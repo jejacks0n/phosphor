@@ -10,7 +10,8 @@
 // place takes the next one there (pick), and a drag after moves that one. Each drag is one
 // edit, worked out each move from the shape as it was at the press. Keys: Delete or Backspace deletes the
 // selected stop or point, Esc lets a stop go or stops editing; the rest are Vector select's (the arrows, Delete
-// with nothing selected, Esc then).
+// with nothing selected, Esc then). A shape is found and edited where it shows (placedShapes: a follower on its path),
+// the pointer taken back through that transform to the shape's own pixels, so its points change as on any shape.
 import { t } from '@/i18n/index.js';
 import { allPoints, apply, deletePoint, invert, moveHandle, movePoint, nearestOnOutline, splitAt, stacked, worldPoints } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
@@ -18,9 +19,10 @@ import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt } from '@/lib/shapeHits.js';
 import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
 import { handlePicker } from '@/tools/handlePick.js';
+import { placedShapes } from '@/document/followers.js';
 import vselect, { handleRadius } from '@/tools/vselect.js';
 
-let drag = null; // { kind: 'point' | 'handle', key, i, at, start, all?, which?, alone?, anchor? } or { kind: 'marquee', from, shift, empty }
+let drag = null; // { kind: 'point' | 'handle', key, i, at, start, shown (start where it shows), all?, which?, alone?, anchor? } or { kind: 'marquee', from, shift, empty }
 const pick = handlePicker();
 
 // The edited shape's points selected: vectorPoint (the last taken, the one the Point row shows) and those taken
@@ -39,10 +41,10 @@ function choose(workspace, list) {
 // The edited shape's points and curve handles in reach of pos, as handlePick's candidates (the drag in the
 // shape's own, local, pixels).
 function pointCandidates(project, workspace, pos, unit, radius, event) {
-  const key = workspace.vectorPoints, shape = project.shapes.get(key), out = [], shift = !!event?.shiftKey;
+  const key = workspace.vectorPoints, shape = project.shapes.get(key), shown = placedShapes(project).get(key), out = [], shift = !!event?.shiftKey;
   const start = (kind, i, extra) => {
     project.beginEdit();
-    drag = { kind, key, i, at: pos, start: project.shapes.get(key), ...extra };
+    drag = { kind, key, i, at: pos, start: project.shapes.get(key), shown: placedShapes(project).get(key), ...extra };
     return true;
   };
   // A point: with Shift, taken too (or, taken already, let go); one of those taken keeps them all, to drag together.
@@ -53,7 +55,7 @@ function pointCandidates(project, workspace, pos, unit, radius, event) {
     return start('point', i, { all: pickedPoints(workspace, shape) });
   };
   const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
-  worldPoints(shape).forEach((p, i) => {
+  worldPoints(shown).forEach((p, i) => {
     const picked = () => choose(workspace, [i]);
     const takeHandle = (which) => () => (choose(workspace, [i]), start('handle', i, { which, alone: !!event?.altKey, anchor: p }));
     for (const which of ['in', 'out']) if (p[which]) out.push({ id: `${which}${i}`, d: d(p[which]), picked, take: takeHandle(which) });
@@ -70,7 +72,7 @@ function handlesPress(ctx, pos, radius, event) {
 
 // A click on the edited shape's outline: a point added there, the curve kept, and taken.
 function outlinePress(project, workspace, pos, unit, radius) {
-  const key = workspace.vectorPoints, shape = project.shapes.get(key), on = nearestOnOutline(shape, pos.x, pos.y);
+  const key = workspace.vectorPoints, shape = project.shapes.get(key), on = nearestOnOutline(placedShapes(project).get(key), pos.x, pos.y);
   if (!on || on.segment < 0 || on.distance * unit.x > radius) return false;
   project.beginEdit();
   project.updateShapes([[key, splitAt(shape, on.segment, on.t)]]);
@@ -101,14 +103,15 @@ function endMarquee(project, workspace) {
     return;
   }
   let key = project.shapes.has(workspace.vectorPoints) ? workspace.vectorPoints : null;
+  const placed = placedShapes(project);
   if (!key) {
-    key = stacked(project.shapes).reverse().find(([, shape]) => pointsIn(shape, box).length)?.[0];
+    key = stacked(placed).reverse().find(([, shape]) => pointsIn(shape, box).length)?.[0];
     if (!key) return;
     workspace.vectorPoints = key;
     project.selectShapes([key]);
     choose(workspace, []);
   }
-  const inside = pointsIn(project.shapes.get(key), box);
+  const inside = pointsIn(placed.get(key), box);
   choose(workspace, shift ? [...pickedPoints(workspace), ...inside] : inside);
 }
 
@@ -125,7 +128,7 @@ export default {
     if (workspace.vectorPoints && project.shapes.has(workspace.vectorPoints)) {
       if (handlesPress(ctx, pos, radius, event) || gradientDrag.line(ctx, pos, radius) || outlinePress(project, workspace, pos, unit, radius)) return true;
     }
-    const hit = shapeAt(project.shapes, pos.x, pos.y, radius / unit.x, false); // an art layer has no points: passed over
+    const hit = shapeAt(placedShapes(project), pos.x, pos.y, radius / unit.x, false); // an art layer has no points: passed over
     if (!hit || hit === workspace.vectorPoints) { // empty canvas, or inside the shape edited: a box over points (end)
       drag = { kind: 'marquee', from: pos, shift: !!event?.shiftKey, empty: !hit };
       return true;
@@ -149,14 +152,14 @@ export default {
     // Shift: a point on a line from where it was pressed, a handle on one from its point.
     const shift = workspace.isShiftPressed;
     if (shift) to = snappedEnd(drag.kind === 'handle' ? drag.anchor : drag.at, to);
-    const back = invert(drag.start.m), { start, i } = drag;
+    const back = invert(drag.shown.m), { start, i } = drag;
     let next;
     if (drag.kind === 'handle') {
       const local = apply(back, to.x, to.y);
       next = moveHandle(start, i, drag.which, local.x, local.y, { alone: drag.alone });
     } else {
       // The point where it was grabbed, moved with the pointer: on the grid with Snap to (along Shift's line).
-      const was = worldPoints(start)[i], snap = snapMode(workspace);
+      const was = worldPoints(drag.shown)[i], snap = snapMode(workspace);
       const moved = { x: was.x + to.x - drag.at.x, y: was.y + to.y - drag.at.y };
       const at = shift ? snapAlong(was, moved, snap) : snapPoint(moved, snap);
       const a = apply(back, was.x, was.y), b = apply(back, at.x, at.y);

@@ -185,7 +185,7 @@ export const vectorActions = {
   setArtContent(key, art, [dx, dy] = [0, 0]) {
     const shape = this.shapes.get(key);
     if (!isArt(shape)) return false;
-    const moved = ({ z, m }) => artFromStranger({ z, m: [m[0], m[1], m[2], m[3], m[4] + dx, m[5] + dy], art });
+    const moved = ({ z, m, follow, along }) => artFromStranger({ z, m: [m[0], m[1], m[2], m[3], m[4] + dx, m[5] + dy], art, ...(follow && { follow }), ...(along && { along }) }); // its link kept
     const next = moved(shape);
     if (next && sameShape(next, shape)) return false;
     if (!next || (this.hasFrames && !this.frames.every(({ changes }) => !isArt(changes.get(key)?.cell) || moved(changes.get(key).cell)))) {
@@ -199,8 +199,9 @@ export const vectorActions = {
 
   // Step into an art layer, to draw in it with the usual tools (as you'd edit a symbol in Flash): the drawing is kept
   // aside (_artInside: its edit cells and paint layer, hasPaint, and the cells as you stepped in),
-  // and the layer's drawing is the edit cells and paint (loadArt), where it sits on the frame showing. Each edit is
-  // then one step changing the layer on every frame it's on (commitArt), and undo goes back no further than here.
+  // and the layer's drawing is the edit cells and paint (loadArt), where it sits on the frame showing (a follower on its
+  // path: placedShapes). Each edit is then one step changing the layer on every frame it's on (commitArt), and undo goes
+  // back no further than here.
   // What's pending is committed first; the selection and any float go. Leaving the ANSI tab steps out. False for a key
   // that's no art layer, when you're inside one already, or for one someone else in the room is drawing in
   // (lockedBy): one person at a time. An animation playing is paused first (once none of those refuses), on the frame
@@ -248,7 +249,8 @@ export const vectorActions = {
 
   // An edit inside an art layer, as commitEdit ends it: the edit cells and paint drawn on are read back into the
   // layer, trimmed to what's drawn (it grows past its edges and shrinks to its drawn cells, its cells staying where
-  // they are; cells of it past the grid's edge are kept as they were), and that's setArtContent's one step. The
+  // they are; cells of it past the grid's edge are kept as they were), and that's setArtContent's one step. A follower
+  // is drawn in where it shows on its path, and only its cells change: its own place stays (the path decides). The
   // stroke records nothing of its own: none of it went to the ledger (sendSlice), and its paint ends with no runs.
   // Too big for one layer, nothing changes and a toast says so.
   commitArt() {
@@ -259,7 +261,7 @@ export const vectorActions = {
     this.hasPaint = layer.hasPaint;
     if (!stroke || !isArt(shape)) return;
     // What can hold the layer's drawing now: where it was, the edit cells, and the paint this stroke touched.
-    const cols = layer.cols, rows = charRowsOf(layer.rows), k = layer.scale, box = artBounds(shape);
+    const shown = placedShapes(this).get(key) ?? shape, cols = layer.cols, rows = charRowsOf(layer.rows), k = layer.scale, box = artBounds(shown);
     const area = { c0: box.x, r0: box.y / 2, c1: box.x + box.w - 1, r1: box.y / 2 + box.h / 2 - 1 };
     const add = (col, row) => {
       area.c0 = Math.min(area.c0, col);
@@ -277,19 +279,20 @@ export const vectorActions = {
     }
     const onGrid = { c0: Math.max(0, area.c0), r0: Math.max(0, area.r0), c1: Math.min(cols - 1, area.c1), r1: Math.min(rows - 1, area.r1) };
     const drawn = onGrid.c0 <= onGrid.c1 && onGrid.r0 <= onGrid.r1 ? drawnIn(this, onGrid) : [];
-    const c0 = shape.m[4], r0 = shape.m[5] / 2;
+    const c0 = shown.m[4], r0 = shown.m[5] / 2;
     for (const [i, ...cell] of shape.art.cells) {
       const col = c0 + i % shape.art.cols, row = r0 + Math.floor(i / shape.art.cols);
       if (col < 0 || row < 0 || col >= cols || row >= rows) drawn.push({ col, row, cell });
     }
-    const made = drawn.length ? artOfCells(drawn) : { m: shape.m, art: { cols: 1, rows: 1, cells: [] } }; // all erased: an empty layer, where it was
+    const made = drawn.length ? artOfCells(drawn) : { m: shown.m, art: { cols: 1, rows: 1, cells: [] } }; // all erased: an empty layer, where it was
+    const by = shown === shape ? [made.m[4] - shape.m[4], made.m[5] - shape.m[5]] : [0, 0];
     inside.writing = true;
     try {
-      this.setArtContent(key, made.art, [made.m[4] - shape.m[4], made.m[5] - shape.m[5]]); // too big: it says so
+      this.setArtContent(key, made.art, by); // too big: it says so
     } finally {
       inside.writing = false;
     }
-    const now = this.shapes.get(key) ?? shape, changed = artBounds(now);
+    const now = placedShapes(this).get(key) ?? shown, changed = artBounds(now);
     this.loadArt(union({ x: onGrid.c0, y: 2 * onGrid.r0, w: Math.max(0, onGrid.c1 - onGrid.c0 + 1), h: Math.max(0, 2 * (onGrid.r1 - onGrid.r0 + 1)) }, changed));
   },
 
@@ -301,7 +304,7 @@ export const vectorActions = {
   // ponytail: the whole grid's paint is reloaded for every edit, undo and redo inside; load only the layer's box if
   // large grids lag there.
   loadArt(area = null) {
-    const inside = this._artInside, shape = this.shapes.get(inside?.key);
+    const inside = this._artInside, shape = placedShapes(this).get(inside?.key); // where it shows
     if (!isArt(shape)) return;
     const layer = this.paintLayer, image = new ImageData(layer.cols, layer.rows), cells = new Map();
     const put = (x, y, hex) => {

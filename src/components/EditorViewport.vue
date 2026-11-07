@@ -208,8 +208,9 @@ const shapeDragStyle = computed(() => {
   };
 });
 
-// VECTOR: where the pointer is, in grid pixels, while the Pen draws (the overlay's dashed next segment).
-watch(() => props.view === 'vector' && workspaceStore.vectorPen && isMouseOver.value && mousePos.value, (pos) => {
+// VECTOR: where the pointer is, in grid pixels, while the Pen draws (the overlay's dashed next segment) or Follow a
+// path… picks (the shape under it lit).
+watch(() => props.view === 'vector' && (workspaceStore.vectorPen || workspaceStore.pickingPath) && isMouseOver.value && mousePos.value, (pos) => {
   const unit = props.unit;
   workspaceStore.vectorHover = pos && unit ? { x: pos.x / unit.x, y: pos.y / unit.y } : null;
 });

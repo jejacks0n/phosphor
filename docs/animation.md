@@ -147,8 +147,31 @@ as you like, and the line grows out along its length. To run a streak along it: 
 to 15, and **Start** from 0 to 100% over frames 1 to 20, so the streak's head leads and its tail follows and the line is
 gone by frame 20.
 
-An [art layer](vector.md#art-layers) has only two parts, Transform and Stack, so those are its only rows and all **+ Add key**
-offers. Its Transform has just **X** and **Y**, its top left corner: X a column, Y in grid pixels, two to a line. A
+### Following a path
+
+A shape or an art layer can follow a path ([Following a path](vector.md#following-a-path)): with it selected, **+ Add
+key** ends with **Follow a path…**, and a click on the line or shape to follow links them. A follower always has an
+**Along** row, whatever its keys: how far along the path its middle is, as a percent of the path's length (measured
+along its curves, so a steady Along moves it at a steady speed). Key it and ease it like the others: Along at 0% on
+frame 1 and 100% on frame 20 moves the follower along the whole path over those frames. On a closed path, past 100%
+comes round again, so an elastic tween springs round the loop and back; on an open one it stops at the ends. The
+row's value is a typed percent; dragging the follower along its path on VECTOR, or the arrow keys, key it on the frame
+showing too.
+
+The row's name, **Along ▾**, is the menu that sets how it follows: **Moves**, **Face the path**, **Motion** and **Stop
+following**. Moving **With the line's end** (or start), the follower sits on the path's End (or Start) on every frame
+and has no Along keys of its own; its value shows that tip's percent, grayed out, and dragging it does nothing.
+
+To ride a dot on a spark's tip: draw the spark's line and key its **End** from 0 to 100% (its **Start** too, for a
+streak that runs off, as above). Draw a dot, choose **Follow a path…** and click the line, then **Along ▾ → With the
+line's end**. The dot stays on the tip whatever you do to the line's timing or easing. Make the line a **Guide** and
+only the dot shows, moving along the curve.
+
+To move a shape along a curve: draw the curve, have the shape follow it, key Along at 0% on the first frame and 100%
+on the last, and choose an easing; **Face the path** turns it as the curve turns, and **Guide** hides the curve.
+
+An [art layer](vector.md#art-layers) has only two parts, Transform and Stack (and Along while it follows a path), so
+those are its only rows and all **+ Add key** offers, with **Follow a path…**. Its Transform has just **X** and **Y**, its top left corner: X a column, Y in grid pixels, two to a line. A
 value typed between cells lands on the nearest whole cell.
 
 On a phone there's no values column and no **◀** or **▶**: a **◇** (lit **◆** where there's a key) ends each row and does

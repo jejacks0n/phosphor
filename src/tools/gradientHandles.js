@@ -8,15 +8,17 @@
 // gradient has there, or a stop to select it (workspace.vectorStop, the selected point let go), whose color that
 // chip's box then sets. A double-click on a stop (on an end with none, the stop whose color shows there: the first
 // or the last) opens that chip's box for it. Each drag or click that changes the gradient is one undo step;
-// removeStop is Delete's.
+// removeStop is Delete's. The handles are where the shape shows (placedShapes: a follower on its path), and a drag is
+// taken back through that to the gradient's own place on the shape.
 import { MOST_STOPS, apply, gradientColorAt, invert, isGradient, multiply, translation, withShape } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { DOUBLE_MS, DOUBLE_PX } from '@/tools/handlePick.js';
+import { placedShapes } from '@/document/followers.js';
 
 const OFF_THE_LINE = 24; // CSS px a stop is dragged off its line to remove it
 const MOVED = 2;         // CSS px a press goes before it's a drag, not a click
 
-let drag = null; // { kind: 'line' | 'move' | 'end' | 'stop', key, slot, start, at, moved, which?, stop?, t? }
+let drag = null; // { kind: 'line' | 'move' | 'end' | 'stop', key, slot, start, shown (start where it shows), at, moved, which?, stop?, t? }
 let last = null; // the last click on a stop, for a double-click: { key, slot, stop, time, at }
 
 const hasGradient = (shape) => !!shape && (isGradient(shape.fill) || isGradient(shape.stroke));
@@ -85,13 +87,13 @@ export function removeStop(project, workspace) {
 // end is the end's), else its line (line: the drag started, or false).
 export const gradientDrag = {
   candidates({ project, workspace, unit }, pos, radius) {
-    const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
+    const key = gradientKey(project, workspace), shape = key && project.shapes.get(key), shown = shape && placedShapes(project).get(key);
     if (!shape) return [];
-    const slot = gradientSlot(shape, workspace), { p0, p1, stops } = gradientHandles(shape, slot), radial = shape[slot].type === 'radial';
+    const slot = gradientSlot(shape, workspace), { p0, p1, stops } = gradientHandles(shown, slot), radial = shape[slot].type === 'radial';
     const stopNear = (p) => stops.find((s) => near(s.at, p, unit, 1))?.i; // a stop at that end
     const take = (hit) => () => {
       project.beginEdit();
-      drag = { ...hit, key, slot, start: shape, at: pos, moved: false };
+      drag = { ...hit, key, slot, start: shape, shown, at: pos, moved: false };
       return true;
     };
     const picked = (stop) => () => {
@@ -107,12 +109,12 @@ export const gradientDrag = {
   },
 
   line({ project, workspace, unit }, pos, radius) {
-    const key = gradientKey(project, workspace), shape = key && project.shapes.get(key);
+    const key = gradientKey(project, workspace), shape = key && project.shapes.get(key), shown = shape && placedShapes(project).get(key);
     if (!shape) return false;
-    const slot = gradientSlot(shape, workspace), { p0, p1 } = gradientHandles(shape, slot), on = along(p0, p1, pos, unit);
+    const slot = gradientSlot(shape, workspace), { p0, p1 } = gradientHandles(shown, slot), on = along(p0, p1, pos, unit);
     if (on.off > radius || on.t <= 0 || on.t >= 1) return false;
     project.beginEdit();
-    drag = { kind: 'line', t: on.t, key, slot, start: shape, at: pos, moved: false };
+    drag = { kind: 'line', t: on.t, key, slot, start: shape, shown, at: pos, moved: false };
     return true;
   },
 
@@ -124,18 +126,18 @@ export const gradientDrag = {
     if (!drag) return;
     if (!drag.moved && !near(drag.at, to, unit, MOVED)) drag.moved = true;
     if (!drag.moved) return;
-    const { start, slot } = drag, back = invert(start.m), local = (p) => apply(back, p.x, p.y);
+    const { start, shown, slot } = drag, back = invert(shown.m), local = (p) => apply(back, p.x, p.y);
     let next = null;
     if (drag.kind === 'line' || drag.kind === 'move') {
       const a = local(drag.at), b = local(to);
       next = withPaint(start, slot, { m: multiply(translation(b.x - a.x, b.y - a.y), start[slot].m) });
     } else if (drag.kind === 'end') {
-      const { p0, p1 } = gradientHandles(start, slot), fixed = drag.which ? p0 : p1, moving = drag.which ? p1 : p0;
+      const { p0, p1 } = gradientHandles(shown, slot), fixed = drag.which ? p0 : p1, moving = drag.which ? p1 : p0;
       const end = workspace.isShiftPressed ? snappedEnd(fixed, to) : to;
       const turn = about(local(fixed), local(moving), local(end));
       if (turn) next = withPaint(start, slot, { m: multiply(turn, start[slot].m) });
     } else if (drag.kind === 'stop') {
-      const { p0, p1 } = gradientHandles(start, slot), on = along(p0, p1, to, unit), stops = start[slot].stops;
+      const { p0, p1 } = gradientHandles(shown, slot), on = along(p0, p1, to, unit), stops = start[slot].stops;
       if (on.off > OFF_THE_LINE && stops.length > 2) {
         next = withPaint(start, slot, { stops: stops.filter((_, j) => j !== drag.stop) });
         workspace.vectorStop = null;

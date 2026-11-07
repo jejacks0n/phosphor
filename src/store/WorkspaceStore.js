@@ -68,6 +68,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorClipboardKeys: null, // the keys they were copied from, so a follower pasted with its path follows the copy
     vectorClipboardId: null, // which copy that was, to know it on the system clipboard
     vectorTrim: null,        // the Start or End handle being dragged, { part, share }, for its label
+    pickingPath: null,       // Follow a path…: the key of the shape or art layer whose next click on VECTOR picks the path it follows (vselect), or null
     vectorMarquee: null,     // the box Vector select drags over empty canvas, { x0, y0, x1, y1 } in grid pixels
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     clipboardId: null,       // the last copy's id, in the block it put on the system clipboard (clipboard.js)

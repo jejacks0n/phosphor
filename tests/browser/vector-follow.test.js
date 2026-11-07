@@ -6,7 +6,7 @@ import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
-import { makeShape, rectShape, transformed, translation, withShape } from '@/document/shapes.js';
+import { apply, makeShape, rectShape, transformed, translation, withShape, worldPoints } from '@/document/shapes.js';
 import { PARTS } from '@/document/parts.js';
 import { centerOf, placedShapes } from '@/document/followers.js';
 import { makeArt } from '@/document/artLayers.js';
@@ -16,6 +16,7 @@ import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboar
 import { loadBooleans } from '@/lib/shapeBooleans.js';
 import { toastMessage } from '@/composables/useToast';
 import vselect, { selectionBox } from '@/tools/vselect.js';
+import vnode from '@/tools/vnode.js';
 import VectorOverlay from '@/components/VectorOverlay.vue';
 import KeyValues from '@/components/KeyValues.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
@@ -465,4 +466,68 @@ test('Add keeps the bottom shape\'s link to its path', async () => {
   const link = project.shapes.get(bottom).follow;
   expect(project.combineShapes([top, bottom], 'add')).toBe(bottom);
   expect(project.shapes.get(bottom).follow).toEqual(link);
+});
+
+// Editing a follower where it shows: the Node tool, the box's handles and stepping in all work on the placed shape and
+// write the record as it would be unplaced.
+const diagonal = () => path({ points: [[4, 4, 0, 0, 0, 0, 0], [24, 24, 0, 0, 0, 0, 0]] }); // its middle (14, 14), at 45°
+
+test('the Node tool drags a point of a follower turned to its path where it shows, and the point lands under the pointer', async () => {
+  const { project, workspace } = await drawing();
+  const p = project.addShape(diagonal());
+  // A square with a point in the middle of its top edge, which a grid pixel down stays inside its box.
+  const points = [[3, 3], [5, 3], [7, 3], [7, 7], [3, 7]].map(([x, y]) => [x, y, 0, 0, 0, 0, 0]);
+  const f = project.addShape(makeShape({ points, closed: true, fill: '#ff0000', stroke: null, width: 1, follow: { key: p, face: true }, along: 0.5 }));
+  Object.assign(workspace, { editorTab: 'vector', vectorSelected: [f], vectorPoints: f });
+  workspace.setActiveTool('vnode');
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } }, shown = () => placedShapes(project).get(f);
+  const m = project.shapes.get(f).m, from = worldPoints(shown())[1], to = apply(shown().m, 5, 4);
+  expect(Math.abs(from.x - 14) > 0.5).toBe(true); // turned: not straight above the middle
+  vnode.begin(ctx, from, {});
+  vnode.move(ctx, from, to);
+  vnode.end(ctx);
+  const [x, y] = project.shapes.get(f).points[1];
+  expect([x, y].map((v) => Math.round(v * 1000) / 1000)).toEqual([5, 4]);
+  near(worldPoints(shown())[1], Math.round(to.x * 100) / 100, Math.round(to.y * 100) / 100);
+  expect(project.shapes.get(f).m).toEqual(m);
+});
+
+test('a follower turned to its path, scaled by a corner in Vector select, stays unskewed and on its path', async () => {
+  const { project, workspace } = await drawing();
+  const p = project.addShape(diagonal());
+  const f = project.addShape(square(5, 5, { follow: { key: p, face: true }, along: 0.5 }));
+  workspace.vectorSelected = [f];
+  workspace.setActiveTool('vselect');
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
+  const corner = selectionBox(placedShapes(project), [f]).corners[2];
+  vselect.begin(ctx, corner, {});
+  vselect.move(ctx, corner, { x: corner.x + 3, y: corner.y });
+  vselect.end(ctx);
+  const m = placedShapes(project).get(f).m;
+  expect(Math.hypot(m[0], m[1])).not.toBeCloseTo(Math.hypot(m[2], m[3]), 2); // stretched one way more than the other
+  expect(m[0] * m[2] + m[1] * m[3]).toBeCloseTo(0, 6); // its sides still square to each other
+  expect(Math.atan2(m[1], m[0])).toBeCloseTo(Math.PI / 4, 6); // still turned to the path
+  near(centerAt(project, f), 14, 14);
+});
+
+test('stepped into a follower art layer, it is drawn in where it shows, and a typed cell lands where it shows', async () => {
+  const { project } = await drawing();
+  const p = project.addShape(path());
+  const art = { cols: 3, rows: 1, cells: [[0, 'A', null, '#ff0000'], [1, 'B', null, '#ff0000'], [2, 'C', null, '#ff0000']] };
+  const a = project.addShape(makeArt({ m: [1, 0, 0, 1, 0, 0], art, follow: { key: p }, along: 0.5 }));
+  await settle(project);
+  const placed = placedShapes(project).get(a), col = placed.m[4], row = placed.m[5] / 2;
+  expect(cell(project, col, row).char).toBe('A');
+  expect(project.enterArt(a)).toBe(true);
+  expect([0, 1, 2].map((i) => cell(project, col + i, row).char).join('')).toBe('ABC');
+  const at = row * project.cols + col + 2;
+  expect(project.shownCells[at]).toBe(project.cells[at]); // inside its box: not dimmed
+  project.typeAt(col + 1, row, 'Z', { fg: '#00ff00' });
+  project.commitEdit();
+  expect(project.shapes.get(a).m).toEqual([1, 0, 0, 1, 0, 0]);
+  expect(project.shapes.get(a).follow).toEqual({ key: p }); // still following
+  expect(project.shapes.get(a).art.cells.map((c) => c[1])).toEqual(['A', 'Z', 'C']);
+  project.leaveArt();
+  await settle(project);
+  expect([0, 1, 2].map((i) => cell(project, col + i, row).char).join('')).toBe('AZC');
 });

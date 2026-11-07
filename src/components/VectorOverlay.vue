@@ -4,10 +4,12 @@
 // handles of the shape whose points are being edited (the selected point filled) and its gradient's line, ends
 // and stops (each in its color, the selected one ringed), and the Pen's points (the first filled: a click there
 // closes) with its next segment, dashed, to the pointer, and a selected shape's Start and End handles on its outline
-// (with the stretch not drawn dashed in its stroke color, and while one's dragged, its name and percent). In a room, an art layer someone else is drawing in shows its
-// box, saying who. Every guide shows its outline, thin and dashed, selected or not, since it draws nothing else. Shapes
-// are read where they show (placedShapes: a follower on its path). It takes no pointer events,
-// and shows nothing while the animation plays. It's drawn twice: first dark and wider (the halo, its own group so
+// (with the stretch not drawn dashed in its stroke color, and while one's dragged, its name and percent). In a room,
+// an art layer someone else is drawing in shows its box, saying who. Every guide shows its outline, thin and dashed,
+// selected or not, since it draws nothing else; a selected follower's path shows dashed in the accent, and while
+// Follow a path… picks, the shape under the pointer that could be the path shows thick in it. Shapes are read where
+// they show (placedShapes: a follower on its path). It takes no pointer events, and shows nothing while the
+// animation plays. It's drawn twice: first dark and wider (the halo, its own group so
 // nothing that looks for the overlay's handles finds it twice), then in color, so it reads over any art.
 import { computed } from 'vue';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -17,7 +19,7 @@ import { t } from '@/i18n';
 import { pathData, withOutlines, worldPoints } from '@/document/shapes.js';
 import { measure } from '@/document/pathLength.js';
 import { placedShapes } from '@/document/followers.js';
-import { boxHandles, handleRadius, selectionBox, trimHandles } from '@/tools/vselect.js';
+import { boxHandles, handleRadius, pathAt, selectionBox, trimHandles } from '@/tools/vselect.js';
 import { gradientHandles, gradientKey, gradientSlot } from '@/tools/gradientHandles.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { pickedPoints } from '@/tools/vnode.js';
@@ -44,8 +46,17 @@ const shown = computed(() => !!props.unit && !workspace.playing);
 const placed = computed(() => placedShapes(project)); // where they show: a follower on its path
 const selected = computed(() => workspace.vectorSelected.filter((key) => placed.value.has(key)));
 const outlines = computed(() => selected.value.map((key) => pathData(placed.value.get(key), props.unit.x, props.unit.y)));
-// Every guide's outline, thin and dashed, selected or not: it draws nothing else, so this is where it's found.
+// Every guide's outline, thin and dashed, selected or not: it draws nothing else, so this is where it's found. And the
+// paths the selected followers follow, dashed in the accent.
 const guides = computed(() => (!props.unit ? [] : [...placed.value.values()].filter((shape) => shape.guide).map((shape) => pathData(shape, props.unit.x, props.unit.y))));
+const followed = computed(() => (!props.unit ? [] : [...new Set(selected.value.map((key) => placed.value.get(key).follow?.key))]
+  .filter((key) => placed.value.has(key)).map((key) => pathData(placed.value.get(key), props.unit.x, props.unit.y))));
+// Follow a path…: the shape under the pointer the picker could follow.
+const pickable = computed(() => {
+  const at = workspace.pickingPath && props.unit && workspace.vectorHover;
+  const key = at && pathAt(project, workspace.pickingPath, at, handleRadius() / props.unit.x);
+  return key ? pathData(placed.value.get(key), props.unit.x, props.unit.y) : null;
+});
 // On a Blank frame, the shapes it carries from the frame before: their outlines, dimmed. Only with Animate on.
 const carried = computed(() => {
   if (!props.unit || !project.hasFrames || !project.animate) return [];
@@ -61,7 +72,6 @@ const box = computed(() => {
   return { corners: b.corners.map(px).map(({ x, y }) => `${x},${y}`).join(' '), handles: handles.map(px), top: px(top), knob: knob && px(knob) };
 });
 
-// The art layers someone else is drawing in: each one's box, and the words over its top-left corner.
 // The one selected shape's Start and End handles, the outline between them left undrawn dashed, and the label of the one
 // being dragged.
 const trim = computed(() => {
@@ -82,6 +92,7 @@ const trim = computed(() => {
   };
 });
 
+// The art layers someone else is drawing in: each one's box, and the words over its top-left corner.
 const locks = computed(() => (!props.unit ? [] : [...new Set(Object.values(project._locks).map(({ key }) => key))]).flatMap((key) => {
   const words = drawing.lockedWords(key), b = words && selectionBox(placed.value, [key]);
   if (!b) return [];
@@ -135,6 +146,8 @@ const r = computed(() => handleRadius() / 2 + 1);
       <path v-for="(d, i) in guides" :key="`g${i}`" :d="d" class="outline guide"/>
       <path v-for="(d, i) in carried" :key="`c${i}`" :d="d" class="outline carried"/>
       <path v-for="(d, i) in outlines" :key="i" :d="d" class="outline"/>
+      <path v-for="(d, i) in followed" :key="`f${i}`" :d="d" class="outline followed"/>
+      <path v-if="pickable" :d="pickable" class="outline pickable"/>
       <g v-for="lock in locks" :key="lock.key" :data-locked="lock.key">
         <polygon :points="lock.corners" class="box"/>
         <text :x="lock.at.x" :y="lock.at.y - 4" class="locked">{{ lock.words }}</text>
@@ -230,6 +243,15 @@ svg.vector-overlays {
 
 .guide, .vector-halo .guide {
   stroke-dasharray: 2 3;
+}
+.followed, .vector-halo .followed {
+  stroke-dasharray: 4 3;
+}
+.pickable {
+  stroke-width: 3px;
+}
+.vector-halo .pickable {
+  stroke-width: 5px;
 }
 .vector-halo .guide {
   stroke-width: 2px;

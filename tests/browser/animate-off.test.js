@@ -9,6 +9,7 @@ import { makeShape, rectShape } from '@/document/shapes.js';
 import ProjectActions from '@/components/ProjectActions.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import VectorOverlay from '@/components/VectorOverlay.vue';
+import KeysPanel from '@/components/KeysPanel.vue';
 
 let app = null;
 afterEach(() => {
@@ -84,4 +85,23 @@ test('a trimmed line\'s Start and End handles show only with Animate on', async 
   project.setAnimate(false);
   await nextTick();
   expect(host.querySelectorAll('circle.handle.trim').length).toBe(0);
+});
+
+test('picking a path ends when Animate turns off, and a guide\'s outline still shows with it off', async () => {
+  const { project, workspace } = await framesKept();
+  project.setAnimate(true);
+  const g = project.addShape(makeShape({ points: [[2, 10, 0, 0, 0, 0, 0], [18, 10, 0, 0, 0, 0, 0]], closed: false, stroke: '#00ff00', width: 1, guide: true }));
+  const f = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
+  project.noteFrame(); // into the frame showing's keys
+  Object.assign(workspace, { editorTab: 'vector', vectorSelected: [f] });
+  workspace.setActiveTool('vselect');
+  const host = await mount({ render: () => [h(KeysPanel), h(VectorOverlay, { unit: { x: 10, y: 10 } })] });
+  workspace.pickingPath = f;
+  await nextTick();
+  expect(workspace.pickingPath).toBe(f);
+  project.setAnimate(false);
+  await nextTick();
+  expect(workspace.pickingPath).toBe(null);
+  expect(project.shapes.has(g)).toBe(true);
+  expect(host.querySelectorAll('[data-vector-overlay] path.guide').length).toBe(1);
 });

@@ -6,7 +6,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePlayback } from '@/composables/usePlayback';
 import { EASINGS, MOTIONS } from '@/document/tweens.js';
-import { partsOf } from '@/document/parts.js';
+import { PARTS, partsOf } from '@/document/parts.js';
 import { isArt } from '@/document/artLayers.js';
 import { listedParts, partKeys } from '@/document/keys.js';
 import { lifeAt } from '@/document/tweens.js';
@@ -15,7 +15,9 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 import KeyValues from '@/components/KeyValues.vue';
 
 // Over the animation bar on VECTOR: the first selected shape's parts as rows, each with its keys as diamonds on a lane
-// of frames lined up with the scrubber's marks below. Keys are selected, eased, deleted and added here.
+// of frames lined up with the scrubber's marks below. Keys are selected, eased, deleted and added here. Following a
+// path is set up here too: + Add key's Follow a path… starts the pick (workspace.pickingPath, which Vector select's
+// next click ends), a follower's Along row has the menu for how it follows, and a path or guide has the Guide toggle.
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -47,16 +49,36 @@ const keys = computed(() => {
   void project.historyVersion;
   return lifeStart.value === null ? null : partKeys(project.frames, shapeKey.value, lifeStart.value);
 });
+const shape = computed(() => project.shapes.get(shapeKey.value) ?? null);
+// A follower has an Along row whatever its keys: its name is the menu that sets how it follows.
 const rows = computed(() => {
   void project.historyVersion;
   if (!keys.value) return [];
-  return listedParts(project.frames, shapeKey.value, lifeStart.value).map((part) => ({ part, keys: keys.value.rows.get(part) }));
+  const listed = listedParts(project.frames, shapeKey.value, lifeStart.value);
+  return PARTS.filter((part) => listed.includes(part) || (part === 'along' && shape.value?.follow)).map((part) => ({ part, keys: keys.value.rows.get(part) }));
 });
 // The parts + Add key offers: those without a row yet; Along only for a shape or art layer that follows a path.
 const unlisted = computed(() => {
-  const shape = keys.value && project.shapes.get(shapeKey.value);
-  return shape ? partsOf(shape).filter((part) => (part !== 'along' || shape.follow) && !rows.value.some((row) => row.part === part)) : [];
+  const one = keys.value && shape.value;
+  return one ? partsOf(one).filter((part) => (part !== 'along' || one.follow) && !rows.value.some((row) => row.part === part)) : [];
 });
+// Follow a path…: one shape or art layer selected that follows nothing.
+const canFollow = computed(() => !!keys.value && !!shape.value && !shape.value.follow
+  && workspace.vectorSelected.filter((key) => project.shapes.has(key)).length === 1);
+// Picking ends, with nothing done, once it couldn't go on: the picker not the one selected shape, the tool not Vector
+// select, VECTOR not showing or Animate off; and with the panel.
+const picking = computed(() => workspace.pickingPath !== null && workspace.pickingPath === shapeKey.value && canFollow.value
+  && workspace.activeTool === 'vselect' && workspace.editorTab === 'vector' && project.animate);
+watch(() => workspace.pickingPath !== null && !picking.value, (stale) => {
+  if (stale) workspace.pickingPath = null;
+}, { immediate: true });
+onBeforeUnmount(() => { workspace.pickingPath = null; });
+// The Along menu's choices, and the Guide toggle: for a path with followers on the frame showing, or a guide.
+const follow = computed(() => shape.value?.follow ?? null);
+const RIDES = [['along', 'rideAlong'], ['start', 'rideStart'], ['end', 'rideEnd']];
+const STEPS = [['smooth', 'smooth'], ['half', 'half'], ['cells', 'cells']];
+const guided = computed(() => !!shape.value && !isArt(shape.value)
+  && (!!shape.value.guide || [...project.shapes.values()].some((other) => other.follow?.key === shapeKey.value)));
 const keyAt = (part, i) => keys.value?.rows.get(part).find((k) => k.at === i);
 const deletable = (k) => !!k && k.at !== keys.value.start && !k.fixed;
 const partName = (part) => t(`keysPanel.parts.${part}`);
@@ -279,6 +301,12 @@ const ease = paused((choice) => project.setKeyEasing(shapeKey.value, workspace.s
 const moveBy = paused((choice) => project.setKeyMotion(shapeKey.value, workspace.selectedKeys, choice));
 const remove = paused(() => project.deleteKeys(shapeKey.value, workspace.selectedKeys));
 const addKey = paused((part) => project.addKey(shapeKey.value, part));
+const pickPath = paused(() => { workspace.pickingPath = shapeKey.value; });
+const ride = paused((choice) => project.setFollow([shapeKey.value], { ride: choice }));
+const face = paused(() => project.setFollow([shapeKey.value], { face: !follow.value.face }));
+const step = paused((choice) => project.setFollow([shapeKey.value], { motion: choice }));
+const unfollow = paused(() => project.stopFollowing([shapeKey.value]));
+const guide = paused(() => project.setGuide([shapeKey.value], !shape.value.guide));
 const show = paused((i) => project.showFrame(i));
 // A row's ◇ keys the part on the frame showing; its lit ◆ deletes that key.
 const toggleHere = paused((part) => {
@@ -306,8 +334,12 @@ const focusIn = () => {
     <div class="head">
       <div class="lead">
         <button class="fold" :aria-label="t('keysPanel.fold')" aria-expanded="true" :title="t('keysPanel.fold')" @click="workspace.keysOpen = false">▾</button>
-        <DropdownMenu v-if="shapeKey" class="add-key" :label="t('keysPanel.addKey')" align="left" up :disabled="!unlisted.length">
+        <DropdownMenu v-if="shapeKey" class="add-key" :label="t('keysPanel.addKey')" align="left" up :disabled="!unlisted.length && !canFollow">
           <button v-for="part in unlisted" :key="part" :disabled="!!keyAt(part, project.frame)" @click="addKey(part)">{{ partName(part) }}</button>
+          <template v-if="canFollow">
+            <div v-if="unlisted.length" class="divider"/>
+            <button class="follow" @click="pickPath">{{ t('keysPanel.followPath') }}</button>
+          </template>
         </DropdownMenu>
       </div>
       <p v-if="!shapeKey" class="none">{{ t('keysPanel.none') }}</p>
@@ -322,6 +354,7 @@ const focusIn = () => {
           <button :aria-label="t('keysPanel.zoomIn')" :title="t('keysPanel.zoomIn')" :disabled="mostZoomed" @click="zoomButton(1.25)">+</button>
         </span>
         <div class="rest">
+          <button v-if="guided" class="guide" :aria-pressed="!!shape.guide" :title="t('keysPanel.guideTitle')" @click="guide">{{ t('keysPanel.guide') }}</button>
           <DropdownMenu class="easing" :label="t('keysPanel.easing')" :trigger-label="t('keysPanel.easingNow', { easing: easingName })" up :disabled="!easable.length">
             <template #trigger>
               <svg v-if="easing !== MIXED" class="curve" viewBox="0 0 16 16" aria-hidden="true"><path :d="CURVES[easing ?? 'none']"/></svg>
@@ -345,7 +378,17 @@ const focusIn = () => {
     <div v-if="shapeKey" class="rows">
       <div v-for="row in rows" :key="row.part" class="row" :class="{ picked: selected.some(({ part }) => part === row.part) }" :data-part="row.part">
         <div class="lead">
-          <span class="name">{{ rowName(row.part) }}</span>
+          <DropdownMenu v-if="row.part === 'along' && follow" class="along" :label="t('keysPanel.alongMenu')" align="left" up>
+            <template #trigger><span class="name">{{ rowName('along') }} ▾</span></template>
+            <p class="heading">{{ t('keysPanel.moves') }}</p>
+            <button v-for="[choice, words] in RIDES" :key="choice" :aria-pressed="(follow.ride ?? 'along') === choice" @click="ride(choice === 'along' ? undefined : choice)">{{ t(`keysPanel.${words}`) }}</button>
+            <button v-if="!isArt(shape)" :aria-pressed="!!follow.face" @click="face">{{ t('keysPanel.face') }}</button>
+            <p class="heading">{{ t('keysPanel.motionHeading') }}</p>
+            <button v-for="[choice, words] in STEPS" :key="choice" :aria-pressed="(follow.motion ?? 'smooth') === choice" @click="step(choice === 'smooth' ? undefined : choice)">{{ t(`animation.motions.${words}`) }}</button>
+            <div class="divider"/>
+            <button @click="unfollow">{{ t('keysPanel.stopFollowing') }}</button>
+          </DropdownMenu>
+          <span v-else class="name">{{ rowName(row.part) }}</span>
           <span v-if="!phone" class="nav">
             <button :aria-label="t('keysPanel.previous', { part: partName(row.part) })" :disabled="previous(row) === undefined" @click="show(previous(row))">◀</button>
             <button class="here" :class="{ on: !!keyAt(row.part, at) }" :aria-label="t('keysPanel.here', { part: partName(row.part) })" :aria-pressed="!!keyAt(row.part, at)" :disabled="!!keyAt(row.part, at) && !deletable(keyAt(row.part, at))" @click="toggleHere(row.part)">{{ keyAt(row.part, at) ? '◆' : '◇' }}</button>
@@ -611,9 +654,43 @@ svg.curve {
   height: 14px;
   fill: none;
 }
-.easing button[aria-pressed='true']::after, .motion button[aria-pressed='true']::after {
+.easing button[aria-pressed='true']::after, .motion button[aria-pressed='true']::after, .along button[aria-pressed='true']::after {
   content: '✓' / '';
   margin-left: 4px;
+}
+/* Follow a path…, and the Along menu's parts, set off by a line; its headings. */
+div.divider {
+  height: 1px;
+  margin: 2px 4px;
+  background: var(--border);
+}
+p.heading {
+  margin: 2px 10px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+/* The Along row's name is its menu: drawn as the other names are. */
+.along {
+  min-width: 0;
+}
+.along :deep(.dropdown-trigger) {
+  height: 20px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  font-weight: 400;
+  color: var(--text);
+}
+button.guide {
+  flex: none;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+button.guide[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--white);
 }
 button.delete {
   flex: none;
@@ -686,6 +763,9 @@ div.row > button.here.on {
   }
   div.row {
     height: 26px;
+  }
+  .add-key button.follow, .along button { /* tall enough to tap */
+    min-height: 40px;
   }
   div.row div.lead {
     padding: 0 0 0 6px;
