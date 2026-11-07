@@ -384,8 +384,9 @@ export const sharingActions = {
     this.editVersion++;
   },
 
-  // The Base and Edit toggles an action may go by: an artist's are always the drawing.
+  // The Base and Edit toggles an action may go by: an artist's are always the drawing, and inside an art layer, the
+  // layer alone.
   layersFor(layers) {
-    return this._sharing?.role === 'artist' ? EDIT_ONLY : layers;
+    return this._sharing?.role === 'artist' || this._artInside ? EDIT_ONLY : layers;
   },
 };

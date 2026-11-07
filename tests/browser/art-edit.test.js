@@ -2,6 +2,7 @@
 // kept aside, and each edit is one undo step that changes the layer on every frame it's on.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import eraser from '@/tools/eraser';
 import { makeArt } from '@/document/artLayers.js';
 import { withShape, isShapeKey } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
@@ -225,6 +226,71 @@ test('a tab change, opening a file, a new document, a canvas resize, Animate off
     await act(project);
     expect([name, seen, project.artInside]).toEqual([name, [true], null]);
   }
+});
+
+test('a whole-layer action steps out first, so undoing it after leaves the drawing as it was', async () => {
+  const cases = {
+    clear: (project) => project.clearEditLayer(),
+    clearFrame: (project) => project.clearEditLayer(),
+    mergeUp: (project) => project.mergeUp({ c0: 0, r0: 0, c1: 9, r1: 9 }),
+    mergeDown: (project) => project.mergeDown(),
+    mergeIntoPicture: (project) => project.mergeIntoPicture(),
+    bake: (project) => project.bake(),
+    bakeFrames: (project) => project.bake(),
+    mergeShapes: (project) => project.mergeShapes(),
+    makeArtLayer: (project, workspace) => {
+      workspace.selection = { c0: 0, r0: 0, c1: 2, r1: 2 };
+      project.makeArtLayer();
+    },
+    setFrameState: (project) => project.setFrameState({ ...project.currentFrame }),
+    setAllFrames: (project) => project.setAllFrames(project.frames.map(({ kind, changes }) => ({ kind, changes }))),
+  };
+  for (const [name, act] of Object.entries(cases)) {
+    const { project, workspace, key } = await withArt();
+    if (['clearFrame', 'bakeFrames', 'setFrameState', 'setAllFrames'].includes(name)) {
+      project.addFrame('blank');
+      project.showFrame(0);
+    }
+    if (name.startsWith('bake')) project.brightness = 140; // something for Bake to bake
+    workspace.editorTab = 'output';
+    project.enterArt(key);
+    project.typeAt(5, 2, 'Z', { fg: RED });
+    await act(project, workspace);
+    await settle(project);
+    const stayed = project.artInside;
+    project.leaveArt();
+    project.undo();
+    await settle(project);
+    if (project.hasFrames) project.showFrame(0);
+    // The drawing as it was: none of the layer's cells or paint in it.
+    expect([name, project.editCells.get('1,1')?.char, project.editCells.has('4,2'), project.editCells.has('5,2')]).toEqual([name, 'X', false, false]);
+    expect([name, !!project.paintLayer.pixelAt(0, 16)]).toEqual([name, true]);
+    expect([name, stayed]).toEqual([name, null]); // stepped out by the action itself
+  }
+});
+
+test('with Base lit, the Eraser or a Delete inside takes from the layer alone, and the base stays', async () => {
+  const { project, workspace, key } = await withArt();
+  workspace.editorTab = 'output';
+  project.enterArt(key);
+  const records = project.baseRecords, version = project.baseLayer.version;
+  workspace.eraseLayers = { base: true, edit: true };
+  workspace.editEraserSize = 1;
+  const ctx = { project, workspace, view: 'output' };
+  eraser.begin(ctx, { x: 4.5, y: 4.5 });
+  eraser.end(ctx);
+  project.deleteSelection({ c0: 6, r0: 6, c1: 8, r1: 8 }, { base: true, edit: true });
+  expect(project.shapes.get(key).art.cells).toEqual([]);
+  expect(project.baseRecords).toBe(records);
+  expect(project.baseLayer.version).toBe(version);
+});
+
+test('no stepping in while the document is shared, until rooms lock a layer someone draws in', async () => {
+  const { project, key } = await withArt();
+  project.startSharing({ send: () => {}, role: 'host', me: 'me' });
+  expect(project.enterArt(key)).toBe(false);
+  project.stopSharing();
+  expect(project.enterArt(key)).toBe(true);
 });
 
 test('autosave writes the drawing kept aside, not the layer being edited', async () => {
