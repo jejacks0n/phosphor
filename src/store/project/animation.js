@@ -360,17 +360,23 @@ function putArt(project, key, art, [dx, dy]) {
   project.frames = [...project.frames];
 }
 
-// Records of shapes put in the frames' changes ([at, key, shape]): a part a record gives a new value is keyed there
-// where the frame keys only some of the shape, so it shows as it was set. Then the parts unkey names ([key, parts]) are
-// keyed nowhere, their easings with them, and a Blank key frame past its life's start left keying none of the shape is
-// no key frame of it. Every frame's look goes: a record can reach any frame its tweens cross.
-function putRecords(project, records, unkey) {
+// Records of shapes put in the frames' changes ([at, key, shape]). keyLike ({ part: like }): where a record's frame keys
+// part like of the shape, it keys part too, eased as like is. Then the parts unkey names ([key, parts]) are keyed
+// nowhere, their easings with them, and a Blank key frame past its life's start left keying none of the shape is no key
+// frame of it. Every frame's look goes: a record can reach any frame its tweens cross.
+function putRecords(project, records, unkey, keyLike) {
   const frames = project.frames;
   for (const [at, key, shape] of records) {
-    const frame = frames[at], was = frame.changes.get(key).cell, set = frame.parts?.get(key);
+    const frame = frames[at], sets = setPartsAt(frames, key, at);
     frame.changes = new Map(frame.changes).set(key, cellState(shape, 0, 0));
-    const added = set ? [...changedParts(was, shape)].filter((name) => !set.has(name)) : [];
-    if (added.length) frame.parts = new Map(frame.parts).set(key, new Set([...set, ...added]));
+    for (const [part, like] of Object.entries(keyLike)) {
+      if (!sets.has(like)) continue;
+      const set = frame.parts?.get(key), eases = new Map(frame.tweens?.get(key) ?? []), easing = eases.get(like);
+      if (set && !set.has(part)) frame.parts = new Map(frame.parts).set(key, new Set([...set, part]));
+      if (easing) eases.set(part, easing);
+      else eases.delete(part);
+      frame.tweens = withEases(frame.tweens, key, eases);
+    }
   }
   frames.forEach((frame, at) => {
     for (const [key, names] of unkey) {
@@ -728,10 +734,11 @@ export const animationActions = {
 
   // changes, [[key, change(shape, at)]]: every record of each shape changed wherever it's held, each frame's own (a key
   // frame's, a Duplicate's, at its index) or the still's (at undefined): one undo step, putRecords's with frames, else
-  // updateShapes's. unkey: parts of those shapes keyed nowhere after it. False, and no step, when nothing changes, for an
+  // updateShapes's. unkey: parts of those shapes keyed nowhere after it; keyLike: parts keyed where another is, eased as
+  // it is (putRecords). False, and no step, when nothing changes, for an
   // art layer someone else in the room is drawing in (a toast says who, as setShapes's), or when a record it makes is
   // one a file wouldn't keep.
-  changeEverywhere(changes, { unkey = [] } = {}) {
+  changeEverywhere(changes, { unkey = [], keyLike = {} } = {}) {
     const locked = lockedAmong(this, changes.map(([key]) => key));
     if (locked) {
       toast(locked);
@@ -757,7 +764,7 @@ export const animationActions = {
     if (!records.length && !this.frames.some((frame) => unkeyed.some(([key, names]) => names.some((name) => keyedThere(frame, key, name))))) return false;
     if (!kept(records.map(([, , shape]) => shape))) return false;
     frameStep(this, () => {
-      putRecords(this, records, unkeyed);
+      putRecords(this, records, unkeyed, keyLike);
       return this.currentFrame;
     });
     return true;

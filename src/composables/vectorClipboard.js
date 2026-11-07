@@ -1,11 +1,11 @@
-// VECTOR's copy, cut and paste (Cmd/Ctrl+C, X, V there, and the options row's buttons): the selected shapes,
-// bottom to top, with their keys, on this tab's own clipboard (workspace.vectorClipboard and vectorClipboardKeys), and
-// on the system clipboard's HTML for
-// another Phosphor tab (clipboardBlocks.js), with an id so this tab knows its own. Cmd/Ctrl+V pastes what the
-// system clipboard holds from another tab, else this tab's (useKeyboardShortcuts). A paste puts copies on top, selected, as
-// one step, where they were copied from (on another frame, after a cut); where the frame has copies of them there
-// already, 2 grid pixels right and down from those, so they're seen to land, and each paste again past the last. A
-// follower pasted with its path follows the pasted path; pasted alone, the path it was copied from (if that's here).
+// VECTOR's copy, cut and paste (Cmd/Ctrl+C, X, V there, and the options row's buttons): the selected shapes, bottom to
+// top, with their keys, on this tab's own clipboard (workspace.vectorClipboard and vectorClipboardKeys), and on the
+// system clipboard's HTML for another Phosphor tab (clipboardBlocks.js), with an id so this tab knows its own.
+// Cmd/Ctrl+V pastes what the system clipboard holds from another tab, else this tab's (useKeyboardShortcuts). A paste
+// puts copies on top, selected, as one step, where they were copied from (on another frame, after a cut); where the
+// frame has copies of them there already, 2 grid pixels right and down from those, so they're seen to land, and each
+// paste again past the last. A follower pasted with its path follows the pasted path; pasted alone, the path it was
+// copied from, if it can follow that here (addShapes).
 import { stacked, transformed, translation } from '@/document/shapes.js';
 import { VERSION, clipboardHtml } from '@/lib/clipboardBlocks.js';
 import { copyEvent } from '@/composables/clipboard.js';

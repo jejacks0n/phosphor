@@ -12,7 +12,8 @@ import { centerOf, placedShapes } from '@/document/followers.js';
 import { makeArt } from '@/document/artLayers.js';
 import { listedParts } from '@/document/keys.js';
 import { clipboardHtml, readClipboardHtml } from '@/lib/clipboardBlocks.js';
-import { copyShapes, pasteShapes } from '@/composables/vectorClipboard.js';
+import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
+import { loadBooleans } from '@/lib/shapeBooleans.js';
 import { toastMessage } from '@/composables/useToast';
 import vselect, { selectionBox } from '@/tools/vselect.js';
 import VectorOverlay from '@/components/VectorOverlay.vue';
@@ -417,4 +418,51 @@ test('Separate on a follower of two outlines leaves the link with the piece that
   expect(project.shapes.get(f).follow).toEqual({ key: p });
   expect(project.shapes.get(other)).not.toHaveProperty('follow');
   expect(project.shapes.get(other)).not.toHaveProperty('along');
+});
+
+test('Follow path keys Along only where Transform is keyed, eased as Transform is, so a frame keying only its Fill shows it where it was', async () => {
+  const { project } = await drawing();
+  const p = project.addShape(path());
+  const f = project.addShape(square(10, 8));
+  for (let i = 0; i < 4; i++) project.addFrame('blank');
+  project.showFrame(2);
+  project.updateShapes([[f, withShape(project.shapes.get(f), { fill: '#ffffff' })]]);
+  project.showFrame(4);
+  project.updateShapes([[f, transformed(project.shapes.get(f), translation(4, 0))]]);
+  project.showFrame(0);
+  project.setKeyEasing(f, [{ part: 'transform', at: 0 }], 'linear');
+  project.showFrame(2);
+  near(centerAt(project, f), 12, 8);
+  expect(project.followPath(f, p)).toBe(true);
+  expect([...project.frames[2].parts.get(f)]).toEqual(['fill']);
+  expect(project.frames[0].tweens.get(f).get('along')).toBe('linear');
+  for (const [at, x] of [[0, 10], [2, 12], [4, 14]]) {
+    project.showFrame(at);
+    near(centerAt(project, f), x, 20);
+  }
+});
+
+test('a shape pasted with a link that couldn\'t be made now (its path follows another since the cut) comes in following nothing', async () => {
+  const { project, workspace } = await drawing();
+  const p = project.addShape(path()), q = project.addShape(path({ m: [1, 0, 0, 1, 0, 4] }));
+  const f = project.addShape(square(10, 8));
+  project.followPath(f, p);
+  workspace.vectorSelected = [f];
+  expect(cutShapes(project, workspace)).toBe(true);
+  expect(project.followPath(p, q)).toBe(true);
+  pasteShapes(project, workspace);
+  const pasted = project.shapes.get(workspace.vectorSelected[0]);
+  expect(pasted).not.toHaveProperty('follow');
+  expect(pasted).not.toHaveProperty('along');
+});
+
+test('Add keeps the bottom shape\'s link to its path', async () => {
+  await loadBooleans();
+  const { project } = await drawing();
+  const p = project.addShape(path());
+  const bottom = project.addShape(square(10, 8)), top = project.addShape(square(12, 8));
+  project.followPath(bottom, p);
+  const link = project.shapes.get(bottom).follow;
+  expect(project.combineShapes([top, bottom], 'add')).toBe(bottom);
+  expect(project.shapes.get(bottom).follow).toEqual(link);
 });
