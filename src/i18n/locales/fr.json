@@ -1412,6 +1412,7 @@
     "make": "Créer un calque d'art",
     "makeTitle": "Transformer le dessin sélectionné en calque d'art que vous pouvez déplacer et animer",
     "tooBig": "C'est trop pour un seul calque d'art. Sélectionnez une zone plus petite.",
+    "nothingDrawn": "Rien n'est dessiné dans les cellules sélectionnées.",
     "edit": "Modifier l'art",
     "editTitle": "Dessiner dans ce calque d'art ; le changement apparaît sur toutes les images où il se trouve",
     "lockedBy": "{name} dessine dans ce calque",

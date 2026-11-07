@@ -408,9 +408,9 @@ export const vectorActions = {
   // Make art layer: the drawing inside the selection (the Select tool's rectangle, or the Magic Wand's cells; the edit
   // layer's cells and paint, as copySelection reads them) becomes one art layer above every shape, at the cells'
   // place and trimmed to the ones that show something, and is taken out of the drawing: one step, with the layer
-  // selected on VECTOR. A cell nothing was drawn on stays see-through. The key, or null (no step) with nothing drawn
-  // there, at the most shapes a frame holds, or a drawing too big or too wide for one layer (a toast says so). The
-  // record is checked as a file would be before anything is taken out.
+  // selected on VECTOR. A cell nothing was drawn on stays see-through. The key, or null (no step, and a toast says
+  // why) with nothing drawn there, at the most shapes a frame holds, or a drawing too big or too wide for one layer.
+  // The record is checked as a file would be, at the stacking it gets, before anything is taken out.
   makeArtLayer() {
     const workspace = useWorkspaceStore();
     const wand = workspace.activeTool === 'wand' && workspace.wand ? wandIn(workspace.wand, 'output', this.rows) : null;
@@ -429,7 +429,10 @@ export const vectorActions = {
     if (!rect) return null;
     if (this._artInside) this.leaveArt(); // made from the drawing, not the art layer you're in
     const drawn = drawnIn(this, rect, wand ? new Set(picked.map(({ col, row }) => cellKey(col, row))) : null);
-    if (!drawn.length) return null;
+    if (!drawn.length) {
+      toast(t('art.nothingDrawn')); // the wand's button can't tell beforehand: it's on whenever anything's drawn
+      return null;
+    }
     if (this.shapes.size >= MOST_SHAPES) {
       toast(t('vector.tooMany', { count: MOST_SHAPES }));
       return null;

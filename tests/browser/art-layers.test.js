@@ -523,3 +523,18 @@ test('Fill, Stroke and Swap leave an art layer as it is: no step, nothing unsave
   expect(project.shapes.get(rect).fill).toBe('#00ff00');
   expect(toastMessage.value).toBe(null);
 });
+
+test('Make art layer with Magic Wand cells that hold nothing says so, and makes nothing', async () => {
+  const { project, workspace } = await blank();
+  drawn(project);
+  const version = project.history.version, mask = new Uint8Array(20 * 10);
+  mask[8 * 20 + 1] = 1; // nothing drawn there
+  workspace.editorTab = 'output';
+  workspace.setActiveTool('wand');
+  Object.assign(workspace, { wand: { view: 'output', width: 20, height: 10, mask } });
+  toastMessage.value = null;
+  expect(project.makeArtLayer()).toBe(null);
+  expect(toastMessage.value).toBe('Nothing is drawn in the selected cells.');
+  expect(project.history.version).toBe(version);
+  expect(arts(project)).toEqual([]);
+});

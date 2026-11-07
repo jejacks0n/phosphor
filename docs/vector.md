@@ -36,7 +36,7 @@ To make one, choose the Select tool (**M**) on ANSI and select the area (or sele
 the Actions menu on narrow screens). What's drawn in the selection (typed cells, drawn cells and paint, the edit layer) moves into a new
 art layer on top of every shape, trimmed to the cells that have something in them, and the view goes to VECTOR with the
 layer selected. It's one undo step, and the canvas looks the same afterward. With the Magic Wand, only the cells it selected are taken, and the rest of the drawing stays. The base layer and the
-shapes aren't taken along, and with nothing drawn in the selection nothing happens. A layer holds a limited amount (a piece about the size of a
+shapes aren't taken along, and with nothing drawn in the selection nothing happens (with the Magic Wand, Phosphor says so). A layer holds a limited amount (a piece about the size of a
 screenful of detailed art); if the selection has more, Phosphor asks for a smaller piece and leaves the drawing as it was.
 
 - **Moving it.** Drag it anywhere in its box, or use the arrow keys, and it moves by whole cells (an arrow moves a column across or a line down, and Shift moves ten times as far), whatever Snap to says. It has no size or turn handles, alone or selected with other shapes, which move with it by whole cells. A layer right at its size limit may not move far or stack much higher; Phosphor says so.

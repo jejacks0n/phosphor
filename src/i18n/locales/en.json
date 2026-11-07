@@ -1412,6 +1412,7 @@
     "make": "Make art layer",
     "makeTitle": "Make the selected drawing an art layer you can move and animate",
     "tooBig": "That's too much for one art layer. Select a smaller piece.",
+    "nothingDrawn": "Nothing is drawn in the selected cells.",
     "edit": "Edit art",
     "editTitle": "Draw in this art layer; the change shows on every frame it's on",
     "lockedBy": "{name} is drawing in this layer",
