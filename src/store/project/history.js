@@ -21,8 +21,10 @@ export const historyActions = {
     if (this._stroke?.typing && !this._typingNow) this.commitEdit(); // another edit ends a typing run
     if (this._stroke || !this.paintLayer) return;
     // Raw, so commitEdit's identity checks see the same objects. keys: the cells it's sent. A stroke begun
-    // for a float's move is held for an artist (sharing.js).
-    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating, startShapes: this.shapes, startFrame: this.hasFrames ? { ...this.currentFrame } : null, vectorSelected: useWorkspaceStore().vectorSelected });
+    // for a float's move is held for an artist (sharing.js). startFrame: the frame showing as it began, for undo to put
+    // its keys back (shapesBefore), only when it's noted up to now: an edit before it not noted yet isn't in it.
+    const noted = this._noted, current = noted?.frame === this.currentFrame && noted.history === this.history.version && noted.edit === this.editVersion;
+    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating, startShapes: this.shapes, startFrame: this.hasFrames && current ? { ...this.currentFrame } : null, vectorSelected: useWorkspaceStore().vectorSelected });
     this.paintLayer.beginStroke();
     this.baseLayer.beginStroke();
   },

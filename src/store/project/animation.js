@@ -275,6 +275,8 @@ function handOn(project, at, handed) {
 // An edit on the frame showing undone (before: shapesBefore's): what the frame set of each shape it had of its own, as
 // the edit found it, keys and easings, so a key the edit changed or took away comes back as it was, though the value it
 // holds is what the frame would have without it (a hold), which a frame worked out from the shapes alone would drop.
+// Its change is the shape just put back (before's, the live one), not the frame's record from then, so the note after
+// finds the frame's change and what shows the same, and nothing edited.
 function putKeysBack(project, before) {
   const back = before.filter(([, shape, held]) => shape && held);
   if (!back.length) return;

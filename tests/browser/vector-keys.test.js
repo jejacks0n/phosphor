@@ -265,6 +265,31 @@ test("undoing an edit of a keyed part puts the frame's keys and easings back as 
   project.undo();
   project.noteFrame();
   expect(keyed()).toEqual([['transform'], 'elastic', 'half']);
+  project.redo();
+  project.noteFrame();
+  expect(keyed()[0]).toEqual([]); // and away again
+  project.undo();
+  project.showFrame(0);
+  project.undo(); // the move to 4, from another frame: undo goes back to frame 3
+  project.noteFrame();
+  expect(keyed()).toEqual([['transform'], 'elastic', 'half']);
+  expect(ys(project, key)).toEqual(want);
+});
+
+// An edit begun before the one before it was noted: its undo leaves what that one keyed (the frame's state as it
+// began isn't the frame's yet, so it isn't put back).
+test('undoing an edit begun before the edit before it was noted keeps that edit\'s key', async () => {
+  const project = await animated();
+  const key = ball(project, 6, { 6: 24 });
+  project.showFrame(3);
+  project.addKey(key, 'transform');
+  const shape = () => project.shapes.get(key);
+  project.updateShapes([[key, withShape(shape(), { fill: '#00ff00' })]]); // a Fill key, not noted yet
+  project.updateShapes([[key, transformed(shape(), translation(0, 4))]]);
+  project.undo();
+  project.noteFrame();
+  expect([...project.frames[3].parts?.get(key) ?? []].sort()).toEqual(['fill', 'transform']);
+  expect(project.frames[3].changes.get(key).cell.fill).toBe('#00ff00');
 });
 
 // A split key (a frame keyed by an edit inside a tween) given back to the tween when the edit's undone, or the shape's
