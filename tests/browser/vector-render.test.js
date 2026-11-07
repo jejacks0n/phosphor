@@ -633,6 +633,63 @@ test('a curve stroked to one side with a long miter limit keeps off its other si
   expect(wrong).toEqual([]);
 });
 
+// A 20-column horizontal line across a gradient picture, 2 wide, in char row 5: the columns it covers.
+const LINE = { fill: null, stroke: '#ff0000', width: 2, cap: 'butt' };
+const lineAcross = (trim) => makeShape({ points: [[0, 11, 0, 0, 0, 0, 0], [20, 11, 0, 0, 0, 0, 0]], closed: false, ...LINE, ...trim });
+function coveredColumns(project, shape) {
+  const bare = Array.from({ length: 30 }, (_, col) => key([at(project, col, 5)])[0]);
+  project.addShape(shape);
+  return bare.flatMap((was, col) => (key([at(project, col, 5)])[0] === was ? [] : [col]));
+}
+const upTo = (n, from = 0) => Array.from({ length: n - from }, (_, i) => from + i);
+
+test('a line drawn half way covers only its first half\'s cells', async () => {
+  const { project } = await gradient();
+  expect(coveredColumns(project, lineAcross({ end: 0.5 }))).toEqual(upTo(10));
+});
+
+test('a streak shows only between Start and End', async () => {
+  const { project } = await gradient();
+  expect(coveredColumns(project, lineAcross({ start: 0.25, end: 0.5 }))).toEqual(upTo(10, 5));
+});
+
+test('End at Start draws nothing, and the shape can still be clicked', async () => {
+  const { project } = await gradient();
+  expect(coveredColumns(project, lineAcross({ end: 0 }))).toEqual([]);
+  expect(shapeAt(project.shapes, 15, 11, 0.5)).toMatch(/^v:/);
+});
+
+test('a trimmed circle keeps its inside stroke', async () => {
+  // A circle 4 wide inside, from its top clockwise: End 0.5 draws its right half.
+  const circle = ellipseShape(10, 10, 30, 30, { fill: null, stroke: '#ffffff', width: 4, align: 'inside' });
+  const whole = painted(circle), half = painted(withShape(circle, { end: 0.5 }));
+  expect(whole(31.5, 20)).toEqual([0, 0, 0]); // just outside: the inside stroke stays in
+  expect(half(31.5, 20)).toEqual([0, 0, 0]);
+  expect(half(28.5, 20)).toEqual([255, 255, 255]);
+  expect(half(11.5, 20)).toEqual([0, 0, 0]); // the left half isn't drawn
+  expect(whole(11.5, 20)).toEqual([255, 255, 255]);
+  expect(painted(withShape(circle, { end: 0.25 }))(24.6, 15.4)).toEqual([255, 255, 255]); // mid-arc, 3.5 deep, past the chord: the whole circle's inside, not the stretch's
+});
+
+test('a gradient stroke trims too, and an elastic End past 1 draws the whole outline', async () => {
+  const stroke = { type: 'linear', stops: RED_TO_BLUE, m: [20, 0, 0, 20, 10, 20] };
+  const circle = ellipseShape(10, 10, 30, 30, { fill: '#00ff00', stroke, width: 2 });
+  const trimmed = painted(withShape(circle, { end: 0.5 }));
+  expect(trimmed(10.2, 20)).not.toEqual(painted(circle)(10.2, 20));
+  const over = painted(withShape(circle, { end: 1.3 })), whole = painted(circle);
+  for (let x = 8; x < 33; x += 0.5) for (let y = 8; y < 33; y += 3.5) expect(over(x, y), `${x},${y}`).toEqual(whole(x, y));
+});
+
+test('an exported frame draws the trim', async () => {
+  const { project } = await gradient();
+  project.addShape(lineAcross({ end: 0 }));
+  project.addFrame('blank');
+  const [shapeKey] = project.shapes.keys();
+  project.updateShapes([[shapeKey, withShape(project.shapes.get(shapeKey), { end: 1 })]]);
+  const first = key((await project.builtFrame(0)).cells), second = key((await project.builtFrame(1)).cells);
+  expect(second.filter((c, i) => c !== first[i]).length).toBe(20); // End keyed 0 then 1: the line only on frame 2
+});
+
 test('a radial gradient stretched with its shape is an ellipse', async () => {
   // A circle of radius 10 about (20, 20), red in the middle to blue at the rim, then the shape stretched ×1.5
   // across about its middle.

@@ -17,6 +17,7 @@ import { charRowsOf } from '../lib/Cells.js';
 import { isArt } from './artLayers.js';
 import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, stacked, strokeAlign, strokeOf } from './shapes.js';
 import { sidePath } from '../lib/shapeHits.js';
+import { measure } from './pathLength.js';
 
 const newCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: Math.max(1, w), height: Math.max(1, h) });
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -209,7 +210,7 @@ export default class ShapeLayer {
 
   #path(shape, k) {
     let held = this.#paths.get(shape);
-    if (held?.k !== k) this.#paths.set(shape, held = { k, path: new Path2D(pathData(shape, k, k)) });
+    if (held?.k !== k) this.#paths.set(shape, held = { k, path: trimmedPath(shape, k) });
     return held.path;
   }
 
@@ -326,10 +327,22 @@ function paintArt(ctx, { m, art }, k) {
   }
 }
 
-// One shape drawn at k canvas pixels per grid pixel (path: its pathData at that scale, as a Path2D): its fill
-// under its fill rule, then its stroke with its width, caps, joins and miter limit, centered on the outline or
-// inside or outside it (strokeAlign). An art layer, its cells (paintArt).
-export function paintShape(ctx, shape, k, path = new Path2D(pathData(shape, k, k))) {
+const share = (v) => Math.min(Math.max(v, 0), 1);
+const isTrimmed = ({ start = 0, end = 1 }) => share(start) > 0 || share(end) < 1;
+
+// What a shape draws, at k canvas pixels per grid pixel, as a Path2D: its outlines, or only their stretch from
+// Start to End (each clamped to 0 to 1; a tween can overshoot) as open outlines. Nothing when End isn't past Start.
+export function trimmedPath(shape, k) {
+  if (!isTrimmed(shape)) return new Path2D(pathData(shape, k, k));
+  const [first, ...rest] = measure(shape).cut(share(shape.start ?? 0), share(shape.end ?? 1));
+  return first ? new Path2D(pathData({ ...shape, points: first.points, closed: false, more: rest.map((o) => [o.closed, o.points]) }, k, k)) : new Path2D();
+}
+
+// One shape drawn at k canvas pixels per grid pixel (path: what it draws at that scale, as a Path2D, trimmedPath):
+// its fill under its fill rule, then its stroke with its width, caps, joins and miter limit, centered on the
+// outline or inside or outside it (strokeAlign), the sides worked out from the whole outline. An art layer, its
+// cells (paintArt).
+export function paintShape(ctx, shape, k, path = trimmedPath(shape, k)) {
   if (isArt(shape)) return paintArt(ctx, shape, k);
   const { rule, cap, join, miter } = strokeOf(shape);
   if (isGradient(shape.fill)) paintGradient(ctx, shape, k, path, rule);
@@ -366,13 +379,13 @@ function paintMaskedStroke(ctx, shape, k, path, styled, align, rule) {
   if (w <= 0 || h <= 0) return;
   const mask = ctx2d(new OffscreenCanvas(w, h));
   mask.translate(-x, -y);
-  styled(mask).stroke(path);
+  styled(mask).stroke(path); // the stretch drawn; the sides and the inside and outside are the whole outline's
   if (align === 'left' || align === 'right') {
     mask.globalCompositeOperation = 'destination-in';
     mask.fill(sidePath(shape, align, 0, k));
   } else if (align !== 'center') {
     mask.globalCompositeOperation = align === 'inside' ? 'destination-in' : 'destination-out';
-    mask.fill(path, rule);
+    mask.fill(isTrimmed(shape) ? new Path2D(pathData(shape, k, k)) : path, rule);
   }
   mask.globalCompositeOperation = 'source-in';
   if (!isGradient(shape.stroke)) {
