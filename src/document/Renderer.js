@@ -156,10 +156,10 @@ export default class Renderer {
   cellsFromOutput(params) {
     const resolved = this.#resolvedFor(params);
     if (resolved) {
-      const { cols } = params, pins = this.baseRecords.pins;
+      const { cols } = params, pinned = this.baseRecords.pins.size || this.shapes?.hasArt;
       return resolved.cells.map((cell, i) => {
         const col = i % cols, row = (i - col) / cols;
-        if (!pins.size || this.pinAt(col, row) === undefined) return this.#shown(cell, col, row, params);
+        if (!pinned || this.pinAt(col, row) === undefined) return this.#shown(cell, col, row, params);
         return buildCell(this.#pictureAt(col, 2 * row), this.#pictureAt(col, 2 * row + 1), cell.char, params.renderStyle);
       });
     }
@@ -273,14 +273,14 @@ export default class Renderer {
   // from (#pictureAt), and an odd last pixel row (no cell) keeps them. Also called for the cells an edit
   // rebuilds (updateCells), whose pins can change after its composite (eraseBase).
   #showResolved(ctx, params, area) {
-    const { cols } = params, cells = this.#resolved.cells, pins = this.baseRecords.pins;
+    const { cols } = params, cells = this.#resolved.cells, pins = this.baseRecords.pins.size || this.shapes?.hasArt;
     const r0 = area.y >> 1, r1 = Math.min(charRowsOf(params.rows), (area.y + area.h + 1) >> 1);
     if (r1 <= r0) return;
     const { x, w } = area, y = 2 * r0, image = ctx.getImageData(x, y, w, 2 * (r1 - r0)), d = image.data;
     const paint = this.#paintData?.data, inks = new Map(); // halfColors' math, inline: this runs over the whole grid
     for (let row = r0; row < r1; row++) {
       for (let col = x; col < x + w; col++) {
-        const pinned = pins.size && this.pinAt(col, row) !== undefined, cell = cells[row * cols + col];
+        const pinned = pins && this.pinAt(col, row) !== undefined, cell = cells[row * cols + col];
         let ink = inks.get(cell.char);
         if (!ink) inks.set(cell.char, ink = coverageOf(cell.char));
         for (let half = 0; half < 2; half++) {
@@ -673,11 +673,11 @@ export default class Renderer {
     return { r: d[o], g: d[o + 1], b: d[o + 2], a: 1 };
   }
 
-  // Generated cells with the base's pins and every in-grid edit cell composed in.
+  // Generated cells with the base's pins (and the art layers' characters) and every in-grid edit cell composed in.
   composeAll(baseCells, editCells, params) {
     const cells = baseCells.slice();
-    const rows = charRowsOf(params.rows);
-    for (const key of this.baseRecords.pins.keys()) {
+    const rows = charRowsOf(params.rows), pins = this.baseRecords.pins;
+    for (const key of this.shapes?.hasArt ? new Set([...pins.keys(), ...this.shapes.artCells()]) : pins.keys()) {
       const { col, row } = parseKey(key);
       if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#paintedPin(col, row, params) ?? this.#onBase(col, row, cells[cellIndex(col, row, params.cols)]);
     }
@@ -767,11 +767,13 @@ export default class Renderer {
     return pin !== undefined ? { ...cell, char: pin } : cell;
   }
 
-  // The base layer's pinned character at a cell, or undefined: none, or a shape draws there and the cell's
-  // character comes from the conversion (the pin shows again once no shape covers it).
+  // The character a cell keeps, or undefined (the conversion's): the topmost art layer's there, else the base
+  // layer's pin; none where a shape reaches over either (the pin shows again once no shape covers it).
   pinAt(col, row) {
     const pin = this.baseRecords.pins.get(cellKey(col, row));
-    return pin !== undefined && this.shapes?.covers(col, row) ? undefined : pin;
+    if (pin === undefined && !this.shapes?.hasArt) return undefined;
+    const shown = this.shapes?.charAt(col, row);
+    return shown === undefined ? pin : shown ?? undefined;
   }
 
   // What's under the shapes' side of the converter: the base layer, with the shapes over it while there are any.

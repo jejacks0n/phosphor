@@ -206,7 +206,8 @@ export function strokeSide(shape, side, pad = 0) {
 }
 
 // The shape's outlines, [{ closed, points }], the first one first.
-export const outlines = (shape) => [{ closed: shape.closed, points: shape.points }, ...(shape.more ?? []).map(([closed, points]) => ({ closed, points }))];
+// An art layer has none: it's cells, not a path (artLayers.js).
+export const outlines = (shape) => (isArt(shape) ? [] : [{ closed: shape.closed, points: shape.points }, ...(shape.more ?? []).map(([closed, points]) => ({ closed, points }))]);
 // The shape with these outlines instead; null with none.
 export const withOutlines = (shape, list) => (list.length ? withShape(shape, { points: list[0].points, closed: list[0].closed, more: list.slice(1).map((o) => [o.closed, o.points]) }) : null);
 export const allPoints = (shape) => outlines(shape).flatMap((o) => o.points);
@@ -310,6 +311,10 @@ function turns(p0, p1, p2, p3) {
 // The box round a shape's outlines themselves, not their handles (a curve's handles reach past it), carried by m:
 // { x0, y0, x1, y1 }.
 function pathBox(shape, m) {
+  if (isArt(shape)) {
+    const { x, y, w, h } = artBounds({ m, art: shape.art });
+    return { x0: x, y0: y, x1: x + w, y1: y + h };
+  }
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   const take = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
   const curve = (a, b) => {
