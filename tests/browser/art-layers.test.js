@@ -436,10 +436,15 @@ test('Join, Add, Subtract and Separate never take an art layer: nothing changes,
 
 // A drawing of cols across whose record, at m and z, is exactly bytes long: 'x' cells, some of them 'é' (a byte more).
 function artOfBytes(bytes, { m = [1, 0, 0, 1, 0, 0], z = 0, cols = 100 } = {}) {
-  const cells = [];
-  while (artBytes({ z, m, art: { cols, rows: Math.ceil((cells.length + 1) / cols), cells: [...cells, [cells.length, 'x', '#123456', '#654321']] } }) <= bytes) {
-    cells.push([cells.length, 'x', '#123456', '#654321']);
+  const cellsOf = (n) => Array.from({ length: n }, (_, i) => [i, 'x', '#123456', '#654321']);
+  const size = (n) => artBytes({ z, m, art: { cols, rows: Math.ceil(n / cols), cells: cellsOf(n) } });
+  let lo = 1, hi = bytes; // the most cells that fit, found by halving (a record grows with every cell)
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (size(mid) <= bytes) lo = mid;
+    else hi = mid - 1;
   }
+  const cells = cellsOf(lo);
   const art = { cols, rows: Math.ceil(cells.length / cols), cells };
   for (let i = 0, short = bytes - artBytes({ z, m, art }); i < short; i++) cells[i][1] = 'é';
   expect(artBytes({ z, m, art })).toBe(bytes);
