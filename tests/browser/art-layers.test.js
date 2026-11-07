@@ -10,6 +10,9 @@ import vnode from '@/tools/vnode.js';
 import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
 import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
+import { createApp } from 'vue';
+import VectorOptions from '@/components/VectorOptions.vue';
+import { i18n } from '@/i18n';
 
 const RED = '#ff0000';
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
@@ -399,5 +402,31 @@ test('the same art, or too big: no step', async () => {
     expect(project.setArtContent('v:nothing', shape.art)).toBe(false);
     expect(project.history.version).toBe(version);
     expect(project.shapes.get(key)).toBe(shape);
+  }
+});
+
+test('Join, Add, Subtract and Separate never take an art layer: nothing changes, and Join and Add are off with one selected', async () => {
+  for (const artOnTop of [false, true]) {
+    const { project, workspace } = await blank();
+    const art = () => project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 2], art: { cols: 2, rows: 1, cells: [[0, 'A', RED, null]] } }));
+    const keys = artOnTop ? [project.addShape(rectShape(0, 0, 6, 6, { fill: '#0000ff' })), art()] : [art(), project.addShape(rectShape(0, 0, 6, 6, { fill: '#0000ff' }))];
+    const shapes = project.shapes, version = project.history.version;
+    expect(project.joinShapes(keys)).toBe(null);
+    expect(project.combineShapes(keys, 'add')).toBe(null);
+    expect(project.combineShapes(keys, 'subtract')).toBe(null);
+    expect(project.separateShape(keys[artOnTop ? 1 : 0])).toBe(null);
+    expect(project.shapes).toBe(shapes);
+    expect(project.history.version).toBe(version);
+
+    Object.assign(workspace, { editorTab: 'vector', activeTool: 'vselect', vectorSelected: keys });
+    const row = document.createElement('div'), options = createApp(VectorOptions).use(i18n);
+    options.mount(row);
+    await settle(project);
+    const button = (name) => row.querySelector(`button[aria-label="${name}"]`);
+    for (const name of ['Join', 'Add', 'Subtract', 'Separate']) expect([artOnTop, name, button(name).disabled]).toEqual([artOnTop, name, true]);
+    workspace.vectorSelected = [keys[artOnTop ? 0 : 1], project.addShape(rectShape(8, 8, 12, 12, { fill: RED }))]; // two paths: Join's on
+    await settle(project);
+    expect(button('Join').disabled).toBe(false);
+    options.unmount();
   }
 });

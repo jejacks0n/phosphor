@@ -445,10 +445,11 @@ export const vectorActions = {
   },
 
   // Join: the shapes keys made one, the bottom one (its key, style and place) with every outline of the rest, so
-  // that an outline inside another is a hole. One step; the key, or null with under two or past a shape's points.
+  // that an outline inside another is a hole. One step; the key, or null with under two, an art layer among them (it
+  // has no outlines: joined, it would be lost), or past a shape's points.
   joinShapes(keys) {
     const order = stacked(this.shapes).filter(([key]) => keys.includes(key));
-    if (order.length < 2) return null;
+    if (order.length < 2 || order.some(([, shape]) => isArt(shape))) return null;
     const [[bottomKey, bottom], ...rest] = order, shape = joined(bottom, rest.map(([, s]) => s));
     if (!shape || !keeps(shape)) {
       toast(t('vector.joinTooBig', { count: MOST_POINTS }));
@@ -460,8 +461,8 @@ export const vectorActions = {
 
   // Add or Subtract (op): the shapes keys made one, their union, or the bottom one with the rest cut out of it
   // (shapeBooleans: loadBooleans first). The result is the bottom one, its key, style and place; the rest go. One
-  // step; the key, or null with under two shapes, an open outline among them, past a shape's points, or nothing
-  // left (then they all go).
+  // step; the key, or null with under two shapes, an open outline or an art layer among them (allClosed: it has no
+  // outline), past a shape's points, or nothing left (then they all go).
   combineShapes(keys, op) {
     const order = stacked(this.shapes).filter(([key]) => keys.includes(key));
     if (order.length < 2 || !order.every(([, shape]) => allClosed(shape))) return null;

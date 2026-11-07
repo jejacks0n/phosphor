@@ -39,7 +39,8 @@ const paste = () => pasteShapes(project, workspace);
 const pasteTitle = computed(() => (workspace.vectorClipboard
   ? t('vector.pasteTitle', { key: shortcut('mod', 'V') })
   : t('toolbar.selection.pasteElsewhereTitle', { key: shortcut('mod', 'V') })));
-// Join and Separate: the selection afterwards is what they made.
+// Join and Separate: the selection afterwards is what they made. Not an art layer: it has no outlines.
+const canJoin = computed(() => selected.value.length > 1 && !selected.value.some((key) => isArt(project.shapes.get(key))));
 const canSeparate = computed(() => !!project.shapes.get(selected.value[0])?.more);
 const join = () => {
   const key = project.joinShapes(selected.value);
@@ -126,7 +127,7 @@ const gradientOf = (slot) => {
       <div class="divider"/>
       <button :title="t('vector.forwardTitle')" :aria-label="t('vector.forward')" @click="forward"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M320 32 496 208H384V352H256V208H144ZM320 384 576 480 320 576 64 480ZM320 432 192 480 320 528 448 480Z"/></svg></button>
       <button :title="t('vector.backTitle')" :aria-label="t('vector.back')" @click="back"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M256 32H384V176H496L320 352 144 176H256ZM320 384 576 480 320 576 64 480ZM320 432 192 480 320 528 448 480Z"/></svg></button>
-      <button :title="t('vector.joinTitle')" :aria-label="t('vector.join')" :disabled="selected.length < 2" @click="join"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="232" cy="320" r="168"/><circle cx="408" cy="320" r="168"/></svg></button>
+      <button :title="t('vector.joinTitle')" :aria-label="t('vector.join')" :disabled="!canJoin" @click="join"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="232" cy="320" r="168"/><circle cx="408" cy="320" r="168"/></svg></button>
       <button :title="t('vector.separateTitle')" :aria-label="t('vector.separate')" :disabled="!canSeparate" @click="separate"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><circle cx="168" cy="320" r="128"/><circle cx="472" cy="320" r="128"/></svg></button>
       <button :title="t('vector.addTitle')" :aria-label="t('vector.add')" :disabled="!canCombine" @click="combine('add')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M96 96H384V256H544V544H256V384H96Z"/></svg></button>
       <button :title="t('vector.subtractTitle')" :aria-label="t('vector.subtract')" :disabled="!canCombine" @click="combine('subtract')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M96 96H384V256H256V384H96Z"/><path fill-rule="evenodd" opacity=".45" d="M256 256H544V544H256ZM296 296V504H504V296Z"/></svg></button>
