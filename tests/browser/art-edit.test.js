@@ -9,6 +9,7 @@ import { readProject, writeProject } from '@/document/projectIO.js';
 import { usePlayback } from '@/composables/usePlayback.js';
 import { toastMessage } from '@/composables/useToast';
 import vselect from '@/tools/vselect';
+import { cutShapes } from '@/composables/vectorClipboard.js';
 
 const RED = '#ff0000', GREEN = '#00ff00';
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
@@ -336,6 +337,14 @@ test('in a room, a layer someone else is drawing in can be selected, not stepped
   expect(vselect.keydown({ project, workspace }, { key: 'Delete' })).toBe(true);
   expect(project.shapes.get(key)).toBe(shape);
   expect(workspace.vectorSelected).toEqual([key]); // refused: still selected
+  project._locks = { ann: { key } }; // no name to say: never the sub
+  toastMessage.value = null;
+  project.deleteShapes([key]);
+  expect(toastMessage.value).toBe('Someone else is drawing in this layer');
+  workspace.vectorSelected = [key];
+  expect(cutShapes(project, workspace)).toBe(true);
+  expect(project.shapes.get(key)).toBe(shape);
+  expect(workspace.vectorSelected).toEqual([key]); // a refused Cut: still selected
   project._locks = { me: { key, name: 'Me' } }; // my own, heard back after I'd stepped out
   expect(project.lockedBy(key)).toBe(null);
   expect(project.enterArt(key)).toBe(true);
@@ -358,13 +367,20 @@ test('in a room, the host can\'t undo or redo a step that reaches a layer someon
   project.undo();
   expect(project.shapes.has(key)).toBe(true);
   expect(toastMessage.value).toBe('Ann is drawing in this layer');
-  for (const act of [() => project.clearEditLayer(), () => project.mergeShapes(), () => project.mergeDown(), () => project.bake()]) {
+  const grid = [project.cols, project.rows];
+  for (const act of [() => project.clearEditLayer(), () => project.mergeShapes(), () => project.mergeDown(), () => project.bake(), () => project.updateCols(30), () => project.updateRows(30)]) {
     toastMessage.value = null;
     act();
-    expect(toastMessage.value).toBe('Ann is drawing in this layer');
+    expect(toastMessage.value).toBe('Ann is drawing in an art layer');
   }
   expect(project.shapes.has(key)).toBe(true);
   expect(project.editCellAt(1, 1)?.char).toBe('X');
+  expect([project.cols, project.rows]).toEqual(grid);
+  toastMessage.value = null; // Merge up goes as slices, and only makes the drawing's own cells: not refused
+  project.mergeUp({ c0: 0, r0: 9, c1: 0, r1: 9 });
+  expect(toastMessage.value).toBe(null);
+  expect(project.editCellAt(0, 9)).toBeTruthy();
+  project.undo();
   project._locks = {};
   project.undo();
   expect(project.shapes.has(key)).toBe(false);

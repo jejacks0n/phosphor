@@ -2,7 +2,7 @@ import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
-import { lockedAmong } from '@/store/project/shared';
+import { anyoneInside, lockedAmong } from '@/store/project/shared';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { Pacer } from '@/social/lobby';
@@ -112,17 +112,22 @@ export const useDrawingStore = defineStore('drawing', () => {
   // cursors say, for what it refuses (an edit to a layer someone else is in, stepping into one). The host keeps the
   // first to step into a layer (noteCursor), so someone who stepped in too, before hearing of it, hears it held by
   // someone else: they're stepped out, and told who has it.
+  // Someone heard as inside none while I'm in a layer no one else has (the one who had it stepped out as I was turned
+  // away, in one broadcast) sends it again, and has it.
   watch(cursors, (all) => {
-    project._locks = Object.fromEntries(Object.entries(all).filter(([, { inside }]) => inside).map(([sub, { inside, name }]) => [sub, { key: inside, name }]));
+    const named = (sub, name) => name || artistNames.value[sub] || t('social.drawing.someoneElse');
+    project._locks = Object.fromEntries(Object.entries(all).filter(([, { inside }]) => inside).map(([sub, { inside, name }]) => [sub, { key: inside, name: named(sub, name) }]));
     const inside = project.artInside, holder = inside && Object.keys(all).find((sub) => sub !== me() && all[sub].inside === inside);
-    if (!holder) return;
-    project.leaveArt();
-    workspace.editorTab = 'vector';
-    toast(t('art.lockedBy', { name: all[holder].name }));
+    if (holder) {
+      project.leaveArt();
+      workspace.editorTab = 'vector';
+      toast(t('art.lockedBy', { name: project._locks[holder].name }));
+    } else if (inside && project._sharing && all[me()] && all[me()].inside !== inside) sendNow();
   }, { flush: 'sync', immediate: true });
   const lockedBy = (key) => project.lockedBy(key);
-  // What a layer someone else is drawing in says, or null.
+  // What a layer someone else is drawing in says, or null; and anyone else in any layer, for what that turns off.
   const lockedWords = (key) => lockedAmong(project, [key]);
+  const someoneInside = computed(() => anyoneInside(project));
 
   // Drawing again, after a pause, a reconnect or the host's reload: what's sent while there's no one to hear it is lost,
   // so the art layer I'm in (or that I've stepped out of it meanwhile) goes again.
@@ -159,7 +164,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   return {
     artists, artistNames, invited, invitation, paused, hostChanging, gettingArt, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, artistsFull, others,
-    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, lockedBy, lockedWords, autosavedBy, autosaved,
+    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, lockedBy, lockedWords, someoneInside, autosavedBy, autosaved,
     watchCallbacks, watching, knownNow, heardArtists, accept, decline, connection, close,
     makeHost, takeOver, hostChanged, becomeArtist, artistsNow, hostingAgain, lastChange, holdsTheArt, noteFormerHost,
   };

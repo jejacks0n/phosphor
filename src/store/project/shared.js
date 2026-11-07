@@ -89,15 +89,26 @@ export function bytesHeld(...held) {
   return bytes;
 }
 
-// In a room, what refuses an edit to an art layer someone other than by is drawing in (lockedBy): the words saying
-// who, for the first of keys that reaches one, or null.
-export function lockedAmong(project, keys, by = project._by) {
+// In a room, who's drawing in the first of keys that's an art layer someone other than by is drawing in (lockedBy), or
+// null; and their name, never a sub.
+function holderOf(project, keys, by) {
   for (const key of keys) {
     const holder = isShapeKey(key) && project.lockedBy(key);
-    if (holder && holder !== by) return t('art.lockedBy', { name: project._locks[holder]?.name ?? holder });
+    if (holder && holder !== by) return holder;
   }
   return null;
 }
+const nameOf = (project, sub) => project._locks[sub]?.name || t('social.drawing.someoneElse');
 
-// The same for anyone else inside any art layer: what a whole-layer action, sent as the project, would step out.
-export const anyoneInside = (project) => lockedAmong(project, Object.values(project._locks).map(({ key }) => key));
+// What refuses an edit to an art layer someone else is drawing in: the words saying who, or null.
+export function lockedAmong(project, keys, by = project._by) {
+  const holder = holderOf(project, keys, by);
+  return holder && t('art.lockedBy', { name: nameOf(project, holder) });
+}
+
+// The same for anyone else inside any art layer, which what goes to the room as the project (a whole-layer step, a new
+// grid) would step out of it.
+export function anyoneInside(project) {
+  const holder = holderOf(project, Object.values(project._locks).map(({ key }) => key), project._by);
+  return holder && t('art.someoneInside', { name: nameOf(project, holder) });
+}

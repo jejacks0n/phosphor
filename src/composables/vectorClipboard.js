@@ -31,8 +31,9 @@ export function cutShapes(project, workspace) {
   const shapes = chosen(project, workspace);
   if (!shapes.length) return false;
   keep(workspace, shapes.map(([, shape]) => shape));
+  const before = project.shapes;
   project.deleteShapes(shapes.map(([key]) => key));
-  workspace.vectorSelected = [];
+  if (project.shapes !== before) workspace.vectorSelected = []; // or refused (a layer someone's drawing in): still selected
   return true;
 }
 

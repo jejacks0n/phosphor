@@ -35,8 +35,9 @@ const mergeOn = computed(() => (onVector.value ? project.shapes.size > 0 : proje
 const mergeTitle = computed(() => t(onVector.value ? 'toolbar.mergeShapesTitle' : 'toolbar.mergeDownTitle'));
 function mergeHere() {
   if (!onVector.value) return openMerge();
+  const before = project.shapes;
   project.mergeShapes(vectorSelection.value.length ? vectorSelection.value : null);
-  workspace.vectorSelected = [];
+  if (project.shapes !== before) workspace.vectorSelected = []; // or refused (someone's in an art layer): still selected
 }
 const warnedSub = (sub, warning = mergeWarning()) => (drawing.othersHere ? t('toolbar.mergeDialog.warnedSub', { warning, sub }) : sub);
 

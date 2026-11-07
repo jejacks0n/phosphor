@@ -12,6 +12,7 @@ import { shapeAt, shapesTouching } from '@/lib/shapeHits.js';
 import { selectionBox } from '@/tools/vselect.js';
 import VectorOverlay from '@/components/VectorOverlay.vue';
 import VectorOptions from '@/components/VectorOptions.vue';
+import ControlPanel from '@/components/ControlPanel.vue';
 import { i18n } from '@/i18n';
 import { useDrawingStore } from '@/store/DrawingStore';
 
@@ -183,9 +184,25 @@ test('in a room, an art layer someone else is drawing in shows its box saying wh
   const edit = [...row.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Edit art');
   expect(edit.disabled).toBe(true);
   expect(edit.title).toBe('Ann is drawing in this layer');
+  // The canvas size is off too (it goes to the room as the project), so a keystroke can't be refused there.
+  const panel = document.createElement('div');
+  const controls = createApp(ControlPanel).use(i18n);
+  controls.mount(panel);
+  await settle(project);
+  for (const id of ['cols', 'rows']) {
+    expect(panel.querySelector(`#${id}`).disabled).toBe(true);
+    expect(panel.querySelector(`#${id}`).title).toBe('Ann is drawing in an art layer');
+  }
+  // A cursor with no name says the name the room listed, never the sub.
+  drawing.artistNames = { bo: 'Bo' };
+  drawing.cursors = { bo: { at: null, view: null, name: null, inside: art } };
+  await settle(project);
+  expect(host.querySelector(`[data-locked="${art}"] text`).textContent).toBe('Bo is drawing in this layer');
   drawing.cursors = { ann: { at: null, view: null, name: 'Ann', inside: null } }; // stepped out
   await settle(project);
   expect(host.querySelector('[data-locked]')).toBeNull();
   expect(edit.disabled).toBe(false);
+  expect(panel.querySelector('#cols').disabled).toBe(false);
   options.unmount();
+  controls.unmount();
 });
