@@ -139,14 +139,15 @@ export const vectorActions = {
     return keys;
   },
 
-  // [[key, Shape | null]]: each shape there replaced, or deleted with null. A key that's gone stays gone, and a
-  // shape a file wouldn't keep (squashed flat, past the limits) stays as it was: a drag stops there. An art layer
-  // with no room left for its longer numbers (moved far, restacked high) says so.
+  // [[key, Shape | null]]: each shape there replaced, or deleted with null. A key that's gone stays gone, one the
+  // same as it was (an art layer given a Fill, which it hasn't) is no change, and a shape a file wouldn't keep
+  // (squashed flat, past the limits) stays as it was: a drag stops there. An art layer with no room left for its
+  // longer numbers (moved far, restacked high) says so.
   updateShapes(changes) {
     const own = ownsEdit(this);
     let next = this.shapes;
     for (const [key, shape] of changes) {
-      if (!this.shapes.has(key) || this.shapes.get(key) === shape) continue;
+      if (!this.shapes.has(key) || sameShape(this.shapes.get(key), shape)) continue;
       if (shape && !keeps(shape)) {
         if (isArt(shape)) toast(t('art.tooBig'));
         continue;
