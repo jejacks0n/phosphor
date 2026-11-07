@@ -289,7 +289,7 @@ test('an art layer moves by whole cells with Snap to on half cells, or Cmd held'
   expect(project.shapes.get(key).m).toEqual([1, 0, 0, 1, 8, 4]);
 });
 
-test('the Node tool passes over an art layer, and a double-click on one in Select does not go to the Node tool', async () => {
+test('the Node tool passes over an art layer, and a double-click on one in Select steps into it, not to the Node tool', async () => {
   const { project, workspace, key, ctx } = await layer();
   const rect = project.addShape(rectShape(1, 1, 7, 7, { fill: '#0000ff' })); // under the layer, round its box
   workspace.vectorSelected = [];
@@ -308,9 +308,19 @@ test('the Node tool passes over an art layer, and a double-click on one in Selec
     vselect.begin(ctx, { x: 3, y: 3 }, {});
     vselect.end(ctx);
   }
-  expect(workspace.activeTool).toBe('vselect');
+  expect(workspace.vectorActiveTool).toBe('vselect');
   expect(workspace.vectorSelected).toEqual([key]);
   expect(workspace.vectorPoints).toBe(null);
+  expect(project.artInside).toBe(key);
+  expect(workspace.editorTab).toBe('output');
+  project.leaveArt();
+
+  // A press that moves is a drag, not a double-click's second click.
+  workspace.editorTab = 'vector';
+  vselect.begin(ctx, { x: 3, y: 3 }, {});
+  vselect.move(ctx, { x: 3, y: 3 }, { x: 4, y: 3 });
+  vselect.end(ctx);
+  expect(project.artInside).toBe(null);
 });
 
 // An art layer on frame 0 of frames 0 to 7: moved to (8, 16) on frame 6 with a linear tween there from frame 0, a Stack

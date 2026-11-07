@@ -8,7 +8,8 @@ import { frameMarks } from '@/lib/frameMarks';
 import { tweenBands } from '@/document/tweens.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
-// Under the canvas while Animate is on: play, step, scrub, timing, and adding and arranging frames.
+// Under the canvas while Animate is on: play, step, scrub, timing, and adding and arranging frames. Inside an art layer
+// the ones that change the frame showing are off (the layer is drawn on every frame, but the dimmed rest is of this one).
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -22,6 +23,7 @@ const kinds = computed(() => [
 
 const at = computed(() => (workspace.playing ? workspace.playFrame : project.frame));
 const count = computed(() => project.frames.length);
+const inside = computed(() => project.artInside !== null);
 // Why Add frame is off, if it is.
 const full = computed(() => {
   if (!project.canAnimate) return t('animation.tooLarge');
@@ -82,20 +84,20 @@ const setFps = (event) => {
 </script>
 
 <template>
-  <div class="animation-bar" role="toolbar" :aria-label="t('animation.toolbarAria')">
+  <div class="animation-bar" role="toolbar" :aria-label="t('animation.toolbarAria')" :title="inside ? t('art.framesOff') : null">
     <!-- Three groups, one line where they fit; on a narrow screen the frames get the first line, and play and the steps start
          the second, so a narrow screen never strands a control. -->
     <div class="playback">
-    <button class="play" :aria-label="workspace.playing ? t('animation.pause') : t('animation.play')" :title="workspace.playing ? t('animation.pauseTitle') : t('animation.playTitle')" :disabled="count < 2" @click="playback.toggle()">
+    <button class="play" :aria-label="workspace.playing ? t('animation.pause') : t('animation.play')" :title="workspace.playing ? t('animation.pauseTitle') : t('animation.playTitle')" :disabled="count < 2 || inside" @click="playback.toggle()">
       <svg viewBox="0 0 16 16" aria-hidden="true">
         <path v-if="workspace.playing" d="M3 2h4v12H3zM9 2h4v12H9z"/>
         <path v-else d="M4 2l10 6-10 6z"/>
       </svg>
     </button>
-    <button class="step" :aria-label="t('animation.prevFrame')" :title="t('animation.prevFrameTitle')" :disabled="count < 2" @click="step(-1)">
+    <button class="step" :aria-label="t('animation.prevFrame')" :title="t('animation.prevFrameTitle')" :disabled="count < 2 || inside" @click="step(-1)">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h2v10H3zM13 3v10L6 8z"/></svg>
     </button>
-    <button class="step" :aria-label="t('animation.nextFrame')" :title="t('animation.nextFrameTitle')" :disabled="count < 2" @click="step(1)">
+    <button class="step" :aria-label="t('animation.nextFrame')" :title="t('animation.nextFrameTitle')" :disabled="count < 2 || inside" @click="step(1)">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg>
     </button>
     </div>
@@ -108,9 +110,9 @@ const setFps = (event) => {
         <span v-for="(mark, i) in marks" :key="i" :class="mark" :style="{ left: markAt(i) }"></span>
       </div>
       <!-- A pointer lets go of it, so the app's keys work again; the keyboard keeps its arrows. -->
-      <input ref="range" type="range" :aria-label="t('animation.frameAria')" min="0" :max="count - 1" step="1" :value="at" @input="scrub" @pointerup="$event.target.blur()">
+      <input ref="range" type="range" :aria-label="t('animation.frameAria')" min="0" :max="count - 1" step="1" :value="at" :disabled="inside" @input="scrub" @pointerup="$event.target.blur()">
     </div>
-    <DropdownMenu :label="t('animation.addFrame')" up :disabled="!!full">
+    <DropdownMenu :label="t('animation.addFrame')" up :disabled="!!full || inside">
       <template #trigger>
         <!-- A frame of film, on its side, with a plus at its corner. -->
         <svg class="add-frame" viewBox="0 0 16 16" fill-rule="evenodd" aria-hidden="true">
@@ -119,7 +121,7 @@ const setFps = (event) => {
       </template>
       <button v-for="[kind, label] in kinds" :key="kind" @click="add(kind)">{{ label }}</button>
     </DropdownMenu>
-    <DropdownMenu class="frame-menu" :label="t('animation.frameActions')" up>
+    <DropdownMenu class="frame-menu" :label="t('animation.frameActions')" up :disabled="inside">
       <template #trigger>
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 7h3v3H2zM6.5 7h3v3h-3zM11 7h3v3h-3z"/></svg>
       </template>

@@ -1411,7 +1411,16 @@
   "art": {
     "make": "Créer un calque d'art",
     "makeTitle": "Transformer le dessin sélectionné en calque d'art que vous pouvez déplacer et animer",
-    "tooBig": "C'est trop pour un seul calque d'art. Sélectionnez une zone plus petite."
+    "tooBig": "C'est trop pour un seul calque d'art. Sélectionnez une zone plus petite.",
+    "edit": "Modifier l'art",
+    "editTitle": "Dessiner dans ce calque d'art ; le changement apparaît sur toutes les images où il se trouve",
+    "editInRoom": "Les salles en direct ne permettent pas encore d'entrer dans un calque d'art.",
+    "editing": "Modification du calque d'art",
+    "done": "Terminé",
+    "doneTitle": "Sortir du calque d'art (Échap)",
+    "framesOff": "Sortez du calque d'art pour changer d'image.",
+    "settingsOff": "Sortez du calque d'art pour modifier ces réglages.",
+    "baseOff": "Dans un calque d'art, les outils dessinent uniquement sur le calque d'édition."
   },
   "vector": {
     "tooMany": "Un dessin contient au plus {count} formes.",

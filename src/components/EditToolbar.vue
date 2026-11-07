@@ -158,6 +158,12 @@ function confirmClear() {
   }
 }
 
+// Done: out of the art layer, and VECTOR with it selected.
+function stepOut() {
+  project.leaveArt();
+  workspace.editorTab = 'vector';
+}
+
 // Merge down asks how (a ChoiceDialog): exactly, or into the picture. rect: a selection's, or null for
 // the whole edit layer.
 const merging = ref(null); // { rect } while the dialog is open
@@ -415,7 +421,13 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       </div>
     </div>
 
-    <div class="toolbar-row secondary-row" v-if="toolOptions.length || activeTool.palette || activeTool.id === 'select' || kept || vectorRow">
+    <div class="toolbar-row secondary-row" v-if="project.artInside || toolOptions.length || activeTool.palette || activeTool.id === 'select' || kept || vectorRow">
+      <!-- Stepped into an art layer: say so, and the way out (also Esc: useKeyboardShortcuts). -->
+      <div v-if="project.artInside" class="tool-setting-group">
+        <span class="option-label">{{ t('art.editing') }}</span>
+        <button class="text" :title="t('art.doneTitle')" aria-keyshortcuts="Escape" @click="stepOut">{{ t('art.done') }}</button>
+        <div class="divider"/>
+      </div>
       <VectorOptions v-if="workspace.editorTab === 'vector'"/>
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">

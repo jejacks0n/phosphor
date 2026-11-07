@@ -19,6 +19,10 @@ const { t } = useI18n();
 const store = useProjectStore();
 const drawing = useDrawingStore();
 
+// Why the settings are off, if they are: only the host's in a room; and inside an art layer the dimmed rest is a snapshot
+// of how they had the picture, which a change would leave stale.
+const locked = computed(() => drawing.hostOnly || (store.artInside ? t('art.settingsOff') : null));
+
 const sliderGroups = computed(() => [
   { id: 'transform', title: t('panel.groups.transform') },
   { id: 'adjust', title: t('panel.groups.adjust') },
@@ -51,7 +55,7 @@ const charsetName = computed(() => {
 <template>
   <aside class="control-panel">
     <div class="logo"></div>
-    <fieldset :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
+    <fieldset :disabled="!!locked" :title="locked">
       <legend>{{ t('panel.groups.setup') }}</legend>
 
       <div class="field">
@@ -169,14 +173,14 @@ const charsetName = computed(() => {
       <!-- Under a folded group its title's line is the separator. -->
       <hr v-if="i === 0 || !isFolded(sliderGroups[i - 1].id)"/>
 
-      <fieldset :class="{ folded: isFolded(group.id) }" :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
+      <fieldset :class="{ folded: isFolded(group.id) }" :disabled="!!locked" :title="locked">
         <legend>
           <button class="fold" :aria-expanded="!isFolded(group.id)" :aria-controls="`group-${group.id}`" @click="toggleFold(group.id)">
             <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
             {{ group.title }}
             <span v-if="isFolded(group.id) && onCount(group)" class="on">{{ t('panel.onCount', onCount(group)) }}</span>
           </button>
-          <button :disabled="!!drawing.hostOnly" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
+          <button :disabled="!!locked" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
         </legend>
 
         <div v-show="!isFolded(group.id)" :id="`group-${group.id}`">
@@ -205,7 +209,7 @@ const charsetName = computed(() => {
       </fieldset>
     </template>
 
-    <button :disabled="!!drawing.hostOnly" :title="drawing.hostOnly" @click="store.resetSliders">{{ t('panel.resetAll') }}</button>
+    <button :disabled="!!locked" :title="locked" @click="store.resetSliders">{{ t('panel.resetAll') }}</button>
 
     <hr/>
 
