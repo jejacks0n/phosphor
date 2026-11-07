@@ -112,7 +112,9 @@ step in (**Edit art** is off, and its title says who is drawing), move, restack 
 it: Phosphor says who's drawing there instead. If two people step into the same layer at once, the one the host hears
 first keeps it, and the other is stepped out and told who has it. While anyone else is inside an art layer, the host
 can't Clear, Merge down, merge Into the image, Bake or change the canvas size either, since those send everyone the
-whole document again. The layer is free again once that person steps out, leaves the room or stops drawing.
+whole document again. The layer is free again once that person steps out, leaves the room or stops drawing. A host can
+free a layer held by someone who has gone idle inside it with **Back to watching** in that person's **⋯** menu in
+**N here** ([Drawing together](social.md#drawing-together)); they can be made an artist again afterward.
 
 ## Saving
 
