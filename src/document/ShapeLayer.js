@@ -131,7 +131,8 @@ export default class ShapeLayer {
   }
 
   // The base layer with the shapes keys (a Set) pressed in, drawn as this layer draws them (alone, then over
-  // the base's bytes), so nothing shown changes: { canvas, covered }, covered the cells ({ col, row }) they draw in.
+  // the base's bytes), so nothing shown changes: { canvas, covered, pins }, covered the cells ({ col, row }) they draw
+  // in, pins the characters ({ col, row, char }) their art layers show: where no pressed shape reaches over them.
   pressed(keys) {
     const base = this.#base, k = base.scale, { width, height } = base.canvas;
     const own = newCanvas(width, height), ownCtx = ctx2d(own);
@@ -150,7 +151,39 @@ export default class ShapeLayer {
         if (any) covered.push({ col, row });
       }
     }
-    return { canvas, covered };
+    return { canvas, covered, pins: this.#pressedPins(keys) };
+  }
+
+  // The characters the art layers among keys show, worked out as #draw does (a shape stacked above has the converter
+  // pick). The cells they give are read back from the base's pixels: their halves' colors, or what is under.
+  #pressedPins(keys) {
+    const base = this.#base, k = base.scale, { width, height } = base.canvas, cols = base.cols, rows = charRowsOf(base.rows);
+    const chars = [], scratch = ctx2d(newCanvas(width, height)), whole = { x: 0, y: 0, w: width, h: height };
+    let band = false;
+    const flush = () => {
+      if (!band) return;
+      this.#reach(scratch, whole, chars);
+      scratch.clearRect(0, 0, width, height);
+      band = false;
+    };
+    for (const [key, shape] of this.#order) {
+      if (!keys.has(key)) continue;
+      if (!isArt(shape)) {
+        this.#paint(scratch, shape, k);
+        band = true;
+        continue;
+      }
+      flush();
+      const { m, art } = shape;
+      for (const [i, char] of art.cells) {
+        const col = m[4] + (i % art.cols), row = m[5] / 2 + Math.floor(i / art.cols);
+        if (char !== null && col >= 0 && col < cols && row >= 0 && row < rows) chars[row * cols + col] = char;
+      }
+    }
+    flush();
+    const pins = [];
+    chars.forEach((char, i) => { if (char) pins.push({ col: i % cols, row: Math.floor(i / cols), char }); });
+    return pins;
   }
 
   changedSince(version) {
@@ -246,7 +279,7 @@ export default class ShapeLayer {
   }
 
   // The cells of rect that what's drawn on ctx reaches (any alpha) given over to the conversion: null.
-  #reach(ctx, { x, y, w, h }) {
+  #reach(ctx, { x, y, w, h }, chars = this.#chars) {
     const k = this.#base.scale, { data } = ctx.getImageData(x, y, w, h), cols = this.#base.cols, rows = charRowsOf(this.#base.rows);
     const c0 = x / k, r0 = y / (2 * k), cw = w / k, rh = h / (2 * k);
     for (let r = 0; r < rh; r++) {
@@ -256,7 +289,7 @@ export default class ShapeLayer {
         for (let py = r * 2 * k, any = false; py < (r + 1) * 2 * k && !any; py++) {
           for (let px = c * k, o = (py * w + px) * 4 + 3; px < (c + 1) * k; px++, o += 4) {
             if (!data[o]) continue;
-            this.#chars[(r0 + r) * cols + c0 + c] = null;
+            chars[(r0 + r) * cols + c0 + c] = null;
             any = true;
             break;
           }

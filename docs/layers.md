@@ -66,7 +66,9 @@ round on top of the result. Nothing on the canvas changes when you bake:
 - The color palette isn't baked: it keeps applying afterwards.
 - [Shapes](vector.md) are pressed into the base layer's pixels and stop being shapes, so shapes alone make
   Bake available. In an animation they stay shapes, with the sliders burnt into their colors; where a shape's
-  edge is soft (an outline's antialiasing), its cells can come out a different color.
+  edge is soft (an outline's antialiasing), its cells can come out a different color. An [art layer](vector.md#art-layers)
+  is pressed in the same way, its characters pinned wherever it showed them, so the base shows exactly what showed; in an
+  animation it stays an art layer, with its colors burnt in.
 - With the CGA or VGA palette, Bake asks how to keep the colors (not with Dither on, or with Best match or By shape: then it bakes exactly, as other palettes do):
   - **Keep full color** (the default): the picture keeps its in-between colors, so switching the
     palette later still has them. A few cells near the edges between palette colors can come out
@@ -88,7 +90,7 @@ the picture → the base layer's own pixels → shapes → edit cells → paint
 
 They're converted with the picture, so the color sliders, the palette and dither reach them (the image filters
 don't). A shape over a pinned character shows its conversion there. When a shape is pressed into the base (Bake,
-Merge down), pins it covers go, since its pixels are what shows there now.
+Merge down), pins it covers go, since its pixels are what shows there now; an art layer's characters become pins instead.
 
 ### Art layers
 

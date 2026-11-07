@@ -4,6 +4,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { ellipseShape, rectShape, withShape } from '@/document/shapes.js';
+import { makeArt } from '@/document/artLayers.js';
 import { cellIndex } from '@/lib/Cells.js';
 
 const SLIDERS = { brightness: 140, contrast: 160, saturation: 130, hue: 40 };
@@ -206,4 +207,56 @@ test('shapes pressed over a partly transparent base leave no pixel on a half ste
   const after = read(), pressed = (i) => [0, 1, 2, 3].some((j) => after[i + j] !== before[i + j]);
   expect(after.filter((v, i) => i % 4 === 0 && pressed(i)).length).toBeGreaterThan(100);
   expect(halfSteps(after, pressed)).toBe(0);
+});
+
+// Art at (5, 3): A B Ｗ (a wide one, taking col 7 and 8), then C at col 9 with only its bottom half colored.
+const BLOCK = () => makeArt({ z: 0, m: [1, 0, 0, 1, 5, 6], art: { cols: 5, rows: 1, cells: [
+  [0, 'A', '#0000ff', '#ffff00'], [1, 'B', '#ff00ff', '#00ffff'], [2, 'Ｗ', '#ffffff', '#000000'], [4, 'C', null, '#00ff00'],
+] } });
+
+test('Merge down presses an art layer into the base, its characters pinned and showing as before', async () => {
+  const { project } = await drawing();
+  project.addShape(rectShape(8, 4, 24, 12, { fill: '#aa0000' })); // under the art, reaching some of its cells
+  project.addShape(BLOCK());
+  project.addShape(rectShape(6, 6, 7, 8, { fill: '#00aa00' }));   // over the art's B only
+  await settle(project);
+  const cells = cellsKey(project);
+  expect(project.cells[cellIndex(5, 3, project.cols)].char).toBe('A');
+  expect(project.cells[cellIndex(6, 3, project.cols)].char).not.toBe('B');
+  project.mergeShapes();
+  await settle(project);
+  expect(project.shapes.size).toBe(0);
+  expect(cellsKey(project)).toEqual(cells);
+  const { pins } = project.baseRecords;
+  expect(['5,3', '7,3', '9,3'].map((k) => pins.get(k))).toEqual(['A', 'Ｗ', 'C']);
+  expect(pins.has('6,3')).toBe(false); // a shape over it: the converter picked there
+  project.undo();
+  await settle(project);
+  expect(project.shapes.size).toBe(3);
+  expect(project.baseRecords.pins.size).toBe(0);
+  expect(cellsKey(project)).toEqual(cells);
+});
+
+test('a selection\'s Merge down presses an art layer it touches, and the art is the same on the canvas', async () => {
+  const { project } = await drawing();
+  project.addShape(BLOCK());
+  const apart = project.addShape(rectShape(22, 24, 28, 28, { fill: '#00ff00' }));
+  await settle(project);
+  const cells = cellsKey(project);
+  project.mergeDown({ c0: 4, r0: 2, c1: 10, r1: 4 });
+  await settle(project);
+  expect(keys(project)).toEqual([apart]);
+  expect(project.baseRecords.pins.get('5,3')).toBe('A');
+  expect(cellsKey(project)).toEqual(cells);
+});
+
+test('Into the image leaves an art layer alone', async () => {
+  const { project } = await drawing();
+  const art = project.addShape(BLOCK());
+  await settle(project);
+  const cells = cellsKey(project);
+  await project.mergeIntoPicture();
+  await settle(project);
+  expect([...project.shapes.keys()]).toEqual([art]);
+  expect(cellsKey(project)).toEqual(cells);
 });
