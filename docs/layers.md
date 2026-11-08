@@ -80,6 +80,31 @@ round on top of the result. Nothing on the canvas changes when you bake:
 The baked image is the size Phosphor works from to make the preview, not your photo's full size, so
 making the grid bigger afterwards works from that smaller image.
 
+### Flattening
+
+**Flatten** (beside Bake in the toolbar; in the Actions menu on narrow screens) is for when the picture
+looks the way you want and you're ready to work on it as ANSI. Everything the drawing shows becomes plain
+cells, each exactly the character, foreground and background it shows now: the picture as converted (with its
+palette, sliders, effects, character choice and Dither), [shapes and art layers](vector.md), your edit cells
+and your paint. Then the image is removed. Nothing on the canvas changes, and nothing converts any more, so
+the color you pick is the color you see and the color you paint is the color you get.
+
+It asks where the cells go, as opening an ANSI file does:
+
+- **Edit it** (the default): the cells go on the edit layer, over a black base, as if you'd drawn them.
+- **Draw on top of it**: the cells are the base layer, every character pinned, and what you draw goes on top.
+
+Afterwards the Transforms, Adjustments and Image Filters sliders are back at neutral, the art style is ANSI,
+Dither is off and the character choice is back to its default, since there's nothing left for them to work
+on. The palette stays: a Color count palette is kept as the colors it had, so it isn't picked again, and
+flattening Color ASCII switches to full color, since its in-between colors aren't the palette's. Changing the
+palette later can't bring back colors that are gone.
+
+Unlike Bake, which keeps an image for the sliders and effects to keep working on, Flatten ends them. Undo brings
+the image, the sliders and your layers back. It's off in an animation, since the picture is under every frame,
+and in a room only the host can flatten. For one area, use **Merge up** with a selection: its cells look exactly
+as they did, and the sliders keep working on them.
+
 ### Shapes
 
 The VECTOR tab's [shapes](vector.md) sit between the base layer's own pixels and the edit layer:

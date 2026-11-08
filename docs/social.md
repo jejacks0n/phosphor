@@ -338,12 +338,12 @@ and size, as a watcher sees it; if the host changes, so does the font. Each arti
 colors and view, with **Show others' cursors** in the chat panel, on by default: a mark and a name at each other artist's cell, or a tag at the edge for someone out of
 view, which goes there when pressed. Anyone drawing can save the art; a project they save has no names in it.
 
-**Only the host** changes the picture and the grid: the settings, SAUCE fields, sliders, base layer, Bake, Merge up,
-Merge down and Into the image are off for an artist and say "Only the host can do this." Merge down, Into the image
-and Bake are final while anyone's listed as an artist, since other people's strokes can land on them; Merge up is an
+**Only the host** changes the picture and the grid: the settings, SAUCE fields, sliders, base layer, Bake, Flatten, Merge up,
+Merge down and Into the image are off for an artist and say "Only the host can do this." Merge down, Into the image,
+Bake and Flatten are final while anyone's listed as an artist, since other people's strokes can land on them; Merge up is an
 ordinary stroke that its maker can undo. If another artist is connected,
 Merge warns first: "Strokes merged into the image can't be undone by anyone." Bake warns too: "A bake can't be undone
-by anyone."
+by anyone." Flatten warns the same way.
 
 **While others are drawing**, a host can't Open, start a new image or blank canvas, restore a version or Clear
 the edit layer; those say "Not while others are drawing." An artist who has dropped out holds none of this up,

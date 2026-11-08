@@ -7,6 +7,9 @@ import { rectShape } from '@/document/shapes';
 import { makeArt } from '@/document/artLayers.js';
 import { charRowsOf } from '@/lib/Cells';
 import { slidersAtDefaults } from '@/store/settings';
+import { createApp } from 'vue';
+import EditToolbar from '@/components/EditToolbar.vue';
+import { i18n } from '@/i18n';
 
 const shown = (project) => cellsKey(project).map((key) => key.toLowerCase());
 
@@ -167,4 +170,26 @@ test('steps out of an art layer first', async () => {
   await settle(project);
   expect(project.artInside).toBe(null);
   expect(shown(project)).toEqual(before);
+});
+
+test('the toolbar asks Edit it or Draw on top of it', async () => {
+  const { project } = await drawing();
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  document.body.append(host);
+  toolbar.mount(host);
+  try {
+    const button = [...host.querySelectorAll('button')].find((b) => b.title.startsWith('Flatten:'));
+    expect(button?.disabled).toBe(false);
+    button.click();
+    await settle(project);
+    const choice = [...document.querySelectorAll('button.choice')].find((b) => b.textContent.includes('Draw on top of it'));
+    expect(choice).toBeTruthy();
+    choice.click();
+    for (let i = 0; i < 100 && project.image && project.shapes.size; i++) await settle(project); // the black picture encodes first
+    expect(project.baseRecords.pins.size).toBeGreaterThan(0);
+    expect(project.editCells.size).toBe(0);
+  } finally {
+    toolbar.unmount();
+    host.remove();
+  }
 });

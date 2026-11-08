@@ -75,7 +75,7 @@ with a **Done** button.
   are in the history with the rest.
 - **What's off.** The settings panel, the Base toggle and the frame controls (the animation bar, and the keys that play, step
   and add frames) are off while you're in. Changing the picture or the frame would leave the dimmed drawing out of date.
-  Clear, Merge up, Merge down (and with it Into the image) and Bake are off too, since they change the whole drawing,
+  Clear, Merge up, Merge down (and with it Into the image), Bake and Flatten are off too, since they change the whole drawing,
   not the layer: their titles say to step out first.
 - **In a room.** One person at a time draws in an art layer ([Rooms](#rooms)).
 - **Stepping out.** Press **Done** or **Esc** (once nothing else is left to cancel: with the Text cursor showing, the first
@@ -91,6 +91,8 @@ with a **Done** button.
 - **Merge down** on ANSI takes shapes along ([Layers](layers.md)); its dialog says so.
 - **Bake** presses every shape in on a still; in an animation they stay shapes, with the sliders burnt into
   their colors.
+- **Flatten** turns every shape and art layer, with the rest of the drawing, into plain cells as they show,
+  and the vector layer is empty afterwards ([Layers](layers.md#flattening)).
 
 ## Animation
 
