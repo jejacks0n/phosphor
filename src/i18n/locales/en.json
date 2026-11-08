@@ -256,7 +256,7 @@
       "help": "Softens noise and fine grain before the picture is converted. Applied before the other effects. The base layer only: the edit layer isn't changed."
     },
     "flatten": {
-      "label": "Flatten",
+      "label": "Simplify",
       "help": "Groups nearby tones into clean, painterly shapes. The base layer only: the edit layer isn't changed."
     },
     "sharpen": {

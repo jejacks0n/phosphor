@@ -256,7 +256,7 @@
       "help": "Adoucit le bruit et le grain fin avant la conversion de l'image. Appliqué avant les autres effets. Le calque de base seulement : le calque d'édition ne change pas."
     },
     "flatten": {
-      "label": "Aplatir",
+      "label": "Simplifier",
       "help": "Regroupe les tons proches en aplats nets et picturaux. Le calque de base seulement : le calque d'édition ne change pas."
     },
     "sharpen": {
