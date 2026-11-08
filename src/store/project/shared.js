@@ -2,7 +2,8 @@
 import { getSetting, SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS } from '@/store/settings.js';
 import { markRaw } from 'vue';
 import { Ledger } from '@/document/ledger.js';
-import { ctx2d } from '@/lib/Canvas.js';
+import { ctx2d, canvasPng } from '@/lib/Canvas.js';
+import { loadImage } from '@/document/projectIO.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
@@ -25,6 +26,18 @@ export const copyOf = (image, width, height) => {
   ctx2d(canvas).drawImage(image, 0, 0);
   return canvas;
 };
+// A black picture cols x rows grid pixels at scale pixels each, as a blank canvas and Flatten have: { image,
+// imageBuffer }. Throws when it can't be encoded.
+export async function blackPicture(cols, rows, scale) {
+  const canvas = document.createElement('canvas');
+  canvas.width = cols * scale;
+  canvas.height = rows * scale;
+  const ctx = ctx2d(canvas);
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const blob = await canvasPng(canvas);
+  return { image: await loadImage(blob), imageBuffer: await blob.arrayBuffer() };
+}
 // randomUUID is only there on secure contexts; a plain-http LAN address has getRandomValues.
 export const randomId = () => crypto.randomUUID?.()
   ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');

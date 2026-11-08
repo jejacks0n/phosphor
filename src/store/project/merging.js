@@ -6,7 +6,7 @@
 // for those would never end under steady drawing. Bake reads the layers after it encodes, so what came
 // meanwhile is in it; Into the image reads them before, so a host holds artists' changes until the project's gone.
 import { t } from '@/i18n';
-import { withPins, withoutPins } from '@/document/baseRecords.js';
+import { EMPTY_BASE, withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { makeArt, isArt } from '@/document/artLayers.js';
 import { finerStops, isGradient, isShape, shapeBounds, withShape } from '@/document/shapes.js';
@@ -18,9 +18,9 @@ import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld, blackPicture } from '@/store/project/shared.js';
 import { placedShapes } from '@/document/followers.js';
-import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
+import { RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
 
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -47,6 +47,18 @@ function bakedChanges(changes, params) {
   const entry = (cell) => cell && (isShape(cell) ? bakedShape(cell, params) : bakeEntry(cell, params));
   return new Map([...changes].map(([key, { cell, top, bottom }]) => [key, cellState(entry(cell), baked(top), baked(bottom))]));
 }
+
+// The clipboard with the color transforms burnt in, as Bake and Flatten leave it.
+const bakedClipboard = (clip, params) => clip && {
+  ...clip,
+  ...(clip.cells && { cells: clip.cells.map(entry => entry && bakeEntry(entry, params)) }),
+  ...(clip.looks && { looks: clip.looks.map(entry => bakeEntry(entry, params)) }),
+  ...(clip.paint && { paint: bakedCanvas(clip.paint, params) }),
+  ...(clip.base && { base: { ...clip.base, pixels: bakedCanvas(clip.base.pixels, params), colors: bakedCanvas(clip.base.colors, params) } }),
+};
+
+// The settings Flatten puts back so nothing converts any more: the sliders, the art style, Dither, the character choice.
+const FLATTENED = ['renderStyle', 'dither', 'charChoice', 'charChoiceAscii'];
 
 export const mergingActions = {
   // Bake: the picture as it shows becomes the image and the Transform, Adjustment and Effect
@@ -101,13 +113,7 @@ export const mergingActions = {
         paint: baked(before.paint), base: baked(pressed?.base ?? before.base), editCells: bakeEditCells(this.editCells, params),
         shapes: pressed ? pressed.shapes : bakedShapes(this.shapes, params), baseRecords: pressed?.baseRecords ?? this.baseRecords,
         fg: getEffectiveColor(before.fg, params), bg: getEffectiveColor(before.bg, params),
-        clipboard: clip && {
-          ...clip,
-          ...(clip.cells && { cells: clip.cells.map(entry => entry && bakeEntry(entry, params)) }),
-          ...(clip.looks && { looks: clip.looks.map(entry => bakeEntry(entry, params)) }),
-          ...(clip.paint && { paint: bakedCanvas(clip.paint, params) }),
-          ...(clip.base && { base: { ...clip.base, pixels: bakedCanvas(clip.base.pixels, params), colors: bakedCanvas(clip.base.colors, params) } }),
-        },
+        clipboard: bakedClipboard(clip, params),
         frames: before.frames && before.frames.map(({ kind, changes }) => ({ kind, changes: bakedChanges(changes, params) })),
       };
 
@@ -135,6 +141,92 @@ export const mergingActions = {
     } finally {
       this._baking = false;
       if (again) await this.bake({ lockPalette });
+    }
+  },
+
+  // Flatten: everything the drawing shows (the picture as converted, the shapes and art layers, the edit cells, the
+  // paint) becomes plain ANSI cells exactly as they show, on the edit layer over a black base (layer 'edit') or
+  // stamped onto the base with every character pinned ('base'), and the image is a black picture. The settings that
+  // convert go back (the sliders, the art style to ANSI, Dither, the character choice); a Number palette is kept as
+  // its colors, so it isn't picked again from the black, and Color ASCII's in-between colors go full color. Nothing on the canvas changes. Edit cells past a shrunk
+  // grid's edge stay. Off with frames: the picture is under every one. One undo step; true when it flattened.
+  async flattenDrawing({ layer = 'edit' } = {}) {
+    if (!this.canFlatten || this._flattening || this._baking || this._merging) return false;
+    if (this._artInside) this.leaveArt();
+    this._flattening = true;
+    let again = false;
+    try {
+      this.ensureLayer();
+      this.commitPending();
+      const workspace = useWorkspaceStore();
+      const params = this.processParams;
+      const doc = this._document, version = this.history.version, image = this.image;
+      const picture = await blackPicture(this.cols, this.rows, this.baseLayer.scale); // the same processing scale
+      if (this._document !== doc) return false;
+      this.commitPending();
+      if (this.image !== image || this.history.version !== version || !this.canFlatten) {
+        again = true;
+        return false;
+      }
+
+      const { cols } = this, rows = charRowsOf(this.rows);
+      const grid = []; // { col, row, char, fg, bg }: each cell as it shows, a wide character's trail a space in its colors
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const cell = this.cells[row * cols + col];
+          grid.push({ col, row, char: cell.wide === 'trail' ? ' ' : cell.char, fg: cell.fg.hex, bg: cell.bg.hex });
+        }
+      }
+      const past = [...this.editCells].filter(([key]) => { const { col, row } = parseKey(key); return col >= cols || row >= rows; });
+
+      const defaults = { ...Object.assign({}, ...RESET_GROUPS.map(groupDefaults)), ...Object.fromEntries(FLATTENED.map((key) => [key, getSetting(key).default])) };
+      const kept = (from) => ({ ...Object.fromEntries(Object.keys(defaults).map((key) => [key, from[key]])), quantize: from.quantize, palette: from.palette });
+      const clip = toRaw(workspace.clipboard);
+      const before = {
+        image, imageBuffer: this.imageBuffer, workingCopy: this.imageIsWorkingCopy, fit: this.fit && { ...toRaw(this.fit) }, settings: kept(this),
+        paint: this.paintLayer.snapshot(), base: this.baseLayer.snapshot(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords,
+        fg: workspace.editFgColor, bg: workspace.editBgColor, clipboard: clip,
+      };
+      // Color ASCII shows a pair's average, off the palette: kept, the palette would snap it; it goes full color.
+      const counted = this.quantize === 'count' && this.renderer.palette?.length, averaged = this.renderStyle === 'colorAscii';
+      const settings = { ...defaults, quantize: averaged ? 'none' : counted ? 'palette' : this.quantize, palette: counted && !averaged ? this.renderer.palette.map((p) => p.hex.toUpperCase()).join(' ') : this.palette };
+
+      // The base: black for the edit layer's grid, or the grid's cells as Merge down writes them (writeBaseCells).
+      this.baseLayer.restore(null);
+      if (layer === 'base') this.baseLayer.paint(grid.flatMap(({ col, row, fg, bg }) => [{ x: col, y: 2 * row, ...hex2rgb(bg), alpha: 1 }, { x: col, y: 2 * row + 1, ...hex2rgb(fg), alpha: 1 }]));
+      const after = {
+        image: picture.image, imageBuffer: picture.imageBuffer, workingCopy: true, fit: { dx: 0, dy: 0, dw: cols, dh: this.rows }, settings,
+        paint: null, base: this.baseLayer.snapshot(), shapes: new Map(),
+        editCells: new Map([...(layer === 'edit' ? grid.map(({ col, row, char, fg, bg }) => [cellKey(col, row), { char, fg, bg }]) : []), ...past]),
+        baseRecords: layer === 'base' ? withPins(EMPTY_BASE, grid.map(({ col, row, char }) => ({ col, row, char }))) : EMPTY_BASE,
+        fg: getEffectiveColor(before.fg, params), bg: getEffectiveColor(before.bg, params), clipboard: bakedClipboard(clip, params),
+      };
+
+      // The color pair and the clipboard swap only while they hold what the other side left (as Bake's).
+      const apply = (state, from) => {
+        this.$patch({ image: shallowRef(state.image), imageBuffer: state.imageBuffer, imageIsWorkingCopy: state.workingCopy, ...state.settings });
+        this.fit = state.fit && { ...state.fit }; // set, not patched: a patch would merge into the object before holds
+        this.paintLayer.restore(state.paint);
+        this.baseLayer.restore(state.base);
+        this.hasPaint = this.paintLayer.hasPaint;
+        this.editCells = state.editCells;
+        this.shapes = state.shapes;
+        this.setBaseRecords(state.baseRecords);
+        if (workspace.editFgColor === from.fg) workspace.editFgColor = state.fg;
+        if (workspace.editBgColor === from.bg) workspace.editBgColor = state.bg;
+        if (toRaw(workspace.clipboard) === from.clipboard) workspace.clipboard = state.clipboard;
+        this.render();
+      };
+      apply(after, before);
+      this.pushWholeLayer(() => apply(before, after), () => apply(after, before), bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.base, after.image, after.imageBuffer, after.editCells));
+      return true;
+    } catch (e) {
+      console.error('Failed to flatten', e);
+      alert(t('document.flattenFailed'));
+      return false;
+    } finally {
+      this._flattening = false;
+      if (again) await this.flattenDrawing({ layer });
     }
   },
 

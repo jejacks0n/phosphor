@@ -8,7 +8,7 @@ const ACTIONS = [
   'cancelEdit', 'cancelKeyDrag', 'catchUpFor', 'cellHasPaint', 'changeEverywhere', 'changeSelection', 'clearEditCells', 'clearEditLayer', 'clearHistory', 'clearImage', 'clipRect', 'combineShapes',
   'commitArt', 'commitEdit', 'commitPending', 'commitSliders', 'compareCheck', 'completeAt', 'composite', 'continueAsArtist', 'copySelection',
   'deleteAt', 'deleteFrame', 'deleteIn', 'deleteInWand', 'deleteKeys', 'deleteSelection', 'deleteShapes', 'documentNumber', 'dropEdits', 'dropHeard', 'dropOldUndo', 'dropWaiting', 'editCell', 'editCellAt', 'editLayerSum', 'endKeyDrag', 'ensureLayer', 'enterArt',
-  'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportAnimation', 'exportFile', 'finishPen', 'fitFor', 'flipBase', 'flipCell',
+  'eraseBase', 'eraseBasePixels', 'eraseEditPixels', 'exportAnimation', 'exportFile', 'finishPen', 'fitFor', 'flattenDrawing', 'flipBase', 'flipCell',
   'flipPaint', 'floatSelection', 'flushHeard', 'followPath', 'forgetAsked', 'gridRect', 'hasCharacters', 'hasEditsIn', 'hearDrawing', 'imageColorAt', 'inheritedCells', 'inheritedShapes', 'joinShapes', 'keepLedger', 'keepMigratedLook', 'keptForHandOver', 'layersFor', 'leaveArt', 'leavePending',
   'loadArt', 'loadProject', 'lockedBy', 'makeArtLayer', 'markSaved', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'mergeUp',
   'moveFrame', 'moveKeys', 'moveSelection', 'newConnection', 'newDocument', 'noteDrawn', 'noteFrame', 'numberWaiting', 'openArtFile', 'openFrames', 'openFromHost', 'openParts', 'openSvgFile', 'ownStroke', 'paintEditPixels', 'paintStroke', 'pasteAt',
