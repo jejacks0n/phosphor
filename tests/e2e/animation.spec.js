@@ -256,6 +256,10 @@ test('on a phone the menus stay on screen side to side too', async ({ page }) =>
   await animateSwitch(page).check();
   for (const [width, height] of [[390, 844], [320, 568], [844, 390]]) {
     await page.setViewportSize({ width, height });
+    // A menu closes on resize, so the resize has to have landed before one opens: the width, then the frame after
+    // (resize events go out before a frame's callbacks).
+    await page.waitForFunction((w) => innerWidth === w, width);
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
     for (const [name, item] of [['Add frame', /^Duplicate/], ['Frame actions', 'Move earlier']]) {
       await expect.poll(async () => (await bar(page).getByRole('button', { name }).boundingBox())?.x ?? -1).toBeGreaterThanOrEqual(0);
       await bar(page).getByRole('button', { name }).click();
