@@ -374,12 +374,16 @@ setting, so they're lit the same on both tools.
 
 With the Magic Wand's selection (the wand being the tool) or a Select rectangle (Select being the
 tool), the options row has **Set FG** and **Set BG** in the ANSI view: every selected cell takes
-your foreground or background color, on the **Layers** lit, in one undo step. On **Base** it's the
-picture's own colors: a cell's background is its top pixel and its foreground its bottom one, so
-Set BG recolors the top pixels and Set FG the bottom ones. Its characters stay as they are. On
-**Edit** the cells take the color as edit cells, keeping their characters. The ASCII styles show
-each character on black in its two pixels' average, so there's no Set BG, and Set FG on Base
-recolors both pixels. In the pixel view it's **Fill**: every selected pixel takes your foreground
+your foreground or background color, on the **Layers** lit, in one undo step. Only that color
+changes: each cell keeps the character and the other color it shows, whatever picked them (Best
+match, By shape, dithering, the palette), and paint on it keeps showing the color it gave its half.
+On **Edit** the cells take it as edit cells, replacing the paint there. On **Base** it goes into the
+picture's own colors (a cell's background is its top pixel, its foreground its bottom one), with the
+cell's character pinned, so the converter doesn't pick another for the new colors. With both lit,
+each cell is recolored where it is: on the edit layer where you've drawn or painted, on the base
+elsewhere. Your color shows as the palette and the color sliders make it, as anything you draw
+does. The ASCII styles show each character on black in its two pixels' average, so there's no Set
+BG, and Set FG on Base recolors both pixels. In the pixel view it's **Fill**: every selected pixel takes your foreground
 color, the picture's pixel on Base and paint on Edit. A color set to None can't be set; choose one
 first.
 
