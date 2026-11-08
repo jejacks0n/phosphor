@@ -1,12 +1,13 @@
 // Flatten: everything the drawing shows (the picture as converted, shapes and art layers, edit cells, paint) becomes
 // plain ANSI cells exactly as they show, on the edit layer or the base, and the image is removed (docs/layers.md,
 // Flattening).
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { rectShape } from '@/document/shapes';
 import { makeArt } from '@/document/artLayers.js';
 import { charRowsOf } from '@/lib/Cells';
 import { slidersAtDefaults } from '@/store/settings';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { createApp } from 'vue';
 import EditToolbar from '@/components/EditToolbar.vue';
 import { i18n } from '@/i18n';
@@ -192,4 +193,62 @@ test('the toolbar asks Edit it or Draw on top of it', async () => {
     toolbar.unmount();
     host.remove();
   }
+});
+
+test('a palette without every color the cells show goes full color, so nothing snaps', async () => {
+  for (const patch of [{ quantize: 'palette', palette: '#AA5601 #224488 #000000' }, { quantize: 'count', colorCount: 6 }]) {
+    const { project } = await drawing({ renderStyle: 'ascii', ...patch }); // white on black, whatever the palette
+    const before = shown(project);
+    await project.flattenDrawing({ layer: 'edit' });
+    project.render();
+    await settle(project);
+    expect(project.quantize, patch.quantize).toBe('none');
+    expect(shown(project), patch.quantize).toEqual(before);
+  }
+});
+
+test('drawn on top of, the PIXEL tab shows each cell as it looks, as an opened ANSI file does', async () => {
+  const { project } = await drawing();
+  useWorkspaceStore().ansiOverlayAll = false;
+  await project.flattenDrawing({ layer: 'base' });
+  expect(useWorkspaceStore().ansiOverlayAll).toBe(true);
+});
+
+test('edit cells past a shrunk grid\'s edge keep their look', async () => {
+  const { project } = await drawing();
+  project.setSlider('contrast', 200);
+  project.typeAt(55, 5, 'q', { fg: '#336699', bg: '#664422' });
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  const look = shown(project)[5 * 60 + 55];
+  project.cols = 50;
+  await settle(project);
+  await project.flattenDrawing({ layer: 'edit' });
+  await settle(project);
+  project.cols = 60;
+  await settle(project);
+  expect(shown(project)[5 * 60 + 55]).toBe(look);
+});
+
+test('a failure partway leaves the drawing as it was', async () => {
+  const { project } = await drawing();
+  const before = shown(project), image = project.image;
+  const real = project.baseLayer.snapshot.bind(project.baseLayer);
+  let calls = 0;
+  vi.spyOn(project.baseLayer, 'snapshot').mockImplementation(() => {
+    if (++calls === 2) throw new Error('out of memory'); // the flattened base's
+    return real();
+  });
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(window, 'alert').mockImplementation(() => {});
+  try {
+    expect(await project.flattenDrawing({ layer: 'base' })).toBe(false);
+  } finally {
+    vi.restoreAllMocks();
+  }
+  project.render();
+  await settle(project);
+  expect(project.image).toBe(image);
+  expect(shown(project)).toEqual(before);
 });

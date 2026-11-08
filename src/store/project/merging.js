@@ -154,7 +154,7 @@ export const mergingActions = {
     if (!this.canFlatten || this._flattening || this._baking || this._merging) return false;
     if (this._artInside) this.leaveArt();
     this._flattening = true;
-    let again = false;
+    let again = false, base = null; // the base as it was, once this starts writing it
     try {
       this.ensureLayer();
       this.commitPending();
@@ -187,17 +187,21 @@ export const mergingActions = {
         paint: this.paintLayer.snapshot(), base: this.baseLayer.snapshot(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords,
         fg: workspace.editFgColor, bg: workspace.editBgColor, clipboard: clip,
       };
-      // Color ASCII shows a pair's average, off the palette: kept, the palette would snap it; it goes full color.
-      const counted = this.quantize === 'count' && this.renderer.palette?.length, averaged = this.renderStyle === 'colorAscii';
-      const settings = { ...defaults, quantize: averaged ? 'none' : counted ? 'palette' : this.quantize, palette: counted && !averaged ? this.renderer.palette.map((p) => p.hex.toUpperCase()).join(' ') : this.palette };
+      // The palette stays while it has every color the cells show (a Number palette as its colors, so it isn't picked
+      // again from the black); a color off it (Color ASCII's averages, Monochrome ASCII's white) and it'd snap: full color.
+      const palette = this.renderer.palette ?? [], inPalette = new Set(palette.map((p) => p.hex.toLowerCase()));
+      const offPalette = palette.length > 0 && grid.some(({ fg, bg }) => !inPalette.has(fg.toLowerCase()) || !inPalette.has(bg.toLowerCase()));
+      const counted = this.quantize === 'count' && palette.length > 0;
+      const settings = { ...defaults, quantize: offPalette ? 'none' : counted ? 'palette' : this.quantize, palette: counted && !offPalette ? palette.map((p) => p.hex.toUpperCase()).join(' ') : this.palette };
 
       // The base: black for the edit layer's grid, or the grid's cells as Merge down writes them (writeBaseCells).
+      base = before.base;
       this.baseLayer.restore(null);
       if (layer === 'base') this.baseLayer.paint(grid.flatMap(({ col, row, fg, bg }) => [{ x: col, y: 2 * row, ...hex2rgb(bg), alpha: 1 }, { x: col, y: 2 * row + 1, ...hex2rgb(fg), alpha: 1 }]));
       const after = {
         image: picture.image, imageBuffer: picture.imageBuffer, workingCopy: true, fit: { dx: 0, dy: 0, dw: cols, dh: this.rows }, settings,
         paint: null, base: this.baseLayer.snapshot(), shapes: new Map(),
-        editCells: new Map([...(layer === 'edit' ? grid.map(({ col, row, char, fg, bg }) => [cellKey(col, row), { char, fg, bg }]) : []), ...past]),
+        editCells: new Map([...(layer === 'edit' ? grid.map(({ col, row, char, fg, bg }) => [cellKey(col, row), { char, fg, bg }]) : []), ...bakeEditCells(new Map(past), params)]),
         baseRecords: layer === 'base' ? withPins(EMPTY_BASE, grid.map(({ col, row, char }) => ({ col, row, char }))) : EMPTY_BASE,
         fg: getEffectiveColor(before.fg, params), bg: getEffectiveColor(before.bg, params), clipboard: bakedClipboard(clip, params),
       };
@@ -219,8 +223,12 @@ export const mergingActions = {
       };
       apply(after, before);
       this.pushWholeLayer(() => apply(before, after), () => apply(after, before), bytesHeld(before.paint, before.base, before.image, before.imageBuffer, after.base, after.image, after.imageBuffer, after.editCells));
+      // The base layer holds each cell as its two halves, which the PIXEL tab would show as stripes: All cells shows
+      // each as it looks, as after opening an ANSI file onto the base.
+      if (layer === 'base') workspace.ansiOverlayAll = true;
       return true;
     } catch (e) {
+      if (base) this.baseLayer.restore(base); // written before the step was recorded: the drawing stays as it was
       console.error('Failed to flatten', e);
       alert(t('document.flattenFailed'));
       return false;
