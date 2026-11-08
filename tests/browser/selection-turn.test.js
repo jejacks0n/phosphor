@@ -1,8 +1,9 @@
 // Flip and rotate a selection. A flip moves its cells, their characters turning with them (box pieces,
-// blocks, arrows), and its paint and base flip too; Rotate turns its pixels. Each is one undo step.
+// blocks, arrows), and its paint and the picture flip too (landing as edit cells); Rotate turns its pixels. Each is one undo step.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
+import { turnChar } from '@/lib/TurnChars.js';
 
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
 const EDIT = { base: false, edit: true }, BOTH = { base: true, edit: true };
@@ -92,7 +93,7 @@ test('Rotate is off while the selection holds characters, on the layers chosen; 
 
 test('the paint and the base flip with the cells; a Half-block ▄ keeps showing its paint', async () => {
   const { project, read } = await scene();
-  const left = project.baseColorAt(4, 8), right = project.baseColorAt(9, 8);
+  const left = project.baseColorAt(4, 8), right = project.baseColorAt(9, 8), corner = project.completeAt(9, 4);
   expect(left).not.toBe(right);
   project.paintStroke([{ x: 4, y: 8, alpha: 1 }], '#ff0000', { blockChars: true }); // the top half of cell (4, 4)
   project.commitEdit();
@@ -102,7 +103,8 @@ test('the paint and the base flip with the cells; a Half-block ▄ keeps showing
   expect(read(4, 5, 4, 5)).toEqual(['▄']);
   project.turnSelection({ c0: 4, r0: 4, c1: 9, r1: 5 }, BOTH, 'h');
   expect(project.cellHasPaint(9, 5)).toBe(true);
-  expect(project.baseColorAt(4, 11)).toBe(right); // (9, 8) flipped down then across
+  // The picture lands as edit cells, as it showed: (9, 4) flipped down then across.
+  expect(project.editCellAt(4, 5)).toEqual({ ...corner, char: turnChar(turnChar(corner.char, 'v'), 'h') });
 });
 
 test('a wide character flipped across still covers its own two cells', async () => {

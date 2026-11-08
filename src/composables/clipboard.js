@@ -45,19 +45,21 @@ export function copyEvent(text, html) {
 }
 
 // A Select block as the clipboard's `phosphor` field: its canvases as PNGs.
-export function encodeBlock({ w, h, cells, paint, base }, id) {
+export function encodeBlock({ w, h, cells, paint, base, looks }, id) {
   return {
     version: VERSION, id, w, h,
     ...(cells && { cells }),
+    ...(looks && { looks }),
     ...(paint && { paint: paint.toDataURL() }),
     ...(base && { base: { pixels: base.pixels.toDataURL(), scale: base.scale, colors: base.colors.toDataURL(), pins: base.pins } }),
   };
 }
 
 // A `phosphor` field (readClipboardHtml's, checked) back as a Select block, its PNGs decoded.
-export async function decodeBlock({ w, h, cells, paint, base }) {
+export async function decodeBlock({ w, h, cells, paint, base, looks }) {
   const block = { w, h };
   if (cells) block.cells = cells;
+  if (looks) block.looks = looks;
   if (paint) block.paint = await canvasOf(paint);
   if (base) block.base = { ...base, pixels: await canvasOf(base.pixels), colors: await canvasOf(base.colors) };
   return block;

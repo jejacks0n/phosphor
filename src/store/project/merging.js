@@ -104,6 +104,7 @@ export const mergingActions = {
         clipboard: clip && {
           ...clip,
           ...(clip.cells && { cells: clip.cells.map(entry => entry && bakeEntry(entry, params)) }),
+          ...(clip.looks && { looks: clip.looks.map(entry => bakeEntry(entry, params)) }),
           ...(clip.paint && { paint: bakedCanvas(clip.paint, params) }),
           ...(clip.base && { base: { ...clip.base, pixels: bakedCanvas(clip.base.pixels, params), colors: bakedCanvas(clip.base.colors, params) } }),
         },

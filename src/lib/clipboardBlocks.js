@@ -117,6 +117,10 @@ function phosphorField(p) {
     const { pixels, scale, colors, pins } = p.base ?? {};
     if (!isPng(pixels) || !isPng(colors) || !size(scale) || !list(pins)) return null;
     out.base = { pixels, scale, colors, pins: pins.map((char) => (usableChar(char) ? char : null)) };
+    if (p.looks !== undefined) { // how the base showed: whole cells, or none (the pixels show as ▄)
+      const looks = list(p.looks) ? p.looks.map(cleanEntry) : [null];
+      if (looks.every(Boolean)) out.looks = looks;
+    }
   }
   return out;
 }

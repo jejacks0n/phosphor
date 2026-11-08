@@ -886,7 +886,6 @@ test('an artist\'s Merge, Bake, slider, Clear and base paste do nothing', async 
   const block = project.copySelection({ c0: 1, r0: 1, c1: 2, r1: 2 }, { base: true, edit: false });
   expect(block.base).toBeTruthy(); // copying the base is a read
   const pins = project.baseRecords;
-  project.pasteBase(block, 10, 10);
   project.eraseBase([{ col: 8, row: 8 }]);
   project.eraseBasePixels([{ x: 8, y: 8 }]);
   project.flipBase([{ col: 8, row: 8 }]);
@@ -1230,7 +1229,7 @@ test('an action added to the edit layer or selection is listed or known to only 
     expect([name, DRAWING_ACTIONS.includes(name) || HOST_ONLY_ACTIONS.includes(name) || ['setShapes', 'refreshShapes', 'finishPen', 'leaveArt', 'commitArt', 'loadArt', 'pressedKeys', 'pressShapes'].includes(name)]).toEqual([name, true]);
   }
   expect(HOST_ONLY_ACTIONS).toContain('mergeShapes');
-  for (const name of [...Object.keys(mergingActions), ...Object.keys(baseLayerActions), 'pasteBase', 'clearEditLayer', 'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'updateCols', 'updateRows', 'setImageFromFile', 'setBlankCanvas', 'loadProject', 'restoreDocument', 'openParts', 'replaceImage', 'newDocument', 'clearImage']) {
+  for (const name of [...Object.keys(mergingActions), ...Object.keys(baseLayerActions), 'clearEditLayer', 'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'updateCols', 'updateRows', 'setImageFromFile', 'setBlankCanvas', 'loadProject', 'restoreDocument', 'openParts', 'replaceImage', 'newDocument', 'clearImage']) {
     expect([name, HOST_ONLY_ACTIONS.includes(name)]).toEqual([name, true]);
   }
 });

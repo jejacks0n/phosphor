@@ -65,6 +65,16 @@ test('a Phosphor block is recognized by its version, and only what a block can h
   assert.ok(readClipboardHtml(clipboardHtml({ ...moebius, phosphor: { ...phosphor, cells: [null] } })).moebius, 'cells the wrong length');
 });
 
+test('how a copied picture looked comes with its base, each cell whole, or not at all', () => {
+  const base = { pixels: 'data:image/png;base64,BBBB', scale: 2, colors: 'data:image/png;base64,CCCC', pins: [null, null] };
+  const block = (looks) => readClipboardHtml(clipboardHtml({ phosphor: { version: 1, id: 'abc', w: 2, h: 1, base, looks } })).phosphor;
+  assert.deepEqual(block([{ char: '░', fg: '#aa0000', bg: '#0000aa', x: 1 }, { char: '▄', fg: '#ffffff', bg: '#000000' }]).looks,
+    [{ char: '░', fg: '#aa0000', bg: '#0000aa' }, { char: '▄', fg: '#ffffff', bg: '#000000' }]);
+  assert.equal(block([{ char: '░' }, null]).looks, undefined, 'a cell missing: the pixels show instead');
+  assert.equal(block([{ char: '░' }]).looks, undefined, 'the wrong length');
+  assert.equal(readClipboardHtml(clipboardHtml({ phosphor: { version: 1, id: 'abc', w: 2, h: 1, looks: [{ char: 'a' }, { char: 'b' }] } })).phosphor.looks, undefined, 'no base, no looks');
+});
+
 test('shapes copied on VECTOR are recognized by their version, each checked as a shape from outside; one that isn\'t is left out', () => {
   const a = rectShape(1, 2, 5, 6, { fill: '#ff0000' }), b = rectShape(3, 3, 9, 9, { fill: null, stroke: '#00ff00', width: 2 });
   const shapes = { version: 1, id: 'xyz', shapes: [a, { ...b, extra: 1 }, b, 'no'] };
