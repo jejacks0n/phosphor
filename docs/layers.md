@@ -96,8 +96,10 @@ It asks where the cells go, as opening an ANSI file does:
 
 Afterwards the Transforms, Adjustments and Image Filters sliders are back at neutral, the art style is ANSI,
 Dither is off and the character choice is back to its default, since there's nothing left for them to work
-on. The palette stays: a Color count palette is kept as the colors it had, so it isn't picked again, and
-flattening Color ASCII switches to full color, since its in-between colors aren't the palette's. Changing the
+on. The palette stays: a Color count palette is kept as the colors it had, so it isn't picked again. If the cells
+show a color the palette doesn't have (Color ASCII's in-between colors, or ASCII's white with a palette
+without it), it switches to full color, so nothing snaps. With **Draw on top of it**, **All cells** turns on
+in PIXEL, as it does for an opened ANSI file. Changing the
 palette later can't bring back colors that are gone.
 
 Unlike Bake, which keeps an image for the sliders and effects to keep working on, Flatten ends them. Undo brings
