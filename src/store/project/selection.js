@@ -13,11 +13,11 @@
 import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry, isPaintBlock } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { cellsOfPixels, charRowsOf } from '@/lib/Cells.js';
+import { cellIndex, cellsOfPixels, charRowsOf } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
-import { hex2rgb } from '@/lib/ColorUtils.js';
+import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { boundsOf } from '@/store/project/shared.js';
+import { boundsOf, over } from '@/store/project/shared.js';
 import { turnChar } from '@/lib/TurnChars.js';
 import { toRaw } from 'vue';
 import { unitsOf, wandIn } from '@/lib/MagicWand.js';
@@ -264,10 +264,12 @@ export const selectionActions = {
   },
 
   // Recolor what's selected (made: the wand's selection or a Select rect), on the layers lit, one
-  // undo step. In the ANSI view, colors { fg?, bg? } go to every cell: on Base, bg to its top pixel
-  // and fg to its bottom one (the ASCII styles show the pair's average, so fg to both); on Edit, as
-  // edit cells, their characters kept. In the pixel view, colors.fg goes to every pixel: the picture
-  // on Base, paint on Edit.
+  // undo step. In the ANSI view, colors { fg?, bg? } change that color of what every cell shows, its
+  // character and other color kept: on Edit, as an edit cell (the paint there, which it replaces,
+  // giving its halves' colors); on Base, as its two pixels (bg the top, fg the bottom; the ASCII styles
+  // show the pair's average, so fg to both) with its character pinned, so the converter doesn't pick
+  // another. With both lit, each cell where it is: on Edit where it has an edit or paint of its own.
+  // In the pixel view, colors.fg goes to every pixel: the picture on Base, paint on Edit.
   recolorSelection(made, view, layers, { fg, bg }) {
     const { base, edit } = this.layersFor(layers);
     let units;
@@ -279,12 +281,16 @@ export const selectionActions = {
       units = view === 'output' ? cells.map(({ col, row }) => ({ x: col, y: row })) : cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
     }
     if (view === 'output') {
-      if (edit) this.writeEditCells(units.map(({ x, y }) => ({ col: x, row: y, attrs: { ...(fg ? { fg } : {}), ...(bg ? { bg } : {}) } })), { clearPaint: true });
-      if (base) {
-        const ascii = this.renderStyle === 'ascii' || this.renderStyle === 'colorAscii';
-        const top = ascii ? fg : bg;
-        this.writeBase(units.flatMap(({ x, y }) => [top && { x, y: 2 * y, hex: top }, fg && { x, y: 2 * y + 1, hex: fg }].filter(Boolean)));
-      }
+      const colors = { ...(fg && { fg }), ...(bg && { bg }) }, ascii = this.renderStyle === 'ascii' || this.renderStyle === 'colorAscii';
+      const ownEdit = ({ x, y }) => !!this.editCellAt(x, y) || this.cellHasPaint(x, y);
+      const onEdit = edit ? units.filter((u) => !base || ownEdit(u)) : [], onBase = base ? units.filter((u) => !edit || !ownEdit(u)) : [];
+      const edits = onEdit.map(({ x, y }) => ({ col: x, row: y, attrs: { ...shownLook(this, x, y), ...colors } }));
+      const cells = (ascii && !fg ? [] : onBase).map(({ x, y }) => {
+        const look = this.completeAt(x, y);
+        return { col: x, row: y, char: look.char, fg: fg ?? look.fg, bg: ascii ? fg : bg ?? look.bg };
+      });
+      if (edits.length) this.writeEditCells(edits, { clearPaint: true });
+      this.writeBaseCells(cells);
     } else if (fg) {
       if (base) this.writeBase(units.map(({ x, y }) => ({ x, y, hex: fg })));
       if (edit) this.paintEditPixels(units.map(({ x, y }) => ({ x, y, ...hex2rgb(fg), alpha: 1 })));
@@ -380,6 +386,16 @@ export const selectionActions = {
     this.commitEdit();
   },
 };
+
+// What a cell shows, as an edit cell would hold it (stored colors): its edit cell over the picture
+// (completeAt), and where it has paint, the character it shows and each painted half's color.
+function shownLook(project, col, row) {
+  const look = project.completeAt(col, row, project.editCellAt(col, row));
+  const top = project.paintLayer?.pixelAt(col, 2 * row), bottom = project.paintLayer?.pixelAt(col, 2 * row + 1);
+  if (!top?.a && !bottom?.a) return look;
+  const half = (hex, paint) => (paint?.a && hex ? rgb2hex(over(hex2rgb(hex), paint)) : hex);
+  return { ...look, char: project.cells[cellIndex(col, row, project.cols)].char, fg: half(look.fg, bottom), bg: half(look.bg, top) };
+}
 
 // A copied block (copySelection) flipped (turnSelection's op 'h' or 'v'): every cell's entry and pin
 // from the cell that lands there, their characters turned, and the paint and base pictures with them.

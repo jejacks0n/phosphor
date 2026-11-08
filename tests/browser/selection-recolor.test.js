@@ -3,7 +3,8 @@
 // the pixel view Fill paints every pixel in it your foreground color. One undo step.
 import { test, expect } from 'vitest';
 import { markRaw } from 'vue';
-import { createTestApp, loadImage } from '../support/app.js';
+import { createTestApp, loadImage, settle } from '../support/app.js';
+import { cellIndex } from '@/lib/Cells';
 
 const PINK = '#ff00ff', TEAL = '#008080';
 
@@ -77,4 +78,59 @@ test('in the ASCII styles, where a cell shows its pixels’ average on black, Se
   project.renderStyle = 'colorAscii';
   project.recolorSelection(wandOf('output', [[2, 2]]), 'output', { base: true, edit: false }, { fg: PINK });
   expect(halves(2, 2)).toEqual([PINK, PINK]);
+});
+
+// What a converted photo shows is more than a cell's two pixels (CGA, Best match, contrast moved): recoloring one of
+// its colors keeps the character and the other color it shows.
+async function photo() {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 30, rows: 30 });
+  Object.assign(project, { quantize: 'cga', charChoice: 'best', contrast: 130 });
+  project.render();
+  await settle(project);
+  return project;
+}
+const RECT = { c0: 3, r0: 3, c1: 12, r1: 8 };
+const shownIn = (project, { c0, r0, c1, r1 }) => {
+  const out = [];
+  for (let row = r0; row <= r1; row++) for (let col = c0; col <= c1; col++) out.push(project.cells[cellIndex(col, row, project.cols)]);
+  return out.map(({ char, fg, bg }) => ({ char, fg: fg.hex.toLowerCase(), bg: bg.hex.toLowerCase() }));
+};
+const PINK_IN_CGA = '#ff55ff'; // pink with the contrast moved, on CGA
+
+for (const layers of [{ base: true, edit: false }, { base: false, edit: true }, { base: true, edit: true }]) {
+  for (const which of ['fg', 'bg']) {
+    test(`Set ${which.toUpperCase()} (${JSON.stringify(layers)}) changes only that color of what each cell shows`, async () => {
+      const project = await photo();
+      const before = shownIn(project, RECT);
+      project.recolorSelection(RECT, 'output', layers, { [which]: PINK });
+      project.render();
+      await settle(project);
+      expect(shownIn(project, RECT)).toEqual(before.map((cell) => ({ ...cell, [which]: PINK_IN_CGA })));
+    });
+  }
+}
+
+test('with both layers lit, a cell with an edit of its own is recolored there; the base under it is left alone', async () => {
+  const project = await photo();
+  project.typeAt(4, 4, 'S', { fg: '#ffffff', bg: '#0000aa' });
+  project.commitEdit();
+  const base = [project.baseColorAt(4, 8), project.baseColorAt(4, 9)];
+  project.recolorSelection(RECT, 'output', { base: true, edit: true }, { fg: PINK });
+  expect(project.editCellAt(4, 4)).toEqual({ char: 'S', fg: PINK, bg: '#0000aa' });
+  expect([project.baseColorAt(4, 8), project.baseColorAt(4, 9)]).toEqual(base);
+  expect(project.editCellAt(5, 4)).toBe(undefined); // no edit of its own: its base is recolored
+});
+
+test('paint on a cell keeps showing as the color it gave that half', async () => {
+  const project = await photo();
+  project.paintStroke([{ x: 6, y: 10, alpha: 1 }], '#aa0000'); // the top half of cell (6, 5): its background
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  const cell = { c0: 6, r0: 5, c1: 6, r1: 5 }, [before] = shownIn(project, cell);
+  project.recolorSelection(cell, 'output', { base: true, edit: true }, { fg: PINK });
+  project.render();
+  await settle(project);
+  expect(shownIn(project, cell)).toEqual([{ ...before, fg: PINK_IN_CGA }]);
 });
