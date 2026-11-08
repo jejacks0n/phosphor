@@ -229,6 +229,19 @@ function chooseBake(id) {
   project.bake({ lockPalette: id === 'lock' });
 }
 
+// Flatten asks where the drawing goes: the edit layer (the default) or the base, worded as opening an .ans file asks.
+// Off with frames (the picture is under every one), inside an art layer, and for artists; others drawing, it warns.
+const flattening = ref(false);
+const flattenOff = () => off(insideOff.value ?? drawing.hostOnly ?? (project.hasFrames ? t('toolbar.flattenOneFrame') : null), t('toolbar.flatten'));
+const flattenChoices = computed(() => [
+  { id: 'edit', title: t('actions.artEdit'), text: t('actions.artEditText') },
+  { id: 'base', title: t('actions.artDrawOn'), text: t('actions.artDrawOnText') },
+]);
+function chooseFlatten(layer) {
+  flattening.value = false;
+  project.flattenDrawing({ layer });
+}
+
 // The selection's Merge down: only when something's drawn inside it.
 const selectionHasEdits = computed(() => {
   void project.editCells; void project.hasPaint; void project.historyVersion; // re-check after edits
@@ -280,6 +293,14 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       :choices="BAKE_CHOICE"
       @choose="chooseBakeFinal"
       @cancel="bakingFinal = false"
+  />
+  <ChoiceDialog
+      v-if="flattening"
+      :title="t('toolbar.flattenDialog.title')"
+      :sub="warnedSub(t('toolbar.flattenDialog.sub'), t('toolbar.flattenDialog.warning'))"
+      :choices="flattenChoices"
+      @choose="chooseFlatten"
+      @cancel="flattening = false"
   />
   <article ref="toolbar" class="edit-toolbar" :class="{ 'actions-folded': actionsFolded }">
     <div class="toolbar-row primary-row">
@@ -369,6 +390,13 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             v-bind="off(insideOff ?? drawing.hostOnly, t('toolbar.bake'))"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
         <button
+            :title="t('toolbar.flattenTitle')"
+            @click="flattening = true"
+            class="primary"
+            :disabled="!project.canFlatten"
+            v-bind="flattenOff()"
+        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M288 64H352V320L416 256L461 301L320 442L179 301L224 256L288 320ZM96 496H544V576H96Z"/></svg></button>
+        <button
             :title="mergeTitle"
             @click="mergeHere"
             class="primary"
@@ -410,6 +438,10 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           <button @click="bake" :disabled="!project.canBake" v-bind="off(insideOff ?? drawing.hostOnly, t('toolbar.bake'))">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
             {{ t('toolbar.bake') }}
+          </button>
+          <button @click="flattening = true" :disabled="!project.canFlatten" v-bind="flattenOff()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M288 64H352V320L416 256L461 301L320 442L179 301L224 256L288 320ZM96 496H544V576H96Z"/></svg>
+            {{ t('toolbar.flatten') }}
           </button>
           <button @click="mergeHere" :disabled="!mergeOn" v-bind="mergeOff()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">

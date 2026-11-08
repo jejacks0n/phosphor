@@ -246,7 +246,7 @@ test('inside, Clear, Merge up, Merge down and Bake are off, saying to step out f
     for (const selection of [null, { c0: 0, r0: 0, c1: 9, r1: 9 }]) {
       workspace.selection = selection;
       await settle(project);
-      for (const name of ['Clear edit layer', 'Merge up', 'Merge down', 'Bake']) {
+      for (const name of ['Clear edit layer', 'Merge up', 'Merge down', 'Bake', 'Flatten']) {
         const buttons = [...host.querySelectorAll(`button[aria-label="${name}"]`)];
         expect([name, buttons.length > 0]).toEqual([name, true]);
         for (const button of buttons) expect([name, button.disabled, button.title]).toEqual([name, true, 'Step out of the art layer first: this changes the whole drawing.']);

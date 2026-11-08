@@ -479,6 +479,14 @@
     "redoTitle": "Rétablir ({key})",
     "bake": "Figer",
     "bakeTitle": "Figer : intégrer les effets des curseurs dans l'image source et réinitialiser les curseurs au point neutre. Votre calque d'édition reste intact.",
+    "flatten": "Aplatir",
+    "flattenTitle": "Aplatir : tout le dessin devient des cellules ANSI exactement comme elles s'affichent, et l'image est retirée. Contrairement à Figer, il ne reste rien à changer pour les curseurs et les effets.",
+    "flattenOneFrame": "Aplatir remplace l'image sous chaque image de l'animation : seulement pour un dessin d'une seule image.",
+    "flattenDialog": {
+      "title": "Aplatir",
+      "sub": "L'image, les formes, les cellules d'édition et la peinture deviennent des cellules ANSI telles qu'elles s'affichent. L'image est retirée ; Annuler la ramène.",
+      "warning": "Aplatir ne peut pas être annulé pendant le dessin à plusieurs."
+    },
     "mergeDown": "Fusionner vers le bas",
     "mergeDownTitle": "Fusionner vers le bas : intégrer le calque d'édition au calque de base.",
     "mergeOneFrame": "Fusionner vers le bas s'intègre au calque de base partagé, ce n'est donc disponible que sur une création à image unique.",

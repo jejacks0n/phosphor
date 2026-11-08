@@ -479,6 +479,14 @@
     "redoTitle": "Redo ({key})",
     "bake": "Bake",
     "bakeTitle": "Bake: lock current slider effects into the source image and reset sliders to neutral. Your edit layer stays untouched.",
+    "flatten": "Flatten",
+    "flattenTitle": "Flatten: everything on the drawing becomes ANSI cells exactly as they show, and the image is removed. Unlike Bake, nothing is left for the sliders and effects to change.",
+    "flattenOneFrame": "Flatten replaces the picture under every frame, so it's only available on single-frame art.",
+    "flattenDialog": {
+      "title": "Flatten",
+      "sub": "The picture, shapes, edit cells and paint become ANSI cells as they show now. The image is removed; Undo brings it back.",
+      "warning": "Flattening can't be undone while drawing together."
+    },
     "mergeDown": "Merge down",
     "mergeDownTitle": "Merge down: flatten the edit layer into the base layer.",
     "mergeOneFrame": "Merge down flattens into the shared base layer, so it's only available on single-frame art.",
