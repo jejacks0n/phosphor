@@ -21,7 +21,7 @@ In Monochrome ASCII every cell shows white on black, but what you paint still pi
 brightness (or its shape, with By shape), so on the ANSI tab the foreground and background show as the grays they act as.
 
 The color transforms, adjustments and effects in the sidebar (Brightness, Contrast, Levels, Hue Rotation,
-Colorize, Posterize, Threshold, Blur, Edges, Flatten, Sharpen…) change the picture before it's converted.
+Colorize, Posterize, Threshold, Blur, Edges, Simplify, Sharpen…) change the picture before it's converted.
 
 - **Levels** (Black point, White point, Midtones) runs before the other adjustments: tones at or below the
   black point turn black, tones at or above the white point turn white, the rest spread across the range,

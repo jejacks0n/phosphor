@@ -16,7 +16,7 @@ test('Underlying colors come from the pipeline run with every color adjustment, 
   assert.deepEqual(
     { brightness: neutral.brightness, contrast: neutral.contrast, saturation: neutral.saturation, hue: neutral.hue, invert: neutral.invert, colorizeStrength: neutral.colorizeStrength },
     { brightness: 100, contrast: 100, saturation: 100, hue: 0, invert: 0, colorizeStrength: 0 });
-  // Effects (Flatten, Edges, Sharpen) work on neighboring pixels, so a cell can't re-apply them: the
+  // Effects (Simplify, Edges, Sharpen) work on neighboring pixels, so a cell can't re-apply them: the
   // source run keeps them, and baked/picked colors include the outline. Only per-pixel color
   // adjustments are neutral (they're re-applied per cell by effectiveColor).
   assert.deepEqual({ sharpen: neutral.sharpen, flatten: neutral.flatten, edges: neutral.edges, edgeColor: neutral.edgeColor, edgeThickness: neutral.edgeThickness },
