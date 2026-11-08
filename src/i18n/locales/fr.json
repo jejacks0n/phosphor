@@ -927,6 +927,7 @@
     "invalidProject": "Fichier de projet Phosphor non valide",
     "loadProjectFailed": "Échec du chargement du fichier de projet : {reason}",
     "bakeFailed": "Impossible de figer l'image.",
+    "flattenFailed": "Impossible d'aplatir le dessin.",
     "mergeIntoImageFailed": "Impossible de fondre dans l'image.",
     "artTooBig": "Ce fichier fait {cols} × {rows}. Phosphor ouvre au plus {maxCols} colonnes, {maxLines} lignes et {maxCells} cellules.",
     "artEmpty": "Ce fichier ne contient aucun dessin."
