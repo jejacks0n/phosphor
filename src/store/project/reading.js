@@ -105,7 +105,8 @@ export const readingActions = {
   // the pinned one) on the base's colors (bg the top half, fg the bottom).
   baseCellAt(col, row) {
     return {
-      char: this.renderer.pinAt(col, row) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
+      // underCell: as the cell shows now; the last full render's is stale after a base edit (until the pipeline's redone)
+      char: this.renderer.underCell(col, row, this.processParams, this.renderedCells)?.char ?? this.renderer.pinAt(col, row) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
       bg: this.baseColorAt(col, 2 * row),
       fg: this.baseColorAt(col, 2 * row + 1),
     };

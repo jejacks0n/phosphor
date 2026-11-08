@@ -48,6 +48,23 @@ describe('exactly', () => {
   });
 });
 
+describe('up', () => {
+  test('a selection keeps the characters it shows when the base changed since the last full render', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+    project.renderStyle = 'ascii'; // each character from its cell's brightness
+    project.render();
+    await settle(project);
+    project.writeBase(Array.from({ length: 20 }, (_, k) => ({ x: 4 + (k % 10), y: 8 + Math.floor(k / 10), hex: '#ffffff' })));
+    project.commitEdit();
+    await settle(project);
+    const before = cellsKey(project);
+    project.mergeUp({ c0: 2, r0: 2, c1: 15, r1: 8 });
+    await settle(project);
+    expect(cellsKey(project)).toEqual(before);
+  });
+});
+
 describe('into the picture', () => {
   test('a picture that can\'t be encoded says so and changes nothing', async () => {
     const { project, workspace } = await createTestApp();
