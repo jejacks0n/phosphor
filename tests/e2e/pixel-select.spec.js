@@ -5,6 +5,8 @@ import { test, expect, openApp, store, tab, settled, pixelPoint, drag } from './
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
 const selection = (page) => store(page, 'workspace', (w) => w.selection);
+// What a cell shows on its top half (a moved block of the picture lands as edit cells looking as it did).
+const shownBg = (page, col, row) => store(page, 'project', `(p) => p.cells[${row} * p.cols + ${col}].bg.hex.toLowerCase()`);
 
 test('M in the PIXEL view selects whole cells; a drag inside moves them; copy, paste and Escape work', async ({ page }) => {
   await openApp(page);
@@ -16,10 +18,10 @@ test('M in the PIXEL view selects whole cells; a drag inside moves them; copy, p
   expect(await selection(page)).toEqual({ c0: 5, r0: 5, c1: 9, r1: 7 });
   await expect(page.locator('.pixel-marquee')).toBeVisible();
 
-  const before = await store(page, 'project', (p) => p.rawColorAt(6, 12));
+  const before = await shownBg(page, 6, 6);
   await drag(page, await pixelPoint(page, 6, 12), await pixelPoint(page, 16, 12));
   expect(await selection(page)).toEqual({ c0: 15, r0: 5, c1: 19, r1: 7 });
-  await expect.poll(() => store(page, 'project', (p) => p.rawColorAt(16, 12))).toBe(before);
+  await expect.poll(() => shownBg(page, 16, 6)).toBe(before);
 
   await page.keyboard.press('ControlOrMeta+c');
   await page.keyboard.press('Escape');
