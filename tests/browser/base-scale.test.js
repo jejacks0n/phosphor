@@ -64,7 +64,8 @@ test('the base layer is at the pipeline\'s processing scale', async () => {
 test('a rescale moves the base to the new grid\'s scale', async () => {
   const { project } = await createTestApp();
   await loadImage(project, await bigImageUrl(), { cols: 30, rows: 30 });
-  project.floatSelection({ c0: 2, r0: 2, c1: 6, r1: 6 }, { base: true, edit: false }, 3, 0);
+  project.eraseBase([{ col: 2, row: 2 }]);
+  project.commitEdit();
   project.cols = 80; // only the base is edited: a rescale
   project.render(); await settle(project);
   expect(project.baseLayer.scale).toBe(unpinned(project));
@@ -129,6 +130,8 @@ test('a moved block keeps its colors under CGA and VGA with adjustments', async 
   }
 });
 
+// It lands as edit cells, each one color put through the adjustments, where the picture put each of
+// its pixels through them: with brightness clipping some of a cell's pixels, a few levels off.
 test('a moved block in full color stays within rounding', async () => {
   const project = await photo({ brightness: 150 });
   const before = colorsIn(project, RECT);
@@ -136,8 +139,8 @@ test('a moved block in full color stays within rounding', async () => {
   project.render(); await settle(project);
   colorsIn(project, RECT, 15).forEach(({ fg, bg }, i) => {
     for (const k of ['r', 'g', 'b']) {
-      expect(Math.abs(fg[k] - before[i].fg[k])).toBeLessThanOrEqual(2);
-      expect(Math.abs(bg[k] - before[i].bg[k])).toBeLessThanOrEqual(2);
+      expect(Math.abs(fg[k] - before[i].fg[k])).toBeLessThanOrEqual(3);
+      expect(Math.abs(bg[k] - before[i].bg[k])).toBeLessThanOrEqual(3);
     }
   });
 });

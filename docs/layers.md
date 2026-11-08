@@ -30,16 +30,14 @@ Colorize, Posterize, Threshold, Blur, Edges, Flatten, Sharpen…) change the pic
   splits the picture into its two colors (black and white by default): tones at or above the level take
   the light one. They run after the other adjustments, Threshold last, and the color palette after them.
 
-You can edit the base like pixels in an image editor. Erasing, flipping, moving, pasting and
-merging down change the base's own pixels, laid over the converted image. They're exact: never
-resampled, blurred or put through the effects, so a moved block keeps its hard edges and an erased
-cell stays black (or the palette's darkest color, with a color-count palette made from a picture
-that has no black). The effects keep working on the parts of the image you haven't edited; content
-you move takes the look it had where it came from. A moved, pasted or flipped part of the picture
-keeps every pixel the converter made from it, so it shows the same colors where it lands, with the
-color adjustments and the color palette (CGA and VGA too) applying to it as they do to the rest of
-the picture. With Sharpen on it can differ a little, since sharpening looks at the pixels around it.
-Your original image is never changed, unless you bake (below).
+You can edit the base like pixels in an image editor. Erasing, Flip FG/BG and merging down change
+the base's own pixels, laid over the converted image. They're exact: never resampled, blurred or put
+through the effects, so an erased cell stays black (or the palette's darkest color, with a
+color-count palette made from a picture that has no black). The effects keep working on the parts of
+the image you haven't edited. A part of the picture you move, paste or flip with the Select tool
+lands on top of everything, as edit cells that look just as it did where it came from, the way Merge
+up makes them ([The Select tool](#the-select-tool)); the color adjustments still apply to them, as
+they do to anything drawn. Your original image is never changed, unless you bake (below).
 
 The base layer also remembers **pinned characters**: cells whose character the converter keeps
 instead of picking one, so rolling the seed or changing the character set doesn't change them.
@@ -256,15 +254,17 @@ same in both.
 The Select tool's **Layers** toggles (**Base**, **Edit**) choose what Copy, Cut, Delete, moving and
 nudging act on:
 
-- **Base** is the base's colors and any pinned characters. Moving the base moves those and
-  leaves the area it came from erased (black, with pinned spaces). Characters the converter picked
-  stay where they are, and your edits on top stay too.
-- **Edit** is your typed and drawn cells and paint. A cell with no edit of its own (nothing typed,
-  drawn or painted in it) is see-through: moved, pasted or stamped, it leaves the edits it lands on
-  showing, while it floats and once it's set down. A cell with anything in it, even half a cell of
-  paint, covers the whole cell under it.
-- With both on, each layer moves, copies and pastes as itself. Pasting puts base content back on
-  the base and edit content on the edit layer.
+- **Base** is the picture, each cell as it shows: its character and colors. Moved, pasted or
+  stamped, it lands on top of everything, as edit cells that look just as they did where they came
+  from (reduced colors, Best match's and By shape's characters, dithering and all), covering the
+  edits and paint there. Moving it leaves the area it came from erased (black, with pinned spaces),
+  and your edits on top there stay.
+- **Edit** is your typed and drawn cells and paint. With Base off, a cell with no edit of its own
+  (nothing typed, drawn or painted in it) is see-through: moved, pasted or stamped, it leaves the
+  edits it lands on showing, while it floats and once it's set down. A cell with anything in it,
+  even half a cell of paint, covers the whole cell under it.
+- With both on, each cell's own edit goes over its picture, as it showed, and the whole block covers
+  what it lands on.
 - **Delete** erases the base (with Base on) and removes your edits (with Edit on).
 
 **Moving** (dragging inside the selection, or the arrow keys) floats the contents over the canvas
@@ -317,8 +317,8 @@ Letters, digits and shades stay as they are.
 
 **Rotate 90°** clockwise turns the picture: the paint and the base's pixels, by their real shape, so
 a square stays a square (two cells side by side, a cell being twice as tall as it's wide, turn into
-two cells side by side). The converter picks the base's characters again from the turned pixels,
-and a Half-block's ▄ goes with its paint. Characters can't turn that way (a cell would land across
+two cells side by side). The turned picture lands as ▄ half-blocks in its pixels' colors, and a
+Half-block's ▄ goes with its paint. Characters can't turn that way (a cell would land across
 half of two), so Rotate is off while the selection has any on the chosen layers: typed or drawn
 characters on the edit layer, or characters pinned on the base by merging down. A block an odd
 number of cells wide turns into a row and a half; the half row left over keeps what was under it.

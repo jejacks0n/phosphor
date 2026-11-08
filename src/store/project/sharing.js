@@ -43,7 +43,7 @@ export const DRAWING_ACTIONS = [
   'paintEditPixels', 'paintStroke', 'eraseEditPixels', 'editCell', 'typeAt', 'writeAt', 'backspaceAt', 'deleteAt', 'typing', 'shiftCells',
   'writeEditCells', 'clearEditCells', 'flipCell', 'flipPaint', 'clearEditLayer',
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
-  'deleteIn', 'pasteAt', 'pasteBase', 'selectionEdit',
+  'deleteIn', 'pasteAt', 'selectionEdit',
   'addShape', 'makeArtLayer', 'setArtContent', 'enterArt', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'penPoint', 'penBack',
   'followPath', 'stopFollowing', 'setFollow', 'setGuide',
   'undo', 'redo',
@@ -51,7 +51,7 @@ export const DRAWING_ACTIONS = [
 
 // Refused for artists: the picture, the settings, the grid and which document this is.
 export const HOST_ONLY_ACTIONS = [
-  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'pasteBase',
+  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells',
   'bake', 'mergeUp', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'clearEditLayer',
   'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed',
   'updateCols', 'updateRows',
