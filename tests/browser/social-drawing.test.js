@@ -1418,7 +1418,7 @@ const SELECTED = { col: 1, row: 1, cols: 2, rows: 2 };
 test('a re-fetch keeps my undo and selection: undo still takes back my earlier stroke, and one left open ends', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann');
-  const workspace = useWorkspaceStore();   // ann's: hers is the pinia joined last
+  const workspace = useWorkspaceStore(ann.pinia);   // ann's: whichever app acted last is the active pinia
   ann.project.editCell(1, 1, { char: 'a' });
   ann.project.commitEdit();
   await allMatch(room, ann);
@@ -1444,7 +1444,7 @@ test('a re-fetch keeps my undo and selection: undo still takes back my earlier s
 test('a merge resets it: undo has nothing for me, and the selection goes', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann');
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(ann.pinia);
   ann.project.editCell(1, 1, { char: 'a' });
   ann.project.commitEdit();
   await allMatch(room, ann);
