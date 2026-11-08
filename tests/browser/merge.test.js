@@ -63,6 +63,21 @@ describe('up', () => {
     await settle(project);
     expect(cellsKey(project)).toEqual(before);
   });
+  // Their colors aren't the cells' two pixels: merged up as those, a ░ in two colors went solid in one.
+  for (const charChoice of ['best', 'shape']) {
+    test(`with a palette, dithered and by ${charChoice}, and contrast moved, a selection looks the same`, async () => {
+      const { project } = await createTestApp();
+      await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 60, rows: 60 });
+      Object.assign(project, { quantize: 'cga', charChoice, dither: 60 });
+      project.setSlider('contrast', 130);
+      project.render();
+      await settle(project);
+      const before = cellsKey(project).map((key) => key.toLowerCase());
+      project.mergeUp({ c0: 5, r0: 5, c1: 40, r1: 25 });
+      await settle(project);
+      expect(cellsKey(project).map((key) => key.toLowerCase())).toEqual(before);
+    });
+  }
 });
 
 describe('into the picture', () => {

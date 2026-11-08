@@ -7,7 +7,21 @@ import { isShapeKey } from '@/document/shapes.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
+import { paletteChoices } from '@/lib/PixelTransforms.js';
 import { over } from '@/store/project/shared.js';
+
+// For each palette color, a stored color that shows as it under the adjustments (paletteChoices), kept while
+// the palette and the settings stay the same: asked once a cell by a whole grid's Merge up.
+const storedFor = new WeakMap();
+function storedOf(palette, params) {
+  let held = storedFor.get(palette);
+  if (held?.params !== params) {
+    const choices = paletteChoices(params, palette);
+    held = { params, map: new Map(palette.map((p, i) => [p.hex.toLowerCase(), choices[i]])) };
+    storedFor.set(palette, held);
+  }
+  return held.map;
+}
 
 export const readingActions = {
   // What the ledger reads, the first time it meets a position: the value before what's being submitted.
@@ -101,15 +115,25 @@ export const readingActions = {
     return { c0: 0, r0: 0, c1: this.cols - 1, r1: charRowsOf(this.rows) - 1 };
   },
 
-  // The base layer's cell (no edits, no paint), as stored colors: the converter's character (or
-  // the pinned one) on the base's colors (bg the top half, fg the bottom).
+  // The base layer's cell (no edits, no paint), as stored colors (before adjustments): the character it
+  // shows (or the pinned one), bg the top half, fg the bottom. With a palette, an ANSI cell's colors are
+  // the ones it shows (dithered, or Best match's and By shape's, aren't its two pixels; and a pixel run
+  // through the adjustments here can land on another palette color than the pipeline's): its own pixel
+  // where that shows as it, so it follows the adjustments as the picture does, else one that does.
   baseCellAt(col, row) {
-    return {
-      // underCell: as the cell shows now; the last full render's is stale after a base edit (until the pipeline's redone)
-      char: this.renderer.underCell(col, row, this.processParams, this.renderedCells)?.char ?? this.renderer.pinAt(col, row) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ',
-      bg: this.baseColorAt(col, 2 * row),
-      fg: this.baseColorAt(col, 2 * row + 1),
-    };
+    const params = this.processParams, palette = this.renderer.palette;
+    // underCell: as the cell shows now; the last full render's is stale after a base edit (until the pipeline's redone)
+    const shown = this.renderer.underCell(col, row, params, this.renderedCells);
+    const bg = this.baseColorAt(col, 2 * row), fg = this.baseColorAt(col, 2 * row + 1);
+    if (shown && palette && this.renderStyle === 'ansi') {
+      const stored = storedOf(palette, params);
+      const as = (color, own) => {
+        const hex = color.hex.toLowerCase();
+        return this.renderer.effective(own, params).hex.toLowerCase() === hex ? own : stored.get(hex) ?? color.hex;
+      };
+      return { char: shown.char, bg: as(shown.bg, bg), fg: as(shown.fg, fg) };
+    }
+    return { char: shown?.char ?? this.renderer.pinAt(col, row) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ', bg, fg };
   },
 
   clipRect({ c0, r0, c1, r1 }) {
