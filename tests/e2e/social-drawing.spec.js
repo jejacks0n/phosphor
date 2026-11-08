@@ -213,7 +213,7 @@ test('an artist\'s host-only controls are off with the reason, Reset all and SAU
   for (const fieldset of await panel.locator('fieldset').all()) await expect(fieldset).toHaveAttribute('title', ONLY_HOST);
 
   const actions = artist.locator('.edit-toolbar .desktop-only button.primary');
-  await expect(actions).toHaveCount(3);
+  await expect(actions).toHaveCount(4);   // Bake, Flatten, Merge, Clear
   for (const button of await actions.all()) {
     await expect(button).toBeDisabled();
     await expect(button).toHaveAttribute('title', ONLY_HOST);
@@ -264,10 +264,10 @@ test('host: Open, New image, Blank canvas, restore and Clear are off while an ar
   await together(host, context, room);
   await typeAt(host, 1, 1, 'h');
 
-  const clear = host.locator('.edit-toolbar .desktop-only button.primary').nth(2);
+  const clear = host.locator('.edit-toolbar .desktop-only button.primary').nth(3);
   await expect(clear).toBeDisabled();
   await expect(clear).toHaveAttribute('title', NOT_WHILE);
-  const undone = host.locator('.edit-toolbar .desktop-only button.primary').nth(1);
+  const undone = host.locator('.edit-toolbar .desktop-only button.primary').nth(2);
   await expect(undone).toBeEnabled();   // Merge isn't: it warns instead
 
   const panel = host.locator('aside.control-panel');
@@ -305,7 +305,7 @@ test('host: Merge warns before the question it asks, and afterward undo can\'t t
   await expect.poll(() => chars(artist, 2, 2, 2)).toBe('M');
   await expect(undoButton(host)).toBeEnabled();
 
-  await host.locator('.edit-toolbar .desktop-only button.primary').nth(1).click();
+  await host.locator('.edit-toolbar .desktop-only button.primary').nth(2).click();
   const dialog = host.getByRole('dialog', { name: 'Merge down' });
   await expect(dialog.getByText(MERGE_WARNING)).toBeVisible();
   const sub = await dialog.locator('p').first().innerText();   // the warning, then the question it asks
@@ -327,11 +327,11 @@ test('host alone again has its normal controls, and with the chat folded the art
   await mayDraw(artist).toBe(false);
   await expect(artist.locator('.app-toast')).toHaveText('You\'re back to watching.');   // what the chat panel would have said
 
-  const clear = host.locator('.edit-toolbar .desktop-only button.primary').nth(2);
+  const clear = host.locator('.edit-toolbar .desktop-only button.primary').nth(3);
   await expect(clear).toBeEnabled();
   await expect(clear).toHaveAttribute('title', /^Clear edit layer/);
   await expect(undoButton(host)).toBeEnabled();
-  await host.locator('.edit-toolbar .desktop-only button.primary').nth(1).click();
+  await host.locator('.edit-toolbar .desktop-only button.primary').nth(2).click();
   const dialog = host.getByRole('dialog', { name: 'Merge down' });
   await expect(dialog.getByText(MERGE_WARNING)).toHaveCount(0);
   await dialog.getByRole('button', { name: /Keep crisp cells/ }).click();
@@ -345,7 +345,7 @@ test('an artist who dropped out holds nothing up: the host\'s controls come back
   await artist.close();
   await expect.poll(() => store(host, 'drawing', (d) => d.othersHere)).toBe(false);
   expect(await store(host, 'drawing', (d) => d.artists)).toEqual([ARTIST.id]);
-  const clear = host.locator('.edit-toolbar .desktop-only button.primary').nth(2);
+  const clear = host.locator('.edit-toolbar .desktop-only button.primary').nth(3);
   await expect(clear).not.toHaveAttribute('title', NOT_WHILE);
   host.on('dialog', (dialog) => dialog.accept());
   await host.locator('aside.control-panel').getByRole('button', { name: 'New project' }).click();
@@ -369,7 +369,7 @@ test('End room says it ends for everyone, ends it for artists too, and the art s
   await selected(artist, 'ANSI');
   expect(await store(artist, 'project', (p) => [!!p.image, p._sharing, p.canUndo])).toEqual([true, null, false]);
   expect(await chars(artist, 3, 6, 6)).toBe('k');
-  await expect(artist.locator('.edit-toolbar .desktop-only button.primary').nth(2)).toBeEnabled();   // an ordinary document
+  await expect(artist.locator('.edit-toolbar .desktop-only button.primary').nth(3)).toBeEnabled();   // an ordinary document
   const download = await saveAs(artist, 'Save project (.phosphor)');
   expect(download.suggestedFilename()).toMatch(/^neon harbor.*\.phosphor$/);
 });
