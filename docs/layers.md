@@ -130,7 +130,7 @@ Drop a `.ans`, `.utf8ans`, `.asc` or `.txt` file on the start screen, or choose 
 and it asks what you'd like to do with the art, then opens it as a new document:
 
 - **Edit it**: the art goes on the edit layer, over a plain black base, as if you'd drawn it. Every cell
-  is an edit cell, so the eraser's **Edit**, **Clear edit layer** and everything else that works on what
+  is an edit cell, so the eraser on the edit layer, **Clear edit layer** and everything else that works on what
   you've drawn works on it.
 - **Draw on top of it**: the art is the base layer, and what you draw goes on top of it. Merge up turns
   it into edit cells later, if you change your mind.
@@ -258,16 +258,15 @@ nudges each cell by its place in the grid. See [Characters](characters.md#how-th
 
 ## Erasing
 
-The eraser's **Erase** toggles choose what it erases: **Base**, **Edit**, or both (one is always on).
+The eraser erases the picked layer (the one picked in LAYERS, which is the edit layer unless you've picked the base).
 
-- **Edit** removes everything on the edit layer: paint and edit cells.
-- **Base** erases the base layer: the cells go black with a pinned space. Your edits on top
+- On the **edit layer** it removes paint and edit cells.
+- On the **base** it erases the base layer: the cells go black with a pinned space. Your edits on top
   stay.
-- With both on, one pass erases both.
 
 Size 1 erases exactly what's under the pointer: one character in the ANSI view, one pixel in
-the Pixel view. In the Pixel view the eraser removes paint (Edit) and turns base pixels black
-(Base), leaving the characters as they are, except a ▄ that Half-block made to show paint
+the Pixel view. In the Pixel view the eraser removes paint (on the edit layer) and turns base pixels black
+(on the base), leaving the characters as they are, except a ▄ that Half-block made to show paint
 (one with no colors of its own): when its cell's last paint is erased, the cell gets its own
 character back.
 
@@ -278,21 +277,20 @@ is a pixel wide and two tall, so the rectangle's top and bottom keep to every se
 it's the same selection in both views, and it stays when you switch. Everything below works the
 same in both.
 
-The Select tool's **Layers** toggles (**Base**, **Edit**) choose what Copy, Cut, Delete, moving and
-nudging act on:
+Copy, Cut, Delete, moving and nudging act on the picked layer. With the base picked, only the tools
+that work on it are offered: the eraser, the eyedropper, the Magic Wand, Select, the hand, zoom and
+Flip.
 
-- **Base** is the picture, each cell as it shows: its character and colors. Moved, pasted or
+- The **base** is the picture, each cell as it shows: its character and colors. Moved, pasted or
   stamped, it lands on top of everything, as edit cells that look just as they did where they came
   from (reduced colors, Best match's and By shape's characters, dithering and all), covering the
   edits and paint there. Moving it leaves the area it came from erased (black, with pinned spaces),
   and your edits on top there stay.
-- **Edit** is your typed and drawn cells and paint. With Base off, a cell with no edit of its own
+- The **edit layer** is your typed and drawn cells and paint. A cell with no edit of its own
   (nothing typed, drawn or painted in it) is see-through: moved, pasted or stamped, it leaves the
   edits it lands on showing, while it floats and once it's set down. A cell with anything in it,
   even half a cell of paint, covers the whole cell under it.
-- With both on, each cell's own edit goes over its picture, as it showed, and the whole block covers
-  what it lands on.
-- **Delete** erases the base (with Base on) and removes your edits (with Edit on).
+- **Delete** erases the base (with the base picked) or removes your edits (with the edit layer picked).
 
 **Moving** (dragging inside the selection, or the arrow keys) floats the contents over the canvas
 until you're done: you can let go, drag again and nudge as often as you like, and whatever the
@@ -338,7 +336,7 @@ block on from there, so you can drag or nudge it away and stamp again. Each stam
 step. With a selection, **E** deletes it too, and **Enter** sets the block down, like Escape.
 
 **Flip horizontally** (a mirror) and **Flip vertically** turn the selection in place, on the
-chosen layers. The characters turn with it: box lines (┌ → ┐, ╒ → ╕), half-blocks and quadrants
+picked layer. The characters turn with it: box lines (┌ → ┐, ╒ → ╕), half-blocks and quadrants
 (▀ → ▄, ▌ → ▐), arrows and triangles (→ ←, ▲ ▼), and brackets and slashes (( ), < >, / \).
 Letters, digits and shades stay as they are.
 
@@ -346,7 +344,7 @@ Letters, digits and shades stay as they are.
 a square stays a square (two cells side by side, a cell being twice as tall as it's wide, turn into
 two cells side by side). The turned picture lands as ▄ half-blocks in its pixels' colors, and a
 Half-block's ▄ goes with its paint. Characters can't turn that way (a cell would land across
-half of two), so Rotate is off while the selection has any on the chosen layers: typed or drawn
+half of two), so Rotate is off while the selection has any on the picked layer: typed or drawn
 characters on the edit layer, or characters pinned on the base by merging down. A block an odd
 number of cells wide turns into a row and a half; the half row left over keeps what was under it.
 The rotated block starts at the same top-left corner (moved back onto the canvas if it would run
@@ -392,26 +390,23 @@ selected in the ANSI view. **Escape**, **Deselect**, a new rectangle, a grid cha
 document drop it.
 
 **Delete** on the wand's options row (or the Delete or Backspace key, except while typing in Edit
-Mode) takes away what's in the selection on the **Layers** lit, in one undo step: **Edit** the edit
-cells and paint, **Base** the picture, which turns black, as the Eraser's Base does (whole cells in
-the ANSI view, just the selected pixels in the pixel view). The Layers are the Select tool's own
-setting, so they're lit the same on both tools.
+Mode) takes away what's in the selection on the picked layer, in one undo step: on the edit layer the edit
+cells and paint, on the base the picture, which turns black, as the Eraser does on the base (whole cells in
+the ANSI view, just the selected pixels in the pixel view).
 
 ### Recoloring a selection
 
 With the Magic Wand's selection (the wand being the tool) or a Select rectangle (Select being the
 tool), the options row has **Set FG** and **Set BG** in the ANSI view: every selected cell takes
-your foreground or background color, on the **Layers** lit, in one undo step. Only that color
+your foreground or background color, on the picked layer, in one undo step. Only that color
 changes: each cell keeps the character and the other color it shows, whatever picked them (Best
 match, By shape, dithering, the palette), and paint on it keeps showing the color it gave its half.
-On **Edit** the cells take it as edit cells, replacing the paint there. On **Base** it goes into the
+On the edit layer the cells take it as edit cells, replacing the paint there. On the base it goes into the
 picture's own colors (a cell's background is its top pixel, its foreground its bottom one), with the
-cell's character pinned, so the converter doesn't pick another for the new colors. With both lit,
-each cell is recolored where it is: on the edit layer where you've drawn or painted, on the base
-elsewhere. Your color shows as the palette and the color sliders make it, as anything you draw
+cell's character pinned, so the converter doesn't pick another for the new colors. Your color shows as the palette and the color sliders make it, as anything you draw
 does. The ASCII styles show each character on black in its two pixels' average, so there's no Set
-BG, and Set FG on Base recolors both pixels. In the pixel view it's **Fill**: every selected pixel takes your foreground
-color, the picture's pixel on Base and paint on Edit. A color set to None can't be set; choose one
+BG, and Set FG on the base recolors both pixels. In the pixel view it's **Fill**: every selected pixel takes your foreground
+color, the picture's pixel on the base and paint on the edit layer. A color set to None can't be set; choose one
 first.
 
 ### Selections and undo
@@ -426,9 +421,9 @@ drops the drawing ones.
 
 ## Flip FG/BG
 
-Flip's **Flip** toggles (**Base**, **Edit**) choose what it flips. **Edit** (the default) swaps an
-edit cell's colors or the paint there; on a cell with neither, the flip goes on the edit layer as
-paint. **Base** swaps the two halves of each cell's base colors. With both on, both layers flip.
+Flip acts on the picked layer. On the edit layer (the default) it swaps an edit cell's colors or the
+paint there; on a cell with neither, the flip goes on the edit layer as paint. On the base it swaps
+the two halves of each cell's base colors.
 
 ## Other tools
 

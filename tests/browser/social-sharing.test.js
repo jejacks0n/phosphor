@@ -945,7 +945,7 @@ test('an artist\'s eraser removes drawing and leaves the picture', async () => {
   project.commitEdit();
   sent.length = 0;
 
-  workspace.eraseLayers = { base: true, edit: true };
+  workspace.pickedLayer = 'base'; // an artist's is the drawing, whatever is picked
   const ctx = { project, workspace, view: 'output' };
   eraser.begin(ctx, { x: 3.5, y: 6.5 });
   eraser.end(ctx);
@@ -954,10 +954,9 @@ test('an artist\'s eraser removes drawing and leaves the picture', async () => {
   expect(project.baseRecords.pins.size).toBe(0);
   expect(project.baseLayer.hasPaint).toBe(false);
 
-  // Base alone lit: it's still the drawing that goes.
+  // Base picked: it's still the drawing that goes.
   project.editCell(5, 5, { char: 'B' });
   project.commitEdit();
-  workspace.eraseLayers = { base: true, edit: false };
   eraser.begin({ ...ctx, view: 'input' }, { x: 5.5, y: 10.5 });
   eraser.end(ctx);
   eraser.begin(ctx, { x: 5.5, y: 10.5 });
@@ -966,13 +965,13 @@ test('an artist\'s eraser removes drawing and leaves the picture', async () => {
   expect(project.baseLayer.hasPaint).toBe(false);
 });
 
-test('an artist\'s selection and flip act on the drawing, whatever layers are lit', async () => {
+test('an artist\'s selection and flip act on the drawing, whatever layer is picked', async () => {
   const { project, workspace } = await drawing('artist');
   project.editCell(3, 3, { char: 'A', fg: '#ffffff', bg: '#000000' });
   project.commitEdit();
   const baseOnly = { base: true, edit: false };
 
-  // Select tool's Layers on Base: moving and deleting still take the drawing, never the picture.
+  // Select tool with the base picked: moving and deleting still take the drawing, never the picture.
   const moved = project.floatSelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, baseOnly, 2, 0);
   expect(char(project, 5, 3)).toBe('A');
   project.deleteSelection(moved, baseOnly);
@@ -982,7 +981,7 @@ test('an artist\'s selection and flip act on the drawing, whatever layers are li
 
   project.editCell(7, 7, { char: 'B', fg: '#ffffff', bg: '#000000' });
   project.commitEdit();
-  workspace.flipLayers = baseOnly;
+  workspace.pickedLayer = 'base';
   const ctx = { project, workspace, view: 'output' };
   flip.begin(ctx, { x: 7.5, y: 14.5 });
   flip.end(ctx);

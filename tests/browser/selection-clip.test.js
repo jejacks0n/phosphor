@@ -74,11 +74,13 @@ test('a stroke entirely outside the selection changes nothing and leaves no undo
   expect(project.history.version).toBe(version);
 });
 
-test('the Eraser erases only inside the selection, on both layers', async () => {
+test('the Eraser erases only inside the selection, on either layer', async () => {
   const { project, workspace, use, painted } = await scene();
   use(pencil, ROW6);
   workspace.selection = { ...SEL };
-  Object.assign(workspace, { editEraserSize: 1, eraseLayers: { base: true, edit: true } });
+  workspace.editEraserSize = 1;
+  use(eraser, ROW6);
+  workspace.pickLayer('base');
   use(eraser, ROW6);
   expect(painted(6, 2, 14)).toEqual([2, 3, 4, 10, 11, 12, 13, 14]);
   expect([3, 5, 9, 11].map((col) => project.baseColorAt(col, 12) === '#000000')).toEqual([false, true, true, false]);
@@ -156,7 +158,8 @@ test('a wand selection in the pixel view keeps the Pencil and Eraser to its pixe
   const stroke = (tool) => { tool.begin(ctx, { x: 2.5, y: 12.5 }, {}); tool.move(ctx, { x: 2.5, y: 12.5 }, { x: 14.5, y: 12.5 }); tool.end(ctx); };
   stroke(pencil);
   expect([4, 5, 6, 7, 8].map((x) => project.rawColorAt(x, 12) === '#ff0000')).toEqual([false, true, false, true, false]);
-  Object.assign(workspace, { editEraserSize: 1, eraseLayers: { base: true, edit: true } });
+  workspace.editEraserSize = 1;
+  workspace.pickLayer('base');
   stroke(eraser);
   expect([4, 5, 6, 7, 8].map((x) => project.baseColorAt(x, 12) === '#000000')).toEqual([false, true, false, true, false]);
 });

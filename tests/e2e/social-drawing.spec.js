@@ -223,13 +223,10 @@ test('an artist\'s host-only controls are off with the reason, Reset all and SAU
     await expect(panel.getByRole('button', { name })).toHaveAttribute('title', ONLY_HOST);
   }
 
-  // The Select tool's: Base is off, and Merge up and down are.
+  // The base isn't the artist's to pick, and the Select tool's Merge up and down are the host's too.
   await artist.keyboard.press('Escape');
   await artist.getByRole('button', { name: 'Select', exact: true }).click();
-  const base = artist.getByRole('group', { name: 'Layers the selection acts on' }).getByRole('button', { name: 'Base' });
-  await expect(base).toBeDisabled();
-  await expect(base).toHaveAttribute('aria-pressed', 'false');
-  await expect(base).toHaveAttribute('title', ONLY_HOST);
+  expect(await store(artist, 'workspace', (w) => [w.pickLayer('base'), w.pickedLayer])).toEqual([false, 'edit']);
   for (const name of ['Merge up', 'Merge down']) {
     const button = artist.locator('.edit-toolbar button.text').filter({ hasText: name });
     await expect(button).toBeDisabled();

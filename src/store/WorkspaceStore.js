@@ -7,6 +7,7 @@ import { clampZoom, clampViewZoom } from '@/lib/zoom';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
 import { snapCursor } from '@/document/wideChars';
+import { getTool } from '@/tools';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 
@@ -80,7 +81,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     inputView: { col: 0, row: 0, cols: 0, rows: 0, zoom: 5 }, // the whole cells on screen in the PIXEL view, and the editZoom they were measured at (InputEditor)
     viewToRestore: null,     // a resumed room's view { tab: 'input' | 'output', col, row }: that tab's editor scrolls there once, and publishes only after
     pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
-    selectLayers: { base: true, edit: true }, // what the Select tool acts on, and the Magic Wand's Delete: the base layer and/or the edit layer
     pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)
     pencilConnect: true,     // Pencil's Single and Double: join the lines it crosses or lands on
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse' | 'line'
@@ -121,8 +121,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     // Brush Settings
     editBrushSize:  2.5,
     editEraserSize: 5,
-    eraseLayers: { base: false, edit: true }, // what the eraser erases: the base layer and/or the edit layer
-    flipLayers: { base: false, edit: true },  // what Flip FG/BG flips: the base layer and/or the edit layer
     editBrushOpacity:  100,
     brushDrawWith: 'normal', // Brush, ANSI view: 'normal' (paint) | 'half' (each cell painted becomes a ▄ the paint colors)
     editBrushStack: true, // Stack opacity: each stroke lays up to the opacity on top of what's there (PaintLayer.paint)
@@ -164,6 +162,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     activeTool(state) {
       return state[toolKey(state.editorTab)];
     },
+    // The layers the eraser, Select, the Magic Wand's Delete and Flip act on: the picked one.
+    toolLayers: (state) => ({ base: state.pickedLayer === 'base', edit: state.pickedLayer !== 'base' }),
     editMode: (state) => ['input', 'output', 'vector'].includes(state.editorTab), // the art is showing
     // The view the room's host is looking at, for watchers: whole cells and the zoom to draw them at
     // (a fraction of the font's cell), of the art tab last shown (SAUCE and SOCIAL keep it). PIXEL's
@@ -205,7 +205,9 @@ export const useWorkspaceStore = defineStore('workspace', {
       if (project.artInside) project.leaveArt();
       this.pickedLayer = id;
       if (this.editorTab === 'vector') this.editorTab = this.viewTab;
-      // ponytail: Task 3 adds tool.base; for 'base', each tab's kept tool that isn't base-capable becomes 'eraser' here.
+      if (id === 'base') {
+        for (const key of ['inputActiveTool', 'outputActiveTool']) if (!getTool(this[key]).base) this[key] = 'eraser';
+      }
       return true;
     },
     // Select rect (the whole grid: project.gridRect()) with the Select tool.

@@ -356,12 +356,12 @@ test('a whole-layer action steps out first, so undoing it after leaves the drawi
   }
 });
 
-test('with Base lit, the Eraser or a Delete inside takes from the layer alone, and the base stays', async () => {
+test('with the base picked, the Eraser or a Delete inside takes from the layer alone, and the base stays', async () => {
   const { project, workspace, key } = await withArt();
   workspace.editorTab = 'output';
   project.enterArt(key);
   const records = project.baseRecords, version = project.baseLayer.version;
-  workspace.eraseLayers = { base: true, edit: true };
+  workspace.pickedLayer = 'base'; // set outright: inside an art layer the edit layer is what's acted on
   workspace.editEraserSize = 1;
   const ctx = { project, workspace, view: 'output' };
   eraser.begin(ctx, { x: 4.5, y: 4.5 });

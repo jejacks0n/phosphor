@@ -4,6 +4,7 @@
  *   keys       the letters that choose it (useKeyboardShortcuts; shown on its button)
  *   altPicks?  holding Alt switches to the picker (Alt+Shift: picking the background)
  *   available? (project) => boolean: offered in the toolbar only when true (e.g. flip needs the ANSI art style)
+ *   base?      true when it works on the base layer: the only tools offered with the base picked
  *   section?   toolbar group ('select', 'navigate', 'cell', 'vector'); a divider separates groups
  *   autoScroll? a drag near the view's edge scrolls it (useEditorInteractions)
  *   preview?   { shape: 'circle' | 'square' | 'cell', size?: (workspace) => grid pixels }
@@ -41,9 +42,10 @@ export function getTool(id) {
   return BY_ID.get(id) ?? NONE;
 }
 
-// The tools offered in a view ('input', 'output' or 'vector'), as the toolbar shows them.
-export function offeredTools(view, project) {
-  return TOOLS.filter(tool => tool.views.includes(view) && (!tool.available || tool.available(project)));
+// The tools offered in a view ('input', 'output' or 'vector'), as the toolbar shows them. With the base picked
+// (onBase), only the tools that work on it: those marked base.
+export function offeredTools(view, project, onBase = false) {
+  return TOOLS.filter(tool => tool.views.includes(view) && (!tool.available || tool.available(project)) && (!onBase || tool.base));
 }
 
 // A tool's name with its keys, for its button's tooltip: 'Pencil (1px) · P'.

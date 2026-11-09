@@ -11,7 +11,7 @@ import eraser from '@/tools/eraser';
 async function scene(settings = {}) {
   const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
-  Object.assign(workspace, { editFgColor: '#ff0000', pencilDrawWith: 'half', brushDrawWith: 'half', editBrushSize: 3, eraseLayers: { base: false, edit: true } }, settings);
+  Object.assign(workspace, { editFgColor: '#ff0000', pencilDrawWith: 'half', brushDrawWith: 'half', editBrushSize: 3 }, settings);
   const use = (tool, view, points) => {
     const ctx = { project, workspace, view };
     tool.begin(ctx, points[0], {});

@@ -107,7 +107,6 @@ test('the eraser on a trail erases its lead too', async () => {
   const { project, workspace } = await blank();
   type(project, 4, 3, '漢');
   workspace.editEraserSize = 1;
-  workspace.eraseLayers = { base: false, edit: true };
   const ctx = { project, workspace, view: 'output' };
   eraser.begin(ctx, { x: 5, y: 6 });
   eraser.end(ctx);

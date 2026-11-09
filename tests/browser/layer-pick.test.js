@@ -8,6 +8,9 @@ import EditTabs from '@/components/EditTabs.vue';
 import { i18n } from '@/i18n';
 import { rectShape } from '@/document/shapes.js';
 import { isArt } from '@/document/artLayers.js';
+import { withPins } from '@/document/baseRecords.js';
+import EditToolbar from '@/components/EditToolbar.vue';
+import eraser from '@/tools/eraser';
 
 const RED = '#ff0000';
 let mounted = null;
@@ -119,4 +122,69 @@ test('an artist can not pick the base', async () => {
   expect(workspace.pickedLayer).toBe('base');
   project._sharing = { role: 'artist' };
   expect(workspace.pickedLayer).toBe('edit');
+});
+
+// A cell with a pin under an edit cell: col 3, row 3.
+function pinUnderEdit(project) {
+  project.setBaseRecords(withPins(project.baseRecords, [{ col: 3, row: 3, char: 'P' }]));
+  project.typeAt(3, 3, 'E', { fg: RED });
+  project.commitEdit();
+}
+
+test('with the base picked, the toolbar offers only the base\'s tools', async () => {
+  const { workspace } = await blank();
+  workspace.editorTab = 'output';
+  workspace.pickLayer('base');
+  const host = document.createElement('div');
+  mounted = createApp(EditToolbar).use(i18n);
+  mounted.mount(host);
+  const ids = async () => {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return [...host.querySelectorAll('[data-tool]')].map((b) => b.dataset.tool);
+  };
+  expect(await ids()).toEqual(['eraser', 'picker', 'wand', 'select', 'hand', 'zoom', 'flip']);
+  workspace.pickLayer('edit');
+  expect(await ids()).toContain('pencil');
+});
+
+test('the base picked while the Pencil is out takes the eraser', async () => {
+  const { workspace } = await blank();
+  workspace.inputActiveTool = 'brush';
+  workspace.outputActiveTool = 'pencil';
+  workspace.pickLayer('base');
+  expect([workspace.inputActiveTool, workspace.outputActiveTool]).toEqual(['eraser', 'eraser']);
+  workspace.outputActiveTool = 'select';
+  workspace.pickLayer('edit');
+  workspace.pickLayer('base');
+  expect(workspace.outputActiveTool).toBe('select'); // a tool the base has stays
+});
+
+test('the eraser on the base erases the base, on the edit layer the edit layer', async () => {
+  const { project, workspace } = await blank();
+  pinUnderEdit(project);
+  workspace.editEraserSize = 1;
+  const ctx = { project, workspace, view: 'output' };
+  const erase = () => { eraser.begin(ctx, { x: 3.5, y: 6.5 }); eraser.end(ctx); };
+  workspace.pickLayer('base');
+  erase();
+  expect(project.baseRecords.pins.get('3,3')).toBe(' '); // the base erased to a pinned space
+  expect(project.editCellAt(3, 3)?.char).toBe('E');
+  project.setBaseRecords(withPins(project.baseRecords, [{ col: 3, row: 3, char: 'P' }]));
+  workspace.pickLayer('edit');
+  erase();
+  expect(project.editCellAt(3, 3)).toBeUndefined();
+  expect(project.baseRecords.pins.get('3,3')).toBe('P');
+});
+
+test('Copy takes the picked layer', async () => {
+  const { project, workspace } = await blank();
+  pinUnderEdit(project);
+  const rect = { c0: 2, r0: 2, c1: 4, r1: 4 };
+  workspace.pickLayer('edit');
+  expect(project.copySelection(rect, workspace.toolLayers).base).toBeUndefined();
+  expect(project.copySelection(rect, workspace.toolLayers).cells.some(Boolean)).toBe(true);
+  workspace.pickLayer('base');
+  const block = project.copySelection(rect, workspace.toolLayers);
+  expect(block.cells).toBeUndefined();
+  expect(block.base.pins).toContain('P');
 });

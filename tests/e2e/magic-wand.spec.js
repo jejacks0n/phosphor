@@ -75,17 +75,15 @@ const tinted = (page) => page.locator('[data-wand-overlay]').evaluate((canvas) =
   return n;
 });
 
-test("the wand's Layers choose what Delete takes away: with Base lit, the picture goes black", async ({ page }) => {
+test("the wand's Delete takes away the picked layer: with the base picked, the picture goes black", async ({ page }) => {
   await openApp(page);
   await page.keyboard.press('w');
   const base = (col, row) => store(page, 'project', `(p) => [p.baseColorAt(${col}, ${2 * row}), p.baseColorAt(${col}, ${2 * row + 1})]`);
   const at = await cellPoint(page, 4, 4);
   await page.mouse.click(at.x, at.y);
-  const layers = page.getByRole('group', { name: 'Layers' });
-  await layers.getByRole('button', { name: 'Base' }).click(); // off: Edit only
-  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click(); // the edit layer is picked
   expect(await base(4, 4)).not.toEqual(['#000000', '#000000']);
-  await layers.getByRole('button', { name: 'Base' }).click(); // on again
+  await store(page, 'workspace', (w) => w.pickLayer('base'));
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   expect(await base(4, 4)).toEqual(['#000000', '#000000']);
 });

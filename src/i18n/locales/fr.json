@@ -330,10 +330,7 @@
   },
   "layers": {
     "label": "Calques",
-    "base": "Base",
-    "baseTitle": "Calque de base : l'image source convertie",
-    "edit": "Édition",
-    "editTitle": "Calque d'édition : tout ce que vous avez peint, tapé ou collé"
+    "base": "Base"
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",
@@ -360,8 +357,7 @@
     "eraser": {
       "title": "Gomme",
       "size": "Taille",
-      "sizeTitle": "Taille de la gomme",
-      "erase": "Effacer"
+      "sizeTitle": "Taille de la gomme"
     },
     "bucket": {
       "title": "Pot de peinture",
@@ -411,8 +407,7 @@
       "title": "Zoom"
     },
     "flip": {
-      "title": "Inverser PP/AP de la cellule",
-      "flip": "Inverser"
+      "title": "Inverser PP/AP de la cellule"
     },
     "text": {
       "title": "Mode Édition",
@@ -423,7 +418,6 @@
     },
     "wand": {
       "title": "Baguette magique",
-      "layers": "Calques",
       "match": "Critère",
       "tolerance": "Tolérance",
       "toleranceTitle": "Écart de couleur maximal par rapport au point cliqué pour être inclus",
@@ -530,8 +524,6 @@
       "lockPaletteText": "Le canevas reste strictement identique au pixel près, ne conservant que les couleurs de {palette}. Revenir en Couleurs réelles par la suite ne restaurera pas les dégradés, sauf en cas d'annulation."
     },
     "selection": {
-      "layers": "Calques",
-      "layersAria": "Calques sur lesquels la sélection s'applique",
       "copyTitle": "Copier ({key})",
       "cutTitle": "Couper ({key})",
       "pasteTitle": "Coller les cellules copiées à l'emplacement de la sélection",

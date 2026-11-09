@@ -73,7 +73,7 @@ with a **Done** button.
   edit would make it too big on any frame it's on, nothing changes and Phosphor says so.
 - **Undo.** Each edit is one undo step, and undo goes back to where you stepped in and no further. Step out, and the steps
   are in the history with the rest.
-- **What's off.** The settings panel, the Base toggle and the frame controls (the animation bar, and the keys that play, step
+- **What's off.** The settings panel, picking the base layer and the frame controls (the animation bar, and the keys that play, step
   and add frames) are off while you're in. Changing the picture or the frame would leave the dimmed drawing out of date.
   Clear, Merge up, Merge down (and with it Into the image), Bake and Flatten are off too, since they change the whole drawing,
   not the layer: their titles say to step out first.

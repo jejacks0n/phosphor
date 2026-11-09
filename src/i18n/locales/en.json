@@ -330,10 +330,7 @@
   },
   "layers": {
     "label": "Layers",
-    "base": "Base",
-    "baseTitle": "Base layer: the converted source image",
-    "edit": "Edit",
-    "editTitle": "Edit layer: everything you've painted, typed, or pasted"
+    "base": "Base"
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",
@@ -360,8 +357,7 @@
     "eraser": {
       "title": "Eraser",
       "size": "Size",
-      "sizeTitle": "Eraser size",
-      "erase": "Erase"
+      "sizeTitle": "Eraser size"
     },
     "bucket": {
       "title": "Paint Bucket",
@@ -411,8 +407,7 @@
       "title": "Zoom"
     },
     "flip": {
-      "title": "Swap cell FG/BG",
-      "flip": "Flip"
+      "title": "Swap cell FG/BG"
     },
     "text": {
       "title": "Edit Mode",
@@ -423,7 +418,6 @@
     },
     "wand": {
       "title": "Magic Wand",
-      "layers": "Layers",
       "match": "Match",
       "tolerance": "Tolerance",
       "toleranceTitle": "How far a color may be from the one clicked and still match",
@@ -530,8 +524,6 @@
       "lockPaletteText": "Canvas stays pixel-identical right now, keeping only {palette} colors. Switching back to Full color later won't restore smooth gradients unless you undo."
     },
     "selection": {
-      "layers": "Layers",
-      "layersAria": "Layers the selection acts on",
       "copyTitle": "Copy ({key})",
       "cutTitle": "Cut ({key})",
       "pasteTitle": "Paste what you copied in Phosphor, at the selection",

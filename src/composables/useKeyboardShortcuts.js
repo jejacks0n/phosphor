@@ -169,7 +169,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       e.preventDefault();
       return true;
     }
-    const sel = workspaceStore.selection, layers = workspaceStore.selectLayers;
+    const sel = workspaceStore.selection, layers = workspaceStore.toolLayers;
     const selecting = workspaceStore.activeTool === 'select' && sel;
     const command = e.metaKey || e.ctrlKey;
     if (!command) {
@@ -241,7 +241,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (!wand || e.defaultPrevented || isField(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
     if (workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false; // the palette has the keys; mid-drag, the drag's end decides
     if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
-    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectLayers);
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.toolLayers);
     else return false;
     e.preventDefault();
     return true;
@@ -266,7 +266,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
     if (workspaceStore.isPainting || workspaceStore.heldTool || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
     const key = e.key.toUpperCase();
-    const tool = offeredTools(workspaceStore.editorTab, projectStore).find(t => t.keys?.includes(key));
+    const tool = offeredTools(workspaceStore.editorTab, projectStore, workspaceStore.toolLayers.base).find(t => t.keys?.includes(key));
     if (!tool) return false;
     e.preventDefault();
     workspaceStore.setActiveTool(tool.id);
