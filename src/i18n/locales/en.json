@@ -331,7 +331,8 @@
   "layers": {
     "label": "Layers",
     "base": "Base",
-    "hiddenToast": "Show the layer to draw on it"
+    "hiddenToast": "Show the layer to draw on it",
+    "hiddenMergeToast": "Show the layer to merge it"
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",

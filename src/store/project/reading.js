@@ -65,7 +65,7 @@ export const readingActions = {
     this.ensureLayer();
     x = Math.floor(x);
     y = Math.floor(y);
-    const painted = this.paintLayer?.pixelAt(x, y);
+    const painted = this.shownPaint?.pixelAt(x, y);
     if (!painted || painted.a >= 1) return painted ? rgb2hex(painted) : this.baseColorAt(x, y);
     return rgb2hex(over(hex2rgb(this.baseColorAt(x, y)), painted));
   },
@@ -89,12 +89,13 @@ export const readingActions = {
   // Stored, not as displayed: a picked or merged-up color keeps following the adjustments, as the
   // picture's own colors do (picking a displayed color would apply the adjustments twice).
   // withPaint: paint (on top, by its alpha) over each half; under it edit-cell attributes, then the
-  // source image.
-  underlyingAt(col, row, { withPaint = true } = {}) {
-    const entry = this.editCellAt(col, row) ?? {};
+  // source image. A hidden layer isn't read (what shows is picked), unless evenHidden (an edit of the layer itself).
+  underlyingAt(col, row, { withPaint = true, evenHidden = false } = {}) {
+    const entry = (evenHidden ? this.editCells : this.shownEditCells).get(cellKey(col, row)) ?? {};
+    const paint = evenHidden ? this.paintLayer : this.shownPaint;
     const half = (y, attr) => {
       const under = entry[attr] ?? this.baseColorAt(col, y);
-      const painted = withPaint && this.paintLayer?.pixelAt(col, y);
+      const painted = withPaint && paint?.pixelAt(col, y);
       return painted ? rgb2hex(over(hex2rgb(under), painted)) : under;
     };
     const i = cellIndex(col, row, this.cols);

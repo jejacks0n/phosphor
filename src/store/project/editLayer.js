@@ -150,7 +150,7 @@ export const editLayerActions = {
     for (const { col, row, attrs } of list) {
       const key = cellKey(col, row);
       const keepPaintBg = clearPaint && attrs.bg === undefined && this.paintLayer?.pixelAt(col, 2 * row);
-      const entry = mergeEntry(next.get(key), keepPaintBg ? { ...attrs, bg: this.underlyingAt(col, row).bg } : attrs);
+      const entry = mergeEntry(next.get(key), keepPaintBg ? { ...attrs, bg: this.underlyingAt(col, row, { evenHidden: true }).bg } : attrs);
       if (entry) next.set(key, entry);
       else next.delete(key);
       pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
@@ -187,7 +187,7 @@ export const editLayerActions = {
     const { base = false, edit = true } = this.layersFor(layers);
     if (edit) {
       if (this.editCellAt(col, row) && !this.cellHasPaint(col, row)) {
-        const { fg, bg } = this.underlyingAt(col, row);
+        const { fg, bg } = this.underlyingAt(col, row, { evenHidden: true });
         this.editCell(col, row, { fg: bg, bg: fg });
       } else if (this.cellHasPaint(col, row) || !base) {
         this.flipPaint(col, row);

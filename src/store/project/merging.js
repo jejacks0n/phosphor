@@ -22,6 +22,14 @@ import { copyOf, over, bytesHeld, blackPicture } from '@/store/project/shared.js
 import { placedShapes } from '@/document/followers.js';
 import { RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
+import { toast } from '@/composables/useToast';
+
+// Merge down and Into the image take the edit layer as it shows: hidden, it's refused, and a toast says so.
+function refusedHidden(project) {
+  if (!project.layerHidden('edit')) return false;
+  toast(t('layers.hiddenMergeToast'));
+  return true;
+}
 
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
@@ -277,7 +285,7 @@ export const mergingActions = {
   // and anything outside the picture's area (the letterbox), merges exactly (mergeKind). The
   // sliders aren't touched. One undo step.
   async mergeIntoPicture(rect = null) {
-    if (!this.image || this._merging || this.hasFrames) return;
+    if (!this.image || this._merging || this.hasFrames || refusedHidden(this)) return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this._merging = true;
     const sharing = this._sharing;
@@ -423,7 +431,7 @@ export const mergingActions = {
   // rect: only the edit layer inside a cell rect (a selection) is merged; the rest stays. Shapes go first, under
   // the edit cells and paint: every one touching rect (or all), whole, with those beneath that overlap them.
   mergeDown(rect = null) {
-    if (!this.image || this.hasFrames) return; // it would put one frame in the base, under all of them
+    if (!this.image || this.hasFrames || refusedHidden(this)) return; // with frames, it would put one frame in the base, under all of them
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     this.commitPending();

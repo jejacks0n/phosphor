@@ -331,7 +331,8 @@
   "layers": {
     "label": "Calques",
     "base": "Base",
-    "hiddenToast": "Affichez le calque pour dessiner dessus"
+    "hiddenToast": "Affichez le calque pour dessiner dessus",
+    "hiddenMergeToast": "Affichez le calque pour le fusionner"
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",

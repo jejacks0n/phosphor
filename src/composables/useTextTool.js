@@ -33,7 +33,7 @@ export function typeText(project, workspace, text) {
 // line is dropped, and lines with no row left are dropped too.
 function typeLines(project, workspace, text) {
   const start = workspace.textCursor;
-  if (!start) return;
+  if (!start || refusesHidden({ project, workspace })) return; // said once, not once a character
   let full = false;
   for (const action of typedText(text)) {
     if (action.type === 'newline') {

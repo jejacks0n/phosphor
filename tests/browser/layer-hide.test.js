@@ -4,8 +4,10 @@ import { test, expect, vi, afterEach } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { rectShape } from '@/document/shapes.js';
 import { getTool } from '@/tools/index.js';
-import { typeAtCursor } from '@/composables/useTextTool.js';
-import { toastMessage, closeToast } from '@/composables/useToast.js';
+import { typeAtCursor, typeText } from '@/composables/useTextTool.js';
+import { toast, toastMessage, closeToast } from '@/composables/useToast.js';
+
+vi.mock('@/composables/useToast', { spy: true });
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
 const INK = { fg: '#ffee00', bg: '#0044aa' };
@@ -141,8 +143,10 @@ test('changes to a hidden layer still land', async () => {
   const before = look(project.cells[0]);
   typed(project, 0, 0, 'X');
   await hide(project, 'edit');
+  const hiddenLook = cellsKey(project);
   project.undo();
   expect(project.editCells.has('0,0')).toBe(false);
+  expect(cellsKey(project)).toEqual(hiddenLook); // still hidden, through the edit's own redraw too
   await hide(project, 'edit', false);
   expect(look(project.cells[0])).toEqual(before);
 });
@@ -155,4 +159,51 @@ test('a merge presses a hidden vector layer\'s shapes in, as it would shown ones
   await settle(project);
   expect(project.shapes.size).toBe(0);
   expect(project.cells.every((cell) => cell.bg.hex === RED)).toBe(true);
+});
+
+test('with the edit layer hidden, Merge down and Into the image are refused and change nothing', async () => {
+  const { project } = await picture();
+  typed(project, 2, 2, 'M');
+  project.paintStroke([{ x: 6, y: 6, alpha: 1 }, { x: 6, y: 7, alpha: 1 }], RED);
+  project.commitEdit();
+  await hide(project, 'edit');
+  const kept = () => [project.editCells, project.baseRecords, project.editVersion, project.historyVersion, project.hasPaint];
+  const before = kept();
+
+  project.mergeDown();
+  expect(kept()).toEqual(before);
+  expect(kept()[0]).toBe(before[0]);
+  expect(kept()[1]).toBe(before[1]);
+  expect(toastMessage.value).toBe('Show the layer to merge it');
+
+  closeToast();
+  await project.mergeIntoPicture();
+  expect(kept()).toEqual(before);
+  expect(kept()[0]).toBe(before[0]);
+  expect(toastMessage.value).toBe('Show the layer to merge it');
+});
+
+test('a pick reads what shows: a hidden edit layer\'s cells and paint aren\'t picked', async () => {
+  const { project } = await picture();
+  const under = project.underlyingAt(5, 2), raw = project.rawColorAt(5, 4);
+  typed(project, 5, 2, 'Z');
+  project.paintStroke([{ x: 5, y: 4, alpha: 1 }, { x: 5, y: 5, alpha: 1 }], RED);
+  project.commitEdit();
+  await settle(project);
+  expect(project.underlyingAt(5, 2)).not.toEqual(under);
+  expect(project.rawColorAt(5, 4)).toBe(RED);
+
+  await hide(project, 'edit');
+  expect(project.underlyingAt(5, 2)).toEqual(under);
+  expect(project.rawColorAt(5, 4)).toBe(raw);
+});
+
+test('a paste into a hidden layer says so once', async () => {
+  const { project, workspace } = await picture();
+  await hide(project, 'edit');
+  workspace.textCursor = { col: 1, row: 1 };
+  vi.mocked(toast).mockClear();
+  typeText(project, workspace, 'abc\ndef');
+  expect(vi.mocked(toast).mock.calls).toEqual([['Show the layer to draw on it']]);
+  expect(project.editCells.size).toBe(0);
 });
