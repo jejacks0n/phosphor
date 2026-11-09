@@ -36,8 +36,10 @@ const sliderGroups = computed(() => [
 ].map(group => ({ ...group, sliders: SETTINGS.filter(s => s.group === group.id && s.min !== undefined) })));
 
 // The layer the Characters section shows: the one picked, or inside an art layer its vector layer. A pick that isn't in
-// the stack yet (VECTOR before the first shape brings its layer) shows the bottom's.
+// the stack yet (VECTOR before the first shape brings its layer) shows the bottom's, and so does a room, where every
+// layer has the bottom's (followBase).
 const picked = computed(() => {
+  if (store._sharing) return 'base';
   const id = store.artInside ? store.shapes.get(store.artInside)?.layer ?? 'vector' : workspace.pickedLayer;
   return store.layerById(id) ? id : 'base';
 });

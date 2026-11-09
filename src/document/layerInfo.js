@@ -18,9 +18,19 @@ const goodLayer = (id, kind, raw, chars = null) => Object.freeze({
   ...(chars && { chars: Object.freeze(chars) }),
 });
 
+// baseChars, the bottom's character settings, which every caller has to give: one left out would count every layer as
+// the bottom's, and a stack saved in the old form loses its layers' own.
+const needChars = (baseChars) => {
+  if (!baseChars) throw new TypeError('the bottom\'s character settings are needed');
+  return baseChars;
+};
+
 // Whether a layer converts as the bottom does: its chars are baseChars (a slider's numeric string is its number). A layer
-// with none yet, or no baseChars to hold it to, counts as the same.
-export const sameChars = (chars, baseChars) => !chars || !baseChars || CHAR_KEYS.every((key) => String(chars[key]) === String(baseChars[key]));
+// with none yet counts as the same.
+export function sameChars(chars, baseChars) {
+  needChars(baseChars);
+  return !chars || CHAR_KEYS.every((key) => String(chars[key]) === String(baseChars[key]));
+}
 
 // layers with every layer but the bottom given chars, a frozen copy of these, under whatever of its own it has.
 export const withChars = (layers, chars) => layers.map((layer, at) => (at ? Object.freeze({ ...layer, chars: Object.freeze({ ...chars, ...layer.chars }) }) : layer));
@@ -39,7 +49,8 @@ export function layersFromOld(raw, { hasShapes }) {
 // Where the old form's layers are in layers: the bottom, then a vector layer if there is one, then a cells layer if there
 // is one (their ids), or null when the stack has anything else, or a layer's chars aren't baseChars (the bottom's: the
 // old form has one set).
-export function legacySlots(layers, baseChars = null) {
+export function legacySlots(layers, baseChars) {
+  needChars(baseChars);
   let i = 1;
   const vector = layers[i]?.kind === 'vector' ? layers[i++].id : null;
   const cells = layers[i]?.kind === 'cells' ? layers[i++].id : null;
@@ -51,8 +62,8 @@ export function legacySlots(layers, baseChars = null) {
 // as the vector layer, whatever their ids. A vector layer is kept even with nothing else, as it's there before its first
 // shape, but not when hasShapes (the file has shapes): they bring it back (layersFromOld), as they did before layers.
 // Null too for a stack that doesn't fit, which only the stack form can say.
-export function savedLayers(layers, { hasShapes = false } = {}) {
-  const slots = legacySlots(layers);
+export function savedLayers(layers, { hasShapes = false, baseChars } = {}) {
+  const slots = legacySlots(layers, baseChars);
   if (!slots) return null;
   const byId = (id) => layers.find((layer) => layer.id === id);
   const kept = ({ name, hidden, n }) => ({ ...(name !== null && { name }), ...(hidden && { hidden }), ...(n !== 1 && { n }) });
@@ -107,8 +118,9 @@ export const nextNumber = (layers, kind) => Math.max(0, ...layers.slice(1).filte
 // (the bottom always counts; its eye is the renderer's hideBase), the bottom, then each vector layer directly above it
 // (vectors), then the next layer if it's a cells layer (cells, its id, or null), and the rest (upper, bottom to top), which
 // the renderer lays over the group cell by cell. baseChars: the bottom's character settings, which a layer must share to
-// be in the group (sameChars): one whose own differ starts the upper walk. Without them every layer's count as equal.
-export function lowerGroup(layers, baseChars = null) {
+// be in the group (sameChars): one whose own differ starts the upper walk.
+export function lowerGroup(layers, baseChars) {
+  needChars(baseChars);
   let i = 1;
   const vectors = [];
   const joins = (kind) => layers[i]?.kind === kind && sameChars(layers[i].chars, baseChars);

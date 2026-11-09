@@ -845,6 +845,20 @@ test('restoreDocument brings back the cells, both layers, the settings and the n
   expect(project.canUndo).toBe(false);
 });
 
+test('restoreDocument brings back a layer\'s own character settings', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  project.setLayerChars('edit', { chars: '#', charChoice: 'best' });
+  const own = project.charsOf('edit');
+  await settle(project);
+  await autosave.flush();
+  const saved = await readLatest(id);
+  project.clearImage();
+  await project.restoreDocument(saved, { documentId: id });
+  await settle(project);
+  expect(project.charsOf('edit')).toEqual(own);
+});
+
 test('a document that was unsaved stays unsaved after a restore; one that was saved does not', async () => {
   const { project } = await opened();
   const id = project.documentId;

@@ -120,8 +120,9 @@ The settings on the left come in three sections, each following a layer:
 - **Picture · Base**: Smoothing and the Image filters, which work on the picture itself. They change only with the
   base picked; with another layer picked they're dimmed, and a line says to pick the base.
 
-A layer whose character settings differ from the base's makes a drawing that saves in the newer form
-([Saving](#the-layers-list)) and can't go live in a room, which has one set.
+A layer whose character settings differ from the base's makes a drawing that saves in the newer form (see **Saving**
+under [The layers list](#the-layers-list)) and can't go live in a room, which has one set. In a room the Characters
+section is always **Characters · Base**, whichever layer is picked, and every layer takes what you choose there.
 
 You can edit the base like pixels in an image editor. Erasing, Flip FG/BG and merging down change
 the base's own pixels, laid over the converted image. They're exact: never resampled, blurred or put

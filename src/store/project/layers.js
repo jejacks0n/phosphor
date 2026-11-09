@@ -99,13 +99,16 @@ export const layerActions = {
   // (the room's toast says so) and the bottom's change every layer's with them. Whether it changed.
   setLayerChars(id, patch) {
     const own = Object.fromEntries(CHAR_KEYS.filter((key) => key in patch).map((key) => [key, patch[key]]));
+    if (!this.layerById(id)) return false;
+    const was = this.charsOf(id);
+    if (Object.keys(own).every((key) => own[key] === was[key])) return false;
     if (id === 'base') {
       this.$patch(own);
       if (this._sharing) followBase(this);
       return true;
     }
-    if (!this.layerById(id) || refusedInRoom(this)) return false;
-    changed(this, id, { chars: Object.freeze({ ...this.charsOf(id), ...own }) });
+    if (refusedInRoom(this)) return false;
+    changed(this, id, { chars: Object.freeze({ ...was, ...own }) });
     return true;
   },
 

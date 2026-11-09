@@ -66,6 +66,27 @@ test('changing Layer 1\'s characters leaves the picture alone', async () => {
   expect(project.charsOf('edit').chars).toBe('#');
 });
 
+test('Layer 1\'s own settings are saved, in the stack form, and come back on open', async () => {
+  const { project } = await blank();
+  project.setLayerChars('edit', { chars: '#', charChoice: 'best' });
+  const own = project.charsOf('edit');
+  const blob = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
+  expect(new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 8))).toBe('PHOSPHR2');
+  await project.openParts(await readProject(blob), { filename: 'own' });
+  await settle(project);
+  expect(project.charsOf('edit')).toEqual(own);
+  expect(project.charsOf('base')).toEqual(topLevel(project));
+});
+
+test('setLayerChars says whether anything changed', async () => {
+  const { project } = await blank();
+  expect(project.setLayerChars('base', { chars: project.chars })).toBe(false);
+  expect(project.setLayerChars('base', { chars: '#' })).toBe(true);
+  expect(project.chars).toBe('#');
+  expect(project.setLayerChars('edit', { chars: project.charsOf('edit').chars })).toBe(false);
+  expect(project.setLayerChars('edit', { chars: '@' })).toBe(true);
+});
+
 test('a new layer copies the picked layer\'s settings', async () => {
   const { project, workspace } = await blank();
   project.setLayerChars('edit', { chars: '#', charChoice: 'best', solids: 60 });
@@ -165,6 +186,27 @@ test('in a room a layer\'s own settings are refused, and the base\'s, the host\'
     project.applySettings({ seed: 'heard' }); // as an artist hears the host's
     expect(project.charsOf('edit').seed).toBe('heard');
     expect(project.fitsRoom).toBe(true);
+  } finally {
+    project.stopSharing();
+  }
+});
+
+test('in a room the Characters section edits Base, whichever layer is picked, and every layer follows', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('edit');
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  try {
+    await mountPanel();
+    expect(sectionOf('Characters · Base')).toBeTruthy();
+    expect(sectionOf('Characters · Base').textContent).not.toContain('Used where');
+    const select = host.querySelector('#charChoice');
+    select.value = 'best';
+    select.dispatchEvent(new Event('change'));
+    await nextTick();
+    expect(project.charChoice).toBe('best');
+    expect(project.charsOf('edit').charChoice).toBe('best');
+    expect(project.fitsRoom).toBe(true);
+    expect(select.value).toBe('best');
   } finally {
     project.stopSharing();
   }

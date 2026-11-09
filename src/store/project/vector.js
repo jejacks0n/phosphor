@@ -33,7 +33,7 @@ const keeps = (shape) => !!shapeFromStranger(shape);
 // (followers.js). One on a vector layer above a cells layer stays a shape through Bake and VECTOR's Merge down.
 // ponytail: a merge for those (into the cells layer under them) is its own later merge.
 const pressable = (project) => {
-  const { vectors } = lowerGroup(project.layers);
+  const { vectors } = lowerGroup(project.layers, project.baseChars);
   return new Map([...placedShapes(project)].filter(([, shape]) => vectors.includes(shape.layer ?? 'vector')));
 };
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;

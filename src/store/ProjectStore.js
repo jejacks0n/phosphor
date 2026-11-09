@@ -163,7 +163,7 @@ export const useProjectStore = defineStore('project', {
     canBake(state) {
       if (!state.image) return false;
       if (!slidersAtDefaults(state)) return true;
-      const { vectors } = lowerGroup(state.layers);
+      const { vectors } = lowerGroup(state.layers, state.baseChars);
       return state.frames.length <= 1 && [...state.shapes.values()].some((shape) => vectors.includes(shape.layer ?? 'vector'));
     },
     // The image is still the one loaded, at its own size (the merge dialog says what Into the image costs).

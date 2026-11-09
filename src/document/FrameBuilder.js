@@ -47,14 +47,14 @@ export default class FrameBuilder {
   #scratch = null;
   #shapes = null; // its own ShapeLayer over the store's base layer: each frame has its own shapes
   #layers = layersFromOld(null, { hasShapes: false });
-  #lower = lowerGroup(this.#layers);
+  #lower = lowerGroup(this.#layers, {}); // these layers have no chars of their own
   #upper = []; // the layers above the lower group, each with its scratch and params: { id, kind, paint, params } or { id, kind, layer, params }
   #plain = true; // every key a frame holds is the lower group's, as before layers: nothing to split
 
   // The picture through the pipeline, for these settings. stores: the store's base layer and records, which
   // are under every frame, and layers: the drawing's, bottom first, whose eyes say what's left out. baseChars: the
   // bottom's character settings, and layerParams each layer's params (the store's), when layers have their own.
-  async prepare(image, params, { baseLayer, baseRecords, layers = this.#layers, baseChars = null, layerParams = null }) {
+  async prepare(image, params, { baseLayer, baseRecords, layers = this.#layers, baseChars, layerParams = null }) {
     const shown = layers.filter((layer, at) => !at || !layer.hidden), hideBase = !!layers[0]?.hidden;
     this.#layers = layers;
     this.#lower = lowerGroup(shown, baseChars);

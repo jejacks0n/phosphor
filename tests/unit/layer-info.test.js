@@ -37,24 +37,24 @@ test('layersFromOld: frozen layers in a new array each time', () => {
 });
 
 test('savedLayers: only what is not the default, and nothing when all is', () => {
-  assert.equal(savedLayers(layersFromOld(undefined, { hasShapes: false })), null);
-  assert.deepEqual(savedLayers([BASE, layer('edit', 'cells', 3)]), { edit: { n: 3 } });
-  assert.deepEqual(layersFromOld(savedLayers([BASE, layer('edit', 'cells', 3)]), { hasShapes: false }), [BASE, layer('edit', 'cells', 3)]);
-  assert.deepEqual(savedLayers([BASE, VECTOR, EDIT]), { vector: {} });
-  assert.deepEqual(savedLayers([{ ...BASE, hidden: true }, { ...EDIT, name: 'Logo' }]), { base: { hidden: true }, edit: { name: 'Logo' } });
-  assert.deepEqual(savedLayers([BASE]), { noEdit: true });
-  assert.deepEqual(ids(layersFromOld(savedLayers([BASE]), { hasShapes: false })), ['base']);
+  assert.equal(savedLayers(layersFromOld(undefined, { hasShapes: false }), { baseChars: CHARS }), null);
+  assert.deepEqual(savedLayers([BASE, layer('edit', 'cells', 3)], { baseChars: CHARS }), { edit: { n: 3 } });
+  assert.deepEqual(layersFromOld(savedLayers([BASE, layer('edit', 'cells', 3)], { baseChars: CHARS }), { hasShapes: false }), [BASE, layer('edit', 'cells', 3)]);
+  assert.deepEqual(savedLayers([BASE, VECTOR, EDIT], { baseChars: CHARS }), { vector: {} });
+  assert.deepEqual(savedLayers([{ ...BASE, hidden: true }, { ...EDIT, name: 'Logo' }], { baseChars: CHARS }), { base: { hidden: true }, edit: { name: 'Logo' } });
+  assert.deepEqual(savedLayers([BASE], { baseChars: CHARS }), { noEdit: true });
+  assert.deepEqual(ids(layersFromOld(savedLayers([BASE], { baseChars: CHARS }), { hasShapes: false })), ['base']);
 });
 
 test('savedLayers: a vector layer its shapes bring back is left out, and one with none is kept', () => {
-  assert.equal(savedLayers([BASE, VECTOR, EDIT], { hasShapes: true }), null); // as a file from before layers had it
-  assert.deepEqual(savedLayers([BASE, { ...VECTOR, name: 'Ink' }, EDIT], { hasShapes: true }), { vector: { name: 'Ink' } });
-  assert.deepEqual(savedLayers([BASE, VECTOR, EDIT], { hasShapes: false }), { vector: {} });
+  assert.equal(savedLayers([BASE, VECTOR, EDIT], { hasShapes: true, baseChars: CHARS }), null); // as a file from before layers had it
+  assert.deepEqual(savedLayers([BASE, { ...VECTOR, name: 'Ink' }, EDIT], { hasShapes: true, baseChars: CHARS }), { vector: { name: 'Ink' } });
+  assert.deepEqual(savedLayers([BASE, VECTOR, EDIT], { hasShapes: false, baseChars: CHARS }), { vector: {} });
 });
 
 test('savedLayers: the old form names its own layers whatever their ids, and a stack that does not fit has no old form', () => {
-  assert.deepEqual(savedLayers([BASE, layer('L4', 'vector', 2), { ...layer('L3', 'cells', 3), name: 'Logo' }]), { vector: { n: 2 }, edit: { name: 'Logo', n: 3 } });
-  assert.equal(savedLayers([BASE, EDIT, VECTOR, layer('L2', 'cells', 2)]), null);
+  assert.deepEqual(savedLayers([BASE, layer('L4', 'vector', 2), { ...layer('L3', 'cells', 3), name: 'Logo' }], { baseChars: CHARS }), { vector: { n: 2 }, edit: { name: 'Logo', n: 3 } });
+  assert.equal(savedLayers([BASE, EDIT, VECTOR, layer('L2', 'cells', 2)], { baseChars: CHARS }), null);
 });
 
 test('goodLayers: a stack as layers, or null unless every rule holds', () => {
@@ -84,12 +84,12 @@ test('goodLayers: at most MOST_LAYERS layers, the bottom counted', () => {
 });
 
 test('legacySlots: the bottom, then a vector layer, then a cells layer, each one optional', () => {
-  assert.deepEqual(legacySlots([BASE, VECTOR, EDIT]), { vector: 'vector', cells: 'edit' });
-  assert.deepEqual(legacySlots([BASE]), { vector: null, cells: null });
-  assert.deepEqual(legacySlots([BASE, layer('L1', 'cells')]), { vector: null, cells: 'L1' });
-  assert.equal(legacySlots([BASE, EDIT, VECTOR]), null);
-  assert.equal(legacySlots([BASE, EDIT, layer('L1', 'cells')]), null);
-  assert.equal(legacySlots([BASE, VECTOR, layer('L1', 'vector')]), null);
+  assert.deepEqual(legacySlots([BASE, VECTOR, EDIT], CHARS), { vector: 'vector', cells: 'edit' });
+  assert.deepEqual(legacySlots([BASE], CHARS), { vector: null, cells: null });
+  assert.deepEqual(legacySlots([BASE, layer('L1', 'cells')], CHARS), { vector: null, cells: 'L1' });
+  assert.equal(legacySlots([BASE, EDIT, VECTOR], CHARS), null);
+  assert.equal(legacySlots([BASE, EDIT, layer('L1', 'cells')], CHARS), null);
+  assert.equal(legacySlots([BASE, VECTOR, layer('L1', 'vector')], CHARS), null);
 });
 
 test('newLayerId: edit and vector while no layer has them, else one past the highest L', () => {
@@ -107,11 +107,11 @@ test('nextNumber: one past the highest of the kind, the bottom left out', () => 
 
 test('lowerGroup: the bottom, the vector layers on it and the next cells layer; everything above is upper', () => {
   const L = (id, kind) => ({ id, kind });
-  assert.deepEqual(lowerGroup([L('base', 'cells')]), { vectors: [], cells: null, upper: [] });
-  assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector'), L('edit', 'cells')]), { vectors: ['vector'], cells: 'edit', upper: [] });
-  assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector'), L('L1', 'vector'), L('edit', 'cells'), L('L2', 'cells'), L('L3', 'vector')]), { vectors: ['vector', 'L1'], cells: 'edit', upper: ['L2', 'L3'] });
-  assert.deepEqual(lowerGroup([L('base', 'cells'), L('edit', 'cells'), L('vector', 'vector'), L('L1', 'cells')]), { vectors: [], cells: 'edit', upper: ['vector', 'L1'] });
-  assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector')]), { vectors: ['vector'], cells: null, upper: [] });
+  assert.deepEqual(lowerGroup([L('base', 'cells')], CHARS), { vectors: [], cells: null, upper: [] });
+  assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector'), L('edit', 'cells')], CHARS), { vectors: ['vector'], cells: 'edit', upper: [] });
+  assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector'), L('L1', 'vector'), L('edit', 'cells'), L('L2', 'cells'), L('L3', 'vector')], CHARS), { vectors: ['vector', 'L1'], cells: 'edit', upper: ['L2', 'L3'] });
+  assert.deepEqual(lowerGroup([L('base', 'cells'), L('edit', 'cells'), L('vector', 'vector'), L('L1', 'cells')], CHARS), { vectors: [], cells: 'edit', upper: ['vector', 'L1'] });
+  assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector')], CHARS), { vectors: ['vector'], cells: null, upper: [] });
 });
 
 // Character settings as a layer carries them (settings.js CHAR_KEYS): the bottom's are the document's own.
@@ -130,6 +130,12 @@ test('lowerGroup sends a layer whose chars differ to the upper walk', () => {
   assert.deepEqual(lowerGroup([BASE, withChars(EDIT)], CHARS), { vectors: [], cells: 'edit', upper: [] });
   assert.deepEqual(lowerGroup([BASE, withChars(VECTOR, { ...CHARS, seed: 'x' }), withChars(EDIT)], CHARS), { vectors: [], cells: null, upper: ['vector', 'edit'] });
   assert.deepEqual(lowerGroup([BASE, withChars(VECTOR), withChars(EDIT, { ...CHARS, seed: 'x' })], CHARS), { vectors: ['vector'], cells: null, upper: ['edit'] });
+});
+
+test('legacySlots, savedLayers and lowerGroup refuse to guess the bottom\'s chars', () => {
+  assert.throws(() => legacySlots([BASE, EDIT]), TypeError);
+  assert.throws(() => savedLayers([BASE, EDIT]), TypeError);
+  assert.throws(() => lowerGroup([BASE, EDIT]), TypeError);
 });
 
 test("goodLayers keeps a layer's chars, cleaned, and refuses bad ones", () => {

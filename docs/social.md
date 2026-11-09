@@ -329,7 +329,8 @@ Their ROOM tab then shows their own copy of the art, strokes that haven't reache
 included, and **Back to watching** brings back the host's straight away. If the art doesn't reach them or won't open,
 they see "The room's art couldn't be opened." and go back to watching, and the host can ask again.
 
-A room holds the base, at most one vector layer and one layer above them, for now, all with the same character settings.
+A room holds the base, at most one vector layer and one layer above them, for now, all with the same character settings
+(the host's Characters section is the base's, and every layer follows it).
 A drawing with more layers can't go live: **Go live** is off and says to merge or delete layers first. While a room is
 live, adding, deleting, duplicating and moving layers isn't available (the one exception is **+ Vector layer** when there's none),
 and neither is giving a layer its own character settings: the host's Characters are every layer's.

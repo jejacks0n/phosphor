@@ -350,7 +350,7 @@ export const documentActions = {
   // whatever its id, its frame keys bare and its shapes naming no layer. Any other stack is written in the stack form,
   // every cells layer with its own cells and paint.
   async projectParts() {
-    const slots = legacySlots(this.layers);
+    const slots = legacySlots(this.layers, this.baseChars);
     const drawingOf = (id) => (id === this.editId ? this._artInside ?? this : this._layerData.get(id)) ?? NO_DRAWING;
     const above = this.layers.filter((layer) => layer.kind === 'cells' && layer.id !== 'base');
     const drawings = slots ? [drawingOf(slots.cells)] : above.map(({ id }) => drawingOf(id));
@@ -369,7 +369,7 @@ export const documentActions = {
     const baseBlob = this.baseLayer?.hasPaint ? this.baseLayer.toBlob() : null;
     if (slots) {
       const paintBlob = drawings[0].paintLayer?.toBlob() ?? null;
-      return { ...parts, editCells: drawings[0].editCells, layers: savedLayers(this.layers, { hasShapes: this.shapes.size > 0 }), paintBlob: await paintBlob, baseBlob: await baseBlob };
+      return { ...parts, editCells: drawings[0].editCells, layers: savedLayers(this.layers, { hasShapes: this.shapes.size > 0, baseChars: this.baseChars }), paintBlob: await paintBlob, baseBlob: await baseBlob };
     }
     const paintBlobs = drawings.map((drawing) => (drawing.hasPaint ? drawing.paintLayer.toBlob() : null));
     const stack = await Promise.all(this.layers.map(async (layer) => {
