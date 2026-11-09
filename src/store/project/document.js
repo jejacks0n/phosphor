@@ -33,9 +33,9 @@ const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
 // A new document's layers: the bottom and the edit layer, in use. Set, not patched: a patch would merge into the last
 // document's.
 function newLayers(project) {
-  project.layers = layersFromOld(null, { hasShapes: false });
-  project.editId = 'edit';
+  project.editId = 'edit'; // first: the pick that follows the layers (followLayerPick) finds it in use
   project._layerData.clear();
+  project.layers = layersFromOld(null, { hasShapes: false });
 }
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.

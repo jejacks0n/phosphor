@@ -328,16 +328,19 @@ export const useWorkspaceStore = defineStore('workspace', {
 // Keeps pickedLayer in step with editorTab, which many places set (a tab chosen, Make art layer, a key): VECTOR picks the
 // topmost vector layer when a cells layer is picked, and the art tabs pick the cells layer picked last (or the topmost one
 // while it's gone) when a vector layer is. A picked layer that leaves the stack picks the one that was under it (one that
-// can be picked: an artist's isn't the base), a base picked becoming an artist's falls back to the edit layer, and a new
-// document picks its edit layer (or its topmost cells layer). Returns a function that stops it.
+// can be picked: an artist's isn't the base), a base picked becoming an artist's picks as the art tabs do, and a new
+// document picks its edit layer (or its topmost cells layer). Every pick made here goes through pick, so the tools draw on
+// it (project.useLayer). Returns a function that stops it.
 export function followLayerPick({ workspace, project, drawing }) {
   // Before its first shape a drawing may have no vector layer: VECTOR picks the one that shape will bring ('vector').
   const kindOf = (id) => project.layerById(id)?.kind ?? (id === 'vector' ? 'vector' : 'cells');
   const pickable = (layer) => layer?.kind === 'cells' && (layer.id !== 'base' || !(drawing.hostOnly || project.artInside));
   const cellsPick = () => (pickable(project.layerById(workspace.lastCellsPick)) ? workspace.lastCellsPick : project.layers.findLast(pickable)?.id ?? 'edit');
-  // A pick made here: the tabs follow, as pickLayer has them.
-  const pick = (id) => {
+  // A pick made here: the edit layer's fields are a cells layer picked, and the tabs follow, as pickLayer has them.
+  const pick = (id, { tabs = true } = {}) => {
     workspace.pickedLayer = id;
+    project.useLayer(id);
+    if (!tabs) return;
     if (kindOf(id) === 'vector') workspace.editorTab = 'vector';
     else if (workspace.editorTab === 'vector') workspace.editorTab = workspace.viewTab;
   };
@@ -348,8 +351,8 @@ export function followLayerPick({ workspace, project, drawing }) {
     }, { flush: 'sync', immediate: true }),
     watch(() => workspace.editorTab, (tab) => {
       const kind = kindOf(workspace.pickedLayer);
-      if (tab === 'vector' && kind !== 'vector') workspace.pickedLayer = project.layers.findLast((layer) => layer.kind === 'vector')?.id ?? 'vector';
-      else if ((tab === 'input' || tab === 'output') && kind === 'vector') workspace.pickedLayer = cellsPick();
+      if (tab === 'vector' && kind !== 'vector') pick(project.layers.findLast((layer) => layer.kind === 'vector')?.id ?? 'vector', { tabs: false });
+      else if ((tab === 'input' || tab === 'output') && kind === 'vector') pick(cellsPick(), { tabs: false });
     }, { flush: 'sync', immediate: true }),
     watch(() => project.layers, (now, was) => {
       if (project.documentId !== documentId) {
@@ -363,7 +366,7 @@ export function followLayerPick({ workspace, project, drawing }) {
       pick(under?.id ?? cellsPick()); // the nearest one still there that can be picked
     }, { flush: 'sync' }),
     watch(() => drawing.hostOnly, (reason) => {
-      if (reason && workspace.pickedLayer === 'base') workspace.pickedLayer = 'edit';
+      if (reason && workspace.pickedLayer === 'base') pick(cellsPick());
     }, { flush: 'sync' }),
   ];
   return () => stops.forEach((stop) => stop());

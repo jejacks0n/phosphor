@@ -122,6 +122,7 @@ test('a picked layer that leaves the stack picks the one under it', async () => 
   expect(project.editId).toBe(id);
   project.layers = project.layers.filter((l) => l.id !== id);
   expect(workspace.pickedLayer).toBe('edit');
+  expect(project.editId).toBe('edit'); // the tools draw on the pick
 });
 
 test('an artist\'s picked layer that leaves the stack skips the base under it', async () => {
@@ -149,6 +150,7 @@ test('the art tabs go back to the cells layer last picked, or the topmost while 
   project.layers = project.layers.filter((l) => l.id !== 'edit');
   workspace.editorTab = 'output';
   expect(workspace.pickedLayer).toBe(id);
+  expect(project.editId).toBe(id);
 });
 
 test('a new document picks the edit layer', async () => {
@@ -169,6 +171,17 @@ test('an artist can not pick the base', async () => {
   expect(workspace.pickedLayer).toBe('base');
   project._sharing = { role: 'artist' };
   expect(workspace.pickedLayer).toBe('edit');
+});
+
+test('an artist moved off the base picks the cells layer picked last, or the topmost, and the tools draw on it', async () => {
+  const { project, workspace } = await blank();
+  const id = project.addLayer('cells', 'edit');
+  workspace.pickLayer(id);
+  workspace.pickLayer('base');
+  project._sharing = { role: 'artist' };
+  expect(workspace.pickedLayer).toBe(id);
+  expect(project.editId).toBe(id);
+  project._sharing = null;
 });
 
 // A cell with a pin under an edit cell: col 3, row 3.
