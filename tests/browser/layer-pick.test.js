@@ -11,10 +11,12 @@ import { isArt } from '@/document/artLayers.js';
 import { withPins } from '@/document/baseRecords.js';
 import EditToolbar from '@/components/EditToolbar.vue';
 import eraser from '@/tools/eraser';
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
+import { toastMessage, closeToast } from '@/composables/useToast.js';
 
 const RED = '#ff0000';
 let mounted = null;
-afterEach(() => { mounted?.unmount(); mounted = null; });
+afterEach(() => { mounted?.unmount(); mounted = null; closeToast(); });
 
 async function blank() {
   const app = await createTestApp();
@@ -201,4 +203,25 @@ test('a new document opens on the edit layer, whatever was picked before', async
   await project.openArtFile(new File([blob], 'past-the-edge.ans'));
   await settle(project);
   expect(workspace.pickedLayer).toBe('edit');
+});
+
+test('with the base picked, a tool key for a tool the base hasn\'t says where it draws', async () => {
+  const { project, workspace } = await blank();
+  workspace.editorTab = 'output';
+  workspace.pickLayer('base');
+  mounted = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
+  mounted.mount(document.createElement('div'));
+  const press = (key) => window.dispatchEvent(new KeyboardEvent('keydown', { key, cancelable: true }));
+  workspace.setActiveTool('eraser');
+  press('p');
+  expect(workspace.activeTool).toBe('eraser');
+  expect(toastMessage.value).toBe('Pencil draws on Layer 1. Pick it in Layers.');
+  closeToast();
+  project.renameLayer('edit', 'Ink');
+  press('b');
+  expect(toastMessage.value).toBe('Brush draws on Ink. Pick it in Layers.');
+  closeToast();
+  press('i'); // one the base has
+  expect(workspace.activeTool).toBe('picker');
+  expect(toastMessage.value).toBeFalsy();
 });

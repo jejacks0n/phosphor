@@ -13,7 +13,8 @@ is showing; with nothing open, or on SAUCE, it says so instead.
 - **Picking a row** picks that layer, and the tabs follow it. The base and the edit layer show PIXEL and
   ANSI; the vector layer shows VECTOR. The tools act on the picked layer: the eraser, Select, Copy, Cut,
   Delete, Flip and the Magic Wand's Delete take only that layer, and with the base picked only the tools
-  that work on it are offered. Picking the edit layer or the base from VECTOR goes back to the art tab you
+  that work on it are offered: a key for one of the others (P for the Pencil, say) says which layer that tool
+  draws on, "Pencil draws on Layer 1. Pick it in Layers." Picking the edit layer or the base from VECTOR goes back to the art tab you
   last had.
 - **+ Vector layer**, under the list, adds the vector layer and picks it. It's there while the drawing has
   none; a drawing with shapes already has one.

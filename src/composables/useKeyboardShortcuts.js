@@ -11,6 +11,8 @@ import { isField } from '@/lib/fields';
 import { usePlayback } from '@/composables/usePlayback';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
+import { toast } from '@/composables/useToast';
+import { t } from '@/i18n';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // The pair's swap: on VECTOR, the shapes' Fill and Stroke trade places.
@@ -266,7 +268,15 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
     if (workspaceStore.isPainting || workspaceStore.heldTool || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
     const key = e.key.toUpperCase();
-    const tool = offeredTools(workspaceStore.editorTab, projectStore, workspaceStore.toolLayers.base).find(t => t.keys?.includes(key));
+    const onBase = workspaceStore.toolLayers.base, find = (base) => offeredTools(workspaceStore.editorTab, projectStore, base).find(({ keys }) => keys?.includes(key));
+    const tool = find(onBase);
+    // With the base picked, a tool the view has but the base hasn't draws on the edit layer: say so, rather than nothing.
+    const elsewhere = !tool && onBase && find(false);
+    if (elsewhere) {
+      e.preventDefault();
+      toast(t('layers.toolOnLayer', { tool: elsewhere.title, layer: projectStore.layerInfo.edit?.name ?? t('layers.editDefault') }));
+      return true;
+    }
     if (!tool) return false;
     e.preventDefault();
     workspaceStore.setActiveTool(tool.id);

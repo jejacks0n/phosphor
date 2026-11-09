@@ -338,7 +338,8 @@
     "renameAria": "Rename {name}",
     "none": "Layers show while a drawing's art is showing.",
     "hiddenToast": "Show the layer to draw on it",
-    "hiddenMergeToast": "Show the layer to merge it"
+    "hiddenMergeToast": "Show the layer to merge it",
+    "toolOnLayer": "{tool} draws on {layer}. Pick it in Layers."
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",

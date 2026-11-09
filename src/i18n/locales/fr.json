@@ -338,7 +338,8 @@
     "renameAria": "Renommer {name}",
     "none": "Les calques s'affichent avec le dessin.",
     "hiddenToast": "Affichez le calque pour dessiner dessus",
-    "hiddenMergeToast": "Affichez le calque pour le fusionner"
+    "hiddenMergeToast": "Affichez le calque pour le fusionner",
+    "toolOnLayer": "{tool} dessine sur {layer}. Choisissez-le dans Calques."
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",
