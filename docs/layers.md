@@ -40,7 +40,7 @@ again and it's all there. Whether a layer is hidden is saved with the drawing.
 
 - A hidden layer can't be drawn on. With it picked, drawing, erasing, a fill, Flip or typing does nothing,
   and a message says "Show the layer to draw on it". On VECTOR, the shapes of a hidden vector layer can still be selected
-  and changed.
+  and changed, but an art layer on it can't be stepped into (Edit art), with the same message.
 - These merges are refused while a layer they read or write is hidden, with "Show the layer to merge it",
   and nothing changes:
   - **Merge up**, **Merge down** and **Into the image**, while the edit layer or the base is hidden;

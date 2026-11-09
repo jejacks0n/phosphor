@@ -258,6 +258,21 @@ test('with the edit layer hidden, Clear edit layer is refused before it asks, an
   expect(kept()[0]).toBe(before[0]);
 });
 
+test('stepping into an art layer is refused while the vector layer is hidden', async () => {
+  const { project, workspace } = await picture();
+  typed(project, 2, 1, 'H');
+  workspace.selection = { c0: 1, r0: 0, c1: 6, r1: 2 };
+  const key = project.makeArtLayer();
+  expect(key).toBeTruthy();
+  await hide(project, 'vector');
+  closeToast();
+  expect(project.enterArt(key)).toBe(false);
+  expect(project.artInside).toBe(null);
+  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  await hide(project, 'vector', false);
+  expect(project.enterArt(key)).toBe(true);
+});
+
 test('a pick reads what shows: a hidden edit layer\'s cells and paint aren\'t picked', async () => {
   const { project } = await picture();
   const under = project.underlyingAt(5, 2), raw = project.rawColorAt(5, 4);
