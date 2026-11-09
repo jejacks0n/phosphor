@@ -9,11 +9,12 @@ import { getTool } from '@/tools';
 import { shortcut } from '@/lib/keyLabels';
 import { useLayerName } from '@/composables/useLayerName';
 
-// Under the ANSI and VECTOR views, starting with the picked layer's name, then following the tool: Edit Mode shows its cursor's cell (each attribute from the
-// edit layer or the base) and the overwrite/insert toggle; Select, the selection's size and place; the
-// Color Picker, its last pick and where each color came from. On the right, with a mouse or trackpad,
-// Space's pan, or while a modifier's held, what it does with the tool (in the pixel view too); the rest is
-// in the docs, for the room it takes. Zoomed out, the zoom, which goes back to 100%.
+// Under the ANSI and VECTOR views, starting with the picked layer's name, then following the tool: Edit
+// Mode shows its cursor's cell (each attribute from the edit layer or the base) and the overwrite/insert
+// toggle; Select, the selection's size and place; the Color Picker, its last pick and where each color
+// came from. On the right, with a mouse or trackpad, Space's pan, or while a modifier's held, what it
+// does with the tool (in the pixel view too); the rest is in the docs, for the room it takes. Zoomed
+// out, the zoom, which goes back to 100%.
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
