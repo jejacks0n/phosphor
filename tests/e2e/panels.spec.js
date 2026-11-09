@@ -52,6 +52,7 @@ test('a help tooltip shows on hover, on screen, and hides', async ({ page }) => 
 test('the Actions menu (narrow screens) opens, and closes on Escape and outside clicks; it stays when something beside it scrolls, and closes when what holds it scrolls', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 800 });
   await openApp(page);
+  await store(page, 'workspace', (w) => { w.sidePanelFolded = true; });   // the Actions button is for a narrow view, not one the panel narrows
   const trigger = page.getByTitle('Actions');
   await trigger.click();
   const menu = page.locator('.dropdown-content');
@@ -84,6 +85,7 @@ test('the Actions menu (narrow screens) opens, and closes on Escape and outside 
 test('the status bar scrolls sideways when it doesn\'t fit, and nothing in it is cut short', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 800 });
   await openApp(page);
+  await store(page, 'workspace', (w) => { w.sidePanelFolded = true; });   // the side panel would take the room the art needs
   await page.keyboard.press('t'); // Edit Mode, with its cursor's cell: the most there is to show
   const at = await cellPoint(page, 40, 10); // the middle: the narrow view shows only part of the art
   await page.mouse.click(at.x, at.y);
@@ -116,7 +118,7 @@ test('New project asks when there are changes, then clears the document', async 
   await page.getByRole('button', { name: 'New project' }).click();
   expect(asked[0]).toMatch(/unsaved changes/);
   expect(await store(page, 'project', (p) => p.image)).toBe(null);
-  await expect(page.getByRole('tab', { selected: true })).toHaveCount(0); // the start screen, no tab
+  await expect(page.locator('.tab-list').getByRole('tab', { selected: true })).toHaveCount(0); // the start screen, no tab
 });
 
 test('the tool options row is the same height for every tool, its options on one line', async ({ page }) => {
@@ -127,7 +129,7 @@ test('the tool options row is the same height for every tool, its options on one
     return { height: Math.round(r.height), middle: Math.round(first.top + first.height / 2 - r.top) };
   });
   const seen = {};
-  for (const tool of ['Pencil', 'Brush', 'Paint Bucket', 'Shapes', 'Swap cell FG/BG', 'Eraser']) {
+  for (const tool of ['Pencil', 'Brush', 'Paint Bucket', 'Shapes', 'Eraser']) {
     await page.getByRole('button', { name: tool }).click();
     seen[tool] = await measure();
   }

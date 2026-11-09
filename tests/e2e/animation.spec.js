@@ -487,6 +487,7 @@ test('Ghost is one button that opens its on and off and its strength, lit while 
 
 test('on a narrow screen the bar holds two tidy lines, and every control stays on screen', async ({ page }) => {
   await openApp(page);
+  await store(page, 'workspace', (w) => { w.sidePanelFolded = true; });   // the bar's own width is what's measured, not the panel's
   await animateSwitch(page).check();
   const lines = async () => bar(page).evaluate((el) => {
     const controls = [...el.querySelectorAll('button, input, output')].filter((c) => c.getBoundingClientRect().width);

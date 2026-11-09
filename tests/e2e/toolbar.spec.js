@@ -1,6 +1,6 @@
 // The toolbar's tools, in order, with a divider ('|') between groups: drawing, selecting, moving
 // around, then the cell tools (ANSI view only).
-import { test, expect, openApp, tab, settled } from './support.js';
+import { test, expect, openApp, store, tab, settled } from './support.js';
 import { fakeRoom, goLive } from './social-support.js';
 
 const row = (page) => page.locator('.tool-group > *').evaluateAll((els) => els.map((el) => el.dataset.tool ?? '|'));
@@ -21,6 +21,7 @@ test('the toolbar folds by its own width, so the side panel open folds it sooner
   const actions = () => page.getByTitle('Actions');
   await page.setViewportSize({ width: 1358, height: 900 });
   await openApp(page);
+  await store(page, 'workspace', (w) => { w.sidePanelFolded = true; });
   await tab(page, 'PIXEL').click();
   await expect(page.locator('.side-panel')).toHaveCSS('width', '28px');   // folded to its rail
   await expect(overlay()).toBeVisible();   // the toolbar is wide: everything's out
