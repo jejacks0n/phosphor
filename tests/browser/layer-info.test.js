@@ -30,6 +30,16 @@ test('renameLayer, setLayerHidden and addVectorLayer change the info and are no 
   expect(project.canUndo).toBe(false);
 });
 
+test('a vector layer that exists for its shapes can be renamed and hidden', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, GRADIENT, { cols: 20, rows: 20 });
+  project.addShape(rectShape(2, 2, 12, 10, { fill: '#ff0000' }));
+  expect(project.layerInfo.vector).toBe(null);
+  project.renameLayer('vector', 'Art');
+  project.setLayerHidden('vector', true);
+  expect(project.layerInfo.vector).toEqual({ name: 'Art', hidden: true });
+});
+
 test('shapes make a vector layer, and a new image or canvas starts from the defaults', async () => {
   const { project } = await createTestApp();
   await loadImage(project, GRADIENT, { cols: 20, rows: 20 });
@@ -55,4 +65,19 @@ test('a room\'s project keeps the host\'s names and clears every eye', async () 
   };
   await project.openFromHost(parts, { filename: 'room' });
   expect(project.layerInfo).toEqual({ base: { name: null, hidden: false }, edit: { name: 'Logo', hidden: false }, vector: { name: 'Art', hidden: false } });
+});
+
+test('the same document brought up to date keeps the artist\'s own eyes, with the host\'s names', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, GRADIENT, { cols: 20, rows: 20 });
+  project.setLayerHidden('edit', true);
+  project.addVectorLayer();
+  project.setLayerHidden('vector', true);
+  const parts = {
+    settings: { cols: 20, rows: 20 }, imageBuffer: project.imageBuffer, paintBuffer: null, baseBuffer: null, editCells: new Map(),
+    baseRecords: project.baseRecords, erasedCells: [], shapes: new Map(), animation: null,
+    layers: { base: { name: 'Photo', hidden: true }, edit: { name: 'Logo' }, vector: { name: 'Art', hidden: true } },
+  };
+  await project.openFromHost(parts, { filename: 'room', sameDocument: true });
+  expect(project.layerInfo).toEqual({ base: { name: 'Photo', hidden: false }, edit: { name: 'Logo', hidden: true }, vector: { name: 'Art', hidden: true } });
 });

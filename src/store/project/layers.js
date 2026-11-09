@@ -2,9 +2,10 @@
 // first shape. None of it is an undo step: they're about the layers, not edits to what's drawn on them.
 import { goodLayerName } from '@/document/layerInfo.js';
 
-// id's entry with changes made, or no change when there's no such layer.
+// id's entry with changes made, or no change when there's no such layer. The vector layer is there from its first shape,
+// before it has an entry of its own.
 function changed(store, id, patch) {
-  const entry = store.layerInfo[id];
+  const entry = store.layerInfo[id] ?? (id === 'vector' && store.hasVectorLayer ? { name: null, hidden: false } : null);
   if (entry) store.layerInfo = { ...store.layerInfo, [id]: { ...entry, ...patch } };
 }
 

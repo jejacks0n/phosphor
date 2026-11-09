@@ -32,15 +32,17 @@ const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
 function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels }, { filename, documentId }) {
+  const own = this.layerInfo; // replaceImage starts it over
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
   this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
   try {
     this.editCells = editCells;
     if (shapes?.size) this.shapes = shapes;
     this.layerInfo = goodLayerInfo(layers, { hasShapes: shapes?.size > 0 });
-    if (this._takingProject) { // a room's project: the host's names, but whether a layer shows is each person's
+    if (this._takingProject) { // a room's project: the host's names, but whether a layer shows is each person's: kept for the same document, else cleared
       const { base, edit, vector } = this.layerInfo;
-      this.layerInfo = { base: { ...base, hidden: false }, edit: { ...edit, hidden: false }, vector: vector && { ...vector, hidden: false } };
+      const eye = (entry, mine) => entry && { ...entry, hidden: this._sameDocument && !!mine?.hidden };
+      this.layerInfo = { base: eye(base, own.base), edit: eye(edit, own.edit), vector: eye(vector, own.vector) };
     }
     this.setBaseRecords(baseRecords);
     if (paint) {
