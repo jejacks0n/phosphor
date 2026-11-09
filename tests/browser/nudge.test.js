@@ -11,7 +11,7 @@ async function scene() {
   project.commitEdit();
   return project;
 }
-const LAYERS = { base: true, edit: true };
+const LAYERS = ['base', 'edit'];
 const START = { c0: 5, r0: 5, c1: 7, r1: 7 }; // 3 wide, nudged 10: further than its own width
 
 test('ten nudges right give what one move of ten does: no trail along the path', async () => {

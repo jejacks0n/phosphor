@@ -57,13 +57,29 @@ export const newLedger = (project) => markRaw(new Ledger({
   numbering: false,
   mostBytes: MOST_CHANGE_BYTES,
 }));
-// Cells layer id's data becomes the edit layer's fields (editCells, paintLayer, hasPaint) as it is, nothing committed (that's
-// useLayer's), and the layer in use waits in _layerData. A layer with no paint yet gets an empty one the size of the one
-// in use. Autosave doesn't count it as an edit.
+// The bottom's stand-in for the edit layer's fields while it's the layer in use (editId 'base'): no cells (frozen), and an
+// empty paint layer nothing paints into, kept while its size is right. What's drawn then goes on the base (onBottom).
+const BASE_CELLS = Object.freeze(new Map());
+function baseFields(project, was) {
+  let paint = project._basePaint;
+  if (was && (!paint || paint.hasPaint || paint.cols !== was.cols || paint.rows !== was.rows || paint.scale !== was.scale)) {
+    paint = project._basePaint = markRaw(new PaintLayer({ cols: was.cols, rows: was.rows, scale: was.scale }));
+  }
+  return { editCells: BASE_CELLS, paintLayer: paint, hasPaint: false };
+}
+
+// Whether the edit layer's fields are the bottom's (the base picked, outside an art layer): what the tools draw goes on
+// the base itself, cells as pins and pixels (writeBaseCells), paint as base pixels.
+export const onBottom = (project) => project.editId === 'base' && !project._artInside;
+
+// Cells layer id's data (or the bottom's, baseFields) becomes the edit layer's fields (editCells, paintLayer, hasPaint) as
+// it is, nothing committed (that's useLayer's), and the layer in use waits in _layerData. A layer with no paint yet gets an
+// empty one the size of the one in use. Autosave doesn't count it as an edit.
 export function swapLayer(project, id) {
+  const was = project.paintLayer;
   // A deleted last cells layer's fields are no layer's (refusedNoCells): not kept, and empty when swapped back to.
-  const next = project._layerData.get(id) ?? { editCells: new Map(), paintLayer: null, hasPaint: false }, was = project.paintLayer;
-  if (project.layerById(project.editId)) project._layerData.set(project.editId, { editCells: project.editCells, paintLayer: was, hasPaint: project.hasPaint });
+  const next = id === 'base' ? baseFields(project, was) : project._layerData.get(id) ?? { editCells: new Map(), paintLayer: null, hasPaint: false };
+  if (project.editId !== 'base' && project.layerById(project.editId)) project._layerData.set(project.editId, { editCells: project.editCells, paintLayer: was, hasPaint: project.hasPaint });
   project._layerData.delete(id);
   project.editId = id;
   project._frameSwaps++;
@@ -72,11 +88,14 @@ export function swapLayer(project, id) {
   project.hasPaint = next.hasPaint;
 }
 
+// Whether a layer's data can be swapped into the edit layer's fields: a cells layer waiting in _layerData, or the bottom.
+export const swappable = (project, id) => id === 'base' || project._layerData.has(id);
+
 // fn with cells layer id's data in the edit layer's fields, and the layer in use's back after: an undo step made on a layer
 // writes there, whatever's picked now. For the layer in use, or one that isn't waiting in _layerData, just fn.
 export function withLayer(project, id, fn) {
   const was = project.editId;
-  if (id === was || !project._layerData.has(id)) return fn();
+  if (id === was || !swappable(project, id)) return fn();
   swapLayer(project, id);
   try {
     return fn();

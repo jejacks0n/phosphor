@@ -216,11 +216,11 @@ test('Delete takes away what is on the layers lit: Edit the drawing, Base the pi
   type(2, 2, ['a']);
   const base = [project.baseColorAt(2, 4), project.baseColorAt(2, 5)];
   click(2, 2);
-  project.deleteInWand(workspace.wand, 'output', { base: false, edit: true });
+  project.deleteInWand(workspace.wand, 'output', ['edit']);
   expect(project.editCellAt(2, 2)).toBe(undefined);
   expect([project.baseColorAt(2, 4), project.baseColorAt(2, 5)]).toEqual(base);
   project.undo();
-  project.deleteInWand(workspace.wand, 'output', { base: true, edit: false });
+  project.deleteInWand(workspace.wand, 'output', ['base']);
   expect(project.editCellAt(2, 2)?.char).toBe('a');
   expect([project.baseColorAt(2, 4), project.baseColorAt(2, 5)]).toEqual(['#000000', '#000000']);
 
@@ -229,7 +229,7 @@ test('Delete takes away what is on the layers lit: Edit the drawing, Base the pi
   const at = (x, y) => workspace.wand.mask[y * workspace.wand.width + x];
   const out = [[9, 8], [9, 10], [8, 9], [10, 9]].find(([x, y]) => !at(x, y)); // a pixel beside it the wand left out
   const kept = project.baseColorAt(...out);
-  project.deleteInWand(workspace.wand, 'input', { base: true, edit: false });
+  project.deleteInWand(workspace.wand, 'input', ['base']);
   expect(project.baseColorAt(9, 9)).toBe('#000000');
   expect(project.baseColorAt(...out)).toBe(kept);
 });

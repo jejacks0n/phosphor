@@ -7,7 +7,6 @@ import { clampZoom, clampViewZoom } from '@/lib/zoom';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
 import { snapCursor } from '@/document/wideChars';
-import { getTool } from '@/tools';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 
@@ -74,7 +73,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorMarquee: null,     // the box Vector select drags over empty canvas, { x0, y0, x1, y1 } in grid pixels
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     clipboardId: null,       // the last copy's id, in the block it put on the system clipboard (clipboard.js)
-    artDrop: null,           // { file, at: { col, row } | null }: an art file opening from the start screen, asking to edit it or draw on top; or dropped on an open drawing, asking to add it or open it (EditWorkspace)
+    artDrop: null,           // { file, at: { col, row } | null, picture? }: a picture on an open still drawing, asking to add it as paint or open it; an art file opening from the start screen, asking to edit it or draw on top; or dropped on an open drawing, asking to add it or open it (EditWorkspace)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
     ansiViewZoom: 1,         // the ansiZoom those cells were measured at (AnsiEditor)
@@ -163,13 +162,10 @@ export const useWorkspaceStore = defineStore('workspace', {
     activeTool(state) {
       return state[toolKey(state.editorTab)];
     },
-    // The layers the eraser and the Flip tool act on: the picked one.
-    toolLayers: (state) => ({ base: state.pickedLayer === 'base', edit: state.pickedLayer !== 'base' }),
     // The layers a selection's actions act on (Select's Copy, Cut, Delete, move, flip and turn; the Magic Wand's Delete; Set FG / Set BG):
-    // every shown one, whatever is picked. To leave a layer out, hide it. edit is the cells layer in use, when it's in the stack.
-    selectionLayers() {
-      const project = useProjectStore(), edit = project.layerById(project.editId);
-      return { base: !project.layerHidden('base'), edit: !!edit && !edit.hidden };
+    // every shown cells layer, the base among them, bottom first, whatever is picked. To leave a layer out, hide it.
+    selectionIds() {
+      return useProjectStore().layers.filter((layer) => layer.kind === 'cells' && !layer.hidden).map((layer) => layer.id);
     },
     // Whether a cells layer above the bottom is picked: what Clear clears (off with the base or a vector layer picked).
     pickedCells(state) {
@@ -221,9 +217,6 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.pickedLayer = id;
       project.useLayer(id);
       if (this.editorTab === 'vector') this.editorTab = this.viewTab;
-      if (id === 'base') {
-        for (const key of ['inputActiveTool', 'outputActiveTool']) if (!getTool(this[key]).base) this[key] = 'eraser';
-      }
       return true;
     },
     // Select rect (the whole grid: project.gridRect()) with the Select tool.

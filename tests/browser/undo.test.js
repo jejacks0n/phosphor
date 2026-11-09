@@ -97,7 +97,10 @@ function makeActions(project, workspace, r, opts) {
     const c0 = int(project.cols - 1), r0 = int(rows() - 1);
     return { c0, r0, c1: Math.min(project.cols - 1, c0 + 1 + int(8)), r1: Math.min(rows() - 1, r0 + 1 + int(6)) };
   };
-  const layers = () => pick([{ base: true, edit: true }, { base: false, edit: true }, { base: true, edit: false }]);
+  const layers = () => { // the shown cells layers (workspace.selectionIds), some of them, or the base alone
+    const ids = workspace.selectionIds;
+    return pick([ids, ids.filter(() => r() < 0.5), ['base']]);
+  };
   const actions = {
     type: () => {
       const c = int(project.cols), rr = int(rows());
@@ -123,7 +126,7 @@ function makeActions(project, workspace, r, opts) {
     },
     flip: () => {
       const c = int(project.cols), rr = int(rows());
-      project.flipCell(c, rr, pick([{ base: false, edit: true }, { base: true, edit: false }, { base: true, edit: true }]));
+      project.flipCell(c, rr); // on the layer in use
       project.commitEdit();
     },
     del: () => project.deleteSelection(rect(), layers()),
@@ -232,6 +235,7 @@ function makeActions(project, workspace, r, opts) {
       if (cellsLayers(project).length < 2) project.addLayer('cells', workspace.pickedLayer);
     },
     pickLayer: () => cellsLayers(project).length && workspace.pickLayer(pick(cellsLayers(project))),
+    pickBase: () => workspace.pickLayer('base'), // the tools draw on the base
     deleteLayer: () => { // a cells layer above the bottom, the last one too (then nothing draws on the edit layer's fields)
       if (cellsLayers(project).length) project.deleteLayer(pick(cellsLayers(project)));
     },
@@ -298,7 +302,7 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
   const t = trackDepth(project);
   const r = rng(seed);
   const actions = makeActions(project, workspace, r, { async });
-  const names = only ?? Object.keys(actions);
+  const names = only ?? Object.keys(actions).filter((name) => name !== 'pickBase'); // the base picked: the layers fuzz's
   const stack = [await snap(project, workspace, { forceRender })];
   const log = [];
   const acc = { open: false };
@@ -313,8 +317,10 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
     if (t.cleared) return { seed, log, problem: 'history cleared mid-run' };
     const err = account(stack, s, d, project, acc, done?.between);
     if (err) return { seed, log, problem: err };
-    // a shown state should match a full render of the same document
-    if (forceRender && s.shown !== s.full && realDiff(s.shown, s.full)) return { seed, log, problem: `step ${i} ${name}: shown cells differ from a full render`, diff: diffCells(s.shown, s.full) };
+    // a shown state should match a full render of the same document; not while a typing run on the base is open under
+    // the Number palette, which holds still through an open edit (rendering.js: composite) and is picked when it ends
+    const held = !!project._stroke && project.quantize === 'count' && project.editId === 'base';
+    if (forceRender && !held && s.shown !== s.full && realDiff(s.shown, s.full)) return { seed, log, problem: `step ${i} ${name}: shown cells differ from a full render`, diff: diffCells(s.shown, s.full) };
   }
   closeRun(stack, project, t, acc);
   const compare = (a, b) => Object.keys(a).filter((k) => k !== 'shown' && a[k] !== b[k] && !(k === 'full' && !forceRender));
@@ -383,9 +389,9 @@ test('fuzz: shapes among typing, paint, selections and merges', async () => {
   expect(failures).toEqual([]);
 }, 300_000);
 
-test('fuzz: typing, paint and selections across two cells layers, added, deleted and duplicated', async () => {
+test('fuzz: typing, paint and selections across two cells layers and the base, added, deleted, duplicated and picked', async () => {
   const failures = [];
-  const only = ['type', 'typingRun', 'paint', 'move', 'clearEdit', 'addLayer', 'addLayer', 'pickLayer', 'pickLayer', 'deleteLayer', 'duplicateLayer'];
+  const only = ['type', 'typingRun', 'paint', 'move', 'del', 'copyPaste', 'clearEdit', 'addLayer', 'addLayer', 'pickLayer', 'pickLayer', 'pickBase', 'deleteLayer', 'duplicateLayer'];
   for (const seed of seeds([1, 2, 3, 4])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
@@ -601,7 +607,7 @@ test('stale pin: pasting base content over an erased cell shows the converter ch
   const at = 9 * 40 + 15;
   dragSlider(project, 'brightness', [101]); project.undo(); await settle(project); // a full render, as after any slider move
   expect(project.cells[at].char).toBe(' ');
-  const block = project.copySelection({ c0: 30, r0: 9, c1: 30, r1: 9 }, { base: true, edit: false });
+  const block = project.copySelection({ c0: 30, r0: 9, c1: 30, r1: 9 }, ['base']);
   project.pasteSelection(block, 15, 9);
   await settle(project);
   const shown = project.cells[at];
@@ -614,7 +620,7 @@ test('stale pin: pasting base content over an erased cell shows the converter ch
 test('stale pin: Merge up right after that paste freezes the old pinned space into an edit cell', async () => {
   const { project, workspace } = await createTestApp();
   await drawnDocument(project, workspace, { cols: 40, rows: 40 });
-  const block = project.copySelection({ c0: 30, r0: 9, c1: 30, r1: 9 }, { base: true, edit: false });
+  const block = project.copySelection({ c0: 30, r0: 9, c1: 30, r1: 9 }, ['base']);
   project.pasteSelection(block, 15, 9);
   await settle(project);
   project.render(); await settle(project);
@@ -632,8 +638,8 @@ test('stale pin: moving a typed-and-merged-down letter away leaves it showing at
   project.mergeDown(); // Exactly: A pinned on the base
   await settle(project);
   // Select (13..14, 8) on the Base layer and drag it two cells down; then a block from elsewhere over (14, 8)
-  project.floatSelection({ c0: 14, r0: 8, c1: 14, r1: 8 }, { base: true, edit: false }, 0, 2);
-  const block = project.copySelection({ c0: 30, r0: 3, c1: 30, r1: 3 }, { base: true, edit: false });
+  project.floatSelection({ c0: 14, r0: 8, c1: 14, r1: 8 }, ['base'], 0, 2);
+  const block = project.copySelection({ c0: 30, r0: 3, c1: 30, r1: 3 }, ['base']);
   project.pasteSelection(block, 14, 8);
   await settle(project);
   expect(project.cells[8 * 40 + 14].char).not.toBe('A');

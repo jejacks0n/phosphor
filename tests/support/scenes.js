@@ -17,7 +17,7 @@ export async function drawnDocument(project, workspace, { cols = 60, rows = 60, 
   project.beginEdit();
   project.eraseBase([{ col: 15, row: 9 }]);
   project.commitEdit();
-  if (clipboard) workspace.clipboard = project.copySelection({ c0: 10, r0: 6, c1: 25, r1: 12 }, { base: true, edit: true });
+  if (clipboard) workspace.clipboard = project.copySelection({ c0: 10, r0: 6, c1: 25, r1: 12 }, ['base', 'edit']);
   project.render(); // an erased cell's pin shows only after a full render
   await settle(project);
 }

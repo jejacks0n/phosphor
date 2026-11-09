@@ -16,6 +16,7 @@ import { snapCursor } from '@/document/wideChars';
 import { isArtFile } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { withShape } from '@/document/shapes.js';
+import { pickedFrom } from '@/store/project/reading.js';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -111,17 +112,11 @@ function pickAt(pos, event) {
   if (!at) return;
   const cell = snapCursor(projectStore.cells, projectStore.cols, at, 0); // a wide character's trail: its lead's colors
   const under = projectStore.underlyingAt(cell.col, cell.row);
-  const entry = projectStore.editCellAt(cell.col, cell.row);
+  const { fgFrom, bgFrom, ownBg } = pickedFrom(projectStore, cell.col, cell.row);
   // Color ASCII never shows a generated background: only an edit cell's is real.
-  const bg = projectStore.renderStyle === 'colorAscii' && !entry?.bg ? null : under.bg;
-  // For the status bar: what this pick read, and which layer each color came from (paint and edit
-  // cells are the edit layer; the rest is the base).
-  const fromEdit = (y, attr) => !!projectStore.paintLayer?.colorAt(cell.col, y) || entry?.[attr] !== undefined;
-  workspaceStore.lastPick = {
-    col: cell.col, row: cell.row, fg: under.fg, bg,
-    fgFrom: fromEdit(2 * cell.row + 1, 'fg') ? 'edit' : 'base',
-    bgFrom: fromEdit(2 * cell.row, 'bg') ? 'edit' : 'base',
-  };
+  const bg = projectStore.renderStyle === 'colorAscii' && !ownBg ? null : under.bg;
+  // For the status bar: what this pick read, and which layer each color came from.
+  workspaceStore.lastPick = { col: cell.col, row: cell.row, fg: under.fg, bg, fgFrom, bgFrom };
   if (mode === 'fg' || mode === 'both') workspaceStore.pickColor('fg', under.fg);
   if (mode === 'bg' || mode === 'both') workspaceStore.pickColor('bg', bg);
 }

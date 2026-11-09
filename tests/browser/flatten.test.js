@@ -60,6 +60,17 @@ test('edit puts the grid on the edit layer over a black base', async () => {
   expect(project.baseRecords.pins.size).toBe(0);
 });
 
+test('with the base picked, edit puts the grid on the topmost cells layer, picked', async () => {
+  const { project, workspace } = await drawing();
+  workspace.pickLayer('base');
+  expect(project.editId).toBe('base');
+  expect(await project.flattenDrawing({ layer: 'edit' })).toBe(true);
+  await settle(project);
+  expect(workspace.pickedLayer).toBe('edit');
+  expect(project.cellsOf('edit').size).toBe(project.cols * charRowsOf(project.rows));
+  expect(project.baseRecords.pins.size).toBe(0);
+});
+
 test('base stamps the grid onto the base, every character pinned', async () => {
   const { project } = await drawing();
   await project.flattenDrawing({ layer: 'base' });

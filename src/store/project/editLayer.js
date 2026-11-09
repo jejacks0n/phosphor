@@ -1,21 +1,24 @@
 // The edit layer: painting and erasing paint, edit cells, typing (with the terminal's rules for wide
 // characters), flipping a cell's colors, and clearing the layer. Owns _typingNow (a keystroke is
-// being applied) and _typingTimer (the pause that ends a typing run).
+// being applied) and _typingTimer (the pause that ends a typing run). With the base picked (onBottom)
+// it all goes on the base: a cell written as it then shows (completeAt, writeBaseCells), paint as base
+// pixels, and typing overwrites (a row of pins and pixels doesn't shift).
 import { cellKey, withCellEdit, mergeEntry, withoutCells, shiftRow } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { EMPTY_STATE } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { cellIndex, bakedEntry, cellsOfPixels } from '@/lib/Cells.js';
+import { cellIndex, cellsOfPixels } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, bytesHeld, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, onBottom, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
 
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100, stack = false) {
     if (!pixels.length || !this.renderer.outputCanvas || refusedNoCells(this, { toast: false })) return; // no cells layer has the fields
+    if (onBottom(this)) return this.paintBasePixels(pixels, opacity, stack);
     this.ensureLayer();
     this.beginEdit();
     this.noteDrawn(pixels);
@@ -43,6 +46,7 @@ export const editLayerActions = {
 
   eraseEditPixels(pixels) {
     if (!pixels.length || !this.renderer.outputCanvas || refusedNoCells(this, { toast: false })) return;
+    if (onBottom(this)) return this.eraseBasePixels(pixels);
     this.ensureLayer();
     this.beginEdit();
     this.paintLayer.erase(pixels);
@@ -54,6 +58,7 @@ export const editLayerActions = {
   // the paint in that cell, so the edit shows (the last edit to a cell wins).
   editCell(col, row, attrs, { clearPaint = false } = {}) {
     if (refusedNoCells(this, { toast: false })) return;
+    if (onBottom(this)) return writeOnBottom(this, [{ col, row, attrs }]);
     this.ensureLayer();
     this.beginEdit();
     const pixels = [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }], erased = clearPaint && this.cellHasPaint(col, row);
@@ -70,6 +75,7 @@ export const editLayerActions = {
     const width = cellWidth(char);
     if (refusedNoCells(this, { toast: false })) return null; // no cells layer to type on (typeLines says so)
     if (width === 2 && col === this.cols - 1) return false;
+    insert &&= !onBottom(this);
     this.typing(() => {
       if (insert) this.shiftCells(row, col, width);
       this.writeAt(col, row, { char, ...attrs });
@@ -89,6 +95,7 @@ export const editLayerActions = {
     if (col < 1) return 0;
     const target = this.cells[cellIndex(col - 1, row, this.cols)]?.wide === 'trail' ? col - 2 : col - 1;
     const k = col - target;
+    insert &&= !onBottom(this);
     this.typing(() => {
       if (insert) this.shiftCells(row, col, -k);
       else this.writeAt(target, row, { char: ' ', ...attrs });
@@ -122,8 +129,9 @@ export const editLayerActions = {
     }, TYPING_PAUSE_MS);
   },
 
-  // Move a row's edit cells (insert/delete); paint stays where it is.
+  // Move a row's edit cells (insert/delete); paint stays where it is. Not on the base.
   shiftCells(row, fromCol, delta) {
+    if (onBottom(this)) return;
     const next = shiftRow(this.editCells, row, fromCol, delta, this.cols);
     if (next === this.editCells) return;
     this.setEditCells(next, Array.from({ length: this.cols }, (_, col) => cellKey(col, row)));
@@ -132,9 +140,11 @@ export const editLayerActions = {
   },
 
   // A whole entry for a cell as the cell layer shows it: its own attributes, the rest frozen from
-  // the image the way the render style shows it (bakedEntry). Paint isn't part of it; it stays put.
-  completeAt(col, row, entry) {
-    return { ...bakedEntry(this.renderStyle, this.baseCellAt(col, row)), ...entry };
+  // what shows under it the way the render style shows it: the base (bakedEntry) with the shown
+  // cells layers below (below: the layer it's for, the one in use unless said) over it (reading.js:
+  // lookUnder). Its own paint isn't part of it; it stays put.
+  completeAt(col, row, entry, below = this.editId) {
+    return { ...this.lookUnder(col, row, below), ...entry };
   },
 
   // Many cell edits at once ([{ col, row, attrs }], e.g. a shape): one Map copy, one paint erase.
@@ -145,6 +155,7 @@ export const editLayerActions = {
   // caller commits it.
   writeEditCells(list, { clearPaint = false } = {}) {
     if (!list.length || refusedNoCells(this, { toast: false })) return;
+    if (onBottom(this)) return writeOnBottom(this, list);
     this.ensureLayer();
     this.beginEdit();
     const blanks = overwritesAll(this.cells, this.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));
@@ -171,6 +182,7 @@ export const editLayerActions = {
 
   // Remove edit cells so the image shows through.
   clearEditCells(cells) {
+    if (onBottom(this)) return this.eraseBase(cells);
     const next = withoutCells(this.editCells, cells);
     if (next === this.editCells || refusedNoCells(this, { toast: false })) return;
     this.ensureLayer();
@@ -180,26 +192,20 @@ export const editLayerActions = {
     this.recomposeEdit(pixels);
   },
 
-  // Flip a cell's colors on the chosen layers. Edit: the paint (as it shows) or the edit cell's
-  // own colors; a cell with neither gets the flip as paint, unless the base is flipping it. Base:
-  // the base's two halves. The edit side goes first, while the cell still shows unflipped.
-  flipCell(col, row, layers = { base: false, edit: true }) {
+  // Flip a cell's colors on the layer in use: the paint (as it shows) or the edit cell's own colors;
+  // a cell with neither gets the flip as paint. On the base, its two halves.
+  flipCell(col, row) {
     if (!this.cells[cellIndex(col, row, this.cols)]) return;
-    const { base = false, edit = true } = this.layersFor(layers);
-    if (edit) {
-      if (this.editCellAt(col, row) && !this.cellHasPaint(col, row)) {
-        const { fg, bg } = this.underlyingAt(col, row, { evenHidden: true });
-        this.editCell(col, row, { fg: bg, bg: fg });
-      } else if (this.cellHasPaint(col, row) || !base) {
-        this.flipPaint(col, row);
-      }
-    }
-    if (base) this.flipBase([{ col, row }]);
+    if (this.editCellAt(col, row) && !this.cellHasPaint(col, row)) {
+      const { fg, bg } = this.underlyingAt(col, row, { evenHidden: true });
+      this.editCell(col, row, { fg: bg, bg: fg });
+    } else this.flipPaint(col, row);
   },
 
   // Swap a cell's two pixels in the paint layer, using the real colors from the output canvas
-  // (cells may be normalized, e.g. a background forced to black in ASCII mode).
+  // (cells may be normalized, e.g. a background forced to black in ASCII mode). On the base, its halves.
   flipPaint(col, row) {
+    if (onBottom(this)) return this.flipBase([{ col, row }]);
     const outputCanvas = this.renderer.outputCanvas;
     if (!outputCanvas) return;
     // Safari requires explicit sRGB to avoid color space mismatch (P3).
@@ -245,3 +251,12 @@ export const editLayerActions = {
     this.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(before.paintLayer, before.editCells));
   },
 };
+
+// Cells written on the base ([{ col, row, attrs }], attrs as writeEditCells takes them: undefined keeps, null clears):
+// each as it then shows, its own attributes over the base's look (completeAt), its character pinned; the half of a wide
+// character one breaks becomes a space, as on a cells layer.
+function writeOnBottom(project, list) {
+  const own = (attrs) => Object.fromEntries(Object.entries(attrs).filter(([, value]) => value != null));
+  const blanks = overwritesAll(project.cells, project.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));
+  project.writeBaseCells([...list, ...blanks.map((cell) => ({ ...cell, attrs: { char: ' ' } }))].map(({ col, row, attrs }) => ({ col, row, ...project.completeAt(col, row, own(attrs)) })));
+}

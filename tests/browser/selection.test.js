@@ -2,9 +2,10 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
+import { rectShape } from '@/document/shapes.js';
 
 const COLS = 30, ATTRS = { fg: '#ffffff', bg: '#000000' };
-const LAYERS = { base: true, edit: true };
+const LAYERS = ['base', 'edit'];
 
 async function scene() {
   const { project, workspace } = await createTestApp();
@@ -36,7 +37,7 @@ test('a block pasted just right of a wide character shows its first column (the 
   const { project } = await scene();
   project.typeAt(10, 3, 'Z', ATTRS);
   project.commitEdit();
-  const block = project.copySelection({ c0: 10, r0: 3, c1: 10, r1: 3 }, { base: false, edit: true });
+  const block = project.copySelection({ c0: 10, r0: 3, c1: 10, r1: 3 }, ['edit']);
   project.typeAt(4, 3, '漢', ATTRS); // lead 4, trail 5
   project.commitEdit();
   expect(cell(project, 5, 3).wide).toBe('trail');
@@ -143,7 +144,7 @@ test('moving a wide character one column right leaves nothing behind where it wa
   const before = cell(project, 4, 3).char;
   project.typeAt(4, 3, '漢', ATTRS); // lead 4, trail 5
   project.commitEdit();
-  project.floatSelection({ c0: 4, r0: 3, c1: 5, r1: 3 }, { base: false, edit: true }, 1, 0);
+  project.floatSelection({ c0: 4, r0: 3, c1: 5, r1: 3 }, ['edit'], 1, 0);
   project.render(); await settle(project);
   expect(cell(project, 5, 3).char).toBe('漢');
   expect(cell(project, 4, 3).char).toBe(before); // the converter's own character, not a space
@@ -151,7 +152,7 @@ test('moving a wide character one column right leaves nothing behind where it wa
 
 test('stamp leaves a copy and floats the block on; undo takes back only the last move, and the selection goes back to the copy', async () => {
   const { project, workspace } = await scene();
-  const EDIT = { base: false, edit: true };
+  const EDIT = ['edit'];
   project.typeAt(5, 5, 'A', ATTRS);
   project.commitEdit();
   workspace.selectAll({ c0: 5, r0: 5, c1: 5, r1: 5 });
@@ -186,7 +187,7 @@ test('Delete on a moved block takes away the block, not what it covered; one und
 
 test('Delete on a stamped block that moved on leaves the stamped copy', async () => {
   const { project, workspace } = await scene();
-  const EDIT = { base: false, edit: true };
+  const EDIT = ['edit'];
   project.typeAt(5, 5, 'A', ATTRS);
   project.commitEdit();
   workspace.selectAll({ c0: 5, r0: 5, c1: 5, r1: 5 });
@@ -202,7 +203,7 @@ test('Delete on a stamped block that moved on leaves the stamped copy', async ()
 
 // A block's empty cells (no edit cell, no paint) are see-through: what's on the edit layer where it lands shows
 // through them, as it moves and once it's set down.
-const EDIT = { base: false, edit: true };
+const EDIT = ['edit'];
 const seen = (project, col, row) => JSON.stringify(cell(project, col, row));
 
 test("a moved block's empty cells don't cover the edit cells it passes over, and they come back after it", async () => {
@@ -334,4 +335,75 @@ test('choosing Edit Mode clears the selection and the Magic Wand, an undo step',
   expect(workspace.selection).toBe(null);
   project.undo();
   expect(workspace.selection).toEqual({ c0: 1, r0: 1, c1: 3, r1: 3 });
+});
+
+// Every shown cells layer is in a selection; the shapes are in Copy as the cells they show, and stay whole otherwise.
+async function stack() {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 30, rows: 20 }); // 30 x 10 cells
+  await settle(project);
+  project.beginEdit();
+  project.writeBaseCells([{ col: 1, row: 1, char: 'P', fg: '#ff0000', bg: '#0000aa' }]);
+  project.commitEdit();
+  project.typeAt(2, 1, 'E', ATTRS);
+  project.typeAt(3, 2, 'e', { fg: '#ffff00' }); // only FG: over what shows
+  project.commitEdit();
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(4, 2, 7, 7, { fill: '#00ff00' }));
+  project.commitEdit();
+  const top = project.addLayer('cells', vector);
+  workspace.editorTab = 'output';
+  workspace.pickLayer(top);
+  await settle(project);
+  return { project, workspace, vector, top, rect: { c0: 1, r0: 1, c1: 8, r1: 4 } };
+}
+const looks = (project, { c0, r0, c1, r1 }, dc = 0) => {
+  const out = [];
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+    const { char, fg, bg } = cell(project, c + dc, r);
+    out.push(`${char}${fg.hex}${bg.hex}`);
+  }
+  return out;
+};
+
+test('Copy takes what shapes show; paste onto Layer 2 shows it', async () => {
+  const { project, workspace, top, rect } = await stack();
+  const shown = looks(project, rect);
+  const block = project.copySelection(rect, workspace.selectionIds);
+  expect(block.parts.map((part) => part.id)).toEqual(['edit', top]);
+  expect(block.base.pins).toContain('P');
+  expect(block.shown.some(Boolean)).toBe(true);
+  project.pasteSelection(block, rect.c0 + 15, rect.r0);
+  project.render(); await settle(project);
+  expect(project.cellsOf(top).size).toBeGreaterThan(0); // on the layer picked
+  expect(looks(project, rect, 15)).toEqual(shown);
+});
+
+test('Cut leaves the shape whole', async () => {
+  const { project, workspace, top, rect } = await stack();
+  project.typeAt(5, 2, 'T', ATTRS);
+  project.commitEdit();
+  const shapes = project.shapes;
+  project.deleteSelection(rect, workspace.selectionIds);
+  expect(project.shapes).toBe(shapes);
+  expect(project.cellsOf('edit').size).toBe(0);
+  expect(project.cellsOf(top).size).toBe(0);
+  expect(project.baseRecords.pins.get('1,1')).toBe(' ');
+});
+
+test('a hidden layer is left out of Copy, Cut and moves', async () => {
+  const { project, workspace, top, rect } = await stack();
+  project.typeAt(5, 2, 'T', ATTRS);
+  project.commitEdit();
+  project.setLayerHidden('edit', true);
+  expect(workspace.selectionIds).toEqual(['base', top]);
+  const block = project.copySelection(rect, workspace.selectionIds);
+  expect(block.parts.map((part) => part.id)).toEqual([top]);
+  project.moveSelection(rect, workspace.selectionIds, 0, 4);
+  expect([...project.cellsOf('edit').keys()].sort()).toEqual(['2,1', '3,2']); // left where it was
+  expect([...project.cellsOf(top).keys()]).toEqual(['5,6']);
+  project.deleteSelection({ ...rect, r0: 5, r1: 8 }, workspace.selectionIds);
+  expect(project.cellsOf(top).size).toBe(0);
+  expect([...project.cellsOf('edit').keys()].sort()).toEqual(['2,1', '3,2']);
 });

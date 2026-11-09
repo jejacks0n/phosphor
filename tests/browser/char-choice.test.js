@@ -223,7 +223,7 @@ test('the base under the paint stays snapped through partial edits, as a full re
   p.beginEdit();
   p.eraseBase([{ col: 5, row: 5 }]);
   p.commitEdit();
-  p.moveSelection({ c0: 2, r0: 2, c1: 8, r1: 5 }, { base: true, edit: true }, 4, 6);
+  p.moveSelection({ c0: 2, r0: 2, c1: 8, r1: 5 }, ['base', 'edit'], 4, 6);
   const partial = Array.from(p.renderer.basePixels.data);
   p.renderer.reset();
   p.render();
@@ -308,7 +308,7 @@ test('By shape samples the base layer\'s own pixels, not their average in the gr
   black(30, 15); // so the base keeps pixels of its own through the undos below
   black(0, 3);
   expect(at(0, 3)).toBe('█#000000#000000');
-  p.moveSelection({ c0: 0, r0: 0, c1: 1, r1: 0 }, { base: true, edit: true }, 0, 3); // the stripes' pixels, over the black
+  p.moveSelection({ c0: 0, r0: 0, c1: 1, r1: 0 }, ['base', 'edit'], 0, 3); // the stripes' pixels, over the black
   expect([at(0, 3), at(1, 3)]).toEqual(['▌#ffffff#000000', '▌#ffffff#000000']);
   expect(key(p.cells)).toEqual(key(fullRebuild(p)));
   const partial = key(p.cells);

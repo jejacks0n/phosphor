@@ -11,8 +11,6 @@ import { isField } from '@/lib/fields';
 import { usePlayback } from '@/composables/usePlayback';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
-import { toast } from '@/composables/useToast';
-import { t } from '@/i18n';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // The pair's swap: on VECTOR, the shapes' Fill and Stroke trade places.
@@ -171,7 +169,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       e.preventDefault();
       return true;
     }
-    const sel = workspaceStore.selection, layers = workspaceStore.selectionLayers;
+    const sel = workspaceStore.selection, layers = workspaceStore.selectionIds;
     const selecting = workspaceStore.activeTool === 'select' && sel;
     const command = e.metaKey || e.ctrlKey;
     if (!command) {
@@ -243,7 +241,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (!wand || e.defaultPrevented || isField(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
     if (workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false; // the palette has the keys; mid-drag, the drag's end decides
     if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
-    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectionLayers);
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectionIds);
     else return false;
     e.preventDefault();
     return true;
@@ -268,15 +266,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
     if (workspaceStore.isPainting || workspaceStore.heldTool || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
     const key = e.key.toUpperCase();
-    const onBase = workspaceStore.toolLayers.base, find = (base) => offeredTools(workspaceStore.editorTab, projectStore, base).find(({ keys }) => keys?.includes(key));
-    const tool = find(onBase);
-    // With the base picked, a tool the view has but the base hasn't draws on the edit layer: say so, rather than nothing.
-    const elsewhere = !tool && onBase && find(false);
-    if (elsewhere) {
-      e.preventDefault();
-      toast(t('layers.toolOnLayer', { tool: elsewhere.title, layer: projectStore.layerById('edit')?.name ?? t('layers.editDefault', { n: projectStore.layerById('edit')?.n ?? 1 }) }));
-      return true;
-    }
+    const tool = offeredTools(workspaceStore.editorTab, projectStore).find(({ keys }) => keys?.includes(key));
     if (!tool) return false;
     e.preventDefault();
     workspaceStore.setActiveTool(tool.id);

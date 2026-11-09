@@ -27,9 +27,9 @@ test('on Base, Set BG gives the top pixel of every cell in the selection your co
   const { project, wandOf, halves } = await scene();
   const wand = wandOf('output', [[2, 2], [5, 3]]);
   const before = [halves(2, 2), halves(5, 3), halves(3, 2)];
-  project.recolorSelection(wand, 'output', { base: true, edit: false }, { bg: PINK });
+  project.recolorSelection(wand, 'output', ['base'], { bg: PINK });
   expect([halves(2, 2), halves(5, 3), halves(3, 2)]).toEqual([[PINK, before[0][1]], [PINK, before[1][1]], before[2]]);
-  project.recolorSelection(wand, 'output', { base: true, edit: false }, { fg: TEAL });
+  project.recolorSelection(wand, 'output', ['base'], { fg: TEAL });
   expect([halves(2, 2), halves(5, 3)]).toEqual([[PINK, TEAL], [PINK, TEAL]]);
   expect(project.editCellAt(2, 2)).toBe(undefined); // the edit layer is left alone
   project.undo();
@@ -43,7 +43,7 @@ test('on Edit, the cells in the selection take the color as edit cells, keeping 
   project.typeAt(2, 2, 'a', { fg: '#ffffff', bg: '#000000' });
   project.commitEdit();
   const base = halves(2, 2);
-  project.recolorSelection(wandOf('output', [[2, 2], [3, 2]]), 'output', { base: false, edit: true }, { fg: PINK });
+  project.recolorSelection(wandOf('output', [[2, 2], [3, 2]]), 'output', ['edit'], { fg: PINK });
   expect(project.editCellAt(2, 2)).toMatchObject({ char: 'a', fg: PINK, bg: '#000000' });
   expect(project.editCellAt(3, 2)).toMatchObject({ fg: PINK });
   expect(project.editCellAt(4, 2)).toBe(undefined);
@@ -53,7 +53,7 @@ test('on Edit, the cells in the selection take the color as edit cells, keeping 
 test('a Select rectangle works the same: every cell in it', async () => {
   const { project, halves } = await scene();
   const outside = halves(4, 1);
-  project.recolorSelection({ c0: 1, r0: 1, c1: 3, r1: 2 }, 'output', { base: true, edit: false }, { bg: PINK });
+  project.recolorSelection({ c0: 1, r0: 1, c1: 3, r1: 2 }, 'output', ['base'], { bg: PINK });
   expect([1, 2, 3].flatMap((c) => [1, 2].map((r) => halves(c, r)[0]))).toEqual(Array(6).fill(PINK));
   expect(halves(4, 1)).toEqual(outside);
 });
@@ -63,20 +63,20 @@ test('in the pixel view, Fill paints each pixel in the selection: the picture on
   workspace.editorTab = 'input';
   const wand = wandOf('input', [[3, 3], [4, 7]]);
   const beside = project.baseColorAt(3, 4);
-  project.recolorSelection(wand, 'input', { base: true, edit: false }, { fg: PINK });
+  project.recolorSelection(wand, 'input', ['base'], { fg: PINK });
   expect([project.baseColorAt(3, 3), project.baseColorAt(4, 7), project.baseColorAt(3, 4)]).toEqual([PINK, PINK, beside]);
   expect(project.hasPaint).toBe(false);
-  project.recolorSelection(wand, 'input', { base: false, edit: true }, { fg: TEAL });
+  project.recolorSelection(wand, 'input', ['edit'], { fg: TEAL });
   expect([project.rawColorAt(3, 3), project.rawColorAt(4, 7), project.baseColorAt(3, 3)]).toEqual([TEAL, TEAL, PINK]);
   // A rectangle in the pixel view is its cells' pixels.
-  project.recolorSelection({ c0: 8, r0: 1, c1: 8, r1: 1 }, 'input', { base: true, edit: false }, { fg: PINK });
+  project.recolorSelection({ c0: 8, r0: 1, c1: 8, r1: 1 }, 'input', ['base'], { fg: PINK });
   expect([project.baseColorAt(8, 2), project.baseColorAt(8, 3), project.baseColorAt(8, 4)].map((c) => c === PINK)).toEqual([true, true, false]);
 });
 
 test('in the ASCII styles, where a cell shows its pixels’ average on black, Set FG gives both of its pixels your color', async () => {
   const { project, wandOf, halves } = await scene();
   project.renderStyle = 'colorAscii';
-  project.recolorSelection(wandOf('output', [[2, 2]]), 'output', { base: true, edit: false }, { fg: PINK });
+  project.recolorSelection(wandOf('output', [[2, 2]]), 'output', ['base'], { fg: PINK });
   expect(halves(2, 2)).toEqual([PINK, PINK]);
 });
 
@@ -98,7 +98,7 @@ const shownIn = (project, { c0, r0, c1, r1 }) => {
 };
 const PINK_IN_CGA = '#ff55ff'; // pink with the contrast moved, on CGA
 
-for (const layers of [{ base: true, edit: false }, { base: false, edit: true }, { base: true, edit: true }]) {
+for (const layers of [['base'], ['edit'], ['base', 'edit']]) {
   for (const which of ['fg', 'bg']) {
     test(`Set ${which.toUpperCase()} (${JSON.stringify(layers)}) changes only that color of what each cell shows`, async () => {
       const project = await photo();
@@ -116,7 +116,7 @@ test('with both layers lit, a cell with an edit of its own is recolored there; t
   project.typeAt(4, 4, 'S', { fg: '#ffffff', bg: '#0000aa' });
   project.commitEdit();
   const base = [project.baseColorAt(4, 8), project.baseColorAt(4, 9)];
-  project.recolorSelection(RECT, 'output', { base: true, edit: true }, { fg: PINK });
+  project.recolorSelection(RECT, 'output', ['base', 'edit'], { fg: PINK });
   expect(project.editCellAt(4, 4)).toEqual({ char: 'S', fg: PINK, bg: '#0000aa' });
   expect([project.baseColorAt(4, 8), project.baseColorAt(4, 9)]).toEqual(base);
   expect(project.editCellAt(5, 4)).toBe(undefined); // no edit of its own: its base is recolored
@@ -129,7 +129,7 @@ test('paint on a cell keeps showing as the color it gave that half', async () =>
   project.render();
   await settle(project);
   const cell = { c0: 6, r0: 5, c1: 6, r1: 5 }, [before] = shownIn(project, cell);
-  project.recolorSelection(cell, 'output', { base: true, edit: true }, { fg: PINK });
+  project.recolorSelection(cell, 'output', ['base', 'edit'], { fg: PINK });
   project.render();
   await settle(project);
   expect(shownIn(project, cell)).toEqual([{ ...before, fg: PINK_IN_CGA }]);

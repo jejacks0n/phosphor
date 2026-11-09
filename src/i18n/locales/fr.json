@@ -355,8 +355,7 @@
     "hiddenToast": "Affichez le calque pour dessiner dessus",
     "hiddenMergeToast": "Affichez le calque pour le fusionner",
     "noCellsLayer": "Ajoutez un calque pour y dessiner.",
-    "notInRoom": "Ajouter, supprimer et déplacer des calques n'est pas encore possible dans une salle en direct.",
-    "toolOnLayer": "{tool} dessine sur {layer}. Choisissez-le dans Calques."
+    "notInRoom": "Ajouter, supprimer et déplacer des calques n'est pas encore possible dans une salle en direct."
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",
@@ -874,6 +873,8 @@
     "artAddWhere": "Il arrive là où vous l'avez déposé, sur le calque d'édition, à faire glisser en place.",
     "artAddTopLeft": "Il arrive en haut à gauche de la vue, sur le calque d'édition, à faire glisser en place.",
     "svgAddText": "En formes sur VECTOR, dans l'image affichée, ajustées au canevas et sélectionnées.",
+    "pictureAddText": "L'ajouter à {name} comme peinture, ajustée au canevas.",
+    "pictureAddNew": "L'ajouter comme nouveau calque, ajusté au canevas.",
     "artOpen": "Ouvrir à la place",
     "artOpenText": "À la place de ce dessin.",
     "artOpenTitle": "Ouvrir {name} ?",

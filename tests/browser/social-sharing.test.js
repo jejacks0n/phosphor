@@ -408,7 +408,7 @@ test('another\'s change under my floating selection survives placing it', async 
     const { project, workspace } = await drawing('host');
     project.editCell(1, 1, { char: 'A' });
     project.commitEdit();
-    const layers = { base: false, edit: true };
+    const layers = ['edit'];
     let rect = { c0: 1, r0: 1, c1: 1, r1: 1 };
     rect = project.floatSelection(rect, layers, 2, 0); // over 3,1
     workspace.selection = rect;
@@ -431,7 +431,7 @@ test('another\'s change under my floating selection survives placing it', async 
   project.commitEdit();
   project.applyNumbered(echo(changes(sent)[0]));
   sent.length = 0;
-  const layers = { base: false, edit: true };
+  const layers = ['edit'];
   let rect = { c0: 1, r0: 1, c1: 1, r1: 1 };
   rect = project.floatSelection(rect, layers, 2, 0); // over 3,1
   workspace.selection = rect;
@@ -471,7 +471,7 @@ test('an artist\'s float back where it started leaves nothing to send, and redo 
   project.commitEdit();
   project.applyNumbered(echo(changes(sent)[0]));
   sent.length = 0;
-  const layers = { base: false, edit: true };
+  const layers = ['edit'];
   const start = { c0: 1, r0: 1, c1: 1, r1: 1 };
   const moved = project.floatSelection(start, layers, 2, 0);
   project.floatSelection(moved, layers, -2, 0);
@@ -495,7 +495,7 @@ test('an artist\'s Stamp then a move leaves the copy where it was, as it does al
     project.editCell(1, 1, { char: 'A' });
     project.commitEdit();
     sent.length = 0;
-    const rect = { c0: 1, r0: 1, c1: 1, r1: 1 }, layers = { base: false, edit: true };
+    const rect = { c0: 1, r0: 1, c1: 1, r1: 1 }, layers = ['edit'];
     const stamped = project.stampSelection(rect, layers);
     project.floatSelection(stamped, layers, 2, 0);
     expect([role, ...inks(project, '1,1', '3,1')]).toEqual([role, 'A', 'A']);
@@ -514,7 +514,7 @@ test('an artist\'s Stamp then Delete takes away the block, not the original', as
     project.editCell(1, 1, { char: 'A' });
     project.commitEdit();
     sent.length = 0;
-    const layers = { base: false, edit: true };
+    const layers = ['edit'];
     const stamped = project.stampSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers);
     project.deleteSelection(stamped, layers);
     expect([role, ...inks(project, '1,1')]).toEqual([role, 'A']);
@@ -528,7 +528,7 @@ test('an artist\'s paste onto the same content, then a move, leaves what was the
   project.editCell(1, 1, { char: 'A' });
   project.commitEdit();
   sent.length = 0;
-  const layers = { base: false, edit: true };
+  const layers = ['edit'];
   const block = project.copySelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers);
   const pasted = project.pasteSelection(block, 1, 1);
   project.floatSelection(pasted, layers, 4, 0);
@@ -541,7 +541,7 @@ test('Stamp, a save, then a move still leaves the copy: nothing had gone out', a
   project.editCell(1, 1, { char: 'A' });
   project.commitEdit();
   sent.length = 0;
-  const layers = { base: false, edit: true };
+  const layers = ['edit'];
   const stamped = project.stampSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers);
   project.commitPending();
   project.floatSelection(stamped, layers, 2, 0);
@@ -612,7 +612,7 @@ test('an artist\'s float that has gone out starts a new run, since it can\'t be 
   project.commitEdit();
   project.applyNumbered(echo(changes(sent)[0]));
   sent.length = 0;
-  const layers = { base: false, edit: true };
+  const layers = ['edit'];
   const moved = project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers, 2, 0);
   project.commitPending(); // a save, say: it goes out
   expect(changes(sent).length).toBe(1);
@@ -629,7 +629,7 @@ test('an artist\'s block left where it is goes out once it\'s been still a while
   project.applyNumbered(echo(changes(sent)[0]));
   sent.length = 0;
   vi.useFakeTimers();
-  const layers = { base: false, edit: true };
+  const layers = ['edit'];
   let rect = project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers, 1, 0);
   vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
   rect = project.floatSelection(rect, layers, 1, 0);
@@ -656,7 +656,7 @@ test('an artist\'s block left where it is goes out once it\'s been still a while
 test('an artist\'s paste left where it is goes out too, and a nudge starts its timer over', async () => {
   const { project, sent } = await drawing('artist');
   vi.useFakeTimers();
-  const layers = { base: false, edit: true };
+  const layers = ['edit'];
   const rect = project.pasteSelection({ w: 1, h: 1, cells: [Object.freeze({ char: 'P' })] }, 2, 2);
   vi.advanceTimersByTime(HELD_FLOAT_MS - 1);
   expect(changes(sent)).toEqual([]);
@@ -677,7 +677,7 @@ test('a block placed or undone before its time sends what it does now, and the t
   project.applyNumbered(echo(changes(sent)[0]));
   sent.length = 0;
   vi.useFakeTimers();
-  const layers = { base: false, edit: true };
+  const layers = ['edit'];
   const rect = project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, layers, 2, 0);
   project.commitPending();
   expect(changes(sent).length).toBe(1);
@@ -699,7 +699,7 @@ test('a block\'s timer doesn\'t fire once the room\'s gone or the person went ba
   project.commitEdit();
   project.applyNumbered(echo(changes(sent)[0]));
   vi.useFakeTimers();
-  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 2, 0);
+  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, ['edit'], 2, 0);
   const send = vi.spyOn(project, 'sendHeld');
   project.stopSharing();
   send.mockClear();
@@ -715,7 +715,7 @@ test('a host\'s float isn\'t held, so it has no timer to wait for', async () => 
   project.commitEdit();
   sent.length = 0;
   vi.useFakeTimers();
-  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 2, 0);
+  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, ['edit'], 2, 0);
   const out = sent.length;
   expect(out).toBeGreaterThan(0);
   vi.advanceTimersByTime(HELD_FLOAT_MS);
@@ -727,7 +727,7 @@ test('an edit after an artist\'s float sends the float first, and undo then asks
   project.editCell(1, 1, { char: 'A' });
   project.commitEdit();
   sent.length = 0;
-  const moved = project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 2, 0);
+  const moved = project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, ['edit'], 2, 0);
   expect(moved).toBeTruthy();
   project.editCell(9, 9, { char: 'B' });
   project.commitEdit();
@@ -832,7 +832,7 @@ test('stopping sends what\'s still open or held first', async () => {
   project.editCell(1, 1, { char: 'A' });
   project.commitEdit();
   sent.length = 0;
-  const moved = project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 2, 0);
+  const moved = project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, ['edit'], 2, 0);
   expect(moved).toBeTruthy();
   project.typeAt(9, 9, 'B', INK);
   project.stopSharing();
@@ -883,7 +883,7 @@ test('an artist\'s Merge, Bake, slider, Clear and base paste do nothing', async 
   project.resetSliders();
   project.resetGroup('adjust');
   project.clearEditLayer();
-  const block = project.copySelection({ c0: 1, r0: 1, c1: 2, r1: 2 }, { base: true, edit: false });
+  const block = project.copySelection({ c0: 1, r0: 1, c1: 2, r1: 2 }, ['base']);
   expect(block.base).toBeTruthy(); // copying the base is a read
   const pins = project.baseRecords;
   project.eraseBase([{ col: 8, row: 8 }]);
@@ -969,9 +969,10 @@ test('an artist\'s selection and flip act on the drawing, whatever layer is pick
   const { project, workspace } = await drawing('artist');
   project.editCell(3, 3, { char: 'A', fg: '#ffffff', bg: '#000000' });
   project.commitEdit();
-  const baseOnly = { base: true, edit: false };
+  const baseOnly = workspace.selectionIds; // the base among them
+  expect(baseOnly).toEqual(['base', 'edit']);
 
-  // Select tool with the base picked: moving and deleting still take the drawing, never the picture.
+  // Select tool: moving and deleting take the drawing, never the picture.
   const moved = project.floatSelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, baseOnly, 2, 0);
   expect(char(project, 5, 3)).toBe('A');
   project.deleteSelection(moved, baseOnly);
@@ -1008,7 +1009,7 @@ test('while paused, drawing does nothing and changes heard still land', async ()
   project.undo();
   project.redo();
   const refused = { c0: 1, r0: 1, c1: 1, r1: 1 };
-  expect(project.floatSelection(refused, { base: false, edit: true }, 2, 0)).toBe(undefined); // callers keep the selection they had
+  expect(project.floatSelection(refused, ['edit'], 2, 0)).toBe(undefined); // callers keep the selection they had
   expect(project.backspaceAt(2, 1, INK)).toBe(undefined);
   project.clearEditLayer();
   expect(project.editCells).toBe(before);
@@ -1261,7 +1262,7 @@ test('a float still held isn\'t sent by a resend: it goes when it\'s placed', as
   project.typeAt(3, 3, 'x');
   project.commitPending();
   const typed = sent.at(-1);
-  project.floatSelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, { base: false, edit: true }, 1, 0);
+  project.floatSelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, ['edit'], 1, 0);
   expect(project._sharing.held.parts.length).toBeGreaterThan(0);
   expect(project._sharing.pending.size).toBeGreaterThan(1);
   sent.length = 0;
@@ -1310,7 +1311,7 @@ test('a block held when its artist is put back to watching goes nowhere on its t
   project.applyNumbered(echo(changes(sent)[0]));
   sent.length = 0;
   vi.useFakeTimers();
-  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 1, 0);
+  project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, ['edit'], 1, 0);
   project.dropWaiting();
   project.stopSharing();
   sent.length = 0;

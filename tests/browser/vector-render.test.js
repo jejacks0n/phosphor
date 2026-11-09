@@ -215,7 +215,7 @@ test('the eraser on the base and a selection\'s move on ANSI leave shapes as the
   project.beginEdit();
   project.eraseBase([{ col: 8, row: 4 }]);
   project.commitEdit();
-  project.moveSelection({ c0: 4, r0: 2, c1: 14, r1: 6 }, { base: true, edit: true }, 5, 3);
+  project.moveSelection({ c0: 4, r0: 2, c1: 14, r1: 6 }, ['base', 'edit'], 5, 3);
   expect(project.shapes.get(shape)).toBe(kept);
   expect(at(project, 8, 4).bg.hex).toBe('#ff0000'); // the shape still covers what was moved away
 });

@@ -4,6 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import select from '@/tools/select';
 import wand from '@/tools/wand';
+import { rectShape, shapeBounds } from '@/document/shapes.js';
 
 async function scene() {
   const { project, workspace } = await createTestApp();
@@ -71,7 +72,7 @@ test('a pasted block that was dragged: undo puts it back where it was pasted, st
   project.typeAt(3, 3, 'x', { fg: '#ff0000', bg: '#000000' });
   project.typeAt(10, 5, 'o', { fg: '#00ff00', bg: '#000000' });
   project.commitEdit();
-  const block = project.copySelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, { base: true, edit: true });
+  const block = project.copySelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, ['base', 'edit']);
   workspace.selectAll(project.pasteSelection(block, 10, 5));
   drag([10, 5], [14, 5]);
   expect(project.editCellAt(14, 5)?.char).toBe('x');
@@ -97,7 +98,7 @@ test('redo puts a pasted block back where it was dragged, floating, so it can be
   project.typeAt(3, 3, 'x', { fg: '#ff0000', bg: '#000000' });
   project.typeAt(10, 5, 'o', { fg: '#00ff00', bg: '#000000' });
   project.commitEdit();
-  const block = project.copySelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, { base: true, edit: true });
+  const block = project.copySelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, ['base', 'edit']);
   workspace.selectAll(project.pasteSelection(block, 10, 5));
   drag([10, 5], [14, 5]);
   project.undo();
@@ -133,4 +134,60 @@ test('a move undone and redone still floats: dragging on is the same move, one u
   expect(project.editCellAt(3, 3)?.char).toBe('x');
   expect(project.editCellAt(12, 3)).toBe(undefined);
   expect(workspace.selection).toEqual({ c0: 2, r0: 2, c1: 5, r1: 4 });
+});
+
+// Review Focus 4: one rect over the base's pins, the edit layer's cells, a shape and Layer 2's cells, moved: each part
+// lands on its own layer, the shape stays where it is, and one undo puts everything back.
+test('a move across three layers and a shape', async () => {
+  const { project, workspace } = await scene();
+  const WHITE = { fg: '#ffffff', bg: '#000000' };
+  project.beginEdit();
+  project.writeBaseCells([{ col: 2, row: 2, char: 'P', fg: '#ff0000', bg: '#000000' }]);
+  project.commitEdit();
+  project.typeAt(3, 3, 'E', WHITE);
+  project.commitEdit();
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(4, 4, 7, 8, { fill: '#00ff00' }));
+  project.commitEdit();
+  const top = project.addLayer('cells', vector);
+  workspace.editorTab = 'output';
+  workspace.pickLayer(top);
+  project.typeAt(4, 4, 'T', WHITE);
+  project.commitEdit();
+  const shapes = [...project.shapes.values()].map(shapeBounds);
+  const swaps = project._frameSwaps;
+  expect(workspace.selectionIds).toEqual(['base', 'edit', top]);
+  const rect = { c0: 1, r0: 1, c1: 5, r1: 5 };
+  expect(project.moveSelection(rect, workspace.selectionIds, 3, 0)).toEqual({ c0: 4, r0: 1, c1: 8, r1: 5 });
+  expect(project._frameSwaps - swaps).toBe(2); // the edit layer swapped in and out once; the base and the layer in use none
+  expect(project.baseRecords.pins.get('5,2')).toBe('P');
+  expect(project.baseRecords.pins.get('2,2')).toBe(' '); // lifted off the base
+  expect(project.cellsOf('edit').get('6,3')?.char).toBe('E');
+  expect(project.cellsOf('edit').has('3,3')).toBe(false);
+  expect(project.cellsOf(top).get('7,4')?.char).toBe('T');
+  expect(project.cellsOf(top).has('4,4')).toBe(false);
+  expect([...project.shapes.values()].map(shapeBounds)).toEqual(shapes); // the shape stays whole, where it was
+  project.undo();
+  expect(project.baseRecords.pins.get('2,2')).toBe('P');
+  expect(project.baseRecords.pins.has('5,2')).toBe(false);
+  expect([...project.cellsOf('edit').keys()]).toEqual(['3,3']);
+  expect([...project.cellsOf(top).keys()]).toEqual(['4,4']);
+});
+
+// A float is tied to the layers it lifted: picking another layer between two nudges of it doesn't move it there.
+test('a floating move stays on the layers it lifted when another layer is picked', async () => {
+  const { project, workspace } = await scene();
+  const other = project.addLayer('cells', 'edit');
+  project.typeAt(3, 3, 'x', { fg: '#ff0000', bg: '#000000' });
+  project.commitEdit();
+  const rect = { c0: 3, r0: 3, c1: 3, r1: 3 };
+  const moved = project.floatSelection(rect, workspace.selectionIds, 1, 0);
+  workspace.pickLayer(other);
+  project.floatSelection(moved, workspace.selectionIds, 1, 0);
+  expect(project.cellsOf('edit').get('5,3')?.char).toBe('x');
+  expect(project.cellsOf(other).size).toBe(0);
+  project.undo();
+  expect(project.cellsOf('edit').get('3,3')?.char).toBe('x');
+  expect(project.cellsOf(other).size).toBe(0);
 });

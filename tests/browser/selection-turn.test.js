@@ -3,10 +3,9 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
-import { turnChar } from '@/lib/TurnChars.js';
 
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
-const EDIT = { base: false, edit: true }, BOTH = { base: true, edit: true };
+const EDIT = ['edit'], BOTH = ['base', 'edit'];
 
 async function scene() {
   const { project, workspace } = await createTestApp();
@@ -82,7 +81,7 @@ test('Rotate is off while the selection holds characters, on the layers chosen; 
   const { project, type, read } = await scene();
   type(2, 2, ['AB']);
   expect(project.hasCharacters({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT)).toBe(true);
-  expect(project.hasCharacters({ c0: 2, r0: 2, c1: 3, r1: 2 }, { base: true, edit: false })).toBe(false);
+  expect(project.hasCharacters({ c0: 2, r0: 2, c1: 3, r1: 2 }, ['base'])).toBe(false);
   expect(project.turnSelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT, 'cw')).toEqual({ c0: 2, r0: 2, c1: 3, r1: 2 });
   expect(read(2, 2, 3, 2)).toEqual(['AB']);
   project.paintStroke([{ x: 6, y: 4, alpha: 1 }], '#ff0000', { blockChars: true });
@@ -91,9 +90,9 @@ test('Rotate is off while the selection holds characters, on the layers chosen; 
   expect(project.hasCharacters({ c0: 6, r0: 2, c1: 7, r1: 2 }, BOTH)).toBe(false);
 });
 
-test('the paint and the base flip with the cells; a Half-block ▄ keeps showing its paint', async () => {
+test('the paint and the base flip with the cells, each on its own layer; a Half-block ▄ keeps showing its paint', async () => {
   const { project, read } = await scene();
-  const left = project.baseColorAt(4, 8), right = project.baseColorAt(9, 8), corner = project.completeAt(9, 4);
+  const left = project.baseColorAt(4, 8), right = project.baseColorAt(9, 8);
   expect(left).not.toBe(right);
   project.paintStroke([{ x: 4, y: 8, alpha: 1 }], '#ff0000', { blockChars: true }); // the top half of cell (4, 4)
   project.commitEdit();
@@ -103,8 +102,9 @@ test('the paint and the base flip with the cells; a Half-block ▄ keeps showing
   expect(read(4, 5, 4, 5)).toEqual(['▄']);
   project.turnSelection({ c0: 4, r0: 4, c1: 9, r1: 5 }, BOTH, 'h');
   expect(project.cellHasPaint(9, 5)).toBe(true);
-  // The picture lands as edit cells, as it showed: (9, 4) flipped down then across.
-  expect(project.editCellAt(4, 5)).toEqual({ ...corner, char: turnChar(turnChar(corner.char, 'v'), 'h') });
+  // The picture flips on the base, pixel for pixel: (9, 8) flipped down then across.
+  expect(project.baseColorAt(4, 11)).toBe(right);
+  expect(project.editCellAt(4, 5)).toBeUndefined();
 });
 
 test('a wide character flipped across still covers its own two cells', async () => {

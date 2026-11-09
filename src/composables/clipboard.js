@@ -1,24 +1,25 @@
 import { selectionText } from '@/lib/Cells';
 import { ctx2d } from '@/lib/Canvas';
 import { VERSION, clipboardHtml, moebiusData } from '@/lib/clipboardBlocks';
+import { flatBlock } from '@/store/project/selection.js';
 
-// Copy a selection: the block (cells, paint, base pixels, on the chosen layers) on Phosphor's own
+// Copy a selection: the block (each shown layer's cells and paint, the base's pixels, what shapes show) on Phosphor's own
 // clipboard, and on the system clipboard its characters as plain text (for a terminal, a chat, a
 // text editor) and, in the HTML slot, what it shows as Moebius's block, with the block itself
-// alongside for another Phosphor tab (clipboardBlocks.js). Without the HTML, the text alone. The
+// alongside for another Phosphor tab as one layer's (flatBlock; clipboardBlocks.js). Without the HTML, the text alone. The
 // text is remembered once it's written, so a paste can tell whether the system clipboard still holds
 // it or something newer was copied elsewhere, and the copy's id, so this tab pastes its own block
 // (which a Bake rewrites) when the clipboard still holds it. Without clipboard access the text stays
 // null, and Phosphor's own block keeps winning, as before.
-export function copySelection(project, workspace, rect, layers) {
-  const lit = project.layersFor(layers);
-  if (!lit.base && !lit.edit) return; // every layer hidden: nothing to copy, as with no selection
-  const block = project.copySelection(rect, layers), id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+export function copySelection(project, workspace, rect, ids) {
+  const lit = project.layersFor(ids);
+  if (!lit.length) return; // every layer hidden: nothing to copy, as with no selection
+  const block = project.copySelection(rect, lit), id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
   workspace.clipboard = block;
   workspace.clipboardId = id;
   workspace.clipboardText = null;
   const text = selectionText(project.cells, project.cols, rect);
-  const html = clipboardHtml({ ...moebiusData(project.cells, project.cols, rect, project.quantize), phosphor: encodeBlock(block, id) });
+  const html = clipboardHtml({ ...moebiusData(project.cells, project.cols, rect, project.quantize), phosphor: encodeBlock(flatBlock(block), id) });
   const written = () => { if (workspace.clipboardId === id) workspace.clipboardText = text; };
   if (copyEvent(text, html)) written();
   else navigator.clipboard?.writeText(text).then(written, () => {});

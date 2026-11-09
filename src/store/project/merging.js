@@ -6,6 +6,7 @@
 // for those would never end under steady drawing. Bake reads the layers after it encodes, so what came
 // meanwhile is in it; Into the image reads them before, so a host holds artists' changes until the project's gone.
 import { t } from '@/i18n';
+import { toast } from '@/composables/useToast';
 import { EMPTY_BASE, withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { makeArt, isArt } from '@/document/artLayers.js';
@@ -18,7 +19,7 @@ import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld, blackPicture, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld, blackPicture, onBottom, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
 import { placedShapes } from '@/document/followers.js';
 import { CHAR_KEYS, RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
@@ -48,12 +49,13 @@ function bakedChanges(changes, params) {
   return new Map([...changes].map(([key, { cell, top, bottom }]) => [key, cellState(entry(cell), baked(top), baked(bottom))]));
 }
 
-// The clipboard with the color transforms burnt in, as Bake and Flatten leave it.
+// The clipboard with the color transforms burnt in, as Bake and Flatten leave it (what shapes showed is as it showed).
 const bakedClipboard = (clip, params) => clip && {
   ...clip,
   ...(clip.cells && { cells: clip.cells.map(entry => entry && bakeEntry(entry, params)) }),
   ...(clip.looks && { looks: clip.looks.map(entry => bakeEntry(entry, params)) }),
   ...(clip.paint && { paint: bakedCanvas(clip.paint, params) }),
+  ...(clip.parts && { parts: clip.parts.map((part) => ({ ...part, cells: part.cells.map((entry) => entry && bakeEntry(entry, params)), ...(part.paint && { paint: bakedCanvas(part.paint, params) }) })) }),
   ...(clip.base && { base: { ...clip.base, pixels: bakedCanvas(clip.base.pixels, params), colors: bakedCanvas(clip.base.colors, params) } }),
 };
 
@@ -153,7 +155,14 @@ export const mergingActions = {
   async flattenDrawing({ layer = 'edit' } = {}) {
     if (!this.canFlatten || this._flattening || this._baking || this._merging) return false;
     if (this._artInside) this.leaveArt();
-    if (layer === 'edit' && refusedNoCells(this)) return false; // onto the cells layer in use: there's none
+    if (layer === 'edit' && onBottom(this)) { // the base in use: onto the topmost cells layer instead
+      const top = this.layers.findLast((each, at) => at && each.kind === 'cells');
+      if (top) useWorkspaceStore().pickLayer(top.id);
+    }
+    if (layer === 'edit' && (onBottom(this) || refusedNoCells(this))) { // onto the cells layer in use: there's none
+      if (onBottom(this)) toast(t('layers.noCellsLayer'));
+      return false;
+    }
     this._flattening = true;
     let again = false, base = null; // the base as it was, once this starts writing it
     try {

@@ -179,7 +179,7 @@ test('moving a selection over the ghost doesn\'t make the frame own it', async (
   type(project, 1, 1, 'A');
   project.addFrame('blank');
   await project.buildGhost();
-  project.moveSelection({ c0: 0, r0: 0, c1: 3, r1: 3 }, { base: false, edit: true }, 4, 4);
+  project.moveSelection({ c0: 0, r0: 0, c1: 3, r1: 3 }, ['edit'], 4, 4);
   project.showFrame(0);
   expect(project.frames[2].changes.size).toBe(0);
 });

@@ -53,6 +53,18 @@ export const baseLayerActions = {
     this.refreshCells(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
   },
 
+  // Paint grid pixels ({ x, y, r, g, b, alpha }) onto the base's own pixels at an opacity, stacking or not, as a cells
+  // layer's paint goes (PaintLayer.paint): the Brush with the base picked. Off-grid ones are skipped.
+  paintBasePixels(pixels, opacity = 100, stack = false) {
+    const { cols, rows } = this;
+    const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows);
+    if (!inGrid.length) return;
+    this.ensureLayer();
+    this.beginEdit();
+    this.baseLayer.paint(inGrid, opacity, stack);
+    this.refreshCells(inGrid);
+  },
+
   // Set base pixels ({ x, y, hex } in grid pixels; off-grid ones are skipped) and show them.
   writeBase(pixels) {
     const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill

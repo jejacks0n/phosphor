@@ -100,7 +100,7 @@ for (const [quantize, smoothing, brightness, dithering = { dither: 0 }] of [
     project.beginEdit();
     project.eraseBase([{ col: 6, row: 9 }, { col: 7, row: 9 }, { col: 20, row: 12 }]);
     project.commitEdit();
-    project.moveSelection({ c0: 2, r0: 2, c1: 8, r1: 5 }, { base: true, edit: true }, 4, 6);
+    project.moveSelection({ c0: 2, r0: 2, c1: 8, r1: 5 }, ['base', 'edit'], 4, 6);
     project.beginEdit();
     project.flipBase([{ col: 15, row: 3 }]);
     project.commitEdit();

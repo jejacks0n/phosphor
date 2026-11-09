@@ -15,7 +15,7 @@ import { carriesError } from '@/lib/CharResolver.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast';
 import { keyLayer } from '@/document/layerInfo.js';
-import { ALONE, bytesHeld, lockedAmong, newLedger, randomId, runsPatch, withLayer } from '@/store/project/shared.js';
+import { ALONE, bytesHeld, lockedAmong, newLedger, randomId, runsPatch, swappable, withLayer } from '@/store/project/shared.js';
 
 const NO_CHANGE = { cells: [], runs: [] };
 
@@ -41,7 +41,7 @@ export const historyActions = {
   // they are are noted and its paint stroke begins. With no edit open, fn just writes id; inside an art layer, the art.
   onLayer(id, fn) {
     const stroke = this._stroke;
-    if (this._artInside || id === this.editId || !this._layerData.has(id)) return fn();
+    if (this._artInside || id === this.editId || !swappable(this, id)) return fn();
     if (!stroke) return withLayer(this, id, fn);
     this.sendSlice();
     try {
@@ -329,7 +329,7 @@ export const historyActions = {
       });
       away = showing;
     };
-    const id = this.editId, on = (fn) => (layerOp ? fn() : id === this.editId || this._layerData.has(id) ? withLayer(this, id, fn) : undefined);
+    const id = this.editId, on = (fn) => (layerOp ? fn() : id === this.editId || swappable(this, id) ? withLayer(this, id, fn) : undefined);
     this.pushEdit({ undo: () => { swap(); on(undo); }, redo: () => { swap(); on(redo); }, wholeLayer: true, ...(layerOp && { layerOp }), bytes });
   },
 

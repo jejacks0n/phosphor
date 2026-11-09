@@ -63,10 +63,15 @@ const sections = computed(() => {
   const choices = paletteChoices(project, palette);
   return swatchSections(project.quantize, palette.map((p, i) => ({ ...p, hex: choices[i] })));
 });
-// Colors edit cells use, and (folded away until asked for) the other colors in the paint.
-// Paint is read when the popover opens: the layer isn't reactive, and doesn't change while this is open.
-const inUse = computed(() => drawingColors(project.editCells));
-const painted = computed(() => (project.hasPaint ? drawingColors(new Map(), project.paintLayer.colorCounts()).filter(hex => !inUse.value.includes(hex)) : []));
+// Colors every cells layer's edit cells use, and (folded away until asked for) the other colors in their paint.
+// Paint is read when the popover opens: the layers aren't reactive, and don't change while this is open.
+const cellsLayers = () => project.layers.filter((layer, at) => at && layer.kind === 'cells').map((layer) => layer.id);
+const inUse = computed(() => drawingColors(cellsLayers().flatMap((id) => [...project.cellsOf(id).values()])));
+const painted = computed(() => {
+  const counts = new Map();
+  for (const id of cellsLayers()) for (const [hex, n] of project.paintOf(id)?.colorCounts() ?? []) counts.set(hex, (counts.get(hex) ?? 0) + n);
+  return drawingColors([], counts).filter(hex => !inUse.value.includes(hex));
+});
 const showPainted = ref(false);
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 

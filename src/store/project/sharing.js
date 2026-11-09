@@ -36,12 +36,11 @@ const SLICE_MS = 100;
 export const ASK_AGAIN_MS = 30_000;
 export const HELD_FLOAT_MS = 2000; // an artist's block left this long with no further move goes out
 const HIDDEN_TAB_MS = 100; // a hidden tab has no frames, and still has to catch up
-const EDIT_ONLY = { base: false, edit: true };
 
 // Refused while paused: everything that changes the drawing. changeSelection isn't here: it's not a change
 // to the document, and Deselect goes on working.
 export const DRAWING_ACTIONS = [
-  'paintEditPixels', 'paintStroke', 'eraseEditPixels', 'editCell', 'typeAt', 'writeAt', 'backspaceAt', 'deleteAt', 'typing', 'shiftCells',
+  'paintEditPixels', 'paintBasePixels', 'paintStroke', 'eraseEditPixels', 'editCell', 'typeAt', 'writeAt', 'backspaceAt', 'deleteAt', 'typing', 'shiftCells',
   'writeEditCells', 'clearEditCells', 'flipCell', 'flipPaint', 'clearEditLayer',
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
   'deleteIn', 'pasteAt', 'selectionEdit',
@@ -52,7 +51,7 @@ export const DRAWING_ACTIONS = [
 
 // Refused for artists: the picture, the settings, the grid and which document this is.
 export const HOST_ONLY_ACTIONS = [
-  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells',
+  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'paintBasePixels', 'addPictureToLayer',
   'bake', 'flattenDrawing', 'mergeUp', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'clearEditLayer',
   'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed', 'setLayerChars',
   'updateCols', 'updateRows',
@@ -401,9 +400,10 @@ export const sharingActions = {
     this.editVersion++;
   },
 
-  // The Base and Edit toggles an action may go by: an artist's are always the drawing, and inside an art layer, the
-  // layer alone.
-  layersFor(layers) {
-    return this._sharing?.role === 'artist' || this._artInside ? EDIT_ONLY : layers;
+  // The layers (ids, bottom first) an action may act on: an artist's leave out the base, which is the host's, and inside
+  // an art layer it's the layer alone (the edit layer's fields hold its drawing).
+  layersFor(ids) {
+    if (this._artInside) return [this.editId];
+    return this._sharing?.role === 'artist' ? ids.filter((id) => id !== 'base') : ids;
   },
 };

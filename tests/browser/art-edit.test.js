@@ -366,7 +366,7 @@ test('with the base picked, the Eraser or a Delete inside takes from the layer a
   const ctx = { project, workspace, view: 'output' };
   eraser.begin(ctx, { x: 4.5, y: 4.5 });
   eraser.end(ctx);
-  project.deleteSelection({ c0: 6, r0: 6, c1: 8, r1: 8 }, { base: true, edit: true });
+  project.deleteSelection({ c0: 6, r0: 6, c1: 8, r1: 8 }, ['base', 'edit']);
   expect(project.shapes.get(key).art.cells).toEqual([]);
   expect(project.baseRecords).toBe(records);
   expect(project.baseLayer.version).toBe(version);
@@ -374,7 +374,7 @@ test('with the base picked, the Eraser or a Delete inside takes from the layer a
 
 test('a paste inside of a block copied with Base lit draws in the layer alone, and the base stays', async () => {
   const { project, workspace, key } = await withArt();
-  const block = project.copySelection({ c0: 0, r0: 0, c1: 2, r1: 2 }, { base: true, edit: true }); // as the clipboard copies
+  const block = project.copySelection({ c0: 0, r0: 0, c1: 2, r1: 2 }, ['base', 'edit']); // as the clipboard copies
   expect(block.base).toBeTruthy();
   workspace.editorTab = 'output';
   project.enterArt(key);

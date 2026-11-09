@@ -158,7 +158,7 @@ test('a floating selection is set down on its own frame when the scrubber moves'
   type(project, 2, 2, 'F');
   project.addFrame('duplicate');
   const rect = { c0: 2, r0: 2, c1: 2, r1: 2 };
-  project.floatSelection(rect, { base: false, edit: true }, 3, 0);
+  project.floatSelection(rect, ['edit'], 3, 0);
   expect(charAt(project, 5, 2)).toBe('F');
   project.showFrame(0);
   expect(project._float).toBeNull();

@@ -50,7 +50,7 @@ async function editor({ writes = true } = {}) {
   for (const [col, char] of [[0, 'a'], [1, 'b'], [2, '漢']]) project.typeAt(col, 0, char, ATTRS);
   project.commitEdit();
   const clipboard = fakeClipboard({ writes });
-  copySelection(project, workspace, SOURCE, { base: true, edit: true });
+  copySelection(project, workspace, SOURCE, ['base', 'edit']);
   await vi.waitFor(() => expect(clipboard.writeText).toHaveBeenCalledTimes(writes ? 0 : 1));
   if (writes) await vi.waitFor(() => expect(workspace.clipboardText).not.toBe(null));
   return { project, workspace, ...clipboard };
@@ -84,7 +84,7 @@ test('where the copy event is refused, the text alone is written', async () => {
   const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: COLS, rows: 20 });
   const { writeText } = fakeClipboard({ copyEvents: false });
-  copySelection(project, workspace, SOURCE, { base: true, edit: true });
+  copySelection(project, workspace, SOURCE, ['base', 'edit']);
   await vi.waitFor(() => expect(workspace.clipboardText).not.toBe(null));
   expect(writeText).toHaveBeenCalledWith(workspace.clipboardText);
 });
@@ -165,7 +165,7 @@ test('our own block on the clipboard, copied before a Bake, pastes as Bake left 
   workspace.editorTab = 'output';
   listen(project, workspace);
   const { written } = fakeClipboard();
-  copySelection(project, workspace, { c0: 10, r0: 6, c1: 15, r1: 9 }, { base: true, edit: true });
+  copySelection(project, workspace, { c0: 10, r0: 6, c1: 15, r1: 9 }, ['base', 'edit']);
   await vi.waitFor(() => expect(workspace.clipboardText).not.toBe(null));
   project.contrast = 40;
   await settle(project);
@@ -183,7 +183,7 @@ test('a block from another tab pastes as it would in its own, into a base at ano
   await drawnDocument(project, workspace);
   const { written } = fakeClipboard();
   const rect = { c0: 10, r0: 6, c1: 35, r1: 26 }; // typed cells, paint, soft paint and a pin
-  copySelection(project, workspace, rect, { base: true, edit: true });
+  copySelection(project, workspace, rect, ['base', 'edit']);
   await vi.waitFor(() => expect(written).toHaveLength(1));
   const { phosphor } = readClipboardHtml(written[0].html);
   const scale = project.baseLayer.scale;
@@ -199,4 +199,26 @@ test('a block from another tab pastes as it would in its own, into a base at ano
   const own = await into(workspace.clipboard);
   expect(own.join()).toContain('#ff3300'); // the paint came too
   expect(await into(await decodeBlock(phosphor))).toEqual(own);
+});
+
+test('copy for other apps takes every shown layer', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: COLS, rows: 20 });
+  project.typeAt(0, 0, 'a', ATTRS);
+  project.commitEdit();
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(1, 0, 'b', ATTRS);
+  project.commitEdit();
+  const { written } = fakeClipboard();
+  copySelection(project, workspace, SOURCE, workspace.selectionIds);
+  await vi.waitFor(() => expect(written).toHaveLength(1));
+  const { phosphor } = readClipboardHtml(written[0].html);
+  expect(phosphor.cells.slice(0, 2).map((entry) => entry.char)).toEqual(['a', 'b']);
+  expect(workspace.clipboard.parts.map((part) => part.id)).toEqual(['edit', top]);
+  project.setLayerHidden(top, true);
+  copySelection(project, workspace, SOURCE, workspace.selectionIds);
+  await vi.waitFor(() => expect(written).toHaveLength(2));
+  expect(readClipboardHtml(written[1].html).phosphor.cells[1].char).not.toBe('b');
+  expect(workspace.clipboard.parts.map((part) => part.id)).toEqual(['edit']);
 });

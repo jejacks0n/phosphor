@@ -3,6 +3,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
+import { pickedFrom } from '@/store/project/reading.js';
 
 test('on soft paint the picker picks the color shown, not the paint at full strength', async () => {
   const { project } = await createTestApp();
@@ -18,4 +19,24 @@ test('on soft paint the picker picks the color shown, not the paint at full stre
   expect(shown).not.toBe('#ff0000');
   expect(project.underlyingAt(3, 3).fg).toBe(shown);
   expect(project.rawColorAt(3, 7)).toBe(shown);
+});
+
+test('the status bar says a color came from a drawn layer when any shown cells layer has it, the one in use or not', async () => {
+  const { project, workspace } = await createTestApp();
+  project.cols = 30;
+  project.rows = 30;
+  await project.setBlankCanvas();
+  project.render();
+  await settle(project);
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(2, 2, 'X', { bg: '#0000ff' }); // a background of its own, on the top layer
+  project.commitEdit();
+  project.paintStroke([{ x: 6, y: 13, alpha: 1 }], '#00ff00'); // cell (6, 6)'s bottom half
+  project.commitEdit();
+  workspace.pickLayer('edit');
+  expect(pickedFrom(project, 2, 2)).toEqual({ fgFrom: 'base', bgFrom: 'edit', ownBg: true });
+  expect(pickedFrom(project, 6, 6)).toEqual({ fgFrom: 'edit', bgFrom: 'base', ownBg: false });
+  project.setLayerHidden(top, true);
+  expect(pickedFrom(project, 2, 2)).toEqual({ fgFrom: 'base', bgFrom: 'base', ownBg: false });
 });

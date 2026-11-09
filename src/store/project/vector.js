@@ -514,7 +514,7 @@ export const vectorActions = {
         this.eraseEditPixels(picked.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
         this.clearEditCells(picked);
       } else {
-        this.deleteIn(rect, { base: false, edit: true });
+        this.deleteIn(rect, [this.editId]);
       }
       [key] = this.addShapes([art]);
     });
@@ -644,10 +644,11 @@ const followedBy = (project, key) => [...project.shapes.values()].some((shape) =
   || (project.hasFrames && project.frames.some((frame) => [...frame.changes.values()].some((state) => state.cell?.follow?.key === key)));
 
 // The cells drawn in a cell rect, by place: [{ col, row, cell }] (artCellOf, of the edit cells and their paint halves as
-// copySelection reads them; a half's paint counts where it's at least half there), only those keep (cell keys) has
+// copySelection reads them, of the layer in use; a half's paint counts where it's at least half there), only those keep (cell keys) has
 // when it's given.
 function drawnIn(project, rect, keep = null) {
-  const block = project.copySelection(rect, { base: false, edit: true });
+  const copied = project.copySelection(rect, [project.editId], { shapes: false });
+  const block = { w: copied.w, cells: new Array(copied.w * copied.h).fill(null), ...copied.parts[0] }; // none with the base in use: nothing drawn
   const paint = block.paint && ctx2d(block.paint).getImageData(0, 0, block.paint.width, block.paint.height).data, k = project.paintLayer?.scale ?? 1;
   const half = (x, y) => {
     const o = (Math.floor(y * k) * block.paint.width + Math.floor(x * k)) * 4;

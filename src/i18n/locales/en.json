@@ -355,8 +355,7 @@
     "hiddenToast": "Show the layer to draw on it",
     "hiddenMergeToast": "Show the layer to merge it",
     "noCellsLayer": "Add a layer to draw on it.",
-    "notInRoom": "Adding, deleting and moving layers isn't available in a room yet.",
-    "toolOnLayer": "{tool} draws on {layer}. Pick it in Layers."
+    "notInRoom": "Adding, deleting and moving layers isn't available in a room yet."
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",
@@ -874,6 +873,8 @@
     "artAddWhere": "It lands where you dropped it, on the edit layer, to drag into place.",
     "artAddTopLeft": "It lands at the top-left of the view, on the edit layer, to drag into place.",
     "svgAddText": "As shapes on VECTOR, in the frame showing, fitted to the canvas and selected.",
+    "pictureAddText": "Add it to {name} as paint, fitted to the canvas.",
+    "pictureAddNew": "Add it as a new layer, fitted to the canvas.",
     "artOpen": "Open instead",
     "artOpenText": "In place of this drawing.",
     "artOpenTitle": "Open {name}?",

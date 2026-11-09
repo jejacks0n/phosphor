@@ -7,10 +7,10 @@ import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer, layerKey } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { cellIndex, charRowsOf } from '@/lib/Cells.js';
+import { bakedEntry, cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { paletteChoices } from '@/lib/PixelTransforms.js';
-import { lowerEdits, lowerPaint, over } from '@/store/project/shared.js';
+import { over } from '@/store/project/shared.js';
 
 // For each palette color, a stored color that shows as it under the adjustments (paletteChoices), kept while
 // the palette and the settings stay the same: asked once a cell by a whole grid's Merge up.
@@ -23,6 +23,35 @@ function storedOf(palette, params) {
     storedFor.set(palette, held);
   }
   return held.map;
+}
+
+// The shown cells layers above the bottom, bottom first: every one, or only those under the layer with the id below (none
+// under the bottom, or under a layer that isn't in the stack).
+function cellsUnder(project, below = null) {
+  const layers = project.layers, at = below === null ? layers.length : layers.findIndex((layer) => layer.id === below);
+  return layers.filter((layer, i) => i > 0 && i < at && layer.kind === 'cells' && !layer.hidden).map((layer) => layer.id);
+}
+
+// Where a picked cell's colors came from, for the status bar: 'edit' where a shown cells layer above the base has paint
+// or an edit cell's own color there, else 'base'; ownBg: one of those edit cells has a background of its own (all Color
+// ASCII shows).
+export function pickedFrom(project, col, row) {
+  const ids = cellsUnder(project), entries = ids.map((id) => project.cellsOf(id).get(cellKey(col, row))).filter(Boolean);
+  const from = (y, attr) => (ids.some((id) => !!project.paintOf(id)?.colorAt(col, y)) || entries.some((entry) => entry[attr] !== undefined) ? 'edit' : 'base');
+  return { fgFrom: from(2 * row + 1, 'fg'), bgFrom: from(2 * row, 'bg'), ownBg: entries.some((entry) => entry.bg) };
+}
+
+// look ({ char?, fg, bg }, stored colors) with cells layer id's cell over it: its entry's own attributes, then (withPaint)
+// its paint over each half by its alpha, bg the top, fg the bottom.
+function layerOver(project, id, col, row, look, withPaint = true) {
+  const entry = project.cellsOf(id).get(cellKey(col, row));
+  let out = entry ? { ...look, ...entry } : look;
+  const paint = withPaint && project.paintOf(id);
+  if (!paint?.hasPaint) return out;
+  const top = paint.pixelAt(col, 2 * row), bottom = paint.pixelAt(col, 2 * row + 1);
+  if (top) out = { ...out, bg: rgb2hex(over(hex2rgb(out.bg), top)) };
+  if (bottom) out = { ...out, fg: rgb2hex(over(hex2rgb(out.fg), bottom)) };
+  return out;
 }
 
 export const readingActions = {
@@ -66,16 +95,19 @@ export const readingActions = {
     return sum;
   },
 
-  // The color under grid pixel (x, y) before adjustments: paint (over the base, by its alpha) if
-  // there is any, else the base.
+  // The color under grid pixel (x, y) before adjustments, as it shows: the base, with every shown cells layer's paint
+  // over it by its alpha, bottom first.
   rawColorAt(x, y) {
     if (!this.image) return '#000000';
     this.ensureLayer();
     x = Math.floor(x);
     y = Math.floor(y);
-    const painted = lowerPaint(this)?.pixelAt(x, y);
-    if (!painted || painted.a >= 1) return painted ? rgb2hex(painted) : this.baseColorAt(x, y);
-    return rgb2hex(over(hex2rgb(this.baseColorAt(x, y)), painted));
+    let color = this.baseColorAt(x, y);
+    for (const id of cellsUnder(this)) {
+      const painted = this.paintOf(id)?.pixelAt(x, y);
+      if (painted) color = rgb2hex(over(hex2rgb(color), painted));
+    }
+    return color;
   },
 
   // The base layer's color at grid pixel (x, y), as stored (before adjustments): its own pixels
@@ -96,23 +128,24 @@ export const readingActions = {
   // What's under a cell, as stored colors (pre-adjustment), for the eyedropper, flip and merge up.
   // Stored, not as displayed: a picked or merged-up color keeps following the adjustments, as the
   // picture's own colors do (picking a displayed color would apply the adjustments twice).
-  // withPaint: paint (on top, by its alpha) over each half; under it edit-cell attributes, then the
-  // source image. A hidden layer isn't read (what shows is picked), unless evenHidden (an edit of the layer itself).
+  // The source image, with every shown cells layer over it, bottom first: its edit cell's attributes, then
+  // (withPaint) its paint by its alpha over each half. A hidden layer isn't read (what shows is picked), unless
+  // evenHidden: an edit of the layer in use itself, read with the shown layers under it.
   underlyingAt(col, row, { withPaint = true, evenHidden = false } = {}) {
-    const entry = (evenHidden ? this.editCells : lowerEdits(this)).get(cellKey(col, row)) ?? {};
-    const paint = evenHidden ? this.paintLayer : lowerPaint(this);
-    const half = (y, attr) => {
-      const under = entry[attr] ?? this.baseColorAt(col, y);
-      const painted = withPaint && paint?.pixelAt(col, y);
-      return painted ? rgb2hex(over(hex2rgb(under), painted)) : under;
-    };
+    const ids = evenHidden ? [...cellsUnder(this, this.editId), this.editId] : cellsUnder(this);
+    let look = { bg: this.baseColorAt(col, 2 * row), fg: this.baseColorAt(col, 2 * row + 1) };
+    for (const id of ids) look = layerOver(this, id, col, row, look, withPaint);
     const i = cellIndex(col, row, this.cols);
     const shown = withPaint ? this.cells[i] : null;
-    return {
-      char: shown?.char ?? entry.char ?? this.renderedCells[i]?.char ?? ' ',
-      bg: half(2 * row, 'bg'),
-      fg: half(2 * row + 1, 'fg'),
-    };
+    return { char: shown?.char ?? look.char ?? this.renderedCells[i]?.char ?? ' ', bg: look.bg, fg: look.fg };
+  },
+
+  // What a cell layer's entry is completed against (completeAt): the base's cell as the render style shows it, with the
+  // shown cells layers under the layer with the id below over it, each as underlyingAt lays them.
+  lookUnder(col, row, below = this.editId) {
+    let look = bakedEntry(this.renderStyle, this.baseCellAt(col, row));
+    for (const id of cellsUnder(this, below)) look = layerOver(this, id, col, row, look);
+    return look;
   },
 
   editCellAt(col, row) {

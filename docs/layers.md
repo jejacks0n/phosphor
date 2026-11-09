@@ -13,12 +13,10 @@ layer ("Layer 1"), the vector layer ("Vector 1") if there is one, and the base (
 is showing; with nothing open, or on SAUCE, it says so instead.
 
 - **Picking a row** picks that layer, and the tabs follow it. The base and the edit layer show PIXEL and
-  ANSI; the vector layer shows VECTOR. The drawing tools act on the picked layer: the eraser and Flip
-  take only that layer. [Selections](#the-select-tool) act on every layer that shows, whatever is picked;
-  to leave a layer out, hide it. With the base picked only the tools that work on it are offered: a key
-  for one of the others (P for the Pencil, say) says which layer that tool draws on, "Pencil draws on
-  Layer 1. Pick it in Layers." Picking the edit layer or the base from VECTOR goes back to the art tab
-  you last had.
+  ANSI; the vector layer shows VECTOR. Every drawing tool acts on the picked layer, the base too
+  ([Drawing on the base](#drawing-on-the-base)), and every tool is offered whichever is picked.
+  [Selections](#the-select-tool) act on every cells layer that shows, whatever is picked; to leave a layer out,
+  hide it. Picking the edit layer or the base from VECTOR goes back to the art tab you last had.
 - **+ Layer** and **+ Vector layer**, under the list, add a layer of cells or a vector layer directly above the
   picked one, and pick it. New layers are named "Layer 2", "Vector 2" and so on; a drawing holds at most 64. A
   drawing with shapes already has a vector layer, since its first shape brings it, and a vector layer stays when
@@ -34,9 +32,10 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   layer and what's on it; deleting the picked layer picks the one that was under it. In an animation both work on
   every frame at once, and each is one undo step: undoing a delete brings the layer back with its name and
   everything on every frame, and the strokes made on it before can then be undone too. The base has no ⋯: it
-  can't be deleted, duplicated or moved. With the last cells layer above the base deleted, there's nothing to
-  draw, type or paste on: a paste, pasted text, Merge up and Flatten's "Edit it" say "Add a layer to draw on it."
-  Moving a selection on the base still works, and keeps it on the base; a layer added then starts empty.
+  can't be deleted, duplicated or moved. With the last cells layer above the base deleted, the base is picked and
+  the tools draw there; with a vector layer picked meanwhile, there's no cells layer to draw on: a paste, pasted
+  text and Merge up say "Add a layer to draw on it." Flatten's "Edit it" with the base picked goes on the topmost
+  cells layer, and says the same when there's none. A layer added then starts empty.
 - **Click the picked row's name** (or double-click any name, or press F2 on its row) to rename the layer; a
   click on another row only picks it. Enter, or leaving the box, keeps the new name; Escape keeps the old one.
   A name is up to 40 characters, and a blank one puts the default back; one too long for the row shows in
@@ -259,19 +258,44 @@ Either way:
 
 An `.svg` file opens on VECTOR as shapes instead ([Vector shapes](vector.md#importing-svg)).
 
+### Drawing on the base
+
+With the base picked, every tool draws on the base itself, as Merge down's Keep crisp cells would leave it:
+
+- The Pencil, Shapes, the Paint Bucket's Cells, Text and a paste write each cell as it shows: its two colors go
+  into the base's two pixels (the background the top, the foreground the bottom) and its character is pinned, so
+  the converter keeps it. A cell given only a foreground keeps the background it showed.
+- The Brush and paint (the Pencil's Colors only, the Bucket's Normal fill) paint the base's own pixels, which
+  the color sliders, the palette and the effects then treat as the picture's.
+- Text overwrites there: Insert doesn't push the characters after it along, and Delete in Insert mode does
+  nothing.
+- The Eraser turns cells black with a pinned space (ANSI view) or pixels black (Pixel view), and Flip swaps a
+  cell's two halves.
+
 ### Adding a file to the drawing
 
 With a drawing open, dropping one of these files on it asks what to do:
 
 - **Add to this drawing**: the file's art lands as a paste does, floating and selected with the Select tool, at
   the cell you dropped it on (or the top-left of the view, when it's dropped beside the drawing), to drag into
-  place. It goes on the edit layer, as one undo step. Whatever runs past the canvas edge is cut off. The
+  place. It goes on the layer picked (written into the base, with the base picked), as one undo step. Whatever runs past the canvas edge is cut off. The
   drawing's SAUCE and palette stay as they are.
 - **Open to edit** or **Open to draw on top**: it opens in place of this drawing, as **Edit it** or **Draw on
   top of it** do above, asking first if there are unsaved changes. (An `.svg` has one **Open instead**.)
 - **Cancel** leaves everything as it was.
 
 In a room where opening isn't allowed, there's no opening; adding works as pasting does.
+
+A **picture** (a PNG, JPEG or other image) dropped on a still drawing asks the same way, outside a room:
+
+- **Add to this drawing** puts it in as paint, fitted to the canvas as an opened picture is, over what's painted
+  there: on the cells layer picked ("Add it to Layer 2 as paint, fitted to the canvas."), or, with the base or a
+  vector layer picked, on a new cells layer above it, named after the file and picked ("Add it as a new layer,
+  fitted to the canvas."). It's one undo step; undoing a new layer's takes the layer away.
+- **Open instead** opens it in place of this drawing, asking first if there are unsaved changes.
+- **Cancel** leaves everything as it was.
+
+In an animation, or in a room, a dropped picture opens as it always has.
 
 ## The edit layer
 
@@ -363,14 +387,15 @@ nudges each cell by its place in the grid. See [Characters](characters.md#how-th
 
 ## Erasing
 
-The eraser erases the picked layer (the one picked in LAYERS, which is the edit layer unless you've picked the base).
+The eraser erases the picked layer (the one picked in LAYERS).
 
-- On the **edit layer** it removes paint and edit cells.
+- On a **cells layer** (the edit layer or another) it removes that layer's paint and edit cells; the layers over
+  and under it stay.
 - On the **base** it erases the base layer: the cells go black with a pinned space. Your edits on top
   stay.
 
 Size 1 erases exactly what's under the pointer: one character in the ANSI view, one pixel in
-the Pixel view. In the Pixel view the eraser removes paint (on the edit layer) and turns base pixels black
+the Pixel view. In the Pixel view the eraser removes paint (on a cells layer) and turns base pixels black
 (on the base), leaving the characters as they are, except a ▄ that Half-block made to show paint
 (one with no colors of its own): when its cell's last paint is erased, the cell gets its own
 character back.
@@ -382,21 +407,25 @@ is a pixel wide and two tall, so the rectangle's top and bottom keep to every se
 it's the same selection in both views, and it stays when you switch. Everything below works the
 same in both.
 
-Copy, Cut, Delete, moving, nudging, flipping and rotating act on every layer that shows, whatever is
-picked: hide a layer (its eye in LAYERS) to leave it out. With the base picked, only the tools
-that work on it are offered: the eraser, the eyedropper, the Magic Wand, Select, the hand, zoom and
-Flip.
+Copy, Cut, Delete, moving, nudging, flipping and rotating act on every cells layer that shows, the base among
+them, whatever is picked: hide a layer (its eye in LAYERS) to leave it out. Moved, flipped or rotated, each
+layer's part stays on its own layer. Shapes are VECTOR's: Cut, Delete and moves leave them whole where they are,
+but **Copy** also takes what the shapes on the vector layers that show show there, as cells, so a paste looks
+like what you copied.
 
-- The **base** is the picture, each cell as it shows: its character and colors. Moved, pasted or
-  stamped, it lands on top of everything, as edit cells that look just as they did where they came
-  from (reduced colors, Best match's and By shape's characters, dithering and all), covering the
-  edits and paint there. Moving it leaves the area it came from erased (black, with pinned spaces),
-  and your edits on top there stay.
-- The **edit layer** is your typed and drawn cells and paint. A cell with no edit of its own
-  (nothing typed, drawn or painted in it) is see-through: moved, pasted or stamped, it leaves the
-  edits it lands on showing, while it floats and once it's set down. A cell with anything in it,
-  even half a cell of paint, covers the whole cell under it.
-- **Delete** erases the base (with the base picked) or removes your edits (with the edit layer picked).
+- The **base** is the picture. Moved, flipped or rotated, its own pixels and pinned characters go with the block,
+  on the base, and the area it came from is erased (black, with pinned spaces). Pasted or stamped, each cell
+  lands as it showed: as edit cells that look just as they did where they came from (reduced colors, Best
+  match's and By shape's characters, dithering and all), covering what's drawn there.
+- A **cells layer** is your typed and drawn cells and paint. A cell with no edit of its own on that layer
+  (nothing typed, drawn or painted in it) is see-through: moved, pasted or stamped, it leaves the edits it
+  lands on showing, while it floats and once it's set down. A cell with anything in it, even half a cell of
+  paint, covers the whole cell under it.
+- A **paste** lands on the picked layer as one: the base's cells, then each layer's cells and paint over the
+  one under it, then what the shapes showed. With the base picked it's written into the base, as drawing there
+  is ([Drawing on the base](#drawing-on-the-base)). A block keeps floating on the layer it was pasted on, and a
+  moved one on the layers it was lifted from, whatever you pick meanwhile.
+- **Delete** removes your edits from each cells layer that shows and erases the base, if it shows.
 
 **Moving** (dragging inside the selection, or the arrow keys) floats the contents over the canvas
 until you're done: you can let go, drag again and nudge as often as you like, and whatever the
@@ -410,8 +439,8 @@ scrolls the view, faster the further you go.
 
 **Copy and Cut** also put the selection on your system clipboard, so it pastes outside the tab:
 
-- into **another Phosphor tab** (or window) with everything: characters, colors, paint and the base,
-  on the layers you copied. It lands in that document's grid, palette and font, and its color
+- into **another Phosphor tab** (or window) with everything: characters, colors and paint, what every layer
+  you copied shows together, as one layer's. It lands in that document's grid, palette and font, and its color
   sliders apply to the pasted colors as to anything drawn there.
 - into **Moebius** with its characters and colors. Moebius's Advanced Color fork shows the exact
   colors; the original Moebius shows the nearest of its 16. A character CP437 doesn't have goes as
@@ -451,7 +480,7 @@ a square stays a square (two cells side by side, a cell being twice as tall as i
 two cells side by side). The turned picture lands as ▄ half-blocks in its pixels' colors, and a
 Half-block's ▄ goes with its paint. Characters can't turn that way (a cell would land across
 half of two), so Rotate is off while the selection has any on the layers that show: typed or drawn
-characters on the edit layer, or characters pinned on the base by merging down. A block an odd
+characters on a cells layer, or characters pinned on the base by merging down. A block an odd
 number of cells wide turns into a row and a half; the half row left over keeps what was under it.
 The rotated block starts at the same top-left corner (moved back onto the canvas if it would run
 off it).
@@ -496,8 +525,8 @@ selected in the ANSI view. **Escape**, **Deselect**, a new rectangle, a grid cha
 document drop it.
 
 **Delete** on the wand's options row (or the Delete or Backspace key, except while typing in Edit
-Mode) takes away what's in the selection on the layers that show, in one undo step: from the edit
-layer the edit cells and paint, from the base the picture, which turns black, as the Eraser does on
+Mode) takes away what's in the selection on the layers that show, in one undo step: from each cells
+layer its edit cells and paint, from the base the picture, which turns black, as the Eraser does on
 the base (whole cells in the ANSI view, just the selected pixels in the pixel view).
 
 ### Recoloring a selection
@@ -507,13 +536,13 @@ tool), the options row has **Set FG** and **Set BG** in the ANSI view: every sel
 your foreground or background color, on the layers that show (each cell where it shows), in one undo step. Only that color
 changes: each cell keeps the character and the other color it shows, whatever picked them (Best
 match, By shape, dithering, the palette), and paint on it keeps showing the color it gave its half.
-With both layers showing, a cell is recolored on the layer it shows from; hide one to leave it out.
-On the edit layer the cells take it as edit cells, replacing the paint there. On the base it goes into the
+Each cell is recolored on the topmost layer that shows with a cell or paint of its own there, else on the base;
+hide a layer to leave it out. On a cells layer the cells take it as edit cells, replacing the paint there. On the base it goes into the
 picture's own colors (a cell's background is its top pixel, its foreground its bottom one), with the
 cell's character pinned, so the converter doesn't pick another for the new colors. Your color shows as the palette and the color sliders make it, as anything you draw
 does. The ASCII styles show each character on black in its two pixels' average, so there's no Set
 BG, and Set FG on the base recolors both pixels. In the pixel view it's **Fill**: every selected pixel takes your foreground
-color, the picture's pixel on the base and paint on the edit layer. A color set to None can't be set; choose one
+color, the picture's pixel on the base and paint on each cells layer. A color set to None can't be set; choose one
 first.
 
 ### Selections and undo
@@ -528,8 +557,8 @@ drops the drawing ones.
 
 ## Flip FG/BG
 
-Flip acts on the picked layer. On the edit layer (the default) it swaps an edit cell's colors or the
-paint there; on a cell with neither, the flip goes on the edit layer as paint. On the base it swaps
+Flip acts on the picked layer. On a cells layer it swaps an edit cell's colors or the paint there; on a
+cell with neither, the flip goes on that layer as paint, the colors it showed swapped. On the base it swaps
 the two halves of each cell's base colors.
 
 ## Other tools

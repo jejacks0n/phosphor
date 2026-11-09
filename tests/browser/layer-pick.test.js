@@ -11,6 +11,8 @@ import { isArt } from '@/document/artLayers.js';
 import { withPins } from '@/document/baseRecords.js';
 import EditToolbar from '@/components/EditToolbar.vue';
 import eraser from '@/tools/eraser';
+import pencil from '@/tools/pencil';
+import brush from '@/tools/brush';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { toastMessage, closeToast } from '@/composables/useToast.js';
 
@@ -129,7 +131,7 @@ test('an artist\'s picked layer that leaves the stack skips the base under it', 
   const { project, workspace } = await blank();
   project.addLayer('vector', 'base');
   workspace.pickLayer('vector');
-  project._sharing = { role: 'artist' };
+  project._sharing = { role: 'artist', heard: [] }; // an artist's sharing as flushHeard reads it
   project.layers = project.layers.filter((l) => l.id !== 'vector');
   expect(workspace.pickedLayer).toBe('edit');
   project._sharing = null;
@@ -163,13 +165,13 @@ test('a new document picks the edit layer', async () => {
 
 test('an artist can not pick the base', async () => {
   const { project, workspace } = await blank();
-  project._sharing = { role: 'artist' };
+  project._sharing = { role: 'artist', heard: [] }; // an artist's sharing as flushHeard reads it
   workspace.pickLayer('base');
   expect(workspace.pickedLayer).toBe('edit');
   project._sharing = null;
   workspace.pickLayer('base');
   expect(workspace.pickedLayer).toBe('base');
-  project._sharing = { role: 'artist' };
+  project._sharing = { role: 'artist', heard: [] }; // an artist's sharing as flushHeard reads it
   expect(workspace.pickedLayer).toBe('edit');
 });
 
@@ -178,7 +180,7 @@ test('an artist moved off the base picks the cells layer picked last, or the top
   const id = project.addLayer('cells', 'edit');
   workspace.pickLayer(id);
   workspace.pickLayer('base');
-  project._sharing = { role: 'artist' };
+  project._sharing = { role: 'artist', heard: [] }; // an artist's sharing as flushHeard reads it
   expect(workspace.pickedLayer).toBe(id);
   expect(project.editId).toBe(id);
   project._sharing = null;
@@ -191,32 +193,80 @@ function pinUnderEdit(project) {
   project.commitEdit();
 }
 
-test('with the base picked, the toolbar offers only the base\'s tools', async () => {
-  const { workspace } = await blank();
-  workspace.editorTab = 'output';
-  workspace.pickLayer('base');
+// The toolbar's tool ids, as it shows them.
+function toolbarIds() {
   const host = document.createElement('div');
   mounted = createApp(EditToolbar).use(i18n);
   mounted.mount(host);
-  const ids = async () => {
+  return async () => {
     await new Promise((resolve) => requestAnimationFrame(resolve));
     return [...host.querySelectorAll('[data-tool]')].map((b) => b.dataset.tool);
   };
-  expect(await ids()).toEqual(['eraser', 'picker', 'wand', 'select', 'hand', 'zoom', 'flip']);
-  workspace.pickLayer('edit');
-  expect(await ids()).toContain('pencil');
-});
+}
 
-test('the base picked while the Pencil is out takes the eraser', async () => {
+test('every tool is offered with the base picked', async () => {
   const { workspace } = await blank();
-  workspace.inputActiveTool = 'brush';
+  workspace.editorTab = 'output';
+  workspace.pickLayer('edit');
+  const ids = toolbarIds();
+  const onEdit = await ids();
+  expect(onEdit).toContain('pencil');
   workspace.outputActiveTool = 'pencil';
   workspace.pickLayer('base');
-  expect([workspace.inputActiveTool, workspace.outputActiveTool]).toEqual(['eraser', 'eraser']);
-  workspace.outputActiveTool = 'select';
-  workspace.pickLayer('edit');
+  expect(await ids()).toEqual(onEdit);
+  expect(workspace.outputActiveTool).toBe('pencil'); // the tool out stays out
+});
+
+test('the Pencil on the base writes the cell as it shows', async () => {
+  const { project, workspace } = await blank();
+  const BLUE = '#0000aa';
+  project.beginEdit();
+  project.writeBaseCells([{ col: 3, row: 3, char: ' ', fg: BLUE, bg: BLUE }, { col: 4, row: 3, char: ' ', fg: BLUE, bg: BLUE }]);
+  project.commitEdit();
+  await settle(project);
+  workspace.editorTab = 'output';
   workspace.pickLayer('base');
-  expect(workspace.outputActiveTool).toBe('select'); // a tool the base has stays
+  Object.assign(workspace, { pencilDrawWith: 'single', editFgColor: RED, editFgNone: false, editBgNone: true }); // only FG set
+  const ctx = { project, workspace, view: 'output' };
+  pencil.begin(ctx, { x: 3.5, y: 7 });
+  pencil.move(ctx, { x: 3.5, y: 7 }, { x: 4.5, y: 7 });
+  pencil.end(ctx);
+  await settle(project);
+  const char = project.baseRecords.pins.get('3,3');
+  expect(char).toMatch(/[─╶╴]/); // a pin is written there
+  const cell = project.cells[3 * project.cols + 3];
+  expect([cell.char, cell.fg.hex, cell.bg.hex]).toEqual([char, RED, BLUE]); // its FG over what showed
+  expect(project.cellsOf('edit').size).toBe(0);
+});
+
+test('the Brush on the base paints base pixels', async () => {
+  const { project, workspace } = await blank();
+  workspace.editorTab = 'input';
+  workspace.pickLayer('base');
+  Object.assign(workspace, { editFgColor: RED, editBrushSize: 1, editBrushOpacity: 100, editBrushHardness: 100, editBrushFlow: 100 });
+  const ctx = { project, workspace, view: 'input' };
+  brush.begin(ctx, { x: 5.5, y: 5.5 });
+  brush.end(ctx);
+  await settle(project);
+  const own = project.baseLayer.pixelAt(5, 5);
+  expect(own && [own.r, own.g, own.b]).toEqual([255, 0, 0]);
+  expect(project.paintOf('edit')?.hasPaint ?? false).toBe(false);
+  expect(project.cells[2 * project.cols + 5].fg.hex).toBe(RED); // pixel (5, 5) is cell (5, 2)'s bottom half
+  project.undo();
+  expect(project.baseLayer.pixelAt(5, 5)).toBe(null);
+});
+
+test('Text on the base overwrites in insert mode', async () => {
+  const { project, workspace } = await blank();
+  project.beginEdit();
+  project.writeBaseCells([{ col: 1, row: 1, char: 'A', fg: RED, bg: '#000000' }, { col: 2, row: 1, char: 'B', fg: RED, bg: '#000000' }]);
+  project.commitEdit();
+  workspace.pickLayer('base');
+  expect(project.typeAt(1, 1, 'X', { fg: '#ffffff' }, { insert: true })).toBe(true);
+  project.commitEdit();
+  const pins = project.baseRecords.pins;
+  expect([pins.get('1,1'), pins.get('2,1'), pins.get('3,1')]).toEqual(['X', 'B', undefined]);
+  expect(project.cellsOf('edit').size).toBe(0);
 });
 
 test('the eraser on the base erases the base, on the edit layer the edit layer', async () => {
@@ -228,7 +278,7 @@ test('the eraser on the base erases the base, on the edit layer the edit layer',
   workspace.pickLayer('base');
   erase();
   expect(project.baseRecords.pins.get('3,3')).toBe(' '); // the base erased to a pinned space
-  expect(project.editCellAt(3, 3)?.char).toBe('E');
+  expect(project.cellsOf('edit').get('3,3')?.char).toBe('E');
   project.setBaseRecords(withPins(project.baseRecords, [{ col: 3, row: 3, char: 'P' }]));
   workspace.pickLayer('edit');
   erase();
@@ -236,7 +286,7 @@ test('the eraser on the base erases the base, on the edit layer the edit layer',
   expect(project.baseRecords.pins.get('3,3')).toBe('P');
 });
 
-// Selections work on what's shown (workspace.selectionLayers), whatever layer is picked; hiding a layer leaves it out.
+// Selections work on what's shown (workspace.selectionIds), whatever layer is picked; hiding a layer leaves it out.
 async function selecting() {
   const app = await blank();
   const { project, workspace } = app;
@@ -252,31 +302,34 @@ async function selecting() {
 }
 const pin = (project) => project.baseRecords.pins.get('3,3');
 
-test('selectionLayers is the shown layers, whatever is picked', async () => {
+test('selectionIds is the shown cells layers, bottom first, whatever is picked', async () => {
   const { project, workspace } = await blank();
+  const top = project.addLayer('cells', 'edit');
+  project.addLayer('vector', 'base');
   workspace.pickLayer('edit');
-  expect(workspace.selectionLayers).toEqual({ base: true, edit: true });
+  expect(workspace.selectionIds).toEqual(['base', 'edit', top]);
   project.setLayerHidden('base', true);
-  expect(workspace.selectionLayers).toEqual({ base: false, edit: true });
+  expect(workspace.selectionIds).toEqual(['edit', top]);
   workspace.pickLayer('base');
   project.setLayerHidden('edit', true);
   project.setLayerHidden('base', false);
-  expect(workspace.selectionLayers).toEqual({ base: true, edit: false });
+  expect(workspace.selectionIds).toEqual(['base', top]);
 });
 
 test('Copy takes every shown layer, the base too with the edit layer picked; a hidden one is left out', async () => {
   const { project, workspace, press } = await selecting();
+  const edit = () => workspace.clipboard.parts.find((part) => part.id === 'edit');
   press('c', { ctrlKey: true });
-  expect(workspace.clipboard.cells.some(Boolean)).toBe(true);
+  expect(edit().cells.some(Boolean)).toBe(true);
   expect(workspace.clipboard.base.pins).toContain('P');
   project.setLayerHidden('base', true);
   press('c', { ctrlKey: true });
-  expect(workspace.clipboard.cells.some(Boolean)).toBe(true);
+  expect(edit().cells.some(Boolean)).toBe(true);
   expect(workspace.clipboard.base).toBeUndefined();
   project.setLayerHidden('base', false);
   workspace.pickLayer('base');
   press('c', { ctrlKey: true });
-  expect(workspace.clipboard.cells.some(Boolean)).toBe(true);   // the edit layer is shown, though the base is picked
+  expect(edit().cells.some(Boolean)).toBe(true);   // the edit layer is shown, though the base is picked
   expect(workspace.clipboard.base.pins).toContain('P');
 });
 
@@ -296,7 +349,8 @@ test('the toolbar\'s Copy takes the shown layers too', async () => {
   copy.click();
   host.remove();
   expect(workspace.clipboard.base.pins).toContain('P');
-  expect(workspace.clipboard.cells.some(Boolean)).toBe(true);
+  expect(workspace.clipboard.parts.map((part) => part.id)).toEqual(['edit']);
+  expect(workspace.clipboard.parts[0].cells.some(Boolean)).toBe(true);
 });
 
 test('Set FG on a selection recolors every shown layer, the base cell too with the edit layer picked; with the base hidden, only the edit cell', async () => {
@@ -361,9 +415,10 @@ test('Delete with Select, and a nudge, act on the shown layers; the Wand\'s Dele
   expect(pin(project)).toBe('P');
   project.undo();
   project.setLayerHidden('base', false);
-  press('ArrowRight');   // the block moves with the base under it (its pin is vacated)
+  press('ArrowRight');   // each layer's part moves on its own layer: the edit cell on the edit layer, the pin on the base
   expect(project.editCellAt(4, 3)?.char).toBe('E');
-  expect(pin(project)).toBe(' ');
+  expect(project.baseRecords.pins.get('4,3')).toBe('P');
+  expect(pin(project)).not.toBe('P');
   project.undo();
 
   workspace.selection = null;
@@ -396,7 +451,7 @@ test('a new document opens on the edit layer, whatever was picked before', async
   expect(workspace.pickedLayer).toBe('edit');
 });
 
-test('with the base picked, a tool key for a tool the base hasn\'t says where it draws', async () => {
+test('with the base picked, a tool key chooses any tool, with nothing to say', async () => {
   const { project, workspace } = await blank();
   workspace.editorTab = 'output';
   workspace.pickLayer('base');
@@ -405,15 +460,9 @@ test('with the base picked, a tool key for a tool the base hasn\'t says where it
   const press = (key) => window.dispatchEvent(new KeyboardEvent('keydown', { key, cancelable: true }));
   workspace.setActiveTool('eraser');
   press('p');
-  expect(workspace.activeTool).toBe('eraser');
-  expect(toastMessage.value).toBe('Pencil draws on Layer 1. Pick it in Layers.');
-  closeToast();
-  project.renameLayer('edit', 'Ink');
+  expect(workspace.activeTool).toBe('pencil');
   press('b');
-  expect(toastMessage.value).toBe('Brush draws on Ink. Pick it in Layers.');
-  closeToast();
-  press('i'); // one the base has
-  expect(workspace.activeTool).toBe('picker');
+  expect(workspace.activeTool).toBe('brush');
   expect(toastMessage.value).toBeFalsy();
 });
 

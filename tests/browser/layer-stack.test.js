@@ -9,6 +9,9 @@ import { MOST_LAYERS } from '@/document/layerInfo.js';
 import { toastMessage } from '@/composables/useToast.js';
 import { coverCell } from '@/lib/Cells.js';
 import { typeText } from '@/composables/useTextTool.js';
+import { createApp } from 'vue';
+import ColorPopover from '@/components/ColorPopover.vue';
+import { i18n } from '@/i18n';
 
 const keys = (cells) => [...cells.keys()];
 
@@ -52,7 +55,7 @@ test('useLayer swaps the aliases', async () => {
   expect(keys(project.editCells)).toEqual(['0,0']);
 });
 
-test('useLayer leaves the bottom, a vector layer and the layer in use as they are', async () => {
+test('useLayer leaves a vector layer and the layer in use as they are, and the bottom hands a layer back its own', async () => {
   const { project } = await blank();
   const cells = project.editCells;
   project.addLayer('vector', 'base');
@@ -416,10 +419,10 @@ test('deleting the picked layer picks the one under it', async () => {
   project.commitEdit();
   expect(keys(project.cellsOf(one))).toEqual(['3,3']);
   workspace.pickLayer('edit');
-  expect(project.deleteLayer('edit')).toBe(true); // the layer in use, with one left above it: that one's fields
+  expect(project.deleteLayer('edit')).toBe(true); // the layer in use: the base under it is picked, and the tools draw there
   expect(workspace.pickedLayer).toBe('base');
-  expect(project.editId).toBe(one);
-  expect(keys(project.editCells)).toEqual(['3,3']);
+  expect(project.editId).toBe('base');
+  expect(keys(project.cellsOf(one))).toEqual(['3,3']);
   project.undo();
   expect(ids(project)).toEqual(['base', 'edit', one]);
   expect(project.cellsOf('edit').size).toBe(0);
@@ -528,7 +531,7 @@ test('a stack opened without an edit layer picks the layer in use', async () => 
   expect(workspace.pickedLayer).toBe(two);
 });
 
-test('with the only cells layer deleted, a base move stays on the base, pastes are refused, and + Layer starts empty', async () => {
+test('with the only cells layer deleted, a base move stays on the base, pastes and typing land on the base, and + Layer starts empty', async () => {
   const { project, workspace } = await blank();
   project.typeAt(1, 1, 'Q', WHITE);
   project.commitEdit();
@@ -538,23 +541,33 @@ test('with the only cells layer deleted, a base move stays on the base, pastes a
   expect(project.deleteLayer('edit')).toBe(true);
   expect(ids(project)).toEqual(['base']);
   expect(workspace.pickedLayer).toBe('base');
-  expect(workspace.selectionLayers).toEqual({ base: true, edit: false }); // only layers in the stack
-  project.moveSelection({ c0: 0, r0: 0, c1: 2, r1: 2 }, workspace.selectionLayers, 5, 0);
+  expect(project.editId).toBe('base'); // the tools draw on the base
+  expect(workspace.selectionIds).toEqual(['base']); // only layers in the stack
+  project.moveSelection({ c0: 0, r0: 0, c1: 2, r1: 2 }, workspace.selectionIds, 5, 0);
   await settle(project);
   expect(project.baseRecords.pins.get('6,1')).toBe('Q'); // the base pins moved
   expect(cellAt(project, 6, 1).char).toBe('Q');
   expect(project.editCells.size).toBe(0);
 
-  const version = project.history.version;
   const block = { w: 1, h: 1, cells: [{ char: 'Z', ...WHITE }] };
-  expect(project.pasteSelection(block, 3, 3)).toBe(null);
-  expect(toastMessage.value).toBe('Add a layer to draw on it.');
-  expect(project.pasteSelection(project.copySelection({ c0: 6, r0: 1, c1: 6, r1: 1 }, { base: true, edit: false }), 3, 3)).toBe(null);
-  toastMessage.value = null;
+  expect(project.pasteSelection(block, 3, 3)).toEqual({ c0: 3, r0: 3, c1: 3, r1: 3 });
+  expect(project.baseRecords.pins.get('3,3')).toBe('Z'); // pasted onto the base
   workspace.textCursor = { col: 4, row: 4 };
   typeText(project, workspace, 'hi');
-  expect(toastMessage.value).toBe('Add a layer to draw on it.');
+  project.commitEdit();
+  expect([project.baseRecords.pins.get('4,4'), project.baseRecords.pins.get('5,4')]).toEqual(['h', 'i']);
   expect(project.editCells.size).toBe(0);
+
+  // The last cells layer deleted with a vector layer picked: the edit layer's fields are no layer's, and a paste is refused.
+  const gone = project.addLayer('cells', 'base');
+  workspace.pickLayer(gone);
+  const vector = project.addLayer('vector', gone);
+  workspace.pickLayer(vector);
+  project.deleteLayer(gone);
+  expect(project.editId).toBe(gone);
+  const version = project.history.version;
+  expect(project.pasteSelection(block, 8, 3)).toBe(null);
+  expect(toastMessage.value).toBe('Add a layer to draw on it.');
   expect(project.history.version).toBe(version);
 
   const id = project.addLayer('cells', 'base');
@@ -563,6 +576,23 @@ test('with the only cells layer deleted, a base move stays on the base, pastes a
   expect(project.cellsOf(id).size).toBe(0);
   expect(project.hasPaint).toBe(false);
   expect(project._layerData.has(id)).toBe(false); // its data is the edit layer's fields, not a stale entry
+});
+
+test('the eyedropper reads what shows, through every shown layer', async () => {
+  const { project, workspace } = await blank();
+  const top = project.addLayer('cells', 'edit'); // [base, edit, L1]: L1 is above the lower group
+  workspace.pickLayer(top);
+  project.typeAt(2, 2, 'X', { fg: '#ff0000', bg: '#0000ff' });
+  project.commitEdit();
+  project.paintStroke([{ x: 6, y: 6, alpha: 1 }], '#00ff00');
+  project.commitEdit();
+  workspace.pickLayer('edit');
+  expect(project.underlyingAt(2, 2)).toMatchObject({ char: 'X', fg: '#ff0000', bg: '#0000ff' });
+  expect(project.rawColorAt(6, 6)).toBe('#00ff00');
+  expect(project.underlyingAt(6, 3).bg).toBe('#00ff00');
+  project.setLayerHidden(top, true);
+  expect(project.underlyingAt(2, 2).fg).toBe('#000000');
+  expect(project.rawColorAt(6, 6)).toBe('#000000');
 });
 
 test('Clear clears the picked cells layer: refused while it\'s hidden, off with the base or a vector layer picked', async () => {
@@ -606,4 +636,60 @@ test('a cells layer added under a painted one shows what a full render does', as
   project.render();
   await settle(project);
   expect(shown).toEqual(cellsKey(project));
+});
+
+test('the color box offers every cells layer\'s colors, not only the one in use', async () => {
+  const { project, workspace } = await blank();
+  project.typeAt(1, 1, 'a', { fg: '#ff0000' }); // on edit
+  project.commitEdit();
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(2, 1, 'b', { fg: '#00ff00' });
+  project.commitEdit();
+  project.paintStroke([{ x: 5, y: 5, alpha: 1 }], '#0000ff');
+  project.commitEdit();
+  workspace.pickLayer('base');
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp(ColorPopover, { slotName: 'fg' }).use(i18n);
+  app.mount(host);
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  const titles = [...host.querySelectorAll('.swatch')].map((b) => b.title.toLowerCase());
+  const fold = host.querySelector('.fold')?.textContent ?? '';
+  app.unmount();
+  host.remove();
+  expect(titles).toEqual(expect.arrayContaining(['#ff0000', '#00ff00']));
+  expect(fold).toContain('1'); // the top layer's paint, folded away
+});
+
+// A picture added to a drawing is paint on a cells layer, fitted to the canvas: one undo step.
+const pictureFile = async () => new File([await (await fetch('/tests/fixtures/images/gradient.png')).blob()], 'gradient.png', { type: 'image/png' });
+
+test('a picture added with Layer 1 picked becomes its paint, one undo step', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('edit');
+  const version = project.history.version;
+  expect(await project.addPictureToLayer(await pictureFile())).toBe('edit');
+  expect(ids(project)).toEqual(['base', 'edit']);
+  expect(project.paintOf('edit').hasPaint).toBe(true);
+  expect(project.history.version).toBe(version + 1);
+  project.undo();
+  expect(project.paintOf('edit').hasPaint).toBe(false);
+  project.redo();
+  expect(project.paintOf('edit').hasPaint).toBe(true);
+});
+
+test('with the base picked it lands on a new layer named after the file', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('base');
+  const id = await project.addPictureToLayer(await pictureFile());
+  expect(ids(project)).toEqual(['base', id, 'edit']);
+  expect(project.layerById(id).name).toBe('gradient');
+  expect(project.paintOf(id).hasPaint).toBe(true);
+  expect(project.paintOf('edit')?.hasPaint ?? false).toBe(false);
+  project.undo();
+  expect(ids(project)).toEqual(['base', 'edit']);
+  project.redo();
+  expect(ids(project)).toEqual(['base', id, 'edit']);
+  expect(project.paintOf(id).hasPaint).toBe(true);
 });

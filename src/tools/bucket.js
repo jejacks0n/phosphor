@@ -11,14 +11,14 @@ import { snappedEnd } from './shapes';
 import { watch } from 'vue';
 import { t } from '@/i18n/index.js';
 
-// Grid pixels the fill stops at: edit cells showing a character with something to see through (text,
+// Grid pixels the fill stops at: the picked layer's edit cells showing a character with something to see through (text,
 // box lines), so a fill stays inside a drawn box and never covers typed text. A line hidden under
 // paint (showsChar) isn't one: the fill covers what you see. With a selection (clip), every pixel
 // outside it is a wall too.
-function wallsOf(project, clip) {
+function wallsOf(project, clip, picked) {
   const walls = new Uint8Array(project.cols * project.rows);
   if (clip) for (let i = 0; i < walls.length; i++) walls[i] = clip.pixel(i % project.cols, Math.floor(i / project.cols)) ? 0 : 1;
-  for (const key of project.editCells.keys()) {
+  for (const key of project.cellsOf(picked).keys()) {
     const { col, row } = parseKey(key);
     const cell = project.cells[cellIndex(col, row, project.cols)];
     if (!cell || isSolidGlyph(cell.char) || !showsChar(cell)) continue;
@@ -48,7 +48,7 @@ function cellArea(project, workspace, pos) {
 // where it feathers), by Tolerance and Contiguous, stopping at walls.
 function pixelArea(project, workspace, pos) {
   const imageData = ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, project.cols, project.rows); // with the upper layers' pixels, as the view shows
-  return floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project, selectionClip(workspace)));
+  return floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project, selectionClip(workspace), workspace.pickedLayer));
 }
 
 const fillsCells = (workspace, view) => view === 'output' && workspace.bucketFillWith === 'cells';

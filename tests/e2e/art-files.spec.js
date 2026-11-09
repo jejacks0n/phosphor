@@ -2,8 +2,9 @@
 // asking whether to edit the art or draw on top of it; and dropping one on an open drawing, to add it there or
 // open it instead.
 import { test, expect } from './support.js';
-import { imageInput, chars, store, tab, settled, openApp, cellPoint, editAt } from './support.js';
+import { imageInput, chars, store, tab, settled, openApp, cellPoint, editAt, fixture } from './support.js';
 import { Sauce } from '../../src/lib/Sauce.js';
+import { readFile } from 'node:fs/promises';
 
 // Two rows: "Hi" in red, then "there".
 const boat = Buffer.from('\x1b[31mHi\x1b[0m\r\nthere', 'latin1');
@@ -53,16 +54,16 @@ test('a .ans dropped on the start screen asks; Cancel leaves the start screen, a
 const tiny = [...new Sauce({ cols: 3, rows: 2 }, { title: 'Tiny' }).appendTo(Buffer.from('ABCDEF', 'latin1'))];
 
 // Drop a file on the element at a selector, at a page point (or its middle), as dragging one from the desktop does.
-async function dropOn(page, selector, bytes, name, at = null) {
-  await page.evaluate(([selector, bytes, name, at]) => {
+async function dropOn(page, selector, bytes, name, at = null, type = '') {
+  await page.evaluate(([selector, bytes, name, at, type]) => {
     const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(new File([new Uint8Array(bytes)], name));
+    dataTransfer.items.add(new File([new Uint8Array(bytes)], name, { type }));
     const target = document.querySelector(selector), box = target.getBoundingClientRect();
     const point = at ?? { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     for (const type of ['dragenter', 'dragover', 'drop']) {
       target.dispatchEvent(new DragEvent(type, { dataTransfer, bubbles: true, cancelable: true, clientX: point.x, clientY: point.y }));
     }
-  }, [selector, bytes, name, at]);
+  }, [selector, bytes, name, at, type]);
 }
 
 const frames = (page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
@@ -166,4 +167,25 @@ test('with others drawing, the question offers no opening; Cancel leaves the dra
   await expect(question(page)).toBeHidden();
   expect(await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), filename: p.filename, version: p.history.version }))).toEqual(before);
   expect(await store(page, 'workspace', (w) => w.artDrop)).toBe(null);
+});
+
+test('a picture dropped on a drawing asks: Add puts it on the layer picked as paint, one undo step; Open instead opens it', async ({ page }) => {
+  await openApp(page);
+  const filename = await store(page, 'project', (p) => p.filename);
+  const photo = [...await readFile(fixture('images/photo.jpg'))];
+  await dropOn(page, 'article.drop-zone', photo, 'photo.jpg', null, 'image/jpeg');
+  await expect(question(page)).toContainText('Add photo.jpg?');
+  await expect(question(page)).toContainText('Add it to Layer 1 as paint, fitted to the canvas.');
+  await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
+  await expect(question(page)).toBeHidden();
+  await expect.poll(() => store(page, 'project', (p) => p.paintOf('edit')?.hasPaint ?? false)).toBe(true);
+  expect(await store(page, 'project', (p) => p.filename)).toBe(filename);
+  await page.keyboard.press('ControlOrMeta+z');
+  await settled(page);
+  expect(await store(page, 'project', (p) => p.paintOf('edit')?.hasPaint ?? false)).toBe(false);
+
+  page.once('dialog', (dialog) => dialog.accept()); // unsaved work
+  await dropOn(page, 'article.drop-zone', photo, 'photo.jpg', null, 'image/jpeg');
+  await question(page).getByRole('button', { name: /Open instead/ }).click();
+  await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('photo');
 });

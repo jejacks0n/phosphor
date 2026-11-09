@@ -2,14 +2,18 @@
 // nothing changes), and a moved or pasted block floating until the selection is set down. Owns
 // _float (the move in progress).
 //
-// They act on the Select tool's layers: Layers = { base, edit }, where Edit is everything drawn
-// (edit cells and paint, stored apart but one thing to the user), and Base is the base's colors and
-// pins (the converter's own characters belong to their cells and stay). Each layer is copied and
-// lifted as itself. Block = { w, h, cells?: (Entry | null)[], paint?: canvas, base?: { pixels:
-// canvas (at scale, basePixelsOf), scale, colors: canvas (its stored colors, a grid pixel each), pins:
-// (char | null)[] }, looks?: Entry[] (with base: each cell as the base showed it, completeAt) }. A
-// block lands on top of everything drawn where it lands: its picture part as edit cells looking as it
-// did (asCells). Rects are clipped to the grid.
+// They act on layers by id, bottom first (workspace.selectionIds: every shown cells layer, through layersFor): a cells
+// layer's cells and paint (stored apart but one thing to the user), and the base's colors and pins (the converter's own
+// characters belong to their cells and stay). Block = { w, h, px?, parts: [{ id, cells: (Entry | null)[], paint?: canvas }],
+// base?: { pixels: canvas (at scale, basePixelsOf), scale, colors: canvas (its stored colors, a grid pixel each), pins:
+// (char | null)[] }, looks?: Entry[] (with base: each cell as the base showed it, completeAt), shown?: (Entry | null)[],
+// shownAt?: number }: a part per cells layer; shown (Copy's) is what shapes on shown vector layers show there, as exact
+// cells, laid over the parts before shownAt. A move, Delete, a flip or turn and a recolor act on each layer as itself, in
+// one selectionEdit (one undo step) and through onLayer (one swap in and out of each layer that isn't in use): each part
+// lands back on its own layer, and shapes stay whole where they are. A paste lands on the layer in use as one layer
+// (flatBlock), on top of what's drawn there: its picture as cells looking as it did (asCells), each part over the one
+// under it, the shown cells over those; on the base, as drawing there does. A block made elsewhere (a Moebius block, an
+// older tab's) is { w, h, cells?, paint? }: one layer's. Rects are clipped to the grid.
 import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry, isPaintBlock } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { ctx2d } from '@/lib/Canvas.js';
@@ -17,7 +21,7 @@ import { cellIndex, cellsOfPixels, charRowsOf } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { boundsOf, over, refusedNoCells } from '@/store/project/shared.js';
+import { boundsOf, onBottom, over, refusedNoCells } from '@/store/project/shared.js';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { turnChar } from '@/lib/TurnChars.js';
 import { toRaw } from 'vue';
@@ -35,23 +39,40 @@ const floated = (action) => function (...args) {
   }
 };
 const canTakeBack = (project, run, steps = run.recorded) => !steps || project._sharing?.role !== 'artist' || !!project._sharing.held;
+const sameIds = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
+
+// Whether id is the base itself: inside an art layer the one id there is (layersFor) is its drawing's, whatever's in use.
+const isBase = (project, id) => id === 'base' && !project._artInside;
+
+// fn(id) for each layer of ids, bottom first, inside the open edit: a cells layer with its data in the edit layer's fields
+// (onLayer), the base as it is (fn writes it itself).
+function eachLayer(project, ids, fn) {
+  for (const id of ids) {
+    if (isBase(project, id)) fn(id);
+    else project.onLayer(id, () => fn(id));
+  }
+}
 
 export const selectionActions = {
-  copySelection(rect, { base, edit }) {
+  // shapes: the cells shapes on shown vector layers show in rect come too, as shown (a move's block leaves them).
+  copySelection(rect, ids, { shapes = true } = {}) {
     this.ensureLayer();
-    const block = { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1 };
+    const block = { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1, parts: [] };
     const cells = rectCells(rect);
-    if (edit) {
-      block.cells = cells.map(({ col, row }) => this.editCellAt(col, row) ?? null);
-      if (this.paintLayer) block.paint = this.paintLayer.copyCells(rect);
+    for (const id of ids) {
+      if (isBase(this, id)) {
+        block.base = {
+          pixels: this.basePixelsOf(rect), scale: this.baseLayer.scale, colors: this.baseColorsOf(rect),
+          pins: cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null),
+        };
+        block.looks = cells.map(({ col, row }) => this.completeAt(col, row, undefined, 'base'));
+        continue;
+      }
+      const own = this.cellsOf(id), paint = this.paintOf(id);
+      block.parts.push({ id, cells: cells.map(({ col, row }) => own.get(cellKey(col, row)) ?? null), ...(paint && { paint: paint.copyCells(rect) }) });
     }
-    if (base) {
-      block.base = {
-        pixels: this.basePixelsOf(rect), scale: this.baseLayer.scale, colors: this.baseColorsOf(rect),
-        pins: cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null),
-      };
-      block.looks = cells.map(({ col, row }) => this.completeAt(col, row));
-    }
+    const shown = shapes && !this._artInside && shownByShapes(this, cells);
+    if (shown) Object.assign(block, { shown, shownAt: block.parts.length });
     return block;
   },
 
@@ -99,8 +120,8 @@ export const selectionActions = {
   // Delete (and Cut) on a block that's floating takes away the block, not what it's over: the move, or
   // the paste and its moves, are undone and, for a move, the place it came from is cleared (one undo
   // step), and the selection goes with the block. Otherwise what's selected is deleted.
-  deleteSelection(rect, layers) {
-    layers = this.layersFor(layers);
+  deleteSelection(rect, ids) {
+    ids = this.layersFor(ids);
     const run = this._float;
     // Its steps: a move's, or a paste's and the moves after it.
     const steps = run?.version === this.history.version && toRaw(rect) === toRaw(run.landed) ? Number(!!run.recorded) + Number(!!(run.paste && run.pasted)) : 0;
@@ -111,37 +132,39 @@ export const selectionActions = {
       useWorkspaceStore().selection = null;
       return;
     }
-    this.selectionEdit([rect], () => this.deleteIn(rect, layers));
+    this.selectionEdit([rect], () => this.deleteIn(rect, ids));
   },
 
   // Returns the pasted rect (clipped), or null when it's all off the grid.
   // A paste is one undo step, and starts a float (floatSelection) whose moves are another: each lifts
   // the block off what it was pasted on, which comes back as it was (covered), and lands it again. So
   // undo after moving it puts it back where it was pasted, still floating, and undo again takes it away.
+  // It lands on the layer in use (to), and its moves stay there whichever is picked meanwhile.
   // pasted: whether the paste was an undo step (one that changes nothing isn't).
   pasteSelection: floated(function (block, col, row) {
-    if (this._artInside && block.base) block = { ...block, base: null }; // inside an art layer, only it's drawn on (layersFor)
+    if (this._artInside && block.base) block = { ...block, base: null, looks: null }; // inside an art layer, only it's drawn on (layersFor)
     if (refusedNoCells(this)) return null; // a paste lands on the cells layer in use
     this.ensureLayer();
+    const to = this.editId;
     const rectAt = (c, r) => this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
     const landed = rectAt(col, row);
     if (!landed) {
       this._float = null;
       return null;
     }
-    const under = covered(this, landed, block);
+    const under = covered(this, landed);
     const version = this.history.version;
-    this.selectionEdit([landed], () => this.pasteAt(block, col, row));
+    this.selectionEdit([landed], () => this.pasteAt(flatBlock(block), col, row));
     const pasted = this.history.version !== version;
     const redo = (dc, dr) => {
       const rect = rectAt(col + dc, row + dr);
-      this.selectionEdit([under.rect, rect].filter(Boolean), () => {
+      this.selectionEdit([under.rect, rect].filter(Boolean), () => this.onLayer(to, () => {
         uncover(this, under);
-        if (rect) this.pasteAt(block, col + dc, row + dr);
-      });
+        if (rect) this.pasteAt(flatBlock(block), col + dc, row + dr);
+      }));
       return rect;
     };
-    const start = { paste: true, block, redo, under, from: landed, layers: null, dc: 0, dr: 0, landed, recorded: false, pasted };
+    const start = { paste: true, block, to, redo, under, from: landed, layers: null, dc: 0, dr: 0, landed, recorded: false, pasted };
     this._float = { ...start, start, version: this.history.version };
     if (pasted) this.history.last.floats = { before: null, after: this._float };
     return landed;
@@ -149,9 +172,9 @@ export const selectionActions = {
 
   // Stamp (Moebius's S while moving, and C on a selection): a copy of what's selected stays where it
   // is, and the block floats on from there as a paste of it, so moving it leaves the copy behind.
-  stampSelection(rect, layers) {
+  stampSelection(rect, ids) {
     this.commitPending();
-    const landed = this.pasteSelection(this.copySelection(rect, this.layersFor(layers)), rect.c0, rect.r0);
+    const landed = this.pasteSelection(this.copySelection(rect, this.layersFor(ids)), rect.c0, rect.r0);
     if (this._float) this._float.stamped = this._float.start.stamped = true;
     return landed;
   },
@@ -162,15 +185,16 @@ export const selectionActions = {
   // the block comes to rest, and the run is one undo step. The run ends, leaving the block where it
   // is, when the selection is cleared or replaced (Escape, Deselect, a new selection: tied to the
   // selection object itself, so reselecting the same cells starts over), its layers change, or
-  // anything else is recorded. Returns where it landed (clipped), or null when it left the grid.
-  floatSelection: floated(function (rect, layers, dc, dr) {
-    layers = this.layersFor(layers);
+  // anything else is recorded. Each part stays on the layer it was lifted from, whatever's picked meanwhile.
+  // Returns where it landed (clipped), or null when it left the grid.
+  floatSelection: floated(function (rect, ids, dc, dr) {
+    ids = this.layersFor(ids);
     this.commitPending(); // text typed onto the block (a paste) is recorded: the next move starts a new run
     const run = this._float;
     const sameRun = run && canTakeBack(this, run) && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
-      && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
-    const block = !sameRun && this.copySelection(rect, layers);
-    const current = sameRun ? run : { block, redo: (c, r) => this.moveSelection(rect, layers, c, r, block), from: rect, layers: { ...layers }, dc: 0, dr: 0 };
+      && (!run.layers || sameIds(run.layers, ids));
+    const block = !sameRun && this.copySelection(rect, ids, { shapes: false });
+    const current = sameRun ? run : { block, redo: (c, r) => this.moveSelection(rect, ids, c, r, block), from: rect, layers: [...ids], dc: 0, dr: 0 };
     const offset = { dc: current.dc + dc, dr: current.dr + dr };
     if (sameRun && run.recorded) this.undo();
     if (!current.turned && !offset.dc && !offset.dr) { // back where it started: a move's nothing, a paste's where it was pasted
@@ -185,36 +209,38 @@ export const selectionActions = {
     return landed;
   }),
 
-  // Flip what's selected (op 'h', 'v') or rotate it 90° clockwise ('cw'), on the chosen layers. A
+  // Flip what's selected (op 'h', 'v') or rotate it 90° clockwise ('cw'), on each of the layers. A
   // flip moves its cells, their characters turning with them (TurnChars), and its paint and base flip
   // too. Rotate turns only pixels, by the picture's shape (rotateBlock), and does nothing while the
   // selection has characters (hasCharacters); the turned block starts at the same top-left corner,
   // moved back onto the grid where it would run off it. It floats, as a move does (floatSelection):
   // turned while it floats, it's the same run, so what it covers comes back when it moves on, and the
   // run is one undo step. Returns where it landed (clipped).
-  turnSelection: floated(function (rect, layers, op) {
-    layers = this.layersFor(layers);
-    if (op === 'cw' && this.hasCharacters(rect, layers)) return rect;
+  turnSelection: floated(function (rect, ids, op) {
+    ids = this.layersFor(ids);
+    if (op === 'cw' && this.hasCharacters(rect, ids)) return rect;
     this.commitPending();
     const run = this._float;
     const sameRun = run && canTakeBack(this, run) && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
-      && (!run.layers || (run.layers.base === layers.base && run.layers.edit === layers.edit));
+      && (!run.layers || sameIds(run.layers, ids));
     if (sameRun && run.recorded) this.undo();
-    // Lifted from (cleared each time it lands; none for a paste, which puts back what it covered), and
+    // Lifted from (cleared each time it lands; none for a paste, which puts back what it covered, on its layer to), and
     // the block as it floats.
     const lifted = sameRun ? (run.paste ? null : run.from) : rect;
-    const liftedLayers = sameRun ? run.layers : { ...layers };
-    const under = !lifted ? run.under : null, start = !lifted ? run.start : null;
-    const block = turnBlock(sameRun && run.block ? run.block : this.copySelection(lifted, liftedLayers), op);
+    const liftedLayers = sameRun ? run.layers : [...ids];
+    const under = !lifted ? run.under : null, start = !lifted ? run.start : null, to = !lifted ? run.to : null;
+    const block = turnBlock(sameRun && run.block ? run.block : this.copySelection(lifted, liftedLayers, { shapes: false }), op);
     const col = Math.max(0, Math.min(rect.c0, this.cols - block.w));
     const row = Math.max(0, Math.min(rect.r0, charRowsOf(this.rows) - block.h));
     const place = (dc, dr) => {
       const c = col + dc, r = row + dr;
       const landed = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
       this.selectionEdit([lifted, under?.rect, landed].filter(Boolean), () => {
-        if (lifted) this.deleteIn(lifted, liftedLayers);
-        if (under) uncover(this, under);
-        this.pasteAt(block, c, r, lifted);
+        if (lifted) moveParts(this, block, liftedLayers, lifted, c, r);
+        else this.onLayer(to, () => {
+          uncover(this, under);
+          this.pasteAt(flatBlock(block), c, r);
+        });
       });
       return landed;
     };
@@ -222,58 +248,67 @@ export const selectionActions = {
     const landed = place(0, 0);
     const recorded = this.history.version !== version;
     this._float = landed && {
-      paste: !lifted, turned: true, block, redo: place, from: lifted ?? run.from, layers: lifted ? liftedLayers : null, under, start, pasted: !lifted && run.pasted, stamped: !lifted && run.stamped,
+      paste: !lifted, turned: true, block, redo: place, from: lifted ?? run.from, layers: lifted ? liftedLayers : null, under, start, to, pasted: !lifted && run.pasted, stamped: !lifted && run.stamped,
       dc: 0, dr: 0, landed, version: this.history.version, recorded,
     };
     if (recorded) this.history.last.floats = { before: start && { ...start, start }, after: this._float ?? { paste: !lifted, from: lifted ?? run.from, landed: null } };
     return landed;
   }),
 
-  // Whether what's in rect, on the chosen layers, has characters Rotate can't turn: anything on the
-  // edit layer but a Half-block's ▄, or a pin on the base but ▄ (both only show their cell's pixels).
-  // A floating block is judged as it was lifted: its picture landed as edit cells, but turns as pixels.
-  hasCharacters(rect, { base, edit }) {
+  // Whether what's in rect, on the layers, has characters Rotate can't turn: anything on a cells
+  // layer but a Half-block's ▄, or a pin on the base but ▄ (both only show their cell's pixels).
+  // A floating block is judged as it was lifted: its picture landed as cells, but turns as pixels.
+  hasCharacters(rect, ids) {
     const run = this._float;
     if (run?.block && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)) {
-      const { cells, base: lifted } = run.block;
-      return (edit && !!cells?.some((entry) => entry && !isPaintBlock(entry))) || (base && !!lifted?.pins.some((pin) => pin && pin !== '▄'));
+      const { parts, cells, base, shown } = run.block;
+      return (parts ?? [{ cells }]).some((part) => !!part.cells?.some((entry) => entry && !isPaintBlock(entry)))
+        || !!base?.pins.some((pin) => pin && pin !== '▄') || !!shown?.some(Boolean);
     }
-    return rectCells(rect).some(({ col, row }) => {
-      const key = cellKey(col, row), entry = edit && this.editCells.get(key), pin = base && this.baseRecords.pins.get(key);
-      return (entry && !isPaintBlock(entry)) || (pin && pin !== '▄');
-    });
+    ids = this.layersFor(ids);
+    return rectCells(rect).some(({ col, row }) => ids.some((id) => {
+      const key = cellKey(col, row);
+      if (isBase(this, id)) return ((pin) => !!pin && pin !== '▄')(this.baseRecords.pins.get(key));
+      const entry = this.cellsOf(id).get(key);
+      return !!entry && !isPaintBlock(entry);
+    }));
   },
 
   // Delete in the Magic Wand's selection (workspace.wand), in `view` (the ANSI view's cells or the
-  // pixel view's grid pixels), on the layers lit, as the Eraser does: Edit takes the drawing away (in
-  // the pixel view, a ▄ there only to show paint (Half-block) goes with the last of its paint); Base
-  // turns the picture black (in the ANSI view whole cells, with a pinned space). One undo step.
-  deleteInWand(made, view = made.view, layers = { base: false, edit: true }) {
-    const { base, edit } = this.layersFor(layers);
+  // pixel view's grid pixels), on each of the layers, as the Eraser does: a cells layer's drawing goes
+  // (in the pixel view, a ▄ there only to show paint (Half-block) goes with the last of its paint); the
+  // base turns black (in the ANSI view whole cells, with a pinned space). One undo step.
+  deleteInWand(made, view = made.view, ids = [this.editId]) {
+    ids = this.layersFor(ids);
     const wand = wandIn(made, view, this.rows);
     const units = unitsOf(wand.mask, wand.width);
     const cells = view === 'output' ? units.map(({ x, y }) => ({ col: x, row: y })) : null;
-    if (edit && cells) {
-      this.eraseEditPixels(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
-      this.clearEditCells(cells);
-    } else if (edit) {
+    this.ensureLayer();
+    this.beginEdit();
+    eachLayer(this, ids, (id) => {
+      if (isBase(this, id)) return cells ? this.eraseBase(cells) : this.eraseBasePixels(units);
+      if (cells) {
+        this.eraseEditPixels(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
+        this.clearEditCells(cells);
+        return;
+      }
       const blocks = cellsOfPixels(units, this.cols, this.rows).filter(({ col, row }) => isPaintBlock(this.editCellAt(col, row)) && this.cellHasPaint(col, row));
       this.eraseEditPixels(units);
       this.clearEditCells(blocks.filter(({ col, row }) => !this.cellHasPaint(col, row)));
-    }
-    if (base) cells ? this.eraseBase(cells) : this.eraseBasePixels(units);
+    });
     this.commitEdit();
   },
 
-  // Recolor what's selected (made: the wand's selection or a Select rect), on the layers lit, one
-  // undo step. In the ANSI view, colors { fg?, bg? } change that color of what every cell shows, its
-  // character and other color kept: on Edit, as an edit cell (the paint there, which it replaces,
-  // giving its halves' colors); on Base, as its two pixels (bg the top, fg the bottom; the ASCII styles
-  // show the pair's average, so fg to both) with its character pinned, so the converter doesn't pick
-  // another. With both lit, each cell where it is: on Edit where it has an edit or paint of its own.
-  // In the pixel view, colors.fg goes to every pixel: the picture on Base, paint on Edit.
-  recolorSelection(made, view, layers, { fg, bg }) {
-    const { base, edit } = this.layersFor(layers);
+  // Recolor what's selected (made: the wand's selection or a Select rect), on the layers, one undo
+  // step. In the ANSI view, colors { fg?, bg? } change that color of what every cell shows, its
+  // character and other color kept, each cell on the topmost of the layers with an edit cell or paint
+  // of its own there, else the base (else the topmost layer): on a cells layer, as an edit cell (the
+  // paint there, which it replaces, giving its halves' colors); on the base, as its two pixels (bg the
+  // top, fg the bottom; the ASCII styles show the pair's average, so fg to both) with its character
+  // pinned, so the converter doesn't pick another. In the pixel view, colors.fg goes to every pixel of
+  // each layer: the picture on the base, paint on a cells layer.
+  recolorSelection(made, view, ids, { fg, bg }) {
+    ids = this.layersFor(ids);
     let units;
     if (made.mask) {
       const wand = wandIn(made, view, this.rows);
@@ -282,63 +317,58 @@ export const selectionActions = {
       const cells = rectCells(made);
       units = view === 'output' ? cells.map(({ col, row }) => ({ x: col, y: row })) : cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
     }
+    this.ensureLayer();
+    this.beginEdit();
     if (view === 'output') {
       const colors = { ...(fg && { fg }), ...(bg && { bg }) }, ascii = this.renderStyle === 'ascii' || this.renderStyle === 'colorAscii';
-      const ownEdit = ({ x, y }) => !!this.editCellAt(x, y) || this.cellHasPaint(x, y);
-      const onEdit = edit ? units.filter((u) => !base || ownEdit(u)) : [], onBase = base ? units.filter((u) => !edit || !ownEdit(u)) : [];
-      const edits = onEdit.map(({ x, y }) => ({ col: x, row: y, attrs: { ...shownLook(this, x, y), ...colors } }));
-      const cells = (ascii && !fg ? [] : onBase).map(({ x, y }) => {
-        const look = this.completeAt(x, y);
-        return { col: x, row: y, char: look.char, fg: fg ?? look.fg, bg: ascii ? fg : bg ?? look.bg };
+      const layered = ids.filter((id) => !isBase(this, id)), base = ids.find((id) => isBase(this, id));
+      const owns = (id, { x, y }) => this.cellsOf(id).has(cellKey(x, y)) || painted(this.paintOf(id), x, y);
+      const byLayer = new Map();
+      for (const unit of units) {
+        const id = layered.findLast((each) => owns(each, unit)) ?? base ?? layered.at(-1);
+        if (id) byLayer.set(id, [...(byLayer.get(id) ?? []), unit]);
+      }
+      eachLayer(this, ids.filter((id) => byLayer.has(id)), (id) => {
+        const mine = byLayer.get(id);
+        if (!isBase(this, id)) return this.writeEditCells(mine.map(({ x, y }) => ({ col: x, row: y, attrs: { ...shownLook(this, x, y), ...colors } })), { clearPaint: true });
+        this.writeBaseCells((ascii && !fg ? [] : mine).map(({ x, y }) => {
+          const look = this.completeAt(x, y, undefined, 'base');
+          return { col: x, row: y, char: look.char, fg: fg ?? look.fg, bg: ascii ? fg : bg ?? look.bg };
+        }));
       });
-      if (edits.length) this.writeEditCells(edits, { clearPaint: true });
-      this.writeBaseCells(cells);
     } else if (fg) {
-      if (base) this.writeBase(units.map(({ x, y }) => ({ x, y, hex: fg })));
-      if (edit) this.paintEditPixels(units.map(({ x, y }) => ({ x, y, ...hex2rgb(fg), alpha: 1 })));
+      eachLayer(this, ids, (id) => (isBase(this, id)
+        ? this.writeBase(units.map(({ x, y }) => ({ x, y, hex: fg })))
+        : this.paintEditPixels(units.map(({ x, y }) => ({ x, y, ...hex2rgb(fg), alpha: 1 })))));
     }
     this.commitEdit();
   },
 
-  // Lift, clear the source, drop dc/dr away (copied first, so an overlapping move keeps everything).
-  // Returns where it landed (clipped), or null when it left the grid.
-  moveSelection(rect, layers, dc, dr, block = null) {
+  // Lift, clear the source, drop dc/dr away (copied first, so an overlapping move keeps everything),
+  // each layer's part on its own layer. Returns where it landed (clipped), or null when it left the grid.
+  moveSelection(rect, ids, dc, dr, block = null) {
     if (!dc && !dr) return rect;
-    layers = this.layersFor(layers);
-    block ||= this.copySelection(rect, layers);
+    ids = this.layersFor(ids);
+    block ||= this.copySelection(rect, ids, { shapes: false });
     const col = rect.c0 + dc, row = rect.r0 + dr;
     const landed = this.clipRect({ c0: col, r0: row, c1: rect.c1 + dc, r1: rect.r1 + dr });
-    this.selectionEdit(landed ? [rect, landed] : [rect], () => {
-      this.deleteIn(rect, layers);
-      this.pasteAt(block, col, row, rect);
-    });
+    this.selectionEdit(landed ? [rect, landed] : [rect], () => moveParts(this, block, ids, rect, col, row));
     return landed;
   },
 
-  // The parts of the selection operations, inside selectionEdit.
-  deleteIn(rect, { base, edit }) {
-    if (edit && !refusedNoCells(this, { toast: false })) {
-      this.editCells = withoutCells(this.editCells, rectCells(rect));
-      this.paintLayer.eraseCells(rect);
-    }
-    if (base) this.eraseBase(rectCells(rect));
+  // The parts of the selection operations, inside selectionEdit: rect cleared on each of the layers.
+  deleteIn(rect, ids) {
+    eachLayer(this, this.layersFor(ids), (id) => deleteOn(this, id, rect));
   },
 
-  // A character pasted over half of a wide character turns its other half into a space, as typing
-  // does; not in the rect a move just vacated (the cells there still show what was moved). The
-  // block's picture covers what's drawn there (asCells, and the paint there erased); its other empty
-  // cells are see-through (withEditUnder).
+  // A block of one layer's (flatBlock) pasted on the layer in use. A character pasted over half of a
+  // wide character turns its other half into a space, as typing does; not in the rect a move just
+  // vacated (the cells there still show what was moved). Its empty cells (no edit cell, no paint) are
+  // see-through (withEditUnder). On the base, as drawing there is (landOnBottom).
   pasteAt(block, col, row, vacated = null) {
     if (block.px % 2) block = withHalfRowUnder(this, block, col, row);
-    if (refusedNoCells(this, { toast: false })) { // no cells layer to land on: a Select move's base stays on the base
-      if (block.base) pasteOnBase(this, block, col, row);
-      return;
-    }
-    if (block.base) {
-      const rect = !block.paint && this.clipRect({ c0: col, r0: row, c1: col + block.w - 1, r1: row + block.h - 1 });
-      if (rect) this.paintLayer.eraseCells(rect);
-      block = asCells(block);
-    }
+    if (onBottom(this)) return landOnBottom(this, block, col, row);
+    if (refusedNoCells(this, { toast: false })) return; // no cells layer to land on
     const own = block.cells;
     if (block.cells) block = withEditUnder(this, block, col, row);
     if (block.cells) {
@@ -403,6 +433,110 @@ function shownLook(project, col, row) {
   return { ...look, char: project.cells[cellIndex(col, row, project.cols)].char, fg: half(look.fg, bottom), bg: half(look.bg, top) };
 }
 
+// Whether a paint layer has paint in cell (col, row).
+const painted = (paint, col, row) => !!(paint?.pixelAt(col, 2 * row) || paint?.pixelAt(col, 2 * row + 1));
+
+// rect cleared on one layer, inside the open edit (a cells layer's data in the edit layer's fields): a cells layer's
+// cells and paint go; the base turns black, with pinned spaces.
+function deleteOn(project, id, rect) {
+  if (isBase(project, id)) return project.eraseBase(rectCells(rect));
+  project.editCells = withoutCells(project.editCells, rectCells(rect));
+  project.paintLayer.eraseCells(rect);
+}
+
+// A move's (or a flip's) block landing at (col, row), rect lifted: on each of the layers, rect cleared and that layer's
+// part put down (the base's own pixels and pins on the base, exactly), one swap in and out of each layer not in use.
+function moveParts(project, block, ids, rect, col, row) {
+  const parts = new Map(block.parts.map((part) => [part.id, part]));
+  eachLayer(project, ids, (id) => {
+    deleteOn(project, id, rect);
+    if (isBase(project, id)) {
+      if (block.base) pasteOnBase(project, block.px % 2 ? withHalfRowUnder(project, { w: block.w, h: block.h, px: block.px, base: block.base }, col, row) : block, col, row);
+      return;
+    }
+    const part = parts.get(id);
+    if (part) project.pasteAt({ w: block.w, h: block.h, px: block.px, cells: part.cells, ...(part.paint && { paint: part.paint }) }, col, row, rect);
+  });
+}
+
+// What the shapes on shown vector layers show in these cells (Copy's), as exact cells (the colors as they show), or
+// null where none reaches; null when none reaches any.
+function shownByShapes(project, cells) {
+  const layers = [project._shapeLayer, ...project.lowerGroup.upper.map((id) => project._upperShapes.get(id))].filter((layer) => layer?.drawsShapes);
+  if (!layers.length) return null;
+  const shown = cells.map(({ col, row }) => {
+    if (!layers.some((layer) => layer.charAt(col, row) !== undefined)) return null;
+    const cell = project.cells[cellIndex(col, row, project.cols)];
+    return cell && { char: cell.wide === 'trail' ? ' ' : cell.char, fg: cell.fg.hex, bg: cell.bg.hex };
+  });
+  return shown.some(Boolean) ? shown : null;
+}
+
+// A block (copySelection's) as one layer's { w, h, px, cells, paint }, for a paste or another app: the base as edit cells
+// looking as it did (asCells), each part over the one under it (an entry over the paint under it covers it; a
+// Half-block's ▄ over the base shows its pixels), the shown cells laid in at shownAt, exactly. A block that's one
+// layer's already comes back as it is.
+// ponytail: an entry with only some attributes takes the rest from the entry under it, not the paint there (that's cleared).
+export function flatBlock(block) {
+  if (!block.parts) return block;
+  const { w, h, px, base, shown, shownAt } = block;
+  const layers = [...block.parts];
+  if (shown) layers.splice(shownAt, 0, { cells: shown, exact: true });
+  const fromBase = base ? asCells(block) : null;
+  let cells = fromBase ? fromBase.cells : new Array(w * h).fill(null), paint = null;
+  for (const part of layers) {
+    const k = paint && paint.width / w;
+    cells = cells.map((lower, i) => {
+      const entry = part.cells[i];
+      if (!entry) return lower;
+      if (paint && !isPaintBlock(entry)) ctx2d(paint).clearRect((i % w) * k, 2 * Math.floor(i / w) * k, k, 2 * k);
+      if (part.exact || !lower) return entry;
+      return isPaintBlock(entry) ? lower : { ...lower, ...entry };
+    });
+    if (!part.paint) continue;
+    if (!paint) {
+      paint = document.createElement('canvas');
+      paint.width = part.paint.width;
+      paint.height = part.paint.height;
+    }
+    const ctx = ctx2d(paint);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(part.paint, 0, 0, paint.width, paint.height);
+  }
+  if (base && !paint) { // the base's cells replace the paint under them
+    paint = document.createElement('canvas');
+    paint.width = w;
+    paint.height = 2 * h;
+  }
+  return { w, h, ...(px != null && { px }), cells, ...(paint && { paint }) };
+}
+
+// A one-layer block landing on the base at (col, row), as drawing there does: each entry written as it shows there
+// (completeAt), every character pinned, and the paint laid over the base's pixels.
+function landOnBottom(project, block, col, row) {
+  const rect = project.clipRect({ c0: col, r0: row, c1: col + block.w - 1, r1: row + block.h - 1 });
+  if (!rect) return;
+  const at = ({ col: c, row: r }) => (r - row) * block.w + (c - col);
+  project.writeBaseCells(rectCells(rect).flatMap((cell) => {
+    const entry = block.cells?.[at(cell)];
+    return entry ? [{ ...cell, ...project.completeAt(cell.col, cell.row, entry, 'base') }] : [];
+  }));
+  if (!block.paint) return;
+  const grid = document.createElement('canvas');
+  grid.width = block.w;
+  grid.height = 2 * block.h;
+  const ctx = ctx2d(grid);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(block.paint, 0, 0, grid.width, grid.height);
+  const { data } = ctx.getImageData(0, 0, grid.width, grid.height), pixels = [];
+  for (let i = 0; i < data.length; i += 4) {
+    if (!data[i + 3]) continue;
+    const p = i / 4, x = p % grid.width;
+    pixels.push({ x: col + x, y: 2 * row + (p - x) / grid.width, r: data[i], g: data[i + 1], b: data[i + 2], alpha: data[i + 3] / 255 });
+  }
+  project.paintBasePixels(pixels.filter(({ x, y }) => x >= rect.c0 && x <= rect.c1 && y >= 2 * rect.r0 && y <= 2 * rect.r1 + 1));
+}
+
 // A copied block (copySelection) flipped (turnSelection's op 'h' or 'v'): every cell's entry and pin
 // from the cell that lands there, their characters turned, and the paint and base pictures with them.
 // Rotated ('cw'): rotateBlock.
@@ -425,9 +559,12 @@ function turnBlock(block, op) {
     }
     return cells;
   };
-  if (block.cells) out.cells = turned(block.cells, (e) => (e?.char && !isPaintBlock(e) ? { ...e, char: turnChar(e.char, op) } : e));
+  const turnCells = (cells) => turned(cells, (e) => (e?.char && !isPaintBlock(e) ? { ...e, char: turnChar(e.char, op) } : e));
+  const turnLayer = ({ cells, paint }) => ({ ...(cells && { cells: turnCells(cells) }), ...(paint && { paint: turnCanvas(paint, op) }) });
+  Object.assign(out, turnLayer(block));
+  if (block.parts) out.parts = block.parts.map((part) => ({ id: part.id, ...turnLayer(part) }));
+  if (block.shown) Object.assign(out, { shown: turnCells(block.shown), shownAt: block.shownAt });
   if (block.looks) out.looks = turned(block.looks, (e) => ({ ...e, char: turnChar(e.char, op) }));
-  if (block.paint) out.paint = turnCanvas(block.paint, op);
   if (block.base) {
     const { pixels, scale, colors, pins } = block.base;
     out.base = { pixels: turnCanvas(pixels, op), scale, colors: turnCanvas(colors, op), pins: turned(pins, (char) => char && turnChar(char, op)) };
@@ -462,11 +599,17 @@ function rotateBlock(block) {
     const col = i % out.w, row = Math.floor(i / out.w), y = P - 1 - col;
     return [2 * row, 2 * row + 1].filter((x) => x < W).map((x) => list[Math.floor(y / 2) * W + x]).find(Boolean) ?? null;
   });
-  if (block.paint) out.paint = turnCanvas(block.paint, 'cw');
-  if (block.cells) {
-    const painted = out.paint && paintedCells(out.paint, out.w, out.h);
-    out.cells = from(block.cells).map((entry, i) => (entry && painted?.[i] ? entry : null));
-  }
+  const rotateLayer = ({ cells, paint }) => {
+    const layer = {};
+    if (paint) layer.paint = turnCanvas(paint, 'cw');
+    if (cells) {
+      const shows = layer.paint && paintedCells(layer.paint, out.w, out.h);
+      layer.cells = from(cells).map((entry, i) => (entry && shows?.[i] ? entry : null));
+    }
+    return layer;
+  };
+  Object.assign(out, rotateLayer(block));
+  if (block.parts) out.parts = block.parts.map((part) => ({ id: part.id, ...rotateLayer(part) }));
   if (block.base) {
     const { pixels, scale, colors, pins } = block.base;
     out.base = { pixels: turnCanvas(pixels, 'cw'), scale, colors: turnCanvas(colors, 'cw'), pins: from(pins) };
@@ -569,18 +712,18 @@ function withEditUnder(project, block, col, row) {
 }
 
 // What a paste covers (a column either side too, for the wide characters it breaks), as it was, on the
-// layers it lands on (a picture lands as edit cells over the paint): put back by uncover, exactly, when
-// the paste moves on.
-function covered(project, rect, block) {
+// layer it lands on (the one in use): put back by uncover, exactly, when the paste moves on.
+function covered(project, rect) {
   const area = { ...rect, c0: Math.max(0, rect.c0 - 1), c1: Math.min(project.cols - 1, rect.c1 + 1) };
-  const under = { rect: area };
-  if (block.cells || block.base) under.entries = rectCells(area).map(({ col, row }) => project.editCells.get(cellKey(col, row)) ?? null);
-  if (block.paint || block.base) under.paint = project.paintLayer.copyCells(area);
-  return under;
+  if (onBottom(project)) {
+    return { rect: area, base: { pixels: project.baseLayer.copyCells(area), pins: rectCells(area).map(({ col, row }) => project.baseRecords.pins.get(cellKey(col, row)) ?? null) } };
+  }
+  return { rect: area, entries: rectCells(area).map(({ col, row }) => project.editCells.get(cellKey(col, row)) ?? null), paint: project.paintLayer.copyCells(area) };
 }
 
-function uncover(project, { rect, entries, paint }) {
+function uncover(project, { rect, entries, paint, base }) {
   const w = rect.c1 - rect.c0 + 1, h = rect.r1 - rect.r0 + 1;
+  if (base) return pasteOnBase(project, { w, h, base }, rect.c0, rect.r0);
   if (entries) project.editCells = pasteBlock(project.editCells, { w, h, entries }, rect.c0, rect.r0, project.cols, charRowsOf(project.rows));
   if (paint) project.paintLayer.pasteCells(paint, rect.c0, rect.r0, w, h);
 }

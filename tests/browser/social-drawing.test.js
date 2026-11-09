@@ -3338,7 +3338,7 @@ test('a block held when the art is replaced from a new start still goes out on i
   ann.project.commitEdit();
   await allMatch(room, ann);
   const posted = vi.spyOn(ann.watch, 'post');
-  ann.project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, { base: false, edit: true }, 2, 0);
+  ann.project.floatSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, ['edit'], 2, 0);
   await wait(150);
   expect(posted.mock.calls.filter(([msg]) => msg.t === 'change')).toEqual([]);
   room.project.shareWholeDocument();

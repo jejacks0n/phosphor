@@ -82,6 +82,7 @@ test('the Eraser erases only inside the selection, on either layer', async () =>
   use(eraser, ROW6);
   workspace.pickLayer('base');
   use(eraser, ROW6);
+  workspace.pickLayer('edit'); // painted reads the layer in use
   expect(painted(6, 2, 14)).toEqual([2, 3, 4, 10, 11, 12, 13, 14]);
   expect([3, 5, 9, 11].map((col) => project.baseColorAt(col, 12) === '#000000')).toEqual([false, true, true, false]);
 });

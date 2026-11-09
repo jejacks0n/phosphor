@@ -1,6 +1,6 @@
 // Selects a rectangle of cells, in either view (in the pixel view a cell is a grid pixel wide and two
 // tall, so the rectangle's edges keep to whole cells there too). Dragging inside the selection moves its contents on
-// the shown layers (workspace.selectionLayers), the block following the pointer cell by cell (a float:
+// the shown layers (workspace.selectionIds), the block following the pointer cell by cell (a float:
 // the whole drag is one undo step); dragging its border moves just the outline; dragging elsewhere
 // draws a new one, and a click outside clears it. The actions are on the options row.
 import { normalizeRect, selectionHit, clampOffset } from '@/document/editCells';
@@ -23,7 +23,6 @@ export default {
   keys: ['M'],
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M64 64h80v40h-40v40H64zm120 0h64v40h-64zm104 0h64v40h-64zm104 0h56v80h-40v-40h-16zM64 184h40v64H64zm344 0h40v64h-40zM64 288h40v64H64zm344 0h40v64h-40zM64 392h40v16h40v40H64zm344 0h40v56h-80v-40h40zM184 408h64v40h-64zm104 0h64v40h-64z"/></svg>`,
   views: ['input', 'output'],
-  base: true,
   kind: 'paint',
   section: 'select',
   autoScroll: true,
@@ -56,7 +55,7 @@ export default {
         dr: Math.max(-rect.r1, Math.min(charRowsOf(project.rows) - 1 - rect.r0, dr)),
       };
       if (offset.dc === moved.dc && offset.dr === moved.dr) return;
-      const landed = project.floatSelection(workspace.selection, workspace.selectionLayers, offset.dc - moved.dc, offset.dr - moved.dr);
+      const landed = project.floatSelection(workspace.selection, workspace.selectionIds, offset.dc - moved.dc, offset.dr - moved.dr);
       if (landed) {
         workspace.selection = landed;
         drag.moved = offset;

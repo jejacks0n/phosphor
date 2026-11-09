@@ -121,7 +121,7 @@ test('a moved block keeps its colors under CGA and VGA with adjustments', async 
   for (const settings of [{ quantize: 'cga' }, { quantize: 'cga', brightness: 150 }, { quantize: 'cga', contrast: 150 }, { quantize: 'cga', saturation: 200 }, { quantize: 'vga', brightness: 150 }]) {
     const project = await photo(settings);
     const before = hexes(colorsIn(project, RECT));
-    project.floatSelection(RECT, { base: true, edit: true }, 15, 0);
+    project.floatSelection(RECT, ['base', 'edit'], 15, 0);
     project.render(); await settle(project);
     expect(hexes(colorsIn(project, RECT, 15)), JSON.stringify(settings)).toEqual(before);
     project.undo();
@@ -135,7 +135,7 @@ test('a moved block keeps its colors under CGA and VGA with adjustments', async 
 test('a moved block in full color stays within rounding', async () => {
   const project = await photo({ brightness: 150 });
   const before = colorsIn(project, RECT);
-  project.floatSelection(RECT, { base: true, edit: true }, 15, 0);
+  project.floatSelection(RECT, ['base', 'edit'], 15, 0);
   project.render(); await settle(project);
   colorsIn(project, RECT, 15).forEach(({ fg, bg }, i) => {
     for (const k of ['r', 'g', 'b']) {
@@ -153,7 +153,8 @@ test('flipping a base cell under CGA with brightness swaps its two shown colors'
     return fg.hex !== bg.hex;
   });
   const { fg, bg } = project.cells[cellIndex(col, row, project.cols)];
-  project.flipCell(col, row, { base: true, edit: false });
+  project.useLayer('base'); // the tools draw on the base
+  project.flipCell(col, row);
   project.commitEdit();
   project.render(); await settle(project);
   const flipped = project.cells[cellIndex(col, row, project.cols)];
@@ -166,7 +167,7 @@ test('a moved block of an image smaller than the grid keeps its colors', async (
   expect(workingScale(project.image, project.processParams)).toBe(null);
   const rect = { c0: 2, r0: 3, c1: 4, r1: 4 };
   const before = hexes(colorsIn(project, rect));
-  project.floatSelection(rect, { base: true, edit: true }, 6, 0);
+  project.floatSelection(rect, ['base', 'edit'], 6, 0);
   project.render(); await settle(project);
   expect(hexes(colorsIn(project, rect, 6))).toEqual(before);
 });
@@ -199,7 +200,7 @@ test('merging down soft paint under CGA shows what it showed', async () => {
 
 test('merging up a moved block under CGA keeps its colors', async () => {
   const project = await photo({ quantize: 'cga' });
-  const landed = project.floatSelection(RECT, { base: true, edit: true }, 15, 0);
+  const landed = project.floatSelection(RECT, ['base', 'edit'], 15, 0);
   project.render(); await settle(project);
   const before = hexes(colorsIn(project, landed));
   project.mergeUp(landed);
@@ -222,7 +223,7 @@ test('an image smaller than the grid isn\'t pinned: merging into the picture twi
 
 test('a base block pasted at another scale shows the colors it was copied with', async () => {
   const project = await photo({ quantize: 'cga' });
-  const block = project.copySelection(RECT, { base: true, edit: false });
+  const block = project.copySelection(RECT, ['base']);
   const copied = hexes(colorsIn(project, RECT));
   project.cols = 45; // a rescale (no edits): 2 processed pixels per grid pixel instead of 3
   project.rows = 45;
@@ -235,7 +236,7 @@ test('a base block pasted at another scale shows the colors it was copied with',
 
 test('redrawing the base doesn\'t make the next render upload the picture again', async () => {
   const project = await photo({ quantize: 'cga', brightness: 150 });
-  project.floatSelection(RECT, { base: true, edit: true }, 15, 0);
+  project.floatSelection(RECT, ['base', 'edit'], 15, 0);
   project.render(); await settle(project);
   project.brightness = 151; // redraws the base (the cache misses on a setting)
   await settle(project);

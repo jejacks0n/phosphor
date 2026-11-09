@@ -9,6 +9,7 @@ import { isProjectFile } from '@/document/projectIO';
 import { isArtFile, readArtFile } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
+import { useLayerName } from '@/composables/useLayerName';
 import { usePlayback } from '@/composables/usePlayback';
 
 import EditTabs from '@/components/EditTabs.vue';
@@ -55,6 +56,8 @@ async function handleFileSelected(file) {
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
   // From the start screen, an art file asks whether to edit it or draw on top of it.
   if (isArtFile(file.name)) return (workspace.artDrop = { file, at: null });
+  // A picture over a still drawing (not shared with a room) asks too: added as a layer's paint, or opened in its place.
+  if (project.image && !isProjectFile(file.name) && !project.hasFrames && !project._sharing) return (workspace.artDrop = { file, at: null, picture: true });
   project.commitPending(); // text typed a moment ago counts
   if (project.image && project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
   if (!project.image) workspace.editorTab = isSvgFile(file.name) ? 'vector' : 'output'; // from the start screen, chosen first: the address moves once
@@ -84,9 +87,11 @@ async function openArt(file, layer) {
 
 // The art file's question. On the start screen: edit it (its art on the edit layer) or draw on top of it (its
 // art the base layer). Dropped on a drawing: added as a paste is (floating and selected, where it was dropped or at
-// the view's top-left), or an SVG as shapes on VECTOR; or opened in place of this drawing, an art file onto either
-// layer (not in a room where opening is off).
-const addText = (drop) => (isSvgFile(drop.file.name) ? t('actions.svgAddText') : drop.at ? t('actions.artAddWhere') : t('actions.artAddTopLeft'));
+// the view's top-left), an SVG as shapes on VECTOR, or a picture as paint on the cells layer picked (else a new one);
+// or opened in place of this drawing, an art file onto either layer (not in a room where opening is off).
+const layerName = useLayerName();
+const addText = (drop) => (drop.picture ? (workspace.pickedCells ? t('actions.pictureAddText', { name: layerName(workspace.pickedLayer) }) : t('actions.pictureAddNew'))
+  : isSvgFile(drop.file.name) ? t('actions.svgAddText') : drop.at ? t('actions.artAddWhere') : t('actions.artAddTopLeft'));
 const artChoices = computed(() => {
   const drop = workspace.artDrop;
   if (!drop) return [];
@@ -96,7 +101,7 @@ const artChoices = computed(() => {
       { id: 'base', title: t('actions.artDrawOn'), text: t('actions.artDrawOnText') },
     ];
   }
-  const open = isSvgFile(drop.file.name) ? [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText') }] : [
+  const open = drop.picture || isSvgFile(drop.file.name) ? [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText') }] : [
     { id: 'edit', title: t('actions.artOpenEdit'), text: t('actions.artOpenEditText') },
     { id: 'base', title: t('actions.artOpenDrawOn'), text: t('actions.artOpenDrawOnText') },
   ];
@@ -105,8 +110,16 @@ const artChoices = computed(() => {
 const artTitle = computed(() => t(project.image ? 'actions.artDropTitle' : 'actions.artOpenTitle', { name: workspace.artDrop?.file.name }));
 const artSub = computed(() => (!project.image ? t('actions.artOpenSub') : drawing.offWithOthers ? t('actions.artDropSubAddOnly') : t('actions.artDropSub')));
 async function chooseArt(choice) {
-  const { file, at } = workspace.artDrop;
+  const { file, at, picture } = workspace.artDrop;
   workspace.artDrop = null;
+  if (picture) {
+    if (choice === 'add') return project.addPictureToLayer(file);
+    project.commitPending(); // text typed a moment ago counts
+    if (project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
+    await project.setImageFromFile(file);
+    workspace.editorTab = 'output';
+    return;
+  }
   if (choice !== 'add') { // 'edit' or 'base' (an art file's layer), or 'open' (an SVG)
     if (!project.image) workspace.editorTab = 'output'; // from the start screen, chosen first: the address moves once
     else {

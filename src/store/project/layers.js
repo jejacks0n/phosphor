@@ -5,7 +5,8 @@
 import { markRaw } from 'vue';
 import { MOST_LAYERS, goodLayerName, legacySlots, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { CHAR_KEYS } from '@/store/settings.js';
-import { readProject, writeProject } from '@/document/projectIO.js';
+import { loadImage, readProject, writeProject } from '@/document/projectIO.js';
+import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
 import { bytesHeld, emptyFields, followBase, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
@@ -168,6 +169,45 @@ export const layerActions = {
     return to;
   },
 
+  // A picture (an image file) added to the drawing as paint, fitted to the canvas, over what's painted there: on the cells
+  // layer picked, else (the base or a vector layer picked) on a new cells layer above it, named after the file, picked.
+  // One undo step; the layer's id. Null, nothing added, on a movie, while shared with a room (its toast), at the most
+  // layers, or for a file that won't decode.
+  async addPictureToLayer(file) {
+    const workspace = useWorkspaceStore();
+    if (this.hasFrames || refusedInRoom(this) || (!workspace.pickedCells && this.layers.length >= MOST_LAYERS)) return null;
+    const picture = await loadImage(file).catch(() => null);
+    if (!picture || this.hasFrames) return null;
+    ready(this);
+    const fitted = (snapshot, { cols, rows, scale }) => {
+      const canvas = Object.assign(document.createElement('canvas'), { width: cols * scale, height: rows * scale });
+      const ctx = ctx2d(canvas), { dx, dy, dw, dh } = fitRect(picture.naturalWidth, picture.naturalHeight, cols, rows);
+      if (snapshot) ctx.drawImage(snapshot.canvas, 0, 0);
+      ctx.drawImage(picture, dx * scale, dy * scale, dw * scale, dh * scale);
+      return { canvas, hasPaint: true };
+    };
+    if (workspace.pickedCells) {
+      const id = this.editId, paint = this.paintLayer, before = paint.snapshot(), after = fitted(before, paint);
+      const show = (state) => () => {
+        this.paintLayer.restore(state);
+        this.hasPaint = this.paintLayer.hasPaint;
+        this.render();
+      };
+      show(after)();
+      this.pushWholeLayer(show(before), show(after), bytesHeld(before, after));
+      return id;
+    }
+    const below = workspace.pickedLayer, to = newLayerId(this.layers, 'cells'), grid = this.paintLayer;
+    const own = markRaw(new PaintLayer({ cols: grid.cols, rows: grid.rows, scale: grid.scale }));
+    own.restore(fitted(null, own));
+    const layer = Object.freeze({ id: to, kind: 'cells', n: nextNumber(this.layers, 'cells'), name: goodLayerName(file.name.replace(/\.[^.]*$/, '')), hidden: false, chars: Object.freeze({ ...this.charsOf(below) }) });
+    let held = { layer, below, data: { editCells: new Map(), paintLayer: own, hasPaint: true } };
+    putBack(this, held);
+    stackStep(this, { held, undo: () => { held = takeOut(this, to); }, redo: () => putBack(this, held) });
+    workspace.pickLayer(to);
+    return to;
+  },
+
   // The layer with the id moved to toIndex in the stack (bottom first), one undo step; whether it moved. Not the bottom,
   // nothing to below it or past the top, nothing while it's shared with a room (the room's toast says so). What's drawn
   // is laid over again in the new order.
@@ -197,14 +237,17 @@ export const layerActions = {
       const workspace = useWorkspaceStore(), picked = workspace.pickedLayer;
       const { filename, documentId, savedToFile, isDirty, savedSettings } = this;
       const parts = await readProject(await writeProject({ imageBuffer: this.imageBuffer, ...await this.projectParts() }));
+      // The pick moves to the layer's room id first: a layer gone from the stack mid-open would pick the one under it,
+      // the base perhaps, which the tools would then draw on while the document's parts are still going in.
+      const now = picked === slots.vector ? 'vector' : picked === slots.cells ? 'edit' : picked;
+      workspace.pickedLayer = now;
       await this.openParts(parts, { filename, documentId });
       this.savedToFile = savedToFile;
       if (isDirty) { // as restoreDocument leaves it
         this.savedSettings = savedSettings;
         this.savedEditVersion = this.editVersion - 1;
       }
-      const now = picked === slots.vector ? 'vector' : picked === slots.cells ? 'edit' : picked;
-      if (workspace.pickedLayer !== now) workspace.pickLayer(now);
+      workspace.pickLayer(now); // the tools draw on it (the base too)
     }
     if (!slots.cells) {
       const { id } = putLayer(this, 'cells');
@@ -216,10 +259,10 @@ export const layerActions = {
 
   // Make the cells layer id the one the edit layer's fields are (editCells, paintLayer, hasPaint), as stepping into an art
   // layer does: what's pending is committed, the one in use waits in _layerData, and autosave doesn't count it as an edit.
-  // Nothing for the bottom, a vector layer, or the layer already in use.
+  // The bottom too: its fields hold no cells and no paint, and what the tools draw goes on the base (shared.js: onBottom).
+  // Nothing for a vector layer, or the layer already in use.
   useLayer(id) {
-    const next = this._layerData.get(id);
-    if (!next || this.layerById(id)?.kind !== 'cells' || id === 'base' || id === this.editId) return;
+    if (id === this.editId || (id !== 'base' && (!this._layerData.has(id) || this.layerById(id)?.kind !== 'cells'))) return;
     if (this._artInside) this.leaveArt();
     this.ensureLayer();
     this.commitPending();

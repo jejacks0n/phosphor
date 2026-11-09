@@ -112,6 +112,7 @@ export const useProjectStore = defineStore('project', {
     layers: layersFromOld(null, { hasShapes: false }), // the drawing's layers, bottom first (document/layerInfo.js; replaced, never changed in place)
     editId: 'edit', // the cells layer editCells, paintLayer and hasPaint are (project/layers.js: useLayer)
     _layerData: markRaw(new Map()), // every other cells layer above the bottom: id -> { editCells, paintLayer, hasPaint }
+    _basePaint: null, // the empty paint layer the edit layer's fields hold while the base is the layer in use (shared.js: baseFields)
     _shapeLayer: null, // the base layer with the shapes over it (ShapeLayer, markRaw), the renderer's
     _upperShapes: markRaw(new Map()), // each vector layer above the lower group: id -> its shapes drawn alone (ShapeLayer), the renderer's upper
     baseRecords: shallowRef(EMPTY_BASE), // the base layer's pinned characters (see document/baseRecords.js)
