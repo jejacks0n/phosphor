@@ -13,15 +13,15 @@ is showing; with nothing open, or on SAUCE, it says so instead.
 - **Picking a row** picks that layer, and the tabs follow it. The base and the edit layer show PIXEL and
   ANSI; the vector layer shows VECTOR. The tools act on the picked layer: the eraser, Select, Copy, Cut,
   Delete, Flip and the Magic Wand's Delete take only that layer, and with the base picked only the tools
-  that work on it are offered: a key for one of the others (P for the Pencil, say) says which layer that tool
-  draws on, "Pencil draws on Layer 1. Pick it in Layers." Picking the edit layer or the base from VECTOR goes back to the art tab you
-  last had.
+  that work on it are offered: a key for one of the others (P for the Pencil, say) says which layer that
+  tool draws on, "Pencil draws on Layer 1. Pick it in Layers." Picking the edit layer or the base from
+  VECTOR goes back to the art tab you last had.
 - **+ Vector layer**, under the list, adds the vector layer and picks it. It's there while the drawing has
   none; a drawing with shapes already has one.
 - **Click the picked row's name** (or double-click any name, or press F2 on its row) to rename the layer; a
   click on another row only picks it. Enter, or leaving the box, keeps the new name; Escape keeps the old one.
-  A long name that doesn't fit shows in full when you hover over it. A name is up to 40 characters, and a blank one puts the default back.
-  Names are saved with the drawing, and a rename isn't an undo step.
+  A name is up to 40 characters, and a blank one puts the default back; one too long for the row shows in
+  full when you hover over it. Names are saved with the drawing, and a rename isn't an undo step.
 - On a phone there's no side panel: a **Layers** button in the tab bar, left of Animate and there while the art
   shows, opens the same list in a dialog. A pick leaves it open, so a layer can be picked, renamed or hidden
   in one visit; **Done**, Escape or a tap outside closes it.
@@ -39,8 +39,9 @@ everything above it. Hiding isn't an undo step, and it doesn't change what's dra
 again and it's all there. Whether a layer is hidden is saved with the drawing.
 
 - A hidden layer can't be drawn on. With it picked, drawing, erasing, a fill, Flip or typing does nothing,
-  and a message says "Show the layer to draw on it". On VECTOR, the shapes of a hidden vector layer can still be selected
-  and changed, but an art layer on it can't be stepped into (Edit art), with the same message.
+  and a message says "Show the layer to draw on it". On VECTOR, the shapes of a hidden vector layer can
+  still be selected and changed, but an art layer on it can't be stepped into (Edit art), with the same
+  message.
 - These merges are refused while a layer they read or write is hidden, with "Show the layer to merge it",
   and nothing changes:
   - **Merge up**, **Merge down** and **Into the image**, while the edit layer or the base is hidden;
@@ -48,7 +49,8 @@ again and it's all there. Whether a layer is hidden is saved with the drawing.
   - **Bake**, VECTOR's **Merge down**, and a **Merge down** that would take shapes with it, while the vector
     layer is hidden and has shapes. What you hide never goes into the base unseen.
 
-  Merge down says so when you press it, before it asks how to merge.
+  With the edit layer or the base hidden, Merge down says so when you press it, before it asks how to
+  merge.
 - **Clear edit layer** is refused the same way while the edit layer is hidden, before it asks: what you can't
   see isn't erased.
 - **Flatten** makes its cells from what shows, so a hidden layer's content is left out of the result
