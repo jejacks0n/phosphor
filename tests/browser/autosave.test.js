@@ -1713,7 +1713,7 @@ test('a stack of four layers survives a restore', async () => {
   const { project } = await opened();
   edit(project);
   const l1 = project.addLayer('cells', 'edit');
-  project.addVectorLayer();
+  project.addLayer('vector', 'base');
   project.renameLayer(l1, 'Logo');
   project.setLayerHidden('base', true);
   project.useLayer(l1);

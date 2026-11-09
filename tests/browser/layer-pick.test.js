@@ -47,7 +47,7 @@ test('picking the vector layer shows VECTOR and SAUCE', async () => {
   const { project, workspace } = await blank();
   const names = await tabsOf(workspace);
   expect(await names()).toEqual(['PIXEL', 'ANSI', 'SAUCE']);
-  project.addVectorLayer();
+  project.addLayer('vector', 'base');
   workspace.pickLayer('vector');
   expect(workspace.pickedLayer).toBe('vector');
   expect(workspace.editorTab).toBe('vector');
@@ -56,7 +56,7 @@ test('picking the vector layer shows VECTOR and SAUCE', async () => {
 
 test('picking the edit layer from VECTOR goes back to the art tab last shown', async () => {
   const { project, workspace } = await blank();
-  project.addVectorLayer();
+  project.addLayer('vector', 'base');
   workspace.editorTab = 'output';
   workspace.viewTab = 'output';
   workspace.pickLayer('vector');
@@ -127,7 +127,7 @@ test('a picked layer that leaves the stack picks the one under it', async () => 
 
 test('an artist\'s picked layer that leaves the stack skips the base under it', async () => {
   const { project, workspace } = await blank();
-  project.addVectorLayer();
+  project.addLayer('vector', 'base');
   workspace.pickLayer('vector');
   project._sharing = { role: 'artist' };
   project.layers = project.layers.filter((l) => l.id !== 'vector');
@@ -138,7 +138,7 @@ test('an artist\'s picked layer that leaves the stack skips the base under it', 
 test('the art tabs go back to the cells layer last picked, or the topmost while it is gone', async () => {
   const { project, workspace } = await blank();
   const id = project.addLayer('cells', 'edit');
-  project.addVectorLayer();
+  project.addLayer('vector', 'base');
   workspace.editorTab = 'output';
   workspace.viewTab = 'output';
   workspace.pickLayer('base');

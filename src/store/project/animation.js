@@ -16,7 +16,7 @@ import { changedParts, partsOf, samePart } from '@/document/parts.js';
 import { addedKey, deletedKeys, moveRange, movedKeys, partKeys } from '@/document/keys.js';
 import { keyLayer, layerKey } from '@/document/layerInfo.js';
 import PaintLayer from '@/document/PaintLayer.js';
-import { drawnShapes, lockedAmong, newLedger } from '@/store/project/shared.js';
+import { lockedAmong, newLedger, putLayer } from '@/store/project/shared.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -114,8 +114,8 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   }
   project._frameSwaps++; // and before shapes: autosave hears each on its own
   project.shapes = shapes;
-  if (shapes.size) project.addVectorLayer();
-  project._shapeLayer?.set(drawnShapes(project)); // drawn by the composite below
+  if (shapes.size && !project.hasVectorLayer) putLayer(project, 'vector', 'base');
+  project.syncShapeLayers(); // drawn by the composite below
   project._arrived = markRaw({ paint, states: resolved });
   if (frame.ledgerAt !== version) project._ledger.refreshBases(); // an earlier frame may have changed what's under its strokes
   if (!draw) return;
@@ -489,8 +489,7 @@ function buildKey(project) {
   const { image, ...params } = project.processParams;
   return {
     image, settings: JSON.stringify(params), baseLayer: project.baseLayer, baseVersion: project.baseLayer?.version, baseRecords: project.baseRecords,
-    baseHidden: project.layerHidden('base'), editHidden: project.layerHidden('edit'), vectorHidden: project.layerHidden('vector'),
-    others: project.layers.some((layer, at) => at && layer.kind === 'cells' && layer.id !== 'edit'), // which FrameBuilder leaves out
+    layers: JSON.stringify(project.layers), // their order and eyes
   };
 }
 const sameKey = (a, b) => !!a && !!b && Object.keys(a).every((name) => a[name] === b[name]);
@@ -505,8 +504,7 @@ async function readyBuilder(project) {
       continue;
     }
     const builder = new FrameBuilder();
-    const hidden = { base: key.baseHidden, edit: key.editHidden, vector: key.vectorHidden, others: key.others };
-    const preparing = builder.prepare(key.image, project.processParams, { baseLayer: project.baseLayer, baseRecords: project.baseRecords, hidden });
+    const preparing = builder.prepare(key.image, project.processParams, { baseLayer: project.baseLayer, baseRecords: project.baseRecords, layers: project.layers });
     project._builder = markRaw({ key, builder, preparing });
     for (const frame of project.frames) frame.built = null;
     await preparing;

@@ -5,6 +5,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
+import { rectShape, withShape } from '@/document/shapes.js';
 
 const ATTRS = { fg: '#ffee00', bg: '#0044aa' };
 
@@ -143,3 +144,36 @@ for (const charChoice of ['best', 'shape']) {
     expect(key(project.cells)).toEqual(partial.cells);
   });
 }
+
+// Layers above the lower group: each edit on any of them, or a shape moved, leaves the cells as a full render makes them.
+test('partial equals full with upper layers', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+  const vector = project.addLayer('vector', 'edit'), one = project.addLayer('cells', vector), two = project.addLayer('cells', one);
+  const shape = project.addShape(rectShape(4, 6, 14, 18, { fill: '#ff0000' }));
+  project.commitEdit();
+  await settle(project);
+  let seed = 7;
+  const random = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32); // one sequence, run to run
+  const pick = (list) => list[Math.floor(random() * list.length)];
+  const layers = ['edit', one, two];
+  for (let i = 0; i < 40; i++) {
+    const op = pick(['type', 'type', 'paint', 'paint', 'erase', 'move']);
+    if (op === 'move') {
+      const was = project.shapes.get(shape);
+      project.updateShapes([[shape, withShape(was, { m: [1, 0, 0, 1, Math.floor(random() * 10), Math.floor(random() * 10)] })]]);
+    } else {
+      project.useLayer(pick(layers));
+      const x = Math.floor(random() * 30), y = Math.floor(random() * 30);
+      if (op === 'type') project.typeAt(x, y >> 1, pick(['A', '漢', '█', ' ', 'b']), ATTRS);
+      else if (op === 'paint') project.paintStroke(Array.from({ length: 4 }, (_, k) => ({ x: Math.min(29, x + k), y, alpha: pick([1, 0.5]) })), pick(['#ff3300', '#33ff66']));
+      else project.eraseEditPixels([{ x, y }, { x: Math.min(29, x + 1), y }]);
+    }
+    project.commitEdit();
+    const partial = key(project.cells);
+    project.renderer.reset();
+    project.render();
+    await settle(project);
+    expect(key(project.cells), `after edit ${i} (${op})`).toEqual(partial);
+  }
+});

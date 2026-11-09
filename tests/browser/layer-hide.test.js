@@ -136,7 +136,7 @@ test('drawing on a hidden layer does nothing and says so', async () => {
 
   // Navigation, the picker and VECTOR's tools aren't refused: a hidden vector layer's shapes are still edited there.
   closeToast();
-  project.addVectorLayer();
+  project.addLayer('vector', 'base');
   await hide(project, 'vector');
   workspace.pickLayer('vector');
   getTool('vselect').begin({ ...ctx, view: 'vector' }, { x: 2, y: 2 });
@@ -186,7 +186,7 @@ test('with the vector layer hidden, Bake, Merge down and the vector merge are re
 
 test('a hidden vector layer with no shapes doesn\'t stop a merge', async () => {
   const { project } = await picture();
-  project.addVectorLayer();
+  project.addLayer('vector', 'base');
   typed(project, 2, 2, 'M');
   await hide(project, 'vector');
   project.mergeDown();

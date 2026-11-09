@@ -1,5 +1,5 @@
 // The LAYERS list (LayersList.vue): the drawing's layers top first, a row picked to decide the tabs, an eye to hide one,
-// a click on the picked row's name (or a double-click) to rename it, and + Vector layer while there's none.
+// a click on the picked row's name (or a double-click) to rename it, ⋯ to rename or move it, + Layer and + Vector layer under it.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -7,6 +7,7 @@ import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { rectShape } from '@/document/shapes.js';
 import LayersList from '@/components/LayersList.vue';
+import { MOST_LAYERS } from '@/document/layerInfo.js';
 
 let app = null, host = null;
 afterEach(() => {
@@ -32,7 +33,17 @@ const rows = () => [...host.querySelectorAll('li')];
 const names = () => rows().map((li) => li.querySelector('button.pick').textContent.trim());
 const pickOf = (i) => rows()[i].querySelector('button.pick');
 const eyeOf = (i) => rows()[i].querySelector('button.eye');
-const addButton = () => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === '+ Vector layer');
+const addButton = (label = '+ Vector layer') => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === label);
+const menuOf = (i) => rows()[i].querySelector('button.dropdown-trigger');
+// The row's ⋯ menu opened, its items by their words. A moment passes before an item is clicked: Vue skips a click
+// dispatched in the same millisecond the menu mounted (a real click never is).
+async function openMenu(i) {
+  menuOf(i).click();
+  await nextTick();
+  await new Promise((resolve) => setTimeout(resolve, 5));
+  const items = [...rows()[i].querySelectorAll('.dropdown-content button')];
+  return (label) => items.find((b) => b.textContent.trim() === label);
+}
 const key = async (el, k) => {
   el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
   await nextTick();
@@ -42,19 +53,78 @@ test('lists edit, vector and base, top first', async () => {
   await mount(({ project }) => project.addShape(rectShape(0, 0, 4, 4, { fill: '#ff0000' })));
   expect(names()).toEqual(['Layer 1', 'Vector 1', 'Base']);
   expect(pickOf(0).getAttribute('aria-pressed')).toBe('true');
-  expect(addButton()).toBeUndefined();
 });
 
-test('no shapes and no vector layer: two rows and + Vector layer', async () => {
-  const { workspace } = await mount();
+test('+ Layer adds directly above the pick and picks it', async () => {
+  const { project, workspace } = await mount();
   expect(names()).toEqual(['Layer 1', 'Base']);
+  addButton('+ Layer').click();
+  await nextTick();
+  expect(names()).toEqual(['Layer 2', 'Layer 1', 'Base']);
+  expect(workspace.pickedLayer).toBe(project.layers[2].id);
+  expect(pickOf(0).getAttribute('aria-pressed')).toBe('true');
+  pickOf(2).click(); // the base: the next goes directly above it
+  await nextTick();
+  addButton('+ Layer').click();
+  await nextTick();
+  expect(names()).toEqual(['Layer 2', 'Layer 1', 'Layer 3', 'Base']);
+  expect(workspace.pickedLayer).toBe(project.layers[1].id);
+});
+
+test('+ Vector layer always shows and adds above the pick', async () => {
+  const { workspace } = await mount();
   addButton().click();
   await nextTick();
-  expect(names()).toEqual(['Layer 1', 'Vector 1', 'Base']);
-  expect(pickOf(1).getAttribute('aria-pressed')).toBe('true');
-  expect(pickOf(0).getAttribute('aria-pressed')).toBe('false');
+  expect(names()).toEqual(['Vector 1', 'Layer 1', 'Base']);
+  expect(pickOf(0).getAttribute('aria-pressed')).toBe('true');
+  expect(workspace.pickedLayer).toBe('vector');
   expect(workspace.editorTab).toBe('vector');
-  expect(addButton()).toBeUndefined();
+  expect(addButton()).toBeDefined();
+  addButton().click();
+  await nextTick();
+  expect(names()).toEqual(['Vector 2', 'Vector 1', 'Layer 1', 'Base']);
+});
+
+test('Move up and Move down in ⋯ reorder; the bottom row has no ⋯', async () => {
+  const { project } = await mount(({ project }) => project.addLayer('cells', 'edit'));
+  expect(names()).toEqual(['Layer 2', 'Layer 1', 'Base']);
+  expect(menuOf(2)).toBeNull();
+  expect(menuOf(0).getAttribute('aria-label')).toBe('Layer 2 options');
+  let item = await openMenu(0);
+  expect(item('Move up').disabled).toBe(true); // the top
+  expect(item('Move down').disabled).toBe(false);
+  expect(item('Rename')).toBeDefined();
+  item('Move down').click();
+  await settle(project); // a move draws the stack again
+  expect(names()).toEqual(['Layer 1', 'Layer 2', 'Base']);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'L1', 'edit']);
+  item = await openMenu(1);
+  expect(item('Move down').disabled).toBe(true); // directly on the bottom
+  item('Move up').click();
+  await settle(project);
+  expect(names()).toEqual(['Layer 2', 'Layer 1', 'Base']);
+  expect(project.canUndo).toBe(true);
+});
+
+test('in a room the ⋯ items that change the stack are off with the reason', async () => {
+  await mount(({ project }) => { project._sharing = { role: 'host' }; });
+  const item = await openMenu(0);
+  for (const label of ['Move up', 'Move down']) {
+    expect(item(label).disabled).toBe(true);
+    expect(item(label).title).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
+  }
+  expect(item('Rename').disabled).toBe(false);
+  expect(addButton('+ Layer').disabled).toBe(true);
+  expect(addButton('+ Layer').title).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
+  expect(addButton().disabled).toBe(false); // the vector layer the room is missing
+});
+
+test('at the most layers + Layer and + Vector layer are off and say why', async () => {
+  await mount(({ project }) => { while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit'); });
+  for (const label of ['+ Layer', '+ Vector layer']) {
+    expect(addButton(label).disabled).toBe(true);
+    expect(addButton(label).title).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`);
+  }
 });
 
 test('picking a row picks its layer', async () => {

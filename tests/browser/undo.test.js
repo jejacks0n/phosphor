@@ -34,12 +34,11 @@ function layerHash(layer) {
   return `${c.width}x${c.height}:${h}:${layer.hasPaint}`;
 }
 
-// Every cells layer above the bottom with anything on it, its cells and paint: an empty one is as good as none, as adding
-// a layer isn't an undo step yet.
+// Every cells layer above the bottom, its cells and paint (an empty one is empty): adding a layer is an undo step, so an
+// undo takes the layer away and a redo brings it back.
 function everyLayer(project) {
   return project.layers.slice(1).filter((layer) => layer.kind === 'cells').map(({ id }) => [id, project.cellsOf(id), project.paintOf(id)])
-    .filter(([, cells, paint]) => cells.size || paint?.hasPaint)
-    .map(([id, cells, paint]) => `${id}=${JSON.stringify([...cells].sort())}:${layerHash(paint)}`).join('|');
+    .map(([id, cells, paint]) => `${id}=${JSON.stringify([...cells].sort())}:${paint?.hasPaint ? layerHash(paint) : 0}`).join('|');
 }
 
 function docState(project, workspace) {
@@ -231,10 +230,7 @@ function makeActions(project, workspace, r, opts) {
     addLayer: () => { // a cells layer above the pick, up to two above the bottom
       if (cellsLayers(project).length < 2) project.addLayer('cells', workspace.pickedLayer);
     },
-    pickLayer: () => {
-      workspace.pickLayer(pick(cellsLayers(project)));
-      project.render(); // ponytail: what shows is the layer in use's until the whole stack is drawn
-    },
+    pickLayer: () => workspace.pickLayer(pick(cellsLayers(project))),
   };
   if (opts.async) {
     actions.mergeIntoPicture = async () => project.mergeIntoPicture(r() < 0.5 ? rect() : null);
@@ -249,11 +245,9 @@ function makeActions(project, workspace, r, opts) {
 
 const cellsLayers = (project) => project.layers.slice(1).filter((layer) => layer.kind === 'cells').map((layer) => layer.id);
 
-// A state's pick back before it's compared: undo and redo don't change the pick, and what shows is the picked layer's.
+// A state's pick back before it's compared: undo and redo don't change the pick, and a whole-layer step writes the layer in use.
 function pickOf(project, workspace, state) {
-  if (!state.pick || state.pick === project.editId) return;
-  workspace.pickLayer(state.pick);
-  project.render();
+  if (state.pick && state.pick !== project.editId && project.layerById(state.pick)) workspace.pickLayer(state.pick);
 }
 
 // The stack of expected states, kept in step with the history. An open typing run is on the stack

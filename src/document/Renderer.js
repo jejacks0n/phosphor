@@ -14,6 +14,10 @@
  * ShapeLayer: the base's pixels with the shapes drawn over them, at the same scale, so they convert
  * with the picture. A pin under a shape gives way to the conversion (pinAt).
  *
+ * All of that is the lower group (layerInfo.js: lowerGroup): the bottom, the vector layers right on it and the next
+ * cells layer. Every layer above it (upper) is laid over the group's cells one cell at a time (composeUpper), with no
+ * error carried between cells; an old document is the lower group alone, so nothing it shows changes.
+ *
  * The base layer is at the pipeline's processing scale (m x m pixels per grid pixel), so a block of
  * the picture moved into it keeps every processed pixel (processed: the picture with its effects,
  * before the color adjustments and the palette), and it's drawn the way the pipeline draws the
@@ -42,6 +46,7 @@ export default class Renderer {
   baseLayer = null;         // the base layer's pixels (PaintLayer), the store's
   shapes = null;            // the base layer with the vector layer's shapes over it (ShapeLayer), the store's
   hideBase = false;         // the base's eye is shut: the picture, its own pixels and its pins left out (the store's, set before a render)
+  upper = [];               // the layers above the lower group, bottom to top (the store's, set before a compose): { kind: 'cells', cells, paint, params } or { kind: 'vector', layer: ShapeLayer, params }
   #scratch = null;
   #pipelineData = null; // pipelineCanvas pixels
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
@@ -64,12 +69,20 @@ export default class Renderer {
   #baseStored = null;   // the same for its stored colors (#baseGrid, stored)
   #baseParams = null;   // the last render's baseParams
   #chosen = null;       // a Number palette someone else picked (usePalette): composite doesn't pick its own
+  #lowerEdits = null;   // the lower group's cells layer's map, from the last composeAll or updateCells: where its cells are exact
+  #lowerBase = null;    // and the generated cells they sat on (the seed's characters)
+  #upperGrids = new WeakMap(); // an upper vector layer -> its shapes at grid resolution (#upperGrid), as #baseDrawn is the base's
+  #shownOver = null;    // { of, canvas }: the output with the upper layers' pixels over it (shownCanvas), until the next compose
+  #oneMatcher = null;   // { params, palette, matcher }: Best match's or By shape's matcher for one upper cell (#upperChar)
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.shapes?.reset();
     this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = null;
     this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = this.#painted = null;
+    this.#lowerEdits = this.#lowerBase = this.#shownOver = this.#oneMatcher = null;
+    this.#upperGrids = new WeakMap();
+    this.upper = [];
     this.#effective = new Map();
   }
 
@@ -203,6 +216,7 @@ export default class Renderer {
   // waits for it to end to carry a change to the base on to every cell after it: #resolveUnder).
   composite(paintLayer, params, { hold = false, rect = null, open = false } = {}) {
     if (!this.outputCanvas || !this.pipelineCanvas) return false;
+    this.#shownOver = null;
 
     const ctx = ctx2d(this.outputCanvas);
     const w = this.outputCanvas.width, h = this.outputCanvas.height;
@@ -480,10 +494,26 @@ export default class Renderer {
   // Cached: a stroke recomposites on every move, and the base doesn't change under it; when it does
   // (an erase, a move), only the grid pixels over what changed are worked out again.
   #baseGrid(layer, params, stored = false) {
+    const result = this.#gridOf(layer, params, stored ? this.#baseStored : this.#baseDrawn, stored);
+    if (stored) this.#baseStored = result;
+    else this.#baseDrawn = result;
+    return result;
+  }
+
+  // An upper vector layer's shapes at grid resolution, drawn as the base layer's own pixels are (#baseGrid), alpha where
+  // nothing's drawn: what composeUpper and shownCanvas lay over the cells under them. Kept per layer, caught up where
+  // its shapes changed.
+  #upperGrid(layer, params) {
+    const result = this.#gridOf(layer, params, this.#upperGrids.get(layer), false);
+    this.#upperGrids.set(layer, result);
+    return result;
+  }
+
+  // #baseGrid's work for any layer, from what was kept of it last time (cached): { layer, key, data, canvas, version }.
+  #gridOf(layer, params, cached, stored) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
     const palette = (params.quantize === 'cga' || params.quantize === 'vga') && !snapsLate(params) && this.palette?.length ? this.palette : null;
     const key = [w, h, params.smoothing, palette && params.quantize, ...COLOR_KEYS.map(key => params[key])].join();
-    const cached = stored ? this.#baseStored : this.#baseDrawn;
     const same = cached?.layer === layer && cached.key === key;
     if (same && cached.version === layer.version) return cached;
 
@@ -498,8 +528,6 @@ export default class Renderer {
       if (result.canvas) ctx2d(result.canvas).putImageData(result.data, 0, 0, area.x, area.y, area.w, area.h);
     }
     result.version = layer.version;
-    if (stored) this.#baseStored = result;
-    else this.#baseDrawn = result;
     return result;
   }
 
@@ -593,6 +621,8 @@ export default class Renderer {
   // Rebuild only the cells under the given grid pixels from the (already composited) output canvas.
   // baseCells (the last full render) supplies a cell's character in random mode.
   updateCells(cells, pixels, params, editCells, baseCells) {
+    this.#lowerEdits = editCells;
+    this.#lowerBase = baseCells;
     if (!this.outputCanvas || !pixels.length) return cells;
     const next = cells.slice();
     const { cols, chars: charset, charMode, renderStyle } = params;
@@ -677,6 +707,8 @@ export default class Renderer {
 
   // Generated cells with the base's pins (and the art layers' characters) and every in-grid edit cell composed in.
   composeAll(baseCells, editCells, params) {
+    this.#lowerEdits = editCells;
+    this.#lowerBase = baseCells;
     const cells = baseCells.slice();
     const rows = charRowsOf(params.rows), pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
     for (const key of this.shapes?.hasArt ? new Set([...pins.keys(), ...this.shapes.artCells()]) : pins.keys()) {
@@ -688,6 +720,123 @@ export default class Renderer {
       if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#composeOne(col, row, params, entry, baseCells);
     }
     return cells;
+  }
+
+  // The upper layers laid over the lower group's cells (lower, composeAll's or updateCells'): a new array sharing every
+  // cell it doesn't change. indexes: only those cells, the rest kept from composed (the cells as last composed, the same
+  // grid), or every cell with null. Per cell, bottom to top, { cell, exact }: exact is a character that's someone's own
+  // (the lower cells layer's entry, the base's pin or an art layer's; a shape reaching over them gives it up):
+  // - a vector layer where a shape reaches: each half is the cell's half color with the layer's pixels over it (its
+  //   shapes drawn as the base's own pixels are, #upperGrid), snapped to the palette, and the character its settings
+  //   pick (#upperChar), or the art layer's where one shows;
+  // - a cells layer's entry composes over the cell as the lower group's do (#composeOne), and its paint covers an exact
+  //   character (coverCell) or, over converted pixels, is mixed into the halves and converted with its settings.
+  // No error carries between cells (as #resolvePainted), so a cell costs only its own layers.
+  composeUpper(lower, indexes, palette, composed = null) {
+    this.#shownOver = null;
+    const out = (indexes && composed?.length === lower.length ? composed : lower).slice();
+    const cols = this.upper[0]?.params.cols ?? 1, n = indexes ? indexes.length : lower.length;
+    for (let k = 0; k < n; k++) {
+      const i = indexes ? indexes[k] : k;
+      if (lower[i]) out[i] = this.#upperCell(lower[i], i % cols, (i - (i % cols)) / cols, i, palette);
+    }
+    return out;
+  }
+
+  #upperCell(cell, col, row, i, palette) {
+    let exact = !!this.#lowerEdits?.has(cellKey(col, row)) || this.pinAt(col, row) !== undefined;
+    const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
+    const seedChar = this.#lowerBase?.[i]?.char ?? cell.char;
+    for (const u of this.upper) {
+      const { params } = u, { renderStyle } = params;
+      if (u.kind === 'vector') {
+        if (!u.layer?.drawsShapes) continue;
+        const char = u.layer.charAt(col, row);
+        if (char === undefined) continue;
+        const { data, width } = this.#upperGrid(u.layer, params).data, halves = halfColors(cell);
+        const [top, bottom] = halves.map((half, k) => {
+          const o = ((2 * row + k) * width + col) * 4;
+          return snap(data[o + 3] ? mix(half, { r: data[o], g: data[o + 1], b: data[o + 2] }, data[o + 3] / 255) : half);
+        });
+        cell = buildCell(top, bottom, char ?? this.#upperChar(top, bottom, seedChar, params), renderStyle);
+        exact = char !== null;
+        continue;
+      }
+      const entry = u.cells.get(cellKey(col, row)), painted = !!u.paint?.hasPaint;
+      const top = painted ? this.#upperPaintAt(u.paint, col, 2 * row, params) : null, bottom = painted ? this.#upperPaintAt(u.paint, col, 2 * row + 1, params) : null;
+      if (entry) {
+        cell = coverCell(composeCell(cell, entry, renderStyle, (hex) => this.effective(hex, params)), top, bottom, { renderStyle, palette });
+        exact = true;
+        continue;
+      }
+      if (!top && !bottom) continue;
+      if (exact) {
+        cell = coverCell(cell, top, bottom, { renderStyle, palette });
+        continue;
+      }
+      const [ht, hb] = halfColors(cell), t = snap(top ? mix(ht, top, top.a) : ht), b = snap(bottom ? mix(hb, bottom, bottom.a) : hb);
+      cell = buildCell(t, b, this.#upperChar(t, b, seedChar, params), renderStyle);
+    }
+    return cell;
+  }
+
+  // The character an upper layer's settings pick for a converted cell of these two halves: Best match's or By shape's
+  // for the one cell with no error coming in (as #resolvePainted), Random's seed character (the lower group's), or by
+  // weight (weightedChar).
+  #upperChar(top, bottom, seedChar, params) {
+    if (resolves(params) && this.#fontReady) {
+      const m = this.#oneMatcher;
+      if (m?.params !== params || m.palette !== this.palette) {
+        const glyphs = this.#glyphsOf(params.chars), solids = params.solids / 100, light = params.patternLight / 100;
+        const matcher = params.charMode === 'shape' ? shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle }) : bestMatcher({ palette: this.palette, glyphs, solids, light });
+        this.#oneMatcher = { params, palette: this.palette, matcher };
+      }
+      const { matcher } = this.#oneMatcher;
+      if (params.charMode !== 'shape') return resolveGrid(new Uint8ClampedArray([top.r, top.g, top.b, 255, bottom.r, bottom.g, bottom.b, 255]), 1, 2, matcher, { strength: 0 }).cells[0].char;
+      const samples = new Uint8ClampedArray(SAMPLES.w * SAMPLES.h * 4), half = (SAMPLES.w * SAMPLES.h) / 2;
+      for (let i = 0; i < SAMPLES.w * SAMPLES.h; i++) {
+        const c = i < half ? top : bottom;
+        samples[4 * i] = c.r; samples[4 * i + 1] = c.g; samples[4 * i + 2] = c.b; samples[4 * i + 3] = 255;
+      }
+      return resolveShapes(samples, 1, 1, matcher, { strength: 0 }).cells[0].char;
+    }
+    return keepsSeed(params.charMode) ? seedChar : weightedChar(top, bottom, params.chars, params.charMode);
+  }
+
+  // An upper cells layer's paint at grid pixel (x, y) through the color transforms, as #drawLayer draws the lower
+  // group's, or null where there's none.
+  #upperPaintAt(paint, x, y, params) {
+    const p = paint.pixelAt(x, y);
+    if (!p || !transformsOn(params)) return p;
+    const bytes = new Uint8ClampedArray([p.r, p.g, p.b, 255]);
+    applyTransforms(bytes, params);
+    return { r: bytes[0], g: bytes[1], b: bytes[2], a: p.a };
+  }
+
+  // What the PIXEL view shows and the Paint Bucket reads: the output, with every upper layer's pixels (its shapes at grid
+  // resolution, its paint) drawn over it when there are any. Kept until the next compose.
+  // ponytail: drawn whole on every ask after a compose; draw only the composed rect if a stroke on a large grid lags.
+  shownCanvas() {
+    if (!this.upper.length || !this.outputCanvas) return this.outputCanvas;
+    if (this.#shownOver?.of === this.outputCanvas) return this.#shownOver.canvas;
+    const { width, height } = this.outputCanvas, canvas = Object.assign(document.createElement('canvas'), { width, height }), ctx = ctx2d(canvas);
+    ctx.drawImage(this.outputCanvas, 0, 0);
+    for (const u of this.upper) {
+      if (u.kind === 'cells') {
+        if (u.paint?.hasPaint) this.#drawLayer(ctx, u.paint, u.params);
+        continue;
+      }
+      if (!u.layer?.drawsShapes) continue;
+      u.layer.sync();
+      const grid = this.#upperGrid(u.layer, u.params);
+      if (!grid.canvas) { // kept in step by #gridOf from here on, as #drawBase keeps the base's
+        grid.canvas = Object.assign(document.createElement('canvas'), { width, height });
+        ctx2d(grid.canvas).putImageData(grid.data, 0, 0);
+      }
+      ctx.drawImage(grid.canvas, 0, 0);
+    }
+    this.#shownOver = { of: this.outputCanvas, canvas };
+    return canvas;
   }
 
   // A stored color as it displays: color adjustments, then the active palette.

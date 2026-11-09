@@ -1,5 +1,5 @@
 // The VECTOR tab: the ANSI art with the shapes' outlines over it, and the tools that draw and change them.
-import { test, expect, openApp, store, tab, pickLayer, settled, startScreen } from './support.js';
+import { test, expect, openApp, store, tab, pickLayer, settled, startScreen, drag } from './support.js';
 
 // The page position of grid pixel (x, y) (fractional) in the ANSI and VECTOR views.
 async function gridPoint(page, x, y) {
@@ -555,14 +555,16 @@ test('undo while the Pen draws takes back the last point, and only that, even on
   await settled(page);
   await page.keyboard.press('p');
   const at = (x, y) => gridPoint(page, x, y), undo = page.locator('.history-group button').first();
-  await expect(undo).toBeDisabled();
+  await expect(undo).toBeEnabled(); // the vector layer added is a step of its own
   await page.mouse.click(...Object.values(await at(10, 10)));
   await page.mouse.click(...Object.values(await at(30, 10)));
-  await expect(undo).toBeEnabled();
   await page.keyboard.press('ControlOrMeta+z');
   expect(await store(page, 'project', (p) => [...p.shapes.values()].map((s) => s.points.length))).toEqual([1]);
   await undo.click();
   expect(await store(page, 'project', (p) => p.shapes.size)).toBe(0);
+  expect(await store(page, 'project', (p) => p.layers.map((l) => l.id))).toEqual(['base', 'edit', 'vector']); // the layer's add is the step left
+  await undo.click();
+  expect(await store(page, 'project', (p) => p.layers.map((l) => l.id))).toEqual(['base', 'edit']);
   await expect(undo).toBeDisabled();
 });
 
@@ -1087,6 +1089,23 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
   await expect(clear).toBeDisabled();
 });
 
+test('dragging a row reorders the layers', async ({ page }) => {
+  await openApp(page);
+  const panel = page.locator('.side-panel'), open = page.getByRole('button', { name: 'Open the panel' });
+  if (await open.isVisible()) await open.click();
+  await panel.getByRole('tab', { name: 'Layers' }).click();
+  await panel.getByRole('button', { name: '+ Layer' }).click();
+  await panel.getByRole('button', { name: '+ Layer' }).click();
+  const rows = panel.locator('.layers-list li');
+  await expect(rows).toHaveCount(4);
+  expect(await store(page, 'project', (p) => p.layers.map((l) => l.id))).toEqual(['base', 'edit', 'L1', 'L2']);
+  const top = await rows.nth(0).boundingBox(), next = await rows.nth(1).boundingBox();
+  await drag(page, { x: top.x + top.width / 2, y: top.y + top.height / 2 }, { x: next.x + next.width / 2, y: next.y + next.height * 0.8 });
+  expect(await store(page, 'project', (p) => p.layers.map((l) => l.id))).toEqual(['base', 'edit', 'L2', 'L1']);
+  expect(await store(page, 'workspace', (w) => w.pickedLayer)).toBe('L2'); // the drag didn't pick another row
+  await expect(rows.nth(0)).toHaveText(/Layer 2/);
+});
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   test('the Pen\'s path shows as it\'s tapped out, a line between its first two points before there\'s anything to fill', async ({ page }) => {
@@ -1266,6 +1285,7 @@ test('on a Blank frame, the shapes it carries have dimmed outlines; one changed 
 
 test('VECTOR\'s Merge down presses the selected shapes into the base, and ANSI\'s Merge down says shapes go too', async ({ page }) => {
   await openApp(page);
+  await pickLayer(page, 'Base'); // so + Vector layer puts the vector layer directly on the base, where its shapes press into it
   await pickLayer(page);
   await settled(page);
   const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 40, 30, 50, 40);

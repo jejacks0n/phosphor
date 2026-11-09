@@ -4,6 +4,7 @@
 // change: only the cells the shapes covered before and after it are drawn again. The Pen's shape is one edit,
 // marked _stroke.pen, from its first point until finishPen: any commit finishes it (commitEdit).
 import { markRaw, watch } from 'vue';
+import ShapeLayer from '@/document/ShapeLayer.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { usePlayback } from '@/composables/usePlayback.js';
@@ -16,7 +17,8 @@ import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { bytesHeld, drawnShapes, lockedAmong, refusedHidden } from '@/store/project/shared.js';
+import { bytesHeld, lockedAmong, putLayer, refusedHidden, shapesOfStack } from '@/store/project/shared.js';
+import { lowerGroup } from '@/document/layerInfo.js';
 import { centerOf, placedShapes } from '@/document/followers.js';
 import { setPartsAt } from '@/document/tweens.js';
 import { measure } from '@/document/pathLength.js';
@@ -26,6 +28,14 @@ import { unitsOf, wandIn } from '@/lib/MagicWand.js';
 
 // What the document holds is what a file, a project or a room takes back: one check for both.
 const keeps = (shape) => !!shapeFromStranger(shape);
+
+// The shapes that can press into the base: those on the vector layers directly on the bottom (hidden or not), placed
+// (followers.js). One on a vector layer above a cells layer stays a shape through Bake and VECTOR's Merge down.
+// ponytail: a merge for those (into the cells layer under them) is its own later merge.
+const pressable = (project) => {
+  const { vectors } = lowerGroup(project.layers);
+  return new Map([...placedShapes(project)].filter(([, shape]) => vectors.includes(shape.layer ?? 'vector')));
+};
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 export const vectorActions = {
@@ -45,25 +55,34 @@ export const vectorActions = {
     this.refreshShapes();
   },
 
-  // Draw what the shapes changed: the grid rect they covered before and after, or every cell past a quarter of
-  // the grid (a full composite is as quick then).
+  // Draw what the shapes changed: the grid rect they covered before and after, on the lower group's shape layer and on
+  // the upper vector layers' (redrawRects).
   refreshShapes() {
-    if (this.shapes.size) this.addVectorLayer(); // the first shape brings it
-    const layer = this._shapeLayer, output = this.renderer.outputCanvas;
-    if (!layer) return;
-    const rect = layer.set(drawnShapes(this));
-    if (!rect || !output || output.width !== this.cols || output.height !== this.rows) return; // a render's on its way
-    const x0 = Math.max(0, rect.x), y0 = Math.max(0, rect.y), x1 = Math.min(this.cols, rect.x + rect.w), y1 = Math.min(this.rows, rect.y + rect.h);
-    if (x1 <= x0 || y1 <= y0) return;
-    const area = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
-    if (this._stroke) this._stroke.shapeRect = union(this._stroke.shapeRect, area);
-    if (area.w * area.h > (this.cols * this.rows) / 4) {
-      if (!this.composite()) this.rebuildCells();
-      return;
+    if (this.shapes.size && !this.hasVectorLayer) putLayer(this, 'vector', 'base'); // the first shape brings it
+    if (this._shapeLayer) redrawRects(this, this.syncShapeLayers());
+  },
+
+  // Each shape layer told the shapes it draws (shapesOfStack): the lower group's over the base, in the layers' order, and
+  // one alone for each vector layer above the group, made here when it first has shapes and dropped when the layer
+  // leaves the stack. Sized to the grid. { lower, upper }: the grid rect each side changed, or null.
+  syncShapeLayers() {
+    const rects = { lower: null, upper: null };
+    if (!this._shapeLayer) return rects;
+    const { lower, upper } = shapesOfStack(this), layers = this.layers;
+    const rank = (shape) => layers.findIndex((layer) => layer.id === (shape.layer ?? 'vector'));
+    rects.lower = this._shapeLayer.set(lower, rank);
+    for (const [id, shapes] of upper) {
+      let layer = this._upperShapes.get(id);
+      if (!layer) {
+        if (!shapes.size) continue;
+        this._upperShapes.set(id, layer = markRaw(new ShapeLayer(null)));
+      }
+      layer.grid(this.cols, this.rows, this.baseLayer.scale);
+      const rect = layer.set(shapes);
+      if (rect) rects.upper = union(rects.upper, rect);
     }
-    const pixels = [];
-    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) pixels.push({ x, y });
-    this.refreshCells(pixels);
+    for (const id of [...this._upperShapes.keys()]) if (!this.layerById(id)) this._upperShapes.delete(id);
+    return rects;
   },
 
   // A new shape on top of the rest; its key, or null at the most a document holds, or for one a file wouldn't keep.
@@ -394,7 +413,7 @@ export const vectorActions = {
   // ponytail: passes until nothing's added, each O(n²) over the shapes' bounds; a stacking-ordered sweep or a spatial
   // index if merges of many shapes lag.
   pressedKeys(keys) {
-    const placed = placedShapes(this), order = stacked(placed).filter(([, shape]) => !shape.guide);
+    const placed = pressable(this), order = stacked(placed).filter(([, shape]) => !shape.guide);
     const named = new Set(keys.filter((key) => placed.has(key))), pressed = new Set([...named].filter((key) => !placed.get(key).guide));
     for (let size = -1; size !== pressed.size;) {
       size = pressed.size;
@@ -413,7 +432,9 @@ export const vectorActions = {
   // every guide, which draws nothing), baseRecords (without the pins they cover, since the shapes' pixels are what shows
   // there, and with their art layers' characters) }.
   pressShapes(pressed) {
-    this._shapeLayer.set(drawnShapes(this));
+    this.syncShapeLayers();
+    const lower = pressable(this);
+    pressed = new Set([...pressed].filter((key) => lower.has(key)));
     const { canvas, covered, pins } = this._shapeLayer.pressed(pressed);
     const shapes = new Map([...this.shapes].filter(([key, shape]) => !pressed.has(key) || shape.guide));
     return { base: { canvas, hasPaint: true }, shapes, baseRecords: withPins(withoutPins(this.baseRecords, covered), pins) };
@@ -648,22 +669,40 @@ function artOfCells(drawn) {
   return { m: [1, 0, 0, 1, c0, 2 * r0], art: { cols, rows: r1 - r0 + 1, cells } };
 }
 
-// The shape layer caught up, and what shows drawn again: area, the grid pixels that can have changed ({ x, y, w, h }),
-// or null for all of them. Not while a render's on its way (the grid's changed): that draws it.
+// The shape layers caught up, and what shows drawn again: area, the grid pixels that can have changed ({ x, y, w, h }),
+// or null for all of them.
 function redraw(project, area = null) {
-  const set = project._shapeLayer?.set(drawnShapes(project)), output = project.renderer.outputCanvas;
-  if (!output || output.width !== project.cols || output.height !== project.rows) return;
-  const rect = area && (set ? union(area, set) : area);
-  const x0 = Math.max(0, rect?.x ?? 0), y0 = Math.max(0, rect?.y ?? 0);
-  const x1 = Math.min(project.cols, rect ? rect.x + rect.w : project.cols), y1 = Math.min(project.rows, rect ? rect.y + rect.h : project.rows);
-  if (!rect || (x1 - x0) * (y1 - y0) > (project.cols * project.rows) / 4) {
+  const { lower, upper } = project.syncShapeLayers();
+  redrawRects(project, { lower: area === null ? { x: 0, y: 0, w: project.cols, h: project.rows } : lower ? union(area, lower) : area, upper });
+}
+
+// What shows drawn again where the shape layers changed: lower, the lower group's grid rect, through the pipeline (and
+// the upper layers over it), and upper, the upper vector layers', over the group's cells alone (recomposeUpper); either
+// past a quarter of the grid is drawn whole (a full composite is as quick then). Not while a render's on its way (the
+// grid's changed): that draws it. An open edit remembers the rects, for the cells its end works out again.
+function redrawRects(project, { lower, upper }) {
+  const output = project.renderer.outputCanvas, { cols, rows } = project;
+  if (!output || output.width !== cols || output.height !== rows) return;
+  const clip = (rect) => {
+    if (!rect) return null;
+    const x0 = Math.max(0, rect.x), y0 = Math.max(0, rect.y), x1 = Math.min(cols, rect.x + rect.w), y1 = Math.min(rows, rect.y + rect.h);
+    return x1 > x0 && y1 > y0 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+  };
+  const pixelsOf = ({ x, y, w, h }) => {
+    const pixels = [];
+    for (let py = y; py < y + h; py++) for (let px = x; px < x + w; px++) pixels.push({ x: px, y: py });
+    return pixels;
+  };
+  const low = clip(lower), up = clip(upper), quarter = (cols * rows) / 4;
+  if (project._stroke) for (const rect of [low, up]) if (rect) project._stroke.shapeRect = union(project._stroke.shapeRect, rect);
+  if (low && low.w * low.h > quarter) { // every cell, the upper layers over them too
     if (!project.composite()) project.rebuildCells();
     return;
   }
-  if (x1 <= x0 || y1 <= y0) return;
-  const pixels = [];
-  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) pixels.push({ x, y });
-  project.refreshCells(pixels);
+  if (low) project.refreshCells(pixelsOf(low));
+  if (!up) return;
+  if (up.w * up.h > quarter) project.applyEditCells();
+  else project.recomposeUpper(pixelsOf(up));
 }
 
 // Whether a change opens an edit of its own, committed with it: none's open, or a typing run is, which the

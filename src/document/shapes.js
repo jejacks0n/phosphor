@@ -310,8 +310,9 @@ export function pathData(shape, sx = 1, sy = 1) {
   return d;
 }
 
-// [[key, shape]] in stacking order, bottom first: by z, ties by key.
-export const stacked = (shapes) => [...shapes].sort(([ka, a], [kb, b]) => a.z - b.z || (ka < kb ? -1 : ka > kb ? 1 : 0));
+// [[key, shape]] in stacking order, bottom first: by z, ties by key. rank(shape): its layer's place in the stack, which
+// comes first, when the shapes are from several vector layers.
+export const stacked = (shapes, rank = null) => [...shapes].sort(([ka, a], [kb, b]) => (rank ? rank(a) - rank(b) : 0) || a.z - b.z || (ka < kb ? -1 : ka > kb ? 1 : 0));
 
 // Where a cubic from p0 to p3 (handles p1, p2), along one axis, turns: its t in (0, 1).
 function turns(p0, p1, p2, p3) {

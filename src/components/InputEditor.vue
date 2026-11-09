@@ -24,30 +24,39 @@ const sizerRef = useTemplateRef('sizer');
 const canvasRef = useTemplateRef('displayCanvas');
 const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZoom, clamp: clampZoom };
 
-// Edit cells (or all, with "All cells") drawn over the image as their half-cell colors: the
+// Every cells layer's cells (or all, with "All cells") drawn over the image as their half-cell colors: the
 // ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible.
 // One bitmap the grid's size, not redrawn on zoom or opacity; when the cells change, only those that
 // did are painted again (an edit keeps every other cell the same object), so a stroke costs its own
 // cells, not the grid's. A new grid size, or All cells switched, paints it all.
 // While an animation plays, the frame playing's own (FrameBuilder); otherwise with its ghost, if it has one: the frame
 // before's staying cells typed there (its picture ghost) are drawn as this frame's own are.
-const shownFrame = () => (workspaceStore.playing && workspaceStore.played) || { cells: projectStore.shownCells, editCells: projectStore.editCells };
-const overlay = { canvas: null, image: null, cells: null, editCells: null, edited: new Set(), all: null, cols: 0, rows: 0, empty: true };
+// The cells shown and the maps of cells that are someone's own: the frame playing's (one map, every layer's), or the
+// drawing's and each cells layer that shows (the one in use is the edit cells, the rest wait in the store's _layerData).
+const shownFrame = () => {
+  const played = workspaceStore.playing && workspaceStore.played;
+  if (played) return { cells: played.cells, maps: [played.editCells] };
+  return { cells: projectStore.shownCells, maps: projectStore.shownLayers.filter((layer, at) => at && layer.kind === 'cells').map((layer) => projectStore.cellsOf(layer.id)) };
+};
+const sameMaps = (a, b) => a.length === b.length && a.every((map, i) => map === b[i]);
+const overlay = { canvas: null, image: null, cells: null, maps: [], edited: new Set(), all: null, cols: 0, rows: 0, empty: true };
 const updateOverlay = () => {
   const { cols, rows } = projectStore;
-  const { cells, editCells } = shownFrame();
+  const { cells, maps } = shownFrame();
   const all = workspaceStore.ansiOverlayAll;
-  if (overlay.cells === cells && overlay.editCells === editCells && overlay.all === all) return;
+  if (overlay.cells === cells && sameMaps(maps, overlay.maps) && overlay.all === all) return;
   const picture = !workspaceStore.playing && cells !== projectStore.cells && projectStore._ghost.built, plain = projectStore.cells;
   const ghost = (i) => plain[i] !== cells[i] && projectStore._ghost.picture.has(i) && picture.editCells.has(cellKey(i % cols, Math.floor(i / cols)));
 
-  // The edit cells, by index (only those in the grid).
+  // The layers' cells, by index (only those in the grid).
   let edited = overlay.edited;
-  if (editCells !== overlay.editCells || cols !== overlay.cols || rows !== overlay.rows) { // indexes are by the grid's width
+  if (!sameMaps(maps, overlay.maps) || cols !== overlay.cols || rows !== overlay.rows) { // indexes are by the grid's width
     edited = new Set();
-    for (const key of editCells.keys()) {
-      const { col, row } = parseKey(key);
-      if (col < cols && row < charRowsOf(rows)) edited.add(row * cols + col);
+    for (const map of maps) {
+      for (const key of map.keys()) {
+        const { col, row } = parseKey(key);
+        if (col < cols && row < charRowsOf(rows)) edited.add(row * cols + col);
+      }
     }
   }
   const shown = (i) => (all || edited.has(i) || (picture && ghost(i)) ? cells[i] ?? null : null);
@@ -75,7 +84,7 @@ const updateOverlay = () => {
     }
     if (changed.length) ctx2d(overlay.canvas).putImageData(overlay.image, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
   }
-  Object.assign(overlay, { cells, editCells, edited, all, cols, rows, empty: all ? !cells.length : !edited.size && !picture });
+  Object.assign(overlay, { cells, maps, edited, all, cols, rows, empty: all ? !cells.length : !edited.size && !picture });
 };
 
 // The ghost on the art: what's under the cells that shownCells dims, laid over them. The cells only say which, since
@@ -125,7 +134,7 @@ const place = (dc, win, zoom) => Object.assign(dc.style, { width: `${win.cols * 
 
 const redrawDisplay = () => {
   const dc = canvasRef.value, sizer = sizerRef.value;
-  const output = (workspaceStore.playing && workspaceStore.played?.output) || projectStore.renderer.outputCanvas;
+  const output = (workspaceStore.playing && workspaceStore.played?.output) || projectStore.renderer.shownCanvas(); // the upper layers' pixels over it
   if (!dc || !sizer || !viewportEl || !output) return;
   const zoom = workspaceStore.editZoom, view = viewIn(sizer, viewportEl);
   // A grid pixel is a column wide and half a line tall: the whole cells in view, and the zoom they're

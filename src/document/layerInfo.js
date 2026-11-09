@@ -82,6 +82,20 @@ export function newLayerId(layers, kind) {
 // A new layer's number, for its default name: one past the highest of its kind (the bottom, which is "Base", left out).
 export const nextNumber = (layers, kind) => Math.max(0, ...layers.slice(1).filter((layer) => layer.kind === kind).map((layer) => layer.n)) + 1;
 
+// The lower group, the layers today's pipeline converts as one block, and everything above it: over the layers that show
+// (the bottom always counts; its eye is the renderer's hideBase), the bottom, then each vector layer directly above it
+// (vectors), then the next layer if it's a cells layer (cells, its id, or null), and the rest (upper, bottom to top), which
+// the renderer lays over the group cell by cell. baseChars: the bottom's character settings, which a layer must share to
+// be in the group; until layers carry their own, every layer's count as equal.
+// eslint-disable-next-line no-unused-vars
+export function lowerGroup(layers, baseChars = null) {
+  let i = 1;
+  const vectors = [];
+  while (layers[i]?.kind === 'vector') vectors.push(layers[i++].id);
+  const cells = layers[i]?.kind === 'cells' ? layers[i++].id : null;
+  return { vectors, cells, upper: layers.slice(i).map((layer) => layer.id) };
+}
+
 // Keys and runs name their layer, so the ledger, history and frames stay flat maps: a key on the edit layer is as it
 // always was ('col,row', a tile's 'x,y'), and on another it's prefixed with the layer's id ('L2:col,row'). A shape's key
 // ('v:<hex>') is its own: keyLayer gives it no layer (id null).

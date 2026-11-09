@@ -55,6 +55,7 @@ const oldFrames = (frames, id) => {
 function newLayers(project) {
   project.editId = 'edit'; // first: the pick that follows the layers (followLayerPick) finds it in use
   project._layerData.clear();
+  project._upperShapes.clear();
   project.layers = layersFromOld(null, { hasShapes: false });
 }
 
@@ -289,6 +290,7 @@ export const documentActions = {
       filename: null,
       cells: [],
       composedCells: [],
+      lowerCells: [],
       renderedCells: [],
       paintLayer: null,
       baseLayer: null,

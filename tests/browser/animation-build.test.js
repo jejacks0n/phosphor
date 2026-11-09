@@ -1,6 +1,7 @@
 // Frames built for playing are the cells a still shows: the same path, in every style and palette, proven.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import { rectShape } from '@/document/shapes.js';
 
 const INK = { fg: '#ffee00', bg: '#0044aa' };
 
@@ -201,14 +202,32 @@ test('a frame with only the edit layer\'s cells is built from its own map, with 
   expect(passes).toBe(0);
 });
 
-test('another cells layer\'s cells are left out of a built frame, for now', async () => {
-  const { project, workspace } = await createTestApp();
-  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 24, rows: 24 });
-  project.typeAt(1, 1, 'A', INK);
+test('a built frame composes the stack in order', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 20 }); // 10 x 10 cells
+  await settle(project);
+  const white = { fg: '#ffffff', bg: '#000000' };
+  for (const [col, row] of [[2, 2], [3, 3]]) project.typeAt(col, row, 'Y', white);
   project.commitEdit();
-  workspace.pickLayer(project.addLayer('cells', 'edit'));
-  project.typeAt(2, 2, 'B', INK);
+  const vector = project.addLayer('vector', 'edit');
+  project.addShape(rectShape(3, 4, 5, 10, { fill: '#ff0000' })); // cols 3–4, rows 2–4: 2,2 stays uncovered
   project.commitEdit();
+  const top = project.addLayer('cells', vector);
   project.addFrame('blank');
-  expect([...(await project.builtFrame(0)).editCells.keys()]).toEqual(['1,1']);
+  project.useLayer(top);
+  project.typeAt(2, 2, 'X', white);
+  project.commitEdit();
+  await settle(project);
+  const at = (built, col, row) => built.cells[row * 10 + col];
+  const second = await project.builtFrame(1), first = await project.builtFrame(0);
+  expect(at(second, 2, 2).char).toBe('X');
+  expect(at(first, 2, 2).char).toBe('Y');
+  for (const built of [first, second]) {
+    expect(at(built, 3, 3).char).not.toBe('Y');
+    expect([at(built, 3, 3).fg.hex, at(built, 3, 3).bg.hex].map((hex) => hex.toLowerCase())).toContain('#ff0000');
+  }
+  expect([...second.editCells.keys()].sort()).toEqual(['2,2', '3,3']); // every layer's cells, for the overlay
+  project.showFrame(1);
+  await settle(project);
+  expect(cellValues(second.cells)).toEqual(cellValues(project.cells));
 });

@@ -10,7 +10,7 @@ import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { paletteChoices } from '@/lib/PixelTransforms.js';
-import { over } from '@/store/project/shared.js';
+import { lowerEdits, lowerPaint, over } from '@/store/project/shared.js';
 
 // For each palette color, a stored color that shows as it under the adjustments (paletteChoices), kept while
 // the palette and the settings stay the same: asked once a cell by a whole grid's Merge up.
@@ -73,7 +73,7 @@ export const readingActions = {
     this.ensureLayer();
     x = Math.floor(x);
     y = Math.floor(y);
-    const painted = this.shownPaint?.pixelAt(x, y);
+    const painted = lowerPaint(this)?.pixelAt(x, y);
     if (!painted || painted.a >= 1) return painted ? rgb2hex(painted) : this.baseColorAt(x, y);
     return rgb2hex(over(hex2rgb(this.baseColorAt(x, y)), painted));
   },
@@ -99,8 +99,8 @@ export const readingActions = {
   // withPaint: paint (on top, by its alpha) over each half; under it edit-cell attributes, then the
   // source image. A hidden layer isn't read (what shows is picked), unless evenHidden (an edit of the layer itself).
   underlyingAt(col, row, { withPaint = true, evenHidden = false } = {}) {
-    const entry = (evenHidden ? this.editCells : this.shownEditCells).get(cellKey(col, row)) ?? {};
-    const paint = evenHidden ? this.paintLayer : this.shownPaint;
+    const entry = (evenHidden ? this.editCells : lowerEdits(this)).get(cellKey(col, row)) ?? {};
+    const paint = evenHidden ? this.paintLayer : lowerPaint(this);
     const half = (y, attr) => {
       const under = entry[attr] ?? this.baseColorAt(col, y);
       const painted = withPaint && paint?.pixelAt(col, y);

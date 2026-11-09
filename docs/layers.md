@@ -1,13 +1,15 @@
 # Layers
 
-Everything in a Phosphor drawing lives on a layer: the **base layer** underneath, the **edit layer** on
-top, and between them the **vector layer**, once the drawing has one, which holds the VECTOR tab's
-[shapes](vector.md). Knowing which is which explains what the tools, Merge and the eraser do.
+Everything in a Phosphor drawing lives on a layer: the **base layer** underneath, which holds the picture, and a
+stack of layers over it, each covering what's under it. A new drawing has one layer on the base, the **edit layer**
+("Layer 1"); a **vector layer** holds the VECTOR tab's [shapes](vector.md), and the first shape brings one, directly
+on the base. You can add more of either kind and put them in any order. Knowing which is which explains what
+the tools, Merge and the eraser do.
 
 ## The layers list
 
-**LAYERS**, in the side panel, lists the drawing's layers, the top of the stack first: the edit layer
-("Layer 1"), the vector layer ("Vector 1") if there is one, and the base ("Base"). It shows while the art
+**LAYERS**, in the side panel, lists the drawing's layers, the top of the stack first: for a new drawing the edit
+layer ("Layer 1"), the vector layer ("Vector 1") if there is one, and the base ("Base"). It shows while the art
 is showing; with nothing open, or on SAUCE, it says so instead.
 
 - **Picking a row** picks that layer, and the tabs follow it. The base and the edit layer show PIXEL and
@@ -17,9 +19,15 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   for one of the others (P for the Pencil, say) says which layer that tool draws on, "Pencil draws on
   Layer 1. Pick it in Layers." Picking the edit layer or the base from VECTOR goes back to the art tab
   you last had.
-- **+ Vector layer**, under the list, adds the vector layer and picks it. It's there while the drawing has
-  none; a drawing with shapes already has one, since its first shape brings it. The vector layer stays when
-  its last shape is deleted.
+- **+ Layer** and **+ Vector layer**, under the list, add a layer of cells or a vector layer directly above the
+  picked one, and pick it. New layers are named "Layer 2", "Vector 2" and so on; a drawing holds at most 64. A
+  drawing with shapes already has a vector layer, since its first shape brings it, and a vector layer stays when
+  its last shape is deleted. Adding a layer is an undo step.
+- **Reordering.** Every row but the base has a **⋯** menu with **Rename**, **Move up** and **Move down**, and the row
+  drags (with the mouse) to another place in the stack: a line shows where it will land, between two rows or
+  directly above the base, never below it. A move is an undo step, and what the drawing shows is laid over again
+  in the new order: a layer covers whatever is under it, cells, paint and shapes alike. Each cells layer keeps its
+  own cells and paint wherever it sits.
 - **Click the picked row's name** (or double-click any name, or press F2 on its row) to rename the layer; a
   click on another row only picks it. Enter, or leaving the box, keeps the new name; Escape keeps the old one.
   A name is up to 40 characters, and a blank one puts the default back; one too long for the row shows in
@@ -168,13 +176,20 @@ as they did, and the sliders keep working on them.
 
 ### Shapes
 
-The VECTOR tab's [shapes](vector.md) sit between the base layer's own pixels and the edit layer:
+The VECTOR tab's [shapes](vector.md) are drawn where their vector layer sits in the stack. The first one sits
+directly on the base, between the base layer's own pixels and the edit layer:
 
 the picture → the base layer's own pixels → shapes → edit cells → paint
 
 They're converted with the picture, so the color sliders, the palette and dither reach them (the image filters
 don't). A shape over a pinned character shows its conversion there. When a shape is pressed into the base (Bake,
 Merge down), pins it covers go, since its pixels are what shows there now; an art layer's characters become pins instead.
+
+A vector layer higher in the stack converts against everything below it: where a shape reaches a cell, the cell's two
+halves take the shape's pixels over what the layers under it show there (a typed character included), and the
+converter picks the character from them, with the drawing's character settings. The layers above then cover it as
+they cover anything. A cells layer's paint behaves the same way: over a typed character or a pin it tints it, as
+paint does on the edit layer, and over converted pixels it's converted with them.
 
 ### Art layers
 

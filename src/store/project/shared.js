@@ -8,6 +8,7 @@ import { loadImage } from '@/document/projectIO.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
+import { newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 
@@ -100,17 +101,46 @@ export function refusedInRoom(project, { fills = false } = {}) {
   return true;
 }
 
-// The shapes the shape layer draws: all of them, followers on their paths and guides left out (followers.js), but the
-// art layer stepped into (vector.js: enterArt), whose drawing is the edit cells and paint while you're inside it. None
-// while the vector layer is hidden.
+// A new layer of kind directly above the layer with the id above (on top when there's none), in the stack, with nothing
+// on it (a cells layer's paint is made when it's first used); the layer. Not an undo step: addLayer's is, and the vector
+// layer a first shape brings, or the edit layer a room is missing, has none.
+export function putLayer(project, kind, above) {
+  const id = newLayerId(project.layers, kind), at = project.layers.findIndex((layer) => layer.id === above) + 1 || project.layers.length;
+  const layer = Object.freeze({ id, kind, n: nextNumber(project.layers, kind), name: null, hidden: false });
+  project.layers = [...project.layers.slice(0, at), layer, ...project.layers.slice(at)];
+  if (kind === 'cells') project._layerData.set(id, { editCells: new Map(), paintLayer: null, hasPaint: false });
+  return layer;
+}
+
+// The lower group's cells layer's cells and paint (ProjectStore.lowerGroup): what the renderer's pipeline is handed. None
+// while the group has no cells layer. Functions, not getters: a layer that isn't in use waits in _layerData, which isn't
+// reactive, so a cached value could be stale.
+const NO_CELLS = new Map();
+export const lowerEdits = (project) => (project.lowerGroup.cells ? project.cellsOf(project.lowerGroup.cells) : NO_CELLS);
+export const lowerPaint = (project) => (project.lowerGroup.cells ? project.paintOf(project.lowerGroup.cells) : null);
+
+// The shapes each shape layer draws: followers on their paths and guides left out (followers.js), the art layer stepped
+// into left out too (vector.js: enterArt, whose drawing is the edit cells and paint while you're inside it), and each on
+// its own vector layer (a shape with no layer is on 'vector'): { lower: Map, upper: Map<id, Map> }, the lower group's
+// vector layers' shapes as one map, and each upper vector layer's. A hidden vector layer's shapes are in neither. Each
+// map keeps its identity while its shapes don't change, so a ShapeLayer told it redraws nothing (ShapeLayer.set).
 const NO_SHAPES = new Map();
-export function drawnShapes(project) {
-  if (project.layerHidden('vector')) return NO_SHAPES;
-  const key = project._artInside?.key, shapes = shownShapes(project.shapes);
-  if (!key || !shapes.has(key)) return shapes;
-  const left = new Map(shapes);
-  left.delete(key);
-  return left;
+const splits = new WeakMap(); // project -> the last result
+export function shapesOfStack(project) {
+  const { vectors, upper: above } = project.lowerGroup, inside = project._artInside?.key;
+  const lower = new Map(), upper = new Map();
+  for (const id of above) if (project.layerById(id).kind === 'vector') upper.set(id, new Map());
+  for (const [key, shape] of shownShapes(project.shapes)) {
+    if (key === inside) continue;
+    const id = shape.layer ?? 'vector';
+    if (vectors.includes(id)) lower.set(key, shape);
+    else upper.get(id)?.set(key, shape);
+  }
+  const last = splits.get(project), same = (a, b) => !!b && a.size === b.size && [...a].every(([key, shape]) => b.get(key) === shape);
+  const kept = (map, was) => (same(map, was) ? was : map.size ? map : NO_SHAPES);
+  const result = { lower: kept(lower, last?.lower), upper: new Map([...upper].map(([id, map]) => [id, kept(map, last?.upper.get(id))])) };
+  splits.set(project, result);
+  return result;
 }
 // A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });

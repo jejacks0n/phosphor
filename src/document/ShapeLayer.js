@@ -11,6 +11,9 @@
  * where a shape reaches over it (or over a pinned character), the base's pin otherwise (Renderer.pinAt).
  * ponytail: two canvases the base layer's size while shapes exist (up to MAX_LAYER_DIM a side), a third while
  * an art layer does; tile them if that's too much memory on large documents.
+ *
+ * Alone (no base layer: a vector layer above the lower group), it's the shapes' own drawing, one canvas at the grid
+ * it's told (grid), and the Renderer lays it over the cells under it (composeUpper).
  */
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
@@ -47,8 +50,20 @@ export default class ShapeLayer {
     this.reset();
   }
 
+  #alone = false;
+
+  // baseLayer: the base it draws over, or null to draw alone (then grid says its size).
   constructor(baseLayer) {
-    this.#base = baseLayer;
+    this.#alone = !baseLayer;
+    this.#base = baseLayer ?? { cols: 0, rows: 0, scale: 1, canvas: { width: 0, height: 0 }, hasPaint: false, version: 0, changedSince: () => ({ x: 0, y: 0, w: 0, h: 0 }) };
+  }
+
+  // Alone: the grid it draws for, at scale canvas pixels a grid pixel (the base layer's, so its shapes are sampled as the
+  // lower group's are). A change draws everything again on the next sync.
+  grid(cols, rows, scale) {
+    const b = this.#base;
+    if (!this.#alone || (b.cols === cols && b.rows === rows && b.scale === scale)) return;
+    Object.assign(b, { cols, rows, scale, canvas: { width: cols * scale, height: rows * scale } });
   }
 
   get scale() { return this.#base.scale; }
@@ -58,8 +73,9 @@ export default class ShapeLayer {
   get hasPaint() { return this.#base.hasPaint || this.drawsShapes; }
   get hasArt() { return this.#hasArt; }
 
-  // The shapes to draw (the store's map). The grid rect that changed, or null when none did.
-  set(shapes) {
+  // The shapes to draw (the store's map), and rank(shape), their layers' order when they're from several vector layers
+  // (shapes.js: stacked). The grid rect that changed, or null when none did.
+  set(shapes, rank = null) {
     if (shapes === this.#shapes) return null;
     const bounds = [];
     for (const [key, shape] of shapes) {
@@ -70,7 +86,7 @@ export default class ShapeLayer {
     }
     for (const [key, shape] of this.#shapes) if (!shapes.has(key)) bounds.push(shapeBounds(shape));
     this.#shapes = shapes;
-    this.#order = stacked(shapes).map(([key, shape]) => [key, shape, shapeBounds(shape)]);
+    this.#order = stacked(shapes, rank).map(([key, shape]) => [key, shape, shapeBounds(shape)]);
     this.#hasArt = this.#order.some(([, shape]) => isArt(shape));
     if (!this.#hasArt) this.#scratch = null;
     const rect = dirtyRect(...bounds);
@@ -91,7 +107,7 @@ export default class ShapeLayer {
     if (held?.width !== width || held.height !== height || held.k !== k) {
       this.#size = { width, height, k };
       this.#own = newCanvas(width, height);
-      this.canvas = newCanvas(width, height);
+      this.canvas = this.#alone ? this.#own : newCanvas(width, height);
       this.#chars = new Array(base.cols * charRowsOf(base.rows));
       this.#scratch = null;
       this.#pending = [];
@@ -243,11 +259,13 @@ export default class ShapeLayer {
 
     // The base's bytes, not a drawImage of its canvas: two canvases that read back the same can hold a
     // semi-transparent pixel premultiplied a little differently (an undo puts tiles back with putImageData),
-    // and the shapes over it would then come out a shade apart.
-    const ctx = ctx2d(this.canvas);
-    if (this.#hideBase) ctx.clearRect(x, y, w, h);
-    else ctx.putImageData(ctx2d(this.#base.canvas).getImageData(x, y, w, h), x, y);
-    ctx.drawImage(this.#own, x, y, w, h, x, y, w, h);
+    // and the shapes over it would then come out a shade apart. Alone, the shapes' own canvas is the drawing.
+    if (!this.#alone) {
+      const ctx = ctx2d(this.canvas);
+      if (this.#hideBase) ctx.clearRect(x, y, w, h);
+      else ctx.putImageData(ctx2d(this.#base.canvas).getImageData(x, y, w, h), x, y);
+      ctx.drawImage(this.#own, x, y, w, h, x, y, w, h);
+    }
 
     const cols = this.#base.cols, rows = charRowsOf(this.#base.rows);
     const c0 = x / k, r0 = y / (2 * k), c1 = Math.min(cols, c0 + w / k), r1 = Math.min(rows, r0 + h / (2 * k));

@@ -1225,7 +1225,7 @@ test('an action added to the edit layer or selection is listed or known to only 
   // The shapes' too; finishPen ends what's open (commitEdit, which a pause runs first), as leaveArt and commitArt do,
   // and the rest is how they're written and pressed. Pressing them into the base is the host's.
   for (const name of Object.keys(vectorActions)) {
-    expect([name, DRAWING_ACTIONS.includes(name) || HOST_ONLY_ACTIONS.includes(name) || ['setShapes', 'refreshShapes', 'finishPen', 'leaveArt', 'commitArt', 'loadArt', 'pressedKeys', 'pressShapes'].includes(name)]).toEqual([name, true]);
+    expect([name, DRAWING_ACTIONS.includes(name) || HOST_ONLY_ACTIONS.includes(name) || ['setShapes', 'refreshShapes', 'syncShapeLayers', 'finishPen', 'leaveArt', 'commitArt', 'loadArt', 'pressedKeys', 'pressShapes'].includes(name)]).toEqual([name, true]);
   }
   expect(HOST_ONLY_ACTIONS).toContain('mergeShapes');
   for (const name of [...Object.keys(mergingActions), ...Object.keys(baseLayerActions), 'clearEditLayer', 'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'updateCols', 'updateRows', 'setImageFromFile', 'setBlankCanvas', 'loadProject', 'restoreDocument', 'openParts', 'replaceImage', 'newDocument', 'clearImage']) {

@@ -8,7 +8,7 @@ import { cellIndex, bakedEntry, cellsOfPixels } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, boundsOf, bytesHeld, refusedHidden } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, refusedHidden } from '@/store/project/shared.js';
 
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100, stack = false) {
@@ -19,7 +19,7 @@ export const editLayerActions = {
     this.paintLayer.paint(pixels, opacity, stack);
     this.hasPaint = this.paintLayer.hasPaint;
 
-    this.refreshCells(pixels);
+    this.refreshEdit(pixels);
   },
 
   // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity,
@@ -44,7 +44,7 @@ export const editLayerActions = {
     this.beginEdit();
     this.paintLayer.erase(pixels);
 
-    this.refreshCells(pixels);
+    this.refreshEdit(pixels);
   },
 
   // Set (string), clear (null) or keep (undefined) a cell's edit-cell char/fg/bg. clearPaint removes
@@ -52,14 +52,11 @@ export const editLayerActions = {
   editCell(col, row, attrs, { clearPaint = false } = {}) {
     this.ensureLayer();
     this.beginEdit();
-    const pixels = [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }];
+    const pixels = [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }], erased = clearPaint && this.cellHasPaint(col, row);
     this.noteDrawn(pixels);
-    if (clearPaint && this.cellHasPaint(col, row)) {
-      this.paintLayer.erase(pixels);
-      this.composite({ rect: boundsOf(pixels) });
-    }
+    if (erased) this.paintLayer.erase(pixels);
     this.setEditCells(withCellEdit(this.editCells, col, row, attrs), [cellKey(col, row)]);
-    this.recompose(pixels);
+    this.recomposeEdit(pixels, { composited: erased });
   },
 
   // Typing: one undo entry per keystroke. Typed cells sit above paint (the last edit wins). A
@@ -125,7 +122,7 @@ export const editLayerActions = {
     if (next === this.editCells) return;
     this.setEditCells(next, Array.from({ length: this.cols }, (_, col) => cellKey(col, row)));
     const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
-    this.recompose(pixels);
+    this.recomposeEdit(pixels);
   },
 
   // A whole entry for a cell as the cell layer shows it: its own attributes, the rest frozen from
@@ -156,16 +153,14 @@ export const editLayerActions = {
       pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
     }
     this.noteDrawn(pixels);
-    if (clearPaint && this.paintLayer?.hasPaint) {
-      this.paintLayer.erase(pixels);
-      this.composite({ rect: boundsOf(pixels) });
-    }
+    const erased = clearPaint && !!this.paintLayer?.hasPaint;
+    if (erased) this.paintLayer.erase(pixels);
     for (const { col, row } of blanks) {
       next.set(cellKey(col, row), mergeEntry(next.get(cellKey(col, row)), { char: ' ' }));
       pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
     }
     this.setEditCells(next, [...list, ...blanks].map(({ col, row }) => cellKey(col, row)));
-    this.recompose(pixels);
+    this.recomposeEdit(pixels, { composited: erased });
   },
 
   // Remove edit cells so the image shows through.
@@ -176,7 +171,7 @@ export const editLayerActions = {
     this.beginEdit();
     this.setEditCells(next, cells.map(({ col, row }) => cellKey(col, row)));
     const pixels = cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
-    this.recompose(pixels);
+    this.recomposeEdit(pixels);
   },
 
   // Flip a cell's colors on the chosen layers. Edit: the paint (as it shows) or the edit cell's

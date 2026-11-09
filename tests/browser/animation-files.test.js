@@ -196,7 +196,7 @@ test('a movie on more layers than the old form has keeps every layer\'s frames',
   const { project } = await animated();
   type(project, 1, 1, 'A');
   const l1 = project.addLayer('cells', 'edit');
-  project.addVectorLayer(); // base, vector, edit, L1: no old form for it
+  project.addLayer('vector', 'base'); // base, vector, edit, L1: no old form for it
   project.useLayer(l1);
   type(project, 2, 2, 'B');
   project.addFrame('blank');

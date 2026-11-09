@@ -2,6 +2,9 @@
 // layers following it, full renders and partial recomposites, and the cells the views show. Owns
 // _renderQueued and _rendering (a render on its way, which tests wait on) and _layerGrid (the grid
 // the layers were last sized to).
+// The renderer's pipeline converts the lower group (ProjectStore.lowerGroup) into lowerCells, and every layer above it is
+// laid over those cell by cell (Renderer.composeUpper): an edit on an upper layer touches only its cells (recomposeUpper),
+// and never runs the pipeline.
 import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer.js';
 import ShapeLayer from '@/document/ShapeLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
@@ -10,8 +13,24 @@ import { fitRect } from '@/lib/Canvas.js';
 import { layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
-import { boundsOf, drawnShapes } from '@/store/project/shared.js';
+import { boundsOf, lowerEdits, lowerPaint } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
+
+// The renderer's upper layers, as the stack is now: each upper cells layer's cells and paint, each upper vector layer's
+// own ShapeLayer (none yet while it never had a shape), with the drawing's settings (one set, until layers carry their own).
+function upperOf(project) {
+  const params = project.processParams;
+  return project.lowerGroup.upper.map((id) => (project.layerById(id).kind === 'vector'
+    ? { id, kind: 'vector', layer: project._upperShapes.get(id) ?? null, params }
+    : { id, kind: 'cells', cells: project.cellsOf(id), paint: project.paintOf(id), params }));
+}
+
+// The cells under grid pixels, each once, as indexes into the cells.
+function cellsUnder(pixels, cols) {
+  const indexes = new Set();
+  for (const { x, y } of pixels) indexes.add((y >> 1) * cols + x);
+  return [...indexes];
+}
 
 export const renderingActions = {
   updateCols(val) {
@@ -51,8 +70,8 @@ export const renderingActions = {
       this.baseLayer = markRaw(new PaintLayer({ cols, rows, scale: this.baseScale ?? this.processingScale(), smooth: false }));
       this.renderer.baseLayer = this.baseLayer;
       this._shapeLayer = markRaw(new ShapeLayer(this.baseLayer));
-      this._shapeLayer.set(drawnShapes(this));
       this.renderer.shapes = this._shapeLayer;
+      this.syncShapeLayers();
       this.baseScale = this.baseLayer.scale;
       this._layerGrid = { cols, rows };
       return;
@@ -61,8 +80,10 @@ export const renderingActions = {
     this._layerGrid = { cols, rows };
     if (this._artInside) this.leaveArt(); // stepped into an art layer: out first, its edits kept (on the old layers)
     this.commitPending(); // an open edit (a typing run) was recorded on the old layers
+    const paints = [this.paintLayer, ...[...this._layerData.values()].map((data) => data.paintLayer).filter(Boolean)]; // every cells layer's follows
     if (this.hasEdits) {
-      const kept = this.paintLayer.extend(cols, rows);
+      let kept = true;
+      for (const paint of paints) kept = paint.extend(cols, rows) && kept;
       this.baseLayer.extend(cols, rows);
       this.baseScale = this.baseLayer.scale;
       if (!kept) this.dropEdits(); // the paint had to be resampled, so recorded strokes no longer fit
@@ -70,7 +91,7 @@ export const renderingActions = {
     }
     // Recorded edits are in the old layers' pixel coordinates; they can't be replayed onto remapped ones.
     const oldFit = this.fit, newFit = this.fitFor(cols, rows);
-    this.paintLayer.resize(cols, rows, oldFit, newFit);
+    for (const paint of paints) paint.resize(cols, rows, oldFit, newFit);
     this.baseLayer.resize(cols, rows, oldFit, newFit, this.processingScale({ fit: newFit }));
     this.baseScale = this.baseLayer.scale;
     this.setBaseRecords(remapBaseRecords(this.baseRecords, resizeTransform(oldFit, newFit), cols, rows));
@@ -116,8 +137,8 @@ export const renderingActions = {
         }
         this.renderer.hideBase = this.layerHidden('base');
         if (this._shapeLayer) this._shapeLayer.hideBase = this.renderer.hideBase;
-        this._shapeLayer?.set(drawnShapes(this));
-        this.renderedCells = await this.renderer.render(this.image, this.processParams, this.shownPaint, baseParams(this.processParams));
+        this.syncShapeLayers();
+        this.renderedCells = await this.renderer.render(this.image, this.processParams, lowerPaint(this), baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();
         if (this._moviePalette || (this.hasFrames && this.quantize === 'count')) this.pickPalette(); // settings changed: a whole movie's palette follows
@@ -136,11 +157,45 @@ export const renderingActions = {
     this.cells = partial ? layoutWideRows(composed, this.cols, laid, rows) : layoutWide(composed, this.cols);
   },
 
-  // Rebuild the cells under grid pixels (an edit's) from the output as it is, and their rows' layout.
+  // Rebuild the cells under grid pixels (an edit's) from the output as it is, the upper layers over them, and their
+  // rows' layout.
   recompose(pixels) {
     const rows = new Set();
     for (const { y } of pixels) rows.add(y >> 1);
-    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.shownEditCells, this.renderedCells), rows);
+    this.lowerCells = this.renderer.updateCells(this.lowerCells, pixels, this.processParams, lowerEdits(this), this.renderedCells);
+    this.setCells(this.overLower(cellsUnder(pixels, this.cols)), rows);
+  },
+
+  // The cells under grid pixels (an upper layer's edit) laid over again from the lower group's cells as they are: the
+  // pipeline and its cells aren't touched.
+  recomposeUpper(pixels) {
+    if (!this.lowerCells.length || this.lowerCells.length !== this.composedCells.length) return; // a render's on its way
+    const rows = new Set();
+    for (const { y } of pixels) rows.add(y >> 1);
+    this.setCells(this.overLower(cellsUnder(pixels, this.cols)), rows);
+  },
+
+  // lowerCells with the upper layers over it (Renderer.composeUpper), the cells at indexes again (every cell with null)
+  // and the rest as last composed; lowerCells itself while there's no upper layer, as before layers.
+  overLower(indexes = null) {
+    this.renderer.upper = upperOf(this);
+    if (!this.renderer.upper.length) return this.lowerCells;
+    return this.renderer.composeUpper(this.lowerCells, indexes, this.renderer.palette, this.composedCells);
+  },
+
+  // The edit layer's fields changed under pixels: drawn again the way their layer is, through the pipeline for the
+  // lower group's cells layer (composited: its paint changed too, so the output is first), or over the group's cells
+  // for an upper one.
+  recomposeEdit(pixels, { composited = false } = {}) {
+    if (this.editIsUpper) return this.recomposeUpper(pixels);
+    if (composited) this.composite({ rect: boundsOf(pixels) });
+    this.recompose(pixels);
+  },
+
+  // After the edit layer's paint changed under pixels: refreshCells, or an upper layer's cells alone.
+  refreshEdit(pixels) {
+    if (this.editIsUpper) this.recomposeUpper(pixels);
+    else this.refreshCells(pixels);
   },
 
   // Recomposite the output after the paint or base pixels changed. When that rebalanced the Number
@@ -151,7 +206,7 @@ export const renderingActions = {
   // every cell was rebuilt. rect: the grid pixels that changed ({ x, y, w, h }), when an edit knows them.
   composite({ rect = null } = {}) {
     const hold = !!this._stroke && this.quantize === 'count';
-    const changed = this.renderer.composite(this.shownPaint, this.processParams, { hold, rect, open: !!this._stroke });
+    const changed = this.renderer.composite(lowerPaint(this), this.processParams, { hold, rect, open: !!this._stroke });
     if (changed) this.rebuildCells();
     return changed;
   },
@@ -171,13 +226,14 @@ export const renderingActions = {
 
   applyEditCells() {
     if (!this.renderedCells.length) return;
-    const editCells = this.shownEditCells, composed = this.renderer.composeAll(this.renderedCells, editCells, this.processParams);
-    // The converter's characters are one column wide (Cells.glyphsOf), so only a row with an edit
-    // cell, a pin or an art layer's character can hold a wide one: the rest are laid out as they are.
+    this.lowerCells = this.renderer.composeAll(this.renderedCells, lowerEdits(this), this.processParams);
+    const composed = this.overLower();
+    // The converter's characters are one column wide (Cells.glyphsOf), so only a row with a cell of a cells layer, a
+    // pin or an art layer's character can hold a wide one: the rest are laid out as they are.
     const rows = new Set();
-    for (const key of editCells.keys()) rows.add(parseKey(key).row);
+    for (const layer of this.shownLayers) if (layer.id !== 'base' && layer.kind === 'cells') for (const key of this.cellsOf(layer.id).keys()) rows.add(parseKey(key).row);
     if (!this.renderer.hideBase) for (const key of this.baseRecords.pins.keys()) rows.add(parseKey(key).row);
-    if (this.renderer.shapes?.hasArt) for (const key of this.renderer.shapes.artCells()) rows.add(parseKey(key).row);
+    for (const shapes of [this.renderer.shapes, ...this.renderer.upper.map((u) => u.layer)]) if (shapes?.hasArt) for (const key of shapes.artCells()) rows.add(parseKey(key).row);
     this.setCells(composed, rows, composed);
   },
 };

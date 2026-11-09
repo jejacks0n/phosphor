@@ -79,12 +79,13 @@ export async function saveAs(page, button, { name } = {}) {
 // An editor tab: PIXEL, ANSI, SAUCE or SOCIAL.
 export const tab = (page, label) => page.getByRole('tab', { name: label, exact: true });
 
-// A layer picked in LAYERS, as the tabs follow: 'Vector 1' (the default) is VECTOR, added first with + Vector layer when
-// the drawing has none; 'Layer 1' is back to PIXEL or ANSI. A folded side panel is folded again after, so the canvas
-// keeps its size. A phone has no side panel: its Layers button opens the list in a dialog, which stays open on a pick until Done.
-// A row already picked isn't clicked again: a click on its name would rename it.
+// A layer picked in LAYERS, as the tabs follow: 'Vector 1' (the default) is VECTOR, added with + Vector layer when the
+// drawing has none (above the layer picked); 'Layer 1' is back to PIXEL or ANSI. A folded side panel is folded again after,
+// so the canvas keeps its size. A phone has no side panel: its Layers button opens the list in a dialog, which stays open
+// on a pick until Done. A row already picked isn't clicked again: a click on its name would rename it.
 const pickRow = async (list, name) => {
   const row = list.locator('li button.pick', { hasText: name });
+  if (name === 'Vector 1' && !await row.count()) return list.getByRole('button', { name: '+ Vector layer' }).click();
   if (await row.getAttribute('aria-pressed') !== 'true') await row.click();
 };
 export async function pickLayer(page, name = 'Vector 1') {
@@ -92,9 +93,7 @@ export async function pickLayer(page, name = 'Vector 1') {
   if (!await panel.count()) {
     await page.getByRole('button', { name: 'Layers', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Layers' });
-    const add = dialog.getByRole('button', { name: '+ Vector layer' });
-    if (name === 'Vector 1' && await add.isVisible()) await add.click();
-    else await pickRow(dialog, name);
+    await pickRow(dialog, name);
     await dialog.getByRole('button', { name: 'Done' }).click();
     return;
   }
@@ -102,9 +101,7 @@ export async function pickLayer(page, name = 'Vector 1') {
   const folded = await open.isVisible();
   if (folded) await open.click();
   await panel.getByRole('tab', { name: 'Layers' }).click();
-  const add = panel.getByRole('button', { name: '+ Vector layer' });
-  if (name === 'Vector 1' && await add.isVisible()) await add.click();
-  else await pickRow(panel, name);
+  await pickRow(panel, name);
   if (folded) await panel.getByRole('button', { name: 'Fold the panel' }).click();
 }
 

@@ -4,7 +4,7 @@ import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
-import { layersFromOld, legacySlots } from '@/document/layerInfo.js';
+import { layersFromOld, legacySlots, lowerGroup } from '@/document/layerInfo.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
 import { artBounds } from '@/document/artLayers.js';
 import { placedShapes } from '@/document/followers.js';
@@ -90,6 +90,7 @@ export const useProjectStore = defineStore('project', {
     editId: 'edit', // the cells layer editCells, paintLayer and hasPaint are (project/layers.js: useLayer)
     _layerData: markRaw(new Map()), // every other cells layer above the bottom: id -> { editCells, paintLayer, hasPaint }
     _shapeLayer: null, // the base layer with the shapes over it (ShapeLayer, markRaw), the renderer's
+    _upperShapes: markRaw(new Map()), // each vector layer above the lower group: id -> its shapes drawn alone (ShapeLayer), the renderer's upper
     baseRecords: shallowRef(EMPTY_BASE), // the base layer's pinned characters (see document/baseRecords.js)
 
     // Animation (store/project/animation.js): the showing frame's resolved state is editCells and paintLayer.
@@ -104,6 +105,7 @@ export const useProjectStore = defineStore('project', {
     filename: null,
     cells: shallowRef([]),          // what the ANSI view shows and exports (renderedCells + edit cells + paint)
     composedCells: shallowRef([]),  // the same before the wide-character layout (what partial updates rebuild from)
+    lowerCells: shallowRef([]),     // the lower group's alone (renderedCells + its cells layer), which the upper layers are laid over
     renderedCells: shallowRef([]),  // last full render: generated cells only
     activePalette: shallowRef([]),
 
@@ -132,9 +134,15 @@ export const useProjectStore = defineStore('project', {
     // Inside an art layer, only as far back as where you stepped in, and on only to what was done inside.
     canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo && (!state._artInside || state._artInside.entries.has(state.history.last)),
     // Something to bake: an image, and a Transform, Adjustment or Effect slider off its default.
-    // Shapes alone make a still bakeable (Bake presses them in); in an animation they stay shapes.
+    // Shapes on the vector layers directly on the bottom make a still bakeable (Bake presses them in); in an animation,
+    // or above a cells layer, they stay shapes.
     canFlatten: (state) => !!state.image && state.frames.length <= 1, // the picture is under every frame
-    canBake: (state) => !!state.image && (!slidersAtDefaults(state) || (state.shapes.size > 0 && state.frames.length <= 1)),
+    canBake(state) {
+      if (!state.image) return false;
+      if (!slidersAtDefaults(state)) return true;
+      const { vectors } = lowerGroup(state.layers);
+      return state.frames.length <= 1 && [...state.shapes.values()].some((shape) => vectors.includes(shape.layer ?? 'vector'));
+    },
     // The image is still the one loaded, at its own size (the merge dialog says what Into the image costs).
     pictureIsOriginal: (state) => !state.imageIsWorkingCopy,
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo && (!state._artInside || state._artInside.entries.has(state.history.next)),
@@ -153,12 +161,18 @@ export const useProjectStore = defineStore('project', {
     // A cells layer's cells and paint: the edit layer's fields for editId, else what waits in _layerData.
     cellsOf() { return (id) => (id === this.editId ? this.editCells : this._layerData.get(id)?.editCells ?? NO_CELLS); },
     paintOf() { return (id) => (id === this.editId ? this.paintLayer : this._layerData.get(id)?.paintLayer ?? null); },
-    // The edit cells and paint the renderer is handed: none while their layer (editId) is hidden. Inside an art layer
-    // they're the art layer's, so the vector layer's eye decides.
-    shownEditCells() { return this.layerHidden(this._artInside ? 'vector' : this.editId) ? NO_CELLS : this.editCells; },
-    shownPaint() { return this.layerHidden(this._artInside ? 'vector' : this.editId) ? null : this.paintLayer; },
-    // Anything on the edit layer or the vector layer, of any frame (a grid resize is then a canvas resize).
-    hasEdits() { return this.hasEditLayer || this.shapes.size > 0; },
+    // The layers that show: the bottom always (its eye is the renderer's hideBase), and the rest while their eye is open.
+    // Inside an art layer the edit layer's fields hold the art layer's drawing, so the vector layer's eye decides for them.
+    shownLayers() { return this.layers.filter((layer, at) => !at || !this.layerHidden(this._artInside && layer.id === this.editId ? 'vector' : layer.id)); },
+    // The layers the renderer's pipeline converts as one block, and those laid over it (layerInfo.js: lowerGroup).
+    lowerGroup() { return lowerGroup(this.shownLayers); },
+    // The cells layer in use is above the lower group (or hidden): an edit to it leaves the group as it is.
+    editIsUpper() { return this.lowerGroup.cells !== this.editId; },
+    // Anything on any cells layer or the vector layer, of any frame (a grid resize is then a canvas resize).
+    hasEdits() {
+      if (this.historyVersion < 0 || this._frameSwaps < 0) return false; // read so this follows them: _layerData isn't reactive, and an undo or a frame shown can fill another layer
+      return this.hasEditLayer || this.shapes.size > 0 || [...this._layerData.values()].some((data) => data.editCells.size > 0 || data.hasPaint);
+    },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
     hasEditLayer: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
     currentFrame: (state) => state.frames[state.frame],

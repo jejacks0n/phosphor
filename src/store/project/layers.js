@@ -1,8 +1,9 @@
-// The layers themselves (document/layerInfo.js): their names, whether they show, new ones, and which cells layer the
-// edit layer's fields are. None of it is an undo step: they're about the layers, not edits to what's drawn on them.
-import { MOST_LAYERS, goodLayerName, legacySlots, newLayerId, nextNumber } from '@/document/layerInfo.js';
+// The layers themselves (document/layerInfo.js): their names, whether they show, new ones, their order, and which cells
+// layer the edit layer's fields are. Adding and moving a layer are undo steps (layerOp); a name, an eye and the layer in
+// use aren't: they're about the layers, not edits to what's drawn on them.
+import { MOST_LAYERS, goodLayerName, legacySlots } from '@/document/layerInfo.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
-import { swapLayer, refusedInRoom } from '@/store/project/shared.js';
+import { putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 
 // id's layer with changes made, or no change when there's no such layer.
@@ -25,21 +26,39 @@ export const layerActions = {
   },
 
   // A new layer of kind directly above the layer with the id above (on top when there's none), and its id. A cells layer
-  // starts empty, its paint made when it's first used. Null, nothing added, when the drawing has the most layers, or when it's
-  // shared with a room (the room's toast says so), which holds the layers it always did: the one thing it takes is the vector
-  // layer it's missing, directly on the bottom.
+  // starts empty, its paint made when it's first used. One undo step: undone, the layer leaves the stack and what's on it
+  // waits in _layerData for a redo. Null, nothing added, when the drawing has the most layers, or when it's shared with a
+  // room (the room's toast says so), which holds the layers it always did: the one thing it takes is the vector layer it's
+  // missing, directly on the bottom, and that's no undo step (a room's layers aren't undone).
   addLayer(kind, above) {
     if (this.layers.length >= MOST_LAYERS || refusedInRoom(this, { fills: kind === 'vector' && above === 'base' && !this.hasVectorLayer })) return null;
-    const id = newLayerId(this.layers, kind), at = this.layers.findIndex((layer) => layer.id === above) + 1 || this.layers.length;
-    const layer = Object.freeze({ id, kind, n: nextNumber(this.layers, kind), name: null, hidden: false });
-    this.layers = [...this.layers.slice(0, at), layer, ...this.layers.slice(at)];
-    if (kind === 'cells') this._layerData.set(id, { editCells: new Map(), paintLayer: null, hasPaint: false });
+    this.commitPending();
+    const layer = putLayer(this, kind, above), { id } = layer, below = this.layers[this.layers.indexOf(layer) - 1].id; // the layer it sits on: the stack can change around it before a redo
+    if (this._sharing) return id;
+    const without = () => { this.layers = this.layers.filter((each) => each.id !== id); this.render(); };
+    const withIt = () => {
+      const rest = this.layers.filter((each) => each.id !== id), at = rest.findIndex((each) => each.id === below) + 1 || rest.length;
+      this.layers = [...rest.slice(0, at), layer, ...rest.slice(at)];
+      this.render();
+    };
+    this.pushEdit({ layerOp: true, bytes: 0, undo: without, redo: withIt });
     return id;
   },
 
-  // The vector layer, before it has a shape: directly on the bottom.
-  addVectorLayer() {
-    if (!this.hasVectorLayer) this.addLayer('vector', 'base');
+  // The layer with the id moved to toIndex in the stack (bottom first), one undo step; whether it moved. Not the bottom,
+  // nothing to below it or past the top, nothing while it's shared with a room (the room's toast says so). What's drawn
+  // is laid over again in the new order.
+  moveLayer(id, toIndex) {
+    const from = this.layers.findIndex((layer) => layer.id === id);
+    if (from < 1 || toIndex < 1 || toIndex >= this.layers.length || toIndex === from || refusedInRoom(this)) return false;
+    this.commitPending();
+    const ids = (layers) => layers.map((layer) => layer.id), before = ids(this.layers), moved = [...this.layers];
+    moved.splice(toIndex, 0, ...moved.splice(from, 1));
+    const after = ids(moved);
+    const order = (list) => () => { this.layers = list.map((each) => this.layerById(each)).filter(Boolean); this.render(); }; // by id: names and eyes since aren't undone
+    order(after)();
+    this.pushEdit({ layerOp: true, bytes: 0, undo: order(before), redo: order(after) });
+    return true;
   },
 
   // Make the document ready to go live, which holds the bottom, at most one vector layer and one cells layer above them
@@ -65,7 +84,7 @@ export const layerActions = {
       if (workspace.pickedLayer !== now) workspace.pickLayer(now);
     }
     if (!slots.cells) {
-      const id = this.addLayer('cells');
+      const { id } = putLayer(this, 'cells');
       if (id === this.editId) this._layerData.delete(id); // the layer in use is the fields', and they're empty
       else this.useLayer(id);
     }

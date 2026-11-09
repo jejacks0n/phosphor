@@ -199,7 +199,7 @@ describe('the old form', () => {
     project.typeAt(1, 1, 'E', { fg: '#ffffff', bg: '#000000' });
     project.commitEdit();
     const l1 = project.addLayer('cells', 'edit');
-    project.addVectorLayer();
+    project.addLayer('vector', 'base');
     project.renameLayer(l1, 'Logo');
     project.useLayer(l1); // the layer in use isn't the edit layer: its cells are its own, not the edit layer's
     project.typeAt(3, 3, 'L', { fg: '#ff0000', bg: '#000000' });

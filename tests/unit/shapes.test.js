@@ -5,7 +5,7 @@ import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
   moveHandle, setSmooth, setFree, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
-  outlines, withOutlines, locate, allPoints, strokeOf, strokeAlign, strokeSide, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors, fillAs,
+  outlines, withOutlines, locate, allPoints, strokeOf, strokeAlign, strokeSide, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors, fillAs, stacked,
 } from '../../src/document/shapes.js';
 import { changeBytes } from '../../src/document/changes.js';
 import { MOST_CHANGE_BYTES } from '../../src/social/wire.js';
@@ -527,4 +527,13 @@ test('fillAs makes a fill solid, linear or radial over the shape\'s box', () => 
   // The stroke's, over the same box, from its own color.
   assert.deepEqual(fillAs(line, 'linear', colors, 'stroke'), { type: 'linear', stops: [[0, '#ffffff'], [1, '#000000']], m: [0, 30, -30, 0, 5, 0] });
   assert.equal(fillAs({ ...line, stroke: down }, 'solid', colors, 'stroke'), '#00ff00');
+});
+
+test('stacked orders by z, ties by key, and by the layers\' rank first when given one', () => {
+  const a = rectShape(0, 0, 1, 1, { fill: '#ff0000', z: 2 }), b = rectShape(0, 0, 1, 1, { fill: '#00ff00', z: 0, layer: 'L1' }), c = rectShape(0, 0, 1, 1, { fill: '#0000ff', z: 1 });
+  const shapes = new Map([['v:c', c], ['v:b', b], ['v:a', a]]);
+  assert.deepEqual(stacked(shapes).map(([key]) => key), ['v:b', 'v:c', 'v:a']);
+  const rank = (shape) => ['vector', 'L1'].indexOf(shape.layer ?? 'vector');
+  assert.deepEqual(stacked(shapes, rank).map(([key]) => key), ['v:c', 'v:a', 'v:b']);
+  assert.deepEqual(stacked(new Map([['v:2', c], ['v:1', { ...c }]])).map(([key]) => key), ['v:1', 'v:2']);
 });

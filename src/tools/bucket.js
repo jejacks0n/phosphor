@@ -47,7 +47,7 @@ function cellArea(project, workspace, pos) {
 // Fill → Normal and the PIXEL view: the grid pixels the fill covers ({ x, y, alpha }, alpha below 1
 // where it feathers), by Tolerance and Contiguous, stopping at walls.
 function pixelArea(project, workspace, pos) {
-  const imageData = ctx2d(project.renderer.outputCanvas).getImageData(0, 0, project.cols, project.rows);
+  const imageData = ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, project.cols, project.rows); // with the upper layers' pixels, as the view shows
   return floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project, selectionClip(workspace)));
 }
 

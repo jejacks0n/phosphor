@@ -2,7 +2,7 @@
 // writes back, whether a stack fits the old form, and a new layer's id and number.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { layersFromOld, savedLayers, legacySlots, newLayerId, nextNumber, goodLayers, MOST_LAYERS } from '../../src/document/layerInfo.js';
+import { layersFromOld, savedLayers, legacySlots, newLayerId, nextNumber, goodLayers, lowerGroup, MOST_LAYERS } from '../../src/document/layerInfo.js';
 
 const ids = (layers) => layers.map((l) => l.id);
 const layer = (id, kind, n = 1) => ({ id, kind, n, name: null, hidden: false });
@@ -103,4 +103,13 @@ test('nextNumber: one past the highest of the kind, the bottom left out', () => 
   assert.equal(nextNumber([BASE, EDIT, layer('L3', 'cells', 2)], 'cells'), 3);
   assert.equal(nextNumber([BASE], 'cells'), 1);
   assert.equal(nextNumber([BASE, EDIT], 'vector'), 1);
+});
+
+test('lowerGroup: the bottom, the vector layers on it and the next cells layer; everything above is upper', () => {
+  const L = (id, kind) => ({ id, kind });
+  assert.deepEqual(lowerGroup([L('base', 'cells')]), { vectors: [], cells: null, upper: [] });
+  assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector'), L('edit', 'cells')]), { vectors: ['vector'], cells: 'edit', upper: [] });
+  assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector'), L('L1', 'vector'), L('edit', 'cells'), L('L2', 'cells'), L('L3', 'vector')]), { vectors: ['vector', 'L1'], cells: 'edit', upper: ['L2', 'L3'] });
+  assert.deepEqual(lowerGroup([L('base', 'cells'), L('edit', 'cells'), L('vector', 'vector'), L('L1', 'cells')]), { vectors: [], cells: 'edit', upper: ['vector', 'L1'] });
+  assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector')]), { vectors: ['vector'], cells: null, upper: [] });
 });
