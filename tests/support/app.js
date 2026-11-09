@@ -5,13 +5,14 @@ import { setActivePinia, createPinia } from 'pinia';
 import '@/assets/fonts.css';
 import { setLocale } from '@/i18n';
 import { useProjectStore } from '@/store/ProjectStore';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useWorkspaceStore, followLayerPick } from '@/store/WorkspaceStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
 import { halfColors } from '@/lib/Cells';
 import { CONSENT_KEY, CONSENT_VERSION } from '@/social/consent';
 
-let stopWatching = null;
+let stopWatching = null, stopPick = null;
 
 // SOCIAL's first question, answered: for after a localStorage.clear(), before the stores are made.
 export const seedConsent = () => localStorage.setItem(CONSENT_KEY, CONSENT_VERSION);
@@ -21,16 +22,18 @@ export const seedConsent = () => localStorage.setItem(CONSENT_KEY, CONSENT_VERSI
 // does.
 export async function createTestApp() {
   stopWatching?.();
+  stopPick?.();
   localStorage.clear();
   await setLocale('en', { persist: false });
   seedConsent();
   setActivePinia(createPinia());
   await setDisplayFont('jetbrains');
   setGlyphRasterizer(rasterizeCoverage);
-  const project = useProjectStore(), workspace = useWorkspaceStore();
+  const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
   workspace.displayFontLoaded = workspace.displayFontSpec;
   project.seed = 'phosphor-tests'; // the default is a random slug: random characters would differ every run
   stopWatching = watch(() => project.processParams, () => project.render(), { deep: true });
+  stopPick = followLayerPick({ workspace, project, drawing });
   return { project, workspace };
 }
 

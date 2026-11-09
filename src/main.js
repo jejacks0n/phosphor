@@ -8,6 +8,9 @@ import { i18n, initLocale } from './i18n';
 import { createAddressRouter, followAddress } from './router';
 import { useSocialStore } from './store/SocialStore';
 import { useRoomStore } from './store/RoomStore';
+import { useWorkspaceStore, followLayerPick } from './store/WorkspaceStore';
+import { useProjectStore } from './store/ProjectStore';
+import { useDrawingStore } from './store/DrawingStore';
 import { hostCopies } from './document/autosaveStore';
 
 const pinia = createPinia();
@@ -27,6 +30,7 @@ hostCopies().catch(() => {});   // a tab that closed never says it's done with i
 const router = createAddressRouter();
 app.use(router);
 followAddress(router);
+followLayerPick({ workspace: useWorkspaceStore(), project: useProjectStore(), drawing: useDrawingStore() });
 router.isReady().finally(() => app.mount('#phosphor'));
 
 // iOS Safari shows a button's :active (pressed) look on a tap only when the page listens for touches.

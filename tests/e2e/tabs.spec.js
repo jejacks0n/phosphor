@@ -7,7 +7,7 @@ const editorTabs = (page) => page.locator('.tab-list');
 test('with nothing open no tab is selected; whatever opens lands on ANSI, and New project goes back', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Or start with a blank canvas' })).toBeVisible();
-  for (const name of ['PIXEL', 'ANSI', 'VECTOR', 'SAUCE']) await expect(tab(page, name)).toBeDisabled();
+  for (const name of ['PIXEL', 'ANSI', 'SAUCE']) await expect(tab(page, name)).toBeDisabled();
   await expect(editorTabs(page).getByRole('tab', { selected: true })).toHaveCount(0);
   await expect(editorTabs(page).locator('[tabindex="0"]')).toHaveCount(0); // no tab to choose, so no Tab stop
   await expect(page.locator('.tab-list .indicator')).toHaveCSS('opacity', '0');
@@ -56,13 +56,11 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
   const selection = await store(page, 'workspace', (w) => w.selection);
   expect(selection).toEqual({ c0: 2, r0: 2, c1: 5, r1: 5 }); // room to nudge, if an arrow got through
 
-  await tab(page, 'PIXEL').focus(); // the order: PIXEL, VECTOR, ANSI, SAUCE
-  await page.keyboard.press('ArrowRight');
-  await expect(tab(page, 'VECTOR')).toBeFocused();
-  await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
-  expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('vector');
+  await tab(page, 'PIXEL').focus(); // the order: PIXEL, ANSI, SAUCE (VECTOR takes their place when the vector layer is picked)
   await page.keyboard.press('ArrowRight');
   await expect(tab(page, 'ANSI')).toBeFocused();
+  await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
+  expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('output');
   await page.keyboard.press('ArrowRight');
   await expect(tab(page, 'SAUCE')).toBeFocused();
   await expect(tab(page, 'SAUCE')).toHaveAttribute('aria-selected', 'true');

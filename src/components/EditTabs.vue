@@ -59,10 +59,12 @@ const isDesktop = useMediaQuery(desktopQuery);
 
 // The art tabs wait for something to show. From ROOM they're the way back to the start screen.
 const noArt = computed(() => !image.value && props.modelValue !== 'room');
+// The picked layer decides them: the base and the edit layer show PIXEL and ANSI, the vector layer VECTOR, and inside an art
+// layer VECTOR and ANSI (shownPick is the vector row then).
 const tabs = computed(() => [
-  { id: 'input', label: t('tabs.pixel'), disabled: noArt.value },
-  { id: 'vector', label: t('tabs.vector'), disabled: noArt.value },
-  { id: 'output', label: renderStyle.value === 'ansi' ? t('tabs.ansi') : t('tabs.ascii'), disabled: noArt.value },
+  ...(workspace.shownPick !== 'vector' ? [{ id: 'input', label: t('tabs.pixel'), disabled: noArt.value }] : []),
+  ...(workspace.shownPick === 'vector' ? [{ id: 'vector', label: t('tabs.vector'), disabled: noArt.value }] : []),
+  ...(workspace.pickedLayer !== 'vector' || project.artInside ? [{ id: 'output', label: renderStyle.value === 'ansi' ? t('tabs.ansi') : t('tabs.ascii'), disabled: noArt.value }] : []),
   { id: 'sauce', label: t('tabs.sauce'), disabled: noArt.value },
   ...(isDesktop.value && (room.role === 'watch' || props.modelValue === 'room') ? [{ id: 'room', label: t('tabs.room'), disabled: false }] : []),   // the room you watch
 ]);

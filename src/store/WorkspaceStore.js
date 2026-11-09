@@ -1,4 +1,4 @@
-import { shallowRef } from 'vue';
+import { shallowRef, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { StorageSerializers, useLocalStorage } from '@vueuse/core';
 import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
@@ -8,6 +8,7 @@ import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
 import { snapCursor } from '@/document/wideChars';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 
 const RECENT_COLORS = 12;
 
@@ -95,6 +96,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     ansiZoom:  1,            // the ANSI (and VECTOR) view's zoom: 25% to 800% of its cell size
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'vector', 'sauce' or 'room' (the room you watch)
     viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)
+    pickedLayer: 'edit',     // the layer picked in LAYERS: 'base' | 'edit' | 'vector'; it decides the art tabs, and followLayerPick keeps it in step with editorTab
     tabAddressed: false,     // the landing address named a tab (router.js)
     documentSettled: false,  // autosave has finished bringing back what it can (useAutosave), or the start screen stopped waiting
     documentAnswered: false, // autosave's restore has really finished, however long it took (a room coming back waits for this)
@@ -158,6 +160,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selectedKeys: [],        // the keys selected there, of the first selected shape: [{ part, at }] (keys.js's refs)
   }),
   getters: {
+    shownPick: (state) => (useProjectStore().artInside ? 'vector' : state.pickedLayer), // inside an art layer the vector row shows as picked
     activeTool(state) {
       return state[toolKey(state.editorTab)];
     },
@@ -189,6 +192,22 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
   },
   actions: {
+    // Pick a layer: the tabs follow. The vector layer is the VECTOR tab; the base and the edit layer share PIXEL and ANSI,
+    // so picking either steps out of an art layer and leaves VECTOR for the art tab last shown. False when refused: the base
+    // isn't an artist's to pick, nor from inside an art layer.
+    pickLayer(id) {
+      const project = useProjectStore();
+      if (id === 'vector') {
+        this.editorTab = 'vector';
+        return true;
+      }
+      if (id === 'base' && (useDrawingStore().hostOnly || project.artInside)) return false;
+      if (project.artInside) project.leaveArt();
+      this.pickedLayer = id;
+      if (this.editorTab === 'vector') this.editorTab = this.viewTab;
+      // ponytail: Task 3 adds tool.base; for 'base', each tab's kept tool that isn't base-capable becomes 'eraser' here.
+      return true;
+    },
     // Select rect (the whole grid: project.gridRect()) with the Select tool.
     selectAll(rect) {
       this.selection = rect;
@@ -292,3 +311,24 @@ export const useWorkspaceStore = defineStore('workspace', {
   }
 });
 
+
+// Keeps pickedLayer in step with editorTab, which many places set (a tab chosen, Make art layer, a key): VECTOR picks the
+// vector layer, and the art tabs pick the edit layer if the vector layer was picked. The vector layer going away while
+// picked, and a base picked becoming an artist's, fall back to the edit layer. Returns a function that stops it.
+export function followLayerPick({ workspace, project, drawing }) {
+  const stops = [
+    watch(() => workspace.editorTab, (tab) => {
+      if (tab === 'vector') workspace.pickedLayer = 'vector';
+      else if ((tab === 'input' || tab === 'output') && workspace.pickedLayer === 'vector') workspace.pickedLayer = 'edit';
+    }, { flush: 'sync', immediate: true }),
+    watch(() => project.hasVectorLayer, (has) => {
+      if (has || workspace.pickedLayer !== 'vector') return;
+      workspace.pickedLayer = 'edit';
+      if (workspace.editorTab === 'vector') workspace.editorTab = workspace.viewTab;
+    }, { flush: 'sync' }),
+    watch(() => drawing.hostOnly, (reason) => {
+      if (reason && workspace.pickedLayer === 'base') workspace.pickedLayer = 'edit';
+    }, { flush: 'sync' }),
+  ];
+  return () => stops.forEach((stop) => stop());
+}
