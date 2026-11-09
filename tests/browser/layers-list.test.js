@@ -1,5 +1,5 @@
 // The LAYERS list (LayersList.vue): the drawing's layers top first, a row picked to decide the tabs, an eye to hide one,
-// a double-click to rename it, and + Vector layer while there's none.
+// a click on the picked row's name (or a double-click) to rename it, and + Vector layer while there's none.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -118,6 +118,35 @@ test('double-click renames, Escape cancels, blank puts the default back', async 
 
   await key(pickOf(1), 'F2');   // the keyboard's way in
   expect(rows()[1].querySelector('input').getAttribute('aria-label')).toBe('Rename Base');
+});
+
+test('a click on the picked row\'s name renames it; on another row it only picks', async () => {
+  const { workspace } = await mount();
+  const nameOf = (i) => rows()[i].querySelector('.name');
+  const input = () => host.querySelector('input');
+
+  pickOf(0).click();   // the row itself, as Enter or Space presses it: no box
+  await nextTick();
+  expect(input()).toBeNull();
+
+  nameOf(1).click();   // the base, not picked: picked, no box
+  await nextTick();
+  expect(workspace.pickedLayer).toBe('base');
+  expect(input()).toBeNull();
+
+  nameOf(1).click();   // now picked: the box
+  await nextTick();
+  expect(input()?.getAttribute('aria-label')).toBe('Rename Base');
+  expect(document.activeElement).toBe(input());
+});
+
+test('a row\'s title is its name, so a long one can be read; an off row\'s says why', async () => {
+  const { project } = await mount();
+  const long = 'the frame around the whole picture, in a';
+  project.renameLayer('edit', long);
+  await nextTick();
+  expect(pickOf(0).title).toBe(long);
+  expect(pickOf(1).title).toBe('Base');
 });
 
 test('inside an art layer the vector row shows as picked and the base row is off', async () => {

@@ -18,8 +18,9 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   last had.
 - **+ Vector layer**, under the list, adds the vector layer and picks it. It's there while the drawing has
   none; a drawing with shapes already has one.
-- **Double-click a name** (or press F2 on its row) to rename the layer. Enter, or leaving the box, keeps the
-  new name; Escape keeps the old one. A name is up to 40 characters, and a blank one puts the default back.
+- **Click the picked row's name** (or double-click any name, or press F2 on its row) to rename the layer; a
+  click on another row only picks it. Enter, or leaving the box, keeps the new name; Escape keeps the old one.
+  A long name that doesn't fit shows in full when you hover over it. A name is up to 40 characters, and a blank one puts the default back.
   Names are saved with the drawing, and a rename isn't an undo step.
 - On a phone there's no side panel: a **Layers** button in the tab bar, left of Animate and there while the art
   shows, opens the same list in a dialog. A pick leaves it open, so a layer can be picked, renamed or hidden

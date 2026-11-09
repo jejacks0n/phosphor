@@ -1130,6 +1130,13 @@ test.describe('on a phone', () => {
     await dialog.locator('li button.pick', { hasText: 'Layer 1' }).tap();
     await expect(tab(page, 'VECTOR')).toHaveCount(0);
     await expect(tab(page, 'PIXEL')).toBeVisible();
+    await apart();
+    await dialog.locator('li button.pick .name', { hasText: 'Layer 1' }).tap();   // a tap on the picked row's name renames it
+    const box = dialog.getByRole('textbox', { name: 'Rename Layer 1' });
+    await expect(box).toBeFocused();
+    await box.fill('Ink');
+    await box.press('Enter');
+    await expect(dialog.locator('li button.pick', { hasText: 'Ink' })).toBeFocused();
     await page.keyboard.press('Escape');   // Escape closes it too
     await expect(dialog).toHaveCount(0);
     await expect(layers).toBeFocused();

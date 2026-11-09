@@ -6,9 +6,9 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 
 // The drawing's layers, top of the stack first: the edit layer, the vector layer if there is one, the base. Picking a row
-// decides the tabs and what the tools act on; its eye hides or shows the layer; a double-click on its name (or F2)
-// renames it, Enter or leaving the box keeps the name and Escape doesn't. + Vector layer adds the vector layer while
-// there's none. The side panel's LAYERS and the phone's Layers dialog both show it.
+// decides the tabs and what the tools act on; its eye hides or shows the layer; a click on the picked row's name, a
+// double-click on any name, or F2 renames it, Enter or leaving the box keeps the name and Escape doesn't. + Vector
+// layer adds the vector layer while there's none. The side panel's LAYERS and the phone's Layers dialog both show it.
 
 const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
 const { t } = useI18n();
@@ -29,6 +29,14 @@ const layers = computed(() => ['edit', ...(project.hasVectorLayer ? ['vector'] :
   hidden: project.layerHidden(id),
   off: id === 'base' ? drawing.hostOnly ?? (project.artInside ? t('art.baseOff') : null) : null,
 })));
+
+// A click picks the row; a click on the picked row's name renames it (a phone has no double-click). Enter and Space
+// press the row, not its name, so they only pick.
+function pick(layer, e) {
+  if (layer.off) return;
+  if (workspace.shownPick === layer.id && e.target.closest('span.name')) rename(layer);
+  else workspace.pickLayer(layer.id);
+}
 
 function addVector() {
   project.addVectorLayer();
@@ -78,9 +86,9 @@ function cancel() {
               @keydown.enter="enter" @keydown.esc.prevent.stop="cancel" @blur="keep"
           >
           <button
-              v-else class="pick" :aria-pressed="workspace.shownPick === layer.id" :title="layer.off"
+              v-else class="pick" :aria-pressed="workspace.shownPick === layer.id" :title="layer.off ?? layer.name"
               :aria-disabled="layer.off ? 'true' : null" :aria-describedby="layer.off ? `${uid}-${layer.id}-off` : null"
-              @click="layer.off || workspace.pickLayer(layer.id)" @keydown.f2.prevent="rename(layer)"
+              @click="pick(layer, $event)" @keydown.f2.prevent="rename(layer)"
           >
             <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="ICONS[layer.id]"/></svg>
             <span class="name" @dblclick="rename(layer)">{{ layer.name }}</span>
