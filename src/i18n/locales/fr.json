@@ -339,6 +339,7 @@
     "none": "Les calques s'affichent avec le dessin.",
     "hiddenToast": "Affichez le calque pour dessiner dessus",
     "hiddenMergeToast": "Affichez le calque pour le fusionner",
+    "notInRoom": "Ajouter, supprimer et déplacer des calques n'est pas encore possible dans une salle en direct.",
     "toolOnLayer": "{tool} dessine sur {layer}. Choisissez-le dans Calques."
   },
   "tools": {
@@ -1099,6 +1100,7 @@
     "start": {
       "heading": "Configurer votre salle",
       "noArt": "Ouvrez d'abord une image ou un canevas pour avoir quelque chose à partager.",
+      "tooManyLayers": "Pour l'instant, une salle en direct contient au plus {name}, un calque vectoriel et un calque au-dessus, tous avec les mêmes réglages de caractères. Fusionnez ou supprimez des calques pour passer en direct.",
       "roomName": "Nom de la salle",
       "roomNamePatternTitle": "Utilisez au moins un caractère qui n'est pas un espace",
       "welcomeMessage": "Message de bienvenue",

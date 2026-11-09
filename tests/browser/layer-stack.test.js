@@ -5,6 +5,8 @@ import { createTestApp, settle } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
 import { rectShape } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
+import { MOST_LAYERS } from '@/document/layerInfo.js';
+import { toastMessage } from '@/composables/useToast.js';
 
 const keys = (cells) => [...cells.keys()];
 
@@ -89,4 +91,33 @@ test('a new image or canvas starts from the bottom and the edit layer', async ()
   expect(project.layerById('edit').name).toBe(null);
   expect(project.editId).toBe('edit');
   expect(project._layerData.size).toBe(0);
+});
+
+test('adding a layer in a room is refused, except the missing vector layer', async () => {
+  const { project } = await blank();
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  try {
+    toastMessage.value = null;
+    expect(project.addLayer('cells', 'edit')).toBe(null);
+    expect(toastMessage.value).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
+    expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
+    toastMessage.value = null;
+    expect(project.addLayer('vector', 'base')).toBe('vector');
+    expect(toastMessage.value).toBe(null);
+    expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
+    expect(project.addLayer('vector', 'base')).toBe(null); // one is there now
+    expect(project.layers).toHaveLength(3);
+  } finally {
+    project.stopSharing();
+  }
+});
+
+test('addLayer refuses past MOST_LAYERS, without a toast', async () => {
+  const { project } = await blank();
+  while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit');
+  toastMessage.value = null;
+  expect(project.addLayer('cells', 'edit')).toBe(null);
+  expect(project.addLayer('vector', 'base')).toBe(null);
+  expect(project.layers).toHaveLength(MOST_LAYERS);
+  expect(toastMessage.value).toBe(null);
 });

@@ -5,12 +5,13 @@ import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
-import { createTestApp } from '../support/app.js';
+import { createTestApp, loadImage } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { nameColor, nameGlyph } from '@/social/names';
 import { clock } from '@/social/chat';
 import HostRoomPage from '@/components/social/HostRoomPage.vue';
+import StartRoomPage from '@/components/social/StartRoomPage.vue';
 
 const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
 let app = null, host = null;
@@ -323,4 +324,24 @@ test('ten people show no "and N more"', async () => {
   await mount({ session: { liveSince: Date.now(), most: 10, messages: 0, people } });
   expect(rows()).toHaveLength(10);
   expect(host.querySelector('.came-by button')).toBe(null);
+});
+
+test('three cells layers: Go live is off and says why', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp(StartRoomPage).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const goLive = button('Go live');
+  expect(goLive.disabled).toBe(false);
+  expect(host.textContent).not.toContain('a room holds at most');
+  project.addLayer('cells', 'edit');
+  project.addLayer('cells', 'L1'); // [base, edit, L1, L2]
+  await nextTick();
+  const words = 'For now, a room holds at most Base, one vector layer and one layer above them, all with the same character settings. Merge or delete layers to go live.';
+  expect(goLive.disabled).toBe(true);
+  expect(goLive.title).toBe(words);
+  expect(host.querySelector('p.no-art').textContent).toBe(words);
 });

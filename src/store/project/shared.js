@@ -91,6 +91,15 @@ export function refusedHidden(project, layers = ['base', 'edit']) {
   return true;
 }
 
+// Whether a change to the layers' structure (adding, deleting, moving, or a merge that removes one) is refused because the
+// document is shared with a room, which holds the layers it always did, with a toast saying so. fills: it adds the vector
+// layer the room is missing, which is allowed (directly on the bottom, where a room's one goes).
+export function refusedInRoom(project, { fills = false } = {}) {
+  if (!project._sharing || fills) return false;
+  toast(t('layers.notInRoom'));
+  return true;
+}
+
 // The shapes the shape layer draws: all of them, followers on their paths and guides left out (followers.js), but the
 // art layer stepped into (vector.js: enterArt), whose drawing is the edit cells and paint while you're inside it. None
 // while the vector layer is hidden.

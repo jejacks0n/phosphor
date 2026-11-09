@@ -4,7 +4,7 @@ import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
-import { layersFromOld } from '@/document/layerInfo.js';
+import { layersFromOld, legacySlots } from '@/document/layerInfo.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
 import { artBounds } from '@/document/artLayers.js';
 import { placedShapes } from '@/document/followers.js';
@@ -146,6 +146,8 @@ export const useProjectStore = defineStore('project', {
     layerById: (state) => (id) => state.layers.find((layer) => layer.id === id),
     // The vector layer is there once it's added, or with the drawing's first shape, and stays when its last one goes.
     hasVectorLayer: (state) => state.layers.some((layer) => layer.kind === 'vector'),
+    // Whether the layers are the ones a room holds: the bottom, at most one vector layer, at most one cells layer above it.
+    fitsRoom: (state) => !!legacySlots(state.layers),
     // Whether a layer's eye is shut.
     layerHidden() { return (id) => !!this.layerById(id)?.hidden; },
     // A cells layer's cells and paint: the edit layer's fields for editId, else what waits in _layerData.

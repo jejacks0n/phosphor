@@ -195,7 +195,8 @@ export const sharingActions = {
     this.commitPending();
     this.ensureLayer();
     this.setAnimate(false);
-    this.history.dropThrough((entry) => entry.frameOp); // frames never travel, so nothing here can bring one back
+    this.history.dropThrough((entry) => entry.frameOp || entry.layerOp); // frames and layers' structure never travel, so nothing here can bring one back
+    this.historyVersion = this.history.version;
     const sum = this.editLayerSum();
     let sharing;
     if (role === 'host') {

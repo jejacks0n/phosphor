@@ -265,7 +265,9 @@ export const useRoomStore = defineStore('room', {
     // A new room, live with your art: false (the server's words as the notice) if it wasn't made.
     // Only a public room sends its signal: the signal shows on its lobby card, and a link-only room has none.
     async startRoom({ name, welcome, isPublic, password, allowGuests, max, signal = null }) {
-      if (useProjectStore().hasFrames) return false;   // frames never travel, so they'd be lost at a handover (StartRoomPage says why)
+      const project = useProjectStore();
+      if (project.hasFrames || !project.fitsRoom) return false;   // frames never travel, so they'd be lost at a handover; nor do more layers than a room holds (StartRoomPage says why)
+      await project.roomLayers();   // before anything is asked of the server: the layers a room holds, under the names it knows
       const social = useSocialStore();
       const body = { name, public: isPublic, allowGuests, max, signal: isPublic ? signal : null, ...(!isPublic && password ? { password } : {}) };   // a private room's password is optional
       const { ok, data, code } = await social.request('/api/rooms', { method: 'POST', body });

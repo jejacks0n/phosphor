@@ -1317,3 +1317,72 @@ test('a block held when its artist is put back to watching goes nowhere on its t
   vi.advanceTimersByTime(HELD_FLOAT_MS * 2);
   expect(sent).toEqual([]);
 });
+
+// A room holds the layers it always did (the bottom, one vector layer, one cells layer): going live makes the document
+// that, and what undo could bring back of a layer operation is out of reach.
+const layer = (id, kind = 'cells') => Object.freeze({ id, kind, n: 1, name: null, hidden: false });
+
+test('a deleted layer can\'t come back by undo in a room', async () => {
+  const { project } = await drawing(null);
+  project.addLayer('cells', 'edit');
+  project.typeAt(0, 0, 'A', INK);
+  project.commitEdit();
+  project.pushEdit({ layerOp: true, undo() {}, redo() {}, bytes: 0 }); // stands for the delete (deleteLayer, in Task 6)
+  expect(project.canUndo).toBe(true);
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  open.push(project);
+  expect(project.canUndo).toBe(false);
+});
+
+test('a fitting stack with ids L1 goes live as edit', async () => {
+  const { project, workspace } = await drawing(null);
+  project.addLayer('cells', 'edit');
+  workspace.pickLayer('L1');
+  project.filename = 'night';
+  project.typeAt(2, 1, 'B', INK);
+  project.commitEdit();
+  project.layers = project.layers.filter((l) => l.id !== 'edit'); // the edit layer deleted (deleteLayer, in Task 6)
+  project._layerData.delete('edit');
+  project.renameLayer('L1', 'Logo');
+  const cells = JSON.stringify([...project.editCells]);
+  expect(project.fitsRoom).toBe(true);
+  await project.roomLayers();
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
+  expect(project.layerById('edit').name).toBe('Logo');
+  expect(project.editId).toBe('edit');
+  expect(workspace.pickedLayer).toBe('edit');
+  expect(project.filename).toBe('night');
+  expect(project.isDirty).toBe(true);
+  expect(JSON.stringify([...project.editCells])).toBe(cells);
+  expect(project.canUndo).toBe(false);
+});
+
+test('a fitting stack keeps its vector layer and its filename through going live', async () => {
+  const { project } = await drawing(null);
+  project.layers = [project.layers[0], layer('L4', 'vector'), project.layerById('edit')];
+  project.filename = 'night';
+  await project.roomLayers();
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
+  expect(project.filename).toBe('night');
+});
+
+test('no cells layer: going live adds an empty edit on top, and that isn\'t an undo step', async () => {
+  for (const below of [[], [layer('vector', 'vector')]]) {
+    const { project } = await drawing(null);
+    project.layers = [project.layers[0], ...below];
+    await project.roomLayers();
+    expect(project.layers.map((l) => l.id)).toEqual(['base', ...below.map((l) => l.id), 'edit']);
+    expect(project.editId).toBe('edit');
+    expect(project.editCells.size).toBe(0);
+    expect(project.canUndo).toBe(false);
+  }
+});
+
+test('a stack that does not fit is left alone by roomLayers', async () => {
+  const { project } = await drawing(null);
+  project.addLayer('cells', 'edit');
+  expect(project.fitsRoom).toBe(false);
+  const layers = project.layers;
+  expect(await project.roomLayers()).toBe(false);
+  expect(project.layers).toBe(layers);
+});

@@ -339,6 +339,7 @@
     "none": "Layers show while a drawing's art is showing.",
     "hiddenToast": "Show the layer to draw on it",
     "hiddenMergeToast": "Show the layer to merge it",
+    "notInRoom": "Adding, deleting and moving layers isn't available in a room yet.",
     "toolOnLayer": "{tool} draws on {layer}. Pick it in Layers."
   },
   "tools": {
@@ -1099,6 +1100,7 @@
     "start": {
       "heading": "Set up your room",
       "noArt": "Open an image or start a canvas first so you have something to share.",
+      "tooManyLayers": "For now, a room holds at most {name}, one vector layer and one layer above them, all with the same character settings. Merge or delete layers to go live.",
       "roomName": "Room name",
       "roomNamePatternTitle": "Use at least one character that isn't a space",
       "welcomeMessage": "Welcome message",

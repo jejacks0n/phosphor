@@ -135,6 +135,26 @@ function channelSends() {
   return () => send.mock.calls.flatMap(([data]) => (typeof data === 'string' ? [JSON.parse(data)] : []));
 }
 
+test('startRoom refuses a stack that doesn\'t fit: no request, no socket', async () => {
+  await social.boot();
+  project.addLayer('cells', 'edit'); // [base, edit, L1]: one cells layer too many
+  const request = vi.spyOn(social, 'request'), opened = sockets.length;
+  expect(await startPublic()).toBe(false);
+  expect(request).not.toHaveBeenCalled();
+  expect(sockets).toHaveLength(opened);
+  expect(room.role).toBe(null);
+});
+
+test('startRoom readies a stack that fits: edit and vector are the layers\' own names', async () => {
+  await social.boot();
+  project.addLayer('cells', 'edit');
+  project.useLayer('L1');
+  project.layers = project.layers.filter((l) => l.id !== 'edit');
+  project._layerData.delete('edit');
+  expect(await startPublic()).toBe(true);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
+});
+
 test('startRoom POSTs the room with the draft\'s signal and no password; a private one sends its password and no signal', async () => {
   await social.boot();
   expect(room.startDraft.signal).toBe(null);
