@@ -316,7 +316,8 @@ export const useWorkspaceStore = defineStore('workspace', {
 
 // Keeps pickedLayer in step with editorTab, which many places set (a tab chosen, Make art layer, a key): VECTOR picks the
 // vector layer, and the art tabs pick the edit layer if the vector layer was picked. The vector layer going away while
-// picked, and a base picked becoming an artist's, fall back to the edit layer. Returns a function that stops it.
+// picked, a base picked becoming an artist's, and a new document fall back to the edit layer. Returns a function that
+// stops it.
 export function followLayerPick({ workspace, project, drawing }) {
   const stops = [
     watch(() => workspace.editorTab, (tab) => {
@@ -330,6 +331,10 @@ export function followLayerPick({ workspace, project, drawing }) {
     }, { flush: 'sync' }),
     watch(() => drawing.hostOnly, (reason) => {
       if (reason && workspace.pickedLayer === 'base') workspace.pickedLayer = 'edit';
+    }, { flush: 'sync' }),
+    // A new document opens on the edit layer, as it always did (a vector pick follows VECTOR, above).
+    watch(() => project.documentId, () => {
+      if (workspace.pickedLayer === 'base') workspace.pickedLayer = 'edit';
     }, { flush: 'sync' }),
   ];
   return () => stops.forEach((stop) => stop());

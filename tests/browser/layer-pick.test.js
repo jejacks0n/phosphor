@@ -188,3 +188,17 @@ test('Copy takes the picked layer', async () => {
   expect(block.cells).toBeUndefined();
   expect(block.base.pins).toContain('P');
 });
+
+test('a new document opens on the edit layer, whatever was picked before', async () => {
+  const { project, workspace } = await blank();
+  workspace.editorTab = 'output';
+  workspace.pickLayer('base');
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  expect(workspace.pickedLayer).toBe('edit');
+
+  workspace.pickLayer('base');
+  const blob = await (await fetch('/tests/fixtures/ansi/past-the-edge.ans')).blob();
+  await project.openArtFile(new File([blob], 'past-the-edge.ans'));
+  await settle(project);
+  expect(workspace.pickedLayer).toBe('edit');
+});
