@@ -5,7 +5,6 @@ import { test, expect, openApp } from './support.js';
 test('dragging the side panel\'s edge resizes it within its bounds, the editor takes what\'s left, and the width stays after a reload', async ({ page }) => {
   await openApp(page);
   const panel = page.locator('.side-panel'), editor = page.locator('section.edit-workspace');
-  await page.getByRole('button', { name: 'Open the panel' }).click();
   await expect(panel).toHaveCSS('width', '280px');
   const before = (await editor.boundingBox()).width;
 

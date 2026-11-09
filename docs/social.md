@@ -425,7 +425,7 @@ host's welcome message pinned at the top. It stays open as you move between tabs
 own piece and keep talking. While **LAYERS** shows, the **CHAT** tab counts new messages; **»** folds the
 panel to a thin rail that counts them too, and **«** opens it again. Drag the panel's left edge to make it
 wider or narrower (or focus the edge and use the arrow keys); a double-click puts it back. Its width and
-whether it's folded stay as you left them in that browser tab, and the next one starts the same way.
+whether it's folded stay as you left them in that browser tab; the panel starts open, and the next tab starts the way you left it.
 
 Everyone in the room reads the chat. Members with a confirmed email write in it; a guest sees
 **Sign in to chat** and an unconfirmed member sees **Confirm your email to chat**. A message is up

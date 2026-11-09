@@ -149,8 +149,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon'
     vectorSides: 5,          // a polygon's sides, 3 to 12
     sidePanelWidth: useLocalStorage('phosphor.sidePanelWidth', 280, { serializer: StorageSerializers.number, listenToStorageChanges: false }), // the side panel's (SidePanel) width in px, as dragged: each tab its own, the last kept for the next
-    sidePanelFolded: useLocalStorage('phosphor.sidePanelFolded', true, { listenToStorageChanges: false }), // the side panel folded to its rail (it starts folded)
-    sidePanelTab: 'layers',  // the side panel's tab: 'layers' | 'social' (LOBBY out of a room, CHAT in one)
+    sidePanelFolded: useLocalStorage('phosphor.sidePanelFolded', false, { listenToStorageChanges: false }), // the side panel folded to its rail (it starts open; a fold is kept in the browser)
+    sidePanelTab: 'layers',  // the side panel's tab: 'layers' | 'social' (Social out of a room, CHAT in one)
     keysOpen: useLocalStorage('phosphor.keysOpen', true), // the Keys panel (KeysPanel) open, or folded away
     keysZoom: useLocalStorage('phosphor.keysZoom', null, { serializer: StorageSerializers.number }), // its lanes' px a frame, or null to fit (keyLanes.js)
     keysScroll: 0,           // how far along they're scrolled, in px, when they don't fit
@@ -305,7 +305,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     toggleSettings() {
       this.settingsOpen = !this.settingsOpen;
     },
-    // The side panel open on its LOBBY (or, in a room, CHAT) tab.
+    // The side panel open on its Social (or, in a room, CHAT) tab.
     showSocial() {
       this.sidePanelFolded = false;
       this.sidePanelTab = 'social';

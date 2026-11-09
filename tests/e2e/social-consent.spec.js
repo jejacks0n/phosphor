@@ -38,7 +38,6 @@ test('the Social tab first shown asks, saying what SOCIAL means with the agreeme
   const seen = elsewhere(page);
   const server = await fakeServer(page);
   await page.goto('/');
-  await page.getByRole('button', { name: 'Open the panel' }).click();
   await expect(consent(page)).toHaveCount(0);   // only the lobby asks: Layers isn't SOCIAL
   await lobbyTab(page).click();
   await expect(consent(page)).toBeVisible();
@@ -188,7 +187,6 @@ test('in French, the Terms and the Privacy Policy they link to are the French co
   await fakeServer(page);
   await page.goto('/');
   await page.getByRole('combobox', { name: 'Language' }).selectOption('fr');
-  await page.getByRole('button', { name: 'Ouvrir le panneau' }).click();
   await page.locator('.side-panel').getByRole('tab', { name: 'Social' }).click();
   await page.getByRole('dialog', { name: 'Avant d\'ouvrir SOCIAL' }).getByRole('button', { name: 'Conditions d\'utilisation', exact: true }).click();
   const terms = page.getByRole('dialog', { name: 'Conditions d\'utilisation' });

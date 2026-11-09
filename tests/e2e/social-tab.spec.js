@@ -5,12 +5,10 @@ import { fakeServer, fakeRoom, goLive, watcherPage, joinFromCard, openLobby, sho
 
 const databases = (page) => page.evaluate(async () => (await indexedDB.databases()).map((d) => d.name));
 const lobbyTab = (page) => page.locator('.side-panel').getByRole('tab', { name: 'Social' });
-const openPanel = (page) => page.getByRole('button', { name: 'Open the panel' }).click();
 
 test('the Social tab is there before any image; nothing SOCIAL runs until the lobby is first shown, then it connects', async ({ page }) => {
   const server = await fakeServer(page);
   await page.goto('/');
-  await openPanel(page);   // folded to its rail to begin with
   await expect(lobbyTab(page)).toBeEnabled();
   await selected(page, 'Layers');   // the panel opens on Layers, which isn't SOCIAL
   await page.waitForLoadState('networkidle');
@@ -35,7 +33,6 @@ test('the Social tab is there before any image; nothing SOCIAL runs until the lo
 
 test('the Social tab is tagged beta, for screen readers as well; its name stays Social', async ({ page }) => {
   await page.goto('/');
-  await openPanel(page);
   await expect(lobbyTab(page).locator('.beta')).toBeVisible();
   await expect(lobbyTab(page)).toHaveAccessibleDescription('Beta');
   await expect(lobbyTab(page)).toHaveAccessibleName('Social');

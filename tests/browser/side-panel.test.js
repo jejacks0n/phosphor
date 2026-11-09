@@ -1,4 +1,4 @@
-// The side panel (SidePanel.vue): LAYERS, and LOBBY, which is CHAT while you're in a room; its width from its edge's keys,
+// The side panel (SidePanel.vue): LAYERS, and Social, which is CHAT while you're in a room; its width from its edge's keys,
 // kept in the browser and held between its narrowest and widest; folding to a rail; and the count of what
 // was said while the chat wasn't showing. Dragging the edge with a real pointer is tests/e2e/side-panel.spec.js.
 import { test, expect, afterEach } from 'vitest';
@@ -49,9 +49,14 @@ const say = async (room, ...said) => {
   await nextTick();
 };
 
-test('out of a room it has LAYERS and LOBBY (marked Beta); its edge\'s keys resize it within its bounds, a double-click puts it back, and the width is kept', async () => {
+test('out of a room it has LAYERS and Social (marked Beta); its edge\'s keys resize it within its bounds, a double-click puts it back, and the width is kept', async () => {
   const { workspace } = await mount();
-  expect(panel().getBoundingClientRect().width).toBe(28);   // folded to begin with
+  expect(workspace.sidePanelFolded).toBe(false);   // open to begin with
+  expect(panel().getBoundingClientRect().width).toBe(SIDE_PANEL.width);
+  host.querySelector('button.fold').click();   // and a fold is kept in the browser
+  await nextTick();
+  expect(panel().getBoundingClientRect().width).toBe(28);
+  expect(localStorage.getItem('phosphor.sidePanelFolded')).toBe('true');
   host.querySelector('button.open').click();
   await nextTick();
   expect(tabs()).toEqual([['Layers', 'true'], ['Social', 'false']]);
