@@ -8,7 +8,7 @@ import { cellIndex, bakedEntry, cellsOfPixels } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, boundsOf, bytesHeld } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, boundsOf, bytesHeld, refusedHidden } from '@/store/project/shared.js';
 
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100, stack = false) {
@@ -212,7 +212,9 @@ export const editLayerActions = {
     ]);
   },
 
+  // Refused while the edit layer is hidden: what you can't see isn't destroyed.
   clearEditLayer() {
+    if (refusedHidden(this, ['edit'])) return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     if (!this.paintLayer) return;

@@ -18,6 +18,7 @@ import { placedShapes } from '@/document/followers.js';
 import { shortcut } from '@/lib/keyLabels';
 import { snapsLate } from '@/lib/CharResolver';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
+import { refusedHidden } from '@/store/project/shared.js';
 
 const { t } = useI18n();
 const project = useProjectStore();
@@ -160,6 +161,7 @@ watch(tools, (offered) => {
 });
 
 function confirmClear() {
+  if (refusedHidden(project, ['edit'])) return; // as the store would, before asking
   if (!project.hasEditLayer || confirm(t('toolbar.clearConfirm'))) {
     project.clearEditLayer();
   }
@@ -175,6 +177,7 @@ function stepOut() {
 // the whole edit layer.
 const merging = ref(null); // { rect } while the dialog is open
 function openMerge(rect = null) {
+  if (refusedHidden(project)) return; // what both merges refuse: refused at the press, not after the question
   merging.value = { rect };
 }
 function merge(kind) {

@@ -45,6 +45,10 @@ again and it's all there. Whether a layer is hidden is saved with the drawing.
   - **Bake** and VECTOR's **Merge down**, while the base is hidden;
   - **Bake**, VECTOR's **Merge down**, and a **Merge down** that would take shapes with it, while the vector
     layer is hidden and has shapes. What you hide never goes into the base unseen.
+
+  Merge down says so when you press it, before it asks how to merge.
+- **Clear edit layer** is refused the same way while the edit layer is hidden, before it asks: what you can't
+  see isn't erased.
 - **Flatten** makes its cells from what shows, so a hidden layer's content is left out of the result
   (Undo brings it back).
 

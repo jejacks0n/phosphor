@@ -6,6 +6,9 @@ import { rectShape } from '@/document/shapes.js';
 import { getTool } from '@/tools/index.js';
 import { typeAtCursor, typeText } from '@/composables/useTextTool.js';
 import { toast, toastMessage, closeToast } from '@/composables/useToast.js';
+import { createApp, nextTick } from 'vue';
+import EditToolbar from '@/components/EditToolbar.vue';
+import { i18n } from '@/i18n';
 
 vi.mock('@/composables/useToast', { spy: true });
 
@@ -14,7 +17,10 @@ const INK = { fg: '#ffee00', bg: '#0044aa' };
 const RED = '#ff0000';
 const look = ({ char, fg, bg }) => ({ char, fg: fg.hex, bg: bg.hex });
 
+let mounted = null;
 afterEach(() => {
+  mounted?.unmount();
+  mounted = null;
   closeToast();
   vi.restoreAllMocks();
 });
@@ -208,6 +214,48 @@ test('with the edit layer hidden, Merge down and Into the image are refused and 
   expect(kept()).toEqual(before);
   expect(kept()[0]).toBe(before[0]);
   expect(toastMessage.value).toBe('Show the layer to merge it');
+});
+
+// The toolbar, mounted in the page; its button whose title starts with title.
+async function toolbarButton(title) {
+  const host = document.createElement('div');
+  document.body.append(host);
+  mounted = createApp(EditToolbar).use(i18n);
+  mounted.mount(host);
+  await nextTick();
+  return [...host.querySelectorAll('button')].find((b) => b.title.startsWith(title));
+}
+
+test('with a layer hidden, Merge down refuses at the press, before it asks how', async () => {
+  const { project } = await picture();
+  typed(project, 2, 2, 'M');
+  await hide(project, 'edit');
+  const button = await toolbarButton('Merge down:');
+  expect(button?.disabled).toBe(false);
+  button.click();
+  await nextTick();
+  expect(document.querySelectorAll('button.choice').length).toBe(0);
+  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(project.editCells.has('2,2')).toBe(true);
+});
+
+test('with the edit layer hidden, Clear edit layer is refused before it asks, and the store refuses it too', async () => {
+  const { project } = await picture();
+  typed(project, 2, 2, 'M');
+  await hide(project, 'edit');
+  const kept = () => [project.editCells, project.historyVersion];
+  const before = kept();
+  project.clearEditLayer();
+  expect(kept()).toEqual(before);
+  expect(kept()[0]).toBe(before[0]);
+  expect(toastMessage.value).toBe('Show the layer to merge it');
+
+  closeToast();
+  const asked = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  (await toolbarButton('Clear edit layer:')).click();
+  expect(asked).not.toHaveBeenCalled();
+  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(kept()[0]).toBe(before[0]);
 });
 
 test('a pick reads what shows: a hidden edit layer\'s cells and paint aren\'t picked', async () => {
