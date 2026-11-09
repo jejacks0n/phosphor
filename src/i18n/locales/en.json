@@ -330,8 +330,8 @@
   "layers": {
     "label": "Layers",
     "base": "Base",
-    "editDefault": "Layer 1",
-    "vectorDefault": "Vector 1",
+    "editDefault": "Layer {n}",
+    "vectorDefault": "Vector {n}",
     "addVector": "+ Vector layer",
     "showAria": "Show {name}",
     "hideAria": "Hide {name}",

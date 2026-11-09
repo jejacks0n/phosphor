@@ -96,7 +96,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     ansiZoom:  1,            // the ANSI (and VECTOR) view's zoom: 25% to 800% of its cell size
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'vector', 'sauce' or 'room' (the room you watch)
     viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)
-    pickedLayer: 'edit',     // the layer picked in LAYERS: 'base' | 'edit' | 'vector'; it decides the art tabs, and followLayerPick keeps it in step with editorTab
+    pickedLayer: 'edit',     // the layer picked in LAYERS, its id; it decides the art tabs, and followLayerPick keeps it in step with editorTab
+    lastCellsPick: 'edit',   // the cells layer picked last, which the art tabs go back to from a vector layer
     tabAddressed: false,     // the landing address named a tab (router.js)
     documentSettled: false,  // autosave has finished bringing back what it can (useAutosave), or the start screen stopped waiting
     documentAnswered: false, // autosave's restore has really finished, however long it took (a room coming back waits for this)
@@ -198,18 +199,22 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
   },
   actions: {
-    // Pick a layer: the tabs follow. The vector layer is the VECTOR tab; the base and the edit layer share PIXEL and ANSI,
-    // so picking either steps out of an art layer and leaves VECTOR for the art tab last shown. False when refused: the base
-    // isn't an artist's to pick, nor from inside an art layer.
+    // Pick a layer: the tabs follow. A vector layer is the VECTOR tab; the cells layers share PIXEL and ANSI, so picking
+    // one steps out of an art layer, makes it the one the tools draw on (project.useLayer) and leaves VECTOR for the art tab
+    // last shown. False when refused: a layer that isn't there, or the base, which isn't an artist's to pick, nor from inside
+    // an art layer.
     pickLayer(id) {
-      const project = useProjectStore();
-      if (id === 'vector') {
+      const project = useProjectStore(), layer = project.layerById(id);
+      if (!layer) return false;
+      if (layer.kind === 'vector') {
+        this.pickedLayer = id;
         this.editorTab = 'vector';
         return true;
       }
       if (id === 'base' && (useDrawingStore().hostOnly || project.artInside)) return false;
       if (project.artInside) project.leaveArt();
       this.pickedLayer = id;
+      project.useLayer(id);
       if (this.editorTab === 'vector') this.editorTab = this.viewTab;
       if (id === 'base') {
         for (const key of ['inputActiveTool', 'outputActiveTool']) if (!getTool(this[key]).base) this[key] = 'eraser';
@@ -321,26 +326,44 @@ export const useWorkspaceStore = defineStore('workspace', {
 
 
 // Keeps pickedLayer in step with editorTab, which many places set (a tab chosen, Make art layer, a key): VECTOR picks the
-// vector layer, and the art tabs pick the edit layer if the vector layer was picked. The vector layer going away while
-// picked, a base picked becoming an artist's, and a new document fall back to the edit layer. Returns a function that
-// stops it.
+// topmost vector layer when a cells layer is picked, and the art tabs pick the cells layer picked last (or the topmost one
+// while it's gone) when a vector layer is. A picked layer that leaves the stack picks the one that was under it (one that
+// can be picked: an artist's isn't the base), a base picked becoming an artist's falls back to the edit layer, and a new
+// document picks its edit layer (or its topmost cells layer). Returns a function that stops it.
 export function followLayerPick({ workspace, project, drawing }) {
+  // Before its first shape a drawing may have no vector layer: VECTOR picks the one that shape will bring ('vector').
+  const kindOf = (id) => project.layerById(id)?.kind ?? (id === 'vector' ? 'vector' : 'cells');
+  const pickable = (layer) => layer?.kind === 'cells' && (layer.id !== 'base' || !(drawing.hostOnly || project.artInside));
+  const cellsPick = () => (pickable(project.layerById(workspace.lastCellsPick)) ? workspace.lastCellsPick : project.layers.findLast(pickable)?.id ?? 'edit');
+  // A pick made here: the tabs follow, as pickLayer has them.
+  const pick = (id) => {
+    workspace.pickedLayer = id;
+    if (kindOf(id) === 'vector') workspace.editorTab = 'vector';
+    else if (workspace.editorTab === 'vector') workspace.editorTab = workspace.viewTab;
+  };
+  let documentId = project.documentId; // every new document's layers are new (document.js)
   const stops = [
-    watch(() => workspace.editorTab, (tab) => {
-      if (tab === 'vector') workspace.pickedLayer = 'vector';
-      else if ((tab === 'input' || tab === 'output') && workspace.pickedLayer === 'vector') workspace.pickedLayer = 'edit';
+    watch(() => workspace.pickedLayer, (id) => {
+      if (project.layerById(id)?.kind === 'cells') workspace.lastCellsPick = id;
     }, { flush: 'sync', immediate: true }),
-    watch(() => project.hasVectorLayer, (has) => {
-      if (has || workspace.pickedLayer !== 'vector') return;
-      workspace.pickedLayer = 'edit';
-      if (workspace.editorTab === 'vector') workspace.editorTab = workspace.viewTab;
+    watch(() => workspace.editorTab, (tab) => {
+      const kind = kindOf(workspace.pickedLayer);
+      if (tab === 'vector' && kind !== 'vector') workspace.pickedLayer = project.layers.findLast((layer) => layer.kind === 'vector')?.id ?? 'vector';
+      else if ((tab === 'input' || tab === 'output') && kind === 'vector') workspace.pickedLayer = cellsPick();
+    }, { flush: 'sync', immediate: true }),
+    watch(() => project.layers, (now, was) => {
+      if (project.documentId !== documentId) {
+        documentId = project.documentId;
+        pick(now.some((layer) => layer.id === 'edit') ? 'edit' : now.findLast((layer) => layer.kind === 'cells').id);
+        return;
+      }
+      const at = was.findIndex((layer) => layer.id === workspace.pickedLayer);
+      if (at < 0 || now.some((layer) => layer.id === workspace.pickedLayer)) return;
+      const under = was.slice(0, at).findLast((layer) => now.some(({ id }) => id === layer.id) && (layer.kind === 'vector' || pickable(layer)));
+      pick(under?.id ?? cellsPick()); // the nearest one still there that can be picked
     }, { flush: 'sync' }),
     watch(() => drawing.hostOnly, (reason) => {
       if (reason && workspace.pickedLayer === 'base') workspace.pickedLayer = 'edit';
-    }, { flush: 'sync' }),
-    // A new document opens on the edit layer, as it always did (a vector pick follows VECTOR, above).
-    watch(() => project.documentId, () => {
-      if (workspace.pickedLayer === 'base') workspace.pickedLayer = 'edit';
     }, { flush: 'sync' }),
   ];
   return () => stops.forEach((stop) => stop());

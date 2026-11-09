@@ -3,41 +3,43 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { rectShape } from '@/document/shapes.js';
-import { DEFAULT_LAYER_INFO } from '@/document/layerInfo.js';
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
+// Each layer's name and eye, by id, in the stack's order.
+const info = (project) => Object.fromEntries(project.layers.map(({ id, name, hidden }) => [id, { name, hidden }]));
+const DEFAULTS = { base: { name: null, hidden: false }, edit: { name: null, hidden: false } };
 
 test('renameLayer, setLayerHidden and addVectorLayer change the info and are no undo step', async () => {
   const { project } = await createTestApp();
   await loadImage(project, GRADIENT, { cols: 20, rows: 20 });
-  expect(project.layerInfo).toEqual(DEFAULT_LAYER_INFO);
+  expect(info(project)).toEqual(DEFAULTS);
   expect(project.hasVectorLayer).toBe(false);
 
   project.renameLayer('edit', '  Logo  ');
   project.setLayerHidden('base', true);
   project.renameLayer('vector', 'Nothing'); // there is no vector layer yet
   project.setLayerHidden('vector', true);
-  expect(project.layerInfo).toEqual({ base: { name: null, hidden: true }, edit: { name: 'Logo', hidden: false }, vector: null });
+  expect(info(project)).toEqual({ base: { name: null, hidden: true }, edit: { name: 'Logo', hidden: false } });
   project.renameLayer('edit', '   '); // blank: the default
-  expect(project.layerInfo.edit.name).toBe(null);
+  expect(project.layerById('edit').name).toBe(null);
 
   project.addVectorLayer();
-  expect(project.layerInfo.vector).toEqual({ name: null, hidden: false });
+  expect(info(project).vector).toEqual({ name: null, hidden: false });
   expect(project.hasVectorLayer).toBe(true);
   project.renameLayer('vector', 'Art');
   project.addVectorLayer(); // already there: as it was
-  expect(project.layerInfo.vector.name).toBe('Art');
+  expect(project.layerById('vector').name).toBe('Art');
   expect(project.canUndo).toBe(false);
 });
 
-test('a vector layer that exists for its shapes can be renamed and hidden', async () => {
+test('the first shape brings the vector layer, directly on the base, and it can be renamed and hidden', async () => {
   const { project } = await createTestApp();
   await loadImage(project, GRADIENT, { cols: 20, rows: 20 });
   project.addShape(rectShape(2, 2, 12, 10, { fill: '#ff0000' }));
-  expect(project.layerInfo.vector).toBe(null);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
   project.renameLayer('vector', 'Art');
   project.setLayerHidden('vector', true);
-  expect(project.layerInfo.vector).toEqual({ name: 'Art', hidden: true });
+  expect(info(project).vector).toEqual({ name: 'Art', hidden: true });
 });
 
 test('shapes make a vector layer, and a new image or canvas starts from the defaults', async () => {
@@ -49,10 +51,10 @@ test('shapes make a vector layer, and a new image or canvas starts from the defa
   project.addVectorLayer();
 
   await project.setBlankCanvas({ cols: 10, rows: 10 });
-  expect(project.layerInfo).toEqual(DEFAULT_LAYER_INFO);
+  expect(info(project)).toEqual(DEFAULTS);
   project.renameLayer('base', 'Photo');
   await loadImage(project, GRADIENT, { cols: 20, rows: 20 });
-  expect(project.layerInfo).toEqual(DEFAULT_LAYER_INFO);
+  expect(info(project)).toEqual(DEFAULTS);
 });
 
 test('a room\'s project keeps the host\'s names and clears every eye', async () => {
@@ -64,7 +66,7 @@ test('a room\'s project keeps the host\'s names and clears every eye', async () 
     layers: { base: { hidden: true }, edit: { name: 'Logo', hidden: true }, vector: { name: 'Art', hidden: true } },
   };
   await project.openFromHost(parts, { filename: 'room' });
-  expect(project.layerInfo).toEqual({ base: { name: null, hidden: false }, edit: { name: 'Logo', hidden: false }, vector: { name: 'Art', hidden: false } });
+  expect(info(project)).toEqual({ base: { name: null, hidden: false }, vector: { name: 'Art', hidden: false }, edit: { name: 'Logo', hidden: false } });
 });
 
 test('the same document brought up to date keeps the artist\'s own eyes, with the host\'s names', async () => {
@@ -79,5 +81,5 @@ test('the same document brought up to date keeps the artist\'s own eyes, with th
     layers: { base: { name: 'Photo', hidden: true }, edit: { name: 'Logo' }, vector: { name: 'Art', hidden: true } },
   };
   await project.openFromHost(parts, { filename: 'room', sameDocument: true });
-  expect(project.layerInfo).toEqual({ base: { name: 'Photo', hidden: false }, edit: { name: 'Logo', hidden: true }, vector: { name: 'Art', hidden: true } });
+  expect(info(project)).toEqual({ base: { name: 'Photo', hidden: false }, vector: { name: 'Art', hidden: true }, edit: { name: 'Logo', hidden: true } });
 });

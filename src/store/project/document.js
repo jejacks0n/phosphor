@@ -2,7 +2,7 @@
 // exporting .ans and .utf8ans, the filename, and what counts as saved.
 import { t } from '@/i18n';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
-import { goodLayerInfo, savedLayers } from '@/document/layerInfo.js';
+import { layersFromOld, savedLayers, legacySlots } from '@/document/layerInfo.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
@@ -30,19 +30,26 @@ const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
   basePixels: baseBuffer && await loadImage(baseBuffer, 'image/png'),
 });
 
+// A new document's layers: the bottom and the edit layer, in use. Set, not patched: a patch would merge into the last
+// document's.
+function newLayers(project) {
+  project.layers = layersFromOld(null, { hasShapes: false });
+  project.editId = 'edit';
+  project._layerData.clear();
+}
+
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
 function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels }, { filename, documentId }) {
-  const own = this.layerInfo; // replaceImage starts it over
+  const own = this.layers; // replaceImage starts them over
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
   this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
   try {
     this.editCells = editCells;
     if (shapes?.size) this.shapes = shapes;
-    this.layerInfo = goodLayerInfo(layers, { hasShapes: shapes?.size > 0 });
+    this.layers = layersFromOld(layers, { hasShapes: shapes?.size > 0 });
     if (this._takingProject) { // a room's project: the host's names, but whether a layer shows is each person's: kept for the same document, else cleared
-      const { base, edit, vector } = this.layerInfo;
-      const eye = (entry, mine) => entry && { ...entry, hidden: this._sameDocument && !!mine?.hidden };
-      this.layerInfo = { base: eye(base, own.base), edit: eye(edit, own.edit), vector: eye(vector, own.vector) };
+      const mine = (id) => this._sameDocument && !!own.find((layer) => layer.id === id)?.hidden;
+      this.layers = this.layers.map((layer) => Object.freeze({ ...layer, hidden: mine(layer.id) }));
     }
     this.setBaseRecords(baseRecords);
     if (paint) {
@@ -208,7 +215,7 @@ export const documentActions = {
       shapes: new Map(),
       hasPaint: false,
     });
-    this.layerInfo = goodLayerInfo(null, { hasShapes: false }); // set, not patched: a patch would merge into the last document's
+    newLayers(this);
     this.newDocument();
   },
 
@@ -245,7 +252,7 @@ export const documentActions = {
       shapes: new Map(),
       hasPaint: false,
     });
-    this.layerInfo = goodLayerInfo(null, { hasShapes: false }); // set, not patched: a patch would merge into the last document's
+    newLayers(this);
     this.newDocument();
     this.markSaved();
   },
@@ -285,14 +292,17 @@ export const documentActions = {
   // What a .phosphor file holds besides the image, all of it as of the call (a canvas is copied when
   // toBlob is called), since a room's changes go on while the blobs are made. Inside an art layer, the drawing
   // is the one kept aside (enterArt).
+  // The old form's cells and paint are its cells layer's (legacySlots).
+  // ponytail: a stack that doesn't fit the old form saves the layer in use; the stack form comes next.
   async projectParts() {
-    const drawing = this._artInside ?? this;
+    const id = (legacySlots(this.layers) ?? { cells: this.editId }).cells;
+    const drawing = id === this.editId ? this._artInside ?? this : this._layerData.get(id) ?? { editCells: new Map(), paintLayer: null, hasPaint: false };
     const parts = {
       settings: { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, (key === 'hasPaint' ? drawing : this)[key]])), paintScale: drawing.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null },
       editCells: drawing.editCells,
       baseRecords: this.baseRecords,
       shapes: this.shapes,
-      layers: savedLayers(this.layerInfo),
+      layers: savedLayers(this.layers),
     };
     if (this.hasFrames) { // as of the call, as the rest is
       this.noteFrame();

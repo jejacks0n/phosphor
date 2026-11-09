@@ -18,7 +18,8 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   Layer 1. Pick it in Layers." Picking the edit layer or the base from VECTOR goes back to the art tab
   you last had.
 - **+ Vector layer**, under the list, adds the vector layer and picks it. It's there while the drawing has
-  none; a drawing with shapes already has one.
+  none; a drawing with shapes already has one, since its first shape brings it. The vector layer stays when
+  its last shape is deleted.
 - **Click the picked row's name** (or double-click any name, or press F2 on its row) to rename the layer; a
   click on another row only picks it. Enter, or leaving the box, keeps the new name; Escape keeps the old one.
   A name is up to 40 characters, and a blank one puts the default back; one too long for the row shows in

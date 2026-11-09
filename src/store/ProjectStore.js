@@ -4,7 +4,7 @@ import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
-import { DEFAULT_LAYER_INFO } from '@/document/layerInfo.js';
+import { layersFromOld } from '@/document/layerInfo.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
 import { artBounds } from '@/document/artLayers.js';
 import { placedShapes } from '@/document/followers.js';
@@ -60,7 +60,7 @@ function insideCells(project, inside, cells) {
   });
 }
 
-const NO_CELLS = new Map(); // a hidden edit layer's cells, never changed
+const NO_CELLS = new Map(); // a hidden or empty layer's cells, never changed
 
 // While the state is made there's no store yet, but there is by the time the ledger reads.
 function firstLedger() {
@@ -86,7 +86,9 @@ export const useProjectStore = defineStore('project', {
     paintScale: null, // the paint layer's scale from a loaded file (its saved paint is at that scale)
     editCells: shallowRef(new Map()), // the edit cells (see document/editCells.js)
     shapes: shallowRef(new Map()), // the vector layer's shapes, 'v:<id>' -> Shape (document/shapes.js), the frame showing's
-    layerInfo: DEFAULT_LAYER_INFO, // the layers' names, eyes and whether the vector layer was added (document/layerInfo.js; replaced, never changed in place)
+    layers: layersFromOld(null, { hasShapes: false }), // the drawing's layers, bottom first (document/layerInfo.js; replaced, never changed in place)
+    editId: 'edit', // the cells layer editCells, paintLayer and hasPaint are (project/layers.js: useLayer)
+    _layerData: markRaw(new Map()), // every other cells layer above the bottom: id -> { editCells, paintLayer, hasPaint }
     _shapeLayer: null, // the base layer with the shapes over it (ShapeLayer, markRaw), the renderer's
     baseRecords: shallowRef(EMPTY_BASE), // the base layer's pinned characters (see document/baseRecords.js)
 
@@ -141,14 +143,18 @@ export const useProjectStore = defineStore('project', {
     // no one else steps in (enterArt) or changes it (setShapes, and a host what an artist sends: takeFromArtist).
     lockedBy: (state) => (key) => (state._artInside?.key === key ? state._by
       : Object.keys(state._locks).find((sub) => sub !== state._by && state._locks[sub].key === key) ?? null),
-    // The vector layer is there once it's added, or the drawing has shapes.
-    hasVectorLayer: (state) => !!state.layerInfo.vector || state.shapes.size > 0,
-    // Whether a layer's eye is shut ('base', 'edit' or 'vector').
-    layerHidden: (state) => (id) => !!state.layerInfo[id]?.hidden,
-    // The edit cells and paint the renderer is handed: none while their layer is hidden. Inside an art layer they're
-    // the art layer's, so the vector layer's eye decides.
-    shownEditCells() { return this.layerHidden(this._artInside ? 'vector' : 'edit') ? NO_CELLS : this.editCells; },
-    shownPaint() { return this.layerHidden(this._artInside ? 'vector' : 'edit') ? null : this.paintLayer; },
+    layerById: (state) => (id) => state.layers.find((layer) => layer.id === id),
+    // The vector layer is there once it's added, or with the drawing's first shape, and stays when its last one goes.
+    hasVectorLayer: (state) => state.layers.some((layer) => layer.kind === 'vector'),
+    // Whether a layer's eye is shut.
+    layerHidden() { return (id) => !!this.layerById(id)?.hidden; },
+    // A cells layer's cells and paint: the edit layer's fields for editId, else what waits in _layerData.
+    cellsOf() { return (id) => (id === this.editId ? this.editCells : this._layerData.get(id)?.editCells ?? NO_CELLS); },
+    paintOf() { return (id) => (id === this.editId ? this.paintLayer : this._layerData.get(id)?.paintLayer ?? null); },
+    // The edit cells and paint the renderer is handed: none while their layer (editId) is hidden. Inside an art layer
+    // they're the art layer's, so the vector layer's eye decides.
+    shownEditCells() { return this.layerHidden(this._artInside ? 'vector' : this.editId) ? NO_CELLS : this.editCells; },
+    shownPaint() { return this.layerHidden(this._artInside ? 'vector' : this.editId) ? null : this.paintLayer; },
     // Anything on the edit layer or the vector layer, of any frame (a grid resize is then a canvas resize).
     hasEdits() { return this.hasEditLayer || this.shapes.size > 0; },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.

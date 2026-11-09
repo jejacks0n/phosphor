@@ -48,6 +48,7 @@ export const vectorActions = {
   // Draw what the shapes changed: the grid rect they covered before and after, or every cell past a quarter of
   // the grid (a full composite is as quick then).
   refreshShapes() {
+    if (this.shapes.size) this.addVectorLayer(); // the first shape brings it
     const layer = this._shapeLayer, output = this.renderer.outputCanvas;
     if (!layer) return;
     const rect = layer.set(drawnShapes(this));

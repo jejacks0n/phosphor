@@ -1704,22 +1704,21 @@ test('a layer renamed or hidden is written, and restores with its name and eye',
   project.clearImage();
 
   await project.restoreDocument({ record, imageBuffer }, { documentId: record.documentId ?? 'restored' });
-  expect(project.layerInfo.edit.name).toBe('Logo');
-  expect(project.layerInfo.base.hidden).toBe(true);
-  expect(project.layerInfo.vector).toBe(null);
+  expect(project.layerById('edit').name).toBe('Logo');
+  expect(project.layerById('base').hidden).toBe(true);
+  expect(project.hasVectorLayer).toBe(false);
 });
 
 test('a restored document with shapes and no layers key has its vector layer', async () => {
   const { rectShape } = await import('@/document/shapes.js');
   const { project } = await opened();
   project.addShape(rectShape(2, 2, 12, 10, { fill: '#ff0000' }));
-  project.layerInfo = { ...project.layerInfo, vector: null }; // as a file from before layers has it
+  project.layers = project.layers.filter((l) => l.id !== 'vector'); // as a file from before layers has it
   await pass(SAVE_AFTER_MS);
   const { record, imageBuffer } = await readLatest(project.documentId);
   project.clearImage();
   expect(project.hasVectorLayer).toBe(false);
 
   await project.restoreDocument({ record, imageBuffer }, { documentId: 'restored' });
-  expect(project.layerInfo.vector).toEqual({ name: null, hidden: false });
-  expect(project.hasVectorLayer).toBe(true);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
 });

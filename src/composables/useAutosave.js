@@ -203,7 +203,7 @@ export function useAutosave() {
     () => project.editVersion,
     () => project.editCells, // a typing run changes these long before its commit changes editVersion
     () => project.shapes, // and a Pen's shape these
-    () => JSON.stringify(project.layerInfo), // a layer's name, eye, or the vector layer added
+    () => JSON.stringify(project.layers), // a layer's name, eye, or a layer added
     () => settingsJson(project),
     () => project.filename,
     () => project.imageBuffer, // merging into the image swaps it

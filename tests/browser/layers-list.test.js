@@ -71,11 +71,11 @@ test('the eye hides and shows', async () => {
   expect(eyeOf(0).hasAttribute('aria-pressed')).toBe(false);   // its label says what it does
   eyeOf(0).click();
   await nextTick();
-  expect(project.layerInfo.edit.hidden).toBe(true);
+  expect(project.layerById('edit').hidden).toBe(true);
   expect(eyeOf(0).getAttribute('aria-label')).toBe('Show Layer 1');
   eyeOf(0).click();
   await nextTick();
-  expect(project.layerInfo.edit.hidden).toBe(false);
+  expect(project.layerById('edit').hidden).toBe(false);
 });
 
 test('double-click renames, Escape cancels, blank puts the default back', async () => {
@@ -92,7 +92,7 @@ test('double-click renames, Escape cancels, blank puts the default back', async 
   input().dispatchEvent(new Event('input'));
   await key(input(), 'Enter');
   expect(input()).toBeNull();
-  expect(project.layerInfo.edit.name).toBe('Ink');
+  expect(project.layerById('edit').name).toBe('Ink');
   expect(names()[0]).toBe('Ink');
   await nextTick();
   expect(document.activeElement).toBe(pickOf(0));   // focus back on the row, not lost
@@ -113,7 +113,7 @@ test('double-click renames, Escape cancels, blank puts the default back', async 
   input().blur();   // blur commits, as Enter does
   await nextTick();
   expect(input()).toBeNull();
-  expect(project.layerInfo.edit.name).toBe(null);
+  expect(project.layerById('edit').name).toBe(null);
   expect(names()[0]).toBe('Layer 1');
 
   await key(pickOf(1), 'F2');   // the keyboard's way in

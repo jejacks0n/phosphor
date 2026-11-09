@@ -85,6 +85,7 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   project.editCells = cells;
   project._frameSwaps++; // and before shapes: autosave hears each on its own
   project.shapes = shapes;
+  if (shapes.size) project.addVectorLayer();
   project._shapeLayer?.set(drawnShapes(project)); // drawn by the composite below
   const layer = project.paintLayer;
   layer.loadGrid(paintImage(resolved, layer.cols, layer.rows));

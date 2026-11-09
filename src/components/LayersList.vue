@@ -6,7 +6,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useLayerName } from '@/composables/useLayerName';
 
-// The drawing's layers, top of the stack first: the edit layer, the vector layer if there is one, the base. Picking a row
+// The drawing's layers, top of the stack first (project.layers, reversed), the base at the bottom. Picking a row
 // decides the tabs and what the tools act on; its eye hides or shows the layer; a click on the picked row's name, a
 // double-click on any name, or F2 renames it, Enter or leaving the box keeps the name and Escape doesn't. + Vector
 // layer adds the vector layer while there's none. The side panel's LAYERS and the phone's Layers dialog both show it.
@@ -18,16 +18,17 @@ const list = useTemplateRef('list');
 const uid = useId();   // for the off rows' reasons: the side panel and the phone dialog may both hold a list
 
 const ICONS = {   // a 16-unit box: cells, a path with its points, pixels
-  edit: 'M2 3h5v4H2zM9 3h5v4H9zM2 9h5v4H2zM9 9h5v4H9z',
+  cells: 'M2 3h5v4H2zM9 3h5v4H9zM2 9h5v4H2zM9 9h5v4H9z',
   vector: 'M2 13C4 4 12 12 14 3l1 .3C13 13 5 5 3 13.3z M1 12h3v3H1zM12 1h3v3h-3z',
   base: 'M2 2h4v4H2zM10 2h4v4h-4zM6 6h4v4H6zM2 10h4v4H2zM10 10h4v4h-4z',
 };
 
 const showing = computed(() => !!project.image && workspace.editMode);
-const layers = computed(() => ['edit', ...(project.hasVectorLayer ? ['vector'] : []), 'base'].map((id) => ({
+const layers = computed(() => [...project.layers].reverse().map(({ id, kind, hidden }) => ({
   id,
+  icon: ICONS[id === 'base' ? 'base' : kind],
   name: layerName(id),
-  hidden: project.layerHidden(id),
+  hidden,
   off: id === 'base' ? drawing.hostOnly ?? (project.artInside ? t('art.baseOff') : null) : null,
 })));
 
@@ -91,7 +92,7 @@ function cancel() {
               :aria-disabled="layer.off ? 'true' : null" :aria-describedby="layer.off ? `${uid}-${layer.id}-off` : null"
               @click="pick(layer, $event)" @keydown.f2.prevent="rename(layer)"
           >
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="ICONS[layer.id]"/></svg>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="layer.icon"/></svg>
             <span class="name" @dblclick="rename(layer)">{{ layer.name }}</span>
           </button>
           <span v-if="layer.off" :id="`${uid}-${layer.id}-off`" class="unseen">{{ layer.off }}</span>

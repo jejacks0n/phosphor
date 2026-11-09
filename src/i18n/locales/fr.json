@@ -330,8 +330,8 @@
   "layers": {
     "label": "Calques",
     "base": "Base",
-    "editDefault": "Calque 1",
-    "vectorDefault": "Vecteur 1",
+    "editDefault": "Calque {n}",
+    "vectorDefault": "Vecteur {n}",
     "addVector": "+ Calque vectoriel",
     "showAria": "Afficher {name}",
     "hideAria": "Masquer {name}",

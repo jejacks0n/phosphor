@@ -274,7 +274,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const elsewhere = !tool && onBase && find(false);
     if (elsewhere) {
       e.preventDefault();
-      toast(t('layers.toolOnLayer', { tool: elsewhere.title, layer: projectStore.layerInfo.edit?.name ?? t('layers.editDefault') }));
+      toast(t('layers.toolOnLayer', { tool: elsewhere.title, layer: projectStore.layerById('edit')?.name ?? t('layers.editDefault', { n: projectStore.layerById('edit')?.n ?? 1 }) }));
       return true;
     }
     if (!tool) return false;

@@ -100,18 +100,63 @@ test('inside an art layer: VECTOR, ANSI and SAUCE, the vector row picked', async
   expect(await names()).toEqual(['PIXEL', 'ANSI', 'SAUCE']);
 });
 
-test('the vector layer gone while picked falls back to the edit layer', async () => {
+test('the vector layer stays when its last shape goes', async () => {
   const { project, workspace } = await blank();
   const key = project.addShape(rectShape(10, 10, 16, 20, { fill: RED }));
-  expect(project.layerInfo.vector).toBe(null); // there for its shape alone
+  expect(project.hasVectorLayer).toBe(true); // its first shape adds it
   workspace.editorTab = 'output';
   workspace.viewTab = 'output';
   workspace.pickLayer('vector');
   expect(workspace.pickedLayer).toBe('vector');
   project.deleteShapes([key]);
-  expect(project.hasVectorLayer).toBe(false);
+  expect(project.hasVectorLayer).toBe(true);
+  expect(workspace.pickedLayer).toBe('vector');
+  expect(workspace.editorTab).toBe('vector');
+});
+
+test('a picked layer that leaves the stack picks the one under it', async () => {
+  const { project, workspace } = await blank();
+  const id = project.addLayer('cells', 'edit');
+  expect(workspace.pickLayer(id)).toBe(true);
+  expect(workspace.pickedLayer).toBe(id);
+  expect(project.editId).toBe(id);
+  project.layers = project.layers.filter((l) => l.id !== id);
   expect(workspace.pickedLayer).toBe('edit');
-  expect(workspace.editorTab).toBe('output');
+});
+
+test('an artist\'s picked layer that leaves the stack skips the base under it', async () => {
+  const { project, workspace } = await blank();
+  project.addVectorLayer();
+  workspace.pickLayer('vector');
+  project._sharing = { role: 'artist' };
+  project.layers = project.layers.filter((l) => l.id !== 'vector');
+  expect(workspace.pickedLayer).toBe('edit');
+  project._sharing = null;
+});
+
+test('the art tabs go back to the cells layer last picked, or the topmost while it is gone', async () => {
+  const { project, workspace } = await blank();
+  const id = project.addLayer('cells', 'edit');
+  project.addVectorLayer();
+  workspace.editorTab = 'output';
+  workspace.viewTab = 'output';
+  workspace.pickLayer('base');
+  workspace.pickLayer('vector');
+  workspace.editorTab = 'input';
+  expect(workspace.pickedLayer).toBe('base');
+  workspace.pickLayer('edit');
+  workspace.pickLayer('vector');
+  project.layers = project.layers.filter((l) => l.id !== 'edit');
+  workspace.editorTab = 'output';
+  expect(workspace.pickedLayer).toBe(id);
+});
+
+test('a new document picks the edit layer', async () => {
+  const { project, workspace } = await blank();
+  const id = project.addLayer('cells', 'edit');
+  workspace.pickLayer(id);
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  expect(workspace.pickedLayer).toBe('edit');
 });
 
 test('an artist can not pick the base', async () => {

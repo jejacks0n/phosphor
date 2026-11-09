@@ -58,7 +58,7 @@ export const newLedger = (project) => markRaw(new Ledger({
 // count; Bake and the vector merge write into the base; Bake and the merges that press shapes take the vector layer's,
 // so a hidden vector layer counts while it has any. Refused, nothing changes and there's no undo step.
 export function refusedHidden(project, layers = ['base', 'edit']) {
-  if (!layers.some((id) => project.layerHidden(id) && (id !== 'vector' || project.shapes.size > 0))) return false;
+  if (!layers.some((id) => project.layerHidden(id) && (project.layerById(id).kind !== 'vector' || project.shapes.size > 0))) return false;
   toast(t('layers.hiddenMergeToast'));
   return true;
 }
