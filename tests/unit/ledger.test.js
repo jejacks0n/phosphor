@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { Ledger, keptForWire, keptFromWire } from '../../src/document/ledger.js';
 import { hashCell, hashPixel, eachPixel, Tail } from '../../src/document/changes.js';
 import { TILE } from '../../src/document/History.js';
-import { layerKey } from '../../src/document/layerInfo.js';
+import { keyLayer, layerKey } from '../../src/document/layerInfo.js';
 
 // The ledger's own: 64 MB in a room, and what a cell counts for.
 const MOST_BYTES = 64 * 1024 * 1024, CELL_BYTES = 128;
@@ -47,7 +47,7 @@ function picture({ cells = [], pixels = [] } = {}) {
       let sum = 0;
       for (const [key, entry] of held.cells) sum ^= hashCell(key, entry);
       for (const [at, rgba] of held.pixels) {
-        const [x, y] = at.split(',').map(Number);
+        const [x, y] = keyLayer(at).key.split(',').map(Number);
         sum ^= hashPixel(x, y, rgba);
       }
       return sum;
@@ -260,14 +260,17 @@ test('a stroke on another layer is undone by itself', () => {
 });
 
 test('tiles of two layers don\'t share a stack', () => {
-  const { pic, drawRuns, undo } = setup({ pixels: [['0,0', GRAY], ['L1:0,0', GREEN]] });
-  drawRuns('a', 's', [[0, 0, 1, RED]]);
-  drawRuns('a', 't', [[0, 0, 1, BLUE, 'L1']]);
+  const { pic, ledger, drawRuns, undo } = setup({ pixels: [['1,0', GRAY], ['L1:1,0', GREEN]] });
+  drawRuns('a', 's', [[1, 0, 1, RED]]);
+  drawRuns('a', 't', [[1, 0, 1, BLUE, 'L1']]);
   assert.equal(pic.tileReads, 2);
-  assert.deepEqual(undo('a', 's').runs, [[0, 0, 1, GRAY]]);
-  assert.equal(pic.px(0, 0, 'L1'), BLUE);
-  assert.deepEqual(undo('a', 't').runs, [[0, 0, 1, GREEN, 'L1']]);
-  assert.equal(pic.px(0, 0), GRAY);
+  assert.equal(ledger.sum, pic.sum());
+  assert.deepEqual(undo('a', 's').runs, [[1, 0, 1, GRAY]]);
+  assert.equal(pic.px(1, 0, 'L1'), BLUE);
+  assert.equal(ledger.sum, pic.sum());
+  assert.deepEqual(undo('a', 't').runs, [[1, 0, 1, GREEN, 'L1']]);
+  assert.equal(pic.px(1, 0), GRAY);
+  assert.equal(ledger.sum, pic.sum());
 });
 
 test('a run across tiles lands in each of them', () => {

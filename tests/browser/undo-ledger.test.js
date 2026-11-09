@@ -478,6 +478,29 @@ test('cancelEdit puts back every layer it touched', async () => {
   expect(project.editId).toBe('edit');
 });
 
+test('a canceled edit across layers records nothing, and what could be redone still can', async () => {
+  const { project } = await drawing();
+  const id = project.addLayer('cells', 'edit');
+  project.clearHistory();
+  type(project, 4, 4, 'K');
+  type(project, 5, 5, 'R');
+  project.undo();
+  acrossLayers(project, id);
+  project.cancelEdit();
+  expect([...project.cellsOf('edit').keys()]).toEqual(['4,4']);
+  expect(project.cellsOf(id).size).toBe(0);
+  expect(project.paintOf(id).pixelAt(6, 6)).toBe(null);
+  expect(strokes(project).size).toBe(2); // K, and R undone: nothing of the canceled edit
+  expect(project.canRedo).toBe(true);
+  project.redo();
+  expect(char(project, 5, 5)).toBe('R');
+  expect(project.canRedo).toBe(false);
+  project.undo();
+  project.undo();
+  expect(project.cellsOf('edit').size).toBe(0);
+  expect(project.canUndo).toBe(false);
+});
+
 test('applyChange writes cells and runs, and only what it names changes', async () => {
   const { project } = await drawing();
   type(project, 7, 7, 'K');

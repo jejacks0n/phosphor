@@ -27,7 +27,8 @@ export const historyActions = {
     // Raw, so commitEdit's identity checks see the same objects. keys: the cells it's sent. A stroke begun
     // for a float's move is held for an artist (sharing.js). startFrame: the frame showing as it began, for undo to put
     // its keys back (shapesBefore), only when it's noted up to now: an edit before it not noted yet isn't in it.
-    // layers: the other cells layers onLayer took it onto, each with its cells as it first got there (cancelEdit).
+    // layers: the other cells layers onLayer took it onto, each with its cells as of its last slice (applyChange keeps
+    // that in step with another's writes); noted is null there, since leaving a layer sends its slice.
     const noted = this._noted, current = noted?.frame === this.currentFrame && noted.history === this.history.version && noted.edit === this.editVersion;
     this._stroke = markRaw({ id: randomId(), editCells: this.editCells, layers: new Map(), shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating, startShapes: this.shapes, startFrame: this.hasFrames && current ? { ...this.currentFrame } : null, vectorSelected: useWorkspaceStore().vectorSelected });
     this.paintLayer.beginStroke();
@@ -255,19 +256,19 @@ export const historyActions = {
   cancelEdit() {
     const stroke = this._stroke;
     if (!stroke || stroke.typing || stroke.pen) return;
-    if (stroke.sent) { // some of it has gone out: it comes back the way any stroke does
+    if (stroke.sent && this._sharing) { // some of it has gone out: it comes back the way any stroke does
       this.commitEdit();
       this.undo();
       return;
     }
+    if (stroke.sent) return cancelSent(this, stroke);
     this._stroke = null;
     const patch = this.paintLayer?.endStroke();
     const basePatch = this.baseLayer?.endStroke();
     if (patch) this.paintLayer.applyPatch(patch, 'before');
     if (basePatch) this.baseLayer.applyPatch(basePatch, 'before');
     this.hasPaint = this.paintLayer?.hasPaint ?? false;
-    for (const [own, layer] of endOthers(this, stroke)) if (own) layer.applyPatch(own, 'before'); // nothing sent: nothing changed there
-    for (const [id, { editCells }] of stroke.layers) if (this._layerData.has(id)) this._layerData.get(id).editCells = editCells;
+    endOthers(this, stroke); // nothing sent: nothing changed there
     const pairs = [[this.editCells, stroke.editCells], [this.baseRecords.pins, stroke.baseRecords.pins]];
     this.editCells = stroke.editCells;
     this.shapes = stroke.shapes;
@@ -400,6 +401,22 @@ function endOthers(project, stroke) {
     data.hasPaint = data.paintLayer.hasPaint;
     return [patch, data.paintLayer];
   });
+}
+
+// Alone, an edit some of which went to the ledger (onLayer sends a slice whenever it changes layers) is canceled there:
+// the rest goes in, the ledger takes the whole stroke back on every layer it touched and lets go of it, and the base
+// pixels and pins go back as they were. No undo step is made, so what could be redone still can.
+function cancelSent(project, stroke) {
+  project.sendSlice();
+  project._stroke = null;
+  project.paintLayer?.endStroke(); // the ledger puts the paint back
+  endOthers(project, stroke);
+  const basePatch = project.baseLayer?.endStroke();
+  if (basePatch) project.baseLayer.applyPatch(basePatch, 'before');
+  const pins = [project.baseRecords.pins, stroke.baseRecords.pins];
+  project.setBaseRecords(stroke.baseRecords);
+  project.applyChange(project._ledger.undo(project._by, stroke.id) ?? NO_CHANGE, { patches: [[basePatch, project.baseLayer]], pins });
+  project._ledger.forget(stroke.id);
 }
 
 // Whether a step can't be undone or redone now: in a room, it reaches an art layer someone else is drawing in (a

@@ -187,3 +187,28 @@ for (const style of ['ansi', 'ascii', 'colorAscii']) {
     });
   }
 }
+
+test('a frame with only the edit layer\'s cells is built from its own map, with no pass over it for other layers', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 24, rows: 24 });
+  project.typeAt(1, 1, 'A', INK);
+  project.commitEdit();
+  project.addFrame('blank');
+  const resolved = project.resolvedOf(0), keys = resolved.keys.bind(resolved);
+  let passes = 0;
+  resolved.keys = () => { passes++; return keys(); };
+  await project.builtFrame(0);
+  expect(passes).toBe(0);
+});
+
+test('another cells layer\'s cells are left out of a built frame, for now', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 24, rows: 24 });
+  project.typeAt(1, 1, 'A', INK);
+  project.commitEdit();
+  workspace.pickLayer(project.addLayer('cells', 'edit'));
+  project.typeAt(2, 2, 'B', INK);
+  project.commitEdit();
+  project.addFrame('blank');
+  expect([...(await project.builtFrame(0)).editCells.keys()]).toEqual(['1,1']);
+});
