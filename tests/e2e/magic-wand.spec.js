@@ -84,7 +84,7 @@ test("the wand's Delete takes away every shown layer: with the base hidden it is
   await store(page, 'project', (p) => p.setLayerHidden('base', true));
   await page.getByRole('button', { name: 'Delete', exact: true }).click(); // the edit layer is picked
   await store(page, 'project', (p) => p.setLayerHidden('base', false));
-  await expect.poll(() => base(4, 4)).not.toEqual(['#000000', '#000000']);
+  expect(await base(4, 4)).not.toEqual(['#000000', '#000000']); // the hidden base was left alone
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect.poll(() => base(4, 4)).toEqual(['#000000', '#000000']);
 });
