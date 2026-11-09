@@ -53,21 +53,22 @@ export const newLedger = (project) => markRaw(new Ledger({
   numbering: false,
   mostBytes: MOST_CHANGE_BYTES,
 }));
-// Whether a merge is refused because one of layers is hidden ('base', 'edit'), with a toast saying so. Merge up, Merge
-// down and Into the image take a layer as it shows into another, so both count; Bake and the vector merge write into
-// the base. Refused, nothing changes and there's no undo step.
+// Whether a merge is refused because one of layers is hidden ('base', 'edit', 'vector'), with a toast saying so: hiding
+// never changes the drawing. Merge up, Merge down and Into the image take a layer as it shows into another, so both
+// count; Bake and the vector merge write into the base; Bake and the merges that press shapes take the vector layer's,
+// so a hidden vector layer counts while it has any. Refused, nothing changes and there's no undo step.
 export function refusedHidden(project, layers = ['base', 'edit']) {
-  if (!layers.some((id) => project.layerHidden(id))) return false;
+  if (!layers.some((id) => project.layerHidden(id) && (id !== 'vector' || project.shapes.size > 0))) return false;
   toast(t('layers.hiddenMergeToast'));
   return true;
 }
 
 // The shapes the shape layer draws: all of them, followers on their paths and guides left out (followers.js), but the
 // art layer stepped into (vector.js: enterArt), whose drawing is the edit cells and paint while you're inside it. None
-// while the vector layer is hidden, unless evenHidden (a merge presses them in whether they show or not).
+// while the vector layer is hidden.
 const NO_SHAPES = new Map();
-export function drawnShapes(project, { evenHidden = false } = {}) {
-  if (!evenHidden && project.layerHidden('vector')) return NO_SHAPES;
+export function drawnShapes(project) {
+  if (project.layerHidden('vector')) return NO_SHAPES;
   const key = project._artInside?.key, shapes = shownShapes(project.shapes);
   if (!key || !shapes.has(key)) return shapes;
   const left = new Map(shapes);

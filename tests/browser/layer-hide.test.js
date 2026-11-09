@@ -151,14 +151,41 @@ test('changes to a hidden layer still land', async () => {
   expect(look(project.cells[0])).toEqual(before);
 });
 
-test('a merge presses a hidden vector layer\'s shapes in, as it would shown ones', async () => {
+test('with the vector layer hidden, Bake, Merge down and the vector merge are refused and change nothing', async () => {
   const { project } = await picture();
-  project.addShape(rectShape(0, 0, 20, 40, { fill: RED }));
-  await hide(project, 'vector');
-  project.mergeShapes();
+  project.addShape(rectShape(0, 0, 6, 8, { fill: RED }));
+  typed(project, 2, 2, 'M');
   await settle(project);
-  expect(project.shapes.size).toBe(0);
-  expect(project.cells.every((cell) => cell.bg.hex === RED)).toBe(true);
+  expect(project.canBake).toBe(true);
+  await hide(project, 'vector');
+  const kept = () => [project.editCells, project.baseRecords, project.historyVersion, project.shapes, project.image, project.baseLayer.version];
+  const before = kept();
+
+  for (const merge of [() => project.bake(), () => project.mergeDown(), () => project.mergeDown({ c0: 0, r0: 0, c1: 3, r1: 3 }), () => project.mergeShapes()]) {
+    closeToast();
+    await merge();
+    expect(kept()).toEqual(before);
+    expect(kept()[3]).toBe(before[3]);
+    expect(toastMessage.value).toBe('Show the layer to merge it');
+  }
+
+  // Merge down of a selection that presses no shape goes ahead.
+  closeToast();
+  typed(project, 8, 8, 'Z');
+  project.mergeDown({ c0: 7, r0: 7, c1: 9, r1: 9 });
+  expect(project.editCells.has('8,8')).toBe(false);
+  expect(project.shapes).toBe(before[3]);
+  expect(toastMessage.value).toBeFalsy();
+});
+
+test('a hidden vector layer with no shapes doesn\'t stop a merge', async () => {
+  const { project } = await picture();
+  project.addVectorLayer();
+  typed(project, 2, 2, 'M');
+  await hide(project, 'vector');
+  project.mergeDown();
+  expect(project.editCells.size).toBe(0);
+  expect(toastMessage.value).toBeFalsy();
 });
 
 test('with the edit layer hidden, Merge down and Into the image are refused and change nothing', async () => {

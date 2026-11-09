@@ -71,7 +71,7 @@ export const mergingActions = {
   // clipboard; recent colors are shared across projects and stay. One undo step (slider moves after
   // it are steps of their own).
   async bake({ lockPalette = false } = {}) {
-    if (!this.canBake || this._baking || refusedHidden(this, ['base'])) return;
+    if (!this.canBake || this._baking || refusedHidden(this, ['base', 'vector'])) return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this._baking = true;
     let again = false;
@@ -425,13 +425,15 @@ export const mergingActions = {
   // the edit cells and paint: every one touching rect (or all), whole, with those beneath that overlap them.
   mergeDown(rect = null) {
     if (!this.image || this.hasFrames || refusedHidden(this)) return; // with frames, it would put one frame in the base, under all of them
+    const area = rect && { x: rect.c0, y: 2 * rect.r0, w: rect.c1 - rect.c0 + 1, h: 2 * (rect.r1 - rect.r0 + 1) };
+    // The shapes it presses: those touching the area where they show, with those beneath (none for guides alone).
+    const pressing = () => this.pressedKeys([...placedShapes(this)].filter(([, shape]) => !area || meets(shapeBounds(shape), area)).map(([key]) => key));
+    if (this.layerHidden('vector') && pressing().size && refusedHidden(this, ['vector'])) return; // what's hidden isn't pressed in
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     this.commitPending();
-    const area = rect && { x: rect.c0, y: 2 * rect.r0, w: rect.c1 - rect.c0 + 1, h: 2 * (rect.r1 - rect.r0 + 1) };
-    const touching = [...placedShapes(this)].filter(([, shape]) => !area || meets(shapeBounds(shape), area)).map(([key]) => key); // where they show
-    const keys = touching.length ? this.pressedKeys(touching) : null;
-    const pressed = keys?.size ? this.pressShapes(keys) : null; // guides alone press nothing
+    const keys = pressing();
+    const pressed = keys.size ? this.pressShapes(keys) : null; // guides alone press nothing
 
     const rows = charRowsOf(this.rows);
     const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);

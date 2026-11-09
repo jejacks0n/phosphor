@@ -408,7 +408,7 @@ export const vectorActions = {
   // every guide, which draws nothing), baseRecords (without the pins they cover, since the shapes' pixels are what shows
   // there, and with their art layers' characters) }.
   pressShapes(pressed) {
-    this._shapeLayer.set(drawnShapes(this, { evenHidden: true }));
+    this._shapeLayer.set(drawnShapes(this));
     const { canvas, covered, pins } = this._shapeLayer.pressed(pressed);
     const shapes = new Map([...this.shapes].filter(([key, shape]) => !pressed.has(key) || shape.guide));
     return { base: { canvas, hasPaint: true }, shapes, baseRecords: withPins(withoutPins(this.baseRecords, covered), pins) };
@@ -418,7 +418,7 @@ export const vectorActions = {
   // base layer's pixels, where they stop being shapes. One whole-layer step. A still only: in an animation the
   // base is under every frame.
   mergeShapes(keys = null) {
-    if (!this.image || this.hasFrames || refusedHidden(this, ['base'])) return;
+    if (!this.image || this.hasFrames || refusedHidden(this, ['base', 'vector'])) return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     this.commitPending();
