@@ -330,7 +330,8 @@
   },
   "layers": {
     "label": "Layers",
-    "base": "Base"
+    "base": "Base",
+    "hiddenToast": "Show the layer to draw on it"
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",

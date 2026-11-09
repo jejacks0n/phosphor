@@ -115,7 +115,7 @@ export const renderingActions = {
           this.renderer.usePalette(null);
         }
         this._shapeLayer?.set(drawnShapes(this));
-        this.renderedCells = await this.renderer.render(this.image, this.processParams, this.paintLayer, baseParams(this.processParams));
+        this.renderedCells = await this.renderer.render(this.image, this.processParams, this.shownPaint, baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();
         if (this._moviePalette || (this.hasFrames && this.quantize === 'count')) this.pickPalette(); // settings changed: a whole movie's palette follows
@@ -138,7 +138,7 @@ export const renderingActions = {
   recompose(pixels) {
     const rows = new Set();
     for (const { y } of pixels) rows.add(y >> 1);
-    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.editCells, this.renderedCells), rows);
+    this.setCells(this.renderer.updateCells(this.composedCells, pixels, this.processParams, this.shownEditCells, this.renderedCells), rows);
   },
 
   // Recomposite the output after the paint or base pixels changed. When that rebalanced the Number
@@ -149,7 +149,7 @@ export const renderingActions = {
   // every cell was rebuilt. rect: the grid pixels that changed ({ x, y, w, h }), when an edit knows them.
   composite({ rect = null } = {}) {
     const hold = !!this._stroke && this.quantize === 'count';
-    const changed = this.renderer.composite(this.paintLayer, this.processParams, { hold, rect, open: !!this._stroke });
+    const changed = this.renderer.composite(this.shownPaint, this.processParams, { hold, rect, open: !!this._stroke });
     if (changed) this.rebuildCells();
     return changed;
   },
@@ -169,11 +169,11 @@ export const renderingActions = {
 
   applyEditCells() {
     if (!this.renderedCells.length) return;
-    const composed = this.renderer.composeAll(this.renderedCells, this.editCells, this.processParams);
+    const editCells = this.shownEditCells, composed = this.renderer.composeAll(this.renderedCells, editCells, this.processParams);
     // The converter's characters are one column wide (Cells.glyphsOf), so only a row with an edit
     // cell, a pin or an art layer's character can hold a wide one: the rest are laid out as they are.
     const rows = new Set();
-    for (const key of this.editCells.keys()) rows.add(parseKey(key).row);
+    for (const key of editCells.keys()) rows.add(parseKey(key).row);
     for (const key of this.baseRecords.pins.keys()) rows.add(parseKey(key).row);
     if (this.renderer.shapes?.hasArt) for (const key of this.renderer.shapes.artCells()) rows.add(parseKey(key).row);
     this.setCells(composed, rows, composed);

@@ -53,8 +53,11 @@ export const newLedger = (project) => markRaw(new Ledger({
   mostBytes: MOST_CHANGE_BYTES,
 }));
 // The shapes the shape layer draws: all of them, followers on their paths and guides left out (followers.js), but the
-// art layer stepped into (vector.js: enterArt), whose drawing is the edit cells and paint while you're inside it.
-export function drawnShapes(project) {
+// art layer stepped into (vector.js: enterArt), whose drawing is the edit cells and paint while you're inside it. None
+// while the vector layer is hidden, unless evenHidden (a merge presses them in whether they show or not).
+const NO_SHAPES = new Map();
+export function drawnShapes(project, { evenHidden = false } = {}) {
+  if (!evenHidden && project.layerHidden('vector')) return NO_SHAPES;
   const key = project._artInside?.key, shapes = shownShapes(project.shapes);
   if (!key || !shapes.has(key)) return shapes;
   const left = new Map(shapes);

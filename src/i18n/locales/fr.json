@@ -330,7 +330,8 @@
   },
   "layers": {
     "label": "Calques",
-    "base": "Base"
+    "base": "Base",
+    "hiddenToast": "Affichez le calque pour dessiner dessus"
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",

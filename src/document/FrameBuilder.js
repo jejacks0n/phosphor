@@ -21,6 +21,13 @@ import { ctx2d } from '../lib/Canvas.js';
 const sameColor = (a, b) => a === b || (a.hex === b.hex && (a.c === b.c || typeof a.c !== 'number'));
 const sameCell = (a, b) => a === b || (a.char === b.char && a.wide === b.wide && sameColor(a.fg, b.fg) && sameColor(a.bg, b.bg));
 
+// What a frame shows with hidden layers left out ({ edit, vector }: whether each is hidden): the edit layer's cells and
+// paint, or the shapes (and art layers).
+function shownOf(resolved, hidden) {
+  if (!hidden.edit && !hidden.vector) return resolved;
+  return new Map([...resolved].filter(([key]) => (isShapeKey(key) ? !hidden.vector : !hidden.edit)));
+}
+
 // A frame's shapes, from its resolved states, as they're drawn: followers on their paths, guides left out.
 function shapesOf(resolved) {
   const shapes = new Map();
@@ -32,10 +39,12 @@ export default class FrameBuilder {
   #renderer = new Renderer();
   #scratch = null;
   #shapes = null; // its own ShapeLayer over the store's base layer: each frame has its own shapes
+  #hidden = { edit: false, vector: false }; // the layers left out
 
   // The picture through the pipeline, for these settings. stores: the store's base layer and records, which
-  // are under every frame.
-  async prepare(image, params, { baseLayer, baseRecords }) {
+  // are under every frame, and hidden: the layers left out ({ edit, vector }).
+  async prepare(image, params, { baseLayer, baseRecords, hidden = this.#hidden }) {
+    this.#hidden = hidden;
     this.#shapes = baseLayer ? new ShapeLayer(baseLayer) : null;
     Object.assign(this.#renderer, { baseLayer, baseRecords, shapes: this.#shapes });
     this.#scratch = new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 });
@@ -49,7 +58,8 @@ export default class FrameBuilder {
     const renderer = this.#renderer, { cols, rows } = params, size = cols * rows * 4;
     const all = new Uint8ClampedArray(size * resolved.length);
     renderer.usePalette([]); // none to snap to, and none to pick
-    resolved.forEach((frame, at) => {
+    resolved.forEach((each, at) => {
+      const frame = shownOf(each, this.#hidden);
       this.#scratch.loadGrid(paintImage(frame, cols, rows));
       this.#shapes?.set(shapesOf(frame));
       renderer.composite(this.#scratch, params);
@@ -63,8 +73,8 @@ export default class FrameBuilder {
   }
 
   // resolved: what the frame shows (frames.js). previous: the frame before's build, to share cells with.
-  build(resolved, params, previous = null) {
-    const renderer = this.#renderer, { cols, rows } = params;
+  build(all, params, previous = null) {
+    const resolved = shownOf(all, this.#hidden), renderer = this.#renderer, { cols, rows } = params;
     this.#scratch.loadGrid(paintImage(resolved, cols, rows));
     this.#shapes?.set(shapesOf(resolved));
     renderer.composite(this.#scratch, params);

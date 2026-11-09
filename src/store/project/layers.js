@@ -15,8 +15,12 @@ export const layerActions = {
     changed(this, id, { name: goodLayerName(name) });
   },
 
+  // Hidden layers leave the screen and the exports: the whole grid is drawn again (rendering.js hands the renderer only
+  // what shows). Drawing on one is refused (tools/index.js).
   setLayerHidden(id, hidden) {
+    if (this.layerHidden(id) === !!hidden) return;
     changed(this, id, { hidden: !!hidden });
+    this.render();
   },
 
   // The vector layer, before it has a shape.

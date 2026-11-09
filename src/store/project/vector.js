@@ -408,7 +408,7 @@ export const vectorActions = {
   // every guide, which draws nothing), baseRecords (without the pins they cover, since the shapes' pixels are what shows
   // there, and with their art layers' characters) }.
   pressShapes(pressed) {
-    this._shapeLayer.set(drawnShapes(this));
+    this._shapeLayer.set(drawnShapes(this, { evenHidden: true }));
     const { canvas, covered, pins } = this._shapeLayer.pressed(pressed);
     const shapes = new Map([...this.shapes].filter(([key, shape]) => !pressed.has(key) || shape.guide));
     return { base: { canvas, hasPaint: true }, shapes, baseRecords: withPins(withoutPins(this.baseRecords, covered), pins) };

@@ -60,6 +60,8 @@ function insideCells(project, inside, cells) {
   });
 }
 
+const NO_CELLS = new Map(); // a hidden edit layer's cells, never changed
+
 // While the state is made there's no store yet, but there is by the time the ledger reads.
 function firstLedger() {
   const pinia = getActivePinia();
@@ -141,6 +143,12 @@ export const useProjectStore = defineStore('project', {
       : Object.keys(state._locks).find((sub) => sub !== state._by && state._locks[sub].key === key) ?? null),
     // The vector layer is there once it's added, or the drawing has shapes.
     hasVectorLayer: (state) => !!state.layerInfo.vector || state.shapes.size > 0,
+    // Whether a layer's eye is shut ('base', 'edit' or 'vector').
+    layerHidden: (state) => (id) => !!state.layerInfo[id]?.hidden,
+    // The edit cells and paint the renderer is handed: none while their layer is hidden. Inside an art layer they're
+    // the art layer's, so the vector layer's eye decides.
+    shownEditCells() { return this.layerHidden(this._artInside ? 'vector' : 'edit') ? NO_CELLS : this.editCells; },
+    shownPaint() { return this.layerHidden(this._artInside ? 'vector' : 'edit') ? null : this.paintLayer; },
     // Anything on the edit layer or the vector layer, of any frame (a grid resize is then a canvas resize).
     hasEdits() { return this.hasEditLayer || this.shapes.size > 0; },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
