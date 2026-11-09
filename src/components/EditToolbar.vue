@@ -128,7 +128,7 @@ const kept = computed(() => wandHere.value || (!!workspace.selection && ['input'
 const deselect = () => project.changeSelection((w) => { w.selection = null; w.wand = null; });
 // What Set FG, Set BG and Fill recolor: the active tool's own selection.
 const recolored = computed(() => (workspace.activeTool === 'wand' ? wandHere.value && workspace.wand : workspace.activeTool === 'select' && workspace.selection));
-const recolor = (colors) => project.recolorSelection(recolored.value, workspace.editorTab, workspace.toolLayers, colors);
+const recolor = (colors) => project.recolorSelection(recolored.value, workspace.editorTab, workspace.selectionLayers, colors);
 const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.renderStyle));
 // VECTOR's options row (VectorOptions), with Vector select, the Pen and the Shape tool. It stays up with
 // nothing selected, so selecting a shape doesn't move the canvas under the pointer.

@@ -241,6 +241,35 @@ test('the toolbar\'s Copy takes the shown layers too', async () => {
   expect(workspace.clipboard.cells.some(Boolean)).toBe(true);
 });
 
+test('Set FG on a selection recolors every shown layer, the base cell too with the edit layer picked; with the base hidden, only the edit cell', async () => {
+  const { project, workspace } = await blank();
+  const GREEN = '#00ff00';
+  project.setBaseRecords(withPins(project.baseRecords, [{ col: 2, row: 2, char: 'P' }]));
+  project.typeAt(3, 3, 'E', { fg: RED });
+  project.commitEdit();
+  workspace.editorTab = 'output';
+  workspace.pickLayer('edit');
+  workspace.setActiveTool('select');
+  workspace.selection = { c0: 2, r0: 2, c1: 4, r1: 4 };
+  workspace.editFgColor = GREEN;
+  const host = document.createElement('div');
+  document.body.append(host);
+  mounted = createApp(EditToolbar).use(i18n);
+  mounted.mount(host);
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  const setFg = () => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Set FG').click();
+  project.setLayerHidden('base', true);
+  setFg();
+  expect(project.editCellAt(3, 3).fg).toBe(GREEN);
+  expect(project.completeAt(2, 2).fg).not.toBe(GREEN);
+  project.undo();
+  project.setLayerHidden('base', false);
+  setFg();
+  host.remove();
+  expect(project.editCellAt(3, 3).fg).toBe(GREEN);
+  expect(project.completeAt(2, 2).fg).toBe(GREEN);
+});
+
 test('Cut takes and removes every shown layer; with the base hidden, only the edit cell', async () => {
   const { project, workspace, press } = await selecting();
   project.setLayerHidden('base', true);

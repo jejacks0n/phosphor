@@ -162,9 +162,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     activeTool(state) {
       return state[toolKey(state.editorTab)];
     },
-    // The layers the eraser, the Flip tool and Set FG / Set BG act on: the picked one.
+    // The layers the eraser and the Flip tool act on: the picked one.
     toolLayers: (state) => ({ base: state.pickedLayer === 'base', edit: state.pickedLayer !== 'base' }),
-    // The layers a selection's actions act on (Select's Copy, Cut, Delete, move, flip and turn; the Magic Wand's Delete):
+    // The layers a selection's actions act on (Select's Copy, Cut, Delete, move, flip and turn; the Magic Wand's Delete; Set FG / Set BG):
     // every shown one, whatever is picked. To leave a layer out, hide it.
     selectionLayers() {
       const project = useProjectStore();

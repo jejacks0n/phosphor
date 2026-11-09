@@ -14,9 +14,9 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   ANSI; the vector layer shows VECTOR. The drawing tools act on the picked layer: the eraser and Flip
   take only that layer. [Selections](#the-select-tool) act on every layer that shows, whatever is picked;
   to leave a layer out, hide it. With the base picked only the tools that work on it are offered: a key
-  for one of the others (P for the Pencil, say) says which layer that
-  tool draws on, "Pencil draws on Layer 1. Pick it in Layers." Picking the edit layer or the base from
-  VECTOR goes back to the art tab you last had.
+  for one of the others (P for the Pencil, say) says which layer that tool draws on, "Pencil draws on
+  Layer 1. Pick it in Layers." Picking the edit layer or the base from VECTOR goes back to the art tab
+  you last had.
 - **+ Vector layer**, under the list, adds the vector layer and picks it. It's there while the drawing has
   none; a drawing with shapes already has one.
 - **Click the picked row's name** (or double-click any name, or press F2 on its row) to rename the layer; a
@@ -445,17 +445,18 @@ selected in the ANSI view. **Escape**, **Deselect**, a new rectangle, a grid cha
 document drop it.
 
 **Delete** on the wand's options row (or the Delete or Backspace key, except while typing in Edit
-Mode) takes away what's in the selection on the layers that show, in one undo step: from the edit layer the edit
-cells and paint, from the base the picture, which turns black, as the Eraser does on the base (whole cells in
-the ANSI view, just the selected pixels in the pixel view).
+Mode) takes away what's in the selection on the layers that show, in one undo step: from the edit
+layer the edit cells and paint, from the base the picture, which turns black, as the Eraser does on
+the base (whole cells in the ANSI view, just the selected pixels in the pixel view).
 
 ### Recoloring a selection
 
 With the Magic Wand's selection (the wand being the tool) or a Select rectangle (Select being the
 tool), the options row has **Set FG** and **Set BG** in the ANSI view: every selected cell takes
-your foreground or background color, on the picked layer, in one undo step. Only that color
+your foreground or background color, on the layers that show (each cell where it shows), in one undo step. Only that color
 changes: each cell keeps the character and the other color it shows, whatever picked them (Best
 match, By shape, dithering, the palette), and paint on it keeps showing the color it gave its half.
+With both layers showing, a cell is recolored on the layer it shows from; hide one to leave it out.
 On the edit layer the cells take it as edit cells, replacing the paint there. On the base it goes into the
 picture's own colors (a cell's background is its top pixel, its foreground its bottom one), with the
 cell's character pinned, so the converter doesn't pick another for the new colors. Your color shows as the palette and the color sliders make it, as anything you draw
@@ -532,8 +533,9 @@ the two halves of each cell's base colors.
   the pixel view one is lit at a time, and **Shift** picks into the other one (while you hold it, that one is
   lit).
 - **The status bar** starts with the name of the picked layer, so a folded panel or a phone still says which
-  layer you're on (it isn't there in the pixel view). Then it follows the tool: Edit Mode shows the cell under the cursor, Select the
-  selection's size and place, and the Eyedropper its last pick and where each color came from.
+  layer you're on (it isn't there in the pixel view). Then it follows the tool: Edit Mode shows the cell
+  under the cursor, Select the selection's size and place, and the Eyedropper its last pick and where
+  each color came from.
   On the right it shows that Space pans, and while you hold Alt (Option on a Mac) or Shift, what that key
   does with the tool. When the view is too narrow for all of
   it, the bar scrolls sideways, like the toolbar's options row.
