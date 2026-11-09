@@ -149,7 +149,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon'
     vectorSides: 5,          // a polygon's sides, 3 to 12
     sidePanelWidth: useLocalStorage('phosphor.sidePanelWidth', 280, { serializer: StorageSerializers.number, listenToStorageChanges: false }), // the side panel's (SidePanel) width in px, as dragged: each tab its own, the last kept for the next
-    sidePanelFolded: useLocalStorage('phosphor.sidePanelFolded', true, { listenToStorageChanges: false }), // the side panel folded to its rail (to begin with, till LAYERS lists something)
+    sidePanelFolded: useLocalStorage('phosphor.sidePanelFolded', true, { listenToStorageChanges: false }), // the side panel folded to its rail (it starts folded)
     sidePanelTab: 'layers',  // the side panel's tab: 'layers' | 'social' (LOBBY out of a room, CHAT in one)
     keysOpen: useLocalStorage('phosphor.keysOpen', true), // the Keys panel (KeysPanel) open, or folded away
     keysZoom: useLocalStorage('phosphor.keysZoom', null, { serializer: StorageSerializers.number }), // its lanes' px a frame, or null to fit (keyLanes.js)

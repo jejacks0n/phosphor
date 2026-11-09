@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useId, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -13,6 +13,7 @@ import { useDrawingStore } from '@/store/DrawingStore';
 const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
 const { t } = useI18n();
 const list = useTemplateRef('list');
+const uid = useId();   // for the off rows' reasons: the side panel and the phone dialog may both hold a list
 
 const DEFAULT_NAMES = { edit: 'layers.editDefault', vector: 'layers.vectorDefault', base: 'layers.base' };
 const ICONS = {   // a 16-unit box: cells, a path with its points, pixels
@@ -42,16 +43,27 @@ async function rename(layer) {
   await nextTick();
   list.value.querySelector('input')?.select();
 }
+// Enter and Escape put focus back on the row; leaving the box (the blur Enter's own unmounting brings, too) doesn't.
 function keep() {
   if (!renaming.value) return;
   project.renameLayer(renaming.value, draft.value);
   renaming.value = null;
 }
-async function cancel() {
+async function backToRow(id) {
+  await nextTick();
+  list.value?.querySelector(`li[data-id="${id}"] button.pick`)?.focus();
+}
+function enter(e) {
+  if (e.isComposing) return;   // confirming an IME's word, not the name
+  e.preventDefault();
+  const id = renaming.value;
+  keep();
+  backToRow(id);
+}
+function cancel() {
   const id = renaming.value;
   renaming.value = null;
-  await nextTick();
-  list.value.querySelector(`li[data-id="${id}"] button.pick`)?.focus();
+  backToRow(id);
 }
 </script>
 
@@ -63,17 +75,19 @@ async function cancel() {
         <li v-for="layer in layers" :key="layer.id" :data-id="layer.id" :class="{ picked: workspace.shownPick === layer.id, hidden: layer.hidden }">
           <input
               v-if="renaming === layer.id" v-model="draft" maxlength="40" :aria-label="t('layers.renameAria', { name: layer.name })"
-              @keydown.enter.prevent="keep" @keydown.esc.prevent.stop="cancel" @blur="keep"
+              @keydown.enter="enter" @keydown.esc.prevent.stop="cancel" @blur="keep"
           >
           <button
-              v-else class="pick" :aria-pressed="workspace.shownPick === layer.id" :disabled="!!layer.off" :title="layer.off"
-              @click="workspace.pickLayer(layer.id)" @keydown.f2.prevent="rename(layer)"
+              v-else class="pick" :aria-pressed="workspace.shownPick === layer.id" :title="layer.off"
+              :aria-disabled="layer.off ? 'true' : null" :aria-describedby="layer.off ? `${uid}-${layer.id}-off` : null"
+              @click="layer.off || workspace.pickLayer(layer.id)" @keydown.f2.prevent="rename(layer)"
           >
             <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="ICONS[layer.id]"/></svg>
             <span class="name" @dblclick="rename(layer)">{{ layer.name }}</span>
           </button>
+          <span v-if="layer.off" :id="`${uid}-${layer.id}-off`" class="unseen">{{ layer.off }}</span>
           <button
-              class="eye link" :aria-pressed="!layer.hidden" :aria-label="t(layer.hidden ? 'layers.showAria' : 'layers.hideAria', { name: layer.name })"
+              class="eye link" :aria-label="t(layer.hidden ? 'layers.showAria' : 'layers.hideAria', { name: layer.name })"
               :title="t(layer.hidden ? 'layers.showAria' : 'layers.hideAria', { name: layer.name })" @click="project.setLayerHidden(layer.id, !layer.hidden)"
           >
             <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -103,6 +117,7 @@ ul {
   list-style: none;
 }
 li {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -137,9 +152,17 @@ li.picked button.pick {
 li.hidden button.pick {
   color: var(--text-muted);
 }
-button.pick:disabled {
+button.pick[aria-disabled='true'] {
   color: var(--text-faint);
   cursor: not-allowed;
+}
+span.unseen {   /* for screen readers only: why the row is off (the title says it on hover) */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 span.name {
   overflow: hidden;
@@ -169,7 +192,7 @@ button.eye {
   padding: 4px;
   color: var(--text-muted);
 }
-button.eye[aria-pressed='true'] {
+li:not(.hidden) button.eye {
   color: var(--text-dim);
 }
 button.add {

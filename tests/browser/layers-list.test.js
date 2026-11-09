@@ -1,6 +1,6 @@
 // The LAYERS list (LayersList.vue): the drawing's layers top first, a row picked to decide the tabs, an eye to hide one,
 // a double-click to rename it, and + Vector layer while there's none.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
@@ -67,12 +67,11 @@ test('picking a row picks its layer', async () => {
 
 test('the eye hides and shows', async () => {
   const { project } = await mount();
-  expect(eyeOf(0).getAttribute('aria-pressed')).toBe('true');
   expect(eyeOf(0).getAttribute('aria-label')).toBe('Hide Layer 1');
+  expect(eyeOf(0).hasAttribute('aria-pressed')).toBe(false);   // its label says what it does
   eyeOf(0).click();
   await nextTick();
   expect(project.layerInfo.edit.hidden).toBe(true);
-  expect(eyeOf(0).getAttribute('aria-pressed')).toBe('false');
   expect(eyeOf(0).getAttribute('aria-label')).toBe('Show Layer 1');
   eyeOf(0).click();
   await nextTick();
@@ -95,6 +94,8 @@ test('double-click renames, Escape cancels, blank puts the default back', async 
   expect(input()).toBeNull();
   expect(project.layerInfo.edit.name).toBe('Ink');
   expect(names()[0]).toBe('Ink');
+  await nextTick();
+  expect(document.activeElement).toBe(pickOf(0));   // focus back on the row, not lost
 
   name().dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
   await nextTick();
@@ -128,17 +129,45 @@ test('inside an art layer the vector row shows as picked and the base row is off
   await nextTick();
   expect(names()).toEqual(['Layer 1', 'Vector 1', 'Base']);
   expect(pickOf(1).getAttribute('aria-pressed')).toBe('true');
-  expect(pickOf(2).disabled).toBe(true);
-  expect(pickOf(2).title).toBe('Inside an art layer, tools draw on the edit layer only.');
+  expect(pickOf(2).getAttribute('aria-disabled')).toBe('true');
+  expect(reasonOf(pickOf(2))).toBe('Inside an art layer, tools draw on the edit layer only.');
 });
+
+// The reason an off row gives a screen reader: the text its aria-describedby names.
+const reasonOf = (button) => button.getAttribute('aria-describedby').split(' ').map((id) => document.getElementById(id).textContent).join(' ');
 
 test('the base row is off for an artist', async () => {
   const { workspace } = await mount(({ project }) => { project._sharing = { role: 'artist' }; });
-  expect(pickOf(1).disabled).toBe(true);
+  const pickSpy = vi.spyOn(workspace, 'pickLayer');
+  expect(pickOf(1).getAttribute('aria-disabled')).toBe('true');
+  expect(reasonOf(pickOf(1))).toBe("Only the room's host can change this.");
   expect(pickOf(1).title).toBe("Only the room's host can change this.");
   pickOf(1).click();
   await nextTick();
+  expect(pickSpy).not.toHaveBeenCalled();
   expect(workspace.pickedLayer).toBe('edit');
+  expect(pickOf(0).hasAttribute('aria-disabled')).toBe(false);
+  expect(pickOf(0).hasAttribute('aria-describedby')).toBe(false);
+});
+
+test('Enter and the blur after it rename once; Enter while an IME is composing keeps the box', async () => {
+  const { project } = await mount();
+  const spy = vi.spyOn(project, 'renameLayer');
+  const input = () => rows()[0].querySelector('input');
+  rows()[0].querySelector('.name').dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+  await nextTick();
+  input().value = 'Ink';
+  input().dispatchEvent(new Event('input'));
+  input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }));
+  await nextTick();
+  expect(input()).not.toBeNull();
+  expect(spy).not.toHaveBeenCalled();
+  const box = input();
+  box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  box.dispatchEvent(new FocusEvent('blur'));   // the box going takes focus with it
+  await nextTick();
+  expect(spy).toHaveBeenCalledTimes(1);
+  expect(spy).toHaveBeenCalledWith('edit', 'Ink');
 });
 
 test('on SAUCE it says so', async () => {
