@@ -20,6 +20,8 @@ is showing; with nothing open, or on SAUCE, it says so instead.
 - **Double-click a name** (or press F2 on its row) to rename the layer. Enter, or leaving the box, keeps the
   new name; Escape keeps the old one. A name is up to 40 characters, and a blank one puts the default back.
   Names are saved with the drawing, and a rename isn't an undo step.
+- On a phone there's no side panel: a **Layers** button in the tab bar, left of Animate and there while the art
+  shows, opens the same list in a dialog. Picking a row, or + Vector layer, closes it.
 - In a room, only the host can pick the base: its row is off for an artist. A rename or an eye is yours
   alone there; someone joining gets the host's names, with every layer showing.
 - Inside an [art layer](vector.md#art-layers) the vector row shows as picked and the base row is off;

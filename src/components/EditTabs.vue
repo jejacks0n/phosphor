@@ -11,6 +11,8 @@ import { usePlayback } from '@/composables/usePlayback';
 import { MAX_ANIMATION_CELLS, charRowsOf } from '@/lib/Cells';
 import { toast } from '@/composables/useToast';
 import { formatNumber } from '@/i18n/format';
+import ModalDialog from '@/components/ModalDialog.vue';
+import LayersList from '@/components/LayersList.vue';
 
 const props = defineProps({
   modelValue: { type: String, required: true },
@@ -56,6 +58,18 @@ const tabList = useTemplateRef('tabList');
 const indicatorStyle = ref({ transform: 'translateX(0px)', width: '0px', opacity: 0 });
 
 const isDesktop = useMediaQuery(desktopQuery);
+
+// A phone has no side panel: its LAYERS list opens from a button here, in a dialog. Picking a row (or + Vector layer)
+// closes it, and so do Escape and the backdrop; focus goes back to the button.
+const layersOpen = ref(false);
+const layersButton = useTemplateRef('layersButton');
+function closeLayers() {
+  layersOpen.value = false;
+  nextTick(() => layersButton.value?.focus());
+}
+function onLayersClick(event) {
+  if (event.target.closest('button.pick:not([aria-disabled]), button.add')) closeLayers();
+}
 
 // The art tabs wait for something to show. From ROOM they're the way back to the start screen.
 const noArt = computed(() => !image.value && props.modelValue !== 'room');
@@ -161,6 +175,10 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
       </button>
       <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
     </div>
+    <button v-if="!isDesktop && workspace.editMode" ref="layersButton" class="layers" @click="layersOpen = true">{{ t('layers.label') }}</button>
+    <ModalDialog v-if="layersOpen" :label="t('layers.label')" @cancel="closeLayers">
+      <div @click="onLayersClick"><LayersList/></div>
+    </ModalDialog>
     <label class="animate" :class="{ on: project.animate, off: !canSwitch }" :title="switchTitle">
       <input type="checkbox" role="switch" :aria-label="t('tabs.animate')" :checked="project.animate" :aria-disabled="blocked || null" @change="switchAnimate">
       <span class="track" aria-hidden="true"></span>
@@ -306,6 +324,16 @@ div.indicator {
   transition: width 0.5s cubic-bezier(0.23, 1, 0.32, 1), transform 0.1s ease;
   background: var(--accent);
   box-shadow: 0 0 3px var(--accent), 0 0 20px var(--accent);
+}
+
+button.layers {
+  margin-left: auto;
+  padding: 3px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+button.layers ~ label.animate {
+  margin-left: 0;
 }
 
 label.animate {

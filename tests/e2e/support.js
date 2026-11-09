@@ -79,18 +79,18 @@ export async function saveAs(page, button, { name } = {}) {
 // An editor tab: PIXEL, ANSI, SAUCE or SOCIAL.
 export const tab = (page, label) => page.getByRole('tab', { name: label, exact: true });
 
-// A layer picked in the side panel's LAYERS, as the tabs follow: 'Vector 1' (the default) is VECTOR, added first with
-// + Vector layer when the drawing has none; 'Layer 1' is back to PIXEL or ANSI. A folded panel is folded again after,
-// so the canvas keeps its size. A phone has no side panel, so there the store picks.
+// A layer picked in LAYERS, as the tabs follow: 'Vector 1' (the default) is VECTOR, added first with + Vector layer when
+// the drawing has none; 'Layer 1' is back to PIXEL or ANSI. A folded side panel is folded again after, so the canvas
+// keeps its size. A phone has no side panel: its Layers button opens the list in a dialog, which closes on the pick.
 export async function pickLayer(page, name = 'Vector 1') {
   const panel = page.locator('.side-panel');
-  if (!await panel.count()) {   // ponytail: until the phone has its Layers dialog, which this then clicks through
-    return page.evaluate((name) => {
-      const pinia = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia;
-      const id = { 'Vector 1': 'vector', 'Layer 1': 'edit', Base: 'base' }[name];
-      if (id === 'vector') pinia._s.get('project').addVectorLayer();
-      pinia._s.get('workspace').pickLayer(id);
-    }, name);
+  if (!await panel.count()) {
+    await page.getByRole('button', { name: 'Layers', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Layers' });
+    const add = dialog.getByRole('button', { name: '+ Vector layer' });
+    if (name === 'Vector 1' && await add.isVisible()) await add.click();
+    else await dialog.locator('li button.pick', { hasText: name }).click();
+    return;
   }
   const open = page.getByRole('button', { name: 'Open the panel' });
   const folded = await open.isVisible();

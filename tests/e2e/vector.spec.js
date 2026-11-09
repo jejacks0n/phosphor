@@ -1105,6 +1105,29 @@ test.describe('on a phone', () => {
     expect(box.width).toBeGreaterThan((b.x - a.x) * 0.9); // from the first point to the second
   });
 
+  test('Layers picks the vector layer', async ({ page }) => {
+    await openApp(page);
+    const layers = page.getByRole('button', { name: 'Layers', exact: true });
+    const dialog = page.getByRole('dialog', { name: 'Layers' });
+    const apart = () => page.waitForTimeout(400);   // a second tap this soon after the first is read as a double tap, not a click
+    await layers.tap();
+    await expect(dialog).toBeVisible();
+    await apart();
+    await page.getByRole('button', { name: '+ Vector layer' }).tap();
+    await expect(dialog).toHaveCount(0);
+    await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
+    await expect(tab(page, 'PIXEL')).toHaveCount(0);
+    await expect(layers).toBeFocused();   // focus comes back to the button that opened it
+    await apart();
+    await layers.tap();   // and picking a row closes it too
+    await apart();
+    await dialog.locator('li button.pick', { hasText: 'Layer 1' }).tap();
+    await expect(dialog).toHaveCount(0);
+    await expect(tab(page, 'VECTOR')).toHaveCount(0);
+    await expect(tab(page, 'PIXEL')).toBeVisible();
+    await expect(layers).toBeFocused();
+  });
+
   test('the options row has every button, as icons, and no hint; Stroke width is in the Stroke box', async ({ page }) => {
     await openApp(page);
     await pickLayer(page);
