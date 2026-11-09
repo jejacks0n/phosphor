@@ -355,13 +355,21 @@ export function followLayerPick({ workspace, project, drawing }) {
       else if ((tab === 'input' || tab === 'output') && kind === 'vector') pick(cellsPick(), { tabs: false });
     }, { flush: 'sync', immediate: true }),
     watch(() => project.layers, (now, was) => {
+      const topVector = () => now.findLast((layer) => layer.kind === 'vector')?.id ?? 'vector';
       if (project.documentId !== documentId) {
+        // On VECTOR it stays VECTOR (a restore's new document id, a file opened): the topmost vector layer, or the one the
+        // first shape will bring. A document opens with the bottom and the edit layer and gets its own layers right after.
         documentId = project.documentId;
-        pick(now.some((layer) => layer.id === 'edit') ? 'edit' : now.findLast((layer) => layer.kind === 'cells').id);
+        if (workspace.editorTab === 'vector') pick(topVector(), { tabs: false });
+        else pick(now.some((layer) => layer.id === 'edit') ? 'edit' : now.findLast((layer) => layer.kind === 'cells').id);
         return;
       }
       const at = was.findIndex((layer) => layer.id === workspace.pickedLayer);
-      if (at < 0 || now.some((layer) => layer.id === workspace.pickedLayer)) return;
+      if (now.some((layer) => layer.id === workspace.pickedLayer)) return;
+      if (at < 0) { // picked before it was there ('vector', the first one's id): the document's own vector layer, now that it's here
+        if (workspace.editorTab === 'vector' && now.some((layer) => layer.kind === 'vector')) pick(topVector(), { tabs: false });
+        return;
+      }
       const under = was.slice(0, at).findLast((layer) => now.some(({ id }) => id === layer.id) && (layer.kind === 'vector' || pickable(layer)));
       pick(under?.id ?? cellsPick()); // the nearest one still there that can be picked
     }, { flush: 'sync' }),

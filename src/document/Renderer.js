@@ -72,7 +72,7 @@ export default class Renderer {
   #lowerEdits = null;   // the lower group's cells layer's map, from the last composeAll or updateCells: where its cells are exact
   #lowerBase = null;    // and the generated cells they sat on (the seed's characters)
   #upperGrids = new WeakMap(); // an upper vector layer -> its shapes at grid resolution (#upperGrid), as #baseDrawn is the base's
-  #shownOver = null;    // { of, canvas }: the output with the upper layers' pixels over it (shownCanvas), until the next compose
+  #shownOver = null;    // { of, canvas, dirty }: the output with the upper layers' pixels over it (shownCanvas); dirty, the grid rect a compose changed since, or null for all of it
   #oneMatcher = null;   // { params, palette, matcher }: Best match's or By shape's matcher for one upper cell (#upperChar)
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
@@ -216,7 +216,6 @@ export default class Renderer {
   // waits for it to end to carry a change to the base on to every cell after it: #resolveUnder).
   composite(paintLayer, params, { hold = false, rect = null, open = false } = {}) {
     if (!this.outputCanvas || !this.pipelineCanvas) return false;
-    this.#shownOver = null;
 
     const ctx = ctx2d(this.outputCanvas);
     const w = this.outputCanvas.width, h = this.outputCanvas.height;
@@ -227,6 +226,7 @@ export default class Renderer {
     const area = partial ? clipped(rect, w, h) : { x: 0, y: 0, w, h };
     if (!area.w || !area.h) return false; // nothing on the grid changed
     const { x, y } = area;
+    this.#shownDirty(partial ? area : null);
 
     ctx.fillStyle = 'black';
     ctx.fillRect(x, y, area.w, area.h);
@@ -592,8 +592,16 @@ export default class Renderer {
   // Draw a layer at grid resolution (a grid pixel at a time) with the color transforms applied;
   // returns the transformed pixels. area: only those grid pixels (the rest of #paintData stays).
   #drawLayer(ctx, layer, params, area = null) {
+    const pixels = this.#drawLayerArea(ctx, layer, params, area ?? { x: 0, y: 0, w: this.outputCanvas.width, h: this.outputCanvas.height });
+    if (!area) return pixels;
+    putRows(this.#paintData.data, this.outputCanvas.width, pixels.data, area);
+    return this.#paintData;
+  }
+
+  // #drawLayer's drawing of area alone: the transformed pixels of that rect.
+  #drawLayerArea(ctx, layer, params, area) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
-    const { x, y, w: aw, h: ah } = area ?? { x: 0, y: 0, w, h };
+    const { x, y, w: aw, h: ah } = area;
 
     // Persistent scratch canvas for downsampling and transforming a layer
     if (!this.#scratch) this.#scratch = document.createElement('canvas');
@@ -613,9 +621,7 @@ export default class Renderer {
       scratchCtx.putImageData(pixels, x, y);
     }
     ctx.drawImage(this.#scratch, x, y, aw, ah, x, y, aw, ah);
-    if (!area) return pixels;
-    putRows(this.#paintData.data, w, pixels.data, area);
-    return this.#paintData;
+    return pixels;
   }
 
   // Rebuild only the cells under the given grid pixels from the (already composited) output canvas.
@@ -733,14 +739,27 @@ export default class Renderer {
   //   character (coverCell) or, over converted pixels, is mixed into the halves and converted with its settings.
   // No error carries between cells (as #resolvePainted), so a cell costs only its own layers.
   composeUpper(lower, indexes, palette, composed = null) {
-    this.#shownOver = null;
     const out = (indexes && composed?.length === lower.length ? composed : lower).slice();
     const cols = this.upper[0]?.params.cols ?? 1, n = indexes ? indexes.length : lower.length;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let k = 0; k < n; k++) {
-      const i = indexes ? indexes[k] : k;
-      if (lower[i]) out[i] = this.#upperCell(lower[i], i % cols, (i - (i % cols)) / cols, i, palette);
+      const i = indexes ? indexes[k] : k, col = i % cols, row = (i - col) / cols;
+      if (lower[i]) out[i] = this.#upperCell(lower[i], col, row, i, palette);
+      if (col < x0) x0 = col;
+      if (col > x1) x1 = col;
+      if (row < y0) y0 = row;
+      if (row > y1) y1 = row;
     }
+    this.#shownDirty(indexes ? (n ? { x: x0, y: 2 * y0, w: x1 - x0 + 1, h: 2 * (y1 - y0 + 1) } : { x: 0, y: 0, w: 0, h: 0 }) : null);
     return out;
+  }
+
+  // The shown canvas (shownCanvas) has this grid rect to catch up on, or all of it (null): a compose changed it.
+  #shownDirty(rect) {
+    const s = this.#shownOver;
+    if (!s) return;
+    if (!rect || s.dirty === null) this.#shownOver = rect ? s : null; // a whole compose: a new copy next time
+    else s.dirty = s.dirty ? union(s.dirty, rect) : rect;
   }
 
   #upperCell(cell, col, row, i, palette) {
@@ -814,16 +833,23 @@ export default class Renderer {
   }
 
   // What the PIXEL view shows and the Paint Bucket reads: the output, with every upper layer's pixels (its shapes at grid
-  // resolution, its paint) drawn over it when there are any. Kept until the next compose.
-  // ponytail: drawn whole on every ask after a compose; draw only the composed rect if a stroke on a large grid lags.
+  // resolution, its paint) drawn over it when there are any. Kept, and caught up only over the rect the composes since
+  // changed (#shownDirty): an edit on an upper layer costs its own cells here too.
   shownCanvas() {
     if (!this.upper.length || !this.outputCanvas) return this.outputCanvas;
-    if (this.#shownOver?.of === this.outputCanvas) return this.#shownOver.canvas;
-    const { width, height } = this.outputCanvas, canvas = Object.assign(document.createElement('canvas'), { width, height }), ctx = ctx2d(canvas);
-    ctx.drawImage(this.outputCanvas, 0, 0);
+    const { width, height } = this.outputCanvas;
+    let s = this.#shownOver;
+    if (s?.of !== this.outputCanvas) s = this.#shownOver = { of: this.outputCanvas, canvas: Object.assign(document.createElement('canvas'), { width, height }), dirty: { x: 0, y: 0, w: width, h: height } };
+    const area = s.dirty && clipped(s.dirty, width, height);
+    if (!area) return s.canvas;
+    s.dirty = { x: 0, y: 0, w: 0, h: 0 };
+    if (!area.w || !area.h) return s.canvas;
+    const ctx = ctx2d(s.canvas), { x, y, w, h } = area;
+    ctx.clearRect(x, y, w, h);
+    ctx.drawImage(this.outputCanvas, x, y, w, h, x, y, w, h);
     for (const u of this.upper) {
       if (u.kind === 'cells') {
-        if (u.paint?.hasPaint) this.#drawLayer(ctx, u.paint, u.params);
+        if (u.paint?.hasPaint) this.#drawLayerArea(ctx, u.paint, u.params, area);
         continue;
       }
       if (!u.layer?.drawsShapes) continue;
@@ -833,10 +859,9 @@ export default class Renderer {
         grid.canvas = Object.assign(document.createElement('canvas'), { width, height });
         ctx2d(grid.canvas).putImageData(grid.data, 0, 0);
       }
-      ctx.drawImage(grid.canvas, 0, 0);
+      ctx.drawImage(grid.canvas, x, y, w, h, x, y, w, h);
     }
-    this.#shownOver = { of: this.outputCanvas, canvas };
-    return canvas;
+    return s.canvas;
   }
 
   // A stored color as it displays: color adjustments, then the active palette.

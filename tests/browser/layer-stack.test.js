@@ -284,3 +284,57 @@ test('a redone add lands on the layer it was put above, even when the stack chan
   expect(project.shapes.size).toBe(1);
   await settle(project);
 });
+
+test('a shape drawn with Vector 2 picked lands on it, draws in its place in the stack, and hides with its eye', async () => {
+  const { project, workspace } = await blank();
+  project.typeAt(2, 2, 'Y', WHITE);
+  project.commitEdit();
+  project.addLayer('vector', 'base');
+  const two = project.addLayer('vector', 'edit'); // [base, vector, edit, L1]
+  expect(two).toBe('L1');
+  workspace.pickLayer(two);
+  const key = project.addShape(rectShape(2, 4, 3, 6, { fill: '#ff0000' }));
+  project.commitEdit();
+  await settle(project);
+  expect(project.shapes.get(key).layer).toBe(two);
+  expect(cellAt(project, 2, 2).char).not.toBe('Y'); // above the edit layer: it covers the Y
+  project.setLayerHidden('vector', true); // Vector 1's eye leaves it alone
+  await settle(project);
+  expect(cellAt(project, 2, 2).char).not.toBe('Y');
+  project.setLayerHidden(two, true);
+  await settle(project);
+  expect(cellAt(project, 2, 2).char).toBe('Y');
+  // Pasted copies land on the picked vector layer too, and on Vector 1 when that's the pick.
+  project.setLayerHidden(two, false);
+  const [copy] = project.addShapes([project.shapes.get(key)]);
+  expect(project.shapes.get(copy).layer).toBe(two);
+  workspace.pickLayer('vector');
+  const [onOne] = project.addShapes([project.shapes.get(key)]);
+  expect(project.shapes.get(onOne).layer).toBeUndefined();
+});
+
+test('after an edit on an upper layer, the PIXEL canvas is redrawn only where the edit was', async () => {
+  const { project } = await blank();
+  const top = project.addLayer('cells', 'edit');
+  project.useLayer(top);
+  project.paintStroke([{ x: 4, y: 6, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  await settle(project);
+  const first = project.renderer.shownCanvas();
+  expect(first).not.toBe(project.renderer.outputCanvas); // an upper layer: a copy with its pixels over it
+  project.paintStroke([{ x: 9, y: 9, alpha: 1 }], '#00ff00');
+  project.commitEdit();
+  const draws = vi.spyOn(CanvasRenderingContext2D.prototype, 'drawImage'), reads = vi.spyOn(CanvasRenderingContext2D.prototype, 'getImageData');
+  try {
+    const again = project.renderer.shownCanvas();
+    expect(again).toBe(first); // the same canvas, caught up
+    const sizes = [...draws.mock.calls.map((args) => (args.length === 9 ? args[7] * args[8] : Infinity)), ...reads.mock.calls.map((args) => args[2] * args[3])];
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const size of sizes) expect(size).toBeLessThanOrEqual(2 * project.paintLayer.scale ** 2); // one cell's pixels at most, at the paint's scale
+  } finally {
+    draws.mockRestore();
+    reads.mockRestore();
+  }
+  const { data } = first.getContext('2d', { willReadFrequently: true }).getImageData(9, 9, 1, 1);
+  expect([data[0], data[1], data[2]]).toEqual([0, 255, 0]);
+});

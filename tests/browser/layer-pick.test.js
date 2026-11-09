@@ -416,3 +416,19 @@ test('with the base picked, a tool key for a tool the base hasn\'t says where it
   expect(workspace.activeTool).toBe('picker');
   expect(toastMessage.value).toBeFalsy();
 });
+
+test('a document restored with VECTOR showing keeps VECTOR and its vector layer picked', async () => {
+  const { project, workspace } = await blank();
+  project.addLayer('vector', 'base');
+  project.addShape(rectShape(2, 2, 6, 6, { fill: RED }));
+  project.commitEdit();
+  workspace.pickLayer('vector');
+  expect(workspace.editorTab).toBe('vector');
+  const { readProject, writeProject } = await import('@/document/projectIO.js');
+  const parts = await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }));
+  await project.openParts(parts, { filename: 'back', documentId: 'restored' }); // as autosave's restore opens it: a new document id
+  await settle(project);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
+  expect(workspace.editorTab).toBe('vector');
+  expect(workspace.pickedLayer).toBe('vector');
+});

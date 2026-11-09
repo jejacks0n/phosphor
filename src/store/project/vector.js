@@ -38,6 +38,13 @@ const pressable = (project) => {
 };
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
+// The vector layer a new shape goes on: the one picked, as its layer field (none for 'vector', the first one's id, which a
+// shape without the field is on), else none.
+function pickedVector(project) {
+  const id = useWorkspaceStore().pickedLayer;
+  return id !== 'vector' && project.layerById(id)?.kind === 'vector' ? id : undefined;
+}
+
 export const vectorActions = {
   // The shapes as they now are, part of the edit that's open (or one begun for them). Not while it changes an art
   // layer someone else in the room is drawing in (lockedBy): it can be selected, not moved, restacked or deleted, and
@@ -85,7 +92,8 @@ export const vectorActions = {
     return rects;
   },
 
-  // A new shape on top of the rest; its key, or null at the most a document holds, or for one a file wouldn't keep.
+  // A new shape on top of the rest, on the vector layer picked; its key, or null at the most a document holds, or for one
+  // a file wouldn't keep.
   addShape(shape) {
     this.ensureLayer();
     if (!this.paintLayer) return null;
@@ -94,15 +102,15 @@ export const vectorActions = {
       return null;
     }
     const key = newShapeKey(), own = ownsEdit(this);
-    const z = Math.max(0, ...[...this.shapes.values()].map((s) => s.z + 1)), added = withShape(shape, { z });
+    const z = Math.max(0, ...[...this.shapes.values()].map((s) => s.z + 1)), added = withShape(shape, { z, layer: pickedVector(this) });
     if (!keeps(added)) return null;
     this.setShapes(new Map(this.shapes).set(key, added));
     if (own) this.commitEdit();
     return key;
   },
 
-  // Shapes on top, in their order (a paste's copies, an SVG's art), as one step; selected, with Vector select. One
-  // a file wouldn't keep is left out; past a frame's shapes none come in, and a toast says so. fromKeys: the keys they
+  // Shapes on top, in their order (a paste's copies, an SVG's art), on the vector layer picked, as one step; selected,
+  // with Vector select. One a file wouldn't keep is left out; past a frame's shapes none come in, and a toast says so. fromKeys: the keys they
   // were copied from, in their order, so a follower that comes in with its path follows the path's copy; one whose link
   // couldn't be made now (its path isn't here, is an art layer, follows one itself, or is the shape) follows none. The
   // keys.
@@ -115,9 +123,9 @@ export const vectorActions = {
     if (!this.paintLayer) return [];
     const own = ownsEdit(this), next = new Map(this.shapes), keys = [], workspace = useWorkspaceStore();
     let z = Math.max(0, ...[...this.shapes.values()].map((shape) => shape.z + 1));
-    const copies = new Map(); // a key copied from to its copy's
+    const copies = new Map(), layer = pickedVector(this); // a key copied from to its copy's
     shapes.forEach((shape, i) => {
-      const made = makeShape({ ...shape, z });
+      const made = makeShape({ ...shape, z, layer });
       if (!keeps(made)) return;
       const key = newShapeKey();
       next.set(key, made);

@@ -176,7 +176,8 @@ as they did, and the sliders keep working on them.
 
 ### Shapes
 
-The VECTOR tab's [shapes](vector.md) are drawn where their vector layer sits in the stack. The first one sits
+The VECTOR tab's [shapes](vector.md) are drawn where their vector layer sits in the stack, and a new shape goes on
+the vector layer picked. A new layer goes directly above the picked one; the vector layer a first shape brings sits
 directly on the base, between the base layer's own pixels and the edit layer:
 
 the picture → the base layer's own pixels → shapes → edit cells → paint
