@@ -16,7 +16,7 @@ import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { bytesHeld, drawnShapes, lockedAmong } from '@/store/project/shared.js';
+import { bytesHeld, drawnShapes, lockedAmong, refusedHidden } from '@/store/project/shared.js';
 import { centerOf, placedShapes } from '@/document/followers.js';
 import { setPartsAt } from '@/document/tweens.js';
 import { measure } from '@/document/pathLength.js';
@@ -418,7 +418,7 @@ export const vectorActions = {
   // base layer's pixels, where they stop being shapes. One whole-layer step. A still only: in an animation the
   // base is under every frame.
   mergeShapes(keys = null) {
-    if (!this.image || this.hasFrames) return;
+    if (!this.image || this.hasFrames || refusedHidden(this, ['base'])) return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     this.commitPending();

@@ -263,10 +263,14 @@ for (const charChoice of ['random', 'best', 'shape']) {
     await settle(project);
     expect(project.baseRecords.pins.size).toBeGreaterThan(0);
     const shown = cellsKey(project);
+    const [key, char] = [...project.baseRecords.pins].find(([, pin]) => pin !== ' '), [col, row] = key.split(',').map(Number);
+    expect(project.renderer.pinAt(col, row)).toBe(char);
 
     await hide(project, 'base');
     expect(project.cells.filter((cell) => !blank(cell))).toEqual([]);
+    expect(project.renderer.pinAt(col, row)).toBe(undefined); // left out, not only black on black
     await hide(project, 'base', false);
+    expect(project.renderer.pinAt(col, row)).toBe(char);
     expect(cellsKey(project)).toEqual(shown);
   });
 
@@ -297,15 +301,18 @@ test('an animation frame leaves a hidden base out', async () => {
   expect((await project.builtFrame(1)).cells.every(blank)).toBe(true);
 });
 
-test('with the base hidden, Merge up, Merge down and Into the image are refused and change nothing', async () => {
+test('with the base hidden, Merge up, Merge down, Into the image, Bake and the vector merge are refused and change nothing', async () => {
   const { project } = await createTestApp();
   await ansFile(project);
   typed(project, 2, 2, 'M');
+  project.addShape(rectShape(0, 0, 6, 8, { fill: RED }));
+  await settle(project);
+  expect(project.canBake).toBe(true);
   await hide(project, 'base');
-  const kept = () => [project.editCells, project.baseRecords, project.editVersion, project.historyVersion];
+  const kept = () => [project.editCells, project.baseRecords, project.editVersion, project.historyVersion, project.shapes, project.image, project.baseLayer.version];
   const before = kept();
 
-  for (const merge of [() => project.mergeUp(null), () => project.mergeDown(), () => project.mergeIntoPicture()]) {
+  for (const merge of [() => project.mergeUp(null), () => project.mergeDown(), () => project.mergeIntoPicture(), () => project.bake(), () => project.mergeShapes()]) {
     closeToast();
     await merge();
     expect(kept()).toEqual(before);
@@ -313,4 +320,16 @@ test('with the base hidden, Merge up, Merge down and Into the image are refused 
     expect(kept()[1]).toBe(before[1]);
     expect(toastMessage.value).toBe('Show the layer to merge it');
   }
+});
+
+test('with the edit layer hidden, Merge up is refused too', async () => {
+  const { project } = await picture();
+  typed(project, 2, 2, 'M');
+  await hide(project, 'edit');
+  const kept = () => [project.editCells, project.baseRecords, project.editVersion, project.historyVersion];
+  const before = kept();
+  project.mergeUp(null);
+  expect(kept()).toEqual(before);
+  expect(kept()[0]).toBe(before[0]);
+  expect(toastMessage.value).toBe('Show the layer to merge it');
 });

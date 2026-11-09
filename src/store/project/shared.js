@@ -8,6 +8,7 @@ import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
 import { t } from '@/i18n';
+import { toast } from '@/composables/useToast';
 
 export const DEFAULT_COLS = getSetting('cols').default;
 export const DEFAULT_ROWS = getSetting('rows').default;
@@ -52,6 +53,15 @@ export const newLedger = (project) => markRaw(new Ledger({
   numbering: false,
   mostBytes: MOST_CHANGE_BYTES,
 }));
+// Whether a merge is refused because one of layers is hidden ('base', 'edit'), with a toast saying so. Merge up, Merge
+// down and Into the image take a layer as it shows into another, so both count; Bake and the vector merge write into
+// the base. Refused, nothing changes and there's no undo step.
+export function refusedHidden(project, layers = ['base', 'edit']) {
+  if (!layers.some((id) => project.layerHidden(id))) return false;
+  toast(t('layers.hiddenMergeToast'));
+  return true;
+}
+
 // The shapes the shape layer draws: all of them, followers on their paths and guides left out (followers.js), but the
 // art layer stepped into (vector.js: enterArt), whose drawing is the edit cells and paint while you're inside it. None
 // while the vector layer is hidden, unless evenHidden (a merge presses them in whether they show or not).

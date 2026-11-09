@@ -18,19 +18,10 @@ import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld, blackPicture } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld, blackPicture, refusedHidden } from '@/store/project/shared.js';
 import { placedShapes } from '@/document/followers.js';
 import { RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
-import { toast } from '@/composables/useToast';
-
-// Merge up, Merge down and Into the image take a layer as it shows into another: with either hidden, they're refused, and
-// a toast says so.
-function refusedHidden(project) {
-  if (!project.layerHidden('edit') && !project.layerHidden('base')) return false;
-  toast(t('layers.hiddenMergeToast'));
-  return true;
-}
 
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
@@ -80,7 +71,7 @@ export const mergingActions = {
   // clipboard; recent colors are shared across projects and stay. One undo step (slider moves after
   // it are steps of their own).
   async bake({ lockPalette = false } = {}) {
-    if (!this.canBake || this._baking) return;
+    if (!this.canBake || this._baking || refusedHidden(this, ['base'])) return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this._baking = true;
     let again = false;
