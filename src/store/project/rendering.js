@@ -114,6 +114,8 @@ export const renderingActions = {
           this._moviePalette = null;
           this.renderer.usePalette(null);
         }
+        this.renderer.hideBase = this.layerHidden('base');
+        if (this._shapeLayer) this._shapeLayer.hideBase = this.renderer.hideBase;
         this._shapeLayer?.set(drawnShapes(this));
         this.renderedCells = await this.renderer.render(this.image, this.processParams, this.shownPaint, baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
@@ -174,7 +176,7 @@ export const renderingActions = {
     // cell, a pin or an art layer's character can hold a wide one: the rest are laid out as they are.
     const rows = new Set();
     for (const key of editCells.keys()) rows.add(parseKey(key).row);
-    for (const key of this.baseRecords.pins.keys()) rows.add(parseKey(key).row);
+    if (!this.renderer.hideBase) for (const key of this.baseRecords.pins.keys()) rows.add(parseKey(key).row);
     if (this.renderer.shapes?.hasArt) for (const key of this.renderer.shapes.artCells()) rows.add(parseKey(key).row);
     this.setCells(composed, rows, composed);
   },

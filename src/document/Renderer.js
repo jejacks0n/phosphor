@@ -41,6 +41,7 @@ export default class Renderer {
   baseRecords = EMPTY_BASE; // the store keeps this in step with its own
   baseLayer = null;         // the base layer's pixels (PaintLayer), the store's
   shapes = null;            // the base layer with the vector layer's shapes over it (ShapeLayer), the store's
+  hideBase = false;         // the base's eye is shut: the picture, its own pixels and its pins left out (the store's, set before a render)
   #scratch = null;
   #pipelineData = null; // pipelineCanvas pixels
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
@@ -81,8 +82,9 @@ export default class Renderer {
       this.#fontReady = true;
     }
     const { canvas: pipeline, paletteColors, samples } = await processImage(image, params);
-    this.pipelineCanvas = pipeline.canvas;
-    this.#picture = samples;
+    // A hidden base: black in the picture's place, so nothing reads it (Best match and By shape included).
+    this.pipelineCanvas = this.hideBase ? blackCanvas(params.cols, params.rows) : pipeline.canvas;
+    this.#picture = this.hideBase && samples ? blackImage(samples.width, samples.height) : samples;
     this.palette = this.#chosen ?? paletteColors;
     this.#pipelineData = ctx2d(this.pipelineCanvas).getImageData(0, 0, params.cols, params.rows);
     this.#effective = new Map();
@@ -676,7 +678,7 @@ export default class Renderer {
   // Generated cells with the base's pins (and the art layers' characters) and every in-grid edit cell composed in.
   composeAll(baseCells, editCells, params) {
     const cells = baseCells.slice();
-    const rows = charRowsOf(params.rows), pins = this.baseRecords.pins;
+    const rows = charRowsOf(params.rows), pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
     for (const key of this.shapes?.hasArt ? new Set([...pins.keys(), ...this.shapes.artCells()]) : pins.keys()) {
       const { col, row } = parseKey(key);
       if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#paintedPin(col, row, params) ?? this.#onBase(col, row, cells[cellIndex(col, row, params.cols)]);
@@ -712,6 +714,7 @@ export default class Renderer {
   imageAt(x, y, cols, rows) {
     const data = this.#source?.data;
     if (!data || data.width !== cols || data.height !== rows || x < 0 || y < 0 || x >= cols || y >= rows) return null;
+    if (this.hideBase) return { r: 0, g: 0, b: 0 };
     const o = (y * data.width + x) * 4;
     return { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2] };
   }
@@ -770,15 +773,16 @@ export default class Renderer {
   // The character a cell keeps, or undefined (the conversion's): the topmost art layer's there, else the base
   // layer's pin; none where a shape reaches over either (the pin shows again once no shape covers it).
   pinAt(col, row) {
-    const pins = this.baseRecords.pins, pin = pins.size ? pins.get(cellKey(col, row)) : undefined; // no key made for none: asked once a cell
+    const pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins, pin = pins.size ? pins.get(cellKey(col, row)) : undefined; // no key made for none: asked once a cell
     if (pin === undefined && !this.shapes?.hasArt) return undefined;
     const shown = this.shapes?.charAt(col, row);
     return shown === undefined ? pin : shown ?? undefined;
   }
 
   // What's under the shapes' side of the converter: the base layer, with the shapes over it while there are any.
+  // A hidden base: the shapes alone (ShapeLayer.hideBase), or nothing.
   get #base() {
-    if (!this.shapes?.drawsShapes) return this.baseLayer;
+    if (!this.shapes?.drawsShapes) return this.hideBase ? null : this.baseLayer;
     this.shapes.sync();
     return this.shapes;
   }
@@ -795,6 +799,19 @@ export default class Renderer {
       palette: this.palette,
     });
   }
+}
+
+// Opaque black, as the pipeline fills the letterbox: what a hidden base shows.
+function blackImage(w, h) {
+  const image = new ImageData(w, h);
+  new Uint32Array(image.data.buffer).fill(0xff000000); // little-endian RGBA: alpha 255
+  return image;
+}
+
+function blackCanvas(w, h) {
+  const canvas = Object.assign(document.createElement('canvas'), { width: w, height: h });
+  ctx2d(canvas).putImageData(blackImage(w, h), 0, 0);
+  return canvas;
 }
 
 // A canvas's pixels snapped to a palette in place, read and written once as bytes (no object per

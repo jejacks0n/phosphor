@@ -37,6 +37,15 @@ export default class ShapeLayer {
   #paths = new WeakMap(); // shape -> { k, path }
   version = 0;
   #changes = [];
+  #hideBase = false;
+
+  // The base's eye is shut: the shapes are drawn over nothing, and everything's drawn again on the next sync.
+  get hideBase() { return this.#hideBase; }
+  set hideBase(hidden) {
+    if (hidden === this.#hideBase) return;
+    this.#hideBase = hidden;
+    this.reset();
+  }
 
   constructor(baseLayer) {
     this.#base = baseLayer;
@@ -236,7 +245,8 @@ export default class ShapeLayer {
     // semi-transparent pixel premultiplied a little differently (an undo puts tiles back with putImageData),
     // and the shapes over it would then come out a shade apart.
     const ctx = ctx2d(this.canvas);
-    ctx.putImageData(ctx2d(this.#base.canvas).getImageData(x, y, w, h), x, y);
+    if (this.#hideBase) ctx.clearRect(x, y, w, h);
+    else ctx.putImageData(ctx2d(this.#base.canvas).getImageData(x, y, w, h), x, y);
     ctx.drawImage(this.#own, x, y, w, h, x, y, w, h);
 
     const cols = this.#base.cols, rows = charRowsOf(this.#base.rows);

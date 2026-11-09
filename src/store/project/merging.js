@@ -24,9 +24,10 @@ import { RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
 import { toast } from '@/composables/useToast';
 
-// Merge down and Into the image take the edit layer as it shows: hidden, it's refused, and a toast says so.
+// Merge up, Merge down and Into the image take a layer as it shows into another: with either hidden, they're refused, and
+// a toast says so.
 function refusedHidden(project) {
-  if (!project.layerHidden('edit')) return false;
+  if (!project.layerHidden('edit') && !project.layerHidden('base')) return false;
   toast(t('layers.hiddenMergeToast'));
   return true;
 }
@@ -249,6 +250,7 @@ export const mergingActions = {
   // Merge up: what the base shows in rect (or the whole grid) becomes edit cells (an edit cell's own
   // attributes stay), and pins there are dropped, since the characters are now edit cells. One undo step.
   mergeUp(rect) {
+    if (refusedHidden(this)) return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     const area = rect ?? this.gridRect();
     this.selectionEdit([area], () => {

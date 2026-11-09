@@ -39,14 +39,15 @@ export default class FrameBuilder {
   #renderer = new Renderer();
   #scratch = null;
   #shapes = null; // its own ShapeLayer over the store's base layer: each frame has its own shapes
-  #hidden = { edit: false, vector: false }; // the layers left out
+  #hidden = { base: false, edit: false, vector: false }; // the layers left out
 
   // The picture through the pipeline, for these settings. stores: the store's base layer and records, which
-  // are under every frame, and hidden: the layers left out ({ edit, vector }).
+  // are under every frame, and hidden: the layers left out ({ base, edit, vector }).
   async prepare(image, params, { baseLayer, baseRecords, hidden = this.#hidden }) {
     this.#hidden = hidden;
     this.#shapes = baseLayer ? new ShapeLayer(baseLayer) : null;
-    Object.assign(this.#renderer, { baseLayer, baseRecords, shapes: this.#shapes });
+    if (this.#shapes) this.#shapes.hideBase = !!hidden.base;
+    Object.assign(this.#renderer, { baseLayer, baseRecords, shapes: this.#shapes, hideBase: !!hidden.base });
     this.#scratch = new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 });
     await this.#renderer.render(image, params, this.#scratch, null);
   }

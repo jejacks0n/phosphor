@@ -207,3 +207,110 @@ test('a paste into a hidden layer says so once', async () => {
   expect(vi.mocked(toast).mock.calls).toEqual([['Show the layer to draw on it']]);
   expect(project.editCells.size).toBe(0);
 });
+
+// The base's eye: the picture, the base's own pixels and its pins leave; the shapes and the edit layer over it stay.
+const BLACK = '#000000';
+// Black on black: the converter's own character there doesn't show, and an export writes the cell as a space.
+const blank = (cell) => cell.fg.hex === BLACK && cell.bg.hex === BLACK;
+const PAST_THE_EDGE = '/tests/fixtures/ansi/past-the-edge.ans';
+
+async function ansFile(project) {
+  const blob = await (await fetch(PAST_THE_EDGE)).blob();
+  await project.openArtFile(new File([blob], 'past-the-edge.ans'));
+  await settle(project);
+}
+
+for (const charChoice of ['random', 'best', 'shape']) {
+  const under = { random: '', best: ' (Best match)', shape: ' (By shape)' }[charChoice];
+
+  test(`a hidden base shows blank cells where nothing else is${under}`, async () => {
+    const { project } = await picture();
+    project.charChoice = charChoice;
+    await settle(project);
+    const shown = cellsKey(project);
+    expect(project.cells.some((cell) => !blank(cell))).toBe(true);
+
+    await hide(project, 'base');
+    expect(project.layerHidden('base')).toBe(true);
+    expect(project.cells.filter((cell) => !blank(cell))).toEqual([]);
+    expect(project.rawColorAt(5, 4)).toBe(BLACK); // a pick reads what shows
+
+    await hide(project, 'base', false);
+    expect(cellsKey(project)).toEqual(shown);
+  });
+
+  test(`a hidden base keeps the shapes and edit cells${under}`, async () => {
+    const { project } = await picture();
+    project.charChoice = charChoice;
+    project.addShape(rectShape(0, 0, 6, 8, { fill: RED }));
+    typed(project, 15, 7, 'X');
+    await settle(project);
+    const shapeCell = (1 * 20) + 1, editCell = (7 * 20) + 15, elsewhere = (8 * 20) + 4;
+    const kept = [look(project.cells[shapeCell]), look(project.cells[editCell])];
+    expect(kept[0].bg).toBe(RED);
+    expect(kept[1]).toEqual({ char: 'X', ...INK });
+    expect(blank(project.cells[elsewhere])).toBe(false);
+
+    await hide(project, 'base');
+    expect([look(project.cells[shapeCell]), look(project.cells[editCell])]).toEqual(kept);
+    expect(blank(project.cells[elsewhere])).toBe(true);
+  });
+
+  test(`a hidden base hides its pins${under}`, async () => {
+    const { project } = await createTestApp();
+    await ansFile(project);
+    project.charChoice = charChoice;
+    await settle(project);
+    expect(project.baseRecords.pins.size).toBeGreaterThan(0);
+    const shown = cellsKey(project);
+
+    await hide(project, 'base');
+    expect(project.cells.filter((cell) => !blank(cell))).toEqual([]);
+    await hide(project, 'base', false);
+    expect(cellsKey(project)).toEqual(shown);
+  });
+
+  test(`edits with the base hidden draw what a full render would, the base still left out${under}`, async () => {
+    const { project } = await picture();
+    project.charChoice = charChoice;
+    await hide(project, 'base');
+    typed(project, 3, 3, 'Q');
+    project.paintStroke([{ x: 8, y: 8, alpha: 1 }, { x: 8, y: 9, alpha: 1 }], RED);
+    project.commitEdit();
+    project.addShape(rectShape(12, 0, 16, 4, { fill: RED }));
+    await settle(project);
+    const edited = cellsKey(project);
+    expect(blank(project.cells[(8 * 20) + 1])).toBe(true);
+    project.render();
+    await settle(project);
+    expect(cellsKey(project)).toEqual(edited);
+  });
+}
+
+test('an animation frame leaves a hidden base out', async () => {
+  const { project } = await picture();
+  project.addFrame('duplicate');
+  await settle(project);
+  expect((await project.builtFrame(1)).cells.every(blank)).toBe(false);
+
+  await hide(project, 'base');
+  expect((await project.builtFrame(1)).cells.every(blank)).toBe(true);
+});
+
+test('with the base hidden, Merge up, Merge down and Into the image are refused and change nothing', async () => {
+  const { project } = await createTestApp();
+  await ansFile(project);
+  typed(project, 2, 2, 'M');
+  await hide(project, 'base');
+  const kept = () => [project.editCells, project.baseRecords, project.editVersion, project.historyVersion];
+  const before = kept();
+
+  for (const merge of [() => project.mergeUp(null), () => project.mergeDown(), () => project.mergeIntoPicture()]) {
+    closeToast();
+    await merge();
+    expect(kept()).toEqual(before);
+    expect(kept()[0]).toBe(before[0]);
+    expect(kept()[1]).toBe(before[1]);
+    expect(toastMessage.value).toBe('Show the layer to merge it');
+  }
+});

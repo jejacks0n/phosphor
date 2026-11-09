@@ -462,7 +462,7 @@ function buildKey(project) {
   const { image, ...params } = project.processParams;
   return {
     image, settings: JSON.stringify(params), baseLayer: project.baseLayer, baseVersion: project.baseLayer?.version, baseRecords: project.baseRecords,
-    editHidden: project.layerHidden('edit'), vectorHidden: project.layerHidden('vector'),
+    baseHidden: project.layerHidden('base'), editHidden: project.layerHidden('edit'), vectorHidden: project.layerHidden('vector'),
   };
 }
 const sameKey = (a, b) => !!a && !!b && Object.keys(a).every((name) => a[name] === b[name]);
@@ -477,7 +477,7 @@ async function readyBuilder(project) {
       continue;
     }
     const builder = new FrameBuilder();
-    const hidden = { edit: key.editHidden, vector: key.vectorHidden };
+    const hidden = { base: key.baseHidden, edit: key.editHidden, vector: key.vectorHidden };
     const preparing = builder.prepare(key.image, project.processParams, { baseLayer: project.baseLayer, baseRecords: project.baseRecords, hidden });
     project._builder = markRaw({ key, builder, preparing });
     for (const frame of project.frames) frame.built = null;
