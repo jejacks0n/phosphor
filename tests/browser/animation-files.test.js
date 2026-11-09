@@ -188,3 +188,51 @@ test('in a room a file with frames opens as a still', async () => {
   expect(project.animate).toBe(false);
   project._sharing = null;
 });
+
+const magicOf = async (file) => new TextDecoder().decode((await file.arrayBuffer()).slice(0, 8));
+const frameKeys = (project) => project.frames.map((f) => [...f.changes.keys()].sort());
+
+test('a movie on more layers than the old form has keeps every layer\'s frames', async () => {
+  const { project } = await animated();
+  type(project, 1, 1, 'A');
+  const l1 = project.addLayer('cells', 'edit');
+  project.addVectorLayer(); // base, vector, edit, L1: no old form for it
+  project.useLayer(l1);
+  type(project, 2, 2, 'B');
+  project.addFrame('blank');
+  type(project, 3, 3, 'C');
+  project.showFrame(0);
+  await settle(project);
+  const keys = frameKeys(project);
+  expect(keys.flat()).toContain(`${l1}:3,3`);
+  const file = await fileOf(project);
+  expect(await magicOf(file)).toBe('PHOSPHR2');
+
+  await project.loadProject(file);
+  await settle(project);
+  expect(project.frames.length).toBe(2);
+  expect(frameKeys(project)).toEqual(keys);
+});
+
+test('a movie whose only cells layer is L3 saves its frame keys bare, in the old form', async () => {
+  const { project } = await animated();
+  project.layers = [project.layers[0], Object.freeze({ id: 'L3', kind: 'cells', n: 3, name: null, hidden: false })];
+  project._layerData.set('L3', { editCells: new Map(), paintLayer: null, hasPaint: false });
+  project.useLayer('L3');
+  type(project, 1, 1, 'A');
+  project.addFrame('blank');
+  type(project, 2, 2, 'B');
+  project.showFrame(0);
+  await settle(project);
+  expect(frameKeys(project).flat()).toContain('L3:2,2');
+  const file = await fileOf(project);
+  expect(await magicOf(file)).toBe('PHOSPHOR');
+
+  await project.loadProject(file);
+  await settle(project);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
+  expect(frameKeys(project).flat()).toContain('2,2');
+  project.showFrame(1);
+  await settle(project);
+  expect(charAt(project, 2, 2)).toBe('B');
+});

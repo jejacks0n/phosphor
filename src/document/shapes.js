@@ -2,7 +2,7 @@
  * The vector layer's shapes, as data. A shape is a path of points with cubic Bézier handles, a fill and a
  * stroke, kept as shapes until it's baked or merged (docs/vector.md). Nothing here touches a canvas.
  *
- * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter?, align?, start?, end?, follow?, along?, guide? }, frozen:
+ * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter?, align?, start?, end?, follow?, along?, guide?, layer? }, frozen:
  *   points  [[x, y, inX, inY, outX, outY, smooth], ...] in the shape's own (local) grid pixels; a handle is an
  *           offset from its point, 0, 0 for none; smooth (1 or 0): its handles stay in line when one moves
  *   closed  whether that outline closes
@@ -20,6 +20,7 @@
  *           (absent: along it, on this shape's own keys), face true (turned the way the path runs), motion 'half' | 'cells'
  *           (absent: smoothly); along, how far along that path it is, a share -1 to 2 (absent: 0); guide true: a path
  *           that only guides, never drawn. follow and guide are the same on every frame; along is a part (parts.js)
+ *   layer   the id of the vector layer it's on; absent: 'vector' (artLayers.js: goodShapeLayer)
  * The optional fields are written only when they aren't the default, so a shape that uses none of them is
  * exactly what it was before they existed (an older copy of Phosphor refuses a shape with a field it doesn't
  * know, and with it the whole file's shapes or a room's whole change). A point's index is flat: the first
@@ -41,7 +42,7 @@
  */
 
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { SHAPE_KEY, alongShare, artBounds, artFromStranger, goodAlong, goodFollow, isArt, makeArt, makeFollow } from './artLayers.js';
+import { SHAPE_KEY, alongShare, artBounds, artFromStranger, goodAlong, goodFollow, goodShapeLayer, isArt, makeArt, makeFollow } from './artLayers.js';
 export const SHAPE_PREFIX = 'v:';
 export const MOST_SHAPES = 1000; // a frame's, from a file, a project or a room
 export const MOST_POINTS = 500;  // a shape's, across its outlines: the biggest still fits in one room message
@@ -54,7 +55,7 @@ const MOST_M = 1e4;       // a transform's stretch
 const MOST_SHIFT = 1e7;   // and its move: turned or grown about a point far down the grid, a shape moves further than any point is
 const HEX = /^#[0-9a-f]{6}$/i;
 const FIELDS = ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm'];
-const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align', 'start', 'end', 'follow', 'along', 'guide'];
+const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align', 'start', 'end', 'follow', 'along', 'guide', 'layer'];
 const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel'], ALIGNS = ['inside', 'outside', 'left', 'right']; // the values other than the default
 const GRADIENTS = ['linear', 'radial'];
 export const MOST_STOPS = 16;
@@ -115,8 +116,8 @@ const share = (v) => round(Math.min(Math.max(v, 0), 1), 4); // a tween's oversho
 
 const roundPoints = (points) => Object.freeze(points.map((p) => Object.freeze(p.slice(0, 6).map((v) => round(v, 2)).concat(p[6] ? 1 : 0))));
 
-export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, start, end, follow, along, guide, art }) {
-  if (art) return makeArt({ z, m, art, follow, along });
+export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, start, end, follow, along, guide, layer, art }) {
+  if (art) return makeArt({ z, m, art, follow, along, layer });
   const shape = {
     z,
     closed: !!closed,
@@ -137,6 +138,7 @@ export function makeShape({ points, closed, fill = null, stroke = null, width = 
   if (follow) shape.follow = makeFollow(follow);
   if (along && alongShare(along)) shape.along = alongShare(along);
   if (guide) shape.guide = true;
+  if (layer && layer !== 'vector') shape.layer = layer;
   return Object.freeze(shape);
 }
 
@@ -581,7 +583,7 @@ export function shapeFromStranger(value) {
   if ('art' in value) return artFromStranger(value);
   const keys = Object.keys(value);
   if (!FIELDS.every((f) => f in value) || !keys.every((k) => FIELDS.includes(k) || OPTIONAL.includes(k))) return null;
-  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide } = value;
+  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide, layer } = value;
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z || typeof closed !== 'boolean') return null;
   if (!goodFill(fill) || !goodFill(stroke)) return null;
   if (!finite(width, MOST_WIDTH) || width < 0) return null;
@@ -601,7 +603,8 @@ export function shapeFromStranger(value) {
   if ('miter' in value && (!finite(miter, 100) || miter < 1 || miter === STROKE_DEFAULTS.miter)) return null;
   if (('start' in value && (!finite(start, 1) || start <= 0)) || ('end' in value && (!finite(end, 1) || end < 0 || end === 1))) return null; // shares, the defaults 0 and 1 left out
   if (('follow' in value && !goodFollow(follow, false)) || ('along' in value && !goodAlong(along)) || ('guide' in value && guide !== true)) return null;
-  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide });
+  if ('layer' in value && !goodShapeLayer(layer)) return null;
+  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide, layer });
 }
 
 export const isGoodShapeKey = (key) => typeof key === 'string' && SHAPE_KEY.test(key);

@@ -1709,6 +1709,35 @@ test('a layer renamed or hidden is written, and restores with its name and eye',
   expect(project.hasVectorLayer).toBe(false);
 });
 
+test('a stack of four layers survives a restore', async () => {
+  const { project } = await opened();
+  edit(project);
+  const l1 = project.addLayer('cells', 'edit');
+  project.addVectorLayer();
+  project.renameLayer(l1, 'Logo');
+  project.setLayerHidden('base', true);
+  project.useLayer(l1);
+  edit(project, 4);
+  project.paintEditPixels([{ x: 1, y: 2, r: 255, g: 0, b: 0, alpha: 1 }]);
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  await pass(SAVE_AFTER_MS);
+  const layers = project.layers, ids = layers.map((l) => l.id);
+  expect(ids).toEqual(['base', 'vector', 'edit', l1]);
+  const cellsOf = () => Object.fromEntries(ids.map((id) => [id, [...project.cellsOf(id)]]));
+  const before = { cells: JSON.stringify(project.cells), layerCells: cellsOf(), paint: project.paintOf(l1).colorAt(1, 2) };
+  const { record, imageBuffer } = await readLatest(project.documentId);
+  project.clearImage();
+
+  await project.restoreDocument({ record, imageBuffer }, { documentId: 'restored' });
+  project.useLayer(l1); // the one in use when it was written: what the view shows is its (until every layer is drawn)
+  project.render();
+  await settle(project);
+  expect(project.layers).toEqual(layers);
+  expect({ cells: JSON.stringify(project.cells), layerCells: cellsOf(), paint: project.paintOf(l1).colorAt(1, 2) }).toEqual(before);
+});
+
 test('a restored document with shapes and no layers key has its vector layer', async () => {
   const { rectShape } = await import('@/document/shapes.js');
   const { project } = await opened();

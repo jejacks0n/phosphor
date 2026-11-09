@@ -21,6 +21,8 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const HALVES = new Set([' ', '█', '▀', '▄']);
 
 export const SHAPE_KEY = /^v:[A-Za-z0-9_-]{1,32}$/; // a shape's key (shapes.js)
+// The vector layer a shape is on, when it isn't 'vector': shapes on that one don't name it (layerInfo.js).
+export const goodShapeLayer = (layer) => typeof layer === 'string' && /^(edit|L\d+)$/.test(layer);
 const FOLLOW_KEYS = ['key', 'ride', 'face', 'motion'];
 const RIDES = ['start', 'end'], MOTIONS = ['half', 'cells']; // the values other than the default: along it, on its own keys; smoothly
 const rounded = (v) => Math.round(v * 1e4) / 1e4 || 0; // 1/10000, no -0
@@ -54,7 +56,7 @@ export function goodFollow(value, art) {
 export const alongShare = (along) => rounded(Math.min(Math.max(along, -1), 2));
 export const goodAlong = (along) => typeof along === 'number' && along !== 0 && along >= -1 && along <= 2;
 
-export function makeArt({ z = 0, m, art, follow, along }) {
+export function makeArt({ z = 0, m, art, follow, along, layer }) {
   const cells = art.cells.map((cell) => Object.freeze([...cell]));
   const record = {
     z,
@@ -63,6 +65,7 @@ export function makeArt({ z = 0, m, art, follow, along }) {
   };
   if (follow) record.follow = makeFollow({ ...follow, face: false });
   if (along && alongShare(along)) record.along = alongShare(along);
+  if (layer && layer !== 'vector') record.layer = layer;
   return Object.freeze(record);
 }
 
@@ -73,9 +76,9 @@ const sameKeys = (value, keys) => Object.keys(value).length === keys.length && k
 
 // A record from a file, a project or another browser: exactly what makeArt makes, or null.
 export function artFromStranger(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || !['z', 'm', 'art'].every((k) => k in value) || !Object.keys(value).every((k) => ['z', 'm', 'art', 'follow', 'along'].includes(k))) return null;
-  const { z, m, art, follow, along } = value;
-  if (('follow' in value && !goodFollow(follow, true)) || ('along' in value && !goodAlong(along))) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !['z', 'm', 'art'].every((k) => k in value) || !Object.keys(value).every((k) => ['z', 'm', 'art', 'follow', 'along', 'layer'].includes(k))) return null;
+  const { z, m, art, follow, along, layer } = value;
+  if (('follow' in value && !goodFollow(follow, true)) || ('along' in value && !goodAlong(along)) || ('layer' in value && !goodShapeLayer(layer))) return null;
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z) return null;
   if (!Array.isArray(m) || m.length !== 6 || m[0] !== 1 || m[1] !== 0 || m[2] !== 0 || m[3] !== 1) return null;
   if (!Number.isInteger(m[4]) || !Number.isInteger(m[5] / 2) || Math.abs(m[4]) > MOST_SHIFT || Math.abs(m[5]) > MOST_SHIFT) return null;

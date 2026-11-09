@@ -4,6 +4,7 @@
 import { describe, test, expect, afterEach, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { matchReference } from '../support/references.js';
+import { readProject, writeProject } from '@/document/projectIO.js';
 
 const fileFrom = async (url) => new File([await (await fetch(url)).blob()], url.slice(url.lastIndexOf('/') + 1));
 
@@ -111,6 +112,112 @@ describe('save, then load', () => {
     await settle(project);
     expect(snapshot(project)).toEqual(before);
     expect(project.imageIsWorkingCopy).toBe(true);
+  });
+});
+
+// The layers a drawing had before the stack keep the old form, magic word and all, so older copies still open it.
+describe('the old form', () => {
+  afterEach(() => vi.restoreAllMocks());
+  const magicOf = async (blob) => new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 8));
+  const resaved = async (project) => writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
+
+  test('an old project saves in the old form and reads back the same', async () => {
+    const all = [...FIXTURES, '/tests/fixtures/projects/animated.phosphor', '/tests/fixtures/projects/one-sided-curve.phosphor'];
+    for (const url of all) {
+      const { project } = await createTestApp();
+      const file = await fileFrom(url);
+      await project.loadProject(file);
+      await settle(project);
+      const blob = await resaved(project);
+      expect(await magicOf(blob), url).toBe('PHOSPHOR');
+      const [own, back] = [await readProject(file), await readProject(blob)];
+      // The file's settings come back as it had them; a setting it's older than is written now, as its default.
+      expect(Object.fromEntries(Object.keys(own.settings).map((key) => [key, back.settings[key]])), url).toEqual(own.settings);
+      // Paint over cells moved from before the cell layer gave them colors when it opened (keepMigratedLook).
+      if (!own.migrated || !own.paintBuffer) expect([...back.editCells], url).toEqual([...own.editCells]);
+      expect(back.layers, url).toEqual(own.layers);
+      expect(back.stack, url).toBe(undefined);
+      expect(!!back.paintBuffer, url).toBe(!!own.paintBuffer); // the paint, made again: its bytes are the browser's
+      expect(back.shapes, url).toEqual(own.shapes);
+    }
+  });
+
+  test('a renamed, hidden edit layer from phase 1 opens hidden with its name', async () => {
+    const { rectShape } = await import('@/document/shapes.js');
+    const { withPins } = await import('@/document/baseRecords.js');
+    const { project } = await createTestApp();
+    const own = await readProject(await fileFrom('/tests/fixtures/projects/no-haspaint.phosphor')); // cells and paint
+    const parts = {
+      ...own, settings: { ...own.settings, hasPaint: true }, paintBlob: new Blob([own.paintBuffer]),
+      shapes: new Map([['v:a', rectShape(2, 2, 10, 8, { fill: '#00ff00' })]]), baseRecords: withPins(own.baseRecords, [{ col: 6, row: 1, char: 'Q' }]),
+    };
+    const phase1 = (layers) => writeProject({ ...parts, layers }).then((blob) => new File([blob], 'phase1.phosphor'));
+    await project.loadProject(await phase1(null));
+    project.setLayerHidden('edit', true);
+    project.render();
+    await settle(project);
+    const shown = { cells: cellsKey(project), rows: project.rows };
+
+    await project.loadProject(await phase1({ edit: { name: 'Logo', hidden: true } }));
+    await settle(project);
+    expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
+    expect(project.layerById('edit')).toMatchObject({ name: 'Logo', hidden: true });
+    expect(project.editCells.size).toBeGreaterThan(0);
+    expect({ cells: cellsKey(project), rows: project.rows }).toEqual(shown);
+    // Saved again: the same form, and the same layers key.
+    const back = await readProject(await resaved(project));
+    expect(back.layers).toEqual({ edit: { name: 'Logo', hidden: true } });
+    expect(await magicOf(await resaved(project))).toBe('PHOSPHOR');
+  });
+
+  test('a stack whose only cells layer is L3 saves in the old form and reopens with the same cells', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+    project.layers = [project.layers[0], Object.freeze({ id: 'L3', kind: 'cells', n: 3, name: 'Ink', hidden: false })]; // as Layer 1 and 2 deleted
+    project._layerData.set('L3', { editCells: new Map(), paintLayer: null, hasPaint: false });
+    project.useLayer('L3');
+    project.typeAt(2, 2, 'Z', { fg: '#ffffff', bg: '#000000' });
+    project.commitEdit();
+    project.paintEditPixels([{ x: 5, y: 6, r: 255, g: 0, b: 0, alpha: 1 }]);
+    project.commitEdit();
+    project.render();
+    await settle(project);
+    const before = { cells: cellsKey(project), editCells: JSON.stringify([...project.editCells]), paint: project.paintLayer.colorAt(5, 6) };
+    const file = await save(project);
+    expect(await magicOf(file)).toBe('PHOSPHOR');
+    expect((await readProject(file)).layers).toEqual({ edit: { name: 'Ink', n: 3 } });
+
+    await project.loadProject(file);
+    await settle(project);
+    expect(project.layers.map((l) => [l.id, l.name, l.n])).toEqual([['base', null, 1], ['edit', 'Ink', 3]]);
+    expect({ cells: cellsKey(project), editCells: JSON.stringify([...project.editCells]), paint: project.paintLayer.colorAt(5, 6) }).toEqual(before);
+  });
+
+  test('a stack that does not fit saves every layer under its own name and eye, and opens the same', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+    project.typeAt(1, 1, 'E', { fg: '#ffffff', bg: '#000000' });
+    project.commitEdit();
+    const l1 = project.addLayer('cells', 'edit');
+    project.addVectorLayer();
+    project.renameLayer(l1, 'Logo');
+    project.useLayer(l1); // the layer in use isn't the edit layer: its cells are its own, not the edit layer's
+    project.typeAt(3, 3, 'L', { fg: '#ff0000', bg: '#000000' });
+    project.commitEdit();
+    project.paintEditPixels([{ x: 7, y: 8, r: 0, g: 0, b: 255, alpha: 1 }]);
+    project.commitEdit();
+    project.setLayerHidden('edit', true);
+    const layers = project.layers;
+    const file = await save(project);
+    expect(await magicOf(file)).toBe('PHOSPHR2');
+
+    await project.loadProject(file);
+    await settle(project);
+    expect(project.layers).toEqual(layers);
+    expect([...project.cellsOf('edit')]).toEqual([['1,1', expect.objectContaining({ char: 'E' })]]);
+    expect([...project.cellsOf(l1)]).toEqual([['3,3', expect.objectContaining({ char: 'L' })]]);
+    expect(project.paintOf(l1).colorAt(7, 8)).toEqual({ r: 0, g: 0, b: 255 });
+    expect(project.paintOf('edit')?.colorAt(7, 8) ?? null).toBe(null);
   });
 });
 

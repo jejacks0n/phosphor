@@ -2,7 +2,7 @@
 // writes back, whether a stack fits the old form, and a new layer's id and number.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { layersFromOld, savedLayers, legacySlots, newLayerId, nextNumber } from '../../src/document/layerInfo.js';
+import { layersFromOld, savedLayers, legacySlots, newLayerId, nextNumber, goodLayers } from '../../src/document/layerInfo.js';
 
 const ids = (layers) => layers.map((l) => l.id);
 const layer = (id, kind, n = 1) => ({ id, kind, n, name: null, hidden: false });
@@ -44,6 +44,29 @@ test('savedLayers: only what is not the default, and nothing when all is', () =>
   assert.deepEqual(savedLayers([{ ...BASE, hidden: true }, { ...EDIT, name: 'Logo' }]), { base: { hidden: true }, edit: { name: 'Logo' } });
   assert.deepEqual(savedLayers([BASE]), { noEdit: true });
   assert.deepEqual(ids(layersFromOld(savedLayers([BASE]), { hasShapes: false })), ['base']);
+});
+
+test('savedLayers: a vector layer its shapes bring back is left out, and one with none is kept', () => {
+  assert.equal(savedLayers([BASE, VECTOR, EDIT], { hasShapes: true }), null); // as a file from before layers had it
+  assert.deepEqual(savedLayers([BASE, { ...VECTOR, name: 'Ink' }, EDIT], { hasShapes: true }), { vector: { name: 'Ink' } });
+  assert.deepEqual(savedLayers([BASE, VECTOR, EDIT], { hasShapes: false }), { vector: {} });
+});
+
+test('savedLayers: the old form names its own layers whatever their ids, and a stack that does not fit has no old form', () => {
+  assert.deepEqual(savedLayers([BASE, layer('L4', 'vector', 2), { ...layer('L3', 'cells', 3), name: 'Logo' }]), { vector: { n: 2 }, edit: { name: 'Logo', n: 3 } });
+  assert.equal(savedLayers([BASE, EDIT, VECTOR, layer('L2', 'cells', 2)]), null);
+});
+
+test('goodLayers: a stack as layers, or null unless every rule holds', () => {
+  const stack = [BASE, EDIT, VECTOR, { ...layer('L2', 'cells', 2), name: 'Logo', hidden: true }];
+  assert.deepEqual(goodLayers(stack), stack);
+  assert.ok(goodLayers(stack).every(Object.isFrozen));
+  assert.deepEqual(goodLayers([{ id: 'base', kind: 'cells' }, { id: 'L7', kind: 'cells', n: 2.5, name: '  Ink ', hidden: 'yes', cells: [] }]), [BASE, { ...layer('L7', 'cells'), name: 'Ink' }]);
+  for (const bad of [
+    undefined, [], {}, [BASE, 'x'],
+    [BASE, layer('../x', 'cells')], [BASE, EDIT, EDIT], [BASE, layer('L01x', 'cells')],
+    [layer('base', 'vector'), EDIT], [EDIT, BASE], [BASE, layer('base', 'cells')], [BASE, layer('L1', 'paint')],
+  ]) assert.equal(goodLayers(bad), null, JSON.stringify(bad));
 });
 
 test('legacySlots: the bottom, then a vector layer, then a cells layer, each one optional', () => {

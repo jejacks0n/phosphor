@@ -2,7 +2,8 @@
 // exporting .ans and .utf8ans, the filename, and what counts as saved.
 import { t } from '@/i18n';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
-import { layersFromOld, savedLayers, legacySlots } from '@/document/layerInfo.js';
+import { layersFromOld, savedLayers, legacySlots, keyLayer } from '@/document/layerInfo.js';
+import PaintLayer from '@/document/PaintLayer.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
@@ -21,14 +22,33 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults } from '@/store/settings.js';
 import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson, randomId, blackPicture } from '@/store/project/shared.js';
 import { generateSlug } from 'random-word-slugs';
-import { shallowRef } from 'vue';
+import { markRaw, shallowRef } from 'vue';
 
 // A project's pictures, decoded: what can fail before anything has changed.
-const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
+const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer, layerParts }) => ({
   image: await loadImage(imageBuffer),
   paint: paintBuffer && await loadImage(paintBuffer, 'image/png'),
   basePixels: baseBuffer && await loadImage(baseBuffer, 'image/png'),
+  layerPaint: new Map(await Promise.all([...layerParts ?? []].filter(([, part]) => part.paintBuffer).map(async ([id, part]) => [id, await loadImage(part.paintBuffer, 'image/png')]))),
 });
+
+const NO_DRAWING = Object.freeze({ editCells: new Map(), paintLayer: null, hasPaint: false });
+const withoutLayer = (shape) => {
+  if (!shape?.layer) return shape;
+  const { layer, ...rest } = shape; // eslint-disable-line no-unused-vars
+  return Object.freeze(rest);
+};
+// The old form's frames: only its cells layer's keys (id's), bare as its cellEdits are, and shapes that name no layer.
+const oldFrames = (frames, id) => {
+  const bare = (key) => (keyLayer(key).id === id ? keyLayer(key).key : null);
+  const kept = (keys) => keys.map(bare).filter((key) => key !== null);
+  return frames.map((frame) => ({
+    ...frame,
+    changes: frame.changes.filter(([key]) => bare(key) !== null).map(([key, ...rest]) => [bare(key), ...rest]),
+    ...(frame.stays && { stays: kept(frame.stays) }),
+    ...(frame.shapes && { shapes: frame.shapes.map(([key, shape]) => [key, withoutLayer(shape)]) }),
+  }));
+};
 
 // A new document's layers: the bottom and the edit layer, in use. Set, not patched: a patch would merge into the last
 // document's.
@@ -39,25 +59,50 @@ function newLayers(project) {
 }
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
-function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels }, { filename, documentId }) {
+// A stack file's layers (stack) come with each cells layer's parts (layerParts) and paint (layerPaint), by id.
+function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, stack, layerParts, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels, layerPaint }, { filename, documentId }) {
   const own = this.layers; // replaceImage starts them over
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
   this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
   try {
-    this.editCells = editCells;
-    if (shapes?.size) this.shapes = shapes;
-    this.layers = layersFromOld(layers, { hasShapes: shapes?.size > 0 });
+    // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
+    // files: paint at the image's size or the grid's.
+    const loadPaint = (layer, picture) => {
+      if (settings.paintScale) layer.extend(Math.round(picture.width / layer.scale), Math.round(picture.height / layer.scale));
+      layer.load(picture, settings.paintScale ? null : { width: image.naturalWidth, height: image.naturalHeight }, this.fit);
+    };
+    let next = stack ?? layersFromOld(layers, { hasShapes: shapes?.size > 0 });
     if (this._takingProject) { // a room's project: the host's names, but whether a layer shows is each person's: kept for the same document, else cleared
       const mine = (id) => this._sameDocument && !!own.find((layer) => layer.id === id)?.hidden;
-      this.layers = this.layers.map((layer) => Object.freeze({ ...layer, hidden: mine(layer.id) }));
+      next = next.map((layer) => Object.freeze({ ...layer, hidden: mine(layer.id) }));
     }
+    if (stack) {
+      // In use, the layer a new document's pick takes (followLayerPick): the edit layer, else the topmost cells layer.
+      // Every other cells layer waits in _layerData, all of them there before the layers are, which the pick follows.
+      const above = stack.filter((layer) => layer.kind === 'cells' && layer.id !== 'base').map((layer) => layer.id);
+      this.editId = above.includes('edit') ? 'edit' : above.at(-1) ?? 'edit';
+      if (layerPaint.size) this.ensureLayer();
+      for (const id of above) {
+        const picture = layerPaint.get(id);
+        if (id === this.editId) {
+          this.editCells = layerParts.get(id).editCells;
+          if (picture) loadPaint(this.paintLayer, picture);
+          this.hasPaint = !!picture && this.paintLayer.hasPaint;
+          continue;
+        }
+        const paintLayer = picture ? markRaw(new PaintLayer({ cols: this.paintLayer.cols, rows: this.paintLayer.rows, scale: this.paintLayer.scale })) : null;
+        if (paintLayer) loadPaint(paintLayer, picture);
+        this._layerData.set(id, { editCells: layerParts.get(id).editCells, paintLayer, hasPaint: !!paintLayer?.hasPaint });
+      }
+    } else {
+      this.editCells = editCells;
+    }
+    if (shapes?.size) this.shapes = shapes;
+    this.layers = next;
     this.setBaseRecords(baseRecords);
     if (paint) {
       this.ensureLayer();
-      // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
-      // files: paint at the image's size or the grid's.
-      if (settings.paintScale) this.paintLayer.extend(Math.round(paint.width / this.paintLayer.scale), Math.round(paint.height / this.paintLayer.scale));
-      this.paintLayer.load(paint, settings.paintScale ? null : { width: image.naturalWidth, height: image.naturalHeight }, this.fit);
+      loadPaint(this.paintLayer, paint);
       this.hasPaint = this.paintLayer.hasPaint;
       if (migrated) this.keepMigratedLook();
     }
@@ -69,11 +114,11 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
       this.baseLayer.extend(Math.round(basePixels.width / k), Math.round(basePixels.height / k));
       this.baseLayer.load(basePixels);
     }
-    // Both layers reach as far as either was saved (they're extended together from here on).
+    // Every layer reaches as far as any was saved (they're extended together from here on).
     if (this.paintLayer) {
-      const cols = Math.max(this.paintLayer.cols, this.baseLayer.cols), rows = Math.max(this.paintLayer.rows, this.baseLayer.rows);
-      this.paintLayer.extend(cols, rows);
-      this.baseLayer.extend(cols, rows);
+      const all = [this.paintLayer, this.baseLayer, ...[...this._layerData.values()].map((data) => data.paintLayer).filter(Boolean)];
+      const cols = Math.max(...all.map((layer) => layer.cols)), rows = Math.max(...all.map((layer) => layer.rows));
+      for (const layer of all) layer.extend(cols, rows);
     }
     // Files from before the base had its own pixels kept erased cells as a record: erase them
     // now (as part of loading, not an edit).
@@ -292,25 +337,37 @@ export const documentActions = {
   // What a .phosphor file holds besides the image, all of it as of the call (a canvas is copied when
   // toBlob is called), since a room's changes go on while the blobs are made. Inside an art layer, the drawing
   // is the one kept aside (enterArt).
-  // The old form's cells and paint are its cells layer's (legacySlots).
-  // ponytail: a stack that doesn't fit the old form saves the layer in use; the stack form comes next.
+  // Layers that fit the old form (legacySlots) are written in it: its cells layer's cells and paint as the edit layer's,
+  // whatever its id, its frame keys bare and its shapes naming no layer. Any other stack is written in the stack form,
+  // every cells layer with its own cells and paint.
   async projectParts() {
-    const id = (legacySlots(this.layers) ?? { cells: this.editId }).cells;
-    const drawing = id === this.editId ? this._artInside ?? this : this._layerData.get(id) ?? { editCells: new Map(), paintLayer: null, hasPaint: false };
+    const slots = legacySlots(this.layers);
+    const drawingOf = (id) => (id === this.editId ? this._artInside ?? this : this._layerData.get(id)) ?? NO_DRAWING;
+    const above = this.layers.filter((layer) => layer.kind === 'cells' && layer.id !== 'base');
+    const drawings = slots ? [drawingOf(slots.cells)] : above.map(({ id }) => drawingOf(id));
+    const scaled = drawings.find((drawing) => drawing.paintLayer) ?? NO_DRAWING;
     const parts = {
-      settings: { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, (key === 'hasPaint' ? drawing : this)[key]])), paintScale: drawing.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null },
-      editCells: drawing.editCells,
+      settings: { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, key === 'hasPaint' ? drawings.some((drawing) => drawing.hasPaint) : this[key]])), paintScale: scaled.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null },
       baseRecords: this.baseRecords,
-      shapes: this.shapes,
-      layers: savedLayers(this.layers),
+      shapes: slots ? new Map([...this.shapes].map(([key, shape]) => [key, withoutLayer(shape)])) : this.shapes,
     };
     if (this.hasFrames) { // as of the call, as the rest is
       this.noteFrame();
       this.resolvedOf(this.frames.length - 1); // every key frame's shape as it shows, kept on it
-      parts.animation = { frames: serializeFrames(this.frames), frame: this.frame, fps: this.fps };
+      const frames = serializeFrames(this.frames);
+      parts.animation = { frames: slots ? oldFrames(frames, slots.cells) : frames, frame: this.frame, fps: this.fps };
     }
-    const paintBlob = drawing.paintLayer?.toBlob() ?? null, baseBlob = this.baseLayer?.hasPaint ? this.baseLayer.toBlob() : null;
-    return { ...parts, paintBlob: await paintBlob, baseBlob: await baseBlob };
+    const baseBlob = this.baseLayer?.hasPaint ? this.baseLayer.toBlob() : null;
+    if (slots) {
+      const paintBlob = drawings[0].paintLayer?.toBlob() ?? null;
+      return { ...parts, editCells: drawings[0].editCells, layers: savedLayers(this.layers, { hasShapes: this.shapes.size > 0 }), paintBlob: await paintBlob, baseBlob: await baseBlob };
+    }
+    const paintBlobs = drawings.map((drawing) => (drawing.hasPaint ? drawing.paintLayer.toBlob() : null));
+    const stack = await Promise.all(this.layers.map(async (layer) => {
+      const at = above.indexOf(layer);
+      return at < 0 ? { ...layer } : { ...layer, editCells: drawings[at].editCells, paintBlob: await paintBlobs[at] };
+    }));
+    return { ...parts, stack, paintBlob: null, baseBlob: await baseBlob };
   },
 
   async loadProject(file) {

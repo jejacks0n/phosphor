@@ -18,6 +18,7 @@
 import { markRaw } from 'vue';
 import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
 import { isShape, isShapeKey, sameShape, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
+import { keyLayer, layerKey } from './layerInfo.js';
 import { EASINGS, MOTIONS, lifeAt, setPartsAt, shapeAt, strayEasings } from './tweens.js';
 import { PARTS, partsOf, samePart, withParts } from './parts.js';
 import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
@@ -208,19 +209,30 @@ export const serializeFrames = (frames) => frames.map((frame, i) => {
 });
 
 const goodPaint = (rgba) => Number.isInteger(rgba) && rgba >= 0 && rgba <= 0xffffffff;
-const goodKey = (key) => {
-  if (typeof key !== 'string' || !/^\d+,\d+$/.test(key)) return false;
-  const { col, row } = parseKey(key);
-  return col < MAX_COLS && row < MAX_LINES;
+// What a project file that isn't one throws (projectIO.js): a frame naming a layer its stack doesn't have is one.
+export const invalidProject = () => Object.assign(new Error('Not a valid Phosphor project file'), { code: 'INVALID_PROJECT' });
+
+// A cell's key on the grid as a frame has it, named by its layer as layerKey writes it. layers: a stack file's ({ cells,
+// vector }, Sets of ids), and a key on a layer that isn't one of its cells layers throws; without them only the edit
+// layer's bare keys are frames' keys, as in the files from before the stack.
+const goodKey = (key, layers = null) => {
+  if (typeof key !== 'string') return false;
+  const { id, key: at } = keyLayer(key);
+  if (!/^\d+,\d+$/.test(at) || layerKey(id, at) !== key) return false;
+  const { col, row } = parseKey(at);
+  if (!(col < MAX_COLS && row < MAX_LINES)) return false;
+  if (!layers) return id === 'edit';
+  if (!layers.cells.has(id)) throw invalidProject();
+  return true;
 };
-function readChanges(entries) {
+function readChanges(entries, layers) {
   if (!Array.isArray(entries) || entries.length > MAX_CELLS) return null;
   const changes = new Map();
   for (const entry of entries) {
     if (!Array.isArray(entry)) return null;
     const [key, cell, top, bottom] = entry;
-    if (!goodKey(key) || !goodPaint(top) || !goodPaint(bottom)) return null;
-    const clean = deserializeEditCells([[key, cell]]).get(key) ?? null;
+    if (!goodKey(key, layers) || !goodPaint(top) || !goodPaint(bottom)) return null;
+    const at = keyLayer(key).key, clean = deserializeEditCells([[at, cell]]).get(at) ?? null;
     if (cell != null && !clean) return null; // a cell with nothing a cell can hold
     if (clean && Object.keys(clean).length !== Object.keys(cell).length) return null;
     changes.set(key, cellState(clean, top, bottom));
@@ -228,14 +240,17 @@ function readChanges(entries) {
   return changes;
 }
 
-// A frame's shape changes into its changes, or false when any is bad.
-function readShapes(entries, changes) {
+// A frame's shape changes into its changes, or false when any is bad. With a stack's layers (goodKey), a shape on a
+// layer that isn't one of its vector layers throws; without them, one that names a layer is bad.
+function readShapes(entries, changes, layers) {
   if (entries === undefined) return true;
   if (!Array.isArray(entries) || entries.length > 2 * MOST_SHAPES) return false;
   for (const entry of entries) {
     if (!Array.isArray(entry) || entry.length !== 2 || !isGoodShapeKey(entry[0])) return false;
     const shape = entry[1] === null ? null : shapeFromStranger(entry[1]);
     if (entry[1] !== null && !shape) return false;
+    if (shape && !layers && shape.layer) return false;
+    if (shape && layers && !layers.vector.has(shape.layer ?? 'vector')) throw invalidProject();
     changes.set(entry[0], shape ? cellState(shape, 0, 0) : EMPTY_STATE);
   }
   return true;
@@ -337,8 +352,9 @@ export function inferParts(frames, indices) {
 
 // { frames, frame, fps } from a file (every cell staying when cellsCarry says false, as the whole movie's did before
 // each cell had its own; motion, the whole movie's, from files before each tween had its own), or null when anything's wrong with them, or the grid (cols, rows) is too
-// large to animate: the file's still holds what it needs to open as one. Files are untrusted.
-export function deserializeFrames(json, cols, rows) {
+// large to animate: the file's still holds what it needs to open as one. Files are untrusted. layers: a stack file's,
+// as goodKey has them; a key or shape on a layer it doesn't have makes the file no project (it throws).
+export function deserializeFrames(json, cols, rows, layers = null) {
   const { frames, frame, fps } = json ?? {};
   if (!Array.isArray(frames) || !frames.length) return null;
   if (!Number.isInteger(frame) || frame < 0 || frame >= frames.length) return null;
@@ -349,13 +365,13 @@ export function deserializeFrames(json, cols, rows) {
   for (const entry of frames) {
     const { kind, hold, changes, drawn, stays, shapes, eases, tweens, motions, parts } = entry ?? {};
     if (!FRAME_KINDS.includes(kind) || !Number.isFinite(hold) || hold < 0 || hold > 60) return null;
-    const map = readChanges(changes);
-    if (!map || !readShapes(shapes, map)) return null;
+    const map = readChanges(changes, layers);
+    if (!map || !readShapes(shapes, map, layers)) return null;
     if (kind !== 'blank') shown = new Set();
     for (const [key, state] of map) if (isShapeKey(key)) shown[isEmptyState(state) ? 'delete' : 'add'](key);
     if (shown.size > MOST_SHAPES) return null;
-    if (drawn !== undefined && !(Array.isArray(drawn) && drawn.length <= MAX_CELLS && drawn.every(goodKey))) return null;
-    if (stays !== undefined && !(Array.isArray(stays) && stays.every((key) => goodKey(key) && map.has(key)))) return null;
+    if (drawn !== undefined && !(Array.isArray(drawn) && drawn.length <= MAX_CELLS && drawn.every((key) => goodKey(key)))) return null;
+    if (stays !== undefined && !(Array.isArray(stays) && stays.every((key) => goodKey(key, layers) && map.has(key)))) return null;
     const staying = json.cellsCarry === false ? [...map.keys()].filter((key) => !isShapeKey(key)) : stays ?? [];
     for (const key of staying) map.set(key, cellState(map.get(key).cell, map.get(key).top, map.get(key).bottom, true));
     const next = newFrame(kind, map);

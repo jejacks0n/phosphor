@@ -125,3 +125,105 @@ test('.phosphor read/write: the layers key round-trips, and is not a setting', a
   const none = await readProject(await writeProject({ settings: { cols: 80 }, imageBuffer, paintBlob: null, editCells: new Map(), layers: null }));
   assert.equal(none.layers, undefined); // a file without changes is as it was
 });
+
+// A drawing with more layers than the old form has: the stack form, under its own magic word, so older copies refuse it.
+const STACK = [
+  { id: 'base', kind: 'cells', n: 1, name: null, hidden: false },
+  { id: 'edit', kind: 'cells', n: 1, name: null, hidden: false },
+  { id: 'vector', kind: 'vector', n: 1, name: null, hidden: false },
+  { id: 'L2', kind: 'cells', n: 2, name: 'Logo', hidden: true },
+];
+const magicOf = async (blob) => new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 8));
+const pngOf = (n, seed) => new Blob([Uint8Array.from({ length: n }, (_, i) => (i * 17 + seed) & 255)], { type: 'image/png' });
+const stackFile = (stack, more = {}) => writeProject({
+  settings: { cols: 20, rows: 20 }, imageBuffer: new ArrayBuffer(4), stack: stack.map((layer) => ({ ...layer, editCells: new Map() })), ...more,
+});
+// A stack file's JSON as written, changed by edit, and written back.
+async function editedStack(edit) {
+  const buffer = await (await stackFile(STACK)).arrayBuffer(), view = new DataView(buffer);
+  const jsonLen = view.getUint32(8, true);
+  const json = JSON.parse(new TextDecoder().decode(buffer.slice(20, 20 + jsonLen)));
+  edit(json);
+  const b = new TextEncoder().encode(JSON.stringify(json));
+  return new Blob([buffer.slice(0, 8), new Uint32Array([b.byteLength, view.getUint32(12, true), view.getUint32(16, true)]), b, buffer.slice(20 + jsonLen)]);
+}
+
+test('a stack round-trips', async () => {
+  const { rectShape } = await import('../../src/document/shapes.js');
+  const shapes = new Map([['v:a', rectShape(1, 1, 5, 5, { fill: '#ff0000' })]]);
+  const editPaint = pngOf(30, 1), logoPaint = pngOf(50, 2), basePng = pngOf(12, 3);
+  const animation = { frames: [{ kind: 'blank', hold: 0, changes: [['1,1', { char: 'a' }, 0, 0], ['L2:2,2', { char: 'b' }, 0, 0]], stays: ['L2:2,2'] }], frame: 0, fps: 10 };
+  const back = await readProject(await writeProject({
+    settings: { cols: 20, rows: 20, hasPaint: true, paintScale: 2 }, imageBuffer: new Uint8Array([9, 8, 7]).buffer, baseBlob: basePng, shapes, animation,
+    stack: [
+      { ...STACK[0] },
+      { ...STACK[1], editCells: new Map([['1,1', { char: 'E' }]]), paintBlob: editPaint },
+      { ...STACK[2] },
+      { ...STACK[3], editCells: new Map([['2,2', { char: 'L' }]]), paintBlob: logoPaint },
+    ],
+  }));
+  assert.deepEqual(back.stack, STACK);
+  assert.equal(back.layers, undefined);
+  assert.deepEqual([...back.layerParts.get('edit').editCells], [['1,1', { char: 'E' }]]);
+  assert.deepEqual([...back.layerParts.get('L2').editCells], [['2,2', { char: 'L' }]]);
+  assert.equal(back.layerParts.get('edit').paintBuffer.byteLength, 30);
+  assert.equal(back.layerParts.get('L2').paintBuffer.byteLength, 50);
+  assert.deepEqual([...new Uint8Array(back.layerParts.get('L2').paintBuffer)], [...new Uint8Array(await logoPaint.arrayBuffer())]);
+  assert.deepEqual([...new Uint8Array(back.baseBuffer)], [...new Uint8Array(await basePng.arrayBuffer())]);
+  assert.deepEqual([...new Uint8Array(back.imageBuffer)], [9, 8, 7]);
+  assert.deepEqual([...back.shapes], [...shapes]);
+  assert.deepEqual(back.settings, { cols: 20, rows: 20, paintScale: 2 });
+  assert.equal(back.paintBuffer, null);
+  assert.equal(back.editCells.size, 0);
+  // A movie's frames keep the keys of every layer (they used to be lost on open).
+  assert.equal(back.framesLost, false);
+  assert.deepEqual([...back.animation.frames[0].changes.keys()], ['1,1', 'L2:2,2']);
+  // A layer with nothing on it has no cells and no paint.
+  const empty = await readProject(await stackFile(STACK));
+  assert.equal(empty.layerParts.get('L2').editCells.size, 0);
+  assert.equal(empty.layerParts.get('L2').paintBuffer, null);
+  // A shape on another vector layer says which.
+  const onL5 = new Map([['v:b', { ...rectShape(1, 1, 5, 5, { fill: '#00ff00' }), layer: 'L5' }]]);
+  const withL5 = await readProject(await stackFile([...STACK, { id: 'L5', kind: 'vector', n: 2, name: null, hidden: false }], { shapes: onL5 }));
+  assert.equal(withL5.shapes.get('v:b').layer, 'L5');
+});
+
+test('a stack file starts with PHOSPHR2 and an old one with PHOSPHOR', async () => {
+  assert.equal(await magicOf(await stackFile(STACK)), 'PHOSPHR2');
+  assert.equal(await magicOf(await writeProject({ settings: { cols: 20 }, imageBuffer: new ArrayBuffer(4), paintBlob: null, editCells: new Map() })), 'PHOSPHOR');
+});
+
+test('untrusted stacks are refused', async () => {
+  const { rectShape } = await import('../../src/document/shapes.js');
+  const cases = {
+    "an id '../x'": (json) => { json.stack[1].id = '../x'; },
+    'two edits': (json) => { json.stack[3].id = 'edit'; },
+    'a vector bottom': (json) => { json.stack[0].kind = 'vector'; },
+    'the bottom second': (json) => { json.stack = [json.stack[1], json.stack[0], ...json.stack.slice(2)]; },
+    'no stack': (json) => { delete json.stack; },
+    'a shape on L9': (json) => { json.shapes = [['v:a', { ...rectShape(1, 1, 5, 5, { fill: '#ff0000' }), layer: 'L9' }]]; },
+    'a shape on a cells layer': (json) => { json.shapes = [['v:a', { ...rectShape(1, 1, 5, 5, { fill: '#ff0000' }), layer: 'L2' }]]; },
+    'a frame key L9:1,1': (json) => Object.assign(json, { frames: [{ kind: 'blank', hold: 0, changes: [['L9:1,1', { char: 'x' }, 0, 0]] }], frame: 0, fps: 10 }),
+    'a frame key on the vector layer': (json) => Object.assign(json, { frames: [{ kind: 'blank', hold: 0, changes: [['vector:1,1', { char: 'x' }, 0, 0]] }], frame: 0, fps: 10 }),
+  };
+  for (const [name, edit] of Object.entries(cases)) {
+    await assert.rejects(readProject(await editedStack(edit)), /Not a valid Phosphor project file/, name);
+  }
+  // A shape on the vector layer itself carries no layer, and one that names it is no shape (it opens without them, as any bad shape).
+  assert.equal((await readProject(await editedStack((json) => { json.shapes = [['v:a', { ...rectShape(1, 1, 5, 5, { fill: '#ff0000' }), layer: 'vector' }]]; }))).shapes.size, 0);
+});
+
+test('old-form files read back unchanged', async () => {
+  const { readdir } = await import('node:fs/promises');
+  const dir = new URL('../fixtures/projects/', import.meta.url);
+  for (const name of (await readdir(dir)).filter((n) => n.endsWith('.phosphor'))) {
+    const read = await readProject(new Blob([await readFile(new URL(name, dir))]));
+    assert.equal(read.stack, undefined, name);
+    assert.equal(read.layers, undefined, name); // none of them has a layers key
+    assert.equal(read.layerParts, undefined, name);
+  }
+  // A shape that names a layer isn't one the old form has: the file opens without its shapes, as it does in older copies.
+  const { rectShape } = await import('../../src/document/shapes.js');
+  const shapes = new Map([['v:a', { ...rectShape(1, 1, 5, 5, { fill: '#ff0000' }), layer: 'L5' }]]);
+  assert.equal((await readProject(await writeProject({ settings: { cols: 20 }, imageBuffer: new ArrayBuffer(4), paintBlob: null, editCells: new Map(), shapes }))).shapes.size, 0);
+});

@@ -34,22 +34,37 @@ export function legacySlots(layers) {
   return i === layers.length ? { vector, cells } : null;
 }
 
-// What the old form's file keeps: only what isn't the default, or null when that's everything, so a file without changes
-// is as it was. A vector layer is kept even with nothing else, as it's there before its first shape.
-// ponytail: a stack that doesn't fit the old form keeps the vector and edit ids' entries here; the stack form comes next.
-export function savedLayers(layers) {
-  const slots = legacySlots(layers) ?? { vector: 'vector', cells: 'edit' };
+// What the old form's file keeps, for layers that fit it (legacySlots): only what isn't the default, or null when that's
+// everything, so a file without changes is as it was. Its cells layer is written as the edit layer and its vector layer
+// as the vector layer, whatever their ids. A vector layer is kept even with nothing else, as it's there before its first
+// shape, but not when hasShapes (the file has shapes): they bring it back (layersFromOld), as they did before layers.
+// Null too for a stack that doesn't fit, which only the stack form can say.
+export function savedLayers(layers, { hasShapes = false } = {}) {
+  const slots = legacySlots(layers);
+  if (!slots) return null;
   const byId = (id) => layers.find((layer) => layer.id === id);
   const kept = ({ name, hidden, n }) => ({ ...(name !== null && { name }), ...(hidden && { hidden }), ...(n !== 1 && { n }) });
   const saved = {};
-  for (const [key, layer] of [['base', layers[0]], ['edit', byId(slots.cells)]]) {
+  for (const [key, layer] of [['base', layers[0]], ['edit', byId(slots.cells)], ['vector', byId(slots.vector)]]) {
     const entry = layer && kept(layer);
-    if (entry && Object.keys(entry).length) saved[key] = entry;
+    if (entry && (Object.keys(entry).length || (key === 'vector' && !hasShapes))) saved[key] = entry;
   }
-  const vector = byId(slots.vector);
-  if (vector) saved.vector = kept(vector);
-  if (!byId(slots.cells)) saved.noEdit = true;
+  if (!slots.cells) saved.noEdit = true;
   return Object.keys(saved).length ? saved : null;
+}
+
+// The stack form's stack (untrusted) as layers, or null unless every rule holds: each id one a layer can have, and only
+// once; the bottom first, a cells layer, and only it 'base'; every kind one there is. Names and numbers are cleaned as
+// layersFromOld cleans them.
+const LAYER_ID = /^(base|vector|edit|L\d+)$/;
+export function goodLayers(raw) {
+  if (!Array.isArray(raw) || raw[0]?.id !== 'base' || raw[0].kind !== 'cells') return null;
+  const seen = new Set();
+  for (const entry of raw) {
+    if (!isObject(entry) || typeof entry.id !== 'string' || !LAYER_ID.test(entry.id) || seen.has(entry.id) || !['cells', 'vector'].includes(entry.kind)) return null;
+    seen.add(entry.id);
+  }
+  return raw.map((entry) => goodLayer(entry.id, entry.kind, entry));
 }
 
 // A new layer's id: 'edit' for cells and 'vector' for a vector layer while no layer has it, else L<k>, one past the
