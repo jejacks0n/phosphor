@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
+import { useLayerName } from '@/composables/useLayerName';
 
 // The drawing's layers, top of the stack first: the edit layer, the vector layer if there is one, the base. Picking a row
 // decides the tabs and what the tools act on; its eye hides or shows the layer; a click on the picked row's name, a
@@ -12,10 +13,10 @@ import { useDrawingStore } from '@/store/DrawingStore';
 
 const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
 const { t } = useI18n();
+const layerName = useLayerName();
 const list = useTemplateRef('list');
 const uid = useId();   // for the off rows' reasons: the side panel and the phone dialog may both hold a list
 
-const DEFAULT_NAMES = { edit: 'layers.editDefault', vector: 'layers.vectorDefault', base: 'layers.base' };
 const ICONS = {   // a 16-unit box: cells, a path with its points, pixels
   edit: 'M2 3h5v4H2zM9 3h5v4H9zM2 9h5v4H2zM9 9h5v4H9z',
   vector: 'M2 13C4 4 12 12 14 3l1 .3C13 13 5 5 3 13.3z M1 12h3v3H1zM12 1h3v3h-3z',
@@ -25,7 +26,7 @@ const ICONS = {   // a 16-unit box: cells, a path with its points, pixels
 const showing = computed(() => !!project.image && workspace.editMode);
 const layers = computed(() => ['edit', ...(project.hasVectorLayer ? ['vector'] : []), 'base'].map((id) => ({
   id,
-  name: project.layerInfo[id]?.name ?? t(DEFAULT_NAMES[id]),
+  name: layerName(id),
   hidden: project.layerHidden(id),
   off: id === 'base' ? drawing.hostOnly ?? (project.artInside ? t('art.baseOff') : null) : null,
 })));

@@ -672,6 +672,7 @@
     }
   },
   "status": {
+    "layerAria": "Calque choisi : {name}",
     "origin": {
       "edit": "édition",
       "base": "base"

@@ -531,7 +531,8 @@ the two halves of each cell's base colors.
 - **Eyedropper**'s **FG** and **BG** toggles choose what a pick sets; in the ANSI view both lit sets both. In
   the pixel view one is lit at a time, and **Shift** picks into the other one (while you hold it, that one is
   lit).
-- **The status bar** follows the tool: Edit Mode shows the cell under the cursor, Select the
+- **The status bar** starts with the name of the picked layer, so a folded panel or a phone still says which
+  layer you're on (it isn't there in the pixel view). Then it follows the tool: Edit Mode shows the cell under the cursor, Select the
   selection's size and place, and the Eyedropper its last pick and where each color came from.
   On the right it shows that Space pans, and while you hold Alt (Option on a Mac) or Shift, what that key
   does with the tool. When the view is too narrow for all of

@@ -7,8 +7,9 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools';
 import { shortcut } from '@/lib/keyLabels';
+import { useLayerName } from '@/composables/useLayerName';
 
-// Under the ANSI view, following the tool: Edit Mode shows its cursor's cell (each attribute from the
+// Under the ANSI and VECTOR views, starting with the picked layer's name, then following the tool: Edit Mode shows its cursor's cell (each attribute from the
 // edit layer or the base) and the overwrite/insert toggle; Select, the selection's size and place; the
 // Color Picker, its last pick and where each color came from. On the right, with a mouse or trackpad,
 // Space's pan, or while a modifier's held, what it does with the tool (in the pixel view too); the rest is
@@ -16,6 +17,8 @@ import { shortcut } from '@/lib/keyLabels';
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
+const layerName = useLayerName();
+const layer = computed(() => layerName(workspace.shownPick));
 const tool = computed(() => workspace.activeTool);
 const sel = computed(() => workspace.selection);
 const offset = computed(() => workspace.selectionOffset ?? { dc: 0, dr: 0 }); // while it's being dragged
@@ -58,6 +61,7 @@ const backTo100 = () => {
 
 <template>
   <footer class="ansi-status">
+    <span class="layer" role="group" :aria-label="t('status.layerAria', { name: layer })">{{ layer }}</span>
     <template v-if="tool === 'text'">
       <template v-if="cursor && cell">
         <span>Col <b>{{ cursor.col + 1 }}</b> Row <b>{{ cursor.row + 1 }}</b></span>

@@ -672,6 +672,7 @@
     }
   },
   "status": {
+    "layerAria": "Picked layer: {name}",
     "origin": {
       "edit": "edit",
       "base": "base"
