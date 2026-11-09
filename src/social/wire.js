@@ -265,7 +265,7 @@ export function readChange(msg, { cols, rows, layerWidth, layerHeight }) {
     if (!Array.isArray(cell) || cell.length !== 2 || typeof cell[0] !== 'string') return null;
     if (isShapeKey(cell[0])) { // a shape (or null, its deletion), exactly as the app makes one
       if (!isGoodShapeKey(cell[0])) return null;
-      if (cell[1] !== null && !sameShape(shapeFromStranger(cell[1]), cell[1])) return null;
+      if (cell[1] !== null && (cell[1]?.layer !== undefined || !sameShape(shapeFromStranger(cell[1]), cell[1]))) return null; // a room has the one vector layer, which shapes don't name
       continue;
     }
     const at = placeOf(cell[0]);

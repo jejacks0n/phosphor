@@ -21,8 +21,9 @@ const HEX = /^#[0-9a-f]{6}$/i;
 const HALVES = new Set([' ', '█', '▀', '▄']);
 
 export const SHAPE_KEY = /^v:[A-Za-z0-9_-]{1,32}$/; // a shape's key (shapes.js)
-// The vector layer a shape is on, when it isn't 'vector': shapes on that one don't name it (layerInfo.js).
-export const goodShapeLayer = (layer) => typeof layer === 'string' && /^(edit|L\d+)$/.test(layer);
+// The vector layer a shape is on, when it isn't 'vector': shapes on that one don't name it (layerInfo.js). An L-id: 'edit'
+// is a cells layer's. Whether the stack has that vector layer is for whoever holds the stack (readProject).
+export const goodShapeLayer = (layer) => typeof layer === 'string' && /^L\d+$/.test(layer);
 const FOLLOW_KEYS = ['key', 'ride', 'face', 'motion'];
 const RIDES = ['start', 'end'], MOTIONS = ['half', 'cells']; // the values other than the default: along it, on its own keys; smoothly
 const rounded = (v) => Math.round(v * 1e4) / 1e4 || 0; // 1/10000, no -0

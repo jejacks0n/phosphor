@@ -53,15 +53,19 @@ export function savedLayers(layers, { hasShapes = false } = {}) {
   return Object.keys(saved).length ? saved : null;
 }
 
-// The stack form's stack (untrusted) as layers, or null unless every rule holds: each id one a layer can have, and only
-// once; the bottom first, a cells layer, and only it 'base'; every kind one there is. Names and numbers are cleaned as
-// layersFromOld cleans them.
+// The most layers a drawing holds, the bottom counted: a guard against crafted files, and can be raised.
+export const MOST_LAYERS = 64; // ponytail: 64 is plenty to draw with; each cells layer can hold a full paint canvas
+
+// The stack form's stack (untrusted) as layers, or null unless every rule holds: no more than MOST_LAYERS; each id one a
+// layer can have, and only once; the bottom first, a cells layer, and only it 'base'; every kind one there is, and 'edit'
+// a cells layer's id and 'vector' a vector layer's. Names and numbers are cleaned as layersFromOld cleans them.
 const LAYER_ID = /^(base|vector|edit|L\d+)$/;
+const OWN_KIND = { edit: 'cells', vector: 'vector' }; // the ids that keep their old meaning
 export function goodLayers(raw) {
-  if (!Array.isArray(raw) || raw[0]?.id !== 'base' || raw[0].kind !== 'cells') return null;
+  if (!Array.isArray(raw) || raw.length > MOST_LAYERS || raw[0]?.id !== 'base' || raw[0].kind !== 'cells') return null;
   const seen = new Set();
   for (const entry of raw) {
-    if (!isObject(entry) || typeof entry.id !== 'string' || !LAYER_ID.test(entry.id) || seen.has(entry.id) || !['cells', 'vector'].includes(entry.kind)) return null;
+    if (!isObject(entry) || typeof entry.id !== 'string' || !LAYER_ID.test(entry.id) || seen.has(entry.id) || !['cells', 'vector'].includes(entry.kind) || (OWN_KIND[entry.id] ?? entry.kind) !== entry.kind) return null;
     seen.add(entry.id);
   }
   return raw.map((entry) => goodLayer(entry.id, entry.kind, entry));

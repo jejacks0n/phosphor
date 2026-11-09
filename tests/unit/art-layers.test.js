@@ -34,6 +34,11 @@ test('artFromStranger takes exactly what makeArt makes, and nothing past MOST_AR
   const big = { cols: 300, rows: 100, cells: Array.from({ length: 6000 }, (_, i) => [i, 'A', '#123456', '#654321']) };
   assert.equal(artFromStranger({ z: 0, m: [1, 0, 0, 1, 0, 0], art: big }), null);
 });
+test('artFromStranger takes a vector layer an L-id names, and not the edit layer', () => {
+  const good = JSON.parse(JSON.stringify(makeArt({ m: [1, 0, 0, 1, 2, 4], art: { cols: 1, rows: 1, cells: [[0, 'A', null, null]] } })));
+  assert.equal(artFromStranger({ ...good, layer: 'L3' }).layer, 'L3');
+  for (const layer of ['edit', 'vector', 3]) assert.equal(artFromStranger({ ...good, layer }), null, String(layer));
+});
 test('artFromStranger counts UTF-8 bytes, not characters', () => {
   const cells = Array.from({ length: 2700 }, (_, i) => [i, '字', null, null]);
   const wide = { z: 0, m: [1, 0, 0, 1, 0, 0], art: { cols: 300, rows: 100, cells } };

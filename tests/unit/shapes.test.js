@@ -171,6 +171,13 @@ test('shapeFromStranger refuses what a shape can\'t be', () => {
   assert.equal(shapeFromStranger(null), null);
 });
 
+// A shape names its vector layer by an L-id; 'edit' is a cells layer's, and 'vector' is the default (left out).
+test('shapeFromStranger takes a vector layer an L-id names, and not the edit layer', () => {
+  const good = JSON.parse(JSON.stringify(rectShape(0, 0, 4, 4, { fill: '#ff0000' })));
+  assert.equal(shapeFromStranger({ ...good, layer: 'L3' }).layer, 'L3');
+  for (const layer of ['edit', 'vector', 'base', 'L', 'L3x', 3, null]) assert.equal(shapeFromStranger({ ...good, layer }), null, String(layer));
+});
+
 // The Pen's shape has one point after its first click, and goes out to a room as it is.
 test('shapeFromStranger takes a shape of one point, as the Pen starts one', () => {
   const pen = makeShape({ points: [[3, 4, 0, 0, 0, 0, 0]], closed: false, stroke: '#ffffff' });

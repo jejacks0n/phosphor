@@ -219,6 +219,14 @@ test.each([
   assert.equal(readChange({ ...good(), ...bad }, GRID), null);
 });
 
+// A room carries the old shape of a drawing: its shapes are on its one vector layer, which they don't name.
+test('readChange refuses a shape that names a layer', async () => {
+  const { rectShape } = await import('../../src/document/shapes.js');
+  const shape = JSON.parse(JSON.stringify(rectShape(0, 0, 4, 4, { fill: '#ff0000' })));
+  assert.ok(readChange({ ...good(), cells: [['v:a', shape]] }, GRID));
+  for (const layer of ['L2', 'edit', 'vector']) assert.equal(readChange({ ...good(), cells: [['v:a', { ...shape, layer }]] }, GRID), null, layer);
+});
+
 test('readChange takes the keys cellKey makes, zero and ten included', () => {
   const cells = [['0,0', null], ['10,0', null], ['0,3', null], ['9,0', null], ['0,0', { char: 'a' }]];
   assert.equal(readChange({ ...good(), cells }, { ...GRID, cols: 11 }).cells, cells);

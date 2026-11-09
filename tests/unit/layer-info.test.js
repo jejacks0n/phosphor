@@ -2,7 +2,7 @@
 // writes back, whether a stack fits the old form, and a new layer's id and number.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { layersFromOld, savedLayers, legacySlots, newLayerId, nextNumber, goodLayers } from '../../src/document/layerInfo.js';
+import { layersFromOld, savedLayers, legacySlots, newLayerId, nextNumber, goodLayers, MOST_LAYERS } from '../../src/document/layerInfo.js';
 
 const ids = (layers) => layers.map((l) => l.id);
 const layer = (id, kind, n = 1) => ({ id, kind, n, name: null, hidden: false });
@@ -67,6 +67,20 @@ test('goodLayers: a stack as layers, or null unless every rule holds', () => {
     [BASE, layer('../x', 'cells')], [BASE, EDIT, EDIT], [BASE, layer('L01x', 'cells')],
     [layer('base', 'vector'), EDIT], [EDIT, BASE], [BASE, layer('base', 'cells')], [BASE, layer('L1', 'paint')],
   ]) assert.equal(goodLayers(bad), null, JSON.stringify(bad));
+});
+
+test('goodLayers: edit is a cells layer and vector is a vector layer, whatever a file says', () => {
+  assert.equal(goodLayers([BASE, layer('edit', 'vector')]), null);
+  assert.equal(goodLayers([BASE, layer('vector', 'cells')]), null);
+  assert.ok(goodLayers([BASE, layer('vector', 'vector'), layer('edit', 'cells')]));
+  assert.ok(goodLayers([BASE, layer('L1', 'vector'), layer('L2', 'cells')]));
+});
+
+test('goodLayers: at most MOST_LAYERS layers, the bottom counted', () => {
+  const stack = (n) => [BASE, ...Array.from({ length: n - 1 }, (_, i) => layer(`L${i + 1}`, 'cells', i + 1))];
+  assert.equal(MOST_LAYERS, 64);
+  assert.equal(goodLayers(stack(MOST_LAYERS)).length, MOST_LAYERS);
+  assert.equal(goodLayers(stack(MOST_LAYERS + 1)), null);
 });
 
 test('legacySlots: the bottom, then a vector layer, then a cells layer, each one optional', () => {
