@@ -7,9 +7,9 @@ import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer, layerKey } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { bakedEntry, cellIndex, charRowsOf } from '@/lib/Cells.js';
+import { bakedEntry, cellIndex, charRowsOf, halfColors, mix } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
-import { paletteChoices } from '@/lib/PixelTransforms.js';
+import { effectiveColor, paletteChoices } from '@/lib/PixelTransforms.js';
 import { over } from '@/store/project/shared.js';
 
 // For each palette color, a stored color that shows as it under the adjustments (paletteChoices), kept while
@@ -23,6 +23,30 @@ function storedOf(palette, params) {
     storedFor.set(palette, held);
   }
   return held.map;
+}
+
+// A stored color that shows as the ASCII styles' black background under the adjustments: black, or white with Invert.
+// ponytail: only those two; an adjustment that lifts black (Contrast, Levels) gets black, a little off. Search a grid if it bites.
+const storedBlack = (params) => ['#000000', '#ffffff'].find((hex) => effectiveColor(hex, params).hex === '#000000') ?? '#000000';
+
+// The stored color hex, or one a step off it on some channels, that shows as target: Color ASCII's FG is the halves'
+// average, and one averaged in stored colors can round the other way from the one shown (Invert turns half up to half down).
+function shownAs(project, hex, target) {
+  const params = project.processParams, { r, g, b } = hex2rgb(hex), steps = [0, -1, 1];
+  for (const dr of steps) for (const dg of steps) for (const db of steps) {
+    const near = rgb2hex({ r: r + dr, g: g + dg, b: b + db });
+    if (project.renderer.effective(near, params).hex.toLowerCase() === target.toLowerCase()) return near;
+  }
+  return hex;
+}
+
+// The base's cell as the render style shows it, in stored colors (bakedEntry of baseCellAt), its Color ASCII FG one that
+// shows as the base's does.
+function baseLook(project, col, row) {
+  const look = bakedEntry(project.renderStyle, project.baseCellAt(col, row));
+  if (project.renderStyle !== 'colorAscii') return look;
+  const shown = project.renderer.underCell(col, row, project.processParams, project.renderedCells);
+  return shown ? { ...look, fg: shownAs(project, look.fg, shown.fg.hex) } : look;
 }
 
 // The shown cells layers above the bottom, bottom first: every one, or only those under the layer with the id below (none
@@ -143,28 +167,36 @@ export const readingActions = {
   // What a cell layer's entry is completed against (completeAt): the base's cell as the render style shows it, with the
   // shown cells layers under the layer with the id below over it, each as underlyingAt lays them.
   lookUnder(col, row, below = this.editId) {
-    let look = bakedEntry(this.renderStyle, this.baseCellAt(col, row));
+    let look = baseLook(this, col, row);
     for (const id of cellsUnder(this, below)) look = layerOver(this, id, col, row, look);
     return look;
   },
 
   // A cell as the stack shows it, in stored colors (before adjustments), for a copy of what shapes show: the base's cell with
   // the lower group's shapes (baseCellAt), then each shown layer above, bottom first: a cells layer as lookUnder lays it,
-  // an upper vector layer's shapes by their alpha over each half. The character is the one that shows.
+  // an upper vector layer's shapes by their alpha over each half (in the ASCII styles, over the halves of the character's
+  // ink on black, then averaged into FG, as buildCell does). The character is the one that shows.
   storedLookAt(col, row) {
-    const { cells, upper } = this.lowerGroup;
-    let look = bakedEntry(this.renderStyle, this.baseCellAt(col, row));
+    const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii';
+    let look = baseLook(this, col, row);
     if (cells) look = layerOver(this, cells, col, row, look);
     for (const id of upper) {
       if (this.layerById(id).kind === 'cells') { look = layerOver(this, id, col, row, look); continue; }
       const shapes = this._upperShapes.get(id);
       if (shapes?.charAt(col, row) === undefined) continue;
       const top = this.renderer.upperStoredAt(shapes, col, 2 * row), bottom = this.renderer.upperStoredAt(shapes, col, 2 * row + 1);
+      if (ascii) { // as buildCell lays them: the halves of the character's ink on black, shapes over each, averaged, no BG
+        const halves = halfColors({ char: look.char ?? ' ', bg: hex2rgb(storedBlack(this.processParams)), fg: hex2rgb(look.fg) });
+        const [t, b] = halves.map((half, k) => { const px = k ? bottom : top; return px ? over(half, px) : half; });
+        look = { char: shapes.charAt(col, row) ?? look.char, fg: rgb2hex(mix(t, b, 0.5)) };
+        continue;
+      }
       if (top) look = { ...look, bg: rgb2hex(over(hex2rgb(look.bg), top)) };
       if (bottom) look = { ...look, fg: rgb2hex(over(hex2rgb(look.fg), bottom)) };
     }
     const shown = this.cells[cellIndex(col, row, this.cols)];
-    return { char: !shown || shown.wide === 'trail' ? ' ' : shown.char, fg: look.fg, bg: look.bg };
+    const fg = shown && this.renderStyle === 'colorAscii' ? shownAs(this, look.fg, shown.fg.hex) : look.fg;
+    return { char: !shown || shown.wide === 'trail' ? ' ' : shown.char, fg, bg: look.bg };
   },
 
   editCellAt(col, row) {

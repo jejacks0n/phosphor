@@ -338,7 +338,7 @@ test('choosing Edit Mode clears the selection and the Magic Wand, an undo step',
 });
 
 // Every shown cells layer is in a selection; the shapes are in Copy as the cells they show, and stay whole otherwise.
-async function stack() {
+async function stack({ shape = rectShape(4, 2, 7, 7, { fill: '#00ff00' }) } = {}) {
   const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ cols: 30, rows: 20 }); // 30 x 10 cells
   await settle(project);
@@ -350,7 +350,7 @@ async function stack() {
   project.commitEdit();
   const vector = project.addLayer('vector', 'edit');
   workspace.pickLayer(vector);
-  project.addShape(rectShape(4, 2, 7, 7, { fill: '#00ff00' }));
+  project.addShape(shape);
   project.commitEdit();
   const top = project.addLayer('cells', vector);
   workspace.editorTab = 'output';
@@ -380,9 +380,14 @@ test('Copy takes what shapes show; paste onto Layer 2 shows it', async () => {
   expect(looks(project, rect, 15)).toEqual(shown);
 });
 
-for (const [name, sliders] of [['Invert on', { invert: 100 }], ['Brightness moved', { brightness: 60 }]]) {
+for (const [name, sliders] of [
+  ['Invert on', { invert: 100 }], ['Brightness moved', { brightness: 60 }],
+  ['Color ASCII', { renderStyle: 'colorAscii' }], ['Color ASCII and Invert', { renderStyle: 'colorAscii', invert: 100 }], ['ASCII', { renderStyle: 'ascii' }],
+  ['the CGA palette', { quantize: 'cga' }], ['the VGA palette', { quantize: 'vga' }], ['the VGA palette and Brightness', { quantize: 'vga', brightness: 60 }],
+]) {
   test(`Copy of what shapes show pastes as it showed, with ${name}`, async () => {
-    const { project, workspace, top, rect } = await stack();
+    // a color no palette has, its top row covering only the bottom half of its first cells
+    const { project, workspace, top, rect } = await stack({ shape: rectShape(4, 3, 7, 7, { fill: '#33aa77', opacity: 0.6 }) });
     project.$patch(sliders);
     project.render(); await settle(project);
     const shown = looks(project, rect);
