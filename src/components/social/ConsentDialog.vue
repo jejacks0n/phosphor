@@ -5,8 +5,8 @@ import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import ModalDialog from '@/components/ModalDialog.vue';
 
-// SOCIAL's first question, the short version of the policies: it stands in for the tab until it's answered
-// (EditWorkspace), and nothing from SOCIAL runs before that (SocialStore.boot). The legal pages open over it.
+// SOCIAL's first question, the short version of the policies: it comes up once something of SOCIAL is wanted
+// (SocialDialogs), and nothing from SOCIAL runs before that (SocialStore.boot). The legal pages open over it.
 const social = useSocialStore(), workspace = useWorkspaceStore();
 const agreed = ref(false);
 const { t } = useI18n();
@@ -19,9 +19,12 @@ function read(page, event) {
 }
 watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); });
 
-// Answered, focus goes on from the tab that's showing (with nothing open, the tab list's one stop), unless what's showing took it.
+// Answered, focus goes back to what asked (the Lobby tab, say), or on from the tab that's showing, unless what's
+// showing took it.
+const asker = document.activeElement;
 onBeforeUnmount(() => nextTick(() => {
-  if (document.activeElement === document.body) document.querySelector('[role="tab"][tabindex="0"]')?.focus();
+  if (document.activeElement !== document.body) return;
+  (asker?.isConnected && asker !== document.body ? asker : document.querySelector('[role="tab"][tabindex="0"]'))?.focus();
 }));
 </script>
 

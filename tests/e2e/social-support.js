@@ -401,10 +401,24 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
   return room;
 }
 
-// The flows two pages share: a page's SOCIAL page by its data-page, the host live through Start a room, a
-// watcher's page and joining from the lobby's card.
-export const shown = (page, name) => page.locator(`.people-tab [data-page="${name}"]`);
-// A number on the host's page, by its label ("Here now"): the locator of its value.
+// The flows two pages share: what of SOCIAL shows (the lobby in the side panel, a page in its dialog, the room you
+// watch on the ROOM tab, your room's Settings and stats), the host live through Start a room, a watcher's page and
+// joining from the lobby's card.
+const PLACES = { lobby: 'section.lobby', 'watch-room': 'div.watch-room', 'host-room': 'div.host-room' };
+export const shown = (page, name) => page.locator(PLACES[name] ?? `.people-forms[data-page="${name}"]`);
+// The lobby, in the side panel (opened from its rail if it's folded).
+export async function openLobby(page) {
+  await page.locator('.side-panel').waitFor();
+  const open = page.getByRole('button', { name: 'Open the panel' });
+  if (await open.isVisible()) await open.click();
+  await page.locator('.side-panel').getByRole('tab', { name: 'Social' }).click();
+}
+// The host's Settings and stats, from the room menu in the chat's header.
+export async function openStats(host) {
+  await host.getByRole('button', { name: 'Room', exact: true }).click();
+  await host.getByRole('button', { name: 'Settings and stats' }).click();
+}
+// A number in the host's Settings and stats, by its label ("Here now"): the locator of its value.
 export const tile = (host, label) => host.locator('dl.numbers > div').filter({ hasText: label }).locator('dd');
 const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
 
@@ -413,7 +427,7 @@ const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasTex
 export async function goLive(host, room, { image = 'images/gradient.png', welcome = '', password = null, allowGuests = true, me = member() } = {}) {
   const server = await fakeServer(host, { me, room });
   await openApp(host, image);
-  await tab(host, 'SOCIAL').click();
+  await openLobby(host);
   await host.getByRole('button', { name: 'Start a room' }).click();
   await host.getByRole('textbox', { name: 'Room name' }).fill('neon harbor');
   await host.getByRole('textbox', { name: 'Welcome message' }).fill(welcome);
@@ -441,7 +455,7 @@ export async function watcherPage(context, room, { me = null, blocked = [], ...s
 
 // Joined from the lobby card, with the host's art.
 export async function joinFromCard(watcher) {
-  await tab(watcher, 'SOCIAL').click();
+  await openLobby(watcher);
   await card(watcher).getByRole('button', { name: /^Join/ }).click();
   await expect.poll(() => store(watcher, 'room', (r) => r.status), { timeout: 20_000, intervals: [100] }).toBe('live');
   await expect.poll(() => store(watcher, 'room', (r) => !!r.art), { intervals: [100] }).toBe(true);
@@ -463,13 +477,13 @@ export const outOfRoom = (page) => expect.poll(() => store(page, 'room', (r) => 
 export const live = (page) => expect.poll(() => store(page, 'room', (r) => r.status), { timeout: 20_000, intervals: [100] }).toBe('live');
 export const joins = (room) => room.received.filter((r) => r.msg.type === 'join').length;
 
-// A host live in `room` (with goLive's options), and a watcher on it from the lobby's card, on /social?room=.
+// A host live in `room` (with goLive's options), and a watcher on it from the lobby's card, on ROOM.
 export async function watching(host, context, room, options) {
   await goLive(host, room, options);
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
   await joinFromCard(watcher);
-  await hash(watcher, `/social?room=${ROOM_ID}`);
+  await hash(watcher, `/room?room=${ROOM_ID}`);
   return watcher;
 }
 

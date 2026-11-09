@@ -538,11 +538,11 @@ test('A watcher\'s room, art and the host\'s view come from the channel; leave c
   await expect.poll(() => lists.at(-1), PATIENT).toEqual([]);
 });
 
-test('?room=<id> on a desktop opens SOCIAL and asks once you\'re known, joining only on yes, taking the link off the URL', async () => {
+test('?room=<id> on a desktop opens the lobby and asks once you\'re known, joining only on yes, taking the link off the URL', async () => {
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
   const { useWorkspaceStore } = await import('@/store/WorkspaceStore');
   await social.start(at(`?room=${ID}&keep=1`));
-  expect(useWorkspaceStore().editorTab).toBe('social');
+  expect([useWorkspaceStore().sidePanelTab, useWorkspaceStore().sidePanelFolded]).toEqual(['social', false]);
   expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?keep=1`);
   expect(social.roomInvite).toBe(ID);
   expect(room.role).toBe(null);
@@ -552,7 +552,7 @@ test('?room=<id> on a desktop opens SOCIAL and asks once you\'re known, joining 
   const socket = await lastSocket(1);
   expect(server.requests.findIndex((r) => r.path === '/api/me')).toBeGreaterThanOrEqual(0);
   expect(socket.url).toMatch(new RegExp(`/api/rooms/${ID}/ws$`));
-  expect(room.role).toBe('watch');
+  expect([room.role, useWorkspaceStore().editorTab]).toEqual(['watch', 'room']);   // its art shows
   await social.showLobby();
   expect(sockets.filter((s) => s.url.includes('/api/rooms/'))).toHaveLength(1);   // once
 });
@@ -1992,23 +1992,12 @@ test('a throttled refusal outside a resume stays the end of it', async () => {
   expect(social.notice).toBe(refusalWords('throttled'));
 });
 
-test('a failed resume toasts when the tab isn\'t SOCIAL', async () => {
+test('a failed resume toasts, and says so in the lobby too', async () => {
   await goLive();
   await reload();
-  useWorkspaceStore().editorTab = 'output';
   room.resume();
   (await greeted()).receive({ type: 'refused', reason: 'unavailable' });
-  expect(toastMessage.value).toBe(ROOM_AWAY_WORDS);
-});
-
-test('a failed resume on the SOCIAL tab doesn\'t toast: the notice is in view', async () => {
-  await goLive();
-  await reload();
-  useWorkspaceStore().editorTab = 'social';
-  room.resume();
-  (await greeted()).receive({ type: 'refused', reason: 'unavailable' });
-  expect(social.notice).toBe(ROOM_AWAY_WORDS);
-  expect(toastMessage.value).toBe(null);
+  expect([social.notice, toastMessage.value]).toEqual([ROOM_AWAY_WORDS, ROOM_AWAY_WORDS]);
 });
 
 test('End room, signing out and starting another room forget the record', async () => {

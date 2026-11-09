@@ -1,5 +1,5 @@
-// The theme picker at the right of the tab bar: Dark (the default), Light, or System (which follows the computer),
-// shown as a moon, a sun and a computer display.
+// The theme picker beside the language, at the bottom of the settings panel: Dark (the default), Light, or System
+// (which follows the computer), shown as a moon, a sun and a computer display.
 import { test, expect } from './support.js';
 
 const picker = (page) => page.getByRole('radiogroup', { name: 'Theme' });
@@ -34,14 +34,19 @@ test('Dark to begin with, even on a light computer; System follows the computer;
   expect(await background(page)).toBe('rgb(26, 26, 26)');
 });
 
-test('each choice is an icon, named for screen readers and on hover', async ({ page }) => {
+test('each choice is an icon, named for screen readers and on hover, in one row with the language, as tall as it', async ({ page }) => {
   await page.goto('/');
   for (const name of ['Dark', 'Light', 'System']) {
     const choice = picker(page).locator('label', { has: page.getByRole('radio', { name }) });
     await expect(choice).toHaveAttribute('title', name);
     await expect(choice).toHaveText('');
-    expect(await choice.locator('svg').boundingBox()).toMatchObject({ width: 15, height: 15 });
+    expect(await choice.locator('svg').boundingBox()).toMatchObject({ width: 12, height: 12 });
   }
+  await picker(page).scrollIntoViewIfNeeded();
+  const language = await page.getByRole('combobox', { name: 'Language' }).boundingBox();
+  const themes = await picker(page).boundingBox();
+  expect([themes.y, themes.height]).toEqual([language.y, language.height]);
+  expect(themes.x).toBeGreaterThan(language.x + language.width);
 });
 
 test('the picker is one stop for Tab, and the arrow keys move the choice', async ({ page }) => {

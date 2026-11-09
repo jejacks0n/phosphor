@@ -1,7 +1,7 @@
 // The longest username there is (24 characters, of the widest letter) as host, artist and watcher: every place a
 // name shows keeps it inside its box, and nothing around it is pushed off.
 import { test, expect, tab, store } from './support.js';
-import { fakeRoom, member, ROOM_ID, goLive, watcherPage, joinFromCard, shown, chat, rowOf, artistPage } from './social-support.js';
+import { fakeRoom, member, ROOM_ID, goLive, watcherPage, joinFromCard, shown, chat, rowOf, artistPage, openLobby, openStats } from './social-support.js';
 
 const longName = (letter, id) => member({ id, username: letter.repeat(24), name: letter.repeat(24), email: `${letter}@example.com` });
 const HOST = longName('w', 'u_1'), ARTIST = longName('m', 'u_2'), WATCHER = longName('o', 'u_3');
@@ -13,7 +13,7 @@ const overflows = (page, selector) => page.locator(selector).evaluateAll((els) =
   return box.right > innerWidth + 1 || out ? [`${el.className}: ${Math.round(box.right)} of ${innerWidth}, ${el.scrollWidth} in ${el.clientWidth}`] : [];
 }));
 
-test('a 24-character name stays in its place in the lobby, the chat, who\'s here, the cursors and Account', async ({ page: host, context }, info) => {
+test('a 24-character name stays in its place in the lobby, the chat, who\'s here, Settings and stats, the cursors and Account', async ({ page: host, context }, info) => {
   const room = fakeRoom();
   const snap = async (page, name) => page.screenshot({ path: info.outputPath(`${name}.png`) });
   await goLive(host, room, { me: HOST });
@@ -23,27 +23,34 @@ test('a 24-character name stays in its place in the lobby, the chat, who\'s here
   const rooms = [{ id: ROOM_ID, name: 'neon harbor', host: HOST.name, count: 0, max: 12, allowGuests: true, signal: null, liveSince: Date.now(), thumbnail: null, blockedInside: false }];
   const watcher = await watcherPage(context, room, { me: WATCHER, rooms });
   await watcher.goto('/');
-  await tab(watcher, 'SOCIAL').click();
+  await openLobby(watcher);
   await expect(shown(watcher, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' })).toBeVisible();
   await snap(watcher, 'lobby');
-  expect(await overflows(watcher, '.people-tab [data-page="lobby"] *')).toEqual([]);
+  expect(await overflows(watcher, 'section.lobby *')).toEqual([]);
   await watcher.getByRole('button', { name: 'Edit account' }).click();
   await expect(shown(watcher, 'account')).toBeVisible();
   await snap(watcher, 'account');
-  expect(await overflows(watcher, '.people-tab *')).toEqual([]);
-  await store(watcher, 'social', (s) => { s.page = 'lobby'; });
+  expect(await overflows(watcher, '.people-forms *')).toEqual([]);
+  await watcher.keyboard.press('Escape');
+  await expect(shown(watcher, 'account')).toHaveCount(0);
   await joinFromCard(watcher);
   await chat(watcher).getByRole('textbox', { name: 'Message' }).fill('here too');
   await chat(watcher).getByRole('textbox', { name: 'Message' }).press('Enter');
   await expect(chat(host).getByText('here too')).toBeVisible();
+  await expect(shown(watcher, 'watch-room')).toBeVisible();
   await snap(watcher, 'watching');
-  expect(await overflows(watcher, '.people-tab *, aside *')).toEqual([]);
+  expect(await overflows(watcher, 'div.watch-room *, aside *')).toEqual([]);
 
   const artist = await artistPage(context, host, room, { me: ARTIST });
   await expect(rowOf(host, ARTIST.name)).toBeVisible();
-  await tab(host, 'SOCIAL').click();
   await snap(host, 'hosting');
-  expect(await overflows(host, '.people-tab *, aside *')).toEqual([]);
+  expect(await overflows(host, 'aside *')).toEqual([]);
+  await openStats(host);
+  await expect(shown(host, 'host-room')).toBeVisible();
+  await snap(host, 'host-stats');
+  expect(await overflows(host, '.people-forms *')).toEqual([]);
+  await host.keyboard.press('Escape');
+  await expect(shown(host, 'host-room')).toHaveCount(0);
 
   await tab(artist, 'ANSI').click();
   await tab(host, 'ANSI').click();
@@ -63,8 +70,9 @@ test('a 24-character name stays in its place in the lobby, the chat, who\'s here
   const hostLine = chat(artist).locator('p.host .person');
   expect((await hostLine.boundingBox()).height).toBeLessThan(24);
 
-  await tab(artist, 'SOCIAL').click();
-  await snap(artist, 'artist-social');
-  expect(await overflows(artist, '.people-tab *, aside *')).toEqual([]);
+  await tab(artist, 'ROOM').click();
+  await expect(shown(artist, 'watch-room')).toBeVisible();
+  await snap(artist, 'artist-room');
+  expect(await overflows(artist, 'div.watch-room *, aside *')).toEqual([]);
 
 });

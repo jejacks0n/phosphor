@@ -13,10 +13,10 @@ import RoomMenu from './RoomMenu.vue';
 import RoomPeople from './RoomPeople.vue';
 import ReportDialog from './ReportDialog.vue';
 
-// The chat of the room you host or watch, at the right of the whole app (every tab, while you're in
+// The chat of the room you host or watch, the side panel's CHAT tab (SidePanel, every tab, while you're in
 // one): the room's name (and, watching, who hosts it, and Exit; hosting, the room menu and who is here;
-// a watcher's list of who to follow is there once an artist is), the host's welcome pinned (with the host's Edit), the messages, and the box to write in. » folds it
-// to a thin rail that counts what came since. The list keeps its place: a new message scrolls it only
+// a watcher's list of who to follow is there once an artist is), the host's welcome pinned (with the host's Edit), the messages, and the box to write in. The panel
+// counts what came while it isn't shown. The list keeps its place: a new message scrolls it only
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
 // without moving what you were reading. Someone you blocked is folded to one line (Show opens just
 // that message). Who came and went, with no message between, is one line ("tin-owl joined, wren
@@ -27,9 +27,7 @@ import ReportDialog from './ReportDialog.vue';
 const room = useRoomStore(), social = useSocialStore(), drawing = useDrawingStore(), project = useProjectStore();
 const { t } = useI18n();
 
-const folded = ref(false);
-const since = ref(0);    // messages since the fold
-const panel = useTemplateRef('panel');
+const props = defineProps({ shown: { type: Boolean, default: true } });   // in view: not folded away or behind LAYERS
 const list = useTemplateRef('list');
 const menu = useTemplateRef('menu');
 
@@ -54,18 +52,13 @@ onMounted(() => {
   list.value.scrollTop = list.value.scrollHeight;
 });
 
-// Folding and opening: focus goes to the other button, or the box.
-async function fold(to) {
-  folded.value = to;
-  since.value = 0;
+// Shown again, it's at the newest. What's said about the drawing while it's out of view is a toast too.
+watch(() => props.shown, async (shown) => {
+  if (!shown) return;
   await nextTick();
-  const next = to ? panel.value.querySelector('button.open') : (panel.value.querySelector('textarea') ?? panel.value.querySelector('button.fold'));
-  next?.focus();
-  if (!to) list.value.scrollTop = list.value.scrollHeight;
-}
-watch(() => room.chat.at(-1)?.id, () => { if (folded.value && !room.chat.at(-1)?.presence) since.value++; });
-watch(() => drawing.invitation, (asked) => { if (asked && folded.value) since.value++; });
-watch(() => drawing.notice, (words) => { if (words && folded.value) toast(words); });   // it's in a part that isn't showing
+  list.value.scrollTop = list.value.scrollHeight;
+});
+watch(() => drawing.notice, (words) => { if (words && !props.shown) toast(words); });
 
 // The list as drawn: messages, runs of who came and went ({ id, people }), and "You joined" after the
 // last of a watcher's first history (a run ends there, so what came after is below it). A run names each
@@ -92,11 +85,11 @@ const rows = computed(() => {
   return out;
 });
 
-// The list's place (the list is shown when not folded; messages come and go meanwhile).
+// The list's place (while it's shown; messages come and go meanwhile).
 const atBottom = (el) => el.scrollHeight - el.scrollTop - el.clientHeight < 8;
 watch(() => [room.chat.length, room.chat[0]?.id], async (_, [, before]) => {
   const el = list.value;
-  if (!el || folded.value) return;
+  if (!el || !props.shown) return;
   const stuck = atBottom(el), height = el.scrollHeight, top = el.scrollTop;
   const prepended = room.chat.findIndex((m) => m.id === before) > 0;
   await nextTick();
@@ -113,12 +106,8 @@ function askIfAtTop() {
 </script>
 
 <template>
-  <aside ref="panel" class="chat" :class="{ folded }" :aria-label="t('social.chat.panelAria')">
-    <div v-show="folded" class="rail">
-      <button class="open link" :aria-label="t('social.chat.openAria')" @click="fold(false)">«</button>
-      <span v-if="since" class="count">{{ since }}</span>
-    </div>
-    <div v-show="!folded" class="body">
+  <aside class="chat" :aria-label="t('social.chat.panelAria')">
+    <div class="body">
       <header>
         <div class="room">
           <h2 v-if="room.room?.name">{{ room.room.name }}</h2>
@@ -136,7 +125,6 @@ function askIfAtTop() {
               <button v-if="room.canReportRoom" class="link report-room" :aria-label="t('social.chat.reportRoomAria')" @click="askToReportRoom">{{ t('social.chat.report') }}</button>
             </div>
           </template>
-          <button class="fold link" :aria-label="t('social.chat.foldAria')" @click="fold(true)">»</button>
         </div>
       </header>
       <RoomPeople v-if="room.role" />
@@ -216,19 +204,8 @@ function askIfAtTop() {
 aside.chat {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
-  width: 280px;
+  flex: 1;
   min-height: 0;
-  box-sizing: border-box;
-  margin-left: 2px;
-  border-radius: 5px;
-  background: var(--surface-1);
-  font-size: 12px;
-  color: var(--text-dim);
-}
-aside.chat.folded {
-  width: 28px;
-  align-items: center;
 }
 .body {
   display: flex;
@@ -236,34 +213,12 @@ aside.chat.folded {
   flex: 1;
   min-height: 0;
 }
-.rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding-top: 6px;
-}
-.rail button.open {
-  padding: 4px;
-  font-size: 14px;
-}
-span.count {
-  min-width: 16px;
-  padding: 1px 4px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  background: var(--accent);
-  font-size: 10px;
-  font-weight: 600;
-  text-align: center;
-  color: var(--white);
-}
 
 header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 10px 6px 8px 12px;
+  padding: 10px 12px 8px;
   border-bottom: 1px solid var(--border);
 }
 div.room {
@@ -318,12 +273,6 @@ button.report-room {
 button.report-room:hover {
   color: var(--text);
 }
-button.fold {   /* Exit's or the ⋯'s height whatever the fonts, so they share a middle */
-  height: 26px;
-  padding: 4px 6px;
-  font-size: 14px;
-}
-
 p.pinned {
   margin: 0;
   padding: 8px 12px;

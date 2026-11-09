@@ -1,9 +1,8 @@
 // The Account page: your username, the ways to sign in, two-factor, who you blocked, and deleting the account.
-import { test, expect, tab, store } from './support.js';
-import { fakeServer, member } from './social-support.js';
+import { test, expect } from './support.js';
+import { fakeServer, member, openLobby, shown } from './social-support.js';
 
-const social = (page) => page.locator('.people-tab');
-const shown = (page, name) => social(page).locator(`[data-page="${name}"]`);
+const social = (page) => page.locator('section.lobby, .people-forms');
 
 // A date as the app words it, formatted in the browser so the test follows its locale and time zone.
 const day = (page, ms) => page.evaluate((t) => new Date(t).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }), ms);
@@ -11,7 +10,7 @@ const LATER = Date.UTC(2031, 10, 15, 12);
 
 async function openAccount(page) {
   await page.goto('/');
-  if (await store(page, 'workspace', (w) => w.editorTab) !== 'social') await tab(page, 'SOCIAL').click();
+  await openLobby(page);
   await shown(page, 'lobby').getByRole('button', { name: 'Edit account' }).click();
   return shown(page, 'account');
 }
@@ -184,7 +183,7 @@ test('Change email asks for the address and password, and says whose mailbox is 
   expect(server.sent('POST', '/api/auth/change-email')[0].body).toMatchObject({ newEmail: 'new@example.com', password: 'violet-lantern-harbor-42' });
   await expect(account.getByLabel('New email')).toHaveCount(0);   // done with
   await expect(account.getByRole('button', { name: 'Change email' })).toBeFocused();
-  await expect(account.getByText('fan@example.com')).toBeVisible();   // not changed yet
+  await expect(account.getByText('fan@example.com', { exact: true })).toBeVisible();   // not changed yet
 });
 
 test('An unconfirmed address: the new mailbox is next, and a refusal stays in the form', async ({ page }) => {

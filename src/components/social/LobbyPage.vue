@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -10,10 +10,19 @@ import ConfirmEmail from './ConfirmEmail.vue';
 import UserName from './UserName.vue';
 import RoomCard from './RoomCard.vue';
 import ReportDialog from './ReportDialog.vue';
-import StartRoomPage from './StartRoomPage.vue';
 
+// The lobby, in the side panel's LOBBY tab: you (or Sign in), the public rooms as cards, and who else is here.
+// Showing it connects the lobby, and while it shows, a room of yours whose tab has gone is looked for.
 const social = useSocialStore(), roomStore = useRoomStore();
 const { t } = useI18n();
+onMounted(() => social.showLobby());
+const LOOK_EVERY_MS = 2000;
+const looking = setInterval(() => roomStore.lookForOwnRooms(), LOOK_EVERY_MS);
+onBeforeUnmount(() => {
+  clearInterval(looking);
+  roomStore.stopLooking();
+});
+watch(() => social.claims?.sub, () => roomStore.lookForOwnRooms(), { immediate: true });
 
 const filters = computed(() => [
   [t('social.lobby.filterAll'), null],
@@ -52,12 +61,36 @@ onBeforeUnmount(() => clearInterval(tick));
 </script>
 
 <template>
-  <div class="lobby">
-    <!-- Setup room takes the public rooms' place; the column beside stays. -->
-    <section v-if="social.page === 'start-room'" class="main">
-      <StartRoomPage />
-    </section>
-    <section v-else class="main">
+  <!-- Not "social" in a class or id: content blockers hide those, and the lobby goes blank. -->
+  <section class="lobby" :aria-label="t('sidePanel.lobby')" @dragover.prevent @drop.prevent> <!-- a dropped file isn't opened by the browser -->
+    <p v-if="social.supported === false" class="unsupported">{{ t('social.unsupported') }}</p>
+    <template v-else>
+      <p v-if="social.notice && social.page === 'lobby'" class="notice" role="status">
+        <span>{{ social.notice }}</span>
+        <button class="link" :aria-label="t('common.dismiss')" @click="social.notice = null">✕</button>
+      </p>
+      <div class="you">
+        <div v-if="known" class="who">
+          <UserName v-if="name" class="name" :name="name" />
+          <span v-if="!social.signedIn" class="tag">{{ t('common.guest') }}</span>
+        </div>
+        <div v-if="social.signedIn" class="links">
+          <button @click="social.page = 'account'">{{ t('social.lobby.editAccount') }}</button>
+          <button @click="social.signOut()">{{ t('social.lobby.signOut') }}</button>
+        </div>
+        <template v-if="known && social.signedIn">
+          <ConfirmEmail v-if="social.me?.emailVerified === false" class="confirm" />
+        </template>
+        <template v-else-if="known">
+          <button class="primary sign-in" @click="social.page = 'sign-in'">{{ t('social.lobby.signInToSocialize') }}</button>
+          <i18n-t keypath="social.lobby.noAccount" tag="p" class="help">
+            <template #create>
+              <button class="link inline" @click="social.page = 'create'">{{ t('social.lobby.createOne') }}</button>
+            </template>
+          </i18n-t>
+        </template>
+      </div>
+
       <p v-for="room in yoursUnlisted" :key="room.id" class="yours">
         <i18n-t :keypath="roomStore.goingBackReplaces ? 'social.lobby.reclaimWaitingDirty' : 'social.lobby.reclaimWaiting'" tag="span" :values="{ replaces: goingBackReplacesWords() }">
           <template #name>
@@ -69,15 +102,14 @@ onBeforeUnmount(() => clearInterval(tick));
       <header>
         <h2>{{ t('social.lobby.publicRooms') }}</h2>
         <span class="count">{{ t('social.lobby.liveCount', { count: social.rooms.length }) }}</span>
-        <template v-if="social.signedIn && social.me?.emailVerified !== false">
-          <p v-if="silenced" class="silenced" role="status">{{ silencedWords(social.claims.silencedUntil, now) }}</p>
-          <button class="start" :disabled="silenced" @click="social.page = 'start-room'">{{ t('social.lobby.startRoom') }}</button>
-        </template>
+        <select v-model="filter" class="filter" :aria-label="t('social.lobby.filterAria')">
+          <option v-for="[label, value] in filters" :key="label" :value="value">{{ label }}</option>
+        </select>
       </header>
-      <hr>
-      <div class="chips" role="group" :aria-label="t('social.lobby.filterAria')">
-        <button v-for="[label, value] in filters" :key="label" class="chip" :aria-pressed="filter === value" @click="filter = value">{{ label }}</button>
-      </div>
+      <template v-if="social.signedIn && social.me?.emailVerified !== false">
+        <p v-if="silenced" class="silenced" role="status">{{ silencedWords(social.claims.silencedUntil, now) }}</p>
+        <button class="start" :disabled="silenced" @click="social.page = 'start-room'">{{ t('social.lobby.startRoom') }}</button>
+      </template>
       <p v-if="reconnecting" class="status" role="status">{{ t('common.reconnecting') }}</p>
 
       <div v-if="view === 'unavailable'" class="state">
@@ -86,7 +118,7 @@ onBeforeUnmount(() => clearInterval(tick));
         <p v-if="social.lobbyStatus === 'refused'">{{ t('social.lobby.clockHint') }}</p>
       </div>
       <div v-else-if="view === 'loading'" class="rooms" aria-busy="true">
-        <div v-for="i in 4" :key="i" class="skeleton-card">
+        <div v-for="i in 3" :key="i" class="skeleton-card">
           <div class="skeleton thumb"></div>
           <div class="skeleton line"></div>
           <div class="skeleton line short"></div>
@@ -103,133 +135,171 @@ onBeforeUnmount(() => clearInterval(tick));
       <div v-else class="rooms" :class="{ stale: reconnecting }" :inert="reconnecting">
         <RoomCard v-for="room in shown" :key="room.id" :room="room" :signed-in="social.signedIn" @report="reporting = $event" />
       </div>
-    </section>
-
-    <aside class="side">
-      <div class="you">
-        <div class="label">{{ t('social.lobby.you') }}</div>
-        <div v-if="known" class="who">
-          <UserName v-if="name" class="name" :name="name" />
-          <span v-if="!social.signedIn" class="tag">{{ t('common.guest') }}</span>
-        </div>
-        <div v-if="social.signedIn" class="links">
-          <button @click="social.page = 'account'">{{ t('social.lobby.editAccount') }}</button>
-          <button @click="social.signOut()">{{ t('social.lobby.signOut') }}</button>
-        </div>
-      </div>
-
-      <template v-if="known && social.signedIn">
-        <ConfirmEmail v-if="social.me?.emailVerified === false" class="confirm" />
-      </template>
-      <template v-else-if="known">
-        <button class="primary sign-in" @click="social.page = 'sign-in'">{{ t('social.lobby.signIn') }}</button>
-        <i18n-t keypath="social.lobby.noAccount" tag="p" class="help">
-          <template #create>
-            <button class="link inline" @click="social.page = 'create'">{{ t('social.lobby.createOne') }}</button>
-          </template>
-        </i18n-t>
-        <p class="help">{{ t('social.lobby.signInHint') }}</p>
-      </template>
 
       <hr>
       <h3 class="here">{{ t('social.lobby.inLobby') }} <span class="count">{{ social.people.length }}</span></h3>
       <ul :aria-label="t('social.lobby.inLobby')">
-        <li v-for="person in social.people" :key="person.sub">
-          <UserName class="name" :name="person.name" />
+        <li v-for="person in social.people" :key="person.sub" :class="{ me: person.sub === social.claims?.sub }">
+          <UserName class="name" :name="person.name">{{ person.sub === social.claims?.sub ? t('social.chat.youSuffix') : '' }}</UserName>
           <span v-if="person.guest" class="what">{{ t('common.guest') }}</span>
         </li>
       </ul>
-    </aside>
+    </template>
     <ReportDialog v-if="reporting" v-bind="reporting" @done="reporting = null" />
-  </div>
+  </section>
 </template>
 
 <style scoped>
-div.lobby {
+section.lobby {
   display: flex;
-  height: 100%;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
   min-height: 0;
+  padding: 12px;
+  overflow: auto;
   font-size: 12px;
   color: var(--text-dim);
 }
 
-section.main {
-  flex: 1;
-  min-width: 0;
-  padding: 16px;
-  overflow: auto;
+p.notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+p.notice button.link {
+  padding: 0 4px;
+}
+p.unsupported {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-muted);
 }
 
-header {
+div.you {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+h3.here {   /* as SAUCE's labels */
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+div.who {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 30px;
 }
-header h2 {
-  margin: 0;
-}
-header button.start {
-  margin-left: auto;
-}
-header p.silenced { /* until when, beside Start a room */
-  margin: 0 0 0 auto;
-  color: var(--text-muted);
-}
-header p.silenced + button.start {
-  margin-left: 0;
-}
-section.main > hr { /* the space below Start a room as above and beside it: the section's 16px */
-  margin-top: 16px;
-}
-
-section.main > div.chips {
-  margin-bottom: 12px;
-}
-
-span.count {
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
-div.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-button.chip {
-  padding: 3px 9px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--surface-3);
-  border-color: var(--border-light);
-  box-shadow: none;
+span.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
 }
-button.chip[aria-pressed="true"] {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--text-inverted);
-  font-weight: 600;
+span.tag {
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  color: var(--text-muted);
+  border: 1px solid var(--border-light);
+}
+div.links {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+div.links button {
+  flex: 1;
+}
+button.sign-in {
+  width: 100%;
+  margin-top: 12px;
+}
+div.confirm {
+  margin-top: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+p.help {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+button.link.inline {
+  padding: 0;
+  font-size: inherit;
+  letter-spacing: normal;
+  color: var(--accent);
 }
 
 p.yours {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+header h2 {   /* as SAUCE's title */
+  margin: 0;
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+span.count {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+header h2,
+header span.count {
+  white-space: nowrap;
+}
+select.filter {   /* right of the title, as small as its words */
+  width: auto;
+  min-width: 0;
+  height: 24px;
+  margin-left: auto;
+  align-self: center;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+p.silenced {
+  margin: 0;
+  color: var(--text-muted);
+}
+button.start {
+  align-self: stretch;
 }
 
 p.status {
-  margin: 0 0 10px;
+  margin: 0;
   color: var(--text-muted);
 }
 
 div.rooms {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 12px;
   transition: opacity 0.2s;
 }
@@ -266,94 +336,25 @@ div.skeleton.line.short {
 }
 
 div.state {
-  padding: 32px 0;
+  padding: 16px 0;
 }
 div.state h3 {
-  font-size: 14px;
+  margin: 0;
+  font-size: 13px;
   letter-spacing: normal;
   text-transform: none;
   color: var(--text);
 }
 div.state p {
   margin: 8px 0 0;
+  line-height: 1.4;
   color: var(--text-muted);
 }
 
-aside.side {
-  display: flex;
-  flex-direction: column;
-  width: 240px;
-  flex-shrink: 0;
-  padding: 14px;
-  overflow: auto;
-  border-left: 1px solid var(--border);
-  background: var(--surface-0);
-}
-
-div.label,
-h3.here {   /* as SAUCE's labels */
-  margin: 0 0 8px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: normal;
-  text-transform: uppercase;
-  color: var(--text-faint);
-}
-
-div.who {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-span.name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--text);
-}
-span.tag {
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  color: var(--text-muted);
-  border: 1px solid var(--border-light);
-}
-
-div.links {
-  display: flex;
-  gap: 6px;
-  margin: 8px 0 0;
-}
-div.links button {
-  flex: 1;
-}
-
-button.sign-in {
+hr {
   width: 100%;
-  margin-top: 16px;
+  margin: 4px 0;
 }
-
-div.confirm {
-  margin-top: 16px;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-p.help {
-  margin: 8px 0 0;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-button.link.inline {
-  padding: 0;
-  font-size: inherit;
-  letter-spacing: normal;
-  color: var(--accent);
-}
-
-
 ul {
   margin: 0;
   padding: 0;
@@ -363,13 +364,19 @@ li {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 0;
+  padding: 4px 0;
 }
 li span.name {
   flex: 1;
 }
+li.me span.name {   /* you, among them */
+  color: var(--accent-hot);
+}
 span.what {
   color: var(--text-faint);
+  white-space: nowrap;
+}
+section.lobby button {   /* a button's words stay on one line */
   white-space: nowrap;
 }
 </style>

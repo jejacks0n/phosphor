@@ -1,5 +1,6 @@
 import { test, expect } from './support.js';
 import { openApp, store, editAt, tab } from './support.js';
+import { openLobby } from './social-support.js';
 
 test('Canvas and DOM views: the DOM view\'s text is the cells\' characters', async ({ page }) => {
   await openApp(page);
@@ -95,16 +96,16 @@ test('the PIXEL view publishes the whole cells on screen: a grid pixel is a colu
   await expect.poll(() => store(page, 'workspace', (w) => w.inputView)).toEqual({ ...onScreen, zoom: 16 });   // and the zoom they're at
 });
 
-test('the art tab last shown is the view a room is sent: SAUCE and SOCIAL keep it', async ({ page }) => {
+test('the art tab last shown is the view a room is sent: SAUCE and the lobby keep it', async ({ page }) => {
   await openApp(page);
   const viewTab = () => store(page, 'workspace', (w) => w.viewTab);
   expect(await viewTab()).toBe('output');
   await tab(page, 'PIXEL').click();
   await expect.poll(viewTab).toBe('input');
-  for (const other of ['SAUCE', 'SOCIAL']) {
-    await tab(page, other).click();
-    expect(await viewTab()).toBe('input');
-  }
+  await tab(page, 'SAUCE').click();
+  expect(await viewTab()).toBe('input');
+  await openLobby(page);
+  expect(await viewTab()).toBe('input');
   await tab(page, 'ANSI').click();
   await expect.poll(viewTab).toBe('output');
 });

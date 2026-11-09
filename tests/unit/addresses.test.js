@@ -1,26 +1,28 @@
-// The table of addresses: which tab and SOCIAL page each path is, and where a page may land.
+// The table of addresses: which tab, SOCIAL page or the lobby each path is, and where a page may land.
 import { test, expect } from 'vitest';
 import { PLACES, pathOf, arrivalPage } from '../../src/lib/addresses.js';
 
-test('every place round-trips through its path', () => {
-  for (const [path, { tab, page = 'lobby' }] of PLACES) expect(pathOf({ tab, page, role: null })).toBe(path);
+test('every tab and page round-trips through its path; the lobby has none of its own', () => {
+  for (const [path, { tab, page, lobby }] of PLACES) {
+    if (lobby) expect(path).toBe('/social');
+    else expect(pathOf(page ? { tab: 'input', page } : { tab })).toBe(path);
+  }
+  expect(pathOf({ tab: 'input', page: 'lobby' })).toBe('/pixel');
 });
 test('/vector is the VECTOR tab, between ANSI and SAUCE', () => {
-  expect(pathOf({ tab: 'vector', page: 'lobby', role: null })).toBe('/vector');
+  expect(pathOf({ tab: 'vector' })).toBe('/vector');
   const paths = PLACES.map(([path]) => path);
   expect(paths.indexOf('/vector')).toBe(paths.indexOf('/ansi') + 1);
   expect(paths.indexOf('/sauce')).toBe(paths.indexOf('/vector') + 1);
 });
-test('the page is forgotten off the SOCIAL tab', () => expect(pathOf({ tab: 'input', page: 'account', role: null })).toBe('/pixel'));
-test('with nothing open the art tabs are the start screen, at /', () => {
-  for (const tab of ['input', 'output', 'vector', 'sauce']) expect(pathOf({ tab, page: 'lobby', role: null, empty: true })).toBe('/');
-  expect(pathOf({ tab: 'social', page: 'account', role: null, empty: true })).toBe('/social/account');
+test('a page open is the address, over whichever tab', () => {
+  expect(pathOf({ tab: 'sauce', page: 'account' })).toBe('/social/account');
+  expect(pathOf({ tab: 'room', page: 'sign-in' })).toBe('/social/sign-in');
 });
-test('in a room, SOCIAL is the room', () => {
-  expect(pathOf({ tab: 'social', page: 'start-room', role: 'host' })).toBe('/social');
-  expect(pathOf({ tab: 'social', page: 'account', role: 'watch' })).toBe('/social');
-  expect(pathOf({ tab: 'social', page: 'sign-in', role: 'watch' })).toBe('/social/sign-in');
-  expect(pathOf({ tab: 'sauce', page: 'lobby', role: 'host' })).toBe('/sauce');
+test('with nothing open the art tabs are the start screen, at /; ROOM and a page aren\'t', () => {
+  for (const tab of ['input', 'output', 'vector', 'sauce']) expect(pathOf({ tab, empty: true })).toBe('/');
+  expect(pathOf({ tab: 'room', empty: true })).toBe('/room');
+  expect(pathOf({ tab: 'input', page: 'account', empty: true })).toBe('/social/account');
 });
 const known = { signedIn: false, needsOnboarding: false, resetToken: null, codePending: false, canStart: false };
 test.each([

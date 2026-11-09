@@ -104,7 +104,7 @@ test('a drag in Edit Mode becomes a Select selection; Escape sets it down and go
 
 ## Testing SOCIAL without its server
 
-The SOCIAL tab talks to a server that these tests never reach. Each layer stands in for it differently:
+SOCIAL talks to a server that these tests never reach. Each layer stands in for it differently:
 
 - **Unit** (`tests/unit/social-*.test.js`): the pure modules in `src/social/` (the API helper,
   lobby state, names, messages). No network.

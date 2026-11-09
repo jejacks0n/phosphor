@@ -7,16 +7,20 @@ import { FOCUSABLE, keepTabIn } from '@/lib/focus';
 // While it's up, keys are the dialog's: none reach the app's shortcuts (Backspace would delete a
 // selection, the arrows nudge it). Escape and the backdrop cancel; Tab keeps to the dialog. `long` is for text to
 // read: wider, its slot lays out in a column that fits the window, and the backdrop does nothing (a drag selecting
-// the text can end there), not even take focus.
+// the text can end there), not even take focus. `wide` is long with room for two columns. With no title (a slot with
+// its own heading), `label` names it; `focus` false leaves focus to the slot.
 const props = defineProps({
-  title: { type: String, required: true },
+  title: { type: String, default: '' },
+  label: { type: String, default: '' },
   sub: { type: String, default: '' },
   long: { type: Boolean, default: false },
+  wide: { type: Boolean, default: false },
+  focus: { type: Boolean, default: true },
 });
 const emit = defineEmits(['cancel']);
 const dialog = useTemplateRef('dialog');
 
-onMounted(() => (dialog.value?.querySelector('[autofocus]') ?? dialog.value?.querySelector(FOCUSABLE))?.focus());
+onMounted(() => props.focus && (dialog.value?.querySelector('[autofocus]') ?? dialog.value?.querySelector(FOCUSABLE))?.focus());
 
 function onKeyDown(event) {
   event.stopPropagation();
@@ -29,9 +33,9 @@ function onKeyDown(event) {
 
 <template>
   <Teleport to="body">
-    <div class="modal-backdrop" @click.self="props.long || emit('cancel')" @mousedown.self="props.long && $event.preventDefault()">
-      <div ref="dialog" class="modal-dialog" :class="{ long: props.long }" role="dialog" aria-modal="true" aria-labelledby="modal-dialog-title" :tabindex="props.long ? -1 : undefined" @keydown="onKeyDown">
-        <h3 id="modal-dialog-title">{{ props.title }}</h3>
+    <div class="modal-backdrop" @click.self="props.long || props.wide || emit('cancel')" @mousedown.self="(props.long || props.wide) && $event.preventDefault()">
+      <div ref="dialog" class="modal-dialog" :class="{ long: props.long || props.wide, wide: props.wide }" :aria-label="props.title ? null : props.label" role="dialog" aria-modal="true" :aria-labelledby="props.title ? 'modal-dialog-title' : null" :tabindex="props.long || props.wide ? -1 : undefined" @keydown="onKeyDown">
+        <h3 v-if="props.title" id="modal-dialog-title">{{ props.title }}</h3>
         <p v-if="props.sub" class="sub">{{ props.sub }}</p>
         <slot/>
       </div>
@@ -71,6 +75,9 @@ div.modal-dialog.long {
   max-height: 100%;
   overflow: auto;   /* a window too short even for what's pinned */
   outline: none;
+}
+div.modal-dialog.wide {   /* after long, which it also is */
+  max-width: 860px;
 }
 
 h3 {

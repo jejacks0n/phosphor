@@ -87,15 +87,6 @@ test('who came and went with nothing between is one line, the names without thei
   expect(host.querySelector('.presence .person').textContent).toBe('name-0');
   expect(host.querySelector('.presence .cell')).toBe(null);
   expect(swatched(host.querySelector('.message .name'), 'name-4')).toBe(true);
-
-  // Folded, comings and goings aren't counted as new messages.
-  host.querySelector('button.fold').click();
-  room.chat = [...room.chat, came(7, 'left')];
-  await nextTick();
-  expect(host.querySelector('span.count')).toBe(null);
-  room.chat = [...room.chat, row(8)];
-  await nextTick();
-  expect(host.querySelector('span.count').textContent).toBe('1');
 });
 
 test('someone who comes and goes more than once in a line is named once, by how it ended up', async () => {

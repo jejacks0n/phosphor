@@ -1,7 +1,7 @@
 // The lobby page: the live public rooms with their Join buttons and filter, you, who's here, and
 // the lobby's states (connecting, reconnecting, empty, unavailable, an unsupported browser).
-import { test, expect, tab, store } from './support.js';
-import { fakeServer, member } from './social-support.js';
+import { test, expect, store } from './support.js';
+import { fakeServer, member, openLobby, shown } from './social-support.js';
 import { nameColor, nameGlyph, nameInk } from '../../src/social/names.js';
 
 const MIN = 60_000;
@@ -20,14 +20,13 @@ const PEOPLE = [
   { sub: 'g_9', name: 'soft-copper-gnat', guest: true, signal: null },
 ];
 
-const lobby = (page) => page.locator('.people-tab [data-page="lobby"]');
+const lobby = (page) => shown(page, 'lobby');
 const card = (page, name) => lobby(page).getByRole('article').filter({ hasText: name });
-const side = (page) => lobby(page).getByRole('complementary');
-const you = (page) => side(page).locator('.you');
+const you = (page) => lobby(page).locator('div.you');
 
 async function showLobby(page, server) {
   await page.goto('/');
-  await tab(page, 'SOCIAL').click();
+  await openLobby(page);
   await expect.poll(() => server.lobby.received.map((m) => m.type)).toContain('hello');
 }
 
@@ -75,38 +74,40 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
 
   await expect(you(page)).toContainText('quiet-amber-fox');
   await expect(you(page).getByText('guest', { exact: true })).toBeVisible();
-  await expect(side(page).getByText('Sign in to chat and start rooms.')).toBeVisible();
   await expect(lobby(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
 
   const here = lobby(page).getByRole('list', { name: 'In the lobby' });
   await expect(lobby(page).getByText('In the lobby 3')).toBeVisible();
   // a person's signal isn't shown (the server still sends one): a member's row is just the name
-  await expect(here.getByRole('listitem')).toHaveText([/quiet-amber-fox\s*guest/, /^\s*dusty-neon-heron\s*$/, /soft-copper-gnat\s*guest/]);
+  await expect(here.getByRole('listitem')).toHaveText([/quiet-amber-fox \(you\)\s*guest/, /^\s*dusty-neon-heron\s*$/, /soft-copper-gnat\s*guest/]);
+  const ink = (n) => here.getByRole('listitem').nth(n).locator('span.name').evaluate((e) => getComputedStyle(e).color);
+  expect(await ink(0)).toBe('rgb(232, 2, 252)');   // you, in the accent pink
+  expect(await ink(1)).not.toBe(await ink(0));
 
   await join.click();   // the room store joins it (this fake id isn't a room id, so it's refused at once)
   await expect(page.getByText('This room isn\'t available')).toBeVisible();
 
-  await side(page).getByRole('button', { name: 'Sign in', exact: true }).click();
+  await lobby(page).getByRole('button', { name: 'Sign in to socialize' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('sign-in');
   await page.goto('/');   // a fresh load, not a reload: that would stay on Sign in
-  await tab(page, 'SOCIAL').click();
-  await side(page).getByRole('button', { name: 'Create one' }).click();
+  await openLobby(page);
+  await lobby(page).getByRole('button', { name: 'Create one' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('create');
 });
 
-test('while it\'s asking who you are, the side shows no Sign in and no guest tag, then you', async ({ page }) => {
+test('while it\'s asking who you are, the lobby shows no Sign in and no guest tag, then you', async ({ page }) => {
   let answer;
   const me = new Promise((resolve) => { answer = resolve; });
   await fakeServer(page, { 'GET /api/me': () => me });
   await page.goto('/');
-  await tab(page, 'SOCIAL').click();
+  await openLobby(page);
   await expect(you(page)).toBeVisible();
   await page.waitForTimeout(300);   // the moment the flash showed in
-  await expect(side(page).getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);
+  await expect(lobby(page).getByRole('button', { name: 'Sign in to socialize' })).toHaveCount(0);
   await expect(you(page).getByText('guest', { exact: true })).toHaveCount(0);
   answer([200, member()]);
-  await expect(side(page).getByRole('button', { name: 'Edit account' })).toBeVisible();
-  await expect(side(page).getByRole('button', { name: 'Sign in', exact: true })).toHaveCount(0);
+  await expect(lobby(page).getByRole('button', { name: 'Edit account' })).toBeVisible();
+  await expect(lobby(page).getByRole('button', { name: 'Sign in to socialize' })).toHaveCount(0);
 });
 
 test('a member can join a members-only room and can start a room, and has no signal of their own', async ({ page }) => {
@@ -119,31 +120,31 @@ test('a member can join a members-only room and can start a room, and has no sig
   await expect(you(page)).toContainText('ansi-fan');
   await expect(you(page).getByText('guest', { exact: true })).toHaveCount(0);
   for (const name of ['Edit account', 'Sign out']) {   // buttons, not links
-    await expect(side(page).getByRole('button', { name })).toBeVisible();
-    await expect(side(page).getByRole('button', { name })).not.toHaveClass(/\blink\b/);
+    await expect(lobby(page).getByRole('button', { name })).toBeVisible();
+    await expect(lobby(page).getByRole('button', { name })).not.toHaveClass(/\blink\b/);
   }
-  // Start a room sits across from the Public rooms title, right-aligned; the filter is below them, past a rule.
+  // Start a room sits under the Public rooms title, the column's whole width; the filter is at the title's right.
   const start = lobby(page).getByRole('button', { name: 'Start a room' });
   await expect(start).toBeEnabled();
-  await expect(side(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
+  await expect(start).toHaveCount(1);
   const title = await lobby(page).getByRole('heading', { name: 'Public rooms' }).boundingBox();
   const button = await start.boundingBox();
-  const main = await lobby(page).locator('section.main').boundingBox();
-  const rule = await lobby(page).locator('section.main hr').boundingBox();
-  const filter = await lobby(page).getByRole('group', { name: 'Filter rooms' }).boundingBox();
-  expect(Math.abs((button.y + button.height / 2) - (title.y + title.height / 2))).toBeLessThan(2);
+  const column = await lobby(page).boundingBox();
+  const filter = await lobby(page).getByRole('combobox', { name: 'Filter rooms' }).boundingBox();
+  expect(button.y).toBeGreaterThanOrEqual(title.y + title.height);
   await expect(start).not.toHaveClass(/\bprimary\b/);   // the secondary style
-  // The same space above it, to its right, and below it to the rule.
-  const above = button.y - main.y, right = main.x + main.width - (button.x + button.width), below = rule.y - (button.y + button.height);
-  expect(Math.abs(above - right)).toBeLessThan(1);
-  expect(Math.abs(below - right)).toBeLessThan(1);
-  expect(filter.y).toBeGreaterThan(rule.y);
+  // The same space at its left and its right: the lobby's padding.
+  const left = button.x - column.x, right = column.x + column.width - (button.x + button.width);
+  expect(Math.abs(left - right)).toBeLessThan(1);
+  expect(filter.x).toBeGreaterThan(title.x + title.width);
+  expect(filter.y + filter.height).toBeLessThanOrEqual(button.y);
+  expect(Math.abs(filter.x + filter.width - (button.x + button.width))).toBeLessThan(1);   // its right edge, the button's
 
   await expect(lobby(page).getByText('Your signal')).toHaveCount(0);   // a room's signal is chosen in Start a room
-  await expect(side(page).getByRole('button', { name: 'Open to chat' })).toHaveCount(0);
-  await expect(lobby(page).getByRole('list', { name: 'In the lobby' }).getByRole('listitem').first()).toHaveText(/^\s*ansi-fan\s*$/);
+  await expect(you(page).getByRole('button', { name: 'Open to chat' })).toHaveCount(0);
+  await expect(lobby(page).getByRole('list', { name: 'In the lobby' }).getByRole('listitem').first()).toHaveText(/^\s*ansi-fan \(you\)\s*$/);
 
-  await side(page).getByRole('button', { name: 'Edit account' }).click();
+  await lobby(page).getByRole('button', { name: 'Edit account' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('account');
   await page.getByRole('button', { name: '‹ Back to lobby' }).click();
   await lobby(page).getByRole('button', { name: 'Start a room' }).click();
@@ -156,36 +157,35 @@ test('a member whose email isn\'t confirmed is asked to confirm it to start a ro
     'POST /api/auth/send-verification-email': () => [200, { status: true }],
   });
   await showLobby(page, server);
-  await expect(side(page).getByText('Confirm your email to start a room')).toBeVisible();
+  await expect(lobby(page).getByText('Confirm your email to start a room')).toBeVisible();
   await expect(lobby(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
-  await side(page).getByRole('button', { name: 'Resend' }).click();
+  await lobby(page).getByRole('button', { name: 'Resend' }).click();
   await expect.poll(() => server.sent('POST', '/api/auth/send-verification-email')).toHaveLength(1);
 });
 
-test('the filter chips show only the rooms with that signal', async ({ page }) => {
+test('the filter menu shows only the rooms with that signal', async ({ page }) => {
   const server = await fakeServer(page, { rooms: ROOMS });
   await showLobby(page, server);
-  const filters = lobby(page).getByRole('group', { name: 'Filter rooms' });
-  await expect(filters.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
+  const filter = lobby(page).getByRole('combobox', { name: 'Filter rooms' });
+  await expect(filter.locator('option:checked')).toHaveText('All');
 
-  await filters.getByRole('button', { name: 'Wants feedback' }).click();
+  await filter.selectOption('Wants feedback');
   await expect(lobby(page).getByRole('article')).toHaveCount(1);
   await expect(card(page, 'neon harbor')).toBeVisible();
-  await expect(filters.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
 
-  await filters.getByRole('button', { name: 'Open to chat' }).click();
+  await filter.selectOption('Open to chat');
   await expect(lobby(page).getByRole('article')).toHaveCount(1);
   await expect(card(page, 'first time')).toBeVisible();
 
-  await filters.getByRole('button', { name: 'Heads down' }).click();
+  await filter.selectOption('Heads down');
   await expect(lobby(page).getByRole('article')).toHaveCount(1);
   await expect(card(page, 'members only')).toBeVisible();
 
-  await filters.getByRole('button', { name: 'All' }).click();
+  await filter.selectOption('All');
   await expect(lobby(page).getByRole('article')).toHaveCount(4);
 
   server.lobby.send({ type: 'room-gone', id: 'harbor' });
-  await filters.getByRole('button', { name: 'Wants feedback' }).click();
+  await filter.selectOption('Wants feedback');
   await expect(lobby(page).getByRole('article')).toHaveCount(0);
   await expect(lobby(page).getByText('No rooms match this filter')).toBeVisible();
 });
@@ -230,7 +230,7 @@ test('a refused pass is tried once more with a fresh one; refused again, the roo
 test('a server that can\'t be reached: unavailable, not loading forever', async ({ page }) => {
   await fakeServer(page, { 'POST /api/pass': () => [503, { code: 'UNAVAILABLE' }] });
   await page.goto('/');
-  await tab(page, 'SOCIAL').click();
+  await openLobby(page);
   await expect(lobby(page).getByText("Can't reach the lobby right now")).toBeVisible();
   await expect(lobby(page).getByText("If your device's clock is off", { exact: false })).toHaveCount(0); // not refused
   await expect(lobby(page).getByText('Reconnecting…')).toHaveCount(0);
@@ -240,7 +240,7 @@ test('while connecting, skeleton cards stand in for the rooms', async ({ page })
   let answer;
   const server = await fakeServer(page, { 'POST /api/pass': () => new Promise((resolve) => { answer = resolve; }) });
   await page.goto('/');
-  await tab(page, 'SOCIAL').click();
+  await openLobby(page);
   await expect(lobby(page).locator('.skeleton').first()).toBeVisible();
   await expect(lobby(page).getByRole('article')).toHaveCount(0);
   await expect.poll(() => typeof answer).toBe('function');
@@ -270,10 +270,10 @@ test('a dropped socket shows Reconnecting… over the dimmed rooms, then recover
   await expect(lobby(page).locator('.rooms')).not.toHaveAttribute('inert');
 });
 
-test('the notice is one line at the top of the tab, and can be dismissed', async ({ page }) => {
+test('the notice is one line at the top of the lobby, and can be dismissed', async ({ page }) => {
   await fakeServer(page);
-  await page.goto('/?verified=1');
-  const notice = page.locator('.people-tab').getByRole('status');
+  await page.goto('/?verified=1');   // the lobby opens in the panel, with the notice on it
+  const notice = lobby(page).locator(':scope > p.notice:first-child');   // the lobby's first line
   await expect(notice).toContainText('Your email is confirmed');
   await notice.getByRole('button', { name: 'Dismiss' }).click();
   await expect(notice).toHaveCount(0);
@@ -281,14 +281,14 @@ test('the notice is one line at the top of the tab, and can be dismissed', async
 });
 
 // Review focus 1: a browser without Ed25519 in WebCrypto is told so, and shown nothing else.
-test('a browser that can\'t do Ed25519 is told plainly, with nothing else on the tab', async ({ page }) => {
+test('a browser that can\'t do Ed25519 is told plainly, with nothing else in the lobby', async ({ page }) => {
   await fakeServer(page, { rooms: ROOMS });
   await page.addInitScript(() => {
     crypto.subtle.generateKey = () => Promise.reject(new DOMException('Unsupported', 'NotSupportedError'));
   });
   await page.goto('/');
-  await tab(page, 'SOCIAL').click();
-  await expect(page.locator('.people-tab')).toHaveText("This browser doesn't support the security features SOCIAL needs.");
+  await openLobby(page);
+  await expect(lobby(page)).toHaveText("This browser doesn't support the security features SOCIAL needs.");
 });
 
 // A person shows the same wherever they do: their name in the text color, after a 14px cell of its glyph on its color.
@@ -306,10 +306,10 @@ test('a name is drawn the same everywhere: its cell (its glyph on its color), th
   const expected = (name) => ({ name, color: textColor, cell: [14, 14, rgb(nameColor(name)), rgb(nameInk(nameColor(name))), `"${nameGlyph(name)}" / ""` ] });
 
   expect(await look(you(page).locator('.name'))).toEqual(expected('ansi-fan'));
-  expect(await look(side(page).getByRole('listitem').filter({ hasText: 'dusty-neon-heron' }).locator('.name'))).toEqual(expected('dusty-neon-heron'));
+  expect(await look(lobby(page).getByRole('list', { name: 'In the lobby' }).getByRole('listitem').filter({ hasText: 'dusty-neon-heron' }).locator('.name'))).toEqual(expected('dusty-neon-heron'));
   expect(await look(card(page, 'first time trying shading').locator('.host'))).toEqual(expected('tin-lantern-owl'));
-  await side(page).getByRole('button', { name: 'Edit account' }).click();
-  expect(await look(page.locator('.people-tab .username'))).toEqual(expected('ansi-fan'));
+  await lobby(page).getByRole('button', { name: 'Edit account' }).click();
+  expect(await look(shown(page, 'account').locator('.username'))).toEqual(expected('ansi-fan'));
 });
 
 test('a pass that can\'t be had says rooms are unavailable, and the lobby comes by itself once one can', async ({ page }) => {
@@ -317,7 +317,7 @@ test('a pass that can\'t be had says rooms are unavailable, and the lobby comes 
   const noPass = (route) => route.abort();
   await page.route('**/api/pass', noPass);
   await page.goto('/');
-  await tab(page, 'SOCIAL').click();
+  await openLobby(page);
   await expect(lobby(page).getByRole('heading', { name: "Can't reach the lobby right now" })).toBeVisible();
 
   await page.unroute('**/api/pass', noPass);

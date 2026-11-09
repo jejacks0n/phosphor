@@ -3,6 +3,7 @@ import { watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useAutosave } from '@/composables/useAutosave';
+import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -13,8 +14,9 @@ import { loadFonts } from '@/lib/userFonts';
 import { charRowsOf } from '@/lib/Cells';
 
 import EditWorkspace from '@/components/EditWorkspace.vue';
-import ChatPanel from '@/components/social/ChatPanel.vue';
+import SidePanel from '@/components/SidePanel.vue';
 import EndRoomDialog from '@/components/social/EndRoomDialog.vue';
+import SocialDialogs from '@/components/social/SocialDialogs.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
 import LegalDialog from '@/components/LegalDialog.vue';
@@ -27,6 +29,7 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const room = useRoomStore();
 const { image } = storeToRefs(project);
+const wide = useMediaQuery(desktopQuery);   // the side panel's: a phone has neither rooms nor room for it
 const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen, legalPage, versionsOpen } = storeToRefs(workspace);
 
 // The theme on <html>, for global.css: the one picked, or with System the computer's (and it follows a change).
@@ -136,7 +139,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
   <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
     <ControlPanel/>
     <EditWorkspace :ready="ready" :recent="recent" :open-recent="openRecent"/>
-    <ChatPanel v-if="room.inRoom"/>
+    <SidePanel v-if="wide"/>
+    <SocialDialogs v-if="wide"/>
     <EndRoomDialog v-if="room.askingEnd" @end="room.answerEnd(true)" @cancel="room.answerEnd(false)"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>

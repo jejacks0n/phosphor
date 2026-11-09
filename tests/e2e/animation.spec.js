@@ -1,4 +1,5 @@
 import { test, expect, openApp, store, tab, chars, cellPoint, settled, autosaved } from './support.js';
+import { openLobby } from './social-support.js';
 
 const animateSwitch = (page) => page.getByRole('switch', { name: 'Animate' });
 const bar = (page) => page.getByRole('toolbar', { name: 'Animation' });
@@ -330,14 +331,14 @@ test('cells drawn to stay show as the ghost on the next frame, and only on scree
   await expect.poll(ghost).not.toBe('A');
 });
 
-test('Animate works from any tab, and the bar is hidden on SOCIAL and SAUCE', async ({ page }) => {
+test('Animate works from any tab, and the bar is hidden on SAUCE, not beside the lobby', async ({ page }) => {
   await openApp(page);
   await tab(page, 'SAUCE').click();
   await animateSwitch(page).check();
   await expect(bar(page)).toBeHidden();
-  await tab(page, 'SOCIAL').click();
-  await expect(bar(page)).toBeHidden();
   await tab(page, 'PIXEL').click();
+  await expect(bar(page)).toBeVisible();
+  await openLobby(page);   // the lobby opens beside the art, which stays as it was
   await expect(bar(page)).toBeVisible();
   await tab(page, 'ANSI').click();
   await expect(bar(page)).toBeVisible();

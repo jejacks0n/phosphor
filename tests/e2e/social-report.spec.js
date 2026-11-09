@@ -2,8 +2,8 @@
 // host's N here ⋯, through one dialog with a reason; and reporting a room, under Exit or on its lobby card's ⋯.
 // The report goes to the server on the reporter's own socket, with the messages as they came, signed by
 // their senders; nothing answers it.
-import { test, expect, store, tab } from './support.js';
-import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, ROOM_ID } from './social-support.js';
+import { test, expect, store } from './support.js';
+import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, ROOM_ID, openLobby } from './social-support.js';
 
 const wren = member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren' });
 
@@ -182,7 +182,7 @@ test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears repo
 
   const watcher = await watcherPage(context, room, { me: wren });
   await watcher.goto('/');
-  await tab(watcher, 'SOCIAL').click();
+  await openLobby(watcher);
   // The ⋯ sits in the picture's top right corner, see-through.
   const thumb = await card(watcher).locator('.thumb').boundingBox(), dots = await more(watcher).boundingBox();
   expect(dots.x + dots.width).toBeGreaterThan(thumb.x + thumb.width - 12);
@@ -214,7 +214,7 @@ test('a member reports a room from its card\'s ⋯: the fake\'s lobby hears repo
   for (const me of [null, member({ id: 'u_3', username: 'tin_owl', name: 'tin_owl', emailVerified: false }), member()]) {
     const page = await watcherPage(context, room, { me });
     await page.goto('/');
-    await tab(page, 'SOCIAL').click();
+    await openLobby(page);
     await expect(card(page).getByRole('button', { name: /^Join/ })).toBeVisible();
     await expect(more(page)).toHaveCount(0);
   }

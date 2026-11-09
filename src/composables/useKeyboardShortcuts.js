@@ -20,7 +20,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
   // Not on SOCIAL: the art isn't showing, and its fields keep their own undo.
   const _handleUndoRedo = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && workspaceStore.editorTab !== 'social') { // Shift makes it 'Z'
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && workspaceStore.editorTab !== 'room') { // Shift makes it 'Z'
       e.preventDefault();
       if (e.shiftKey) {
         projectStore.redo();

@@ -3,7 +3,6 @@ import { ref, computed, watch, nextTick, useTemplateRef, onMounted, onBeforeUnmo
 import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { MOST_CHARS, silencedWords } from '@/social/chat';
 import UserName from './UserName.vue';
 
@@ -15,7 +14,7 @@ import UserName from './UserName.vue';
 // A silenced person gets a notice of until when in place of the box, and the box back (its text kept) when the
 // silence ends: a minute-by-minute clock, as a silence can be longer than a timeout can wait.
 const { t } = useI18n();
-const room = useRoomStore(), social = useSocialStore(), workspace = useWorkspaceStore();
+const room = useRoomStore(), social = useSocialStore();
 
 const text = ref('');
 const field = useTemplateRef('field');
@@ -67,9 +66,9 @@ function onKeyDown(event) {
   send();
 }
 
+// The sign-in page opens over the room.
 function signIn() {
   social.page = 'sign-in';
-  workspace.editorTab = 'social';
 }
 </script>
 

@@ -39,8 +39,8 @@ async function inRoom(host, context, { welcome = '', me = null, blocked = [] } =
 
 test('the panel is beside every tab for the host and the watcher, with the welcome pinned, and its box says who you are on its top border, as [ avatar name ], each person their own', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { welcome: 'be kind, draw big', me: wren });
-  // (the watcher has no art of its own, so its ANSI tab is off)
-  for (const [page, tabs] of [[host, ['SOCIAL', 'ANSI', 'PIXEL']], [watcher, ['SOCIAL', 'PIXEL']]]) {
+  // (the watcher has no art of its own: from ROOM, PIXEL is the start screen)
+  for (const [page, tabs] of [[host, ['ANSI', 'PIXEL']], [watcher, ['ROOM', 'PIXEL']]]) {
     for (const name of tabs) {
       await tab(page, name).click();
       await expect(panel(page).getByRole('heading', { name: 'neon harbor', level: 2 })).toBeVisible();
@@ -50,15 +50,12 @@ test('the panel is beside every tab for the host and the watcher, with the welco
     }
   }
   // Who hosts it, Track and Exit are the watcher's; the host has their own page. Exit is at the right of
-  // the header, beside the fold button (where the host's ⋯ is).
+  // the header (where the host's ⋯ is).
   await expect(panel(watcher).getByText('hosted by ansi-fan')).toBeVisible();
   const exit = await panel(watcher).getByRole('button', { name: 'Exit' }).boundingBox();
-  const fold = await panel(watcher).getByRole('button', { name: 'Fold the chat' }).boundingBox();
   const name = await panel(watcher).getByRole('heading', { name: 'neon harbor' }).boundingBox();
-  expect(exit.x + exit.width).toBeLessThanOrEqual(fold.x);
-  expect(fold.x - (exit.x + exit.width)).toBeLessThan(8);
-  expect(fold.height).toBe(exit.height);   // whatever the fonts, so they share a middle
-  expect(Math.abs((exit.y + exit.height / 2) - (fold.y + fold.height / 2))).toBeLessThan(1);
+  const edge = await panel(watcher).boundingBox();
+  expect(edge.x + edge.width - (exit.x + exit.width)).toBeLessThan(16);
   expect(exit.y).toBeLessThan(name.y + name.height);   // on the name's line, not under it
   const menu = await panel(host).getByRole('button', { name: 'Room', exact: true }).boundingBox();
   expect(exit.height).toBe(menu.height);   // the size of the host's ⋯ in its place
@@ -96,7 +93,7 @@ test('the box: close to the panel\'s edges, Send a button only with something to
   }
   await expect(panel(watcher).locator('footer')).toHaveCSS('border-top-style', 'none');
   await expect(panel(watcher)).toHaveCSS('border-top-style', 'none');   // nor around the panel
-  await expect(panel(watcher)).toHaveCSS('margin-left', '2px');
+  await expect(watcher.locator('.side-panel')).toHaveCSS('margin-left', '2px');   // the side panel it's in
   // Send has no background until there's something to send.
   const send = panel(watcher).getByRole('button', { name: 'Send' });
   await expect(send).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
@@ -176,7 +173,7 @@ async function backAsWren(host, watcher) {
 
 test('a guest is asked to sign in over the room: "Back to the room" returns to it, and signing in with a password is back in it as themselves; Back from the room they come back to stays in it', async ({ page: host, context }) => {
   const { room, watcher } = await guestToSignIn(host, context);
-  expect(await store(watcher, 'workspace', (w) => w.editorTab)).toBe('social');
+  expect(await store(watcher, 'workspace', (w) => w.editorTab)).toBe('room');
   await shown(watcher, 'sign-in').getByRole('button', { name: '‹ Back to room' }).click();
   await expect(shown(watcher, 'watch-room')).toBeVisible();
   expect(await store(watcher, 'room', (r) => r.role)).toBe('watch');
@@ -186,11 +183,11 @@ test('a guest is asked to sign in over the room: "Back to the room" returns to i
   await signInWithPassword(watcher);
   await expect.poll(() => joins(room)).toBe(2);
   await live(watcher);
-  await hash(watcher, `/social?room=${ROOM_ID}`);
+  await hash(watcher, `/room?room=${ROOM_ID}`);
   await backAsWren(host, watcher);
 
   await watcher.goBack();
-  await hash(watcher, `/social?room=${ROOM_ID}`);
+  await hash(watcher, `/room?room=${ROOM_ID}`);
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');
   await expect(shown(watcher, 'watch-room')).toBeVisible();
   expect(joins(room)).toBe(2);
@@ -232,21 +229,23 @@ test('a watcher\'s message reaches both with their name, a time and "(you)" only
   await expect(messages(watcher).nth(1).getByText('host', { exact: true })).toBeVisible();
   await expect(messages(host).nth(1)).toContainText('ansi-fan (you)');
 
-  await panel(watcher).getByRole('button', { name: 'Fold the chat' }).click();
-  await expect(panel(watcher).getByRole('button', { name: 'Open the chat' })).toBeFocused();
-  await expect(panel(watcher).getByRole('heading', { name: 'neon harbor' })).toHaveCount(0);
-  expect((await panel(watcher).boundingBox()).width).toBe(28);
-  await expect(panel(watcher).getByText('1', { exact: true })).toHaveCount(0);
+  // The side panel folds to a rail that counts what's said meanwhile.
+  const side = watcher.locator('.side-panel'), rail = side.locator('.rail');
+  await watcher.getByRole('button', { name: 'Fold the panel' }).click();
+  await expect(watcher.getByRole('button', { name: 'Open the panel' })).toBeFocused();
+  await expect(panel(watcher).getByRole('heading', { name: 'neon harbor' })).toBeHidden();
+  expect((await side.boundingBox()).width).toBe(28);
+  await expect(rail.getByText('1', { exact: true })).toHaveCount(0);
 
   await say(host, 'psst');
-  await expect(panel(watcher).getByText('1', { exact: true })).toBeVisible();
-  await panel(watcher).getByRole('button', { name: 'Open the chat' }).click();
+  await expect(rail.getByText('1', { exact: true })).toBeVisible();
+  await watcher.getByRole('button', { name: 'Open the panel' }).click();
   await expect(box(watcher)).toBeFocused();
   expect((await panel(watcher).boundingBox()).width).toBe(280);
   await expect(messages(watcher)).toHaveCount(3);
   await expect(messages(watcher).nth(2)).toContainText('psst');
-  await panel(watcher).getByRole('button', { name: 'Fold the chat' }).click();
-  await expect(panel(watcher).getByText('1', { exact: true })).toHaveCount(0);   // counted from this fold
+  await watcher.getByRole('button', { name: 'Fold the panel' }).click();
+  await expect(rail.getByText('1', { exact: true })).toHaveCount(0);   // counted from this fold
 });
 
 test('60 messages before a second watcher joins: the last 50, "You joined", and the other 10 on scrolling to the top; a new message keeps the place when scrolled up, and follows at the bottom', async ({ page: host, context }) => {
@@ -365,7 +364,7 @@ test('Block from your rooms asks first: Cancel and Escape leave everything as it
   await expect.poll(() => server.sent('POST', '/api/blocks')).toHaveLength(2);
   expect(server.sent('POST', '/api/blocks')[1].body).toEqual({ username: 'pixel_wren' });
   await expect(watching(host)).toHaveCount(0);
-  await expect(watcher.getByText('The host removed you')).toBeVisible();
+  await expect(shown(watcher, 'lobby').getByText('The host removed you')).toBeVisible();
 });
 
 // The watcher is in the room and the host's Block box is open on them; then they leave.
@@ -427,13 +426,13 @@ test('the host\'s panel says who is here, folded; opened it lists each with gues
   await host.getByRole('button', { name: 'Remove from room' }).click();
   await expect(watching(host)).toHaveCount(0);
   await expect(shown(watcher, 'lobby')).toBeVisible();
-  await expect(watcher.getByText('The host removed you')).toBeVisible();
+  await expect(shown(watcher, 'lobby').getByText('The host removed you')).toBeVisible();
   expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
   expect(server.sent('POST', '/api/blocks')).toHaveLength(0);   // removing is not blocking
 });
 
-test('the room menu: Copy link, Edit welcome saves the pinned welcome for everyone, Settings and stats opens the SOCIAL tab; no End room (that\'s on the SOCIAL tab)', async ({ page: host, context }) => {
-  const { watcher } = await inRoom(host, context, { me: wren });
+test('the room menu: Copy link, Edit welcome saves the pinned welcome for everyone, Settings and stats opens in a dialog; End room beside it asks first, and Cancel keeps the room', async ({ page: host, context }) => {
+  const { room, watcher } = await inRoom(host, context, { me: wren });
   const menu = panel(host).getByRole('button', { name: 'Room', exact: true });
   const item = (name) => host.locator('.dropdown-content').getByRole('button', { name, exact: true });
   await tab(host, 'ANSI').click();
@@ -470,9 +469,24 @@ test('the room menu: Copy link, Edit welcome saves the pinned welcome for everyo
   await expect(panel(host).getByText('Pinned, from the host')).toHaveCount(0);
   await expect(menu).toBeFocused();
 
+  // Settings and stats is a dialog over the tab you're on; closing it puts focus back on the menu.
   await menu.click();
   await item('Settings and stats').click();
-  expect(await store(host, 'workspace', (w) => w.editorTab)).toBe('social');
-  await expect(shown(host, 'host-room')).toBeVisible();
+  const stats = host.getByRole('dialog', { name: 'Settings and stats' });
+  await expect(stats.locator('div.host-room')).toBeVisible();
+  expect(await store(host, 'workspace', (w) => w.editorTab)).toBe('output');
+  await host.keyboard.press('Escape');
+  await expect(stats).toHaveCount(0);
+  await expect(menu).toBeFocused();
+
+  // End room sits beside the menu, and asks first: Cancel keeps the room going for everyone.
+  await panel(host).getByRole('button', { name: 'End room' }).click();
+  const asked = host.getByRole('dialog', { name: 'End this room?' });
+  await expect(asked.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await asked.getByRole('button', { name: 'Cancel' }).click();
+  await expect(asked).toHaveCount(0);
+  expect(await store(host, 'room', (r) => r.status)).toBe('live');
+  await expect(shown(watcher, 'watch-room')).toBeVisible();
+  expect(room.from('host').filter((m) => m.type === 'end')).toHaveLength(0);
 });
 

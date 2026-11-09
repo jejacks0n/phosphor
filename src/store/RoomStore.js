@@ -272,6 +272,7 @@ export const useRoomStore = defineStore('room', {
       if (code === 'SILENCED') social.renewPass();   // a pass that says so, so Start a room is off now
       if (!ok) return false;
       social.notice = null;   // what it said was about somewhere else
+      social.page = 'lobby';  // Start a room closes: the chat in the side panel is the room's now
       const lobbyPin = isPublic ? this.lobbyPin : null;   // picked in Setup room, kept through close()
       this.close();
       this.hostRoom({
@@ -561,8 +562,9 @@ export const useRoomStore = defineStore('room', {
     },
 
     // A room by its id (a lobby card's Join, or a ?room= link), with its password once it asks for one.
-    // keepNotice: this comes with what the notice says (signing in, a link back from confirming an email).
-    join(id, { password, keepNotice = false } = {}) {
+    // keepNotice: this comes with what the notice says (signing in, a link back from confirming an email). show: the
+    // ROOM tab is shown (a join you asked for; not your own room coming back, or a rejoin in place).
+    join(id, { password, keepNotice = false, show = false } = {}) {
       const social = useSocialStore();
       if (!ROOM_ID.test(id)) {
         social.notice = refusalWords('unavailable');
@@ -572,6 +574,7 @@ export const useRoomStore = defineStore('room', {
       this.close({ spent: this.id !== id });   // the same room again (its password, say): still in it, as an artist too
       noteLeft(id, false);
       this.watchRoom(id, { password });
+      if (show) useWorkspaceStore().editorTab = 'room';
     },
 
     // In as a watcher: a Watch, and the socket's join. The chat stays with someone who was already in.
@@ -1155,11 +1158,11 @@ export const useRoomStore = defineStore('room', {
     },
 
     over(notice) {
-      const social = useSocialStore(), hosting = this.role === 'host', drawing = useDrawingStore().mayDraw;
+      const social = useSocialStore();
       this._connection = null;   // it's ending itself: no end to send
       this.leave();
       if (notice) social.notice = notice;
-      if (notice && (hosting || drawing) && useWorkspaceStore().editorTab !== 'social') toast(notice);   // the notice is on the tab you're not on
+      if (notice) toast(notice);   // and in the lobby, which the side panel shows in place of the chat
     },
 
     // The watcher's connection to the host: lost goes back to waiting for its next offer. Failed stays

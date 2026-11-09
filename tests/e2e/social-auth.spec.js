@@ -1,21 +1,21 @@
 // Signing in, creating an account, a forgotten password, a new one from the emailed link, and picking a
 // username after a first Discord or GitHub sign-in.
-import { test, expect, tab, store } from './support.js';
-import { fakeServer, member } from './social-support.js';
+import { test, expect } from './support.js';
+import { fakeServer, member, openLobby, shown } from './social-support.js';
 
-const social = (page) => page.locator('.people-tab');
-const shown = (page, name) => social(page).locator(`[data-page="${name}"]`);
+const social = (page) => page.locator('section.lobby, .people-forms');
 const notice = (page) => social(page).getByRole('status');
 const TERMS = /^I'm 13 or older and agree to the Terms\s*, Privacy Policy\s*, and Community Guidelines$/;
 
+// The app at `url`; a plain load opens the lobby (a link back from the server opens what it brought itself).
 async function open(page, url = '/') {
   await page.goto(url);
-  if (await store(page, 'workspace', (w) => w.editorTab) !== 'social') await tab(page, 'SOCIAL').click();
+  if (url === '/') await openLobby(page);
 }
 
 async function openSignIn(page) {
   await open(page);
-  await shown(page, 'lobby').getByRole('button', { name: 'Sign in', exact: true }).click();
+  await shown(page, 'lobby').getByRole('button', { name: 'Sign in to socialize' }).click();
   return shown(page, 'sign-in');
 }
 
@@ -104,7 +104,7 @@ test('the sign-in page links to creating an account, a forgotten password and th
 test('the Community Guidelines open from sign-up, say what they are and link to what governs', async ({ page }) => {
   await fakeServer(page);
   await page.goto('/#/social/create');
-  await page.locator('.people-tab').getByRole('button', { name: 'Community Guidelines' }).click();
+  await page.locator('section.lobby, .people-forms').getByRole('button', { name: 'Community Guidelines' }).click();
   const dialog = page.getByRole('dialog', { name: 'Community Guidelines' });
   await expect(dialog).toContainText('section 5 of our Terms');
   await expect(dialog).toContainText('the Terms take priority');
@@ -130,10 +130,11 @@ test('the Terms and the Privacy Policy open over the app, like About, and link t
     if (name === 'Terms') await shown.getByRole('button', { name: 'Privacy Policy' }).click();
   }
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(1);   // the form's own, under them
+  await expect(form).toBeVisible();
   await form.getByRole('button', { name: 'Privacy Policy' }).click();
   await page.getByRole('dialog', { name: 'Privacy Policy' }).getByRole('button', { name: 'Close' }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(1);
 });
 
 test('create an account: disabled until the terms are agreed to; success is the lobby, asked to confirm the email', async ({ page }) => {

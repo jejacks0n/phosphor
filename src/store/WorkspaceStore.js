@@ -93,7 +93,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     shapeDrag: null,         // { from, to, line? } grid positions while a shape (or the bucket's gradient line) is being dragged
     editZoom:  5,
     ansiZoom:  1,            // the ANSI (and VECTOR) view's zoom: 25% to 800% of its cell size
-    editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'vector', 'sauce' or 'social'
+    editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'vector', 'sauce' or 'room' (the room you watch)
     viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)
     tabAddressed: false,     // the landing address named a tab (router.js)
     documentSettled: false,  // autosave has finished bringing back what it can (useAutosave), or the start screen stopped waiting
@@ -148,6 +148,9 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorHover: null,       // where the pointer is over VECTOR's art, in grid pixels, for the Pen's next segment
     vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon'
     vectorSides: 5,          // a polygon's sides, 3 to 12
+    sidePanelWidth: useLocalStorage('phosphor.sidePanelWidth', 280, { serializer: StorageSerializers.number, listenToStorageChanges: false }), // the side panel's (SidePanel) width in px, as dragged: each tab its own, the last kept for the next
+    sidePanelFolded: useLocalStorage('phosphor.sidePanelFolded', true, { listenToStorageChanges: false }), // the side panel folded to its rail (to begin with, till LAYERS lists something)
+    sidePanelTab: 'layers',  // the side panel's tab: 'layers' | 'social' (LOBBY out of a room, CHAT in one)
     keysOpen: useLocalStorage('phosphor.keysOpen', true), // the Keys panel (KeysPanel) open, or folded away
     keysZoom: useLocalStorage('phosphor.keysZoom', null, { serializer: StorageSerializers.number }), // its lanes' px a frame, or null to fit (keyLanes.js)
     keysScroll: 0,           // how far along they're scrolled, in px, when they don't fit
@@ -280,6 +283,11 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     toggleSettings() {
       this.settingsOpen = !this.settingsOpen;
+    },
+    // The side panel open on its LOBBY (or, in a room, CHAT) tab.
+    showSocial() {
+      this.sidePanelFolded = false;
+      this.sidePanelTab = 'social';
     },
   }
 });

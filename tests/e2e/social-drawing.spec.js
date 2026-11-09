@@ -322,7 +322,7 @@ test('host alone again has its normal controls, and with the chat folded the art
   const room = fakeRoom();
   const { artist } = await together(host, context, room);
   await typeAt(host, 1, 1, 'h');
-  await chat(artist).getByRole('button', { name: 'Fold the chat' }).click();
+  await artist.getByRole('button', { name: 'Fold the panel' }).click();
   await fromMenu(host, 'Back to watching');
   await mayDraw(artist).toBe(false);
   await expect(artist.locator('.app-toast')).toHaveText('You\'re back to watching.');   // what the chat panel would have said
@@ -358,14 +358,13 @@ test('End room says it ends for everyone, ends it for artists too, and the art s
   await typeAt(artist, 6, 3, 'k');
   await expect.poll(() => chars(host, 3, 6, 6)).toBe('k');
 
-  await tab(host, 'SOCIAL').click();
-  await shown(host, 'host-room').getByRole('button', { name: 'End room' }).click();
+  await chat(host).getByRole('button', { name: 'End room' }).click();
   const asked = host.getByRole('dialog', { name: 'End this room?' });
   await expect(asked.getByText('Everyone will be disconnected (including co-artists) and the room chat will clear.')).toBeVisible();
   await asked.getByRole('button', { name: 'End room' }).click();
 
   await expect.poll(() => store(artist, 'room', (r) => r.role)).toBe(null);
-  await expect(artist.getByText('The host ended the room')).toBeVisible();   // said where they are: on ANSI
+  await expect(artist.locator('.app-toast').filter({ hasText: 'The host ended the room' })).toBeVisible();   // said where they are: on ANSI
   await selected(artist, 'ANSI');
   expect(await store(artist, 'project', (p) => [!!p.image, p._sharing, p.canUndo])).toEqual([true, null, false]);
   expect(await chars(artist, 3, 6, 6)).toBe('k');
@@ -604,7 +603,7 @@ test('reporting a person and a room still works for an artist', async ({ page: h
   expect(await store(artist, 'drawing', (d) => d.mayDraw)).toBe(true);
 });
 
-test('others\' cursors show with a name, Show others\' cursors turns them off, and going to the SOCIAL tab takes yours away', async ({ page: host, context }) => {
+test('others\' cursors show with a name, Show others\' cursors turns them off, and going to the ROOM tab takes yours away', async ({ page: host, context }) => {
   const room = fakeRoom();
   const { artist } = await together(host, context, room);
   const toggle = chat(artist).getByRole('checkbox', { name: 'Show others\' cursors' });
@@ -628,11 +627,11 @@ test('others\' cursors show with a name, Show others\' cursors turns them off, a
   await artist.mouse.move(mine.x + 8, mine.y);
   await expect(host.locator('.artist-cursor')).toContainText('tin_owl');
 
-  // Going to the SOCIAL tab takes their cursor off the others' screens.
+  // Going to the ROOM tab takes their cursor off the others' screens.
   await expect(host.locator('.artist-cursor').filter({ hasText: ARTIST.name })).toHaveCount(1);
-  await tab(artist, 'SOCIAL').focus();
+  await tab(artist, 'ROOM').focus();
   await artist.keyboard.press('Enter');   // the pointer stays where it was, so it never moves off the art
-  await expect.poll(() => store(artist, 'workspace', (w) => w.editorTab)).toBe('social');
+  await expect.poll(() => store(artist, 'workspace', (w) => w.editorTab)).toBe('room');
   await expect(host.locator('.artist-cursor').filter({ hasText: ARTIST.name })).toHaveCount(0);
 });
 
@@ -710,11 +709,11 @@ test('the pause layer follows the view: folding the chat and narrowing the windo
   };
   const opened = await follows();
 
-  await chat(artist).getByRole('button', { name: 'Fold the chat' }).click();
+  await artist.getByRole('button', { name: 'Fold the panel' }).click();
   await expect.poll(() => view.evaluate((el) => el.clientWidth)).toBeGreaterThan(opened);
   const wide = await follows();
 
-  await artist.getByRole('button', { name: /Unfold|Open the chat/ }).click();
+  await artist.getByRole('button', { name: 'Open the panel' }).click();
   const { height } = artist.viewportSize();
   await artist.setViewportSize({ width: 1000, height });
   await expect.poll(() => view.evaluate((el) => el.clientWidth)).toBeLessThan(wide);
@@ -871,7 +870,7 @@ const makeHost = async (host, name = ARTIST.name) => {
   await dialog.getByRole('button', { name: 'Make host' }).click();
 };
 
-test('Make host asks, the host stays an artist whose SOCIAL tab shows its own document, the new host has no art left over, and can invite', async ({ page: host, context }) => {
+test('Make host asks, the host stays an artist whose ROOM tab shows its own document, the new host has no art left over, and can invite', async ({ page: host, context }) => {
   const room = fakeRoom();
   const { artist } = await together(host, context, room);
   const person = await watcherPage(context, room, { me: REAPER });
@@ -880,7 +879,7 @@ test('Make host asks, the host stays an artist whose SOCIAL tab shows its own do
   await typeAt(host, 1, 1, 'h');
   await typeAt(artist, 2, 2, 'a');
   await agreed(host, artist);
-  await tab(artist, 'SOCIAL').click();
+  await tab(artist, 'ROOM').click();
   await expect.poll(() => artRow(artist, 2)).toContain('a');
 
   await fromMenu(host, 'Make host');
@@ -899,9 +898,12 @@ test('Make host asks, the host stays an artist whose SOCIAL tab shows its own do
   await hash(host, `/ansi?room=${ROOM_ID}`);
   expect(await store(host, 'project', (p) => p.canUndo)).toBe(true);
 
-  // The former host's SOCIAL tab shows the document it carries on with, and the new host has no art left over.
+  // The former host's ROOM tab shows the document it carries on with, and the new host has no art left over
+  // (nor a ROOM tab: it was on ROOM, and is back on ANSI).
   expect(await store(artist, 'room', (r) => r.art)).toBe(null);
-  await tab(host, 'SOCIAL').click();
+  await selected(artist, 'ANSI');
+  await expect(tab(artist, 'ROOM')).toHaveCount(0);
+  await tab(host, 'ROOM').click();
   await expect.poll(() => artRow(host, 2)).toContain('a');
   await tab(artist, 'ANSI').click();
   await typeAt(artist, 5, 3, 'z');   // the new host's stroke, on the old host's own document
@@ -990,10 +992,10 @@ test('someone who chose another tab while the art was coming stays there', async
   await artist.evaluate(() => sessionStorage.setItem('phosphor-autosave-document', crypto.randomUUID()));
   artist.on('dialog', (dialog) => dialog.accept());
   await artist.reload();
-  await tab(artist, 'SOCIAL').click();
+  await tab(artist, 'ROOM').click();
   await mayDraw(artist).toBe(true);
   await settled(artist);
-  await selected(artist, 'SOCIAL');
+  await selected(artist, 'ROOM');
 });
 
 test('a watcher never becomes host, and keeps watching through a handover', async ({ page: host, context }) => {
@@ -1054,7 +1056,7 @@ test('a host cut off who comes back as an artist is told who hosts now, with the
   await typeAt(host, 20, 12, 'm');
   await typeAt(artist, 30, 12, 'a');
   await agreed(host, artist);
-  await chat(host).getByRole('button', { name: 'Fold the chat' }).click();
+  await host.getByRole('button', { name: 'Fold the panel' }).click();
   const before = await store(host, 'project', (p) => p.documentId);
   room.dropHost();
   await store(host, 'project', (p) => { p.typeAt(25, 12, 'o', { fg: '#ffffff', bg: '#000000' }); p.commitEdit(); });   // the page lives, and goes on drawing
@@ -1174,16 +1176,16 @@ test('an artist who reloads and is named through joined gathers first: it takes 
   await expect(chat(artist).getByRole('status').filter({ hasText: UNDO_RESET })).toBeVisible();
 });
 
-// What the SOCIAL tab shows of the room, as text, for a row of cells.
+// What the ROOM tab shows of the room, as text, for a row of cells.
 const artRow = (page, row, length = 8) => store(page, 'room', `(r) => r.art?.cells.slice(${row} * r.art.cols, ${row} * r.art.cols + ${length}).map((c) => c.char).join('') ?? null`);
 
-test('an artist\'s SOCIAL tab shows their own document as it changes, and put back to watching they get the host\'s', async ({ page: host, context }) => {
+test('an artist\'s ROOM tab shows their own document as it changes, and put back to watching they get the host\'s', async ({ page: host, context }) => {
   const room = fakeRoom();
   const { artist } = await together(host, context, room);
   await typeAt(host, 1, 1, 'h');
   await typeAt(artist, 2, 2, 'a');
   await agreed(host, artist);
-  await tab(artist, 'SOCIAL').click();
+  await tab(artist, 'ROOM').click();
   await expect(artist.getByLabel('The room\'s art')).toBeVisible();
   await expect.poll(() => artRow(artist, 2)).toContain('a');
   await expect.poll(() => artRow(artist, 1)).toContain('h');

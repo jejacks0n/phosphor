@@ -95,7 +95,7 @@
     "ascii": "ASCII",
     "vector": "VECTOR",
     "sauce": "SAUCE",
-    "social": "SOCIAL",
+    "room": "ROOM",
     "beta": "Beta",
     "animate": "Animate",
     "animateHint": "Animate frame by frame",
@@ -317,6 +317,16 @@
       "notMonospaced": "“{name}” isn't monospaced ({narrow} is {narrowPx}px wide, while {wide} is {widePx}px). Phosphor needs fixed-width fonts where every character shares one cell width.",
       "aSpace": "space"
     }
+  },
+  "sidePanel": {
+    "layers": "Layers",
+    "lobby": "Lobby",
+    "social": "Social",
+    "chat": "Chat",
+    "layersEmpty": "Your layers will be listed here.",
+    "foldAria": "Fold the panel",
+    "openAria": "Open the panel",
+    "resizeAria": "Panel width"
   },
   "layers": {
     "label": "Layers",
@@ -1061,13 +1071,12 @@
       "emptyHeading": "No public rooms live right now",
       "emptyBody": "Start a room and your canvas will light up the lobby.",
       "emptyFilter": "No rooms match this filter",
-      "you": "You",
       "editAccount": "Edit account",
       "signOut": "Sign out",
       "signIn": "Sign in",
+      "signInToSocialize": "Sign in to socialize",
       "noAccount": "No account? {create}",
       "createOne": "Create one",
-      "signInHint": "Sign in to chat and start rooms.",
       "inLobby": "In the lobby",
       "confirmToStart": "Confirm your email to start a room",
       "resend": "Resend"
@@ -1214,8 +1223,6 @@
     },
     "chat": {
       "panelAria": "Chat",
-      "openAria": "Open the chat",
-      "foldAria": "Fold the chat",
       "hostedBy": "hosted by {host}",
       "exit": "Exit",
       "reportRoomAria": "Report room",

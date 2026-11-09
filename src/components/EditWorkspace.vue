@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
-import { useSocialStore } from '@/store/SocialStore';
 import { toast } from '@/composables/useToast';
 import { isProjectFile } from '@/document/projectIO';
 import { isArtFile, readArtFile } from '@/lib/ArtFile';
@@ -21,8 +20,7 @@ import KeysPanel from '@/components/KeysPanel.vue';
 import AnsiEditor from '@/components/AnsiEditor.vue';
 import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
-import SocialTab from '@/components/social/SocialTab.vue';
-import ConsentDialog from '@/components/social/ConsentDialog.vue';
+import WatchRoomPage from '@/components/social/WatchRoomPage.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 
 defineProps({
@@ -35,7 +33,6 @@ const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
-const social = useSocialStore();
 useKeyboardShortcuts(project, workspace);
 const playback = usePlayback();
 
@@ -155,10 +152,7 @@ async function addSvg(file) {
       @click="workspace.settingsOpen && workspace.toggleSettings()"
   >
     <EditTabs v-model="workspace.editorTab"/>
-    <template v-if="workspace.editorTab === 'social'">
-      <SocialTab v-if="social.allowed"/>
-      <ConsentDialog v-else/>
-    </template>
+    <WatchRoomPage v-if="workspace.editorTab === 'room'"/>
     <template v-else>
       <EditToolbar v-if="project.image && workspace.editMode"/>
       <DropZone @file-dropped="handleFileSelected">

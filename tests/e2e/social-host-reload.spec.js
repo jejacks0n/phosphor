@@ -1,7 +1,7 @@
 // A host's reload keeps the room: it comes back at the same address with its art, chat and numbers, the
 // watchers wait and see it, and a room that ended meanwhile says so. Every reload accepts the page-closing prompt.
 import { test, expect, tab, store, chars, editAt, settled, autosaved } from './support.js';
-import { fakeRoom, fakeServer, member, ROOM_ID, ARTIST, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom, live, joins, invitedPage, invitation, mayDraw as mayDrawOf } from './social-support.js';
+import { fakeRoom, fakeServer, member, ROOM_ID, ARTIST, shown, tile, goLive, watching, selected, hash, asked, chat, outOfRoom, live, joins, invitedPage, invitation, mayDraw as mayDrawOf, openLobby, openStats } from './social-support.js';
 
 const AWAY = 'Your room closed while you were away.';
 const ELSEWHERE = 'This room is open in another tab';
@@ -16,13 +16,18 @@ async function say(page, text) {
   await box.press('Enter');
 }
 
-// The Host page's numbers, read on the SOCIAL tab.
+// The host's numbers, read in Settings and stats (closed again after).
 async function numbers(host) {
-  await tab(host, 'SOCIAL').click();
+  await openStats(host);
   const read = {};
   for (const label of NUMBERS) read[label] = await tile(shown(host, 'host-room'), label).textContent();
+  await host.keyboard.press('Escape');
+  await expect(shown(host, 'host-room')).toHaveCount(0);
   return read;
 }
+
+// The side panel on the room's chat (a reload brings it back on LAYERS).
+const showChat = (page) => page.locator('.side-panel').getByRole('tab', { name: /^Chat/ }).click();
 
 // Hosting on PIXEL with a message said; the page-closing prompt is accepted.
 async function hostingOnPixel(host, room, options) {
@@ -42,7 +47,6 @@ test('a host\'s reload keeps the room: its art, chat, numbers and Live for, at t
   const art = await chars(host, 0, 0, 20);
   const liveSince = await store(host, 'room', (r) => r.session.liveSince);
   const before = await numbers(host);
-  await tab(host, 'PIXEL').click();
 
   await host.reload();
   await live(host);
@@ -52,10 +56,12 @@ test('a host\'s reload keeps the room: its art, chat, numbers and Live for, at t
   expect(joins(room)).toBe(0);
   await expect.poll(() => hosts(room)).toBe(2);
   expect(await chars(host, 0, 0, 20)).toBe(art);
+  await showChat(host);
   await expect(messages(host)).toHaveCount(1);
   await expect(messages(host).first()).toContainText('hello room');
   expect(await store(host, 'room', (r) => r.session.liveSince)).toBe(liveSince);
   await expect.poll(() => numbers(host)).toEqual(before);
+  await openStats(host);
   await expect(shown(host, 'host-room').locator('.live')).toContainText('Live for');
   expect(await store(host, 'room', (r) => r.role)).toBe('host');
 });
@@ -90,6 +96,7 @@ test('the watcher stays through it: The host is reconnecting… during the reloa
   await host.keyboard.type('Z');
   const at = await store(host, 'project', (p) => 2 * p.cols + 3);
   await expect.poll(async () => (await cells(watcher))?.[at]).toBe('Z');
+  await showChat(host);
   await expect(joined(host)).toHaveCount(1);
   await expect(chat(watcher).getByRole('log').getByText('You joined')).toHaveCount(1);
   await expect(joined(watcher)).toHaveCount(0);
@@ -131,6 +138,7 @@ test('reloading again while reconnecting comes back the same', async ({ page: ho
   expect(joins(room)).toBe(0);
   expect(await store(host, 'room', (r) => r.session.liveSince)).toBe(liveSince);
   expect(await chars(host, 0, 0, 20)).toBe(art);
+  await showChat(host);
   await expect(messages(host)).toHaveCount(1);
 });
 
@@ -140,14 +148,14 @@ test('a room gone while away: the words, the art stays, the address loses ?room=
   const art = await chars(host, 0, 0, 20);
 
   await host.reload();
-  await expect(host.getByRole('status').filter({ hasText: AWAY })).toBeVisible();
+  await expect(host.locator('.app-toast')).toHaveText(AWAY);   // a toast, and the lobby's notice
   await hash(host, '/pixel');
   await selected(host, 'PIXEL');
   await outOfRoom(host);
-  expect(await chars(host, 0, 0, 20)).toBe(art);
+  await expect.poll(() => chars(host, 0, 0, 20)).toBe(art);   // the reload's autosave brings it back; the words can come first
   expect(await store(host, 'social', (s) => s.notice)).toBe(AWAY);
-  await tab(host, 'SOCIAL').click();
-  await expect(host.locator('.people-tab').getByText(AWAY)).toBeVisible();
+  await openLobby(host);
+  await expect(shown(host, 'lobby').getByText(AWAY)).toBeVisible();
 });
 
 test('signed out while away: no room, no words', async ({ page: host }) => {
@@ -193,7 +201,8 @@ test('a duplicated tab takes the room, and the older tab stops', async ({ page: 
   await copy.waitForFunction(() => document.querySelector('#phosphor')?.__vue_app__);
   await live(copy);
   await expect.poll(() => hosts(room)).toBe(2);
-  await expect(host.getByRole('status').filter({ hasText: ELSEWHERE })).toBeVisible();
+  await expect(host.locator('.app-toast')).toHaveText(ELSEWHERE);   // a toast, and the lobby's notice
+  await expect(shown(host, 'lobby').getByRole('status').filter({ hasText: ELSEWHERE })).toBeVisible();
   await outOfRoom(host);
   expect(await chars(host, 0, 0, 20)).toBe(art);
   expect(await store(copy, 'room', (r) => r.role)).toBe('host');
@@ -295,20 +304,22 @@ test('a host scrolled and zoomed in PIXEL comes back to the same view, and the w
   expect((await watcher.evaluate(() => window.boxes)).filter((box) => box !== JSON.stringify(before))).toEqual([]);
 });
 
-test('reloaded on SOCIAL, watchers keep the view; going to ANSI opens at it', async ({ page: host, context }) => {
+// SAUCE has no view of the art: the one the host had waits for an art tab.
+test('reloaded on SAUCE, watchers keep the view; going to ANSI opens at it', async ({ page: host, context }) => {
   const room = fakeRoom();
   const watcher = await hostingTallArt(host, context, room);
   await tab(host, 'ANSI').click();
   await zoomAndScroll(host, 30, 0, 200);
   const before = await shared(host);
   await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
-  await tab(host, 'SOCIAL').click();
+  await tab(host, 'SAUCE').click();
   await boxesFrom(watcher);
 
   await host.reload();
   await live(host);
   await expect.poll(() => hosts(room)).toBe(2);
-  await selected(host, 'SOCIAL');
+  await hash(host, `/sauce?room=${ROOM_ID}`);
+  await selected(host, 'SAUCE');
   expect(await shared(host)).toEqual(before);
   await expect.poll(() => store(watcher, 'room', (r) => r.hostView)).toEqual(before);
   expect((await watcher.evaluate(() => window.boxes)).filter((box) => box !== JSON.stringify(before))).toEqual([]);
@@ -446,5 +457,6 @@ test('a former host refused on the way back in keeps its art, and says why', asy
   await expect.poll(() => store(artist, 'room', (r) => r.role), ARTIST_STROKE_WAIT).toBe('host');
   await expect.poll(() => store(host, 'room', (r) => r.role), ARTIST_STROKE_WAIT).toBe(null);
   expect(await chars(host, 1, 1, 1)).toBe('a');
-  await expect(host.getByRole('status').filter({ hasText: 'Room is full' })).toBeVisible();
+  await expect(host.locator('.app-toast')).toHaveText('Room is full');   // a toast, and the lobby's notice
+  await expect(shown(host, 'lobby').getByRole('status').filter({ hasText: 'Room is full' })).toBeVisible();
 });

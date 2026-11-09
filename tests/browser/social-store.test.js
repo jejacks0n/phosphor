@@ -79,18 +79,18 @@ test('An answer to an older version of the question isn\'t one: boot waits, with
   expect(localStorage.getItem(CONSENT_KEY)).toBe(String(CONSENT_VERSION));
 });
 
-test('Not now forgets what a link was going to do, and goes back to the tab you came from', async () => {
+test('Not now forgets what a link was going to do, and closes the lobby it opened, leaving the tab as it was', async () => {
   localStorage.clear();
   setActivePinia(createPinia());
   social = useSocialStore();
   const server = fakeServer();
   useWorkspaceStore().editorTab = 'sauce';
-  social._cameFromTab = 'sauce';
   social.start(at('?reset=tok'));
   const going = social.followRoomLink('abcdefghij');
+  expect(useWorkspaceStore().sidePanelTab).toBe('social');
   Object.assign(social, { notice: 'Your email is confirmed' });
   social.declineConsent();
-  expect(useWorkspaceStore().editorTab).toBe('sauce');
+  expect([useWorkspaceStore().editorTab, useWorkspaceStore().sidePanelTab]).toEqual(['sauce', 'layers']);
   expect([social.page, social.resetToken, social._roomLink, social._roomLinkAsks, social.notice]).toEqual(['lobby', null, null, false, null]);
 
   social.acceptConsent();
@@ -907,10 +907,11 @@ test('A guest watching a room who signs in joins it again with the same password
   await social.start(at(''));
   await social.showLobby();
   const { join } = watching('hush');
+  useWorkspaceStore().editorTab = 'room';
   server.route('POST /api/auth/sign-in/email', () => ((server.session = member()), [200, { token: 't' }]));
   expect(await social.signIn('fan@example.com', 'right-password')).toBe(true);
   expect(join).toHaveBeenCalledOnce();
-  expect(join).toHaveBeenCalledWith('abcdefghij', { password: 'hush', keepNotice: true });
+  expect(join).toHaveBeenCalledWith('abcdefghij', { password: 'hush', keepNotice: true, show: true });   // back on ROOM, where it was
 
   join.mockClear();
   watching(undefined);
@@ -960,7 +961,7 @@ test('A two-factor code that signs you in joins the room kept before Discord, on
   const join = joinSpy(rooms);
   sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
   expect(await social.verifyTwoFactor('000000')).toBe(true);
-  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij');
+  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { show: true });   // back from Discord: its art shows
   expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
 
   join.mockClear();
@@ -968,7 +969,7 @@ test('A two-factor code that signs you in joins the room kept before Discord, on
   watching('hush');
   sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
   await social.verifyTwoFactor('123456');
-  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { password: 'hush', keepNotice: true });
+  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { password: 'hush', keepNotice: true, show: false });   // on an art tab, it stays
   expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
   expect(server.sent('POST', '/api/auth/two-factor/verify-totp')).toHaveLength(2);
 });
@@ -1014,7 +1015,7 @@ test('Back from Discord needing a username: no room is joined until onboarding i
   expect(join).not.toHaveBeenCalled();
 
   await social.finishOnboarding('ansi-fan');
-  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { keepNotice: true });
+  expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { keepNotice: true, show: true });   // its art shows: the ROOM tab
 });
 
 test('The back link says "room" while watching and "lobby" otherwise', () => {

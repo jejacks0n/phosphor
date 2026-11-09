@@ -10,13 +10,12 @@ How Phosphor works, for people drawing with it.
   convert with it, selecting, moving, scaling and rotating them.
 - [Animation](animation.md) — frames, the bar under the canvas, what carries from one frame to the next,
   the ghost, timing, and exporting as animated .ans, .cast and .gif.
-- [Social](social.md) — the SOCIAL tab: the lobby, accounts and guests, hosting a room and watching
+- [Social](social.md) — SOCIAL, in the side panel and its boxes: the lobby, accounts and guests, hosting a room and watching
   someone draw, chat, blocking and reporting, and what isn't in this version yet.
 
-The colors: the picker at the right of the tab bar (a moon, a sun and a computer display) chooses
-**Dark** (the default), **Light** or **System** (which follows your computer's setting, and changes
-when it does). Your choice is kept in this browser. A narrow window has no room for it there, so it
-stays on your last choice (Dark to begin with).
+The colors: the picker beside the language, at the bottom of the settings panel (a moon, a sun and a computer
+display), chooses **Dark** (the default), **Light** or **System** (which follows your computer's setting, and
+changes when it does). Your choice is kept in this browser.
 
 The address: the address bar says which tab you're on and, on SOCIAL, which page, so Back and Forward
 move between them and a reload comes back to the same place. With nothing open you're on the start

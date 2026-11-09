@@ -2,18 +2,20 @@
 
 > **Partly built.** This page describes how Phosphor's social side is meant to work.
 >
-> **Works today:** the SOCIAL tab, signing in, creating an account, the Account page, the lobby
+> **Works today:** the lobby in the side panel, signing in, creating an account, the Account page, the lobby
 > with its Join counts and reasons, its filter and who's here, starting and hosting a room, watching
 > one, drawing together, and the chat in a room, with the host's Delete, Remove and Block, and reporting
 > people and rooms.
 
-Phosphor's **SOCIAL** tab is where you meet other people: you can watch someone draw, or let others
-watch you. It sits beside PIXEL, ANSI and SAUCE and is there even before you've opened any art. It's
-for wide screens: a phone held sideways can be wide enough, and narrower screens don't show the tab.
+Phosphor's social side, **SOCIAL**, is where you meet other people: you can watch someone draw, or let
+others watch you. It lives in the side panel on the right of the workspace: its **SOCIAL** tab (marked
+Beta), beside **LAYERS**, is there even before you've opened any art, and becomes **CHAT** while you're in
+a room. Signing in, your account and starting a room open in boxes over everything. It's for wide screens:
+a phone held sideways can be wide enough, and narrower screens don't show the side panel.
 
 ## Before you come in
 
-The first time a browser opens SOCIAL, it asks first. **Before you open SOCIAL** is the short version of
+The first time a browser opens SOCIAL (the LOBBY tab, a page of SOCIAL, or a room's link), it asks first. **Before you open SOCIAL** is the short version of
 the policies: what the lobby shows about you, what watching and starting a room mean (each of you can see
 the other's IP address; an invited artist gets the whole project, including the original image), and
 how to behave. Accept is off until you tick **I'm 13 or older and agree to the Terms, Privacy Policy, and
@@ -25,8 +27,8 @@ asked again if the policies change in a way that matters, or after clearing the 
 
 - **Accept** goes on to where you were going: the lobby, a page of SOCIAL, a room's link (which then asks
   whether to join), or a link from one of our emails.
-- **Not now**, or Escape, goes back to the tab you came from, with a link's room and page forgotten. With no tab to
-  go back to, as when you arrive straight from a link, you land on PIXEL (or the start screen, with nothing open) at a
+- **Not now**, or Escape, closes it and goes back to LAYERS, with a link's room and page forgotten. You stay on the
+  tab you were on; arriving straight from a link, you land on PIXEL (or the start screen, with nothing open) at a
   plain address. A link from an email still works when you open it again, until it expires.
 - **Coming back to a room you're in** isn't held up. A reload while hosting or watching stays in the room, unasked,
   even from a session from before you were asked. The next plain load of the page asks.
@@ -36,36 +38,36 @@ words. The Terms govern.
 
 ## The lobby
 
-The SOCIAL tab opens on the lobby: a gallery of the **public rooms** that are live right now. Each
+Out of a room, the **SOCIAL** tab is the lobby: the **public rooms** that are live right now, as a column of cards. Each
 room shows a small picture of the art, up to 80 columns of it, around the part its host is looking at
 (or the part the host chose; see **Lobby picture** under Hosting). The host's browser makes it soon after
 going live, then again every few minutes when the art or that part has changed. A card also shows
 its name, the host's username, how long it's been live, the room's **signal** (if its host chose one), and a **Join** button with how many are in the room
 and how many it holds (*Join 4/12*). Private rooms are never listed.
 
+What SOCIAL has to tell you (a room that ended, something that failed) shows in a line at the top of the lobby,
+which ✕ dismisses, or at the top of a box while one is open. In a room the panel shows the chat instead, so it
+comes up at the bottom of the window too.
+
 When you can't join a room, its Join button is grayed out and says why beside it:
 
 - **Room is full**: it's at the host's watcher limit.
 - **Signed-in users only**: the room doesn't allow guests, and you haven't signed in.
 
-Signed in (with your email confirmed), **Start a room** sits across from the **Public rooms**
-title. Below them, past a rule, filters (**All**, **Wants feedback**, **Open to chat**, **Heads down**) narrow it
+Signed in (with your email confirmed), **Start a room** sits under the **Public rooms**
+title. A menu at the title's right (**All**, **Wants feedback**, **Open to chat**, **Heads down**) narrows the list
 to rooms whose host wants feedback, is open to chat or is heads down. When none match, it says **No rooms match this filter**.
 
 If someone you've blocked is in a room, its card says **Someone you blocked is here**.
 
 A room of yours whose tab you closed shows **Back to your room** in place of Join (see **Hosting**). One with no card, because it isn't listed, is offered in a line at the top of the lobby instead: "Your room {name} is waiting for you."
 
-Beside the gallery, signed in:
+At the top, you: your username, with **Edit account** and **Sign out**. Not signed in, it shows
+your guest nickname, **Sign in to socialize**, and **Create one** for a new account (and there's no Start a room).
+Below the rooms, **In the lobby**: who's here (guests show as guests), you among them, marked **(you)** and in pink.
 
-- **You**: your username, with **Edit account** and **Sign out**.
-- **In the lobby**: who else is here (guests show as guests).
-
-Not signed in, the same column shows your guest nickname, **Sign in**, and **Create one** for a new
-account (and there's no Start a room).
-
-Sign in, Create an account, Account and Start a room each open in the SOCIAL tab in place of the
-lobby, with **Back to the lobby** at the top.
+Sign in, Create an account, Account and Start a room each open in a box over everything, with **Back to
+the lobby** at the top (or Escape).
 
 ## Members and guests
 
@@ -170,9 +172,9 @@ picture**, the part of the art its card will show, as the host's page does while
 **Lobby picture** under Hosting); a position you pin there is kept when you go live. With room to
 spare it sits beside the rest of the form; in a narrower window, below it.
 
-**Go live** shares the art you have open; **Back to the lobby** leaves without starting it. You keep drawing as
-usual, and watchers see each change as you make it, with a box in your name color for where your
-view is: the view of whichever of PIXEL or ANSI you're on, at your zoom. SAUCE and SOCIAL keep the
+**Go live** shares the art you have open, and the box closes; **Back to the lobby** leaves without starting it. You
+keep drawing as usual, and watchers see each change as you make it, with a box in your name color for where your
+view is: the view of whichever of PIXEL or ANSI you're on, at your zoom. SAUCE keeps the
 last one. Open other art while you're live and watchers see that instead.
 
 While you're live, **Room settings** changes the welcome message, Allow guests, Max watchers and,
@@ -181,7 +183,8 @@ as they were set.
 
 ## Hosting
 
-While you host, the SOCIAL tab shows your room instead of the lobby, as its dashboard. At the top are
+While you host, the side panel's CHAT tab is your room's, with **End room** in its header beside the room menu.
+**Settings and stats**, in that menu, opens your room's dashboard in a box. At the top are
 its name, **Live for** (how long since the room went live, as H:MM:SS; a reconnect doesn't restart it),
 **Copy link** and **End room**, which asks first (**End room** or **Cancel**; so does Back, see **The
 address, Back and Forward**). Send the link to anyone you want in a private room, along with its
@@ -209,10 +212,9 @@ shows under it, unticked; saved ticked, each guest is removed. Under
 them, as plain facts, **Set when the room started**: **Listed in the lobby** or **Only with the link**,
 and whether a password is set. Those can't change while the room is live. What you've typed in the form
 stays when you go to another tab, and when a setting is changed from the chat panel meanwhile, a field
-you're half way through typing in here stays as it is (the others show the new value). The SOCIAL tab carries a dot while you're in
-a room, hosting or watching.
+you're half way through typing in here stays as it is (the others show the new value).
 
-The lobby picture and the settings under it are one column; beside them (or under them, when the tab is
+The lobby picture and the settings under it are one column; beside them (or under them, when the box is
 narrow), **Who came by** is at least as tall as they are, and lists everyone who visited this session, a
 table of **Name**, **Time**, **Status** and **Messages**, a row each, newest last (**Nobody has stopped by yet.** until someone has). A row has their name after its cell (**guest** for a guest), their time in the room (**under
 a minute**, **54m**, **1h 38m**; it counts up while they're here, and a person who comes back has the
@@ -235,8 +237,7 @@ they're tracking you or looking around on their own (or still connecting); someo
   isn't available". Unblock them from Account.
 
 The **⋯** in the panel's header is the room menu: **Copy link**, **Edit welcome** (a box to change
-the pinned welcome, which watchers see at once), and **Settings and stats** (the SOCIAL tab, where
-**End room** is).
+the pinned welcome, which watchers see at once), and **Settings and stats** (the dashboard above).
 
 In the chat, **Delete** takes the place of a message's time when you point at it or tab to it, and takes the message out for everyone, leaving **Message deleted by the host** in its place (a message
 from someone you blocked shows **Show** first).
@@ -271,14 +272,14 @@ settings made meanwhile goes once you're back.
 
 ## Watching
 
-**Join** on a room's card, or a link to it, opens the room right in the SOCIAL tab, in place of the
-lobby. You're in one room at a time; **Exit**, at the top right of the chat panel, brings the lobby
-back. A private room with a
-password asks for it first. A room you join is in the address, so reloading the page joins it again
+**Join** on a room's card, or a link to it, opens the room on a **ROOM** tab, after SAUCE, which is there
+while you watch; the side panel's LOBBY becomes its CHAT. You're in one room at a time; **Exit**, at the top
+right of the chat panel, takes the ROOM tab away (you're back on the art tab you were on) and brings the lobby
+back. A private room with a password asks for it first, on the ROOM tab. A room you join is in the address, so reloading the page joins it again
 (a private room asks for its password again); see **The address, Back and Forward**.
 
 The room's name, its host and **Exit** are at the top of the chat panel, with the welcome message
-pinned under them; the SOCIAL tab shows just the art, in the middle of the page when it's smaller
+pinned under them; the ROOM tab shows just the art, in the middle of the page when it's smaller
 than the page. The art is view only, in the host's font. A box
 in the host's name color shows where they're looking, with a tag in its corner: the host's cell and name, and
 *tracking* while your view tracks theirs. The box is their whole view, and while you track, the
@@ -303,8 +304,8 @@ drawing, none of this is on the screen. (An artist has **Show others' cursors** 
 Your browser connects straight to the host's, which shows each of you the other's IP address (a VPN
 hides yours).
 
-You can go back to your own art in PIXEL or ANSI while you watch: the room keeps running in the
-SOCIAL tab, and the chat stays open beside your work. Watching never changes your
+You can go back to your own art in PIXEL or ANSI while you watch: the room keeps running on the
+ROOM tab, and the chat stays open beside your work. Watching never changes your
 own art.
 
 When the host ends the room, it ends for you too. The art goes with it: Phosphor doesn't keep a
@@ -324,7 +325,7 @@ blocks nothing, so they can save what they have open first; if that art has unsa
 replaces it. **Not now** just clears the notice, and the host can ask again. Leaving the room clears an
 invitation. Accepting opens the room's art in the ordinary tabs, and the row says **artist**. What they had open
 stays in the browser's own list, like anything else autosave keeps.
-The room's page on their SOCIAL tab then shows their own copy of the art, strokes that haven't reached the host
+Their ROOM tab then shows their own copy of the art, strokes that haven't reached the host
 included, and **Back to watching** brings back the host's straight away. If the art doesn't reach them or won't open,
 they see "The room's art couldn't be opened." and go back to watching, and the host can ask again.
 
@@ -390,17 +391,18 @@ hold drawing for up to a minute. If they can't be reached or can't bridge the ga
 own saved document and strokes only an artist had may be lost. Undo starts over, and everyone sees "Your undo starts
 over. All the drawing is still here." since the host hasn't changed.
 
-Anything said in the chat panel about the drawing shows as a toast too while the chat is folded.
+Anything said in the chat panel about the drawing shows as a toast too while the chat isn't showing (the panel folded, or on **LAYERS**).
 
 ## The address, Back and Forward
 
-The address bar says which tab you're on, and on SOCIAL which page: the lobby, Sign in, Create an
-account, Pick your username, Account, Start a room and the rest. Back and Forward move between them
-as they would on any website, and reloading brings you back to the same one. A room you host or watch
-is part of the address.
+The address bar says which tab you're on (ROOM is /room), or which page of SOCIAL is open over it: Sign in,
+Create an account, Pick your username, Account, Start a room and the rest. Back and Forward move between them
+as they would on any website (Back closes a page), and reloading brings you back to the same one. A room you
+host or watch is part of the address. The lobby has no address of its own: an old link to /social opens it in
+the side panel.
 
 - **A page you can't be on** goes to the nearest one you can. Account when you're signed out shows
-  Sign in; Sign in and Create an account when you're signed in show the lobby, as do Start a room
+  Sign in; Sign in and Create an account when you're signed in don't open, and nor do Start a room
   when you're signed out or your email isn't confirmed, the two-factor code page when no code was
   asked for, and the new-password page without a link from an email. ANSI and SAUCE with no image
   open show PIXEL.
@@ -417,9 +419,13 @@ is part of the address.
 
 ## Chat
 
-When you're in a room, hosting or watching, a chat panel sits on the right of the whole workspace,
-with the host's welcome message pinned at the top. It stays open as you move between tabs, so you can work on your own piece and keep talking. **»**
-collapses it to a thin rail that counts new messages; **«** opens it again.
+On a wide screen a side panel sits on the right of the whole workspace, with a **LAYERS** tab (empty
+for now). When you're in a room, hosting or watching, it gains a **CHAT** tab and opens on it, with the
+host's welcome message pinned at the top. It stays open as you move between tabs, so you can work on your
+own piece and keep talking. While **LAYERS** shows, the **CHAT** tab counts new messages; **»** folds the
+panel to a thin rail that counts them too, and **«** opens it again. Drag the panel's left edge to make it
+wider or narrower (or focus the edge and use the arrow keys); a double-click puts it back. Its width and
+whether it's folded stay as you left them in that browser tab, and the next one starts the same way.
 
 Everyone in the room reads the chat. Members with a confirmed email write in it; a guest sees
 **Sign in to chat** and an unconfirmed member sees **Confirm your email to chat**. A message is up
@@ -429,7 +435,7 @@ where you came in. Who joins and leaves shows between the messages, each name af
 comings and goings with nothing said between them share one line (**tin-owl joined, wren left,
 pixel_fox joined**). Someone who comes and goes more than once in a line is named once, by how it
 ended: **joined**, **left**, **came and went** or **came back**. Your own aren't shown, and they
-don't count as new messages on the rail.
+don't count as new messages.
 
 Chat goes from browser to browser through the host, like the art, and never through Phosphor's
 server. The host's browser keeps the last 5,000 messages for as long as the room lasts, and a
@@ -504,6 +510,6 @@ Thank you.**, and **Report room** goes away for that room (this browser remember
 
 ## Not in this version
 
-- Narrow screens: the SOCIAL tab needs a wide one. A link from one of Phosphor's emails, or to a room,
+- Narrow screens: SOCIAL needs a wide one (the side panel isn't shown on a narrow screen). A link from one of Phosphor's emails, or to a room,
   opened on a narrow screen does nothing there; open it on a computer, or with the screen wider.
 - Keeping a copy of art you're only watching.

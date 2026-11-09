@@ -84,16 +84,28 @@ test('a tab change is one step, and Back undoes it', async () => {
   expect(workspace.editorTab).toBe('sauce');
 });
 
-test('two changes in one tick are one step', async () => {
+test('a page opening over a tab is one step, and Back closes it', async () => {
   await landed();
-  social.page = 'sign-in'; workspace.editorTab = 'social';   // ChatFoot's order
+  social.page = 'sign-in';   // the chat's Sign in to chat, say
   await settled();
   expect(path()).toBe('/social/sign-in');
   expect(push).toHaveBeenCalledTimes(1);
 
   router.back();
   await settled();
-  expect(workspace.editorTab).toBe('input');
+  expect([workspace.editorTab, social.page, path()]).toEqual(['input', 'lobby', '/pixel']);
+});
+
+test('two changes in one tick are one step', async () => {
+  await landed();
+  workspace.editorTab = 'sauce'; social.page = 'sign-in';
+  await settled();
+  expect(path()).toBe('/social/sign-in');
+  expect(push).toHaveBeenCalledTimes(1);
+
+  router.back();
+  await settled();
+  expect([workspace.editorTab, social.page]).toEqual(['input', 'lobby']);
 });
 
 test('an address that is already true navigates nowhere', async () => {
@@ -111,24 +123,30 @@ test('an address that is already true navigates nowhere', async () => {
   expect(replace).not.toHaveBeenCalled();
 });
 
-test('a SOCIAL page is in the address both ways, and the page stays when you leave the tab', async () => {
+test('a SOCIAL page is in the address both ways, over the tab underneath', async () => {
   serverFor(member());
   await landed('/social/account');
   await expect.poll(() => social.signedIn).toBe(true);
-  expect(workspace.editorTab).toBe('social');
-  expect(social.page).toBe('account');
+  expect([workspace.editorTab, social.page]).toEqual(['input', 'account']);
 
-  social.page = 'lobby';
-  await settled();
-  expect(path()).toBe('/social');
-
-  workspace.editorTab = 'input';
-  social.page = 'forgot';
+  social.page = 'lobby';   // closed
   await settled();
   expect(path()).toBe('/pixel');
   router.back();
   await settled();
+  expect(social.page).toBe('account');
+  router.forward();
+  await settled();
   expect(social.page).toBe('lobby');
+
+  workspace.editorTab = 'sauce';   // a tab changing under a page leaves the page's address
+  social.page = 'forgot';
+  await settled();
+  push.mockClear();
+  workspace.editorTab = 'output';
+  await settled();
+  expect(path()).toBe('/social/forgot');
+  expect(push).not.toHaveBeenCalled();
 });
 
 test('Back onto /ansi with no image is the start screen at /, replacing', async () => {
@@ -151,20 +169,20 @@ test('Back onto /ansi with no image is the start screen at /, replacing', async 
   expect(replace).toHaveBeenCalledTimes(2);
 });
 
-test('the start screen and SOCIAL are a step apart either way', async () => {
+test('a page over the start screen is a step either way', async () => {
   project.clearImage();
   await landed();
-  workspace.editorTab = 'social';
+  social.page = 'sign-in';
   await settled();
-  expect(path()).toBe('/social');
+  expect(path()).toBe('/social/sign-in');
   expect(push).toHaveBeenCalledTimes(1);
   router.back();
   await settled();
-  expect(path()).toBe('/');
-  expect(workspace.editorTab).toBe('input');   // the tab SOCIAL was left from, under the start screen
+  expect([path(), social.page]).toEqual(['/', 'lobby']);
   router.forward();
   await settled();
-  workspace.editorTab = 'output';   // an art tab, from SOCIAL: the way back
+  expect(social.page).toBe('sign-in');
+  social.page = 'lobby';   // closed
   await settled();
   expect(path()).toBe('/');
   expect(push).toHaveBeenCalledTimes(2);
@@ -230,6 +248,18 @@ test('an unknown path lands on the default tab', async () => {
   expect(path()).toBe('/pixel');
   expect(workspace.editorTab).toBe('input');
   expect(workspace.tabAddressed).toBe(false);
+});
+
+test('/social on a computer opens the lobby in the side panel, and the tab\'s address takes its place', async () => {
+  workspace.sidePanelFolded = true;
+  await landed();
+  await router.push('/social');
+  push.mockClear();
+  await settled();
+  expect([workspace.sidePanelFolded, workspace.sidePanelTab, social.page]).toEqual([false, 'social', 'lobby']);
+  expect(path()).toBe('/pixel');
+  expect(push).not.toHaveBeenCalled();
+  expect(replace).toHaveBeenCalledTimes(1);
 });
 
 test('/social on a phone falls back to the art tab, replacing', async () => {
@@ -334,9 +364,9 @@ for (const [address, out, signedIn] of ARRIVALS) {
       serverFor(session);
       await landed();
       await router.push(`/social/${address}`);
-      await expect.poll(() => path()).toBe(shown === 'lobby' ? '/social' : `/social/${shown === 'start-room' ? 'start' : shown}`);
+      await expect.poll(() => path()).toBe(shown === 'lobby' ? '/pixel' : `/social/${shown === 'start-room' ? 'start' : shown}`);
       expect(social.page).toBe(shown);
-      expect(workspace.editorTab).toBe('social');
+      expect(workspace.editorTab).toBe('input');   // under the page, or with none
       expect(push).toHaveBeenCalledTimes(1);   // the one above
       expect(replace).toHaveBeenCalledTimes(shown === address || (address === 'start' && shown === 'start-room') ? 0 : 1);
     });
@@ -347,7 +377,7 @@ test('Start a room is out of reach with an email not yet confirmed', async () =>
   serverFor(member({ emailVerified: false }));
   await landed();
   await router.push('/social/start');
-  await expect.poll(() => path()).toBe('/social');
+  await expect.poll(() => path()).toBe('/pixel');
   expect(social.page).toBe('lobby');
 });
 
@@ -384,8 +414,8 @@ test('a stale session\'s Sign in page isn\'t bounced while signed in', async () 
 test('a Two-factor page the store showed is not an arrival, and stays', async () => {
   const server = serverFor();
   server.route('POST /api/auth/sign-in/email', () => [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }]);
-  await landed('/social');
-  await expect.poll(() => social.supported).toBe(true);
+  await landed();
+  await social.boot();
   social.page = 'sign-in';
   await settled();
   await social.signIn('fan@example.com', 'right-password');
@@ -393,37 +423,12 @@ test('a Two-factor page the store showed is not an arrival, and stays', async ()
   expect(social.page).toBe('two-factor');
   expect(path()).toBe('/social/two-factor');
 
-  router.back();   // to the lobby (the code took Sign in's place), and forward to the code still being asked for
+  router.back();   // to the tab (the code took Sign in's place), and forward to the code still being asked for
   await settled();
   router.forward();
   await settled();
   expect(social.page).toBe('two-factor');
   expect(path()).toBe('/social/two-factor');
-});
-
-test('going from the Two-factor page to another tab and back is one step each way', async () => {
-  const server = serverFor();
-  server.route('POST /api/auth/sign-in/email', () => [200, { twoFactorRedirect: true, twoFactorMethods: ['totp'] }]);
-  await landed('/social');
-  await expect.poll(() => social.supported).toBe(true);
-  social.page = 'sign-in';
-  await settled();
-  await social.signIn('fan@example.com', 'right-password');
-  await settled();
-  expect(path()).toBe('/social/two-factor');
-  push.mockClear();
-  replace.mockClear();
-
-  workspace.editorTab = 'input';
-  await settled();
-  expect(path()).toBe('/pixel');
-  expect(push).toHaveBeenCalledTimes(1);
-
-  workspace.editorTab = 'social';
-  await settled();
-  expect(path()).toBe('/social/two-factor');
-  expect(push).toHaveBeenCalledTimes(2);
-  expect(replace).not.toHaveBeenCalled();
 });
 
 test('a two-factor return from the server is read before the router lands, and stays', async () => {
@@ -447,18 +452,18 @@ test('a visitor who never shows SOCIAL costs nothing', async () => {
 
 // In a room, as a lobby card's Join does. Memory history keeps each entry's state, so the marks work here; what
 // a page load does with them (a reload, a host's) is in tests/e2e/addresses-rooms.spec.js.
-async function inRoomFrom(address, id = ID) {
+async function inRoomFrom(address = '/pixel', id = ID) {
   useFakeSockets();
   serverFor(member());
   await landed(address);
   await social.boot();
-  room.join(id);
+  room.join(id, { show: true });
   await settled();
 }
 
 test('joining pushes ?room=, and it rides along on every tab', async () => {
-  await inRoomFrom('/social');
-  expect(address()).toBe(`/social?room=${ID}`);
+  await inRoomFrom();
+  expect(address()).toBe(`/room?room=${ID}`);
   expect(push).toHaveBeenCalledTimes(1);
   expect(replace).not.toHaveBeenCalled();
 
@@ -469,28 +474,28 @@ test('joining pushes ?room=, and it rides along on every tab', async () => {
 });
 
 test('Back through tabs stays in the room', async () => {
-  await inRoomFrom('/social');
+  await inRoomFrom();
   workspace.editorTab = 'input';
   await settled();
 
   router.back();
   await settled();
-  expect(workspace.editorTab).toBe('social');
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(workspace.editorTab).toBe('room');
+  expect(address()).toBe(`/room?room=${ID}`);
   expect(room.id).toBe(ID);
   expect(roomSockets()).toHaveLength(1);
   expect(push).toHaveBeenCalledTimes(2);
 });
 
 test('Back past the join leaves the room; Forward joins it again', async () => {
-  await inRoomFrom('/social');
+  await inRoomFrom();
   const socket = roomSockets()[0];
 
   router.back();
   await settled();
   expect(socket.closed).toBe(true);
   expect(room.role).toBe(null);
-  expect(address()).toBe('/social');
+  expect(address()).toBe('/pixel');
   expect(hasLeftRoom(ID)).toBe(false);
   expect(replace).not.toHaveBeenCalled();
   expect(push).toHaveBeenCalledTimes(1);
@@ -499,11 +504,11 @@ test('Back past the join leaves the room; Forward joins it again', async () => {
   await expect.poll(() => roomSockets().length).toBe(2);
   expect(social.roomInvite).toBe(null);
   expect(room.id).toBe(ID);
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(address()).toBe(`/room?room=${ID}`);
 });
 
 test('Exit replaces, dropping ?room=, and the entries before it are spent', async () => {
-  await inRoomFrom('/social');
+  await inRoomFrom();
   workspace.editorTab = 'input';
   await settled();
   room.leave();
@@ -515,8 +520,8 @@ test('Exit replaces, dropping ?room=, and the entries before it are spent', asyn
 
   router.back();
   await settled();
-  expect(address()).toBe('/social');
-  expect(workspace.editorTab).toBe('social');
+  expect(address()).toBe('/pixel');
+  expect(workspace.editorTab).toBe('input');
   expect(replace).toHaveBeenCalledTimes(2);
   expect([room.role, social.roomInvite, social._roomLink]).toEqual([null, null, null]);
   expect(roomSockets()).toHaveLength(1);
@@ -524,7 +529,7 @@ test('Exit replaces, dropping ?room=, and the entries before it are spent', asyn
 
 for (const reason of ['removed', 'ended']) {
   test(`being ${reason} replaces the same way`, async () => {
-    await inRoomFrom('/social');
+    await inRoomFrom();
     workspace.editorTab = 'input';
     await settled();
     room.heard({ type: reason });
@@ -537,16 +542,16 @@ for (const reason of ['removed', 'ended']) {
 }
 
 test('joining another room spends the first', async () => {
-  await inRoomFrom('/social');
+  await inRoomFrom();
   room.join(OTHER);
   await settled();
-  expect(address()).toBe(`/social?room=${OTHER}`);
+  expect(address()).toBe(`/room?room=${OTHER}`);
   expect(push).toHaveBeenCalledTimes(2);
   expect(hasLeftRoom(ID)).toBe(true);
 
   router.back();   // onto the first room's entry: no room at all, and the one past it can be undone
   await settled();
-  expect(address()).toBe('/social');
+  expect(address()).toBe('/pixel');
   expect(room.role).toBe(null);
   expect(social.roomInvite).toBe(null);
   expect(hasLeftRoom(OTHER)).toBe(false);
@@ -555,7 +560,7 @@ test('joining another room spends the first', async () => {
 
 // Back past the join and Forward onto its entry: the rejoin is waiting for the room's answer.
 async function rejoinedOnForward() {
-  await inRoomFrom('/social');
+  await inRoomFrom();
   router.back();
   await settled();
   router.forward();
@@ -565,12 +570,12 @@ async function rejoinedOnForward() {
   expect(replace).not.toHaveBeenCalled();
 }
 
-test('a password form on SOCIAL already moves nothing: the next tab change is still a step', async () => {
+test('a password form on ROOM already moves nothing: the next tab change is still a step', async () => {
   await rejoinedOnForward();
   room.heard({ type: 'refused', reason: 'wrong-password' });
   await settled();
   expect(room.status).toBe('password');
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(address()).toBe(`/room?room=${ID}`);
 
   workspace.editorTab = 'input';
   await settled();
@@ -579,22 +584,23 @@ test('a password form on SOCIAL already moves nothing: the next tab change is st
   expect(replace).not.toHaveBeenCalled();
 });
 
-test('a refusal on SOCIAL already loses ?room= by replacing, and the next tab change is still a step', async () => {
+test('a refusal on ROOM already loses ?room= by replacing, opening the lobby, and the next tab change is still a step', async () => {
   await rejoinedOnForward();
   room.heard({ type: 'refused', reason: 'unavailable' });
   await settled();
-  expect(address()).toBe('/social');
+  expect(address()).toBe('/pixel');   // the art view, its refusal in the lobby
+  expect([workspace.sidePanelFolded, workspace.sidePanelTab]).toEqual([false, 'social']);
   expect(replace).toHaveBeenCalledTimes(1);
 
-  workspace.editorTab = 'input';
+  workspace.editorTab = 'sauce';
   await settled();
-  expect(address()).toBe('/pixel');
+  expect(address()).toBe('/sauce');
   expect(push).toHaveBeenCalledTimes(2);
   expect(replace).toHaveBeenCalledTimes(1);
 });
 
-test('a password form for an entry on another tab moves to SOCIAL by replacing it', async () => {
-  await inRoomFrom('/social');
+test('a password form for an entry on another tab moves to ROOM by replacing it', async () => {
+  await inRoomFrom();
   workspace.editorTab = 'input';
   await settled();
   router.go(-2);
@@ -604,47 +610,67 @@ test('a password form for an entry on another tab moves to SOCIAL by replacing i
   await expect.poll(() => room.status).toBe('joining');
   room.heard({ type: 'refused', reason: 'wrong-password' });
   await settled();
-  expect(workspace.editorTab).toBe('social');
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(workspace.editorTab).toBe('room');
+  expect(address()).toBe(`/room?room=${ID}`);
   expect(push).toHaveBeenCalledTimes(2);
   expect(replace).toHaveBeenCalledTimes(1);
 });
 
 test('joining a spent room again un-spends it', async () => {
-  await inRoomFrom('/social');
+  await inRoomFrom();
   room.leave();
   await settled();
   expect(hasLeftRoom(ID)).toBe(true);
-  room.join(ID);
+  room.join(ID, { show: true });
   await settled();
   expect(hasLeftRoom(ID)).toBe(false);
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(address()).toBe(`/room?room=${ID}`);
 });
 
 test('signing in while watching goes back into the room, which is not spent', async () => {
-  await inRoomFrom('/social');
+  await inRoomFrom();
   await social.signIn('fan@example.com', 'right-password');
   await settled();
   expect(room.id).toBe(ID);
   expect(hasLeftRoom(ID)).toBe(false);
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(address()).toBe(`/room?room=${ID}`);
 });
 
 test('a Join before autosave has answered is still a step, so Back stays in Phosphor', async () => {
   useFakeSockets();
   serverFor(member());
-  await landing('/social');
+  await landing('/pixel');
   await social.boot();
   push = vi.spyOn(router, 'push');
 
-  room.join(ID);
+  room.join(ID, { show: true });
   await settled();
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(address()).toBe(`/room?room=${ID}`);
   expect(push).toHaveBeenCalledTimes(1);
 
   router.back();
   await settled();
-  expect(address()).toBe('/social');
+  expect(address()).toBe('/pixel');
+  expect(room.role).toBe(null);
+});
+
+test('a Join from the start screen is a step, and so is leaving ROOM for it; Back comes back to it in Phosphor', async () => {
+  project.clearImage();
+  await inRoomFrom('/');
+  expect(address()).toBe(`/room?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(1);
+
+  workspace.editorTab = 'input';   // PIXEL, with nothing open
+  await settled();
+  expect(address()).toBe(`/?room=${ID}`);
+  expect(push).toHaveBeenCalledTimes(2);
+  router.back();
+  await settled();
+  expect(address()).toBe(`/room?room=${ID}`);
+
+  router.back();
+  await settled();
+  expect(address()).toBe('/');
   expect(room.role).toBe(null);
 });
 
@@ -666,7 +692,6 @@ for (const [page, leave, next] of NO_RETURN) {
     await social.boot();
     if (page === 'reset') social.resetToken = 'tok';
     social.page = page;
-    workspace.editorTab = 'social';
     await settled();
     expect(social.page).toBe(page);
     push.mockClear();
@@ -692,7 +717,7 @@ test('the Sign in a stale session sends you to still shows, and is a step; leavi
   expect(push).toHaveBeenCalledTimes(1);
   expect(replace).not.toHaveBeenCalled();
 
-  workspace.editorTab = 'input';
+  social.page = 'lobby';   // closed: signed in, it's no place to come back to
   await settled();
   expect(path()).toBe('/pixel');
   expect(push).toHaveBeenCalledTimes(1);
@@ -744,15 +769,15 @@ test('going elsewhere before a rejoin gets there means no join', async () => {
   expect(roomSockets()).toEqual([]);
 });
 
-test('an unmarked ?room= asks on SOCIAL, and the address it came in on goes', async () => {
+test('an unmarked ?room= asks with the lobby open, and the address it came in on goes', async () => {
   useFakeSockets();
   serverFor(member());
   await landed();
   await router.push(`/pixel?room=${ID}`);
   await expect.poll(() => social.roomInvite).toBe(ID);
   await settled();
-  expect(workspace.editorTab).toBe('social');
-  expect(address()).toBe('/social');
+  expect([workspace.editorTab, workspace.sidePanelTab, workspace.sidePanelFolded]).toEqual(['input', 'social', false]);
+  expect(address()).toBe('/pixel');
   expect(push).toHaveBeenCalledTimes(1);   // the one above: this is no step of its own
   expect(roomSockets()).toEqual([]);
 
@@ -810,20 +835,20 @@ async function hostingFrom(address = '/social/start') {
 
 test('Back past going live asks, and Cancel keeps the room and the address', async () => {
   await hostingFrom();
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(address()).toBe(`/pixel?room=${ID}`);
   expect(push).toHaveBeenCalledTimes(1);
 
   router.back();
   await settled();
   expect(room.askingEnd).toBe(true);
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(address()).toBe(`/pixel?room=${ID}`);
 
   room.answerEnd(false);
   await settled();
   expect(room.askingEnd).toBe(false);
   expect(room.role).toBe('host');
-  expect(address()).toBe(`/social?room=${ID}`);
-  expect(router.options.history.location).toBe(`/social?room=${ID}`);
+  expect(address()).toBe(`/pixel?room=${ID}`);
+  expect(router.options.history.location).toBe(`/pixel?room=${ID}`);
   expect(push).toHaveBeenCalledTimes(1);
 
   router.back();
@@ -845,23 +870,23 @@ test('End ends the room and lands on Setup room', async () => {
   expect(hasLeftRoom(ID)).toBe(true);
   expect(address()).toBe('/social/start');
   expect(social.page).toBe('start-room');
-  expect(workspace.editorTab).toBe('social');
+  expect(workspace.editorTab).toBe('input');   // under it
   expect(push).toHaveBeenCalledTimes(1);
   expect(replace).not.toHaveBeenCalled();
 });
 
 test('Back between tabs while hosting doesn\'t ask', async () => {
   await hostingFrom();
-  workspace.editorTab = 'input';
+  workspace.editorTab = 'sauce';
   await settled();
-  expect(address()).toBe(`/pixel?room=${ID}`);
+  expect(address()).toBe(`/sauce?room=${ID}`);
 
   router.back();
   await settled();
   expect(room.askingEnd).toBe(false);
   expect(room.role).toBe('host');
-  expect(address()).toBe(`/social?room=${ID}`);
-  expect(workspace.editorTab).toBe('social');
+  expect(address()).toBe(`/pixel?room=${ID}`);
+  expect(workspace.editorTab).toBe('input');
 });
 
 test('the room ending while it asks: the question goes and Back finishes', async () => {
@@ -883,14 +908,14 @@ test('a store changing while it asks moves the address only after the answer', a
   router.back();
   await settled();
 
-  workspace.editorTab = 'input';
+  workspace.editorTab = 'sauce';
   await settled();
   expect(room.askingEnd).toBe(true);
-  expect(address()).toBe(`/social?room=${ID}`);
+  expect(address()).toBe(`/pixel?room=${ID}`);
   expect(push).toHaveBeenCalledTimes(1);
 
   room.answerEnd(false);
   await settled();
-  expect(address()).toBe(`/pixel?room=${ID}`);
+  expect(address()).toBe(`/sauce?room=${ID}`);
   expect(room.role).toBe('host');
 });

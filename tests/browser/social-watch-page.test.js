@@ -95,3 +95,12 @@ test('the middle of the art in view is the store\'s lookingAt (a room report\'s 
   const { room } = await mount({ status: 'live', room: { name: 'neon harbor', welcome: '', host: 'ansi-fan' }, art, hostView: { col: 0, row: 0, cols: 2, rows: 1 } });
   await expect.poll(() => room.lookingAt).toMatchObject({ middleCol: expect.any(Number), middleRow: expect.any(Number) });
 });
+
+test('asked for a password, focus lost with what was pressed (the link\'s Join) waits on the heading', async () => {
+  const { room, heading } = await mount({ status: 'joining' });
+  document.activeElement?.blur();
+  room.status = 'password';
+  await nextTick();
+  await nextTick();
+  expect(document.activeElement).toBe(heading);
+});

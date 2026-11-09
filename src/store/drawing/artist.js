@@ -132,7 +132,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
           notice.value = [notice.value, words].filter(Boolean).join(' ');   // what undo did is still so
           toast(words);
         }
-        if (goToArt && workspace.editorTab === 'social') workspace.editorTab = 'output';
+        if (goToArt && workspace.editorTab === 'room') workspace.editorTab = 'output';
         goToArt = false;
         if (connections === onConnection) caughtUp();   // a newer one has its own host to hear from, and its own resend
       },

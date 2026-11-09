@@ -82,7 +82,7 @@ export const tab = (page, label) => page.getByRole('tab', { name: label, exact: 
 // Nothing open: the start screen, with no tab selected.
 export async function startScreen(page) {
   await expect(imageInput(page)).toBeAttached();
-  await expect(page.getByRole('tab', { selected: true })).toHaveCount(0);
+  await expect(page.locator('.tab-list').getByRole('tab', { selected: true })).toHaveCount(0);   // the editor's tabs (the side panel's are its own)
 }
 
 // Autosave has written the open document, so a reload can bring it back. Its first write is a second after the

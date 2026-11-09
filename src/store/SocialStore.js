@@ -78,10 +78,9 @@ export const useSocialStore = defineStore('social', {
   state: () => ({
     consentVersion: useLocalStorage(CONSENT_KEY, 0, { writeDefaults: false }),   // the version of SOCIAL's question this browser accepted (consent.js)
     _roomGoesOn: false,  // this load is coming back to a room, which that question doesn't interrupt (allowed)
-    _cameFromTab: 'input',   // the tab SOCIAL's question goes back to: the editor when there's none (router.js)
     supported: null,     // null until checked: false when this browser can't do Ed25519 or IndexedDB
     me: null,            // /api/me's body; null signed out
-    page: 'lobby',       // 'lobby' | 'sign-in' | 'create' | 'forgot' | 'reset' | 'onboarding' | 'account' | 'two-factor' | 'start-room'
+    page: 'lobby',       // the page open over everything (SocialDialogs), or 'lobby' for none: 'sign-in' | 'create' | 'forgot' | 'reset' | 'onboarding' | 'account' | 'two-factor' | 'start-room'
     resetToken: null,
     pass: null,
     claims: null,        // the pass's claims: { sub, name, guest, verified, key, exp }
@@ -90,10 +89,10 @@ export const useSocialStore = defineStore('social', {
     blocked: [],         // [{ id, username, since }]
     roomReports: keptRoomReports(),   // the rooms reported in this browser, by account: [{ room, by }] (reportedRooms is yours)
     providers: [],       // the provider ids the server has set up: only those get a button
-    notice: null,        // one line at the top of the tab
+    notice: null,        // one line at the top of the lobby, or of the page open over it
     busy: false,
     started: false,
-    lobbyWanted: false,  // the SOCIAL tab has been shown
+    lobbyWanted: false,  // the lobby has been shown
     _boot: null,         // boot()'s promise, once asked for
     _codePending: false, // a two-factor code is waited for (signIn's challenge, or the return from the server): its address is an arrival only then
     _roomLink: null,     // the room to go to once you're known: a ?room= link's (it asks first) or the one you signed in from
@@ -138,8 +137,8 @@ export const useSocialStore = defineStore('social', {
       this.joinLink();
     },
 
-    // The SOCIAL tab is showing: once you're known, the lobby connects, and stays connected. A link back
-    // left in the URL by a narrow window, since widened, is read now.
+    // The lobby is showing (the side panel's LOBBY tab): once you're known, it connects, and stays connected. A
+    // link back left in the URL by a narrow window, since widened, is read now.
     async showLobby() {
       this.lobbyWanted = true;
       this.readReturn(window.location);
@@ -148,27 +147,28 @@ export const useSocialStore = defineStore('social', {
       this.connectLobby();
     },
 
-    // The room a ?room= link named, once, when you're done with onboarding (finishOnboarding comes back to it).
-    joinLink() {
+    // The room a ?room= link named, once, when you're done with onboarding (finishOnboarding comes back to it). Its
+    // art shows (the ROOM tab), unless it's your own room coming back (rejoin), where the address has the tab.
+    joinLink(show = true) {
       if (this.me?.needsOnboarding) return;
       const id = this._roomLink;
       this._roomLink = null;
       if (id === null || !this.supported) return;
       if (this._roomLinkAsks && ROOM_ID.test(id)) this.roomInvite = id;
-      else useRoomStore().join(id, { keepNotice: true });   // (one that can't be a room's goes no further, and says so)
+      else useRoomStore().join(id, { keepNotice: true, show });   // (one that can't be a room's goes no further, and says so)
     },
 
     // Your own room again, from an entry of yours (Forward, a reload): no asking.
     async rejoin(id) {
       Object.assign(this, { _roomLink: id, _roomLinkAsks: false, _roomGoesOn: true });
       await this.boot();
-      this.joinLink();
+      this.joinLink(false);
     },
 
-    // A room's address that nothing here made: it asks, on SOCIAL.
+    // A room's address that nothing here made: it asks, with the lobby open behind.
     async followRoomLink(id) {
       Object.assign(this, { _roomLink: id, _roomLinkAsks: true });
-      useWorkspaceStore().editorTab = 'social';
+      useWorkspaceStore().showSocial();
       await this.boot();
       this.joinLink();
     },
@@ -177,7 +177,7 @@ export const useSocialStore = defineStore('social', {
     answerRoomInvite(yes) {
       const id = this.roomInvite;
       this.roomInvite = null;
-      if (yes && id !== null) useRoomStore().join(id);
+      if (yes && id !== null) useRoomStore().join(id, { show: true });
     },
 
     // SOCIAL's question, answered: what was waiting on boot goes on to where it was going.
@@ -185,11 +185,12 @@ export const useSocialStore = defineStore('social', {
       this.consentVersion = CONSENT_VERSION;
     },
 
-    // Not now: back to the tab you came from, with what brought you here (a link's room, its page, its token and words) forgotten.
+    // Not now: the lobby and any page close, with what brought you here (a link's room, its page, its token and words) forgotten.
     declineConsent() {
       keepRoom(null);
       Object.assign(this, { page: 'lobby', resetToken: null, notice: null, _codePending: false, _roomLink: null, _roomLinkAsks: false });
-      useWorkspaceStore().editorTab = this._cameFromTab;
+      const workspace = useWorkspaceStore();
+      if (workspace.sidePanelTab === 'social') workspace.sidePanelTab = 'layers';
     },
 
     // This browser's key, then who you are; once, however often it's asked for. Everything SOCIAL does starts
@@ -232,7 +233,7 @@ export const useSocialStore = defineStore('social', {
         this.notice = error === 'EMAIL_NOT_VERIFIED' ? t('social.notices.confirmWithProvider') : messageFor(error);
       }
       if (!returned.some((name) => params.has(name))) return false;
-      useWorkspaceStore().editorTab = 'social';   // back to where you were
+      useWorkspaceStore().showSocial();   // back to where you were: the lobby, under the page it brought, if any
       [...returned, ...ERROR_PARAMS].forEach((name) => params.delete(name));
       history.replaceState(history.state, '', url.pathname + url.search + url.hash);
       return true;
@@ -272,10 +273,10 @@ export const useSocialStore = defineStore('social', {
 
     // You're someone else now (signed in, or out): a room you host is ended (signing out, passed on to any artists in it), or one you watch left, then a
     // new pass and a new lobby connection. Signing in (not out) while watching goes back into the same room,
-    // with the same password, as the new you.
+    // with the same password, as the new you, on the tab you were on (ROOM, if it was).
     async becameSomeoneElse({ signedOut = false } = {}) {
       const rooms = useRoomStore();
-      const back = signedOut ? null : rooms.rejoinInfo();
+      const back = signedOut ? null : rooms.rejoinInfo(), onRoom = useWorkspaceStore().editorTab === 'room';
       keepRoom(null);
       rooms.close({ passRole: signedOut });
       if (signedOut) forgetHostCopies().catch(() => {});   // what's kept for coming back doesn't outlive the sign-in
@@ -283,7 +284,7 @@ export const useSocialStore = defineStore('social', {
       else await this.refreshMe();
       Object.assign(this, { blocked: [], _codePending: false, page: this.me?.needsOnboarding ? 'onboarding' : 'lobby' });
       this.reconnect();
-      if (back) rooms.join(back.id, { password: back.password, keepNotice: true });
+      if (back) rooms.join(back.id, { password: back.password, keepNotice: true, show: onRoom });
     },
 
     // Signing in or up stays busy until you're known, so the form can't be sent a second time meanwhile.
@@ -318,7 +319,7 @@ export const useSocialStore = defineStore('social', {
           // Back from Discord or GitHub and then the code: the room kept before leaving, unless it's already rejoined.
           const id = keptRoom();
           await this.becameSomeoneElse();
-          if (id && !useRoomStore().role) useRoomStore().join(id);
+          if (id && !useRoomStore().role) useRoomStore().join(id, { show: true });
         }
         return ok;
       });

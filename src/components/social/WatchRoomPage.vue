@@ -41,6 +41,12 @@ watch(() => room.status === 'password' && room.passwordWrong, async (wrong) => {
   passwordRef.value?.focus();
   passwordRef.value?.select();
 });
+// Asked for its password, focus left with what was pressed (the link's Join) waits on the heading.
+watch(() => room.status === 'password', async (asking) => {
+  if (!asking) return;
+  await nextTick();
+  if (document.activeElement === document.body) headingRef.value?.focus();
+}, { immediate: true });
 const lookAround = () => { if (room.tracking) room.setTracking(false); };
 // The zoom's buttons go by quarters, from wherever a pinch left it.
 const zoomOut = () => room.setArtZoom((Math.ceil(room.artZoom * 4) - 1) / 4);

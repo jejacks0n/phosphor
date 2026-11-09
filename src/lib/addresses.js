@@ -1,30 +1,29 @@
-// The addresses: which tab and SOCIAL page each path is, and where an address may land.
+// The addresses: which tab, SOCIAL page or the lobby each path is, and where an address may land.
 export const PLACES = [
   ['/pixel', { tab: 'input' }],
   ['/ansi', { tab: 'output' }],
   ['/vector', { tab: 'vector' }],
   ['/sauce', { tab: 'sauce' }],
-  ['/social', { tab: 'social', page: 'lobby' }],
-  ['/social/sign-in', { tab: 'social', page: 'sign-in' }],
-  ['/social/create', { tab: 'social', page: 'create' }],
-  ['/social/forgot', { tab: 'social', page: 'forgot' }],
-  ['/social/account', { tab: 'social', page: 'account' }],
-  ['/social/two-factor', { tab: 'social', page: 'two-factor' }],
-  ['/social/start', { tab: 'social', page: 'start-room' }],
-  ['/social/reset', { tab: 'social', page: 'reset' }],
-  ['/social/name', { tab: 'social', page: 'onboarding' }],
+  ['/room', { tab: 'room' }],
+  ['/social', { lobby: true }],
+  ['/social/sign-in', { page: 'sign-in' }],
+  ['/social/create', { page: 'create' }],
+  ['/social/forgot', { page: 'forgot' }],
+  ['/social/account', { page: 'account' }],
+  ['/social/two-factor', { page: 'two-factor' }],
+  ['/social/start', { page: 'start-room' }],
+  ['/social/reset', { page: 'reset' }],
+  ['/social/name', { page: 'onboarding' }],
 ];
 
-// The pages a guest watching a room still gets, to sign in to chat.
-export const SIGN_IN_PAGES = new Set(['sign-in', 'create', 'forgot', 'two-factor', 'onboarding']);
-
-// The room you host or watch shows in place of the lobby, so its address is /social. With nothing open the
-// art tabs are the start screen, which is /.
-export function pathOf({ tab, page, role, empty = false }) {
-  if (empty && tab !== 'social') return '/';
-  const inRoom = role === 'host' || (role === 'watch' && !SIGN_IN_PAGES.has(page));
-  const shown = tab === 'social' && !inRoom ? page : 'lobby';
-  return PLACES.find(([, p]) => p.tab === tab && (tab !== 'social' || p.page === shown))?.[0] ?? '/social';
+// A SOCIAL page open over the tab is its address; with none it's the tab's. With nothing open the art tabs are
+// the start screen, which is /. The lobby (/social) is no place of its own: landing there opens it in the side
+// panel, and the tab's address takes its place.
+export function pathOf({ tab, page = 'lobby', empty = false }) {
+  const open = page !== 'lobby' && PLACES.find(([, p]) => p.page === page);
+  if (open) return open[0];
+  if (empty && tab !== 'room') return '/';
+  return PLACES.find(([, p]) => p.tab === tab)?.[0] ?? '/';
 }
 
 // A page that can't be shown goes to the nearest one that can.

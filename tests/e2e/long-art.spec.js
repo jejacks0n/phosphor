@@ -74,11 +74,12 @@ test('a font-size change halfway down a long piece keeps the place, and draws it
     el.scrollTop = el.scrollHeight / 2;
     return { ratio: el.scrollTop / el.scrollHeight };
   });
-  // A cell a quarter of the way down the view, painted: it's still in view after the change.
+  // A cell in the middle column, a quarter of the way down the view, painted: it's still in view after the
+  // change, which keeps the view's middle (column 10 scrolls off the left in an editor narrower than the art).
   const view = await scroller(page).boundingBox();
   const box = await sizer(page).boundingBox();
   const row = Math.floor((view.y + view.height / 4 - box.y - 2) / ((box.height - 4) / await linesOf(page)));
-  await paintCell(page, 10, row);
+  await paintCell(page, 40, row);
 
   // Every scroll position from here on: the browser resets it to 0 if the sizer ever collapses.
   // And every frame, once painted (a task after its frame): how much of the view the canvas covers.
@@ -108,7 +109,7 @@ test('a font-size change halfway down a long piece keeps the place, and draws it
   expect(frames.filter((f) => f.covered < f.view)).toEqual([]);
   const after = await scroller(page).evaluate((el) => el.scrollTop / el.scrollHeight);
   expect(Math.abs(after - before.ratio)).toBeLessThan(0.02);
-  await shown(page, 10, row).toBe(await bgOf(page, 10, row));
+  await shown(page, 40, row).toBe(await bgOf(page, 40, row));
 });
 
 test('the PIXEL view at 16x draws the end of a long picture with a canvas the size of the view', async ({ page }) => {

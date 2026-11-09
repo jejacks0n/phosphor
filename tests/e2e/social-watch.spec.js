@@ -2,7 +2,7 @@
 // a watcher (a guest unless said otherwise). Joining from a lobby card or a ?room= link, the host's art
 // live with the host's view, Tracking, Leave, refusals, and the watcher's own art left as it was.
 import { test, expect, openApp, tab, store, editAt, cellPoint, screenPixel, settled } from './support.js';
-import { fakeRoom, ROOM_ID, shown, tile, goLive, watcherPage, joinFromCard, followLink } from './social-support.js';
+import { fakeRoom, ROOM_ID, shown, tile, goLive, watcherPage, joinFromCard, followLink, openStats, selected } from './social-support.js';
 
 const watching = (page) => shown(page, 'watch-room');
 const chat = (page) => page.getByRole('complementary', { name: 'Chat' });   // its top has the room's name, the host and Leave
@@ -20,7 +20,7 @@ test('Join from a lobby card: the room\'s name, its welcome, and the host\'s art
   await expect(chat(watcher).getByRole('heading', { name: 'neon harbor' })).toBeVisible();
   await expect(chat(watcher).getByText('hosted by ansi-fan')).toBeVisible();
   await expect(chat(watcher).getByText('hi all')).toBeVisible();
-  // The SOCIAL tab doesn't say them again: the art is all it shows (its heading is for screen readers).
+  // The ROOM tab doesn't say them again: the art is all it shows (its heading is for screen readers).
   const page = watching(watcher);
   await expect(page.getByRole('heading', { name: 'neon harbor' })).toHaveCSS('position', 'absolute');
   await expect(page.getByText('hosted by ansi-fan')).toHaveCount(0);
@@ -35,7 +35,7 @@ test('Join from a lobby card: the room\'s name, its welcome, and the host\'s art
   expect((await hostCells(host))[at][0]).toBe('Z');
   await expect.poll(async () => (await watcherCells(watcher))[at], { timeout: 2000 }).toEqual((await hostCells(host))[at]);
 
-  await tab(host, 'SOCIAL').click();
+  await openStats(host);
   await expect(tile(shown(host, 'host-room'), 'Here now')).toHaveText('1');
   await chat(watcher).getByRole('button', { name: 'Exit' }).click();
   await expect(shown(watcher, 'lobby').getByRole('heading', { name: 'Public rooms', exact: true })).toBeFocused();
@@ -60,7 +60,6 @@ test('the host sees the watcher tracking; a wheel is looking around, and Track b
   await store(host, 'workspace', (w) => { w.ansiZoom = 1; });
   await host.locator('.ansi-editor > article').evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
   await expect.poll(() => store(host, 'workspace', (w) => w.ansiViewOrigin.row)).toBeGreaterThan(400);
-  await tab(host, 'SOCIAL').click();
 
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
@@ -105,7 +104,6 @@ test('a tracking watcher\'s art stays centered when their own view changes size;
   await store(host, 'workspace', (w) => { w.ansiZoom = 1; });
   await host.locator('.ansi-editor > article').evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
   await expect.poll(() => store(host, 'workspace', (w) => w.ansiViewOrigin.row)).toBeGreaterThan(400);
-  await tab(host, 'SOCIAL').click();
 
   const watcher = await watcherPage(context, room);
   await watcher.setViewportSize({ width: 830, height: 500 });
@@ -118,7 +116,7 @@ test('a tracking watcher\'s art stays centered when their own view changes size;
   });
   await expect.poll(offCenter).toBeLessThanOrEqual(1);
 
-  await chat(watcher).getByRole('button', { name: 'Fold the chat' }).click();
+  await watcher.getByRole('button', { name: 'Fold the panel' }).click();
   await expect.poll(offCenter).toBeLessThanOrEqual(1);
   await watcher.setViewportSize({ width: 950, height: 500 });
   await expect.poll(offCenter).toBeLessThanOrEqual(1);
@@ -186,7 +184,6 @@ test('a watcher zooms the art themselves: it stops tracking, and Track goes back
   await tab(host, 'ANSI').click();
   await settled(host);
   await store(host, 'workspace', (w) => { w.ansiZoom = 1; });
-  await tab(host, 'SOCIAL').click();
 
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
@@ -298,9 +295,12 @@ test('a watcher\'s own unsaved art is as it was after joining, watching and leav
   expect(await own()).toEqual(before);
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');   // still watching
 
-  await tab(watcher, 'SOCIAL').click();
+  // Exit from ROOM: the tab goes, and the watcher is back on PIXEL, where they were.
+  await tab(watcher, 'ROOM').click();
   await chat(watcher).getByRole('button', { name: 'Exit' }).click();
   await expect(shown(watcher, 'lobby')).toBeVisible();
+  await selected(watcher, 'PIXEL');
+  await expect(tab(watcher, 'ROOM')).toHaveCount(0);
   expect(await own()).toEqual(before);
 });
 

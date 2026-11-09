@@ -1,7 +1,7 @@
 // A host whose tab closed goes back to the room from a new tab in the same browser: the lobby's card or a plain
 // line offers it, or the question a link asks, and pressing it reloads the tab into the room as a host's reload would.
 import { test, expect, tab, store, chars, editAt, settled, openApp, otherBrowser } from './support.js';
-import { fakeRoom, fakeServer, member, ROOM_ID, shown, goLive, chat, live, joins, artistPage, asked, mayDraw as mayDrawOf } from './social-support.js';
+import { fakeRoom, fakeServer, member, ROOM_ID, shown, goLive, chat, live, joins, artistPage, asked, mayDraw as mayDrawOf, openLobby } from './social-support.js';
 
 const BACK = 'Back to your room';
 const AWAY = 'Your room closed while you were away.';
@@ -12,6 +12,7 @@ const OFFERED = 15_000;   // how long an offer that's coming may take on a busy 
 const listing = () => [{ id: ROOM_ID, name: 'neon harbor', host: 'ansi-fan', count: 0, max: 12, allowGuests: true, signal: null, liveSince: Date.now(), thumbnail: null, blockedInside: false }];
 const card = (page) => shown(page, 'lobby').getByRole('article').filter({ hasText: 'neon harbor' });
 const back = (page) => page.getByRole('button', { name: BACK });
+const chatTab = (page) => page.locator('.side-panel').getByRole('tab', { name: 'Chat' });
 
 // The same browser's next tab, signed in as `me`, on the lobby.
 async function newTab(context, room, { me = member(), rooms = listing(), open = async (page) => { await page.goto('/'); } } = {}) {
@@ -19,7 +20,7 @@ async function newTab(context, room, { me = member(), rooms = listing(), open = 
   await fakeServer(page, { me, room, rooms });
   page.on('dialog', () => { throw new Error('Going back asked about leaving the page'); });
   await open(page);
-  await tab(page, 'SOCIAL').click();
+  await openLobby(page);
   return page;
 }
 
@@ -53,8 +54,8 @@ test('a closed tab\'s room: its card offers Back to your room in Join\'s place, 
   await live(again);
   expect(await store(again, 'room', (r) => r.role)).toBe('host');
   expect(await chars(again, 0, 0, 20)).toBe(art);
+  await expect(chatTab(again)).toHaveAttribute('aria-selected', 'true');   // in the room: the panel on its chat
   await expect(chat(again).getByRole('log').locator('.message').first()).toContainText('hello room');
-  await expect(shown(again, 'host-room')).toBeVisible();
   expect(joins(room)).toBe(0);
   await expect(back(again)).toHaveCount(0);
 });
@@ -79,15 +80,16 @@ test('a host\'s reload doesn\'t flash the offer in another tab, and that tab off
   await expect(back(second)).toBeVisible({ timeout: OFFERED });
 });
 
-test('leaving SOCIAL and coming back looks again from the start: nothing from before counts', async ({ page: host, context }) => {
+test('leaving the lobby and coming back looks again from the start: nothing from before counts', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room);
   await kept(host);
   await host.close();
   const again = await newTab(context, room);
   await expect(back(again)).toBeVisible({ timeout: OFFERED });
-  await tab(again, 'PIXEL').click();
-  await tab(again, 'SOCIAL').click();
+  await again.locator('.side-panel').getByRole('tab', { name: 'Layers' }).click();
+  await expect(shown(again, 'lobby')).toHaveCount(0);
+  await openLobby(again);
   await again.waitForTimeout(800);
   await expect(back(again)).toHaveCount(0);
   await expect(back(again)).toBeVisible({ timeout: OFFERED });
@@ -139,7 +141,7 @@ test('unsaved art in the new tab: it says it\'s replaced, on the card and as its
   await tab(again, 'ANSI').click();
   await editAt(again, 3, 3);
   await again.keyboard.type('m');
-  await tab(again, 'SOCIAL').click();
+  await openLobby(again);
   await expect(card(again).getByText(REPLACES)).toBeVisible({ timeout: OFFERED });
   await expect(card(again).getByRole('button', { name: BACK })).toHaveAccessibleDescription(REPLACES, { timeout: OFFERED });
   await press(again, back(again));
@@ -164,8 +166,10 @@ test('pressed once the room is over: it says so, and it isn\'t offered again', a
   const again = await newTab(context, room);
   await expect(back(again)).toBeVisible({ timeout: OFFERED });
   await press(again, back(again));
+  await expect(again.locator('.app-toast')).toHaveText(AWAY);   // a toast, and the lobby's notice
+  await openLobby(again);
   await expect(shown(again, 'lobby').getByRole('button', { name: /^Join/ })).toBeVisible();
-  await expect(again.getByRole('status').filter({ hasText: AWAY })).toBeVisible();
+  await expect(shown(again, 'lobby').locator('p.notice')).toContainText(AWAY);
   expect(await store(again, 'room', (r) => r.role)).toBe(null);
   await again.waitForTimeout(LOOKS);
   await expect(back(again)).toHaveCount(0);
@@ -183,6 +187,7 @@ test('pressed after the role moved: back in as an artist, with the existing word
   await expect.poll(() => store(artist, 'room', (r) => r.role), { timeout: 10_000 }).toBe('host');
   await press(again, back(again));
   await expect.poll(() => store(again, 'room', (r) => r.role), { timeout: 10_000 }).toBe('watch');
+  await expect(chatTab(again)).toHaveAttribute('aria-selected', 'true');
   await expect(chat(again).getByText('is now the host. What you had open is saved')).toBeVisible();
   await mayDrawOf(again).toBe(true);
 });

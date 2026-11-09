@@ -14,23 +14,24 @@ test('the Magic Wand and Select sit together, between the picker and the Hand, i
 });
 
 // The overlay controls fold into their dropdown, and the Actions into theirs, when the toolbar is narrow,
-// whatever narrows it: a narrow window, or the chat column beside the editor.
-test('the toolbar folds by its own width, so the chat column folds it sooner', async ({ page }) => {
+// whatever narrows it: a narrow window, or the side panel open beside the editor.
+test('the toolbar folds by its own width, so the side panel open folds it sooner', async ({ page }) => {
   const overlay = () => page.getByRole('slider', { name: 'ANSI Overlay' });
   const folded = () => page.locator('.overlay-menu');
   const actions = () => page.getByTitle('Actions');
-  await page.setViewportSize({ width: 1328, height: 900 });
+  await page.setViewportSize({ width: 1358, height: 900 });
   await openApp(page);
   await tab(page, 'PIXEL').click();
+  await expect(page.locator('.side-panel')).toHaveCSS('width', '28px');   // folded to its rail
   await expect(overlay()).toBeVisible();   // the toolbar is wide: everything's out
   await expect(folded()).toHaveCount(0);
   await expect(actions()).toBeHidden();
-  await page.setViewportSize({ width: 1290, height: 900 });   // a toolbar of 1020px: the overlay folds
+  await page.setViewportSize({ width: 1320, height: 900 });   // a toolbar of 1020px: the overlay folds
   await expect(folded()).toBeVisible();
-  await page.setViewportSize({ width: 1328, height: 900 });
+  await page.setViewportSize({ width: 1358, height: 900 });
   await expect(overlay()).toBeVisible();
 
-  await goLive(page, fakeRoom());   // hosting: the chat column takes 280px from the editor
+  await goLive(page, fakeRoom());   // hosting: the side panel opens on the chat, 280px from the editor
   await expect(page.locator('aside.chat')).toBeVisible();
   await tab(page, 'PIXEL').click();
   await expect(folded()).toBeVisible();

@@ -95,7 +95,7 @@
     "ascii": "ASCII",
     "vector": "VECTOR",
     "sauce": "SAUCE",
-    "social": "SOCIAL",
+    "room": "SALLE",
     "beta": "Bêta",
     "animate": "Animer",
     "animateHint": "Animer image par image",
@@ -317,6 +317,16 @@
       "notMonospaced": "« {name} » n'est pas à chasse fixe ({narrow} mesure {narrowPx} px de large, alors que {wide} en mesure {widePx} px). Phosphor nécessite des polices à espacement fixe où chaque caractère occupe la même largeur de cellule.",
       "aSpace": "espace"
     }
+  },
+  "sidePanel": {
+    "layers": "Calques",
+    "lobby": "Hall",
+    "social": "Social",
+    "chat": "Chat",
+    "layersEmpty": "Vos calques seront listés ici.",
+    "foldAria": "Replier le panneau",
+    "openAria": "Ouvrir le panneau",
+    "resizeAria": "Largeur du panneau"
   },
   "layers": {
     "label": "Calques",
@@ -1061,13 +1071,12 @@
       "emptyHeading": "Aucune salle publique en direct pour le moment",
       "emptyBody": "Créez une salle et votre canevas illuminera le hall.",
       "emptyFilter": "Aucune salle ne correspond à ce filtre",
-      "you": "Vous",
       "editAccount": "Gérer le compte",
       "signOut": "Se déconnecter",
       "signIn": "Se connecter",
+      "signInToSocialize": "Se connecter pour échanger",
       "noAccount": "Pas de compte ? {create}",
       "createOne": "En créer un",
-      "signInHint": "Connectez-vous pour discuter et créer des salles.",
       "inLobby": "Dans le hall",
       "confirmToStart": "Confirmez votre adresse e-mail pour créer une salle",
       "resend": "Renvoyer"
@@ -1214,8 +1223,6 @@
     },
     "chat": {
       "panelAria": "Chat",
-      "openAria": "Ouvrir le chat",
-      "foldAria": "Replier le chat",
       "hostedBy": "hébergé par {host}",
       "exit": "Quitter",
       "reportRoomAria": "Signaler la salle",
