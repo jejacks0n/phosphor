@@ -28,7 +28,7 @@ import { layerKey } from '@/document/layerInfo.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, readChange } from '@/social/wire.js';
-import { ALONE, SAVED_KEYS, anyoneInside, randomId, runsPatch } from '@/store/project/shared.js';
+import { ALONE, SAVED_KEYS, anyoneInside, followBase, randomId, runsPatch } from '@/store/project/shared.js';
 import { toast } from '@/composables/useToast';
 import { settingsFromStranger } from '@/store/settings.js';
 
@@ -54,7 +54,7 @@ export const DRAWING_ACTIONS = [
 export const HOST_ONLY_ACTIONS = [
   'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells',
   'bake', 'flattenDrawing', 'mergeUp', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'clearEditLayer',
-  'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed',
+  'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed', 'setLayerChars',
   'updateCols', 'updateRows',
   'setImageFromFile', 'setBlankCanvas', 'replaceImage', 'newDocument', 'clearImage', 'loadProject', 'restoreDocument', 'openParts', 'openArtFile',
 ];
@@ -382,9 +382,11 @@ export const sharingActions = {
     Object.assign(sharing, { cancelFlush: null, heard: [], heardCells: new Map(), heardRuns: [] });
   },
 
-  // From the host, so only what a document saves.
+  // From the host, so only what a document saves. A room has one set of character settings: every layer takes the
+  // bottom's, as the host's do (setLayerChars).
   applySettings(values) {
     this.$patch(Object.fromEntries(SAVED_KEYS.filter((key) => key in values && key !== 'cols' && key !== 'rows').map((key) => [key, values[key]])));
+    followBase(this);
   },
 
   // The base layer's own pixels (runs in its pixels) and its records (baseRecords.js).

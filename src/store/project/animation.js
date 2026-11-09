@@ -502,7 +502,7 @@ function buildKey(project) {
   const { image, ...params } = project.processParams;
   return {
     image, settings: JSON.stringify(params), baseLayer: project.baseLayer, baseVersion: project.baseLayer?.version, baseRecords: project.baseRecords,
-    layers: JSON.stringify(project.layers), // their order and eyes
+    layers: JSON.stringify(project.layers), // their order, eyes and own character settings
   };
 }
 const sameKey = (a, b) => !!a && !!b && Object.keys(a).every((name) => a[name] === b[name]);
@@ -517,7 +517,7 @@ async function readyBuilder(project) {
       continue;
     }
     const builder = new FrameBuilder();
-    const preparing = builder.prepare(key.image, project.processParams, { baseLayer: project.baseLayer, baseRecords: project.baseRecords, layers: project.layers });
+    const preparing = builder.prepare(key.image, project.processParams, { baseLayer: project.baseLayer, baseRecords: project.baseRecords, layers: project.layers, baseChars: project.baseChars, layerParams: project.layerParams });
     project._builder = markRaw({ key, builder, preparing });
     for (const frame of project.frames) frame.built = null;
     await preparing;

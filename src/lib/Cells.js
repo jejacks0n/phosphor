@@ -51,15 +51,21 @@ export const colorOf = (p) => ({ r: p.r, g: p.g, b: p.b, hex: rgb2hex(p), c: p.c
 
 // The characters a charset generates from: whole characters (an astral one isn't two UTF-16
 // halves), one column wide only so generated cells never overlap, ▄ when nothing's left. Cached for
-// the last charset: it's asked once per cell.
+// the last few charsets (each layer can have its own): it's asked once per cell.
+const MOST_KEPT_CHARSETS = 16;
+const keptGlyphs = new Map();
 let lastCharset = null, lastGlyphs = null;
 export function glyphsOf(charset) {
-  if (charset !== lastCharset) {
-    const glyphs = graphemes(charset || '').filter(c => cellWidth(c) === 1);
-    lastCharset = charset;
-    lastGlyphs = glyphs.length ? glyphs : ['▄'];
+  if (charset === lastCharset) return lastGlyphs;
+  let glyphs = keptGlyphs.get(charset);
+  if (!glyphs) {
+    if (keptGlyphs.size >= MOST_KEPT_CHARSETS) keptGlyphs.clear();
+    glyphs = graphemes(charset || '').filter(c => cellWidth(c) === 1);
+    if (!glyphs.length) glyphs = ['▄'];
+    keptGlyphs.set(charset, glyphs);
   }
-  return lastGlyphs;
+  lastCharset = charset;
+  return lastGlyphs = glyphs;
 }
 
 // How heavy a pixel's character is, 0 to 1, in the ASCII styles: by brightness in Monochrome (white
@@ -108,6 +114,12 @@ const seedHash = (seed) => {
   return h >>> 0;
 };
 const cellRandom = (h, col, row) => fmix(h ^ Math.imul(col + 1, 0x9e3779b1) ^ Math.imul(row + 1, 0x85ebca77));
+
+// The seed's character for the cell at col, row: the one buildCells gives it from charset under Random.
+export function seededChar(charset, seed, col, row) {
+  const chars = glyphsOf(charset);
+  return chars[cellRandom(seedHash(seed), col, row) % chars.length];
+}
 
 export function buildCells(pixels, cols, rows, opts) {
   return buildCellsWith((i) => pixels[i], cols, rows, opts);

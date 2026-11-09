@@ -38,6 +38,10 @@ const playback = usePlayback();
 
 onMounted(() => project.render());
 watch(() => project.processParams, () => project.render(), { deep: true });
+// A layer's own character settings changed (a layer added or gone draws itself, and a rename keeps its params).
+watch(() => project.layerParams, (now, was) => {
+  if ([...now].some(([id, params]) => was.has(id) && was.get(id) !== params)) project.render();
+});
 // The frame before's staying cells are a ghost from its picture: built when there's a new frame before, or it went
 // stale (a render).
 watch(() => [project.frame, project.frames, project.renderedCells, project.animate, workspace.ghost, workspace.playing], () => {

@@ -20,7 +20,7 @@ import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { copyOf, over, bytesHeld, blackPicture, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
 import { placedShapes } from '@/document/followers.js';
-import { RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
+import { CHAR_KEYS, RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
 
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -187,6 +187,7 @@ export const mergingActions = {
         image, imageBuffer: this.imageBuffer, workingCopy: this.imageIsWorkingCopy, fit: this.fit && { ...toRaw(this.fit) }, settings: kept(this),
         paint: this.paintLayer.snapshot(), base: this.baseLayer.snapshot(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords,
         fg: workspace.editFgColor, bg: workspace.editBgColor, clipboard: clip,
+        chars: new Map(this.layers.map((each) => [each.id, each.chars])),
       };
       // The palette stays while it has every color the cells show (a Number palette as its colors, so it isn't picked
       // again from the black); a color off it (Color ASCII's averages, Monochrome ASCII's white) and it'd snap: full color.
@@ -205,6 +206,8 @@ export const mergingActions = {
         editCells: new Map([...(layer === 'edit' ? grid.map(({ col, row, char, fg, bg }) => [cellKey(col, row), { char, fg, bg }]) : []), ...bakeEditCells(new Map(past), params)]),
         baseRecords: layer === 'base' ? withPins(EMPTY_BASE, grid.map(({ col, row, char }) => ({ col, row, char }))) : EMPTY_BASE,
         fg: getEffectiveColor(before.fg, params), bg: getEffectiveColor(before.bg, params), clipboard: bakedClipboard(clip, params),
+        // Nothing converts any more: every layer's character settings are the base's, as they come out.
+        chars: new Map(this.layers.map((each) => [each.id, Object.freeze(Object.fromEntries(CHAR_KEYS.map((key) => [key, key in settings ? settings[key] : this[key]])))])),
       };
 
       // The color pair and the clipboard swap only while they hold what the other side left (as Bake's).
@@ -217,6 +220,7 @@ export const mergingActions = {
         this.editCells = state.editCells;
         this.shapes = state.shapes;
         this.setBaseRecords(state.baseRecords);
+        this.layers = this.layers.map((each, at) => (at && state.chars.get(each.id) ? Object.freeze({ ...each, chars: state.chars.get(each.id) }) : each)); // by id: names and eyes since aren't undone
         if (workspace.editFgColor === from.fg) workspace.editFgColor = state.fg;
         if (workspace.editBgColor === from.bg) workspace.editBgColor = state.bg;
         if (toRaw(workspace.clipboard) === from.clipboard) workspace.clipboard = state.clipboard;

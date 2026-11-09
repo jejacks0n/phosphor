@@ -69,6 +69,9 @@ const defaultOf = (s) => (typeof s.default === 'function' ? s.default() : s.defa
 export const SETTING_KEYS = SETTINGS.filter(s => s.group !== 'sauce').map(s => s.key);
 export const SAUCE_KEYS = SETTINGS.filter(s => s.group === 'sauce').map(s => s.key);
 export const RESET_GROUPS = ['transform', 'adjust', 'effects'];
+// The character settings each layer has its own of (the bottom's are these fields themselves): how its paint, its
+// picture or its shapes become characters. The rest are the whole drawing's, or the picture's.
+export const CHAR_KEYS = ['chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solids', 'patternLight'];
 
 // Whether every slider a bake (or Reset All) resets is at its default: nothing to bake. A slider
 // can hold its value as a numeric string.

@@ -4,13 +4,13 @@ import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
-import { layersFromOld, legacySlots, lowerGroup } from '@/document/layerInfo.js';
+import { layersFromOld, legacySlots, lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
 import { artBounds } from '@/document/artLayers.js';
 import { placedShapes } from '@/document/followers.js';
 import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { charModeOf } from '@/lib/CharResolver.js';
-import { settingsState, slidersAtDefaults } from '@/store/settings.js';
+import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
 import { documentActions } from '@/store/project/document.js';
@@ -29,7 +29,7 @@ import { handoverActions } from '@/store/project/handover.js';
 import { animationActions } from '@/store/project/animation.js';
 import { vectorActions } from '@/store/project/vector.js';
 import { layerActions } from '@/store/project/layers.js';
-import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES, ALONE, newLedger } from '@/store/project/shared.js';
+import { PIPELINE_KEYS, savedJson, MAX_HISTORY_BYTES, ALONE, newLedger } from '@/store/project/shared.js';
 
 // A cell an edit didn't touch stays the same object, except a wide one, which is laid out again with its row.
 const sameLook = (a, b) => a === b || (!!a?.wide && !!b && a.wide === b.wide && a.char === b.char && a.fg.hex === b.fg.hex && a.bg.hex === b.bg.hex);
@@ -61,6 +61,29 @@ function insideCells(project, inside, cells) {
 }
 
 const NO_CELLS = new Map(); // a hidden or empty layer's cells, never changed
+
+// A layer's params: the drawing's (processParams) with its own character settings over them, made once per processParams
+// and chars (layerParams), so each keeps its identity while neither changes: the Renderer's caches go by it.
+const OWN_PARAMS = new WeakMap(); // processParams -> WeakMap(chars -> params)
+function ownParams(params, chars) {
+  let own = OWN_PARAMS.get(params);
+  if (!own) OWN_PARAMS.set(params, own = new WeakMap());
+  let made = own.get(chars);
+  if (!made) {
+    const { renderStyle } = params;
+    made = {
+      ...params,
+      chars: renderStyle === 'ansi' ? chars.chars : chars.charsAscii,
+      charMode: charModeOf(renderStyle, chars.charChoice, chars.charChoiceAscii),
+      charChoice: chars.charChoice,
+      seed: chars.seed,
+      solids: chars.solids,
+      patternLight: chars.patternLight,
+    };
+    own.set(chars, made);
+  }
+  return made;
+}
 
 // While the state is made there's no store yet, but there is by the time the ledger reads.
 function firstLedger() {
@@ -154,8 +177,19 @@ export const useProjectStore = defineStore('project', {
     layerById: (state) => (id) => state.layers.find((layer) => layer.id === id),
     // The vector layer is there once it's added, or with the drawing's first shape, and stays when its last one goes.
     hasVectorLayer: (state) => state.layers.some((layer) => layer.kind === 'vector'),
-    // Whether the layers are the ones a room holds: the bottom, at most one vector layer, at most one cells layer above it.
-    fitsRoom: (state) => !!legacySlots(state.layers),
+    // Whether the layers are the ones a room holds: the bottom, at most one vector layer, at most one cells layer above it,
+    // all with the bottom's character settings (a room has one set).
+    fitsRoom() { return !!legacySlots(this.layers, this.baseChars); },
+    // The bottom's character settings: the document's own fields (settings.js CHAR_KEYS).
+    baseChars: (state) => Object.fromEntries(CHAR_KEYS.map((key) => [key, state[key]])),
+    // A layer's character settings: its own (layer.chars), the bottom's for the bottom, or for a layer that has none yet.
+    charsOf() { return (id) => (id !== 'base' && this.layerById(id)?.chars) || this.baseChars; },
+    // Each layer's params, by id: processParams with its own character settings over them, or processParams itself for a
+    // layer whose settings are the bottom's (ownParams keeps each one's identity while nothing changes).
+    layerParams() {
+      const params = this.processParams, base = this.baseChars;
+      return new Map(this.layers.map((layer) => [layer.id, sameChars(layer.chars, base) ? params : ownParams(params, layer.chars)]));
+    },
     // Whether a layer's eye is shut.
     layerHidden() { return (id) => !!this.layerById(id)?.hidden; },
     // A cells layer's cells and paint: the edit layer's fields for editId, else what waits in _layerData.
@@ -165,7 +199,7 @@ export const useProjectStore = defineStore('project', {
     // Inside an art layer the edit layer's fields hold the art layer's drawing, so the vector layer's eye decides for them.
     shownLayers() { return this.layers.filter((layer, at) => !at || !this.layerHidden(this._artInside && layer.id === this.editId ? 'vector' : layer.id)); },
     // The layers the renderer's pipeline converts as one block, and those laid over it (layerInfo.js: lowerGroup).
-    lowerGroup() { return lowerGroup(this.shownLayers); },
+    lowerGroup() { return lowerGroup(this.shownLayers, this.baseChars); },
     // The cells layer in use is above the lower group (or hidden): an edit to it leaves the group as it is.
     editIsUpper() { return this.lowerGroup.cells !== this.editId; },
     // Anything on any cells layer or the vector layer, of any frame (a grid resize is then a canvas resize).
@@ -213,7 +247,7 @@ export const useProjectStore = defineStore('project', {
       const workspace = useWorkspaceStore();
       return workspace.ghost ? workspace.ghostStrength / 100 : 0;
     },
-    isDirty: (state) => settingsJson(state) !== state.savedSettings || state.editVersion !== state.savedEditVersion,
+    isDirty: (state) => savedJson(state) !== state.savedSettings || state.editVersion !== state.savedEditVersion,
     imageRatio: (state) => {
       if (!state.image) return 1;
       const w = state.image.naturalWidth || state.image.width || 1;

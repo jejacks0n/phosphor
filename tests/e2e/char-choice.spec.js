@@ -1,5 +1,5 @@
 // Choose characters: it sits above Characters, and each choice shows only its own options.
-import { test, expect, openApp, settled, store } from './support.js';
+import { test, expect, openApp, pickLayer, settled, store } from './support.js';
 
 const panel = (page) => page.locator('aside.control-panel');
 const cells = (page) => store(page, 'project', (p) => p.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`).join());
@@ -7,6 +7,7 @@ const top = async (locator) => (await locator.boundingBox()).y;
 
 test('Choose characters comes before Characters, and each choice shows its own options', async ({ page }) => {
   await openApp(page);
+  await pickLayer(page, 'Base'); // the picture's characters are its layer's
   const choice = panel(page).locator('#charChoice');
   const seed = panel(page).locator('#seed');
   const solids = panel(page).getByRole('slider', { name: 'Solids' });
@@ -61,7 +62,7 @@ test('Choose characters comes before Characters, and each choice shows its own o
 
 test('an unknown choice (from an old file or a room) shows its options as Random, the way it converts', async ({ page }) => {
   await openApp(page);
-  await store(page, 'project', (p) => { p.charChoice = 'bogus'; });
+  await store(page, 'project', (p) => p.setLayerChars('edit', { charChoice: 'bogus' })); // the layer picked, Layer 1
   await expect(panel(page).locator('#seed')).toBeVisible();
   await expect(panel(page).getByRole('slider', { name: 'Solids' })).toHaveCount(0);
   await expect(panel(page).getByRole('slider', { name: 'Pattern light' })).toHaveCount(0);

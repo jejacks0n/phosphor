@@ -48,26 +48,27 @@ export default class FrameBuilder {
   #shapes = null; // its own ShapeLayer over the store's base layer: each frame has its own shapes
   #layers = layersFromOld(null, { hasShapes: false });
   #lower = lowerGroup(this.#layers);
-  #upper = []; // the layers above the lower group, each with its scratch: { id, kind, paint } or { id, kind, layer }
+  #upper = []; // the layers above the lower group, each with its scratch and params: { id, kind, paint, params } or { id, kind, layer, params }
   #plain = true; // every key a frame holds is the lower group's, as before layers: nothing to split
 
   // The picture through the pipeline, for these settings. stores: the store's base layer and records, which
-  // are under every frame, and layers: the drawing's, bottom first, whose eyes say what's left out.
-  async prepare(image, params, { baseLayer, baseRecords, layers = this.#layers }) {
+  // are under every frame, and layers: the drawing's, bottom first, whose eyes say what's left out. baseChars: the
+  // bottom's character settings, and layerParams each layer's params (the store's), when layers have their own.
+  async prepare(image, params, { baseLayer, baseRecords, layers = this.#layers, baseChars = null, layerParams = null }) {
     const shown = layers.filter((layer, at) => !at || !layer.hidden), hideBase = !!layers[0]?.hidden;
     this.#layers = layers;
-    this.#lower = lowerGroup(shown);
+    this.#lower = lowerGroup(shown, baseChars);
     this.#plain = shown.length === layers.length && !this.#lower.upper.length && (this.#lower.cells ?? 'edit') === 'edit';
     this.#shapes = baseLayer ? new ShapeLayer(baseLayer) : null;
     if (this.#shapes) this.#shapes.hideBase = hideBase;
     Object.assign(this.#renderer, { baseLayer, baseRecords, shapes: this.#shapes, hideBase });
     this.#scratch = new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 });
     this.#upper = this.#lower.upper.map((id) => {
-      const { kind } = layers.find((layer) => layer.id === id);
-      if (kind === 'cells') return { id, kind, paint: new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 }) };
+      const { kind } = layers.find((layer) => layer.id === id), own = layerParams?.get(id) ?? params;
+      if (kind === 'cells') return { id, kind, paint: new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 }), params: own };
       const layer = new ShapeLayer(null);
       layer.grid(params.cols, params.rows, baseLayer?.scale ?? 1);
-      return { id, kind, layer };
+      return { id, kind, layer, params: own };
     });
     await this.#renderer.render(image, params, this.#scratch, null);
   }
@@ -134,11 +135,11 @@ export default class FrameBuilder {
     renderer.upper = this.#upper.map((u) => {
       if (u.kind === 'vector') {
         u.layer.set(upper.get(u.id) ?? NO_SHAPES);
-        return { kind: 'vector', layer: u.layer, params };
+        return { kind: 'vector', layer: u.layer, params: u.params };
       }
       const own = upper.get(u.id) ?? NO_SHAPES;
       u.paint.loadGrid(paintImage(own, cols, rows));
-      return { kind: 'cells', cells: cellsIn(own), paint: u.paint, params };
+      return { kind: 'cells', cells: cellsIn(own), paint: u.paint, params: u.params };
     });
     if (renderer.upper.length) cells = renderer.composeUpper(cells, null, renderer.palette);
     cells = layoutWide(cells, cols);

@@ -30,7 +30,7 @@ import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { buildCellsFromBytes, buildCell, keepsSeed, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix } from '../lib/Cells.js';
+import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix } from '../lib/Cells.js';
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { ditherPixels } from '../lib/Dither.js';
@@ -60,7 +60,7 @@ export default class Renderer {
   #painted = null;      // { of, layer, version, cells }: By shape's cells under paint (#resolvePainted), of the #resolved they go over
   #baseSnapped = null;  // { from, palette, data }: #baseData (from) snapped to the palette, for basePixels under Best match
   #fontReady = false;   // the reference font has loaded: Best match and By shape can measure glyphs
-  #glyphs = null;       // { chars, glyphs }: the set's glyphs with their inks and masks in the reference font
+  #glyphs = new Map();  // chars -> the set's glyphs with their inks and masks in the reference font (a few sets: each layer can have its own)
   #snapped = null;      // the whole output's bytes and palette entries, from the composite that just snapped it
   #effective = new Map(); // stored color -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
@@ -70,18 +70,18 @@ export default class Renderer {
   #baseParams = null;   // the last render's baseParams
   #chosen = null;       // a Number palette someone else picked (usePalette): composite doesn't pick its own
   #lowerEdits = null;   // the lower group's cells layer's map, from the last composeAll or updateCells: where its cells are exact
-  #lowerBase = null;    // and the generated cells they sat on (the seed's characters)
   #upperGrids = new WeakMap(); // an upper vector layer -> its shapes at grid resolution (#upperGrid), as #baseDrawn is the base's
   #upperPaints = new WeakMap(); // an upper cells layer's paint -> its pixels at grid resolution through the transforms (#upperPaint)
   #shownOver = null;    // { of, canvas, dirty }: the output with the upper layers' pixels over it (shownCanvas); dirty, the grid rect a compose changed since, or null for all of it
-  #oneMatcher = null;   // { params, palette, matcher }: Best match's or By shape's matcher for one upper cell (#upperChar)
+  #matchers = new WeakMap(); // an upper layer's params -> { palette, matcher }: Best match's or By shape's matcher for one of its cells (#upperChar)
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.shapes?.reset();
     this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = null;
     this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = this.#painted = null;
-    this.#lowerEdits = this.#lowerBase = this.#shownOver = this.#oneMatcher = null;
+    this.#lowerEdits = this.#shownOver = null;
+    this.#matchers = new WeakMap();
     this.#upperGrids = new WeakMap();
     this.#upperPaints = new WeakMap();
     this.upper = [];
@@ -460,10 +460,13 @@ export default class Renderer {
   // The set's one-column characters (as the converter's, Cells.glyphsOf), each once, with their ink
   // (Best match) and mask (By shape) in the reference font.
   #glyphsOf(chars) {
-    if (this.#glyphs?.chars !== chars) {
-      this.#glyphs = { chars, glyphs: [...new Set(glyphsOf(chars))].map((char) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h) })) };
+    let glyphs = this.#glyphs.get(chars);
+    if (!glyphs) {
+      if (this.#glyphs.size >= 16) this.#glyphs.clear();
+      glyphs = [...new Set(glyphsOf(chars))].map((char) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h) }));
+      this.#glyphs.set(chars, glyphs);
     }
-    return this.#glyphs.glyphs;
+    return glyphs;
   }
 
   // A Number palette chosen from outside (one for a whole animation), until it's null: cells then use it, and
@@ -635,7 +638,6 @@ export default class Renderer {
   // baseCells (the last full render) supplies a cell's character in random mode.
   updateCells(cells, pixels, params, editCells, baseCells) {
     this.#lowerEdits = editCells;
-    this.#lowerBase = baseCells;
     if (!this.outputCanvas || !pixels.length) return cells;
     const next = cells.slice();
     const { cols, chars: charset, charMode, renderStyle } = params;
@@ -721,7 +723,6 @@ export default class Renderer {
   // Generated cells with the base's pins (and the art layers' characters) and every in-grid edit cell composed in.
   composeAll(baseCells, editCells, params) {
     this.#lowerEdits = editCells;
-    this.#lowerBase = baseCells;
     const cells = baseCells.slice();
     const rows = charRowsOf(params.rows), pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
     for (const key of this.shapes?.hasArt ? new Set([...pins.keys(), ...this.shapes.artCells()]) : pins.keys()) {
@@ -798,7 +799,6 @@ export default class Renderer {
   #upperCell(cell, col, row, i, palette, reads) {
     let exact = !!this.#lowerEdits?.has(cellKey(col, row)) || this.pinAt(col, row) !== undefined;
     const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
-    const seedChar = this.#lowerBase?.[i]?.char ?? cell.char;
     const width = this.outputCanvas.width;
     const paintAt = (bytes, y) => { // a grid pixel of a layer's paint, or null where there's none
       const o = (y * width + col) * 4;
@@ -815,7 +815,7 @@ export default class Renderer {
           const o = ((2 * row + k) * width + col) * 4;
           return snap(data[o + 3] ? mix(half, { r: data[o], g: data[o + 1], b: data[o + 2] }, data[o + 3] / 255) : half);
         });
-        cell = buildCell(top, bottom, char ?? this.#upperChar(top, bottom, seedChar, params), renderStyle);
+        cell = buildCell(top, bottom, char ?? this.#upperChar(top, bottom, col, row, params), renderStyle);
         exact = char !== null;
         continue;
       }
@@ -832,23 +832,23 @@ export default class Renderer {
         continue;
       }
       const [ht, hb] = halfColors(cell), t = snap(top ? mix(ht, top, top.a) : ht), b = snap(bottom ? mix(hb, bottom, bottom.a) : hb);
-      cell = buildCell(t, b, this.#upperChar(t, b, seedChar, params), renderStyle);
+      cell = buildCell(t, b, this.#upperChar(t, b, col, row, params), renderStyle);
     }
     return cell;
   }
 
-  // The character an upper layer's settings pick for a converted cell of these two halves: Best match's or By shape's
-  // for the one cell with no error coming in (as #resolvePainted), Random's seed character (the lower group's), or by
-  // weight (weightedChar).
-  #upperChar(top, bottom, seedChar, params) {
+  // The character an upper layer's settings (params, its own) pick for a converted cell of these two halves at col, row:
+  // Best match's or By shape's for the one cell with no error coming in (as #resolvePainted), Random's seed character
+  // (its own seed's in its own set), or by weight (weightedChar).
+  #upperChar(top, bottom, col, row, params) {
     if (resolves(params) && this.#fontReady) {
-      const m = this.#oneMatcher;
-      if (m?.params !== params || m.palette !== this.palette) {
+      let m = this.#matchers.get(params);
+      if (m?.palette !== this.palette) {
         const glyphs = this.#glyphsOf(params.chars), solids = params.solids / 100, light = params.patternLight / 100;
         const matcher = params.charMode === 'shape' ? shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle }) : bestMatcher({ palette: this.palette, glyphs, solids, light });
-        this.#oneMatcher = { params, palette: this.palette, matcher };
+        this.#matchers.set(params, m = { palette: this.palette, matcher });
       }
-      const { matcher } = this.#oneMatcher;
+      const { matcher } = m;
       if (params.charMode !== 'shape') return resolveGrid(new Uint8ClampedArray([top.r, top.g, top.b, 255, bottom.r, bottom.g, bottom.b, 255]), 1, 2, matcher, { strength: 0 }).cells[0].char;
       const samples = new Uint8ClampedArray(SAMPLES.w * SAMPLES.h * 4), half = (SAMPLES.w * SAMPLES.h) / 2;
       for (let i = 0; i < SAMPLES.w * SAMPLES.h; i++) {
@@ -857,7 +857,7 @@ export default class Renderer {
       }
       return resolveShapes(samples, 1, 1, matcher, { strength: 0 }).cells[0].char;
     }
-    return keepsSeed(params.charMode) ? seedChar : weightedChar(top, bottom, params.chars, params.charMode);
+    return keepsSeed(params.charMode) ? seededChar(params.chars, params.seed, col, row) : weightedChar(top, bottom, params.chars, params.charMode);
   }
 
   // What the PIXEL view shows and the Paint Bucket reads: the output, with every upper layer's pixels (its shapes at grid

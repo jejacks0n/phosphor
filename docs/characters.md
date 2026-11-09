@@ -49,8 +49,8 @@ set is skipped, so the cells it fills never overlap.
 
 ## How the converter picks characters
 
-**Choose characters**, above the Characters field in Setup, sets how the converter picks each cell's
-character from your set. Each Art style offers its own ways:
+**Choose characters**, above the Characters field in the left column's **Characters** section, sets how the
+converter picks each cell's character from your set. Each Art style offers its own ways:
 
 | Art style | Ways |
 | --- | --- |
@@ -74,6 +74,14 @@ character from your set. Each Art style offers its own ways:
   the shape of each character in your set, and the closest wins. In ANSI it picks the character and
   both colors; in Color ASCII the character and its ink color, on black; in Monochrome ASCII the
   character alone, white on black. Smoothing doesn't change these samples: they're always averaged.
+
+**Each layer has its own character settings**: Choose characters, the Characters set, the Character seed, Solids
+and Pattern light. The Characters section shows the layer picked in LAYERS, under its name, and what you change
+there changes only how that layer's paint, picture or shapes become characters (the base's are its picture's). A
+new layer starts with the picked layer's, and a drawing from before layers had their own gives every layer the ones
+it had, so it looks the same. Where a layer's settings differ from the base's, a seam can show where its cells meet
+the ones under it. The Art style, the palette and Dither are the whole drawing's
+([Layers](layers.md#the-left-column)).
 
 Two sliders tune Best match and By shape:
 
@@ -116,7 +124,7 @@ can now and then pick the other one, in a cell here and there.
 
 ## The font
 
-**Font**, in the side panel's Setup, sets the font the art is drawn in, in both views, and its size.
+**Font**, in the left column's Drawing section, sets the font the art is drawn in, in both views, and its size.
 Phosphor has four:
 
 - **JetBrains Mono**: the default.

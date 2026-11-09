@@ -17,12 +17,12 @@ import { boundsOf, lowerEdits, lowerPaint } from '@/store/project/shared.js';
 import { markRaw } from 'vue';
 
 // The renderer's upper layers, as the stack is now: each upper cells layer's cells and paint, each upper vector layer's
-// own ShapeLayer (none yet while it never had a shape), with the drawing's settings (one set, until layers carry their own).
+// own ShapeLayer (none yet while it never had a shape), each with its own params (layerParams: its character settings).
 function upperOf(project) {
-  const params = project.processParams;
+  const own = project.layerParams;
   return project.lowerGroup.upper.map((id) => (project.layerById(id).kind === 'vector'
-    ? { id, kind: 'vector', layer: project._upperShapes.get(id) ?? null, params }
-    : { id, kind: 'cells', cells: project.cellsOf(id), paint: project.paintOf(id), params }));
+    ? { id, kind: 'vector', layer: project._upperShapes.get(id) ?? null, params: own.get(id) }
+    : { id, kind: 'cells', cells: project.cellsOf(id), paint: project.paintOf(id), params: own.get(id) }));
 }
 
 // The cells under grid pixels, each once, as indexes into the cells.

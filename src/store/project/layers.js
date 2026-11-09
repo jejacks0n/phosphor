@@ -4,10 +4,11 @@
 // has data in _layerData: one taken out (deleted, its add undone) is held by the undo step that can put it back.
 import { markRaw } from 'vue';
 import { MOST_LAYERS, goodLayerName, legacySlots, newLayerId, nextNumber } from '@/document/layerInfo.js';
+import { CHAR_KEYS } from '@/store/settings.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
-import { bytesHeld, emptyFields, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
+import { bytesHeld, emptyFields, followBase, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -92,15 +93,31 @@ export const layerActions = {
     this.render();
   },
 
-  // A new layer of kind directly above the layer with the id above (on top when there's none), and its id. A cells layer
-  // starts empty, its paint made when it's first used. One undo step: undone, the layer leaves the stack and what's on it
+  // A layer's own character settings changed: the CHAR_KEYS in patch (the rest is left out). The bottom's are the
+  // document's fields. Not an undo step, as the document's never were; what's drawn follows (EditWorkspace renders on a
+  // change to layerParams). While the drawing's shared with a room, which has one set, a layer above the bottom is refused
+  // (the room's toast says so) and the bottom's change every layer's with them. Whether it changed.
+  setLayerChars(id, patch) {
+    const own = Object.fromEntries(CHAR_KEYS.filter((key) => key in patch).map((key) => [key, patch[key]]));
+    if (id === 'base') {
+      this.$patch(own);
+      if (this._sharing) followBase(this);
+      return true;
+    }
+    if (!this.layerById(id) || refusedInRoom(this)) return false;
+    changed(this, id, { chars: Object.freeze({ ...this.charsOf(id), ...own }) });
+    return true;
+  },
+
+  // A new layer of kind directly above the layer with the id above (on top when there's none), and its id, with the picked
+  // layer's character settings. A cells layer starts empty, its paint made when it's first used. One undo step: undone, the layer leaves the stack and what's on it
   // waits in _layerData for a redo. Null, nothing added, when the drawing has the most layers, or when it's shared with a
   // room (the room's toast says so), which holds the layers it always did: the one thing it takes is the vector layer it's
   // missing, directly on the bottom, and that's no undo step (a room's layers aren't undone).
   addLayer(kind, above) {
     if (this.layers.length >= MOST_LAYERS || refusedInRoom(this, { fills: kind === 'vector' && above === 'base' && !this.hasVectorLayer })) return null;
     this.commitPending();
-    const { id } = putLayer(this, kind, above);
+    const { id } = putLayer(this, kind, above, this.charsOf(useWorkspaceStore().pickedLayer));
     this.render(); // the groups can change: a layer put under a painted one leaves that one's paint over it
     if (this._sharing) return id;
     let held = null; // undone: takeOut's, whose layer below (by id) is where a redo puts it, as the stack can change around it meanwhile
@@ -170,7 +187,7 @@ export const layerActions = {
   // the layer picked stay, and undo is cleared (ponytail: re-keying history in place would keep it; do that if it bites).
   // With no cells layer an empty edit layer goes on top; that isn't an undo step.
   async roomLayers() {
-    const slots = legacySlots(this.layers);
+    const slots = legacySlots(this.layers, this.baseChars);
     if (!slots) return false;
     if ((slots.vector ?? 'vector') !== 'vector' || (slots.cells ?? 'edit') !== 'edit') {
       this.commitPending();

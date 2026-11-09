@@ -11,10 +11,13 @@ import { processImage } from '@/lib/ImageProcessor.js';
 
 const SHADES = '▄░▒▓█';
 
+// The gradient with settings, the character ones every layer's (each layer has its own: the edit layer's paint converts
+// with its own).
 async function gradient({ cols = 40, rows = 40, ...settings } = {}) {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows });
   Object.assign(project, settings);
+  project.setLayerChars('edit', settings);
   project.render();
   await settle(project);
   return project;

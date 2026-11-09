@@ -9,7 +9,7 @@ import { forgetKey } from '@/social/keys';
 import { desktopQuery } from '@/social/config';
 import { GOING_BACK_FAILED_WORDS, ROOM_AWAY_WORDS } from '@/social/messages';
 import { keepHostCopy, hostCopies, keepRoomLedger, readRoomLedger, readLatest } from '@/document/autosaveStore';
-import { settingsJson } from '@/store/project/shared';
+import { savedJson } from '@/store/project/shared';
 import { createTestApp, loadImage } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { member, fakeServer, useFakeSockets, lastSocket } from '../support/socialServer.js';
@@ -387,7 +387,7 @@ test('another account can\'t go back, even by the id', async () => {
 
 test('going back says it replaces art with unsaved changes, and only then', async () => {
   project.savedEditVersion = project.editVersion;
-  project.savedSettings = settingsJson(project);
+  project.savedSettings = savedJson(project); // what isDirty compares: the settings and every layer's own characters
   expect(room.goingBackReplaces).toBe(false);
   project.editVersion++;
   expect(room.goingBackReplaces).toBe(true);

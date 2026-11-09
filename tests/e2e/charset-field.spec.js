@@ -1,5 +1,5 @@
 import { test, expect } from './support.js';
-import { openApp, store, settled } from './support.js';
+import { openApp, pickLayer, store, settled } from './support.js';
 
 // The Characters field: type your own, or pick a ready-made set from the ▾, a native select (the
 // system's own menu, like the other menus) laid invisibly over it.
@@ -10,10 +10,12 @@ const charsInCells = (page) => store(page, 'project', (p) => [...new Set(p.cells
 
 test('the Characters field: pick a ready-made set, or type your own', async ({ page }) => {
   await openApp(page);
+  await pickLayer(page, 'Base'); // the picture's characters are its layer's
   await expect(label(page)).toHaveText('Default');
   await expect(sets(page).locator('option:checked')).toHaveText(/^Default/);
 
-  // A click on the ▾ lands on the select.
+  // A click on the ▾ lands on the select (the Characters section sits below the Drawing section's sliders).
+  await page.locator('.charset-field').scrollIntoViewIfNeeded();
   const chevron = await page.locator('.charset-field svg.chevron').boundingBox();
   expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.tagName, [chevron.x + chevron.width / 2, chevron.y + chevron.height / 2])).toBe('SELECT');
 
@@ -42,6 +44,7 @@ test.describe('on a touch screen', () => {
     await openApp(page);
     await page.getByTitle('Toggle settings').click();
     await expect(sets(page)).toBeVisible();
+    await page.locator('.charset-field').scrollIntoViewIfNeeded();
     await page.waitForFunction(() => { // the settings drawer has finished sliding in
       const b = document.querySelector('.charset-field svg.chevron').getBoundingClientRect();
       return document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2)?.tagName === 'SELECT';
@@ -68,5 +71,5 @@ test('the ASCII styles have their own sets; every set\'s name fits whole on the 
     }
   }
   await sets(page).selectOption({ label: 'Classic ramp · .:-=+*#%@' });
-  expect(await store(page, 'project', (p) => p.charsAscii)).toBe(' .:-=+*#%@');
+  expect(await store(page, 'project', (p) => p.charsOf('edit').charsAscii)).toBe(' .:-=+*#%@'); // the layer picked, Layer 1
 });

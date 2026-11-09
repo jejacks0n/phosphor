@@ -47,13 +47,13 @@ export function loadImage(source, type) {
 // animation: { frames (serializeFrames), frame, fps } (motion: the whole movie's, in files from before each tween had its own; cellsCarry false: every cell staying, in files from before each cell had its own), left out for a still. The rest holds the frame
 // showing, so older copies open it as a still.
 // stack: the stack form, in place of editCells, paintBlob and layers: every layer bottom first, { id, kind, n, name,
-// hidden }, a cells layer above the bottom with its editCells and paintBlob (or null).
+// hidden, chars }, a cells layer above the bottom with its editCells and paintBlob (or null).
 export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob = null, editCells, baseRecords = EMPTY_BASE, shapes = null, layers = null, animation = null, stack = null }) {
   const base = serializeBase(baseRecords);
   const baseBuffer = baseBlob ? await baseBlob.arrayBuffer() : new ArrayBuffer(0);
   const paints = stack ? await Promise.all(stack.map((layer) => layer.paintBlob?.arrayBuffer() ?? new ArrayBuffer(0))) : [];
   const own = stack
-    ? { stack: stack.map(({ id, kind, n, name, hidden, editCells: cells }, i) => ({ id, kind, n, ...(name !== null && { name }), ...(hidden && { hidden }), ...(cells?.size && { cells: serializeEditCells(cells) }), ...(paints[i].byteLength && { paintLength: paints[i].byteLength }) })) }
+    ? { stack: stack.map(({ id, kind, n, name, hidden, chars, editCells: cells }, i) => ({ id, kind, n, ...(name !== null && { name }), ...(hidden && { hidden }), ...(chars && id !== 'base' && { chars }), ...(cells?.size && { cells: serializeEditCells(cells) }), ...(paints[i].byteLength && { paintLength: paints[i].byteLength }) })) }
     : { cellEdits: serializeEditCells(editCells) };
   const json = new TextEncoder().encode(JSON.stringify({ ...settings, ...own, ...(base && { base }), ...(shapes?.size && { shapes: serializeShapes(shapes) }), ...(layers && { layers }), ...(baseBlob && { baseLength: baseBuffer.byteLength }), ...animation }));
   if (stack) {

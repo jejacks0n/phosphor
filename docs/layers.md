@@ -48,9 +48,10 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   alone there; someone joining gets the host's names, with every layer showing.
 - Inside an [art layer](vector.md#art-layers) the vector row shows as picked and the base row is off;
   picking the edit layer steps out of the art layer.
-- **Saving.** A `.phosphor` file and autosave keep every layer with what's on it, its name and its eye. A drawing
-  with no more than the base, one vector layer above it and one layer on top saves as it always has, so an older
-  copy of Phosphor opens it. One with more layers saves in a newer form, which an older copy refuses ("Not a
+- **Saving.** A `.phosphor` file and autosave keep every layer with what's on it, its name, its eye and its
+  character settings. A drawing with no more than the base, one vector layer above it and one layer on top, all
+  with the base's character settings, saves as it always has, so an older copy of Phosphor opens it. One with
+  more layers, or a layer with settings of its own, saves in a newer form, which an older copy refuses ("Not a
   valid Phosphor project file") rather than opening only part of it.
 
 ### Hiding a layer
@@ -105,6 +106,22 @@ Colorize, Posterize, Threshold, Blur, Edges, Simplify, Sharpen…) change the pi
 - **Posterize** cuts each color channel to the number of steps you set (Off by default), and **Threshold**
   splits the picture into its two colors (black and white by default): tones at or above the level take
   the light one. They run after the other adjustments, Threshold last, and the color palette after them.
+
+### The left column
+
+The settings on the left come in three sections, each following a layer:
+
+- **Drawing** (all layers): the grid's size, the Art style, the font, the color palette with its colors, Dither style
+  and Dither, then Transforms and Adjustments. They're the whole drawing's, whichever layer is picked.
+- **Characters**, with the picked layer's name (inside an [art layer](vector.md#art-layers), its vector layer's):
+  Choose characters, the Characters set, the Character seed, Solids and Pattern light. Each layer has its own
+  ([Characters](characters.md#how-the-converter-picks-characters)): changing them changes only how that layer's
+  paint, picture or shapes become characters. A line under the title says so for a layer above the base.
+- **Picture · Base**: Smoothing and the Image filters, which work on the picture itself. They change only with the
+  base picked; with another layer picked they're dimmed, and a line says to pick the base.
+
+A layer whose character settings differ from the base's makes a drawing that saves in the newer form
+([Saving](#the-layers-list)) and can't go live in a room, which has one set.
 
 You can edit the base like pixels in an image editor. Erasing, Flip FG/BG and merging down change
 the base's own pixels, laid over the converted image. They're exact: never resampled, blurred or put

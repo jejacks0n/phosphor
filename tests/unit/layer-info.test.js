@@ -113,3 +113,30 @@ test('lowerGroup: the bottom, the vector layers on it and the next cells layer; 
   assert.deepEqual(lowerGroup([L('base', 'cells'), L('edit', 'cells'), L('vector', 'vector'), L('L1', 'cells')]), { vectors: [], cells: 'edit', upper: ['vector', 'L1'] });
   assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector')]), { vectors: ['vector'], cells: null, upper: [] });
 });
+
+// Character settings as a layer carries them (settings.js CHAR_KEYS): the bottom's are the document's own.
+const CHARS = { chars: '░▒▓', charsAscii: ' .:', seed: 's', charChoice: 'random', charChoiceAscii: 'weight', solids: 25, patternLight: 100 };
+const withChars = (each, chars = CHARS) => ({ ...each, chars });
+
+test("legacySlots needs every layer's chars equal to the bottom's", () => {
+  assert.deepEqual(legacySlots([BASE, withChars(VECTOR), withChars(EDIT)], CHARS), { vector: 'vector', cells: 'edit' });
+  assert.equal(legacySlots([BASE, withChars(VECTOR), withChars(EDIT, { ...CHARS, chars: '#' })], CHARS), null);
+  assert.equal(legacySlots([BASE, withChars(VECTOR, { ...CHARS, solids: 50 }), withChars(EDIT)], CHARS), null);
+  assert.deepEqual(legacySlots([BASE, withChars(EDIT, { ...CHARS, solids: '25' })], CHARS), { vector: null, cells: 'edit' }); // a slider's numeric string is its number
+});
+
+test('lowerGroup sends a layer whose chars differ to the upper walk', () => {
+  assert.deepEqual(lowerGroup([BASE, withChars(EDIT, { ...CHARS, chars: '#' })], CHARS), { vectors: [], cells: null, upper: ['edit'] });
+  assert.deepEqual(lowerGroup([BASE, withChars(EDIT)], CHARS), { vectors: [], cells: 'edit', upper: [] });
+  assert.deepEqual(lowerGroup([BASE, withChars(VECTOR, { ...CHARS, seed: 'x' }), withChars(EDIT)], CHARS), { vectors: [], cells: null, upper: ['vector', 'edit'] });
+  assert.deepEqual(lowerGroup([BASE, withChars(VECTOR), withChars(EDIT, { ...CHARS, seed: 'x' })], CHARS), { vectors: ['vector'], cells: null, upper: ['edit'] });
+});
+
+test("goodLayers keeps a layer's chars, cleaned, and refuses bad ones", () => {
+  assert.deepEqual(goodLayers([BASE, withChars(EDIT)])[1].chars, CHARS);
+  assert.ok(Object.isFrozen(goodLayers([BASE, withChars(EDIT)])[1].chars));
+  assert.deepEqual(goodLayers([BASE, withChars(EDIT, { solids: 50, cols: 9, junk: 1 })])[1].chars, { solids: 50 }); // only character settings
+  assert.equal(goodLayers([withChars(BASE), EDIT])[0].chars, undefined); // the bottom's are the document's
+  assert.equal(goodLayers([BASE, withChars(EDIT, { solids: 900 })]), null);
+  assert.equal(goodLayers([BASE, withChars(EDIT, 'x')]), null);
+});

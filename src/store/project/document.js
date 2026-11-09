@@ -2,7 +2,7 @@
 // exporting .ans and .utf8ans, the filename, and what counts as saved.
 import { t } from '@/i18n';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
-import { layersFromOld, savedLayers, legacySlots, keyLayer } from '@/document/layerInfo.js';
+import { layersFromOld, savedLayers, legacySlots, keyLayer, withChars } from '@/document/layerInfo.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
@@ -20,7 +20,7 @@ import { userComments } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults } from '@/store/settings.js';
-import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, settingsJson, randomId, blackPicture } from '@/store/project/shared.js';
+import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, savedJson, randomId, blackPicture } from '@/store/project/shared.js';
 import { generateSlug } from 'random-word-slugs';
 import { markRaw, shallowRef } from 'vue';
 
@@ -50,13 +50,13 @@ const oldFrames = (frames, id) => {
   }));
 };
 
-// A new document's layers: the bottom and the edit layer, in use. Set, not patched: a patch would merge into the last
-// document's.
+// A new document's layers: the bottom and the edit layer, in use, with the document's character settings. Set, not
+// patched: a patch would merge into the last document's.
 function newLayers(project) {
   project.editId = 'edit'; // first: the pick that follows the layers (followLayerPick) finds it in use
   project._layerData.clear();
   project._upperShapes.clear();
-  project.layers = layersFromOld(null, { hasShapes: false });
+  project.layers = withChars(layersFromOld(null, { hasShapes: false }), project.baseChars);
 }
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
@@ -72,7 +72,9 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
       if (settings.paintScale) layer.extend(Math.round(picture.width / layer.scale), Math.round(picture.height / layer.scale));
       layer.load(picture, settings.paintScale ? null : { width: image.naturalWidth, height: image.naturalHeight }, this.fit);
     };
-    let next = stack ?? layersFromOld(layers, { hasShapes: shapes?.size > 0 });
+    // Every layer converts with its own character settings: an old document's, and a stack's layer without them, take the
+    // document's (the file's, set above), so it shows as it did.
+    let next = withChars(stack ?? layersFromOld(layers, { hasShapes: shapes?.size > 0 }), this.baseChars);
     if (this._takingProject) { // a room's project: the host's names, but whether a layer shows is each person's: kept for the same document, else cleared
       const mine = (id) => this._sameDocument && !!own.find((layer) => layer.id === id)?.hidden;
       next = next.map((layer) => Object.freeze({ ...layer, hidden: mine(layer.id) }));
@@ -144,8 +146,9 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
 }
 
 export const documentActions = {
-  randomizeSeed() {
-    this.seed = generateSlug(2);
+  // A new random seed for the layer with the id (the bottom's is the document's).
+  randomizeSeed(id = 'base') {
+    this.setLayerChars(id, { seed: generateSlug(2) });
   },
 
   async setImageFromFile(file) {
@@ -277,7 +280,7 @@ export const documentActions = {
 
   // The current settings and edits are what's on disk (or there's nothing to lose).
   markSaved() {
-    this.savedSettings = settingsJson(this);
+    this.savedSettings = savedJson(this);
     this.savedEditVersion = this.editVersion;
   },
 

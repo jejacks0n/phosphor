@@ -8,7 +8,7 @@ import { loadImage } from '@/document/projectIO.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
-import { newLayerId, nextNumber } from '@/document/layerInfo.js';
+import { newLayerId, nextNumber, sameChars } from '@/document/layerInfo.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 
@@ -21,6 +21,8 @@ export const TYPING_PAUSE_MS = 1000; // a pause this long ends a typing run (one
 export const PIPELINE_KEYS = SETTINGS.filter(s => s.group !== 'sauce' && s.pipeline !== false).map(s => s.key);
 export const SAVED_KEYS = [...SETTING_KEYS, ...SAUCE_KEYS];
 export const settingsJson = (state) => JSON.stringify(SAVED_KEYS.map(key => state[key]));
+// What isDirty compares with the last save: the settings and every layer's own character settings.
+export const savedJson = (state) => settingsJson(state) + JSON.stringify(state.layers.map((layer) => layer.chars ?? null));
 // An image's pixels on a canvas of its own.
 export const copyOf = (image, width, height) => {
   const canvas = document.createElement('canvas');
@@ -105,9 +107,10 @@ export function refusedInRoom(project, { fills = false } = {}) {
 // A new layer of kind directly above the layer with the id above (on top when there's none), in the stack, with nothing
 // on it (a cells layer's paint is made when it's first used); the layer. Not an undo step: addLayer's is, and the vector
 // layer a first shape brings, or the edit layer a room is missing, has none.
-export function putLayer(project, kind, above) {
+// chars: its character settings (charsOf's), the bottom's unless said.
+export function putLayer(project, kind, above, chars = project.baseChars) {
   const id = newLayerId(project.layers, kind), at = project.layers.findIndex((layer) => layer.id === above) + 1 || project.layers.length;
-  const layer = Object.freeze({ id, kind, n: nextNumber(project.layers, kind), name: null, hidden: false });
+  const layer = Object.freeze({ id, kind, n: nextNumber(project.layers, kind), name: null, hidden: false, chars: Object.freeze({ ...chars }) });
   // The last cells layer was deleted: this one takes the fields, empty (not inside an art layer: they're its drawing then).
   const none = kind === 'cells' && !project._artInside && !project.layerById(project.editId);
   project.layers = [...project.layers.slice(0, at), layer, ...project.layers.slice(at)];
@@ -116,6 +119,14 @@ export function putLayer(project, kind, above) {
     emptyFields(project);
   } else if (kind === 'cells') project._layerData.set(id, { editCells: new Map(), paintLayer: null, hasPaint: false });
   return layer;
+}
+
+// Every layer's character settings made the bottom's, for a drawing shared with a room, which has one set: the layers
+// that already have them stay the same objects, and the array is replaced only when one changed.
+export function followBase(project) {
+  const base = project.baseChars;
+  if (project.layers.every((layer, at) => !at || sameChars(layer.chars, base))) return;
+  project.layers = project.layers.map((layer, at) => (!at || sameChars(layer.chars, base) ? layer : Object.freeze({ ...layer, chars: Object.freeze({ ...base }) })));
 }
 
 // The edit layer's fields emptied, a paint layer of the same size kept: for a drawing left with no cells layer above the

@@ -112,11 +112,17 @@
   },
   "panel": {
     "groups": {
-      "setup": "Setup",
+      "drawing": "Drawing",
+      "drawingSub": "all layers",
+      "characters": "Characters · {name}",
+      "picture": "Picture · {name}",
       "transform": "Transforms",
       "adjust": "Adjustments",
       "effects": "Image filters"
     },
+    "pictureOff": "Pick {name} in Layers to change the picture.",
+    "charsNote": "Used where paint or a picture on {name} becomes characters.",
+    "charsNoteVector": "Shapes and art layers on {name} convert with these.",
     "reset": "Reset",
     "resetAll": "Reset all",
     "onCount": "{count} on",

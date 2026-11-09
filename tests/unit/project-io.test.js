@@ -227,3 +227,25 @@ test('old-form files read back unchanged', async () => {
   const shapes = new Map([['v:a', { ...rectShape(1, 1, 5, 5, { fill: '#ff0000' }), layer: 'L5' }]]);
   assert.equal((await readProject(await writeProject({ settings: { cols: 20 }, imageBuffer: new ArrayBuffer(4), paintBlob: null, editCells: new Map(), shapes }))).shapes.size, 0);
 });
+
+test("a layer's own chars make the stack form and round-trip", async () => {
+  const { legacySlots } = await import('../../src/document/layerInfo.js');
+  const base = { chars: '░▒▓', charsAscii: ' .:', seed: 's', charChoice: 'random', charChoiceAscii: 'weight', solids: 25, patternLight: 100 };
+  const own = { ...base, chars: '#', charChoice: 'best', solids: 60 };
+  const stack = [STACK[0], { ...STACK[1], chars: own }];
+  assert.equal(legacySlots(stack, base), null); // the old shape, but its own characters: only the stack form can say so
+  const back = await readProject(await stackFile(stack));
+  assert.deepEqual(back.stack[1].chars, own);
+  assert.equal(back.stack[0].chars, undefined);
+});
+
+test('bad chars in a stack are refused', async () => {
+  const cases = {
+    'solids 900': (json) => { json.stack[1].chars = { solids: 900 }; },
+    'a number for characters': (json) => { json.stack[1].chars = { chars: 7 }; },
+    'not an object': (json) => { json.stack[1].chars = 'x'; },
+  };
+  for (const [name, edit] of Object.entries(cases)) {
+    await assert.rejects(readProject(await editedStack(edit)), /Not a valid Phosphor project file/, name);
+  }
+});

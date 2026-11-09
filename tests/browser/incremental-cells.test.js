@@ -33,6 +33,7 @@ for (const [quantize, dithering] of [['none', DITHERS[0]], ['vga', DITHERS[1]], 
     const { project } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
     Object.assign(project, { quantize, ...dithering });
+    project.setLayerChars('edit', dithering); // the character settings every layer's, so the edit layer is the lower group's
     project.render();
     await settle(project);
 
