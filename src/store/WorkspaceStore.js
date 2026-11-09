@@ -162,8 +162,14 @@ export const useWorkspaceStore = defineStore('workspace', {
     activeTool(state) {
       return state[toolKey(state.editorTab)];
     },
-    // The layers the eraser, Select, the Magic Wand's Delete and Flip act on: the picked one.
+    // The layers the eraser, the Flip tool and Set FG / Set BG act on: the picked one.
     toolLayers: (state) => ({ base: state.pickedLayer === 'base', edit: state.pickedLayer !== 'base' }),
+    // The layers a selection's actions act on (Select's Copy, Cut, Delete, move, flip and turn; the Magic Wand's Delete):
+    // every shown one, whatever is picked. To leave a layer out, hide it.
+    selectionLayers() {
+      const project = useProjectStore();
+      return { base: !project.layerHidden('base'), edit: !project.layerHidden('edit') };
+    },
     editMode: (state) => ['input', 'output', 'vector'].includes(state.editorTab), // the art is showing
     // The view the room's host is looking at, for watchers: whole cells and the zoom to draw them at
     // (a fraction of the font's cell), of the art tab last shown (SAUCE and SOCIAL keep it). PIXEL's

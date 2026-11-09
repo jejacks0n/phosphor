@@ -126,7 +126,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
-  // The ANSI view's selection keys: Cmd/Ctrl+C, X, V (on the chosen layers; a paste goes to the
+  // The ANSI view's selection keys: Cmd/Ctrl+C, X, V (on the shown layers; a paste goes to the
   // selection, else the Text tool's cursor, else the top-left of the view, and becomes the
   // selection), Cmd/Ctrl+A (select all), and Escape (in Edit Mode it puts the cursor away, so letters
   // choose tools again). With the Select tool and a selection, Moebius's block keys: Delete,
@@ -171,7 +171,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       e.preventDefault();
       return true;
     }
-    const sel = workspaceStore.selection, layers = workspaceStore.toolLayers;
+    const sel = workspaceStore.selection, layers = workspaceStore.selectionLayers;
     const selecting = workspaceStore.activeTool === 'select' && sel;
     const command = e.metaKey || e.ctrlKey;
     if (!command) {
@@ -243,7 +243,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (!wand || e.defaultPrevented || isField(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
     if (workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false; // the palette has the keys; mid-drag, the drag's end decides
     if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
-    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.toolLayers);
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectionLayers);
     else return false;
     e.preventDefault();
     return true;

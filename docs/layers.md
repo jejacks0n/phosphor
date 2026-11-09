@@ -11,9 +11,10 @@ top, and between them the **vector layer**, once the drawing has one, which hold
 is showing; with nothing open, or on SAUCE, it says so instead.
 
 - **Picking a row** picks that layer, and the tabs follow it. The base and the edit layer show PIXEL and
-  ANSI; the vector layer shows VECTOR. The tools act on the picked layer: the eraser, Select, Copy, Cut,
-  Delete, Flip and the Magic Wand's Delete take only that layer, and with the base picked only the tools
-  that work on it are offered: a key for one of the others (P for the Pencil, say) says which layer that
+  ANSI; the vector layer shows VECTOR. The drawing tools act on the picked layer: the eraser and Flip
+  take only that layer. [Selections](#the-select-tool) act on every layer that shows, whatever is picked;
+  to leave a layer out, hide it. With the base picked only the tools that work on it are offered: a key
+  for one of the others (P for the Pencil, say) says which layer that
   tool draws on, "Pencil draws on Layer 1. Pick it in Layers." Picking the edit layer or the base from
   VECTOR goes back to the art tab you last had.
 - **+ Vector layer**, under the list, adds the vector layer and picks it. It's there while the drawing has
@@ -330,7 +331,8 @@ is a pixel wide and two tall, so the rectangle's top and bottom keep to every se
 it's the same selection in both views, and it stays when you switch. Everything below works the
 same in both.
 
-Copy, Cut, Delete, moving and nudging act on the picked layer. With the base picked, only the tools
+Copy, Cut, Delete, moving, nudging, flipping and rotating act on every layer that shows, whatever is
+picked: hide a layer (its eye in LAYERS) to leave it out. With the base picked, only the tools
 that work on it are offered: the eraser, the eyedropper, the Magic Wand, Select, the hand, zoom and
 Flip.
 
@@ -389,7 +391,7 @@ block on from there, so you can drag or nudge it away and stamp again. Each stam
 step. With a selection, **E** deletes it too, and **Enter** sets the block down, like Escape.
 
 **Flip horizontally** (a mirror) and **Flip vertically** turn the selection in place, on the
-picked layer. The characters turn with it: box lines (┌ → ┐, ╒ → ╕), half-blocks and quadrants
+layers that show. The characters turn with it: box lines (┌ → ┐, ╒ → ╕), half-blocks and quadrants
 (▀ → ▄, ▌ → ▐), arrows and triangles (→ ←, ▲ ▼), and brackets and slashes (( ), < >, / \).
 Letters, digits and shades stay as they are.
 
@@ -397,7 +399,7 @@ Letters, digits and shades stay as they are.
 a square stays a square (two cells side by side, a cell being twice as tall as it's wide, turn into
 two cells side by side). The turned picture lands as ▄ half-blocks in its pixels' colors, and a
 Half-block's ▄ goes with its paint. Characters can't turn that way (a cell would land across
-half of two), so Rotate is off while the selection has any on the picked layer: typed or drawn
+half of two), so Rotate is off while the selection has any on the layers that show: typed or drawn
 characters on the edit layer, or characters pinned on the base by merging down. A block an odd
 number of cells wide turns into a row and a half; the half row left over keeps what was under it.
 The rotated block starts at the same top-left corner (moved back onto the canvas if it would run
@@ -443,8 +445,8 @@ selected in the ANSI view. **Escape**, **Deselect**, a new rectangle, a grid cha
 document drop it.
 
 **Delete** on the wand's options row (or the Delete or Backspace key, except while typing in Edit
-Mode) takes away what's in the selection on the picked layer, in one undo step: on the edit layer the edit
-cells and paint, on the base the picture, which turns black, as the Eraser does on the base (whole cells in
+Mode) takes away what's in the selection on the layers that show, in one undo step: from the edit layer the edit
+cells and paint, from the base the picture, which turns black, as the Eraser does on the base (whole cells in
 the ANSI view, just the selected pixels in the pixel view).
 
 ### Recoloring a selection

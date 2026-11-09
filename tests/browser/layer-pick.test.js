@@ -2,7 +2,7 @@
 // vector layer VECTOR (and SAUCE), an art layer stepped into VECTOR and ANSI. followLayerPick keeps the pick in step with
 // editorTab, so what sets the tab today still works.
 import { test, expect, afterEach } from 'vitest';
-import { createApp, h } from 'vue';
+import { createApp, h, markRaw } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
 import EditTabs from '@/components/EditTabs.vue';
 import { i18n } from '@/i18n';
@@ -178,17 +178,111 @@ test('the eraser on the base erases the base, on the edit layer the edit layer',
   expect(project.baseRecords.pins.get('3,3')).toBe('P');
 });
 
-test('Copy takes the picked layer', async () => {
+// Selections work on what's shown (workspace.selectionLayers), whatever layer is picked; hiding a layer leaves it out.
+async function selecting() {
+  const app = await blank();
+  const { project, workspace } = app;
+  pinUnderEdit(project);
+  workspace.editorTab = 'output';
+  workspace.pickLayer('edit');
+  workspace.setActiveTool('select');
+  workspace.selection = { c0: 2, r0: 2, c1: 4, r1: 4 };
+  mounted = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
+  mounted.mount(document.createElement('div'));
+  const press = (key, extra = {}) => window.dispatchEvent(new KeyboardEvent('keydown', { key, cancelable: true, ...extra }));
+  return { ...app, press };
+}
+const pin = (project) => project.baseRecords.pins.get('3,3');
+
+test('selectionLayers is the shown layers, whatever is picked', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('edit');
+  expect(workspace.selectionLayers).toEqual({ base: true, edit: true });
+  project.setLayerHidden('base', true);
+  expect(workspace.selectionLayers).toEqual({ base: false, edit: true });
+  workspace.pickLayer('base');
+  project.setLayerHidden('edit', true);
+  project.setLayerHidden('base', false);
+  expect(workspace.selectionLayers).toEqual({ base: true, edit: false });
+});
+
+test('Copy takes every shown layer, the base too with the edit layer picked; a hidden one is left out', async () => {
+  const { project, workspace, press } = await selecting();
+  press('c', { ctrlKey: true });
+  expect(workspace.clipboard.cells.some(Boolean)).toBe(true);
+  expect(workspace.clipboard.base.pins).toContain('P');
+  project.setLayerHidden('base', true);
+  press('c', { ctrlKey: true });
+  expect(workspace.clipboard.cells.some(Boolean)).toBe(true);
+  expect(workspace.clipboard.base).toBeUndefined();
+  project.setLayerHidden('base', false);
+  workspace.pickLayer('base');
+  press('c', { ctrlKey: true });
+  expect(workspace.clipboard.cells.some(Boolean)).toBe(true);   // the edit layer is shown, though the base is picked
+  expect(workspace.clipboard.base.pins).toContain('P');
+});
+
+test('the toolbar\'s Copy takes the shown layers too', async () => {
   const { project, workspace } = await blank();
   pinUnderEdit(project);
-  const rect = { c0: 2, r0: 2, c1: 4, r1: 4 };
+  workspace.editorTab = 'output';
   workspace.pickLayer('edit');
-  expect(project.copySelection(rect, workspace.toolLayers).base).toBeUndefined();
-  expect(project.copySelection(rect, workspace.toolLayers).cells.some(Boolean)).toBe(true);
-  workspace.pickLayer('base');
-  const block = project.copySelection(rect, workspace.toolLayers);
-  expect(block.cells).toBeUndefined();
-  expect(block.base.pins).toContain('P');
+  workspace.setActiveTool('select');
+  workspace.selection = { c0: 2, r0: 2, c1: 4, r1: 4 };
+  const host = document.createElement('div');
+  document.body.append(host);
+  mounted = createApp(EditToolbar).use(i18n);
+  mounted.mount(host);
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  const copy = [...host.querySelectorAll('button')].find((b) => b.getAttribute('aria-label')?.startsWith('Copy ('));
+  copy.click();
+  host.remove();
+  expect(workspace.clipboard.base.pins).toContain('P');
+  expect(workspace.clipboard.cells.some(Boolean)).toBe(true);
+});
+
+test('Cut takes and removes every shown layer; with the base hidden, only the edit cell', async () => {
+  const { project, workspace, press } = await selecting();
+  project.setLayerHidden('base', true);
+  press('x', { ctrlKey: true });
+  expect(workspace.clipboard.base).toBeUndefined();
+  expect(project.editCellAt(3, 3)).toBeUndefined();
+  expect(pin(project)).toBe('P');
+  project.undo();
+  project.setLayerHidden('base', false);
+  press('x', { ctrlKey: true });
+  expect(workspace.clipboard.base.pins).toContain('P');
+  expect(project.editCellAt(3, 3)).toBeUndefined();
+  expect(pin(project)).toBe(' ');
+});
+
+test('Delete with Select, and a nudge, act on the shown layers; the Wand\'s Delete too', async () => {
+  const { project, workspace, press } = await selecting();
+  project.setLayerHidden('base', true);
+  press('Delete');
+  expect(project.editCellAt(3, 3)).toBeUndefined();
+  expect(pin(project)).toBe('P');
+  project.undo();
+  project.setLayerHidden('base', false);
+  press('ArrowRight');   // the block moves with the base under it (its pin is vacated)
+  expect(project.editCellAt(4, 3)?.char).toBe('E');
+  expect(pin(project)).toBe(' ');
+  project.undo();
+
+  workspace.selection = null;
+  workspace.setActiveTool('wand');
+  const mask = new Uint8Array(20 * 10);
+  mask[3 * 20 + 3] = 1;
+  workspace.wand = markRaw({ view: 'output', width: 20, height: 10, mask, within: null });
+  project.setLayerHidden('base', true);
+  press('Delete');
+  expect(project.editCellAt(3, 3)).toBeUndefined();
+  expect(pin(project)).toBe('P');
+  project.undo();
+  project.setLayerHidden('base', false);
+  press('Delete');
+  expect(project.editCellAt(3, 3)).toBeUndefined();
+  expect(pin(project)).toBe(' ');
 });
 
 test('a new document opens on the edit layer, whatever was picked before', async () => {

@@ -91,11 +91,11 @@ const MORE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
 const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option =>
   (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));
 
-// The actions on the Select tool's selection (one undo step each), on its chosen layers.
-const copySelection = () => copyToClipboards(project, workspace, workspace.selection, workspace.toolLayers);
+// The actions on the Select tool's selection (one undo step each), on the shown layers.
+const copySelection = () => copyToClipboards(project, workspace, workspace.selection, workspace.selectionLayers);
 const cutSelection = () => {
   copySelection();
-  project.deleteSelection(workspace.selection, workspace.toolLayers);
+  project.deleteSelection(workspace.selection, workspace.selectionLayers);
 };
 const pasteSelection = () => {
   const sel = workspace.selection;
@@ -106,11 +106,11 @@ const pasteTitle = computed(() => (workspace.clipboard
   ? t('toolbar.selection.pasteTitle')
   : t('toolbar.selection.pasteElsewhereTitle', { key: shortcut('mod', 'V') })));
 const stampSelection = () => {
-  workspace.selection = project.stampSelection(workspace.selection, workspace.toolLayers) ?? workspace.selection;
+  workspace.selection = project.stampSelection(workspace.selection, workspace.selectionLayers) ?? workspace.selection;
 };
 // Flip across ('h') or down ('v'), or rotate 90° clockwise ('cw'): the selection follows the block.
 const turnSelection = (op) => {
-  workspace.selection = project.turnSelection(workspace.selection, workspace.toolLayers, op) ?? workspace.selection;
+  workspace.selection = project.turnSelection(workspace.selection, workspace.selectionLayers, op) ?? workspace.selection;
 };
 
 // A dropdown's choices on offer right now, and the one it shows: the setting's own choice, or when
@@ -257,7 +257,7 @@ const artReady = computed(() => (workspace.activeTool === 'wand' ? project.hasEd
 // Rotate turns only pixels: not while the selection has characters on its layers.
 const selectionHasCharacters = computed(() => {
   void project.editCells; void project.baseRecords; void project.historyVersion; // re-check after edits
-  return !!workspace.selection && project.hasCharacters(workspace.selection, workspace.toolLayers);
+  return !!workspace.selection && project.hasCharacters(workspace.selection, workspace.selectionLayers);
 });
 // A toggle group as shown: one with shiftFlips (the Eyedropper's one-lit choices) shows the other lit while Shift is
 // held, as that's what a click then picks.
@@ -479,7 +479,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           <button :title="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :aria-label="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" @click="copySelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>
           <button :title="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" :aria-label="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" @click="cutSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M192 368A96 96 0 1 1 192 560A96 96 0 1 1 192 368ZM192 416A48 48 0 1 0 192 512A48 48 0 1 0 192 416ZM448 368A96 96 0 1 1 448 560A96 96 0 1 1 448 368ZM448 416A48 48 0 1 0 448 512A48 48 0 1 0 448 416Z"/><path d="M480 48L544 88L310 408L254 372ZM160 48L96 88L330 408L386 372Z"/></svg></button>
           <button :title="pasteTitle" :aria-label="pasteTitle" :disabled="!workspace.clipboard" @click="pasteSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M160 96H208V176H432V96H480A64 64 0 0 1 544 160V528A64 64 0 0 1 480 592H160A64 64 0 0 1 96 528V160A64 64 0 0 1 160 96ZM160 224V528H480V224Z"/><path d="M256 48H384A32 32 0 0 1 416 80V144H224V80A32 32 0 0 1 256 48Z"/></svg></button>
-          <button :title="t('toolbar.selection.deleteTitle')" :aria-label="t('toolbar.selection.delete')" aria-keyshortcuts="Delete E" @click="project.deleteSelection(workspace.selection, workspace.toolLayers)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
+          <button :title="t('toolbar.selection.deleteTitle')" :aria-label="t('toolbar.selection.delete')" aria-keyshortcuts="Delete E" @click="project.deleteSelection(workspace.selection, workspace.selectionLayers)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
           <button :title="t('toolbar.selection.stampTitle')" :aria-label="t('toolbar.selection.stamp')" aria-keyshortcuts="S C" @click="stampSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 64H368A48 48 0 0 1 416 112V176C416 224 384 256 384 304H480A64 64 0 0 1 544 368V432H96V368A64 64 0 0 1 160 304H256C256 256 224 224 224 176V112A48 48 0 0 1 272 64ZM96 480H544V544H96Z"/></svg></button>
           <button :title="t('toolbar.selection.flipHTitle')" :aria-label="t('toolbar.selection.flipH')" @click="turnSelection('h')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 128V512H64Z"/><path fill-rule="evenodd" d="M368 128L576 512H368ZM416 320V464H494Z"/><path d="M304 64H336V576H304Z"/></svg></button>
           <button :title="t('toolbar.selection.flipV')" :aria-label="t('toolbar.selection.flipV')" @click="turnSelection('v')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 272H512L128 64Z"/><path fill-rule="evenodd" d="M128 368H512L128 576ZM320 416H176V494Z"/><path d="M64 304H576V336H64Z"/></svg></button>
@@ -541,7 +541,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       </div>
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
-        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.toolLayers)">{{ t('common.delete') }}</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectionLayers)">{{ t('common.delete') }}</button>
         <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
         <button class="text" :title="t('toolbar.selection.wandDeselectTitle')" aria-keyshortcuts="Escape" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
       </div>
