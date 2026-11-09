@@ -11,6 +11,8 @@ import { VERSION, clipboardHtml, moebiusData } from '@/lib/clipboardBlocks';
 // (which a Bake rewrites) when the clipboard still holds it. Without clipboard access the text stays
 // null, and Phosphor's own block keeps winning, as before.
 export function copySelection(project, workspace, rect, layers) {
+  const lit = project.layersFor(layers);
+  if (!lit.base && !lit.edit) return; // every layer hidden: nothing to copy, as with no selection
   const block = project.copySelection(rect, layers), id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
   workspace.clipboard = block;
   workspace.clipboardId = id;

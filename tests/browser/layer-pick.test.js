@@ -270,6 +270,16 @@ test('Set FG on a selection recolors every shown layer, the base cell too with t
   expect(project.completeAt(2, 2).fg).toBe(GREEN);
 });
 
+test('Copy with every layer hidden leaves the clipboard as it was', async () => {
+  const { project, workspace, press } = await selecting();
+  press('c', { ctrlKey: true });
+  const kept = workspace.clipboard;
+  project.setLayerHidden('base', true);
+  project.setLayerHidden('edit', true);
+  press('c', { ctrlKey: true });
+  expect(workspace.clipboard).toBe(kept);
+});
+
 test('Cut takes and removes every shown layer; with the base hidden, only the edit cell', async () => {
   const { project, workspace, press } = await selecting();
   project.setLayerHidden('base', true);
