@@ -307,3 +307,38 @@ test('a deleted frame gives up what’s cached of it, and undoing the delete wor
   project.redo(); // and again, on the way back out
   expect([deleted.resolved, deleted.built]).toEqual([null, null]);
 });
+
+test('each frame keeps each layer\'s changes', async () => {
+  const { project, workspace } = await animated(2);
+  const id = project.addLayer('cells', 'edit');
+  type(project, 1, 1, 'a');
+  workspace.pickLayer(id);
+  type(project, 2, 2, 'x');
+  project.showFrame(1);
+  type(project, 2, 2, 'y');
+  type(project, 3, 3, 'z');
+  paint(project, 6, 6);
+  workspace.pickLayer('edit');
+  type(project, 1, 1, 'b');
+  const chars = (cells) => Object.fromEntries([...cells].map(([key, { char }]) => [key, char]));
+  const frame0 = () => {
+    expect(chars(project.cellsOf(id))).toEqual({ '2,2': 'x' });
+    expect(chars(project.cellsOf('edit'))).toEqual({ '1,1': 'a' });
+    expect(project.paintOf(id).pixelAt(6, 6)).toBe(null);
+  };
+  const frame1 = () => {
+    expect(chars(project.cellsOf(id))).toEqual({ '2,2': 'y', '3,3': 'z' });
+    expect(chars(project.cellsOf('edit'))).toEqual({ '1,1': 'b' });
+    expect(project.paintOf(id).pixelAt(6, 6)).not.toBe(null);
+  };
+  project.showFrame(0);
+  frame0();
+  project.showFrame(1);
+  frame1();
+  workspace.pickLayer(id);
+  project.showFrame(0);
+  frame0();
+  project.showFrame(1);
+  frame1();
+  expect([...project.frames[1].changes.keys()].sort()).toEqual([`${id}:2,2`, `${id}:3,3`, `${id}:6,3`, '1,1'].sort()); // the paint at (6, 6) is cell 6,3
+});

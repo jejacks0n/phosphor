@@ -1,8 +1,7 @@
 // The layers themselves (document/layerInfo.js): their names, whether they show, new ones, and which cells layer the
 // edit layer's fields are. None of it is an undo step: they're about the layers, not edits to what's drawn on them.
-import { markRaw } from 'vue';
 import { goodLayerName, newLayerId, nextNumber } from '@/document/layerInfo.js';
-import PaintLayer from '@/document/PaintLayer.js';
+import { swapLayer } from '@/store/project/shared.js';
 
 // id's layer with changes made, or no change when there's no such layer.
 function changed(store, id, patch) {
@@ -47,13 +46,6 @@ export const layerActions = {
     if (this._artInside) this.leaveArt();
     this.ensureLayer();
     this.commitPending();
-    const was = this.paintLayer;
-    this._layerData.set(this.editId, { editCells: this.editCells, paintLayer: was, hasPaint: this.hasPaint });
-    this._layerData.delete(id);
-    this.editId = id;
-    this._frameSwaps++;
-    this.editCells = next.editCells;
-    this.paintLayer = next.paintLayer ?? (was && markRaw(new PaintLayer({ cols: was.cols, rows: was.rows, scale: was.scale })));
-    this.hasPaint = next.hasPaint;
+    swapLayer(this, id);
   },
 };

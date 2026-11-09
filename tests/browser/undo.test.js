@@ -34,8 +34,17 @@ function layerHash(layer) {
   return `${c.width}x${c.height}:${h}:${layer.hasPaint}`;
 }
 
+// Every cells layer above the bottom with anything on it, its cells and paint: an empty one is as good as none, as adding
+// a layer isn't an undo step yet.
+function everyLayer(project) {
+  return project.layers.slice(1).filter((layer) => layer.kind === 'cells').map(({ id }) => [id, project.cellsOf(id), project.paintOf(id)])
+    .filter(([, cells, paint]) => cells.size || paint?.hasPaint)
+    .map(([id, cells, paint]) => `${id}=${JSON.stringify([...cells].sort())}:${layerHash(paint)}`).join('|');
+}
+
 function docState(project, workspace) {
   return {
+    layers: everyLayer(project),
     editCells: JSON.stringify([...project.editCells].sort()),
     pins: JSON.stringify([...project.baseRecords.pins].sort()),
     shapes: JSON.stringify([...project.shapes].sort()),
@@ -57,7 +66,7 @@ async function snap(project, workspace, { forceRender = true } = {}) {
     await settle(project);
     full = cellsKey(project).join('|');
   }
-  return { ...docState(project, workspace), shown, full };
+  return { ...docState(project, workspace), pick: project.editId, shown, full };
 }
 
 // Count the undoable depth by wrapping the history.
@@ -219,6 +228,13 @@ function makeActions(project, workspace, r, opts) {
       else while (project._stroke?.pen) project.penBack();
     },
     reset: () => (r() < 0.5 ? project.resetSliders() : project.resetGroup(pick(['transform', 'adjust', 'effects']))),
+    addLayer: () => { // a cells layer above the pick, up to two above the bottom
+      if (cellsLayers(project).length < 2) project.addLayer('cells', workspace.pickedLayer);
+    },
+    pickLayer: () => {
+      workspace.pickLayer(pick(cellsLayers(project)));
+      project.render(); // ponytail: what shows is the layer in use's until the whole stack is drawn
+    },
   };
   if (opts.async) {
     actions.mergeIntoPicture = async () => project.mergeIntoPicture(r() < 0.5 ? rect() : null);
@@ -230,6 +246,15 @@ function makeActions(project, workspace, r, opts) {
   return actions;
 }
 
+
+const cellsLayers = (project) => project.layers.slice(1).filter((layer) => layer.kind === 'cells').map((layer) => layer.id);
+
+// A state's pick back before it's compared: undo and redo don't change the pick, and what shows is the picked layer's.
+function pickOf(project, workspace, state) {
+  if (!state.pick || state.pick === project.editId) return;
+  workspace.pickLayer(state.pick);
+  project.render();
+}
 
 // The stack of expected states, kept in step with the history. An open typing run is on the stack
 // (provisionally) but not yet in the history; it becomes a step when committed, if it changed anything.
@@ -295,6 +320,7 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
   // undo all the way
   for (let i = stack.length - 2; i >= 0; i--) {
     project.undo();
+    pickOf(project, workspace, stack[i]);
     const s = await snap(project, workspace, { forceRender });
     const bad = compare(stack[i], s);
     if (bad.length) return { seed, log, problem: `undo to state ${i}: ${bad.join(',')} differ`, diff: bad.includes('full') ? diffCells(stack[i].full, s.full) : null, want: pickKeys(stack[i], bad), got: pickKeys(s, bad) };
@@ -302,6 +328,7 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
   if (project.canUndo) return { seed, log, problem: 'canUndo still true at the start' };
   for (let i = 1; i < stack.length; i++) {
     project.redo();
+    pickOf(project, workspace, stack[i]);
     const s = await snap(project, workspace, { forceRender });
     const bad = compare(stack[i], s);
     if (bad.length) return { seed, log, problem: `redo to state ${i}: ${bad.join(',')} differ`, diff: bad.includes('full') ? diffCells(stack[i].full, s.full) : null, want: pickKeys(stack[i], bad), got: pickKeys(s, bad) };
@@ -349,6 +376,16 @@ test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
   const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'combineShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
   for (const seed of seeds([1, 2, 3, 4, 6])) {
+    const f = await fuzz(seed, { async: false, steps: 20, only });
+    if (f) failures.push(f);
+  }
+  expect(failures).toEqual([]);
+}, 300_000);
+
+test('fuzz: typing, paint and selections across two cells layers', async () => {
+  const failures = [];
+  const only = ['type', 'typingRun', 'paint', 'move', 'clearEdit', 'addLayer', 'addLayer', 'pickLayer', 'pickLayer'];
+  for (const seed of seeds([1, 2, 3, 4])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
   }

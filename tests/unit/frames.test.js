@@ -5,6 +5,7 @@ import { MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES } from '../../src/lib/Cells.
 import { rectShape, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { shapeAt } from '../../src/document/tweens.js';
 import { PARTS } from '../../src/document/parts.js';
+import { keyLayer, layerKey } from '../../src/document/layerInfo.js';
 
 const A = Object.freeze({ char: 'A' }), B = Object.freeze({ char: 'B' });
 const RED = 0xff0000ff, BLUE = 0x0000ffff;
@@ -20,6 +21,14 @@ const blank = (entries = []) => newFrame('blank', new Map(entries));
 const eased = (easing, parts = PARTS) => new Map(parts.map((part) => [part, easing]));
 // Frames saved as a copy from before each part had its own easing saved them: one easing a shape, its Transform's.
 const asOld = (saved) => saved.map(({ eases, ...frame }) => ({ ...frame, ...(eases && { tweens: eases.map(([key, pairs]) => [key, pairs[0][1]]) }) }));
+
+test('keyLayer reads what layerKey writes', () => {
+  assert.equal(layerKey('edit', '2,3'), '2,3');
+  assert.equal(layerKey('L12', '2,3'), 'L12:2,3');
+  assert.deepEqual(keyLayer('2,3'), { id: 'edit', key: '2,3' });
+  assert.deepEqual(keyLayer(layerKey('L12', '2,3')), { id: 'L12', key: '2,3' });
+  assert.deepEqual(keyLayer('v:ab12'), { id: null, key: 'v:ab12' });
+});
 
 test('the kinds are blank, duplicate and wipe', () => {
   assert.deepEqual(FRAME_KINDS, ['blank', 'duplicate', 'wipe']);

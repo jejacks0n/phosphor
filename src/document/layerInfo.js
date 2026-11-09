@@ -2,6 +2,8 @@
 // replaced, never changed in place. The bottom is always 'base', the cells layer holding the picture. A name of null is
 // the default (the interface words it by kind and n, in the language it's in). Files keep the old form's layers key
 // ({ base?, edit?, vector?, noEdit? }); a file or a room may say anything there, so layersFromOld makes sure it's only this.
+import { isShapeKey } from './shapes.js';
+
 export const MAX_LAYER_NAME = 40;
 
 // A name as typed: trimmed and capped; null (the default) when nothing's left.
@@ -60,3 +62,13 @@ export function newLayerId(layers, kind) {
 
 // A new layer's number, for its default name: one past the highest of its kind (the bottom, which is "Base", left out).
 export const nextNumber = (layers, kind) => Math.max(0, ...layers.slice(1).filter((layer) => layer.kind === kind).map((layer) => layer.n)) + 1;
+
+// Keys and runs name their layer, so the ledger, history and frames stay flat maps: a key on the edit layer is as it
+// always was ('col,row', a tile's 'x,y'), and on another it's prefixed with the layer's id ('L2:col,row'). A shape's key
+// ('v:<hex>') is its own: keyLayer gives it no layer (id null).
+export const layerKey = (id, key) => (id === 'edit' ? key : `${id}:${key}`);
+export function keyLayer(key) {
+  if (isShapeKey(key)) return { id: null, key };
+  const at = key.indexOf(':');
+  return at < 0 ? { id: 'edit', key } : { id: key.slice(0, at), key: key.slice(at + 1) };
+}

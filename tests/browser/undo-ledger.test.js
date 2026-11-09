@@ -409,6 +409,75 @@ test('stroke ids are short text and never repeat', async () => {
   for (const id of ids) expect(id.length).toBeLessThanOrEqual(40);
 });
 
+test('a stroke on Layer 2 undone while Layer 1 is picked takes only Layer 2\'s cells back', async () => {
+  const { project, workspace } = await drawing();
+  type(project, 1, 1, 'E');
+  paint(project, [[3, 3]], '#0000ff');
+  const id = project.addLayer('cells', 'edit');
+  workspace.pickLayer(id);
+  paint(project, [[5, 5]], '#ff0000');
+  type(project, 2, 2, 'L');
+  workspace.pickLayer('edit');
+  const edit = project.cellsOf('edit'), editPaint = sameLayer(project.paintOf('edit'));
+  project.undo();
+  project.undo();
+  expect(project.cellsOf(id).size).toBe(0);
+  expect(project.paintOf(id).pixelAt(5, 5)).toBe(null);
+  expect(project._layerData.get(id).hasPaint).toBe(false);
+  expect(project.cellsOf('edit')).toBe(edit);
+  expect(sameLayer(project.paintOf('edit'))).toBe(editPaint);
+  expect(project.editId).toBe('edit');
+  project.redo();
+  project.redo();
+  expect(project.cellsOf(id).get('2,2').char).toBe('L');
+  expect(project.paintOf(id).pixelAt(5, 5)).toEqual(RED);
+  expect(project.cellsOf('edit')).toBe(edit);
+  expect(project.editId).toBe('edit');
+});
+
+// One edit's cells and paint on the edit layer and another, through onLayer.
+function acrossLayers(project, id) {
+  project.beginEdit();
+  project.onLayer('edit', () => project.writeEditCells([{ col: 1, row: 1, attrs: { char: 'A', ...INK } }]));
+  project.onLayer(id, () => {
+    project.writeEditCells([{ col: 2, row: 2, attrs: { char: 'B', ...INK } }]);
+    project.paintEditPixels([{ x: 6, y: 6, r: 255, g: 0, b: 0, alpha: 1 }]);
+  });
+}
+
+test('onLayer writes two layers in one undo step', async () => {
+  const { project } = await drawing();
+  const id = project.addLayer('cells', 'edit');
+  project.clearHistory();
+  acrossLayers(project, id);
+  expect(project.editId).toBe('edit');
+  project.commitEdit();
+  expect(project.cellsOf('edit').get('1,1').char).toBe('A');
+  expect(project.cellsOf(id).get('2,2').char).toBe('B');
+  expect(project.paintOf(id).pixelAt(6, 6)).toEqual(RED);
+  expect(project.paintOf('edit').pixelAt(6, 6)).toBe(null);
+  project.undo();
+  expect(project.canUndo).toBe(false);
+  expect([project.cellsOf('edit').size, project.cellsOf(id).size, project.paintOf(id).pixelAt(6, 6)]).toEqual([0, 0, null]);
+  project.redo();
+  expect(project.cellsOf('edit').get('1,1').char).toBe('A');
+  expect(project.cellsOf(id).get('2,2').char).toBe('B');
+  expect(project.paintOf(id).pixelAt(6, 6)).toEqual(RED);
+});
+
+test('cancelEdit puts back every layer it touched', async () => {
+  const { project } = await drawing();
+  const id = project.addLayer('cells', 'edit');
+  type(project, 4, 4, 'K');
+  acrossLayers(project, id);
+  project.cancelEdit();
+  expect(project._stroke).toBe(null);
+  expect([...project.cellsOf('edit').keys()]).toEqual(['4,4']);
+  expect(project.cellsOf(id).size).toBe(0);
+  expect(project.paintOf(id).pixelAt(6, 6)).toBe(null);
+  expect(project.editId).toBe('edit');
+});
+
 test('applyChange writes cells and runs, and only what it names changes', async () => {
   const { project } = await drawing();
   type(project, 7, 7, 'K');

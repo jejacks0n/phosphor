@@ -22,10 +22,11 @@ const sameColor = (a, b) => a === b || (a.hex === b.hex && (a.c === b.c || typeo
 const sameCell = (a, b) => a === b || (a.char === b.char && a.wide === b.wide && sameColor(a.fg, b.fg) && sameColor(a.bg, b.bg));
 
 // What a frame shows with hidden layers left out ({ edit, vector }: whether each is hidden): the edit layer's cells and
-// paint, or the shapes (and art layers).
+// paint, or the shapes (and art layers). Other cells layers' keys (layerInfo.js) are left out too.
+// ponytail: a frame plays the edit layer alone, until frames are built from the whole stack.
 function shownOf(resolved, hidden) {
-  if (!hidden.edit && !hidden.vector) return resolved;
-  return new Map([...resolved].filter(([key]) => (isShapeKey(key) ? !hidden.vector : !hidden.edit)));
+  if (!hidden.edit && !hidden.vector && ![...resolved.keys()].some((key) => !isShapeKey(key) && key.includes(':'))) return resolved;
+  return new Map([...resolved].filter(([key]) => (isShapeKey(key) ? !hidden.vector : !hidden.edit && !key.includes(':'))));
 }
 
 // A frame's shapes, from its resolved states, as they're drawn: followers on their paths, guides left out.

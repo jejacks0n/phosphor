@@ -3,8 +3,10 @@
  * started with, so undo can take back one person's stroke and leave everyone else's. What it returns is
  * a Numbered, { n, by, stroke, cells, runs }, for the caller to apply and send; nothing here touches the
  * picture, it only reads it. While numbering, one too big for mostBytes takes a number per piece: it comes
- * back whole, to apply, with those pieces as parts, to send. readCell(key) gives a cell's entry, and readTile(x, y) a tile's RGBA pixels:
- * x and y TILE-aligned, always TILE x TILE, transparent past the layer's edge. Both are read the first
+ * back whole, to apply, with those pieces as parts, to send. readCell(key) gives a cell's entry, and readTile(x, y, id) a tile's RGBA pixels
+ * on layer id: x and y TILE-aligned, always TILE x TILE, transparent past the layer's edge. Keys and runs name their layer
+ * (layerInfo.js: layerKey; a run is [x, y, length, rgba, id?], no id the edit layer's), and so do tiles: 'x,y' on the
+ * edit layer, 'id:x,y' on another, so each layer's positions have stacks of their own. Both are read the first
  * time a position is touched, so they must show the picture with every Numbered so far applied, and
  * without the change being submitted.
  *
@@ -14,6 +16,7 @@
  */
 import { hashCell, hashPixel, eachPixel, pack, changeBytes, splitChange, Tail } from './changes.js';
 import { TILE } from './History.js';
+import { keyLayer, layerKey } from './layerInfo.js';
 
 // In a room; alone, History's limits decide and tell us through forget.
 const MOST_STROKES = 50;
@@ -109,7 +112,7 @@ export function keptFromWire({ n, epoch, limits, sum, bytes, strokes, cells, til
       must(Array.isArray(tile) && tile.length === 5 && inLayer(tile[1], tile[2]) && tile[0] === `${tile[1]},${tile[2]}` && isPairs(tile[3]) && Array.isArray(tile[4]));
       const [name, x, y, base, entries] = tile;
       return [name, {
-        x, y, base: filled(base),
+        x, y, id: 'edit', base: filled(base),
         entries: entries.map((entry) => {
           must(Array.isArray(entry) && entry.length === 2 && records.get(entry[0])?.paint.has(name) && !records.get(entry[0]).undone);
           return { stroke: entry[0], px: pixelsAt(entry[1]) };
@@ -184,9 +187,9 @@ export class Ledger {
 
     for (const [key, entry] of cells) this.#writeCell(record, key, entry ?? null);
     let tile = null;
-    eachPixel(runs, (x, y, rgba) => {
+    eachPixel(runs, (x, y, rgba, id = 'edit') => {
       const tx = Math.floor(x / TILE) * TILE, ty = Math.floor(y / TILE) * TILE;
-      if (tile?.x !== tx || tile?.y !== ty) tile = this.#tile(tx, ty);
+      if (tile?.x !== tx || tile?.y !== ty || tile.id !== id) tile = this.#tile(tx, ty, id);
       this.#writePixel(record, tile, (y - ty) * TILE + (x - tx), rgba);
     });
     this.#trim(stroke);
@@ -228,8 +231,8 @@ export class Ledger {
     }
     const runs = [];
     for (const [name, px] of record.paint) {
-      const [x, y] = name.split(',').map(Number);
-      const tile = this.#tile(x, y);
+      const { id, key } = keyLayer(name), [x, y] = key.split(',').map(Number);
+      const tile = this.#tile(x, y, id);
       for (let i = 0; i < px.length; i++) {
         if (!px[i]) continue;
         const shown = shownPixel(tile, i);
@@ -265,8 +268,8 @@ export class Ledger {
   // stroke has touched can change after that, by way of an earlier frame. The picture has them right now: the
   // caller says when it holds that, on arriving at a frame.
   refreshBases() {
-    for (const { x, y, base, entries } of this.#stacks.tiles.values()) {
-      const data = this.readTile(x, y);
+    for (const { x, y, id, base, entries } of this.#stacks.tiles.values()) {
+      const data = this.readTile(x, y, id);
       for (let i = 0; i < base.length; i++) if (!entries.some(({ px }) => px[i])) base[i] = pack(data, i * 4);
     }
   }
@@ -339,6 +342,7 @@ export class Ledger {
     // As frozen as a live ledger's. They're no longer the picture's own objects, which only sameCell ever meets.
     for (const stack of stacks.cells.values()) Object.freeze(stack.base);
     for (const record of stacks.strokes.values()) for (const value of record.cells.values()) Object.freeze(value);
+    for (const [name, tile] of stacks.tiles) tile.id ??= keyLayer(name).id; // kept before tiles named their layer
     ledger.#stacks = stacks;
     return ledger;
   }
@@ -394,13 +398,13 @@ export class Ledger {
     this.#sumCell(key, value, shown);
   }
 
-  #tile(x, y) {
-    const { tiles } = this.#stacks, name = `${x},${y}`;
+  #tile(x, y, id = 'edit') {
+    const { tiles } = this.#stacks, name = layerKey(id, `${x},${y}`);
     let tile = tiles.get(name);
     if (!tile) {
-      const data = this.readTile(x, y), base = new Uint32Array(TILE * TILE);
+      const data = this.readTile(x, y, id), base = new Uint32Array(TILE * TILE);
       for (let i = 0; i < base.length; i++) base[i] = pack(data, i * 4);
-      tiles.set(name, tile = { x, y, base, entries: [] });
+      tiles.set(name, tile = { x, y, id, base, entries: [] });
     }
     return tile;
   }
@@ -421,7 +425,7 @@ export class Ledger {
       target = { stroke: record.id, px: new Uint32Array(TILE * TILE) };
       entries.push(target);
       this.#charge(record, TILE_BYTES);
-      const name = `${tile.x},${tile.y}`;
+      const name = layerKey(tile.id, `${tile.x},${tile.y}`);
       if (!record.paint.has(name)) record.paint.set(name, target.px);
     }
     for (const entry of entries) if (entry.stroke === record.id && entry !== target) entry.px[i] = 0;
@@ -456,11 +460,11 @@ export class Ledger {
   }
 
   #listPixel(runs, tile, i, from, to) {
-    const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
+    const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE), id = tile.id === 'edit' ? undefined : tile.id;
     this.#sumPixel(tile, i, from, to);
     const last = runs.at(-1);
-    if (last && last[1] === y && last[0] + last[2] === x && last[3] === to) last[2]++;
-    else runs.push([x, y, 1, to]);
+    if (last && last[1] === y && last[0] + last[2] === x && last[3] === to && last[4] === id) last[2]++;
+    else runs.push(id ? [x, y, 1, to, id] : [x, y, 1, to]);
   }
 
   #charge(record, bytes) {

@@ -2,6 +2,7 @@
 import { getSetting, SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS } from '@/store/settings.js';
 import { markRaw } from 'vue';
 import { Ledger } from '@/document/ledger.js';
+import PaintLayer from '@/document/PaintLayer.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { loadImage } from '@/document/projectIO.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
@@ -49,10 +50,37 @@ export const ALONE = 'me';
 // A ledger for someone drawing alone, reading the store project() gives.
 export const newLedger = (project) => markRaw(new Ledger({
   readCell: (key) => project().readCell(key),
-  readTile: (x, y) => project().readTile(x, y),
+  readTile: (x, y, id) => project().readTile(x, y, id),
   numbering: false,
   mostBytes: MOST_CHANGE_BYTES,
 }));
+// Cells layer id's data becomes the edit layer's fields (editCells, paintLayer, hasPaint) as it is, nothing committed (that's
+// useLayer's), and the layer in use waits in _layerData. A layer with no paint yet gets an empty one the size of the one
+// in use. Autosave doesn't count it as an edit.
+export function swapLayer(project, id) {
+  const next = project._layerData.get(id), was = project.paintLayer;
+  project._layerData.set(project.editId, { editCells: project.editCells, paintLayer: was, hasPaint: project.hasPaint });
+  project._layerData.delete(id);
+  project.editId = id;
+  project._frameSwaps++;
+  project.editCells = next.editCells;
+  project.paintLayer = next.paintLayer ?? (was && markRaw(new PaintLayer({ cols: was.cols, rows: was.rows, scale: was.scale })));
+  project.hasPaint = next.hasPaint;
+}
+
+// fn with cells layer id's data in the edit layer's fields, and the layer in use's back after: an undo step made on a layer
+// writes there, whatever's picked now. For the layer in use, or one that isn't waiting in _layerData, just fn.
+export function withLayer(project, id, fn) {
+  const was = project.editId;
+  if (id === was || !project._layerData.has(id)) return fn();
+  swapLayer(project, id);
+  try {
+    return fn();
+  } finally {
+    swapLayer(project, was);
+  }
+}
+
 // Whether a merge is refused because one of layers is hidden ('base', 'edit', 'vector'), with a toast saying so: hiding
 // never changes the drawing. Merge up, Merge down and Into the image take a layer as it shows into another, so both
 // count; Bake and the vector merge write into the base; Bake and the merges that press shapes take the vector layer's,

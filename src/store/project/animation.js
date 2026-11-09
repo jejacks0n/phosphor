@@ -1,6 +1,7 @@
 // Animation: the document's frames (document/frames.js). The current frame's resolved state is the normal
 // editCells, shapes (its 'v:' keys, a shape as a state's cell) and paintLayer, swapped when the frame changes, because everything that edits only ever touches
-// those two. A frame's changes are worked out from them on leaving it (noteFrame), so no tool knows about
+// those two; each other cells layer's is its cells and paint where it waits (_layerData), its keys named by layer
+// (layerInfo.js). A frame's changes are worked out from them on leaving it (noteFrame), so no tool knows about
 // frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
 // builds frames for playing, and what it was prepared for).
 import FrameBuilder from '@/document/FrameBuilder.js';
@@ -13,6 +14,8 @@ import { isArt } from '@/document/artLayers.js';
 import { MOTIONS, lifeAt, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { changedParts, partsOf, samePart } from '@/document/parts.js';
 import { addedKey, deletedKeys, moveRange, movedKeys, partKeys } from '@/document/keys.js';
+import { keyLayer, layerKey } from '@/document/layerInfo.js';
+import PaintLayer from '@/document/PaintLayer.js';
 import { drawnShapes, lockedAmong, newLedger } from '@/store/project/shared.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -25,36 +28,43 @@ const MOST_FPS = 60;
 
 const clamped = (value, least, most) => Math.min(most, Math.max(least, value));
 
-// The frame showing, as states. Browsers read soft paint back a step off what was written (changes.js), so a
-// half is compared with what it read on arrival, and one that hasn't changed keeps the value it arrived with:
-// compared with that value directly, a frame would take ownership of every soft cell it inherited, and later
-// fixes would silently stop carrying through it.
+// The cells layers frames hold, the one in use first (a document without an edit layer still has its fields). The
+// bottom's cells and pixels are the document's, the same on every frame.
+const frameLayers = (project) => [...new Set([project.editId, ...project.layers.slice(1).filter((layer) => layer.kind === 'cells').map((layer) => layer.id)])];
+const layerData = (project, id) => (id === project.editId ? project : project._layerData.get(id));
+
+// The frame showing, as states, each cells layer's under its keys (layerKey). Browsers read soft paint back a step off
+// what was written (changes.js), so a half is compared with what it read on arrival, and one that hasn't changed keeps
+// the value it arrived with: compared with that value directly, a frame would take ownership of every soft cell it
+// inherited, and later fixes would silently stop carrying through it.
 function liveStates(project) {
-  const layer = project.paintLayer, arrived = project._arrived;
-  const halves = new Map();
-  if (layer?.hasPaint || arrived?.paint) {
-    const { data, width, height } = layer.gridPixels();
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const now = pack(data, (y * width + x) * 4);
-        const was = arrived?.paint && x < arrived.paint.width && y < arrived.paint.height ? pack(arrived.paint.data, (y * arrived.paint.width + x) * 4) : 0;
-        if (!now && !was) continue;
-        const row = y >> 1, key = cellKey(x, row);
-        const held = now === was ? arrived.states.get(key) : null;
-        const value = held ? (y & 1 ? held.bottom : held.top) : now;
-        if (!value) continue;
-        const half = halves.get(key);
-        if (half) half[y & 1] = value;
-        else halves.set(key, y & 1 ? [0, value] : [value, 0]);
+  const arrived = project._arrived, states = new Map();
+  for (const id of frameLayers(project)) {
+    const { editCells = NOTHING, paintLayer: layer } = layerData(project, id) ?? {}, before = arrived?.paint?.get(id);
+    const halves = new Map();
+    if (layer?.hasPaint || before) {
+      const { data, width, height } = layer.gridPixels();
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const now = pack(data, (y * width + x) * 4);
+          const was = before && x < before.width && y < before.height ? pack(before.data, (y * before.width + x) * 4) : 0;
+          if (!now && !was) continue;
+          const row = y >> 1, key = layerKey(id, cellKey(x, row));
+          const held = now === was ? arrived.states.get(key) : null;
+          const value = held ? (y & 1 ? held.bottom : held.top) : now;
+          if (!value) continue;
+          const half = halves.get(key);
+          if (half) half[y & 1] = value;
+          else halves.set(key, y & 1 ? [0, value] : [value, 0]);
+        }
       }
     }
+    for (const [at, cell] of editCells) {
+      const key = layerKey(id, at), half = halves.get(key);
+      states.set(key, cellState(cell, half?.[0] ?? 0, half?.[1] ?? 0));
+    }
+    for (const [key, [top, bottom]] of halves) if (!states.has(key)) states.set(key, cellState(null, top, bottom));
   }
-  const states = new Map();
-  for (const [key, cell] of project.editCells) {
-    const half = halves.get(key);
-    states.set(key, cellState(cell, half?.[0] ?? 0, half?.[1] ?? 0));
-  }
-  for (const [key, [top, bottom]] of halves) if (!states.has(key)) states.set(key, cellState(null, top, bottom));
   for (const [key, shape] of project.shapes) states.set(key, cellState(shape, 0, 0));
   return states;
 }
@@ -67,7 +77,8 @@ function carried(project) {
   return project.frames[project.frame - 1].passes;
 }
 
-// Frame i becomes the one showing: its state in editCells and the paint layer, its ledger in _ledger. Whatever
+// Frame i becomes the one showing: its state in editCells and the paint layer (each other cells layer's where it waits),
+// its ledger in _ledger. Whatever
 // was showing has been noted already, or is going away. leaving: the frame whose ledger is out, when the list
 // has just changed under it.
 function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}) {
@@ -80,17 +91,32 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   project.frame = i;
   project._noted = markRaw({ frame, history: version, edit: project.editVersion });
   const resolved = project.resolvedOf(i);
-  const cells = new Map(), shapes = new Map();
-  for (const [key, { cell }] of resolved) if (cell) (isShapeKey(key) ? shapes : cells).set(key, cell);
-  project.editCells = cells;
+  const shapes = new Map(), byLayer = new Map(), paint = new Map();
+  for (const [key, state] of resolved) {
+    if (isShapeKey(key)) {
+      if (state.cell) shapes.set(key, state.cell);
+      continue;
+    }
+    const { id, key: at } = keyLayer(key);
+    (byLayer.get(id) ?? byLayer.set(id, new Map()).get(id)).set(at, state);
+  }
+  const { cols, rows, scale } = project.paintLayer;
+  for (const id of frameLayers(project)) {
+    const data = layerData(project, id), states = byLayer.get(id) ?? NOTHING;
+    if (!data) continue;
+    data.editCells = new Map([...states].filter(([, { cell }]) => cell).map(([at, { cell }]) => [at, cell]));
+    const image = paintImage(states, cols, rows);
+    if (!data.paintLayer && !image.data.some((value, at) => at % 4 === 3 && value)) continue; // no paint, none made
+    data.paintLayer ??= markRaw(new PaintLayer({ cols, rows, scale }));
+    data.paintLayer.loadGrid(image);
+    data.hasPaint = data.paintLayer.hasPaint;
+    paint.set(id, data.hasPaint ? data.paintLayer.gridPixels() : null);
+  }
   project._frameSwaps++; // and before shapes: autosave hears each on its own
   project.shapes = shapes;
   if (shapes.size) project.addVectorLayer();
   project._shapeLayer?.set(drawnShapes(project)); // drawn by the composite below
-  const layer = project.paintLayer;
-  layer.loadGrid(paintImage(resolved, layer.cols, layer.rows));
-  project.hasPaint = layer.hasPaint;
-  project._arrived = markRaw({ paint: layer.hasPaint ? layer.gridPixels() : null, states: resolved });
+  project._arrived = markRaw({ paint, states: resolved });
   if (frame.ledgerAt !== version) project._ledger.refreshBases(); // an earlier frame may have changed what's under its strokes
   if (!draw) return;
   const output = project.renderer.outputCanvas;
@@ -614,7 +640,7 @@ export const animationActions = {
     const { cols } = this, rows = charRowsOf(this.rows);
     for (const key of previous.keys()) {
       if (own.has(key) || isShapeKey(key)) continue;
-      const { col, row } = parseKey(key);
+      const { col, row } = parseKey(keyLayer(key).key);
       if (col < cols && row < rows) inherited.add(cellIndex(col, row, cols));
     }
     // Drawn here in exactly the color it inherited: the frame doesn't own it, but it's no ghost to whoever drew it.
@@ -633,7 +659,7 @@ export const animationActions = {
     let live = null;
     for (const [key, state] of prior.changes) {
       if (!state.stays || isEmptyState(state) || (live ??= liveStates(this)).has(key)) continue;
-      const { col, row } = parseKey(key);
+      const { col, row } = parseKey(keyLayer(key).key);
       if (col < cols && row < rows) picture.add(cellIndex(col, row, cols));
     }
     return picture;
@@ -906,7 +932,7 @@ export const animationActions = {
     for (const { changes } of frames) {
       for (const [key, { top, bottom }] of changes) {
         if (!top && !bottom) continue;
-        const at = parseKey(key);
+        const at = parseKey(keyLayer(key).key);
         cols = Math.max(cols, at.col + 1);
         rows = Math.max(rows, 2 * (at.row + 1));
       }

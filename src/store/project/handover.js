@@ -16,7 +16,7 @@ export const handoverActions = {
   restoreLedger(row, me) {
     const documentN = this._documentN;
     const fits = row?.documentId === this.documentId;
-    const ledger = fits ? Ledger.restore(row.kept, { readCell: (key) => this.readCell(key), readTile: (x, y) => this.readTile(x, y), mostBytes: MOST_CHANGE_BYTES }) : this._ledger;
+    const ledger = fits ? Ledger.restore(row.kept, { readCell: (key) => this.readCell(key), readTile: (x, y, id) => this.readTile(x, y, id), mostBytes: MOST_CHANGE_BYTES }) : this._ledger;
     const items = fits && documentN !== null ? ledger.tail.since(documentN) : null;
     if (items && (documentN === ledger.n || items.at(-1)?.n === ledger.n)) {
       this._ledger = markRaw(ledger);
@@ -99,7 +99,7 @@ export const handoverActions = {
   takeLedger(kept, left) {
     if (kept && left && kept.n === left.n && kept.epoch === left.epoch) {
       try {
-        const ledger = Ledger.restore({ ...kept, tail: [] }, { readCell: (key) => this.readCell(key), readTile: (x, y) => this.readTile(x, y), mostBytes: MOST_CHANGE_BYTES });
+        const ledger = Ledger.restore({ ...kept, tail: [] }, { readCell: (key) => this.readCell(key), readTile: (x, y, id) => this.readTile(x, y, id), mostBytes: MOST_CHANGE_BYTES });
         ledger.tail = left.tail;
         this._ledger = markRaw(ledger);
         return true;

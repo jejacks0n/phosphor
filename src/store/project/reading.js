@@ -4,6 +4,8 @@ import { wholeTile } from '@/document/PaintLayer.js';
 import { hashCell, hashPixel, pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
+import { keyLayer, layerKey } from '@/document/layerInfo.js';
+import { TILE } from '@/document/History.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
@@ -29,31 +31,37 @@ export const readingActions = {
   // had as of its last slice, and only the tiles this slice touched can be asked for. An artist's change
   // waiting for its frame (sharing.js) is already what's there. Inside an art layer they're the drawing kept aside:
   // what's drawn in the layer goes as the layer, never as cells or paint (sendSlice).
+  // Keys and tiles name their layer (layerInfo.js); the baseline is the layer in use's, the one a slice is of.
   readCell(key) {
     const heard = this._sharing?.heardCells;
     if (heard?.has(key)) return heard.get(key);
     if (isShapeKey(key)) return (this._baseline?.shapes ?? this.shapes).get(key);
-    return (this._artInside?.editCells ?? this._baseline?.cells ?? this.editCells).get(key);
+    const { id, key: at } = keyLayer(key);
+    if (id !== this.editId) return this.cellsOf(id).get(at);
+    return (this._artInside?.editCells ?? this._baseline?.cells ?? this.editCells).get(at);
   },
 
-  readTile(x, y) {
+  readTile(x, y, id = 'edit') {
+    if (id !== this.editId) return this.paintOf(id)?.readTile(x, y) ?? new Uint8ClampedArray(TILE * TILE * 4);
     if (this._artInside) return this._artInside.paintLayer.readTile(x, y);
     const before = this._baseline?.tiles.get(`${x},${y}`);
     return before ? wholeTile(before) : this.paintLayer.readTile(x, y);
   },
 
-  // The check over the edit layer as it is (changes.js), the slow way: what a sum is seeded with. Inside an art layer,
+  // The check over the drawn layers as they are (changes.js), the slow way: what a sum is seeded with. Inside an art layer,
   // over the drawing kept aside.
   editLayerSum() {
-    const { editCells, paintLayer } = this._artInside ?? this;
     let sum = 0;
-    for (const [key, entry] of editCells) sum ^= hashCell(key, entry);
     for (const [key, shape] of this.shapes) sum ^= hashCell(key, shape);
-    if (!paintLayer?.hasPaint) return sum;
-    const { width, height } = paintLayer.canvas;
-    const { data } = ctx2d(paintLayer.canvas).getImageData(0, 0, width, height);
-    for (let i = 3, at = 0; i < data.length; i += 4, at++) {
-      if (data[i]) sum ^= hashPixel(at % width, Math.floor(at / width), pack(data, i - 3));
+    for (const id of new Set([this.editId, ...this.layers.slice(1).filter((layer) => layer.kind === 'cells').map((layer) => layer.id)])) {
+      const { editCells, paintLayer } = id === this.editId ? this._artInside ?? this : this._layerData.get(id) ?? {};
+      for (const [key, entry] of editCells ?? []) sum ^= hashCell(layerKey(id, key), entry);
+      if (!paintLayer?.hasPaint) continue;
+      const { width, height } = paintLayer.canvas;
+      const { data } = ctx2d(paintLayer.canvas).getImageData(0, 0, width, height);
+      for (let i = 3, at = 0; i < data.length; i += 4, at++) {
+        if (data[i]) sum ^= hashPixel(at % width, Math.floor(at / width), pack(data, i - 3));
+      }
     }
     return sum;
   },

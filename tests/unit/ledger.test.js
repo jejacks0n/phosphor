@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { Ledger, keptForWire, keptFromWire } from '../../src/document/ledger.js';
 import { hashCell, hashPixel, eachPixel, Tail } from '../../src/document/changes.js';
 import { TILE } from '../../src/document/History.js';
+import { layerKey } from '../../src/document/layerInfo.js';
 
 // The ledger's own: 64 MB in a room, and what a cell counts for.
 const MOST_BYTES = 64 * 1024 * 1024, CELL_BYTES = 128;
@@ -12,16 +13,18 @@ const RED = 0xff0000ff, GREEN = 0x00ff00ff, BLUE = 0x0000ffff, GRAY = 0x80808080
 const cell = (char) => Object.freeze({ char });
 const X = cell('x'), Y = cell('y'), Z = cell('z'), START = cell('s');
 
-// A picture over Maps, as a store would be: reads for the ledger, and apply for what comes back.
+// A picture over Maps, as a store would be: reads for the ledger, and apply for what comes back. Pixels are 'x,y' on the
+// edit layer and 'id:x,y' on another (layerKey).
 function picture({ cells = [], pixels = [] } = {}) {
   const held = { cells: new Map(cells), pixels: new Map(pixels), tileReads: 0 };
   return Object.assign(held, {
     readCell: (key) => held.cells.get(key),
-    readTile(x, y) {
+    readTile(x, y, id = 'edit') {
       held.tileReads++;
       const data = new Uint8ClampedArray(TILE * TILE * 4);
       for (const [at, rgba] of held.pixels) {
-        const [px, py] = at.split(',').map(Number);
+        if (at !== layerKey(id, at.slice(at.indexOf(':') + 1))) continue;
+        const [px, py] = at.slice(at.indexOf(':') + 1).split(',').map(Number);
         if (px < x || py < y || px >= x + TILE || py >= y + TILE) continue;
         const i = ((py - y) * TILE + (px - x)) * 4;
         data.set([rgba >>> 24, (rgba >>> 16) & 0xff, (rgba >>> 8) & 0xff, rgba & 0xff], i);
@@ -33,12 +36,12 @@ function picture({ cells = [], pixels = [] } = {}) {
         if (entry) held.cells.set(key, entry);
         else held.cells.delete(key);
       }
-      eachPixel(runs, (x, y, rgba) => {
-        if (rgba) held.pixels.set(`${x},${y}`, rgba);
-        else held.pixels.delete(`${x},${y}`);
+      eachPixel(runs, (x, y, rgba, id = 'edit') => {
+        if (rgba) held.pixels.set(layerKey(id, `${x},${y}`), rgba);
+        else held.pixels.delete(layerKey(id, `${x},${y}`));
       });
     },
-    px: (x, y) => held.pixels.get(`${x},${y}`) ?? 0,
+    px: (x, y, id = 'edit') => held.pixels.get(layerKey(id, `${x},${y}`)) ?? 0,
     // The check, worked out the slow way.
     sum() {
       let sum = 0;
@@ -241,6 +244,30 @@ test('paint: erasing is a value, and undoing it brings back what it erased', () 
   assert.equal(pic.px(3, 3), 0);
   assert.deepEqual(undo('b', 'bs').runs, [[3, 3, 1, RED]]);
   assert.deepEqual(undo('a', 'as').runs, [[3, 3, 1, GRAY]]);
+});
+
+test('a stroke on another layer is undone by itself', () => {
+  const { pic, ledger, go, drawCell, undo } = setup();
+  go(ledger.submit('a', 's', { cells: [['L1:2,3', X]], runs: [[0, 0, 4, RED, 'L1']] }));
+  drawCell('a', 't', '2,3', Y);
+  assert.equal(pic.px(0, 0, 'L1'), RED);
+  assert.equal(pic.px(0, 0), 0);
+  const back = undo('a', 's');
+  assert.deepEqual(back.cells, [['L1:2,3', null]]);
+  assert.deepEqual(back.runs, [[0, 0, 4, 0, 'L1']]);
+  assert.equal(pic.cells.get('2,3'), Y);
+  assert.deepEqual(ledger.redo('a', 's').runs, [[0, 0, 4, RED, 'L1']]);
+});
+
+test('tiles of two layers don\'t share a stack', () => {
+  const { pic, drawRuns, undo } = setup({ pixels: [['0,0', GRAY], ['L1:0,0', GREEN]] });
+  drawRuns('a', 's', [[0, 0, 1, RED]]);
+  drawRuns('a', 't', [[0, 0, 1, BLUE, 'L1']]);
+  assert.equal(pic.tileReads, 2);
+  assert.deepEqual(undo('a', 's').runs, [[0, 0, 1, GRAY]]);
+  assert.equal(pic.px(0, 0, 'L1'), BLUE);
+  assert.deepEqual(undo('a', 't').runs, [[0, 0, 1, GREEN, 'L1']]);
+  assert.equal(pic.px(0, 0), GRAY);
 });
 
 test('a run across tiles lands in each of them', () => {

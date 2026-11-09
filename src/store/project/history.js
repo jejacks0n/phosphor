@@ -3,7 +3,9 @@
 // its base patch and base records in the entry; undo and redo replay them. Owns _stroke, the edit being
 // recorded (a typing run keeps it open across keystrokes: editLayer.js; clearImage and dropEdits drop it
 // when the document or the grid changes under it): its editCells is the map as of its last slice, as
-// sendSlice leaves it, and _baseline, what a slice being submitted began with (reading.js).
+// sendSlice leaves it, and _baseline, what a slice being submitted began with (reading.js). An edit is on the
+// cells layer in use (editId), and onLayer takes it onto others: its keys and runs name their layer (layerInfo.js), so
+// undo puts each back on its own, whichever is in use then.
 import { markRaw, toRaw } from 'vue';
 import { parseKey } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
@@ -12,7 +14,8 @@ import { keepDrawn, keepMode, withModes } from '@/document/frames.js';
 import { carriesError } from '@/lib/CharResolver.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast';
-import { ALONE, bytesHeld, lockedAmong, newLedger, randomId, runsPatch } from '@/store/project/shared.js';
+import { keyLayer } from '@/document/layerInfo.js';
+import { ALONE, bytesHeld, lockedAmong, newLedger, randomId, runsPatch, withLayer } from '@/store/project/shared.js';
 
 const NO_CHANGE = { cells: [], runs: [] };
 
@@ -24,10 +27,40 @@ export const historyActions = {
     // Raw, so commitEdit's identity checks see the same objects. keys: the cells it's sent. A stroke begun
     // for a float's move is held for an artist (sharing.js). startFrame: the frame showing as it began, for undo to put
     // its keys back (shapesBefore), only when it's noted up to now: an edit before it not noted yet isn't in it.
+    // layers: the other cells layers onLayer took it onto, each with its cells as it first got there (cancelEdit).
     const noted = this._noted, current = noted?.frame === this.currentFrame && noted.history === this.history.version && noted.edit === this.editVersion;
-    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating, startShapes: this.shapes, startFrame: this.hasFrames && current ? { ...this.currentFrame } : null, vectorSelected: useWorkspaceStore().vectorSelected });
+    this._stroke = markRaw({ id: randomId(), editCells: this.editCells, layers: new Map(), shapes: this.shapes, baseRecords: this.baseRecords, keys: [], hold: !!this._floating, startShapes: this.shapes, startFrame: this.hasFrames && current ? { ...this.currentFrame } : null, vectorSelected: useWorkspaceStore().vectorSelected });
     this.paintLayer.beginStroke();
     this.baseLayer.beginStroke();
+  },
+
+  // Inside an open edit, fn writes cells layer id instead of the one in use (a selection across layers), and it's still the
+  // one edit, one undo step. What's written on the layer in use so far goes to the ledger first, under its own name, and
+  // what fn writes goes after it under id's: the layers' fields are swapped around fn, and the first time, id's cells as
+  // they are are noted and its paint stroke begins. With no edit open, fn just writes id; inside an art layer, the art.
+  onLayer(id, fn) {
+    const stroke = this._stroke;
+    if (this._artInside || id === this.editId || !this._layerData.has(id)) return fn();
+    if (!stroke) return withLayer(this, id, fn);
+    this.sendSlice();
+    try {
+      return withLayer(this, id, () => {
+        stroke.editCells = this.editCells;
+        stroke.noted = null;
+        if (!stroke.layers.has(id)) {
+          stroke.layers.set(id, { editCells: this.editCells, noted: null });
+          this.paintLayer.beginStroke();
+        }
+        try {
+          return fn();
+        } finally {
+          this.sendSlice();
+        }
+      });
+    } finally {
+      stroke.editCells = this.editCells; // as it was sent: sendSlice did that before the swap
+      stroke.noted = null;
+    }
   },
 
   // A writer that knows which keys it changes sets the map through this, so a slice looks at those alone
@@ -63,15 +96,16 @@ export const historyActions = {
     const patch = this.paintLayer?.endStroke();
     const basePatch = this.baseLayer?.endStroke();
     this.hasPaint = this.paintLayer?.hasPaint ?? false; // an erase may have left none
+    const others = endOthers(this, stroke); // [patch, layer] of each other layer it was on
     // The Number palette, held still through the stroke, is picked again, and Floyd–Steinberg (Best match's,
     // or the dither's) carries the stroke's change to the base on: when that changed anything else, every
     // cell was rebuilt; when not, only the stroke's cells (shown in its own colors) need catching up.
     if (stroke && (this.quantize === 'count' || carriesError(this.processParams) || this.renderer.holdsDither(this.processParams)) && !this.composite()) {
-      const pixels = changedPixels(this.cols, this.rows, [[patch, this.paintLayer], [basePatch, this.baseLayer]], [[stroke.baseRecords.pins, this.baseRecords.pins]], stroke.keys, stroke.shapeRect);
+      const pixels = changedPixels(this.cols, this.rows, [[patch, this.paintLayer], ...others, [basePatch, this.baseLayer]], [[stroke.baseRecords.pins, this.baseRecords.pins]], stroke.keys, stroke.shapeRect);
       if (pixels) this.recompose(pixels);
       else this.rebuildCells();
     }
-    if (!stroke || (!patch && !basePatch && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) {
+    if (!stroke || (!patch && !basePatch && others.every(([own]) => !own) && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) {
       if (stroke) {
         keepDrawn(this.currentFrame, stroke.id); // no step to undo it
         keepMode(this.currentFrame, stroke.id);
@@ -163,12 +197,14 @@ export const historyActions = {
   },
 
   // Write a change's cells and runs and refresh only what changed. also: what's changed with it, for
-  // one refresh to cover: patches ([patch, layer]) already applied, and pins ([before, after]). Inside an art layer
+  // one refresh to cover: patches ([patch, layer]) already applied, and pins ([before, after]). Keys and runs name their
+  // layer: the one in use is written through the edit layer's fields, the others where they wait (_layerData), and a
+  // layer that isn't there is left out. Inside an art layer
   // its cells and runs are the drawing's, kept aside: they show on stepping out (leaveArt redraws it all). A change
   // to the layer itself (someone's undo, say), or to where it shows (a follower's path moved it), is drawn on again;
   // anything else leaves an open stroke inside it as it is.
   applyChange({ cells: all, runs }, { patches = [], pins = [] } = {}) {
-    const cells = all.filter(([key]) => !isShapeKey(key)), shapes = all.filter(([key]) => isShapeKey(key));
+    const shapes = all.filter(([key]) => isShapeKey(key));
     const placeOf = () => placedShapes(this).get(this._artInside.key)?.m; // where the layer shows: a follower's path can move it
     const was = this._artInside && shapes.length ? placeOf() : null;
     if (shapes.length) {
@@ -180,19 +216,33 @@ export const historyActions = {
       this.shapes = next;
       if (this._stroke) this._stroke.shapes = next;
     }
-    const inside = this._artInside, drawing = inside ?? this;
-    if (cells.length) {
-      const next = new Map(drawing.editCells);
-      for (const [key, entry] of cells) {
-        if (entry) next.set(key, entry);
-        else next.delete(key);
-      }
-      drawing.editCells = next;
-      if (this._stroke && !inside) this._stroke.editCells = next; // another's, written mid-stroke: not part of it (sharing.js)
+    const inside = this._artInside, byLayer = new Map([[this.editId, { cells: [], runs: [] }]]), keys = [];
+    const of = (id) => byLayer.get(id) ?? byLayer.set(id, { cells: [], runs: [] }).get(id);
+    for (const [key, entry] of all) {
+      if (isShapeKey(key)) continue;
+      const { id, key: at } = keyLayer(key);
+      of(id).cells.push([at, entry]);
     }
-    drawing.paintLayer.writeRuns(runs);
-    drawing.hasPaint = drawing.paintLayer.hasPaint;
-    if (!inside) this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], cells.map(([key]) => key));
+    for (const run of runs) of(run[4] ?? 'edit').runs.push(run);
+    for (const [id, { cells, runs: own }] of byLayer) {
+      const drawing = id === this.editId ? inside ?? this : this._layerData.get(id);
+      if (!drawing) continue;
+      if (cells.length) {
+        const next = new Map(drawing.editCells);
+        for (const [key, entry] of cells) {
+          if (entry) next.set(key, entry);
+          else next.delete(key);
+          keys.push(key);
+        }
+        drawing.editCells = next;
+        // Another's, written mid-stroke: not part of it (sharing.js).
+        if (this._stroke && !inside && id === this.editId) this._stroke.editCells = next;
+        else if (this._stroke?.layers.has(id)) this._stroke.layers.get(id).editCells = next;
+      }
+      drawing.paintLayer?.writeRuns(own);
+      drawing.hasPaint = drawing.paintLayer?.hasPaint ?? false;
+    }
+    if (!inside) this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], keys);
     else if (pins.length) this.refreshChanged([], [pins]);
     const moved = () => { const m = placeOf(); return !m || !was || m.some((v, i) => v !== was[i]); };
     if (inside && shapes.length && (shapes.some(([key]) => key === inside.key) || moved())) this.loadArt();
@@ -216,6 +266,8 @@ export const historyActions = {
     if (patch) this.paintLayer.applyPatch(patch, 'before');
     if (basePatch) this.baseLayer.applyPatch(basePatch, 'before');
     this.hasPaint = this.paintLayer?.hasPaint ?? false;
+    for (const [own, layer] of endOthers(this, stroke)) if (own) layer.applyPatch(own, 'before'); // nothing sent: nothing changed there
+    for (const [id, { editCells }] of stroke.layers) if (this._layerData.has(id)) this._layerData.get(id).editCells = editCells;
     const pairs = [[this.editCells, stroke.editCells], [this.baseRecords.pins, stroke.baseRecords.pins]];
     this.editCells = stroke.editCells;
     this.shapes = stroke.shapes;
@@ -254,7 +306,8 @@ export const historyActions = {
   // showing. History dropping one of those strokes meanwhile finds nothing to forget, so what it holds
   // stays until the next reset; the picture and undo stay right.
   // In a room it's final: artists can't follow it being undone (sharing.js). It's the showing frame's edit layer,
-  // and undoing goes back to that frame; everyFrame: all of them's, undone from wherever (a Bake).
+  // and undoing goes back to that frame; everyFrame: all of them's, undone from wherever (a Bake). It's the cells layer in
+  // use's too: undo and redo run with that one in the edit layer's fields, whichever's in use then.
   pushWholeLayer(undo, redo, bytes, { everyFrame = false } = {}) {
     if (this._sharing?.role === 'host') {
       this.editVersion++;
@@ -273,7 +326,8 @@ export const historyActions = {
       });
       away = showing;
     };
-    this.pushEdit({ undo: () => { swap(); undo(); }, redo: () => { swap(); redo(); }, wholeLayer: true, bytes });
+    const id = this.editId;
+    this.pushEdit({ undo: () => { swap(); withLayer(this, id, undo); }, redo: () => { swap(); withLayer(this, id, redo); }, wholeLayer: true, bytes });
   },
 
   // The last whole-layer step and everything older go: what's left only needs strokes since.
@@ -337,6 +391,16 @@ export const historyActions = {
     if (!entry.selectionOnly && this.hasFrames && this.quantize === 'count') this.pickPalette();
   },
 };
+
+// The paint strokes the open edit began on other cells layers (onLayer) end: [patch, layer] for each, and their hasPaint
+// is checked again.
+function endOthers(project, stroke) {
+  return [...(stroke?.layers.keys() ?? [])].filter((id) => id !== project.editId && project._layerData.get(id)?.paintLayer).map((id) => {
+    const data = project._layerData.get(id), patch = data.paintLayer.endStroke();
+    data.hasPaint = data.paintLayer.hasPaint;
+    return [patch, data.paintLayer];
+  });
+}
 
 // Whether a step can't be undone or redone now: in a room, it reaches an art layer someone else is drawing in (a
 // host's, whose steps the ledger holds; an artist's is the host's to refuse). A toast says who.

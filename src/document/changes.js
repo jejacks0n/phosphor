@@ -62,8 +62,9 @@ export function keepBaseline(before, after) {
   }
 }
 
+// fn(x, y, rgba, id) for each pixel of runs ([x, y, length, rgba, id?]: id names a layer other than the edit layer's).
 export function eachPixel(runs, fn) {
-  for (const [x, y, length, rgba] of runs) for (let i = 0; i < length; i++) fn(x + i, y, rgba);
+  for (const [x, y, length, rgba, id] of runs) for (let i = 0; i < length; i++) fn(x + i, y, rgba, id);
 }
 
 export const changeBytes = (change) => utf8Length(JSON.stringify(change));

@@ -24,6 +24,7 @@ import { markRaw } from 'vue';
 import { deserializeBase } from '@/document/baseRecords.js';
 import { cellChanges, exactly, keepBaseline, pixelRuns, splitChange, pack, Tail } from '@/document/changes.js';
 import { TILE } from '@/document/History.js';
+import { layerKey } from '@/document/layerInfo.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, readChange } from '@/social/wire.js';
@@ -243,9 +244,9 @@ export const sharingActions = {
   sendSlice() {
     const stroke = this._stroke;
     if (!stroke) return;
-    const inside = !!this._artInside;
+    const inside = !!this._artInside, id = this.editId; // keys and runs name the layer they're on (layerInfo.js)
     const tiles = inside ? [] : this.paintLayer?.strokeSlice() ?? [];
-    const own = inside ? [] : changedCells(stroke, this.editCells), cells = [...own, ...cellChanges(stroke.shapes, this.shapes)];
+    const own = inside ? [] : changedCells(stroke, this.editCells), cells = [...own.map(([key, entry]) => [layerKey(id, key), entry]), ...cellChanges(stroke.shapes, this.shapes)];
     const baseline = markRaw({ cells: stroke.editCells, shapes: stroke.shapes, tiles: new Map(tiles.map(({ x, y, before }) => [`${x},${y}`, before])) });
     stroke.wroteCells ||= stroke.editCells !== this.editCells || stroke.shapes !== this.shapes;
     if (!inside) {
@@ -259,6 +260,7 @@ export const sharingActions = {
       keepBaseline(before.data, after.data);
       return changed;
     });
+    if (id !== 'edit') for (const run of runs) run.push(id);
     if (!cells.length && !runs.length) { // only base pixels or pins, or a float landing on what's already there
       if (stroke.hold && this._sharing?.pending && this._sharing.held?.stroke !== stroke.id) {
         this.sendHeld();
@@ -269,9 +271,9 @@ export const sharingActions = {
     for (const [key] of own) stroke.keys.push(key); // the cells it's rebuilt over (commitEdit), not its shapes'
     // Every cell it's changed, edit cell or paint: the mode it drew in goes with them (commitEdit).
     stroke.cells ??= new Set();
-    for (const [key] of own) stroke.cells.add(key);
+    for (const [key] of own) stroke.cells.add(layerKey(id, key));
     const k = this.paintLayer.scale; // runs are the layer's pixels, k to a grid pixel
-    for (const [x, y, length] of runs) for (let i = 0; i < length; i++) stroke.cells.add(`${Math.floor((x + i) / k)},${Math.floor(y / k) >> 1}`);
+    for (const [x, y, length] of runs) for (let i = 0; i < length; i++) stroke.cells.add(layerKey(id, `${Math.floor((x + i) / k)},${Math.floor(y / k) >> 1}`));
     stroke.sent = true;
 
     const change = { cells, runs }, { pending, screen } = this._sharing ?? {};
