@@ -314,7 +314,9 @@ test('a shape drawn with Vector 2 picked lands on it, draws in its place in the 
 });
 
 test('after an edit on an upper layer, the PIXEL canvas is redrawn only where the edit was', async () => {
-  const { project } = await blank();
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 60, rows: 60 });
+  await settle(project);
   const top = project.addLayer('cells', 'edit');
   project.useLayer(top);
   project.paintStroke([{ x: 4, y: 6, alpha: 1 }], '#ff0000');
@@ -322,19 +324,43 @@ test('after an edit on an upper layer, the PIXEL canvas is redrawn only where th
   await settle(project);
   const first = project.renderer.shownCanvas();
   expect(first).not.toBe(project.renderer.outputCanvas); // an upper layer: a copy with its pixels over it
-  project.paintStroke([{ x: 9, y: 9, alpha: 1 }], '#00ff00');
+  // Two edits far from the origin, read once between: a rect from (0, 0) to either would be thousands of pixels.
+  for (const [x, y] of [[50, 50], [40, 52]]) {
+    project.paintStroke([{ x, y, alpha: 1 }], '#00ff00');
+    project.commitEdit();
+    const draws = vi.spyOn(CanvasRenderingContext2D.prototype, 'drawImage'), reads = vi.spyOn(CanvasRenderingContext2D.prototype, 'getImageData');
+    try {
+      const again = project.renderer.shownCanvas();
+      expect(again).toBe(first); // the same canvas, caught up
+      const sizes = [...draws.mock.calls.map((args) => (args.length === 9 ? args[7] * args[8] : Infinity)), ...reads.mock.calls.map((args) => args[2] * args[3])];
+      expect(sizes.length).toBeGreaterThan(0);
+      for (const size of sizes) expect(size).toBeLessThanOrEqual(2); // one cell's two grid pixels at most
+    } finally {
+      draws.mockRestore();
+      reads.mockRestore();
+    }
+    const { data } = first.getContext('2d', { willReadFrequently: true }).getImageData(x, y, 1, 1);
+    expect([data[0], data[1], data[2]]).toEqual([0, 255, 0]);
+  }
+});
+
+test('a whole compose reads an upper layer\'s paint once, not a pixel at a time', async () => {
+  const { project } = await blank();
+  const top = project.addLayer('cells', 'edit');
+  project.useLayer(top);
+  project.paintStroke([{ x: 4, y: 6, alpha: 1 }, { x: 12, y: 13, alpha: 0.5 }], '#ff0000');
   project.commitEdit();
-  const draws = vi.spyOn(CanvasRenderingContext2D.prototype, 'drawImage'), reads = vi.spyOn(CanvasRenderingContext2D.prototype, 'getImageData');
+  await settle(project);
+  const before = cellsKey(project);
+  const reads = vi.spyOn(CanvasRenderingContext2D.prototype, 'getImageData');
   try {
-    const again = project.renderer.shownCanvas();
-    expect(again).toBe(first); // the same canvas, caught up
-    const sizes = [...draws.mock.calls.map((args) => (args.length === 9 ? args[7] * args[8] : Infinity)), ...reads.mock.calls.map((args) => args[2] * args[3])];
-    expect(sizes.length).toBeGreaterThan(0);
-    for (const size of sizes) expect(size).toBeLessThanOrEqual(2 * project.paintLayer.scale ** 2); // one cell's pixels at most, at the paint's scale
+    project.applyEditCells(); // the whole grid, as a hide, a move or a slider step does
+    expect(reads.mock.calls.length).toBeLessThanOrEqual(2); // the paint at grid resolution, once; nothing per cell
   } finally {
-    draws.mockRestore();
     reads.mockRestore();
   }
-  const { data } = first.getContext('2d', { willReadFrequently: true }).getImageData(9, 9, 1, 1);
-  expect([data[0], data[1], data[2]]).toEqual([0, 255, 0]);
+  expect(cellsKey(project)).toEqual(before);
+  project.paintStroke([{ x: 2, y: 2, alpha: 1 }], '#0000ff'); // and an edit after that catches the cache up where it painted
+  project.commitEdit();
+  expect(cellAt(project, 2, 1).bg.hex.toLowerCase()).toBe('#0000ff');
 });

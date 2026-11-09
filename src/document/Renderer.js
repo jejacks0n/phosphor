@@ -72,6 +72,7 @@ export default class Renderer {
   #lowerEdits = null;   // the lower group's cells layer's map, from the last composeAll or updateCells: where its cells are exact
   #lowerBase = null;    // and the generated cells they sat on (the seed's characters)
   #upperGrids = new WeakMap(); // an upper vector layer -> its shapes at grid resolution (#upperGrid), as #baseDrawn is the base's
+  #upperPaints = new WeakMap(); // an upper cells layer's paint -> its pixels at grid resolution through the transforms (#upperPaint)
   #shownOver = null;    // { of, canvas, dirty }: the output with the upper layers' pixels over it (shownCanvas); dirty, the grid rect a compose changed since, or null for all of it
   #oneMatcher = null;   // { params, palette, matcher }: Best match's or By shape's matcher for one upper cell (#upperChar)
 
@@ -82,6 +83,7 @@ export default class Renderer {
     this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = this.#painted = null;
     this.#lowerEdits = this.#lowerBase = this.#shownOver = this.#oneMatcher = null;
     this.#upperGrids = new WeakMap();
+    this.#upperPaints = new WeakMap();
     this.upper = [];
     this.#effective = new Map();
   }
@@ -598,8 +600,17 @@ export default class Renderer {
     return this.#paintData;
   }
 
-  // #drawLayer's drawing of area alone: the transformed pixels of that rect.
+  // #drawLayer's drawing of area alone: the transformed pixels of that rect (#paintPart), drawn onto ctx.
   #drawLayerArea(ctx, layer, params, area) {
+    const pixels = this.#paintPart(layer, params, area), { x, y, w: aw, h: ah } = area;
+    if (transformsOn(params)) ctx2d(this.#scratch).putImageData(pixels, x, y);
+    ctx.drawImage(this.#scratch, x, y, aw, ah, x, y, aw, ah);
+    return pixels;
+  }
+
+  // A layer's pixels over area at grid resolution (a grid pixel at a time, as the lower group's paint is drawn) with the
+  // color transforms applied: an ImageData of the rect. The scratch canvas holds the untransformed draw after.
+  #paintPart(layer, params, area) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
     const { x, y, w: aw, h: ah } = area;
 
@@ -616,11 +627,7 @@ export default class Renderer {
     scratchCtx.drawImage(layer.canvas, x * k, y * k, aw * k, ah * k, x, y, aw, ah); // the grid's part (a layer can reach past it)
 
     const pixels = scratchCtx.getImageData(x, y, aw, ah);
-    if (transformsOn(params)) {
-      applyTransforms(pixels.data, params);
-      scratchCtx.putImageData(pixels, x, y);
-    }
-    ctx.drawImage(this.#scratch, x, y, aw, ah, x, y, aw, ah);
+    if (transformsOn(params)) applyTransforms(pixels.data, params);
     return pixels;
   }
 
@@ -741,38 +748,69 @@ export default class Renderer {
   composeUpper(lower, indexes, palette, composed = null) {
     const out = (indexes && composed?.length === lower.length ? composed : lower).slice();
     const cols = this.upper[0]?.params.cols ?? 1, n = indexes ? indexes.length : lower.length;
+    // Each layer's pixels at grid resolution, read once for the walk: a cells layer's paint, a vector layer's shapes.
+    const reads = this.upper.map((u) => {
+      if (u.kind === 'cells') return u.paint?.hasPaint ? this.#upperPaint(u.paint, u.params) : null;
+      if (!u.layer?.drawsShapes) return null;
+      u.layer.sync();
+      return this.#upperGrid(u.layer, u.params).data;
+    });
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let k = 0; k < n; k++) {
       const i = indexes ? indexes[k] : k, col = i % cols, row = (i - col) / cols;
-      if (lower[i]) out[i] = this.#upperCell(lower[i], col, row, i, palette);
+      if (lower[i]) out[i] = this.#upperCell(lower[i], col, row, i, palette, reads);
       if (col < x0) x0 = col;
       if (col > x1) x1 = col;
       if (row < y0) y0 = row;
       if (row > y1) y1 = row;
     }
-    this.#shownDirty(indexes ? (n ? { x: x0, y: 2 * y0, w: x1 - x0 + 1, h: 2 * (y1 - y0 + 1) } : { x: 0, y: 0, w: 0, h: 0 }) : null);
+    this.#shownDirty(indexes ? { x: x0, y: 2 * y0, w: n ? x1 - x0 + 1 : 0, h: n ? 2 * (y1 - y0 + 1) : 0 } : null);
     return out;
   }
 
-  // The shown canvas (shownCanvas) has this grid rect to catch up on, or all of it (null): a compose changed it.
+  // The shown canvas (shownCanvas) has this grid rect to catch up on too, or all of it (null): a compose changed it.
   #shownDirty(rect) {
     const s = this.#shownOver;
     if (!s) return;
-    if (!rect || s.dirty === null) this.#shownOver = rect ? s : null; // a whole compose: a new copy next time
-    else s.dirty = s.dirty ? union(s.dirty, rect) : rect;
+    if (!rect) this.#shownOver = null; // a whole compose: a new copy next time
+    else s.dirty = union(s.dirty, rect);
   }
 
-  #upperCell(cell, col, row, i, palette) {
+  // An upper cells layer's paint at grid resolution through the color transforms, as #drawLayer draws the lower group's:
+  // RGBA bytes the output's size. Kept per paint layer while the grid and color settings stay the same, caught up only
+  // over what the layer changed since (changedSince), as #gridOf is.
+  #upperPaint(paint, params) {
+    const w = this.outputCanvas.width, h = this.outputCanvas.height;
+    const key = [w, h, ...COLOR_KEYS.map((name) => params[name])].join();
+    let kept = this.#upperPaints.get(paint);
+    const same = kept?.key === key;
+    if (same && kept.version === paint.version) return kept.data;
+    const changed = same && paint.changedSince(kept.version);
+    const area = changed ? gridRectOf(changed, paint.scale, w, h) : { x: 0, y: 0, w, h };
+    if (!same) kept = { key, data: new Uint8ClampedArray(w * h * 4) };
+    if (area.w && area.h) putRows(kept.data, w, this.#paintPart(paint, params, area).data, area);
+    kept.version = paint.version;
+    this.#upperPaints.set(paint, kept);
+    return kept.data;
+  }
+
+  // reads: each upper layer's pixels at grid resolution (composeUpper), or null for one with nothing to lay.
+  #upperCell(cell, col, row, i, palette, reads) {
     let exact = !!this.#lowerEdits?.has(cellKey(col, row)) || this.pinAt(col, row) !== undefined;
     const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
     const seedChar = this.#lowerBase?.[i]?.char ?? cell.char;
-    for (const u of this.upper) {
-      const { params } = u, { renderStyle } = params;
+    const width = this.outputCanvas.width;
+    const paintAt = (bytes, y) => { // a grid pixel of a layer's paint, or null where there's none
+      const o = (y * width + col) * 4;
+      return bytes[o + 3] ? { r: bytes[o], g: bytes[o + 1], b: bytes[o + 2], a: bytes[o + 3] / 255 } : null;
+    };
+    for (let at = 0; at < this.upper.length; at++) {
+      const u = this.upper[at], read = reads[at], { params } = u, { renderStyle } = params;
       if (u.kind === 'vector') {
-        if (!u.layer?.drawsShapes) continue;
+        if (!read) continue;
         const char = u.layer.charAt(col, row);
         if (char === undefined) continue;
-        const { data, width } = this.#upperGrid(u.layer, params).data, halves = halfColors(cell);
+        const { data } = read, halves = halfColors(cell);
         const [top, bottom] = halves.map((half, k) => {
           const o = ((2 * row + k) * width + col) * 4;
           return snap(data[o + 3] ? mix(half, { r: data[o], g: data[o + 1], b: data[o + 2] }, data[o + 3] / 255) : half);
@@ -781,8 +819,8 @@ export default class Renderer {
         exact = char !== null;
         continue;
       }
-      const entry = u.cells.get(cellKey(col, row)), painted = !!u.paint?.hasPaint;
-      const top = painted ? this.#upperPaintAt(u.paint, col, 2 * row, params) : null, bottom = painted ? this.#upperPaintAt(u.paint, col, 2 * row + 1, params) : null;
+      const entry = u.cells.get(cellKey(col, row));
+      const top = read ? paintAt(read, 2 * row) : null, bottom = read ? paintAt(read, 2 * row + 1) : null;
       if (entry) {
         cell = coverCell(composeCell(cell, entry, renderStyle, (hex) => this.effective(hex, params)), top, bottom, { renderStyle, palette });
         exact = true;
@@ -820,16 +858,6 @@ export default class Renderer {
       return resolveShapes(samples, 1, 1, matcher, { strength: 0 }).cells[0].char;
     }
     return keepsSeed(params.charMode) ? seedChar : weightedChar(top, bottom, params.chars, params.charMode);
-  }
-
-  // An upper cells layer's paint at grid pixel (x, y) through the color transforms, as #drawLayer draws the lower
-  // group's, or null where there's none.
-  #upperPaintAt(paint, x, y, params) {
-    const p = paint.pixelAt(x, y);
-    if (!p || !transformsOn(params)) return p;
-    const bytes = new Uint8ClampedArray([p.r, p.g, p.b, 255]);
-    applyTransforms(bytes, params);
-    return { r: bytes[0], g: bytes[1], b: bytes[2], a: p.a };
   }
 
   // What the PIXEL view shows and the Paint Bucket reads: the output, with every upper layer's pixels (its shapes at grid
@@ -1053,8 +1081,10 @@ function sameRows(a, b, width, { x, y, w, h }) {
 // Whether rect a lies inside rect b.
 const inside = (a, b) => a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
 
-// The smallest rect holding rects a and b.
+// The smallest rect holding rects a and b; an empty one (no width or height) adds nothing.
 function union(a, b) {
+  if (!a.w || !a.h) return b;
+  if (!b.w || !b.h) return a;
   const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
   return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y };
 }
