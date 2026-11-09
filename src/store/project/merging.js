@@ -49,11 +49,12 @@ function bakedChanges(changes, params) {
   return new Map([...changes].map(([key, { cell, top, bottom }]) => [key, cellState(entry(cell), baked(top), baked(bottom))]));
 }
 
-// The clipboard with the color transforms burnt in, as Bake and Flatten leave it (what shapes showed is as it showed).
+// The clipboard with the color transforms burnt in, as Bake and Flatten leave it.
 const bakedClipboard = (clip, params) => clip && {
   ...clip,
   ...(clip.cells && { cells: clip.cells.map(entry => entry && bakeEntry(entry, params)) }),
   ...(clip.looks && { looks: clip.looks.map(entry => bakeEntry(entry, params)) }),
+  ...(clip.shown && { shown: clip.shown.map((entry) => entry && bakeEntry(entry, params)) }),
   ...(clip.paint && { paint: bakedCanvas(clip.paint, params) }),
   ...(clip.parts && { parts: clip.parts.map((part) => ({ ...part, cells: part.cells.map((entry) => entry && bakeEntry(entry, params)), ...(part.paint && { paint: bakedCanvas(part.paint, params) }) })) }),
   ...(clip.base && { base: { ...clip.base, pixels: bakedCanvas(clip.base.pixels, params), colors: bakedCanvas(clip.base.colors, params) } }),

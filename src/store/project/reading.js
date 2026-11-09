@@ -148,6 +148,25 @@ export const readingActions = {
     return look;
   },
 
+  // A cell as the stack shows it, in stored colors (before adjustments), for a copy of what shapes show: the base's cell with
+  // the lower group's shapes (baseCellAt), then each shown layer above, bottom first: a cells layer as lookUnder lays it,
+  // an upper vector layer's shapes by their alpha over each half. The character is the one that shows.
+  storedLookAt(col, row) {
+    const { cells, upper } = this.lowerGroup;
+    let look = bakedEntry(this.renderStyle, this.baseCellAt(col, row));
+    if (cells) look = layerOver(this, cells, col, row, look);
+    for (const id of upper) {
+      if (this.layerById(id).kind === 'cells') { look = layerOver(this, id, col, row, look); continue; }
+      const shapes = this._upperShapes.get(id);
+      if (shapes?.charAt(col, row) === undefined) continue;
+      const top = this.renderer.upperStoredAt(shapes, col, 2 * row), bottom = this.renderer.upperStoredAt(shapes, col, 2 * row + 1);
+      if (top) look = { ...look, bg: rgb2hex(over(hex2rgb(look.bg), top)) };
+      if (bottom) look = { ...look, fg: rgb2hex(over(hex2rgb(look.fg), bottom)) };
+    }
+    const shown = this.cells[cellIndex(col, row, this.cols)];
+    return { char: !shown || shown.wide === 'trail' ? ' ' : shown.char, fg: look.fg, bg: look.bg };
+  },
+
   editCellAt(col, row) {
     return this.editCells.get(cellKey(col, row));
   },

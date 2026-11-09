@@ -134,3 +134,22 @@ test('paint on a cell keeps showing as the color it gave that half', async () =>
   await settle(project);
   expect(shownIn(project, cell)).toEqual([{ ...before, fg: PINK_IN_CGA }]);
 });
+
+// Select all at a large document's size has to stay linear in its cells: each cell is sorted to its layer once, not by
+// copying the layer's list so far (which froze the tab at 500k cells). Counted as the array elements iterated.
+test('Set FG on a big selection goes through its cells a bounded number of times', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 80, rows: 100 }); // 4000 cells
+  await settle(project);
+  workspace.editorTab = 'output';
+  const n = project.cols * 50, iterator = Array.prototype[Symbol.iterator];
+  let steps = 0;
+  Array.prototype[Symbol.iterator] = function () { steps += this.length; return iterator.call(this); };
+  try {
+    project.recolorSelection(project.gridRect(), 'output', ['base'], { fg: PINK });
+  } finally {
+    Array.prototype[Symbol.iterator] = iterator;
+  }
+  expect(project.baseColorAt(5, 2 * 7 + 1)).toBe(PINK);
+  expect(steps).toBeLessThan(50 * n);
+});

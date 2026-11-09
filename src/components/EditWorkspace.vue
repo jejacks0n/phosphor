@@ -91,7 +91,7 @@ async function openArt(file, layer) {
 // or opened in place of this drawing, an art file onto either layer (not in a room where opening is off).
 const layerName = useLayerName();
 const addText = (drop) => (drop.picture ? (workspace.pickedCells ? t('actions.pictureAddText', { name: layerName(workspace.pickedLayer) }) : t('actions.pictureAddNew'))
-  : isSvgFile(drop.file.name) ? t('actions.svgAddText') : drop.at ? t('actions.artAddWhere') : t('actions.artAddTopLeft'));
+  : isSvgFile(drop.file.name) ? t('actions.svgAddText') : t(drop.at ? 'actions.artAddWhere' : 'actions.artAddTopLeft', { name: layerName(project.editId) }));
 const artChoices = computed(() => {
   const drop = workspace.artDrop;
   if (!drop) return [];

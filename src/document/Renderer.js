@@ -71,6 +71,7 @@ export default class Renderer {
   #chosen = null;       // a Number palette someone else picked (usePalette): composite doesn't pick its own
   #lowerEdits = null;   // the lower group's cells layer's map, from the last composeAll or updateCells: where its cells are exact
   #upperGrids = new WeakMap(); // an upper vector layer -> its shapes at grid resolution (#upperGrid), as #baseDrawn is the base's
+  #upperStored = new WeakMap(); // an upper vector layer -> its shapes at grid resolution as stored (upperStoredAt)
   #upperPaints = new WeakMap(); // an upper cells layer's paint -> its pixels at grid resolution through the transforms (#upperPaint)
   #shownOver = null;    // { of, canvas, dirty }: the output with the upper layers' pixels over it (shownCanvas); dirty, the grid rect a compose changed since, or null for all of it
   #matchers = new WeakMap(); // an upper layer's params -> { palette, matcher }: Best match's or By shape's matcher for one of its cells (#upperChar)
@@ -83,6 +84,7 @@ export default class Renderer {
     this.#lowerEdits = this.#shownOver = null;
     this.#matchers = new WeakMap();
     this.#upperGrids = new WeakMap();
+    this.#upperStored = new WeakMap();
     this.#upperPaints = new WeakMap();
     this.upper = [];
     this.#effective = new Map();
@@ -589,6 +591,20 @@ export default class Renderer {
     const layer = this.#base;
     if (!layer?.hasPaint || !this.outputCanvas || !this.#baseParams) return null;
     const { data } = this.#baseGrid(layer, this.#baseParams, true);
+    if (x < 0 || y < 0 || x >= data.width || y >= data.height) return null;
+    const o = (y * data.width + x) * 4, p = data.data;
+    return p[o + 3] ? { r: p[o], g: p[o + 1], b: p[o + 2], a: p[o + 3] / 255 } : null;
+  }
+
+  // An upper vector layer's color at grid pixel (x, y) as stored (before adjustments), as baseStoredAt reads the base's,
+  // with its alpha (0..1), or null where it draws nothing (or it isn't one of the upper layers).
+  upperStoredAt(layer, x, y) {
+    const u = this.upper.find((each) => each.layer === layer);
+    if (!u || !layer.drawsShapes || !this.outputCanvas) return null;
+    layer.sync();
+    const result = this.#gridOf(layer, u.params, this.#upperStored.get(layer), true);
+    this.#upperStored.set(layer, result);
+    const { data } = result;
     if (x < 0 || y < 0 || x >= data.width || y >= data.height) return null;
     const o = (y * data.width + x) * 4, p = data.data;
     return p[o + 3] ? { r: p[o], g: p[o + 1], b: p[o + 2], a: p[o + 3] / 255 } : null;

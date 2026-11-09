@@ -172,10 +172,14 @@ export const layerActions = {
   // A picture (an image file) added to the drawing as paint, fitted to the canvas, over what's painted there: on the cells
   // layer picked, else (the base or a vector layer picked) on a new cells layer above it, named after the file, picked.
   // One undo step; the layer's id. Null, nothing added, on a movie, while shared with a room (its toast), at the most
-  // layers, or for a file that won't decode.
+  // layers, on a hidden layer picked (its toast), or for a file that won't decode.
   async addPictureToLayer(file) {
     const workspace = useWorkspaceStore();
     if (this.hasFrames || refusedInRoom(this) || (!workspace.pickedCells && this.layers.length >= MOST_LAYERS)) return null;
+    if (workspace.pickedCells && this.layerHidden(this.editId)) { // as drawing on it is (tools: a hidden layer)
+      toast(t('layers.hiddenToast'));
+      return null;
+    }
     const picture = await loadImage(file).catch(() => null);
     if (!picture || this.hasFrames) return null;
     ready(this);

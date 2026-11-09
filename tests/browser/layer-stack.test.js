@@ -679,6 +679,19 @@ test('a picture added with Layer 1 picked becomes its paint, one undo step', asy
   expect(project.paintOf('edit').hasPaint).toBe(true);
 });
 
+test('a picture isn\'t added to a hidden layer picked: the toast says to show it', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('edit');
+  project.setLayerHidden('edit', true);
+  const version = project.history.version;
+  toastMessage.value = null;
+  expect(await project.addPictureToLayer(await pictureFile())).toBe(null);
+  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(project.paintOf('edit')?.hasPaint ?? false).toBe(false);
+  expect(ids(project)).toEqual(['base', 'edit']);
+  expect(project.history.version).toBe(version);
+});
+
 test('with the base picked it lands on a new layer named after the file', async () => {
   const { project, workspace } = await blank();
   workspace.pickLayer('base');

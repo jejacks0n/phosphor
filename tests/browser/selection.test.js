@@ -380,12 +380,43 @@ test('Copy takes what shapes show; paste onto Layer 2 shows it', async () => {
   expect(looks(project, rect, 15)).toEqual(shown);
 });
 
+for (const [name, sliders] of [['Invert on', { invert: 100 }], ['Brightness moved', { brightness: 60 }]]) {
+  test(`Copy of what shapes show pastes as it showed, with ${name}`, async () => {
+    const { project, workspace, top, rect } = await stack();
+    project.$patch(sliders);
+    project.render(); await settle(project);
+    const shown = looks(project, rect);
+    project.pasteSelection(project.copySelection(rect, workspace.selectionIds), rect.c0 + 15, rect.r0);
+    project.render(); await settle(project);
+    expect(project.cellsOf(top).size).toBeGreaterThan(0);
+    expect(looks(project, rect, 15)).toEqual(shown);
+  });
+}
+
+test('a copied block of what shapes show keeps its look through Bake', async () => {
+  const { project, workspace, rect } = await stack();
+  project.$patch({ invert: 100 });
+  project.render(); await settle(project);
+  const shown = looks(project, rect);
+  workspace.clipboard = project.copySelection(rect, workspace.selectionIds);
+  await project.bake();
+  project.render(); await settle(project);
+  expect(project.invert).toBe(0);
+  project.pasteSelection(workspace.clipboard, rect.c0 + 15, rect.r0);
+  project.render(); await settle(project);
+  expect(looks(project, rect, 15)).toEqual(shown);
+});
+
 test('Cut leaves the shape whole', async () => {
   const { project, workspace, top, rect } = await stack();
   project.typeAt(5, 2, 'T', ATTRS);
   project.commitEdit();
+  app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
+  app.mount(document.createElement('div'));
+  workspace.selectAll(rect);
   const shapes = project.shapes;
-  project.deleteSelection(rect, workspace.selectionIds);
+  key('x', { metaKey: true }); // Cut: the copy, then the cells gone from every shown layer
+  expect(workspace.clipboard.shown.some(Boolean)).toBe(true);
   expect(project.shapes).toBe(shapes);
   expect(project.cellsOf('edit').size).toBe(0);
   expect(project.cellsOf(top).size).toBe(0);

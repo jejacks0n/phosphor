@@ -74,7 +74,7 @@ test('a .ans dropped on the drawing can be added where it lands, as one undo ste
   await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
   await expect(question(page)).toContainText('Add tiny.ans?');
   await expect(question(page)).toContainText('Add it to this drawing, or open it in place of this one.');
-  await expect(question(page)).toContainText('It lands where you dropped it, on the edit layer');
+  await expect(question(page)).toContainText('It lands where you dropped it, on Layer 1,');
   await expect(page.locator('article.drop-zone')).not.toHaveClass(/dragging/); // the drop ended its highlight
   await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
   await expect(question(page)).toBeHidden();
@@ -115,7 +115,7 @@ test('dropped beside the drawing, an added file lands at the top-left of the vie
   const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
   expect(row).toBeGreaterThan(0);
   await dropOn(page, 'article.drop-zone', tiny, 'tiny.ans', { x: 1, y: 1 });
-  await expect(question(page)).toContainText('It lands at the top-left of the view, on the edit layer');
+  await expect(question(page)).toContainText('It lands at the top-left of the view, on Layer 1,');
   await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
   await expect.poll(() => chars(page, row, col, col + 2)).toBe('ABC'); // once the file is read
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: col, r0: row, c1: col + 2, r1: row + 1 });

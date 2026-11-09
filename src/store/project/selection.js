@@ -326,7 +326,7 @@ export const selectionActions = {
       const byLayer = new Map();
       for (const unit of units) {
         const id = layered.findLast((each) => owns(each, unit)) ?? base ?? layered.at(-1);
-        if (id) byLayer.set(id, [...(byLayer.get(id) ?? []), unit]);
+        if (id) (byLayer.get(id) ?? byLayer.set(id, []).get(id)).push(unit);
       }
       eachLayer(this, ids.filter((id) => byLayer.has(id)), (id) => {
         const mine = byLayer.get(id);
@@ -459,15 +459,14 @@ function moveParts(project, block, ids, rect, col, row) {
   });
 }
 
-// What the shapes on shown vector layers show in these cells (Copy's), as exact cells (the colors as they show), or
+// What the shapes on shown vector layers show in these cells (Copy's), as exact cells (stored colors: storedLookAt), or
 // null where none reaches; null when none reaches any.
 function shownByShapes(project, cells) {
   const layers = [project._shapeLayer, ...project.lowerGroup.upper.map((id) => project._upperShapes.get(id))].filter((layer) => layer?.drawsShapes);
   if (!layers.length) return null;
   const shown = cells.map(({ col, row }) => {
     if (!layers.some((layer) => layer.charAt(col, row) !== undefined)) return null;
-    const cell = project.cells[cellIndex(col, row, project.cols)];
-    return cell && { char: cell.wide === 'trail' ? ' ' : cell.char, fg: cell.fg.hex, bg: cell.bg.hex };
+    return project.cells[cellIndex(col, row, project.cols)] ? project.storedLookAt(col, row) : null;
   });
   return shown.some(Boolean) ? shown : null;
 }

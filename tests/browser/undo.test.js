@@ -323,6 +323,9 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
     if (forceRender && !held && s.shown !== s.full && realDiff(s.shown, s.full)) return { seed, log, problem: `step ${i} ${name}: shown cells differ from a full render`, diff: diffCells(s.shown, s.full) };
   }
   closeRun(stack, project, t, acc);
+  // a run still open on the last step (base typing, held above) is checked once it's closed
+  const end = await snap(project, workspace, { forceRender });
+  if (forceRender && end.shown !== end.full && realDiff(end.shown, end.full)) return { seed, log, problem: 'after closeRun: shown cells differ from a full render', diff: diffCells(end.shown, end.full) };
   const compare = (a, b) => Object.keys(a).filter((k) => k !== 'shown' && a[k] !== b[k] && !(k === 'full' && !forceRender));
   // undo all the way
   for (let i = stack.length - 2; i >= 0; i--) {
