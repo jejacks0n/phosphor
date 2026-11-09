@@ -314,6 +314,20 @@ export function pathData(shape, sx = 1, sy = 1) {
 // comes first, when the shapes are from several vector layers.
 export const stacked = (shapes, rank = null) => [...shapes].sort(([ka, a], [kb, b]) => (rank ? rank(a) - rank(b) : 0) || a.z - b.z || (ka < kb ? -1 : ka > kb ? 1 : 0));
 
+// Copies of shapes (key to shape) on the vector layer with the id layer (null: 'vector', which a shape doesn't name), each
+// under a new key, a follower whose path is among them following the path's copy: { shapes, keyMap }, keyMap each key
+// copied to its copy's. A keyMap given is used and added to, so the records other frames hold of them copy to the same
+// keys.
+export function copyShapes(shapes, layer, keyMap = new Map()) {
+  for (const key of shapes.keys()) if (!keyMap.has(key)) keyMap.set(key, newShapeKey());
+  const copies = new Map();
+  for (const [key, shape] of shapes) {
+    const path = shape.follow && keyMap.get(shape.follow.key);
+    copies.set(keyMap.get(key), withShape(shape, { layer, ...(path && { follow: { ...shape.follow, key: path } }) }));
+  }
+  return { shapes: copies, keyMap };
+}
+
 // Where a cubic from p0 to p3 (handles p1, p2), along one axis, turns: its t in (0, 1).
 function turns(p0, p1, p2, p3) {
   const a = -p0 + 3 * p1 - 3 * p2 + p3, b = 2 * (p0 - 2 * p1 + p2), c = p1 - p0;

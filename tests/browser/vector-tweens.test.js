@@ -315,14 +315,15 @@ test('a project keeps its tweens when saved and opened', async () => {
   expect(y(opened, key)).toBe(3);
 });
 
-test('clearing the far key frame, and undoing that, redraws the frames between', async () => {
+test('clearing the far key frame clears its cells and leaves its shapes, so the frames between keep the tween', async () => {
   const { project } = await animated();
   const key = bounce(project, 'easeIn');
   for (let i = 1; i < 6; i++) project.showFrame(i);
   project.showFrame(6);
   project.clearEditLayer();
+  expect(y(project, key)).toBe(24);
   project.showFrame(3);
-  expect(y(project, key)).toBe(0);
+  expect(y(project, key)).toBe(3);
   project.undo();
   project.showFrame(3);
   expect(y(project, key)).toBe(3);

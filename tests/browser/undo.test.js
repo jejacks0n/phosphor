@@ -231,6 +231,12 @@ function makeActions(project, workspace, r, opts) {
       if (cellsLayers(project).length < 2) project.addLayer('cells', workspace.pickedLayer);
     },
     pickLayer: () => workspace.pickLayer(pick(cellsLayers(project))),
+    deleteLayer: () => { // a cells layer above the bottom, keeping one
+      if (cellsLayers(project).length > 1) project.deleteLayer(pick(cellsLayers(project)));
+    },
+    duplicateLayer: () => { // up to three above the bottom; the copy is picked
+      if (cellsLayers(project).length < 3) project.duplicateLayer(pick(cellsLayers(project)));
+    },
   };
   if (opts.async) {
     actions.mergeIntoPicture = async () => project.mergeIntoPicture(r() < 0.5 ? rect() : null);
@@ -376,9 +382,9 @@ test('fuzz: shapes among typing, paint, selections and merges', async () => {
   expect(failures).toEqual([]);
 }, 300_000);
 
-test('fuzz: typing, paint and selections across two cells layers', async () => {
+test('fuzz: typing, paint and selections across two cells layers, added, deleted and duplicated', async () => {
   const failures = [];
-  const only = ['type', 'typingRun', 'paint', 'move', 'clearEdit', 'addLayer', 'addLayer', 'pickLayer', 'pickLayer'];
+  const only = ['type', 'typingRun', 'paint', 'move', 'clearEdit', 'addLayer', 'addLayer', 'pickLayer', 'pickLayer', 'deleteLayer', 'duplicateLayer'];
   for (const seed of seeds([1, 2, 3, 4])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
@@ -551,16 +557,18 @@ async function fuzzSettings(seed, { steps = 20, forceRender = false } = {}) {
     if (err) return { seed, log, problem: err };
   }
   closeRun(stack, project, t, acc);
-  const keys = ['editCells', 'pins', 'paint', 'base', 'sliders', 'image', 'hasPaint', 'colors'];
+  const keys = ['layers', 'editCells', 'pins', 'paint', 'base', 'sliders', 'image', 'hasPaint', 'colors'];
   const cmp = (a, b) => keys.filter((k) => a[k] !== b[k]);
   for (let i = stack.length - 2; i >= 0; i--) {
     project.undo();
+    pickOf(project, workspace, stack[i]);
     const s = await snap(project, workspace, { forceRender });
     const bad = cmp(stack[i], s);
     if (bad.length) return { seed, log, problem: `undo to ${i}: ${bad}`, want: pickKeys(stack[i], bad), got: pickKeys(s, bad) };
   }
   for (let i = 1; i < stack.length; i++) {
     project.redo();
+    pickOf(project, workspace, stack[i]);
     const s = await snap(project, workspace, { forceRender });
     const bad = cmp(stack[i], s);
     if (bad.length) return { seed, log, problem: `redo to ${i}: ${bad}`, want: pickKeys(stack[i], bad), got: pickKeys(s, bad) };

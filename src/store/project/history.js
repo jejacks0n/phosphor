@@ -308,8 +308,10 @@ export const historyActions = {
   // stays until the next reset; the picture and undo stay right.
   // In a room it's final: artists can't follow it being undone (sharing.js). It's the showing frame's edit layer,
   // and undoing goes back to that frame; everyFrame: all of them's, undone from wherever (a Bake). It's the cells layer in
-  // use's too: undo and redo run with that one in the edit layer's fields, whichever's in use then.
-  pushWholeLayer(undo, redo, bytes, { everyFrame = false } = {}) {
+  // use's too: undo and redo run with that one in the edit layer's fields, whichever's in use then. History is linear, so
+  // a layer deleted since is back by then (the delete's own undo puts it back); one that's nowhere is left as it is, never
+  // written on another. layerOp: it changes the stack (deleting, duplicating), and puts the layers back itself.
+  pushWholeLayer(undo, redo, bytes, { everyFrame = false, layerOp = false } = {}) {
     if (this._sharing?.role === 'host') {
       this.editVersion++;
       this.shareWholeDocument();
@@ -327,8 +329,8 @@ export const historyActions = {
       });
       away = showing;
     };
-    const id = this.editId;
-    this.pushEdit({ undo: () => { swap(); withLayer(this, id, undo); }, redo: () => { swap(); withLayer(this, id, redo); }, wholeLayer: true, bytes });
+    const id = this.editId, on = (fn) => (layerOp ? fn() : id === this.editId || this._layerData.has(id) ? withLayer(this, id, fn) : undefined);
+    this.pushEdit({ undo: () => { swap(); on(undo); }, redo: () => { swap(); on(redo); }, wholeLayer: true, ...(layerOp && { layerOp }), bytes });
   },
 
   // The last whole-layer step and everything older go: what's left only needs strokes since.

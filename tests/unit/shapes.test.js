@@ -5,8 +5,9 @@ import {
   makeShape, sameShape, isShape, isShapeKey, newShapeKey, pathData, shapeBounds, dirtyRect, worldPoints,
   multiply, invert, apply, rotation, scaling, translation, rectShape, ellipseShape, polygonShape, splitAt, nearestOnOutline,
   moveHandle, setSmooth, setFree, deletePoint, shapeFromStranger, localBounds, curveBounds, deserializeShapes, serializeShapes, transformed, MOST_POINTS,
-  outlines, withOutlines, locate, allPoints, strokeOf, strokeAlign, strokeSide, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors, fillAs, stacked,
+  outlines, withOutlines, locate, allPoints, strokeOf, strokeAlign, strokeSide, STROKE_DEFAULTS, withShape, movePoint, joined, separated, styleColors, fillAs, stacked, copyShapes,
 } from '../../src/document/shapes.js';
+import { makeArt } from '../../src/document/artLayers.js';
 import { changeBytes } from '../../src/document/changes.js';
 import { MOST_CHANGE_BYTES } from '../../src/social/wire.js';
 
@@ -536,4 +537,27 @@ test('stacked orders by z, ties by key, and by the layers\' rank first when give
   const rank = (shape) => ['vector', 'L1'].indexOf(shape.layer ?? 'vector');
   assert.deepEqual(stacked(shapes, rank).map(([key]) => key), ['v:c', 'v:a', 'v:b']);
   assert.deepEqual(stacked(new Map([['v:2', c], ['v:1', { ...c }]])).map(([key]) => key), ['v:1', 'v:2']);
+});
+
+test('copyShapes gives new keys and points followers at the copies', () => {
+  const path = rectShape(0, 0, 10, 10, { stroke: '#ff0000' });
+  const rider = makeShape({ ...rectShape(0, 0, 1, 1, { fill: '#00ff00' }), follow: { key: 'v:path' }, along: 0.5 });
+  const away = makeShape({ ...rectShape(0, 0, 1, 1, { fill: '#0000ff' }), follow: { key: 'v:elsewhere' } }); // its path is on another layer
+  const art = makeArt({ m: [1, 0, 0, 1, 2, 4], art: { cols: 1, rows: 1, cells: [[0, 'A', '#ffffff', '#000000']] } });
+  const shapes = new Map([['v:path', path], ['v:rider', rider], ['v:away', away], ['v:art', art]]);
+  const { shapes: copies, keyMap } = copyShapes(shapes, 'L2');
+  assert.deepEqual([...keyMap.keys()], [...shapes.keys()]);
+  assert.equal(new Set(keyMap.values()).size, 4);
+  for (const [from, to] of keyMap) {
+    assert.ok(isShapeKey(to) && !shapes.has(to));
+    assert.equal(copies.get(to).layer, 'L2');
+    assert.deepEqual({ ...copies.get(to), layer: undefined, follow: undefined }, { ...shapes.get(from), layer: undefined, follow: undefined });
+  }
+  assert.equal(copies.get(keyMap.get('v:rider')).follow.key, keyMap.get('v:path'));
+  assert.equal(copies.get(keyMap.get('v:away')).follow.key, 'v:elsewhere');
+  assert.deepEqual(copies.get(keyMap.get('v:art')).art, art.art); // an art layer's drawing comes with it
+  // On Vector 1 (null) a copy names no layer; a keyMap given is used, so another frame's records copy to the same keys.
+  const again = copyShapes(new Map([['v:rider', rider]]), null, keyMap);
+  assert.equal(again.shapes.get(keyMap.get('v:rider')).layer, undefined);
+  assert.equal(again.shapes.get(keyMap.get('v:rider')).follow.key, keyMap.get('v:path'));
 });

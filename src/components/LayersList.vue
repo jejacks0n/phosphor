@@ -11,7 +11,8 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 // The drawing's layers, top of the stack first (project.layers, reversed), the base at the bottom. Picking a row
 // decides the tabs and what the tools act on; its eye hides or shows the layer; a click on the picked row's name, a
 // double-click on any name, or F2 renames it, Enter or leaving the box keeps the name and Escape doesn't. Each row but
-// the bottom has a ⋯ menu (Rename, Move up, Move down) and drags to another place in the stack, never below the bottom.
+// the bottom has a ⋯ menu (Rename, Duplicate, Delete, Move up, Move down) and drags to another place in the stack, never
+// below the bottom.
 // + Layer and + Vector layer, under the list, add a layer directly above the picked one and pick it. The side panel's
 // LAYERS and the phone's Layers dialog both show it.
 
@@ -54,6 +55,11 @@ function add(kind) {
   const id = project.addLayer(kind, inRoom.value ? 'base' : workspace.shownPick);
   if (id) workspace.pickLayer(id);
 }
+
+// The ⋯ menu's Duplicate (the copy goes directly above and is picked, project.duplicateLayer) and Delete, each an undo
+// step: off in a room, and Duplicate at the most layers.
+const duplicateOff = computed(() => (full.value ? t('layers.full', { n: MOST_LAYERS }) : inRoom.value ? t('layers.notInRoom') : null));
+const duplicate = (layer) => project.duplicateLayer(layer.id);
 
 // The ⋯ menu's moves: a step up or down the stack, as an undo step (project.moveLayer).
 const moveOff = (layer, by) => (inRoom.value ? t('layers.notInRoom') : (by > 0 ? layer.at === project.layers.length - 1 : layer.at === 1) ? '' : null);
@@ -164,6 +170,8 @@ function cancel() {
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6.5h3v3H2zM6.5 6.5h3v3h-3zM11 6.5h3v3h-3z"/></svg>
             </template>
             <button @click="rename(layer)">{{ t('layers.rename') }}</button>
+            <button :disabled="duplicateOff !== null" :title="duplicateOff" @click="duplicate(layer)">{{ t('layers.duplicate') }}</button>
+            <button :disabled="inRoom" :title="inRoom ? t('layers.notInRoom') : null" @click="project.deleteLayer(layer.id)">{{ t('layers.delete') }}</button>
             <button :disabled="moveOff(layer, 1) !== null" :title="moveOff(layer, 1) || null" @click="move(layer, 1)">{{ t('layers.moveUp') }}</button>
             <button :disabled="moveOff(layer, -1) !== null" :title="moveOff(layer, -1) || null" @click="move(layer, -1)">{{ t('layers.moveDown') }}</button>
           </DropdownMenu>

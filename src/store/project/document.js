@@ -82,6 +82,10 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
       // Every other cells layer waits in _layerData, all of them there before the layers are, which the pick follows.
       const above = stack.filter((layer) => layer.kind === 'cells' && layer.id !== 'base').map((layer) => layer.id);
       this.editId = above.includes('edit') ? 'edit' : above.at(-1) ?? 'edit';
+      // The pick replaceImage gave the edit layer it opens with goes to that layer, so it doesn't fall to the base when
+      // the stack has no edit layer.
+      const workspace = useWorkspaceStore();
+      if (workspace.pickedLayer === 'edit' && !above.includes('edit')) workspace.pickedLayer = this.editId;
       if (layerPaint.size) this.ensureLayer();
       for (const id of above) {
         const picture = layerPaint.get(id);

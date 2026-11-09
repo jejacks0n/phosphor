@@ -3,6 +3,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells.js';
+import { rectShape, transformed, translation } from '@/document/shapes.js';
 
 const INK = { fg: '#ffee00', bg: '#0044aa' };
 
@@ -172,14 +173,14 @@ test('a slider undo does not change frame', async () => {
   expect(project.frame).toBe(1);
 });
 
-test('Clear edit layer undoes to the frame and kind it had', async () => {
+test('Clear edit layer undoes to the frame it was on, as it was', async () => {
   const { project } = await animated(2);
   project.showFrame(1);
   type(project, 1, 1, 'A');
   paint(project, 6, 6);
   const drawn = cellsKey(project);
   project.clearEditLayer();
-  expect(project.currentFrame.kind).toBe('wipe');
+  expect(project.editCells.size).toBe(0);
   project.showFrame(0);
   project.undo();
   expect(project.frame).toBe(1);
@@ -192,7 +193,7 @@ test('Clear edit layer undoes to the frame and kind it had', async () => {
   project.redo();
   project.redo();
   project.redo();
-  expect(project.currentFrame.kind).toBe('wipe');
+  expect(project.frame).toBe(1);
   expect(project.editCells.size).toBe(0);
 });
 
@@ -341,4 +342,133 @@ test('each frame keeps each layer\'s changes', async () => {
   project.showFrame(1);
   frame1();
   expect([...project.frames[1].changes.keys()].sort()).toEqual([`${id}:2,2`, `${id}:3,3`, `${id}:6,3`, '1,1'].sort()); // the paint at (6, 6) is cell 6,3
+});
+
+// A layer deleted or cleared on a movie: every frame at once, as one undo step.
+const charsOf = (cells) => Object.fromEntries([...cells].map(([key, { char }]) => [key, char]));
+// A vector layer with a shape tweened from frame 0 to frame 2 (moved down 8 there, eased linear): the shape's key.
+function tweened(project, workspace, vector) {
+  workspace.pickLayer(vector);
+  const key = project.addShape(rectShape(2, 20, 6, 24, { fill: '#00ff00' }));
+  project.showFrame(2);
+  project.updateShapes([[key, transformed(project.shapes.get(key), translation(0, 8))]]);
+  project.showFrame(0);
+  project.setKeyEasing(key, [{ part: 'transform', at: 0 }], 'linear');
+  return key;
+}
+
+test('undo across a deleted layer in an animation', async () => {
+  const { project, workspace } = await animated(3);
+  const vector = project.addLayer('vector', 'edit'), key = tweened(project, workspace, vector);
+  const tween = () => JSON.stringify(project.frames.map((frame) => [frame.changes.get(key)?.cell ?? null, [...(frame.tweens?.get(key) ?? [])]]));
+  const was = tween();
+  expect(was).toContain('linear');
+  const id = project.addLayer('cells', vector);
+  workspace.pickLayer(id);
+  for (const [at, char] of [[0, 'a'], [1, 'b'], [2, 'c']]) {
+    project.showFrame(at);
+    type(project, 1 + at, 1, char);
+  }
+  project.noteFrame();
+  const onLayer = (frame) => [...frame.changes.keys()].filter((at) => at.startsWith(`${id}:`));
+  const keysBefore = project.frames.map(onLayer), cellsBefore = [0, 1, 2].map((at) => { project.showFrame(at); return charsOf(project.cellsOf(id)); });
+  expect(keysBefore.every((list) => list.length)).toBe(true);
+  expect(project.deleteLayer(id)).toBe(true);
+  expect(project.frames.every((frame) => !onLayer(frame).length)).toBe(true); // none left on any frame
+  expect(project.layerById(id)).toBeUndefined();
+  workspace.pickLayer('edit');
+  type(project, 5, 5, 'e');
+  project.undo();
+  project.undo();
+  expect(project.layerById(id)).toBeTruthy();
+  expect(project.frames.map(onLayer)).toEqual(keysBefore);
+  expect([0, 1, 2].map((at) => { project.showFrame(at); return charsOf(project.cellsOf(id)); })).toEqual(cellsBefore);
+  expect(tween()).toBe(was);
+  expect(project.cellsOf('edit').size).toBe(0);
+  project.showFrame(2);
+  project.undo(); // the layer's last stroke, on the frame showing
+  expect(project.frame).toBe(2);
+  expect(charsOf(project.cellsOf(id))).toEqual({ '1,1': 'a', '2,1': 'b' });
+});
+
+test('deleting a vector layer drops its shapes\' keys from every frame', async () => {
+  const { project, workspace } = await animated(3);
+  const vector = project.addLayer('vector', 'edit'), key = tweened(project, workspace, vector);
+  const other = project.addLayer('vector', vector);
+  workspace.pickLayer(other);
+  const stays = project.addShape(rectShape(10, 2, 14, 6, { fill: '#0000ff' }));
+  project.commitEdit();
+  project.noteFrame();
+  const shapes = new Set([key]);
+  const held = (frame) => [...frame.changes.keys(), ...(frame.tweens?.keys() ?? []), ...(frame.parts?.keys() ?? []), ...(frame.motions?.keys() ?? [])];
+  const before = JSON.stringify(project.frames.map((frame) => held(frame)));
+  expect(project.deleteLayer(vector)).toBe(true);
+  expect(project.frames.every((f) => ![...f.changes.keys()].some((k) => shapes.has(k)))).toBe(true);
+  expect(project.frames.every((f) => !held(f).some((k) => shapes.has(k)))).toBe(true);
+  expect([...project.shapes.keys()]).toEqual([stays]);
+  project.showFrame(2);
+  expect(project.shapes.has(key)).toBe(false);
+  project.undo();
+  expect(JSON.stringify(project.frames.map((frame) => held(frame)))).toBe(before);
+  project.showFrame(1);
+  expect(project.shapes.get(key).m[5]).toBe(4); // half way down its tween again
+});
+
+test('duplicating a layer in an animation copies its keys on every frame, a shape\'s tween under its copy\'s key', async () => {
+  const { project, workspace } = await animated(3);
+  const vector = project.addLayer('vector', 'edit'), key = tweened(project, workspace, vector);
+  const id = project.addLayer('cells', vector);
+  workspace.pickLayer(id);
+  for (const [at, char] of [[0, 'a'], [2, 'c']]) {
+    project.showFrame(at);
+    type(project, 1 + at, 1, char);
+  }
+  const cells = project.duplicateLayer(id);
+  const bare = (frame, on) => [...frame.changes.keys()].filter((at) => at.startsWith(`${on}:`)).map((at) => at.slice(on.length + 1));
+  expect(project.frames.map((frame) => bare(frame, cells))).toEqual(project.frames.map((frame) => bare(frame, id)));
+  project.showFrame(1);
+  expect(charsOf(project.cellsOf(cells))).toEqual({ '1,1': 'a' });
+  const shapes = project.duplicateLayer(vector);
+  const [copy] = [...project.shapes].find(([, shape]) => shape.layer === shapes);
+  expect(copy).not.toBe(key);
+  expect(project.shapes.get(copy).m[5]).toBe(4); // half way down the copied tween
+  expect(project.frames[0].tweens.get(copy)).toEqual(project.frames[0].tweens.get(key));
+  project.undo();
+  project.undo();
+  expect(project.frames.every((frame) => !bare(frame, cells).length && !frame.changes.has(copy))).toBe(true);
+});
+
+test('a frame holds no keys of a layer the stack doesn\'t have', async () => {
+  const { project } = await animated(2);
+  project.showFrame(1);
+  type(project, 1, 1, 'a');
+  project.layers = project.layers.filter((l) => l.id !== 'edit'); // the layer in use gone, its fields kept
+  project.noteFrame();
+  expect([...project.frames[1].changes.keys()]).toEqual([]);
+});
+
+test('Clear edit layer on a movie clears only the picked layer, on the frame showing', async () => {
+  const { project, workspace } = await animated(2);
+  const id = project.addLayer('cells', 'edit');
+  type(project, 1, 1, 'a');
+  workspace.pickLayer(id);
+  type(project, 2, 2, 'x');
+  const key = project.addShape(rectShape(10, 2, 14, 6, { fill: '#0000ff' }));
+  project.commitEdit();
+  workspace.pickLayer(id);
+  project.showFrame(1);
+  type(project, 3, 3, 'y');
+  workspace.pickLayer('edit');
+  type(project, 4, 4, 'b');
+  workspace.pickLayer(id);
+  project.clearEditLayer();
+  expect(charsOf(project.cellsOf(id))).toEqual({}); // what it inherited there too
+  expect(charsOf(project.cellsOf('edit'))).toEqual({ '1,1': 'a', '4,4': 'b' });
+  expect(project.shapes.has(key)).toBe(true);
+  expect(project.currentFrame.kind).toBe('blank');
+  project.showFrame(0);
+  expect(charsOf(project.cellsOf(id))).toEqual({ '2,2': 'x' });
+  project.undo();
+  expect(project.frame).toBe(1);
+  expect(charsOf(project.cellsOf(id))).toEqual({ '2,2': 'x', '3,3': 'y' });
 });

@@ -1327,7 +1327,7 @@ test('a deleted layer can\'t come back by undo in a room', async () => {
   project.addLayer('cells', 'edit');
   project.typeAt(0, 0, 'A', INK);
   project.commitEdit();
-  project.pushEdit({ layerOp: true, undo() {}, redo() {}, bytes: 0 }); // stands for the delete (deleteLayer, in Task 6)
+  expect(project.deleteLayer('L1')).toBe(true);
   expect(project.canUndo).toBe(true);
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
   open.push(project);
@@ -1341,8 +1341,7 @@ test('a fitting stack with ids L1 goes live as edit', async () => {
   project.filename = 'night';
   project.typeAt(2, 1, 'B', INK);
   project.commitEdit();
-  project.layers = project.layers.filter((l) => l.id !== 'edit'); // the edit layer deleted (deleteLayer, in Task 6)
-  project._layerData.delete('edit');
+  project.deleteLayer('edit');
   project.renameLayer('L1', 'Logo');
   const cells = JSON.stringify([...project.editCells]);
   expect(project.fitsRoom).toBe(true);

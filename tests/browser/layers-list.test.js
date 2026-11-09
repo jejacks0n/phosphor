@@ -106,10 +106,25 @@ test('Move up and Move down in ⋯ reorder; the bottom row has no ⋯', async ()
   expect(project.canUndo).toBe(true);
 });
 
+test('Duplicate and Delete in ⋯: the copy goes directly above and is picked, and Delete takes it away', async () => {
+  const { project, workspace } = await mount();
+  expect(names()).toEqual(['Layer 1', 'Base']);
+  let item = await openMenu(0);
+  item('Duplicate').click();
+  await settle(project);
+  expect(names()).toEqual(['Layer 1 copy', 'Layer 1', 'Base']);
+  expect(workspace.pickedLayer).toBe(project.layers[2].id);
+  item = await openMenu(0);
+  item('Delete').click();
+  await settle(project);
+  expect(names()).toEqual(['Layer 1', 'Base']);
+  expect(workspace.pickedLayer).toBe('edit');
+});
+
 test('in a room the ⋯ items that change the stack are off with the reason', async () => {
   await mount(({ project }) => { project._sharing = { role: 'host' }; });
   const item = await openMenu(0);
-  for (const label of ['Move up', 'Move down']) {
+  for (const label of ['Duplicate', 'Delete', 'Move up', 'Move down']) {
     expect(item(label).disabled).toBe(true);
     expect(item(label).title).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
   }
@@ -119,12 +134,16 @@ test('in a room the ⋯ items that change the stack are off with the reason', as
   expect(addButton().disabled).toBe(false); // the vector layer the room is missing
 });
 
-test('at the most layers + Layer and + Vector layer are off and say why', async () => {
+test('at the most layers + Layer, + Vector layer and Duplicate are off and say why', async () => {
   await mount(({ project }) => { while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit'); });
   for (const label of ['+ Layer', '+ Vector layer']) {
     expect(addButton(label).disabled).toBe(true);
     expect(addButton(label).title).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`);
   }
+  const item = await openMenu(0);
+  expect(item('Duplicate').disabled).toBe(true);
+  expect(item('Duplicate').title).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`);
+  expect(item('Delete').disabled).toBe(false);
 });
 
 test('picking a row picks its layer', async () => {

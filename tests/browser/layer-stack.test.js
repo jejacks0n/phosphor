@@ -3,7 +3,7 @@
 import { test, expect, vi } from 'vitest';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
-import { rectShape } from '@/document/shapes.js';
+import { makeShape, rectShape, transformed, translation } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
 import { toastMessage } from '@/composables/useToast.js';
@@ -363,4 +363,166 @@ test('a whole compose reads an upper layer\'s paint once, not a pixel at a time'
   project.paintStroke([{ x: 2, y: 2, alpha: 1 }], '#0000ff'); // and an edit after that catches the cache up where it painted
   project.commitEdit();
   expect(cellAt(project, 2, 1).bg.hex.toLowerCase()).toBe('#0000ff');
+});
+
+// Deleting and duplicating: one undo step each, on every frame; the bottom stays.
+const ids = (project) => project.layers.map((l) => l.id);
+const canvasBytes = (paint) => paint.canvas.width * paint.canvas.height * 4;
+
+test('deleting a layer and undoing brings back its cells, paint and name', async () => {
+  const { project, workspace } = await blank();
+  const id = project.addLayer('cells', 'edit');
+  workspace.pickLayer(id);
+  project.typeAt(1, 1, 'Q', WHITE);
+  project.commitEdit();
+  project.paintStroke([{ x: 4, y: 6, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  project.renameLayer(id, 'Ink');
+  workspace.pickLayer('edit');
+  await settle(project);
+  const shown = cellsKey(project), paint = project.paintOf(id);
+  expect(project.deleteLayer(id)).toBe(true);
+  await settle(project);
+  expect(ids(project)).toEqual(['base', 'edit']);
+  expect(project._layerData.has(id)).toBe(false);
+  expect(cellAt(project, 1, 1).char).not.toBe('Q');
+  expect(project.history.last.bytes).toBeGreaterThanOrEqual(canvasBytes(paint)); // what it holds counts toward undo's budget
+  project.undo();
+  await settle(project);
+  expect(ids(project)).toEqual(['base', 'edit', id]);
+  expect(project.layerById(id).name).toBe('Ink');
+  expect(keys(project.cellsOf(id))).toEqual(['1,1']);
+  expect(project.paintOf(id).pixelAt(4, 6)).not.toBe(null);
+  expect(cellsKey(project)).toEqual(shown);
+  project.redo();
+  expect(ids(project)).toEqual(['base', 'edit']);
+  project.undo();
+  project.undo(); // the strokes under the delete are in reach again
+  expect(project.paintOf(id).pixelAt(4, 6)).toBe(null);
+  expect(keys(project.cellsOf(id))).toEqual(['1,1']);
+});
+
+test('deleting the picked layer picks the one under it', async () => {
+  const { project, workspace } = await blank();
+  const one = project.addLayer('cells', 'edit'), two = project.addLayer('cells', one); // [base, edit, L1, L2]
+  workspace.pickLayer(two);
+  project.typeAt(2, 2, 'T', WHITE);
+  project.commitEdit();
+  expect(project.deleteLayer(two)).toBe(true);
+  expect(workspace.pickedLayer).toBe(one);
+  expect(project.editId).toBe(one);
+  project.typeAt(3, 3, 'O', WHITE);
+  project.commitEdit();
+  expect(keys(project.cellsOf(one))).toEqual(['3,3']);
+  workspace.pickLayer('edit');
+  expect(project.deleteLayer('edit')).toBe(true); // the layer in use, with one left above it: that one's fields
+  expect(workspace.pickedLayer).toBe('base');
+  expect(project.editId).toBe(one);
+  expect(keys(project.editCells)).toEqual(['3,3']);
+  project.undo();
+  expect(ids(project)).toEqual(['base', 'edit', one]);
+  expect(project.cellsOf('edit').size).toBe(0);
+});
+
+test('duplicate sits above the original, picked, named \'Layer 2 copy\'', async () => {
+  const { project, workspace } = await blank();
+  const id = project.addLayer('cells', 'edit'), above = project.addLayer('cells', id); // Layer 2, Layer 3
+  workspace.pickLayer(id);
+  project.typeAt(1, 1, 'Q', WHITE);
+  project.commitEdit();
+  project.paintStroke([{ x: 4, y: 6, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  workspace.pickLayer('edit');
+  await settle(project);
+  const shown = cellsKey(project);
+  const copy = project.duplicateLayer(id);
+  await settle(project);
+  expect(ids(project)).toEqual(['base', 'edit', id, copy, above]);
+  expect(project.layerById(copy).name).toBe('Layer 2 copy');
+  expect(workspace.pickedLayer).toBe(copy);
+  expect(project.editId).toBe(copy);
+  expect(JSON.stringify([...project.cellsOf(copy)])).toBe(JSON.stringify([...project.cellsOf(id)]));
+  expect(project.paintOf(copy)).not.toBe(project.paintOf(id));
+  expect(project.paintOf(copy).pixelAt(4, 6)).toEqual(project.paintOf(id).pixelAt(4, 6));
+  expect(cellsKey(project)).toEqual(shown);
+  expect(project.history.last.bytes).toBeGreaterThanOrEqual(canvasBytes(project.paintOf(copy)));
+  project.typeAt(1, 1, 'Z', WHITE); // the copy is its own
+  project.commitEdit();
+  expect(project.cellsOf(id).get('1,1').char).toBe('Q');
+  project.undo();
+  project.undo();
+  expect(ids(project)).toEqual(['base', 'edit', id, above]);
+  expect(workspace.pickedLayer).toBe(id);
+  project.redo();
+  expect(ids(project)).toEqual(['base', 'edit', id, copy, above]);
+  expect(project.cellsOf(copy).get('1,1').char).toBe('Q');
+});
+
+test('a duplicated vector layer\'s shapes have new keys; moving one leaves the original', async () => {
+  const { project, workspace } = await blank();
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer(vector);
+  const path = project.addShape(rectShape(1, 1, 12, 12, { stroke: '#ff0000' }));
+  const rider = project.addShape(makeShape({ ...rectShape(0, 0, 2, 2, { fill: '#00ff00' }), follow: { key: path } }));
+  project.commitEdit();
+  const copy = project.duplicateLayer(vector);
+  expect(ids(project)).toEqual(['base', 'edit', vector, copy]);
+  const copies = [...project.shapes].filter(([, shape]) => shape.layer === copy);
+  expect(copies).toHaveLength(2);
+  expect(copies.some(([key]) => key === path || key === rider)).toBe(false);
+  const [pathCopy] = copies.find(([, shape]) => !shape.follow), [, riderCopy] = copies.find(([, shape]) => shape.follow);
+  expect(riderCopy.follow.key).toBe(pathCopy);
+  const original = project.shapes.get(path);
+  project.updateShapes([[pathCopy, transformed(project.shapes.get(pathCopy), translation(3, 0))]]);
+  project.commitEdit();
+  expect(project.shapes.get(path)).toBe(original);
+  project.undo();
+  project.undo();
+  expect(ids(project)).toEqual(['base', 'edit', vector]);
+  expect([...project.shapes.keys()].sort()).toEqual([path, rider].sort());
+});
+
+test('the bottom can\'t be deleted', async () => {
+  const { project } = await blank();
+  const version = project.history.version;
+  expect(project.deleteLayer('base')).toBe(false);
+  expect(project.deleteLayer('nope')).toBe(false);
+  expect(project.duplicateLayer('base')).toBe(null);
+  expect(project.history.version).toBe(version);
+  project._sharing = { role: 'host' };
+  expect(project.deleteLayer('edit')).toBe(false);
+  expect(toastMessage.value).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
+  expect(project.duplicateLayer('edit')).toBe(null);
+  project._sharing = null;
+  expect(ids(project)).toEqual(['base', 'edit']);
+});
+
+test('an undo step whose layer is gone writes no other layer', async () => {
+  const { project, workspace } = await blank();
+  const id = project.addLayer('cells', 'edit');
+  workspace.pickLayer(id);
+  project.typeAt(1, 1, 'Q', WHITE);
+  project.commitEdit();
+  project.clearEditLayer(); // a whole-layer step on L1
+  workspace.pickLayer('edit');
+  project.layers = project.layers.filter((l) => l.id !== id); // gone some way history doesn't know of
+  project._layerData.delete(id);
+  project.undo();
+  expect(project.editCells.size).toBe(0); // not L1's 'Q' written on the edit layer
+  expect(project.editId).toBe('edit');
+});
+
+test('a stack opened without an edit layer picks the layer in use', async () => {
+  const { project, workspace } = await blank();
+  const one = project.addLayer('cells', 'edit'), two = project.addLayer('cells', one);
+  workspace.pickLayer(two);
+  project.typeAt(1, 1, 'T', WHITE);
+  project.commitEdit();
+  project.deleteLayer('edit'); // [base, L1, L2]: no old form
+  const parts = await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }));
+  await project.openParts(parts, { filename: 'stack' });
+  await settle(project);
+  expect(ids(project)).toEqual(['base', one, two]);
+  expect(project.editId).toBe(two);
+  expect(workspace.pickedLayer).toBe(two);
 });

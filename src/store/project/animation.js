@@ -9,7 +9,7 @@ import { BASE, EMPTY_STATE, cellState, dropStrays, foldDeleted, frameDiff, isEmp
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
-import { isShapeKey, sameShape, shapeFromStranger, withShape } from '@/document/shapes.js';
+import { copyShapes, isShapeKey, newShapeKey, sameShape, shapeFromStranger, withShape } from '@/document/shapes.js';
 import { isArt } from '@/document/artLayers.js';
 import { MOTIONS, lifeAt, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { changedParts, partsOf, samePart } from '@/document/parts.js';
@@ -28,9 +28,13 @@ const MOST_FPS = 60;
 
 const clamped = (value, least, most) => Math.min(most, Math.max(least, value));
 
-// The cells layers frames hold, the one in use first (a document without an edit layer still has its fields). The
+// The cells layers frames hold, the one in use first: those in the stack, so a layer gone (deleted, or its add undone)
+// leaves no keys behind, even with its fields still in use (a document without an edit layer still has them, empty). The
 // bottom's cells and pixels are the document's, the same on every frame.
-const frameLayers = (project) => [...new Set([project.editId, ...project.layers.slice(1).filter((layer) => layer.kind === 'cells').map((layer) => layer.id)])];
+const frameLayers = (project) => {
+  const ids = project.layers.slice(1).filter((layer) => layer.kind === 'cells').map((layer) => layer.id);
+  return ids.includes(project.editId) ? [project.editId, ...ids.filter((id) => id !== project.editId)] : ids;
+};
 const layerData = (project, id) => (id === project.editId ? project : project._layerData.get(id));
 
 // The frame showing, as states, each cells layer's under its keys (layerKey). Browsers read soft paint back a step off
@@ -324,6 +328,15 @@ function putKeysBack(project, before) {
   project.staleFrames(Math.min(reach, tweenReach(project.frames, project.frame)));
   project.staleFrames(project.frame);
   project.frames = [...project.frames]; // the bar's marks
+}
+
+// A frame's tweens, motions or parts (by shape key, or null) without keys' entries, or with keyMap (copyShapes') each
+// entry of keys copied under its copy's key too.
+function rekeyed(map, keys, keyMap) {
+  if (!map || ![...map.keys()].some((key) => keys.has(key))) return map;
+  const next = new Map(keyMap ? map : [...map].filter(([key]) => !keys.has(key)));
+  if (keyMap) for (const [key, value] of map) if (keys.has(key)) next.set(keyMap.get(key), value);
+  return next.size ? next : null;
 }
 
 const framesNow = (project) => ({ list: project.frames, states: project.frames.map(({ kind, changes, tweens, motions, parts, splits }) => ({ kind, changes, tweens, motions, parts, splits })), showing: project.currentFrame });
@@ -951,6 +964,38 @@ export const animationActions = {
     this.fps = 8;
     this._arrived = this._noted = this._moviePalette = null;
     this.renderer.usePalette(null);
+  },
+
+  // Every frame's states (kind, changes, and its shapes' tweens, motions, parts and splits) as they are (before) and with
+  // layer id's keys gone, or with to, copied under the layer with that id (after), for setAllFrames: a cells layer's cells
+  // and paint, a vector layer's shapes with all they hold, under keyMap's new keys (copyShapes': every shape the layer has
+  // showing or on any frame, so a follower follows its path's copy). For a still the states are null: its drawing is
+  // the layers' own. The frame showing is noted first; nothing changes.
+  layerFrames(id, to = null) {
+    const vector = this.layerById(id)?.kind === 'vector', shapes = new Set(), onLayer = (key, cell) => cell && (cell.layer ?? 'vector') === id && shapes.add(key);
+    if (vector) {
+      for (const [key, shape] of this.shapes) onLayer(key, shape);
+      for (const frame of this.frames) for (const [key, { cell }] of frame.changes) if (isShapeKey(key)) onLayer(key, cell);
+    }
+    const keyMap = to && vector ? new Map([...shapes].map((key) => [key, newShapeKey()])) : null;
+    if (!this.hasFrames) return { before: null, after: null, keyMap };
+    this.noteFrame();
+    const mine = (key) => (isShapeKey(key) ? shapes.has(key) : !vector && keyLayer(key).id === id);
+    const before = framesNow(this).states;
+    const after = before.map(({ kind, changes, tweens, motions, parts, splits }) => {
+      const next = new Map([...changes].filter(([key]) => to || !mine(key)));
+      if (to) {
+        const held = [...changes].filter(([key]) => mine(key));
+        const copies = keyMap && copyShapes(new Map(held.filter(([key, { cell }]) => isShapeKey(key) && cell).map(([key, { cell }]) => [key, cell])), to, keyMap).shapes;
+        for (const [key, state] of held) {
+          if (!isShapeKey(key)) next.set(layerKey(to, keyLayer(key).key), state);
+          else next.set(keyMap.get(key), state.cell ? cellState(copies.get(keyMap.get(key)), state.top, state.bottom, state.stays) : state);
+        }
+      }
+      const split = splits && [...splits].some((key) => shapes.has(key)) ? new Set(to ? [...splits, ...[...splits].filter((key) => shapes.has(key)).map((key) => keyMap.get(key))] : [...splits].filter((key) => !shapes.has(key))) : splits;
+      return { kind, changes: next, tweens: rekeyed(tweens, shapes, keyMap), motions: rekeyed(motions, shapes, keyMap), parts: rekeyed(parts, shapes, keyMap), splits: split };
+    });
+    return { before, after, keyMap };
   },
 
   // Bake's before and after: every frame's kind and changes, set, and the frame showing shown from them.

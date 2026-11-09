@@ -204,7 +204,7 @@ test('a still never computes changes: frames[0].changes stays empty after stroke
   expect(project.frames[0].changes.size).toBe(0);
 });
 
-test('Clear edit layer makes the frame a Wipe, empty', async () => {
+test('Clear edit layer empties the layer on the frame, what it inherits there too, and the frame keeps its kind', async () => {
   const { project } = await animated();
   const clean = cellsKey(project);
   type(project, 1, 1, 'A');
@@ -212,8 +212,9 @@ test('Clear edit layer makes the frame a Wipe, empty', async () => {
   type(project, 2, 2, 'B');
   project.clearEditLayer();
   await settle(project);
-  expect(project.currentFrame.kind).toBe('wipe');
-  expect(project.currentFrame.changes.size).toBe(0);
+  expect(project.currentFrame.kind).toBe('blank');
+  expect([...project.currentFrame.changes.keys()]).toEqual(['1,1']); // the A it inherited, covered
+  expect(project.editCells.size).toBe(0);
   expect(cellsKey(project)).toEqual(clean);
   project.showFrame(0);
   expect(charAt(project, 1, 1)).toBe('A');

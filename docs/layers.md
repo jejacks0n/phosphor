@@ -23,11 +23,18 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   picked one, and pick it. New layers are named "Layer 2", "Vector 2" and so on; a drawing holds at most 64. A
   drawing with shapes already has a vector layer, since its first shape brings it, and a vector layer stays when
   its last shape is deleted. Adding a layer is an undo step.
-- **Reordering.** Every row but the base has a **⋯** menu with **Rename**, **Move up** and **Move down**, and the row
-  drags (with the mouse) to another place in the stack: a line shows where it will land, between two rows or
-  directly above the base, never below it. A move is an undo step, and what the drawing shows is laid over again
-  in the new order: a layer covers whatever is under it, cells, paint and shapes alike. Each cells layer keeps its
-  own cells and paint wherever it sits.
+- **Reordering.** Every row but the base has a **⋯** menu with **Rename**, **Duplicate**, **Delete**, **Move up** and
+  **Move down**, and the row drags (with the mouse) to another place in the stack: a line shows where it will land,
+  between two rows or directly above the base, never below it. A move is an undo step, and what the drawing shows is
+  laid over again in the new order: a layer covers whatever is under it, cells, paint and shapes alike. Each cells
+  layer keeps its own cells and paint wherever it sits.
+- **Duplicate** puts a copy of the layer directly above it and picks it, named after it ("Layer 2 copy"): a cells
+  layer's cells and paint, or a vector layer's shapes, as new shapes that move on their own (one that follows a path
+  on the same layer follows the path's copy, and an art layer's drawing comes with it). **Delete** removes the
+  layer and what's on it; deleting the picked layer picks the one that was under it. In an animation both work on
+  every frame at once, and each is one undo step: undoing a delete brings the layer back with its name and
+  everything on every frame, and the strokes made on it before can then be undone too. The base has no ⋯: it
+  can't be deleted, duplicated or moved.
 - **Click the picked row's name** (or double-click any name, or press F2 on its row) to rename the layer; a
   click on another row only picks it. Enter, or leaving the box, keeps the new name; Escape keeps the old one.
   A name is up to 40 characters, and a blank one puts the default back; one too long for the row shows in
@@ -329,7 +336,9 @@ nudges each cell by its place in the grid. See [Characters](characters.md#how-th
   its characters and colors, effects included — becomes edit cells, which the seed, character set
   and effects no longer change. With a selection it merges that area; without one, the whole
   canvas. Merging up over a pinned character moves it to the edit layer and removes the pin.
-- **Clear edit layer** (top toolbar) removes everything you've drawn. The base layer isn't touched.
+- **Clear edit layer** (top toolbar) removes everything you've drawn on the picked layer. The base layer isn't touched.
+  In an animation it clears that layer on the frame showing, what the frame inherits there included; the frame's
+  other layers and shapes stay.
 
 ## Erasing
 

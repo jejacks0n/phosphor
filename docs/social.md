@@ -331,7 +331,7 @@ they see "The room's art couldn't be opened." and go back to watching, and the h
 
 A room holds the base, at most one vector layer and one layer above them, for now, all with the same character settings.
 A drawing with more layers can't go live: **Go live** is off and says to merge or delete layers first. While a room is
-live, adding, deleting and moving layers isn't available (the one exception is **+ Vector layer** when there's none).
+live, adding, deleting, duplicating and moving layers isn't available (the one exception is **+ Vector layer** when there's none).
 
 Everyone draws on the edit layer and sees each other's strokes as they happen. A block an artist moves or pastes
 reaches the others when it's placed, or after 2 seconds with no further move; moving it again after that is a new

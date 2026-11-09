@@ -3,6 +3,9 @@
 // being applied) and _typingTimer (the pause that ends a typing run).
 import { cellKey, withCellEdit, mergeEntry, withoutCells, shiftRow } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
+import { EMPTY_STATE } from '@/document/frames.js';
+import { isShapeKey } from '@/document/shapes.js';
+import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, bakedEntry, cellsOfPixels } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
@@ -214,9 +217,13 @@ export const editLayerActions = {
     this.ensureLayer();
     if (!this.paintLayer) return;
     this.commitPending();
-    if (this.hasFrames) { // it's the frame that changes: to a Wipe, empty
+    // On a movie it's the frame that changes: its cells and paint on the layer in use go, and what it inherits there is
+    // covered over; its kind, the other layers and the shapes stay.
+    if (this.hasFrames) {
       this.noteFrame();
-      const { kind, changes, parts } = this.currentFrame, cleared = { kind: 'wipe', changes: new Map(), parts: null };
+      const { kind, changes, parts } = this.currentFrame, at = this.frame, mine = (key) => !isShapeKey(key) && keyLayer(key).id === this.editId;
+      const inherited = kind === 'blank' && at ? (this.resolvedOf(at - 1), this.frames[at - 1].passes) : new Map();
+      const cleared = { kind, changes: new Map([...[...changes].filter(([key]) => !mine(key)), ...[...inherited.keys()].filter(mine).map((key) => [key, EMPTY_STATE])]), parts };
       const eases = this.frames.map((frame) => [frame, frame.tweens, frame.motions]); // what the Clear leaves no tween for goes
       this.setFrameState(cleared);
       this.pushWholeLayer(() => this.setFrameState({ kind, changes, parts, eases }), () => this.setFrameState(cleared), bytesHeld(changes));
