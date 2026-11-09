@@ -2,6 +2,7 @@
 // exporting .ans and .utf8ans, the filename, and what counts as saved.
 import { t } from '@/i18n';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
+import { goodLayerInfo, savedLayers } from '@/document/layerInfo.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
@@ -30,12 +31,17 @@ const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer }) => ({
 });
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
-function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels }, { filename, documentId }) {
+function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels }, { filename, documentId }) {
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
   this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
   try {
     this.editCells = editCells;
     if (shapes?.size) this.shapes = shapes;
+    this.layerInfo = goodLayerInfo(layers, { hasShapes: shapes?.size > 0 });
+    if (this._takingProject) { // a room's project: the host's names, but whether a layer shows is each person's
+      const { base, edit, vector } = this.layerInfo;
+      this.layerInfo = { base: { ...base, hidden: false }, edit: { ...edit, hidden: false }, vector: vector && { ...vector, hidden: false } };
+    }
     this.setBaseRecords(baseRecords);
     if (paint) {
       this.ensureLayer();
@@ -200,6 +206,7 @@ export const documentActions = {
       shapes: new Map(),
       hasPaint: false,
     });
+    this.layerInfo = goodLayerInfo(null, { hasShapes: false }); // set, not patched: a patch would merge into the last document's
     this.newDocument();
   },
 
@@ -236,6 +243,7 @@ export const documentActions = {
       shapes: new Map(),
       hasPaint: false,
     });
+    this.layerInfo = goodLayerInfo(null, { hasShapes: false }); // set, not patched: a patch would merge into the last document's
     this.newDocument();
     this.markSaved();
   },
@@ -282,6 +290,7 @@ export const documentActions = {
       editCells: drawing.editCells,
       baseRecords: this.baseRecords,
       shapes: this.shapes,
+      layers: savedLayers(this.layerInfo),
     };
     if (this.hasFrames) { // as of the call, as the rest is
       this.noteFrame();

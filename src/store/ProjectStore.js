@@ -4,6 +4,7 @@ import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
+import { DEFAULT_LAYER_INFO } from '@/document/layerInfo.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
 import { artBounds } from '@/document/artLayers.js';
 import { placedShapes } from '@/document/followers.js';
@@ -27,6 +28,7 @@ import { sharingArtistActions } from '@/store/project/sharingArtist.js';
 import { handoverActions } from '@/store/project/handover.js';
 import { animationActions } from '@/store/project/animation.js';
 import { vectorActions } from '@/store/project/vector.js';
+import { layerActions } from '@/store/project/layers.js';
 import { PIPELINE_KEYS, settingsJson, MAX_HISTORY_BYTES, ALONE, newLedger } from '@/store/project/shared.js';
 
 // A cell an edit didn't touch stays the same object, except a wide one, which is laid out again with its row.
@@ -82,6 +84,7 @@ export const useProjectStore = defineStore('project', {
     paintScale: null, // the paint layer's scale from a loaded file (its saved paint is at that scale)
     editCells: shallowRef(new Map()), // the edit cells (see document/editCells.js)
     shapes: shallowRef(new Map()), // the vector layer's shapes, 'v:<id>' -> Shape (document/shapes.js), the frame showing's
+    layerInfo: DEFAULT_LAYER_INFO, // the layers' names, eyes and whether the vector layer was added (document/layerInfo.js; replaced, never changed in place)
     _shapeLayer: null, // the base layer with the shapes over it (ShapeLayer, markRaw), the renderer's
     baseRecords: shallowRef(EMPTY_BASE), // the base layer's pinned characters (see document/baseRecords.js)
 
@@ -136,6 +139,8 @@ export const useProjectStore = defineStore('project', {
     // no one else steps in (enterArt) or changes it (setShapes, and a host what an artist sends: takeFromArtist).
     lockedBy: (state) => (key) => (state._artInside?.key === key ? state._by
       : Object.keys(state._locks).find((sub) => sub !== state._by && state._locks[sub].key === key) ?? null),
+    // The vector layer is there once it's added, or the drawing has shapes.
+    hasVectorLayer: (state) => !!state.layerInfo.vector || state.shapes.size > 0,
     // Anything on the edit layer or the vector layer, of any frame (a grid resize is then a canvas resize).
     hasEdits() { return this.hasEditLayer || this.shapes.size > 0; },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
@@ -230,5 +235,6 @@ export const useProjectStore = defineStore('project', {
     handoverActions,
     animationActions,
     vectorActions,
+    layerActions,
   ), WHOLE_LAYER_ACTIONS, lockedOut), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject),
 });

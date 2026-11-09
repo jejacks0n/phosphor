@@ -41,10 +41,10 @@ export function loadImage(source, type) {
 // baseRecords: the base layer's pinned characters (saved as `base`, left out when there are none);
 // animation: { frames (serializeFrames), frame, fps } (motion: the whole movie's, in files from before each tween had its own; cellsCarry false: every cell staying, in files from before each cell had its own), left out for a still. The rest holds the frame
 // showing, so older copies open it as a still.
-export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob = null, editCells, baseRecords = EMPTY_BASE, shapes = null, animation = null }) {
+export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob = null, editCells, baseRecords = EMPTY_BASE, shapes = null, layers = null, animation = null }) {
   const base = serializeBase(baseRecords);
   const baseBuffer = baseBlob ? await baseBlob.arrayBuffer() : new ArrayBuffer(0);
-  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeEditCells(editCells), ...(base && { base }), ...(shapes?.size && { shapes: serializeShapes(shapes) }), ...(baseBlob && { baseLength: baseBuffer.byteLength }), ...animation }));
+  const json = new TextEncoder().encode(JSON.stringify({ ...settings, cellEdits: serializeEditCells(editCells), ...(base && { base }), ...(shapes?.size && { shapes: serializeShapes(shapes) }), ...(layers && { layers }), ...(baseBlob && { baseLength: baseBuffer.byteLength }), ...animation }));
   const paintBuffer = paintBlob ? await paintBlob.arrayBuffer() : new ArrayBuffer(0);
   const header = new TextEncoder().encode(MAGIC_HEADER);
   const lengths = new Uint32Array([json.byteLength, imageBuffer.byteLength, paintBuffer.byteLength]);
@@ -63,7 +63,7 @@ export async function readProject(file) {
   const paintLen = view.getUint32(16, true);
 
   let offset = 20;
-  const { cellEdits, charEditMap, hasPaint, base, baseLength, shapes, frames, frame, fps, motion, cellsCarry, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
+  const { cellEdits, charEditMap, hasPaint, base, baseLength, shapes, layers, frames, frame, fps, motion, cellsCarry, ...settings } = JSON.parse(new TextDecoder().decode(buffer.slice(offset, offset += jsonLen)));
   delete settings.charMode; // older files stored a charMode that's now derived from renderStyle
   delete settings.documentId; // Untrusted, and autosave's, not the file's: one could overwrite another document's record
   delete settings.savedToFile;
@@ -86,7 +86,7 @@ export async function readProject(file) {
   const edits = cellEdits ? deserializeEditCells(cellEdits) : migrateCharEdits(charEditMap || [], settings.cols);
   const animation = frames === undefined ? null : deserializeFrames({ frames, frame, fps, motion, cellsCarry }, settings.cols, settings.rows);
   // Untrusted: a file with a shape that can't be one opens without its shapes.
-  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, baseBuffer, editCells: edits, shapes: deserializeShapes(shapes) ?? new Map(), ...readBase(base), migrated: !cellEdits && edits.size > 0, animation, framesLost: frames !== undefined && !animation };
+  return { settings, imageBuffer, paintBuffer: usePaint ? paint : null, baseBuffer, editCells: edits, shapes: deserializeShapes(shapes) ?? new Map(), layers, ...readBase(base), migrated: !cellEdits && edits.size > 0, animation, framesLost: frames !== undefined && !animation };
 }
 
 // The base record, and (from files before the base had its own pixels) the cells to erase.

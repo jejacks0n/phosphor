@@ -115,3 +115,13 @@ test('a project file keeps its shapes, and a file with a bad shape opens without
   assert.equal(bad.shapes.size, 0);
   assert.equal((await readProject(fileOf({ cols: 4, shapes: 'x' }))).shapes.size, 0);
 });
+
+test('.phosphor read/write: the layers key round-trips, and is not a setting', async () => {
+  const imageBuffer = new Uint8Array(8).buffer;
+  const layers = { edit: { name: 'Logo', hidden: true } };
+  const back = await readProject(await writeProject({ settings: { cols: 80 }, imageBuffer, paintBlob: null, editCells: new Map(), layers }));
+  assert.deepEqual(back.layers, layers);
+  assert.deepEqual(back.settings, { cols: 80 });
+  const none = await readProject(await writeProject({ settings: { cols: 80 }, imageBuffer, paintBlob: null, editCells: new Map(), layers: null }));
+  assert.equal(none.layers, undefined); // a file without changes is as it was
+});

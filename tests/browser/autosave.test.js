@@ -1693,3 +1693,33 @@ test('autosave brings shapes back, and drawing a shape counts as an edit', async
   expect([...back.project.shapes.keys()]).toEqual([key]);
   expect(back.project.cells.map((c) => c.char + c.fg.hex + c.bg.hex)).toEqual(cells);
 });
+
+test('a layer renamed or hidden is written, and restores with its name and eye', async () => {
+  const { project } = await opened();
+  project.renameLayer('edit', 'Logo');
+  project.setLayerHidden('base', true);
+  await pass(SAVE_AFTER_MS);
+  expect(writeLatest).toHaveBeenCalledTimes(1);
+  const { record, imageBuffer } = await readLatest(project.documentId);
+  project.clearImage();
+
+  await project.restoreDocument({ record, imageBuffer }, { documentId: record.documentId ?? 'restored' });
+  expect(project.layerInfo.edit.name).toBe('Logo');
+  expect(project.layerInfo.base.hidden).toBe(true);
+  expect(project.layerInfo.vector).toBe(null);
+});
+
+test('a restored document with shapes and no layers key has its vector layer', async () => {
+  const { rectShape } = await import('@/document/shapes.js');
+  const { project } = await opened();
+  project.addShape(rectShape(2, 2, 12, 10, { fill: '#ff0000' }));
+  project.layerInfo = { ...project.layerInfo, vector: null }; // as a file from before layers has it
+  await pass(SAVE_AFTER_MS);
+  const { record, imageBuffer } = await readLatest(project.documentId);
+  project.clearImage();
+  expect(project.hasVectorLayer).toBe(false);
+
+  await project.restoreDocument({ record, imageBuffer }, { documentId: 'restored' });
+  expect(project.layerInfo.vector).toEqual({ name: null, hidden: false });
+  expect(project.hasVectorLayer).toBe(true);
+});

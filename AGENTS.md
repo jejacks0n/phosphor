@@ -33,6 +33,7 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   - `selection.js`: copy, cut, paste and floating moves
   - `merging.js`: Merge up, Merge down, Into the image, Bake
   - `vector.js`: the vector layer's shapes: added, changed, restacked, deleted, and the cells they cover drawn again
+  - `layers.js`: the layers' names, eyes, and the vector layer added
   - `sliders.js`: slider moves as undo steps
   - `history.js`: recording edits, undo and redo
   - `animation.js`: frames: moving between them, adding, deleting, reordering, timing, a whole movie's palette
