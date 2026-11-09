@@ -137,7 +137,7 @@ export const useSocialStore = defineStore('social', {
       this.joinLink();
     },
 
-    // The lobby is showing (the side panel's LOBBY tab): once you're known, it connects, and stays connected. A
+    // The lobby is showing (the side panel's Social tab): once you're known, it connects, and stays connected. A
     // link back left in the URL by a narrow window, since widened, is read now.
     async showLobby() {
       this.lobbyWanted = true;

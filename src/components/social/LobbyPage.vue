@@ -11,7 +11,7 @@ import UserName from './UserName.vue';
 import RoomCard from './RoomCard.vue';
 import ReportDialog from './ReportDialog.vue';
 
-// The lobby, in the side panel's LOBBY tab: you (or Sign in), the public rooms as cards, and who else is here.
+// The lobby, in the side panel's Social tab: you (or Sign in), the public rooms as cards, and who else is here.
 // Showing it connects the lobby, and while it shows, a room of yours whose tab has gone is looked for.
 const social = useSocialStore(), roomStore = useRoomStore();
 const { t } = useI18n();

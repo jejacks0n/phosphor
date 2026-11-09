@@ -8,14 +8,14 @@
 > people and rooms.
 
 Phosphor's social side, **SOCIAL**, is where you meet other people: you can watch someone draw, or let
-others watch you. It lives in the side panel on the right of the workspace: its **SOCIAL** tab (marked
+others watch you. It lives in the side panel on the right of the workspace: its **Social** tab (marked
 Beta), beside **LAYERS**, is there even before you've opened any art, and becomes **CHAT** while you're in
 a room. Signing in, your account and starting a room open in boxes over everything. It's for wide screens:
 a phone held sideways can be wide enough, and narrower screens don't show the side panel.
 
 ## Before you come in
 
-The first time a browser opens SOCIAL (the LOBBY tab, a page of SOCIAL, or a room's link), it asks first. **Before you open SOCIAL** is the short version of
+The first time a browser opens SOCIAL (the Social tab, a page of SOCIAL, or a room's link), it asks first. **Before you open SOCIAL** is the short version of
 the policies: what the lobby shows about you, what watching and starting a room mean (each of you can see
 the other's IP address; an invited artist gets the whole project, including the original image), and
 how to behave. Accept is off until you tick **I'm 13 or older and agree to the Terms, Privacy Policy, and
@@ -38,7 +38,7 @@ words. The Terms govern.
 
 ## The lobby
 
-Out of a room, the **SOCIAL** tab is the lobby: the **public rooms** that are live right now, as a column of cards. Each
+Out of a room, the **Social** tab is the lobby: the **public rooms** that are live right now, as a column of cards. Each
 room shows a small picture of the art, up to 80 columns of it, around the part its host is looking at
 (or the part the host chose; see **Lobby picture** under Hosting). The host's browser makes it soon after
 going live, then again every few minutes when the art or that part has changed. A card also shows
@@ -273,7 +273,7 @@ settings made meanwhile goes once you're back.
 ## Watching
 
 **Join** on a room's card, or a link to it, opens the room on a **ROOM** tab, after SAUCE, which is there
-while you watch; the side panel's LOBBY becomes its CHAT. You're in one room at a time; **Exit**, at the top
+while you watch; the side panel's **Social** tab becomes its CHAT. You're in one room at a time; **Exit**, at the top
 right of the chat panel, takes the ROOM tab away (you're back on the art tab you were on) and brings the lobby
 back. A private room with a password asks for it first, on the ROOM tab. A room you join is in the address, so reloading the page joins it again
 (a private room asks for its password again); see **The address, Back and Forward**.

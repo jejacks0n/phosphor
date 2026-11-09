@@ -15,7 +15,7 @@ import ChatPanel from '@/components/social/ChatPanel.vue';
 import LobbyPage from '@/components/social/LobbyPage.vue';
 import LayersList from '@/components/LayersList.vue';
 
-// The column at the right of the whole app, on a wide screen: LAYERS, and LOBBY, which is CHAT while you're in a
+// The column at the right of the whole app, on a wide screen: LAYERS, and Social, which is CHAT while you're in a
 // room. Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and
 // » folds it to a thin rail that counts the messages you haven't seen, as the CHAT tab does while LAYERS shows.
 // Width and fold are kept in the browser; going into a room opens it on CHAT, and leaving shows the lobby there.
