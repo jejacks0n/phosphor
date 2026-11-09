@@ -9,6 +9,7 @@ import { isField, isTextInput } from '@/lib/fields';
 import { snapCursor } from '@/document/wideChars';
 import { t } from '@/i18n/index.js';
 import { refusesHidden } from '@/tools';
+import { refusedNoCells } from '@/store/project/shared.js';
 
 // Type one character at the Text tool's cursor and move right by its width (the keyboard and the
 // F-key strip). The cursor never rests on a wide character's trail.
@@ -33,7 +34,7 @@ export function typeText(project, workspace, text) {
 // line is dropped, and lines with no row left are dropped too.
 function typeLines(project, workspace, text) {
   const start = workspace.textCursor;
-  if (!start || refusesHidden({ project, workspace })) return; // said once, not once a character
+  if (!start || refusesHidden({ project, workspace }) || refusedNoCells(project)) return; // said once, not once a character
   let full = false;
   for (const action of typedText(text)) {
     if (action.type === 'newline') {

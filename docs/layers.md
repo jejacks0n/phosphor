@@ -34,7 +34,9 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   layer and what's on it; deleting the picked layer picks the one that was under it. In an animation both work on
   every frame at once, and each is one undo step: undoing a delete brings the layer back with its name and
   everything on every frame, and the strokes made on it before can then be undone too. The base has no ⋯: it
-  can't be deleted, duplicated or moved.
+  can't be deleted, duplicated or moved. With the last cells layer above the base deleted, there's nothing to
+  draw, type or paste on: a paste, pasted text, Merge up and Flatten's "Edit it" say "Add a layer to draw on it."
+  Moving a selection on the base still works, and keeps it on the base; a layer added then starts empty.
 - **Click the picked row's name** (or double-click any name, or press F2 on its row) to rename the layer; a
   click on another row only picks it. Enter, or leaving the box, keeps the new name; Escape keeps the old one.
   A name is up to 40 characters, and a blank one puts the default back; one too long for the row shows in
@@ -72,7 +74,7 @@ again and it's all there. Whether a layer is hidden is saved with the drawing.
 
   With the edit layer or the base hidden, Merge down says so when you press it, before it asks how to
   merge.
-- **Clear edit layer** is refused the same way while the edit layer is hidden, before it asks: what you can't
+- **Clear edit layer** is refused the same way while the picked layer is hidden, before it asks: what you can't
   see isn't erased.
 - **Flatten** makes its cells from what shows, so a hidden layer's content is left out of the result
   (Undo brings it back).
@@ -336,7 +338,8 @@ nudges each cell by its place in the grid. See [Characters](characters.md#how-th
   its characters and colors, effects included — becomes edit cells, which the seed, character set
   and effects no longer change. With a selection it merges that area; without one, the whole
   canvas. Merging up over a pinned character moves it to the edit layer and removes the pin.
-- **Clear edit layer** (top toolbar) removes everything you've drawn on the picked layer. The base layer isn't touched.
+- **Clear edit layer** (top toolbar) removes everything you've drawn on the picked layer. The base layer isn't touched,
+  and with the base or a vector layer picked it's off.
   In an animation it clears that layer on the frame showing, what the frame inherits there included; the frame's
   other layers and shapes stay.
 

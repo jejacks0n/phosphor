@@ -59,8 +59,9 @@ export const newLedger = (project) => markRaw(new Ledger({
 // useLayer's), and the layer in use waits in _layerData. A layer with no paint yet gets an empty one the size of the one
 // in use. Autosave doesn't count it as an edit.
 export function swapLayer(project, id) {
-  const next = project._layerData.get(id), was = project.paintLayer;
-  project._layerData.set(project.editId, { editCells: project.editCells, paintLayer: was, hasPaint: project.hasPaint });
+  // A deleted last cells layer's fields are no layer's (refusedNoCells): not kept, and empty when swapped back to.
+  const next = project._layerData.get(id) ?? { editCells: new Map(), paintLayer: null, hasPaint: false }, was = project.paintLayer;
+  if (project.layerById(project.editId)) project._layerData.set(project.editId, { editCells: project.editCells, paintLayer: was, hasPaint: project.hasPaint });
   project._layerData.delete(id);
   project.editId = id;
   project._frameSwaps++;
@@ -107,9 +108,33 @@ export function refusedInRoom(project, { fills = false } = {}) {
 export function putLayer(project, kind, above) {
   const id = newLayerId(project.layers, kind), at = project.layers.findIndex((layer) => layer.id === above) + 1 || project.layers.length;
   const layer = Object.freeze({ id, kind, n: nextNumber(project.layers, kind), name: null, hidden: false });
+  // The last cells layer was deleted: this one takes the fields, empty (not inside an art layer: they're its drawing then).
+  const none = kind === 'cells' && !project._artInside && !project.layerById(project.editId);
   project.layers = [...project.layers.slice(0, at), layer, ...project.layers.slice(at)];
-  if (kind === 'cells') project._layerData.set(id, { editCells: new Map(), paintLayer: null, hasPaint: false });
+  if (none) {
+    project.editId = id;
+    emptyFields(project);
+  } else if (kind === 'cells') project._layerData.set(id, { editCells: new Map(), paintLayer: null, hasPaint: false });
   return layer;
+}
+
+// The edit layer's fields emptied, a paint layer of the same size kept: for a drawing left with no cells layer above the
+// bottom, whose fields are no layer's (editId isn't in the stack, refusedNoCells).
+export function emptyFields(project) {
+  const was = project.paintLayer;
+  project._frameSwaps++; // autosave: the step is the edit
+  project.editCells = new Map();
+  project.paintLayer = was && markRaw(new PaintLayer({ cols: was.cols, rows: was.rows, scale: was.scale }));
+  project.hasPaint = false;
+}
+
+// Whether drawing on the edit layer's fields is refused because no cells layer above the bottom has them (the last one
+// was deleted): what's written there wouldn't show, nor be kept. Inside an art layer they're its drawing. toast: say so,
+// where it would look like it worked.
+export function refusedNoCells(project, { toast: say = true } = {}) {
+  if (project._artInside || project.layerById(project.editId)) return false;
+  if (say) toast(t('layers.noCellsLayer'));
+  return true;
 }
 
 // The lower group's cells layer's cells and paint (ProjectStore.lowerGroup): what the renderer's pipeline is handed. None

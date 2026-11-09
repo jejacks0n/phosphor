@@ -11,11 +11,11 @@ import { cellIndex, bakedEntry, cellsOfPixels } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, bytesHeld, refusedHidden } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
 
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100, stack = false) {
-    if (!pixels.length || !this.renderer.outputCanvas) return;
+    if (!pixels.length || !this.renderer.outputCanvas || refusedNoCells(this, { toast: false })) return; // no cells layer has the fields
     this.ensureLayer();
     this.beginEdit();
     this.noteDrawn(pixels);
@@ -42,7 +42,7 @@ export const editLayerActions = {
   },
 
   eraseEditPixels(pixels) {
-    if (!pixels.length || !this.renderer.outputCanvas) return;
+    if (!pixels.length || !this.renderer.outputCanvas || refusedNoCells(this, { toast: false })) return;
     this.ensureLayer();
     this.beginEdit();
     this.paintLayer.erase(pixels);
@@ -53,6 +53,7 @@ export const editLayerActions = {
   // Set (string), clear (null) or keep (undefined) a cell's edit-cell char/fg/bg. clearPaint removes
   // the paint in that cell, so the edit shows (the last edit to a cell wins).
   editCell(col, row, attrs, { clearPaint = false } = {}) {
+    if (refusedNoCells(this, { toast: false })) return;
     this.ensureLayer();
     this.beginEdit();
     const pixels = [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }], erased = clearPaint && this.cellHasPaint(col, row);
@@ -67,6 +68,7 @@ export const editLayerActions = {
   // column: false, and nothing is typed.
   typeAt(col, row, char, attrs, { insert = false } = {}) {
     const width = cellWidth(char);
+    if (refusedNoCells(this, { toast: false })) return null; // no cells layer to type on (typeLines says so)
     if (width === 2 && col === this.cols - 1) return false;
     this.typing(() => {
       if (insert) this.shiftCells(row, col, width);
@@ -103,6 +105,7 @@ export const editLayerActions = {
   // A run of typing is one undo step: its stroke stays open across keystrokes and is committed
   // after a pause, by any other edit (beginEdit), or by undo/redo/save (commitPending).
   typing(fn) {
+    if (refusedNoCells(this, { toast: false })) return;
     this.ensureLayer();
     this._typingNow = true;
     try {
@@ -141,7 +144,7 @@ export const editLayerActions = {
   // the paint gave it, as it keeps the base's or an edit cell's. Part of the current edit; the
   // caller commits it.
   writeEditCells(list, { clearPaint = false } = {}) {
-    if (!list.length) return;
+    if (!list.length || refusedNoCells(this, { toast: false })) return;
     this.ensureLayer();
     this.beginEdit();
     const blanks = overwritesAll(this.cells, this.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));
@@ -169,7 +172,7 @@ export const editLayerActions = {
   // Remove edit cells so the image shows through.
   clearEditCells(cells) {
     const next = withoutCells(this.editCells, cells);
-    if (next === this.editCells) return;
+    if (next === this.editCells || refusedNoCells(this, { toast: false })) return;
     this.ensureLayer();
     this.beginEdit();
     this.setEditCells(next, cells.map(({ col, row }) => cellKey(col, row)));
@@ -210,9 +213,10 @@ export const editLayerActions = {
     ]);
   },
 
-  // Refused while the edit layer is hidden: what you can't see isn't destroyed.
+  // The picked cells layer (the one in use): off with the base or a vector layer picked, and refused while it's hidden:
+  // what you can't see isn't destroyed.
   clearEditLayer() {
-    if (refusedHidden(this, ['edit'])) return;
+    if (!useWorkspaceStore().pickedCells || refusedHidden(this, [this.editId])) return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     if (!this.paintLayer) return;

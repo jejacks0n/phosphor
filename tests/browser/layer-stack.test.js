@@ -8,6 +8,7 @@ import { readProject, writeProject } from '@/document/projectIO.js';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
 import { toastMessage } from '@/composables/useToast.js';
 import { coverCell } from '@/lib/Cells.js';
+import { typeText } from '@/composables/useTextTool.js';
 
 const keys = (cells) => [...cells.keys()];
 
@@ -525,4 +526,84 @@ test('a stack opened without an edit layer picks the layer in use', async () => 
   expect(ids(project)).toEqual(['base', one, two]);
   expect(project.editId).toBe(two);
   expect(workspace.pickedLayer).toBe(two);
+});
+
+test('with the only cells layer deleted, a base move stays on the base, pastes are refused, and + Layer starts empty', async () => {
+  const { project, workspace } = await blank();
+  project.typeAt(1, 1, 'Q', WHITE);
+  project.commitEdit();
+  project.mergeDown(); // 'Q' pinned on the base
+  await settle(project);
+  expect(project.baseRecords.pins.get('1,1')).toBe('Q');
+  expect(project.deleteLayer('edit')).toBe(true);
+  expect(ids(project)).toEqual(['base']);
+  expect(workspace.pickedLayer).toBe('base');
+  expect(workspace.selectionLayers).toEqual({ base: true, edit: false }); // only layers in the stack
+  project.moveSelection({ c0: 0, r0: 0, c1: 2, r1: 2 }, workspace.selectionLayers, 5, 0);
+  await settle(project);
+  expect(project.baseRecords.pins.get('6,1')).toBe('Q'); // the base pins moved
+  expect(cellAt(project, 6, 1).char).toBe('Q');
+  expect(project.editCells.size).toBe(0);
+
+  const version = project.history.version;
+  const block = { w: 1, h: 1, cells: [{ char: 'Z', ...WHITE }] };
+  expect(project.pasteSelection(block, 3, 3)).toBe(null);
+  expect(toastMessage.value).toBe('Add a layer to draw on it.');
+  expect(project.pasteSelection(project.copySelection({ c0: 6, r0: 1, c1: 6, r1: 1 }, { base: true, edit: false }), 3, 3)).toBe(null);
+  toastMessage.value = null;
+  workspace.textCursor = { col: 4, row: 4 };
+  typeText(project, workspace, 'hi');
+  expect(toastMessage.value).toBe('Add a layer to draw on it.');
+  expect(project.editCells.size).toBe(0);
+  expect(project.history.version).toBe(version);
+
+  const id = project.addLayer('cells', 'base');
+  workspace.pickLayer(id);
+  expect(project.editId).toBe(id);
+  expect(project.cellsOf(id).size).toBe(0);
+  expect(project.hasPaint).toBe(false);
+  expect(project._layerData.has(id)).toBe(false); // its data is the edit layer's fields, not a stale entry
+});
+
+test('Clear clears the picked cells layer: refused while it\'s hidden, off with the base or a vector layer picked', async () => {
+  const { project, workspace } = await blank();
+  const id = project.addLayer('cells', 'edit');
+  project.typeAt(1, 1, 'A', WHITE);
+  project.commitEdit();
+  workspace.pickLayer(id);
+  project.typeAt(2, 2, 'B', WHITE);
+  project.commitEdit();
+  const both = () => [keys(project.cellsOf('edit')), keys(project.cellsOf(id))];
+  project.setLayerHidden(id, true);
+  project.clearEditLayer();
+  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(both()).toEqual([['1,1'], ['2,2']]);
+  project.setLayerHidden(id, false);
+  workspace.pickLayer('base');
+  expect(workspace.pickedCells).toBe(false); // the toolbar's Clear is off
+  project.clearEditLayer();
+  expect(both()).toEqual([['1,1'], ['2,2']]);
+  workspace.pickLayer(project.addLayer('vector', id));
+  expect(workspace.pickedCells).toBe(false);
+  project.clearEditLayer();
+  expect(both()).toEqual([['1,1'], ['2,2']]);
+  workspace.pickLayer('edit');
+  expect(workspace.pickedCells).toBe(true);
+  project.clearEditLayer();
+  expect(both()).toEqual([[], ['2,2']]);
+});
+
+test('a cells layer added under a painted one shows what a full render does', async () => {
+  const { project, workspace } = await createTestApp();
+  await drawnDocument(project, workspace, { cols: 40, rows: 40 });
+  project.addLayer('vector', 'base'); // [base, vector, edit]
+  project.paintStroke(Array.from({ length: 10 }, (_, k) => ({ x: 18 + k, y: 32 + (k % 3), alpha: k % 2 ? 0.5 : 1 })), '#123456');
+  project.commitEdit();
+  workspace.pickLayer('vector');
+  project.addLayer('cells', 'vector'); // the edit layer's paint is over the new one now
+  await settle(project);
+  const shown = cellsKey(project);
+  project.render();
+  await settle(project);
+  expect(shown).toEqual(cellsKey(project));
 });

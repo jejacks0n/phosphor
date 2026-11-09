@@ -65,7 +65,8 @@ async function snap(project, workspace, { forceRender = true } = {}) {
     await settle(project);
     full = cellsKey(project).join('|');
   }
-  return { ...docState(project, workspace), pick: project.editId, shown, full };
+  // pick: the cells layer in use; with none left above the bottom, editId names no layer and its fields are empty (refusedNoCells)
+  return { ...docState(project, workspace), pick: project.layerById(project.editId) ? project.editId : null, shown, full };
 }
 
 // Count the undoable depth by wrapping the history.
@@ -230,9 +231,9 @@ function makeActions(project, workspace, r, opts) {
     addLayer: () => { // a cells layer above the pick, up to two above the bottom
       if (cellsLayers(project).length < 2) project.addLayer('cells', workspace.pickedLayer);
     },
-    pickLayer: () => workspace.pickLayer(pick(cellsLayers(project))),
-    deleteLayer: () => { // a cells layer above the bottom, keeping one
-      if (cellsLayers(project).length > 1) project.deleteLayer(pick(cellsLayers(project)));
+    pickLayer: () => cellsLayers(project).length && workspace.pickLayer(pick(cellsLayers(project))),
+    deleteLayer: () => { // a cells layer above the bottom, the last one too (then nothing draws on the edit layer's fields)
+      if (cellsLayers(project).length) project.deleteLayer(pick(cellsLayers(project)));
     },
     duplicateLayer: () => { // up to three above the bottom; the copy is picked
       if (cellsLayers(project).length < 3) project.duplicateLayer(pick(cellsLayers(project)));

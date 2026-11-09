@@ -17,7 +17,8 @@ import { cellIndex, cellsOfPixels, charRowsOf } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { boundsOf, over } from '@/store/project/shared.js';
+import { boundsOf, over, refusedNoCells } from '@/store/project/shared.js';
+import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { turnChar } from '@/lib/TurnChars.js';
 import { toRaw } from 'vue';
 import { unitsOf, wandIn } from '@/lib/MagicWand.js';
@@ -120,6 +121,7 @@ export const selectionActions = {
   // pasted: whether the paste was an undo step (one that changes nothing isn't).
   pasteSelection: floated(function (block, col, row) {
     if (this._artInside && block.base) block = { ...block, base: null }; // inside an art layer, only it's drawn on (layersFor)
+    if (refusedNoCells(this)) return null; // a paste lands on the cells layer in use
     this.ensureLayer();
     const rectAt = (c, r) => this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
     const landed = rectAt(col, row);
@@ -315,7 +317,7 @@ export const selectionActions = {
 
   // The parts of the selection operations, inside selectionEdit.
   deleteIn(rect, { base, edit }) {
-    if (edit) {
+    if (edit && !refusedNoCells(this, { toast: false })) {
       this.editCells = withoutCells(this.editCells, rectCells(rect));
       this.paintLayer.eraseCells(rect);
     }
@@ -328,6 +330,10 @@ export const selectionActions = {
   // cells are see-through (withEditUnder).
   pasteAt(block, col, row, vacated = null) {
     if (block.px % 2) block = withHalfRowUnder(this, block, col, row);
+    if (refusedNoCells(this, { toast: false })) { // no cells layer to land on: a Select move's base stays on the base
+      if (block.base) pasteOnBase(this, block, col, row);
+      return;
+    }
     if (block.base) {
       const rect = !block.paint && this.clipRect({ c0: col, r0: row, c1: col + block.w - 1, r1: row + block.h - 1 });
       if (rect) this.paintLayer.eraseCells(rect);
@@ -504,6 +510,17 @@ function withHalfRowUnder(project, block, col, row) {
     out.base = { ...block.base, pixels: fill(pixels, project.basePixelsOf(last)), colors: fill(colors, project.baseColorsOf(last)), pins: keep(pins, (key) => project.baseRecords.pins.get(key)) };
   }
   return out;
+}
+
+// A block's base pasted back into the base at (col, row), clipped to the grid: its pixels, and its pins (a cell it had
+// none in is left with none). Where a base moved on its own goes while there's no cells layer to lift it onto (pasteAt).
+function pasteOnBase(project, { w, h, base }, col, row) {
+  const rect = project.clipRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
+  if (!rect) return;
+  const cells = rectCells(rect), pin = ({ col: c, row: r }) => base.pins[(r - row) * w + (c - col)];
+  project.baseLayer.pasteCells(base.pixels, col, row, w, h, rect);
+  project.setBaseRecords(withPins(withoutPins(project.baseRecords, cells), cells.filter((cell) => pin(cell) != null).map((cell) => ({ ...cell, char: pin(cell) }))));
+  project.refreshCells(cells.flatMap(({ col: c, row: r }) => [{ x: c, y: 2 * r }, { x: c, y: 2 * r + 1 }]));
 }
 
 // A block whose picture part (base) is edit cells: each cell as it looked where it was copied (looks),

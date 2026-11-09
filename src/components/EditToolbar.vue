@@ -161,7 +161,7 @@ watch(tools, (offered) => {
 });
 
 function confirmClear() {
-  if (refusedHidden(project, ['edit'])) return; // as the store would, before asking
+  if (refusedHidden(project, [project.editId])) return; // as the store would, before asking
   if (!project.hasEditLayer || confirm(t('toolbar.clearConfirm'))) {
     project.clearEditLayer();
   }
@@ -418,7 +418,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             :title="t('toolbar.clearEditTitle')"
             @click="confirmClear"
             class="primary"
-            :disabled="!project.hasEditLayer"
+            :disabled="!project.hasEditLayer || !workspace.pickedCells"
             v-bind="off(insideOff ?? drawing.offWithOthers, t('toolbar.clearEdit'))"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M431.2 476.5L163.5 208.8C141.1 240.2 128 278.6 128 320C128 426 214 512 320 512C361.5 512 399.9 498.9 431.2 476.5zM476.5 431.2C498.9 399.8 512 361.4 512 320C512 214 426 128 320 128C278.5 128 240.1 141.1 208.8 163.5L476.5 431.2zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z"/></svg></button>
       </div>
@@ -455,7 +455,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill-rule="evenodd" d="M96 96H544V544H96ZM160 160V480H480V160Z"/><path d="M296 224H344V296H416V344H344V416H296V344H224V296H296Z"/></svg>
             {{ t('art.make') }}
           </button>
-          <button v-if="workspace.editorTab !== 'vector'" @click="confirmClear" :disabled="!project.hasEditLayer" v-bind="off(insideOff ?? drawing.offWithOthers, t('toolbar.clearEdit'))">
+          <button v-if="workspace.editorTab !== 'vector'" @click="confirmClear" :disabled="!project.hasEditLayer || !workspace.pickedCells" v-bind="off(insideOff ?? drawing.offWithOthers, t('toolbar.clearEdit'))">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M431.2 476.5L163.5 208.8C141.1 240.2 128 278.6 128 320C128 426 214 512 320 512C361.5 512 399.9 498.9 431.2 476.5zM476.5 431.2C498.9 399.8 512 361.4 512 320C512 214 426 128 320 128C278.5 128 240.1 141.1 208.8 163.5L476.5 431.2zM64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576C178.6 576 64 461.4 64 320z"/>
             </svg>

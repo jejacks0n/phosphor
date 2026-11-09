@@ -348,6 +348,7 @@
     "none": "Les calques s'affichent avec le dessin.",
     "hiddenToast": "Affichez le calque pour dessiner dessus",
     "hiddenMergeToast": "Affichez le calque pour le fusionner",
+    "noCellsLayer": "Ajoutez un calque pour y dessiner.",
     "notInRoom": "Ajouter, supprimer et déplacer des calques n'est pas encore possible dans une salle en direct.",
     "toolOnLayer": "{tool} dessine sur {layer}. Choisissez-le dans Calques."
   },

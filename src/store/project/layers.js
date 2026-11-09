@@ -7,7 +7,7 @@ import { MOST_LAYERS, goodLayerName, legacySlots, newLayerId, nextNumber } from 
 import { readProject, writeProject } from '@/document/projectIO.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
-import { bytesHeld, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
+import { bytesHeld, emptyFields, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -33,13 +33,7 @@ function takeOut(store, id) {
     const next = others.filter((each) => store.layers.indexOf(each) < at).at(-1) ?? others.at(-1);
     held.data = { editCells: store.editCells, paintLayer: store.paintLayer, hasPaint: store.hasPaint };
     if (next) swapLayer(store, next.id);
-    else {
-      const was = store.paintLayer;
-      store._frameSwaps++; // autosave: the step is the edit
-      store.editCells = new Map();
-      store.paintLayer = was && markRaw(new PaintLayer({ cols: was.cols, rows: was.rows, scale: was.scale }));
-      store.hasPaint = false;
-    }
+    else emptyFields(store);
   }
   store._layerData.delete(id);
   store.layers = store.layers.filter((each) => each !== layer);
@@ -107,6 +101,7 @@ export const layerActions = {
     if (this.layers.length >= MOST_LAYERS || refusedInRoom(this, { fills: kind === 'vector' && above === 'base' && !this.hasVectorLayer })) return null;
     this.commitPending();
     const { id } = putLayer(this, kind, above);
+    this.render(); // the groups can change: a layer put under a painted one leaves that one's paint over it
     if (this._sharing) return id;
     let held = null; // undone: takeOut's, whose layer below (by id) is where a redo puts it, as the stack can change around it meanwhile
     this.pushEdit({ layerOp: true, bytes: 0, undo: () => { held = takeOut(this, id); this.render(); }, redo: () => { putBack(this, held); this.render(); } });

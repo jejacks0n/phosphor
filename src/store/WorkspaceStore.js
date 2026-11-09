@@ -166,10 +166,15 @@ export const useWorkspaceStore = defineStore('workspace', {
     // The layers the eraser and the Flip tool act on: the picked one.
     toolLayers: (state) => ({ base: state.pickedLayer === 'base', edit: state.pickedLayer !== 'base' }),
     // The layers a selection's actions act on (Select's Copy, Cut, Delete, move, flip and turn; the Magic Wand's Delete; Set FG / Set BG):
-    // every shown one, whatever is picked. To leave a layer out, hide it.
+    // every shown one, whatever is picked. To leave a layer out, hide it. edit is the cells layer in use, when it's in the stack.
     selectionLayers() {
-      const project = useProjectStore();
-      return { base: !project.layerHidden('base'), edit: !project.layerHidden('edit') };
+      const project = useProjectStore(), edit = project.layerById(project.editId);
+      return { base: !project.layerHidden('base'), edit: !!edit && !edit.hidden };
+    },
+    // Whether a cells layer above the bottom is picked: what Clear clears (off with the base or a vector layer picked).
+    pickedCells(state) {
+      const layer = useProjectStore().layerById(state.pickedLayer);
+      return layer?.kind === 'cells' && layer.id !== 'base';
     },
     editMode: (state) => ['input', 'output', 'vector'].includes(state.editorTab), // the art is showing
     // The view the room's host is looking at, for watchers: whole cells and the zoom to draw them at

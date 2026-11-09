@@ -18,7 +18,7 @@ import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld, blackPicture, refusedHidden } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld, blackPicture, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
 import { placedShapes } from '@/document/followers.js';
 import { RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
@@ -153,6 +153,7 @@ export const mergingActions = {
   async flattenDrawing({ layer = 'edit' } = {}) {
     if (!this.canFlatten || this._flattening || this._baking || this._merging) return false;
     if (this._artInside) this.leaveArt();
+    if (layer === 'edit' && refusedNoCells(this)) return false; // onto the cells layer in use: there's none
     this._flattening = true;
     let again = false, base = null; // the base as it was, once this starts writing it
     try {
@@ -243,6 +244,7 @@ export const mergingActions = {
   mergeUp(rect) {
     if (refusedHidden(this)) return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
+    if (refusedNoCells(this)) return;
     const area = rect ?? this.gridRect();
     this.selectionEdit([area], () => {
       this.editCells = updateRect(this.editCells, area, (col, row, entry) => this.completeAt(col, row, entry));
