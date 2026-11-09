@@ -323,7 +323,6 @@
     "lobby": "Hall",
     "social": "Social",
     "chat": "Chat",
-    "layersEmpty": "Vos calques seront listés ici.",
     "foldAria": "Replier le panneau",
     "openAria": "Ouvrir le panneau",
     "resizeAria": "Largeur du panneau"
@@ -331,6 +330,13 @@
   "layers": {
     "label": "Calques",
     "base": "Base",
+    "editDefault": "Calque 1",
+    "vectorDefault": "Vecteur 1",
+    "addVector": "+ Calque vectoriel",
+    "showAria": "Afficher {name}",
+    "hideAria": "Masquer {name}",
+    "renameAria": "Renommer {name}",
+    "none": "Les calques s'affichent avec le dessin.",
     "hiddenToast": "Affichez le calque pour dessiner dessus",
     "hiddenMergeToast": "Affichez le calque pour le fusionner"
   },

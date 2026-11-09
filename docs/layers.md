@@ -1,7 +1,49 @@
 # Layers
 
-Everything in a Phosphor drawing lives on one of two layers: the **base layer** underneath and the
-**edit layer** on top. Knowing which is which explains what the tools, Merge and the eraser do.
+Everything in a Phosphor drawing lives on a layer: the **base layer** underneath, the **edit layer** on
+top, and between them the **vector layer**, once the drawing has one, which holds the VECTOR tab's
+[shapes](vector.md). Knowing which is which explains what the tools, Merge and the eraser do.
+
+## The layers list
+
+**LAYERS**, in the side panel, lists the drawing's layers, the top of the stack first: the edit layer
+("Layer 1"), the vector layer ("Vector 1") if there is one, and the base ("Base"). It shows while the art
+is showing; with nothing open, or on SAUCE, it says so instead.
+
+- **Picking a row** picks that layer, and the tabs follow it. The base and the edit layer show PIXEL and
+  ANSI; the vector layer shows VECTOR. The tools act on the picked layer: the eraser, Select, Copy, Cut,
+  Delete, Flip and the Magic Wand's Delete take only that layer, and with the base picked only the tools
+  that work on it are offered. Picking the edit layer or the base from VECTOR goes back to the art tab you
+  last had.
+- **+ Vector layer**, under the list, adds the vector layer and picks it. It's there while the drawing has
+  none; a drawing with shapes already has one.
+- **Double-click a name** (or press F2 on its row) to rename the layer. Enter, or leaving the box, keeps the
+  new name; Escape keeps the old one. A name is up to 40 characters, and a blank one puts the default back.
+  Names are saved with the drawing, and a rename isn't an undo step.
+- In a room, only the host can pick the base: its row is off for an artist. A rename or an eye is yours
+  alone there; someone joining gets the host's names, with every layer showing.
+- Inside an [art layer](vector.md#art-layers) the vector row shows as picked and the base row is off;
+  picking the edit layer steps out of the art layer.
+
+### Hiding a layer
+
+Each row's **eye** hides or shows its layer. A hidden layer leaves the screen and the exports: what you
+see and what you export is everything that shows, with the hidden layer left out. Hiding the base takes
+away the picture, the base's own pixels and its pinned characters, and leaves the grid blank under
+everything above it. Hiding isn't an undo step, and it doesn't change what's drawn on the layer: show it
+again and it's all there. Whether a layer is hidden is saved with the drawing.
+
+- A hidden layer can't be drawn on. With it picked, drawing, erasing, a fill, Flip or typing does nothing,
+  and a message says "Show the layer to draw on it". On VECTOR, the shapes of a hidden vector layer can still be selected
+  and changed.
+- These merges are refused while a layer they read or write is hidden, with "Show the layer to merge it",
+  and nothing changes:
+  - **Merge up**, **Merge down** and **Into the image**, while the edit layer or the base is hidden;
+  - **Bake** and VECTOR's **Merge down**, while the base is hidden.
+- A hidden vector layer's shapes still go into the base with Bake or Merge down, as they would if they
+  showed.
+- **Flatten** makes its cells from what shows, so a hidden layer's content is left out of the result
+  (Undo brings it back).
 
 ## The base layer
 

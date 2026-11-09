@@ -1,8 +1,9 @@
 # Vector shapes
 
-The **VECTOR** tab (between ANSI and SAUCE, at `/vector`) holds shapes and curves that stay editable: you
-can move, scale, rotate and reshape them as often as you like, and the art underneath converts them to
-characters as you go. The tab shows the art exactly as ANSI does, with the editing marks for the shapes on
+The **VECTOR** tab (at `/vector`) shows while the vector layer is picked in [LAYERS](layers.md#the-layers-list)
+(**+ Vector layer** adds it). It holds shapes and curves that stay editable: you can move, scale, rotate and
+reshape them as often as you like, and the art underneath converts them to characters as you go. The tab
+shows the art exactly as ANSI does, with the editing marks for the shapes on
 top. Zoom and pan work as they do on ANSI: zoomed in as far as 800%, a cell is many screen pixels wide, for placing
 points between cells.
 

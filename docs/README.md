@@ -2,8 +2,9 @@
 
 How Phosphor works, for people drawing with it.
 
-- [Layers](layers.md) — the base layer (your image, converted to cells) and the edit layer
-  (everything you draw): merging up and down, erasing, and what the Select tool acts on.
+- [Layers](layers.md) — the layers list (picking, hiding and renaming a layer), the base layer (your
+  image, converted to cells), the vector layer and the edit layer (everything you draw): merging up and
+  down, erasing, and what the Select tool acts on.
 - [Characters](characters.md) — what a cell can hold, one- and two-column characters (Chinese,
   Japanese, Korean, emoji), typing any script, pasting text, and saving as .utf8ans or .ans.
 - [Vector shapes](vector.md) — the VECTOR tab: shapes and curves that stay editable over the art and

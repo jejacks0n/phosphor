@@ -1,5 +1,5 @@
 // The VECTOR tab: the ANSI art with the shapes' outlines over it, and the tools that draw and change them.
-import { test, expect, openApp, store, tab, settled } from './support.js';
+import { test, expect, openApp, store, tab, pickLayer, settled } from './support.js';
 
 // The page position of grid pixel (x, y) (fractional) in the ANSI and VECTOR views.
 async function gridPoint(page, x, y) {
@@ -24,7 +24,7 @@ async function dragPoints(page, from, to) {
 
 test('the VECTOR tab shows the ANSI art and its address is /vector', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
   await expect.poll(() => new URL(page.url()).hash).toBe('#/vector');
   await expect(page.locator('.ansi-editor .display canvas')).toBeVisible();
@@ -35,7 +35,7 @@ test('the VECTOR tab shows the ANSI art and its address is /vector', async ({ pa
 
 test('Alt-dragging a handle scales the selection from its center', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const key = await addRect(page, 10, 10, 20, 20);
   await settled(page);
@@ -53,7 +53,7 @@ test('Alt-dragging a handle scales the selection from its center', async ({ page
 
 test('clicking a shape selects it, dragging moves it, a handle scales it, the knob rotates it, and undo takes each back', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const bare = await cells(page);
   const key = await addRect(page, 10, 10, 20, 20);
@@ -90,7 +90,7 @@ test('clicking a shape selects it, dragging moves it, a handle scales it, the kn
 
 test('Esc deselects and arrows nudge; a double-click edits points, and Esc leaves them first', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   const key = await addRect(page, 10, 10, 20, 20);
   await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
   await page.keyboard.press('ArrowRight');
@@ -116,7 +116,7 @@ const undoSteps = async (page, n) => { for (let i = 0; i < n; i++) await page.ke
 
 test('the Shape tool draws a rectangle, an ellipse and a 5-sided polygon that convert to cells, each one undo step', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const bare = await cells(page);
   await page.keyboard.press('u');
@@ -150,7 +150,7 @@ test('on VECTOR the color pair is Fill and Stroke: it shows the selected shape\'
   await page.keyboard.press('m');
   const height = async () => (await page.locator('.edit-toolbar').boundingBox()).height;
   const ansi = await height();
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   const pair = page.locator('.color-pair');
   await expect(pair.getByRole('button', { name: 'Fill', exact: true })).toBeVisible();
   await expect(pair.getByRole('button', { name: 'Stroke', exact: true })).toBeVisible();
@@ -173,7 +173,7 @@ test('on VECTOR the color pair is Fill and Stroke: it shows the selected shape\'
 
 test('a shape just drawn, shown selected, takes a Fill or Stroke change, and the next shape drawn gets it too; while the Pen draws, only the next does', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
   await page.keyboard.press('u');
@@ -203,7 +203,7 @@ test('a shape just drawn, shown selected, takes a Fill or Stroke change, and the
 
 test('VECTOR\'s color box is the one the other tabs have, with Fill and Stroke for FG and BG, and Swap', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
   const key = await addRect(page, 10, 10, 20, 20);
   await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
@@ -225,7 +225,7 @@ test('VECTOR\'s color box is the one the other tabs have, with Fill and Stroke f
 // Shift held once the drag is going (pressed first, it adds to or takes from the selection).
 test('Shift while moving a shape keeps it on a straight line or a 45° angle', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const key = await addRect(page, 10, 10, 20, 20);
   await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
@@ -257,7 +257,7 @@ test('Shift while moving a shape keeps it on a straight line or a 45° angle', a
 
 test('Fill, Stroke and the Stroke box\'s Width change the selected shape; Forward and Back restack it; Delete removes it', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
   const below = await addRect(page, 10, 10, 20, 20);
   const above = await addRect(page, 15, 15, 25, 25);
@@ -290,7 +290,7 @@ test('Fill, Stroke and the Stroke box\'s Width change the selected shape; Forwar
 
 test('Cmd+A selects every shape, with Vector select, and not the page\'s text', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 30, 10, 40, 20);
   await page.keyboard.press('p'); // from another tool, and with a Pen shape under way
@@ -306,7 +306,7 @@ test('Cmd+A selects every shape, with Vector select, and not the page\'s text', 
 
 test('zoomed in to 800%, the Pen puts a point where the pointer is, to a fraction of a cell', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await store(page, 'workspace', (w) => w.setAnsiZoom(8));
   await settled(page);
@@ -334,7 +334,7 @@ test('zoomed in to 800%, the Pen puts a point where the pointer is, to a fractio
 
 test('Cmd+C and Cmd+V copy the selected shapes and paste them on top, selected; Cmd+X cuts', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 30, 10, 40, 20);
   await page.keyboard.press('ControlOrMeta+a');
@@ -372,7 +372,7 @@ test.describe('between tabs', () => {
 
   test('shapes copied in one tab paste into another, where they were; its Paste button pastes only its own', async ({ page }) => {
     await openApp(page);
-    await tab(page, 'VECTOR').click();
+    await pickLayer(page);
     await settled(page);
     await addRect(page, 10, 10, 20, 20);
     const outer = await addRect(page, 30, 10, 40, 20), inner = await addRect(page, 33, 13, 37, 17);
@@ -385,7 +385,7 @@ test.describe('between tabs', () => {
 
     const other = await page.context().newPage();
     await openApp(other);
-    await tab(other, 'VECTOR').click();
+    await pickLayer(other);
     await settled(other);
     await other.keyboard.press('v');
     await expect(other.locator('.vector-options').getByRole('button', { name: /^Nothing copied in this tab\. To paste from another tab or app, use (⌘V|Ctrl\+V)$/ })).toBeDisabled();
@@ -401,7 +401,7 @@ test.describe('between tabs', () => {
 
 test('Vector select\'s Copy, Cut and Paste buttons', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await addRect(page, 10, 10, 20, 20);
   await page.keyboard.press('v');
@@ -421,7 +421,7 @@ test('Vector select\'s Copy, Cut and Paste buttons', async ({ page }) => {
 
 test('a box dragged over empty canvas selects what it touches, and undo brings back a selection lost by a click', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 30, 10, 40, 20);
   await addRect(page, 10, 40, 20, 50);
@@ -444,7 +444,7 @@ test('a box dragged over empty canvas selects what it touches, and undo brings b
 
 test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   const key = await addRect(page, 10, 10, 20, 20);
   await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
   const color = await store(page, 'project', (p) => p.rawColorAt(40.5, 30.5));
@@ -496,7 +496,7 @@ test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', asy
 
 test('the Pen draws a closed shape with a curve, and Enter or a tool change leaves an open one', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const bare = await cells(page);
   await page.keyboard.press('p');
@@ -530,7 +530,7 @@ test('the Pen draws a closed shape with a curve, and Enter or a tool change leav
 
 test('Shift with the Pen keeps the next point, and a smooth point\'s handle, across, up and down or at 45°', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await page.keyboard.press('p');
   const at = (x, y) => gridPoint(page, x, y);
@@ -551,7 +551,7 @@ test('Shift with the Pen keeps the next point, and a smooth point\'s handle, acr
 
 test('undo while the Pen draws takes back the last point, and only that, even on a first shape', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await page.keyboard.press('p');
   const at = (x, y) => gridPoint(page, x, y), undo = page.locator('.history-group button').first();
@@ -568,7 +568,7 @@ test('undo while the Pen draws takes back the last point, and only that, even on
 
 test('Shift with the Pen shows the next segment where the point will go, before the click', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await page.keyboard.press('p');
   const at = (x, y) => gridPoint(page, x, y), next = page.locator('.vector-overlay line.box');
@@ -586,7 +586,7 @@ test('Shift with the Pen shows the next segment where the point will go, before 
 
 test('Shift while editing points keeps a dragged point on a straight line, and a handle across, up and down or at 45°', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const key = await addRect(page, 10, 10, 30, 30);
   const point = (i) => store(page, 'project', `(p) => p.shapes.get('${key}').points[${i}]`);
@@ -622,7 +622,7 @@ const lineEnds = (page, key) => store(page, 'project', `(p) => {
 
 test('the Node tool (A) edits the points of the shape pressed, a two-point line\'s ends too, and a double-click with Vector select switches to it', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const line = await addLine(page);
   await page.keyboard.press('a');
@@ -648,7 +648,7 @@ test('the Node tool (A) edits the points of the shape pressed, a two-point line\
 
 test('the Node tool shows and drags the points of every outline in a shape', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const key = await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, fill: '#ff0000', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0], rule: 'evenodd',
     points: [[10, 10, 0, 0, 0, 0, 0], [40, 10, 0, 0, 0, 0, 0], [40, 40, 0, 0, 0, 0, 0], [10, 40, 0, 0, 0, 0, 0]],
@@ -668,7 +668,7 @@ test('the Node tool shows and drags the points of every outline in a shape', asy
 
 test('Join makes two shapes one with a hole, and Separate takes it apart', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const outer = await addRect(page, 10, 10, 40, 40);
   await addRect(page, 20, 20, 30, 30);
@@ -690,7 +690,7 @@ test('Join makes two shapes one with a hole, and Separate takes it apart', async
 
 test('Add makes the selected shapes one, and Subtract cuts the one above out of the one below', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const bottom = await addRect(page, 10, 10, 30, 30);
   await addRect(page, 20, 20, 40, 40);
@@ -723,7 +723,7 @@ test('the Stroke color box sets caps, joins and the miter limit on the selection
   await tab(page, 'ANSI').click();
   const height = async () => (await page.locator('.edit-toolbar').boundingBox()).height;
   const ansi = await height();
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const key = await addRect(page, 10, 10, 20, 20);
   await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
@@ -783,7 +783,7 @@ test('the Stroke color box sets caps, joins and the miter limit on the selection
 
 test('the Stroke color box puts the stroke inside, centered on or outside the outline, and an open path\'s to its left or right', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const key = await addRect(page, 10, 10, 20, 20);
   await page.mouse.click(...Object.values(await gridPoint(page, 11, 11)));
@@ -817,7 +817,7 @@ test('the Stroke color box puts the stroke inside, centered on or outside the ou
 
 test('the Fill color box makes a gradient and takes it back to solid', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const bg = await store(page, 'workspace', (w) => w.editBgColor);
   const key = await addRect(page, 10, 10, 20, 20);
@@ -863,7 +863,7 @@ test('the Fill color box makes a gradient and takes it back to solid', async ({ 
 
 test('the Stroke color box makes a gradient stroke, which the Node tool edits; with both gradients, Fill or Stroke says which', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const bg = await store(page, 'workspace', (w) => w.editBgColor);
   await store(page, 'workspace', (w) => { w.recentColors = ['#ffff00']; });
@@ -909,7 +909,7 @@ test('the Stroke color box makes a gradient stroke, which the Node tool edits; w
 
 test('with a gradient fill and stroke, the color box\'s Fill or Stroke shows that gradient\'s handles', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, width: 2, m: [1, 0, 0, 1, 0, 0],
     fill: { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [10, 0, 0, 10, 10, 15] },
@@ -931,7 +931,7 @@ test('with a gradient fill and stroke, the color box\'s Fill or Stroke shows tha
 
 test('a double-click on a gradient\'s stop opens its color in that side\'s box; on an end with no stop, the stop whose color shows there', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   // Linear from (10, 15) to (30, 15); its stops short of both ends, as an SVG can have them.
   await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, width: 2, m: [1, 0, 0, 1, 0, 0], fill: '#888888',
@@ -957,7 +957,7 @@ test('a double-click on a gradient\'s stop opens its color in that side\'s box; 
 
 test('the Node tool shows a shape\'s gradient\'s handles with its points; recoloring a stop changes the art; one Delete for a stop or a point; G isn\'t a VECTOR tool', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
   const key = await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
@@ -1018,7 +1018,7 @@ test('the Node tool shows a shape\'s gradient\'s handles with its points; recolo
 
 test('Vector select shows one shape\'s gradient: a click on its end, over a scale handle, picks the stop there, which the Fill box recolors and Delete removes; Esc keeps the shape', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await store(page, 'workspace', (w) => { w.recentColors = ['#00ff00']; });
   await store(page, 'project', `(p) => p.addShape({ z: 0, closed: true, stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
@@ -1060,7 +1060,7 @@ test('Snap to in VECTOR\'s tool row: Cells puts a shape drawn on cell corners', 
   await openApp(page);
   await tab(page, 'ANSI').click();
   await expect(page.getByRole('button', { name: /^Snap to/ })).toHaveCount(0); // VECTOR's only
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const snap = page.getByRole('button', { name: /^Snap to/ });
   await expect(snap).toContainText('None');
@@ -1077,11 +1077,12 @@ test('Snap to in VECTOR\'s tool row: Cells puts a shape drawn on cell corners', 
 
 test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shapes are drawn', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   await addRect(page, 10, 10, 30, 30);
   const clear = page.getByTitle('Clear edit layer: erase everything on the edit layer.');
   await expect(clear).toHaveCount(0);
+  await pickLayer(page, 'Layer 1');
   await tab(page, 'ANSI').click();
   await expect(clear).toBeDisabled();
 });
@@ -1090,7 +1091,7 @@ test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   test('the Pen\'s path shows as it\'s tapped out, a line between its first two points before there\'s anything to fill', async ({ page }) => {
     await openApp(page);
-    await tab(page, 'VECTOR').click();
+    await pickLayer(page);
     await settled(page);
     const [cx, cy] = await store(page, 'project', (p) => [Math.round(p.cols / 2), Math.round(p.rows / 2)]); // the middle: what a phone's screen shows
     await page.keyboard.press('p');
@@ -1106,7 +1107,7 @@ test.describe('on a phone', () => {
 
   test('the options row has every button, as icons, and no hint; Stroke width is in the Stroke box', async ({ page }) => {
     await openApp(page);
-    await tab(page, 'VECTOR').click();
+    await pickLayer(page);
     const key = await addRect(page, 4, 4, 14, 14);
     await store(page, 'workspace', `(w) => { w.vectorSelected = ['${key}']; }`);
     const row = page.locator('.vector-options');
@@ -1131,7 +1132,7 @@ test.describe('on a phone', () => {
 
 test('double-click edits points: drag a point and a handle, click the outline to add one, Smooth, Free or Sharp, Delete, and empty canvas to finish', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const key = await addRect(page, 10, 10, 30, 30);
   const world = (i) => store(page, 'project', `(p) => { const s = p.shapes.get('${key}'); const [x, y] = s.points[${i}]; return { x: x + s.m[4], y: y + s.m[5], n: s.points.length, smooth: s.points[${i}][6] }; }`);
@@ -1204,7 +1205,7 @@ test('double-click edits points: drag a point and a handle, click the outline to
 
 test('on a Blank frame, the shapes it carries have dimmed outlines; one changed there is its own', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const key = await addRect(page, 10, 10, 20, 20);
   await store(page, 'project', (p) => { p.setAnimate(true); p.addFrame('blank'); });
@@ -1220,7 +1221,7 @@ test('on a Blank frame, the shapes it carries have dimmed outlines; one changed 
 
 test('VECTOR\'s Merge down presses the selected shapes into the base, and ANSI\'s Merge down says shapes go too', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await settled(page);
   const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 40, 30, 50, 40);
   await settled(page);
@@ -1234,6 +1235,7 @@ test('VECTOR\'s Merge down presses the selected shapes into the base, and ANSI\'
   await page.keyboard.press('ControlOrMeta+z');
   expect((await shapeList(page)).map((s) => s.key).sort()).toEqual([a, b].sort());
 
+  await pickLayer(page, 'Layer 1');
   await tab(page, 'ANSI').click();
   await page.getByRole('button', { name: /^Merge down: flatten/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Merge down' });

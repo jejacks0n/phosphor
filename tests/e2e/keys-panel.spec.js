@@ -1,4 +1,4 @@
-import { test, expect, openApp, store, tab, autosaved } from './support.js';
+import { test, expect, openApp, store, tab, pickLayer, autosaved } from './support.js';
 
 const animateSwitch = (page) => page.getByRole('switch', { name: 'Animate' });
 const bar = (page) => page.getByRole('toolbar', { name: 'Animation' });
@@ -21,7 +21,7 @@ const y = (page, key, at) => store(page, 'project', `(p) => p.resolvedOf(${at}).
 // frames too. Frame 4 shows.
 async function ball(page, more = {}) {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await animateSwitch(page).check();
   const key = await store(page, 'project', (p) => p.addShape({ z: 0, closed: true, fill: '#ff0000', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0],
     points: [[2, 2, 0, 0, 0, 0, 0], [6, 2, 0, 0, 0, 0, 0], [6, 6, 0, 0, 0, 0, 0], [2, 6, 0, 0, 0, 0, 0]] }));
@@ -53,6 +53,7 @@ test('the Keys button opens and folds the panel, and it stays as left across a r
   await animateSwitch(page).check();
   await expect(keysButton(page)).toHaveAttribute('aria-pressed', 'false');
   await expect(panel(page)).toBeHidden();
+  await pickLayer(page, 'Layer 1');
   await tab(page, 'ANSI').click();
   await expect(keysButton(page)).toHaveCount(0); // VECTOR's
 });
@@ -71,7 +72,7 @@ test('only the parts that change are rows; + Add key offers the others and keys 
 
 test("an art layer's panel lists Transform with X and Y, and + Add key offers only Stack", async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await animateSwitch(page).check();
   const key = await store(page, 'project', (p) => p.addShape({ z: 0, m: [1, 0, 0, 1, 0, 0], art: { cols: 3, rows: 1, cells: [[0, 'A', '#ff0000', null]] } }));
   for (let i = 0; i < 6; i++) await addFrame(page, 'Blank');

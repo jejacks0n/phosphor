@@ -323,7 +323,6 @@
     "lobby": "Lobby",
     "social": "Social",
     "chat": "Chat",
-    "layersEmpty": "Your layers will be listed here.",
     "foldAria": "Fold the panel",
     "openAria": "Open the panel",
     "resizeAria": "Panel width"
@@ -331,6 +330,13 @@
   "layers": {
     "label": "Layers",
     "base": "Base",
+    "editDefault": "Layer 1",
+    "vectorDefault": "Vector 1",
+    "addVector": "+ Vector layer",
+    "showAria": "Show {name}",
+    "hideAria": "Hide {name}",
+    "renameAria": "Rename {name}",
+    "none": "Layers show while a drawing's art is showing.",
     "hiddenToast": "Show the layer to draw on it",
     "hiddenMergeToast": "Show the layer to merge it"
   },

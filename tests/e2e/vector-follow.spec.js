@@ -1,7 +1,7 @@
 // Following a path on VECTOR, with real pointer events: + Add key's Follow a path… and a click on a Pen curve link a
 // rectangle to it, dragging the rectangle slides it along the curve (one undo step), and the curve's End handle drags
 // along it.
-import { test, expect, openApp, store, tab, settled } from './support.js';
+import { test, expect, openApp, store, pickLayer, settled } from './support.js';
 
 // The page position of grid pixel (x, y) in the VECTOR view.
 async function gridPoint(page, x, y) {
@@ -33,7 +33,7 @@ const boxCenter = (page) => page.evaluate(() => {
 
 test('a rectangle follows a Pen curve picked with Follow a path…, drags along it, and the curve\'s End handle drags along it too', async ({ page }) => {
   await openApp(page);
-  await tab(page, 'VECTOR').click();
+  await pickLayer(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
   await page.evaluate(() => document.activeElement.blur()); // the tool keys are the canvas's again
   await settled(page);
@@ -103,7 +103,7 @@ test.describe('on a phone', () => {
 
   test('the Along menu\'s name and Guide take a finger 40px tall, and + Add key\'s items are each 40px', async ({ page }) => {
     await openApp(page);
-    await tab(page, 'VECTOR').click();
+    await pickLayer(page);
     await page.getByRole('switch', { name: 'Animate' }).check();
     const [path, dot] = await store(page, 'project', (p) => [
       p.addShape({ z: 0, closed: false, fill: null, stroke: '#00ff00', width: 1, m: [1, 0, 0, 1, 0, 0], points: [[4, 20, 0, 0, 0, 0, 0], [30, 20, 0, 0, 0, 0, 0]] }),

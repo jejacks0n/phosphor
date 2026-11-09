@@ -13,6 +13,7 @@ import { useSocialStore } from '@/store/SocialStore';
 import { toast } from '@/composables/useToast';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 import LobbyPage from '@/components/social/LobbyPage.vue';
+import LayersList from '@/components/LayersList.vue';
 
 // The column at the right of the whole app, on a wide screen: LAYERS, and LOBBY, which is CHAT while you're in a
 // room. Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and
@@ -106,7 +107,7 @@ function key(e) {
         <button class="fold link" :aria-label="t('sidePanel.foldAria')" @click="fold(true)">»</button>
       </div>
       <aside v-show="tab === 'layers'" class="layers" :aria-label="t('sidePanel.layers')">
-        <p class="empty">{{ t('sidePanel.layersEmpty') }}</p>
+        <LayersList/>
       </aside>
       <ChatPanel v-if="room.inRoom" v-show="tab === 'social'" :shown="chatShown"/>
       <LobbyPage v-else-if="tab === 'social' && social.allowed"/>
@@ -222,10 +223,5 @@ aside.layers {
   flex: 1;
   min-height: 0;
   overflow: auto;
-}
-p.empty {
-  margin: 0;
-  padding: 16px 12px;
-  color: var(--text-muted);
 }
 </style>
