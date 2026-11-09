@@ -81,7 +81,7 @@ export const tab = (page, label) => page.getByRole('tab', { name: label, exact: 
 
 // A layer picked in LAYERS, as the tabs follow: 'Vector 1' (the default) is VECTOR, added first with + Vector layer when
 // the drawing has none; 'Layer 1' is back to PIXEL or ANSI. A folded side panel is folded again after, so the canvas
-// keeps its size. A phone has no side panel: its Layers button opens the list in a dialog, which closes on the pick.
+// keeps its size. A phone has no side panel: its Layers button opens the list in a dialog, which stays open on a pick until Done.
 export async function pickLayer(page, name = 'Vector 1') {
   const panel = page.locator('.side-panel');
   if (!await panel.count()) {
@@ -90,6 +90,7 @@ export async function pickLayer(page, name = 'Vector 1') {
     const add = dialog.getByRole('button', { name: '+ Vector layer' });
     if (name === 'Vector 1' && await add.isVisible()) await add.click();
     else await dialog.locator('li button.pick', { hasText: name }).click();
+    await dialog.getByRole('button', { name: 'Done' }).click();
     return;
   }
   const open = page.getByRole('button', { name: 'Open the panel' });

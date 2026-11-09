@@ -1,5 +1,5 @@
 // The VECTOR tab: the ANSI art with the shapes' outlines over it, and the tools that draw and change them.
-import { test, expect, openApp, store, tab, pickLayer, settled } from './support.js';
+import { test, expect, openApp, store, tab, pickLayer, settled, startScreen } from './support.js';
 
 // The page position of grid pixel (x, y) (fractional) in the ANSI and VECTOR views.
 async function gridPoint(page, x, y) {
@@ -1106,6 +1106,9 @@ test.describe('on a phone', () => {
   });
 
   test('Layers picks the vector layer', async ({ page }) => {
+    await page.goto('/');
+    await startScreen(page);
+    await expect(page.getByRole('button', { name: 'Layers', exact: true })).toHaveCount(0);   // nothing open: nothing to list
     await openApp(page);
     const layers = page.getByRole('button', { name: 'Layers', exact: true });
     const dialog = page.getByRole('dialog', { name: 'Layers' });
@@ -1114,18 +1117,30 @@ test.describe('on a phone', () => {
     await expect(dialog).toBeVisible();
     await apart();
     await page.getByRole('button', { name: '+ Vector layer' }).tap();
-    await expect(dialog).toHaveCount(0);
-    await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
+    await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');   // the tabs follow, behind the dialog
     await expect(tab(page, 'PIXEL')).toHaveCount(0);
+    await expect(dialog).toBeVisible();   // which stays open, for a rename or an eye
+    await apart();
+    await dialog.getByRole('button', { name: 'Done' }).tap();
+    await expect(dialog).toHaveCount(0);
     await expect(layers).toBeFocused();   // focus comes back to the button that opened it
     await apart();
-    await layers.tap();   // and picking a row closes it too
+    await layers.tap();
     await apart();
     await dialog.locator('li button.pick', { hasText: 'Layer 1' }).tap();
-    await expect(dialog).toHaveCount(0);
     await expect(tab(page, 'VECTOR')).toHaveCount(0);
     await expect(tab(page, 'PIXEL')).toBeVisible();
+    await page.keyboard.press('Escape');   // Escape closes it too
+    await expect(dialog).toHaveCount(0);
     await expect(layers).toBeFocused();
+  });
+
+  test('the Layers dialog closes when the window widens to a computer\'s', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Layers', exact: true }).tap();
+    await expect(page.getByRole('dialog', { name: 'Layers' })).toBeVisible();
+    await page.setViewportSize({ width: 1200, height: 844 });
+    await expect(page.getByRole('dialog')).toHaveCount(0);   // its button is gone, and the side panel has the list
   });
 
   test('the options row has every button, as icons, and no hint; Stroke width is in the Stroke box', async ({ page }) => {

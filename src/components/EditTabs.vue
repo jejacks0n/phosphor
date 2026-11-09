@@ -59,17 +59,17 @@ const indicatorStyle = ref({ transform: 'translateX(0px)', width: '0px', opacity
 
 const isDesktop = useMediaQuery(desktopQuery);
 
-// A phone has no side panel: its LAYERS list opens from a button here, in a dialog. Picking a row (or + Vector layer)
-// closes it, and so do Escape and the backdrop; focus goes back to the button.
+// A phone has no side panel: its LAYERS list opens from a button here, in a dialog. A pick leaves it open (a rename
+// takes a click on a name already picked, and the eye is for hiding what's picked); Done, Escape and the backdrop close it,
+// and focus goes back to the button.
+const showLayers = computed(() => !isDesktop.value && !!image.value && workspace.editMode);
 const layersOpen = ref(false);
 const layersButton = useTemplateRef('layersButton');
 function closeLayers() {
   layersOpen.value = false;
   nextTick(() => layersButton.value?.focus());
 }
-function onLayersClick(event) {
-  if (event.target.closest('button.pick:not([aria-disabled]), button.add')) closeLayers();
-}
+watch(showLayers, (shown) => { if (!shown) layersOpen.value = false; });   // no button behind it: the window widened, or the art went
 
 // The art tabs wait for something to show. From ROOM they're the way back to the start screen.
 const noArt = computed(() => !image.value && props.modelValue !== 'room');
@@ -175,9 +175,10 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
       </button>
       <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
     </div>
-    <button v-if="!isDesktop && workspace.editMode" ref="layersButton" class="layers" @click="layersOpen = true">{{ t('layers.label') }}</button>
+    <button v-if="showLayers" ref="layersButton" class="layers" @click="layersOpen = true">{{ t('layers.label') }}</button>
     <ModalDialog v-if="layersOpen" :label="t('layers.label')" @cancel="closeLayers">
-      <div @click="onLayersClick"><LayersList/></div>
+      <LayersList/>
+      <div class="actions"><button class="primary" @click="closeLayers">{{ t('common.done') }}</button></div>
     </ModalDialog>
     <label class="animate" :class="{ on: project.animate, off: !canSwitch }" :title="switchTitle">
       <input type="checkbox" role="switch" :aria-label="t('tabs.animate')" :checked="project.animate" :aria-disabled="blocked || null" @change="switchAnimate">
@@ -331,6 +332,11 @@ button.layers {
   padding: 3px 8px;
   font-size: 12px;
   white-space: nowrap;
+}
+div.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 button.layers ~ label.animate {
   margin-left: 0;
