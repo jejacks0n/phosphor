@@ -179,8 +179,8 @@ export function paletteChoices(params, palette) {
 }
 
 // Several stored colors ([r, g, b] each) through the adjustments and the palette at once: what each shows, as flat RGB
-// bytes (one applyTransforms call: its setup costs more than its pixels).
-function shownBatch(colors, params, palette) {
+// bytes, as effectiveColor gives one (one applyTransforms call: its setup costs more than its pixels).
+export function shownColors(colors, params, palette = null) {
   const data = new Uint8ClampedArray(colors.length * 4);
   colors.forEach(([r, g, b], i) => data.set([r, g, b, 255], i * 4));
   applyTransforms(data, params);
@@ -202,7 +202,7 @@ function shownIndex(params, palette) {
   if (kept?.palette === palette) return kept.buckets;
   const colors = [];
   for (let r = 0; r < 33; r++) for (let g = 0; g < 33; g++) for (let b = 0; b < 33; b++) colors.push([Math.min(255, r * 8), Math.min(255, g * 8), Math.min(255, b * 8)]);
-  const shown = shownBatch(colors, params, palette);
+  const shown = shownColors(colors, params, palette);
   const buckets = new Array(4096), seen = new Set();
   for (let i = 0; i < colors.length; i++) {
     const r = shown[4 * i], g = shown[4 * i + 1], b = shown[4 * i + 2], exact = (r << 16) | (g << 8) | b;
@@ -246,7 +246,7 @@ export function storedShowingAs(params, target, palette = null) {
   if (!near.length) return target;
   const clamp = (v) => Math.max(0, Math.min(255, v));
   const nearest = (moves) => { // of these stored colors, the one showing nearest the target, and how far
-    const shown = shownBatch(moves, params, palette);
+    const shown = shownColors(moves, params, palette);
     let at = null, d = Infinity;
     moves.forEach((move, i) => {
       const dn = off(shown[4 * i], shown[4 * i + 1], shown[4 * i + 2]);

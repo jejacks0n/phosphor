@@ -9,7 +9,7 @@ import { TILE } from '@/document/History.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { bakedEntry, cellIndex, charRowsOf, halfColors, isSolidGlyph, mix } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
-import { effectiveColor, paletteChoices, storedShowingAs } from '@/lib/PixelTransforms.js';
+import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { over } from '@/store/project/shared.js';
 
 // For each palette color, a stored color that shows as it under the adjustments (paletteChoices), kept while
@@ -27,17 +27,23 @@ function storedOf(palette, params) {
 
 // A stored color that shows as the ASCII styles' black background under the adjustments: black, or white with Invert.
 // ponytail: only those two; an adjustment that lifts black (Contrast, Levels) gets black, a little off. Search a grid if it bites.
-const storedBlack = (params) => ['#000000', '#ffffff'].find((hex) => effectiveColor(hex, params).hex === '#000000') ?? '#000000';
+const blacks = new WeakMap(); // processParams -> the hex: asked twice a cell by a merge
+const storedBlack = (params) => {
+  if (!blacks.has(params)) blacks.set(params, ['#000000', '#ffffff'].find((hex) => effectiveColor(hex, params).hex === '#000000') ?? '#000000');
+  return blacks.get(params);
+};
 
 // The stored color hex, or one a step off it on some channels, that shows as target: Color ASCII's FG is the halves'
 // average, and one averaged in stored colors can round the other way from the one shown (Invert turns half up to half down).
 // reach: an adjustment that clips (Brightness past 100) or turns hues doesn't average as stored colors do, so failing
 // that, a stored color that shows as target, or as near it as any can (reaching).
 function shownAs(project, hex, target, { reach = false } = {}) {
-  const params = project.processParams, { r, g, b } = hex2rgb(hex), steps = [0, -1, 1];
-  for (const dr of steps) for (const dg of steps) for (const db of steps) {
-    const near = rgb2hex({ r: r + dr, g: g + dg, b: b + db });
-    if (project.renderer.effective(near, params).hex.toLowerCase() === target.toLowerCase()) return near;
+  const params = project.processParams, { r, g, b } = hex2rgb(hex), goal = hex2rgb(target), steps = [0, -1, 1];
+  const clamp = (v) => Math.max(0, Math.min(255, v)), near = [];
+  for (const dr of steps) for (const dg of steps) for (const db of steps) near.push([clamp(r + dr), clamp(g + dg), clamp(b + db)]);
+  const shown = shownColors(near, params, project.renderer.palette); // the 27 at once: a merge asks for every cell
+  for (let i = 0; i < near.length; i++) {
+    if (shown[4 * i] === goal.r && shown[4 * i + 1] === goal.g && shown[4 * i + 2] === goal.b) return rgb2hex({ r: near[i][0], g: near[i][1], b: near[i][2] });
   }
   return reach ? reaching(project, target) : hex;
 }
