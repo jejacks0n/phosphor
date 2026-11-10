@@ -13,7 +13,7 @@ import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboar
 import { createApp } from 'vue';
 import VectorOptions from '@/components/VectorOptions.vue';
 import { i18n } from '@/i18n';
-import { writeProject } from '@/document/projectIO.js';
+import { readProject, writeProject } from '@/document/projectIO.js';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { useDrawingStore } from '@/store/DrawingStore';
 
@@ -732,4 +732,16 @@ test('Make art layer is refused while the cells layer or the vector layer above 
     expect(project.cellsOf('edit').get('2,1')?.char).toBe('H');
     expect(cellsKey(project)).toEqual(shown);
   }
+});
+
+test('Make art layer with the base picked puts nothing of the base among the waiting layers, and the file still opens', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('base');
+  expect(project.editId).toBe('base');
+  project.typeAt(2, 1, 'H', { fg: RED });
+  project.commitEdit();
+  select(workspace, 1, 0, 6, 2);
+  const key = project.makeArtLayer();
+  expect([...project._layerData.keys()]).not.toContain('base');
+  if (key) await expect(readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }))).resolves.toBeTruthy();
 });

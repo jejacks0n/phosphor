@@ -385,3 +385,18 @@ test('Into the image from a row that isn\'t the layer in use merges that row\'s 
     host.remove();
   }
 });
+
+test('Merge down of a cells layer into another with the base hidden keeps what shows', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(3, 3, 'A', { fg: '#ff0000' }); // BG none: it's completed against what shows under it
+  project.commitEdit();
+  project.setLayerHidden('base', true);
+  await settle(project);
+  const shown = cellsKey(project);
+  expect(project.mergeDown(top)).toBe(true);
+  await settle(project);
+  expect(cellsKey(project)).toEqual(shown);
+});

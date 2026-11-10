@@ -472,3 +472,26 @@ test('Clear edit layer on a movie clears only the picked layer, on the frame sho
   expect(project.frame).toBe(1);
   expect(charsOf(project.cellsOf(id))).toEqual({ '2,2': 'x', '3,3': 'y' });
 });
+
+test('undoing a layer added in a movie leaves no keys of it on any frame, and the file opens with its frames', async () => {
+  const { project, workspace } = await animated();
+  const { readProject, writeProject } = await import('@/document/projectIO.js');
+  project.addLayer('cells', 'edit'); // L1 stays: the file is the stack form
+  project.addFrame('blank');
+  project.addFrame('blank');
+  project.showFrame(0);
+  const added = project.addLayer('cells', 'L1');
+  workspace.pickLayer(added);
+  project.showFrame(1);
+  type(project, 1, 1, 'A');
+  project.showFrame(2);
+  type(project, 2, 2, 'B');
+  project.showFrame(0);
+  project.undo(); // B, on frame 2
+  project.undo(); // A, on frame 1
+  project.undo(); // the layer
+  expect(project.layerById(added)).toBeUndefined();
+  const file = await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }));
+  expect(file.framesLost).toBe(false);
+  expect(file.animation.frames.length).toBe(3);
+});
