@@ -191,6 +191,8 @@ test('paint on an upper layer over a typed cell covers it as paint covers edit c
 
 test('undo and redo of an upper layer\'s edits, a fill of the whole layer among them, don\'t run the lower group or the pipeline', async () => {
   const { project } = await blank();
+  project.paintStroke([{ x: 9, y: 9, alpha: 1 }], '#0000ff'); // on the lower group's layer: in the output, not in the last render's cells
+  project.commitEdit();
   const top = project.addLayer('cells', 'edit');
   project.useLayer(top);
   project.typeAt(2, 2, 'A', { fg: '#ffffff', bg: '#000000' });

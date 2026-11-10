@@ -245,18 +245,19 @@ export const historyActions = {
     }
     if (!inside) {
       // Changes all on layers above the lower group are laid over again alone: their cells, or past a quarter of the grid
-      // the whole stack (applyEditCells, which visits only the cells the upper layers touch); the pipeline isn't touched.
+      // the whole stack (rebuildCells: the output as it is, the upper layers over only the cells they touch); no pipeline.
       // Not under the Number palette (every layer's pixels count toward it) or a carried error or held dither, where the
       // composite catches the rest of the grid up, as commitEdit's does.
+      const drawingOf = (id) => (id === this.editId ? this : this._layerData.get(id));
       const lower = this.lowerGroup.cells, written = [...byLayer].filter(([, { cells, runs: own }]) => cells.length || own.length);
       const belowToo = changedPixels(this.cols, this.rows, patches, pins.length ? [pins] : [], [], null, Infinity).length; // base pixels or pins
       const whole = this.quantize === 'count' || carriesError(this.processParams) || this.renderer.holdsDither(this.processParams);
-      const upper = !belowToo && !whole && written.every(([id]) => id !== lower && id !== 'base');
+      const upper = !belowToo && !whole && written.every(([id]) => id !== lower && id !== 'base' && drawingOf(id)); // a layer that isn't there (a merge's) takes the path it always did
       if (!upper) this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], keys);
       else {
-        const pixels = changedPixels(this.cols, this.rows, written.map(([id, { runs: own }]) => [runsPatch(own), (id === this.editId ? this : this._layerData.get(id)).paintLayer]), [], keys);
+        const pixels = changedPixels(this.cols, this.rows, written.filter(([id]) => drawingOf(id).paintLayer).map(([id, { runs: own }]) => [runsPatch(own), drawingOf(id).paintLayer]), [], keys); // no paint yet: no runs landed
         if (pixels) this.recomposeUpper(pixels);
-        else this.applyEditCells();
+        else this.rebuildCells();
       }
     } else if (pins.length) this.refreshChanged([], [pins]);
     const moved = () => { const m = placeOf(); return !m || !was || m.some((v, i) => v !== was[i]); };
