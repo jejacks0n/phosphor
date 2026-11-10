@@ -200,6 +200,9 @@ says beside you for the keyboard score. Then, for each step of the script:
    `page.evaluate(() => [document.activeElement?.tagName, document.activeElement?.getAttribute('aria-label')])`;
    `BODY` means focus went nowhere.
 8. **Record findings** with `qa.finding`, each with a screenshot or a timing.
+9. **Put back what a probe changed** before the next step, when later steps rely on it (a setting, a key, a layer,
+   the file that's open): by undo, or by setting it back. If it can't be put back, say so in a `qa.note` on the step,
+   with what the rest of the run started from.
 
 ### A step that can't be done
 

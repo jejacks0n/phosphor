@@ -57,8 +57,8 @@ every key, easing and path where she left it.
 - 12 items on one vector layer: the 4 shapes from `gradients.svg`, a ball, a curve, a spark line, two dots that follow
   them, and 3 art layers (each a few cells to a 10 by 4 block).
 - Three cells layers at most (Base, Layer 1 and one more); one vector layer.
-- At the edge: 160 columns by 50 lines (8,000 cells, 192,000 across 24 frames), and 201 by 200 lines (40,200 cells),
-  past the 40,000 cells a frame animation holds.
+- Bigger: 160 columns by 50 lines (8,000 cells, 192,000 across 24 frames).
+- At the edge: 40,000 cells a frame, the most animation holds; 201 by 200 lines (40,200 cells) is just past it.
 - Exports: a .gif of a few hundred KB, a .cast under 1 MB, a .phosphor of a few hundred KB.
 
 ## Traits
@@ -98,12 +98,14 @@ script. Every section ends with Free time.
 - Does: drops `gradients.svg` on the drawing and chooses Add to this drawing; scales the import down by a corner
   handle with Shift held.
 - Expects: the question offers Add to this drawing and Open instead; its four shapes land on VECTOR in the frame
-  showing, centered, at their own size (200 by 160 fits inside the canvas's grid pixels, or is scaled to fit), with
-  their gradients, all selected with Vector select; the whole import is one undo step
-  ([Importing SVG](../../vector.md#importing-svg)).
+  showing, with their gradients, all selected with Vector select. At 200 by 160 the art is bigger than the 80 by 50
+  canvas, so it's scaled down to fit inside it less a margin of 2 grid pixels (about 58 by 46), its proportions kept,
+  and centered; check the margin. The whole import is one undo step ([Importing SVG](../../vector.md#importing-svg)).
 - Probes: `back-out`: drop it and press Escape at the question, and check nothing came in; `extremes`: drop
-  `belle-verriere-mark.svg` too and time it against the `file` budget; `free`: choose Open instead once, and check
-  what happens to the canvas she had (it asks about unsaved changes first, or says what it replaced).
+  `belle-verriere-mark.svg` too, time it against the `file` budget, then undo it (one step) so the layer is back to
+  its items; `free`: drop `gradients.svg` again and choose Open instead, check what happens to the canvas she had (it
+  asks about unsaved changes first, or says what it replaced), and cancel that question; if it opened anyway, reopen
+  her scene from "Pick up where you left off" and note it.
 - Rated: yes, wants Cmd+O, then Enter on Add to this drawing
 
 ### 4. Draw a curve to follow, and a spark line
@@ -170,8 +172,8 @@ a Polygon.
 - Expects: the frame keeps its changes, not its look: a Blank moved sits over different frames, so what it shows can
   change; Move earlier is off on frame 1 and Move later on the last
   ([Carrying and owning a cell](../../animation.md#carrying-and-owning-a-cell)).
-- Probes: `out-of-order`: on frame 1, look at Move earlier (off); `undo-redo`: undo both moves, redo one, and check the
-  scrubber's ticks follow.
+- Probes: `out-of-order`: on frame 1, look at Move earlier (off); `undo-redo`: undo the three moves, redo them, and
+  check the scrubber's ticks follow.
 - Rated: yes, wants a key to move the frame (Alt+Shift+`,` and `.`, say)
 
 ### 10. Set the timing
@@ -180,7 +182,8 @@ a Polygon.
   ([Timing](../../animation.md#timing)); each change is kept, and the project keeps it.
 - Probes: `extremes`: type 0, 61 and 999 in frames per second (it holds to 1 to 60) and a hold of 61 and -1;
   `back-out`: type a number and press Escape or click away before Enter, and check what's kept; `undo-redo`: undo the
-  hold and check it goes back to 0.
+  hold and check it goes back to 0, then redo it. Then put back 12 frames per second and frame 24's hold of 0.5, which
+  steps 26 and 29 rely on.
 - Rated: yes, wants Tab to frames per second (typing the number is content)
 
 **Free time:** she'd look for a way to select several frames and move them at once, set New cells to Stay on their
@@ -206,17 +209,18 @@ the arrow keys once it has focus.
 - Expects: the ball rises from 13 to 24, starting fast; the frame 7 fill keys only Fill, so the ball still falls in
   one ease from 1 to 13 without slowing at 7; the color holds and jumps at frame 7 until its frame 1 key has an
   easing, then tweens from frame 1 to 7 ([Tweens](../../animation.md#tweens): each part tweens on its own).
-- Probes: `again`: give it a second fill on frame 18; `undo-redo`: undo the fill and check only the Fill row's key
-  goes, with the Transform tween as it was; `extremes`: choose Elastic on the frame 1 Transform key and check the
-  ball springs past frame 13's place and back.
+- Probes: `again`: give it a second fill on frame 18, then undo it; `undo-redo`: undo the frame 7 fill and check only
+  the Fill row's key goes, with the Transform tween as it was, then redo it; `extremes`: choose Elastic on the frame 1
+  Transform key and check the ball springs past frame 13's place and back, then put Ease in back (steps 14 to 17 rely
+  on it).
 - Rated: yes, wants Alt+F, then the arrows to the color
 
 ### 13. Type a value into a key
 - Does: on frame 13, in the Transform row's values, types 30 in Y and 45 in Turn, pressing Enter after each.
 - Expects: each typed value keys the part on the frame showing, as if she had edited the shape there; undo takes it
   back; the Turn tweens the short way round ([The Keys panel](../../animation.md#the-keys-panel)).
-- Probes: `extremes`: type -99999, 99999, an empty value and letters in X; `back-out`: type a value and press Escape
-  before Enter; `undo-redo`: undo the Turn, redo it, then type a W and check redo is off.
+- Probes: `extremes`: type -99999, 99999, an empty value and letters in X, undoing each that took; `back-out`: type
+  a value and press Escape before Enter; `undo-redo`: undo the Turn, redo it, then type a W and check redo is off.
 - Rated: yes, wants Tab to the field (the number is content)
 
 ### 14. Drag a key to retime it
@@ -227,7 +231,7 @@ the arrow keys once it has focus.
   keys back; a drag is one undo step ([The Keys panel](../../animation.md#the-keys-panel)).
 - Probes: `speed`: drag a key back and forth across the whole lane for two seconds with `qa.frames`; `extremes`: drop
   a key onto another key of the same row (it replaces it) and drag the first key past the shape's next key (it stops a
-  frame short); `back-out`: Escape mid-drag.
+  frame short), undoing both; `back-out`: Escape mid-drag.
 - Rated: yes, wants a key to move the selected keys by a frame (Alt+arrows, say)
 
 ### 15. Give the move a stepped look
@@ -245,8 +249,8 @@ the arrow keys once it has focus.
 - Expects: an art layer's only rows are Transform and Stack (and Along while it follows a path); its X and Y are its
   top left, X a column, Y in grid pixels; on the frames between it lands on whole cells; the motion menu is off for it
   ([Tweens](../../animation.md#tweens), [Following a path](../../animation.md#following-a-path)).
-- Probes: `extremes`: type an X of 3.5 (it lands on the nearest whole cell) and a Y past the canvas; `speed`: press
-  the arrow keys ten times quickly with Shift held and count the undo steps it takes.
+- Probes: `extremes`: type an X of 3.5 (it lands on the nearest whole cell) and a Y past the canvas, then undo the Y;
+  `speed`: press the arrow keys ten times quickly with Shift held and count the undo steps it takes.
 - Rated: yes, wants the arrow keys
 
 ### 17. Delete keys
@@ -302,9 +306,9 @@ number, try Mixed by selecting keys with different easings, and Shift-click a ke
 - Expects: the dot sits on the spark's End on every frame whatever its own Along keys say (they're kept); its value is
   grayed; Guide hides the line in the cells and the exports and shows it on VECTOR as a thin dashed outline
   ([Following a path](../../animation.md#following-a-path)). The vector layer now holds its 12 items.
-- Probes: `interrupt`: change the spark's End easing to Elastic and check the dot still rides the tip; `undo-redo`:
-  undo Guide and the ride, one at a time; `free`: try to select the Guide by clicking inside it (only its outline
-  takes a click).
+- Probes: `interrupt`: change the spark's End easing to Elastic, check the dot still rides the tip, and put it back;
+  `undo-redo`: undo Guide and the ride, one at a time, then redo both; `free`: try to select the Guide by clicking
+  inside it (only its outline takes a click).
 - Rated: yes, wants a key for the Along ▾ menu
 
 ### 22. Face the path, and step a follower by keys
@@ -396,12 +400,13 @@ Alt+`,` while typing in Edit Mode, and Bake with the sliders moved to see every 
 - Expects: the cast's header is as wide and tall as the art; its events are spaced at 1/12 s with frame 24 held 0.5 s
   ("exact timing"); its last screen matches frame 24 cell for cell (after `terminal.normalizeHidden`), with the guide
   not drawn ([Exporting](../../animation.md#exporting)).
-- Probes: `out-of-order`: hide Layer 1 and export, and check it's left out; `again`: export with a frame of 0 hold
-  between two held ones and check the timing.
+- Probes: `out-of-order`: hide Layer 1 and export, and check it's left out, then show it again; `again`: give frames
+  22 and 24 holds with 23's at 0, export and check the timing, then undo the holds back to frame 24's 0.5.
 - Rated: yes, wants a key for Export .cast
 
 ### 30. Save it and reopen it
-- Does: presses Cmd+S and saves; starts a New project; opens the .phosphor with Choose a file.
+- Does: presses Cmd+S and saves; starts a New project (if it asks about unsaved changes, that's a browser confirm:
+  handle it with `page.once('dialog')`); opens the .phosphor with Choose a file.
 - Expects: everything comes back: 24 frames, their holds, 12 frames per second, the frame she was on, every shape and
   art layer with its keys per part, easings, motions, Start and End, every follower's path and Along, the Guide, Face
   the path; Animate is on, since it has more than one frame ([Saving](../../animation.md#saving),

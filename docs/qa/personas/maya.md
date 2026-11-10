@@ -191,8 +191,8 @@ gives her a painterly look, look for a way to reorder the filters, and check the
 
 ### 14. Dither with Best match and By shape
 - Does: with Dither on, switches Choose characters to Best match, then By shape, and tries both dither styles.
-- Expects: Dither now works on the cells instead of the pixels: Floyd–Steinberg carries each cell's error on to the
-  next cells, Ordered nudges each cell by its place ([Characters](../../characters.md#how-the-converter-picks-characters)).
+- Expects: Dither now works on the cells instead of the pixels: Floyd–Steinberg carries each cell's error on to the next
+  cells, Ordered nudges each cell by its place ([Characters](../../characters.md#how-the-converter-picks-characters)).
 - Probes: `extremes`: Dither at 100% with Solids at 100%; `interrupt`: switch to PIXEL and check what the Pixel tab
   shows for Best match's cells (each half its two colors blended).
 - Rated: yes, wants Tab to Choose characters then the arrows
@@ -279,9 +279,9 @@ dithered, and compare the dither at 80 and at 200 columns.
 ### 23. Paint inside the art layer
 - Does: steps into the art layer again (Edit art), paints a stroke with the Brush, fills an area with the Paint Bucket,
   drags a Linear gradient with the Bucket's Gradient choice, then presses Done.
-- Expects: the usual ANSI tools draw into the art layer and only it ([Editing an art layer](../../vector.md#editing-an-art-layer));
-  drawing past its edge grows it; each edit is one undo step; the change shows on VECTOR once she's out, with the
-  layer selected.
+- Expects: the usual ANSI tools draw into the art layer and only it
+  ([Editing an art layer](../../vector.md#editing-an-art-layer)); drawing past its edge grows it; each edit is one undo
+  step; the change shows on VECTOR once she's out, with the layer selected.
 - Probes: `undo-redo`: undo the gradient, the fill and the stroke inside, and check undo stops where she stepped in;
   `out-of-order`: try to pick Base or change a setting in the left column while inside (they're off);
   `interrupt`: switch tabs while inside, which steps out, and check what she drew stayed.
@@ -357,7 +357,9 @@ from Bake, merge with a selection, and check the merges are off with Animate on 
 
 ### 30. Export a PNG to post
 - Does: looks for a PNG export among Save project, Export .ans and Export .utf8ans (in the left column and on SAUCE).
-- Expects: a PNG of the art as it shows, which [Vector shapes](../../vector.md#saving) lists among the exports.
+- Expects: a PNG of the art as it shows, which [Vector shapes](../../vector.md#saving) lists among the exports. If
+  there's none, that's a `bug` finding, since the docs say it works (the README's
+  [A step that can't be done](../README.md#a-step-that-cant-be-done)).
 - Probes: `out-of-order`: look on every tab and in the Actions menu of a narrow window; `free`: try the browser's own
   right-click on the canvas.
 - Rated: yes, wants a key for Export PNG

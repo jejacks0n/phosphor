@@ -178,7 +178,7 @@ in the status bar to see what they do, and try "Or start with a blank canvas" fr
 - Expects: the picture converts again at 40 columns, its rows following the photo's shape (Lock aspect ratio is on);
   the change lands within the `setting` budget.
 - Probes: `extremes`: type 0, then 999, and check where it stops (300 columns at most); `undo-redo`: undo the size
-  from Actions and check the number goes back too.
+  from Actions and check the number goes back too. End at 40 columns.
 - Rated: yes, wants return on the phone's keyboard
 
 ### 11. Undo, from a phone
@@ -219,8 +219,8 @@ column to see the words change, switch the theme, and open About.
 - Expects: the dialog fits at 390 wide, with every row's name, eye and ⋯ visible; "Layer 2" is added above Layer 1 and
   picked, and stays open after a pick; return keeps the new name; the status bar then says "doodles"
   ([The layers list](../../layers.md#the-layers-list)).
-- Probes: `extremes`: rename it to 40 characters with emoji and check the row; `back-out`: start a rename and tap
-  outside the dialog; `again`: add three layers in a row.
+- Probes: `extremes`: rename it to 40 characters with emoji and check the row, then back to "doodles"; `back-out`: start
+  a rename and tap outside the dialog; `again`: add three layers in a row.
 - Rated: yes, wants return on the phone's keyboard
 
 ### 15. Long-press a layer
@@ -250,8 +250,8 @@ sticker or emoji picker.
   phone's number keys and presses return.
 - Expects: it loops; the scrubber follows her finger; the new speed shows when she plays again; the bar's fields stay
   readable with the keyboard up.
-- Probes: `extremes`: type 0 and 99 in frames per second; `interrupt`: reload, as when the phone drops a tab in the
-  background, and check the frames came back with Animate on.
+- Probes: `extremes`: type 0 and 99 in frames per second, then 4 again; `interrupt`: reload, as when the phone drops a
+  tab in the background, and check the frames came back with Animate on.
 - Rated: yes, wants return on the phone's keyboard
 
 ### 18. Use the ghost
@@ -267,10 +267,11 @@ frames, and pinch while it plays.
 ## Sharing it
 
 ### 19. Save a picture to post
-- Does: with Animate off, looks for a PNG: in the settings column's buttons, in Actions, and long-presses
-  the picture.
+- Does: turns Animate off first (step 16 turned it on), then looks for a PNG: in the settings column's buttons, in
+  Actions, and long-presses the picture.
 - Expects: a way to save the art as a picture, which [Vector shapes](../../vector.md#saving) lists among the exports
-  (PNG). If there's none, that's an `oversight` finding: the person came to share a picture.
+  (PNG). If there's none, that's a `bug` finding, since the docs say it works (the README's
+  [A step that can't be done](../README.md#a-step-that-cant-be-done)).
 - Probes: `out-of-order`: look on SAUCE too; `free`: take the screenshot a phone person would (`qa.shot`) and note
   that's her only way.
 - Rated: no (touch only: no keyboard shows here)
@@ -296,7 +297,8 @@ frames, and pinch while it plays.
 - Rated: yes, wants Go on the phone's keyboard
 
 ### 22. Come back to it
-- Does: presses New project (accepting if it asks), then looks at the start screen.
+- Does: presses New project (accepting if it asks: a browser confirm, handled with `page.once('dialog')` as in step
+  21), then looks at the start screen.
 - Expects: "Pick up where you left off" lists her work with its time and an Open button; Open brings it back; the list
   fits at 390 wide, long names cut off neatly.
 - Probes: `again`: open it twice; `extremes`: save a project under a 60-character name with emoji and check how it
