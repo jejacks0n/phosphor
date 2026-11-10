@@ -149,15 +149,19 @@ button.link {
   font-family: inherit;
   font-size: 10px;
   padding: 1px 4px;
-  background: var(--surface-1);
   color: var(--text-dim);
-  border: 1px solid var(--border);
   border-radius: 3px;
   cursor: pointer;
+}
+.locale-select:not(:focus) {   /* focused, a field's own look: its accent border and glow */
+  background: var(--surface-1);
+  border-color: var(--border);
 }
 
 .locale-select:hover {
   color: var(--text);
+}
+.locale-select:hover:not(:focus) {
   border-color: var(--border-light, var(--border));
 }
 </style>
