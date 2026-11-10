@@ -82,6 +82,13 @@ and what's right.
 - `shots/`: screenshots, named `001-<step>.png` and so on.
 - `inbox/` and `outbox/`: the snippets as sent, and what each did (`outbox/<name>.json`).
 
+The run's only output is its folder. Don't change any file in the repo outside `qa-runs/`, and don't commit. If a
+script step looks wrong about the app, say so with `qa.note` on that step and walk it as the app is; don't edit the
+script (the owner decides, and the next change to it is someone's work). Keep a short log of your own in the run folder
+(`agent-log.md`): what you did at each step and anything odd, so the reviewer can follow you. If you're running out of
+room to work (an agent's context, say), stop where you are and send `--end`: a run cut short with its report beats one
+with none. Look at your screenshots as images (open the PNG), not only at the DOM.
+
 Keep your snippet files in `qa-runs/snippets/` (or anywhere outside the tracked tree); `qa:send` copies each one into
 the inbox under a new name, so you can send the same file again.
 
@@ -111,8 +118,13 @@ keeps serving the next snippet. What a failed snippet recorded before it failed 
 Keep each snippet to a step or part of one, so it finishes well inside `QA_SNIPPET_MS`. A snippet that times out isn't
 stopped, only given up on: it may still be acting on the page when the next one starts. Every Playwright action gives
 up after 10 s and every navigation after 30 s (`actionTimeout` and `navigationTimeout` in
-`tests/qa/playwright.config.js`), so a leftover snippet fails at its next action rather than acting much later; your
-own waits (`waitForTimeout`, `expect.poll`, a loop) aren't bounded, so wait in small pieces. If one times out, send a
+`tests/qa/playwright.config.js`), so a leftover snippet fails at its next action rather than acting much later.
+Playwright's own waits (`waitForFunction`, `waitForEvent`, `locator.waitFor`) are held to the same 10 s, and so are the
+helpers built on them: `e2e.settled` and `e2e.saveAs` give up after 10 s. Opening or exporting a big file (Walt's
+300×1600, a long GIF) can take longer, and a time-out there is the harness, not the app: for that one call, raise the
+limit with `context.setDefaultTimeout(60_000)` and set it back to `10_000` after, or pass `{ timeout: 60_000 }` to the
+wait you write yourself. Time it with `qa.time` all the same: past the `file` budget is a finding. Waits that aren't
+Playwright's (`waitForTimeout`, `expect.poll`, a loop) aren't bounded, so wait in small pieces. If one times out, send a
 snippet that only looks (a screenshot, `page.url()`) before you go on. Raise `QA_SNIPPET_MS` when you start the session
 if a step really waits longer (opening the long file on a slow step, say); above 180 s, raise `QA_WAIT` (in seconds)
 for `qa:send` too, or it gives up before the snippet does.
