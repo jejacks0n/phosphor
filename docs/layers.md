@@ -31,7 +31,7 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   on the same layer follows the path's copy, and an art layer's drawing comes with it). **Delete** removes the
   layer and what's on it; deleting the picked layer picks the one that was under it. In an animation both work on
   every frame at once, and each is one undo step: undoing a delete brings the layer back with its name and
-  everything on every frame, and the strokes made on it before can then be undone too. The base has no ⋯: it
+  everything on every frame, picked again if it was picked, and the strokes made on it before can then be undone too. The base has no ⋯: it
   can't be deleted, duplicated or moved. With the last cells layer above the base deleted, the base is picked and
   the tools draw there; with a vector layer picked meanwhile, there's no cells layer to draw on: a paste and pasted
   text say "Add a layer to draw on it." Flatten's "Edit it" with the base picked goes on the topmost
@@ -361,7 +361,7 @@ nudges each cell by its place in the grid. See [Characters](characters.md#how-th
 ## Moving things between layers
 
 - **Merge down** (top toolbar, the Select tool's row, or a row's ⋯ in LAYERS) puts the picked layer into the layer
-  under it, and the merged layer leaves the stack, so nothing on the canvas changes. Undo brings it back. It's off
+  under it, and the merged layer leaves the stack, so nothing on the canvas changes. Undo brings it back, picked if it was. It's off
   with the base picked (nothing is under it), and onto a vector layer, since cells can't become shapes: Make art
   layer does that ([Art layers](#art-layers)). In an [animation](animation.md) with more than one frame it's off,
   Into the image too: a layer is under every frame, so one frame can't go into it. In a room it only goes into the
