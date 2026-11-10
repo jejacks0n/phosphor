@@ -527,7 +527,12 @@
     "mergeShapesOneFrame": "Fusionner vers le bas intègre les formes au calque de base partagé, ce n'est donc disponible que sur une création à image unique.",
     "clearEdit": "Effacer le calque",
     "clearEditTitle": "Effacer le calque : tout effacer sur {name}.",
-    "clearConfirm": "Effacer {name} ? Tout ce que vous y avez peint, tapé ou collé sera supprimé.",
+    "clearDialog": {
+      "title": "Effacer {name} ?",
+      "sub": "Tout ce que vous y avez peint, tapé ou collé sera supprimé.",
+      "clear": "L'effacer",
+      "clearText": "Défaire le rétablit."
+    },
     "mergeDialog": {
       "title": "Fusionner vers le bas",
       "warning": "La fusion vers le bas ne peut pas être annulée lors d'un dessin en commun.",

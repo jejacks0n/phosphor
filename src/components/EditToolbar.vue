@@ -161,11 +161,18 @@ watch(tools, (offered) => {
   if (!offered.some(({ tool }) => tool.id === workspace.activeTool)) workspace.setActiveTool('hand');
 });
 
+// Clear asks in the app's own dialog (clearing): after the browser's confirm, the page could be left without the keys
+// until a click, so the undo key right after did nothing.
+const clearing = ref(null); // the layer's name while asked
 function confirmClear() {
   if (refusedHidden(project, [project.editId])) return; // as the store would, before asking
-  if (!project.hasEditLayer || confirm(t('toolbar.clearConfirm', { name: layerName(project.editId) }))) {
-    project.clearEditLayer();
-  }
+  if (!project.hasEditLayer) project.clearEditLayer();
+  else clearing.value = layerName(project.editId);
+}
+const clearChoices = computed(() => [{ id: 'clear', title: t('toolbar.clearDialog.clear'), text: t('toolbar.clearDialog.clearText') }]);
+function chooseClear() {
+  clearing.value = null;
+  project.clearEditLayer();
 }
 
 // Done: out of the art layer, and VECTOR with it selected.
@@ -282,6 +289,14 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       :choices="BAKE_CHOICE"
       @choose="chooseBakeFinal"
       @cancel="bakingFinal = false"
+  />
+  <ChoiceDialog
+      v-if="clearing"
+      :title="t('toolbar.clearDialog.title', { name: clearing })"
+      :sub="t('toolbar.clearDialog.sub')"
+      :choices="clearChoices"
+      @choose="chooseClear"
+      @cancel="clearing = null"
   />
   <ChoiceDialog
       v-if="flattening"

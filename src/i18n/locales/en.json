@@ -527,7 +527,12 @@
     "mergeShapesOneFrame": "Merge down presses shapes into the shared base layer, so it's only available on single-frame art.",
     "clearEdit": "Clear layer",
     "clearEditTitle": "Clear layer: erase everything on {name}.",
-    "clearConfirm": "Clear {name}? Everything you've painted, typed, or pasted on it will be removed.",
+    "clearDialog": {
+      "title": "Clear {name}?",
+      "sub": "Everything you've painted, typed, or pasted on it will be removed.",
+      "clear": "Clear it",
+      "clearText": "Undo brings it back."
+    },
     "mergeDialog": {
       "title": "Merge down",
       "warning": "Merging down can't be undone while drawing together.",
