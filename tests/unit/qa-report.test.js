@@ -46,7 +46,15 @@ test('a software renderer puts its warning before everything else', () => {
   expect(renderReport(run())).not.toContain('Software renderer');
 });
 
+test('a renderer that could not be read leads with a warning too', () => {
+  for (const renderer of [undefined, '']) {
+    const text = renderReport(run({ machine: { os: 'Linux', cpu: 'x', browser: 'Chromium', renderer } }));
+    expect(text.startsWith('Renderer unknown: timings may not be real')).toBe(true);
+  }
+  expect(renderReport(run())).not.toContain('Renderer unknown');
+});
+
 test('warnings from the event counts show under their step', () => {
   const text = renderReport(run({ steps: [step('Sneaky', 'keys', { events: { keys: 0, pointers: 2 } })] }));
-  expect(text).toMatch(/Sneaky[\s\S]*pointer/i);
+  expect(text).toMatch(/Warning: Rated keys but no keys reached the page/);
 });
