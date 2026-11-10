@@ -66,7 +66,8 @@ every layer, hidden ones and the hidden base's picture too, so showing or hiding
 colors. In an animation, the palette for the whole movie counts every layer of every frame the same way.
 
 - A hidden layer can't be drawn on. With it picked, drawing, erasing, a fill, Flip or typing does nothing,
-  and a message says "Show the layer to draw on it". On VECTOR, the shapes of a hidden vector layer can
+  and a message says "Show the layer to draw on it". The Select tool and the Magic Wand still select what
+  shows, the hidden layer left out. On VECTOR, the shapes of a hidden vector layer can
   still be selected and changed, but an art layer on it can't be stepped into (Edit art), with the same
   message. A paste or a stamp onto a hidden layer picked (the base too) is refused the same way, and so is
   **Make art layer** while the picked layer or the vector layer above it is hidden.

@@ -10,7 +10,8 @@
  *   cursor?    (ctx, pos) => CSS cursor | null: the pointer over the content, at grid pixel pos
  *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox' }
  *   begin(ctx, pos, event) -> false when there's no stroke to continue; move(ctx, from, to); end(ctx).
- *              A paint tool's (not VECTOR's) is refused while the picked layer is hidden (refusesHidden).
+ *              A paint tool's (not VECTOR's, nor Select's and the Wand's, which select what shows) is refused while the
+ *              picked layer is hidden (refusesHidden).
  *   cancel?(ctx)  end without applying (a second finger landed: a pinch); without it, end(ctx)
  *   keydown?(ctx, event) -> true when the tool took the key (useKeyboardShortcuts asks it first)
  * ctx = { project, workspace, view, unit (CSS px per grid pixel, { x, y }) }; positions are fractional grid pixels.
@@ -45,7 +46,7 @@ export function refusesHidden({ project, workspace, view }) {
 }
 
 for (const tool of TOOLS) {
-  if (tool.kind !== 'paint' || tool.views.includes('vector')) continue;
+  if (tool.kind !== 'paint' || tool.views.includes('vector') || tool.section === 'select') continue;
   const begin = tool.begin;
   tool.begin = (ctx, ...rest) => !refusesHidden(ctx) && begin.call(tool, ctx, ...rest);
 }

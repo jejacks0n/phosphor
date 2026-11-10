@@ -144,6 +144,23 @@ test('drawing on a hidden layer does nothing and says so', async () => {
   expect(toastMessage.value).toBe(null);
 });
 
+test('Select and the Magic Wand still select with the picked layer hidden: they select what shows', async () => {
+  const { project, workspace } = await picture();
+  typed(project, 1, 1, 'A');
+  const two = project.addLayer('cells', 'edit');
+  workspace.pickLayer(two);
+  await hide(project, two); // left out of the selection, as docs/layers.md says to
+  const ctx = { project, workspace, view: 'output', unit: { x: 1, y: 1 } };
+  closeToast();
+  workspace.setActiveTool('select');
+  expect(getTool('select').begin(ctx, { x: 1, y: 2 }, { shiftKey: false })).not.toBe(false);
+  getTool('select').end?.(ctx);
+  workspace.setActiveTool('wand');
+  getTool('wand').begin(ctx, { x: 1, y: 2 }, { shiftKey: false }); // one click: no stroke to continue
+  expect(workspace.wand).toBeTruthy();
+  expect(toastMessage.value).toBe(null);
+});
+
 test('changes to a hidden layer still land', async () => {
   const { project } = await picture();
   const before = look(project.cells[0]);
