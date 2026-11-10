@@ -46,7 +46,7 @@ export default class Renderer {
   baseLayer = null;         // the base layer's pixels (PaintLayer), the store's
   shapes = null;            // the base layer with the vector layer's shapes over it (ShapeLayer), the store's
   hideBase = false;         // the base's eye is shut: the picture, its own pixels and its pins left out (the store's, set before a render)
-  upper = [];               // the layers above the lower group, bottom to top (the store's, set before a compose): { kind: 'cells', cells, paint, params } or { kind: 'vector', layer: ShapeLayer, params }
+  upper = [];               // the layers above the lower group, bottom to top (the store's, set before a render and a compose): { kind: 'cells', cells, paint, params } or { kind: 'vector', layer: ShapeLayer, params }
   everyLayer = [];          // what the Number palette counts over the picture (countCanvas), bottom to top, hidden layers too (the store's, set before a composite): { layer } drawn as the base is (the base with shapes over it, a vector layer alone) or { paint } (a cells layer's); none while the output is all there is
   #scratch = null;
   #countScratch = null; // #scratch's stand-in while countCanvas draws, so the lower group's paint stays there for the dither (#ditherUnder)
@@ -79,6 +79,8 @@ export default class Renderer {
   #upperPaints = new WeakMap(); // an upper cells layer's paint -> its pixels at grid resolution through the transforms (#upperPaint)
   #shownOver = null;    // { of, canvas, dirty }: the output with the upper layers' pixels over it (shownCanvas); dirty, the grid rect a compose changed since, or null for all of it
   #matchers = new WeakMap(); // an upper layer's params -> { palette, matcher }: Best match's or By shape's matcher for one of its cells (#upperChar)
+  #upperSamples = new WeakMap(); // an upper vector layer -> its own samples at By shape's resolution, a tile of cells at a time (#samplesAt)
+  #cellSamples = null;  // one cell's samples, for By shape on an upper layer (#upperChar)
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
@@ -88,6 +90,7 @@ export default class Renderer {
     this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = this.#painted = null;
     this.#lowerEdits = this.#shownOver = null;
     this.#matchers = new WeakMap();
+    this.#upperSamples = new WeakMap();
     this.#upperGrids = new WeakMap();
     this.#upperStored = new WeakMap();
     this.#upperPaints = new WeakMap();
@@ -97,7 +100,8 @@ export default class Renderer {
 
   // baseParams: params with the color adjustments neutral (settings.baseParams).
   async render(image, params, paintLayer, baseParams) {
-    if (resolves(params) && !this.#fontReady) { // glyphs measured in a placeholder font would choose the characters
+    // An upper layer's own settings (upper, set before a render too) count: its glyphs are measured in it as well.
+    if ((resolves(params) || this.upper.some((u) => resolves(u.params))) && !this.#fontReady) { // glyphs measured in a placeholder font would choose the characters
       // If it doesn't load, glyphs are measured in its fallbacks, ending in the system's monospace font,
       // which differs from computer to computer: the characters may then too.
       await loadReferenceFont().catch((error) => console.warn('IBM VGA did not load: Best match and By shape measure glyphs in a fallback font', error));
@@ -901,9 +905,9 @@ export default class Renderer {
         const { data } = read, halves = halfColors(cell);
         const [top, bottom] = halves.map((half, k) => {
           const o = ((2 * row + k) * width + col) * 4;
-          return snap(data[o + 3] ? mix(half, { r: data[o], g: data[o + 1], b: data[o + 2] }, data[o + 3] / 255) : half);
+          return data[o + 3] ? mix(half, { r: data[o], g: data[o + 1], b: data[o + 2] }, data[o + 3] / 255) : half;
         });
-        cell = buildCell(top, bottom, char ?? this.#upperChar(top, bottom, col, row, params), renderStyle);
+        cell = char === null ? this.#upperChar(halves, top, bottom, col, row, params, u.layer, snap) : buildCell(snap(top), snap(bottom), char, renderStyle);
         exact = char !== null;
         continue;
       }
@@ -919,16 +923,19 @@ export default class Renderer {
         cell = coverCell(cell, top, bottom, { renderStyle, palette });
         continue;
       }
-      const [ht, hb] = halfColors(cell), t = snap(top ? mix(ht, top, top.a) : ht), b = snap(bottom ? mix(hb, bottom, bottom.a) : hb);
-      cell = buildCell(t, b, this.#upperChar(t, b, col, row, params), renderStyle);
+      const halves = halfColors(cell), [ht, hb] = halves;
+      // Paint is drawn a grid pixel at a time (PaintLayer.paint, drawOver): its halves are its samples.
+      cell = this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, null, snap);
     }
     return cell;
   }
 
-  // The character an upper layer's settings (params, its own) pick for a converted cell of these two halves at col, row:
-  // Best match's or By shape's for the one cell with no error coming in (as #resolvePainted), Random's seed character
-  // (its own seed's in its own set), or by weight (weightedChar).
-  #upperChar(top, bottom, col, row, params) {
+  // The cell an upper layer's settings (params, its own) make of a converted cell at col, row: under, its two half colors
+  // under the layer; top and bottom, them with the layer's pixels over them (grid resolution, before the palette snap).
+  // Best match's or By shape's cell for the one cell with no error coming in (as #resolvePainted), By shape's sampled
+  // as the lower group's are: the layer's own samples in the cell (#samplesAt) over the halves under it. Else the halves
+  // snapped with Random's seed character (its own seed's in its own set) or one by weight (weightedChar).
+  #upperChar(under, top, bottom, col, row, params, layer, snap) {
     if (resolves(params) && this.#fontReady) {
       let m = this.#matchers.get(params);
       if (m?.palette !== this.palette) {
@@ -937,15 +944,60 @@ export default class Renderer {
         this.#matchers.set(params, m = { palette: this.palette, matcher });
       }
       const { matcher } = m;
-      if (params.charMode !== 'shape') return resolveGrid(new Uint8ClampedArray([top.r, top.g, top.b, 255, bottom.r, bottom.g, bottom.b, 255]), 1, 2, matcher, { strength: 0 }).cells[0].char;
-      const samples = new Uint8ClampedArray(SAMPLES.w * SAMPLES.h * 4), half = (SAMPLES.w * SAMPLES.h) / 2;
-      for (let i = 0; i < SAMPLES.w * SAMPLES.h; i++) {
-        const c = i < half ? top : bottom;
-        samples[4 * i] = c.r; samples[4 * i + 1] = c.g; samples[4 * i + 2] = c.b; samples[4 * i + 3] = 255;
+      if (params.charMode !== 'shape') {
+        const r = matcher.match([top.r, top.g, top.b], [bottom.r, bottom.g, bottom.b]);
+        return { char: r.char, fg: r.fg, bg: r.bg };
       }
-      return resolveShapes(samples, 1, 1, matcher, { strength: 0 }).cells[0].char;
+      const s = (this.#cellSamples ??= new Float64Array(SAMPLES.w * SAMPLES.h * 3)), own = this.#samplesAt(layer, params, col, row);
+      for (let sy = 0, j = 0; sy < SAMPLES.h; sy++) {
+        const half = sy < SAMPLES.h / 2 ? 0 : 1, u = under[half], c = half ? bottom : top;
+        for (let sx = 0; sx < SAMPLES.w; sx++, j += 3) {
+          if (!own) { s[j] = c.r; s[j + 1] = c.g; s[j + 2] = c.b; continue; }
+          const o = ((own.y + sy) * own.width + own.x + sx) * 4, a = own.data[o + 3] / 255;
+          s[j] = Math.round(own.data[o] * a + u.r * (1 - a)); s[j + 1] = Math.round(own.data[o + 1] * a + u.g * (1 - a)); s[j + 2] = Math.round(own.data[o + 2] * a + u.b * (1 - a));
+        }
+      }
+      const r = matcher.match(s);
+      return { char: r.char, fg: r.fg, bg: r.bg };
     }
-    return keepsSeed(params.charMode) ? seededChar(params.chars, params.seed, col, row) : weightedChar(top, bottom, params.chars, params.charMode);
+    const t = snap(top), b = snap(bottom);
+    return buildCell(t, b, keepsSeed(params.charMode) ? seededChar(params.chars, params.seed, col, row) : weightedChar(t, b, params.chars, params.charMode), params.renderStyle);
+  }
+
+  // An upper vector layer's own samples in the cell at col, row (its shapes, SAMPLES a cell, alpha their coverage, through
+  // the color transforms, as baseSamplesOver reads the base's): { data, width, x, y }, the cell's first sample at x, y of
+  // data, width samples wide. Read from the layer a tile of cells at a time where it's first asked for (only cells the
+  // layer reaches ask), and kept per layer until the grid, its scale or the color settings change, or the layer changes
+  // over the tile. Null for none, or a layer with no more detail than its grid pixels (scale 1: its halves are its samples).
+  // ponytail: a tile is kept for good, 32 KB of a layer's every tile it reaches (64 MB for a layer over 500k cells); drop
+  // tiles by age if that ever matters.
+  #samplesAt(layer, params, col, row) {
+    const k = layer?.scale;
+    if (!(k > 1)) return null;
+    const w = this.outputCanvas.width, h = this.outputCanvas.height, n = SAMPLES.w, across = Math.ceil(w / TILE);
+    const key = [w, h, k, ...COLOR_KEYS.map((name) => params[name])].join();
+    let kept = this.#upperSamples.get(layer);
+    if (kept?.key !== key) this.#upperSamples.set(layer, kept = { key, version: layer.version, tiles: new Map() });
+    else if (kept.version !== layer.version) {
+      const since = layer.changedSince(kept.version), area = since && gridRectOf(since, k, w, h);
+      kept.version = layer.version;
+      if (!area) kept.tiles.clear();
+      else if (area.w && area.h) {
+        for (const t of kept.tiles.keys()) {
+          const x = (t % across) * TILE, y = Math.floor(t / across) * 2 * TILE;
+          if (x < area.x + area.w && area.x < x + TILE && y < area.y + area.h && area.y < y + 2 * TILE) kept.tiles.delete(t);
+        }
+      }
+    }
+    const tx = Math.floor(col / TILE), ty = Math.floor(row / TILE), t = ty * across + tx;
+    let tile = kept.tiles.get(t);
+    if (!tile) {
+      const area = clipped({ x: tx * TILE, y: ty * 2 * TILE, w: TILE, h: 2 * TILE }, w, 2 * charRowsOf(h));
+      tile = { area, data: new Uint8ClampedArray(area.w * n * area.h * n * 4) };
+      baseSamplesOver(tile.data, area.w * n, layer, params, area, n, true);
+      kept.tiles.set(t, tile);
+    }
+    return { data: tile.data, width: tile.area.w * n, x: (col - tile.area.x) * n, y: (2 * row - tile.area.y) * n };
   }
 
   // What the PIXEL view shows and the Paint Bucket reads: the output, with every upper layer's pixels (its shapes at grid
@@ -1223,8 +1275,9 @@ function baseGridPart(layer, params, palette, area, stored) {
 // The base layer's own pixels (k a grid pixel) blended over samples (RGBA bytes, width wide, n a grid
 // pixel each way) in area (grid pixels): each sample the alpha-weighted average of the layer pixels
 // it covers, or the one it falls in when it covers none (k under n), through the color transforms.
-// Worked out from the layer's bytes, not drawn scaled, so an area comes out as the whole would.
-function baseSamplesOver(data, width, layer, params, area, n) {
+// Worked out from the layer's bytes, not drawn scaled, so an area comes out as the whole would. own: samples are the
+// layer's own, area's alone from data's corner, each its color and its coverage in alpha (#samplesAt).
+function baseSamplesOver(data, width, layer, params, area, n, own = false) {
   const k = layer.scale;
   const lx = Math.floor(area.x * k), ly = Math.floor(area.y * k);
   const lw = Math.max(1, Math.ceil((area.x + area.w) * k) - lx), lh = Math.max(1, Math.ceil((area.y + area.h) * k) - ly);
@@ -1251,6 +1304,11 @@ function baseSamplesOver(data, width, layer, params, area, n) {
         }
       }
       if (!a) continue;
+      if (own) {
+        const o = (j * width + i) * 4;
+        data[o] = Math.round(r / a); data[o + 1] = Math.round(g / a); data[o + 2] = Math.round(b / a); data[o + 3] = Math.round(a / count);
+        continue;
+      }
       const alpha = a / count / 255, o = ((area.y * n + j) * width + area.x * n + i) * 4;
       data[o] = Math.round(Math.round(r / a) * alpha + data[o] * (1 - alpha));
       data[o + 1] = Math.round(Math.round(g / a) * alpha + data[o + 1] * (1 - alpha));
@@ -1259,6 +1317,9 @@ function baseSamplesOver(data, width, layer, params, area, n) {
     }
   }
 }
+
+// The cells a side of an upper layer's tile of By shape samples (Renderer #samplesAt).
+const TILE = 16;
 
 // The color settings a layer is drawn with.
 const COLOR_KEYS = ['brightness', 'contrast', 'saturation', 'hue', 'invert', 'colorize', 'colorizeStrength',

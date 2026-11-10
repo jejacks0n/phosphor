@@ -7,7 +7,7 @@ import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
-import { rectShape } from '@/document/shapes.js';
+import { rectShape, ellipseShape } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { CHAR_KEYS } from '@/store/settings.js';
 import ControlPanel from '@/components/ControlPanel.vue';
@@ -243,4 +243,72 @@ test('in a room the Characters section edits Base, whichever layer is picked, an
   } finally {
     project.stopSharing();
   }
+});
+
+// A circle drawn on a vector layer, in the lower group (right on Base, converted with Base's settings) or as an upper
+// layer (above Layer 1, its own settings differing only in a seed they don't use), every layer set to settings: the
+// cells it shows.
+// moved: the circle drawn first a few cells over and composed, then moved, so what an upper layer kept of it catches up.
+// under: Base's and Layer 1's settings, when not settings (an upper layer only).
+async function circleOn(where, settings, { moved = false, under = settings } = {}) {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 24, rows: 24, quantize: 'cga' });
+  await settle(project);
+  const vector = project.addLayer('vector', where);
+  for (const id of ['base', 'edit']) project.setLayerChars(id, under);
+  project.setLayerChars(vector, where === 'base' ? settings : { ...settings, seed: 'its own' }); // an upper layer by its settings
+  workspace.pickLayer(vector);
+  const key = project.addShape(ellipseShape(2.3 - 3 * moved, 3.1 + 5 * moved, 21.6 - 3 * moved, 22.4 + 5 * moved, { fill: '#ff5555' }));
+  project.commitEdit();
+  await settle(project);
+  if (moved) {
+    project.updateShapes([[key, { ...project.shapes.get(key), points: ellipseShape(2.3, 3.1, 21.6, 22.4).points }]]);
+    project.commitEdit();
+    await settle(project);
+  }
+  expect(project.lowerGroup.upper.length).toBe(where === 'base' ? 0 : 1);
+  return cellsKey(project);
+}
+const halfBlocks = new Set([' ', '█', '▀', '▄']);
+
+for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }], ['Best match', { charChoice: 'best', chars: '▄░▒▓█', solids: 0 }]]) {
+  test(`under ${name} a circle on an upper vector layer picks the characters it does in the lower group`, async () => {
+    const lower = await circleOn('base', settings), upper = await circleOn('edit', settings);
+    expect(lower.some((cell) => !halfBlocks.has(cell[0]))).toBe(true); // its edges cross cells
+    expect(upper).toEqual(lower);
+    expect(await circleOn('edit', settings, { moved: true })).toEqual(lower);
+  });
+}
+
+test('By shape on an upper vector layer over a picture of Random picks the characters it does in the lower group', async () => {
+  const settings = { charChoice: 'shape', solids: 0 };
+  const lower = await circleOn('base', settings), upper = await circleOn('edit', settings, { under: { charChoice: 'random' } });
+  const reached = lower.map((cell, i) => i).filter((i) => !lower[i].endsWith('#000000#000000'));
+  expect(reached.length).toBeGreaterThan(50);
+  expect(reached.map((i) => upper[i])).toEqual(reached.map((i) => lower[i]));
+});
+
+// White paint at half opacity over black, on Base (converted with Base's settings) or on an upper cells layer (its
+// own, differing only in a seed they don't use), every layer set to settings: the cell it's in.
+async function paintedOn(where, settings) {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 8, rows: 8, quantize: 'cga' });
+  await settle(project);
+  for (const id of ['base', 'edit']) project.setLayerChars(id, settings);
+  const layer = where === 'base' ? 'base' : project.addLayer('cells', 'edit');
+  if (layer !== 'base') project.setLayerChars(layer, { ...settings, seed: 'its own' });
+  workspace.pickLayer(layer);
+  workspace.editBrushOpacity = 50;
+  project.paintStroke([{ x: 3, y: 4, alpha: 1 }, { x: 3, y: 5, alpha: 1 }], '#ffffff');
+  project.commitEdit();
+  await settle(project);
+  expect(project.lowerGroup.upper.length).toBe(where === 'base' ? 0 : 1);
+  return cellsKey(project)[2 * 8 + 3];
+}
+
+test('under Best match paint on an upper cells layer makes the cell the same paint makes on Base', async () => {
+  const settings = { charChoice: 'best', chars: '▄░▒▓█', solids: 0 };
+  const base = await paintedOn('base', settings);
+  expect(halfBlocks.has(base[0])).toBe(false); // a shade: its colors aren't the palette's
+  expect(await paintedOn('edit', settings)).toBe(base);
 });

@@ -74,6 +74,7 @@ export default class FrameBuilder {
       layer.grid(params.cols, params.rows, baseLayer?.scale ?? 1);
       return { id, kind, layer, params: own };
     });
+    this.#renderer.upper = this.#upper; // a layer's own Best match or By shape waits for the reference font too
     await this.#renderer.render(image, params, this.#scratch, null);
   }
 

@@ -177,6 +177,7 @@ export const renderingActions = {
         if (this._shapeLayer) this._shapeLayer.hideBase = this.renderer.hideBase;
         this.syncShapeLayers();
         this.renderer.everyLayer = countedLayers(this);
+        this.renderer.upper = upperOf(this); // a layer's own Best match or By shape waits for the reference font too
         this.renderedCells = await this.renderer.render(this.image, this.processParams, lowerPaint(this), baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();

@@ -82,7 +82,11 @@ and Pattern light. The Characters section shows the layer picked in LAYERS, unde
 there changes only how that layer's paint, picture or shapes become characters (the base's are its picture's). A
 new layer starts with the picked layer's, and a drawing from before layers had their own gives every layer the ones
 it had, so it looks the same. Where a layer's settings differ from the base's, a seam can show where its cells meet
-the ones under it. The Art style, the palette and Dither are the whole drawing's
+the ones under it. A layer with its own Best match or By shape picks the way the base does: By shape samples a vector
+layer's shapes inside each cell over what's under them, so a circle's edge gets the same characters on its own layer
+as it would on the base's, and Best match mixes its colors before the palette, so a soft edge can get a shade. Paint
+is matched by its halves (it covers whole half cells). No error carries between the cells of such a layer, so Dither
+doesn't pattern them. The Art style, the palette and Dither are the whole drawing's
 ([Layers](layers.md#the-left-column)).
 
 Two sliders tune Best match and By shape:
