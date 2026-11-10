@@ -197,6 +197,19 @@ test('a document whose layers all have the base\'s Dither saves in the old form;
   expect(cellsKey(project)).toEqual(shown);
 });
 
+test('Base\'s Dither changed keeps a cells layer, which has nothing to dither, in the lower group and the old form', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await settle(project);
+  project.setLayerChars('base', { dither: 30, ditherStyle: 'bayer' });
+  project.commitLayerChars();
+  await settle(project);
+  expect(project.charsOf('edit').dither).toBe(0); // as it was copied
+  expect(project.lowerGroup.cells).toBe('edit');
+  expect(project.fitsRoom).toBe(true);
+  expect(await magic(await saved(project))).toBe('PHOSPHOR');
+});
+
 async function mountPanel() {
   host = document.createElement('div');
   document.body.append(host);

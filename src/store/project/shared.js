@@ -208,8 +208,8 @@ export function putLayer(project, kind, above, chars = project.baseChars) {
 // that already have them stay the same objects, and the array is replaced only when one changed.
 export function followBase(project) {
   const base = project.baseChars;
-  if (project.layers.every((layer, at) => !at || sameChars(layer.chars, base))) return;
-  project.layers = project.layers.map((layer, at) => (!at || sameChars(layer.chars, base) ? layer : Object.freeze({ ...layer, chars: Object.freeze({ ...base }) })));
+  if (project.layers.every((layer, at) => !at || sameChars(layer.chars, base, layer.kind))) return;
+  project.layers = project.layers.map((layer, at) => (!at || sameChars(layer.chars, base, layer.kind) ? layer : Object.freeze({ ...layer, chars: Object.freeze({ ...base }) })));
 }
 
 // The edit layer's fields emptied, a paint layer of the same size kept: for a drawing left with no cells layer above the

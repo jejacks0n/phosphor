@@ -26,10 +26,12 @@ const needChars = (baseChars) => {
 };
 
 // Whether a layer converts as the bottom does: its chars are baseChars (a slider's numeric string is its number). A layer
-// with none yet counts as the same.
-export function sameChars(chars, baseChars) {
+// with none yet counts as the same. kind: the layer's; a cells layer's Dither and Dither style aren't compared, as
+// nothing on it dithers (paint never does), and the left column doesn't show them for it.
+const UNDITHERED_KEYS = CHAR_KEYS.filter((key) => key !== 'dither' && key !== 'ditherStyle');
+export function sameChars(chars, baseChars, kind = null) {
   needChars(baseChars);
-  return !chars || CHAR_KEYS.every((key) => String(chars[key]) === String(baseChars[key]));
+  return !chars || (kind === 'cells' ? UNDITHERED_KEYS : CHAR_KEYS).every((key) => String(chars[key]) === String(baseChars[key]));
 }
 
 // layers with every layer but the bottom given chars, a frozen copy of these, under whatever of its own it has.
@@ -54,7 +56,7 @@ export function legacySlots(layers, baseChars) {
   let i = 1;
   const vector = layers[i]?.kind === 'vector' ? layers[i++].id : null;
   const cells = layers[i]?.kind === 'cells' ? layers[i++].id : null;
-  return i === layers.length && layers.every((layer) => sameChars(layer.chars, baseChars)) ? { vector, cells } : null;
+  return i === layers.length && layers.every((layer) => sameChars(layer.chars, baseChars, layer.kind)) ? { vector, cells } : null;
 }
 
 // What the old form's file keeps, for layers that fit it (legacySlots): only what isn't the default, or null when that's
@@ -123,7 +125,7 @@ export function lowerGroup(layers, baseChars) {
   needChars(baseChars);
   let i = 1;
   const vectors = [];
-  const joins = (kind) => layers[i]?.kind === kind && sameChars(layers[i].chars, baseChars);
+  const joins = (kind) => layers[i]?.kind === kind && sameChars(layers[i].chars, baseChars, kind);
   while (joins('vector')) vectors.push(layers[i++].id);
   const cells = joins('cells') ? layers[i++].id : null;
   return { vectors, cells, upper: layers.slice(i).map((layer) => layer.id) };

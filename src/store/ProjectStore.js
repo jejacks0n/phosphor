@@ -195,7 +195,7 @@ export const useProjectStore = defineStore('project', {
     // layer whose settings are the bottom's (ownParams keeps each one's identity while nothing changes).
     layerParams() {
       const params = this.processParams, base = this.baseChars;
-      return new Map(this.layers.map((layer) => [layer.id, sameChars(layer.chars, base) ? params : ownParams(params, layer.chars)]));
+      return new Map(this.layers.map((layer) => [layer.id, sameChars(layer.chars, base, layer.kind) ? params : ownParams(params, layer.chars)]));
     },
     // Whether a layer's eye is shut.
     layerHidden() { return (id) => !!this.layerById(id)?.hidden; },
