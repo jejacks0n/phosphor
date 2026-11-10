@@ -146,33 +146,71 @@ div.grip:focus-visible {
   flex: 1;
   min-height: 0;
 }
+/* Its tabs, as the editor's (EditTabs.vue): a strip of the tab bar's color, the picked tab the panel's own color and open
+   into it, marked with the glowing bar along its top. */
 div.tabs {
   display: flex;
-  align-items: stretch;
+  align-items: flex-end;
+  gap: 3px;
   flex-shrink: 0;
+  padding: 9px 6px 0;
+  border-radius: 5px 5px 0 0;
   border-bottom: 1px solid var(--border);
+  background: var(--surface-0);
 }
 div.tabs button[role='tab'] {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 34px;
+  height: 28px;
+  margin-bottom: -1px;
   padding: 0 8px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: none;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  border: 1px solid var(--border);
+  border-bottom: 1px solid transparent;
+  border-radius: 5px 5px 0 0;
+  box-shadow: none;
+  background: var(--surface-0);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: normal;
   text-transform: uppercase;
   color: var(--text-muted);
+  transition: color 0.3s ease;
+}
+div.tabs button[role='tab']:hover { /* not the global button lift */
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border) var(--border) transparent;
+}
+div.tabs button[role='tab']:not(.on):hover {
+  background: var(--surface-2);
+  color: var(--accent);
+}
+div.tabs button[role='tab']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 div.tabs button[role='tab'].on {
-  border-bottom-color: var(--accent);
+  height: 31px;
+  font-weight: 500;
+  background: var(--surface-1);
   color: var(--text);
+  text-shadow: 0 0 5px var(--accent-glow);
+}
+div.tabs button[role='tab'].on::before { /* the editor tabs' marker */
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  height: 4px;
+  border-radius: 4px 4px 0 0;
+  pointer-events: none;
+  background: var(--accent);
+  box-shadow: 0 0 3px var(--accent), 0 0 20px var(--accent);
 }
 span.beta {   /* as the editor tabs' marks */
   font-size: 8px;
