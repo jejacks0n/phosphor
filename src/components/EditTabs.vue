@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, watchEffect, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, computed, watch, watchEffect, nextTick, useTemplateRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import { useMediaQuery } from '@vueuse/core';
@@ -11,6 +11,7 @@ import { usePlayback } from '@/composables/usePlayback';
 import { MAX_ANIMATION_CELLS, charRowsOf } from '@/lib/Cells';
 import { toast } from '@/composables/useToast';
 import { formatNumber } from '@/i18n/format';
+import { useTabIndicator } from '@/composables/useTabIndicator';
 import ModalDialog from '@/components/ModalDialog.vue';
 import LayersList from '@/components/LayersList.vue';
 
@@ -55,7 +56,7 @@ function switchAnimate(event) {
 }
 
 const tabList = useTemplateRef('tabList');
-const indicatorStyle = ref({ transform: 'translateX(0px)', width: '0px', opacity: 0 });
+const { style: indicatorStyle, update: updateIndicator } = useTabIndicator(tabList, '[role="tab"].active'); // the underline
 
 const isDesktop = useMediaQuery(desktopQuery);
 
@@ -116,38 +117,9 @@ function choose(id) {
   });
 }
 
-// The underline slides to the selected tab. With none before (nothing was open), it grows out of the
-// middle of the one it lands on instead of sliding in from wherever it last was.
-const APPEAR = 'width 0.3s cubic-bezier(0.23, 1, 0.32, 1), transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.15s ease';
-const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-function updateIndicator() {
-  requestAnimationFrame(() => {
-    const activeEl = tabList.value?.querySelector('[role="tab"].active');
-    if (!activeEl) {
-      indicatorStyle.value = { ...indicatorStyle.value, opacity: 0 };
-      return;
-    }
-    const listRect = tabList.value.getBoundingClientRect();
-    const activeRect = activeEl.getBoundingClientRect();
-    const left = Math.round(activeRect.left - listRect.left), width = Math.round(activeRect.width);
-    const placed = { transform: `translateX(${left}px)`, width: `${width}px`, opacity: 1 };
-    if (indicatorStyle.value.opacity || reducedMotion.value) {
-      indicatorStyle.value = placed;
-      return;
-    }
-    indicatorStyle.value = { transform: `translateX(${left + width / 2}px)`, width: '0px', opacity: 0, transition: 'none' };
-    requestAnimationFrame(() => { indicatorStyle.value = { ...placed, transition: APPEAR }; });
-  });
-}
-
 watch(() => props.modelValue, () => nextTick(updateIndicator), { immediate: true });
 watch(image, () => nextTick(updateIndicator));
 watch(tabs, () => nextTick(updateIndicator), { deep: true });
-onMounted(() => {
-  window.addEventListener('resize', updateIndicator);
-  setTimeout(updateIndicator, 100);
-});
-onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
 </script>
 
 <template>

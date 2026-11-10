@@ -11,6 +11,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { toast } from '@/composables/useToast';
+import { useTabIndicator } from '@/composables/useTabIndicator';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 import LobbyPage from '@/components/social/LobbyPage.vue';
 import LayersList from '@/components/LayersList.vue';
@@ -56,6 +57,11 @@ watch(() => room.inRoom, async (inRoom, was) => {
 
 const pick = (name) => { workspace.sidePanelTab = name; };
 
+// The editor tabs' marker, sliding to the tab picked, and placed again wherever the tabs move to.
+const tabList = useTemplateRef('tabList');
+const { style: markerStyle, update: placeMarker } = useTabIndicator(tabList, '[role="tab"].on');
+watch([tab, width, () => workspace.sidePanelFolded, () => room.inRoom, unread], () => nextTick(placeMarker), { immediate: true });
+
 // Resizing: the edge follows the pointer (captured, so it keeps up off the edge), arrows step it.
 let drag = null;
 function grab(e) {
@@ -88,13 +94,14 @@ function key(e) {
         @dblclick="workspace.sidePanelWidth = SIDE_PANEL.width" @keydown="key"
     ></div>
     <div class="body">
-      <div class="tabs" role="tablist">
+      <div ref="tabList" class="tabs" role="tablist">
         <button role="tab" :aria-selected="tab === 'layers'" :class="{ on: tab === 'layers' }" @click="pick('layers')">{{ t('sidePanel.layers') }}</button>
         <button role="tab" :aria-selected="tab === 'social'" :class="{ on: tab === 'social' }" :aria-description="room.inRoom ? null : t('tabs.beta')" @click="pick('social')">
           {{ room.inRoom ? t('sidePanel.chat') : t('sidePanel.social') }}
           <span v-if="unread" class="unread">{{ unread }}</span>
           <span v-else-if="!room.inRoom" class="beta" aria-hidden="true">{{ t('tabs.beta') }}</span>
         </button>
+        <div class="indicator" :style="markerStyle" aria-hidden="true"></div>
       </div>
       <aside v-show="tab === 'layers'" class="layers" :aria-label="t('sidePanel.layers')">
         <LayersList/>
@@ -149,6 +156,7 @@ div.grip:focus-visible {
 /* Its tabs, as the editor's (EditTabs.vue): a strip of the tab bar's color, the picked tab the panel's own color and open
    into it, marked with the glowing bar along its top. */
 div.tabs {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 3px;
@@ -200,15 +208,15 @@ div.tabs button[role='tab'].on {
   color: var(--text);
   text-shadow: 0 0 5px var(--accent-glow);
 }
-div.tabs button[role='tab'].on::before { /* the editor tabs' marker */
-  content: '';
+div.indicator { /* the editor tabs' marker, along the picked tab's top */
   position: absolute;
-  top: -1px;
-  left: -1px;
-  right: -1px;
+  top: 9px;
+  left: 0;
   height: 4px;
   border-radius: 4px 4px 0 0;
+  z-index: 2;
   pointer-events: none;
+  transition: width 0.5s cubic-bezier(0.23, 1, 0.32, 1), transform 0.1s ease;
   background: var(--accent);
   box-shadow: 0 0 3px var(--accent), 0 0 20px var(--accent);
 }

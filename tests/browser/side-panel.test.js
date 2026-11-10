@@ -171,3 +171,23 @@ test('the lobby says how many of who\'s here are signed in and how many are gues
   await nextTick();
   expect(host.querySelector('h3.here span.count').textContent).toBe('0 signed in · 2 guests');
 });
+
+test('the marker on its picked tab is the editor tabs\' one: it slides to the tab picked', async () => {
+  const { workspace } = await mount();
+  const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const marker = () => host.querySelector('.side-panel div.tabs .indicator');
+  const at = (i) => {
+    const list = host.querySelector('.side-panel div.tabs').getBoundingClientRect(), tab = host.querySelectorAll('.side-panel [role=tab]')[i].getBoundingClientRect();
+    return { transform: `translateX(${Math.round(tab.left - list.left)}px)`, width: `${Math.round(tab.width)}px` };
+  };
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  await frames();
+  expect(marker()).toBeTruthy();
+  expect({ transform: marker().style.transform, width: marker().style.width }).toEqual(at(0));
+  workspace.sidePanelTab = 'social';
+  await nextTick();
+  await frames();
+  expect({ transform: marker().style.transform, width: marker().style.width }).toEqual(at(1));
+  expect(getComputedStyle(marker()).transitionProperty).toContain('transform'); // it moves there, not jumps
+  expect(marker().getBoundingClientRect().top).toBe(host.querySelectorAll('.side-panel [role=tab]')[1].getBoundingClientRect().top); // along its top
+});
