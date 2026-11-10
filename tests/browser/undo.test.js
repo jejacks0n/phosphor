@@ -548,9 +548,11 @@ test('a slider move survives a grid resize on an undrawn picture (undo still has
 async function fuzzSettings(seed, { steps = 20, forceRender = false } = {}) {
   const { project, workspace } = await createTestApp();
   await drawnDocument(project, workspace, { cols: 40, rows: 40 });
+  const vector = project.addLayer('vector', 'edit'); // a vector layer above Layer 1, whose own Dither counts
   await settle(project);
   project.clearHistory();
   const initial = { seed: project.seed, chars: project.chars, quantize: project.quantize, renderStyle: project.renderStyle };
+  const snapOwn = async (...args) => ({ ...await snap(...args), vectorOwn: JSON.stringify(project.layerById(vector)?.chars ?? null) });
   const t = trackDepth(project);
   const r = rng(seed);
   const actions = makeActions(project, workspace, r, { async: true });
@@ -561,17 +563,17 @@ async function fuzzSettings(seed, { steps = 20, forceRender = false } = {}) {
     if (k === 2) project.quantize = ['none', 'count', 'cga', 'vga'][Math.floor(r() * 4)];
     if (k === 3) project.renderStyle = ['ansi', 'colorAscii', 'ansi'][Math.floor(r() * 3)];
   };
-  // A layer's character setting changed from the left column: an undo step, Base's or Layer 1's (Dither only on Base).
+  // A layer's character setting changed from the left column: an undo step, Base's, Layer 1's or the vector layer's.
   actions.layerChars = () => {
-    const k = Math.floor(r() * 4), id = r() < 0.5 ? 'base' : 'edit';
+    const k = Math.floor(r() * 4), id = ['base', 'edit', vector][Math.floor(r() * 3)];
     if (k === 0) project.setLayerChars(id, { charChoice: ['random', 'best', 'shape'][Math.floor(r() * 3)] });
     if (k === 1) project.setLayerChars(id, { chars: ['░▒▓█', '.:*%#', '▄▀█ '][Math.floor(r() * 3)] });
     if (k === 2) project.setLayerChars(id, { seed: `l${Math.floor(r() * 1000)}` });
-    if (k === 3) project.setLayerChars('base', { dither: [0, 50, 100][Math.floor(r() * 3)], ditherStyle: r() < 0.5 ? 'floyd' : 'bayer' });
+    if (k === 3) project.setLayerChars(id, { dither: [0, 50, 100][Math.floor(r() * 3)], ditherStyle: r() < 0.5 ? 'floyd' : 'bayer' }); // none on Layer 1
     project.commitLayerChars();
   };
   const names = [...Object.keys(actions), 'settings', 'settings'];
-  const start = await snap(project, workspace, { forceRender: true });
+  const start = await snapOwn(project, workspace, { forceRender: true });
   const stack = [start];
   const acc = { open: false };
   const log = [];
@@ -579,33 +581,34 @@ async function fuzzSettings(seed, { steps = 20, forceRender = false } = {}) {
     const name = names[Math.floor(r() * names.length)];
     const before = t.depth;
     const done = await actions[name]();
-    const s = await snap(project, workspace, { forceRender });
+    const s = await snapOwn(project, workspace, { forceRender });
     const d = t.depth - before;
     log.push(`${name}(${d})`);
     if (t.cleared) return { seed, log, problem: 'history cleared' };
+    if (done?.between) done.between.vectorOwn ??= s.vectorOwn; // a state within the action (docState's): its chars are the same
     const err = account(stack, s, d, project, acc, done?.between);
     if (err) return { seed, log, problem: err };
   }
   closeRun(stack, project, t, acc);
-  const keys = ['layers', 'own', 'baseOwn', 'editCells', 'pins', 'paint', 'base', 'sliders', 'image', 'hasPaint', 'colors'];
+  const keys = ['layers', 'own', 'baseOwn', 'vectorOwn', 'editCells', 'pins', 'paint', 'base', 'sliders', 'image', 'hasPaint', 'colors'];
   const cmp = (a, b) => keys.filter((k) => a[k] !== b[k]);
   for (let i = stack.length - 2; i >= 0; i--) {
     project.undo();
     pickOf(project, workspace, stack[i]);
-    const s = await snap(project, workspace, { forceRender });
+    const s = await snapOwn(project, workspace, { forceRender });
     const bad = cmp(stack[i], s);
     if (bad.length) return { seed, log, problem: `undo to ${i}: ${bad}`, want: pickKeys(stack[i], bad), got: pickKeys(s, bad) };
   }
   for (let i = 1; i < stack.length; i++) {
     project.redo();
     pickOf(project, workspace, stack[i]);
-    const s = await snap(project, workspace, { forceRender });
+    const s = await snapOwn(project, workspace, { forceRender });
     const bad = cmp(stack[i], s);
     if (bad.length) return { seed, log, problem: `redo to ${i}: ${bad}`, want: pickKeys(stack[i], bad), got: pickKeys(s, bad) };
   }
   while (project.canUndo) project.undo();
   Object.assign(project, initial);
-  const s = await snap(project, workspace, { forceRender: true });
+  const s = await snapOwn(project, workspace, { forceRender: true });
   if (s.full !== start.full) return { seed, log, problem: 'with the settings put back, the start state differs', diff: diffCells(start.full, s.full) };
   return null;
 }
