@@ -1,12 +1,23 @@
 // Each layer's own Dither and Dither style (CHAR_KEYS, setLayerChars, commitLayerChars): an old document gives every
 // layer the document's, a layer's own changes only that layer as one undo step, an upper vector layer dithers its
 // shapes as the lower group does (Ordered by place, Floyd–Steinberg held still through an edit and worked out whole at
-// its end).
-import { test, expect } from 'vitest';
+// its end), and the left column (ControlPanel.vue) shows Dither in the picked layer's Characters section.
+import { test, expect, afterEach } from 'vitest';
+import { createApp, nextTick } from 'vue';
+import { getActivePinia } from 'pinia';
+import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
 import { rectShape, ellipseShape, transformed, translation } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
+import ControlPanel from '@/components/ControlPanel.vue';
+
+let app = null, host = null;
+afterEach(() => {
+  app?.unmount();
+  host?.remove();
+  app = host = null;
+});
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
 const MAUVE = { fill: '#7a5a8a' }; // between CGA's colors: dithering mixes several
@@ -184,4 +195,42 @@ test('a document whose layers all have the base\'s Dither saves in the old form;
   expect(dithers(project, vector)).toEqual({ ditherStyle: 'bayer', dither: 70 });
   expect(project.dither).toBe(0);
   expect(cellsKey(project)).toEqual(shown);
+});
+
+async function mountPanel() {
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+}
+const sectionOf = (words) => [...host.querySelectorAll('aside > fieldset')].find((set) => set.querySelector('legend').textContent.includes(words));
+
+test('Dither shows in Characters for Base and a vector layer, not a cells layer, and only with a palette', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await settle(project);
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer('base');
+  await mountPanel();
+  expect(sectionOf('Drawing').querySelector('#dither')).toBeNull();
+  expect(sectionOf('Characters · Base').querySelector('#dither')).toBeTruthy();
+  expect(sectionOf('Characters · Base').querySelector('#ditherStyle')).toBeTruthy();
+  workspace.pickLayer('edit');
+  await nextTick();
+  expect(host.querySelector('#dither')).toBeNull();
+  expect(host.querySelector('#ditherStyle')).toBeNull();
+  workspace.pickLayer(vector);
+  await nextTick();
+  const style = sectionOf('Characters · Vector 1').querySelector('#ditherStyle');
+  const version = project.history.version;
+  style.value = 'bayer';
+  style.dispatchEvent(new Event('change'));
+  await nextTick();
+  expect(project.charsOf(vector).ditherStyle).toBe('bayer');
+  expect(project.ditherStyle).toBe('floyd');
+  expect(project.history.version).toBe(version + 1);
+  project.quantize = 'none';
+  await nextTick();
+  expect(host.querySelector('#dither')).toBeNull();
 });

@@ -201,7 +201,7 @@
     },
     "dither": {
       "label": "Tramage",
-      "help": "Mélange les couleurs de la palette en un motif fin là où l'image tombe entre elles, pour des dégradés lisses plutôt qu'en bandes. La peinture garde sa propre couleur. Avec la meilleure correspondance ou le choix par forme, les caractères le font passer d'une cellule à l'autre."
+      "help": "Mélange les couleurs de la palette en un motif fin là où l'image tombe entre elles, pour des dégradés lisses plutôt qu'en bandes. La peinture garde sa propre couleur. Chaque calque a le sien : sur un calque vectoriel, il trame les formes. Avec la meilleure correspondance ou le choix par forme, les caractères le font passer d'une cellule à l'autre."
     },
     "smoothing": {
       "help": "Détermine la façon dont l'image est échantillonnée sur la grille. Élevé fond les transitions en douceur ; Faible préserve les bords nets et le grain."

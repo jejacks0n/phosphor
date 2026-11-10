@@ -201,7 +201,7 @@
     },
     "dither": {
       "label": "Dither",
-      "help": "Mixes the palette's colors in a fine pattern where the picture falls between them, so gradients come out smooth instead of in bands. Paint keeps its own color. With Best match or By shape, the characters carry it from cell to cell."
+      "help": "Mixes the palette's colors in a fine pattern where the picture falls between them, so gradients come out smooth instead of in bands. Paint keeps its own color. Each layer has its own: on a vector layer it dithers the shapes. With Best match or By shape, the characters carry it from cell to cell."
     },
     "smoothing": {
       "help": "Controls how the image is sampled onto the grid. High blends smoothly; Low preserves sharp edges and grain."

@@ -78,6 +78,9 @@ const onCount = (group) => (group.sliders ?? []).filter((s) => Number(store[s.ke
 const showSeed = computed(() => ownParams.value.charMode === 'random' && own.chars.length > 1);
 const showPatternLight = computed(() => resolves(ownParams.value));
 const showSolids = computed(() => ansi.value && showPatternLight.value); // ASCII's background is always black: no solid to prefer
+// Dither works on what converts like a picture (the base's picture, a vector layer's shapes), never on paint: not on a
+// cells layer, and only with a palette to dither to.
+const showDither = computed(() => store.quantize !== 'none' && (picked.value === 'base' || pickedKind.value === 'vector'));
 
 // The ready-made set the Characters field holds, or Custom.
 const charsetName = computed(() => {
@@ -153,16 +156,6 @@ const charsetName = computed(() => {
         <label for="palette">{{ t('panel.paletteColors.label') }}</label>
         <input type="text" id="palette" v-model.lazy="store.palette" placeholder="#FFFFFF #000000">
       </div>
-      <template v-if="store.quantize !== 'none'">
-        <div class="field">
-          <div class="label-group"><label for="ditherStyle">{{ t('panel.ditherStyle.label') }}</label><HelpInfo :text="help('ditherStyle')" /></div>
-          <select id="ditherStyle" v-model="store.ditherStyle">
-            <option value="floyd">{{ t('panel.ditherStyle.floyd') }}</option>
-            <option value="bayer">{{ t('panel.ditherStyle.bayer') }}</option>
-          </select>
-        </div>
-        <RangeField :setting="getSetting('dither')" v-model="store.dither"/>
-      </template>
     </fieldset>
 
     <template v-for="(group, i) in sections" :key="group.id">
@@ -215,6 +208,18 @@ const charsetName = computed(() => {
 
             <RangeField v-if="showSolids" :setting="getSetting('solids')" v-model="own.solids"/>
             <RangeField v-if="showPatternLight" :setting="getSetting('patternLight')" v-model="own.patternLight"/>
+
+            <!-- Undoable: a style picked, a drag or a nudge is one step (setLayerChars, then commitLayerChars). -->
+            <template v-if="showDither">
+              <div class="field">
+                <div class="label-group"><label for="ditherStyle">{{ t('panel.ditherStyle.label') }}</label><HelpInfo :text="help('ditherStyle')" /></div>
+                <select id="ditherStyle" :value="own.ditherStyle" @change="own.ditherStyle = $event.target.value; store.commitLayerChars()">
+                  <option value="floyd">{{ t('panel.ditherStyle.floyd') }}</option>
+                  <option value="bayer">{{ t('panel.ditherStyle.bayer') }}</option>
+                </select>
+              </div>
+              <RangeField :setting="getSetting('dither')" v-model="own.dither" @commit="store.commitLayerChars()"/>
+            </template>
           </template>
 
           <template v-else-if="group.id === 'picture'">
