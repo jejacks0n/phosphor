@@ -468,7 +468,10 @@ test('with the base hidden, Merge down, Into the image, Bake and the vector merg
 
 test('hiding, showing or moving a layer above the lower group lays the stack over again without the pipeline, and shows what a render would', async () => {
   const { project } = await picture();
+  project.paintStroke([{ x: 2, y: 9, alpha: 1 }, { x: 3, y: 9, alpha: 1 }], RED); // on the lower group's layer: in the output, not in the last render's cells
+  project.commitEdit();
   const one = project.addLayer('cells', 'edit'), vector = project.addLayer('vector', one), two = project.addLayer('cells', vector);
+  expect(look(project.cells[4 * project.cols + 2]).fg).toBe(RED);
   project.useLayer(one);
   project.paintStroke([{ x: 3, y: 4, alpha: 1 }, { x: 4, y: 4, alpha: 1 }], RED);
   typed(project, 6, 6, 'A');
@@ -496,5 +499,30 @@ test('hiding, showing or moving a layer above the lower group lays the stack ove
     pipeline.mockClear();
     project.setLayerHidden(id, false);
     await settle(project);
+  }
+});
+
+test('moving a layer under the Number palette counts the colors again: the paint now on top shows in its own color', async () => {
+  const { project } = await picture();
+  Object.assign(project, { quantize: 'count', colorCount: 5 });
+  project.render();
+  await settle(project);
+  const one = project.addLayer('cells', 'edit'), two = project.addLayer('cells', one);
+  const block = [];
+  for (let y = 4; y < 16; y++) for (let x = 2; x < 14; x++) block.push({ x, y, alpha: 1 });
+  project.useLayer(one);
+  project.paintStroke(block, '#ffffff');
+  project.commitEdit();
+  project.useLayer(two);
+  project.paintStroke(block, '#ffff00');
+  project.commitEdit();
+  await settle(project);
+  const rendered = async () => { project.render(); await settle(project); return cellsKey(project); };
+  await rendered();
+  for (const step of [() => project.moveLayer(two, 2), () => project.undo(), () => project.redo()]) {
+    step();
+    await settle(project);
+    const shown = cellsKey(project);
+    expect(shown).toEqual(await rendered());
   }
 });
