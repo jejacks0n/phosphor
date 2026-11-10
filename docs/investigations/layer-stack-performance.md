@@ -18,6 +18,23 @@ measured). **Per whole-grid pass, it doesn't yet:** every pass that lays the sta
 upper layer's paint one pixel at a time, and those passes are what a hide, a move, an undo of an add, a slider step
 and every animation frame run. That one cost is behind five of the ten areas below.
 
+## What was done (2026-11-09, `jejacks0n/ux-perf`, from `26d11788`)
+
+The numbers under **Done** in each area below are from the same scratch benchmarks, run before and after on this branch
+(`composeUpper` had already been moved to one read per layer per compose, so the "before" column here is that state,
+not the 23.8 s of the first measurement). Everything else in the areas stands as written. Changes, each a commit:
+
+| Area | Change | 100 x 5,000, 16 upper layers: before → after |
+| --- | --- | --: |
+| 11 | `reaching` searches a grid of what stored colors show | 190 µs → 18 µs a lookup; 9% → 0.2% of lookups more than 1 off |
+| 1, 2 | a whole-grid compose visits only the cells the upper layers touch | 527 ms → 21 ms |
+| 2 | hide, show, move, add of an upper layer: no pipeline | 500 → 22 (hide), 33 (show), 50 to 80 (move) ms |
+| 6 | a layer's PNG kept while its paint's version stands; a pick schedules no write | `projectParts` after a one-cell edit 103 → 6 ms |
+| 3 | a rename keeps built frames | frames rebuilt on rename: yes → no |
+| 5 | an upper-only undo or redo never runs the pipeline | undo of a whole-layer fill 85 to 129 → 55 to 82 ms |
+
+Not done: areas 4 (memory), 7 (the drag's growth with layers), 8, 9 and 10; what's left is under each.
+
 ## Summary
 
 Ranked by how much a real user would feel each, worst first.
@@ -112,6 +129,14 @@ linear. A layer with one dot of paint costs the same as one painted all over.
 45k (today 2.1 s; `composeAll` alone is about 20 ms there). Add a `bench/` row: `composeUpperFullMs` at 1, 4 and 16
 upper layers, each with a small patch of paint.
 
+**Done.** `composeUpper` with `indexes === null` now visits only the cells some upper layer touches (`#touched`: a cells
+layer's keys and the pixels of its paint at grid resolution, a vector layer's `reachedCells`), and `#upperCell` builds
+the cell's key once instead of once per layer. Measured, whole compose: 45k with 1 / 4 / 16 upper: 6.7 / 14 / 48 ms →
+1.2 / 2 / 7 ms; the limit: 84 / 174 / 527 ms → 1.9 / 5.7 / 21 ms. A layer painted all over at 45k is unchanged (17 ms:
+every cell is touched), as is a layer with its own character settings (the `layer-chars` bench, 24 to 119 ms: each cell
+through `#upperChar`, which the character-picking work owns). Left: `#touched` scans each layer's grid bytes on every
+whole compose (about 1 ms a layer at the limit); keep the touched list per paint version if that ever shows.
+
 ## 2. Showing, hiding, moving or un-adding a layer re-renders everything
 
 **What's slow and when you'd feel it.** `setLayerHidden`, `moveLayer` and `addLayer`'s undo and redo all call
@@ -156,6 +181,14 @@ Hiding the only upper layer is cheap (no upper left to compose) and shows the pi
 **Done when** hide, show and move of an upper layer at the limit with 16 layers take under 100 ms, and a slider step
 is within 50 ms of its single-layer cost. Add `hideTopMs`, `moveLayerMs` and `sliderMs` at 1, 4 and 16 upper layers to
 `bench/`.
+
+**Done.** `setLayerHidden`, `moveLayer` and `addLayer` (with its undo and redo) go through `redrawn` in `layers.js`:
+when the lower group's membership and the base's eye are as they were, `syncShapeLayers` + `applyEditCells` and no
+pipeline; else `render()`. Measured at the limit with 1 / 4 / 16 upper: hide 35 / 188 / 500 → 18 / 18 / 22 ms, show
+130 / 218 / 514 → 33 / 33 / 33 ms (two frames of `settled`), move 140 / 241 / 522 → 58 / 52 / 81 ms. A slider step
+(`renderMs`) is 108 / 101 / 167 ms at the limit, from 188 / 288 / 607: the pipeline plus a few ms a layer. Left:
+`deleteLayer`, `duplicateLayer` and `addPictureToLayer` still `render()` through `stackStep` (they're one-off), and a
+move of a layer with no paint and no cells still composes.
 
 ## 3. Animation: every frame built and every swap composes the stack whole
 
@@ -206,6 +239,12 @@ per builder (and a builder is made again on every `buildKey` change).
 
 **Done when** building a 24-frame movie at 40k cells with four upper layers (small patches) is under 1 s and a frame
 swap under 60 ms; a rename keeps built frames. Extend the `animations` case in `bench/` with 1 and 4 upper layers.
+
+**Done in part.** `buildKey` keys the layers on id, kind, eye and own character settings, so a rename keeps every built
+frame (measured: it did invalidate, now it doesn't). Area 1's fix took the dominant term out of `build` and `arrive`:
+at 200 x 100 with 4 upper layers, building two frames 39 → 24 ms, rebuilding them 28 → 13 ms; a frame swap is 33 ms
+at any layer count (two frames of waiting). Left: `arrive` still does `paintImage` + `loadGrid` per cells layer and
+`liveStates` reads every painted layer per note (7.7 ms at 4 layers); not measured as a problem at the animation limit.
 
 ## 4. Memory: a paint canvas per cells layer, two grids per vector layer
 
@@ -268,6 +307,12 @@ it (one set of layers), but each `FrameBuilder` adds a full set for the upper la
 budget test asserts total paint canvas bytes stay under a stated cap at the limit with `MOST_LAYERS` layers. Add a
 `canvasMB` column to the `bench/` rows.
 
+**Not done.** Only picked layers and painted frames make canvases, as before. Note for whoever takes it: Chromium (and
+WebKit) don't commit a canvas's backing store until it's first drawn to or read, so an unpainted layer's `PaintLayer`
+costs its JS object until the first stroke; the 68 MB in the table is width x height x 4, not memory held. The real
+cost is painted layers at high scale (the 26 MB a layer estimate), which only a scale cap by layer count addresses. The
+`this.paintLayer` readers (28 sites in `src/store/project`) are why "make it on first paint" wasn't attempted here.
+
 ## 5. Undo and redo of an upper-layer edit run the lower group's pipeline
 
 **What's slow and when you'd feel it.** `applyChange` writes each layer's cells and runs where they live, then calls
@@ -310,6 +355,15 @@ Small, and mostly the rect composite (redo's extra is `#ditherUnder`/`#resolveUn
 **Done when** undo of an upper-layer fill covering the grid at the limit is under the fill's own cost (today a render)
 and `renderer.composite` is never called for an undo whose keys are all upper (a spy test, as "an edit on an upper
 layer doesn't run the lower group" does).
+
+**Done.** `applyChange` groups the written layers; when none is the lower group's cells layer or the base, no base pixels
+or pins changed, and the settings don't need the composite (Number palette, a carried error, held dither: as `commitEdit`
+decides), it calls `recomposeUpper` over the changed pixels, or `applyEditCells` (a whole sparse compose, no pipeline)
+past a quarter of the grid. Measured, a fill of the whole top layer undone, at the limit with 1 / 4 / 16 upper:
+85 / 115 / 129 → 59 / 68 / 82 ms; at 45k 36 / 31 / 35 → 29 / 22 / 29 ms. `renderer.composite` is never called for
+such an undo (spy test in `layer-stack.test.js`). Left: redo of that fill is 300 to 433 ms at the limit, which is the
+ledger's per-pixel runs (`writeRuns` over a million pixels), not the stack; `pushWholeLayer`'s callers (delete,
+duplicate, merges) still `render()`.
 
 ## 6. Autosave writes every layer on every write
 
@@ -358,6 +412,13 @@ serialize is on the main thread.
 **Done when** a write after a one-cell edit encodes one PNG, and picking a layer schedules no write. Test: spy on
 `toBlob` across two writes with 4 painted layers.
 
+**Done.** `PaintLayer.toBlob` keeps the PNG promise while `version` stands (a failed encode isn't kept), so a write
+encodes only the layers that changed; the autosave watcher skips a scheduling when only `editCells` changed, the frame
+number didn't and `_frameSwaps` moved (a layer pick). Measured `projectParts`: a second call with nothing changed
+0.1 ms at every size; after a one-cell edit, 45k 2 / 4.5 / 15 → 1 / 0.9 / 0.8 ms (1 / 4 / 16 upper), the limit
+13 / 42 / 103 → 6.7 / 6.1 / 6.4 ms (the base and the parts' serialization). A pick schedules no write
+(`autosave.test.js`). Left: a first write after opening still encodes every painted layer, as it must.
+
 ## 7. Upper vector layers: full canvases, whole redraws, and a drag that walks the stack
 
 **What's slow and when you'd feel it.** Each upper vector layer with shapes gets an alone `ShapeLayer`: a canvas at
@@ -405,6 +466,10 @@ redraws are per vector layer per grid change.
 **Done when** a shape drag step on a vector layer above 16 cells layers is within 2x its cost above one, at both
 sizes. Add a `shapeDragMs` row at 1 and 16 under-layers to `bench/`.
 
+**Not done.** A shape drag step above 1 / 4 / 16 cells layers is 1.4 / 2.5 / 4.3 ms at the limit (was 1.3 / 2 / 3.4):
+the rect's cells each walk every layer in the indexed compose. Under the 2x target it isn't; it's also under 5 ms. The
+`rank` map wasn't changed: with one shape it measures nothing.
+
 ## 8. Edits on the lower group now walk the upper layers and copy the cells again
 
 **What's slow and when you'd feel it.** A Pencil move or keystroke on the lower group's cells layer (`edit` in an
@@ -447,6 +512,9 @@ cells adds 100k `parseKey` calls per render).
 **Done when** a lower-group Pencil move at the limit with 16 upper layers is within 0.5 ms of its single-layer cost,
 and `applyEditCells` minus `composeAll` minus `composeUpper` is under 5 ms with 100k entries spread over 16 layers.
 
+**Not done.** A lower-group Pencil move at the limit is 0.5 to 1 ms with 1 to 16 upper layers, within the target as
+measured; the rows loop wasn't measured with 100k entries.
+
 ## 9. Layer swaps: cheap, but each commits, re-fires watchers and will multiply under Task 8
 
 **What's at risk and when you'd feel it.** `useLayer`/`swapLayer` are a few map operations (measured 0.01 to 0.05 ms
@@ -486,6 +554,8 @@ below x 2 x 1.8 µs ≈ 72 ms per layer below).
 **Done when** a selection move over 16 visible layers at the limit costs under 20 ms per pointer move, measured by
 a `bench/` row once Task 8 lands.
 
+**Not done.** Nothing measured here changed.
+
 ## 10. The LAYERS list
 
 **What's at risk and when you'd feel it.** `layers` is one computed over `project.layers` reversed, calling
@@ -511,6 +581,8 @@ is under 1 ms; a 64-row Vue re-render with a menu each is on the order of 1 to 3
 **Done when** a pointer move during a drag causes no layout read and re-renders only the two rows whose drop marker
 changed (a Vue devtools or `onRenderTriggered` check); no number to hit.
 
+**Not done.** No drag test exists to hang a change on; the estimate stands.
+
 ## 11. The nearest-color search under Color ASCII (added after the final review)
 
 `reaching` (`src/store/project/reading.js`) finds a stored color that shows as a target under the sliders, for a
@@ -525,6 +597,18 @@ default. It's marked `ponytail:`.
   exists. Some targets can't be shown exactly by any stored color.
 - **Next:** start from a coarse color grid computed once per settings (about 8 ms in a probe; cells more than 5 off
   fell from about 7% to under 1%), or, if merged paint stays paint (the open owner question R22), drop the search.
+
+**Done.** `storedShowingAs` in `PixelTransforms.js`: `paletteChoices`' 33³ grid through the adjustments and the palette,
+indexed by what each color shows (4096 buckets of 16 levels a channel, built once per settings, 2 to 9 ms), the eight
+grid colors showing nearest the target each stepped 4, 2, 1 a channel with all 26 moves in one `applyTransforms`
+call, the nearest kept. `reaching` is a per-settings, per-target cache over it (the renderer's color cache is no longer
+flooded), and `shownAs` checks its 27 ±1 candidates in one call instead of 27 `effective` calls. Measured on 1,000
+random reachable targets: Brightness 140 + Hue 40, 189 → 20 µs a lookup, more than 1 off 9.2% → 0.2% (max 81 → 2),
+more than 20 off 2.8% → 0; Contrast 250, 121 → 9 µs, 61% → 0 more than 1 off; Invert + Saturation 150, 182 → 17 µs,
+31% → 0. The misses left are targets a step inside a clip (253 under Brightness 140), shown as 255. A whole Merge down
+of a layer painted all over, 300 x 200 under those sliders: 1.88 → 1.46 s (80 x 50: 242 → 111 ms); what's left is
+`storedLookAt`'s own reads per cell (`baseCellAt` 3 to 4 µs, two `pixelAt` 2.4 µs a layer, conversions), 15 µs a cell
+with no reaching at all.
 
 ## How this was measured
 
