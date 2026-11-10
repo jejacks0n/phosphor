@@ -36,6 +36,13 @@ async function toggle() {
   else if (menu.right > width - MARGIN) position.value = { ...edge, right: `${MARGIN}px` };
 }
 const close = () => { isOpen.value = false; };
+// An item chosen closes the menu; focus that was on the item goes back to the trigger, not to the page.
+function chosen() {
+  if (!props.closeOnSelect) return;
+  const had = content.value?.contains(document.activeElement);
+  close();
+  if (had) root.value.querySelector('.dropdown-trigger').focus();
+}
 // Scrolling what holds the menu would leave it behind, so it closes. Something beside it, a chat
 // keeping up with its messages, say, doesn't move it.
 const handleScroll = (e) => { if (isOpen.value && !root.value.contains(e.target) && e.target.contains(root.value)) close(); };
@@ -75,7 +82,7 @@ onBeforeUnmount(() => {
         </svg>
       </slot>
     </button>
-    <div ref="content" class="dropdown-content" v-if="isOpen" :style="position" @click="closeOnSelect && close()">
+    <div ref="content" class="dropdown-content" v-if="isOpen" :style="position" @click="chosen">
       <slot></slot>
     </div>
   </article>

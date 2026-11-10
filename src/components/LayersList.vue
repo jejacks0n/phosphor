@@ -61,6 +61,8 @@ function add(kind) {
 // step: off in a room, and Duplicate at the most layers.
 const duplicateOff = computed(() => (full.value ? t('layers.full', { n: MOST_LAYERS }) : inRoom.value ? t('layers.notInRoom') : null));
 const duplicate = (layer) => project.duplicateLayer(layer.id);
+// Its row (and ⋯) gone, focus goes to the row picked now (the one under it) rather than the page.
+const remove = (layer) => project.deleteLayer(layer.id) && backToRow(workspace.pickedLayer);
 
 // The ⋯ menu's Merge down: the layer into the one under it, as the toolbar's (off with its reason, asking how into the base).
 const { offFor: mergeOff, mergeDown } = useMergeDown();
@@ -175,7 +177,7 @@ function cancel() {
             </template>
             <button @click="rename(layer)">{{ t('layers.rename') }}</button>
             <button :disabled="duplicateOff !== null" :title="duplicateOff" @click="duplicate(layer)">{{ t('layers.duplicate') }}</button>
-            <button :disabled="inRoom" :title="inRoom ? t('layers.notInRoom') : null" @click="project.deleteLayer(layer.id)">{{ t('layers.delete') }}</button>
+            <button :disabled="inRoom" :title="inRoom ? t('layers.notInRoom') : null" @click="remove(layer)">{{ t('layers.delete') }}</button>
             <button :disabled="mergeOff(layer.id) !== null" :title="mergeOff(layer.id)" @click="mergeDown(layer.id)">{{ t('toolbar.mergeDown') }}</button>
             <button :disabled="moveOff(layer, 1) !== null" :title="moveOff(layer, 1) || null" @click="move(layer, 1)">{{ t('layers.moveUp') }}</button>
             <button :disabled="moveOff(layer, -1) !== null" :title="moveOff(layer, -1) || null" @click="move(layer, -1)">{{ t('layers.moveDown') }}</button>

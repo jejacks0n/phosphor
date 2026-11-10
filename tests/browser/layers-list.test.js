@@ -121,6 +121,25 @@ test('Duplicate and Delete in ⋯: the copy goes directly above and is picked, a
   expect(workspace.pickedLayer).toBe('edit');
 });
 
+test('an item chosen from ⋯ with the keyboard leaves focus in the list: on the trigger, or after Delete on the row picked', async () => {
+  const { project, workspace } = await mount();
+  let item = await openMenu(0);
+  item('Duplicate').focus();
+  item('Duplicate').click(); // Enter on a focused button
+  await settle(project);
+  await nextTick();
+  expect(names()).toEqual(['Layer 1 copy', 'Layer 1', 'Base']);
+  expect(document.activeElement).toBe(menuOf(1)); // Layer 1's ⋯, which the item was chosen from
+  item = await openMenu(0);
+  item('Delete').focus();
+  item('Delete').click();
+  await settle(project);
+  await nextTick();
+  expect(names()).toEqual(['Layer 1', 'Base']);
+  expect(workspace.pickedLayer).toBe('edit');
+  expect(document.activeElement).toBe(pickOf(0)); // the row is gone: the one picked now, not the page
+});
+
 test('in a room the ⋯ items that change the stack are off with the reason', async () => {
   await mount(({ project }) => { project._sharing = { role: 'host' }; });
   const item = await openMenu(0);
