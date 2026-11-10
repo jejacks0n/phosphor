@@ -713,3 +713,23 @@ test('an art layer on a vector layer above the first goes by its own layer\'s ey
   expect(project.shownLayers.some((layer) => layer.id === project.editId)).toBe(true); // the art's drawing shows
   project.leaveArt();
 });
+
+test('Make art layer is refused while the cells layer or the vector layer above it is hidden, so nothing vanishes', async () => {
+  for (const hidden of ['upper', 'edit']) {
+    const { project, workspace } = await blank();
+    const upper = project.addLayer('vector', 'edit'); // directly above the edit layer: where the art would go
+    workspace.pickLayer('edit');
+    project.typeAt(2, 1, 'H', { fg: RED });
+    project.commitEdit();
+    project.setLayerHidden(hidden === 'upper' ? upper : 'edit', true);
+    await settle(project);
+    const shown = cellsKey(project), version = project.history.version;
+    select(workspace, 1, 0, 6, 2);
+    toastMessage.value = null;
+    expect(project.makeArtLayer()).toBe(null);
+    expect(toastMessage.value).toBe('Show the layer to draw on it');
+    expect(project.history.version).toBe(version);
+    expect(project.cellsOf('edit').get('2,1')?.char).toBe('H');
+    expect(cellsKey(project)).toEqual(shown);
+  }
+});

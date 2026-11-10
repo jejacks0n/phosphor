@@ -474,7 +474,7 @@ export const vectorActions = {
   // drawing: one step, with the layer picked and selected on VECTOR. With no vector layer there, one is made there, in the
   // same step (in an animation, the edit's step, which carries a frame's shapes: withLayerMade). In a room the art goes on its vector layer, as it
   // always did, since a room keeps its layers. A cell nothing was drawn on stays see-through. The key, or null (no step,
-  // and a toast says why) with nothing drawn there, at the most shapes a frame holds, at the most layers when it would
+  // and a toast says why) with the cells layer or the vector layer above it hidden, with nothing drawn there, at the most shapes a frame holds, at the most layers when it would
   // make one, or a drawing too big or too wide for one layer. The record is checked as a file would be, at the stacking it gets, before anything is taken out.
   makeArtLayer() {
     const workspace = useWorkspaceStore();
@@ -493,6 +493,13 @@ export const vectorActions = {
     const rect = box && this.clipRect(box);
     if (!rect) return null;
     if (this._artInside) this.leaveArt(); // made from the drawing, not the art layer you're in
+    // What's hidden never goes into another layer unseen: neither the cells layer's drawing nor the art, onto a hidden
+    // vector layer (in a room, its one).
+    const src = this.editId, above = this.layers[this.layers.findIndex((layer) => layer.id === src) + 1];
+    if (this.layerHidden(src) || this.layerHidden(this._sharing ? 'vector' : above?.kind === 'vector' && above.id)) {
+      toast(t('layers.hiddenToast'));
+      return null;
+    }
     const drawn = drawnIn(this, rect, wand ? new Set(picked.map(({ col, row }) => cellKey(col, row))) : null);
     if (!drawn.length) {
       toast(t('art.nothingDrawn')); // the wand's button can't tell beforehand: it's on whenever anything's drawn
@@ -508,7 +515,6 @@ export const vectorActions = {
       toast(t('art.tooBig'));
       return null;
     }
-    const src = this.editId, above = this.layers[this.layers.findIndex((layer) => layer.id === src) + 1];
     const adds = !this._sharing && above?.kind !== 'vector';
     if (adds && this.layers.length >= MOST_LAYERS) {
       toast(t('layers.full', { n: MOST_LAYERS }));
