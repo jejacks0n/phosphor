@@ -334,6 +334,27 @@ describe('down between layers', () => {
     expect(project.mergeDown('base')).toBe(false);
     expect(ids(project).length).toBe(3);
   });
+  test('Merge down of paint over cells keeps what shows under Color ASCII with the sliders off their defaults', async () => {
+    const { project, workspace } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+    Object.assign(project, { renderStyle: 'colorAscii', brightness: 140, hue: 40 });
+    project.render();
+    await settle(project);
+    const top = project.addLayer('cells', 'edit');
+    workspace.pickLayer(top);
+    project.paintStroke([{ x: 4, y: 6, alpha: 1 }], '#ffff00');
+    project.paintStroke([{ x: 4, y: 7, alpha: 1 }], '#0000ff');
+    project.commitEdit();
+    await settle(project);
+    const before = cellsKey(project), at = 3 * project.cols + 4, shown = project.cells[at];
+    expect(project.mergeDown(top)).toBe(true);
+    await settle(project);
+    const after = cellsKey(project), cell = project.cells[at];
+    expect(after.filter((_, i) => i !== at)).toEqual(before.filter((_, i) => i !== at));
+    // The halves' average as shown (#b38080 here) is one no stored color shows as under these sliders: the nearest one is.
+    expect([cell.char, cell.bg.hex]).toEqual([shown.char, shown.bg.hex]);
+    expect(Math.max(...['r', 'g', 'b'].map((k) => Math.abs(cell.fg[k] - shown.fg[k])))).toBeLessThanOrEqual(1);
+  });
 });
 
 test('Into the image from a row that isn\'t the layer in use merges that row\'s layer, as the dialog names it', async () => {

@@ -7,7 +7,7 @@ import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer, layerKey } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { bakedEntry, cellIndex, charRowsOf, halfColors, mix } from '@/lib/Cells.js';
+import { bakedEntry, cellIndex, charRowsOf, halfColors, isSolidGlyph, mix } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices } from '@/lib/PixelTransforms.js';
 import { over } from '@/store/project/shared.js';
@@ -31,13 +31,47 @@ const storedBlack = (params) => ['#000000', '#ffffff'].find((hex) => effectiveCo
 
 // The stored color hex, or one a step off it on some channels, that shows as target: Color ASCII's FG is the halves'
 // average, and one averaged in stored colors can round the other way from the one shown (Invert turns half up to half down).
-function shownAs(project, hex, target) {
+// reach: an adjustment that clips (Brightness past 100) or turns hues doesn't average as stored colors do, so failing
+// that, the stored color found nearest hex that shows as target, or as near it as any can (reaching).
+function shownAs(project, hex, target, { reach = false } = {}) {
   const params = project.processParams, { r, g, b } = hex2rgb(hex), steps = [0, -1, 1];
   for (const dr of steps) for (const dg of steps) for (const db of steps) {
     const near = rgb2hex({ r: r + dr, g: g + dg, b: b + db });
     if (project.renderer.effective(near, params).hex.toLowerCase() === target.toLowerCase()) return near;
   }
-  return hex;
+  return reach ? reaching(project, hex, target) : hex;
+}
+
+// From the stored color hex, a step on one, two or three channels at a time toward showing as target, the step halved
+// when none gets nearer; the color it ends on.
+// ponytail: a descent, so a hue turn that only far-off colors reach can leave it short, and it's a few hundred lookups a
+// color (kept per settings: a merge of a whole picture's paint under such sliders can still take seconds). A grid search
+// first if either bites.
+const reached = new WeakMap(); // processParams -> Map('hex>target' -> stored)
+function reaching(project, hex, target) {
+  const params = project.processParams, goal = hex2rgb(target), key = `${hex}>${target}`;
+  let kept = reached.get(params);
+  if (!kept) reached.set(params, kept = new Map());
+  if (kept.has(key)) return kept.get(key);
+  const off = (c) => {
+    const shown = project.renderer.effective(rgb2hex(c), params);
+    return (shown.r - goal.r) ** 2 + (shown.g - goal.g) ** 2 + (shown.b - goal.b) ** 2;
+  };
+  const clamp = (v) => Math.max(0, Math.min(255, v));
+  let at = hex2rgb(hex), d = off(at);
+  for (let step = 64; step >= 1 && d; step >>= 1) {
+    // every move of the step on one, two or three channels: the adjustments couple them (a hue turn)
+    const moves = [-step, 0, step].flatMap((r) => [-step, 0, step].flatMap((g) => [-step, 0, step].map((b) => ({ r, g, b })))).filter(({ r, g, b }) => r || g || b);
+    for (let moved = true; moved && d;) {
+      moved = false;
+      for (const m of moves) {
+        const next = { r: clamp(at.r + m.r), g: clamp(at.g + m.g), b: clamp(at.b + m.b) }, dn = off(next);
+        if (dn < d) [at, d, moved] = [next, dn, true];
+      }
+    }
+  }
+  kept.set(key, rgb2hex(at));
+  return kept.get(key);
 }
 
 // The base's cell as the render style shows it, in stored colors (bakedEntry of baseCellAt), its Color ASCII FG one that
@@ -175,27 +209,41 @@ export const readingActions = {
   // A cell as the stack shows it, in stored colors (before adjustments), for a copy of what shapes show: the base's cell with
   // the lower group's shapes (baseCellAt), then each shown layer above, bottom first: a cells layer as lookUnder lays it,
   // an upper vector layer's shapes by their alpha over each half (in the ASCII styles, over the halves of the character's
-  // ink on black, then averaged into FG, as buildCell does). The character is the one that shows. through: only up to the
-  // upper layer with that id, its cell as it shows there (shown: the cell as composed up to it, Merge down's freeze).
+  // ink on black, then averaged into FG, as buildCell does; an upper cells layer's paint the same way, over an exact cell's
+  // BG and FG unless its character is solid, as coverCell does). The character is the one that shows. through: only up to
+  // the upper layer with that id, its cell as it shows there (shown: the cell as composed up to it, Merge down's freeze).
   storedLookAt(col, row, { through = null, shown = this.cells[cellIndex(col, row, this.cols)] } = {}) {
-    const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii';
+    const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii', key = cellKey(col, row);
     let look = baseLook(this, col, row);
     if (cells) look = layerOver(this, cells, col, row, look);
+    let exact = !!(cells && this.cellsOf(cells).has(key)) || this.renderer.pinAt(col, row) !== undefined; // as the renderer's upper walk
+    // The look with paint pixels (or shape pixels) top and bottom over the halves, as the ASCII styles show it: averaged, no BG.
+    const asciiOver = (top, bottom, halvesOf = halfColors) => {
+      const halves = halvesOf({ char: look.char ?? ' ', bg: hex2rgb(storedBlack(this.processParams)), fg: hex2rgb(look.fg) });
+      const [t, b] = halves.map((half, k) => { const px = k ? bottom : top; return px ? over(half, px) : half; });
+      return { char: look.char, fg: rgb2hex(mix(t, b, 0.5)) };
+    };
     for (const id of through ? upper.slice(0, upper.indexOf(through) + 1) : upper) {
-      if (this.layerById(id).kind === 'cells') { look = layerOver(this, id, col, row, look); continue; }
-      const shapes = this._upperShapes.get(id);
-      if (shapes?.charAt(col, row) === undefined) continue;
+      if (this.layerById(id).kind === 'cells') {
+        if (!ascii) { look = layerOver(this, id, col, row, look); continue; }
+        look = layerOver(this, id, col, row, look, false);
+        if (this.cellsOf(id).has(key)) exact = true;
+        const paint = this.paintOf(id), top = paint?.pixelAt(col, 2 * row), bottom = paint?.pixelAt(col, 2 * row + 1);
+        if (top || bottom) look = asciiOver(top, bottom, exact && !isSolidGlyph(look.char ?? ' ') ? (cell) => [cell.bg, cell.fg] : halfColors);
+        continue;
+      }
+      const shapes = this._upperShapes.get(id), char = shapes?.charAt(col, row);
+      if (char === undefined) continue;
       const top = this.renderer.upperStoredAt(shapes, col, 2 * row), bottom = this.renderer.upperStoredAt(shapes, col, 2 * row + 1);
+      exact = char !== null;
       if (ascii) { // as buildCell lays them: the halves of the character's ink on black, shapes over each, averaged, no BG
-        const halves = halfColors({ char: look.char ?? ' ', bg: hex2rgb(storedBlack(this.processParams)), fg: hex2rgb(look.fg) });
-        const [t, b] = halves.map((half, k) => { const px = k ? bottom : top; return px ? over(half, px) : half; });
-        look = { char: shapes.charAt(col, row) ?? look.char, fg: rgb2hex(mix(t, b, 0.5)) };
+        look = { ...asciiOver(top, bottom), char: char ?? look.char };
         continue;
       }
       if (top) look = { ...look, bg: rgb2hex(over(hex2rgb(look.bg), top)) };
       if (bottom) look = { ...look, fg: rgb2hex(over(hex2rgb(look.fg), bottom)) };
     }
-    const fg = shown && this.renderStyle === 'colorAscii' ? shownAs(this, look.fg, shown.fg.hex) : look.fg;
+    const fg = shown && this.renderStyle === 'colorAscii' ? shownAs(this, look.fg, shown.fg.hex, { reach: true }) : look.fg;
     return { char: !shown || shown.wide === 'trail' ? ' ' : shown.char, fg, bg: look.bg };
   },
 
