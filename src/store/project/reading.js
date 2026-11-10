@@ -27,15 +27,20 @@ function storedOf(palette, params) {
 }
 
 // The cell as it shows up to the upper layer with the id at col, row: shown when that's the layer stopped at (through) or no
-// layer above it reaches the cell, else the upper walk stopped there for the one cell (levelCells).
-function levelAt(project, id, col, row, through, shown) {
+// layer above it reaches the cell, else the upper walk stopped there (levelCells): for batch's cells at once ({ indexes,
+// levels }: the cells asked for together and each layer's walk over them, kept as it's made), or the one cell.
+function levelAt(project, id, col, row, through, shown, batch) {
   if (id === through) return shown;
   const { upper } = project.lowerGroup, key = cellKey(col, row), i = cellIndex(col, row, project.cols);
   const above = upper.slice(upper.indexOf(id) + 1, through ? upper.indexOf(through) + 1 : upper.length);
   const reached = above.some((each) => (project.layerById(each).kind === 'vector'
     ? project._upperShapes.get(each)?.charAt(col, row) !== undefined
     : project.cellsOf(each).has(key) || !!project.paintOf(each)?.pixelAt(col, 2 * row) || !!project.paintOf(each)?.pixelAt(col, 2 * row + 1)));
-  return reached ? levelCells(project, id, [i])[i] : shown;
+  if (!reached) return shown;
+  if (!batch) return levelCells(project, id, [i])[i];
+  let level = batch.levels.get(id);
+  if (!level) batch.levels.set(id, level = levelCells(project, id, batch.indexes));
+  return level[i];
 }
 
 // A color a cell shows as a stored one that shows as it (storedOf), or itself where none does (no palette).
@@ -233,7 +238,9 @@ export const readingActions = {
   // BG and FG unless its character is solid, as coverCell does), or under its own Best match or By shape the colors its
   // cell shows there (levelAt), stored. The character is the one that shows. through: only up to
   // the upper layer with that id, its cell as it shows there (shown: the cell as composed up to it, Merge down's freeze).
-  storedLookAt(col, row, { through = null, shown = this.cells[cellIndex(col, row, this.cols)] } = {}) {
+  // batch: { indexes, levels: new Map() } shared by the calls for the cells at indexes (a copy's, a freeze's), so a layer's
+  // level is composed once for them all (levelAt).
+  storedLookAt(col, row, { through = null, shown = this.cells[cellIndex(col, row, this.cols)], batch = null } = {}) {
     const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii', key = cellKey(col, row);
     let look = baseLook(this, col, row);
     if (cells) look = layerOver(this, cells, col, row, look);
@@ -258,7 +265,7 @@ export const readingActions = {
       const top = this.renderer.upperStoredAt(shapes, col, 2 * row), bottom = this.renderer.upperStoredAt(shapes, col, 2 * row + 1);
       exact = char !== null;
       if (char === null && resolves(this.layerParams.get(id))) { // Best match's or By shape's colors, not its halves'
-        const cell = levelAt(this, id, col, row, through, shown);
+        const cell = levelAt(this, id, col, row, through, shown, batch);
         if (cell) {
           look = { char: look.char, fg: storedHexOf(this, cell.fg), bg: ascii ? look.bg : storedHexOf(this, cell.bg) };
           continue;

@@ -470,9 +470,10 @@ function moveParts(project, block, ids, rect, col, row) {
 function shownByShapes(project, cells) {
   const layers = [project._shapeLayer, ...project.lowerGroup.upper.map((id) => project._upperShapes.get(id))].filter((layer) => layer?.drawsShapes);
   if (!layers.length) return null;
+  const batch = { indexes: cells.map(({ col, row }) => cellIndex(col, row, project.cols)), levels: new Map() };
   const shown = cells.map(({ col, row }) => {
     if (!layers.some((layer) => layer.charAt(col, row) !== undefined)) return null;
-    return project.cells[cellIndex(col, row, project.cols)] ? project.storedLookAt(col, row) : null;
+    return project.cells[cellIndex(col, row, project.cols)] ? project.storedLookAt(col, row, { batch }) : null;
   });
   return shown.some(Boolean) ? shown : null;
 }

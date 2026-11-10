@@ -158,8 +158,9 @@ function frozenCells(project, id, indexes) {
   if (!indexes.length) return frozen;
   const level = levelCells(project, id, indexes), params = project.processParams, cols = project.cols;
   const as = (stored, target) => (target && project.renderer.effective(target, params).hex.toLowerCase() === target.toLowerCase() ? target : stored);
+  const batch = { indexes, levels: new Map() };
   for (const i of indexes) {
-    const col = i % cols, row = (i - col) / cols, shown = level[i], look = project.storedLookAt(col, row, { through: id, shown });
+    const col = i % cols, row = (i - col) / cols, shown = level[i], look = project.storedLookAt(col, row, { through: id, shown, batch });
     frozen.set(cellKey(col, row), { ...look, fg: as(look.fg, shown.fg?.hex), ...(look.bg !== undefined && { bg: as(look.bg, shown.bg?.hex) }) });
   }
   return frozen;

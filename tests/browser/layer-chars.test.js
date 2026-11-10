@@ -1,7 +1,7 @@
 // Each layer's own character settings (charsOf, setLayerChars, layerParams): an old document gives every layer the
 // document's, a new layer copies the picked one's, and the left column (ControlPanel.vue) shows the picked layer's under
 // its name, with the picture's settings only while the picture's layer is picked.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
@@ -356,6 +356,35 @@ for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }]
     const looks = await circleOn('edit', settings, { looks: true });
     expect(looks.filter(([shown]) => !halfBlocks.has(shown[0])).length).toBeGreaterThan(4);
     expect(looks.map(([, look]) => look)).toEqual(looks.map(([shown]) => shown));
+  });
+}
+
+for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }], ['Best match', { charChoice: 'best', chars: '▄░▒▓█', solids: 0 }]]) {
+  test(`under ${name} Copy takes the colors an upper vector layer's cells show under a layer above, composing it once`, async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 24, rows: 24, quantize: 'cga', brightness: 120 });
+    await settle(project);
+    const vector = project.addLayer('vector', 'edit');
+    project.setLayerChars(vector, { ...settings, seed: 'its own' });
+    workspace.pickLayer(vector);
+    project.addShape(ellipseShape(2.3, 3.1, 21.6, 22.4, { fill: '#ff5555' }));
+    project.commitEdit();
+    const above = project.addLayer('cells', vector); // its characters over every cell, the colors the ones under
+    workspace.pickLayer(above);
+    const all = Array.from({ length: 24 * 12 }, (_, i) => ({ col: i % 24, row: Math.floor(i / 24) }));
+    project.writeEditCells(all.map((cell) => ({ ...cell, attrs: { char: '#' } })));
+    project.commitEdit();
+    await settle(project);
+    expect(project.lowerGroup.upper.slice(-2)).toEqual([vector, above]);
+    const composes = vi.spyOn(project.renderer, 'composeUpper');
+    const { shown } = project.copySelection(project.gridRect(), [above]);
+    expect(composes.mock.calls.length).toBeLessThanOrEqual(2); // the level once for the whole copy, not once a cell
+    composes.mockRestore();
+    const shows = (hex) => project.renderer.effective(hex, project.processParams).hex;
+    const reached = all.map((cell, i) => i).filter((i) => shown[i]); // where a shape is
+    expect(reached.length).toBeGreaterThan(100);
+    expect(reached.map((i) => `${shown[i].char}${shows(shown[i].fg)}${shows(shown[i].bg)}`)).toEqual(reached.map((i) => cellsKey(project)[i]));
+    expect(reached.map((i) => shown[i])).toEqual(reached.map((i) => project.storedLookAt(all[i].col, all[i].row))); // as a cell at a time
   });
 }
 
