@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { renderSVG } from 'uqr';
 import { useSocialStore, PROVIDERS } from '@/store/SocialStore';
@@ -9,7 +9,7 @@ import { mountTurnstile } from '@/social/turnstile';
 import UsernameField from './UsernameField.vue';
 import UserName from './UserName.vue';
 
-// Your username, the ways to sign in, two-factor, who you blocked, and deleting the account. Errors of a form
+// Your username, the ways to sign in, two-factor, a link to who you blocked, and deleting the account. Errors of a form
 // show under it; the others are the notice at the top of the tab.
 const social = useSocialStore();
 const { t } = useI18n();
@@ -56,8 +56,6 @@ const setup = ref(null);
 const setupCode = ref('');
 const backupCodes = ref(null);
 const twoFactorSection = useTemplateRef('twoFactorSection');
-
-onMounted(() => social.loadBlocked());
 
 // A panel opening takes focus (its first field, or Cancel when it has none) and closing gives it back
 // to the button that opened it.
@@ -323,8 +321,10 @@ async function deleteAccount() {
       </form>
       <div v-else-if="me.twoFactorEnabled" class="row">
         <span class="what">{{ t('social.account.twoFactorOn') }}</span>
-        <button data-ask="codes" @click="startAsk('codes')">{{ t('social.account.newBackupCodes') }}</button>
-        <button data-ask="off" @click="startAsk('off')">{{ t('social.account.turnOff') }}</button>
+        <span class="buttons">
+          <button data-ask="codes" @click="startAsk('codes')">{{ t('social.account.newBackupCodes') }}</button>
+          <button data-ask="off" @click="startAsk('off')">{{ t('social.account.turnOff') }}</button>
+        </span>
       </div>
       <div v-else class="row">
         <span class="what">{{ t('social.account.twoFactorOff') }}</span>
@@ -334,11 +334,7 @@ async function deleteAccount() {
 
     <section aria-labelledby="account-blocked">
       <h3 id="account-blocked">{{ t('social.account.blockedHeading') }}</h3>
-      <p v-if="!social.blocked.length" class="help">{{ t('social.account.nobodyBlocked') }}</p>
-      <div v-for="person in social.blocked" :key="person.username" class="row">
-        <UserName class="username" :name="person.username" />
-        <button :disabled="social.busy" :aria-label="t('social.account.unblockAria', { name: person.username })" @click="social.unblock(person.username)">{{ t('social.account.unblock') }}</button>
-      </div>
+      <p class="help"><button class="link inline" @click="social.page = 'blocked'">{{ t('social.account.seeBlocked') }}</button></p>
     </section>
 
     <section aria-labelledby="account-delete">

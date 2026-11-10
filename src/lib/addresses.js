@@ -10,6 +10,7 @@ export const PLACES = [
   ['/social/create', { page: 'create' }],
   ['/social/forgot', { page: 'forgot' }],
   ['/social/account', { page: 'account' }],
+  ['/social/blocked', { page: 'blocked' }],
   ['/social/two-factor', { page: 'two-factor' }],
   ['/social/start', { page: 'start-room' }],
   ['/social/reset', { page: 'reset' }],
@@ -28,7 +29,7 @@ export function pathOf({ tab, page = 'lobby', empty = false }) {
 
 // A page that can't be shown goes to the nearest one that can.
 export function arrivalPage(page, { signedIn, needsOnboarding, resetToken, codePending, canStart }) {
-  if (page === 'account') return signedIn ? page : 'sign-in';
+  if (page === 'account' || page === 'blocked') return signedIn ? page : 'sign-in';
   if (page === 'two-factor') return codePending ? page : 'lobby';
   if (page === 'reset') return resetToken ? page : 'lobby';
   if (page === 'sign-in' || page === 'create') return signedIn ? 'lobby' : page;

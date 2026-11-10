@@ -27,6 +27,7 @@ test('with nothing open the art tabs are the start screen, at /; ROOM and a page
 const known = { signedIn: false, needsOnboarding: false, resetToken: null, codePending: false, canStart: false };
 test.each([
   ['account', {}, 'sign-in'], ['account', { signedIn: true }, 'account'],
+  ['blocked', {}, 'sign-in'], ['blocked', { signedIn: true }, 'blocked'],
   ['two-factor', {}, 'lobby'], ['two-factor', { codePending: true }, 'two-factor'],
   ['reset', {}, 'lobby'], ['reset', { resetToken: 't' }, 'reset'],
   ['sign-in', { signedIn: true }, 'lobby'], ['create', { signedIn: true }, 'lobby'], ['sign-in', {}, 'sign-in'],

@@ -1367,6 +1367,7 @@
       "newBackupCodes": "Nouveaux codes de secours",
       "twoFactorOff": "Demander un code provenant d'une application d'authentification lors de chaque connexion.",
       "blockedHeading": "Personnes bloquées",
+      "seeBlocked": "Voir les personnes bloquées",
       "nobodyBlocked": "Aucune personne bloquée",
       "unblock": "Débloquer",
       "unblockAria": "Débloquer {name}",

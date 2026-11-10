@@ -349,6 +349,7 @@ test('stop ends the sync', async () => {
 // [address, the page signed out, the page signed in]
 const ARRIVALS = [
   ['account', 'sign-in', 'account'],
+  ['blocked', 'sign-in', 'blocked'],
   ['sign-in', 'sign-in', 'lobby'],
   ['create', 'create', 'lobby'],
   ['forgot', 'forgot', 'forgot'],

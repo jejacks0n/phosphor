@@ -13,6 +13,7 @@ import ForgotPasswordPage from './ForgotPasswordPage.vue';
 import ResetPasswordPage from './ResetPasswordPage.vue';
 import OnboardingPage from './OnboardingPage.vue';
 import AccountPage from './AccountPage.vue';
+import BlockedPage from './BlockedPage.vue';
 import TwoFactorPage from './TwoFactorPage.vue';
 import StartRoomPage from './StartRoomPage.vue';
 
@@ -31,6 +32,7 @@ const PAGES = {
   reset: [ResetPasswordPage, 'social.auth.resetHeading', 'lobby'],
   onboarding: [OnboardingPage, 'social.auth.onboardingHeading', null],   // no way back but its Cancel and sign out
   account: [AccountPage, 'social.account.heading', 'lobby'],
+  blocked: [BlockedPage, 'social.account.blockedHeading', 'account'],
   'two-factor': [TwoFactorPage, 'social.auth.twoFactorHeading', 'sign-in'],
   'start-room': [StartRoomPage, 'social.start.heading', 'lobby', true],
 };
@@ -38,11 +40,11 @@ const PAGES = {
 const lobbyShown = computed(() => !room.inRoom && !workspace.sidePanelFolded && workspace.sidePanelTab === 'social');
 const wanted = computed(() => lobbyShown.value || social.page !== 'lobby' || social._roomLink !== null);
 
-// Account is only for someone signed in: until /api/me has answered nothing shows (a link back from connecting a
-// provider asks for Account first), and once it has, someone signed out gets none.
+// Account and Blocked are only for someone signed in: until /api/me has answered nothing shows (a link back from
+// connecting a provider asks for Account first), and once it has, someone signed out gets none.
 const page = computed(() => {
   if (!social.allowed || social.supported !== true) return null;
-  if (social.page === 'account' && !social.signedIn) return null;
+  if ((social.page === 'account' || social.page === 'blocked') && !social.signedIn) return null;
   return PAGES[social.page] ? social.page : null;
 });
 const cancel = () => {

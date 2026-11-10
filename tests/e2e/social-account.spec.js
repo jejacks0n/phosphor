@@ -1,4 +1,4 @@
-// The Account page: your username, the ways to sign in, two-factor, who you blocked, and deleting the account.
+// The Account page: your username, the ways to sign in, two-factor, who you blocked (a page of its own), and deleting the account.
 import { test, expect } from './support.js';
 import { fakeServer, member, openLobby, shown } from './social-support.js';
 
@@ -262,9 +262,10 @@ test('An account with no password has no Change email', async ({ page }) => {
   await expect(account.getByRole('button', { name: 'Change email' })).toHaveCount(0);
 });
 
-test('Unblock removes the row; with nobody blocked it says so', async ({ page }) => {
+test('Blocked, from Account\'s link: Unblock removes the row; with nobody blocked it says so', async ({ page }) => {
   const server = await fakeServer(page, { me: member(), blocked: [{ id: 'u_noisy-nick', username: 'noisy-nick', since: 1 }, { id: 'u_rude-ray', username: 'rude-ray', since: 2 }] });
-  const account = await openAccount(page);
+  await (await openAccount(page)).getByRole('button', { name: 'See who you blocked' }).click();
+  const account = shown(page, 'blocked');
   await expect(account.getByText('noisy-nick')).toBeVisible();
   await account.getByRole('button', { name: 'Unblock noisy-nick' }).click();
   await expect(account.getByText('noisy-nick')).toHaveCount(0);

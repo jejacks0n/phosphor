@@ -1,12 +1,13 @@
 // SOCIAL's layer over everything (SocialDialogs.vue): its first question once something of SOCIAL is wanted, a page
 // in a box named by its heading, where Escape goes from each, and a room's link asking whether to join. Opening the
 // lobby and a page from the address is tests/browser/address.test.js; the flows with a real page, tests/e2e.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { CONSENT_KEY } from '@/social/consent';
+import { member } from '../support/socialServer.js';
 import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import SocialDialogs from '@/components/social/SocialDialogs.vue';
@@ -118,6 +119,28 @@ test('a page\'s close button (×) goes where Escape does; the name page, with no
   close().click();
   await nextTick();
   expect([social.roomInvite, dialog()]).toEqual([null, null]);
+});
+
+test('Blocked opens from Account\'s link, lists who you blocked with Unblock, and closes back to Account', async () => {
+  const { social } = await mount();
+  Object.assign(social, { supported: true, me: member() });
+  const load = vi.spyOn(social, 'loadBlocked').mockImplementation(async () => { social.blocked = [{ id: 'u_9', username: 'noisy-nick', since: 1 }]; });
+  const unblock = vi.spyOn(social, 'unblock').mockResolvedValue(true);
+  social.page = 'account';
+  await nextTick();
+  [...dialog().querySelectorAll('button')].find((b) => b.textContent === 'See who you blocked').click();
+  await nextTick();
+  await nextTick();
+  expect([social.page, dialog().getAttribute('aria-label')]).toEqual(['blocked', 'Blocked']);
+  expect(load).toHaveBeenCalledOnce();
+  dialog().querySelector('button[aria-label="Unblock noisy-nick"]').click();
+  expect(unblock).toHaveBeenCalledWith('noisy-nick');
+  social.blocked = [];
+  await nextTick();
+  expect(dialog().textContent).toContain('Nobody blocked');
+  dialog().querySelector('button.close').click();
+  await nextTick();
+  expect(social.page).toBe('account');
 });
 
 test('a room\'s link asks whether to join, over everything', async () => {

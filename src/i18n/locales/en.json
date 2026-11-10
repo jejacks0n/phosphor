@@ -1367,6 +1367,7 @@
       "newBackupCodes": "New backup codes",
       "twoFactorOff": "Ask for a code from an authenticator app whenever you sign in.",
       "blockedHeading": "Blocked",
+      "seeBlocked": "See who you blocked",
       "nobodyBlocked": "Nobody blocked",
       "unblock": "Unblock",
       "unblockAria": "Unblock {name}",

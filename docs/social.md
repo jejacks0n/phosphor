@@ -140,7 +140,8 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
     codes** (it asks for your password) replaces them, and **Turn off** (the same) ends two-factor.
   - If you lose the phone and the backup codes, there is no way back in from the app: write to
     hello@phosphor.work for help.
-- **Blocked**: everyone you've blocked, with **Unblock**.
+- **Blocked**: **See who you blocked** opens a page of its own (its address is /social/blocked) with
+  everyone you've blocked, each with **Unblock**. Its close button goes back to Account.
 - **Delete account**: folded away until you open it. Its button asks for your password, then
   (**Delete for good**) removes your account, your username and your blocks. An account with no password needs you to have signed in with Discord or
   GitHub in the last 5 minutes.
@@ -234,7 +235,7 @@ they're tracking you or looking around on their own (or still connecting); someo
   said while muted stays hidden from the others.
 - **Block from your rooms**: asks first (**Block** or **Cancel**), then they can't join any room you host again, and your rooms no longer show in their lobby.
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
-  isn't available". Unblock them from Account.
+  isn't available". Unblock them from Account's **See who you blocked**.
 
 The **⋯** in the panel's header is the room menu: **Copy link**, **Edit welcome** (a box to change
 the pinned welcome, which watchers see at once), and **Settings and stats** (the dashboard above).
@@ -406,7 +407,7 @@ as they would on any website (Back closes a page), and reloading brings you back
 host or watch is part of the address. The lobby has no address of its own: an old link to /social opens it in
 the side panel.
 
-- **A page you can't be on** goes to the nearest one you can. Account when you're signed out shows
+- **A page you can't be on** goes to the nearest one you can. Account and Blocked when you're signed out show
   Sign in; Sign in and Create an account when you're signed in don't open, and nor do Start a room
   when you're signed out or your email isn't confirmed, the two-factor code page when no code was
   asked for, and the new-password page without a link from an email. ANSI and SAUCE with no image

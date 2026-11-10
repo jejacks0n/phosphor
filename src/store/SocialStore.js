@@ -80,7 +80,7 @@ export const useSocialStore = defineStore('social', {
     _roomGoesOn: false,  // this load is coming back to a room, which that question doesn't interrupt (allowed)
     supported: null,     // null until checked: false when this browser can't do Ed25519 or IndexedDB
     me: null,            // /api/me's body; null signed out
-    page: 'lobby',       // the page open over everything (SocialDialogs), or 'lobby' for none: 'sign-in' | 'create' | 'forgot' | 'reset' | 'onboarding' | 'account' | 'two-factor' | 'start-room'
+    page: 'lobby',       // the page open over everything (SocialDialogs), or 'lobby' for none: 'sign-in' | 'create' | 'forgot' | 'reset' | 'onboarding' | 'account' | 'blocked' | 'two-factor' | 'start-room'
     resetToken: null,
     pass: null,
     claims: null,        // the pass's claims: { sub, name, guest, verified, key, exp }
