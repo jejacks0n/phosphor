@@ -1,15 +1,19 @@
 // The QA harness itself: the GPU is real, the drawn person's browser is what they'd have, and what a
 // run records lands in its folder. Run with `npm run qa:smoke`.
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, expect } from '@playwright/test';
 import { DEVICES, drawTraits } from './setup.js';
 import { makeQa, newRun, qaContext, renderer } from './qa.js';
 
+const runDirs = [];
+test.afterAll(() => runDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+
 // A qa on a fresh context and run folder, with the app open.
 async function start(browser, traits) {
   const runDir = mkdtempSync(join(tmpdir(), 'phosphor-qa-smoke-'));
+  runDirs.push(runDir);
   const context = await qaContext(browser, traits);
   const qa = await makeQa({ context, runDir, run: newRun(traits) });
   const page = await context.newPage();
@@ -41,9 +45,9 @@ test('qa counts trusted keys and pointers across a reload', async ({ browser }) 
   const { context, qa, page } = await start(browser, maya);
   qa.step('press and click');
   await page.evaluate(() => dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })));
-  await page.keyboard.press('Shift');
+  await page.keyboard.press('x');
   await page.reload();
-  await page.keyboard.press('Shift');
+  await page.keyboard.press('x');
   await page.mouse.click(5, 5);
   await flush(page);
   expect(qa.run.steps.at(-1).events).toEqual({ keys: 2, pointers: 1 });
@@ -75,5 +79,32 @@ test('qa writes what it records', async ({ browser }) => {
   expect(step.shots).toEqual([shot]);
   expect(existsSync(join(runDir, shot))).toBe(true);
   expect(run.findings).toEqual([expect.objectContaining({ id, kind: 'friction', step: 'Undo twice' })]);
+  await context.close();
+});
+
+test('qa records the page\'s errors under their step, and cuts off the SOCIAL server', async ({ browser }) => {
+  const { context, qa, page } = await start(browser, maya);
+  qa.step('Break it');
+  const failed = page.waitForEvent('requestfailed');
+  await page.evaluate(() => {
+    console.error('a console error');
+    setTimeout(() => { throw new Error('a page error'); });
+    fetch('http://localhost:8787/api/me').catch(() => {});
+  });
+  expect((await failed).failure().errorText).toMatch(/^net::ERR_BLOCKED_BY_CLIENT/); // cut off here, never reaching a server
+  await expect.poll(() => qa.run.pageErrors).toEqual(expect.arrayContaining([
+    { step: 'Break it', kind: 'console', text: 'a console error' },
+    { step: 'Break it', kind: 'error', text: 'a page error' },
+  ]));
+  await context.close();
+});
+
+test('qa refuses a finding that leaves a part out, and ends a step left unrated with a warning', async ({ browser }) => {
+  const { context, qa } = await start(browser, maya);
+  qa.step('Forgot to rate', { rated: true });
+  expect(() => qa.finding({ kind: 'bug', severity: 'minor', expected: 'a', actual: 'b' })).toThrow('a finding needs repro');
+  qa.end();
+  expect(qa.run.steps[0].rated).toBe(false);
+  expect(qa.run.warnings).toEqual([{ step: 'Forgot to rate', text: expect.stringContaining('never rated') }]);
   await context.close();
 });

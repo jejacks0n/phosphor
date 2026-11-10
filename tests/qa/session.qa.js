@@ -11,7 +11,7 @@ import { test, expect } from '@playwright/test';
 import * as e2e from '../e2e/support.js';
 import * as social from '../e2e/social-support.js';
 import { drawTraits, runDirName, runSnippet } from './setup.js';
-import { renderReport } from './report.js';
+import { safeReport } from './report.js';
 import { makeQa, newRun, qaContext, renderer } from './qa.js';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
@@ -54,6 +54,10 @@ function asJson(result) {
 
 const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 
+// Errors nothing awaited (a snippet's page handlers or timers) would end Playwright's test with no report;
+// for the session's life they're recorded instead, and it keeps serving.
+const CAUGHT = { unhandledRejection: 'Unhandled rejection', uncaughtException: 'Uncaught exception' };
+
 test('a QA session', async ({ browser }) => {
   const seed = whole('QA_SEED', Math.floor(Math.random() * 2 ** 31));
   const traits = drawTraits(process.env.QA_PERSONA, seed);
@@ -64,44 +68,89 @@ test('a QA session', async ({ browser }) => {
   writeFileSync(join(runs, `${traits.persona}.latest`), `${runDir}\n`);
   console.log(`QA run: ${runDir}`);
 
-  const context = await qaContext(browser, traits);
   const run = newRun(traits);
-  const qa = await makeQa({ context, runDir, run });
-  const page = await context.newPage();
-  await page.goto('/');
-
-  run.commit = git('rev-parse', 'HEAD');
-  run.scriptCommit = git('log', '-1', '--format=%H', '--', `docs/qa/personas/${traits.persona}.md`);
-  run.machine = { os: `${os.platform()} ${os.release()}`, cpu: os.cpus()[0].model, browser: browser.version(), renderer: await renderer(page) };
-  qa.save();
-
-  // Task 3 brings files and terminal.
-  const namespaces = { e2e, social, files: null, terminal: null, expect };
-  const inbox = join(runDir, 'inbox');
-  const seen = new Set();
-  let last = Date.now();
-  let ended = false;
-  while (!ended && Date.now() - last < idleMs) {
-    const names = readdirSync(inbox).filter((name) => !name.startsWith('.') && !seen.has(name)).sort();
-    for (const name of names) {
-      seen.add(name);
-      if (name === 'end') {
-        ended = true;
-        break;
-      }
-      const args = { page: qa.page, context, browser, qa, traits, ...namespaces };
-      const result = await runSnippet(join(inbox, name), args, snippetMs);
-      if (!result.ok) result.shot = await qa.shot(`failed ${name}`).catch(() => null);
-      run.snippets.push({ file: name, ok: result.ok, ms: result.ms, error: result.error ?? null });
-      qa.save();
-      writeWhole(join(runDir, 'outbox', `${name}.json`), asJson(result));
-      last = Date.now();
-    }
-    await pause(200);
+  let qa = null;
+  let context = null;
+  let stopped = false;
+  const warn = (text) => {
+    run.warnings.push({ step: run.steps.at(-1)?.name ?? null, text });
+    writeWhole(join(runDir, 'run.json'), JSON.stringify(run, null, 2));
+  };
+  // The report, written whenever the session stops: at its end, on a signal, or as the worker exits. It
+  // only reads and writes files, so it works from an exit handler too.
+  const finish = () => {
+    qa?.end();
+    writeWhole(join(runDir, 'run.json'), JSON.stringify(run, null, 2));
+    writeWhole(join(runDir, 'report.md'), safeReport(run));
+  };
+  const onSignal = (signal) => {
+    warn(`Stopped by ${signal}.`);
+    finish();
+    stopped = true;
+  };
+  const handlers = Object.fromEntries(Object.entries(CAUGHT).map(([event, label]) => [event, (error) => warn(`${label}: ${error?.message ?? error}`)]));
+  const kept = Object.fromEntries(Object.keys(CAUGHT).map((event) => [event, process.listeners(event)]));
+  for (const [event, handler] of Object.entries(handlers)) {
+    process.removeAllListeners(event);
+    process.on(event, handler);
   }
+  const onGone = () => {
+    warn('The browser went away.');
+    stopped = true;
+  };
+  process.on('SIGINT', onSignal);
+  process.on('SIGTERM', onSignal);
+  process.on('exit', finish);
 
-  qa.save();
-  writeWhole(join(runDir, 'report.md'), renderReport(run));
-  console.log(`QA report: ${join(runDir, 'report.md')}`);
-  await context.close();
+  try {
+    context = await qaContext(browser, traits);
+    qa = await makeQa({ context, runDir, run });
+    browser.on('disconnected', onGone);
+    const page = await context.newPage();
+    await page.goto('/');
+
+    run.commit = git('rev-parse', 'HEAD');
+    run.scriptCommit = git('log', '-1', '--format=%H', '--', `docs/qa/personas/${traits.persona}.md`);
+    run.machine = { os: `${os.platform()} ${os.release()}`, cpu: os.cpus()[0].model, browser: browser.version(), renderer: await renderer(page) };
+    qa.save();
+
+    // Task 3 brings files and terminal.
+    const namespaces = { e2e, social, files: null, terminal: null, expect };
+    const inbox = join(runDir, 'inbox');
+    const seen = new Set();
+    let last = Date.now();
+    while (!stopped && Date.now() - last < idleMs) {
+      const names = readdirSync(inbox).filter((name) => !name.startsWith('.') && !seen.has(name)).sort();
+      for (const name of names) {
+        seen.add(name);
+        if (name === 'end') {
+          stopped = true;
+          break;
+        }
+        const args = { page: qa.page, context, browser, qa, traits, ...namespaces };
+        const result = await runSnippet(join(inbox, name), args, snippetMs);
+        if (!result.ok) result.shot = await qa.shot(`failed ${name}`).catch(() => null);
+        run.snippets.push({ file: name, ok: result.ok, ms: result.ms, error: result.error ?? null });
+        qa.save();
+        writeWhole(join(runDir, 'outbox', `${name}.json`), asJson(result));
+        last = Date.now();
+      }
+      await pause(200);
+    }
+  } catch (error) {
+    warn(`The session failed: ${error?.message ?? error}`);
+    throw error;
+  } finally {
+    finish();
+    console.log(`QA report: ${join(runDir, 'report.md')}`);
+    await Promise.race([context?.close().catch(() => {}), pause(10_000)]);
+    browser.off('disconnected', onGone);
+    process.off('exit', finish);
+    process.off('SIGINT', onSignal);
+    process.off('SIGTERM', onSignal);
+    for (const [event, handler] of Object.entries(handlers)) {
+      process.off(event, handler);
+      for (const listener of kept[event]) process.on(event, listener);
+    }
+  }
 });
