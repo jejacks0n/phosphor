@@ -21,10 +21,12 @@ function changed(store, id, patch) {
 
 // The layer with the id out of the stack, and what's on it, for putBack: { layer, below, data } for a cells layer (its
 // cells and paint), { layer, below, shapes } for a vector layer (the shapes on it showing; a movie's other frames keep
-// theirs, layerFrames'). below: the id of the layer it sat on. The layer in use hands the edit layer's fields to the cells
-// layer nearest under it, else the topmost, else they start empty (a drawing with no cells layer still has them).
+// theirs, layerFrames'). below: the id of the layer it sat on; picked: it was the picked layer. The layer in use hands the
+// edit layer's fields to the cells layer nearest under it, else the topmost, else they start empty (a drawing with no cells
+// layer still has them).
 function takeOut(store, id) {
-  const at = store.layers.findIndex((layer) => layer.id === id), layer = store.layers[at], held = { layer, below: store.layers[at - 1].id };
+  const at = store.layers.findIndex((layer) => layer.id === id), layer = store.layers[at];
+  const held = { layer, below: store.layers[at - 1].id, picked: useWorkspaceStore().pickedLayer === id };
   if (layer.kind === 'vector') {
     held.shapes = new Map([...store.shapes].filter(([, shape]) => (shape.layer ?? 'vector') === id));
     if (held.shapes.size) store.shapes = new Map([...store.shapes].filter(([key]) => !held.shapes.has(key)));
@@ -43,8 +45,9 @@ function takeOut(store, id) {
 }
 
 // What takeOut took, back in the stack directly above the layer it sat on (on top when that's gone): its data where it
-// waits, or in the edit layer's fields when it's still their layer (none left when it went), and its shapes.
-function putBack(store, { layer, below, data, shapes }) {
+// waits, or in the edit layer's fields when it's still their layer (none left when it went), and its shapes. Picked again
+// when it was picked as it went.
+function putBack(store, { layer, below, data, shapes, picked }) {
   if (data) {
     if (store.paintLayer) data.paintLayer?.extend(store.paintLayer.cols, store.paintLayer.rows); // the grid can have grown since
     if (layer.id === store.editId) {
@@ -55,6 +58,7 @@ function putBack(store, { layer, below, data, shapes }) {
   if (shapes?.size) store.shapes = new Map([...store.shapes, ...shapes]);
   const rest = store.layers.filter((each) => each.id !== layer.id), at = rest.findIndex((each) => each.id === below) + 1 || rest.length;
   store.layers = [...rest.slice(0, at), layer, ...rest.slice(at)];
+  if (picked) useWorkspaceStore().pickLayer(layer.id);
 }
 
 // Ready for a step that changes the stack: out of an art layer, the layers made, what's open committed.

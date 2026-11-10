@@ -9,6 +9,7 @@ import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
 import { newLayerId, nextNumber, sameChars } from '@/document/layerInfo.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 
@@ -145,18 +146,20 @@ export function levelCells(project, id, indexes = null) {
 }
 
 // What a step that changes the stack and what's on its cells layers holds either side (Flatten, Bake, the merges): the
-// layers, and every cells layer's data above the bottom by id ({ editCells, paintLayer, hasPaint }), the one in use's
-// fields among them. A step never changes the objects in one: it makes new ones (paintFrom) for the other side.
+// layers, every cells layer's data above the bottom by id ({ editCells, paintLayer, hasPaint }), the one in use's fields
+// among them, and the layer picked. A step never changes the objects in one: it makes new ones (paintFrom) for the other side.
 export function stackState(project) {
   const data = new Map(project._layerData);
   if (project.editId !== 'base' && project.layerById(project.editId)) data.set(project.editId, { editCells: project.editCells, paintLayer: project.paintLayer, hasPaint: project.hasPaint });
-  return { layers: project.layers, data };
+  return { layers: project.layers, data, pick: useWorkspaceStore().pickedLayer };
 }
 
 // stackState's state put back (layers: left as they are when it has none): each layer's data where it waits, the one in
 // use's in the edit layer's fields (empty ones when it isn't in the stack any more), and the layers last, so a pick that
-// left the stack moves to the layer that was under it (followLayerPick), which is then the one in use.
-export function putStack(project, { layers = project.layers, data }) {
+// left the stack moves to the layer that was under it (followLayerPick), which is then the one in use. A layer picked in
+// the state (pick) that this brings back is picked again.
+export function putStack(project, { layers = project.layers, data, pick = null }) {
+  const back = pick && !project.layerById(pick);
   const grid = project.paintLayer;
   project._layerData.clear();
   for (const [id, each] of data) {
@@ -172,6 +175,7 @@ export function putStack(project, { layers = project.layers, data }) {
     project.hasPaint = own.hasPaint;
   } else if (project.editId !== 'base') emptyFields(project);
   project.layers = layers;
+  if (back && project.layerById(pick)) useWorkspaceStore().pickLayer(pick);
 }
 
 // Whether a change to the layers' structure (adding, deleting, moving, or a merge that removes one) is refused because the

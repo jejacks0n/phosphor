@@ -481,3 +481,43 @@ test('a document restored with VECTOR showing keeps VECTOR and its vector layer 
   expect(workspace.editorTab).toBe('vector');
   expect(workspace.pickedLayer).toBe('vector');
 });
+
+test('undoing a Delete layer of the picked layer picks it again, and the next stroke lands on it', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('edit');
+  expect(project.deleteLayer('edit')).toBe(true);
+  expect(workspace.pickedLayer).toBe('base');
+  project.undo();
+  expect(workspace.pickedLayer).toBe('edit');
+  project.redo();
+  expect(workspace.pickedLayer).toBe('base');
+  project.undo();
+  expect(workspace.pickedLayer).toBe('edit');
+  expect(project.editId).toBe('edit');
+  project.paintStroke([{ x: 4, y: 6, alpha: 1 }], RED);
+  project.commitEdit();
+  expect(project.baseLayer.hasPaint).toBe(false);
+  expect(project.paintOf('edit').pixelAt(4, 6)).not.toBe(null);
+});
+
+test('undoing a Merge down picks the layer it brings back; a layer picked that the undo doesn\'t bring back stays picked', async () => {
+  const { project, workspace } = await blank();
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(2, 2, 'C', { fg: RED });
+  project.commitEdit();
+  expect(project.mergeDown(top)).toBe(true);
+  expect(workspace.pickedLayer).toBe('edit');
+  project.undo();
+  expect(workspace.pickedLayer).toBe(top);
+  expect(project.editId).toBe(top);
+  project.typeAt(3, 3, 'D', { fg: RED });
+  project.commitEdit();
+  expect([...project.cellsOf(top).keys()]).toEqual(['2,2', '3,3']);
+  project.undo(); // the D
+  workspace.pickLayer('edit'); // merged from Layer 2's ⋯ with Layer 1 picked, the undo doesn't pick Layer 2
+  expect(project.mergeDown(top)).toBe(true);
+  project.undo();
+  expect(workspace.pickedLayer).toBe('edit');
+  expect(project.editId).toBe('edit');
+});
