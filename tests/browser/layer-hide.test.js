@@ -465,3 +465,36 @@ test('with the base hidden, Merge down, Into the image, Bake and the vector merg
   }
 });
 
+
+test('hiding, showing or moving a layer above the lower group lays the stack over again without the pipeline, and shows what a render would', async () => {
+  const { project } = await picture();
+  const one = project.addLayer('cells', 'edit'), vector = project.addLayer('vector', one), two = project.addLayer('cells', vector);
+  project.useLayer(one);
+  project.paintStroke([{ x: 3, y: 4, alpha: 1 }, { x: 4, y: 4, alpha: 1 }], RED);
+  typed(project, 6, 6, 'A');
+  project.useLayer(two);
+  project.paintStroke([{ x: 3, y: 4, alpha: 0.5 }, { x: 8, y: 9, alpha: 1 }], '#00ff00');
+  typed(project, 6, 6, 'B');
+  project.addShape(rectShape(2, 2, 8, 8, { fill: '#0000ff' }));
+  project.commitEdit();
+  await settle(project);
+  const rendered = async () => { project.render(); await settle(project); return cellsKey(project); };
+  const pipeline = vi.spyOn(project.renderer, 'render');
+  const steps = [() => project.setLayerHidden(two, true), () => project.setLayerHidden(two, false), () => project.setLayerHidden(vector, true), () => project.setLayerHidden(vector, false), () => project.moveLayer(two, 2), () => project.undo(), () => project.moveLayer(one, 4), () => project.addLayer('cells', two), () => project.undo(), () => project.redo()];
+  for (const [i, step] of steps.entries()) {
+    step();
+    const shown = cellsKey(project);
+    expect(pipeline, `step ${i} ran the pipeline`).not.toHaveBeenCalled();
+    expect(shown, `step ${i}`).toEqual(await rendered());
+    pipeline.mockClear();
+  }
+  // The lower group's own layers (the base's eye, its vector layers, its cells layer) change the picture: a render.
+  for (const id of ['edit', 'base']) {
+    project.setLayerHidden(id, true);
+    await settle(project);
+    expect(pipeline, `hiding ${id}`).toHaveBeenCalled();
+    pipeline.mockClear();
+    project.setLayerHidden(id, false);
+    await settle(project);
+  }
+});

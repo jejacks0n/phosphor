@@ -61,6 +61,18 @@ function putBack(store, { layer, below, data, shapes, picked }) {
   if (picked) useWorkspaceStore().pickLayer(layer.id);
 }
 
+// What's drawn after change() changed the stack: when the lower group (the layers the pipeline converts as one block) and
+// the base's eye are as they were, only the upper layers are laid over again (applyEditCells: tens of milliseconds at the
+// limit), else a render, as the picture's own conversion changes.
+function redrawn(store, change) {
+  const group = () => { const { vectors, cells } = store.lowerGroup; return [store.layerHidden('base'), ...vectors, cells].join(); };
+  const was = group();
+  change();
+  if (group() !== was || !store.renderedCells.length) return store.render();
+  store.syncShapeLayers();
+  store.applyEditCells();
+}
+
 // Ready for a step that changes the stack: out of an art layer, the layers made, what's open committed.
 function ready(store) {
   if (store._artInside) store.leaveArt();
@@ -91,8 +103,7 @@ export const layerActions = {
   // what shows). Drawing on one is refused (tools/index.js).
   setLayerHidden(id, hidden) {
     if (!this.layerById(id) || this.layerHidden(id) === !!hidden) return;
-    changed(this, id, { hidden: !!hidden });
-    this.render();
+    redrawn(this, () => changed(this, id, { hidden: !!hidden }));
   },
 
   // A layer's own character settings changed: the CHAR_KEYS in patch (the rest is left out). The bottom's are the
@@ -122,11 +133,11 @@ export const layerActions = {
   addLayer(kind, above) {
     if (this.layers.length >= MOST_LAYERS || refusedInRoom(this, { fills: kind === 'vector' && above === 'base' && !this.hasVectorLayer })) return null;
     this.commitPending();
-    const { id } = putLayer(this, kind, above, this.charsOf(useWorkspaceStore().pickedLayer));
-    this.render(); // the groups can change: a layer put under a painted one leaves that one's paint over it
+    let id;
+    redrawn(this, () => { ({ id } = putLayer(this, kind, above, this.charsOf(useWorkspaceStore().pickedLayer))); }); // the groups can change: a layer put under a painted one leaves that one's paint over it
     if (this._sharing) return id;
     let held = null; // undone: takeOut's, whose layer below (by id) is where a redo puts it, as the stack can change around it meanwhile
-    this.pushEdit({ layerOp: true, bytes: 0, undo: () => { held = takeOut(this, id); this.render(); }, redo: () => { putBack(this, held); this.render(); } });
+    this.pushEdit({ layerOp: true, bytes: 0, undo: () => redrawn(this, () => { held = takeOut(this, id); }), redo: () => redrawn(this, () => putBack(this, held)) });
     return id;
   },
 
@@ -223,7 +234,7 @@ export const layerActions = {
     const ids = (layers) => layers.map((layer) => layer.id), before = ids(this.layers), moved = [...this.layers];
     moved.splice(toIndex, 0, ...moved.splice(from, 1));
     const after = ids(moved);
-    const order = (list) => () => { this.layers = list.map((each) => this.layerById(each)).filter(Boolean); this.render(); }; // by id: names and eyes since aren't undone
+    const order = (list) => () => redrawn(this, () => { this.layers = list.map((each) => this.layerById(each)).filter(Boolean); }); // by id: names and eyes since aren't undone
     order(after)();
     this.pushEdit({ layerOp: true, bytes: 0, undo: order(before), redo: order(after) });
     return true;
