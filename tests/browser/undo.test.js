@@ -44,6 +44,8 @@ function everyLayer(project) {
 function docState(project, workspace) {
   return {
     layers: everyLayer(project),
+    own: JSON.stringify(project.layers.slice(1).filter((layer) => layer.kind === 'cells').map((layer) => [layer.id, layer.chars ?? null]).sort()), // each cells layer's character settings
+    baseOwn: `${project.charChoice}:${project.ditherStyle}:${project.dither}`, // the base's, the ones no settings change below touches
     editCells: JSON.stringify([...project.editCells].sort()),
     pins: JSON.stringify([...project.baseRecords.pins].sort()),
     shapes: JSON.stringify([...project.shapes].sort()),
@@ -559,6 +561,15 @@ async function fuzzSettings(seed, { steps = 20, forceRender = false } = {}) {
     if (k === 2) project.quantize = ['none', 'count', 'cga', 'vga'][Math.floor(r() * 4)];
     if (k === 3) project.renderStyle = ['ansi', 'colorAscii', 'ansi'][Math.floor(r() * 3)];
   };
+  // A layer's character setting changed from the left column: an undo step, Base's or Layer 1's (Dither only on Base).
+  actions.layerChars = () => {
+    const k = Math.floor(r() * 4), id = r() < 0.5 ? 'base' : 'edit';
+    if (k === 0) project.setLayerChars(id, { charChoice: ['random', 'best', 'shape'][Math.floor(r() * 3)] });
+    if (k === 1) project.setLayerChars(id, { chars: ['░▒▓█', '.:*%#', '▄▀█ '][Math.floor(r() * 3)] });
+    if (k === 2) project.setLayerChars(id, { seed: `l${Math.floor(r() * 1000)}` });
+    if (k === 3) project.setLayerChars('base', { dither: [0, 50, 100][Math.floor(r() * 3)], ditherStyle: r() < 0.5 ? 'floyd' : 'bayer' });
+    project.commitLayerChars();
+  };
   const names = [...Object.keys(actions), 'settings', 'settings'];
   const start = await snap(project, workspace, { forceRender: true });
   const stack = [start];
@@ -576,7 +587,7 @@ async function fuzzSettings(seed, { steps = 20, forceRender = false } = {}) {
     if (err) return { seed, log, problem: err };
   }
   closeRun(stack, project, t, acc);
-  const keys = ['layers', 'editCells', 'pins', 'paint', 'base', 'sliders', 'image', 'hasPaint', 'colors'];
+  const keys = ['layers', 'own', 'baseOwn', 'editCells', 'pins', 'paint', 'base', 'sliders', 'image', 'hasPaint', 'colors'];
   const cmp = (a, b) => keys.filter((k) => a[k] !== b[k]);
   for (let i = stack.length - 2; i >= 0; i--) {
     project.undo();
