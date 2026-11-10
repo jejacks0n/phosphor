@@ -156,7 +156,6 @@ const setFps = (event) => {
         <input v-model="workspace.ghost" type="checkbox" :aria-label="t('animation.ghostOn')" :title="t('animation.ghostTitle')">
         <label class="strength" :class="{ off: !workspace.ghost }">
           <input v-model.number="workspace.ghostStrength" type="range" :aria-label="t('animation.ghostStrength')" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
-          <output>{{ workspace.ghostStrength }}%</output>
         </label>
       </div>
     </DropdownMenu>
@@ -386,11 +385,6 @@ label.strength input {
   width: 140px;
   margin: 0;
   accent-color: var(--accent);
-}
-label.strength output {
-  min-width: 34px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
 }
 
 span.full {

@@ -52,7 +52,7 @@ test('its box turns the ghost on and off and sets its strength, and stays open w
   const check = box.querySelector('input[type=checkbox]'), slider = box.querySelector('input[type=range]');
   expect(check.checked).toBe(true);
   expect(slider.value).toBe('35');
-  expect(box.textContent).toContain('35%');
+  expect(box.querySelector('output')).toBeNull(); // no readout beside the slider
   expect(box.textContent).not.toContain('Show the ghost'); // the checkbox is named for screen readers, not labeled
   expect(check.getAttribute('aria-label')).toBe('Show the ghost');
   expect(check.parentElement).toBe(slider.closest('label').parentElement); // one row: the checkbox, then the slider
@@ -60,7 +60,6 @@ test('its box turns the ghost on and off and sets its strength, and stays open w
   slider.dispatchEvent(new Event('input'));
   await nextTick();
   expect(workspace.ghostStrength).toBe(70);
-  expect(box.textContent).toContain('70%');
   check.click();
   await nextTick();
   expect(workspace.ghost).toBe(false);
