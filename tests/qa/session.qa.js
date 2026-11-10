@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import * as e2e from '../e2e/support.js';
 import * as social from '../e2e/social-support.js';
+import * as files from './files.js';
+import * as terminal from './terminal.js';
 import { drawTraits, runDirName, runSnippet } from './setup.js';
 import { safeReport } from './report.js';
 import { makeQa, newRun, qaContext, renderer } from './qa.js';
@@ -121,8 +123,7 @@ test('a QA session', async ({ browser }) => {
     run.machine = { os: `${os.platform()} ${os.release()}`, cpu: os.cpus()[0].model, browser: browser.version(), renderer: await renderer(page) };
     qa.save();
 
-    // Task 3 brings files and terminal.
-    const namespaces = { e2e, social, files: null, terminal: null, expect };
+    const namespaces = { e2e, social, files, terminal, expect, runDir };
     const inbox = join(runDir, 'inbox');
     const seen = new Set();
     let last = Date.now();
