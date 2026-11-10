@@ -10,16 +10,21 @@ import { FINDING_KINDS, PROBES, SEVERITIES, slug } from './report.js';
 // A run record with nothing recorded yet, in the shape renderReport reads.
 export function newRun(traits) {
   const { persona, seed } = traits;
-  return { persona, seed, traits, commit: null, scriptCommit: null, machine: {}, steps: [], findings: [], memory: [], snippets: [], pageErrors: [], warnings: [] };
+  return { persona, seed, traits, commit: null, scriptCommit: null, machine: {}, steps: [], findings: [], memory: [], snippets: [], pageErrors: [], droppedPageErrors: 0, warnings: [] };
 }
+
+// The SOCIAL server, which a run cuts off.
+const SOCIAL = /^(https?|wss?):\/\/localhost:8787\//;
+// The most page errors a run keeps: a page that logs every frame can't grow the record without end.
+export const PAGE_ERRORS_KEPT = 200;
 
 // The drawn person's browser: their device, language and theme, and SOCIAL's first question answered. The
 // language and theme are only set where the person hasn't chosen yet, so a choice they make survives a reload.
 // The SOCIAL server is cut off, as in the end-to-end flows, unless a snippet fakes it for a page.
 export async function qaContext(browser, traits) {
   const context = await browser.newContext(contextOptions(traits));
-  await context.route('http://localhost:8787/**', (route) => route.abort('blockedbyclient')); // a failure only this can give
-  await context.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
+  await context.route(SOCIAL, (route) => route.abort('blockedbyclient')); // a failure only this can give
+  await context.routeWebSocket(SOCIAL, (ws) => ws.close());
   await seedConsent(context);
   await context.addInitScript((storage) => {
     try {
@@ -67,14 +72,23 @@ export async function makeQa({ context, runDir, run }) {
   });
 
   // The page's errors and console errors (the page's refusals under its Content-Security-Policy among them),
-  // under the step they happened in.
+  // under the step they happened in, each one once with a count. Saved when a new one comes, not on every
+  // repeat, so a page that logs every frame doesn't write run.json every frame.
   const pageError = (kind, text) => {
-    run.pageErrors.push({ step: open()?.name ?? null, kind, text });
-    save();
+    const step = open()?.name ?? null;
+    const seen = run.pageErrors.find((e) => e.step === step && e.kind === kind && e.text === text);
+    if (seen) seen.count++;
+    else if (run.pageErrors.length >= PAGE_ERRORS_KEPT) run.droppedPageErrors++;
+    else {
+      run.pageErrors.push({ step, kind, text, count: 1 });
+      save();
+    }
   };
   const watch = (page) => {
     page.on('pageerror', (error) => pageError('error', error.message));
     page.on('console', (message) => {
+      // A load the run's own cut-off of the SOCIAL server refused isn't the page's error.
+      if (SOCIAL.test(message.location().url)) return;
       if (message.type() === 'error' || message.text().includes('Content Security Policy')) pageError('console', message.text());
     });
   };

@@ -75,3 +75,8 @@ test('a report that cannot be written still says why, with the raw steps and fin
   expect(text).toContain('"id": "F1"');
   expect(safeReport(run())).toBe(renderReport(run()));
 });
+
+test('a page error seen more than once says how many times, and the ones not kept are counted', () => {
+  const text = renderReport(run({ pageErrors: [{ step: 'Draw', kind: 'console', text: 'again', count: 3 }], droppedPageErrors: 12 }));
+  expect(text).toContain('- Draw (console, 3 times): again\n- 12 more not kept');
+});

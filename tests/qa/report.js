@@ -54,7 +54,12 @@ export function renderReport(run) {
 
   // What went wrong outside the steps' checks: the page's own errors (Content-Security-Policy refusals
   // among them), and the session's.
-  if (run.pageErrors?.length) out.push('## Page errors', '', ...run.pageErrors.map((e) => `- ${e.step ?? 'before any step'} (${e.kind}): ${e.text}`), '');
+  if (run.pageErrors?.length) {
+    out.push('## Page errors', '');
+    for (const e of run.pageErrors) out.push(`- ${e.step ?? 'before any step'} (${e.kind}${e.count > 1 ? `, ${e.count} times` : ''}): ${e.text}`);
+    if (run.droppedPageErrors) out.push(`- ${run.droppedPageErrors} more not kept`);
+    out.push('');
+  }
   if (run.warnings?.length) out.push('## Session warnings', '', ...run.warnings.map((w) => `- ${w.step ?? 'before any step'}: ${w.text}`), '');
 
   out.push('## Steps', '');

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, expect } from '@playwright/test';
 import { DEVICES, drawTraits } from './setup.js';
-import { makeQa, newRun, qaContext, renderer } from './qa.js';
+import { PAGE_ERRORS_KEPT, makeQa, newRun, qaContext, renderer } from './qa.js';
 
 const runDirs = [];
 test.afterAll(() => runDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -93,9 +93,24 @@ test('qa records the page\'s errors under their step, and cuts off the SOCIAL se
   });
   expect((await failed).failure().errorText).toMatch(/^net::ERR_BLOCKED_BY_CLIENT/); // cut off here, never reaching a server
   await expect.poll(() => qa.run.pageErrors).toEqual(expect.arrayContaining([
-    { step: 'Break it', kind: 'console', text: 'a console error' },
-    { step: 'Break it', kind: 'error', text: 'a page error' },
+    { step: 'Break it', kind: 'console', text: 'a console error', count: 1 },
+    { step: 'Break it', kind: 'error', text: 'a page error', count: 1 },
   ]));
+  await flush(page);
+  expect(qa.run.pageErrors.map((e) => e.text).join('\n')).not.toContain('BLOCKED_BY_CLIENT'); // the run's own cut-off
+  await context.close();
+});
+
+test('qa keeps each page error once with a count, and only so many', async ({ browser }) => {
+  const { context, qa, page } = await start(browser, maya);
+  qa.step('Flood');
+  await page.evaluate(() => {
+    for (let i = 0; i < 3; i++) console.error('every frame');
+    for (let i = 0; i < 250; i++) console.error(`error ${i}`);
+  });
+  await expect.poll(() => qa.run.droppedPageErrors).toBe(250 + 1 - PAGE_ERRORS_KEPT);
+  expect(qa.run.pageErrors).toHaveLength(PAGE_ERRORS_KEPT);
+  expect(qa.run.pageErrors[0]).toEqual({ step: 'Flood', kind: 'console', text: 'every frame', count: 3 });
   await context.close();
 });
 

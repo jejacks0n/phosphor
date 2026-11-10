@@ -78,10 +78,17 @@ test('a QA session', async ({ browser }) => {
   };
   // The report, written whenever the session stops: at its end, on a signal, or as the worker exits. It
   // only reads and writes files, so it works from an exit handler too.
+  // Never throws, so what follows it in the finally (closing the browser, giving the process its listeners
+  // back) always runs.
   const finish = () => {
-    qa?.end();
-    writeWhole(join(runDir, 'run.json'), JSON.stringify(run, null, 2));
-    writeWhole(join(runDir, 'report.md'), safeReport(run));
+    try {
+      qa?.end();
+      writeWhole(join(runDir, 'run.json'), JSON.stringify(run, null, 2));
+      writeWhole(join(runDir, 'report.md'), safeReport(run));
+      return true;
+    } catch (error) {
+      console.error(`The QA report couldn't be written: ${error?.stack ?? error}`);
+    }
   };
   const onSignal = (signal) => {
     warn(`Stopped by ${signal}.`);
@@ -141,8 +148,7 @@ test('a QA session', async ({ browser }) => {
     warn(`The session failed: ${error?.message ?? error}`);
     throw error;
   } finally {
-    finish();
-    console.log(`QA report: ${join(runDir, 'report.md')}`);
+    if (finish()) console.log(`QA report: ${join(runDir, 'report.md')}`);
     await Promise.race([context?.close().catch(() => {}), pause(10_000)]);
     browser.off('disconnected', onGone);
     process.off('exit', finish);
