@@ -716,8 +716,9 @@ function withLayerMade(project, made, src, version) {
 }
 
 // Make art layer's art taken off the cells layer in use (inside rect, or only the wand's picked cells) onto a new vector
-// layer made directly above it, as one whole-layer step that adds the layer (layerOp); the art's key. Its redo puts the
-// layers back as they were when it was undone (a rename or an eye isn't a step of its own).
+// layer made directly above it, as one whole-layer step that adds the layer (layerOp); the art's key. As withLayerMade's,
+// its undo takes only that layer out and its redo puts it back as it was when undone, the other layers as they are then
+// (a rename or an eye isn't a step of its own).
 function artOnNewLayer(project, art, rect, picked) {
   const src = project.editId, before = { stack: stackState(project), shapes: project.shapes };
   const paint = paintFrom(project.paintLayer, project.paintLayer.snapshot());
@@ -729,22 +730,27 @@ function artOnNewLayer(project, art, rect, picked) {
   }));
   if (picked) paint.erase(picked.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
   else paint.clearCells(rect);
-  const { id } = putLayer(project, 'vector', src, project.charsOf(src)), key = newShapeKey();
+  let made = putLayer(project, 'vector', src, project.charsOf(src));
+  const { id } = made, key = newShapeKey();
   const after = {
-    stack: { layers: project.layers, data: new Map(before.stack.data).set(src, { editCells, paintLayer: paint, hasPaint: paint.hasPaint }) },
+    stack: { data: new Map(before.stack.data).set(src, { editCells, paintLayer: paint, hasPaint: paint.hasPaint }) },
     shapes: new Map(project.shapes).set(key, makeShape({ ...art, layer: id === 'vector' ? undefined : id })),
   };
-  const apply = (state) => {
+  const apply = (state, layers) => {
     project.shapes = state.shapes;
-    putStack(project, state.stack);
+    putStack(project, { ...state.stack, layers });
     project.render();
   };
-  apply(after);
+  apply(after, project.layers);
   const undo = () => {
-    after.stack = { ...after.stack, layers: project.layers };
-    apply(before);
+    made = project.layerById(id) ?? made;
+    apply(before, project.layers.filter((layer) => layer.id !== id));
   };
-  project.pushWholeLayer(undo, () => apply(after), bytesHeld(paint, editCells), { everyFrame: true, layerOp: true });
+  const redo = () => {
+    const at = project.layers.findIndex((layer) => layer.id === src) + 1 || project.layers.length;
+    apply(after, [...project.layers.slice(0, at), made, ...project.layers.slice(at)]);
+  };
+  project.pushWholeLayer(undo, redo, bytesHeld(paint, editCells), { everyFrame: true, layerOp: true });
   return key;
 }
 

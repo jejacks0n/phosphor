@@ -680,6 +680,36 @@ test('a redo of Make art layer brings the layer it made back as it was when undo
   }
 });
 
+test('Make art layer\'s undo and redo leave a rename or an eye of another layer made in between, on a still or a movie', async () => {
+  for (const movie of [false, true]) {
+    const { project, workspace } = await blank();
+    const top = project.addLayer('cells', 'edit');
+    workspace.pickLayer(top);
+    project.typeAt(2, 1, 'Q', { fg: RED });
+    project.commitEdit();
+    if (movie) {
+      project.addFrame('blank');
+      project.showFrame(0);
+    }
+    await settle(project);
+    select(workspace, 1, 0, 4, 2);
+    project.makeArtLayer();
+    const id = project.layers.at(-1).id;
+    project.renameLayer('edit', 'Ground'); // after the make, before its undo
+    project.undo();
+    await settle(project);
+    expect(project.layerById(id)).toBeFalsy();
+    expect(project.layerById('edit').name).toBe('Ground');
+    project.setLayerHidden('edit', true); // after the undo, before the redo
+    project.renameLayer(top, 'Sky');
+    project.redo();
+    await settle(project);
+    expect(project.layerById(id)).toBeTruthy();
+    expect(project.layerById('edit')).toMatchObject({ name: 'Ground', hidden: true });
+    expect(project.layerById(top).name).toBe('Sky');
+  }
+});
+
 // [base, vector, edit, a vector layer above it], with an art layer made from the edit layer: it lands on the upper one.
 async function artOnUpper() {
   const app = await blank();
