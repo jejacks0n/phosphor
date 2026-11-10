@@ -79,7 +79,10 @@ export default class Renderer {
   #upperPaints = new WeakMap(); // an upper cells layer's paint -> its pixels at grid resolution through the transforms (#upperPaint)
   #shownOver = null;    // { of, canvas, dirty }: the output with the upper layers' pixels over it (shownCanvas); dirty, the grid rect a compose changed since, or null for all of it
   #matchers = new WeakMap(); // an upper layer's params -> { palette, matcher }: Best match's or By shape's matcher for one of its cells (#upperChar)
-  #upperSamples = new WeakMap(); // an upper vector layer -> its own samples at By shape's resolution, a tile of cells at a time (#samplesAt)
+  #upperSamples = new WeakMap(); // an upper vector layer -> { params, w, h, k, key, version, tiles }: its own samples at By shape's resolution, a tile of cells at a time (#samplesAt)
+  #tiles = new Map();   // every upper layer's tile -> its layer's #upperSamples entry, least recently used first, within sampleBudget
+  #tileBytes = 0;       // what #tiles hold
+  sampleBudget = 32 * 1024 * 1024; // the most bytes of By shape samples upper layers keep, together
   #cellSamples = null;  // one cell's samples, for By shape on an upper layer (#upperChar)
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
@@ -91,6 +94,8 @@ export default class Renderer {
     this.#lowerEdits = this.#shownOver = null;
     this.#matchers = new WeakMap();
     this.#upperSamples = new WeakMap();
+    this.#tiles = new Map();
+    this.#tileBytes = 0;
     this.#upperGrids = new WeakMap();
     this.#upperStored = new WeakMap();
     this.#upperPaints = new WeakMap();
@@ -107,6 +112,7 @@ export default class Renderer {
       await loadReferenceFont().catch((error) => console.warn('IBM VGA did not load: Best match and By shape measure glyphs in a fallback font', error));
       this.#fontReady = true;
     }
+    this.#dropTiles((kept) => !this.upper.some((u) => u.layer === kept.layer && u.params.charMode === 'shape'));
     const { canvas: pipeline, paletteColors, samples } = await processImage(image, params);
     // A hidden base: black in the picture's place, so nothing reads it (Best match and By shape included).
     this.pipelineCanvas = this.hideBase ? blackCanvas(params.cols, params.rows) : pipeline.canvas;
@@ -803,8 +809,9 @@ export default class Renderer {
   // grid), or every cell with null. Per cell, bottom to top, { cell, exact }: exact is a character that's someone's own
   // (the lower cells layer's entry, the base's pin or an art layer's; a shape reaching over them gives it up):
   // - a vector layer where a shape reaches: each half is the cell's half color with the layer's pixels over it (its
-  //   shapes drawn as the base's own pixels are, #upperGrid), snapped to the palette, and the character its settings
-  //   pick (#upperChar), or the art layer's where one shows;
+  //   shapes drawn as the base's own pixels are, #upperGrid), converted by its settings (#upperChar: snapped with
+  //   Random's or a weighted character, or Best match's or By shape's cell, By shape's from samples inside the cell),
+  //   or the art layer's character over the halves snapped where one shows;
   // - a cells layer's entry composes over the cell as the lower group's do (#composeOne), and its paint covers an exact
   //   character (coverCell) or, over converted pixels, is mixed into the halves and converted with its settings.
   // No error carries between cells (as #resolvePainted), so a cell costs only its own layers.
@@ -966,39 +973,71 @@ export default class Renderer {
 
   // An upper vector layer's own samples in the cell at col, row (its shapes, SAMPLES a cell, alpha their coverage, through
   // the color transforms, as baseSamplesOver reads the base's): { data, width, x, y }, the cell's first sample at x, y of
-  // data, width samples wide. Read from the layer a tile of cells at a time where it's first asked for (only cells the
-  // layer reaches ask), and kept per layer until the grid, its scale or the color settings change, or the layer changes
-  // over the tile. Null for none, or a layer with no more detail than its grid pixels (scale 1: its halves are its samples).
-  // ponytail: a tile is kept for good, 32 KB of a layer's every tile it reaches (64 MB for a layer over 500k cells); drop
-  // tiles by age if that ever matters.
+  // data (RGBA), width samples wide. Read from the layer a tile of cells at a time
+  // where it's first asked for (only cells the layer reaches ask), and kept until the grid, its scale or the color settings
+  // change, the layer changes over the tile, it's no longer an upper By shape layer (render), or the tiles of every layer
+  // together pass sampleBudget (the least recently used go). Null for none, or a layer with no more detail than its grid
+  // pixels (scale 1: its halves are its samples). Its coverage is a byte, so in full color a cell can come out a level
+  // off the lower group's.
+  // ponytail: one budget for every layer, 32 KB a tile: a layer reaching past it reads its oldest tiles again on every
+  // whole compose; raise sampleBudget if that shows in profiles.
   #samplesAt(layer, params, col, row) {
     const k = layer?.scale;
     if (!(k > 1)) return null;
     const w = this.outputCanvas.width, h = this.outputCanvas.height, n = SAMPLES.w, across = Math.ceil(w / TILE);
-    const key = [w, h, k, ...COLOR_KEYS.map((name) => params[name])].join();
     let kept = this.#upperSamples.get(layer);
-    if (kept?.key !== key) this.#upperSamples.set(layer, kept = { key, version: layer.version, tiles: new Map() });
-    else if (kept.version !== layer.version) {
+    if (kept?.params !== params || kept.w !== w || kept.h !== h || kept.k !== k) { // the key's worked out only then, not a cell at a time
+      const key = [w, h, k, ...COLOR_KEYS.map((name) => params[name])].join();
+      if (kept?.key !== key) {
+        if (kept) this.#dropTiles((each) => each === kept);
+        this.#upperSamples.set(layer, kept = { layer, key, version: layer.version, tiles: new Map() });
+      }
+      Object.assign(kept, { params, w, h, k });
+    }
+    if (kept.version !== layer.version) {
       const since = layer.changedSince(kept.version), area = since && gridRectOf(since, k, w, h);
       kept.version = layer.version;
-      if (!area) kept.tiles.clear();
+      if (!area) this.#dropTiles((each) => each === kept);
       else if (area.w && area.h) {
-        for (const t of kept.tiles.keys()) {
+        for (const [t, tile] of kept.tiles) {
           const x = (t % across) * TILE, y = Math.floor(t / across) * 2 * TILE;
-          if (x < area.x + area.w && area.x < x + TILE && y < area.y + area.h && area.y < y + 2 * TILE) kept.tiles.delete(t);
+          if (x < area.x + area.w && area.x < x + TILE && y < area.y + area.h && area.y < y + 2 * TILE) this.#dropTile(kept, t, tile);
         }
       }
     }
     const tx = Math.floor(col / TILE), ty = Math.floor(row / TILE), t = ty * across + tx;
     let tile = kept.tiles.get(t);
-    if (!tile) {
-      const area = clipped({ x: tx * TILE, y: ty * 2 * TILE, w: TILE, h: 2 * TILE }, w, 2 * charRowsOf(h));
-      tile = { area, data: new Uint8ClampedArray(area.w * n * area.h * n * 4) };
+    if (tile) this.#tiles.delete(tile); // used: the newest
+    else {
+      const area = clipped({ x: tx * TILE, y: ty * 2 * TILE, w: TILE, h: 2 * TILE }, w, 2 * charRowsOf(h)), count = area.w * n * area.h * n;
+      tile = { t, area, data: new Uint8ClampedArray(count * 4) };
       baseSamplesOver(tile.data, area.w * n, layer, params, area, n, true);
       kept.tiles.set(t, tile);
+      this.#tileBytes += tile.data.byteLength;
     }
+    this.#tiles.set(tile, kept);
+    this.#dropTiles(null);
     return { data: tile.data, width: tile.area.w * n, x: (col - tile.area.x) * n, y: (2 * row - tile.area.y) * n };
   }
+
+  // Every tile of the layers whose #upperSamples entry gone(entry) says, then (gone null too) the least recently used past
+  // sampleBudget, the newest kept whatever it holds.
+  #dropTiles(gone) {
+    if (gone) for (const [tile, kept] of this.#tiles) if (gone(kept)) this.#dropTile(kept, tile.t, tile);
+    for (const [tile, kept] of this.#tiles) {
+      if (this.#tileBytes <= this.sampleBudget || this.#tiles.size === 1) break;
+      this.#dropTile(kept, tile.t, tile);
+    }
+  }
+
+  #dropTile(kept, t, tile) {
+    kept.tiles.delete(t);
+    this.#tiles.delete(tile);
+    this.#tileBytes -= tile.data.byteLength;
+  }
+
+  // What the upper layers' By shape samples hold, in bytes (#samplesAt).
+  get sampleBytes() { return this.#tileBytes; }
 
   // What the PIXEL view shows and the Paint Bucket reads: the output, with every upper layer's pixels (its shapes at grid
   // resolution, its paint) drawn over it when there are any. Kept, and caught up only over the rect the composes since

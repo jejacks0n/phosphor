@@ -358,3 +358,47 @@ for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }]
     expect(looks.map(([, look]) => look)).toEqual(looks.map(([shown]) => shown));
   });
 }
+
+// An upper vector layer under By shape keeps its samples (Renderer.sampleBytes) only while it's an upper By shape layer,
+// and every layer's together within the renderer's budget, the oldest given up first.
+async function sampled() {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 40, rows: 64, quantize: 'cga' });
+  await settle(project);
+  const vector = project.addLayer('vector', 'edit');
+  project.setLayerChars(vector, { charChoice: 'shape', seed: 'its own' });
+  workspace.pickLayer(vector);
+  project.addShape(ellipseShape(2.3, 3.1, 37.6, 60.4, { fill: '#ff5555' }));
+  project.commitEdit();
+  await settle(project);
+  expect(project.renderer.sampleBytes).toBeGreaterThan(0);
+  return { project, vector };
+}
+
+test('an upper vector layer gives its By shape samples back once it\'s Random', async () => {
+  const { project, vector } = await sampled();
+  project.setLayerChars(vector, { charChoice: 'random' });
+  project.render(); // as the app does on a layer's settings changing
+  await settle(project);
+  expect(project.renderer.sampleBytes).toBe(0);
+});
+
+test('an upper vector layer gives its By shape samples back once it joins the lower group', async () => {
+  const { project, vector } = await sampled();
+  for (const id of ['base', 'edit']) project.setLayerChars(id, project.charsOf(vector));
+  project.moveLayer(vector, 1); // right on Base, with its settings
+  await settle(project);
+  expect(project.lowerGroup.upper).toEqual([]);
+  expect(project.renderer.sampleBytes).toBe(0);
+});
+
+test('the By shape samples of upper layers stay within the renderer\'s budget, and what shows doesn\'t change', async () => {
+  const { project } = await sampled();
+  const shown = cellsKey(project), all = project.renderer.sampleBytes;
+  project.renderer.sampleBudget = Math.floor(all / 3);
+  project.render();
+  await settle(project);
+  expect(project.renderer.sampleBytes).toBeLessThanOrEqual(project.renderer.sampleBudget);
+  expect(project.renderer.sampleBytes).toBeGreaterThan(0);
+  expect(cellsKey(project)).toEqual(shown);
+});
