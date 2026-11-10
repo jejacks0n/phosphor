@@ -19,8 +19,9 @@ never a lost hour of work, whatever the browser does.
   color of the 256, SAUCE titled "QA Long". The same maker (`files.makeLongAns({ cols, lines })`) makes the over-limit
   files he tries: 300 by 1,700 (510,000 cells) and 301 by 100.
 - The real packs in `input/qa/packs/` when they're there (`input/qa/README.txt` lists them): the biggest .ans
-  (`blocktronics_blocktober/ungenannt_oceanvs.ans`, 137 KB; `acid-50a/RA-FIFTY.ANS`), the long member list
-  (`blocktronics_blocktober/__BLOCKTRONICS_BLOCKTOBER_MEMBERLIST_AND_STATS.ans`), .asc files from `acid-50a`, .txt from
+  (`blocktronics_blocktober/ungenannt_oceanvs.ans`, 137 KB), the longest (`acid-50a/RA-FIFTY.ANS`, about 1,675
+  lines), the member list (`blocktronics_blocktober/__BLOCKTRONICS_BLOCKTOBER_MEMBERLIST_AND_STATS.ans`, about 240
+  lines), .asc files from `acid-50a`, .txt from
   `impure88`, and the formats he'd try even though Phosphor may not open them: `.xb` (`acid-55a/ACID-55.XB`), `.sue`
   (`acid-55a/WE-WILL.SUE`), `.tnd` (`blocktronics_blocktober/_Pumpkin_by_TCF.tnd`), `.nfo` and `.diz`. When the folder
   is missing, those steps are skipped with a note.
@@ -50,7 +51,7 @@ never a lost hour of work, whatever the browser does.
 
 - 300 columns by 1,600 lines: 480,000 cells (the limits are 300 columns, 5,000 lines and 500,000 cells; at 300 columns
   1,666 lines). The .ans is about 10.6 MB; a .phosphor of it a few MB.
-- Real files: 80 columns, up to a few hundred lines, up to 137 KB.
+- Real files: 80 columns, up to about 1,675 lines (`RA-FIFTY.ANS`), up to 137 KB.
 - SAUCE at its widths: Title 35, Author 20, Group 20 characters, comments up to 255 lines of 64.
 - One or two layers. A session of an hour or more, with `qa.memory` at its start and end.
 
@@ -88,7 +89,8 @@ script. Every section ends with Free time.
 - Expects: the view zooms down to 25%; the status bar shows the zoom away from 100% and pressing it goes back; zooming
   stays smooth at this size.
 - Probes: `extremes`: zoom to 800% and to 25%; `speed`: zoom in and out quickly with `qa.frames`.
-- Rated: yes, wants Cmd+minus and Cmd+0
+- Rated: yes, wants Cmd+minus and Cmd+0. Those are the browser's own keys, which do nothing to a headless page: if
+  the app has no zoom key of its own, rate it `mouse` with that want.
 
 ### 4. Fix one cell
 - Does: goes to a cell near the middle (column 150, line 800) in Edit Mode, types one character over it.
@@ -205,7 +207,9 @@ SAUCE in a .utf8ans export, and check SAUCE's help text.
 - Rated: yes, wants Tab to the entry, then Enter
 
 ### 18. Go back to an earlier version
-- Does: after more than five minutes of work, opens Versions, restores the oldest snapshot, then opens Versions again.
+- Does: opens Versions early on (none yet); then keeps fixing cells, a snippet at a time, until more than five minutes
+  of work have passed and Versions lists a snapshot (or waits, with an edit every minute); then restores the oldest
+  snapshot and opens Versions again.
 - Expects: snapshots every 5 minutes while he works (the last 20); restoring one keeps what he had in the list as "Before
   restoring"; Versions with none yet says "No snapshots saved yet."
 - Probes: `back-out`: open Versions and press Escape; `undo-redo`: after restoring, Cmd+Z, and see what it does.
@@ -216,7 +220,9 @@ SAUCE in a .utf8ans export, and check SAUCE's help text.
 - Expects: the address names each tab; Back and Forward move between them; the reload comes back to SAUCE.
 - Probes: `again`: Back past the first tab to the start screen's address and Forward again; `interrupt`: Back while a
   dialog is open.
-- Rated: yes, wants Cmd+[ and Cmd+] (the browser's), and ← → with a tab focused
+- Rated: yes, wants ← → with a tab focused. Back and Forward themselves are the browser's (Cmd+[ and Cmd+], which do
+  nothing headless, so use `page.goBack()` and `page.goForward()`); rate the step by the app's own keys, `mouse` if it
+  has none.
 
 **Free time:** he'd close the tab and reopen the app, try Versions after a reload, check what autosave keeps of the
 long file (time the reload), and press Back from a fresh start screen.
@@ -224,12 +230,12 @@ long file (time the reload), and press Back from a fresh start screen.
 ## Real packs and the edges
 
 ### 20. Open the biggest real files
-- Does: opens `ungenannt_oceanvs.ans` and `RA-FIFTY.ANS` with Edit it, timing each, and compares each with the terminal
+- Does: opens `ungenannt_oceanvs.ans` (the biggest) and `RA-FIFTY.ANS` (the longest) with Edit it, timing each, and compares each with the terminal
   check and with the app's reopen of its own export.
 - Expects: each opens under the `file` budget at its SAUCE width (or 80); the app's export reopens unchanged; where the
   original uses a move right past the last column, the app wraps and a modern terminal doesn't, so note it and judge
   from the screenshot.
-- Probes: `again`: open the member list, the longest file in the packs; `extremes`: open them on a phone-sized view.
+- Probes: `again`: open the member list too; `extremes`: open them on a phone-sized view.
 - Rated: yes, wants Cmd+O
 
 ### 21. Open .asc and .txt files
