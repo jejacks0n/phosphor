@@ -22,8 +22,8 @@ export const TYPING_PAUSE_MS = 1000; // a pause this long ends a typing run (one
 export const PIPELINE_KEYS = SETTINGS.filter(s => s.group !== 'sauce' && s.pipeline !== false).map(s => s.key);
 export const SAVED_KEYS = [...SETTING_KEYS, ...SAUCE_KEYS];
 export const settingsJson = (state) => JSON.stringify(SAVED_KEYS.map(key => state[key]));
-// What isDirty compares with the last save: the settings and every layer's own character settings.
-export const savedJson = (state) => settingsJson(state) + JSON.stringify(state.layers.map((layer) => layer.chars ?? null));
+// What isDirty compares with the last save: the settings and every layer's own character settings, name and eye.
+export const savedJson = (state) => settingsJson(state) + JSON.stringify(state.layers.map((layer) => [layer.chars ?? null, layer.name, layer.hidden]));
 // An image's pixels on a canvas of its own.
 export const copyOf = (image, width, height) => {
   const canvas = document.createElement('canvas');

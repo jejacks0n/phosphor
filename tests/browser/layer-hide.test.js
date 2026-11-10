@@ -161,6 +161,19 @@ test('Select and the Magic Wand still select with the picked layer hidden: they 
   expect(toastMessage.value).toBe(null);
 });
 
+test('an eye or a name changed after a save leaves the drawing unsaved, as both are saved with it', async () => {
+  const { project } = await picture();
+  project.markSaved();
+  expect(project.isDirty).toBe(false);
+  project.renameLayer('edit', 'Ink');
+  expect(project.isDirty).toBe(true);
+  project.markSaved();
+  await hide(project, 'edit');
+  expect(project.isDirty).toBe(true);
+  await hide(project, 'edit', false);
+  expect(project.isDirty).toBe(false); // back as saved
+});
+
 test('changes to a hidden layer still land', async () => {
   const { project } = await picture();
   const before = look(project.cells[0]);
