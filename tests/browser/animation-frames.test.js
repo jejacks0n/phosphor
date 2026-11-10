@@ -321,3 +321,16 @@ test('renaming a layer keeps the frames built; an eye builds them again', async 
   await settle(project);
   expect(await project.builtFrame(0)).not.toBe(built);
 });
+
+test('a frame shown with shapes and no vector layer at the most layers a drawing holds doesn\'t make a 65th', async () => {
+  const { project } = await animated();
+  const { MOST_LAYERS } = await import('@/document/layerInfo.js');
+  const { rectShape } = await import('@/document/shapes.js');
+  while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit');
+  project.addFrame('blank');
+  project.showFrame(0);
+  project.frames[1].changes = new Map([['v:abc', cellState(rectShape(2, 2, 6, 6, { fill: '#ff0000' }), 0, 0)]]); // no app path makes this: a guard
+  project.staleFrames(1);
+  project.showFrame(1);
+  expect(project.layers).toHaveLength(MOST_LAYERS);
+});

@@ -14,7 +14,7 @@ import { isArt } from '@/document/artLayers.js';
 import { MOTIONS, lifeAt, setPartsAt, shapeAt, tweenReach, tweenedAt, workedOutAt } from '@/document/tweens.js';
 import { changedParts, partsOf, samePart } from '@/document/parts.js';
 import { addedKey, deletedKeys, moveRange, movedKeys, partKeys } from '@/document/keys.js';
-import { keyLayer, layerKey } from '@/document/layerInfo.js';
+import { MOST_LAYERS, keyLayer, layerKey } from '@/document/layerInfo.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { lockedAmong, newLedger, putLayer } from '@/store/project/shared.js';
 import { t } from '@/i18n';
@@ -118,7 +118,7 @@ function arrive(project, i, leaving = project.currentFrame, { draw = true } = {}
   }
   project._frameSwaps++; // and before shapes: autosave hears each on its own
   project.shapes = shapes;
-  if (shapes.size && !project.hasVectorLayer) putLayer(project, 'vector', 'base');
+  if (shapes.size && !project.hasVectorLayer && project.layers.length < MOST_LAYERS) putLayer(project, 'vector', 'base'); // never one too many
   project.syncShapeLayers(); // drawn by the composite below
   project._arrived = markRaw({ paint, states: resolved });
   if (frame.ledgerAt !== version) project._ledger.refreshBases(); // an earlier frame may have changed what's under its strokes
