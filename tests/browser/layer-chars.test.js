@@ -7,7 +7,7 @@ import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
-import { rectShape, ellipseShape } from '@/document/shapes.js';
+import { rectShape, ellipseShape, makeShape } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { CHAR_KEYS } from '@/store/settings.js';
 import ControlPanel from '@/components/ControlPanel.vue';
@@ -312,3 +312,35 @@ test('under Best match paint on an upper cells layer makes the cell the same pai
   expect(halfBlocks.has(base[0])).toBe(false); // a shade: its colors aren't the palette's
   expect(await paintedOn('edit', settings)).toBe(base);
 });
+
+// A small rect inside a big ellipse on an upper vector layer of its own settings, on a 40 x 64 canvas: moved times
+// (each an edit of its own) 0.7 grid pixels down and right, or drawn there to begin with (none), then
+// rendered whole at another brightness.
+async function movedInside(settings, moves) {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 40, rows: 64, quantize: 'cga' });
+  await settle(project);
+  const vector = project.addLayer('vector', 'edit');
+  project.setLayerChars(vector, { ...settings, seed: 'its own' });
+  workspace.pickLayer(vector);
+  project.addShape(ellipseShape(2.3, 3.1, 37.6, 60.4, { fill: '#ff5555' }));
+  const rect = (d) => rectShape(10.4 + d, 20.2 + d, 14.7 + d, 26.6 + d, { fill: '#55ff55' }).points;
+  const key = project.addShape(makeShape({ points: rect(moves ? 0 : 0.7 * 6), closed: true, fill: '#55ff55' }));
+  project.commitEdit();
+  await settle(project);
+  for (let i = 1; i <= moves; i++) {
+    project.updateShapes([[key, { ...project.shapes.get(key), points: rect(0.7 * i) }]]);
+    project.commitEdit();
+    await settle(project);
+  }
+  project.brightness = 120; // a whole render that reads the layer again
+  project.render();
+  await settle(project);
+  return cellsKey(project);
+}
+
+for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }], ['Random', { charChoice: 'random' }]]) {
+  test(`under ${name} an upper vector layer moved in small steps, then rendered whole, shows what a fresh drawing does`, async () => {
+    expect(await movedInside(settings, 6)).toEqual(await movedInside(settings, 0));
+  });
+}

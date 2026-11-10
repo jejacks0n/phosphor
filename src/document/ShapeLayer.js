@@ -12,8 +12,8 @@
  * ponytail: two canvases the base layer's size while shapes exist (up to MAX_LAYER_DIM a side), a third while
  * an art layer does; tile them if that's too much memory on large documents.
  *
- * Alone (no base layer: a vector layer above the lower group), it's the shapes' own drawing, one canvas at the grid
- * it's told (grid), and the Renderer lays it over the cells under it (composeUpper).
+ * Alone (no base layer: a vector layer above the lower group), it's the shapes' own drawing at the grid it's told
+ * (grid), copied a rect at a time as over a base, and the Renderer lays it over the cells under it (composeUpper).
  */
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
@@ -107,7 +107,7 @@ export default class ShapeLayer {
     if (held?.width !== width || held.height !== height || held.k !== k) {
       this.#size = { width, height, k };
       this.#own = newCanvas(width, height);
-      this.canvas = this.#alone ? this.#own : newCanvas(width, height);
+      this.canvas = newCanvas(width, height);
       this.#chars = new Array(base.cols * charRowsOf(base.rows));
       this.#scratch = null;
       this.#pending = [];
@@ -269,13 +269,12 @@ export default class ShapeLayer {
 
     // The base's bytes, not a drawImage of its canvas: two canvases that read back the same can hold a
     // semi-transparent pixel premultiplied a little differently (an undo puts tiles back with putImageData),
-    // and the shapes over it would then come out a shade apart. Alone, the shapes' own canvas is the drawing.
-    if (!this.#alone) {
-      const ctx = ctx2d(this.canvas);
-      if (this.#hideBase) ctx.clearRect(x, y, w, h);
-      else ctx.putImageData(ctx2d(this.#base.canvas).getImageData(x, y, w, h), x, y);
-      ctx.drawImage(this.#own, x, y, w, h, x, y, w, h);
-    }
+    // and the shapes over it would then come out a shade apart. Alone, over nothing: the rect of the shapes'
+    // own, so what's read (a whole re-read too) never has a shape's edge drawn twice past an earlier rect.
+    const ctx = ctx2d(this.canvas);
+    if (this.#alone || this.#hideBase) ctx.clearRect(x, y, w, h);
+    else ctx.putImageData(ctx2d(this.#base.canvas).getImageData(x, y, w, h), x, y);
+    ctx.drawImage(this.#own, x, y, w, h, x, y, w, h);
 
     const cols = this.#base.cols, rows = charRowsOf(this.#base.rows);
     const c0 = x / k, r0 = y / (2 * k), c1 = Math.min(cols, c0 + w / k), r1 = Math.min(rows, r0 + h / (2 * k));
