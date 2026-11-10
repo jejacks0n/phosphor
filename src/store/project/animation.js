@@ -5,7 +5,7 @@
 // frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
 // builds frames for playing, and what it was prepared for).
 import FrameBuilder from '@/document/FrameBuilder.js';
-import { BASE, EMPTY_STATE, cellState, dropStrays, foldDeleted, frameDiff, isEmptyState, newFrame, paintImage, passedOn, resolveOver, sameChanges, sameState, drawnKeys, staysAt, withEases } from '@/document/frames.js';
+import { BASE, CUT, EMPTY_STATE, carriedInto, cellState, dropStrays, foldDeleted, frameDiff, isEmptyState, newFrame, paintImage, passedOn, resolveOver, sameChanges, sameState, drawnKeys, staysAt, withEases } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
@@ -74,11 +74,11 @@ function liveStates(project) {
 }
 
 // What the frame showing draws over: what the frame before passes on (its staying cells are the ghost, which is no
-// part of this frame).
+// part of this frame), but a layer it cuts.
 function carried(project) {
   if (!project.frame || project.currentFrame.kind !== 'blank') return NOTHING;
   project.resolvedOf(project.frame - 1);
-  return project.frames[project.frame - 1].passes;
+  return carriedInto(project.frames[project.frame - 1].passes, project.currentFrame);
 }
 
 // Frame i becomes the one showing: its state in editCells and the paint layer (each other cells layer's where it waits),
@@ -240,6 +240,7 @@ function note(project) {
   if (!project._stroke && noted?.frame === frame && noted.history === project.history.version && noted.edit === project.editVersion) return;
   project._noted = markRaw({ frame, history: project.history.version, edit: project.editVersion });
   const { own: changes, tweened, parts } = ownChanges(project, carried(project));
+  for (const [key, state] of frame.changes) if (keyLayer(key).key === CUT) changes.set(key, state); // drawn on, it's still cut off
   if (sameChanges(changes, frame.changes) && sameParts(parts, frame.parts)) return reshow(project);
   // A shape the frame stops having can leave later key frames with nothing to carry from: they keep how they look.
   if ([...frame.changes].some(([key, { cell }]) => isShapeKey(key) && cell && !changes.get(key)?.cell)) keepShown(project);
@@ -291,7 +292,7 @@ function settleFrame(project, { keys = false, stay = false } = {}) {
 // passed on) is what the frames after them showed there, so where that's changed it goes on to the first of them that
 // doesn't draw over it too, as its own.
 function handOn(project, at, handed) {
-  const frame = project.frames[at], under = at && frame.kind === 'blank' ? (project.resolvedOf(at - 1), project.frames[at - 1].passes) : NOTHING;
+  const frame = project.frames[at], under = at && frame.kind === 'blank' ? (project.resolvedOf(at - 1), carriedInto(project.frames[at - 1].passes, frame)) : NOTHING;
   for (const [key, state] of frame.changes) {
     if (!state.stays) continue;
     const was = handed.get(key) ?? EMPTY_STATE;

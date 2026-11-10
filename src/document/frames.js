@@ -2,7 +2,8 @@
  * Animation frames, as data. A frame records only what changed on it: changes maps a cell ('col,row') to its
  * whole state on that frame, its edit cell entry and both halves' paint (packed as changes.js packs them,
  * 0 is none). A change owns the whole cell, so a later fix on an earlier frame stops there, all of it. An
- * empty state is an explicit erase, which carries forward like any change. A cell's change that stays (stays: true,
+ * empty state is an explicit erase, which carries forward like any change. A Blank frame's cut (an empty state at
+ * layerKey(id, CUT), Clear's) stops a cells layer's carry there: none of its cells come from the frames before. A cell's change that stays (stays: true,
  * drawn with New cells set to Stay) shows on its frame only: the frame after gets what was there before it. Nothing
  * here touches a canvas.
  *
@@ -73,10 +74,22 @@ export function keepDrawn(frame, id) {
 // How long a frame stays, in ms: its hold, or one tick at the movie's fps.
 export const frameDuration = ({ hold }, fps) => (hold > 0 ? hold * 1000 : 1000 / fps);
 
+// A cut's key part (cutKey), which no cell's is.
+export const CUT = '*';
+export const cutKey = (id) => layerKey(id, CUT);
+const isCut = (key) => !isShapeKey(key) && keyLayer(key).key === CUT;
+// What a Blank frame (with changes) takes of what the frame before passes on (previous): all of it, but the cells of a
+// layer it cuts.
+export function carriedInto(previous, { changes }) {
+  let cuts = null;
+  for (const key of changes.keys()) if (isCut(key)) (cuts ??= new Set()).add(keyLayer(key).id);
+  return cuts ? new Map([...previous].filter(([key]) => isShapeKey(key) || !cuts.has(keyLayer(key).id))) : previous;
+}
+
 // What a frame shows, given what the frame before it passes on (passedOn). Frame 0 goes over an empty map, so it acts as
-// a wipe.
-export function resolveOver(previous, { kind, changes }) {
-  const resolved = kind !== 'blank' ? new Map() : new Map(previous);
+// a wipe. A cut is an empty state, so it's no cell.
+export function resolveOver(previous, frame) {
+  const { kind, changes } = frame, resolved = kind !== 'blank' ? new Map() : new Map(carriedInto(previous, frame));
   for (const [key, state] of changes) {
     if (!isEmptyState(state)) resolved.set(key, state);
     else resolved.delete(key);
@@ -85,12 +98,13 @@ export function resolveOver(previous, { kind, changes }) {
 }
 
 // What a frame hands the one after: what it shows (shown), but where a cell of its stays, what was there before it.
-export function passedOn(previous, { kind, changes }, shown) {
-  let passes = null;
+export function passedOn(previous, frame, shown) {
+  const { kind, changes } = frame;
+  let passes = null, carried = null;
   for (const [key, state] of changes) {
     if (!state.stays) continue;
     passes ??= new Map(shown);
-    const under = kind === 'blank' ? previous.get(key) : undefined;
+    const under = kind === 'blank' ? (carried ??= carriedInto(previous, frame)).get(key) : undefined;
     if (under) passes.set(key, under);
     else passes.delete(key);
   }
@@ -132,8 +146,10 @@ export function foldDeleted(deleted, next) {
     return map.size ? map : null;
   };
   const tweens = takeIn('tweens') ?? new Map(), motions = takeIn('motions') ?? new Map();
-  // The next frame never showed the deleted one's staying cells: what was under them, which comes to it as before.
-  const changes = new Map([...[...deleted.changes].filter(([, state]) => !state.stays), ...next.changes]);
+  // The next frame never showed the deleted one's staying cells: what was under them, which comes to it as before; nor
+  // the deleted one's cells of a layer it cuts.
+  const cut = carriedInto(deleted.changes, next);
+  const changes = new Map([...[...cut].filter(([, state]) => !state.stays), ...next.changes]);
   const parts = new Map([...(deleted.parts ?? [])].filter(([key]) => !next.changes.has(key)));
   for (const [key, { cell }] of next.changes) {
     const own = next.parts?.get(key), was = deleted.changes.get(key)?.cell;
@@ -215,12 +231,16 @@ export const invalidProject = () => Object.assign(new Error('Not a valid Phospho
 // A cell's key on the grid as a frame has it, named by its layer as layerKey writes it. layers: a stack file's ({ cells,
 // vector }, Sets of ids), and a key on a layer that isn't one of its cells layers throws; without them only the edit
 // layer's bare keys are frames' keys, as in the files from before the stack.
-const goodKey = (key, layers = null) => {
+// cut: a cut's key (CUT) is one too.
+const goodKey = (key, layers = null, { cut = false } = {}) => {
   if (typeof key !== 'string') return false;
   const { id, key: at } = keyLayer(key);
-  if (!/^\d+,\d+$/.test(at) || layerKey(id, at) !== key) return false;
-  const { col, row } = parseKey(at);
-  if (!(col < MAX_COLS && row < MAX_LINES)) return false;
+  if (layerKey(id, at) !== key) return false;
+  if (!cut || at !== CUT) {
+    if (!/^\d+,\d+$/.test(at)) return false;
+    const { col, row } = parseKey(at);
+    if (!(col < MAX_COLS && row < MAX_LINES)) return false;
+  }
   if (!layers) return id === 'edit';
   if (!layers.cells.has(id)) throw invalidProject();
   return true;
@@ -231,7 +251,8 @@ function readChanges(entries, layers) {
   for (const entry of entries) {
     if (!Array.isArray(entry)) return null;
     const [key, cell, top, bottom] = entry;
-    if (!goodKey(key, layers) || !goodPaint(top) || !goodPaint(bottom)) return null;
+    if (!goodKey(key, layers, { cut: true }) || !goodPaint(top) || !goodPaint(bottom)) return null;
+    if (keyLayer(key).key === CUT && (cell != null || top || bottom)) return null; // a cut holds nothing
     const at = keyLayer(key).key, clean = deserializeEditCells([[at, cell]]).get(at) ?? null;
     if (cell != null && !clean) return null; // a cell with nothing a cell can hold
     if (clean && Object.keys(clean).length !== Object.keys(cell).length) return null;

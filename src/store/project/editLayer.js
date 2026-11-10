@@ -5,7 +5,7 @@
 // pixels, and typing overwrites (a row of pins and pixels doesn't shift).
 import { cellKey, withCellEdit, mergeEntry, withoutCells, shiftRow } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
-import { EMPTY_STATE } from '@/document/frames.js';
+import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
@@ -232,13 +232,14 @@ export const editLayerActions = {
     this.ensureLayer();
     if (!this.paintLayer) return;
     this.commitPending();
-    // On a movie it's the frame that changes: its cells and paint on the layer in use go, and what it inherits there is
-    // covered over; its kind, the other layers and the shapes stay.
+    // On a movie it's the frame that changes: its cells and paint on the layer in use go, and a Blank one is cut off from
+    // the layer's cells on the frames before it, so it stays empty there, whatever's drawn on them later; its kind, the
+    // other layers and the shapes stay.
     if (this.hasFrames) {
       this.noteFrame();
-      const { kind, changes, parts } = this.currentFrame, at = this.frame, mine = (key) => !isShapeKey(key) && keyLayer(key).id === this.editId;
-      const inherited = kind === 'blank' && at ? (this.resolvedOf(at - 1), this.frames[at - 1].passes) : new Map();
-      const cleared = { kind, changes: new Map([...[...changes].filter(([key]) => !mine(key)), ...[...inherited.keys()].filter(mine).map((key) => [key, EMPTY_STATE])]), parts };
+      const { kind, changes, parts } = this.currentFrame, mine = (key) => !isShapeKey(key) && keyLayer(key).id === this.editId;
+      const cut = kind === 'blank' && this.frame ? [[cutKey(this.editId), EMPTY_STATE]] : [];
+      const cleared = { kind, changes: new Map([...[...changes].filter(([key]) => !mine(key)), ...cut]), parts };
       const eases = this.frames.map((frame) => [frame, frame.tweens, frame.motions]); // what the Clear leaves no tween for goes
       this.setFrameState(cleared);
       this.pushWholeLayer(() => this.setFrameState({ kind, changes, parts, eases }), () => this.setFrameState(cleared), bytesHeld(changes));

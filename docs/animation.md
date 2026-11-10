@@ -50,6 +50,11 @@ earlier frame stops at a frame that owns the cell. Erasing is a change too, and 
 Editing a cell back to exactly what the frame before shows returns it to inherited: the frame no longer owns it, and fixes
 carry through it again.
 
+**Clear layer** on a frame means empty: it stops the carry of the picked layer there. Nothing that layer has on earlier
+frames shows on the cleared frame, or on the Blank frames after it, not even what you draw on those earlier frames
+later, and no ghost of it shows either. What you then draw on the cleared frame is its own and carries on as usual.
+The frame stays a Blank, so the other layers and the shapes still carry into it. Undo puts the carry back.
+
 Moving a frame keeps its changes, not its look. A Blank moved earlier or later sits over different frames, so
 what it shows can change.
 

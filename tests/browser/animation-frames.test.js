@@ -213,11 +213,39 @@ test('Clear edit layer empties the layer on the frame, what it inherits there to
   project.clearEditLayer();
   await settle(project);
   expect(project.currentFrame.kind).toBe('blank');
-  expect([...project.currentFrame.changes.keys()]).toEqual(['1,1']); // the A it inherited, covered
-  expect(project.editCells.size).toBe(0);
+  expect(project.editCells.size).toBe(0); // the A it inherited too
   expect(cellsKey(project)).toEqual(clean);
   project.showFrame(0);
   expect(charAt(project, 1, 1)).toBe('A');
+});
+
+test('Clear on a frame stops the carry: what\'s drawn on an earlier frame later doesn\'t show on it or after it, drawn on or saved', async () => {
+  const { project } = await animated();
+  const { readProject, writeProject } = await import('@/document/projectIO.js');
+  type(project, 1, 1, 'A');
+  project.addFrame('blank');
+  project.clearEditLayer();
+  project.addFrame('blank'); // after the cleared frame
+  project.showFrame(0);
+  type(project, 3, 3, 'C'); // a spot no frame used
+  project.showFrame(1);
+  expect(charAt(project, 3, 3)).not.toBe('C');
+  expect(charAt(project, 1, 1)).not.toBe('A');
+  type(project, 5, 5, 'D'); // drawing on it doesn't bring the carry back
+  expect(charAt(project, 3, 3)).not.toBe('C');
+  expect(project.inheritedCells().size).toBe(0); // no ghost of them either
+  project.showFrame(2);
+  expect(charAt(project, 3, 3)).not.toBe('C');
+  expect(charAt(project, 5, 5)).toBe('D');
+  const file = await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }));
+  expect(file.framesLost).toBe(false);
+  await project.openParts(file, { filename: 'back' });
+  await settle(project);
+  project.showFrame(1);
+  expect(charAt(project, 3, 3)).not.toBe('C');
+  expect(charAt(project, 5, 5)).toBe('D');
+  project.showFrame(0);
+  expect(charAt(project, 3, 3)).toBe('C');
 });
 
 test('Clear edit layer on a still leaves it a still', async () => {

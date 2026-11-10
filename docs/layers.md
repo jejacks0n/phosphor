@@ -400,8 +400,9 @@ nudges each cell by its place in the grid. See [Characters](characters.md#how-th
       exactly instead. Shapes stay shapes.
 - **Clear layer** (top toolbar) removes everything you've drawn on the picked layer. The base layer isn't touched,
   and with the base or a vector layer picked it's off.
-  In an animation it clears that layer on the frame showing, what the frame inherits there included; the frame's
-  other layers and shapes stay.
+  In an animation it clears that layer on the frame showing and stops its carry there: what earlier frames have on
+  that layer no longer shows on the cleared frame, even what's drawn on them later, until you draw on it
+  ([Carrying and owning a cell](animation.md#carrying-and-owning-a-cell)). The frame's other layers and shapes stay.
 
 ## Erasing
 

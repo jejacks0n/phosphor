@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import assert from 'node:assert/strict';
-import { EMPTY_STATE, FRAME_KINDS, cellState, deserializeFrames, drawnKeys, foldDeleted, frameDiff, isEmptyState, newFrame, passedOn, resolveOver, serializeFrames } from '../../src/document/frames.js';
+import { EMPTY_STATE, FRAME_KINDS, cellState, cutKey, deserializeFrames, drawnKeys, foldDeleted, frameDiff, isEmptyState, newFrame, passedOn, resolveOver, serializeFrames } from '../../src/document/frames.js';
 import { MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES } from '../../src/lib/Cells.js';
 import { rectShape, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { shapeAt } from '../../src/document/tweens.js';
@@ -53,6 +53,21 @@ test('an explicit erase on a Blank frame carries forward', () => {
   assert.ok(resolved[0].has('1,1'));
   assert.ok(!resolved[1].has('1,1'));
   assert.ok(!resolved[2].has('1,1'));
+});
+
+test('a cut stops one layer\'s carry on a Blank frame and after it, whatever the frames before hold; a file keeps it, and refuses one holding a cell', () => {
+  const L1 = (at) => layerKey('L1', at);
+  const frames = [blank([['1,1', cellState(A, 0, 0)], [L1('2,2'), cellState(B, 0, 0)]]), blank([[cutKey('L1'), EMPTY_STATE], [L1('3,3'), cellState(A, 0, 0)]]), blank()];
+  const resolved = resolveAll(frames);
+  assert.deepEqual([...resolved[1].keys()].sort(), ['1,1', L1('3,3')]); // the edit layer's A still carries
+  assert.deepEqual([...resolved[2].keys()].sort(), ['1,1', L1('3,3')]);
+  assert.ok(!foldDeleted(frames[0], frames[1]).changes.has(L1('2,2'))); // frame 0 deleted: the cut frame still never showed it
+  const layers = { cells: new Set(['edit', 'L1']), vector: new Set() };
+  const json = { frames: serializeFrames(frames), frame: 0, fps: 8 };
+  const read = deserializeFrames(JSON.parse(JSON.stringify(json)), 20, 20, layers);
+  assert.ok(read.frames[1].changes.has(cutKey('L1')));
+  json.frames[1].changes.find(([key]) => key === cutKey('L1'))[1] = { char: 'X' };
+  assert.equal(deserializeFrames(JSON.parse(JSON.stringify(json)), 20, 20, layers), null);
 });
 
 test('a Wipe resolves to only its own changes', () => {
