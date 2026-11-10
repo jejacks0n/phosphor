@@ -1723,6 +1723,25 @@ test('a layer renamed or hidden is written, and restores with its name and eye',
   expect(project.hasVectorLayer).toBe(false);
 });
 
+test('picking another layer schedules no write; going to another frame still does', async () => {
+  const { project } = await opened();
+  const l1 = project.addLayer('cells', 'edit');
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  started.mockClear();
+  project.useLayer(l1);
+  project.useLayer('edit');
+  await pass(SAVE_AT_LEAST_EVERY_MS);
+  expect(started).not.toHaveBeenCalled();
+  project.addFrame('blank');
+  await pass(SAVE_AFTER_MS);
+  started.mockClear();
+  project.showFrame(0);
+  await pass(SAVE_AFTER_MS);
+  expect(started).toHaveBeenCalledTimes(1);
+  expect((await readLatest(project.documentId)).record.rest).toBeTruthy();
+});
+
 test('a stack of four layers survives a restore', async () => {
   const { project } = await opened();
   edit(project);

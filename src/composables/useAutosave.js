@@ -197,7 +197,8 @@ export function useAutosave() {
     return current.value;
   };
 
-  let swaps = project._frameSwaps;
+  let swaps = project._frameSwaps, frame = project.frame;
+  const CELLS = 2; // editCells' place below
   watch([
     () => project.documentId,
     () => project.editVersion,
@@ -207,10 +208,15 @@ export function useAutosave() {
     () => settingsJson(project),
     () => project.filename,
     () => project.imageBuffer, // merging into the image swaps it
-  ], () => {
-    if (project._frameSwaps === swaps) edited = true; // going to another frame replaces editCells, and is no edit
-    swaps = project._frameSwaps;
-    schedule(); // though the frame's kept
+  ], (values, before) => {
+    if (project._frameSwaps === swaps) edited = true; // going to another frame or layer replaces editCells, and is no edit
+    else {
+      swaps = project._frameSwaps;
+      const picked = project.frame === frame && values.every((value, i) => i === CELLS || value === before[i]);
+      frame = project.frame;
+      if (picked) return; // a layer picked: nothing of the record changed
+    }
+    schedule(); // a frame change: the frame's kept
   }, { flush: 'sync' }); // sync: beforeunload commits a typing run and reads current straight after
 
   // A save to a file isn't a change to the art, but the record has to say it happened. Opening a
