@@ -680,7 +680,8 @@ function drawnIn(project, rect, keep = null) {
 }
 
 // The vector layer Make art layer made in an animation (made, directly above the layer with the id src), part of the edit
-// just recorded: its undo takes the layer out after the art, and its redo puts the layer back first. The edit's own step
+// just recorded: its undo takes the layer out after the art, and its redo puts the layer back first, as it was when undone
+// (a rename or an eye isn't a step of its own). The edit's own step
 // carries every frame's shapes, which a whole-layer step would have to. None recorded (version unchanged): it goes.
 function withLayerMade(project, made, src, version) {
   const out = () => {
@@ -691,6 +692,7 @@ function withLayerMade(project, made, src, version) {
   if (!entry) return out();
   const { undo, redo } = entry;
   entry.undo = () => {
+    made = project.layerById(made.id) ?? made;
     undo();
     out();
   };
@@ -702,7 +704,8 @@ function withLayerMade(project, made, src, version) {
 }
 
 // Make art layer's art taken off the cells layer in use (inside rect, or only the wand's picked cells) onto a new vector
-// layer made directly above it, as one whole-layer step that adds the layer (layerOp); the art's key.
+// layer made directly above it, as one whole-layer step that adds the layer (layerOp); the art's key. Its redo puts the
+// layers back as they were when it was undone (a rename or an eye isn't a step of its own).
 function artOnNewLayer(project, art, rect, picked) {
   const src = project.editId, before = { stack: stackState(project), shapes: project.shapes };
   const paint = paintFrom(project.paintLayer, project.paintLayer.snapshot());
@@ -725,7 +728,11 @@ function artOnNewLayer(project, art, rect, picked) {
     project.render();
   };
   apply(after);
-  project.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(paint, editCells), { everyFrame: true, layerOp: true });
+  const undo = () => {
+    after.stack = { ...after.stack, layers: project.layers };
+    apply(before);
+  };
+  project.pushWholeLayer(undo, () => apply(after), bytesHeld(paint, editCells), { everyFrame: true, layerOp: true });
   return key;
 }
 

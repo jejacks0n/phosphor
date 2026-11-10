@@ -653,3 +653,29 @@ test('Make art layer in an animation makes the vector layer above in the same un
   expect(project.layers.map((l) => l.id)).toEqual([...ids, made.id]);
   expect(project.shapes.has(key)).toBe(true);
 });
+
+test('a redo of Make art layer brings the layer it made back as it was when undone, renamed and hidden, on a still or a movie', async () => {
+  for (const movie of [false, true]) {
+    const { project, workspace } = await blank();
+    const top = project.addLayer('cells', 'edit');
+    workspace.pickLayer(top);
+    project.typeAt(2, 1, 'Q', { fg: RED });
+    project.commitEdit();
+    if (movie) {
+      project.addFrame('blank');
+      project.showFrame(0);
+    }
+    await settle(project);
+    select(workspace, 1, 0, 4, 2);
+    project.makeArtLayer();
+    const id = project.layers.at(-1).id;
+    project.renameLayer(id, 'Sky');
+    project.setLayerHidden(id, true);
+    project.undo();
+    await settle(project);
+    expect(project.layerById(id)).toBeFalsy();
+    project.redo();
+    await settle(project);
+    expect(project.layerById(id)).toMatchObject({ name: 'Sky', hidden: true });
+  }
+});
