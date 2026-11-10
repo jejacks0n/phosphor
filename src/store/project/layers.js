@@ -147,7 +147,9 @@ export const layerActions = {
     const { id, values } = before, after = pick(this.charsOf(id), DITHER_KEYS);
     if (DITHER_KEYS.every((key) => String(values[key]) === String(after[key]))) return;
     this.commitPending();
-    this.pushEdit({ settingsOnly: true, undo: () => putChars(this, id, values), redo: () => putChars(this, id, after) }); // settingsOnly: kept when the grid changes (rendering.js dropEdits)
+    // settingsOnly: kept when the grid changes (rendering.js dropEdits). ownChars: a layer's own, which a room (one set of
+    // settings) can't hold: going live drops it (startSharing).
+    this.pushEdit({ settingsOnly: true, ownChars: id !== 'base', undo: () => putChars(this, id, values), redo: () => putChars(this, id, after) });
   },
 
   // A new layer of kind directly above the layer with the id above (on top when there's none), and its id, with the picked

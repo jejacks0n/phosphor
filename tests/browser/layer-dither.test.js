@@ -250,6 +250,34 @@ test('in a room the vector layer a host adds with Layer 1 picked takes Base\'s D
   }
 });
 
+test('going live drops a layer\'s own Dither steps, so undo in the room never brings one back', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await settle(project);
+  const vector = project.addLayer('vector', 'base');
+  project.setLayerChars('base', { dither: 20 }); // the base's own stays a step
+  project.commitLayerChars();
+  project.setLayerChars(vector, { dither: 30 });
+  project.commitLayerChars();
+  project.setLayerChars(vector, { dither: 0 });
+  project.commitLayerChars();
+  project.setLayerChars(vector, { dither: 20 });
+  project.commitLayerChars();
+  await settle(project);
+  expect(project.fitsRoom).toBe(true);
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  try {
+    project.undo();
+    expect(project.dither).toBe(0); // the base's step, undone: every layer follows
+    expect(dithers(project, vector).dither).toBe(0);
+    for (let i = 0; i < 4; i++) project.undo();
+    expect(dithers(project, vector).dither).toBe(project.dither);
+    expect(project.fitsRoom).toBe(true);
+  } finally {
+    project.stopSharing();
+  }
+});
+
 async function mountPanel() {
   host = document.createElement('div');
   document.body.append(host);

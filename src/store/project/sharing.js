@@ -194,6 +194,7 @@ export const sharingActions = {
     this.ensureLayer();
     this.setAnimate(false);
     this.history.dropThrough((entry) => entry.frameOp || entry.layerOp); // frames and layers' structure never travel, so nothing here can bring one back
+    this.history.retain((entry) => !entry.ownChars); // nor a layer's own settings: a room has one set
     this.historyVersion = this.history.version;
     const sum = this.editLayerSum();
     let sharing;
