@@ -201,7 +201,7 @@ test('coming back from Discord (?social=signed-in) with the room kept, a guest-t
   expect(await watcher.evaluate(() => sessionStorage.getItem('phosphor-rejoin'))).toBe(null);
 });
 
-test('a watcher\'s message reaches both with their name, a time and "(you)" only for the sender; the host\'s carries the host tag; » by Animate folds the panel away and counts what came since, « opens it again', async ({ page: host, context }) => {
+test('a watcher\'s message reaches both with their name, a time and "(you)" only for the sender; the host\'s carries the host tag; » in the panel's tabs folds the panel away and counts what came since, « opens it again', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
   // No messages yet: "You joined" is there once live, with nothing above it.
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');
@@ -227,7 +227,7 @@ test('a watcher\'s message reaches both with their name, a time and "(you)" only
   await expect(messages(watcher).nth(1).getByText('host', { exact: true })).toBeVisible();
   await expect(messages(host).nth(1)).toContainText('ansi-fan (you)');
 
-  // The side panel folds away on the arrow by Animate, which counts what's said meanwhile.
+  // The side panel folds away on the » in its tabs, whose « in the nav counts what's said meanwhile.
   const side = watcher.locator('.side-panel'), rail = watcher.locator('nav.workspace-tabs span.unread');
   await watcher.getByRole('button', { name: 'Fold the panel' }).click();
   await expect(watcher.getByRole('button', { name: 'Open the panel' })).toBeFocused();

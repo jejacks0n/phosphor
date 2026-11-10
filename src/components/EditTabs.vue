@@ -14,6 +14,7 @@ import { formatNumber } from '@/i18n/format';
 import { useTabIndicator } from '@/composables/useTabIndicator';
 import ModalDialog from '@/components/ModalDialog.vue';
 import LayersList from '@/components/LayersList.vue';
+import { toggleSidePanel } from '@/components/SidePanel.vue';
 
 const props = defineProps({
   modelValue: { type: String, required: true },
@@ -157,10 +158,10 @@ watch(tabs, () => nextTick(updateIndicator), { deep: true });
       <span class="track" aria-hidden="true"></span>
       <span class="word">{{ t('tabs.animate') }}</span>
     </label>
-    <!-- The side panel's fold, on a wide screen (a phone has none): folded, it takes no room, and this counts what was said. -->
-    <template v-if="isDesktop">
-      <button class="panel link" :aria-label="t(workspace.sidePanelFolded ? 'sidePanel.openAria' : 'sidePanel.foldAria')" :aria-expanded="!workspace.sidePanelFolded" @click="workspace.sidePanelFolded = !workspace.sidePanelFolded">{{ workspace.sidePanelFolded ? '«' : '»' }}</button>
-      <span v-if="workspace.sidePanelFolded && workspace.sidePanelUnread" class="unread">{{ workspace.sidePanelUnread }}</span>
+    <!-- The side panel's fold on a wide screen (a phone has none): while it's open the » is in the panel's own tabs; folded, it takes no room, and this « sits where that » was, with a count of what was said. -->
+    <template v-if="isDesktop && workspace.sidePanelFolded">
+      <span v-if="workspace.sidePanelUnread" class="unread">{{ workspace.sidePanelUnread }}</span>
+      <button class="panel link" :aria-label="t('sidePanel.openAria')" aria-expanded="false" @click="toggleSidePanel(workspace)">«</button>
     </template>
   </nav>
 </template>

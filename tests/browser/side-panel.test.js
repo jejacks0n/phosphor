@@ -1,5 +1,5 @@
 // The side panel (SidePanel.vue): LAYERS, and Social, which is CHAT while you're in a room; its width from its edge's keys,
-// kept in the browser and held between its narrowest and widest; folding away on the arrow by Animate (EditTabs.vue),
+// kept in the browser and held between its narrowest and widest; folding away on the » at its tabs' right end (and the « of EditTabs.vue in the same spot),
 // and the count of what was said while the chat wasn't showing. Dragging the edge with a real pointer is tests/e2e/side-panel.spec.js.
 import { test, expect, afterEach, beforeAll, afterAll } from 'vitest';
 import { page } from 'vitest/browser';
@@ -38,7 +38,7 @@ async function mount(before = () => {}) {
 const panel = () => host.querySelector('.side-panel');
 const words = (b) => [...b.childNodes].filter((n) => n.nodeType !== Node.COMMENT_NODE && !n.classList?.contains('beta')).map((n) => n.textContent).join('').trim().replace(/\s+/g, ' ');
 const tabs = () => [...host.querySelectorAll('.side-panel [role=tab]')].map((b) => [words(b), b.getAttribute('aria-selected')]);
-const arrow = () => host.querySelector('nav button.panel');
+const arrow = () => host.querySelector('button.panel');   // » in the panel's tabs while open, « in the nav while folded
 const grip = () => host.querySelector('[role=separator]');
 const press = async (key) => {
   grip().dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
@@ -59,11 +59,16 @@ test('out of a room it has LAYERS and Social (marked Beta); its edge\'s keys res
   expect(workspace.sidePanelFolded).toBe(false);   // open to begin with
   expect(panel().getBoundingClientRect().width).toBe(SIDE_PANEL.width);
   expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['»', 'Fold the panel', 'true']);
-  expect(arrow().previousElementSibling.matches('label.animate')).toBe(true); // right next to Animate
+  expect(arrow().parentElement.matches('.side-panel div.tabs')).toBe(true);   // at the right end of the panel's tabs
+  expect(arrow().previousElementSibling.matches('[role=tablist]')).toBe(true);
+  expect(host.querySelector('nav button.panel')).toBe(null);
   arrow().click();   // folded, it takes no width at all; and a fold is kept in the browser
   await nextTick();
   expect(panel().getBoundingClientRect().width).toBe(0);
   expect(panel().checkVisibility()).toBe(false);
+  expect(arrow().parentElement.matches('nav.workspace-tabs')).toBe(true);   // and the « is in the nav
+  await nextTick();
+  expect(document.activeElement).toBe(arrow());   // focus went with it
   expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['«', 'Open the panel', 'false']);
   expect(localStorage.getItem('phosphor.sidePanelFolded')).toBe('true');
   arrow().click();
@@ -175,9 +180,9 @@ test('the lobby says how many of who\'s here are signed in and how many are gues
 test('the marker on its picked tab is the editor tabs\' one: it slides to the tab picked', async () => {
   const { workspace } = await mount();
   const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  const marker = () => host.querySelector('.side-panel div.tabs .indicator');
+  const marker = () => host.querySelector('.side-panel div.tablist .indicator');
   const at = (i) => {
-    const list = host.querySelector('.side-panel div.tabs').getBoundingClientRect(), tab = host.querySelectorAll('.side-panel [role=tab]')[i].getBoundingClientRect();
+    const list = host.querySelector('.side-panel div.tablist').getBoundingClientRect(), tab = host.querySelectorAll('.side-panel [role=tab]')[i].getBoundingClientRect();
     return { transform: `translateX(${Math.round(tab.left - list.left)}px)`, width: `${Math.round(tab.width)}px` };
   };
   await new Promise((resolve) => setTimeout(resolve, 150));

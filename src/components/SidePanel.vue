@@ -1,6 +1,13 @@
 <script>
 // Its width in px: the narrowest and widest it drags to, where a double-click puts it, and an arrow key's step.
 export const SIDE_PANEL = { min: 240, max: 480, width: 280, step: 16 };
+
+// Fold or open it. The button that did it goes with it (» there, « in EditTabs), so focus follows to the one that's left.
+export async function toggleSidePanel(workspace) {
+  workspace.sidePanelFolded = !workspace.sidePanelFolded;
+  await nextTick();
+  document.querySelector('button.panel')?.focus();
+}
 </script>
 
 <script setup>
@@ -18,8 +25,8 @@ import LayersList from '@/components/LayersList.vue';
 
 // The column at the right of the whole app, on a wide screen: LAYERS, and Social, which is CHAT while you're in a
 // room. Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and the
-// arrow by Animate (EditTabs) folds it away entirely, then counts the messages you haven't seen, as the CHAT tab does
-// while LAYERS shows. Width and fold are kept in the browser; going into a room opens it on CHAT, and leaving shows the
+// » at the right end of its tabs folds it away entirely; EditTabs then shows « in that same spot, which brings it back
+// and counts the messages you haven't seen, as the CHAT tab does while LAYERS shows. Width and fold are kept in the browser; going into a room opens it on CHAT, and leaving shows the
 // lobby there.
 
 const workspace = useWorkspaceStore(), room = useRoomStore(), drawing = useDrawingStore(), social = useSocialStore();
@@ -32,7 +39,7 @@ const tab = computed(() => workspace.sidePanelTab);
 const chatShown = computed(() => room.inRoom && !workspace.sidePanelFolded && tab.value === 'social');
 
 // Messages (not who came and went) and an invitation to draw count while the chat isn't showing (sidePanelUnread, which
-// the arrow by Animate shows while the panel's folded).
+// the « in EditTabs shows while the panel's folded).
 const unread = computed(() => workspace.sidePanelUnread);
 watch(chatShown, (shown) => { if (shown) workspace.sidePanelUnread = 0; });
 watch(() => room.chat.at(-1)?.id, () => { if (!chatShown.value && room.chat.length && !room.chat.at(-1).presence) workspace.sidePanelUnread++; });
@@ -94,7 +101,8 @@ function key(e) {
         @dblclick="workspace.sidePanelWidth = SIDE_PANEL.width" @keydown="key"
     ></div>
     <div class="body">
-      <div ref="tabList" class="tabs" role="tablist">
+      <div class="tabs">
+        <div ref="tabList" class="tablist" role="tablist">
         <button role="tab" :aria-selected="tab === 'layers'" :class="{ on: tab === 'layers' }" @click="pick('layers')">{{ t('sidePanel.layers') }}</button>
         <button role="tab" :aria-selected="tab === 'social'" :class="{ on: tab === 'social' }" :aria-description="room.inRoom ? null : t('tabs.beta')" @click="pick('social')">
           {{ room.inRoom ? t('sidePanel.chat') : t('sidePanel.social') }}
@@ -102,6 +110,9 @@ function key(e) {
           <span v-else-if="!room.inRoom" class="beta" aria-hidden="true">{{ t('tabs.beta') }}</span>
         </button>
         <div class="indicator" :style="markerStyle" aria-hidden="true"></div>
+        </div>
+        <!-- The fold, at the row's right end: folded, EditTabs shows « at this same spot. -->
+        <button class="panel link" :aria-label="t('sidePanel.foldAria')" aria-expanded="true" @click="toggleSidePanel(workspace)">»</button>
       </div>
       <aside v-show="tab === 'layers'" class="layers" :aria-label="t('sidePanel.layers')">
         <LayersList/>
@@ -126,7 +137,7 @@ div.side-panel {
   font-size: 12px;
   color: var(--text-dim);
 }
-div.side-panel.folded {   /* folded away: no width at all, the arrow by Animate brings it back */
+div.side-panel.folded {   /* folded away: no width at all, EditTabs' « brings it back */
   display: none;
 }
 
@@ -165,6 +176,19 @@ div.tabs {
   border-radius: 5px 5px 0 0;
   border-bottom: 1px solid var(--border);
   background: var(--surface-0);
+}
+div.tablist {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  gap: 3px;
+}
+div.tabs button.panel {   /* as EditTabs' « folded, so it keeps its place */
+  align-self: center;
+  margin: 0 5px 7px 4px;   /* the right and bottom put it where EditTabs' « is (measured, at both) */
+  padding: 4px;
+  font-size: 14px;
 }
 div.tabs button[role='tab'] {
   position: relative;
@@ -210,7 +234,7 @@ div.tabs button[role='tab'].on {
 }
 div.indicator { /* the editor tabs' marker, along the picked tab's top */
   position: absolute;
-  top: 9px;
+  top: 0;
   left: 0;
   height: 4px;
   border-radius: 4px 4px 0 0;

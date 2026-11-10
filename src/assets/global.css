@@ -163,7 +163,7 @@ button.link:hover {
   text-decoration: underline;
 }
 
-/* A count of what you haven't seen: the side panel's CHAT tab, and the arrow by Animate while it's folded. */
+/* A count of what you haven't seen: the side panel's CHAT tab, and the « at the nav's right end while it's folded. */
 span.unread {
   min-width: 16px;
   padding: 1px 4px;
