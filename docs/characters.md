@@ -77,17 +77,18 @@ Each Art style offers its own ways:
   both colors; in Color ASCII the character and its ink color, on black; in Monochrome ASCII the
   character alone, white on black. Smoothing doesn't change these samples: they're always averaged.
 
-**Each layer has its own character settings**: Choose characters, the Characters set, the Character seed, Solids
-and Pattern light. The Characters section shows the layer picked in LAYERS, under its name, and what you change
+**Each layer has its own character settings**: Choose characters, the Characters set, the Character seed, Solids,
+Pattern light, and (for the base and vector layers, with a palette) Dither style and Dither. The Characters section shows the layer picked in LAYERS, under its name, and what you change
 there changes only how that layer's paint, picture or shapes become characters (the base's are its picture's). A
 new layer starts with the picked layer's, and a drawing from before layers had their own gives every layer the ones
 it had, so it looks the same. Where a layer's settings differ from the base's, a seam can show where its cells meet
 the ones under it. A layer with its own Best match or By shape picks the way the base does: By shape samples a vector
 layer's shapes inside each cell over what's under them, so a circle's edge gets the same characters on its own layer
 as it would on the base's, and Best match mixes its colors before the palette, so a soft edge can get a shade. Paint
-is matched by its halves (it covers whole half cells). No error carries between the cells of such a layer, so Dither
-doesn't pattern them. The Art style, the palette and Dither are the whole drawing's
-([Layers](layers.md#the-left-column)).
+is matched by its halves (it covers whole half cells). On such a layer its own Ordered Dither nudges each cell by its
+place, as on the base; its own Floyd–Steinberg doesn't carry error between Best match's or By shape's cells (they're
+matched one at a time over what's under them), so there it does nothing. The Art style and the palette are the whole
+drawing's ([Layers](layers.md#the-left-column)).
 
 Two sliders tune Best match and By shape:
 
@@ -98,7 +99,7 @@ Two sliders tune Best match and By shape:
   At 0% the mix is a plain average; at 100% it's mixed as light mixes on a screen, so a shade reads
   lighter than the average.
 
-**Dither** (under the palette) still applies. With Random, By intensity and By brightness it dithers the
+**Dither** (in the Characters section, with a palette) still applies. With Random, By intensity and By brightness it dithers the
 picture's pixels, as described in [Layers](layers.md). With Best match or By shape,
 Floyd–Steinberg carries each cell's error on to the cells after it (it can lag on very large
 documents, and while you edit the base layer, the cells under the edit settle when you let go), and

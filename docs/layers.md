@@ -116,12 +116,15 @@ Colorize, Posterize, Threshold, Blur, Edges, Simplify, Sharpen…) change the pi
 
 The settings on the left come in three sections, each following a layer:
 
-- **Drawing** (all layers): the grid's size, the Art style, the font, the color palette with its colors, Dither style
-  and Dither, then Transforms and Adjustments. They're the whole drawing's, whichever layer is picked.
+- **Drawing** (all layers): the grid's size, the Art style, the font and the color palette with its colors, then
+  Transforms and Adjustments. They're the whole drawing's, whichever layer is picked.
 - **Characters**, with the picked layer's name (inside an [art layer](vector.md#art-layers), its vector layer's):
-  Choose characters, the Characters set, the Character seed, Solids and Pattern light. Each layer has its own
+  Choose characters, the Characters set, the Character seed, Solids and Pattern light, and with a palette, for the
+  base and a vector layer, Dither style and Dither. Each layer has its own
   ([Characters](characters.md#how-the-converter-picks-characters)): changing them changes only how that layer's
-  paint, picture or shapes become characters. A line under the title says so for a layer above the base.
+  paint, picture or shapes become characters. A line under the title says so for a layer above the base. A cells
+  layer has no Dither: paint is never dithered. Changing a layer's Dither or Dither style is an undo step (a drag of
+  the slider is one).
   Every layer converts something (the base its picture, a cells layer its paint, a vector layer its shapes), so the
   section is always there. A new drawing picks Layer 1: to change how the picture becomes characters, pick the base.
 - **Picture · Base** and **Image filters**: Smoothing and the Image filters, which work on the picture itself. They
@@ -354,7 +357,7 @@ a neighboring palette color as the palette rebalances. (Typed cells' colors don'
 yet.) In an [animation](animation.md) there's one palette for the whole movie, picked from every frame,
 so colors stay put from frame to frame.
 
-**Dither** (under the palette, off at 0%) mixes the palette's colors in a fine pattern where the
+**Dither** (in the Characters section once there's a palette, off at 0%) mixes the palette's colors in a fine pattern where the
 picture falls between them, so a gradient comes out smooth instead of in flat bands. **Floyd–Steinberg**
 scatters them like grain; **Ordered (Bayer)** lays them in a regular crosshatch. It works on the
 picture and your base edits, two pixels a cell like everything else, so more columns make a finer
@@ -365,6 +368,14 @@ base pixels can: with Floyd–Steinberg, the pattern after the change shifts wit
 With **Best match** or **By shape** choosing the characters, Dither works on the cells instead of
 the pixels: Floyd–Steinberg carries each cell's error on to the cells after it, and Ordered (Bayer)
 nudges each cell by its place in the grid. See [Characters](characters.md#how-the-converter-picks-characters).
+
+Each layer that converts like a picture has its own Dither and Dither style, in its Characters section: the base for
+its picture, a vector layer for its shapes. A vector layer whose Dither is the base's converts with the picture, and
+dithers with it. One with its own dithers its shapes the same way: Ordered nudges each half its shapes cover by its
+place in the grid, so a shape shows the pattern it would on the base; Floyd–Steinberg carries the error between the
+pixels its shapes cover (not into what's under them). While you drag one of its shapes, the pattern outside what you
+drag holds still, and it settles over the whole layer when you let go. A drawing from before layers had their own
+Dither gives every layer the one it had, so it looks the same.
 
 ## Moving things between layers
 

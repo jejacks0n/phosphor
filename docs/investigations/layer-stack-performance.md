@@ -622,6 +622,25 @@ of a layer painted all over, 300 x 200 under those sliders: 1.88 → 1.46 s (80 
 with no reaching at all. This is the one area whose output changes: where the old descent from `hex` stopped short,
 the stored color is now a nearer one (it shows the same or nearer).
 
+## 12. An upper layer's own Floyd–Steinberg (added with per-layer Dither)
+
+Each layer now has its own Dither (`CHAR_KEYS`). An upper vector layer with Floyd–Steinberg on carries error between
+the pixels its shapes cover, so `composeUpper` walks it a whole row at a time over every cell it visits
+(`Renderer #ditherLayer`), not cell by cell; the layers between two such layers are still walked cell by cell. It's
+marked `ponytail:` twice in `Renderer.js`.
+
+- **During an edit** it holds still: the edit's cells are worked out with no error coming in, the rest stay. A drag of
+  a 20 x 20 rect over a layer covering a 300 x 200 grid: 0.5 ms a move (measured).
+- **At the edit's end** (`commitEdit`, and any compose outside an edit that reaches the layer: an undo, a heard
+  change), the layer is worked out again over every cell it reaches (`#settled`), with every upper layer over those
+  cells: **35 to 37 ms** for that 300 x 200 layer reaching 47k cells (measured; a whole `applyEditCells` of the same
+  document is 24 to 35 ms). Nothing is spent for a layer with Dither off or Ordered (Bayer, a nudge by place, per
+  cell).
+- **Memory:** an error buffer the size of the grid (3 floats a grid pixel) per such layer per compose: about 1.4 MB at
+  300 x 200, 6 MB at the limit, dropped after.
+- **Next, if it shows:** keep two rows of the error buffer instead of the grid's; at the edit's end, start the walk at
+  the first row the edit reached (the error before it is unchanged) instead of the layer's top.
+
 ## How this was measured
 
 Two scratch Vitest browser benchmarks, kept outside the repo and not part of `npm test`:
