@@ -242,6 +242,7 @@ button.pick {
   padding: 0 6px;
   border: 0;
   background: none;
+  box-shadow: none;
   font-size: 12px;
   text-align: left;
   color: var(--text-dim);
