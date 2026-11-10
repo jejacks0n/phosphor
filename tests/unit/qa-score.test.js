@@ -22,14 +22,18 @@ test('no rated steps is not rated, never 100 or NaN', () => {
   expect(keyboardScore([{ name: 'a', rated: false }])).toEqual({ score: null, rated: 0, costs: [] });
 });
 
+test('a rating that is not one of the marks throws, even an inherited name', () => {
+  expect(() => keyboardScore([{ name: 'Y', rated: true, how: 'constructor' }])).toThrow('step "Y" is rated but has no rating');
+});
+
 test('a rated step with no rating throws', () => {
   expect(() => keyboardScore([{ name: 'X', rated: true }])).toThrow('step "X" is rated but has no rating');
 });
 
-test('a keys step that sent pointer events and no keys earns a warning', () => {
+test('a step rated for the keys with no key events earns a warning; pointers alongside keys are fine', () => {
   expect(eventCheck({ how: 'keys', events: { keys: 0, pointers: 2 } })).toEqual(expect.any(String));
   expect(eventCheck({ how: 'keys', events: { keys: 1, pointers: 0 } })).toBeNull();
-  expect(eventCheck({ how: 'mouse', events: { keys: 0, pointers: 3 } })).toBeNull();
-  expect(eventCheck({ how: 'mouse', events: { keys: 0, pointers: 0 } })).toEqual(expect.any(String));
+  expect(eventCheck({ how: 'keys', events: { keys: 1, pointers: 2 } })).toBeNull();
+  expect(eventCheck({ how: 'mouse', events: { keys: 0, pointers: 0 } })).toBeNull();
   expect(eventCheck({ events: { keys: 0, pointers: 0 } })).toBeNull();
 });

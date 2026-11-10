@@ -27,7 +27,9 @@ function stepLines(step) {
 
 export function renderReport(run) {
   const out = [];
-  if (SOFTWARE.test(run.machine?.renderer || '')) out.push('Software renderer: timings are not real', '');
+  const renderer = run.machine?.renderer;
+  if (!renderer) out.push('Renderer unknown: timings may not be real', '');
+  else if (SOFTWARE.test(renderer)) out.push('Software renderer: timings are not real', '');
   const { persona, seed, traits = {}, commit, scriptCommit, machine = {} } = run;
   out.push(`# QA run: ${persona}, seed ${seed}`, '');
   out.push(`- Traits: ${Object.entries(traits).map(([k, v]) => `${k} ${v}`).join(', ')}`);

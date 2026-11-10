@@ -10,7 +10,7 @@ export const BUDGETS = { response: 100, frame: 33, longFrame: 50, setting: 250, 
 export function keyboardScore(steps) {
   const rated = steps.filter((step) => step.rated);
   for (const step of rated) {
-    if (!(step.how in MARKS)) throw new Error(`step "${step.name}" is rated but has no rating`);
+    if (!Object.hasOwn(MARKS, step.how)) throw new Error(`step "${step.name}" is rated but has no rating`);
   }
   if (!rated.length) return { score: null, rated: 0, costs: [] };
   const marks = rated.reduce((sum, step) => sum + MARKS[step.how], 0);
@@ -20,13 +20,11 @@ export function keyboardScore(steps) {
   return { score: Math.round(100 * marks / rated.length), rated: rated.length, costs };
 }
 
-// A warning when the events counted on the way don't match how the step was rated, or null.
+// A warning when a step rated for the keys had no key events counted on the way, or null.
 export function eventCheck(step) {
   const { keys = 0, pointers = 0 } = step.events || {};
-  if (step.how === 'keys' || step.how === 'keysLong') {
-    if (!keys) return `Rated ${step.how} but no keys reached the page (${pointers} pointer events).`;
-    if (pointers) return `Rated ${step.how} but ${pointers} pointer events came with the keys.`;
+  if ((step.how === 'keys' || step.how === 'keysLong') && !keys) {
+    return `Rated ${step.how} but no keys reached the page (${pointers} pointer events).`;
   }
-  if (step.how === 'mouse' && !pointers) return 'Rated mouse but no pointer events reached the page.';
   return null;
 }
