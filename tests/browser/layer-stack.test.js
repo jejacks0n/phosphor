@@ -191,7 +191,9 @@ test('paint on an upper layer over a typed cell covers it as paint covers edit c
 
 test('undo and redo of an upper layer\'s edits, a fill of the whole layer among them, don\'t run the lower group or the pipeline', async () => {
   const { project } = await blank();
-  project.paintStroke([{ x: 9, y: 9, alpha: 1 }], '#0000ff'); // on the lower group's layer: in the output, not in the last render's cells
+  project.render();
+  await settle(project);
+  project.paintStroke([{ x: 9, y: 9, alpha: 1 }], '#0000ff'); // on the lower group's layer after the last render: in the output, not in its cells
   project.commitEdit();
   const top = project.addLayer('cells', 'edit');
   project.useLayer(top);
@@ -203,7 +205,7 @@ test('undo and redo of an upper layer\'s edits, a fill of the whole layer among 
   project.commitEdit();
   await settle(project);
   const rendered = async () => { project.render(); await settle(project); return cellsKey(project); };
-  const filled = await rendered();
+  const filled = cellsKey(project); // no render here: the lower stroke stays out of the last render's cells
   const updateCells = vi.spyOn(project.renderer, 'updateCells'), composite = vi.spyOn(project.renderer, 'composite'), pipeline = vi.spyOn(project.renderer, 'render');
   project.undo();
   const unfilled = cellsKey(project);
