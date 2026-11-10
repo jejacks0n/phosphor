@@ -55,9 +55,9 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });
 
-// The dialog is at most 860px wide, so its two columns are side by side in a wide window, and stacked once the window
-// is barely wider than a phone's.
-test('Set up your room: the radio buttons look like the checkboxes; the room beside its lobby card when there\'s room, stacked when there isn\'t; link-only has no card', async ({ page }) => {
+// The dialog is at most 860px wide, and its columns are as wide as Settings and stats' are: side by side in any window
+// wide enough for SOCIAL at all.
+test('Set up your room: the radio buttons look like the checkboxes; the room\'s settings beside its lobby card, down to the narrowest window; link-only has no card', async ({ page }) => {
   await startPage(page);
   const setup = shown(page, 'start-room');
   const style = (el) => el.evaluate((input) => {
@@ -70,22 +70,24 @@ test('Set up your room: the radio buttons look like the checkboxes; the room bes
   await expect.poll(async () => [await style(radio), { ...await style(checkbox), radius: '50%' }])
     .toEqual([{ appearance: 'none', width: '16px', radius: '50%', background: 'rgb(232, 2, 252)' }, { appearance: 'none', width: '16px', radius: '50%', background: 'rgb(232, 2, 252)' }]);
   const card = setup.getByRole('region', { name: 'Lobby card' });
+  const settings = setup.locator('section.settings').filter({ hasText: 'Room settings' });
   const name = setup.getByRole('textbox', { name: 'Room name' });
-  await expect(card.getByRole('group', { name: 'Signal' })).toBeVisible();
-  await expect(card.getByRole('region', { name: 'Lobby picture' })).toBeVisible();
-  let [field, box] = [await name.boundingBox(), await card.boundingBox()];
-  expect(box.x).toBeGreaterThan(field.x + field.width);   // beside
-  expect(Math.abs(box.y - field.y)).toBeLessThan(40);
+  const signal = card.getByRole('combobox', { name: 'Signal' });
+  await expect(signal).toBeVisible();
+  await expect(setup.getByRole('region', { name: 'Lobby picture' })).toBeVisible();
+  let [field, box] = [await name.boundingBox(), await signal.boundingBox()];
+  expect(box.x).toBeGreaterThan(field.x + field.width);   // beside, its first field level with the room's
+  expect(Math.abs(box.y - field.y)).toBeLessThan(1);
+  let first = await settings.boundingBox();
   const wide = await setup.getByRole('button', { name: 'Go live' }).boundingBox();   // as wide as the first column
-  expect(Math.abs(wide.x - field.x)).toBeLessThan(1);
-  expect(Math.abs(wide.width - field.width)).toBeLessThan(1);
+  expect(Math.abs(wide.x - first.x)).toBeLessThan(1);
+  expect(Math.abs(wide.width - first.width)).toBeLessThan(1);
 
   await page.setViewportSize({ width: 769, height: 1000 });
-  await expect.poll(async () => (await card.boundingBox()).y).toBeGreaterThan((await name.boundingBox()).y + 100);   // below
-  [field, box] = [await name.boundingBox(), await card.boundingBox()];
-  expect(Math.abs(box.x - field.x)).toBeLessThan(1);
-  const live = await setup.getByRole('button', { name: 'Go live' }).boundingBox();   // one column: as wide as it
-  expect(Math.abs(live.width - field.width)).toBeLessThan(1);
+  await expect.poll(async () => (await setup.boundingBox()).width).toBeLessThan(700);
+  [first, box] = [await settings.boundingBox(), await card.boundingBox()];
+  expect(box.x).toBeGreaterThan(first.x + first.width);   // still beside
+  expect(Math.abs(box.y - first.y)).toBeLessThan(1);
 
   await page.setViewportSize({ width: 1400, height: 900 });
   await setup.getByRole('radio', { name: 'Unlisted (link only)' }).check();
@@ -112,12 +114,12 @@ test('going live with a public room: a name of only spaces isn\'t sent; the POST
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toHaveAccessibleDescription(/^Guests can watch/);
   await expect(page.getByRole('spinbutton', { name: 'Max watchers' })).toHaveAccessibleDescription(/^Rooms stream directly/);
   await expect(page.getByRole('textbox', { name: 'Welcome message' })).toHaveAccessibleDescription('0/200');
-  const signal = page.getByRole('group', { name: 'Signal' });
-  await expect(signal.locator('label')).toHaveText(['None', 'Wants feedback', 'Open to chat', 'Heads down']);
-  await expect(signal.getByRole('radio', { name: 'None' })).toBeChecked();
+  const signal = page.getByRole('combobox', { name: 'Signal' });
+  await expect(signal.locator('option')).toHaveText(['None', 'Wants feedback', 'Open to chat', 'Heads down']);
+  await expect(signal.locator('option:checked')).toHaveText('None');
   await expect(signal).toHaveAccessibleDescription('Shown on your room\'s card in the lobby.');
 
-  await signal.getByRole('radio', { name: 'Open to chat' }).check();
+  await signal.selectOption('Open to chat');
 
   const name = page.getByRole('textbox', { name: 'Room name' });
   await expect(name).toHaveAttribute('title', 'Use at least one character that isn\'t a space');   // the browser shows it with "match the format"
@@ -165,9 +167,9 @@ test('going live with a public room: a name of only spaces isn\'t sent; the POST
 test('a private room\'s password is optional: without one its link alone reaches it, and its page says to send the link', async ({ page }) => {
   const { room, server } = await startPage(page);
   await page.getByRole('textbox', { name: 'Room name' }).fill('just us');
-  await page.getByRole('radio', { name: 'Open to chat' }).check();   // chosen while public, then not sent
+  await page.getByRole('combobox', { name: 'Signal' }).selectOption('Open to chat');   // chosen while public, then not sent
   await page.getByRole('radio', { name: 'Unlisted (link only)' }).check();
-  await expect(page.getByRole('group', { name: 'Signal' })).toHaveCount(0);   // only lobby cards show a signal
+  await expect(page.getByRole('combobox', { name: 'Signal' })).toHaveCount(0);   // only lobby cards show a signal
   await expect(page.getByRole('textbox', { name: 'Password (optional)' })).not.toHaveAttribute('required');
   await page.getByRole('button', { name: 'Go live' }).click();
   await openStats(page);

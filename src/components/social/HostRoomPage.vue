@@ -122,11 +122,12 @@ const save = () => {
             <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> {{ t('social.start.allowGuests') }}</label>
             <label v-if="!draft.allowGuests && guests.length" class="choice kick"><input v-model="kickGuests" type="checkbox"> {{ kickLabel }}</label>
             <label>{{ t('social.start.maxWatchers') }} <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
-            <fieldset v-if="room.room.public">
-              <legend>{{ t('social.start.signal') }}</legend>
-              <label class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="null"> {{ t('common.none') }}</label>
-              <label v-for="(words, value) in signalWords" :key="value" class="choice"><input v-model="draft.signal" type="radio" name="signal" :value="value"> {{ words }}</label>
-            </fieldset>
+            <label v-if="room.room.public">{{ t('social.start.signal') }}
+              <select v-model="draft.signal">
+                <option :value="null">{{ t('common.none') }}</option>
+                <option v-for="(words, value) in signalWords" :key="value" :value="value">{{ words }}</option>
+              </select>
+            </label>
             <button type="submit">{{ done === 'saved' ? t('common.saved') : t('common.save') }}</button>
           </form>
           <div class="facts">
@@ -272,19 +273,6 @@ textarea {
   min-height: calc(3lh + 18px);   /* 3 lines, the padding and the border; it grows to fit the message */
   field-sizing: content;
   resize: vertical;
-}
-fieldset {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin: 0;
-  padding: 0;
-  border: none;
-}
-legend {   /* as the labels */
-  margin-bottom: 5px;
-  padding: 0;
-  font-weight: 500;
 }
 label.kick {   /* under Allow guests, as part of it */
   margin-top: -4px;

@@ -94,10 +94,12 @@ test('settings are the welcome, guests and max watchers; listed or link only and
 test('a listed room\'s signal can be changed: the room\'s is chosen to begin with, and Save sends the new one', async () => {
   const { room } = await mount({ room: { name: 'neon harbor', welcome: '', public: true, allowGuests: true, max: 12, count: 0, signal: 'feedback' } });
   const changed = vi.spyOn(room, 'changeSettings').mockImplementation(() => {});
-  const radio = (text) => [...host.querySelectorAll('fieldset label')].find((l) => l.textContent.trim() === text).querySelector('input');
-  expect(host.querySelector('fieldset legend').textContent).toBe('Signal');
-  expect(radio('Wants feedback').checked).toBe(true);
-  radio('Open to chat').click();
+  const select = host.querySelector('select');
+  expect(select.closest('label').textContent.trim()).toMatch(/^Signal/);   // a select, named by its label
+  expect([...select.options].map((o) => o.text)).toEqual(['None', 'Wants feedback', 'Open to chat', 'Heads down']);
+  expect(select.selectedOptions[0].text).toBe('Wants feedback');
+  select.selectedIndex = 2;
+  select.dispatchEvent(new Event('change'));
   await nextTick();
   host.querySelector('form button[type=submit]').click();
   expect(changed).toHaveBeenLastCalledWith({ welcome: '', allowGuests: true, max: 12, signal: 'chat' });
@@ -344,4 +346,23 @@ test('three cells layers: Go live is off and says why', async () => {
   expect(goLive.disabled).toBe(true);
   expect(goLive.title).toBe(words);
   expect(host.querySelector('p.no-art').textContent).toBe(words);
+});
+
+test('Set up your room: the signal is a select in the lobby card, and choosing one sets the room\'s; a link-only room has none', async () => {
+  await createTestApp();
+  const room = useRoomStore();
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp(StartRoomPage).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const select = host.querySelector('section.settings select');
+  expect([...select.options].map((o) => o.text)).toEqual(['None', 'Wants feedback', 'Open to chat', 'Heads down']);
+  expect(select.selectedOptions[0].text).toBe('None');
+  select.selectedIndex = 3;
+  select.dispatchEvent(new Event('change'));
+  expect(room.startDraft.signal).toBe('heads-down');
+  room.startDraft.isPublic = false;
+  await nextTick();
+  expect(host.querySelector('select')).toBe(null);
 });

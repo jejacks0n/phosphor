@@ -149,7 +149,7 @@ you out everywhere else. Signed out, it has a **Sign in** link back.
 ## Starting a room
 
 **Start a room** needs some art open in Phosphor: it's the art you share. It opens **Set up your room**
-in the lobby, in place of the public rooms (the column beside stays), and asks for:
+in a box over everything, laid out as your room's Settings and stats will be: a **Room settings** box that asks for:
 
 - **Room name**: up to 60 characters.
 - **Welcome message**: a few lines (up to 200 characters) on what you're working on and what you'd
@@ -157,9 +157,6 @@ in the lobby, in place of the public rooms (the column beside stays), and asks f
 - **Who can join**: *Anyone, in the lobby* (a public room) or *Only with the link* (a private
   room, kept out of the lobby). A private room can also have a **password**, if you want people to
   need both; without one, the link alone lets them in.
-- **Signal**, for a public room: *None*, *Wants feedback*, *Open to chat* or *Heads down*. It's
-  shown on your room's card in the lobby, and the lobby's filters use it. A private room has no card,
-  so it has no signal.
 - **Allow guests**: whether people who haven't signed in can watch. Guests can only watch. Turned
   off while you're live, no new guest gets in and a guest who leaves can't come back; the guests
   already in the room stay unless you also tick **Kick the guests here too**. While guests are
@@ -168,10 +165,12 @@ in the lobby, in place of the public rooms (the column beside stays), and asks f
 - **Max watchers**: from 1 to 30 (12 to begin with; a higher number goes back to 30). Each watcher uses some of your upload speed,
   and 12 suits most home connections.
 
-For a room in the lobby, Set up your room also has a **Lobby card** group: the **Signal**, and the **Lobby
-picture**, the part of the art its card will show, as the host's page does while you're live (see
-**Lobby picture** under Hosting); a position you pin there is kept when you go live. With room to
-spare it sits beside the rest of the form; in a narrower window, below it.
+For a room in the lobby, Set up your room also has a **Lobby card** box with the **Signal**, picked from a list:
+*None*, *Wants feedback*, *Open to chat* or *Heads down*. It's shown on your room's card in the lobby, and the
+lobby's filters use it (a private room has no card, so it has no signal). Under it is the **Lobby picture**, the
+part of the art its card will show, as the host's page does while you're live (see **Lobby picture** under
+Hosting); a position you pin there is kept when you go live. With room to spare these sit beside Room settings; in
+a narrower window, below them.
 
 **Go live** shares the art you have open, and the box closes; its close button (**×**) leaves without starting it. You
 keep drawing as usual, and watchers see each change as you make it, with a box in your name color for where your
