@@ -242,11 +242,11 @@ export const vectorActions = {
   // back no further than here.
   // What's pending is committed first; the selection and any float go. Leaving the ANSI tab steps out. False for a key
   // that's no art layer, when you're inside one already, or for one someone else in the room is drawing in
-  // (lockedBy): one person at a time, and while the vector layer is hidden (a toast says so). An animation playing is paused first (once none of those refuses), on the frame
+  // (lockedBy): one person at a time, and while its vector layer is hidden (a toast says so). An animation playing is paused first (once none of those refuses), on the frame
   // showing, as a press would, which would otherwise step out again; false too if the layer isn't on that frame.
   enterArt(key) {
     if (!isArt(this.shapes.get(key)) || this._artInside || this.lockedBy(key)) return false;
-    if (this.layerHidden('vector')) { // inside, every stroke would be refused
+    if (this.layerHidden(this.shapes.get(key).layer ?? 'vector')) { // its vector layer: inside, every stroke would be refused
       toast(t('layers.hiddenToast'));
       return false;
     }

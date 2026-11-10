@@ -679,3 +679,37 @@ test('a redo of Make art layer brings the layer it made back as it was when undo
     expect(project.layerById(id)).toMatchObject({ name: 'Sky', hidden: true });
   }
 });
+
+// [base, vector, edit, a vector layer above it], with an art layer made from the edit layer: it lands on the upper one.
+async function artOnUpper() {
+  const app = await blank();
+  const { project, workspace } = app;
+  project.addLayer('vector', 'base');
+  const upper = project.addLayer('vector', 'edit');
+  workspace.pickLayer('edit');
+  project.typeAt(2, 1, 'H', { fg: RED });
+  project.commitEdit();
+  select(workspace, 1, 0, 6, 2);
+  const key = project.makeArtLayer();
+  expect(project.shapes.get(key).layer).toBe(upper);
+  await settle(project);
+  return { ...app, upper, key };
+}
+
+test('an art layer on a vector layer above the first goes by its own layer\'s eye, and its row shows as picked inside', async () => {
+  const { project, workspace, upper, key } = await artOnUpper();
+  project.setLayerHidden(upper, true);
+  await settle(project);
+  toastMessage.value = null;
+  expect(project.enterArt(key)).toBe(false);
+  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(project.artInside).toBe(null);
+
+  project.setLayerHidden(upper, false);
+  project.setLayerHidden('vector', true); // the first one's eye has nothing to do with it
+  await settle(project);
+  expect(project.enterArt(key)).toBe(true);
+  expect(workspace.shownPick).toBe(upper); // LayersList's highlighted row
+  expect(project.shownLayers.some((layer) => layer.id === project.editId)).toBe(true); // the art's drawing shows
+  project.leaveArt();
+});

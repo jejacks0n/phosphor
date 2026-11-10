@@ -28,24 +28,6 @@ async function artOnUpper() {
   return { ...app, upper, key };
 }
 
-test('an art layer on a hidden vector layer above the first can\'t be stepped into', async () => {
-  const { project, upper, key } = await artOnUpper();
-  project.setLayerHidden(upper, true);
-  await settle(project);
-  toastMessage.value = null;
-  expect(project.enterArt(key)).toBe(false); // docs/layers.md: "an art layer on it can't be stepped into (Edit art), with the same message"
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
-  expect(project.artInside).toBe(null);
-});
-
-test('an art layer on a shown vector layer can be stepped into while the first vector layer is hidden', async () => {
-  const { project, key } = await artOnUpper();
-  project.setLayerHidden('vector', true);
-  await settle(project);
-  expect(project.enterArt(key)).toBe(true);
-  project.leaveArt();
-});
-
 test('Make art layer into a hidden vector layer doesn\'t make the drawing vanish', async () => {
   const { project, workspace } = await blank();
   const upper = project.addLayer('vector', 'edit'); // directly above the edit layer: where Make art layer puts the art
@@ -62,11 +44,4 @@ test('Make art layer into a hidden vector layer doesn\'t make the drawing vanish
   // Either it's refused and says so, or what showed still shows.
   if (key) expect(cellsKey(project)).toEqual(shown);
   else expect(toastMessage.value).toBeTruthy();
-});
-
-test('inside an art layer on a vector layer above the first, that layer\'s row shows as picked', async () => {
-  const { project, workspace, upper, key } = await artOnUpper();
-  expect(project.enterArt(key)).toBe(true);
-  expect(workspace.shownPick).toBe(upper); // LayersList highlights shownPick: Vector 1's row lights up instead
-  project.leaveArt();
 });

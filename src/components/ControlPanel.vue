@@ -39,7 +39,7 @@ const sliderGroups = computed(() => [
 // layer has the bottom's (followBase).
 const picked = computed(() => {
   if (store._sharing) return 'base';
-  const id = store.artInside ? store.shapes.get(store.artInside)?.layer ?? 'vector' : workspace.pickedLayer;
+  const id = store.artInside ? store.drawsOn : workspace.pickedLayer;
   return store.layerById(id) ? id : 'base';
 });
 const pickedKind = computed(() => store.layerById(picked.value).kind);

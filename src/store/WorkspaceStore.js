@@ -159,7 +159,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selectedKeys: [],        // the keys selected there, of the first selected shape: [{ part, at }] (keys.js's refs)
   }),
   getters: {
-    shownPick: (state) => (useProjectStore().artInside ? 'vector' : state.pickedLayer), // inside an art layer the vector row shows as picked
+    shownPick: (state) => (useProjectStore().artInside ? useProjectStore().drawsOn : state.pickedLayer), // inside an art layer its vector layer's row shows as picked
     activeTool(state) {
       return state[toolKey(state.editorTab)];
     },

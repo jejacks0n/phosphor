@@ -201,8 +201,8 @@ export const useProjectStore = defineStore('project', {
     cellsOf() { return (id) => (id === this.editId ? this.editCells : this._layerData.get(id)?.editCells ?? NO_CELLS); },
     paintOf() { return (id) => (id === this.editId ? this.paintLayer : this._layerData.get(id)?.paintLayer ?? null); },
     // The layers that show: the bottom always (its eye is the renderer's hideBase), and the rest while their eye is open.
-    // Inside an art layer the edit layer's fields hold the art layer's drawing, so the vector layer's eye decides for them.
-    shownLayers() { return this.layers.filter((layer, at) => !at || !this.layerHidden(this._artInside && layer.id === this.editId ? 'vector' : layer.id)); },
+    // Inside an art layer the edit layer's fields hold the art layer's drawing, so its vector layer's eye decides for them.
+    shownLayers() { return this.layers.filter((layer, at) => !at || !this.layerHidden(layer.id === this.editId ? this.drawsOn : layer.id)); },
     // The layers the renderer's pipeline converts as one block, and those laid over it (layerInfo.js: lowerGroup).
     lowerGroup() { return lowerGroup(this.shownLayers, this.baseChars); },
     // The cells layer in use is above the lower group (or hidden): an edit to it leaves the group as it is.
