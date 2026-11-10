@@ -63,3 +63,10 @@ test('Make art layer into a hidden vector layer doesn\'t make the drawing vanish
   if (key) expect(cellsKey(project)).toEqual(shown);
   else expect(toastMessage.value).toBeTruthy();
 });
+
+test('inside an art layer on a vector layer above the first, that layer\'s row shows as picked', async () => {
+  const { project, workspace, upper, key } = await artOnUpper();
+  expect(project.enterArt(key)).toBe(true);
+  expect(workspace.shownPick).toBe(upper); // LayersList highlights shownPick: Vector 1's row lights up instead
+  project.leaveArt();
+});
