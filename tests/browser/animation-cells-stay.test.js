@@ -278,3 +278,11 @@ test('fuzz: cells drawn to carry and to stay stay drawn right, and undo and redo
   }
   expect(failures).toEqual([]);
 }, 300_000);
+
+test('Clear on the frame after a staying cell leaves no picture ghost of it: clear means empty', async () => {
+  const { project, workspace } = await hello(); // on frame 2, after the staying P
+  workspace.cellsStay = false;
+  project.clearEditLayer(); // the carried L under the P goes: the P would be a ghost on nothing
+  expect(project.editCells.size).toBe(0);
+  expect(project.pictureCells().size).toBe(0);
+});

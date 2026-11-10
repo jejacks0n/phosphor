@@ -670,7 +670,7 @@ export const animationActions = {
     if (!this.frame || this.currentFrame.kind !== 'blank') return picture;
     const prior = this.frames[this.frame - 1], { cols } = this, rows = charRowsOf(this.rows);
     let live = null;
-    for (const [key, state] of prior.changes) {
+    for (const [key, state] of carriedInto(prior.changes, this.currentFrame)) { // none of a layer it cuts
       if (!state.stays || isEmptyState(state) || (live ??= liveStates(this)).has(key)) continue;
       const { col, row } = parseKey(keyLayer(key).key);
       if (col < cols && row < rows) picture.add(cellIndex(col, row, cols));
