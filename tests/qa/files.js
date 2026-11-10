@@ -67,7 +67,7 @@ export function makeSceneAns() {
     ...esc('?33h'), ...esc('0m'),
     ...esc('1;37;44m'), ...text('╔══ QA Scene ══╗ ░▒▓█▀▄ ÉÍ» é'), ...esc('0m'), ...eol,
     ...esc('0;32m'), ...text('ab'), ...esc('10C'), ...esc('1;33m'), ...text('Z'), ...esc('s'),
-    ...esc('0;36m'), ...eol, ...text('below'), ...esc('u'), ...esc('0;35m'), ...text('R'), ...eol,
+    ...esc('0;36m'), ...eol, ...esc('u'), ...esc('0;35m'), ...text('R'), ...eol,
     ...esc('0;5;37;41m'), ...text('!'), ...esc('0m'), ...text(' a bright background'), ...eol,
     ...esc('0;33m'), ...text(fullLine), ...esc('0;31m'), ...text('Wrapped past the edge'), ...eol,
     ...esc('0m'), ...text('└──┘'),
