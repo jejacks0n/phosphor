@@ -234,8 +234,9 @@ export function storedShowingAs(params, target, palette = null) {
     near.sort((a, b) => a.d - b.d);
     if (near.length > STARTS) near.pop();
   };
-  // Rings of buckets out from the target's: done when nothing outside the cube scanned can be nearer than the starts found.
-  for (let ring = 0; ring < 16 && (near.length < STARTS || near[STARTS - 1].d > (ring * 16) ** 2); ring++) {
+  // Rings of buckets out from the target's: done when nothing outside the cube scanned can be nearer than the starts found
+  // (the target can sit at its bucket's edge, so the next ring's colors can be as near as the rings scanned so far, less one).
+  for (let ring = 0; ring < 16 && (near.length < STARTS || near[STARTS - 1].d > (Math.max(0, ring - 1) * 16) ** 2); ring++) {
     for (let r = Math.max(0, br - ring); r <= Math.min(15, br + ring); r++) for (let g = Math.max(0, bg - ring); g <= Math.min(15, bg + ring); g++) for (let b = Math.max(0, bb - ring); b <= Math.min(15, bb + ring); b++) {
       if (Math.max(Math.abs(r - br), Math.abs(g - bg), Math.abs(b - bb)) !== ring) continue; // the inner cube's done
       const bucket = buckets[(r << 8) | (g << 4) | b];
