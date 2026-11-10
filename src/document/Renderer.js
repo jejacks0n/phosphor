@@ -861,17 +861,23 @@ export default class Renderer {
     return out;
   }
 
-  // indexes (into n cells) and, for each Floyd–Steinberg layer (settles, bottom to top) that reaches any of them, every
-  // cell it reaches, in order.
+  // indexes (into n cells) and, for each Floyd–Steinberg layer (settles) that reaches any of them, every cell it reaches,
+  // in order: again until no layer adds any, as a higher layer's cells can reach a lower one's.
   // ponytail: the whole layer again from its top at an edit's end (35 ms for 300 x 200); start at the first row the
   // edit reached if that's too slow (docs/investigations/layer-stack-performance.md, area 12).
   #settled(indexes, settles, n) {
     const flags = new Uint8Array(n);
     for (const i of indexes) if (i < n) flags[i] = 1;
-    for (let at = 0; at < settles.length; at++) {
-      if (!settles[at]) continue;
-      const reached = this.upper[at].layer.reachedCells();
-      if (reached.some((i) => flags[i])) for (const i of reached) if (i < n) flags[i] = 1;
+    const waiting = new Set(settles.flatMap((settle, at) => (settle ? [at] : [])));
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const at of waiting) {
+        const reached = this.upper[at].layer.reachedCells();
+        if (!reached.some((i) => flags[i])) continue;
+        for (const i of reached) if (i < n) flags[i] = 1;
+        waiting.delete(at);
+        grew = true;
+      }
     }
     const cells = [];
     for (let i = 0; i < n; i++) if (flags[i]) cells.push(i);

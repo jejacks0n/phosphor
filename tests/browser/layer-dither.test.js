@@ -173,6 +173,32 @@ test('Floyd–Steinberg on an upper vector layer holds outside a drag until it e
   expect(cellsKey(project)).toEqual(ended);
 });
 
+test('two Floyd–Steinberg layers, one over the other: an edit that reaches only the higher one settles both', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, GRADIENT, { cols: 40, rows: 40 });
+  project.quantize = 'cga';
+  await settle(project);
+  const lower = project.addLayer('vector', 'edit'), higher = project.addLayer('vector', lower);
+  for (const id of [lower, higher]) project.setLayerChars(id, { dither: 100, ditherStyle: 'floyd' });
+  project.commitLayerChars();
+  workspace.pickLayer(lower);
+  project.addShape(rectShape(0, 0, 24, 40, MAUVE));
+  project.commitEdit();
+  workspace.pickLayer(higher);
+  project.addShape(rectShape(16, 0, 40, 1, { fill: '#aa3366' })); // a strip over the top of the lower one
+  const far = project.addShape(rectShape(30, 30, 34, 34, { fill: '#ff0000' })); // and a rect away from it
+  project.commitEdit();
+  await settle(project);
+  expect(project.lowerGroup.upper).toEqual([lower, higher]);
+  project.updateShapes([[far, transformed(project.shapes.get(far), translation(1, 1))]]);
+  await settle(project);
+  const moved = cellsKey(project);
+  project.renderer.reset();
+  project.render();
+  await settle(project);
+  expect(cellsKey(project)).toEqual(moved);
+});
+
 test('a document whose layers all have the base\'s Dither saves in the old form; one with its own saves as a stack and comes back', async () => {
   const { project, workspace } = await createTestApp();
   await loadImage(project, GRADIENT, { cols: 24, rows: 24 });
