@@ -223,15 +223,13 @@ test('an artist\'s host-only controls are off with the reason, Reset all and SAU
     await expect(panel.getByRole('button', { name })).toHaveAttribute('title', ONLY_HOST);
   }
 
-  // The base isn't the artist's to pick, and the Select tool's Merge up and down are the host's too.
+  // The base isn't the artist's to pick, and the Select tool's Merge down is the host's too.
   await artist.keyboard.press('Escape');
   await artist.getByRole('button', { name: 'Select', exact: true }).click();
   expect(await store(artist, 'workspace', (w) => [w.pickLayer('base'), w.pickedLayer])).toEqual([false, 'edit']);
-  for (const name of ['Merge up', 'Merge down']) {
-    const button = artist.locator('.edit-toolbar button.text').filter({ hasText: name });
-    await expect(button).toBeDisabled();
-    await expect(button).toHaveAttribute('title', ONLY_HOST);
-  }
+  const mergeDown = artist.locator('.edit-toolbar button.text').filter({ hasText: 'Merge down' });
+  await expect(mergeDown).toBeDisabled();
+  await expect(mergeDown).toHaveAttribute('title', ONLY_HOST);
 
   // Reset all is off for the artist, and the host's isn't.
   const reset = artist.getByRole('button', { name: 'RESET ALL' });
@@ -326,7 +324,7 @@ test('host alone again has its normal controls, and with the chat folded the art
 
   const clear = host.locator('.edit-toolbar .desktop-only button.primary').nth(3);
   await expect(clear).toBeEnabled();
-  await expect(clear).toHaveAttribute('title', /^Clear edit layer/);
+  await expect(clear).toHaveAttribute('title', /^Clear layer/);
   await expect(undoButton(host)).toBeEnabled();
   await host.locator('.edit-toolbar .desktop-only button.primary').nth(2).click();
   const dialog = host.getByRole('dialog', { name: 'Merge down' });

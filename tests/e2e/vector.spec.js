@@ -1082,7 +1082,7 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
   await pickLayer(page);
   await settled(page);
   await addRect(page, 10, 10, 30, 30);
-  const clear = page.getByTitle('Clear edit layer: erase everything on the edit layer.');
+  const clear = page.getByTitle('Clear layer: erase everything on Layer 1.');
   await expect(clear).toHaveCount(0);
   await pickLayer(page, 'Layer 1');
   await tab(page, 'ANSI').click();
@@ -1283,7 +1283,7 @@ test('on a Blank frame, the shapes it carries have dimmed outlines; one changed 
   expect((await matrix(page, key))[4]).toBe(0);
 });
 
-test('VECTOR\'s Merge down presses the selected shapes into the base, and ANSI\'s Merge down says shapes go too', async ({ page }) => {
+test('VECTOR\'s Merge down presses the selected shapes into the base', async ({ page }) => {
   await openApp(page);
   await pickLayer(page, 'Base'); // so + Vector layer puts the vector layer directly on the base, where its shapes press into it
   await pickLayer(page);
@@ -1299,13 +1299,4 @@ test('VECTOR\'s Merge down presses the selected shapes into the base, and ANSI\'
   await expect.poll(() => cells(page)).toEqual(shown);
   await page.keyboard.press('ControlOrMeta+z');
   expect((await shapeList(page)).map((s) => s.key).sort()).toEqual([a, b].sort());
-
-  await pickLayer(page, 'Layer 1');
-  await tab(page, 'ANSI').click();
-  await page.getByRole('button', { name: /^Merge down: flatten/ }).click();
-  const dialog = page.getByRole('dialog', { name: 'Merge down' });
-  await expect(dialog.getByText('Shapes are merged too, and stop being editable.')).toBeVisible();
-  await dialog.getByRole('button', { name: /^Keep crisp cells/ }).click();
-  expect(await shapeList(page)).toEqual([]);
-  await expect.poll(() => cells(page)).toEqual(shown);
 });

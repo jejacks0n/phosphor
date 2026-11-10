@@ -139,8 +139,11 @@ function makeActions(project, workspace, r, opts) {
       let landed = sel;
       for (let k = 0; k < 1 + int(3) && landed; k++) landed = project.floatSelection(landed, ls, int(5) - 2, int(5) - 2);
     },
-    mergeUp: () => project.mergeUp(r() < 0.5 ? rect() : undefined),
-    mergeDown: () => project.mergeDown(r() < 0.5 ? rect() : null),
+    mergeDown: () => project.mergeDown(workspace.pickedLayer, r() < 0.5 ? rect() : null), // the picked layer into the one under it
+    makeArtLayer: () => { // the picked cells layer's drawing in a rect, into the vector layer above it (made there if missing)
+      workspace.selection = rect();
+      project.makeArtLayer();
+    },
     mergeShapes: () => project.mergeShapes(r() < 0.5 ? [pick([...project.shapes.keys()])].filter(Boolean) : null),
     clearEdit: () => project.clearEditLayer(),
     slider: () => {
@@ -323,6 +326,9 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
     if (forceRender && !held && s.shown !== s.full && realDiff(s.shown, s.full)) return { seed, log, problem: `step ${i} ${name}: shown cells differ from a full render`, diff: diffCells(s.shown, s.full) };
   }
   closeRun(stack, project, t, acc);
+  // A move run that came back where it started undid its step and left it redoable (floatSelection): a redo tail the run
+  // itself left, and still there after undoing and redoing everything.
+  const tail = project.canRedo;
   // a run still open on the last step (base typing, held above) is checked once it's closed
   const end = await snap(project, workspace, { forceRender });
   if (forceRender && end.shown !== end.full && realDiff(end.shown, end.full)) return { seed, log, problem: 'after closeRun: shown cells differ from a full render', diff: diffCells(end.shown, end.full) };
@@ -343,7 +349,7 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
     const bad = compare(stack[i], s);
     if (bad.length) return { seed, log, problem: `redo to state ${i}: ${bad.join(',')} differ`, diff: bad.includes('full') ? diffCells(stack[i].full, s.full) : null, want: pickKeys(stack[i], bad), got: pickKeys(s, bad) };
   }
-  if (project.canRedo) return { seed, log, problem: 'canRedo still true at the end' };
+  if (project.canRedo !== tail) return { seed, log, problem: `canRedo ${project.canRedo} at the end` };
   return null;
 }
 
@@ -384,7 +390,7 @@ for (const quantize of ['none', 'count']) {
 
 test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
-  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'combineShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeUp', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'combineShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
   for (const seed of seeds([1, 2, 3, 4, 6])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
@@ -394,7 +400,7 @@ test('fuzz: shapes among typing, paint, selections and merges', async () => {
 
 test('fuzz: typing, paint and selections across two cells layers and the base, added, deleted, duplicated and picked', async () => {
   const failures = [];
-  const only = ['type', 'typingRun', 'paint', 'move', 'del', 'copyPaste', 'clearEdit', 'addLayer', 'addLayer', 'pickLayer', 'pickLayer', 'pickBase', 'deleteLayer', 'duplicateLayer'];
+  const only = ['type', 'typingRun', 'paint', 'move', 'del', 'copyPaste', 'clearEdit', 'addLayer', 'addLayer', 'pickLayer', 'pickLayer', 'pickBase', 'deleteLayer', 'duplicateLayer', 'mergeDown', 'makeArtLayer'];
   for (const seed of seeds([1, 2, 3, 4])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
@@ -485,7 +491,7 @@ test('the history cap: undo stops at the 50th step back, exactly there', async (
   const states = [await snap(project, workspace)];
   for (let i = 0; i < 60; i++) {
     if (i % 7 === 3) dragSlider(project, 'hue', [10 * i]);
-    else if (i % 11 === 5) project.mergeDown({ c0: 0, r0: 0, c1: 20, r1: 10 });
+    else if (i % 11 === 5) project.mergeDown('edit', { c0: 0, r0: 0, c1: 20, r1: 10 });
     else { project.paintStroke([{ x: i % 40, y: (3 * i) % 40, alpha: 1 }, { x: (i + 1) % 40, y: (3 * i) % 40, alpha: 1 }], COLORS[i % COLORS.length]); project.commitEdit(); }
     states.push(await snap(project, workspace));
   }
@@ -620,25 +626,10 @@ test('stale pin: pasting base content over an erased cell shows the converter ch
   expect(`${shown.char}${shown.fg.hex}${shown.bg.hex}`).toBe(`${full.char}${full.fg.hex}${full.bg.hex}`);
 });
 
-test('stale pin: Merge up right after that paste freezes the old pinned space into an edit cell', async () => {
-  const { project, workspace } = await createTestApp();
-  await drawnDocument(project, workspace, { cols: 40, rows: 40 });
-  const block = project.copySelection({ c0: 30, r0: 9, c1: 30, r1: 9 }, ['base']);
-  project.pasteSelection(block, 15, 9);
-  await settle(project);
-  project.render(); await settle(project);
-  const want = project.cells[9 * 40 + 15].char; // what the converter puts there
-  project.undo(); await settle(project);
-  project.pasteSelection(block, 15, 9); // again, with no full render after it
-  await settle(project);
-  project.mergeUp({ c0: 15, r0: 9, c1: 15, r1: 9 });
-  expect(project.editCellAt(15, 9).char).toBe(want);
-});
-
 test('stale pin: moving a typed-and-merged-down letter away leaves it showing at both places', async () => {
   const { project, workspace } = await createTestApp();
   await drawnDocument(project, workspace, { cols: 40, rows: 40 }); // 'A' typed at (14, 8)
-  project.mergeDown(); // Exactly: A pinned on the base
+  project.mergeDown('edit'); // Exactly: A pinned on the base
   await settle(project);
   // Select (13..14, 8) on the Base layer and drag it two cells down; then a block from elsewhere over (14, 8)
   project.floatSelection({ c0: 14, r0: 8, c1: 14, r1: 8 }, ['base'], 0, 2);
@@ -673,7 +664,7 @@ test('undo keeps steps up to its byte budget: a stroke counts its tiles, a merge
   project.commitEdit();
   const stroke = project.history.bytes;
   expect(stroke).toBeGreaterThan(0);
-  project.mergeDown();
+  project.mergeDown('edit');
   const merge = project.history.bytes - stroke;
   const layer = (l) => l.canvas.width * l.canvas.height * 4;
   expect(merge).toBeGreaterThanOrEqual(2 * layer(project.baseLayer) + layer(project.paintLayer)); // the base before and after, the paint before

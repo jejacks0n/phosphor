@@ -9,7 +9,7 @@ import { loadImage, readProject, writeProject } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
-import { bytesHeld, emptyFields, followBase, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
+import { bytesHeld, emptyFields, followBase, layerName, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -56,9 +56,6 @@ function putBack(store, { layer, below, data, shapes }) {
   const rest = store.layers.filter((each) => each.id !== layer.id), at = rest.findIndex((each) => each.id === below) + 1 || rest.length;
   store.layers = [...rest.slice(0, at), layer, ...rest.slice(at)];
 }
-
-// A layer's name as shown (useLayerName's, in the store).
-const shownName = (layer) => layer.name ?? t(layer.kind === 'vector' ? 'layers.vectorDefault' : 'layers.editDefault', { n: layer.n });
 
 // Ready for a step that changes the stack: out of an art layer, the layers made, what's open committed.
 function ready(store) {
@@ -155,7 +152,7 @@ export const layerActions = {
       toast(t('vector.tooMany', { count: MOST_SHAPES }));
       return null;
     }
-    const copy = Object.freeze({ ...layer, id: to, n: nextNumber(this.layers, layer.kind), name: goodLayerName(t('layers.copyName', { name: shownName(layer) })) });
+    const copy = Object.freeze({ ...layer, id: to, n: nextNumber(this.layers, layer.kind), name: goodLayerName(t('layers.copyName', { name: layerName(layer) })) });
     let held = { layer: copy, below: id };
     if (keyMap) held.shapes = copyShapes(new Map([...this.shapes].filter(([key]) => keyMap.has(key))), to, keyMap).shapes;
     else {

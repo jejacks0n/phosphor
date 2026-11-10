@@ -201,13 +201,6 @@ test('a shape squashed flat or past the limits isn\'t taken: an update leaves it
   expect(project.shapes.size).toBe(1);
 });
 
-test('Merge up lifts what a shape shows into edit cells', async () => {
-  const { project } = await gradient();
-  project.addShape(rectShape(4, 4, 14, 12, RED));
-  project.mergeUp({ c0: 6, r0: 3, c1: 7, r1: 4 });
-  expect(project.editCells.get('6,3').bg).toBe('#ff0000');
-});
-
 test('the eraser on the base and a selection\'s move on ANSI leave shapes as they are', async () => {
   const { project } = await gradient();
   const shape = project.addShape(rectShape(4, 4, 14, 12, RED));

@@ -570,3 +570,43 @@ test('Make art layer with Magic Wand cells that hold nothing says so, and makes 
   expect(project.history.version).toBe(version);
   expect(arts(project)).toEqual([]);
 });
+
+test('Make art layer from Layer 2 lands in the vector layer above it, made there if missing', async () => {
+  const { project, workspace } = await blank();
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(2, 1, 'Q', { fg: RED });
+  project.commitEdit();
+  await settle(project);
+  const before = cellsKey(project), version = project.history.version;
+  select(workspace, 1, 0, 4, 2);
+  const key = project.makeArtLayer();
+  expect(key).toBeTruthy();
+  expect(project.layers.map((l) => l.id).slice(0, 3)).toEqual(['base', 'edit', top]);
+  expect(project.layers).toHaveLength(4);
+  const made = project.layers[3];
+  expect(made.kind).toBe('vector');
+  expect(project.shapes.get(key).layer ?? 'vector').toBe(made.id);
+  expect(project.cellsOf(top).size).toBe(0);
+  expect(cellsKey(project)).toEqual(before);
+  expect(project.history.version).toBe(version + 1); // one step, the layer made with it
+  project.undo();
+  await settle(project);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit', top]);
+  expect(project.shapes.size).toBe(0);
+  expect(project.cellsOf(top).get('2,1').char).toBe('Q');
+  expect(cellsKey(project)).toEqual(before);
+  project.redo();
+  await settle(project);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit', top, made.id]);
+  expect(project.shapes.has(key)).toBe(true);
+
+  // the vector layer that's there now takes the next one
+  workspace.pickLayer(top);
+  project.typeAt(8, 1, 'R', { fg: RED });
+  project.commitEdit();
+  select(workspace, 7, 0, 9, 2);
+  const next = project.makeArtLayer();
+  expect(project.layers).toHaveLength(4);
+  expect(project.shapes.get(next).layer ?? 'vector').toBe(made.id);
+});

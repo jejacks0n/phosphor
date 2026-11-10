@@ -105,7 +105,7 @@ test('a pin under a pressed shape goes, so the cell still shows the shape', asyn
   const { project } = await drawing();
   project.typeAt(5, 3, 'A', { fg: '#ffff00', bg: '#000000' });
   project.commitEdit();
-  project.mergeDown(); // the A is a pin now
+  project.mergeDown('edit'); // the A is a pin now
   expect(project.baseRecords.pins.get('5,3')).toBe('A');
   project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' }));
   await settle(project);
@@ -121,7 +121,7 @@ test('a pin under a pressed shape goes, so the cell still shows the shape', asyn
   expect(project.shapes.size).toBe(1);
 });
 
-test('Merge down takes the shapes with it, under the edit cells and paint, and nothing changes on the canvas', async () => {
+test('Merge down of the vector layer, then of the layer over it, presses everything in and nothing changes on the canvas', async () => {
   const { project } = await drawing();
   project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' }));
   project.typeAt(4, 2, 'B', { fg: '#ffff00', bg: '#0000ff' });
@@ -130,14 +130,21 @@ test('Merge down takes the shapes with it, under the edit cells and paint, and n
   project.commitEdit();
   await settle(project);
   const cells = cellsKey(project);
-  project.mergeDown();
+  expect(project.mergeDown('edit')).toBe(false); // the vector layer is under it: that goes first
+  expect(project.mergeDown('vector')).toBe(true);
   await settle(project);
+  expect(project.layers.map((layer) => layer.id)).toEqual(['base', 'edit']);
   expect(project.shapes.size).toBe(0);
-  expect(project.editCells.size).toBe(0);
   expect(cellsKey(project)).toEqual(cells);
+  expect(project.mergeDown('edit')).toBe(true);
+  await settle(project);
+  expect(project.cellsOf('edit').size).toBe(0);
+  expect(cellsKey(project)).toEqual(cells);
+  project.undo();
   project.undo();
   await settle(project);
   expect(project.shapes.size).toBe(1);
+  expect(project.layers.map((layer) => layer.id)).toEqual(['base', 'vector', 'edit']);
   expect(cellsKey(project)).toEqual(cells);
 });
 
@@ -151,9 +158,10 @@ test('a selection\'s Merge down takes shapes touching it whole, and the overlapp
   project.commitEdit();
   await settle(project);
   const cells = cellsKey(project);
-  project.mergeDown({ c0: 2, r0: 1, c1: 6, r1: 3 });
+  project.mergeDown('vector', { c0: 2, r0: 1, c1: 6, r1: 3 });
   await settle(project);
   expect(keys(project)).toEqual([apart, above].sort());
+  expect(project.editCellAt(3, 2)?.char).toBe('C'); // the layer over it stays as it was
   expect(project.shapes.has(beneath) || project.shapes.has(top)).toBe(false);
   expect(cellsKey(project)).toEqual(cells);
 });
@@ -243,7 +251,7 @@ test('a selection\'s Merge down presses an art layer it touches, and the art is 
   const apart = project.addShape(rectShape(22, 24, 28, 28, { fill: '#00ff00' }));
   await settle(project);
   const cells = cellsKey(project);
-  project.mergeDown({ c0: 4, r0: 2, c1: 10, r1: 4 });
+  project.mergeDown('vector', { c0: 4, r0: 2, c1: 10, r1: 4 });
   await settle(project);
   expect(keys(project)).toEqual([apart]);
   expect(project.baseRecords.pins.get('5,3')).toBe('A');
@@ -265,7 +273,7 @@ test('a base pin under an art cell with colors and no character is still there a
   const { project } = await drawing();
   project.typeAt(5, 3, 'Q', { fg: '#ffff00', bg: '#000000' });
   project.commitEdit();
-  project.mergeDown(); // the Q is a pin now
+  project.mergeDown('edit'); // the Q is a pin now
   expect(project.baseRecords.pins.get('5,3')).toBe('Q');
   project.addShape(makeArt({ z: 0, m: [1, 0, 0, 1, 5, 6], art: { cols: 1, rows: 1, cells: [[0, null, '#2040a0', '#a0a040']] } }));
   await settle(project);
@@ -285,7 +293,8 @@ test('Merge down with paint over a solid art character shows the cell as before'
   project.commitEdit();
   await settle(project);
   const cells = cellsKey(project);
-  project.mergeDown();
+  project.mergeDown('vector');
+  expect(project.mergeDown('edit')).toBe(true);
   await settle(project);
   expect(cellsKey(project)).toEqual(cells);
 });

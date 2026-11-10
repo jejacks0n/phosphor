@@ -123,7 +123,7 @@ async function paintedThenBoxed({ merge }) {
   project.paintStroke(pixels, '#00aa00');
   project.commitEdit();
   if (merge) {
-    project.mergeDown();
+    project.mergeDown('edit');
     await settle(project);
   }
   draw('output', { x: 4, y: 8 }, { x: 16, y: 13 }, { shapeKind: 'rect', shapeDrawWith: 'single', editBgNone: true, editFgColor: '#ffffff' });

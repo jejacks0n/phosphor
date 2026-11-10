@@ -193,19 +193,9 @@ test('merging down soft paint under CGA shows what it showed', async () => {
   project.render(); await settle(project);
   const area = { c0: 3, r0: 1, c1: 20, r1: 10 };
   const before = cellsIn(project, area);
-  project.mergeDown();
+  project.mergeDown('edit');
   project.render(); await settle(project);
   expect(cellsIn(project, area)).toEqual(before);
-});
-
-test('merging up a moved block under CGA keeps its colors', async () => {
-  const project = await photo({ quantize: 'cga' });
-  const landed = project.floatSelection(RECT, ['base', 'edit'], 15, 0);
-  project.render(); await settle(project);
-  const before = hexes(colorsIn(project, landed));
-  project.mergeUp(landed);
-  project.render(); await settle(project);
-  expect(hexes(colorsIn(project, landed))).toEqual(before);
 });
 
 test('an image smaller than the grid isn\'t pinned: merging into the picture twice keeps its size', async () => {

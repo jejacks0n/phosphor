@@ -874,8 +874,7 @@ test('an artist\'s Merge, Bake, slider, Clear and base paste do nothing', async 
   sent.length = 0;
   const edits = project.editCells, version = project.history.version;
 
-  project.mergeUp();
-  project.mergeDown();
+  project.mergeDown('edit');
   await project.mergeIntoPicture();
   await project.bake();
   project.setSlider('brightness', 50);
@@ -920,8 +919,10 @@ test('a host\'s Merge and slider still work', async () => {
   project.setSlider('brightness', 50);
   project.commitSliders();
   expect(project.brightness).toBe(50);
-  project.mergeUp();
-  expect(project.editCells.size).toBeGreaterThan(0);
+  project.typeAt(2, 2, 'M', { fg: '#ff0000' });
+  project.commitEdit();
+  expect(project.mergeDown('edit')).toBe(true);
+  expect(project.baseRecords.pins.get('2,2')).toBe('M');
 });
 
 test('every way of opening a document is refused for an artist', async () => {

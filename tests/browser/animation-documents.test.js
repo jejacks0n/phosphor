@@ -24,40 +24,14 @@ test('Merge down and Into the image are off with more than one frame and on with
   project.addFrame('blank');
   const edits = project.editCells;
   await project.mergeIntoPicture();
-  project.mergeDown();
+  project.mergeDown('edit');
   expect(project.editCells).toBe(edits);
   expect(project.baseLayer.hasPaint).toBe(false);
   project.deleteFrame();
-  project.mergeDown();
+  project.mergeDown('edit');
   await settle(project);
   expect(project.editCells.size).toBe(0);
   expect(project.baseLayer.hasPaint).toBe(true);
-});
-
-test('Merge up changes only the current frame, and undoes', async () => {
-  const { project } = await animated();
-  project.beginEdit();
-  project.eraseBase([{ col: 4, row: 4 }]); // a pinned space, under every frame
-  project.commitEdit();
-  project.render();
-  await settle(project);
-  project.addFrame('blank');
-  project.addFrame('blank');
-  project.showFrame(1);
-  const before = structuredClone(project.cells);
-  project.mergeUp(null);
-  await settle(project);
-  expect(project.editCells.size).toBe(project.cols * 10);
-  expect(structuredClone(project.cells)).toEqual(before);
-  expect(project.baseRecords.pins.size).toBe(1); // another frame still stands on it
-  project.showFrame(0);
-  expect(project.editCells.size).toBe(0);
-  expect(charAt(project, 4, 4)).toBe(' ');
-  project.showFrame(2);
-  expect(project.editCells.size).toBe(project.cols * 10); // a Blank frame inherits from it
-  project.undo();
-  expect(project.frame).toBe(1);
-  expect(project.editCells.size).toBe(0);
 });
 
 test('Bake applies to every frame cells and paint, keeps each frame looking the same, and undoes', async () => {

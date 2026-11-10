@@ -4,6 +4,11 @@
 import { describe, test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
+import { rectShape } from '@/document/shapes.js';
+import { toastMessage } from '@/composables/useToast.js';
+import { createApp } from 'vue';
+import EditToolbar from '@/components/EditToolbar.vue';
+import { i18n } from '@/i18n';
 
 const maxDiff = (a, b, only) => (only ?? a.map((_, i) => i)).reduce((m, i) => Math.max(m, ...a[i].map((v, k) => Math.abs(v - b[i][k]))), 0);
 const drawnCells = (project, rect) => {
@@ -20,14 +25,14 @@ describe('exactly', () => {
     const { project, workspace } = await createTestApp();
     await drawnDocument(project, workspace);
     const before = cellsKey(project);
-    project.mergeDown();
+    expect(project.mergeDown('edit')).toBe(true);
     await settle(project);
     expect(cellsKey(project)).toEqual(before);
-    expect(project.editCells.size).toBe(0);
+    expect(project.layers.map((l) => l.id)).toEqual(['base']); // the merged layer leaves the stack
     expect(project.hasPaint).toBe(false);
     project.undo();
     await settle(project);
-    expect(project.editCells.size).toBe(4);
+    expect(project.cellsOf('edit').size).toBe(4);
     project.redo();
     await settle(project);
     expect(cellsKey(project)).toEqual(before);
@@ -39,45 +44,13 @@ describe('exactly', () => {
     const rect = { c0: 10, r0: 5, c1: 21, r1: 20 }; // the paint at y 40 (row 20) straddles c1
     const outside = [...project.editCells.keys()].filter((k) => { const [c, r] = k.split(',').map(Number); return c > rect.c1 || r > rect.r1 || c < rect.c0 || r < rect.r0; });
     const before = cellsKey(project);
-    project.mergeDown(rect);
+    project.mergeDown('edit', rect);
     await settle(project);
     expect(cellsKey(project)).toEqual(before);
     expect([...project.editCells.keys()].sort()).toEqual(outside.sort());
     expect(project.cellHasPaint(30, 20)).toBe(true);
     expect(project.cellHasPaint(20, 20)).toBe(false);
   });
-});
-
-describe('up', () => {
-  test('a selection keeps the characters it shows when the base changed since the last full render', async () => {
-    const { project } = await createTestApp();
-    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
-    project.renderStyle = 'ascii'; // each character from its cell's brightness
-    project.render();
-    await settle(project);
-    project.writeBase(Array.from({ length: 20 }, (_, k) => ({ x: 4 + (k % 10), y: 8 + Math.floor(k / 10), hex: '#ffffff' })));
-    project.commitEdit();
-    await settle(project);
-    const before = cellsKey(project);
-    project.mergeUp({ c0: 2, r0: 2, c1: 15, r1: 8 });
-    await settle(project);
-    expect(cellsKey(project)).toEqual(before);
-  });
-  // Their colors aren't the cells' two pixels: merged up as those, a ░ in two colors went solid in one.
-  for (const charChoice of ['best', 'shape']) {
-    test(`with a palette, dithered and by ${charChoice}, and contrast moved, a selection looks the same`, async () => {
-      const { project } = await createTestApp();
-      await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 60, rows: 60 });
-      Object.assign(project, { quantize: 'cga', charChoice, dither: 60 });
-      project.setSlider('contrast', 130);
-      project.render();
-      await settle(project);
-      const before = cellsKey(project).map((key) => key.toLowerCase());
-      project.mergeUp({ c0: 5, r0: 5, c1: 40, r1: 25 });
-      await settle(project);
-      expect(cellsKey(project).map((key) => key.toLowerCase())).toEqual(before);
-    });
-  }
 });
 
 describe('into the picture', () => {
@@ -162,6 +135,9 @@ describe('into the picture', () => {
     await project.mergeIntoPicture();
     await settle(project);
     const size = `${project.image.width}x${project.image.height}`;
+    expect(project.layers.map((l) => l.id)).toEqual(['base']); // the merged layer left the stack: draw on a new one
+    const next = project.addLayer('cells', 'base');
+    workspace.pickLayer(next);
     project.typeAt(30, 20, '█', { fg: '#00ffff', bg: '#000000' });
     project.commitEdit();
     await settle(project);
@@ -172,7 +148,7 @@ describe('into the picture', () => {
     expect(`${project.image.width}x${project.image.height}`).toBe(size);
     project.undo();
     await settle(project);
-    expect(project.editCellAt(30, 20)).toBeTruthy();
+    expect(project.cellsOf(next).get('30,20')).toBeTruthy();
     expect(cellsKey(project)).toEqual(beforeSecond);
     project.redo();
     await settle(project);
@@ -204,5 +180,158 @@ describe('into the picture', () => {
     await settle(project);
     expect(project.image).toBe(loaded);
     expect(project.canUndo).toBe(false);
+  });
+});
+
+// Merge down between two layers above the bottom (docs/layers.md, Moving things between layers). The bottom, Layer 1 with
+// A and B typed and red paint under them, and Layer 2 over it: C typed over B with no background of its own, D over the
+// red paint, and see-through green paint across A and C.
+async function twoLayers() {
+  const app = await createTestApp(), { project, workspace } = app;
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+  project.typeAt(4, 4, 'A', { fg: '#ffee00', bg: '#0044aa' });
+  project.typeAt(5, 4, 'B', { fg: '#ffee00', bg: '#0044aa' });
+  project.commitEdit();
+  project.paintStroke(Array.from({ length: 8 }, (_, k) => ({ x: 2 + k, y: 9, alpha: 1 })), '#ff3300');
+  project.commitEdit();
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(5, 4, 'C', { fg: '#00ffff' });
+  project.typeAt(3, 4, 'D', { fg: '#00ffff', bg: '#440044' });
+  project.commitEdit();
+  project.paintStroke(Array.from({ length: 6 }, (_, k) => ({ x: 4 + k, y: 8, alpha: 0.5 })), '#33ff66');
+  project.commitEdit();
+  await settle(project);
+  return { ...app, top };
+}
+const ids = (project) => project.layers.map((l) => l.id);
+
+describe('down between layers', () => {
+  test('Merge down of cells into cells keeps what shows and removes the layer', async () => {
+    const { project, workspace, top } = await twoLayers();
+    const before = cellsKey(project);
+    expect(project.mergeDown(top)).toBe(true);
+    await settle(project);
+    expect(cellsKey(project)).toEqual(before);
+    expect(ids(project)).toEqual(['base', 'edit']);
+    expect(workspace.pickedLayer).toBe('edit'); // the pick moves to the layer it went into
+    expect(project.cellsOf('edit').get('5,4')).toMatchObject({ char: 'C', fg: '#00ffff', bg: '#0044aa' });
+    project.render();
+    await settle(project);
+    expect(cellsKey(project)).toEqual(before);
+    project.undo();
+    await settle(project);
+    expect(ids(project)).toEqual(['base', 'edit', top]);
+    expect(project.cellsOf('edit').get('5,4').char).toBe('B');
+    expect(project.cellsOf(top).get('5,4').char).toBe('C');
+    expect(cellsKey(project)).toEqual(before);
+    project.redo();
+    await settle(project);
+    expect(ids(project)).toEqual(['base', 'edit']);
+    expect(cellsKey(project)).toEqual(before);
+  });
+
+  test('Merge down is off onto a vector layer', async () => {
+    const { project } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    await settle(project);
+    project.addLayer('vector', 'base');
+    project.typeAt(2, 2, 'A', { fg: '#ffffff' });
+    project.commitEdit();
+    const version = project.history.version;
+    toastMessage.value = null;
+    expect(project.mergeDown('edit')).toBe(false);
+    expect(toastMessage.value).toBe("Cells can't go into a vector layer. Use Make art layer instead.");
+    expect(ids(project)).toEqual(['base', 'vector', 'edit']);
+    expect(project.history.version).toBe(version);
+    const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+    document.body.append(host);
+    toolbar.mount(host);
+    try {
+      const button = host.querySelector('button[aria-label="Merge down"]');
+      expect(button.disabled).toBe(true);
+      expect(button.title).toBe("Cells can't go into a vector layer. Use Make art layer instead.");
+    } finally {
+      toolbar.unmount();
+      host.remove();
+    }
+  });
+
+  test('Merge down of a vector layer into a cells layer freezes what shows', async () => {
+    const { project, workspace } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+    project.charChoice = 'best'; // its characters follow the colors: a palette change picks others
+    project.typeAt(4, 4, 'A', { fg: '#ffee00', bg: '#0044aa' });
+    project.commitEdit();
+    const vector = project.addLayer('vector', 'edit');
+    workspace.pickLayer(vector);
+    project.addShape(rectShape(2, 5, 13, 16, { fill: '#ff0000' }));
+    project.commitEdit();
+    project.addShape(rectShape(6, 3, 20, 12, { fill: '#33ff66', stroke: '#0000ff', width: 1.5 }));
+    project.commitEdit();
+    project.render();
+    await settle(project);
+    expect(ids(project)).toEqual(['base', 'edit', vector]);
+    const before = cellsKey(project);
+    expect(project.mergeDown(vector)).toBe(true);
+    await settle(project);
+    expect(ids(project)).toEqual(['base', 'edit']);
+    expect(project.shapes.size).toBe(0);
+    expect(cellsKey(project)).toEqual(before);
+    const reached = [...project.cellsOf('edit').keys()].map((key) => key.split(',').map(Number)).map(([c, r]) => r * project.cols + c);
+    expect(reached.length).toBeGreaterThan(20);
+    const chars = reached.map((i) => project.cells[i].char);
+    project.quantize = 'cga';
+    project.render();
+    await settle(project);
+    expect(reached.map((i) => project.cells[i].char)).toEqual(chars);
+    project.quantize = 'none';
+    project.undo();
+    await settle(project);
+    expect(ids(project)).toEqual(['base', 'edit', vector]);
+    expect(project.shapes.size).toBe(2);
+    expect(cellsKey(project)).toEqual(before);
+  });
+
+  test('in a room, Merge down into the bottom keeps the layer, emptied', async () => {
+    const { project, workspace, top } = await twoLayers();
+    project.shareWholeDocument = vi.fn(); // the host's step goes to the room as the whole document
+    project._sharing = { role: 'host', heardCells: new Map(), heardRuns: [] };
+    try {
+      toastMessage.value = null;
+      expect(project.mergeDown(top)).toBe(false); // only into the bottom: the room keeps its layers
+      expect(toastMessage.value).toBe("Adding, deleting and moving layers isn't available in a room yet.");
+      const before = cellsKey(project);
+      workspace.pickLayer('edit');
+      expect(project.mergeDown('edit')).toBe(true);
+      await settle(project);
+      expect(ids(project)).toEqual(['base', 'edit', top]);
+      expect(project.cellsOf('edit').size).toBe(0);
+      expect(project.paintOf('edit').hasPaint).toBe(false);
+      expect(cellsKey(project)).toEqual(before);
+      expect(project.shareWholeDocument).toHaveBeenCalled();
+    } finally {
+      project._sharing = null;
+    }
+  });
+
+  test('Merge down refuses a hidden layer or a hidden one under it', async () => {
+    const { project, top } = await twoLayers();
+    const version = project.history.version;
+    for (const id of [top, 'edit']) {
+      project.setLayerHidden(id, true);
+      toastMessage.value = null;
+      expect(project.mergeDown(top)).toBe(false);
+      expect(toastMessage.value).toBe('Show the layer to merge it');
+      expect(ids(project)).toEqual(['base', 'edit', top]);
+      project.setLayerHidden(id, false);
+    }
+    expect(project.history.version).toBe(version);
+  });
+
+  test('Merge down is off with the base picked: nothing is under it', async () => {
+    const { project } = await twoLayers();
+    expect(project.mergeDown('base')).toBe(false);
+    expect(ids(project).length).toBe(3);
   });
 });

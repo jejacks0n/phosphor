@@ -444,7 +444,7 @@ test('the first accepted invitation keeps the host\'s strokes undoable, and drop
   const { project } = room;
   project.editCell(1, 1, { char: 'a' });
   project.commitEdit();
-  project.mergeDown();
+  project.mergeDown('edit', project.gridRect()); // the whole grid: the layer stays, to draw on (no room yet to keep it)
   expect(project.canUndo).toBe(true);
   const merged = char(project, 2, 2);
   project.editCell(2, 2, { char: 'b' });
@@ -803,7 +803,7 @@ test('a merge with an artist listed goes to everyone as the project, and is fina
   room.project.editCell(1, 1, { char: 'H' });
   room.project.commitEdit();
   await allMatch(room, ann);
-  room.project.mergeDown();
+  room.project.mergeDown('edit');
   expect(room.project.canUndo).toBe(false);
   expect(room.project._ledger.epoch).not.toBe(epoch);
   await expect.poll(() => ann.project.baseRecords.pins.get('1,1'), PATIENT).toBe('H');
@@ -1450,7 +1450,7 @@ test('a merge resets it: undo has nothing for me, and the selection goes', async
   await allMatch(room, ann);
   workspace.selection = SELECTED;
   expect(ann.project.history.canUndo).toBe(true);
-  room.project.mergeDown();
+  room.project.mergeDown('edit');
   await expect.poll(() => char(ann.project, 1, 1), PATIENT).toBe(undefined);
   await allMatch(room, ann);
   expect(ann.project.history.canUndo).toBe(false);
@@ -3037,7 +3037,7 @@ test('an undo held across a project that replaced the stacks says so', async () 
   room.host.hold();
   ann.project.undo();
   await expect.poll(() => room.host.holding.length, PATIENT).toBe(1);
-  room.project.mergeDown();
+  room.project.mergeDown('edit');
   room.host.release();
   await expect.poll(() => toastMessage.value, PATIENT).toBe('That can\'t be undone anymore.');
 });

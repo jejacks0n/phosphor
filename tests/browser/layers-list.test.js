@@ -245,8 +245,8 @@ test('inside an art layer the vector row shows as picked and the base row is off
   workspace.selection = { c0: 1, r0: 0, c1: 6, r1: 2 };
   expect(project.enterArt(project.makeArtLayer())).toBe(true);
   await nextTick();
-  expect(names()).toEqual(['Layer 1', 'Vector 1', 'Base']);
-  expect(pickOf(1).getAttribute('aria-pressed')).toBe('true');
+  expect(names()).toEqual(['Vector 1', 'Layer 1', 'Base']); // made directly over Layer 1
+  expect(pickOf(0).getAttribute('aria-pressed')).toBe('true');
   expect(pickOf(2).getAttribute('aria-disabled')).toBe('true');
   expect(reasonOf(pickOf(2))).toBe('Inside an art layer, tools draw on the edit layer only.');
 });

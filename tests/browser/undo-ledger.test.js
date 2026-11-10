@@ -99,7 +99,7 @@ test('undoing a merge brings back the strokes before it, and they still undo', a
   const { project } = await drawing();
   paint(project, [[3, 3]], '#ff0000');
   type(project, 10, 10, 'A');
-  project.mergeDown();
+  project.mergeDown('edit', project.gridRect()); // the whole grid: the layer stays, to draw on
   expect(strokes(project).size).toBe(0);
   expect([painted(project, 3, 3), project.editCells.size]).toEqual([null, 0]);
 
@@ -215,7 +215,7 @@ test('a new edit drops what could be redone, and the ledger lets go of it', asyn
 test('dropOldUndo keeps strokes after the last merge and drops the merge and what came before', async () => {
   const { project } = await drawing();
   paint(project, [[3, 3]], '#ff0000');
-  project.mergeDown();
+  project.mergeDown('edit', project.gridRect()); // the whole grid: the layer stays, to draw on
   paint(project, [[4, 4]], '#ff0000');
   project.clearEditLayer();
   paint(project, [[5, 5]], '#ff0000');
@@ -236,7 +236,7 @@ test('dropOldUndo keeps strokes after the last merge and drops the merge and wha
 test('dropOldUndo with a merge that could still be redone drops it, and everything that needs it', async () => {
   const { project } = await drawing();
   paint(project, [[3, 3]], '#ff0000');
-  project.mergeDown();
+  project.mergeDown('edit', project.gridRect()); // the whole grid: the layer stays, to draw on
   paint(project, [[4, 4]], '#ff0000');
   project.undo();
   project.undo();

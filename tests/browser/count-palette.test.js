@@ -55,7 +55,7 @@ test('base pixels count too, and undo brings the palette back', async () => {
   const before = hexes(project), cells = cellsKey(project);
   project.paintStroke(line(8), '#ff8800');
   project.commitEdit();
-  project.mergeDown();
+  project.mergeDown('edit');
   await settle(project);
   expect(hexes(project)).toContain('#ff8800');
   expect(project.hasEdits).toBe(false);

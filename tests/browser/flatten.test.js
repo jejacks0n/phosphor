@@ -263,3 +263,67 @@ test('a failure partway leaves the drawing as it was', async () => {
   expect(project.image).toBe(image);
   expect(shown(project)).toEqual(before);
 });
+
+// drawing()'s, with Layer 2 above the edit layer (a letter and paint) and a vector layer on top with a shape.
+async function stacked() {
+  const app = await drawing(), { project, workspace } = app;
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(6, 6, 'W', { fg: '#00ffff', bg: '#440044' });
+  project.commitEdit();
+  project.paintStroke(Array.from({ length: 10 }, (_, k) => ({ x: 4 + k, y: 30, alpha: 0.6 })), '#ff00ff');
+  project.commitEdit();
+  const vector = project.addLayer('vector', top);
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(14, 14, 26, 24, '#0000ff'));
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  return { ...app, top, vector };
+}
+
+test('Flatten across the stack keeps what shows', async () => {
+  for (const layer of ['edit', 'base']) {
+    const { project } = await stacked();
+    expect(project.layers).toHaveLength(5);
+    const before = shown(project);
+    expect(await project.flattenDrawing({ layer })).toBe(true);
+    await settle(project);
+    expect(project.layers.map((l) => l.id)).toEqual(layer === 'edit' ? ['base', 'edit'] : ['base']);
+    expect(project.layers.every((l) => !l.hidden)).toBe(true);
+    expect(project.shapes.size).toBe(0);
+    expect(shown(project)).toEqual(before);
+    project.render();
+    await settle(project);
+    expect(shown(project)).toEqual(before);
+    project.undo();
+    await settle(project);
+    expect(project.layers).toHaveLength(5);
+  }
+});
+
+test('Flatten drops hidden layers and says so first', async () => {
+  const { project, top } = await stacked();
+  project.setLayerHidden(top, true);
+  await settle(project);
+  const before = shown(project);
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  document.body.append(host);
+  toolbar.mount(host);
+  try {
+    [...host.querySelectorAll('button')].find((b) => b.title.startsWith('Flatten:')).click();
+    await settle(project);
+    expect(document.querySelector('.modal-dialog').textContent).toContain('The hidden layer is removed too.');
+    [...document.querySelectorAll('button.choice')].find((b) => b.textContent.includes('Edit it')).click();
+    for (let i = 0; i < 100 && project.layers.length > 2; i++) await settle(project); // the black picture encodes first
+    expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
+    expect(shown(project)).toEqual(before);
+    project.undo();
+    await settle(project);
+    expect(project.layerById(top)?.hidden).toBe(true);
+    expect(project.cellsOf(top).get('6,6').char).toBe('W');
+  } finally {
+    toolbar.unmount();
+    host.remove();
+  }
+});

@@ -175,12 +175,13 @@ export const readingActions = {
   // A cell as the stack shows it, in stored colors (before adjustments), for a copy of what shapes show: the base's cell with
   // the lower group's shapes (baseCellAt), then each shown layer above, bottom first: a cells layer as lookUnder lays it,
   // an upper vector layer's shapes by their alpha over each half (in the ASCII styles, over the halves of the character's
-  // ink on black, then averaged into FG, as buildCell does). The character is the one that shows.
-  storedLookAt(col, row) {
+  // ink on black, then averaged into FG, as buildCell does). The character is the one that shows. through: only up to the
+  // upper layer with that id, its cell as it shows there (shown: the cell as composed up to it, Merge down's freeze).
+  storedLookAt(col, row, { through = null, shown = this.cells[cellIndex(col, row, this.cols)] } = {}) {
     const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii';
     let look = baseLook(this, col, row);
     if (cells) look = layerOver(this, cells, col, row, look);
-    for (const id of upper) {
+    for (const id of through ? upper.slice(0, upper.indexOf(through) + 1) : upper) {
       if (this.layerById(id).kind === 'cells') { look = layerOver(this, id, col, row, look); continue; }
       const shapes = this._upperShapes.get(id);
       if (shapes?.charAt(col, row) === undefined) continue;
@@ -194,7 +195,6 @@ export const readingActions = {
       if (top) look = { ...look, bg: rgb2hex(over(hex2rgb(look.bg), top)) };
       if (bottom) look = { ...look, fg: rgb2hex(over(hex2rgb(look.fg), bottom)) };
     }
-    const shown = this.cells[cellIndex(col, row, this.cols)];
     const fg = shown && this.renderStyle === 'colorAscii' ? shownAs(this, look.fg, shown.fg.hex) : look.fg;
     return { char: !shown || shown.wide === 'trail' ? ' ' : shown.char, fg, bg: look.bg };
   },

@@ -5,6 +5,8 @@
 // what's guaranteed; locking to the palette bakes it in, and nothing moves.
 import { describe, test, expect, vi } from 'vitest';
 import { makeArt } from '@/document/artLayers.js';
+import { rectShape } from '@/document/shapes.js';
+import { toastMessage } from '@/composables/useToast.js';
 import { getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument, outputKey } from '../support/scenes.js';
@@ -212,4 +214,86 @@ test('Bake on a still presses an art layer into the base, its characters pinned,
   expect(project.shapes.size).toBe(0);
   expect([...project.baseRecords.pins]).toEqual(expect.arrayContaining([['5,3', 'A'], ['7,3', 'C']]));
   expect(cellsKey(project)).toEqual(cells);
+});
+
+// The bottom with a shape on its vector layer, Layer 1, a vector layer above Layer 1 with a shape, and Layer 2 on top
+// with a letter and paint, waiting while Layer 1 is in use.
+async function stack() {
+  const app = await createTestApp(), { project, workspace } = app;
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+  const pressed = project.addShape(rectShape(2, 2, 10, 10, { fill: '#ff0000' }));
+  project.commitEdit();
+  const upper = project.addLayer('vector', 'edit');
+  workspace.pickLayer(upper);
+  const kept = project.addShape(rectShape(12, 12, 22, 24, { fill: '#00ff00' }));
+  project.commitEdit();
+  const top = project.addLayer('cells', upper);
+  workspace.pickLayer(top);
+  project.typeAt(20, 3, 'Z', { fg: '#ffee00', bg: '#0044aa' });
+  project.commitEdit();
+  project.paintStroke(Array.from({ length: 8 }, (_, k) => ({ x: 18 + k, y: 20, alpha: 1 })), '#ff3300');
+  project.commitEdit();
+  workspace.pickLayer('edit');
+  await settle(project);
+  return { ...app, pressed, kept, upper, top };
+}
+
+test('Bake presses only the vector layers on the bottom: a vector layer above Layer 1 keeps its shapes, and every layer keeps its look', async () => {
+  const { project, pressed, kept } = await stack();
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit', 'L1', 'L2']);
+  Object.assign(project, COLOR_SLIDERS);
+  await settle(project);
+  const cells = cellsKey(project);
+  await project.bake();
+  await settle(project);
+  expect(project.shapes.has(pressed)).toBe(false);
+  expect(project.shapes.has(kept)).toBe(true);
+  expect(project.brightness).toBe(100);
+  expect(cellsKey(project)).toEqual(cells);
+  project.render();
+  await settle(project);
+  expect(cellsKey(project)).toEqual(cells);
+});
+
+test('a vector layer on the bottom with its own character settings stays shapes through Bake, and Merge down says why it can\'t', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+  const key = project.addShape(rectShape(2, 2, 10, 10, { fill: '#ff0000' }));
+  project.commitEdit();
+  project.setLayerChars('vector', { chars: '░▒' });
+  project.brightness = 140;
+  await settle(project);
+  const cells = cellsKey(project);
+  await project.bake();
+  await settle(project);
+  expect(project.shapes.has(key)).toBe(true);
+  expect(cellsKey(project)).toEqual(cells);
+  const version = project.history.version;
+  for (const merge of [() => project.mergeDown('vector'), () => project.mergeShapes([key])]) {
+    toastMessage.value = null;
+    merge();
+    expect(toastMessage.value).toBe('Vector 1 has its own character settings, so its shapes can\'t be pressed into the layer under it.');
+    expect(project.shapes.has(key)).toBe(true);
+    expect(project.history.version).toBe(version);
+  }
+});
+
+test('a hidden vector layer on the bottom is never lost to Bake: it\'s refused until it shows', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+  project.addShape(rectShape(2, 2, 10, 10, { fill: '#ff0000' }));
+  project.commitEdit();
+  const second = project.addLayer('vector', 'vector');
+  workspace.pickLayer(second);
+  const key = project.addShape(rectShape(12, 4, 20, 12, { fill: '#0000ff' }));
+  project.commitEdit();
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', second, 'edit']);
+  project.setLayerHidden(second, true);
+  project.brightness = 140;
+  await settle(project);
+  toastMessage.value = null;
+  await project.bake();
+  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(project.shapes.has(key)).toBe(true);
+  expect(project.brightness).toBe(140);
 });

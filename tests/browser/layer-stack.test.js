@@ -535,7 +535,7 @@ test('with the only cells layer deleted, a base move stays on the base, pastes a
   const { project, workspace } = await blank();
   project.typeAt(1, 1, 'Q', WHITE);
   project.commitEdit();
-  project.mergeDown(); // 'Q' pinned on the base
+  project.mergeDown('edit', project.gridRect()); // 'Q' pinned on the base, and the layer stays, empty
   await settle(project);
   expect(project.baseRecords.pins.get('1,1')).toBe('Q');
   expect(project.deleteLayer('edit')).toBe(true);

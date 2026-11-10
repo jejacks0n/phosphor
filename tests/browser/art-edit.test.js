@@ -235,7 +235,7 @@ test('the dimmed drawing is worked out once on stepping in: an edit inside reads
   }
 });
 
-test('inside, Clear, Merge up, Merge down and Bake are off, saying to step out first', async () => {
+test('inside, Clear, Merge down and Bake are off, saying to step out first', async () => {
   const { project, workspace, key } = await withArt();
   workspace.editorTab = 'output';
   project.enterArt(key);
@@ -246,7 +246,7 @@ test('inside, Clear, Merge up, Merge down and Bake are off, saying to step out f
     for (const selection of [null, { c0: 0, r0: 0, c1: 9, r1: 9 }]) {
       workspace.selection = selection;
       await settle(project);
-      for (const name of ['Clear edit layer', 'Merge up', 'Merge down', 'Bake', 'Flatten']) {
+      for (const name of ['Clear layer', 'Merge down', 'Bake', 'Flatten']) {
         const buttons = [...host.querySelectorAll(`button[aria-label="${name}"]`)];
         expect([name, buttons.length > 0]).toEqual([name, true]);
         for (const button of buttons) expect([name, button.disabled, button.title]).toEqual([name, true, 'Step out of the art layer first: this changes the whole drawing.']);
@@ -319,9 +319,7 @@ test('a whole-layer action steps out first, so undoing it after leaves the drawi
   const cases = {
     clear: (project) => project.clearEditLayer(),
     clearFrame: (project) => project.clearEditLayer(),
-    mergeUp: (project) => project.mergeUp({ c0: 0, r0: 0, c1: 9, r1: 9 }),
-    mergeDown: (project) => project.mergeDown(),
-    mergeIntoPicture: (project) => project.mergeIntoPicture(),
+    mergeDown: (project) => project.mergeDown('vector'), // Layer 1 is over the vector layer, which merges down first
     bake: (project) => project.bake(),
     bakeFrames: (project) => project.bake(),
     mergeShapes: (project) => project.mergeShapes(),
@@ -395,7 +393,7 @@ test('a whole-layer action that has nothing to do leaves you inside', async () =
   workspace.selection = null;
   await project.bake();
   await project.mergeIntoPicture();
-  project.mergeDown();
+  project.mergeDown('edit');
   project.mergeShapes();
   project.makeArtLayer();
   expect(project.artInside).toBe(key);
@@ -451,7 +449,7 @@ test('in a room, the host can\'t undo or redo a step that reaches a layer someon
   expect(project.shapes.has(key)).toBe(true);
   expect(toastMessage.value).toBe('Ann is drawing in this layer');
   const grid = [project.cols, project.rows];
-  for (const act of [() => project.clearEditLayer(), () => project.mergeShapes(), () => project.mergeDown(), () => project.bake(), () => project.updateCols(30), () => project.updateRows(30)]) {
+  for (const act of [() => project.clearEditLayer(), () => project.mergeShapes(), () => project.mergeDown('edit'), () => project.bake(), () => project.updateCols(30), () => project.updateRows(30)]) {
     toastMessage.value = null;
     act();
     expect(toastMessage.value).toBe('Ann is drawing in an art layer');
@@ -459,11 +457,6 @@ test('in a room, the host can\'t undo or redo a step that reaches a layer someon
   expect(project.shapes.has(key)).toBe(true);
   expect(project.editCellAt(1, 1)?.char).toBe('X');
   expect([project.cols, project.rows]).toEqual(grid);
-  toastMessage.value = null; // Merge up goes as slices, and only makes the drawing's own cells: not refused
-  project.mergeUp({ c0: 0, r0: 9, c1: 0, r1: 9 });
-  expect(toastMessage.value).toBe(null);
-  expect(project.editCellAt(0, 9)).toBeTruthy();
-  project.undo();
   project._locks = {};
   project.undo();
   expect(project.shapes.has(key)).toBe(false);

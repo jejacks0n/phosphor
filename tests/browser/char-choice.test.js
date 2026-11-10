@@ -140,7 +140,7 @@ test('a pinned character shows its own two halves, as with Random', async () => 
   const p = await gradient({ quantize: 'cga', charChoice: 'best', chars: '░▒▓█', solids: 100 });
   p.typeAt(8, 8, '▄', { fg: '#0000aa', bg: '#aa0000' });
   p.commitEdit();
-  p.mergeDown();
+  p.mergeDown('edit');
   await settle(p);
   const cell = p.cells[8 * p.cols + 8];
   expect([cell.char, cell.bg.hex.toLowerCase(), cell.fg.hex.toLowerCase()]).toEqual(['▄', '#aa0000', '#0000aa']);
@@ -392,7 +392,7 @@ for (const [renderStyle, shape, chars] of [['ansi', { charChoice: 'shape' }, HIG
     const painted = key(p.cells);
     expect(painted).not.toEqual(base);
     expect(painted).toEqual(key(fullRebuild(p)));
-    p.mergeDown();
+    p.mergeDown('edit');
     await settle(p);
     expect(key(p.cells)).toEqual(painted);
     p.undo(); // the merge

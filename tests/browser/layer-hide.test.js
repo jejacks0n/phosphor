@@ -167,21 +167,13 @@ test('with the vector layer hidden, Bake, Merge down and the vector merge are re
   const kept = () => [project.editCells, project.baseRecords, project.historyVersion, project.shapes, project.image, project.baseLayer.version];
   const before = kept();
 
-  for (const merge of [() => project.bake(), () => project.mergeDown(), () => project.mergeDown({ c0: 0, r0: 0, c1: 3, r1: 3 }), () => project.mergeShapes()]) {
+  for (const merge of [() => project.bake(), () => project.mergeDown('vector'), () => project.mergeDown('vector', { c0: 0, r0: 0, c1: 3, r1: 3 }), () => project.mergeDown('edit'), () => project.mergeShapes()]) {
     closeToast();
     await merge();
     expect(kept()).toEqual(before);
     expect(kept()[3]).toBe(before[3]);
     expect(toastMessage.value).toBe('Show the layer to merge it');
   }
-
-  // Merge down of a selection that presses no shape goes ahead.
-  closeToast();
-  typed(project, 8, 8, 'Z');
-  project.mergeDown({ c0: 7, r0: 7, c1: 9, r1: 9 });
-  expect(project.editCells.has('8,8')).toBe(false);
-  expect(project.shapes).toBe(before[3]);
-  expect(toastMessage.value).toBeFalsy();
 });
 
 test('a hidden vector layer with no shapes doesn\'t stop a merge', async () => {
@@ -189,8 +181,9 @@ test('a hidden vector layer with no shapes doesn\'t stop a merge', async () => {
   project.addLayer('vector', 'base');
   typed(project, 2, 2, 'M');
   await hide(project, 'vector');
-  project.mergeDown();
-  expect(project.editCells.size).toBe(0);
+  expect(project.mergeDown('vector')).toBe(true); // nothing on it to lose
+  expect(project.mergeDown('edit')).toBe(true);
+  expect(project.cellsOf('edit').size).toBe(0);
   expect(toastMessage.value).toBeFalsy();
 });
 
@@ -203,7 +196,7 @@ test('with the edit layer hidden, Merge down and Into the image are refused and 
   const kept = () => [project.editCells, project.baseRecords, project.editVersion, project.historyVersion, project.hasPaint];
   const before = kept();
 
-  project.mergeDown();
+  project.mergeDown('edit');
   expect(kept()).toEqual(before);
   expect(kept()[0]).toBe(before[0]);
   expect(kept()[1]).toBe(before[1]);
@@ -252,7 +245,7 @@ test('with the edit layer hidden, Clear edit layer is refused before it asks, an
 
   closeToast();
   const asked = vi.spyOn(window, 'confirm').mockReturnValue(true);
-  (await toolbarButton('Clear edit layer:')).click();
+  (await toolbarButton('Clear layer:')).click();
   expect(asked).not.toHaveBeenCalled();
   expect(toastMessage.value).toBe('Show the layer to merge it');
   expect(kept()[0]).toBe(before[0]);
@@ -391,7 +384,7 @@ test('an animation frame leaves a hidden base out', async () => {
   expect((await project.builtFrame(1)).cells.every(blank)).toBe(true);
 });
 
-test('with the base hidden, Merge up, Merge down, Into the image, Bake and the vector merge are refused and change nothing', async () => {
+test('with the base hidden, Merge down, Into the image, Bake and the vector merge are refused and change nothing', async () => {
   const { project } = await createTestApp();
   await ansFile(project);
   typed(project, 2, 2, 'M');
@@ -402,7 +395,7 @@ test('with the base hidden, Merge up, Merge down, Into the image, Bake and the v
   const kept = () => [project.editCells, project.baseRecords, project.editVersion, project.historyVersion, project.shapes, project.image, project.baseLayer.version];
   const before = kept();
 
-  for (const merge of [() => project.mergeUp(null), () => project.mergeDown(), () => project.mergeIntoPicture(), () => project.bake(), () => project.mergeShapes()]) {
+  for (const merge of [() => project.mergeDown('vector'), () => project.mergeIntoPicture(), () => project.bake(), () => project.mergeShapes()]) {
     closeToast();
     await merge();
     expect(kept()).toEqual(before);
@@ -412,14 +405,3 @@ test('with the base hidden, Merge up, Merge down, Into the image, Bake and the v
   }
 });
 
-test('with the edit layer hidden, Merge up is refused too', async () => {
-  const { project } = await picture();
-  typed(project, 2, 2, 'M');
-  await hide(project, 'edit');
-  const kept = () => [project.editCells, project.baseRecords, project.editVersion, project.historyVersion];
-  const before = kept();
-  project.mergeUp(null);
-  expect(kept()).toEqual(before);
-  expect(kept()[0]).toBe(before[0]);
-  expect(toastMessage.value).toBe('Show the layer to merge it');
-});

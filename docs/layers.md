@@ -33,8 +33,8 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   every frame at once, and each is one undo step: undoing a delete brings the layer back with its name and
   everything on every frame, and the strokes made on it before can then be undone too. The base has no ⋯: it
   can't be deleted, duplicated or moved. With the last cells layer above the base deleted, the base is picked and
-  the tools draw there; with a vector layer picked meanwhile, there's no cells layer to draw on: a paste, pasted
-  text and Merge up say "Add a layer to draw on it." Flatten's "Edit it" with the base picked goes on the topmost
+  the tools draw there; with a vector layer picked meanwhile, there's no cells layer to draw on: a paste and pasted
+  text say "Add a layer to draw on it." Flatten's "Edit it" with the base picked goes on the topmost
   cells layer, and says the same when there's none. A layer added then starts empty.
 - **Click the picked row's name** (or double-click any name, or press F2 on its row) to rename the layer; a
   click on another row only picks it. Enter, or leaving the box, keeps the new name; Escape keeps the old one.
@@ -67,17 +67,16 @@ again and it's all there. Whether a layer is hidden is saved with the drawing.
   message.
 - These merges are refused while a layer they read or write is hidden, with "Show the layer to merge it",
   and nothing changes:
-  - **Merge up**, **Merge down** and **Into the image**, while the edit layer or the base is hidden;
-  - **Bake** and VECTOR's **Merge down**, while the base is hidden;
-  - **Bake**, VECTOR's **Merge down**, and a **Merge down** that would take shapes with it, while the vector
-    layer is hidden and has shapes. What you hide never goes into the base unseen.
+  - **Merge down** and **Into the image**, while the layer being merged or the one under it is hidden (a vector
+    layer counts while it has shapes);
+  - **Bake**, while the base is hidden, or a vector layer directly on it that has shapes.
 
-  With the edit layer or the base hidden, Merge down says so when you press it, before it asks how to
-  merge.
-- **Clear edit layer** is refused the same way while the picked layer is hidden, before it asks: what you can't
+  What you hide never goes into another layer unseen. Merge down says so when you press it, before it asks how
+  to merge.
+- **Clear layer** is refused the same way while the picked layer is hidden, before it asks: what you can't
   see isn't erased.
-- **Flatten** makes its cells from what shows, so a hidden layer's content is left out of the result
-  (Undo brings it back).
+- **Flatten** makes its cells from what shows, so a hidden layer is removed, with what's on it. Its dialog
+  says so first, and Undo brings it back.
 
 ## The base layer
 
@@ -146,7 +145,7 @@ in the order you made them.
 
 ### Baking
 
-**Bake** (the flame button in the toolbar, beside Merge down and Clear edit layer; Bake in the
+**Bake** (the flame button in the toolbar, beside Merge down and Clear layer; Bake in the
 Actions menu on narrow screens) makes the picture as it looks now your image, and
 puts the Transforms, Adjustments and Image Filters sliders back to neutral, so you can start another
 round on top of the result. Nothing on the canvas changes when you bake:
@@ -155,9 +154,10 @@ round on top of the result. Nothing on the canvas changes when you bake:
   edits to the base, so baking burns them in; the same goes for your color pair and anything
   you've copied.
 - The color palette isn't baked: it keeps applying afterwards.
-- [Shapes](vector.md) are pressed into the base layer's pixels and stop being shapes, so shapes alone make
-  Bake available. In an animation they stay shapes, with the sliders burnt into their colors; where a shape's
-  edge is soft (an outline's antialiasing), its cells can come out a different color. An [art layer](vector.md#art-layers)
+- [Shapes](vector.md) on a vector layer directly on the base are pressed into the base layer's pixels and stop
+  being shapes, so shapes alone make Bake available. Shapes higher in the stack (over a cells layer), and on a vector
+  layer with its own [character settings](characters.md#how-the-converter-picks-characters), stay shapes. In an
+  animation they stay shapes, with the sliders burnt into their colors; where a shape's edge is soft (an outline's antialiasing), its cells can come out a different color. An [art layer](vector.md#art-layers)
   is pressed in the same way, its characters pinned wherever it showed them, so the base shows exactly what showed; in an
   animation it stays an art layer, with its colors burnt in.
 - With the CGA or VGA palette, Bake asks how to keep the colors (not with Dither on, or with Best match or By shape: then it bakes exactly, as other palettes do):
@@ -184,8 +184,11 @@ the color you pick is the color you see and the color you paint is the color you
 
 It asks where the cells go, as opening an ANSI file does:
 
-- **Edit it** (the default): the cells go on the edit layer, over a black base, as if you'd drawn them.
+- **Edit it** (the default): the cells go on one layer, over a black base, as if you'd drawn them.
 - **Draw on top of it**: the cells are the base layer, every character pinned, and what you draw goes on top.
+
+Either way every other layer goes, its content now in those cells. A hidden layer goes too, with what's on it, since
+it doesn't show; the dialog says so first. The layer that's left shows, with the base's character settings.
 
 Afterwards the Transforms, Adjustments and Image Filters sliders are back at neutral, the art style is ANSI,
 Dither is off and the character choice is back to its default, since there's nothing left for them to work
@@ -197,8 +200,7 @@ palette later can't bring back colors that are gone.
 
 Unlike Bake, which keeps an image for the sliders and effects to keep working on, Flatten ends them. Undo brings
 the image, the sliders and your layers back. It's off in an animation, since the picture is under every frame,
-and in a room only the host can flatten. For one area, use **Merge up** with a selection: its cells look exactly
-as they did, and the sliders keep working on them.
+and in a room only the host can flatten.
 
 ### Shapes
 
@@ -221,8 +223,8 @@ paint does on the edit layer, and over converted pixels it's converted with them
 ### Art layers
 
 An [art layer](vector.md#art-layers) (**Make art layer**, with the Select tool) takes the drawing in a selection off the
-edit layer and puts it on VECTOR, where it's drawn with the shapes: above the base layer's own pixels, and below the edit
-cells and paint you draw afterward. Its cells keep their characters and colors exactly, where an art layer is the
+picked cells layer and puts it on the vector layer directly above that layer, adding one there when the layer above
+isn't a vector layer. So it's drawn where the cells were: over the layers under it and under the ones above. Its cells keep their characters and colors exactly, where an art layer is the
 topmost thing at a cell.
 
 ## Opening ANSI and text files
@@ -231,10 +233,9 @@ Drop a `.ans`, `.utf8ans`, `.asc` or `.txt` file on the start screen, or choose 
 and it asks what you'd like to do with the art, then opens it as a new document:
 
 - **Edit it**: the art goes on the edit layer, over a plain black base, as if you'd drawn it. Every cell
-  is an edit cell, so the eraser on the edit layer, **Clear edit layer** and everything else that works on what
+  is an edit cell, so the eraser on the edit layer, **Clear layer** and everything else that works on what
   you've drawn works on it.
-- **Draw on top of it**: the art is the base layer, and what you draw goes on top of it. Merge up turns
-  it into edit cells later, if you change your mind.
+- **Draw on top of it**: the art is the base layer, and what you draw goes on top of it.
 - **Cancel** opens nothing.
 
 Either way:
@@ -355,32 +356,38 @@ nudges each cell by its place in the grid. See [Characters](characters.md#how-th
 
 ## Moving things between layers
 
-- **Merge down** (top toolbar, or the Select tool's row) puts the edit layer into the base layer.
-  In an [animation](animation.md) with more than one frame it's off, Into the image too: the base is under
-  every frame, so one frame can't go into it.
-  With a selection, only what's drawn inside it goes; the rest of the edit layer stays. Each time,
-  it asks how:
-  - **Keep crisp cells**: paint and cells become base pixels exactly as they show, and your typed and drawn
-    cells keep their characters, pinned on the base layer. Nothing is resampled or re-filtered, and
-    the effects never touch it. [Shapes](vector.md) go too, first, under the cells and paint, and stop being
-    editable: with a selection, every shape touching it goes whole, with any shape beneath one of those that
-    overlaps it, so nothing on the canvas changes.
-  - **Blend into source image**: your drawing becomes part of the image itself, so every effect applies
-    to it, live, like the photo: Edges outlines it, Sharpen sharpens it, and moving the sliders keeps
-    changing it. Paint and solid cells (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep
-    showing their two halves; letters and other characters can't become picture pixels, so they
-    merge exactly, as does anything drawn in the bars around a picture that doesn't fill the grid.
-    Like Bake, the first time makes the picture the working-size copy the preview is made from, so
-    growing the grid later works from that, and effects like Edges can shift slightly across the
-    picture that first time. With a color-count palette, the palette is worked out again from the
-    merged picture, so some colors can shift. When the graphics card can't process a picture as
-    long as the grid (most handle the full 5000 lines; some phones stop at 2000 or 4000), it merges
-    exactly instead. Shapes stay shapes.
-- **Merge up** (the Select tool's row) does the opposite for the base: what the base layer shows —
-  its characters and colors, effects included — becomes edit cells, which the seed, character set
-  and effects no longer change. With a selection it merges that area; without one, the whole
-  canvas. Merging up over a pinned character moves it to the edit layer and removes the pin.
-- **Clear edit layer** (top toolbar) removes everything you've drawn on the picked layer. The base layer isn't touched,
+- **Merge down** (top toolbar, the Select tool's row, or a row's ⋯ in LAYERS) puts the picked layer into the layer
+  under it, and the merged layer leaves the stack, so nothing on the canvas changes. Undo brings it back. It's off
+  with the base picked (nothing is under it), and onto a vector layer, since cells can't become shapes: Make art
+  layer does that ([Art layers](#art-layers)). In an [animation](animation.md) with more than one frame it's off,
+  Into the image too: a layer is under every frame, so one frame can't go into it. In a room it only goes into the
+  base, and the merged layer stays, emptied, since a room keeps its layers. With a selection, only what's drawn
+  inside it goes, and the layer stays with the rest; a vector layer goes into a cells layer only whole.
+  - **A cells layer into a cells layer**: each of its cells is written on the layer under it as it shows, over
+    that layer's paint, and its paint is drawn over that layer's paint. Where its paint lies over a converted
+    cell, that cell is written as the exact character and colors it shows.
+  - **A vector layer into a cells layer**: every cell its shapes reach is written there as the exact cell it
+    shows now. A later palette or character setting doesn't convert it again. Its guides, which draw nothing,
+    stay, and the vector layer with them.
+  - **A vector layer into the base**: its shapes are pressed into the base layer's pixels (VECTOR's Merge down,
+    which presses only the selected shapes when some are). A vector layer with its own character settings can't
+    be pressed: it says so.
+  - **A cells layer into the base** asks how, each time:
+    - **Keep crisp cells**: paint and cells become base pixels exactly as they show, and your typed and drawn
+      cells keep their characters, pinned on the base layer. Nothing is resampled or re-filtered, and
+      the effects never touch it.
+    - **Blend into source image**: your drawing becomes part of the image itself, so every effect applies
+      to it, live, like the photo: Edges outlines it, Sharpen sharpens it, and moving the sliders keeps
+      changing it. Paint and solid cells (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep
+      showing their two halves; letters and other characters can't become picture pixels, so they
+      merge exactly, as does anything drawn in the bars around a picture that doesn't fill the grid.
+      Like Bake, the first time makes the picture the working-size copy the preview is made from, so
+      growing the grid later works from that, and effects like Edges can shift slightly across the
+      picture that first time. With a color-count palette, the palette is worked out again from the
+      merged picture, so some colors can shift. When the graphics card can't process a picture as
+      long as the grid (most handle the full 5000 lines; some phones stop at 2000 or 4000), it merges
+      exactly instead. Shapes stay shapes.
+- **Clear layer** (top toolbar) removes everything you've drawn on the picked layer. The base layer isn't touched,
   and with the base or a vector layer picked it's off.
   In an animation it clears that layer on the frame showing, what the frame inherits there included; the frame's
   other layers and shapes stay.

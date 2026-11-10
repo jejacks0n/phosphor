@@ -256,13 +256,13 @@ One frames-per-second number holds for the whole movie (8 to begin with, 1 to 60
 
 ## What's off with frames, and why
 
-- **Merge down** and **Into the image**: they put one frame into the base, which is under all of them.
+- **Merge down** and **Into the image**: they put one frame into the layer under it, which is under all of them.
 - **Rooms**: a room holds one still document, and frames don't travel.
 - **Size**: at most 1,000 frames and 40,000 cells a frame, and 4 million cells across the frames, so a 200 x 200 canvas
   holds 100. The grid can only grow as far as the frames allow. Those keep a movie where every cell changes on every frame within
   what a browser tab can hold.
 
-**Merge up** works on the frame showing, and **Bake** on every frame. **Flatten** is off, since it replaces the picture under every frame. Moving a slider changes every frame, since they all sit on the same base.
+**Bake** works on every frame. **Flatten** is off, since it replaces the picture under every frame. Moving a slider changes every frame, since they all sit on the same base.
 With a Color count palette, there's one palette for the whole movie, picked from every frame, so colors stay
 put from frame to frame ([Layers](layers.md)). Dither touches the picture under the frames, which holds still, and the
 shapes, which are dithered where each frame has them: with Floyd–Steinberg, a shape that moves can shift the pattern

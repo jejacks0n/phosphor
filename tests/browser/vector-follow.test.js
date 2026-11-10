@@ -134,6 +134,21 @@ test('Merge down of everything leaves the guide a shape, and presses the followe
   expect(red(project, 14, 10)).toBe(true);
 });
 
+test('Merge down of a vector layer into a cells layer keeps its guides, and the layer with them', async () => {
+  const { project, workspace } = await drawing();
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer(vector);
+  const g = project.addShape(path({ guide: true }));
+  project.addShape(square(5, 5));
+  await settle(project);
+  const cells = cellsKey(project);
+  expect(project.mergeDown(vector)).toBe(true);
+  await settle(project);
+  expect([...project.shapes.keys()]).toEqual([g]);
+  expect(project.layers.map((layer) => layer.id)).toEqual(['base', 'edit', vector]);
+  expect(cellsKey(project)).toEqual(cells);
+});
+
 test('Bake leaves a guide a shape too', async () => {
   const { project } = await drawing();
   const g = project.addShape(path({ guide: true }));
@@ -225,22 +240,21 @@ test('a lone guide has nothing to merge: no change and no undo step', async () =
   project.clearHistory();
   project.mergeShapes([g]);
   project.mergeShapes();
-  project.mergeDown({ c0: 0, r0: 0, c1: 29, r1: 14 });
+  project.mergeDown('edit', { c0: 0, r0: 0, c1: 29, r1: 14 });
   await settle(project);
   expect([...project.shapes.keys()]).toEqual([g]);
   expect(project.canUndo).toBe(false);
 });
 
-test('Merge down is off for a document whose only shapes are guides', async () => {
+// Merge down acts on the picked layer (on PIXEL and ANSI a cells layer, so that's VECTOR's alone).
+test('Merge down is off for a vector layer whose only shapes are guides', async () => {
   const { project, workspace } = await drawing();
   project.addShape(path({ guide: true }));
+  workspace.pickLayer(project.layers.find((layer) => layer.kind === 'vector').id);
   const host = await mount(EditToolbar);
   const merge = () => [...host.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Merge down' || b.title.startsWith('Merge down:'));
-  for (const tab of ['vector', 'output']) {
-    workspace.editorTab = tab;
-    await nextTick();
-    expect([tab, merge().length > 0, merge().every((b) => b.disabled)]).toEqual([tab, true, true]);
-  }
+  await nextTick();
+  expect([workspace.editorTab, merge().length > 0, merge().every((b) => b.disabled)]).toEqual(['vector', true, true]);
   project.addShape(square(5, 5));
   await nextTick();
   expect(merge().some((b) => !b.disabled)).toBe(true);

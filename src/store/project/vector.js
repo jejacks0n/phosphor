@@ -17,8 +17,7 @@ import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { bytesHeld, lockedAmong, putLayer, refusedHidden, shapesOfStack } from '@/store/project/shared.js';
-import { lowerGroup } from '@/document/layerInfo.js';
+import { bytesHeld, levelCells, lockedAmong, paintFrom, putLayer, putStack, shapesOfStack, stackState } from '@/store/project/shared.js';
 import { centerOf, placedShapes } from '@/document/followers.js';
 import { setPartsAt } from '@/document/tweens.js';
 import { measure } from '@/document/pathLength.js';
@@ -29,12 +28,12 @@ import { unitsOf, wandIn } from '@/lib/MagicWand.js';
 // What the document holds is what a file, a project or a room takes back: one check for both.
 const keeps = (shape) => !!shapeFromStranger(shape);
 
-// The shapes that can press into the base: those on the vector layers directly on the bottom (hidden or not), placed
-// (followers.js). One on a vector layer above a cells layer stays a shape through Bake and VECTOR's Merge down.
-// ponytail: a merge for those (into the cells layer under them) is its own later merge.
-const pressable = (project) => {
-  const { vectors } = lowerGroup(project.layers, project.baseChars);
-  return new Map([...placedShapes(project)].filter(([, shape]) => vectors.includes(shape.layer ?? 'vector')));
+// The shapes that can press into the base: those on the shown vector layers directly on the bottom with its character
+// settings (the lower group's), placed (followers.js), or only those on the layer with the id. A hidden one's aren't drawn
+// on the shape layer, so they'd be lost: Bake and Merge down refuse it (refusedHidden).
+const pressable = (project, id = null) => {
+  const { vectors } = project.lowerGroup;
+  return new Map([...placedShapes(project)].filter(([, shape]) => (id ? [id] : vectors).includes(shape.layer ?? 'vector') && vectors.includes(shape.layer ?? 'vector')));
 };
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
@@ -109,12 +108,13 @@ export const vectorActions = {
     return key;
   },
 
-  // Shapes on top, in their order (a paste's copies, an SVG's art), on the vector layer picked, as one step; selected,
+  // Shapes on top, in their order (a paste's copies, an SVG's art), on the vector layer picked (layer: its id as a shape's
+  // layer field holds it, undefined for 'vector'), as one step; selected,
   // with Vector select. One a file wouldn't keep is left out; past a frame's shapes none come in, and a toast says so. fromKeys: the keys they
   // were copied from, in their order, so a follower that comes in with its path follows the path's copy; one whose link
   // couldn't be made now (its path isn't here, is an art layer, follows one itself, or is the shape) follows none. The
   // keys.
-  addShapes(shapes, fromKeys = null) {
+  addShapes(shapes, fromKeys = null, layer = pickedVector(this)) {
     if (this.shapes.size + shapes.length > MOST_SHAPES) {
       toast(t('vector.tooMany', { count: MOST_SHAPES }));
       return [];
@@ -123,7 +123,8 @@ export const vectorActions = {
     if (!this.paintLayer) return [];
     const own = ownsEdit(this), next = new Map(this.shapes), keys = [], workspace = useWorkspaceStore();
     let z = Math.max(0, ...[...this.shapes.values()].map((shape) => shape.z + 1));
-    const copies = new Map(), layer = pickedVector(this); // a key copied from to its copy's
+    const copies = new Map(); // a key copied from to its copy's
+    if (layer === 'vector') layer = undefined; // a shape on the first one has no layer field
     shapes.forEach((shape, i) => {
       const made = makeShape({ ...shape, z, layer });
       if (!keeps(made)) return;
@@ -417,11 +418,12 @@ export const vectorActions = {
 
   // The shapes keys, every shape beneath one of them whose bounds overlap it where it shows, and the followers of each
   // pressed path or guide named in keys (which would leave it otherwise), and so on: what a merge presses into the base
-  // together, so that nothing shown changes. Never a guide, which draws nothing and stays a shape.
+  // together, so that nothing shown changes. Never a guide, which draws nothing and stays a shape. layer: only the
+  // shapes on the vector layer with that id.
   // ponytail: passes until nothing's added, each O(n²) over the shapes' bounds; a stacking-ordered sweep or a spatial
   // index if merges of many shapes lag.
-  pressedKeys(keys) {
-    const placed = pressable(this), order = stacked(placed).filter(([, shape]) => !shape.guide);
+  pressedKeys(keys, layer = null) {
+    const placed = pressable(this, layer), order = stacked(placed).filter(([, shape]) => !shape.guide);
     const named = new Set(keys.filter((key) => placed.has(key))), pressed = new Set([...named].filter((key) => !placed.get(key).guide));
     for (let size = -1; size !== pressed.size;) {
       size = pressed.size;
@@ -448,34 +450,24 @@ export const vectorActions = {
     return { base: { canvas, hasPaint: true }, shapes, baseRecords: withPins(withoutPins(this.baseRecords, covered), pins) };
   },
 
-  // VECTOR's Merge down: the shapes keys (or all of them), with those beneath that overlap them, pressed into the
-  // base layer's pixels, where they stop being shapes. One whole-layer step. A still only: in an animation the
-  // base is under every frame.
+  // VECTOR's Merge down: the shapes keys, with those beneath on their layer that overlap them, pressed into the base
+  // layer's pixels, where they stop being shapes, and their layer stays; with none, the whole vector layer picked merges
+  // down (mergeDown, which says why when it can't). Whether it merged.
   mergeShapes(keys = null) {
-    if (!this.image || this.hasFrames || refusedHidden(this, ['base', 'vector'])) return;
-    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
-    this.ensureLayer();
-    this.commitPending();
-    const pressed = this.pressedKeys(keys ?? [...this.shapes.keys()]);
-    if (!pressed.size) return; // none, or guides alone with no followers: nothing to press, and no step
-    const before = { base: this.baseLayer.snapshot(), shapes: this.shapes, baseRecords: this.baseRecords };
-    const after = this.pressShapes(pressed);
-    const apply = ({ base, shapes, baseRecords }) => {
-      this.baseLayer.restore(base);
-      this.shapes = shapes;
-      this.setBaseRecords(baseRecords);
-      this.render();
-    };
-    apply(after);
-    this.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(before.base, after.base));
+    const picked = useWorkspaceStore().pickedLayer, first = keys?.length && this.shapes.get(keys[0]);
+    const id = this.layerById(picked)?.kind === 'vector' ? picked : first ? first.layer ?? 'vector' : 'vector';
+    return this.mergeDown(id, null, keys?.length ? keys : null);
   },
 
-  // Make art layer: the drawing inside the selection (the Select tool's rectangle, or the Magic Wand's cells; the edit
-  // layer's cells and paint, as copySelection reads them) becomes one art layer above every shape, at the cells'
-  // place and trimmed to the ones that show something, and is taken out of the drawing: one step, with the layer
-  // selected on VECTOR. A cell nothing was drawn on stays see-through. The key, or null (no step, and a toast says
-  // why) with nothing drawn there, at the most shapes a frame holds, or a drawing too big or too wide for one layer.
-  // The record is checked as a file would be, at the stacking it gets, before anything is taken out.
+  // Make art layer: the drawing inside the selection (the Select tool's rectangle, or the Magic Wand's cells; the cells
+  // layer in use's cells and paint, as copySelection reads them) becomes one art layer on top of the vector layer directly
+  // above that cells layer, at the cells' place and trimmed to the ones that show something, and is taken out of the
+  // drawing: one step, with the layer picked and selected on VECTOR. With no vector layer there, one is made there, in the
+  // same step (in an animation it's made as a first shape brings one, with no step of its own: ponytail, a frame's shapes
+  // live in its changes, which a whole-layer step would have to carry). In a room the art goes on its vector layer, as it
+  // always did, since a room keeps its layers. A cell nothing was drawn on stays see-through. The key, or null (no step,
+  // and a toast says why) with nothing drawn there, at the most shapes a frame holds, or a drawing too big or too wide for
+  // one layer. The record is checked as a file would be, at the stacking it gets, before anything is taken out.
   makeArtLayer() {
     const workspace = useWorkspaceStore();
     const wand = workspace.activeTool === 'wand' && workspace.wand ? wandIn(workspace.wand, 'output', this.rows) : null;
@@ -508,19 +500,30 @@ export const vectorActions = {
       toast(t('art.tooBig'));
       return null;
     }
+    const src = this.editId, above = this.layers[this.layers.findIndex((layer) => layer.id === src) + 1];
+    const into = this._sharing ? undefined : above?.kind === 'vector' ? above.id : this.hasFrames ? putLayer(this, 'vector', src, this.charsOf(src)).id : null;
     let key = null;
-    this.selectionEdit([rect], () => {
-      if (wand) {
-        this.eraseEditPixels(picked.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
-        this.clearEditCells(picked);
-      } else {
-        this.deleteIn(rect, [this.editId]);
-      }
-      [key] = this.addShapes([art]);
-    });
+    if (into === null) key = artOnNewLayer(this, art, rect, picked);
+    else {
+      this.selectionEdit([rect], () => {
+        if (wand) {
+          this.eraseEditPixels(picked.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
+          this.clearEditCells(picked);
+        } else {
+          this.deleteIn(rect, [this.editId]);
+        }
+        [key] = this.addShapes([art], null, into);
+      });
+    }
     workspace.selection = null;
     workspace.wand = null;
-    workspace.editorTab = 'vector';
+    const layer = key && (this.shapes.get(key)?.layer ?? 'vector');
+    if (layer && this.layerById(layer)) workspace.pickLayer(layer);
+    else workspace.editorTab = 'vector';
+    if (key) {
+      workspace.setActiveTool('vselect');
+      workspace.vectorSelected = [key];
+    }
     return key ?? null;
   },
 
@@ -650,18 +653,48 @@ function drawnIn(project, rect, keep = null) {
   const copied = project.copySelection(rect, [project.editId], { shapes: false });
   const block = { w: copied.w, cells: new Array(copied.w * copied.h).fill(null), ...copied.parts[0] }; // none with the base in use: nothing drawn
   const paint = block.paint && ctx2d(block.paint).getImageData(0, 0, block.paint.width, block.paint.height).data, k = project.paintLayer?.scale ?? 1;
+  const level = levelCells(project, project.editId); // what the layer shows, not what's over it
   const half = (x, y) => {
+    if (!paint) return null;
     const o = (Math.floor(y * k) * block.paint.width + Math.floor(x * k)) * 4;
-    return paint && paint[o + 3] >= 128 ? rgb2hex({ r: paint[o], g: paint[o + 1], b: paint[o + 2] }) : null;
+    return paint[o + 3] >= 128 ? rgb2hex({ r: paint[o], g: paint[o + 1], b: paint[o + 2] }) : null;
   };
   const drawn = [];
   block.cells.forEach((entry, i) => {
     const x = i % block.w, y = Math.floor(i / block.w), col = rect.c0 + x, row = rect.r0 + y;
     if (keep && !keep.has(cellKey(col, row))) return;
-    const cell = artCellOf(entry, half(x, 2 * y), half(x, 2 * y + 1), project.composedCells[cellIndex(col, row, project.cols)]?.char);
+    const cell = artCellOf(entry, half(x, 2 * y), half(x, 2 * y + 1), level[cellIndex(col, row, project.cols)]?.char);
     if (cell) drawn.push({ col, row, cell });
   });
   return drawn;
+}
+
+// Make art layer's art taken off the cells layer in use (inside rect, or only the wand's picked cells) onto a new vector
+// layer made directly above it, as one whole-layer step that adds the layer (layerOp); the art's key.
+function artOnNewLayer(project, art, rect, picked) {
+  const src = project.editId, before = { stack: stackState(project), shapes: project.shapes };
+  const paint = paintFrom(project.paintLayer, project.paintLayer.snapshot());
+  const taken = picked ? new Set(picked.map(({ col, row }) => cellKey(col, row))) : null;
+  const editCells = new Map([...project.editCells].filter(([key]) => {
+    if (taken) return !taken.has(key);
+    const { col, row } = parseKey(key);
+    return col < rect.c0 || col > rect.c1 || row < rect.r0 || row > rect.r1;
+  }));
+  if (picked) paint.erase(picked.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
+  else paint.clearCells(rect);
+  const { id } = putLayer(project, 'vector', src, project.charsOf(src)), key = newShapeKey();
+  const after = {
+    stack: { layers: project.layers, data: new Map(before.stack.data).set(src, { editCells, paintLayer: paint, hasPaint: paint.hasPaint }) },
+    shapes: new Map(project.shapes).set(key, makeShape({ ...art, layer: id === 'vector' ? undefined : id })),
+  };
+  const apply = (state) => {
+    project.shapes = state.shapes;
+    putStack(project, state.stack);
+    project.render();
+  };
+  apply(after);
+  project.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(paint, editCells), { everyFrame: true, layerOp: true });
+  return key;
 }
 
 // Drawn cells ({ col, row, cell }, at least one) as an art layer's place and drawing, trimmed to them: { m, art }. A

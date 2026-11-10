@@ -1307,7 +1307,7 @@ describe.each([
   ['the base layer\'s pixels', (project) => {
     project.paintEditPixels([{ x: 4, y: 4, r: 1, g: 2, b: 3 }], 100);
     project.commitEdit();
-    project.mergeDown();
+    project.mergeDown('edit');
   }],
 ])('with %s', (_, draw) => {
   test('restoring a version and going back makes no duplicates', async () => {

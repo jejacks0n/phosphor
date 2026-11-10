@@ -52,15 +52,14 @@ export const DRAWING_ACTIONS = [
 // Refused for artists: the picture, the settings, the grid and which document this is.
 export const HOST_ONLY_ACTIONS = [
   'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'paintBasePixels', 'addPictureToLayer',
-  'bake', 'flattenDrawing', 'mergeUp', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'clearEditLayer',
+  'bake', 'flattenDrawing', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'clearEditLayer',
   'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed', 'setLayerChars',
   'updateCols', 'updateRows',
   'setImageFromFile', 'setBlankCanvas', 'replaceImage', 'newDocument', 'clearImage', 'loadProject', 'restoreDocument', 'openParts', 'openArtFile',
 ];
 
 // Refused while someone else is drawing in an art layer, with a toast saying who: a whole-layer action or a new grid
-// goes to the room as the project, which would step them out and lose what they hadn't sent. (Merge up goes as
-// slices, and only takes the drawing's own cells.)
+// goes to the room as the project, which would step them out and lose what they hadn't sent.
 export const WHOLE_LAYER_ACTIONS = ['clearEditLayer', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'bake', 'flattenDrawing', 'updateCols', 'updateRows'];
 export function lockedOut(project) {
   const words = anyoneInside(project);

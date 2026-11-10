@@ -42,6 +42,7 @@ test('the merge dialog: centered, canceled three ways, keys kept inside, each ch
   await expect(dialog(page)).toBeHidden();
   expect(await hasEdits(page)).toBe(false);
 
+  await page.getByRole('button', { name: '+ Layer' }).click(); // the merged layer went: a new one to draw on, picked
   await drawLine(page, 10);
   await mergeButton(page).click();
   await dialog(page).getByRole('button', { name: /^Blend into source image/ }).click();

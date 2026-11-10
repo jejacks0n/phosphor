@@ -104,14 +104,74 @@ export function withLayer(project, id, fn) {
   }
 }
 
-// Whether a merge is refused because one of layers is hidden ('base', 'edit', 'vector'), with a toast saying so: hiding
-// never changes the drawing. Merge up, Merge down and Into the image take a layer as it shows into another, so both
-// count; Bake and the vector merge write into the base; Bake and the merges that press shapes take the vector layer's,
-// so a hidden vector layer counts while it has any. Refused, nothing changes and there's no undo step.
-export function refusedHidden(project, layers = ['base', 'edit']) {
-  if (!layers.some((id) => project.layerHidden(id) && (project.layerById(id).kind !== 'vector' || project.shapes.size > 0))) return false;
+// Whether a merge is refused because one of the layers with the ids is hidden, with a toast saying so: hiding never
+// changes the drawing, and what's hidden is never merged (nor lost). A vector layer counts only while it has shapes of its
+// own. Refused, nothing changes and there's no undo step.
+export function refusedHidden(project, ids) {
+  const counts = (id) => {
+    const layer = project.layerById(id);
+    return !!layer?.hidden && (layer.kind !== 'vector' || [...project.shapes.values()].some((shape) => (shape.layer ?? 'vector') === id));
+  };
+  if (!ids.some(counts)) return false;
   toast(t('layers.hiddenMergeToast'));
   return true;
+}
+
+// A layer's name as shown (useLayerName's, in the store): its own, else "Base", "Layer n" or "Vector n".
+export const layerName = (layer) => layer.name ?? (layer.id === 'base' ? t('layers.base') : t(layer.kind === 'vector' ? 'layers.vectorDefault' : 'layers.editDefault', { n: layer.n }));
+
+// A new paint layer the size of grid (a PaintLayer), holding snapshot (a snapshot(), or null for none): a layer's paint
+// changed by a step that keeps the one before for its undo.
+export function paintFrom(grid, snapshot = null) {
+  const paint = markRaw(new PaintLayer({ cols: grid.cols, rows: grid.rows, scale: grid.scale }));
+  if (snapshot) paint.restore(snapshot);
+  return paint;
+}
+
+// The cells as they show up to the layer with the id, before the wide layout: the lower group's (lowerCells) for the
+// bottom or a layer in that group, else the upper walk stopped at the layer (Renderer.composeUpper) at indexes (every
+// cell with null), the lower group's elsewhere. What a merge or Make art layer takes from a layer with others over it.
+export function levelCells(project, id, indexes = null) {
+  const { cells, vectors } = project.lowerGroup;
+  if (id === 'base' || id === cells || vectors.includes(id)) return project.lowerCells;
+  project.overLower([]); // the renderer's upper layers as the stack is now
+  const all = project.renderer.upper;
+  project.renderer.upper = all.slice(0, all.findIndex((u) => u.id === id) + 1);
+  try {
+    return project.renderer.composeUpper(project.lowerCells, indexes, project.renderer.palette);
+  } finally {
+    project.renderer.upper = all;
+  }
+}
+
+// What a step that changes the stack and what's on its cells layers holds either side (Flatten, Bake, the merges): the
+// layers, and every cells layer's data above the bottom by id ({ editCells, paintLayer, hasPaint }), the one in use's
+// fields among them. A step never changes the objects in one: it makes new ones (paintFrom) for the other side.
+export function stackState(project) {
+  const data = new Map(project._layerData);
+  if (project.editId !== 'base' && project.layerById(project.editId)) data.set(project.editId, { editCells: project.editCells, paintLayer: project.paintLayer, hasPaint: project.hasPaint });
+  return { layers: project.layers, data };
+}
+
+// stackState's state put back (layers: left as they are when it has none): each layer's data where it waits, the one in
+// use's in the edit layer's fields (empty ones when it isn't in the stack any more), and the layers last, so a pick that
+// left the stack moves to the layer that was under it (followLayerPick), which is then the one in use.
+export function putStack(project, { layers = project.layers, data }) {
+  const grid = project.paintLayer;
+  project._layerData.clear();
+  for (const [id, each] of data) {
+    if (grid) each.paintLayer?.extend(grid.cols, grid.rows); // the grid can have grown since
+    project._layerData.set(id, each);
+  }
+  const own = project.editId !== 'base' && project._layerData.get(project.editId);
+  if (own) {
+    project._layerData.delete(project.editId);
+    project._frameSwaps++;
+    project.editCells = own.editCells;
+    project.paintLayer = own.paintLayer ?? (grid && paintFrom(grid));
+    project.hasPaint = own.hasPaint;
+  } else if (project.editId !== 'base') emptyFields(project);
+  project.layers = layers;
 }
 
 // Whether a change to the layers' structure (adding, deleting, moving, or a merge that removes one) is refused because the

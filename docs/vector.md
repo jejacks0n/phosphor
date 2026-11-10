@@ -34,8 +34,8 @@ copy it and delete it, and it stacks with the shapes. It keeps its characters an
 where a shape's art is converted.
 
 To make one, choose the Select tool (**M**) on ANSI and select the area (or select cells with the Magic Wand), and press **Make art layer** (beside Merge down, or in
-the Actions menu on narrow screens). What's drawn in the selection (typed cells, drawn cells and paint, the edit layer) moves into a new
-art layer on top of every shape, trimmed to the cells that have something in them, and the view goes to VECTOR with the
+the Actions menu on narrow screens). What's drawn in the selection (typed cells, drawn cells and paint, on the picked cells layer) moves into a new
+art layer on the vector layer directly above that layer (one is added there when the layer above isn't a vector layer), on top of its shapes, trimmed to the cells that have something in them, and the view goes to VECTOR with the
 layer selected. It's one undo step, and the canvas looks the same afterward. With the Magic Wand, only the cells it selected are taken, and the rest of the drawing stays. The base layer and the
 shapes aren't taken along, and with nothing drawn in the selection nothing happens (with the Magic Wand, Phosphor says so). A layer holds a limited amount (a piece about the size of a
 screenful of detailed art); if the selection has more, Phosphor asks for a smaller piece and leaves the drawing as it was.
@@ -76,7 +76,7 @@ with a **Done** button.
   are in the history with the rest.
 - **What's off.** The settings panel, picking the base layer and the frame controls (the animation bar, and the keys that play, step
   and add frames) are off while you're in. Changing the picture or the frame would leave the dimmed drawing out of date.
-  Clear, Merge up, Merge down (and with it Into the image), Bake and Flatten are off too, since they change the whole drawing,
+  Clear, Merge down (and with it Into the image), Bake and Flatten are off too, since they change the whole drawing,
   not the layer: their titles say to step out first.
 - **In a room.** One person at a time draws in an art layer ([Rooms](#rooms)).
 - **Stepping out.** Press **Done** or **Esc** (once nothing else is left to cancel: with the Text cursor showing, the first
@@ -85,15 +85,18 @@ with a **Done** button.
 
 ## Bake and Merge down
 
-- **Merge down** on VECTOR presses the selected shapes (or, with none selected, all of them) into the base
-  layer's pixels, where they stop being shapes, with nothing on the canvas changing. Any shape beneath one of
-  them that overlaps it goes too. One undo brings them back as shapes. In an animation it's off: the base is
-  under every frame.
-- **Merge down** on ANSI takes shapes along ([Layers](layers.md)); its dialog says so.
-- **Bake** presses every shape in on a still; in an animation they stay shapes, with the sliders burnt into
+- **Merge down** on VECTOR merges the picked vector layer into the layer under it
+  ([Layers](layers.md#moving-things-between-layers)). Onto the base it presses the selected shapes (or, with none
+  selected, all of them, and the layer goes) into the base layer's pixels, where they stop being shapes, with
+  nothing on the canvas changing. Any shape beneath one of them that overlaps it goes too. Onto a cells layer the
+  whole layer goes, every cell its shapes reach written there as it shows. One undo brings them back as shapes. A
+  vector layer with its own character settings can't be pressed into the base, which would change how it shows: it
+  says so. In an animation it's off: a layer is under every frame.
+- **Bake** presses the shapes on a vector layer directly on the base in on a still (not one with its own character
+  settings); shapes higher in the stack stay shapes. In an animation they stay shapes, with the sliders burnt into
   their colors.
 - **Flatten** turns every shape and art layer, with the rest of the drawing, into plain cells as they show,
-  and the vector layer is empty afterwards ([Layers](layers.md#flattening)).
+  and the vector layers go ([Layers](layers.md#flattening)).
 
 ## Animation
 

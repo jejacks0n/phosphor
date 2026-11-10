@@ -5,13 +5,14 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useLayerName } from '@/composables/useLayerName';
+import { useMergeDown } from '@/composables/useMergeDown';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // The drawing's layers, top of the stack first (project.layers, reversed), the base at the bottom. Picking a row
 // decides the tabs and what the tools act on; its eye hides or shows the layer; a click on the picked row's name, a
 // double-click on any name, or F2 renames it, Enter or leaving the box keeps the name and Escape doesn't. Each row but
-// the bottom has a ⋯ menu (Rename, Duplicate, Delete, Move up, Move down) and drags to another place in the stack, never
+// the bottom has a ⋯ menu (Rename, Duplicate, Delete, Merge down, Move up, Move down) and drags to another place in the stack, never
 // below the bottom.
 // + Layer and + Vector layer, under the list, add a layer directly above the picked one and pick it. The side panel's
 // LAYERS and the phone's Layers dialog both show it.
@@ -60,6 +61,9 @@ function add(kind) {
 // step: off in a room, and Duplicate at the most layers.
 const duplicateOff = computed(() => (full.value ? t('layers.full', { n: MOST_LAYERS }) : inRoom.value ? t('layers.notInRoom') : null));
 const duplicate = (layer) => project.duplicateLayer(layer.id);
+
+// The ⋯ menu's Merge down: the layer into the one under it, as the toolbar's (off with its reason, asking how into the base).
+const { offFor: mergeOff, mergeDown } = useMergeDown();
 
 // The ⋯ menu's moves: a step up or down the stack, as an undo step (project.moveLayer).
 const moveOff = (layer, by) => (inRoom.value ? t('layers.notInRoom') : (by > 0 ? layer.at === project.layers.length - 1 : layer.at === 1) ? '' : null);
@@ -172,6 +176,7 @@ function cancel() {
             <button @click="rename(layer)">{{ t('layers.rename') }}</button>
             <button :disabled="duplicateOff !== null" :title="duplicateOff" @click="duplicate(layer)">{{ t('layers.duplicate') }}</button>
             <button :disabled="inRoom" :title="inRoom ? t('layers.notInRoom') : null" @click="project.deleteLayer(layer.id)">{{ t('layers.delete') }}</button>
+            <button :disabled="mergeOff(layer.id) !== null" :title="mergeOff(layer.id)" @click="mergeDown(layer.id)">{{ t('toolbar.mergeDown') }}</button>
             <button :disabled="moveOff(layer, 1) !== null" :title="moveOff(layer, 1) || null" @click="move(layer, 1)">{{ t('layers.moveUp') }}</button>
             <button :disabled="moveOff(layer, -1) !== null" :title="moveOff(layer, -1) || null" @click="move(layer, -1)">{{ t('layers.moveDown') }}</button>
           </DropdownMenu>
