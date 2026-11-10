@@ -64,8 +64,9 @@ intact and saved as a .phosphor.
 
 ## Sizes
 
-- One room: up to 12 watchers (Max watchers' default; 1 to 30 allowed), up to 5 pages besides hers in an ordinary
-  run, 12 for the full room in step 8's `extremes` probe.
+- One room: up to 12 watchers (Max watchers' default; 1 to 30 allowed). In an ordinary run, up to 5 pages besides
+  hers (`tin_owl`, `pixel_fox`, the guest, `spam_gull`, `loud_crow`); step 8's `extremes` probe fills the room to 12
+  with nine more members, and step 13's brings five of its own; each probe closes its pages after it.
 - Up to 7 people drawing (her and six artists), where the room's own limit stops Make artist.
 - Her art is her partner's: `photo.jpg` at 80 by 27 lines (2,160 cells), `scene.ans` at 80 by 6, a blank canvas at 80
   by 25 (2,000 cells), or `long.ans` at 300 by 1,600 (480,000 cells, the biggest art a room is sent).
@@ -215,7 +216,7 @@ and drag the panel wider.
   ([Chat](../../social.md#chat)).
 - Probes: `extremes`: a 300-character message with emoji (the 301st character can't be typed), then the full room: 9
   more members join (12 watchers) and each says a line, and she times her own message reaching a watcher against
-  `response`; `speed`: send five messages as fast as she can ("Easy there—wait a moment before sending again." after
+  `response`, then the nine leave (their pages closed), so later steps aren't refused as "Room is full"; `speed`: send five messages as fast as she can ("Easy there—wait a moment before sending again." after
   three, with her text kept).
 - Rated: yes, wants a key to put the cursor in the chat box
 
@@ -269,8 +270,9 @@ change, ask in the chat whether people can see her box, and have a watcher Exit 
 - Does: makes `pixel_fox` an artist too; turns Show others' cursors off and on.
 - Expects: both artists' marks show at their cells with their names (a tag at the edge for one out of view, which
   goes there when pressed); Show others' cursors off hides them ([Drawing together](../../social.md#drawing-together)).
-- Probes: `extremes`: make artists of four more members (step 8's), then open a fifth's ⋯: Make artist is off and
-  says "This room already has the maximum number of artists."; then put the four back to watching; `speed`: have both artists draw while she
+- Probes: `extremes`: five more members join (ids `u_10` and up); she makes four of them artists, then opens the
+  fifth's ⋯: Make artist is off and says "This room already has the maximum number of artists."; then she puts the
+  four back to watching and the five leave (their pages closed); `speed`: have both artists draw while she
   scrolls, with `qa.frames`.
 - Rated: yes, wants Tab to the row's ⋯, then Enter on Make artist
 
@@ -319,8 +321,8 @@ change, ask in the chat whether people can see her box, and have a watcher Exit 
 - Rated: yes, wants Tab to the row's ⋯, then Enter on Back to watching
 
 **Free time:** she'd have `tin_owl` save the art as a .phosphor from their page (a project saved by an artist has no
-names in it), press `tin_owl`'s cursor tag when it's off screen, merge Layer 1 into the base with only a dropped artist
-listed, and leave `tin_owl` invited and have them Exit (the invitation clears).
+names in it), press `tin_owl`'s cursor tag when it's off screen, and leave `tin_owl` invited and have them Exit (the
+invitation clears), then have them join again from the card (step 22 makes them an artist again).
 
 ## Running the room
 
@@ -358,7 +360,9 @@ listed, and leave `tin_owl` invited and have them Exit (the invitation clears).
 ### 21. Remove and block
 - Does: opens `spam_gull`'s ⋯ and presses Remove from room; has `spam_gull` try the link again. Then has `loud_crow`
   join, opens their ⋯, presses Block from your rooms, Cancel, then Block from your rooms and Block.
-- Expects: removed, `spam_gull`'s page says "The host removed you", and they can't come back until the room ends;
+- Expects: removed, `spam_gull`'s page says "The host removed you", and they can't come back until the room ends (the
+  fake keeps no list of who was removed, so a rejoin isn't refused there: that part isn't reachable on the fake, and
+  is noted, not faked);
   "Block loud_crow?" says "They can't join any room you host, and they leave this one now. Unblock them from Account.";
   blocked, they leave; Removed counts each once ([Hosting](../../social.md#hosting)).
 - Probes: `back-out`: Cancel and Escape at Block, with focus back on the ⋯; `interrupt`: have `loud_crow` leave while the
@@ -376,7 +380,8 @@ for people already in, report `spam_gull` from N here (Report in their ⋯), and
   browser's leave-page question with `page.once('dialog', (d) => d.accept())`); looks at a watcher's and `tin_owl`'s
   pages while it's away.
 - Expects: she comes back at the same address and tab, hosting, not asked to join; the art with her stroke, the chat,
-  the numbers and Live for (not restarted) are back; the side panel comes back on LAYERS, with CHAT beside it;
+  the numbers and Live for (not restarted) are back; the side panel shows CHAT, as it does in a room
+  ([Chat](../../social.md#chat)): if it comes back on LAYERS, that difference is a finding;
   watchers see "The host is reconnecting…" and then carry on; `tin_owl` sees "Waiting for the host to
   reconnect—drawing paused…" and then draws on; everyone sees "Your undo starts over. All the drawing is still here."
   Undo empty after the reload is by design ([Hosting](../../social.md#hosting),
@@ -398,15 +403,14 @@ for people already in, report `spam_gull` from N here (Report in their ⋯), and
 ### 24. Take it back
 - Does: has `tin_owl` make her the host again from their ⋯ (setup); opens Settings and stats.
 - Expects: "tin_owl made ansi-fan the host."; she hosts again, with the chat so far, the room's name and welcome kept;
-  the stats start new and no one is muted ([When the host changes](../../social.md#when-the-host-changes)); people
-  removed stay removed.
-- Probes: `interrupt`: have a watcher reload during the hand back and check they come in watching her; `again`: check
-  `spam_gull` still can't come back by the link.
+  the stats start new and no one is muted ([When the host changes](../../social.md#when-the-host-changes)). That
+  people removed stay removed isn't reachable on the fake (it keeps no list of them): noted, not faked.
+- Probes: `interrupt`: have a watcher reload during the hand back and check they come in watching her; `again`: hand it to `tin_owl` and back a second time,
+  and check the chat, name and welcome still carry over.
 - Rated: no (the other person's move)
 
-**Free time:** she'd close her tab with `tin_owl` drawing to see the handover without asking (it needs a room made with
-`hostWaitMs`: if this one wasn't, note it), press Back to your room from a new tab, sign out while hosting, and read
-what `tin_owl`'s page said all along.
+**Free time:** she'd read what `tin_owl`'s page said all along, check Live for didn't restart through the hand
+over and back, undo a stroke she drew before handing over, and have a watcher send a message during a hand over.
 
 ## Ending
 
@@ -435,8 +439,9 @@ what `tin_owl`'s page said all along.
   you left off" offers it.
 - Rated: yes, wants Cmd+S, then Enter
 
-**Free time:** she'd start a second room right away with the same settings (what the form kept), look for last night's
-numbers once the room's gone (they go with it), export her partner's usual export, and check the lobby no longer lists
-a room of hers.
+**Free time:** she'd start a second room right away with the same settings (what the form kept), and with it the
+moves that would have ended the first one early: with `tin_owl` drawing, close her tab to see the handover without
+asking (it needs a new `social.fakeRoom({ hostWaitMs: 3000 })`, her page and `tin_owl`'s faked again with it), press
+Back to your room from a new tab, and sign out while hosting; then check the lobby no longer lists a room of hers.
 
 ## Known

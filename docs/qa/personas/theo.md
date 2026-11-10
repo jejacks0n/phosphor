@@ -24,8 +24,8 @@ invitation taken, a troll reported, and his own art (open in his other tabs) unt
   - `room` is one `social.fakeRoom()` the run shares (keep it on `globalThis` so later snippets reach it).
   - `rooms`, the lobby's cards: the live room (`id: social.ROOM_ID`, name "neon harbor", host `ansi-fan`, count 0, max
     12, guests allowed, signal `feedback`, `blockedInside` true when he's signed in), and two he can't join, only look
-    at: "quiet docks" (`allowGuests: false`, signal `heads-down`) and "full house" (count 12 of 12, signal `chat`), each
-    with an id of its own. Joining either would reach the same fake room, so he only reads why they're grayed.
+    at: "quiet docks" (`allowGuests: false`, no signal) and "full house" (count 12 of 12, signal `chat`), each with an
+    id of its own. Joining either would reach the same fake room, so he only reads why they're grayed.
   - `blocked`: `[{ id: 'u_8', username: 'loud_crow', since: Date.now() }]`: someone he blocked last month, from a room
     he hosted.
 - The other people, each a page of the same context; their moves are setup, not his steps, and the `social` helpers
@@ -112,15 +112,16 @@ script. Every section ends with Free time.
 
 ### 2. Narrow the list
 - Does: opens the filter menu at the right of Public rooms and picks Wants feedback, Open to chat, Heads down, then All.
-- Expects: each shows only the rooms with that signal; one with none says "No rooms match this filter"; All shows them
-  all again ([The lobby](../../social.md#the-lobby)).
+- Expects: each shows only the rooms with that signal; Heads down has none and says "No rooms match this filter"; All
+  shows them all again ([The lobby](../../social.md#the-lobby)).
 - Probes: `again`: pick the same filter twice; `out-of-order`: pick a filter, then reload and see what it starts on.
 - Rated: yes, wants Tab to the filter, then the arrows
 
 ### 3. Rooms I can't get into
-- Does: reads the quiet docks and full house cards and presses their Join.
-- Expects: their Join is grayed out and says why beside it: "Room is full" on full house, and, as a guest, "Signed-in
-  users only" on quiet docks; pressing a grayed Join does nothing ([The lobby](../../social.md#the-lobby)).
+- Does: reads the quiet docks and full house cards and presses full house's Join; as a guest, quiet docks' Join too.
+  Signed in, quiet docks is open to him, so he only reads it (joining it would reach the same fake room).
+- Expects: a grayed Join says why beside it: "Room is full" on full house, and, as a guest, "Signed-in users only" on
+  quiet docks; pressing a grayed Join does nothing ([The lobby](../../social.md#the-lobby)).
 - Probes: `out-of-order`: tab to a grayed Join and press Enter; `extremes`: narrow the window to the smallest the side
   panel shows at and check the reason still fits beside Join.
 - Rated: no (reading the lobby)
@@ -130,7 +131,7 @@ script. Every section ends with Free time.
 - Expects: "Joining…" and "Waiting for the host…", then the ROOM tab, after SAUCE, shows just the host's art, view
   only, in the host's font; the side panel's Social tab becomes CHAT, with the room's name, "hosted by ansi-fan", Exit,
   and the welcome pinned under them ("Pinned note"); "You joined" in the log; a box in the host's color with a tag in
-  its corner, "· tracking"; the address is `/room?room=abcdefghij`. The art shows within the `file` budget of the press
+  its corner, "· tracking"; the address is `/#/room?room=abcdefghij`. The art shows within the `file` budget of the press
   ([Watching](../../social.md#watching)).
 - Probes: `again`: press Join twice quickly and check he's in once (the host's N here counts him once);
   `interrupt`: switch to PIXEL and back while it's joining.
@@ -148,7 +149,8 @@ script. Every section ends with Free time.
 - Rated: yes, wants Enter on Join in the question
 
 **Free time:** he'd open the link in a second tab while watching in the first ("You're watching this room in another
-tab" in the older one), point at the host's name on a card, look for a way to see a room before joining it, and
+tab" in the older one), then join again from the first and close the second, so he's watching there for step 6;
+point at the host's name on a card, look for a way to see a room before joining it, and
 narrow the window until the side panel goes.
 
 ## Watching
@@ -326,10 +328,11 @@ again, check his own tool and colors came back, and see what the host's view loo
 - Does: looks for a way to block `spam_gull`: on their message, beside their name, in the chat panel's header, and in
   Edit account (See who you blocked).
 - Expects: blocking is made from a room you host ("Block from your rooms" in N here, [Hosting](../../social.md#hosting));
-  a watcher has no Block in the room. See who you blocked lists `loud_crow` with Unblock. Record where he looked and what
-  told him (or didn't) how to stop seeing `spam_gull`.
+  a watcher has no Block in the room. See who you blocked lists `loud_crow` with Unblock. Where he finds no Block, the
+  run files an `oversight` saying where he looked and what told him (or didn't) how to stop seeing `spam_gull`.
 - Probes: `out-of-order`: Unblock `loud_crow` from See who you blocked, come back, and check whether their messages
-  unfold (nothing later relies on the block; a watcher can't put it back, so note that); `free`: try right-clicking a
+  unfold (nothing later relies on the block; a watcher can't put it back, so note it, as the README's Walking a step item 9
+  says); `free`: try right-clicking a
   person's name in the chat.
 - Rated: yes, wants a Block beside Report on the message
 
@@ -395,7 +398,7 @@ the shortcut list, and see how the chat reads with the panel at its narrowest.
 - Rated: no (the browser's own Back and Forward, `page.goBack()` and `page.goForward()`)
 
 ### 29. The room ends
-- Does: back in the room, has the host press End room and End room.
+- Does: joins again from the card (step 28 left with Exit), then has the host press End room and End room.
 - Expects: "The host ended the room"; he's back in the lobby, the ROOM tab gone, his own art as it was; the art goes
   with the room (Phosphor keeps no copy); a reload doesn't join it again ([Watching](../../social.md#watching)).
   Takes `qa.memory`.
