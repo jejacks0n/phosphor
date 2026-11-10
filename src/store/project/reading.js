@@ -153,16 +153,20 @@ export const readingActions = {
     return sum;
   },
 
-  // The color under grid pixel (x, y) before adjustments, as it shows: the base, with every shown cells layer's paint
-  // over it by its alpha, bottom first. upTo: only up to the cells layer with that id, it included even hidden.
+  // The color under grid pixel (x, y) before adjustments, as it shows: the base (with the lower group's shapes), with every
+  // shown cells layer's paint and upper vector layer's shapes over it by their alpha, bottom first. upTo: only up to the
+  // cells layer with that id, it included even hidden.
   rawColorAt(x, y, { upTo = null } = {}) {
     if (!this.image) return '#000000';
     this.ensureLayer();
     x = Math.floor(x);
     y = Math.floor(y);
     let color = this.baseColorAt(x, y);
-    for (const id of upTo ? [...cellsUnder(this, upTo), upTo] : cellsUnder(this)) {
-      const painted = this.paintOf(id)?.pixelAt(x, y);
+    const upper = this.lowerGroup.upper, last = upTo === null ? this.layers.length - 1 : this.layers.findIndex((layer) => layer.id === upTo);
+    for (const layer of this.layers.slice(1, last + 1)) {
+      if (layer.hidden && layer.id !== upTo) continue;
+      const painted = layer.kind === 'cells' ? this.paintOf(layer.id)?.pixelAt(x, y)
+        : upper.includes(layer.id) && this.renderer.upperStoredAt(this._upperShapes.get(layer.id), x, y);
       if (painted) color = rgb2hex(over(hex2rgb(color), painted));
     }
     return color;

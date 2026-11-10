@@ -4,6 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
 import { pickedFrom } from '@/store/project/reading.js';
+import { rectShape } from '@/document/shapes.js';
 
 test('on soft paint the picker picks the color shown, not the paint at full strength', async () => {
   const { project } = await createTestApp();
@@ -39,4 +40,19 @@ test('the status bar says a color came from a drawn layer when any shown cells l
   expect(pickedFrom(project, 6, 6)).toEqual({ fgFrom: 'edit', bgFrom: 'base', ownBg: false });
   project.setLayerHidden(top, true);
   expect(pickedFrom(project, 2, 2)).toEqual({ fgFrom: 'base', bgFrom: 'base', ownBg: false });
+});
+
+test('the PIXEL picker picks a shape on a vector layer above a cells layer, and not once it is hidden', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await settle(project);
+  const vector = project.addLayer('vector', 'edit'); // above Layer 1: an upper layer
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(2, 4, 3, 5, { fill: '#ff0000' }));
+  await settle(project);
+  expect(project.rawColorAt(2, 4)).toBe('#ff0000');
+  expect(project.rawColorAt(2, 5)).toBe('#000000');
+  project.setLayerHidden(vector, true);
+  await settle(project);
+  expect(project.rawColorAt(2, 4)).toBe('#000000');
 });

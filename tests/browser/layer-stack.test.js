@@ -729,3 +729,19 @@ test('Flip on an upper cells layer swaps its own paint, and a bare cell takes th
   expect(project.paintOf(top).pixelAt(5, 10)).toMatchObject({ r: 255, g: 255, b: 0 });
   expect(project.paintOf('edit').pixelAt(5, 10)).toMatchObject({ r: 0, g: 255, b: 0 }); // the layer under is untouched
 });
+
+test('Flip on an upper cells layer takes the flip of an upper vector layer under it too', async () => {
+  const { project, workspace } = await blank();
+  const vector = project.addLayer('vector', 'edit'); // above Layer 1: an upper layer
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(2, 4, 3, 5, { fill: '#ff0000' })); // red on cell 2,2's top half, black under it
+  const top = project.addLayer('cells', vector);
+  workspace.pickLayer(top);
+  await settle(project);
+  const colors = () => [cellAt(project, 2, 2).fg.hex, cellAt(project, 2, 2).bg.hex].map((hex) => hex.toLowerCase());
+  expect(colors()).toEqual(['#000000', '#ff0000']);
+  project.flipCell(2, 2);
+  project.commitEdit();
+  await settle(project);
+  expect(colors()).toEqual(['#ff0000', '#000000']);
+});
