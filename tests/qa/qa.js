@@ -1,7 +1,7 @@
 // What a QA run records as it goes: steps and their ratings, probes, notes, timings, screenshots, memory and
 // findings, written to the run's run.json after every call that records something.
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { seedConsent } from '../e2e/support.js';
 import { contextOptions, storageFor } from './setup.js';
 import { BUDGETS, MARKS } from './score.js';
@@ -10,7 +10,7 @@ import { FINDING_KINDS, PROBES, SEVERITIES, slug } from './report.js';
 // A run record with nothing recorded yet, in the shape renderReport reads.
 export function newRun(traits) {
   const { persona, seed } = traits;
-  return { persona, seed, traits, commit: null, scriptCommit: null, machine: {}, steps: [], findings: [], memory: [], snippets: [], pageErrors: [], droppedPageErrors: 0, warnings: [] };
+  return { persona, seed, traits, commit: null, scriptCommit: null, dirty: null, machine: {}, steps: [], findings: [], memory: [], snippets: [], pageErrors: [], droppedPageErrors: 0, warnings: [] };
 }
 
 // The SOCIAL server, which a run cuts off.
@@ -52,6 +52,14 @@ export async function makeQa({ context, runDir, run }) {
   let shots = 0;
   const open = () => run.steps.at(-1);
   const current = () => context.pages().at(-1);
+  // The page a call means: the one it's given, or the only one open. With several open, the newest is often
+  // not the one meant, so the call has to name it.
+  const pageFor = (page, call) => {
+    if (page) return page;
+    const pages = context.pages();
+    if (pages.length > 1) throw new Error(`${pages.length} pages are open: pass the page you mean, ${call}`);
+    return pages.at(-1);
+  };
   const save = () => writeFileSync(join(runDir, 'run.json'), JSON.stringify(run, null, 2));
   const record = (fn) => (...args) => {
     const value = fn(...args);
@@ -99,8 +107,10 @@ export async function makeQa({ context, runDir, run }) {
     run,
     get page() { return current(); },
 
+    // The open step's name again carries on with it (a retry), rather than counting the step twice.
     step: record((name, { rated = false, want = null } = {}) => {
       const last = open();
+      if (last?.name === name) return;
       if (last?.rated && !last.how) throw new Error(`step "${last.name}" is rated: qa.rate it before the next step`);
       run.steps.push({ name, rated, how: null, want, events: { keys: 0, pointers: 0 }, probes: [], notes: [], timings: [], shots: [] });
     }),
@@ -112,9 +122,11 @@ export async function makeQa({ context, runDir, run }) {
       Object.assign(step, { rated: true, how }, want === undefined ? {} : { want });
     }),
 
-    probe: record((kind, note) => {
+    probe: record((kind, note, ...extra) => {
+      if (extra.length) throw new Error('qa.probe takes two arguments, (kind, note): put everything in the note');
       oneOf(PROBES, kind, 'a probe');
       if (!open()) throw new Error('qa.probe needs a step');
+      if (!note) throw new Error('a probe needs its note: what you did and what came of it');
       open().probes.push({ kind, note });
     }),
 
@@ -125,7 +137,8 @@ export async function makeQa({ context, runDir, run }) {
       open().notes.push(String(text));
     }),
 
-    async shot(name, { page = current(), fullPage = false, timeout = 10_000 } = {}) {
+    async shot(name, { page, fullPage = false, timeout = 10_000 } = {}) {
+      page = pageFor(page, 'qa.shot(name, { page })');
       const path = `shots/${String(++shots).padStart(3, '0')}-${slug(name)}.png`;
       await page.screenshot({ path: join(runDir, path), fullPage, timeout });
       open()?.shots.push(path);
@@ -146,7 +159,8 @@ export async function makeQa({ context, runDir, run }) {
 
     // The intervals between animation frames while fn runs: the worst one, against the frame budget, and how
     // many were long.
-    async frames(name, fn, page = current()) {
+    async frames(name, fn, page) {
+      page = pageFor(page, 'qa.frames(name, fn, page)');
       await page.evaluate(() => {
         const frames = window.__qaFrames = { times: [], on: true };
         const tick = (time) => {
@@ -155,11 +169,25 @@ export async function makeQa({ context, runDir, run }) {
         };
         requestAnimationFrame(tick);
       });
-      await fn();
-      const times = await page.evaluate(() => {
+      const stop = () => page.evaluate(() => {
         window.__qaFrames.on = false;
         return window.__qaFrames.times;
       });
+      try {
+        await fn();
+      } catch (error) {
+        await stop().catch(() => {});
+        throw error;
+      }
+      const times = await stop();
+      // Fewer than two frames is a page that stalled (one behind another, say), not a smooth one.
+      if (times.length < 2) {
+        const text = `qa.frames "${name}": ${times.length} frames came, so no timing (is the page in front? call page.bringToFront() first)`;
+        if (open()) open().notes.push(text);
+        else run.warnings.push({ step: null, text });
+        save();
+        return { worst: null, long: null };
+      }
       const gaps = times.slice(1).map((time, i) => time - times[i]);
       const worst = Math.round(gaps.reduce((most, gap) => Math.max(most, gap), 0));
       const long = gaps.filter((gap) => gap > BUDGETS.longFrame).length;
@@ -168,7 +196,8 @@ export async function makeQa({ context, runDir, run }) {
       return { worst, long };
     },
 
-    async memory(page = current()) {
+    async memory(page) {
+      page = pageFor(page, 'qa.memory(page)');
       const bytes = await page.evaluate(() => performance.memory.usedJSHeapSize);
       run.memory.push({ step: open()?.name ?? null, bytes });
       save();
@@ -181,6 +210,7 @@ export async function makeQa({ context, runDir, run }) {
       for (const [field, value] of Object.entries({ expected, actual, repro })) {
         if (!value) throw new Error(`a finding needs ${field}`);
       }
+      if (shot && !existsSync(resolve(runDir, shot))) throw new Error(`a finding's shot must be a file in the run folder, and ${shot} isn't there`);
       const id = `F${run.findings.length + 1}`;
       run.findings.push({ id, kind, severity, step, expected, actual, repro, shot });
       return id;

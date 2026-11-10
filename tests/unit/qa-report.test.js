@@ -28,6 +28,13 @@ test('a finding shows all its parts, and findings run from blocker to polish', (
   const text = renderReport(run({ findings: [finding('p', 'polish'), finding('b', 'blocker', { kind: 'a11y' })] }));
   for (const part of ['a11y', 'blocker', 'Paint', 'exp-b', 'act-b', 'repro-b']) expect(text).toContain(part);
   expect(text.indexOf('exp-b')).toBeLessThan(text.indexOf('exp-p'));
+  expect(text).toContain('### b blocker, a11y: Paint');
+});
+
+test('the header says whether the build had uncommitted changes, when the run recorded it', () => {
+  expect(renderReport(run({ dirty: true }))).toContain('- Uncommitted changes: yes');
+  expect(renderReport(run({ dirty: false }))).toContain('- Uncommitted changes: no');
+  expect(renderReport(run())).not.toContain('Uncommitted changes');
 });
 
 test('a timing over its budget says over, and a step with no probes is listed', () => {
