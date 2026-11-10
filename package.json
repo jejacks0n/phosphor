@@ -20,7 +20,10 @@
     "test:browser": "vitest run --project browser",
     "test:e2e": "playwright test",
     "test:update": "UPDATE_REFERENCES=1 vitest run",
-    "fixtures": "node tests/fixtures/make-fixtures.mjs"
+    "fixtures": "node tests/fixtures/make-fixtures.mjs",
+    "qa": "playwright test -c tests/qa/playwright.config.js tests/qa/session.qa.js",
+    "qa:send": "node tests/qa/send.mjs",
+    "qa:smoke": "playwright test -c tests/qa/playwright.config.js tests/qa/smoke.qa.js"
   },
   "dependencies": {
     "@vueuse/core": "^15.0.0",
