@@ -50,18 +50,25 @@ function pickedVector(project) {
 export const vectorActions = {
   // The shapes as they now are, part of the edit that's open (or one begun for them). Not while it changes an art
   // layer someone else in the room is drawing in (lockedBy): it can be selected, not moved, restacked or deleted, and
-  // a toast says who's in it.
+  // a toast says who's in it. Nor a first shape when the vector layer it brings would be one more than a drawing holds.
+  // Whether they're the shapes now.
   setShapes(next) {
     this.ensureLayer();
-    if (!this.paintLayer || next === this.shapes) return;
+    if (!this.paintLayer) return false;
+    if (next === this.shapes) return true;
+    if (next.size && !this.hasVectorLayer && this.layers.length >= MOST_LAYERS) {
+      toast(t('layers.full', { n: MOST_LAYERS }));
+      return false;
+    }
     const locked = lockedAmong(this, Object.values(this._locks).map(({ key }) => key).filter((key) => next.get(key) !== this.shapes.get(key)));
     if (locked) {
       toast(locked);
-      return;
+      return false;
     }
     this.beginEdit();
     this.shapes = next;
     this.refreshShapes();
+    return true;
   },
 
   // Draw what the shapes changed: the grid rect they covered before and after, on the lower group's shape layer and on
@@ -105,8 +112,7 @@ export const vectorActions = {
     }
     const key = newShapeKey(), own = ownsEdit(this);
     const z = Math.max(0, ...[...this.shapes.values()].map((s) => s.z + 1)), added = withShape(shape, { z, layer: pickedVector(this) });
-    if (!keeps(added)) return null;
-    this.setShapes(new Map(this.shapes).set(key, added));
+    if (!keeps(added) || !this.setShapes(new Map(this.shapes).set(key, added))) return null;
     if (own) this.commitEdit();
     return key;
   },
@@ -145,7 +151,7 @@ export const vectorActions = {
       const shape = next.get(key), path = shape.follow && next.get(shape.follow.key);
       if (shape.follow && (!path || isArt(path) || path.follow || shape.follow.key === key)) next.set(key, withShape(shape, { follow: undefined, along: undefined }));
     }
-    if (keys.length) this.setShapes(next);
+    if (keys.length && !this.setShapes(next)) return [];
     if (own) this.commitEdit();
     workspace.setActiveTool('vselect');
     workspace.vectorSelected = keys;

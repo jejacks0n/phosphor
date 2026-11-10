@@ -1,7 +1,6 @@
 // Bug hunt: a drawing that a save can't bring back. Each test here fails because of a bug.
 import { test, expect } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
-import { rectShape } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
 
@@ -16,20 +15,6 @@ async function blank(cols = 20, rows = 20) {
 
 // The drawing as a file, read back: what a save, autosave and a reload do.
 const roundTrip = async (project) => readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }));
-
-test('the first shape drawn with the most layers makes a 65th layer, and the file no longer opens', async () => {
-  const { project, workspace } = await blank();
-  while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit');
-  expect(project.layers).toHaveLength(MOST_LAYERS);
-  expect(project.hasVectorLayer).toBe(false);
-  workspace.editorTab = 'vector'; // the VECTOR tab is still there: it picks the vector layer the first shape will bring
-  project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
-  project.commitEdit();
-  await settle(project);
-  expect(project.shapes.size).toBe(1);
-  await expect(roundTrip(project)).resolves.toBeTruthy(); // a save, an autosave: "Not a valid Phosphor project file"
-  expect(project.layers.length).toBeLessThanOrEqual(MOST_LAYERS);
-});
 
 test('undoing an added layer in a movie leaves its keys on frames not showing, and the file no longer opens', async () => {
   const { project, workspace } = await blank();

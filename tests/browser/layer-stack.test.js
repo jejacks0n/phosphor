@@ -126,6 +126,21 @@ test('addLayer refuses past MOST_LAYERS, without a toast', async () => {
   expect(toastMessage.value).toBe(null);
 });
 
+test('the first shape is refused with the most layers, since the vector layer it brings would be one too many', async () => {
+  const { project, workspace } = await blank();
+  while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit');
+  expect(project.hasVectorLayer).toBe(false);
+  workspace.editorTab = 'vector'; // still offered: it picks the vector layer the first shape would bring
+  toastMessage.value = null;
+  expect(project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }))).toBe(null);
+  expect(project.addShapes([rectShape(2, 2, 6, 6, { fill: '#ff0000' })])).toEqual([]); // a paste, an SVG
+  project.commitEdit();
+  expect(toastMessage.value).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`);
+  expect(project.shapes.size).toBe(0);
+  expect(project.layers).toHaveLength(MOST_LAYERS);
+  await expect(readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }))).resolves.toBeTruthy();
+});
+
 // A stack with layers above the lower group: the bottom, the edit layer, a vector layer over it and a cells layer on top.
 // A black picture, 'Y' typed on the edit layer at 2,2 and 3,3, a red rect over cols 2–4 and rows 2–4 on the vector layer,
 // and 'X' at 2,2 on the top layer.
