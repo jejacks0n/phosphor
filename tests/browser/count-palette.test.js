@@ -4,6 +4,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
+import { rectShape } from '@/document/shapes.js';
 
 const hexes = (project) => project.activePalette.map((p) => p.hex.toLowerCase()).sort();
 const line = (y) => Array.from({ length: 10 }, (_, k) => ({ x: 5 + k, y, alpha: 1 }));
@@ -171,4 +172,64 @@ test('paint on an upper layer is counted', async () => {
   block(project, '#ff00aa');
   await settle(project);
   expect(hexes(project)).toContain('#ff00aa');
+});
+
+// Hidden and shown again, the Number palette is the same each time.
+async function sameAcrossHide(project, id) {
+  await settle(project);
+  const shown = hexes(project);
+  project.setLayerHidden(id, true);
+  await settle(project);
+  expect(hexes(project)).toEqual(shown);
+  project.setLayerHidden(id, false);
+  await settle(project);
+  expect(hexes(project)).toEqual(shown);
+  return shown;
+}
+async function blankCount() {
+  const app = await createTestApp();
+  await app.project.setBlankCanvas({ cols: 40, rows: 80 });
+  await settle(app.project);
+  Object.assign(app.project, { quantize: 'count', colorCount: 4 });
+  return app;
+}
+
+test('hiding a vector layer above the lower group, its shapes still count', async () => {
+  const { project, workspace } = await blankCount();
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(2, 2, 20, 20, { fill: '#00ff00' }));
+  project.commitEdit();
+  expect(project.lowerGroup.upper).toContain(vector);
+  expect(await sameAcrossHide(project, vector)).toContain('#00ff00');
+});
+
+test('hiding a vector layer in the lower group, or the base under its shapes, the shapes still count', async () => {
+  const { project, workspace } = await blankCount();
+  project.addLayer('vector', 'base');
+  workspace.pickLayer('vector');
+  project.addShape(rectShape(2, 2, 20, 20, { fill: '#00ff00' }));
+  project.commitEdit();
+  expect(project.lowerGroup.vectors).toEqual(['vector']);
+  expect(await sameAcrossHide(project, 'vector')).toContain('#00ff00');
+  expect(await sameAcrossHide(project, 'base')).toContain('#00ff00');
+});
+
+test('with Dither on, a hidden layer and paint on the lower group, the cells are a full render\'s', async () => {
+  const { project, workspace } = await gradient8();
+  project.dither = 60;
+  await settle(project);
+  block(project, '#ff00aa'); // on Layer 1, the lower group's
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.paintStroke(WHITE, '#ffffff');
+  project.commitEdit();
+  project.setLayerHidden(top, true);
+  await settle(project);
+  workspace.pickLayer('edit');
+  project.paintStroke(line(30), '#00ffff');
+  project.commitEdit();
+  await settle(project);
+  expect(hexes(project)).toHaveLength(8);
+  expect(cellsKey(project)).toEqual(await fullRender(project));
 });
