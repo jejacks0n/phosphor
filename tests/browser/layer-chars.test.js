@@ -2,6 +2,7 @@
 // document's, a new layer copies the picked one's, and the left column (ControlPanel.vue) shows the picked layer's under
 // its name, with the picture's settings only while the picture's layer is picked.
 import { test, expect, afterEach, vi } from 'vitest';
+import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
@@ -476,6 +477,8 @@ test('the Characters set typed is one undo step, a set picked from ▾ another, 
   keys.mount(document.createElement('div'));
   try {
     input.focus();
+    input.value = '#@x'; // typed, not committed yet
+    input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true }));
     expect(steps()).toBe(2); // the field's own, not the app's
     input.blur();
@@ -523,4 +526,34 @@ test('the seed typed is one undo step, and the dice roll another', async () => {
   project.undo();
   expect(project.charsOf('edit').seed).toBe(was);
   expect(project.seed).toBe(was);
+});
+
+test('with real keys: a seed typed and entered, then Cmd+Z, undoes the step and the field shows it; typing not yet entered keeps Cmd+Z its own', async () => {
+  const { project } = await undoable('edit');
+  const keys = createApp({ setup() { useKeyboardShortcuts(project, useWorkspaceStore()); return () => null; } });
+  keys.mount(document.createElement('div'));
+  try {
+    const was = project.charsOf('edit').seed, seed = host.querySelector('#seed');
+    await userEvent.click(seed);
+    await userEvent.keyboard('{Control>}a{/Control}{Meta>}a{/Meta}typed{Enter}');
+    expect(project.charsOf('edit').seed).toBe('typed');
+    await userEvent.keyboard('{ControlOrMeta>}z{/ControlOrMeta}');
+    expect(project.charsOf('edit').seed).toBe(was); // the app's undo: the step
+    await nextTick();
+    expect(seed.value).toBe(was);
+    expect(project.canRedo).toBe(true);
+    seed.blur();
+    await nextTick();
+    expect(project.charsOf('edit').seed).toBe(was); // no step on the way out
+    expect(project.canRedo).toBe(true);
+
+    await userEvent.click(seed);
+    await userEvent.keyboard('more');
+    const version = project.history.version;
+    await userEvent.keyboard('{ControlOrMeta>}z{/ControlOrMeta}');
+    expect(project.history.version).toBe(version); // the field's own typing, not entered yet
+    expect(project.canRedo).toBe(true);
+  } finally {
+    keys.unmount();
+  }
 });

@@ -160,8 +160,8 @@ in the order you made them.
 The Characters section's settings are undo steps the same way, on whichever layer they're the picked one's: a choice
 picked (Choose characters, a set from ▾, Dither style), a Characters set or a seed typed, a roll of the seed's dice,
 and a Solids, Pattern light or Dither slider's drag or run of nudges are one step each. While you're typing in the
-Characters or seed field, Cmd+Z (Ctrl+Z) undoes your typing there, as in any text field; once you've left it, it
-undoes the step. In a room these settings are Base's, and going live leaves out the steps that gave another layer
+Characters or seed field, Cmd+Z (Ctrl+Z) undoes your typing there, as in any text field; once you've pressed Enter or
+left it, it undoes the step (and the field shows what that leaves). In a room these settings are Base's, and going live leaves out the steps that gave another layer
 settings of its own.
 
 ### Baking

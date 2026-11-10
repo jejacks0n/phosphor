@@ -19,10 +19,15 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const playback = usePlayback();
 
   // Not on SOCIAL: the art isn't showing, and its fields keep their own undo. Nor in a field you type in (the Characters
-  // set, the seed, a size): it undoes its own typing while it has focus. A slider, a menu or a button doesn't type.
+  // set, the seed, a size) while it holds typing it hasn't committed: it undoes that itself. Once it has (Enter, its
+  // change), the app's undo takes the step back, and the field shows what that leaves. A slider, a menu or a button
+  // doesn't type.
   const TYPED = 'input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]), textarea, [contenteditable]';
+  const typing = new WeakSet(); // the fields with typing not committed yet
+  const _onInput = (e) => { if (isField(e.target) && e.target.matches?.(TYPED)) typing.add(e.target); };
+  const _onChange = (e) => typing.delete(e.target); // and on focusout: what's left was committed, or never typed
   const _handleUndoRedo = (e) => {
-    if (isField(e.target) && e.target.matches?.(TYPED)) return false;
+    if (typing.has(e.target)) return false;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && workspaceStore.editorTab !== 'room') { // Shift makes it 'Z'
       e.preventDefault();
       if (e.shiftKey) {
@@ -406,6 +411,9 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     window.addEventListener('blur', _handleBlur);
     window.addEventListener('contextmenu', _handleContextMenu);
     document.addEventListener('paste', _handlePaste, true);
+    document.addEventListener('input', _onInput, true);
+    document.addEventListener('change', _onChange, true);
+    document.addEventListener('focusout', _onChange, true);
   });
 
   onBeforeUnmount(() => {
@@ -414,6 +422,9 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     window.removeEventListener('blur', _handleBlur);
     window.removeEventListener('contextmenu', _handleContextMenu);
     document.removeEventListener('paste', _handlePaste, true);
+    document.removeEventListener('input', _onInput, true);
+    document.removeEventListener('change', _onChange, true);
+    document.removeEventListener('focusout', _onChange, true);
     clearTimeout(_pendingPaste?.timer);
   });
 
