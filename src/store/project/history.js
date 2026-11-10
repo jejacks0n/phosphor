@@ -101,10 +101,17 @@ export const historyActions = {
     // The Number palette, held still through the stroke, is picked again, and Floyd–Steinberg (Best match's,
     // or the dither's) carries the stroke's change to the base on: when that changed anything else, every
     // cell was rebuilt; when not, only the stroke's cells (shown in its own colors) need catching up.
+    // An upper layer's own Floyd–Steinberg, held still too, is laid over again where the stroke reached it, which works
+    // it out over every cell it reaches (Renderer.composeUpper).
+    const strokePixels = () => changedPixels(this.cols, this.rows, [[patch, this.paintLayer], ...others, [basePatch, this.baseLayer]], [[stroke.baseRecords.pins, this.baseRecords.pins]], stroke.keys, stroke.shapeRect);
     if (stroke && (this.quantize === 'count' || carriesError(this.processParams) || this.renderer.holdsDither(this.processParams)) && !this.composite()) {
-      const pixels = changedPixels(this.cols, this.rows, [[patch, this.paintLayer], ...others, [basePatch, this.baseLayer]], [[stroke.baseRecords.pins, this.baseRecords.pins]], stroke.keys, stroke.shapeRect);
+      const pixels = strokePixels();
       if (pixels) this.recompose(pixels);
       else this.rebuildCells();
+    } else if (stroke && this.renderer.upperHoldsDither) {
+      const pixels = strokePixels();
+      if (pixels) this.recomposeUpper(pixels);
+      else this.applyEditCells();
     }
     if (!stroke || (!patch && !basePatch && others.every(([own]) => !own) && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) {
       if (stroke) {
@@ -306,6 +313,7 @@ export const historyActions = {
     if (this._stroke) this.commitEdit();
     if (!this._floating) this.sendHeld(); // this is what ends a float someone left where it is
     this.commitSliders(); // a slider move still open
+    this.commitLayerChars(); // and a Dither one
     this.flushHeard(); // whatever comes next reads the map
   },
 

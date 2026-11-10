@@ -264,7 +264,8 @@ export const readingActions = {
       if (char === undefined) continue;
       const top = this.renderer.upperStoredAt(shapes, col, 2 * row), bottom = this.renderer.upperStoredAt(shapes, col, 2 * row + 1);
       exact = char !== null;
-      if (char === null && resolves(this.layerParams.get(id))) { // Best match's or By shape's colors, not its halves'
+      const own = this.layerParams.get(id);
+      if (char === null && (resolves(own) || (own.dither > 0 && this.renderer.palette?.length))) { // Best match's, By shape's or Dither's colors, not its halves'
         const cell = levelAt(this, id, col, row, through, shown, batch);
         if (cell) {
           look = { char: look.char, fg: storedHexOf(this, cell.fg), bg: ascii ? look.bg : storedHexOf(this, cell.bg) };

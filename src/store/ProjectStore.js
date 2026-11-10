@@ -79,6 +79,8 @@ function ownParams(params, chars) {
       seed: chars.seed,
       solids: chars.solids,
       patternLight: chars.patternLight,
+      ditherStyle: chars.ditherStyle,
+      dither: chars.dither,
     };
     own.set(chars, made);
   }

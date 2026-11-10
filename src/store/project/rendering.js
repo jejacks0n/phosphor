@@ -64,6 +64,13 @@ function countedLayers(project) {
 }
 
 // The cells under grid pixels, each once, as indexes into the cells.
+// rows with those of the cells the last compose laid over again past the ones it was asked for: an upper layer's own
+// Floyd–Steinberg worked out again (Renderer.settled).
+function settledRows(project, rows) {
+  for (const i of project.renderer.settled ?? []) rows.add(Math.floor(i / project.cols));
+  return rows;
+}
+
 function cellsUnder(pixels, cols) {
   const indexes = new Set();
   for (const { x, y } of pixels) indexes.add((y >> 1) * cols + x);
@@ -203,7 +210,7 @@ export const renderingActions = {
     const rows = new Set();
     for (const { y } of pixels) rows.add(y >> 1);
     this.lowerCells = this.renderer.updateCells(this.lowerCells, pixels, this.processParams, lowerEdits(this), this.renderedCells);
-    this.setCells(this.overLower(cellsUnder(pixels, this.cols)), rows);
+    this.setCells(this.overLower(cellsUnder(pixels, this.cols)), settledRows(this, rows));
   },
 
   // The cells under grid pixels (an upper layer's edit) laid over again from the lower group's cells as they are: the
@@ -212,16 +219,17 @@ export const renderingActions = {
     if (!this.lowerCells.length || this.lowerCells.length !== this.composedCells.length) return; // a render's on its way
     const rows = new Set();
     for (const { y } of pixels) rows.add(y >> 1);
-    this.setCells(this.overLower(cellsUnder(pixels, this.cols)), rows);
+    this.setCells(this.overLower(cellsUnder(pixels, this.cols)), settledRows(this, rows));
   },
 
   // lowerCells with the upper layers over it (Renderer.composeUpper), the cells at indexes again (every cell with null)
-  // and the rest as last composed; lowerCells itself while there's no upper layer, as before layers.
+  // and the rest as last composed; lowerCells itself while there's no upper layer, as before layers. While an edit is
+  // open, an upper layer's own Floyd–Steinberg holds still (commitEdit catches it up).
   overLower(indexes = null) {
     this.renderer.upper = upperOf(this);
     if (!this.renderer.upper.length) return this.lowerCells;
     if (this.renderer.needsFont) this.render(); // a layer added, shown or moved without one, with its own Best match or By shape
-    return this.renderer.composeUpper(this.lowerCells, indexes, this.renderer.palette, this.composedCells);
+    return this.renderer.composeUpper(this.lowerCells, indexes, this.renderer.palette, this.composedCells, { open: !!this._stroke });
   },
 
   // The edit layer's fields changed under pixels: drawn again the way their layer is, through the pipeline for the

@@ -19,6 +19,17 @@ function changed(store, id, patch) {
   if (store.layerById(id)) store.layers = store.layers.map((layer) => (layer.id === id ? Object.freeze({ ...layer, ...patch }) : layer));
 }
 
+// own (some of CHAR_KEYS) as the layer with the id's character settings: the document's fields for the bottom, with every
+// layer following them in a room (followBase).
+function putChars(store, id, own) {
+  if (id !== 'base') return changed(store, id, { chars: Object.freeze({ ...store.charsOf(id), ...own }) });
+  store.$patch(own);
+  if (store._sharing) followBase(store);
+}
+
+const DITHER_KEYS = ['ditherStyle', 'dither'];
+const pick = (from, keys) => Object.fromEntries(keys.map((key) => [key, from[key]]));
+
 // The layer with the id out of the stack, and what's on it, for putBack: { layer, below, data } for a cells layer (its
 // cells and paint), { layer, below, shapes } for a vector layer (the shapes on it showing; a movie's other frames keep
 // theirs, layerFrames'). below: the id of the layer it sat on; picked: it was the picked layer. The layer in use hands the
@@ -109,22 +120,34 @@ export const layerActions = {
   },
 
   // A layer's own character settings changed: the CHAR_KEYS in patch (the rest is left out). The bottom's are the
-  // document's fields. Not an undo step, as the document's never were; what's drawn follows (EditWorkspace renders on a
-  // change to layerParams). While the drawing's shared with a room, which has one set, a layer above the bottom is refused
-  // (the room's toast says so) and the bottom's change every layer's with them. Whether it changed.
+  // document's fields. Not an undo step, as the document's never were, but for its Dither and Dither style: those are
+  // noted as they were, and commitLayerChars makes the change one step (a slider's drag, a style picked). What's drawn
+  // follows (EditWorkspace renders on a change to layerParams). While the drawing's shared with a room, which has one
+  // set, a layer above the bottom is refused (the room's toast says so) and the bottom's change every layer's with them.
+  // Whether it changed.
   setLayerChars(id, patch) {
     const own = Object.fromEntries(CHAR_KEYS.filter((key) => key in patch).map((key) => [key, patch[key]]));
     if (!this.layerById(id)) return false;
     const was = this.charsOf(id);
     if (Object.keys(own).every((key) => own[key] === was[key])) return false;
-    if (id === 'base') {
-      this.$patch(own);
-      if (this._sharing) followBase(this);
-      return true;
+    if (id !== 'base' && refusedInRoom(this)) return false;
+    if (DITHER_KEYS.some((key) => key in own) && this._ditherBefore?.id !== id) {
+      this.commitLayerChars();
+      this._ditherBefore = { id, values: pick(was, DITHER_KEYS) };
     }
-    if (refusedInRoom(this)) return false;
-    changed(this, id, { chars: Object.freeze({ ...was, ...own }) });
+    putChars(this, id, own);
     return true;
+  },
+
+  // A Dither change (setLayerChars) ended: one undo step from the values noted to these, none when they're the same.
+  commitLayerChars() {
+    const before = this._ditherBefore;
+    this._ditherBefore = null;
+    if (!before || !this.layerById(before.id)) return;
+    const { id, values } = before, after = pick(this.charsOf(id), DITHER_KEYS);
+    if (DITHER_KEYS.every((key) => String(values[key]) === String(after[key]))) return;
+    this.commitPending();
+    this.pushEdit({ settingsOnly: true, undo: () => putChars(this, id, values), redo: () => putChars(this, id, after) }); // settingsOnly: kept when the grid changes (rendering.js dropEdits)
   },
 
   // A new layer of kind directly above the layer with the id above (on top when there's none), and its id, with the picked

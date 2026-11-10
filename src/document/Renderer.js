@@ -16,7 +16,8 @@
  *
  * All of that is the lower group (layerInfo.js: lowerGroup): the bottom, the vector layers right on it and the next
  * cells layer. Every layer above it (upper) is laid over the group's cells one cell at a time (composeUpper), with no
- * error carried between cells; an old document is the lower group alone, so nothing it shows changes.
+ * error carried between cells but by a layer's own Floyd–Steinberg; an old document is the lower group alone, so
+ * nothing it shows changes.
  *
  * The base layer is at the pipeline's processing scale (m x m pixels per grid pixel), so a block of
  * the picture moved into it keeps every processed pixel (processed: the picture with its effects,
@@ -33,7 +34,7 @@ import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
 import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix } from '../lib/Cells.js';
 import { cellKey, parseKey } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
-import { ditherPixels } from '../lib/Dither.js';
+import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
 import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatcher, resolveShapes, SAMPLES } from '../lib/CharResolver.js';
 import { loadReferenceFont, referenceInk, referenceMask, coverageOf } from '../lib/GlyphCoverage.js';
 import ShapeMatcher from '../lib/ShapeMatcher.js';
@@ -84,6 +85,8 @@ export default class Renderer {
   #tileBytes = 0;       // what #tiles hold
   sampleBudget = 32 * 1024 * 1024; // the most bytes of By shape samples upper layers keep, together
   #cellSamples = null;  // one cell's samples, for By shape on an upper layer (#upperChar)
+  #exact = false;       // whether the cell #upperCell made last holds a character that's someone's own
+  settled = null;       // the cells the last composeUpper laid over again with indexes, past them too, as a Floyd–Steinberg layer was worked out again (#settled), or null
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
@@ -811,11 +814,17 @@ export default class Renderer {
   // - a vector layer where a shape reaches: each half is the cell's half color with the layer's pixels over it (its
   //   shapes drawn as the base's own pixels are, #upperGrid), converted by its settings (#upperChar: snapped with
   //   Random's or a weighted character, or Best match's or By shape's cell, By shape's from samples inside the cell),
-  //   or the art layer's character over the halves snapped where one shows;
+  //   or the art layer's character over the halves snapped where one shows. Its own Dither: Ordered nudges each half it
+  //   covers by its place (a cell by its own under Best match and By shape), and Floyd–Steinberg (#ditherLayer) carries
+  //   error between the pixels it covers;
   // - a cells layer's entry composes over the cell as the lower group's do (#composeOne), and its paint covers an exact
-  //   character (coverCell) or, over converted pixels, is mixed into the halves and converted with its settings.
-  // No error carries between cells (as #resolvePainted), so a cell costs only its own layers.
-  composeUpper(lower, indexes, palette, composed = null) {
+  //   character (coverCell) or, over converted pixels, is mixed into the halves and converted with its settings. Paint
+  //   isn't dithered.
+  // Only a Floyd–Steinberg layer carries anything between cells, so otherwise a cell costs only its own layers. Such a
+  // layer holds still while an edit is open (open): the cells at indexes are worked out with no error coming in, the
+  // rest stay. Not open, cells at indexes it reaches work it out again over every cell it reaches (#settled), as its
+  // pattern after a change can move anywhere after it.
+  composeUpper(lower, indexes, palette, composed = null, { open = false } = {}) {
     const out = (indexes && composed?.length === lower.length ? composed : lower).slice();
     const cols = this.upper[0]?.params.cols ?? 1;
     // Each layer's pixels at grid resolution, read once for the walk: a cells layer's paint, a vector layer's shapes.
@@ -825,19 +834,134 @@ export default class Renderer {
       u.layer.sync();
       return this.#upperGrid(u.layer, u.params).data;
     });
+    const settles = this.upper.map((u, at) => u.kind === 'vector' && !!reads[at] && this.holdsDither(u.params));
     // Every cell: only those some upper layer touches, as the rest come out as they went in.
-    const visited = indexes ?? this.#touched(reads, cols, lower.length), n = visited.length;
+    let visited = indexes ?? this.#touched(reads, cols, lower.length);
+    if (settles.includes(true)) visited = indexes && !open ? this.#settled(indexes, settles, lower.length) : Int32Array.from(visited).sort();
+    this.settled = indexes && visited !== indexes && !open && settles.includes(true) ? visited : null;
+    const n = visited.length;
+    if (settles.includes(true)) this.#composeSettling(out, lower, visited, palette, reads, settles, cols);
+    else {
+      for (let k = 0; k < n; k++) {
+        const i = visited[k], col = i % cols, row = (i - col) / cols;
+        if (lower[i]) out[i] = this.#upperCell(lower[i], col, row, palette, reads);
+      }
+    }
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (let k = 0; k < n; k++) {
-      const i = visited[k], col = i % cols, row = (i - col) / cols;
-      if (lower[i]) out[i] = this.#upperCell(lower[i], col, row, i, palette, reads);
-      if (col < x0) x0 = col;
-      if (col > x1) x1 = col;
-      if (row < y0) y0 = row;
-      if (row > y1) y1 = row;
+    if (indexes) {
+      for (let k = 0; k < n; k++) {
+        const i = visited[k], col = i % cols, row = (i - col) / cols;
+        if (col < x0) x0 = col;
+        if (col > x1) x1 = col;
+        if (row < y0) y0 = row;
+        if (row > y1) y1 = row;
+      }
     }
     this.#shownDirty(indexes ? { x: x0, y: 2 * y0, w: n ? x1 - x0 + 1 : 0, h: n ? 2 * (y1 - y0 + 1) : 0 } : null);
     return out;
+  }
+
+  // indexes (into n cells) and, for each Floyd–Steinberg layer (settles, bottom to top) that reaches any of them, every
+  // cell it reaches, in order.
+  // ponytail: the whole layer again from its top at an edit's end (35 ms for 300 x 200); start at the first row the
+  // edit reached if that's too slow (docs/investigations/layer-stack-performance.md, area 12).
+  #settled(indexes, settles, n) {
+    const flags = new Uint8Array(n);
+    for (const i of indexes) if (i < n) flags[i] = 1;
+    for (let at = 0; at < settles.length; at++) {
+      if (!settles[at]) continue;
+      const reached = this.upper[at].layer.reachedCells();
+      if (reached.some((i) => flags[i])) for (const i of reached) if (i < n) flags[i] = 1;
+    }
+    const cells = [];
+    for (let i = 0; i < n; i++) if (flags[i]) cells.push(i);
+    return cells;
+  }
+
+  // composeUpper's walk with a Floyd–Steinberg layer in it (settles): the layers between two such are laid cell by cell
+  // as ever (#upperCell), and each such layer over every visited cell (in order) at once (#ditherLayer).
+  #composeSettling(out, lower, visited, palette, reads, settles, cols) {
+    const n = visited.length, last = this.upper.length, exact = new Uint8Array(n);
+    for (let k = 0; k < n; k++) {
+      const i = visited[k], col = i % cols;
+      exact[k] = this.#exactUnder(col, (i - col) / cols) ? 1 : 0;
+    }
+    let from = 0;
+    for (let at = 0; at <= last; at++) {
+      if (at < last && !settles[at]) continue;
+      for (let k = 0; k < n; k++) {
+        const i = visited[k], col = i % cols, row = (i - col) / cols;
+        if (!lower[i]) continue;
+        const cell = from ? out[i] : lower[i];
+        if (from === at) out[i] = cell;
+        else {
+          out[i] = this.#upperCell(cell, col, row, palette, reads, from, at, exact[k] === 1);
+          exact[k] = this.#exact ? 1 : 0;
+        }
+      }
+      if (at < last) this.#ditherLayer(out, lower, visited, exact, at, reads[at].data, palette, cols);
+      from = at + 1;
+    }
+  }
+
+  // The upper vector layer at `at` over the visited cells (in order) with its own Floyd–Steinberg (holdsDither): each half
+  // its shapes cover is their color over the cell's half, with the error that came to it, snapped to the palette; its
+  // error goes on to the pixels right of it and below as ditherPixels passes it, among the pixels the layer covers (one
+  // it doesn't keeps the color under it and takes none). Only visited ones: an open edit's area starts with no error
+  // coming in. An art layer's character takes its halves snapped, as ever.
+  // ponytail: an error buffer the size of the grid per such layer per compose (5 MB at the limit); keep two rows of it
+  // if that shows.
+  #ditherLayer(out, lower, visited, exact, at, data, palette, cols) {
+    const u = this.upper[at], { params } = u, width = this.outputCanvas.width, height = this.outputCanvas.height;
+    const strength = params.dither / 100, err = new Float32Array(width * height * 3), n = visited.length;
+    const snap = (c) => nearestColor(c, palette);
+    const pass = (x, y, er, eg, eb, f) => {
+      if (x < 0 || x >= width || y >= height) return;
+      const q = (y * width + x) * 3;
+      err[q] += er * f; err[q + 1] += eg * f; err[q + 2] += eb * f;
+    };
+    for (let k0 = 0, k1; k0 < n; k0 = k1) {
+      const row = Math.floor(visited[k0] / cols), line = [];
+      for (k1 = k0; k1 < n && Math.floor(visited[k1] / cols) === row; k1++) {
+        const i = visited[k1], col = i - row * cols, char = lower[i] ? u.layer.charAt(col, row) : undefined;
+        if (char === undefined) continue;
+        const halves = halfColors(out[i]);
+        const sides = halves.map((half, h) => {
+          const o = ((2 * row + h) * width + col) * 4;
+          return data[o + 3] ? mix(half, { r: data[o], g: data[o + 1], b: data[o + 2] }, data[o + 3] / 255) : null;
+        });
+        line.push({ k: k1, i, col, char, halves, sides });
+      }
+      for (let h = 0; h < 2; h++) {
+        const y = 2 * row + h;
+        for (const cell of line) {
+          const c = cell.sides[h];
+          if (cell.char !== null || !c) continue;
+          const x = cell.col, q = (y * width + x) * 3;
+          const r = byte(c.r + err[q]), g = byte(c.g + err[q + 1]), b = byte(c.b + err[q + 2]);
+          const p = palette[paletteIndex(r, g, b, palette)];
+          cell.sides[h] = p;
+          const er = (r - p.r) * strength, eg = (g - p.g) * strength, eb = (b - p.b) * strength;
+          pass(x + 1, y, er, eg, eb, 7 / 16); pass(x - 1, y + 1, er, eg, eb, 3 / 16); pass(x, y + 1, er, eg, eb, 5 / 16); pass(x + 1, y + 1, er, eg, eb, 1 / 16);
+        }
+      }
+      for (const { k, i, col, char, halves, sides } of line) {
+        const [top, bottom] = sides.map((side, h) => side ?? halves[h]);
+        out[i] = char === null ? this.#upperChar(halves, top, bottom, col, row, params, u.layer, snap) : buildCell(snap(top), snap(bottom), char, params.renderStyle);
+        exact[k] = char !== null ? 1 : 0;
+      }
+    }
+  }
+
+  // Whether the upper layers' Floyd–Steinberg holds still through an open edit (composeUpper): the edit's end lays them
+  // over again (commitEdit).
+  get upperHoldsDither() {
+    return this.upper.some((u) => u.kind === 'vector' && u.layer?.drawsShapes && this.holdsDither(u.params));
+  }
+
+  // A layer's own Ordered dither (Bayer): its nudge's size (bayerNudge's spread x strength), or 0 with none or no palette.
+  #bayerOf(params) {
+    return params.dither > 0 && params.ditherStyle === 'bayer' && this.palette?.length ? nudgeSpread(this.palette) * params.dither / 100 : 0;
   }
 
   // The cells (indexes into n cells, cols wide) some upper layer touches: a cells layer's entries and the cells its paint
@@ -893,28 +1017,40 @@ export default class Renderer {
     return kept.data;
   }
 
-  // reads: each upper layer's pixels at grid resolution (composeUpper), or null for one with nothing to lay.
-  #upperCell(cell, col, row, i, palette, reads) {
+  // Whether the cell at col, row holds a character that's someone's own under the upper layers: the lower cells layer's
+  // entry or the base's pin.
+  #exactUnder(col, row) {
+    return !!this.#lowerEdits?.has(cellKey(col, row)) || this.pinAt(col, row) !== undefined;
+  }
+
+  // reads: each upper layer's pixels at grid resolution (composeUpper), or null for one with nothing to lay. Only the
+  // layers from `from` up to (not with) `to`, over a cell whose character is exact or not; whether it is after them is
+  // left in #exact.
+  #upperCell(cell, col, row, palette, reads, from = 0, to = this.upper.length, exact = this.#exactUnder(col, row)) {
     const key = cellKey(col, row);
-    let exact = !!this.#lowerEdits?.has(key) || this.pinAt(col, row) !== undefined;
     const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
     const width = this.outputCanvas.width;
     const paintAt = (bytes, y) => { // a grid pixel of a layer's paint, or null where there's none
       const o = (y * width + col) * 4;
       return bytes[o + 3] ? { r: bytes[o], g: bytes[o + 1], b: bytes[o + 2], a: bytes[o + 3] / 255 } : null;
     };
-    for (let at = 0; at < this.upper.length; at++) {
+    for (let at = from; at < to; at++) {
       const u = this.upper[at], read = reads[at], { params } = u, { renderStyle } = params;
       if (u.kind === 'vector') {
         if (!read) continue;
         const char = u.layer.charAt(col, row);
         if (char === undefined) continue;
-        const { data } = read, halves = halfColors(cell);
+        const { data } = read, halves = halfColors(cell), size = char === null ? this.#bayerOf(params) : 0;
+        const ordered = size && !resolves(params); // each half it covers nudged by its own place, then snapped
         const [top, bottom] = halves.map((half, k) => {
           const o = ((2 * row + k) * width + col) * 4;
-          return data[o + 3] ? mix(half, { r: data[o], g: data[o + 1], b: data[o + 2] }, data[o + 3] / 255) : half;
+          if (!data[o + 3]) return half;
+          const c = mix(half, { r: data[o], g: data[o + 1], b: data[o + 2] }, data[o + 3] / 255);
+          if (!ordered) return c;
+          const v = bayerNudge(col, 2 * row + k, size, 1);
+          return palette[paletteIndex(byte(c.r + v), byte(c.g + v), byte(c.b + v), palette)];
         });
-        cell = char === null ? this.#upperChar(halves, top, bottom, col, row, params, u.layer, snap) : buildCell(snap(top), snap(bottom), char, renderStyle);
+        cell = char === null ? this.#upperChar(halves, top, bottom, col, row, params, u.layer, snap, ordered ? 0 : bayerNudge(col, row, size, 1)) : buildCell(snap(top), snap(bottom), char, renderStyle);
         exact = char !== null;
         continue;
       }
@@ -934,6 +1070,7 @@ export default class Renderer {
       // Paint is drawn a grid pixel at a time (PaintLayer.paint, drawOver): its halves are its samples.
       cell = this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, null, snap);
     }
+    this.#exact = exact;
     return cell;
   }
 
@@ -941,8 +1078,9 @@ export default class Renderer {
   // under the layer; top and bottom, them with the layer's pixels over them (grid resolution, before the palette snap).
   // Best match's or By shape's cell for the one cell with no error coming in (as #resolvePainted), By shape's sampled
   // as the lower group's are: the layer's own samples in the cell (#samplesAt) over the halves under it. Else the halves
-  // snapped with Random's seed character (its own seed's in its own set) or one by weight (weightedChar).
-  #upperChar(under, top, bottom, col, row, params, layer, snap) {
+  // snapped with Random's seed character (its own seed's in its own set) or one by weight (weightedChar). nudge: Ordered
+  // dither's for the cell (bayerNudge), added to every sample Best match or By shape matches, as walkCells adds it.
+  #upperChar(under, top, bottom, col, row, params, layer, snap, nudge = 0) {
     if (resolves(params) && this.#fontReady) {
       let m = this.#matchers.get(params);
       if (m?.palette !== this.palette) {
@@ -952,16 +1090,16 @@ export default class Renderer {
       }
       const { matcher } = m;
       if (params.charMode !== 'shape') {
-        const r = matcher.match([top.r, top.g, top.b], [bottom.r, bottom.g, bottom.b]);
+        const r = matcher.match([clamp(top.r + nudge), clamp(top.g + nudge), clamp(top.b + nudge)], [clamp(bottom.r + nudge), clamp(bottom.g + nudge), clamp(bottom.b + nudge)]);
         return { char: r.char, fg: r.fg, bg: r.bg };
       }
       const s = (this.#cellSamples ??= new Float64Array(SAMPLES.w * SAMPLES.h * 3)), own = this.#samplesAt(layer, params, col, row);
       for (let sy = 0, j = 0; sy < SAMPLES.h; sy++) {
         const half = sy < SAMPLES.h / 2 ? 0 : 1, u = under[half], c = half ? bottom : top;
         for (let sx = 0; sx < SAMPLES.w; sx++, j += 3) {
-          if (!own) { s[j] = c.r; s[j + 1] = c.g; s[j + 2] = c.b; continue; }
+          if (!own) { s[j] = clamp(c.r + nudge); s[j + 1] = clamp(c.g + nudge); s[j + 2] = clamp(c.b + nudge); continue; }
           const o = ((own.y + sy) * own.width + own.x + sx) * 4, a = own.data[o + 3] / 255;
-          s[j] = Math.round(own.data[o] * a + u.r * (1 - a)); s[j + 1] = Math.round(own.data[o + 1] * a + u.g * (1 - a)); s[j + 2] = Math.round(own.data[o + 2] * a + u.b * (1 - a));
+          s[j] = clamp(Math.round(own.data[o] * a + u.r * (1 - a)) + nudge); s[j + 1] = clamp(Math.round(own.data[o + 1] * a + u.g * (1 - a)) + nudge); s[j + 2] = clamp(Math.round(own.data[o + 2] * a + u.b * (1 - a)) + nudge);
         }
       }
       const r = matcher.match(s);
@@ -1198,6 +1336,9 @@ function blackCanvas(w, h) {
   ctx2d(canvas).putImageData(blackImage(w, h), 0, 0);
   return canvas;
 }
+
+const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
+const byte = (v) => Math.round(clamp(v));
 
 // A canvas's pixels snapped to a palette in place, read and written once as bytes (no object per
 // pixel: this runs over the whole output). Returns its bytes and each pixel's palette entry, or
