@@ -201,7 +201,7 @@ test('coming back from Discord (?social=signed-in) with the room kept, a guest-t
   expect(await watcher.evaluate(() => sessionStorage.getItem('phosphor-rejoin'))).toBe(null);
 });
 
-test('a watcher\'s message reaches both with their name, a time and "(you)" only for the sender; the host\'s carries the host tag; » in the panel's tabs folds the panel away and counts what came since, « opens it again', async ({ page: host, context }) => {
+test('a watcher\'s message reaches both with their name, a time and "(you)" only for the sender; the host\'s carries the host tag; » in the panel\'s tabs folds the panel away and counts what came since, « opens it again', async ({ page: host, context }) => {
   const { watcher } = await inRoom(host, context, { me: wren });
   // No messages yet: "You joined" is there once live, with nothing above it.
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');
