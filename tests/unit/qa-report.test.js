@@ -80,3 +80,9 @@ test('a page error seen more than once says how many times, and the ones not kep
   const text = renderReport(run({ pageErrors: [{ step: 'Draw', kind: 'console', text: 'again', count: 3 }], droppedPageErrors: 12 }));
   expect(text).toContain('- Draw (console, 3 times): again\n- 12 more not kept');
 });
+
+test('a note shows under its own step, not with the session warnings', () => {
+  const text = renderReport(run({ steps: [step('Packs', null, { rated: false, notes: ['input/qa/ is missing, so this step is skipped'] }), step('Next', 'keys')] }));
+  expect(text).toMatch(/### Packs\n[\s\S]*- Note: input\/qa\/ is missing, so this step is skipped[\s\S]*### Next/);
+  expect(text).not.toContain('## Session warnings');
+});

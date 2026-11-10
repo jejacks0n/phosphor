@@ -33,7 +33,8 @@ selectors. The probe kinds, ratings and files are the README's (docs/qa/README.m
 
 ## Script
 
-Steps are numbered through the whole script. Every section ends with Free time.
+Each `##` heading after this one, up to Known, is a section of the script. Steps are numbered through the whole
+script. Every section ends with Free time.
 
 ## <Section>
 

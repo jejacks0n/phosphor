@@ -20,6 +20,7 @@ function stepLines(step) {
   if (step.probes?.length) for (const probe of step.probes) lines.push(`- Probe ${probe.kind}: ${probe.note}`);
   for (const t of step.timings || []) lines.push(`- Timing ${t.name}: ${t.ms} ms of ${t.budget} ms${t.over ? ' (over)' : ''}`);
   for (const shot of step.shots || []) lines.push(`- Shot: ${shot}`);
+  for (const note of step.notes || []) lines.push(`- Note: ${note}`);
   const warning = eventCheck(step);
   if (warning) lines.push(`- Warning: ${warning}`);
   return [...lines, ''];

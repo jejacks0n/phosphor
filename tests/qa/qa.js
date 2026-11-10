@@ -1,4 +1,4 @@
-// What a QA run records as it goes: steps and their ratings, probes, timings, screenshots, memory and
+// What a QA run records as it goes: steps and their ratings, probes, notes, timings, screenshots, memory and
 // findings, written to the run's run.json after every call that records something.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -102,7 +102,7 @@ export async function makeQa({ context, runDir, run }) {
     step: record((name, { rated = false, want = null } = {}) => {
       const last = open();
       if (last?.rated && !last.how) throw new Error(`step "${last.name}" is rated: qa.rate it before the next step`);
-      run.steps.push({ name, rated, how: null, want, events: { keys: 0, pointers: 0 }, probes: [], timings: [], shots: [] });
+      run.steps.push({ name, rated, how: null, want, events: { keys: 0, pointers: 0 }, probes: [], notes: [], timings: [], shots: [] });
     }),
 
     rate: record((how, want) => {
@@ -116,6 +116,13 @@ export async function makeQa({ context, runDir, run }) {
       oneOf(PROBES, kind, 'a probe');
       if (!open()) throw new Error('qa.probe needs a step');
       open().probes.push({ kind, note });
+    }),
+
+    // What the reviewer should know about the open step that isn't a finding: a skip and why, a known difference.
+    note: record((text) => {
+      if (!open()) throw new Error('qa.note needs a step');
+      if (!text) throw new Error('a note needs its text');
+      open().notes.push(String(text));
     }),
 
     async shot(name, { page = current(), fullPage = false, timeout = 10_000 } = {}) {

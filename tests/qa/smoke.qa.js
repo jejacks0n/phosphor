@@ -69,12 +69,13 @@ test('qa writes what it records', async ({ browser }) => {
   qa.step('Undo twice', { rated: true });
   qa.rate('mouse');
   qa.probe('again', 'undid twice more');
+  qa.note('a known difference');
   const shot = await qa.shot('Undo / "twice"');
   const id = qa.finding({ kind: 'friction', severity: 'minor', expected: 'a key', actual: 'a menu', repro: 'undo twice' });
 
   const run = JSON.parse(readFileSync(join(runDir, 'run.json'), 'utf8'));
   const [step] = run.steps;
-  expect(step).toMatchObject({ name: 'Undo twice', rated: true, how: 'mouse', probes: [{ kind: 'again', note: 'undid twice more' }] });
+  expect(step).toMatchObject({ name: 'Undo twice', rated: true, how: 'mouse', probes: [{ kind: 'again', note: 'undid twice more' }], notes: ['a known difference'] });
   expect(shot).toMatch(/^shots\/\d{3}-undo-twice\.png$/);
   expect(step.shots).toEqual([shot]);
   expect(existsSync(join(runDir, shot))).toBe(true);
