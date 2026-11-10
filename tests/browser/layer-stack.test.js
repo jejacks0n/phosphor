@@ -760,3 +760,30 @@ test('Flip on an upper cells layer takes the flip of an upper vector layer under
   await settle(project);
   expect(colors()).toEqual(['#ff0000', '#000000']);
 });
+
+test('Flip and the ANSI eyedropper on an edit cell with no paint read an upper vector layer under it; one above, or a hidden one, is left out', async () => {
+  const { project, workspace } = await blank();
+  const vector = project.addLayer('vector', 'edit'); // above Layer 1: an upper layer
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(2, 4, 3, 5, { fill: '#ff0000' })); // red on cell 2,2's top half, black under it
+  const top = project.addLayer('cells', vector);
+  const over = project.addLayer('vector', top); // above the layer flipped
+  workspace.pickLayer(over);
+  project.addShape(rectShape(4, 4, 5, 5, { fill: '#00ff00' })); // green on cell 4,4's top half
+  workspace.pickLayer(top);
+  project.typeAt(2, 2, 'A', { fg: '#ffffff' });
+  project.typeAt(4, 2, 'B', { fg: '#ffffff' });
+  project.commitEdit();
+  await settle(project);
+  const under = (col) => { const { fg, bg } = project.underlyingAt(col, 2, { evenHidden: true }); return [fg, bg].map((hex) => hex.toLowerCase()); };
+  expect(under(2)).toEqual(['#ffffff', '#ff0000']); // its own FG, the shape's red behind it, as the eyedropper picks it
+  expect(under(4)).toEqual(['#ffffff', '#000000']); // the green over it isn't under it
+  project.setLayerHidden(vector, true);
+  await settle(project);
+  expect(under(2)).toEqual(['#ffffff', '#000000']); // hidden, the red isn't behind it
+  project.setLayerHidden(vector, false);
+  await settle(project);
+  project.flipCell(2, 2);
+  project.commitEdit();
+  expect(project.cellsOf(top).get('2,2')).toMatchObject({ fg: '#ff0000', bg: '#ffffff' });
+});

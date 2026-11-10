@@ -190,13 +190,24 @@ export const readingActions = {
   // What's under a cell, as stored colors (pre-adjustment), for the eyedropper, flip and merge up.
   // Stored, not as displayed: a picked or merged-up color keeps following the adjustments, as the
   // picture's own colors do (picking a displayed color would apply the adjustments twice).
-  // The source image, with every shown cells layer over it, bottom first: its edit cell's attributes, then
-  // (withPaint) its paint by its alpha over each half. A hidden layer isn't read (what shows is picked), unless
-  // evenHidden: an edit of the layer in use itself, read with the shown layers under it.
+  // The source image (with the lower group's shapes), with every shown layer over it, bottom first: a cells layer's edit
+  // cell's attributes, then (withPaint) its paint by its alpha over each half; an upper vector layer's shapes the same
+  // way. A hidden layer isn't read (what shows is picked), unless evenHidden: an edit of the layer in use itself, read
+  // with the shown layers under it (none above it).
   underlyingAt(col, row, { withPaint = true, evenHidden = false } = {}) {
-    const ids = evenHidden ? [...cellsUnder(this, this.editId), this.editId] : cellsUnder(this);
+    const ids = evenHidden ? [...cellsUnder(this, this.editId), this.editId] : cellsUnder(this), upper = this.lowerGroup.upper;
+    const last = evenHidden ? this.layers.findIndex((layer) => layer.id === this.editId) : this.layers.length - 1;
     let look = { bg: this.baseColorAt(col, 2 * row), fg: this.baseColorAt(col, 2 * row + 1) };
-    for (const id of ids) look = layerOver(this, id, col, row, look, withPaint);
+    for (const { id, kind } of this.layers.slice(1, last + 1)) {
+      if (kind === 'cells') {
+        if (ids.includes(id)) look = layerOver(this, id, col, row, look, withPaint);
+        continue;
+      }
+      if (!withPaint || !upper.includes(id)) continue;
+      const shapes = this._upperShapes.get(id), top = this.renderer.upperStoredAt(shapes, col, 2 * row), bottom = this.renderer.upperStoredAt(shapes, col, 2 * row + 1);
+      if (top) look = { ...look, bg: rgb2hex(over(hex2rgb(look.bg), top)) };
+      if (bottom) look = { ...look, fg: rgb2hex(over(hex2rgb(look.fg), bottom)) };
+    }
     const i = cellIndex(col, row, this.cols);
     const shown = withPaint ? this.cells[i] : null;
     return { char: shown?.char ?? look.char ?? this.renderedCells[i]?.char ?? ' ', bg: look.bg, fg: look.fg };
