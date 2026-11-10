@@ -11,7 +11,8 @@ points between cells.
 
 Shapes are drawn over the base layer's own pixels and converted with the picture, so the color
 adjustments, the palette and dither apply to them as they do to the picture (the image filters, such as
-Blur, don't). Edit cells and paint stay on top of them:
+Blur, don't). A vector layer with Dither of its own dithers its shapes by it ([Layers](layers.md#the-left-column)). Edit
+cells and paint stay on top of them:
 
 the picture → the base layer's own pixels → shapes → edit cells → paint
 
