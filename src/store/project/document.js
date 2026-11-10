@@ -51,9 +51,11 @@ const oldFrames = (frames, id) => {
 };
 
 // A new document's layers: the bottom and the edit layer, in use, with the document's character settings. Set, not
-// patched: a patch would merge into the last document's.
+// patched: a patch would merge into the last document's. Counted, so the pick that follows the layers (followLayerPick)
+// takes it as a new document even under the same id (a version brought back).
 function newLayers(project) {
-  project.editId = 'edit'; // first: the pick that follows the layers (followLayerPick) finds it in use
+  project.editId = 'edit'; // first: the pick that follows the layers finds it in use
+  project._layersStarted++;
   project._layerData.clear();
   project._upperShapes.clear();
   project.layers = withChars(layersFromOld(null, { hasShapes: false }), project.baseChars);

@@ -28,35 +28,3 @@ test('Merge down of a cells layer into another with the base hidden keeps what s
   await settle(project);
   expect(cellsKey(project)).toEqual(shown);
 });
-
-// restoreVersion's path: the same document id, from autosave's record.
-async function restoreSame(project) {
-  const parts = await project.projectParts();
-  const rest = await (await writeProject({ ...parts, imageBuffer: new ArrayBuffer(0) })).arrayBuffer();
-  await project.restoreDocument({ record: { rest, filename: project.filename, savedToFile: false, dirty: false }, imageBuffer: project.imageBuffer }, { documentId: project.documentId });
-  await settle(project);
-}
-
-test('bringing back a version with Layer 2 picked leaves the pick and the layer in use in step', async () => {
-  const { project, workspace } = await blank();
-  const two = project.addLayer('cells', 'edit');
-  workspace.pickLayer(two);
-  project.typeAt(1, 1, 'A', WHITE);
-  project.commitEdit();
-  await restoreSame(project);
-  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit', two]);
-  // Whatever's picked, the tools draw on it.
-  expect(project.editId).toBe(workspace.pickedLayer);
-});
-
-test('bringing back a version from VECTOR leaves the pick and the layer in use in step', async () => {
-  const { project, workspace } = await blank();
-  project.addLayer('vector', 'base');
-  workspace.pickLayer('vector');
-  expect(workspace.editorTab).toBe('vector');
-  await restoreSame(project);
-  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
-  const picked = project.layerById(workspace.pickedLayer);
-  if (picked.kind === 'cells') expect(project.editId).toBe(workspace.pickedLayer);
-  else expect(workspace.editorTab).toBe('vector');
-});

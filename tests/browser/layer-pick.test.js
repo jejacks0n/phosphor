@@ -482,6 +482,43 @@ test('a document restored with VECTOR showing keeps VECTOR and its vector layer 
   expect(workspace.pickedLayer).toBe('vector');
 });
 
+// A version brought back (restoreVersion's path): autosave's record opened under the same document id.
+async function restoreSame(project) {
+  const { writeProject } = await import('@/document/projectIO.js');
+  const rest = await (await writeProject({ ...await project.projectParts(), imageBuffer: new ArrayBuffer(0) })).arrayBuffer();
+  await project.restoreDocument({ record: { rest, filename: project.filename, savedToFile: false, dirty: false }, imageBuffer: project.imageBuffer }, { documentId: project.documentId });
+  await settle(project);
+}
+
+test('a version brought back from VECTOR keeps Layer 1\'s cells and VECTOR', async () => {
+  const { project, workspace } = await blank();
+  const { cellsKey } = await import('../support/app.js');
+  project.typeAt(1, 1, 'A', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  project.addLayer('vector', 'base');
+  workspace.pickLayer('vector');
+  await settle(project);
+  const shown = cellsKey(project);
+  await restoreSame(project);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
+  expect(project.cellsOf('edit').has('1,1')).toBe(true);
+  expect(cellsKey(project)).toEqual(shown);
+  expect(workspace.editorTab).toBe('vector');
+  expect(workspace.pickedLayer).toBe('vector');
+});
+
+test('a version brought back with a cells layer under the edit layer picked draws on the layer picked', async () => {
+  const { project, workspace } = await blank();
+  const low = project.addLayer('cells', 'base'); // [base, L1, edit]
+  workspace.pickLayer(low);
+  project.typeAt(1, 1, 'A', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  await restoreSame(project);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', low, 'edit']);
+  expect(project.cellsOf(low).has('1,1')).toBe(true);
+  expect(project.editId).toBe(workspace.pickedLayer);
+});
+
 test('undoing a Delete layer of the picked layer picks it again, and the next stroke lands on it', async () => {
   const { project, workspace } = await blank();
   workspace.pickLayer('edit');

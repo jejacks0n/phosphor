@@ -343,7 +343,7 @@ export function followLayerPick({ workspace, project, drawing }) {
     if (kindOf(id) === 'vector') workspace.editorTab = 'vector';
     else if (workspace.editorTab === 'vector') workspace.editorTab = workspace.viewTab;
   };
-  let documentId = project.documentId; // every new document's layers are new (document.js)
+  let started = project._layersStarted; // every document opened starts its layers over (document.js: newLayers)
   const stops = [
     watch(() => workspace.pickedLayer, (id) => {
       if (project.layerById(id)?.kind === 'cells') workspace.lastCellsPick = id;
@@ -355,10 +355,10 @@ export function followLayerPick({ workspace, project, drawing }) {
     }, { flush: 'sync', immediate: true }),
     watch(() => project.layers, (now, was) => {
       const topVector = () => now.findLast((layer) => layer.kind === 'vector')?.id ?? 'vector';
-      if (project.documentId !== documentId) {
-        // On VECTOR it stays VECTOR (a restore's new document id, a file opened): the topmost vector layer, or the one the
-        // first shape will bring. A document opens with the bottom and the edit layer and gets its own layers right after.
-        documentId = project.documentId;
+      if (project._layersStarted !== started) {
+        // On VECTOR it stays VECTOR (a restore, a file opened): the topmost vector layer, or the one the first shape will
+        // bring. A document opens with the bottom and the edit layer and gets its own layers right after.
+        started = project._layersStarted;
         if (workspace.editorTab === 'vector') pick(topVector(), { tabs: false });
         else pick(now.some((layer) => layer.id === 'edit') ? 'edit' : now.findLast((layer) => layer.kind === 'cells').id);
         return;

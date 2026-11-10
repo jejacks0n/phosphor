@@ -150,6 +150,7 @@ export const useProjectStore = defineStore('project', {
     _takingProject: false, // a host's project is being written: the guard below doesn't apply (document.js)
     _sameDocument: false, // and it's this document brought up to date, so undo and the selection stay
     _documentN: null, // the ledger's number the open document was autosaved at, as it came back (useAutosave)
+    _layersStarted: 0, // how many times the layers have started over for a document opened (document.js: newLayers)
     _artInside: null, // the art layer stepped into, and the drawing kept aside meanwhile (vector.js: enterArt)
     _locks: {}, // in a room, sub -> { key, name }: the art layer they're drawing in, as their cursors say (DrawingStore keeps it)
   }),
