@@ -27,7 +27,7 @@ const textOf = (bytes, encoding) => {
 // a palette color of 8 or more, the default colors and RGB are read as they stand.
 const colorOf = ({ isDefault, isPalette, isRGB, value }, defaultIndex, bright) => {
   if (isRGB) return `#${hex2(value >> 16 & 255)}${hex2(value >> 8 & 255)}${hex2(value & 255)}`;
-  if (isDefault) return VGA[defaultIndex];
+  if (isDefault) return VGA[bright ? defaultIndex + 8 : defaultIndex]; // a bare bold or blink brightens the default, as the app reads it
   return VGA[isPalette && value < 8 && bright ? value + 8 : value];
 };
 

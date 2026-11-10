@@ -23,6 +23,12 @@ test('a bright background written as blink reads as the bright color', async () 
   expect(cells[0]).toEqual(cell('A', vga(9), vga(12)));
 });
 
+test('a bare bold or blink brightens the default colors, as the app reads an opened file', async () => {
+  const { cells } = await terminalCells(bytes('\x1b[0;1mA\x1b[0;5mB'), { cols: 2, rows: 1, encoding: 'cp437' });
+  expect(cells[0]).toEqual(cell('A', vga(15), vga(0)));
+  expect(cells[1]).toEqual(cell('B', vga(7), vga(8)));
+});
+
 test('a byte is read as CP437, and as UTF-8 when the file is', async () => {
   const shown = await terminalCells(Uint8Array.of(0xdb, 0xe9), { cols: 2, rows: 1, encoding: 'cp437' });
   expect(shown.cells.map((c) => c.char)).toEqual(['█', 'Θ']);
