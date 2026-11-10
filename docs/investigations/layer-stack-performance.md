@@ -511,6 +511,21 @@ is under 1 ms; a 64-row Vue re-render with a menu each is on the order of 1 to 3
 **Done when** a pointer move during a drag causes no layout read and re-renders only the two rows whose drop marker
 changed (a Vue devtools or `onRenderTriggered` check); no number to hit.
 
+## 11. The nearest-color search under Color ASCII (added after the final review)
+
+`reaching` (`src/store/project/reading.js`) finds a stored color that shows as a target under the sliders, for a
+cells-into-cells Merge down of paint over cells and for a large Copy of shapes, in Color ASCII with a slider off its
+default. It's marked `ponytail:`.
+
+- **Cost:** about 0.15–0.3 ms per cell where the ±1 check fails, which is most cells under clipping sliders: about
+  1 s for 80×50, 10–18 s for 300×200, minutes at 500k cells. About 200 entries per cell join the renderer's color
+  cache until the next render.
+- **Accuracy:** the local search stops at local minima under clipping sliders (Brightness 140, Hue 40): about 10% of
+  random paint pairs end more than 1 off per channel, about 2.5% more than 20 off, though a stored color within 1.4
+  exists. Some targets can't be shown exactly by any stored color.
+- **Next:** start from a coarse color grid computed once per settings (about 8 ms in a probe; cells more than 5 off
+  fell from about 7% to under 1%), or, if merged paint stays paint (the open owner question R22), drop the search.
+
 ## How this was measured
 
 Two scratch Vitest browser benchmarks, kept outside the repo and not part of `npm test`:
