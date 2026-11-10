@@ -806,3 +806,24 @@ test('Flip of a bare cell on an upper cells layer leaves out a vector layer abov
   expect(black).toMatchObject({ r: 0, g: 0, b: 0 }); // the black under the top half, not blue or green
   expect(project.paintOf(top).pixelAt(2, 4)).toMatchObject({ r: 0, g: 0, b: 0 });
 });
+
+test('a save after a one-cell edit encodes one layer\'s PNG, not every layer\'s', async () => {
+  const { project } = await blank();
+  const ids = [project.addLayer('cells', 'edit')];
+  for (let i = 0; i < 3; i++) ids.push(project.addLayer('cells', ids.at(-1)));
+  for (const id of ids) {
+    project.useLayer(id);
+    project.paintStroke([{ x: 2, y: 2, alpha: 1 }], '#ff0000');
+    project.commitEdit();
+  }
+  await project.projectParts();
+  const encoded = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob');
+  await project.projectParts();
+  expect(encoded).not.toHaveBeenCalled(); // nothing changed: every PNG kept
+  project.paintStroke([{ x: 3, y: 3, alpha: 1 }], '#00ff00');
+  project.commitEdit();
+  const parts = await project.projectParts();
+  expect(encoded).toHaveBeenCalledTimes(1);
+  expect(parts.stack.filter((layer) => layer.paintBlob).length).toBe(4);
+  encoded.mockRestore();
+});

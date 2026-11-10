@@ -372,8 +372,16 @@ export default class PaintLayer {
     this.#changed(null);
   }
 
+  // The paint as a PNG (a promise of the blob): the one made last while the pixels haven't changed since (version), as
+  // autosave asks for every layer's on every write.
+  #png = null; // { version, blob }
   toBlob() {
-    return canvasPng(this.canvas);
+    if (this.#png?.version !== this.version) {
+      const blob = canvasPng(this.canvas);
+      blob.catch(() => { if (this.#png?.blob === blob) this.#png = null; }); // an encode that failed isn't kept: the next try encodes again
+      this.#png = { version: this.version, blob };
+    }
+    return this.#png.blob;
   }
 
   get recording() {

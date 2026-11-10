@@ -70,3 +70,24 @@ test('a load replaces what was there, and tells what is drawn from the layer tha
   expect(at(layer.gridPixels(), 1, 1)).toEqual([0, 0, 0, 0]);
   expect(layer.changedSince(version)).toBe(null);
 });
+
+test('the PNG is made once while the paint stays, and again after a change or a restore', async () => {
+  const layer = layerAt(2);
+  layer.loadGrid(gridWith([{ x: 2, y: 3, r: 200, g: 40, b: 90, a: 255 }]));
+  const first = layer.toBlob();
+  expect(layer.toBlob()).toBe(first); // the same promise: nothing encoded again
+  const kept = layer.snapshot();
+  layer.paint([{ x: 5, y: 1, r: 1, g: 2, b: 3, alpha: 1 }]);
+  const second = layer.toBlob();
+  expect(second).not.toBe(first);
+  const pixel = async (blob, x, y) => {
+    const image = await createImageBitmap(await blob), canvas = Object.assign(document.createElement('canvas'), { width: image.width, height: image.height });
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    return [...ctx.getImageData(x * 2, y * 2, 1, 1).data];
+  };
+  expect(await pixel(second, 5, 1)).toEqual([1, 2, 3, 255]);
+  layer.restore(kept); // back to before the paint: the PNG from before can't come back stale
+  expect(layer.toBlob()).not.toBe(second);
+  expect(await pixel(layer.toBlob(), 5, 1)).toEqual([0, 0, 0, 0]);
+});
