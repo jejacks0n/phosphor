@@ -72,6 +72,8 @@ export const RESET_GROUPS = ['transform', 'adjust', 'effects'];
 // The character settings each layer has its own of (the bottom's are these fields themselves): how its paint, its
 // picture or its shapes become characters, and how they're dithered. The rest are the whole drawing's, or the picture's.
 export const CHAR_KEYS = ['chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solids', 'patternLight', 'ditherStyle', 'dither'];
+// Of those, the ones a cells layer above the bottom doesn't hold: nothing on it dithers (paint never does).
+export const DITHER_KEYS = ['ditherStyle', 'dither'];
 
 // Whether every slider a bake (or Reset All) resets is at its default: nothing to bake. A slider
 // can hold its value as a numeric string.

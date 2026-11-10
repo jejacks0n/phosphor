@@ -50,7 +50,7 @@ test('an old document opens looking the same, every layer with the document\'s D
   const parts = await readProject(stacked);
   parts.stack = parts.stack.map(({ chars, ...layer }) => (chars ? { ...layer, chars: { ...chars, dither: undefined, ditherStyle: undefined } } : layer))
     .map((layer) => (layer.chars ? { ...layer, chars: Object.fromEntries(Object.entries(layer.chars).filter(([, v]) => v !== undefined)) } : layer));
-  expect('dither' in parts.stack[2].chars).toBe(false);
+  expect('dither' in parts.stack[1].chars).toBe(false);
   await project.openParts(parts, { filename: 'stack' });
   await settle(project);
   for (const id of ['base', 'vector', 'edit']) expect(dithers(project, id), id).toEqual(want);
@@ -204,10 +204,50 @@ test('Base\'s Dither changed keeps a cells layer, which has nothing to dither, i
   project.setLayerChars('base', { dither: 30, ditherStyle: 'bayer' });
   project.commitLayerChars();
   await settle(project);
-  expect(project.charsOf('edit').dither).toBe(0); // as it was copied
+  expect(project.charsOf('edit').dither).toBe(30); // it holds none: the base's
   expect(project.lowerGroup.cells).toBe('edit');
   expect(project.fitsRoom).toBe(true);
   expect(await magic(await saved(project))).toBe('PHOSPHOR');
+});
+
+test('a cells layer holds no Dither: it isn\'t saved, an old file\'s is dropped, and a layer made from it takes the base\'s', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await settle(project);
+  project.setLayerChars('base', { dither: 50 });
+  project.commitLayerChars();
+  expect(project.setLayerChars('edit', { dither: 20 })).toBe(false);
+  expect('dither' in project.layerById('edit').chars).toBe(false);
+  expect(project.charsOf('edit').dither).toBe(50);
+  workspace.pickLayer('edit');
+  const vector = project.addLayer('vector', 'edit'); // + Vector layer with Layer 1 picked
+  expect(dithers(project, vector)).toEqual({ ditherStyle: 'floyd', dither: 50 });
+  project.setLayerChars('edit', { chars: '#' });
+  const parts = await readProject(await saved(project));
+  const edit = parts.stack.find((layer) => layer.id === 'edit');
+  expect('dither' in edit.chars).toBe(false);
+  parts.stack = parts.stack.map((layer) => (layer.id === 'edit' ? { ...layer, chars: { ...layer.chars, dither: 90 } } : layer)); // as a file from before
+  await project.openParts(parts, { filename: 'old' });
+  await settle(project);
+  expect('dither' in project.layerById('edit').chars).toBe(false);
+  expect(project.charsOf('edit').dither).toBe(50);
+});
+
+test('in a room the vector layer a host adds with Layer 1 picked takes Base\'s Dither, and the stack stays one set', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await settle(project);
+  workspace.pickLayer('edit');
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  try {
+    project.setLayerChars('base', { dither: 60 });
+    project.commitLayerChars();
+    project.addLayer('vector', 'base'); // the room's missing vector layer
+    expect(project.fitsRoom).toBe(true);
+    expect(project.lowerGroup.upper).toEqual([]);
+  } finally {
+    project.stopSharing();
+  }
 });
 
 async function mountPanel() {

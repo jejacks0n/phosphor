@@ -5,7 +5,7 @@
 // chars: a layer's own character settings (settings.js CHAR_KEYS), frozen; every layer but the bottom has them once it's
 // in a document (the bottom's are the document's own fields).
 import { isShapeKey } from './shapes.js';
-import { CHAR_KEYS, settingsFromStranger } from '../store/settings.js';
+import { CHAR_KEYS, DITHER_KEYS, settingsFromStranger } from '../store/settings.js';
 
 export const MAX_LAYER_NAME = 40;
 
@@ -15,8 +15,16 @@ export const goodLayerName = (name) => (typeof name === 'string' ? name.trim().s
 const isObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
 const goodLayer = (id, kind, raw, chars = null) => Object.freeze({
   id, kind, n: Number.isInteger(raw?.n) && raw.n > 0 ? raw.n : 1, name: goodLayerName(raw?.name), hidden: raw?.hidden === true,
-  ...(chars && { chars: Object.freeze(chars) }),
+  ...(chars && { chars: layerChars(kind, chars) }),
 });
+
+// chars as a layer of kind holds them: a frozen copy, a cells layer's without Dither (DITHER_KEYS), as it has none of its own.
+export function layerChars(kind, chars) {
+  if (kind !== 'cells') return Object.freeze({ ...chars });
+  const own = { ...chars };
+  for (const key of DITHER_KEYS) delete own[key];
+  return Object.freeze(own);
+}
 
 // baseChars, the bottom's character settings, which every caller has to give: one left out would count every layer as
 // the bottom's, and a stack saved in the old form loses its layers' own.
@@ -26,16 +34,15 @@ const needChars = (baseChars) => {
 };
 
 // Whether a layer converts as the bottom does: its chars are baseChars (a slider's numeric string is its number). A layer
-// with none yet counts as the same. kind: the layer's; a cells layer's Dither and Dither style aren't compared, as
-// nothing on it dithers (paint never does), and the left column doesn't show them for it.
-const UNDITHERED_KEYS = CHAR_KEYS.filter((key) => key !== 'dither' && key !== 'ditherStyle');
+// with none yet counts as the same. kind: the layer's; a cells layer has no Dither to compare (layerChars).
+const UNDITHERED_KEYS = CHAR_KEYS.filter((key) => !DITHER_KEYS.includes(key));
 export function sameChars(chars, baseChars, kind = null) {
   needChars(baseChars);
   return !chars || (kind === 'cells' ? UNDITHERED_KEYS : CHAR_KEYS).every((key) => String(chars[key]) === String(baseChars[key]));
 }
 
 // layers with every layer but the bottom given chars, a frozen copy of these, under whatever of its own it has.
-export const withChars = (layers, chars) => layers.map((layer, at) => (at ? Object.freeze({ ...layer, chars: Object.freeze({ ...chars, ...layer.chars }) }) : layer));
+export const withChars = (layers, chars) => layers.map((layer, at) => (at ? Object.freeze({ ...layer, chars: layerChars(layer.kind, { ...chars, ...layer.chars }) }) : layer));
 
 // raw (the old form's layers key: untrusted, or undefined) as layers, always new ones. hasShapes: there's a vector layer,
 // whatever raw says.

@@ -79,8 +79,8 @@ function ownParams(params, chars) {
       seed: chars.seed,
       solids: chars.solids,
       patternLight: chars.patternLight,
-      ditherStyle: chars.ditherStyle,
-      dither: chars.dither,
+      ditherStyle: chars.ditherStyle ?? params.ditherStyle, // a cells layer holds none (layerInfo.js layerChars)
+      dither: chars.dither ?? params.dither,
     };
     own.set(chars, made);
   }
@@ -189,8 +189,15 @@ export const useProjectStore = defineStore('project', {
     fitsRoom() { return !!legacySlots(this.layers, this.baseChars); },
     // The bottom's character settings: the document's own fields (settings.js CHAR_KEYS).
     baseChars: (state) => Object.fromEntries(CHAR_KEYS.map((key) => [key, state[key]])),
-    // A layer's character settings: its own (layer.chars), the bottom's for the bottom, or for a layer that has none yet.
-    charsOf() { return (id) => (id !== 'base' && this.layerById(id)?.chars) || this.baseChars; },
+    // A layer's character settings: its own (layer.chars), the bottom's for the bottom, or for a layer that has none yet;
+    // a cells layer's Dither is the bottom's (it holds none: layerChars), so a layer made from it takes that.
+    charsOf() {
+      return (id) => {
+        const layer = id !== 'base' && this.layerById(id);
+        if (!layer?.chars) return this.baseChars;
+        return layer.kind === 'cells' ? { ...layer.chars, ditherStyle: this.ditherStyle, dither: this.dither } : layer.chars;
+      };
+    },
     // Each layer's params, by id: processParams with its own character settings over them, or processParams itself for a
     // layer whose settings are the bottom's (ownParams keeps each one's identity while nothing changes).
     layerParams() {

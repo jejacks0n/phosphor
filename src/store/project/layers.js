@@ -3,8 +3,8 @@
 // eye and the layer in use aren't: they're about the layers, not edits to what's drawn on them. Only a layer in the stack
 // has data in _layerData: one taken out (deleted, its add undone) is held by the undo step that can put it back.
 import { markRaw } from 'vue';
-import { MOST_LAYERS, goodLayerName, legacySlots, newLayerId, nextNumber } from '@/document/layerInfo.js';
-import { CHAR_KEYS } from '@/store/settings.js';
+import { MOST_LAYERS, goodLayerName, layerChars, legacySlots, newLayerId, nextNumber } from '@/document/layerInfo.js';
+import { CHAR_KEYS, DITHER_KEYS } from '@/store/settings.js';
 import { loadImage, readProject, writeProject } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
@@ -22,12 +22,11 @@ function changed(store, id, patch) {
 // own (some of CHAR_KEYS) as the layer with the id's character settings: the document's fields for the bottom, with every
 // layer following them in a room (followBase).
 function putChars(store, id, own) {
-  if (id !== 'base') return changed(store, id, { chars: Object.freeze({ ...store.charsOf(id), ...own }) });
+  if (id !== 'base') return changed(store, id, { chars: layerChars(store.layerById(id)?.kind, { ...store.charsOf(id), ...own }) });
   store.$patch(own);
   if (store._sharing) followBase(store);
 }
 
-const DITHER_KEYS = ['ditherStyle', 'dither'];
 const pick = (from, keys) => Object.fromEntries(keys.map((key) => [key, from[key]]));
 
 // The layer with the id out of the stack, and what's on it, for putBack: { layer, below, data } for a cells layer (its
@@ -126,8 +125,9 @@ export const layerActions = {
   // set, a layer above the bottom is refused (the room's toast says so) and the bottom's change every layer's with them.
   // Whether it changed.
   setLayerChars(id, patch) {
-    const own = Object.fromEntries(CHAR_KEYS.filter((key) => key in patch).map((key) => [key, patch[key]]));
-    if (!this.layerById(id)) return false;
+    const layer = this.layerById(id), holds = (key) => id === 'base' || layer.kind !== 'cells' || !DITHER_KEYS.includes(key); // a cells layer has no Dither
+    if (!layer) return false;
+    const own = Object.fromEntries(CHAR_KEYS.filter((key) => key in patch && holds(key)).map((key) => [key, patch[key]]));
     const was = this.charsOf(id);
     if (Object.keys(own).every((key) => own[key] === was[key])) return false;
     if (id !== 'base' && refusedInRoom(this)) return false;
@@ -241,7 +241,7 @@ export const layerActions = {
     const below = workspace.pickedLayer, to = newLayerId(this.layers, 'cells'), grid = this.paintLayer;
     const own = markRaw(new PaintLayer({ cols: grid.cols, rows: grid.rows, scale: grid.scale }));
     own.restore(fitted(null, own));
-    const layer = Object.freeze({ id: to, kind: 'cells', n: nextNumber(this.layers, 'cells'), name: goodLayerName(file.name.replace(/\.[^.]*$/, '')), hidden: false, chars: Object.freeze({ ...this.charsOf(below) }) });
+    const layer = Object.freeze({ id: to, kind: 'cells', n: nextNumber(this.layers, 'cells'), name: goodLayerName(file.name.replace(/\.[^.]*$/, '')), hidden: false, chars: layerChars('cells', this.charsOf(below)) });
     let held = { layer, below, data: { editCells: new Map(), paintLayer: own, hasPaint: true } };
     putBack(this, held);
     stackStep(this, { held, undo: () => { held = takeOut(this, to); }, redo: () => putBack(this, held) });

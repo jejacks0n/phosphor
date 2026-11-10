@@ -20,7 +20,7 @@ import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putStack, refusedHidden, refusedInRoom, stackState } from '@/store/project/shared.js';
-import { lowerGroup, sameChars } from '@/document/layerInfo.js';
+import { layerChars, lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { placedShapes } from '@/document/followers.js';
 import { CHAR_KEYS, RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
 import { shallowRef, toRaw } from 'vue';
@@ -374,7 +374,7 @@ export const mergingActions = {
       // character settings as they come out.
       const chars = Object.freeze(Object.fromEntries(CHAR_KEYS.map((key) => [key, key in settings ? settings[key] : this[key]])));
       const edit = this.layerById('edit') ?? { id: 'edit', kind: 'cells', n: 1, name: null };
-      const layers = [Object.freeze({ ...this.layers[0], hidden: false }), ...(layer === 'edit' ? [Object.freeze({ ...edit, hidden: false, chars })] : [])];
+      const layers = [Object.freeze({ ...this.layers[0], hidden: false }), ...(layer === 'edit' ? [Object.freeze({ ...edit, hidden: false, chars: layerChars('cells', chars) })] : [])];
       const editCells = new Map([...(layer === 'edit' ? grid.map(({ col, row, char, fg, bg }) => [cellKey(col, row), { char, fg, bg }]) : []), ...bakeEditCells(new Map(past), params)]);
 
       // The base: black for the edit layer's grid, or the grid's cells as Merge down writes them (writeBaseCells).

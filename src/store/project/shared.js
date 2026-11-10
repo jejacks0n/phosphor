@@ -8,7 +8,7 @@ import { loadImage } from '@/document/projectIO.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
-import { newLayerId, nextNumber, sameChars } from '@/document/layerInfo.js';
+import { layerChars, newLayerId, nextNumber, sameChars } from '@/document/layerInfo.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -193,7 +193,7 @@ export function refusedInRoom(project, { fills = false } = {}) {
 // chars: its character settings (charsOf's), the bottom's unless said.
 export function putLayer(project, kind, above, chars = project.baseChars) {
   const id = newLayerId(project.layers, kind), at = project.layers.findIndex((layer) => layer.id === above) + 1 || project.layers.length;
-  const layer = Object.freeze({ id, kind, n: nextNumber(project.layers, kind), name: null, hidden: false, chars: Object.freeze({ ...chars }) });
+  const layer = Object.freeze({ id, kind, n: nextNumber(project.layers, kind), name: null, hidden: false, chars: layerChars(kind, chars) });
   // The last cells layer was deleted: this one takes the fields, empty (not inside an art layer: they're its drawing then).
   const none = kind === 'cells' && !project._artInside && !project.layerById(project.editId);
   project.layers = [...project.layers.slice(0, at), layer, ...project.layers.slice(at)];
@@ -209,7 +209,7 @@ export function putLayer(project, kind, above, chars = project.baseChars) {
 export function followBase(project) {
   const base = project.baseChars;
   if (project.layers.every((layer, at) => !at || sameChars(layer.chars, base, layer.kind))) return;
-  project.layers = project.layers.map((layer, at) => (!at || sameChars(layer.chars, base, layer.kind) ? layer : Object.freeze({ ...layer, chars: Object.freeze({ ...base }) })));
+  project.layers = project.layers.map((layer, at) => (!at || sameChars(layer.chars, base, layer.kind) ? layer : Object.freeze({ ...layer, chars: layerChars(layer.kind, base) })));
 }
 
 // The edit layer's fields emptied, a paint layer of the same size kept: for a drawing left with no cells layer above the
