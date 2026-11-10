@@ -220,6 +220,7 @@ export const renderingActions = {
   overLower(indexes = null) {
     this.renderer.upper = upperOf(this);
     if (!this.renderer.upper.length) return this.lowerCells;
+    if (this.renderer.needsFont) this.render(); // a layer added, shown or moved without one, with its own Best match or By shape
     return this.renderer.composeUpper(this.lowerCells, indexes, this.renderer.palette, this.composedCells);
   },
 

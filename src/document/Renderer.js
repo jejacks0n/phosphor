@@ -1036,6 +1036,10 @@ export default class Renderer {
     this.#tileBytes -= tile.data.byteLength;
   }
 
+  // An upper layer (upper) has its own Best match or By shape and the reference font they measure glyphs in hasn't loaded:
+  // a render loads it (until then such a layer's cells are Random's or by weight).
+  get needsFont() { return !this.#fontReady && this.upper.some((u) => resolves(u.params)); }
+
   // What the upper layers' By shape samples hold, in bytes (#samplesAt).
   get sampleBytes() { return this.#tileBytes; }
 
