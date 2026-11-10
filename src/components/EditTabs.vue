@@ -75,12 +75,14 @@ watch(showLayers, (shown) => { if (!shown) layersOpen.value = false; });   // no
 
 // The art tabs wait for something to show. From ROOM they're the way back to the start screen.
 const noArt = computed(() => !image.value && props.modelValue !== 'room');
-// The picked layer decides them: the base and the edit layer show PIXEL and ANSI, the vector layer VECTOR, and inside an art
-// layer VECTOR and ANSI (shownPick is the vector row then).
+// The picked layer decides them, by its kind: a cells layer (the base among them) shows PIXEL and ANSI, a vector layer
+// VECTOR, and inside an art layer VECTOR and ANSI (shownPick is its vector layer's row then). 'vector' before the first
+// shape brings its layer is the vector layer it will be.
+const isVector = (id) => project.layerById(id)?.kind === 'vector' || id === 'vector';
 const tabs = computed(() => [
-  ...(workspace.shownPick !== 'vector' ? [{ id: 'input', label: t('tabs.pixel'), disabled: noArt.value }] : []),
-  ...(workspace.shownPick === 'vector' ? [{ id: 'vector', label: t('tabs.vector'), disabled: noArt.value }] : []),
-  ...(workspace.pickedLayer !== 'vector' || project.artInside ? [{ id: 'output', label: renderStyle.value === 'ansi' ? t('tabs.ansi') : t('tabs.ascii'), disabled: noArt.value }] : []),
+  ...(!isVector(workspace.shownPick) ? [{ id: 'input', label: t('tabs.pixel'), disabled: noArt.value }] : []),
+  ...(isVector(workspace.shownPick) ? [{ id: 'vector', label: t('tabs.vector'), disabled: noArt.value }] : []),
+  ...(!isVector(workspace.pickedLayer) || project.artInside ? [{ id: 'output', label: renderStyle.value === 'ansi' ? t('tabs.ansi') : t('tabs.ascii'), disabled: noArt.value }] : []),
   { id: 'sauce', label: t('tabs.sauce'), disabled: noArt.value },
   ...(isDesktop.value && (room.role === 'watch' || props.modelValue === 'room') ? [{ id: 'room', label: t('tabs.room'), disabled: false }] : []),   // the room you watch
 ]);

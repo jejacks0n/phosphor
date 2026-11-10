@@ -102,6 +102,23 @@ test('inside an art layer: VECTOR, ANSI and SAUCE, the vector row picked', async
   expect(await names()).toEqual(['PIXEL', 'ANSI', 'SAUCE']);
 });
 
+test('a vector layer above the first picked shows VECTOR and SAUCE, and inside an art layer on it VECTOR, ANSI and SAUCE', async () => {
+  const { project, workspace } = await blank();
+  project.addLayer('vector', 'base'); // the first, 'vector'
+  const upper = project.addLayer('vector', 'edit'); // directly above the edit layer: where Make art layer puts the art
+  const names = await tabsOf(workspace);
+  workspace.pickLayer(upper);
+  expect(workspace.editorTab).toBe('vector');
+  expect(await names()).toEqual(['VECTOR', 'SAUCE']);
+  workspace.pickLayer('edit');
+  const key = artLayer(project, workspace);
+  expect(project.shapes.get(key).layer).toBe(upper);
+  expect(project.enterArt(key)).toBe(true);
+  workspace.editorTab = 'output';
+  expect(workspace.shownPick).toBe(upper);
+  expect(await names()).toEqual(['VECTOR', 'ANSI', 'SAUCE']);
+});
+
 test('the vector layer stays when its last shape goes', async () => {
   const { project, workspace } = await blank();
   const key = project.addShape(rectShape(10, 10, 16, 20, { fill: RED }));
