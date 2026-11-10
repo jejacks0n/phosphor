@@ -68,8 +68,8 @@ script. Every section ends with Free time.
 - Expects: it opens on ANSI as character art, 80 columns wide with its rows from the photo's shape; LAYERS shows
   Layer 1 (picked) over Base; the Characters section is titled "Characters · Layer 1"; the address shows the ANSI tab.
   Opening takes under the `file` budget.
-- Probes: `free`: drop the file on the box instead of using the button; `again`: open `gradient.png` over it from
-  the start screen's recent list or New project, and check it asks about unsaved changes only if there are any;
+- Probes: `free`: drop the file on the box instead of using the button; `again`: press New project and open the same
+  `photo.jpg` a second time, checking New project asks about unsaved changes only if there are any;
   `extremes`: open `tall.png` and `rgba.png` and look at where the transparency and the long edge land.
 - Rated: yes, wants Cmd+O
 
@@ -90,7 +90,7 @@ script. Every section ends with Free time.
   the `setting` budget.
 - Probes: `undo-redo`: undo the style changes one at a time and check the picture and the menu go back together;
   `speed`: arrow through the Art style menu as fast as it takes keys and check the picture ends on the last one.
-- Rated: yes, wants Tab to Art style then the arrows (more than two keys is `keysLong`)
+- Rated: yes, wants Tab to Art style then the arrows
 
 ### 4. Try every palette
 - Does: in Color palette, tries Full color (24-bit), VGA (256 colors), CGA (16 colors), Limited count (and moves its
@@ -276,7 +276,18 @@ dithered, and compare the dither at 80 and at 200 columns.
   cursor showing (the first Escape puts the cursor away).
 - Rated: yes, wants M, then a key for Make art layer
 
-### 23. Give the vector layer its own dither
+### 23. Paint inside the art layer
+- Does: steps into the art layer again (Edit art), paints a stroke with the Brush, fills an area with the Paint Bucket,
+  drags a Linear gradient with the Bucket's Gradient choice, then presses Done.
+- Expects: the usual ANSI tools draw into the art layer and only it ([Editing an art layer](../../vector.md#editing-an-art-layer));
+  drawing past its edge grows it; each edit is one undo step; the change shows on VECTOR once she's out, with the
+  layer selected.
+- Probes: `undo-redo`: undo the gradient, the fill and the stroke inside, and check undo stops where she stepped in;
+  `out-of-order`: try to pick Base or change a setting in the left column while inside (they're off);
+  `interrupt`: switch tabs while inside, which steps out, and check what she drew stayed.
+- Rated: yes, wants B and G (the strokes themselves aren't rated), and Escape to step out
+
+### 24. Give the vector layer its own dither
 - Does: on CGA with the base's Dither at 0%, picks Vector 1, and in "Characters · Vector 1" sets Dither style to
   Ordered (Bayer) and Dither to 60%; then drags a shape a little.
 - Expects: only the shapes take the pattern; the picture under them doesn't change; while she drags, the pattern
@@ -292,7 +303,7 @@ held.
 
 ## Merging and baking
 
-### 24. Merge my two paint layers
+### 25. Merge my two paint layers
 - Does: picks Layer 2, which sits directly above Layer 1, and presses Merge down (top toolbar), into Layer 1.
 - Expects: no question: its cells and paint are written onto the layer under it, it leaves the stack, and nothing on
   the canvas changes; one undo brings it back, picked; redo merges it again.
@@ -300,7 +311,7 @@ held.
   and press Merge down ("Show the layer to merge it").
 - Rated: yes, wants Cmd+E
 
-### 25. Merge my paint into the picture, crisp
+### 26. Merge my paint into the picture, crisp
 - Does: picks Layer 1, which sits directly on the base (anything between them she moves up first, with ⋯ and Move up
   or a drag in LAYERS), presses Merge down, and chooses Keep crisp cells.
 - Expects: the question "Choose how to merge … into Base" with Keep crisp cells and Blend into source image; Keep crisp
@@ -309,7 +320,7 @@ held.
 - Probes: `back-out`: press Escape at the question and check nothing merged; `undo-redo`: undo, redo, undo.
 - Rated: yes, wants Cmd+E, then Enter on Keep crisp cells
 
-### 26. Merge my paint into the image itself
+### 27. Merge my paint into the image itself
 - Does: picks Base, presses + Layer (it lands directly on the base), paints a few strokes and types a word on it,
   presses Merge down and chooses Blend into source image; then moves Edges and Sharpen.
 - Expects: her paint becomes part of the picture (Into the image), so Edges outlines it and the sliders keep changing
@@ -318,17 +329,21 @@ held.
   second time into the already blended picture.
 - Rated: yes, wants Cmd+E, then the arrows to the second choice
 
-### 27. Press the shapes into the picture
+### 28. Press the shapes into the picture
 - Does: picks Vector 1, moves it directly onto the base if it isn't (⋯, Move down), and presses Merge down on VECTOR.
-- Expects: with the vector layer's Dither its own, Merge down refuses and says why ("… has its own character settings,
-  so its shapes can't be pressed into the layer under it"); with the base's settings, its shapes are pressed into the
-  base's pixels and stop being shapes, nothing on the canvas changes, and one undo brings them back as shapes.
+  Then, in "Characters · Vector 1", sets Dither style and Dither back to the base's, and presses Merge down again.
+- Expects: the first press is refused, since step 24 gave Vector 1 a Dither of its own: a message says "Vector 1 has
+  its own character settings, so its shapes can't be pressed into the layer under it", and nothing changes. With its
+  settings the base's again, the second press presses its shapes into the base's pixels, where they stop being shapes
+  (its art layer's characters pinned); nothing on the canvas changes, and one undo brings them back as shapes.
 - Probes: `out-of-order`: try it with the vector layer hidden; `undo-redo`: undo and redo the press.
 - Rated: yes, wants Cmd+E
 
-### 28. Bake it
-- Does: on CGA with a few sliders moved, presses Bake (the flame) and chooses Keep full color; undoes; bakes again
-  choosing Snap to CGA colors; then turns Dither on and bakes once more.
+### 29. Bake it
+- Does: with the shapes pressed in the last step (or no vector layer directly on the base: a hidden one with shapes
+  there refuses Bake, and one with settings of its own stays shapes), on CGA with a few sliders moved, presses Bake (the
+  flame) and chooses Keep full color; undoes; bakes again choosing Snap to CGA colors; then turns Dither on and bakes
+  once more.
 - Expects: nothing on the canvas changes; the sliders go back to neutral; the palette stays; with Dither on it bakes
   exactly, without asking; undo brings the original image and the sliders back
   ([Baking](../../layers.md#baking)).
@@ -340,14 +355,14 @@ from Bake, merge with a selection, and check the merges are off with Animate on 
 
 ## Getting it out
 
-### 29. Export a PNG to post
+### 30. Export a PNG to post
 - Does: looks for a PNG export among Save project, Export .ans and Export .utf8ans (in the left column and on SAUCE).
 - Expects: a PNG of the art as it shows, which [Vector shapes](../../vector.md#saving) lists among the exports.
 - Probes: `out-of-order`: look on every tab and in the Actions menu of a narrow window; `free`: try the browser's own
   right-click on the canvas.
 - Rated: yes, wants a key for Export PNG
 
-### 30. Export an .ans for the terminal
+### 31. Export an .ans for the terminal
 - Does: presses Export .ans, keeps the offered name, and saves; then checks it in the headless terminal against the
   screen (the README's Files).
 - Expects: the dialog offers "photo-" with the date and time; any character CP437 lacks is listed with what it becomes
@@ -357,7 +372,7 @@ from Bake, merge with a selection, and check the merges are off with Animate on 
   reopen and check the offered name; `extremes`: name the file with emoji and slashes.
 - Rated: yes, wants a key for Export .ans
 
-### 31. Save the project and reopen it
+### 32. Save the project and reopen it
 - Does: presses Cmd+S, saves; starts a New project; opens the saved .phosphor with Choose a file.
 - Expects: everything comes back: the picture and its sliders, the palette and Dither, each layer with its name, its
   eye, its paint and its own character settings, the vector layer's shapes with their gradients, the art layer, the
@@ -372,7 +387,7 @@ from it.
 
 ## Bigger: 200 columns
 
-### 32. Make it 200 columns wide
+### 33. Make it 200 columns wide
 - Does: opens her photo fresh, sets Dimensions to 200 columns with Lock aspect ratio on.
 - Expects: nothing drawn yet, so the picture is converted again at the new size and the rows follow its shape; the
   change lands within the `setting` budget.
@@ -380,7 +395,7 @@ from it.
   size change.
 - Rated: yes, wants Tab to Dimensions (typing the number is content)
 
-### 33. Tune it at the bigger size
+### 34. Tune it at the bigger size
 - Does: at 200 columns, moves Brightness, Dither and Pattern light, switches Choose characters to By shape, and paints
   a stroke on Layer 1.
 - Expects: each change lands within the `setting` budget; strokes draw without long frames; with a stroke drawn, a
