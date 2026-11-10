@@ -124,6 +124,9 @@ The settings on the left come in three sections, each following a layer:
 - **Picture · Base** and **Image filters**: Smoothing and the Image filters, which work on the picture itself. They
   show only with the base picked; with another layer picked they're hidden.
 
+Each section under Drawing (Transforms, Adjustments, Characters, Picture, Image filters) folds and unfolds on its
+title, and this browser remembers which are folded. A folded slider group says how many of its sliders are on.
+
 A layer whose character settings differ from the base's makes a drawing that saves in the newer form (see **Saving**
 under [The layers list](#the-layers-list)) and can't go live in a room, which has one set. In a room the Characters
 section is always **Characters · Base**, whichever layer is picked, and every layer takes what you choose there.

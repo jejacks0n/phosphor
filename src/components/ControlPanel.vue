@@ -66,12 +66,12 @@ const sections = computed(() => {
 const help = (key) => getSetting(key).help;
 const ansi = computed(() => store.renderStyle === 'ansi');
 
-// A slider group folds and unfolds on its title, and stays as it was left in this browser. Folded, it says how many of
-// its sliders are on (off their defaults), so a forgotten Threshold doesn't change the picture unseen.
+// A section folds and unfolds on its title, and stays as it was left in this browser. Folded, a slider group says how
+// many of its sliders are on (off their defaults), so a forgotten Threshold doesn't change the picture unseen.
 const folded = useLocalStorage('phosphor.panel.folded', []);
 const isFolded = (id) => folded.value.includes(id);
 const toggleFold = (id) => { folded.value = isFolded(id) ? folded.value.filter((f) => f !== id) : [...folded.value, id]; };
-const onCount = (group) => group.sliders.filter((s) => Number(store[s.key]) !== s.default).length;
+const onCount = (group) => (group.sliders ?? []).filter((s) => Number(store[s.key]) !== s.default).length;
 
 // Each way of choosing characters' own options, from the way the picked layer's cells are made (an unknown choice
 // from an old file or a room converts as Random or By weight, and shows their options).
@@ -169,68 +169,66 @@ const charsetName = computed(() => {
       <!-- Under a folded group its title's line is the separator. -->
       <hr v-if="i === 0 || !isFolded(sections[i - 1].id)"/>
 
-      <fieldset v-if="group.id === 'characters'" class="characters" :disabled="!!locked" :title="locked">
-        <legend>{{ group.title }}</legend>
-        <p v-if="charsNote" class="note">{{ charsNote }}</p>
-
-        <div class="field">
-          <div class="label-group"><label :for="ansi ? 'charChoice' : 'charChoiceAscii'">{{ t('panel.charChoice.label') }}</label><HelpInfo :text="help(ansi ? 'charChoice' : 'charChoiceAscii')" /></div>
-          <select v-if="ansi" id="charChoice" v-model="own.charChoice">
-            <option value="random">{{ t('panel.charChoice.random') }}</option>
-            <option value="best">{{ t('panel.charChoice.best') }}</option>
-            <option value="shape">{{ t('panel.charChoice.shape') }}</option>
-          </select>
-          <select v-else id="charChoiceAscii" v-model="own.charChoiceAscii">
-            <option value="weight">{{ store.renderStyle === 'ascii' ? t('panel.charChoice.brightness') : t('panel.charChoice.intensity') }}</option>
-            <option value="shape">{{ t('panel.charChoice.shape') }}</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <div class="label-row">
-            <div class="label-group"><label for="chars">{{ t('panel.chars.label') }}</label><HelpInfo :text="help('chars')" /></div>
-            <span class="value">{{ charsetName }}</span>
-          </div>
-          <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="own.chars" :presets="ANSI_CHARSETS"/>
-          <CharsetField v-else id="chars" v-model="own.charsAscii" :presets="ASCII_CHARSETS"/>
-        </div>
-
-        <div v-if="showSeed" class="field">
-          <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :text="help('seed')" /></div>
-          <div class="row-inputs">
-            <input type="text" id="seed" v-model.lazy="own.seed" :placeholder="t('panel.seed.placeholder')">
-            <button @click="store.randomizeSeed(picked)" :title="t('panel.seed.randomize')">🎲</button>
-          </div>
-        </div>
-
-        <RangeField v-if="showSolids" :setting="getSetting('solids')" v-model="own.solids"/>
-        <RangeField v-if="showPatternLight" :setting="getSetting('patternLight')" v-model="own.patternLight"/>
-      </fieldset>
-
-      <fieldset v-else-if="group.id === 'picture'" class="picture" :disabled="!!locked" :title="locked">
-        <legend>{{ group.title }}</legend>
-
-        <div class="field">
-          <div class="label-group"><label for="smoothing">{{ t('panel.smoothing.label') }}</label><HelpInfo :text="help('smoothing')" /></div>
-          <select id="smoothing" v-model="store.smoothing">
-            <option value="low">{{ t('panel.smoothing.low') }}</option>
-            <option value="medium">{{ t('panel.smoothing.medium') }}</option>
-            <option value="high">{{ t('panel.smoothing.high') }}</option>
-          </select>
-        </div>
-      </fieldset>
-
-      <fieldset v-else :class="{ folded: isFolded(group.id) }" :disabled="!!locked" :title="locked">
+      <fieldset :class="[group.id, { folded: isFolded(group.id) }]" :disabled="!!locked" :title="locked">
         <legend>
           <button class="fold" :aria-expanded="!isFolded(group.id)" :aria-controls="`group-${group.id}`" @click="toggleFold(group.id)">
             <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
             {{ group.title }}
             <span v-if="isFolded(group.id) && onCount(group)" class="on">{{ t('panel.onCount', onCount(group)) }}</span>
           </button>
-          <button :disabled="!!locked" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
+          <button v-if="group.sliders" :disabled="!!locked" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
         </legend>
 
         <div v-show="!isFolded(group.id)" :id="`group-${group.id}`">
+          <template v-if="group.id === 'characters'">
+            <p v-if="charsNote" class="note">{{ charsNote }}</p>
+
+            <div class="field">
+              <div class="label-group"><label :for="ansi ? 'charChoice' : 'charChoiceAscii'">{{ t('panel.charChoice.label') }}</label><HelpInfo :text="help(ansi ? 'charChoice' : 'charChoiceAscii')" /></div>
+              <select v-if="ansi" id="charChoice" v-model="own.charChoice">
+                <option value="random">{{ t('panel.charChoice.random') }}</option>
+                <option value="best">{{ t('panel.charChoice.best') }}</option>
+                <option value="shape">{{ t('panel.charChoice.shape') }}</option>
+              </select>
+              <select v-else id="charChoiceAscii" v-model="own.charChoiceAscii">
+                <option value="weight">{{ store.renderStyle === 'ascii' ? t('panel.charChoice.brightness') : t('panel.charChoice.intensity') }}</option>
+                <option value="shape">{{ t('panel.charChoice.shape') }}</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <div class="label-row">
+                <div class="label-group"><label for="chars">{{ t('panel.chars.label') }}</label><HelpInfo :text="help('chars')" /></div>
+                <span class="value">{{ charsetName }}</span>
+              </div>
+              <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="own.chars" :presets="ANSI_CHARSETS"/>
+              <CharsetField v-else id="chars" v-model="own.charsAscii" :presets="ASCII_CHARSETS"/>
+            </div>
+
+            <div v-if="showSeed" class="field">
+              <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :text="help('seed')" /></div>
+              <div class="row-inputs">
+                <input type="text" id="seed" v-model.lazy="own.seed" :placeholder="t('panel.seed.placeholder')">
+                <button @click="store.randomizeSeed(picked)" :title="t('panel.seed.randomize')">🎲</button>
+              </div>
+            </div>
+
+            <RangeField v-if="showSolids" :setting="getSetting('solids')" v-model="own.solids"/>
+            <RangeField v-if="showPatternLight" :setting="getSetting('patternLight')" v-model="own.patternLight"/>
+          </template>
+
+          <template v-else-if="group.id === 'picture'">
+            <div class="field">
+              <div class="label-group"><label for="smoothing">{{ t('panel.smoothing.label') }}</label><HelpInfo :text="help('smoothing')" /></div>
+              <select id="smoothing" v-model="store.smoothing">
+                <option value="low">{{ t('panel.smoothing.low') }}</option>
+                <option value="medium">{{ t('panel.smoothing.medium') }}</option>
+                <option value="high">{{ t('panel.smoothing.high') }}</option>
+              </select>
+            </div>
+          </template>
+
+          <template v-else>
           <!-- Undoable: each drag, nudge or color pick is one step (setSlider, then commitSliders). -->
           <RangeField
               v-for="slider in group.sliders"
@@ -252,6 +250,7 @@ const charsetName = computed(() => {
                 @change="store.commitSliders(key)"
             >
           </RangeField>
+          </template>
         </div>
       </fieldset>
     </template>

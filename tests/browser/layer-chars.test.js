@@ -134,6 +134,32 @@ test('the Characters legend names the picked layer, and Picture · Base and Imag
   expect(sectionOf('Picture')).toBeUndefined();
 });
 
+test('Characters and Picture fold on their titles like the slider groups, and stay folded when the panel comes back', async () => {
+  const { workspace } = await blank();
+  workspace.pickLayer('base');
+  await mountPanel();
+  const fold = (words) => sectionOf(words).querySelector('legend button.fold');
+  for (const words of ['Characters', 'Picture']) {
+    expect(fold(words).getAttribute('aria-expanded')).toBe('true');
+    fold(words).click();
+    await nextTick();
+    expect(fold(words).getAttribute('aria-expanded')).toBe('false');
+    expect(sectionOf(words).classList).toContain('folded');
+  }
+  expect(host.querySelector('#charChoice').checkVisibility()).toBe(false);
+  expect(host.querySelector('#smoothing').checkVisibility()).toBe(false);
+  expect(host.querySelector('#group-adjust').checkVisibility()).toBe(true); // the others stay open
+  expect(JSON.parse(localStorage.getItem('phosphor.panel.folded'))).toEqual(['characters', 'picture']);
+  app.unmount();
+  host.remove();
+  await mountPanel();
+  expect(fold('Characters').getAttribute('aria-expanded')).toBe('false');
+  expect(host.querySelector('#charChoice').checkVisibility()).toBe(false);
+  fold('Characters').click();
+  await nextTick();
+  expect(host.querySelector('#charChoice').checkVisibility()).toBe(true);
+});
+
 test('the Characters note says what a vector layer converts', async () => {
   const { project, workspace } = await blank();
   const id = project.addLayer('vector', 'edit');
