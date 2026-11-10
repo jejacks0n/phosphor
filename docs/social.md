@@ -211,8 +211,8 @@ With Allow guests unticked and guests in the room, **Kick the 2 guests here too*
 shows under it, unticked; saved ticked, each guest is removed. Under
 them, as plain facts, **Set when the room started**: **Listed in the lobby** or **Only with the link**,
 and whether a password is set. Those can't change while the room is live. What you've typed in the form
-stays when you go to another tab, and when a setting is changed from the chat panel meanwhile, a field
-you're half way through typing in here stays as it is (the others show the new value).
+stays when you go to another tab, and when a setting changes meanwhile, a field you're half way through
+typing in here stays as it is (the others show the new value).
 
 The lobby picture and the settings under it are one column; beside them (or under them, when the box is
 narrow), **Who came by** is at least as tall as they are, and lists everyone who visited this session, a
@@ -236,8 +236,8 @@ they're tracking you or looking around on their own (or still connecting); someo
   They aren't told; your rooms simply aren't there for them, and a link to one says "This room
   isn't available". Unblock them from Account's **See who you blocked**.
 
-The **⋯** in the panel's header is the room menu: **Copy link**, **Edit welcome** (a box to change
-the pinned welcome, which watchers see at once), and **Settings and stats** (the dashboard above).
+The **⋯** in the panel's header is the room menu: **Copy link** and **Settings and stats** (the dashboard
+above, where you change the pinned welcome; watchers see it once you save).
 
 In the chat, **Delete** takes the place of a message's time when you point at it or tab to it, and takes the message out for everyone, leaving **Message deleted by the host** in its place (a message
 from someone you blocked shows **Show** first).
@@ -447,8 +447,8 @@ Chat goes from browser to browser through the host, like the art, and never thro
 server. The host's browser keeps the last 5,000 messages for as long as the room lasts, and a
 watcher's list goes back no further than that. When the room ends, so does its chat.
 
-As the host you can **Delete** a message for everyone, and **Edit** the pinned welcome (the same box as
-the room menu's **Edit welcome**). To **Kick**, **Mute** or **Block**
+As the host you can **Delete** a message for everyone, and change the pinned welcome in **Settings and
+stats**. To **Kick**, **Mute** or **Block**
 the person who wrote one, use their **⋯** in the **N here** list (see **Hosting**).
 
 A guest who signs in from the chat comes back into the room as themselves (a private room asks for

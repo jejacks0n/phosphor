@@ -1174,7 +1174,6 @@
     },
     "menu": {
       "label": "Salle",
-      "editWelcome": "Modifier le message de bienvenue",
       "settingsAndStats": "Paramètres et statistiques"
     },
     "endDialog": {

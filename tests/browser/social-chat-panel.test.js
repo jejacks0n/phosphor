@@ -208,7 +208,7 @@ test('the room menu has no End room: that\'s on the SOCIAL tab', async () => {
   await mount('host', 0);
   host.querySelector('.room-menu .dropdown-trigger').click();
   await vi.waitFor(() => expect(host.querySelector('.dropdown-content')).not.toBe(null));
-  expect([...host.querySelectorAll('.dropdown-content button')].map((b) => b.textContent)).toEqual(['Copy link', 'Edit welcome', 'Settings and stats']);
+  expect([...host.querySelectorAll('.dropdown-content button')].map((b) => b.textContent)).toEqual(['Copy link', 'Settings and stats']);
 });
 
 // Report, on a message: for a confirmed member, on other people's messages that show.

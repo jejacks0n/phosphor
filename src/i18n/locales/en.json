@@ -1174,7 +1174,6 @@
     },
     "menu": {
       "label": "Room",
-      "editWelcome": "Edit welcome",
       "settingsAndStats": "Settings and stats"
     },
     "endDialog": {

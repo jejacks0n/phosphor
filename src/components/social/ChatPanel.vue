@@ -15,7 +15,7 @@ import ReportDialog from './ReportDialog.vue';
 
 // The chat of the room you host or watch, the side panel's CHAT tab (SidePanel, every tab, while you're in
 // one): the room's name (and, watching, who hosts it, and Exit; hosting, the room menu and who is here;
-// a watcher's list of who to follow is there once an artist is), the host's welcome pinned (with the host's Edit), the messages, and the box to write in. The panel
+// a watcher's list of who to follow is there once an artist is), the host's welcome pinned, the messages, and the box to write in. The panel
 // counts what came while it isn't shown. The list keeps its place: a new message scrolls it only
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
 // without moving what you were reading. Someone you blocked is folded to one line (Show opens just
@@ -29,7 +29,6 @@ const { t } = useI18n();
 
 const props = defineProps({ shown: { type: Boolean, default: true } });   // in view: not folded away or behind LAYERS
 const list = useTemplateRef('list');
-const menu = useTemplateRef('menu');
 
 const host = computed(() => room.room?.host || null);
 const blocked = computed(() => new Set(social.blocked.map((b) => b.id)));
@@ -118,7 +117,7 @@ function askIfAtTop() {
           </p>
         </div>
         <div class="tools">
-          <RoomMenu v-if="room.role === 'host'" ref="menu" />
+          <RoomMenu v-if="room.role === 'host'" />
           <template v-else-if="room.role === 'watch'">
             <div class="leave">
               <button class="exit" @click="room.leave()">{{ t('social.chat.exit') }}</button>
@@ -129,10 +128,7 @@ function askIfAtTop() {
       </header>
       <RoomPeople v-if="room.role" />
       <p v-if="room.room?.welcome" class="pinned">
-        <span>
-          {{ t('social.chat.pinnedFromHost') }}
-          <button v-if="room.role === 'host'" class="link edit" @click="menu.editWelcome($event.currentTarget)">{{ t('common.edit') }}</button>
-        </span>
+        <span>{{ t('social.chat.pinnedFromHost') }}</span>
         {{ room.room.welcome }}
       </p>
       <div v-if="drawing.invitation" class="invitation" role="status">
@@ -289,13 +285,6 @@ p.pinned span {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-faint);
-}
-
-p.pinned button.edit {
-  padding: 0 4px;
-  font-size: 11px;
-  text-transform: none;
-  letter-spacing: normal;
 }
 
 div.invitation {
