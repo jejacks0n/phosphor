@@ -243,8 +243,22 @@ export const historyActions = {
       drawing.paintLayer?.writeRuns(own);
       drawing.hasPaint = drawing.paintLayer?.hasPaint ?? false;
     }
-    if (!inside) this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], keys);
-    else if (pins.length) this.refreshChanged([], [pins]);
+    if (!inside) {
+      // Changes all on layers above the lower group are laid over again alone: their cells, or past a quarter of the grid
+      // the whole stack (applyEditCells, which visits only the cells the upper layers touch); the pipeline isn't touched.
+      // Not under the Number palette (every layer's pixels count toward it) or a carried error or held dither, where the
+      // composite catches the rest of the grid up, as commitEdit's does.
+      const lower = this.lowerGroup.cells, written = [...byLayer].filter(([, { cells, runs: own }]) => cells.length || own.length);
+      const belowToo = changedPixels(this.cols, this.rows, patches, pins.length ? [pins] : [], [], null, Infinity).length; // base pixels or pins
+      const whole = this.quantize === 'count' || carriesError(this.processParams) || this.renderer.holdsDither(this.processParams);
+      const upper = !belowToo && !whole && written.every(([id]) => id !== lower && id !== 'base');
+      if (!upper) this.refreshChanged([[runsPatch(runs), this.paintLayer], ...patches], pins.length ? [pins] : [], keys);
+      else {
+        const pixels = changedPixels(this.cols, this.rows, written.map(([id, { runs: own }]) => [runsPatch(own), (id === this.editId ? this : this._layerData.get(id)).paintLayer]), [], keys);
+        if (pixels) this.recomposeUpper(pixels);
+        else this.applyEditCells();
+      }
+    } else if (pins.length) this.refreshChanged([], [pins]);
     const moved = () => { const m = placeOf(); return !m || !was || m.some((v, i) => v !== was[i]); };
     if (inside && shapes.length && (shapes.some(([key]) => key === inside.key) || moved())) this.loadArt();
     else if (shapes.length) this.refreshShapes();
@@ -431,9 +445,9 @@ function lockedStep(project, entry) {
 
 // The grid pixels under patches' tiles ([patch, layer]: tiles in the layer's pixels), in the cells whose
 // value differs between each pair of maps ('col,row' keys) or named in keys, and in rect (grid pixels: the
-// shapes' area), or null past a quarter of the grid.
-function changedPixels(cols, rows, patches, mapPairs, keys = [], rect = null) {
-  const limit = cols * rows / 4, seen = new Set(), pixels = [];
+// shapes' area), or null past limit pixels (a quarter of the grid: a whole pass is as quick).
+function changedPixels(cols, rows, patches, mapPairs, keys = [], rect = null, limit = cols * rows / 4) {
+  const seen = new Set(), pixels = [];
   const add = (x, y) => {
     const i = y * cols + x;
     if (x < 0 || y < 0 || x >= cols || y >= rows || seen.has(i)) return;

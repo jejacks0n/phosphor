@@ -189,6 +189,43 @@ test('paint on an upper layer over a typed cell covers it as paint covers edit c
   expect(look(cellAt(project, 2, 2))).toEqual(look(coverCell(before, red, null, { renderStyle: 'ansi', palette: project.renderer.palette })));
 });
 
+test('undo and redo of an upper layer\'s edits, a fill of the whole layer among them, don\'t run the lower group or the pipeline', async () => {
+  const { project } = await blank();
+  const top = project.addLayer('cells', 'edit');
+  project.useLayer(top);
+  project.typeAt(2, 2, 'A', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  const everywhere = [];
+  for (let y = 0; y < project.rows; y++) for (let x = 0; x < project.cols; x++) everywhere.push({ x, y, alpha: 1 });
+  project.paintStroke(everywhere, '#ff0000'); // past a quarter of the grid
+  project.commitEdit();
+  await settle(project);
+  const rendered = async () => { project.render(); await settle(project); return cellsKey(project); };
+  const filled = await rendered();
+  const updateCells = vi.spyOn(project.renderer, 'updateCells'), composite = vi.spyOn(project.renderer, 'composite'), pipeline = vi.spyOn(project.renderer, 'render');
+  project.undo();
+  const unfilled = cellsKey(project);
+  expect(unfilled).not.toEqual(filled);
+  project.undo();
+  const untyped = cellsKey(project);
+  project.redo();
+  expect(cellsKey(project)).toEqual(unfilled);
+  project.redo();
+  expect(cellsKey(project)).toEqual(filled);
+  expect(updateCells).not.toHaveBeenCalled();
+  expect(composite).not.toHaveBeenCalled();
+  expect(pipeline).not.toHaveBeenCalled();
+  project.undo();
+  project.undo();
+  expect(untyped).toEqual(await rendered());
+  // The lower group's cells layer still goes through the pipeline's path.
+  project.useLayer('edit');
+  project.paintStroke([{ x: 4, y: 6, alpha: 1 }], '#00ff00');
+  project.commitEdit();
+  project.undo();
+  expect(composite).toHaveBeenCalled();
+});
+
 test('an old document has no upper layers', async () => {
   const { project, workspace } = await createTestApp();
   await drawnDocument(project, workspace);
