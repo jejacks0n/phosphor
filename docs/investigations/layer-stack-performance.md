@@ -28,12 +28,16 @@ not the 23.8 s of the first measurement). Everything else in the areas stands as
 | --- | --- | --: |
 | 11 | `reaching` searches a grid of what stored colors show | 190 µs → 18 µs a lookup; 9% → 0.2% of lookups more than 1 off |
 | 1, 2 | a whole-grid compose visits only the cells the upper layers touch | 527 ms → 21 ms |
-| 2 | hide, show, move, add of an upper layer: no pipeline | 500 → 22 (hide), 33 (show), 50 to 80 (move) ms |
+| 2 | hide, show, move, add of an upper layer: no pipeline (the output re-read) | 500 → 55 (hide), 50 (show), 71 (move) ms |
 | 6 | a layer's PNG kept while its paint's version stands; a pick schedules no write | `projectParts` after a one-cell edit 103 → 6 ms |
 | 3 | a rename keeps built frames | frames rebuilt on rename: yes → no |
 | 5 | an upper-only undo or redo never runs the pipeline | undo of a whole-layer fill 85 to 129 → 55 to 82 ms |
 
 Not done: areas 4 (memory), 7 (the drag's growth with layers), 8, 9 and 10; what's left is under each.
+
+One deliberate output change: a Merge down of paint under Color ASCII with a slider off its default (area 11) now stores
+a color that shows nearer the shown one than the old descent found, where the two differ. It shows the same or nearer;
+no reference fixture changed.
 
 ## Summary
 
@@ -183,10 +187,15 @@ is within 50 ms of its single-layer cost. Add `hideTopMs`, `moveLayerMs` and `sl
 `bench/`.
 
 **Done.** `setLayerHidden`, `moveLayer` and `addLayer` (with its undo and redo) go through `redrawn` in `layers.js`:
-when the lower group's membership and the base's eye are as they were, `syncShapeLayers` + `applyEditCells` and no
-pipeline; else `render()`. Measured at the limit with 1 / 4 / 16 upper: hide 35 / 188 / 500 → 18 / 18 / 22 ms, show
-130 / 218 / 514 → 33 / 33 / 33 ms (two frames of `settled`), move 140 / 241 / 522 → 58 / 52 / 81 ms. A slider step
-(`renderMs`) is 108 / 101 / 167 ms at the limit, from 188 / 288 / 607: the pipeline plus a few ms a layer. Left:
+when the lower group's membership and the base's eye are as they were, and the palette isn't the Number palette (it
+counts every layer's pixels bottom to top, so a move over another layer's paint changes it), `syncShapeLayers` +
+`rebuildCells` (the cells read again from the output as it is, then the upper layers over them) and no pipeline; else
+`render()`. `applyEditCells` alone wasn't enough: it lays edits over the last full render's cells, which a stroke on the
+lower group's layer leaves behind (the output canvas is current, `renderedCells` isn't), so a hide after such a stroke
+showed the cell from before it. Measured at the limit with 1 / 4 / 16 upper: hide 35 / 188 / 500 → 38 / 39 / 55 ms,
+show 130 / 218 / 514 → 33 / 43 / 50 ms (two frames of `settled`), move 140 / 241 / 522 → 59 / 41 / 71 ms; the
+`cellsFromOutput` re-read is 20 to 30 ms of that at 500k cells. A slider step (`renderMs`) is 108 / 116 / 156 ms at
+the limit, from 188 / 288 / 607: the pipeline plus a few ms a layer. Left:
 `deleteLayer`, `duplicateLayer` and `addPictureToLayer` still `render()` through `stackStep` (they're one-off), and a
 move of a layer with no paint and no cells still composes.
 
@@ -358,8 +367,9 @@ layer doesn't run the lower group" does).
 
 **Done.** `applyChange` groups the written layers; when none is the lower group's cells layer or the base, no base pixels
 or pins changed, and the settings don't need the composite (Number palette, a carried error, held dither: as `commitEdit`
-decides), it calls `recomposeUpper` over the changed pixels, or `applyEditCells` (a whole sparse compose, no pipeline)
-past a quarter of the grid. Measured, a fill of the whole top layer undone, at the limit with 1 / 4 / 16 upper:
+decides), and every written layer is there, it calls `recomposeUpper` over the changed pixels, or `rebuildCells` (the
+output as it is, a whole sparse compose, no pipeline) past a quarter of the grid; a layer with no paint yet contributes
+no runs. Measured, a fill of the whole top layer undone, at the limit with 1 / 4 / 16 upper:
 85 / 115 / 129 → 59 / 68 / 82 ms; at 45k 36 / 31 / 35 → 29 / 22 / 29 ms. `renderer.composite` is never called for
 such an undo (spy test in `layer-stack.test.js`). Left: redo of that fill is 300 to 433 ms at the limit, which is the
 ledger's per-pixel runs (`writeRuns` over a million pixels), not the stack; `pushWholeLayer`'s callers (delete,
@@ -601,14 +611,16 @@ default. It's marked `ponytail:`.
 **Done.** `storedShowingAs` in `PixelTransforms.js`: `paletteChoices`' 33³ grid through the adjustments and the palette,
 indexed by what each color shows (4096 buckets of 16 levels a channel, built once per settings, 2 to 9 ms), the eight
 grid colors showing nearest the target each stepped 4, 2, 1 a channel with all 26 moves in one `applyTransforms`
-call, the nearest kept. `reaching` is a per-settings, per-target cache over it (the renderer's color cache is no longer
+call, the nearest kept (the ring search stops one ring later than the first cut, as a target at its bucket's edge can
+have a nearer color in the next ring). `reaching` is a per-settings, per-target cache over it (the renderer's color cache is no longer
 flooded), and `shownAs` checks its 27 ±1 candidates in one call instead of 27 `effective` calls. Measured on 1,000
 random reachable targets: Brightness 140 + Hue 40, 189 → 20 µs a lookup, more than 1 off 9.2% → 0.2% (max 81 → 2),
 more than 20 off 2.8% → 0; Contrast 250, 121 → 9 µs, 61% → 0 more than 1 off; Invert + Saturation 150, 182 → 17 µs,
 31% → 0. The misses left are targets a step inside a clip (253 under Brightness 140), shown as 255. A whole Merge down
 of a layer painted all over, 300 x 200 under those sliders: 1.88 → 1.46 s (80 x 50: 242 → 111 ms); what's left is
 `storedLookAt`'s own reads per cell (`baseCellAt` 3 to 4 µs, two `pixelAt` 2.4 µs a layer, conversions), 15 µs a cell
-with no reaching at all.
+with no reaching at all. This is the one area whose output changes: where the old descent from `hex` stopped short,
+the stored color is now a nearer one (it shows the same or nearer).
 
 ## How this was measured
 
