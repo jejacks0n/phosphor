@@ -119,8 +119,10 @@ The settings on the left come in three sections, each following a layer:
   Choose characters, the Characters set, the Character seed, Solids and Pattern light. Each layer has its own
   ([Characters](characters.md#how-the-converter-picks-characters)): changing them changes only how that layer's
   paint, picture or shapes become characters. A line under the title says so for a layer above the base.
-- **Picture · Base**: Smoothing and the Image filters, which work on the picture itself. They change only with the
-  base picked; with another layer picked they're dimmed, and a line says to pick the base.
+  Every layer converts something (the base its picture, a cells layer its paint, a vector layer its shapes), so the
+  section is always there. A new drawing picks Layer 1: to change how the picture becomes characters, pick the base.
+- **Picture · Base** and **Image filters**: Smoothing and the Image filters, which work on the picture itself. They
+  show only with the base picked; with another layer picked they're hidden.
 
 A layer whose character settings differ from the base's makes a drawing that saves in the newer form (see **Saving**
 under [The layers list](#the-layers-list)) and can't go live in a room, which has one set. In a room the Characters

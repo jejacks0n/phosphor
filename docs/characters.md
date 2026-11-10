@@ -50,7 +50,9 @@ set is skipped, so the cells it fills never overlap.
 ## How the converter picks characters
 
 **Choose characters**, above the Characters field in the left column's **Characters** section, sets how the
-converter picks each cell's character from your set. Each Art style offers its own ways:
+converter picks each cell's character from your set. The section is the picked layer's (its name is in the title), and
+a new drawing picks Layer 1: to change how the picture converts, pick Base in LAYERS ([Layers](layers.md#the-left-column)).
+Each Art style offers its own ways:
 
 | Art style | Ways |
 | --- | --- |

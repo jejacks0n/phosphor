@@ -16,7 +16,7 @@ test('a slider group folds on its title, counts what\'s on, resets folded, and s
   await expect(fold(page, 'Adjustments')).toHaveAttribute('aria-expanded', 'false');
   await expect(adjustments().getByRole('slider', { name: 'Contrast' })).toBeHidden();
   await expect(fold(page, 'Adjustments')).toHaveText(/Adjustments\s*2 on/);
-  await expect(group(page, 'Image filters').getByRole('slider', { name: 'Blur' })).toBeVisible(); // the others stay open
+  await expect(group(page, 'Transforms').getByRole('slider', { name: 'Hue shift' })).toBeVisible(); // the others stay open
 
   await page.reload();
   await expect(fold(page, 'Adjustments')).toHaveAttribute('aria-expanded', 'false');

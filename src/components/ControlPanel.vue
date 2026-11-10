@@ -27,8 +27,7 @@ const layerName = useLayerName();
 // of how they had the picture, which a change would leave stale.
 const locked = computed(() => drawing.hostOnly || (store.artInside ? t('art.settingsOff') : null));
 
-// The slider groups: Transforms and Adjustments are the whole drawing's, Image filters the picture's (with the Characters
-// and Picture sections before it).
+// The slider groups: Transforms and Adjustments are the whole drawing's, Image filters the picture's.
 const sliderGroups = computed(() => [
   { id: 'transform', title: t('panel.groups.transform') },
   { id: 'adjust', title: t('panel.groups.adjust') },
@@ -54,10 +53,15 @@ const charsNote = computed(() => {
   if (picked.value === 'base') return null;
   return t(pickedKind.value === 'vector' ? 'panel.charsNoteVector' : 'panel.charsNote', { name: layerName(picked.value) });
 });
-// Smoothing and the Image filters are the picture's: off, saying why, unless its layer is picked.
-const pictureOff = computed(() => (workspace.pickedLayer === 'base' ? null : t('panel.pictureOff', { name: layerName('base') })));
-// Why a slider group is off: locked, or Image filters away from the picture's layer.
-const groupOff = (id) => locked.value || (id === 'effects' ? pictureOff.value : null);
+// The sections under Drawing, in order: the drawing's slider groups, the picked layer's Characters (every layer converts
+// something: the base its picture, a cells layer its paint, a vector layer its shapes), and only with the base picked the
+// picture's own Smoothing and Image filters.
+const sections = computed(() => {
+  const [transform, adjust, effects] = sliderGroups.value;
+  const characters = { id: 'characters', title: t('panel.groups.characters', { name: layerName(picked.value) }) };
+  const picture = { id: 'picture', title: t('panel.groups.picture', { name: layerName('base') }) };
+  return [transform, adjust, characters, ...(workspace.pickedLayer === 'base' ? [picture, effects] : [])];
+});
 
 const help = (key) => getSetting(key).help;
 const ansi = computed(() => store.renderStyle === 'ansi');
@@ -161,75 +165,69 @@ const charsetName = computed(() => {
       </template>
     </fieldset>
 
-    <template v-for="(group, i) in sliderGroups" :key="group.id">
+    <template v-for="(group, i) in sections" :key="group.id">
       <!-- Under a folded group its title's line is the separator. -->
-      <hr v-if="i === 0 || !isFolded(sliderGroups[i - 1].id)"/>
+      <hr v-if="i === 0 || !isFolded(sections[i - 1].id)"/>
 
-      <!-- Before Image filters, the picked layer's Characters and the picture's own settings. -->
-      <template v-if="group.id === 'effects'">
-        <fieldset class="characters" :disabled="!!locked" :title="locked">
-          <legend>{{ t('panel.groups.characters', { name: layerName(picked) }) }}</legend>
-          <p v-if="charsNote" class="note">{{ charsNote }}</p>
+      <fieldset v-if="group.id === 'characters'" class="characters" :disabled="!!locked" :title="locked">
+        <legend>{{ group.title }}</legend>
+        <p v-if="charsNote" class="note">{{ charsNote }}</p>
 
-          <div class="field">
-            <div class="label-group"><label :for="ansi ? 'charChoice' : 'charChoiceAscii'">{{ t('panel.charChoice.label') }}</label><HelpInfo :text="help(ansi ? 'charChoice' : 'charChoiceAscii')" /></div>
-            <select v-if="ansi" id="charChoice" v-model="own.charChoice">
-              <option value="random">{{ t('panel.charChoice.random') }}</option>
-              <option value="best">{{ t('panel.charChoice.best') }}</option>
-              <option value="shape">{{ t('panel.charChoice.shape') }}</option>
-            </select>
-            <select v-else id="charChoiceAscii" v-model="own.charChoiceAscii">
-              <option value="weight">{{ store.renderStyle === 'ascii' ? t('panel.charChoice.brightness') : t('panel.charChoice.intensity') }}</option>
-              <option value="shape">{{ t('panel.charChoice.shape') }}</option>
-            </select>
+        <div class="field">
+          <div class="label-group"><label :for="ansi ? 'charChoice' : 'charChoiceAscii'">{{ t('panel.charChoice.label') }}</label><HelpInfo :text="help(ansi ? 'charChoice' : 'charChoiceAscii')" /></div>
+          <select v-if="ansi" id="charChoice" v-model="own.charChoice">
+            <option value="random">{{ t('panel.charChoice.random') }}</option>
+            <option value="best">{{ t('panel.charChoice.best') }}</option>
+            <option value="shape">{{ t('panel.charChoice.shape') }}</option>
+          </select>
+          <select v-else id="charChoiceAscii" v-model="own.charChoiceAscii">
+            <option value="weight">{{ store.renderStyle === 'ascii' ? t('panel.charChoice.brightness') : t('panel.charChoice.intensity') }}</option>
+            <option value="shape">{{ t('panel.charChoice.shape') }}</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <div class="label-group"><label for="chars">{{ t('panel.chars.label') }}</label><HelpInfo :text="help('chars')" /></div>
+            <span class="value">{{ charsetName }}</span>
           </div>
+          <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="own.chars" :presets="ANSI_CHARSETS"/>
+          <CharsetField v-else id="chars" v-model="own.charsAscii" :presets="ASCII_CHARSETS"/>
+        </div>
 
-          <div class="field">
-            <div class="label-row">
-              <div class="label-group"><label for="chars">{{ t('panel.chars.label') }}</label><HelpInfo :text="help('chars')" /></div>
-              <span class="value">{{ charsetName }}</span>
-            </div>
-            <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="own.chars" :presets="ANSI_CHARSETS"/>
-            <CharsetField v-else id="chars" v-model="own.charsAscii" :presets="ASCII_CHARSETS"/>
+        <div v-if="showSeed" class="field">
+          <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :text="help('seed')" /></div>
+          <div class="row-inputs">
+            <input type="text" id="seed" v-model.lazy="own.seed" :placeholder="t('panel.seed.placeholder')">
+            <button @click="store.randomizeSeed(picked)" :title="t('panel.seed.randomize')">🎲</button>
           </div>
+        </div>
 
-          <div v-if="showSeed" class="field">
-            <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :text="help('seed')" /></div>
-            <div class="row-inputs">
-              <input type="text" id="seed" v-model.lazy="own.seed" :placeholder="t('panel.seed.placeholder')">
-              <button @click="store.randomizeSeed(picked)" :title="t('panel.seed.randomize')">🎲</button>
-            </div>
-          </div>
+        <RangeField v-if="showSolids" :setting="getSetting('solids')" v-model="own.solids"/>
+        <RangeField v-if="showPatternLight" :setting="getSetting('patternLight')" v-model="own.patternLight"/>
+      </fieldset>
 
-          <RangeField v-if="showSolids" :setting="getSetting('solids')" v-model="own.solids"/>
-          <RangeField v-if="showPatternLight" :setting="getSetting('patternLight')" v-model="own.patternLight"/>
-        </fieldset>
+      <fieldset v-else-if="group.id === 'picture'" class="picture" :disabled="!!locked" :title="locked">
+        <legend>{{ group.title }}</legend>
 
-        <hr/>
+        <div class="field">
+          <div class="label-group"><label for="smoothing">{{ t('panel.smoothing.label') }}</label><HelpInfo :text="help('smoothing')" /></div>
+          <select id="smoothing" v-model="store.smoothing">
+            <option value="low">{{ t('panel.smoothing.low') }}</option>
+            <option value="medium">{{ t('panel.smoothing.medium') }}</option>
+            <option value="high">{{ t('panel.smoothing.high') }}</option>
+          </select>
+        </div>
+      </fieldset>
 
-        <fieldset class="picture" :class="{ off: !!pictureOff }" :disabled="!!(locked || pictureOff)" :title="locked || pictureOff">
-          <legend>{{ t('panel.groups.picture', { name: layerName('base') }) }}</legend>
-          <p v-if="pictureOff" class="note">{{ pictureOff }}</p>
-
-          <div class="field">
-            <div class="label-group"><label for="smoothing">{{ t('panel.smoothing.label') }}</label><HelpInfo :text="help('smoothing')" /></div>
-            <select id="smoothing" v-model="store.smoothing">
-              <option value="low">{{ t('panel.smoothing.low') }}</option>
-              <option value="medium">{{ t('panel.smoothing.medium') }}</option>
-              <option value="high">{{ t('panel.smoothing.high') }}</option>
-            </select>
-          </div>
-        </fieldset>
-      </template>
-
-      <fieldset :class="{ folded: isFolded(group.id), off: group.id === 'effects' && !!pictureOff }" :disabled="!!groupOff(group.id)" :title="groupOff(group.id)">
+      <fieldset v-else :class="{ folded: isFolded(group.id) }" :disabled="!!locked" :title="locked">
         <legend>
           <button class="fold" :aria-expanded="!isFolded(group.id)" :aria-controls="`group-${group.id}`" @click="toggleFold(group.id)">
             <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
             {{ group.title }}
             <span v-if="isFolded(group.id) && onCount(group)" class="on">{{ t('panel.onCount', onCount(group)) }}</span>
           </button>
-          <button :disabled="!!groupOff(group.id)" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
+          <button :disabled="!!locked" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
         </legend>
 
         <div v-show="!isFolded(group.id)" :id="`group-${group.id}`">
@@ -336,17 +334,12 @@ legend span.sub {
   color: var(--text-faint);
 }
 
-/* A line under a section's title: what it's about, or why it's off. */
+/* A line under a section's title: what it's about. */
 p.note {
   margin: -8px 0 12px;
   font-size: 11px;
   font-style: italic;
   color: var(--text-muted);
-}
-
-/* The picture's settings away from its layer: off, and dimmed. */
-fieldset.off {
-  opacity: 0.5;
 }
 
 /* Folded, a group is its underlined title (where it was: folding doesn't move it), with no room for sliders under it. */

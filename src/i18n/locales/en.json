@@ -120,7 +120,6 @@
       "adjust": "Adjustments",
       "effects": "Image filters"
     },
-    "pictureOff": "Pick {name} in Layers to change the picture.",
     "charsNote": "Used where paint or a picture on {name} becomes characters.",
     "charsNoteVector": "Shapes and art layers on {name} convert with these.",
     "reset": "Reset",

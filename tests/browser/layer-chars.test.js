@@ -1,6 +1,6 @@
 // Each layer's own character settings (charsOf, setLayerChars, layerParams): an old document gives every layer the
 // document's, a new layer copies the picked one's, and the left column (ControlPanel.vue) shows the picked layer's under
-// its name, with the picture's settings only on the picture's layer.
+// its name, with the picture's settings only while the picture's layer is picked.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -108,23 +108,30 @@ async function mountPanel() {
 const fieldsets = () => [...host.querySelectorAll('aside > fieldset')];
 const sectionOf = (words) => fieldsets().find((set) => set.querySelector('legend').textContent.includes(words));
 
-test('the Characters legend names the picked layer, the Picture section names Base and is off elsewhere', async () => {
-  const { workspace } = await blank();
+test('the Characters legend names the picked layer, and Picture · Base and Image filters show only with Base picked', async () => {
+  const { project, workspace } = await blank();
   workspace.pickLayer('edit');
   await mountPanel();
   expect(sectionOf('Characters · Layer 1')).toBeTruthy();
   expect(sectionOf('Characters · Layer 1').textContent).toContain('Used where paint or a picture on Layer 1 becomes characters.');
-  const picture = sectionOf('Picture · Base');
-  expect(picture.disabled).toBe(true);
-  expect(picture.textContent).toContain('Pick Base in Layers to change the picture.');
-  expect(picture.title).toBe('Pick Base in Layers to change the picture.');
+  expect(sectionOf('Picture')).toBeUndefined();
+  expect(sectionOf('Image filters')).toBeUndefined();
+  expect(host.querySelector('#smoothing')).toBeNull();
   expect(sectionOf('Drawing').textContent).toContain('all layers');
+  expect(sectionOf('Adjustments')).toBeTruthy(); // the drawing's groups stay
   workspace.pickLayer('base');
   await nextTick();
   expect(sectionOf('Characters · Base')).toBeTruthy();
   expect(sectionOf('Characters · Base').textContent).not.toContain('Used where');
   expect(sectionOf('Picture · Base').disabled).toBe(false);
-  expect(sectionOf('Picture · Base').textContent).not.toContain('Pick Base');
+  expect(sectionOf('Image filters').disabled).toBe(false);
+  expect(fieldsets().map((set) => set.querySelector('legend').textContent.trim().split(/\s+/)[0]))
+    .toEqual(['Drawing', 'Transforms', 'Adjustments', 'Characters', 'Picture', 'Image']);
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer(vector);
+  await nextTick();
+  expect(sectionOf('Characters · Vector 1')).toBeTruthy(); // every layer converts something
+  expect(sectionOf('Picture')).toBeUndefined();
 });
 
 test('the Characters note says what a vector layer converts', async () => {

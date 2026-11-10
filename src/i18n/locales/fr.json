@@ -120,7 +120,6 @@
       "adjust": "Ajustements",
       "effects": "Filtres d'image"
     },
-    "pictureOff": "Choisissez {name} dans Calques pour modifier l'image.",
     "charsNote": "Utilisés là où la peinture ou une image sur {name} devient des caractères.",
     "charsNoteVector": "Les formes et les calques d'art de {name} sont convertis avec ces réglages.",
     "reset": "Réinitialiser",
