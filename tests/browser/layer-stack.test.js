@@ -787,3 +787,22 @@ test('Flip and the ANSI eyedropper on an edit cell with no paint read an upper v
   project.commitEdit();
   expect(project.cellsOf(top).get('2,2')).toMatchObject({ fg: '#ff0000', bg: '#ffffff' });
 });
+
+test('Flip of a bare cell on an upper cells layer leaves out a vector layer above it, and a hidden one under it', async () => {
+  const { project, workspace } = await blank();
+  const hidden = project.addLayer('vector', 'edit');
+  workspace.pickLayer(hidden);
+  project.addShape(rectShape(2, 4, 3, 5, { fill: '#0000ff' })); // blue on cell 2,2's top half, hidden below
+  const top = project.addLayer('cells', hidden);
+  const above = project.addLayer('vector', top);
+  workspace.pickLayer(above);
+  project.addShape(rectShape(2, 4, 3, 5, { fill: '#00ff00' })); // green there too, above the layer flipped
+  project.setLayerHidden(hidden, true);
+  workspace.pickLayer(top);
+  await settle(project);
+  project.flipCell(2, 2);
+  project.commitEdit();
+  const black = project.paintOf(top).pixelAt(2, 5);
+  expect(black).toMatchObject({ r: 0, g: 0, b: 0 }); // the black under the top half, not blue or green
+  expect(project.paintOf(top).pixelAt(2, 4)).toMatchObject({ r: 0, g: 0, b: 0 });
+});
