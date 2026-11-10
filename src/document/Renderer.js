@@ -806,7 +806,7 @@ export default class Renderer {
   // No error carries between cells (as #resolvePainted), so a cell costs only its own layers.
   composeUpper(lower, indexes, palette, composed = null) {
     const out = (indexes && composed?.length === lower.length ? composed : lower).slice();
-    const cols = this.upper[0]?.params.cols ?? 1, n = indexes ? indexes.length : lower.length;
+    const cols = this.upper[0]?.params.cols ?? 1;
     // Each layer's pixels at grid resolution, read once for the walk: a cells layer's paint, a vector layer's shapes.
     const reads = this.upper.map((u) => {
       if (u.kind === 'cells') return u.paint?.hasPaint ? this.#upperPaint(u.paint, u.params) : null;
@@ -814,9 +814,11 @@ export default class Renderer {
       u.layer.sync();
       return this.#upperGrid(u.layer, u.params).data;
     });
+    // Every cell: only those some upper layer touches, as the rest come out as they went in.
+    const visited = indexes ?? this.#touched(reads, cols, lower.length), n = visited.length;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let k = 0; k < n; k++) {
-      const i = indexes ? indexes[k] : k, col = i % cols, row = (i - col) / cols;
+      const i = visited[k], col = i % cols, row = (i - col) / cols;
       if (lower[i]) out[i] = this.#upperCell(lower[i], col, row, i, palette, reads);
       if (col < x0) x0 = col;
       if (col > x1) x1 = col;
@@ -825,6 +827,33 @@ export default class Renderer {
     }
     this.#shownDirty(indexes ? { x: x0, y: 2 * y0, w: n ? x1 - x0 + 1 : 0, h: n ? 2 * (y1 - y0 + 1) : 0 } : null);
     return out;
+  }
+
+  // The cells (indexes into n cells, cols wide) some upper layer touches: a cells layer's entries and the cells its paint
+  // has a pixel in (reads: its pixels at grid resolution), a vector layer's cells its shapes reach. A whole-grid compose
+  // visits only these: a layer with a sticker of paint costs its sticker, not the grid.
+  #touched(reads, cols, n) {
+    const flags = new Uint8Array(n), width = this.outputCanvas.width, height = this.outputCanvas.height;
+    const rows = charRowsOf(height);
+    for (let at = 0; at < this.upper.length; at++) {
+      const u = this.upper[at], read = reads[at];
+      if (u.kind === 'vector') {
+        if (read) for (const i of u.layer.reachedCells()) if (i < n) flags[i] = 1;
+        continue;
+      }
+      for (const key of u.cells.keys()) {
+        const { col, row } = parseKey(key);
+        if (col < cols && row < rows) flags[row * cols + col] = 1;
+      }
+      if (!read) continue;
+      for (let y = 0, o = 3; y < height; y++) {
+        const start = (y >> 1) * cols;
+        for (let x = 0; x < width; x++, o += 4) if (read[o]) flags[start + x] = 1;
+      }
+    }
+    const cells = [];
+    for (let i = 0; i < n; i++) if (flags[i]) cells.push(i);
+    return cells;
   }
 
   // The shown canvas (shownCanvas) has this grid rect to catch up on too, or all of it (null): a compose changed it.
@@ -855,7 +884,8 @@ export default class Renderer {
 
   // reads: each upper layer's pixels at grid resolution (composeUpper), or null for one with nothing to lay.
   #upperCell(cell, col, row, i, palette, reads) {
-    let exact = !!this.#lowerEdits?.has(cellKey(col, row)) || this.pinAt(col, row) !== undefined;
+    const key = cellKey(col, row);
+    let exact = !!this.#lowerEdits?.has(key) || this.pinAt(col, row) !== undefined;
     const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
     const width = this.outputCanvas.width;
     const paintAt = (bytes, y) => { // a grid pixel of a layer's paint, or null where there's none
@@ -877,7 +907,7 @@ export default class Renderer {
         exact = char !== null;
         continue;
       }
-      const entry = u.cells.get(cellKey(col, row));
+      const entry = u.cells.get(key);
       const top = read ? paintAt(read, 2 * row) : null, bottom = read ? paintAt(read, 2 * row + 1) : null;
       if (entry) {
         cell = coverCell(composeCell(cell, entry, renderStyle, (hex) => this.effective(hex, params)), top, bottom, { renderStyle, palette });

@@ -142,6 +142,16 @@ export default class ShapeLayer {
     return col < this.#base.cols ? this.#chars[row * this.#base.cols + col] : undefined;
   }
 
+  // The cells (as row * cols + col) where charAt isn't undefined: a shape reaches or an art layer gives a character. What
+  // a whole-grid compose visits of this layer.
+  reachedCells() {
+    if (!this.drawsShapes) return [];
+    this.sync();
+    const cells = [];
+    this.#chars.forEach((char, i) => { if (char !== undefined) cells.push(i); }); // forEach skips the holes
+    return cells;
+  }
+
   // The grid cells ('col,row') an art layer gives a character: where the Renderer looks past its pins.
   artCells() {
     const cells = new Set(), cols = this.#base.cols, rows = charRowsOf(this.#base.rows);

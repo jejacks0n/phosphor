@@ -178,3 +178,31 @@ test('partial equals full with upper layers', async () => {
     expect(key(project.cells), `after edit ${i} (${op})`).toEqual(partial);
   }
 });
+
+test('a whole-grid compose visits only the cells the upper layers touch, and comes out as one over every cell', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+  const vector = project.addLayer('vector', 'edit'), one = project.addLayer('cells', vector), two = project.addLayer('cells', one);
+  project.addShape(rectShape(4, 6, 14, 18, { fill: '#ff0000' }));
+  project.commitEdit();
+  project.useLayer(one);
+  project.paintStroke(Array.from({ length: 12 }, (_, k) => ({ x: 10 + k, y: 20 + (k % 3), alpha: k % 2 ? 1 : 0.4 })), '#33ff66');
+  project.typeAt(2, 2, '漢', ATTRS);
+  project.typeAt(29, 14, 'Z', ATTRS);
+  project.commitEdit();
+  project.useLayer(two);
+  project.paintStroke([{ x: 0, y: 0, alpha: 1 }, { x: 29, y: 29, alpha: 1 }, { x: 12, y: 21, alpha: 0.5 }], '#ff3300');
+  project.typeAt(12, 10, 'q', ATTRS);
+  project.commitEdit();
+  project.eraseEditPixels([{ x: 29, y: 29 }]); // painted, then erased: nothing of this layer's there
+  project.commitEdit();
+  await settle(project);
+  const { renderer } = project, every = Array.from({ length: project.lowerCells.length }, (_, i) => i);
+  const whole = renderer.composeUpper(project.lowerCells, null, renderer.palette);
+  const each = renderer.composeUpper(project.lowerCells, every, renderer.palette, project.lowerCells);
+  expect(key(whole)).toEqual(key(each));
+  expect(key(whole)).not.toEqual(key(project.lowerCells)); // the upper layers show
+  project.setLayerHidden('base', true);
+  await settle(project);
+  expect(key(renderer.composeUpper(project.lowerCells, null, renderer.palette))).toEqual(key(renderer.composeUpper(project.lowerCells, every, renderer.palette, project.lowerCells)));
+});
