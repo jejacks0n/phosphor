@@ -123,8 +123,7 @@ The settings on the left come in three sections, each following a layer:
   base and a vector layer, Dither style and Dither. Each layer has its own
   ([Characters](characters.md#how-the-converter-picks-characters)): changing them changes only how that layer's
   paint, picture or shapes become characters. A line under the title says so for a layer above the base. A cells
-  layer has no Dither: paint is never dithered. Changing a layer's Dither or Dither style is an undo step (a drag of
-  the slider is one).
+  layer has no Dither: paint is never dithered. Each change here is an undo step (see below).
   Every layer converts something (the base its picture, a cells layer its paint, a vector layer its shapes), so the
   section is always there. A new drawing picks Layer 1: to change how the picture becomes characters, pick the base.
 - **Picture · Base** and **Image filters**: Smoothing and the Image filters, which work on the picture itself. They
@@ -157,6 +156,13 @@ Moving a slider in Transforms, Adjustments or Image Filters is an undo step, lik
 a whole drag is one step, a run of arrow-key nudges on one slider is one step, and so are RESET,
 RESET ALL and picking the Colorize or Edges color. Undo goes back through slider moves and drawing
 in the order you made them.
+
+The Characters section's settings are undo steps the same way, on whichever layer they're the picked one's: a choice
+picked (Choose characters, a set from ▾, Dither style), a Characters set or a seed typed, a roll of the seed's dice,
+and a Solids, Pattern light or Dither slider's drag or run of nudges are one step each. While you're typing in the
+Characters or seed field, Cmd+Z (Ctrl+Z) undoes your typing there, as in any text field; once you've left it, it
+undoes the step. In a room these settings are Base's, and going live leaves out the steps that gave another layer
+settings of its own.
 
 ### Baking
 

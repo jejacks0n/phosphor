@@ -11,6 +11,8 @@ import { rectShape, ellipseShape, makeShape } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { CHAR_KEYS } from '@/store/settings.js';
 import ControlPanel from '@/components/ControlPanel.vue';
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 let app = null, host = null;
 afterEach(() => {
@@ -430,4 +432,95 @@ test('the By shape samples of upper layers stay within the renderer\'s budget, a
   expect(project.renderer.sampleBytes).toBeLessThanOrEqual(project.renderer.sampleBudget);
   expect(project.renderer.sampleBytes).toBeGreaterThan(0);
   expect(cellsKey(project)).toEqual(shown);
+});
+
+// Every character setting is an undo step on every layer: a pick, a set typed or picked, a slider's drag (and a run of
+// key nudges), the seed typed or rolled. Each undone puts the layer's settings back and leaves the others alone.
+async function undoable(pick) {
+  const { project, workspace } = await blank();
+  workspace.pickLayer(pick);
+  await mountPanel();
+  const version = project.history.version;
+  const steps = () => project.history.version - version;
+  return { project, steps, field: (id) => host.querySelector(`#${id}`) };
+}
+const change = async (el, value, type = 'change') => {
+  el.value = value;
+  el.dispatchEvent(new Event(type));
+  await nextTick();
+};
+
+test('Choose characters picked is one undo step, on a layer and on Base', async () => {
+  for (const pick of ['edit', 'base']) {
+    const { project, steps, field } = await undoable(pick);
+    await change(field('charChoice'), 'best');
+    expect(project.charsOf(pick).charChoice, pick).toBe('best');
+    expect(steps()).toBe(1);
+    project.undo();
+    expect(project.charsOf(pick).charChoice).toBe('random');
+    project.redo();
+    expect(project.charsOf(pick).charChoice).toBe('best');
+  }
+});
+
+test('the Characters set typed is one undo step, a set picked from ▾ another, and its field keeps Cmd+Z for its own typing', async () => {
+  const { project, steps, field } = await undoable('edit');
+  const was = project.charsOf('edit').chars;
+  const input = field('chars');
+  await change(input, '#@');
+  expect(project.charsOf('edit').chars).toBe('#@');
+  await change(host.querySelector('.charset-field select'), '1');
+  expect(project.charsOf('edit').chars).not.toBe('#@');
+  expect(steps()).toBe(2);
+  const keys = createApp({ setup() { useKeyboardShortcuts(project, useWorkspaceStore()); return () => null; } });
+  keys.mount(document.createElement('div'));
+  try {
+    input.focus();
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true }));
+    expect(steps()).toBe(2); // the field's own, not the app's
+    input.blur();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, cancelable: true }));
+    expect(project.charsOf('edit').chars).toBe('#@');
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, cancelable: true }));
+    expect(project.charsOf('edit').chars).toBe(was);
+  } finally {
+    keys.unmount();
+  }
+});
+
+test('a Solids drag is one undo step, and key nudges a moment apart are one more', async () => {
+  const { project, steps, field } = await undoable('edit');
+  project.setLayerChars('edit', { charChoice: 'best' });
+  project.commitLayerChars();
+  await nextTick();
+  const start = steps(), slider = field('solids');
+  for (const value of [30, 40, 50]) await change(slider, String(value), 'input');
+  slider.dispatchEvent(new Event('pointerdown'));
+  await change(slider, '55');
+  expect(project.charsOf('edit').solids).toBe(55);
+  expect(steps() - start).toBe(1);
+  for (const value of [56, 57, 58]) await change(slider, String(value)); // arrow keys: each a change, a nudge
+  expect(steps() - start).toBe(2);
+  project.undo();
+  expect(project.charsOf('edit').solids).toBe(55);
+  project.undo();
+  expect(project.charsOf('edit').solids).toBe(25);
+  expect(project.charsOf('base').solids).toBe(25);
+});
+
+test('the seed typed is one undo step, and the dice roll another', async () => {
+  const { project, steps, field } = await undoable('edit');
+  const was = project.charsOf('edit').seed;
+  await change(field('seed'), 'typed');
+  expect(project.charsOf('edit').seed).toBe('typed');
+  host.querySelector('#seed + button').click();
+  await nextTick();
+  const rolled = project.charsOf('edit').seed;
+  expect(rolled).not.toBe('typed');
+  expect(steps()).toBe(2);
+  project.undo();
+  expect(project.charsOf('edit').seed).toBe('typed');
+  project.undo();
+  expect(project.charsOf('edit').seed).toBe(was);
+  expect(project.seed).toBe(was);
 });

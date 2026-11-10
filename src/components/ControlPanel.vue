@@ -43,10 +43,14 @@ const picked = computed(() => {
   return store.layerById(id) ? id : 'base';
 });
 const pickedKind = computed(() => store.layerById(picked.value).kind);
-// Its character settings, read and written as its own (charsOf, setLayerChars).
+// Its character settings, read and written as its own (charsOf, setLayerChars), each change an undo step: a pick or a set
+// typed at once, a slider's drag or nudge when it ends (its RangeField's commit).
+const SLID = ['solids', 'patternLight', 'dither'];
 const own = reactive(Object.fromEntries(CHAR_KEYS.map((key) => [key, computed({
   get: () => store.charsOf(picked.value)[key],
-  set: (value) => store.setLayerChars(picked.value, { [key]: value }),
+  set: (value) => {
+    if (store.setLayerChars(picked.value, { [key]: value }) && !SLID.includes(key)) store.commitLayerChars();
+  },
 })])));
 const ownParams = computed(() => store.layerParams.get(picked.value) ?? store.processParams);
 const charsNote = computed(() => {
@@ -206,19 +210,18 @@ const charsetName = computed(() => {
               </div>
             </div>
 
-            <RangeField v-if="showSolids" :setting="getSetting('solids')" v-model="own.solids"/>
-            <RangeField v-if="showPatternLight" :setting="getSetting('patternLight')" v-model="own.patternLight"/>
+            <RangeField v-if="showSolids" :setting="getSetting('solids')" v-model="own.solids" @commit="store.commitLayerChars($event)"/>
+            <RangeField v-if="showPatternLight" :setting="getSetting('patternLight')" v-model="own.patternLight" @commit="store.commitLayerChars($event)"/>
 
-            <!-- Undoable: a style picked, a drag or a nudge is one step (setLayerChars, then commitLayerChars). -->
             <template v-if="showDither">
               <div class="field">
                 <div class="label-group"><label for="ditherStyle">{{ t('panel.ditherStyle.label') }}</label><HelpInfo :text="help('ditherStyle')" /></div>
-                <select id="ditherStyle" :value="own.ditherStyle" @change="own.ditherStyle = $event.target.value; store.commitLayerChars()">
+                <select id="ditherStyle" v-model="own.ditherStyle">
                   <option value="floyd">{{ t('panel.ditherStyle.floyd') }}</option>
                   <option value="bayer">{{ t('panel.ditherStyle.bayer') }}</option>
                 </select>
               </div>
-              <RangeField :setting="getSetting('dither')" v-model="own.dither" @commit="store.commitLayerChars()"/>
+              <RangeField :setting="getSetting('dither')" v-model="own.dither" @commit="store.commitLayerChars($event)"/>
             </template>
           </template>
 

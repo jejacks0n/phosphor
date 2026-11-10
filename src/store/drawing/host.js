@@ -238,9 +238,9 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
     const keeps = setInterval(() => project.keepLedger(), KEEP_LEDGER_EVERY_MS);
     stops.push(() => clearInterval(keeps));
     let sent = settingsJson(project), grid = `${project.cols},${project.rows}`;
-    stops.push(watch(() => [settingsJson(project), project._sliderBefore], () => {   // a slider's end goes as one change
+    stops.push(watch(() => [settingsJson(project), project._sliderBefore, project._charsBefore], () => {   // a slider's end goes as one change
       const now = settingsJson(project), gridNow = `${project.cols},${project.rows}`;
-      if (project._sliderBefore || now === sent) return;
+      if (project._sliderBefore || project._charsBefore || now === sent) return;
       sent = now;
       if (gathering()) {   // from a catch-up, and everyone hears it in what they're answered
         grid = gridNow;

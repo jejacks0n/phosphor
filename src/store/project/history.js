@@ -313,7 +313,7 @@ export const historyActions = {
     if (this._stroke) this.commitEdit();
     if (!this._floating) this.sendHeld(); // this is what ends a float someone left where it is
     this.commitSliders(); // a slider move still open
-    this.commitLayerChars(); // and a Dither one
+    this.commitLayerChars(); // and a layer's character setting
     this.flushHeard(); // whatever comes next reads the map
   },
 

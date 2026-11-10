@@ -153,7 +153,7 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
 export const documentActions = {
   // A new random seed for the layer with the id (the bottom's is the document's).
   randomizeSeed(id = 'base') {
-    this.setLayerChars(id, { seed: generateSlug(2) });
+    if (this.setLayerChars(id, { seed: generateSlug(2) })) this.commitLayerChars(); // one undo step
   },
 
   async setImageFromFile(file) {

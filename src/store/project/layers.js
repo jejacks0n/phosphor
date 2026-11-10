@@ -1,6 +1,7 @@
-// The layers themselves (document/layerInfo.js): their names, whether they show, new ones, their order, and which cells
-// layer the edit layer's fields are. Adding, moving, deleting and duplicating a layer are undo steps (layerOp); a name, an
-// eye and the layer in use aren't: they're about the layers, not edits to what's drawn on them. Only a layer in the stack
+// The layers themselves (document/layerInfo.js): their names, whether they show, their character settings, new ones,
+// their order, and which cells layer the edit layer's fields are. Adding, moving, deleting and duplicating a layer are
+// undo steps (layerOp), and so is a change to its character settings (commitLayerChars: _charsBefore, _lastChars); a
+// name, an eye and the layer in use aren't: they're about the layers, not edits to what's drawn on them. Only a layer in the stack
 // has data in _layerData: one taken out (deleted, its add undone) is held by the undo step that can put it back.
 import { markRaw } from 'vue';
 import { MOST_LAYERS, goodLayerName, layerChars, legacySlots, newLayerId, nextNumber } from '@/document/layerInfo.js';
@@ -9,7 +10,7 @@ import { loadImage, readProject, writeProject } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
-import { bytesHeld, emptyFields, followBase, layerName, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
+import { NUDGE_MS, bytesHeld, emptyFields, followBase, layerName, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -118,38 +119,46 @@ export const layerActions = {
     redrawn(this, () => changed(this, id, { hidden: !!hidden }));
   },
 
-  // A layer's own character settings changed: the CHAR_KEYS in patch (the rest is left out). The bottom's are the
-  // document's fields. Not an undo step, as the document's never were, but for its Dither and Dither style: those are
-  // noted as they were, and commitLayerChars makes the change one step (a slider's drag, a style picked). What's drawn
-  // follows (EditWorkspace renders on a change to layerParams). While the drawing's shared with a room, which has one
-  // set, a layer above the bottom is refused (the room's toast says so) and the bottom's change every layer's with them.
-  // Whether it changed.
+  // A layer's own character settings changed: the CHAR_KEYS in patch (the rest is left out; a cells layer has no Dither).
+  // The bottom's are the document's fields. They're noted as they were, and commitLayerChars makes the change one undo
+  // step (a slider's drag, a pick, a set typed, the seed rolled). What's drawn follows (EditWorkspace renders on a change
+  // to layerParams). While the drawing's shared with a room, which has one set, a layer above the bottom is refused (the
+  // room's toast says so) and the bottom's change every layer's with them. Whether it changed.
   setLayerChars(id, patch) {
-    const layer = this.layerById(id), holds = (key) => id === 'base' || layer.kind !== 'cells' || !DITHER_KEYS.includes(key); // a cells layer has no Dither
+    const layer = this.layerById(id), holds = (key) => id === 'base' || layer.kind !== 'cells' || !DITHER_KEYS.includes(key);
     if (!layer) return false;
     const own = Object.fromEntries(CHAR_KEYS.filter((key) => key in patch && holds(key)).map((key) => [key, patch[key]]));
     const was = this.charsOf(id);
     if (Object.keys(own).every((key) => own[key] === was[key])) return false;
     if (id !== 'base' && refusedInRoom(this)) return false;
-    if (DITHER_KEYS.some((key) => key in own) && this._ditherBefore?.id !== id) {
+    if (this._charsBefore?.id !== id) {
       this.commitLayerChars();
-      this._ditherBefore = { id, values: pick(was, DITHER_KEYS) };
+      this._charsBefore = { id, key: Object.keys(own)[0], values: pick(was, CHAR_KEYS) };
     }
     putChars(this, id, own);
     return true;
   },
 
-  // A Dither change (setLayerChars) ended: one undo step from the values noted to these, none when they're the same.
-  commitLayerChars() {
-    const before = this._ditherBefore;
-    this._ditherBefore = null;
+  // A change setLayerChars noted ended: one undo step from the values noted to these, none when they're the same. A key
+  // nudge on the same setting a moment after the last, with nothing recorded between, extends that step, as a slider's
+  // does (sliders.js commitSliders).
+  commitLayerChars({ nudge = false } = {}) {
+    const before = this._charsBefore;
+    this._charsBefore = null;
     if (!before || !this.layerById(before.id)) return;
-    const { id, values } = before, after = pick(this.charsOf(id), DITHER_KEYS);
-    if (DITHER_KEYS.every((key) => String(values[key]) === String(after[key]))) return;
+    const { id, key, values } = before, after = pick(this.charsOf(id), CHAR_KEYS), last = this._lastChars;
+    if (CHAR_KEYS.every((each) => String(values[each]) === String(after[each]))) return;
+    if (nudge && last?.id === id && last.key === key && last.version === this.history.version && Date.now() - last.at < NUDGE_MS) {
+      last.at = Date.now();
+      last.entry.after = after;
+      return;
+    }
     this.commitPending();
     // settingsOnly: kept when the grid changes (rendering.js dropEdits). ownChars: a layer's own, which a room (one set of
     // settings) can't hold: going live drops it (startSharing).
-    this.pushEdit({ settingsOnly: true, ownChars: id !== 'base', undo: () => putChars(this, id, values), redo: () => putChars(this, id, after) });
+    const entry = { settingsOnly: true, ownChars: id !== 'base', after, undo: () => putChars(this, id, values), redo: () => putChars(this, id, entry.after) };
+    this.pushEdit(entry);
+    this._lastChars = nudge ? { id, key, entry, version: this.history.version, at: Date.now() } : null;
   },
 
   // A new layer of kind directly above the layer with the id above (on top when there's none), and its id, with the picked

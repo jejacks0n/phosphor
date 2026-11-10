@@ -18,8 +18,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const swapColors = () => (workspaceStore.editorTab === 'vector' ? vectorStyle.swap() : workspaceStore.swapColors());
   const playback = usePlayback();
 
-  // Not on SOCIAL: the art isn't showing, and its fields keep their own undo.
+  // Not on SOCIAL: the art isn't showing, and its fields keep their own undo. Nor in a field you type in (the Characters
+  // set, the seed, a size): it undoes its own typing while it has focus. A slider, a menu or a button doesn't type.
+  const TYPED = 'input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]), textarea, [contenteditable]';
   const _handleUndoRedo = (e) => {
+    if (isField(e.target) && e.target.matches?.(TYPED)) return false;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && workspaceStore.editorTab !== 'room') { // Shift makes it 'Z'
       e.preventDefault();
       if (e.shiftKey) {

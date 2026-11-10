@@ -476,7 +476,7 @@ export const useRoomStore = defineStore('room', {
       const artNow = () => artOf(project, workspace);
       const flush = () => {
         timer = null;
-        if (project._sliderBefore) return schedule();
+        if (project._sliderBefore || project._charsBefore) return schedule();
         const art = artNow();
         if (art.cells.length === art.cols * art.lines) this._host?.setArt(art);   // not a new size before its render
       };
