@@ -13,22 +13,6 @@ async function blank(cols = 20, rows = 20) {
   return app;
 }
 
-test('a block pasted with the picked layer hidden lands on it unseen', async () => {
-  const { project, workspace } = await blank();
-  project.typeAt(1, 1, 'A', WHITE);
-  project.commitEdit();
-  const block = project.copySelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, ['edit']);
-  project.setLayerHidden('edit', true);
-  await settle(project);
-  toastMessage.value = null;
-  const shown = cellsKey(project);
-  const landed = project.pasteSelection(block, 5, 5);
-  expect(cellsKey(project)).toEqual(shown); // nothing shows, as nothing should
-  // Either the paste is refused and says so, or it mustn't have written the hidden layer.
-  expect(landed === null ? toastMessage.value : project.cellsOf('edit').has('5,5')).toBeTruthy();
-  expect(project.cellsOf('edit').has('5,5')).toBe(false);
-});
-
 test('Merge down of a cells layer into another with the base hidden keeps what shows', async () => {
   const { project, workspace } = await createTestApp();
   const { loadImage } = await import('../support/app.js');

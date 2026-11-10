@@ -291,6 +291,36 @@ test('a paste into a hidden layer says so once', async () => {
   expect(project.editCells.size).toBe(0);
 });
 
+test('a block pasted or stamped onto a hidden layer picked, or the hidden base, is refused and says so', async () => {
+  const { project, workspace } = await picture();
+  typed(project, 1, 1, 'A');
+  const block = project.copySelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, ['edit']);
+  await hide(project, 'edit');
+  const shown = cellsKey(project);
+  closeToast();
+  expect(project.pasteSelection(block, 5, 5)).toBe(null);
+  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(project.cellsOf('edit').has('5,5')).toBe(false);
+  expect(cellsKey(project)).toEqual(shown);
+
+  await hide(project, 'edit', false);
+  const two = project.addLayer('cells', 'edit');
+  workspace.pickLayer(two);
+  await hide(project, two);
+  closeToast();
+  expect(project.stampSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, workspace.selectionIds)).toBe(null); // C on a selection
+  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(project.cellsOf(two).size).toBe(0);
+
+  workspace.pickLayer('base');
+  await hide(project, 'base');
+  const pins = project.baseRecords.pins.size;
+  closeToast();
+  expect(project.pasteSelection(block, 5, 5)).toBe(null);
+  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(project.baseRecords.pins.size).toBe(pins);
+});
+
 // The base's eye: the picture, the base's own pixels and its pins leave; the shapes and the edit layer over it stay.
 const BLACK = '#000000';
 // Black on black: the converter's own character there doesn't show, and an export writes the cell as a space.

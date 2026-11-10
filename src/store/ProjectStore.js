@@ -171,6 +171,9 @@ export const useProjectStore = defineStore('project', {
     pictureIsOriginal: (state) => !state.imageIsWorkingCopy,
     canRedo: (state) => state.historyVersion >= 0 && state.history.canRedo && (!state._artInside || state._artInside.entries.has(state.history.next)),
     artInside: (state) => state._artInside?.key ?? null, // the art layer stepped into
+    // The layer what's drawn on the edit layer's fields lands on: the cells layer in use, or inside an art layer the vector
+    // layer the art layer is on.
+    drawsOn: (state) => (state._artInside ? state.shapes.get(state._artInside.key)?.layer ?? 'vector' : state.editId),
     // Who's drawing in an art layer: me while I'm in it, or whoever else the room says is, or null. Only one at a time:
     // no one else steps in (enterArt) or changes it (setShapes, and a host what an artist sends: takeFromArtist).
     lockedBy: (state) => (key) => (state._artInside?.key === key ? state._by

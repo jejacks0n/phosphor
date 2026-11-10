@@ -21,6 +21,8 @@ import { cellIndex, cellsOfPixels, charRowsOf } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
+import { toast } from '@/composables/useToast';
+import { t } from '@/i18n';
 import { boundsOf, onBottom, over, refusedNoCells } from '@/store/project/shared.js';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { turnChar } from '@/lib/TurnChars.js';
@@ -144,6 +146,10 @@ export const selectionActions = {
   pasteSelection: floated(function (block, col, row) {
     if (this._artInside && block.base) block = { ...block, base: null, looks: null }; // inside an art layer, only it's drawn on (layersFor)
     if (refusedNoCells(this)) return null; // a paste lands on the cells layer in use
+    if (this.layerHidden(this.drawsOn)) { // as drawing on it is (tools: refusesHidden)
+      toast(t('layers.hiddenToast'));
+      return null;
+    }
     this.ensureLayer();
     const to = this.editId;
     const rectAt = (c, r) => this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
@@ -175,7 +181,7 @@ export const selectionActions = {
   stampSelection(rect, ids) {
     this.commitPending();
     const landed = this.pasteSelection(this.copySelection(rect, this.layersFor(ids)), rect.c0, rect.r0);
-    if (this._float) this._float.stamped = this._float.start.stamped = true;
+    if (landed && this._float) this._float.stamped = this._float.start.stamped = true;
     return landed;
   },
 
