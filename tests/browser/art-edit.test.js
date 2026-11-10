@@ -320,6 +320,7 @@ test('a whole-layer action steps out first, so undoing it after leaves the drawi
     clear: (project) => project.clearEditLayer(),
     clearFrame: (project) => project.clearEditLayer(),
     mergeDown: (project) => project.mergeDown('vector'), // Layer 1 is over the vector layer, which merges down first
+    mergeIntoPicture: (project) => project.mergeIntoPicture(), // with the vector layer moved on top: Layer 1 is on the base
     bake: (project) => project.bake(),
     bakeFrames: (project) => project.bake(),
     mergeShapes: (project) => project.mergeShapes(),
@@ -337,6 +338,10 @@ test('a whole-layer action steps out first, so undoing it after leaves the drawi
       project.showFrame(0);
     }
     if (name.startsWith('bake')) project.brightness = 140; // something for Bake to bake
+    if (name === 'mergeIntoPicture') {
+      project.moveLayer('vector', project.layers.length - 1);
+      project.clearHistory();
+    }
     workspace.editorTab = 'output';
     project.enterArt(key);
     project.typeAt(5, 2, 'Z', { fg: RED });
@@ -348,8 +353,9 @@ test('a whole-layer action steps out first, so undoing it after leaves the drawi
     await settle(project);
     if (project.hasFrames) project.showFrame(0);
     // The drawing as it was: none of the layer's cells or paint in it.
-    expect([name, project.editCells.get('1,1')?.char, project.editCells.has('4,2'), project.editCells.has('5,2')]).toEqual([name, 'X', false, false]);
-    expect([name, !!project.paintLayer.pixelAt(0, 16)]).toEqual([name, true]);
+    const edits = project.cellsOf('edit'); // Layer 1's, in use or not (a merge that took it out leaves the base picked)
+    expect([name, edits.get('1,1')?.char, edits.has('4,2'), edits.has('5,2')]).toEqual([name, 'X', false, false]);
+    expect([name, !!project.paintOf('edit')?.pixelAt(0, 16)]).toEqual([name, true]);
     expect([name, stayed]).toEqual([name, null]); // stepped out by the action itself
   }
 });

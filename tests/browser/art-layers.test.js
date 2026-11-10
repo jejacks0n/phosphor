@@ -610,3 +610,46 @@ test('Make art layer from Layer 2 lands in the vector layer above it, made there
   expect(project.layers).toHaveLength(4);
   expect(project.shapes.get(next).layer ?? 'vector').toBe(made.id);
 });
+
+test('Make art layer at the most layers a drawing holds is refused when it would add one', async () => {
+  const { project, workspace } = await blank();
+  project.typeAt(2, 1, 'Q', { fg: RED });
+  project.commitEdit();
+  while (project.addLayer('cells', 'edit')); // up to the limit, every one above the edit layer
+  const count = project.layers.length, version = project.history.version;
+  workspace.pickLayer('edit');
+  select(workspace, 1, 0, 4, 2);
+  toastMessage.value = null;
+  expect(project.makeArtLayer()).toBe(null);
+  expect(toastMessage.value).toBe(`A drawing holds at most ${count} layers.`);
+  expect(project.layers).toHaveLength(count);
+  expect(project.history.version).toBe(version);
+  expect(project.cellsOf('edit').get('2,1').char).toBe('Q');
+});
+
+test('Make art layer in an animation makes the vector layer above in the same undo step', async () => {
+  const { project, workspace } = await blank();
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(2, 1, 'Q', { fg: RED });
+  project.commitEdit();
+  project.addFrame('blank');
+  project.showFrame(0);
+  await settle(project);
+  const ids = project.layers.map((l) => l.id), version = project.history.version;
+  select(workspace, 1, 0, 4, 2);
+  const key = project.makeArtLayer();
+  expect(key).toBeTruthy();
+  expect(project.history.version).toBe(version + 1);
+  const made = project.layers.at(-1);
+  expect([made.kind, project.shapes.get(key).layer ?? 'vector']).toEqual(['vector', made.id]);
+  project.undo();
+  await settle(project);
+  expect(project.layers.map((l) => l.id)).toEqual(ids);
+  expect(project.shapes.size).toBe(0);
+  expect(project.cellsOf(top).get('2,1')?.char).toBe('Q');
+  project.redo();
+  await settle(project);
+  expect(project.layers.map((l) => l.id)).toEqual([...ids, made.id]);
+  expect(project.shapes.has(key)).toBe(true);
+});

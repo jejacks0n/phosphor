@@ -35,7 +35,7 @@ where a shape's art is converted.
 
 To make one, choose the Select tool (**M**) on ANSI and select the area (or select cells with the Magic Wand), and press **Make art layer** (beside Merge down, or in
 the Actions menu on narrow screens). What's drawn in the selection (typed cells, drawn cells and paint, on the picked cells layer) moves into a new
-art layer on the vector layer directly above that layer (one is added there when the layer above isn't a vector layer), on top of its shapes, trimmed to the cells that have something in them, and the view goes to VECTOR with the
+art layer on the vector layer directly above that layer (one is added there when the layer above isn't a vector layer, unless the drawing has the most layers it holds, which it says), on top of its shapes, trimmed to the cells that have something in them, and the view goes to VECTOR with the
 layer selected. It's one undo step, and the canvas looks the same afterward. With the Magic Wand, only the cells it selected are taken, and the rest of the drawing stays. The base layer and the
 shapes aren't taken along, and with nothing drawn in the selection nothing happens (with the Magic Wand, Phosphor says so). A layer holds a limited amount (a piece about the size of a
 screenful of detailed art); if the selection has more, Phosphor asks for a smaller piece and leaves the drawing as it was.

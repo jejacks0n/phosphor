@@ -155,7 +155,7 @@ round on top of the result. Nothing on the canvas changes when you bake:
   you've copied.
 - The color palette isn't baked: it keeps applying afterwards.
 - [Shapes](vector.md) on a vector layer directly on the base are pressed into the base layer's pixels and stop
-  being shapes, so shapes alone make Bake available. Shapes higher in the stack (over a cells layer), and on a vector
+  being shapes, so shapes alone make Bake available. Shapes higher in the stack (over a cells layer, hidden or not), and on a vector
   layer with its own [character settings](characters.md#how-the-converter-picks-characters), stay shapes. In an
   animation they stay shapes, with the sliders burnt into their colors; where a shape's edge is soft (an outline's antialiasing), its cells can come out a different color. An [art layer](vector.md#art-layers)
   is pressed in the same way, its characters pinned wherever it showed them, so the base shows exactly what showed; in an

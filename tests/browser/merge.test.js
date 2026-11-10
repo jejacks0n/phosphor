@@ -335,3 +335,32 @@ describe('down between layers', () => {
     expect(ids(project).length).toBe(3);
   });
 });
+
+test('Into the image from a row that isn\'t the layer in use merges that row\'s layer, as the dialog names it', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  project.paintStroke([{ x: 3, y: 6, alpha: 1 }, { x: 6, y: 6, alpha: 1 }], '#ff3300');
+  project.commitEdit();
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.typeAt(9, 9, 'Q', { fg: '#00ffff' });
+  project.commitEdit();
+  await settle(project);
+  const { asking } = await import('@/composables/useMergeDown.js');
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  document.body.append(host);
+  toolbar.mount(host);
+  try {
+    asking.value = { id: 'edit', rect: null }; // as LAYERS' ⋯ Merge down on Layer 1 asks
+    await settle(project);
+    const blend = [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Blend into source image'));
+    expect(document.body.textContent).toContain('Choose how to merge Layer 1 into Base:');
+    blend.click();
+    await vi.waitFor(() => expect(project.layerById('edit')).toBe(undefined), { timeout: 10_000 }); // the picture's encoded first
+    expect(project.layers.map((l) => l.id)).toEqual(['base', top]);
+    expect(project.cellsOf(top).get('9,9')?.char).toBe('Q');
+  } finally {
+    toolbar.unmount();
+    host.remove();
+  }
+});

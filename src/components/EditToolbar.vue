@@ -180,7 +180,7 @@ function merge(kind) {
   const { id, rect } = merging.value;
   merging.value = null;
   if (kind === 'exact') project.mergeDown(id, rect);
-  else project.mergeIntoPicture(rect);
+  else project.mergeIntoPicture(rect, id);
 }
 const mergeChoices = computed(() => {
   const choices = [

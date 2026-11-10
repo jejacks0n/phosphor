@@ -12,6 +12,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { IDENTITY, MOST_POINTS, MOST_SHAPES, allClosed, apply, isGradient, joined, multiply, makeShape, nearestOnOutline, newShapeKey, sameShape, separated, shapeBounds, shapeFromStranger, stacked, styleColors, withShape } from '@/document/shapes.js';
 import { artBounds, artCellOf, artFromStranger, isArt } from '@/document/artLayers.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
+import { MOST_LAYERS, lowerGroup } from '@/document/layerInfo.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
 import { withPins, withoutPins } from '@/document/baseRecords.js';
@@ -29,11 +30,13 @@ import { unitsOf, wandIn } from '@/lib/MagicWand.js';
 const keeps = (shape) => !!shapeFromStranger(shape);
 
 // The shapes that can press into the base: those on the shown vector layers directly on the bottom with its character
-// settings (the lower group's), placed (followers.js), or only those on the layer with the id. A hidden one's aren't drawn
-// on the shape layer, so they'd be lost: Bake and Merge down refuse it (refusedHidden).
+// settings, placed (followers.js), or only those on the layer with the id. Directly on it in the whole stack, not only
+// among the shown layers: a hidden cells layer between still covers them once it's shown. A hidden vector layer's aren't
+// drawn on the shape layer, so they'd be lost: Bake and Merge down refuse it (refusedHidden).
 const pressable = (project, id = null) => {
-  const { vectors } = project.lowerGroup;
-  return new Map([...placedShapes(project)].filter(([, shape]) => (id ? [id] : vectors).includes(shape.layer ?? 'vector') && vectors.includes(shape.layer ?? 'vector')));
+  const shown = project.lowerGroup.vectors, onBottom = lowerGroup(project.layers, project.baseChars).vectors;
+  const can = (layer) => (!id || layer === id) && shown.includes(layer) && onBottom.includes(layer);
+  return new Map([...placedShapes(project)].filter(([, shape]) => can(shape.layer ?? 'vector')));
 };
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
@@ -463,11 +466,10 @@ export const vectorActions = {
   // layer in use's cells and paint, as copySelection reads them) becomes one art layer on top of the vector layer directly
   // above that cells layer, at the cells' place and trimmed to the ones that show something, and is taken out of the
   // drawing: one step, with the layer picked and selected on VECTOR. With no vector layer there, one is made there, in the
-  // same step (in an animation it's made as a first shape brings one, with no step of its own: ponytail, a frame's shapes
-  // live in its changes, which a whole-layer step would have to carry). In a room the art goes on its vector layer, as it
+  // same step (in an animation, the edit's step, which carries a frame's shapes: withLayerMade). In a room the art goes on its vector layer, as it
   // always did, since a room keeps its layers. A cell nothing was drawn on stays see-through. The key, or null (no step,
-  // and a toast says why) with nothing drawn there, at the most shapes a frame holds, or a drawing too big or too wide for
-  // one layer. The record is checked as a file would be, at the stacking it gets, before anything is taken out.
+  // and a toast says why) with nothing drawn there, at the most shapes a frame holds, at the most layers when it would
+  // make one, or a drawing too big or too wide for one layer. The record is checked as a file would be, at the stacking it gets, before anything is taken out.
   makeArtLayer() {
     const workspace = useWorkspaceStore();
     const wand = workspace.activeTool === 'wand' && workspace.wand ? wandIn(workspace.wand, 'output', this.rows) : null;
@@ -501,10 +503,17 @@ export const vectorActions = {
       return null;
     }
     const src = this.editId, above = this.layers[this.layers.findIndex((layer) => layer.id === src) + 1];
-    const into = this._sharing ? undefined : above?.kind === 'vector' ? above.id : this.hasFrames ? putLayer(this, 'vector', src, this.charsOf(src)).id : null;
+    const adds = !this._sharing && above?.kind !== 'vector';
+    if (adds && this.layers.length >= MOST_LAYERS) {
+      toast(t('layers.full', { n: MOST_LAYERS }));
+      return null;
+    }
+    const made = adds && this.hasFrames ? putLayer(this, 'vector', src, this.charsOf(src)) : null;
+    const into = this._sharing ? undefined : !adds ? above.id : made ? made.id : null;
     let key = null;
     if (into === null) key = artOnNewLayer(this, art, rect, picked);
     else {
+      const version = this.history.version;
       this.selectionEdit([rect], () => {
         if (wand) {
           this.eraseEditPixels(picked.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
@@ -514,6 +523,7 @@ export const vectorActions = {
         }
         [key] = this.addShapes([art], null, into);
       });
+      if (made) withLayerMade(this, made, src, version);
     }
     workspace.selection = null;
     workspace.wand = null;
@@ -667,6 +677,28 @@ function drawnIn(project, rect, keep = null) {
     if (cell) drawn.push({ col, row, cell });
   });
   return drawn;
+}
+
+// The vector layer Make art layer made in an animation (made, directly above the layer with the id src), part of the edit
+// just recorded: its undo takes the layer out after the art, and its redo puts the layer back first. The edit's own step
+// carries every frame's shapes, which a whole-layer step would have to. None recorded (version unchanged): it goes.
+function withLayerMade(project, made, src, version) {
+  const out = () => {
+    project.layers = project.layers.filter((layer) => layer.id !== made.id);
+    project.render();
+  };
+  const entry = project.history.version !== version && project.history.last;
+  if (!entry) return out();
+  const { undo, redo } = entry;
+  entry.undo = () => {
+    undo();
+    out();
+  };
+  entry.redo = () => {
+    const at = project.layers.findIndex((layer) => layer.id === src) + 1 || project.layers.length;
+    project.layers = [...project.layers.slice(0, at), made, ...project.layers.slice(at)];
+    redo();
+  };
 }
 
 // Make art layer's art taken off the cells layer in use (inside rect, or only the wand's picked cells) onto a new vector

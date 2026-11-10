@@ -435,19 +435,21 @@ export const mergingActions = {
     return { col, row, top, bottom, char };
   },
 
-  // Merge into the picture: the cells layer in use (inside rect, or all of it), directly on the bottom, becomes part of the image,
+  // Merge into the picture: the cells layer with the id (the one in use by default; another is picked first), inside rect
+  // or all of it, directly on the bottom, becomes part of the image,
   // so every effect applies to it, live, like the photo. The image becomes the picture at its
   // working size (m processed pixels per grid pixel) with nothing applied, each picture cell
   // painted in as exact m x m blocks: the converter's own characters go in as they are and come
   // back from the picture; solid characters go in as they show, pinned to ▄; any other character,
   // and anything outside the picture's area (the letterbox), merges exactly (mergeKind). The
   // sliders aren't touched. One undo step, and the layer leaves the stack as Merge down's does.
-  async mergeIntoPicture(rect = null) {
-    const id = this.editId, below = this.layers[this.layers.findIndex((layer) => layer.id === id) - 1];
+  async mergeIntoPicture(rect = null, id = this.editId) {
+    const below = this.layers[this.layers.findIndex((layer) => layer.id === id) - 1];
     if (!this.image || this._merging || this.hasFrames || !below || refusedHidden(this, [id, 'base'])) return;
     if (below.kind === 'vector') return void toast(t('toolbar.mergeOntoVector'));
     if (below.id !== 'base') return;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
+    if (id !== this.editId) useWorkspaceStore().pickLayer(id); // what's read below is the layer in use's
     this._merging = true;
     const sharing = this._sharing;
     sharing?.hold?.();
@@ -585,7 +587,7 @@ export const mergingActions = {
     } finally {
       sharing?.release?.();
       this._merging = false;
-      if (again) await this.mergeIntoPicture(rect);
+      if (again) await this.mergeIntoPicture(rect, id);
     }
   },
 

@@ -309,10 +309,13 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
   const stack = [await snap(project, workspace, { forceRender })];
   const log = [];
   const acc = { open: false };
+  let redoBy = null; // the action that left the redo tail there is, if any
   for (let i = 0; i < steps; i++) {
     const name = names[Math.floor(r() * names.length)];
-    const before = t.depth;
+    const before = t.depth, hadRedo = project.canRedo;
     const done = await actions[name]();
+    if (!project.canRedo) redoBy = null;
+    else if (!hadRedo) redoBy = name;
     const s = await snap(project, workspace, { forceRender });
     let d = t.depth - before;
     log.push(`${name}(${d >= 0 ? '+' : ''}${d})`);
@@ -326,9 +329,9 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
     if (forceRender && !held && s.shown !== s.full && realDiff(s.shown, s.full)) return { seed, log, problem: `step ${i} ${name}: shown cells differ from a full render`, diff: diffCells(s.shown, s.full) };
   }
   closeRun(stack, project, t, acc);
-  // A move run that came back where it started undid its step and left it redoable (floatSelection): a redo tail the run
-  // itself left, and still there after undoing and redoing everything.
-  const tail = project.canRedo;
+  // A move run that came back where it started undid its step and left it redoable (floatSelection): a redo tail a move
+  // left, and still there after undoing and redoing everything. Any other action's is a failure.
+  const tail = project.canRedo && redoBy === 'move';
   // a run still open on the last step (base typing, held above) is checked once it's closed
   const end = await snap(project, workspace, { forceRender });
   if (forceRender && end.shown !== end.full && realDiff(end.shown, end.full)) return { seed, log, problem: 'after closeRun: shown cells differ from a full render', diff: diffCells(end.shown, end.full) };

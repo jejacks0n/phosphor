@@ -297,3 +297,19 @@ test('a hidden vector layer on the bottom is never lost to Bake: it\'s refused u
   expect(project.shapes.has(key)).toBe(true);
   expect(project.brightness).toBe(140);
 });
+
+test('Bake leaves a vector layer over a hidden cells layer: it isn\'t on the bottom', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  project.typeAt(4, 4, 'A', { fg: '#ffee00' });
+  project.commitEdit();
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer(vector);
+  const key = project.addShape(rectShape(2, 2, 12, 12, { fill: '#ff0000' }));
+  project.setLayerHidden('edit', true); // shown, the vector layer looks like it's on the bottom
+  project.brightness = 140;
+  await settle(project);
+  await project.bake();
+  await settle(project);
+  expect([...project.shapes.keys()]).toEqual([key]);
+});
