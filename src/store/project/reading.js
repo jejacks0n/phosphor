@@ -9,7 +9,7 @@ import { TILE } from '@/document/History.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { bakedEntry, cellIndex, charRowsOf, halfColors, isSolidGlyph, mix } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
-import { effectiveColor, paletteChoices } from '@/lib/PixelTransforms.js';
+import { effectiveColor, paletteChoices, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { over } from '@/store/project/shared.js';
 
 // For each palette color, a stored color that shows as it under the adjustments (paletteChoices), kept while
@@ -32,46 +32,26 @@ const storedBlack = (params) => ['#000000', '#ffffff'].find((hex) => effectiveCo
 // The stored color hex, or one a step off it on some channels, that shows as target: Color ASCII's FG is the halves'
 // average, and one averaged in stored colors can round the other way from the one shown (Invert turns half up to half down).
 // reach: an adjustment that clips (Brightness past 100) or turns hues doesn't average as stored colors do, so failing
-// that, the stored color found nearest hex that shows as target, or as near it as any can (reaching).
+// that, a stored color that shows as target, or as near it as any can (reaching).
 function shownAs(project, hex, target, { reach = false } = {}) {
   const params = project.processParams, { r, g, b } = hex2rgb(hex), steps = [0, -1, 1];
   for (const dr of steps) for (const dg of steps) for (const db of steps) {
     const near = rgb2hex({ r: r + dr, g: g + dg, b: b + db });
     if (project.renderer.effective(near, params).hex.toLowerCase() === target.toLowerCase()) return near;
   }
-  return reach ? reaching(project, hex, target) : hex;
+  return reach ? reaching(project, target) : hex;
 }
 
-// From the stored color hex, a step on one, two or three channels at a time toward showing as target, the step halved
-// when none gets nearer; the color it ends on.
-// ponytail: a descent, so a hue turn that only far-off colors reach can leave it short, and it's a few hundred lookups a
-// color (kept per settings: a merge of a whole picture's paint under such sliders can still take seconds). A grid search
-// first if either bites.
-const reached = new WeakMap(); // processParams -> Map('hex>target' -> stored)
-function reaching(project, hex, target) {
-  const params = project.processParams, goal = hex2rgb(target), key = `${hex}>${target}`;
+// The stored color that shows as target, or as near it as any can (storedShowingAs), kept per settings and target: a
+// merge of a whole picture's paint under such sliders asks once a distinct shown color.
+const reached = new WeakMap(); // processParams -> Map(target -> stored)
+function reaching(project, target) {
+  const params = project.processParams, palette = project.renderer.palette;
   let kept = reached.get(params);
-  if (!kept) reached.set(params, kept = new Map());
-  if (kept.has(key)) return kept.get(key);
-  const off = (c) => {
-    const shown = project.renderer.effective(rgb2hex(c), params);
-    return (shown.r - goal.r) ** 2 + (shown.g - goal.g) ** 2 + (shown.b - goal.b) ** 2;
-  };
-  const clamp = (v) => Math.max(0, Math.min(255, v));
-  let at = hex2rgb(hex), d = off(at);
-  for (let step = 64; step >= 1 && d; step >>= 1) {
-    // every move of the step on one, two or three channels: the adjustments couple them (a hue turn)
-    const moves = [-step, 0, step].flatMap((r) => [-step, 0, step].flatMap((g) => [-step, 0, step].map((b) => ({ r, g, b })))).filter(({ r, g, b }) => r || g || b);
-    for (let moved = true; moved && d;) {
-      moved = false;
-      for (const m of moves) {
-        const next = { r: clamp(at.r + m.r), g: clamp(at.g + m.g), b: clamp(at.b + m.b) }, dn = off(next);
-        if (dn < d) [at, d, moved] = [next, dn, true];
-      }
-    }
-  }
-  kept.set(key, rgb2hex(at));
-  return kept.get(key);
+  if (kept?.palette !== palette) reached.set(params, kept = { palette, map: new Map() });
+  let stored = kept.map.get(target);
+  if (stored === undefined) kept.map.set(target, stored = storedShowingAs(params, target, palette));
+  return stored;
 }
 
 // The base's cell as the render style shows it, in stored colors (bakedEntry of baseCellAt), its Color ASCII FG one that

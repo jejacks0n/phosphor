@@ -177,3 +177,97 @@ export function paletteChoices(params, palette) {
   }
   return choices.map((hex, i) => hex ?? best.get(key(palette[i].hex))?.hex ?? palette[i].hex);
 }
+
+// Several stored colors ([r, g, b] each) through the adjustments and the palette at once: what each shows, as flat RGB
+// bytes (one applyTransforms call: its setup costs more than its pixels).
+function shownBatch(colors, params, palette) {
+  const data = new Uint8ClampedArray(colors.length * 4);
+  colors.forEach(([r, g, b], i) => data.set([r, g, b, 255], i * 4));
+  applyTransforms(data, params);
+  if (palette?.length) {
+    for (let i = 0; i < data.length; i += 4) {
+      const { r, g, b } = nearestColor({ r: data[i], g: data[i + 1], b: data[i + 2] }, palette);
+      data[i] = r; data[i + 1] = g; data[i + 2] = b;
+    }
+  }
+  return data;
+}
+
+// paletteChoices' grid of stored colors (33³, 8 apart a channel) through the adjustments and the palette, indexed by what
+// each shows: 4096 buckets of 16 levels a channel, each the grid colors showing inside it (one per shown color), as
+// [shownR, shownG, shownB, storedR, storedG, storedB, ...]. Kept per params while the palette stays.
+const shownIndexes = new WeakMap();
+function shownIndex(params, palette) {
+  const kept = shownIndexes.get(params);
+  if (kept?.palette === palette) return kept.buckets;
+  const colors = [];
+  for (let r = 0; r < 33; r++) for (let g = 0; g < 33; g++) for (let b = 0; b < 33; b++) colors.push([Math.min(255, r * 8), Math.min(255, g * 8), Math.min(255, b * 8)]);
+  const shown = shownBatch(colors, params, palette);
+  const buckets = new Array(4096), seen = new Set();
+  for (let i = 0; i < colors.length; i++) {
+    const r = shown[4 * i], g = shown[4 * i + 1], b = shown[4 * i + 2], exact = (r << 16) | (g << 8) | b;
+    if (seen.has(exact)) continue;
+    seen.add(exact);
+    const at = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+    (buckets[at] ??= []).push(r, g, b, ...colors[i]);
+  }
+  shownIndexes.set(params, { palette, buckets });
+  return buckets;
+}
+
+// A stored color that shows as the target (hex) under the adjustments and the palette, or as near it as any can: from the
+// STARTS grid colors (shownIndex) showing nearest the target, each stepped 4, 2, then 1 a channel (all 26 ways at once)
+// while a step shows nearer, the one that ends nearest. For a merge under Color ASCII with a slider off its default, where
+// the halves' average isn't a stored color, asked once a distinct target.
+// ponytail: under a clipping slider a target a step inside the clip (253 under Brightness 140) can end 2 off, on the
+// clipped plateau: about 1 in 500, and no eye sees 253 from 255. More starts or a finer grid if it ever shows.
+const STARTS = 8;
+export function storedShowingAs(params, target, palette = null) {
+  const goal = hex2rgb(target), buckets = shownIndex(params, palette);
+  const off = (r, g, b) => (r - goal.r) ** 2 + (g - goal.g) ** 2 + (b - goal.b) ** 2;
+  const br = goal.r >> 4, bg = goal.g >> 4, bb = goal.b >> 4;
+  const near = []; // { d, at: [r, g, b] }, nearest first: a start can sit beside a better valley than another's
+  const offer = (r, g, b, stored) => {
+    const dn = off(r, g, b);
+    if (near.length === STARTS && dn >= near[STARTS - 1].d) return;
+    near.push({ d: dn, at: stored });
+    near.sort((a, b) => a.d - b.d);
+    if (near.length > STARTS) near.pop();
+  };
+  // Rings of buckets out from the target's: done when nothing outside the cube scanned can be nearer than the starts found.
+  for (let ring = 0; ring < 16 && (near.length < STARTS || near[STARTS - 1].d > (ring * 16) ** 2); ring++) {
+    for (let r = Math.max(0, br - ring); r <= Math.min(15, br + ring); r++) for (let g = Math.max(0, bg - ring); g <= Math.min(15, bg + ring); g++) for (let b = Math.max(0, bb - ring); b <= Math.min(15, bb + ring); b++) {
+      if (Math.max(Math.abs(r - br), Math.abs(g - bg), Math.abs(b - bb)) !== ring) continue; // the inner cube's done
+      const bucket = buckets[(r << 8) | (g << 4) | b];
+      if (!bucket) continue;
+      for (let i = 0; i < bucket.length; i += 6) offer(bucket[i], bucket[i + 1], bucket[i + 2], [bucket[i + 3], bucket[i + 4], bucket[i + 5]]);
+    }
+  }
+  if (!near.length) return target;
+  const clamp = (v) => Math.max(0, Math.min(255, v));
+  const nearest = (moves) => { // of these stored colors, the one showing nearest the target, and how far
+    const shown = shownBatch(moves, params, palette);
+    let at = null, d = Infinity;
+    moves.forEach((move, i) => {
+      const dn = off(shown[4 * i], shown[4 * i + 1], shown[4 * i + 2]);
+      if (dn < d) [at, d] = [move, dn];
+    });
+    return { at, d };
+  };
+  let best = near[0];
+  for (let { at, d } of near) {
+    if (!best.d) break;
+    for (let step = 4; step >= 1 && d; step >>= 1) {
+      for (let moved = true; moved && d;) {
+        const moves = [];
+        for (const dr of [-step, 0, step]) for (const dg of [-step, 0, step]) for (const db of [-step, 0, step]) if (dr || dg || db) moves.push([clamp(at[0] + dr), clamp(at[1] + dg), clamp(at[2] + db)]);
+        const found = nearest(moves);
+        moved = found.d < d;
+        if (moved) ({ at, d } = found);
+      }
+    }
+    if (d < best.d) best = { at, d };
+  }
+  const at = best.at;
+  return rgb2hex({ r: at[0], g: at[1], b: at[2] });
+}
