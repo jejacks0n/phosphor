@@ -775,3 +775,24 @@ test('Make art layer with the base picked puts nothing of the base among the wai
   expect([...project._layerData.keys()]).not.toContain('base');
   if (key) await expect(readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }))).resolves.toBeTruthy();
 });
+
+test('Make art layer refused for a hidden layer inside an art layer leaves you inside it', async () => {
+  const { project, workspace } = await blank();
+  project.typeAt(2, 1, 'H', { fg: RED });
+  project.commitEdit();
+  select(workspace, 1, 0, 6, 2);
+  const key = project.makeArtLayer();
+  project.typeAt(8, 1, 'Q', { fg: RED }); // more drawing, left out of it
+  project.commitEdit();
+  workspace.pickLayer('edit');
+  project.addLayer('vector', 'edit'); // directly above the edit layer: where the next art would go
+  project.setLayerHidden(project.layers[2].id, true);
+  workspace.editorTab = 'output';
+  expect(project.enterArt(key)).toBe(true);
+  select(workspace, 7, 0, 9, 2);
+  toastMessage.value = null;
+  expect(project.makeArtLayer()).toBe(null);
+  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(project.artInside).toBe(key);
+  project.leaveArt();
+});

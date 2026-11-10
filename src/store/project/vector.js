@@ -498,14 +498,14 @@ export const vectorActions = {
     }
     const rect = box && this.clipRect(box);
     if (!rect) return null;
-    if (this._artInside) this.leaveArt(); // made from the drawing, not the art layer you're in
     // What's hidden never goes into another layer unseen: neither the cells layer's drawing nor the art, onto a hidden
-    // vector layer (in a room, its one).
+    // vector layer (in a room, its one). Refused before an art layer you're in is stepped out of (editId stays).
     const src = this.editId, above = this.layers[this.layers.findIndex((layer) => layer.id === src) + 1];
     if (this.layerHidden(src) || this.layerHidden(this._sharing ? 'vector' : above?.kind === 'vector' && above.id)) {
       toast(t('layers.hiddenToast'));
       return null;
     }
+    if (this._artInside) this.leaveArt(); // made from the drawing, not the art layer you're in
     const drawn = drawnIn(this, rect, wand ? new Set(picked.map(({ col, row }) => cellKey(col, row))) : null);
     if (!drawn.length) {
       toast(t('art.nothingDrawn')); // the wand's button can't tell beforehand: it's on whenever anything's drawn
