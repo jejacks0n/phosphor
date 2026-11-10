@@ -10,7 +10,8 @@ import { ctx2d } from '@/lib/Canvas.js';
 import { bakedEntry, cellIndex, charRowsOf, halfColors, isSolidGlyph, mix } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
-import { over } from '@/store/project/shared.js';
+import { resolves } from '@/lib/CharResolver.js';
+import { levelCells, over } from '@/store/project/shared.js';
 
 // For each palette color, a stored color that shows as it under the adjustments (paletteChoices), kept while
 // the palette and the settings stay the same: asked once a cell by a whole grid's Merge up.
@@ -23,6 +24,24 @@ function storedOf(palette, params) {
     storedFor.set(palette, held);
   }
   return held.map;
+}
+
+// The cell as it shows up to the upper layer with the id at col, row: shown when that's the layer stopped at (through) or no
+// layer above it reaches the cell, else the upper walk stopped there for the one cell (levelCells).
+function levelAt(project, id, col, row, through, shown) {
+  if (id === through) return shown;
+  const { upper } = project.lowerGroup, key = cellKey(col, row), i = cellIndex(col, row, project.cols);
+  const above = upper.slice(upper.indexOf(id) + 1, through ? upper.indexOf(through) + 1 : upper.length);
+  const reached = above.some((each) => (project.layerById(each).kind === 'vector'
+    ? project._upperShapes.get(each)?.charAt(col, row) !== undefined
+    : project.cellsOf(each).has(key) || !!project.paintOf(each)?.pixelAt(col, 2 * row) || !!project.paintOf(each)?.pixelAt(col, 2 * row + 1)));
+  return reached ? levelCells(project, id, [i])[i] : shown;
+}
+
+// A color a cell shows as a stored one that shows as it (storedOf), or itself where none does (no palette).
+function storedHexOf(project, color) {
+  const palette = project.renderer.palette;
+  return (palette?.length && storedOf(palette, project.processParams).get(color.hex.toLowerCase())) || color.hex;
 }
 
 // A stored color that shows as the ASCII styles' black background under the adjustments: black, or white with Invert.
@@ -211,7 +230,8 @@ export const readingActions = {
   // the lower group's shapes (baseCellAt), then each shown layer above, bottom first: a cells layer as lookUnder lays it,
   // an upper vector layer's shapes by their alpha over each half (in the ASCII styles, over the halves of the character's
   // ink on black, then averaged into FG, as buildCell does; an upper cells layer's paint the same way, over an exact cell's
-  // BG and FG unless its character is solid, as coverCell does). The character is the one that shows. through: only up to
+  // BG and FG unless its character is solid, as coverCell does), or under its own Best match or By shape the colors its
+  // cell shows there (levelAt), stored. The character is the one that shows. through: only up to
   // the upper layer with that id, its cell as it shows there (shown: the cell as composed up to it, Merge down's freeze).
   storedLookAt(col, row, { through = null, shown = this.cells[cellIndex(col, row, this.cols)] } = {}) {
     const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii', key = cellKey(col, row);
@@ -237,6 +257,13 @@ export const readingActions = {
       if (char === undefined) continue;
       const top = this.renderer.upperStoredAt(shapes, col, 2 * row), bottom = this.renderer.upperStoredAt(shapes, col, 2 * row + 1);
       exact = char !== null;
+      if (char === null && resolves(this.layerParams.get(id))) { // Best match's or By shape's colors, not its halves'
+        const cell = levelAt(this, id, col, row, through, shown);
+        if (cell) {
+          look = { char: look.char, fg: storedHexOf(this, cell.fg), bg: ascii ? look.bg : storedHexOf(this, cell.bg) };
+          continue;
+        }
+      }
       if (ascii) { // as buildCell lays them: the halves of the character's ink on black, shapes over each, averaged, no BG
         look = { ...asciiOver(top, bottom), char: char ?? look.char };
         continue;

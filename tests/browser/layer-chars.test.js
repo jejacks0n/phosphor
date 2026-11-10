@@ -250,9 +250,10 @@ test('in a room the Characters section edits Base, whichever layer is picked, an
 // cells it shows.
 // moved: the circle drawn first a few cells over and composed, then moved, so what an upper layer kept of it catches up.
 // under: Base's and Layer 1's settings, when not settings (an upper layer only).
-async function circleOn(where, settings, { moved = false, under = settings } = {}) {
+// looks: what Copy takes of each cell instead (storedLookAt), as it shows (with brightness at 120 to show it's stored).
+async function circleOn(where, settings, { moved = false, under = settings, looks = false } = {}) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 24, rows: 24, quantize: 'cga' });
+  await project.setBlankCanvas({ cols: 24, rows: 24, quantize: 'cga', ...(looks && { brightness: 120 }) });
   await settle(project);
   const vector = project.addLayer('vector', where);
   for (const id of ['base', 'edit']) project.setLayerChars(id, under);
@@ -267,7 +268,12 @@ async function circleOn(where, settings, { moved = false, under = settings } = {
     await settle(project);
   }
   expect(project.lowerGroup.upper.length).toBe(where === 'base' ? 0 : 1);
-  return cellsKey(project);
+  if (!looks) return cellsKey(project);
+  const shows = (hex) => project.renderer.effective(hex, project.processParams).hex;
+  return project.cells.map((cell, i) => {
+    const look = project.storedLookAt(i % 24, Math.floor(i / 24));
+    return [cellsKey(project)[i], `${look.char}${shows(look.fg)}${shows(look.bg)}`];
+  });
 }
 const halfBlocks = new Set([' ', '█', '▀', '▄']);
 
@@ -342,5 +348,13 @@ async function movedInside(settings, moves) {
 for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }], ['Random', { charChoice: 'random' }]]) {
   test(`under ${name} an upper vector layer moved in small steps, then rendered whole, shows what a fresh drawing does`, async () => {
     expect(await movedInside(settings, 6)).toEqual(await movedInside(settings, 0));
+  });
+}
+
+for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }], ['Best match', { charChoice: 'best', chars: '▄░▒▓█', solids: 0 }]]) {
+  test(`under ${name} Copy takes the colors an upper vector layer's cells show`, async () => {
+    const looks = await circleOn('edit', settings, { looks: true });
+    expect(looks.filter(([shown]) => !halfBlocks.has(shown[0])).length).toBeGreaterThan(4);
+    expect(looks.map(([, look]) => look)).toEqual(looks.map(([shown]) => shown));
   });
 }
