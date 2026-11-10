@@ -52,6 +52,11 @@ export function renderReport(run) {
     out.push('');
   }
 
+  // What went wrong outside the steps' checks: the page's own errors (Content-Security-Policy refusals
+  // among them), and the session's.
+  if (run.pageErrors?.length) out.push('## Page errors', '', ...run.pageErrors.map((e) => `- ${e.step ?? 'before any step'} (${e.kind}): ${e.text}`), '');
+  if (run.warnings?.length) out.push('## Session warnings', '', ...run.warnings.map((w) => `- ${w.step ?? 'before any step'}: ${w.text}`), '');
+
   out.push('## Steps', '');
   for (const step of run.steps) out.push(...stepLines(step));
 
@@ -65,4 +70,16 @@ export function renderReport(run) {
     out.push('');
   }
   return out.join('\n');
+}
+
+// The report, or when it can't be written, what went wrong and the run's raw record, so a run always ends
+// with something to read.
+export function safeReport(run) {
+  try {
+    return renderReport(run);
+  } catch (error) {
+    const { steps, findings, pageErrors, warnings, snippets } = run;
+    return [`# QA run: ${run.persona}, seed ${run.seed}`, '', `The report couldn't be written: ${error?.message ?? error}`, '',
+      '```json', JSON.stringify({ steps, findings, pageErrors, warnings, snippets }, null, 2), '```', ''].join('\n');
+  }
 }

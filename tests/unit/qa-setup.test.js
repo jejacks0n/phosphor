@@ -59,7 +59,8 @@ test('the QA port is 4210 unless QA_PORT says otherwise, and never one the app o
 });
 
 test('a run directory is the date, the persona and the seed', () => {
-  expect(runDirName(new Date('2026-11-09T12:00:00Z'), 'dex', 42)).toBe('2026-11-09-dex-42');
+  expect(runDirName(new Date(2026, 10, 9, 23, 30), 'dex', 42)).toBe('2026-11-09-dex-42');
+  expect(runDirName(new Date(2026, 0, 5, 0, 10), 'dex', 42)).toBe('2026-01-05-dex-42');
 });
 
 test('runSnippet records a value, a throw or a timeout', async () => {

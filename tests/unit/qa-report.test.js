@@ -1,6 +1,6 @@
 // The report a QA run writes: plain Markdown, the score first, findings worst first.
 import { test, expect } from 'vitest';
-import { slug, renderReport } from '../qa/report.js';
+import { slug, renderReport, safeReport } from '../qa/report.js';
 
 const run = (over = {}) => ({
   persona: 'maya', seed: 7, traits: { device: 'desktop', input: 'mouse' }, commit: 'abc1234', scriptCommit: 'def5678',
@@ -57,4 +57,21 @@ test('a renderer that could not be read leads with a warning too', () => {
 test('warnings from the event counts show under their step', () => {
   const text = renderReport(run({ steps: [step('Sneaky', 'keys', { events: { keys: 0, pointers: 2 } })] }));
   expect(text).toMatch(/Warning: Rated keys but no keys reached the page/);
+});
+
+test('page errors and session warnings show under their own headings, with their steps', () => {
+  const text = renderReport(run({
+    pageErrors: [{ step: 'Paint', kind: 'console', text: 'Refused to connect' }],
+    warnings: [{ step: null, text: 'Unhandled rejection: late' }],
+  }));
+  expect(text).toContain('## Page errors\n\n- Paint (console): Refused to connect');
+  expect(text).toContain('## Session warnings\n\n- before any step: Unhandled rejection: late');
+});
+
+test('a report that cannot be written still says why, with the raw steps and findings', () => {
+  const text = safeReport(run({ steps: [step('Lost', null)], findings: [{ id: 'F1', kind: 'bug' }] }));
+  expect(text).toContain("The report couldn't be written: step \"Lost\" is rated but has no rating");
+  expect(text).toContain('"name": "Lost"');
+  expect(text).toContain('"id": "F1"');
+  expect(safeReport(run())).toBe(renderReport(run()));
 });

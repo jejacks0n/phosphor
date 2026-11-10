@@ -4,9 +4,12 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from '@playwright/test';
 import { launchWithout } from '../support/chromiumArgs.js';
-import { qaPort } from './setup.js';
+import { PERSONAS, qaPort } from './setup.js';
 
 const port = qaPort(process.env);
+// A persona that doesn't exist stops the run before the build, not after it.
+const persona = process.env.QA_PERSONA;
+if (persona !== undefined && !PERSONAS.includes(persona)) throw new Error(`QA_PERSONA must be one of ${PERSONAS.join(', ')}, not "${persona}"`);
 const root = fileURLToPath(new URL('../..', import.meta.url));
 
 // The GPU through Metal, never SwiftShader, so timings are real; the heap's true size for qa.memory; no

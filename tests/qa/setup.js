@@ -74,8 +74,10 @@ export function qaPort(env) {
   return port;
 }
 
+// Named by the local day, the one the owner reads folders by.
 export function runDirName(date, persona, seed) {
-  return `${date.toISOString().slice(0, 10)}-${persona}-${seed}`;
+  const two = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}-${persona}-${seed}`;
 }
 
 // Runs a snippet file's default export with the given arguments, and records what came of it: its value,

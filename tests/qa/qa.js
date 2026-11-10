@@ -10,13 +10,16 @@ import { FINDING_KINDS, PROBES, SEVERITIES, slug } from './report.js';
 // A run record with nothing recorded yet, in the shape renderReport reads.
 export function newRun(traits) {
   const { persona, seed } = traits;
-  return { persona, seed, traits, commit: null, scriptCommit: null, machine: {}, steps: [], findings: [], memory: [], snippets: [] };
+  return { persona, seed, traits, commit: null, scriptCommit: null, machine: {}, steps: [], findings: [], memory: [], snippets: [], pageErrors: [], warnings: [] };
 }
 
 // The drawn person's browser: their device, language and theme, and SOCIAL's first question answered. The
 // language and theme are only set where the person hasn't chosen yet, so a choice they make survives a reload.
+// The SOCIAL server is cut off, as in the end-to-end flows, unless a snippet fakes it for a page.
 export async function qaContext(browser, traits) {
   const context = await browser.newContext(contextOptions(traits));
+  await context.route('http://localhost:8787/**', (route) => route.abort('blockedbyclient')); // a failure only this can give
+  await context.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
   await seedConsent(context);
   await context.addInitScript((storage) => {
     try {
@@ -63,6 +66,21 @@ export async function makeQa({ context, runDir, run }) {
     addEventListener('pointerdown', (event) => event.isTrusted && window.__qaEvent('pointer'), true);
   });
 
+  // The page's errors and console errors (the page's refusals under its Content-Security-Policy among them),
+  // under the step they happened in.
+  const pageError = (kind, text) => {
+    run.pageErrors.push({ step: open()?.name ?? null, kind, text });
+    save();
+  };
+  const watch = (page) => {
+    page.on('pageerror', (error) => pageError('error', error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error' || message.text().includes('Content Security Policy')) pageError('console', message.text());
+    });
+  };
+  context.pages().forEach(watch);
+  context.on('page', watch);
+
   const qa = {
     run,
     get page() { return current(); },
@@ -86,9 +104,9 @@ export async function makeQa({ context, runDir, run }) {
       open().probes.push({ kind, note });
     }),
 
-    async shot(name, { page = current(), fullPage = false } = {}) {
+    async shot(name, { page = current(), fullPage = false, timeout = 10_000 } = {}) {
       const path = `shots/${String(++shots).padStart(3, '0')}-${slug(name)}.png`;
-      await page.screenshot({ path: join(runDir, path), fullPage });
+      await page.screenshot({ path: join(runDir, path), fullPage, timeout });
       open()?.shots.push(path);
       save();
       return path;
@@ -122,7 +140,7 @@ export async function makeQa({ context, runDir, run }) {
         return window.__qaFrames.times;
       });
       const gaps = times.slice(1).map((time, i) => time - times[i]);
-      const worst = Math.round(Math.max(0, ...gaps));
+      const worst = Math.round(gaps.reduce((most, gap) => Math.max(most, gap), 0));
       const long = gaps.filter((gap) => gap > BUDGETS.longFrame).length;
       open()?.timings.push({ name, ms: worst, budget: BUDGETS.frame, over: worst > BUDGETS.frame, long });
       save();
@@ -139,9 +157,21 @@ export async function makeQa({ context, runDir, run }) {
     finding: record(({ kind, severity, expected, actual, repro, shot = null, step = open()?.name ?? null }) => {
       oneOf(FINDING_KINDS, kind, 'a finding\'s kind');
       oneOf(SEVERITIES, severity, 'a finding\'s severity');
+      for (const [field, value] of Object.entries({ expected, actual, repro })) {
+        if (!value) throw new Error(`a finding needs ${field}`);
+      }
       const id = `F${run.findings.length + 1}`;
       run.findings.push({ id, kind, severity, step, expected, actual, repro, shot });
       return id;
+    }),
+
+    // The run is over: a step opened as rated but never rated isn't counted, and the report says so.
+    end: record(() => {
+      const last = open();
+      if (last?.rated && !last.how) {
+        last.rated = false;
+        run.warnings.push({ step: last.name, text: 'Opened as rated but never rated, so it isn\'t counted.' });
+      }
     }),
 
     save,
