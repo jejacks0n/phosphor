@@ -357,7 +357,8 @@ export function followLayerPick({ workspace, project, drawing }) {
       const topVector = () => now.findLast((layer) => layer.kind === 'vector')?.id ?? 'vector';
       if (project._layersStarted !== started) {
         // On VECTOR it stays VECTOR (a restore, a file opened): the topmost vector layer, or the one the first shape will
-        // bring. A document opens with the bottom and the edit layer and gets its own layers right after.
+        // bring. A document opens with the bottom and the edit layer and gets its own layers right after, when the
+        // topmost of those is picked (document.js: showParts).
         started = project._layersStarted;
         if (workspace.editorTab === 'vector') pick(topVector(), { tabs: false });
         else pick(now.some((layer) => layer.id === 'edit') ? 'edit' : now.findLast((layer) => layer.kind === 'cells').id);

@@ -108,6 +108,9 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
     }
     if (shapes?.size) this.shapes = shapes;
     this.layers = next;
+    // On VECTOR it opens on the topmost vector layer (the pick at the start over could only be the first one's id).
+    const top = next.findLast((layer) => layer.kind === 'vector'), workspace = useWorkspaceStore();
+    if (top && workspace.editorTab === 'vector') workspace.pickLayer(top.id);
     this.setBaseRecords(baseRecords);
     if (paint) {
       this.ensureLayer();

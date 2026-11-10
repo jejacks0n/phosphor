@@ -507,6 +507,17 @@ async function restoreSame(project) {
   await settle(project);
 }
 
+test('a version brought back, or a file opened, on VECTOR picks the topmost vector layer', async () => {
+  const { project, workspace } = await blank();
+  project.addLayer('vector', 'base');
+  const upper = project.addLayer('vector', 'edit');
+  workspace.pickLayer('vector'); // the first one: the open picks the topmost, as from any other tab
+  expect(workspace.editorTab).toBe('vector');
+  await restoreSame(project);
+  expect(workspace.editorTab).toBe('vector');
+  expect(workspace.pickedLayer).toBe(upper);
+});
+
 test('a version brought back from VECTOR keeps Layer 1\'s cells and VECTOR', async () => {
   const { project, workspace } = await blank();
   const { cellsKey } = await import('../support/app.js');
