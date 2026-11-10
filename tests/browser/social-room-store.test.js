@@ -155,6 +155,20 @@ test('startRoom readies a stack that fits: edit and vector are the layers\' own 
   expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
 });
 
+test('a Go live the server refuses leaves the layers and undo as they were', async () => {
+  await social.boot();
+  server.route('POST /api/rooms', () => [400, { code: 'INVALID', field: 'name' }]);
+  project.addLayer('cells', 'edit');
+  project.useLayer('L1');
+  project.layers = project.layers.filter((l) => l.id !== 'edit');
+  project._layerData.delete('edit');
+  project.typeAt(1, 1, 'A', { fg: '#ffffff' });
+  project.commitEdit();
+  expect(await startPublic()).toBe(false);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'L1']);
+  expect(project.canUndo).toBe(true);
+});
+
 test('startRoom POSTs the room with the draft\'s signal and no password; a private one sends its password and no signal', async () => {
   await social.boot();
   expect(room.startDraft.signal).toBe(null);
