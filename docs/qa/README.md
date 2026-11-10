@@ -19,7 +19,8 @@ JavaScript files) one at a time and read what each did. Before you start:
 
 - Work from a clean tree on the branch you're testing. The session builds the working tree and records `HEAD` as the
   app's commit, and the persona file's last commit as the script's version (`null` until the file is committed), so
-  uncommitted changes to either are in the run but not in its record.
+  uncommitted changes to either are in the run but not in its record. It records whether there were any (`dirty` in
+  `run.json`, "Uncommitted changes" in the report's header).
 - Read the persona's file, the docs it walks (`docs/layers.md`, `docs/characters.md`, `docs/vector.md`,
   `docs/animation.md`, `docs/social.md`), and the Rules in `AGENTS.md`.
 - Run one session at a time. Both commands find the session through `qa-runs/<persona>.latest`, and every session
@@ -46,7 +47,9 @@ npm run qa:smoke                                  # check the harness itself (no
 
 `npm run qa` builds the app into `dist-qa/`, serves it on the QA port, opens the persona's browser on the start
 screen and prints `QA run: <folder>` once it's ready for snippets (the build takes about a minute). Wait for that
-line before you send anything. It runs until you send `--end`, until it has had no snippet for `QA_IDLE_MIN` minutes,
+line before you send anything. Start it in the background with the longest timeout your shell allows (in Claude
+Code, Bash with `run_in_background: true` and `timeout: 7200000`, two hours): a shorter one ends the session, and the
+browser with it, partway through a run. It runs until you send `--end`, until it has had no snippet for `QA_IDLE_MIN` minutes,
 or until it's stopped (Ctrl+C or a kill); every way of stopping writes `report.md`.
 
 | Variable | Default | What it does |
@@ -61,6 +64,10 @@ or until it's stopped (Ctrl+C or a kill); every way of stopping writes `report.m
 If port 4210 is taken, find out what holds it (`lsof -nP -iTCP:4210 -sTCP:LISTEN`). A QA session you left running:
 end it with `--end`. Anything else isn't yours to stop: start with another `QA_PORT` instead (say `4211`).
 
+If a session ends before the run is done, start a new one at the same seed (`QA_SEED=<seed>`, so the traits are the
+same), rebuild the state the next step needs, say what you rebuilt in a `qa.note` on the new session's first step, and
+carry on from where the first stopped. The new session gets a folder of its own; give the reviewer both folders.
+
 ### The run folder
 
 Each session gets `qa-runs/<local date>-<persona>-<seed>/` (a second session of the same seed on the same day gets
@@ -68,6 +75,10 @@ Each session gets `qa-runs/<local date>-<persona>-<seed>/` (a second session of 
 
 - `run.json`: everything recorded so far, rewritten after every call that records something.
 - `report.md`: written when the session ends.
+
+Never edit `run.json` or `report.md` by hand, during the run or after it: they're the record the reviewer judges. A
+correction (a probe that went on the wrong step, a rating that was wrong) goes in a `qa.note`, saying what was wrong
+and what's right.
 - `shots/`: screenshots, named `001-<step>.png` and so on.
 - `inbox/` and `outbox/`: the snippets as sent, and what each did (`outbox/<name>.json`).
 
@@ -80,12 +91,12 @@ A snippet is an ES module whose default export is an async function. It's called
 
 | Argument | What it is |
 | --- | --- |
-| `page` | The persona's page: the newest page of the context, the one a person is looking at. |
+| `page` | The newest page of the context. Once a second page is open it may not be the persona's: see below. |
 | `context` | The Playwright browser context (the person's browser: device, language, theme). |
 | `browser` | The Playwright browser. |
 | `qa` | The recorder (below). |
 | `traits` | What was drawn: `{ persona, seed, device, input, language, theme, account, interruption, partner }`. |
-| `runDir` | The run folder's absolute path. |
+| `runDir` | The run folder's absolute path (`qa` has no `runDir` of its own). |
 | `e2e` | `tests/e2e/support.js`: `fixture(path)`, `imageInput(page)`, `settled(page)`, `store(page, name, read)`, `cellPoint`, `pixelPoint`, `drag`, `chars`, `tab`, `pickLayer`, `saveAs`, `autosaved` and the rest. |
 | `social` | `tests/e2e/social-support.js`: the fake SOCIAL server (`fakeServer`, `fakeRoom`, `member`, `goLive`, `watcherPage`, `artistPage` and the rest). |
 | `files` | `tests/qa/files.js`: the ANSI files the personas bring (see [Files](#files)). |
@@ -98,30 +109,51 @@ The answer `qa:send` prints is `{ "ok": true, "value": ..., "ms": ... }`, or `{ 
 keeps serving the next snippet. What a failed snippet recorded before it failed stays recorded.
 
 Keep each snippet to a step or part of one, so it finishes well inside `QA_SNIPPET_MS`. A snippet that times out isn't
-stopped, only given up on: it may still be acting on the page when the next one starts. If one times out, send a
+stopped, only given up on: it may still be acting on the page when the next one starts. Every Playwright action gives
+up after 10 s and every navigation after 30 s (`actionTimeout` and `navigationTimeout` in
+`tests/qa/playwright.config.js`), so a leftover snippet fails at its next action rather than acting much later; your
+own waits (`waitForTimeout`, `expect.poll`, a loop) aren't bounded, so wait in small pieces. If one times out, send a
 snippet that only looks (a screenshot, `page.url()`) before you go on. Raise `QA_SNIPPET_MS` when you start the session
-if a step really waits longer (opening the long file on a slow step, say).
+if a step really waits longer (opening the long file on a slow step, say); above 180 s, raise `QA_WAIT` (in seconds)
+for `qa:send` too, or it gives up before the snippet does.
 
-A step stays open until the next `qa.step`, so one step can take several snippets. `page` is always the newest page:
-once a second page is open (a second tab, or a watcher or artist a `social` helper opens), hold the persona's own as
-`context.pages()[0]` and pass the page you mean to every call. The SOCIAL server is cut off for
+A step stays open until the next `qa.step`, so one step can take several snippets. Calling `qa.step` again with the
+open step's name carries on with that step (a retry after a failed snippet), so it's never counted twice. `page` is
+always the newest page: once a second page is open (a second tab, or a watcher or artist a `social` helper opens), hold
+the persona's own as `context.pages()[0]` and pass the page you mean to every call. `qa.shot`, `qa.frames` and
+`qa.memory` throw without one then, naming the call to make. The SOCIAL server is cut off for
 the whole browser unless a snippet fakes it for a page with `social.fakeServer(page, ...)`. Import Node's own modules
 (`import { join } from 'node:path'`) as you like, but reach the repo's code through the arguments above, not by
 relative path: the snippet runs from the inbox.
+
+What earlier runs got wrong, so you don't:
+
+- **A dialog handler outlives its snippet.** `page.on('dialog', ...)` answers every dialog after it, in every later
+  step. For one dialog use `page.once('dialog', ...)`; remove any `page.on` handler (`page.off('dialog', handler)`)
+  before the step ends.
+- **Check what has focus before you type** (as in [Walking a step](#walking-a-step), step 7), so stray keys don't land
+  in the art or a field.
+- **Give your own locators short timeouts**, around 5 s (`locator.click({ timeout: 5_000 })`,
+  `expect(locator).toBeVisible({ timeout: 5_000 })`), so one that never matches fails fast.
+- **Bring a page to the front before you drive it.** With several pages open, call `await page.bringToFront()` on the
+  page you're about to drive: a page behind another stalls its timers and animations in headless Chromium, so the
+  snippet hangs, and `qa.frames` there gets no frames. Take every screenshot from the page you mean, and name that
+  page in the shot's name.
+- **`qa.probe(kind, note)` takes two arguments.** Put everything in the note; a third argument throws.
 
 ### The `qa` recorder
 
 | Call | What it records |
 | --- | --- |
-| `qa.step(name, { rated, want })` | Starts a step. `rated: true` when the script's step says `Rated: yes`; `want` is the keystroke path the script wants. A rated step must be rated before the next `qa.step`, or that call throws. |
+| `qa.step(name, { rated, want })` | Starts a step. `rated: true` when the script's step says `Rated: yes`; `want` is the keystroke path the script wants. A rated step must be rated before the next `qa.step`, or that call throws. The open step's name again carries on with that step, as first opened. |
 | `qa.rate(how, want)` | Rates the open step: `'keys'`, `'keysLong'` or `'mouse'` (see [The keyboard score](#the-keyboard-score)). `want` replaces the step's wanted path. |
-| `qa.probe(kind, note)` | A probe tried at the open step: one of the [probe kit](#the-probe-kit)'s kinds, and what you did and what came of it. |
+| `qa.probe(kind, note)` | A probe tried at the open step: one of the [probe kit](#the-probe-kit)'s kinds, and what you did and what came of it. The note is required, and there's no third argument. |
 | `qa.note(text)` | A note on the open step: anything the reviewer should know that isn't a finding (a step skipped and why, a known difference you saw, timings that aren't real). The report prints it under the step. |
-| `qa.shot(name, { page, fullPage, timeout })` | A screenshot of the newest page (or `page`) into `shots/`, kept with the open step. Returns its path, relative to the run folder. |
+| `qa.shot(name, { page, fullPage, timeout })` | A screenshot of `page` into `shots/`, kept with the open step. Returns its path, relative to the run folder. `page` may be left out only while one page is open. |
 | `qa.time(name, fn, budget)` | Runs `fn` and records its time against `budget`, a number of ms or a budget's name (see [Budgets](#budgets)). Returns the ms. |
-| `qa.frames(name, fn, page)` | Records the worst gap between animation frames while `fn` runs, against the `frame` budget, and how many were longer than `longFrame`. Returns `{ worst, long }`. Don't reload or navigate inside it. |
-| `qa.memory(page)` | Records the page's JavaScript heap size under the open step. Returns the bytes. |
-| `qa.finding({ kind, severity, expected, actual, repro, shot, step })` | A finding (see [What's a finding](#whats-a-finding)). `expected`, `actual` and `repro` are required; `step` defaults to the open step's name. Returns its id (`F1`, `F2` ...). |
+| `qa.frames(name, fn, page)` | Records the worst gap between animation frames on `page` while `fn` runs, against the `frame` budget, and how many were longer than `longFrame`. Returns `{ worst, long }`. When fewer than two frames came (a page behind another stalls), it records a note on the step instead of a timing and returns `{ worst: null, long: null }`: bring the page to the front and try again. `page` may be left out only while one page is open. Don't reload or navigate inside it. |
+| `qa.memory(page)` | Records the page's JavaScript heap size under the open step. Returns the bytes. `page` may be left out only while one page is open. |
+| `qa.finding({ kind, severity, expected, actual, repro, shot, step })` | A finding (see [What's a finding](#whats-a-finding)). `expected`, `actual` and `repro` are required; `shot`, when given, must be a file in the run folder (a path `qa.shot` returned); `step` defaults to the open step's name. Returns its id (`F1`, `F2` ...), which the report prints in the finding's heading. |
 | `qa.run` | The run record itself, as `run.json` has it. |
 | `qa.page` | The newest page, the same as the `page` argument at the time you read it. |
 | `qa.save()` | Writes `run.json` now. Every recording call already does. |
@@ -189,8 +221,9 @@ says beside you for the keyboard score. Then, for each step of the script:
    name. The `e2e` helpers are for setting up and checking, not for walking the step: one that does the step for you
    hides the friction you're there to find. Most of them, and the `social` helpers, find controls by their English
    names, so on a French run they fail; `fixture`, `imageInput`, `settled`, `store`, `cellPoint`, `pixelPoint` and `drag` work in any language.
-4. **Run the step's named probes, and at least two kit probes of your own choosing**, recording each with
-   `qa.probe(kind, note)`. Pick what this person would actually run into at this step.
+4. **Run the step's named probes, and at least two kit probes of your own choosing** beyond them, recording each with
+   `qa.probe(kind, note)`. A named probe doesn't count toward the two: reviews of earlier runs found steps with only
+   the named ones. Pick what this person would actually run into at this step.
 5. **Look at a screenshot of the result.** Open the image file and look at it. Don't rely only on the DOM or the
    stores: overlap, clipping, cut-off text, contrast, a layout that jumped and a wrong picture only show there.
 6. **Time what the persona waits on**, with `qa.time` (a click's response, a setting, opening or exporting a file)
@@ -453,10 +486,11 @@ The reviewer is a different agent from the one that ran. When the run ends:
 1. Check the checkout is still at the run's commit: `git rev-parse HEAD` against `commit` in `run.json`. If it isn't,
    say so at the top of `review.md`, with both commits, since a reproduction then tests a different app.
 
-2. Read `report.md` and `run.json`, and open every screenshot in `shots/`. Look at each with fresh eyes: a visual
-   problem the run missed is yours to add.
+2. Read `report.md` and `run.json` (a run split across sessions has a folder for each: read them all), and open every
+   screenshot a finding cites, and at least one for each step. Look at each with fresh eyes: a visual problem the run
+   missed is yours to add.
 3. Reproduce each `bug` and `performance` finding in a fresh session at the same seed (`QA_PERSONA=<persona>
-   QA_SEED=<seed> npm run qa`, which makes its own `-2` folder), following the finding's repro. A timing reproduces when it's over its budget again. Other kinds you judge
+   QA_SEED=<seed> npm run qa`, which makes a new folder), following the finding's repro. A timing reproduces when it's over its budget again. Other kinds you judge
    from the report and the screenshots, reproducing where you doubt one.
 4. Mark each finding `confirmed`, `dropped` (with why: didn't reproduce, a style opinion, not this persona's problem,
    Safari- or Firefox-only) or `known` (on the persona's Known list).
@@ -469,7 +503,7 @@ The reviewer is a different agent from the one that ran. When the run ends:
      with the rating it should have;
    - the notes under each step, and the "Page errors" and "Session warnings" sections, each read and judged: a page error the steps didn't explain
      is worth a finding of its own.
-6. Write `review.md` in the run's folder (not your reproduction's): the run's folder name, then each finding by its id
+6. Write `review.md` in the run's folder (the first, for a split run; not your reproduction's): the run's folder names, then each finding by its id
    with its mark and a line on why, then your own findings (as the run's are written: kind, severity, step, expected,
    actual, repro, shot), then the flags.
 
