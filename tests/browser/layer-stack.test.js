@@ -136,6 +136,9 @@ test('the first shape is refused with the most layers, since the vector layer it
   expect(project.addShapes([rectShape(2, 2, 6, 6, { fill: '#ff0000' })])).toEqual([]); // a paste, an SVG
   project.commitEdit();
   expect(toastMessage.value).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`);
+  toastMessage.value = null;
+  expect(project.addSvg('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="4" height="4" fill="red"/></svg>')).toEqual([]);
+  expect(toastMessage.value).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`); // not "Left out: other parts."
   expect(project.shapes.size).toBe(0);
   expect(project.layers).toHaveLength(MOST_LAYERS);
   await expect(readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }))).resolves.toBeTruthy();

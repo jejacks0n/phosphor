@@ -47,6 +47,14 @@ function pickedVector(project) {
   return id !== 'vector' && project.layerById(id)?.kind === 'vector' ? id : undefined;
 }
 
+// Whether a first shape is refused because the vector layer it brings would be one more than a drawing holds, with a
+// toast saying so.
+function bringsTooMany(project) {
+  if (project.hasVectorLayer || project.layers.length < MOST_LAYERS) return false;
+  toast(t('layers.full', { n: MOST_LAYERS }));
+  return true;
+}
+
 export const vectorActions = {
   // The shapes as they now are, part of the edit that's open (or one begun for them). Not while it changes an art
   // layer someone else in the room is drawing in (lockedBy): it can be selected, not moved, restacked or deleted, and
@@ -56,10 +64,7 @@ export const vectorActions = {
     this.ensureLayer();
     if (!this.paintLayer) return false;
     if (next === this.shapes) return true;
-    if (next.size && !this.hasVectorLayer && this.layers.length >= MOST_LAYERS) {
-      toast(t('layers.full', { n: MOST_LAYERS }));
-      return false;
-    }
+    if (next.size && bringsTooMany(this)) return false;
     const locked = lockedAmong(this, Object.values(this._locks).map(({ key }) => key).filter((key) => next.get(key) !== this.shapes.get(key)));
     if (locked) {
       toast(locked);
@@ -171,6 +176,7 @@ export const vectorActions = {
       toast(refusal);
       return [];
     }
+    if (art.items.length && bringsTooMany(this)) return []; // said as that, not as parts left out
     const room = (n) => Math.max(1, n - 4);
     const s = Math.min(1, ...[[this.cols, art.width], [this.rows, art.height]].filter(([, n]) => n > 0).map(([c, n]) => room(c) / n));
     const fit = [s, 0, 0, s, (this.cols - art.width * s) / 2, (this.rows - art.height * s) / 2];
