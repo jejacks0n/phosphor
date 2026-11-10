@@ -91,6 +91,8 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   server's, documented in `server/`.
 - **Reference files are claims.** Never run `npm run test:update` to make a failing test pass
   without reading `git diff tests/fixtures/reference` and knowing why every change is right.
+- **QA scripts are claims too:** a change to a feature changes the persona scripts in `docs/qa/personas/`
+  that walk it, in the same work ([docs/qa/README.md](docs/qa/README.md)).
 - **A failing test blocks the deploy.** Don't skip or loosen a test to get past it; fix the cause,
   or say plainly that the test was wrong and why.
 - Bug reports with a file: the file goes in `tests/fixtures/`, a case goes in its test (the routine is

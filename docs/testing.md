@@ -202,3 +202,10 @@ tests/fixtures/reference` and commit only what you meant to change.
 
 `tests/fixtures/README.md` lists every fixture and how it was made (`npm run fixtures` rebuilds the
 generated ones).
+
+## QA runs
+
+QA runs are something else: an agent walks a persona's script (a named person doing their real job) through the
+app in a real browser, probing around each step for bugs, visual problems, slow steps and friction, scores the
+keyboard, and a second agent reviews what it found. They aren't tests and aren't part of CI; they run on demand,
+and a confirmed bug still gets its failing test here when it's fixed. How a run works: [docs/qa/README.md](qa/README.md).
