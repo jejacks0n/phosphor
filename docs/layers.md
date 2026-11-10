@@ -45,7 +45,8 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   in one visit; **Done**, Escape or a tap outside closes it.
 - In a room, only the host can pick the base: its row is off for an artist. A rename or an eye is yours
   alone there; someone joining gets the host's names, with every layer showing.
-- Inside an [art layer](vector.md#art-layers) the vector row shows as picked and the base row is off;
+- Inside an [art layer](vector.md#art-layers) its vector layer's row shows as picked, and that layer's eye decides
+  whether it can be stepped into and drawn in; the base row is off;
   picking the edit layer steps out of the art layer.
 - **Saving.** A `.phosphor` file and autosave keep every layer with what's on it, its name, its eye and its
   character settings. A drawing with no more than the base, one vector layer above it and one layer on top, all
