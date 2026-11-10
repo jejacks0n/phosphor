@@ -203,9 +203,14 @@ export const editLayerActions = {
   },
 
   // Swap a cell's two pixels in the paint layer, using the real colors from the output canvas
-  // (cells may be normalized, e.g. a background forced to black in ASCII mode). On the base, its halves.
+  // (cells may be normalized, e.g. a background forced to black in ASCII mode). On the base, its halves. On a layer above
+  // the lower group (not in the output canvas), its pixels as they show up to it, in stored colors.
   flipPaint(col, row) {
     if (onBottom(this)) return this.flipBase([{ col, row }]);
+    if (this.editIsUpper) {
+      const [top, bottom] = [2 * row, 2 * row + 1].map((y) => hex2rgb(this.rawColorAt(col, y, { upTo: this.editId })));
+      return this.paintEditPixels([{ x: col, y: 2 * row, ...bottom, alpha: 1 }, { x: col, y: 2 * row + 1, ...top, alpha: 1 }]);
+    }
     const outputCanvas = this.renderer.outputCanvas;
     if (!outputCanvas) return;
     // Safari requires explicit sRGB to avoid color space mismatch (P3).

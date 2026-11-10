@@ -706,3 +706,26 @@ test('with the base picked it lands on a new layer named after the file', async 
   expect(ids(project)).toEqual(['base', id, 'edit']);
   expect(project.paintOf(id).hasPaint).toBe(true);
 });
+
+test('Flip on an upper cells layer swaps its own paint, and a bare cell takes the flip of what shows under it', async () => {
+  const { project, workspace } = await blank();
+  project.paintStroke([{ x: 5, y: 10, alpha: 1 }], '#00ff00'); // Layer 1 (the lower group): green over yellow at 5,5
+  project.paintStroke([{ x: 5, y: 11, alpha: 1 }], '#ffff00');
+  project.commitEdit();
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.paintStroke([{ x: 2, y: 4, alpha: 1 }], '#ff0000'); // Layer 2: red over blue at 2,2
+  project.paintStroke([{ x: 2, y: 5, alpha: 1 }], '#0000ff');
+  project.commitEdit();
+  await settle(project);
+  const colors = (col, row) => [cellAt(project, col, row).fg.hex, cellAt(project, col, row).bg.hex].map((hex) => hex.toLowerCase());
+  expect(colors(2, 2)).toEqual(['#0000ff', '#ff0000']);
+  project.flipCell(2, 2);
+  project.flipCell(5, 5);
+  project.commitEdit();
+  await settle(project);
+  expect(colors(2, 2)).toEqual(['#ff0000', '#0000ff']);
+  expect(colors(5, 5)).toEqual(['#00ff00', '#ffff00']);
+  expect(project.paintOf(top).pixelAt(5, 10)).toMatchObject({ r: 255, g: 255, b: 0 });
+  expect(project.paintOf('edit').pixelAt(5, 10)).toMatchObject({ r: 0, g: 255, b: 0 }); // the layer under is untouched
+});
