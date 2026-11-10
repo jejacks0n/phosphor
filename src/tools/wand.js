@@ -16,7 +16,7 @@ function matcher(project, workspace, view) {
   const tolerance = workspace.wandTolerance;
   const near = (a, b) => colorDistance(a.r, a.g, a.b, b.r, b.g, b.b) <= tolerance;
   if (view === 'input') {
-    const output = project.renderer.outputCanvas;
+    const output = project.renderer.shownCanvas(); // with the upper layers' pixels, as the view shows
     if (!output) return null;
     const { data } = ctx2d(output).getImageData(0, 0, project.cols, project.rows);
     const rgb = (i) => ({ r: data[4 * i], g: data[4 * i + 1], b: data[4 * i + 2] });

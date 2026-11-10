@@ -233,3 +233,16 @@ test('Delete takes away what is on the layers lit: Edit the drawing, Base the pi
   expect(project.baseColorAt(9, 9)).toBe('#000000');
   expect(project.baseColorAt(...out)).toBe(kept);
 });
+
+test('the pixel view selects by what shows: paint on a layer above the lower group counts', async () => {
+  const { project, workspace, click } = await scene();
+  workspace.editorTab = 'input';
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.paintStroke([{ x: 3, y: 3, alpha: 1 }, { x: 4, y: 3, alpha: 1 }, { x: 9, y: 9, alpha: 1 }], '#ff00ff');
+  project.commitEdit();
+  await settle(project);
+  workspace.wandContiguous = false;
+  click(3, 3, {}, 'input');
+  expect([...workspace.wand.mask].filter(Boolean).length).toBe(3);
+});
