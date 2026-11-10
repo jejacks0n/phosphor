@@ -120,6 +120,7 @@ test('a QA session', async ({ browser }) => {
 
     run.commit = git('rev-parse', 'HEAD');
     run.scriptCommit = git('log', '-1', '--format=%H', '--', `docs/qa/personas/${traits.persona}.md`);
+    run.dirty = git('status', '--porcelain') !== null; // uncommitted changes are in the build but not in the commit
     run.machine = { os: `${os.platform()} ${os.release()}`, cpu: os.cpus()[0].model, browser: browser.version(), renderer: await renderer(page) };
     qa.save();
 
@@ -137,7 +138,7 @@ test('a QA session', async ({ browser }) => {
         }
         const args = { page: qa.page, context, browser, qa, traits, ...namespaces };
         const result = await runSnippet(join(inbox, name), args, snippetMs);
-        if (!result.ok) result.shot = await qa.shot(`failed ${name}`).catch(() => null);
+        if (!result.ok) result.shot = await qa.shot(`failed ${name}`, { page: qa.page }).catch(() => null);
         run.snippets.push({ file: name, ok: result.ok, ms: result.ms, error: result.error ?? null });
         qa.save();
         writeWhole(join(runDir, 'outbox', `${name}.json`), asJson(result));

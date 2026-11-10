@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { test, expect } from '@playwright/test';
 import { DEVICES, drawTraits } from './setup.js';
 import { PAGE_ERRORS_KEPT, makeQa, newRun, qaContext, renderer } from './qa.js';
+import { keyboardScore } from './score.js';
 
 const runDirs = [];
 test.afterAll(() => runDirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
@@ -122,5 +123,74 @@ test('qa refuses a finding that leaves a part out, and ends a step left unrated 
   qa.end();
   expect(qa.run.steps[0].rated).toBe(false);
   expect(qa.run.warnings).toEqual([{ step: 'Forgot to rate', text: expect.stringContaining('never rated') }]);
+  await context.close();
+});
+
+test('qa bounds every action and navigation, and builds against the cut-off SOCIAL server only', async ({ browser }) => {
+  test.setTimeout(60_000);
+  const { context, page } = await start(browser, maya);
+  await expect(page.locator('#nothing-has-this-id').click()).rejects.toThrow('Timeout 10000ms exceeded');
+  await context.route('**/never-answers', () => {}); // a request held open forever
+  await expect(page.goto('/never-answers')).rejects.toThrow('Timeout 30000ms exceeded');
+  await context.close();
+  expect(test.info().config.webServer.command).toContain('VITE_SOCIAL_API=http://localhost:8787 ');
+});
+
+test('qa.frames stops its frame loop when fn throws, and notes a page whose frames stall rather than time it', async ({ browser }) => {
+  const { context, qa, page } = await start(browser, maya);
+  qa.step('Frames');
+  await expect(qa.frames('throws', async () => { throw new Error('a broken drag'); })).rejects.toThrow('a broken drag');
+  expect(await page.evaluate(() => window.__qaFrames.on)).toBe(false);
+
+  await page.evaluate(() => { window.requestAnimationFrame = () => 0; }); // a page whose frames never come, as behind another
+  expect(await qa.frames('stalled', () => page.waitForTimeout(200))).toEqual({ worst: null, long: null });
+  const [step] = qa.run.steps;
+  expect(step.timings).toEqual([]);
+  expect(step.notes).toEqual([expect.stringContaining('qa.frames "stalled"')]);
+  await context.close();
+});
+
+test('qa.shot, qa.frames and qa.memory need their page once a second page is open', async ({ browser }) => {
+  const { context, qa, page } = await start(browser, maya);
+  qa.step('Two pages');
+  expect(await qa.memory()).toBeGreaterThan(0);
+  const second = await context.newPage();
+  await expect(qa.shot('which')).rejects.toThrow('qa.shot(name, { page })');
+  await expect(qa.frames('which', async () => {})).rejects.toThrow('qa.frames(name, fn, page)');
+  await expect(qa.memory()).rejects.toThrow('qa.memory(page)');
+  expect(await qa.shot('this one', { page })).toMatch(/this-one\.png$/);
+  await second.close();
+  await context.close();
+});
+
+test('qa.probe takes a kind and a note, and nothing more', async ({ browser }) => {
+  const { context, qa } = await start(browser, maya);
+  qa.step('Probe');
+  expect(() => qa.probe('again')).toThrow('a probe needs its note');
+  expect(() => qa.probe('again', '')).toThrow('a probe needs its note');
+  expect(() => qa.probe('again', 'pressed it twice', 'it worked')).toThrow('qa.probe takes two arguments');
+  expect(qa.run.steps[0].probes).toEqual([]);
+  await context.close();
+});
+
+test('qa.step with the open step\'s name carries on with it, so a retry counts once', async ({ browser }) => {
+  const { context, qa } = await start(browser, maya);
+  qa.step('2. Pick the pencil', { rated: true, want: 'P' });
+  qa.rate('keys');
+  qa.probe('again', 'first try');
+  qa.step('2. Pick the pencil', { rated: true, want: 'P' });
+  qa.probe('speed', 'the retry');
+  expect(qa.run.steps).toHaveLength(1);
+  expect(qa.run.steps[0]).toMatchObject({ how: 'keys', probes: [{ kind: 'again' }, { kind: 'speed' }] });
+  expect(keyboardScore(qa.run.steps)).toMatchObject({ rated: 1 });
+  await context.close();
+});
+
+test('qa.finding refuses a shot that isn\'t in the run folder', async ({ browser }) => {
+  const { context, qa } = await start(browser, maya);
+  qa.step('Shot');
+  const finding = (shot) => qa.finding({ kind: 'bug', severity: 'minor', expected: 'a', actual: 'b', repro: 'c', shot });
+  expect(() => finding('shots/999-made-up.png')).toThrow('shots/999-made-up.png');
+  expect(finding(await qa.shot('real'))).toBe('F1');
   await context.close();
 });

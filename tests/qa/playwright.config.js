@@ -28,10 +28,14 @@ export default defineConfig({
     channel: 'chromium', // the full browser's headless mode, which has the GPU; the headless shell doesn't
     headless: true,
     launchOptions,
+    // A snippet's action or navigation gives up rather than hang, so one left running can't act much later.
+    actionTimeout: 10_000,
+    navigationTimeout: 30_000,
   },
-  // Never another checkout's server: a port that's taken stops the run.
+  // Never another checkout's server: a port that's taken stops the run. The SOCIAL server is pinned to the one
+  // a run cuts off, so a local env file can't point a QA build past the cut-off.
   webServer: {
-    command: `VITE_SOCIAL_STUN=none npx vite build --outDir dist-qa && npx vite preview --outDir dist-qa --port ${port} --strictPort`,
+    command: `VITE_SOCIAL_API=http://localhost:8787 VITE_SOCIAL_STUN=none npx vite build --outDir dist-qa && npx vite preview --outDir dist-qa --port ${port} --strictPort`,
     cwd: root,
     url: `http://localhost:${port}`,
     reuseExistingServer: false,

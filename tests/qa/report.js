@@ -35,6 +35,7 @@ export function renderReport(run) {
   out.push(`# QA run: ${persona}, seed ${seed}`, '');
   out.push(`- Traits: ${Object.entries(traits).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   out.push(`- Commit: ${commit}, script commit: ${scriptCommit}`);
+  if (typeof run.dirty === 'boolean') out.push(`- Uncommitted changes: ${run.dirty ? 'yes' : 'no'}`);
   out.push(`- Machine: ${machine.os}, ${machine.cpu}, ${machine.browser}, ${machine.renderer}`, '');
 
   const { score, rated, costs } = keyboardScore(run.steps);
@@ -47,7 +48,7 @@ export function renderReport(run) {
   const findings = [...run.findings].sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity));
   if (!findings.length) out.push('None.', '');
   for (const f of findings) {
-    out.push(`### ${f.severity}, ${f.kind}: ${f.step}`, '');
+    out.push(`### ${f.id} ${f.severity}, ${f.kind}: ${f.step}`, '');
     out.push(`- Expected: ${f.expected}`, `- Actual: ${f.actual}`, `- Repro: ${f.repro}`);
     if (f.shot) out.push(`- Shot: ${f.shot}`);
     out.push('');
