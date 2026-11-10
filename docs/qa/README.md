@@ -29,7 +29,8 @@ Some traits shape the run beyond the browser:
 
 - `account` (Juno and Theo): `guest` or `signedIn`. Fake the server for the page as that person:
   `social.fakeServer(page, { me: null })` for a guest, `social.fakeServer(page, { me: social.member() })` signed in.
-  A step the fake server can't reach is skipped with a note saying so.
+  Fake the server before the person opens SOCIAL: a page that opened it unfaked has already been refused. A step the
+  fake server can't reach is skipped (see [A step that can't be done](#a-step-that-cant-be-done)).
 - `partner` (Juno only): the persona whose kind of work Juno draws in her room. Where Juno's script says to draw,
   draw as that persona would, with their files and sizes.
 - `interruption`: see [Interruptions](#interruptions).
@@ -50,7 +51,7 @@ or until it's stopped (Ctrl+C or a kill); every way of stopping writes `report.m
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `QA_PERSONA` | (required) | `maya`, `dex`, `priya`, `juno`, `theo`, `sam`, `lea` or `walt`. Anything else stops before the build. |
+| `QA_PERSONA` | (required) | `maya`, `dex`, `priya`, `juno`, `theo`, `sam`, `lea` or `walt`. A misspelled one stops before the build; an unset one stops the session as it starts, after the build. |
 | `QA_SEED` | random | A whole number. The same persona and seed always draw the same traits. Unset, a random seed is drawn and recorded. |
 | `QA_PORT` | `4210` | The port the QA build is served on. Never `5173`, `4180` or `4181` (refused). A port in use stops the run: it never tests someone else's server. |
 | `QA_SNIPPET_MS` | `120000` | How long a snippet may run before it's recorded as timed out. |
@@ -101,7 +102,9 @@ stopped, only given up on: it may still be acting on the page when the next one 
 snippet that only looks (a screenshot, `page.url()`) before you go on. Raise `QA_SNIPPET_MS` when you start the session
 if a step really waits longer (opening the long file on a slow step, say).
 
-A step stays open until the next `qa.step`, so one step can take several snippets. The SOCIAL server is cut off for
+A step stays open until the next `qa.step`, so one step can take several snippets. `page` is always the newest page:
+once a second page is open (a second tab, or a watcher or artist a `social` helper opens), hold the persona's own as
+`context.pages()[0]` and pass the page you mean to every call. The SOCIAL server is cut off for
 the whole browser unless a snippet fakes it for a page with `social.fakeServer(page, ...)`. Import Node's own modules
 (`import { join } from 'node:path'`) as you like, but reach the repo's code through the arguments above, not by
 relative path: the snippet runs from the inbox.
@@ -113,6 +116,7 @@ relative path: the snippet runs from the inbox.
 | `qa.step(name, { rated, want })` | Starts a step. `rated: true` when the script's step says `Rated: yes`; `want` is the keystroke path the script wants. A rated step must be rated before the next `qa.step`, or that call throws. |
 | `qa.rate(how, want)` | Rates the open step: `'keys'`, `'keysLong'` or `'mouse'` (see [The keyboard score](#the-keyboard-score)). `want` replaces the step's wanted path. |
 | `qa.probe(kind, note)` | A probe tried at the open step: one of the [probe kit](#the-probe-kit)'s kinds, and what you did and what came of it. |
+| `qa.note(text)` | A note on the open step: anything the reviewer should know that isn't a finding (a step skipped and why, a known difference you saw, timings that aren't real). The report prints it under the step. |
 | `qa.shot(name, { page, fullPage, timeout })` | A screenshot of the newest page (or `page`) into `shots/`, kept with the open step. Returns its path, relative to the run folder. |
 | `qa.time(name, fn, budget)` | Runs `fn` and records its time against `budget`, a number of ms or a budget's name (see [Budgets](#budgets)). Returns the ms. |
 | `qa.frames(name, fn, page)` | Records the worst gap between animation frames while `fn` runs, against the `frame` budget, and how many were longer than `longFrame`. Returns `{ worst, long }`. Don't reload or navigate inside it. |
@@ -132,12 +136,11 @@ Besides these, the session records on its own:
 - the page's errors and console errors, under the step they happened in (each kept once with a count);
 - the machine, the browser and the GPU renderer.
 
-**A note** (a skipped step and why, a known difference you saw, anything the reviewer should know that isn't a
-finding) goes in the run's warnings, which the report prints under "Session warnings":
+The report's "Session warnings" are the harness's own (a snippet's stray error, a step left unrated, a stop); what
+you want to tell the reviewer goes in a note, on the step it's about:
 
 ```js
-qa.run.warnings.push({ step: qa.run.steps.at(-1)?.name ?? null, text: 'Note: input/qa/ is missing, so step 14 is skipped.' });
-qa.save();
+qa.note('input/qa/ is missing, so this step is skipped.');
 ```
 
 ### An example
@@ -184,8 +187,8 @@ says beside you for the keyboard score. Then, for each step of the script:
    says, in the drawn language, so you do too: read the page as they would (a screenshot, or
    `await page.locator('body').ariaSnapshot()` for the names) and act on what you find there, by role and visible
    name. The `e2e` helpers are for setting up and checking, not for walking the step: one that does the step for you
-   hides the friction you're there to find. Most of them find controls by their English names, so on a French run
-   they fail; `fixture`, `imageInput`, `settled`, `store`, `cellPoint`, `pixelPoint` and `drag` work in any language.
+   hides the friction you're there to find. Most of them, and the `social` helpers, find controls by their English
+   names, so on a French run they fail; `fixture`, `imageInput`, `settled`, `store`, `cellPoint`, `pixelPoint` and `drag` work in any language.
 4. **Run the step's named probes, and at least two kit probes of your own choosing**, recording each with
    `qa.probe(kind, note)`. Pick what this person would actually run into at this step.
 5. **Look at a screenshot of the result.** Open the image file and look at it. Don't rely only on the DOM or the
@@ -197,6 +200,25 @@ says beside you for the keyboard score. Then, for each step of the script:
    `page.evaluate(() => [document.activeElement?.tagName, document.activeElement?.getAttribute('aria-label')])`;
    `BODY` means focus went nowhere.
 8. **Record findings** with `qa.finding`, each with a screenshot or a timing.
+
+### A step that can't be done
+
+When a step can't be done (the control isn't there, the feature is gone, the flow is blocked), open the step as the
+script has it, try the path, and record what stopped you:
+
+- a rated step is rated `mouse`, with `want` set to the path the script wants;
+- an `oversight` finding, or a `bug` when the docs say it works;
+- a note on the step saying what you tried;
+
+then go on to the next step. A step skipped for something outside the app (the `input/qa/` packs missing, a step the
+fake SOCIAL server can't reach) is opened with `rated: false` and gets only a note, saying why.
+
+### The end of a run
+
+After the last section's Free time, send `npm run qa:send -- <persona> --end`. The run is then handed to the reviewer
+(below), with the run folder's path.
+
+### Pointing and driving
 
 `e2e.cellPoint` and `e2e.pixelPoint` assume the whole grid is in view; when the view is zoomed or scrolled (most
 grids on a tablet or phone), they give points off the canvas. Check a point falls inside the visible canvas
@@ -238,7 +260,7 @@ value for `qa.probe`:
 | `again` | Do it twice. | Export the same file twice in a row; add a layer, then add another right away. |
 | `undo-redo` | Undo, redo, undo again, and redo after a different edit (which should have nothing to redo). | Draw a stroke, Cmd+Z, Shift+Cmd+Z, Cmd+Z, then type a letter and try to redo; undo a slider's move and check both the picture and the slider went back. |
 | `back-out` | Leave midway: Escape, Cancel, a click away. | Open the save dialog, change the name, press Escape, and open it again; start a drag-select and press Escape before letting go. |
-| `interrupt` | Break off and come back: reload, Back, a second tab, switch layer, frame or tab. | Halfway through typing, switch to PIXEL and back; reload right after a stroke and check autosave brought it back. |
+| `interrupt` | Break off and come back: reload, Back, a second tab, switch layer, frame or tab. | Halfway through typing, switch to PIXEL and back; reload a second and a half after a stroke and check autosave brought it back. |
 | `out-of-order` | Do it with nothing to act on, or before it makes sense. | Press Delete with no selection; paint on a hidden layer, or an empty one. |
 | `extremes` | Empty, zero, huge, junk pasted in, long names, emoji and wide characters, the persona's biggest sizes. | Rename a layer to 200 characters with emoji in it; set the width to 0, then to 99999. |
 | `speed` | Rapid repeats, a held key, undo mashed. | Press Cmd+Z thirty times as fast as the page takes it; hold an arrow key moving a selection for two seconds (`keyboard.down` again and again sends repeats, then `up`). |
@@ -250,17 +272,24 @@ drew a dot and redo was off, as it should be')`. A probe that turns something up
 ## Free time
 
 Every section of a script ends with **Free time**. Open it as its own step, not rated
-(`qa.step('Free time: <section>')`), and make at least three off-script moves this person would try next, each
-recorded as `qa.probe('free', ...)`: the control they'd reach for, the thing they'd want to do with what they just
+(`qa.step('Free time: <section>')`), and make three to five off-script moves this person would try next, each
+recorded as `qa.probe('free', ...)`. Free time's probes are all `free`: the rule of two kit probes a step doesn't
+apply to it. The moves: the control they'd reach for, the thing they'd want to do with what they just
 made, the mistake they'd make. Use what you've seen of the person so far, and what makes them give up.
 
 ## Interruptions
 
 The drawn `interruption` trait adds one break to the run, besides any `interrupt` probes:
 
-- **`reload`**: once, in the middle of a section, at a moment with unsaved work (right after an edit, not after a save
-  or export). Reload with `page.reload()`, then check that autosave brought the work back as it was: the layers, the
-  undo history, the tab, the settings. Anything lost is a finding.
+- **`reload`**: once, in the middle of a section, at a moment with unsaved work: edits made since the last time the
+  persona saved a file. Autosave writes a second after edits stop (at least every 10 s while they go on), so wait for
+  it as a person pausing would: a second and a half after the last edit (`await page.waitForTimeout(1500)`).
+  `e2e.autosaved(page)` only says the document has been written once, so it's no use after the first write. Reload
+  with `page.reload()`, then check autosave brought the work back as a project file keeps it: the picture and its
+  settings, every layer with what's on it (its name, its eye, its character settings), shapes, frames, the file name
+  and that there are unsaved changes; and the address brings back the tab. Undo starts empty after a reload, by
+  design: that isn't a finding. Losing work that was given time to autosave is a finding; losing the last second
+  before the reload isn't.
 - **`secondTab`**: open the app in a second page of the same context (`const second = await context.newPage(); await
   second.goto('/');`), look at what the second tab shows and does, then close it (`await second.close()`) and come
   back to the first, which is `qa.page` again. Check the first tab's work is as it was.
@@ -368,7 +397,7 @@ and a few ms of the time are the browser's round trip. Take `qa.memory` at the s
 growth over a long session shows.
 
 Timings are only real on the GPU. The report's first line says when the renderer is software or unknown; then don't
-file `performance` findings, and add a note saying why.
+file `performance` findings; note it on the first step.
 
 ## Files
 
@@ -388,8 +417,9 @@ file `performance` findings, and add a note saying why.
   ignored by git: never commit anything from it or copy its files into `tests/fixtures/`. Its path from a snippet is
   `join(runDir, '..', '..', 'input', 'qa', 'packs')`. The packs hold .ans, .asc and .txt, and also .xb, .sue, .tnd,
   .nfo and .diz files the app may not open: trying those is part of a run, and what happens is recorded (a refusal
-  that says why is fine; nothing at all, or the wrong art, is a finding). When the folder is there, use it and add a
-  note saying so. When it isn't, skip the steps that need it and add a note naming them.
+  that says why is fine; nothing at all, or the wrong art, is a finding). When the folder is there, use it and say so
+  in a note on the first step that does. When it isn't, skip the steps that need it, each opened and noted (see
+  [A step that can't be done](#a-step-that-cant-be-done)).
 
 Exports: wait for the download and keep it in the run folder (`const download = await page.waitForEvent('download')`
 around the click that saves, then `await download.saveAs(join(runDir, 'exports', download.suggestedFilename()))`).
@@ -404,30 +434,39 @@ const shown = await terminal.terminalCells(bytes, { cols: app.cols, rows: app.ro
 const differences = terminal.diffCells(terminal.normalizeHidden(app), shown);
 ```
 
-Use `encoding: 'utf8'` for a .utf8ans, and give the terminal one row more than the art (it ends with a line feed), then
-compare the first `rows` rows. A .cast is `terminal.castFinalCells(text)`, the screen it ends on.
+A .utf8ans ends with a line feed, so give the terminal one row more than the art and compare the rows the art has:
+
+```js
+const shown = await terminal.terminalCells(bytes, { cols: app.cols, rows: app.rows + 1, encoding: 'utf8' });
+const differences = terminal.diffCells(terminal.normalizeHidden(app), { ...shown, rows: app.rows, cells: shown.cells.slice(0, app.cols * app.rows) });
+```
+
+A .cast is `terminal.castFinalCells(text)`, the screen it ends on.
 
 ## The reviewer
 
 The reviewer is a different agent from the one that ran. When the run ends:
 
-1. Read `report.md` and `run.json`, and open every screenshot in `shots/`. Look at each with fresh eyes: a visual
+1. Check the checkout is still at the run's commit: `git rev-parse HEAD` against `commit` in `run.json`. If it isn't,
+   say so at the top of `review.md`, with both commits, since a reproduction then tests a different app.
+
+2. Read `report.md` and `run.json`, and open every screenshot in `shots/`. Look at each with fresh eyes: a visual
    problem the run missed is yours to add.
-2. Reproduce each `bug` and `performance` finding in a fresh session at the same seed (`QA_PERSONA=<persona>
+3. Reproduce each `bug` and `performance` finding in a fresh session at the same seed (`QA_PERSONA=<persona>
    QA_SEED=<seed> npm run qa`, which makes its own `-2` folder), following the finding's repro. A timing reproduces when it's over its budget again. Other kinds you judge
    from the report and the screenshots, reproducing where you doubt one.
-3. Mark each finding `confirmed`, `dropped` (with why: didn't reproduce, a style opinion, not this persona's problem,
+4. Mark each finding `confirmed`, `dropped` (with why: didn't reproduce, a style opinion, not this persona's problem,
    Safari- or Firefox-only) or `known` (on the persona's Known list).
-4. Flag:
+5. Flag:
    - the steps with no probes (the report's "No probes tried"), and steps with fewer than the step's named probes
-     and two of the kit's;
+     and two of the kit's, leaving out Free time and the steps skipped with a note;
    - Free time with fewer than three `free` probes;
    - the event check's warnings (the `Warning:` lines under Steps: a step rated for the keys with no keys counted),
      and any rating you think is wrong,
      with the rating it should have;
-   - the "Page errors" and "Session warnings" sections, each read and judged: a page error the steps didn't explain
+   - the notes under each step, and the "Page errors" and "Session warnings" sections, each read and judged: a page error the steps didn't explain
      is worth a finding of its own.
-5. Write `review.md` in the run's folder (not your reproduction's): the run's folder name, then each finding by its id
+6. Write `review.md` in the run's folder (not your reproduction's): the run's folder name, then each finding by its id
    with its mark and a line on why, then your own findings (as the run's are written: kind, severity, step, expected,
    actual, repro, shot), then the flags.
 
