@@ -46,6 +46,11 @@ const reconnecting = computed(() => social.lobbyStatus === 'reconnecting' && vie
 const yoursUnlisted = computed(() => (view.value === 'loading' ? [] : roomStore.reclaimable.filter((r) => !shown.value.some((card) => card.id === r.id))));
 
 const name = computed(() => social.myName ?? social.me?.username);
+// Who's here, as how many are signed in and how many are guests.
+const here = computed(() => {
+  const guests = social.people.filter((p) => p.guest).length, members = social.people.length - guests;
+  return `${t('social.lobby.signedInCount', { count: members }, members)} · ${t('social.lobby.guestCount', { count: guests }, guests)}`;
+});
 // Who you are is known once /api/me has answered: until then, neither you nor a guest (no Sign in to flash).
 const known = computed(() => social.supported !== null);
 
@@ -137,7 +142,7 @@ onBeforeUnmount(() => clearInterval(tick));
       </div>
 
       <hr>
-      <h3 class="here">{{ t('social.lobby.inLobby') }} <span class="count">{{ social.people.length }}</span></h3>
+      <h3 class="here">{{ t('social.lobby.inLobby') }} <span class="count">{{ here }}</span></h3>
       <ul :aria-label="t('social.lobby.inLobby')">
         <li v-for="person in social.people" :key="person.sub" :class="{ me: person.sub === social.claims?.sub }">
           <UserName class="name" :name="person.name">{{ person.sub === social.claims?.sub ? t('social.chat.youSuffix') : '' }}</UserName>
@@ -271,11 +276,15 @@ span.count {
   color: var(--text-muted);
   font-weight: 400;
 }
+h3.here span.count {   /* the numbers in the small secondary type, not the heading's */
+  margin-left: 4px;
+  text-transform: none;
+}
 header h2,
 header span.count {
   white-space: nowrap;
 }
-select.filter {   /* right of the title, as small as its words */
+select.filter {   /* right of the title, as small as its words, on the panel as the title is */
   width: auto;
   min-width: 0;
   height: 24px;
@@ -283,6 +292,9 @@ select.filter {   /* right of the title, as small as its words */
   align-self: center;
   padding: 2px 6px;
   font-size: 11px;
+}
+select.filter:not(:hover, :focus) {   /* hovered and focused, a field's own look */
+  background: transparent;
 }
 p.silenced {
   margin: 0;

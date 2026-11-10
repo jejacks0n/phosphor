@@ -64,7 +64,7 @@ A room of yours whose tab you closed shows **Back to your room** in place of Joi
 
 At the top, you: your username, with **Edit account** and **Sign out**. Not signed in, it shows
 your guest nickname, **Sign in to socialize**, and **Create one** for a new account (and there's no Start a room).
-Below the rooms, **In the lobby**: who's here (guests show as guests), you among them, marked **(you)** and in pink.
+Below the rooms, **In the lobby**, with how many are signed in and how many are guests: who's here (guests show as guests), you among them, marked **(you)** and in pink.
 
 Sign in, Create an account, Account and Start a room each open in a box over everything, with a close button
 (**×**) at its top right (or Escape).

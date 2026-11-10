@@ -1096,6 +1096,8 @@
       "noAccount": "Pas de compte ? {create}",
       "createOne": "En créer un",
       "inLobby": "Dans le hall",
+      "signedInCount": "{count} connecté | {count} connectés",
+      "guestCount": "{count} invité | {count} invités",
       "confirmToStart": "Confirmez votre adresse e-mail pour créer une salle",
       "resend": "Renvoyer"
     },

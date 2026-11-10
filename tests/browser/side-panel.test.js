@@ -158,3 +158,16 @@ test('in a room, what SOCIAL says (the lobby\'s notice line, not showing) is a t
   await nextTick();
   expect(toastMessage.value).toBe('Something went wrong. Try again.');
 });
+
+test('the lobby says how many of who\'s here are signed in and how many are guests', async () => {
+  const { workspace } = await mount();
+  workspace.showSocial();
+  const social = useSocialStore();
+  const person = (sub, guest) => [sub, { sub, name: sub, guest }];
+  social.lobby = { rooms: new Map(), people: new Map([person('u_1', false), person('u_2', false), person('g_1', true)]) };
+  await nextTick();
+  expect(host.querySelector('h3.here span.count').textContent).toBe('2 signed in · 1 guest');
+  social.lobby = { rooms: new Map(), people: new Map([person('g_1', true), person('g_2', true)]) };
+  await nextTick();
+  expect(host.querySelector('h3.here span.count').textContent).toBe('0 signed in · 2 guests');
+});

@@ -77,7 +77,7 @@ test('a guest sees the rooms, their Join buttons, the guest tag and Sign in; Joi
   await expect(lobby(page).getByRole('button', { name: 'Start a room' })).toHaveCount(0);
 
   const here = lobby(page).getByRole('list', { name: 'In the lobby' });
-  await expect(lobby(page).getByText('In the lobby 3')).toBeVisible();
+  await expect(lobby(page).getByText('In the lobby 1 signed in · 2 guests')).toBeVisible();
   // a person's signal isn't shown (the server still sends one): a member's row is just the name
   await expect(here.getByRole('listitem')).toHaveText([/quiet-amber-fox \(you\)\s*guest/, /^\s*dusty-neon-heron\s*$/, /soft-copper-gnat\s*guest/]);
   const ink = (n) => here.getByRole('listitem').nth(n).locator('span.name').evaluate((e) => getComputedStyle(e).color);
@@ -202,7 +202,7 @@ test('a room the server adds appears, one it removes disappears; people come and
   await expect(card(page, 'cyberdeck sunset')).toBeVisible();
 
   server.lobby.send({ type: 'person-gone', sub: 'u_2' });
-  await expect(lobby(page).getByText('In the lobby 2')).toBeVisible(); // you and the guest
+  await expect(lobby(page).getByText('In the lobby 0 signed in · 2 guests')).toBeVisible(); // you and the guest
 });
 
 test('no rooms: the lobby says so', async ({ page }) => {

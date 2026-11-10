@@ -1096,6 +1096,8 @@
       "noAccount": "No account? {create}",
       "createOne": "Create one",
       "inLobby": "In the lobby",
+      "signedInCount": "{count} signed in",
+      "guestCount": "{count} guest | {count} guests",
       "confirmToStart": "Confirm your email to start a room",
       "resend": "Resend"
     },
