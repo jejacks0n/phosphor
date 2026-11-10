@@ -196,6 +196,7 @@ test('a whole-grid compose visits only the cells the upper layers touch, and com
   project.commitEdit();
   project.eraseEditPixels([{ x: 29, y: 29 }]); // painted, then erased: nothing of this layer's there
   project.commitEdit();
+  project._layerData.get(one).editCells.set('40,2', { char: 'P', fg: '#ffffff', bg: '#000000' }); // past the grid (a canvas shrunk): no cell of the grid is it
   await settle(project);
   const { renderer } = project, every = Array.from({ length: project.lowerCells.length }, (_, i) => i);
   const whole = renderer.composeUpper(project.lowerCells, null, renderer.palette);
@@ -205,4 +206,33 @@ test('a whole-grid compose visits only the cells the upper layers touch, and com
   project.setLayerHidden('base', true);
   await settle(project);
   expect(key(renderer.composeUpper(project.lowerCells, null, renderer.palette))).toEqual(key(renderer.composeUpper(project.lowerCells, every, renderer.palette, project.lowerCells)));
+});
+
+test('a stack at the most layers, with every layer hidden or shown, composes as a render does', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  const { MOST_LAYERS } = await import('@/document/layerInfo.js');
+  const ids = [];
+  while (project.layers.length < MOST_LAYERS) ids.push(project.addLayer(ids.length % 5 === 4 ? 'vector' : 'cells', ids.at(-1) ?? 'edit'));
+  for (const [i, id] of ids.entries()) {
+    if (project.layerById(id).kind === 'vector') continue;
+    project.useLayer(id);
+    project.paintStroke([{ x: i % 20, y: (2 * i) % 40, alpha: 1 }], i % 2 ? '#ff3300' : '#33ff66');
+    project.typeAt((i * 7) % 20, (i * 3) % 20, 'A', ATTRS);
+    project.commitEdit();
+  }
+  await settle(project);
+  const rendered = async () => { project.render(); await settle(project); return key(project.cells); };
+  const shown = await rendered();
+  for (const id of ['base', 'edit', ...ids]) project.setLayerHidden(id, true);
+  await settle(project);
+  const hidden = key(project.cells);
+  expect(hidden).not.toEqual(shown);
+  expect(hidden.every((cell) => cell.endsWith('#000000#000000'))).toBe(true); // nothing shows: black everywhere (the hidden base's blank cells)
+  expect(hidden).toEqual(await rendered());
+  for (const id of ['base', 'edit', ...ids]) project.setLayerHidden(id, false);
+  await settle(project);
+  expect(key(project.cells)).toEqual(shown);
+  project.setLayerHidden(ids.at(-1), true);
+  expect(key(project.cells)).toEqual(await rendered());
 });
