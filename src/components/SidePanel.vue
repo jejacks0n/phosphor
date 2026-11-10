@@ -4,7 +4,7 @@ export const SIDE_PANEL = { min: 240, max: 480, width: 280, step: 16 };
 </script>
 
 <script setup>
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -16,9 +16,10 @@ import LobbyPage from '@/components/social/LobbyPage.vue';
 import LayersList from '@/components/LayersList.vue';
 
 // The column at the right of the whole app, on a wide screen: LAYERS, and Social, which is CHAT while you're in a
-// room. Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and
-// » folds it to a thin rail that counts the messages you haven't seen, as the CHAT tab does while LAYERS shows.
-// Width and fold are kept in the browser; going into a room opens it on CHAT, and leaving shows the lobby there.
+// room. Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and the
+// arrow by Animate (EditTabs) folds it away entirely, then counts the messages you haven't seen, as the CHAT tab does
+// while LAYERS shows. Width and fold are kept in the browser; going into a room opens it on CHAT, and leaving shows the
+// lobby there.
 
 const workspace = useWorkspaceStore(), room = useRoomStore(), drawing = useDrawingStore(), social = useSocialStore();
 const { t } = useI18n();
@@ -29,11 +30,12 @@ const width = computed(() => clamp(workspace.sidePanelWidth));
 const tab = computed(() => workspace.sidePanelTab);
 const chatShown = computed(() => room.inRoom && !workspace.sidePanelFolded && tab.value === 'social');
 
-// Messages (not who came and went) and an invitation to draw count while the chat isn't showing.
-const unread = ref(0);
-watch(chatShown, (shown) => { if (shown) unread.value = 0; });
-watch(() => room.chat.at(-1)?.id, () => { if (!chatShown.value && room.chat.length && !room.chat.at(-1).presence) unread.value++; });
-watch(() => drawing.invitation, (asked) => { if (asked && !chatShown.value) unread.value++; });
+// Messages (not who came and went) and an invitation to draw count while the chat isn't showing (sidePanelUnread, which
+// the arrow by Animate shows while the panel's folded).
+const unread = computed(() => workspace.sidePanelUnread);
+watch(chatShown, (shown) => { if (shown) workspace.sidePanelUnread = 0; });
+watch(() => room.chat.at(-1)?.id, () => { if (!chatShown.value && room.chat.length && !room.chat.at(-1).presence) workspace.sidePanelUnread++; });
+watch(() => drawing.invitation, (asked) => { if (asked && !chatShown.value) workspace.sidePanelUnread++; });
 
 // In a room the panel shows the chat, not the lobby's notice line: what SOCIAL says meanwhile (a Block that failed,
 // say) is a toast.
@@ -42,7 +44,7 @@ watch(() => social.notice, (notice) => { if (notice && room.inRoom) toast(notice
 // In a room (a reload's own included) the panel opens on its chat. Leaving it, focus lost with what held it (Exit,
 // End in Settings and stats) goes to the lobby's heading.
 watch(() => room.inRoom, async (inRoom, was) => {
-  unread.value = 0;
+  workspace.sidePanelUnread = 0;
   if (inRoom) return workspace.showSocial();
   if (!was) return;
   await nextTick();
@@ -52,13 +54,6 @@ watch(() => room.inRoom, async (inRoom, was) => {
   heading.focus();
 }, { immediate: true });
 
-// Folding and opening: focus goes to the other button, or to the chat's box.
-async function fold(to) {
-  workspace.sidePanelFolded = to;
-  await nextTick();
-  const next = to ? panel.value.querySelector('button.open') : (chatShown.value && panel.value.querySelector('textarea')) || panel.value.querySelector('button.fold');
-  next?.focus();
-}
 const pick = (name) => { workspace.sidePanelTab = name; };
 
 // Resizing: the edge follows the pointer (captured, so it keeps up off the edge), arrows step it.
@@ -85,10 +80,6 @@ function key(e) {
 
 <template>
   <div ref="panel" class="side-panel" :class="{ folded: workspace.sidePanelFolded }" :style="workspace.sidePanelFolded ? null : { width: `${width}px` }">
-    <div v-show="workspace.sidePanelFolded" class="rail">
-      <button class="open link" :aria-label="t('sidePanel.openAria')" @click="fold(false)">«</button>
-      <span v-if="unread" class="count">{{ unread }}</span>
-    </div>
     <div
         v-if="!workspace.sidePanelFolded"
         class="grip" role="separator" aria-orientation="vertical" tabindex="0" :aria-label="t('sidePanel.resizeAria')"
@@ -96,15 +87,14 @@ function key(e) {
         @pointerdown="grab" @pointermove="move" @pointerup="drop" @pointercancel="drop" @lostpointercapture="drop"
         @dblclick="workspace.sidePanelWidth = SIDE_PANEL.width" @keydown="key"
     ></div>
-    <div v-show="!workspace.sidePanelFolded" class="body">
+    <div class="body">
       <div class="tabs" role="tablist">
         <button role="tab" :aria-selected="tab === 'layers'" :class="{ on: tab === 'layers' }" @click="pick('layers')">{{ t('sidePanel.layers') }}</button>
         <button role="tab" :aria-selected="tab === 'social'" :class="{ on: tab === 'social' }" :aria-description="room.inRoom ? null : t('tabs.beta')" @click="pick('social')">
           {{ room.inRoom ? t('sidePanel.chat') : t('sidePanel.social') }}
-          <span v-if="unread" class="count">{{ unread }}</span>
+          <span v-if="unread" class="unread">{{ unread }}</span>
           <span v-else-if="!room.inRoom" class="beta" aria-hidden="true">{{ t('tabs.beta') }}</span>
         </button>
-        <button class="fold link" :aria-label="t('sidePanel.foldAria')" @click="fold(true)">»</button>
       </div>
       <aside v-show="tab === 'layers'" class="layers" :aria-label="t('sidePanel.layers')">
         <LayersList/>
@@ -129,31 +119,8 @@ div.side-panel {
   font-size: 12px;
   color: var(--text-dim);
 }
-div.side-panel.folded {
-  width: 28px;
-  align-items: center;
-}
-.rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding-top: 6px;
-}
-.rail button.open {
-  padding: 4px;
-  font-size: 14px;
-}
-span.count {
-  min-width: 16px;
-  padding: 1px 4px;
-  box-sizing: border-box;
-  border-radius: 8px;
-  background: var(--accent);
-  font-size: 10px;
-  font-weight: 600;
-  text-align: center;
-  color: var(--white);
+div.side-panel.folded {   /* folded away: no width at all, the arrow by Animate brings it back */
+  display: none;
 }
 
 /* The left edge, a few px either side of it, drags the width. */
@@ -214,11 +181,6 @@ span.beta {   /* as the editor tabs' marks */
   align-self: flex-start;
   margin-top: 7px;
 }
-div.tabs button.fold {
-  padding: 4px 10px;
-  font-size: 14px;
-}
-
 aside.layers {
   flex: 1;
   min-height: 0;

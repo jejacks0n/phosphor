@@ -30,7 +30,8 @@ test('dragging the side panel\'s edge resizes it within its bounds, the editor t
   await page.reload();
   await expect(panel).toHaveCSS('width', '300px');
   await page.getByRole('button', { name: 'Fold the panel' }).click();
-  await expect(panel).toHaveCSS('width', '28px');
+  await expect(panel).toBeHidden();   // folded, it takes no room
   await page.reload();
-  await expect(panel).toHaveCSS('width', '28px');   // and folded stays folded
+  await expect(page.getByRole('button', { name: 'Open the panel' })).toBeVisible();
+  await expect(panel).toBeHidden();   // and folded stays folded
 });

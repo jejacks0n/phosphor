@@ -102,7 +102,7 @@ export async function pickLayer(page, name = 'Vector 1') {
   if (folded) await open.click();
   await panel.getByRole('tab', { name: 'Layers' }).click();
   await pickRow(panel, name);
-  if (folded) await panel.getByRole('button', { name: 'Fold the panel' }).click();
+  if (folded) await page.getByRole('button', { name: 'Fold the panel' }).click();
 }
 
 // Nothing open: the start screen, with no tab selected.

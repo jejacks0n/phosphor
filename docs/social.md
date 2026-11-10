@@ -427,8 +427,9 @@ the side panel.
 On a wide screen a side panel sits on the right of the whole workspace, with a **LAYERS** tab (empty
 for now). When you're in a room, hosting or watching, it gains a **CHAT** tab and opens on it, with the
 host's welcome message pinned at the top. It stays open as you move between tabs, so you can work on your
-own piece and keep talking. While **LAYERS** shows, the **CHAT** tab counts new messages; **»** folds the
-panel to a thin rail that counts them too, and **«** opens it again. Drag the panel's left edge to make it
+own piece and keep talking. While **LAYERS** shows, the **CHAT** tab counts new messages; **»**, right of
+**Animate** at the top, folds the panel away (it takes no room then, and the arrow counts them too), and **«**
+opens it again. Drag the panel's left edge to make it
 wider or narrower (or focus the edge and use the arrow keys); a double-click puts it back. Its width and
 whether it's folded stay as you left them in that browser tab; the panel starts open, and the next tab starts the way you left it.
 

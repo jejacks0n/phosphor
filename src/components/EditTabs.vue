@@ -185,6 +185,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', updateIndicator));
       <span class="track" aria-hidden="true"></span>
       <span class="word">{{ t('tabs.animate') }}</span>
     </label>
+    <!-- The side panel's fold, on a wide screen (a phone has none): folded, it takes no room, and this counts what was said. -->
+    <template v-if="isDesktop">
+      <button class="panel link" :aria-label="t(workspace.sidePanelFolded ? 'sidePanel.openAria' : 'sidePanel.foldAria')" :aria-expanded="!workspace.sidePanelFolded" @click="workspace.sidePanelFolded = !workspace.sidePanelFolded">{{ workspace.sidePanelFolded ? '«' : '»' }}</button>
+      <span v-if="workspace.sidePanelFolded && workspace.sidePanelUnread" class="unread">{{ workspace.sidePanelUnread }}</span>
+    </template>
   </nav>
 </template>
 
@@ -340,6 +345,12 @@ div.actions {
 }
 button.layers ~ label.animate {
   margin-left: 0;
+}
+
+button.panel {
+  margin-left: -6px;
+  padding: 4px;
+  font-size: 14px;
 }
 
 label.animate {

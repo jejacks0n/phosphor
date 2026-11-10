@@ -163,6 +163,19 @@ button.link:hover {
   text-decoration: underline;
 }
 
+/* A count of what you haven't seen: the side panel's CHAT tab, and the arrow by Animate while it's folded. */
+span.unread {
+  min-width: 16px;
+  padding: 1px 4px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--white);
+}
+
 button.close {
   display: flex;
   position: absolute;
