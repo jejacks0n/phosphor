@@ -133,6 +133,19 @@ test('a still picks its palette exactly as today, and so does one frame left aft
   expect(hexes(project)).toContain('#00ffaa');
 });
 
+test('a movie\'s palette counts every layer', async () => {
+  const project = await counted(2);
+  project.showFrame(1);
+  stroke(project, line(6), '#ff00aa'); // on L1, which is hidden next
+  project.useLayer(project.addLayer('cells', 'edit')); // above the lower group
+  stroke(project, line(9), '#00ffaa');
+  project.setLayerHidden('edit', true);
+  await settle(project);
+  project.showFrame(0);
+  await project.pickPalette();
+  expect(hexes(project)).toEqual(expect.arrayContaining(['#ff00aa', '#00ffaa']));
+});
+
 test('leaving Color count lets the palette go', async () => {
   const project = await counted(2);
   project.quantize = 'vga';

@@ -122,3 +122,53 @@ test('paint from before an edit keeps its palette color while the edit holds the
   const shown = cellsKey(project);
   expect(shown).toEqual(await fullRender(project));
 });
+
+// A block of paint over most of the grid's top half, on the cells layer in use.
+const block = (project, hex) => {
+  const pixels = [];
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 40; x++) pixels.push({ x, y, alpha: 1 });
+  project.paintStroke(pixels, hex);
+  project.commitEdit();
+};
+
+test('hiding and showing a layer leaves the Number palette as it was', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 40, rows: 80 });
+  await settle(project);
+  project.quantize = 'count';
+  project.colorCount = 4;
+  await settle(project);
+  block(project, '#ff0000'); // on L1
+  await settle(project);
+  const shown = hexes(project);
+  expect(shown).toContain('#ff0000');
+  project.setLayerHidden('edit', true);
+  await settle(project);
+  expect(hexes(project)).toEqual(shown);
+  project.setLayerHidden('edit', false);
+  await settle(project);
+  expect(hexes(project)).toEqual(shown);
+});
+
+test('an old document counts from outputCanvas', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+  project.quantize = 'count';
+  project.colorCount = 8;
+  await settle(project);
+  expect(project.renderer.countCanvas()).toBe(project.renderer.outputCanvas);
+});
+
+test('paint on an upper layer is counted', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/tiny.gif', { cols: 40, rows: 40 });
+  project.quantize = 'count';
+  project.colorCount = 8;
+  await settle(project);
+  project.useLayer(project.addLayer('cells', 'edit')); // above the lower group's cells layer
+  await settle(project);
+  expect(project.editIsUpper).toBe(true);
+  block(project, '#ff00aa');
+  await settle(project);
+  expect(hexes(project)).toContain('#ff00aa');
+});

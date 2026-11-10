@@ -50,6 +50,7 @@ export default class FrameBuilder {
   #lower = lowerGroup(this.#layers, {}); // these layers have no chars of their own
   #upper = []; // the layers above the lower group, each with its scratch and params: { id, kind, paint, params } or { id, kind, layer, params }
   #plain = true; // every key a frame holds is the lower group's, as before layers: nothing to split
+  #every = null; // the stack with every eye open, while anything is hidden or above the lower group: { lower, upper }, as #lower and #upper (moviePalette counts it)
 
   // The picture through the pipeline, for these settings. stores: the store's base layer and records, which
   // are under every frame, and layers: the drawing's, bottom first, whose eyes say what's left out. baseChars: the
@@ -59,6 +60,9 @@ export default class FrameBuilder {
     this.#layers = layers;
     this.#lower = lowerGroup(shown, baseChars);
     this.#plain = shown.length === layers.length && !this.#lower.upper.length && (this.#lower.cells ?? 'edit') === 'edit';
+    const every = lowerGroup(layers, baseChars);
+    this.#every = shown.length < layers.length || hideBase || every.upper.length
+      ? { lower: every, upper: every.upper.map((id) => ({ id, kind: layers.find((layer) => layer.id === id).kind })) } : null;
     this.#shapes = baseLayer ? new ShapeLayer(baseLayer) : null;
     if (this.#shapes) this.#shapes.hideBase = hideBase;
     Object.assign(this.#renderer, { baseLayer, baseRecords, shapes: this.#shapes, hideBase });
@@ -76,10 +80,12 @@ export default class FrameBuilder {
   // A frame's resolved states split by layer: states, the lower group's cells layer's (bare keys); shapes, the group's
   // vector layers' as drawn; upper, each upper layer's (a vector layer's as drawn); every, every cells layer's cells by
   // position. A plain stack hands the frame over as it is, with nothing copied.
-  #split(all) {
-    if (this.#plain) return { states: all, shapes: shapesOf(all), upper: null, every: null };
-    const { cells: lowerId, vectors } = this.#lower, states = new Map(), shapes = new Map(), every = new Map();
-    const upper = new Map(this.#upper.map(({ id }) => [id, new Map()]));
+  // grouping: another split of the stack (#every), as { lower, upper }.
+  #split(all, grouping = null) {
+    if (this.#plain && !grouping) return { states: all, shapes: shapesOf(all), upper: null, every: null };
+    const { lower: group, upper: above } = grouping ?? { lower: this.#lower, upper: this.#upper };
+    const { cells: lowerId, vectors } = group, states = new Map(), shapes = new Map(), every = new Map();
+    const upper = new Map(above.map(({ id }) => [id, new Map()]));
     for (const [key, state] of all) {
       if (isShapeKey(key)) {
         if (!state.cell) continue;
@@ -93,7 +99,7 @@ export default class FrameBuilder {
       else upper.get(id)?.set(at, state);
       if (state.cell && (id === lowerId || upper.has(id))) every.set(at, state.cell);
     }
-    for (const u of this.#upper) if (u.kind === 'vector') upper.set(u.id, shownShapes(upper.get(u.id)));
+    for (const u of above) if (u.kind === 'vector') upper.set(u.id, shownShapes(upper.get(u.id)));
     return { states, shapes: shownShapes(shapes), upper, every };
   }
 
@@ -107,19 +113,55 @@ export default class FrameBuilder {
     this.#renderer.composite(this.#scratch, params);
   }
 
-  // The Number palette for a whole movie: every frame's output, before it's quantized, as one picture. Each
-  // frame's unsnapped output is what a still's palette is picked from. resolved: every frame's.
+  // The Number palette for a whole movie: what each frame counts, as one picture. Each frame counts what a still's
+  // palette is picked from (Renderer.countCanvas): its unsnapped output, or, while anything is hidden or above the lower
+  // group, the picture with every layer over it, hidden ones too (#every). resolved: every frame's.
   // ponytail: holds every frame's pixels at once while it picks, so this is what the frame limit protects.
   moviePalette(resolved, params) {
-    const renderer = this.#renderer, { cols, rows } = params, size = cols * rows * 4;
+    const renderer = this.#renderer, { cols, rows } = params, size = cols * rows * 4, every = this.#every;
     const all = new Uint8ClampedArray(size * resolved.length);
     renderer.usePalette([]); // none to snap to, and none to pick
+    const paint = () => new PaintLayer({ cols, rows, scale: 1 });
+    const scratch = every && { // each frame's layers loaded into these in turn
+      shapes: renderer.baseLayer ? new ShapeLayer(renderer.baseLayer) : null, // the base shown: it's counted
+      paint: paint(),
+      upper: every.upper.map(({ kind }) => {
+        if (kind === 'cells') return paint();
+        const layer = new ShapeLayer(null);
+        layer.grid(cols, rows, renderer.baseLayer?.scale ?? 1);
+        return layer;
+      }),
+    };
     resolved.forEach((each, at) => {
-      const { states, shapes } = this.#split(each);
-      this.#compositeLower(states, shapes, params);
-      all.set(ctx2d(renderer.outputCanvas).getImageData(0, 0, cols, rows).data, at * size);
+      if (every) renderer.everyLayer = this.#counted(this.#split(each, every), every, scratch, params);
+      else {
+        const { states, shapes } = this.#split(each);
+        this.#compositeLower(states, shapes, params);
+      }
+      all.set(ctx2d(renderer.countCanvas(params)).getImageData(0, 0, cols, rows).data, at * size);
     });
+    renderer.everyLayer = [];
     return getPaletteColors(params, { getImageData: () => all });
+  }
+
+  // A frame's layers, split by #every, as Renderer.everyLayer: the base with the lower group's shapes over it, the
+  // group's paint, then each layer above it.
+  #counted({ states, shapes, upper }, every, scratch, params) {
+    scratch.shapes?.set(shapes, this.#rank);
+    scratch.paint.loadGrid(paintImage(states, params.cols, params.rows));
+    return [
+      { layer: scratch.shapes?.drawsShapes ? scratch.shapes : this.#renderer.baseLayer },
+      { paint: scratch.paint },
+      ...every.upper.map(({ id, kind }, at) => {
+        const layer = scratch.upper[at], own = upper.get(id) ?? NO_SHAPES;
+        if (kind === 'vector') {
+          layer.set(own);
+          return { layer };
+        }
+        layer.loadGrid(paintImage(own, params.cols, params.rows));
+        return { paint: layer };
+      }),
+    ];
   }
 
   usePalette(palette) {

@@ -8,6 +8,8 @@
 import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer.js';
 import ShapeLayer from '@/document/ShapeLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
+import { shownShapes } from '@/document/followers.js';
+import { lowerGroup } from '@/document/layerInfo.js';
 import { parseKey } from '@/document/editCells.js';
 import { fitRect } from '@/lib/Canvas.js';
 import { layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
@@ -23,6 +25,42 @@ function upperOf(project) {
   return project.lowerGroup.upper.map((id) => (project.layerById(id).kind === 'vector'
     ? { id, kind: 'vector', layer: project._upperShapes.get(id) ?? null, params: own.get(id) }
     : { id, kind: 'cells', cells: project.cellsOf(id), paint: project.paintOf(id), params: own.get(id) }));
+}
+
+// What the Number palette counts over the picture (Renderer.everyLayer): the stack as it would show with every eye open,
+// so showing or hiding a layer never changes the palette. The layers that show are handed over as they're drawn; a
+// hidden vector layer (or the base's shapes with something under them hidden) is drawn by a scratch ShapeLayer made only
+// here. None (the output alone) for other palettes, while everything shows and nothing is above the lower group, and
+// inside an art layer, where the edit layer's fields aren't its own.
+// ponytail: a scratch ShapeLayer draws its shapes whole on every recount; keep them per layer if that's slow.
+function countedLayers(project) {
+  const { layers } = project;
+  if (project.quantize !== 'count' || !project._shapeLayer || project._artInside) return [];
+  const all = lowerGroup(layers, project.baseChars), shown = project.lowerGroup;
+  if (!all.upper.length && !layers.some((layer) => layer.hidden)) return [];
+  let byLayer = null; // the shapes each vector layer draws, made when a scratch layer needs them
+  const shapesOn = (ids) => {
+    byLayer ??= [...shownShapes(project.shapes)];
+    return new Map(byLayer.filter(([, shape]) => ids.includes(shape.layer ?? 'vector')));
+  };
+  let lower = project._shapeLayer;
+  if (project.layerHidden('base') || shown.vectors.join() !== all.vectors.join()) {
+    lower = new ShapeLayer(project.baseLayer);
+    lower.set(shapesOn(all.vectors), (shape) => layers.findIndex((layer) => layer.id === (shape.layer ?? 'vector')));
+  }
+  const counted = [{ layer: lower.drawsShapes ? lower : project.baseLayer }];
+  if (all.cells) counted.push({ paint: project.paintOf(all.cells) });
+  for (const id of all.upper) {
+    if (project.layerById(id).kind === 'cells') counted.push({ paint: project.paintOf(id) });
+    else if (shown.upper.includes(id)) counted.push({ layer: project._upperShapes.get(id) });
+    else {
+      const alone = new ShapeLayer(null);
+      alone.grid(project.cols, project.rows, project.baseLayer.scale);
+      alone.set(shapesOn([id]));
+      counted.push({ layer: alone });
+    }
+  }
+  return counted;
 }
 
 // The cells under grid pixels, each once, as indexes into the cells.
@@ -138,6 +176,7 @@ export const renderingActions = {
         this.renderer.hideBase = this.layerHidden('base');
         if (this._shapeLayer) this._shapeLayer.hideBase = this.renderer.hideBase;
         this.syncShapeLayers();
+        this.renderer.everyLayer = countedLayers(this);
         this.renderedCells = await this.renderer.render(this.image, this.processParams, lowerPaint(this), baseParams(this.processParams));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();
@@ -206,6 +245,7 @@ export const renderingActions = {
   // every cell was rebuilt. rect: the grid pixels that changed ({ x, y, w, h }), when an edit knows them.
   composite({ rect = null } = {}) {
     const hold = !!this._stroke && this.quantize === 'count';
+    this.renderer.everyLayer = hold ? [] : countedLayers(this); // held: not counted till the edit ends
     const changed = this.renderer.composite(lowerPaint(this), this.processParams, { hold, rect, open: !!this._stroke });
     if (changed) this.rebuildCells();
     return changed;

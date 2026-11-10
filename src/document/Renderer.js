@@ -47,7 +47,11 @@ export default class Renderer {
   shapes = null;            // the base layer with the vector layer's shapes over it (ShapeLayer), the store's
   hideBase = false;         // the base's eye is shut: the picture, its own pixels and its pins left out (the store's, set before a render)
   upper = [];               // the layers above the lower group, bottom to top (the store's, set before a compose): { kind: 'cells', cells, paint, params } or { kind: 'vector', layer: ShapeLayer, params }
+  everyLayer = [];          // what the Number palette counts over the picture (countCanvas), bottom to top, hidden layers too (the store's, set before a composite): { layer } drawn as the base is (the base with shapes over it, a vector layer alone) or { paint } (a cells layer's); none while the output is all there is
   #scratch = null;
+  #countScratch = null; // #scratch's stand-in while countCanvas draws, so the lower group's paint stays there for the dither (#ditherUnder)
+  #count = null;        // countCanvas's canvas
+  #pictureCanvas = null; // the pipeline's own picture, even while the base is hidden: what the Number palette counts under every layer
   #pipelineData = null; // pipelineCanvas pixels
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
@@ -79,7 +83,8 @@ export default class Renderer {
   // Forget the previous image's canvases so nothing paints against them before the next render.
   reset() {
     this.shapes?.reset();
-    this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = null;
+    this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = this.#pictureCanvas = null;
+    this.everyLayer = [];
     this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = this.#painted = null;
     this.#lowerEdits = this.#shownOver = null;
     this.#matchers = new WeakMap();
@@ -101,6 +106,7 @@ export default class Renderer {
     const { canvas: pipeline, paletteColors, samples } = await processImage(image, params);
     // A hidden base: black in the picture's place, so nothing reads it (Best match and By shape included).
     this.pipelineCanvas = this.hideBase ? blackCanvas(params.cols, params.rows) : pipeline.canvas;
+    this.#pictureCanvas = pipeline.canvas;
     this.#picture = this.hideBase && samples ? blackImage(samples.width, samples.height) : samples;
     this.palette = this.#chosen ?? paletteColors;
     this.#pipelineData = ctx2d(this.pipelineCanvas).getImageData(0, 0, params.cols, params.rows);
@@ -210,8 +216,9 @@ export default class Renderer {
   }
 
   // Redraw outputCanvas: the pipeline image, then the base layer's pixels and the paint layer, each
-  // with the color transforms applied. The Number palette (quantize 'count') is picked from what
-  // that shows, so the drawing's colors have places in it; true when that changed the palette
+  // with the color transforms applied. The Number palette (quantize 'count') is picked from that with
+  // every other layer over it, hidden ones too (countCanvas), so the drawing's colors have places in it
+  // and an eye never changes it; true when that changed the palette
   // (every cell may need its colors again, not just those under the change). hold: an edit is open
   // and the Number palette waits for it to end; meanwhile the paint shows in its own colors
   // (updateCells). rect: the grid pixels an edit changed ({ x, y, w, h }), the only ones redrawn
@@ -479,14 +486,49 @@ export default class Renderer {
     this.#effective = new Map();
   }
 
-  // The Number palette from the output as composited (before it's quantized); true when it changed.
+  // The Number palette from what's counted (countCanvas); true when it changed.
   #recount(params) {
-    const next = getPaletteColors(params, new Canvas(this.outputCanvas));
+    const next = getPaletteColors(params, new Canvas(this.countCanvas(params)));
     const key = (palette) => palette?.map((p) => p.hex).join();
     if (key(next) === key(this.palette)) return false;
     this.palette = next;
     this.#effective = new Map(); // displayed colors snap to the palette
     return true;
+  }
+
+  // What the Number palette is picked from: the output as composited (before it's quantized) while it's all there is,
+  // else the pipeline's own picture (the base hidden or not) with everyLayer over it in order, hidden layers too, each
+  // drawn as it would show: so an eye never changes the palette. At grid resolution.
+  countCanvas(params) {
+    if (!this.everyLayer.length || !this.outputCanvas) return this.outputCanvas;
+    const { width: w, height: h } = this.outputCanvas, area = { x: 0, y: 0, w, h };
+    if (this.#count?.width !== w || this.#count.height !== h) this.#count = Object.assign(document.createElement('canvas'), { width: w, height: h });
+    const ctx = ctx2d(this.#count), kept = this.#scratch;
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(this.#pictureCanvas, 0, 0, w, h, 0, 0, w, h);
+    this.#scratch = this.#countScratch;
+    try {
+      for (const { layer, paint } of this.everyLayer) {
+        if (paint?.hasPaint) this.#drawLayerArea(ctx, paint, params, area);
+        if (!layer?.hasPaint) continue;
+        if (layer === this.#base) {
+          this.#drawBase(ctx, layer, params, area);
+          continue;
+        }
+        layer.sync?.();
+        const grid = this.#upperGrid(layer, params);
+        if (!grid.canvas) { // kept in step by #gridOf from here on
+          grid.canvas = Object.assign(document.createElement('canvas'), { width: w, height: h });
+          ctx2d(grid.canvas).putImageData(grid.data, 0, 0);
+        }
+        ctx.drawImage(grid.canvas, 0, 0);
+      }
+    } finally {
+      this.#countScratch = this.#scratch;
+      this.#scratch = kept;
+    }
+    return this.#count;
   }
 
   // The base layer at grid resolution, the way the pipeline draws the picture: every pixel through
