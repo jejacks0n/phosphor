@@ -224,7 +224,6 @@ async function deleteAccount() {
 
 <template>
   <div class="form-page account">
-    <button class="link back" @click="social.page = 'lobby'">{{ t('social.nav.backToLobby') }}</button>
     <h2>{{ t('social.account.heading') }}</h2>
 
     <section aria-labelledby="account-username">

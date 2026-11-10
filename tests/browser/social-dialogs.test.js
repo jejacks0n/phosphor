@@ -57,7 +57,7 @@ test('the question waits until something of SOCIAL is wanted: the lobby showing,
   expect(dialog().textContent).toContain('Before you open SOCIAL');
 });
 
-test('a page shows in a box named by its heading once you\'re known; Escape goes back where its own back link does', async () => {
+test('a page shows in a box named by its heading once you\'re known; Escape goes back from each', async () => {
   const { social } = await mount();
   social.page = 'sign-in';
   await nextTick();
@@ -89,6 +89,35 @@ test('a page shows in a box named by its heading once you\'re known; Escape goes
   social.page = 'account';
   await nextTick();
   expect(dialog()).toBe(null);   // Account is for someone signed in
+});
+
+test('a page\'s close button (×) goes where Escape does; the name page, with nowhere to go, has none, and a room\'s link closes as Not now', async () => {
+  const { social } = await mount();
+  social.supported = true;
+  const close = () => dialog()?.querySelector('button.close');
+  social.page = 'start-room';
+  await nextTick();
+  expect(close().getAttribute('aria-label')).toBe('Close');
+  close().click();
+  await nextTick();
+  expect([social.page, dialog()]).toEqual(['lobby', null]);
+
+  social.page = 'two-factor';
+  await nextTick();
+  close().click();
+  await nextTick();
+  expect(social.page).toBe('sign-in');
+
+  social.page = 'onboarding';
+  await nextTick();
+  expect(close()).toBe(null);
+
+  social.page = 'lobby';
+  social.roomInvite = 'abcdefghij';
+  await nextTick();
+  close().click();
+  await nextTick();
+  expect([social.roomInvite, dialog()]).toEqual([null, null]);
 });
 
 test('a room\'s link asks whether to join, over everything', async () => {

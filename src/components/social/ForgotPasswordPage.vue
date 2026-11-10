@@ -23,7 +23,6 @@ async function send() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">{{ social.backTo === 'room' ? t('social.nav.backToRoom') : t('social.nav.backToLobby') }}</button>
     <h2>{{ t('social.auth.forgotHeading') }}</h2>
     <p class="intro">{{ t('social.auth.forgotIntro') }}</p>
     <form @submit.prevent="send">

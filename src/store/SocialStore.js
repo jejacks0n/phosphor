@@ -117,8 +117,6 @@ export const useSocialStore = defineStore('social', {
     reportedRooms: (state) => (state.claims ? state.roomReports.filter((r) => r.by === state.claims.sub).map((r) => r.room) : []),
     // The room on its way once you're known, unasked: the address holds it meanwhile.
     roomGoingTo: (state) => (state._roomLinkAsks ? null : state._roomLink),
-    // The word for the sign-in pages' back link.
-    backTo: () => (useRoomStore().role === 'watch' ? 'room' : 'lobby'),
     isGuest() {
       return this.claims?.guest ?? !this.signedIn;
     },

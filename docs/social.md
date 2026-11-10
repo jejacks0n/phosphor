@@ -66,8 +66,8 @@ At the top, you: your username, with **Edit account** and **Sign out**. Not sign
 your guest nickname, **Sign in to socialize**, and **Create one** for a new account (and there's no Start a room).
 Below the rooms, **In the lobby**: who's here (guests show as guests), you among them, marked **(you)** and in pink.
 
-Sign in, Create an account, Account and Start a room each open in a box over everything, with **Back to
-the lobby** at the top (or Escape).
+Sign in, Create an account, Account and Start a room each open in a box over everything, with a close button
+(**×**) at its top right (or Escape).
 
 ## Members and guests
 
@@ -78,7 +78,7 @@ gives you a random nickname, such as `quiet-amber-fox`, shown with a **guest** t
 mistakes it for a member. The nickname stays with this browser: reloading, another tab, signing out, or
 coming back later the same day keeps it. A private window, clearing the site's data, or a day or more
 away gives you a new one. A room for signed-in users only shows its Join button grayed out until
-you sign in. In a room, a guest's chat panel shows **Sign in to chat** in place of the message box. It opens the sign-in page over the room (**Back to the room** returns), and
+you sign in. In a room, a guest's chat panel shows **Sign in to chat** in place of the message box. It opens the sign-in page over the room (closing it returns to the room), and
 once you're signed in, by password, Discord, GitHub or a two-factor code, you're back in the same room as
 yourself. A private room asks for its password again after Discord or GitHub, which leave the page; after a
 password or two-factor sign-in here, Phosphor still has it in memory for the trip back (and never saves it).
@@ -172,7 +172,7 @@ picture**, the part of the art its card will show, as the host's page does while
 **Lobby picture** under Hosting); a position you pin there is kept when you go live. With room to
 spare it sits beside the rest of the form; in a narrower window, below it.
 
-**Go live** shares the art you have open, and the box closes; **Back to the lobby** leaves without starting it. You
+**Go live** shares the art you have open, and the box closes; its close button (**×**) leaves without starting it. You
 keep drawing as usual, and watchers see each change as you make it, with a box in your name color for where your
 view is: the view of whichever of PIXEL or ANSI you're on, at your zoom. SAUCE keeps the
 last one. Open other art while you're live and watchers see that instead.

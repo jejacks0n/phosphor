@@ -49,8 +49,8 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   await page.getByRole('textbox', { name: 'Room name' }).fill('nothing yet');
   await expect(page.getByRole('button', { name: 'Go live' })).toBeDisabled();
 
-  await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);   // the way back is Back to the lobby
-  await page.getByRole('button', { name: '‹ Back to lobby' }).click();
+  await expect(page.getByRole('button', { name: 'Cancel' })).toHaveCount(0);   // the way back is its close button
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
   expect(server.sent('POST', '/api/rooms')).toEqual([]);
 });

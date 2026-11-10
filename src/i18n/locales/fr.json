@@ -1047,8 +1047,6 @@
     "unsupported": "Ce navigateur ne prend pas en charge les fonctionnalités de sécurité nécessaires à SOCIAL.",
     "agreeTerms": "J'ai 13 ans ou plus et j'accepte les {terms}, la {privacy} et les {guidelines}",
     "nav": {
-      "backToLobby": "‹ Retour au hall",
-      "backToRoom": "‹ Retour à la salle",
       "cancel": "‹ Annuler",
       "cancelSignOut": "Annuler et se déconnecter"
     },

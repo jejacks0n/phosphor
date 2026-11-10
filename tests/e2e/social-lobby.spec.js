@@ -146,7 +146,7 @@ test('a member can join a members-only room and can start a room, and has no sig
 
   await lobby(page).getByRole('button', { name: 'Edit account' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('account');
-  await page.getByRole('button', { name: '‹ Back to lobby' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
   await lobby(page).getByRole('button', { name: 'Start a room' }).click();
   expect(await store(page, 'social', (s) => s.page)).toBe('start-room');
 });

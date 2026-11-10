@@ -31,7 +31,7 @@ test('rename: Change opens a field, Save sends it, and the lobby shows the new n
   await expect(account.getByRole('button', { name: 'Change', exact: true })).toBeVisible();
   await expect(account.locator('.username')).toHaveText('pixel-pal');
   expect(server.sent('PATCH', '/api/me/username').map((r) => r.body)).toEqual([{ username: 'pixel-pal' }]);
-  await account.getByRole('button', { name: '‹ Back to lobby' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
   await expect(shown(page, 'lobby').locator('.you')).toContainText('pixel-pal');
 });
 
@@ -426,7 +426,7 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   await expect(section.getByText('On. Signing in asks for a code.')).toBeVisible();
   await expect(section.locator('li')).toHaveCount(0);
 
-  await account.getByRole('button', { name: '‹ Back to lobby' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
   await shown(page, 'lobby').getByRole('button', { name: 'Edit account' }).click();
   await expect(section.getByText('On. Signing in asks for a code.')).toBeVisible();
   await expect(section.locator('li')).toHaveCount(0);

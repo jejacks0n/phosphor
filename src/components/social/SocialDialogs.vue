@@ -22,7 +22,8 @@ import StartRoomPage from './StartRoomPage.vue';
 const social = useSocialStore(), room = useRoomStore(), workspace = useWorkspaceStore();
 const { t } = useI18n();
 
-// Each page, with the words its dialog is named by (its heading), where Escape goes, and whether it's two columns wide.
+// Each page, with the words its dialog is named by (its heading), where Escape and its close button go, and whether
+// it's two columns wide. A page with nowhere to go has no close button.
 const PAGES = {
   'sign-in': [SignInPage, 'social.auth.signInHeading', 'lobby'],
   create: [CreateAccountPage, 'social.auth.createHeading', 'lobby'],
@@ -65,7 +66,7 @@ const linkIsYours = computed(() => room.reclaimable.some((r) => r.id === social.
 
 <template>
   <ConsentDialog v-if="!social.allowed && wanted"/>
-  <ModalDialog v-else-if="page" long :wide="!!PAGES[page][3]" :focus="false" :label="t(PAGES[page][1])" @cancel="cancel">
+  <ModalDialog v-else-if="page" long :wide="!!PAGES[page][3]" :focus="false" :label="t(PAGES[page][1])" :closable="!!PAGES[page][2]" @cancel="cancel">
     <div ref="body" class="people-forms" :data-page="page">
       <p v-if="social.notice" class="notice" role="status">
         <span>{{ social.notice }}</span>
@@ -74,7 +75,7 @@ const linkIsYours = computed(() => room.reclaimable.some((r) => r.id === social.
       <component :is="PAGES[page][0]" />
     </div>
   </ModalDialog>
-  <ModalDialog v-if="social.allowed && social.roomInvite" :title="t('social.joinDialog.title')" :sub="t('social.joinDialog.sub')" @cancel="social.answerRoomInvite(false)">
+  <ModalDialog v-if="social.allowed && social.roomInvite" closable :title="t('social.joinDialog.title')" :sub="t('social.joinDialog.sub')" @cancel="social.answerRoomInvite(false)">
     <p v-if="linkIsYours && room.goingBackReplaces" class="replaces">{{ goingBackReplacesWords() }}</p>
     <div class="actions">
       <button @click="social.answerRoomInvite(false)">{{ t('common.notNow') }}</button>
@@ -104,12 +105,12 @@ div.people-forms button {
   flex-shrink: 0;
   white-space: nowrap;
 }
-div.people-forms p.notice {
+div.people-forms p.notice {   /* clear of the dialog's close button, over its top right corner */
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  margin: 0 0 12px;
+  margin: 0 30px 12px 0;
   padding: 8px 10px;
   border-radius: 4px;
   background: var(--surface-2);

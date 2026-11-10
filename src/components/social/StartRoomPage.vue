@@ -30,7 +30,6 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
 
 <template>
   <div class="start-room">
-    <button class="link back" @click="social.page = 'lobby'">{{ t('social.nav.backToLobby') }}</button>
     <h2>{{ t('social.start.heading') }}</h2>
     <!-- Two groups, side by side when there's room and stacked when there isn't: the room and who can join it,
          then its lobby card (for a room in the lobby). -->
@@ -82,9 +81,6 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
 <style scoped>
 div.start-room {
   max-width: 760px;   /* past this the fields only get longer, not easier */
-}
-button.back {
-  margin-left: -8px;
 }
 h2 {
   margin: 8px 0 16px;

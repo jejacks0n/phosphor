@@ -1018,8 +1018,3 @@ test('Back from Discord needing a username: no room is joined until onboarding i
   expect(join).toHaveBeenCalledExactlyOnceWith('abcdefghij', { keepNotice: true, show: true });   // its art shows: the ROOM tab
 });
 
-test('The back link says "room" while watching and "lobby" otherwise', () => {
-  expect(social.backTo).toBe('lobby');
-  watching();
-  expect(social.backTo).toBe('room');
-});

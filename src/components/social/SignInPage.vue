@@ -36,7 +36,6 @@ async function signInWith(provider) {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">{{ social.backTo === 'room' ? t('social.nav.backToRoom') : t('social.nav.backToLobby') }}</button>
     <h2>{{ t('social.auth.signInHeading') }}</h2>
     <p class="intro">{{ t('social.auth.signInIntro') }}</p>
     <template v-if="shown.length">

@@ -1047,8 +1047,6 @@
     "unsupported": "This browser doesn't support the security features SOCIAL needs.",
     "agreeTerms": "I'm 13 or older and agree to the {terms}, {privacy}, and {guidelines}",
     "nav": {
-      "backToLobby": "‹ Back to lobby",
-      "backToRoom": "‹ Back to room",
       "cancel": "‹ Cancel",
       "cancelSignOut": "Cancel and sign out"
     },

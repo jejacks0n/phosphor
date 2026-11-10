@@ -34,7 +34,6 @@ async function create() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">{{ social.backTo === 'room' ? t('social.nav.backToRoom') : t('social.nav.backToLobby') }}</button>
     <h2>{{ t('social.auth.createHeading') }}</h2>
     <p class="intro">{{ t('social.auth.createIntro') }}</p>
     <form @submit.prevent="ready && create()">

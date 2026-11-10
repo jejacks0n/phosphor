@@ -28,7 +28,7 @@ async function openCreate(page) {
 test('sign in by email or by username, each at its own endpoint; back in the lobby as the member', async ({ page }) => {
   const server = await fakeServer(page);
   let form = await openSignIn(page);
-  await expect(form.getByRole('button', { name: '‹ Back to lobby' })).toBeVisible();
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true })).toBeVisible();
   await form.getByLabel('Email or username').fill('fan@example.com');
   await form.getByLabel('Password').fill('correct horse battery');
   await form.getByRole('button', { name: 'Sign in', exact: true }).click();
@@ -97,7 +97,7 @@ test('the sign-in page links to creating an account, a forgotten password and th
   await shown(page, 'create').getByRole('button', { name: 'Sign in', exact: true }).click();
   await shown(page, 'sign-in').getByRole('button', { name: 'Forgot your password?' }).click();
   await expect(shown(page, 'forgot')).toBeVisible();
-  await shown(page, 'forgot').getByRole('button', { name: '‹ Back to lobby' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
 });
 
@@ -229,7 +229,7 @@ test('onboarding offers no way back half signed in: Cancel and sign out lands on
   await open(page, '/?social=signed-in');
   const form = shown(page, 'onboarding');
   await expect(form.getByLabel('Username')).toHaveValue('quiet'); // the provider's name is guest-shaped
-  await expect(form.getByRole('button', { name: /Back to lobby/ })).toHaveCount(0);
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true })).toHaveCount(0);
   await form.getByRole('button', { name: 'Cancel and sign out' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
   await expect(shown(page, 'lobby').locator('.you .tag')).toHaveText('guest');

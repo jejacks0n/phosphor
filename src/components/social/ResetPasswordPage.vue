@@ -16,7 +16,6 @@ async function set() {
 
 <template>
   <div class="form-page">
-    <button class="link back" @click="social.page = 'lobby'">{{ t('social.nav.backToLobby') }}</button>
     <h2>{{ t('social.auth.resetHeading') }}</h2>
     <p class="intro">{{ t('social.auth.resetIntro') }}</p>
     <form @submit.prevent="set">

@@ -171,10 +171,10 @@ async function backAsWren(host, watcher) {
   await expect(messages(host).first()).toContainText('pixel_wren');
 }
 
-test('a guest is asked to sign in over the room: "Back to the room" returns to it, and signing in with a password is back in it as themselves; Back from the room they come back to stays in it', async ({ page: host, context }) => {
+test('a guest is asked to sign in over the room: closing it returns to the room, and signing in with a password is back in it as themselves; Back from the room they come back to stays in it', async ({ page: host, context }) => {
   const { room, watcher } = await guestToSignIn(host, context);
   expect(await store(watcher, 'workspace', (w) => w.editorTab)).toBe('room');
-  await shown(watcher, 'sign-in').getByRole('button', { name: '‹ Back to room' }).click();
+  await watcher.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
   await expect(shown(watcher, 'watch-room')).toBeVisible();
   expect(await store(watcher, 'room', (r) => r.role)).toBe('watch');
 

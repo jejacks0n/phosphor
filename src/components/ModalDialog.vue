@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, useTemplateRef } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { FOCUSABLE, keepTabIn } from '@/lib/focus';
 
 // A box centered over the page like a confirm box, for ChoiceDialog and SaveDialog: a title, a line
@@ -8,7 +9,8 @@ import { FOCUSABLE, keepTabIn } from '@/lib/focus';
 // selection, the arrows nudge it). Escape and the backdrop cancel; Tab keeps to the dialog. `long` is for text to
 // read: wider, its slot lays out in a column that fits the window, and the backdrop does nothing (a drag selecting
 // the text can end there), not even take focus. `wide` is long with room for two columns. With no title (a slot with
-// its own heading), `label` names it; `focus` false leaves focus to the slot.
+// its own heading), `label` names it; `focus` false leaves focus to the slot. `closable` adds a close button (×) at
+// the top right, which cancels as Escape does.
 const props = defineProps({
   title: { type: String, default: '' },
   label: { type: String, default: '' },
@@ -16,7 +18,9 @@ const props = defineProps({
   long: { type: Boolean, default: false },
   wide: { type: Boolean, default: false },
   focus: { type: Boolean, default: true },
+  closable: { type: Boolean, default: false },
 });
+const { t } = useI18n();
 const emit = defineEmits(['cancel']);
 const dialog = useTemplateRef('dialog');
 
@@ -35,6 +39,7 @@ function onKeyDown(event) {
   <Teleport to="body">
     <div class="modal-backdrop" @click.self="props.long || props.wide || emit('cancel')" @mousedown.self="(props.long || props.wide) && $event.preventDefault()">
       <div ref="dialog" class="modal-dialog" :class="{ long: props.long || props.wide, wide: props.wide }" :aria-label="props.title ? null : props.label" role="dialog" aria-modal="true" :aria-labelledby="props.title ? 'modal-dialog-title' : null" :tabindex="props.long || props.wide ? -1 : undefined" @keydown="onKeyDown">
+        <button v-if="props.closable" class="close" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('cancel')">×</button>
         <h3 v-if="props.title" id="modal-dialog-title">{{ props.title }}</h3>
         <p v-if="props.sub" class="sub">{{ props.sub }}</p>
         <slot/>
@@ -78,6 +83,16 @@ div.modal-dialog.long {
 }
 div.modal-dialog.wide {   /* after long, which it also is */
   max-width: 860px;
+}
+
+/* The app's close button, inside the corner rather than over it: a long box scrolls, which would cut it off, and
+   sticky keeps it in reach as it does. It takes no room, so what's under it starts at the top as before. */
+div.modal-dialog > button.close {
+  position: sticky;
+  top: 0;
+  flex: none;
+  align-self: flex-end;
+  margin: -8px -8px -22px auto;
 }
 
 h3 {
