@@ -246,6 +246,15 @@ button.pick {
   text-align: left;
   color: var(--text-dim);
 }
+/* The row has the hover look; its name button takes none of the buttons' own (lift, shadow, border, press). */
+button.pick:hover,
+button.pick:active:not(:disabled) {
+  transform: none;
+  filter: none;
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+}
 li.picked button.pick {
   color: var(--text);
 }
