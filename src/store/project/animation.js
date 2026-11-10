@@ -503,7 +503,7 @@ function buildKey(project) {
   const { image, ...params } = project.processParams;
   return {
     image, settings: JSON.stringify(params), baseLayer: project.baseLayer, baseVersion: project.baseLayer?.version, baseRecords: project.baseRecords,
-    layers: JSON.stringify(project.layers), // their order, eyes and own character settings
+    layers: JSON.stringify(project.layers.map(({ id, kind, hidden, chars }) => ({ id, kind, hidden, chars }))), // their order, eyes and own character settings: a name shows nowhere
   };
 }
 const sameKey = (a, b) => !!a && !!b && Object.keys(a).every((name) => a[name] === b[name]);

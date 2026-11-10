@@ -307,3 +307,17 @@ test('hold and fps are held to their ranges and count as edits', async () => {
   expect(project.frames[0].hold).toBe(60);
   expect(project.fps).toBe(1);
 });
+
+test('renaming a layer keeps the frames built; an eye builds them again', async () => {
+  const { project } = await animated();
+  type(project, 1, 1, 'A');
+  const top = project.addLayer('cells', 'edit');
+  project.addFrame('blank');
+  await settle(project);
+  const built = await project.builtFrame(0);
+  project.renameLayer('edit', 'Letters');
+  expect(await project.builtFrame(0)).toBe(built);
+  project.setLayerHidden(top, true);
+  await settle(project);
+  expect(await project.builtFrame(0)).not.toBe(built);
+});
