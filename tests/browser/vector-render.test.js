@@ -6,7 +6,8 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
 import { MOST_SHAPES, deletePoint, makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, withShape, worldPoints } from '@/document/shapes';
-import { paintShape } from '@/document/ShapeLayer.js';
+import ShapeLayer, { paintShape } from '@/document/ShapeLayer.js';
+import { ctx2d } from '@/lib/Canvas.js';
 import { toastMessage } from '@/composables/useToast';
 import { shapeAt } from '@/lib/shapeHits.js';
 import vnode, { pickedPoints } from '@/tools/vnode.js';
@@ -951,4 +952,24 @@ test('Vector select edits one selected shape\'s gradient: its ends and stops dra
   workspace.vectorStop = 0;
   project.selectShapes([other]);
   expect(workspace.vectorStop).toBe(null);
+});
+
+test('vector layers above the picture share one canvas to draw their shapes on, and none of one shows on another', async () => {
+  const a = new ShapeLayer(null), b = new ShapeLayer(null);
+  a.grid(20, 20, 4);
+  b.grid(20, 20, 4);
+  a.set(new Map([['v:a', ellipseShape(0, 0, 20, 20, { fill: '#ff0000' })]]));
+  a.sync();
+  const made = vi.spyOn(document, 'createElement');
+  b.set(new Map([['v:b', rectShape(2, 2, 4, 4, { fill: '#00ff00' })]]));
+  b.sync();
+  expect(made.mock.calls.filter(([tag]) => tag === 'canvas').length).toBe(1); // its drawing, and no scratch of its own
+  made.mockRestore();
+  const { data } = ctx2d(b.canvas).getImageData(0, 0, 80, 80);
+  for (let y = 0; y < 80; y++) {
+    for (let x = 0; x < 80; x++) {
+      const o = (y * 80 + x) * 4, inside = x >= 8 && x < 16 && y >= 8 && y < 16;
+      expect([x, y, inside ? data[o + 1] === 255 && data[o + 3] === 255 : data[o + 3] === 0]).toEqual([x, y, true]);
+    }
+  }
 });

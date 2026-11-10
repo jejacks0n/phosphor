@@ -5,12 +5,12 @@
  * stay exact. It looks like a PaintLayer to the Renderer: canvas, scale, cols, rows, version, hasPaint and
  * changedSince.
  *
- * Shapes are drawn into a canvas of their own, then over a copy of the base's rect. A redraw covers whole
+ * Shapes are drawn alone into a canvas every layer shares, then over a copy of the base's rect. A redraw covers whole
  * cells and draws every shape that reaches the rect, unclipped, so a part comes out as the whole would; it
  * reads back each cell's character (charAt): an art layer's where it's the topmost thing there, the conversion's
  * where a shape reaches over it (or over a pinned character), the base's pin otherwise (Renderer.pinAt).
- * ponytail: two canvases the base layer's size while shapes exist (up to MAX_LAYER_DIM a side), a third while
- * an art layer does; tile them if that's too much memory on large documents.
+ * ponytail: a canvas the base layer's size a layer while shapes exist (up to MAX_LAYER_DIM a side), and the one they
+ * share, another while an art layer does; tile them if that's too much memory on large documents.
  *
  * Alone (no base layer: a vector layer above the lower group), it's the shapes' own drawing at the grid it's told
  * (grid), copied a rect at a time as over a base, and the Renderer lays it over the cells under it (composeUpper).
@@ -23,13 +23,18 @@ import { sidePath } from '../lib/shapeHits.js';
 import { measure } from './pathLength.js';
 
 const newCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: Math.max(1, w), height: Math.max(1, h) });
+// The canvas every ShapeLayer draws its shapes alone on (#draw): only a redraw's rect is read, right after it's cleared
+// and drawn, so one serves them all. Made again for another size.
+// ponytail: one size at a time: layers of two sizes drawn in turn (none today: a document's are all the base's) make it
+// again each time; keep one a size then.
+let shared = null;
+const ownCanvas = (w, h) => (shared?.width === Math.max(1, w) && shared.height === Math.max(1, h) ? shared : (shared = newCanvas(w, h)));
 const meets = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 export default class ShapeLayer {
   #base;
   #shapes = new Map();
   #order = [];          // [key, shape, bounds] in stacking order
-  #own = null;          // the shapes alone, right inside each rect last drawn
   canvas = null;        // the base with the shapes over it
   #size = null;         // { width, height, k }: the base canvas's size and scale they're drawn for
   #seen = -1;           // the base's version drawn
@@ -106,7 +111,6 @@ export default class ShapeLayer {
     const held = this.#size;
     if (held?.width !== width || held.height !== height || held.k !== k) {
       this.#size = { width, height, k };
-      this.#own = newCanvas(width, height);
       this.canvas = newCanvas(width, height);
       this.#chars = new Array(base.cols * charRowsOf(base.rows));
       this.#scratch = null;
@@ -263,7 +267,7 @@ export default class ShapeLayer {
     // Unclipped and untranslated: either would antialias an edge a little differently from a drawing of the
     // whole. Shapes that reach past the rect leave pixels outside it on this canvas; only the rect is read, and
     // a later rect is cleared before it's drawn.
-    const own = ctx2d(this.#own), drawn = this.#order.filter(([, , bounds]) => meets(bounds, grid)).map(([, shape]) => shape);
+    const drawing = ownCanvas(this.#base.canvas.width, this.#base.canvas.height), own = ctx2d(drawing), drawn = this.#order.filter(([, , bounds]) => meets(bounds, grid)).map(([, shape]) => shape);
     own.clearRect(x, y, w, h);
     for (const shape of drawn) this.#paint(own, shape, k);
 
@@ -274,7 +278,7 @@ export default class ShapeLayer {
     const ctx = ctx2d(this.canvas);
     if (this.#alone || this.#hideBase) ctx.clearRect(x, y, w, h);
     else ctx.putImageData(ctx2d(this.#base.canvas).getImageData(x, y, w, h), x, y);
-    ctx.drawImage(this.#own, x, y, w, h, x, y, w, h);
+    ctx.drawImage(drawing, x, y, w, h, x, y, w, h);
 
     const cols = this.#base.cols, rows = charRowsOf(this.#base.rows);
     const c0 = x / k, r0 = y / (2 * k), c1 = Math.min(cols, c0 + w / k), r1 = Math.min(rows, r0 + h / (2 * k));
@@ -283,7 +287,7 @@ export default class ShapeLayer {
       this.#reach(own, rect);
       return;
     }
-    const scratch = ctx2d(this.#scratch ??= newCanvas(this.#own.width, this.#own.height));
+    const scratch = ctx2d(this.#scratch ??= newCanvas(drawing.width, drawing.height));
     let band = [];
     const flush = () => {
       if (!band.length) return;
