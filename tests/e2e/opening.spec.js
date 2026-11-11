@@ -43,7 +43,7 @@ test('two tabs: changing a setting in one leaves the other tab\'s document alone
 
 test('on a computer the file picker offers images, SVG files, .phosphor files and art files', async ({ page }) => {
   await page.goto('/');
-  await expect(imageInput(page)).toHaveAttribute('accept', 'image/*,.svg,.phosphor,.ans,.utf8ans,.asc,.txt');
+  await expect(imageInput(page)).toHaveAttribute('accept', 'image/*,.svg,.phosphor,.ans,.utf8ans,.asc,.txt,.nfo,.diz');
 });
 
 test.describe('on a phone', () => {
