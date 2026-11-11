@@ -5,6 +5,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
 import { rectShape } from '@/document/shapes.js';
+import { brushPixels } from '@/lib/Brushes';
 import { toastMessage } from '@/composables/useToast.js';
 import { createApp } from 'vue';
 import EditToolbar from '@/components/EditToolbar.vue';
@@ -228,6 +229,45 @@ describe('down between layers', () => {
     project.redo();
     await settle(project);
     expect(ids(project)).toEqual(['base', 'edit']);
+    expect(cellsKey(project)).toEqual(before);
+  });
+
+  // With a palette and Levels on, what a cell shows can be a palette color its stored colors don't show as: the frozen
+  // cells are written in stored colors that do (M12: soft paint over paint recolored #aa5500 cells #aa0000).
+  const filtered = async () => {
+    const app = await createTestApp(), { project } = app;
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+    Object.assign(project, { quantize: 'cga', levelsBlack: 73, levelsWhite: 183, levelsMid: 0.61 });
+    const soft = (x0, x1, y0, dy) => brushPixels({ x: x0, y: y0 }, { x: x1, y: y0 + dy }, { size: 3, flow: 1, hardness: 0.5 }, project.cols, project.rows);
+    for (let y = 6; y < 30; y += 3) project.paintStroke(soft(4, 24, y, 2), '#a87000'); // the swatch that shows as #aa5500
+    project.commitEdit();
+    return { ...app, soft };
+  };
+
+  test('Merge down of soft paint over paint keeps every cell with a palette and Levels on', async () => {
+    const { project, workspace, soft } = await filtered();
+    const top = project.addLayer('cells', 'edit');
+    workspace.pickLayer(top);
+    for (let y = 9; y < 34; y += 4) project.paintStroke(soft(12, 34, y, -2), '#6068ff');
+    project.commitEdit();
+    await settle(project);
+    const before = cellsKey(project);
+    expect(project.mergeDown(top)).toBe(true);
+    await settle(project);
+    expect(cellsKey(project)).toEqual(before);
+  });
+
+  test('Merge down of a vector layer over paint keeps every cell with a palette and Levels on', async () => {
+    const { project, workspace } = await filtered();
+    const vector = project.addLayer('vector', 'edit');
+    workspace.pickLayer(vector);
+    project.addShape(rectShape(6, 3, 30, 22, { fill: '#5555ff', stroke: '#00aa00', width: 1.5 }));
+    project.commitEdit();
+    project.render();
+    await settle(project);
+    const before = cellsKey(project);
+    expect(project.mergeDown(vector)).toBe(true);
+    await settle(project);
     expect(cellsKey(project)).toEqual(before);
   });
 

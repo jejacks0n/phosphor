@@ -60,12 +60,19 @@ const storedBlack = (params) => {
 // The stored color hex, or one a step off it on some channels, that shows as target: Color ASCII's FG is the halves'
 // average, and one averaged in stored colors can round the other way from the one shown (Invert turns half up to half down).
 // reach: an adjustment that clips (Brightness past 100) or turns hues doesn't average as stored colors do, so failing
-// that, a stored color that shows as target, or as near it as any can (reaching).
-function shownAs(project, hex, target, { reach = false } = {}) {
+// that, a stored color that shows as target, or as near it as any can (reaching). memo: a Map kept for one batch of calls
+// (a merge asks twice a cell, mostly the same few pairs).
+function shownAs(project, hex, target, { reach = false, memo = null } = {}) {
+  if (!memo) return nearShowing(project, hex, target, reach);
+  const key = `${hex}${target}${reach}`;
+  if (!memo.has(key)) memo.set(key, nearShowing(project, hex, target, reach));
+  return memo.get(key);
+}
+function nearShowing(project, hex, target, reach) {
   const params = project.processParams, { r, g, b } = hex2rgb(hex), goal = hex2rgb(target), steps = [0, -1, 1];
   const clamp = (v) => Math.max(0, Math.min(255, v)), near = [];
   for (const dr of steps) for (const dg of steps) for (const db of steps) near.push([clamp(r + dr), clamp(g + dg), clamp(b + db)]);
-  const shown = shownColors(near, params, project.renderer.palette); // the 27 at once: a merge asks for every cell
+  const shown = shownColors(near, params, project.renderer.palette); // the 27 at once
   for (let i = 0; i < near.length; i++) {
     if (shown[4 * i] === goal.r && shown[4 * i + 1] === goal.g && shown[4 * i + 2] === goal.b) return rgb2hex({ r: near[i][0], g: near[i][1], b: near[i][2] });
   }
@@ -239,7 +246,7 @@ export const readingActions = {
   // cell shows there (levelAt), stored. The character is the one that shows. through: only up to
   // the upper layer with that id, its cell as it shows there (shown: the cell as composed up to it, Merge down's freeze).
   // batch: { indexes, levels: new Map() } shared by the calls for the cells at indexes (a copy's, a freeze's), so a layer's
-  // level is composed once for them all (levelAt).
+  // level is composed once for them all (levelAt). Its colors show as shown's, or as near as stored colors can.
   storedLookAt(col, row, { through = null, shown = this.cells[cellIndex(col, row, this.cols)], batch = null } = {}) {
     const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii', key = cellKey(col, row);
     let look = baseLook(this, col, row);
@@ -279,8 +286,12 @@ export const readingActions = {
       if (top) look = { ...look, bg: rgb2hex(over(hex2rgb(look.bg), top)) };
       if (bottom) look = { ...look, fg: rgb2hex(over(hex2rgb(look.fg), bottom)) };
     }
-    const fg = shown && this.renderStyle === 'colorAscii' ? shownAs(this, look.fg, shown.fg.hex, { reach: true }) : look.fg;
-    return { char: !shown || shown.wide === 'trail' ? ' ' : shown.char, fg, bg: look.bg };
+    // Colors that show as shown's: the look in stored colors can show a palette color, or a step, off it under the
+    // sliders (the pipeline adjusts pixels before it averages them into a cell). Monochrome ASCII's colors don't show.
+    const colored = shown && this.renderStyle !== 'ascii', memo = batch && (batch.asked ??= new Map());
+    const fg = colored ? shownAs(this, look.fg, shown.fg.hex, { reach: true, memo }) : look.fg;
+    const bg = colored && !ascii && look.bg !== undefined ? shownAs(this, look.bg, shown.bg.hex, { reach: true, memo }) : look.bg;
+    return { char: !shown || shown.wide === 'trail' ? ' ' : shown.char, fg, bg };
   },
 
   editCellAt(col, row) {
