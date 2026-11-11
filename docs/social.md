@@ -187,7 +187,7 @@ as they were set.
 
 While you host, the side panel's CHAT tab is your room's, with **End room** in its header beside the room menu.
 **Settings and stats**, in that menu, opens your room's dashboard in a box. At the top are
-its name, **Live for** (how long since the room went live, as H:MM:SS; a reconnect doesn't restart it),
+its name, **Live for** (how long since the room went live, as H:MM:SS; a reconnect or a reload doesn't restart it, but a hand-over isn't one: the new host's dashboard starts over),
 **Copy link** and **End room**, which asks first (**End room** or **Cancel**; so does Back, see **The
 address, Back and Forward**). Send the link to anyone you want in a private room, along with its
 password. Following a link asks **Join this room?** first (**Join** or **Not now**), since joining
@@ -319,8 +319,8 @@ copy. If the role passes to an artist (see **Drawing together**), the room carri
 A host can invite a member in the room to draw. **N here** lists them; their **⋯** menu has **Make artist**,
 and the row then says **invited** with **Withdraw invitation** in the menu. Inviting someone who accepts gives them the
 whole project, including the original image, where watching only ever shows the rendered art. Guests can't be asked. A room holds a
-limited number of people drawing, the host among them; at that number **Make artist** is off and says "This room has
-as many artists as it can take." Someone asked holds a place until they answer, and someone listed keeps theirs while
+limited number of people drawing, the host among them; at that number **Make artist** is off and says "This room already has
+the maximum number of artists." Someone asked holds a place until they answer, and someone listed keeps theirs while
 they're away, so they can always come back. Someone going back to watching frees theirs.
 
 The invited person sees "{host} invited you to draw." in the chat panel, with **Accept** and **Not now**. It
@@ -384,7 +384,7 @@ is sent again to the new one. Someone chosen who hasn't got the art passes the r
 artist left, the room ends. **End room** always ends it for everyone. Coming back in time (a reload, or **Back to your room**
 from a new tab; see **Hosting**) calls it off.
 
-The new host keeps the chat so far, the room's name and its welcome, and starts with new stats and no one muted.
+The new host keeps the chat so far, the room's name and its welcome, and starts with new stats (**Live for** among them, counting from the hand-over) and no one muted.
 People the former host removed stay removed, and everyone else stays in until the new host removes them. A former host
 can come back into a password room without the password; **Remove** keeps them out.
 Watchers can't be chosen; they carry on watching, now the new host. A host cut off who comes back after the role has moved
