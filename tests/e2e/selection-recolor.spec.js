@@ -42,16 +42,13 @@ test('in the PIXEL view, Fill paints the pixels selected your foreground color',
 test('Enter on a focused Set FG presses it and keeps the selection', async ({ page }) => {
   await openApp(page);
   await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; });
-  const at = await cellPoint(page, 4, 4);
-  await page.mouse.move(at.x, at.y);
-  await page.keyboard.press('t');
-  await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('m');
+  await drag(page, await cellPoint(page, 10, 2), await cellPoint(page, 11, 2));
   await page.keyboard.press('Shift+ArrowRight');
   const setFg = page.getByRole('button', { name: 'Set FG', exact: true });
   await setFg.focus(); // where Shift+Tab lands depends on the page's tab order, which other tests own
   await expect(setFg).toBeFocused();
   await page.keyboard.press('Enter');
-  const sel = await store(page, 'workspace', (w) => w.selection && { ...w.selection });
-  expect(sel).not.toBe(null); // kept
-  expect(await base(page, sel.c0, sel.r0 * 2)).toBe('#ff00ff'); // a character row is two pixel rows
+  expect(await store(page, 'workspace', (w) => w.selection !== null)).toBe(true); // kept
+  expect([await base(page, 10, 5), await base(page, 12, 5)]).toEqual(['#ff00ff', '#ff00ff']);
 });
