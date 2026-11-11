@@ -149,3 +149,29 @@ test('over the status bar the pointer is the ordinary arrow, whatever the tool h
     await expect.poll(() => page.locator('footer.ansi-status').evaluate((el) => getComputedStyle(el).cursor), { message: tool }).toBe('default');
   }
 });
+
+test.describe('help on a touch screen', () => {
+  test.use({ hasTouch: true });
+
+  test('a tap on an i shows its tip, and another tap elsewhere hides it', async ({ page }) => {
+    await openApp(page);
+    await page.locator('button.help-icon').first().tap();
+    const tip = page.locator('div.help-tooltip');
+    await expect(tip).toBeVisible();
+    expect((await tip.boundingBox()).x).toBeGreaterThanOrEqual(0);
+    await page.touchscreen.tap(700, 400);
+    await expect(tip).toBeHidden();
+  });
+});
+
+test('Tab reaches a help i, Enter opens its tip and Escape closes it', async ({ page }) => {
+  await openApp(page);
+  const help = page.locator('button.help-icon').first();
+  await expect(help).toHaveAccessibleName(/^Help: /);
+  for (let i = 0; i < 40 && !(await help.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+  await expect(help).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('div.help-tooltip')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('div.help-tooltip')).toBeHidden();
+});

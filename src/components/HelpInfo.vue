@@ -1,9 +1,14 @@
 <script setup>
-import { ref, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, nextTick, onBeforeUnmount, useTemplateRef, useId } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 defineProps({
   text: { type: String, required: true },
+  name: { type: String, default: '' },
 });
+
+const { t } = useI18n();
+const tipId = useId();
 
 const icon = useTemplateRef('icon');
 const tooltip = useTemplateRef('tooltip');
@@ -16,18 +21,31 @@ function show() {
   nextTick(updatePosition);
   window.addEventListener('resize', updatePosition);
   window.addEventListener('scroll', updatePosition, true);
+  document.addEventListener('pointerdown', onOutside, true);
 }
 
 function hide() {
   isVisible.value = false;
   window.removeEventListener('resize', updatePosition);
   window.removeEventListener('scroll', updatePosition, true);
+  document.removeEventListener('pointerdown', onOutside, true);
 }
 
-function toggle() {
+// A mouse shows the tip by hovering, so its click must not toggle (it would hide what hover just showed). A tap
+// has no hover to speak of, so its click toggles. A key press arrives as a click with no pointer before it.
+let pointerType = '';
+function onPointerDown(e) { pointerType = e.pointerType; }
+function onClick() {
+  const mouse = pointerType === 'mouse';
+  pointerType = '';
+  if (mouse) return;
   if (isVisible.value) hide();
   else show();
 }
+function onEnter(e) { if (e.pointerType === 'mouse') show(); }
+function onLeave(e) { if (e.pointerType === 'mouse') hide(); }
+// A tap elsewhere closes an open tip.
+function onOutside(e) { if (!icon.value?.contains(e.target)) hide(); }
 
 // Above the icon, kept inside the viewport (below it when there's no room above), with the arrow
 // pointing back at the icon.
@@ -60,13 +78,26 @@ onBeforeUnmount(hide);
 </script>
 
 <template>
-  <div class="help-info" @mouseenter="show" @mouseleave="hide" @click.stop="toggle">
-    <span class="help-icon" ref="icon">i</span>
+  <div class="help-info" @pointerenter="onEnter" @pointerleave="onLeave">
+    <button
+        type="button"
+        class="help-icon"
+        ref="icon"
+        :aria-label="t('common.help', { name })"
+        :aria-describedby="isVisible ? tipId : undefined"
+        :aria-expanded="isVisible"
+        @pointerdown="onPointerDown"
+        @click.stop="onClick"
+        @keydown.esc="hide"
+        @blur="hide"
+    >i</button>
 
     <Teleport to="body">
       <div
           v-if="isVisible"
           class="help-tooltip"
+          role="tooltip"
+          :id="tipId"
           :style="tooltipStyle"
           :class="{ 'is-bottom': isBottom }"
           ref="tooltip"
@@ -85,7 +116,9 @@ div.help-info {
   line-height: 1;
 }
 
-span.help-icon {
+button.help-icon {
+  padding: 0;
+  background: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -105,10 +138,18 @@ span.help-icon {
   border: 1px solid var(--border-subtle);
 }
 
-span.help-icon:hover {
+button.help-icon:hover,
+button.help-icon:focus-visible {
   background: var(--accent);
   color: var(--white);
   border-color: var(--accent);
+}
+
+/* A tap target of about 24 px around the 12 px circle. */
+button.help-icon::before {
+  content: "";
+  position: absolute;
+  inset: -7px;
 }
 
 div.help-tooltip {
