@@ -383,7 +383,8 @@ the shortcut list, and see how the chat reads with the panel at its narrowest.
 ### 26. Reload while watching
 - Does: following `tin_owl`, reloads his page.
 - Expects: he's back in the room without being asked to join, on the address he was on, with the art, the chat and
-  the welcome; he starts on the host again; the host's list counts him once
+  the welcome; the side panel is as he left it, still folded if he folded it ([Chat](../../social.md#chat)); he
+  starts on the host again; the host's list counts him once
   ([The address, Back and Forward](../../social.md#the-address-back-and-forward)).
 - Probes: `again`: reload twice quickly; `interrupt`: reload while a message is half typed in the box (lost or kept:
   note which).

@@ -387,8 +387,8 @@ for people already in, report `spam_gull` from N here (Report in their ⋯), and
   browser's leave-page question with `page.once('dialog', (d) => d.accept())`); looks at a watcher's and `tin_owl`'s
   pages while it's away.
 - Expects: she comes back at the same address and tab, hosting, not asked to join; the art with her stroke, the chat,
-  the numbers and Live for (not restarted) are back; the side panel shows CHAT, as it does in a room
-  ([Chat](../../social.md#chat)): if it comes back on LAYERS, that difference is a finding;
+  the numbers and Live for (not restarted) are back; the side panel shows what it showed before the reload, CHAT or
+  LAYERS ([Chat](../../social.md#chat)): if it comes back on the other, that difference is a finding;
   watchers see "The host is reconnecting…" and then carry on; `tin_owl` sees "Waiting for the host to
   reconnect—drawing paused…" and then draws on; everyone sees "Your undo starts over. All the drawing is still here."
   The docs say undo starts over ([Hosting](../../social.md#hosting),

@@ -13,6 +13,7 @@ export async function toggleSidePanel(workspace) {
 <script setup>
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useSessionStorage } from '@vueuse/core';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -26,8 +27,8 @@ import LayersList from '@/components/LayersList.vue';
 // The column at the right of the whole app, on a wide screen: LAYERS, and Social, which is CHAT while you're in a
 // room. Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and the
 // » at the right end of its tabs folds it away entirely; EditTabs then shows « in that same spot, which brings it back
-// and counts the messages you haven't seen, as the CHAT tab does while LAYERS shows. Width and fold are kept in the browser; going into a room opens it on CHAT, and leaving shows the
-// lobby there.
+// and counts the messages you haven't seen, as the CHAT tab does while LAYERS shows. Width and fold are kept in the browser; going into a room opens it on CHAT, a reload into
+// one shows it as it was (folded or not, on LAYERS or CHAT), and leaving shows the lobby there.
 
 const workspace = useWorkspaceStore(), room = useRoomStore(), drawing = useDrawingStore(), social = useSocialStore();
 const { t } = useI18n();
@@ -49,11 +50,26 @@ watch(() => drawing.invitation, (asked) => { if (asked && !chatShown.value) work
 // say) is a toast.
 watch(() => social.notice, (notice) => { if (notice && room.inRoom) toast(notice); });
 
-// In a room (a reload's own included) the panel opens on its chat. Leaving it, focus lost with what held it (Exit,
-// End in Settings and stats) goes to the lobby's heading.
+// The tab showing in a room, kept in this browser tab for a reload into it.
+const roomTab = useSessionStorage('phosphor.sidePanelRoomTab', 'social');
+watch(tab, (name) => { if (room.inRoom) roomTab.value = name; });
+
+// In a room the panel opens on its chat, unless this load is coming back to it (a reload): then it's as it was, the
+// fold as kept and the tab that showed. Only the first room of a load is that. Leaving it, focus lost with what held
+// it (Exit, End in Settings and stats) goes to the lobby's heading.
+let first = true;
 watch(() => room.inRoom, async (inRoom, was) => {
   workspace.sidePanelUnread = 0;
-  if (inRoom) return workspace.showSocial();
+  if (inRoom) {
+    const back = first && social._roomGoesOn;
+    first = false;
+    if (back) workspace.sidePanelTab = roomTab.value;
+    else {
+      workspace.showSocial();
+      roomTab.value = 'social';   // (the tab may have been Social already, in the lobby)
+    }
+    return;
+  }
   if (!was) return;
   await nextTick();
   const heading = panel.value?.querySelector('section.lobby h2');

@@ -26,8 +26,9 @@ async function numbers(host) {
   return read;
 }
 
-// The side panel on the room's chat (a reload brings it back on LAYERS).
-const showChat = (page) => page.locator('.side-panel').getByRole('tab', { name: /^Chat/ }).click();
+// The side panel's tabs. A reload shows the one that showed before it, and keeps a fold.
+const panelTab = (page, name) => page.locator('.side-panel').getByRole('tab', { name });
+const chatShows = (page) => expect(panelTab(page, /^Chat/)).toHaveAttribute('aria-selected', 'true');
 
 // Hosting on PIXEL with a message said; the page-closing prompt is accepted.
 async function hostingOnPixel(host, room, options) {
@@ -56,7 +57,7 @@ test('a host\'s reload keeps the room: its art, chat, numbers and Live for, at t
   expect(joins(room)).toBe(0);
   await expect.poll(() => hosts(room)).toBe(2);
   expect(await chars(host, 0, 0, 20)).toBe(art);
-  await showChat(host);
+  await chatShows(host);
   await expect(messages(host)).toHaveCount(1);
   await expect(messages(host).first()).toContainText('hello room');
   expect(await store(host, 'room', (r) => r.session.liveSince)).toBe(liveSince);
@@ -64,6 +65,30 @@ test('a host\'s reload keeps the room: its art, chat, numbers and Live for, at t
   await openStats(host);
   await expect(shown(host, 'host-room').locator('.live')).toContainText('Live for');
   expect(await store(host, 'room', (r) => r.role)).toBe('host');
+});
+
+test('a host\'s reload shows the side panel as it was: CHAT stays CHAT, LAYERS stays LAYERS, and a fold stays folded', async ({ page: host }) => {
+  const room = fakeRoom();
+  await hostingOnPixel(host, room);
+  await chatShows(host);
+  await host.reload();
+  await live(host);
+  await chatShows(host);
+  await expect(messages(host)).toHaveCount(1);
+
+  await panelTab(host, 'Layers').click();
+  await host.reload();
+  await live(host);
+  await expect(panelTab(host, 'Layers')).toHaveAttribute('aria-selected', 'true');
+  await expect(panelTab(host, /^Chat/)).toHaveAttribute('aria-selected', 'false');
+
+  await host.getByRole('button', { name: 'Fold the panel' }).click();
+  await host.reload();
+  await live(host);
+  await expect(host.getByRole('button', { name: 'Open the panel' })).toBeVisible();
+  await expect(host.locator('.side-panel')).toBeHidden();
+  await host.getByRole('button', { name: 'Open the panel' }).click();
+  await expect(panelTab(host, 'Layers')).toHaveAttribute('aria-selected', 'true');
 });
 
 test('the watcher stays through it: The host is reconnecting… during the reload, then the art, no second join, the edits after, one joined line', async ({ page: host, context }) => {
@@ -96,7 +121,7 @@ test('the watcher stays through it: The host is reconnecting… during the reloa
   await host.keyboard.type('Z');
   const at = await store(host, 'project', (p) => 2 * p.cols + 3);
   await expect.poll(async () => (await cells(watcher))?.[at]).toBe('Z');
-  await showChat(host);
+  await chatShows(host);
   await expect(joined(host)).toHaveCount(1);
   await expect(chat(watcher).getByRole('log').getByText('You joined')).toHaveCount(1);
   await expect(joined(watcher)).toHaveCount(0);
@@ -138,7 +163,7 @@ test('reloading again while reconnecting comes back the same', async ({ page: ho
   expect(joins(room)).toBe(0);
   expect(await store(host, 'room', (r) => r.session.liveSince)).toBe(liveSince);
   expect(await chars(host, 0, 0, 20)).toBe(art);
-  await showChat(host);
+  await chatShows(host);
   await expect(messages(host)).toHaveCount(1);
 });
 
