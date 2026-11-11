@@ -100,7 +100,7 @@ const charsetName = computed(() => {
       <legend>{{ t('panel.groups.drawing') }} <span class="sub">{{ t('panel.groups.drawingSub') }}</span></legend>
 
       <div class="field">
-        <div class="label-group"><label for="cols">{{ getSetting('cols').label }}</label><HelpInfo :text="help('cols')" /></div>
+        <div class="label-group"><label for="cols">{{ getSetting('cols').label }}</label><HelpInfo :name="getSetting('cols').label" :text="help('cols')" /></div>
         <div class="row-inputs">
           <input
               type="number"
@@ -134,7 +134,7 @@ const charsetName = computed(() => {
       </div>
 
       <div class="field">
-        <div class="label-group"><label for="renderStyle">{{ t('panel.renderStyle.label') }}</label><HelpInfo :text="help('renderStyle')" /></div>
+        <div class="label-group"><label for="renderStyle">{{ t('panel.renderStyle.label') }}</label><HelpInfo :name="t('panel.renderStyle.label')" :text="help('renderStyle')" /></div>
         <select id="renderStyle" v-model="store.renderStyle">
           <option value="ansi">{{ t('panel.renderStyle.ansi') }}</option>
           <option value="colorAscii">{{ t('panel.renderStyle.colorAscii') }}</option>
@@ -145,7 +145,7 @@ const charsetName = computed(() => {
       <FontField/>
 
       <div class="field">
-        <div class="label-group"><label for="quantize">{{ t('panel.quantize.label') }}</label><HelpInfo :text="help('quantize')" /></div>
+        <div class="label-group"><label for="quantize">{{ t('panel.quantize.label') }}</label><HelpInfo :name="t('panel.quantize.label')" :text="help('quantize')" /></div>
         <select id="quantize" v-model="store.quantize">
           <option value="none">{{ t('panel.quantize.none') }}</option>
           <option value="vga">{{ t('panel.quantize.vga') }}</option>
@@ -181,7 +181,7 @@ const charsetName = computed(() => {
             <p v-if="charsNote" class="note">{{ charsNote }}</p>
 
             <div class="field">
-              <div class="label-group"><label :for="ansi ? 'charChoice' : 'charChoiceAscii'">{{ t('panel.charChoice.label') }}</label><HelpInfo :text="help(ansi ? 'charChoice' : 'charChoiceAscii')" /></div>
+              <div class="label-group"><label :for="ansi ? 'charChoice' : 'charChoiceAscii'">{{ t('panel.charChoice.label') }}</label><HelpInfo :name="t('panel.charChoice.label')" :text="help(ansi ? 'charChoice' : 'charChoiceAscii')" /></div>
               <select v-if="ansi" id="charChoice" v-model="own.charChoice">
                 <option value="random">{{ t('panel.charChoice.random') }}</option>
                 <option value="best">{{ t('panel.charChoice.best') }}</option>
@@ -195,7 +195,7 @@ const charsetName = computed(() => {
 
             <div class="field">
               <div class="label-row">
-                <div class="label-group"><label for="chars">{{ t('panel.chars.label') }}</label><HelpInfo :text="help('chars')" /></div>
+                <div class="label-group"><label for="chars">{{ t('panel.chars.label') }}</label><HelpInfo :name="t('panel.chars.label')" :text="help('chars')" /></div>
                 <span class="value">{{ charsetName }}</span>
               </div>
               <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="own.chars" :presets="ANSI_CHARSETS"/>
@@ -203,7 +203,7 @@ const charsetName = computed(() => {
             </div>
 
             <div v-if="showSeed" class="field">
-              <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :text="help('seed')" /></div>
+              <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :name="t('panel.seed.label')" :text="help('seed')" /></div>
               <div class="row-inputs">
                 <input type="text" id="seed" v-model.lazy="own.seed" :placeholder="t('panel.seed.placeholder')">
                 <button @click="store.randomizeSeed(picked)" :title="t('panel.seed.randomize')">🎲</button>
@@ -215,7 +215,7 @@ const charsetName = computed(() => {
 
             <template v-if="showDither">
               <div class="field">
-                <div class="label-group"><label for="ditherStyle">{{ t('panel.ditherStyle.label') }}</label><HelpInfo :text="help('ditherStyle')" /></div>
+                <div class="label-group"><label for="ditherStyle">{{ t('panel.ditherStyle.label') }}</label><HelpInfo :name="t('panel.ditherStyle.label')" :text="help('ditherStyle')" /></div>
                 <select id="ditherStyle" v-model="own.ditherStyle">
                   <option value="floyd">{{ t('panel.ditherStyle.floyd') }}</option>
                   <option value="bayer">{{ t('panel.ditherStyle.bayer') }}</option>
@@ -227,7 +227,7 @@ const charsetName = computed(() => {
 
           <template v-else-if="group.id === 'picture'">
             <div class="field">
-              <div class="label-group"><label for="smoothing">{{ t('panel.smoothing.label') }}</label><HelpInfo :text="help('smoothing')" /></div>
+              <div class="label-group"><label for="smoothing">{{ t('panel.smoothing.label') }}</label><HelpInfo :name="t('panel.smoothing.label')" :text="help('smoothing')" /></div>
               <select id="smoothing" v-model="store.smoothing">
                 <option value="low">{{ t('panel.smoothing.low') }}</option>
                 <option value="medium">{{ t('panel.smoothing.medium') }}</option>

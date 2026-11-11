@@ -7,6 +7,7 @@
     "noscript": "Phosphor a besoin de JavaScript pour fonctionner."
   },
   "common": {
+    "help": "Aide : {name}",
     "close": "Fermer",
     "cancel": "Annuler",
     "done": "Terminé",

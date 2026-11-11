@@ -65,7 +65,7 @@ function commit(event) {
     <div class="label-row">
       <div v-if="setting.help" class="label-group">
         <label :for="setting.key">{{ setting.label }}</label>
-        <HelpInfo :text="setting.help"/>
+        <HelpInfo :name="setting.label" :text="setting.help"/>
       </div>
       <label v-else :for="setting.key">{{ setting.label }}</label>
       <span class="value">{{ formatted }}</span>

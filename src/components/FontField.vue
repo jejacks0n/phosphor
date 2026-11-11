@@ -63,7 +63,7 @@ const remove = async () => {
 <template>
   <div class="field">
     <div class="label-row">
-      <div class="label-group"><label for="displayFont">{{ t('font.label') }}</label><HelpInfo :text="t('font.help')"/></div>
+      <div class="label-group"><label for="displayFont">{{ t('font.label') }}</label><HelpInfo :name="t('font.label')" :text="t('font.help')"/></div>
       <span class="actions">
         <button v-if="isLoaded" class="text" :title="t('font.removeTitle')" :aria-label="t('font.removeAria')" @click="remove">{{ t('font.remove') }}</button>
         <button class="text" :title="t('font.loadTitle')" :disabled="hostsFont" @click="fileInput.click()">{{ t('font.load') }}</button>
