@@ -193,7 +193,7 @@ test('a picture dropped on a drawing asks: Add puts it on the layer picked as pa
 test('choosing the same file again after Cancel asks again', async ({ page }) => {
   await page.goto('/');
   const choose = async () => {
-    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByText('Choose a file').click()]);
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.desktop', { hasText: 'Choose a file' }).click()]);
     await chooser.setFiles({ name: 'long.ans', mimeType: 'application/octet-stream', buffer: boat });
   };
   await choose();
