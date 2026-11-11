@@ -1,7 +1,8 @@
 // Changing the grid's size (docs/layers.md): with nothing on the edit layer it rescales (the image
 // refits, the base's pins move with it); with edits it's a canvas resize (everything stays put, the
 // grid gains or loses cells at the right and bottom, and what's past the edge comes back when it
-// grows). Random characters belong to their cell's position, so they survive a width change.
+// grows). Random characters belong to their cell's position, so they survive a width change. A step undo could
+// bring back keeps its cells where they are too: a grid change never forgets the undo steps before it.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
@@ -20,11 +21,12 @@ async function resize(project, cols, rows = project.rows) {
 
 const pinned = (project) => [...project.baseRecords.pins.keys()];
 
-test('a rescale with an empty edit layer moves the pins with the picture', async () => {
+test('a rescale with an empty edit layer and nothing to undo moves the pins with the picture', async () => {
   const { project } = await grid();
   project.beginEdit();
   project.eraseBase([{ col: 10, row: 5 }]);
   project.commitEdit();
+  project.clearHistory(); // as a project opened with base edits: nothing to undo
   expect(pinned(project)).toEqual(['10,5']);
   await resize(project, 80, 80);
   const at = pinned(project).map((key) => key.split(',').map(Number));
@@ -53,6 +55,74 @@ test('a canvas resize keeps what goes past the edge and brings it back', async (
   expect(project.cells[cellIndex(30, 5, 40)].char).toBe('X');
   const painted = project.cells[cellIndex(35, 15, 40)];
   expect([painted.fg.hex, painted.bg.hex]).toContain('#ff0000');
+});
+
+// A row of cells as text: each one's character and colors.
+const row = (project, r, cols = project.cols) => Array.from({ length: 20 }, (_, c) => {
+  const cell = project.cells[cellIndex(c, r, cols)];
+  return cell.char + cell.fg.hex + cell.bg.hex;
+}).join('|');
+
+// Edits on the base alone (an erased cell and a typed fix), with nothing on the edit layer, as on an opened .ans fixed
+// with Base picked: the grid grows or shrinks, and undo and redo still take back and put back each edit, in place.
+for (const [what, to] of [['grows', 50], ['shrinks', 30]]) {
+  test(`a grid that ${what} keeps the undo steps before it: undo and redo put the cells back`, async () => {
+    const { project, workspace } = await grid();
+    const before = row(project, 5);
+    workspace.pickLayer('base');
+    project.beginEdit();
+    project.eraseBase([{ col: 10, row: 5 }]);
+    project.commitEdit();
+    const erased = row(project, 5);
+    project.typeAt(12, 5, 'X', { fg: '#ffffff', bg: '#000000' });
+    project.commitEdit();
+    const fixed = row(project, 5);
+    expect(new Set([before, erased, fixed]).size).toBe(3);
+
+    await resize(project, to, to);
+    expect(row(project, 5)).toBe(fixed); // a canvas resize: everything stays where it is
+    project.undo();
+    await settle(project);
+    expect(row(project, 5)).toBe(erased);
+    project.undo();
+    await settle(project);
+    expect(row(project, 5)).toBe(before);
+    expect(project.canUndo).toBe(false);
+    project.redo();
+    project.redo();
+    await settle(project);
+    expect(row(project, 5)).toBe(fixed);
+
+    await resize(project, 40, 40);
+    expect(row(project, 5)).toBe(fixed);
+    project.undo();
+    project.undo();
+    await settle(project);
+    expect(row(project, 5)).toBe(before);
+  });
+}
+
+// The other settings that aren't undo steps (Art style, Color palette, Color count, frames per second, a frame's hold)
+// leave the steps before them too: Cmd+Z after them takes back the edit before.
+test('the settings that are not undo steps keep the undo steps before them', async () => {
+  const { project } = await grid();
+  project.setAnimate(true);
+  const before = row(project, 5);
+  project.typeAt(12, 5, 'X', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  project.renderStyle = 'colorAscii';
+  project.quantize = 'count';
+  project.colorCount = 8;
+  project.setFps(12);
+  project.setHold(0, 0.5);
+  await settle(project);
+  project.renderStyle = 'ansi';
+  project.quantize = 'none';
+  await settle(project);
+  project.undo();
+  await settle(project);
+  expect(row(project, 5)).toBe(before);
+  expect(project.canUndo).toBe(false);
 });
 
 test('random characters stay with their cells when the width changes', async () => {

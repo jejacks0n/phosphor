@@ -82,7 +82,7 @@ export const renderingActions = {
     let num = parseInt(val);
     if (isNaN(num) || num < 1) return;
 
-    if (this.aspectLock && this.image && !this.hasEdits && !this.hasFrames) this.$patch(lockedGrid(num, this.imageRatio));
+    if (this.aspectLock && this.image && !this.resizesCanvas && !this.hasFrames) this.$patch(lockedGrid(num, this.imageRatio));
     else this.cols = Math.min(num, this.hasFrames ? this.maxCols : maxColsBeside(this.rows));
   },
 
@@ -90,7 +90,7 @@ export const renderingActions = {
     let num = parseInt(val);
     if (isNaN(num) || num < 1) return;
 
-    if (this.aspectLock && this.image && !this.hasEdits && !this.hasFrames) {
+    if (this.aspectLock && this.image && !this.resizesCanvas && !this.hasFrames) {
       const cols = Math.max(1, Math.round(num * this.imageRatio));
       this.$patch(gridFits(cols, num) ? { cols, rows: num } : lockedGrid(cols, this.imageRatio));
     } else {
@@ -99,10 +99,10 @@ export const renderingActions = {
   },
 
   // Create the paint and base pixel layers on first use, and follow grid changes. With anything on
-  // the edit layer, a grid change is a canvas resize: the image and every layer stay where they
-  // are, and the grid gains or loses cells at the right and bottom (what's past the edge is kept,
-  // for when it grows back). Otherwise it rescales: the image refits the grid, and the base's own
-  // pixels (hard-edged) and pins move with it. The base layer is at the pipeline's processing scale
+  // the edit layer, or a step to undo that's tied to where things are (resizesCanvas), a grid change is a canvas resize:
+  // the image and every layer stay where they are, and the grid gains or loses cells at the right and bottom (what's
+  // past the edge is kept, for when it grows back), so every undo step still fits. Otherwise it rescales: the image
+  // refits the grid, and the base's own pixels (hard-edged) and pins move with it. The base layer is at the pipeline's processing scale
   // (the new grid's, on a rescale), and the pipeline keeps that scale while it exists.
   ensureLayer() {
     if (!this.image) return;
@@ -126,15 +126,17 @@ export const renderingActions = {
     if (this._artInside) this.leaveArt(); // stepped into an art layer: out first, its edits kept (on the old layers)
     this.commitPending(); // an open edit (a typing run) was recorded on the old layers
     const paints = [this.paintLayer, ...[...this._layerData.values()].map((data) => data.paintLayer).filter(Boolean)]; // every cells layer's follows
-    if (this.hasEdits) {
+    if (this.resizesCanvas) {
       let kept = true;
       for (const paint of paints) kept = paint.extend(cols, rows) && kept;
       this.baseLayer.extend(cols, rows);
       this.baseScale = this.baseLayer.scale;
-      if (!kept) this.dropEdits(); // the paint had to be resampled, so recorded strokes no longer fit
+      // ponytail: past MAX_LAYER_DIM the paint is resampled to a smaller scale and recorded strokes no longer fit it, so
+      // the steps go; resample the ledger's tiles (and every entry holding paint) to keep them.
+      if (!kept) this.dropEdits();
       return;
     }
-    // Recorded edits are in the old layers' pixel coordinates; they can't be replayed onto remapped ones.
+    // Nothing to undo is tied to the old layout (resizesCanvas): only slider, settings and selection steps go with it.
     const oldFit = this.fit, newFit = this.fitFor(cols, rows);
     for (const paint of paints) paint.resize(cols, rows, oldFit, newFit);
     this.baseLayer.resize(cols, rows, oldFit, newFit, this.processingScale({ fit: newFit }));
@@ -144,8 +146,9 @@ export const renderingActions = {
     this.dropEdits();
   },
 
-  // The grid changed under the history: forget the open edit and every step but slider moves (they
-  // don't depend on the grid).
+  // The grid changed under the history: forget the open edit and every step but slider and settings moves (they don't
+  // depend on the grid). A rescale has only those and selection steps to drop; a canvas resize whose paint had to be
+  // resampled, everything else too.
   dropEdits() {
     this._stroke = null;
     this._ledger.reset(); // first: what History drops next has nothing left to forget
