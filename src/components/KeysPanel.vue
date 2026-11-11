@@ -123,7 +123,11 @@ onBeforeUnmount(() => { workspace.selectedKeys = []; });
 // panel open), the lanes give way: the column they share with the ruler narrows, and they scroll and zoom the same way.
 // want is the scrubber's place, which the columns aim for; lane is where the ruler (or a row's lane) really is.
 const want = reactive({ lead: 0, lane: 0 });
-const lane = reactive({ left: 0, width: 0, thumb: 0 });
+const lane = reactive({ left: 0, width: 0, thumb: 0, panel: 0 });
+// A row's values sit beside its lane where they fit; where they don't (a tablet with the side panel open), and on a
+// phone, a button there opens them over the row. need is how wide each part's values were when last in their row.
+const need = reactive({});
+const popped = (part) => phone.value || (need[part] ?? 0) > lane.panel - lane.left - lane.width - 18;
 const ruler = useTemplateRef('ruler');
 const scrubber = () => document.querySelector('.animation-bar .scrubber input[type=range]');
 function measure() {
@@ -135,6 +139,11 @@ function measure() {
   const own = root.value.querySelector('div.ruler, div.lane')?.getBoundingClientRect() ?? box;
   lane.left = own.left - left;
   lane.width = own.width;
+  lane.panel = root.value.clientWidth;
+  for (const el of root.value.querySelectorAll('div.row[data-part] > div.values')) { // its fields' own width, not its box's
+    const first = el.firstElementChild?.getBoundingClientRect(), last = el.lastElementChild?.getBoundingClientRect();
+    need[el.parentElement.dataset.part] = first ? last.right - first.left : 0;
+  }
   lane.thumb = parseFloat(getComputedStyle(range).getPropertyValue('--thumb')) || 0;
 }
 let observer = null;
@@ -143,6 +152,7 @@ onMounted(() => {
   observer = new ResizeObserver(measure);
   for (const el of [root.value, scrubber(), scrubber()?.closest('.animation-bar')]) if (el) observer.observe(el);
 });
+watch(() => rows.value.map((row) => row.part).join(), measure, { flush: 'post' }); // a row's values, measured
 watch(ruler, (el, was) => { // its column narrows when a name or a button beside it grows
   if (was) observer?.unobserve(was);
   if (el) observer?.observe(el);
@@ -440,8 +450,14 @@ const focusIn = () => {
           </span>
           <button v-for="k in row.keys.filter((k) => inView(k.at))" :key="`key${k.at}`" class="key" :class="{ fixed: k.fixed }" :data-at="k.at" :style="{ left: `${x(k.at) - keyW / 2}px` }" :aria-pressed="isSelected(row.part, k.at)" :aria-label="t('keysPanel.key', { part: partName(row.part), frame: k.at + 1 })" @pointerdown="pressKey($event, row.part, k.at)" @click="pick(row.part, k.at, $event)"></button>
         </div>
-        <KeyValues v-if="!phone" :part="row.part" :shape-key="shapeKey"/>
-        <button v-else class="here" :class="{ on: !!keyAt(row.part, at) }" :aria-label="t('keysPanel.here', { part: partName(row.part) })" :aria-pressed="!!keyAt(row.part, at)" :disabled="!!keyAt(row.part, at) && !deletable(keyAt(row.part, at))" @click="toggleHere(row.part)">{{ keyAt(row.part, at) ? '◆' : '◇' }}</button>
+        <DropdownMenu v-if="popped(row.part)" class="values-menu" :label="t('keysPanel.valuesMenu', { part: partName(row.part) })" :trigger-label="t('keysPanel.valuesMenu', { part: partName(row.part) })" up :close-on-select="false">
+          <template #trigger>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 3.25h8v1.5H1zm11 0h3v1.5h-3zM9.5 1.5H11v5H9.5zM1 11.25h3v1.5H1zm6 0h8v1.5H7zM4.5 9.5H6v5H4.5z"/></svg>
+          </template>
+          <KeyValues :part="row.part" :shape-key="shapeKey"/>
+        </DropdownMenu>
+        <KeyValues v-else :part="row.part" :shape-key="shapeKey"/>
+        <button v-if="phone" class="here" :class="{ on: !!keyAt(row.part, at) }" :aria-label="t('keysPanel.here', { part: partName(row.part) })" :aria-pressed="!!keyAt(row.part, at)" :disabled="!!keyAt(row.part, at) && !deletable(keyAt(row.part, at))" @click="toggleHere(row.part)">{{ keyAt(row.part, at) ? '◆' : '◇' }}</button>
       </div>
       <span v-if="rows.length && inView(at)" class="playhead" :style="{ left: `${lane.left + x(at)}px` }"></span>
     </div>
@@ -769,12 +785,49 @@ button.delete svg {
   p.none {
     grid-column: 2 / -1;
   }
+  div.row > article.values-menu {
+    grid-column: 3;
+    justify-self: start;
+    margin-left: 14px; /* under the zoom */
+  }
   div.row > :deep(div.values) {
     grid-column: 3 / -1;
     contain: inline-size; /* its fields don't widen the columns; it scrolls instead */
     overflow-x: auto;
     scrollbar-width: none;
   }
+}
+/* A row's values, in a box over the row: its button where the values would be, and in the box, fields a finger can use. */
+article.values-menu :deep(.dropdown-trigger) {
+  height: 20px;
+  padding: 0 6px;
+}
+article.values-menu :deep(.dropdown-trigger) > svg {
+  width: 12px;
+  height: 12px;
+}
+article.values-menu :deep(div.dropdown-content) {
+  min-width: 0;
+  padding: 8px 10px;
+}
+article.values-menu :deep(div.values) {
+  flex-wrap: wrap;
+  row-gap: 8px;
+  margin: 0;
+}
+article.values-menu :deep(input) {
+  width: 52px;
+  height: 26px;
+  font-size: 12px;
+}
+article.values-menu :deep(button.chip) { /* the box's own look for its items, undone */
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+}
+article.values-menu :deep(button.chip.none) {
+  background: repeating-linear-gradient(45deg, transparent 0 3px, var(--text-faint) 3px 4px);
 }
 div.rest {
   container-type: inline-size; /* its width is the column's, not its words' */
@@ -811,6 +864,9 @@ div.row > button.here {
 div.row > button.here.on {
   color: var(--accent);
 }
+div.row > article.values-menu + button.here {
+  margin-left: 4px;
+}
 @media (max-width: 768px) {
   div.head {
     flex-wrap: wrap;
@@ -840,6 +896,19 @@ div.row > button.here.on {
   }
   div.row {
     height: 26px;
+  }
+  div.row > article.values-menu {
+    margin-left: auto;
+  }
+  article.values-menu :deep(.dropdown-trigger) {
+    width: 34px;
+    height: 22px;
+    justify-content: center;
+  }
+  article.values-menu :deep(input) { /* 16px: Safari on a phone zooms the page to anything smaller when it's focused */
+    font-size: 16px;
+    height: 32px;
+    width: 60px;
   }
   .add-key button, .along button { /* every item tall enough to tap, and one height */
     min-height: 40px;

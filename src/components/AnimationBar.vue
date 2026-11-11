@@ -325,6 +325,10 @@ label.field input {
   padding: 2px 4px;
 }
 
+/* Ghost and Keys at the end of their line. */
+article.ghost {
+  margin-left: auto;
+}
 /* Ghost: one button, the ghost and a small caret, as the toolbar's buttons are and lit while it's on. */
 .ghost :deep(.dropdown-trigger) {
   display: flex;

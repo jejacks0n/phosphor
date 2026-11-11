@@ -21,7 +21,8 @@ Left to right: play and pause, step back and forward, which frame you're on, the
 film with a plus), a menu to move or delete the frame, frames per second, this frame's hold, **Ghost** (a ghost, lit
 while it's on, opening a box that turns it on and off and sets its strength), and on VECTOR **Keys** (a diamond, lit
 while the Keys panel is open; see [Tweens](#tweens)). On a narrow screen the bar takes two lines: the frame you're on,
-the scrubber and the menus first, then play and the steps with the timing, **Ghost** and **Keys**.
+the scrubber and the menus first, then play and the steps with the timing, and **Ghost** and **Keys** at the line's
+end.
 
 The marks under the scrubber say what each frame is: a tall tick where something was drawn, a short tick where
 nothing was, a block for a Duplicate, and a diamond for a Wipe. With a shape selected, its tweens show too: a band
@@ -117,8 +118,9 @@ selected, the first); with none, it says so.
 
 Where the panel is too narrow for that and its buttons beside it (a tablet with the side panel open, say), the top line
 stays one line: the part names, **+ Add key** and Delete keep their room, the easing menu shows only its curve, and the
-lanes and their ruler narrow to what's left, still lined up with each other, scrolling and zooming as below. A row's
-values scroll sideways when they don't all fit.
+lanes and their ruler narrow to what's left, still lined up with each other, scrolling and zooming as below. A row
+whose values don't fit beside it (Transform's, usually) has a button there instead that opens them in a box over the
+row; it stays open while you type, and closes with Escape or a click outside it.
 
 With more frames than fit at a usable width (about 14 pixels a frame, 10 on a phone), the lanes become a window onto
 the movie: scroll it with the wheel or trackpad (Shift-wheel too) or by dragging the ruler of frame numbers where
@@ -188,7 +190,7 @@ its top left corner: X a column, Y in grid pixels, two to a line. A value typed 
 whole cell.
 
 On a phone there's no values column and no **◀** or **▶**: a **◇** (lit **◆** where there's a key) ends each row and does
-what the one between them does on a wide screen. The top line is the **▾**, **+ Add key**, then the easing, the motion and
+what the one between them does on a wide screen, and the button beside it opens the row's values in a box. The top line is the **▾**, **+ Add key**, then the easing, the motion and
 Delete; the ruler, with **−** and **+**, has the line under it. The diamonds are taller, for a finger.
 
 Click a diamond to select it and show its frame; Shift-click adds or removes one; click a frame number to select every

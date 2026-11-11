@@ -674,9 +674,13 @@ test('+ is off at the closest zoom', async ({ page }) => {
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-  test('the rows have a key toggle at their end and no values', async ({ page }) => {
+  test('the rows have a key toggle at their end, and their values in a box from the button beside it', async ({ page }) => {
     await ball(page);
     await expect(row(page, 'transform').locator('.values')).toHaveCount(0);
+    await row(page, 'transform').getByRole('button', { name: 'Transform values' }).tap();
+    await expect(page.locator('.dropdown-content').getByRole('spinbutton', { name: /^X/ })).toBeVisible();
+    await page.keyboard.press('Escape'); // closes it
+    await expect(page.locator('.dropdown-content')).toHaveCount(0);
     await expect(panel(page).getByRole('button', { name: /key: (previous|next)/ })).toHaveCount(0);
     const box = await panel(page).boundingBox(), lane = await row(page, 'transform').locator('.lane').boundingBox();
     const here = row(page, 'transform').locator('button.here'), at = await here.boundingBox();
@@ -788,6 +792,28 @@ test.describe('on a tablet, with the side panel open', () => {
     await panel(page).getByRole('button', { name: 'Zoom in' }).click();
     await expect.poll(() => panel(page).locator('.ruler button.frame').count()).toBeLessThan(numbers);
     await lined();
+  });
+
+  test("Transform's values, too wide for the row, open in a box from a button there; a value typed in it keys the part", async ({ page }) => {
+    const key = await ball(page);
+    await store(page, 'project', `(p) => p.addKey('${key}', 'fill')`);
+    await expect(row(page, 'transform').locator('> .values')).toHaveCount(0);
+    await expect(row(page, 'fill').locator('> .values button.chip')).toBeVisible(); // small enough to stay in its row
+    await row(page, 'transform').getByRole('button', { name: 'Transform values' }).click();
+    const x = page.locator('.dropdown-content').getByRole('spinbutton', { name: /^X/ });
+    await expect(x).toBeVisible();
+    await x.fill('5');
+    await x.press('Enter');
+    await expect(diamond(page, 'transform', 3)).toHaveCount(1); // keyed on frame 4, the one showing
+    expect(await store(page, 'project', `(p) => p.shapes.get('${key}').m[4]`)).toBe(1); // the middle was 4
+    await expect(x).toBeVisible(); // the box stays open for the next value
+  });
+
+  test('Ghost and Keys end the bar\'s second line, under its frame buttons', async ({ page }) => {
+    await ball(page);
+    const [keys, more] = await Promise.all([keysButton(page).boundingBox(), bar(page).locator('.frame-menu').boundingBox()]);
+    expect(keys.x + keys.width).toBeCloseTo(more.x + more.width, 0);
+    expect(keys.y).toBeGreaterThan(more.y + more.height);
   });
 });
 
