@@ -164,6 +164,12 @@ Characters or seed field, Cmd+Z (Ctrl+Z) undoes your typing there, as in any tex
 left it, it undoes the step (and the field shows what that leaves). In a room these settings are Base's, and going live leaves out the steps that gave another layer
 settings of its own.
 
+The grid size, the Art style, the Color palette, the Color count, frames per second and a frame's hold aren't undo
+steps. Changing one keeps the undo steps before it: Cmd+Z afterward takes back the edit you made before the change and
+leaves the setting as it is, and redo puts that edit back. (One exception: paint is kept at up to the picture's own
+resolution, at most 4,000 pixels on a side, so on a large picture a grid grown past that resamples the paint, and that
+forgets the steps before it.)
+
 ### Baking
 
 **Bake** (the flame button in the toolbar, beside Merge down and Clear layer; Bake in the
@@ -592,8 +598,7 @@ the rectangle's outline, **Select all**, **Escape** and **Deselect**. Undo bring
 you had before, so a stray wand click is one undo away. These steps don't count as changes to the
 document (nothing new to save). A move or paste keeps its selection with it: undoing a move puts the
 selection back where the block came from, undoing a pasted block's moves puts it back where the
-block was pasted, and redo puts it back on the block. A grid change drops the selection steps, as it
-drops the drawing ones.
+block was pasted, and redo puts it back on the block. A grid change that rescales drops the selection steps.
 
 ## Flip FG/BG
 
@@ -718,18 +723,20 @@ character):
 
 ## When the grid changes
 
-What a new grid size does depends on the edit layer:
+What a new grid size does depends on what's drawn, and on what Undo could bring back:
 
-- **With anything on the edit layer** (typed cells, shapes, paint), resizing is a **canvas
-  resize**. The picture and everything on it stay exactly where they are; columns and rows are
-  added or removed at the right and bottom. What a shrink cuts off isn't lost: it comes back when
-  you make the grid bigger again, and it's saved with the project. The aspect-ratio lock is off
-  while this applies.
-- **With nothing on the edit layer**, resizing **rescales**: the image is converted again at the
-  new size. Base edits (erased, moved or merged-down pixels, pinned characters) scale with it, the
-  pixels as hard-edged blocks and each pinned character to the cell over where it was.
+- **With anything on the edit layer** (typed cells, shapes, paint), or **any drawing step to undo or redo** (a base
+  edit, a cleared layer, a stroke you undid), resizing is a **canvas resize**. The picture and everything on it stay
+  exactly where they are; columns and rows are added or removed at the right and bottom, and every undo step still
+  fits. What a shrink cuts off isn't lost: it comes back when you make the grid bigger again, and it's saved with
+  the project. The aspect-ratio lock is off while this applies.
+- **With nothing on the edit layer and no drawing step to undo** (slider, settings and selection steps don't count),
+  resizing **rescales**: the image is converted again at the new size. Base edits (erased, moved or merged-down
+  pixels, pinned characters) scale with it, the pixels as hard-edged blocks and each pinned character to the cell
+  over where it was.
 
-Clearing or erasing everything on the edit layer brings rescaling back.
+Clearing or erasing everything on the edit layer brings rescaling back once there's no drawing step left to undo:
+a new document, or a project or file opened, starts with none.
 
 The grid can be up to **300 columns** wide and **5000 lines** tall, with **500,000 cells** in all,
 so narrow art can run long: 80 and 100 columns reach the full 5000 lines, 160 columns stops at 3125

@@ -66,6 +66,7 @@ test('a rescale moves the base to the new grid\'s scale', async () => {
   await loadImage(project, await bigImageUrl(), { cols: 30, rows: 30 });
   project.eraseBase([{ col: 2, row: 2 }]);
   project.commitEdit();
+  project.clearHistory(); // nothing to undo either (as a project opened with base edits)
   project.cols = 80; // only the base is edited: a rescale
   project.render(); await settle(project);
   expect(project.baseLayer.scale).toBe(unpinned(project));

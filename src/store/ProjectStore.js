@@ -221,6 +221,12 @@ export const useProjectStore = defineStore('project', {
       if (this.historyVersion < 0 || this._frameSwaps < 0) return false; // read so this follows them: _layerData isn't reactive, and an undo or a frame shown can fill another layer
       return this.hasEditLayer || this.shapes.size > 0 || [...this._layerData.values()].some((data) => data.editCells.size > 0 || data.hasPaint);
     },
+    // A grid change is a canvas resize (rendering.js: ensureLayer): with anything drawn, or with a step undo or redo could
+    // bring back that's tied to where things are, which a rescale would leave pointing at the wrong places. Slider and
+    // character settings steps aren't, nor are selection steps (a rescale drops those).
+    resizesCanvas() {
+      return this.hasEdits || (this.historyVersion >= 0 && this.history.some((entry) => !entry.settingsOnly && !entry.selectionOnly));
+    },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
     hasEditLayer: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
     currentFrame: (state) => state.frames[state.frame],
@@ -275,11 +281,11 @@ export const useProjectStore = defineStore('project', {
     mostFrames: (state) => maxFramesFor(state.cols * charRowsOf(state.rows)),
     maxCols() {
       if (this.hasFrames) return Math.max(1, Math.min(maxColsBeside(this.rows), Math.floor(this.frameCellLimit / Math.max(1, charRowsOf(this.rows)))));
-      return this.aspectLock && this.image && !this.hasEdits ? lockedGrid(MAX_COLS, this.imageRatio).cols : maxColsBeside(this.rows);
+      return this.aspectLock && this.image && !this.resizesCanvas ? lockedGrid(MAX_COLS, this.imageRatio).cols : maxColsBeside(this.rows);
     },
     maxRows() {
       if (this.hasFrames) return Math.max(2, Math.min(maxRowsBeside(this.cols), 2 * Math.floor(this.frameCellLimit / Math.max(1, this.cols))));
-      return this.aspectLock && this.image && !this.hasEdits ? lockedGrid(MAX_COLS, this.imageRatio).rows : maxRowsBeside(this.cols);
+      return this.aspectLock && this.image && !this.resizesCanvas ? lockedGrid(MAX_COLS, this.imageRatio).rows : maxRowsBeside(this.cols);
     },
     // Why the Animate switch is off, if it is; rooms hold one still document, and frames never travel.
     canAnimate: (state) => !state._sharing && state.cols * charRowsOf(state.rows) <= MAX_ANIMATION_CELLS,

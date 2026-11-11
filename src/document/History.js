@@ -46,6 +46,9 @@ export default class History {
     return entry;
   }
 
+  // Whether any entry, undoable or redoable, passes test.
+  some(test) { return this.#entries.some(test); }
+
   // Drop every entry but those keep(entry) accepts, in order.
   retain(keep) {
     dropped(this.#entries.filter((entry) => !keep(entry)));
