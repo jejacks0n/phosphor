@@ -116,3 +116,18 @@ test('a button shows it\'s being pressed while a finger (or the mouse) is down o
   await page.waitForTimeout(300);
   expect(await look()).toBe(idle);
 });
+
+test('two quick taps on a toggle both act', async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('p');
+  await page.getByRole('button', { name: 'Colors only' }).click();
+  await page.getByRole('button', { name: 'Single line' }).click();
+  const connect = page.getByRole('checkbox', { name: 'Connect' });
+  await expect(connect).toBeChecked();
+  const box = await connect.boundingBox();
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  await page.touchscreen.tap(x, y);
+  await page.waitForTimeout(250);
+  await page.touchscreen.tap(x, y);
+  await expect(connect).toBeChecked(); // off, then on again
+});
