@@ -225,6 +225,7 @@ function chooseBake(id) {
 // Flatten asks where the drawing goes: the edit layer (the default) or the base, worded as opening an .ans file asks.
 // Off with frames (the picture is under every one), inside an art layer, and for artists; others drawing, it warns.
 const flattening = ref(false);
+const bakeOff = () => off(insideOff.value ?? drawing.hostOnly ?? (project.canBake ? null : t('toolbar.bakeNothing')), t('toolbar.bake'));
 const flattenOff = () => off(insideOff.value ?? drawing.hostOnly ?? (project.hasFrames ? t('toolbar.flattenOneFrame') : null), t('toolbar.flatten'));
 // The hidden layers Flatten removes, which its dialog says first.
 const hiddenCount = computed(() => project.layers.filter((layer, at) => at && layer.hidden).length);
@@ -391,7 +392,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             @click="bake"
             class="primary"
             :disabled="!project.canBake"
-            v-bind="off(insideOff ?? drawing.hostOnly, t('toolbar.bake'))"
+            v-bind="bakeOff()"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
         <button
             :title="t('toolbar.flattenTitle')"
@@ -439,7 +440,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             </svg>
             {{ t('toolbar.redo') }}
           </button>
-          <button @click="bake" :disabled="!project.canBake" v-bind="off(insideOff ?? drawing.hostOnly, t('toolbar.bake'))">
+          <button @click="bake" :disabled="!project.canBake" v-bind="bakeOff()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
             {{ t('toolbar.bake') }}
           </button>

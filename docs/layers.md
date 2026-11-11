@@ -169,7 +169,8 @@ settings of its own.
 **Bake** (the flame button in the toolbar, beside Merge down and Clear layer; Bake in the
 Actions menu on narrow screens) makes the picture as it looks now your image, and
 puts the Transforms, Adjustments and Image Filters sliders back to neutral, so you can start another
-round on top of the result. Nothing on the canvas changes when you bake:
+round on top of the result. With the sliders at their defaults and no shapes to press in, there's nothing to bake: the
+button is off, and its title says so. Nothing on the canvas changes when you bake:
 
 - Your drawing keeps its colors. The color sliders tint your paint, your edit cells and your
   edits to the base, so baking burns them in; the same goes for your color pair and anything
