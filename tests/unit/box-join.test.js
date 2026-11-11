@@ -27,6 +27,24 @@ test("Joining box-drawing characters (the Shapes tool's Connect)", async () => {
   assert.equal(joinBox('─', ' ', inwardArms(['', '', '│', '']), [false, false, true, false]), '─'); // nothing joins from inside
 });
 
+test("A line's end (a lone arm) that lands on a line joins it as a T, in its own weight across its axis", () => {
+  // [own arms, the character under, the piece]: [up, right, down, left], each 0, 1 (single) or 2 (double)
+  const cases = [
+    [[0, 1, 0, 0], '║', '╟'], [[0, 0, 0, 1], '║', '╢'], // the triage's repro: a single line across a double box
+    [[1, 0, 0, 0], '═', '╧'], [[0, 0, 1, 0], '═', '╤'], // single into a double box's bottom and top edges, from inside
+    [[0, 2, 0, 0], '│', '╞'], [[0, 0, 0, 2], '│', '╡'], // double into single
+    [[2, 0, 0, 0], '─', '╨'], [[0, 0, 2, 0], '─', '╥'],
+    [[0, 1, 0, 0], '│', '├'], [[0, 0, 0, 1], '│', '┤'], [[1, 0, 0, 0], '─', '┴'], [[0, 0, 1, 0], '─', '┬'], // single into single
+    [[0, 2, 0, 0], '║', '╠'], [[0, 0, 0, 2], '║', '╣'], [[2, 0, 0, 0], '═', '╩'], [[0, 0, 2, 0], '═', '╦'], // double into double
+    [[0, 1, 0, 0], '╗', '╥'], [[1, 0, 0, 0], '╗', '╡'], [[0, 0, 0, 2], '┌', '╤'], // at a corner
+    [[0, 1, 0, 0], ' ', '─'], [[2, 0, 0, 0], 'A', '║'], // nothing to join: it runs on straight
+    [[0, 1, 0, 0], '─', '─'], // the same axis: no T
+  ];
+  for (const [own, under, piece] of cases) assert.equal(joinBox(own, under), piece, `${own} over ${under}`);
+  assert.equal(joinBox([0, 1, 0, 0], ' ', inwardArms(['║', '', '║', ''])), '╟'); // the line it ends on points in
+  assert.equal(joinBox([0, 1, 0, 0], ' ', inwardArms(['│', '', '', ''])), '└');
+});
+
 test('The Lines tool: the piece for a cell\'s arms, and the cells a drag passes through, never diagonally', () => {
   // [up, right, down, left], each 0 (none), 1 (single) or 2 (double)
   assert.equal(pieceOf([0, 1, 0, 1]), '─');

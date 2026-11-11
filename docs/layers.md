@@ -616,7 +616,8 @@ the two halves of each cell's base colors.
   **Line** draws a straight line from where you start dragging to where you let go, in the
   foreground color: one pixel thick in the Pixel view (half-blocks in the ANSI view), or whole cells
   in Full block or Character. Single and Double lines run straight across or down, whichever your
-  drag is closer to, and join the lines they cross with Connect. **Anti-aliased** lines and ellipses
+  drag is closer to, and with Connect join the lines they cross (╫) or end on (╟), never running past
+  the line they end on. **Anti-aliased** lines and ellipses
   share their edges between pixels, or shade cells ░▒▓ in Full block.
 - Lines and ellipses in Half-block or Full block can use **Half-column detail**: each block is
   placed to the nearest half cell across, so one that falls between two columns is drawn as the
