@@ -492,3 +492,23 @@ test('while Report room makes its picture, the dialog\'s buttons are off and Can
   finish(true);
   await vi.waitFor(() => expect(document.querySelector('p.reported').textContent).toBe('Reported. Thank you.'));
 });
+
+test('unmounting while shown changes does not throw on the scroll', async () => {
+  // The shown watcher awaits nextTick before reading list.value. If the component unmounts
+  // during that gap, list.value is null; without a guard it throws on .scrollHeight.
+  await createTestApp();
+  const room = useRoomStore();
+  Object.assign(room, { role: 'watch', id: 'abcdefghij', status: 'live', room: { name: 'x', welcome: '' }, chat: Array.from({ length: 3 }, (_, n) => row(n)) });
+  const { ref: vref, defineComponent, h } = await import('vue');
+  const shown = vref(false);
+  const wrapper = defineComponent({ setup: () => () => h(ChatPanel, { shown: shown.value }) });
+  const el = document.createElement('div');
+  document.body.append(el);
+  const wrapApp = createApp(wrapper).use(getActivePinia()).use(i18n);
+  wrapApp.mount(el);
+  await nextTick();
+  shown.value = true;    // triggers the async watcher — it now awaits nextTick internally
+  wrapApp.unmount();     // unmount before that internal nextTick resolves, clearing list.value
+  el.remove();
+  await nextTick();      // let any pending microtasks run; must not throw
+});

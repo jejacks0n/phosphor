@@ -74,7 +74,7 @@ onMounted(() => {
 watch(() => props.shown, async (shown) => {
   if (!shown) return;
   await nextTick();
-  list.value.scrollTop = list.value.scrollHeight;
+  if (list.value) list.value.scrollTop = list.value.scrollHeight;
 });
 watch(() => drawing.notice, (words) => { if (words && !props.shown) toast(words); });
 
