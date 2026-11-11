@@ -79,7 +79,11 @@ export const vectorActions = {
   // Draw what the shapes changed: the grid rect they covered before and after, on the lower group's shape layer and on
   // the upper vector layers' (redrawRects).
   refreshShapes() {
-    if (this.shapes.size && !this.hasVectorLayer) putLayer(this, 'vector', 'base'); // the first shape brings it
+    if (this.shapes.size && !this.hasVectorLayer) {
+      // Record layers before the auto-created vector layer, so commitEdit can undo it too.
+      if (this._stroke && !this._stroke._layersBefore) this._stroke._layersBefore = this.layers;
+      putLayer(this, 'vector', 'base'); // the first shape brings it
+    }
     if (this._shapeLayer) redrawRects(this, this.syncShapeLayers());
   },
 

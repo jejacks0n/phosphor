@@ -133,7 +133,7 @@ export const layerActions = {
     if (id !== 'base' && refusedInRoom(this)) return false;
     if (this._charsBefore?.id !== id) {
       this.commitLayerChars();
-      this._charsBefore = { id, key: Object.keys(own)[0], values: pick(was, CHAR_KEYS) };
+      this._charsBefore = { id, key: Object.keys(own)[0], values: pick(was, CHAR_KEYS), hadNoOwn: id !== 'base' && !layer.chars };
     }
     putChars(this, id, own);
     return true;
@@ -146,7 +146,7 @@ export const layerActions = {
     const before = this._charsBefore;
     this._charsBefore = null;
     if (!before || !this.layerById(before.id)) return;
-    const { id, key, values } = before, after = pick(this.charsOf(id), CHAR_KEYS), last = this._lastChars;
+    const { id, key, values, hadNoOwn } = before, after = pick(this.charsOf(id), CHAR_KEYS), last = this._lastChars;
     if (CHAR_KEYS.every((each) => String(values[each]) === String(after[each]))) return;
     if (nudge && last?.id === id && last.key === key && last.version === this.history.version && Date.now() - last.at < NUDGE_MS) {
       last.at = Date.now();
@@ -156,7 +156,8 @@ export const layerActions = {
     this.commitPending();
     // settingsOnly: kept when the grid changes (rendering.js dropEdits). ownChars: a layer's own, which a room (one set of
     // settings) can't hold: going live drops it (startSharing).
-    const entry = { settingsOnly: true, ownChars: id !== 'base', after, undo: () => putChars(this, id, values), redo: () => putChars(this, id, entry.after) };
+    const restoreOwn = hadNoOwn ? () => changed(this, id, { chars: null }) : () => putChars(this, id, values);
+    const entry = { settingsOnly: true, ownChars: id !== 'base', after, undo: restoreOwn, redo: () => putChars(this, id, entry.after) };
     this.pushEdit(entry);
     this._lastChars = nudge ? { id, key, entry, version: this.history.version, at: Date.now() } : null;
   },

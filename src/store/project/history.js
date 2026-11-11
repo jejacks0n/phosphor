@@ -166,6 +166,10 @@ export const historyActions = {
       onDrop: () => { ledger.forget(id); keepDrawn(frame, id); keepMode(frame, id); }, // or while a merge holds its stacks, not found: see pushWholeLayer
       bytes: this._ledger.bytesOf(id) + bytesHeld(basePatch),
     });
+    if (stroke._layersBefore) {
+      const layersBefore = stroke._layersBefore, entry = this.history.last, { undo: base } = entry;
+      entry.undo = () => { base(); this.layers = layersBefore; this.refreshShapes(); };
+    }
     if (basePatch || records.before !== records.after) this.sendBase(basePatch, 'after');
   },
 
