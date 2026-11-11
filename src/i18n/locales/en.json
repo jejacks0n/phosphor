@@ -1067,7 +1067,7 @@
       "startingHeading": "Starting a room",
       "startingBody": "The people you admit see your art as you draw it, and everyone who joins can see your IP address. Public rooms show a preview in the lobby. Anyone you invite to draw gets the whole project, including the original image. If someone reports your room, we keep a snapshot of the canvas to review and resolve the report.",
       "beKindHeading": "Be kind",
-      "beKindBody": "Don't bully, harass, threaten anyone, or attack people for who they are. Don't use someone's IP address against them or share their personal information. Keep public rooms appropriate, respect other people's art, and only report in good faith. Hosts can remove or block people, and anyone signed in with a confirmed email can report a person or room."
+      "beKindBody": "Don't bully, harass, threaten anyone, or attack people for who they are. Don't use someone's IP address against them or share their personal information. Keep public rooms appropriate, respect other people's art, and only report in good faith. Hosts can remove people from their room, anyone signed in can block someone (it keeps them out of rooms you host and folds their messages for you), and anyone signed in with a confirmed email can report a person or room."
     },
     "joinDialog": {
       "title": "Join this room?",

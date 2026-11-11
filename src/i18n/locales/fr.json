@@ -1067,7 +1067,7 @@
       "startingHeading": "Créer une salle",
       "startingBody": "Les personnes que vous admettez voient votre création pendant que vous dessinez, et toute personne qui rejoint peut voir votre adresse IP. Les salles publiques affichent un aperçu dans le hall. Toute personne que vous invitez à dessiner reçoit l'intégralité du projet, y compris l'image originale. Si quelqu'un signale votre salle, nous conservons un instantané du canevas pour examiner et résoudre le signalement.",
       "beKindHeading": "Bienveillance",
-      "beKindBody": "Ne harcelez pas, ne menacez personne et n'attaquez personne pour ce qu'il est. N'utilisez pas l'adresse IP d'une personne contre elle et ne partagez pas ses informations personnelles. Gardez les salles publiques convenables, respectez le travail des autres et ne signalez que de bonne foi. Les hôtes peuvent retirer ou bloquer des participants, et tout membre connecté avec un e-mail confirmé peut signaler une personne ou une salle."
+      "beKindBody": "Ne harcelez pas, ne menacez personne et n'attaquez personne pour ce qu'il est. N'utilisez pas l'adresse IP d'une personne contre elle et ne partagez pas ses informations personnelles. Gardez les salles publiques convenables, respectez le travail des autres et ne signalez que de bonne foi. Les hôtes peuvent retirer des participants de leur salle, tout membre connecté peut bloquer quelqu'un (il ne peut plus rejoindre les salles que vous hébergez et ses messages sont repliés pour vous), et tout membre connecté avec un e-mail confirmé peut signaler une personne ou une salle."
     },
     "joinDialog": {
       "title": "Rejoindre cette salle ?",

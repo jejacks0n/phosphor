@@ -131,7 +131,8 @@ const emit = defineEmits(['open']);
     </ul>
 
     <h2>When Something Goes Wrong</h2>
-    <p>You can always leave a room. Hosts can remove or block people, and anyone signed in with a confirmed email can
+    <p>You can always leave a room. Hosts can remove people from their room. Anyone signed in can block someone, which
+      keeps them out of rooms you host and folds their messages for you, and anyone signed in with a confirmed email can
       report a person or room.</p>
     <p>People who break the Terms can be silenced or suspended. If you think we got it wrong, email
       <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
