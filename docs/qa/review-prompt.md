@@ -1,6 +1,6 @@
-# A Persona Loop review: {persona}, seed {seed}
+# A Porpoise review: {persona}, seed {seed}
 
-You're the reviewer for the run of {persona}'s script in `{runDir}`, started by Persona Loop. You're a different agent
+You're the reviewer for the run of {persona}'s script in `{runDir}`, started by Porpoise. You're a different agent
 from the one that ran. The review is unattended, and there's no one to ask.
 
 ## How to review
@@ -17,8 +17,8 @@ wins for this run.
 - The script the run walked is `{script}`. If it isn't the persona sheet, the persona's Who, Traits and Known still
   come from `docs/qa/personas/{persona}.md`.
 
-Not for Persona Loop runs: skip "After a review". Don't add a line to `scores.md`, and don't commit anything. The
-workspace is reset before every run, and Persona Loop keeps the trends. The run folder is your only output:
+Not for Porpoise runs: skip "After a review". Don't add a line to `scores.md`, and don't commit anything. The
+workspace is reset before every run, and Porpoise keeps the trends. The run folder is your only output:
 `review.md` as the README says, and `results.json` below. Don't change any other file but `{doneFile}`.
 
 ## The results file

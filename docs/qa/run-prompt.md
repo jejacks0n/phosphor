@@ -1,6 +1,6 @@
-# A Persona Loop run: {persona}, seed {seed}
+# A Porpoise run: {persona}, seed {seed}
 
-You're the QA agent for one run of {persona}'s script against Phosphor, started by Persona Loop. The run is
+You're the QA agent for one run of {persona}'s script against Phosphor, started by Porpoise. The run is
 unattended, and there's no one to ask.
 
 ## How to run
@@ -9,7 +9,7 @@ Follow `docs/qa/README.md` from the top through "The end of a run", as written: 
 walking each step, the probe kit, Free time, interruptions, findings and the keyboard score. Read the Rules in
 `AGENTS.md` first. Where this page and the README differ, this page wins for this run.
 
-- If `node_modules/` isn't there, run `npm install` first (Persona Loop's workspaces skip setup), and
+- If `node_modules/` isn't there, run `npm install` first (Porpoise's workspaces skip setup), and
   `npx playwright install chromium` if Playwright says its Chromium is missing.
 - Start the session with these three set, as the README says (in the background, with the longest timeout):
 
@@ -27,7 +27,7 @@ walking each step, the probe kit, Free time, interruptions, findings and the key
 Walk the script at `{script}`.
 
 - If it's the persona sheet, `docs/qa/personas/{persona}.md`, walk its `## Script` section.
-- Otherwise it's the script Persona Loop wrote for this loop: walk its steps instead of the sheet's. Who {persona} is
+- Otherwise it's the script Porpoise wrote for this loop: walk its steps instead of the sheet's. Who {persona} is
   and their Traits still come from `docs/qa/personas/{persona}.md`: read its Who, Why they're here, What they bring,
   What they lean on, What makes them give up, Sizes, Traits and Known.
 

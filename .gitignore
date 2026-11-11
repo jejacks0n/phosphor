@@ -4,7 +4,7 @@ node_modules
 /dist-path
 /dist-qa
 /qa-runs
-/.persona-loop/
+/.porpoise/
 /input
 
 # local env files
