@@ -19,7 +19,7 @@ async function accepted(page) {
 // Everything the page asked of anywhere but the app's own origin.
 const elsewhere = (page) => {
   const seen = [];
-  page.on('request', (request) => { if (!request.url().startsWith('http://localhost:4180') && !request.url().startsWith('data:') && !request.url().startsWith('blob:')) seen.push(request.url()); });
+  page.on('request', (request) => { if (!/^https?:\/\/localhost(:\d+)?\//.test(request.url()) && !request.url().startsWith('data:') && !request.url().startsWith('blob:')) seen.push(request.url()); });
   page.on('websocket', (socket) => seen.push(socket.url()));
   return seen;
 };

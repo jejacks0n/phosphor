@@ -5,7 +5,7 @@ import { fakeServer, fakeRoom, member, tile, ROOM_ID, openLobby, openStats, show
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
-const LINK = `http://localhost:4180/?room=${ROOM_ID}`;
+const link = (baseURL) => `${baseURL}/?room=${ROOM_ID}`;
 
 // Signed in, with art open, on Start a room.
 async function startPage(page, options = {}) {
@@ -96,7 +96,7 @@ test('Set up your room: the radio buttons look like the checkboxes; the room\'s 
   expect((await name.boundingBox()).width).toBeLessThan(form.width * 0.6);   // still a column wide, not stretched
 });
 
-test('going live with a public room: a name of only spaces isn\'t sent; the POST with its signal, the host back on the art with the room\'s chat, Settings and stats with its link and fitting its box, Copy link', async ({ page }) => {
+test('going live with a public room: a name of only spaces isn\'t sent; the POST with its signal, the host back on the art with the room\'s chat, Settings and stats with its link and fitting its box, Copy link', async ({ page, baseURL }) => {
   const { room, server } = await startPage(page);
   // The setup is a dialog of its own over the art, named by its heading, which has focus.
   const setup = shown(page, 'start-room');
@@ -147,7 +147,7 @@ test('going live with a public room: a name of only spaces isn\'t sent; the POST
   await expect(host.getByRole('heading', { name: 'neon harbor' })).toBeVisible();
   await expect(host.getByText(/Live for 0:0\d:\d\d/)).toBeVisible();
   await expect(tile(host, 'Here now')).toHaveText('0');
-  await expect(host.getByText(LINK)).toBeVisible();
+  await expect(host.getByText(link(baseURL))).toBeVisible();
   await expect(host.getByText('Send the link and the password to anyone you want in.')).toHaveCount(0);
   expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'neon harbor', public: true, allowGuests: true, max: 12, signal: 'chat' }]);
   await expect.poll(() => room.received[0]).toMatchObject({ from: 'host', msg: { type: 'host' } });
@@ -158,7 +158,7 @@ test('going live with a public room: a name of only spaces isn\'t sent; the POST
 
   const copy = host.getByRole('button', { name: 'Copy link' });
   await copy.click();
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(LINK);
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(link(baseURL));
   await expect(host.getByRole('button', { name: 'Copied' })).toBeVisible();
   await expect(host.getByRole('status')).toHaveText('Copied');   // said, too
   await expect(copy).toBeVisible({ timeout: 4000 });   // back after 2 s
