@@ -119,15 +119,22 @@ onBeforeUnmount(() => { workspace.selectedKeys = []; });
 
 // The lanes line up with the scrubber, as wide as its range, frame i where its mark is (the thumb, --thumb, travels
 // half a thumb short of each end); or, with too many frames for that, they're a window that scrolls and zooms
-// (keyLanes.js).
+// (keyLanes.js). Where the panel is too narrow for that and the names and buttons beside it (a tablet with the side
+// panel open), the lanes give way: the column they share with the ruler narrows, and they scroll and zoom the same way.
+// want is the scrubber's place, which the columns aim for; lane is where the ruler (or a row's lane) really is.
+const want = reactive({ lead: 0, lane: 0 });
 const lane = reactive({ left: 0, width: 0, thumb: 0 });
+const ruler = useTemplateRef('ruler');
 const scrubber = () => document.querySelector('.animation-bar .scrubber input[type=range]');
 function measure() {
   const range = scrubber();
   if (!range || !root.value) return;
-  const box = range.getBoundingClientRect();
-  lane.left = box.left - root.value.getBoundingClientRect().left;
-  lane.width = box.width;
+  const left = root.value.getBoundingClientRect().left, box = range.getBoundingClientRect();
+  want.lead = box.left - left;
+  want.lane = box.width;
+  const own = root.value.querySelector('div.ruler, div.lane')?.getBoundingClientRect() ?? box;
+  lane.left = own.left - left;
+  lane.width = own.width;
   lane.thumb = parseFloat(getComputedStyle(range).getPropertyValue('--thumb')) || 0;
 }
 let observer = null;
@@ -136,6 +143,11 @@ onMounted(() => {
   observer = new ResizeObserver(measure);
   for (const el of [root.value, scrubber(), scrubber()?.closest('.animation-bar')]) if (el) observer.observe(el);
 });
+watch(ruler, (el, was) => { // its column narrows when a name or a button beside it grows
+  if (was) observer?.unobserve(was);
+  if (el) observer?.observe(el);
+  measure();
+}, { flush: 'post' });
 onBeforeUnmount(() => observer?.disconnect());
 const layout = computed(() => laneLayout({ count: count.value, width: lane.width, thumb: lane.thumb, zoom: workspace.keysZoom,
   scroll: workspace.keysScroll, minPx: phone.value ? MIN_FRAME_PX_PHONE : MIN_FRAME_PX }));
@@ -354,7 +366,7 @@ const focusIn = () => {
 </script>
 
 <template>
-  <section ref="root" class="keys-panel" tabindex="0" :aria-label="t('keysPanel.aria')" :style="{ '--lead': `${lane.left}px`, '--lane': `${lane.width}px` }" @keydown="keydown" @pointerdown="focusIn" @lostpointercapture="lostKeys">
+  <section ref="root" class="keys-panel" tabindex="0" :aria-label="t('keysPanel.aria')" :style="{ '--lead': `${want.lead}px`, '--lane': `${want.lane}px` }" @keydown="keydown" @pointerdown="focusIn" @lostpointercapture="lostKeys">
     <div class="head">
       <div class="lead">
         <button class="fold" :aria-label="t('keysPanel.fold')" aria-expanded="true" :title="t('keysPanel.fold')" @click="workspace.keysOpen = false">▾</button>
@@ -368,7 +380,7 @@ const focusIn = () => {
       </div>
       <p v-if="!shapeKey" class="none">{{ t('keysPanel.none') }}</p>
       <template v-else>
-        <div class="ruler" @wheel="wheel" @pointerdown.self="grabRuler" @pointermove="panRuler" @pointerup="dropRuler" @lostpointercapture="dropRuler">
+        <div ref="ruler" class="ruler" @wheel="wheel" @pointerdown.self="grabRuler" @pointermove="panRuler" @pointerup="dropRuler" @lostpointercapture="dropRuler">
           <button v-for="i in numbered" :key="i" class="frame" :class="{ now: i === at, out: outside(i) }" :data-at="i" :style="{ left: `${x(i) - 10}px` }" :aria-label="t('keysPanel.frame', { frame: i + 1 })" :disabled="!keys" @pointerdown="pressKeys($event, i, keysOn(i))" @click="pickFrame(i)">
             <span>{{ i + 1 }}</span>
           </button>
@@ -732,6 +744,58 @@ button.delete svg {
   fill: currentColor;
 }
 
+/* Wider than a phone: the head and every row share the panel's columns (a subgrid), so the ruler and the lanes are one
+   column and always line up. The names take what they need, at least the scrubber's lead; the lanes as much of the
+   scrubber's width as leaves the buttons room, and no less than a few frames, which then scroll and zoom; the buttons
+   the rest, the easing menu down to its curve and the words cut short before Delete is. A row's values scroll sideways
+   when they don't fit. */
+@media (min-width: 769px) {
+  section.keys-panel {
+    display: grid;
+    grid-template-columns: minmax(max-content, var(--lead)) minmax(96px, var(--lane)) max-content minmax(180px, 1fr);
+  }
+  div.head, div.rows, div.row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: subgrid;
+    align-items: center;
+  }
+  div.lead {
+    width: auto;
+  }
+  div.ruler, div.lane {
+    width: auto;
+  }
+  p.none {
+    grid-column: 2 / -1;
+  }
+  div.row > :deep(div.values) {
+    grid-column: 3 / -1;
+    contain: inline-size; /* its fields don't widen the columns; it scrolls instead */
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
+div.rest {
+  container-type: inline-size; /* its width is the column's, not its words' */
+}
+div.rest article.dropdown {
+  min-width: 0;
+}
+@container (max-width: 204px) { /* short of room, the easing menu is its curve */
+  .easing span.shrinks {
+    display: none;
+  }
+}
+div.rest :deep(.dropdown-trigger) {
+  max-width: 100%;
+}
+span.shrinks {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* On a phone: no values and no ◀ ▶; a ◆ toggle ends each row. The top line is the fold, + Add key and the buttons; the
    ruler (and the zoom) has the next, under the lanes' own columns. */
 div.row > button.here {
@@ -764,17 +828,6 @@ div.row > button.here.on {
     min-width: 120px;
     justify-content: flex-end;
     padding: 0 8px 0 0;
-  }
-  div.rest article.dropdown {
-    min-width: 0;
-  }
-  div.rest :deep(.dropdown-trigger) {
-    max-width: 100%;
-  }
-  span.shrinks {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   div.ruler {
     order: 2;
