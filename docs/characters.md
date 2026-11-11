@@ -192,10 +192,12 @@ gives other apps only its characters (see [Layers](layers.md#the-select-tool)).
   (`38;5`), and the rest as 24-bit ones (`38;2`). A file you opened keeps the palette it came with
   ([Opening a file](layers.md#opening-ansi-and-text-files)), so it comes out in the same kind of codes.
 - **SAUCE**, the record after the art, says what's on the SAUCE tab: title, author, group and your
-  comments, and nothing Phosphor adds of its own. A file you opened comes out with its record as it
-  went in: its date, flags (iCE colors, letter spacing), font name, size and comments, changed only
-  where you changed them on the SAUCE tab. A resize changes the size it gives. Comments are lines of 64
-  characters, so a longer line is cut into lines of 64, and the record holds at most 255 of them.
+  comments. For a converted image or a blank canvas, Phosphor's own lines come first (Created with
+  Phosphor, and the settings it was converted with), then a blank line and yours. A file you opened gets
+  none of them: it comes out with its record as it went in, its date, flags (iCE colors, letter spacing),
+  font name, size and comments changed only where you changed them on the SAUCE tab. A resize changes the
+  size it gives. Comments are lines of up to 64 characters: a longer line breaks at a space, and only a
+  word longer than 64 is split. The record holds at most 255 lines.
 
 Saving a project and both exports open the same dialog, where you name the file (Cmd/Ctrl+S opens it
 for the project). It offers the document's name with the date and time (`art-20261030-131405`), so

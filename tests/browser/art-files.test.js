@@ -168,14 +168,37 @@ test('a 256-color file opens on VGA and exports 256-color codes, not 24-bit ones
   }
 });
 
-test('a converted image or a blank canvas has no comments but the person\'s', async () => {
+// Phosphor's own comment lines: who made it, and the settings it was converted with.
+const PHOSPHOR_LINES = /^Created with Phosphor Params: seed=\S+, smoothing=\S+, quantize=\S+ Adjust: .+ Effects: .+$/;
+
+test('a converted image or a blank canvas has Phosphor\'s comment lines, wrapped at a space, then the person\'s', async () => {
   const project = await afterAnotherDocument();
   project.sauceUserComments = '';
-  expect(readSauce(await exported(project)).comments).toEqual([]);
+  const own = readSauce(await exported(project));
+  expect(own.comments.length).toBeGreaterThan(4); // the Effects line is longer than one
+  expect(own.comments.every((line) => line.length <= 64 && line === line.trim())).toBe(true);
+  expect(own.comments.join(' ')).toMatch(PHOSPHOR_LINES); // each break was a space, so no word is cut
+  expect(own.comments.join(' ')).toContain('edges=0 (#000000), thickness=1');
+
   project.sauceUserComments = 'mine\nalso';
   const sauce = readSauce(await exported(project));
-  expect([sauce.comments, sauce.flags, sauce.fontName]).toEqual([['mine', 'also'], 3, 'IBM VGA']);
+  expect(sauce.comments.slice(own.comments.length)).toEqual(['', 'mine', 'also']);
+  expect([sauce.flags, sauce.fontName]).toEqual([3, 'IBM VGA']);
   expect(sauce.date).toMatch(/^\d{8}$/);
+
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await settle(project);
+  project.sauceUserComments = '';
+  expect(readSauce(await exported(project)).comments.join(' ')).toMatch(PHOSPHOR_LINES);
+});
+
+test('an opened file, with SAUCE or without, gets no comment lines of Phosphor\'s', async () => {
+  const project = await afterAnotherDocument();
+  await project.openArtFile(new File(['hello\nthere'], 'note.txt'));
+  await settle(project);
+  expect(readSauce(await exported(project)).comments).toEqual([]);
+  await openFixture(project, 'edit');
+  expect(readSauce(await exported(project)).comments).toHaveLength(2);
 });
 
 test('a file with no SAUCE starts the SAUCE tab empty', async () => {

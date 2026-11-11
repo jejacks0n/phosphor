@@ -15,8 +15,8 @@ const pad = (text, length, fill = 32) => {
   return bytes;
 };
 
-// An opened file's record as it comes out again: what a field given holds, written as is (an empty date or font
-// stays empty), and its flags and size when given; what isn't given is Phosphor's own.
+// A record: what a field given holds, written as is (an opened file's empty date or font stays empty), and its
+// flags and size when given; what isn't given is Phosphor's own.
 export class Sauce {
   constructor(file, opts) {
     this.cols = opts.width ?? file.cols;
@@ -43,11 +43,15 @@ export class Sauce {
     if (!input) return [];
     const lines = Array.isArray(input) ? input : [input];
     const processed = [];
+    // A line longer than a comment line breaks at its last space that fits; only a word longer than a line is split.
     lines.forEach(line => {
-      if (!line.length) processed.push(''); // a blank line stays
-      for (let i = 0; i < line.length; i += COMMENT_WIDTH) {
-        processed.push(line.substring(i, i + COMMENT_WIDTH));
+      let rest = line;
+      while (rest.length > COMMENT_WIDTH) {
+        const space = rest.lastIndexOf(' ', COMMENT_WIDTH);
+        processed.push(rest.slice(0, space > 0 ? space : COMMENT_WIDTH));
+        rest = rest.slice(space > 0 ? space + 1 : COMMENT_WIDTH);
       }
+      processed.push(rest); // a blank line stays
     });
     return processed.slice(0, MOST_COMMENT_LINES);
   }
@@ -174,8 +178,8 @@ export function readSauce(bytes) {
 }
 
 // What an opened file's record holds that the SAUCE tab doesn't show, as the setting keeps it (sauceRecord): its
-// flags, its size, and the grid's size (cols, lines) it was opened at.
-export const keptRecord = ({ flags, width, height }, cols, lines) => [flags, width, height, cols, lines].join(' ');
+// flags, its size, and the grid's size (cols, lines) it was opened at; 'none' for a file with no record.
+export const keptRecord = (sauce, cols, lines) => (sauce ? [sauce.flags, sauce.width, sauce.height, cols, lines].join(' ') : 'none');
 
 // The kept record's fields to write again: its flags, and its size while the grid is still the size it was opened
 // at (a resize changes what the size describes). Null when there's no kept record.
