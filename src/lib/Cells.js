@@ -206,14 +206,15 @@ const isWide = (cell) => !!cell && !(cell.char.length === 1 && cell.char.charCod
 
 // A cell rect as text (for the system clipboard): the characters as they show, a line per row. A
 // wide character is written once (its trail adds nothing), so the text lines up in a terminal; a
-// cell that isn't there (cells from before a grid change) is a space.
+// cell that shows nothing (its colors match: showsChar) or isn't there (cells from before a grid
+// change) is a space, as an export writes it.
 export function selectionText(cells, cols, { c0, r0, c1, r1 }) {
   const lines = [];
   for (let row = r0; row <= r1; row++) {
     let line = '';
     for (let col = c0; col <= c1; col++) {
       const cell = cells[cellIndex(col, row, cols)];
-      if (cell?.wide !== 'trail') line += cell?.char ?? ' ';
+      if (cell?.wide !== 'trail') line += cell && showsChar(cell) ? cell.char : ' ';
     }
     lines.push(line);
   }
