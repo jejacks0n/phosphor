@@ -48,7 +48,7 @@ test('Enter on a focused Set FG presses it and keeps the selection', async ({ pa
   await page.keyboard.press('Shift+ArrowRight');
   await page.keyboard.press('Shift+ArrowRight');
   const setFg = page.getByRole('button', { name: 'Set FG', exact: true });
-  for (let i = 0; i < 60 && !(await setFg.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press('Shift+Tab');
+  await setFg.focus(); // where Shift+Tab lands depends on the page's tab order, which other tests own
   await expect(setFg).toBeFocused();
   await page.keyboard.press('Enter');
   expect(await store(page, 'workspace', (w) => w.selection !== null)).toBe(true);
