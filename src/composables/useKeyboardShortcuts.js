@@ -62,7 +62,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Space pans unless the art isn't showing (SAUCE, SOCIAL), it types (a text field, Edit Mode's
   // typing) or it presses a focused control (a button, a menu) while the pointer isn't over the canvas.
   const TYPES = 'input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select, [contenteditable]';
-  const PRESSES = 'button, a, [role="tab"], [role="button"], input[type=checkbox], input[type=radio]';
+  const PRESSES = 'button, a, [role="tab"], [role="button"], [role="menuitem"], summary, input[type=checkbox], input[type=radio]';
   const _spacePans = (e) => {
     if (!workspaceStore.editMode || workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false;
     if (workspaceStore.activeTool === 'text' && workspaceStore.textCursor && workspaceStore.editorTab === 'output') return false; // typing, wherever focus is
@@ -182,7 +182,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const command = e.metaKey || e.ctrlKey;
     if (!command) {
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      if ((e.key === 'Escape' || (selecting && e.key === 'Enter')) && sel) {
+      if ((e.key === 'Escape' || (selecting && e.key === 'Enter' && !e.target?.closest?.(PRESSES))) && sel) { // Enter on a focused control presses it
         projectStore.changeSelection((w) => { w.selection = null; });
         if (workspaceStore.activeTool === 'select' && workspaceStore.selectFromText) workspaceStore.setActiveTool('text'); // back to typing, at the cursor
       } else if (e.key === 'Escape' && _typing()) [workspaceStore.lastTextCursor, workspaceStore.textCursor] = [workspaceStore.textCursor, null];

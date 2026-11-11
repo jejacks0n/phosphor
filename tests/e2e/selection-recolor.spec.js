@@ -38,3 +38,18 @@ test('in the PIXEL view, Fill paints the pixels selected your foreground color',
   await page.getByRole('button', { name: 'Fill', exact: true }).click();
   expect(await base(page, 6, 6)).toBe('#ff00ff');
 });
+
+test('Enter on a focused Set FG presses it and keeps the selection', async ({ page }) => {
+  await openApp(page);
+  await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; });
+  const at = await cellPoint(page, 4, 4);
+  await page.mouse.move(at.x, at.y);
+  await page.keyboard.press('t');
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByRole('button', { name: 'Set FG', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
+  expect(await store(page, 'workspace', (w) => w.selection !== null)).toBe(true);
+  expect(await base(page, 4, 8)).toBe('#ff00ff');
+});
