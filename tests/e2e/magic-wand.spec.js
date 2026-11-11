@@ -1,6 +1,6 @@
 // The Magic Wand through the real UI: W, a click, the outline over the view; the selection stays for
 // the Paint Bucket, which fills only what's selected; Escape or switching views drops it.
-import { test, expect, openApp, store, cellPoint, screenPixel } from './support.js';
+import { test, expect, openApp, store, cellPoint, screenPixel, settled } from './support.js';
 
 const MAGENTA = [255, 0, 255];
 const wandCount = (page) => store(page, 'workspace', (w) => w.wand && [...w.wand.mask].filter(Boolean).length);
@@ -84,6 +84,7 @@ test("the wand's Delete takes away every shown layer: with the base hidden it is
   await store(page, 'project', (p) => p.setLayerHidden('base', true));
   await page.getByRole('button', { name: 'Delete', exact: true }).click(); // the edit layer is picked
   await store(page, 'project', (p) => p.setLayerHidden('base', false));
+  await settled(page); // the picture reads black while it redraws after an edit
   expect(await base(4, 4)).not.toEqual(['#000000', '#000000']); // the hidden base was left alone
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect.poll(() => base(4, 4)).toEqual(['#000000', '#000000']);
