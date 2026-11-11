@@ -6,7 +6,7 @@ import { openApp, store, cellPoint } from './support.js';
 const ws = (page, read) => store(page, 'workspace', read);
 const hint = (page) => page.locator('.ansi-status .hint');
 const scroller = (page) => page.locator('.ansi-editor > article');
-const colorAt = (page, col, row) => store(page, 'project', `(p) => p.rawColorAt(${col}, ${2 * row})`);
+const colorAt = (page, col, row, slot) => store(page, 'project', `(p) => p.underlyingAt(${col}, ${row}).${slot}`); // what the Eyedropper reads
 
 test('Alt picks the foreground and Alt+Shift the background, from Pencil and Shapes; letting go brings the tool back', async ({ page }) => {
   await openApp(page);
@@ -19,7 +19,7 @@ test('Alt picks the foreground and Alt+Shift the background, from Pencil and Sha
     await page.keyboard.down('Alt');
     await expect(hint(page)).toHaveText(/Picking the foreground color/);
     await page.mouse.click(at.x, at.y);
-    expect(await ws(page, (w) => w.editFgColor)).toBe(await colorAt(page, 10, 3));
+    expect(await ws(page, (w) => w.editFgColor)).toBe(await colorAt(page, 10, 3, 'fg'));
 
     const bgAt = await cellPoint(page, 60, 20, 0);
     await page.keyboard.down('Shift');
@@ -27,8 +27,8 @@ test('Alt picks the foreground and Alt+Shift the background, from Pencil and Sha
     await page.mouse.click(bgAt.x, bgAt.y);
     await page.keyboard.up('Shift');
     await page.keyboard.up('Alt');
-    expect(await ws(page, (w) => [w.editBgNone, w.editBgColor])).toEqual([false, await colorAt(page, 60, 20)]);
-    expect(await ws(page, (w) => w.editFgColor)).toBe(await colorAt(page, 10, 3));
+    expect(await ws(page, (w) => [w.editBgNone, w.editBgColor])).toEqual([false, await colorAt(page, 60, 20, 'bg')]);
+    expect(await ws(page, (w) => w.editFgColor)).toBe(await colorAt(page, 10, 3, 'fg'));
 
     expect(await ws(page, (w) => w.activeTool)).toBe(id);
     expect(await store(page, 'project', (p) => p.hasEdits)).toBe(false); // nothing was drawn
