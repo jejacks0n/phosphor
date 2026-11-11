@@ -62,6 +62,22 @@ test('as Double with Connect it joins the line it crosses', async () => {
   expect(charAt(4, 5)).toBe('═');
 });
 
+test('with Connect a line that ends on a line joins it as a T, and draws nothing past it', async () => {
+  const { draw, charAt, workspace } = await scene({ shapeKind: 'rect', shapeDrawWith: 'double', shapeConnect: true, editBgNone: true });
+  draw('output', { x: 2.5, y: 8.5 }, { x: 31.5, y: 20.5 });  // a double box, cells (2,4) to (31,10)
+  Object.assign(workspace, { shapeKind: 'line', shapeDrawWith: 'single' });
+  draw('output', { x: 2.5, y: 16.5 }, { x: 31.5, y: 16.5 }); // a single line across row 8, edge to edge
+  expect(charAt(2, 8)).toBe('╟');
+  expect(charAt(31, 8)).toBe('╢');
+  expect(charAt(16, 8)).toBe('─');
+  draw('output', { x: 10.5, y: 2.5 }, { x: 10.5, y: 8.5 });  // down onto the top edge, from above
+  expect(charAt(10, 4)).toBe('╧');
+  expect(charAt(10, 3)).toBe('│');
+  workspace.shapeDrawWith = 'double';
+  draw('output', { x: 31.5, y: 8.5 }, { x: 38.5, y: 8.5 });  // a double line on from the top-right corner
+  expect(charAt(31, 4)).toBe('╦');
+});
+
 test('as Character or Full block it draws whole cells along the line, diagonals too', async () => {
   const { draw, charAt, workspace } = await scene({ shapeDrawWith: 'char' });
   workspace.activeChar = '*';

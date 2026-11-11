@@ -11,7 +11,7 @@
 import { linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/editCells';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
-import { joinBox, inwardArms } from '@/lib/BoxJoin';
+import { armsOf, joinBox, inwardArms } from '@/lib/BoxJoin';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { selectionClip } from '@/lib/selectionClip';
 import { watch } from 'vue';
@@ -220,10 +220,18 @@ function apply({ project, workspace, view }, end) {
     };
     const erased = (col, row) => fill && col > rect.c0 && col < rect.c1 && row > rect.r0 && row < rect.r1;
     const STEPS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    // A straight run's ends point only back along it, so one that lands on a line joins it as a T
+    // rather than crossing it.
+    const ends = (col, row, char) => {
+      const arms = [...armsOf(char)];
+      if (rect.r0 === rect.r1 && rect.c0 < rect.c1) { if (col === rect.c0) arms[3] = 0; if (col === rect.c1) arms[1] = 0; }
+      if (rect.c0 === rect.c1 && rect.r0 < rect.r1) { if (row === rect.r0) arms[0] = 0; if (row === rect.r1) arms[2] = 0; }
+      return arms;
+    };
     const join = (col, row, char) => {
       if (!workspace.shapeConnect) return char;
       const closed = STEPS.map(([dc, dr]) => erased(col + dc, row + dr));
-      return joinBox(char, shown(col, row), inwardArms(STEPS.map(([dc, dr]) => shown(col + dc, row + dr))), closed);
+      return joinBox(ends(col, row, char), shown(col, row), inwardArms(STEPS.map(([dc, dr]) => shown(col + dc, row + dr))), closed);
     };
     cells = boxCells(rect, drawWith, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char: join(col, row, char), ...attrs } }));
     if (fill) {
