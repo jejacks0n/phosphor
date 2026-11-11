@@ -243,7 +243,8 @@ In the chat, **Delete** takes the place of a message's time when you point at it
 from someone you blocked shows **Show** first).
 
 **End room** ends it for everyone, including anyone drawing, and tells watchers at once. Reloading the tab comes back to the same
-room as its host, at the same address and the same view, and watchers wait and see it's reconnecting. Closing the tab for
+room as its host, at the same address and the same view, with the side panel as you left it (folded or open, on
+CHAT or LAYERS), and watchers wait and see it's reconnecting. Closing the tab for
 good ends the room within about a minute, unless you come back to it or someone is drawing with you: then an artist carries it on
 (see **Drawing together**). The prompt still asks first; if the room ended while the page was
 away, you're told so and your art stays. Signing out while you host works the same way. A chat longer
@@ -426,12 +427,14 @@ the side panel.
 
 On a wide screen a side panel sits on the right of the whole workspace, with a **LAYERS** tab (empty
 for now). When you're in a room, hosting or watching, it gains a **CHAT** tab and opens on it, with the
-host's welcome message pinned at the top. It stays open as you move between tabs, so you can work on your
+host's welcome message pinned at the top. A reload in the room shows the panel as it was: still folded if you
+folded it, and on **CHAT** or **LAYERS**, whichever was showing. It stays open as you move between tabs, so you can work on your
 own piece and keep talking. While **LAYERS** shows, the **CHAT** tab counts new messages; **»**, right of
 **Animate** at the top, folds the panel away (it takes no room then, and the arrow counts them too), and **«**
 opens it again. Drag the panel's left edge to make it
 wider or narrower (or focus the edge and use the arrow keys); a double-click puts it back. Its width and
-whether it's folded stay as you left them in that browser tab; the panel starts open, and the next tab starts the way you left it.
+whether it's folded are kept in the browser: a reload, or the next tab, starts the way you left them, and a browser that has
+never folded it starts with it open. Going into a room opens it, on **CHAT**.
 
 Everyone in the room reads the chat. Members with a confirmed email write in it; a guest sees
 **Sign in to chat** and an unconfirmed member sees **Confirm your email to chat**. A message is up

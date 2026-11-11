@@ -137,7 +137,7 @@ test('going into a room opens it on CHAT; what\'s said behind LAYERS or the fold
   expect(host.querySelector('aside.chat')).toBe(null);
 });
 
-test('in a room already when it comes (a reload), it opens on CHAT; leaving with focus lost with what held it puts focus on the lobby\'s heading', async () => {
+test('in a room already when it comes (the window widened, say), it opens on CHAT; leaving with focus lost with what held it puts focus on the lobby\'s heading', async () => {
   const { room, workspace } = await mount((r) => inRoom(r, [row(0)]));
   expect(workspace.sidePanelFolded).toBe(false);
   expect(tabs()).toEqual([['Layers', 'false'], ['Chat', 'true']]);
@@ -147,6 +147,58 @@ test('in a room already when it comes (a reload), it opens on CHAT; leaving with
   await nextTick();
   await nextTick();
   expect(document.activeElement).toBe(host.querySelector('section.lobby h2'));
+});
+
+// A reload into the room: new stores, the fold as the browser kept it, and this load coming back to a room.
+async function reloadInto(folded) {
+  await nextTick();   // the chat, if it was shown, scrolled to its newest
+  app.unmount();
+  host.remove();
+  return mount((r) => {
+    useWorkspaceStore().sidePanelFolded = folded;
+    useSocialStore()._roomGoesOn = true;
+    inRoom(r, [row(0)]);
+  });
+}
+
+test('a reload into the room shows the panel as it was: folded stays folded, and LAYERS or CHAT, whichever showed', async () => {
+  sessionStorage.clear();
+  const { room } = await mount();
+  await enter(room, [row(0)]);
+  host.querySelector('.side-panel [role=tab]').click();   // LAYERS
+  arrow().click();
+  await nextTick();
+  expect(sessionStorage.getItem('phosphor.sidePanelRoomTab')).toBe('layers');
+  expect(localStorage.getItem('phosphor.sidePanelFolded')).toBe('true');
+
+  let again = await reloadInto(true);
+  expect(again.workspace.sidePanelFolded).toBe(true);
+  expect(again.workspace.sidePanelTab).toBe('layers');
+  arrow().click();
+  await nextTick();
+  expect(tabs()).toEqual([['Layers', 'true'], ['Chat', 'false']]);
+  host.querySelectorAll('.side-panel [role=tab]')[1].click();   // CHAT
+  await nextTick();
+  expect(sessionStorage.getItem('phosphor.sidePanelRoomTab')).toBe('social');
+
+  again = await reloadInto(false);
+  expect(again.workspace.sidePanelFolded).toBe(false);
+  expect(tabs()).toEqual([['Layers', 'false'], ['Chat', 'true']]);
+
+  host.querySelector('.side-panel [role=tab]').click();   // LAYERS, then out of the room, and into another from the lobby: that opens on CHAT
+  await nextTick();
+  expect(sessionStorage.getItem('phosphor.sidePanelRoomTab')).toBe('layers');
+  arrow().click();
+  again.room.role = null;
+  await nextTick();
+  again.workspace.sidePanelTab = 'social';   // the lobby, folded
+  await nextTick();
+  await enter(again.room);
+  expect(again.workspace.sidePanelFolded).toBe(false);
+  expect(tabs()).toEqual([['Layers', 'false'], ['Chat', 'true']]);
+  expect(sessionStorage.getItem('phosphor.sidePanelRoomTab')).toBe('social');
+  await nextTick();   // the chat, shown, scrolls to its newest
+  sessionStorage.clear();
 });
 
 test('in a room, what SOCIAL says (the lobby\'s notice line, not showing) is a toast; out of one it isn\'t', async () => {
