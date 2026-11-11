@@ -1,0 +1,11 @@
+{
+  "repo": "jejacks0n/phosphor",
+  "personas": "docs/qa/personas",
+  "runPrompt": "docs/qa/run-prompt.md",
+  "reviewPrompt": "docs/qa/review-prompt.md",
+  "builderBrief": "docs/qa/builder-brief.md",
+  "base": "main",
+  "setup": "skip",
+  "runsDir": "qa-runs",
+  "resultsFile": "results.json"
+}

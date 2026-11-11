@@ -56,6 +56,7 @@ or until it's stopped (Ctrl+C or a kill); every way of stopping writes `report.m
 | --- | --- | --- |
 | `QA_PERSONA` | (required) | `maya`, `dex`, `priya`, `juno`, `theo`, `sam`, `lea` or `walt`. A misspelled one stops before the build; an unset one stops the session as it starts, after the build. |
 | `QA_SEED` | random | A whole number. The same persona and seed always draw the same traits. Unset, a random seed is drawn and recorded. |
+| `QA_RUN_DIR` | (dated) | The run's folder, when something hands the run its own (see [The run folder](#the-run-folder)). |
 | `QA_PORT` | `4210` | The port the QA build is served on. Never `5173`, `4180` or `4181` (refused). A port in use stops the run: it never tests someone else's server. |
 | `QA_SNIPPET_MS` | `120000` | How long a snippet may run before it's recorded as timed out. |
 | `QA_IDLE_MIN` | `30` | Minutes with no snippet before the session ends itself. Your thinking time between snippets counts. |
@@ -71,7 +72,14 @@ carry on from where the first stopped. The new session gets a folder of its own;
 ### The run folder
 
 Each session gets `qa-runs/<local date>-<persona>-<seed>/` (a second session of the same seed on the same day gets
-`-2`, then `-3`). `qa-runs/` is ignored by git, and so is `dist-qa/`. In the folder:
+`-2`, then `-3`). `qa-runs/` is ignored by git, and so is `dist-qa/`.
+
+When `QA_RUN_DIR` is set, the session uses exactly that folder instead, and makes it if it isn't there. A relative
+path is from the repo's root. It's for a caller that hands each run its own folder (Persona Loop does, with
+`QA_RUN_DIR` under `qa-runs/`). A folder a session has already used is refused, so a session that ends early and
+starts again needs a new one: name it after the first, with `-2`, then `-3`, beside it.
+
+In the folder:
 
 - `run.json`: everything recorded so far, rewritten after every call that records something.
 - `report.md`: written when the session ends.
