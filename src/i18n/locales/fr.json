@@ -1049,6 +1049,7 @@
     }
   },
   "social": {
+    "narrow": "Les salles demandent un écran plus large.",
     "unsupported": "Ce navigateur ne prend pas en charge les fonctionnalités de sécurité nécessaires à SOCIAL.",
     "agreeTerms": "J'ai 13 ans ou plus et j'accepte les {terms}, la {privacy} et les {guidelines}",
     "nav": {

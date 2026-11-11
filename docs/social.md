@@ -11,7 +11,8 @@ Phosphor's social side, **SOCIAL**, is where you meet other people: you can watc
 others watch you. It lives in the side panel on the right of the workspace: its **Social** tab (marked
 Beta), beside **LAYERS**, is there even before you've opened any art, and becomes **CHAT** while you're in
 a room. Signing in, your account and starting a room open in boxes over everything. It's for wide screens:
-a phone held sideways can be wide enough, and narrower screens don't show the side panel.
+a phone held sideways can be wide enough. Narrower screens don't show the side panel, and say "Rooms need a wider
+screen." (see Not in this version).
 
 ## Before you come in
 
@@ -516,6 +517,8 @@ Thank you.**, and **Report room** goes away for that room (this browser remember
 
 ## Not in this version
 
-- Narrow screens: SOCIAL needs a wide one (the side panel isn't shown on a narrow screen). A link from one of Phosphor's emails, or to a room,
-  opened on a narrow screen does nothing there; open it on a computer, or with the screen wider.
+- Narrow screens: SOCIAL needs a wide one (the side panel isn't shown on a narrow screen). A link to a room opened on
+  a narrow screen, or a room you're in when the window narrows, shows "Rooms need a wider screen." A watcher gets
+  **Exit** with it, which leaves as the room's own Exit does. A host's room goes on, without Exit, and the room is
+  back as it was when the window widens.
 - Keeping a copy of art you're only watching.

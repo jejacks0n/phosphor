@@ -1,6 +1,7 @@
 <script setup>
 import { watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
+import { useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAutosave } from '@/composables/useAutosave';
 import { desktopQuery } from '@/social/config';
@@ -16,6 +17,7 @@ import { charRowsOf } from '@/lib/Cells';
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import SidePanel from '@/components/SidePanel.vue';
 import EndRoomDialog from '@/components/social/EndRoomDialog.vue';
+import NarrowRooms from '@/components/social/NarrowRooms.vue';
 import SocialDialogs from '@/components/social/SocialDialogs.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
@@ -28,6 +30,7 @@ import AppToast from '@/components/AppToast.vue';
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const room = useRoomStore();
+const route = useRoute();
 const { image } = storeToRefs(project);
 const wide = useMediaQuery(desktopQuery);   // the side panel's: a phone has neither rooms nor room for it
 const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen, legalPage, versionsOpen } = storeToRefs(workspace);
@@ -141,6 +144,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <EditWorkspace :ready="ready" :recent="recent" :open-recent="openRecent"/>
     <SidePanel v-if="wide"/>
     <SocialDialogs v-if="wide"/>
+    <NarrowRooms v-if="!wide && (room.role || route.query.room)"/>
     <EndRoomDialog v-if="room.askingEnd" @end="room.answerEnd(true)" @cancel="room.answerEnd(false)"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
