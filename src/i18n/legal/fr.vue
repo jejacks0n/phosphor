@@ -131,8 +131,9 @@ const emit = defineEmits(['open']);
     </ul>
 
     <h2>Quand quelque chose ne va pas</h2>
-    <p>Vous pouvez toujours quitter une salle. Les hôtes peuvent retirer ou bloquer des personnes, et quiconque est connecté avec un e-mail confirmé peut
-      signaler une personne ou une salle.</p>
+    <p>Vous pouvez toujours quitter une salle. Les hôtes peuvent retirer des personnes de leur salle. Quiconque est connecté peut bloquer
+      quelqu'un : il ne peut plus rejoindre les salles que vous hébergez, et ses messages sont repliés pour vous. Quiconque est connecté avec un
+      e-mail confirmé peut signaler une personne ou une salle.</p>
     <p>Les personnes qui enfreignent les Conditions peuvent être réduites au silence ou suspendues. Si vous pensez qu'une erreur a été commise, écrivez à
       <a href="mailto:hello@phosphor.work">hello@phosphor.work</a>.</p>
 
