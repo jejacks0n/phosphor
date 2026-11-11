@@ -1,5 +1,7 @@
 <script setup>
+import { watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import ReadingDialog from '@/components/ReadingDialog.vue';
 
 // This build: the version (its third number is the day it was built) and the commit (vite.config.js, buildInfo).
@@ -7,6 +9,15 @@ const { version, sha } = __BUILD__;
 
 const emit = defineEmits(['close']);
 const { t } = useI18n();
+const workspace = useWorkspaceStore();
+
+// A legal page closing gives focus back to its link.
+let opener = null;
+function read(page, event) {
+  opener = event.currentTarget;
+  workspace.legalPage = page;
+}
+watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); });
 </script>
 
 <template>
@@ -102,6 +113,18 @@ const { t } = useI18n();
     </ul>
     <p>{{ t('about.thanks') }}</p>
 
+    <i18n-t keypath="about.policies" tag="p">
+      <template #terms>
+        <button type="button" class="link inline" @click="read('terms', $event)">{{ t('legal.titles.terms') }}</button>
+      </template>
+      <template #privacy>
+        <button type="button" class="link inline" @click="read('privacy', $event)">{{ t('legal.titles.privacy') }}</button>
+      </template>
+      <template #guidelines>
+        <button type="button" class="link inline" @click="read('guidelines', $event)">{{ t('legal.titles.guidelines') }}</button>
+      </template>
+    </i18n-t>
+
     <hr/>
 
     <div class="footer">
@@ -146,6 +169,14 @@ p, li {
 }
 
 a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+button.link.inline {
+  padding: 0;
+  font: inherit;
+  letter-spacing: normal;
   color: var(--accent);
   text-decoration: underline;
 }

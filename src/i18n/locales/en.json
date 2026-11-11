@@ -74,7 +74,8 @@
     "creditIcons": "The icons: most are from {fontAwesome} by Fonticons, Inc. ({ccBy})",
     "creditScene": "And the many authors, maintainers, and ANSI artists who have inspired me over the years—too many to name",
     "thanks": "Thanks to all of you for the inspiration, and for keeping the scene going.",
-    "motto": "Make Code Not War"
+    "motto": "Make Code Not War",
+    "policies": "Read the {terms}, the {privacy} and the {guidelines}."
   },
   "zero": {
     "dropPrompt": "Drop an image, {ext} or ANSI file here",
@@ -1288,6 +1289,7 @@
       "subRoomInside": "Moderators receive recent lobby previews plus a snapshot of the canvas right now.",
       "subRoomLobby": "Moderators receive the room's recent lobby previews.",
       "thanks": "Reported. Thank you.",
+      "rules": "Reports are about the {guidelines}.",
       "whatsWrong": "What's wrong?",
       "reasons": {
         "spam": "Spam or flooding",

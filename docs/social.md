@@ -99,7 +99,8 @@ has them set up; with neither, the page is just the email or username and passwo
   verified), and a **password** of at least 10 characters that isn't a known leaked password;
 - a quick check that you're not a script (Cloudflare Turnstile);
 - that you're **13 or older** and agree to the **Terms**, **Privacy Policy**, and **Community Guidelines**
-  (each opens over the app, like About).
+  (each opens over the app, like About). About, under **About Phosphor** in the footer, links all three at its
+  end, so you can read them any time.
 
 Phosphor then emails you a link to confirm your address. Until you do, you can watch but not chat
 or start a room. The lobby says **Confirm your email to start a room**, with **Resend** to send the
@@ -468,7 +469,7 @@ message that's been deleted.
 
 Either way, a box asks **Report <name>?** and **What's wrong?**: **Spam or flooding**, **Harassment or
 hate**, **Sexual or violent**, or **Something else**. Pick one and press **Report**, or **Cancel**
-to send nothing. The box says who'll look: Phosphor's moderators see the message and the few before it.
+to send nothing. The box links the **Community Guidelines**, which open over it. The box says who'll look: Phosphor's moderators see the message and the few before it.
 For a message, what's sent is that message and up to five
 before it, as they arrived, each signed by whoever wrote it. For a person from **N here**, it's their
 last few messages, which may be none. Phosphor's server sees chat only in a report. Afterward you
