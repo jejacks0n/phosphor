@@ -51,6 +51,7 @@ test('Enter on a focused Set FG presses it and keeps the selection', async ({ pa
   await setFg.focus(); // where Shift+Tab lands depends on the page's tab order, which other tests own
   await expect(setFg).toBeFocused();
   await page.keyboard.press('Enter');
-  expect(await store(page, 'workspace', (w) => w.selection !== null)).toBe(true);
-  expect(await base(page, 4, 8)).toBe('#ff00ff');
+  const sel = await store(page, 'workspace', (w) => w.selection && { ...w.selection });
+  expect(sel).not.toBe(null); // kept
+  expect(await base(page, sel.c0, sel.r0 * 2)).toBe('#ff00ff'); // a character row is two pixel rows
 });
