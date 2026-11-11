@@ -1,9 +1,9 @@
 // The QA personas' traits: drawn from a seed, the same every time, and kept to what each persona would use.
 import { test, expect } from 'vitest';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PERSONAS, PARTNERS, DEVICES, drawTraits, contextOptions, storageFor, qaPort, runDirName, runSnippet } from '../qa/setup.js';
+import { PERSONAS, PARTNERS, DEVICES, drawTraits, contextOptions, storageFor, qaPort, runDirName, makeRunDir, runSnippet } from '../qa/setup.js';
 import { LOCALE_STORAGE_KEY } from '../../src/i18n/index.js';
 
 const seeds = Array.from({ length: 500 }, (_, i) => i + 1);
@@ -61,6 +61,27 @@ test('the QA port is 4210 unless QA_PORT says otherwise, and never one the app o
 test('a run directory is the date, the persona and the seed', () => {
   expect(runDirName(new Date(2026, 10, 9, 23, 30), 'dex', 42)).toBe('2026-11-09-dex-42');
   expect(runDirName(new Date(2026, 0, 5, 0, 10), 'dex', 42)).toBe('2026-01-05-dex-42');
+});
+
+test('a run folder is dated under qa-runs, with -2 for the same seed again the same day', () => {
+  const root = mkdtempSync(join(tmpdir(), 'qa-root-'));
+  const day = new Date(2026, 10, 9, 12);
+  const first = makeRunDir(root, 'dex', 42, {}, day);
+  expect(first).toBe(join(root, 'qa-runs', '2026-11-09-dex-42'));
+  expect(existsSync(join(first, 'inbox')) && existsSync(join(first, 'outbox'))).toBe(true);
+  expect(makeRunDir(root, 'dex', 42, {}, day)).toBe(`${first}-2`);
+});
+
+test('QA_RUN_DIR is the run folder as given, made if it isn\'t there, and never one a session has used', () => {
+  const root = mkdtempSync(join(tmpdir(), 'qa-root-'));
+  const given = join(root, 'qa-runs', 'loop-3', 'maya-7');
+  expect(makeRunDir(root, 'maya', 7, { QA_RUN_DIR: given })).toBe(given);
+  expect(existsSync(join(given, 'inbox')) && existsSync(join(given, 'outbox'))).toBe(true);
+  expect(() => makeRunDir(root, 'maya', 7, { QA_RUN_DIR: given })).toThrow(/QA_RUN_DIR/);
+  expect(makeRunDir(root, 'maya', 7, { QA_RUN_DIR: 'qa-runs/relative' })).toBe(join(root, 'qa-runs', 'relative'));
+  const empty = join(root, 'elsewhere');
+  mkdirSync(empty);
+  expect(makeRunDir(root, 'maya', 7, { QA_RUN_DIR: empty })).toBe(empty);
 });
 
 test('runSnippet records a value, a throw or a timeout', async () => {
