@@ -102,7 +102,7 @@ export function followAddress(router) {
     const empty = workspace.documentSettled ? !project.image : !current.meta.tab;
     const path = pathOf({ tab: workspace.editorTab, page: social.page, empty });
     const computer = matchMedia(desktopQuery).matches;
-    const wanted = going ?? (computer ? null : was);   // a phone has no rooms: a link stays, for a computer
+    const wanted = going ?? (computer || router.options.history.state.inRoom ? null : was);   // a phone has no rooms: a link stays, for a computer (but not the entry of a room you've left)
     if (path === current.path && wanted === was) {
       replaceNext = false;
       return;
