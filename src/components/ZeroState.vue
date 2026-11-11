@@ -8,7 +8,7 @@ defineProps({
   recent: { type: Array, default: () => [] },
   openRecent: Function,
 });
-const emit = defineEmits(['browse', 'start-blank']);
+defineEmits(['browse', 'start-blank']);
 const { t } = useI18n();
 
 const MAX_RECENT = 5;
