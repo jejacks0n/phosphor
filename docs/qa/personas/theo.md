@@ -335,14 +335,14 @@ again, check his own tool and colors came back, and see what the host's view loo
 ### 22. Block the troll
 - Does: looks for a way to block `spam_gull`: on their message, beside their name, in the chat panel's header, and in
   Edit account (See who you blocked).
-- Expects: blocking is made from a room you host ("Block from your rooms" in N here, [Hosting](../../social.md#hosting));
-  a watcher has no Block in the room. See who you blocked lists `loud_crow` with Unblock. Where he finds no Block, the
-  run files an `oversight` saying where he looked and what told him (or didn't) how to stop seeing `spam_gull`.
-- Probes: `out-of-order`: Unblock `loud_crow` from See who you blocked, come back, and check whether their messages
-  unfold (nothing later relies on the block; a watcher can't put it back, so note it, as the README's Walking a step item 9
-  says); `free`: try right-clicking a
-  person's name in the chat.
-- Rated: yes, wants a Block beside Report on the message
+- Expects: Block shows beside Report in place of their message's time on hover or tab; a box asks "Block spam_gull?"
+  with Block and Cancel; Block folds their messages to "Message from someone you blocked" at once, and he stays in the
+  room. See who you blocked lists `spam_gull` and `loud_crow`, each with Unblock
+  ([Blocking and reporting](../../social.md#blocking-and-reporting)).
+- Probes: `back-out`: Cancel, then Escape, each blocking nothing, with focus back on the message's Block;
+  `out-of-order`: Unblock `loud_crow` from See who you blocked, come back, and check their messages unfold, then block
+  them again from one of their messages; `free`: try right-clicking a person's name in the chat.
+- Rated: yes, wants Tab to the message's Block, then Enter
 
 ### 23. Report the room
 - Does: presses Report under Exit, picks Something else, presses Report.

@@ -11,6 +11,7 @@ import { useSocialStore } from '@/store/SocialStore';
 import { nameColor, nameGlyph } from '@/social/names';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 import ReportDialog from '@/components/social/ReportDialog.vue';
+import { fakeServer } from '../support/socialServer.js';
 
 let app = null, host = null, formatted = 0;
 const formatGetter = Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'format');
@@ -356,6 +357,68 @@ test('Report again on the same message while "Reported" shows opens the dialog a
     expect(document.querySelector('p.reported').textContent).toBe('Reported. Thank you.');
   }
   expect(room.report).toHaveBeenCalledTimes(2);
+});
+
+// Block, on a message: a signed-in watcher's (confirmed or not), on other people's messages that show. The host's is in "N here".
+const blocks = () => [...host.querySelectorAll('button.block')].map((b) => b.getAttribute('aria-label'));
+
+test('Block shows beside Report on other people\'s messages for a signed-in watcher; not on your own, a deleted one, a folded blocked one, for a guest or for the host', async () => {
+  const room = await mount('watch', 0);
+  const social = useSocialStore();
+  social.claims = claims({});
+  social.blocked = [{ id: 'u_4', username: 'name-4', since: 1 }];
+  room.chat = [row(0), row(1, { mine: true, sub: 'u_me' }), row(2, { deleted: true, text: '' }), row(3, { text: '', presence: 'joined' }), row(4), row(5, { host: true })];
+  await nextTick();
+  expect(blocks()).toEqual(['Block name-0', 'Block name-5']);
+  expect(host.querySelector('button.block').textContent).toBe('Block');
+  expect(host.querySelector('button.block').previousElementSibling.matches('button.report')).toBe(true);
+  social.claims = claims({ verified: false });   // no Report yet, but Block
+  await nextTick();
+  expect(reports()).toEqual([]);
+  expect(blocks()).toEqual(['Block name-0', 'Block name-5']);
+  social.claims = claims({ guest: true, verified: false });
+  await nextTick();
+  expect(blocks()).toEqual([]);
+  social.claims = claims({});
+  room.role = 'host';
+  await nextTick();
+  expect(blocks()).toEqual([]);
+});
+
+test('a watcher\'s Block asks first: Cancel and Escape send nothing, with focus back on Block; Block blocks them, folds their messages and puts focus on the messages', async () => {
+  const server = fakeServer();
+  const room = await mount('watch', 0);
+  const social = useSocialStore();
+  social.claims = claims({});
+  room.chat = [row(0), row(1), row(2, { sub: 'u_0', name: 'name-0' })];
+  await nextTick();
+  const dialog = () => document.querySelector('[role=dialog]');
+  const dialogButton = (name) => [...dialog().querySelectorAll('button')].find((b) => b.textContent === name);
+  for (const cancel of [() => dialogButton('Cancel').click(), () => dialog().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))]) {
+    const trigger = host.querySelector('button.block');
+    trigger.click();
+    await nextTick();
+    expect(dialog().querySelector('h3').textContent).toBe('Block name-0?');
+    expect(dialog().querySelector('p.sub').textContent).toBe('They can\'t join any room you host, and their messages fold here. Unblock them from Account.');
+    expect(document.activeElement).toBe(dialogButton('Cancel'));
+    cancel();
+    await nextTick();
+    expect(dialog()).toBe(null);
+    expect(document.activeElement).toBe(trigger);
+  }
+  expect(server.sent('POST', '/api/blocks')).toEqual([]);
+
+  server.route('POST /api/blocks', () => [200, {}]);
+  server.route('GET /api/blocks', () => [200, { blocked: [{ id: 'u_0', username: 'name-0', since: 1 }] }]);
+  host.querySelector('button.block').click();
+  await nextTick();
+  dialogButton('Block').click();
+  await vi.waitFor(() => expect(blocks()).toEqual(['Block name-1']));
+  expect(server.sent('POST', '/api/blocks').map((r) => r.body)).toEqual([{ username: 'name-0' }]);
+  expect([...host.querySelectorAll('.message')].map((m) => m.textContent.includes('Message from someone you blocked'))).toEqual([true, false, true]);
+  expect(dialog()).toBe(null);
+  expect(document.activeElement).toBe(host.querySelector('[role=log]'));
+  expect(room.role).toBe('watch');   // they're blocked from your rooms; you stay in this one
 });
 
 // Report room: a confirmed watcher's, under Exit, until they've reported the room.

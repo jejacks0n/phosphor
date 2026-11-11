@@ -1272,6 +1272,8 @@
       "youSuffix": " (you)",
       "reportMessageAria": "Report message from {name}",
       "deleteMessageAria": "Delete message from {name}",
+      "blockAria": "Block {name}",
+      "blockSub": "They can't join any room you host, and their messages fold here. Unblock them from Account.",
       "mutedNote": "Quietly muted — visible only to the two of you",
       "messageAria": "Message",
       "sendAria": "Send",

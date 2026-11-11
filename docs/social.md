@@ -461,6 +461,12 @@ If someone you've blocked is in a room you're about to join, its card in the lob
 their messages fold to a single line, **Message from someone you blocked**, with **Show** if you want to read it.
 Nobody else sees any difference, and they aren't told.
 
+Watching a room while signed in (a guest can't), you can block someone from there too: **Block** shows beside
+**Report** in place of a message's time when you point at it or tab to it, on anyone's message but your own. It asks
+first (**Block <name>?**, with **Block** or **Cancel**), and then it's the host's Block from your own side: they can't
+join any room you host, your rooms no longer show in their lobby, and their messages here fold at once. You stay in the
+room, and so do they; only the host can remove someone from it. Unblock them from Account's **See who you blocked**.
+
 If you're signed in with a confirmed email, you can **Report** a person. On someone else's message,
 **Report** shows in place of its time when you point at it or tab to it. As the host, the same **Report** is in the **⋯**
 beside a person in the **N here** list. You can't report yourself, a guest (they can't chat), or a
