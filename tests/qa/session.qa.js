@@ -1,9 +1,9 @@
 // A QA session: one person's browser, kept open while an agent drops snippets into the run's inbox (with
 // `npm run qa:send`) and reads what each did from its outbox. Start it with
-// `QA_PERSONA=<name> [QA_SEED=<n>] npm run qa`, in the background; `npm run qa:send -- <name> --end`
-// writes report.md and ends it.
+// `QA_PERSONA=<name> [QA_SEED=<n>] [QA_RUN_DIR=<folder>] npm run qa`, in the background;
+// `npm run qa:send -- <name> --end` writes report.md and ends it.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { readdirSync, renameSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,7 +12,7 @@ import * as e2e from '../e2e/support.js';
 import * as social from '../e2e/social-support.js';
 import * as files from './files.js';
 import * as terminal from './terminal.js';
-import { drawTraits, runDirName, runSnippet } from './setup.js';
+import { drawTraits, makeRunDir, runSnippet } from './setup.js';
 import { safeReport } from './report.js';
 import { makeQa, newRun, qaContext, renderer } from './qa.js';
 
@@ -36,16 +36,6 @@ function writeWhole(path, text) {
   renameSync(`${path}.part`, path);
 }
 
-// A run of the same seed on the same day gets a folder of its own.
-function makeRunDir(persona, seed) {
-  const base = join(runs, runDirName(new Date(), persona, seed));
-  let dir = base;
-  for (let n = 2; existsSync(dir); n++) dir = `${base}-${n}`;
-  mkdirSync(join(dir, 'inbox'), { recursive: true });
-  mkdirSync(join(dir, 'outbox'));
-  return dir;
-}
-
 function asJson(result) {
   try {
     return JSON.stringify(result, null, 2);
@@ -66,7 +56,7 @@ test('a QA session', async ({ browser }) => {
   const snippetMs = whole('QA_SNIPPET_MS', 120_000);
   const idleMs = whole('QA_IDLE_MIN', 30) * 60_000;
 
-  const runDir = makeRunDir(traits.persona, seed);
+  const runDir = makeRunDir(root, traits.persona, seed);
   writeFileSync(join(runs, `${traits.persona}.latest`), `${runDir}\n`);
   console.log(`QA run: ${runDir}`);
 

@@ -1,6 +1,8 @@
 // What a QA run is before it starts: the person drawn from a seed, the browser that person has, the port
 // and the folder the run uses, and the snippets a session runs while it waits. Plain ES modules with no
 // Playwright import, since the Playwright config and the unit tests both load them.
+import { existsSync, mkdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const PERSONAS = ['maya', 'dex', 'priya', 'juno', 'theo', 'sam', 'lea', 'walt'];
@@ -78,6 +80,27 @@ export function qaPort(env) {
 export function runDirName(date, persona, seed) {
   const two = (n) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${two(date.getMonth() + 1)}-${two(date.getDate())}-${persona}-${seed}`;
+}
+
+// The run's folder, made with its inbox and outbox. QA_RUN_DIR names it outright (relative to the repo's
+// root), for a caller that hands each run its own; a folder a session has already used is refused, so its
+// snippets are never run again. Otherwise it's dated under qa-runs, and a run of the same seed on the same
+// day gets a folder of its own.
+export function makeRunDir(root, persona, seed, env = process.env, date = new Date()) {
+  const runs = join(root, 'qa-runs');
+  let dir;
+  if (env.QA_RUN_DIR) {
+    dir = resolve(root, env.QA_RUN_DIR);
+    if (existsSync(join(dir, 'inbox'))) throw new Error(`QA_RUN_DIR ${dir} has had a session already: give this one a folder of its own`);
+  } else {
+    const base = join(runs, runDirName(date, persona, seed));
+    dir = base;
+    for (let n = 2; existsSync(dir); n++) dir = `${base}-${n}`;
+  }
+  mkdirSync(runs, { recursive: true }); // the <persona>.latest files live here, wherever the run's folder is
+  mkdirSync(join(dir, 'inbox'), { recursive: true });
+  mkdirSync(join(dir, 'outbox'));
+  return dir;
 }
 
 // Runs a snippet file's default export with the given arguments, and records what came of it: its value,
