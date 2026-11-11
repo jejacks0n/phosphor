@@ -1,4 +1,4 @@
-import { test, expect, openApp, editAt, saveAs, settled, store, chars, imageInput, tab, cellPoint, drag, fixture } from './support.js';
+import { test, expect, openApp, editAt, saveAs, settled, store, chars, imageInput, zeroState, tab, cellPoint, drag, fixture } from './support.js';
 
 // Whether leaving would ask right now: beforeunload's answer, without leaving.
 const leavingAsks = (page) => page.evaluate(() => {
@@ -93,7 +93,7 @@ test('a refresh brings back your work', async ({ page }) => {
   await restored(page);
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(before);
   await expect(undoButton(page)).toBeDisabled();
-  await expect(imageInput(page)).toHaveCount(0);
+  await expect(zeroState(page)).toHaveCount(0);
 });
 
 test('a stroke right after a save comes back from a reload, unsaved, even one that comes before its write was due', async ({ page }) => {
@@ -121,7 +121,7 @@ test('a new tab offers recent work and opens it; a tab open on it is marked and 
 
   const other = await context.newPage();
   await other.goto('/');
-  await expect(imageInput(other)).toBeAttached();
+  await expect(zeroState(other)).toBeAttached();
   const row = recentList(other).getByRole('listitem');
   await expect(row).toHaveCount(1);
   await expect(row).toContainText('gradient');
@@ -168,13 +168,13 @@ test('New project keeps the old work in the list, and a refresh stays at the zer
   await typeAndWrite(page, 3, 3, 'kept');
   page.on('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'New project' }).click();
-  await expect(imageInput(page)).toBeAttached();
+  await expect(zeroState(page)).toBeAttached();
   const button = recentList(page).getByRole('listitem').getByRole('button');
   await expect(recentList(page)).toContainText('gradient');
   await expect(button).toBeEnabled();
 
   await page.reload();
-  await expect(imageInput(page)).toBeAttached();
+  await expect(zeroState(page)).toBeAttached();
   expect(await store(page, 'project', (p) => p.image)).toBe(null);
   await expect(recentList(page)).toContainText('gradient');
   await expect(button).toBeEnabled();
@@ -254,7 +254,7 @@ test('a version appears after 5 minutes of changes; the dialog focuses, and Esca
 
 test('no versions says so, and the button waits for an image', async ({ page }) => {
   await page.goto('/');
-  await expect(imageInput(page)).toBeAttached();
+  await expect(zeroState(page)).toBeAttached();
   await expect(versionsButton(page)).toBeDisabled();
 
   await imageInput(page).setInputFiles(fixture('images/gradient.png'));

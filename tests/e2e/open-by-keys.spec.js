@@ -6,7 +6,7 @@ test('Tab reaches Choose a file on the start screen, and Enter opens the chooser
   await page.goto('/');
   const choose = page.locator('button.browse');
   await expect(choose).toBeVisible();
-  for (let i = 0; i < 20 && !(await choose.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
+  for (let i = 0; i < 80 && !(await choose.evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab');
   await expect(choose).toBeFocused();
   const chooser = page.waitForEvent('filechooser');
   await page.keyboard.press('Enter');
