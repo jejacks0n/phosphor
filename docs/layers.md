@@ -690,7 +690,9 @@ pixel or ANSI view with either of them chosen and the other view takes it too.
 These work in both the ANSI and the pixel view, for as long as you hold the key:
 
 - **Alt** (Option on a Mac), with the Pencil, Brush, Paint Bucket or Shapes: the Eyedropper. A
-  click picks the foreground color; add **Shift** to pick the background color instead.
+  click picks the foreground color; add **Shift** to pick the background color instead. In the ANSI
+  view it reads the cell as the Eyedropper does, so on an opened .ans it gets the character's colors,
+  not the picture under it.
 - **Shift**, with the Pencil or Brush: a click draws a straight line from where your last stroke
   ended (with either of them, in either view) to where you click, and keeps going if you drag.
 - **Shift**, while dragging a shape: a Rectangle becomes a square and an Ellipse a circle, and a Line
