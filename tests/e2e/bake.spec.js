@@ -1,5 +1,5 @@
 import { test, expect } from './support.js';
-import { openApp, store, settled } from './support.js';
+import { openApp, pickLayer, store, settled } from './support.js';
 
 const cellsOf = (page) => store(page, 'project', (p) => JSON.stringify(p.cells));
 
@@ -27,6 +27,7 @@ test('Bake from the toolbar: the sliders go back to neutral and the picture stay
 
 test('Bake under CGA with Dither on asks nothing: dithered, CGA snaps on the grid, so it bakes exactly', async ({ page }) => {
   await openApp(page);
+  await pickLayer(page, 'Base'); // the picture's Dither is its layer's
   await page.getByRole('combobox', { name: 'Color palette' }).selectOption('cga');
   await page.getByRole('slider', { name: 'Dither' }).fill('100');
   await raiseContrast(page);

@@ -106,6 +106,7 @@ test('dropping an image onto the editor loads it', async ({ page }) => {
     dt.items.add(new File([new Uint8Array(data)], 'tall.png', { type: 'image/png' }));
     el.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
   }, bytes);
+  await page.getByRole('dialog').getByRole('button', { name: /Open instead/ }).click(); // a picture over a drawing asks first
   await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('tall');
   await settled(page);
 });

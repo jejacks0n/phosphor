@@ -406,9 +406,9 @@ export function fakeRoom({ password = null, allowGuests = true, max = 12, full =
 // joining from the lobby's card.
 const PLACES = { lobby: 'section.lobby', 'watch-room': 'div.watch-room', 'host-room': 'div.host-room' };
 export const shown = (page, name) => page.locator(PLACES[name] ?? `.people-forms[data-page="${name}"]`);
-// The lobby, in the side panel (opened from its rail if it's folded).
+// The lobby, in the side panel (opened by the tabs' « if it's folded away, when it's in the page but hidden).
 export async function openLobby(page) {
-  await page.locator('.side-panel').waitFor();
+  await page.locator('.side-panel').waitFor({ state: 'attached' });
   const open = page.getByRole('button', { name: 'Open the panel' });
   if (await open.isVisible()) await open.click();
   await page.locator('.side-panel').getByRole('tab', { name: 'Social' }).click();

@@ -23,11 +23,11 @@ test('the toolbar folds by its own width, so the side panel open folds it sooner
   await openApp(page);
   await store(page, 'workspace', (w) => { w.sidePanelFolded = true; });
   await tab(page, 'PIXEL').click();
-  await expect(page.locator('.side-panel')).toHaveCSS('width', '28px');   // folded to its rail
+  await expect(page.locator('.side-panel')).toBeHidden();   // folded away entirely
   await expect(overlay()).toBeVisible();   // the toolbar is wide: everything's out
   await expect(folded()).toHaveCount(0);
   await expect(actions()).toBeHidden();
-  await page.setViewportSize({ width: 1320, height: 900 });   // a toolbar of 1020px: the overlay folds
+  await page.setViewportSize({ width: 1290, height: 900 });   // a toolbar of about 1000px: the overlay folds
   await expect(folded()).toBeVisible();
   await page.setViewportSize({ width: 1358, height: 900 });
   await expect(overlay()).toBeVisible();

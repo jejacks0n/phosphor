@@ -467,7 +467,7 @@ test('Ghost is one button that opens its on and off and its strength, lit while 
   await expect(show).toBeChecked();
   await expect(slider).toHaveValue('35');
   await slider.fill('70');
-  await expect(bar(page).locator('.dropdown-content')).toContainText('70%');
+  await expect(ghost).toHaveAttribute('title', /70%/); // the box shows no percent; the button's title says it
   expect(await store(page, 'workspace', (w) => w.ghostStrength)).toBe(70);
   await show.uncheck();
   expect(await store(page, 'workspace', (w) => w.ghost)).toBe(false);
