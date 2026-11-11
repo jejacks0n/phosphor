@@ -91,6 +91,13 @@ invitation taken, a troll reported, and his own art (open in his other tabs) unt
   can't run here), signing in with Discord or GitHub, and email links; a host on another machine or network ("Couldn't
   reach this host" can't happen when every page is on this one).
 
+## Goals
+- When I join a room, the host's art shows right away.
+  Counted: ms on join-room, target 2000, lower is better.
+- My messages never vanish, and the box never eats what I typed, even when I send too fast.
+- I can say yes to drawing and get back to watching, with my own unsaved art in my other tab as I left it.
+- A troll in the chat is out of my sight in a couple of moves.
+
 ## Script
 
 Each `##` heading after this one, up to Known, is a section of the script. Steps are numbered through the whole
@@ -127,6 +134,7 @@ script. Every section ends with Free time.
 - Rated: no (reading the lobby)
 
 ### 4. Join from the card
+- Measured: join-room
 - Does: presses Join on neon harbor.
 - Expects: "Joining…" and "Waiting for the host…", then the ROOM tab, after SAUCE, shows just the host's art, view
   only, in the host's font; the side panel's Social tab becomes CHAT, with the room's name, "hosted by ansi-fan", Exit,

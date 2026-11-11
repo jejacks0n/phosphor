@@ -55,6 +55,13 @@ post, an .ans that opens the same in a terminal, and a .phosphor file she can re
 
 All apply. She has no account and no partner: she doesn't use SOCIAL.
 
+## Goals
+- The PNG I post and the .ans I export look like my screen: the same palette, the dithering kept, no layer missing.
+- A merge or a bake that says nothing will change changes nothing, and Undo brings back what any of them did.
+- The level sliders keep up with my hand.
+  Counted: ms on set-levels, target 250, lower is better.
+- My saved project reopens with its settings, layers and shapes all there.
+
 ## Script
 
 Each `##` heading after this one, up to Known, is a section of the script. Steps are numbered through the whole
@@ -145,6 +152,7 @@ the help (the i beside a label) for Choose characters, and try the same settings
 - Rated: yes, wants Tab to Blur then the arrows
 
 ### 9. Set the levels
+- Measured: set-levels
 - Does: moves Black point up, White point down, and Midtones both ways.
 - Expects: tones at or below the black point go black, at or above the white point go white, and the rest spread
   across; Midtones lifts or deepens the middle without moving either end. Levels runs before the other adjustments,

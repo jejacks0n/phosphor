@@ -59,6 +59,13 @@ again unchanged.
 All apply. He has no account and no partner. On a touch device he still tries the keys first at every rated step, as
 every run does.
 
+## Goals
+- My .ans export shows in a terminal cell for cell as Phosphor shows it: the same characters, the same colors, bright backgrounds still bright, my SAUCE intact.
+- Phosphor opens my files as I drew them, and opens its own export again unchanged: no wrong wrap, no lost indent, no color off by one.
+- Export my .ans from the keys in three presses or fewer.
+  Counted: keys on export-ans, target 3, lower is better.
+- When a dialog closes, my keys work again without a click.
+
 ## Script
 
 Each `##` heading after this one, up to Known, is a section of the script. Steps are numbered through the whole
@@ -255,6 +262,7 @@ look at what covers what, and check what Merge down's tooltip says.
 - Rated: yes, wants Alt+B, then Enter
 
 ### 21. Export my .ans
+- Measured: export-ans
 - Does: presses Export .ans, types a name, and saves; keeps the download in the run folder.
 - Expects: the dialog offers the document's name with the date and time; a character CP437 lacks is listed with what it
   becomes and how many cells use it ("Export as .utf8ans to keep exact characters."); the name he typed becomes the

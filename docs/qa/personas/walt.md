@@ -59,6 +59,13 @@ never a lost hour of work, whatever the browser does.
 
 All apply. He has no account and no partner. On a phone or tablet the long file is mostly scrolled by touch.
 
+## Goals
+- A file I fix and save differs from the one I opened only where I changed it: in the .ans export, when Phosphor reopens it or the project, and in a terminal.
+- No SAUCE field is cut short without a warning, and SAUCE comes back the same after a round trip.
+- A fix I gave time to save survives a reload.
+- A fix on the long file shows as soon as I type it.
+  Counted: ms on fix-cell, target 100, lower is better.
+
 ## Script
 
 Each `##` heading after this one, up to Known, is a section of the script. Steps are numbered through the whole
@@ -93,6 +100,7 @@ script. Every section ends with Free time.
   the app has no zoom key of its own, rate it `mouse` with that want.
 
 ### 4. Fix one cell
+- Measured: fix-cell
 - Does: goes to a cell near the middle (column 150, line 800) in Edit Mode, types one character over it.
 - Expects: the character shows at once, within the `response` budget from the key; the status bar says Col 150 Row
   800; the rest of the file doesn't move.

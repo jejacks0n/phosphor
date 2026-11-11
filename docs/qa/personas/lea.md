@@ -78,6 +78,13 @@ Two things every step of hers does, on top of the README's Walking a step:
   return, Go or Done (one or two keys) finishes the step, and `mouse` when she has to tap something to finish it
   (Escape, Tab and the arrows aren't on it). Steps with no keyboard on screen are `Rated: no`.
 
+## Goals
+- I can save my selfie as a picture to post, from my phone, without getting stuck.
+- Export a GIF of my little movie in four taps or fewer.
+  Counted: taps on export-gif, target 4, lower is better.
+- Every button I need is on the screen, not cut off or covered, and every tap shows me something happened.
+- My work is still there when the tab reloads or I come back to it later.
+
 ## Script
 
 Each `##` heading after this one, up to Known, is a section of the script. Steps are numbered through the whole
@@ -278,6 +285,7 @@ frames, and pinch while it plays.
 - Rated: no (touch only: no keyboard shows here)
 
 ### 20. Export a GIF
+- Measured: export-gif
 - Does: turns Animate on (with the frames from step 16), opens ☰, scrolls to Export .gif and taps it; renames the file
   on the phone's keyboard and presses Go.
 - Expects: Export .gif shows only with Animate on and more than one frame; the dialog ("Looping animated GIF rendered
