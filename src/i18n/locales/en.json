@@ -507,6 +507,7 @@
     "redoTitle": "Redo ({key})",
     "bake": "Bake",
     "bakeTitle": "Bake: lock current slider effects into the source image and reset sliders to neutral. Your edit layer stays untouched.",
+    "bakeNothing": "Nothing to bake: the sliders are at their defaults and there are no shapes on the picture.",
     "flatten": "Flatten",
     "flattenTitle": "Flatten: everything on the drawing becomes ANSI cells exactly as they show, and the image is removed. Unlike Bake, nothing is left for the sliders and effects to change.",
     "flattenOneFrame": "Flatten replaces the picture under every frame, so it's only available on single-frame art.",

@@ -507,6 +507,7 @@
     "redoTitle": "Rétablir ({key})",
     "bake": "Figer",
     "bakeTitle": "Figer : intégrer les effets des curseurs dans l'image source et réinitialiser les curseurs au point neutre. Votre calque d'édition reste intact.",
+    "bakeNothing": "Rien à figer : les curseurs sont à leurs valeurs par défaut et il n'y a aucune forme sur l'image.",
     "flatten": "Aplatir",
     "flattenTitle": "Aplatir : tout le dessin devient des cellules ANSI exactement comme elles s'affichent, et l'image est retirée. Contrairement à Figer, il ne reste rien à changer pour les curseurs et les effets.",
     "flattenOneFrame": "Aplatir remplace l'image sous chaque image de l'animation : seulement pour un dessin d'une seule image.",
