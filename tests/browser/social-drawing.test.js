@@ -471,7 +471,7 @@ test('a host\'s slider move reaches the artist and rerenders, with no history en
   const send = vi.spyOn(room.host, 'sendAll');
   room.project.setSlider('brightness', 140);
   await wait(30);
-  expect(send).not.toHaveBeenCalled();   // its end goes as one change
+  expect(send.mock.calls.filter(([m]) => m.t === 'settings')).toHaveLength(0);   // its end goes as one change; cursor pings may have fired
   room.project.setSlider('brightness', 70);
   room.project.commitSliders();
   await expect.poll(() => ann.project.brightness, PATIENT).toBe(70);
