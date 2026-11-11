@@ -234,3 +234,11 @@ test('paint over a file\'s cells covers them as it covers typed ones: a space or
   await settle(project);
   expect(shows()).toEqual(expected);
 });
+
+test('a new blank canvas clears all SAUCE fields to their defaults', async () => {
+  const project = await afterAnotherDocument();
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await settle(project);
+  expect([project.sauceTitle, project.sauceAuthor, project.sauceGroup, project.sauceDate, project.sauceUserComments, project.sauceFontName, project.sauceUse9pxFont])
+    .toEqual(['', '', '', '', '', 'IBM VGA', false]);
+});

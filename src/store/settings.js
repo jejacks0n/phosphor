@@ -135,6 +135,7 @@ export function settingsState() {
 }
 
 export const settingDefaults = () => Object.fromEntries(SETTINGS.map(s => [s.key, defaultOf(s)]));
+export const sauceDefaults = () => Object.fromEntries(SETTINGS.filter(s => s.group === 'sauce').map(s => [s.key, defaultOf(s)]));
 
 export function groupDefaults(group) {
   return Object.fromEntries(SETTINGS.filter(s => s.group === group && s.reset !== false).map(s => [s.key, defaultOf(s)]));

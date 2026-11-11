@@ -20,7 +20,7 @@ import { rgb2hex } from '@/lib/ColorUtils.js';
 import { keptFields, keptRecord } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { settingDefaults } from '@/store/settings.js';
+import { settingDefaults, sauceDefaults } from '@/store/settings.js';
 import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, savedJson, randomId, blackPicture } from '@/store/project/shared.js';
 import { generateSlug } from 'random-word-slugs';
 import { markRaw, shallowRef } from 'vue';
@@ -173,9 +173,8 @@ export const documentActions = {
 
     this.replaceImage(image, buffer, {
       ...lockedGrid(this.cols, ratio),
+      ...sauceDefaults(),
       filename: file.name.replace(/\.[^/.]+$/, ''),
-      sauceTitle: '',
-      sauceRecord: '',
       savedToFile: false,
     });
     this.markSaved();
@@ -197,9 +196,8 @@ export const documentActions = {
     this.replaceImage(picture.image, picture.imageBuffer, {
       cols: Math.max(1, cols),
       rows: Math.max(1, rows),
+      ...sauceDefaults(),
       filename: t('common.untitled'),
-      sauceTitle: '',
-      sauceRecord: '',
       savedToFile: false,
       ...patch,
     });
