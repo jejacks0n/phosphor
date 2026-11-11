@@ -268,9 +268,11 @@ Either way:
   edit, so there's nothing to undo. With **Draw on top of it**, the art is the base layer as if you'd used
   Merge down, and the color sliders, the palette and Bake work on it as they do on any picture. **All cells** turns on
   in the PIXEL view, so each cell shows there as it looks rather than as its two colors.
-- **The palette** follows the file: CGA when every color is one of the 16 classic colors written as a 16-color code, otherwise full color.
+- **The palette** follows the file: CGA when every color is one of the 16 classic colors, VGA when it uses
+  256-color codes for the others, and full color when it uses a 24-bit code. An export writes the same kind of codes.
 - **SAUCE** fills the SAUCE tab: title, author, group, date, comments, font name and the 9px font setting.
-  Your display font stays as you have it.
+  Your display font stays as you have it. An export writes the record back as it came, with only what you
+  changed on the SAUCE tab, and the size after a resize ([Saving](characters.md#saving-utf8ans-and-ans)).
 - **Bright backgrounds** are kept bright. Blink isn't shown.
 - **Characters**: a `.utf8ans` is UTF-8. The other three are UTF-8 when they look like it, and CP437
   otherwise.

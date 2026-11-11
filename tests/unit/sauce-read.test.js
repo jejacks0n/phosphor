@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
-import { artEndOf, readSauce, userComments } from '../../src/lib/Sauce.js';
+import { artEndOf, keptFields, keptRecord, readSauce } from '../../src/lib/Sauce.js';
 
 const W = { r: 255, g: 255, b: 255, hex: '#ffffff', c: [255, 255, 255] };
 const K = { r: 0, g: 0, b: 0, hex: '#000000', c: [0, 0, 0] };
@@ -15,7 +15,7 @@ test('readSauce returns what the writer put in the record, and artEnd is the EOF
   const read = readSauce(bytes);
   assert.deepEqual(
     { ...read, artEnd: undefined },
-    { title: 'Boat', author: 'Ann', group: 'G', date: '20261102', comments: ['one', 'two'], dataType: 1, fileType: 1, width: 4, height: 2, iceColors: true, use9pxFont: true, fontName: 'IBM VGA', artEnd: undefined },
+    { title: 'Boat', author: 'Ann', group: 'G', date: '20261102', comments: ['one', 'two'], dataType: 1, fileType: 1, width: 4, height: 2, flags: 5, iceColors: true, use9pxFont: true, fontName: 'IBM VGA', artEnd: undefined },
   );
   assert.equal(read.artEnd, bytes.indexOf(0x1a));
   assert.equal(artEndOf(bytes), read.artEnd);
@@ -68,10 +68,26 @@ test('garbled input does not throw: a comment count that runs off the start is i
   assert.equal(readSauce(new Uint8Array(100)), null);
 });
 
-test("userComments drops the block Phosphor writes and keeps the person's lines", () => {
-  const block = ['Created with Phosphor', 'Params: seed=1', 'Adjust: brightness=0%', 'Effects: sharpen=0'];
-  assert.equal(userComments([...block, '', 'mine', 'also']), 'mine\nalso');
-  assert.equal(userComments(block), '');
-  assert.equal(userComments(['mine']), 'mine');
-  assert.equal(userComments([]), '');
+test('a record written with its own flags, size, empty date and empty font keeps them', async () => {
+  const record = { ...sauce, date: '', fontName: '', flags: 0x10, width: 80, height: 99, comments: ['Created with Phosphor', '', 'theirs'] };
+  const read = readSauce(await bytesOf({ sauce: record }));
+  assert.deepEqual(
+    [read.date, read.fontName, read.flags, read.width, read.height, read.comments],
+    ['', '', 0x10, 80, 99, ['Created with Phosphor', '', 'theirs']],
+  );
+});
+
+test('with nothing given, the record is Phosphor\'s own: no comments, iCE colors, today, IBM VGA and the grid\'s size', async () => {
+  const read = readSauce(await bytesOf({ sauce: {} }));
+  assert.deepEqual([read.comments, read.flags, read.fontName, read.width, read.height], [[], 3, 'IBM VGA', 4, 2]);
+  assert.match(read.date, /^\d{8}$/);
+});
+
+test('keptFields gives the record\'s flags, and its size only while the grid is the size it was opened at', () => {
+  const kept = keptRecord({ flags: 0x10, width: 80, height: 99 }, 80, 25);
+  assert.deepEqual(keptFields(kept, 80, 25), { flags: 0x10, width: 80, height: 99 });
+  assert.deepEqual(keptFields(kept, 80, 30), { flags: 0x10 });
+  assert.deepEqual(keptFields(kept, 60, 25), { flags: 0x10 });
+  assert.equal(keptFields('', 80, 25), null);
+  assert.equal(keptFields('1 2 x 4 5', 80, 25), null); // a stranger's setting that isn't one
 });

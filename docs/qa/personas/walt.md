@@ -76,7 +76,7 @@ script. Every section ends with Free time.
 ### 1. Open the long file
 - Does: takes `qa.memory`; writes the files; on the start screen chooses `long.ans` and picks Edit it, timing it from
   the choice to the art showing.
-- Expects: 300 columns by 1,600 lines on Layer 1 over a black base, full color (its colors aren't all CGA), SAUCE
+- Expects: 300 columns by 1,600 lines on Layer 1 over a black base, VGA (its colors are 256-color codes), SAUCE
   titled "QA Long"; nothing to undo. Opening takes under the `file` budget; over it is a `performance` finding.
 - Probes: `back-out`: choose it and press Cancel at the question; `free`: drop it on the start screen's box instead.
 - Rated: yes, wants Cmd+O, then Enter for Edit it

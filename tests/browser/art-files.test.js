@@ -1,12 +1,13 @@
 // Opening an .ans, .utf8ans, .asc or .txt file as a document: its art on the base layer, every
 // character pinned, or on the edit layer over a black base; its palette and SAUCE in the settings,
 // and nothing to undo or save.
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
+import { readSauce } from '@/lib/Sauce';
 
 const plain = (hex) => { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; return { r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] }; };
 const COLORS = {
@@ -105,6 +106,76 @@ test('opened to edit, the art is edit cells over a black base, as the file shows
   }
   expect(project.history.canUndo).toBe(false);
   expect(project.isDirty).toBe(false);
+});
+
+// The .ans file exportFile downloads, as bytes.
+async function exported(project) {
+  const spy = vi.spyOn(URL, 'createObjectURL');
+  await project.exportFile('ans');
+  const blob = spy.mock.calls.at(-1)[0];
+  spy.mockRestore();
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+// A file made by hand the way RA-FIFTY.ANS is: 256-color codes, flags 0, no font name, a height (5) past its lines (3),
+// and two comments.
+const OPENED = '/tests/fixtures/ansi/256-colors.ans';
+const openFixture = async (project, layer) => {
+  const blob = await (await fetch(OPENED)).blob();
+  await project.openArtFile(new File([blob], '256-colors.ans'), { layer });
+  await settle(project);
+  return new Uint8Array(await blob.arrayBuffer());
+};
+// The comment block and record: from COMNT to the end, the file size (bytes 90 to 93 of the record) left out.
+const tail = (bytes) => {
+  const at = bytes.length - 128 - 5 - 64 * bytes[bytes.length - 128 + 104];
+  const block = [...bytes.subarray(at)];
+  block.splice(block.length - 128 + 90, 4);
+  return block;
+};
+
+test('an opened file exports with its SAUCE record as it went in, and Phosphor adds no comments of its own', async () => {
+  for (const layer of ['base', 'edit']) {
+    const project = await afterAnotherDocument();
+    const original = await openFixture(project, layer);
+    const bytes = await exported(project);
+    expect(tail(bytes), layer).toEqual(tail(original));
+    expect(readSauce(bytes).comments, layer).toEqual(readSauce(original).comments);
+  }
+});
+
+test('a SAUCE field the person changes is the only one that changes, and a resize changes the size', async () => {
+  const project = await afterAnotherDocument();
+  const original = readSauce(await openFixture(project, 'edit'));
+  project.sauceTitle = 'Renamed';
+  const renamed = readSauce(await exported(project));
+  expect({ ...renamed, artEnd: 0 }).toEqual({ ...original, title: 'Renamed', artEnd: 0 });
+
+  project.updateRows(2 * 4);
+  await settle(project);
+  const resized = readSauce(await exported(project));
+  expect([resized.width, resized.height, resized.flags, resized.fontName]).toEqual([8, 4, 0, '']);
+});
+
+test('a 256-color file opens on VGA and exports 256-color codes, not 24-bit ones', async () => {
+  for (const layer of ['base', 'edit']) {
+    const project = await afterAnotherDocument();
+    await openFixture(project, layer);
+    expect(project.quantize, layer).toBe('vga');
+    const art = new TextDecoder('latin1').decode(await exported(project));
+    expect(art, layer).toMatch(/\[38;5;\d+m/);
+    expect(art, layer).not.toMatch(/[34]8;2;/);
+  }
+});
+
+test('a converted image or a blank canvas has no comments but the person\'s', async () => {
+  const project = await afterAnotherDocument();
+  project.sauceUserComments = '';
+  expect(readSauce(await exported(project)).comments).toEqual([]);
+  project.sauceUserComments = 'mine\nalso';
+  const sauce = readSauce(await exported(project));
+  expect([sauce.comments, sauce.flags, sauce.fontName]).toEqual([['mine', 'also'], 3, 'IBM VGA']);
+  expect(sauce.date).toMatch(/^\d{8}$/);
 });
 
 test('a file with no SAUCE starts the SAUCE tab empty', async () => {

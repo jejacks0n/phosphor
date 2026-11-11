@@ -16,7 +16,7 @@ import { MAX_GIF_PIXELS, gifBytes, gifDelay, gifFrames } from '@/lib/GifFile.js'
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
-import { userComments } from '@/lib/Sauce.js';
+import { keptFields, keptRecord } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults } from '@/store/settings.js';
@@ -174,6 +174,7 @@ export const documentActions = {
       ...lockedGrid(this.cols, ratio),
       filename: file.name.replace(/\.[^/.]+$/, ''),
       sauceTitle: '',
+      sauceRecord: '',
       savedToFile: false,
     });
     this.markSaved();
@@ -197,6 +198,7 @@ export const documentActions = {
       rows: Math.max(1, rows),
       filename: t('common.untitled'),
       sauceTitle: '',
+      sauceRecord: '',
       savedToFile: false,
       ...patch,
     });
@@ -225,9 +227,10 @@ export const documentActions = {
         sauceAuthor: sauce.author,
         sauceGroup: sauce.group,
         sauceDate: sauce.date,
-        sauceUserComments: userComments(sauce.comments),
+        sauceUserComments: sauce.comments.join('\n'),
         sauceFontName: sauce.fontName,
         sauceUse9pxFont: sauce.use9pxFont,
+        sauceRecord: keptRecord(sauce, art.cols, art.rows),
       }),
     });
     if (!opened) return;
@@ -468,26 +471,21 @@ export const documentActions = {
     downloadBlob(blob, `${this.filename}.${ext}`);
   },
 
-  // What an art file's SAUCE record says, from the SAUCE tab.
+  // What an art file's SAUCE record says, from the SAUCE tab: only what the person typed, or what the opened file's
+  // record held. An opened file's record comes out as it went in (sauceRecord keeps its flags and size, the size
+  // until a resize); another drawing's is Phosphor's own, its empty date and font filled in.
   sauceFields() {
-    const comments = [
-      `Created with Phosphor`,
-      `Params: seed=${this.seed}, smoothing=${this.smoothing}, quantize=${this.quantize}`,
-      `Adjust: brightness=${this.brightness}%, contrast=${this.contrast}%, saturation=${this.saturation}%, invert=${this.invert}%`,
-      `Effects: blur=${this.blur}, sharpen=${this.sharpen}, flatten=${this.flatten}, edges=${this.edges} (${this.edgeColor}), thickness=${this.edgeThickness}`,
-    ];
-    if (this.sauceUserComments) {
-      comments.push(''); // Spacer
-      comments.push(...this.sauceUserComments.split('\n'));
-    }
+    const kept = keptFields(this.sauceRecord, this.cols, charRowsOf(this.rows));
+    const asIs = (value) => (kept ? value : value || undefined);
     return {
+      ...kept,
       use9pxFont: this.sauceUse9pxFont,
-      fontName: this.sauceFontName,
+      fontName: asIs(this.sauceFontName),
       title: this.sauceTitle,
       author: this.sauceAuthor,
       group: this.sauceGroup,
-      date: this.sauceDate,
-      comments,
+      date: asIs(this.sauceDate),
+      comments: this.sauceUserComments ? this.sauceUserComments.split('\n') : [],
     };
   },
 
