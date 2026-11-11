@@ -141,6 +141,7 @@ span.who-am-i > span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 12px;
 }
 span.who-am-i :deep(article.dropdown) {
   display: flex;
