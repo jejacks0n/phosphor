@@ -314,6 +314,10 @@ value for `qa.probe`:
 | `speed` | Rapid repeats, a held key, undo mashed. | Press Cmd+Z thirty times as fast as the page takes it; hold an arrow key moving a selection for two seconds (`keyboard.down` again and again sends repeats, then `up`). |
 | `free` | An off-script move in [Free time](#free-time). | Try the right-click menu on a layer; drag a file onto the canvas instead of using the button. |
 
+Some settings aren't undo steps, by the owner's choice: the grid size, Art style, Color palette, Color count, frames per
+second and a frame's hold. Cmd+Z after one takes back the edit before it, and that isn't a finding. What a run checks
+instead is that the change kept the undo steps before it: a setting that forgets them is a `bug`.
+
 Record what you did and what came of it, in a line: `qa.probe('undo-redo', 'undid the stroke, redid it, undid it;
 drew a dot and redo was off, as it should be')`. A probe that turns something up is also a finding.
 
@@ -335,8 +339,8 @@ The drawn `interruption` trait adds one break to the run, besides any `interrupt
   `e2e.autosaved(page)` only says the document has been written once, so it's no use after the first write. Reload
   with `page.reload()`, then check autosave brought the work back as a project file keeps it: the picture and its
   settings, every layer with what's on it (its name, its eye, its character settings), shapes, frames, the file name
-  and that there are unsaved changes; and the address brings back the tab. Undo starts empty after a reload, by
-  design: that isn't a finding. Losing work that was given time to autosave is a finding; losing the last second
+  and that there are unsaved changes; and the address brings back the tab. Undo starting empty after a reload is
+  `friction`: file it once a run (minor), not at every reload. Losing work that was given time to autosave is a finding; losing the last second
   before the reload isn't.
 - **`secondTab`**: open the app in a second page of the same context (`const second = await context.newPage(); await
   second.goto('/');`), look at what the second tab shows and does, then close it (`await second.close()`) and come
@@ -387,9 +391,13 @@ The score is what the persona could do from the keys, found by trying it. It ris
 
 | Rating | When | Marks |
 | --- | --- | --- |
-| `keys` | One or two keystrokes. A key with its modifiers (Shift+Cmd+Z) is one keystroke. | 1 |
-| `keysLong` | From the keys, but more than two keystrokes: Tab-walking, arrowing through a menu. | 0.5 |
+| `keys` | Three keystrokes or fewer. A key with its modifiers (Shift+Cmd+Z) is one keystroke. | 1 |
+| `keysLong` | From the keys, but more than three keystrokes: Tab-walking, arrowing through a menu. | 0 |
 | `mouse` | No keyboard path. | 0 |
+
+A path of more than three keystrokes isn't one a person would use, least of all one that starts with Tab, so
+`keysLong` earns nothing. It's rated apart from `mouse` only so the to-do list can tell "make the path shorter" from
+"add one".
 
 The score is round(100 × marks ÷ rated steps), out of 100. A run with no rated steps has no score (`null`, "not
 rated" in the report).
