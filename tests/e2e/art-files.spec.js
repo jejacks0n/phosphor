@@ -189,3 +189,17 @@ test('a picture dropped on a drawing asks: Add puts it on the layer picked as pa
   await question(page).getByRole('button', { name: /Open instead/ }).click();
   await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('photo');
 });
+
+test('choosing the same file again after Cancel asks again', async ({ page }) => {
+  await page.goto('/');
+  const choose = async () => {
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByText('Choose a file').click()]);
+    await chooser.setFiles({ name: 'long.ans', mimeType: 'application/octet-stream', buffer: boat });
+  };
+  await choose();
+  await expect(question(page)).toContainText('Open long.ans?');
+  await question(page).getByRole('button', { name: 'Cancel' }).click();
+  await expect(question(page)).toBeHidden();
+  await choose();
+  await expect(question(page)).toContainText('Open long.ans?');
+});

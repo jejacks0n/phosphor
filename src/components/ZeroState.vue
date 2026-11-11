@@ -22,6 +22,7 @@ const MAX_RECENT = 5;
 
 function onFileSelected(e) {
   const file = e.target.files[0];
+  e.target.value = ''; // so choosing the same file again (after Cancel) fires change again
   if (file) emit('file-selected', file);
 }
 </script>
