@@ -75,7 +75,7 @@ Each session gets `qa-runs/<local date>-<persona>-<seed>/` (a second session of 
 `-2`, then `-3`). `qa-runs/` is ignored by git, and so is `dist-qa/`.
 
 When `QA_RUN_DIR` is set, the session uses exactly that folder instead, and makes it if it isn't there. A relative
-path is from the repo's root. It's for a caller that hands each run its own folder (Persona Loop does, with
+path is from the repo's root. It's for a caller that hands each run its own folder (Porpoise does, with
 `QA_RUN_DIR` under `qa-runs/`). A folder a session has already used is refused, so a session that ends early and
 starts again needs a new one: name it after the first, with `-2`, then `-3`, beside it.
 
