@@ -13,7 +13,7 @@ async function raiseContrast(page) {
 
 test('Bake from the toolbar: the sliders go back to neutral and the picture stays as it was', async ({ page }) => {
   await openApp(page);
-  const bake = page.getByTitle(/^Bake:/);
+  const bake = page.locator('button[title^="Bake:"], button[title^="Nothing to bake"]'); // its title says why when it's off
   await expect(bake).toBeDisabled();
   await raiseContrast(page);
   const cells = await cellsOf(page);
