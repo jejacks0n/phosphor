@@ -109,6 +109,13 @@ intact and saved as a .phosphor.
   room); signing in with Discord or GitHub; email links; a real network between two machines (every page is on this
   one, so "Couldn't reach this host" can't happen).
 
+## Goals
+- The room stays up until I end it: a reload while live brings me back hosting, with my art, the chat and the people still there, and End room asks before it ends.
+- My undo takes back only my own strokes, and never loses mine after someone else's.
+- A troll is dealt with in a couple of moves: Delete, Quiet mute, Remove and Block each do what they say, and a Block holds.
+- Save the night's art from the keys in three presses or fewer.
+  Counted: keys on save-art, target 3, lower is better.
+
 ## Script
 
 Each `##` heading after this one, up to Known, is a section of the script. Steps are numbered through the whole
@@ -433,6 +440,7 @@ comes back to her (a hand-over isn't a reconnect), undo a stroke she drew before
 - Rated: yes, wants a key for End room, then Enter
 
 ### 27. Save the night's art
+- Measured: save-art
 - Does: presses Cmd+S and saves; opens the .phosphor in a New project.
 - Expects: the art as the room ended it, everyone's strokes in it; no names in the file; layers and settings as they
   were; nothing of the room left open. Takes `qa.memory`.

@@ -67,6 +67,13 @@ All apply. She has no account and no partner. On a phone, the Keys panel has no 
 ([The Keys panel](../../animation.md#the-keys-panel)), so the steps that type values are done by dragging and keying
 on the frame showing instead, and the bar takes two lines.
 
+## Goals
+- Every key, easing and path stays where I left it when I undo, scrub, or save and reopen the project.
+- My GIF and .cast match what played on screen: every frame, the timing, no guide drawn.
+- Undo works on the frame I'm looking at, or shows me the frame it went to, and takes back one step at a time.
+- The timeline keeps up while I drag a key.
+  Counted: ms on retime-key, target 33, lower is better.
+
 ## Script
 
 Each `##` heading after this one, up to Known, is a section of the script. Steps are numbered through the whole
@@ -224,6 +231,7 @@ the arrow keys once it has focus.
 - Rated: yes, wants Tab to the field (the number is content)
 
 ### 14. Drag a key to retime it
+- Measured: retime-key
 - Does: drags the ball's Transform key from frame 13 to frame 10, timing the drag with `qa.frames`; then Shift-clicks
   two keys and drags them together; then drags one and presses Escape before letting go.
 - Expects: the key moves a frame at a time, its easing with it, the tweens on either side stretch or shrink, and the

@@ -54,6 +54,12 @@ as a .cast. Done is an export the terminal check shows cell for cell as the scre
 
 All apply. Sam has no account and no partner.
 
+## Goals
+- My .utf8ans and .ans print in a terminal cell for cell as the screen shows them, at 40 by 10 and at 132 by 50: no column off, no wide character pushing a row out of line.
+- My .cast ends on the last frame Phosphor showed, with its timing kept.
+- The canvas size I type is the size that stays.
+- Text I paste starts at my cursor and loses nothing but what runs past the edge and the characters that can't show.
+
 ## Script
 
 Each `##` heading after this one, up to Known, is a section of the script. Steps are numbered through the whole
