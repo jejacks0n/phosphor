@@ -54,6 +54,8 @@ export async function otherBrowser(browser) {
 export const fixture = (path) => fileURLToPath(new URL(`../fixtures/${path}`, import.meta.url));
 
 // The workspace's file input (images and projects), not the Font field's.
+// The start screen itself: there when nothing is open.
+export const zeroState = (page) => page.locator('article.zero-state');
 export const imageInput = (page) => page.locator('input.open-input');
 
 // The app with an image loaded, on the ANSI tab. A page that has the app open is reopened as a new tab
@@ -107,7 +109,7 @@ export async function pickLayer(page, name = 'Vector 1') {
 
 // Nothing open: the start screen, with no tab selected.
 export async function startScreen(page) {
-  await expect(imageInput(page)).toBeAttached();
+  await expect(zeroState(page)).toBeAttached();
   await expect(page.locator('.tab-list').getByRole('tab', { selected: true })).toHaveCount(0);   // the editor's tabs (the side panel's are its own)
 }
 

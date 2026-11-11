@@ -2,7 +2,7 @@
 // or opened in its place. A broken file says so and changes nothing. (What an SVG leaves out is said in
 // tests/browser/svg-import.test.js.)
 import { readFileSync } from 'node:fs';
-import { test, expect, imageInput, store, tab, settled, openApp, fixture } from './support.js';
+import { test, expect, imageInput, zeroState, store, tab, settled, openApp, fixture } from './support.js';
 
 const rose = readFileSync(fixture('svg/rose-mark.svg'));
 const shapeCount = (page) => store(page, 'project', (p) => p.shapes.size);
@@ -66,7 +66,7 @@ test('a broken SVG says so and changes nothing', async ({ page }) => {
   await page.goto('/');
   await imageInput(page).setInputFiles({ name: 'broken.svg', mimeType: 'image/svg+xml', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><rect') });
   await expect(toast(page)).toHaveText(/Couldn't read this file as an SVG/);
-  await expect(imageInput(page)).toBeAttached(); // still the start screen
+  await expect(zeroState(page)).toBeAttached(); // still the start screen
   expect(await store(page, 'project', (p) => !!p.image)).toBe(false);
 
   await openApp(page);
