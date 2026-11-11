@@ -90,7 +90,7 @@ onBeforeUnmount(hide);
         @click.stop="onClick"
         @keydown.esc="hide"
         @blur="hide"
-    >i</button>
+    ><span class="help-glyph">i</span></button>
 
     <Teleport to="body">
       <div
@@ -117,8 +117,22 @@ div.help-info {
 }
 
 button.help-icon {
+  display: inline-flex;
   padding: 0;
+  border: 0;
   background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* A finger gets a tap target of 24 px around the small circle; a mouse keeps the layout as it was. */
+@media (pointer: coarse) {
+  button.help-icon { padding: 7px; }
+}
+
+span.help-glyph {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -128,28 +142,18 @@ button.help-icon {
   font-size: 10px;
   font-family: serif;
   font-weight: bold;
-  cursor: pointer;
-  position: relative;
   transition: all 0.2s ease;
-  flex-shrink: 0;
   text-transform: lowercase;
   user-select: none;
   color: var(--text-faint);
   border: 1px solid var(--border-subtle);
 }
 
-button.help-icon:hover,
-button.help-icon:focus-visible {
+button.help-icon:hover span.help-glyph,
+button.help-icon:focus-visible span.help-glyph {
   background: var(--accent);
   color: var(--white);
   border-color: var(--accent);
-}
-
-/* A tap target of about 24 px around the 12 px circle. */
-button.help-icon::before {
-  content: "";
-  position: absolute;
-  inset: -7px;
 }
 
 div.help-tooltip {

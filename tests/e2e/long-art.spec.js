@@ -235,7 +235,7 @@ test('a new grid size in the PIXEL view re-centers it, and no frame shows the ca
 
   await recordFrames(page);
   const before = await view.evaluate((el) => el.scrollTop);
-  await page.getByLabel('Dimensions').fill('40'); // a new size: the output's size changes and the view re-centers
+  await page.getByLabel('Dimensions', { exact: true }).fill('40'); // a new size: the output's size changes and the view re-centers
   await page.waitForFunction((before) => window.__frames.some((f) => Math.abs(f.scrollTop - before) > 100), before);
   const frames = await stopRecording(page);
   expect(frames.filter((f) => f.covered < f.view)).toEqual([]);
@@ -246,7 +246,7 @@ test('the PIXEL view shows an edit cell where it is after the grid changes size'
   await store(page, 'project', (p) => { p.typeAt(5, 5, ' ', { fg: '#ff00ff', bg: '#ff00ff' }); p.commitEdit(); }); // both halves magenta
   await tab(page, 'PIXEL').click(); // its overlay drawn, then the grid changes under it
   await settled(page);
-  await page.getByLabel('Dimensions').fill('100'); // a canvas resize: with an edit, the grid gains columns
+  await page.getByLabel('Dimensions', { exact: true }).fill('100'); // a canvas resize: with an edit, the grid gains columns
   await expect.poll(() => store(page, 'project', (p) => p.cols)).toBe(100);
   await settled(page);
   const zoom = await store(page, 'workspace', (w) => w.editZoom);
