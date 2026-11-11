@@ -805,6 +805,7 @@
     "zoomOut": "Zoom arrière",
     "zoomIn": "Zoom avant",
     "followPath": "Suivre un tracé…",
+    "valuesMenu": "Valeurs : {part}",
     "alongMenu": "Le long : comment il suit son tracé",
     "moves": "Se déplace",
     "rideAlong": "Le long, sur ses propres clés",

@@ -805,6 +805,7 @@
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
     "followPath": "Follow a path…",
+    "valuesMenu": "{part} values",
     "alongMenu": "Along: how it follows its path",
     "moves": "Moves",
     "rideAlong": "Along it, on its own keys",
