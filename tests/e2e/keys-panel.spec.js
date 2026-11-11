@@ -759,6 +759,38 @@ test.describe('on a phone', () => {
   });
 });
 
+test.describe('on a tablet, with the side panel open', () => {
+  test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true });
+
+  test('the head is one line with every button whole, and the lanes narrow to fit, lined up with the ruler, and zoom', async ({ page }) => {
+    await ball(page, { 3: 12 });
+    const box = await panel(page).boundingBox();
+    expect(box.width).toBeLessThan(600); // narrower than the scrubber and the buttons beside it
+    const head = await Promise.all(['.fold', '.add-key', '.ruler', '.zoom', '.easing', '.motion', '.delete'].map((c) => panel(page).locator(c).boundingBox()));
+    for (const b of head) {
+      expect(b.x).toBeGreaterThanOrEqual(box.x);
+      expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
+      expect(Math.abs(b.y + b.height / 2 - (head[0].y + head[0].height / 2))).toBeLessThan(8); // one line
+    }
+    for (const cut of [panel(page).locator('.add-key .dropdown-trigger'), row(page, 'transform').locator('.name')]) {
+      expect(await cut.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true); // "+ Add key" and "Transform" whole
+    }
+    const ruler = await panel(page).locator('.ruler').boundingBox(), lane = await row(page, 'transform').locator('.lane').boundingBox();
+    expect(lane.x).toBeCloseTo(ruler.x, 0);
+    expect(lane.width).toBeCloseTo(ruler.width, 0);
+    const lined = async () => {
+      for (const at of await keyFrames(page, 'transform')) {
+        expect(Math.abs(await centerX(diamond(page, 'transform', at)) - await centerX(panel(page).locator(`button.frame[data-at="${at}"]`)))).toBeLessThan(1);
+      }
+    };
+    await lined();
+    const numbers = await panel(page).locator('.ruler button.frame').count();
+    await panel(page).getByRole('button', { name: 'Zoom in' }).click();
+    await expect.poll(() => panel(page).locator('.ruler button.frame').count()).toBeLessThan(numbers);
+    await lined();
+  });
+});
+
 test.describe('on a touch screen', () => {
   test.use({ hasTouch: true });
 

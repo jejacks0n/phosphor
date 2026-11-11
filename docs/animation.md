@@ -115,6 +115,11 @@ On VECTOR with Animate on, the Keys panel sits over the bar, its frames lined up
 opens and folds it, as does the **▾** at its top left; it stays as you left it. It shows the selected shape (with several
 selected, the first); with none, it says so.
 
+Where the panel is too narrow for that and its buttons beside it (a tablet with the side panel open, say), the top line
+stays one line: the part names, **+ Add key** and Delete keep their room, the easing menu shows only its curve, and the
+lanes and their ruler narrow to what's left, still lined up with each other, scrolling and zooming as below. A row's
+values scroll sideways when they don't all fit.
+
 With more frames than fit at a usable width (about 14 pixels a frame, 10 on a phone), the lanes become a window onto
 the movie: scroll it with the wheel or trackpad (Shift-wheel too) or by dragging the ruler of frame numbers where
 there's no number, and zoom with **−** and **+** on the top line, or Cmd/Ctrl-wheel over the lanes (or a trackpad
