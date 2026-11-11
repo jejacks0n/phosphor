@@ -384,8 +384,9 @@ for people already in, report `spam_gull` from N here (Report in their ⋯), and
   ([Chat](../../social.md#chat)): if it comes back on LAYERS, that difference is a finding;
   watchers see "The host is reconnecting…" and then carry on; `tin_owl` sees "Waiting for the host to
   reconnect—drawing paused…" and then draws on; everyone sees "Your undo starts over. All the drawing is still here."
-  Undo empty after the reload is by design ([Hosting](../../social.md#hosting),
-  [When the host changes](../../social.md#when-the-host-changes)).
+  The docs say undo starts over ([Hosting](../../social.md#hosting),
+  [When the host changes](../../social.md#when-the-host-changes)); losing it is `friction` all the same, filed once
+  (minor).
 - Probes: `interrupt`: have `tin_owl` draw while she's away, and check their strokes reach her once she's back;
   `again`: reload a second time while it's still reconnecting.
 - Rated: no (a reload)
@@ -409,8 +410,8 @@ for people already in, report `spam_gull` from N here (Report in their ⋯), and
   and check the chat, name and welcome still carry over.
 - Rated: no (the other person's move)
 
-**Free time:** she'd read what `tin_owl`'s page said all along, check Live for didn't restart through the hand
-over and back, undo a stroke she drew before handing over, and have a watcher send a message during a hand over.
+**Free time:** she'd read what `tin_owl`'s page said all along, check Live for starts over when the room
+comes back to her (a hand-over isn't a reconnect), undo a stroke she drew before handing over, and have a watcher send a message during a hand over.
 
 ## Ending
 

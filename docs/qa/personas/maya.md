@@ -88,7 +88,8 @@ script. Every section ends with Free time.
   Random, Best match and By shape in ANSI, By intensity and By shape in Color ASCII, By brightness and By shape in
   Monochrome ASCII ([Characters](../../characters.md#how-the-converter-picks-characters)); each change lands within
   the `setting` budget.
-- Probes: `undo-redo`: undo the style changes one at a time and check the picture and the menu go back together;
+- Probes: `undo-redo`: make a brush mark, change the style twice, then undo, and check it takes the mark back and leaves the
+  style (a style change isn't an undo step); redo it;
   `speed`: arrow through the Art style menu as fast as it takes keys and check the picture ends on the last one.
 - Rated: yes, wants Tab to Art style then the arrows
 
