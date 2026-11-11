@@ -19,5 +19,12 @@ are the run's draw in order: device, input, language, theme, then account, inter
 The app commit moves from b03fd011 to 82a1a774 partway through the round, though only the QA harness (its terminal
 check, `tests/qa/terminal.js`, and that check's unit test) changed between them: the app the runs tested is the same.
 
+The rows above were scored under the first rule, where a long keyboard path earned half a mark. From 2026-11-10 a
+path of more than three keystrokes earns nothing ([The keyboard score](README.md#the-keyboard-score)). Under that rule
+the same runs, from their reviewers' corrected ratings, score: maya 6, dex 42, sam 35, walt 18, priya 19, lea 100,
+juno 9, theo 26. Compare later runs with these. They may be a little low: a step the first rule rated `keysLong` at
+exactly three keystrokes now counts as `keys`, and only one such step (dex's 19) was found.
+
 [^lea]: On a different scale from the other rows: only Lea's phone-keyboard steps are rated, and the phone's
-    on-screen keyboard can't be emulated, so the score covers those steps alone.
+    on-screen keyboard can't be emulated, so the score covers those steps alone. From 2026-11-10 phone personas aren't given a
+    keyboard score: they're measured by taps per task.

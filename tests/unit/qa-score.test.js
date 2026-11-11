@@ -2,7 +2,7 @@
 import { test, expect } from 'vitest';
 import { keyboardScore, eventCheck } from '../qa/score.js';
 
-test('keys count 1, keysLong 0.5 and mouse 0; the costs are the worst first', () => {
+test('keys count 1, keysLong and mouse 0; the costs are the worst first', () => {
   const steps = [
     { name: 'a', rated: true, how: 'keys', want: 'one key' },
     { name: 'b', rated: true, how: 'keysLong', want: 'a shorter way' },
@@ -10,7 +10,7 @@ test('keys count 1, keysLong 0.5 and mouse 0; the costs are the worst first', ()
     { name: 'd', rated: false },
   ];
   const result = keyboardScore(steps);
-  expect(result).toMatchObject({ score: 50, rated: 3 });
+  expect(result).toMatchObject({ score: 33, rated: 3 });
   expect(result.costs).toEqual([
     { step: 'c', how: 'mouse', want: 'a key for it' },
     { step: 'b', how: 'keysLong', want: 'a shorter way' },
