@@ -235,6 +235,76 @@ test('undo by an artist comes back as a numbered change everyone applies', async
   await allMatch(room, ann, bob);
 });
 
+// A stroke along row 3 from one column to another, in cells and paint (a pixel per column, on row 30), and what each
+// column shows: its character and its paint, r or b.
+function stripe(project, from, to, char, color) {
+  for (let col = from; col <= to; col++) project.editCell(col, 3, { char });
+  project.paintStroke(Array.from({ length: to - from + 1 }, (_, i) => ({ x: from + i, y: 30, alpha: 1 })), color);
+  project.commitEdit();
+}
+const stripeShows = (project, from, to) => Array.from({ length: to - from + 1 }, (_, i) => {
+  const paint = painted(project, from + i, 30);
+  return `${char(project, from + i, 3) ?? '-'}${paint ? (paint.r > paint.b ? 'r' : 'b') : '-'}`;
+}).join(' ');
+const shows = (...parts) => parts.flatMap(([value, count]) => Array(count).fill(value)).join(' ');
+
+test('a host\'s redo puts their stroke back under an artist\'s later one, on every page', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  stripe(room.project, 2, 14, 'H', '#ff0000');
+  await allMatch(room, ann);
+  stripe(ann.project, 8, 14, 'A', '#0000ff');
+  await allMatch(room, ann);
+
+  room.project.undo();
+  await allMatch(room, ann);
+  expect(stripeShows(room.project, 2, 14)).toBe(shows(['--', 6], ['Ab', 7]));
+  room.project.redo();
+  await allMatch(room, ann);
+  for (const { project } of [room, ann]) expect(stripeShows(project, 2, 14)).toBe(shows(['Hr', 6], ['Ab', 7]));
+
+  ann.project.undo(); // the later one taken back afterward: the host's is what's beneath
+  await expect.poll(() => char(room.project, 8, 3), PATIENT).toBe('H');
+  await allMatch(room, ann);
+  for (const { project } of [room, ann]) expect(stripeShows(project, 2, 14)).toBe(shows(['Hr', 13]));
+});
+
+test('an artist\'s redo puts their stroke back under the host\'s later one', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  stripe(ann.project, 2, 14, 'A', '#0000ff');
+  await allMatch(room, ann);
+  stripe(room.project, 8, 14, 'H', '#ff0000');
+  await allMatch(room, ann);
+  ann.project.undo();
+  await expect.poll(() => char(room.project, 2, 3), PATIENT).toBe(undefined);
+  await allMatch(room, ann);
+  expect(stripeShows(ann.project, 2, 14)).toBe(shows(['--', 6], ['Hr', 7]));
+  ann.project.redo();
+  await expect.poll(() => char(room.project, 2, 3), PATIENT).toBe('A');
+  await allMatch(room, ann);
+  for (const { project } of [room, ann]) expect(stripeShows(project, 2, 14)).toBe(shows(['Ab', 6], ['Hr', 7]));
+});
+
+test('a redo with the later stroke undone too brings the whole stroke back, and the later one\'s redo goes over it', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  stripe(room.project, 2, 14, 'H', '#ff0000');
+  await allMatch(room, ann);
+  stripe(ann.project, 8, 14, 'A', '#0000ff');
+  await allMatch(room, ann);
+  room.project.undo();
+  ann.project.undo();
+  await expect.poll(() => char(room.project, 8, 3), PATIENT).toBe(undefined);
+  room.project.redo();
+  await allMatch(room, ann);
+  expect(stripeShows(ann.project, 2, 14)).toBe(shows(['Hr', 13]));
+  ann.project.redo();
+  await expect.poll(() => char(room.project, 8, 3), PATIENT).toBe('A');
+  await allMatch(room, ann);
+  for (const { project } of [room, ann]) expect(stripeShows(project, 2, 14)).toBe(shows(['Hr', 6], ['Ab', 7]));
+});
+
 test('an artist\'s undo on a stroke with the host mid-stroke leaves the host\'s screen as its ledger has it', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann');
@@ -2029,8 +2099,8 @@ test('the ledger\'s record survives a reload: what it holds comes back, undo wor
   expect(char(project, 2, 2)).toBe(undefined);
   project.undo();
   expect(char(project, 1, 1)).toBe('A');   // not ann's, whatever's under it
-  project.redo();   // a redo goes on top of whatever's drawn since
-  expect(char(project, 1, 1)).toBe('H');
+  project.redo();   // back in its place: under ann's, drawn since
+  expect(char(project, 1, 1)).toBe('A');
   project.redo();
   expect(char(project, 2, 2)).toBe('I');
   await forgetRoomLedger('room');

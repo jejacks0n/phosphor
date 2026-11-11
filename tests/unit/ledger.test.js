@@ -180,23 +180,112 @@ test('nobody can add to another person\'s stroke, or to one that was undone', ()
   assert.equal(ledger.n, 2);
 });
 
-test('redo puts the stroke on top again, even over what was drawn since', () => {
-  const { pic, drawCell, drawRuns, undo, redo } = setup();
-  drawCell('a', 'as', '0,0', X);
-  drawRuns('a', 'as', [[1, 1, 3, RED]]);
-  undo('a', 'as');
-  drawCell('b', 'bs', '0,0', Y);
-  drawRuns('b', 'bs', [[2, 1, 1, GREEN]]);
-  const redone = redo('a', 'as');
-  assert.deepEqual(redone.cells, [['0,0', X]]);
-  assert.deepEqual(redone.runs, [[1, 1, 3, RED]]);
-  assert.equal(pic.cells.get('0,0'), X);
-  assert.equal(pic.px(2, 1), RED);
+// The triage's: mine on 2 to 14, yours over 8 to 14, in cells and in paint.
+function underLater() {
+  const it = setup();
+  const row = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => `${from + i},0`);
+  it.go(it.ledger.submit('me', 'mine', { cells: row(2, 14).map((key) => [key, X]), runs: [[2, 1, 13, RED]] }));
+  it.go(it.ledger.submit('you', 'yours', { cells: row(8, 14).map((key) => [key, Y]), runs: [[8, 1, 7, GREEN]] }));
+  const shows = (from, to, cell, rgba) => {
+    for (let x = from; x <= to; x++) {
+      assert.equal(it.pic.cells.get(`${x},0`), cell, `cell ${x}`);
+      assert.equal(it.pic.px(x, 1), rgba, `pixel ${x}`);
+    }
+  };
+  return { ...it, row, shows };
+}
 
-  undo('a', 'as'); // a redone stroke undoes again, and b's is what's beneath
+test('redo puts my stroke back where it was: what you drew over it since stays on top', () => {
+  const { undo, redo, row, shows } = underLater();
+  undo('me', 'mine');
+  shows(2, 7, undefined, 0);
+  shows(8, 14, Y, GREEN);
+  const redone = redo('me', 'mine');
+  assert.deepEqual(redone.cells, row(2, 7).map((key) => [key, X])); // only what shows again
+  assert.deepEqual(redone.runs, [[2, 1, 6, RED]]);
+  shows(2, 7, X, RED);
+  shows(8, 14, Y, GREEN);
+});
+
+test('redo under a later stroke: undoing that one afterward shows mine beneath it', () => {
+  const { undo, redo, shows } = underLater();
+  undo('me', 'mine');
+  redo('me', 'mine');
+  undo('you', 'yours');
+  shows(2, 14, X, RED);
+  redo('you', 'yours');
+  shows(8, 14, Y, GREEN);
+});
+
+test('redo when the later stroke is undone too brings mine back whole, and its redo goes back over mine', () => {
+  const { undo, redo, shows } = underLater();
+  undo('me', 'mine');
+  undo('you', 'yours');
+  shows(2, 14, undefined, 0);
+  redo('me', 'mine');
+  shows(2, 14, X, RED);
+  redo('you', 'yours');
+  shows(2, 7, X, RED);
+  shows(8, 14, Y, GREEN);
+});
+
+test('what someone draws while my stroke is undone is later than it, and stays on top of my redo', () => {
+  const { pic, drawCell, drawRuns, undo, redo } = setup();
+  drawCell('me', 'mine', '0,0', X);
+  drawRuns('me', 'mine', [[1, 1, 3, RED]]);
+  undo('me', 'mine');
+  drawCell('you', 'yours', '0,0', Y);
+  drawRuns('you', 'yours', [[2, 1, 1, GREEN]]);
+  const redone = redo('me', 'mine');
+  assert.deepEqual(redone.cells, []);
+  assert.deepEqual(redone.runs, [[1, 1, 1, RED], [3, 1, 1, RED]]);
   assert.equal(pic.cells.get('0,0'), Y);
   assert.equal(pic.px(2, 1), GREEN);
-  assert.equal(pic.px(1, 1), 0);
+
+  undo('you', 'yours'); // and mine is what's beneath
+  assert.equal(pic.cells.get('0,0'), X);
+  assert.equal(pic.px(2, 1), RED);
+});
+
+test('redo with nobody over it brings the whole stroke back', () => {
+  const { pic, drawCell, drawRuns, undo, redo } = setup();
+  drawCell('me', 'mine', '0,0', X);
+  drawRuns('me', 'mine', [[1, 1, 3, RED]]);
+  undo('me', 'mine');
+  const redone = redo('me', 'mine');
+  assert.deepEqual(redone.cells, [['0,0', X]]);
+  assert.deepEqual(redone.runs, [[1, 1, 3, RED]]);
+  assert.equal(pic.px(3, 1), RED);
+});
+
+test('a stroke written in turns with another comes back under each of the other\'s later writes', () => {
+  const { pic, drawRuns, undo, redo } = setup();
+  drawRuns('me', 'mine', [[0, 0, 2, RED]]);
+  drawRuns('you', 'yours', [[0, 0, 1, GREEN]]);
+  drawRuns('me', 'mine', [[0, 0, 1, BLUE]]); // over yours again: this pixel's mine
+  drawRuns('you', 'yours', [[1, 0, 1, GREEN]]); // and this one's yours
+  undo('me', 'mine');
+  redo('me', 'mine');
+  assert.equal(pic.px(0, 0), BLUE);
+  assert.equal(pic.px(1, 0), GREEN);
+});
+
+test('a ledger kept before undone strokes held their place still redoes them, on top as it did then', () => {
+  const { pic, ledger, drawCell, drawRuns, undo } = setup();
+  drawCell('me', 'mine', '0,0', X);
+  drawRuns('me', 'mine', [[1, 1, 1, RED]]);
+  drawCell('you', 'yours', '0,0', Y);
+  drawRuns('you', 'yours', [[1, 1, 1, GREEN]]);
+  undo('me', 'mine');
+  const kept = structuredClone(ledger.kept()), { stacks } = kept, mine = stacks.strokes.get('mine');
+  const stack = stacks.cells.get('0,0'); // as it was kept then: an undone stroke left its stacks
+  stack.strokes = stack.strokes.filter((record) => record !== mine);
+  for (const tile of stacks.tiles.values()) tile.entries = tile.entries.filter((entry) => entry.stroke !== 'mine');
+  const back = Ledger.restore(kept, { readCell: pic.readCell, readTile: pic.readTile });
+  pic.apply(back.redo('me', 'mine'));
+  assert.deepEqual(pic.cells.get('0,0'), X);
+  assert.equal(pic.px(1, 1), RED);
+  assert.equal(back.sum, pic.sum());
 });
 
 test('an undo lists only the positions that visibly change', () => {
@@ -609,10 +698,13 @@ test.each([1, 2, 3, 4, 5, 6])('many hands, in any order, end as position-by-posi
   for (const x of [1, 2, 3, TILE - 1, TILE, TILE + 1]) for (const y of [2, 3]) {
     positions.set(`p${x},${y}`, { x, y, base: pic.px(x, y), stack: [] });
   }
-  const strokes = new Map(); // id: { by, undone, values: Map<position, value> }
+  const strokes = new Map(); // id: { by, undone, values: Map<position, value> }; an undone one keeps its place
   const pixelValues = [RED, GREEN, BLUE, 0], cellValues = [X, Y, Z, null];
   const names = [...positions.keys()];
-  const shown = (spot) => (spot.stack.length ? strokes.get(spot.stack.at(-1)).values.get(spot.name) : spot.base);
+  const shown = (spot) => {
+    const top = spot.stack.findLast((id) => !strokes.get(id).undone);
+    return top ? strokes.get(top).values.get(spot.name) : spot.base;
+  };
   for (const [name, spot] of positions) spot.name = name;
   const removeFrom = (spot, id) => { spot.stack = spot.stack.filter((other) => other !== id); };
 
@@ -635,26 +727,21 @@ test.each([1, 2, 3, 4, 5, 6])('many hands, in any order, end as position-by-posi
         stroke.values.set(name, value);
       }
       go(ledger.submit(by, id, change));
-    } else if (roll < 7 && live.length) {
-      const [id, stroke] = live[random(live.length)];
+    } else if (roll < 9 && (roll < 7 ? live : undone).length) {
+      const pick = roll < 7 ? live : undone, [id, stroke] = pick[random(pick.length)];
       const before = new Map(names.map((name) => [name, shown(positions.get(name))]));
-      for (const spot of positions.values()) removeFrom(spot, id);
-      stroke.undone = true;
-      const numbered = go(ledger.undo(stroke.by, id));
+      stroke.undone = roll < 7;
+      const numbered = go(roll < 7 ? ledger.undo(stroke.by, id) : ledger.redo(stroke.by, id));
       const listed = numbered.cells.length + numbered.runs.reduce((sum, run) => sum + run[2], 0);
       const changed = names.filter((name) => {
         const a = before.get(name), b = shown(positions.get(name));
         return positions.get(name).cell ? JSON.stringify(a) !== JSON.stringify(b) : a !== b;
       }).length;
-      assert.equal(listed, changed, 'an undo lists exactly what changes');
-    } else if (roll < 9 && undone.length) {
-      const [id, stroke] = undone[random(undone.length)];
-      stroke.undone = false;
-      for (const name of stroke.values.keys()) positions.get(name).stack.push(id);
-      go(ledger.redo(stroke.by, id));
+      assert.equal(listed, changed, 'an undo or redo lists exactly what changes');
     } else if (strokes.size) {
       const ids = [...strokes.keys()], id = ids[random(ids.length)], stroke = strokes.get(id);
-      if (!stroke.undone) {
+      if (stroke.undone) for (const spot of positions.values()) removeFrom(spot, id);
+      else {
         for (const [name, value] of stroke.values) {
           const spot = positions.get(name), at = spot.stack.indexOf(id);
           for (const lower of spot.stack.slice(0, at)) strokes.get(lower).values.delete(name);

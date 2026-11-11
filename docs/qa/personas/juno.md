@@ -299,9 +299,9 @@ change, ask in the chat whether people can see her box, and have a watcher Exit 
 ### 15. Undo only what I drew
 - Does: draws a stroke; has `tin_owl` draw over half of it; presses Cmd+Z; then Shift+Cmd+Z; then has `tin_owl` press
   Cmd+Z.
-- Expects: her undo takes back only her stroke and shows what's beneath, `tin_owl`'s half staying; redo puts hers back;
-  `tin_owl`'s undo takes back only theirs; every page ends showing the same art ([Drawing
-  together](../../social.md#drawing-together)).
+- Expects: her undo takes back only her stroke and shows what's beneath, `tin_owl`'s half staying; redo puts hers back
+  under `tin_owl`'s half, which stays on top; `tin_owl`'s undo takes back only theirs, and hers shows beneath; every
+  page ends showing the same art ([Drawing together](../../social.md#drawing-together)).
 - Probes: `undo-redo`: undo, redo, undo again, then draw and check redo is off; `speed`: press Cmd+Z thirty times as
   fast as the page takes it and check none of `tin_owl`'s or `pixel_fox`'s strokes went, then redo them all; `out-of-order`:
   undo with nothing of hers left: nothing changes, and no one else's strokes go.
