@@ -80,6 +80,14 @@ test('a copy writes the characters as text, a wide character once, and the block
   expect(html.phosphor.cells[0]).toEqual({ char: 'a', ...ATTRS });
 });
 
+test('a cell that shows nothing copies as a space, as it exports', async () => {
+  const { project, workspace, written } = await editor();
+  const hidden = { char: '▒', fg: { ...ATTRS, hex: '#000000' }, bg: { ...ATTRS, hex: '#000000' } };
+  project.cells[cellIndex(1, 1, COLS)] = hidden;
+  copySelection(project, workspace, SOURCE, ['base', 'edit']);
+  expect(written.at(-1).text.split('\n')[1][1]).toBe(' ');
+});
+
 test('where the copy event is refused, the text alone is written', async () => {
   const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: COLS, rows: 20 });

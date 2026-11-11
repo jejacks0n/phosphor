@@ -493,7 +493,8 @@ scrolls the view, faster the further you go.
   its closest lookalike (or `?`), as in a .ans export. Copy in Chrome for this: Safari and Firefox
   rewrite what a web page puts on the clipboard in ways Moebius can't read, so a copy made in
   either pastes into Moebius as characters only, in Moebius's colors.
-- into a terminal, a chat or a text editor as plain text, a line per row.
+- into a terminal, a chat or a text editor as plain text, a line per row. A cell that shows nothing (its character and
+  background are the same color, black on black included) is a space, as in an export.
 
 **Paste** (Cmd/Ctrl+V) pastes whatever you copied last, wherever you copied it:
 

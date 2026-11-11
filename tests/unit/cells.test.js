@@ -2,6 +2,7 @@
 // (export bytes depend on it).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { CellWriter } from '../../src/lib/AnsiFile.js';
 import { buildCells, buildCell, weightedChar, charRowsOf, cellIndex, cellOfPixel, cellAt, layoutWide, layoutWideRows, selectionText } from '../../src/lib/Cells.js';
 
 test('Cell model: one { char, fg, bg } per character cell, built exactly as the pipeline always has (export bytes depend on it)', async () => {
@@ -79,6 +80,15 @@ test('Cell model: one { char, fg, bg } per character cell, built exactly as the 
   assert.equal(selectionText(textGrid, 4, { c0: 1, r0: 0, c1: 2, r1: 0 }), '漢');        // lead and trail
   assert.equal(selectionText(textGrid, 4, { c0: 2, r0: 0, c1: 3, r1: 0 }), 'b');         // starting on a trail: nothing for it
   assert.equal(selectionText([], 4, { c0: 0, r0: 0, c1: 1, r1: 0 }), '  ');           // no cells (yet): spaces
+  // A cell that shows nothing copies as a space, as an export writes it: black on black, and any other matching pair.
+  const hid = (char, hex) => ({ char, fg: { hex }, bg: { hex } });
+  const banner = [C('h'), C('i'), hid('▄', '#000000'), hid('▒', '#000000'), hid('█', '#ff5555'), C('▄')];
+  assert.equal(selectionText(banner, 6, { c0: 0, r0: 0, c1: 5, r1: 0 }), 'hi   ▄');
+  // Copy and export agree: the UTF-8 writer's characters, its color codes taken out, are the copied line.
+  const writer = new CellWriter({ utf8: true });
+  banner.forEach((cell) => writer.cell(cell));
+  const exported = new TextDecoder().decode(writer.take()).replace(new RegExp(`${String.fromCharCode(27)}\\[[\\d;]*m`, 'g'), '');
+  assert.equal(exported, selectionText(banner, 6, { c0: 0, r0: 0, c1: 5, r1: 0 }));
 });
 
 test('an edit lays out only its rows again: the other rows keep their layout, and the result is the whole grid\'s', () => {
