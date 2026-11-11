@@ -1,5 +1,6 @@
 // GIF export: gifBytes writes the file (LZW included, looping forever) and gifFrames draws cells as the ANSI view
-// does, offscreen, onto one palette, so colors don't shimmer from frame to frame.
+// does, offscreen (drawnCells, which the PNG export uses too), onto one palette, so colors don't shimmer from frame
+// to frame.
 import CellCanvas from './CellCanvas.js';
 import { ctx2d } from './Canvas.js';
 import quantize from './Quantizer.js';
@@ -116,15 +117,14 @@ function indexer(palette) {
 
 const SAMPLED_FRAMES = 12; // what the palette's picked from, evenly through the animation
 
-// frames: each frame's cells, delays its delayCs. { width, height, frames } for gifBytes. Throws if there's no
-// WebGL2 to draw with.
-export async function gifFrames(frames, cols, lines, delays, { smooth, tooLarge } = {}) {
+// Cells drawn as the ANSI view draws them, offscreen at one pixel per font pixel: use gets { width, height, rgba },
+// rgba(cells) a frame's pixels, while the view's there. Throws if there's no WebGL2 to draw with.
+export async function drawnCells(cols, lines, { smooth } = {}, use) {
   const view = new CellCanvas(document.createElement('canvas'));
   try {
     if (smooth !== undefined) view.smooth = smooth;
     view.resize(cols, lines, 1);
     const { width, height } = view.canvas;
-    tooLarge?.(width * height * frames.length);
     const copy = document.createElement('canvas');
     copy.width = width;
     copy.height = height;
@@ -135,6 +135,17 @@ export async function gifFrames(frames, cols, lines, delays, { smooth, tooLarge 
       ctx.drawImage(view.canvas, 0, 0);
       return ctx.getImageData(0, 0, width, height).data;
     };
+    return await use({ width, height, rgba });
+  } finally {
+    view.destroy();
+  }
+}
+
+// frames: each frame's cells, delays its delayCs. { width, height, frames } for gifBytes. Throws if there's no
+// WebGL2 to draw with.
+export function gifFrames(frames, cols, lines, delays, { smooth, tooLarge } = {}) {
+  return drawnCells(cols, lines, { smooth }, async ({ width, height, rgba }) => {
+    tooLarge?.(width * height * frames.length);
     const step = Math.max(1, Math.floor(frames.length / SAMPLED_FRAMES));
     const sampled = [];
     for (let i = 0; i < frames.length; i += step) sampled.push(rgba(frames[i]));
@@ -150,7 +161,5 @@ export async function gifFrames(frames, cols, lines, delays, { smooth, tooLarge 
       await new Promise((resolve) => setTimeout(resolve)); // the page stays alive
     }
     return { width, height, frames: out };
-  } finally {
-    view.destroy();
-  }
+  });
 }

@@ -872,6 +872,7 @@
     "exportAnimatedUtf8ans": "Exporter en .utf8ans animé",
     "exportCast": "Exporter en .cast",
     "exportGif": "Exporter en .gif",
+    "exportPng": "Exporter en .png",
     "versions": "Versions",
     "newProject": "Nouveau projet",
     "artDropTitle": "Ajouter {name} ?",
@@ -938,7 +939,18 @@
       "utf8ans": {
         "title": "Exporter en .utf8ans",
         "sub": "Art ANSI UTF-8 pour les terminaux modernes — conserve chaque caractère et couleur Unicode."
+      },
+      "png": {
+        "title": "Exporter en .png",
+        "sub": "Ce que montre la vue ANSI, en image, avec votre police d'affichage actuelle."
       }
+    },
+    "png": {
+      "ask": "Le texte lissé ajoute des couleurs : le PNG sera plusieurs fois plus lourd.",
+      "smoothTitle": "Lissé",
+      "smoothText": "Avec anticrénelage, comme dans la vue ANSI.",
+      "hardTitle": "Contours nets",
+      "hardText": "Des pixels nets dans les couleurs du dessin : le fichier le plus léger."
     },
     "tooTall": "À {cols}×{rows}, cela dépasse les terminaux standard 80×25 — les lignes dépassant la fenêtre de lecture seront coupées pendant la lecture.",
     "cp437Note": "1 caractère n'est pas dans CP437 et sera substitué en .ans : | {count} caractères ne sont pas dans CP437 et seront substitués en .ans :",

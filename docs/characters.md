@@ -198,8 +198,14 @@ gives other apps only its characters (see [Layers](layers.md#the-select-tool)).
   font name, size and comments changed only where you changed them on the SAUCE tab. A resize changes the
   size it gives. Comments are lines of up to 64 characters: a longer line breaks at a space, and only a
   word longer than 64 is split. The record holds at most 255 lines.
+- **.png** is a picture of the art as the ANSI view draws it, in your display font, at one pixel per
+  font pixel: the frame showing, with or without Animate. With Smooth text off (the status bar's
+  **Smooth**) every pixel is one of the art's colors and the file is small. With it on, the export
+  first asks: **Smooth** (picked first) keeps the anti-aliased edges, which add colors and make the file
+  a few times bigger, and **Hard-edged** draws the text crisp, as with Smooth text off. It asks every
+  time, and the answer doesn't change the setting.
 
-Saving a project and both exports open the same dialog, where you name the file (Cmd/Ctrl+S opens it
+Saving a project and the exports open the same dialog, where you name the file (Cmd/Ctrl+S opens it
 for the project). It offers the document's name with the date and time (`art-20261030-131405`), so
 each save is a new file; type over it for any other name. The name you give becomes the document's
 name, so the next save starts from it, with a new time. Every browser saves it as a download with

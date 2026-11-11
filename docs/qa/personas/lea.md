@@ -44,8 +44,7 @@ confused, and the work still there if she comes back to the tab later.
   Dimensions ([Layers](../../layers.md#the-left-column)).
 - The Brush and Edit Mode, the color pair ([Other tools](../../layers.md#other-tools)).
 - The Animate switch, Add frame, play, Ghost ([Animation](../../animation.md)).
-- Export .gif, Save project, and the PNG she expects among the exports ([Vector shapes](../../vector.md#saving) lists
-  PNG among them).
+- Export .gif, Export .png and Save project ([Characters](../../characters.md#saving-utf8ans-and-ans)).
 
 ## What makes them give up
 
@@ -275,13 +274,11 @@ frames, and pinch while it plays.
 ## Sharing it
 
 ### 19. Save a picture to post
-- Does: turns Animate off first (step 16 turned it on), then looks for a PNG: in the settings column's buttons, in
-  Actions, and long-presses the picture.
-- Expects: a way to save the art as a picture, which [Vector shapes](../../vector.md#saving) lists among the exports
-  (PNG). If there's none, that's a `bug` finding, since the docs say it works (the README's
-  [A step that can't be done](../README.md#a-step-that-cant-be-done)).
-- Probes: `out-of-order`: look on SAUCE too; `free`: take the screenshot a phone person would (`qa.shot`) and note
-  that's her only way.
+- Does: turns Animate off first (step 16 turned it on), then opens ☰, taps Export .png, keeps Smooth when it asks
+  about smooth text, and presses Export.
+- Expects: a PNG of the art as it shows, saved to her phone
+  ([Characters](../../characters.md#saving-utf8ans-and-ans)).
+- Probes: `out-of-order`: look on SAUCE too; `free`: long-press the picture, as she would to save any image.
 - Rated: no (touch only: no keyboard shows here)
 
 ### 20. Export a GIF

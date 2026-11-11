@@ -32,8 +32,7 @@ post, an .ans that opens the same in a terminal, and a .phosphor file she can re
 - LAYERS: + Layer, + Vector layer, picking, the eye, Merge down, Bake ([Layers](../../layers.md)).
 - The Brush, Edit Mode, the Paint Bucket and its Gradient choice ([Layers](../../layers.md#other-tools)).
 - VECTOR's Shape tool, Fill and Stroke, gradients and art layers ([Vector shapes](../../vector.md)).
-- Save project, Export .ans, and the PNG she expects to find among the exports ([Vector shapes](../../vector.md#saving)
-  lists PNG among them).
+- Save project, Export .ans and Export .png ([Characters](../../characters.md#saving-utf8ans-and-ans)).
 
 ## What makes them give up
 
@@ -365,10 +364,10 @@ from Bake, merge with a selection, and check the merges are off with Animate on 
 ## Getting it out
 
 ### 30. Export a PNG to post
-- Does: looks for a PNG export among Save project, Export .ans and Export .utf8ans (in the left column and on SAUCE).
-- Expects: a PNG of the art as it shows, which [Vector shapes](../../vector.md#saving) lists among the exports. If
-  there's none, that's a `bug` finding, since the docs say it works (the README's
-  [A step that can't be done](../README.md#a-step-that-cant-be-done)).
+- Does: presses Export .png (in the left column, or on SAUCE), keeps Smooth when it asks about smooth text, and saves;
+  then turns the status bar's Smooth off and exports again.
+- Expects: a PNG of the art as it shows, same palette, dithering and layers
+  ([Characters](../../characters.md#saving-utf8ans-and-ans)); with Smooth text off, no question, and a smaller file.
 - Probes: `out-of-order`: look on every tab and in the Actions menu of a narrow window; `free`: try the browser's own
   right-click on the canvas.
 - Rated: yes, wants a key for Export PNG
