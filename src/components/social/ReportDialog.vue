@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, nextTick, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onUnmounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { REASONS } from '@/social/chat';
 import ModalDialog from '@/components/ModalDialog.vue';
 
@@ -22,7 +23,15 @@ const props = defineProps({
   back: { default: null },      // where focus goes when the trigger has gone
 });
 const emit = defineEmits(['done']);
-const roomStore = useRoomStore(), social = useSocialStore();
+const roomStore = useRoomStore(), social = useSocialStore(), workspace = useWorkspaceStore();
+
+// A legal page closing gives focus back to its link.
+let opener = null;
+function read(page, event) {
+  opener = event.currentTarget;
+  workspace.legalPage = page;
+}
+watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); });
 const SHOWN_MS = 4000;
 
 const title = computed(() => (props.room ? t('social.report.titleRoom') : t('social.report.titlePerson', { name: props.name })));
@@ -68,6 +77,11 @@ function report() {
     <p class="reported" role="status">{{ sent ? t('social.report.thanks') : '' }}</p>
   </Teleport>
   <ModalDialog v-if="!sent" :title="title" :sub="says" @cancel="cancel">
+    <i18n-t keypath="social.report.rules" tag="p" class="rules">
+      <template #guidelines>
+        <button type="button" class="link inline" @click="read('guidelines', $event)">{{ t('legal.titles.guidelines') }}</button>
+      </template>
+    </i18n-t>
     <fieldset>
       <legend>{{ t('social.report.whatsWrong') }}</legend>
       <label v-for="r in REASONS" :key="r.id"><input v-model="reason" type="radio" name="report-reason" :value="r.id"> {{ r.label }}</label>
@@ -80,6 +94,17 @@ function report() {
 </template>
 
 <style scoped>
+p.rules {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+button.link.inline {
+  padding: 0;
+  font: inherit;
+  letter-spacing: normal;
+  color: var(--accent);
+  text-decoration: underline;
+}
 fieldset {
   display: flex;
   flex-direction: column;

@@ -74,7 +74,8 @@
     "creditIcons": "Les icônes : la plupart proviennent de {fontAwesome} par Fonticons, Inc. ({ccBy})",
     "creditScene": "Et les nombreux auteurs, mainteneurs et artistes ANSI qui m'ont inspiré au fil des années — trop nombreux pour être tous cités",
     "thanks": "Merci à vous tous pour l'inspiration et pour faire vivre la scène.",
-    "motto": "Make Code Not War"
+    "motto": "Make Code Not War",
+    "policies": "Lire les {terms}, la {privacy} et les {guidelines}."
   },
   "zero": {
     "dropPrompt": "Déposez une image, un fichier {ext} ou un fichier ANSI ici",
@@ -1288,6 +1289,7 @@
       "subRoomInside": "Les modérateurs recevront les aperçus récents du hall ainsi qu'un instantané du canevas actuel.",
       "subRoomLobby": "Les modérateurs recevront les aperçus récents du hall de cette salle.",
       "thanks": "Signalé. Merci.",
+      "rules": "Les signalements portent sur les {guidelines}.",
       "whatsWrong": "Quel est le problème ?",
       "reasons": {
         "spam": "Spam ou inondation",
