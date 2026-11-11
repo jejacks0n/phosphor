@@ -1273,6 +1273,8 @@
       "youSuffix": " (vous)",
       "reportMessageAria": "Signaler le message de {name}",
       "deleteMessageAria": "Supprimer le message de {name}",
+      "blockAria": "Bloquer {name}",
+      "blockSub": "Il ne pourra rejoindre aucune salle que vous hébergez, et ses messages sont repliés ici. Débloquez-le depuis votre Compte.",
       "mutedNote": "Masqué discrètement — visible uniquement entre vous deux",
       "messageAria": "Message",
       "sendAria": "Envoyer",

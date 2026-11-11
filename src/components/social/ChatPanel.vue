@@ -12,6 +12,7 @@ import ChatFoot from './ChatFoot.vue';
 import RoomMenu from './RoomMenu.vue';
 import RoomPeople from './RoomPeople.vue';
 import ReportDialog from './ReportDialog.vue';
+import ModalDialog from '@/components/ModalDialog.vue';
 
 // The chat of the room you host or watch, the side panel's CHAT tab (SidePanel, every tab, while you're in
 // one): the room's name (and, watching, who hosts it, and Exit; hosting, the room menu and who is here;
@@ -22,7 +23,8 @@ import ReportDialog from './ReportDialog.vue';
 // that message). Who came and went, with no message between, is one line ("tin-owl joined, wren
 // left"); your own comings and goings aren't shown, as "You joined" marks where you came in. A confirmed
 // member can Report someone else's message (it shows on hover or focus, as the host's Delete does), until
-// they've reported that person in this room; and Report room, under Exit, until they've reported the room.
+// they've reported that person in this room; and Report room, under Exit, until they've reported the room. A signed-in
+// watcher has Block beside it (the host's is in "N here"), which asks first and blocks them from the watcher's own rooms.
 // An invitation to draw waits here, blocking nothing, until it's answered, withdrawn or they leave.
 const room = useRoomStore(), social = useSocialStore(), drawing = useDrawingStore(), project = useProjectStore();
 const { t } = useI18n();
@@ -41,6 +43,23 @@ const opened = ref(0);         // each Report opens a new dialog, even on the sa
 const askToReport = (m, event) => {
   reporting.value = { name: m.name, sub: m.sub, messageId: m.id, trigger: event.currentTarget };
   opened.value++;
+};
+const blockable = (m) => room.role === 'watch' && !social.isGuest && !m.mine && !m.deleted && !blocked.value.has(m.sub);
+const blocking = ref(null);   // { name, trigger }
+const askToBlock = (m, event) => {
+  blocking.value = { name: m.name, trigger: event.currentTarget };
+};
+const blockDone = (trigger) => (trigger.isConnected ? trigger : list.value).focus();   // its Block gone, the messages
+const cancelBlock = () => {
+  blockDone(blocking.value.trigger);
+  blocking.value = null;
+};
+const confirmBlock = async () => {
+  const { name, trigger } = blocking.value;
+  blocking.value = null;
+  await social.block(name);   // their messages fold, and its Block goes
+  await nextTick();
+  blockDone(trigger);
 };
 const askToReportRoom = (event) => {
   reporting.value = { room: { id: room.id, from: 'inside' }, trigger: event.currentTarget };
@@ -151,7 +170,7 @@ function askIfAtTop() {
         <p v-if="room.chatMore" class="more">{{ t('social.chat.scrollForEarlier') }}</p>
         <p v-if="room.role === 'watch' && room.joinedAt === null && room.status === 'live'" class="joined">{{ t('social.chat.youJoined') }}</p>
         <!-- A row is drawn again only when what it shows changes, not on every new message. -->
-        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.map(presenceKey).join()] : [m.deleted, hidden(m), room.role === 'host', reportable(m)]">
+        <div v-for="m in rows" :key="m.id" v-memo="m.people ? [m.people.map(presenceKey).join()] : [m.deleted, hidden(m), room.role === 'host', reportable(m), blockable(m)]">
           <p v-if="m.joined" class="joined">{{ t('social.chat.youJoined') }}</p>
           <p v-else-if="m.people" class="presence">
             <span>
@@ -178,8 +197,9 @@ function askIfAtTop() {
                 <!-- Report and Delete take the time's place while the message is pointed at or has focus. -->
                 <span class="when">
                   <time>{{ time(m.ts) }}</time>
-                  <span v-if="reportable(m) || room.role === 'host'" class="actions">
+                  <span v-if="reportable(m) || blockable(m) || room.role === 'host'" class="actions">
                     <button v-if="reportable(m)" class="link report" :aria-label="t('social.chat.reportMessageAria', { name: m.name })" @click="askToReport(m, $event)">{{ t('social.chat.report') }}</button>
+                    <button v-if="blockable(m)" class="link block" :aria-label="t('social.chat.blockAria', { name: m.name })" @click="askToBlock(m, $event)">{{ t('social.people.blockConfirm') }}</button>
                     <button v-if="room.role === 'host'" class="link delete" :aria-label="t('social.chat.deleteMessageAria', { name: m.name })" @click="room.deleteMessage(m.id)">{{ t('common.delete') }}</button>
                   </span>
                 </span>
@@ -192,6 +212,12 @@ function askIfAtTop() {
       </div>
       <ChatFoot />
       <ReportDialog v-if="reporting" :key="opened" v-bind="reporting" @done="reporting = null" />
+      <ModalDialog v-if="blocking" :title="t('social.people.blockTitle', { name: blocking.name })" :sub="t('social.chat.blockSub')" @cancel="cancelBlock">
+        <div class="actions">
+          <button autofocus @click="cancelBlock">{{ t('common.cancel') }}</button>
+          <button class="danger" @click="confirmBlock">{{ t('social.people.blockConfirm') }}</button>
+        </div>
+      </ModalDialog>
     </div>
   </aside>
 </template>
