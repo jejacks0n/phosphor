@@ -35,10 +35,10 @@ const needChars = (baseChars) => {
 
 // Whether a layer converts as the bottom does: its chars are baseChars (a slider's numeric string is its number). A layer
 // with none yet counts as the same. kind: the layer's; a cells layer has no Dither to compare (layerChars).
-const UNDITHERED_KEYS = CHAR_KEYS.filter((key) => !DITHER_KEYS.includes(key));
 export function sameChars(chars, baseChars, kind = null) {
   needChars(baseChars);
-  return !chars || (kind === 'cells' ? UNDITHERED_KEYS : CHAR_KEYS).every((key) => String(chars[key]) === String(baseChars[key]));
+  // Read at the call, not at load: settings.js imports this module by way of projectIO.js, so CHAR_KEYS can be unset then.
+  return !chars || CHAR_KEYS.every((key) => (kind === 'cells' && DITHER_KEYS.includes(key)) || String(chars[key]) === String(baseChars[key]));
 }
 
 // layers with every layer but the bottom given chars, a frozen copy of these, under whatever of its own it has.
