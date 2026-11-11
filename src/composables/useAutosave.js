@@ -353,6 +353,12 @@ export function useAutosave() {
   useEventListener(document, 'visibilitychange', () => {
     if (document.visibilityState === 'hidden') flush();
   });
+  // A reload or a link away: the page goes once the next one arrives, and hidden comes only then, too late
+  // for a write. Begun here, what's waiting is written while the next page loads.
+  useEventListener(window, 'beforeunload', () => {
+    project.commitPending(); // text typed a moment ago counts
+    flush();
+  });
   onBeforeUnmount(() => {
     clearTimers();
     holdLock(null);
