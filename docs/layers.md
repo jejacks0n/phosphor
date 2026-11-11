@@ -515,7 +515,7 @@ the block you copied.
 
 **Stamp** (**S**, or **C** as in Moebius) leaves a copy of the selection where it is and floats the
 block on from there, so you can drag or nudge it away and stamp again. Each stamp is its own undo
-step. With a selection, **E** deletes it too, and **Enter** sets the block down, like Escape.
+step. With a selection, **E** deletes it too, and **Enter** sets the block down, like Escape (with a button focused, Enter presses the button instead).
 
 **Flip horizontally** (a mirror) and **Flip vertically** turn the selection in place, on the
 layers that show. The characters turn with it: box lines (┌ → ┐, ╒ → ╕), half-blocks and quadrants

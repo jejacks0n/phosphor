@@ -317,6 +317,18 @@ test('Escape or Enter on a selection made from Edit Mode sets it down and goes b
   }
 });
 
+test('Enter on a focused button leaves the selection (the button is pressed); on the canvas it sets it down', async () => {
+  const { workspace } = await editor();
+  workspace.setActiveTool('select');
+  workspace.selectAll({ c0: 1, r0: 1, c1: 3, r1: 3 });
+  const button = document.body.appendChild(document.createElement('button'));
+  button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+  button.remove();
+  expect(workspace.selection).not.toBe(null);
+  key('Enter');
+  expect(workspace.selection).toBe(null);
+});
+
 test('Escape on a selection made with the Select tool only clears it', async () => {
   const { workspace } = await editor();
   workspace.setActiveTool('select');
