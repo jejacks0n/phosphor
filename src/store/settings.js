@@ -60,7 +60,8 @@ export const SETTINGS = [
   { key: 'sauceGroup', default: '', group: 'sauce', most: SAUCE_WIDTHS.group, storageKey: 'current_file.sauce.group' },
   { key: 'sauceDate', default: '', group: 'sauce', most: SAUCE_WIDTHS.date, storageKey: 'current_file.sauce.date' },
   { key: 'sauceUserComments', default: '', group: 'sauce', most: SAUCE_WIDTHS.comments, storageKey: 'current_file.sauce.userComments' },
-  // An opened file's record, what the SAUCE tab doesn't show of it, to write again (Sauce.js keptRecord); empty for another drawing.
+  // An opened file's record, what the SAUCE tab doesn't show of it, to write again (Sauce.js keptRecord), 'none' for a file
+  // with no record; empty for another drawing, whose record and comment lines are Phosphor's own.
   { key: 'sauceRecord', default: '', group: 'sauce', storageKey: 'current_file.sauce.record' },
 ];
 

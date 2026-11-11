@@ -230,8 +230,8 @@ export const documentActions = {
         sauceUserComments: sauce.comments.join('\n'),
         sauceFontName: sauce.fontName,
         sauceUse9pxFont: sauce.use9pxFont,
-        sauceRecord: keptRecord(sauce, art.cols, art.rows),
       }),
+      sauceRecord: keptRecord(sauce, art.cols, art.rows),
     });
     if (!opened) return;
     const cells = art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell }));
@@ -471,12 +471,19 @@ export const documentActions = {
     downloadBlob(blob, `${this.filename}.${ext}`);
   },
 
-  // What an art file's SAUCE record says, from the SAUCE tab: only what the person typed, or what the opened file's
-  // record held. An opened file's record comes out as it went in (sauceRecord keeps its flags and size, the size
-  // until a resize); another drawing's is Phosphor's own, its empty date and font filled in.
+  // What an art file's SAUCE record says, from the SAUCE tab. An opened file's record comes out as it went in
+  // (sauceRecord keeps its flags and size, the size until a resize), with nothing added. Another drawing's is
+  // Phosphor's own: its empty date and font filled in, and Phosphor's comment lines before the person's.
   sauceFields() {
     const kept = keptFields(this.sauceRecord, this.cols, charRowsOf(this.rows));
     const asIs = (value) => (kept ? value : value || undefined);
+    const own = this.sauceRecord ? [] : [
+      `Created with Phosphor`,
+      `Params: seed=${this.seed}, smoothing=${this.smoothing}, quantize=${this.quantize}`,
+      `Adjust: brightness=${this.brightness}%, contrast=${this.contrast}%, saturation=${this.saturation}%, invert=${this.invert}%`,
+      `Effects: blur=${this.blur}, sharpen=${this.sharpen}, flatten=${this.flatten}, edges=${this.edges} (${this.edgeColor}), thickness=${this.edgeThickness}`,
+    ];
+    const typed = this.sauceUserComments ? this.sauceUserComments.split('\n') : [];
     return {
       ...kept,
       use9pxFont: this.sauceUse9pxFont,
@@ -485,7 +492,7 @@ export const documentActions = {
       author: this.sauceAuthor,
       group: this.sauceGroup,
       date: asIs(this.sauceDate),
-      comments: this.sauceUserComments ? this.sauceUserComments.split('\n') : [],
+      comments: own.length && typed.length ? [...own, '', ...typed] : [...own, ...typed],
     };
   },
 

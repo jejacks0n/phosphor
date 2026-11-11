@@ -83,6 +83,13 @@ test('with nothing given, the record is Phosphor\'s own: no comments, iCE colors
   assert.match(read.date, /^\d{8}$/);
 });
 
+test('a comment line longer than 64 breaks at its last space that fits, and only a longer word is split', async () => {
+  const words = 'Effects: blur=0, sharpen=0, flatten=0, edges=0 (#000000), thickness=1.5';
+  const long = 'x'.repeat(70);
+  const read = readSauce(await bytesOf({ sauce: { comments: [words, '', long, 'short'] } }));
+  assert.deepEqual(read.comments, ['Effects: blur=0, sharpen=0, flatten=0, edges=0 (#000000),', 'thickness=1.5', '', 'x'.repeat(64), 'xxxxxx', 'short']);
+});
+
 test('keptFields gives the record\'s flags, and its size only while the grid is the size it was opened at', () => {
   const kept = keptRecord({ flags: 0x10, width: 80, height: 99 }, 80, 25);
   assert.deepEqual(keptFields(kept, 80, 25), { flags: 0x10, width: 80, height: 99 });
