@@ -51,7 +51,8 @@ export function readArtFile(bytes, name) {
   const lines = new Map(); // row -> sparse array of cells
   let widest = 0; // the widest line reached, used when there's no fixed width
   let maxRow = -1; // the last line a character or erase reached
-  let wrote = false, deep = false, over = false;
+  let wrote = false, over = false;
+  let depth = 0; // the deepest color a cell got: 0 the 16 colors, 1 one of the other 240, 2 a 24-bit one
   let col = 0, row = 0, pending = false, saved = [0, 0];
   let bold = false, blink = false, inverse = false, fg = { i: 7 }, bg = { i: 0 };
   let pen = null; // fg and bg as a cell gets them; cleared when the colors change
@@ -70,20 +71,21 @@ export function readArtFile(bytes, name) {
 
   const colors = () => {
     if (pen) return pen;
-    const f = fg.hex ? fg : { hex: CGA[bold && fg.i < 8 ? fg.i + 8 : fg.i], deep: false };
-    const b = bg.hex ? bg : { hex: CGA[blink && bg.i < 8 ? bg.i + 8 : bg.i], deep: false };
-    pen = inverse ? { fg: b.hex, bg: f.hex, deep: !!(f.deep || b.deep) } : { fg: f.hex, bg: b.hex, deep: !!(f.deep || b.deep) };
+    const f = fg.hex ? fg : { hex: CGA[bold && fg.i < 8 ? fg.i + 8 : fg.i], depth: 0 };
+    const b = bg.hex ? bg : { hex: CGA[blink && bg.i < 8 ? bg.i + 8 : bg.i], depth: 0 };
+    const d = Math.max(f.depth, b.depth);
+    pen = inverse ? { fg: b.hex, bg: f.hex, depth: d } : { fg: f.hex, bg: b.hex, depth: d };
     return pen;
   };
 
   const setCell = (c, char, trail = false) => {
     if (over) return;
-    const { fg: f, bg: b, deep: d } = colors();
+    const { fg: f, bg: b, depth: d } = colors();
     let line = lines.get(row);
     if (!line) lines.set(row, line = []);
     if (!trail && c > 0 && line[c - 1] && cellWidth(line[c - 1].char) === 2) line[c - 1] = { ...line[c - 1], char: ' ' }; // its trail is gone
     line[c] = { char, fg: f, bg: b };
-    if (d) deep = true;
+    depth = Math.max(depth, d);
   };
 
   const put = (char, width) => {
@@ -126,17 +128,17 @@ export function readArtFile(bytes, name) {
       else if (p === 39) fg = { i: 7 };
       else if (p >= 40 && p <= 47) bg = { i: p - 40 };
       else if (p === 49) bg = { i: 0 };
-      else if (p >= 90 && p <= 97) fg = { hex: CGA[p - 82] };
-      else if (p >= 100 && p <= 107) bg = { hex: CGA[p - 92] };
+      else if (p >= 90 && p <= 97) fg = { hex: CGA[p - 82], depth: 0 };
+      else if (p >= 100 && p <= 107) bg = { hex: CGA[p - 92], depth: 0 };
       else if (p === 38 || p === 48) {
         let color = null;
         if (params[k + 1] === 5) {
           const n = params[k + 2];
-          if (n >= 0 && n < 256) color = { hex: VGA[n], deep: n >= 16 };
+          if (n >= 0 && n < 256) color = { hex: VGA[n], depth: n < 16 ? 0 : 1 }; // the 16 are CGA's, as a CGA .utf8ans writes them
           k += 2;
         } else if (params[k + 1] === 2) {
           const [r, g, b] = params.slice(k + 2, k + 5);
-          if (b !== undefined) color = { hex: '#' + hex2(r) + hex2(g) + hex2(b), deep: true };
+          if (b !== undefined) color = { hex: '#' + hex2(r) + hex2(g) + hex2(b), depth: 2 };
           k += 4;
         }
         if (color) { if (p === 38) fg = color; else bg = color; }
@@ -156,7 +158,7 @@ export function readArtFile(bytes, name) {
       case 's': saved = [col, row]; break;
       case 'u': [col, row] = saved; pending = false; break;
       case 'J':
-        if (params[0] === 2) { lines.clear(); maxRow = -1; widest = 0; wrote = deep = over = false; col = row = 0; pending = false; }
+        if (params[0] === 2) { lines.clear(); maxRow = -1; widest = 0; wrote = over = false; depth = 0; col = row = 0; pending = false; }
         break;
       case 'K': erase(params[0]); break;
       case 'm': sgr(params.length ? params : [0]); break;
@@ -197,5 +199,5 @@ export function readArtFile(bytes, name) {
     const line = lines.get(r);
     for (let c = 0; c < cols; c++) cells[r * cols + c] = line?.[c] ?? { char: ' ', fg: DEFAULT_FG, bg: DEFAULT_BG };
   }
-  return { cols, rows, cells, sauce, palette: deep ? 'none' : 'cga' };
+  return { cols, rows, cells, sauce, palette: ['cga', 'vga', 'none'][depth] };
 }

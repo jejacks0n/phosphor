@@ -1,6 +1,6 @@
 /**
  * Generates and appends SAUCE (Standard Architecture for Universal Comment Extensions)
- * metadata records to ANSI files, including a comment block for Phosphor settings.
+ * metadata records to ANSI files, and reads them back.
  */
 import { CP437, cp437Byte, cp437Substitute } from './Cp437.js';
 
@@ -8,17 +8,19 @@ import { CP437, cp437Byte, cp437Substitute } from './Cp437.js';
 const MOST_COMMENT_LINES = 255, COMMENT_WIDTH = 64;
 export const SAUCE_WIDTHS = { title: 35, author: 20, group: 20, date: 8, fontName: 20, comments: MOST_COMMENT_LINES * (COMMENT_WIDTH + 1) };
 
-// SAUCE text is CP437, one byte a character, space-padded.
-const pad = (text, length) => {
-  const bytes = new Uint8Array(length).fill(32);
+// SAUCE text is CP437, one byte a character, space-padded (the font name, a ZString, NUL-padded).
+const pad = (text, length, fill = 32) => {
+  const bytes = new Uint8Array(length).fill(fill);
   [...(text ?? '')].slice(0, length).forEach((char, i) => { bytes[i] = cp437Byte(cp437Substitute(char)); });
   return bytes;
 };
 
+// An opened file's record as it comes out again: what a field given holds, written as is (an empty date or font
+// stays empty), and its flags and size when given; what isn't given is Phosphor's own.
 export class Sauce {
   constructor(file, opts) {
-    this.cols = file.cols;
-    this.rows = file.rows;
+    this.cols = opts.width ?? file.cols;
+    this.rows = opts.height ?? file.rows;
 
     this.dataType = opts.dataType || 1;
     this.fileType = opts.fileType || 1;
@@ -27,10 +29,11 @@ export class Sauce {
     this.title = opts.title || '';
     this.author = opts.author || '';
     this.group = opts.group || '';
-    this.date = opts.date || new Date().toLocaleDateString('sv').replaceAll('-', '');
+    this.date = opts.date ?? new Date().toLocaleDateString('sv').replaceAll('-', '');
 
-    this.use9pxFont = opts.use9pxFont || false;
-    this.fontName = opts.fontName || 'IBM VGA';
+    // Phosphor's own flags: iCE colors (bit 0), and 8 or 9 pixel letter spacing (bits 1 and 2).
+    this.flags = opts.flags ?? (1 | (opts.use9pxFont ? 4 : 2));
+    this.fontName = opts.fontName ?? 'IBM VGA';
 
     // Process comments into chunks a line wide
     this.comments = this.#processComments(opts.comments);
@@ -106,12 +109,9 @@ export class Sauce {
     output[98] = this.rows & 0xff;
     output[99] = (this.rows >> 8) & 0xff;
 
-    // Flags: Bit 0 is iCE Colors. We always set it to 1.
-    let flags = 1;
-    flags |= (this.use9pxFont) ? (1 << 2) : (1 << 1);
-    output[105] = flags;
+    output[105] = this.flags;
 
-    output.set(pad(this.fontName, SAUCE_WIDTHS.fontName), 106);
+    output.set(pad(this.fontName, SAUCE_WIDTHS.fontName, 0), 106);
 
     // Number of comments
     output[104] = this.comments.length;
@@ -165,6 +165,7 @@ export function readSauce(bytes) {
     fileType: bytes[at(95)],
     width: bytes[at(96)] | (bytes[at(97)] << 8),
     height: bytes[at(98)] | (bytes[at(99)] << 8),
+    flags,
     iceColors: !!(flags & 1),
     use9pxFont: (flags & 6) === 4,
     fontName: field(bytes, at(106), at(126)),
@@ -172,9 +173,15 @@ export function readSauce(bytes) {
   };
 }
 
-// The comments as the SAUCE tab keeps them: without the lines Phosphor writes itself (sauceFields), which end at a blank line.
-export function userComments(comments) {
-  if (comments[0] !== 'Created with Phosphor') return comments.join('\n');
-  const blank = comments.indexOf('');
-  return blank < 0 ? '' : comments.slice(blank + 1).join('\n');
+// What an opened file's record holds that the SAUCE tab doesn't show, as the setting keeps it (sauceRecord): its
+// flags, its size, and the grid's size (cols, lines) it was opened at.
+export const keptRecord = ({ flags, width, height }, cols, lines) => [flags, width, height, cols, lines].join(' ');
+
+// The kept record's fields to write again: its flags, and its size while the grid is still the size it was opened
+// at (a resize changes what the size describes). Null when there's no kept record.
+export function keptFields(text, cols, lines) {
+  const numbers = text ? text.split(' ').map(Number) : [];
+  if (numbers.length !== 5 || !numbers.every(Number.isInteger)) return null;
+  const [flags, width, height, keptCols, keptLines] = numbers;
+  return { flags, ...(cols === keptCols && lines === keptLines && { width, height }) };
 }

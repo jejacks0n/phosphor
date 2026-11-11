@@ -240,10 +240,10 @@ test('inverse swaps the colors as written to the cell', () => {
   assert.equal(at(read('\x1b[7;27;31mX'), 0).fg, '#aa0000');
 });
 
-test('256-color and 24-bit colors set the palette to none only when a cell gets one', () => {
+test('a 256-color code sets the palette to VGA and a 24-bit one to none, only when a cell gets one', () => {
   const art = read('\x1b[38;5;196mX');
   assert.equal(at(art, 0).fg, '#ff0000');
-  assert.equal(art.palette, 'none');
+  assert.equal(art.palette, 'vga');
   const bg = read('\x1b[48;2;18;52;86mX');
   assert.equal(at(bg, 0).bg, '#123456');
   assert.equal(bg.palette, 'none');
@@ -251,10 +251,11 @@ test('256-color and 24-bit colors set the palette to none only when a cell gets 
   const low = read('\x1b[38;5;9;48;5;4mX');
   assert.equal(at(low, 0).fg, '#ff5555');
   assert.equal(at(low, 0).bg, '#0000aa');
-  assert.equal(low.palette, 'cga');
+  assert.equal(low.palette, 'cga'); // the 16, as a CGA .utf8ans writes them
   const deepBg = read('\x1b[48;5;100mX');
   assert.equal(at(deepBg, 0).bg, '#878700');
-  assert.equal(deepBg.palette, 'none');
+  assert.equal(deepBg.palette, 'vga');
+  assert.equal(read('\x1b[38;5;196mX\x1b[48;2;1;2;3mY').palette, 'none'); // 24-bit anywhere is full color
   assert.equal(read('\x1b[38;5;196m\x1b[0mX').palette, 'cga'); // set and never written with
 });
 
