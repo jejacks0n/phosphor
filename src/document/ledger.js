@@ -7,12 +7,14 @@
  * on layer id: x and y TILE-aligned, always TILE x TILE, transparent past the layer's edge. Keys and runs name their layer
  * (layerInfo.js: layerKey; a run is [x, y, length, rgba, id?], no id the edit layer's), and so do tiles: 'x,y' on the
  * edit layer, 'id:x,y' on another, so each layer's positions have stacks of their own. Both are read the first
- * time a position is touched, so they must show the picture with every Numbered so far applied, and
- * without the change being submitted.
+ * time a position is touched, and again while only undone strokes are there, so they must show the picture with
+ * every Numbered so far applied, and without the change being submitted.
  *
  * Cells: a position's stack is the strokes that wrote it, oldest first, and each stroke holds its values.
  * Paint: per tile, what it started with and a list of entries, oldest first. An entry is one stroke's
  * pixels in that tile as a typed array, so a stroke costs what its tiles do however its pixels are spread.
+ * An undone stroke keeps its place in each stack, showing nowhere, so its redo puts it back where it was:
+ * under whatever anyone drew over it since, as undo leaves that on top.
  */
 import { hashCell, hashPixel, eachPixel, pack, changeBytes, splitChange, Tail } from './changes.js';
 import { TILE } from './History.js';
@@ -103,7 +105,7 @@ export function keptFromWire({ n, epoch, limits, sum, bytes, strokes, cells, til
       return [key, {
         base,
         strokes: on.map((id) => {
-          must(records.get(id)?.cells.has(key) && !records.get(id).undone);
+          must(records.get(id)?.cells.has(key));
           return records.get(id);
         }),
       }];
@@ -114,14 +116,14 @@ export function keptFromWire({ n, epoch, limits, sum, bytes, strokes, cells, til
       return [name, {
         x, y, id: 'edit', base: filled(base),
         entries: entries.map((entry) => {
-          must(Array.isArray(entry) && entry.length === 2 && records.get(entry[0])?.paint.has(name) && !records.get(entry[0]).undone);
+          must(Array.isArray(entry) && entry.length === 2 && records.get(entry[0])?.paint.has(name));
           return { stroke: entry[0], px: pixelsAt(entry[1]) };
         }),
       }];
     })),
   };
   for (const record of records.values()) {
-    if (record.undone) continue;
+    if (record.undone) continue; // a ledger from before undone strokes kept their place has them in no stack: restore places them
     for (const key of record.cells.keys()) must(stacks.cells.get(key)?.strokes.includes(record));
     for (const name of record.paint.keys()) must(stacks.tiles.get(name)?.entries.some(({ stroke }) => stroke === record.id));
   }
@@ -196,53 +198,12 @@ export class Ledger {
     return this.#numbered(by, stroke, cells, runs);
   }
 
-  // Each position it's on top of goes to the next value down; where it's buried it just leaves the stack.
-  // Lists only what visibly changes, so someone's undo can be nothing at all but still takes a number.
-  undo(by, stroke) {
-    const record = this.#stacks.strokes.get(stroke);
-    if (!record || record.by !== by || record.undone) return null;
-    const cells = [];
-    for (const [key, value] of record.cells) {
-      const stack = this.#stacks.cells.get(key);
-      const onTop = stack.strokes.at(-1) === record;
-      stack.strokes.splice(stack.strokes.indexOf(record), 1);
-      if (onTop) this.#revealCell(cells, key, value, stack);
-      if (!stack.strokes.length) this.#stacks.cells.delete(key);
-    }
-    const runs = [];
-    for (const name of record.paint.keys()) this.#undoTile(record, name, runs);
-    record.undone = true;
-    return this.#numbered(by, stroke, cells, runs);
-  }
+  // Each position it's on top of goes to the next value down; where it's buried nothing shows. Lists only what
+  // visibly changes, so someone's undo can be nothing at all but still takes a number.
+  undo(by, stroke) { return this.#flip(by, stroke, true); }
 
-  // Back on top of each position, as a new change, over whatever was drawn since.
-  redo(by, stroke) {
-    const record = this.#stacks.strokes.get(stroke);
-    if (!record || record.by !== by || !record.undone) return null;
-    const cells = [];
-    for (const [key, value] of record.cells) {
-      const stack = this.#cellStack(key);
-      const shown = this.#shownCell(key, stack);
-      stack.strokes.push(record);
-      if (!sameCell(shown, value)) {
-        cells.push([key, value]);
-        this.#sumCell(key, shown, value);
-      }
-    }
-    const runs = [];
-    for (const [name, px] of record.paint) {
-      const { id, key } = keyLayer(name), [x, y] = key.split(',').map(Number);
-      const tile = this.#tile(x, y, id);
-      for (let i = 0; i < px.length; i++) {
-        if (!px[i]) continue;
-        const shown = shownPixel(tile, i);
-        if (shown !== color(px[i])) this.#listPixel(runs, tile, i, shown, color(px[i]));
-      }
-      tile.entries.push({ stroke: record.id, px });
-    }
-    record.undone = false;
-    return this.#numbered(by, stroke, cells, runs);
-  }
+  // Back in its place in each stack: where someone drew over it since, theirs stays on top.
+  redo(by, stroke) { return this.#flip(by, stroke, false); }
 
   // A number for a settings, base or project message; those go in the tail through their caller.
   note() { return ++this.n; }
@@ -270,7 +231,7 @@ export class Ledger {
   refreshBases() {
     for (const { x, y, id, base, entries } of this.#stacks.tiles.values()) {
       const data = this.readTile(x, y, id);
-      for (let i = 0; i < base.length; i++) if (!entries.some(({ px }) => px[i])) base[i] = pack(data, i * 4);
+      for (let i = 0; i < base.length; i++) if (!entries.some(({ px, undone }) => px[i] && !undone)) base[i] = pack(data, i * 4);
     }
   }
 
@@ -283,7 +244,18 @@ export class Ledger {
   forget(stroke) {
     const stacks = this.#stacks, record = stacks.strokes.get(stroke);
     if (!record) return;
-    if (!record.undone) {
+    if (record.undone) { // it shows nowhere: it only leaves the stacks
+      for (const key of record.cells.keys()) {
+        const stack = stacks.cells.get(key);
+        stack.strokes.splice(stack.strokes.indexOf(record), 1);
+        if (!stack.strokes.length) stacks.cells.delete(key);
+      }
+      for (const name of record.paint.keys()) {
+        const tile = stacks.tiles.get(name);
+        tile.entries = tile.entries.filter((entry) => entry.stroke !== stroke);
+        if (!tile.entries.length) stacks.tiles.delete(name);
+      }
+    } else {
       for (const [key, value] of record.cells) {
         const stack = stacks.cells.get(key);
         const below = stack.strokes.splice(0, stack.strokes.indexOf(record) + 1);
@@ -342,8 +314,23 @@ export class Ledger {
     // As frozen as a live ledger's. They're no longer the picture's own objects, which only sameCell ever meets.
     for (const stack of stacks.cells.values()) Object.freeze(stack.base);
     for (const record of stacks.strokes.values()) for (const value of record.cells.values()) Object.freeze(value);
-    for (const [name, tile] of stacks.tiles) tile.id ??= keyLayer(name).id; // kept before tiles named their layer
+    for (const [name, tile] of stacks.tiles) {
+      tile.id ??= keyLayer(name).id; // kept before tiles named their layer
+      for (const entry of tile.entries) entry.undone = stacks.strokes.get(entry.stroke).undone; // a wire's has no flags
+    }
     ledger.#stacks = stacks;
+    // Kept before an undone stroke kept its place, it's in no stack: it goes on top of each, where redo once put it.
+    for (const record of stacks.strokes.values()) {
+      if (!record.undone) continue;
+      for (const key of record.cells.keys()) {
+        const stack = ledger.#cellStack(key);
+        if (!stack.strokes.includes(record)) stack.strokes.push(record);
+      }
+      for (const [name, px] of record.paint) {
+        const { id, key } = keyLayer(name), [x, y] = key.split(',').map(Number), tile = ledger.#tile(x, y, id);
+        if (!tile.entries.some((entry) => entry.stroke === record.id)) tile.entries.push({ stroke: record.id, px, undone: true });
+      }
+    }
     return ledger;
   }
 
@@ -369,15 +356,19 @@ export class Ledger {
     this.#sum ^= hashPixel(x, y, from) ^ hashPixel(x, y, to);
   }
 
+  // A stack or tile with nothing showing in it (all undone) reads what's beneath again, as a new one would: on a frame
+  // that can have changed since.
   #cellStack(key) {
     const { cells } = this.#stacks;
     let stack = cells.get(key);
-    if (!stack) cells.set(key, stack = { base: this.readCell(key) ?? null, strokes: [] });
+    if (!stack) cells.set(key, stack = { base: null, strokes: [] });
+    if (stack.strokes.every((record) => record.undone)) stack.base = this.readCell(key) ?? null;
     return stack;
   }
 
   #shownCell(key, stack) {
-    return stack.strokes.length ? stack.strokes.at(-1).cells.get(key) : stack.base;
+    const top = stack.strokes.findLast((record) => !record.undone);
+    return top ? top.cells.get(key) : stack.base;
   }
 
   // A stroke has one value per position. Writing again moves it to the top, over whoever drew since.
@@ -391,20 +382,13 @@ export class Ledger {
     record.cells.set(key, entry);
   }
 
-  #revealCell(cells, key, value, stack) {
-    const shown = this.#shownCell(key, stack);
-    if (sameCell(value, shown)) return;
-    cells.push([key, shown]);
-    this.#sumCell(key, value, shown);
-  }
-
   #tile(x, y, id = 'edit') {
     const { tiles } = this.#stacks, name = layerKey(id, `${x},${y}`);
     let tile = tiles.get(name);
-    if (!tile) {
-      const data = this.readTile(x, y, id), base = new Uint32Array(TILE * TILE);
-      for (let i = 0; i < base.length; i++) base[i] = pack(data, i * 4);
-      tiles.set(name, tile = { x, y, id, base, entries: [] });
+    if (!tile) tiles.set(name, tile = { x, y, id, base: new Uint32Array(TILE * TILE), entries: [] });
+    if (tile.entries.every((entry) => entry.undone)) {
+      const data = this.readTile(x, y, id);
+      for (let i = 0; i < tile.base.length; i++) tile.base[i] = pack(data, i * 4);
     }
     return tile;
   }
@@ -432,31 +416,42 @@ export class Ledger {
     target.px[i] = held(rgba);
   }
 
-  // The stroke's entries in a tile leave it, and become one array again for a redo.
-  #undoTile(record, name, runs) {
-    const tile = this.#stacks.tiles.get(name), own = record.paint.get(name);
-    const { entries } = tile;
-    for (let i = 0; i < own.length; i++) {
-      for (let at = entries.length - 1; at >= 0; at--) {
-        const value = entries[at].px[i];
-        if (!value) continue;
-        if (entries[at].stroke === record.id) { // on top: what's next down shows
-          let under = tile.base[i];
-          for (let lower = at - 1; lower >= 0; lower--) {
-            if (entries[lower].px[i]) { under = color(entries[lower].px[i]); break; }
-          }
-          if (under !== color(value)) this.#listPixel(runs, tile, i, color(value), under);
+  // Undo or redo: the stroke goes out of sight or comes back in its place. Where it's under someone's, nothing
+  // shows; where it's on top, the value it covers comes or goes. The stroke has one value per position, so one
+  // of its entries in a tile at most holds a pixel.
+  #flip(by, stroke, undo) {
+    const record = this.#stacks.strokes.get(stroke);
+    if (!record || record.by !== by || record.undone === undo) return null;
+    const cells = [], runs = [];
+    for (const [key, value] of record.cells) {
+      const { strokes, base } = this.#cellStack(key), at = strokes.indexOf(record);
+      if (strokes.some((other, i) => i > at && !other.undone)) continue;
+      const below = strokes.findLast((other, i) => i < at && !other.undone), under = below ? below.cells.get(key) : base;
+      const [from, to] = undo ? [value, under] : [under, value];
+      if (sameCell(from, to)) continue;
+      cells.push([key, to]);
+      this.#sumCell(key, from, to);
+    }
+    for (const name of record.paint.keys()) {
+      const { id, key } = keyLayer(name), [x, y] = key.split(',').map(Number);
+      const tile = this.#tile(x, y, id), { entries } = tile;
+      for (let i = 0; i < TILE * TILE; i++) {
+        let at = entries.length - 1, mine = 0; // as held: 0 is not drawn here
+        for (; at >= 0 && !mine; at--) {
+          const entry = entries[at];
+          if (!entry.px[i]) continue;
+          if (entry.stroke === stroke) mine = entry.px[i];
+          else if (!entry.undone) break; // under someone's
         }
-        break;
+        if (!mine) continue;
+        const under = shownPixel(tile, i, at);
+        const [from, to] = undo ? [color(mine), under] : [under, color(mine)];
+        if (from !== to) this.#listPixel(runs, tile, i, from, to);
       }
+      for (const entry of entries) if (entry.stroke === stroke) entry.undone = undo;
     }
-    for (const entry of entries) {
-      if (entry.stroke !== record.id || entry.px === own) continue;
-      for (let i = 0; i < own.length; i++) if (entry.px[i]) own[i] = entry.px[i];
-      this.#charge(record, -TILE_BYTES);
-    }
-    tile.entries = entries.filter((entry) => entry.stroke !== record.id);
-    if (!tile.entries.length) this.#stacks.tiles.delete(name);
+    record.undone = undo;
+    return this.#numbered(by, stroke, cells, runs);
   }
 
   #listPixel(runs, tile, i, from, to) {
@@ -489,10 +484,11 @@ export class Ledger {
   }
 }
 
-function shownPixel(tile, i) {
-  for (let at = tile.entries.length - 1; at >= 0; at--) {
-    const value = tile.entries[at].px[i];
-    if (value) return color(value);
+// What shows at a pixel, from the entry at down.
+function shownPixel(tile, i, at = tile.entries.length - 1) {
+  for (; at >= 0; at--) {
+    const { px, undone } = tile.entries[at];
+    if (px[i] && !undone) return color(px[i]);
   }
   return tile.base[i];
 }
