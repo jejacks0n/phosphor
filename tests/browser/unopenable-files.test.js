@@ -49,3 +49,25 @@ test('an .nfo is not refused', async () => {
   await new Promise((resolve) => setTimeout(resolve, 20));
   expect((message() ?? '')).not.toContain("can't open");
 });
+
+// Some phones give a photo no type: it is tried as a picture, and refused only if it won't decode.
+const choose = async (host, file) => {
+  const input = host.querySelector('input[type=file]');
+  input.files = filesOf(file).files;
+  input.dispatchEvent(new Event('change'));
+  await new Promise((resolve) => setTimeout(resolve, 300));
+};
+
+test('a file with no type that holds a picture opens', async () => {
+  const { project, host } = await startScreen();
+  await choose(host, new File([await (await fetch('/tests/fixtures/images/gradient.png')).arrayBuffer()], 'photo.heic', { type: '' }));
+  expect(project.image).toBeTruthy();
+  expect(message() ?? '').not.toContain("can't open");
+});
+
+test('a file with no type that is not a picture is refused with its name', async () => {
+  const { project, host } = await startScreen();
+  await choose(host, new File([new Uint8Array(64).fill(7)], 'mystery.xb', { type: '' }));
+  expect(message()).toContain("Phosphor can't open mystery.xb");
+  expect(project.image).toBeFalsy();
+});

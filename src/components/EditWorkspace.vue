@@ -5,7 +5,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { toast } from '@/composables/useToast';
-import { isProjectFile } from '@/document/projectIO';
+import { isProjectFile, loadImage } from '@/document/projectIO';
 import { isArtFile, readArtFile } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -50,11 +50,21 @@ watch(() => [project.frame, project.frames, project.renderedCells, project.anima
 });
 
 // Every file dropped or chosen comes through here. A picture, a project, an art file or an SVG opens; anything else
-// says so, naming the file.
-const canOpen = (file) => file.type.startsWith('image/') || isProjectFile(file.name) || isArtFile(file.name) || isSvgFile(file.name);
+// says so, naming the file. A file with no type (some phones give none for a photo) is tried as a picture first.
+const knownKind = (file) => isProjectFile(file.name) || isArtFile(file.name) || isSvgFile(file.name);
+async function canOpen(file) {
+  if (file.type.startsWith('image/') || knownKind(file)) return true;
+  if (file.type) return false;
+  try {
+    await loadImage(file, '');
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 async function handleFileSelected(file) {
-  if (!canOpen(file)) return toast(t('actions.cantOpen', { name: file.name }));
+  if (!(await canOpen(file))) return toast(t('actions.cantOpen', { name: file.name }));
   // An art or SVG file over a drawing asks whether to add it or open it (artDrop), even in a room: adding is a
   // paste. An SVG is never a picture: it's shapes.
   if (project.image && (isArtFile(file.name) || isSvgFile(file.name))) return (workspace.artDrop = { file, at: null });
