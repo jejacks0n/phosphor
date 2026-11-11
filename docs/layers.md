@@ -250,7 +250,7 @@ topmost thing at a cell.
 
 ## Opening ANSI and text files
 
-Drop a `.ans`, `.utf8ans`, `.asc` or `.txt` file on the start screen, or choose one with **Browse Files**,
+Drop a `.ans`, `.utf8ans`, `.asc`, `.txt`, `.nfo` or `.diz` file on the start screen, or choose one with **Browse Files**,
 and it asks what you'd like to do with the art, then opens it as a new document:
 
 - **Edit it**: the art goes on the edit layer, over a plain black base, as if you'd drawn it. Every cell

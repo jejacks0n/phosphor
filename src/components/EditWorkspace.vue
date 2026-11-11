@@ -49,7 +49,12 @@ watch(() => [project.frame, project.frames, project.renderedCells, project.anima
   if (!workspace.playing && workspace.ghost) project.buildGhost();
 });
 
+// Every file dropped or chosen comes through here. A picture, a project, an art file or an SVG opens; anything else
+// says so, naming the file.
+const canOpen = (file) => file.type.startsWith('image/') || isProjectFile(file.name) || isArtFile(file.name) || isSvgFile(file.name);
+
 async function handleFileSelected(file) {
+  if (!canOpen(file)) return toast(t('actions.cantOpen', { name: file.name }));
   // An art or SVG file over a drawing asks whether to add it or open it (artDrop), even in a room: adding is a
   // paste. An SVG is never a picture: it's shapes.
   if (project.image && (isArtFile(file.name) || isSvgFile(file.name))) return (workspace.artDrop = { file, at: null });

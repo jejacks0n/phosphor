@@ -862,6 +862,7 @@
   "actions": {
     "confirmNew": "Vous avez des modifications non enregistrées. Commencer un nouveau projet quand même ?",
     "confirmOpen": "Vous avez des modifications non enregistrées. Ouvrir {name} quand même ?",
+    "cantOpen": "Phosphor ne peut pas ouvrir {name}. Il ouvre les images, les projets .phosphor, les SVG et les fichiers .ans, .utf8ans, .asc, .txt, .nfo et .diz.",
     "saveProject": "Enregistrer le projet (.phosphor)",
     "exportAns": "Exporter en .ans",
     "exportUtf8ans": "Exporter en .utf8ans",

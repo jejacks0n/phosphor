@@ -862,6 +862,7 @@
   "actions": {
     "confirmNew": "You have unsaved changes. Start a new project anyway?",
     "confirmOpen": "You have unsaved changes. Open {name} anyway?",
+    "cantOpen": "Phosphor can't open {name}. It opens pictures, .phosphor projects, SVGs, and .ans, .utf8ans, .asc, .txt, .nfo and .diz files.",
     "saveProject": "Save project (.phosphor)",
     "exportAns": "Export .ans",
     "exportUtf8ans": "Export .utf8ans",

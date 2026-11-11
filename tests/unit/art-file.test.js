@@ -12,8 +12,11 @@ const text = (art, row = 0) => art.cells.slice(row * art.cols, (row + 1) * art.c
 const error = (fn) => { try { fn(); } catch (e) { return e; } assert.fail('did not throw'); };
 
 test('isArtFile checks the extension, ignoring case', () => {
-  assert.deepEqual(ART_EXTENSIONS, ['ans', 'utf8ans', 'asc', 'txt']);
+  assert.deepEqual(ART_EXTENSIONS, ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz']);
   assert.equal(isArtFile('A.ANS'), true);
+  assert.equal(isArtFile('release.NFO'), true);
+  assert.equal(isArtFile('file_id.diz'), true);
+  for (const name of ['a.xb', 'a.sue', 'a.tnd', 'a.ttf']) assert.equal(isArtFile(name), false);
   assert.equal(isArtFile('x.utf8ans'), true);
   assert.equal(isArtFile('a.png'), false);
   assert.equal(isArtFile('ans'), false);
@@ -294,4 +297,13 @@ test('no art in an empty file or one that never wrote a cell', () => {
   assert.equal(error(() => readArtFile(new Uint8Array(0), 'a.ans')).userMessage, "There's no art in this file.");
   assert.equal(error(() => read('\r\n\r\n\x1b[31m')).userMessage, "There's no art in this file.");
   assert.equal(error(() => read('\x1a')).userMessage, "There's no art in this file.");
+});
+
+test('.nfo and .diz read as CP437 text, the way .asc does', () => {
+  const bytes = Uint8Array.from([0xb0, 0xdb, 0x0d, 0x0a, 0x41]);
+  for (const name of ['a.nfo', 'a.diz']) {
+    const art = readArtFile(bytes, name);
+    assert.equal(text(art, 0).trim(), '░█');
+    assert.equal(at(art, 0, 1).char, 'A');
+  }
 });

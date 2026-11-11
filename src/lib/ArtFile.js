@@ -1,5 +1,5 @@
 /**
- * Reads a text-art file (.ans, .utf8ans, .asc, .txt) into cells, the way a terminal would show it:
+ * Reads a text-art file (.ans, .utf8ans, .asc, .txt, .nfo, .diz) into cells, the way a terminal would show it:
  * a cursor, wrapping at the file's width, and the escape sequences art files use (cursor moves,
  * clear, erase and colors). Nothing here touches the store; the caller decides what to do with the
  * cells.
@@ -12,7 +12,7 @@ import { artEndOf, readSauce } from './Sauce.js';
 import { t } from '@/i18n';
 import { formatNumber } from '@/i18n/format';
 
-export const ART_EXTENSIONS = ['ans', 'utf8ans', 'asc', 'txt'];
+export const ART_EXTENSIONS = ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz'];
 
 const extensionOf = (name) => /\.([^./\\]+)$/.exec(name ?? '')?.[1].toLowerCase() ?? '';
 export const isArtFile = (name) => ART_EXTENSIONS.includes(extensionOf(name));
