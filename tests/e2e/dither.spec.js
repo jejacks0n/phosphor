@@ -7,7 +7,7 @@ const cells = (page) => store(page, 'project', (p) => p.cells.map((c) => `${c.ch
 test('the dither fields show with a palette, and the slider breaks up its bands', async ({ page }) => {
   await openApp(page);
   await pickLayer(page, 'Base'); // the picture's Dither is its layer's
-  const style = panel(page).getByLabel('Dither style');
+  const style = panel(page).getByLabel('Dither style', { exact: true });
   const dither = panel(page).getByRole('slider', { name: 'Dither' });
   await expect(style).toHaveCount(0);
   await expect(dither).toHaveCount(0);
