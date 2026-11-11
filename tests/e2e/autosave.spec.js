@@ -1,4 +1,4 @@
-import { test, expect, openApp, editAt, saveAs, settled, store, chars, imageInput, tab, cellPoint, fixture } from './support.js';
+import { test, expect, openApp, editAt, saveAs, settled, store, chars, imageInput, tab, cellPoint, drag, fixture } from './support.js';
 
 // Whether leaving would ask right now: beforeunload's answer, without leaving.
 const leavingAsks = (page) => page.evaluate(() => {
@@ -94,6 +94,25 @@ test('a refresh brings back your work', async ({ page }) => {
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(before);
   await expect(undoButton(page)).toBeDisabled();
   await expect(imageInput(page)).toHaveCount(0);
+});
+
+test('a stroke right after a save comes back from a reload, unsaved, even one that comes before its write was due', async ({ page }) => {
+  await openApp(page);
+  await saveAs(page, 'Save project (.phosphor)');
+  await expect.poll(async () => (await record(page))?.savedToFile).toBe(true);
+  await page.getByRole('button', { name: 'Brush' }).click();
+  await drag(page, await cellPoint(page, 4, 5, 0), await cellPoint(page, 14, 5, 0));
+
+  // The next page takes a moment to arrive, as over a network, but less than autosave's second.
+  await page.route((url) => url.pathname === '/', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
+  page.once('dialog', (dialog) => dialog.accept()); // its write is under way, not done: leaving still asks
+  await page.reload();
+  await restored(page);
+  expect(await store(page, 'project', (p) => ({ painted: p.hasPaint, unsaved: p.isDirty, savedToFile: p.savedToFile })))
+    .toEqual({ painted: true, unsaved: true, savedToFile: true }); // not the saved drawing, without the stroke
 });
 
 test('a new tab offers recent work and opens it; a tab open on it is marked and disabled', async ({ page, context }) => {

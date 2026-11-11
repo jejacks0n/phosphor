@@ -273,6 +273,22 @@ test('a save with no later edit is written as saved, with no version, and the ed
   expect(await listVersions(id)).toHaveLength(2);
 });
 
+test('an edit right after a save is written as soon as the page starts to leave, not a second later', async () => {
+  const { project } = await opened();
+  const id = project.documentId;
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  await project.saveProject();
+  await pass(SAVE_AFTER_MS);
+  started.mockClear();
+
+  edit(project);
+  window.dispatchEvent(new Event('beforeunload')); // a reload: the page goes once the next one arrives
+  expect(started).toHaveBeenCalledTimes(1); // with no time passed
+  await autosave.flush(); // the write already under way
+  expect((await readLatest(id)).record).toMatchObject({ savedToFile: true, dirty: true });
+  expect(await writtenChars(id)).toEqual(['0,0:a']);
+});
+
 test('opening a project file is one write, saved, with no version', async () => {
   const { project } = await mounted();
   await project.setBlankCanvas();
