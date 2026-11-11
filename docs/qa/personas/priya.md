@@ -181,8 +181,8 @@ a Polygon.
 - Expects: the movie plays at 12 frames a second, with frame 24 staying half a second
   ([Timing](../../animation.md#timing)); each change is kept, and the project keeps it.
 - Probes: `extremes`: type 0, 61 and 999 in frames per second (it holds to 1 to 60) and a hold of 61 and -1;
-  `back-out`: type a number and press Escape or click away before Enter, and check what's kept; `undo-redo`: undo the
-  hold and check it goes back to 0, then redo it. Then put back 12 frames per second and frame 24's hold of 0.5, which
+  `back-out`: type a number and press Escape or click away before Enter, and check what's kept; `undo-redo`: undo after
+  the hold and check it takes back the edit before it and leaves the timing (timing isn't an undo step), then redo it. Then put back 12 frames per second and frame 24's hold of 0.5, which
   steps 26 and 29 rely on.
 - Rated: yes, wants Tab to frames per second (typing the number is content)
 
@@ -377,7 +377,8 @@ ghost shows while playing (it doesn't).
 - Expects: it goes on playing with the change, from the frame showing, after a moment to build the frames again; every
   frame takes the palette (they sit on the same base); the shapes dither where each frame has them
   ([What's off with frames, and why](../../animation.md#whats-off-with-frames-and-why)).
-- Probes: `undo-redo`: undo the palette while it plays; `extremes`: Limited count at its least while it plays.
+- Probes: `undo-redo`: undo while it plays and check it takes back the last edit and leaves the palette (a palette isn't an
+  undo step), then redo; `extremes`: Limited count at its least while it plays.
 - Rated: yes, wants Tab to Color palette then the arrows
 
 **Free time:** she'd press Enter or Space expecting play as in Flash, look for a loop range or ping-pong, step with
@@ -401,7 +402,7 @@ Alt+`,` while typing in Edit Mode, and Bake with the sliders moved to see every 
   ("exact timing"); its last screen matches frame 24 cell for cell (after `terminal.normalizeHidden`), with the guide
   not drawn ([Exporting](../../animation.md#exporting)).
 - Probes: `out-of-order`: hide Layer 1 and export, and check it's left out, then show it again; `again`: give frames
-  22 and 24 holds with 23's at 0, export and check the timing, then undo the holds back to frame 24's 0.5.
+  22 and 24 holds with 23's at 0, export and check the timing, then type the holds back (22 and 23 at 0, 24 at 0.5): holds aren't undo steps.
 - Rated: yes, wants a key for Export .cast
 
 ### 30. Save it and reopen it
@@ -421,8 +422,9 @@ Alt+`,` while typing in Edit Mode, and Bake with the sliders moved to see every 
   budget at 8,000 cells a frame; past 40,000 cells a frame the grid won't grow ("The grid can
   only grow as far as the frames allow"); check what tells her why
   ([What's off with frames, and why](../../animation.md#whats-off-with-frames-and-why)).
-- Probes: `extremes`: grow to the most the frames allow and take `qa.memory`; `undo-redo`: undo the size change and
-  check every frame's keys are where they were.
+- Probes: `extremes`: grow to the most the frames allow and take `qa.memory`; `undo-redo`: undo after the size change and
+  check it takes back the edit before it (a size change isn't an undo step, and mustn't forget the steps before it),
+  then redo it and check every frame's keys are where they were.
 - Rated: yes, wants Tab to Dimensions (typing the number is content)
 
 **Free time:** she'd export the GIF again at 160 by 50 and time it, export animated .utf8ans and play it in the

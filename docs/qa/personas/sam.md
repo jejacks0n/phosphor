@@ -75,7 +75,8 @@ script. Every section ends with Free time.
   so Sam unlocks it to set both; nothing is drawn yet, so it rescales; the sizes stay as typed; the field's help says
   the second number is pixel rows, two to a line.
 - Probes: `extremes`: type 0, then 99999, then `-3` and `4.5` into each number; `back-out`: type a size, press Escape,
-  and check what the field shows; `undo-redo`: undo the size change, redo it.
+  and check what the field shows; `undo-redo`: Cmd+Z, and check nothing changes and the size stays (a size change isn't an undo
+  step, and nothing's drawn yet), then Shift+Cmd+Z.
 - Rated: yes, wants Tab to Dimensions
 
 ### 3. Type the banner

@@ -177,8 +177,9 @@ in the status bar to see what they do, and try "Or start with a blank canvas" fr
 - Does: taps the first Dimensions number, types 40 on the phone's number keys and presses return.
 - Expects: the picture converts again at 40 columns, its rows following the photo's shape (Lock aspect ratio is on);
   the change lands within the `setting` budget.
-- Probes: `extremes`: type 0, then 999, and check where it stops (300 columns at most); `undo-redo`: undo the size
-  from Actions and check the number goes back too. End at 40 columns.
+- Probes: `extremes`: type 0, then 999, and check where it stops (300 columns at most); `undo-redo`: undo from
+  Actions and check it takes back her brush mark from step 4 and leaves the size (a size change isn't an undo step,
+  and mustn't forget the steps before it); redo it. End at 40 columns.
 - Rated: yes, wants return on the phone's keyboard
 
 ### 11. Undo, from a phone

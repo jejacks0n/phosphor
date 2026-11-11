@@ -266,7 +266,8 @@ long file (time the reload), and press Back from a fresh start screen.
 - Does: on the long file, sets Dimensions' lines to 1,700 (3,400 pixel rows), then 1,666.
 - Expects: it stops at what 300 columns allow (1,666 lines), adding lines at the bottom; it lands within the `setting`
   budget.
-- Probes: `undo-redo`: undo the grow; `extremes`: 5,000 lines at 100 columns.
+- Probes: `undo-redo`: undo after the grow and check it takes back his last cell fix and leaves
+  the size (a size change isn't an undo step, and mustn't forget the steps before it), then redo it; `extremes`: 5,000 lines at 100 columns.
 - Rated: yes, wants Tab to Dimensions
 
 ### 25. Memory after a long session
