@@ -1021,6 +1021,7 @@
       "undo": "Undo",
       "redo": "Redo",
       "saveProject": "Save the project",
+      "openFile": "Open a file",
       "pencil": "Pencil",
       "brush": "Brush",
       "eraser": "Eraser (with Select and a selection: erase it)",

@@ -1,29 +1,32 @@
-// The start screen's file chooser: choosing the same file twice (Cancel at the question between) is two choices.
+// The file chooser (the start screen's button and Cmd/Ctrl+O): choosing the same file twice (Cancel at the question
+// between) is two choices.
 import { test, expect, afterEach } from 'vitest';
 import { createApp } from 'vue';
+import { createTestApp } from '../support/app.js';
+import EditWorkspace from '@/components/EditWorkspace.vue';
 import { i18n } from '@/i18n';
-import ZeroState from '@/components/ZeroState.vue';
+import { toastMessage, closeToast } from '@/composables/useToast.js';
 
-let app = null, host = null;
-afterEach(() => {
-  app?.unmount();
-  host?.remove();
-});
+let mounted = null, host = null;
+afterEach(() => { mounted?.unmount(); host?.remove(); closeToast(); });
 
 test('the same file chosen twice reports twice, because the chooser is emptied after each choice', async () => {
-  const chosen = [];
+  await createTestApp();
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ZeroState, { onFileSelected: (file) => chosen.push(file) });
-  app.use(i18n).mount(host);
+  mounted = createApp(EditWorkspace).use(i18n);
+  mounted.mount(host);
+  await new Promise((resolve) => setTimeout(resolve, 50));
   const input = host.querySelector('input[type=file]');
-  const file = new File(['x'], 'long.ans');
+  const file = new File([new Uint8Array(8)], 'theme.sue');
   for (let i = 0; i < 2; i++) {
     const dt = new DataTransfer();
     dt.items.add(file);
     input.files = dt.files;
     input.dispatchEvent(new Event('change'));
     expect(input.files.length).toBe(0); // a real chooser then sees the same file as new
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(toastMessage.value).toContain("Phosphor can't open theme.sue");
+    closeToast();
   }
-  expect(chosen).toEqual([file, file]);
 });

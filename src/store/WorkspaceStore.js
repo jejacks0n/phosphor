@@ -73,6 +73,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorMarquee: null,     // the box Vector select drags over empty canvas, { x0, y0, x1, y1 } in grid pixels
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     clipboardId: null,       // the last copy's id, in the block it put on the system clipboard (clipboard.js)
+    openRequest: 0,          // counts Cmd/Ctrl+O presses: EditWorkspace opens its file chooser for each
     artDrop: null,           // { file, at: { col, row } | null, picture? }: a picture on an open still drawing, asking to add it as paint or open it; an art file opening from the start screen, asking to edit it or draw on top; or dropped on an open drawing, asking to add it or open it (EditWorkspace)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)

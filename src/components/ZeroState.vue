@@ -1,8 +1,6 @@
 <script setup>
-import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
-import { ART_EXTENSIONS } from '@/lib/ArtFile';
 import { formatMediumDateTime } from '@/i18n/format';
 
 defineProps({
@@ -10,21 +8,10 @@ defineProps({
   recent: { type: Array, default: () => [] },
   openRecent: Function,
 });
-const emit = defineEmits(['file-dropped', 'file-selected', 'start-blank']);
+const emit = defineEmits(['browse', 'start-blank']);
 const { t } = useI18n();
 
-// A phone's picker greys out any file it can't match to the list, and it can't match .phosphor (no type it knows), so
-// on a touch screen there's no list; a file that isn't an image, a project or an art file says so when it fails to open.
-const touch = useMediaQuery('(pointer: coarse)');
-const accept = ['image/*', '.svg', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)].join(',');
-
 const MAX_RECENT = 5;
-
-function onFileSelected(e) {
-  const file = e.target.files[0];
-  e.target.value = ''; // so choosing the same file again (after Cancel) fires change again
-  if (file) emit('file-selected', file);
-}
 </script>
 
 <template>
@@ -33,11 +20,10 @@ function onFileSelected(e) {
       <div class="logo"></div>
       <span class="icon">⬆</span>
       <p>{{ t('zero.dropPrompt', { ext: PROJECT_EXTENSION }) }}</p>
-      <label>
+      <button class="browse" @click="$emit('browse')">
         <span class="mobile">{{ t('zero.browseMobile') }}</span>
         <span class="desktop">{{ t('zero.browseDesktop') }}</span>
-        <input type="file" @change="onFileSelected" :accept="touch ? null : accept" hidden>
-      </label>
+      </button>
 
       <button class="link" @click="$emit('start-blank')">
         {{ t('zero.startBlank') }}
@@ -116,7 +102,7 @@ p {
   color: var(--text-muted);
 }
 
-label {
+button.browse {
   width: 80%;
   min-width: 100px;
   max-width: 200px;
@@ -133,7 +119,12 @@ label {
   border: 1px solid var(--border-light);
 }
 
-label:hover {
+button.browse:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+button.browse:hover {
   transform: translateY(-1px);
   background: var(--accent-hot);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);

@@ -1,12 +1,13 @@
 <script setup>
-import { computed, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
+import { useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { toast } from '@/composables/useToast';
-import { isProjectFile, loadImage } from '@/document/projectIO';
-import { isArtFile, readArtFile } from '@/lib/ArtFile';
+import { isProjectFile, loadImage, PROJECT_EXTENSION } from '@/document/projectIO';
+import { isArtFile, readArtFile, ART_EXTENSIONS } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { useLayerName } from '@/composables/useLayerName';
@@ -48,6 +49,20 @@ watch(() => project.layerParams, (now, was) => {
 watch(() => [project.frame, project.frames, project.renderedCells, project.animate, workspace.ghost, workspace.playing], () => {
   if (!workspace.playing && workspace.ghost) project.buildGhost();
 });
+
+// The file chooser: the start screen's button and Cmd/Ctrl+O (the workspace's openRequest) both open it, and what it
+// picks goes the way a dropped file does. A phone's picker greys out any file it can't match to the list, and it can't
+// match .phosphor (no type it knows), so on a touch screen there's no list; a file that isn't an image, a project or an
+// art file says so when it fails to open.
+const chooser = ref(null);
+const touch = useMediaQuery('(pointer: coarse)');
+const accept = ['image/*', '.svg', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)].join(',');
+watch(() => workspace.openRequest, () => chooser.value?.click());
+function onChosen(e) {
+  const file = e.target.files[0];
+  e.target.value = ''; // choosing the same file again still fires
+  if (file) handleFileSelected(file);
+}
 
 // Every file dropped or chosen comes through here. A picture, a project, an art file or an SVG opens; anything else
 // says so, naming the file. A file with no type (some phones give none for a photo) is tried as a picture first.
@@ -184,6 +199,7 @@ async function addSvg(file) {
       @click="workspace.settingsOpen && workspace.toggleSettings()"
   >
     <EditTabs v-model="workspace.editorTab"/>
+    <input ref="chooser" class="open-input" type="file" :accept="touch ? null : accept" hidden @change="onChosen">
     <WatchRoomPage v-if="workspace.editorTab === 'room'"/>
     <template v-else>
       <EditToolbar v-if="project.image && workspace.editMode"/>
@@ -194,7 +210,7 @@ async function addSvg(file) {
           <SauceEditor v-if="workspace.editorTab === 'sauce'"/>
         </div>
 
-        <ZeroState v-else :ready="ready" :recent="recent" :open-recent="openRecent" @file-selected="handleFileSelected" @start-blank="startBlank"/>
+        <ZeroState v-else :ready="ready" :recent="recent" :open-recent="openRecent" @browse="chooser.click()" @start-blank="startBlank"/>
       </DropZone>
       <ChoiceDialog
           v-if="workspace.artDrop"
