@@ -102,9 +102,9 @@ function pickAt(pos, event) {
     }
     return;
   }
-  // The pixel view, and a picker held with Alt from a drawing tool, pick exactly the half under the
-  // pointer: into the foreground, or with Alt+Shift the background.
-  if (props.view === 'input' || workspaceStore.pickSwapped) {
+  // The pixel view picks exactly the half under the pointer. A picker held with Alt in the ANSI view reads
+  // the cell like the Eyedropper does (below), into the foreground, or with Alt+Shift the background.
+  if (props.view === 'input') {
     workspaceStore.pickColor(mode === 'bg' ? 'bg' : 'fg', projectStore.rawColorAt(pos.x, pos.y));
     return;
   }

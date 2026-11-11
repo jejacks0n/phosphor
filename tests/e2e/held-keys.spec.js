@@ -119,3 +119,35 @@ test('Shift-click with the Pencil draws a straight line from the last point; Pen
   const painted = await store(page, 'project', (p) => Array.from({ length: 21 }, (_, i) => !!p.paintLayer.pixelAt(5 + i, 8)));
   expect(painted).toEqual(Array(21).fill(true));
 });
+
+// An opened .ans with Edit it: gray "!" over red "!" cells, nothing but black under them.
+const bang = Buffer.from('\x1b[37m!!\r\n\x1b[31m!!', 'latin1');
+
+test('Alt+click with the Pencil picks what the Eyedropper picks on an opened .ans, not the black picture under it', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate((bytes) => {
+    const dt = new DataTransfer();
+    dt.items.add(new File([new Uint8Array(bytes)], 'bang.ans'));
+    document.querySelector('article.drop-zone').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+  }, [...bang]);
+  await page.getByRole('dialog').getByRole('button', { name: /Edit it/ }).click();
+  await expect(page.locator('.ansi-editor .display')).toBeVisible();
+  await page.waitForTimeout(500); // the picture redraws
+  const colors = (w) => [w.editFgColor, w.editBgColor];
+  for (const row of [0, 1]) {
+    const at = await cellPoint(page, 0, row);
+    await page.getByRole('button', { name: 'Eyedropper' }).click();
+    await page.mouse.click(at.x, at.y);
+    const [fg, bg] = await ws(page, colors);
+    expect(fg).not.toBe('#000000');
+    await page.getByRole('button', { name: 'Pencil' }).click();
+    await page.keyboard.down('Alt');
+    await page.mouse.click(at.x, at.y);
+    expect((await ws(page, colors))[0]).toBe(fg);
+    await page.keyboard.down('Shift');
+    await page.mouse.click(at.x, at.y);
+    await page.keyboard.up('Shift');
+    await page.keyboard.up('Alt');
+    expect((await ws(page, colors))[1]).toBe(bg);
+  }
+});
