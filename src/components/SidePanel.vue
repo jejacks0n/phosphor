@@ -163,7 +163,7 @@ div.grip {
   z-index: 2;
   top: 0;
   bottom: 0;
-  left: -4px;
+  left: -6px;
   width: 8px;
   cursor: col-resize;
   touch-action: none;

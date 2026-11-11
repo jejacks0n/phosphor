@@ -5,6 +5,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { MOST_CHARS, silencedWords } from '@/social/chat';
 import UserName from './UserName.vue';
+import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // The foot of the chat panel: one bordered box with the message in it and a round send arrow at its
 // bottom-right (gray with nothing to send, purple with text). Enter sends, Shift+Enter is a new line,
@@ -70,6 +71,9 @@ function onKeyDown(event) {
 function signIn() {
   social.page = 'sign-in';
 }
+
+function editAccount() { social.page = 'account'; }
+function signOut() { social.signOut(); }
 </script>
 
 <template>
@@ -77,7 +81,14 @@ function signIn() {
     <p v-if="silenced" class="silenced" role="status">{{ silencedWords(room.silencedUntil, now) }}</p>
     <form v-else-if="room.canChat" @submit.prevent="send">
       <div class="box">
-        <span class="who-am-i">[ <UserName :name="social.myName" /> ]</span>
+        <span class="who-am-i">
+          [ <UserName :name="social.myName" /> ]
+          <DropdownMenu class="account-menu" :label="t('common.actions')" align="left" up>
+            <template #trigger>…</template>
+            <button @click="editAccount">{{ t('social.lobby.editAccount') }}</button>
+            <button @click="signOut">{{ t('social.lobby.signOut') }}</button>
+          </DropdownMenu>
+        </span>
         <textarea ref="field" v-model="text" :aria-label="t('social.chat.messageAria')" :maxlength="MOST_CHARS" rows="1" @input="typed" @keydown="onKeyDown"></textarea>
         <button type="submit" class="send" :class="{ ready: hasText }" :aria-label="t('social.chat.sendAria')">
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" fill="currentColor"/></svg>
@@ -93,7 +104,7 @@ function signIn() {
 
 <style scoped>
 footer {
-  padding: 4px;
+  padding: 0;
 }
 
 form {
@@ -130,6 +141,27 @@ span.who-am-i > span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+span.who-am-i :deep(article.dropdown) {
+  display: flex;
+  align-items: center;
+}
+span.who-am-i :deep(.dropdown-trigger) {
+  padding: 0 2px;
+  height: auto;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  line-height: 14px;
+  box-shadow: none;
+  font-weight: normal;
+}
+span.who-am-i :deep(.dropdown-trigger):hover {
+  color: var(--text);
+  background: transparent;
 }
 div.box:focus-within {
   border-color: var(--accent);
