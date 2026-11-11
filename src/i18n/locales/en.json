@@ -873,6 +873,7 @@
     "exportAnimatedUtf8ans": "Export animated .utf8ans",
     "exportCast": "Export .cast",
     "exportGif": "Export .gif",
+    "exportPng": "Export .png",
     "versions": "Versions",
     "newProject": "New project",
     "artDropTitle": "Add {name}?",
@@ -939,7 +940,18 @@
       "utf8ans": {
         "title": "Export .utf8ans",
         "sub": "UTF-8 ANSI art for modern terminals—preserves every Unicode character and color."
+      },
+      "png": {
+        "title": "Export .png",
+        "sub": "What the ANSI view shows, as a picture in your current display font."
       }
+    },
+    "png": {
+      "ask": "Smooth text adds colors, so the PNG will be a few times bigger.",
+      "smoothTitle": "Smooth",
+      "smoothText": "Anti-aliased, as the ANSI view shows it.",
+      "hardTitle": "Hard-edged",
+      "hardText": "Crisp pixels in the drawing's own colors: the smallest file."
     },
     "tooTall": "At {cols}×{rows}, this exceeds standard 80×25 terminals—rows taller than the viewer window will be clipped during playback.",
     "cp437Note": "1 character isn't in CP437 and will be substituted in .ans: | {count} characters aren't in CP437 and will be substituted in .ans:",

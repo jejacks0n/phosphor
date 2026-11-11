@@ -132,3 +132,29 @@ test('a .cast download holds a frame per event at its time, and a .gif download 
   expect(bytes.at(-1)).toBe(0x3b);
 });
 
+
+// A PNG's width, height and color type, from its IHDR.
+const pngHeader = (bytes) => ({ signature: [...bytes.subarray(0, 8)], width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20), colorType: bytes[25] });
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+
+test('Export .png, without Animate: smooth text asks first, Smooth focused; off, it asks nothing; each download is a PNG of the grid', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Export .png' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('Smooth text adds colors, so the PNG will be a few times bigger.');
+  await expect(dialog.getByRole('button', { name: /^Smooth/ })).toBeFocused();
+  await page.keyboard.press('Enter');
+  const [smooth] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: 'Export' }).click()]);
+  expect(smooth.suggestedFilename()).toMatch(/^gradient-\d{8}-\d{6}\.png$/);
+  const smoothHeader = pngHeader(await readFile(await smooth.path()));
+  expect(smoothHeader.signature).toEqual(PNG_SIGNATURE);
+
+  await page.getByRole('button', { name: 'Smooth', exact: true }).click(); // the status bar's
+  const hard = await saveAs(page, 'Export .png'); // no question first: the save dialog's Export
+  const hardHeader = pngHeader(await readFile(await hard.path()));
+  expect(hardHeader.signature).toEqual(PNG_SIGNATURE);
+  expect([hardHeader.width, hardHeader.height]).toEqual([smoothHeader.width, smoothHeader.height]);
+  const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2) }));
+  expect(hardHeader.width % cols).toBe(0); // a whole number of font pixels a cell
+  expect(hardHeader.height % rows).toBe(0);
+});

@@ -24,6 +24,7 @@ function confirmNewProject() {
     <button @click="saveDialog = 'phosphor'" :disabled="!image" class="primary">{{ t('actions.saveProject') }}</button>
     <button @click="saveDialog = 'ans'" :disabled="!image" class="secondary">{{ t('actions.exportAns') }}</button>
     <button @click="saveDialog = 'utf8ans'" :disabled="!image" class="secondary">{{ t('actions.exportUtf8ans') }}</button>
+    <button @click="saveDialog = 'png'" :disabled="!image" class="secondary">{{ t('actions.exportPng') }}</button>
     <template v-if="project.hasFrames && project.animate">
       <button @click="saveDialog = 'ansimation'" :disabled="!image" class="secondary">{{ t('actions.exportAnimatedAns') }}</button>
       <button @click="saveDialog = 'utf8ansimation'" :disabled="!image" class="secondary">{{ t('actions.exportAnimatedUtf8ans') }}</button>

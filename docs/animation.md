@@ -281,7 +281,7 @@ A file whose frames are damaged or too large opens that way too, and says so; sa
 
 ## Exporting
 
-The usual exports, .ans and .utf8ans, write the frame showing. With more than one frame and Animate on there are four more:
+The usual exports, .ans, .utf8ans and .png, write the frame showing. With more than one frame and Animate on there are four more:
 
 - **Animated .ans** (an ANSiMation): the art draws itself in a viewer or terminal, frame by frame. A file like this has no
   clock, so timing is lost and its speed depends on the viewer. It moves the cursor instead of scrolling, so

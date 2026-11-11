@@ -1,5 +1,5 @@
 // The document as a whole: a new image or blank canvas, opening and saving .phosphor projects,
-// exporting .ans and .utf8ans, the filename, and what counts as saved.
+// exporting .ans, .utf8ans and .png, the filename, and what counts as saved.
 import { t } from '@/i18n';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
 import { layersFromOld, savedLayers, legacySlots, keyLayer, withChars } from '@/document/layerInfo.js';
@@ -12,7 +12,8 @@ import { readArtFile } from '@/lib/ArtFile.js';
 import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
 import { MOST_SHAPES } from '@/document/shapes.js';
 import { castText } from '@/lib/CastFile.js';
-import { MAX_GIF_PIXELS, gifBytes, gifDelay, gifFrames } from '@/lib/GifFile.js';
+import { MAX_GIF_PIXELS, drawnCells, gifBytes, gifDelay, gifFrames } from '@/lib/GifFile.js';
+import { pngBlob } from '@/lib/PngFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
@@ -498,14 +499,19 @@ export const documentActions = {
 
   // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first. Out of an art layer
   // first: the cells then are the layer's alone, without the drawing.
-  async exportFile(ext, { filename = this.filename, ...opts } = {}) {
+  // 'png' is the frame showing as the ANSI view draws it, smooth or hard-edged as asked (the view's own setting by
+  // default), at one pixel per font pixel.
+  async exportFile(ext, { filename = this.filename, smooth = useWorkspaceStore().smoothText, ...opts } = {}) {
     if (this._artInside) this.leaveArt();
-    const blob = new AnsiFile(this.cols, charRowsOf(this.rows), this.cells).toBlob({
-      sauce: this.sauceFields(),
-      colorMode: this.quantize,
-      utf8: ext === 'utf8ans',
-      ...opts,
-    });
+    const lines = charRowsOf(this.rows);
+    const blob = ext === 'png'
+      ? await drawnCells(this.cols, lines, { smooth }, ({ width, height, rgba }) => pngBlob(width, height, rgba(this.cells)))
+      : new AnsiFile(this.cols, lines, this.cells).toBlob({
+        sauce: this.sauceFields(),
+        colorMode: this.quantize,
+        utf8: ext === 'utf8ans',
+        ...opts,
+      });
     this.rename(filename); // once there's a file to give the name to
     downloadBlob(blob, `${this.filename}.${ext}`);
   },
