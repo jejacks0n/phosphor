@@ -53,8 +53,8 @@ export async function otherBrowser(browser) {
 
 export const fixture = (path) => fileURLToPath(new URL(`../fixtures/${path}`, import.meta.url));
 
-// The start screen's file input (images and projects), not the Font field's.
-export const imageInput = (page) => page.locator('article.zero-state input[type=file]');
+// The workspace's file input (images and projects), not the Font field's.
+export const imageInput = (page) => page.locator('input.open-input');
 
 // The app with an image loaded, on the ANSI tab. A page that has the app open is reopened as a new tab
 // would be: a tab's document comes back on a reload, so the tab forgets it first (a page still at

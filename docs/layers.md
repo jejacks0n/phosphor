@@ -710,6 +710,10 @@ turns into a stroke.
 Press **?** for the list of every keyboard shortcut (in Edit Mode, where ? types, press **Alt+?**,
 Option+? on a Mac).
 
+**Cmd+O** (Ctrl+O) opens the file chooser, from anywhere in the app except while you type in a field or in
+Edit Mode's text. What it picks opens as a dropped file does, asking first where a drop would. On the start
+screen, **Tab** reaches **Choose a file** and Enter or Space presses it.
+
 ### Color keys
 
 As in Moebius, these work with any tool, in Edit Mode while you type too (they never type a

@@ -71,3 +71,14 @@ test('a file with no type that is not a picture is refused with its name', async
   expect(message()).toContain("Phosphor can't open mystery.xb");
   expect(project.image).toBeFalsy();
 });
+
+test('the start screen\'s chooser is a named button, reachable by Tab, and it opens the file input', async () => {
+  const { host } = await startScreen();
+  const button = host.querySelector('article.zero-state button.browse');
+  expect(button.tabIndex).toBe(0);
+  expect(button.textContent.trim().length).toBeGreaterThan(0);
+  let clicked = 0;
+  host.querySelector('input[type=file]').addEventListener('click', (e) => { clicked++; e.preventDefault(); });
+  button.click();
+  expect(clicked).toBe(1);
+});

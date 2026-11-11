@@ -49,6 +49,16 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return false;
   };
 
+  // Cmd/Ctrl+O opens the file chooser (EditWorkspace's, the start screen's too), so the browser's own box stays shut. Not
+  // while typing, in a field or in Edit Mode's text.
+  const _handleOpen = (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'o') return false;
+    if (isField(e.target) || _typing()) return false;
+    e.preventDefault();
+    workspaceStore.openRequest++;
+    return true;
+  };
+
   // Held keys: Alt swaps a drawing tool for the picker (Shift added: the background color), Space any
   // tool for the hand. Let go mid-drag and the tool comes back when the drag ends, so a pick or a pan
   // never turns into a stroke.
@@ -365,6 +375,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
+    if (_handleOpen(e)) return;
     if (_handleHelp(e)) return;
     if (_handleVectorKeys(e)) return;
     if (_handleActiveToolKeys(e)) return;

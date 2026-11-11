@@ -21,6 +21,7 @@ const groups = computed(() => [
       [[k('mod', 'Z')], t('shortcuts.rows.undo')],
       [[k('shift', 'mod', 'Z')], t('shortcuts.rows.redo')],
       [[k('mod', 'S')], t('shortcuts.rows.saveProject')],
+      [[k('mod', 'O')], t('shortcuts.rows.openFile')],
     ],
   },
   {

@@ -1021,6 +1021,7 @@
       "undo": "Annuler",
       "redo": "Rétablir",
       "saveProject": "Enregistrer le projet",
+      "openFile": "Ouvrir un fichier",
       "pencil": "Crayon",
       "brush": "Pinceau",
       "eraser": "Gomme (avec Sélection et une sélection active : l'effacer)",
