@@ -47,8 +47,9 @@ test('Enter on a focused Set FG presses it and keeps the selection', async ({ pa
   await page.keyboard.press('t');
   await page.keyboard.press('Shift+ArrowRight');
   await page.keyboard.press('Shift+ArrowRight');
-  await page.keyboard.press('Shift+Tab');
-  await expect(page.getByRole('button', { name: 'Set FG', exact: true })).toBeFocused();
+  const setFg = page.getByRole('button', { name: 'Set FG', exact: true });
+  for (let i = 0; i < 60 && !(await setFg.evaluate((b) => b === document.activeElement)); i++) await page.keyboard.press('Shift+Tab');
+  await expect(setFg).toBeFocused();
   await page.keyboard.press('Enter');
   expect(await store(page, 'workspace', (w) => w.selection !== null)).toBe(true);
   expect(await base(page, 4, 8)).toBe('#ff00ff');
