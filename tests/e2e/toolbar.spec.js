@@ -18,7 +18,7 @@ test('the Magic Wand and Select sit together, between the picker and the Hand, i
 test('the toolbar folds by its own width, so the side panel open folds it sooner', async ({ page }) => {
   const overlay = () => page.getByRole('slider', { name: 'ANSI Overlay' });
   const folded = () => page.locator('.overlay-menu');
-  const actions = () => page.getByTitle('Actions');
+  const actions = () => page.locator('.edit-toolbar').getByTitle('Actions');
   await page.setViewportSize({ width: 1358, height: 900 });
   await openApp(page);
   await store(page, 'workspace', (w) => { w.sidePanelFolded = true; });

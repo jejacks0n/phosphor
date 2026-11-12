@@ -132,6 +132,7 @@ function cancel() {
             <input
                 v-model="name"
                 class="filename-input"
+                :aria-label="t('save.fileName')"
                 autocomplete="off"
                 spellcheck="false"
                 autofocus

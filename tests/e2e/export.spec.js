@@ -57,7 +57,7 @@ test('the animated export warns above 80x25 and downloads an .ans', async ({ pag
 
   const modal = await openExportModal(page, 'Animated ANS');
   await expect(modal).toContainText('baud rate');
-  await expect(modal).toContainText('clipped during playback');
+  await expect(modal).toContainText('clip during playback');
 
   const [download] = await Promise.all([page.waitForEvent('download'), modal.getByRole('button', { name: /^Export Animated ANS/ }).click()]);
   expect(download.suggestedFilename()).toMatch(/\.ans$/);
@@ -80,7 +80,7 @@ test('at 80x25 or smaller the export says nothing about rows past the terminal',
     p.rows = 50;
   });
   const modal = await openExportModal(page, 'Animated ANS');
-  await expect(modal).not.toContainText('clipped during playback');
+  await expect(modal).not.toContainText('clip during playback');
   await page.keyboard.press('Escape');
 });
 
@@ -94,7 +94,7 @@ test('an animated .utf8ans keeps every character, warns above 80x25, and lists n
   await settled(page);
 
   const modal = await openExportModal(page, 'Animated UTF-8 ANS');
-  await expect(modal).toContainText('clipped during playback');
+  await expect(modal).toContainText('clip during playback');
   await expect(modal.getByRole('list', { name: 'Replacements' })).toHaveCount(0);
   const [download] = await Promise.all([page.waitForEvent('download'), modal.getByRole('button', { name: /^Export Animated UTF-8 ANS/ }).click()]);
   expect(download.suggestedFilename()).toMatch(/\.utf8ans$/);
