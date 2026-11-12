@@ -874,6 +874,7 @@
     "exportAnimatedUtf8ans": "Export animated .utf8ans",
     "exportCast": "Export .cast",
     "exportGif": "Export .gif",
+    "export": "Export…",
     "exportPng": "Export .png",
     "versions": "Versions",
     "newProject": "New project",
@@ -954,14 +955,34 @@
       "hardTitle": "Hard-edged",
       "hardText": "Crisp pixels in the drawing's own colors: the smallest file."
     },
-    "tooTall": "At {cols}×{rows}, this exceeds standard 80×25 terminals—rows taller than the viewer window will be clipped during playback.",
     "cp437Note": "1 character isn't in CP437 and will be substituted in .ans: | {count} characters aren't in CP437 and will be substituted in .ans:",
     "replacementsAria": "Replacements",
     "becomesAria": "becomes",
     "cellCount": "{count} cell | {count} cells",
     "keepHint": "Export as .utf8ans to keep exact characters.",
     "saveFailed": "Couldn't save the file.",
+    "tooTall": "At {cols}×{rows}, wider or taller than a standard 80×25 terminal. Part of the drawing may clip during playback.",
     "gifTooLarge": "This animation is too large for a GIF. Try fewer frames or smaller dimensions—or export .cast, which has no size limit."
+  },
+  "export": {
+    "modal": {
+      "title": "Export",
+      "sub": "Save the drawing as an image, an ANSI file, or a recording.",
+      "still": "Still",
+      "animated": "Animated",
+      "textRendering": "Text rendering",
+      "tooTall": "At {cols}×{rows}, wider or taller than a standard 80×25 terminal. Part of the drawing may clip during playback.",
+      "exportBtn": "Export {name}",
+      "formats": {
+        "ans":            { "name": "ANS" },
+        "utf8ans":        { "name": "UTF-8 ANS" },
+        "png":            { "name": "PNG" },
+        "gif":            { "name": "GIF" },
+        "ansimation":     { "name": "Animated ANS" },
+        "utf8ansimation": { "name": "Animated UTF-8 ANS" },
+        "cast":           { "name": "Cast" }
+      }
+    }
   },
   "versions": {
     "title": "Versions",

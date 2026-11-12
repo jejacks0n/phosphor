@@ -9,7 +9,7 @@ const { t } = useI18n();
 const drawing = useDrawingStore();
 const project = useProjectStore();
 const { image } = storeToRefs(project);
-const { editorTab, saveDialog, versionsOpen } = storeToRefs(useWorkspaceStore());
+const { editorTab, saveDialog, exportModal, versionsOpen } = storeToRefs(useWorkspaceStore());
 
 function confirmNewProject() {
   project.commitPending(); // text typed a moment ago counts
@@ -22,15 +22,7 @@ function confirmNewProject() {
 <template>
   <article class="project-actions">
     <button @click="saveDialog = 'phosphor'" :disabled="!image" class="primary">{{ t('actions.saveProject') }}</button>
-    <button @click="saveDialog = 'ans'" :disabled="!image" class="secondary">{{ t('actions.exportAns') }}</button>
-    <button @click="saveDialog = 'utf8ans'" :disabled="!image" class="secondary">{{ t('actions.exportUtf8ans') }}</button>
-    <button @click="saveDialog = 'png'" :disabled="!image" class="secondary">{{ t('actions.exportPng') }}</button>
-    <template v-if="project.hasFrames && project.animate">
-      <button @click="saveDialog = 'ansimation'" :disabled="!image" class="secondary">{{ t('actions.exportAnimatedAns') }}</button>
-      <button @click="saveDialog = 'utf8ansimation'" :disabled="!image" class="secondary">{{ t('actions.exportAnimatedUtf8ans') }}</button>
-      <button @click="saveDialog = 'cast'" :disabled="!image" class="secondary">{{ t('actions.exportCast') }}</button>
-      <button @click="saveDialog = 'gif'" :disabled="!image" class="secondary">{{ t('actions.exportGif') }}</button>
-    </template>
+    <button @click="exportModal = true" :disabled="!image" class="secondary">{{ t('actions.export') }}</button>
     <button @click="versionsOpen = true" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="secondary">{{ t('actions.versions') }}</button>
     <hr/>
     <button @click="confirmNewProject" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="danger">{{ t('actions.newProject') }}</button>

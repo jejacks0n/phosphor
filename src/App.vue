@@ -23,6 +23,7 @@ import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
 import LegalDialog from '@/components/LegalDialog.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
+import ExportModal from '@/components/ExportModal.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import AppToast from '@/components/AppToast.vue';
@@ -33,7 +34,7 @@ const room = useRoomStore();
 const route = useRoute();
 const { image } = storeToRefs(project);
 const wide = useMediaQuery(desktopQuery);   // the side panel's: a phone has neither rooms nor room for it
-const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, shortcutsOpen, legalPage, versionsOpen } = storeToRefs(workspace);
+const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, exportModal, shortcutsOpen, legalPage, versionsOpen } = storeToRefs(workspace);
 
 // The theme on <html>, for global.css: the one picked, or with System the computer's (and it follows a change).
 const prefersLight = useMediaQuery('(prefers-color-scheme: light)');
@@ -148,6 +149,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <EndRoomDialog v-if="room.askingEnd" @end="room.answerEnd(true)" @cancel="room.answerEnd(false)"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
+    <ExportModal v-if="exportModal" @close="exportModal = false"/>
     <VersionsDialog v-if="versionsOpen && !drawing.offWithOthers" :flush="autosave.flush" :restore-version="autosave.restoreVersion" @close="versionsOpen = false"/>
     <ShortcutsDialog v-if="shortcutsOpen" @close="shortcutsOpen = false"/>
     <LegalDialog v-if="legalPage" :page="legalPage" @open="legalPage = $event" @close="legalPage = null"/>
