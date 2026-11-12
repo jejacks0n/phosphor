@@ -2,13 +2,35 @@
 // between) is two choices.
 import { test, expect, afterEach } from 'vitest';
 import { createApp } from 'vue';
-import { createTestApp } from '../support/app.js';
+import { createTestApp, settle } from '../support/app.js';
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import { i18n } from '@/i18n';
 import { toastMessage, closeToast } from '@/composables/useToast.js';
 
 let mounted = null, host = null;
 afterEach(() => { mounted?.unmount(); host?.remove(); closeToast(); });
+
+test('opening a PNG from the start screen selects the base layer', async () => {
+  const { project, workspace } = await createTestApp();
+  host = document.createElement('div');
+  document.body.append(host);
+  mounted = createApp(EditWorkspace).use(i18n);
+  mounted.mount(host);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  const input = host.querySelector('input[type=file]');
+  const blob = await (await fetch('/tests/fixtures/images/one.png')).blob();
+  const file = new File([blob], 'one.png', { type: 'image/png' });
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  input.dispatchEvent(new Event('change'));
+
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  await settle(project);
+
+  expect(workspace.pickedLayer).toBe('base');
+});
 
 test('the same file chosen twice reports twice, because the chooser is emptied after each choice', async () => {
   await createTestApp();

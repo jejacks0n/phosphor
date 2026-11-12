@@ -93,7 +93,7 @@ async function handleFileSelected(file) {
   if (!project.image) workspace.editorTab = isSvgFile(file.name) ? 'vector' : 'output'; // from the start screen, chosen first: the address moves once
   if (isProjectFile(file.name)) await project.loadProject(file);
   else if (isArtFile(file.name) || isSvgFile(file.name)) return openArt(file);
-  else await project.setImageFromFile(file);
+  else { await project.setImageFromFile(file); workspace.pickLayer('base'); }
   workspace.editorTab = 'output';
 }
 
@@ -147,6 +147,7 @@ async function chooseArt(choice) {
     project.commitPending(); // text typed a moment ago counts
     if (project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
     await project.setImageFromFile(file);
+    workspace.pickLayer('base');
     workspace.editorTab = 'output';
     return;
   }
