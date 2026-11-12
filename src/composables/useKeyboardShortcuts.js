@@ -46,6 +46,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       if (projectStore.image) workspaceStore.saveDialog = 'phosphor';
       return true;
     }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+      e.preventDefault();
+      if (projectStore.image) workspaceStore.exportModal = true;
+      return true;
+    }
     return false;
   };
 

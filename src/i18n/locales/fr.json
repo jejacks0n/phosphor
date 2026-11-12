@@ -874,6 +874,7 @@
     "exportAnimatedUtf8ans": "Exporter en .utf8ans animé",
     "exportCast": "Exporter en .cast",
     "exportGif": "Exporter en .gif",
+    "export": "Exporter…",
     "exportPng": "Exporter en .png",
     "versions": "Versions",
     "newProject": "Nouveau projet",
@@ -954,14 +955,34 @@
       "hardTitle": "Contours nets",
       "hardText": "Des pixels nets dans les couleurs du dessin : le fichier le plus léger."
     },
-    "tooTall": "À {cols}×{rows}, cela dépasse les terminaux standard 80×25 — les lignes dépassant la fenêtre de lecture seront coupées pendant la lecture.",
     "cp437Note": "1 caractère n'est pas dans CP437 et sera substitué en .ans : | {count} caractères ne sont pas dans CP437 et seront substitués en .ans :",
     "replacementsAria": "Substitutions",
     "becomesAria": "devient",
     "cellCount": "{count} cellule | {count} cellules",
     "keepHint": "Exportez en .utf8ans pour conserver les caractères exacts.",
     "saveFailed": "Impossible d'enregistrer le fichier.",
+    "tooTall": "À {cols}×{rows}, plus large ou plus haut qu'un terminal standard 80×25. Une partie du dessin peut être coupée pendant la lecture.",
     "gifTooLarge": "Cette animation est trop volumineuse pour un GIF. Essayez avec moins d'images ou des dimensions plus petites — ou exportez en .cast, qui n'a pas de limite de taille."
+  },
+  "export": {
+    "modal": {
+      "title": "Exporter",
+      "sub": "Enregistrez le dessin en tant qu'image, fichier ANSI ou enregistrement.",
+      "still": "Fixe",
+      "animated": "Animé",
+      "textRendering": "Rendu du texte",
+      "tooTall": "À {cols}×{rows}, plus large ou plus haut qu'un terminal standard 80×25. Une partie du dessin peut être coupée pendant la lecture.",
+      "exportBtn": "Exporter {name}",
+      "formats": {
+        "ans":            { "name": "ANS" },
+        "utf8ans":        { "name": "UTF-8 ANS" },
+        "png":            { "name": "PNG" },
+        "gif":            { "name": "GIF" },
+        "ansimation":     { "name": "ANS animé" },
+        "utf8ansimation": { "name": "UTF-8 ANS animé" },
+        "cast":           { "name": "Cast" }
+      }
+    }
   },
   "versions": {
     "title": "Versions",

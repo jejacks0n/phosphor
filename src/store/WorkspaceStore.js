@@ -111,7 +111,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     legalPage: null,         // the Terms, Privacy Policy or Community Guidelines while one's open (LegalDialog): 'terms' | 'privacy' | 'guidelines'
     colorBox: null,          // the color box (ColorPair's popover) while it's open: 'fg' | 'bg'
     versionsOpen: false,     // the autosaved versions list (VersionsDialog)
-    saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'ans' | 'utf8ans' | 'png' and the animated formats (SaveDialog)
+    saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'png' and the animated formats (SaveDialog)
+    exportModal: false,      // the export modal (ExportModal) open
 
     // Scroll state persistence
     inputScrollX: null,
