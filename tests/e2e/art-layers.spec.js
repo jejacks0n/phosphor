@@ -13,7 +13,7 @@ async function makeHi(page) {
   await page.getByRole('button', { name: 'Edit Mode' }).click();
   await page.keyboard.press('m');
   await drag(page, await cellPoint(page, 4, 4), await cellPoint(page, 8, 6));
-  await page.locator('.primary-row').getByRole('button', { name: 'Make art layer' }).click();
+  await page.getByRole('button', { name: 'Make art layer' }).click();
   await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
   await settled(page);
   expect(await store(page, 'workspace', (w) => w.vectorSelected.length)).toBe(1);
