@@ -58,7 +58,8 @@ export const fixture = (path) => fileURLToPath(new URL(`../fixtures/${path}`, im
 export const zeroState = (page) => page.locator('article.zero-state');
 export const imageInput = (page) => page.locator('input.open-input');
 
-// The app with an image loaded, on the ANSI tab. A page that has the app open is reopened as a new tab
+// The app with an image loaded, on the ANSI tab, with Layer 1 picked: a picture opens with its own layer (the base)
+// picked, and the flows here draw on the layer above it. A page that has the app open is reopened as a new tab
 // would be: a tab's document comes back on a reload, so the tab forgets it first (a page still at
 // about:blank has no storage to forget).
 export async function openApp(page, image = 'images/gradient.png') {
@@ -67,6 +68,7 @@ export async function openApp(page, image = 'images/gradient.png') {
   await imageInput(page).setInputFiles(fixture(image));
   await tab(page, 'ANSI').click();
   await settled(page);
+  await pickLayer(page, 'Layer 1');
 }
 
 // Save or export through the save dialog: the button, then the dialog's Save/Export; the download.

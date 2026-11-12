@@ -18,6 +18,7 @@ test('M in the PIXEL view selects whole cells; a drag inside moves them; copy, p
   expect(await selection(page)).toEqual({ c0: 5, r0: 5, c1: 9, r1: 7 });
   await expect(page.locator('.pixel-marquee')).toBeVisible();
 
+  await page.getByRole('checkbox', { name: 'All layers' }).check(); // the picture's cells move too, not only the picked layer's
   const before = await shownBg(page, 6, 6);
   await drag(page, await pixelPoint(page, 6, 12), await pixelPoint(page, 16, 12));
   expect(await selection(page)).toEqual({ c0: 15, r0: 5, c1: 19, r1: 7 });

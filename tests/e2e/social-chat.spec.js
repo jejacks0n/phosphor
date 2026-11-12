@@ -67,8 +67,8 @@ test('the panel is beside every tab for the host and the watcher, with the welco
   // The box says who you are on its top border, as [ avatar name ], each person their own.
   for (const [page, name, other] of [[watcher, 'pixel_wren', 'ansi-fan'], [host, 'ansi-fan', 'pixel_wren']]) {
     const foot = panel(page).locator('footer');
-    const tag = foot.getByText(`[ ${name} ]`, { exact: true });
-    await expect(tag).toBeVisible();
+    const tag = foot.locator('.who-am-i'); // the name, and the … that opens the account's actions
+    await expect(tag).toContainText(`[ ${name} ]`);
     await expect(foot.getByText(`[ ${other} ]`)).toHaveCount(0);
     await expect(tag.locator('.cell')).toBeVisible();
     // On the line, a little in from its left end, and hiding the line behind it.
