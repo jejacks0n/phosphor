@@ -246,7 +246,6 @@ const selectionHasEdits = computed(() => {
 });
 
 // Make art layer: the Select tool's selection or the Magic Wand's, with something drawn in it.
-const artOn = computed(() => (workspace.activeTool === 'select' && !!workspace.selection) || (workspace.activeTool === 'wand' && wandHere.value));
 const artReady = computed(() => (workspace.activeTool === 'wand' ? project.hasEdits : selectionHasEdits.value)); // the wand's cells are checked when it's made
 
 // Rotate turns only pixels: not while the selection has characters on its layers.
@@ -400,22 +399,14 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             class="primary"
             :disabled="!project.canFlatten"
             v-bind="flattenOff()"
-        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M288 64H352V320L416 256L461 301L320 442L179 301L224 256L288 320ZM96 496H544V576H96Z"/></svg></button>
+        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg></button>
         <button
             :title="mergeTitle"
             @click="mergeHere"
             class="primary"
             :disabled="!mergeOn"
             v-bind="mergeOff()"
-        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/></svg></button>
-        <button
-            v-if="artOn"
-            :title="t('art.makeTitle')"
-            :aria-label="t('art.make')"
-            @click="project.makeArtLayer()"
-            class="primary"
-            :disabled="!artReady"
-        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill-rule="evenodd" d="M96 96H544V544H96ZM160 160V480H480V160Z"/><path d="M296 224H344V296H416V344H344V416H296V344H224V296H296Z"/></svg></button>
+        ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M288 64H352V320L416 256L461 301L320 442L179 301L224 256L288 320ZM96 496H544V576H96Z"/></svg></button>
         <button
             v-if="workspace.editorTab !== 'vector'"
             :title="t('toolbar.clearEditTitle', { name: layerName(project.editId) })"
@@ -445,18 +436,14 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             {{ t('toolbar.bake') }}
           </button>
           <button @click="flattening = true" :disabled="!project.canFlatten" v-bind="flattenOff()">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M288 64H352V320L416 256L461 301L320 442L179 301L224 256L288 320ZM96 496H544V576H96Z"/></svg>
-            {{ t('toolbar.flatten') }}
-          </button>
-          <button @click="mergeHere" :disabled="!mergeOn" v-bind="mergeOff()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/>
             </svg>
-            {{ t('toolbar.mergeDown') }}
+            {{ t('toolbar.flatten') }}
           </button>
-          <button v-if="artOn" :title="t('art.makeTitle')" @click="project.makeArtLayer()" :disabled="!artReady">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill-rule="evenodd" d="M96 96H544V544H96ZM160 160V480H480V160Z"/><path d="M296 224H344V296H416V344H344V416H296V344H224V296H296Z"/></svg>
-            {{ t('art.make') }}
+          <button @click="mergeHere" :disabled="!mergeOn" v-bind="mergeOff()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M288 64H352V320L416 256L461 301L320 442L179 301L224 256L288 320ZM96 496H544V576H96Z"/></svg>
+            {{ t('toolbar.mergeDown') }}
           </button>
           <button v-if="workspace.editorTab !== 'vector'" @click="confirmClear" :disabled="!project.hasEditLayer || !workspace.pickedCells" v-bind="off(insideOff ?? drawing.offWithOthers, t('toolbar.clearEdit'))">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">

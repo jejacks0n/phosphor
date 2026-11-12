@@ -59,12 +59,13 @@ const charsNote = computed(() => {
 });
 // The sections under Drawing, in order: the drawing's slider groups, the picked layer's Characters (every layer converts
 // something: the base its picture, a cells layer its paint, a vector layer its shapes), and only with the base picked the
-// picture's own Smoothing and Image filters.
+// picture's own Smoothing and Image filters (effects only when a real image is loaded).
+const hasRealImage = computed(() => !!store.image && store.pictureIsOriginal);
 const sections = computed(() => {
   const [transform, adjust, effects] = sliderGroups.value;
   const characters = { id: 'characters', title: t('panel.groups.characters', { name: layerName(picked.value) }) };
   const picture = { id: 'picture', title: t('panel.groups.picture', { name: layerName('base') }) };
-  return [transform, adjust, characters, ...(workspace.pickedLayer === 'base' ? [picture, effects] : [])];
+  return [transform, adjust, characters, ...(workspace.pickedLayer === 'base' ? [picture, ...(hasRealImage.value ? [effects] : [])] : [])];
 });
 
 const help = (key) => getSetting(key).help;
@@ -262,6 +263,8 @@ const charsetName = computed(() => {
         </div>
       </fieldset>
     </template>
+
+    <p v-if="workspace.pickedLayer === 'base' && !hasRealImage" class="note effects-note">{{ t('panel.effectsNoImage') }}</p>
 
     <button :disabled="!!locked" :title="locked" @click="store.resetSliders">{{ t('panel.resetAll') }}</button>
 

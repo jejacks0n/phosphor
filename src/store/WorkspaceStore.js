@@ -81,6 +81,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     inputView: { col: 0, row: 0, cols: 0, rows: 0, zoom: 5 }, // the whole cells on screen in the PIXEL view, and the editZoom they were measured at (InputEditor)
     viewToRestore: null,     // a resumed room's view { tab: 'input' | 'output', col, row }: that tab's editor scrolls there once, and publishes only after
     pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
+    selectAllLayers: false,  // Select tool drag-move: true = move all visible layers, false = picked layer only
     pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)
     pencilConnect: true,     // Pencil's Single and Double: join the lines it crosses or lands on
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse' | 'line'

@@ -1,11 +1,12 @@
 // Selects a rectangle of cells, in either view (in the pixel view a cell is a grid pixel wide and two
 // tall, so the rectangle's edges keep to whole cells there too). Dragging inside the selection moves its contents on
-// the shown layers (workspace.selectionIds), the block following the pointer cell by cell (a float:
+// the picked layer (or all visible layers when All layers is on), the block following the pointer cell by cell (a float:
 // the whole drag is one undo step); dragging its border moves just the outline; dragging elsewhere
 // draws a new one, and a click outside clears it. The actions are on the options row.
 import { normalizeRect, selectionHit, clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 import { t } from '@/i18n/index.js';
+
 
 let drag = null; // { mode: 'select' | 'move' | 'outline', start: { col, row }, rect?, moved?: { dc, dr } }
 
@@ -26,6 +27,9 @@ export default {
   kind: 'paint',
   section: 'select',
   autoScroll: true,
+  options: [
+    { key: 'selectAllLayers', get label() { return t('tools.select.allLayers'); }, get title() { return t('tools.select.allLayersTitle'); }, type: 'checkbox' },
+  ],
   // before: the selection to undo back to, when the caller changed it already (Edit Mode's drag).
   begin({ project, workspace }, pos, event, before = { selection: workspace.selection, wand: workspace.wand }) {
     const cell = cellOf(project, pos);
@@ -55,7 +59,8 @@ export default {
         dr: Math.max(-rect.r1, Math.min(charRowsOf(project.rows) - 1 - rect.r0, dr)),
       };
       if (offset.dc === moved.dc && offset.dr === moved.dr) return;
-      const landed = project.floatSelection(workspace.selection, workspace.selectionIds, offset.dc - moved.dc, offset.dr - moved.dr);
+      const ids = workspace.selectAllLayers ? workspace.selectionIds : [workspace.pickedLayer];
+      const landed = project.floatSelection(workspace.selection, ids, offset.dc - moved.dc, offset.dr - moved.dr);
       if (landed) {
         workspace.selection = landed;
         drag.moved = offset;
