@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -34,8 +34,17 @@ const problem = ref('');
 const stem = computed(() => fileStem(name.value, selected.value.ext));
 
 const tooTall = computed(() => ['ansimation', 'utf8ansimation'].includes(selectedId.value) && (project.cols > 80 || charRowsOf(project.rows) > 25));
-// Unmappable character count for still ANS; animated ANS omitted (requires async build).
-const unmappable = computed(() => selectedId.value === 'ans' ? [...AnsiFile.unmappable(project.cells)].length : 0);
+// .ans is CP437: the characters it can't keep and what each becomes. An animated .ans lists what every frame holds,
+// once they're built (a format picked meanwhile keeps its own list).
+const listed = (cells) => [...AnsiFile.unmappable(cells)].map(([char, { count, as }]) => ({ char, count, as }));
+const replacements = ref([]);
+watch(selectedId, (id) => {
+  replacements.value = id === 'ans' ? listed(project.cells) : [];
+  if (id !== 'ansimation') return;
+  project.animationCells().then((frames) => {
+    if (selectedId.value === id) replacements.value = listed((function* all() { for (const cells of frames) yield* cells; })());
+  });
+}, { immediate: true });
 
 function pickFormat(id) {
   selectedId.value = id;
@@ -122,8 +131,19 @@ function cancel() {
         <!-- Animated ANS: too tall/wide warning -->
         <p v-if="tooTall" class="note warn">{{ t('export.modal.tooTall', { cols: project.cols, rows: charRowsOf(project.rows) }) }}</p>
 
-        <!-- ANS: unmappable character count -->
-        <p v-if="unmappable" class="note">{{ t('save.cp437Note', unmappable, unmappable) }} {{ t('save.keepHint') }}</p>
+        <!-- ANS: the characters it replaces -->
+        <template v-if="replacements.length">
+          <p class="note">{{ t('save.cp437Note', { count: replacements.length }, replacements.length) }}</p>
+          <ul class="replacements" :aria-label="t('save.replacementsAria')" tabindex="0">
+            <li v-for="r in replacements" :key="r.char">
+              <span class="char">{{ r.char }}</span>
+              <span class="arrow" :aria-label="t('save.becomesAria')">→</span>
+              <span class="char">{{ r.as }}</span>
+              <span class="count">{{ t('save.cellCount', { count: r.count }, r.count) }}</span>
+            </li>
+          </ul>
+          <p class="note">{{ t('save.keepHint') }}</p>
+        </template>
 
         <p v-if="problem" class="note problem" role="alert">{{ problem }}</p>
 
@@ -276,6 +296,42 @@ p.note {
   margin: 0;
 }
 p.warn { color: var(--warning); }
+
+/* As long as it needs to be, scrolling past a few rows. */
+ul.replacements {
+  max-height: 120px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-1);
+}
+ul.replacements:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+ul.replacements li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 12px;
+}
+span.char {
+  width: 1.4em;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 17px;
+  text-align: center;
+  color: var(--text);
+}
+span.arrow { color: var(--text-faint); }
+span.count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
 p.problem { color: var(--danger); }
 
 div.foot {

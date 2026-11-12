@@ -1,7 +1,7 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { i18n } from '@/i18n';
-import { createTestApp } from '../support/app.js';
+import { createTestApp, settle } from '../support/app.js';
 import ExportModal from '@/components/ExportModal.vue';
 
 afterEach(() => vi.restoreAllMocks());
@@ -117,6 +117,25 @@ test('Cancel closes without exporting', async () => {
     document.querySelector('.modal-dialog button.cancel').click();
     expect(closed).toHaveBeenCalled();
     expect(exported).not.toHaveBeenCalled();
+  } finally {
+    unmount();
+  }
+});
+
+test('.ans lists each character it replaces and what it becomes; another format lists none', async () => {
+  const { project } = await drawing();
+  project.typeAt(2, 0, '漢', { fg: '#ffee00', bg: '#0044aa' });
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  const { unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    const rows = () => [...modal.querySelectorAll('ul[aria-label="Replacements"] li')].map((li) => li.textContent.replace(/\s+/g, ''));
+    expect(rows()).toEqual(['漢→?1cell']);
+    [...modal.querySelectorAll('.format-btn:not(:disabled)')].find((b) => b.textContent.includes('UTF-8 ANS')).click();
+    await nextTick();
+    expect(rows()).toEqual([]);
   } finally {
     unmount();
   }
