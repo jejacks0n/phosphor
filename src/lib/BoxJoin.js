@@ -40,7 +40,7 @@ export function joinBox(char, under, inward = [0, 0, 0, 0], closed = [false, fal
   const own = Array.isArray(char) ? char : ARMS.get(char);
   if (!own) return char;
   const below = ARMS.get(under) ?? [0, 0, 0, 0];
-  const arms = own.map((w, d) => w || (closed[d] ? 0 : below[d] || inward[d]));
+  const arms = own.map((w, d) => w || (closed[d] ? 0 : (below[d] && (inward[d] || !inward[(d + 2) % 4]) ? below[d] : 0) || inward[d]));
   const v = own[0] || own[2] || Math.max(arms[0], arms[2]);
   const h = own[1] || own[3] || Math.max(arms[1], arms[3]);
   return pieceOf(arms.map((w, d) => w && (d % 2 ? h : v))) ?? char;

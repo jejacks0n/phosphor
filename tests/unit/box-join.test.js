@@ -25,6 +25,12 @@ test("Joining box-drawing characters (the Shapes tool's Connect)", async () => {
   assert.equal(joinBox('═', '│', [0, 0, 0, 0], [false, false, true, false]), '╧'); // a filled box's top edge: the line ends there
   assert.equal(joinBox('║', '─', [0, 0, 0, 0], [false, true, false, false]), '╢');  // its left edge
   assert.equal(joinBox('─', ' ', inwardArms(['', '', '│', '']), [false, false, true, false]), '─'); // nothing joins from inside
+
+  // A rectangle edge over a line endpoint: ─ at the right end of a line (left neighbor is ─, no right
+  // neighbor). The ─ was stored with a phantom right arm by pieceOf; drawing │ over it should give ┤,
+  // not ┼ — the phantom arm must not be inherited.
+  assert.equal(joinBox('│', '─', inwardArms(['', '', '', '─'])), '┤');
+  assert.equal(joinBox('─', '│', inwardArms(['│', '', '', ''])), '┴'); // same for a vertical endpoint (up arm real, down phantom)
 });
 
 test("A line's end (a lone arm) that lands on a line joins it as a T, in its own weight across its axis", () => {
