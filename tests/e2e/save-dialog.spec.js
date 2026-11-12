@@ -19,7 +19,8 @@ test('Cmd+S opens it with the name ready to type over; a new name renames the do
   await expect(dialog(page)).toBeHidden();
   expect(await store(page, 'project', (p) => p.filename)).toBe('my art');
 
-  await page.getByRole('button', { name: 'Export .utf8ans' }).click();
+  await page.getByRole('button', { name: 'Export…' }).click();
+  await dialog(page).getByRole('button', { name: /^UTF-8 ANS/ }).click();
   await expect(nameField(page)).toHaveValue(/^my art-\d{8}-\d{6}$/);
 });
 
@@ -67,7 +68,7 @@ test('.ans: every character that will be replaced is listed, in a list that scro
   const cells = await store(page, 'project', (p) => p.cells);
   const expected = [...AnsiFile.unmappable(cells)].map(([char, { as }]) => `${char}→${as}`);
 
-  await page.getByRole('button', { name: 'Export .ans' }).click();
+  await page.getByRole('button', { name: 'Export…' }).click();
   const list = dialog(page).getByRole('list', { name: 'Replacements' });
   const shown = (await list.getByRole('listitem').allTextContents()).map((t) => t.replace(/\s+/g, '').replace(/\d+cells?$/, ''));
   expect(shown).toEqual(expected);
