@@ -338,12 +338,13 @@ test('a redone add lands on the layer it was put above, even when the stack chan
   project.addShape(rectShape(1, 1, 3, 3, { fill: '#ff0000' })); // the first shape brings the vector layer, on the bottom, with no step of its own
   project.commitEdit();
   expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit', id]);
-  project.undo(); // the shape; the vector layer stays
+  project.undo(); // the shape; the vector layer removes with it, since it was auto-created for it
   project.undo(); // the add
-  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
   project.redo();
-  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit', id]); // above the edit layer, not at the index it had
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit', id]); // above the edit layer, not at the index it had
   project.redo();
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit', id]); // shape redone, vector layer back
   expect(project.shapes.size).toBe(1);
   await settle(project);
 });
