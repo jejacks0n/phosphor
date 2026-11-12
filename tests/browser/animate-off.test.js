@@ -37,16 +37,15 @@ async function mount(component, props = {}) {
   return host;
 }
 
-test('the animated exports show only with Animate on', async () => {
+test('the Export… button is always present; animated formats are inside the modal', async () => {
   const { project } = await framesKept();
   const host = await mount(ProjectActions);
   const labels = () => [...host.querySelectorAll('button')].map((b) => b.textContent.trim());
   expect(project.hasFrames).toBe(true);
-  expect(labels()).not.toContain('Export animated .ans');
-  expect(labels()).not.toContain('Export .gif');
+  expect(labels()).toContain('Export…');
   project.setAnimate(true);
   await nextTick();
-  expect(labels()).toContain('Export animated .ans');
+  expect(labels()).toContain('Export…'); // still just one button; animated options are in the modal
 });
 
 test('the Animation shortcuts show only with Animate on', async () => {
