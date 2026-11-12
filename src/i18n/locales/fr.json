@@ -124,6 +124,7 @@
     },
     "charsNote": "Utilisés là où la peinture ou une image sur {name} devient des caractères.",
     "charsNoteVector": "Les formes et les calques d'art de {name} sont convertis avec ces réglages.",
+    "effectsNoImage": "Les filtres d'image nécessitent une image. Chargez-en une, ou utilisez Cuire pour convertir le canevas actuel en image.",
     "reset": "Réinitialiser",
     "resetAll": "Tout réinitialiser",
     "onCount": "{count} actif | {count} actifs",
@@ -440,7 +441,9 @@
       "canvasInputAria": "Écrire sur le canevas"
     },
     "select": {
-      "title": "Sélection"
+      "title": "Sélection",
+      "allLayers": "Tous les calques",
+      "allLayersTitle": "Déplacer tous les calques visibles ; désactivez pour déplacer uniquement le calque sélectionné"
     },
     "wand": {
       "title": "Baguette magique",

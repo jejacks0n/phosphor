@@ -124,6 +124,7 @@
     },
     "charsNote": "Used where paint or a picture on {name} becomes characters.",
     "charsNoteVector": "Shapes and art layers on {name} convert with these.",
+    "effectsNoImage": "Image filters need an image. Load one, or use Bake to turn the current canvas into one.",
     "reset": "Reset",
     "resetAll": "Reset all",
     "onCount": "{count} on",
@@ -440,7 +441,9 @@
       "canvasInputAria": "Type into the canvas"
     },
     "select": {
-      "title": "Select"
+      "title": "Select",
+      "allLayers": "All layers",
+      "allLayersTitle": "Move all visible layers; turn off to move only the picked layer"
     },
     "wand": {
       "title": "Magic Wand",

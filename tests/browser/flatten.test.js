@@ -8,8 +8,9 @@ import { makeArt } from '@/document/artLayers.js';
 import { charRowsOf } from '@/lib/Cells';
 import { slidersAtDefaults } from '@/store/settings';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { createApp } from 'vue';
+import { createApp, nextTick } from 'vue';
 import EditToolbar from '@/components/EditToolbar.vue';
+import ControlPanel from '@/components/ControlPanel.vue';
 import { i18n } from '@/i18n';
 
 const shown = (project) => cellsKey(project).map((key) => key.toLowerCase());
@@ -324,6 +325,28 @@ test('Flatten drops hidden layers and says so first', async () => {
     expect(project.cellsOf(top).get('6,6').char).toBe('W');
   } finally {
     toolbar.unmount();
+    host.remove();
+  }
+});
+
+test('image filters panel hides after flatten and shows a note', async () => {
+  const { project, workspace } = await drawing();
+  workspace.pickedLayer = 'base';
+  const host = document.createElement('div'), panel = createApp(ControlPanel).use(i18n);
+  document.body.append(host);
+  panel.mount(host);
+  try {
+    await nextTick();
+    expect(host.querySelector('fieldset.effects')).not.toBeNull();
+    expect(host.querySelector('.note')).toBeNull();
+    await project.flattenDrawing({ layer: 'edit' });
+    await settle(project);
+    workspace.pickedLayer = 'base';  // flatten resets to edit; manually switch to base to see the picture section
+    await nextTick();
+    expect(host.querySelector('fieldset.effects')).toBeNull();
+    expect(host.querySelector('.effects-note')?.textContent).toContain('Image filters need an image');
+  } finally {
+    panel.unmount();
     host.remove();
   }
 });
