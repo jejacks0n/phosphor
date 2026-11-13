@@ -44,7 +44,8 @@ const rows = computed(() => charRowsOf(project.rows));
 const cellsOf = (axis) => (axis === 'x' || axis === 'v' ? cols.value : rows.value);   // 'v' guides lie along columns
 
 // The drag under way: { kind: 'guide', axis: 'v' | 'h', index (null: a new one), offset, pos (null: off the art) },
-// { kind: 'zero', axis: 'x' | 'y', offset, zero } or { kind: 'corner', zero }, with the pointer at client.
+// { kind: 'zero', axis: 'x' | 'y', offset, zero } or { kind: 'corner', zero }, with the pointer at client and
+// zero as it showed when the press began (shown).
 const drag = ref(null);
 
 // Zero as drawn and counted: a zero being dragged where it is, and past the drawing's edge at the edge.
@@ -131,7 +132,7 @@ function nearZero(axis, event) {
 function start(event, d) {
   if (event.button) return;
   props.root?.focus({ preventScroll: true });
-  drag.value = { ...d, client: null };
+  drag.value = { ...d, client: null, shown: { ...zero.value } };
 }
 // A ruler: its triangle drags zero, anywhere else a new guide (out of the top ruler a horizontal one).
 function pressRuler(axis, event) {
@@ -173,7 +174,8 @@ useEventListener(window, 'pointerup', (event) => {
     else if (d.pos !== workspace.guides[d.index].pos) workspace.moveGuide(d.index, d.pos);
     return;
   }
-  for (const [axis, pos] of Object.entries(d.zero ?? {})) if (pos !== workspace.rulerZero[axis]) workspace.setRulerZero(axis, pos);
+  // A zero left where it showed stays as it's kept, even past the drawing's edge (it shows at the edge).
+  for (const [axis, pos] of Object.entries(d.zero ?? {})) if (pos !== d.shown[axis] && pos !== workspace.rulerZero[axis]) workspace.setRulerZero(axis, pos);
 });
 
 // One ruler on its canvas: the drawing's span, the hovered character, the ticks and labels, the guides' ticks
