@@ -16,7 +16,7 @@ import RangeField from '@/components/RangeField.vue';
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
 // 24-bit. A palette swatch stores a color that displays as its palette color under the color
 // adjustments (paletteChoices), so every palette color the adjustments can make can be painted with; one
-// they can't shows its palette color, dimmed, and can't be picked. Other swatches show how their color
+// they can't shows its palette color under a "no" sign and can't be picked. Other swatches show how their color
 // displays (adjusted, snapped) and store the color itself.
 // On VECTOR the slots are the shapes' Fill and Stroke (useVectorStyle), each of which can be none, and the selected
 // shapes' Fill and Stroke can each be Solid, Linear or Radial; with a gradient's stop selected (the Node tool), the chip for
@@ -453,9 +453,13 @@ button.swatch {
   cursor: pointer;
 }
 
+/* A color the sliders can't make: its own color, at full strength, under a "no" sign (a circle with a slash), white
+   edged in black so it reads on any color, its lines scaling with the swatch so a small one's color still shows. */
 button.swatch:disabled {
-  opacity: 0.3;
   cursor: not-allowed;
+  opacity: 1; /* not dimmed as other disabled buttons are */
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'><g stroke='%23000' stroke-width='3'><circle cx='8' cy='8' r='5.5'/><path d='M4.1 4.1l7.8 7.8'/></g><g stroke='%23fff' stroke-width='1.5'><circle cx='8' cy='8' r='5.5'/><path d='M4.1 4.1l7.8 7.8'/></g></svg>");
+  background-size: 100% 100%;
 }
 
 button.swatch.selected {
