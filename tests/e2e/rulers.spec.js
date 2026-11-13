@@ -3,7 +3,7 @@
 // back after a reload and with its saved file.
 import { readFile } from 'node:fs/promises';
 import { test, expect } from './support.js';
-import { openApp, store, settled, cellPoint, drag, saveAs, autosaved, imageInput, zeroState } from './support.js';
+import { openApp, store, settled, cellPoint, drag, saveAs, autosaved, imageInput, zeroState, tab } from './support.js';
 
 const ws = (page, read) => store(page, 'workspace', read);
 const guides = (page) => ws(page, (w) => w.guides);
@@ -41,6 +41,38 @@ async function guideAt(page, pos) {
   const row = await cellPoint(page, 0, 10);
   await drag(page, from, { x: await edgeX(page, pos), y: row.y });
 }
+
+// The rulers lie over the view's top and left, so the view gives the art room beside them: scrolled to its
+// top left, the art's first column and row are clear of them, and the triangles marking zero there can be
+// grabbed. Zoomed in, the art is bigger than the view, so nothing centers it away from the rulers.
+test('the art scrolls clear of the rulers, and its zero triangles at the top left drag', async ({ page }) => {
+  await openApp(page);
+  await handWithRulers(page);
+  await store(page, 'workspace', (w) => w.setAnsiZoom(4));
+  const view = scroller(page);
+  await expect.poll(() => view.evaluate((el) => el.scrollWidth > el.clientWidth && el.scrollHeight > el.clientHeight)).toBe(true);
+  await view.evaluate((el) => { el.scrollLeft = 0; el.scrollTop = 0; });
+  const art = await page.locator('.ansi-editor .display').boundingBox();
+  const top = await page.locator('.ruler.top').boundingBox(), left = await page.locator('.ruler.left').boundingBox();
+  expect(art.x).toBeGreaterThanOrEqual(left.x + left.width);
+  expect(art.y).toBeGreaterThanOrEqual(top.y + top.height);
+
+  const middle3 = (await cellPoint(page, 0, 3)).y, edge3 = middle3 - (middle3 - art.y) / 7;   // row 3's middle, its top edge
+  await drag(page, { x: await edgeX(page, 0), y: top.y + 4 }, { x: await edgeX(page, 5), y: middle3 });
+  await drag(page, { x: left.x + 4, y: art.y + 1 }, { x: await edgeX(page, 2), y: edge3 });
+  expect(await ws(page, (w) => w.rulerZero)).toEqual({ x: 5, y: 3 });
+
+  // PIXEL pads the art by less than a ruler once the art is three times the view.
+  await store(page, 'project', (p) => p.updateCols(300));
+  await tab(page, 'PIXEL').click();
+  await store(page, 'workspace', (w) => w.setEditZoom(16));
+  const pixelView = page.locator('.pixel-display');
+  await expect.poll(async () => (await pixelView.boundingBox()).width).toBe(300 * 16);
+  await page.locator('article[tabindex="0"]:has(.pixel-display)').evaluate((el) => { el.scrollLeft = 0; el.scrollTop = 0; });
+  const pixels = await pixelView.boundingBox();
+  expect(pixels.x).toBeGreaterThanOrEqual(left.x + left.width);
+  expect(pixels.y).toBeGreaterThanOrEqual(top.y + top.height);
+});
 
 test('with the Hand, a guide drags out of the left ruler, moves, and goes back onto it', async ({ page }) => {
   await openApp(page);
