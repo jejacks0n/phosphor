@@ -519,6 +519,10 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
         </template>
       </div>
+      <div v-if="activeTool.id === 'hand'" class="tool-setting-group">
+        <div class="divider"/>
+        <button class="text" :title="t('tools.hand.clearGuidesTitle')" :disabled="!workspace.guides.length" @click="workspace.clearGuides()">{{ t('tools.hand.clearGuides') }}</button>
+      </div>
       <div v-if="recolored" class="tool-setting-group">
         <div class="divider"/>
         <template v-if="workspace.editorTab === 'output'">
