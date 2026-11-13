@@ -29,7 +29,6 @@ const leftRuler = useTemplateRef('left');
 
 const TOP = 20, LEFT = 30;   // the rulers' thickness, in CSS px
 const NEAR_ZERO = 8;         // how close to a triangle a press grabs zero
-const GUIDE_COLOR = '#22e3ff';
 
 const moved = ref(0);   // the view scrolled, resized or zoomed, or the theme changed: everything is placed again
 const bump = () => { moved.value++; };
@@ -221,7 +220,7 @@ function paint(canvas, axis) {
   ctx.textBaseline = 'middle';
   ctx.textAlign = top ? 'center' : 'left';
   for (const { at, text } of marks.labels) top ? ctx.fillText(text, at, 6) : ctx.fillText(text, 2, at);
-  ctx.fillStyle = GUIDE_COLOR;
+  ctx.fillStyle = color('--guide');
   for (const g of lines.value) if (g.pos !== null && (g.axis === 'v') === top) tick(start + g.pos * size, thick);
   const zp = start + z * size;
   ctx.fillStyle = color('--accent-hot');
@@ -278,6 +277,7 @@ watchEffect(() => {
 
 <style scoped>
 div.guide-rulers {
+  --guide: #22e3ff;   /* the guides, their ticks on the rulers and the label dragging one */
   position: fixed;   /* over the view whatever it's scrolled to, as the sharing overlay is */
   z-index: 150;
   overflow: hidden;
@@ -346,7 +346,7 @@ div.guide.h {
 div.guide::after {
   content: "";
   position: absolute;
-  background: #22e3ff;
+  background: var(--guide);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
 }
 div.guide.v::after {
@@ -400,8 +400,8 @@ div.ruler-pill.left {
 div.ruler-drag-pill {
   position: fixed;   /* beside the pointer, even off the view */
   background: #000000;
-  border: 1px solid #22e3ff;
-  color: #22e3ff;
+  border: 1px solid var(--guide);
+  color: var(--guide);
 }
 div.ruler-drag-pill.zeroing {
   border-color: var(--accent-hot);
