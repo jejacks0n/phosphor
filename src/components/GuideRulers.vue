@@ -87,10 +87,13 @@ const pills = computed(() => {
   };
 });
 
-// Where zero is, in the 1-based columns and rows used everywhere else.
+// Where zero is, in the 1-based columns and rows used everywhere else: on one, between two, or at an edge.
 function zeroText(axis, z) {
-  const [on, between] = axis === 'x' ? ['zeroOnColumn', 'zeroBetweenColumns'] : ['zeroOnRow', 'zeroBetweenRows'];
-  return z % 1 ? t(`rulers.${on}`, { n: Math.floor(z) + 1 }) : t(`rulers.${between}`, { a: z, b: z + 1 });
+  const kind = axis === 'x' ? 'Column' : 'Row';
+  if (z % 1) return t(`rulers.zeroOn${kind}`, { n: Math.floor(z) + 1 });
+  if (z === 0) return t(`rulers.zeroBefore${kind}`, { n: 1 });
+  if (z === cellsOf(axis)) return t(`rulers.zeroAfter${kind}`, { n: z });
+  return t(`rulers.zeroBetween${kind}s`, { a: z, b: z + 1 });
 }
 
 // The label beside the pointer while dragging, and the dashed zero lines.
