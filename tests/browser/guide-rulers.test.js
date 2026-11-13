@@ -171,3 +171,23 @@ test('a click on a triangle keeps a zero past the edge', async () => {
   pointer(window, 'pointerup', at.left + 200, 10);
   expect(workspace.rulerZero.x).toBe(30);
 });
+
+test('a double-click on a triangle puts that zero back; on the corner, both', async () => {
+  const { workspace, at } = await mount();
+  workspace.setActiveTool('hand');
+  workspace.setRulerZero('x', 4.5);
+  workspace.setRulerZero('y', 3);
+  await nextTick();
+  const dblclick = (el, clientX, clientY) => el.dispatchEvent(new MouseEvent('dblclick', { clientX, clientY, bubbles: true }));
+  const top = root.querySelector('.ruler.top'), left = root.querySelector('.ruler.left');
+  dblclick(top, at.left + 100, 10);   // away from the triangle: nothing
+  expect(workspace.rulerZero).toEqual({ x: 4.5, y: 3 });
+  dblclick(top, at.left + 45, 10);
+  expect(workspace.rulerZero).toEqual({ x: 0, y: 3 });
+  dblclick(left, 15, at.top + 60);
+  expect(workspace.rulerZero).toEqual({ x: 0, y: 0 });
+  workspace.setRulerZero('x', 4.5);
+  workspace.setRulerZero('y', 3);
+  dblclick(root.querySelector('.ruler-corner'), 15, 10);
+  expect(workspace.rulerZero).toEqual({ x: 0, y: 0 });
+});
