@@ -226,7 +226,9 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Expects: paint covers half cells and shows through each cell's character (Colors only); with Build up on, two strokes
   at 50% make it solid; the color adjustments tint the paint too.
 - Probes: `out-of-order`: hide Layer 2 with its eye and try to paint ("Show the layer to draw on it"); `undo-redo`:
-  undo one stroke, redo it, then paint and check redo is off; `speed`: draw fast scribbles with `qa.frames`.
+  undo one stroke, redo it, then paint and check redo is off; `speed`: draw fast scribbles with `qa.frames`;
+  `extremes`: with a Color list and Saturation at 0, paint on Layer 2 with a swatch that isn't gray and check the Pixel
+  view shows the stroke in the swatch's color, as the ANSI view does.
 - Rated: yes, wants B (the strokes themselves aren't rated), and ] or [ for the brush size
 
 ### 17. Type a caption over it

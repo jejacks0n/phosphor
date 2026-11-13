@@ -1188,7 +1188,8 @@ export default class Renderer {
   get sampleBytes() { return this.#tileBytes; }
 
   // What the PIXEL view shows and the Paint Bucket reads: the output, with every upper layer's pixels (its shapes at grid
-  // resolution, its paint) drawn over it when there are any. Kept, and caught up only over the rect the composes since
+  // resolution, its paint) drawn over it when there are any, snapped to the palette where they cover it, as the output
+  // snaps the lower group's paint (cells keep their blends). Kept, and caught up only over the rect the composes since
   // changed (#shownDirty): an edit on an upper layer costs its own cells here too.
   shownCanvas() {
     if (!this.upper.length || !this.outputCanvas) return this.outputCanvas;
@@ -1202,9 +1203,12 @@ export default class Renderer {
     const ctx = ctx2d(s.canvas), { x, y, w, h } = area;
     ctx.clearRect(x, y, w, h);
     ctx.drawImage(this.outputCanvas, x, y, w, h, x, y, w, h);
+    const palette = this.palette?.length ? this.palette : null, covered = palette && new Uint8Array(w * h); // area pixels an upper layer draws on
     for (const u of this.upper) {
       if (u.kind === 'cells') {
-        if (u.paint?.hasPaint) this.#drawLayerArea(ctx, u.paint, u.params, area);
+        if (!u.paint?.hasPaint) continue;
+        const { data } = this.#drawLayerArea(ctx, u.paint, u.params, area);
+        if (covered) for (let i = 0; i < covered.length; i++) covered[i] ||= data[4 * i + 3];
         continue;
       }
       if (!u.layer?.drawsShapes) continue;
@@ -1215,6 +1219,16 @@ export default class Renderer {
         ctx2d(grid.canvas).putImageData(grid.data, 0, 0);
       }
       ctx.drawImage(grid.canvas, x, y, w, h, x, y, w, h);
+      if (covered) for (let i = 0; i < covered.length; i++) covered[i] ||= grid.data.data[4 * ((y + Math.floor(i / w)) * width + x + (i % w)) + 3];
+    }
+    if (covered?.some(Boolean)) {
+      const image = ctx.getImageData(x, y, w, h), d = image.data;
+      for (let i = 0, o = 0; i < covered.length; i++, o += 4) {
+        if (!covered[i]) continue;
+        const k = paletteIndex(d[o], d[o + 1], d[o + 2], palette);
+        d[o] = palette[k].r; d[o + 1] = palette[k].g; d[o + 2] = palette[k].b;
+      }
+      ctx.putImageData(image, x, y);
     }
     return s.canvas;
   }
