@@ -27,11 +27,14 @@ export function shownZero(zero, cells) {
 }
 
 // The marks of a ruler `length` px long whose cell 0 starts at `start` and whose cells are `size` px:
-// labels on every 10th (and on the 0 character), ticks on 5ths and 10ths at the cell's middle, and
-// ticks on cell edges unless the cells are too narrow to tell apart. Only what is near the ruler.
-export function rulerMarks({ cells, zero, size, start, length }) {
+// labels on every 10th (and on the 0 character), or every 20th, 50th, 100th ... when every 10th would
+// be closer than `gap` px; ticks on 5ths and 10ths at the cell's middle, and ticks on cell edges unless
+// the cells are too narrow to tell apart. Only what is near the ruler.
+export function rulerMarks({ cells, zero, size, start, length, gap = 28 }) {
   const near = (px) => px >= -size && px <= length + size;
   const marks = { edges: [], fives: [], tens: [], labels: [] };
+  let every = 10;   // 10, 20, 50, 100, 200, ...
+  for (let i = 0; every * size < gap && every < cells; i++) every = [2, 5, 10][i % 3] * 10 ** (Math.floor(i / 3) + 1);
   if (size >= 3) {
     for (let e = 0; e <= cells; e++) {
       const px = start + e * size;
@@ -45,7 +48,7 @@ export function rulerMarks({ cells, zero, size, start, length }) {
     if (count === 0) marks.labels.push({ at, text: '0' });
     else if (count % 10 === 0) {
       marks.tens.push(at);
-      marks.labels.push({ at, text: guideLabel(count) });
+      if (count % every === 0) marks.labels.push({ at, text: guideLabel(count) });
     } else if (count % 5 === 0) marks.fives.push(at);
   }
   return marks;

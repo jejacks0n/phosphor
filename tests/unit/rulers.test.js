@@ -57,3 +57,20 @@ test('rulerMarks: only what is on screen', () => {
   expect(Math.min(...m.edges)).toBeGreaterThanOrEqual(-10);
   expect(Math.max(...m.edges)).toBeLessThanOrEqual(210);
 });
+
+test('rulerMarks: zoomed out, labels step to every 20th, 50th, 100th ... so they stay gap px apart, and 0 stays labeled', () => {
+  const texts = (size, gap) => rulerMarks({ cells: 300, zero: 100.5, size, start: 0, length: 300 * size, gap }).labels.map((l) => l.text);
+  expect(texts(3, 28)).toContain('10');               // 30 px apart: every 10th
+  expect(texts(2, 28)).not.toContain('10');           // 20 px: every 20th
+  expect(texts(2, 28)).toEqual(expect.arrayContaining(['−100', '−20', '0', '20', '40', '180']));
+  expect(texts(1, 28)).toEqual(['−100', '−50', '0', '50', '100', '150']);   // 10 px: every 50th
+  expect(texts(0.5, 28)).toEqual(['−100', '0', '100']);                       // 5 px: every 100th
+  expect(texts(0.25, 28)).toEqual(['0']);                                     // 2.5 px: every 200th, and 0
+  expect(texts(1.5, 14)).toContain('10');             // the left ruler's characters are taller: 14 px is enough
+  expect(texts(1, 14)).toEqual(expect.arrayContaining(['−20', '0', '20']));
+  expect(texts(1, 14)).not.toContain('10');
+});
+
+test('rulerMarks: characters with no width still end', () => {
+  expect(rulerMarks({ cells: 80, zero: 0, size: 0, start: 0, length: 100 }).labels).toEqual([]);
+});

@@ -205,7 +205,7 @@ function paint(canvas, axis) {
     band(start + hovered * size, size);
     ctx.globalAlpha = 1;
   }
-  const marks = rulerMarks({ cells, zero: z, size, start, length });
+  const marks = rulerMarks({ cells, zero: z, size, start, length, gap: top ? 28 : 14 });   // a row's label needs less room than a column's
   ctx.fillStyle = color('--text-muted');
   for (const p of marks.edges) tick(p, 4);
   for (const p of marks.fives) tick(p, thick * 0.38);

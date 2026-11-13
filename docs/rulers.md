@@ -10,8 +10,9 @@ choice) and a **Clear guides** button, which removes every guide on the drawing 
 points where they are. With Rulers off, the rulers and the guides are hidden, not lost.
 
 The top ruler counts columns and the left one counts rows. Ticks mark every character's edge, longer
-at every fifth and tenth from zero, with a number at zero and every tenth. A purple label follows the
-pointer over the art with that character's count, and a pink triangle on each ruler marks zero.
+at every fifth and tenth from zero, with a number at zero and every tenth (zoomed out, every 20th,
+50th or 100th, so the numbers don't crowd). A purple label follows the pointer over the art with that
+character's count, and a pink triangle on each ruler marks zero.
 
 ## Moving things
 
