@@ -11,6 +11,8 @@ How Phosphor works, for people drawing with it.
   convert with it, selecting, moving, scaling and rotating them.
 - [Animation](animation.md) — frames, the bar under the canvas, what carries from one frame to the next,
   the ghost, timing, and exporting as animated .ans, .cast and .gif.
+- [Rulers and guides](rulers.md) — counting characters along the top and left, guides dragged out of the
+  rulers, moving zero, and what is kept with the drawing.
 - [Social](social.md) — SOCIAL, in the side panel and its boxes: the lobby, accounts and guests, hosting a room and watching
   someone draw, chat, blocking and reporting, and what isn't in this version yet.
 
