@@ -261,6 +261,10 @@ function onDrop(event) {
   workspaceStore.artDrop = { file, at: pos && cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows) };
 }
 
+// The rulers lie over the view's top and left; the content gets room beside them (div.canvas-viewport.ruled),
+// so the art's first column and row scroll clear of them.
+const ruled = computed(() => workspaceStore.rulers && !!props.unit);
+
 // Padded layout: room to pan the content well past each edge.
 const viewportWidth = ref(0);
 const viewportHeight = ref(0);
@@ -357,8 +361,8 @@ defineExpose({ centerContent });
       <ArtistCursors v-if="drawingStore.showCursors" :root="rootRef" :display="unref(display)" :unit="unit"/>
       <PauseLayer v-if="drawingStore.paused"/>
     </div>
-    <GuideRulers v-if="workspaceStore.rulers && unit" :box="overArt" :root="rootRef" :display="unref(display)" :unit="unit" :coords-at="coordsAt" :hover="hoverCell"/>
-    <div class="canvas-viewport" :class="{ padded: !!contentSize }" :style="viewportStyle">
+    <GuideRulers v-if="ruled" :box="overArt" :root="rootRef" :display="unref(display)" :unit="unit" :coords-at="coordsAt" :hover="hoverCell"/>
+    <div class="canvas-viewport" :class="{ padded: !!contentSize, ruled }" :style="viewportStyle">
       <div class="canvas-container">
         <slot/>
         <div class="tool-preview" :style="previewStyle"></div>
@@ -401,6 +405,17 @@ div.canvas-container {
   user-select: none;
   -webkit-user-select: none;
   touch-action: none; /* Crucial: prevent browser default touch handling inside container */
+}
+
+/* As thick as the rulers (GuideRulers.vue). Inside the full-width box (border-box), so art that fits shows
+   no scrollbar; outside the padded layout's sized one, which keeps its room to pan past each edge. */
+div.canvas-viewport.ruled {
+  box-sizing: border-box;
+  padding: 20px 0 0 30px;
+}
+
+div.canvas-viewport.padded.ruled {
+  box-sizing: content-box;
 }
 
 div.canvas-viewport.padded div.canvas-container {
