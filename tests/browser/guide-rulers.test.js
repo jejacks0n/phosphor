@@ -155,3 +155,19 @@ test('a press on a ruler or a guide takes the focus to the view', async () => {
     field.remove();
   }
 });
+
+// Zero past the drawing's edge is kept until it grows back: a press and release on its triangle, at the edge,
+// doesn't move it there.
+test('a click on a triangle keeps a zero past the edge', async () => {
+  const { project, workspace, at } = await mount();
+  workspace.setActiveTool('hand');
+  project.updateCols(40);
+  workspace.setRulerZero('x', 30);
+  project.updateCols(20);
+  expect(project.cols).toBe(20);
+  await nextTick();
+  const top = root.querySelector('.ruler.top');
+  pointer(top, 'pointerdown', at.left + 200, 10);
+  pointer(window, 'pointerup', at.left + 200, 10);
+  expect(workspace.rulerZero.x).toBe(30);
+});
