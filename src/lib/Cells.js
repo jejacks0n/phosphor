@@ -269,12 +269,13 @@ export const showsChar = (cell) => cell.fg.hex !== cell.bg.hex;
 export const isSolidGlyph = (char) => coverageOf(char).every(c => c === 0 || c === 1);
 
 // Paint over a cell: a textured character stays, the paint tinting the background (top half) and
-// foreground (bottom half), the way image cells are built (buildCell); a solid or empty one becomes
-// ▄, each half the glyph's own color under the paint. Unpainted cells are returned as is.
+// foreground (bottom half), the way image cells are built (buildCell); a solid or empty one, or one
+// that doesn't show (drawn in its own background color), becomes ▄, each half the glyph's own color
+// under the paint. Unpainted cells are returned as is.
 export function coverCell(cell, paintTop, paintBottom, { renderStyle, palette }) {
   const aTop = paintTop?.a ?? 0, aBottom = paintBottom?.a ?? 0;
   if (!aTop && !aBottom) return cell;
-  const solid = isSolidGlyph(cell.char);
+  const solid = isSolidGlyph(cell.char) || !showsChar(cell);
   const [ht, hb] = solid ? halfColors(cell) : [cell.bg, cell.fg];
   const snap = (p) => (palette && palette.length ? nearestColor(p, palette) : p);
   const top = snap(aTop ? mix(ht, paintTop, aTop) : ht);

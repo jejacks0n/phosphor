@@ -9,7 +9,7 @@ import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { cellIndex, cellsOfPixels } from '@/lib/Cells.js';
+import { cellIndex, cellsOfPixels, showsChar } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -31,14 +31,28 @@ export const editLayerActions = {
   // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity,
   // stacking or not (Stack opacity). blockChars (the Pencil's and Brush's Half-block, ANSI view)
   // makes each cell painted a ▄ first, which the paint colors half by half, instead of showing through
-  // the cell's own character.
+  // the cell's own character; 'plain' (their Colors only, ANSI view) only the cells that show no character (a blank
+  // canvas's, in their own background color) as the stroke first reaches them, so the paint doesn't bring a hidden one
+  // out (a cell the stroke itself paints into one color stays as it was).
   paintStroke(pixels, color, { blockChars = false } = {}) {
     const workspace = useWorkspaceStore();
     const { r, g, b } = hex2rgb(color ?? workspace.editFgColor);
     const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill
     const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows);
     if (blockChars) {
-      const cells = cellsOfPixels(inGrid, cols, rows).filter(({ col, row }) => this.editCellAt(col, row)?.char !== '▄');
+      let cells = cellsOfPixels(inGrid, cols, rows).filter(({ col, row }) => this.editCellAt(col, row)?.char !== '▄');
+      if (blockChars === 'plain' && cells.length) {
+        if (!refusedNoCells(this, { toast: false })) {
+          this.ensureLayer();
+          this.beginEdit();
+        }
+        const seen = this._stroke && (this._stroke.plainSeen ??= new Set());
+        cells = !seen ? [] : cells.filter(({ col, row }) => {
+          const key = cellKey(col, row), first = !seen.has(key), cell = this.cells[cellIndex(col, row, cols)];
+          seen.add(key);
+          return first && !!cell && !showsChar(cell);
+        });
+      }
       this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
     }
     this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);

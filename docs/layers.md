@@ -335,8 +335,8 @@ The edit layer is everything you draw: typed text (Edit Mode), shapes, pasted ce
 
 Paint covers half-cells, so it shows through a cell's character: paint on the top half colors the
 cell's background, paint on the bottom half its foreground. A cell whose character is solid or
-empty (a space, █, ▀ or ▄) has nothing to show through, so under paint it becomes a ▄ half-block
-instead. The same goes for the base layer's pinned characters (an opened file's, or ones Merge down
+empty (a space, █, ▀ or ▄), or doesn't show (drawn in its own background color), has nothing to show
+through, so under paint it becomes a ▄ half-block instead. The same goes for the base layer's pinned characters (an opened file's, or ones Merge down
 left), shown in the colors they show. Typing or drawing cells (a line box, a Character or Full block shape) over paint replaces
 the paint in those cells, so what you wrote shows; with the background set to None, each cell keeps
 the background color the paint gave it, as it keeps the picture's or an earlier cell's.
@@ -346,7 +346,9 @@ is chosen again with the paint in it, as it would be after Merge down
 cell, so on its own it doesn't make quadrants or the rising blocks.
 
 The Pencil and Brush paint over each cell's own character, which shows through: **Colors only**,
-the default in their **Draw with** (ANSI view). With **Half-block** each cell they paint becomes a ▄
+the default in their **Draw with** (ANSI view). A cell that shows no character yet (a blank canvas's
+black, or the lines added when it grows) becomes a ▄ as they paint it, so a click there paints a plain
+half-block, not the character the converter put there unseen. With **Half-block** each cell they paint becomes a ▄
 instead, and the paint colors its two halves, so you draw clean half-blocks. The half you don't
 paint keeps its color.
 
