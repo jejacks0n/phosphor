@@ -123,6 +123,13 @@ const FRAGMENT_SHADER = `
         return color;
     }
 
+    // A neighbor as this pixel is adjusted: 8-bit under a palette, then the color adjustments.
+    vec3 adjustedAt(vec2 at) {
+        vec3 c = texture2D(uImage, at).rgb;
+        if (uUsePalette && uPaletteSize > 0.0) c = round8(c);
+        return applyCSSFilters(c);
+    }
+
     void main() {
         vec2 texel = 1.0 / uResolution;
 
@@ -238,13 +245,14 @@ const FRAGMENT_SHADER = `
             if (uUsePalette && uPaletteSize > 0.0) color = round8(color);
             color = applyCSSFilters(color);
 
-            // Sharpen (Final pass only)
+            // Sharpen (Final pass only): against the neighbors adjusted as this pixel is, so a flat area stays
+            // as the adjustments make it (raw neighbors would add the adjustment again, four times over).
             if (uSharpen > 0.0) {
-                vec3 neighborSum = 
-                    texture2D(uImage, vTexCoord + vec2(0.0,  texel.y)).rgb +
-                    texture2D(uImage, vTexCoord + vec2(0.0, -texel.y)).rgb +
-                    texture2D(uImage, vTexCoord + vec2( texel.x, 0.0)).rgb +
-                    texture2D(uImage, vTexCoord + vec2(-texel.x, 0.0)).rgb;
+                vec3 neighborSum =
+                    adjustedAt(vTexCoord + vec2(0.0,  texel.y)) +
+                    adjustedAt(vTexCoord + vec2(0.0, -texel.y)) +
+                    adjustedAt(vTexCoord + vec2( texel.x, 0.0)) +
+                    adjustedAt(vTexCoord + vec2(-texel.x, 0.0));
                 color = color * (1.0 + 4.0 * uSharpen) - neighborSum * uSharpen;
             }
         }
