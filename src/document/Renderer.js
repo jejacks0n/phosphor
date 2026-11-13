@@ -23,8 +23,8 @@
  * the picture moved into it keeps every processed pixel (processed: the picture with its effects,
  * before the color adjustments and the palette), and it's drawn the way the pipeline draws the
  * picture: adjusted, snapped to CGA/VGA, then averaged down to the grid. It looks the same wherever
- * it goes. (Sharpen is the exception: the shader sharpens after the adjustments, from neighbors
- * that aren't adjusted, so a sharpened block can differ a little.)
+ * it goes. (Sharpen is the exception: the shader sharpens the adjusted picture, so at a sharpened
+ * edge a moved block, adjusted after it was sharpened, can differ a little.)
  */
 import { processImage, processedImage, adjustedPixels, getPaletteColors, workingScale, fittingScale } from '../lib/ImageProcessor.js';
 import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';

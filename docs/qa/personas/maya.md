@@ -169,9 +169,12 @@ the help (the i beside a label) for Choose characters, and try the same settings
 - Rated: yes, wants Tab to Posterize then the arrows
 
 ### 11. Check the order holds
-- Does: with Blur up, turns Edges on, then Sharpen; then folds Adjustments and Image filters by their titles.
-- Expects: Edges traces the blurred picture (Blur is "Applied before the other effects"); a folded section says how
-  many of its sliders are on ("2 on"), and stays folded across a reload in this browser.
+- Does: with Blur up and Brightness raised, turns Edges on, then Sharpen; then folds Adjustments and Image filters by
+  their titles.
+- Expects: Edges traces the blurred picture (Blur is "Applied before the other effects"); Sharpen crisps only the edges
+  (flat areas keep the colors Brightness gave them, and every color the picture shows is one the color picker can
+  paint with); a folded section says how many of its sliders are on ("2 on"), and stays folded across a reload in this
+  browser.
 - Probes: `interrupt`: reload with sections folded and check they come back folded; `back-out`: press Reset on
   Adjustments, then undo it; `again`: Reset all twice.
 - Rated: yes, wants a key to fold a section from its title (Enter or Space on the focused title)
