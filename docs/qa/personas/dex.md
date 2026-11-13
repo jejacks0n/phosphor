@@ -330,6 +330,13 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Probes: `again`: export twice and compare the two files' bytes (they should be the same).
 - Rated: yes, wants a key for Export .ans
 
+### 29. Find the middle of my logo
+- Does: with the Hand, turns on Rulers, drags zero to the logo's middle character, drags a guide to each side and
+  checks they read the same number ([Rulers and guides](../../rulers.md)).
+- Expects: the two guides read the same number with opposite signs, and nothing marks the drawing unsaved.
+- Probes: `extremes`: a 300-column drawing zoomed out.
+- Rated: yes
+
 **Free time:** he'd try Flatten's Draw on top of it, open `past-the-edge.ans` with Draw on top and fix its second row,
 try the `.xb` and `.tnd` files from the packs, and check his keyboard path for everything he did today in the shortcut
 list.
