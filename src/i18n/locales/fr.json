@@ -612,6 +612,7 @@
     "inThisDrawing": "Dans ce dessin",
     "painted": "{arrow} Peintes ({count})",
     "none": "Aucun",
+    "cantPaint": "{hex} : les curseurs, tels qu'ils sont, ne peuvent pas donner cette couleur",
     "noneTitle": "Aucun : conserve la couleur sous-jacente",
     "recentTitle": "Récente : {hex}"
   },

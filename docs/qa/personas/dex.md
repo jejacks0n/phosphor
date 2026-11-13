@@ -142,7 +142,8 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
   picks and stays, Escape closes; with CGA every swatch paints its CGA color; X swaps (in Edit Mode it types, so he uses
   Shift+Cmd+X there).
 - Probes: `back-out`: open the box and press Escape, then check where focus is and that tool keys work; `speed`: hold
-  Alt+↓ for two seconds.
+  Alt+↓ for two seconds; `extremes`: with Saturation at 0, open the box again: the colors that aren't gray show dimmed,
+  say why when hovered, can't be picked, and the arrows and Alt+↓ go past them to the grays.
 - Rated: yes, wants Alt+F, then Enter
 
 ### 8. Pick a color off the art

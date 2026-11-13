@@ -154,7 +154,7 @@ export function getEffectiveColor(hex, params, palette = null) {
 // The color picker's swatches: for each palette color, a stored color that displays as it under the
 // color adjustments, so every palette color can be painted with. The palette color itself when it
 // displays as itself (always, with the adjustments neutral); else the color nearest it, from a
-// grid of colors, that does; else (the adjustments can't make it) the palette color itself.
+// grid of colors, that does; else null: the adjustments can't make it, and nothing paints as it.
 // ponytail: an 8-step grid (33³ colors); a finer one if a narrow adjustment ever misses a color.
 export function paletteChoices(params, palette) {
   const key = (hex) => hex.toLowerCase();
@@ -175,7 +175,17 @@ export function paletteChoices(params, palette) {
     const d = (grid[i] - target.r) ** 2 + (grid[i + 1] - target.g) ** 2 + (grid[i + 2] - target.b) ** 2;
     if (!(best.get(shown)?.d <= d)) best.set(shown, { hex: rgb2hex({ r: grid[i], g: grid[i + 1], b: grid[i + 2] }), d });
   }
-  return choices.map((hex, i) => hex ?? best.get(key(palette[i].hex))?.hex ?? palette[i].hex);
+  return choices.map((hex, i) => hex ?? best.get(key(palette[i].hex))?.hex ?? null);
+}
+
+// Alt+Up/Down's next swatch color: delta steps on from the palette index from, past the colors nothing paints as
+// (paletteChoices' nulls); null when there's none.
+export function stepChoice(choices, from, delta) {
+  for (let n = 1; n <= choices.length; n++) {
+    const next = choices[(((from + n * delta) % choices.length) + choices.length) % choices.length];
+    if (next) return next;
+  }
+  return null;
 }
 
 // Several stored colors ([r, g, b] each) through the adjustments and the palette at once: what each shows, as flat RGB

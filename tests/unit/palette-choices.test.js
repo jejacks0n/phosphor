@@ -2,7 +2,7 @@
 // color that displays as that palette color, so every color in the palette can be painted with.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { paletteChoices, effectiveColor, storedShowingAs } from '../../src/lib/PixelTransforms.js';
+import { paletteChoices, stepChoice, effectiveColor, storedShowingAs } from '../../src/lib/PixelTransforms.js';
 import { parseColorList, PALETTES, hex2rgb, rgb2hex } from '../../src/lib/ColorUtils.js';
 
 const neutral = { brightness: 100, contrast: 100, saturation: 100, hue: 0, invert: 0, colorize: '#ff00ff', colorizeStrength: 0 };
@@ -24,10 +24,14 @@ test('Swatches: with the adjustments moved, each swatch still paints its palette
   paletteChoices(params, PALETTES.cga).forEach((hex, i) => assert.equal(shows(hex, params, PALETTES.cga), PALETTES.cga[i].hex));
 });
 
-test('Swatches: a palette color no color can display as is offered as itself', () => {
+test('Swatches: a palette color no color can display as has no swatch color, and Alt+arrows step past it', () => {
   const palette = parseColorList('#FFFFFF #E03020 #808080 #000000');
   const params = { ...neutral, saturation: 0 }; // gray only: red is out of reach
-  assert.equal(paletteChoices(params, palette)[1], '#E03020');
+  const choices = paletteChoices(params, palette);
+  assert.equal(choices[1], null);
+  assert.equal(stepChoice(choices, 0, 1), choices[2]); // from white, down past red to gray
+  assert.equal(stepChoice(choices, 2, -1), choices[0]); // and back up past it
+  assert.equal(stepChoice([null, null], 0, 1), null); // nothing to step to
 });
 
 // A merge under Color ASCII with a slider off its default asks for a stored color that shows as the halves' average.

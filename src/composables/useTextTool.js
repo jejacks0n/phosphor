@@ -1,7 +1,7 @@
 import { onMounted, onBeforeUnmount, watch } from 'vue';
 import { textKeyAction, moveCursor, typedText } from '@/lib/TextKeys';
 import { charRowsOf } from '@/lib/Cells';
-import { effectiveColor, paletteChoices } from '@/lib/PixelTransforms';
+import { effectiveColor, paletteChoices, stepChoice } from '@/lib/PixelTransforms';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { toast } from '@/composables/useToast';
 import { cellWidth } from '@/lib/CharWidth';
@@ -70,13 +70,14 @@ export function useTextTool(project, workspace, textInput) {
   };
 
   // Alt+Up/Down: the slot's color steps through the active palette (nothing to step in 24-bit), from
-  // the palette color it displays as, to the next one's swatch color (as the color picker offers it).
+  // the palette color it displays as, to the next one's swatch color (as the color picker offers it),
+  // past the ones the adjustments can't make.
   const stepColor = (slot, delta) => {
     const palette = project.activePalette;
     if (!palette || !palette.length) return;
     const { c } = effectiveColor(slot === 'fg' ? workspace.editFgColor : workspace.editBgColor, project, palette);
-    const next = paletteChoices(project, palette)[(c + delta + palette.length) % palette.length];
-    workspace.setColor(slot, next.toLowerCase());
+    const next = stepChoice(paletteChoices(project, palette), c, delta);
+    if (next) workspace.setColor(slot, next.toLowerCase());
   };
 
   const apply = (action) => {

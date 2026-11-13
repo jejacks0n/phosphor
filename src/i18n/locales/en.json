@@ -612,6 +612,7 @@
     "inThisDrawing": "In this artwork",
     "painted": "{arrow} Painted ({count})",
     "none": "None",
+    "cantPaint": "{hex}: the sliders as they are can't make this color",
     "noneTitle": "None: keep underlying color",
     "recentTitle": "Recent: {hex}"
   },

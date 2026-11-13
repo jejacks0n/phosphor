@@ -15,8 +15,9 @@ import RangeField from '@/components/RangeField.vue';
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
 // 24-bit. A palette swatch stores a color that displays as its palette color under the color
-// adjustments (paletteChoices), so every palette color can be painted with; other swatches show
-// how their color displays (adjusted, snapped) and store the color itself.
+// adjustments (paletteChoices), so every palette color the adjustments can make can be painted with; one
+// they can't shows its palette color, dimmed, and can't be picked. Other swatches show how their color
+// displays (adjusted, snapped) and store the color itself.
 // On VECTOR the slots are the shapes' Fill and Stroke (useVectorStyle), each of which can be none, and the selected
 // shapes' Fill and Stroke can each be Solid, Linear or Radial; with a gradient's stop selected (the Node tool), the chip for
 // the gradient it edits (gradientSlot) is that stop's color.
@@ -57,11 +58,11 @@ const isNone = computed(() => (vector.value ? !style.value(SHAPE_SLOTS[props.slo
 // shape can go without either.
 const offersNone = computed(() => !stop.value && (vector.value || props.slotName === 'bg' || ansiView.value));
 
-// The palette as the colors its swatches store.
+// The palette as the colors its swatches store, or (paints false) a palette color nothing paints as.
 const sections = computed(() => {
   const palette = project.activePalette ?? [];
   const choices = paletteChoices(project, palette);
-  return swatchSections(project.quantize, palette.map((p, i) => ({ ...p, hex: choices[i] })));
+  return swatchSections(project.quantize, palette.map((p, i) => ({ ...p, hex: choices[i] ?? p.hex, paints: !!choices[i] })));
 });
 // Colors every cells layer's edit cells use, and (folded away until asked for) the other colors in their paint.
 // Paint is read when the popover opens: the layers aren't reactive, and don't change while this is open.
@@ -144,7 +145,7 @@ const onArrow = (event) => {
   if (event.target.closest?.('.stroke-settings') && event.target.tagName === 'INPUT') return event.stopPropagation();
   event.preventDefault();
   event.stopPropagation();
-  const controls = [...root.value.querySelectorAll('button, input')];
+  const controls = [...root.value.querySelectorAll('button:not(:disabled), input')];
   const from = document.activeElement;
   if (!controls.includes(from)) return controls[0]?.focus();
   const next = nearestInDirection(from.getBoundingClientRect(), controls.map((el) => el.getBoundingClientRect()), event.key);
@@ -190,9 +191,10 @@ onBeforeUnmount(() => {
           v-for="color in section.colors"
           :key="color.hex + color.c"
           class="swatch"
-          :class="{ selected: !isNone && current.toLowerCase() === color.hex.toLowerCase() }"
-          :style="{ backgroundColor: shown(color.hex) }"
-          :title="color.hex"
+          :class="{ selected: color.paints && !isNone && current.toLowerCase() === color.hex.toLowerCase() }"
+          :style="{ backgroundColor: color.paints ? shown(color.hex) : color.hex }"
+          :title="color.paints ? color.hex : t('colors.cantPaint', { hex: color.hex.toLowerCase() })"
+          :disabled="!color.paints"
           @click="choose(color.hex.toLowerCase())"
       ></button>
     </div>
@@ -449,6 +451,11 @@ button.swatch {
   border: 1px solid var(--border-light);
   border-radius: 2px;
   cursor: pointer;
+}
+
+button.swatch:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 button.swatch.selected {
