@@ -1636,8 +1636,12 @@
   "rulers": {
     "zeroOnColumn": "0 sur la colonne {n}",
     "zeroBetweenColumns": "0 entre les colonnes {a} et {b}",
+    "zeroBeforeColumn": "0 avant la colonne {n}",
+    "zeroAfterColumn": "0 après la colonne {n}",
     "zeroOnRow": "0 sur la ligne {n}",
     "zeroBetweenRows": "0 entre les lignes {a} et {b}",
+    "zeroBeforeRow": "0 avant la ligne {n}",
+    "zeroAfterRow": "0 après la ligne {n}",
     "remove": "Retirer",
     "cornerTitle": "Faites glisser pour placer les deux zéros. Double-cliquez pour les remettre en haut à gauche.",
     "guideTitle": "Faites glisser pour déplacer, ou sur une règle pour retirer"

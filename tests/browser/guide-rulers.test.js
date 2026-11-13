@@ -209,3 +209,21 @@ test('only the pointer that pressed moves and lets go', async () => {
   touch(window, 'pointerup', 1, at.left + 70, at.top + 50);
   expect(workspace.guides[0].pos).toBe(7);
 });
+
+test('zero dragged to an edge reads before the first column or after the last', async () => {
+  const { workspace, at } = await mount();
+  workspace.setActiveTool('hand');
+  await nextTick();
+  pointer(root.querySelector('.ruler.top'), 'pointerdown', at.left + 1, 10);
+  const pill = async (x) => {
+    pointer(window, 'pointermove', x, 10);
+    await nextTick();
+    return root.querySelector('.ruler-drag-pill').textContent;
+  };
+  expect(await pill(at.left + 2)).toBe('0 before column 1');
+  expect(await pill(at.left + 100)).toBe('0 between columns 10 and 11');
+  expect(await pill(at.left + 105)).toBe('0 on column 11');
+  expect(await pill(at.left + 199)).toBe('0 after column 20');
+  pointer(window, 'pointerup', at.left + 199, 10);
+  expect(workspace.rulerZero.x).toBe(20);
+});
