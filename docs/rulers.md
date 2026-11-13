@@ -27,12 +27,12 @@ Guides and zero points snap to a character's edge or its middle.
 
 ## How the count reads
 
-Zero on an edge: the characters either side are 1 and -1. Zero in the middle of a character: that
-character is 0, and the ones beside it are 1 and -1. A guide's number is its distance from zero, such
+Zero on an edge: the characters either side are 1 and −1. Zero in the middle of a character: that
+character is 0, and the ones beside it are 1 and −1. A guide's number is its distance from zero, such
 as 12 or 12½.
 
-- A 41-character-wide emblem with zero on its middle character reads -20 ... 0 ... 20, so a guide at
-  each side reads 20 and -20.
+- A 41-character-wide emblem with zero on its middle character reads −20 ... 0 ... 20 across its characters. A guide on each side edge
+  reads 20½ and −20½, and one through the middle of an outer character reads 20 and −20.
 - A 28-character-wide platform has no middle character: its middle is the edge between the 14th and
   15th, and a guide there is 14 characters in from either side.
 
