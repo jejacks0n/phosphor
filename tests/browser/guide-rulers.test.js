@@ -134,3 +134,24 @@ test('rulers off hides the guides', async () => {
   await nextTick();
   expect(root.querySelector('.guide')).toBe(null);
 });
+
+// A press on a ruler or a guide is kept from the view, which would take the focus itself: the view takes it here,
+// or a toolbar field (the Rulers checkbox just clicked) would keep it and the tool keys after the drag do nothing.
+test('a press on a ruler or a guide takes the focus to the view', async () => {
+  const { workspace } = await mount();
+  workspace.setActiveTool('hand');
+  workspace.addGuide('v', 3);
+  root.tabIndex = 0;
+  const field = document.body.appendChild(Object.assign(document.createElement('input'), { type: 'checkbox' }));
+  try {
+    await nextTick();
+    for (const el of [root.querySelector('.ruler.left'), root.querySelector('.guide.v')]) {
+      field.focus();
+      press(el);
+      pointer(window, 'pointerup', 0, 0);
+      expect(document.activeElement).toBe(root);
+    }
+  } finally {
+    field.remove();
+  }
+});
