@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readProject, writeProject, fileStem, timestamped, isProjectFile, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
+import { readProject, writeProject, fileStem, timestamped, isProjectFile, goodFileId, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
 import { EMPTY_BASE, withPins } from '../../src/document/baseRecords.js';
 import { MAX_COLS, maxRowsBeside } from '../../src/lib/Cells.js';
 
@@ -250,4 +250,12 @@ test('bad chars in a stack are refused', async () => {
   for (const [name, edit] of Object.entries(cases)) {
     await assert.rejects(readProject(await editedStack(edit)), /Not a valid Phosphor project file/, name);
   }
+});
+
+test('a file id is kept when it is a short plain id, dropped otherwise', async () => {
+  const idOf = async (fileId) => (await readProject(await writeProject({ settings: { cols: 80, fileId }, imageBuffer: new ArrayBuffer(4), editCells: new Map() }))).settings.fileId;
+  assert.equal(await idOf('3f2a-b_9'), '3f2a-b_9');
+  for (const bad of ['../x', '', 42, 'a'.repeat(65)]) assert.equal(await idOf(bad), undefined, String(bad));
+  assert.equal(goodFileId('a'.repeat(64)), true);
+  assert.equal(goodFileId(null), false);
 });

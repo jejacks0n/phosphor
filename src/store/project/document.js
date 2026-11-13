@@ -64,10 +64,10 @@ function newLayers(project) {
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
 // A stack file's layers (stack) come with each cells layer's parts (layerParts) and paint (layerPaint), by id.
-function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, stack, layerParts, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels, layerPaint }, { filename, documentId }) {
+function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, stack, layerParts, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels, layerPaint }, { filename, documentId, fileId }) {
   const own = this.layers; // replaceImage starts them over
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
-  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }) });
+  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
   try {
     // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
     // files: paint at the image's size or the grid's.
@@ -262,6 +262,7 @@ export const documentActions = {
     this.activePalette = [];
     this.$patch({
       documentId: randomId(),
+      fileId: randomId(), // a new drawing's; a file opened brings its own in the patch
       fit: null,
       paintScale: null,
       baseScale: null, // a loaded file's comes in the patch
@@ -299,6 +300,7 @@ export const documentActions = {
       image: null,
       imageBuffer: null,
       documentId: null,
+      fileId: null,
       savedToFile: false,
       fit: null,
       filename: null,
@@ -343,7 +345,9 @@ export const documentActions = {
     if (!this.image || !this.imageBuffer) return;
     this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
-    const blob = await writeProject({ imageBuffer: this.imageBuffer, ...await this.projectParts() });
+    const parts = await this.projectParts();
+    // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too).
+    const blob = await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } });
     this.rename(filename); // once there's a file to give the name to
     downloadBlob(blob, `${this.filename}${PROJECT_EXTENSION}`);
     this.markSaved();
@@ -429,7 +433,7 @@ export const documentActions = {
     this._takingProject = true;
     this._sameDocument = sameDocument;
     try {
-      showParts.call(this, parts, pictures, options);
+      showParts.call(this, parts, pictures, { fileId: null, ...options }); // the host's drawing, not one of this browser's (unless it's mine: handover)
     } finally {
       this._takingProject = false;
       this._sameDocument = false;

@@ -140,6 +140,7 @@ export function useAutosave() {
         parts.paintBlob = null;
         parts.settings = { ...parts.settings, paintScale: null, baseScale: null };
       }
+      parts.settings = { ...parts.settings, fileId: project.fileId }; // a restore keeps the drawing's id
       const rest = await writeProject({ ...parts, imageBuffer: new ArrayBuffer(0) });
       record.rest = await rest.arrayBuffer();
       if (project._document !== doc) return; // parts of two documents; the swap scheduled its own write

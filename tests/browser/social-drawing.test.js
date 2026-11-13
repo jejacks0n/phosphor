@@ -2487,6 +2487,16 @@ test('a catch-up answer is taken only if it\'s what was asked for, with nothing 
   expect(char(project, 2, 2)).toBe('z');
 });
 
+test('a returning host taking an artist\'s project keeps its own drawing\'s file id', async () => {
+  const room = await hostingWithSocket();
+  const { project } = room, { n, epoch } = project._ledger;
+  const id = project.fileId;
+  expect(id).toBeTruthy();
+  const parts = { ...await project.projectParts(), imageBuffer: project.imageBuffer };
+  expect(await project.takeCatchUp({ n: n + 1, epoch, kind: 'project', parts }, n + 1)).toBe(true);
+  expect(project.fileId).toBe(id);
+});
+
 test('the list emptying while a returning host gathers leaves it drawing, and strokes from anyone asked later aren\'t held', async () => {
   const room = await hostingWithSocket();
   const ann = await artist(room, 'ann');

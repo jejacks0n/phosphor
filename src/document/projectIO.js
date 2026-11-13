@@ -27,6 +27,8 @@ const MAGIC_HEADER = 'PHOSPHOR', STACK_HEADER = 'PHOSPHR2';
 export const goodFit = (fit) => !!fit && ['dx', 'dy', 'dw', 'dh'].every(k => Number.isFinite(fit[k]) && Math.abs(fit[k]) <= 2 * MAX_LINES) && fit.dw > 0 && fit.dh > 0;
 export const goodScale = (scale, size, longest = 1) => Number.isInteger(scale) && scale > 0 && scale <= Math.max(longest, Math.floor(MAX_LAYER_DIM / size));
 export const goodBaseScale = (scale, size) => goodScale(scale, size, 2);
+// A file id is only ever a storage key: a short run of letters, digits, - and _.
+export const goodFileId = (id) => typeof id === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(id);
 
 // Decode image bytes; the object URL only lives until the image has loaded.
 export function loadImage(source, type) {
@@ -84,6 +86,7 @@ export async function readProject(file) {
   delete settings.charMode; // older files stored a charMode that's now derived from renderStyle
   delete settings.documentId; // Untrusted, and autosave's, not the file's: one could overwrite another document's record
   delete settings.savedToFile;
+  if (!goodFileId(settings.fileId)) delete settings.fileId; // untrusted, and a bad one gets a new id on open
   // Untrusted: a grid within the limits (Cells.js; left out, the columns are the default, which fits
   // any height), and a fit and paint scale that can be drawn.
   if (settings.cols !== undefined) settings.cols = Math.min(MAX_COLS, Math.max(1, settings.cols | 0));

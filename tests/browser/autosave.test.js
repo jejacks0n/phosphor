@@ -821,9 +821,9 @@ test('evicting spares the documents open in other tabs', async () => {
   }
 });
 
-test('restoreDocument brings back the cells, both layers, the settings and the name, and no undo', async () => {
+test('restoreDocument brings back the cells, both layers, the settings, the name and the file id, and no undo', async () => {
   const { project } = await opened();
-  const id = project.documentId;
+  const id = project.documentId, fileId = project.fileId;
   project.filename = 'mine';
   project.brightness += 10;
   edit(project);
@@ -858,6 +858,7 @@ test('restoreDocument brings back the cells, both layers, the settings and the n
   }).toEqual(before);
   expect(project.filename).toBe('mine');
   expect(project.documentId).toBe(id);
+  expect(project.fileId).toBe(fileId);
   expect(project.canUndo).toBe(false);
 });
 

@@ -288,13 +288,13 @@ export const layerActions = {
     if ((slots.vector ?? 'vector') !== 'vector' || (slots.cells ?? 'edit') !== 'edit') {
       this.commitPending();
       const workspace = useWorkspaceStore(), picked = workspace.pickedLayer;
-      const { filename, documentId, savedToFile, isDirty, savedSettings } = this;
+      const { filename, documentId, fileId, savedToFile, isDirty, savedSettings } = this;
       const parts = await readProject(await writeProject({ imageBuffer: this.imageBuffer, ...await this.projectParts() }));
       // The pick moves to the layer's room id first: a layer gone from the stack mid-open would pick the one under it,
       // the base perhaps, which the tools would then draw on while the document's parts are still going in.
       const now = picked === slots.vector ? 'vector' : picked === slots.cells ? 'edit' : picked;
       workspace.pickedLayer = now;
-      await this.openParts(parts, { filename, documentId });
+      await this.openParts(parts, { filename, documentId, fileId }); // the same drawing, renamed for the room
       this.savedToFile = savedToFile;
       if (isDirty) { // as restoreDocument leaves it
         this.savedSettings = savedSettings;

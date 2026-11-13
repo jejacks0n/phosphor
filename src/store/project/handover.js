@@ -179,7 +179,7 @@ export const handoverActions = {
     if (!settings || cells.length > MAX_CELLS || !cellsFitAnyGrid(cells)) return false;
     await this.openFromHost(
       { ...parts, settings, erasedCells: [], migrated: false },
-      { filename: this.filename, documentId: this.documentId, sameDocument: true },
+      { filename: this.filename, documentId: this.documentId, fileId: this.fileId, sameDocument: true },
     );
     this.ensureLayer();
     this.clearHistory();
