@@ -363,7 +363,9 @@ more strokes only change its color. Within a stroke, **Flow** is how quickly it 
 
 Color adjustments apply to the edit layer too: moving Brightness or Hue changes your edits along
 with the picture, and with Threshold on, your paint splits into its two colors as the picture does. The color palette (CGA, VGA, a color count) applies to everything, so an
-`.ans` export always fits it. With **Color count**, the colors are picked from everything you see (the
+`.ans` export always fits it. Paint and shapes show in the palette's colors in the Pixel view too, on every layer, so
+they show there in the color of the swatch you painted with (characters show there as they look, their two colors
+blended). With **Color count**, the colors are picked from everything you see (the
 picture, your base edits and your paint), so a color you paint with gets a place in the palette.
 The palette updates when you finish a stroke or a shape: while you're painting, the picture holds
 still and your stroke shows in its own colors. When the picture has no more colors than the number
