@@ -37,7 +37,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     displayFontLoaded: null, // displayFontSpec, once it's loaded and measured in (App.vue)
     theme: useLocalStorage('phosphor.theme', 'dark'), // the app's colors: 'dark' | 'light' | 'system' (the computer's; index.html sets it before the first paint)
     smoothText: useLocalStorage('phosphor.smoothText', true), // the art's text anti-aliased (both views), or sharp
-    rulers: useLocalStorage('phosphor.rulers', false), // the character rulers shown around the ANSI view
+    rulers: useLocalStorage('phosphor.rulers', false), // the character rulers (and the guides) shown on PIXEL, ANSI and VECTOR
     guides: [],              // { axis: 'v' | 'h', pos }: the open drawing's guides, in cells (kept per drawing in this browser, never part of the document)
     rulerZero: { x: 0, y: 0 }, // where the rulers count from
     guidesFile: null,        // the file id the guides belong to; null: they last until the page closes

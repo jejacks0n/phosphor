@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import ArtistCursors from '@/components/social/ArtistCursors.vue';
 import PauseLayer from '@/components/social/PauseLayer.vue';
+import GuideRulers from '@/components/GuideRulers.vue';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
 import { getTool } from '@/tools';
 import { charRowsOf, cellAt, cellsOfPixels } from '@/lib/Cells';
@@ -217,6 +218,14 @@ const toolCursor = computed(() => {
   return tool.value.cursor(toolCtx(), { x: pos.x / unit.x, y: pos.y / unit.y });
 });
 
+// The character under the pointer, on the grid: for the rulers' moving labels and others' view of where you are.
+const hoverCell = computed(() => {
+  const pos = mousePos.value, unit = props.unit;
+  if (!pos || !isMouseOver.value || !unit) return null;
+  const col = Math.floor(pos.x / unit.x), row = Math.floor(pos.y / unit.y / 2);
+  return col >= 0 && row >= 0 && col < projectStore.cols && row < charRowsOf(projectStore.rows) ? { col, row } : null;
+});
+
 // Sharing: what floats over the drawing area, not scrolled with it, inside this element so that a wheel over it
 // comes here (handleWheel) and a press too. A press held when the drawing pauses ends: its stroke, if there is
 // one, goes in with the rest of what's waiting, before anything is refused.
@@ -227,13 +236,7 @@ const overArt = computed(() => {
   return { left: `${rootLeft.value}px`, top: `${rootTop.value}px`, width: `${el?.clientWidth ?? 0}px`, height: `${el?.clientHeight ?? 0}px` };
 });
 watch(() => drawingStore.paused, (paused) => { if (paused) commitPaint(); }, { flush: 'sync' });
-watch([mousePos, isMouseOver], ([pos, over]) => {
-  const unit = props.unit;
-  if (!projectStore._sharing) return;
-  if (!pos || !over || !unit) return drawingStore.pointAt(null);
-  const col = Math.floor(pos.x / unit.x), row = Math.floor(pos.y / unit.y / 2);
-  drawingStore.pointAt(col >= 0 && row >= 0 && col < projectStore.cols && row < charRowsOf(projectStore.rows) ? { col, row } : null);
-});
+watch(hoverCell, (cell) => { if (projectStore._sharing) drawingStore.pointAt(cell); });
 // The view goes out when it moves with the pointer still (a wheel, a scrollbar, a zoom, the window), and when drawing
 // begins again after a pause, since the host forgot where everyone was while they were away. Someone may be following.
 watch(() => [workspaceStore.sharedView, drawingStore.mayDraw, drawingStore.paused], () => drawingStore.viewMoved());
@@ -354,6 +357,7 @@ defineExpose({ centerContent });
       <ArtistCursors v-if="drawingStore.showCursors" :root="rootRef" :display="unref(display)" :unit="unit"/>
       <PauseLayer v-if="drawingStore.paused"/>
     </div>
+    <GuideRulers v-if="workspaceStore.rulers && unit" :box="overArt" :root="rootRef" :display="unref(display)" :unit="unit" :coords-at="coordsAt" :hover="hoverCell"/>
     <div class="canvas-viewport" :class="{ padded: !!contentSize }" :style="viewportStyle">
       <div class="canvas-container">
         <slot/>

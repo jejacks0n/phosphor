@@ -1628,5 +1628,14 @@
     "sharpTitle": "Make the point sharp: its handles go",
     "deletePointTitle": "Delete the selected stop, or else the selected point",
     "pointsHint": "Drag a point, a handle or a gradient's stop; click the outline to add a point; Esc or empty canvas to finish"
+  },
+  "rulers": {
+    "zeroOnColumn": "0 on column {n}",
+    "zeroBetweenColumns": "0 between columns {a} and {b}",
+    "zeroOnRow": "0 on row {n}",
+    "zeroBetweenRows": "0 between rows {a} and {b}",
+    "remove": "Remove",
+    "cornerTitle": "Drag to set both zero points. Double-click to put them back at the top left.",
+    "guideTitle": "Drag to move, or onto a ruler to remove"
   }
 }
