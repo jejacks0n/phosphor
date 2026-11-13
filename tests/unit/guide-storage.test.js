@@ -63,4 +63,23 @@ test('junk is ignored', () => {
     }),
   );
   expect(loadGuides('a', s)).toEqual({ guides: [{ axis: 'h', pos: 3 }], zero: { x: 0, y: 0 } });
+
+  // An entry that isn't one is dropped, and saving goes on working.
+  s.setItem(GUIDES_KEY, JSON.stringify({ x: null, y: 7, a: { ...sample, usedAt: 1 } }));
+  saveGuides('b', sample, { storage: s, now: 2 });
+  expect(loadGuides('b', s)).toEqual(sample);
+  expect(loadGuides('a', s)).toEqual(sample);
+  expect(Object.keys(JSON.parse(s.getItem(GUIDES_KEY))).sort()).toEqual(['a', 'b']);
+});
+
+test('a file id that is a name every object has finds nothing it wasn\'t given', () => {
+  const s = fakeStorage();
+  expect(loadGuides('__proto__', s)).toBeNull();
+  expect(loadGuides('constructor', s)).toBeNull();
+  saveGuides('a', sample, { storage: s });
+  expect(loadGuides('constructor', s)).toBeNull();
+  expect(loadGuides('toString', s)).toBeNull();
+  saveGuides('__proto__', sample, { storage: s, now: 2 });
+  expect(loadGuides('__proto__', s)).toEqual(sample);
+  expect(loadGuides('a', s)).toEqual(sample);
 });
