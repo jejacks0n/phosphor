@@ -724,8 +724,9 @@ character):
 - In the color box, the **arrow keys** move between the swatches (starting on the current color),
   **Enter** picks one and closes the box, **Space** picks one and leaves it open, and **Escape**
   closes it. With a palette (CGA, VGA, Color count or Color list), every swatch paints its palette
-  color whatever the color adjustments are, unless the adjustments can't make that color at all
-  (Saturation at 0 makes only grays).
+  color whatever the color adjustments are. A color the adjustments can't make at all (Saturation at
+  0 makes only grays) shows dimmed and can't be picked, and the arrows, and Alt+↑ and Alt+↓ in Edit
+  Mode, step past it.
 - **Shift+Cmd+X** (Shift+Ctrl+X): swap the foreground and background. Plain **X** swaps them too,
   except in Edit Mode, where it types.
 
