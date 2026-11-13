@@ -54,6 +54,10 @@ test('Composition of edit cells: glyph coverage, half-cell colors, edit-cell att
   assert.deepEqual([spaceBottom.char, spaceBottom.bg.hex, spaceBottom.fg.hex], ['▄', '#0000ff', '#ff0000']);
   const upper = coverCell({ char: '▀', fg: red, bg: blue }, { r: 0, g: 255, b: 0, a: 1 }, null, { renderStyle: 'ansi', palette: null });
   assert.deepEqual([upper.char, upper.bg.hex, upper.fg.hex], ['▄', '#00ff00', '#0000ff']); // the paint stays on the top half
+  // A character in its own background color (black converted from a black picture) doesn't show: the
+  // cell is plain, so paint over it is a half-block too, not the hidden character brought out.
+  const hidden = coverCell({ char: '%', fg: black, bg: black }, { r: 255, g: 255, b: 255, a: 1 }, null, { renderStyle: 'ansi', palette: null });
+  assert.deepEqual([hidden.char, hidden.bg.hex, hidden.fg.hex], ['▄', '#ffffff', '#000000']);
 
   assert.equal(effectiveColor('#ff5555', NEUTRAL, PALETTES.cga).c, 9);
   assert.equal(effectiveColor('#fe0101', NEUTRAL, PALETTES.cga).c, 1);   // nearest is #aa0000, not #ff5555

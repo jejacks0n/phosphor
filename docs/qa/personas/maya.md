@@ -223,8 +223,9 @@ dithered, and compare the dither at 80 and at 200 columns.
 
 ### 16. Paint over the picture
 - Does: picks the Brush, sets its Size and Opacity, and paints a few strokes on Layer 2.
-- Expects: paint covers half cells and shows through each cell's character (Colors only); with Build up on, two strokes
-  at 50% make it solid; the color adjustments tint the paint too.
+- Expects: paint covers half cells and shows through each cell's character (Colors only), and a cell that shows none
+  (one flat color) takes it as a plain `▄`; with Build up on, two strokes at 50% make it solid; the color adjustments
+  tint the paint too.
 - Probes: `out-of-order`: hide Layer 2 with its eye and try to paint ("Show the layer to draw on it"); `undo-redo`:
   undo one stroke, redo it, then paint and check redo is off; `speed`: draw fast scribbles with `qa.frames`;
   `extremes`: with a Color list and Saturation at 0, paint on Layer 2 with a swatch that isn't gray and check the Pixel

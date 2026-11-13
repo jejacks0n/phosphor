@@ -39,7 +39,7 @@ const brush = {
     const options = { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100 };
     const clip = selectionClip(workspace);
     const pixels = brushPixels(from, to, options, project.cols, project.rows);
-    project.paintStroke(clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels, undefined, { blockChars: view === 'output' && workspace.brushDrawWith === 'half' });
+    project.paintStroke(clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels, undefined, { blockChars: view === 'output' && (workspace.brushDrawWith === 'half' || 'plain') });
     workspace.strokeEnd = to;
   },
   end({ project }) {
