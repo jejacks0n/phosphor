@@ -428,7 +428,11 @@
       "sidesTitle": "The polygon's number of sides"
     },
     "hand": {
-      "title": "Hand (pan)"
+      "title": "Hand (pan)",
+      "rulers": "Rulers",
+      "rulersTitle": "Rulers along the art's top and left, and the guides",
+      "clearGuides": "Clear guides",
+      "clearGuidesTitle": "Remove every guide on this drawing"
     },
     "zoom": {
       "title": "Zoom"

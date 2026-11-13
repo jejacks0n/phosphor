@@ -428,7 +428,11 @@
       "sidesTitle": "Le nombre de côtés du polygone"
     },
     "hand": {
-      "title": "Main (panoramique)"
+      "title": "Main (panoramique)",
+      "rulers": "Règles",
+      "rulersTitle": "Règles le long du haut et de la gauche du dessin, et les repères",
+      "clearGuides": "Effacer les repères",
+      "clearGuidesTitle": "Supprimer tous les repères de ce dessin"
     },
     "zoom": {
       "title": "Zoom"
