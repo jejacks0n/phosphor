@@ -6,8 +6,9 @@ drag out of them to line things up. They help you place art; they are never part
 ## Turning them on
 
 Choose the Hand. Its options row has a **Rulers** checkbox (off at first; this browser remembers your
-choice) and a **Clear guides** button, which removes every guide on the drawing and leaves the zero
-points where they are. With Rulers off, the rulers and the guides are hidden, not lost.
+choice) and a **Clear guides** button, which removes every guide on the drawing, those hidden past its
+edge too, and leaves the zero points where they are. With no guides it's grayed out. With Rulers off,
+the rulers and the guides are hidden, not lost.
 
 The top ruler counts columns and the left one counts rows. Ticks mark every character's edge, longer
 at every fifth and tenth from zero, with a number at zero and every tenth (zoomed out, every 20th,
@@ -32,8 +33,9 @@ Zero on an edge: the characters either side are 1 and −1. Zero in the middle o
 character is 0, and the ones beside it are 1 and −1. A guide's number is its distance from zero, such
 as 12 or 12½.
 
-- A 41-character-wide emblem with zero on its middle character reads −20 ... 0 ... 20 across its characters. A guide on each side edge
-  reads 20½ and −20½, and one through the middle of an outer character reads 20 and −20.
+- A 41-character-wide emblem with zero on its middle character reads −20 ... 0 ... 20 across its
+  characters. A guide on each side edge reads 20½ and −20½, and one through the middle of an outer
+  character reads 20 and −20.
 - A 28-character-wide platform has no middle character: its middle is the edge between the 14th and
   15th, and a guide there is 14 characters in from either side.
 
