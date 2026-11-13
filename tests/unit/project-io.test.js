@@ -217,7 +217,9 @@ test('old-form files read back unchanged', async () => {
   const { readdir } = await import('node:fs/promises');
   const dir = new URL('../fixtures/projects/', import.meta.url);
   for (const name of (await readdir(dir)).filter((n) => n.endsWith('.phosphor'))) {
-    const read = await readProject(new Blob([await readFile(new URL(name, dir))]));
+    const bytes = await readFile(new URL(name, dir));
+    if (new TextDecoder().decode(bytes.subarray(0, 8)) !== 'PHOSPHOR') continue; // the stack form (a report saved by the app, a layer with its own characters)
+    const read = await readProject(new Blob([bytes]));
     assert.equal(read.stack, undefined, name);
     assert.equal(read.layers, undefined, name); // none of them has a layers key
     assert.equal(read.layerParts, undefined, name);
