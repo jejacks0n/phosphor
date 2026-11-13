@@ -6,6 +6,7 @@ import { familyOf } from '@/lib/userFonts';
 import { clampZoom, clampViewZoom } from '@/lib/zoom';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
+import { loadGuides, saveGuides } from '@/lib/guideStorage';
 import { snapCursor } from '@/document/wideChars';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -36,6 +37,10 @@ export const useWorkspaceStore = defineStore('workspace', {
     displayFontLoaded: null, // displayFontSpec, once it's loaded and measured in (App.vue)
     theme: useLocalStorage('phosphor.theme', 'dark'), // the app's colors: 'dark' | 'light' | 'system' (the computer's; index.html sets it before the first paint)
     smoothText: useLocalStorage('phosphor.smoothText', true), // the art's text anti-aliased (both views), or sharp
+    rulers: useLocalStorage('phosphor.rulers', false), // the character rulers shown around the ANSI view
+    guides: [],              // { axis: 'v' | 'h', pos }: the open drawing's guides, in cells (kept per drawing in this browser, never part of the document)
+    rulerZero: { x: 0, y: 0 }, // where the rulers count from
+    guidesFile: null,        // the file id the guides belong to; null: they last until the page closes
     activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     isShiftPressed: false,
     isAltPressed: false,     // Option on a Mac: Vector select scales from the middle
@@ -261,6 +266,40 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.heldTool = null;
       this[held.key] = held.tool;
       if (held.by === 'alt') this.endPick(); // a pick that ended with the key, not the pointer
+    },
+    showGuidesFor(fileId) {
+      const kept = fileId ? loadGuides(fileId) : null;
+      this.guidesFile = fileId;
+      this.guides = kept?.guides ?? [];
+      this.rulerZero = kept?.zero ?? { x: 0, y: 0 };
+    },
+    persistGuides() {
+      if (this.guidesFile) saveGuides(this.guidesFile, { guides: this.guides, zero: this.rulerZero });
+    },
+    addGuide(axis, pos) {
+      this.guides.push({ axis, pos });
+      this.persistGuides();
+    },
+    moveGuide(index, pos) {
+      this.guides[index].pos = pos;
+      this.persistGuides();
+    },
+    removeGuide(index) {
+      this.guides.splice(index, 1);
+      this.persistGuides();
+    },
+    clearGuides() {
+      this.guides = [];
+      this.persistGuides();
+    },
+    setRulerZero(axis, pos) {
+      this.rulerZero[axis] = pos;
+      this.persistGuides();
+    },
+    resetRulerZero(axis) {
+      if (axis) this.rulerZero[axis] = 0;
+      else this.rulerZero = { x: 0, y: 0 };
+      this.persistGuides();
     },
     // hex: choose that color (and clear the slot's none flag); null: set the slot to none.
     // remember: false while a native picker is being dragged, so only the final color is recent.

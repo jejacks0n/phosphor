@@ -42,6 +42,8 @@ watchEffect(() => {
   document.documentElement.dataset.theme = workspace.theme === 'system' ? (prefersLight.value ? 'light' : 'dark') : workspace.theme;
 });
 
+watch(() => project.fileId, (id) => workspace.showGuidesFor(id), { immediate: true }); // each drawing has its own guides
+
 const autosave = useAutosave();
 const { ready, recent, openRecent } = autosave;
 const drawing = useDrawingStore();
