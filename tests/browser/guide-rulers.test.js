@@ -191,3 +191,21 @@ test('a double-click on a triangle puts that zero back; on the corner, both', as
   dblclick(root.querySelector('.ruler-corner'), 15, 10);
   expect(workspace.rulerZero).toEqual({ x: 0, y: 0 });
 });
+
+// Two fingers: the one that pressed the guide drags it; another touching down and lifting doesn't end the drag.
+test('only the pointer that pressed moves and lets go', async () => {
+  const { workspace, at } = await mount();
+  workspace.setActiveTool('hand');
+  workspace.addGuide('v', 3);
+  await nextTick();
+  const touch = (target, type, pointerId, clientX, clientY) => target.dispatchEvent(new PointerEvent(type, { pointerId, clientX, clientY, bubbles: true, button: 0, pointerType: 'touch' }));
+  const guide = root.querySelector('.guide.v'), r = guide.getBoundingClientRect();
+  touch(guide, 'pointerdown', 1, r.left + 5, r.top + 50);
+  touch(window, 'pointermove', 2, at.left + 150, at.top + 50);
+  touch(window, 'pointerup', 2, at.left + 150, at.top + 50);
+  touch(window, 'pointercancel', 2, at.left + 150, at.top + 50);
+  expect(workspace.guides[0].pos).toBe(3);
+  touch(window, 'pointermove', 1, at.left + 70, at.top + 50);
+  touch(window, 'pointerup', 1, at.left + 70, at.top + 50);
+  expect(workspace.guides[0].pos).toBe(7);
+});

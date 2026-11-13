@@ -43,7 +43,7 @@ const cols = computed(() => project.cols);
 const rows = computed(() => charRowsOf(project.rows));
 const cellsOf = (axis) => (axis === 'x' || axis === 'v' ? cols.value : rows.value);   // 'v' guides lie along columns
 
-// The drag under way: { kind: 'guide', axis: 'v' | 'h', index (null: a new one), offset, pos (null: off the art) },
+// The drag under way, by one pointer: { kind: 'guide', axis: 'v' | 'h', index (null: a new one), offset, pos (null: off the art) },
 // { kind: 'zero', axis: 'x' | 'y', offset, zero } or { kind: 'corner', zero }, with the pointer at client and
 // zero as it showed when the press began (shown).
 const drag = ref(null);
@@ -132,7 +132,7 @@ function nearZero(axis, event) {
 function start(event, d) {
   if (event.button) return;
   props.root?.focus({ preventScroll: true });
-  drag.value = { ...d, client: null, shown: { ...zero.value } };
+  drag.value = { ...d, client: null, shown: { ...zero.value }, pointer: event.pointerId };
 }
 // A ruler: its triangle drags zero, anywhere else a new guide (out of the top ruler a horizontal one).
 function pressRuler(axis, event) {
@@ -159,12 +159,13 @@ function track(event) {
   else d.pos = offArt(event) ? null : pos;
 }
 // The drag goes on whatever the tool is by now (Space let go mid-drag), and ends where it's let go: the corner
-// only where it was dragged to, so a click (or a double-click) on it moves nothing.
-useEventListener(window, 'pointermove', (event) => { if (drag.value) track(event); });
-useEventListener(window, 'pointercancel', () => { drag.value = null; });
+// only where it was dragged to, so a click (or a double-click) on it moves nothing. Another finger is ignored.
+const held = (event) => drag.value?.pointer === event.pointerId;
+useEventListener(window, 'pointermove', (event) => { if (held(event)) track(event); });
+useEventListener(window, 'pointercancel', (event) => { if (held(event)) drag.value = null; });
 useEventListener(window, 'pointerup', (event) => {
+  if (!held(event)) return;
   const d = drag.value;
-  if (!d) return;
   if (d.kind !== 'corner') track(event);
   drag.value = null;
   if (d.kind === 'guide') {
