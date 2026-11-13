@@ -1628,5 +1628,14 @@
     "sharpTitle": "Rendre le point vif : ses poignées disparaissent",
     "deletePointTitle": "Supprimer l'arrêt sélectionné, ou sinon le point sélectionné",
     "pointsHint": "Faites glisser un point, une poignée ou un arrêt du dégradé ; cliquez sur le contour pour ajouter un point ; Échap ou un clic à côté pour terminer"
+  },
+  "rulers": {
+    "zeroOnColumn": "0 sur la colonne {n}",
+    "zeroBetweenColumns": "0 entre les colonnes {a} et {b}",
+    "zeroOnRow": "0 sur la ligne {n}",
+    "zeroBetweenRows": "0 entre les lignes {a} et {b}",
+    "remove": "Retirer",
+    "cornerTitle": "Faites glisser pour placer les deux zéros. Double-cliquez pour les remettre en haut à gauche.",
+    "guideTitle": "Faites glisser pour déplacer, ou sur une règle pour retirer"
   }
 }
