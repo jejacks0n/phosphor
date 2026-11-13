@@ -126,8 +126,11 @@ function nearZero(axis, event) {
   return origin.value && Math.abs((axis === 'x' ? event.clientX - r.left : event.clientY - r.top) - pxOf(axis, zero.value[axis])) <= NEAR_ZERO;
 }
 
+// The press is kept from the view, so the view's focus is taken here, as a press on it would: a toolbar field
+// (the Rulers checkbox) kept would swallow the tool keys.
 function start(event, d) {
   if (event.button) return;
+  props.root?.focus({ preventScroll: true });
   drag.value = { ...d, client: null };
 }
 // A ruler: its triangle drags zero, anywhere else a new guide (out of the top ruler a horizontal one).
