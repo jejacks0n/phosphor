@@ -87,9 +87,30 @@ const ROOM_WORDS = {
   ended: () => t('social.errors.room.ended'),
   removed: () => t('social.errors.room.removed'),
   replaced: () => t('social.errors.room.replaced'),
+  // A desktop room's service, about a join waiting for the host's answer.
+  'turned-away': () => t('social.errors.room.turnedAway'),
+  busy: () => t('social.errors.room.busy'),
+  moved: () => t('social.errors.room.moved'),
 };
 
 export const refusalWords = (reason) => (Object.hasOwn(ROOM_WORDS, reason) ? ROOM_WORDS[reason]() : ROOM_WORDS.unavailable());
+
+// Joining a desktop room by its address, and why it didn't go: the address isn't one (empty, bad-port, bad-host), or
+// what answered there (not-phosphor, unreachable, no-room). versionWords says whether the other side's room protocol
+// is newer or older than ours.
+const JOIN_WORDS = {
+  empty: () => t('social.errors.join.empty'),
+  'bad-port': () => t('social.errors.join.badPort'),
+  'bad-host': () => t('social.errors.join.badHost'),
+  'not-phosphor': () => t('social.errors.join.notPhosphor'),
+  unreachable: () => t('social.errors.join.unreachable'),
+  'no-room': () => t('social.errors.join.noRoom'),
+};
+export const versionWords = (theirs, ours) => t(theirs > ours ? 'social.errors.join.newer' : 'social.errors.join.older');
+export const joinWords = (code) => JOIN_WORDS[code]();
+
+// A desktop room's host stopped answering, for longer than a reload takes.
+export const hostGoneWords = () => t('social.errors.hostGone');
 
 // What a host is told when the room it reloaded into is gone.
 export const roomAwayWords = () => t('social.errors.roomAway');

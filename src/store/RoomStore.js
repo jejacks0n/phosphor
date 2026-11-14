@@ -6,7 +6,8 @@ import { forgetHostCopy, forgetRoomLedger, hostCopies, keepHostCopy, readLatest,
 import { proof, sign } from '@/social/keys';
 import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
-import { roomAwayWords, hostReplacedWords, artNotOpenedWords, goingBackFailedWords, newHostWords, refusalWords } from '@/social/messages';
+import { roomAwayWords, hostReplacedWords, artNotOpenedWords, goingBackFailedWords, newHostWords, refusalWords, joinWords, versionWords, hostGoneWords } from '@/social/messages';
+import { parseAddress } from '@/social/address';
 import { decodePass, passKey } from '@/social/pass';
 import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { forgetHostingRecord, holdHostingTab, hostingTabsGone, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
@@ -33,6 +34,38 @@ const DESKTOP_PORT = 'phosphor-desktop-port';   // the port last chosen to host 
 const ROOM_ID_LETTERS = 'abcdefghijklmnopqrstuvwxyz234567';   // ROOM_ID's: 32 of them, so a random byte's low 5 bits pick one evenly
 const newRoomId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => ROOM_ID_LETTERS[b & 31]).join('');
 const MOST_ASKS = 5;   // the service lets no more wait at once
+const INFO_WITHIN_MS = 5000;   // what's at an address typed in answers /info within this, or nothing that answers is there
+
+// What a room service at this address ('host:port') says it has: its info answer, or { error } with why there's none.
+// Something else on that port either answers with something else or closes once it's open (not-phosphor); nothing
+// there never opens (unreachable).
+// ponytail: a web server on that port refuses the socket before it opens, which reads as unreachable; a browser can't tell.
+function readInfo(address) {
+  return new Promise((resolve) => {
+    let socket, opened = false, done = false;
+    const answer = (result) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { socket?.close(); } catch { /* already gone */ }
+      resolve(result);
+    };
+    const nothing = () => answer({ error: opened ? 'not-phosphor' : 'unreachable' });
+    const timer = setTimeout(nothing, INFO_WITHIN_MS);
+    try {
+      socket = new WebSocket(`ws://${address}/info`);
+    } catch {
+      return nothing();
+    }
+    socket.onopen = () => { opened = true; };
+    socket.onerror = socket.onclose = nothing;
+    socket.onmessage = ({ data }) => {
+      let info = null;
+      try { info = JSON.parse(data); } catch { /* not JSON: not Phosphor */ }
+      answer(info?.type === 'info' && Number.isInteger(info.protocol) ? info : { error: 'not-phosphor' });
+    };
+  });
+}
 
 const SEND_EVERY_MS = 100;       // the art, as it changes (a stroke shows as it's drawn)
 const VIEW_EVERY_MS = 250;       // the part of the art the host is looking at
@@ -175,6 +208,7 @@ const watcherFields = () => ({
   joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
   _watch: null,        // Watch (markRaw)
   _password: undefined, // the password the join sent
+  ...(DESKTOP ? { _joinedAs: null } : {}),   // joined's { peer, token }: the channel to the host's service is theirs
 });
 
 // No room at all: what close() goes back to. The chat and what's reported go only here: a role changing hands keeps them.
@@ -217,6 +251,10 @@ export const useRoomStore = defineStore('room', {
     reclaimable: [],     // rooms of yours whose tab has gone, to go back to: [{ id, name }]
     goingBack: false,    // the page is reloading into one of them, with what's open kept: nothing to ask about leaving
     _seenGone: {},       // id -> when a look first found the room's tab gone, for as long as looks keep finding that (a reload's gap is shorter)
+    ...(DESKTOP ? {
+      needsPassword: null,   // joinAddress's room asks for a password: { address, name }, for the page to ask
+      _address: null,        // the host's 'host:port' a watcher joined by: its room service's /room and /channel
+    } : {}),
   }),
 
   getters: {
@@ -655,6 +693,35 @@ export const useRoomStore = defineStore('room', {
       if (show) useWorkspaceStore().editorTab = 'room';
     },
 
+    // Desktop: a room by the address typed in (Join), asked what's there first. False with a notice when it isn't a room
+    // to join, and false with needsPassword set when it asks for a password that wasn't given.
+    async joinAddress(text, { password } = {}) {
+      const social = useSocialStore(), at = parseAddress(text);
+      this.needsPassword = null;
+      const info = at.error ? at : await readInfo(at.address);
+      if (info.error) {
+        social.notice = joinWords(info.error);
+        return false;
+      }
+      if (info.protocol !== ROOM_PROTOCOL) {
+        social.notice = versionWords(info.protocol, ROOM_PROTOCOL);
+        return false;
+      }
+      if (info.id === null || !ROOM_ID.test(info.id)) {
+        social.notice = joinWords(info.id === null ? 'no-room' : 'not-phosphor');
+        return false;
+      }
+      const name = typeof info.name === 'string' ? info.name : '';
+      if (info.password && !password) {
+        this.needsPassword = { address: at.address, name };
+        return false;
+      }
+      this._address = at.address;
+      this.join(info.id, { password: info.password ? password : undefined, show: true });
+      this.room = { name, welcome: '' };   // until the host's own word on it
+      return true;
+    },
+
     // In as a watcher: a Watch, and the socket's join. The chat stays with someone who was already in.
     watchRoom(id, { password } = {}) {
       const social = useSocialStore();
@@ -665,6 +732,8 @@ export const useRoomStore = defineStore('room', {
         ...drawing.watchCallbacks(),
         send: (msg) => this._connection?.send(msg),
         connectWithinMs: this._connectWithinMs, roomId: id, passKey,
+        // The channel to the host through its service, as joined's peer: read then, as a rejoin changes it.
+        ...(DESKTOP ? { config: { channelUrl: () => `ws://${this._address}/channel?peer=${encodeURIComponent(this._joinedAs?.peer)}&token=${encodeURIComponent(this._joinedAs?.token)}` } } : {}),
         onChat: (event) => this.chatHeard(event),
         onRoom: ({ name, welcome }) => { this.room = { ...this.room, name, welcome }; },   // the host is joined's
         onArt: (art) => { if (!drawing.mayDraw) this.art = art; },   // one that crossed their yes: they have the document
@@ -696,7 +765,8 @@ export const useRoomStore = defineStore('room', {
         this.showBox = true;
         if (this.showEveryone) this.setShowEveryone(false);
       }));
-      this.connect({ type: 'join', ...(password === undefined ? {} : { password }) }, { liveOn: ['joined'], endOn: ['refused', 'removed', 'ended', 'replaced'] });
+      // On desktop the service is one room's, named in the greeting, and a join can wait long for the host's yes.
+      this.connect({ type: 'join', ...(DESKTOP ? { room: id } : {}), ...(password === undefined ? {} : { password }) }, { liveOn: DESKTOP ? ['joined', 'waiting'] : ['joined'], endOn: ['refused', 'removed', 'ended', 'replaced'] });
       // The host judges the pass this watcher joined with: confirming your email mid-room joins again, with the new one.
       this._stops.push(watch(() => social.claims?.verified, (now, was) => {
         if (was === false && now === true) this.join(this.id, { password: this._password });
@@ -803,6 +873,7 @@ export const useRoomStore = defineStore('room', {
       // On desktop, the host's own service on loopback, or the host's address for a guest.
       const url = !DESKTOP ? `${wsOrigin(apiOrigin())}/api/rooms/${id}/ws` : this.role === 'host' ? `ws://127.0.0.1:${this._desktop.port}/room` : `ws://${this._address}/room`;
       const protocol = DESKTOP ? { protocol: ROOM_PROTOCOL } : {};
+      let hostGone = null;   // desktop: a watcher's wait for the host's service to answer again
       const connection = this._connection = markRaw(new LobbyConnection({
         url,
         getPass: () => social.getPass(),
@@ -810,7 +881,13 @@ export const useRoomStore = defineStore('room', {
         liveOn, endOn,
         onMessage: (msg) => { if (connection === this._connection) this.heard(msg); },
         onStatus: (status) => {
+          if (status !== 'reconnecting') {
+            clearTimeout(hostGone);
+            hostGone = null;
+          }
           if (connection !== this._connection) return;
+          // A desktop room's service is on the host's computer: gone longer than a reload takes, the host has gone.
+          if (DESKTOP && this.role === 'watch' && status === 'reconnecting') hostGone ??= setTimeout(() => { if (connection === this._connection) this.over(hostGoneWords()); }, RETURN_WITHIN_MS);
           if (this.role === 'host' && status !== 'refused' && status !== 'closed') this.status = status;
           // The server kicked a watcher while its connection to the host was being made: the host gave up
           // on reaching it first, so joining again would only fail the same way.
@@ -1197,11 +1274,15 @@ export const useRoomStore = defineStore('room', {
           if (Array.isArray(msg.artists) && !useDrawingStore().mayDraw) useDrawingStore().artists = msg.artists;
           this._refusedOnce = false;
           this.status = 'waiting';
+          if (DESKTOP) this._joinedAs = { peer: msg.peer, token: msg.token };
           this.room = { name: '', welcome: '', ...this.room, host: msg.hostName, hostSub: msg.hostSub };
           this.following ??= msg.hostSub;
           break;
+        case 'waiting':   // desktop: the join waits for the host's yes
+          if (DESKTOP && this.role === 'watch') this.status = 'waiting';
+          break;
         case 'refused':
-          this.refused(msg.reason);
+          this.refused(msg.reason, msg.protocol);
           break;
         // Yours (decided in this room or elsewhere): a new pass that says so. A host drops that watcher's chat; the
         // silences decided while it was away come again after hosting.
@@ -1223,8 +1304,9 @@ export const useRoomStore = defineStore('room', {
     },
 
     // A refused pass is tried once more with a fresh one. A wrong password asks for it (wrong only when
-    // one was sent: a link's first try goes without). Anything else is the end of it.
-    refused(reason) {
+    // one was sent: a link's first try goes without); on desktop the try ends, and Join asks. Anything else is the end
+    // of it. A desktop room's service refuses another version with its own (protocol).
+    refused(reason, protocol) {
       const connection = this._connection;
       if (reason === 'not-host' && this.role === 'host') return this.backAsArtist();
       const wait = reason === 'throttled' && this._resuming ? retryIn(this._throttled++, this._resumeBegan) : null;
@@ -1233,10 +1315,14 @@ export const useRoomStore = defineStore('room', {
       } else if (reason === 'bad-pass' && !this._refusedOnce) {
         this._refusedOnce = true;
         useSocialStore().renewPass().then(() => { if (connection === this._connection) connection.open(); });
+      } else if (reason === 'wrong-password' && DESKTOP) {
+        const again = { address: this._address, name: this.room?.name ?? '' };
+        this.over(refusalWords(reason));
+        this.needsPassword = again;
       } else if (reason === 'wrong-password') {
         Object.assign(this, { status: 'password', passwordWrong: this._password !== undefined });
       } else {
-        this.over(this._resuming ? roomAwayWords() : refusalWords(reason));
+        this.over(this._resuming ? roomAwayWords() : DESKTOP && reason === 'version' ? versionWords(protocol, ROOM_PROTOCOL) : refusalWords(reason));
       }
     },
 
