@@ -2,7 +2,7 @@
 // the room service, which the page starts, changes, asks about and stops through the preload (window.phosphorDesktop).
 // The service outlives a reload of the page. A quit (closing the window too) asks the page first, so a host can hand
 // the room over, and goes on when the page says it's ready or after 20 s.
-import { app, BrowserWindow, ipcMain, net, protocol, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
@@ -26,8 +26,17 @@ let win = null;
 let quitReady = false;
 let quitTimer = null;
 
+// A port from the page: a whole number from 1 to 65535 (a numeric string too), or none for the default.
+const portFrom = (port) => {
+  if (port === undefined || port === null || port === '') return undefined;
+  const n = typeof port === 'string' && /^\d+$/.test(port.trim()) ? Number(port) : port;
+  if (Number.isInteger(n) && n >= 1 && n <= 65535) return n;
+  throw new Error(`No port ${port}`);
+};
+
 async function startService({ port, mode, sub } = {}) {
   if (mode !== 'host' && mode !== 'standby') throw new Error(`No mode ${mode}`);
+  port = portFrom(port);
   const running = !!service;
   if (!running) {
     const starting = createRoomService({ port, mode, owner: { sub }, secret });
@@ -68,6 +77,12 @@ const finishQuit = () => {
   clearTimeout(quitTimer);
   app.quit();
 };
+// A quit the person called off (Stay): the next one asks the page again.
+const quitCalledOff = () => {
+  quitReady = false;
+  clearTimeout(quitTimer);
+  quitTimer = null;
+};
 
 // Links out of the app open in the system browser; nothing else is opened.
 const openOutside = (url) => {
@@ -75,9 +90,15 @@ const openOutside = (url) => {
 };
 
 function serve(request) {
+  const notFound = () => new Response('Not found', { status: 404 });
   const { host, pathname } = new URL(request.url);
-  const file = path.join(DIST, decodeURIComponent(pathname));
-  if (host !== 'phosphor' || !file.startsWith(DIST)) return new Response('Not found', { status: 404 });
+  let file;
+  try {
+    file = path.join(DIST, decodeURIComponent(pathname));
+  } catch {
+    return notFound();   // a malformed escape
+  }
+  if (host !== 'phosphor' || !file.startsWith(DIST)) return notFound();
   const found = existsSync(file) && statSync(file).isFile() ? file : path.join(DIST, 'index.html');
   return net.fetch(pathToFileURL(found).toString());
 }
@@ -109,6 +130,20 @@ function openWindow() {
     event.preventDefault();
     app.quit();
   });
+  // The page asks before it goes with unsaved changes (or a room it hosts), as a browser does: Electron shows nothing
+  // for that by itself, so the question is asked here. Plain English: the main process has no app strings.
+  win.webContents.on('will-prevent-unload', (event) => {
+    const choice = dialog.showMessageBoxSync(win, {
+      type: 'question',
+      buttons: ['Leave', 'Stay'],
+      defaultId: 1,
+      cancelId: 1,
+      message: 'Leave Phosphor?',
+      detail: 'Changes you made may not be saved.',
+    });
+    if (choice === 0) event.preventDefault();   // leave: the page goes after all
+    else quitCalledOff();
+  });
   win.on('closed', () => { win = null; });
   win.loadURL(`${ORIGIN}/`);
 }
@@ -137,6 +172,8 @@ else {
 
   app.whenReady().then(() => {
     protocol.handle('app', serve);
+    // No permission is given, but writing to the clipboard (a room's link is copied).
+    session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => callback(permission === 'clipboard-sanitized-write'));
     openWindow();
   });
 }
