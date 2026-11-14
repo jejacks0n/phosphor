@@ -15,7 +15,8 @@ Phosphor's rules come from `AGENTS.md`, and that file binds everything you write
   - `npm run lint`;
   - the unit and browser tests that cover your change: `npx vitest run --project unit tests/unit/<file>` and
     `npx vitest run --project browser tests/browser/<file>`, or the whole layer (`npm run test:unit`,
-    `npm run test:browser`) when the change is in code many tests use.
+    `npm run test:browser`) when the change is in code many tests use. `tests/browser/desktop-*.test.js` are in
+    their own project: run one with `--project browser-desktop`, not `--project browser`.
 
   Up to 3 builders run at once, each in its own worktree. The browser tests are safe side by side: each run takes the
   next free port. The end-to-end tests aren't: their config serves the build on fixed ports, `4180` and `4181`, and

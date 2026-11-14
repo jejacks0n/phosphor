@@ -1,0 +1,46 @@
+# The desktop app's packages (npx electron-builder, after npm run build:desktop). CI makes them on a version tag or by
+# hand (.github/workflows/desktop.yml), where the signing keys come from secrets; docs/desktop.md is for the people
+# who download them.
+appId: work.phosphor.app
+productName: Phosphor
+directories:
+  output: release
+files:
+  - desktop/**
+  - dist-desktop/**
+  - package.json
+  # The page is bundled into dist-desktop/: the main process needs only ws, not the page's packages.
+  - "!node_modules/**"
+  - node_modules/ws/**
+# package.json has no main of its own: the web build doesn't need one.
+extraMetadata:
+  main: desktop/main.js
+publish: github
+
+mac:
+  category: public.app-category.graphics-design
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  # Needs APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID; without them it's skipped, with a warning.
+  notarize: true
+  extendInfo:
+    # macOS asks the person the first time the app reaches the local network, in these words.
+    NSLocalNetworkUsageDescription: "Phosphor connects to rooms on your local network."
+
+# Signed with WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD.
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+
+# Not signed: AppImage and .deb have no signing people would check.
+linux:
+  category: Graphics
+  maintainer: Jeremy Jackson <jejacks0n@users.noreply.github.com>
+  target:
+    - AppImage
+    - deb

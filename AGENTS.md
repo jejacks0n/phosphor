@@ -13,6 +13,9 @@ npm test                          # lint, unit, browser and end-to-end tests: ru
 npm run test:unit                 # or one layer: test:unit, test:browser, test:e2e
 npm run test:update               # rewrite reference files (see below)
 npm run build
+npm run desktop                   # the desktop app (Electron), built first
+npm run build:desktop             # the desktop build alone, in dist-desktop/ (packages: npx electron-builder)
+npm run test:e2e:desktop          # the desktop app's end-to-end tests, not part of npm test
 ```
 
 Addresses are hash addresses (`/#/social`) by default. `VITE_ADDRESSES=path npm run build` builds path
@@ -65,6 +68,16 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   you host or watch), `src/store/DrawingStore.js` (who's an artist, invitations, cursors; a host's side in `src/store/drawing/host.js`, an artist's in `src/store/drawing/artist.js`) and `src/components/social/` (one component per page; the chat is `ChatPanel.vue`, `ChatFoot.vue` and `ReportDialog.vue`; the question asked before anything of SOCIAL runs is `ConsentDialog.vue`, with the wait in `SocialStore.boot` and its version in `src/social/consent.js`). Its tests are the
   `social-*` files in `tests/unit`, `tests/browser` and `tests/e2e`; the end-to-end fake server is
   `tests/e2e/social-support.js` ([docs/testing.md](docs/testing.md)).
+- The desktop app ([docs/desktop.md](docs/desktop.md)): the web app in Electron, with rooms by address and no server.
+  The build is `VITE_DESKTOP=1`, and its branches sit behind `import.meta.env.VITE_DESKTOP === '1'`, so the web build
+  leaves them out. `desktop/` is the Electron side: `main.js` (the window, the `app://phosphor/` origin it serves
+  `dist-desktop/` from, quitting), `preload.cjs` (`window.phosphorDesktop`, the page's one way in), `roomService.js`
+  (the room API on this computer: greetings, asks, channels, hand-overs), `addresses.js` (where others can join) and
+  `selfPass.js` (passes checked in Node). The page's side: `src/social/desktop.js` (the door to the preload),
+  `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join) and
+  `selfPass.js` (passes signed by their own key), with `src/components/social/DesktopStartPage.vue` in the lobby's
+  place. Packaging is `electron-builder.yml`, released by `.github/workflows/desktop.yml` on a version tag. Its
+  tests are the `desktop-*` files in `tests/unit`, `tests/browser` (the `browser-desktop` project) and `tests/e2e`.
 - `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be
   worked on side by side. Commit and push inside `server/`; its commits go to its repo, never this
   one. A fresh checkout makes the link with `ln -s <the server's checkout> server`.

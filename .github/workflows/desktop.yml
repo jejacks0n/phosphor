@@ -1,0 +1,78 @@
+name: Build the desktop app
+
+# A version tag (v0.2.0, matching package.json's version) builds the three platforms and attaches them to a draft
+# GitHub Release for the tag, to look over and publish by hand. A run by hand builds them as this run's artifacts.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write # the tag's draft release
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false # one platform's failure still shows the others'
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      # electron-builder reads these: the macOS Developer ID .p12 and its password, the Apple account that notarizes,
+      # and the Windows .pfx and its password.
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # A tag is a release, so it's signed: a platform's missing secrets fail it. By hand, it builds unsigned and says so.
+      - id: signing
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS) needed="CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID" ;;
+            Windows) needed="WIN_CSC_LINK WIN_CSC_KEY_PASSWORD" ;;
+            *) needed="" ;;
+          esac
+          missing=""
+          for name in $needed; do [ -n "${!name}" ] || missing="$missing $name"; done
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="v$(node -p "require('./package.json').version")"
+            [ "$GITHUB_REF_NAME" = "$version" ] || { echo "::error::The tag $GITHUB_REF_NAME isn't package.json's version, $version"; exit 1; }
+            [ -z "$missing" ] || { echo "::error::A release is signed, and these secrets aren't set for $RUNNER_OS:$missing"; exit 1; }
+          elif [ -n "$missing" ]; then
+            echo "::warning::This $RUNNER_OS build is unsigned: these secrets aren't set:$missing"
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+          fi
+      # npm runs scripts in cmd on Windows, which can't read build:desktop's VITE_DESKTOP=1.
+      - if: runner.os == 'Windows'
+        run: npm config set script-shell "C:\Program Files\Git\bin\bash.exe"
+      - run: npm ci
+      # Electron downloads itself the first time it's required, not on install: here, rather than inside the build.
+      - run: node -e "require('electron')"
+      - run: npm run build:desktop
+      - if: github.ref_type == 'tag'
+        run: npx electron-builder --publish always
+      - if: github.ref_type != 'tag'
+        run: npx electron-builder --publish never
+      - if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: phosphor-${{ runner.os }}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+          if-no-files-found: error
