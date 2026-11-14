@@ -7,7 +7,7 @@ import { openApp, store, settled, fixture, cellPoint } from './support.js';
 // bar, dropping a file, and starting a new project.
 test('About opens from the footer, says which build it is, and closes', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'About Phosphor' }).click();
+  await page.locator('footer').getByRole('button', { name: 'About Phosphor' }).click();
   await expect(page.locator('.modal-backdrop')).toBeVisible();
   // The build it is: major.minor with the day it was built as the third number, and the commit
   // (GitHub Actions' when deploying; "-dirty" with uncommitted changes), in About and in the page's
