@@ -157,7 +157,7 @@ look at the status bar, and take `qa.memory` again.
 ### 11. Restore on top of the original
 - Does: opens `long.ans` again with Draw on top of it, fixes a cell on Layer 1, exports, and reopens the export.
 - Expects: the art is the base with every character pinned; his fix covers it on Layer 1; the export and its reopen
-  differ from the original only at the fixed cell.
+  differ from the original only at the fixed cell (a 256-color file's 16 and 231 come back as 16 and 231, not 0 and 15).
 - Probes: `out-of-order`: pick Base and erase a cell (black with a pinned space), then compare again; `undo-redo`: undo
   both fixes.
 - Rated: yes, wants Cmd+O, then a key for Draw on top of it
