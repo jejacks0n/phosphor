@@ -29,7 +29,7 @@ describe('nothing on the canvas changes', () => {
     const encoding = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => done(null));
     try {
       await project.bake();
-      expect(alert).toHaveBeenCalledWith("Couldn't bake the image.");
+      expect(alert).toHaveBeenCalledWith('Could not bake the image.');
     } finally {
       encoding.mockRestore();
       alert.mockRestore();
@@ -272,7 +272,7 @@ test('a vector layer on the bottom with its own character settings stays shapes 
   for (const merge of [() => project.mergeDown('vector'), () => project.mergeShapes([key])]) {
     toastMessage.value = null;
     merge();
-    expect(toastMessage.value).toBe('Vector 1 has its own character settings, so its shapes can\'t be pressed into the layer under it.');
+    expect(toastMessage.value).toBe('Vector 1 uses custom character settings and cannot merge into the layer below.');
     expect(project.shapes.has(key)).toBe(true);
     expect(project.history.version).toBe(version);
   }
@@ -293,7 +293,7 @@ test('a hidden vector layer on the bottom is never lost to Bake: it\'s refused u
   await settle(project);
   toastMessage.value = null;
   await project.bake();
-  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(toastMessage.value).toBe('Make the layer visible to merge it');
   expect(project.shapes.has(key)).toBe(true);
   expect(project.brightness).toBe(140);
 });

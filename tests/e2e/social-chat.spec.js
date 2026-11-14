@@ -129,9 +129,9 @@ test('the box: close to the panel\'s edges, Send a button only with something to
     await expect(box(watcher)).toHaveValue('');   // taken, before the next
   }
   await expect(messages(watcher)).toHaveCount(3);
-  await expect(panel(watcher).getByText('Easy there—wait a moment before sending again.')).toHaveCount(0);
+  await expect(panel(watcher).getByText('Please wait a moment before sending another message.')).toHaveCount(0);
   await say(watcher, 'four');
-  await expect(panel(watcher).getByText('Easy there—wait a moment before sending again.')).toBeVisible();
+  await expect(panel(watcher).getByText('Please wait a moment before sending another message.')).toBeVisible();
   await expect(box(watcher)).toHaveValue('four');   // kept, to send again
   await expect(messages(host)).toHaveCount(3);
   await expect(messages(host)).not.toContainText(['four']);
@@ -229,20 +229,20 @@ test('a watcher\'s message reaches both with their name, a time and "(you)" only
 
   // The side panel folds away on the » in its tabs, whose « in the nav counts what's said meanwhile.
   const side = watcher.locator('.side-panel'), rail = watcher.locator('nav.workspace-tabs span.unread');
-  await watcher.getByRole('button', { name: 'Fold the panel' }).click();
-  await expect(watcher.getByRole('button', { name: 'Open the panel' })).toBeFocused();
+  await watcher.getByRole('button', { name: 'Collapse panel' }).click();
+  await expect(watcher.getByRole('button', { name: 'Expand panel' })).toBeFocused();
   await expect(panel(watcher).getByRole('heading', { name: 'neon harbor' })).toBeHidden();
   await expect(side).toBeHidden();
   await expect(rail).toHaveCount(0);
 
   await say(host, 'psst');
   await expect(rail).toHaveText('1');
-  await watcher.getByRole('button', { name: 'Open the panel' }).click();
-  await expect(watcher.getByRole('button', { name: 'Fold the panel' })).toBeFocused();
+  await watcher.getByRole('button', { name: 'Expand panel' }).click();
+  await expect(watcher.getByRole('button', { name: 'Collapse panel' })).toBeFocused();
   expect((await panel(watcher).boundingBox()).width).toBe(280);
   await expect(messages(watcher)).toHaveCount(3);
   await expect(messages(watcher).nth(2)).toContainText('psst');
-  await watcher.getByRole('button', { name: 'Fold the panel' }).click();
+  await watcher.getByRole('button', { name: 'Collapse panel' }).click();
   await expect(rail).toHaveCount(0);   // counted from this fold
 });
 
@@ -334,7 +334,7 @@ test('Block from your rooms asks first: Cancel and Escape leave everything as it
     await expect(dialog).toBeVisible();
     const [back, forward] = await Promise.all(['Cancel', 'Block'].map((name) => dialog.getByRole('button', { name, exact: true }).boundingBox()));
     expect(back.x).toBeLessThan(forward.x);   // the way out first, and on the left
-    await expect(dialog.getByText('They can\'t join any room you host, and they leave this one now. Unblock them from Account.')).toBeVisible();
+    await expect(dialog.getByText('They cannot join any room you host, and they will leave this room immediately. You can unblock them in Account settings.')).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
     await dismiss();
     await expect(blockDialog(host)).toHaveCount(0);

@@ -409,7 +409,7 @@ export const shown = (page, name) => page.locator(PLACES[name] ?? `.people-forms
 // The lobby, in the side panel (opened by the tabs' « if it's folded away, when it's in the page but hidden).
 export async function openLobby(page) {
   await page.locator('.side-panel').waitFor({ state: 'attached' });
-  const open = page.getByRole('button', { name: 'Open the panel' });
+  const open = page.getByRole('button', { name: 'Expand panel' });
   if (await open.isVisible()) await open.click();
   await page.locator('.side-panel').getByRole('tab', { name: 'Social' }).click();
 }

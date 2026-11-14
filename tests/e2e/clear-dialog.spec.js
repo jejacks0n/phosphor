@@ -21,7 +21,7 @@ test('Clear asks in a dialog; Cancel keeps the layer, Clear empties it, and the 
   expect(await hasEdits(page)).toBe(true);
 
   await clearButton(page).click();
-  await dialog(page).getByRole('button', { name: /^Clear it/ }).click();
+  await dialog(page).getByRole('button', { name: /^Clear layer/ }).click();
   await expect(dialog(page)).toBeHidden();
   expect(await hasEdits(page)).toBe(false);
   await page.keyboard.press('ControlOrMeta+z');

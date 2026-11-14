@@ -85,14 +85,14 @@ intact and saved as a .phosphor.
   | Partner | Step 1 opens | Step 10, live with people watching | Step 14, drawing together |
   | --- | --- | --- | --- |
   | `maya` | `images/photo.jpg` | [The filters and their order](maya.md#the-filters-and-their-order) (steps 8 to 11) | [Dithering](maya.md#dithering) (steps 12 to 14, on her photo) |
-  | `dex` | `scene.ans`, Edit it | [Drawing character by character](dex.md#drawing-character-by-character) (steps 4 to 9) | [Blocks: select, copy, move](dex.md#blocks-select-copy-move) (steps 10 to 14) |
+  | `dex` | `scene.ans`, Edit artwork | [Drawing character by character](dex.md#drawing-character-by-character) (steps 4 to 9) | [Blocks: select, copy, move](dex.md#blocks-select-copy-move) (steps 10 to 14) |
   | `priya` | a blank canvas | [Setting up the scene](priya.md#setting-up-the-scene), steps 2 to 4 | the same section's steps 5 and 6 (art layers) |
   | `sam` | a blank canvas | [A banner from text](sam.md#a-banner-from-text) (steps 2 to 7) | [Widths](sam.md#widths) (steps 8 to 10) |
-  | `walt` | `long.ans`, Edit it | [The long file](walt.md#the-long-file) (steps 2 to 7) | [SAUCE at its limits](walt.md#sauce-at-its-limits) (steps 12 to 15) |
+  | `walt` | `long.ans`, Edit artwork | [The long file](walt.md#the-long-file) (steps 2 to 7) | [SAUCE at its limits](walt.md#sauce-at-its-limits) (steps 12 to 15) |
 
   A room refuses some of what those steps do, and says so: no adding, deleting, duplicating or moving layers while
   live (only Add vector layer when there's none, added directly on the base), no layer's own character settings (the
-  Characters section is always Base's), no Animate ("Live rooms don't support animations yet."), and while anyone else
+  Characters section is always Base's), no Animate ("Shared rooms do not support animation yet."), and while anyone else
   is drawing no Open, new image, blank canvas, restoring a version or Clear ("Unavailable while co-artists are
   drawing."). A partner's step that runs into one of these is tried once; a refusal the docs promise
   ([Drawing together](../../social.md#drawing-together)) isn't a finding, and the step goes on without it (Dex's step
@@ -125,7 +125,7 @@ script. Every section ends with Free time.
 
 ### 1. Open tonight's art
 - Does: takes `qa.memory`; on the start screen opens what her partner opens (the table in Traits): the photo with
-  Choose a file, an .ans with Choose a file and Edit it, or "Or start with a blank canvas".
+  Choose a file, an .ans with Choose a file and Edit artwork, or "Start with a blank canvas".
 - Expects: it opens as it does for that persona (their step 1); LAYERS shows Layer 1 over Base; the side panel shows
   LAYERS and Social (marked Beta). Opening takes under the `file` budget.
 - Probes: `back-out`: for an .ans, press Cancel at the question first; `again`: open the same art a second time, and
@@ -148,9 +148,8 @@ script. Every section ends with Free time.
 ### 3. Check my art fits a room
 - Does: presses Add layer to add a second cells layer, opens Start a room and looks at Go live; closes it, undoes the
   layer; then turns Animate on, adds a frame, and looks again; undoes the frame and turns Animate off.
-- Expects: with a layer too many, Go live is off and says "For now, a room holds at most Base, one vector layer and
-  one layer above them, all with the same character settings. Merge or delete layers to go live."; with two frames it
-  says "Live rooms don't support animations yet."; once the art fits again, Go live is on
+- Expects: with a layer too many, Go live is off and says "Shared rooms currently support at most Base, one vector layer, and one drawing layer, all sharing the same character settings. Merge or delete extra layers to start a room."; with two frames it
+  says "Shared rooms do not support animation yet."; once the art fits again, Go live is on
   ([Drawing together](../../social.md#drawing-together)).
 - Probes: `undo-redo`: undo the layer, redo it, undo it again, and check Go live follows; `out-of-order`: give Layer 1
   character settings of its own and check Go live says why, then undo them.
@@ -166,7 +165,7 @@ lobby, and look at Who's here.
 - Does: opens Start a room and fills Set up your room: Room name "neon harbor", a two-line Welcome message, Public in
   the lobby, Allow guests on, Max watchers 12, Signal "Wants feedback"; looks at the Lobby picture beside them.
 - Expects: the Room settings box beside the Lobby card box (below it in a narrow window); a count under the welcome
-  as she types (up to 200); "Rooms stream directly from your browser. Up to 12 watchers suits most home connections."
+  as she types (up to 200); "Rooms stream directly from your browser. Up to 12 viewers works best for most home internet connections."
   under Max watchers; the Lobby picture frames part of her art, about twice as wide as tall
   ([Starting a room](../../social.md#starting-a-room)).
 - Probes: `extremes`: a 61-character name (it stops at 60), a name of only spaces (refused: "Use at least one character
@@ -179,10 +178,9 @@ lobby, and look at Who's here.
 - Does: picks Unlisted (link only), types a password, presses Go live; opens Settings and stats from the room menu;
   has `tin_owl` follow the room's link, type a wrong password, then the right one; then ends the room from Settings and
   stats (End room, then End room in the question).
-- Expects: the Lobby card box goes for a link-only room; Settings and stats says "Send the link and the password to
-  anyone you want in.", and under Room settings "Set when the room started": Only with the link, Password set;
+- Expects: the Lobby card box goes for a link-only room; Settings and stats says "Share the room link and password with the people you want to invite.", and under Room settings "Set when the room started": Only with the link, Password set;
   `tin_owl` is asked Join this room?, then for the password ("Wrong password", then in); ending says "End this room?"
-  and "Everyone will be disconnected (including co-artists) and the room chat will clear.", and `tin_owl` sees "The host
+  and "All participants will be disconnected (including co-artists), and room chat will be cleared.", and `tin_owl` sees "The host
   ended the room" ([Hosting](../../social.md#hosting)).
 - Probes: `back-out`: press Cancel at End this room? and check the room goes on; `out-of-order`: look for a way to
   change the password or make the room public while it's live (they stay as set: that's the docs' rule, not a
@@ -223,7 +221,7 @@ and drag the panel wider.
   ([Chat](../../social.md#chat)).
 - Probes: `extremes`: a 300-character message with emoji (the 301st character can't be typed), then the full room: 9
   more members join (12 watchers) and each says a line, and she times her own message reaching a watcher against
-  `response`, then the nine leave (their pages closed), so later steps aren't refused as "Room is full"; `speed`: send five messages as fast as she can ("Easy there—wait a moment before sending again." after
+  `response`, then the nine leave (their pages closed), so later steps aren't refused as "Room is full"; `speed`: send five messages as fast as she can ("Please wait a moment before sending another message." after
   three, with her text kept).
 - Rated: yes, wants a key to put the cursor in the chat box
 
@@ -312,8 +310,7 @@ change, ask in the chat whether people can see her box, and have a watcher Exit 
 - Does: tries Open, New project, the blank canvas, a version from Versions and Clear; then Merge down on Layer 1 and
   Bake, canceling each warning.
 - Expects: Open, new art, restoring and Clear are off and say "Unavailable while co-artists are drawing."; Merge down
-  warns first ("Merging down can't be undone while drawing together.") and Bake too ("Baking can't be undone while
-  drawing together."), each with a way to back out ([Drawing together](../../social.md#drawing-together)).
+  warns first ("Merging down cannot be undone in shared rooms.") and Bake too ("Baking cannot be undone in shared rooms."), each with a way to back out ([Drawing together](../../social.md#drawing-together)).
 - Probes: `back-out`: Cancel and Escape at each warning, checking nothing merged or baked; `out-of-order`: press Cmd+O
   and check the key is refused the same way as the button.
 - Rated: yes, wants Cmd+E for Merge down, then Escape at the warning
@@ -345,7 +342,7 @@ invitation clears), then have them join again from the card (step 22 makes them 
 - Rated: yes, wants a key for Settings and stats
 
 ### 19. Turn guests away
-- Does: unticks Allow guests and saves without ticking "Also remove the guest currently here"; then opens the guest's
+- Does: unticks Allow guests and saves without ticking "Also remove the guest currently in the room"; then opens the guest's
   ⋯ in N here and presses Kick; then ticks Allow guests again and saves.
 - Expects: the guest already in stays until she kicks them; while guests are off, the guest's row has a ⋯ with Kick;
   kicked, the guest's page says "The host removed you" and is back in the lobby; a new guest can't get in while guests
@@ -356,7 +353,7 @@ invitation clears), then have them join again from the card (step 22 makes them 
 
 ### 20. Quiet a troll
 - Does: has `spam_gull` join and post several messages; points at one and presses Delete; then opens `spam_gull`'s ⋯
-  and presses Quiet mute (only you see them); has them post again; then Unmute.
+  and presses Quiet mute (hide their messages from others); has them post again; then Unmute.
 - Expects: Delete shows in the time's place on hover or tab, and leaves "Message deleted by the host" for everyone;
   muted, their row says muted and their new messages reach no one else, shown to her marked "Quietly muted — visible
   only to the two of you"; what they said while muted stays hidden from the others after Unmute
@@ -371,7 +368,7 @@ invitation clears), then have them join again from the card (step 22 makes them 
 - Expects: removed, `spam_gull`'s page says "The host removed you", and they can't come back until the room ends (the
   fake keeps no list of who was removed, so a rejoin isn't refused there: that part isn't reachable on the fake, and
   is noted, not faked);
-  "Block loud_crow?" says "They can't join any room you host, and they leave this one now. Unblock them from Account.";
+  "Block loud_crow?" says "They cannot join any room you host, and they will leave this room immediately. You can unblock them in Account settings.";
   blocked, they leave; Removed counts each once ([Hosting](../../social.md#hosting)).
 - Probes: `back-out`: Cancel and Escape at Block, with focus back on the ⋯; `interrupt`: have `loud_crow` leave while the
   question is open, then press Block (it still blocks the account, and focus goes to N here); `again`: check Account's
@@ -390,8 +387,7 @@ for people already in, report `spam_gull` from N here (Report in their ⋯), and
 - Expects: she comes back at the same address and tab, hosting, not asked to join; the art with her stroke, the chat,
   the numbers and Live for (not restarted by a reload) are back; the side panel shows what it showed before the reload,
   CHAT or LAYERS ([Chat](../../social.md#chat)): if it comes back on the other, that difference is a finding;
-  watchers see "The host is reconnecting…" and then carry on; `tin_owl` sees "Waiting for the host to
-  reconnect—drawing paused…" and then draws on; everyone sees "Your undo starts over. All the drawing is still here."
+  watchers see "The host is reconnecting…" and then carry on; `tin_owl` sees "Waiting for the host to reconnect. Drawing is paused…" and then draws on; everyone sees "Undo history has reset. All existing artwork is preserved."
   The docs say undo starts over ([Hosting](../../social.md#hosting),
   [When the host changes](../../social.md#when-the-host-changes)); losing it is `friction` all the same, filed once
   (minor).
@@ -401,8 +397,7 @@ for people already in, report `spam_gull` from N here (Report in their ⋯), and
 
 ### 23. Hand the room to my regular
 - Does: opens `tin_owl`'s ⋯ and presses Make host; Cancel; then Make host and Make host.
-- Expects: "Make tin_owl the host?" with "You'll stay in the room as an artist."; drawing pauses ("Handing off to the
-  new host—drawing paused…"); then everyone sees "ansi-fan made tin_owl the host."; she's an artist: host-only controls
+- Expects: "Make tin_owl the host?" with "You will remain in the room as an artist."; drawing pauses ("Transferring host controls. Drawing is paused…"); then everyone sees "ansi-fan made tin_owl the host."; she's an artist: host-only controls
   are off for her with "Only the room's host can change this.", her undo is kept, and watchers carry on watching
   `tin_owl` ([When the host changes](../../social.md#when-the-host-changes)).
 - Probes: `back-out`: Cancel and Escape at the question; `out-of-order`: look for Make host on a watcher's row (only
@@ -432,7 +427,7 @@ comes back to her (a hand-over isn't a reconnect), undo a stroke she drew before
 
 ### 26. End the room
 - Does: with `tin_owl` drawing and watchers in, presses End room in the chat panel's header, then End room.
-- Expects: "End this room?" with "Everyone will be disconnected (including co-artists) and the room chat will clear.";
+- Expects: "End this room?" with "All participants will be disconnected (including co-artists), and room chat will be cleared.";
   ended, every watcher sees "The host ended the room" and is back in the lobby; `tin_owl` keeps the art as an ordinary
   document; her art stays open; CHAT goes, the lobby is back, and the address loses `?room=`
   ([Hosting](../../social.md#hosting)).

@@ -1931,8 +1931,8 @@ test('a sudden handover keeps all the drawing, empties undo and shows the notice
   expect(ann.project._ledger.sum).toBe(ann.project.editLayerSum());
   expect(ann.project.canUndo).toBe(false);
   expect(bob.project.canUndo).toBe(false);
-  expect(bob.drawing.notice).toContain('undo starts over');
-  expect(ann.drawing.notice).toContain('undo starts over');
+  expect(bob.drawing.notice).toMatch(/undo history has reset/i);
+  expect(ann.drawing.notice).toMatch(/undo history has reset/i);
   expect(char(bob.project, 1, 1)).toBe('A');
   expect(painted(bob.project, 5, 5)).toEqual(painted(ann.project, 5, 5));
 
@@ -2240,8 +2240,8 @@ test('a host whose kept ledger doesn\'t reach takes the artist\'s agreed picture
   await expect.poll(() => char(room.project, 1, 1), PATIENT).toBe('H');
   await expect.poll(() => char(room.project, 2, 2), PATIENT).toBe('A');
   await expect.poll(() => char(room.project, 3, 3), PATIENT).toBe('w');
-  await expect.poll(() => room.drawing.notice, PATIENT).toContain('undo starts over');
-  await expect.poll(() => ann.drawing.notice, PATIENT).toContain('undo starts over');
+  await expect.poll(() => room.drawing.notice, PATIENT).toMatch(/undo history has reset/i);
+  await expect.poll(() => ann.drawing.notice, PATIENT).toMatch(/undo history has reset/i);
   expect(room.drawing.notice).not.toContain('host changed');   // the host only reloaded
   expect(ann.drawing.notice).not.toContain('host changed');
   await allMatch({ project: room.project }, ann);
@@ -2297,7 +2297,7 @@ test('a new host that didn\'t take the old ledger tells artists undo starts over
 
   const next = await newHostIs(room, ann, { planned: true, former: 'host' });   // the ledger never came
   await expect.poll(() => bob.project.canUndo, PATIENT).toBe(false);
-  expect(bob.drawing.notice).toContain('undo starts over');
+  expect(bob.drawing.notice).toMatch(/undo history has reset/i);
   await expect.poll(() => next.former.project.canUndo, PATIENT).toBe(false);   // the old host's own undo too
 });
 
@@ -2331,7 +2331,7 @@ test('a host back from a reload with no ledger tells artists undo starts over', 
   room.drawing.hostingAgain();
   await again.peer('ann', await passFor('ann'));
   await expect.poll(() => ann.project.canUndo, PATIENT).toBe(false);
-  expect(ann.drawing.notice).toContain('undo starts over');
+  expect(ann.drawing.notice).toMatch(/undo history has reset/i);
 });
 
 test('a hand-over that isn\'t what a ledger could be is refused, whatever part of it is wrong', async () => {
@@ -2415,7 +2415,7 @@ test('a ledger that can\'t be restored falls back to the sudden path, and the ne
   room.host.close();
   await asked;
   expect(ann.project._sharing.role).toBe('host');
-  expect(ann.drawing.notice).toContain('undo starts over');
+  expect(ann.drawing.notice).toMatch(/undo history has reset/i);
   ann.project.editCell(3, 3, { char: 'C' });
   ann.project.commitEdit();
   await expect.poll(() => char(bob.project, 3, 3), PATIENT).toBe('C');
@@ -3074,7 +3074,7 @@ test('an undo the host can\'t do says so and takes the step away, and the older 
   room.project._ledger.forget(room.project._ledger.strokesBy('ann').at(-1));
 
   ann.project.undo();
-  await expect.poll(() => toastMessage.value, PATIENT).toBe('That can\'t be undone anymore.');
+  await expect.poll(() => toastMessage.value, PATIENT).toBe('That action can no longer be undone.');
   expect(ann.project.history.canRedo).toBe(false);
   expect(ann.project._sharing.strokesAsked).toEqual([]);
   expect(char(ann.project, 2, 2)).toBe('B');
@@ -3101,7 +3101,7 @@ test('a redo the host can\'t do says so and takes the step away', async () => {
   room.project._ledger.forget(last);
 
   ann.project.redo();
-  await expect.poll(() => toastMessage.value, PATIENT).toBe('That can\'t be redone anymore.');
+  await expect.poll(() => toastMessage.value, PATIENT).toBe('That action can no longer be redone.');
   expect(ann.project.history.canRedo).toBe(false);
   expect(ann.project.history.canUndo).toBe(true);
   ann.project.undo();
@@ -3120,7 +3120,7 @@ test('an undo held across a project that replaced the stacks says so', async () 
   await expect.poll(() => room.host.holding.length, PATIENT).toBe(1);
   room.project.mergeDown('edit');
   room.host.release();
-  await expect.poll(() => toastMessage.value, PATIENT).toBe('That can\'t be undone anymore.');
+  await expect.poll(() => toastMessage.value, PATIENT).toBe('That action can no longer be undone.');
 });
 
 test('an undo lost with its connection says so once the host has said all it numbered', async () => {
@@ -3137,7 +3137,7 @@ test('an undo lost with its connection says so once the host has said all it num
   expect(toastMessage.value).toBe(null);
   ann.drawing.connection('connecting');
   ann.drawing.heardArtists(['ann'], {});   // a new connection's list, and with it the hello
-  await expect.poll(() => toastMessage.value, PATIENT).toBe('That can\'t be undone anymore.');
+  await expect.poll(() => toastMessage.value, PATIENT).toBe('That action can no longer be undone.');
   expect(ann.project.history.canRedo).toBe(false);
 });
 
@@ -3166,7 +3166,7 @@ test('a host\'s own undo the ledger no longer has says so and takes the step awa
   room.project.commitEdit();
   room.project._ledger.forget(room.project._ledger.strokesBy('host').at(-1));
   room.project.undo();
-  expect(toastMessage.value).toBe('That can\'t be undone anymore.');
+  expect(toastMessage.value).toBe('That action can no longer be undone.');
   expect(room.project.history.canRedo).toBe(false);
   expect(char(room.project, 1, 1)).toBe('H');
 });
@@ -3352,7 +3352,7 @@ test('a refusal goes by what was asked: an undo and a redo of one stroke are two
   expect(ann.project._sharing.strokesAsked).toEqual([{ kind: 'undo', stroke }]);
   ann.project.askForStroke('redo', stroke);
   ann.project.strokeRefused('redo', stroke);
-  expect(toastMessage.value).toBe('That can\'t be redone anymore.');
+  expect(toastMessage.value).toBe('That action can no longer be redone.');
   expect(ann.project._sharing.strokesAsked).toEqual([{ kind: 'undo', stroke }]);
 });
 
@@ -3402,14 +3402,14 @@ test('back as an artist, what\'s said joins what\'s still being said', async () 
   room.project.commitEdit();
   const ann = await join(room, 'ann');
   ann.drawing.noteFormerHost();
-  ann.drawing.notice = 'Your undo starts over. All the drawing is still here.';
+  ann.drawing.notice = 'Undo history has reset. All existing artwork is preserved.';
   ann.drawing.heardArtists(['ann']);
   room.drawing.artistsNow(['ann']);
   await expect.poll(() => ann.project.image, PATIENT).toBeTruthy();
-  await expect.poll(() => ann.drawing.notice, PATIENT).toContain('What you had open');
-  expect(ann.drawing.notice).toContain('Your undo starts over.');
-  expect(toastMessage.value).toContain('What you had open');
-  expect(toastMessage.value).not.toContain('undo starts over');
+  await expect.poll(() => ann.drawing.notice, PATIENT).toContain('Your previous work is saved');
+  expect(ann.drawing.notice).toContain('Undo history has reset.');
+  expect(toastMessage.value).toContain('Your previous work is saved');
+  expect(toastMessage.value).not.toMatch(/undo history has reset/i);
 });
 
 test('a block held when the art is replaced from a new start still goes out on its time, once', async () => {
@@ -3632,7 +3632,7 @@ test('the lock goes when its artist steps out or leaves', async () => {
   expect(room.project.enterArt(key)).toBe(true);
   expect(room.drawing.cursors.host.inside).toBe(key);
   await expect.poll(() => ann.drawing.lockedBy(key), PATIENT).toBe('host');
-  expect(ann.drawing.lockedWords(key)).toBe('Hal is drawing in this layer');
+  expect(ann.drawing.lockedWords(key)).toBe('Hal is currently editing this layer');
   expect(room.drawing.lockedWords(key)).toBe(null); // mine
   expect(ann.project.enterArt(key)).toBe(false);
   room.project.leaveArt();
@@ -3657,7 +3657,7 @@ test('two artists who step into one art layer before hearing each other: the fir
   const [first, second] = ann.project.artInside ? [ann, bob] : [bob, ann];
   expect(room.drawing.lockedBy(key)).toBe(first.sub);
   await expect.poll(() => second.drawing.lockedBy(key), PATIENT).toBe(first.sub);
-  expect(toastMessage.value).toBe(`${first.sub} is drawing in this layer`);
+  expect(toastMessage.value).toBe(`${first.sub} is currently editing this layer`);
   expect(useWorkspaceStore(second.pinia).editorTab).toBe('vector');
   first.project.typeAt(5, 2, 'Z', { fg: '#ff0000' });
   first.project.commitEdit();
@@ -3744,7 +3744,7 @@ test('an art layer someone is drawing in keeps following its path, and the host 
   toastMessage.value = null;
   const held = room.project.shapes.get(key);
   expect(room.project.followPath(key, other)).toBe(false);
-  expect(toastMessage.value).toBe('ann is drawing in this layer');
+  expect(toastMessage.value).toBe('ann is currently editing this layer');
   expect(room.project.shapes.get(key)).toBe(held);
   ann.project.leaveArt();
 });

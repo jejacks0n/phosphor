@@ -157,7 +157,7 @@ test('the status bar shows 50% (or 400%), and pressing it goes back to 100%, lea
   await scroller(page).evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
   await frames(page);
   const line = await middleLine(page);
-  const button = page.getByRole('button', { name: 'Zoom 50%: back to 100%', exact: true });
+  const button = page.getByRole('button', { name: 'Zoom 50%: reset to 100%', exact: true });
   await expect(button).toHaveText('50%');
   await button.focus();
   await page.keyboard.press('Enter');
@@ -167,7 +167,7 @@ test('the status bar shows 50% (or 400%), and pressing it goes back to 100%, lea
   await expect.poll(async () => Math.abs(await middleLine(page) - line)).toBeLessThan(1); // the view keeps its middle
 
   await store(page, 'workspace', (w) => w.setAnsiZoom(4)); // zoomed in, too
-  await page.getByRole('button', { name: 'Zoom 400%: back to 100%', exact: true }).click();
+  await page.getByRole('button', { name: 'Zoom 400%: reset to 100%', exact: true }).click();
   expect(await zoom(page)).toBe(1);
 });
 

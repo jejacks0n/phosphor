@@ -33,7 +33,7 @@ never a lost hour of work, whatever the browser does.
 
 ## What they lean on
 
-- Opening ANSI files with Edit it and Draw on top of it, the limits
+- Opening ANSI files with Edit artwork and Draw on top, the limits
   ([Opening ANSI and text files](../../layers.md#opening-ansi-and-text-files)).
 - Edit Mode for one-cell fixes, the Eyedropper, scrolling and zoom.
 - SAUCE, Export .ans, Save project ([Saving](../../characters.md#saving-utf8ans-and-ans)).
@@ -74,12 +74,12 @@ script. Every section ends with Free time.
 ## The long file
 
 ### 1. Open the long file
-- Does: takes `qa.memory`; writes the files; on the start screen chooses `long.ans` and picks Edit it, timing it from
+- Does: takes `qa.memory`; writes the files; on the start screen chooses `long.ans` and picks Edit artwork, timing it from
   the choice to the art showing.
 - Expects: 300 columns by 1,600 lines on Layer 1 over a black base, VGA (its colors are 256-color codes), SAUCE
   titled "QA Long"; nothing to undo. Opening takes under the `file` budget; over it is a `performance` finding.
 - Probes: `back-out`: choose it and press Cancel at the question; `free`: drop it on the start screen's box instead.
-- Rated: yes, wants Cmd+O, then Enter for Edit it
+- Rated: yes, wants Cmd+O, then Enter for Edit artwork
 
 ### 2. Scroll to the bottom and back
 - Does: scrolls the ANSI view down to line 1,600 with the wheel (or a touch drag), then back to the top; then pans
@@ -143,7 +143,7 @@ look at the status bar, and take `qa.memory` again.
 - Rated: no (a check, outside the app)
 
 ### 9. Phosphor opens its own export unchanged
-- Does: notes the cells on screen, starts a New project, opens the exported .ans with Edit it, and compares.
+- Does: notes the cells on screen, starts a New project, opens the exported .ans with Edit artwork, and compares.
 - Expects: `diffCells` empty: every character and color where it was, the fixes included; the SAUCE fields the same.
 - Probes: `interrupt`: open it in a second tab instead and compare there; `undo-redo`: Cmd+Z after opening does nothing.
 - Rated: yes, wants Cmd+O
@@ -155,12 +155,12 @@ look at the status bar, and take `qa.memory` again.
 - Rated: yes, wants Cmd+O
 
 ### 11. Restore on top of the original
-- Does: opens `long.ans` again with Draw on top of it, fixes a cell on Layer 1, exports, and reopens the export.
+- Does: opens `long.ans` again with Draw on top, fixes a cell on Layer 1, exports, and reopens the export.
 - Expects: the art is the base with every character pinned; his fix covers it on Layer 1; the export and its reopen
   differ from the original only at the fixed cell (a 256-color file's 16 and 231 come back as 16 and 231, not 0 and 15).
 - Probes: `out-of-order`: pick Base and erase a cell (black with a pinned space), then compare again; `undo-redo`: undo
   both fixes.
-- Rated: yes, wants Cmd+O, then a key for Draw on top of it
+- Rated: yes, wants Cmd+O, then a key for Draw on top
 
 **Free time:** he'd open the exported .ans as UTF-8 by renaming it .utf8ans and see what happens, export .utf8ans and
 compare it in the terminal, open `ansi/past-the-edge.ans` and judge its second row from the screenshot, and diff the
@@ -217,7 +217,7 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
 
 ### 17. A second tab offers my work
 - Does: opens the app in a second tab of the same browser and looks at the start screen; then closes it.
-- Expects: "Pick up where you left off" lists his work, marked as already open in another tab ("Open in other tab");
+- Expects: "Pick up where you left off" lists his work, marked as already open in another tab ("Open in another tab");
   the first tab's work is as it was.
 - Probes: `out-of-order`: open it in the second tab anyway, fix a cell there, close it, and see what the first tab has.
 - Rated: yes, wants Tab to the entry, then Enter
@@ -248,7 +248,7 @@ long file (time the reload), and press Back from a fresh start screen.
 ## Real packs and the edges
 
 ### 20. Open the biggest real files
-- Does: opens `ungenannt_oceanvs.ans` (the biggest) and `RA-FIFTY.ANS` (the longest) with Edit it, timing each, and compares each with the terminal
+- Does: opens `ungenannt_oceanvs.ans` (the biggest) and `RA-FIFTY.ANS` (the longest) with Edit artwork, timing each, and compares each with the terminal
   check and with the app's reopen of its own export.
 - Expects: each opens under the `file` budget at its SAUCE width (or 80); the app's export reopens unchanged; where the
   original uses a move right past the last column, the app wraps and a modern terminal doesn't, so note it and judge
@@ -294,7 +294,7 @@ long file (time the reload), and press Back from a fresh start screen.
 - Probes: `again`: open and close the long file three times, taking `qa.memory` after each.
 - Rated: no (a check of memory)
 
-**Free time:** he'd open a pack file with Draw on top of it and Flatten it, export a pack file and diff its bytes with
+**Free time:** he'd open a pack file with Draw on top and Flatten it, export a pack file and diff its bytes with
 the original, try opening a .phosphor from an older version (`projects/live-main.phosphor`), and leave the session idle
 for a few minutes and come back.
 

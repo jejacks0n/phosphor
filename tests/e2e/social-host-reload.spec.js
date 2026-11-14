@@ -82,12 +82,12 @@ test('a host\'s reload shows the side panel as it was: CHAT stays CHAT, LAYERS s
   await expect(panelTab(host, 'Layers')).toHaveAttribute('aria-selected', 'true');
   await expect(panelTab(host, /^Chat/)).toHaveAttribute('aria-selected', 'false');
 
-  await host.getByRole('button', { name: 'Fold the panel' }).click();
+  await host.getByRole('button', { name: 'Collapse panel' }).click();
   await host.reload();
   await live(host);
-  await expect(host.getByRole('button', { name: 'Open the panel' })).toBeVisible();
+  await expect(host.getByRole('button', { name: 'Expand panel' })).toBeVisible();
   await expect(host.locator('.side-panel')).toBeHidden();
-  await host.getByRole('button', { name: 'Open the panel' }).click();
+  await host.getByRole('button', { name: 'Expand panel' }).click();
   await expect(panelTab(host, 'Layers')).toHaveAttribute('aria-selected', 'true');
 });
 

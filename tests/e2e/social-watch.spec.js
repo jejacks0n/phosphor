@@ -116,7 +116,7 @@ test('a tracking watcher\'s art stays centered when their own view changes size;
   });
   await expect.poll(offCenter).toBeLessThanOrEqual(1);
 
-  await watcher.getByRole('button', { name: 'Fold the panel' }).click();
+  await watcher.getByRole('button', { name: 'Collapse panel' }).click();
   await expect.poll(offCenter).toBeLessThanOrEqual(1);
   await watcher.setViewportSize({ width: 950, height: 500 });
   await expect.poll(offCenter).toBeLessThanOrEqual(1);
@@ -310,7 +310,7 @@ test('a ?room= link asks first: nothing reaches the room, and Not now or Escape 
   const asked = watcher.getByRole('dialog', { name: 'Join this room?' });
   for (const decline of [() => asked.getByRole('button', { name: 'Not now' }).click(), () => watcher.keyboard.press('Escape')]) {
     await watcher.goto(`/?room=${ROOM_ID}`);
-    await expect(asked.getByText('the host can see your IP address')).toBeVisible();
+    await expect(asked.getByText('allowing the host to see your IP address')).toBeVisible();
     expect(await store(watcher, 'room', (r) => r.role)).toBe(null);
     await decline();
     await expect(asked).toHaveCount(0);

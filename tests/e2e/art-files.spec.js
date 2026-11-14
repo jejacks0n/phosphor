@@ -12,13 +12,13 @@ const boat = Buffer.from('\x1b[31mHi\x1b[0m\r\nthere', 'latin1');
 const question = (page) => page.getByRole('dialog');
 const editCount = (page) => store(page, 'project', (p) => p.editCells.size);
 
-test('the file picker asks, then Draw on top of it opens a .ans on the ANSI tab as the base layer, named for the file', async ({ page }) => {
+test('the file picker asks, then Draw on top opens a .ans on the ANSI tab as the base layer, named for the file', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText(/Drop an image, .* or ANSI file here/)).toBeVisible();
+  await expect(page.getByText(/Drop an image, .*, or ANSI file here/)).toBeVisible();
   await imageInput(page).setInputFiles({ name: 'boat.ans', mimeType: 'application/octet-stream', buffer: boat });
   await expect(question(page)).toContainText('Open boat.ans?');
-  await expect(question(page)).toContainText('Edit its art, or draw on top of it.');
-  await question(page).getByRole('button', { name: /Draw on top of it/ }).click();
+  await expect(question(page)).toContainText('Edit its artwork directly, or draw on top of it.');
+  await question(page).getByRole('button', { name: /Draw on top/ }).click();
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
   await settled(page);
   expect(await chars(page, 0, 0, 1)).toBe('Hi');
@@ -27,7 +27,7 @@ test('the file picker asks, then Draw on top of it opens a .ans on the ANSI tab 
   expect(await editCount(page)).toBe(0);
 });
 
-test('a .ans dropped on the start screen asks; Cancel leaves the start screen, and Edit it opens it on the edit layer', async ({ page }) => {
+test('a .ans dropped on the start screen asks; Cancel leaves the start screen, and Edit artwork opens it on the edit layer', async ({ page }) => {
   await page.goto('/');
   const drop = () => page.evaluate((bytes) => {
     const dt = new DataTransfer();
@@ -37,11 +37,11 @@ test('a .ans dropped on the start screen asks; Cancel leaves the start screen, a
   await drop();
   await question(page).getByRole('button', { name: 'Cancel' }).click();
   await expect(question(page)).toBeHidden();
-  await expect(page.getByText(/Drop an image, .* or ANSI file here/)).toBeVisible();
+  await expect(page.getByText(/Drop an image, .*, or ANSI file here/)).toBeVisible();
   expect(await store(page, 'project', (p) => !!p.image)).toBe(false);
 
   await drop();
-  await question(page).getByRole('button', { name: /Edit it/ }).click();
+  await question(page).getByRole('button', { name: /Edit artwork/ }).click();
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
   await settled(page);
   expect(await chars(page, 0, 0, 1)).toBe('Hi');
@@ -73,8 +73,8 @@ test('a .ans dropped on the drawing can be added where it lands, as one undo ste
   const before = await store(page, 'project', (p) => ({ cells: p.cells.map((c) => c.char), title: p.sauceTitle, quantize: p.quantize, filename: p.filename }));
   await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
   await expect(question(page)).toContainText('Add tiny.ans?');
-  await expect(question(page)).toContainText('Add it to this drawing, or open it in place of this one.');
-  await expect(question(page)).toContainText('It lands where you dropped it, on Layer 1,');
+  await expect(question(page)).toContainText('Add it to this artwork, or open it as a new project.');
+  await expect(question(page)).toContainText('Places the artwork where you dropped it on Layer 1');
   await expect(page.locator('article.drop-zone')).not.toHaveClass(/dragging/); // the drop ended its highlight
   await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
   await expect(question(page)).toBeHidden();
@@ -115,7 +115,7 @@ test('dropped beside the drawing, an added file lands at the top-left of the vie
   const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
   expect(row).toBeGreaterThan(0);
   await dropOn(page, 'article.drop-zone', tiny, 'tiny.ans', { x: 1, y: 1 });
-  await expect(question(page)).toContainText('It lands at the top-left of the view, on Layer 1,');
+  await expect(question(page)).toContainText('Places the artwork at the top-left of the view, on Layer 1');
   await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
   await expect.poll(() => chars(page, row, col, col + 2)).toBe('ABC'); // once the file is read
   expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: col, r0: row, c1: col + 2, r1: row + 1 });
@@ -169,13 +169,13 @@ test('with others drawing, the question offers no opening; Cancel leaves the dra
   expect(await store(page, 'workspace', (w) => w.artDrop)).toBe(null);
 });
 
-test('a picture dropped on a drawing asks: Add puts it on the layer picked as paint, one undo step; Open instead opens it', async ({ page }) => {
+test('a picture dropped on a drawing asks: Add puts it on the layer picked as paint, one undo step; Open as new project opens it', async ({ page }) => {
   await openApp(page);
   const filename = await store(page, 'project', (p) => p.filename);
   const photo = [...await readFile(fixture('images/photo.jpg'))];
   await dropOn(page, 'article.drop-zone', photo, 'photo.jpg', null, 'image/jpeg');
   await expect(question(page)).toContainText('Add photo.jpg?');
-  await expect(question(page)).toContainText('Add it to Layer 1 as paint, fitted to the canvas.');
+  await expect(question(page)).toContainText('Adds image to Layer 1 as paint, fitted to canvas.');
   await question(page).getByRole('button', { name: /Add to this drawing/ }).click();
   await expect(question(page)).toBeHidden();
   await expect.poll(() => store(page, 'project', (p) => p.paintOf('edit')?.hasPaint ?? false)).toBe(true);
@@ -186,7 +186,7 @@ test('a picture dropped on a drawing asks: Add puts it on the layer picked as pa
 
   page.once('dialog', (dialog) => dialog.accept()); // unsaved work
   await dropOn(page, 'article.drop-zone', photo, 'photo.jpg', null, 'image/jpeg');
-  await question(page).getByRole('button', { name: /Open instead/ }).click();
+  await question(page).getByRole('button', { name: /Open as new project/ }).click();
   await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('photo');
 });
 

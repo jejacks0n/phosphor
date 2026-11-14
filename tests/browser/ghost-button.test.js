@@ -33,7 +33,7 @@ const named = (host, name) => [...host.querySelectorAll('button')].filter((b) =>
 test('Ghost is one button, lit while the ghost is on, and nothing beside it', async () => {
   const { workspace, host } = await bar();
   expect(named(host, 'Ghost')).toHaveLength(1);
-  expect(named(host, 'Ghost strength')).toHaveLength(0);
+  expect(named(host, 'Ghost opacity')).toHaveLength(0);
   const ghost = named(host, 'Ghost')[0];
   expect(ghost.closest('.ghost').classList.contains('active')).toBe(true);
   expect(ghost.querySelector('svg')).not.toBeNull(); // a ghost, not a word
@@ -53,8 +53,8 @@ test('its box turns the ghost on and off and sets its strength, and stays open w
   expect(check.checked).toBe(true);
   expect(slider.value).toBe('35');
   expect(box.querySelector('output')).toBeNull(); // no readout beside the slider
-  expect(box.textContent).not.toContain('Show the ghost'); // the checkbox is named for screen readers, not labeled
-  expect(check.getAttribute('aria-label')).toBe('Show the ghost');
+  expect(box.textContent).not.toContain('Show ghost'); // the checkbox is named for screen readers, not labeled
+  expect(check.getAttribute('aria-label')).toBe('Show ghost');
   expect(check.parentElement).toBe(slider.closest('label').parentElement); // one row: the checkbox, then the slider
   slider.value = '70';
   slider.dispatchEvent(new Event('input'));

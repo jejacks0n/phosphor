@@ -28,7 +28,7 @@ test('a file chosen that Phosphor cannot open is refused with its name, and noth
   input.files = filesOf(new File([new Uint8Array(8)], 'theme.sue')).files;
   input.dispatchEvent(new Event('change'));
   await new Promise((resolve) => setTimeout(resolve, 20));
-  expect(message()).toContain("Phosphor can't open theme.sue");
+  expect(message()).toContain('Phosphor cannot open theme.sue');
   expect(project.image).toBeFalsy();
 });
 
@@ -38,7 +38,7 @@ test('a file dropped that Phosphor cannot open is refused with its name', async 
   event.dataTransfer = filesOf(new File([new Uint8Array(8)], 'font.ttf'));
   host.querySelector('article.drop-zone').dispatchEvent(event);
   await new Promise((resolve) => setTimeout(resolve, 20));
-  expect(message()).toContain("Phosphor can't open font.ttf");
+  expect(message()).toContain('Phosphor cannot open font.ttf');
 });
 
 test('an .nfo is not refused', async () => {
@@ -68,7 +68,7 @@ test('a file with no type that holds a picture opens', async () => {
 test('a file with no type that is not a picture is refused with its name', async () => {
   const { project, host } = await startScreen();
   await choose(host, new File([new Uint8Array(64).fill(7)], 'mystery.xb', { type: '' }));
-  expect(message()).toContain("Phosphor can't open mystery.xb");
+  expect(message()).toContain('Phosphor cannot open mystery.xb');
   expect(project.image).toBeFalsy();
 });
 

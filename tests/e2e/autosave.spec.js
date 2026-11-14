@@ -126,7 +126,7 @@ test('a new tab offers recent work and opens it; a tab open on it is marked and 
   await expect(row).toHaveCount(1);
   await expect(row).toContainText('gradient');
   await expect(row.getByRole('button')).toBeDisabled();
-  await expect(row.getByRole('button')).toHaveText('Open in other tab');
+  await expect(row.getByRole('button')).toHaveText('Open in another tab');
 
   await page.close();
   await other.reload();

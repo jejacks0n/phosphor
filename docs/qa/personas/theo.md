@@ -149,8 +149,7 @@ script. Every section ends with Free time.
 - Does: presses Exit; then opens the shared link (`/?room=abcdefghij`), answers Not now; opens it again and presses
   Join.
 - Expects: Exit takes the ROOM tab away, puts him back on the tab he was on, and brings the lobby back; the link asks
-  "Join this room?" with "You followed a link to it. Joining connects your browser directly to the host's, so the host
-  can see your IP address."; Not now leaves him in the lobby at a plain address; Join puts him in the room
+  "Join this room?" with "You followed an invite link. Joining connects your browser directly to the host's computer, allowing the host to see your IP address."; Not now leaves him in the lobby at a plain address; Join puts him in the room
   ([The address, Back and Forward](../../social.md#the-address-back-and-forward)).
 - Probes: `back-out`: Escape at the question instead of Not now; `out-of-order`: open a link that can't be a room's
   (`/?room=nope`), which says "This room isn't available" without asking.
@@ -239,8 +238,7 @@ ROOM tab, open PIXEL to see whether his own art's PIXEL view is still his, and r
 
 ### 13. Fast messages
 - Does: sends five short messages as fast as he can, then waits a second and sends one more.
-- Expects: three go at once, then one a second; a refused one stays in the box with "Easy there—wait a moment before
-  sending again.", and what he typed after it is kept; after a second it sends ([Chat](../../social.md#chat)).
+- Expects: three go at once, then one a second; a refused one stays in the box with "Please wait a moment before sending another message.", and what he typed after it is kept; after a second it sends ([Chat](../../social.md#chat)).
 - Probes: `speed`: hold Enter with text in the box for two seconds; `again`: send the kept text as soon as he can, and
   check it isn't sent twice.
 - Rated: yes, wants Enter
@@ -274,8 +272,7 @@ panel's left edge wider and double-click it back, and type a message with his na
 - Does: the host makes him an artist (`social.fromMenu(host, 'Make artist', 'theo_watches')`); he reads the notice,
   then presses Not now.
 - Expects: "ansi-fan invited you to draw together." in the chat panel with Accept and Not now; it blocks nothing, so
-  he can save his own art first; with his photo's paint unsaved it says "Accepting replaces your current canvas (you
-  have unsaved changes)."; Not now clears the notice ([Drawing together](../../social.md#drawing-together)).
+  he can save his own art first; with his photo's paint unsaved it says "Accepting replaces your current canvas, which has unsaved changes."; Not now clears the notice ([Drawing together](../../social.md#drawing-together)).
 - Probes: `back-out`: press Escape with the notice showing (does it stay?); `again`: the host asks again right away,
   and the notice comes back once.
 - Rated: yes, wants Tab to Not now, then Enter

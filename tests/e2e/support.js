@@ -101,12 +101,12 @@ export async function pickLayer(page, name = 'Vector 1') {
     await dialog.getByRole('button', { name: 'Done' }).click();
     return;
   }
-  const open = page.getByRole('button', { name: 'Open the panel' });
+  const open = page.getByRole('button', { name: 'Expand panel' });
   const folded = await open.isVisible();
   if (folded) await open.click();
   await panel.getByRole('tab', { name: 'Layers' }).click();
   await pickRow(panel, name);
-  if (folded) await page.getByRole('button', { name: 'Fold the panel' }).click();
+  if (folded) await page.getByRole('button', { name: 'Collapse panel' }).click();
 }
 
 // Nothing open: the start screen, with no tab selected.

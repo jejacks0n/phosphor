@@ -57,37 +57,37 @@
   },
   "about": {
     "label": "About Phosphor",
-    "tagline": "Turn images into ANSI and ASCII, then keep drawing … with style.",
+    "tagline": "Turn images into ANSI and ASCII art, then keep drawing with style.",
     "version": "v{version}",
     "build": "build {sha}",
-    "p1": "Phosphor began in 2019 as a small experiment to build tooling for a concept I called “ANSI Nouveau.” At the time, I was interested in the idea of recreating the mid-90s BBS experience I grew up with, but through a modern, high-fidelity lens. Like many passion projects, life got in the way and it eventually landed on the shelf.",
-    "p2": "Years later, I came across a fantastic {moebiusFork} that added 256-color and full-color support. It reminded me of this project, so I dragged it out of storage, dusted off the code—and leveraging modern tools and techniques, brought it back to life.",
+    "p1": "Phosphor began in 2019 as a small experiment to build tooling for a concept I called “ANSI Nouveau.” At the time, I was interested in the idea of recreating the mid-90s BBS experience I grew up with, but through a modern lens. Like many passion projects, life got in the way and it eventually landed on the shelf.",
+    "p2": "A couple years later, I came across a fantastic {moebiusFork} that added 256-color and full-color support. It reminded me of this project, so I dragged it out of storage, dusted off the code, and leveraging modern tools and techniques, brought it back to life.",
     "moebiusForkLink": "fork of the Moebius ANSI editor",
-    "p3": "Phosphor started as an image-to-ANSI converter, and today it brings two workflows together. It turns images into ANSI or ASCII that you can fine-tune to your liking, then lets you draw and type over that cell by cell and export as .ans or .utf8ans. Finish your piece here, or take the file into another editor for a final pass—whether you're after “Pure ANSI” or the full-color, UTF-8 “ANSI Nouveau” modern style that inspired the project.",
-    "p4": "It's still early days. Expect rough edges on phones and small tablets—though iPad with Apple Pencil works well in testing. Feedback, bug reports, and ideas are always welcome: open an issue on {github}, or fork the repo and take it in your own direction.",
+    "p3": "While Phosphor started as an image-to-ANSI converter, today it brings the two workflows together. It turns images into ANSI or ASCII that you can fine-tune to your liking, then lets you draw and type over that cell by cell and export as .ans or .utf8ans. Finish your piece here, or take the file into another editor you love for a final pass. It supports going for that “Pure ANSI” or the full-color, UTF-8 “ANSI Nouveau” style that initially inspired the project.",
+    "p4": "Phosphore is still evolving. Expect rough edges on phones and small tablets, though iPad with Apple Pencil works well in testing. Feedback, bug reports, and ideas are always welcome: open an issue on {github}, or fork the repo and take it in your own direction.",
     "githubLink": "GitHub",
     "creditsIntro": "Credits and special thanks:",
-    "creditErtdfgcvb": "{ertdfgcvb} (Andreas Gysin) for the inspiration for Phosphor with the (awesome) {playCore} library",
-    "creditMoebius": "Andy Herbert, Blocktronics and MeaTLoTioN for their work on Moebius",
-    "creditDurdraw": "cmang for {durdraw}, the ANSI and ASCII art editor that animates",
-    "credit16Colors": "lordscarlet (Doug Moore) and Brendan O'Connor for creating sixteencolors and those working to keep {sixteenColors} alive today.",
-    "creditFonts": "The fonts: {ibmVga} from VileR's Ultimate Oldschool PC Font Pack ({ccBySa}), {jetbrains} by The JetBrains Mono Project Authors ({ofl1}), {unscii} by viznut (public domain), and {unifont} by Roman Czyborra, Paul Hardy and others ({ofl2})",
-    "creditIcons": "The icons: most are from {fontAwesome} by Fonticons, Inc. ({ccBy})",
-    "creditScene": "And the many authors, maintainers, and ANSI artists who have inspired me over the years—too many to name",
-    "thanks": "Thanks to all of you for the inspiration, and for keeping the scene going.",
+    "creditErtdfgcvb": "{ertdfgcvb} (Andreas Gysin) for inspiring Phosphor through the {playCore} library",
+    "creditMoebius": "Andy Herbert, Blocktronics, and MeaTLoTioN for their work on Moebius",
+    "creditDurdraw": "cmang for {durdraw}, the animated ANSI and ASCII art editor",
+    "credit16Colors": "lordscarlet (Doug Moore) and Brendan O'Connor for creating sixteencolors, and everyone working to keep {sixteenColors} online.",
+    "creditFonts": "Fonts: {ibmVga} from VileR's Ultimate Oldschool PC Font Pack ({ccBySa}), {jetbrains} by The JetBrains Mono Project Authors ({ofl1}), {unscii} by viznut (public domain), and {unifont} by Roman Czyborra, Paul Hardy, and others ({ofl2})",
+    "creditIcons": "Icons: most icons are from {fontAwesome} by Fonticons, Inc. ({ccBy})",
+    "creditScene": "And all the artists, tool builders, and ANSI scene members who keep text art alive.",
+    "thanks": "Thank you for the inspiration, and for keeping the scene going.",
     "motto": "Make Code Not War",
-    "policies": "Read the {terms}, the {privacy} and the {guidelines}."
+    "policies": "Read our {terms}, {privacy}, and {guidelines}."
   },
   "zero": {
-    "dropPrompt": "Drop an image, {ext} or ANSI file here",
+    "dropPrompt": "Drop an image, {ext}, or ANSI file here",
     "browseMobile": "Choose a file",
     "browseDesktop": "Choose a file",
-    "startBlank": "Or start with a blank canvas",
+    "startBlank": "Start with a blank canvas",
     "recentHeading": "Pick up where you left off",
     "open": "Open",
-    "openElsewhere": "Open in other tab",
+    "openElsewhere": "Open in another tab",
     "openAria": "Open {name}",
-    "openElsewhereAria": "{name} (already open in another tab)"
+    "openElsewhereAria": "{name} (open in another tab)"
   },
   "tabs": {
     "toggleSettings": "Toggle settings",
@@ -101,10 +101,10 @@
     "beta": "Beta",
     "animate": "Animate",
     "animateHint": "Animate frame by frame",
-    "animateNeedArt": "Open an image or start a canvas to animate.",
-    "animateInRoom": "Live rooms don't support animations yet.",
-    "animateTooLargeTitle": "Canvas is too large to animate ({max} cells max).",
-    "animateTooLargeToast": "This canvas has {cells} cells (animation supports up to {max}). Lower Dimensions to animate.",
+    "animateNeedArt": "Open an image or create a canvas to animate.",
+    "animateInRoom": "Shared rooms do not support animation yet.",
+    "animateTooLargeTitle": "Canvas is too large to animate (maximum {max} cells).",
+    "animateTooLargeToast": "This canvas has {cells} cells. Animation supports up to {max} cells. Reduce canvas dimensions to animate.",
     "themeAria": "Theme",
     "themes": {
       "dark": "Dark",
@@ -122,9 +122,9 @@
       "adjust": "Adjustments",
       "effects": "Image filters"
     },
-    "charsNote": "Used where paint or a picture on {name} becomes characters.",
-    "charsNoteVector": "Shapes and art layers on {name} convert with these.",
-    "effectsNoImage": "Image filters need an image. Load one, or use Bake to turn the current canvas into one.",
+    "charsNote": "Controls how paint or images on {name} convert into characters.",
+    "charsNoteVector": "Shapes and art layers on {name} use these character settings when converted.",
+    "effectsNoImage": "Image filters require an image. Open an image or use Bake to turn the canvas into an image.",
     "reset": "Reset",
     "resetAll": "Reset all",
     "onCount": "{count} on",
@@ -132,7 +132,7 @@
     "charRows": "{n} row | {n} rows",
     "rowsAria": "Rows",
     "aspectLock": "Lock aspect ratio",
-    "aspectFreeWithEdits": "Once you've drawn on the canvas, resizing adds or trims cells on the right and bottom freely.",
+    "aspectFreeWithEdits": "After you draw on the canvas, resizing adds or trims cells along the right and bottom edges.",
     "renderStyle": {
       "label": "Art style",
       "ansi": "ANSI",
@@ -155,7 +155,7 @@
     "seed": {
       "label": "Character seed",
       "placeholder": "Seed",
-      "randomize": "Roll a new seed"
+      "randomize": "Generate new seed"
     },
     "quantize": {
       "label": "Color palette",
@@ -183,76 +183,76 @@
   "settings": {
     "cols": {
       "label": "Dimensions",
-      "help": "Canvas width in columns and height in pixel rows (two pixel rows make one character row)."
+      "help": "Canvas width in columns and height in pixel rows. Two pixel rows equal one character row."
     },
     "renderStyle": {
-      "help": "ANSI colors each character and its background. Color ASCII draws colored characters on black, using denser glyphs for stronger colors. Monochrome ASCII uses one color, mapping brightness from light to dense."
+      "help": "ANSI mode sets colors for both the character and its background. Color ASCII draws colored characters on a black background, using denser shapes for stronger colors. Monochrome ASCII uses one color and maps brightness from light to dark."
     },
     "chars": {
-      "help": "Characters the converter chooses from—randomly for ANSI, or from dark to bright for ASCII. Repeat a character to weight it higher. Best match and By shape ignore repeats."
+      "help": "The characters used to convert images. ANSI chooses characters randomly, while ASCII maps them from dark to bright. Repeating a character makes it appear more often. Best match and By shape ignore repeated characters."
     },
     "seed": {
-      "help": "Controls random character placement in ANSI mode. Same seed, same pattern—roll the dice to shuffle."
+      "help": "Controls random character placement in ANSI mode. The same seed produces the same pattern. Generate a new seed to shuffle characters."
     },
     "quantize": {
-      "help": "Full color keeps 24-bit color. VGA and CGA snap to classic 256- and 16-color palettes. Limited count picks the best N colors from the image, and Custom color list uses only the hex colors you enter."
+      "help": "Full color preserves 24-bit color. VGA and CGA reduce colors to classic 256-color and 16-color palettes. Limited count picks the best colors from the image. Custom color list uses only the hex colors you enter."
     },
     "colorCount": {
       "label": "Color count"
     },
     "ditherStyle": {
-      "help": "How dithering mixes the palette's colors. Floyd–Steinberg scatters them like grain; Ordered lays them in a regular crosshatch that stays put from frame to frame."
+      "help": "Chooses how colors blend together. Floyd–Steinberg scatters dots like film grain. Ordered creates a regular grid pattern that stays steady between animation frames."
     },
     "dither": {
       "label": "Dither",
-      "help": "Mixes the palette's colors in a fine pattern where the picture falls between them, so gradients come out smooth instead of in bands. Paint keeps its own color. Each layer has its own: on a vector layer it dithers the shapes. With Best match or By shape, the characters carry it from cell to cell."
+      "help": "Blends palette colors using fine dot patterns to create smooth gradients instead of harsh color bands. Direct painting does not dither. The base layer and each vector layer have their own dither setting. In Best match or By shape modes, characters also adapt to the dither pattern."
     },
     "smoothing": {
-      "help": "Controls how the image is sampled onto the grid. High blends smoothly; Low preserves sharp edges and grain."
+      "help": "Controls how the image resizes onto the grid. High blends smoothly. Low preserves sharp edges and pixel details."
     },
     "colorizeStrength": {
       "label": "Colorize",
-      "help": "Tints the image toward a single hue while preserving light and shadow."
+      "help": "Tints the image toward a single color while preserving light and shadow."
     },
     "hue": {
       "label": "Hue shift",
-      "help": "Rotates every color around the color wheel."
+      "help": "Rotates colors around the color wheel."
     },
     "invert": {
       "label": "Invert",
-      "help": "Flips colors to their negatives (applied after Colorize and Hue shift)."
+      "help": "Inverts all colors to their negatives. This applies after Colorize and Hue shift."
     },
     "brightness": {
       "label": "Brightness",
-      "help": "Shifts the overall image lighter or darker."
+      "help": "Adjusts the overall image brightness lighter or darker."
     },
     "contrast": {
       "label": "Contrast",
-      "help": "Pushes lights and darks further apart, or brings them closer."
+      "help": "Increases or decreases the difference between light and dark areas."
     },
     "levelsBlack": {
       "label": "Black point",
-      "help": "Tones at or below this become black, and the rest spread out to fill the range."
+      "help": "Sets the black point. Tones at or below this level become pure black, expanding the remaining tones."
     },
     "levelsWhite": {
       "label": "White point",
-      "help": "Tones at or above this become white, and the rest spread out to fill the range."
+      "help": "Sets the white point. Tones at or above this level become pure white, expanding the remaining tones."
     },
     "levelsMid": {
       "label": "Midtones",
-      "help": "Lifts the middle tones (above 1) or deepens them (below 1) without moving black or white."
+      "help": "Adjusts midtone brightness. Values above 1 lighten midtones, and values below 1 darken them, without changing black or white."
     },
     "saturation": {
       "label": "Saturation",
-      "help": "Boosts color intensity or pulls it toward grayscale."
+      "help": "Adjusts color intensity from grayscale to vivid color."
     },
     "posterize": {
       "label": "Posterize",
-      "help": "Cuts each color channel to this many steps, for flat, poster-like color."
+      "help": "Reduces the number of colors in each channel to create flat, poster-like bands."
     },
     "threshold": {
       "label": "Threshold",
-      "help": "Splits the picture in two: tones at or above this level take the light color, the rest the dark one."
+      "help": "Splits the image into two colors. Tones at or above this level use the light color, and darker tones use the dark color."
     },
     "thresholdDark": {
       "label": "Dark color"
@@ -262,37 +262,37 @@
     },
     "blur": {
       "label": "Blur",
-      "help": "Softens noise and fine grain before the picture is converted. Applied before the other effects. The base layer only: the edit layer isn't changed."
+      "help": "Softens noise and fine detail before converting the image. Applies to the base layer only; drawing layers are not affected."
     },
     "flatten": {
       "label": "Simplify",
-      "help": "Groups nearby tones into clean, painterly shapes. The base layer only: the edit layer isn't changed."
+      "help": "Groups similar colors together into clean, simplified shapes. Applies to the base layer only; drawing layers are not affected."
     },
     "sharpen": {
       "label": "Sharpen",
-      "help": "Crisps up edges and fine detail. The base layer only: the edit layer isn't changed."
+      "help": "Sharpens edges and fine details. Applies to the base layer only; drawing layers are not affected."
     },
     "edges": {
       "label": "Edges",
-      "help": "Traces detected outlines in your chosen edge color. The base layer only: the edit layer isn't changed."
+      "help": "Traces outlines using your chosen edge color. Applies to the base layer only; drawing layers are not affected."
     },
     "edgeThickness": {
       "label": "Edge thickness",
-      "help": "Controls how bold the traced outlines appear. The base layer only: the edit layer isn't changed."
+      "help": "Controls the thickness of traced outlines. Applies to the base layer only; drawing layers are not affected."
     },
     "charChoice": {
-      "help": "Random picks from your set by the seed. Best match picks the character and its two palette colors that come closest to the picture. By shape compares each character's shape with the picture's detail in the cell."
+      "help": "Random chooses characters using the seed value. Best match picks the character and colors that best match the image. By shape matches character outlines to image details in each cell."
     },
     "charChoiceAscii": {
-      "help": "By intensity (Color ASCII) and By brightness (Monochrome ASCII) pick a character further along your set the brighter the cell. By shape compares each character's shape with the picture's detail in the cell."
+      "help": "By intensity (Color ASCII) and By brightness (Monochrome ASCII) choose denser characters as cells get brighter. By shape matches character outlines to image details in each cell."
     },
     "solids": {
       "label": "Solids",
-      "help": "How strongly a plain solid cell is preferred over a shade or a half-block."
+      "help": "Controls how often solid color blocks are chosen instead of shaded blocks or half-blocks."
     },
     "patternLight": {
       "label": "Pattern light",
-      "help": "How a character's ink mixes its two colors: 0% is a plain average, 100% mixes them as light does on a screen, so shades read lighter."
+      "help": "Controls how character foreground and background colors blend. At 0%, colors blend by simple average. At 100%, colors blend like light on a screen, making shaded cells appear brighter."
     }
   },
   "charsets": {
@@ -310,7 +310,7 @@
   },
   "font": {
     "label": "Font",
-    "help": "Sets the display font for your canvas. Use Load font to add a monospaced TrueType, OpenType, or WOFF font from your computer. Bitmap fonts look crispest at multiples of their native size (16 or 32px for 8×16 fonts). Your font choice stays in this browser; in a shared room, you'll see the host's font temporarily.",
+    "help": "Sets the display font for your canvas. Click Load font to add a monospaced TrueType, OpenType, or WOFF font from your computer. Bitmap fonts look best at multiples of their native size (such as 16px or 32px for 8×16 fonts). Your font choice is saved in your browser. In a shared room, you see the host's font.",
     "remove": "Remove",
     "removeAria": "Remove font",
     "removeTitle": "Remove this font from your browser",
@@ -319,10 +319,10 @@
     "groupBuiltIn": "Built-in",
     "groupYours": "Yours",
     "sizeAria": "Font size",
-    "sizeTitle": "Font size (px)",
-    "hostsFont": "Using the host's font while you draw here.",
+    "sizeTitle": "Font size in pixels",
+    "hostsFont": "Using the host's font while in this room.",
     "errors": {
-      "unreadable": "Couldn't read “{name}” as a font. Try a TrueType (.ttf), OpenType (.otf), or WOFF file.",
+      "unreadable": "Could not read “{name}” as a font file. Please use a TrueType (.ttf), OpenType (.otf), or WOFF file.",
       "notMonospaced": "“{name}” isn't monospaced ({narrow} is {narrowPx}px wide, while {wide} is {widePx}px). Phosphor needs fixed-width fonts where every character shares one cell width.",
       "aSpace": "space"
     }
@@ -332,8 +332,8 @@
     "lobby": "Lobby",
     "social": "Social",
     "chat": "Chat",
-    "foldAria": "Fold the panel",
-    "openAria": "Open the panel",
+    "foldAria": "Collapse panel",
+    "openAria": "Expand panel",
     "resizeAria": "Panel width"
   },
   "layers": {
@@ -344,7 +344,7 @@
     "addVector": "Add vector layer",
     "addCells": "Add layer",
     "count": "{n} of {most} layer | {n} of {most} layers",
-    "full": "A drawing holds at most {n} layers.",
+    "full": "A drawing can have up to {n} layers.",
     "menuAria": "{name} options",
     "moveUp": "Move up",
     "moveDown": "Move down",
@@ -355,11 +355,11 @@
     "showAria": "Show {name}",
     "hideAria": "Hide {name}",
     "renameAria": "Rename {name}",
-    "none": "Layers show while a drawing's art is showing.",
-    "hiddenToast": "Show the layer to draw on it",
-    "hiddenMergeToast": "Show the layer to merge it",
-    "noCellsLayer": "Add a layer to draw on it.",
-    "notInRoom": "Adding, deleting and moving layers isn't available in a room yet."
+    "none": "Layers appear while your artwork is showing.",
+    "hiddenToast": "Make the layer visible to draw on it",
+    "hiddenMergeToast": "Make the layer visible to merge it",
+    "noCellsLayer": "Add a drawing layer before drawing.",
+    "notInRoom": "Adding, deleting, and reordering layers is not supported in shared rooms yet."
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",
@@ -375,7 +375,7 @@
     "pencil": {
       "title": "Pencil",
       "connect": "Connect",
-      "connectTitle": "Auto-join corners and intersections with existing box-drawing lines"
+      "connectTitle": "Automatically connect box-drawing lines at corners and intersections"
     },
     "brush": {
       "title": "Brush",
@@ -388,7 +388,7 @@
       "hardness": "Hardness",
       "hardnessTitle": "Edge softness",
       "stack": "Build up",
-      "stackTitle": "Layer strokes additively—two passes at 50% reach full opacity. When off, overlapping strokes cap at Opacity."
+      "stackTitle": "Build up brush strokes additively. For example, two passes at 50% opacity reach 100%. When turned off, overlapping strokes never exceed the set Opacity."
     },
     "eraser": {
       "title": "Eraser",
@@ -400,15 +400,15 @@
       "tolerance": "Tolerance",
       "toleranceTitle": "Fill tolerance",
       "contiguous": "Contiguous",
-      "contiguousTitle": "Fill only connected areas; turn off to fill matches across the canvas",
+      "contiguousTitle": "Fill only connected areas. Turn off to fill matching cells across the entire canvas",
       "feather": "Feather",
       "featherTitle": "Soften the filled edge",
       "match": "Match",
       "set": "Set",
       "fill": "Fill",
-      "setFgTitle": "Set the cells to your foreground color",
-      "setBgTitle": "Set the cells to your background color",
-      "setCharTitle": "Set the cells to your character"
+      "setFgTitle": "Fill cells with your foreground color",
+      "setBgTitle": "Fill cells with your background color",
+      "setCharTitle": "Fill cells with your active character"
     },
     "blur": {
       "title": "Blur"
@@ -421,7 +421,7 @@
     },
     "retouch": {
       "strength": "Strength",
-      "strengthTitle": "How far one stroke goes",
+      "strengthTitle": "Effect intensity for each stroke",
       "range": "Range",
       "shadows": "Shadows",
       "midtones": "Midtones",
@@ -432,7 +432,7 @@
       "shape": "Shape",
       "linear": "Linear",
       "spherical": "Spherical",
-      "needsColors": "A gradient needs both a foreground and a background color: neither can be None."
+      "needsColors": "A gradient requires both a foreground and a background color. Neither color can be None."
     },
     "picker": {
       "title": "Eyedropper",
@@ -453,16 +453,16 @@
       "title": "Shape",
       "polygon": "Polygon",
       "sides": "Sides",
-      "sidesTitle": "The polygon's number of sides"
+      "sidesTitle": "Number of sides for the polygon"
     },
     "hand": {
       "title": "Hand (pan)",
       "rulers": "Rulers",
-      "rulersTitle": "Rulers along the art's top and left, and the guides",
+      "rulersTitle": "Show rulers along the top and left edges, and show guides",
       "opacity": "Opacity",
-      "opacityTitle": "How solid the rulers are: the guides and the counts at the pointer stay solid",
+      "opacityTitle": "Sets ruler opacity. Guides and pointer measurements always stay fully visible",
       "clearGuides": "Clear guides",
-      "clearGuidesTitle": "Remove every guide on this drawing"
+      "clearGuidesTitle": "Remove all guides from this drawing"
     },
     "zoom": {
       "title": "Zoom"
@@ -477,15 +477,15 @@
     "select": {
       "title": "Select",
       "allLayers": "All layers",
-      "allLayersTitle": "Move all visible layers; turn off to move only the picked layer"
+      "allLayersTitle": "Move all visible layers. Turn off to move only the selected layer"
     },
     "wand": {
       "title": "Magic Wand",
       "match": "Match",
       "tolerance": "Tolerance",
-      "toleranceTitle": "How far a color may be from the one clicked and still match",
+      "toleranceTitle": "How closely colors must match the clicked cell",
       "contiguous": "Contiguous",
-      "contiguousTitle": "Select only connected matches; turn off to select matches across the whole canvas"
+      "contiguousTitle": "Select only connected matching cells. Turn off to select matching cells across the whole canvas"
     },
     "shapes": {
       "title": "Shapes",
@@ -497,15 +497,15 @@
       "shiftCircle": "circle",
       "shiftSnap45": "snap to 45°",
       "fill": "Fill",
-      "fillTitle": "Fill the inside with the character too",
+      "fillTitle": "Fill the inside of the shape with the active character",
       "connect": "Connect",
-      "connectTitle": "Auto-join corners and intersections with existing box-drawing lines",
+      "connectTitle": "Automatically connect box-drawing lines at corners and intersections",
       "antialiased": "Anti-aliased",
-      "antialiasedTitle": "Smooth edges—uses shade blocks ░▒▓ in Full-block mode",
+      "antialiasedTitle": "Smooth edges using shade blocks (░▒▓) in Full-block mode",
       "verticalHalves": "Half-column detail",
-      "verticalHalvesTitle": "Use side-half (▌▐) and quarter blocks (▝▘▗▖) for smoother horizontal curves",
+      "verticalHalvesTitle": "Use vertical half-blocks (▌▐) and quarter blocks (▝▘▗▖) for smoother curves",
       "blockChars": "Write block glyphs",
-      "blockCharsTitle": "Replace touched cells with block characters; turn off to tint existing characters instead"
+      "blockCharsTitle": "Replace drawn cells with block characters. Turn off to change colors without replacing characters"
     },
     "matchToggles": {
       "fg": "FG",
@@ -538,97 +538,97 @@
         "ascii": "ASCII"
       },
       "allCells": "All cells",
-      "allCellsTitle": "Show converted base characters too, not just your edits"
+      "allCellsTitle": "Show converted base characters as well as your edits"
     },
     "undo": "Undo",
     "undoTitle": "Undo ({key})",
     "redo": "Redo",
     "redoTitle": "Redo ({key})",
     "bake": "Bake",
-    "bakeTitle": "Bake: lock current slider effects into the source image and reset sliders to neutral. Your edit layer stays untouched.",
-    "bakeNothing": "Nothing to bake: the sliders are at their defaults and there are no shapes on the picture.",
+    "bakeTitle": "Apply all current slider adjustments to the base image and reset sliders to neutral. Drawing layers are not changed.",
+    "bakeNothing": "Nothing to bake: all sliders are at default values and there are no shapes on the image.",
     "flatten": "Flatten",
-    "flattenTitle": "Flatten: everything on the drawing becomes ANSI cells exactly as they show, and the image is removed. Unlike Bake, nothing is left for the sliders and effects to change.",
-    "flattenOneFrame": "Flatten replaces the picture under every frame, so it's only available on single-frame art.",
+    "flattenTitle": "Flatten: converts all visible layers into character cells and removes the background image. Sliders and image filters no longer change the result.",
+    "flattenOneFrame": "Flatten replaces the underlying image across all frames, so it is only available for single-frame artwork.",
     "flattenDialog": {
       "title": "Flatten",
-      "sub": "Every layer that shows becomes ANSI cells as it shows now. The image is removed; Undo brings it back.",
-      "warning": "Flattening can't be undone while drawing together.",
-      "hidden": "The hidden layer is removed too. | The {n} hidden layers are removed too."
+      "sub": "All visible layers will be converted into character cells, and the background image will be removed. You can undo this action.",
+      "warning": "Flattening cannot be undone in shared rooms.",
+      "hidden": "The hidden layer will also be removed. | The {n} hidden layers will also be removed."
     },
     "mergeDown": "Merge down",
-    "mergeDownTitle": "Merge down: put {name} into the layer under it.",
-    "mergeOntoVector": "Cells can't go into a vector layer. Use Make art layer instead.",
-    "mergeOwnChars": "{name} has its own character settings, so its shapes can't be pressed into the layer under it.",
-    "mergeShapesWhole": "Shapes go into a cells layer only as a whole layer. Deselect them to merge all of {name}.",
-    "mergeBase": "Nothing is under the base to merge it into.",
-    "mergeOneFrame": "Merge down flattens into the shared base layer, so it's only available on single-frame art.",
-    "mergeShapesTitle": "Merge down: press the selected shapes into the base layer, where they stop being editable.",
-    "mergeShapesOneFrame": "Merge down presses shapes into the shared base layer, so it's only available on single-frame art.",
+    "mergeDownTitle": "Merge {name} down into the layer below it.",
+    "mergeOntoVector": "Character cells cannot merge into a vector layer. Use Make art layer instead.",
+    "mergeOwnChars": "{name} uses custom character settings and cannot merge into the layer below.",
+    "mergeShapesWhole": "Shapes can only merge into a drawing layer as an entire layer. Deselect shapes to merge all of {name}.",
+    "mergeBase": "The base layer is already at the bottom and cannot merge down.",
+    "mergeOneFrame": "Merging into the shared base layer is only available for single-frame artwork.",
+    "mergeShapesTitle": "Merge down: paint the selected shapes into the base layer's pixels. Merged shapes can no longer be edited as vectors.",
+    "mergeShapesOneFrame": "Merging shapes into the shared base layer is only available for single-frame artwork.",
     "clearEdit": "Clear layer",
-    "clearEditTitle": "Clear layer: erase everything on {name}.",
+    "clearEditTitle": "Clear layer: erase all content on {name}.",
     "clearDialog": {
       "title": "Clear {name}?",
-      "sub": "Everything you've painted, typed, or pasted on it will be removed.",
-      "clear": "Clear it",
-      "clearText": "Undo brings it back."
+      "sub": "All painted cells, text, and pasted content on this layer will be removed.",
+      "clear": "Clear layer",
+      "clearText": "You can use Undo to restore it."
     },
     "mergeDialog": {
       "title": "Merge down",
-      "warning": "Merging down can't be undone while drawing together.",
+      "warning": "Merging down cannot be undone in shared rooms.",
       "warnedSub": "{warning} {sub}",
-      "subSelection": "Only what's drawn inside the selection goes into the base layer; the rest of the layer stays where it is.",
+      "subSelection": "Only content inside the selection merges into the base layer. The rest of the layer remains unchanged.",
       "subAll": "Choose how to merge {name} into {below}:",
       "exactTitle": "Keep crisp cells",
-      "exactText": "Locks each cell cleanly as shown. Image filters like Edges and Sharpen won't affect it.",
+      "exactText": "Preserves each character cell exactly as shown. Image filters like Edges and Sharpen will not affect these cells.",
       "intoImageTitle": "Blend into source image",
-      "intoImageText": "Paints into the underlying image so live sliders and filters affect it too.",
-      "originalNote": "Flattens the source image to working resolution (like Bake), so filters like Edges may shift slightly this first time."
+      "intoImageText": "Draws directly into the base image so sliders and image filters will apply to it.",
+      "originalNote": "Resizes the source image to its working resolution (like Bake). Filters like Edges may shift slightly."
     },
     "bakeDialog": {
       "title": "Bake",
       "titlePalette": "Bake with {palette} palette",
-      "warning": "Baking can't be undone while drawing together.",
-      "subPalette": "Locks current slider adjustments into the source image and resets sliders to zero. How should colors be stored?",
-      "choiceText": "The picture as it looks now becomes the image, and the sliders go back to neutral.",
+      "warning": "Baking cannot be undone in shared rooms.",
+      "subPalette": "Applies current slider adjustments to the source image and resets sliders to zero. How should colors be saved?",
+      "choiceText": "The image as it looks now becomes the new base image, and all sliders reset to neutral.",
       "keepFullTitle": "Keep full color",
-      "keepFullText": "Preserves smooth gradients underneath so switching palettes later keeps full detail. A few border cells between {palette} colors may shift.",
+      "keepFullText": "Preserves 24-bit color detail underneath so switching palettes later keeps full gradients. A few border cells between {palette} colors may shift slightly.",
       "lockPaletteTitle": "Snap to {palette} colors",
-      "lockPaletteText": "Canvas stays pixel-identical right now, keeping only {palette} colors. Switching back to Full color later won't restore smooth gradients unless you undo."
+      "lockPaletteText": "Locks the image to {palette} colors only. Switching back to Full color later will not restore smooth gradients unless you undo."
     },
     "selection": {
       "copyTitle": "Copy ({key})",
       "cutTitle": "Cut ({key})",
-      "pasteTitle": "Paste what you copied in Phosphor, at the selection",
-      "pasteElsewhereTitle": "Nothing copied in this tab. To paste from another tab or app, use {key}",
+      "pasteTitle": "Paste copied cells at the selection",
+      "pasteElsewhereTitle": "Clipboard is empty in this tab. To paste from another tab or app, press {key}",
       "delete": "Delete",
       "deleteTitle": "Delete (Delete or E)",
       "stamp": "Stamp",
-      "stampTitle": "Stamp: leave a copy here and move the block on (S or C)",
+      "stampTitle": "Stamp: place a copy here and keep moving the selection (S or C)",
       "flipH": "Flip horizontally",
       "flipHTitle": "Flip horizontally (mirror)",
       "flipV": "Flip vertically",
       "rotateAria": "Rotate 90° clockwise",
       "rotateTitle": "Rotate 90° clockwise",
-      "rotateCharsDisabled": "Can't rotate a selection that contains typed characters",
-      "mergeDownSelectionTitle": "Merge down: what's drawn here goes into the layer under it",
+      "rotateCharsDisabled": "Cannot rotate a selection that contains typed characters",
+      "mergeDownSelectionTitle": "Merge down: merge selected content into the layer below",
       "deselect": "Deselect",
-      "deselectBlockTitle": "Deselect: set the block down (Esc or Enter)",
+      "deselectBlockTitle": "Deselect: place the selection onto the canvas (Esc or Enter)",
       "dragHint": "Drag to select cells, or:",
       "selectAll": "Select all",
-      "selectAllTitle": "Select the whole canvas ({key})",
-      "mergeDownAllTitle": "Merge down: the whole layer into the layer under it",
+      "selectAllTitle": "Select the entire canvas ({key})",
+      "mergeDownAllTitle": "Merge the entire layer into the layer below it",
       "setFg": "Set FG",
       "setFgTitle": "Set FG: apply foreground color to selected cells on active layers",
-      "setFgNoneTitle": "Set FG: your foreground color is None; choose one first",
+      "setFgNoneTitle": "Set FG: your foreground color is None. Choose a color first",
       "setBg": "Set BG",
-      "setBgTitle": "Set BG: every cell selected takes your background color, on the layers lit",
-      "setBgNoneTitle": "Set BG: your background color is None; choose one first",
+      "setBgTitle": "Set BG: apply background color to selected cells on active layers",
+      "setBgNoneTitle": "Set BG: your background color is None. Choose a color first",
       "fill": "Fill",
-      "fillTitle": "Fill: every pixel selected takes your foreground color, on the layers lit",
-      "fillNoneTitle": "Fill: your foreground color is None; choose one first",
+      "fillTitle": "Fill: apply foreground color to selected pixels on active layers",
+      "fillNoneTitle": "Fill: your foreground color is None. Choose a color first",
       "wandDeleteTitle": "Clear selected area on active layers (Delete)",
-      "wandDeselectTitle": "Deselect so tools paint anywhere again (Esc)"
+      "wandDeselectTitle": "Deselect so tools can draw anywhere again (Esc)"
     }
   },
   "colors": {
@@ -646,8 +646,8 @@
     "inThisDrawing": "In this artwork",
     "painted": "{arrow} Painted ({count})",
     "none": "None",
-    "cantPaint": "{hex}: the sliders as they are can't make this color",
-    "noneTitle": "None: keep underlying color",
+    "cantPaint": "{hex}: this color cannot be produced with current slider settings",
+    "noneTitle": "None: keep existing color",
     "recentTitle": "Recent: {hex}"
   },
   "palette": {
@@ -655,8 +655,8 @@
     "copyName": "{name} copy",
     "forkName": "{name} (custom)",
     "forkNameNumbered": "{name} (custom {n})",
-    "forkedToast": "Built-in palettes are read-only—editing your new copy, “{name}”.",
-    "wideLastColToast": "A two-column character won't fit in the last column.",
+    "forkedToast": "Built-in palettes cannot be modified. Changes were saved to your new custom palette, “{name}”.",
+    "wideLastColToast": "Two-column characters cannot fit in the last column.",
     "builtins": {
       "shades": "Shades & blocks",
       "single": "Single lines",
@@ -699,7 +699,7 @@
       "editBtn": "Edit ▸",
       "newBtn": "＋ New",
       "utf8": "UTF-8",
-      "lockedNote": "Built-in — editing creates your own copy",
+      "lockedNote": "Built-in — editing creates a custom copy",
       "duplicateBtn": "⧉ Duplicate",
       "deletePalette": "Delete palette",
       "aimAtAria": "Aim at F{n}",
@@ -714,38 +714,38 @@
       "findAria": "Find or paste characters",
       "notes": {
         "codePoint": "Code point",
-        "pasted": "Pasted characters — click to add (struck-through glyphs don't fit a cell).",
-        "inDrawing": "Every character on the canvas right now",
-        "recent": "Characters you've used recently, across projects"
+        "pasted": "Pasted characters — click to add (struck-through characters do not fit in a cell).",
+        "inDrawing": "All characters currently on the canvas",
+        "recent": "Characters you used recently across projects"
       },
-      "hoverDefault": "Hover any glyph to inspect it.",
-      "aimingNext": "Filling F{slot} (next: F{next}) — click a glyph below, or drag onto any slot.",
-      "aimingLast": "Filling F{slot} — click a glyph below, or drag onto any slot.",
-      "unusableChar": "{char} can't fit a single grid cell (control, invisible, or multi-character).",
-      "notCp437Warning": "{char} isn't in CP437 — saved in .utf8ans, or substituted when exporting .ans.",
+      "hoverDefault": "Hover over any character to inspect it.",
+      "aimingNext": "Assigning to F{slot} (next: F{next}) — click a character below, or drag onto any slot.",
+      "aimingLast": "Assigning to F{slot} — click a character below, or drag onto any slot.",
+      "unusableChar": "{char} cannot fit in a single grid cell (control code, invisible, or multiple characters).",
+      "notCp437Warning": "{char} is not in CP437 — saved in .utf8ans, or substituted when exporting .ans.",
       "infoCp437": "CP437 {byte}",
       "infoUtf8Only": "UTF-8 only",
-      "infoCantUse": "can't be used",
+      "infoCantUse": "cannot be used",
       "infoWide": "2 cells wide",
-      "infoOnSlot": "already on F{slot}",
+      "infoOnSlot": "already assigned to F{slot}",
       "legendInPalette": "already in this palette",
-      "legendNotCp437": "not CP437 (.ans export warns)",
-      "legendDoesntFit": "doesn't fit one cell"
+      "legendNotCp437": "not in CP437 (substituted in .ans exports)",
+      "legendDoesntFit": "does not fit in one cell"
     }
   },
   "status": {
-    "layerAria": "Picked layer: {name}",
+    "layerAria": "Selected layer: {name}",
     "origin": {
       "edit": "edit",
       "base": "base"
     },
     "panning": "Panning",
-    "pickingBg": "Picking the background color",
-    "pickingFg": "Picking the foreground color · add {shift} for the background",
+    "pickingBg": "Picking background color",
+    "pickingFg": "Picking foreground color · hold {shift} for background",
     "straightLine": "straight line",
-    "pickFill": "pick the fill",
-    "pickStroke": "pick the stroke",
-    "breakHandle": "drag a handle to break it from its partner",
+    "pickFill": "pick fill color",
+    "pickStroke": "pick stroke color",
+    "breakHandle": "drag handle to adjust it independently",
     "spaceKey": "Space",
     "pan": "pan",
     "colRow": "Col {col} Row {row}",
@@ -756,29 +756,29 @@
     "selection": "Selection {size}",
     "selectionAt": "at Col {col}, Row {row}",
     "pickedColRow": "Picked Col {col} Row {row}",
-    "zoomResetTitle": "Zoomed out: back to 100%",
-    "zoomResetAria": "Zoom {percent}%: back to 100%",
+    "zoomResetTitle": "Reset zoom to 100%",
+    "zoomResetAria": "Zoom {percent}%: reset to 100%",
     "domToCanvasTitle": "Rendered as DOM text (experimental). Click to switch to canvas rendering.",
     "canvasToDomTitle": "Rendered on canvas. Click to switch to DOM text rendering (experimental).",
     "canvas": "Canvas",
     "dom": "DOM",
-    "smoothOnTitle": "Smooth text is on (anti-aliased glyphs). Click for crisp 2-color pixel edges.",
-    "smoothOffTitle": "Smooth text is off (crisp 2-color pixels). Click for anti-aliased glyphs.",
+    "smoothOnTitle": "Smooth text is on (anti-aliased characters). Click for sharp pixel edges.",
+    "smoothOffTitle": "Smooth text is off (sharp pixel edges). Click for anti-aliased characters.",
     "smooth": "Smooth",
-    "insertTitle": "Insert: typing pushes the row right (Insert key)",
-    "overwriteTitle": "Overwrite: typing replaces the cell (Insert key)",
+    "insertTitle": "Insert mode: typing shifts existing cells to the right (Insert key)",
+    "overwriteTitle": "Overwrite mode: typing replaces existing cells (Insert key)",
     "insert": "Insert",
     "overwrite": "Overwrite"
   },
   "animation": {
     "toolbarAria": "Animation",
     "kinds": {
-      "blank": "Blank — empty edit layer (shows ghost)",
-      "duplicate": "Duplicate — copy current frame",
-      "wipe": "Wipe — blank slate, blocks ghost"
+      "blank": "Blank — empty drawing layer (shows onion skin)",
+      "duplicate": "Duplicate — copy all drawings from the current frame",
+      "wipe": "Wipe — blank frame with no onion skin"
     },
-    "tooLarge": "Canvas is too large to add frames",
-    "maxFrames": "Max {count} frame at this canvas size | Max {count} frames at this canvas size",
+    "tooLarge": "Canvas is too large to add animation frames",
+    "maxFrames": "Maximum {count} frame at this canvas size | Maximum {count} frames at this canvas size",
     "play": "Play",
     "playTitle": "Play (L)",
     "pause": "Pause",
@@ -791,8 +791,8 @@
     "addFrame": "Add frame",
     "frameActions": "Frame actions",
     "cellsCarry": "New cells",
-    "cellsCarryOn": "Carry on to later frames",
-    "cellsCarryOff": "Stay on their frame",
+    "cellsCarryOn": "Carry forward to later frames",
+    "cellsCarryOff": "Keep on this frame only",
     "moveEarlier": "Move earlier",
     "moveLater": "Move later",
     "deleteFrame": "Delete frame",
@@ -816,27 +816,27 @@
     "holdTitle": "Hold duration in seconds (0 = one frame tick)",
     "ghost": "Ghost",
     "ghostTitle": "Onion skin: show previous frames dimmed behind Blank frames",
-    "ghostStrength": "Ghost strength",
-    "ghostOn": "Show the ghost",
+    "ghostStrength": "Ghost opacity",
+    "ghostOn": "Show ghost",
     "ghostOnTitle": "Onion skin: on, {percent}%",
     "ghostOffTitle": "Onion skin: off"
   },
   "keysPanel": {
     "aria": "Keys",
     "button": "Keys",
-    "buttonTitle": "Keys: show the selected shape's keys",
-    "fold": "Fold the keys away",
+    "buttonTitle": "Keys: show keyframes for the selected shape",
+    "fold": "Hide keyframes panel",
     "addKey": "+ Add key",
-    "none": "Select a shape to see its keys.",
-    "easing": "Easing of the tweens leaving the selected keys",
-    "motion": "How the moves leaving the selected Transform keys go",
+    "none": "Select a shape to view its keyframes.",
+    "easing": "Easing curve for transitions from selected keys",
+    "motion": "Movement style for selected Transform keys",
     "mixed": "Mixed",
     "easingNow": "Easing: {easing}",
     "motionNow": "Motion: {motion}",
     "delete": "Delete keys",
-    "deleteTitle": "Delete the selected keys (Delete)",
+    "deleteTitle": "Delete selected keys (Delete)",
     "frame": "Frame {frame}: select its keys",
-    "key": "{part} key, frame {frame}",
+    "key": "{part} key on frame {frame}",
     "previous": "{part}: previous key",
     "next": "{part}: next key",
     "here": "{part}: key on this frame",
@@ -844,36 +844,36 @@
     "zoomIn": "Zoom in",
     "followPath": "Follow a path…",
     "valuesMenu": "{part} values",
-    "alongMenu": "Along: how it follows its path",
+    "alongMenu": "Along: how the shape follows its path",
     "moves": "Moves",
-    "rideAlong": "Along it, on its own keys",
-    "rideStart": "With the line's start",
-    "rideEnd": "With the line's end",
-    "face": "Face the path",
+    "rideAlong": "Move along path using its own keys",
+    "rideStart": "Stay with line start",
+    "rideEnd": "Stay with line end",
+    "face": "Rotate to face path",
     "motionHeading": "Motion",
-    "stopFollowing": "Stop following",
+    "stopFollowing": "Stop following path",
     "guide": "Guide",
-    "guideTitle": "Guide: a path that draws nothing, its outline shown on VECTOR only",
+    "guideTitle": "Guide: a reference path that does not render on the artwork",
     "values": {
       "x": "X",
       "y": "Y",
       "turn": "Turn",
       "scaleX": "W",
       "scaleY": "H",
-      "xTitle": "X: where the middle of the shape is, in grid pixels",
-      "yTitle": "Y: where the middle of the shape is, in grid pixels",
-      "artXTitle": "X: the art layer's left edge, in columns",
-      "artYTitle": "Y: the art layer's top edge, in grid pixels (two to a line)",
-      "turnTitle": "Turn, in degrees",
-      "scaleXTitle": "Width, as a percentage, along the shape's own axes",
-      "scaleYTitle": "Height, as a percentage, along the shape's own axes (negative flips it)",
-      "widthTitle": "Stroke width, in grid pixels",
-      "startTitle": "Start, as a percentage of the way along the outline where drawing begins",
-      "endTitle": "End, as a percentage of the way along the outline where drawing stops",
-      "alongTitle": "Along, as a percentage of the way along the path",
-      "fill": "Fill color: open the color box",
-      "stroke": "Stroke color: open the color box",
-      "outline": "{n} point · edit with the Node tool | {n} points · edit with the Node tool",
+      "xTitle": "X: center position of shape in grid pixels",
+      "yTitle": "Y: center position of shape in grid pixels",
+      "artXTitle": "X: left edge of art layer in columns",
+      "artYTitle": "Y: top edge of art layer in grid pixels (two pixels per row)",
+      "turnTitle": "Rotation in degrees",
+      "scaleXTitle": "Width percentage along the shape's axes",
+      "scaleYTitle": "Height percentage along the shape's axes (negative values flip vertically)",
+      "widthTitle": "Stroke width in grid pixels",
+      "startTitle": "Start point along outline where drawing begins (percentage)",
+      "endTitle": "End point along outline where drawing stops (percentage)",
+      "alongTitle": "Position along path (percentage)",
+      "fill": "Fill color: open color picker",
+      "stroke": "Stroke color: open color picker",
+      "outline": "{n} point · edit with Node tool | {n} points · edit with Node tool",
       "stack": "{n} of {m}"
     },
     "partsShort": {
@@ -904,7 +904,7 @@
   "actions": {
     "confirmNew": "You have unsaved changes. Start a new project anyway?",
     "confirmOpen": "You have unsaved changes. Open {name} anyway?",
-    "cantOpen": "Phosphor can't open {name}. It opens pictures, .phosphor projects, SVGs, and .ans, .utf8ans, .asc, .txt, .nfo and .diz files.",
+    "cantOpen": "Phosphor cannot open {name}. Supported formats include images, .phosphor projects, SVGs, and text files (.ans, .utf8ans, .asc, .txt, .nfo, .diz).",
     "saveProject": "Save project (.phosphor)",
     "exportAns": "Export .ans",
     "exportUtf8ans": "Export .utf8ans",
@@ -917,30 +917,30 @@
     "versions": "Versions",
     "newProject": "New project",
     "artDropTitle": "Add {name}?",
-    "artDropSub": "Add it to this drawing, or open it in place of this one.",
+    "artDropSub": "Add it to this artwork, or open it as a new project.",
     "artDropSubAddOnly": "Add it to this drawing.",
     "artAdd": "Add to this drawing",
-    "artAddWhere": "It lands where you dropped it, on {name}, to drag into place.",
-    "artAddTopLeft": "It lands at the top-left of the view, on {name}, to drag into place.",
-    "svgAddText": "As shapes on VECTOR, in the frame showing, fitted to the canvas and selected.",
-    "pictureAddText": "Add it to {name} as paint, fitted to the canvas.",
-    "pictureAddNew": "Add it as a new layer, fitted to the canvas.",
-    "artOpen": "Open instead",
-    "artOpenText": "In place of this drawing.",
+    "artAddWhere": "Places the artwork where you dropped it on {name} so you can drag it into position.",
+    "artAddTopLeft": "Places the artwork at the top-left of the view, on {name}, so you can drag it into position.",
+    "svgAddText": "Adds shapes to VECTOR on the current frame, fitted to canvas and selected.",
+    "pictureAddText": "Adds image to {name} as paint, fitted to canvas.",
+    "pictureAddNew": "Adds image as a new layer, fitted to canvas.",
+    "artOpen": "Open as new project",
+    "artOpenText": "Replaces the current artwork.",
     "artOpenTitle": "Open {name}?",
-    "artOpenSub": "Edit its art, or draw on top of it.",
-    "artEdit": "Edit it",
-    "artEditText": "The art goes on the edit layer, over a black base, as if you'd drawn it.",
-    "artDrawOn": "Draw on top of it",
-    "artDrawOnText": "The art is the base layer, and what you draw goes on top.",
+    "artOpenSub": "Edit its artwork directly, or draw on top of it.",
+    "artEdit": "Edit artwork",
+    "artEditText": "Places the artwork on a drawing layer over a black background.",
+    "artDrawOn": "Draw on top",
+    "artDrawOnText": "Places the artwork on the base layer so you can draw on top.",
     "artOpenEdit": "Open to edit",
-    "artOpenEditText": "In place of this drawing: the art on the edit layer, over a black base.",
+    "artOpenEditText": "Replaces the current artwork and places it on a drawing layer over a black background.",
     "artOpenDrawOn": "Open to draw on top",
-    "artOpenDrawOnText": "In place of this drawing: the art as the base layer, under what you draw."
+    "artOpenDrawOnText": "Replaces the current artwork and places it on the base layer under your drawings."
   },
   "sauce": {
     "heading": "SAUCE metadata",
-    "description": "Saved in exported .ans and .utf8ans files, for ANSI viewers, archives and BBS tools. An opened file keeps its record; what you change here is all that changes.",
+    "description": "Metadata embedded in exported .ans and .utf8ans files for ANSI viewers, archives, and BBS systems. An opened file keeps its record; only what you change here changes.",
     "title": "Title",
     "titlePlaceholder": "Up to 35 characters",
     "author": "Author",
@@ -971,56 +971,56 @@
     "formats": {
       "phosphor": {
         "title": "Save project",
-        "sub": "Saves your full project—source image, layers, frames, and settings—to reopen in Phosphor."
+        "sub": "Saves your complete project—source image, layers, frames, and settings—so you can reopen it in Phosphor."
       },
       "ans": {
         "title": "Export .ans",
-        "sub": "Classic CP437 ANSI art for traditional viewers, editors, and BBSes."
+        "sub": "Classic CP437 ANSI art for vintage viewers, editors, and BBS systems."
       },
       "ansimation": {
         "title": "Export animated .ans",
-        "sub": "Classic CP437 ANSiMation stream. Playback speed depends on the viewer's baud rate rather than frame holds."
+        "sub": "Classic CP437 animated ANSI file. Playback speed depends on viewer baud rate."
       },
       "utf8ansimation": {
         "title": "Export animated .utf8ans",
-        "sub": "UTF-8 ANSiMation stream for modern terminals, keeping every character. Playback speed depends on the terminal."
+        "sub": "UTF-8 animated ANSI file for modern terminals, preserving all Unicode characters and colors."
       },
       "cast": {
         "title": "Export .cast",
-        "sub": "asciinema recording for terminals and the web—keeps exact frame timing and every character."
+        "sub": "asciinema recording for terminals and the web, preserving exact frame timing and characters."
       },
       "gif": {
         "title": "Export .gif",
-        "sub": "Looping animated GIF rendered in your current display font—ready to share anywhere."
+        "sub": "Looping animated GIF rendered in your display font, ready to share anywhere."
       },
       "utf8ans": {
         "title": "Export .utf8ans",
-        "sub": "UTF-8 ANSI art for modern terminals—preserves every Unicode character and color."
+        "sub": "UTF-8 ANSI art for modern terminals, preserving all Unicode characters and colors."
       },
       "png": {
         "title": "Export .png",
-        "sub": "What the ANSI view shows, as a picture in your current display font."
+        "sub": "Image export rendered in your display font, exactly as shown in the ANSI view."
       }
     },
     "png": {
-      "ask": "Smooth text adds colors, so the PNG will be a few times bigger.",
+      "ask": "Smooth text adds subtle shading colors, which makes the PNG file larger.",
       "smoothTitle": "Smooth",
-      "smoothText": "Anti-aliased, as the ANSI view shows it.",
+      "smoothText": "Anti-aliased characters, matching what you see in the ANSI view.",
       "hardTitle": "Hard-edged",
-      "hardText": "Crisp pixels in the drawing's own colors: the smallest file."
+      "hardText": "Sharp pixel characters using only the drawing's palette colors (smallest file size)."
     },
-    "cp437Note": "1 character isn't in CP437 and will be substituted in .ans: | {count} characters aren't in CP437 and will be substituted in .ans:",
+    "cp437Note": "1 character is not in CP437 and will be substituted in .ans exports: | {count} characters are not in CP437 and will be substituted in .ans exports:",
     "replacementsAria": "Replacements",
     "becomesAria": "becomes",
     "cellCount": "{count} cell | {count} cells",
-    "keepHint": "Export as .utf8ans to keep exact characters.",
+    "keepHint": "Export as .utf8ans to keep all original characters.",
     "sauceNote": "1 character in SAUCE isn't in CP437 and will be substituted: | {count} characters in SAUCE aren't in CP437 and will be substituted:",
     "sauceReplacementsAria": "SAUCE replacements",
     "sauceHint": "SAUCE is CP437 in every ANSI file. To choose your own stand-ins, change these on the SAUCE tab.",
     "sauceCommentsOver": "Comments: only the first {most} SAUCE lines fit. From line {line} (\"{text}\") on, they won't be in this file; they stay on the SAUCE tab.",
-    "saveFailed": "Couldn't save the file.",
-    "tooTall": "At {cols}×{rows}, wider or taller than a standard 80×25 terminal. Part of the drawing may clip during playback.",
-    "gifTooLarge": "This animation is too large for a GIF. Try fewer frames or smaller dimensions—or export .cast, which has no size limit."
+    "saveFailed": "Could not save the file.",
+    "tooTall": "At {cols}×{rows}, this artwork is larger than a standard 80×25 terminal. Portions may clip during playback.",
+    "gifTooLarge": "This animation is too large to export as a GIF. Try using fewer frames, smaller dimensions, or export as .cast instead."
   },
   "export": {
     "modal": {
@@ -1032,43 +1032,57 @@
       "tooTall": "At {cols}×{rows}, wider or taller than a standard 80×25 terminal. Part of the drawing may clip during playback.",
       "exportBtn": "Export {name}",
       "formats": {
-        "ans":            { "name": "ANS" },
-        "utf8ans":        { "name": "UTF-8 ANS" },
-        "png":            { "name": "PNG" },
-        "gif":            { "name": "GIF" },
-        "ansimation":     { "name": "Animated ANS" },
-        "utf8ansimation": { "name": "Animated UTF-8 ANS" },
-        "cast":           { "name": "Cast" }
+        "ans": {
+          "name": "ANS"
+        },
+        "utf8ans": {
+          "name": "UTF-8 ANS"
+        },
+        "png": {
+          "name": "PNG"
+        },
+        "gif": {
+          "name": "GIF"
+        },
+        "ansimation": {
+          "name": "Animated ANS"
+        },
+        "utf8ansimation": {
+          "name": "Animated UTF-8 ANS"
+        },
+        "cast": {
+          "name": "Cast"
+        }
       }
     }
   },
   "versions": {
     "title": "Versions",
-    "sub": "Phosphor saves up to 20 snapshots in this browser (about every 5 minutes while you work). Clearing browser data removes them, so save a .phosphor file for anything you want to keep.",
+    "sub": "Phosphor automatically saves up to 20 versions in your browser (about every 5 minutes). Clearing browser data deletes them. Save a .phosphor file to keep your work permanently.",
     "beforeRestore": "Before restore",
     "asOpened": "As opened",
     "empty": "No snapshots saved yet.",
-    "readError": "Couldn't read the versions.",
-    "restoreError": "Couldn't restore that version.",
+    "readError": "Could not load saved versions.",
+    "restoreError": "Could not restore this version.",
     "kb": "{n} KB",
     "mb": "{n} MB"
   },
   "autosave": {
-    "failing": "Autosave isn't available in this browser. Save a .phosphor file to keep your work.",
-    "evictedOldest": "Browser storage was full, so your oldest saved snapshot was removed to make room.",
-    "stillFull": "Browser storage is full—even after clearing old snapshots, this project didn't fit. Save a .phosphor file to keep your work.",
-    "openFailed": "Couldn't reopen that project."
+    "failing": "Autosave is not supported in this browser. Please save a .phosphor file to protect your work.",
+    "evictedOldest": "Browser storage was full. Your oldest saved version was removed to make room.",
+    "stillFull": "Browser storage is full. This project could not be saved even after clearing old versions. Please save a .phosphor file.",
+    "openFailed": "Could not reopen that project."
   },
   "document": {
-    "framesLost": "Couldn't read this file's frames, so it opened as a still image. Saving will overwrite it as a still.",
-    "openImageFailed": "Couldn't open “{name}”. Make sure it's a supported image or .phosphor file.",
-    "decodeImageFailed": "Could not decode image",
-    "blankFailed": "Couldn't start a blank canvas.",
-    "invalidProject": "Not a valid Phosphor project file",
+    "framesLost": "Could not read animation frames from this file, so it opened as a still image. Saving will replace it as a still image.",
+    "openImageFailed": "Could not open “{name}”. Make sure it is a supported image or .phosphor file.",
+    "decodeImageFailed": "Could not decode image.",
+    "blankFailed": "Could not create a blank canvas.",
+    "invalidProject": "Invalid Phosphor project file.",
     "loadProjectFailed": "Failed to load project file: {reason}",
-    "bakeFailed": "Couldn't bake the image.",
-    "flattenFailed": "Couldn't flatten the drawing.",
-    "mergeIntoImageFailed": "Couldn't merge into the image.",
+    "bakeFailed": "Could not bake the image.",
+    "flattenFailed": "Could not flatten the artwork.",
+    "mergeIntoImageFailed": "Could not merge into the image.",
     "artTooBig": "This file is {cols} × {rows}. Phosphor opens at most {maxCols} columns, {maxLines} lines and {maxCells} cells.",
     "artEmpty": "There's no art in this file."
   },
@@ -1089,15 +1103,15 @@
       "tabs": "Editor tabs"
     },
     "rows": {
-      "vselect": "Vector select: pick, move, scale and rotate shapes (double-click: the Node tool)",
-      "vnode": "Node: press a shape to edit its points and its gradient; drag a point, a handle or a stop, click the outline to add a point",
-      "pen": "Pen: click for a corner, drag for a curve; click the first point to close",
-      "penEnd": "Leave the Pen's shape an open curve",
-      "penBack": "Take the Pen's last point away",
-      "vshape": "Shape: drag a rectangle, an ellipse or a polygon (with Shift: square)",
-      "vectorNudge": "Nudge the selected shapes (with Shift: 10 pixels)",
-      "vectorDelete": "Delete the selected shapes",
-      "vectorEsc": "Stop editing points, then deselect",
+      "vselect": "Vector select: select, move, scale, and rotate shapes (double-click to use Node tool)",
+      "vnode": "Node: click a shape to edit its points and gradient. Drag points, handles, or color stops; click outline to add points",
+      "pen": "Pen: click to place a corner point, drag for a curve; click the first point to close shape",
+      "penEnd": "Finish shape as an open curve",
+      "penBack": "Remove last placed point",
+      "vshape": "Shape: drag to draw a rectangle, ellipse, or polygon (hold Shift for square or circle)",
+      "vectorNudge": "Nudge selected shapes (hold Shift for 10 pixels)",
+      "vectorDelete": "Delete selected shapes",
+      "vectorEsc": "Exit point editing, then deselect",
       "thisList": "This list ({key} in Edit Mode)",
       "undo": "Undo",
       "redo": "Redo",
@@ -1105,7 +1119,7 @@
       "openFile": "Open a file",
       "pencil": "Pencil",
       "brush": "Brush",
-      "eraser": "Eraser (with Select and a selection: erase it)",
+      "eraser": "Eraser (with the Select tool and a selection: erase selection contents)",
       "bucket": "Paint Bucket",
       "gradient": "Gradient",
       "blur": "Blur",
@@ -1113,67 +1127,67 @@
       "burn": "Burn (darken)",
       "shapes": "Shapes",
       "picker": "Eyedropper",
-      "wand": "Magic Wand: select by color or character",
+      "wand": "Magic Wand: select areas by color or character",
       "hand": "Hand",
       "zoom": "Zoom",
-      "editMode": "Edit Mode — type characters (press Esc to return to single-key tool shortcuts)",
+      "editMode": "Edit Mode: type characters directly (press Esc to use tool shortcuts)",
       "flip": "Flip (ANSI view)",
       "select": "Select",
-      "holdAlt": "Pick a color (Pencil, Brush, Paint Bucket, Shapes)",
-      "holdAltShift": "Pick the background color",
-      "holdSpace": "Pan, with any tool (or drag with the middle button)",
-      "openFg": "Open the color box on the foreground",
-      "openBg": "Open it on the background",
-      "swapColors": "Swap foreground and background (X types in Edit Mode)",
-      "moveSwatches": "In the color box: move between swatches",
-      "pickSwatch": "In the color box: pick and close, or pick and stay",
+      "holdAlt": "Sample color with Eyedropper (Pencil, Brush, Paint Bucket, Gradient, Shapes)",
+      "holdAltShift": "Sample background color",
+      "holdSpace": "Pan canvas with any tool (or drag with middle mouse button)",
+      "openFg": "Open color picker for foreground",
+      "openBg": "Open color picker for background",
+      "swapColors": "Swap foreground and background colors (types 'X' in Edit Mode)",
+      "moveSwatches": "Navigate color swatches in color picker",
+      "pickSwatch": "Select swatch and close, or select and stay",
       "moveCursor": "Move the cursor",
-      "selectFromCursor": "Select from the cursor (the Select tool takes over)",
+      "selectFromCursor": "Select from cursor position (switches to Select tool)",
       "homeEnd": "Start or end of the row",
       "nextLine": "Start of the next line",
-      "erase": "Erase before or at the cursor",
-      "insertOverwrite": "Insert or overwrite",
-      "typeFKey": "Type the character palette's slot",
-      "grabFKey": "Put the character under the cursor on that slot",
+      "erase": "Erase character before or at cursor",
+      "insertOverwrite": "Toggle between Insert and Overwrite mode",
+      "typeFKey": "Type character from active palette slot",
+      "grabFKey": "Save character under cursor to this palette slot",
       "prevNextPalette": "Previous or next character palette",
-      "stepFgPalette": "Step the foreground through the palette (add Shift for the background)",
+      "stepFgPalette": "Step foreground color through palette (hold Shift for background)",
       "selectAll": "Select all",
       "copyCutPaste": "Copy, cut, paste",
       "nudge": "Nudge the selection",
       "growShrink": "Grow or shrink the selection",
       "deleteSelection": "Delete what's selected",
-      "stamp": "Stamp: leave a copy here and move the block on",
-      "deselect": "Deselect, setting the block down (back to Edit Mode, if you came from there)",
-      "playPause": "Play or pause (any other key pauses too)",
-      "prevNextFrame": "Previous or next frame ({keys} while typing)",
-      "newFrame": "Add a frame after this one, of its kind (hold to add more)",
+      "stamp": "Stamp: place a copy here and keep moving the selection",
+      "deselect": "Deselect and place selection onto canvas (returns to Edit Mode if active before)",
+      "playPause": "Play or pause animation (any other key also pauses)",
+      "prevNextFrame": "Go to previous or next frame ({keys} while typing)",
+      "newFrame": "Add a new frame matching current frame type (hold to add multiple)",
       "switchTabs": "With a tab focused: switch tabs"
     }
   },
   "social": {
-    "narrow": "Rooms need a wider screen.",
-    "unsupported": "This browser doesn't support the security features SOCIAL needs.",
-    "agreeTerms": "I'm 13 or older and agree to the {terms}, {privacy}, and {guidelines}",
+    "narrow": "Shared rooms require a wider screen.",
+    "unsupported": "This browser does not support the security features required for Social rooms.",
+    "agreeTerms": "I am 13 or older and agree to the {terms}, {privacy}, and {guidelines}",
     "nav": {
       "cancel": "‹ Cancel",
       "cancelSignOut": "Cancel and sign out"
     },
     "consent": {
-      "title": "Before you open SOCIAL",
-      "regionAria": "What SOCIAL means for you",
-      "intro": "SOCIAL lets you watch people draw live, draw together, or host your own room. Here's how your privacy works.",
+      "title": "Before you use Social rooms",
+      "regionAria": "Privacy and community information for Social rooms",
+      "intro": "Social mode lets you watch live drawing, draw with others, or host your own room. Here is how your privacy is protected.",
       "lobbyHeading": "The lobby",
-      "lobbyBody": "Opening SOCIAL connects your browser to our server. People in the lobby can see your username (guests get a random three-word nickname). Public rooms show their host, title, viewer count, and a live preview.",
+      "lobbyBody": "Entering Social mode connects your browser to our server. People in the lobby can see your username (guests receive a random nickname). Public rooms show their host, title, viewer count, and a live preview.",
       "joiningHeading": "Joining a room",
-      "joiningBody": "Your browser connects directly to the host's, so each of you can see the other's IP address. That can reveal your approximate location and internet provider, so use a VPN if you want to hide it. Chat goes through the host's browser, and anyone in the room can see and copy it.",
+      "joiningBody": "Your browser connects directly to the host's computer, so each of you can see the other's IP address, which may show your general city and internet provider. Use a VPN if you want to keep your IP address private. Chat messages are visible to everyone in the room.",
       "startingHeading": "Starting a room",
-      "startingBody": "The people you admit see your art as you draw it, and everyone who joins can see your IP address. Public rooms show a preview in the lobby. Anyone you invite to draw gets the whole project, including the original image. If someone reports your room, we keep a snapshot of the canvas to review and resolve the report.",
-      "beKindHeading": "Be kind",
-      "beKindBody": "Don't bully, harass, threaten anyone, or attack people for who they are. Don't use someone's IP address against them or share their personal information. Keep public rooms appropriate, respect other people's art, and only report in good faith. Hosts can remove people from their room, anyone signed in can block someone (it keeps them out of rooms you host and folds their messages for you), and anyone signed in with a confirmed email can report a person or room."
+      "startingBody": "People in your room see your drawing in real time and can see your IP address. Public rooms display a preview in the lobby. If you invite someone to draw, they receive a copy of the entire project, including the base image. If your room is reported, moderators receive a snapshot of the canvas to investigate.",
+      "beKindHeading": "Community rules",
+      "beKindBody": "Do not harass, bully, or demean others. Do not misuse IP addresses or share private personal information. Keep public rooms appropriate, respect other artists' work, and submit reports in good faith only. Hosts can remove participants from their rooms. Signed-in users can block others, and those with a confirmed email can report rooms or users that violate our guidelines."
     },
     "joinDialog": {
       "title": "Join this room?",
-      "sub": "You followed a link to it. Joining connects your browser directly to the host's, so the host can see your IP address.",
+      "sub": "You followed an invite link. Joining connects your browser directly to the host's computer, allowing the host to see your IP address.",
       "join": "Join",
       "backToYourRoom": "Back to your room"
     },
@@ -1224,8 +1238,8 @@
     },
     "start": {
       "heading": "Set up your room",
-      "noArt": "Open an image or start a canvas first so you have something to share.",
-      "tooManyLayers": "For now, a room holds at most {name}, one vector layer and one layer above them, all with the same character settings. Merge or delete layers to go live.",
+      "noArt": "Open an image or create a canvas first so you have artwork to share.",
+      "tooManyLayers": "Shared rooms currently support at most {name}, one vector layer, and one drawing layer, all sharing the same character settings. Merge or delete extra layers to start a room.",
       "roomName": "Room name",
       "roomNamePatternTitle": "Use at least one character that isn't a space",
       "welcomeMessage": "Welcome message",
@@ -1234,11 +1248,11 @@
       "anyoneInLobby": "Public in the lobby",
       "onlyWithLink": "Unlisted (link only)",
       "passwordOptional": "Password (optional)",
-      "passwordHelp": "Anyone with the link can join—add a password to require both.",
+      "passwordHelp": "Anyone with the link can join. Add a password if you want to require both.",
       "allowGuests": "Allow guests",
-      "allowGuestsHelp": "Guests can watch but can't chat or draw. You can switch to signed-in members anytime.",
+      "allowGuestsHelp": "Guests can watch but cannot chat or draw. You can change this setting at any time.",
       "maxWatchers": "Max watchers",
-      "maxWatchersHelp": "Rooms stream directly from your browser. Up to 12 watchers suits most home connections.",
+      "maxWatchersHelp": "Rooms stream directly from your browser. Up to 12 viewers works best for most home internet connections.",
       "lobbyCard": "Lobby card",
       "signal": "Signal",
       "signalHelp": "Shown on your room's card in the lobby.",
@@ -1247,8 +1261,8 @@
     "host": {
       "liveFor": "Live for {duration}",
       "endRoom": "End room",
-      "sendLinkWithPassword": "Send the link and the password to anyone you want in.",
-      "sendLink": "Send the link to anyone you want in.",
+      "sendLinkWithPassword": "Share the room link and password with the people you want to invite.",
+      "sendLink": "Share the room link with the people you want to invite.",
       "stats": {
         "hereNow": "Here now",
         "max": "Max",
@@ -1257,7 +1271,7 @@
         "removed": "Removed"
       },
       "roomSettings": "Room settings",
-      "kickGuests": "Also remove the guest currently here | Also remove the {count} guests currently here",
+      "kickGuests": "Also remove the guest currently in the room | Also remove the {count} guests currently in the room",
       "setAtStart": "Set when the room started",
       "listedInLobby": "Listed in the lobby",
       "onlyWithLink": "Only with the link",
@@ -1286,12 +1300,12 @@
     },
     "endDialog": {
       "title": "End this room?",
-      "sub": "Everyone will be disconnected (including co-artists) and the room chat will clear.",
+      "sub": "All participants will be disconnected (including co-artists), and room chat will be cleared.",
       "confirm": "End room"
     },
     "makeHostDialog": {
       "title": "Make {name} the host?",
-      "sub": "You'll stay in the room as an artist.",
+      "sub": "You will remain in the room as an artist.",
       "confirm": "Make host"
     },
     "watch": {
@@ -1306,16 +1320,16 @@
       "zoomAria": "Zoom",
       "zoomOutAria": "Zoom out",
       "zoomInAria": "Zoom in",
-      "artUnavailable": "This browser can't show the room's art",
+      "artUnavailable": "This browser cannot display the room's artwork.",
       "artRegionAria": "The room's art",
       "trackAria": "Track {name}",
       "trackingState": "· tracking",
       "trackBtn": "Track ›"
     },
     "pause": {
-      "hostChanging": "Handing off to the new host—drawing paused…",
-      "gettingArt": "Syncing the room's canvas—drawing paused…",
-      "hostReconnecting": "Waiting for the host to reconnect—drawing paused…"
+      "hostChanging": "Transferring host controls. Drawing is paused…",
+      "gettingArt": "Syncing canvas from the host. Drawing is paused…",
+      "hostReconnecting": "Waiting for the host to reconnect. Drawing is paused…"
     },
     "cursors": {
       "goToAria": "Go to {name}"
@@ -1335,12 +1349,12 @@
       "makeArtist": "Make artist",
       "kickSession": "Remove from room",
       "unmute": "Unmute",
-      "mute": "Quiet mute (only you see them)",
-      "muteTitle": "Hides their messages from everyone else without notifying them.",
+      "mute": "Quiet mute (hide their messages from others)",
+      "muteTitle": "Hides their messages from everyone else without alerting them.",
       "blockFuture": "Block from your rooms",
       "report": "Report",
       "blockTitle": "Block {name}?",
-      "blockSub": "They can't join any room you host, and they leave this one now. Unblock them from Account.",
+      "blockSub": "They cannot join any room you host, and they will leave this room immediately. You can unblock them in Account settings.",
       "blockConfirm": "Block",
       "whoToFollowAria": "Who to follow",
       "followAria": "Follow {name}",
@@ -1358,7 +1372,7 @@
       "pinnedFromHost": "Pinned note",
       "invitedByHost": "{host} invited you to draw together.",
       "invitedFallback": "The host invited you to draw.",
-      "acceptReplacesDirty": "Accepting replaces your current canvas (you have unsaved changes).",
+      "acceptReplacesDirty": "Accepting replaces your current canvas, which has unsaved changes.",
       "showCursors": "Show others' cursors",
       "messagesAria": "Messages",
       "scrollForEarlier": "↑ Scroll up for earlier messages",
@@ -1376,11 +1390,11 @@
       "reportMessageAria": "Report message from {name}",
       "deleteMessageAria": "Delete message from {name}",
       "blockAria": "Block {name}",
-      "blockSub": "They can't join any room you host, and their messages fold here. Unblock them from Account.",
+      "blockSub": "They cannot join any room you host, and their messages will be hidden. You can unblock them in Account settings.",
       "mutedNote": "Quietly muted — visible only to the two of you",
       "messageAria": "Message",
       "sendAria": "Send",
-      "slowDown": "Easy there—wait a moment before sending again.",
+      "slowDown": "Please wait a moment before sending another message.",
       "silencedUntil": "You're silenced until {until}.",
       "signInToChat": "Sign in to chat",
       "confirmToChat": "Confirm your email to chat"
@@ -1388,10 +1402,10 @@
     "report": {
       "titleRoom": "Report this room?",
       "titlePerson": "Report {name}?",
-      "subMessage": "Moderators receive this message and a few preceding messages for context.",
-      "subPerson": "Moderators receive this user's recent chat messages in this room.",
-      "subRoomInside": "Moderators receive recent lobby previews plus a snapshot of the canvas right now.",
-      "subRoomLobby": "Moderators receive the room's recent lobby previews.",
+      "subMessage": "Moderators will receive this message and recent messages before it for context.",
+      "subPerson": "Moderators will receive this user's recent chat messages in this room.",
+      "subRoomInside": "Moderators will receive recent lobby previews and a snapshot of the current canvas.",
+      "subRoomLobby": "Moderators will receive recent lobby previews for this room.",
       "thanks": "Reported. Thank you.",
       "rules": "Reports are about the {guidelines}.",
       "whatsWrong": "What's wrong?",
@@ -1406,33 +1420,33 @@
     },
     "auth": {
       "usernameLabel": "Username",
-      "usernameHelp": "How everyone sees you. Letters, numbers, - and _.",
+      "usernameHelp": "How your name appears to others. Use letters, numbers, hyphens, and underscores.",
       "emailLabel": "Email",
       "emailOrUsername": "Email or username",
       "passwordLabel": "Password",
-      "passwordHelp": "At least 10 characters, not a known leaked password.",
+      "passwordHelp": "Must be at least 10 characters and not found in known data breaches.",
       "signInHeading": "Sign in",
       "signInIntro": "Sign in to chat and start rooms.",
       "continueWith": "Continue with {provider}",
       "signInSubmit": "Sign in",
       "forgotPassword": "Forgot your password?",
       "createHeading": "Create an account",
-      "createIntro": "An account lets you chat and start rooms, under a username that's yours.",
+      "createIntro": "An account lets you chat and host rooms under your own username.",
       "createSubmit": "Create account",
       "haveAccount": "Have an account? {signIn}",
       "forgotHeading": "Forgot your password?",
-      "forgotIntro": "We'll email you a link to set a new one.",
+      "forgotIntro": "We will email you a link to reset your password.",
       "sendLink": "Send link",
       "rememberedIt": "Remembered it? {signIn}",
       "resetHeading": "Set a new password",
-      "resetIntro": "Choose the password you'll sign in with from now on.",
+      "resetIntro": "Enter the new password you want to use for your account.",
       "newPasswordLabel": "New password",
-      "resetPasswordHelp": "At least 10 characters, not a known leaked password. Setting it signs you out everywhere else.",
+      "resetPasswordHelp": "Must be at least 10 characters. Changing your password signs you out of all other sessions.",
       "setPassword": "Set password",
       "onboardingHeading": "Pick your username",
-      "onboardingIntro": "One more step before you're in. You can change it once every 30 days.",
+      "onboardingIntro": "Choose your username to finish setup. You can change your username once every 30 days.",
       "twoFactorHeading": "Two-factor code",
-      "twoFactorIntro": "This account asks for a code each time you sign in.",
+      "twoFactorIntro": "This account requires a verification code when signing in.",
       "backupCodeLabel": "Backup code",
       "totpCodeLabel": "Code from your authenticator app",
       "trustComputer": "Trust this computer for 30 days",
@@ -1443,7 +1457,7 @@
     "account": {
       "heading": "Account",
       "usernameHeading": "Username",
-      "usernameCooldownHelp": "Once every 30 days. Your color and glyph come from your username.",
+      "usernameCooldownHelp": "You can change your username once every 30 days.",
       "changeUsernameBtn": "Change",
       "waysHeading": "Ways to sign in",
       "emailAndPassword": "Email and password",
@@ -1451,11 +1465,11 @@
       "changePassword": "Change password",
       "newEmail": "New email",
       "currentPassword": "Current password",
-      "emailHelpVerified": "We'll send an approval link to {email} first, then a confirmation link to your new address. Links expire after 1 hour and must open in this browser (up to 2 changes a day).",
-      "emailHelpUnverified": "We'll send a confirmation link to your new address. Links expire after 1 hour and must open in this browser (up to 2 changes a day).",
+      "emailHelpVerified": "We will send an approval link to {email}, then a confirmation link to your new address. Links expire after 1 hour and must be opened in this browser (maximum 2 changes per day).",
+      "emailHelpUnverified": "We will send a confirmation link to your new address. Links expire after 1 hour and must be opened in this browser (maximum 2 changes per day).",
       "confirmNewPassword": "Confirm new password",
-      "newPasswordHelp": "At least 10 characters, not a known leaked password. Changing it signs you out everywhere else.",
-      "passwordsDontMatch": "Those new passwords don't match",
+      "newPasswordHelp": "Must be at least 10 characters. Changing your password signs you out of all other sessions.",
+      "passwordsDontMatch": "The new passwords do not match.",
       "connected": "Connected",
       "notConnected": "Not connected",
       "disconnect": "Disconnect",
@@ -1464,15 +1478,15 @@
       "connectAria": "Connect {provider}",
       "needOneWay": "You need at least one way to sign in",
       "twoFactorHeading": "Two-factor",
-      "backupCodesHelp": "Save these backup codes somewhere safe. Each one works once, if you lose your phone. You won't see them again.",
-      "scanQrHelp": "Scan this with your authenticator app, or enter the key:",
+      "backupCodesHelp": "Store these backup codes in a safe place. Each code can be used once if you lose access to your authenticator app.",
+      "scanQrHelp": "Scan this QR code with your authenticator app, or enter the secret key manually:",
       "qrAria": "QR code",
       "codeFromApp": "Code from the app",
       "turnOn": "Turn on",
       "turnOff": "Turn off",
       "turnOffTwoFactor": "Turn off two-factor",
       "makeNewCodes": "Make new codes",
-      "recentSignInHelp": "Requires a fresh sign-in within the last 5 minutes.",
+      "recentSignInHelp": "Requires signing in within the last 5 minutes.",
       "twoFactorOn": "On. Signing in asks for a code.",
       "newBackupCodes": "New backup codes",
       "twoFactorOff": "Ask for a code from an authenticator app whenever you sign in.",
@@ -1482,8 +1496,8 @@
       "unblock": "Unblock",
       "unblockAria": "Unblock {name}",
       "deleteHeading": "Delete account",
-      "deleteHelp": "This removes your account, your username and your blocks. It can't be undone.",
-      "deleteRecentSignInHelp": "Requires a fresh sign-in within the last 5 minutes.",
+      "deleteHelp": "Permanently deletes your account, username, and block list. This action cannot be undone.",
+      "deleteRecentSignInHelp": "Requires signing in within the last 5 minutes.",
       "deleteForGood": "Delete for good"
     },
     "drawing": {
@@ -1540,7 +1554,7 @@
       "accountNotFound": "That sign-in method isn't linked to your account.",
       "lastWay": "You need at least one way to sign in",
       "throttled": "Too many tries. Wait a moment and try again",
-      "turnstileFailed": "We couldn't check that you're a person. Try again",
+      "turnstileFailed": "Security verification failed. Please try again.",
       "passwordBreached": "That password has appeared in a data breach. Choose another",
       "passwordTooShort": "Passwords need at least 10 characters",
       "emailNotVerified": "Confirm your email first—check your inbox for the link.",
@@ -1565,14 +1579,14 @@
         "replaced": "You're watching this room in another tab"
       },
       "roomAway": "Your room closed while you were away.",
-      "undoReset": "The host changed, so undo starts over. All the drawing is still here.",
-      "undoRestart": "Your undo starts over. All the drawing is still here.",
+      "undoReset": "The host has changed, so undo history has reset. All existing artwork is preserved.",
+      "undoRestart": "Undo history has reset. All existing artwork is preserved.",
       "newHostPlanned": "{old} made {name} the host.",
       "newHostLeft": "{old} left the room. {name} is now the host.",
-      "refusedUndo": "That can't be undone anymore.",
-      "refusedRedo": "That can't be redone anymore.",
-      "backAsArtist": "{name} is now the host. What you had open is saved: open a new tab, and it's under \"Pick up where you left off.\"",
-      "goingBackReplaces": "Going back replaces your open art, which has unsaved changes.",
+      "refusedUndo": "That action can no longer be undone.",
+      "refusedRedo": "That action can no longer be redone.",
+      "backAsArtist": "{name} is now the host. Your previous work is saved: open a new tab to find it under Pick up where you left off.",
+      "goingBackReplaces": "Returning replaces your open canvas, which has unsaved changes.",
       "artNotOpened": "The room's art couldn't be opened.",
       "goingBackFailed": "Couldn't go back to your room.",
       "hostReplaced": "This room is open in another tab"
@@ -1580,26 +1594,26 @@
   },
   "art": {
     "make": "Make art layer",
-    "makeTitle": "Make the selected drawing an art layer you can move and animate",
-    "tooBig": "That's too much for one art layer. Select a smaller piece.",
+    "makeTitle": "Convert the selected cells into an art layer that you can move and animate",
+    "tooBig": "Selection is too large for an art layer. Please select a smaller area.",
     "nothingDrawn": "Nothing is drawn in the selected cells.",
     "edit": "Edit art",
-    "editTitle": "Draw in this art layer; the change shows on every frame it's on",
-    "lockedBy": "{name} is drawing in this layer",
-    "someoneInside": "{name} is drawing in an art layer",
+    "editTitle": "Draw inside this art layer. Changes will appear across all frames where this layer is used",
+    "lockedBy": "{name} is currently editing this layer",
+    "someoneInside": "{name} is currently editing an art layer",
     "editing": "Editing art layer",
     "done": "Done",
-    "doneTitle": "Step out of the art layer (Esc)",
-    "framesOff": "Step out of the art layer to change frames.",
-    "settingsOff": "Step out of the art layer to change these.",
-    "baseOff": "Inside an art layer, tools draw on the edit layer only.",
-    "wholeLayerOff": "Step out of the art layer first: this changes the whole drawing."
+    "doneTitle": "Exit art layer editing (Esc)",
+    "framesOff": "Exit the art layer to change frames.",
+    "settingsOff": "Exit the art layer to adjust these settings.",
+    "baseOff": "Inside an art layer, drawing tools work on the art layer only.",
+    "wholeLayerOff": "Exit the art layer first: this action affects the entire drawing."
   },
   "vector": {
-    "tooMany": "A drawing holds at most {count} shapes.",
-    "followArt": "An art layer can't be followed: pick a line or a shape.",
-    "followFollower": "That shape follows a path itself, so it can't be followed.",
-    "followIsPath": "Other shapes follow this one, so it can't follow a path.",
+    "tooMany": "A drawing can hold at most {count} shapes.",
+    "followArt": "Art layers cannot be followed. Please select a path or shape.",
+    "followFollower": "That shape already follows a path and cannot be followed.",
+    "followIsPath": "Other shapes follow this shape, so it cannot follow another path.",
     "fill": "Fill",
     "stroke": "Stroke",
     "fillChipTitle": "Fill: {color} ({key})",
@@ -1607,25 +1621,25 @@
     "strokeChipTitle": "Stroke: {color} ({key})",
     "strokeNoneTitle": "Stroke: none ({key})",
     "width": "Stroke width",
-    "widthTitle": "The outline's width, in pixels",
+    "widthTitle": "Stroke outline width in pixels",
     "widthValue": "Stroke width in pixels",
     "forward": "Forward",
-    "forwardTitle": "Bring the shapes one step forward",
+    "forwardTitle": "Bring selected shapes one step forward",
     "back": "Back",
-    "backTitle": "Send the shapes one step back",
+    "backTitle": "Send selected shapes one step back",
     "join": "Join",
-    "joinTitle": "Make the selected shapes one shape: an outline inside another becomes a hole",
+    "joinTitle": "Combine selected shapes into one compound shape. An outline inside another becomes a cutout",
     "separate": "Separate",
-    "separateTitle": "Make each of the shape's outlines a shape of its own",
+    "separateTitle": "Split compound shape into separate individual shapes",
     "add": "Add",
-    "addTitle": "Make the selected shapes one, covering everything they cover",
+    "addTitle": "Merge selected shapes into a single outline covering their combined area",
     "subtract": "Subtract",
-    "subtractTitle": "Cut the shapes above out of the bottom one",
+    "subtractTitle": "Subtract upper shapes from the bottom shape",
     "strokeTitle": "Caps, joins and the miter limit",
     "cap": "Cap",
     "joinLabel": "Join",
     "miter": "Miter",
-    "miterTitle": "How far a Miter join's point may reach, in stroke widths, before it's cut off",
+    "miterTitle": "Maximum miter length in stroke widths before corner is beveled",
     "capButt": "Butt cap",
     "capRound": "Round cap",
     "capSquare": "Square cap",
@@ -1638,11 +1652,11 @@
     "alignOutside": "Stroke outside",
     "alignLeft": "Stroke left of the path",
     "alignRight": "Stroke right of the path",
-    "svgUnreadable": "Couldn't read this file as an SVG.",
-    "svgEmpty": "Nothing in this SVG could come in.",
-    "svgLeftOut": "Left out: {kinds}.",
-    "svgTextHint": "To bring text in, convert it to curves (or paths) before exporting.",
-    "svgTooBig": "This SVG has {shapes} shapes, the biggest with {points} points; there's room for {mostShapes} shapes here, and a shape holds {mostPoints} points.",
+    "svgUnreadable": "Could not read this file as an SVG.",
+    "svgEmpty": "No importable vector shapes found in this SVG.",
+    "svgLeftOut": "Unsupported SVG elements skipped: {kinds}.",
+    "svgTextHint": "To import text from an SVG, convert text to paths in your vector editor before exporting.",
+    "svgTooBig": "This SVG contains {shapes} shapes, with up to {points} points in a shape. Phosphor supports up to {mostShapes} shapes and {mostPoints} points per shape.",
     "svgKinds": {
       "text": "text",
       "image": "images",
@@ -1666,13 +1680,13 @@
     "radialStrokeChipTitle": "Stroke: radial gradient ({key})",
     "gradientLabel": "Gradient",
     "gradientSlotTitle": "Which gradient's handles show",
-    "joinTooBig": "A shape can have at most {count} points.",
-    "deleteTitle": "Delete the selected shapes",
-    "pasteTitle": "Paste the copied shapes ({key})",
-    "selectHint": "Drag to move, the handles to scale, the knob to rotate",
-    "pickPathHint": "Follow a path: click the line or shape to follow. Esc cancels",
+    "joinTooBig": "A shape cannot exceed {count} points.",
+    "deleteTitle": "Delete selected shapes",
+    "pasteTitle": "Paste copied shapes ({key})",
+    "selectHint": "Drag to move, drag handles to scale, drag top knob to rotate",
+    "pickPathHint": "Click a line or shape to follow. Press Esc to cancel",
     "snapTo": "Snap to: {mode}",
-    "snapToTitle": "Where points you place or drag land; hold {key} to drag without snapping",
+    "snapToTitle": "Snap mode for placed or dragged points. Hold {key} to drag freely without snapping",
     "snap": {
       "none": "None",
       "cells": "Cells",
@@ -1680,13 +1694,13 @@
     },
     "point": "Point",
     "smooth": "Smooth",
-    "smoothTitle": "Make the point smooth: its handles stay in line",
+    "smoothTitle": "Smooth point: handles stay aligned in a straight line",
     "free": "Free",
-    "freeTitle": "Free the point's handles: each moves on its own",
+    "freeTitle": "Free point: handles move independently",
     "sharp": "Sharp",
-    "sharpTitle": "Make the point sharp: its handles go",
-    "deletePointTitle": "Delete the selected stop, or else the selected point",
-    "pointsHint": "Drag a point, a handle or a gradient's stop; click the outline to add a point; Esc or empty canvas to finish"
+    "sharpTitle": "Sharp point: removes handles to create a sharp corner",
+    "deletePointTitle": "Delete selected color stop or point",
+    "pointsHint": "Drag points, handles, or color stops. Click outline to add a point. Press Esc or click empty canvas to finish"
   },
   "rulers": {
     "zeroOnColumn": "0 on column {n}",
@@ -1698,7 +1712,7 @@
     "zeroBeforeRow": "0 before row {n}",
     "zeroAfterRow": "0 after row {n}",
     "remove": "Remove",
-    "cornerTitle": "Drag to set both zero points. Double-click to put them back at the top left.",
-    "guideTitle": "Drag to move, or onto a ruler to remove"
+    "cornerTitle": "Drag to set both ruler origins. Double-click to reset origins to the top-left corner.",
+    "guideTitle": "Drag to move guide, or drag onto a ruler to delete it"
   }
 }

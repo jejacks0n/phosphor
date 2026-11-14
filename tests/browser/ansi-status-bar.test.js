@@ -31,12 +31,12 @@ const layer = () => host.querySelector('footer > :first-child');
 
 test('it starts with the picked layer\'s name, which a pick and a rename update', async () => {
   const { project, workspace } = await mount();
-  expect(layer().getAttribute('aria-label')).toBe('Picked layer: Layer 1');
+  expect(layer().getAttribute('aria-label')).toBe('Selected layer: Layer 1');
   expect(layer().textContent).toBe('Layer 1');
   workspace.pickLayer('base');
   await nextTick();
   expect(layer().textContent).toBe('Base');
-  expect(layer().getAttribute('aria-label')).toBe('Picked layer: Base');
+  expect(layer().getAttribute('aria-label')).toBe('Selected layer: Base');
 
   project.renameLayer('edit', 'Ink');
   workspace.pickLayer('edit');

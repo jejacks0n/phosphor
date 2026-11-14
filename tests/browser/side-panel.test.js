@@ -58,7 +58,7 @@ test('out of a room it has LAYERS and Social (marked Beta); its edge\'s keys res
   const { workspace } = await mount();
   expect(workspace.sidePanelFolded).toBe(false);   // open to begin with
   expect(panel().getBoundingClientRect().width).toBe(SIDE_PANEL.width);
-  expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['»', 'Fold the panel', 'true']);
+  expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['»', 'Collapse panel', 'true']);
   expect(arrow().parentElement.matches('.side-panel div.tabs')).toBe(true);   // at the right end of the panel's tabs
   expect(arrow().previousElementSibling.matches('[role=tablist]')).toBe(true);
   expect(host.querySelector('nav button.panel')).toBe(null);
@@ -69,7 +69,7 @@ test('out of a room it has LAYERS and Social (marked Beta); its edge\'s keys res
   expect(arrow().parentElement.matches('nav.workspace-tabs')).toBe(true);   // and the « is in the nav
   await nextTick();
   expect(document.activeElement).toBe(arrow());   // focus went with it
-  expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['«', 'Open the panel', 'false']);
+  expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['«', 'Expand panel', 'false']);
   expect(localStorage.getItem('phosphor.sidePanelFolded')).toBe('true');
   arrow().click();
   await nextTick();

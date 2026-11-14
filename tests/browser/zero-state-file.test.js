@@ -48,7 +48,7 @@ test('the same file chosen twice reports twice, because the chooser is emptied a
     input.dispatchEvent(new Event('change'));
     expect(input.files.length).toBe(0); // a real chooser then sees the same file as new
     await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(toastMessage.value).toContain("Phosphor can't open theme.sue");
+    expect(toastMessage.value).toContain('Phosphor cannot open theme.sue');
     closeToast();
   }
 });

@@ -27,7 +27,7 @@ test('riding the path\'s Start puts it where the Start is', () => {
   at(placed([['v:p', line(0, 0, 20, 0, { start: 0.75 })], ['v:f', square(50, 50, { follow: { key: 'v:p', ride: 'start' } })]]), 15, 0);
 });
 
-test('Face the path turns it to a vertical path, on top of its own turn', () => {
+test('Rotate to face path turns it to a vertical path, on top of its own turn', () => {
   const own = makeShape({ ...square(50, 50), m: rotation(Math.PI / 6, 50, 50) });
   const f = makeShape({ ...own, follow: { key: 'v:p', face: true }, along: 0.5 });
   const shape = placed([['v:p', line(0, 0, 0, 20)], ['v:f', f]]);

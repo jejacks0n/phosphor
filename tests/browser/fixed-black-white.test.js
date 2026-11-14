@@ -20,7 +20,7 @@ afterEach(() => {
 const FIXTURE = '/tests/fixtures/ansi/fixed-black-white.ans';
 const artOf = (bytes) => new TextDecoder('latin1').decode(bytes.subarray(0, bytes.indexOf(0x1a)));
 
-// The fixture opened (Edit it, or Draw on top of it), and its art as the file has it.
+// The fixture opened (Edit artwork, or Draw on top), and its art as the file has it.
 async function opened(layer) {
   const app = await createTestApp();
   const blob = await (await fetch(FIXTURE)).blob();
@@ -107,7 +107,7 @@ async function throughUndo(project, steps) {
 // The colors' palette indexes in each cell, fg and bg.
 const indexesOf = (project) => project.cells.map(({ fg, bg }) => [fg.c, bg.c]);
 
-test('Draw on top of it keeps 16 and 231 on the base, and so does a .phosphor saved and opened again', async () => {
+test('Draw on top keeps 16 and 231 on the base, and so does a .phosphor saved and opened again', async () => {
   const { project, original } = await opened('base');
   expect(await exported(project)).toBe(original);
   const spy = vi.spyOn(URL, 'createObjectURL');

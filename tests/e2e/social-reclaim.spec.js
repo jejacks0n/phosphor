@@ -5,7 +5,7 @@ import { fakeRoom, fakeServer, member, ROOM_ID, shown, goLive, chat, live, joins
 
 const BACK = 'Back to your room';
 const AWAY = 'Your room closed while you were away.';
-const REPLACES = 'Going back replaces your open art, which has unsaved changes.';
+const REPLACES = 'Returning replaces your open canvas, which has unsaved changes.';
 const LOOKS = 4500;   // long enough for two looks to have passed
 const OFFERED = 15_000;   // how long an offer that's coming may take on a busy machine; a wait for one that isn't stays LOOKS
 
@@ -188,7 +188,7 @@ test('pressed after the role moved: back in as an artist, with the existing word
   await press(again, back(again));
   await expect.poll(() => store(again, 'room', (r) => r.role), { timeout: 10_000 }).toBe('watch');
   await expect(chatTab(again)).toHaveAttribute('aria-selected', 'true');
-  await expect(chat(again).getByText('is now the host. What you had open is saved')).toBeVisible();
+  await expect(chat(again).getByText('is now the host. Your previous work is saved')).toBeVisible();
   await mayDrawOf(again).toBe(true);
 });
 

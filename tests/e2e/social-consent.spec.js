@@ -5,8 +5,8 @@ import { CONSENT_KEY } from '../../src/social/consent.js';
 
 test.use({ consented: false });
 
-const TERMS = /^I'm 13 or older and agree to the Terms\s*, Privacy Policy\s*, and Community Guidelines$/;
-const consent = (page) => page.getByRole('dialog', { name: 'Before you open SOCIAL' });
+const TERMS = /^I am 13 or older and agree to the Terms\s*, Privacy Policy\s*, and Community Guidelines$/;
+const consent = (page) => page.getByRole('dialog', { name: 'Before you use Social rooms' });
 const lobbyTab = (page) => page.locator('.side-panel').getByRole('tab', { name: 'Social' });
 const agree = (page) => consent(page).getByRole('checkbox', { name: TERMS });
 const notNow = (page) => consent(page).getByRole('button', { name: 'Not now' });
@@ -45,12 +45,12 @@ test('the Social tab first shown asks, saying what SOCIAL means with the agreeme
   await expect(shown(page, 'lobby')).toHaveCount(0);
 
   // What the lobby, joining and starting a room mean, and how to behave.
-  for (const heading of ['The lobby', 'Joining a room', 'Starting a room', 'Be kind']) {
+  for (const heading of ['The lobby', 'Joining a room', 'Starting a room', 'Community rules']) {
     await expect(consent(page).getByRole('heading', { name: heading })).toBeVisible();
   }
   await expect(consent(page)).toContainText('each of you can see the other\'s IP address');
-  await expect(consent(page)).toContainText('use a VPN');
-  await expect(consent(page)).toContainText('including the original image');
+  await expect(consent(page)).toContainText('Use a VPN');
+  await expect(consent(page)).toContainText('including the base image');
   await expect(consent(page)).toContainText('snapshot of the canvas');
 
   // The agreement and both answers share a row, with the answers at the right.
@@ -65,7 +65,7 @@ test('the Social tab first shown asks, saying what SOCIAL means with the agreeme
 
   // Accept stays off until the box is ticked.
   await expect(accept(page)).toBeDisabled();
-  await expect(consent(page).locator('label')).toHaveText('I\'m 13 or older and agree to the Terms, Privacy Policy, and Community Guidelines');
+  await expect(consent(page).locator('label')).toHaveText('I am 13 or older and agree to the Terms, Privacy Policy, and Community Guidelines');
   await agree(page).check();
   await expect(accept(page)).toBeEnabled();
   await agree(page).uncheck();
@@ -268,7 +268,7 @@ test('in a window too short for it, the modal scrolls and its buttons stay reach
   await expect(accept(page)).toBeInViewport({ ratio: 1 });
   await expect(notNow(page)).toBeInViewport({ ratio: 1 });
   await expect(agree(page)).toBeInViewport({ ratio: 1 });
-  const body = consent(page).getByRole('region', { name: 'What SOCIAL means for you' });
+  const body = consent(page).getByRole('region', { name: 'Privacy and community information for Social rooms' });
   const scrolls = await body.evaluate((el) => el.scrollHeight > el.clientHeight);
   expect(scrolls).toBe(true);
   await body.focus();

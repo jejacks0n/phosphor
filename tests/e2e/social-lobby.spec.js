@@ -288,7 +288,7 @@ test('a browser that can\'t do Ed25519 is told plainly, with nothing else in the
   });
   await page.goto('/');
   await openLobby(page);
-  await expect(lobby(page)).toHaveText("This browser doesn't support the security features SOCIAL needs.");
+  await expect(lobby(page)).toHaveText('This browser does not support the security features required for Social rooms.');
 });
 
 // A person shows the same wherever they do: their name in the text color, after a 14px cell of its glyph on its color.

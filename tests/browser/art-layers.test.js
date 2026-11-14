@@ -154,7 +154,7 @@ test('too big for one layer: refused, the drawing untouched', async () => {
   select(workspace, 0, 0, 199, 39);
   toastMessage.value = null;
   expect(project.makeArtLayer()).toBe(null);
-  expect(toastMessage.value).toBe("That's too much for one art layer. Select a smaller piece.");
+  expect(toastMessage.value).toBe('Selection is too large for an art layer. Please select a smaller area.');
   expect(project.history.version).toBe(version);
   expect(project.editCells).toBe(edits);
   expect(project.shapes.size).toBe(0);
@@ -495,7 +495,7 @@ test('an edit that fits where the layer shows but not on another frame it is on 
   await opened.loadProject(file);
   expect(opened.frames.length).toBe(2);
   expect(changed).toBe(false);
-  expect(toastMessage.value).toBe("That's too much for one art layer. Select a smaller piece.");
+  expect(toastMessage.value).toBe('Selection is too large for an art layer. Please select a smaller area.');
   expect(project.history.version).toBe(version);
   expect(project.shapes.get(key)).toBe(shape);
   // With room on every frame it's on, it's taken everywhere.
@@ -517,7 +517,7 @@ test('Make art layer checks the record at the stacking it gets, so a drawing at 
   select(workspace, 0, 0, 99, art.rows - 1);
   toastMessage.value = null;
   expect(project.makeArtLayer()).toBe(null);
-  expect(toastMessage.value).toBe("That's too much for one art layer. Select a smaller piece.");
+  expect(toastMessage.value).toBe('Selection is too large for an art layer. Please select a smaller area.');
   expect(project.editCells).toBe(edits);
   expect(project.history.version).toBe(version);
 });
@@ -530,7 +530,7 @@ test('a move or restack an art layer at the limit has no room for is refused, an
     toastMessage.value = null;
     project.updateShapes([[key, withShape(shape, change)]]);
     expect(project.shapes.get(key)).toBe(shape);
-    expect(toastMessage.value).toBe("That's too much for one art layer. Select a smaller piece.");
+    expect(toastMessage.value).toBe('Selection is too large for an art layer. Please select a smaller area.');
   }
 });
 
@@ -621,7 +621,7 @@ test('Make art layer at the most layers a drawing holds is refused when it would
   select(workspace, 1, 0, 4, 2);
   toastMessage.value = null;
   expect(project.makeArtLayer()).toBe(null);
-  expect(toastMessage.value).toBe(`A drawing holds at most ${count} layers.`);
+  expect(toastMessage.value).toBe(`A drawing can have up to ${count} layers.`);
   expect(project.layers).toHaveLength(count);
   expect(project.history.version).toBe(version);
   expect(project.cellsOf('edit').get('2,1').char).toBe('Q');
@@ -732,7 +732,7 @@ test('an art layer on a vector layer above the first goes by its own layer\'s ey
   await settle(project);
   toastMessage.value = null;
   expect(project.enterArt(key)).toBe(false);
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(toastMessage.value).toBe('Make the layer visible to draw on it');
   expect(project.artInside).toBe(null);
 
   project.setLayerHidden(upper, false);
@@ -757,7 +757,7 @@ test('Make art layer is refused while the cells layer or the vector layer above 
     select(workspace, 1, 0, 6, 2);
     toastMessage.value = null;
     expect(project.makeArtLayer()).toBe(null);
-    expect(toastMessage.value).toBe('Show the layer to draw on it');
+    expect(toastMessage.value).toBe('Make the layer visible to draw on it');
     expect(project.history.version).toBe(version);
     expect(project.cellsOf('edit').get('2,1')?.char).toBe('H');
     expect(cellsKey(project)).toEqual(shown);
@@ -792,7 +792,7 @@ test('Make art layer refused for a hidden layer inside an art layer leaves you i
   select(workspace, 7, 0, 9, 2);
   toastMessage.value = null;
   expect(project.makeArtLayer()).toBe(null);
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(toastMessage.value).toBe('Make the layer visible to draw on it');
   expect(project.artInside).toBe(key);
   project.leaveArt();
 });

@@ -2,7 +2,7 @@
 import { test, expect } from './support.js';
 import { fakeRoom, ROOM_ID, watching, goLive, watcherPage, outOfRoom, live } from './social-support.js';
 
-const words = (page) => page.getByText('Rooms need a wider screen.');
+const words = (page) => page.getByText('Shared rooms require a wider screen.');
 
 test('a watcher whose window narrows is told, can Exit, and widening brings the room back', async ({ page: host, context }) => {
   const room = fakeRoom();

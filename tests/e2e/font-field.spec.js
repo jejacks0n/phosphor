@@ -60,10 +60,10 @@ test('the status bar\'s Smooth button turns anti-aliasing off and on, in both vi
   await expect(page.getByRole('button', { name: 'DOM', exact: true })).toHaveAttribute('title', 'Rendered on canvas. Click to switch to DOM text rendering (experimental).');
   const smooth = page.getByRole('button', { name: 'Smooth' });
   await expect(smooth).toHaveAttribute('aria-pressed', 'true'); // on by default
-  await expect(smooth).toHaveAttribute('title', 'Smooth text is on (anti-aliased glyphs). Click for crisp 2-color pixel edges.');
+  await expect(smooth).toHaveAttribute('title', 'Smooth text is on (anti-aliased characters). Click for sharp pixel edges.');
   await smooth.click();
   await expect(smooth).toHaveAttribute('aria-pressed', 'false');
-  await expect(smooth).toHaveAttribute('title', 'Smooth text is off (crisp 2-color pixels). Click for anti-aliased glyphs.');
+  await expect(smooth).toHaveAttribute('title', 'Smooth text is off (sharp pixel edges). Click for anti-aliased characters.');
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--display-font-smoothing').trim())).toBe('none');
   await page.getByRole('button', { name: 'DOM', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Canvas', exact: true })).toHaveAttribute('title', 'Rendered as DOM text (experimental). Click to switch to canvas rendering.');
@@ -76,7 +76,7 @@ test('the status bar\'s Smooth button turns anti-aliasing off and on, in both vi
 
 test('the canvas follows the Smooth button: white text on black has gray edges when smooth, none when sharp', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Or start with a blank canvas' }).click();
+  await page.getByRole('button', { name: 'Start with a blank canvas' }).click();
   await tab(page, 'ANSI').click();
   await settled(page);
   await editAt(page, 1, 1);

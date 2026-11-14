@@ -110,7 +110,7 @@ test('a click without a drag fills nothing (the Paint Bucket fills solid); a dra
   await settle(project);
   expect(project.canUndo).toBe(false);
   expect(paintAt(project, 20, 40)).toBeNull();
-  expect(toastMessage.value).toMatch(/needs both a foreground and a background color/);
+  expect(toastMessage.value).toMatch(/requires both a foreground and a background color/);
 });
 
 test('a press outside the selection starts no line', async () => {

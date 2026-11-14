@@ -252,7 +252,7 @@ test('Merge down is off for a vector layer whose only shapes are guides', async 
   project.addShape(path({ guide: true }));
   workspace.pickLayer(project.layers.find((layer) => layer.kind === 'vector').id);
   const host = await mount(EditToolbar);
-  const merge = () => [...host.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Merge down' || b.title.startsWith('Merge down:'));
+  const merge = () => [...host.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'Merge down' || /^Merge (down:|.+ down into)/.test(b.title));
   await nextTick();
   expect([workspace.editorTab, merge().length > 0, merge().every((b) => b.disabled)]).toEqual(['vector', true, true]);
   project.addShape(square(5, 5));
@@ -269,7 +269,7 @@ test('a guide is clicked on its outline, never on its fill', async () => {
   expect(shapeAt(placed, 16.3, 14, 0.5)).toBe(g);
 });
 
-// Follow path, Stop following, Guide and the link's options, as store actions: each one undo step, on every frame.
+// Follow path, Stop following path, Guide and the link's options, as store actions: each one undo step, on every frame.
 const recordsOf = (project, key) => project.frames.map((frame) => frame.changes.get(key)?.cell ?? null);
 const centerAt = (project, key) => centerOf(placedShapes(project).get(key));
 const near = (point, x, y) => expect([Math.round(point.x * 100) / 100, Math.round(point.y * 100) / 100]).toEqual([x, y]);
@@ -323,7 +323,7 @@ test('in a three-key movie, Follow path links every key frame, each where it was
   expect(recordsOf(project, f)).toEqual(after);
 });
 
-test('Stop following puts the follower back on its own Transform on every frame, and leaves no Along keys', async () => {
+test('Stop following path puts the follower back on its own Transform on every frame, and leaves no Along keys', async () => {
   const { project, p, f } = await threeKeys();
   const before = recordsOf(project, f);
   project.followPath(f, p);
@@ -349,7 +349,7 @@ test('Follow path is refused, with a toast and no undo step, for a follower\'s p
   project.followPath(f, p);
   project.clearHistory();
   const shapes = project.shapes;
-  for (const [follower, to, words] of [[g, f, /follows a path itself/], [p, other, /Other shapes follow/], [g, art, /art layer/]]) {
+  for (const [follower, to, words] of [[g, f, /already follows a path/], [p, other, /Other shapes follow/], [g, art, /Art layers cannot be followed/]]) {
     toastMessage.value = null;
     expect(project.followPath(follower, to)).toBe(false);
     expect(toastMessage.value).toMatch(words);

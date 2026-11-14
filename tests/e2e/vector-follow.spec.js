@@ -58,7 +58,7 @@ test('a rectangle follows a Pen curve picked with Follow a path…, drags along 
   expect(await store(page, 'workspace', (w) => w.vectorSelected)).toEqual([rect]);
   await panel(page).locator('.add-key .dropdown-trigger').click();
   await menuItem(page, 'Follow a path…').click();
-  await expect(page.getByText('Follow a path: click the line or shape to follow. Esc cancels')).toBeVisible();
+  await expect(page.getByText('Click a line or shape to follow. Press Esc to cancel')).toBeVisible();
   expect(await store(page, 'workspace', (w) => w.pickingPath)).toBe(rect);
   await click(page, 14, 30);
   await expect.poll(() => store(page, 'workspace', (w) => w.pickingPath)).toBe(null);
