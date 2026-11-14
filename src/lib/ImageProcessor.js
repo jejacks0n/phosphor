@@ -11,6 +11,25 @@ import { snapsLate, SAMPLES } from './CharResolver.js';
 let glProcessor;
 let glBase; // the base layer's own, so the pipeline's processor keeps the picture uploaded
 const customPalettes = {};
+const uniform = new WeakMap(); // a picture made one color all over (markUniform) -> its 1 x 1 stand-in
+
+// A picture made one color all over (a blank canvas's black), said so where it's made rather than found by looking at
+// every pixel: processImage puts one pixel of it through the pipeline instead of the whole picture.
+export function markUniform(image, color) {
+  const one = Object.assign(document.createElement('canvas'), { width: 1, height: 1 }), ctx = ctx2d(one);
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 1, 1);
+  uniform.set(image, one);
+}
+
+// A tw x th ImageData, opaque black, with [r, g, b] over dx, dy, dw, dh: what boxFiltered makes of a one-color picture.
+function filled(tw, th, dx, dy, dw, dh, [r, g, b]) {
+  const image = new ImageData(tw, th), pixels = new Uint32Array(image.data.buffer); // little-endian RGBA, as blackImage
+  pixels.fill(0xff000000);
+  const color = (0xff000000 | (b << 16) | (g << 8) | r) >>> 0, x0 = Math.max(0, dx), x1 = Math.min(tw, dx + dw);
+  for (let y = Math.max(0, dy); y < Math.min(th, dy + dh); y++) pixels.fill(color, y * tw + x0, y * tw + x1);
+  return image;
+}
 
 // The longest side, in pixels, this GPU processes a picture at (16384 on most, 8192 on software WebGL).
 export const gpuMaxSide = () => (glProcessor ??= new WebGLProcessor()).maxSide;
@@ -157,7 +176,11 @@ export async function processImage(image, params, { samples = true } = {}) {
   const { cols, rows, smoothing } = params;
   const { dx, dy, dw, dh, pw, ph, glParams } = prepare(image, params);
   glProcessor ??= new WebGLProcessor();
-  glProcessor.process(image, glParams, pw, ph);
+  // A one-color picture stays one color through every pass: each pixel is adjusted alike, and blur, Flatten, Edges and
+  // Sharpen read neighbors of that color (the edges clamped). So one pixel goes through, and every grid pixel is it.
+  const one = uniform.get(image);
+  glProcessor.process(one ?? image, glParams, one ? 1 : pw, one ? 1 : ph);
+  const pixel = one && boxFiltered(glProcessor.canvas, 1, 1, 0, 0, 1, 1).data;
 
   // Final output stage (downsizing)
   const canvas = new Canvas();
@@ -165,9 +188,11 @@ export async function processImage(image, params, { samples = true } = {}) {
   canvas.ctx.imageSmoothingEnabled = true;
   canvas.ctx.imageSmoothingQuality = smoothing;
   // Fit by the image's natural aspect (the store's fit), not pw x ph
-  canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
+  if (one) canvas.ctx.putImageData(filled(cols, rows, dx, dy, dw, dh, pixel), 0, 0);
+  else canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
   const s = SAMPLES.w; // a grid pixel's samples each way (a cell is two grid pixels tall)
-  const sampled = samples && params.charMode === 'shape' ? boxFiltered(glProcessor.canvas, cols * s, rows * s, dx * s, dy * s, dw * s, dh * s) : null;
+  const sampled = !(samples && params.charMode === 'shape') ? null
+    : one ? filled(cols * s, rows * s, dx * s, dy * s, dw * s, dh * s, pixel) : boxFiltered(glProcessor.canvas, cols * s, rows * s, dx * s, dy * s, dw * s, dh * s);
 
   // Quantization happens after paint is composited (Renderer), not here. The Number palette is picked
   // there too, from the composited picture (Renderer.composite), so it isn't worked out here.
