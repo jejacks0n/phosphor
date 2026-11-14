@@ -203,6 +203,10 @@ test('StartRoomPage desktop: no public or guests, a password always, and the por
   expect(host.textContent).not.toContain('Who can join');
   expect(host.textContent).not.toContain('Allow guests');
   expect(host.textContent).not.toContain('Lobby card');
+  // No lobby card: the settings are the one column, and with nothing to share yet, the warning is above Go live.
+  expect(host.querySelector('form').classList.contains('single')).toBe(true);
+  expect(host.querySelector('div.column')).toBe(null);
+  expect(host.querySelector('form > p.no-art').textContent).toBe('Open an image or start a canvas first so you have something to share.');
   expect(field('Password')).toBeTruthy();
   expect(field('Port').value).toBe('4000');
 
@@ -371,6 +375,7 @@ test('SocialDialogs desktop: no question, no account pages, no room link; Start 
   social.page = 'start-room';
   await nextTick();
   expect(dialog().textContent).toContain('Set up your room');
+  expect(dialog().classList.contains('wide')).toBe(false);   // one column: no lobby card beside it
 });
 
 test('LegalDialog desktop: the app\'s privacy note in place of the hosted service\'s policy; the Terms stay', async () => {

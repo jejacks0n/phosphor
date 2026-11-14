@@ -26,7 +26,8 @@ const social = useSocialStore(), room = useRoomStore(), workspace = useWorkspace
 const { t } = useI18n();
 
 // Each page, with the words its dialog is named by (its heading), where Escape and its close button go, and whether
-// it's two columns wide. A page with nowhere to go has no close button.
+// when it's two columns wide (Set up your room, with a lobby card beside its settings). A page with nowhere to go has
+// no close button.
 const PAGES = {
   'sign-in': [SignInPage, 'social.auth.signInHeading', 'lobby'],
   create: [CreateAccountPage, 'social.auth.createHeading', 'lobby'],
@@ -36,7 +37,7 @@ const PAGES = {
   account: [AccountPage, 'social.account.heading', 'lobby'],
   blocked: [BlockedPage, 'social.account.blockedHeading', 'account'],
   'two-factor': [TwoFactorPage, 'social.auth.twoFactorHeading', 'sign-in'],
-  'start-room': [StartRoomPage, 'social.start.heading', 'lobby', true],
+  'start-room': [StartRoomPage, 'social.start.heading', 'lobby', () => !DESKTOP && room.startDraft.isPublic],
 };
 
 const lobbyShown = computed(() => !room.inRoom && !workspace.sidePanelFolded && workspace.sidePanelTab === 'social');
@@ -71,7 +72,7 @@ const linkIsYours = computed(() => room.reclaimable.some((r) => r.id === social.
 
 <template>
   <ConsentDialog v-if="!DESKTOP && !social.allowed && wanted"/>
-  <ModalDialog v-else-if="page" long :wide="!!PAGES[page][3]" :focus="false" :label="t(PAGES[page][1])" :closable="!!PAGES[page][2]" @cancel="cancel">
+  <ModalDialog v-else-if="page" long :wide="!!PAGES[page][3]?.()" :focus="false" :label="t(PAGES[page][1])" :closable="!!PAGES[page][2]" @cancel="cancel">
     <div ref="body" class="people-forms" :data-page="page">
       <p v-if="social.notice" class="notice" role="status">
         <span>{{ social.notice }}</span>

@@ -188,6 +188,8 @@ A public room also has a **Lobby card** box:
 - **Lobby picture**: the part of the art your card will show (see [Hosting](#hosting)). A position you pin here is
   kept when you go live.
 
+An unlisted room has Room settings alone, in a narrower box.
+
 What you've typed stays while you visit another tab. **Go live** shares the art you have open and closes the box; its
 **×** leaves without starting.
 
