@@ -39,7 +39,8 @@ const INFO_WITHIN_MS = 5000;   // what's at an address typed in answers /info wi
 // What a room service at this address ('host:port') says it has: its info answer, or { error } with why there's none.
 // Something else on that port either answers with something else or closes once it's open (not-phosphor); nothing
 // there never opens (unreachable).
-// ponytail: a web server on that port refuses the socket before it opens, which reads as unreachable; a browser can't tell.
+// A web server on that port refuses the socket before it opens, as nothing there does: a browser can't tell the two
+// apart, so unreachable's words cover both (no Phosphor room answered).
 function readInfo(address) {
   return new Promise((resolve) => {
     let socket, opened = false, done = false;
@@ -887,7 +888,14 @@ export const useRoomStore = defineStore('room', {
           }
           if (connection !== this._connection) return;
           // A desktop room's service is on the host's computer: gone longer than a reload takes, the host has gone.
-          if (DESKTOP && this.role === 'watch' && status === 'reconnecting') hostGone ??= setTimeout(() => { if (connection === this._connection) this.over(hostGoneWords()); }, RETURN_WITHIN_MS);
+          // Its socket stops retrying first: over() leaves it running, and a room back at that address would hear a join.
+          if (DESKTOP && this.role === 'watch' && status === 'reconnecting') {
+            hostGone ??= setTimeout(() => {
+              if (connection !== this._connection) return;
+              connection.close();
+              this.over(hostGoneWords());
+            }, RETURN_WITHIN_MS);
+          }
           if (this.role === 'host' && status !== 'refused' && status !== 'closed') this.status = status;
           // The server kicked a watcher while its connection to the host was being made: the host gave up
           // on reaching it first, so joining again would only fail the same way.

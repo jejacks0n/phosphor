@@ -1591,9 +1591,9 @@
       "join": {
         "empty": "Saisissez l'adresse de l'hôte.",
         "badPort": "Le port doit être un nombre entre 1 et 65535.",
-        "badHost": "Ce n'est pas une adresse. Elle ressemble à 192.168.1.20 ou mon-mac.local, suivie de :port si l'hôte en a choisi un.",
+        "badHost": "Une adresse ressemble à 192.168.1.20 ou mon-mac.local, suivie de :port si l'hôte en a choisi un.",
         "notPhosphor": "Ce n'est pas une salle Phosphor.",
-        "unreachable": "Rien n'a répondu à cette adresse. Vérifiez-la, et que la salle de l'hôte est ouverte.",
+        "unreachable": "Aucune salle Phosphor n'a répondu à cette adresse. Vérifiez-la, et vérifiez que la salle de l'hôte est ouverte.",
         "noRoom": "Phosphor est bien là, mais aucune salle n'est ouverte pour le moment.",
         "newer": "Cette personne utilise une version plus récente de Phosphor. Mettez à jour pour rejoindre la salle.",
         "older": "Cette personne utilise une version plus ancienne de Phosphor. Elle doit la mettre à jour pour que vous puissiez rejoindre la salle."
