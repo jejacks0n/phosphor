@@ -1,14 +1,16 @@
 name: Build the desktop app
 
-# Only a version tag builds it: v and three numbers (v0.2.0), matching package.json's version and higher than every
-# version tag before it. It builds the three platforms and attaches them to a draft GitHub Release for the tag, to
-# look over and publish by hand.
+# Only a version tag builds it: v and three numbers (v0.2.0), or a pre-release with a dash after them (v0.2.0-beta,
+# v0.2.0-beta.2), matching package.json's version and higher than every version tag before it by semver's order, where
+# v0.2.0-beta comes before v0.2.0 (scripts/release-tag.mjs). It builds the three platforms and attaches them to a GitHub
+# Release for the tag: a draft to look over and publish by hand, or for a pre-release, a pre-release published as the
+# builds finish.
 on:
   push:
-    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+    tags: ['v[0-9]+.[0-9]+.[0-9]+', 'v[0-9]+.[0-9]+.[0-9]+-*']
 
 permissions:
-  contents: write # the tag's draft release
+  contents: write # the tag's release
 
 jobs:
   # Once, before the three builds: a tag that isn't the next version builds nothing.
@@ -19,14 +21,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # every tag, to compare with
-      - run: |
-          tag="$GITHUB_REF_NAME"
-          version="v$(node -p "require('./package.json').version")"
-          [ "$tag" = "$version" ] || { echo "::error::The tag $tag isn't package.json's version, $version"; exit 1; }
-          last=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' | grep -Ex 'v[0-9]+\.[0-9]+\.[0-9]+' | grep -vx "$tag" | sort -V | tail -1)
-          if [ -n "$last" ] && [ "$(printf '%s\n%s\n' "$last" "$tag" | sort -V | tail -1)" != "$tag" ]; then
-            echo "::error::The tag $tag isn't higher than the last version, $last"; exit 1
-          fi
+      - id: tag
+        run: node scripts/release-tag.mjs "$GITHUB_REF_NAME"
+    outputs:
+      prerelease: ${{ steps.tag.outputs.prerelease }}
 
   package:
     needs: version
@@ -47,6 +45,8 @@ jobs:
       WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
       WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # true for a pre-release tag: electron-builder then makes a published pre-release rather than a draft.
+      EP_PRE_RELEASE: ${{ needs.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

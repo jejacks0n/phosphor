@@ -37,11 +37,15 @@ test('builder config names the Local Network usage, signs mac and windows, publi
 
 test('the desktop workflow runs only on a version tag higher than the last, and a release needs the signing secrets', () => {
   const yml = read('.github/workflows/desktop.yml');
-  assert.match(yml, /tags: \['v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+'\]/);
+  // A release (v1.2.3) or a pre-release (v1.2.3-beta), the second published as a GitHub pre-release.
+  assert.match(yml, /tags: \['v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+', 'v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+-\*'\]/);
+  assert.match(yml, /EP_PRE_RELEASE: \$\{\{ needs\.version\.outputs\.prerelease \}\}/);
   assert.doesNotMatch(yml, /workflow_dispatch|branches:|pull_request/);
-  // One check before the three builds: the tag is package.json's version and higher than every version tag before it.
+  // One check before the three builds: the tag is package.json's version and higher than every version tag before it
+  // (scripts/release-tag.mjs, tested in desktop-release-tag.test.js).
   assert.match(yml, /needs: version/);
-  assert.match(yml, /sort -V/);
+  assert.match(yml, /node scripts\/release-tag\.mjs "\$GITHUB_REF_NAME"/);
+  assert.match(yml, /prerelease: \$\{\{ steps\.tag\.outputs\.prerelease \}\}/);
   assert.match(yml, /fetch-depth: 0/);
   assert.match(yml, /os: \[macos-latest, windows-latest, ubuntu-latest\]/);
   assert.match(yml, /contents: write/);
