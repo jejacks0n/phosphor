@@ -1,5 +1,5 @@
-// The page's one way into the main process (desktop/main.js), as window.phosphorDesktop: the room service, and
-// quitting. Sandboxed, so CommonJS, with only Electron's renderer modules.
+// The page's one way into the main process (desktop/main.js), as window.phosphorDesktop: the room service, quitting,
+// the menu bar (its words and state out, its commands back), files opened and saved, and the releases to update to. Sandboxed, so CommonJS, with only Electron's renderer modules.
 const { contextBridge, ipcRenderer } = require('electron');
 
 let onQuit = null;
@@ -13,6 +13,11 @@ ipcRenderer.on('phosphor:quit', () => {
   }
 });
 
+let onMenu = null;
+let onOpenedFile = null;
+ipcRenderer.on('phosphor:menu', (_event, name) => onMenu?.(name));
+ipcRenderer.on('phosphor:opened-file', (_event, file) => onOpenedFile?.(file));
+
 // The end-to-end tests' shorter wait for a host gone (PHOSPHOR_RETURN_WITHIN_MS, passed on by main.js); undefined otherwise.
 const returnWithin = process.argv.find((arg) => arg.startsWith('--phosphor-return-within-ms='));
 
@@ -23,4 +28,14 @@ contextBridge.exposeInMainWorld('phosphorDesktop', {
   stopService: () => ipcRenderer.invoke('phosphor:stop-service'),
   onQuit: (cb) => { onQuit = cb; },
   quitReady: () => ipcRenderer.send('phosphor:quit-ready'),
+  setMenu: (labels, state) => ipcRenderer.invoke('phosphor:set-menu', { labels, state }),
+  onMenu: (cb) => { onMenu = cb; },
+  // Files to open come once the page says it takes them: { path, name, bytes }, or { name, missing: true }.
+  onOpenedFile: (cb) => {
+    onOpenedFile = cb;
+    ipcRenderer.send('phosphor:files-ready');
+  },
+  openFile: () => ipcRenderer.invoke('phosphor:open-file'),
+  saveProject: ({ bytes, name, path, as } = {}) => ipcRenderer.invoke('phosphor:save-project', { bytes, name, path, as }),
+  releases: () => ipcRenderer.invoke('phosphor:releases'),
 });

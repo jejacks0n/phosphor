@@ -9,23 +9,17 @@ const { t } = useI18n();
 const drawing = useDrawingStore();
 const project = useProjectStore();
 const { image } = storeToRefs(project);
-const { editorTab, saveDialog, exportModal, versionsOpen } = storeToRefs(useWorkspaceStore());
-
-function confirmNewProject() {
-  project.commitPending(); // text typed a moment ago counts
-  if (project.isDirty && !confirm(t('actions.confirmNew'))) return;
-  project.clearImage();
-  editorTab.value = 'input';
-}
+const workspace = useWorkspaceStore();
+const { exportModal, versionsOpen } = storeToRefs(workspace);
 </script>
 
 <template>
   <article class="project-actions">
-    <button @click="saveDialog = 'phosphor'" :disabled="!image" class="primary">{{ t('actions.saveProject') }}</button>
+    <button @click="workspace.saveFile()" :disabled="!image" class="primary">{{ t('actions.saveProject') }}</button>
     <button @click="exportModal = true" :disabled="!image" class="secondary">{{ t('actions.export') }}</button>
     <button @click="versionsOpen = true" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="secondary">{{ t('actions.versions') }}</button>
     <hr/>
-    <button @click="confirmNewProject" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="danger">{{ t('actions.newProject') }}</button>
+    <button @click="workspace.newProject()" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="danger">{{ t('actions.newProject') }}</button>
   </article>
 </template>
 

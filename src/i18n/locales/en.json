@@ -48,7 +48,7 @@
       "privacy": "Privacy Policy",
       "guidelines": "Community Guidelines"
     },
-    "desktopPrivacy": "This app sends nothing to Phosphor. In a room, the people you connect with see your IP address."
+    "desktopPrivacy": "This app sends nothing to Phosphor. In a room, the people you connect with see your IP address. When you choose Check for Updates, it asks GitHub for Phosphor's releases, and GitHub sees your IP address."
   },
   "footer": {
     "about": "About Phosphor",
@@ -1765,5 +1765,63 @@
     "remove": "Remove",
     "cornerTitle": "Drag to set both ruler origins. Double-click to reset origins to the top-left corner.",
     "guideTitle": "Drag to move guide, or drag onto a ruler to delete it"
+  }
+,
+  "menu": {
+    "file": "File",
+    "new": "New",
+    "open": "Open…",
+    "openRecent": "Open Recent",
+    "clearRecent": "Clear Menu",
+    "noRecent": "No Recent Files",
+    "save": "Save",
+    "saveAs": "Save As…",
+    "export": "Export…",
+    "versions": "Versions…",
+    "closeWindow": "Close Window",
+    "quit": "Quit Phosphor",
+    "edit": "Edit",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "selectAll": "Select All",
+    "room": "Room",
+    "hostRoom": "Start a Room…",
+    "joinRoom": "Join a Room…",
+    "copyAddress": "Copy Room Address",
+    "leaveRoom": "Leave Room",
+    "endRoom": "End Room…",
+    "view": "View",
+    "actualSize": "Actual Size",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "fullScreen": "Toggle Full Screen",
+    "window": "Window",
+    "help": "Help",
+    "shortcuts": "Keyboard Shortcuts",
+    "github": "Phosphor on GitHub",
+    "releaseNotes": "Release Notes",
+    "reportIssue": "Report an Issue…",
+    "troubleshooting": "Troubleshooting",
+    "devTools": "Toggle Developer Tools",
+    "about": "About Phosphor",
+    "checkUpdates": "Check for Updates…",
+    "services": "Services",
+    "hide": "Hide Phosphor",
+    "hideOthers": "Hide Others",
+    "showAll": "Show All",
+    "openableFiles": "Pictures, projects and art files",
+    "projectFiles": "Phosphor projects",
+    "addressCopied": "Room address copied.",
+    "missing": "{name} isn't there anymore.",
+    "openFailed": "That file couldn't be opened."
+  },
+  "updates": {
+    "check": "Check for updates",
+    "failed": "Couldn't check for updates. Check your connection and try again.",
+    "upToDate": "Phosphor {version} is the newest version.",
+    "available": "Phosphor {version} is out (you have {current}). Open its download page?"
   }
 }

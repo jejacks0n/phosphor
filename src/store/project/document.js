@@ -22,8 +22,11 @@ import { toast } from '@/composables/useToast.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults, sauceDefaults } from '@/store/settings.js';
 import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, savedJson, randomId, blackPicture } from '@/store/project/shared.js';
+import { desktop } from '@/social/desktop.js';
 import { generateSlug } from 'random-word-slugs';
 import { markRaw, shallowRef } from 'vue';
+
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 
 // A project's pictures, decoded: what can fail before anything has changed.
 const loadParts = async ({ imageBuffer, paintBuffer, baseBuffer, layerParts }) => ({
@@ -269,6 +272,7 @@ export const documentActions = {
     this.$patch({
       documentId: randomId(),
       fileId: randomId(), // a new drawing's; a file opened brings its own in the patch
+      filePath: null, // desktop: a project opened from its file says it after
       fit: null,
       paintScale: null,
       baseScale: null, // a loaded file's comes in the patch
@@ -349,17 +353,31 @@ export const documentActions = {
     if (filename?.trim()) this.filename = filename.trim();
   },
 
-  async saveProject(filename = this.filename) {
-    if (!this.image || !this.imageBuffer) return;
+  // On desktop the file is written where the system's save box says, or over the project's own file (filePath) with
+  // no box (Save As, `as`, always asks). False when the box is canceled. What's marked saved is the project as written:
+  // a room's changes heard while the box is open are still unsaved.
+  async saveProject(filename = this.filename, { as = false } = {}) {
+    if (!this.image || !this.imageBuffer) return false;
     this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
+    const [settings, version] = [savedJson(this), this.editVersion];
     const parts = await this.projectParts();
     // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too).
     const blob = await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } });
+    if (DESKTOP) {
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      const saved = await desktop.saveProject({ bytes, name: `${filename}${PROJECT_EXTENSION}`, path: this.filePath, as });
+      if (!saved) return false;
+      this.filePath = saved;
+      this.rename(saved.split(/[\\/]/).pop().slice(0, -PROJECT_EXTENSION.length));
+      Object.assign(this, { savedSettings: settings, savedEditVersion: version, savedToFile: true });
+      return true;
+    }
     this.rename(filename); // once there's a file to give the name to
     downloadBlob(blob, `${this.filename}${PROJECT_EXTENSION}`);
     this.markSaved();
     this.savedToFile = true;
+    return true;
   },
 
   // What a .phosphor file holds besides the image, all of it as of the call (a canvas is copied when
@@ -405,6 +423,7 @@ export const documentActions = {
       await this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length) });
       this.savedToFile = true;
       this.asOpened = true;
+      this.filePath = file.desktopPath ?? null; // desktop: where it was opened from, for Save to write over
     } catch (e) {
       console.error('Failed to load project file', e);
       const reason = e?.code === 'INVALID_PROJECT' ? t('document.invalidProject') : e?.code === 'DECODE_IMAGE_FAILED' ? t('document.decodeImageFailed') : e.message;

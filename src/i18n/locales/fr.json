@@ -48,7 +48,7 @@
       "privacy": "Politique de confidentialité",
       "guidelines": "Règles de la communauté"
     },
-    "desktopPrivacy": "Cette application n'envoie rien à Phosphor. Dans une salle, les personnes avec qui vous vous connectez voient votre adresse IP."
+    "desktopPrivacy": "Cette application n'envoie rien à Phosphor. Dans une salle, les personnes avec qui vous vous connectez voient votre adresse IP. Quand vous choisissez Rechercher les mises à jour, elle demande à GitHub les versions de Phosphor, et GitHub voit votre adresse IP."
   },
   "footer": {
     "about": "À propos de Phosphor",
@@ -1765,5 +1765,63 @@
     "remove": "Retirer",
     "cornerTitle": "Faites glisser pour définir les deux origines des règles. Double-cliquez pour réinitialiser les origines dans le coin supérieur gauche.",
     "guideTitle": "Faites glisser pour déplacer le repère, ou sur une règle pour le supprimer"
+  }
+,
+  "menu": {
+    "file": "Fichier",
+    "new": "Nouveau",
+    "open": "Ouvrir…",
+    "openRecent": "Ouvrir l'élément récent",
+    "clearRecent": "Effacer le menu",
+    "noRecent": "Aucun fichier récent",
+    "save": "Enregistrer",
+    "saveAs": "Enregistrer sous…",
+    "export": "Exporter…",
+    "versions": "Versions…",
+    "closeWindow": "Fermer la fenêtre",
+    "quit": "Quitter Phosphor",
+    "edit": "Édition",
+    "undo": "Annuler",
+    "redo": "Rétablir",
+    "cut": "Couper",
+    "copy": "Copier",
+    "paste": "Coller",
+    "selectAll": "Tout sélectionner",
+    "room": "Salle",
+    "hostRoom": "Créer une salle…",
+    "joinRoom": "Rejoindre une salle…",
+    "copyAddress": "Copier l'adresse de la salle",
+    "leaveRoom": "Quitter la salle",
+    "endRoom": "Fermer la salle…",
+    "view": "Affichage",
+    "actualSize": "Taille réelle",
+    "zoomIn": "Zoom avant",
+    "zoomOut": "Zoom arrière",
+    "fullScreen": "Plein écran",
+    "window": "Fenêtre",
+    "help": "Aide",
+    "shortcuts": "Raccourcis clavier",
+    "github": "Phosphor sur GitHub",
+    "releaseNotes": "Notes de version",
+    "reportIssue": "Signaler un problème…",
+    "troubleshooting": "Dépannage",
+    "devTools": "Outils de développement",
+    "about": "À propos de Phosphor",
+    "checkUpdates": "Rechercher les mises à jour…",
+    "services": "Services",
+    "hide": "Masquer Phosphor",
+    "hideOthers": "Masquer les autres",
+    "showAll": "Tout afficher",
+    "openableFiles": "Images, projets et fichiers d'art",
+    "projectFiles": "Projets Phosphor",
+    "addressCopied": "Adresse de la salle copiée.",
+    "missing": "{name} n'est plus là.",
+    "openFailed": "Ce fichier n'a pas pu être ouvert."
+  },
+  "updates": {
+    "check": "Rechercher les mises à jour",
+    "failed": "Impossible de rechercher les mises à jour. Vérifiez votre connexion et réessayez.",
+    "upToDate": "Phosphor {version} est la version la plus récente.",
+    "available": "Phosphor {version} est disponible (vous avez {current}). Ouvrir sa page de téléchargement ?"
   }
 }

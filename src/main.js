@@ -13,6 +13,7 @@ import { useProjectStore } from './store/ProjectStore';
 import { useDrawingStore } from './store/DrawingStore';
 import { hostCopies } from './document/autosaveStore';
 import { desktop } from './social/desktop';
+import { useDesktopMenu } from './composables/useDesktopMenu';
 
 const pinia = createPinia();
 
@@ -33,7 +34,10 @@ const router = createAddressRouter();
 app.use(router);
 followAddress(router);
 followLayerPick({ workspace: useWorkspaceStore(), project: useProjectStore(), drawing: useDrawingStore() });
-router.isReady().finally(() => app.mount('#phosphor'));
+router.isReady().finally(() => {
+  app.mount('#phosphor');
+  if (import.meta.env.VITE_DESKTOP === '1') useDesktopMenu();   // once mounted: the files it's asked to open go to EditWorkspace
+});
 
 // iOS Safari shows a button's :active (pressed) look on a tap only when the page listens for touches.
 document.addEventListener('touchstart', () => {}, { passive: true });

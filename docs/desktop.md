@@ -19,9 +19,36 @@ The app is on Phosphor's [GitHub Releases](https://github.com/jejacks0n/phosphor
   because Ubuntu restricts the unprivileged user namespaces the app's sandbox needs. Use the `.deb` there: it sets the
   sandbox up when it installs.
 
-The app doesn't update itself. Download the next release when there is one. In a room, someone on a different version
-is told so: "They're on a newer Phosphor. Update to join." or "They're on an older Phosphor. They need to update
-before you can join."
+The app doesn't update itself. **Check for Updates…** (in the Phosphor menu on macOS, in Help elsewhere) asks GitHub
+for the releases and offers the newest one's download page, or says yours is the newest. Someone on a beta (a version
+like `1.2.0-beta`) is offered betas too; everyone else only releases. It asks only when you choose it. In a room,
+someone on a different version is told so: "They're on a newer Phosphor. Update to join." (with **Check for updates**
+beside it) or "They're on an older Phosphor. They need to update before you can join."
+
+## The menu bar
+
+The app's own menus, in the language Phosphor shows:
+
+- **File**: New, Open… (Cmd/Ctrl+O), Open Recent, Save (Cmd/Ctrl+S), Save As… (Cmd/Ctrl+Shift+S), Export…
+  (Cmd/Ctrl+E) and Versions…, as the buttons under the settings do.
+- **Edit**: Undo and Redo (the drawing's, or a text field's while you type in one), Cut, Copy, Paste and Select All.
+- **Room**: Start a Room… and Join a Room… open the Social tab; Copy Room Address copies the first address others can
+  join at, while you host; Leave Room (End Room… for a host, which asks first).
+- **View**: Actual Size, Zoom In and Zoom Out (the whole window, as a browser's zoom) and Full Screen.
+- **Help**: Keyboard Shortcuts, Phosphor on GitHub, the Release Notes for your version, and Report an Issue…, which
+  opens a new GitHub issue with your Phosphor version and system written in. Troubleshooting has the developer tools,
+  for when someone helping you asks what they say.
+
+## Opening and saving
+
+Open… is your system's own file chooser, and Save writes a project straight back to its file: the first Save of a
+drawing asks where (as Save As… always does), and after that Save writes over that `.phosphor` file without asking. A
+project opened with Open…, Open Recent or a double-click saves back to where it came from; one dropped on the window
+asks where the first time. A save is written whole: if it fails, the file it would have replaced is left as it was.
+Exports still ask where each time.
+
+Double-clicking a `.phosphor` file opens it in Phosphor, and `.ans` and `.utf8ans` files can open in it too (Open
+With, or as the default if you choose it). With Phosphor already open, the file opens there.
 
 ## Your name
 
@@ -149,9 +176,10 @@ There's nothing to report to either: no one at Phosphor sees a desktop room.
 ## Nothing goes to Phosphor
 
 The app has no account and no sign-in, and sends nothing to Phosphor: no lobby, no room list, no reports, no usage.
-It connects only to the rooms you host or join, at the addresses you give it. Its Privacy page says so: "This app
-sends nothing to Phosphor. In a room, the people you connect with see your IP address." Your drawings, name and
-settings stay on your computer.
+It connects only to the rooms you host or join, at the addresses you give it, and to GitHub when you choose Check for
+Updates. Its Privacy page says so: "This app sends nothing to Phosphor. In a room, the people you connect with see
+your IP address. When you choose Check for Updates, it asks GitHub for Phosphor's releases, and GitHub sees your IP
+address." Your drawings, name and settings stay on your computer.
 
 ## Not in this version
 
@@ -159,4 +187,4 @@ settings stay on your computer.
 - Rooms without an address someone can reach: there's no relay, so behind a network that won't let connections in,
   use Tailscale or forward the port.
 - A narrow window: rooms need a wider one, as on the web ("Rooms need a wider screen."). Widen the window.
-- Updating itself: download the next release.
+- Updating itself: Check for Updates finds the next release, and you download it.
