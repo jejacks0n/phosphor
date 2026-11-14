@@ -947,7 +947,9 @@
     "group": "Group",
     "groupPlaceholder": "Up to 20 characters",
     "comments": "Comments",
-    "commentsPlaceholder": "Notes saved inside the file…"
+    "commentsPlaceholder": "Notes saved inside the file…",
+    "countAria": "{count} of {width} characters",
+    "cut": "Only {width} characters fit. Left out: \"{left}\""
   },
   "save": {
     "fileName": "File name",

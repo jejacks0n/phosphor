@@ -947,7 +947,9 @@
     "group": "Groupe",
     "groupPlaceholder": "Jusqu'à 20 caractères",
     "comments": "Commentaires",
-    "commentsPlaceholder": "Notes enregistrées dans le fichier…"
+    "commentsPlaceholder": "Notes enregistrées dans le fichier…",
+    "countAria": "{count} caractères sur {width}",
+    "cut": "Seuls {width} caractères tiennent. Laissé de côté : « {left} »"
   },
   "save": {
     "fileName": "Nom de fichier",

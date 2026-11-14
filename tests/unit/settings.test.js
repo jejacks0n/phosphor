@@ -97,6 +97,9 @@ test('a setting\'s text from a host is as long as a person could have, and no lo
     assert.ok(settingsFromStranger({ [key]: 'x'.repeat(width) }), key);
     assert.equal(settingsFromStranger({ [key]: 'x'.repeat(width + 1) }), null, key);
   }
+  // Counted as the record counts: an emoji is one character, though it's two UTF-16 units.
+  assert.ok(settingsFromStranger({ sauceTitle: '🎨'.repeat(35), sauceAuthor: '🎨'.repeat(20) }));
+  assert.equal(settingsFromStranger({ sauceTitle: '🎨'.repeat(36) }), null);
   for (const key of ['chars', 'charsAscii', 'palette', 'seed', 'renderStyle', 'quantize', 'smoothing']) assert.equal(settingsFromStranger({ [key]: 'x'.repeat(64 * 1024) }), null, key);
   const everyCp437Weighted = [...CP437].map((char) => char.repeat(40)).join('');
   assert.ok(settingsFromStranger({ chars: everyCp437Weighted, charsAscii: everyCp437Weighted }));

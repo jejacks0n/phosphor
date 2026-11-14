@@ -2,7 +2,7 @@ import { useLocalStorage } from '@vueuse/core';
 import { generateSlug } from 'random-word-slugs';
 import { goodBaseScale, goodFit, goodScale } from '@/document/projectIO.js';
 import { MAX_COLS, maxRowsBeside } from '@/lib/Cells.js';
-import { SAUCE_WIDTHS } from '@/lib/Sauce.js';
+import { SAUCE_WIDTHS, charCount } from '@/lib/Sauce.js';
 import { t } from '@/i18n/index.js';
 
 // A list of characters or colors, in characters: every CP437 character 64 times over, or 2000 colors.
@@ -86,13 +86,13 @@ export function slidersAtDefaults(state) {
 }
 
 // A value a setting could hold: its default's kind, a slider within its range (a slider can hold a numeric
-// string), a color a hex, text no longer than it could be.
+// string), a color a hex, text no longer than it could be (in characters, as SAUCE counts them: an emoji is one).
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const asNumber = (value) => (typeof value === 'string' && value.trim() ? Number(value) : value);
 function goodSetting({ default: usual, min = -Infinity, max = Infinity, most = MOST_TEXT }, value) {
   if (typeof usual === 'boolean') return typeof value === 'boolean';
   if (typeof usual === 'number') return typeof asNumber(value) === 'number' && Number.isFinite(asNumber(value)) && asNumber(value) >= min && asNumber(value) <= max;
-  return typeof value === 'string' && value.length <= most && (typeof usual !== 'string' || !HEX_COLOR.test(usual) || HEX_COLOR.test(value));
+  return typeof value === 'string' && charCount(value) <= most && (typeof usual !== 'string' || !HEX_COLOR.test(usual) || HEX_COLOR.test(value));
 }
 
 // Settings from another browser, only what a document saves and how its layers sit (null for those of a document
