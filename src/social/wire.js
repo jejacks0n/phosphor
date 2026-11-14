@@ -57,9 +57,11 @@
  *   { t: 'cursors', [sub]: { at, view, name, inside } } where everyone is
  *   { t: 'invite' } / { t: 'withdrawn' }        asked to draw; the ask is gone
  *   { t: 'artists', subs, names }               who may draw now, and the names of those of them who are here ({ sub: name })
- *   { t: 'hand-over', chunks, room }            then `chunks` binary messages: packValue's ledger (keptForWire), for
+ *   { t: 'hand-over', chunks, room, extra }     then `chunks` binary messages: packValue's ledger (keptForWire), for
  *                                               the artist the host wants to be next. It means nothing until
- *                                               the server says new-host. room: { name, welcome }
+ *                                               the server says new-host. room: { name, welcome };
+ *                                               extra: a desktop room's settings for the next host
+ *                                               ({ password, max, welcome, name, approved }), or null
  *   { t: 'catch-up', has, epoch }               a host back from a reload, behind this artist: what's after has
  *   { t: 'undo-reset' }                         the host's stacks started over: everyone's undo goes with them
  *   { t: 'undo-refused', stroke } / { t: 'redo-refused', stroke }

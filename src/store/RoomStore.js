@@ -35,6 +35,7 @@ const ROOM_ID_LETTERS = 'abcdefghijklmnopqrstuvwxyz234567';   // ROOM_ID's: 32 o
 const newRoomId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => ROOM_ID_LETTERS[b & 31]).join('');
 const MOST_ASKS = 5;   // the service lets no more wait at once
 const INFO_WITHIN_MS = 5000;   // what's at an address typed in answers /info within this, or nothing that answers is there
+const QUIT_HAND_OVER_MS = 16_000;   // a quitting host's hand-over: within the main process's 20 s wait, with time to end the room
 const MOVE_TRY_MS = 5000;   // a room that moved to another computer: each of its addresses goes live within this, or the next is tried
 const keptPort = () => {   // the port last hosted on, for this computer's service; none for the default
   try {
@@ -416,7 +417,6 @@ export const useRoomStore = defineStore('room', {
         passKey, connectWithinMs: this._connectWithinMs, roomId: fields.id,
         // A watcher's channel through the service, which pairs it with theirs; _desktop read then, as a reload sets it later.
         // The next host's room is made from this room's settings, with everyone here already let in.
-        // ponytail: a host back from a reload has no password in memory, so the next host's room has none; ask the service if that matters.
         ...(DESKTOP ? {
           config: { channelUrl: (peer) => `ws://127.0.0.1:${this._desktop.port}/channel?peer=${encodeURIComponent(peer)}&secret=${encodeURIComponent(this._desktop.secret)}` },
           handOverExtra: () => {
@@ -443,6 +443,7 @@ export const useRoomStore = defineStore('room', {
     // first look and the Host page; the socket waits for you and the art (comeBack). A record that can't
     // be read changes nothing, and one that can't be restored is forgotten as well.
     resume() {
+      if (DESKTOP) this.stopStrayStandby();
       const record = keptHostingRecord();
       if (!ROOM_ID.test(record?.id) || !record.sub || !record.room || !Array.isArray(record.session?.people)) return;
       const { id, link, room, hasPassword, session, lobbyPin, peopleOpen, muted, view } = record;
@@ -476,7 +477,8 @@ export const useRoomStore = defineStore('room', {
         const service = await desktop.serviceInfo().catch(() => null);
         if (gone()) return;
         if (service?.mode !== 'host') return this.over(roomAwayWords());
-        Object.assign(this, { addresses: service.addresses, port: service.port, _desktop: { secret: service.secret, port: service.port } });
+        // The password in memory again (never the record), for the next host.
+        Object.assign(this, { addresses: service.addresses, port: service.port, _desktop: { secret: service.secret, port: service.port }, _password: service.password || undefined });
       }
       await askForPass();
       const late = !social.claims;
@@ -1219,18 +1221,27 @@ export const useRoomStore = defineStore('room', {
       this._standby = null;
       desktop.stopService().catch(() => {});
     },
+    // At launch or after a reload: standby left running by an artist before the reload, with nothing here drawing now.
+    async stopStrayStandby() {
+      const service = await desktop.serviceInfo().catch(() => null);
+      if (service?.mode === 'standby' && !this.role && !this._standby) desktop.stopService().catch(() => {});
+    },
 
     // Desktop: the app is quitting (desktop.onQuit). A host hands the room to a connected artist whose own service
-    // answered, or ends it with no one to (or when that doesn't happen); then the app can go. quitReady is said once,
-    // whatever happens, and the main process stops waiting after 20 s anyway.
+    // answered (or waits on a Make host already on its way), or ends it with no one to, when that doesn't happen, or
+    // when it hasn't within QUIT_HAND_OVER_MS; then the app can go. quitReady is said once, whatever happens, before the
+    // main process stops waiting (20 s).
     async quitting() {
+      let timer = null;
       try {
         const drawing = useDrawingStore();
         const to = this.role === 'host' && drawing.artists.find((sub) => drawing.connected.includes(sub) && this.canBeHost(sub));
-        if (to) await drawing.makeHost(to);
+        const handing = this.role === 'host' && (drawing.handingOver() ?? (to && drawing.makeHost(to)));
+        if (handing) await Promise.race([handing, new Promise((resolve) => { timer = setTimeout(resolve, QUIT_HAND_OVER_MS); })]);
       } catch (error) {
         console.warn('The room couldn\'t be handed over.', error);
       }
+      clearTimeout(timer);
       try {
         if (this.role === 'host') this.close();   // not a host now: the window's question is about the drawing alone
       } finally {

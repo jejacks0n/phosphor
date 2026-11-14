@@ -49,11 +49,12 @@ async function startService({ port, mode, sub } = {}) {
   return { port: started.port, addresses: reachableAddresses(undefined, started.port), secret };
 }
 
-// The live mode: after a hand-over the service goes back to standby on its own.
+// The live mode: after a hand-over the service goes back to standby on its own. The room's password, for a host back
+// from a reload to hand on (the page keeps it in memory alone).
 async function serviceInfo() {
   try {
     const running = await service;
-    return running ? { port: running.port, addresses: reachableAddresses(undefined, running.port), secret, mode: running.mode() } : null;
+    return running ? { port: running.port, addresses: reachableAddresses(undefined, running.port), secret, mode: running.mode(), password: running.room()?.password ?? null } : null;
   } catch {
     return null;
   }

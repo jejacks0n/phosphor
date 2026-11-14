@@ -264,10 +264,11 @@ test('quitting as host with a hostable artist makes them host, then quitReady', 
   const ann = await someone('ann'), cy = await someone('cy');
   socket.receive({ type: 'artists-now', subs: [cy.claims.sub, ann.claims.sub], hostable: { [ann.claims.sub]: ['192.168.1.30:31337'] } });
   drawing.connected = [cy.claims.sub, ann.claims.sub];
+  room.watchers = [cy, ann].map(({ claims }, i) => ({ peer: `p_${i + 1}`, sub: claims.sub, name: claims.name, guest: false, tracking: true, connected: true }));
   const made = sockets.length;
   let answered;
   const makeHost = vi.spyOn(drawing, 'makeHost').mockImplementation(async (sub) => {
-    expect(room._host.handOverExtra()).toEqual({ password: 'sesame', max: 5, welcome: 'Hi', name: 'Night shift', approved: [social.claims.sub] });
+    expect(room._host.handOverExtra()).toEqual({ password: 'sesame', max: 5, welcome: 'Hi', name: 'Night shift', approved: [social.claims.sub, cy.claims.sub, ann.claims.sub] });
     await new Promise((resolve) => { answered = resolve; });
     socket.receive({ type: 'new-host', name: 'ann', sub, planned: true, addresses: ['192.168.1.30:31337'] });
     return true;
@@ -315,6 +316,63 @@ test('quitting as host with no one hostable ends the room, then quitReady', asyn
   await joined();
   await room.quitting();
   expect([room.role, desktop.quitReady.mock.calls.length]).toEqual(['watch', 1]);
+});
+
+// A host with ann listed, connected and able to host. Returns the room's socket and ann.
+async function hostingWithAnn() {
+  const socket = await hosting();
+  const ann = await someone('ann');
+  socket.receive({ type: 'artists-now', subs: [ann.claims.sub], hostable: { [ann.claims.sub]: ['192.168.1.30:31337'] } });
+  drawing.connected = [ann.claims.sub];
+  return { socket, ann };
+}
+
+test('quitting gives up on a hand-over that takes too long: the room ends, then quitReady, before the app stops waiting', async () => {
+  const { socket } = await hostingWithAnn();
+  vi.spyOn(drawing, 'makeHost').mockImplementation(() => new Promise(() => {}));   // never answers
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const quitting = room.quitting();
+  vi.advanceTimersByTime(15_999);
+  await Promise.resolve();
+  expect(desktop.quitReady).not.toHaveBeenCalled();
+  expect(room.role).toBe('host');
+  vi.advanceTimersByTime(1);   // 16 s: the main process waits 20
+  await quitting;
+  expect(socket.sent.at(-1)).toEqual({ type: 'end' });
+  expect([room.role, desktop.quitReady.mock.calls.length]).toEqual([null, 1]);
+});
+
+test('quitting while a Make host is on its way waits on that one', async () => {
+  const { socket, ann } = await hostingWithAnn();
+  let said;
+  vi.spyOn(room._host, 'handOver').mockImplementation(() => new Promise((resolve) => { said = resolve; }));
+  const asked = drawing.makeHost(ann.claims.sub);
+  expect(drawing.handingOver()).toBeTruthy();
+  const makeHost = vi.spyOn(drawing, 'makeHost');
+  const quitting = room.quitting();
+  expect(makeHost).not.toHaveBeenCalled();   // a second ask would be refused at once, and the room ended
+  await vi.waitFor(() => expect(said).toBeTypeOf('function'));
+  said(true);   // the artist has the ledger
+  await vi.waitFor(() => expect(socket.sent.at(-1)).toEqual({ type: 'hand-over', to: ann.claims.sub }));
+  expect(desktop.quitReady).not.toHaveBeenCalled();
+  socket.receive({ type: 'new-host', name: 'ann', sub: ann.claims.sub, planned: true, addresses: ['192.168.1.30:31337'] });
+  await quitting;
+  expect(await asked).toBe(true);
+  expect(drawing.handingOver()).toBe(null);
+  expect([room.role, desktop.quitReady.mock.calls.length]).toEqual(['watch', 1]);
+  expect(socket.sent.some((msg) => msg.type === 'end')).toBe(false);
+});
+
+test('standby left running from before a reload stops when nothing here is drawing', async () => {
+  desktop.serviceInfo.mockResolvedValue({ port: PORT, addresses: MINE, secret: SECRET, mode: 'standby', password: null });
+  room.resume();
+  await vi.waitFor(() => expect(desktop.stopService).toHaveBeenCalledTimes(1));
+  desktop.stopService.mockClear();
+  desktop.serviceInfo.mockResolvedValue(null);   // nothing running: nothing to stop
+  room.resume();
+  await vi.waitFor(() => expect(desktop.serviceInfo).toHaveBeenCalledTimes(2));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(desktop.stopService).not.toHaveBeenCalled();
 });
 
 test('passOn names only an artist whose own service answered', async () => {

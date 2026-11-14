@@ -64,7 +64,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   const artistParts = artistSide({ project, workspace, me: () => me(), artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts, noteUndoSaid });
   const { autosavedBy, autosaved, hostChanged, lastChange, holdsTheArt, noteFormerHost, watchCallbacks, knownNow, heardArtists, accept, decline, connection } = artistParts;
   const hostParts = hostSide({ project, me: () => me(), artist: artistParts, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts, noteUndoSaid });
-  const { hostCallbacks, invite, withdraw, backToWatching, peopleHere, resumeHosting, makeHost, takeOver, becomeArtist, artistsNow, hostingAgain } = hostParts;
+  const { hostCallbacks, invite, withdraw, backToWatching, peopleHere, resumeHosting, makeHost, handingOver, takeOver, becomeArtist, artistsNow, hostingAgain } = hostParts;
 
   // Who this person is comes with the room's Host, or its Watch.
   function watching(theWatch, { me: whoAmI, ...room }) {
@@ -166,6 +166,6 @@ export const useDrawingStore = defineStore('drawing', () => {
     artists, artistNames, invited, invitation, paused, hostChanging, gettingArt, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, artistsFull, others,
     hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, lockedBy, lockedWords, someoneInside, autosavedBy, autosaved,
     watchCallbacks, watching, knownNow, heardArtists, accept, decline, connection, close,
-    makeHost, takeOver, hostChanged, becomeArtist, artistsNow, hostingAgain, lastChange, holdsTheArt, noteFormerHost,
+    makeHost, handingOver, takeOver, hostChanged, becomeArtist, artistsNow, hostingAgain, lastChange, holdsTheArt, noteFormerHost,
   };
 });

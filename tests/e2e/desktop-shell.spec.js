@@ -44,7 +44,7 @@ test('the room service keeps its port and secret across a reload, changes mode w
   expect(started.secret.length).toBeGreaterThanOrEqual(32);
 
   await page.reload();
-  expect(await page.evaluate(() => window.phosphorDesktop.serviceInfo())).toEqual({ ...started, mode: 'host' });
+  expect(await page.evaluate(() => window.phosphorDesktop.serviceInfo())).toEqual({ ...started, mode: 'host', password: null });   // no room greeted yet
 
   // The service is there, and says whose it is.
   const sub = await page.evaluate(() => new Promise((resolve, reject) => {
@@ -56,7 +56,7 @@ test('the room service keeps its port and secret across a reload, changes mode w
 
   const again = await page.evaluate(() => window.phosphorDesktop.startService({ port: 31402, mode: 'standby', sub: 'bob-sub' }));
   expect(again).toEqual(started);
-  expect(await page.evaluate(() => window.phosphorDesktop.serviceInfo())).toEqual({ ...started, mode: 'standby' });
+  expect(await page.evaluate(() => window.phosphorDesktop.serviceInfo())).toEqual({ ...started, mode: 'standby', password: null });
 
   await page.evaluate(() => window.phosphorDesktop.stopService());
   expect(await page.evaluate(() => window.phosphorDesktop.serviceInfo())).toBeNull();
