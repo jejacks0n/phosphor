@@ -16,8 +16,8 @@ const { t } = useI18n();
         <template #name><UserName class="person" :name="a.name" :sub="a.sub" /></template>
       </i18n-t>
       <div class="answers">
-        <button @click="room.turnAway(a.ask)">{{ t('social.desktop.turnAway') }}</button>
-        <button class="primary" @click="room.letIn(a.ask)">{{ t('social.desktop.letIn') }}</button>
+        <button :aria-label="t('social.desktop.turnAwayAria', { name: a.name })" @click="room.turnAway(a.ask)">{{ t('social.desktop.turnAway') }}</button>
+        <button class="primary" :aria-label="t('social.desktop.letInAria', { name: a.name })" @click="room.letIn(a.ask)">{{ t('social.desktop.letIn') }}</button>
       </div>
     </li>
   </ul>

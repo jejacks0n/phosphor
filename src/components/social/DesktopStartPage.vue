@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, nextTick, useTemplateRef } from 'vue';
+import { ref, watch, onMounted, nextTick, useTemplateRef, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -14,9 +14,12 @@ onMounted(() => social.showLobby());   // boots: the key that signs your pass
 
 const name = ref(social.desktopName);
 watch(name, (typed) => social.setDesktopName(typed));
+const id = useId();
 const address = ref(room.needsPassword?.address ?? '');
+watch(address, () => { room.needsPassword = null; });   // another address: its own check says whether it asks
 const password = ref('');
 const joining = ref(false);
+const keepPassword = ref(false);   // joinAddress clears needsPassword while it checks: the field stays meanwhile
 const passwordInput = useTemplateRef('passwordInput');
 watch(() => room.needsPassword, async (asks) => {   // asked (again, when wrong): the password, to type it
   if (!asks) return;
@@ -26,10 +29,11 @@ watch(() => room.needsPassword, async (asks) => {   // asked (again, when wrong)
 }, { immediate: true });
 async function join() {
   joining.value = true;
+  keepPassword.value = !!room.needsPassword;
   try {
-    await room.joinAddress(address.value, { password: room.needsPassword ? password.value : undefined });
+    await room.joinAddress(address.value, { password: keepPassword.value ? password.value : undefined });
   } finally {
-    joining.value = false;
+    joining.value = keepPassword.value = false;
   }
 }
 </script>
@@ -43,13 +47,13 @@ async function join() {
         <span>{{ social.notice }}</span>
         <button class="link" :aria-label="t('common.dismiss')" @click="social.notice = null">✕</button>
       </p>
-      <label>{{ t('social.desktop.yourName') }} <input v-model="name" :maxlength="USERNAME_MAX" autocomplete="nickname"></label>
-      <p v-if="!social.desktopName" class="help">{{ t('social.desktop.nameFirst') }}</p>
+      <label>{{ t('social.desktop.yourName') }} <input v-model="name" :maxlength="USERNAME_MAX" autocomplete="nickname" :aria-describedby="social.desktopName ? undefined : `${id}-name`"></label>
+      <p v-if="!social.desktopName" :id="`${id}-name`" class="help">{{ t('social.desktop.nameFirst') }}</p>
 
       <form @submit.prevent="join">
         <h2>{{ t('social.desktop.joinHeading') }}</h2>
         <label>{{ t('social.desktop.address') }} <input v-model="address" placeholder="192.168.1.20:31337" autocomplete="off" spellcheck="false" required></label>
-        <template v-if="room.needsPassword">
+        <template v-if="room.needsPassword || keepPassword">
           <p class="help">{{ t('social.watch.needsPassword') }}</p>
           <label>{{ t('social.watch.password') }} <input ref="passwordInput" v-model="password" type="password" autocomplete="off" required></label>
         </template>

@@ -76,6 +76,74 @@ test('the side panel\'s Social tab is the start page, not the lobby', async () =
   expect(host.textContent).not.toContain('Public rooms');
 });
 
+test('a join waiting counts as unread while the chat isn\'t showing', async () => {
+  const { room } = await mount(SidePanel, ({ room, social }) => {
+    social.claims = claims();
+    hosting()({ room });
+    useWorkspaceStore().sidePanelTab = 'layers';
+  });
+  const workspace = useWorkspaceStore();
+  workspace.sidePanelTab = 'layers';
+  await nextTick();
+  workspace.sidePanelUnread = 0;
+  room.asks = [{ ask: 'a1', sub: 'wren-sub', name: 'wren' }];
+  await nextTick();
+  expect(workspace.sidePanelUnread).toBe(1);
+  room.asks = [];   // answered: nothing more
+  await nextTick();
+  room.asks = [{ ask: 'a2', sub: 'owl-sub', name: 'owl' }];
+  await nextTick();
+  expect(workspace.sidePanelUnread).toBe(2);
+  workspace.sidePanelTab = 'social';   // the chat showing: read
+  await nextTick();
+  room.asks = [...room.asks, { ask: 'a3', sub: 'cy-sub', name: 'cy' }];
+  await nextTick();
+  expect(workspace.sidePanelUnread).toBe(0);
+});
+
+test('the start page\'s password field stays while Join checks, and goes when the address changes', async () => {
+  const { room } = await mount(DesktopStartPage, ({ room, social }) => {
+    social.setDesktopName('ansi-fan');
+    room.needsPassword = { address: '192.168.1.20:31337', name: 'Night shift' };
+  });
+  expect(field('Your name').getAttribute('aria-describedby')).toBe(null);
+  let answer;
+  vi.spyOn(room, 'joinAddress').mockImplementation(() => {
+    room.needsPassword = null;   // as joinAddress does before it asks what's there
+    return new Promise((resolve) => { answer = resolve; });
+  });
+  await type(field('Password'), 'sesame');
+  button('Join').click();
+  await nextTick();
+  expect(field('Password')).toBeTruthy();
+  answer(false);
+  await vi.waitFor(() => expect(button('Join').disabled).toBe(false));
+  expect(field('Password')).toBe(undefined);   // the check failed (unreachable, say): no password asked now
+
+  room.needsPassword = { address: '192.168.1.20:31337', name: 'Night shift' };
+  await nextTick();
+  await type(field('Address'), '192.168.1.21');
+  expect(room.needsPassword).toBe(null);
+  expect(field('Password')).toBe(undefined);
+});
+
+test('the name gate\'s help is the name field\'s description; Copy, Let in and Turn away say whom', async () => {
+  await mount(DesktopStartPage);
+  const help = document.getElementById(field('Your name').getAttribute('aria-describedby'));
+  expect(help.textContent).toBe('Pick a name others will see first.');
+  app.unmount();
+  host.remove();
+  await mount(HostRoomPage, hosting({ addresses: ['192.168.1.20:31337'], asks: [{ ask: 'a1', sub: 'wren-sub', name: 'wren' }] }));
+  expect(button('Copy').getAttribute('aria-label')).toBe('Copy 192.168.1.20:31337');
+  expect(button('Let in').getAttribute('aria-label')).toBe('Let wren in');
+  expect(button('Turn away').getAttribute('aria-label')).toBe('Turn wren away');
+});
+
+test('HostRoomPage desktop: no "Set when the room started" with nothing set then', async () => {
+  await mount(HostRoomPage, hosting({ hasPassword: false }));
+  expect(host.textContent).not.toContain('Set when the room started');
+});
+
 test('Join with a password-asking room shows the password field', async () => {
   const { room } = await mount(DesktopStartPage, ({ social }) => social.setDesktopName('ansi-fan'));
   const asked = vi.spyOn(room, 'joinAddress').mockImplementation(async (text, { password } = {}) => {

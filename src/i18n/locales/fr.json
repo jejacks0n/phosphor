@@ -1324,6 +1324,9 @@
       "ipSeen": "Les personnes avec qui vous vous connectez voient votre adresse IP.",
       "copy": "Copier",
       "copyAddress": "Copier l'adresse",
+      "copyAria": "Copier {address}",
+      "letInAria": "Faire entrer {name}",
+      "turnAwayAria": "Refuser {name}",
       "copyFailed": "Impossible de copier l'adresse",
       "addressesAria": "Où les autres peuvent rejoindre la salle",
       "loopbackOnly": "Seul cet ordinateur peut rejoindre la salle. Connectez-vous à un réseau pour partager une adresse.",
@@ -1337,7 +1340,7 @@
       "passwordHelp": "Chaque personne qui rejoint le saisit, et c'est toujours vous qui la faites entrer.",
       "maxWatchersHelp": "Les salles diffusent directement depuis cet ordinateur. Jusqu'à 12 spectateurs convient à la plupart des connexions domestiques.",
       "port": "Port",
-      "portHelp": "Les autres rejoignent la salle sur ce port. S'il est pris, le suivant de libre est utilisé."
+      "portHelp": "Les autres rejoignent la salle sur ce port. S'il est pris, le prochain port libre est utilisé."
     },
     "watch": {
       "joining": "Connexion en cours…",
