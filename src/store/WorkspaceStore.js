@@ -104,7 +104,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     shapeBlockChars: false,  // ANSI blocks: real ▄/█ characters, or paint over the cells' own
     shapeAntialias: false,   // ellipses and lines: edge pixels by coverage, or ░▒▓█ cells
     shapeVerticalHalves: false, // ANSI blocks: ▌▐ too (Half-block: quadrants), for lines and ellipses
-    strokeEnd: null,         // where the last Pencil or Brush stroke ended (a grid position): Shift-click draws a line from there
+    strokeEnd: null,         // where the last Pencil, Brush or Retouch stroke ended (a grid position): Shift-click draws a line from there
     shapeDrag: null,         // { from, to, line? } grid positions while a shape (or the Gradient's line) is being dragged
     editZoom:  5,
     ansiZoom:  1,            // the ANSI (and VECTOR) view's zoom: 25% to 800% of its cell size
@@ -151,6 +151,12 @@ export const useWorkspaceStore = defineStore('workspace', {
     bucketMatch: { fg: true, bg: true, char: true }, // Cells: what a cell must share with the one clicked
     bucketSet: { fg: true, bg: false, char: false }, // Cells: what the fill sets (your FG, BG, character)
     gradientShape: 'linear', // the Gradient: 'linear' | 'spherical' (a drag from FG to BG)
+
+    // Retouch Settings (Blur, Dodge, Burn)
+    retouchSize: 6,
+    retouchStrength: 50,
+    retouchHardness: 50,
+    retouchRange: 'midtones', // Dodge and Burn: 'shadows' | 'midtones' | 'highlights'
 
     // The VECTOR tab
     vectorSelected: [],      // the keys of the shapes Vector select has selected (follows project.shapes: one gone drops out)

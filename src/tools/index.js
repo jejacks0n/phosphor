@@ -21,6 +21,7 @@ import brush from './brush';
 import eraser from './eraser';
 import bucket from './bucket';
 import gradient from './gradient';
+import { blur, dodge, burn } from './retouch';
 import picker from './picker';
 import hand from './hand';
 import zoom from './zoom';
@@ -39,7 +40,7 @@ import { groupOf } from './groups';
 import { t } from '@/i18n/index.js';
 
 // A group's tools (tools/groups.js) are listed in its order.
-export const TOOLS = [vselect, vnode, pen, vshape, pencil, brush, eraser, bucket, gradient, shapes, picker, select, wand, hand, zoom, text, flip];
+export const TOOLS = [vselect, vnode, pen, vshape, pencil, brush, eraser, bucket, gradient, blur, dodge, burn, shapes, picker, select, wand, hand, zoom, text, flip];
 
 // True when the picked layer is hidden, so drawing on it (a paint tool, typing) is refused: a toast says so. VECTOR
 // isn't: its handles are the editor, not the art, and its shapes can be edited while they're hidden.
