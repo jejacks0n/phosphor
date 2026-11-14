@@ -92,7 +92,7 @@ script. Every section ends with Free time.
 - Rated: yes, wants a key for Animate (Tab to the switch, then Space, is the path today)
 
 ### 2. Draw the ball
-- Does: presses + Vector layer in LAYERS, picks the Shape tool (U), chooses Ellipse, drags a circle near the top with
+- Does: presses Add vector layer in LAYERS, picks the Shape tool (U), chooses Ellipse, drags a circle near the top with
   Shift held, then gives it a Fill from the color box (Alt+F).
 - Expects: "Vector 1" is added above Layer 1 and picked, the tabs become VECTOR and SAUCE, and the Keys button (a
   diamond) appears on the bar; the circle is selected, and the color goes to it as one undo step

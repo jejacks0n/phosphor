@@ -14,8 +14,9 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 // double-click on any name, or F2 renames it, Enter or leaving the box keeps the name and Escape doesn't. Each row but
 // the bottom has a ⋯ menu (Rename, Duplicate, Delete, Merge down, Move up, Move down) and drags to another place in the stack, never
 // below the bottom.
-// + Layer and + Vector layer, under the list, add a layer directly above the picked one and pick it. The side panel's
-// LAYERS and the phone's Layers dialog both show it.
+// A header over the list counts the layers (of the most a drawing holds), and its two icon buttons, Add layer and Add
+// vector layer, add a layer directly above the picked one and pick it. The side panel's LAYERS and the phone's Layers
+// dialog both show it.
 
 const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
 const { t } = useI18n();
@@ -48,9 +49,10 @@ function pick(layer, e) {
   else workspace.pickLayer(layer.id);
 }
 
-// + Layer and + Vector layer: directly above the pick, and picked. Off at the most layers, and in a room, except the
+// Add layer and Add vector layer: directly above the pick, and picked. Off at the most layers, and in a room, except the
 // vector layer a room is missing, which goes directly on the bottom, where a room's one is.
 const full = computed(() => project.layers.length >= MOST_LAYERS);
+const ADD_BADGE = 'M11.7 9h1.6v2.7H16v1.6h-2.7V16h-1.6v-2.7H9v-1.6h2.7z';   // the + on an add button's layer icon, its bottom right
 const addOff = (kind) => (full.value ? t('layers.full', { n: MOST_LAYERS }) : inRoom.value && (kind !== 'vector' || project.hasVectorLayer) ? t('layers.notInRoom') : null);
 function add(kind) {
   const id = project.addLayer(kind, inRoom.value ? 'base' : workspace.shownPick);
@@ -144,6 +146,15 @@ function cancel() {
   <div class="layers-list">
     <p v-if="!showing" class="none">{{ t('layers.none') }}</p>
     <template v-else>
+      <div class="head">
+        <span class="count">{{ t('layers.count', { n: project.layers.length, most: MOST_LAYERS }, project.layers.length) }}</span>
+        <button
+            v-for="kind in ['cells', 'vector']" :key="kind" class="add" :disabled="addOff(kind) !== null"
+            :aria-label="t(kind === 'cells' ? 'layers.addCells' : 'layers.addVector')" :title="addOff(kind) ?? t(kind === 'cells' ? 'layers.addCells' : 'layers.addVector')" @click="add(kind)"
+        >
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="ICONS[kind]" transform="scale(.7)"/><path :d="ADD_BADGE"/></svg>
+        </button>
+      </div>
       <ul ref="list">
         <li
             v-for="(layer, i) in layers" :key="layer.id" :data-id="layer.id" :class="[{ picked: workspace.shownPick === layer.id, hidden: layer.hidden }, dropClass(layer, i)]"
@@ -184,10 +195,6 @@ function cancel() {
           </DropdownMenu>
         </li>
       </ul>
-      <div class="adds">
-        <button class="add link" :disabled="addOff('cells') !== null" :title="addOff('cells')" @click="add('cells')">{{ t('layers.addCells') }}</button>
-        <button class="add link" :disabled="addOff('vector') !== null" :title="addOff('vector')" @click="add('vector')">{{ t('layers.addVector') }}</button>
-      </div>
     </template>
   </div>
 </template>
@@ -320,13 +327,23 @@ li:not(.hidden) button.eye {
   width: 14px;
   height: 14px;
 }
-div.adds {
+div.head {
   display: flex;
-  gap: 12px;
-  margin: 0 12px 8px;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+span.count {
+  flex: 1;
+  color: var(--text-muted);
 }
 button.add {
-  padding: 4px 0;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  padding: 0;
 }
 </style>

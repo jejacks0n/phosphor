@@ -29,7 +29,7 @@ post, an .ans that opens the same in a terminal, and a .phosphor file she can re
 - The left column's settings: Dimensions, Art style, Color palette, Transforms, Adjustments, the Characters section
   (Choose characters, the Characters set, the seed, Solids, Pattern light, Dither style and Dither) and Image filters
   ([Layers](../../layers.md#the-left-column), [Characters](../../characters.md#how-the-converter-picks-characters)).
-- LAYERS: + Layer, + Vector layer, picking, the eye, Merge down, Bake ([Layers](../../layers.md)).
+- LAYERS: its header (the count, Add layer, Add vector layer), picking, the eye, Merge down, Bake ([Layers](../../layers.md)).
 - The Brush, Edit Mode, the Paint Bucket and the Gradient beside it ([Layers](../../layers.md#other-tools)).
 - VECTOR's Shape tool, Fill and Stroke, gradients and art layers ([Vector shapes](../../vector.md)).
 - Save project, Export .ans and Export .png ([Characters](../../characters.md#saving-utf8ans-and-ans)).
@@ -214,7 +214,7 @@ dithered, and compare the dither at 80 and at 200 columns.
 ## Layers to draw on
 
 ### 15. Add a layer to paint on
-- Does: picks Layer 1, presses + Layer.
+- Does: picks Layer 1, presses Add layer.
 - Expects: "Layer 2" appears directly above Layer 1 and is picked; Characters says "Characters · Layer 2"; adding it
   is one undo step.
 - Probes: `again`: add another right away (Layer 3), then delete it from its ⋯ menu; `undo-redo`: undo the add and
@@ -272,7 +272,7 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Rated: yes, wants O, Shift+O and R
 
 ### 21. Add a vector layer and draw a shape
-- Does: presses + Vector layer, picks the Shape tool, drags an Ellipse with Shift held, then sets its Fill and its
+- Does: presses Add vector layer, picks the Shape tool, drags an Ellipse with Shift held, then sets its Fill and its
   Stroke from the color box.
 - Expects: "Vector 1" is added above the picked layer and picked, and the tabs become VECTOR and SAUCE; the shape is a
   circle, selected, converted with the picture (palette and dither reach it); a color picked with it selected goes to
@@ -347,7 +347,7 @@ held.
 - Rated: yes, wants Cmd+E, then Enter on Keep crisp cells
 
 ### 28. Merge my paint into the image itself
-- Does: picks Base, presses + Layer (it lands directly on the base), paints a few strokes and types a word on it,
+- Does: picks Base, presses Add layer (it lands directly on the base), paints a few strokes and types a word on it,
   presses Merge down and chooses Blend into source image; then moves Edges and Sharpen.
 - Expects: her paint becomes part of the picture (Into the image), so Edges outlines it and the sliders keep changing
   it; letters merge exactly; undo brings back the layer and the picture.

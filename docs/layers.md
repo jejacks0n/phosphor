@@ -17,8 +17,10 @@ is showing; with nothing open, or on SAUCE, it says so instead.
   ([Drawing on the base](#drawing-on-the-base)), and every tool is offered whichever is picked.
   [Selections](#the-select-tool) act on every cells layer that shows, whatever is picked; to leave a layer out,
   hide it. Picking the edit layer or the base from VECTOR goes back to the art tab you last had.
-- **+ Layer** and **+ Vector layer**, under the list, add a layer of cells or a vector layer directly above the
-  picked one, and pick it. New layers are named "Layer 2", "Vector 2" and so on; a drawing holds at most 64. A
+- **The header**, over the list, counts the drawing's layers ("3 of 64 layers": the base counts, and a drawing holds
+  at most 64). Its two buttons on the right, **Add layer** (the cells icon with a plus) and **Add vector layer** (the
+  path icon with a plus), add a layer of cells or a vector layer directly above the picked one, and pick it. Each
+  says its name on hover, or why it's off. New layers are named "Layer 2", "Vector 2" and so on. A
   drawing with shapes already has a vector layer, since its first shape brings it, and a vector layer stays when
   its last shape is deleted. Adding a layer is an undo step.
 - **Reordering.** Every row but the base has a **⋯** menu with **Rename**, **Duplicate**, **Delete**, **Move up** and

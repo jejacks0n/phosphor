@@ -176,7 +176,7 @@ with Connect, type a box with the F-keys' line characters, and check the shortcu
 - Rated: yes, wants Cmd+C, Cmd+V
 
 ### 11. Move a block through empty cells
-- Does: presses + Layer, types a word on Layer 2 with spaces around it, hides Layer 1 with its eye (a move takes every
+- Does: presses Add layer, types a word on Layer 2 with spaces around it, hides Layer 1 with its eye (a move takes every
   cells layer that shows), selects a block larger than the word, moves it with the arrows onto where his art is, sets
   it down with Enter, and shows Layer 1 again.
 - Expects: the block's cells with nothing on Layer 2 are see-through: Layer 1's art shows through them; what the block
@@ -213,7 +213,7 @@ on a block with characters (it's off, and says why), and look for Moebius's bloc
 ## Putting the logo on
 
 ### 15. Add a layer for the logo
-- Does: picks his top layer (Layer 2, from step 11), presses + Layer.
+- Does: picks his top layer (Layer 2, from step 11), presses Add layer.
 - Expects: Layer 3 on top, picked.
 - Probes: `again`: add one more and delete it from its ⋯ menu; `interrupt`: rename it with F2 on its row, Escape.
 - Rated: yes, wants Shift+Cmd+N

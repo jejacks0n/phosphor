@@ -1094,8 +1094,8 @@ test('dragging a row reorders the layers', async ({ page }) => {
   const panel = page.locator('.side-panel'), open = page.getByRole('button', { name: 'Open the panel' });
   if (await open.isVisible()) await open.click();
   await panel.getByRole('tab', { name: 'Layers' }).click();
-  await panel.getByRole('button', { name: '+ Layer' }).click();
-  await panel.getByRole('button', { name: '+ Layer' }).click();
+  await panel.getByRole('button', { name: 'Add layer' }).click();
+  await panel.getByRole('button', { name: 'Add layer' }).click();
   const rows = panel.locator('.layers-list li');
   await expect(rows).toHaveCount(4);
   expect(await store(page, 'project', (p) => p.layers.map((l) => l.id))).toEqual(['base', 'edit', 'L1', 'L2']);
@@ -1135,7 +1135,7 @@ test.describe('on a phone', () => {
     await layers.tap();
     await expect(dialog).toBeVisible();
     await apart();
-    await page.getByRole('button', { name: '+ Vector layer' }).tap();
+    await page.getByRole('button', { name: 'Add vector layer' }).tap();
     await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');   // the tabs follow, behind the dialog
     await expect(tab(page, 'PIXEL')).toHaveCount(0);
     await expect(dialog).toBeVisible();   // which stays open, for a rename or an eye
@@ -1285,7 +1285,7 @@ test('on a Blank frame, the shapes it carries have dimmed outlines; one changed 
 
 test('VECTOR\'s Merge down presses the selected shapes into the base', async ({ page }) => {
   await openApp(page);
-  await pickLayer(page, 'Base'); // so + Vector layer puts the vector layer directly on the base, where its shapes press into it
+  await pickLayer(page, 'Base'); // so Add vector layer puts the vector layer directly on the base, where its shapes press into it
   await pickLayer(page);
   await settled(page);
   const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 40, 30, 50, 40);
