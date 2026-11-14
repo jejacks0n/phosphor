@@ -28,7 +28,7 @@
  */
 import { processImage, processedImage, adjustedPixels, getPaletteColors, workingScale, fittingScale } from '../lib/ImageProcessor.js';
 import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
-import { nearestColor, paletteIndex } from '../lib/ColorUtils.js';
+import { nearestColor, paletteIndex, withIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
 import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix } from '../lib/Cells.js';
@@ -1308,10 +1308,14 @@ export default class Renderer {
     return under && coverCell(under, top, bottom, { renderStyle: params.renderStyle, palette: this.#heldData ? null : this.palette });
   }
 
-  // A converted cell with the base layer's pin (if any) as its character.
+  // A converted cell with the base layer's pin (if any) as its character, and the 256-color indexes kept beside the pin
+  // (16 and 231, which 0 and 15 share the colors of) as its colors' c while the pin is what shows and so are the colors.
   #onBase(col, row, cell) {
     const pin = this.pinAt(col, row);
-    return pin !== undefined ? { ...cell, char: pin } : cell;
+    if (pin === undefined) return cell;
+    const { indexes } = this.hideBase ? EMPTY_BASE : this.baseRecords, kept = indexes.size ? indexes.get(cellKey(col, row)) : undefined;
+    if (!kept || (this.shapes?.hasArt && this.shapes.charAt(col, row) !== undefined)) return { ...cell, char: pin }; // an art layer's character
+    return { ...cell, char: pin, fg: withIndex(cell.fg, kept.fgIndex, this.palette), bg: withIndex(cell.bg, kept.bgIndex, this.palette) };
   }
 
   // The character a cell keeps, or undefined (the conversion's): the topmost art layer's there, else the base

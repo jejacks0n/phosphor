@@ -392,11 +392,11 @@ export const sharingActions = {
   applyBase(runs, records) {
     this.ensureLayer();
     if (!this.baseLayer) return;
-    const pins = this.baseRecords.pins;
+    const { pins, indexes } = this.baseRecords;
     this.baseLayer.writeRuns(runs);
     this.setBaseRecords(records);
     if (this._stroke) this._stroke.baseRecords = records;
-    this.refreshChanged([[runsPatch(runs), this.baseLayer]], [[pins, records.pins]]);
+    this.refreshChanged([[runsPatch(runs), this.baseLayer]], [[pins, records.pins], [indexes, records.indexes]]); // runs are only the pixels that changed
     this.editVersion++;
   },
 

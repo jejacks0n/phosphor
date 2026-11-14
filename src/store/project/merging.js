@@ -11,7 +11,7 @@ import { EMPTY_BASE, withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { makeArt, isArt } from '@/document/artLayers.js';
 import { finerStops, isGradient, isShape, shapeBounds, withShape } from '@/document/shapes.js';
-import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeKind } from '@/document/editCells.js';
+import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors } from '@/lib/Cells.js';
@@ -91,7 +91,8 @@ const onLayerId = (id) => ([, shape]) => (shape.layer ?? 'vector') === id;
 // (top) and foreground (bottom) pixels with its character pinned (a cell that showed a different character, ▄ for a solid
 // one under paint, as its two half colors with the shown character pinned), then its paint over them, a grid pixel at a
 // time as it shows. Paint over a pinned cell (an erased one's space) pins what it shows too. Nothing is resampled or put
-// through the effects. Entries past the grid (after a canvas resize shrank it) or outside rect stay on the layer.
+// through the effects. A color's 256-color index goes with it (mergeCellOf's) where no paint is over that half. Entries past
+// the grid (after a canvas resize shrank it) or outside rect stay on the layer.
 function onBase(project, id, rect) {
   const cells = project.cellsOf(id), paint = project.paintOf(id), rows = charRowsOf(project.rows);
   const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
@@ -116,7 +117,8 @@ function onBase(project, id, rect) {
   if (paint?.hasPaint) project.baseLayer.drawOver(paint, rect);
   const left = paint && paintFrom(paint, rect ? paint.snapshot() : null);
   if (rect) left?.clearCells(rect);
-  const pins = [...merged.map(({ col, row, char }) => ({ col, row, char })), ...paintedPins];
+  const unpainted = (col, y, index) => (paint?.colorAt(col, y) ? undefined : index);
+  const pins = [...merged.map(({ col, row, char, fgIndex, bgIndex }) => ({ col, row, char, fgIndex: unpainted(col, 2 * row + 1, fgIndex), bgIndex: unpainted(col, 2 * row, bgIndex) })), ...paintedPins];
   const after = {
     base: project.baseLayer.snapshot(), baseRecords: withPins(before.baseRecords, pins),
     stack: leftOn(project, before.stack, id, rect, { editCells: kept, paintLayer: left, hasPaint: !!left?.hasPaint }),
@@ -388,7 +390,7 @@ export const mergingActions = {
         image: picture.image, imageBuffer: picture.imageBuffer, workingCopy: true, fit: { dx: 0, dy: 0, dw: cols, dh: this.rows }, settings,
         base: this.baseLayer.snapshot(), shapes: new Map(),
         stack: { layers, data: new Map(layer === 'edit' ? [['edit', { editCells, paintLayer: paintFrom(this.paintLayer), hasPaint: false }]] : []) },
-        baseRecords: layer === 'base' ? withPins(EMPTY_BASE, grid.map(({ col, row, char }) => ({ col, row, char }))) : EMPTY_BASE,
+        baseRecords: layer === 'base' ? withPins(EMPTY_BASE, grid) : EMPTY_BASE, // each character pinned with its indexes
         fg: getEffectiveColor(before.fg, params), bg: getEffectiveColor(before.bg, params), clipboard: bakedClipboard(clip, params),
       };
 
@@ -426,17 +428,19 @@ export const mergingActions = {
   // What merging a cell into the base shows: its two halves (top, bottom) under the paint, and
   // the character to pin. Color ASCII shows only the foreground (on black) and rebuilds it as the
   // halves' average; a cell showing another character than its own (▄ for a solid one under
-  // paint) goes in as its two half colors.
+  // paint) goes in as its two half colors. A cell going in as it shows keeps its colors' 256-color indexes (fgIndex,
+  // bgIndex: an entry's own, or the base's under it).
   // entry: the cells layer's own there (the one in use's unless said); shown: the character it shows there, before the
   // wide layout, so a wide character's trail pins its own character, not its lead's (levelCells': what's over the layer
   // isn't in it).
   mergeCellOf(col, row, entry = this.editCellAt(col, row), shown = levelCells(this, this.editId)[cellIndex(col, row, this.cols)]?.char) {
-    const cell = { ...this.baseCellAt(col, row), ...entry };
+    const cell = entry ? mergeEntry(this.baseCellAt(col, row), entry) : this.baseCellAt(col, row);
     const char = shown ?? cell.char;
     const [top, bottom] = this.renderStyle === 'colorAscii' ? [hex2rgb(cell.fg), hex2rgb(cell.fg)]
       : char === cell.char ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
         : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
-    return { col, row, top, bottom, char };
+    const exact = this.renderStyle !== 'colorAscii' && char === cell.char;
+    return { col, row, top, bottom, char, ...(exact && { fgIndex: cell.fgIndex, bgIndex: cell.bgIndex }) };
   },
 
   // Merge into the picture: the cells layer with the id (the one in use by default; another is picked first), inside rect
@@ -527,9 +531,11 @@ export const mergingActions = {
         if (kind === 'exact') {
           const merged = this.mergeCellOf(col, row, entry, level[cellIndex(col, row, this.cols)]?.char);
           ({ top, bottom } = merged);
-          if (entry || pin) pins.push({ col, row, char: entry ? merged.char : level[cellIndex(col, row, this.cols)]?.char ?? pin });
+          // its indexes as onBase keeps them, where no paint is over that half
+          const fgIndex = paintAt(col, 2 * row + 1).a ? undefined : merged.fgIndex, bgIndex = paintAt(col, 2 * row).a ? undefined : merged.bgIndex;
+          if (entry || pin) pins.push({ col, row, char: entry ? merged.char : level[cellIndex(col, row, this.cols)]?.char ?? pin, fgIndex, bgIndex });
         } else {
-          const cell = { ...this.baseCellAt(col, row), ...entry };
+          const cell = entry ? mergeEntry(this.baseCellAt(col, row), entry) : this.baseCellAt(col, row);
           [top, bottom] = kind === 'picture' ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
             : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
           if (kind === 'picture-pinned') pins.push({ col, row, char: '▄' });

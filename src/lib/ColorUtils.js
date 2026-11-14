@@ -144,6 +144,13 @@ export const PALETTES = {
   vga: VGA
 };
 
+// A cell's Color with c the palette index given, when that index's color is the one it shows (an index sharedIndex kept);
+// else as it is.
+export function withIndex(color, index, palette) {
+  const p = index === undefined ? undefined : palette?.[index];
+  return p && p.r === color.r && p.g === color.g && p.b === color.b ? { ...color, c: index } : color;
+}
+
 // index, when a lower index in the palette has its color (xterm's 16 and 231 are 0's and 15's colors, fixed where those
 // follow a terminal's theme), else undefined: what edit cells keep as fgIndex and bgIndex, for the export to write back.
 const firstIndexes = new WeakMap(); // a palette -> its colors' (lowercase hex) first indexes

@@ -6,7 +6,7 @@
 // layer's cells and paint (stored apart but one thing to the user), and the base's colors and pins (the converter's own
 // characters belong to their cells and stay). Block = { w, h, px?, parts: [{ id, cells: (Entry | null)[], paint?: canvas }],
 // base?: { pixels: canvas (at scale, basePixelsOf), scale, colors: canvas (its stored colors, a grid pixel each), pins:
-// (char | null)[] }, looks?: Entry[] (with base: each cell as the base showed it, completeAt), shown?: (Entry | null)[],
+// (char | null)[], indexes?: ({ fgIndex?, bgIndex? } | undefined)[] (beside the pins: baseRecords.js) }, looks?: Entry[] (with base: each cell as the base showed it, completeAt), shown?: (Entry | null)[],
 // shownAt?: number }: a part per cells layer; shown (Copy's) is what shapes on shown vector layers show there, as exact
 // cells, laid over the parts before shownAt. A move, Delete, a flip or turn and a recolor act on each layer as itself, in
 // one selectionEdit (one undo step) and through onLayer (one swap in and out of each layer that isn't in use): each part
@@ -66,6 +66,7 @@ export const selectionActions = {
         block.base = {
           pixels: this.basePixelsOf(rect), scale: this.baseLayer.scale, colors: this.baseColorsOf(rect),
           pins: cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null),
+          indexes: cells.map(({ col, row }) => this.baseRecords.indexes.get(cellKey(col, row))),
         };
         block.looks = cells.map(({ col, row }) => this.completeAt(col, row, undefined, 'base'));
         continue;
@@ -339,7 +340,7 @@ export const selectionActions = {
         if (!isBase(this, id)) return this.writeEditCells(mine.map(({ x, y }) => ({ col: x, row: y, attrs: { ...shownLook(this, x, y), ...colors } })), { clearPaint: true });
         this.writeBaseCells((ascii && !fg ? [] : mine).map(({ x, y }) => {
           const look = this.completeAt(x, y, undefined, 'base');
-          return { col: x, row: y, char: look.char, fg: fg ?? look.fg, bg: ascii ? fg : bg ?? look.bg };
+          return { col: x, row: y, char: look.char, fg: fg ?? look.fg, bg: ascii ? fg : bg ?? look.bg, fgIndex: fg ? undefined : look.fgIndex, bgIndex: ascii || bg ? undefined : look.bgIndex };
         }));
       });
     } else if (fg) {
@@ -572,8 +573,9 @@ function turnBlock(block, op) {
   if (block.shown) Object.assign(out, { shown: turnCells(block.shown), shownAt: block.shownAt });
   if (block.looks) out.looks = turned(block.looks, (e) => ({ ...e, char: turnChar(e.char, op) }));
   if (block.base) {
-    const { pixels, scale, colors, pins } = block.base;
-    out.base = { pixels: turnCanvas(pixels, op), scale, colors: turnCanvas(colors, op), pins: turned(pins, (char) => char && turnChar(char, op)) };
+    const { pixels, scale, colors, pins, indexes } = block.base;
+    const swapped = (kept) => (kept && op === 'v' ? { fgIndex: kept.bgIndex, bgIndex: kept.fgIndex } : kept); // the halves swap
+    out.base = { pixels: turnCanvas(pixels, op), scale, colors: turnCanvas(colors, op), pins: turned(pins, (char) => char && turnChar(char, op)), ...(indexes && { indexes: turned(indexes, swapped) }) };
   }
   return out;
 }
@@ -655,20 +657,21 @@ function withHalfRowUnder(project, block, col, row) {
   if (block.cells) out.cells = keep(block.cells, (key) => project.editCells.get(key));
   if (block.paint) out.paint = fill(block.paint, project.paintLayer.copyCells(last));
   if (block.base) {
-    const { pixels, colors, pins } = block.base;
+    const { pixels, colors, pins, indexes } = block.base, below = (i) => Math.floor(i / block.w) === block.h - 1;
     out.base = { ...block.base, pixels: fill(pixels, project.basePixelsOf(last)), colors: fill(colors, project.baseColorsOf(last)), pins: keep(pins, (key) => project.baseRecords.pins.get(key)) };
+    if (indexes) out.base.indexes = indexes.map((kept, i) => (pins[i] == null && below(i) ? project.baseRecords.indexes.get(cellKey(col + (i % block.w), r)) : kept));
   }
   return out;
 }
 
-// A block's base pasted back into the base at (col, row), clipped to the grid: its pixels, and its pins (a cell it had
-// none in is left with none). Where a base moved on its own goes while there's no cells layer to lift it onto (pasteAt).
+// A block's base pasted back into the base at (col, row), clipped to the grid: its pixels, and its pins with their indexes
+// (a cell it had none in is left with none). Where a base moved on its own goes while there's no cells layer to lift it onto (pasteAt).
 function pasteOnBase(project, { w, h, base }, col, row) {
   const rect = project.clipRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
   if (!rect) return;
-  const cells = rectCells(rect), pin = ({ col: c, row: r }) => base.pins[(r - row) * w + (c - col)];
+  const cells = rectCells(rect), at = ({ col: c, row: r }) => (r - row) * w + (c - col), pin = (cell) => base.pins[at(cell)];
   project.baseLayer.pasteCells(base.pixels, col, row, w, h, rect);
-  project.setBaseRecords(withPins(withoutPins(project.baseRecords, cells), cells.filter((cell) => pin(cell) != null).map((cell) => ({ ...cell, char: pin(cell) }))));
+  project.setBaseRecords(withPins(withoutPins(project.baseRecords, cells), cells.filter((cell) => pin(cell) != null).map((cell) => ({ ...cell, char: pin(cell), ...base.indexes?.[at(cell)] }))));
   project.refreshCells(cells.flatMap(({ col: c, row: r }) => [{ x: c, y: 2 * r }, { x: c, y: 2 * r + 1 }]));
 }
 
@@ -722,7 +725,8 @@ function withEditUnder(project, block, col, row) {
 function covered(project, rect) {
   const area = { ...rect, c0: Math.max(0, rect.c0 - 1), c1: Math.min(project.cols - 1, rect.c1 + 1) };
   if (onBottom(project)) {
-    return { rect: area, base: { pixels: project.baseLayer.copyCells(area), pins: rectCells(area).map(({ col, row }) => project.baseRecords.pins.get(cellKey(col, row)) ?? null) } };
+    const { pins, indexes } = project.baseRecords, cells = rectCells(area);
+    return { rect: area, base: { pixels: project.baseLayer.copyCells(area), pins: cells.map(({ col, row }) => pins.get(cellKey(col, row)) ?? null), indexes: cells.map(({ col, row }) => indexes.get(cellKey(col, row))) } };
   }
   return { rect: area, entries: rectCells(area).map(({ col, row }) => project.editCells.get(cellKey(col, row)) ?? null), paint: project.paintLayer.copyCells(area) };
 }

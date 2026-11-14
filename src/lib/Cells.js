@@ -311,10 +311,11 @@ export function putCellPixels(data, cols, i, cell) {
 }
 
 // The entry that freezes a base cell as an edit cell (merge up, copy, move), from its underlying colors
-// ({ char, bg: top half, fg: bottom half }), so it looks as the render style builds it: ANSI keeps
-// both halves; Color ASCII shows their average on no background; ASCII shows only the character.
-export function bakedEntry(renderStyle, { char, fg, bg }) {
+// ({ char, bg: top half, fg: bottom half, fgIndex?, bgIndex? }), so it looks as the render style builds it: ANSI keeps
+// both halves, with their 256-color indexes; Color ASCII shows their average on no background; ASCII shows only the
+// character.
+export function bakedEntry(renderStyle, { char, fg, bg, fgIndex, bgIndex }) {
   if (renderStyle === 'ascii') return { char };
   if (renderStyle === 'colorAscii') return { char, fg: rgb2hex(mix(hex2rgb(bg), hex2rgb(fg), 0.5)) };
-  return { char, fg, bg };
+  return { char, fg, bg, ...(fgIndex !== undefined && { fgIndex }), ...(bgIndex !== undefined && { bgIndex }) };
 }
