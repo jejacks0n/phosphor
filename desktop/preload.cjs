@@ -13,7 +13,11 @@ ipcRenderer.on('phosphor:quit', () => {
   }
 });
 
+// The end-to-end tests' shorter wait for a host gone (PHOSPHOR_RETURN_WITHIN_MS, passed on by main.js); undefined otherwise.
+const returnWithin = process.argv.find((arg) => arg.startsWith('--phosphor-return-within-ms='));
+
 contextBridge.exposeInMainWorld('phosphorDesktop', {
+  returnWithinMs: returnWithin ? Number(returnWithin.split('=')[1]) : undefined,
   startService: ({ port, mode, sub } = {}) => ipcRenderer.invoke('phosphor:start-service', { port, mode, sub }),
   serviceInfo: () => ipcRenderer.invoke('phosphor:service-info'),
   stopService: () => ipcRenderer.invoke('phosphor:stop-service'),

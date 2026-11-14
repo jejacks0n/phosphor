@@ -943,7 +943,7 @@ export const useRoomStore = defineStore('room', {
               if (connection !== this._connection) return;
               connection.close();
               this.over(hostGoneWords());
-            }, RETURN_WITHIN_MS);
+            }, desktop?.returnWithinMs ?? RETURN_WITHIN_MS);   // shorter only in the end-to-end tests
           }
           if (this.role === 'host' && status !== 'refused' && status !== 'closed') this.status = status;
           // The server kicked a watcher while its connection to the host was being made: the host gave up
