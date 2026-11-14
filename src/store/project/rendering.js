@@ -12,7 +12,7 @@ import { shownShapes } from '@/document/followers.js';
 import { lowerGroup } from '@/document/layerInfo.js';
 import { parseKey } from '@/document/editCells.js';
 import { fitRect } from '@/lib/Canvas.js';
-import { layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
+import { isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
 import { boundsOf, lowerEdits, lowerPaint } from '@/store/project/shared.js';
@@ -281,11 +281,13 @@ export const renderingActions = {
     if (!this.renderedCells.length) return;
     this.lowerCells = this.renderer.composeAll(this.renderedCells, lowerEdits(this), this.processParams);
     const composed = this.overLower();
-    // The converter's characters are one column wide (Cells.glyphsOf), so only a row with a cell of a cells layer, a
-    // pin or an art layer's character can hold a wide one: the rest are laid out as they are.
+    // The converter's characters are one column wide (Cells.glyphsOf), so only a row with a wide character in a cell of a
+    // cells layer or a pin, or with an art layer's character, can hold one: the rest are laid out as they are (composed
+    // anew, so a row whose wide character went has nothing to lay out). Keys are parsed only for those: at 500k cells,
+    // parsing every one took 300 ms a redraw.
     const rows = new Set();
-    for (const layer of this.shownLayers) if (layer.id !== 'base' && layer.kind === 'cells') for (const key of this.cellsOf(layer.id).keys()) rows.add(parseKey(key).row);
-    if (!this.renderer.hideBase) for (const key of this.baseRecords.pins.keys()) rows.add(parseKey(key).row);
+    for (const layer of this.shownLayers) if (layer.id !== 'base' && layer.kind === 'cells') for (const [key, { char }] of this.cellsOf(layer.id)) if (char && isWideChar(char)) rows.add(parseKey(key).row);
+    if (!this.renderer.hideBase) for (const [key, char] of this.baseRecords.pins) if (char && isWideChar(char)) rows.add(parseKey(key).row);
     for (const shapes of [this.renderer.shapes, ...this.renderer.upper.map((u) => u.layer)]) if (shapes?.hasArt) for (const key of shapes.artCells()) rows.add(parseKey(key).row);
     this.setCells(composed, rows, composed);
   },
