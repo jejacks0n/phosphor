@@ -420,7 +420,9 @@ export const useRoomStore = defineStore('room', {
     // You're this room's host: these fields, and a Host (with what it kept, for a room coming back). What
     // was kept is taken first, so one that can't be taken throws with nothing changed.
     hostRoom(fields, kept = null) {
-      const drawing = useDrawingStore();
+      const drawing = useDrawingStore(), project = useProjectStore();
+      project._hosting = true;   // a room is a still, with or without anyone drawing (frames never travel)
+      project.setAnimate(false);
       const host = markRaw(new Host({
         ...drawing.hostCallbacks(),
         send: (msg) => this._connection?.send(msg),
@@ -545,6 +547,7 @@ export const useRoomStore = defineStore('room', {
 
     // This tab is done hosting, and what was kept for coming back goes with it.
     doneHosting() {
+      useProjectStore()._hosting = false;
       forgetHostingRecord();
       if (!this._leaveKept) {
         forgetRoomLedger(this.id).catch(() => {});

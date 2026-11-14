@@ -144,8 +144,8 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
       this.commitEdit();
       this.clearHistory();
     }
-    if (animation?.frames.length > 1 && !this._sharing && !this._takingProject) this.openFrames(animation); // a room holds a still: the file's still is what's open
-    if (framesLost && !this._sharing && !this._takingProject) toast(t('document.framesLost'));
+    if (animation?.frames.length > 1 && !this.inRoom && !this._takingProject) this.openFrames(animation); // a room holds a still: the file's still is what's open
+    if (framesLost && !this.inRoom && !this._takingProject) toast(t('document.framesLost'));
     this.render();
     this.markSaved();
   } catch (error) {
