@@ -1599,6 +1599,7 @@
         "older": "Cette personne utilise une version plus ancienne de Phosphor. Elle doit la mettre à jour pour que vous puissiez rejoindre la salle."
       },
       "hostGone": "L'hôte est parti. Vous pourrez réessayer de rejoindre la salle plus tard.",
+      "movedUnreachable": "La salle est passée chez {name}, mais son adresse n'a pas pu être jointe.",
       "roomAway": "Votre salle a été fermée pendant votre absence.",
       "undoReset": "L'hôte a changé, l'historique d'annulation a donc été réinitialisé. Tout le dessin existant est préservé.",
       "undoRestart": "L'historique d'annulation a été réinitialisé. Tout le dessin existant est préservé.",
