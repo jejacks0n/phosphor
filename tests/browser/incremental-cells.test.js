@@ -4,7 +4,8 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
-import { layoutWide } from '@/lib/Cells';
+import { cellIndex, composeCell, coverCell, layoutWide } from '@/lib/Cells';
+import { parseKey } from '@/document/editCells';
 import { rectShape, withShape } from '@/document/shapes.js';
 
 const ATTRS = { fg: '#ffee00', bg: '#0044aa' };
@@ -236,3 +237,47 @@ test('a stack at the most layers, with every layer hidden or shown, composes as 
   project.setLayerHidden(ids.at(-1), true);
   expect(key(project.cells)).toEqual(await rendered());
 });
+
+// Each entry as #composeOne lays it: over the cell under it (underCell), with the paint over that (coverCell), or the
+// generated cell where there's none under it (a resize's render still to come).
+function composedOneByOne(project, params, base) {
+  const r = project.renderer, cells = base.slice();
+  for (const [key, entry] of project.editCells) {
+    const { col, row } = parseKey(key), i = cellIndex(col, row, params.cols);
+    if (col >= params.cols || 2 * row >= params.rows) continue;
+    const under = r.underCell(col, row, params, base);
+    cells[i] = under ? coverCell(composeCell(under, entry, params.renderStyle, (hex, index) => r.effective(hex, params, index)),
+      r.paintAt(col, 2 * row), r.paintAt(col, 2 * row + 1), { renderStyle: params.renderStyle, palette: r.palette }) : base[i];
+  }
+  return cells;
+}
+
+const STYLES = [['none', {}], ['cga', {}], ['count', {}], ['vga', { renderStyle: 'colorAscii' }], ['cga', { renderStyle: 'ascii' }], ['cga', BEST], ['cga', { charChoice: 'shape', dither: 100, ditherStyle: 'floyd' }]];
+for (const [quantize, settings] of STYLES) for (const paint of [false, true]) {
+  test(`composeAll lays every kind of entry as over the cell under it (${quantize}, ${JSON.stringify(settings)}${paint ? ', paint' : ''})`, async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 24, rows: 24 });
+    Object.assign(project, { quantize, colorCount: 8, ...settings });
+    project.setLayerChars('edit', settings);
+    project.writeBaseCells([{ col: 2, row: 1, char: 'Z', fg: '#ffffff', bg: '#000000' }, { col: 3, row: 1, char: '漢', fg: '#ffffff', bg: '#000000' }]);
+    project.commitEdit();
+    if (paint) {
+      project.paintStroke(Array.from({ length: 12 }, (_, k) => ({ x: 1 + k, y: 2 + (k % 3), alpha: k % 2 ? 0.5 : 1 })), '#ff3300');
+      project.commitEdit();
+    }
+    project.writeEditCells([
+      ['A', '#ffee00', '#0044aa'], ['漢', '#ffffff', '#000000'], [null, '#ffee00', '#0044aa'], ['b', undefined, '#0044aa'], ['c', '#ffee00', undefined],
+      ['▄', undefined, undefined], ['█', '#000000', '#000000', 16, 16], ['x', '#ffffff', '#ffffff', 231, 15], [' ', '#00ff00', '#ff00ff'], ['░', '#123456', '#654321'],
+    ].flatMap(([char, fg, bg, fgIndex, bgIndex], k) => [0, 1, 2].map((row) => ({ col: 1 + 2 * k, row, attrs: Object.fromEntries(Object.entries({ char, fg, bg, fgIndex, bgIndex }).filter(([, v]) => v != null)) }))));
+    project.writeEditCells([{ col: 2, row: 1, attrs: { char: 'Q', fg: '#ffee00', bg: '#0044aa' } }, { col: 3, row: 1, attrs: { fg: '#ffee00' } }]); // over the pins
+    project.commitEdit();
+    project.render();
+    await settle(project);
+
+    const params = project.processParams, base = project.renderer.cellsFromOutput(params);
+    expect(project.renderer.composeAll(base, project.editCells, params)).toEqual(composedOneByOne(project, params, base));
+    project.cols = 30; // the pipeline's pixels are the old size until the render: no cell under any entry
+    const resized = project.processParams;
+    expect(project.renderer.composeAll(base, project.editCells, resized)).toEqual(composedOneByOne(project, resized, base));
+  });
+}
