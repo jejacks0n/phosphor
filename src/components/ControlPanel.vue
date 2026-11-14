@@ -97,7 +97,7 @@ const charsetName = computed(() => {
 
 <template>
   <aside class="control-panel">
-    <div class="logo"></div>
+    <button class="logo" :aria-label="t('about.label')" :title="t('about.label')" @click="workspace.showAboutModal = true"></button>
     <fieldset class="drawing" :disabled="!!locked" :title="locked">
       <legend>{{ t('panel.groups.drawing') }} <span class="sub">{{ t('panel.groups.drawingSub') }}</span></legend>
 
@@ -290,13 +290,17 @@ aside.control-panel {
   overflow-y: auto;
 }
 
-div.logo {
+/* The logo opens About, as the footer's About Phosphor does: a button with only the picture, no button look. */
+button.logo {
   display: block;
   width: 100%;
   padding: 30% 0;
   margin-bottom: 10px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
   user-select: none;
-  pointer-events: none;
+  background-color: transparent;
   background-image: var(--logo);
   background-size: contain;
   background-repeat: no-repeat;
