@@ -8,7 +8,7 @@ import { keyLayer, layerKey } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { bakedEntry, cellIndex, charRowsOf, halfColors, isSolidGlyph, mix } from '@/lib/Cells.js';
-import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
+import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { resolves } from '@/lib/CharResolver.js';
 import { levelCells, over } from '@/store/project/shared.js';
@@ -308,7 +308,8 @@ export const readingActions = {
   // shows (or the pinned one), bg the top half, fg the bottom. With a palette, an ANSI cell's colors are
   // the ones it shows (dithered, or Best match's and By shape's, aren't its two pixels; and a pixel run
   // through the adjustments here can land on another palette color than the pipeline's): its own pixel
-  // where that shows as it, so it follows the adjustments as the picture does, else one that does.
+  // where that shows as it, so it follows the adjustments as the picture does, else one that does; and the 256-color index
+  // a color shows as when a lower index shares it (fgIndex, bgIndex: a pin's, as 16 and 231 are kept).
   baseCellAt(col, row) {
     const params = this.processParams, palette = this.renderer.palette;
     // underCell: as the cell shows now; the last full render's is stale after a base edit (until the pipeline's redone)
@@ -320,7 +321,8 @@ export const readingActions = {
         const hex = color.hex.toLowerCase();
         return this.renderer.effective(own, params).hex.toLowerCase() === hex ? own : stored.get(hex) ?? color.hex;
       };
-      return { char: shown.char, bg: as(shown.bg, bg), fg: as(shown.fg, fg) };
+      const fgIndex = sharedIndex(shown.fg.c, palette), bgIndex = sharedIndex(shown.bg.c, palette);
+      return { char: shown.char, bg: as(shown.bg, bg), fg: as(shown.fg, fg), ...(fgIndex !== undefined && { fgIndex }), ...(bgIndex !== undefined && { bgIndex }) };
     }
     return { char: shown?.char ?? this.renderer.pinAt(col, row) ?? this.renderedCells[cellIndex(col, row, this.cols)]?.char ?? ' ', bg, fg };
   },

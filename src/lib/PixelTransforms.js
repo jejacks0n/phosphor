@@ -2,7 +2,7 @@
 // Uint8ClampedArray (from ImageData), so the edit layer, the colors cells keep, the chips and Bake match the
 // pipeline's picture (without ctx.filter: no Safari < 18 support).
 
-import { hex2rgb, rgb2hex, nearestColor } from './ColorUtils.js';
+import { hex2rgb, rgb2hex, nearestColor, withIndex } from './ColorUtils.js';
 import { ctx2d } from './Canvas.js';
 
 const clamp01 = (c) => Math.max(0, Math.min(1, c));
@@ -145,8 +145,8 @@ export function effectiveColor(hex, params, palette = null, index = undefined) {
   applyTransforms(data, params);
   const transformed = { r: data[0], g: data[1], b: data[2] };
   if (!palette || !palette.length) return { ...transformed, hex: rgb2hex(transformed), c: [transformed.r, transformed.g, transformed.b] };
-  const { r, g, b, c } = nearestColor(transformed, palette), kept = palette[index];
-  return { r, g, b, hex: rgb2hex({ r, g, b }), c: kept && kept.r === r && kept.g === g && kept.b === b ? index : c };
+  const { r, g, b, c } = nearestColor(transformed, palette);
+  return withIndex({ r, g, b, hex: rgb2hex({ r, g, b }), c }, index, palette);
 }
 
 export function getEffectiveColor(hex, params, palette = null) {

@@ -13,6 +13,7 @@ import { vectorActions } from '@/store/project/vector.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
 import { DRAWING_ACTIONS, HELD_FLOAT_MS, HOST_ONLY_ACTIONS } from '@/store/project/sharing.js';
 import { cellIndex } from '@/lib/Cells';
+import { deserializeBase } from '@/document/baseRecords.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { guarded } from '@/store/project/combineActions.js';
 import { createApp } from 'vue';
@@ -1124,7 +1125,7 @@ test('applyBase writes the base\'s pixels and pins, refreshing their cells, and 
   const k = project.baseLayer.scale;
   project.editCell(1, 1, { char: 'A' });
   project.sendSlice();
-  const pins = Object.freeze({ pins: new Map([['8,8', 'Q']]) });
+  const pins = Object.freeze({ pins: new Map([['8,8', 'Q']]), indexes: new Map() });
   const edits = project.editVersion;
   project.applyBase([[8 * k, 16 * k, k, BLUE], [8 * k, 16 * k + 1, k, BLUE]], pins);
   expect(project.baseRecords).toBe(pins);
@@ -1138,6 +1139,27 @@ test('applyBase writes the base\'s pixels and pins, refreshing their cells, and 
   project.undo(); // the artist's undo asks; it doesn't put the pins back
   expect(project.baseRecords).toBe(pins);
   expect(sent.at(-1).t).toBe('undo');
+});
+
+// A pin's 256-color indexes (16 and 231, which 0 and 15 share the colors of) go with the base's pins: the host's base
+// carries them, and a base where only an index changed (no pixel did, so there's no run) shows it.
+test('the base\'s 256-color indexes go to the room with its pins', async () => {
+  const host = await drawing('host');
+  host.project.quantize = 'vga';
+  await settle(host.project);
+  host.project.writeBaseCells([{ col: 2, row: 2, char: 'A', fg: '#000000', bg: '#000000', fgIndex: 16 }]);
+  host.project.commitEdit();
+  const records = host.sent.filter(({ t }) => t === 'base').at(-1).records;
+  expect(records.indexes).toEqual([['2,2', { fgIndex: 16 }]]);
+
+  const { project } = await drawing('artist');
+  project.quantize = 'vga';
+  await settle(project);
+  const k = project.baseLayer.scale, black = Array.from({ length: 2 * k }, (_, i) => [2 * k, 4 * k + i, k, 0x000000ff]);
+  project.applyBase(black, deserializeBase({ pins: [['2,2', 'A']] }).records);
+  expect(project.cells[cellIndex(2, 2, 40)].fg.c).toBe(0);
+  project.applyBase([], deserializeBase(records).records);
+  expect(project.cells[cellIndex(2, 2, 40)].fg.c).toBe(16);
 });
 
 test('an applied change refreshes only its cells', async () => {
