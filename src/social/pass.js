@@ -3,6 +3,7 @@
 import { api } from './api.js';
 import { fromBase64url } from './base64url.js';
 import { proof } from './keys.js';
+import { verifySelfPass } from './selfPass.js';
 
 const RENEW_EARLY_MS = 5 * 60_000;
 
@@ -46,7 +47,7 @@ export function passKey() {
 
 // The claims of a pass signed by the server's key (keyB64, from passKey) and not yet expired, or null for
 // anything else, malformed passes included. Hosts use this on a watcher's pass.
-export async function verifyPass(pass, keyB64, now = Date.now()) {
+async function verifyServerPass(pass, keyB64, now = Date.now()) {
   try {
     const [body, signature, ...rest] = pass.split('.');
     if (!signature || rest.length) return null;
@@ -58,3 +59,6 @@ export async function verifyPass(pass, keyB64, now = Date.now()) {
     return null;
   }
 }
+
+// On desktop there's no server: a pass is signed by its own key, and keyB64 isn't used.
+export const verifyPass = import.meta.env.VITE_DESKTOP === '1' ? (pass, _key, now) => verifySelfPass(pass, now) : verifyServerPass;
