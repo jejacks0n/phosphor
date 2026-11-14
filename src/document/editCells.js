@@ -3,14 +3,16 @@
  * frozen and the Map is replaced on every change (copy-on-write), so undo can keep both sides and
  * callers can compare identity to see whether anything changed.
  *
- * Entry = { char?, fg?, bg? }: fg/bg are underlying colors ('#rrggbb'); a missing attribute shows
- * what's underneath. Keys are grid positions, so entries outside a shrunken grid are kept.
+ * Entry = { char?, fg?, bg?, fgIndex?, bgIndex? }: fg/bg are underlying colors ('#rrggbb'); a missing
+ * attribute shows what's underneath. fgIndex/bgIndex: the 256-color index a file gave the color when a
+ * lower one has the same color (xterm's 16 and 231, fixed, where 0 and 15 follow a terminal's theme), so
+ * the export writes it back. Keys are grid positions, so entries outside a shrunken grid are kept.
  */
 import { usableChar } from '../lib/CharWidth.js';
 import { getEffectiveColor } from '../lib/PixelTransforms.js';
 import { isSolidGlyph } from '../lib/Cells.js';
 
-const ATTRS = ['char', 'fg', 'bg'];
+const ATTRS = ['char', 'fg', 'bg', 'fgIndex', 'bgIndex'];
 
 // A ▄ with no colors of its own: Half-block wrote it to show the paint over its cell.
 export const isPaintBlock = (entry) => entry?.char === '▄' && entry.fg === undefined && entry.bg === undefined;
@@ -31,6 +33,7 @@ export function mergeEntry(old, attrs) {
     if (attrs[attr] === null) delete next[attr];
     else if (attrs[attr] !== undefined) next[attr] = attrs[attr];
   }
+  for (const color of ['fg', 'bg']) if (attrs[color] !== undefined && attrs[`${color}Index`] === undefined) delete next[`${color}Index`]; // a color set anew has no file's index
   if (!ATTRS.some(attr => attr in next)) return null;
   if (old && ATTRS.every(attr => old[attr] === next[attr])) return old;
   return Object.freeze(next);
@@ -57,16 +60,19 @@ export function withoutCells(map, cells) {
 
 export const serializeEditCells = (map) => [...map];
 
-// Project files are untrusted: keep only col,row keys, chars a cell can hold and #rrggbb colors.
+// Project files are untrusted: keep only col,row keys, chars a cell can hold, #rrggbb colors and their 256-color indexes.
+const isIndex = (v) => Number.isInteger(v) && v >= 0 && v < 256;
 const VALID = {
   char: usableChar,
   fg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
   bg: (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v),
+  fgIndex: (v, entry) => isIndex(v) && VALID.fg(entry.fg),
+  bgIndex: (v, entry) => isIndex(v) && VALID.bg(entry.bg),
 };
 // An entry from outside (a file, the clipboard) with only what a cell can hold, or null when nothing's left.
 export function cleanEntry(entry) {
   if (!entry || typeof entry !== 'object') return null;
-  const clean = Object.fromEntries(ATTRS.filter(attr => VALID[attr](entry[attr])).map(attr => [attr, entry[attr]]));
+  const clean = Object.fromEntries(ATTRS.filter(attr => VALID[attr](entry[attr], entry)).map(attr => [attr, entry[attr]]));
   return Object.keys(clean).length ? Object.freeze(clean) : null;
 }
 

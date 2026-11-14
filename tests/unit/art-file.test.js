@@ -259,6 +259,17 @@ test('a 256-color code sets the palette to VGA and a 24-bit one to none, only wh
   assert.equal(read('\x1b[38;5;196m\x1b[0mX').palette, 'cga'); // set and never written with
 });
 
+// xterm's 16 and 231 are fixed black and white, 0 and 15 a terminal's own (its theme's): the same colors here, so a
+// cell keeps the index it was given, for the export to write back.
+test('a 256-color index that shares its color with a lower one is kept with the cell', () => {
+  const art = read('\x1b[38;5;16;48;5;231mA\x1b[38;5;0;48;5;15mB\x1b[7mC\x1b[0;38;5;196mD');
+  assert.deepEqual(at(art, 0), { char: 'A', fg: '#000000', bg: '#ffffff', fgIndex: 16, bgIndex: 231 });
+  assert.deepEqual(at(art, 1), { char: 'B', fg: '#000000', bg: '#ffffff' });
+  assert.deepEqual(at(art, 2), { char: 'C', fg: '#ffffff', bg: '#000000' }); // inverse swaps them, indexes and all
+  assert.deepEqual(at(read('\x1b[38;5;16;48;5;15;7mX'), 0), { char: 'X', fg: '#ffffff', bg: '#000000', bgIndex: 16 });
+  assert.deepEqual(at(art, 3), { char: 'D', fg: '#ff0000', bg: '#000000' });
+});
+
 test('cells never written are spaces in the default colors, and rows is the last line reached', () => {
   const art = read('\x1b[3;3HX');
   assert.equal(art.rows, 3);

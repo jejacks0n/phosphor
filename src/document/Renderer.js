@@ -1063,7 +1063,7 @@ export default class Renderer {
       const entry = u.cells.get(key);
       const top = read ? paintAt(read, 2 * row) : null, bottom = read ? paintAt(read, 2 * row + 1) : null;
       if (entry) {
-        cell = coverCell(composeCell(cell, entry, renderStyle, (hex) => this.effective(hex, params)), top, bottom, { renderStyle, palette });
+        cell = coverCell(composeCell(cell, entry, renderStyle, (hex, index) => this.effective(hex, params, index)), top, bottom, { renderStyle, palette });
         exact = true;
         continue;
       }
@@ -1234,11 +1234,12 @@ export default class Renderer {
   }
 
   // A stored color as it displays: color adjustments, then the active palette.
-  effective(hex, params) {
-    let color = this.#effective.get(hex);
+  effective(hex, params, index) {
+    const key = index === undefined ? hex : `${hex}/${index}`;
+    let color = this.#effective.get(key);
     if (!color) {
-      color = effectiveColor(hex, params, this.palette);
-      this.#effective.set(hex, color);
+      color = effectiveColor(hex, params, this.palette, index);
+      this.#effective.set(key, color);
     }
     return color;
   }
@@ -1336,7 +1337,7 @@ export default class Renderer {
   #composeOne(col, row, params, entry, baseCells) {
     const under = this.underCell(col, row, params, baseCells);
     if (!under) return baseCells[cellIndex(col, row, params.cols)];
-    const cell = composeCell(under, entry, params.renderStyle, (hex) => this.effective(hex, params));
+    const cell = composeCell(under, entry, params.renderStyle, (hex, index) => this.effective(hex, params, index));
     return coverCell(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), {
       renderStyle: params.renderStyle,
       palette: this.palette,

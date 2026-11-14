@@ -191,6 +191,8 @@ gives other apps only its characters (see [Layers](layers.md#the-select-tool)).
 - **Colors** are written as the Color palette says: CGA as the 16 classic colors, VGA as 256-color codes
   (`38;5`), and the rest as 24-bit ones (`38;2`). A file you opened keeps the palette it came with
   ([Opening a file](layers.md#opening-ansi-and-text-files)), so it comes out in the same kind of codes.
+  Opened with **Edit it**, its black and white keep their codes too: 16 and 231 are fixed black and white
+  in a terminal, while 0 and 15 follow its theme, though Phosphor shows them alike.
 - **SAUCE**, the record after the art, says what's on the SAUCE tab: title, author, group and your
   comments. For a converted image or a blank canvas, Phosphor's own lines come first (Created with
   Phosphor, and the settings it was converted with), then a blank line and yours. A file you opened gets

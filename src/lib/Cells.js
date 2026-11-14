@@ -247,15 +247,16 @@ export function halfColors(cell, coverage = coverageOf) {
   return [mix(cell.bg, cell.fg, top), mix(cell.bg, cell.fg, bottom)];
 }
 
-// An edit cell's entry over the generated cell under it. effective(hex) turns a stored color into the
-// Color it displays as. ASCII saves white on black, so edit-cell colors are kept but not shown.
+// An edit cell's entry over the generated cell under it. effective(hex, index) turns a stored color (and
+// the palette index it was read as, if any) into the Color it displays as. ASCII saves white on black, so
+// edit-cell colors are kept but not shown.
 export function composeCell(under, entry, renderStyle, effective) {
   const char = entry.char ?? under.char;
   if (renderStyle === 'ascii') return { char, fg: under.fg, bg: under.bg };
   return {
     char,
-    fg: entry.fg ? effective(entry.fg) : under.fg,
-    bg: entry.bg ? effective(entry.bg) : under.bg,
+    fg: entry.fg ? effective(entry.fg, entry.fgIndex) : under.fg,
+    bg: entry.bg ? effective(entry.bg, entry.bgIndex) : under.bg,
   };
 }
 

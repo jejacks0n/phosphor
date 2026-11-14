@@ -61,6 +61,12 @@ test('Composition of edit cells: glyph coverage, half-cell colors, edit-cell att
 
   assert.equal(effectiveColor('#ff5555', NEUTRAL, PALETTES.cga).c, 9);
   assert.equal(effectiveColor('#fe0101', NEUTRAL, PALETTES.cga).c, 1);   // nearest is #aa0000, not #ff5555
+  // A file's index for a color a lower one shares (xterm's 16 and 231 are 0's and 15's colors) stays while it's the color shown.
+  assert.equal(effectiveColor('#000000', NEUTRAL, PALETTES.vga).c, 0);
+  assert.equal(effectiveColor('#000000', NEUTRAL, PALETTES.vga, 16).c, 16);
+  assert.equal(effectiveColor('#ffffff', NEUTRAL, PALETTES.vga, 231).c, 231);
+  assert.equal(effectiveColor('#000000', NEUTRAL, PALETTES.cga, 16).c, 0);                          // CGA has no 16
+  assert.equal(effectiveColor('#000000', { ...NEUTRAL, invert: 100 }, PALETTES.vga, 16).c, 15);     // shown as white now
   assert.deepEqual(effectiveColor('#123456', NEUTRAL), { r: 0x12, g: 0x34, b: 0x56, hex: '#123456', c: [0x12, 0x34, 0x56] });
 
   assert.equal(getEffectiveColor('#123456', NEUTRAL), '#123456');

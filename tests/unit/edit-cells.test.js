@@ -50,6 +50,14 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   assert.deepEqual(mergeEntry({ char: 'a' }, { fg: '#000000' }), { char: 'a', fg: '#000000' });
   const same = Object.freeze({ char: 'a' });
   assert.equal(mergeEntry(same, { char: 'a' }), same);
+  // A file's 256-color index (16, 231) stays with its color, goes when the color is set anew, and loads only as a whole
+  // number under 256 beside a color.
+  const fixed = mergeEntry(undefined, { char: 'a', fg: '#000000', fgIndex: 16, bg: '#ffffff', bgIndex: 231 });
+  assert.deepEqual(mergeEntry(fixed, { char: 'b' }), { char: 'b', fg: '#000000', fgIndex: 16, bg: '#ffffff', bgIndex: 231 });
+  assert.deepEqual(mergeEntry(fixed, { fg: '#000000' }), { char: 'a', fg: '#000000', bg: '#ffffff', bgIndex: 231 });
+  assert.deepEqual(mergeEntry(fixed, { bg: null }), { char: 'a', fg: '#000000', fgIndex: 16 });
+  assert.deepEqual([...deserializeEditCells([['0,0', fixed], ['1,0', { char: 'c', fgIndex: 16 }], ['2,0', { fg: '#000000', fgIndex: 256, bgIndex: 1 }]])],
+    [['0,0', fixed], ['1,0', { char: 'c' }], ['2,0', { fg: '#000000' }]]);
   // Block operations (selection): rects are inclusive and normalized; blocks are row-major.
   assert.deepEqual(normalizeRect({ col: 5, row: 4 }, { col: 2, row: 1 }), { c0: 2, r0: 1, c1: 5, r1: 4 });
   assert.deepEqual(rectCells({ c0: 1, r0: 0, c1: 2, r1: 1 }), [{ col: 1, row: 0 }, { col: 2, row: 0 }, { col: 1, row: 1 }, { col: 2, row: 1 }]);

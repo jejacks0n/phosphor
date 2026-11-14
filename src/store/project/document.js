@@ -234,7 +234,7 @@ export const documentActions = {
     });
     if (!opened) return;
     const cells = art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell }));
-    if (layer === 'edit') this.writeEditCells(cells.map(({ col, row, char, fg, bg }) => ({ col, row, attrs: { char, fg, bg } })));
+    if (layer === 'edit') this.writeEditCells(cells.map(({ col, row, ...attrs }) => ({ col, row, attrs }))); // char, fg, bg and any 256-color index
     else this.writeBaseCells(cells);
     this.commitEdit();
     this.clearHistory();
