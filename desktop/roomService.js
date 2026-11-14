@@ -205,9 +205,9 @@ export async function createRoomService({
     if (!claims || (room && room.id !== id)) return reply(ws, refused('bad-pass'));
 
     if (hosting) {
-      if (!room) {
+      if (!room) {   // made here; one handed over from another computer brings its artists, the old host among them
         room = roomFrom(msg.room);
-        artists = [];
+        artists = Array.isArray(msg.room?.artists) ? msg.room.artists.filter((sub) => typeof sub === 'string' && sub !== claims.sub) : [];
         hostable.clear();
       }
       Object.assign(room, { hostSub: claims.sub, hostName: claims.name });

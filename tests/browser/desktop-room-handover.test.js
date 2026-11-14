@@ -268,7 +268,8 @@ test('quitting as host with a hostable artist makes them host, then quitReady', 
   const made = sockets.length;
   let answered;
   const makeHost = vi.spyOn(drawing, 'makeHost').mockImplementation(async (sub) => {
-    expect(room._host.handOverExtra()).toEqual({ password: 'sesame', max: 5, welcome: 'Hi', name: 'Night shift', approved: [social.claims.sub, cy.claims.sub, ann.claims.sub] });
+    // The room's artists on the next host's service: those drawing now, and this host, who stays on as one.
+    expect(room._host.handOverExtra()).toEqual({ password: 'sesame', max: 5, welcome: 'Hi', name: 'Night shift', approved: [social.claims.sub, cy.claims.sub, ann.claims.sub], artists: [social.claims.sub, cy.claims.sub, ann.claims.sub] });
     await new Promise((resolve) => { answered = resolve; });
     socket.receive({ type: 'new-host', name: 'ann', sub, planned: true, addresses: ['192.168.1.30:31337'] });
     return true;

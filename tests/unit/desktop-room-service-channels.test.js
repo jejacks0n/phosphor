@@ -289,3 +289,15 @@ test('hand-over to an artist with no hostable address does nothing', async () =>
   assert.equal(s.mode(), 'host');
   assert.equal(anas.readyState, WebSocket.OPEN);
 });
+
+// The web's room keeps its artists through a hand-over, the old host among them; a desktop room's next service is made
+// from the hand-over's extra, which lists them. The new host's own sub isn't one, and the host hears them unasked.
+test('a room made from a hand-over keeps its artists, less the new host, and says them to the host', async () => {
+  const s = await service();
+  const [owner, ana] = [await person('Host'), await person('Ana')];
+  const { ws: host } = await hosting(s, owner, { ...ROOM, approved: [ana.sub], artists: [ana.sub, owner.sub, 7] });
+  assert.deepEqual(await host.next(), { type: 'artists-now', subs: [ana.sub], hostable: {} });
+  const anas = await joining(s, ana);   // let in already, where the room was
+  const joined = await anas.next();
+  assert.deepEqual([joined.type, joined.artists], ['joined', [ana.sub]]);
+});

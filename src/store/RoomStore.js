@@ -429,9 +429,14 @@ export const useRoomStore = defineStore('room', {
         // The next host's room is made from this room's settings, with everyone here already let in.
         ...(DESKTOP ? {
           config: { channelUrl: (peer) => `ws://127.0.0.1:${this._desktop.port}/channel?peer=${encodeURIComponent(peer)}&secret=${encodeURIComponent(this._desktop.secret)}` },
+          // Its artists go on being them there, this host among them, as the web's room keeps them through a hand-over.
           handOverExtra: () => {
-            const { name, welcome, max } = this.room;
-            return { password: this._password ?? null, max, welcome, name, approved: [...new Set([useSocialStore().claims?.sub, ...this.watchers.map((w) => w.sub)])].filter(Boolean) };
+            const { name, welcome, max } = this.room, me = useSocialStore().claims?.sub;
+            return {
+              password: this._password ?? null, max, welcome, name,
+              approved: [...new Set([me, ...this.watchers.map((w) => w.sub)])].filter(Boolean),
+              artists: [...new Set([me, ...drawing.artists])].filter(Boolean),
+            };
           },
         } : {}),
         onWatchers: (list) => {
