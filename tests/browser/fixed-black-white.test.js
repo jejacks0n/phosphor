@@ -68,3 +68,17 @@ test('Alt+Up/Down walks the 256 colors straight through 16 and 231', async () =>
     expect(walked, slot).toEqual([16, 17, 16, 15, 231, 232, 231]);
   }
 });
+
+// A lower cell's index doesn't come through what's merged over it: 0's black over 16's is 0, and an index of the entry's
+// own stays.
+test('Merge down keeps the upper cell\'s own index, never the lower one\'s', async () => {
+  const { project, workspace } = await opened('edit');
+  const cols = project.cols, id = project.addLayer('cells');
+  workspace.pickLayer(id);
+  project.writeEditCells([{ col: 0, row: 1, attrs: { fg: '#000000' } }, { col: 1, row: 1, attrs: { fg: '#ffffff', bg: '#000000', bgIndex: 16 } }]);
+  project.commitEdit();
+  await settle(project);
+  expect(project.mergeDown(id)).not.toBe(false);
+  await settle(project);
+  expect([project.cells[cols].fg.c, project.cells[cols].bg.c, project.cells[cols + 1].fg.c, project.cells[cols + 1].bg.c]).toEqual([0, 231, 15, 16]);
+});
