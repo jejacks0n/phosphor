@@ -49,6 +49,27 @@ test('a help tooltip shows on hover, on screen, and hides', async ({ page }) => 
   await expect(tip).toBeHidden();
 });
 
+// Safari hovers what a slider's drag crosses (an (i), another thumb, Colorize's color box) and never lets go of it, so
+// while a slider is held nothing else answers the pointer; the held slider still drags, and all is back on release.
+test('while a slider is held, nothing else on the page answers the pointer, until it\'s let go', async ({ page }) => {
+  await openApp(page);
+  const adjustments = page.getByRole('group', { name: /Adjustments/ });
+  const slider = adjustments.getByRole('slider', { name: 'Brightness' });
+  const others = [adjustments.locator('button.help-icon').first(), adjustments.getByRole('slider', { name: 'Contrast' }), adjustments.locator('input[type=color]').first()];
+  const answers = (el) => el.evaluate((e) => getComputedStyle(e).pointerEvents !== 'none');
+  await slider.scrollIntoViewIfNeeded();
+  const box = await slider.boundingBox();
+  const before = await slider.inputValue();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 40, box.y + box.height / 2, { steps: 5 });
+  for (const el of others) expect(await answers(el)).toBe(false);
+  expect(await answers(slider)).toBe(true);
+  await page.mouse.up();
+  expect(await slider.inputValue()).not.toBe(before);
+  for (const el of others) expect(await answers(el)).toBe(true);
+});
+
 test('the Actions menu (narrow screens) opens, and closes on Escape and outside clicks; it stays when something beside it scrolls, and closes when what holds it scrolls', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 800 });
   await openApp(page);
