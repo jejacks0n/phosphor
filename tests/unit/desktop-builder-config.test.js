@@ -35,10 +35,14 @@ test('builder config names the Local Network usage, signs mac and windows, publi
   assert.match(linux, /- deb$/m);
 });
 
-test('the desktop workflow runs on a version tag or by hand, and a tag build needs the signing secrets', () => {
+test('the desktop workflow runs only on a version tag higher than the last, and a release needs the signing secrets', () => {
   const yml = read('.github/workflows/desktop.yml');
-  assert.match(yml, /tags: \['v\*'\]/);
-  assert.match(yml, /workflow_dispatch:/);
+  assert.match(yml, /tags: \['v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+'\]/);
+  assert.doesNotMatch(yml, /workflow_dispatch|branches:|pull_request/);
+  // One check before the three builds: the tag is package.json's version and higher than every version tag before it.
+  assert.match(yml, /needs: version/);
+  assert.match(yml, /sort -V/);
+  assert.match(yml, /fetch-depth: 0/);
   assert.match(yml, /os: \[macos-latest, windows-latest, ubuntu-latest\]/);
   assert.match(yml, /contents: write/);
   for (const secret of ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID', 'WIN_CSC_LINK', 'WIN_CSC_KEY_PASSWORD']) {
@@ -47,6 +51,6 @@ test('the desktop workflow runs on a version tag or by hand, and a tag build nee
   assert.match(yml, /GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
   assert.match(yml, /::error::/);
   assert.match(yml, /--publish always/);
-  assert.match(yml, /--publish never/);
+  assert.doesNotMatch(yml, /--publish never/);
   assert.match(yml, /node -e "require\('electron'\)"/);
 });

@@ -1,17 +1,35 @@
 name: Build the desktop app
 
-# A version tag (v0.2.0, matching package.json's version) builds the three platforms and attaches them to a draft
-# GitHub Release for the tag, to look over and publish by hand. A run by hand builds them as this run's artifacts.
+# Only a version tag builds it: v and three numbers (v0.2.0), matching package.json's version and higher than every
+# version tag before it. It builds the three platforms and attaches them to a draft GitHub Release for the tag, to
+# look over and publish by hand.
 on:
   push:
-    tags: ['v*']
-  workflow_dispatch:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
 
 permissions:
   contents: write # the tag's draft release
 
 jobs:
+  # Once, before the three builds: a tag that isn't the next version builds nothing.
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # every tag, to compare with
+      - run: |
+          tag="$GITHUB_REF_NAME"
+          version="v$(node -p "require('./package.json').version")"
+          [ "$tag" = "$version" ] || { echo "::error::The tag $tag isn't package.json's version, $version"; exit 1; }
+          last=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' | grep -Ex 'v[0-9]+\.[0-9]+\.[0-9]+' | grep -vx "$tag" | sort -V | tail -1)
+          if [ -n "$last" ] && [ "$(printf '%s\n%s\n' "$last" "$tag" | sort -V | tail -1)" != "$tag" ]; then
+            echo "::error::The tag $tag isn't higher than the last version, $last"; exit 1
+          fi
+
   package:
+    needs: version
     strategy:
       fail-fast: false # one platform's failure still shows the others'
       matrix:
@@ -35,9 +53,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # A tag is a release, so it's signed: a platform's missing secrets fail it. By hand, it builds unsigned and says so.
-      - id: signing
-        shell: bash
+      # A release is signed: a platform's missing secrets fail it.
+      - shell: bash
         run: |
           case "$RUNNER_OS" in
             macOS) needed="CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID" ;;
@@ -46,14 +63,7 @@ jobs:
           esac
           missing=""
           for name in $needed; do [ -n "${!name}" ] || missing="$missing $name"; done
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            version="v$(node -p "require('./package.json').version")"
-            [ "$GITHUB_REF_NAME" = "$version" ] || { echo "::error::The tag $GITHUB_REF_NAME isn't package.json's version, $version"; exit 1; }
-            [ -z "$missing" ] || { echo "::error::A release is signed, and these secrets aren't set for $RUNNER_OS:$missing"; exit 1; }
-          elif [ -n "$missing" ]; then
-            echo "::warning::This $RUNNER_OS build is unsigned: these secrets aren't set:$missing"
-            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
-          fi
+          [ -z "$missing" ] || { echo "::error::A release is signed, and these secrets aren't set for $RUNNER_OS:$missing"; exit 1; }
       # npm runs scripts in cmd on Windows, which can't read build:desktop's VITE_DESKTOP=1.
       - if: runner.os == 'Windows'
         run: npm config set script-shell "C:\Program Files\Git\bin\bash.exe"
@@ -61,18 +71,4 @@ jobs:
       # Electron downloads itself the first time it's required, not on install: here, rather than inside the build.
       - run: node -e "require('electron')"
       - run: npm run build:desktop
-      - if: github.ref_type == 'tag'
-        run: npx electron-builder --publish always
-      - if: github.ref_type != 'tag'
-        run: npx electron-builder --publish never
-      - if: github.ref_type != 'tag'
-        uses: actions/upload-artifact@v4
-        with:
-          name: phosphor-${{ runner.os }}
-          path: |
-            release/*.dmg
-            release/*.zip
-            release/*.exe
-            release/*.AppImage
-            release/*.deb
-          if-no-files-found: error
+      - run: npx electron-builder --publish always
