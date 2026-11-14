@@ -15,10 +15,14 @@ export { test, expect };
 // (PHOSPHOR_RETURN_WITHIN_MS, say), and `files` are named on its command line, as a file double-clicked is.
 // The Leave/Stay question main.js asks before a reload or quit the page would ask about is answered Leave, so a host's
 // reload or an app closed with unsaved art goes ahead; a spec that wants the question stands in for it again.
+// A Linux runner has no GPU, so WebGL comes from SwiftShader, as in the web flows (playwright.config.js): without it the
+// art never renders. On macOS these switches would turn WebGL off, so they're for Linux alone.
+const SOFTWARE_GL = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
+
 export async function launchApp({ name = 'ann', port = 31401, env = {}, files = [] } = {}) {
   const userData = mkdtempSync(join(tmpdir(), `phosphor-${name}-`));
   const app = await _electron.launch({
-    args: ['desktop/main.js', ...files],
+    args: [...SOFTWARE_GL, 'desktop/main.js', ...files],
     env: { ...process.env, PHOSPHOR_USER_DATA: userData, PHOSPHOR_ADDRESSES: '127.0.0.1', ...env },
   });
   await app.evaluate(({ dialog }) => { dialog.showMessageBoxSync = () => 0; });
