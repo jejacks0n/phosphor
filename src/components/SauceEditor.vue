@@ -78,7 +78,7 @@ function fit(event, f) {
   }
   fitted[key] = text;
   project[key] = text;
-  notes[key] = [left && t('sauce.cut', { width: formatNumber(width), left: quoted(left) }), stripped && !f.digits && t('sauce.controls')].filter(Boolean).join(' ');
+  notes[key] = [left && t('sauce.cut', { width: formatNumber(width), left: quoted(left) }), stripped && !f.digits && t('sauce.controls')].filter(Boolean).join('\n'); // one line each
 }
 </script>
 
@@ -214,6 +214,7 @@ span.count.full { color: var(--warning); }
 p.cut {
   margin: 0;
   overflow-wrap: anywhere;
+  white-space: pre-line; /* a cut and stripped control characters, each on its own line */
   color: var(--warning);
 }
 p.cut:empty { margin-top: -6px; }   /* stays in the page, as a live region must */

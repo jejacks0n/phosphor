@@ -117,7 +117,7 @@ test('control characters typed or pasted are left out, and the line under the fi
 
   await edit('sauce-group', `${'g'.repeat(19)}\u001bxy`);
   expect(project.sauceGroup).toBe(`${'g'.repeat(19)}x`);
-  expect(noteOf('sauce-group').textContent.trim()).toBe('Only 20 characters fit. Left out: "y" Control characters, like tab or ESC, can\'t be in SAUCE and were left out.');
+  expect(noteOf('sauce-group').textContent.trim()).toBe('Only 20 characters fit. Left out: "y"\nControl characters, like tab or ESC, can\'t be in SAUCE and were left out.');
 });
 
 test('Comments keep their line breaks, CR LF as LF, and lose their other control characters', async () => {
