@@ -348,6 +348,7 @@ div.filename-row {
 
 input.filename-input {
   flex: 1;
+  min-width: 0;
   border-right: none;
   border-radius: 6px 0 0 6px;
 }
@@ -378,5 +379,16 @@ button.cancel {
   box-shadow: none;
   color: var(--text-muted);
   font: inherit;
+}
+
+/* A phone: the list above the format it picks, so neither runs off the screen. */
+@media (max-width: 768px) {
+  div.export-body { grid-template-columns: minmax(0, 1fr); }
+  nav.format-list {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 0 0 8px;
+  }
+  div.format-detail { padding: 14px 0 0; }
 }
 </style>
