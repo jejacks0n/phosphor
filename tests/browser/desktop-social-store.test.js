@@ -63,6 +63,8 @@ test('setDesktopName changes the next pass\'s name, kept on this computer and cu
   expect(localStorage.getItem('phosphor-desktop-name')).toBe('x'.repeat(24));
   setActivePinia(createPinia());
   expect(useSocialStore().desktopName).toBe('x'.repeat(24));
+  social.setDesktopName('a'.repeat(23) + ' b');   // cut at the space: none left at the end
+  expect(social.desktopName).toBe('a'.repeat(23));
 });
 
 test('verifyPass takes a self pass and refuses a tampered one', async () => {

@@ -81,7 +81,7 @@ const withToken = (turnstileToken) => (turnstileToken ? { 'x-turnstile-token': t
 export const useSocialStore = defineStore('social', {
   state: () => ({
     consentVersion: useLocalStorage(CONSENT_KEY, 0, { writeDefaults: false }),   // the version of SOCIAL's question this browser accepted (consent.js)
-    desktopName: useLocalStorage('phosphor-desktop-name', '', { writeDefaults: false }),   // the desktop app's name for you (setDesktopName)
+    desktopName: DESKTOP ? useLocalStorage('phosphor-desktop-name', '', { writeDefaults: false }) : '',   // the desktop app's name for you (setDesktopName)
     _roomGoesOn: false,  // this load is coming back to a room, which that question doesn't interrupt (allowed)
     supported: null,     // null until checked: false when this browser can't do Ed25519 or IndexedDB
     me: null,            // /api/me's body; null signed out
@@ -577,7 +577,7 @@ export const useSocialStore = defineStore('social', {
 
     // The desktop app's name for you, as long as a username at most: the next pass carries it.
     setDesktopName(name) {
-      this.desktopName = name.trim().slice(0, USERNAME_MAX);
+      this.desktopName = name.trim().slice(0, USERNAME_MAX).trimEnd();
       this.dropPass();
     },
 
