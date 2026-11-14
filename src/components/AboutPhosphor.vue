@@ -27,6 +27,7 @@ watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); });
       <p class="tagline">{{ t('about.tagline') }}</p>
       <p class="version accent">{{ t('about.version', { version }) }}</p>
       <p class="build">{{ t('about.build', { sha }) }}</p>
+      <p class="repo"><a href="https://github.com/jejacks0n/phosphor" target="_blank" rel="noopener">github.com/jejacks0n/phosphor</a></p>
     </header>
 
     <hr/>
@@ -186,6 +187,10 @@ p.build {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+p.repo {
+  margin: 12px 0 0;
 }
 
 p.version {
