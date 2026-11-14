@@ -86,13 +86,21 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - id: playwright
-        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - id: versions
+        run: |
+          echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "electron=$(node -p "require('electron/package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+          key: playwright-${{ runner.os }}-${{ steps.versions.outputs.version }}
       - run: npx playwright install --with-deps chromium
+      # Electron downloads itself the first time it's required, not on install: here, rather than inside a test.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/electron
+          key: electron-${{ runner.os }}-${{ steps.versions.outputs.electron }}
+      - run: node -e "require('electron')"
       # Electron's sandbox needs unprivileged user namespaces, which Ubuntu 24.04 keeps from apps without an AppArmor
       # profile, as Electron from npm is.
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0

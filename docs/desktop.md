@@ -1,0 +1,157 @@
+# The desktop app
+
+Phosphor also comes as an app for macOS, Windows and Linux. Drawing in it works as it does in the browser. What's
+different is **SOCIAL**: there's no lobby, account or sign-in. You host a room on your own computer and give people its
+address, or you join someone's room by the address they give you. Nothing in the app goes through a Phosphor server.
+
+Rooms otherwise work as they do on the web: watching, chat, drawing together, cursors, following, **Remove**, **Make
+host** and the host's reload (see [Social](social.md)). This page covers what's different.
+
+## Downloading
+
+The app is on Phosphor's [GitHub Releases](https://github.com/jejacks0n/phosphor/releases) page:
+
+- **macOS**: the `.dmg` (or the `.zip`), for Apple silicon (`arm64`) or Intel (`x64`). It's signed and notarized, so
+  macOS opens it without a warning.
+- **Windows**: the installer (`.exe`), one for both x64 and Arm. It's signed.
+- **Linux**: the `.AppImage` or the `.deb`. These aren't signed.
+
+The app doesn't update itself. Download the next release when there is one. In a room, someone on a different version
+is told so: "They're on a newer Phosphor. Update to join." or "They're on an older Phosphor. They need to update
+before you can join."
+
+## Your name
+
+Out of a room, the **Social** tab in the side panel starts with **Your name**: the name others see in a room you host
+or join. It's kept on this computer, and you can change it there any time. Until there's one, **Join** and **Start a
+room** are off and say "Pick a name others will see first."
+
+Names aren't unique, since there are no accounts. When two people in a room go by the same name, each is followed
+by the start of their key's fingerprint, such as `ann #3f9a`, in the chat and the list of who's here.
+
+## Hosting
+
+Under **Host a room**, **Start a room** opens **Set up your room**, with:
+
+- **Room name** and **Welcome message**, as on the web.
+- **Password (optional)**: "Everyone joining types it in, and you still let each one in."
+- **Max watchers**: "Rooms stream directly from this computer. Up to 12 watchers suits most home connections."
+- **Port**: where others connect, **31337** to begin with. "Others join at this port. If it's taken, the next free
+  one is used." (up to 20 ports above it). The port you last hosted on is kept for next time.
+
+There's no public or link-only choice and no guests: a room is reached only by its address, and everyone in it chose a
+name. **Go live** opens the room on this computer. If it can't, you see "The room couldn't start on this computer.
+Try another port."
+
+### The addresses
+
+While you host, **Settings and stats** (in the room menu of the chat panel) lists the addresses others can join at,
+each with **Copy**: this computer's network addresses with the port, such as `192.168.1.20:31337`. A Tailscale address
+is marked **Tailscale**. With no network, it shows `127.0.0.1` and the port, and says "Only this computer can join.
+Connect to a network to share an address." Under them:
+
+- "Anyone who can reach this address can ask to join."
+- "Over the internet, forward port 31337 on your router." (with your room's port)
+- "The connection isn't encrypted."
+
+Which address to give:
+
+- **On the same network** (home, office, the same Wi-Fi): the first address listed.
+- **On Tailscale**: the address marked **Tailscale**, for anyone on your tailnet, wherever they are.
+- **Over the internet**: your router's public address and the port, after forwarding that port on your router to this
+  computer. Phosphor can't do this for you, and some networks don't allow it.
+
+### What your computer asks
+
+- **macOS** asks the first time Phosphor connects to another computer on your local network whether it may find and
+  connect to devices there, with Phosphor's reason: "Phosphor connects to rooms on your local network." Choose
+  **Allow**. If you didn't, turn Phosphor on in System Settings, Privacy & Security, Local Network.
+- **macOS's firewall**, when it's on, asks the first time you host whether Phosphor may accept incoming network
+  connections. Choose **Allow**, or no one else can reach your room.
+- **Windows** may ask the same in a Windows Security window the first time you host. Allow it on private networks.
+
+## Joining
+
+Under **Join a room**, type the **Address** the host gave you and press **Join**. It's the host's address with
+the port, such as `192.168.1.20:31337`, `my-mac.local` or a Tailscale address. Leave the port off when it's 31337.
+Before connecting, a typo is caught:
+
+- "Type the host's address."
+- "The port must be a number from 1 to 65535."
+- "An address looks like 192.168.1.20 or my-mac.local, with :port after it if the host chose one."
+
+And once it has tried:
+
+- "No Phosphor room answered at that address. Check it, and that the host's room is open."
+- "That isn't a Phosphor room." (something else answered there)
+- "Phosphor is there, but no room is open right now."
+
+A room with a password says "This room needs a password" and adds a **Password** field. Type it and press **Join**
+again. A wrong one is asked for again.
+
+### The host lets you in
+
+Every join is asked of the host. While they decide, you see "Waiting for the host to let you in." The host sees
+"ann wants to join" with **Turn away** and **Let in**, in the chat panel under who's here, and in **Settings and stats**. It
+counts as unread while the chat isn't showing, so a host on **LAYERS** or with the panel folded sees it too.
+
+- **Let in**: you're in. You stay let in for as long as the room lasts, so a reload or a dropped connection doesn't
+  ask the host again.
+- **Turn away**: "The host didn't let you in."
+- At most five people wait at once. Past that: "The host has too many people waiting. Try again in a moment."
+- **Max watchers** still applies.
+
+## The connection isn't encrypted
+
+Everything in a room (the art, the chat, the password) goes between the computers as it is, not encrypted. Someone who
+can watch the network between you could read it. On a home network you trust that matters little. On a shared one
+(a café, an office, the internet), it does. Tailscale encrypts what goes over it, so a Tailscale address is the
+safer one to share.
+
+The people you connect with see your IP address, and you see theirs. Host and Join both say so.
+
+## Changing hosts
+
+**Make host** works as on the web (see **When the host changes** in [Social](social.md)), with one more condition:
+when someone starts drawing, their app opens its own room service and the host's app checks it can reach it. Only an
+artist it reached can be made host, so **Make host** shows for them alone. Everyone then moves to the new host's
+address on their own. Anyone still waiting to be let in sees "The room moved to a new host before you were let in."
+Someone who can't reach the new host's address is told "The room moved to ann, and their
+address couldn't be reached." The host's app only checked that *it* could reach the new host: on one network or on
+Tailscale that holds for everyone; over the internet it may not.
+
+**Quitting the app while hosting** (closing the window quits it, on every platform) hands the room to the first
+connected artist who can be host, as **Make host** does, and waits for them to take it, up to about 16 seconds. With
+no one to hand it to, or no answer in time, the room ends. **End room** always ends it for everyone.
+
+## When the host goes away
+
+A room needs its host's app. If the host's computer sleeps, loses its network or the app stops, everyone waits about
+a minute for the host's address to answer again. If it does, the room carries on. If not, the room is over: "The host
+went away. You can try joining again later." No one takes over, since there's no server to decide who should.
+
+A reload of the host's window picks up where it was, as on the web. Quitting and opening the app again isn't a reload:
+the room is over, and people join the new one when the host starts it.
+
+## No Block and no reports
+
+There's no **Block** in the desktop app. Anyone can make a new name and key in a moment, so blocking one would stop
+no one. Letting people in is the gate instead: **Remove** takes someone out and forgets that you let them in, so
+coming back means asking you again, and you can **Turn away**.
+
+There's nothing to report to either: no one at Phosphor sees a desktop room.
+
+## Nothing goes to Phosphor
+
+The app has no account and no sign-in, and sends nothing to Phosphor: no lobby, no room list, no reports, no usage.
+It connects only to the rooms you host or join, at the addresses you give it. Its Privacy page says so: "This app
+sends nothing to Phosphor. In a room, the people you connect with see your IP address." Your drawings, name and
+settings stay on your computer.
+
+## Not in this version
+
+- Joining a desktop room from a browser, or a web room from the app.
+- Rooms without an address someone can reach: there's no relay, so behind a network that won't let connections in,
+  use Tailscale or forward the port.
+- A narrow window: rooms need a wider one, as on the web ("Rooms need a wider screen."). Widen the window.
+- Updating itself: download the next release.

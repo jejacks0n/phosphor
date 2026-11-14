@@ -3,6 +3,7 @@ node_modules
 /dist
 /dist-path
 /dist-desktop
+/release
 /dist-qa
 /qa-runs
 /.porpoise/
