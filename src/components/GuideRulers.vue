@@ -279,7 +279,7 @@ watchEffect(() => {
 div.guide-rulers {
   --guide: #22e3ff;   /* the guides, their ticks on the rulers and the label dragging one */
   position: fixed;   /* over the view whatever it's scrolled to, as the sharing overlay is */
-  z-index: 150;
+  z-index: 140;      /* over the art; under the Brush's circle (145) and others' cursors (150) */
   overflow: hidden;
   pointer-events: none;
 }
