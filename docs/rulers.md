@@ -10,6 +10,9 @@ choice) and a **Clear guides** button, which removes every guide on the drawing,
 edge too, and leaves the zero points where they are. With no guides it's grayed out. With Rulers off,
 the rulers and the guides are hidden, not lost.
 
+With Rulers on, **Opacity** fades the rulers (10–100%, remembered in this browser) so the art shows
+through them. The guides and the counts at the pointer stay solid.
+
 The top ruler counts columns and the left one counts rows. Ticks mark every character's edge, longer
 at every fifth and tenth from zero, with a number at zero and every tenth (zoomed out, every 20th,
 50th or 100th, so the numbers don't crowd). A purple label follows the pointer over the art with that

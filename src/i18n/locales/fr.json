@@ -432,6 +432,8 @@
       "title": "Main (panoramique)",
       "rulers": "Règles",
       "rulersTitle": "Règles le long du haut et de la gauche du dessin, et les repères",
+      "opacity": "Opacité",
+      "opacityTitle": "L'opacité des règles : les repères et les nombres au pointeur restent opaques",
       "clearGuides": "Effacer les repères",
       "clearGuidesTitle": "Supprimer tous les repères de ce dessin"
     },

@@ -432,6 +432,8 @@
       "title": "Hand (pan)",
       "rulers": "Rulers",
       "rulersTitle": "Rulers along the art's top and left, and the guides",
+      "opacity": "Opacity",
+      "opacityTitle": "How solid the rulers are: the guides and the counts at the pointer stay solid",
       "clearGuides": "Clear guides",
       "clearGuidesTitle": "Remove every guide on this drawing"
     },
