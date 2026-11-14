@@ -28,6 +28,10 @@ export const useWorkspaceStore = defineStore('workspace', {
     editBgColor: '#000000',
     editFgNone: false,
     editBgNone: true,
+    // A swatch's 256-color index when a lower index shares its color (16 and 231 are 0's and 15's black and white, fixed
+    // where those follow a terminal's theme), so what's drawn with it exports as it (edit cells' fgIndex, bgIndex).
+    editFgIndex: undefined,
+    editBgIndex: undefined,
     recentColors: useLocalStorage('phosphor.recentColors', []),
     ansiRenderer: useLocalStorage('phosphor.ansiRenderer', 'canvas'), // the ANSI view's renderer (trial): 'canvas' | 'dom'
     displayFont: useLocalStorage('phosphor.displayFont', 'jetbrains'), // the font the art is drawn in: an id in displayFonts.js, or a loaded font's
@@ -309,13 +313,15 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     // hex: choose that color (and clear the slot's none flag); null: set the slot to none.
     // remember: false while a native picker is being dragged, so only the final color is recent.
-    setColor(slot, hex, { remember = true } = {}) {
+    // index: the swatch's, when a lower index shares its color (sharedIndex); otherwise the color has none.
+    setColor(slot, hex, { remember = true, index } = {}) {
       const none = slot === 'fg' ? 'editFgNone' : 'editBgNone';
       if (hex === null) {
         this[none] = true;
         return;
       }
       this[slot === 'fg' ? 'editFgColor' : 'editBgColor'] = hex;
+      this[slot === 'fg' ? 'editFgIndex' : 'editBgIndex'] = index;
       this[none] = false;
       if (remember) this.rememberColor(hex);
     },
@@ -353,6 +359,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     swapColors() {
       [this.editFgColor, this.editBgColor] = [this.editBgColor, this.editFgColor];
       [this.editFgNone, this.editBgNone] = [this.editBgNone, this.editFgNone];
+      [this.editFgIndex, this.editBgIndex] = [this.editBgIndex, this.editFgIndex];
     },
     setEditZoom(z) {
       this.editZoom = clampZoom(z);
