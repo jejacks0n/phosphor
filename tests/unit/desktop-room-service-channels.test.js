@@ -162,10 +162,18 @@ test('addresses are probed and listed in artists-now\'s hostable', async () => {
   assert.deepEqual(await host.next(), { type: 'artists-now', subs: [ana.sub], hostable: { [ana.sub]: [address] } });
   sendJson(host, { type: 'artists', subs: [ana.sub, 'gone-sub'], tag: 5 });
   assert.deepEqual(await host.next(), { type: 'artists-now', subs: [ana.sub, 'gone-sub'], tag: 5, hostable: { [ana.sub]: [address] } });
+
+  // The same person on a new socket keeps them.
+  assert.equal((await (await joining(s, ana)).next()).type, 'joined');
+  assert.equal((await host.next()).type, 'peer-gone');
+  assert.equal((await host.next()).type, 'peer');
+  sendJson(host, { type: 'artists', subs: [ana.sub], tag: 6 });
+  assert.deepEqual((await host.next()).hostable, { [ana.sub]: [address] });
 });
 
 test('an address that doesn\'t answer is left out', async () => {
-  const s = await service({ probe: (address) => probeAddress(address, 200) });
+  const probed = [];
+  const s = await service({ probeEveryMs: 0, probe: (address) => probed.push(address) && probeAddress(address, 200) });
   const { ws: host } = await hosting(s, await person('Host'));
   const ana = await person();
   const { ws: guest } = await letIn(s, host, ana);
@@ -182,13 +190,38 @@ test('an address that doesn\'t answer is left out', async () => {
   await new Promise((resolve) => free.close(resolve));
   silent.on('connection', (socket) => opened.push(() => socket.destroy()));
 
-  const list = [refused, `127.0.0.1:${silent.address().port}`, `127.0.0.1:${liar.address().port}`, someoneElse, 'evil/x?y=1:80', good];
-  sendJson(guest, { type: 'addresses', list });
+  const unshaped = ['evil/x?y=1:80', 'my-mac.local:31337', '127.0.0.1:70000', '127.0.0.1:0', '300.0.0.1:80'];
+  const list = [refused, `127.0.0.1:${silent.address().port}`, `127.0.0.1:${liar.address().port}`, someoneElse, good];
+  sendJson(guest, { type: 'addresses', list: [...unshaped.slice(0, 3), ...list] });
   assert.deepEqual(await host.next(), { type: 'artists-now', subs: [], hostable: { [ana.sub]: [good] } });
+  assert.deepEqual(probed, list);   // only IPv4 with a port that can be one is tried
+  for (const address of unshaped) assert.equal(await probeAddress(address, 200), null);
 
-  // Past eight, the rest aren't tried.
+  // Past eight, the rest aren't tried; leaving drops what was found.
   sendJson(guest, { type: 'addresses', list: [...Array(8).fill(refused), good] });
   assert.deepEqual(await host.next(), { type: 'artists-now', subs: [], hostable: {} });
+  sendJson(guest, { type: 'addresses', list: [good] });
+  assert.deepEqual((await host.next()).hostable, { [ana.sub]: [good] });
+  guest.close();
+  assert.equal((await host.next()).type, 'peer-gone');
+  sendJson(host, { type: 'artists', subs: [], tag: 1 });
+  assert.deepEqual((await host.next()).hostable, {});
+});
+
+test('addresses sent again within ten seconds aren\'t probed again', async () => {
+  const probed = [];
+  const s = await service({ probe: (address) => probed.push(address) && probeAddress(address) });
+  const { ws: host } = await hosting(s, await person('Host'));
+  const ana = await person();
+  const { ws: guest } = await letIn(s, host, ana);
+  const good = await standbyFor(ana);
+  sendJson(guest, { type: 'addresses', list: [good] });
+  assert.deepEqual((await host.next()).hostable, { [ana.sub]: [good] });
+  for (let i = 0; i < 5; i++) sendJson(guest, { type: 'addresses', list: [good] });   // the round before is over
+  await wait(100);
+  sendJson(host, { type: 'artists', subs: [], tag: 1 });
+  assert.equal((await host.next()).tag, 1);   // no second artists-now came first
+  assert.deepEqual(probed, [good]);
 });
 
 test('hand-over names the artist with their addresses and closes every room socket', async () => {

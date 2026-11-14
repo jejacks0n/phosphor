@@ -28,7 +28,12 @@ const BACKED_UP_EVERY_MS = 20;
 const MOST_UNGREETED = 32;        // /room sockets open without a greeting yet
 const MOST_ADDRESSES = 8;
 const PROBE_WITHIN_MS = 3000;
-const ADDRESS = /^(\[[0-9a-f:.]+\]|[a-z0-9.-]+):\d{1,5}$/i;
+const PROBE_EVERY_MS = 10_000;     // a person's addresses are probed at most this often
+// An IPv4 address and port, as reachableAddresses gives them: no names for the host to look up.
+const isAddress = (a) => {
+  const m = typeof a === 'string' && /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}):(\d{1,5})$/.exec(a);
+  return !!m && m.slice(1, 5).every((n) => Number(n) <= 255) && Number(m[5]) >= 1 && Number(m[5]) <= 65535;
+};
 const FINAL = { refused: 1008, removed: 1000, ended: 1000, replaced: 1000 };   // messages after which the socket is closed
 
 export const isLoopback = (address) => /^(::ffff:)?127\.|^::1$/.test(address ?? '');
@@ -40,11 +45,17 @@ const same = (a, b) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 
-// Whose room service is at this address (`host:port`): the sub its probe answers with this nonce, or null.
+// Whose room service is at this address (`host:port`): the sub its probe answers with this nonce, or null. It never
+// rejects.
 export function probeAddress(address, withinMs = PROBE_WITHIN_MS) {
   const nonce = randomBytes(12).toString('base64url');
   return new Promise((resolve) => {
-    const ws = new WebSocket(`ws://${address}/probe?nonce=${nonce}`, { maxPayload: 1024, handshakeTimeout: withinMs });
+    let ws;
+    try {
+      ws = new WebSocket(`ws://${address}/probe?nonce=${nonce}`, { maxPayload: 1024, handshakeTimeout: withinMs });
+    } catch {
+      return resolve(null);   // not an address a socket can open
+    }
     const timer = setTimeout(() => done(null), withinMs);
     const done = (sub) => {
       clearTimeout(timer);
@@ -95,7 +106,7 @@ async function listen(server, port, tries, host) {
 
 export async function createRoomService({
   port = 31337, tries = 20, host = '0.0.0.0', mode = 'host', owner = {}, secret, now = Date.now, probe = probeAddress,
-  greetWithinMs = 10_000, pairWithinMs = 20_000,
+  greetWithinMs = 10_000, pairWithinMs = 20_000, probeEveryMs = PROBE_EVERY_MS,
 } = {}) {
   let room = null;              // { id, name, welcome, password, max, approved: Set, hostSub, hostName }
   const sockets = new Map();    // 'host', a peer or an ask -> its socket
@@ -103,7 +114,7 @@ export async function createRoomService({
   const waiting = new Map();    // ask -> { sub, name, pass }
   let artists = [];             // the subs the host holds as artists
   const hostable = new Map();   // sub -> the addresses their own service answered at
-  const probing = new Set();    // subs whose addresses are being probed
+  const probedAt = new Map();   // sub -> when its addresses were last probed
   const channels = new Map();   // peer -> { host, guest }: its channel's sockets, one side maybe still to come
   let made = 0;                 // peers and asks so far, for their ids
   let ungreeted = 0;            // /room sockets with no greeting yet
@@ -129,7 +140,10 @@ export async function createRoomService({
   const full = (sub) => watchers.size - [...watchers.values()].filter((w) => w.sub === sub).length >= room.max;
 
   const gone = (peer) => {
-    if (!watchers.delete(peer)) return;
+    const w = watchers.get(peer);
+    if (!w) return;
+    watchers.delete(peer);
+    hostable.delete(w.sub);
     dropChannel(peer);
     send('host', { type: 'peer-gone', peer });
     const ws = sockets.get(peer);
@@ -157,11 +171,13 @@ export async function createRoomService({
   // In, as a watcher: an older socket of the same sub is replaced.
   const admit = (ws, { sub, name, pass }) => {
     if (full(sub)) return reply(ws, refused('full'));
+    const where = hostable.get(sub);   // the same person on a new socket hasn't left
     for (const [peer, w] of watchers) {
       if (w.sub !== sub) continue;
       send(peer, { type: 'replaced' });
       gone(peer);
     }
+    if (where) hostable.set(sub, where);
     const peer = `p_${++made}`, token = randomBytes(16).toString('base64url');
     watchers.set(peer, { sub, name, pass, token });
     sockets.set(peer, ws);
@@ -255,12 +271,11 @@ export async function createRoomService({
 
   // An artist's addresses, kept if their own service answers there as them. The host hears it unasked.
   const probeFor = async (sub, list) => {
-    if (!Array.isArray(list) || probing.has(sub)) return;   // ponytail: one round at a time per person; a list sent meanwhile is dropped
-    const tried = list.slice(0, MOST_ADDRESSES).filter((a) => typeof a === 'string' && ADDRESS.test(a));
+    if (!Array.isArray(list) || Date.now() - (probedAt.get(sub) ?? -Infinity) < probeEveryMs) return;   // a list sent sooner is dropped
+    const tried = list.slice(0, MOST_ADDRESSES).filter(isAddress);
     const at = room;
-    probing.add(sub);
+    probedAt.set(sub, Date.now());
     const answers = await Promise.all(tried.map((a) => probe(a).catch(() => null)));
-    probing.delete(sub);
     if (room !== at) return;
     const kept = tried.filter((a, i) => answers[i] === sub);
     if (kept.length) hostable.set(sub, kept);
@@ -293,6 +308,7 @@ export async function createRoomService({
         const w = watchers.get(msg.peer);
         if (!w) return;
         watchers.delete(msg.peer);
+        hostable.delete(w.sub);
         dropChannel(msg.peer);
         room.approved.delete(w.sub);
         return send(msg.peer, { type: 'removed' });

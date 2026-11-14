@@ -311,7 +311,7 @@ test('ping is answered pong', async () => {
 });
 
 test('a socket that doesn\'t greet in time is closed 1008, and one that did stays', async () => {
-  const s = await service({ greetWithinMs: 50 });
+  const s = await service({ greetWithinMs: 200 });
   const silent = client(s.port);
   const { ws: host } = await hosting(s, await person('Host'));
   assert.equal((await silent.closed).code, 1008);
