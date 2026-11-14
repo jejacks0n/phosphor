@@ -242,3 +242,13 @@ test('in a real view the Brush and Eraser circle draws over the rulers, which st
   expect(z('.tool-preview')).toBeGreaterThan(z('.guide-rulers'));
   expect(z('.guide-rulers')).toBeLessThan(150);   // the room's layer (others' cursors, the pause) is 150
 });
+
+test('Ruler opacity fades the rulers and their corner, not the guides or the labels', async () => {
+  const { workspace } = await mount();
+  workspace.addGuide('v', 3);
+  workspace.rulerOpacity = 40;
+  await nextTick();
+  const opacity = (selector) => getComputedStyle(root.querySelector(selector)).opacity;
+  expect([opacity('canvas.ruler.top'), opacity('canvas.ruler.left'), opacity('.ruler-corner')]).toEqual(['0.4', '0.4', '0.4']);
+  expect(opacity('.guide.v')).toBe('1');
+});

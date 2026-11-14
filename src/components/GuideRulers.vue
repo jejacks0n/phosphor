@@ -242,7 +242,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div v-if="workspace.rulers" ref="overlay" class="guide-rulers" :class="{ hand: isHand }" :style="box">
+  <div v-if="workspace.rulers" ref="overlay" class="guide-rulers" :class="{ hand: isHand }" :style="[box, { '--ruler-opacity': workspace.rulerOpacity / 100 }]">
     <div
         v-for="g in lines"
         :key="g.index ?? 'new'"
@@ -284,6 +284,9 @@ div.guide-rulers {
   pointer-events: none;
 }
 
+canvas.ruler, div.ruler-corner {
+  opacity: var(--ruler-opacity, 1);   /* Ruler opacity, on the Hand's row */
+}
 canvas.ruler, div.ruler-corner, div.guide {
   position: absolute;
   display: block;

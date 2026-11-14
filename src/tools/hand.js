@@ -9,6 +9,7 @@ export default {
   views: ['input', 'output', 'vector'],
   options: [
     { key: 'rulers', type: 'checkbox', get label() { return t('tools.hand.rulers'); }, get title() { return t('tools.hand.rulersTitle'); } },
+    { key: 'rulerOpacity', get label() { return t('tools.hand.opacity'); }, get title() { return t('tools.hand.opacityTitle'); }, min: 10, max: 100, unit: '%', when: (workspace) => workspace.rulers },
   ],
   kind: 'navigate',
   section: 'navigate',
