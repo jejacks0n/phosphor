@@ -454,6 +454,6 @@ div.tool-preview {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   box-shadow: 0 0 0 1px var(--black), inset 0 0 0 1px var(--black);
-  z-index: 100;
+  z-index: 145;   /* the pointer's own: over the rulers (140) */
 }
 </style>

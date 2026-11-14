@@ -7,6 +7,7 @@ import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import GuideRulers from '@/components/GuideRulers.vue';
+import InputEditor from '@/components/InputEditor.vue';
 
 let app = null, root = null;
 afterEach(() => {
@@ -226,4 +227,18 @@ test('zero dragged to an edge reads before the first column or after the last', 
   expect(await pill(at.left + 199)).toBe('0 after column 20');
   pointer(window, 'pointerup', at.left + 199, 10);
   expect(workspace.rulerZero.x).toBe(20);
+});
+
+test('in a real view the Brush and Eraser circle draws over the rulers, which stay under others\' cursors', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  workspace.rulers = true;
+  root = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 400px; height: 300px' });
+  document.body.append(root);
+  app = createApp({ render: () => h(InputEditor) }).use(getActivePinia()).use(i18n);
+  app.mount(root);
+  await nextTick();
+  const z = (selector) => Number(getComputedStyle(root.querySelector(selector)).zIndex);
+  expect(z('.tool-preview')).toBeGreaterThan(z('.guide-rulers'));
+  expect(z('.guide-rulers')).toBeLessThan(150);   // the room's layer (others' cursors, the pause) is 150
 });
