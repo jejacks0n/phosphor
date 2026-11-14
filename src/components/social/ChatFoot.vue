@@ -14,6 +14,7 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 // known) it holds a blank line's space, so the panel doesn't jump and "Confirm your email" doesn't flash.
 // A silenced person gets a notice of until when in place of the box, and the box back (its text kept) when the
 // silence ends: a minute-by-minute clock, as a silence can be longer than a timeout can wait.
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';   // no account: your name is changed on the start page, out of a room
 const { t } = useI18n();
 const room = useRoomStore(), social = useSocialStore();
 
@@ -82,8 +83,8 @@ function signOut() { social.signOut(); }
     <form v-else-if="room.canChat" @submit.prevent="send">
       <div class="box">
         <span class="who-am-i">
-          [ <UserName :name="social.myName" /> ]
-          <DropdownMenu class="account-menu" :label="t('common.actions')" align="left" up>
+          [ <UserName :name="social.myName" :sub="social.claims?.sub" /> ]
+          <DropdownMenu v-if="!DESKTOP" class="account-menu" :label="t('common.actions')" align="left" up>
             <template #trigger>…</template>
             <button @click="editAccount">{{ t('social.lobby.editAccount') }}</button>
             <button @click="signOut">{{ t('social.lobby.signOut') }}</button>

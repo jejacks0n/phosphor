@@ -7,7 +7,7 @@ import { proof, sign } from '@/social/keys';
 import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
 import { roomAwayWords, hostReplacedWords, artNotOpenedWords, goingBackFailedWords, newHostWords, refusalWords, joinWords, versionWords, hostGoneWords, movedUnreachableWords } from '@/social/messages';
-import { parseAddress } from '@/social/address';
+import { parseAddress, DEFAULT_PORT } from '@/social/address';
 import { decodePass, passKey } from '@/social/pass';
 import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { forgetHostingRecord, holdHostingTab, hostingTabsGone, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
@@ -174,7 +174,7 @@ const deletedRow = ({ id, ts }) => ({ id, ts, text: '', pass: null, sig: null, s
 
 // What's open, as a room's picture.
 const artOf = (project, workspace) => ({ cells: project.cells, cols: project.cols, lines: charRowsOf(project.rows), font: fontOnWire(workspace.displayFontSpec) });
-const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null });
+const newStartDraft = () => ({ name: '', welcome: '', isPublic: true, password: '', allowGuests: true, max: 12, signal: null, ...(DESKTOP ? { port: keptPort() ?? DEFAULT_PORT } : {}) });
 const newSettingsDraft = () => ({ welcome: '', allowGuests: true, max: 12, signal: null, seen: {} });
 
 // A host's side of a room, as no one has it: what becomeArtist leaves behind.
@@ -327,6 +327,16 @@ export const useRoomStore = defineStore('room', {
 
     // Whether this artist could take the room over: on desktop, only one whose own room service answered.
     canBeHost: (state) => (sub) => !DESKTOP || !!state.hostable[sub]?.length,
+
+    // The names more than one person here goes by (you, the host, the watchers, the artists, who spoke): on desktop
+    // anyone can pick any name, so these are told apart by their sub (UserName).
+    sameNames() {
+      const drawing = useDrawingStore(), subs = new Map();
+      const people = [useSocialStore().claims, { sub: this.room?.hostSub, name: this.room?.host }, ...this.watchers, ...this.chat,
+        ...Object.entries(drawing.artistNames).map(([sub, name]) => ({ sub, name }))];
+      for (const { sub, name } of people.filter(Boolean)) if (sub && name) subs.set(name, (subs.get(name) ?? new Set()).add(sub));
+      return new Set([...subs].filter(([, held]) => held.size > 1).map(([name]) => name));
+    },
 
     // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.
     lobbyPlace() {

@@ -145,7 +145,7 @@ onBeforeUnmount(() => clearInterval(tick));
       <h3 class="here">{{ t('social.lobby.inLobby') }} <span class="count">{{ here }}</span></h3>
       <ul :aria-label="t('social.lobby.inLobby')">
         <li v-for="person in social.people" :key="person.sub" :class="{ me: person.sub === social.claims?.sub }">
-          <UserName class="name" :name="person.name">{{ person.sub === social.claims?.sub ? t('social.chat.youSuffix') : '' }}</UserName>
+          <UserName class="name" :name="person.name" :sub="person.sub">{{ person.sub === social.claims?.sub ? t('social.chat.youSuffix') : '' }}</UserName>
           <span v-if="person.guest" class="what">{{ t('common.guest') }}</span>
         </li>
       </ul>

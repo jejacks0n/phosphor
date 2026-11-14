@@ -11,11 +11,12 @@ import MakeHostDialog from './MakeHostDialog.vue';
 
 // Who is here, under the host's chat header: "N here" (those connected), folded or open for as long as
 // the room lasts. The list is every watcher, one still connecting too. A member's ⋯ menu: Make artist (then
-// Withdraw invitation, or Back to watching and, while connected, Make host, which asks first), Remove for this
-// session, Block from my rooms, which asks first, and Report (when you may report, and haven't reported them in this room). Cancel (or Escape) puts
+// Withdraw invitation, or Back to watching and, while connected, Make host (on desktop, once their own room service answered), which asks first), Remove for this
+// session, Block from my rooms, which asks first (not on desktop), and Report (when you may report, and haven't reported them in this room). Cancel (or Escape) puts
 // focus back on the ⋯ button the menu came from, or on the "N here" button when that member has left.
 // A watcher's is a list of who to follow, when there's more than the host: Follow on each row (pressed for the one
 // followed), and Show everyone and Show box under it. Nothing shows while the host is the only one to follow.
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';   // no Block: Remove is all there is
 const { t } = useI18n();
 const room = useRoomStore(), drawing = useDrawingStore();
 
@@ -63,7 +64,7 @@ const confirmBlock = async () => {
     </button>
     <ul v-if="room.peopleOpen" :aria-label="t('social.people.whoIsHereAria')">
       <li v-for="watcher in room.watchers" :key="watcher.peer">
-        <UserName class="name" :name="watcher.name" />
+        <UserName class="name" :name="watcher.name" :sub="watcher.sub" />
         <span v-if="watcher.guest" class="tag">{{ t('common.guest') }}</span>
         <span v-else-if="room.muted.includes(watcher.sub)" class="tag">{{ t('common.muted') }}</span>
         <span v-if="drawing.artists.includes(watcher.sub)" class="tag">{{ t('common.artist') }}</span>
@@ -75,14 +76,14 @@ const confirmBlock = async () => {
         </DropdownMenu>
         <DropdownMenu v-else-if="!watcher.guest" :label="t('social.people.moreFor', { name: watcher.name })">
           <template #trigger><span aria-hidden="true">⋯</span></template>
-          <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected" :disabled="drawing.paused" :title="drawing.paused ? t('social.people.notWhilePaused') : undefined" @click="askToMakeHost(watcher, $event)">{{ t('social.people.makeHost') }}</button>
+          <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected && room.canBeHost(watcher.sub)" :disabled="drawing.paused" :title="drawing.paused ? t('social.people.notWhilePaused') : undefined" @click="askToMakeHost(watcher, $event)">{{ t('social.people.makeHost') }}</button>
           <button v-if="drawing.artists.includes(watcher.sub)" @click="drawing.backToWatching(watcher.sub)">{{ t('social.people.backToWatching') }}</button>
           <button v-else-if="drawing.invited.includes(watcher.sub)" @click="drawing.withdraw(watcher.sub)">{{ t('social.people.withdrawInvitation') }}</button>
           <button v-else-if="watcher.connected" :disabled="!!drawing.artistsFull" :title="drawing.artistsFull ?? undefined" @click="drawing.invite(watcher.sub)">{{ t('social.people.makeArtist') }}</button>
           <button @click="room.remove(watcher.peer)">{{ t('social.people.kickSession') }}</button>
           <button v-if="room.muted.includes(watcher.sub)" @click="room.mute(watcher.sub, false)">{{ t('social.people.unmute') }}</button>
           <button v-else :title="t('social.people.muteTitle')" @click="room.mute(watcher.sub, true)">{{ t('social.people.mute') }}</button>
-          <button @click="askToBlock(watcher, $event)">{{ t('social.people.blockFuture') }}</button>
+          <button v-if="!DESKTOP" @click="askToBlock(watcher, $event)">{{ t('social.people.blockFuture') }}</button>
           <button v-if="room.canReport && !room.reported.includes(watcher.sub)" @click="askToReport(watcher, $event)">{{ t('social.people.report') }}</button>
         </DropdownMenu>
       </li>
@@ -101,7 +102,7 @@ const confirmBlock = async () => {
   <section v-else-if="room.canFollow" class="people follow">
     <ul :aria-label="t('social.people.whoToFollowAria')">
       <li v-for="person in room.followable" :key="person.sub">
-        <UserName class="name" :name="person.name" />
+        <UserName class="name" :name="person.name" :sub="person.sub" />
         <span v-if="person.host" class="tag">{{ t('common.host') }}</span>
         <button
             class="link follow-person"

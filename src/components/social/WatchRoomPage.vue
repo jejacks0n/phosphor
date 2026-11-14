@@ -19,7 +19,7 @@ const { t } = useI18n();
 const statusWords = computed(() => ({
   joining: t('social.watch.joining'),
   connecting: t('social.watch.joining'),
-  waiting: t('social.watch.waiting'),
+  waiting: import.meta.env.VITE_DESKTOP === '1' ? t('social.watch.waitingToBeLetIn') : t('social.watch.waiting'),   // on desktop every join waits for the host's yes
   password: t('social.watch.needsPassword'),
   failed: t('social.watch.failed'),
 }));
