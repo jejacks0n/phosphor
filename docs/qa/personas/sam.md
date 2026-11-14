@@ -168,8 +168,9 @@ status bar's Col and Row as the cursor crosses wide characters, and try the Eras
 
 ### 12. Export .utf8ans
 - Does: presses Export .utf8ans and saves under the offered name.
-- Expects: the name is the document's with the date and time; it saves within the `file` budget; nothing is listed to
-  replace (every character is kept).
+- Expects: the name is the document's with the date and time; it saves within the `file` budget; nothing of the art is
+  listed to replace (every character is kept); a SAUCE character CP437 lacks (the probe's emoji in Author) is, with
+  its field, since SAUCE is CP437 in every ANSI file.
 - Probes: `again`: export twice and check the names differ; `back-out`: Escape from the dialog, then Cmd+S (the project
   dialog, not this one).
 - Rated: yes, wants a key for Export .utf8ans
@@ -185,7 +186,7 @@ status bar's Col and Row as the cursor crosses wide characters, and try the Eras
 - Does: presses Export .ans.
 - Expects: the dialog lists each character CP437 lacks (`漢`, `字`, `😀` and the rest), what it becomes and how many
   cells use it, with "Export as .utf8ans to keep exact characters."; a two-column character becomes its stand-in plus a
-  space, so the grid still lines up.
+  space, so the grid still lines up; an emoji still in Author is listed under it, in the SAUCE list.
 - Probes: `back-out`: read the list, press Cancel, and check nothing downloaded; `again`: export after removing every
   wide character (nothing listed).
 - Rated: yes, wants a key for Export .ans

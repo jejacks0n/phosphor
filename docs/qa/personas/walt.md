@@ -177,7 +177,8 @@ bytes of the original and the export outside the art.
 
 ### 13. Author and Group at 20
 - Does: types 25 characters into Author and Group each, with a CP437 accent and a character CP437 lacks.
-- Expects: each stops at 20, with 20 / 20 beside it and a line naming what didn't fit; on export a character CP437 lacks is written as its stand-in or `?`.
+- Expects: each stops at 20, with 20 / 20 beside it and a line naming what didn't fit; on export a character CP437 lacks is written as its stand-in or `?`,
+  and the Export dialog lists it first, with what it becomes and the fields it's in.
 - Probes: `undo-redo`: Cmd+Z in the field undoes his typing there; then outside it, Cmd+Z, and see what it undoes;
   `interrupt`: reload and check the fields came back.
 - Rated: yes, wants Tab between the fields
@@ -196,7 +197,7 @@ bytes of the original and the export outside the art.
 - Rated: yes, wants a key for Export .ans
 
 **Free time:** he'd look for the SAUCE date and font fields, clear every field and export (an empty SAUCE), compare
-SAUCE in a .utf8ans export, and check SAUCE's help text.
+SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's help text.
 
 ## Autosave, Versions, Back and Forward
 

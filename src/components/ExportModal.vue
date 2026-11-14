@@ -6,6 +6,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { charRowsOf } from '@/lib/Cells';
+import { sauceUnmappable } from '@/lib/Sauce';
 import { fileStem, timestamped } from '@/document/projectIO';
 
 // All export formats in one modal: ANS, UTF-8 ANS, PNG (Still), GIF, Animated ANS, Animated UTF-8
@@ -45,6 +46,11 @@ watch(selectedId, (id) => {
     if (selectedId.value === id) replacements.value = listed((function* all() { for (const cells of frames) yield* cells; })());
   });
 }, { immediate: true });
+
+// Every ANSI format writes a SAUCE record, in CP437 whatever the art is in: the characters of it CP437 lacks, as the
+// export writes it, and the fields each is in.
+const SAUCE_FORMATS = ['ans', 'utf8ans', 'ansimation', 'utf8ansimation'];
+const sauceReplacements = computed(() => (SAUCE_FORMATS.includes(selectedId.value) ? sauceUnmappable(project.sauceFields()) : []));
 
 function pickFormat(id) {
   selectedId.value = id;
@@ -143,6 +149,20 @@ function cancel() {
             </li>
           </ul>
           <p class="note">{{ t('save.keepHint') }}</p>
+        </template>
+
+        <!-- Every ANSI format: SAUCE's characters it replaces -->
+        <template v-if="sauceReplacements.length">
+          <p class="note">{{ t('save.sauceNote', { count: sauceReplacements.length }, sauceReplacements.length) }}</p>
+          <ul class="replacements" :aria-label="t('save.sauceReplacementsAria')" tabindex="0">
+            <li v-for="r in sauceReplacements" :key="r.char">
+              <span class="char">{{ r.char }}</span>
+              <span class="arrow" :aria-label="t('save.becomesAria')">→</span>
+              <span class="char">{{ r.as }}</span>
+              <span class="count">{{ r.fields.map((field) => t(`sauce.${field}`)).join(', ') }}</span>
+            </li>
+          </ul>
+          <p class="note">{{ t('save.sauceHint') }}</p>
         </template>
 
         <p v-if="problem" class="note problem" role="alert">{{ problem }}</p>
@@ -315,6 +335,7 @@ ul.replacements:focus-visible {
 }
 ul.replacements li {
   display: flex;
+  flex-wrap: wrap;   /* SAUCE's field names go under the row before they push it wider */
   align-items: center;
   gap: 10px;
   padding: 3px 12px;

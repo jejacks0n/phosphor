@@ -2,7 +2,8 @@
 // what an edit that runs past a field's width leaves out, named rather than dropped.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { charCount, fitField } from '../../src/lib/Sauce.js';
+import { AnsiFile } from '../../src/lib/AnsiFile.js';
+import { charCount, fitField, readSauce, sauceUnmappable } from '../../src/lib/Sauce.js';
 
 test('a character is one place, an emoji included', () => {
   assert.equal(charCount('Café € 🎨'), 8);
@@ -34,4 +35,34 @@ test('what fits, and a deletion, go through as they are', () => {
 test('an emoji next to one that shares its first half isn\'t split', () => {
   // 🎨 and 🎭 share a high surrogate: the edit starts at the emoji, not inside it.
   assert.deepEqual(fitField('ab🎨', 'ab🎭🎨', 4, 3), { text: 'ab🎨', caret: 2, left: '🎭', stripped: false });
+});
+
+const WALT = { title: 'Restored by Walt', author: 'Wélt Kowałski €96 re', group: 'Ïmpure Łodz Crew €XY', comments: [] };
+
+test('the characters SAUCE can\'t hold in CP437 are listed in field order, each with what it becomes and its fields', () => {
+  assert.deepEqual(sauceUnmappable(WALT), [
+    { char: 'ł', as: '?', fields: ['author'] },
+    { char: '€', as: '?', fields: ['author', 'group'] },
+    { char: 'Ï', as: '?', fields: ['group'] },
+    { char: 'Ł', as: '?', fields: ['group'] },
+  ]);
+  assert.deepEqual(sauceUnmappable({ title: 'a → b', comments: ['🎨 here'] }), [
+    { char: '→', as: '>', fields: ['title'] }, // a lookalike, as the art's list gives
+    { char: '🎨', as: '?', fields: ['comments'] },
+  ]);
+  assert.deepEqual(sauceUnmappable({ title: 'Plain é', author: '', group: '', comments: ['fine'] }), []);
+});
+
+test('only what reaches the record is listed: past a field\'s width, or past the 255th comment line, nothing is', () => {
+  assert.deepEqual(sauceUnmappable({ title: `${'x'.repeat(35)}€`, comments: [...Array(255).fill('ok'), 'ł'] }), []);
+  assert.deepEqual(sauceUnmappable({ title: `${'x'.repeat(34)}€` }).map(({ char }) => char), ['€']);
+});
+
+test('what the list says a character becomes is what the file holds', async () => {
+  const W = { r: 255, g: 255, b: 255, hex: '#ffffff', c: [255, 255, 255] };
+  const bytes = new Uint8Array(await new AnsiFile(1, 1, [{ char: 'A', fg: W, bg: W }]).toBlob({ sauce: WALT }).arrayBuffer());
+  const read = readSauce(bytes);
+  let { author, group } = WALT;
+  for (const { char, as } of sauceUnmappable(WALT)) [author, group] = [author, group].map((text) => text.replaceAll(char, as));
+  assert.deepEqual([read.author, read.group], [author, group]);
 });
