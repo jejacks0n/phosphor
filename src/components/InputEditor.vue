@@ -39,7 +39,7 @@ const shownFrame = () => {
   return { cells: projectStore.shownCells, maps: projectStore.shownLayers.filter((layer, at) => at && layer.kind === 'cells').map((layer) => projectStore.cellsOf(layer.id)) };
 };
 const sameMaps = (a, b) => a.length === b.length && a.every((map, i) => map === b[i]);
-const overlay = { canvas: null, image: null, cells: null, maps: [], edited: new Set(), all: null, cols: 0, rows: 0, empty: true };
+const overlay = { canvas: null, image: null, cells: null, maps: [], edited: null, all: null, cols: 0, rows: 0, empty: true };
 const updateOverlay = () => {
   const { cols, rows } = projectStore;
   const { cells, maps } = shownFrame();
@@ -48,9 +48,9 @@ const updateOverlay = () => {
   const picture = !workspaceStore.playing && cells !== projectStore.cells && projectStore._ghost.built, plain = projectStore.cells;
   const ghost = (i) => plain[i] !== cells[i] && projectStore._ghost.picture.has(i) && picture.editCells.has(cellKey(i % cols, Math.floor(i / cols)));
 
-  // The layers' cells, by index (only those in the grid).
-  let edited = overlay.edited;
-  if (!sameMaps(maps, overlay.maps) || cols !== overlay.cols || rows !== overlay.rows) { // indexes are by the grid's width
+  // The layers' cells, by index (only those in the grid); none asked for while All cells shows every cell (a file's 500k).
+  let edited = all ? null : overlay.edited;
+  if (!all && (!edited || !sameMaps(maps, overlay.maps) || cols !== overlay.cols || rows !== overlay.rows)) { // indexes are by the grid's width
     edited = new Set();
     for (const map of maps) {
       for (const key of map.keys()) {
