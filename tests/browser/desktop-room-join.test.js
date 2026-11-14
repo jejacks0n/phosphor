@@ -81,7 +81,7 @@ test('joinAddress: an answer that isn\'t info says not-phosphor', async () => {
   joining = room.joinAddress(ADDRESS);
   (await lastSocket(3)).serverClose();
   expect(await joining).toBe(false);
-  expect(social.notice).toMatch(/^Nothing answered/);
+  expect(social.notice).toMatch(/^No Phosphor room answered/);
 
   // Quiet for 5 s.
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -89,7 +89,7 @@ test('joinAddress: an answer that isn\'t info says not-phosphor', async () => {
   socket = await lastSocket(4);
   vi.advanceTimersByTime(5000);
   expect(await joining).toBe(false);
-  expect(social.notice).toMatch(/^Nothing answered/);
+  expect(social.notice).toMatch(/^No Phosphor room answered/);
   expect(socket.closed).toBe(true);
   vi.useRealTimers();
 
@@ -185,9 +185,13 @@ test('a host gone past RETURN_WITHIN_MS closes with the host-gone words', async 
   socket.serverClose();
   vi.advanceTimersByTime(RETURN_WITHIN_MS - 1);
   expect(room.role).toBe('watch');
+  const connection = room._connection, made = sockets.length;
   vi.advanceTimersByTime(1);
   expect(room.role).toBe(null);
   expect(social.notice).toBe('The host went away. You can try joining again later.');
+  expect(connection.status).toBe('closed');   // no retries left to join again later, unasked
+  vi.advanceTimersByTime(RETURN_WITHIN_MS);
+  expect(sockets).toHaveLength(made);
 });
 
 test('turned-away and busy refusals show their words', async () => {

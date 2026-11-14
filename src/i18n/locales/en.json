@@ -1591,9 +1591,9 @@
       "join": {
         "empty": "Type the host's address.",
         "badPort": "The port must be a number from 1 to 65535.",
-        "badHost": "That isn't an address. It looks like 192.168.1.20 or my-mac.local, with :port after it if the host chose one.",
+        "badHost": "An address looks like 192.168.1.20 or my-mac.local, with :port after it if the host chose one.",
         "notPhosphor": "That isn't a Phosphor room.",
-        "unreachable": "Nothing answered at that address. Check it, and that the host's room is open.",
+        "unreachable": "No Phosphor room answered at that address. Check it, and that the host's room is open.",
         "noRoom": "Phosphor is there, but no room is open right now.",
         "newer": "They're on a newer Phosphor. Update to join.",
         "older": "They're on an older Phosphor. They need to update before you can join."
