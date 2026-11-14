@@ -17,7 +17,7 @@ import { snapCursor } from '@/document/wideChars';
 import { isArtFile } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { withShape } from '@/document/shapes.js';
-import { pickedFrom } from '@/store/project/reading.js';
+import { pickedFrom, pickedIndexes } from '@/store/project/reading.js';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -118,8 +118,9 @@ function pickAt(pos, event) {
   const bg = projectStore.renderStyle === 'colorAscii' && !ownBg ? null : under.bg;
   // For the status bar: what this pick read, and which layer each color came from.
   workspaceStore.lastPick = { col: cell.col, row: cell.row, fg: under.fg, bg, fgFrom, bgFrom };
-  if (mode === 'fg' || mode === 'both') workspaceStore.pickColor('fg', under.fg);
-  if (mode === 'bg' || mode === 'both') workspaceStore.pickColor('bg', bg);
+  const { fgIndex, bgIndex } = pickedIndexes(projectStore, cell.col, cell.row); // a 16 or 231 is picked as itself
+  if (mode === 'fg' || mode === 'both') workspaceStore.pickColor('fg', under.fg, fgIndex);
+  if (mode === 'bg' || mode === 'both') workspaceStore.pickColor('bg', bg, bgIndex);
 }
 
 // Brush/eraser outline under the pointer, or the character cell for cell tools.

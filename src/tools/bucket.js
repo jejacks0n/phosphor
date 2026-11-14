@@ -58,7 +58,7 @@ const fillsCells = (workspace, view) => view === 'output' && workspace.bucketFil
 function fillSolid({ project, workspace, view }, pos) {
   if (fillsCells(workspace, view)) {
     const set = workspace.bucketSet, colors = workspace.typingAttrs();
-    const attrs = { ...(set.fg ? { fg: colors.fg } : {}), ...(set.bg ? { bg: colors.bg } : {}), ...(set.char ? { char: workspace.activeChar } : {}) };
+    const attrs = { ...(set.fg ? { fg: colors.fg, fgIndex: colors.fgIndex } : {}), ...(set.bg ? { bg: colors.bg, bgIndex: colors.bgIndex } : {}), ...(set.char ? { char: workspace.activeChar } : {}) };
     project.writeEditCells(cellArea(project, workspace, pos).map(({ x, y }) => ({ col: x, row: y, attrs })), { clearPaint: true });
   } else {
     project.paintStroke(pixelArea(project, workspace, pos));
@@ -72,7 +72,8 @@ function fillSolid({ project, workspace, view }, pos) {
 function fillGradient({ project, workspace, view }, from, to) {
   const shape = workspace.bucketGradient, fg = workspace.editFgColor, bg = workspace.editBgColor;
   if (fillsCells(workspace, view)) {
-    const cells = cellArea(project, workspace, from).map(({ x, y }) => ({ col: x, row: y, attrs: { char: blendChar(shape, from, to, x, y), fg, bg } }));
+    const { editFgIndex: fgIndex, editBgIndex: bgIndex } = workspace;
+    const cells = cellArea(project, workspace, from).map(({ x, y }) => ({ col: x, row: y, attrs: { char: blendChar(shape, from, to, x, y), fg, bg, fgIndex, bgIndex } }));
     project.writeEditCells(cells, { clearPaint: true });
   } else {
     const f = hex2rgb(fg), b = hex2rgb(bg);
