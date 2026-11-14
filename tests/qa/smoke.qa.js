@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test, expect } from '@playwright/test';
 import { DEVICES, drawTraits } from './setup.js';
-import { PAGE_ERRORS_KEPT, makeQa, newRun, qaContext, renderer } from './qa.js';
+import { PAGE_ERRORS_KEPT, buildDesktop, makeQa, newRun, qaApp, qaContext, renderer } from './qa.js';
 import { keyboardScore } from './score.js';
 
 const runDirs = [];
@@ -193,4 +193,28 @@ test('qa.finding refuses a shot that isn\'t in the run folder', async ({ browser
   expect(() => finding('shots/999-made-up.png')).toThrow('shots/999-made-up.png');
   expect(finding(await qa.shot('real'))).toBe('F1');
   await context.close();
+});
+
+test('a run drawn the desktop app opens the desktop build in Electron at the device\'s size, in its language, counting keys', async () => {
+  test.setTimeout(180_000); // the desktop build first
+  const traits = drawTraits('maya', 18);
+  expect([traits.desktopApp, traits.device, traits.language]).toEqual([true, 'laptop', 'fr']);
+  buildDesktop();
+  const runDir = mkdtempSync(join(tmpdir(), 'phosphor-qa-smoke-'));
+  const userData = mkdtempSync(join(tmpdir(), 'phosphor-qa-app-'));
+  runDirs.push(runDir, userData);
+  const { app, context, page } = await qaApp(traits, userData);
+  try {
+    const qa = await makeQa({ context, runDir, run: newRun(traits) });
+    await page.reload();
+    const { width, height } = DEVICES.laptop;
+    expect(await page.evaluate(() => [innerWidth, innerHeight, location.protocol, !!window.phosphorDesktop])).toEqual([width, height, 'app:', true]);
+    expect(await page.evaluate(() => [localStorage.getItem('phosphor.locale'), document.documentElement.lang])).toEqual(['fr', 'fr']);
+    qa.step('press');
+    await page.keyboard.press('x');
+    await flush(page);
+    expect(qa.run.steps.at(-1).events.keys).toBe(1);
+  } finally {
+    await app.close();
+  }
 });

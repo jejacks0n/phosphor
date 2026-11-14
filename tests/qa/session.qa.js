@@ -1,20 +1,21 @@
-// A QA session: one person's browser, kept open while an agent drops snippets into the run's inbox (with
+// A QA session: one person's browser (or the desktop app, for a run drawn it), kept open while an agent drops snippets into the run's inbox (with
 // `npm run qa:send`) and reads what each did from its outbox. Start it with
 // `QA_PERSONA=<name> [QA_SEED=<n>] [QA_RUN_DIR=<folder>] npm run qa`, in the background;
 // `npm run qa:send -- <name> --end` writes report.md and ends it.
 import { execFileSync } from 'node:child_process';
-import { readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import * as e2e from '../e2e/support.js';
 import * as social from '../e2e/social-support.js';
+import * as desktop from '../e2e/desktop-support.js';
 import * as files from './files.js';
 import * as terminal from './terminal.js';
 import { drawTraits, makeRunDir, runSnippet } from './setup.js';
 import { safeReport } from './report.js';
-import { makeQa, newRun, qaContext, renderer } from './qa.js';
+import { buildDesktop, makeQa, newRun, qaApp, qaContext, renderer } from './qa.js';
 
 const root = fileURLToPath(new URL('../..', import.meta.url));
 const runs = join(root, 'qa-runs');
@@ -63,6 +64,8 @@ test('a QA session', async ({ browser }) => {
   const run = newRun(traits);
   let qa = null;
   let context = null;
+  let app = null; // the desktop app, on a run drawn it
+  let userData = null; // its folder for what it keeps, removed at the end
   let stopped = false;
   const warn = (text) => {
     run.warnings.push({ step: run.steps.at(-1)?.name ?? null, text });
@@ -102,19 +105,29 @@ test('a QA session', async ({ browser }) => {
   process.on('exit', finish);
 
   try {
-    context = await qaContext(browser, traits);
-    qa = await makeQa({ context, runDir, run });
-    browser.on('disconnected', onGone);
-    const page = await context.newPage();
-    await page.goto('/');
+    let page;
+    if (traits.desktopApp) {
+      buildDesktop();
+      userData = mkdtempSync(join(os.tmpdir(), 'phosphor-qa-app-'));
+      ({ app, context, page } = await qaApp(traits, userData));
+      qa = await makeQa({ context, runDir, run });
+      app.on('close', onGone);
+      await page.reload(); // with makeQa's scripts in it
+    } else {
+      context = await qaContext(browser, traits);
+      qa = await makeQa({ context, runDir, run });
+      browser.on('disconnected', onGone);
+      page = await context.newPage();
+      await page.goto('/');
+    }
 
     run.commit = git('rev-parse', 'HEAD');
     run.scriptCommit = git('log', '-1', '--format=%H', '--', `docs/qa/personas/${traits.persona}.md`);
     run.dirty = git('status', '--porcelain') !== null; // uncommitted changes are in the build but not in the commit
-    run.machine = { os: `${os.platform()} ${os.release()}`, cpu: os.cpus()[0].model, browser: browser.version(), renderer: await renderer(page) };
+    run.machine = { os: `${os.platform()} ${os.release()}`, cpu: os.cpus()[0].model, browser: app ? `Electron ${await app.evaluate(() => process.versions.electron)}` : browser.version(), renderer: await renderer(page) };
     qa.save();
 
-    const namespaces = { e2e, social, files, terminal, expect, runDir };
+    const namespaces = { e2e, social, desktop, files, terminal, expect, runDir, app };
     const inbox = join(runDir, 'inbox');
     const seen = new Set();
     let last = Date.now();
@@ -141,7 +154,9 @@ test('a QA session', async ({ browser }) => {
     throw error;
   } finally {
     if (finish()) console.log(`QA report: ${join(runDir, 'report.md')}`);
-    await Promise.race([context?.close().catch(() => {}), pause(10_000)]);
+    app?.off('close', onGone);
+    await Promise.race([(app ?? context)?.close().catch(() => {}), pause(10_000)]);
+    if (userData) rmSync(userData, { recursive: true, force: true });
     browser.off('disconnected', onGone);
     process.off('exit', finish);
     process.off('SIGINT', onSignal);
