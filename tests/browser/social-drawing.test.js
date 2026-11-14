@@ -13,6 +13,7 @@ import { CHECK_EVERY_MS, MOST_ARTISTS, useDrawingStore } from '@/store/DrawingSt
 import RoomPeople from '@/components/social/RoomPeople.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { ASK_AGAIN_MS, HELD_FLOAT_MS } from '@/store/project/sharing';
+import { followParams } from '@/store/project/rendering';
 import { useRoomStore } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { serializeBase, withPins } from '@/document/baseRecords';
@@ -75,7 +76,7 @@ async function join(room, sub, { guest = false } = {}) {
   setActivePinia(pinia);
   const project = useProjectStore(), drawing = useDrawingStore();
   project.seed = 'phosphor-tests';
-  toStop.push(watch(() => project.processParams, () => project.render(), { deep: true }));
+  toStop.push(followParams(project));
   const person = { sub, pinia, project, drawing };
   person.watch = new Watch({
     config, roomId: 'room', passKey,

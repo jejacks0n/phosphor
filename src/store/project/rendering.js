@@ -1,7 +1,7 @@
 // The grid and what's drawn on it: the grid's size (rescale or canvas resize), the paint and base
 // layers following it, full renders and partial recomposites, and the cells the views show. Owns
-// _renderQueued and _rendering (a render on its way, which tests wait on) and _layerGrid (the grid
-// the layers were last sized to).
+// _renderQueued and _rendering (a render on its way, which tests wait on), _rendered (the params it used) and _layerGrid
+// (the grid the layers were last sized to).
 // The renderer's pipeline converts the lower group (ProjectStore.lowerGroup) into lowerCells, and every layer above it is
 // laid over those cell by cell (Renderer.composeUpper): an edit on an upper layer touches only its cells (recomposeUpper),
 // and never runs the pipeline.
@@ -16,7 +16,7 @@ import { isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBe
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
 import { boundsOf, lowerEdits, lowerPaint } from '@/store/project/shared.js';
-import { markRaw } from 'vue';
+import { markRaw, watch } from 'vue';
 
 // The renderer's upper layers, as the stack is now: each upper cells layer's cells and paint, each upper vector layer's
 // own ShapeLayer (none yet while it never had a shape), each with its own params (layerParams: its character settings).
@@ -69,6 +69,24 @@ function countedLayers(project) {
 function settledRows(project, rows) {
   for (const i of project.renderer.settled ?? []) rows.add(Math.floor(i / project.cols));
   return rows;
+}
+
+// Settings changes render again (EditWorkspace.vue, and the tests' app): the drawing's params, or a layer's own character
+// settings (a layer added or gone draws itself, and a rename keeps its params). Not to params the same as those the render
+// on its way, or the last, used (_rendered): its ensureLayer can move the base's scale (a first render, a restore, a resize
+// past MAX_LAYER_DIM), which makes processParams and every layer's params anew. Returns what stops it.
+const sameParams = (a, b) => !!b && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((key) => a[key] === b[key]);
+export function followParams(project) {
+  const stops = [
+    watch(() => project.processParams, (now, was) => {
+      if (now === was || !sameParams(now, project._rendered?.params)) project.render(); // the same object: changed inside
+    }, { deep: true }),
+    watch(() => project.layerParams, (now, was) => {
+      const rendered = project._rendered?.layers;
+      if ([...now].some(([id, params]) => was.has(id) && was.get(id) !== params && !sameParams(params, rendered?.get(id)))) project.render();
+    }),
+  ];
+  return () => stops.forEach((stop) => stop());
 }
 
 function cellsUnder(pixels, cols) {
@@ -188,7 +206,9 @@ export const renderingActions = {
         this.syncShapeLayers();
         this.renderer.everyLayer = countedLayers(this);
         this.renderer.upper = upperOf(this); // a layer's own Best match or By shape waits for the reference font too
-        this.renderedCells = await this.renderer.render(this.image, this.processParams, lowerPaint(this), baseParams(this.processParams));
+        const params = this.processParams;
+        this._rendered = markRaw({ params, layers: this.layerParams }); // what followParams needn't render again
+        this.renderedCells = await this.renderer.render(this.image, params, lowerPaint(this), baseParams(params));
         this.activePalette = this.renderer.palette;
         this.applyEditCells();
         if (this._moviePalette || (this.hasFrames && this.quantize === 'count')) this.pickPalette(); // settings changed: a whole movie's palette follows

@@ -12,6 +12,7 @@ import { isSvgFile } from '@/lib/SvgFile.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { useLayerName } from '@/composables/useLayerName';
 import { usePlayback } from '@/composables/usePlayback';
+import { followParams } from '@/store/project/rendering';
 
 import EditTabs from '@/components/EditTabs.vue';
 import ZeroState from '@/components/ZeroState.vue';
@@ -39,11 +40,7 @@ useKeyboardShortcuts(project, workspace);
 const playback = usePlayback();
 
 onMounted(() => project.render());
-watch(() => project.processParams, () => project.render(), { deep: true });
-// A layer's own character settings changed (a layer added or gone draws itself, and a rename keeps its params).
-watch(() => project.layerParams, (now, was) => {
-  if ([...now].some(([id, params]) => was.has(id) && was.get(id) !== params)) project.render();
-});
+followParams(project);
 // The frame before's staying cells are a ghost from its picture: built when there's a new frame before, or it went
 // stale (a render).
 watch(() => [project.frame, project.frames, project.renderedCells, project.animate, workspace.ghost, workspace.playing], () => {

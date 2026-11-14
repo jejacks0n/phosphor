@@ -238,3 +238,29 @@ test('redrawing the base doesn\'t make the next render upload the picture again'
   upload.mockRestore();
   expect(uploads).toBe(0);
 });
+
+test('a canvas resize past the layers\' largest size renders once, though the base\'s scale drops in it', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 40, rows: 40 });
+  await settle(project);
+  project.typeAt(2, 2, 'A', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  const scale = project.baseLayer.scale, pipeline = vi.spyOn(project.renderer, 'render');
+  project.rows = 600; // there's an edit: a canvas resize, and 600 rows at the scale would be past MAX_LAYER_DIM
+  await settle(project);
+  expect(project.baseLayer.scale).toBeLessThan(scale);
+  expect(pipeline).toHaveBeenCalledTimes(1);
+});
+
+test('a setting changed while a render is on its way renders again, with it', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  const render = project.renderer.render.bind(project.renderer), pipeline = vi.spyOn(project.renderer, 'render').mockImplementationOnce((...args) => {
+    project.brightness = 150; // the render has read its params
+    return render(...args);
+  });
+  project.contrast = 120;
+  await settle(project);
+  expect(pipeline).toHaveBeenCalledTimes(2);
+  expect(pipeline.mock.calls.map(([, params]) => [params.contrast, params.brightness])).toEqual([[120, 100], [120, 150]]);
+});
