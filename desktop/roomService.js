@@ -4,9 +4,17 @@
 // made at launch) or a `join` from anyone. The host approves every join: someone it let in stays approved
 // for the room's life, until removed. Close codes follow the room API: 1008 after refused, 1000 after
 // removed, ended and replaced.
+//
+// /channel stands in for a WebRTC data channel: a guest's socket (with the token `joined` gave it) and the host's
+// for that guest (loopback, with the secret) are piped together, frames kept as they came, and a guest that falls
+// behind stops the service reading the host's side, so the host's own bufferedAmount grows. /probe says whose
+// service this is; an artist's addresses are probed so the host knows where they could host next. A hand-over
+// names the new host with those addresses and ends the room here: the service goes back to standby, where it
+// answers only /probe and /info.
 import http from 'node:http';
-import { randomBytes } from 'node:crypto';
-import { WebSocketServer } from 'ws';
+import { Buffer } from 'node:buffer';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
+import WebSocket, { WebSocketServer } from 'ws';
 import { verifySelfPass, verifyProof } from './selfPass.js';
 
 export const PROTOCOL = 1;
@@ -14,11 +22,46 @@ const PROOF_WITHIN_MS = 60_000;
 const MOST_WAITING = 5;           // asks waiting for the host's answer at once
 const MAX_WATCHERS = 30;          // RoomStore's MAX_WATCHERS
 const MAX_PAYLOAD = 16 * 1024;
+const MAX_CHANNEL_PAYLOAD = 128 * 1024;
+const BACKED_UP_BYTES = 1024 * 1024;   // a channel's other side further behind than this stops its reading
+const BACKED_UP_EVERY_MS = 20;
+const MOST_UNGREETED = 32;        // /room sockets open without a greeting yet
+const MOST_ADDRESSES = 8;
+const PROBE_WITHIN_MS = 3000;
+const ADDRESS = /^(\[[0-9a-f:.]+\]|[a-z0-9.-]+):\d{1,5}$/i;
 const FINAL = { refused: 1008, removed: 1000, ended: 1000, replaced: 1000 };   // messages after which the socket is closed
 
 export const isLoopback = (address) => /^(::ffff:)?127\.|^::1$/.test(address ?? '');
 const maxOf = (n) => (Number.isInteger(n) && n >= 1 && n <= MAX_WATCHERS ? n : null);
 const refused = (reason) => ({ type: 'refused', reason });
+const same = (a, b) => {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const [x, y] = [Buffer.from(a), Buffer.from(b)];
+  return x.length === y.length && timingSafeEqual(x, y);
+};
+
+// Whose room service is at this address (`host:port`): the sub its probe answers with this nonce, or null.
+export function probeAddress(address, withinMs = PROBE_WITHIN_MS) {
+  const nonce = randomBytes(12).toString('base64url');
+  return new Promise((resolve) => {
+    const ws = new WebSocket(`ws://${address}/probe?nonce=${nonce}`, { maxPayload: 1024, handshakeTimeout: withinMs });
+    const timer = setTimeout(() => done(null), withinMs);
+    const done = (sub) => {
+      clearTimeout(timer);
+      ws.terminate();
+      resolve(sub);
+    };
+    ws.on('message', (data) => {
+      let msg;
+      try {
+        msg = JSON.parse(data.toString());
+      } catch { /* not a probe's answer */ }
+      done(msg?.type === 'probe' && msg.nonce === nonce && typeof msg.sub === 'string' ? msg.sub : null);
+    });
+    ws.on('error', () => done(null));
+    ws.on('close', () => done(null));
+  });
+}
 
 // The room as the host's greeting describes it.
 const roomFrom = (r) => ({
@@ -50,13 +93,20 @@ async function listen(server, port, tries, host) {
   throw Object.assign(new Error(`No free port from ${port} to ${port + tries - 1}`), { code: 'NO_PORT' });
 }
 
-export async function createRoomService({ port = 31337, tries = 20, host = '0.0.0.0', secret, now = Date.now } = {}) {
+export async function createRoomService({
+  port = 31337, tries = 20, host = '0.0.0.0', mode = 'host', owner = {}, secret, now = Date.now, probe = probeAddress,
+  greetWithinMs = 10_000, pairWithinMs = 20_000,
+} = {}) {
   let room = null;              // { id, name, welcome, password, max, approved: Set, hostSub, hostName }
   const sockets = new Map();    // 'host', a peer or an ask -> its socket
-  const watchers = new Map();   // peer -> { sub, pass, token }
-  const waiting = new Map();    // ask -> { sub, pass }
+  const watchers = new Map();   // peer -> { sub, name, pass, token }
+  const waiting = new Map();    // ask -> { sub, name, pass }
   let artists = [];             // the subs the host holds as artists
+  const hostable = new Map();   // sub -> the addresses their own service answered at
+  const probing = new Set();    // subs whose addresses are being probed
+  const channels = new Map();   // peer -> { host, guest }: its channel's sockets, one side maybe still to come
   let made = 0;                 // peers and asks so far, for their ids
+  let ungreeted = 0;            // /room sockets with no greeting yet
 
   const whoIs = (ws) => {
     for (const [who, s] of sockets) if (s === ws) return who;
@@ -80,6 +130,7 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
 
   const gone = (peer) => {
     if (!watchers.delete(peer)) return;
+    dropChannel(peer);
     send('host', { type: 'peer-gone', peer });
     const ws = sockets.get(peer);
     if (ws) close(ws, 1000, 'gone');
@@ -88,8 +139,23 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
     if (waiting.delete(ask)) send('host', { type: 'ask-gone', ask });
   };
 
+  // A channel's sockets close, and it goes.
+  const shut = (ws, code, reason) => {
+    ws.resume();   // a paused socket couldn't hear the close's answer
+    ws.close(code, reason);
+  };
+  const dropChannel = (peer, code = 1000, reason = 'gone') => {
+    const pair = channels.get(peer);
+    if (!pair) return;
+    channels.delete(peer);
+    clearTimeout(pair.timer);
+    for (const ws of [pair.host, pair.guest]) if (ws) shut(ws, code, reason);
+  };
+
+  const artistsNow = (tag) => ({ type: 'artists-now', subs: artists, hostable: Object.fromEntries(hostable), ...(tag === undefined ? {} : { tag }) });
+
   // In, as a watcher: an older socket of the same sub is replaced.
-  const admit = (ws, sub, pass) => {
+  const admit = (ws, { sub, name, pass }) => {
     if (full(sub)) return reply(ws, refused('full'));
     for (const [peer, w] of watchers) {
       if (w.sub !== sub) continue;
@@ -97,7 +163,7 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
       gone(peer);
     }
     const peer = `p_${++made}`, token = randomBytes(16).toString('base64url');
-    watchers.set(peer, { sub, pass, token });
+    watchers.set(peer, { sub, name, pass, token });
     sockets.set(peer, ws);
     reply(ws, { type: 'joined', id: room.id, peer, token, hostName: room.hostName, hostSub: room.hostSub, artists });
     send('host', { type: 'peer', peer, pass });
@@ -114,10 +180,11 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
   const greeted = async (ws, msg, loopback) => {
     if (msg.protocol !== PROTOCOL) return reply(ws, { ...refused('version'), protocol: PROTOCOL });
     const hosting = msg.type === 'host';
-    if (hosting && !(loopback && typeof secret === 'string' && msg.secret === secret)) return reply(ws, refused('not-host'));
+    if (hosting && !(loopback && same(msg.secret, secret))) return reply(ws, refused('not-host'));
     const id = hosting ? room?.id ?? msg.room?.id : msg.room;
     const claims = await checked(msg, id);
     if (ws.readyState !== ws.OPEN) return;
+    if (mode !== 'host') return reply(ws, refused('unavailable'));   // handed over, or set to standby, meanwhile
     if (!hosting && (!room || room.id !== id)) return reply(ws, refused('unavailable'));
     if (!claims || (room && room.id !== id)) return reply(ws, refused('bad-pass'));
 
@@ -125,6 +192,7 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
       if (!room) {
         room = roomFrom(msg.room);
         artists = [];
+        hostable.clear();
       }
       Object.assign(room, { hostSub: claims.sub, hostName: claims.name });
       const older = sockets.get('host');
@@ -132,12 +200,12 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
       sockets.set('host', ws);
       reply(ws, { type: 'hosting', room: info(), peers: [...watchers].map(([peer, w]) => ({ peer, pass: w.pass })) });
       for (const [ask, { pass }] of waiting) reply(ws, { type: 'asking', ask, pass });
-      if (artists.length) reply(ws, { type: 'artists-now', subs: artists });
+      if (artists.length) reply(ws, artistsNow());
       return;
     }
 
-    const { sub } = claims;
-    if (room.approved.has(sub)) return admit(ws, sub, msg.pass);
+    const { sub } = claims, who = { sub, name: String(claims.name ?? ''), pass: msg.pass };
+    if (room.approved.has(sub)) return admit(ws, who);
     if (room.password !== null && msg.password !== room.password) return reply(ws, refused('wrong-password'));
     if (full(sub)) return reply(ws, refused('full'));
     const older = [...waiting].filter(([, a]) => a.sub === sub).map(([ask]) => ask);   // the same person asking again
@@ -147,25 +215,65 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
       withdraw(ask);
     }
     const ask = `a_${++made}`;
-    waiting.set(ask, { sub, pass: msg.pass });
+    waiting.set(ask, who);
     sockets.set(ask, ws);
     reply(ws, { type: 'waiting' });
     send('host', { type: 'asking', ask, pass: msg.pass });
   };
 
-  const end = () => {
-    const everyone = [...sockets.keys()];
+  const clear = () => {
     room = null;
     watchers.clear();
     waiting.clear();
     artists = [];
+    hostable.clear();
+    for (const peer of [...channels.keys()]) dropChannel(peer, 1000, 'ended');
+  };
+
+  const end = () => {
+    const everyone = [...sockets.keys()];
+    clear();
     for (const to of everyone) send(to, { type: 'ended' });
+  };
+
+  // The room moves to an artist who's here and whose own service answered: everyone hears who and where, those
+  // still asking hear it moved, every socket closes, and this service goes back to standby.
+  const handOver = (to) => {
+    const w = [...watchers.values()].find((watcher) => watcher.sub === to);
+    if (!w || !artists.includes(to) || !hostable.get(to)?.length) return;
+    const said = JSON.stringify({ type: 'new-host', name: w.name, sub: to, planned: true, addresses: hostable.get(to) });
+    for (const ask of [...waiting.keys()]) send(ask, refused('moved'));
+    const everyone = [...sockets.values()];
+    sockets.clear();
+    clear();
+    mode = 'standby';
+    for (const ws of everyone) {
+      ws.send(said);
+      ws.close(1000, 'new-host');
+    }
+  };
+
+  // An artist's addresses, kept if their own service answers there as them. The host hears it unasked.
+  const probeFor = async (sub, list) => {
+    if (!Array.isArray(list) || probing.has(sub)) return;   // ponytail: one round at a time per person; a list sent meanwhile is dropped
+    const tried = list.slice(0, MOST_ADDRESSES).filter((a) => typeof a === 'string' && ADDRESS.test(a));
+    const at = room;
+    probing.add(sub);
+    const answers = await Promise.all(tried.map((a) => probe(a).catch(() => null)));
+    probing.delete(sub);
+    if (room !== at) return;
+    const kept = tried.filter((a, i) => answers[i] === sub);
+    if (kept.length) hostable.set(sub, kept);
+    else hostable.delete(sub);
+    send('host', artistsNow());
   };
 
   // A message from a socket past its greeting. An ask's are ignored until it's let in.
   const heard = (who, msg) => {
     if (who !== 'host') {
-      if (msg.type === 'signal-to' && watchers.has(who)) send('host', { type: 'signal-from', from: who, data: msg.data });
+      const w = watchers.get(who);
+      if (msg.type === 'signal-to' && w) send('host', { type: 'signal-from', from: who, data: msg.data });
+      if (msg.type === 'addresses' && w) void probeFor(w.sub, msg.list);
       return;
     }
     switch (msg.type) {
@@ -177,7 +285,7 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
         sockets.delete(msg.ask);
         if (msg.yes !== true) return reply(ws, refused('turned-away'));
         room.approved.add(asked.sub);
-        return admit(ws, asked.sub, asked.pass);
+        return admit(ws, asked);
       }
       case 'left':
         return gone(msg.peer);
@@ -185,6 +293,7 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
         const w = watchers.get(msg.peer);
         if (!w) return;
         watchers.delete(msg.peer);
+        dropChannel(msg.peer);
         room.approved.delete(w.sub);
         return send(msg.peer, { type: 'removed' });
       }
@@ -195,21 +304,35 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
       }
       case 'end':
         return end();
+      case 'hand-over':
+        return handOver(msg.to);
       case 'artists':
         if (!Array.isArray(msg.subs)) return;
         artists = msg.subs.filter((sub) => typeof sub === 'string');
-        return send('host', { type: 'artists-now', subs: artists, ...(msg.tag === undefined ? {} : { tag: msg.tag }) });
+        return send('host', artistsNow(msg.tag));
       case 'signal-to':
         if (watchers.has(msg.to)) send(msg.to, { type: 'signal-from', from: 'host', data: msg.data });
     }
   };
 
   // /room: the first host or join is the greeting, and everything after waits for it to be checked.
+  // A socket that hasn't greeted within greetWithinMs is closed.
   const connected = (ws, req) => {
     const loopback = isLoopback(req.socket.remoteAddress);
-    let queue = null;
+    let queue = null, counted = true;
+    ungreeted++;
+    const timer = setTimeout(() => {
+      greetedOrGone();
+      ws.close(1008, 'greeting');
+    }, greetWithinMs);
+    const greetedOrGone = () => {
+      if (!counted) return;
+      counted = false;
+      ungreeted--;
+      clearTimeout(timer);
+    };
     ws.on('message', (data, isBinary) => {
-      if (isBinary) return;
+      if (isBinary || ws.readyState !== WebSocket.OPEN) return;
       const text = data.toString();
       if (text === 'ping') return ws.send('pong');
       let msg;
@@ -220,7 +343,9 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
       }
       if (typeof msg?.type !== 'string') return;
       if (!queue) {
-        if (msg.type === 'host' || msg.type === 'join') queue = greeted(ws, msg, loopback);
+        if (msg.type !== 'host' && msg.type !== 'join') return;
+        greetedOrGone();
+        queue = greeted(ws, msg, loopback);
       } else {
         queue = queue.then(() => {
           const who = whoIs(ws);
@@ -233,12 +358,61 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
       });
     });
     ws.on('close', () => {
+      greetedOrGone();
       const who = whoIs(ws);
       if (!who) return;
       sockets.delete(who);
       if (watchers.has(who)) gone(who);
       else withdraw(who);
     });
+  };
+
+  // /channel: the host's side (loopback, with the secret) or the guest's (with its token), for a peer who's here.
+  // A newer host side takes the channel's place; a second guest side is turned away. Until both sides are in,
+  // the one there isn't read (what it sends waits), and is closed if the other doesn't come within pairWithinMs.
+  const channelOpened = (ws, req, query) => {
+    const peer = query.get('peer'), w = watchers.get(peer);
+    const side = query.has('secret') ? 'host' : 'guest', other = side === 'host' ? 'guest' : 'host';
+    const allowed = side === 'host' ? isLoopback(req.socket.remoteAddress) && same(query.get('secret'), secret) : same(query.get('token'), w?.token);
+    if (!w || !allowed) return ws.close(1008, 'refused');
+    let pair = channels.get(peer);
+    if (pair?.[side]) {
+      if (side === 'guest') return ws.close(1008, 'taken');
+      dropChannel(peer, 1000, 'replaced');
+      pair = null;
+    }
+    if (!pair) channels.set(peer, pair = { host: null, guest: null, timer: null });
+    pair[side] = ws;
+    if (pair[other]) {
+      clearTimeout(pair.timer);
+      pair[other].resume();
+    } else {
+      ws.pause();
+      pair.timer = setTimeout(() => {
+        if (channels.get(peer) === pair && !pair[other]) dropChannel(peer, 1008, 'unpaired');
+      }, pairWithinMs);
+    }
+
+    ws.on('message', (data, isBinary) => {
+      const to = channels.get(peer) === pair ? pair[other] : null;
+      if (to?.readyState !== WebSocket.OPEN) return;
+      to.send(data, { binary: isBinary });
+      if (to.bufferedAmount <= BACKED_UP_BYTES || ws.isPaused) return;
+      ws.pause();
+      const backedUp = setInterval(() => {
+        if (to.readyState === WebSocket.OPEN && to.bufferedAmount > BACKED_UP_BYTES) return;
+        clearInterval(backedUp);
+        ws.resume();
+      }, BACKED_UP_EVERY_MS);
+    });
+    ws.on('close', () => {
+      if (channels.get(peer) === pair && pair[side] === ws) dropChannel(peer);
+    });
+  };
+
+  const sayProbe = (ws, nonce) => {
+    ws.send(JSON.stringify({ type: 'probe', nonce, sub: owner.sub ?? null }));
+    ws.close(1000);
   };
 
   const sayInfo = (ws) => {
@@ -248,29 +422,43 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
 
   const server = http.createServer((req, res) => res.writeHead(404).end());
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_PAYLOAD });
+  const channelWss = new WebSocketServer({ noServer: true, maxPayload: MAX_CHANNEL_PAYLOAD });
   server.on('upgrade', (req, socket, head) => {
-    let pathname;
+    let url;
     try {
-      ({ pathname } = new URL(req.url, 'http://localhost'));
+      url = new URL(req.url, 'http://localhost');
     } catch {
       return socket.destroy();   // an address that isn't one: anyone can send it, and it mustn't stop the service
     }
-    if (pathname !== '/room' && pathname !== '/info') return socket.destroy();
-    wss.handleUpgrade(req, socket, head, (ws) => {
+    const { pathname, searchParams } = url, nonce = searchParams.get('nonce');
+    const served = pathname === '/info' || (pathname === '/probe' && nonce)
+      || (mode === 'host' && (pathname === '/channel' || (pathname === '/room' && ungreeted < MOST_UNGREETED)));
+    if (!served) return socket.destroy();
+    (pathname === '/channel' ? channelWss : wss).handleUpgrade(req, socket, head, (ws) => {
       ws.on('error', () => {});   // a bad frame (or one too big) closes the socket: nothing more to do
       if (pathname === '/info') sayInfo(ws);
+      else if (pathname === '/probe') sayProbe(ws, nonce);
+      else if (pathname === '/channel') channelOpened(ws, req, searchParams);
       else connected(ws, req);
     });
   });
 
   return {
     port: await listen(server, port, tries, host),
+    mode: () => mode,
+    // Standby (from hosting) ends the room here.
+    set: (changes) => {
+      if (changes.owner) owner = changes.owner;
+      if (changes.mode !== 'host' && changes.mode !== 'standby') return;
+      if (changes.mode === 'standby' && room) end();
+      mode = changes.mode;
+    },
     room: () => room && {
       id: room.id, name: room.name, welcome: room.welcome, password: room.password, max: room.max,
       approved: [...room.approved], count: watchers.size,
     },
     close: async () => {
-      for (const ws of wss.clients) ws.terminate();
+      for (const ws of [...wss.clients, ...channelWss.clients]) ws.terminate();
       server.closeAllConnections();
       await new Promise((resolve) => server.close(() => resolve()));
     },

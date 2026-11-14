@@ -4,85 +4,10 @@ import { test, afterEach } from 'vitest';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import WebSocket from 'ws';
-import { createRoomService, isLoopback } from '../../desktop/roomService.js';
-import { makeSelfPass } from '../../src/social/selfPass.js';
-import { proof } from '../../src/social/keys.js';
-import { toBase64url } from '../../src/social/base64url.js';
+import { isLoopback } from '../../desktop/roomService.js';
+import { ROOM, SECRET, opened, closeAll, person, service, client, greet, hosting, joining, letIn, refusal } from '../support/desktopRoom.js';
 
-const SECRET = 'the-secret';
-const ROOM = { id: 'r_1', name: 'neon harbor', welcome: 'hi', password: null, max: 12, approved: [] };
-const opened = [];   // services, sockets and plain servers, all closed after each test
-
-afterEach(async () => {
-  for (const thing of opened.splice(0).reverse()) {
-    if (thing instanceof WebSocket) thing.terminate();
-    else await new Promise((resolve) => (thing.close.length ? thing.close(resolve) : thing.close().then(resolve)));
-  }
-});
-
-async function person(name = 'Ana') {
-  const pair = await crypto.subtle.generateKey({ name: 'Ed25519' }, false, ['sign', 'verify']);
-  const publicKey = toBase64url(new Uint8Array(await crypto.subtle.exportKey('raw', pair.publicKey)));
-  const { pass, claims } = await makeSelfPass({ privateKey: pair.privateKey, publicKey }, name);
-  return { pass, sub: claims.sub, privateKey: pair.privateKey };
-}
-
-async function service(options = {}) {
-  const s = await createRoomService({ port: 0, host: '127.0.0.1', owner: { sub: 'me' }, secret: SECRET, ...options });
-  opened.push({ close: () => s.close() });
-  return s;
-}
-
-// A client socket whose messages queue up for next(); closed resolves to { code, reason }.
-function client(port, path = '/room') {
-  const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`);
-  opened.push(ws);
-  const inbox = [], waiters = [];
-  ws.on('message', (data) => {
-    const text = data.toString();
-    const msg = text === 'pong' ? text : JSON.parse(text);
-    if (waiters.length) waiters.shift()(msg);
-    else inbox.push(msg);
-  });
-  ws.next = () => (inbox.length ? Promise.resolve(inbox.shift()) : new Promise((resolve) => waiters.push(resolve)));
-  ws.closed = new Promise((resolve) => ws.on('close', (code, reason) => resolve({ code, reason: reason.toString() })));
-  ws.ready = new Promise((resolve, reject) => { ws.on('open', resolve); ws.on('error', reject); });
-  return ws;
-}
-
-async function greet(ws, who, type, id, extra = {}, ts = Date.now()) {
-  const signed = await proof(who.privateKey, (t) => `room:${id}:${t}`, ts);
-  await ws.ready;
-  ws.send(JSON.stringify({ type, pass: who.pass, ...signed, protocol: 1, ...extra }));
-}
-
-async function hosting(s, owner, room = ROOM) {
-  const ws = client(s.port);
-  await greet(ws, owner, 'host', room.id, { secret: SECRET, room });
-  const msg = await ws.next();
-  assert.equal(msg.type, 'hosting');
-  return { ws, msg };
-}
-
-async function joining(s, who, extra = {}) {
-  const ws = client(s.port);
-  await greet(ws, who, 'join', ROOM.id, { room: ROOM.id, ...extra });
-  return ws;
-}
-
-// Joined through the host's yes.
-async function letIn(s, host, who, extra) {
-  const ws = await joining(s, who, extra);
-  assert.equal((await ws.next()).type, 'waiting');
-  const { ask } = await host.next();
-  host.send(JSON.stringify({ type: 'answer', ask, yes: true }));
-  const joined = await ws.next();
-  assert.equal(joined.type, 'joined');
-  assert.equal((await host.next()).type, 'peer');
-  return { ws, joined };
-}
-
-const refusal = async (ws) => ({ msg: await ws.next(), closed: await ws.closed });
+afterEach(closeAll);
 
 test('info names the room and whether it has a password', async () => {
   const s = await service();
@@ -297,12 +222,12 @@ test('resends waiting asks to a host that greets again', async () => {
   await asker.next();
   const { ask } = await first.next();
   first.send(JSON.stringify({ type: 'artists', subs: [ana.sub], tag: 1 }));
-  assert.deepEqual(await first.next(), { type: 'artists-now', subs: [ana.sub], tag: 1 });
+  assert.deepEqual(await first.next(), { type: 'artists-now', subs: [ana.sub], tag: 1, hostable: {} });
 
   const { ws: second, msg } = await hosting(s, owner);
   assert.deepEqual(msg.peers, [{ peer: joined.peer, pass: ana.pass }]);
   assert.deepEqual(await second.next(), { type: 'asking', ask, pass: bo.pass });
-  assert.deepEqual(await second.next(), { type: 'artists-now', subs: [ana.sub] });
+  assert.deepEqual(await second.next(), { type: 'artists-now', subs: [ana.sub], hostable: {} });
   assert.deepEqual(await first.closed, { code: 1000, reason: 'replaced' });
 
   // The new host's yes lets the guest in, who was never dropped; the one inside stayed.
@@ -357,7 +282,7 @@ test('the port falls back when taken, and NO_PORT past twenty', async () => {
   const base = 40_000 + Math.floor(Math.random() * 20_000);
   const occupy = (port) => new Promise((resolve, reject) => {
     const server = net.createServer().once('error', reject).listen(port, '127.0.0.1', () => resolve(server));
-    opened.push(server);
+    opened.push(() => new Promise((done) => server.close(done)));
   });
   await occupy(base);
   const s = await service({ port: base });
@@ -370,7 +295,7 @@ test('the port falls back when taken, and NO_PORT past twenty', async () => {
 test('a malformed upgrade is dropped, and the service carries on', async () => {
   const s = await service();
   const raw = net.connect(s.port, '127.0.0.1');
-  opened.push({ close: () => Promise.resolve(raw.destroy()) });
+  opened.push(() => raw.destroy());
   raw.write('GET //[ HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n');
   await new Promise((resolve) => raw.on('close', resolve));
   const info = client(s.port, '/info');
@@ -383,4 +308,26 @@ test('ping is answered pong', async () => {
   await ws.ready;
   ws.send('ping');
   assert.equal(await ws.next(), 'pong');
+});
+
+test('a socket that doesn\'t greet in time is closed 1008, and one that did stays', async () => {
+  const s = await service({ greetWithinMs: 50 });
+  const silent = client(s.port);
+  const { ws: host } = await hosting(s, await person('Host'));
+  assert.equal((await silent.closed).code, 1008);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.equal(host.readyState, WebSocket.OPEN);
+});
+
+test('past 32 sockets that haven\'t greeted, a new one is refused', async () => {
+  const s = await service();
+  const silent = Array.from({ length: 32 }, () => client(s.port));
+  await Promise.all(silent.map((ws) => ws.ready));
+  const extra = client(s.port);
+  await assert.rejects(extra.ready);
+  // A greeting frees its place.
+  const owner = await person('Host');
+  await greet(silent[0], owner, 'host', ROOM.id, { secret: SECRET, room: ROOM });
+  assert.equal((await silent[0].next()).type, 'hosting');
+  await client(s.port).ready;
 });
