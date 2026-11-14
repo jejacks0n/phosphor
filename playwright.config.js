@@ -19,7 +19,7 @@ export default defineConfig({
     trace: { mode: 'retain-on-failure', screenshots: false }, // recording every test's screenshots costs about 15% of the suite's time
   },
   projects: [
-    { name: 'chromium', testIgnore: /path-addresses/, use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions } },
+    { name: 'chromium', testIgnore: [/path-addresses/, /[\\/]desktop-[^\\/]*\.spec\.js$/], use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions } },
     // The other way the app can be built: its own build, its own port, one spec.
     { name: 'path-addresses', testMatch: /path-addresses/, use: { ...devices['Desktop Chrome'], viewport: { width: 1400, height: 900 }, launchOptions, baseURL: 'http://localhost:4181' } },
   ],
