@@ -497,7 +497,7 @@ export function flatBlock(block) {
       if (!entry) return lower;
       if (paint && !isPaintBlock(entry)) ctx2d(paint).clearRect((i % w) * k, 2 * Math.floor(i / w) * k, k, 2 * k);
       if (part.exact || !lower) return entry;
-      return isPaintBlock(entry) ? lower : { ...lower, ...entry };
+      return isPaintBlock(entry) ? lower : mergeEntry(lower, entry);
     });
     if (!part.paint) continue;
     if (!paint) {

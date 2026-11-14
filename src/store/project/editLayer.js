@@ -156,9 +156,10 @@ export const editLayerActions = {
   // A whole entry for a cell as the cell layer shows it: its own attributes, the rest frozen from
   // what shows under it the way the render style shows it: the base (bakedEntry) with the shown
   // cells layers below (below: the layer it's for, the one in use unless said) over it (reading.js:
-  // lookUnder). Its own paint isn't part of it; it stays put.
+  // lookUnder). Its own paint isn't part of it; it stays put. A color of its own drops the index the one under had (mergeEntry).
   completeAt(col, row, entry, below = this.editId) {
-    return { ...this.lookUnder(col, row, below), ...entry };
+    const look = this.lookUnder(col, row, below);
+    return entry ? mergeEntry(look, entry) : look;
   },
 
   // Many cell edits at once ([{ col, row, attrs }], e.g. a shape): one Map copy, one paint erase.

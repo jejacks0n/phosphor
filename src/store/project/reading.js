@@ -2,7 +2,7 @@
 // paint), what's under a cell, edit cells, and rects on the grid.
 import { wholeTile } from '@/document/PaintLayer.js';
 import { hashCell, hashPixel, pack } from '@/document/changes.js';
-import { cellKey, parseKey } from '@/document/editCells.js';
+import { cellKey, parseKey, mergeEntry } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer, layerKey } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
@@ -117,15 +117,16 @@ export function pickedFrom(project, col, row) {
 }
 
 // look ({ char?, fg, bg }, stored colors) with cells layer id's cell over it: its entry's own attributes, then (withPaint)
-// its paint over each half by its alpha, bg the top, fg the bottom.
+// its paint over each half by its alpha, bg the top, fg the bottom. A color set over another drops the index it had
+// (mergeEntry).
 function layerOver(project, id, col, row, look, withPaint = true) {
   const entry = project.cellsOf(id).get(cellKey(col, row));
-  let out = entry ? { ...look, ...entry } : look;
+  let out = entry ? mergeEntry(look, entry) : look;
   const paint = withPaint && project.paintOf(id);
   if (!paint?.hasPaint) return out;
   const top = paint.pixelAt(col, 2 * row), bottom = paint.pixelAt(col, 2 * row + 1);
-  if (top) out = { ...out, bg: rgb2hex(over(hex2rgb(out.bg), top)) };
-  if (bottom) out = { ...out, fg: rgb2hex(over(hex2rgb(out.fg), bottom)) };
+  if (top) out = mergeEntry(out, { bg: rgb2hex(over(hex2rgb(out.bg), top)) });
+  if (bottom) out = mergeEntry(out, { fg: rgb2hex(over(hex2rgb(out.fg), bottom)) });
   return out;
 }
 
