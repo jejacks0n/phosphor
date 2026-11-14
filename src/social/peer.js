@@ -1,4 +1,5 @@
 import { rtcConfig } from './config.js';
+import { openSocketPeer } from './socketPeer.js';
 
 const MOST_CANDIDATES = 50;   // a stranger's candidates taken in all (held or applied): more is only work
 
@@ -8,7 +9,7 @@ const MOST_CANDIDATES = 50;   // a stranger's candidates taken in all (held or a
 // takes theirs. onOpen fires once with the open channel; onClose fires once, for the channel closing,
 // the connection failing, no open channel within connectWithinMs, or close(). failed means the
 // channel never opened.
-export function openPeer({ initiator, sendSignal, onOpen, onClose, config = rtcConfig(), connectWithinMs = 20_000 }) {
+export function openRtcPeer({ initiator, sendSignal, onOpen, onClose, config = rtcConfig(), connectWithinMs = 20_000 }) {
   const pc = new RTCPeerConnection(config);
   let opened = false;
   let done = false;
@@ -81,3 +82,6 @@ export function openPeer({ initiator, sendSignal, onOpen, onClose, config = rtcC
     close: finish,
   };
 }
+
+// The desktop build's rooms connect over the room service's sockets, not WebRTC.
+export const openPeer = import.meta.env.VITE_DESKTOP === '1' ? openSocketPeer : openRtcPeer;
