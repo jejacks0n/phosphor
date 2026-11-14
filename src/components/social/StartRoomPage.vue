@@ -37,10 +37,11 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
     <h2>{{ t('social.start.heading') }}</h2>
     <!-- Laid out as the room's Settings and stats: its settings in a box, and its lobby card (for a room in the
          lobby) with the lobby picture beside them when there's room, under them when there isn't. A room with no
-         lobby card (link-only, or on desktop) is one column, in a narrower box (SocialDialogs). -->
+         lobby card (link-only, or on desktop) is one column, in a narrower box (SocialDialogs): its settings bare, with
+         no box or heading of their own under the dialog's. -->
     <form :class="{ single: !listed }" @submit.prevent="goLive">
       <section class="settings">
-        <h3>{{ t('social.host.roomSettings') }}</h3>
+        <h3 v-if="listed">{{ t('social.host.roomSettings') }}</h3>
         <div class="fields">
           <label>{{ t('social.start.roomName') }} <input v-model="draft.name" maxlength="60" pattern=".*\S.*" :title="t('social.start.roomNamePatternTitle')" required></label>
           <label>{{ t('social.start.welcomeMessage') }} <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="`${id}-count`"></textarea></label>
@@ -131,6 +132,14 @@ form {
 }
 form.single {
   grid-template-columns: 1fr;
+}
+form.single section.settings {
+  padding: 0;
+  border: none;
+  background: none;
+}
+form.single div.fields {
+  margin-top: 0;
 }
 div.column {
   display: flex;
