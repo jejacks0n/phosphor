@@ -96,3 +96,20 @@ test('a name that isn\'t a short string, or an exp past an hour from now, is ref
     assert.ok(await verifyInNode(pass, NOW));
   }
 });
+
+// now = 0 is a kept message's check (watching.js claimsOf), as the web's server-pass check reads it: the pass's
+// expiry isn't held against it, either way, but the rest is checked.
+test('now = 0 takes a good pass whatever its exp, and still refuses a bad name or signature', async () => {
+  const [key, other] = [await newKey(), await newKey()];
+  const { pass, claims } = await makeSelfPass(key, 'Ana', NOW);
+  const signed = async (changes, by = key) => {
+    const body = encode({ ...claims, ...changes });
+    return `${body}.${await sign(by.privateKey, body)}`;
+  };
+  for (const check of [verifySelfPass, verifyInNode]) {
+    assert.deepEqual(await check(pass, 0), claims);
+    assert.ok(await check(await signed({ exp: 1e15 }), 0));   // not capped either
+    assert.equal(await check(await signed({ name: ['x'] }), 0), null);
+    assert.equal(await check(await signed({}, other), 0), null);
+  }
+});

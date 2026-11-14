@@ -34,7 +34,8 @@ export async function verifySelfPass(pass, now = Date.now()) {
     if (!await verifyProof(claims.key, body, signature)) return null;
     if (claims.sub !== await fingerprint(claims.key)) return null;
     const named = typeof claims.name === 'string' && claims.name.trim() !== '' && claims.name.length <= USERNAME_MAX;
-    return named && claims.exp * 1000 > now && claims.exp * 1000 <= now + MOST_SECONDS * 1000 ? claims : null;
+    // now = 0 is a kept message's check: its expiry isn't held against it (exp > 0, as the web's server-pass check reads it).
+    return named && claims.exp * 1000 > now && (now === 0 || claims.exp * 1000 <= now + MOST_SECONDS * 1000) ? claims : null;
   } catch {
     return null;
   }
