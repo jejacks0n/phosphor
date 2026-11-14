@@ -112,6 +112,9 @@ export const joinWords = (code) => JOIN_WORDS[code]();
 // A desktop room's host stopped answering, for longer than a reload takes.
 export const hostGoneWords = () => t('social.errors.hostGone');
 
+// A desktop room moved to another computer, and none of its addresses answered.
+export const movedUnreachableWords = (name) => t('social.errors.movedUnreachable', { name });
+
 // What a host is told when the room it reloaded into is gone.
 export const roomAwayWords = () => t('social.errors.roomAway');
 export const ROOM_AWAY_WORDS = t('social.errors.roomAway');

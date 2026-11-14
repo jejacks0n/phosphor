@@ -12,6 +12,7 @@ import { useWorkspaceStore, followLayerPick } from './store/WorkspaceStore';
 import { useProjectStore } from './store/ProjectStore';
 import { useDrawingStore } from './store/DrawingStore';
 import { hostCopies } from './document/autosaveStore';
+import { desktop } from './social/desktop';
 
 const pinia = createPinia();
 
@@ -24,6 +25,7 @@ initLocale();
 // be reached leaves the editor be). Before the router's made, which keeps what the URL has then.
 useSocialStore().start();
 useRoomStore().resume();   // a room this tab hosts: the router must see it on its first look
+desktop?.onQuit(() => useRoomStore().quitting());   // the desktop app asks before it quits: a room hosted here is handed over or ended
 hostCopies().catch(() => {});   // a tab that closed never says it's done with its copy, and looking drops an old one
 
 // The stores are placed from the address before App's setup, and autosave's start reads them.

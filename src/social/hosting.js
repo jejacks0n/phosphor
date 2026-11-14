@@ -54,12 +54,14 @@ const notDrawing = () => ({ drawing: false, took: 0, ...nothingWaiting() });
 
 export class Host {
   // project(): the document as of now, { n, epoch, chunks (a promise) }. onChange gives back what it numbered,
-  // or nothing when it's refused.
+  // or nothing when it's refused. handOverExtra(): what else the next host is sent with hand-over (a desktop room's
+  // settings), or null.
   constructor({
     send, passKey, config, connectWithinMs, roomId, returnWithinMs = RETURN_WITHIN_MS, onWatchers = () => {}, onChat = () => {},
     project = null, onChange = () => null, onUndo = () => {}, onRedo = () => {}, onCursor = () => {}, onHello = () => {}, onAnswer = () => {},
+    handOverExtra = () => null,
   }) {
-    Object.assign(this, { send, passKey, config, connectWithinMs, roomId, returnWithinMs, onWatchers, onChat, project, onChange, onUndo, onRedo, onCursor, onHello, onAnswer });
+    Object.assign(this, { send, passKey, config, connectWithinMs, roomId, returnWithinMs, onWatchers, onChat, project, onChange, onUndo, onRedo, onCursor, onHello, onAnswer, handOverExtra });
     this.artists = new Set();   // the subs who may draw
     // peer -> { peer, pass, claims, tracking, conn, channel, has (the art it has), packing, behind,
     // allowance, heard (its chat, checked one at a time), following (the sub of the artist whose view it's sent, or
@@ -541,7 +543,7 @@ export class Host {
       };
     });
     w.projecting = true;   // behind these chunks, as behind a project's
-    this.sendTo(w, { t: 'hand-over', chunks: chunks.length, room: this.room });
+    this.sendTo(w, { t: 'hand-over', chunks: chunks.length, room: this.room, extra: this.handOverExtra() });
     await this.putPaced(w, chunks);
     await this.sentWhole(w);
     return answer;

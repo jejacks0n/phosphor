@@ -29,11 +29,11 @@ export class Watch {
   constructor({
     send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = NOTHING,
     onNumbered = NOTHING, onSettings = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING, onHandOver = NOTHING, onCatchUp = NOTHING, onUndoReset = NOTHING, onRefused = NOTHING, onProjectFailed = NOTHING, onFont = NOTHING,
-    takesProjects = () => false,
+    takesProjects = () => false, onHandOverExtra = NOTHING,
   }) {
     Object.assign(this, {
       send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat,
-      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, onHandOver, onCatchUp, onUndoReset, onRefused, onProjectFailed, onFont, takesProjects,
+      onNumbered, onSettings, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, onHandOver, onCatchUp, onUndoReset, onRefused, onProjectFailed, onFont, takesProjects, onHandOverExtra,
     });
     this.mostWaiting = MOST_WAITING;
     this.conn = null;
@@ -226,10 +226,12 @@ export class Watch {
   }
 
   // The host means this artist to be next. The ledger's only for someone drawing, and only until new-host.
-  handOverStart({ chunks, room }) {
+  // extra: what else the host sends for the next one (a desktop room's settings), or null.
+  handOverStart({ chunks, room, extra = null }) {
     const fits = this.takesProjects() && Number.isInteger(chunks) && chunks >= 1 && chunks <= MOST_PROJECT_CHUNKS;
     this.handOver = fits ? { want: chunks, chunks: [] } : null;
     if (fits && room) this.room(room);
+    if (fits) this.onHandOverExtra(extra);
   }
 
   async handOverChunk(data) {

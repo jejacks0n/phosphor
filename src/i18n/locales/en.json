@@ -1599,6 +1599,7 @@
         "older": "They're on an older Phosphor. They need to update before you can join."
       },
       "hostGone": "The host went away. You can try joining again later.",
+      "movedUnreachable": "The room moved to {name}, and their address couldn't be reached.",
       "roomAway": "Your room closed while you were away.",
       "undoReset": "The host has changed, so undo history has reset. All existing artwork is preserved.",
       "undoRestart": "Undo history has reset. All existing artwork is preserved.",

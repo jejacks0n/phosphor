@@ -6,7 +6,7 @@ import { forgetHostCopy, forgetRoomLedger, hostCopies, keepHostCopy, readLatest,
 import { proof, sign } from '@/social/keys';
 import { Allowance, MOST_KEPT, REASONS, chatText, evidenceFor, newId, signedText } from '@/social/chat';
 import { LobbyConnection, Pacer } from '@/social/lobby';
-import { roomAwayWords, hostReplacedWords, artNotOpenedWords, goingBackFailedWords, newHostWords, refusalWords, joinWords, versionWords, hostGoneWords } from '@/social/messages';
+import { roomAwayWords, hostReplacedWords, artNotOpenedWords, goingBackFailedWords, newHostWords, refusalWords, joinWords, versionWords, hostGoneWords, movedUnreachableWords } from '@/social/messages';
 import { parseAddress } from '@/social/address';
 import { decodePass, passKey } from '@/social/pass';
 import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
@@ -35,6 +35,14 @@ const ROOM_ID_LETTERS = 'abcdefghijklmnopqrstuvwxyz234567';   // ROOM_ID's: 32 o
 const newRoomId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => ROOM_ID_LETTERS[b & 31]).join('');
 const MOST_ASKS = 5;   // the service lets no more wait at once
 const INFO_WITHIN_MS = 5000;   // what's at an address typed in answers /info within this, or nothing that answers is there
+const MOVE_TRY_MS = 5000;   // a room that moved to another computer: each of its addresses goes live within this, or the next is tried
+const keptPort = () => {   // the port last hosted on, for this computer's service; none for the default
+  try {
+    return Number(localStorage.getItem(DESKTOP_PORT)) || undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 // What a room service at this address ('host:port') says it has: its info answer, or { error } with why there's none.
 // Something else on that port either answers with something else or closes once it's open (not-phosphor); nothing
@@ -209,7 +217,12 @@ const watcherFields = () => ({
   joinedAt: null,      // a watcher's: the id of the last message in its first history ("You joined" comes after it)
   _watch: null,        // Watch (markRaw)
   _password: undefined, // the password the join sent
-  ...(DESKTOP ? { _joinedAs: null } : {}),   // joined's { peer, token }: the channel to the host's service is theirs
+  ...(DESKTOP ? {
+    _joinedAs: null,       // joined's { peer, token }: the channel to the host's service is theirs
+    _handOverExtra: null,  // what the host's hand-over brought besides the ledger: the room's settings, for carryOn
+    _standby: null,        // drawing: this computer's service is on standby, at these addresses ([] until it says), so the host knows where it could host next
+    _moveTimer: null,      // the room moved to another computer: the wait for this address to go live before the next is tried
+  } : {}),
 });
 
 // No room at all: what close() goes back to. The chat and what's reported go only here: a role changing hands keeps them.
@@ -352,7 +365,8 @@ export const useRoomStore = defineStore('room', {
     // join waits for the host's yes, and the password goes only to the service.
     async startDesktopRoom({ name, welcome, password, max, port }) {
       const project = useProjectStore(), social = useSocialStore();
-      if (this.role === 'host') this.close();   // one service: the old room ends before a new one starts on it
+      // One service: a room hosted here ends, or standby stops, before a room starts on it (else close() below would stop it).
+      if (this.role === 'host' || this._standby) this.close();
       let service;
       try {
         await social.getPass();   // whose service it is (the sub)
@@ -376,6 +390,7 @@ export const useRoomStore = defineStore('room', {
         startDraft: newStartDraft(), settingsDraft: newSettingsDraft(), hasPassword: !!password, lobbyPin: null,
         id, link: null, status: 'connecting', addresses: service.addresses, port: service.port, _desktop: { secret: service.secret, port: service.port },
         room: { name, welcome: welcome ?? '', max, count: 0 },
+        _password: password || undefined,   // in memory alone, for the next host (handOverExtra)
       });
       this.share();
       this.connect(this.desktopGreeting(password), HOST_SOCKET);
@@ -400,7 +415,15 @@ export const useRoomStore = defineStore('room', {
         send: (msg) => this._connection?.send(msg),
         passKey, connectWithinMs: this._connectWithinMs, roomId: fields.id,
         // A watcher's channel through the service, which pairs it with theirs; _desktop read then, as a reload sets it later.
-        ...(DESKTOP ? { config: { channelUrl: (peer) => `ws://127.0.0.1:${this._desktop.port}/channel?peer=${encodeURIComponent(peer)}&secret=${encodeURIComponent(this._desktop.secret)}` } } : {}),
+        // The next host's room is made from this room's settings, with everyone here already let in.
+        // ponytail: a host back from a reload has no password in memory, so the next host's room has none; ask the service if that matters.
+        ...(DESKTOP ? {
+          config: { channelUrl: (peer) => `ws://127.0.0.1:${this._desktop.port}/channel?peer=${encodeURIComponent(peer)}&secret=${encodeURIComponent(this._desktop.secret)}` },
+          handOverExtra: () => {
+            const { name, welcome, max } = this.room;
+            return { password: this._password ?? null, max, welcome, name, approved: [...new Set([useSocialStore().claims?.sub, ...this.watchers.map((w) => w.sub)])].filter(Boolean) };
+          },
+        } : {}),
         onWatchers: (list) => {
           this.watchers = list;
           drawing.peopleHere(list);
@@ -734,7 +757,10 @@ export const useRoomStore = defineStore('room', {
         send: (msg) => this._connection?.send(msg),
         connectWithinMs: this._connectWithinMs, roomId: id, passKey,
         // The channel to the host through its service, as joined's peer: read then, as a rejoin changes it.
-        ...(DESKTOP ? { config: { channelUrl: () => `ws://${this._address}/channel?peer=${encodeURIComponent(this._joinedAs?.peer)}&token=${encodeURIComponent(this._joinedAs?.token)}` } } : {}),
+        ...(DESKTOP ? {
+          config: { channelUrl: () => `ws://${this._address}/channel?peer=${encodeURIComponent(this._joinedAs?.peer)}&token=${encodeURIComponent(this._joinedAs?.token)}` },
+          onHandOverExtra: (extra) => { this._handOverExtra = extra && typeof extra === 'object' ? extra : null; },
+        } : {}),
         onChat: (event) => this.chatHeard(event),
         onRoom: ({ name, welcome }) => { this.room = { ...this.room, name, welcome }; },   // the host is joined's
         onArt: (art) => { if (!drawing.mayDraw) this.art = art; },   // one that crossed their yes: they have the document
@@ -756,6 +782,7 @@ export const useRoomStore = defineStore('room', {
       this._stops.push(watch(() => drawing.artists, (list) => {
         this.artistViews = Object.fromEntries(Object.entries(this.artistViews).filter(([sub]) => list.includes(sub)));
       }));
+      if (DESKTOP) this._stops.push(watch(() => drawing.mayDraw, (draws) => (draws ? this.standBy() : this.standDown())));
       // Not named any more (put back to watching, or gone): the host's view is the one to follow.
       this._stops.push(watch(() => this.followable, (list) => {
         if (this.following && this.following !== this.room?.hostSub && !list.some((p) => p.sub === this.following)) this.follow(this.room?.hostSub);
@@ -851,8 +878,9 @@ export const useRoomStore = defineStore('room', {
       if (this.role === 'host') {
         if (!passRole || !useDrawingStore().artists.length) this._connection?.send({ type: 'end' });
         this.doneHosting();
-        if (DESKTOP) desktop.stopService().catch(() => {});   // the room's service goes with it
       }
+      if (DESKTOP && (this.role === 'host' || this._standby)) desktop.stopService().catch(() => {});   // the room's service goes with it, or standby's
+      clearTimeout(this._moveTimer);
       const connection = this._connection;
       this._connection = null;
       connection?.close();
@@ -887,6 +915,10 @@ export const useRoomStore = defineStore('room', {
             hostGone = null;
           }
           if (connection !== this._connection) return;
+          if (DESKTOP && status === 'live') {   // the room that moved is here
+            clearTimeout(this._moveTimer);
+            this._moveTimer = null;
+          }
           // A desktop room's service is on the host's computer: gone longer than a reload takes, the host has gone.
           // Its socket stops retrying first: over() leaves it running, and a room back at that address would hear a join.
           if (DESKTOP && this.role === 'watch' && status === 'reconnecting') {
@@ -910,7 +942,8 @@ export const useRoomStore = defineStore('room', {
     },
 
     // The room named a new host (or `joined` says it did, while this socket was down: no planned then).
-    heardNewHost({ name, sub, planned }) {
+    // On desktop the room is on the new host's own service now, at its addresses: everyone else joins again there.
+    heardNewHost({ name, sub, planned, addresses }) {
       const me = useSocialStore().claims?.sub, old = this.role === 'host' ? useSocialStore().claims?.name : this.room?.host;
       const words = old && name && old !== name ? newHostWords({ old, name, planned }) : null;
       if (sub === me) return this.takeOver({ planned, words });
@@ -920,7 +953,9 @@ export const useRoomStore = defineStore('room', {
         this._connection?.close();
         return this.backAsArtist();
       }
-      if (this.role === 'host') return this.becomeArtist({ planned, name, sub, words });
+      const where = DESKTOP && Array.isArray(addresses) ? addresses.filter((a) => typeof a === 'string').map((a) => parseAddress(a)).filter((a) => !a.error).map((a) => a.address) : [];
+      if (DESKTOP && !where.length) return this.moveTo(where, name);   // nowhere to go
+      if (this.role === 'host') return this.becomeArtist({ planned, name, sub, words, where });
       this.room = { ...this.room, host: name, hostSub: sub };
       this.chat = this.chat.map((row) => (row.host === (row.sub === sub) ? row : { ...row, host: row.sub === sub }));
       this.artistViews = {};
@@ -931,6 +966,19 @@ export const useRoomStore = defineStore('room', {
       this._watch.close();
       this.watchState('lost');
       useDrawingStore().hostChanged({ planned, words });
+      if (DESKTOP) this.moveTo(where, name);
+    },
+
+    // Desktop: the room moved to another computer's service. Its addresses are tried in turn on the room's socket, each
+    // given MOVE_TRY_MS to go live; none of them answering ends it.
+    moveTo(addresses, name, at = 0) {
+      const old = this._connection;
+      this._connection = null;
+      old?.close();   // the old socket would try its old address again
+      if (at >= addresses.length || !old) return this.over(movedUnreachableWords(name));
+      this._address = addresses[at];
+      this.connect(old.greeting, { liveOn: old.liveOn, endOn: old.endOn });
+      this._moveTimer = setTimeout(() => this.moveTo(addresses, name, at + 1), MOVE_TRY_MS);
     },
 
     // Named by the room: this socket is the host's now, and hosting comes next. A document on its way back (a reload)
@@ -972,7 +1020,7 @@ export const useRoomStore = defineStore('room', {
       const named = this._named;
       if (!named?.passing) return;
       const hosting = named.heard.find((msg) => msg.type === 'hosting');
-      const list = named.heard.findLast((msg) => msg.type === 'artists-now')?.subs;
+      const now = named.heard.findLast((msg) => msg.type === 'artists-now'), list = now?.subs;
       if (!answerLate && (named.to || !hosting || !list)) return;
       clearTimeout(named.timer);
       const me = useSocialStore().claims?.sub, here = new Set();
@@ -981,34 +1029,59 @@ export const useRoomStore = defineStore('room', {
           here.add(decodePass(pass).sub);
         } catch { /* a pass that can't be read names no one */ }
       }
-      named.to = (list ?? []).find((sub) => sub !== me && here.has(sub) && !named.tried.has(sub)) ?? null;
+      const canHost = (sub) => !DESKTOP || !!now.hostable?.[sub]?.length;   // on desktop, only one whose own service answered
+      named.to = (list ?? []).find((sub) => sub !== me && here.has(sub) && !named.tried.has(sub) && canHost(sub)) ?? null;
       if (!named.to) return void this._connection?.send({ type: 'end' });
       named.tried.add(named.to);
       this._connection?.send({ type: 'hand-over', to: named.to });
       named.timer = setTimeout(() => this.passOn(true), HAND_OVER_ANSWERED_WITHIN_MS);
     },
 
+    // On as host. On desktop the room goes on from this computer's own service, made from the old host's settings
+    // (the hand-over's extra); on the web the same socket greets again as host.
     carryOn({ planned, words }) {
       const drawing = useDrawingStore(), connection = this._connection;
       for (const stop of this._stops) stop();
       this.stopAsking();
       this._watch?.close();
-      const { id, room, _password: password } = this;
+      const { id, room, _password: password, _handOverExtra: extra } = this;
       this.hostRoom({
         ...hostFields(), ...watcherFields(),
-        id, link: `${appOrigin()}/?room=${id}`, status: 'reconnecting', hasPassword: password !== undefined,
+        id, link: DESKTOP ? null : `${appOrigin()}/?room=${id}`, status: 'reconnecting', hasPassword: DESKTOP ? !!extra?.password : password !== undefined,
         room: { ...room, hostSub: useSocialStore().claims.sub, hostName: useSocialStore().claims.name },
         _tookOver: true,
+        ...(DESKTOP ? { _password: extra?.password || undefined } : {}),   // for the host after this one
       });
       drawing.takeOver(this._host, { planned, words });
       this.chat = this.chat.map((row) => ({ ...row, host: row.mine }));
-      if (connection) Object.assign(connection, { greeting: { type: 'host' }, ...HOST_SOCKET });
+      if (DESKTOP) this.hostOwnService(id, { name: room?.name ?? '', welcome: room?.welcome ?? '', ...extra, id });
+      else if (connection) Object.assign(connection, { greeting: { type: 'host' }, ...HOST_SOCKET });
       this.share();
+    },
+
+    // Desktop carryOn: this computer's service (on standby until now) takes the room, and the host's socket to it on
+    // loopback greets with the room (what the service makes it from), in place of the old host's.
+    async hostOwnService(id, room) {
+      const old = this._connection;
+      this._connection = null;
+      old?.close();
+      let service;
+      try {
+        service = await desktop.startService({ mode: 'host', sub: useSocialStore().claims.sub });
+      } catch (error) {
+        console.warn('The room service didn\'t start.', error);
+        if (this.id === id && this.role === 'host') this.over(t('social.notices.serviceFailed'));
+        return;
+      }
+      if (this.id !== id || this.role !== 'host') return;
+      Object.assign(this, { addresses: service.addresses, port: service.port, _desktop: { secret: service.secret, port: service.port } });
+      this.connect({ type: 'host', secret: service.secret, room }, HOST_SOCKET);
     },
 
     // The role moved on, by this host's Make host or while it was away: back in on a new socket, with the document
     // and chat as they are. Refused (full, or no longer welcome), it's left with them, as anyone leaving is.
-    becomeArtist({ planned, name, sub, words }) {
+    // On desktop the room is at the new host's addresses (where).
+    becomeArtist({ planned, name, sub, words, where }) {
       const drawing = useDrawingStore();
       for (const stop of this._stops) stop();
       this._connection = null;   // ending itself
@@ -1022,7 +1095,9 @@ export const useRoomStore = defineStore('room', {
         _stops: [],
       });
       this.chat = this.chat.map((row) => ({ ...row, host: row.sub === sub }));
+      if (DESKTOP) this._address = where[0];
       this.watchRoom(id);
+      if (DESKTOP) this._moveTimer = setTimeout(() => this.moveTo(where, name, 1), MOVE_TRY_MS);
       drawing.becomeArtist({ planned });
       drawing.hostChanged({ planned, words });
     },
@@ -1121,6 +1196,46 @@ export const useRoomStore = defineStore('room', {
     },
     turnAway(ask) {
       this.letIn(ask, false);
+    },
+
+    // Desktop: drawing, this computer's service waits on standby, and the host hears its addresses, to know it could
+    // hand the room here. It stops when drawing does, unless this computer is hosting by then.
+    async standBy() {
+      this._standby = [];   // close() stops it from now on, started or not
+      let service;
+      try {
+        service = await desktop.startService({ port: keptPort(), mode: 'standby', sub: useSocialStore().claims?.sub });
+      } catch (error) {
+        console.warn('The room service didn\'t start.', error);   // the room goes on: this one can't be its next host
+        this._standby = null;
+        return;
+      }
+      if (!this._standby) return;   // stopped meanwhile
+      this._standby = service.addresses;
+      this._connection?.send({ type: 'addresses', list: service.addresses });
+    },
+    standDown() {
+      if (!this._standby || this.role === 'host') return;
+      this._standby = null;
+      desktop.stopService().catch(() => {});
+    },
+
+    // Desktop: the app is quitting (desktop.onQuit). A host hands the room to a connected artist whose own service
+    // answered, or ends it with no one to (or when that doesn't happen); then the app can go. quitReady is said once,
+    // whatever happens, and the main process stops waiting after 20 s anyway.
+    async quitting() {
+      try {
+        const drawing = useDrawingStore();
+        const to = this.role === 'host' && drawing.artists.find((sub) => drawing.connected.includes(sub) && this.canBeHost(sub));
+        if (to) await drawing.makeHost(to);
+      } catch (error) {
+        console.warn('The room couldn\'t be handed over.', error);
+      }
+      try {
+        if (this.role === 'host') this.close();   // not a host now: the window's question is about the drawing alone
+      } finally {
+        desktop.quitReady();
+      }
     },
 
     // The host's Mute, for this room: what they say from now on reaches only them and the host. They aren't told.
@@ -1283,6 +1398,7 @@ export const useRoomStore = defineStore('room', {
           this._refusedOnce = false;
           this.status = 'waiting';
           if (DESKTOP) this._joinedAs = { peer: msg.peer, token: msg.token };
+          if (DESKTOP && this._standby?.length) this._connection?.send({ type: 'addresses', list: this._standby });   // a new socket: the host's service hears them again
           this.room = { name: '', welcome: '', ...this.room, host: msg.hostName, hostSub: msg.hostSub };
           this.following ??= msg.hostSub;
           break;
@@ -1318,7 +1434,10 @@ export const useRoomStore = defineStore('room', {
       const connection = this._connection;
       if (reason === 'not-host' && this.role === 'host') return this.backAsArtist();
       const wait = reason === 'throttled' && this._resuming ? retryIn(this._throttled++, this._resumeBegan) : null;
-      if (wait) {   // too busy to say: the room may well be there
+      // A room that moved: the new host's service may not have taken it up yet. MOVE_TRY_MS decides when to give up.
+      if (DESKTOP && reason === 'unavailable' && this._moveTimer) {
+        setTimeout(() => { if (connection === this._connection) connection.open(); }, 1000);
+      } else if (wait) {   // too busy to say: the room may well be there
         setTimeout(() => { if (connection === this._connection) connection.open(); }, wait);
       } else if (reason === 'bad-pass' && !this._refusedOnce) {
         this._refusedOnce = true;
