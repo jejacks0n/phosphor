@@ -1933,6 +1933,7 @@ test('a reload after the first change, and later changes, keep no second As open
   await leave();
 
   const back = await mounted();
+  await pass(SAVE_AFTER_MS); // the restore's own write: a write queued behind it isn't one pass sees start
   for (const col of [1, 2]) {
     await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
     edit(back.project, col);
