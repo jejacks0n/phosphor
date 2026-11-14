@@ -149,7 +149,7 @@ test('a save that fails says so and keeps the work unsaved', async () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   desktop.saveProject.mockImplementationOnce(async () => { throw new Error('disk full'); });
   await workspace.saveFile();
-  expect(toastMessage.value).toBe("Couldn't save the file.");
+  expect(toastMessage.value).toBe('Could not save the file.');
   expect([project.filePath, project.savedToFile]).toEqual([null, false]);
 });
 

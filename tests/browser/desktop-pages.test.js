@@ -207,7 +207,7 @@ test('StartRoomPage desktop: no public or guests, a password always, and the por
   expect(host.querySelector('form').classList.contains('single')).toBe(true);
   expect(host.querySelector('div.column')).toBe(null);
   expect(host.querySelector('h3')).toBe(null);   // the dialog's heading is the only one
-  expect(host.querySelector('form > p.no-art').textContent).toBe('Open an image or start a canvas first so you have something to share.');
+  expect(host.querySelector('form > p.no-art').textContent).toBe('Open an image or create a canvas first so you have artwork to share.');
   expect(field('Password')).toBeTruthy();
   expect(field('Port').value).toBe('4000');
 
