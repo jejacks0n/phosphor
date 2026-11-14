@@ -208,7 +208,9 @@ gives other apps only its characters (see [Layers](layers.md#the-select-tool)).
   word longer than 64 is split. The record holds at most 255 lines.
   Title holds 35 characters, Author and Group 20 each, counted as the record counts them (one a character,
   an emoji too), with a count beside each field. A field stops at its width, and a line under it names what
-  a paste or a key past the end left out, until the field next changes.
+  a paste or a key past the end left out, until the field next changes. The record is CP437 in .ans and
+  .utf8ans alike: a character it lacks is written as its lookalike or `?`, and the export dialog lists
+  those too, for every ANSI format, with the fields each is in. Only what reaches the record is listed.
 - **.png** is a picture of the art as the ANSI view draws it, in your display font, at one pixel per
   font pixel: the frame showing, with or without Animate. With Smooth text off (the status bar's
   **Smooth**) every pixel is one of the art's colors and the file is small. With it on, the export

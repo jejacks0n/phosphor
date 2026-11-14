@@ -140,3 +140,60 @@ test('.ans lists each character it replaces and what it becomes; another format 
     unmount();
   }
 });
+
+// Walt's SAUCE: an accent CP437 has (é), and characters it lacks in two fields.
+const WALT = { sauceAuthor: 'Wélt Kowałski €96 re', sauceGroup: 'Ïmpure Łodz Crew €XY' };
+const pick = async (modal, name) => {
+  [...modal.querySelectorAll('.format-btn')].find((b) => b.querySelector('.format-name').textContent.trim() === name).click();
+  await nextTick();
+};
+
+test('every format that writes SAUCE lists the SAUCE characters CP437 lacks, with their fields; PNG lists none', async () => {
+  const { project } = await drawing();
+  Object.assign(project, WALT);
+  const { unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    const list = () => modal.querySelector('ul[aria-label="SAUCE replacements"]');
+    const rows = () => [...(list()?.querySelectorAll('li') ?? [])].map((li) => [...li.children].map((span) => span.textContent.trim()).join(' '));
+    const expected = ['ł → ? Author', '€ → ? Author, Group', 'Ï → ? Group', 'Ł → ? Group'];
+    expect(rows()).toEqual(expected);
+    expect(modal.textContent).toContain('4 characters in SAUCE aren\'t in CP437 and will be substituted:');
+    expect(modal.textContent).toContain('SAUCE is CP437 in every ANSI file. To choose your own stand-ins, change these on the SAUCE tab.');
+    expect(modal.querySelector('ul[aria-label="Replacements"]')).toBeNull(); // the art's own are all CP437
+
+    await pick(modal, 'UTF-8 ANS');
+    expect(rows()).toEqual(expected);
+    expect(modal.textContent).not.toContain('Export as .utf8ans to keep exact characters.');
+
+    await pick(modal, 'PNG');
+    expect(list()).toBeNull();
+
+    project.sauceAuthor = 'Walt €';
+    project.sauceGroup = '';
+    await pick(modal, 'ANS');
+    expect(rows()).toEqual(['€ → ? Author']);
+    expect(modal.textContent).toContain('1 character in SAUCE isn\'t in CP437 and will be substituted:');
+  } finally {
+    unmount();
+  }
+});
+
+test('the animated ANSI formats list SAUCE\'s too, GIF and Cast don\'t', async () => {
+  const { project } = await drawing();
+  project.animate = true;
+  project.addFrame('blank');
+  await settle(project);
+  Object.assign(project, WALT);
+  const { unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    const list = () => modal.querySelector('ul[aria-label="SAUCE replacements"]');
+    for (const [name, listed] of [['Animated ANS', true], ['Animated UTF-8 ANS', true], ['GIF', false], ['Cast', false]]) {
+      await pick(modal, name);
+      expect(!!list(), name).toBe(listed);
+    }
+  } finally {
+    unmount();
+  }
+});

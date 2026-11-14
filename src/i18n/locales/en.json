@@ -999,6 +999,9 @@
     "becomesAria": "becomes",
     "cellCount": "{count} cell | {count} cells",
     "keepHint": "Export as .utf8ans to keep exact characters.",
+    "sauceNote": "1 character in SAUCE isn't in CP437 and will be substituted: | {count} characters in SAUCE aren't in CP437 and will be substituted:",
+    "sauceReplacementsAria": "SAUCE replacements",
+    "sauceHint": "SAUCE is CP437 in every ANSI file. To choose your own stand-ins, change these on the SAUCE tab.",
     "saveFailed": "Couldn't save the file.",
     "tooTall": "At {cols}×{rows}, wider or taller than a standard 80×25 terminal. Part of the drawing may clip during playback.",
     "gifTooLarge": "This animation is too large for a GIF. Try fewer frames or smaller dimensions—or export .cast, which has no size limit."

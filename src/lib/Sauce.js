@@ -27,14 +27,15 @@ export function fitField(before, after, caret, width, clean = (text) => text) {
 }
 
 // SAUCE text is CP437, one byte a character, space-padded (the font name, a ZString, NUL-padded).
+const cut = (text, width) => [...(text ?? '')].slice(0, width).join('');
 const pad = (text, length, fill = 32) => {
   const bytes = new Uint8Array(length).fill(fill);
-  [...(text ?? '')].slice(0, length).forEach((char, i) => { bytes[i] = cp437Byte(cp437Substitute(char)); });
+  [...cut(text, length)].forEach((char, i) => { bytes[i] = cp437Byte(cp437Substitute(char)); });
   return bytes;
 };
 
-// A record: what a field given holds, written as is (an opened file's empty date or font stays empty), and its
-// flags and size when given; what isn't given is Phosphor's own.
+// A record: what a field given holds, as far as its width (an opened file's empty date or font stays empty), and its
+// flags and size when given; what isn't given is Phosphor's own. The text fields are what's written.
 export class Sauce {
   constructor(file, opts) {
     this.cols = opts.width ?? file.cols;
@@ -44,14 +45,14 @@ export class Sauce {
     this.fileType = opts.fileType || 1;
     this.fileSize = opts.fileSize || 0;
 
-    this.title = opts.title || '';
-    this.author = opts.author || '';
-    this.group = opts.group || '';
-    this.date = opts.date ?? new Date().toLocaleDateString('sv').replaceAll('-', '');
+    this.title = cut(opts.title, SAUCE_WIDTHS.title);
+    this.author = cut(opts.author, SAUCE_WIDTHS.author);
+    this.group = cut(opts.group, SAUCE_WIDTHS.group);
+    this.date = cut(opts.date ?? new Date().toLocaleDateString('sv').replaceAll('-', ''), SAUCE_WIDTHS.date);
 
     // Phosphor's own flags: iCE colors (bit 0), and 8 or 9 pixel letter spacing (bits 1 and 2).
     this.flags = opts.flags ?? (1 | (opts.use9pxFont ? 4 : 2));
-    this.fontName = opts.fontName ?? 'IBM VGA';
+    this.fontName = cut(opts.fontName ?? 'IBM VGA', SAUCE_WIDTHS.fontName);
 
     // Process comments into chunks a line wide
     this.comments = this.#processComments(opts.comments);
@@ -140,6 +141,23 @@ export class Sauce {
 
     return output;
   }
+}
+
+// The characters a record's text can't hold in CP437, of what's written (each field cut at its width, the comments
+// at 255 lines, as the export cuts them): what each is written as and the fields it's in, in field order and as each
+// first appears. What the export dialog lists.
+const LISTED = ['title', 'author', 'group', 'comments'];
+export function sauceUnmappable(fields) {
+  const sauce = new Sauce({}, fields), found = new Map();
+  for (const field of LISTED) {
+    for (const char of [...[sauce[field]].flat().join('')]) {
+      if (cp437Substitute(char) === char) continue;
+      const entry = found.get(char) ?? { char, as: cp437Substitute(char), fields: [] };
+      if (!entry.fields.includes(field)) entry.fields.push(field);
+      found.set(char, entry);
+    }
+  }
+  return [...found.values()];
 }
 
 // Reading: the record is the last 128 bytes, and its comment block sits just before it.
