@@ -246,7 +246,7 @@ test('a cells layer holds no Dither: it isn\'t saved, an old file\'s is dropped,
   expect('dither' in project.layerById('edit').chars).toBe(false);
   expect(project.charsOf('edit').dither).toBe(50);
   workspace.pickLayer('edit');
-  const vector = project.addLayer('vector', 'edit'); // + Vector layer with Layer 1 picked
+  const vector = project.addLayer('vector', 'edit'); // Add vector layer with Layer 1 picked
   expect(dithers(project, vector)).toEqual({ ditherStyle: 'floyd', dither: 50 });
   project.setLayerChars('edit', { chars: '#' });
   const parts = await readProject(await saved(project));

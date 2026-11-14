@@ -1,5 +1,6 @@
 // The LAYERS list (LayersList.vue): the drawing's layers top first, a row picked to decide the tabs, an eye to hide one,
-// a click on the picked row's name (or a double-click) to rename it, ⋯ to rename or move it, + Layer and + Vector layer under it.
+// a click on the picked row's name (or a double-click) to rename it, ⋯ to rename or move it, and a header over it counting
+// the layers, with Add layer and Add vector layer.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -33,7 +34,8 @@ const rows = () => [...host.querySelectorAll('li')];
 const names = () => rows().map((li) => li.querySelector('button.pick').textContent.trim());
 const pickOf = (i) => rows()[i].querySelector('button.pick');
 const eyeOf = (i) => rows()[i].querySelector('button.eye');
-const addButton = (label = '+ Vector layer') => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === label);
+const addButton = (label = 'Add vector layer') => host.querySelector(`div.head button[aria-label="${label}"]`);
+const count = () => host.querySelector('div.head span.count').textContent.trim();
 const menuOf = (i) => rows()[i].querySelector('button.dropdown-trigger');
 // The row's ⋯ menu opened, its items by their words. A moment passes before an item is clicked: Vue skips a click
 // dispatched in the same millisecond the menu mounted (a real click never is).
@@ -55,23 +57,25 @@ test('lists edit, vector and base, top first', async () => {
   expect(pickOf(0).getAttribute('aria-pressed')).toBe('true');
 });
 
-test('+ Layer adds directly above the pick and picks it', async () => {
+test('Add layer adds directly above the pick and picks it', async () => {
   const { project, workspace } = await mount();
   expect(names()).toEqual(['Layer 1', 'Base']);
-  addButton('+ Layer').click();
+  expect(count()).toBe(`2 of ${MOST_LAYERS} layers`);
+  addButton('Add layer').click();
   await nextTick();
   expect(names()).toEqual(['Layer 2', 'Layer 1', 'Base']);
+  expect(count()).toBe(`3 of ${MOST_LAYERS} layers`);
   expect(workspace.pickedLayer).toBe(project.layers[2].id);
   expect(pickOf(0).getAttribute('aria-pressed')).toBe('true');
   pickOf(2).click(); // the base: the next goes directly above it
   await nextTick();
-  addButton('+ Layer').click();
+  addButton('Add layer').click();
   await nextTick();
   expect(names()).toEqual(['Layer 2', 'Layer 1', 'Layer 3', 'Base']);
   expect(workspace.pickedLayer).toBe(project.layers[1].id);
 });
 
-test('+ Vector layer always shows and adds above the pick', async () => {
+test('Add vector layer always shows and adds above the pick', async () => {
   const { workspace } = await mount();
   addButton().click();
   await nextTick();
@@ -148,14 +152,14 @@ test('in a room the ⋯ items that change the stack are off with the reason', as
     expect(item(label).title).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
   }
   expect(item('Rename').disabled).toBe(false);
-  expect(addButton('+ Layer').disabled).toBe(true);
-  expect(addButton('+ Layer').title).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
+  expect(addButton('Add layer').disabled).toBe(true);
+  expect(addButton('Add layer').title).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
   expect(addButton().disabled).toBe(false); // the vector layer the room is missing
 });
 
-test('at the most layers + Layer, + Vector layer and Duplicate are off and say why', async () => {
+test('at the most layers Add layer, Add vector layer and Duplicate are off and say why', async () => {
   await mount(({ project }) => { while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit'); });
-  for (const label of ['+ Layer', '+ Vector layer']) {
+  for (const label of ['Add layer', 'Add vector layer']) {
     expect(addButton(label).disabled).toBe(true);
     expect(addButton(label).title).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`);
   }

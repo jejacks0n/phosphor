@@ -221,10 +221,10 @@ column to see the words change, switch the theme, and open About.
 - Rated: yes, wants the phone keyboard's Done to put the cursor away
 
 ### 14. Add a layer and name it
-- Does: taps Layers, taps + Layer, taps its name and types "doodles" on the phone's keyboard and presses return; hides
-  it with its eye and shows it again; taps Done.
-- Expects: the dialog fits at 390 wide, with every row's name, eye and ⋯ visible; "Layer 2" is added above Layer 1 and
-  picked, and stays open after a pick; return keeps the new name; the status bar then says "doodles"
+- Does: taps Layers, taps Add layer (the header's cells icon with a plus), taps its name and types "doodles" on the
+  phone's keyboard and presses return; hides it with its eye and shows it again; taps Done.
+- Expects: the dialog fits at 390 wide, with the header's count and both add buttons and every row's name, eye and ⋯
+  visible; "Layer 2" is added above Layer 1 and picked, and stays open after a pick; return keeps the new name; the status bar then says "doodles"
   ([The layers list](../../layers.md#the-layers-list)).
 - Probes: `extremes`: rename it to 40 characters with emoji and check the row, then back to "doodles"; `back-out`: start
   a rename and tap outside the dialog; `again`: add three layers in a row.

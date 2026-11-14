@@ -91,7 +91,7 @@ intact and saved as a .phosphor.
   | `walt` | `long.ans`, Edit it | [The long file](walt.md#the-long-file) (steps 2 to 7) | [SAUCE at its limits](walt.md#sauce-at-its-limits) (steps 12 to 15) |
 
   A room refuses some of what those steps do, and says so: no adding, deleting, duplicating or moving layers while
-  live (only + Vector layer when there's none, added directly on the base), no layer's own character settings (the
+  live (only Add vector layer when there's none, added directly on the base), no layer's own character settings (the
   Characters section is always Base's), no Animate ("Live rooms don't support animations yet."), and while anyone else
   is drawing no Open, new image, blank canvas, restoring a version or Clear ("Unavailable while co-artists are
   drawing."). A partner's step that runs into one of these is tried once; a refusal the docs promise
@@ -146,7 +146,7 @@ script. Every section ends with Free time.
 - Rated: yes, wants a key to reach the side panel's Social tab (Tab-walking is the path today)
 
 ### 3. Check my art fits a room
-- Does: presses + Layer to add a second cells layer, opens Start a room and looks at Go live; closes it, undoes the
+- Does: presses Add layer to add a second cells layer, opens Start a room and looks at Go live; closes it, undoes the
   layer; then turns Animate on, adds a frame, and looks again; undoes the frame and turns Animate off.
 - Expects: with a layer too many, Go live is off and says "For now, a room holds at most Base, one vector layer and
   one layer above them, all with the same character settings. Merge or delete layers to go live."; with two frames it

@@ -591,7 +591,7 @@ test('a stack opened without an edit layer picks the layer in use', async () => 
   expect(workspace.pickedLayer).toBe(two);
 });
 
-test('with the only cells layer deleted, a base move stays on the base, pastes and typing land on the base, and + Layer starts empty', async () => {
+test('with the only cells layer deleted, a base move stays on the base, pastes and typing land on the base, and Add layer starts empty', async () => {
   const { project, workspace } = await blank();
   project.typeAt(1, 1, 'Q', WHITE);
   project.commitEdit();
