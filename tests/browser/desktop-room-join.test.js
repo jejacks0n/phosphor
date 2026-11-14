@@ -151,11 +151,11 @@ test('joinAddress joins with room id and protocol, waiting then joined', async (
   expect(await verify((await loadKey()).publicKey, `room:${ID}:${greeting.ts}`, greeting.proof)).toBe(true);
 
   socket.receive({ type: 'waiting' });
-  expect(room.status).toBe('waiting');
+  expect(room.status).toBe('asked');   // the host's yes is what's waited for
   expect(room._connection.status).toBe('live');   // a long wait for the host's yes isn't a quiet socket
 
   socket.receive({ type: 'joined', id: ID, peer: 'p_1', token: 'tok', hostName: 'ann', hostSub: 'u_ann', artists: [] });
-  expect(room.status).toBe('waiting');
+  expect(room.status).toBe('waiting');   // let in: now the host's art is
   expect(room.room).toMatchObject({ name: 'Night shift', host: 'ann', hostSub: 'u_ann' });
 });
 

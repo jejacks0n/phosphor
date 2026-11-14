@@ -73,3 +73,26 @@ test('verifyProof checks a proof the way verifySignature does', async () => {
   assert.equal(await verifyProof('bad', message, p), false);
   assert.equal(await verifySignature(key.publicKey, message, p), true);
 });
+
+// A pass's own key signs whatever claims it likes, so the claims are checked in shape too: what the host's page
+// shows (the name) and how long it's good (exp).
+test('a name that isn\'t a short string, or an exp past an hour from now, is refused by both checks', async () => {
+  const key = await newKey();
+  const { claims } = await makeSelfPass(key, 'Ana', NOW);
+  const signed = async (changes) => {
+    const body = encode({ ...claims, ...changes });
+    return `${body}.${await sign(key.privateKey, body)}`;
+  };
+  const hour = Math.floor(NOW / 1000) + 3600;
+  for (const bad of [{ name: ['x'] }, { name: null }, { name: 7 }, { name: '' }, { name: '   ' }, { name: 'x'.repeat(25) }, { name: 'x'.repeat(15_000) },
+    { exp: hour + 3600 }, { exp: 1e15 }]) {
+    const pass = await signed(bad);
+    assert.equal(await verifySelfPass(pass, NOW), null, JSON.stringify(bad).slice(0, 40));
+    assert.equal(await verifyInNode(pass, NOW), null, JSON.stringify(bad).slice(0, 40));
+  }
+  for (const good of [{ name: 'x'.repeat(24) }, { exp: hour + 300 }]) {   // the longest name, and a clock a few minutes ahead
+    const pass = await signed(good);
+    assert.ok(await verifySelfPass(pass, NOW));
+    assert.ok(await verifyInNode(pass, NOW));
+  }
+});

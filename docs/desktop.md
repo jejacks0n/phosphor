@@ -14,7 +14,9 @@ The app is on Phosphor's [GitHub Releases](https://github.com/jejacks0n/phosphor
 - **macOS**: the `.dmg` (or the `.zip`), for Apple silicon (`arm64`) or Intel (`x64`). It's signed and notarized, so
   macOS opens it without a warning.
 - **Windows**: the installer (`.exe`), one for both x64 and Arm. It's signed.
-- **Linux**: the `.AppImage` or the `.deb`. These aren't signed.
+- **Linux**: the `.AppImage` or the `.deb`. These aren't signed. On Ubuntu 24.04 and later the AppImage may not start,
+  because Ubuntu restricts the unprivileged user namespaces the app's sandbox needs. Use the `.deb` there: it sets the
+  sandbox up when it installs.
 
 The app doesn't update itself. Download the next release when there is one. In a room, someone on a different version
 is told so: "They're on a newer Phosphor. Update to join." or "They're on an older Phosphor. They need to update
@@ -27,7 +29,8 @@ or join. It's kept on this computer, and you can change it there any time. Until
 room** are off and say "Pick a name others will see first."
 
 Names aren't unique, since there are no accounts. When two people in a room go by the same name, each is followed
-by the start of their key's fingerprint, such as `ann #3f9a`, in the chat and the list of who's here.
+by the start of their key's fingerprint, such as `ann #3f9a`, in the chat, the list of who's here and a join asking
+to be let in.
 
 ## Hosting
 
@@ -37,7 +40,7 @@ Under **Host a room**, **Start a room** opens **Set up your room**, with:
 - **Password (optional)**: "Everyone joining types it in, and you still let each one in."
 - **Max watchers**: "Rooms stream directly from this computer. Up to 12 watchers suits most home connections."
 - **Port**: where others connect, **31337** to begin with. "Others join at this port. If it's taken, the next free
-  one is used." (up to 20 ports above it). The port you last hosted on is kept for next time.
+  one is used." (the port you chose or one of the 19 above it). The port you last hosted on is kept for next time.
 
 There's no public or link-only choice and no guests: a room is reached only by its address, and everyone in it chose a
 name. **Go live** opens the room on this computer. If it can't, you see "The room couldn't start on this computer.
@@ -46,8 +49,8 @@ Try another port."
 ### The addresses
 
 While you host, **Settings and stats** (in the room menu of the chat panel) lists the addresses others can join at,
-each with **Copy**: this computer's network addresses with the port, such as `192.168.1.20:31337`. A Tailscale address
-is marked **Tailscale**. With no network, it shows `127.0.0.1` and the port, and says "Only this computer can join.
+each with **Copy**: this computer's network addresses with the port, such as `192.168.1.20:31337`. Home and office
+network addresses come first, and Tailscale's last, marked **Tailscale**. With no network, it shows `127.0.0.1` and the port, and says "Only this computer can join.
 Connect to a network to share an address." Under them:
 
 - "Anyone who can reach this address can ask to join."
@@ -91,9 +94,10 @@ again. A wrong one is asked for again.
 
 ### The host lets you in
 
-Every join is asked of the host. While they decide, you see "Waiting for the host to let you in." The host sees
-"ann wants to join" with **Turn away** and **Let in**, in the chat panel under who's here, and in **Settings and stats**. It
-counts as unread while the chat isn't showing, so a host on **LAYERS** or with the panel folded sees it too.
+Every join is asked of the host. While they decide, you see "Waiting for the host to let you in." Once you're let in,
+it says "Waiting for the host…" until their art arrives. The host sees "ann wants to join" with **Turn away** and
+**Let in**, in the chat panel under who's here, and in **Settings and stats**. It counts as unread while the chat
+isn't showing, so a host on **LAYERS** or with the panel folded sees it too.
 
 - **Let in**: you're in. You stay let in for as long as the room lasts, so a reload or a dropped connection doesn't
   ask the host again.

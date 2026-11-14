@@ -56,11 +56,11 @@ test('a join waits, the host is asked, and yes joins', async () => {
   assert.deepEqual(await host.next(), { type: 'peer', peer: joined.peer, pass: ana.pass });
   assert.equal(s.room().count, 1);
 
-  // Signals go both ways, and a guest's socket closing tells the host.
+  // The host signals a guest; a guest's signals go nowhere (a socket peer's guest has none to send, and the host's
+  // page isn't to be flooded with them). A guest's socket closing tells the host.
   host.send(JSON.stringify({ type: 'signal-to', to: joined.peer, data: { a: 1 } }));
   assert.deepEqual(await guest.next(), { type: 'signal-from', from: 'host', data: { a: 1 } });
   guest.send(JSON.stringify({ type: 'signal-to', data: { b: 2 } }));
-  assert.deepEqual(await host.next(), { type: 'signal-from', from: joined.peer, data: { b: 2 } });
   guest.close();
   assert.deepEqual(await host.next(), { type: 'peer-gone', peer: joined.peer });
 });
@@ -186,6 +186,17 @@ test('end tells everyone ended', async () => {
     assert.deepEqual(await ws.next(), { type: 'ended' });
     assert.equal((await ws.closed).code, 1000);
   }
+});
+
+test('closing the service ends the room first: everyone hears ended', async () => {
+  const s = await service();
+  const { ws: host } = await hosting(s, await person('Host'));
+  const { ws: guest } = await letIn(s, host, await person());
+  const asker = await joining(s, await person('Bo'));
+  await asker.next();
+  await host.next();
+  await s.close();
+  for (const ws of [host, guest, asker]) assert.deepEqual(await ws.next(), { type: 'ended' });
 });
 
 test('refuses busy past five waiting asks', async () => {

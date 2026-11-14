@@ -3,8 +3,10 @@
 // is the same check written for Node.
 import { toBase64url, fromBase64url } from './base64url.js';
 import { sign, verifySignature } from './keys.js';
+import { USERNAME_MAX } from './names.js';
 
 const HOUR = 3600;
+const DRIFT = 300;   // a clock this many seconds ahead of the host's still has its pass taken
 
 // base64url of the first 16 bytes of SHA-256 over the raw public key: 22 characters.
 export async function fingerprint(publicKeyB64) {
@@ -19,8 +21,9 @@ export async function makeSelfPass({ privateKey, publicKey }, name, now = Date.n
   return { pass: `${body}.${await sign(privateKey, body)}`, claims };
 }
 
-// The claims of a pass signed by its own key, whose sub is that key's fingerprint and which hasn't
-// expired, or null for anything else.
+// The claims of a pass signed by its own key, whose sub is that key's fingerprint, whose name is a name (a string,
+// not blank, at most USERNAME_MAX) and which hasn't expired and isn't good for much more than an hour, or null for
+// anything else: the key signs whatever claims it likes.
 export async function verifySelfPass(pass, now = Date.now()) {
   try {
     const [body, signature, ...rest] = pass.split('.');
@@ -28,7 +31,8 @@ export async function verifySelfPass(pass, now = Date.now()) {
     const claims = JSON.parse(new TextDecoder().decode(fromBase64url(body)));
     if (!await verifySignature(claims.key, body, signature)) return null;
     if (claims.sub !== await fingerprint(claims.key)) return null;
-    return claims.exp * 1000 > now ? claims : null;
+    const named = typeof claims.name === 'string' && claims.name.trim() !== '' && claims.name.length <= USERNAME_MAX;
+    return named && claims.exp * 1000 > now && claims.exp * 1000 <= now + (HOUR + DRIFT) * 1000 ? claims : null;
   } catch {
     return null;
   }

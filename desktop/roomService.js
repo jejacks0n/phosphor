@@ -3,7 +3,7 @@
 // and a proof over room:<id>:<ts>), then a `host` from this machine's own window (loopback, with the secret
 // made at launch) or a `join` from anyone. The host approves every join: someone it let in stays approved
 // for the room's life, until removed. Close codes follow the room API: 1008 after refused, 1000 after
-// removed, ended and replaced.
+// removed, ended and replaced. Closing the service ends its room.
 //
 // /channel stands in for a WebRTC data channel: a guest's socket (with the token `joined` gave it) and the host's
 // for that guest (loopback, with the secret) are piped together, frames kept as they came, and a guest that falls
@@ -283,11 +283,11 @@ export async function createRoomService({
     send('host', artistsNow());
   };
 
-  // A message from a socket past its greeting. An ask's are ignored until it's let in.
+  // A message from a socket past its greeting. An ask's are ignored until it's let in, and a watcher's signal-to always
+  // is: a socket peer's guest sends none (it opens its channel when the host's offer comes), so only a flood would.
   const heard = (who, msg) => {
     if (who !== 'host') {
       const w = watchers.get(who);
-      if (msg.type === 'signal-to' && w) send('host', { type: 'signal-from', from: who, data: msg.data });
       if (msg.type === 'addresses' && w) void probeFor(w.sub, msg.list);
       return;
     }
@@ -473,7 +473,18 @@ export async function createRoomService({
       id: room.id, name: room.name, welcome: room.welcome, password: room.password, max: room.max,
       approved: [...room.approved], count: watchers.size,
     },
+    // A room here ends first, as the host's end does, and its sockets get a moment (a second at most) to hear
+    // ended before every socket is cut: a host's Leave sends end and stops the service at once, and either can
+    // come first.
     close: async () => {
+      if (room) {
+        end();
+        const closing = [...wss.clients].filter((ws) => ws.readyState !== WebSocket.CLOSED);
+        await Promise.race([
+          Promise.all(closing.map((ws) => new Promise((resolve) => ws.once('close', resolve)))),
+          new Promise((resolve) => setTimeout(resolve, 1000)),
+        ]);
+      }
       for (const ws of [...wss.clients, ...channelWss.clients]) ws.terminate();
       server.closeAllConnections();
       await new Promise((resolve) => server.close(() => resolve()));
