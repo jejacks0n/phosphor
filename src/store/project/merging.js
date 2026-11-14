@@ -15,7 +15,7 @@ import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeKind } from '@/docume
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors } from '@/lib/Cells.js';
-import { rgb2hex, hex2rgb } from '@/lib/ColorUtils.js';
+import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -345,11 +345,14 @@ export const mergingActions = {
       }
 
       const { cols } = this, rows = charRowsOf(this.rows);
-      const grid = []; // { col, row, char, fg, bg }: each cell as it shows, a wide character's trail a space in its colors
+      // { col, row, char, fg, bg, fgIndex?, bgIndex? }: each cell as it shows, a wide character's trail a space in its
+      // colors, a 256-color index a lower one shares (16, 231) kept
+      const grid = [], shownPalette = this.renderer.palette;
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
           const cell = this.cells[row * cols + col];
-          grid.push({ col, row, char: cell.wide === 'trail' ? ' ' : cell.char, fg: cell.fg.hex, bg: cell.bg.hex });
+          const fgIndex = sharedIndex(cell.fg.c, shownPalette), bgIndex = sharedIndex(cell.bg.c, shownPalette);
+          grid.push({ col, row, char: cell.wide === 'trail' ? ' ' : cell.char, fg: cell.fg.hex, bg: cell.bg.hex, ...(fgIndex !== undefined && { fgIndex }), ...(bgIndex !== undefined && { bgIndex }) });
         }
       }
       const stack = stackState(this);
@@ -375,7 +378,7 @@ export const mergingActions = {
       const chars = Object.freeze(Object.fromEntries(CHAR_KEYS.map((key) => [key, key in settings ? settings[key] : this[key]])));
       const edit = this.layerById('edit') ?? { id: 'edit', kind: 'cells', n: 1, name: null };
       const layers = [Object.freeze({ ...this.layers[0], hidden: false }), ...(layer === 'edit' ? [Object.freeze({ ...edit, hidden: false, chars: layerChars('cells', chars) })] : [])];
-      const editCells = new Map([...(layer === 'edit' ? grid.map(({ col, row, char, fg, bg }) => [cellKey(col, row), { char, fg, bg }]) : []), ...bakeEditCells(new Map(past), params)]);
+      const editCells = new Map([...(layer === 'edit' ? grid.map(({ col, row, ...entry }) => [cellKey(col, row), entry]) : []), ...bakeEditCells(new Map(past), params)]);
 
       // The base: black for the edit layer's grid, or the grid's cells as Merge down writes them (writeBaseCells).
       base = before.base;
