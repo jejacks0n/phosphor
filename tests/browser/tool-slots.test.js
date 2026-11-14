@@ -34,7 +34,7 @@ const choices = () => [...host.querySelectorAll('.dropdown-content button.choice
 
 test('ANSI shows a slot per tool, the grouped ones sharing theirs', async () => {
   await toolbar();
-  expect(slots()).toEqual(['pencil', 'brush', 'eraser', 'fill', 'shapes', 'picker', 'select', 'navigate', 'text', 'flip']);
+  expect(slots()).toEqual(['pencil', 'brush', 'eraser', 'fill', 'retouch', 'shapes', 'picker', 'select', 'navigate', 'text', 'flip']);
 });
 
 test('VECTOR groups Vector select and Node', async () => {

@@ -7,10 +7,10 @@ const row = (page) => page.locator('.tool-group > *').evaluateAll((els) => els.m
 
 test('Select and the Magic Wand share a slot between the picker and the Hand and Zoom\'s, in both views', async ({ page }) => {
   await openApp(page);
-  expect(await row(page)).toEqual(['pencil', 'brush', 'eraser', 'fill', 'shapes', 'picker', '|', 'select', '|', 'navigate', '|', 'text', 'flip']);
+  expect(await row(page)).toEqual(['pencil', 'brush', 'eraser', 'fill', 'retouch', 'shapes', 'picker', '|', 'select', '|', 'navigate', '|', 'text', 'flip']);
   await tab(page, 'PIXEL').click();
   await settled(page);
-  expect(await row(page)).toEqual(['pencil', 'brush', 'eraser', 'fill', 'shapes', 'picker', '|', 'select', '|', 'navigate']);
+  expect(await row(page)).toEqual(['pencil', 'brush', 'eraser', 'fill', 'retouch', 'shapes', 'picker', '|', 'select', '|', 'navigate']);
 });
 
 // The overlay controls fold into their dropdown, and the Actions into theirs, when the toolbar is narrow,

@@ -662,6 +662,17 @@ the two halves of each cell's base colors.
   them in an ordered pattern so the bands don't show as hard lines. Where the blend changes faster
   than a cell can show, a half-block (▀ ▄ ▌ ▐) puts the edge mid-cell. Set doesn't apply to a
   gradient: it gives each cell its character and both colors. A gradient is one undo step.
+- **Retouch** shares a button: **Blur** (**R**), **Dodge** (**O**) and **Burn** (**Shift+O**). They're soft round
+  brushes, like the Brush, that change the colors that show on the picked layer instead of laying your own: Dodge
+  lightens, Burn darkens, Blur evens each spot out with the ones around it. **Size** and **Hardness** work as the
+  Brush's; **Strength** is how far one stroke goes, and going over a spot again in the same stroke adds nothing, so
+  stroke again to go further. Dodge and Burn's **Range** chooses the colors they change most: **Shadows** the dark
+  ones, **Highlights** the light ones, **Midtones** (to start) the ones between, leaving black and white alone. In the
+  pixel view each grid pixel's color is changed and laid back as paint. In the ANSI view each cell's colors are, and
+  its character stays (as an edit cell); a cell that shows no character still shows none. Blur there evens a cell's
+  colors with the cells around it, foreground with foreground and background with background. They read the colors
+  as stored, before the color adjustments, so with a palette the result shows in the palette's colors, as any paint
+  does. With a selection, they stay inside it. A stroke is one undo step.
 - **Eyedropper**'s **FG** and **BG** toggles choose what a pick sets; in the ANSI view both lit sets both. In
   the pixel view one is lit at a time, and **Shift** picks into the other one (while you hold it, that one is
   lit).
@@ -681,11 +692,11 @@ the two halves of each cell's base colors.
 ### Tool keys
 
 A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the same tool: **P**
-Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **Shift+G** Gradient, **U** Shapes, **I** Eyedropper, **H** Hand,
+Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **Shift+G** Gradient, **R** Blur, **O** Dodge, **Shift+O** Burn, **U** Shapes, **I** Eyedropper, **H** Hand,
 **Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
 (Edit Mode and Flip are the ANSI view's). Each tool's button shows its key.
 
-Some tools share a button: the Paint Bucket and Gradient, Select and the Magic Wand, the Hand and Zoom,
+Some tools share a button: the Paint Bucket and Gradient, Blur, Dodge and Burn, Select and the Magic Wand, the Hand and Zoom,
 and in the vector view the Vector select and Node tools. The button shows the one you chose last (the
 first until then); click it to use that one. Its corner, a long press or a right-click opens the
 rest, each with its key (not on a phone). A tool's key chooses it whichever one the button shows.
@@ -706,8 +717,8 @@ These work in both the ANSI and the pixel view, for as long as you hold the key:
   click picks the foreground color; add **Shift** to pick the background color instead. In the ANSI
   view it reads the cell as the Eyedropper does, so on an opened .ans it gets the character's colors,
   not the picture under it.
-- **Shift**, with the Pencil or Brush: a click draws a straight line from where your last stroke
-  ended (with either of them, in either view) to where you click, and keeps going if you drag.
+- **Shift**, with the Pencil, Brush, Blur, Dodge or Burn: a click draws a straight line from where your last stroke
+  ended (with any of them, in either view) to where you click, and keeps going if you drag.
 - **Shift**, while dragging a shape: a Rectangle becomes a square and an Ellipse a circle, and a Line
   snaps to steps of 45°. A Single or Double line runs only straight across or down, Shift or not.
 - **Shift**, while dragging a Gradient: the line snaps to steps

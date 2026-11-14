@@ -42,7 +42,7 @@ const hint = computed(() => {
   const current = getTool(tool.value);
   if (workspace.isShiftPressed) {
     const vector = tool.value === 'picker' && workspace.editorTab === 'vector';
-    const shift = current?.altPicks ? (current.shiftLines ? t('status.straightLine') : current.shiftHint?.(workspace))
+    const shift = current?.altPicks || current?.shiftLines ? (current.shiftLines ? t('status.straightLine') : current.shiftHint?.(workspace))
       : vector ? t(workspace.vectorPickSlot.stroke ? 'status.pickFill' : 'status.pickStroke') : null;
     if (shift) return [[KEYS.shift, shift]];
   }

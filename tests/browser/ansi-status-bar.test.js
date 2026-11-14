@@ -65,3 +65,11 @@ test('in French the label is Calque choisi', async () => {
   expect(layer().getAttribute('aria-label')).toBe('Calque choisi : Base');
   await setLocale('en', { persist: false });
 });
+
+test('with Shift held, Dodge (no Alt pick of its own) says Shift draws a straight line, as the Brush does', async () => {
+  const { workspace } = await mount();
+  workspace.setActiveTool('dodge');
+  workspace.isShiftPressed = true;
+  await nextTick();
+  expect(host.querySelector('footer').textContent).toContain(i18n.global.t('status.straightLine'));
+});

@@ -368,7 +368,8 @@
       "fill": "Outils de remplissage",
       "select": "Outils de sélection",
       "navigate": "Outils de vue",
-      "vselect": "Outils de sélection vectorielle"
+      "vselect": "Outils de sélection vectorielle",
+      "retouch": "Outils de retouche"
     },
     "pencil": {
       "title": "Crayon",
@@ -407,6 +408,23 @@
       "setFgTitle": "Appliquer votre couleur de premier plan aux cellules",
       "setBgTitle": "Appliquer votre couleur d'arrière-plan aux cellules",
       "setCharTitle": "Appliquer votre caractère aux cellules"
+    },
+    "blur": {
+      "title": "Flou"
+    },
+    "dodge": {
+      "title": "Densité −"
+    },
+    "burn": {
+      "title": "Densité +"
+    },
+    "retouch": {
+      "strength": "Intensité",
+      "strengthTitle": "Jusqu'où va un trait",
+      "range": "Plage",
+      "shadows": "Ombres",
+      "midtones": "Tons moyens",
+      "highlights": "Tons clairs"
     },
     "gradient": {
       "title": "Dégradé",
@@ -1068,6 +1086,9 @@
       "eraser": "Gomme (avec Sélection et une sélection active : l'effacer)",
       "bucket": "Pot de peinture",
       "gradient": "Dégradé",
+      "blur": "Flou",
+      "dodge": "Densité − (éclaircir)",
+      "burn": "Densité + (assombrir)",
       "shapes": "Formes",
       "picker": "Pipette",
       "wand": "Baguette magique : sélectionner par couleur ou caractère",

@@ -368,7 +368,8 @@
       "fill": "Fill tools",
       "select": "Selection tools",
       "navigate": "View tools",
-      "vselect": "Vector selection tools"
+      "vselect": "Vector selection tools",
+      "retouch": "Retouch tools"
     },
     "pencil": {
       "title": "Pencil",
@@ -407,6 +408,23 @@
       "setFgTitle": "Set the cells to your foreground color",
       "setBgTitle": "Set the cells to your background color",
       "setCharTitle": "Set the cells to your character"
+    },
+    "blur": {
+      "title": "Blur"
+    },
+    "dodge": {
+      "title": "Dodge"
+    },
+    "burn": {
+      "title": "Burn"
+    },
+    "retouch": {
+      "strength": "Strength",
+      "strengthTitle": "How far one stroke goes",
+      "range": "Range",
+      "shadows": "Shadows",
+      "midtones": "Midtones",
+      "highlights": "Highlights"
     },
     "gradient": {
       "title": "Gradient",
@@ -1068,6 +1086,9 @@
       "eraser": "Eraser (with Select and a selection: erase it)",
       "bucket": "Paint Bucket",
       "gradient": "Gradient",
+      "blur": "Blur",
+      "dodge": "Dodge (lighten)",
+      "burn": "Burn (darken)",
       "shapes": "Shapes",
       "picker": "Eyedropper",
       "wand": "Magic Wand: select by color or character",
