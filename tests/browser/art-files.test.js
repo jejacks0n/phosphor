@@ -168,6 +168,32 @@ test('a 256-color file opens on VGA and exports 256-color codes, not 24-bit ones
   }
 });
 
+// xterm's 16 and 231 are fixed black and white, 0 and 15 a terminal's own (its theme's): the same colors in Phosphor. A
+// file using all four, opened to edit, exports byte for byte as it was (a QA report: 16 came back 0, 231 came back 15),
+// apart from a cell changed, and so does its .phosphor saved and opened again.
+test('a 256-color file\'s 16 and 231 export as 16 and 231, edited and through a .phosphor', async () => {
+  const project = await afterAnotherDocument();
+  const blob = await (await fetch('/tests/fixtures/ansi/fixed-black-white.ans')).blob();
+  await project.openArtFile(new File([blob], 'fixed-black-white.ans'), { layer: 'edit' });
+  await settle(project);
+  const artOf = async (bytes) => new TextDecoder('latin1').decode(bytes.subarray(0, bytes.indexOf(0x1a)));
+  const original = await artOf(new Uint8Array(await blob.arrayBuffer()));
+  expect(await artOf(await exported(project))).toBe(original);
+
+  project.editCell(1, 0, { char: 'Z' });
+  await settle(project);
+  const edited = original.replace('16mB', '16mZ');
+  expect(await artOf(await exported(project))).toBe(edited);
+
+  const spy = vi.spyOn(URL, 'createObjectURL');
+  await project.saveProject();
+  const saved = spy.mock.calls.at(-1)[0];
+  spy.mockRestore();
+  await project.loadProject(new File([saved], 'saved.phosphor'));
+  await settle(project);
+  expect(await artOf(await exported(project))).toBe(edited);
+});
+
 // Phosphor's own comment lines: who made it, and the settings it was converted with.
 const PHOSPHOR_LINES = /^Created with Phosphor Params: seed=\S+, smoothing=\S+, quantize=\S+ Adjust: .+ Effects: .+$/;
 

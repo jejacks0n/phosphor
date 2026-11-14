@@ -3,9 +3,11 @@
 // mode, at a narrow and a wide width, and an animated export as its last frame.
 import { describe, test } from 'vitest';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
 import { readArtFile } from '../../src/lib/ArtFile.js';
-import { buildCell, layoutWide } from '../../src/lib/Cells.js';
+import { buildCell, composeCell, layoutWide } from '../../src/lib/Cells.js';
+import { effectiveColor } from '../../src/lib/PixelTransforms.js';
 import { PALETTES, rgb2hex } from '../../src/lib/ColorUtils.js';
 
 const SAUCE = { title: 'Round trip', author: 'Test Author', group: '', date: '20261102', fontName: 'IBM VGA', use9pxFont: false, comments: [] };
@@ -76,5 +78,21 @@ describe('an export reads back as it was exported', () => {
     const art = readArtFile(bytes, 'movie.utf8ans');
     expectCells(art, frames[1], cols, rows, true);
     assert.equal(art.palette, 'cga');
+  });
+
+  // xterm's 16 and 231 are fixed black and white, 0 and 15 a terminal's own: the same colors in Phosphor, different ones
+  // in a themed terminal. A file using both, edit cells as opened, comes back byte for byte (a QA report: every 16 came
+  // back 0 and every 231 15), a character on 16 over 0 included.
+  test('a 256-color file\'s 16 and 231 come back as 16 and 231, not 0 and 15', async () => {
+    const file = new Uint8Array(readFileSync(new URL('../fixtures/ansi/fixed-black-white.ans', import.meta.url)));
+    const art = readArtFile(file, 'fixed-black-white.ans');
+    assert.equal(art.palette, 'vga');
+    const NEUTRAL = { brightness: 100, contrast: 100, saturation: 100, hue: 0, invert: 0, colorize: '#ff00ff', colorizeStrength: 0 };
+    const effective = (hex, index) => effectiveColor(hex, NEUTRAL, PALETTES.vga, index);
+    const cells = art.cells.map((entry) => composeCell({ char: ' ' }, entry, 'ansi', effective));
+    const blob = new AnsiFile(art.cols, art.rows, cells).toBlob({ colorMode: 'vga', sauce: SAUCE });
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    const artOf = (b) => [...b.subarray(0, b.indexOf(0x1a))];
+    assert.deepEqual(new TextDecoder('latin1').decode(new Uint8Array(artOf(bytes))), new TextDecoder('latin1').decode(new Uint8Array(artOf(file))));
   });
 });

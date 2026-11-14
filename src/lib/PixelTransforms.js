@@ -137,14 +137,16 @@ export function bakedCanvas(canvas, params) {
 
 // What a base color looks like after project-wide transforms and quantization are applied, as a
 // cell Color: { r, g, b, hex, c } where c is the palette index, or [r, g, b] without a palette.
-export function effectiveColor(hex, params, palette = null) {
+// index: the palette index the color was read as (an edit cell's fgIndex or bgIndex), kept as c while
+// it's the color shown, since xterm's 16 and 231 are the same colors as 0 and 15 (nearest picks those).
+export function effectiveColor(hex, params, palette = null, index = undefined) {
   const rgb = hex2rgb(hex);
   const data = new Uint8ClampedArray([rgb.r, rgb.g, rgb.b, 255]);
   applyTransforms(data, params);
   const transformed = { r: data[0], g: data[1], b: data[2] };
   if (!palette || !palette.length) return { ...transformed, hex: rgb2hex(transformed), c: [transformed.r, transformed.g, transformed.b] };
-  const { r, g, b, c } = nearestColor(transformed, palette);
-  return { r, g, b, hex: rgb2hex({ r, g, b }), c };
+  const { r, g, b, c } = nearestColor(transformed, palette), kept = palette[index];
+  return { r, g, b, hex: rgb2hex({ r, g, b }), c: kept && kept.r === r && kept.g === g && kept.b === b ? index : c };
 }
 
 export function getEffectiveColor(hex, params, palette = null) {

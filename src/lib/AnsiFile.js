@@ -9,6 +9,9 @@ const utf8Encoder = new TextEncoder();
 
 const toBytes = (input) => Array.from(input).map((b) => b.charCodeAt(0));
 
+// A palette color's index (VGA's 256, CGA's 16), 0 for a color without one.
+const indexOf = (color) => (Number.isInteger(Number(color.c)) ? Number(color.c) : 0);
+
 // A character's UTF-8 bytes, worked out once per character (a file is a character per cell).
 const utf8Bytes = new Map();
 const utf8Of = (char) => {
@@ -90,7 +93,9 @@ export class CellWriter {
   cell(cell) {
     const { fg, bg } = cell, utf8 = this.#utf8;
     const trail = cell.wide === 'trail';
-    const char = trail ? (utf8 && !this.#leadAsSpace ? '' : ' ') : fg.hex === bg.hex ? ' ' : cell.char;
+    // In 256 colors, 16 on 0 (or 231 on 15) is a fixed color on a terminal's own: it shows there.
+    const hidden = fg.hex === bg.hex && (this.#colorMode !== 'vga' || indexOf(fg) === indexOf(bg));
+    const char = trail ? (utf8 && !this.#leadAsSpace ? '' : ' ') : hidden ? ' ' : cell.char;
     this.#leadAsSpace = cell.wide === 'lead' && char === ' ';
 
     switch (this.#colorMode) {
@@ -126,16 +131,15 @@ export class CellWriter {
     }
   }
 
+  // By index, not color: 16 and 231 are 0's and 15's colors, but fixed where those follow a terminal's theme.
   #addVgaBytes(add, fg, bg, active) {
-    if (fg.hex !== active.fg.hex) {
-      const fgCode = Number.isInteger(Number(fg.c)) ? Number(fg.c) : 0;
-      add(38, 5, fgCode);
+    if (fg.hex !== active.fg.hex || indexOf(fg) !== indexOf(active.fg)) {
+      add(38, 5, indexOf(fg));
       active.fg = fg;
     }
 
-    if (bg.hex !== active.bg.hex) {
-      const bgCode = Number.isInteger(Number(bg.c)) ? Number(bg.c) : 0;
-      add(48, 5, bgCode);
+    if (bg.hex !== active.bg.hex || indexOf(bg) !== indexOf(active.bg)) {
+      add(48, 5, indexOf(bg));
       active.bg = bg;
     }
   }

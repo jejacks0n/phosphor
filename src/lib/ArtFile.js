@@ -74,17 +74,17 @@ export function readArtFile(bytes, name) {
     const f = fg.hex ? fg : { hex: CGA[bold && fg.i < 8 ? fg.i + 8 : fg.i], depth: 0 };
     const b = bg.hex ? bg : { hex: CGA[blink && bg.i < 8 ? bg.i + 8 : bg.i], depth: 0 };
     const d = Math.max(f.depth, b.depth);
-    pen = inverse ? { fg: b.hex, bg: f.hex, depth: d } : { fg: f.hex, bg: b.hex, depth: d };
+    pen = inverse ? { fg: b.hex, bg: f.hex, fgIndex: b.index, bgIndex: f.index, depth: d } : { fg: f.hex, bg: b.hex, fgIndex: f.index, bgIndex: b.index, depth: d };
     return pen;
   };
 
   const setCell = (c, char, trail = false) => {
     if (over) return;
-    const { fg: f, bg: b, depth: d } = colors();
+    const { fg: f, bg: b, fgIndex, bgIndex, depth: d } = colors();
     let line = lines.get(row);
     if (!line) lines.set(row, line = []);
     if (!trail && c > 0 && line[c - 1] && cellWidth(line[c - 1].char) === 2) line[c - 1] = { ...line[c - 1], char: ' ' }; // its trail is gone
-    line[c] = { char, fg: f, bg: b };
+    line[c] = { char, fg: f, bg: b, ...(fgIndex !== undefined && { fgIndex }), ...(bgIndex !== undefined && { bgIndex }) };
     depth = Math.max(depth, d);
   };
 
@@ -135,6 +135,9 @@ export function readArtFile(bytes, name) {
         if (params[k + 1] === 5) {
           const n = params[k + 2];
           if (n >= 0 && n < 256) color = { hex: VGA[n], depth: n < 16 ? 0 : 1 }; // the 16 are CGA's, as a CGA .utf8ans writes them
+          // 16 and 231 are fixed black and white, 0 and 15 the terminal's own (its theme's): the same colors, so the cell
+          // keeps the index, for the export to write back (effectiveColor).
+          if (color && VGA.indexOf(VGA[n]) !== n) color.index = n;
           k += 2;
         } else if (params[k + 1] === 2) {
           const [r, g, b] = params.slice(k + 2, k + 5);

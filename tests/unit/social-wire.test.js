@@ -165,6 +165,7 @@ test('readChange gives back a good change unchanged, the same arrays', () => {
   assert.deepEqual(readChange({ stroke: 'x', cells: [], runs: [] }, GRID), { stroke: 'x', cells: [], runs: [] });
   assert.equal(readChange({ ...good(), stroke: 'é'.repeat(40) }, GRID).stroke.length, 40);
   assert.ok(readChange({ ...good(), runs: [[0, 0, 1, 0xffffffff]] }, GRID));
+  assert.ok(readChange({ ...good(), cells: [['0,0', { char: 'a', fg: '#000000', fgIndex: 16, bg: '#ffffff', bgIndex: 231 }]] }, GRID)); // a file's 256-color indexes
 });
 
 test.each([
@@ -192,6 +193,9 @@ test.each([
   ['a short hex', { cells: [['0,0', { bg: '#fff' }]] }],
   ['an entry with nothing in it', { cells: [['0,0', {}]] }],
   ['an entry with something else in it', { cells: [['0,0', { char: 'a', wide: 'lead' }]] }],
+  ['a 256-color index past 255', { cells: [['0,0', { fg: '#000000', fgIndex: 256 }]] }],
+  ['a 256-color index that isn\'t a number', { cells: [['0,0', { fg: '#000000', fgIndex: '16' }]] }],
+  ['a 256-color index with no color', { cells: [['0,0', { char: 'a', bgIndex: 16 }]] }],
   ['an entry that is a list', { cells: [['0,0', ['a']]] }],
   ['an entry that is a string', { cells: [['0,0', 'a']] }],
   ['an entry that is missing', { cells: [['0,0', undefined]] }],
