@@ -185,6 +185,26 @@ test('startRoom refuses a document with more than one frame', async () => {
   expect(request).not.toHaveBeenCalled();
 });
 
+test('a room you host is a still from the start, with no one drawing yet: Animate turns off and stays off until it ends', async () => {
+  const { project } = await animated();
+  project.setAnimate(true);
+  project.addFrame('blank');
+  const { writeProject } = await import('@/document/projectIO.js');
+  const movie = new File([await writeProject({ imageBuffer: project.imageBuffer, ...(await project.projectParts()) })], 'movie.phosphor');
+  project.deleteFrame();
+  const room = useRoomStore();
+  room.hostRoom({ id: 'abcdefghij', room: { name: 'R' } });
+  expect([project.animate, project.canAnimate]).toEqual([false, false]);
+  project.setAnimate(true);
+  project.addFrame('blank');
+  expect([project.animate, project.frames.length]).toEqual([false, 1]);
+  await project.loadProject(movie);   // a file with frames opened while hosting: its still
+  await settle(project);
+  expect([project.animate, project.frames.length]).toEqual([false, 1]);
+  room.close();
+  expect(project.canAnimate).toBe(true);
+});
+
 test('sharing starts with no way back to frames: the bar goes and undo can’t bring one back', async () => {
   const { project } = await animated();
   project.setAnimate(true);

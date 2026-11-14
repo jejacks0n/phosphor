@@ -34,14 +34,14 @@ const project = useProjectStore();
 const playback = usePlayback();
 const canSwitch = computed(() => !!image.value && project.canAnimate);
 const switchTitle = computed(() => {
-  if (project._sharing) return t('tabs.animateInRoom');
+  if (project.inRoom) return t('tabs.animateInRoom');
   if (!project.canAnimate) return t('tabs.animateTooLargeTitle', { max: formatNumber(MAX_ANIMATION_CELLS) });
   return image.value ? t('tabs.animateHint') : t('tabs.animateNeedArt');
 });
 // Why it can't be turned on, said when it's tried: a phone has no hover to show the title.
 const blocked = computed(() => !canSwitch.value && !project.animate);
 function whyNot() {
-  if (project._sharing || !image.value) return switchTitle.value;
+  if (project.inRoom || !image.value) return switchTitle.value;
   const cells = formatNumber(project.cols * charRowsOf(project.rows));
   return t('tabs.animateTooLargeToast', { cells, max: formatNumber(MAX_ANIMATION_CELLS) });
 }

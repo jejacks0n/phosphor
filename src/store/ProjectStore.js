@@ -151,6 +151,7 @@ export const useProjectStore = defineStore('project', {
     _ledger: firstLedger(),
     _by: ALONE, // who the ledger knows this person as
     _sharing: null, // the room this document is shared with (sharing.js)
+    _hosting: false, // a room you host shows this document, with or without anyone drawing in it (RoomStore)
     _paused: false,
     _takingProject: false, // a host's project is being written: the guard below doesn't apply (document.js)
     _sameDocument: false, // and it's this document brought up to date, so undo and the selection stay
@@ -290,8 +291,10 @@ export const useProjectStore = defineStore('project', {
       if (this.hasFrames) return Math.max(2, Math.min(maxRowsBeside(this.cols), 2 * Math.floor(this.frameCellLimit / Math.max(1, this.cols))));
       return this.aspectLock && this.image && !this.resizesCanvas ? lockedGrid(MAX_COLS, this.imageRatio).rows : maxRowsBeside(this.cols);
     },
+    // In a room: hosting it, or drawing in someone else's.
+    inRoom: (state) => !!state._sharing || state._hosting,
     // Why the Animate switch is off, if it is; rooms hold one still document, and frames never travel.
-    canAnimate: (state) => !state._sharing && state.cols * charRowsOf(state.rows) <= MAX_ANIMATION_CELLS,
+    canAnimate: (state) => !state._sharing && !state._hosting && state.cols * charRowsOf(state.rows) <= MAX_ANIMATION_CELLS,
     processParams: (state) => ({
       ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
       chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,
