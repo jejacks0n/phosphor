@@ -2,6 +2,8 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { PLACES, pathOf, arrivalPage } from '../../src/lib/addresses.js';
 
+afterEach(() => vi.unstubAllEnvs());
+
 test('every tab and page round-trips through its path; the lobby has none of its own', () => {
   for (const [path, { tab, page, lobby }] of PLACES) {
     if (lobby) expect(path).toBe('/social');
@@ -43,4 +45,3 @@ test('desktop arrivalPage sends sign-in and account to lobby; hosting stays', ()
   expect(arrivalPage('lobby', known)).toBe('lobby');
   expect(arrivalPage('start-room', known)).toBe('start-room');   // anyone hosts on desktop
 });
-afterEach(() => vi.unstubAllEnvs());

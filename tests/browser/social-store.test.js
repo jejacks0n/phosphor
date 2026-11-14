@@ -40,6 +40,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+test('The web build keeps no desktop name: booting writes no phosphor-desktop-name', async () => {
+  fakeServer();
+  await social.boot();
+  social.desktopName = 'someone';
+  await new Promise((resolve) => setTimeout(resolve));   // (a stored ref writes after a tick)
+  expect(localStorage.getItem('phosphor-desktop-name')).toBe(null);
+});
+
 test('Until SOCIAL\'s question is answered, boot waits: no key, no IndexedDB, no request; the answer lets it go on', async () => {
   localStorage.clear();
   setActivePinia(createPinia());
