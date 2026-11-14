@@ -114,6 +114,7 @@ const zoom = {
     nextTick(() => { zoomGesture = false; }); // after the watcher below, which a change queues
   },
   clamp: clampViewZoom,
+  start: 1,
   drag: dragViewZoom,
 };
 watch(() => workspaceStore.ansiZoom, (z) => {

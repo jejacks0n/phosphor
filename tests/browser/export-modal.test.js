@@ -1,4 +1,5 @@
 import { test, expect, vi, afterEach } from 'vitest';
+import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
@@ -73,6 +74,22 @@ test('export button calls exportFile with the right ext and closes', async () =>
     modal.querySelector('button.primary').click();
     await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
     expect(exported).toHaveBeenCalledWith('ans', expect.objectContaining({ smooth: expect.any(Boolean) }));
+  } finally {
+    unmount();
+  }
+});
+
+test('Enter in the file name exports, as it saves in Save project', async () => {
+  const { project } = await drawing();
+  const exported = vi.spyOn(project, 'exportFile').mockResolvedValue();
+  const { closed, unmount } = mountModal();
+  try {
+    const name = document.querySelector('.modal-dialog input.filename-input');
+    name.focus();
+    await userEvent.keyboard('{Enter}');
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    expect(exported).toHaveBeenCalledTimes(1);
+    expect(exported).toHaveBeenCalledWith('ans', expect.anything());
   } finally {
     unmount();
   }

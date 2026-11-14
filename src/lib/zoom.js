@@ -3,6 +3,7 @@
 export const ANSI_ZOOM_MIN = 0.25;
 export const ANSI_ZOOM_MAX = 1;
 export const VIEW_ZOOM_MAX = 8;
+export const PIXEL_ZOOM_START = 5; // the zoom PIXEL opens at, and Cmd/Ctrl+0's there (100% is the ANSI view's)
 
 export const clampZoom = (z) => Math.max(1, Math.min(16, z));
 export const clampAnsiZoom = (z) => Math.max(ANSI_ZOOM_MIN, Math.min(ANSI_ZOOM_MAX, z));

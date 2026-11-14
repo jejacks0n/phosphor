@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { StorageSerializers, useLocalStorage } from '@vueuse/core';
 import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
-import { clampZoom, clampViewZoom } from '@/lib/zoom';
+import { clampZoom, clampViewZoom, PIXEL_ZOOM_START } from '@/lib/zoom';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
 import { loadGuides, saveGuides } from '@/lib/guideStorage';
@@ -87,6 +87,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     clipboardId: null,       // the last copy's id, in the block it put on the system clipboard (clipboard.js)
     openRequest: 0,          // counts Cmd/Ctrl+O presses: EditWorkspace opens its file chooser for each
+    zoomRequest: null,       // { by }: a zoom key, for the view showing (EditorViewport): by 2 or 0.5, or 0 for the view's own zoom
     artDrop: null,           // { file, at: { col, row } | null, picture? }: a picture on an open still drawing, asking to add it as paint or open it; an art file opening from the start screen, asking to edit it or draw on top; or dropped on an open drawing, asking to add it or open it (EditWorkspace)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
@@ -106,7 +107,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     shapeVerticalHalves: false, // ANSI blocks: ▌▐ too (Half-block: quadrants), for lines and ellipses
     strokeEnd: null,         // where the last Pencil, Brush or Retouch stroke ended (a grid position): Shift-click draws a line from there
     shapeDrag: null,         // { from, to, line? } grid positions while a shape (or the Gradient's line) is being dragged
-    editZoom:  5,
+    editZoom:  PIXEL_ZOOM_START,
     ansiZoom:  1,            // the ANSI (and VECTOR) view's zoom: 25% to 800% of its cell size
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'vector', 'sauce' or 'room' (the room you watch)
     viewTab: 'output',       // the art tab last shown, 'input' or 'output' (its view mounts and sets it)

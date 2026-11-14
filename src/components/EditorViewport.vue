@@ -25,7 +25,7 @@ import { pickedFrom, pickedIndexes } from '@/store/project/reading.js';
 const props = defineProps({
   display: { type: Object, default: null },                 // the sizer (or the DOM view's pre) that coordinates are measured against
   coordsAt: { type: Function, required: true },             // (event) => { x, y } in fractional grid pixels, or null
-  zoom: { type: Object, default: null },                    // { get, set, clamp, drag? } for the view's zoom; null: not zoomable
+  zoom: { type: Object, default: null },                    // { get, set, clamp, start, drag? } for the view's zoom (start: Cmd/Ctrl+0's); null: not zoomable
   scrollKey: { type: String, required: true },              // 'input' | 'ansi': where scroll position is remembered
   contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its center on resize
   view: { type: String, required: true },                   // 'input' (PIXEL) | 'output' (ANSI) | 'vector' (VECTOR), passed to tools
@@ -51,6 +51,7 @@ const {
   handleTouchCancel,
   handleWheel,
   centerContent,
+  zoomAtMiddle,
 } = useEditorInteractions({
   containerRef: rootRef,
   displayRef: computed(() => props.display),
@@ -262,6 +263,20 @@ function onDrop(event) {
   workspaceStore.artDrop = { file, at: pos && cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows) };
 }
 
+// A zoom key (useKeyboardShortcuts): double, halve or the view's own zoom, about the middle of the view.
+watch(() => workspaceStore.zoomRequest, (request) => {
+  if (!request || !props.zoom) return;
+  zoomAtMiddle(request.by ? props.zoom.clamp(props.zoom.get() * request.by) : props.zoom.start);
+}, { flush: 'sync' }); // each press, though two land before Vue's next flush
+
+// The keys that scroll a focused view (Page Up and Down, Home, End, the arrows: Cmd+arrows on a Mac), with nothing
+// focused (a file just opened, say), scroll this one, as if it had been clicked: it takes the focus first, and the
+// browser's own scroll follows the key.
+const SCROLL_KEYS = new Set(['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+const focusForScroll = (e) => {
+  if (SCROLL_KEYS.has(e.key) && (!document.activeElement || document.activeElement === document.body)) rootRef.value?.focus({ preventScroll: true });
+};
+
 // The rulers lie over the view's top and left; the content gets room beside them (div.canvas-viewport.ruled),
 // so the art's first column and row scroll clear of them.
 const ruled = computed(() => workspaceStore.rulers && !!props.unit);
@@ -306,6 +321,7 @@ onMounted(() => {
   viewportHeight.value = el.clientHeight;
   el.addEventListener('wheel', handleWheel, { passive: false });
   el.addEventListener('scroll', onScroll);
+  window.addEventListener('keydown', focusForScroll, true);
 
   // Restore the previous scroll position, or center; wait a frame so the content has its size.
   requestAnimationFrame(() => {
@@ -330,6 +346,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   commitPaint();
   drawingStore.pointAt(null);   // off the art: another tab has no one's pointer on it
+  window.removeEventListener('keydown', focusForScroll, true);
   const el = rootRef.value;
   if (el) {
     el.removeEventListener('wheel', handleWheel);

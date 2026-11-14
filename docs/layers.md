@@ -837,8 +837,10 @@ swaps the two halves of each cell's base colors.
   bar scrolls sideways, like the toolbar's options row.
 - **Zoom** (**Z**): The ANSI view zooms from 25% of its cells' size to 800% (100% is the font at its size), with
   Ctrl+wheel (a trackpad pinch), a pinch on a touch screen, or the Zoom tool: drag left to zoom out, right to zoom in,
-  by half or double every 300 pixels. Away from 100%, the status bar shows the zoom; press it to go back to 100%. A
-  room's watchers see the art at up to 100%. The zoom stays when you go to the PIXEL view and back, and a new font or
+  by half or double every 300 pixels. **Cmd++** and **Cmd+−** (Ctrl on Windows and Linux) double or halve it around
+  the center of the view, and **Cmd+0** goes back to 100%; in the PIXEL view they zoom it too, and Cmd+0 goes back to
+  the zoom it opens at. In the art views these keys replace the browser's own zoom. Away from 100%, the status bar
+  shows the zoom; press it to go back to 100%. A room's watchers see the art at up to 100%. The zoom stays when you go to the PIXEL view and back, and a new font or
   font size keeps it.
 
 ---
@@ -917,6 +919,11 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
 - **Opening a File**: **Cmd+O** (Ctrl+O) opens the file chooser, from anywhere in the app except while you type in a
   field or in Edit Mode's text. What you pick opens as a dropped file does, asking first where a drop would.
 - **The Start Screen**: **Tab** reaches **Choose a file**, and **Enter** or **Space** presses it.
+- **Scrolling**: **Page Up** and **Page Down** scroll the view one screen, and **Home** and **End** (or **Cmd+↑** and
+  **Cmd+↓** on a Mac) scroll to its top and bottom. They reach the view whenever nothing else has focus, as after a file
+  opens, so you don't need to click it first. In Edit Mode, while you type, Home and End move the cursor instead.
+- **Saving and Exporting**: **Cmd+S** (Ctrl+S) saves the project and **Cmd+E** (Ctrl+E) opens Export. In either
+  dialog, **Enter** in the file name saves or exports.
 
 ---
 
