@@ -64,10 +64,15 @@ async function mounted() {
   return { project, workspace };
 }
 
-// An image opened with the composable mounted, its opening write done and forgotten.
+// An image opened with the composable mounted, its opening write done and forgotten. Not opened from a file (that
+// would keep an As opened version at the first change): the counts below are the writes' own.
 async function opened() {
   const { project, workspace } = await mounted();
-  await loadImage(project, GRADIENT, { cols: 20, rows: 20 });
+  const bytes = await (await (await fetch(GRADIENT)).blob()).arrayBuffer();
+  project.replaceImage(await decodeImage(bytes), bytes, { cols: 20, rows: 20, aspectLock: false, filename: 'gradient' });
+  project.markSaved();
+  project.render();
+  await settle(project);
   await pass(SAVE_AFTER_MS);
   vi.mocked(writeLatest).mockClear();
   vi.mocked(addVersion).mockClear();
@@ -111,15 +116,20 @@ const edit = (project, col = 0) => {
   project.commitEdit();
 };
 
-// The characters in a document's latest state, by cell key.
-async function writtenChars(id) {
-  const { record } = await readLatest(id);
+// The characters in a stored row (readLatest, readVersion), by cell key.
+async function charsOf({ record }) {
   const { editCells } = await readProject(new Blob([record.rest]));
   return [...editCells].map(([key, cell]) => `${key}:${cell.char}`);
 }
 
+// The characters in a document's latest state, by cell key.
+const writtenChars = async (id) => charsOf(await readLatest(id));
+
 // Puts junk where a stored row's rest goes.
-const overwriteRest = (id, rest) => new Promise((resolve, reject) => {
+const overwriteRest = (id, rest) => overwriteRecord(id, { rest });
+
+// Changes fields of a document's stored row.
+const overwriteRecord = (id, fields) => new Promise((resolve, reject) => {
   const open = indexedDB.open('phosphor-autosave', 1);
   open.onerror = () => reject(open.error);
   open.onsuccess = () => {
@@ -127,7 +137,7 @@ const overwriteRest = (id, rest) => new Promise((resolve, reject) => {
     const tx = db.transaction('documents', 'readwrite');
     const documents = tx.objectStore('documents');
     const get = documents.get(id);
-    get.onsuccess = () => documents.put({ ...get.result, rest });
+    get.onsuccess = () => documents.put({ ...get.result, ...fields });
     tx.oncomplete = () => { db.close(); resolve(); };
   };
 });
@@ -298,6 +308,7 @@ test('opening a project file is one write, saved, with no version', async () => 
   vi.mocked(writeLatest).mockClear();
 
   await project.loadProject(new File([blob], 'mine.phosphor'));
+  await autosave.flush(); // a file opened is written at once
   await pass(SAVE_AFTER_MS);
   await pass(SAVE_AFTER_MS * 2);
   expect(writeLatest).toHaveBeenCalledTimes(1);
@@ -1826,4 +1837,122 @@ test('a restored document with shapes and no layers key has its vector layer', a
 
   await project.restoreDocument({ record, imageBuffer }, { documentId: 'restored' });
   expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
+});
+
+// A file opened, kept as it opened ("As opened") once it changes: Versions can always take it back there.
+const textFile = () => new File(['HELLO'], 'hello.txt');
+const openedVersions = async (id) => (await listVersions(id)).filter((v) => v.reason === 'opened');
+
+// Opens the text file onto the edit layer; its cells as opened, as charsOf gives them.
+async function openText(project) {
+  await project.openArtFile(textFile(), { layer: 'edit' });
+  return [...project.editCells].map(([key, cell]) => `${key}:${cell.char}`);
+}
+
+test.each([
+  ['an edit a while after it opens', SAVE_AFTER_MS * 3],
+  ['an edit within the first second', 0],
+])('a file opened keeps its state as opened as a version once it changes: %s', async (_, wait) => {
+  const { project } = await mounted();
+  const cells = await openText(project);
+  const id = project.documentId;
+  await vi.advanceTimersByTimeAsync(wait);
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  await autosave.flush();
+
+  const [kept, ...more] = await openedVersions(id);
+  expect(more).toEqual([]);
+  expect(await charsOf(await readVersion(kept.id))).toEqual(cells);
+  expect(await writtenChars(id)).not.toEqual(cells);
+  // The first timed version comes when it always did: the first change has its own.
+  expect((await listVersions(id)).map((v) => v.reason)).toEqual(['timed', 'opened']);
+
+  await autosave.restoreVersion(kept.id);
+  expect([...project.editCells].map(([key, cell]) => `${key}:${cell.char}`)).toEqual(cells);
+});
+
+test.each([
+  ['a picture', (project) => loadImage(project, GRADIENT)],
+  ['a project file', async (project) => {
+    await project.setBlankCanvas();
+    const blob = await writeProject({ ...await project.projectParts(), imageBuffer: project.imageBuffer });
+    await autosave.flush();
+    started.mockClear();
+    await project.loadProject(new File([blob], 'mine.phosphor'));
+  }],
+  ['an art file to draw on top of', (project) => project.openArtFile(textFile())],
+  ['an SVG', (project) => project.openSvgFile(new File(['<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="5" height="5" fill="red"/></svg>'], 'box.svg'))],
+])('%s opened is kept As opened at its first change', async (_, open) => {
+  const { project } = await mounted();
+  await open(project);
+  const id = project.documentId;
+  expect(started).toHaveBeenCalledTimes(1); // written as it opened, at once
+  await autosave.flush();
+  const { record } = await readLatest(id);
+  expect(record.asOpened).toBe(true);
+  edit(project, 3);
+  await pass(SAVE_AFTER_MS);
+  const [kept] = await openedVersions(id);
+  expect((await readVersion(kept.id)).record.rest).toEqual(record.rest);
+});
+
+test('a blank canvas has no As opened: there is nothing to go back to', async () => {
+  const { project } = await mounted();
+  await project.setBlankCanvas();
+  await pass(SAVE_AFTER_MS);
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  expect(await listVersions(project.documentId)).toHaveLength(1);
+  expect(await openedVersions(project.documentId)).toEqual([]);
+});
+
+test('a file opened and reloaded before any change still keeps As opened at its first change, even one right after the reload', async () => {
+  const { project } = await mounted();
+  const cells = await openText(project);
+  const id = project.documentId;
+  await pass(SAVE_AFTER_MS);
+  await leave();
+
+  const back = await mounted();
+  expect(back.project.documentId).toBe(id);
+  edit(back.project); // before the restore's own write
+  await pass(SAVE_AFTER_MS);
+  await autosave.flush();
+  const [kept, ...more] = await openedVersions(id);
+  expect(more).toEqual([]);
+  expect(await charsOf(await readVersion(kept.id))).toEqual(cells);
+});
+
+test('a reload after the first change, and later changes, keep no second As opened', async () => {
+  const { project } = await mounted();
+  await openText(project);
+  const id = project.documentId;
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  await leave();
+
+  const back = await mounted();
+  for (const col of [1, 2]) {
+    await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
+    edit(back.project, col);
+    await pass(SAVE_AFTER_MS);
+  }
+  expect((await listVersions(id)).map((v) => v.reason)).toEqual(['timed', 'timed', 'timed', 'opened']);
+});
+
+test('an older record, written before the As opened mark, never gets one', async () => {
+  const { project } = await mounted();
+  await openText(project);
+  const id = project.documentId;
+  await pass(SAVE_AFTER_MS);
+  await leave();
+  await overwriteRecord(id, { asOpened: undefined });
+
+  const back = await mounted();
+  await pass(SAVE_AFTER_MS);
+  edit(back.project);
+  await pass(SAVE_AFTER_MS);
+  expect(await listVersions(id)).toHaveLength(1);
+  expect(await openedVersions(id)).toEqual([]);
 });

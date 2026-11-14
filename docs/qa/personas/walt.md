@@ -215,11 +215,13 @@ SAUCE in a .utf8ans export, and check SAUCE's help text.
 - Rated: yes, wants Tab to the entry, then Enter
 
 ### 18. Go back to an earlier version
-- Does: opens Versions early on (none yet); then keeps fixing cells, a snippet at a time, until more than five minutes
-  of work have passed and Versions lists a snapshot (or waits, with an edit every minute); then restores the oldest
-  snapshot and opens Versions again.
-- Expects: snapshots every 5 minutes while he works (the last 20); restoring one keeps what he had in the list as "Before
-  restoring"; Versions with none yet says "No snapshots saved yet."
+- Does: opens Versions right after opening his file (none yet); fixes a cell and opens it again; then keeps fixing
+  cells, a snippet at a time, until more than five minutes of work have passed and Versions lists another snapshot (or
+  waits, with an edit every minute); then restores the oldest, "As opened", and opens Versions again.
+- Expects: Versions with none yet says "No snapshots saved yet."; after his first fix it lists "As opened" (the file as
+  he opened it) and a snapshot with the fix; then snapshots every 5 minutes while he works (the last 20, "As opened"
+  among them); restoring "As opened" brings back the file as it opened, and keeps what he had in the list as "Before
+  restoring".
 - Probes: `back-out`: open Versions and press Escape; `undo-redo`: after restoring, Cmd+Z, and see what it does.
 - Rated: yes, wants a key for Versions
 

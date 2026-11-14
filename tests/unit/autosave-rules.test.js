@@ -19,6 +19,11 @@ test('the newest 20 versions stay, in any order given', () => {
   assert.deepEqual(versionsToDrop(versions.slice(0, 20)), []);
 });
 
+test('As opened stays however many newer ones come, with the newest 19 beside it', () => {
+  const versions = [{ id: 0, savedAt: 0, reason: 'opened' }, ...Array.from({ length: 22 }, (_, i) => ({ id: i + 1, savedAt: i + 1, reason: 'timed' }))];
+  assert.deepEqual(versionsToDrop(versions).sort((a, b) => a - b), [1, 2, 3]);
+});
+
 test('versions saved in the same millisecond: the higher id is the newer', () => {
   const versions = Array.from({ length: 22 }, (_, i) => ({ id: i, savedAt: 5 }));
   assert.deepEqual(versionsToDrop(versions).sort((a, b) => a - b), [0, 1]);

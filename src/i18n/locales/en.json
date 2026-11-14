@@ -1025,6 +1025,7 @@
     "title": "Versions",
     "sub": "Phosphor saves up to 20 snapshots in this browser (about every 5 minutes while you work). Clearing browser data removes them, so save a .phosphor file for anything you want to keep.",
     "beforeRestore": "Before restore",
+    "asOpened": "As opened",
     "empty": "No snapshots saved yet.",
     "readError": "Couldn't read the versions.",
     "restoreError": "Couldn't restore that version.",
