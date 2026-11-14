@@ -227,7 +227,10 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
           if (who) heard(who, msg);
         });
       }
-      queue?.catch(() => ws.terminate());
+      queue?.catch((error) => {
+        console.error('Room service: a message failed', error);
+        ws.terminate();
+      });
     });
     ws.on('close', () => {
       const who = whoIs(ws);
@@ -246,7 +249,12 @@ export async function createRoomService({ port = 31337, tries = 20, host = '0.0.
   const server = http.createServer((req, res) => res.writeHead(404).end());
   const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_PAYLOAD });
   server.on('upgrade', (req, socket, head) => {
-    const { pathname } = new URL(req.url, 'http://localhost');
+    let pathname;
+    try {
+      ({ pathname } = new URL(req.url, 'http://localhost'));
+    } catch {
+      return socket.destroy();   // an address that isn't one: anyone can send it, and it mustn't stop the service
+    }
     if (pathname !== '/room' && pathname !== '/info') return socket.destroy();
     wss.handleUpgrade(req, socket, head, (ws) => {
       ws.on('error', () => {});   // a bad frame (or one too big) closes the socket: nothing more to do

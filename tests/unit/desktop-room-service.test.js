@@ -367,6 +367,16 @@ test('the port falls back when taken, and NO_PORT past twenty', async () => {
   await assert.rejects(service({ port: base }), { code: 'NO_PORT' });
 });
 
+test('a malformed upgrade is dropped, and the service carries on', async () => {
+  const s = await service();
+  const raw = net.connect(s.port, '127.0.0.1');
+  opened.push({ close: () => Promise.resolve(raw.destroy()) });
+  raw.write('GET //[ HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n');
+  await new Promise((resolve) => raw.on('close', resolve));
+  const info = client(s.port, '/info');
+  assert.equal((await info.next()).type, 'info');
+});
+
 test('ping is answered pong', async () => {
   const s = await service();
   const ws = client(s.port);
