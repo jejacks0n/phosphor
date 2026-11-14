@@ -11,6 +11,11 @@ import { snapCursor } from '@/document/wideChars';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { groupOf } from '@/tools/groups';
+import { t } from '@/i18n';
+import { toast } from '@/composables/useToast';
+
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
+let saving = false;   // desktop: a save under way (saveFile)
 
 const RECENT_COLORS = 12;
 
@@ -87,6 +92,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     clipboardText: null,     // the text the last copy put on the system clipboard, once written (clipboard.js)
     clipboardId: null,       // the last copy's id, in the block it put on the system clipboard (clipboard.js)
     openRequest: 0,          // counts Cmd/Ctrl+O presses: EditWorkspace opens its file chooser for each
+    fileRequest: null,       // desktop: a File to open (double-clicked, Open Recent), which EditWorkspace takes as chosen
     zoomRequest: null,       // { by }: a zoom key, for the view showing (EditorViewport): by 2 or 0.5, or 0 for the view's own zoom
     artDrop: null,           // { file, at: { col, row } | null, picture? }: a picture on an open still drawing, asking to add it as paint or open it; an art file opening from the start screen, asking to edit it or draw on top; or dropped on an open drawing, asking to add it or open it (EditWorkspace)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
@@ -383,6 +389,32 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     toggleSettings() {
       this.settingsOpen = !this.settingsOpen;
+    },
+    // New project (the button, the desktop menu): asked first when there's unsaved work.
+    newProject() {
+      const project = useProjectStore();
+      if (!project.image || useDrawingStore().offWithOthers) return;
+      project.commitPending(); // text typed a moment ago counts
+      if (project.isDirty && !confirm(t('actions.confirmNew'))) return;
+      project.clearImage();
+      this.editorTab = 'input';
+    },
+    // Save project (the button, Cmd/Ctrl+S, the desktop menu): the save dialog, or on desktop straight over the
+    // project's own file, or where the system's save box says (always, for Save As: `as`).
+    async saveFile({ as = false } = {}) {
+      const project = useProjectStore();
+      if (!project.image) return;
+      if (!DESKTOP) return void (this.saveDialog = 'phosphor');
+      if (saving) return;   // one at a time: a second Save while the box is open would open another
+      saving = true;
+      try {
+        await project.saveProject(undefined, { as });
+      } catch (error) {
+        console.warn('Could not save the file', error);
+        toast(error.userMessage ?? t('save.saveFailed'));
+      } finally {
+        saving = false;
+      }
     },
     // The side panel open on its Social (or, in a room, CHAT) tab.
     showSocial() {

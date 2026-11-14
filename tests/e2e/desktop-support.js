@@ -12,13 +12,13 @@ export { test, expect };
 
 // A launched app: { app, page, name, port, close }, close also removing its user data folder. Anything the page's
 // Content-Security-Policy refuses is kept in `refused`, for the spec to check. `env` adds to the app's environment
-// (PHOSPHOR_RETURN_WITHIN_MS, say).
+// (PHOSPHOR_RETURN_WITHIN_MS, say), and `files` are named on its command line, as a file double-clicked is.
 // The Leave/Stay question main.js asks before a reload or quit the page would ask about is answered Leave, so a host's
 // reload or an app closed with unsaved art goes ahead; a spec that wants the question stands in for it again.
-export async function launchApp({ name = 'ann', port = 31401, env = {} } = {}) {
+export async function launchApp({ name = 'ann', port = 31401, env = {}, files = [] } = {}) {
   const userData = mkdtempSync(join(tmpdir(), `phosphor-${name}-`));
   const app = await _electron.launch({
-    args: ['desktop/main.js'],
+    args: ['desktop/main.js', ...files],
     env: { ...process.env, PHOSPHOR_USER_DATA: userData, PHOSPHOR_ADDRESSES: '127.0.0.1', ...env },
   });
   await app.evaluate(({ dialog }) => { dialog.showMessageBoxSync = () => 0; });
@@ -43,6 +43,18 @@ export async function launchApp({ name = 'ann', port = 31401, env = {} } = {}) {
   };
   return { app, page, name, port, refused, close, kill };
 }
+
+// The app's menu bar: its menus' labels, and an item clicked by its labels down the menus (File, Save).
+export const menuLabels = (app) => app.evaluate(({ Menu }) => Menu.getApplicationMenu()?.items.map((item) => item.label) ?? []);
+export const clickMenu = (app, ...labels) => app.evaluate(({ Menu }, labels) => {
+  let items = Menu.getApplicationMenu().items, item;
+  for (const label of labels) {
+    item = items.find((each) => each.label === label);
+    if (!item) throw new Error(`No menu item ${labels.join(' > ')}`);
+    items = item.submenu?.items ?? [];
+  }
+  item.click();
+}, labels);
 
 // Closes every app given (those that are set), each whatever the others do.
 export const closeAll = (apps) => Promise.all(apps.filter(Boolean).map((a) => a.close().catch(() => {})));

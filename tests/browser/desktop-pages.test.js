@@ -22,6 +22,8 @@ import SocialDialogs from '@/components/social/SocialDialogs.vue';
 import LegalDialog from '@/components/LegalDialog.vue';
 import SidePanel from '@/components/SidePanel.vue';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useFakeDesktop, resetDesktop } from '@/social/desktop';
+import { toastMessage } from '@/composables/useToast';
 
 let app = null, host = null;
 afterEach(() => {
@@ -69,6 +71,24 @@ test('DesktopStartPage needs a name before Host or Join', async () => {
 
   await type(field('Your name'), '   ');
   expect([button('Start a room').disabled, button('Join').disabled]).toEqual([true, true]);
+});
+
+test('a room on a newer Phosphor offers Check for updates beside saying so; other notices don\'t', async () => {
+  const releases = vi.fn(async () => ({ version: '1.0.0', releases: [] }));
+  useFakeDesktop({ releases });
+  try {
+    const { social } = await mount(DesktopStartPage, ({ social }) => { social.page = 'lobby'; });
+    social.notice = "They're on an older Phosphor. They need to update before you can join.";
+    await nextTick();
+    expect(button('Check for updates')).toBe(undefined);
+    social.notice = "They're on a newer Phosphor. Update to join.";
+    await nextTick();
+    button('Check for updates').click();
+    await vi.waitFor(() => expect(toastMessage.value).toBe('Phosphor 1.0.0 is the newest version.'));
+    expect(releases).toHaveBeenCalledTimes(1);
+  } finally {
+    resetDesktop();
+  }
 });
 
 test('the side panel\'s Social tab is the start page, not the lobby', async () => {
@@ -356,7 +376,7 @@ test('SocialDialogs desktop: no question, no account pages, no room link; Start 
 test('LegalDialog desktop: the app\'s privacy note in place of the hosted service\'s policy; the Terms stay', async () => {
   await mount(LegalDialog, () => {}, { page: 'privacy' });
   const body = () => document.querySelector('.legal-body').textContent;
-  expect(body()).toContain('This app sends nothing to Phosphor. In a room, the people you connect with see your IP address.');
+  expect(body()).toContain('This app sends nothing to Phosphor. In a room, the people you connect with see your IP address. When you choose Check for Updates, it asks GitHub for Phosphor\'s releases, and GitHub sees your IP address.');
   expect(body()).not.toContain('phosphor.work');
   app.unmount();
   app = createApp({ render: () => h(LegalDialog, { page: 'terms' }) }).use(getActivePinia()).use(i18n);

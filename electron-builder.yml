@@ -1,6 +1,6 @@
-# The desktop app's packages (npx electron-builder, after npm run build:desktop). CI makes them on a version tag or by
-# hand (.github/workflows/desktop.yml), where the signing keys come from secrets; docs/desktop.md is for the people
-# who download them.
+# The desktop app's packages (npx electron-builder, after npm run build:desktop). CI makes them on a version tag
+# (.github/workflows/desktop.yml), where the signing keys come from secrets; docs/desktop.md is for the people who
+# download them.
 appId: work.phosphor.app
 productName: Phosphor
 directories:
@@ -16,6 +16,19 @@ files:
 extraMetadata:
   main: desktop/main.js
 publish: github
+# Double-clicked, these open in Phosphor (desktop/main.js hands them to the page): its projects, which it owns, and
+# ANSI art, which it can edit as another editor may. Plain text art (.asc, .txt, .nfo, .diz) is left to other apps.
+fileAssociations:
+  - ext: phosphor
+    name: Phosphor Project
+    role: Editor
+    rank: Owner
+    mimeType: application/x-phosphor
+  - ext: [ans, utf8ans]
+    name: ANSI Art
+    role: Editor
+    rank: Alternate
+    mimeType: text/x-ansi
 
 mac:
   category: public.app-category.graphics-design

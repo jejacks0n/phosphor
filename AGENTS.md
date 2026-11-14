@@ -72,11 +72,12 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   The build is `VITE_DESKTOP=1`, and its branches sit behind `import.meta.env.VITE_DESKTOP === '1'`, so the web build
   leaves them out. `desktop/` is the Electron side: `main.js` (the window, the `app://phosphor/` origin it serves
   `dist-desktop/` from, quitting), `preload.cjs` (`window.phosphorDesktop`, the page's one way in), `roomService.js`
-  (the room API on this computer: greetings, asks, channels, hand-overs), `addresses.js` (where others can join) and
-  `selfPass.js` (passes checked in Node). The page's side: `src/social/desktop.js` (the door to the preload),
+  (the room API on this computer: greetings, asks, channels, hand-overs), `addresses.js` (where others can join),
+  `selfPass.js` (passes checked in Node), `menu.js` (the menu bar, in the page's words) and `files.js` (files opened,
+  saved and kept in Open Recent). The page's side: `src/social/desktop.js` (the door to the preload),
   `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join) and
   `selfPass.js` (passes signed by their own key), with `src/components/social/DesktopStartPage.vue` in the lobby's
-  place. Packaging is `electron-builder.yml`, released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`, or `v1.2.3-beta` for a
+  place and `src/composables/useDesktopMenu.js` running the menu's commands and Check for Updates. Packaging is `electron-builder.yml`, released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`, or `v1.2.3-beta` for a
   pre-release: package.json's version, higher by semver than every version tag before it, checked by
   `scripts/release-tag.mjs`). Its
   tests are the `desktop-*` files in `tests/unit`, `tests/browser` (the `browser-desktop` project) and `tests/e2e`.

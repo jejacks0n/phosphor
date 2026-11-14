@@ -5,29 +5,7 @@
 //                                        ::error::
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
-
-const VERSION = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
-
-export const parse = (tag) => {
-  const match = VERSION.exec(tag);
-  return match && { numbers: match.slice(1, 4).map(Number), pre: match[4]?.split('.') ?? [] };
-};
-
-// Below 0, 0 or above 0, as a is before, the same as or after b.
-export const compare = (a, b) => {
-  const [x, y] = [parse(a), parse(b)];
-  for (let i = 0; i < 3; i++) if (x.numbers[i] !== y.numbers[i]) return x.numbers[i] - y.numbers[i];
-  if (!x.pre.length || !y.pre.length) return y.pre.length - x.pre.length; // a release is after its pre-releases
-  for (let i = 0; i < Math.min(x.pre.length, y.pre.length); i++) {
-    const [p, q] = [x.pre[i], y.pre[i]];
-    if (p === q) continue;
-    const [pn, qn] = [/^\d+$/.test(p), /^\d+$/.test(q)];
-    if (pn && qn) return Number(p) - Number(q);
-    if (pn !== qn) return pn ? -1 : 1; // numbers before words
-    return p < q ? -1 : 1;
-  }
-  return x.pre.length - y.pre.length;
-};
+import { compare, parse } from '../src/lib/semver.js';
 
 // The reason the tag can't be released, or null.
 export const refusal = (tag, version, tags) => {

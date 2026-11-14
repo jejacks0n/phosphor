@@ -43,7 +43,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleSave = (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
-      if (projectStore.image) workspaceStore.saveDialog = 'phosphor';
+      workspaceStore.saveFile();
       return true;
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 'e') {

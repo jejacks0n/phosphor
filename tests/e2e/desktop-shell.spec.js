@@ -1,7 +1,10 @@
 // The desktop app's shell: Electron serving the desktop build from app://phosphor/, its bridge to the room service,
 // and the quit that waits for the page.
-import { test, expect, launchApp, openImage } from './desktop-support.js';
-import { cellPoint, drag, pickLayer, store } from './support.js';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { test, expect, launchApp, openImage, menuLabels, clickMenu } from './desktop-support.js';
+import { cellPoint, drag, fixture, pickLayer, store } from './support.js';
 
 let launched;
 test.afterEach(async () => {
@@ -111,4 +114,56 @@ test('a quit with unsaved changes asks: Stay keeps the app and the next quit wai
   const closed = new Promise((resolve) => app.process().once('exit', resolve));
   await page.evaluate(() => window.phosphorDesktop.quitReady());
   await closed;
+});
+
+const { version } = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
+
+// The menu bar is in the page's words; Save asks where once (the save box stood in for), then writes over that file;
+// Open Recent and a file named at launch open it again; Open is the system's chooser.
+test('the menu saves a project where the box says and then over it, and it opens again from Open Recent and at launch', async () => {
+  const folder = mkdtempSync(join(tmpdir(), 'phosphor-saved-'));
+  const file = join(folder, 'night.phosphor');
+  let second;
+  try {
+    launched = await launchApp();
+    const { app, page } = launched;
+    await expect.poll(() => menuLabels(app)).toEqual(expect.arrayContaining(['File', 'Edit', 'Room', 'View', 'Help']));
+    await app.evaluate(({ dialog }, chosen) => {
+      globalThis.boxes = 0;
+      dialog.showSaveDialog = async () => { globalThis.boxes++; return { canceled: false, filePath: chosen }; };
+    }, join(folder, 'night'));   // no extension typed: .phosphor is added
+    await openImage(page);
+
+    // Help's links open in the browser, for Phosphor's version (package.json's, not Electron's).
+    await app.evaluate(({ shell }) => { globalThis.opened = []; shell.openExternal = async (url) => { globalThis.opened.push(url); }; });
+    await clickMenu(app, 'Help', 'Release Notes');
+    expect(await app.evaluate(() => globalThis.opened)).toEqual([`https://github.com/jejacks0n/phosphor/releases/tag/v${version}`]);
+
+    await clickMenu(app, 'File', 'Save');
+    await expect.poll(() => store(page, 'project', (p) => p.filePath)).toBe(file);
+    expect(existsSync(file)).toBe(true);
+    expect(await store(page, 'project', (p) => [p.filename, p.isDirty])).toEqual(['night', false]);
+
+    await store(page, 'project', (p) => { p.cols = 60; });
+    await page.keyboard.press('ControlOrMeta+s');
+    await expect.poll(() => store(page, 'project', (p) => p.isDirty)).toBe(false);
+    expect(await app.evaluate(() => globalThis.boxes)).toBe(1);
+
+    await clickMenu(app, 'File', 'New');
+    await expect.poll(() => store(page, 'project', (p) => !!p.image)).toBe(false);
+    await clickMenu(app, 'File', 'Open Recent', 'night.phosphor');
+    await expect.poll(() => store(page, 'project', (p) => [p.filename, p.filePath, p.cols])).toEqual(['night', file, 60]);
+
+    await clickMenu(app, 'File', 'New');
+    await app.evaluate(({ dialog }, picked) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [picked] }); }, fixture('images/gradient.png'));
+    await page.keyboard.press('ControlOrMeta+o');
+    await expect.poll(() => store(page, 'project', (p) => [p.filename, p.filePath])).toEqual(['gradient', null]);
+    await launched.close();
+
+    second = await launchApp({ files: [file] });
+    await expect.poll(() => store(second.page, 'project', (p) => [p.filename, p.filePath, p.cols])).toEqual(['night', file, 60]);
+  } finally {
+    await second?.close();
+    rmSync(folder, { recursive: true, force: true });
+  }
 });

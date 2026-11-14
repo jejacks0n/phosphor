@@ -6,6 +6,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { toast } from '@/composables/useToast';
+import { desktop, fileFrom } from '@/social/desktop';
 import { isProjectFile, loadImage, PROJECT_EXTENSION } from '@/document/projectIO';
 import { isArtFile, readArtFile, ART_EXTENSIONS } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
@@ -36,6 +37,7 @@ const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 useKeyboardShortcuts(project, workspace);
 const playback = usePlayback();
 
@@ -54,7 +56,23 @@ watch(() => [project.frame, project.frames, project.renderedCells, project.anima
 const chooser = ref(null);
 const touch = useMediaQuery('(pointer: coarse)');
 const accept = ['image/*', '.svg', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)].join(',');
-watch(() => workspace.openRequest, () => chooser.value?.click());
+watch(() => workspace.openRequest, () => (DESKTOP ? openChosen() : chooser.value?.click()));
+// Desktop: the system's own chooser, in the main process, which can then save a project back where it came from; and
+// files it was asked to open (double-clicked, Open Recent), as the workspace's fileRequest.
+async function openChosen() {
+  try {
+    const file = await desktop.openFile();
+    if (file) handleFileSelected(fileFrom(file));
+  } catch (error) {
+    console.warn('Could not open the file', error);
+    toast(t('menu.openFailed'));
+  }
+}
+watch(() => workspace.fileRequest, (file) => {
+  if (!file) return;
+  workspace.fileRequest = null;
+  handleFileSelected(file);
+});
 function onChosen(e) {
   const file = e.target.files[0];
   e.target.value = ''; // choosing the same file again still fires

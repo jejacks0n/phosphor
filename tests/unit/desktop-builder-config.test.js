@@ -8,7 +8,7 @@ const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), '
 // The block under a top-level key, up to the next one.
 const section = (yml, key) => new RegExp(`^${key}:\\n((?:[ #].*\\n|\\n)*)`, 'm').exec(yml)?.[1] ?? '';
 
-test('builder config names the Local Network usage, signs mac and windows, publishes to github', () => {
+test('builder config names the Local Network usage, opens projects and ANSI art, signs mac and windows, publishes to github', () => {
   const yml = read('electron-builder.yml');
   assert.match(yml, /^appId: work\.phosphor\.app$/m);
   assert.match(yml, /^productName: Phosphor$/m);
@@ -16,6 +16,12 @@ test('builder config names the Local Network usage, signs mac and windows, publi
   // Not dist/: that's the web build's.
   assert.match(yml, /^directories:\n\s+output: release$/m);
   for (const file of ['desktop/**', 'dist-desktop/**', 'package.json']) assert.match(section(yml, 'files'), new RegExp(`- ${file.replaceAll('*', '\\*')}$`, 'm'));
+
+  // Double-clicked projects and ANSI art open in Phosphor: projects as theirs, ANSI art as one editor among others.
+  const associations = section(yml, 'fileAssociations');
+  assert.match(associations, /- ext: phosphor\n\s+name: Phosphor Project\n\s+role: Editor\n\s+rank: Owner\n\s+mimeType: application\/x-phosphor/);
+  assert.match(associations, /- ext: \[ans, utf8ans\]\n\s+name: ANSI Art\n\s+role: Editor\n\s+rank: Alternate\n\s+mimeType: text\/x-ansi/);
+  assert.doesNotMatch(associations, /txt|asc|nfo|diz/);
 
   const mac = section(yml, 'mac');
   assert.match(mac, /NSLocalNetworkUsageDescription: "Phosphor connects to rooms on your local network\."/);

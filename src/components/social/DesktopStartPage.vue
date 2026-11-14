@@ -4,10 +4,12 @@ import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { USERNAME_MAX } from '@/social/names';
+import { checkForUpdates } from '@/composables/useDesktopMenu';
 
 // The desktop build's side panel Social tab out of a room, in the lobby's place: your name (kept on this computer, and
 // needed first: it's the name on your pass), Join by an address someone gives you (and its password, once the room
-// asks for one: a wrong one brings this page back asking again), and Start a room, which opens the host form.
+// asks for one: a wrong one brings this page back asking again), and Start a room, which opens the host form. A room on
+// a newer version offers Check for Updates beside saying so.
 const social = useSocialStore(), room = useRoomStore();
 const { t } = useI18n();
 onMounted(() => social.showLobby());   // boots: the key that signs your pass
@@ -45,6 +47,7 @@ async function join() {
     <template v-else>
       <p v-if="social.notice && social.page === 'lobby'" class="notice" role="status">
         <span>{{ social.notice }}</span>
+        <button v-if="social.notice === t('social.errors.join.newer')" class="link" @click="checkForUpdates()">{{ t('updates.check') }}</button>
         <button class="link" :aria-label="t('common.dismiss')" @click="social.notice = null">✕</button>
       </p>
       <label>{{ t('social.desktop.yourName') }} <input v-model="name" :maxlength="USERNAME_MAX" autocomplete="nickname" :aria-describedby="social.desktopName ? undefined : `${id}-name`"></label>
