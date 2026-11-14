@@ -76,7 +76,8 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   `selfPass.js` (passes checked in Node). The page's side: `src/social/desktop.js` (the door to the preload),
   `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join) and
   `selfPass.js` (passes signed by their own key), with `src/components/social/DesktopStartPage.vue` in the lobby's
-  place. Packaging is `electron-builder.yml`, released by `.github/workflows/desktop.yml` on a version tag. Its
+  place. Packaging is `electron-builder.yml`, released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`: package.json's version,
+  higher than every version tag before it). Its
   tests are the `desktop-*` files in `tests/unit`, `tests/browser` (the `browser-desktop` project) and `tests/e2e`.
 - `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be
   worked on side by side. Commit and push inside `server/`; its commits go to its repo, never this
