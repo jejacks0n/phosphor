@@ -1527,7 +1527,8 @@
       "checkEmailConfirmNew": "Consultez {email} pour confirmer",
       "passwordChanged": "Votre mot de passe a été mis à jour.",
       "accountDeleted": "Votre compte a été supprimé.",
-      "copyLinkFailed": "Impossible de copier le lien"
+      "copyLinkFailed": "Impossible de copier le lien",
+      "serviceFailed": "La salle n'a pas pu démarrer sur cet ordinateur. Essayez un autre port."
     },
     "errors": {
       "fallback": "Une erreur est survenue. Veuillez réessayer.",

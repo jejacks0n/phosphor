@@ -1527,7 +1527,8 @@
       "checkEmailConfirmNew": "Check {email} to confirm it",
       "passwordChanged": "Your password has been updated.",
       "accountDeleted": "Your account has been deleted.",
-      "copyLinkFailed": "Couldn't copy the link"
+      "copyLinkFailed": "Couldn't copy the link",
+      "serviceFailed": "The room couldn't start on this computer. Try another port."
     },
     "errors": {
       "fallback": "Something went wrong. Try again.",
