@@ -129,6 +129,7 @@
     "resetAll": "Reset all",
     "onCount": "{count} on",
     "colsAria": "Columns",
+    "charRows": "{n} row | {n} rows",
     "rowsAria": "Rows",
     "aspectLock": "Lock aspect ratio",
     "aspectFreeWithEdits": "Once you've drawn on the canvas, resizing adds or trims cells on the right and bottom freely.",

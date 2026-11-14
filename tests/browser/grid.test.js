@@ -4,8 +4,12 @@
 // grows). Random characters belong to their cell's position, so they survive a width change. A step undo could
 // bring back keeps its cells where they are too: a grid change never forgets the undo steps before it.
 import { test, expect } from 'vitest';
+import { createApp, nextTick } from 'vue';
+import { getActivePinia } from 'pinia';
+import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
+import ControlPanel from '@/components/ControlPanel.vue';
 
 async function grid(cols = 40, rows = 40) {
   const { project, workspace } = await createTestApp();
@@ -213,4 +217,20 @@ test('Into the image on a grid longer than the GPU processes keeps the drawing (
   await settle(project);
   for (const row of [50, 4500]) expect(project.cells[cellIndex(10, row, 80)].bg.hex).toBe('#ff0000');
   expect(project.hasPaint).toBe(false);
+});
+
+test('Dimensions reads the height in character rows above the inputs, which count pixel rows', async () => {
+  const { project } = await grid(40, 168);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const readout = () => host.querySelector('#cols').closest('.field').querySelector('.label-row .value').textContent;
+  expect(host.querySelector('#rows').value).toBe('168');
+  expect(readout()).toBe('84 rows');
+  await resize(project, 40, 3);
+  expect(readout()).toBe('1 row');
+  app.unmount();
+  host.remove();
 });

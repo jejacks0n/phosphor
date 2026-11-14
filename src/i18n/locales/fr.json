@@ -129,6 +129,7 @@
     "resetAll": "Tout réinitialiser",
     "onCount": "{count} actif | {count} actifs",
     "colsAria": "Colonnes",
+    "charRows": "{n} ligne | {n} lignes",
     "rowsAria": "Lignes",
     "aspectLock": "Conserver les proportions",
     "aspectFreeWithEdits": "Une fois que vous avez dessiné sur le canevas, le redimensionnement ajoute ou rogne librement des cellules à droite et en bas.",

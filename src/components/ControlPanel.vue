@@ -16,6 +16,7 @@ import CharsetField from '@/components/CharsetField.vue';
 import FontField from '@/components/FontField.vue';
 import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 import { resolves } from '@/lib/CharResolver';
+import { charRowsOf } from '@/lib/Cells';
 
 const { t } = useI18n();
 const store = useProjectStore();
@@ -101,7 +102,10 @@ const charsetName = computed(() => {
       <legend>{{ t('panel.groups.drawing') }} <span class="sub">{{ t('panel.groups.drawingSub') }}</span></legend>
 
       <div class="field">
-        <div class="label-group"><label for="cols">{{ getSetting('cols').label }}</label><HelpInfo :name="getSetting('cols').label" :text="help('cols')" /></div>
+        <div class="label-row">
+          <div class="label-group"><label for="cols">{{ getSetting('cols').label }}</label><HelpInfo :name="getSetting('cols').label" :text="help('cols')" /></div>
+          <span class="value">{{ t('panel.charRows', charRowsOf(store.rows)) }}</span>
+        </div>
         <div class="row-inputs">
           <input
               type="number"
