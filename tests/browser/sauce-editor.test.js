@@ -107,3 +107,26 @@ test('for an artist in a room, the fields are off and the counts still show', as
   expect(host.querySelector('fieldset').title).toBe('Only the room\'s host can change this.');
   expect(countOf('sauce-title').textContent.trim()).toBe('6 / 35');
 });
+
+test('control characters typed or pasted are left out, and the line under the field says so', async () => {
+  const { project } = await mount();
+  await edit('sauce-author', 'A\tB\u0007C\u001b[31mD');
+  expect(project.sauceAuthor).toBe('ABC[31mD');
+  expect(field('sauce-author').value).toBe('ABC[31mD');
+  expect(noteOf('sauce-author').textContent.trim()).toBe('Control characters, like tab or ESC, can\'t be in SAUCE and were left out.');
+
+  await edit('sauce-group', `${'g'.repeat(19)}\u001bxy`);
+  expect(project.sauceGroup).toBe(`${'g'.repeat(19)}x`);
+  expect(noteOf('sauce-group').textContent.trim()).toBe('Only 20 characters fit. Left out: "y" Control characters, like tab or ESC, can\'t be in SAUCE and were left out.');
+});
+
+test('Comments keep their line breaks, CR LF as LF, and lose their other control characters', async () => {
+  const { project } = await mount();
+  const comments = host.querySelector('#sauce-comments');
+  comments.value = 'one\r\ntwo\u001b[0m\tthree';
+  comments.setSelectionRange(comments.value.length, comments.value.length);
+  comments.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+  await nextTick();
+  expect(project.sauceUserComments).toBe('one\ntwo[0mthree');
+  expect(noteOf('sauce-comments').textContent.trim()).toBe('Control characters, like tab or ESC, can\'t be in SAUCE and were left out.');
+});

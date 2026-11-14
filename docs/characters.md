@@ -211,6 +211,9 @@ gives other apps only its characters (see [Layers](layers.md#the-select-tool)).
   a paste or a key past the end left out, until the field next changes. The record is CP437 in .ans and
   .utf8ans alike: a character it lacks is written as its lookalike or `?`, and the export dialog lists
   those too, for every ANSI format, with the fields each is in. Only what reaches the record is listed.
+  SAUCE text holds no control characters (tab, ESC and the like), which a terminal printing the file would
+  act on: typed or pasted, they're left out and the line under the field says so, and an export leaves out
+  any a project or an opened file still has. A comment's line breaks stay, since they make its lines.
 - **.png** is a picture of the art as the ANSI view draws it, in your display font, at one pixel per
   font pixel: the frame showing, with or without Animate. With Smooth text off (the status bar's
   **Smooth**) every pixel is one of the art's colors and the file is small. With it on, the export

@@ -3,7 +3,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
-import { charCount, fitField, readSauce, sauceUnmappable } from '../../src/lib/Sauce.js';
+import { charCount, fitField, readSauce, sauceText, sauceUnmappable } from '../../src/lib/Sauce.js';
 
 test('a character is one place, an emoji included', () => {
   assert.equal(charCount('Café € 🎨'), 8);
@@ -65,4 +65,33 @@ test('what the list says a character becomes is what the file holds', async () =
   let { author, group } = WALT;
   for (const { char, as } of sauceUnmappable(WALT)) [author, group] = [author, group].map((text) => text.replaceAll(char, as));
   assert.deepEqual([read.author, read.group], [author, group]);
+});
+
+// Control characters: C0 (tab, BEL, ESC and the rest), DEL and C1. A terminal printing the file would act on them.
+const CONTROLS = 'A\tB\u0007C\u001b[31mD\u007fE\u0085F\u0000G\u009bH';
+
+test('SAUCE text holds no control characters; a comment keeps its line breaks, CR LF and CR as LF', () => {
+  assert.equal(sauceText(CONTROLS), 'ABC[31mDEFGH');
+  assert.equal(sauceText('one\ntwo'), 'onetwo');
+  assert.equal(sauceText('one\r\ntwo\rthree\nfour\u001b', true), 'one\ntwo\nthree\nfour');
+  assert.equal(sauceText('Café 🎨 é\u00a0'), 'Café 🎨 é\u00a0'); // a no-break space is CP437's 255, not a control
+});
+
+test('a field\'s edit loses its control characters before it\'s fitted, and says so', () => {
+  assert.deepEqual(fitField('', CONTROLS, CONTROLS.length, 20, sauceText), { text: 'ABC[31mDEFGH', caret: 12, left: '', stripped: true });
+  assert.deepEqual(fitField('', 'x\u001by', 3, 1, sauceText), { text: 'x', caret: 1, left: 'y', stripped: true });
+  assert.deepEqual(fitField('', 'a\r\nb', 4, 9, (text) => sauceText(text, true)), { text: 'a\nb', caret: 3, left: '', stripped: true });
+});
+
+test('the record never holds a field\'s control characters, whatever the field held (a project, an opened file)', async () => {
+  const W = { r: 255, g: 255, b: 255, hex: '#ffffff', c: [255, 255, 255] };
+  const sauce = { title: CONTROLS, author: CONTROLS, group: CONTROLS, fontName: 'IBM\u001bVGA', date: '2026\t1113', comments: [CONTROLS, `${'w '.repeat(31)}\u001b\u001bxy`] };
+  const bytes = new Uint8Array(await new AnsiFile(1, 1, [{ char: 'A', fg: W, bg: W }]).toBlob({ sauce }).arrayBuffer());
+  const record = bytes.subarray(bytes.indexOf(0x1a) + 1);
+  const text = [...record.subarray(0, record.length - 128 + 90), ...record.subarray(record.length - 128 + 106)]; // the comments, title to date, font name
+  assert.equal(text.some((byte) => (byte > 0 && byte < 32) || byte === 127), false);
+  const read = readSauce(bytes);
+  assert.deepEqual([read.title, read.author, read.group, read.fontName, read.date], ['ABC[31mDEFGH', 'ABC[31mDEFGH', 'ABC[31mDEFGH', 'IBMVGA', '20261113']);
+  assert.deepEqual(read.comments, ['ABC[31mDEFGH', `${'w '.repeat(31)}xy`]); // stripped before it's wrapped: 64 fit one line
+  assert.deepEqual(sauceUnmappable(sauce), []); // nothing written as ?, so nothing listed
 });

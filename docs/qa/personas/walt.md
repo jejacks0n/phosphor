@@ -180,7 +180,8 @@ bytes of the original and the export outside the art.
 - Expects: each stops at 20, with 20 / 20 beside it and a line naming what didn't fit; on export a character CP437 lacks is written as its stand-in or `?`,
   and the Export dialog lists it first, with what it becomes and the fields it's in.
 - Probes: `undo-redo`: Cmd+Z in the field undoes his typing there; then outside it, Cmd+Z, and see what it undoes;
-  `interrupt`: reload and check the fields came back.
+  `interrupt`: reload and check the fields came back; `extremes`: paste text with a tab, BEL and `ESC[31m` into
+  Author: the control characters are left out, the line under the field says so, and the export has none.
 - Rated: yes, wants Tab between the fields
 
 ### 14. Comments as long as SAUCE allows
