@@ -949,6 +949,7 @@
     "comments": "Commentaires",
     "commentsPlaceholder": "Notes enregistrées dans le fichier…",
     "countAria": "{count} caractères sur {width}",
+    "controls": "Les caractères de contrôle, comme la tabulation ou ESC, ne peuvent pas figurer dans le SAUCE et ont été laissés de côté.",
     "cut": "Seuls {width} caractères tiennent. Laissé de côté : « {left} »"
   },
   "save": {

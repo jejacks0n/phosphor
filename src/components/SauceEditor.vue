@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import ProjectActions from '@/components/ProjectActions.vue';
-import { SAUCE_WIDTHS, charCount, fitField } from '@/lib/Sauce.js';
+import { SAUCE_WIDTHS, charCount, fitField, sauceText } from '@/lib/Sauce.js';
 
 const project = useProjectStore();
 const drawing = useDrawingStore();
@@ -17,29 +17,31 @@ const SHORT = [
   { key: 'sauceAuthor', id: 'sauce-author', label: 'sauce.author', placeholder: 'sauce.authorPlaceholder', width: SAUCE_WIDTHS.author },
   { key: 'sauceGroup', id: 'sauce-group', label: 'sauce.group', placeholder: 'sauce.groupPlaceholder', width: SAUCE_WIDTHS.group },
 ];
+const COMMENTS = { key: 'sauceUserComments', id: 'sauce-comments', width: SAUCE_WIDTHS.comments, lines: true };
 
 // What an edit left out, by setting, until the field next changes; a change from elsewhere (a file opened, a host's)
 // clears it, since nothing typed was cut.
 const notes = reactive({});
 const fitted = {};
-watch(() => SHORT.map(({ key }) => project[key]), () => {
-  for (const { key } of SHORT) if (project[key] !== fitted[key]) notes[key] = '';
+watch(() => [...SHORT, COMMENTS].map(({ key }) => project[key]), () => {
+  for (const { key } of [...SHORT, COMMENTS]) if (project[key] !== fitted[key]) notes[key] = '';
 });
 
 const quoted = (text) => ([...text].length > 20 ? `${[...text].slice(0, 20).join('')}…` : text);
 
-// Mid-composition (IME) the text isn't the person's yet: it's fitted when committed.
-function fit(event, { key, width }) {
+// Mid-composition (IME) the text isn't the person's yet: it's fitted when committed. Control characters are left out
+// (a comment's line breaks stay) and said to be, though no one types them on purpose: a paste can bring them.
+function fit(event, { key, width, lines = false }) {
   if (event.isComposing) return;
   const input = event.target;
-  const { text, caret, left } = fitField(project[key] ?? '', input.value, input.selectionEnd ?? input.value.length, width);
+  const { text, caret, left, stripped } = fitField(project[key] ?? '', input.value, input.selectionEnd ?? input.value.length, width, (raw) => sauceText(raw, lines));
   if (text !== input.value) {
     input.value = text;
     input.setSelectionRange(caret, caret);
   }
   fitted[key] = text;
   project[key] = text;
-  notes[key] = left ? t('sauce.cut', { width, left: quoted(left) }) : '';
+  notes[key] = [left && t('sauce.cut', { width, left: quoted(left) }), stripped && t('sauce.controls')].filter(Boolean).join(' ');
 }
 </script>
 
@@ -74,7 +76,16 @@ function fit(event, { key, width }) {
 
         <div class="field">
           <label for="sauce-comments">{{ t('sauce.comments') }}</label>
-          <textarea id="sauce-comments" v-model="project.sauceUserComments" :maxlength="SAUCE_WIDTHS.comments" :placeholder="t('sauce.commentsPlaceholder')"></textarea>
+          <textarea
+              id="sauce-comments"
+              :value="project.sauceUserComments"
+              :maxlength="SAUCE_WIDTHS.comments"
+              :placeholder="t('sauce.commentsPlaceholder')"
+              aria-describedby="sauce-comments-note"
+              @input="fit($event, COMMENTS)"
+              @compositionend="fit($event, COMMENTS)"
+          ></textarea>
+          <p id="sauce-comments-note" class="cut" aria-live="polite">{{ notes.sauceUserComments }}</p>
         </div>
       </fieldset>
 

@@ -8,6 +8,10 @@ import { CP437, cp437Byte, cp437Substitute } from './Cp437.js';
 const MOST_COMMENT_LINES = 255, COMMENT_WIDTH = 64;
 export const SAUCE_WIDTHS = { title: 35, author: 20, group: 20, date: 8, fontName: 20, comments: MOST_COMMENT_LINES * (COMMENT_WIDTH + 1) };
 
+// What SAUCE text can't hold: control characters (C0, tab and ESC among them, DEL and C1), which a terminal printing
+// the file would act on. A comment's line breaks are its lines (lines: true), so they stay, CR LF and CR as LF.
+export const sauceText = (text, lines = false) => (lines ? text.replace(/\r\n?/g, '\n').replace(/[^\P{Cc}\n]/gu, '') : text.replace(/\p{Cc}/gu, ''));
+
 // Characters as the record counts them: one byte each, so one a code point (an emoji is one).
 export const charCount = (text) => [...text].length;
 
@@ -27,7 +31,7 @@ export function fitField(before, after, caret, width, clean = (text) => text) {
 }
 
 // SAUCE text is CP437, one byte a character, space-padded (the font name, a ZString, NUL-padded).
-const cut = (text, width) => [...(text ?? '')].slice(0, width).join('');
+const cut = (text, width) => [...sauceText(text ?? '')].slice(0, width).join('');
 const pad = (text, length, fill = 32) => {
   const bytes = new Uint8Array(length).fill(fill);
   [...cut(text, length)].forEach((char, i) => { bytes[i] = cp437Byte(cp437Substitute(char)); });
@@ -64,7 +68,7 @@ export class Sauce {
     const processed = [];
     // A line longer than a comment line breaks at its last space that fits; only a word longer than a line is split.
     lines.forEach(line => {
-      let rest = line;
+      let rest = sauceText(line);
       while (rest.length > COMMENT_WIDTH) {
         const space = rest.lastIndexOf(' ', COMMENT_WIDTH);
         processed.push(rest.slice(0, space > 0 ? space : COMMENT_WIDTH));
