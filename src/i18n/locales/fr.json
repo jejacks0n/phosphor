@@ -57,37 +57,37 @@
   },
   "about": {
     "label": "À propos de Phosphor",
-    "tagline": "Transformez vos images en art ANSI et ASCII, puis continuez à dessiner… avec style.",
+    "tagline": "Transformez vos images en art ANSI et ASCII, puis continuez à dessiner avec style.",
     "version": "v{version}",
     "build": "build {sha}",
-    "p1": "Phosphor a débuté en 2019 comme une modeste expérience visant à concevoir des outils pour un concept que j'appelais « ANSI Nouveau ». À l'époque, je voulais recréer l'expérience des BBS du milieu des années 90 qui ont bercé ma jeunesse, mais à travers un prisme moderne et haute fidélité. Comme bien des projets de passionnés, la vie a suivi son cours et le projet a fini sur une étagère.",
-    "p2": "Des années plus tard, je suis tombé sur un fantastique {moebiusFork} qui ajoutait la prise en charge des 256 couleurs et de la couleur vraie. Cela m'a rappelé ce projet : je l'ai sorti de sa boîte, dépoussiéré le code — et, tirant parti des outils et techniques modernes, je lui ai redonné vie.",
+    "p1": "Phosphor a débuté en 2019 comme une modeste expérience visant à concevoir des outils pour un concept que j'appelais « ANSI Nouveau ». À l'époque, je voulais recréer l'expérience des BBS du milieu des années 90 qui ont bercé ma jeunesse, mais à travers un prisme moderne. Comme bien des projets de passionnés, la vie a suivi son cours et le projet a fini sur une étagère.",
+    "p2": "Quelques années plus tard, je suis tombé sur un fantastique {moebiusFork} qui ajoutait la prise en charge des 256 couleurs et de la couleur vraie. Cela m'a rappelé ce projet : je l'ai sorti de sa boîte, dépoussiéré le code et, tirant parti des outils et techniques modernes, je lui ai redonné vie.",
     "moebiusForkLink": "fork de l'éditeur ANSI Moebius",
-    "p3": "Phosphor a commencé comme un convertisseur image-vers-ANSI, et réunit aujourd'hui deux flux de travail. Il transforme des images en ANSI ou ASCII que vous pouvez affiner à votre goût, puis vous permet de peindre et taper par-dessus cellule par cellule et d'exporter en .ans ou .utf8ans. Terminez votre création ici, ou ouvrez le fichier dans un autre éditeur pour une passe finale — que vous recherchiez le « Pur ANSI » ou le style moderne « ANSI Nouveau » en 24 bits et UTF-8 qui a inspiré ce projet.",
-    "p4": "Nous n'en sommes qu'aux débuts. Attendez-vous à quelques aspérités sur téléphones et petites tablettes — bien que l'iPad avec l'Apple Pencil fonctionne bien lors des tests. Les retours, signalements de bugs et idées sont toujours les bienvenus : ouvrez un ticket sur {github}, ou forkez le dépôt pour l'emmener dans votre propre direction.",
+    "p3": "Bien que Phosphor ait commencé comme un convertisseur d'image en ANSI, il réunit aujourd'hui les deux flux de travail. Il transforme des images en ANSI ou ASCII que vous pouvez affiner à votre goût, puis vous permet de peindre et taper par-dessus cellule par cellule et d'exporter en .ans ou .utf8ans. Terminez votre création ici, ou ouvrez le fichier dans un autre éditeur que vous aimez pour une passe finale. Vous pouvez opter pour le « Pur ANSI » ou pour le style moderne « ANSI Nouveau » en 24 bits et UTF-8 qui a inspiré ce projet.",
+    "p4": "Phosphor continue d'évoluer. Attendez-vous à quelques aspérités sur téléphones et petites tablettes, bien que l'iPad avec l'Apple Pencil fonctionne bien lors des tests. Les retours, signalements de bugs et idées sont toujours les bienvenus : ouvrez un ticket sur {github}, ou forkez le dépôt pour l'emmener dans votre propre direction.",
     "githubLink": "GitHub",
     "creditsIntro": "Crédits et remerciements chaleureux :",
-    "creditErtdfgcvb": "{ertdfgcvb} (Andreas Gysin) pour l'inspiration de Phosphor avec l'(incroyable) bibliothèque {playCore}",
+    "creditErtdfgcvb": "{ertdfgcvb} (Andreas Gysin) pour avoir inspiré Phosphor grâce à la bibliothèque {playCore}",
     "creditMoebius": "Andy Herbert, Blocktronics et MeaTLoTioN pour leur travail sur Moebius",
-    "creditDurdraw": "cmang pour {durdraw}, l'éditeur d'art ANSI et ASCII qui s'anime",
-    "credit16Colors": "lordscarlet (Doug Moore) et Brendan O'Connor pour avoir créé sixteencolors, ainsi que ceux qui œuvrent pour maintenir {sixteenColors} en vie aujourd'hui.",
-    "creditFonts": "Les polices : {ibmVga} du pack Ultimate Oldschool PC Font de VileR ({ccBySa}), {jetbrains} par les auteurs du projet JetBrains Mono ({ofl1}), {unscii} par viznut (domaine public), et {unifont} par Roman Czyborra, Paul Hardy et leurs contributeurs ({ofl2})",
-    "creditIcons": "Les icônes : la plupart proviennent de {fontAwesome} par Fonticons, Inc. ({ccBy})",
-    "creditScene": "Et les nombreux auteurs, mainteneurs et artistes ANSI qui m'ont inspiré au fil des années — trop nombreux pour être tous cités",
-    "thanks": "Merci à vous tous pour l'inspiration et pour faire vivre la scène.",
+    "creditDurdraw": "cmang pour {durdraw}, l'éditeur d'art ANSI et ASCII animé",
+    "credit16Colors": "lordscarlet (Doug Moore) et Brendan O'Connor pour avoir créé sixteencolors, ainsi que tous ceux qui œuvrent pour maintenir {sixteenColors} en ligne.",
+    "creditFonts": "Polices : {ibmVga} du pack Ultimate Oldschool PC Font de VileR ({ccBySa}), {jetbrains} par les auteurs du projet JetBrains Mono ({ofl1}), {unscii} par viznut (domaine public), et {unifont} par Roman Czyborra, Paul Hardy et d'autres ({ofl2})",
+    "creditIcons": "Icônes : la plupart des icônes proviennent de {fontAwesome} par Fonticons, Inc. ({ccBy})",
+    "creditScene": "Et tous les artistes, créateurs d'outils et membres de la scène ANSI qui font vivre l'art textuel.",
+    "thanks": "Merci pour l'inspiration, et pour faire vivre la scène.",
     "motto": "Make Code Not War",
-    "policies": "Lire les {terms}, la {privacy} et les {guidelines}."
+    "policies": "Consultez nos {terms}, notre {privacy} et nos {guidelines}."
   },
   "zero": {
     "dropPrompt": "Déposez une image, un fichier {ext} ou un fichier ANSI ici",
     "browseMobile": "Choisir un fichier",
     "browseDesktop": "Choisir un fichier",
-    "startBlank": "Ou commencez avec un canevas vierge",
+    "startBlank": "Commencer avec un canevas vierge",
     "recentHeading": "Reprenez là où vous vous étiez arrêté",
     "open": "Ouvrir",
-    "openElsewhere": "Ouvrir dans l'autre onglet",
+    "openElsewhere": "Ouvrir dans un autre onglet",
     "openAria": "Ouvrir {name}",
-    "openElsewhereAria": "{name} (déjà ouvert dans un autre onglet)"
+    "openElsewhereAria": "{name} (ouvert dans un autre onglet)"
   },
   "tabs": {
     "toggleSettings": "Afficher/masquer les paramètres",
@@ -102,9 +102,9 @@
     "animate": "Animer",
     "animateHint": "Animer image par image",
     "animateNeedArt": "Ouvrez une image ou créez un canevas pour animer.",
-    "animateInRoom": "Les salles en direct ne prennent pas encore en charge les animations.",
-    "animateTooLargeTitle": "Le canevas est trop grand pour être animé ({max} cellules max).",
-    "animateTooLargeToast": "Ce canevas compte {cells} cellules (l'animation prend en charge jusqu'à {max}). Réduisez les Dimensions pour animer.",
+    "animateInRoom": "Les salons partagés ne prennent pas encore en charge l'animation.",
+    "animateTooLargeTitle": "Le canevas est trop grand pour être animé (maximum {max} cellules).",
+    "animateTooLargeToast": "Ce canevas compte {cells} cellules. L'animation prend en charge jusqu'à {max} cellules. Réduisez les dimensions du canevas pour animer.",
     "themeAria": "Thème",
     "themes": {
       "dark": "Sombre",
@@ -122,9 +122,9 @@
       "adjust": "Ajustements",
       "effects": "Filtres d'image"
     },
-    "charsNote": "Utilisés là où la peinture ou une image sur {name} devient des caractères.",
-    "charsNoteVector": "Les formes et les calques d'art de {name} sont convertis avec ces réglages.",
-    "effectsNoImage": "Les filtres d'image nécessitent une image. Chargez-en une, ou utilisez Cuire pour convertir le canevas actuel en image.",
+    "charsNote": "Contrôle la façon dont la peinture ou les images sur {name} sont converties en caractères.",
+    "charsNoteVector": "Les formes et calques d'art sur {name} utilisent ces réglages de caractères lors de la conversion.",
+    "effectsNoImage": "Les filtres d'image nécessitent une image. Ouvrez une image ou utilisez Figer pour convertir le canevas en image.",
     "reset": "Réinitialiser",
     "resetAll": "Tout réinitialiser",
     "onCount": "{count} actif | {count} actifs",
@@ -132,7 +132,7 @@
     "charRows": "{n} ligne | {n} lignes",
     "rowsAria": "Lignes",
     "aspectLock": "Conserver les proportions",
-    "aspectFreeWithEdits": "Une fois que vous avez dessiné sur le canevas, le redimensionnement ajoute ou rogne librement des cellules à droite et en bas.",
+    "aspectFreeWithEdits": "Après avoir dessiné sur le canevas, le redimensionnement ajoute ou rogne des cellules le long des bords droit et inférieur.",
     "renderStyle": {
       "label": "Style artistique",
       "ansi": "ANSI",
@@ -155,7 +155,7 @@
     "seed": {
       "label": "Graine de caractères",
       "placeholder": "Graine",
-      "randomize": "Tirer une nouvelle graine"
+      "randomize": "Générer une nouvelle graine"
     },
     "quantize": {
       "label": "Palette de couleurs",
@@ -183,76 +183,76 @@
   "settings": {
     "cols": {
       "label": "Dimensions",
-      "help": "Largeur du canevas en colonnes et hauteur en lignes de pixels (deux lignes de pixels forment une ligne de caractères)."
+      "help": "Largeur du canevas en colonnes et hauteur en lignes de pixels. Deux lignes de pixels correspondent à une ligne de caractères."
     },
     "renderStyle": {
-      "help": "L'ANSI colore chaque caractère et son arrière-plan. L'ASCII couleur dessine des caractères colorés sur fond noir, en utilisant des glyphes plus denses pour les couleurs plus intenses. L'ASCII monochrome n'utilise qu'une couleur, faisant correspondre la luminosité du clair au dense."
+      "help": "Le mode ANSI définit les couleurs pour le caractère et son arrière-plan. L'ASCII couleur dessine des caractères colorés sur fond noir, en utilisant des formes plus denses pour les couleurs plus vives. L'ASCII monochrome n'utilise qu'une seule couleur et fait correspondre la luminosité du sombre au clair."
     },
     "chars": {
-      "help": "Caractères parmi lesquels le convertisseur choisit — aléatoirement pour l'ANSI, ou du sombre au clair pour l'ASCII. Répétez un caractère pour augmenter sa fréquence d'apparition. La meilleure correspondance et le choix par forme ignorent les répétitions."
+      "help": "Caractères utilisés pour convertir les images. L'ANSI choisit les caractères aléatoirement, tandis que l'ASCII les fait correspondre du sombre au clair. Répéter un caractère le fait apparaître plus souvent. La meilleure correspondance et le choix par forme ignorent les répétitions."
     },
     "seed": {
-      "help": "Contrôle la disposition aléatoire des caractères en mode ANSI. Même graine, même motif — lancez le dé pour mélanger."
+      "help": "Contrôle la disposition aléatoire des caractères en mode ANSI. La même graine produit le même motif. Générez une nouvelle graine pour mélanger les caractères."
     },
     "quantize": {
-      "help": "Couleurs réelles conserve les couleurs 24 bits. VGA et CGA s'alignent sur les palettes classiques de 256 et 16 couleurs. Nombre limité sélectionne les N meilleures couleurs de l'image, et Liste de couleurs personnalisée n'utilise que les couleurs hexadécimales saisies."
+      "help": "Couleurs réelles préserve les couleurs 24 bits. VGA et CGA réduisent les couleurs aux palettes classiques de 256 et 16 couleurs. Nombre limité sélectionne les meilleures couleurs de l'image. Liste de couleurs personnalisée utilise uniquement les couleurs hexadécimales saisies."
     },
     "colorCount": {
       "label": "Nombre de couleurs"
     },
     "ditherStyle": {
-      "help": "La façon dont le tramage mélange les couleurs de la palette. Floyd–Steinberg les disperse comme un grain ; Ordonné les dispose en une trame régulière qui ne bouge pas d'une image à l'autre."
+      "help": "Choisit la façon dont les couleurs se mélangent. Floyd–Steinberg disperse les points comme le grain d'une pellicule. Ordonné crée un motif de grille régulier qui reste stable d'une image d'animation à l'autre."
     },
     "dither": {
       "label": "Tramage",
-      "help": "Mélange les couleurs de la palette en un motif fin là où l'image tombe entre elles, pour des dégradés lisses plutôt qu'en bandes. La peinture garde sa propre couleur. Chaque calque a le sien : sur un calque vectoriel, il trame les formes. Avec la meilleure correspondance ou le choix par forme, les caractères le font passer d'une cellule à l'autre."
+      "help": "Mélange les couleurs de la palette selon un motif de points fins pour créer des dégradés lisses plutôt que des bandes de couleur nettes. La peinture directe n'est pas tramée. Le calque de base et chaque calque vectoriel ont leur propre réglage de tramage. En mode Meilleure correspondance ou Par forme, les caractères s'adaptent également au motif de tramage."
     },
     "smoothing": {
-      "help": "Détermine la façon dont l'image est échantillonnée sur la grille. Élevé fond les transitions en douceur ; Faible préserve les bords nets et le grain."
+      "help": "Contrôle la façon dont l'image est redimensionnée sur la grille. Élevé fond les transitions en douceur. Faible préserve les contours nets et les détails des pixels."
     },
     "colorizeStrength": {
       "label": "Coloriser",
-      "help": "Teinte l'image vers une nuance unique tout en préservant l'ombre et la lumière."
+      "help": "Teinte l'image vers une seule couleur tout en préservant l'ombre et la lumière."
     },
     "hue": {
       "label": "Décalage de teinte",
-      "help": "Fait tourner toutes les couleurs autour du cercle chromatique."
+      "help": "Fait pivoter les couleurs autour du cercle chromatique."
     },
     "invert": {
       "label": "Inverser",
-      "help": "Inverse les couleurs en leurs négatifs (appliqué après Coloriser et Décalage de teinte)."
+      "help": "Inverse toutes les couleurs en leurs négatifs. S'applique après Coloriser et Décalage de teinte."
     },
     "brightness": {
       "label": "Luminosité",
-      "help": "Rend l'ensemble de l'image plus clair ou plus sombre."
+      "help": "Rend la luminosité globale de l'image plus claire ou plus sombre."
     },
     "contrast": {
       "label": "Contraste",
-      "help": "Écarte davantage les tons clairs et sombres, ou les rapproche."
+      "help": "Augmente ou diminue la différence entre les zones claires et sombres."
     },
     "levelsBlack": {
       "label": "Point noir",
-      "help": "Les tons à ce niveau ou en dessous deviennent noirs, et les autres s'étalent pour remplir la gamme."
+      "help": "Définit le point noir. Les tons à ce niveau ou en dessous deviennent noir pur, étendant les tons restants."
     },
     "levelsWhite": {
       "label": "Point blanc",
-      "help": "Les tons à ce niveau ou au-dessus deviennent blancs, et les autres s'étalent pour remplir la gamme."
+      "help": "Définit le point blanc. Les tons à ce niveau ou au-dessus deviennent blanc pur, étendant les tons restants."
     },
     "levelsMid": {
       "label": "Tons moyens",
-      "help": "Éclaircit les tons moyens (au-dessus de 1) ou les assombrit (en dessous de 1) sans déplacer le noir ni le blanc."
+      "help": "Ajuste la luminosité des tons moyens. Les valeurs supérieures à 1 éclaircissent les tons moyens, et les valeurs inférieures à 1 les assombrissent, sans changer le noir ni le blanc."
     },
     "saturation": {
       "label": "Saturation",
-      "help": "Augmente l'intensité des couleurs ou tend vers des niveaux de gris."
+      "help": "Ajuste l'intensité des couleurs, des niveaux de gris aux couleurs vives."
     },
     "posterize": {
       "label": "Postériser",
-      "help": "Réduit chaque canal de couleur à ce nombre de paliers, pour des couleurs plates façon affiche."
+      "help": "Réduit le nombre de couleurs dans chaque canal pour créer des bandes plates façon affiche."
     },
     "threshold": {
       "label": "Seuil",
-      "help": "Coupe l'image en deux : les tons à ce niveau ou au-dessus prennent la couleur claire, les autres la sombre."
+      "help": "Divise l'image en deux couleurs. Les tons à ce niveau ou au-dessus prennent la couleur claire, et les tons plus sombres prennent la couleur sombre."
     },
     "thresholdDark": {
       "label": "Couleur sombre"
@@ -262,37 +262,37 @@
     },
     "blur": {
       "label": "Flou",
-      "help": "Adoucit le bruit et le grain fin avant la conversion de l'image. Appliqué avant les autres effets. Le calque de base seulement : le calque d'édition ne change pas."
+      "help": "Adoucit le bruit et les détails fins avant de convertir l'image. S'applique au calque de base uniquement ; les calques de dessin ne sont pas affectés."
     },
     "flatten": {
       "label": "Simplifier",
-      "help": "Regroupe les tons proches en aplats nets et picturaux. Le calque de base seulement : le calque d'édition ne change pas."
+      "help": "Regroupe les couleurs similaires en formes simplifiées et nettes. S'applique au calque de base uniquement ; les calques de dessin ne sont pas affectés."
     },
     "sharpen": {
       "label": "Netteté",
-      "help": "Accentue les contours et les détails fins. Le calque de base seulement : le calque d'édition ne change pas."
+      "help": "Accentue les contours et les détails fins. S'applique au calque de base uniquement ; les calques de dessin ne sont pas affectés."
     },
     "edges": {
       "label": "Contours",
-      "help": "Trace les contours détectés dans la couleur de contour choisie. Le calque de base seulement : le calque d'édition ne change pas."
+      "help": "Trace les contours avec votre couleur de contour choisie. S'applique au calque de base uniquement ; les calques de dessin ne sont pas affectés."
     },
     "edgeThickness": {
       "label": "Épaisseur des contours",
-      "help": "Contrôle l'épaisseur des contours tracés. Le calque de base seulement : le calque d'édition ne change pas."
+      "help": "Contrôle l'épaisseur des contours tracés. S'applique au calque de base uniquement ; les calques de dessin ne sont pas affectés."
     },
     "charChoice": {
-      "help": "Aléatoire choisit dans votre jeu selon la graine. La meilleure correspondance choisit le caractère et ses deux couleurs de palette qui se rapprochent le plus de l'image. Par forme compare la forme de chaque caractère au détail de l'image dans la cellule."
+      "help": "Aléatoire choisit les caractères selon la graine. La meilleure correspondance choisit le caractère et les couleurs qui correspondent le mieux à l'image. Par forme fait correspondre les contours des caractères aux détails de l'image dans chaque cellule."
     },
     "charChoiceAscii": {
-      "help": "Par intensité (ASCII couleur) et Par luminosité (ASCII monochrome) choisissent un caractère plus loin dans votre jeu à mesure que la cellule est claire. Par forme compare la forme de chaque caractère au détail de l'image dans la cellule."
+      "help": "Par intensité (ASCII couleur) et Par luminosité (ASCII monochrome) choisissent des caractères plus denses à mesure que les cellules sont plus claires. Par forme fait correspondre les contours des caractères aux détails de l'image dans chaque cellule."
     },
     "solids": {
       "label": "Aplats",
-      "help": "À quel point une cellule pleine unie est préférée à une trame ou à un demi-bloc."
+      "help": "Contrôle la fréquence à laquelle des blocs de couleur pleine sont choisis plutôt que des blocs tramés ou des demi-blocs."
     },
     "patternLight": {
       "label": "Lumière des motifs",
-      "help": "La façon dont l'encre d'un caractère mélange ses deux couleurs : 0 % est une moyenne simple, 100 % les mélange comme le fait la lumière sur un écran, si bien que les trames paraissent plus claires."
+      "help": "Contrôle la façon dont les couleurs de premier plan et d'arrière-plan du caractère se mélangent. À 0 %, les couleurs se mélangent par moyenne simple. À 100 %, les couleurs se mélangent comme la lumière sur un écran, rendant les cellules tramées plus lumineuses."
     }
   },
   "charsets": {
@@ -310,7 +310,7 @@
   },
   "font": {
     "label": "Police",
-    "help": "Définit la police d'affichage de votre canevas. Utilisez Charger une police pour ajouter une police à chasse fixe TrueType, OpenType ou WOFF depuis votre ordinateur. Les polices matricielles (bitmap) sont plus nettes à des multiples de leur taille native (16 ou 32 px pour les polices 8×16). Votre choix de police reste dans ce navigateur ; dans une salle partagée, vous verrez temporairement la police de l'hôte.",
+    "help": "Définit la police d'affichage de votre canevas. Cliquez sur Charger une police pour ajouter une police à chasse fixe TrueType, OpenType ou WOFF depuis votre ordinateur. Les polices matricielles (bitmap) sont optimales à des multiples de leur taille native (comme 16 px ou 32 px pour les polices 8×16). Votre choix de police est enregistré dans votre navigateur. Dans un salon partagé, vous voyez la police de l'hôte.",
     "remove": "Retirer",
     "removeAria": "Retirer la police",
     "removeTitle": "Retirer cette police de votre navigateur",
@@ -319,10 +319,10 @@
     "groupBuiltIn": "Intégrées",
     "groupYours": "Les vôtres",
     "sizeAria": "Taille de police",
-    "sizeTitle": "Taille de police (px)",
-    "hostsFont": "Police de l'hôte utilisée pendant que vous dessinez ici.",
+    "sizeTitle": "Taille de police en pixels",
+    "hostsFont": "Utilisation de la police de l'hôte dans ce salon.",
     "errors": {
-      "unreadable": "Impossible de lire « {name} » comme une police. Essayez un fichier TrueType (.ttf), OpenType (.otf) ou WOFF.",
+      "unreadable": "Impossible de lire « {name} » comme un fichier de police. Veuillez utiliser un fichier TrueType (.ttf), OpenType (.otf) ou WOFF.",
       "notMonospaced": "« {name} » n'est pas à chasse fixe ({narrow} mesure {narrowPx} px de large, alors que {wide} en mesure {widePx} px). Phosphor nécessite des polices à espacement fixe où chaque caractère occupe la même largeur de cellule.",
       "aSpace": "espace"
     }
@@ -333,7 +333,7 @@
     "social": "Social",
     "chat": "Chat",
     "foldAria": "Replier le panneau",
-    "openAria": "Ouvrir le panneau",
+    "openAria": "Déplier le panneau",
     "resizeAria": "Largeur du panneau"
   },
   "layers": {
@@ -344,7 +344,7 @@
     "addVector": "Ajouter un calque vectoriel",
     "addCells": "Ajouter un calque",
     "count": "{n} calque sur {most} | {n} calques sur {most}",
-    "full": "Un dessin contient au plus {n} calques.",
+    "full": "Un dessin peut contenir jusqu'à {n} calques.",
     "menuAria": "Options de {name}",
     "moveUp": "Monter",
     "moveDown": "Descendre",
@@ -355,11 +355,11 @@
     "showAria": "Afficher {name}",
     "hideAria": "Masquer {name}",
     "renameAria": "Renommer {name}",
-    "none": "Les calques s'affichent avec le dessin.",
-    "hiddenToast": "Affichez le calque pour dessiner dessus",
-    "hiddenMergeToast": "Affichez le calque pour le fusionner",
-    "noCellsLayer": "Ajoutez un calque pour y dessiner.",
-    "notInRoom": "Ajouter, supprimer et déplacer des calques n'est pas encore possible dans une salle en direct."
+    "none": "Les calques apparaissent lorsque votre dessin est affiché.",
+    "hiddenToast": "Rendez le calque visible pour dessiner dessus",
+    "hiddenMergeToast": "Rendez le calque visible pour le fusionner",
+    "noCellsLayer": "Ajoutez un calque de dessin avant de dessiner.",
+    "notInRoom": "L'ajout, la suppression et le réordonnancement des calques ne sont pas encore pris en charge dans les salons partagés."
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",
@@ -375,7 +375,7 @@
     "pencil": {
       "title": "Crayon",
       "connect": "Connecter",
-      "connectTitle": "Raccorder automatiquement les angles et intersections avec les lignes de tracé de cadres existantes"
+      "connectTitle": "Raccorder automatiquement les lignes de tracé de cadres aux angles et intersections"
     },
     "brush": {
       "title": "Pinceau",
@@ -388,7 +388,7 @@
       "hardness": "Dureté",
       "hardnessTitle": "Douceur des contours",
       "stack": "Cumuler",
-      "stackTitle": "Superposer les traits de façon additive — deux passages à 50 % atteignent la pleine opacité. Si désactivé, les traits superposés plafonnent à l'Opacité."
+      "stackTitle": "Superposer les traits de pinceau de façon additive. Par exemple, deux passages à 50 % d'opacité atteignent 100 %. Si désactivé, les traits superposés ne dépassent jamais l'Opacité définie."
     },
     "eraser": {
       "title": "Gomme",
@@ -400,15 +400,15 @@
       "tolerance": "Tolérance",
       "toleranceTitle": "Tolérance de remplissage",
       "contiguous": "Contigu",
-      "contiguousTitle": "Remplir uniquement les zones connectées ; désactivez pour remplir toutes les correspondances sur l'ensemble du canevas",
+      "contiguousTitle": "Remplir uniquement les zones connectées. Désactivez pour remplir les cellules correspondantes sur l'ensemble du canevas",
       "feather": "Adoucir",
       "featherTitle": "Adoucir les contours du remplissage",
       "match": "Critère",
       "set": "Appliquer",
       "fill": "Remplir",
-      "setFgTitle": "Appliquer votre couleur de premier plan aux cellules",
-      "setBgTitle": "Appliquer votre couleur d'arrière-plan aux cellules",
-      "setCharTitle": "Appliquer votre caractère aux cellules"
+      "setFgTitle": "Remplir les cellules avec votre couleur de premier plan",
+      "setBgTitle": "Remplir les cellules avec votre couleur d'arrière-plan",
+      "setCharTitle": "Remplir les cellules avec votre caractère actif"
     },
     "blur": {
       "title": "Flou"
@@ -421,7 +421,7 @@
     },
     "retouch": {
       "strength": "Intensité",
-      "strengthTitle": "Jusqu'où va un trait",
+      "strengthTitle": "Intensité de l'effet pour chaque trait",
       "range": "Plage",
       "shadows": "Ombres",
       "midtones": "Tons moyens",
@@ -432,7 +432,7 @@
       "shape": "Forme",
       "linear": "Linéaire",
       "spherical": "Sphérique",
-      "needsColors": "Un dégradé nécessite une couleur de premier plan et une couleur d'arrière-plan : aucune ne peut être Aucun."
+      "needsColors": "Un dégradé nécessite une couleur de premier plan et une couleur d'arrière-plan. Aucune couleur ne peut être Aucun."
     },
     "picker": {
       "title": "Pipette",
@@ -453,14 +453,14 @@
       "title": "Forme",
       "polygon": "Polygone",
       "sides": "Côtés",
-      "sidesTitle": "Le nombre de côtés du polygone"
+      "sidesTitle": "Nombre de côtés du polygone"
     },
     "hand": {
       "title": "Main (panoramique)",
       "rulers": "Règles",
-      "rulersTitle": "Règles le long du haut et de la gauche du dessin, et les repères",
+      "rulersTitle": "Afficher les règles le long des bords supérieur et gauche, et afficher les repères",
       "opacity": "Opacité",
-      "opacityTitle": "L'opacité des règles : les repères et les nombres au pointeur restent opaques",
+      "opacityTitle": "Définit l'opacité des règles. Les repères et les mesures au curseur restent toujours parfaitement visibles",
       "clearGuides": "Effacer les repères",
       "clearGuidesTitle": "Supprimer tous les repères de ce dessin"
     },
@@ -477,15 +477,15 @@
     "select": {
       "title": "Sélection",
       "allLayers": "Tous les calques",
-      "allLayersTitle": "Déplacer tous les calques visibles ; désactivez pour déplacer uniquement le calque sélectionné"
+      "allLayersTitle": "Déplacer tous les calques visibles. Désactivez pour déplacer uniquement le calque sélectionné"
     },
     "wand": {
       "title": "Baguette magique",
       "match": "Critère",
       "tolerance": "Tolérance",
-      "toleranceTitle": "Écart de couleur maximal par rapport au point cliqué pour être inclus",
+      "toleranceTitle": "Niveau de tolérance des couleurs par rapport à la cellule cliquée",
       "contiguous": "Contigu",
-      "contiguousTitle": "Sélectionner uniquement les correspondances connectées ; désactivez pour sélectionner sur tout le canevas"
+      "contiguousTitle": "Sélectionner uniquement les cellules correspondantes connectées. Désactivez pour sélectionner les cellules correspondantes sur tout le canevas"
     },
     "shapes": {
       "title": "Formes",
@@ -497,15 +497,15 @@
       "shiftCircle": "cercle",
       "shiftSnap45": "aligner à 45°",
       "fill": "Remplir",
-      "fillTitle": "Remplir également l'intérieur avec le caractère",
+      "fillTitle": "Remplir l'intérieur de la forme avec le caractère actif",
       "connect": "Connecter",
-      "connectTitle": "Raccorder automatiquement les angles et intersections avec les lignes de tracé de cadres existantes",
+      "connectTitle": "Raccorder automatiquement les lignes de tracé de cadres aux angles et intersections",
       "antialiased": "Anticrénelé",
-      "antialiasedTitle": "Bords lisses — utilise des blocs de trame ░▒▓ en mode Bloc plein",
+      "antialiasedTitle": "Lisser les contours avec des blocs de trame (░▒▓) en mode Bloc plein",
       "verticalHalves": "Détail en demi-colonnes",
-      "verticalHalvesTitle": "Utiliser les demi-blocs latéraux (▌▐) et quarts de bloc (▝▘▗▖) pour des courbes horizontales plus fluides",
+      "verticalHalvesTitle": "Utiliser les demi-blocs verticaux (▌▐) et quarts de bloc (▝▘▗▖) pour des courbes plus douces",
       "blockChars": "Écrire des blocs",
-      "blockCharsTitle": "Remplacer les cellules touchées par des blocs graphiques ; désactivez pour teinter les caractères existants"
+      "blockCharsTitle": "Remplacer les cellules dessinées par des blocs graphiques. Désactivez pour changer les couleurs sans remplacer les caractères"
     },
     "matchToggles": {
       "fg": "PP",
@@ -538,97 +538,97 @@
         "ascii": "ASCII"
       },
       "allCells": "Toutes les cellules",
-      "allCellsTitle": "Afficher aussi les caractères de base convertis, pas seulement vos modifications"
+      "allCellsTitle": "Afficher les caractères convertis de la base ainsi que vos modifications"
     },
     "undo": "Annuler",
     "undoTitle": "Annuler ({key})",
     "redo": "Rétablir",
     "redoTitle": "Rétablir ({key})",
     "bake": "Figer",
-    "bakeTitle": "Figer : intégrer les effets des curseurs dans l'image source et réinitialiser les curseurs au point neutre. Votre calque d'édition reste intact.",
-    "bakeNothing": "Rien à figer : les curseurs sont à leurs valeurs par défaut et il n'y a aucune forme sur l'image.",
+    "bakeTitle": "Appliquer tous les réglages actuels des curseurs à l'image de base et réinitialiser les curseurs au point neutre. Les calques de dessin ne sont pas modifiés.",
+    "bakeNothing": "Rien à figer : tous les curseurs sont à leurs valeurs par défaut et il n'y a aucune forme sur l'image.",
     "flatten": "Aplatir",
-    "flattenTitle": "Aplatir : tout le dessin devient des cellules ANSI exactement comme elles s'affichent, et l'image est retirée. Contrairement à Figer, il ne reste rien à changer pour les curseurs et les effets.",
-    "flattenOneFrame": "Aplatir remplace l'image sous chaque image de l'animation : seulement pour un dessin d'une seule image.",
+    "flattenTitle": "Aplatir : convertit tous les calques visibles en cellules de caractères et retire l'image d'arrière-plan. Les curseurs et filtres d'image ne modifient plus le résultat.",
+    "flattenOneFrame": "Aplatir remplace l'image sous-jacente sur toutes les images, cette action n'est donc disponible que pour les créations à image unique.",
     "flattenDialog": {
       "title": "Aplatir",
-      "sub": "Chaque calque affiché devient des cellules ANSI telles qu'elles s'affichent. L'image est retirée ; Annuler la ramène.",
-      "warning": "Aplatir ne peut pas être annulé pendant le dessin à plusieurs.",
-      "hidden": "Le calque masqué est aussi supprimé. | Les {n} calques masqués sont aussi supprimés."
+      "sub": "Tous les calques visibles seront convertis en cellules de caractères, et l'image d'arrière-plan sera retirée. Vous pouvez annuler cette action.",
+      "warning": "L'aplatissement ne peut pas être annulé dans les salons partagés.",
+      "hidden": "Le calque masqué sera également supprimé. | Les {n} calques masqués seront également supprimés."
     },
     "mergeDown": "Fusionner vers le bas",
-    "mergeDownTitle": "Fusionner vers le bas : intégrer {name} au calque en dessous.",
-    "mergeOntoVector": "Les cellules ne peuvent pas aller dans un calque vectoriel. Utilisez plutôt Créer un calque d'art.",
-    "mergeOwnChars": "{name} a ses propres réglages de caractères, ses formes ne peuvent donc pas être intégrées au calque en dessous.",
-    "mergeShapesWhole": "Les formes ne vont dans un calque de cellules qu'avec tout leur calque. Désélectionnez-les pour fusionner tout {name}.",
-    "mergeBase": "Rien ne se trouve sous la base pour l'y fusionner.",
-    "mergeOneFrame": "Fusionner vers le bas s'intègre au calque de base partagé, ce n'est donc disponible que sur une création à image unique.",
-    "mergeShapesTitle": "Fusionner vers le bas : intégrer les formes sélectionnées au calque de base, où elles ne sont plus modifiables.",
-    "mergeShapesOneFrame": "Fusionner vers le bas intègre les formes au calque de base partagé, ce n'est donc disponible que sur une création à image unique.",
+    "mergeDownTitle": "Fusionner {name} vers le bas dans le calque en dessous.",
+    "mergeOntoVector": "Les cellules de caractères ne peuvent pas être fusionnées dans un calque vectoriel. Utilisez plutôt Créer un calque d'art.",
+    "mergeOwnChars": "{name} utilise des réglages de caractères personnalisés et ne peut pas être fusionné dans le calque en dessous.",
+    "mergeShapesWhole": "Les formes ne peuvent fusionner dans un calque de dessin qu'avec l'ensemble de leur calque. Désélectionnez les formes pour fusionner tout {name}.",
+    "mergeBase": "Le calque de base est déjà tout en bas et ne peut pas être fusionné vers le bas.",
+    "mergeOneFrame": "La fusion dans le calque de base partagé n'est disponible que pour les créations à image unique.",
+    "mergeShapesTitle": "Fusionner vers le bas : peindre les formes sélectionnées dans les pixels du calque de base. Les formes fusionnées ne peuvent plus être modifiées en tant que vecteurs.",
+    "mergeShapesOneFrame": "La fusion des formes dans le calque de base partagé n'est disponible que pour les créations à image unique.",
     "clearEdit": "Effacer le calque",
-    "clearEditTitle": "Effacer le calque : tout effacer sur {name}.",
+    "clearEditTitle": "Effacer le calque : effacer tout le contenu de {name}.",
     "clearDialog": {
       "title": "Effacer {name} ?",
-      "sub": "Tout ce que vous y avez peint, tapé ou collé sera supprimé.",
-      "clear": "L'effacer",
-      "clearText": "Défaire le rétablit."
+      "sub": "Toutes les cellules peintes, le texte et le contenu collé sur ce calque seront supprimés.",
+      "clear": "Effacer le calque",
+      "clearText": "Vous pouvez utiliser Annuler pour le rétablir."
     },
     "mergeDialog": {
       "title": "Fusionner vers le bas",
-      "warning": "La fusion vers le bas ne peut pas être annulée lors d'un dessin en commun.",
+      "warning": "La fusion vers le bas ne peut pas être annulée dans les salons partagés.",
       "warnedSub": "{warning} {sub}",
-      "subSelection": "Seul ce qui est dessiné à l'intérieur de la sélection va dans le calque de base ; le reste du calque reste en place.",
+      "subSelection": "Seul le contenu situé à l'intérieur de la sélection est fusionné dans le calque de base. Le reste du calque reste inchangé.",
       "subAll": "Choisissez comment fusionner {name} dans {below} :",
       "exactTitle": "Conserver des cellules nettes",
-      "exactText": "Fixe chaque cellule telle qu'affichée. Les filtres d'image comme Contours et Netteté ne l'affecteront pas.",
+      "exactText": "Préserve chaque cellule de caractère exactement telle qu'affichée. Les filtres d'image comme Contours et Netteté n'affecteront pas ces cellules.",
       "intoImageTitle": "Fondre dans l'image source",
-      "intoImageText": "Intègre directement à l'image sous-jacente afin que les curseurs et filtres en direct l'affectent aussi.",
-      "originalNote": "Aligne l'image source sur la résolution de travail (comme Figer), donc des filtres comme Contours peuvent varier légèrement cette première fois."
+      "intoImageText": "Dessine directement dans l'image de base afin que les curseurs et les filtres d'image s'y appliquent.",
+      "originalNote": "Redimensionne l'image source à sa résolution de travail (comme Figer). Les filtres comme Contours peuvent varier légèrement."
     },
     "bakeDialog": {
       "title": "Figer",
       "titlePalette": "Figer avec la palette {palette}",
-      "warning": "Cette action ne peut pas être annulée lors d'un dessin en commun.",
-      "subPalette": "Intègre les réglages actuels des curseurs dans l'image source et remet les curseurs à zéro. Comment enregistrer les couleurs ?",
-      "choiceText": "L'image telle qu'elle apparaît devient l'image source, et les curseurs reviennent au point neutre.",
+      "warning": "Figer ne peut pas être annulé dans les salons partagés.",
+      "subPalette": "Applique les réglages actuels des curseurs à l'image source et réinitialise les curseurs à zéro. Comment enregistrer les couleurs ?",
+      "choiceText": "L'image telle qu'elle apparaît devient la nouvelle image de base, et tous les curseurs reviennent au point neutre.",
       "keepFullTitle": "Conserver les couleurs réelles",
-      "keepFullText": "Préserve les dégradés sous-jacents afin qu'un changement de palette ultérieur conserve tous les détails. Quelques cellules en bordure entre les couleurs de {palette} peuvent varier.",
+      "keepFullText": "Préserve les détails en couleur 24 bits sous-jacents afin qu'un changement de palette ultérieur conserve tous les dégradés. Quelques cellules de bordure entre les couleurs de {palette} peuvent varier légèrement.",
       "lockPaletteTitle": "S'aligner sur les couleurs {palette}",
-      "lockPaletteText": "Le canevas reste strictement identique au pixel près, ne conservant que les couleurs de {palette}. Revenir en Couleurs réelles par la suite ne restaurera pas les dégradés, sauf en cas d'annulation."
+      "lockPaletteText": "Verrouille l'image aux seules couleurs de {palette}. Revenir en Couleurs réelles par la suite ne restaurera pas les dégradés continus sauf en cas d'annulation."
     },
     "selection": {
       "copyTitle": "Copier ({key})",
       "cutTitle": "Couper ({key})",
       "pasteTitle": "Coller les cellules copiées à l'emplacement de la sélection",
-      "pasteElsewhereTitle": "Rien n'a été copié dans cet onglet. Pour coller depuis un autre onglet ou une autre application, utilisez {key}",
+      "pasteElsewhereTitle": "Le presse-papiers est vide dans cet onglet. Pour coller depuis un autre onglet ou une autre application, appuyez sur {key}",
       "delete": "Supprimer",
       "deleteTitle": "Supprimer (Suppr ou E)",
       "stamp": "Tampon",
-      "stampTitle": "Tampon : laisser une copie ici et continuer à déplacer le bloc (S ou C)",
+      "stampTitle": "Tampon : placer une copie ici et continuer à déplacer la sélection (S ou C)",
       "flipH": "Retourner horizontalement",
       "flipHTitle": "Retourner horizontalement (miroir)",
       "flipV": "Retourner verticalement",
       "rotateAria": "Pivoter de 90° dans le sens horaire",
       "rotateTitle": "Pivoter de 90° dans le sens horaire",
       "rotateCharsDisabled": "Impossible de faire pivoter une sélection contenant des caractères tapés",
-      "mergeDownSelectionTitle": "Fusionner vers le bas : ce qui est dessiné ici s'intègre au calque en dessous",
+      "mergeDownSelectionTitle": "Fusionner vers le bas : fusionner le contenu sélectionné dans le calque en dessous",
       "deselect": "Désélectionner",
-      "deselectBlockTitle": "Désélectionner : déposer le bloc (Échap ou Entrée)",
+      "deselectBlockTitle": "Désélectionner : poser la sélection sur le canevas (Échap ou Entrée)",
       "dragHint": "Glissez pour sélectionner des cellules, ou :",
       "selectAll": "Tout sélectionner",
       "selectAllTitle": "Sélectionner tout le canevas ({key})",
-      "mergeDownAllTitle": "Fusionner vers le bas : tout le calque s'intègre au calque en dessous",
+      "mergeDownAllTitle": "Fusionner tout le calque dans le calque en dessous",
       "setFg": "Appliquer PP",
       "setFgTitle": "Appliquer PP : applique la couleur de premier plan aux cellules sélectionnées sur les calques actifs",
-      "setFgNoneTitle": "Appliquer PP : votre premier plan est Aucun ; choisissez d'abord une couleur",
+      "setFgNoneTitle": "Appliquer PP : votre couleur de premier plan est Aucun. Choisissez d'abord une couleur",
       "setBg": "Appliquer AP",
-      "setBgTitle": "Appliquer AP : chaque cellule sélectionnée prend votre couleur d'arrière-plan, sur les calques actifs",
-      "setBgNoneTitle": "Appliquer AP : votre arrière-plan est Aucun ; choisissez d'abord une couleur",
+      "setBgTitle": "Appliquer AP : appliquer la couleur d'arrière-plan aux cellules sélectionnées sur les calques actifs",
+      "setBgNoneTitle": "Appliquer AP : votre couleur d'arrière-plan est Aucun. Choisissez d'abord une couleur",
       "fill": "Remplir",
-      "fillTitle": "Remplir : chaque pixel sélectionné prend votre couleur de premier plan, sur les calques actifs",
-      "fillNoneTitle": "Remplir : votre premier plan est Aucun ; choisissez d'abord une couleur",
+      "fillTitle": "Remplir : appliquer la couleur de premier plan aux pixels sélectionnés sur les calques actifs",
+      "fillNoneTitle": "Remplir : votre couleur de premier plan est Aucun. Choisissez d'abord une couleur",
       "wandDeleteTitle": "Effacer la zone sélectionnée sur les calques actifs (Suppr)",
-      "wandDeselectTitle": "Désélectionner pour que les outils puissent à nouveau peindre partout (Échap)"
+      "wandDeselectTitle": "Désélectionner pour que les outils puissent à nouveau dessiner partout (Échap)"
     }
   },
   "colors": {
@@ -646,8 +646,8 @@
     "inThisDrawing": "Dans ce dessin",
     "painted": "{arrow} Peintes ({count})",
     "none": "Aucun",
-    "cantPaint": "{hex} : les curseurs, tels qu'ils sont, ne peuvent pas donner cette couleur",
-    "noneTitle": "Aucun : conserve la couleur sous-jacente",
+    "cantPaint": "{hex} : cette couleur ne peut pas être produite avec les réglages actuels des curseurs",
+    "noneTitle": "Aucun : conserver la couleur existante",
     "recentTitle": "Récente : {hex}"
   },
   "palette": {
@@ -655,8 +655,8 @@
     "copyName": "Copie de {name}",
     "forkName": "{name} (personnalisée)",
     "forkNameNumbered": "{name} (personnalisée {n})",
-    "forkedToast": "Les palettes intégrées sont en lecture seule — modification de votre nouvelle copie, « {name} ».",
-    "wideLastColToast": "Un caractère sur deux colonnes ne peut pas tenir dans la dernière colonne.",
+    "forkedToast": "Les palettes intégrées ne peuvent pas être modifiées. Les modifications ont été enregistrées dans votre nouvelle palette personnalisée, « {name} ».",
+    "wideLastColToast": "Les caractères sur deux colonnes ne peuvent pas tenir dans la dernière colonne.",
     "builtins": {
       "shades": "Trames & blocs",
       "single": "Lignes simples",
@@ -699,7 +699,7 @@
       "editBtn": "Modifier ▸",
       "newBtn": "＋ Nouvelle",
       "utf8": "UTF-8",
-      "lockedNote": "Intégrée — la modification crée votre propre copie",
+      "lockedNote": "Intégrée — la modification crée une copie personnalisée",
       "duplicateBtn": "⧉ Dupliquer",
       "deletePalette": "Supprimer la palette",
       "aimAtAria": "Cibler F{n}",
@@ -714,38 +714,38 @@
       "findAria": "Rechercher ou coller des caractères",
       "notes": {
         "codePoint": "Point de code",
-        "pasted": "Caractères collés — cliquez pour ajouter (les glyphes barrés ne rentrent pas dans une cellule).",
-        "inDrawing": "Tous les caractères actuellement présents sur le canevas",
-        "recent": "Caractères récemment utilisés, tous projets confondus"
+        "pasted": "Caractères collés — cliquez pour ajouter (les caractères barrés ne rentrent pas dans une cellule).",
+        "inDrawing": "Tous les caractères actuellement sur le canevas",
+        "recent": "Caractères récemment utilisés sur tous vos projets"
       },
-      "hoverDefault": "Survolez un glyphe pour l'inspecter.",
-      "aimingNext": "Remplissage de F{slot} (suivant : F{next}) — cliquez sur un glyphe ci-dessous ou glissez-le sur un emplacement.",
-      "aimingLast": "Remplissage de F{slot} — cliquez sur un glyphe ci-dessous ou glissez-le sur un emplacement.",
-      "unusableChar": "{char} ne peut pas entrer dans une cellule de grille (caractère de contrôle, invisible ou multiple).",
-      "notCp437Warning": "{char} ne fait pas partie de CP437 — enregistré en .utf8ans, ou substitué lors de l'exportation .ans.",
+      "hoverDefault": "Survolez un caractère pour l'examiner.",
+      "aimingNext": "Assignation à F{slot} (suivant : F{next}) — cliquez sur un caractère ci-dessous, ou faites-le glisser sur un emplacement.",
+      "aimingLast": "Assignation à F{slot} — cliquez sur un caractère ci-dessous, ou faites-le glisser sur un emplacement.",
+      "unusableChar": "{char} ne peut pas entrer dans une seule cellule de grille (code de contrôle, invisible ou caractères multiples).",
+      "notCp437Warning": "{char} n'est pas dans CP437 — enregistré en .utf8ans, ou substitué lors de l'exportation en .ans.",
       "infoCp437": "CP437 {byte}",
       "infoUtf8Only": "UTF-8 uniquement",
-      "infoCantUse": "inutilisable",
+      "infoCantUse": "ne peut pas être utilisé",
       "infoWide": "large de 2 cellules",
-      "infoOnSlot": "déjà sur F{slot}",
+      "infoOnSlot": "déjà assigné à F{slot}",
       "legendInPalette": "déjà dans cette palette",
-      "legendNotCp437": "hors CP437 (avertissement à l'export .ans)",
+      "legendNotCp437": "pas dans CP437 (substitué dans les exports .ans)",
       "legendDoesntFit": "ne rentre pas dans une cellule"
     }
   },
   "status": {
-    "layerAria": "Calque choisi : {name}",
+    "layerAria": "Calque sélectionné : {name}",
     "origin": {
       "edit": "édition",
       "base": "base"
     },
     "panning": "Panoramique",
     "pickingBg": "Prélèvement de la couleur d'arrière-plan",
-    "pickingFg": "Prélèvement de la couleur de premier plan · ajoutez {shift} pour l'arrière-plan",
+    "pickingFg": "Prélèvement de la couleur de premier plan · maintenez {shift} pour l'arrière-plan",
     "straightLine": "ligne droite",
-    "pickFill": "prélever le remplissage",
-    "pickStroke": "prélever le contour",
-    "breakHandle": "faire glisser une poignée pour la séparer de l'autre",
+    "pickFill": "prélever la couleur de remplissage",
+    "pickStroke": "prélever la couleur de contour",
+    "breakHandle": "faire glisser la poignée pour l'ajuster indépendamment",
     "spaceKey": "Espace",
     "pan": "panoramique",
     "colRow": "Col {col} Lig {row}",
@@ -756,29 +756,29 @@
     "selection": "Sélection {size}",
     "selectionAt": "à Col {col}, Lig {row}",
     "pickedColRow": "Prélevé Col {col} Lig {row}",
-    "zoomResetTitle": "Zoom arrière : retour à 100 %",
-    "zoomResetAria": "Zoom {percent} % : retour à 100 %",
+    "zoomResetTitle": "Réinitialiser le zoom à 100 %",
+    "zoomResetAria": "Zoom {percent} % : réinitialiser à 100 %",
     "domToCanvasTitle": "Rendu sous forme de texte DOM (expérimental). Cliquez pour basculer vers le rendu canevas.",
     "canvasToDomTitle": "Rendu sur canevas. Cliquez pour basculer vers le rendu texte DOM (expérimental).",
     "canvas": "Canevas",
     "dom": "DOM",
-    "smoothOnTitle": "Le texte lissé est activé (glyphes avec anticrénelage). Cliquez pour des contours de pixels nets.",
-    "smoothOffTitle": "Le texte lissé est désactivé (pixels nets). Cliquez pour des glyphes avec anticrénelage.",
+    "smoothOnTitle": "Le texte lissé est activé (caractères avec anticrénelage). Cliquez pour des contours de pixels nets.",
+    "smoothOffTitle": "Le texte lissé est désactivé (contours de pixels nets). Cliquez pour des caractères avec anticrénelage.",
     "smooth": "Lissé",
-    "insertTitle": "Insertion : la frappe décale la ligne vers la droite (touche Inser)",
-    "overwriteTitle": "Refrappe : la frappe remplace la cellule (touche Inser)",
+    "insertTitle": "Mode insertion : la frappe décale les cellules existantes vers la droite (touche Inser)",
+    "overwriteTitle": "Mode refrappe : la frappe remplace les cellules existantes (touche Inser)",
     "insert": "Insertion",
     "overwrite": "Refrappe"
   },
   "animation": {
     "toolbarAria": "Animation",
     "kinds": {
-      "blank": "Vierge — calque d'édition vide (affiche le fantôme)",
-      "duplicate": "Dupliquer — copier l'image actuelle",
-      "wipe": "Effacement — repart de zéro, bloque le fantôme"
+      "blank": "Vierge — calque de dessin vide (affiche le fantôme)",
+      "duplicate": "Dupliquer — copier tous les dessins de l'image actuelle",
+      "wipe": "Effacement — image vierge sans pelure d'oignon"
     },
-    "tooLarge": "Le canevas est trop grand pour ajouter des images",
-    "maxFrames": "Max {count} image pour cette taille de canevas | Max {count} images pour cette taille de canevas",
+    "tooLarge": "Le canevas est trop grand pour ajouter des images d'animation",
+    "maxFrames": "Maximum {count} image pour cette taille de canevas | Maximum {count} images pour cette taille de canevas",
     "play": "Lecture",
     "playTitle": "Lecture (L)",
     "pause": "Pause",
@@ -791,8 +791,8 @@
     "addFrame": "Ajouter une image",
     "frameActions": "Actions d'image",
     "cellsCarry": "Nouvelles cellules",
-    "cellsCarryOn": "Se poursuivent sur les images suivantes",
-    "cellsCarryOff": "Restent sur leur image",
+    "cellsCarryOn": "Reporter sur les images suivantes",
+    "cellsCarryOff": "Conserver sur cette image uniquement",
     "moveEarlier": "Déplacer vers l'avant",
     "moveLater": "Déplacer vers l'arrière",
     "deleteFrame": "Supprimer l'image",
@@ -816,7 +816,7 @@
     "holdTitle": "Durée de maintien en secondes (0 = un pas d'image)",
     "ghost": "Fantôme",
     "ghostTitle": "Pelure d'oignon : afficher les images précédentes estompées derrière les images vierges",
-    "ghostStrength": "Intensité du fantôme",
+    "ghostStrength": "Opacité du fantôme",
     "ghostOn": "Afficher le fantôme",
     "ghostOnTitle": "Pelure d'oignon : activée, {percent} %",
     "ghostOffTitle": "Pelure d'oignon : désactivée"
@@ -825,18 +825,18 @@
     "aria": "Clés",
     "button": "Clés",
     "buttonTitle": "Clés : afficher les clés de la forme sélectionnée",
-    "fold": "Replier les clés",
+    "fold": "Masquer le panneau des clés",
     "addKey": "+ Ajouter une clé",
-    "none": "Sélectionnez une forme pour voir ses clés.",
-    "easing": "Accélération des interpolations qui partent des clés sélectionnées",
-    "motion": "Comment se font les déplacements qui partent des clés Transformation sélectionnées",
+    "none": "Sélectionnez une forme pour voir ses clés d'animation.",
+    "easing": "Courbe d'accélération pour les transitions depuis les clés sélectionnées",
+    "motion": "Style de déplacement pour les clés Transformation sélectionnées",
     "mixed": "Mixte",
     "easingNow": "Accélération : {easing}",
     "motionNow": "Déplacement : {motion}",
     "delete": "Supprimer les clés",
     "deleteTitle": "Supprimer les clés sélectionnées (Suppr)",
     "frame": "Image {frame} : sélectionner ses clés",
-    "key": "Clé {part}, image {frame}",
+    "key": "Clé {part} sur l'image {frame}",
     "previous": "{part} : clé précédente",
     "next": "{part} : clé suivante",
     "here": "{part} : clé sur cette image",
@@ -844,36 +844,36 @@
     "zoomIn": "Zoom avant",
     "followPath": "Suivre un tracé…",
     "valuesMenu": "Valeurs : {part}",
-    "alongMenu": "Le long : comment il suit son tracé",
+    "alongMenu": "Le long : comment la forme suit son tracé",
     "moves": "Se déplace",
-    "rideAlong": "Le long, sur ses propres clés",
-    "rideStart": "Avec le début de la ligne",
-    "rideEnd": "Avec la fin de la ligne",
-    "face": "Suivre l'orientation du tracé",
+    "rideAlong": "Se déplacer le long du tracé sur ses propres clés",
+    "rideStart": "Rester au début de la ligne",
+    "rideEnd": "Rester à la fin de la ligne",
+    "face": "Pivoter pour suivre l'orientation du tracé",
     "motionHeading": "Mouvement",
-    "stopFollowing": "Ne plus suivre",
+    "stopFollowing": "Arrêter de suivre le tracé",
     "guide": "Guide",
-    "guideTitle": "Guide : un tracé qui ne dessine rien, son contour visible dans VECTOR seulement",
+    "guideTitle": "Guide : un tracé de référence qui n'apparaît pas sur le dessin final",
     "values": {
       "x": "X",
       "y": "Y",
       "turn": "Rot.",
       "scaleX": "L",
       "scaleY": "H",
-      "xTitle": "X : où se trouve le milieu de la forme, en pixels de la grille",
-      "yTitle": "Y : où se trouve le milieu de la forme, en pixels de la grille",
-      "artXTitle": "X : le bord gauche du calque d'art, en colonnes",
-      "artYTitle": "Y : le bord du haut du calque d'art, en pixels de la grille (deux par ligne)",
-      "turnTitle": "Rotation, en degrés",
-      "scaleXTitle": "Largeur, en pourcentage, selon les axes de la forme",
-      "scaleYTitle": "Hauteur, en pourcentage, selon les axes de la forme (négatif la retourne)",
-      "widthTitle": "Épaisseur du contour, en pixels de la grille",
-      "startTitle": "Début, en pourcentage du chemin le long du contour où le tracé commence",
-      "endTitle": "Fin, en pourcentage du chemin le long du contour où le tracé s'arrête",
-      "alongTitle": "Le long, en pourcentage du chemin le long du tracé",
+      "xTitle": "X : position centrale de la forme en pixels de grille",
+      "yTitle": "Y : position centrale de la forme en pixels de grille",
+      "artXTitle": "X : bord gauche du calque d'art en colonnes",
+      "artYTitle": "Y : bord supérieur du calque d'art en pixels de grille (deux pixels par ligne)",
+      "turnTitle": "Rotation en degrés",
+      "scaleXTitle": "Pourcentage de largeur selon les axes de la forme",
+      "scaleYTitle": "Pourcentage de hauteur selon les axes de la forme (une valeur négative retourne verticalement)",
+      "widthTitle": "Épaisseur du contour en pixels de grille",
+      "startTitle": "Point de départ le long du contour où le tracé commence (pourcentage)",
+      "endTitle": "Point d'arrêt le long du contour où le tracé s'arrête (pourcentage)",
+      "alongTitle": "Position le long du tracé (pourcentage)",
       "fill": "Couleur de remplissage : ouvrir le sélecteur de couleur",
-      "stroke": "Couleur du contour : ouvrir le sélecteur de couleur",
-      "outline": "{n} point · à modifier avec l'outil Nœud | {n} points · à modifier avec l'outil Nœud",
+      "stroke": "Couleur de contour : ouvrir le sélecteur de couleur",
+      "outline": "{n} point · modifier avec l'outil Nœud | {n} points · modifier avec l'outil Nœud",
       "stack": "{n} sur {m}"
     },
     "partsShort": {
@@ -904,7 +904,7 @@
   "actions": {
     "confirmNew": "Vous avez des modifications non enregistrées. Commencer un nouveau projet quand même ?",
     "confirmOpen": "Vous avez des modifications non enregistrées. Ouvrir {name} quand même ?",
-    "cantOpen": "Phosphor ne peut pas ouvrir {name}. Il ouvre les images, les projets .phosphor, les SVG et les fichiers .ans, .utf8ans, .asc, .txt, .nfo et .diz.",
+    "cantOpen": "Phosphor ne peut pas ouvrir {name}. Les formats pris en charge comprennent les images, les projets .phosphor, les fichiers SVG et les fichiers texte (.ans, .utf8ans, .asc, .txt, .nfo, .diz).",
     "saveProject": "Enregistrer le projet (.phosphor)",
     "exportAns": "Exporter en .ans",
     "exportUtf8ans": "Exporter en .utf8ans",
@@ -917,30 +917,30 @@
     "versions": "Versions",
     "newProject": "Nouveau projet",
     "artDropTitle": "Ajouter {name} ?",
-    "artDropSub": "L'ajouter à ce dessin, ou l'ouvrir à la place de celui-ci.",
+    "artDropSub": "L'ajouter à ce dessin ou l'ouvrir comme nouveau projet.",
     "artDropSubAddOnly": "L'ajouter à ce dessin.",
     "artAdd": "Ajouter à ce dessin",
-    "artAddWhere": "Il arrive là où vous l'avez déposé, sur {name}, à faire glisser en place.",
-    "artAddTopLeft": "Il arrive en haut à gauche de la vue, sur {name}, à faire glisser en place.",
-    "svgAddText": "En formes sur VECTOR, dans l'image affichée, ajustées au canevas et sélectionnées.",
-    "pictureAddText": "L'ajouter à {name} comme peinture, ajustée au canevas.",
-    "pictureAddNew": "L'ajouter comme nouveau calque, ajusté au canevas.",
-    "artOpen": "Ouvrir à la place",
-    "artOpenText": "À la place de ce dessin.",
+    "artAddWhere": "Place le dessin là où vous l'avez déposé sur {name} pour que vous puissiez le glisser en position.",
+    "artAddTopLeft": "Place le dessin en haut à gauche de la vue sur {name} pour que vous puissiez le glisser en position.",
+    "svgAddText": "Ajoute des formes à VECTOR sur l'image actuelle, ajustées au canevas et sélectionnées.",
+    "pictureAddText": "Ajoute l'image à {name} comme peinture, ajustée au canevas.",
+    "pictureAddNew": "Ajoute l'image comme nouveau calque, ajustée au canevas.",
+    "artOpen": "Ouvrir comme nouveau projet",
+    "artOpenText": "Remplace le dessin actuel.",
     "artOpenTitle": "Ouvrir {name} ?",
-    "artOpenSub": "Modifier son dessin, ou dessiner par-dessus.",
-    "artEdit": "Le modifier",
-    "artEditText": "Le dessin va sur le calque d'édition, sur une base noire, comme si vous l'aviez dessiné.",
+    "artOpenSub": "Modifier son dessin directement, ou dessiner par-dessus.",
+    "artEdit": "Modifier le dessin",
+    "artEditText": "Place le dessin sur un calque de dessin par-dessus un fond noir.",
     "artDrawOn": "Dessiner par-dessus",
-    "artDrawOnText": "Le dessin est le calque de base, et ce que vous dessinez va par-dessus.",
+    "artDrawOnText": "Place le dessin sur le calque de base pour que vous puissiez dessiner par-dessus.",
     "artOpenEdit": "Ouvrir pour le modifier",
-    "artOpenEditText": "À la place de ce dessin : le dessin sur le calque d'édition, sur une base noire.",
+    "artOpenEditText": "Remplace le dessin actuel et le place sur un calque de dessin par-dessus un fond noir.",
     "artOpenDrawOn": "Ouvrir pour dessiner par-dessus",
-    "artOpenDrawOnText": "À la place de ce dessin : le dessin en calque de base, sous ce que vous dessinez."
+    "artOpenDrawOnText": "Remplace le dessin actuel et le place sur le calque de base sous vos dessins."
   },
   "sauce": {
     "heading": "Métadonnées SAUCE",
-    "description": "Enregistrées dans les fichiers .ans et .utf8ans exportés, pour les visionneuses ANSI, les archives et les BBS. Un fichier ouvert garde son enregistrement : seul ce que vous modifiez ici change.",
+    "description": "Métadonnées intégrées aux fichiers .ans et .utf8ans exportés pour les visionneuses ANSI, les archives et les systèmes BBS. Un fichier ouvert conserve son enregistrement ; seules vos modifications ici sont appliquées.",
     "title": "Titre",
     "titlePlaceholder": "Jusqu'à 35 caractères",
     "author": "Auteur",
@@ -971,56 +971,56 @@
     "formats": {
       "phosphor": {
         "title": "Enregistrer le projet",
-        "sub": "Enregistre votre projet complet — image source, calques, images et paramètres — pour le rouvrir dans Phosphor."
+        "sub": "Enregistre votre projet complet — image source, calques, images et réglages — pour pouvoir le rouvrir dans Phosphor."
       },
       "ans": {
         "title": "Exporter en .ans",
-        "sub": "Art ANSI CP437 classique pour les visionneuses traditionnelles, les éditeurs et les BBS."
+        "sub": "Art ANSI CP437 classique pour les visionneuses traditionnelles, les éditeurs et les systèmes BBS."
       },
       "ansimation": {
         "title": "Exporter en .ans animé",
-        "sub": "Flux ANSiMation CP437 classique. La vitesse de lecture dépend de la vitesse en bauds de la visionneuse plutôt que des durées de maintien des images."
+        "sub": "Fichier ANSI animé CP437 classique. La vitesse de lecture dépend de la vitesse en bauds de la visionneuse."
       },
       "utf8ansimation": {
         "title": "Exporter en .utf8ans animé",
-        "sub": "Flux ANSiMation UTF-8 pour les terminaux modernes, conservant tous les caractères. La vitesse de lecture dépend du terminal."
+        "sub": "Fichier ANSI animé UTF-8 pour terminaux modernes, conservant tous les caractères et couleurs Unicode."
       },
       "cast": {
         "title": "Exporter en .cast",
-        "sub": "Enregistrement asciinema pour terminaux et le web — conserve le minutage exact des images et chaque caractère."
+        "sub": "Enregistrement asciinema pour les terminaux et le web, conservant le minutage exact des images et les caractères."
       },
       "gif": {
         "title": "Exporter en .gif",
-        "sub": "GIF animé en boucle rendu avec votre police d'affichage actuelle — prêt à être partagé partout."
+        "sub": "GIF animé en boucle rendu dans votre police d'affichage, prêt à être partagé partout."
       },
       "utf8ans": {
         "title": "Exporter en .utf8ans",
-        "sub": "Art ANSI UTF-8 pour les terminaux modernes — conserve chaque caractère et couleur Unicode."
+        "sub": "Art ANSI UTF-8 pour terminaux modernes, conservant tous les caractères et couleurs Unicode."
       },
       "png": {
         "title": "Exporter en .png",
-        "sub": "Ce que montre la vue ANSI, en image, avec votre police d'affichage actuelle."
+        "sub": "Exportation d'image rendue dans votre police d'affichage, exactement telle qu'affichée dans la vue ANSI."
       }
     },
     "png": {
-      "ask": "Le texte lissé ajoute des couleurs : le PNG sera plusieurs fois plus lourd.",
+      "ask": "Le texte lissé ajoute des couleurs de dégradé subtiles, ce qui rend le fichier PNG plus lourd.",
       "smoothTitle": "Lissé",
-      "smoothText": "Avec anticrénelage, comme dans la vue ANSI.",
+      "smoothText": "Caractères avec anticrénelage, correspondant à ce que vous voyez dans la vue ANSI.",
       "hardTitle": "Contours nets",
-      "hardText": "Des pixels nets dans les couleurs du dessin : le fichier le plus léger."
+      "hardText": "Caractères en pixels nets utilisant uniquement les couleurs de la palette du dessin (taille de fichier minimale)."
     },
-    "cp437Note": "1 caractère n'est pas dans CP437 et sera substitué en .ans : | {count} caractères ne sont pas dans CP437 et seront substitués en .ans :",
+    "cp437Note": "1 caractère n'est pas dans CP437 et sera substitué lors des exportations en .ans : | {count} caractères ne sont pas dans CP437 et seront substitués lors des exportations en .ans :",
     "replacementsAria": "Substitutions",
     "becomesAria": "devient",
     "cellCount": "{count} cellule | {count} cellules",
-    "keepHint": "Exportez en .utf8ans pour conserver les caractères exacts.",
+    "keepHint": "Exportez en .utf8ans pour conserver tous les caractères originaux.",
     "sauceNote": "1 caractère du SAUCE n'est pas dans CP437 et sera substitué : | {count} caractères du SAUCE ne sont pas dans CP437 et seront substitués :",
     "sauceReplacementsAria": "Substitutions SAUCE",
     "sauceHint": "Le SAUCE est en CP437 dans tout fichier ANSI. Pour choisir vous-même les remplaçants, modifiez ces champs dans l'onglet SAUCE.",
     "sauceCommentsOver": "Commentaires : seules les {most} premières lignes SAUCE tiennent. À partir de la ligne {line} (« {text} »), ils ne seront pas dans ce fichier ; ils restent dans l'onglet SAUCE.",
     "saveFailed": "Impossible d'enregistrer le fichier.",
-    "tooTall": "À {cols}×{rows}, plus large ou plus haut qu'un terminal standard 80×25. Une partie du dessin peut être coupée pendant la lecture.",
-    "gifTooLarge": "Cette animation est trop volumineuse pour un GIF. Essayez avec moins d'images ou des dimensions plus petites — ou exportez en .cast, qui n'a pas de limite de taille."
+    "tooTall": "À {cols}×{rows}, cette création est plus grande qu'un terminal standard 80×25. Certaines parties peuvent être tronquées lors de la lecture.",
+    "gifTooLarge": "Cette animation est trop volumineuse pour être exportée en GIF. Essayez d'utiliser moins d'images, des dimensions plus petites, ou exportez en .cast à la place."
   },
   "export": {
     "modal": {
@@ -1032,43 +1032,57 @@
       "tooTall": "À {cols}×{rows}, plus large ou plus haut qu'un terminal standard 80×25. Une partie du dessin peut être coupée pendant la lecture.",
       "exportBtn": "Exporter {name}",
       "formats": {
-        "ans":            { "name": "ANS" },
-        "utf8ans":        { "name": "UTF-8 ANS" },
-        "png":            { "name": "PNG" },
-        "gif":            { "name": "GIF" },
-        "ansimation":     { "name": "ANS animé" },
-        "utf8ansimation": { "name": "UTF-8 ANS animé" },
-        "cast":           { "name": "Cast" }
+        "ans": {
+          "name": "ANS"
+        },
+        "utf8ans": {
+          "name": "UTF-8 ANS"
+        },
+        "png": {
+          "name": "PNG"
+        },
+        "gif": {
+          "name": "GIF"
+        },
+        "ansimation": {
+          "name": "ANS animé"
+        },
+        "utf8ansimation": {
+          "name": "UTF-8 ANS animé"
+        },
+        "cast": {
+          "name": "Cast"
+        }
       }
     }
   },
   "versions": {
     "title": "Versions",
-    "sub": "Phosphor enregistre jusqu'à 20 instantanés dans ce navigateur (environ toutes les 5 minutes pendant votre travail). Effacer les données de navigation les supprime : enregistrez un fichier .phosphor pour tout travail que vous souhaitez conserver.",
+    "sub": "Phosphor enregistre automatiquement jusqu'à 20 versions dans votre navigateur (environ toutes les 5 minutes). Effacer les données de navigation les supprime. Enregistrez un fichier .phosphor pour conserver votre travail de façon permanente.",
     "beforeRestore": "Avant restauration",
     "asOpened": "À l'ouverture",
     "empty": "Aucun instantané enregistré pour l'instant.",
-    "readError": "Impossible de lire les versions.",
+    "readError": "Impossible de charger les versions enregistrées.",
     "restoreError": "Impossible de restaurer cette version.",
     "kb": "{n} Ko",
     "mb": "{n} Mo"
   },
   "autosave": {
-    "failing": "La sauvegarde automatique n'est pas disponible dans ce navigateur. Enregistrez un fichier .phosphor pour conserver votre travail.",
-    "evictedOldest": "L'espace de stockage du navigateur était plein, votre instantané le plus ancien a donc été supprimé pour faire de la place.",
-    "stillFull": "L'espace de stockage du navigateur est plein — même après avoir libéré les anciens instantanés, ce projet ne rentre pas. Enregistrez un fichier .phosphor pour conserver votre travail.",
+    "failing": "La sauvegarde automatique n'est pas prise en charge dans ce navigateur. Veuillez enregistrer un fichier .phosphor pour protéger votre travail.",
+    "evictedOldest": "L'espace de stockage du navigateur était plein. Votre version enregistrée la plus ancienne a été supprimée pour faire de la place.",
+    "stillFull": "L'espace de stockage du navigateur est plein. Ce projet n'a pas pu être enregistré même après avoir libéré les anciennes versions. Veuillez enregistrer un fichier .phosphor.",
     "openFailed": "Impossible de rouvrir ce projet."
   },
   "document": {
-    "framesLost": "Impossible de lire les images de ce fichier : il a été ouvert comme une image fixe. L'enregistrer l'écrasera en tant qu'image fixe.",
+    "framesLost": "Impossible de lire les images d'animation de ce fichier, il a donc été ouvert comme image fixe. L'enregistrer le remplacera en tant qu'image fixe.",
     "openImageFailed": "Impossible d'ouvrir « {name} ». Assurez-vous qu'il s'agit d'une image prise en charge ou d'un fichier .phosphor.",
-    "decodeImageFailed": "Impossible de décoder l'image",
+    "decodeImageFailed": "Impossible de décoder l'image.",
     "blankFailed": "Impossible de créer un canevas vierge.",
-    "invalidProject": "Fichier de projet Phosphor non valide",
+    "invalidProject": "Fichier de projet Phosphor non valide.",
     "loadProjectFailed": "Échec du chargement du fichier de projet : {reason}",
     "bakeFailed": "Impossible de figer l'image.",
     "flattenFailed": "Impossible d'aplatir le dessin.",
-    "mergeIntoImageFailed": "Impossible de fondre dans l'image.",
+    "mergeIntoImageFailed": "Impossible de fusionner dans l'image.",
     "artTooBig": "Ce fichier fait {cols} × {rows}. Phosphor ouvre au plus {maxCols} colonnes, {maxLines} lignes et {maxCells} cellules.",
     "artEmpty": "Ce fichier ne contient aucun dessin."
   },
@@ -1089,15 +1103,15 @@
       "tabs": "Onglets de l'éditeur"
     },
     "rows": {
-      "vselect": "Sélection vectorielle : choisir, déplacer, redimensionner et faire pivoter les formes (double-clic : l'outil Nœud)",
-      "vnode": "Nœud : appuyez sur une forme pour modifier ses points et son dégradé ; faites glisser un point, une poignée ou un arrêt, cliquez sur le contour pour ajouter un point",
-      "pen": "Plume : cliquez pour un angle, faites glisser pour une courbe ; cliquez sur le premier point pour fermer",
-      "penEnd": "Laisser la forme de la plume en courbe ouverte",
-      "penBack": "Retirer le dernier point de la plume",
-      "vshape": "Forme : tracez un rectangle, une ellipse ou un polygone (avec Maj : carré)",
-      "vectorNudge": "Décaler les formes sélectionnées (avec Maj : 10 pixels)",
+      "vselect": "Sélection vectorielle : sélectionner, déplacer, redimensionner et faire pivoter les formes (double-cliquez pour utiliser l'outil Nœud)",
+      "vnode": "Nœud : cliquez sur une forme pour modifier ses points et son dégradé. Faites glisser les points, poignées ou arrêts de couleur ; cliquez sur le contour pour ajouter des points",
+      "pen": "Plume : cliquez pour placer un point d'angle, faites glisser pour une courbe ; cliquez sur le premier point pour fermer la forme",
+      "penEnd": "Terminer la forme en courbe ouverte",
+      "penBack": "Retirer le dernier point placé",
+      "vshape": "Forme : faites glisser pour tracer un rectangle, une ellipse ou un polygone (maintenez Maj pour un carré ou un cercle)",
+      "vectorNudge": "Décaler les formes sélectionnées (maintenez Maj pour 10 pixels)",
       "vectorDelete": "Supprimer les formes sélectionnées",
-      "vectorEsc": "Arrêter de modifier les points, puis désélectionner",
+      "vectorEsc": "Quitter la modification des points, puis désélectionner",
       "thisList": "Cette liste ({key} en Mode Édition)",
       "undo": "Annuler",
       "redo": "Rétablir",
@@ -1105,7 +1119,7 @@
       "openFile": "Ouvrir un fichier",
       "pencil": "Crayon",
       "brush": "Pinceau",
-      "eraser": "Gomme (avec Sélection et une sélection active : l'effacer)",
+      "eraser": "Gomme (avec l'outil Sélection et une sélection active : effacer le contenu de la sélection)",
       "bucket": "Pot de peinture",
       "gradient": "Dégradé",
       "blur": "Flou",
@@ -1113,67 +1127,67 @@
       "burn": "Densité + (assombrir)",
       "shapes": "Formes",
       "picker": "Pipette",
-      "wand": "Baguette magique : sélectionner par couleur ou caractère",
+      "wand": "Baguette magique : sélectionner des zones par couleur ou caractère",
       "hand": "Main",
       "zoom": "Zoom",
-      "editMode": "Mode Édition — taper des caractères (appuyez sur Échap pour revenir aux raccourcis outils à une touche)",
+      "editMode": "Mode Édition : taper directement des caractères (appuyez sur Échap pour utiliser les raccourcis d'outils)",
       "flip": "Inverser (vue ANSI)",
       "select": "Sélection",
-      "holdAlt": "Prélever une couleur (Crayon, Pinceau, Pot de peinture, Formes)",
-      "holdAltShift": "Prélever la couleur d'arrière-plan",
-      "holdSpace": "Panoramique, avec n'importe quel outil (ou glisser avec le bouton central)",
-      "openFg": "Ouvrir le sélecteur sur le premier plan",
-      "openBg": "Ouvrir le sélecteur sur l'arrière-plan",
-      "swapColors": "Intervertir premier plan et arrière-plan (X écrit en Mode Édition)",
-      "moveSwatches": "Dans le sélecteur : naviguer entre les échantillons",
-      "pickSwatch": "Dans le sélecteur : choisir et fermer, ou choisir et rester",
+      "holdAlt": "Échantillonner la couleur à la pipette (Crayon, Pinceau, Pot de peinture, Dégradé, Formes)",
+      "holdAltShift": "Échantillonner la couleur d'arrière-plan",
+      "holdSpace": "Déplacer le canevas avec n'importe quel outil (ou faire glisser avec le bouton central de la souris)",
+      "openFg": "Ouvrir le sélecteur de couleur pour le premier plan",
+      "openBg": "Ouvrir le sélecteur de couleur pour l'arrière-plan",
+      "swapColors": "Intervertir les couleurs de premier plan et d'arrière-plan (tape 'X' en Mode Édition)",
+      "moveSwatches": "Naviguer entre les échantillons de couleur dans le sélecteur",
+      "pickSwatch": "Sélectionner l'échantillon et fermer, ou sélectionner et rester",
       "moveCursor": "Déplacer le curseur",
-      "selectFromCursor": "Sélectionner depuis le curseur (l'outil Sélection prend le relais)",
+      "selectFromCursor": "Sélectionner depuis la position du curseur (bascule vers l'outil Sélection)",
       "homeEnd": "Début ou fin de la ligne",
       "nextLine": "Début de la ligne suivante",
-      "erase": "Effacer avant ou au curseur",
-      "insertOverwrite": "Insertion ou refrappe",
-      "typeFKey": "Taper le glyphe de l'emplacement de palette",
-      "grabFKey": "Placer le caractère sous le curseur sur cet emplacement",
+      "erase": "Effacer le caractère avant le curseur ou sous le curseur",
+      "insertOverwrite": "Basculer entre le mode Insertion et le mode Refrappe",
+      "typeFKey": "Taper le caractère depuis l'emplacement de palette actif",
+      "grabFKey": "Enregistrer le caractère sous le curseur dans cet emplacement de palette",
       "prevNextPalette": "Palette de caractères précédente ou suivante",
-      "stepFgPalette": "Faire défiler le premier plan dans la palette (ajouter Maj pour l'arrière-plan)",
+      "stepFgPalette": "Faire défiler la couleur de premier plan dans la palette (maintenir Maj pour l'arrière-plan)",
       "selectAll": "Tout sélectionner",
       "copyCutPaste": "Copier, couper, coller",
       "nudge": "Ajuster la sélection pas à pas",
       "growShrink": "Agrandir ou réduire la sélection",
       "deleteSelection": "Supprimer ce qui est sélectionné",
-      "stamp": "Tampon : laisser une copie ici et continuer à déplacer le bloc",
-      "deselect": "Désélectionner, en déposant le bloc (retour au mode Édition, si vous en venez)",
-      "playPause": "Lecture ou pause (toute autre touche met aussi en pause)",
-      "prevNextFrame": "Image précédente ou suivante ({keys} pendant la saisie)",
-      "newFrame": "Ajouter une image après celle-ci, du même type (maintenir pour en ajouter d’autres)",
+      "stamp": "Tampon : placer une copie ici et continuer à déplacer la sélection",
+      "deselect": "Désélectionner et placer la sélection sur le canevas (revient au Mode Édition s'il était actif auparavant)",
+      "playPause": "Lire ou mettre en pause l'animation (toute autre touche met également en pause)",
+      "prevNextFrame": "Aller à l'image précédente ou suivante ({keys} pendant la frappe)",
+      "newFrame": "Ajouter une nouvelle image du même type que l'image actuelle (maintenir pour en ajouter plusieurs)",
       "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet"
     }
   },
   "social": {
-    "narrow": "Les salles demandent un écran plus large.",
-    "unsupported": "Ce navigateur ne prend pas en charge les fonctionnalités de sécurité nécessaires à SOCIAL.",
+    "narrow": "Les salles partagées nécessitent un écran plus large.",
+    "unsupported": "Ce navigateur ne prend pas en charge les fonctionnalités de sécurité requises pour les salles Social.",
     "agreeTerms": "J'ai 13 ans ou plus et j'accepte les {terms}, la {privacy} et les {guidelines}",
     "nav": {
       "cancel": "‹ Annuler",
       "cancelSignOut": "Annuler et se déconnecter"
     },
     "consent": {
-      "title": "Avant d'ouvrir SOCIAL",
-      "regionAria": "Ce que SOCIAL implique pour vous",
-      "intro": "SOCIAL vous permet de regarder des artistes dessiner en direct, de dessiner ensemble ou d'héberger votre propre salle. Voici comment fonctionne votre vie privée.",
+      "title": "Avant d'utiliser les salles Social",
+      "regionAria": "Informations de confidentialité et règles communautaires pour les salles Social",
+      "intro": "Le mode Social vous permet de regarder des artistes dessiner en direct, de dessiner avec d'autres ou d'héberger votre propre salle. Voici comment votre vie privée est protégée.",
       "lobbyHeading": "Le hall",
-      "lobbyBody": "Ouvrir SOCIAL connecte votre navigateur à notre serveur. Les personnes présentes dans le hall peuvent voir votre nom d'utilisateur (les invités reçoivent un pseudonyme aléatoire de trois mots). Les salles publiques affichent leur hôte, titre, nombre de spectateurs et un aperçu en direct.",
+      "lobbyBody": "Accéder au mode Social connecte votre navigateur à notre serveur. Les personnes présentes dans le hall peuvent voir votre nom d'utilisateur (les invités reçoivent un pseudonyme aléatoire). Les salles publiques affichent leur hôte, titre, nombre de spectateurs et un aperçu en direct.",
       "joiningHeading": "Rejoindre une salle",
-      "joiningBody": "Votre navigateur se connecte directement à celui de l'hôte : chacun de vous peut voir l'adresse IP de l'autre. Cela peut révéler votre localisation approximative et votre fournisseur d'accès, utilisez donc un VPN si vous souhaitez la masquer. Le chat transite par le navigateur de l'hôte, et toute personne dans la salle peut le voir et le copier.",
+      "joiningBody": "Votre navigateur se connecte directement à l'ordinateur de l'hôte, si bien que chacun de vous peut voir l'adresse IP de l'autre, ce qui peut indiquer votre ville approximative et votre fournisseur d'accès. Utilisez un VPN si vous souhaitez garder votre adresse IP privée. Les messages du chat sont visibles par tous les participants de la salle.",
       "startingHeading": "Créer une salle",
-      "startingBody": "Les personnes que vous admettez voient votre création pendant que vous dessinez, et toute personne qui rejoint peut voir votre adresse IP. Les salles publiques affichent un aperçu dans le hall. Toute personne que vous invitez à dessiner reçoit l'intégralité du projet, y compris l'image originale. Si quelqu'un signale votre salle, nous conservons un instantané du canevas pour examiner et résoudre le signalement.",
-      "beKindHeading": "Bienveillance",
-      "beKindBody": "Ne harcelez pas, ne menacez personne et n'attaquez personne pour ce qu'il est. N'utilisez pas l'adresse IP d'une personne contre elle et ne partagez pas ses informations personnelles. Gardez les salles publiques convenables, respectez le travail des autres et ne signalez que de bonne foi. Les hôtes peuvent retirer des participants de leur salle, tout membre connecté peut bloquer quelqu'un (il ne peut plus rejoindre les salles que vous hébergez et ses messages sont repliés pour vous), et tout membre connecté avec un e-mail confirmé peut signaler une personne ou une salle."
+      "startingBody": "Les participants de votre salle voient votre dessin en temps réel et peuvent voir votre adresse IP. Les salles publiques affichent un aperçu dans le hall. Si vous invitez quelqu'un à dessiner, il reçoit une copie de l'intégralité du projet, y compris l'image de base. Si votre salle est signalée, les modérateurs reçoivent un instantané du canevas pour examiner la situation.",
+      "beKindHeading": "Règles communautaires",
+      "beKindBody": "Ne harcelez pas, n'intimidez pas et ne dénigrez pas les autres. N'abusez pas des adresses IP et ne partagez pas d'informations personnelles privées. Gardez les salles publiques convenables, respectez le travail des autres artistes et ne soumettez de signalements que de bonne foi. Les hôtes peuvent retirer des participants de leurs salles. Les utilisateurs connectés peuvent bloquer d'autres personnes, et ceux dont l'adresse e-mail est confirmée peuvent signaler les salles ou utilisateurs qui enfreignent nos règles."
     },
     "joinDialog": {
       "title": "Rejoindre cette salle ?",
-      "sub": "Vous avez suivi un lien vers celle-ci. La rejoindre connecte directement votre navigateur à celui de l'hôte, qui pourra voir votre adresse IP.",
+      "sub": "Vous avez suivi un lien d'invitation. Rejoindre connecte votre navigateur directement à l'ordinateur de l'hôte, lui permettant de voir votre adresse IP.",
       "join": "Rejoindre",
       "backToYourRoom": "Retourner dans votre salle"
     },
@@ -1224,8 +1238,8 @@
     },
     "start": {
       "heading": "Configurer votre salle",
-      "noArt": "Ouvrez d'abord une image ou un canevas pour avoir quelque chose à partager.",
-      "tooManyLayers": "Pour l'instant, une salle en direct contient au plus {name}, un calque vectoriel et un calque au-dessus, tous avec les mêmes réglages de caractères. Fusionnez ou supprimez des calques pour passer en direct.",
+      "noArt": "Ouvrez une image ou créez un canevas d'abord pour avoir un dessin à partager.",
+      "tooManyLayers": "Les salles partagées prennent actuellement en charge au plus {name}, un calque vectoriel et un calque de dessin, tous partageant les mêmes réglages de caractères. Fusionnez ou supprimez les calques superflus pour créer une salle.",
       "roomName": "Nom de la salle",
       "roomNamePatternTitle": "Utilisez au moins un caractère qui n'est pas un espace",
       "welcomeMessage": "Message de bienvenue",
@@ -1234,11 +1248,11 @@
       "anyoneInLobby": "Publique dans le hall",
       "onlyWithLink": "Non répertoriée (lien uniquement)",
       "passwordOptional": "Mot de passe (optionnel)",
-      "passwordHelp": "Toute personne disposant du lien peut rejoindre — ajoutez un mot de passe pour exiger les deux.",
+      "passwordHelp": "Toute personne disposant du lien peut rejoindre. Ajoutez un mot de passe si vous souhaitez exiger les deux.",
       "allowGuests": "Autoriser les invités",
-      "allowGuestsHelp": "Les invités peuvent regarder mais ne peuvent pas discuter ni dessiner. Vous pouvez restreindre aux membres connectés à tout moment.",
+      "allowGuestsHelp": "Les invités peuvent regarder mais ne peuvent pas discuter ni dessiner. Vous pouvez modifier ce réglage à tout moment.",
       "maxWatchers": "Spectateurs max",
-      "maxWatchersHelp": "Les salles diffusent directement depuis votre navigateur. Jusqu'à 12 spectateurs convient à la plupart des connexions domestiques.",
+      "maxWatchersHelp": "Les salles diffusent directement depuis votre navigateur. Jusqu'à 12 spectateurs est optimal pour la plupart des connexions internet domestiques.",
       "lobbyCard": "Carte du hall",
       "signal": "Signal",
       "signalHelp": "Affiché sur la carte de votre salle dans le hall.",
@@ -1247,8 +1261,8 @@
     "host": {
       "liveFor": "En direct depuis {duration}",
       "endRoom": "Fermer la salle",
-      "sendLinkWithPassword": "Envoyez le lien et le mot de passe aux personnes que vous souhaitez inviter.",
-      "sendLink": "Envoyez le lien aux personnes que vous souhaitez inviter.",
+      "sendLinkWithPassword": "Partagez le lien de la salle et le mot de passe avec les personnes que vous souhaitez inviter.",
+      "sendLink": "Partagez le lien de la salle avec les personnes que vous souhaitez inviter.",
       "stats": {
         "hereNow": "Ici actuellement",
         "max": "Max",
@@ -1257,7 +1271,7 @@
         "removed": "Retirés"
       },
       "roomSettings": "Paramètres de la salle",
-      "kickGuests": "Retirer aussi l'invité actuellement présent | Retirer aussi les {count} invités actuellement présents",
+      "kickGuests": "Retirer aussi l'invité actuellement présent dans la salle | Retirer aussi les {count} invités actuellement présents dans la salle",
       "setAtStart": "Défini au démarrage de la salle",
       "listedInLobby": "Répertoriée dans le hall",
       "onlyWithLink": "Accessible uniquement avec le lien",
@@ -1306,16 +1320,16 @@
       "zoomAria": "Zoom",
       "zoomOutAria": "Zoom arrière",
       "zoomInAria": "Zoom avant",
-      "artUnavailable": "Ce navigateur ne peut pas afficher l'art de la salle",
+      "artUnavailable": "Ce navigateur ne peut pas afficher le dessin de la salle.",
       "artRegionAria": "L'art de la salle",
       "trackAria": "Suivre {name}",
       "trackingState": "· suivi en cours",
       "trackBtn": "Suivre ›"
     },
     "pause": {
-      "hostChanging": "Passation vers le nouvel hôte — dessin en pause…",
-      "gettingArt": "Synchronisation du canevas de la salle — dessin en pause…",
-      "hostReconnecting": "En attente de la reconnexion de l'hôte — dessin en pause…"
+      "hostChanging": "Transfert des commandes de l'hôte. Le dessin est en pause…",
+      "gettingArt": "Synchronisation du canevas depuis l'hôte. Le dessin est en pause…",
+      "hostReconnecting": "En attente de reconnexion de l'hôte. Le dessin est en pause…"
     },
     "cursors": {
       "goToAria": "Aller à {name}"
@@ -1335,12 +1349,12 @@
       "makeArtist": "Nommer artiste",
       "kickSession": "Retirer de la salle",
       "unmute": "Rétablir la parole",
-      "mute": "Masquage discret (vous seul le voyez)",
+      "mute": "Masquage discret (masquer leurs messages pour les autres)",
       "muteTitle": "Masque ses messages pour tous les autres sans l'avertir.",
       "blockFuture": "Bloquer de vos salles",
       "report": "Signaler",
       "blockTitle": "Bloquer {name} ?",
-      "blockSub": "Il ne pourra rejoindre aucune salle que vous hébergez et quitte celle-ci immédiatement. Débloquez-le depuis votre Compte.",
+      "blockSub": "Cette personne ne pourra rejoindre aucune salle que vous hébergez, et elle quittera cette salle immédiatement. Vous pouvez la débloquer dans les paramètres du Compte.",
       "blockConfirm": "Bloquer",
       "whoToFollowAria": "Qui suivre",
       "followAria": "Suivre {name}",
@@ -1358,7 +1372,7 @@
       "pinnedFromHost": "Note épinglée",
       "invitedByHost": "{host} vous a invité à dessiner ensemble.",
       "invitedFallback": "L'hôte vous a invité à dessiner.",
-      "acceptReplacesDirty": "Accepter remplacera votre canevas actuel (vous avez des modifications non enregistrées).",
+      "acceptReplacesDirty": "Accepter remplace votre canevas actuel, qui contient des modifications non enregistrées.",
       "showCursors": "Afficher les curseurs des autres",
       "messagesAria": "Messages",
       "scrollForEarlier": "↑ Faites défiler vers le haut pour les messages précédents",
@@ -1376,11 +1390,11 @@
       "reportMessageAria": "Signaler le message de {name}",
       "deleteMessageAria": "Supprimer le message de {name}",
       "blockAria": "Bloquer {name}",
-      "blockSub": "Il ne pourra rejoindre aucune salle que vous hébergez, et ses messages sont repliés ici. Débloquez-le depuis votre Compte.",
+      "blockSub": "Cette personne ne pourra rejoindre aucune salle que vous hébergez, et ses messages seront masqués. Vous pouvez la débloquer dans les paramètres du Compte.",
       "mutedNote": "Masqué discrètement — visible uniquement entre vous deux",
       "messageAria": "Message",
       "sendAria": "Envoyer",
-      "slowDown": "Doucement — attendez un instant avant d'envoyer un autre message.",
+      "slowDown": "Veuillez patienter un instant avant d'envoyer un autre message.",
       "silencedUntil": "Vous êtes réduit au silence jusqu'au {until}.",
       "signInToChat": "Connectez-vous pour discuter",
       "confirmToChat": "Confirmez votre e-mail pour discuter"
@@ -1388,10 +1402,10 @@
     "report": {
       "titleRoom": "Signaler cette salle ?",
       "titlePerson": "Signaler {name} ?",
-      "subMessage": "Les modérateurs recevront ce message ainsi que quelques messages précédents pour le contexte.",
+      "subMessage": "Les modérateurs recevront ce message ainsi que les messages récents qui le précèdent pour le contexte.",
       "subPerson": "Les modérateurs recevront les messages de chat récents de cet utilisateur dans cette salle.",
-      "subRoomInside": "Les modérateurs recevront les aperçus récents du hall ainsi qu'un instantané du canevas actuel.",
-      "subRoomLobby": "Les modérateurs recevront les aperçus récents du hall de cette salle.",
+      "subRoomInside": "Les modérateurs recevront les aperçus récents du hall et un instantané du canevas actuel.",
+      "subRoomLobby": "Les modérateurs recevront les aperçus récents du hall pour cette salle.",
       "thanks": "Signalé. Merci.",
       "rules": "Les signalements portent sur les {guidelines}.",
       "whatsWrong": "Quel est le problème ?",
@@ -1406,33 +1420,33 @@
     },
     "auth": {
       "usernameLabel": "Nom d'utilisateur",
-      "usernameHelp": "Votre identifiant visible de tous. Lettres, chiffres, - et _.",
+      "usernameHelp": "Comment votre nom apparaît aux autres. Utilisez des lettres, chiffres, tirets et traits de soulignement.",
       "emailLabel": "E-mail",
       "emailOrUsername": "E-mail ou nom d'utilisateur",
       "passwordLabel": "Mot de passe",
-      "passwordHelp": "Au moins 10 caractères, ne faisant pas partie d'une fuite connue.",
+      "passwordHelp": "Doit comporter au moins 10 caractères et ne pas figurer dans des fuites de données connues.",
       "signInHeading": "Connexion",
       "signInIntro": "Connectez-vous pour discuter et créer des salles.",
       "continueWith": "Continuer avec {provider}",
       "signInSubmit": "Se connecter",
       "forgotPassword": "Mot de passe oublié ?",
       "createHeading": "Créer un compte",
-      "createIntro": "Un compte vous permet de discuter et de créer des salles sous un nom d'utilisateur qui vous appartient.",
+      "createIntro": "Un compte vous permet de discuter et d'héberger des salles sous votre propre nom d'utilisateur.",
       "createSubmit": "Créer un compte",
       "haveAccount": "Vous avez déjà un compte ? {signIn}",
       "forgotHeading": "Mot de passe oublié ?",
-      "forgotIntro": "Nous vous enverrons un lien par e-mail pour en définir un nouveau.",
+      "forgotIntro": "Nous vous enverrons un lien par e-mail pour réinitialiser votre mot de passe.",
       "sendLink": "Envoyer le lien",
       "rememberedIt": "Vous vous en souvenez ? {signIn}",
       "resetHeading": "Définir un nouveau mot de passe",
-      "resetIntro": "Choisissez le mot de passe avec lequel vous vous connecterez désormais.",
+      "resetIntro": "Saisissez le nouveau mot de passe que vous souhaitez utiliser pour votre compte.",
       "newPasswordLabel": "Nouveau mot de passe",
-      "resetPasswordHelp": "Au moins 10 caractères, ne faisant pas partie d'une fuite connue. Le définir vous déconnecte partout ailleurs.",
+      "resetPasswordHelp": "Doit comporter au moins 10 caractères. Changer votre mot de passe vous déconnecte de toutes vos autres sessions.",
       "setPassword": "Définir le mot de passe",
       "onboardingHeading": "Choisissez votre nom d'utilisateur",
-      "onboardingIntro": "Encore une étape avant de commencer. Vous pourrez le modifier une fois tous les 30 jours.",
+      "onboardingIntro": "Choisissez votre nom d'utilisateur pour finaliser la configuration. Vous pouvez modifier votre nom d'utilisateur une fois tous les 30 jours.",
       "twoFactorHeading": "Code d'authentification à deux facteurs",
-      "twoFactorIntro": "Ce compte exige un code à chaque connexion.",
+      "twoFactorIntro": "Ce compte nécessite un code de vérification lors de la connexion.",
       "backupCodeLabel": "Code de secours",
       "totpCodeLabel": "Code de votre application d'authentification",
       "trustComputer": "Faire confiance à cet ordinateur pendant 30 jours",
@@ -1443,7 +1457,7 @@
     "account": {
       "heading": "Compte",
       "usernameHeading": "Nom d'utilisateur",
-      "usernameCooldownHelp": "Une fois tous les 30 jours. Votre couleur et votre glyphe dépendent de votre nom d'utilisateur.",
+      "usernameCooldownHelp": "Vous pouvez modifier votre nom d'utilisateur une fois tous les 30 jours.",
       "changeUsernameBtn": "Modifier",
       "waysHeading": "Moyens de connexion",
       "emailAndPassword": "E-mail et mot de passe",
@@ -1451,11 +1465,11 @@
       "changePassword": "Changer de mot de passe",
       "newEmail": "Nouvel e-mail",
       "currentPassword": "Mot de passe actuel",
-      "emailHelpVerified": "Nous enverrons d'abord un lien d'approbation à {email}, puis un lien de confirmation à votre nouvelle adresse. Les liens expirent après 1 heure et doivent s'ouvrir dans ce navigateur (jusqu'à 2 modifications par jour).",
-      "emailHelpUnverified": "Nous enverrons un lien de confirmation à votre nouvelle adresse. Les liens expirent après 1 heure et doivent s'ouvrir dans ce navigateur (jusqu'à 2 modifications par jour).",
+      "emailHelpVerified": "Nous enverrons un lien d'approbation à {email}, puis un lien de confirmation à votre nouvelle adresse. Les liens expirent après 1 heure et doivent être ouverts dans ce navigateur (maximum 2 modifications par jour).",
+      "emailHelpUnverified": "Nous enverrons un lien de confirmation à votre nouvelle adresse. Les liens expirent après 1 heure et doivent être ouverts dans ce navigateur (maximum 2 modifications par jour).",
       "confirmNewPassword": "Confirmer le nouveau mot de passe",
-      "newPasswordHelp": "Au moins 10 caractères, ne faisant pas partie d'une fuite connue. Le modifier vous déconnecte partout ailleurs.",
-      "passwordsDontMatch": "Ces nouveaux mots de passe ne correspondent pas",
+      "newPasswordHelp": "Doit comporter au moins 10 caractères. Changer votre mot de passe vous déconnecte de toutes vos autres sessions.",
+      "passwordsDontMatch": "Les nouveaux mots de passe ne correspondent pas.",
       "connected": "Connecté",
       "notConnected": "Non connecté",
       "disconnect": "Déconnecter",
@@ -1464,15 +1478,15 @@
       "connectAria": "Connecter {provider}",
       "needOneWay": "Vous devez conserver au moins un moyen de connexion",
       "twoFactorHeading": "Authentification à deux facteurs",
-      "backupCodesHelp": "Conservez ces codes de secours en lieu sûr. Chacun fonctionne une seule fois en cas de perte de votre téléphone. Vous ne les reverrez plus.",
-      "scanQrHelp": "Scannez ceci avec votre application d'authentification, ou saisissez la clé :",
+      "backupCodesHelp": "Conservez ces codes de secours en lieu sûr. Chaque code peut être utilisé une fois si vous perdez l'accès à votre application d'authentification.",
+      "scanQrHelp": "Scannez ce code QR avec votre application d'authentification, ou saisissez la clé secrète manuellement :",
       "qrAria": "Code QR",
       "codeFromApp": "Code de l'application",
       "turnOn": "Activer",
       "turnOff": "Désactiver",
       "turnOffTwoFactor": "Désactiver l'authentification à deux facteurs",
       "makeNewCodes": "Générer de nouveaux codes",
-      "recentSignInHelp": "Nécessite une connexion récente datant de moins de 5 minutes.",
+      "recentSignInHelp": "Nécessite une connexion datant de moins de 5 minutes.",
       "twoFactorOn": "Activée. La connexion nécessite un code.",
       "newBackupCodes": "Nouveaux codes de secours",
       "twoFactorOff": "Demander un code provenant d'une application d'authentification lors de chaque connexion.",
@@ -1482,8 +1496,8 @@
       "unblock": "Débloquer",
       "unblockAria": "Débloquer {name}",
       "deleteHeading": "Supprimer le compte",
-      "deleteHelp": "Ceci supprime définitivement votre compte, votre nom d'utilisateur et vos blocages. Cette action est irréversible.",
-      "deleteRecentSignInHelp": "Nécessite une connexion récente datant de moins de 5 minutes.",
+      "deleteHelp": "Supprime définitivement votre compte, votre nom d'utilisateur et votre liste de blocage. Cette action ne peut pas être annulée.",
+      "deleteRecentSignInHelp": "Nécessite une connexion datant de moins de 5 minutes.",
       "deleteForGood": "Supprimer définitivement"
     },
     "drawing": {
@@ -1540,7 +1554,7 @@
       "accountNotFound": "Cette méthode de connexion n'est pas associée à votre compte.",
       "lastWay": "Vous devez conserver au moins un moyen de connexion",
       "throttled": "Trop de tentatives. Attendez un moment et réessayez",
-      "turnstileFailed": "Nous n'avons pas pu vérifier que vous êtes un humain. Réessayez",
+      "turnstileFailed": "La vérification de sécurité a échoué. Veuillez réessayer.",
       "passwordBreached": "Ce mot de passe est apparu dans une fuite de données. Choisissez-en un autre",
       "passwordTooShort": "Les mots de passe doivent comporter au moins 10 caractères",
       "emailNotVerified": "Confirmez d'abord votre e-mail — consultez votre boîte de réception pour trouver le lien.",
@@ -1565,14 +1579,14 @@
         "replaced": "Vous regardez cette salle dans un autre onglet"
       },
       "roomAway": "Votre salle a été fermée pendant votre absence.",
-      "undoReset": "L'hôte a changé, l'historique d'annulation repart donc à zéro. Tout le dessin reste intact.",
-      "undoRestart": "Votre historique d'annulation repart à zéro. Tout le dessin reste intact.",
+      "undoReset": "L'hôte a changé, l'historique d'annulation a donc été réinitialisé. Tout le dessin existant est préservé.",
+      "undoRestart": "L'historique d'annulation a été réinitialisé. Tout le dessin existant est préservé.",
       "newHostPlanned": "{old} a désigné {name} comme hôte.",
       "newHostLeft": "{old} a quitté la salle. {name} est maintenant l'hôte.",
-      "refusedUndo": "Ceci ne peut plus être annulé.",
-      "refusedRedo": "Ceci ne peut plus être rétabli.",
-      "backAsArtist": "{name} est maintenant l'hôte. Ce qui était ouvert a été sauvegardé : ouvrez un nouvel onglet, c'est sous « Reprendre là où vous vous étiez arrêté ».",
-      "goingBackReplaces": "Revenir en arrière remplacera votre création ouverte, qui contient des modifications non enregistrées.",
+      "refusedUndo": "Cette action ne peut plus être annulée.",
+      "refusedRedo": "Cette action ne peut plus être rétablie.",
+      "backAsArtist": "{name} est maintenant l'hôte. Votre travail précédent est sauvegardé : ouvrez un nouvel onglet pour le retrouver sous Reprendre là où vous vous étiez arrêté.",
+      "goingBackReplaces": "Revenir en arrière remplace votre canevas ouvert, qui contient des modifications non enregistrées.",
       "artNotOpened": "Impossible d'ouvrir l'art de la salle.",
       "goingBackFailed": "Impossible de retourner dans votre salle.",
       "hostReplaced": "Cette salle est ouverte dans un autre onglet"
@@ -1580,26 +1594,26 @@
   },
   "art": {
     "make": "Créer un calque d'art",
-    "makeTitle": "Transformer le dessin sélectionné en calque d'art que vous pouvez déplacer et animer",
-    "tooBig": "C'est trop pour un seul calque d'art. Sélectionnez une zone plus petite.",
+    "makeTitle": "Convertir les cellules sélectionnées en calque d'art que vous pouvez déplacer et animer",
+    "tooBig": "La sélection est trop grande pour un calque d'art. Veuillez sélectionner une zone plus petite.",
     "nothingDrawn": "Rien n'est dessiné dans les cellules sélectionnées.",
     "edit": "Modifier l'art",
-    "editTitle": "Dessiner dans ce calque d'art ; le changement apparaît sur toutes les images où il se trouve",
-    "lockedBy": "{name} dessine dans ce calque",
-    "someoneInside": "{name} dessine dans un calque d'art",
+    "editTitle": "Dessiner à l'intérieur de ce calque d'art. Les modifications apparaîtront sur toutes les images où ce calque est utilisé",
+    "lockedBy": "{name} modifie actuellement ce calque",
+    "someoneInside": "{name} modifie actuellement un calque d'art",
     "editing": "Modification du calque d'art",
     "done": "Terminé",
-    "doneTitle": "Sortir du calque d'art (Échap)",
-    "framesOff": "Sortez du calque d'art pour changer d'image.",
-    "settingsOff": "Sortez du calque d'art pour modifier ces réglages.",
-    "baseOff": "Dans un calque d'art, les outils dessinent uniquement sur le calque d'édition.",
-    "wholeLayerOff": "Sortez d'abord du calque d'art : cela change tout le dessin."
+    "doneTitle": "Quitter la modification du calque d'art (Échap)",
+    "framesOff": "Quittez le calque d'art pour changer d'image.",
+    "settingsOff": "Quittez le calque d'art pour ajuster ces réglages.",
+    "baseOff": "À l'intérieur d'un calque d'art, les outils de dessin fonctionnent uniquement sur le calque d'art.",
+    "wholeLayerOff": "Quittez d'abord le calque d'art : cette action affecte l'ensemble du dessin."
   },
   "vector": {
-    "tooMany": "Un dessin contient au plus {count} formes.",
-    "followArt": "Un calque d'art ne peut pas être suivi : choisissez une ligne ou une forme.",
-    "followFollower": "Cette forme suit déjà un tracé, elle ne peut donc pas être suivie.",
-    "followIsPath": "D'autres formes suivent celle-ci, elle ne peut donc pas suivre de tracé.",
+    "tooMany": "Un dessin peut contenir au plus {count} formes.",
+    "followArt": "Les calques d'art ne peuvent pas être suivis. Veuillez sélectionner un tracé ou une forme.",
+    "followFollower": "Cette forme suit déjà un tracé et ne peut pas être suivie.",
+    "followIsPath": "D'autres formes suivent cette forme, elle ne peut donc pas suivre un autre tracé.",
     "fill": "Remplissage",
     "stroke": "Contour",
     "fillChipTitle": "Remplissage : {color} ({key})",
@@ -1607,25 +1621,25 @@
     "strokeChipTitle": "Contour : {color} ({key})",
     "strokeNoneTitle": "Contour : aucun ({key})",
     "width": "Épaisseur du contour",
-    "widthTitle": "L'épaisseur du contour, en pixels",
+    "widthTitle": "Épaisseur du contour en pixels",
     "widthValue": "Épaisseur du contour en pixels",
     "forward": "Avancer",
-    "forwardTitle": "Avancer les formes d'un cran",
+    "forwardTitle": "Avancer les formes sélectionnées d'un niveau",
     "back": "Reculer",
-    "backTitle": "Reculer les formes d'un cran",
+    "backTitle": "Reculer les formes sélectionnées d'un niveau",
     "join": "Joindre",
-    "joinTitle": "Faire des formes sélectionnées une seule forme : un contour dans un autre devient un trou",
+    "joinTitle": "Combiner les formes sélectionnées en une seule forme composée. Un contour à l'intérieur d'un autre devient une découpe",
     "separate": "Séparer",
-    "separateTitle": "Faire de chaque contour de la forme une forme à part",
+    "separateTitle": "Séparer la forme composée en formes individuelles distinctes",
     "add": "Ajouter",
-    "addTitle": "Faire des formes sélectionnées une seule, qui couvre tout ce qu'elles couvrent",
+    "addTitle": "Fusionner les formes sélectionnées en un seul contour couvrant leur surface combinée",
     "subtract": "Soustraire",
-    "subtractTitle": "Découper les formes du dessus dans celle du dessous",
+    "subtractTitle": "Soustraire les formes supérieures de la forme inférieure",
     "strokeTitle": "Extrémités, jointures et limite d'onglet",
     "cap": "Extrémité",
     "joinLabel": "Jointure",
     "miter": "Onglet",
-    "miterTitle": "Jusqu'où la pointe d'une jointure en onglet peut aller, en largeurs de contour, avant d'être coupée",
+    "miterTitle": "Longueur maximale de l'onglet en épaisseurs de contour avant que le coin ne soit biseauté",
     "capButt": "Extrémité plate",
     "capRound": "Extrémité ronde",
     "capSquare": "Extrémité carrée",
@@ -1639,10 +1653,10 @@
     "alignLeft": "Contour à gauche du tracé",
     "alignRight": "Contour à droite du tracé",
     "svgUnreadable": "Impossible de lire ce fichier comme un SVG.",
-    "svgEmpty": "Rien dans ce SVG n'a pu être importé.",
-    "svgLeftOut": "Laissé de côté : {kinds}.",
-    "svgTextHint": "Pour importer du texte, convertissez-le en courbes (ou tracés) avant d'exporter.",
-    "svgTooBig": "Ce SVG a {shapes} formes, la plus grande de {points} points ; il y a de la place pour {mostShapes} formes ici, et une forme a au plus {mostPoints} points.",
+    "svgEmpty": "Aucune forme vectorielle importable trouvée dans ce SVG.",
+    "svgLeftOut": "Éléments SVG non pris en charge ignorés : {kinds}.",
+    "svgTextHint": "Pour importer du texte depuis un SVG, convertissez le texte en tracés dans votre éditeur vectoriel avant d'exporter.",
+    "svgTooBig": "Ce SVG contient {shapes} formes, avec jusqu'à {points} points dans une forme. Phosphor prend en charge jusqu'à {mostShapes} formes et {mostPoints} points par forme.",
     "svgKinds": {
       "text": "texte",
       "image": "images",
@@ -1666,13 +1680,13 @@
     "radialStrokeChipTitle": "Contour : dégradé radial ({key})",
     "gradientLabel": "Dégradé",
     "gradientSlotTitle": "Le dégradé dont les poignées s'affichent",
-    "joinTooBig": "Une forme a au plus {count} points.",
+    "joinTooBig": "Une forme ne peut pas dépasser {count} points.",
     "deleteTitle": "Supprimer les formes sélectionnées",
     "pasteTitle": "Coller les formes copiées ({key})",
-    "selectHint": "Faites glisser pour déplacer, les poignées pour redimensionner, le bouton pour faire pivoter",
-    "pickPathHint": "Suivre un tracé : cliquez sur la ligne ou la forme à suivre. Échap pour annuler",
+    "selectHint": "Glisser pour déplacer, glisser les poignées pour redimensionner, glisser le bouton supérieur pour faire pivoter",
+    "pickPathHint": "Cliquez sur une ligne ou une forme à suivre. Appuyez sur Échap pour annuler",
     "snapTo": "Aligner sur : {mode}",
-    "snapToTitle": "Où tombent les points que vous placez ou faites glisser ; maintenez {key} pour glisser sans aligner",
+    "snapToTitle": "Mode d'alignement pour les points placés ou déplacés. Maintenez {key} pour déplacer librement sans alignement",
     "snap": {
       "none": "Rien",
       "cells": "Cellules",
@@ -1680,13 +1694,13 @@
     },
     "point": "Point",
     "smooth": "Lisse",
-    "smoothTitle": "Rendre le point lisse : ses poignées restent alignées",
+    "smoothTitle": "Point lisse : les poignées restent alignées en ligne droite",
     "free": "Libre",
-    "freeTitle": "Libérer les poignées du point : chacune bouge seule",
+    "freeTitle": "Point libre : les poignées se déplacent indépendamment",
     "sharp": "Vif",
-    "sharpTitle": "Rendre le point vif : ses poignées disparaissent",
-    "deletePointTitle": "Supprimer l'arrêt sélectionné, ou sinon le point sélectionné",
-    "pointsHint": "Faites glisser un point, une poignée ou un arrêt du dégradé ; cliquez sur le contour pour ajouter un point ; Échap ou un clic à côté pour terminer"
+    "sharpTitle": "Point vif : supprime les poignées pour créer un coin net",
+    "deletePointTitle": "Supprimer l'arrêt de couleur ou le point sélectionné",
+    "pointsHint": "Faites glisser des points, poignées ou arrêts de couleur. Cliquez sur le contour pour ajouter un point. Appuyez sur Échap ou cliquez sur le canevas vide pour terminer"
   },
   "rulers": {
     "zeroOnColumn": "0 sur la colonne {n}",
@@ -1698,7 +1712,7 @@
     "zeroBeforeRow": "0 avant la ligne {n}",
     "zeroAfterRow": "0 après la ligne {n}",
     "remove": "Retirer",
-    "cornerTitle": "Faites glisser pour placer les deux zéros. Double-cliquez pour les remettre en haut à gauche.",
-    "guideTitle": "Faites glisser pour déplacer, ou sur une règle pour retirer"
+    "cornerTitle": "Faites glisser pour définir les deux origines des règles. Double-cliquez pour réinitialiser les origines dans le coin supérieur gauche.",
+    "guideTitle": "Faites glisser pour déplacer le repère, ou sur une règle pour le supprimer"
   }
 }
