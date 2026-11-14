@@ -257,6 +257,7 @@ span.beta {   /* raised over the end of SOCIAL */
   font-size: 8px;
   font-weight: normal;
   letter-spacing: 0.04em;
+  text-transform: lowercase;
   color: var(--accent);
 }
 aside.layers {
