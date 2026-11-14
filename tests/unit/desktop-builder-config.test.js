@@ -70,3 +70,9 @@ test('the app icon electron-builder makes every platform’s from is a 1024 px s
   assert.equal(png.toString('latin1', 1, 4), 'PNG');
   assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1024, 1024]);
 });
+
+test('the desktop flows run on a virtual screen bigger than the app’s 1400 by 900 window, not xvfb-run’s own 640 by 480', () => {
+  const step = read('.github/workflows/deploy.yml').split('\n').find((line) => line.includes('xvfb-run') && line.includes('test:e2e:desktop'));
+  const [, width, height] = /-screen 0 (\d+)x(\d+)x24/.exec(step) ?? [];
+  assert.ok(Number(width) >= 1400 && Number(height) >= 900, step);
+});
