@@ -248,7 +248,8 @@ look at what covers what, and check what Merge down's tooltip says.
 
 ### 19. Fill in my SAUCE
 - Does: goes to the SAUCE tab, types a Title, Author, Group and a two-line comment.
-- Expects: the fields take up to 35, 20 and 20 characters; the comments are saved in the file; the address shows the
+- Expects: the fields take up to 35, 20 and 20 characters, each with its count beside it; a paste past a field's
+  width keeps what fits and a line under the field names the rest (an emoji takes one place); the comments are saved in the file; the address shows the
   SAUCE tab.
 - Probes: `extremes`: paste 40 characters with `é`, `€` and an emoji into Title; `interrupt`: go to ANSI and back and
   check the fields kept what he typed.

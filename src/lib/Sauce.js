@@ -8,6 +8,24 @@ import { CP437, cp437Byte, cp437Substitute } from './Cp437.js';
 const MOST_COMMENT_LINES = 255, COMMENT_WIDTH = 64;
 export const SAUCE_WIDTHS = { title: 35, author: 20, group: 20, date: 8, fontName: 20, comments: MOST_COMMENT_LINES * (COMMENT_WIDTH + 1) };
 
+// Characters as the record counts them: one byte each, so one a code point (an emoji is one).
+export const charCount = (text) => [...text].length;
+
+// A field after an edit (typing, a paste, IME's committed text): what went in before the caret is kept as far as the
+// field's width allows, from its start; the rest is left out and named, so nothing is cut without a word. Gives the
+// text, the caret after what went in, what was left out ('' when nothing), and whether clean took anything out.
+export function fitField(before, after, caret, width, clean = (text) => text) {
+  const tail = after.slice(caret);
+  let start = 0;
+  const most = Math.max(0, Math.min(caret, before.length - tail.length));
+  while (start < most && before[start] === after[start]) start++;
+  if (start && /[\uD800-\uDBFF]/.test(after[start - 1])) start--; // not inside an emoji
+  const head = after.slice(0, start), raw = after.slice(start, caret), inserted = [...clean(raw)];
+  const room = Math.max(0, width - charCount(head) - charCount(tail));
+  const kept = inserted.slice(0, room).join('');
+  return { text: head + kept + tail, caret: head.length + kept.length, left: inserted.slice(room).join(''), stripped: inserted.join('') !== raw };
+}
+
 // SAUCE text is CP437, one byte a character, space-padded (the font name, a ZString, NUL-padded).
 const pad = (text, length, fill = 32) => {
   const bytes = new Uint8Array(length).fill(fill);
