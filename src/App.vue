@@ -143,7 +143,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 
 <template>
   <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
-    <ControlPanel/>
+    <!-- On a phone the settings are a drawer under the workspace: out of reach until it opens. -->
+    <ControlPanel :inert="!wide && !workspace.settingsOpen"/>
     <EditWorkspace :ready="ready" :recent="recent" :open-recent="openRecent"/>
     <SidePanel v-if="wide"/>
     <SocialDialogs v-if="wide"/>
