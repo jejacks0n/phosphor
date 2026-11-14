@@ -49,10 +49,10 @@ function goTo({ x, y }) {
   <template v-for="mark in marks" :key="mark.sub">
     <button v-if="mark.arrow" class="off-view" :style="mark.style" :aria-label="t('social.cursors.goToAria', { name: mark.name })" @pointerdown.stop @mousedown.stop @touchstart.stop @click="goTo(mark)">
       <span aria-hidden="true">{{ mark.arrow }}</span>
-      <UserName :name="mark.name" />
+      <UserName :name="mark.name" :sub="mark.sub" />
     </button>
     <div v-else class="artist-cursor" :class="mark.tagSide" :style="mark.style">
-      <UserName class="tag" :name="mark.name" />
+      <UserName class="tag" :name="mark.name" :sub="mark.sub" />
     </div>
   </template>
 </template>

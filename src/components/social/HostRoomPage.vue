@@ -2,16 +2,21 @@
 import { ref, computed, watch, useId, onBeforeUnmount, nextTick, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoomStore, MAX_WATCHERS } from '@/store/RoomStore';
+import { useSocialStore } from '@/store/SocialStore';
 import { removedCount } from '@/social/session';
 import { signalWords } from '@/social/lobby';
 import EndRoomDialog from './EndRoomDialog.vue';
 import LobbyPicture from './LobbyPicture.vue';
 import CameBy from './CameBy.vue';
+import JoinAsks from './JoinAsks.vue';
 
 // The room you host, as a dashboard: its name and how long it's been live, Copy link and End room (which
 // asks first), the session's five numbers, its settings with the facts that can't change, and who came by. One status
 // region, always there, says Reconnecting… (seen; also while connecting a room that has been live: a reload
 // bringing it back) and Copied or Saved (which their buttons show).
+// On desktop there's no link or lobby: the addresses others can join at, each with its Copy (127.0.0.1 when this
+// computer has no network), what to know about them, and the joins waiting for a yes; no guests and no listing.
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const room = useRoomStore();
 const { t } = useI18n();
 
@@ -48,6 +53,23 @@ const said = computed(() => (reconnecting.value ? t('common.reconnecting') : don
 
 async function copyLink() {
   if (await room.copyLink()) say('copied');
+}
+
+const addresses = computed(() => (room.addresses?.length ? room.addresses : [`127.0.0.1:${room.port}`]));
+const tailscale = (address) => {   // 100.64.0.0/10
+  const second = /^100\.(\d+)\./.exec(address)?.[1];
+  return second >= 64 && second <= 127;
+};
+const copiedAddress = ref(null);
+async function copyAddress(address) {
+  try {
+    await navigator.clipboard.writeText(address);
+  } catch {
+    useSocialStore().notice = t('social.desktop.copyFailed');   // as Copy link's failing (a toast, in a room)
+    return;
+  }
+  copiedAddress.value = address;
+  say('copied');
 }
 
 const endButton = useTemplateRef('endButton');
@@ -95,13 +117,31 @@ const save = () => {
       <h2>{{ room.room.name }}</h2>
       <span v-if="room.session.liveSince" class="live">{{ t('social.host.liveFor', { duration: liveFor }) }}</span>
       <span class="actions">
-        <button @click="copyLink">{{ done === 'copied' ? t('common.copied') : t('common.copyLink') }}</button>
+        <button v-if="!DESKTOP" @click="copyLink">{{ done === 'copied' ? t('common.copied') : t('common.copyLink') }}</button>
         <button ref="endButton" class="danger" @click="ending = true">{{ t('social.host.endRoom') }}</button>
       </span>
     </header>
     <p class="status" :class="{ unseen: !reconnecting }" role="status">{{ said }}</p>
-    <p class="link"><span class="link-text">{{ room.link }}</span></p>
-    <p v-if="!room.room.public" class="help">{{ room.hasPassword ? t('social.host.sendLinkWithPassword') : t('social.host.sendLink') }}</p>
+    <template v-if="DESKTOP">
+      <JoinAsks v-if="room.asks.length" />
+      <ul class="addresses" :aria-label="t('social.desktop.addressesAria')">
+        <li v-for="address in addresses" :key="address">
+          <span class="link-text address">{{ address }}</span>
+          <span v-if="tailscale(address)" class="tag">Tailscale</span>
+          <button @click="copyAddress(address)">{{ done === 'copied' && copiedAddress === address ? t('common.copied') : t('social.desktop.copy') }}</button>
+        </li>
+      </ul>
+      <p v-if="!room.addresses.length" class="help">{{ t('social.desktop.loopbackOnly') }}</p>
+      <ul class="notes">
+        <li>{{ t('social.desktop.anyoneCanAsk') }}</li>
+        <li>{{ t('social.desktop.forwardPort', { port: room.port }) }}</li>
+        <li>{{ t('social.desktop.notEncrypted') }}</li>
+      </ul>
+    </template>
+    <template v-else>
+      <p class="link"><span class="link-text">{{ room.link }}</span></p>
+      <p v-if="!room.room.public" class="help">{{ room.hasPassword ? t('social.host.sendLinkWithPassword') : t('social.host.sendLink') }}</p>
+    </template>
 
     <dl class="numbers">
       <div v-for="[label, value] in numbers" :key="label">
@@ -119,8 +159,8 @@ const save = () => {
           <form @submit.prevent="save">
             <label>{{ t('social.start.welcomeMessage') }} <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="countId"></textarea></label>
             <p :id="countId" class="help count">{{ t('social.start.charCount', { count: draft.welcome.length, max: 200 }) }}</p>
-            <label class="choice"><input v-model="draft.allowGuests" type="checkbox"> {{ t('social.start.allowGuests') }}</label>
-            <label v-if="!draft.allowGuests && guests.length" class="choice kick"><input v-model="kickGuests" type="checkbox"> {{ kickLabel }}</label>
+            <label v-if="!DESKTOP" class="choice"><input v-model="draft.allowGuests" type="checkbox"> {{ t('social.start.allowGuests') }}</label>
+            <label v-if="!DESKTOP && !draft.allowGuests && guests.length" class="choice kick"><input v-model="kickGuests" type="checkbox"> {{ kickLabel }}</label>
             <label>{{ t('social.start.maxWatchers') }} <input v-model.number="draft.max" type="number" min="1" :max="MAX_WATCHERS" required></label>
             <label v-if="room.room.public">{{ t('social.start.signal') }}
               <select v-model="draft.signal">
@@ -132,7 +172,7 @@ const save = () => {
           </form>
           <div class="facts">
             <p class="help">{{ t('social.host.setAtStart') }}</p>
-            <p>{{ room.room.public ? t('social.host.listedInLobby') : t('social.host.onlyWithLink') }}</p>
+            <p v-if="!DESKTOP">{{ room.room.public ? t('social.host.listedInLobby') : t('social.host.onlyWithLink') }}</p>
             <p v-if="room.hasPassword">{{ t('social.host.passwordSet') }}</p>
           </div>
         </section>
@@ -183,7 +223,7 @@ span.actions {
   gap: 8px;
   margin-left: auto;
 }
-p.status, p.help, p.link, div.facts p {
+p.status, p.help, p.link, div.facts p, ul.notes {
   margin: 0;
   color: var(--text-muted);
 }
@@ -200,6 +240,35 @@ span.link-text {
   color: var(--text);
   overflow-wrap: anywhere;
   user-select: all;
+}
+
+ul.addresses {   /* each address on its own line, its Copy at the end */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+ul.addresses li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+ul.addresses button {
+  margin-left: auto;
+}
+span.tag {   /* as the chat panel's tags */
+  padding: 1px 6px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+ul.notes {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.5;
 }
 
 dl.numbers {

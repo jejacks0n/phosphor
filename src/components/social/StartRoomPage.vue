@@ -10,7 +10,9 @@ import LobbyPicture from './LobbyPicture.vue';
 
 // Set up your room, in a box over everything: the room's settings and, for a room listed in the lobby, its lobby card
 // (its signal) and picture. Going live makes it (its errors are the notice at the top of the box), and the side panel
-// shows the room you host from then on.
+// shows the room you host from then on. On desktop the room is on this computer's room service: no lobby, link or
+// guests, so no lobby card or Who can join, a password always offered, and the port it listens on (kept for next time).
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const social = useSocialStore(), room = useRoomStore(), project = useProjectStore();
 const { t } = useI18n();
 
@@ -19,9 +21,11 @@ const noArt = computed(() => t('social.start.noArt'));
 const roomsAreStill = computed(() => t('tabs.animateInRoom'));
 const layerName = useLayerName();
 const tooManyLayers = computed(() => t('social.start.tooManyLayers', { name: layerName('base') }));
-const cannotGoLive = computed(() => project.hasFrames ? roomsAreStill.value : !project.fitsRoom ? tooManyLayers.value : undefined);   // why Go live is off, when it's the document
+const nameFirst = computed(() => (DESKTOP && !social.desktopName ? t('social.desktop.nameFirst') : undefined));   // a pass needs a name
+const cannotGoLive = computed(() => project.hasFrames ? roomsAreStill.value : !project.fitsRoom ? tooManyLayers.value : nameFirst.value);   // why Go live is off, when it's the document (or, on desktop, no name)
 
 const draft = room.startDraft;   // kept in the store while you're on another tab
+const listed = computed(() => !DESKTOP && draft.isPublic);   // in the lobby, with its card and picture
 watch(() => draft.max, (max) => { if (max > MAX_WATCHERS) draft.max = MAX_WATCHERS; });
 const id = useId();
 
@@ -40,26 +44,32 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
           <label>{{ t('social.start.roomName') }} <input v-model="draft.name" maxlength="60" pattern=".*\S.*" :title="t('social.start.roomNamePatternTitle')" required></label>
           <label>{{ t('social.start.welcomeMessage') }} <textarea v-model="draft.welcome" maxlength="200" rows="3" :aria-describedby="`${id}-count`"></textarea></label>
           <p :id="`${id}-count`" class="help count">{{ t('social.start.charCount', { count: draft.welcome.length, max: 200 }) }}</p>
-          <fieldset>
+          <fieldset v-if="!DESKTOP">
             <legend>{{ t('social.start.whoCanJoin') }}</legend>
             <div class="choices">
               <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="true"> {{ t('social.start.anyoneInLobby') }}</label>
               <label class="choice"><input v-model="draft.isPublic" type="radio" name="who" :value="false"> {{ t('social.start.onlyWithLink') }}</label>
             </div>
           </fieldset>
-          <template v-if="!draft.isPublic">
+          <template v-if="DESKTOP || !draft.isPublic">
             <label>{{ t('social.start.passwordOptional') }} <input v-model="draft.password" type="text" autocomplete="off" :aria-describedby="`${id}-password`"></label>
-            <p :id="`${id}-password`" class="help">{{ t('social.start.passwordHelp') }}</p>
+            <p :id="`${id}-password`" class="help">{{ DESKTOP ? t('social.desktop.passwordHelp') : t('social.start.passwordHelp') }}</p>
           </template>
-          <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> {{ t('social.start.allowGuests') }}</label>
-          <p :id="`${id}-guests`" class="help">{{ t('social.start.allowGuestsHelp') }}</p>
+          <template v-if="!DESKTOP">
+            <label class="choice"><input v-model="draft.allowGuests" type="checkbox" :aria-describedby="`${id}-guests`"> {{ t('social.start.allowGuests') }}</label>
+            <p :id="`${id}-guests`" class="help">{{ t('social.start.allowGuestsHelp') }}</p>
+          </template>
           <label>{{ t('social.start.maxWatchers') }} <input v-model.number="draft.max" class="short" type="number" min="1" :max="MAX_WATCHERS" required :aria-describedby="`${id}-max`"></label>
-          <p :id="`${id}-max`" class="help">{{ t('social.start.maxWatchersHelp') }}</p>
+          <p :id="`${id}-max`" class="help">{{ DESKTOP ? t('social.desktop.maxWatchersHelp') : t('social.start.maxWatchersHelp') }}</p>
+          <template v-if="DESKTOP">
+            <label>{{ t('social.desktop.port') }} <input v-model.number="draft.port" class="short" type="number" min="1" max="65535" required :aria-describedby="`${id}-port`"></label>
+            <p :id="`${id}-port`" class="help">{{ t('social.desktop.portHelp') }}</p>
+          </template>
         </div>
       </section>
 
       <div class="column">
-        <section v-if="draft.isPublic" class="settings" :aria-labelledby="`${id}-card`">
+        <section v-if="listed" class="settings" :aria-labelledby="`${id}-card`">
           <h3 :id="`${id}-card`">{{ t('social.start.lobbyCard') }}</h3>
           <div class="fields">
             <label>{{ t('social.start.signal') }}
@@ -73,7 +83,7 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
           </div>
         </section>
         <p v-else-if="!hasArt" class="no-art">{{ noArt }}</p>
-        <LobbyPicture v-if="draft.isPublic && hasArt" />
+        <LobbyPicture v-if="listed && hasArt" />
       </div>
       <p v-if="cannotGoLive" class="no-art why">{{ cannotGoLive }}</p>
 

@@ -245,7 +245,7 @@ onBeforeUnmount(() => {
     <div ref="sizer" class="sizer" :style="sizerStyle">
       <canvas ref="canvas" :key="fontKey"></canvas>
       <div v-for="other in othersBoxes" :key="other.sub" class="other-view" :style="other.style" aria-hidden="true">
-        <span class="other-tag"><UserName class="name" :name="other.name" /></span>
+        <span class="other-tag"><UserName class="name" :name="other.name" :sub="other.sub" /></span>
       </div>
       <div v-if="boxed && showBox" class="host-view" :style="boxStyle">
         <button

@@ -47,7 +47,8 @@
       "terms": "Terms",
       "privacy": "Privacy Policy",
       "guidelines": "Community Guidelines"
-    }
+    },
+    "desktopPrivacy": "This app sends nothing to Phosphor. In a room, the people you connect with see your IP address."
   },
   "footer": {
     "about": "About Phosphor",
@@ -1314,9 +1315,34 @@
       "sub": "You will remain in the room as an artist.",
       "confirm": "Make host"
     },
+    "desktop": {
+      "yourName": "Your name",
+      "nameFirst": "Pick a name others will see first.",
+      "joinHeading": "Join a room",
+      "hostHeading": "Host a room",
+      "address": "Address",
+      "ipSeen": "The people you connect with see your IP address.",
+      "copy": "Copy",
+      "copyAddress": "Copy address",
+      "copyFailed": "Couldn't copy the address",
+      "addressesAria": "Where others can join",
+      "loopbackOnly": "Only this computer can join. Connect to a network to share an address.",
+      "anyoneCanAsk": "Anyone who can reach this address can ask to join.",
+      "forwardPort": "Over the internet, forward port {port} on your router.",
+      "notEncrypted": "The connection isn't encrypted.",
+      "asksAria": "Waiting to join",
+      "wantsToJoin": "{name} wants to join",
+      "letIn": "Let in",
+      "turnAway": "Turn away",
+      "passwordHelp": "Everyone joining types it in, and you still let each one in.",
+      "maxWatchersHelp": "Rooms stream directly from this computer. Up to 12 watchers suits most home connections.",
+      "port": "Port",
+      "portHelp": "Others join at this port. If it's taken, the next free one is used."
+    },
     "watch": {
       "joining": "Joining…",
       "waiting": "Waiting for the host…",
+      "waitingToBeLetIn": "Waiting for the host to let you in.",
       "needsPassword": "This room needs a password",
       "failed": "Couldn't reach this host",
       "hostReconnecting": "The host is reconnecting…",

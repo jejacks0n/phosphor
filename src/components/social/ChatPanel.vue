@@ -9,6 +9,7 @@ import UserName from './UserName.vue';
 import { clock } from '@/social/chat';
 import { toast } from '@/composables/useToast';
 import ChatFoot from './ChatFoot.vue';
+import JoinAsks from './JoinAsks.vue';
 import RoomMenu from './RoomMenu.vue';
 import RoomPeople from './RoomPeople.vue';
 import ReportDialog from './ReportDialog.vue';
@@ -24,7 +25,8 @@ import ModalDialog from '@/components/ModalDialog.vue';
 // left"); your own comings and goings aren't shown, as "You joined" marks where you came in. A confirmed
 // member can Report someone else's message (it shows on hover or focus, as the host's Delete does), until
 // they've reported that person in this room; and Report room, under Exit, until they've reported the room. A signed-in
-// watcher has Block beside it (the host's is in "N here"), which asks first and blocks them from the watcher's own rooms.
+// watcher has Block beside it (the host's is in "N here"), which asks first and blocks them from the watcher's own rooms;
+// the desktop has no Block (nor Report: there's no one to report to). A desktop host sees the joins waiting for a yes.
 // An invitation to draw waits here, blocking nothing, until it's answered, withdrawn or they leave.
 const room = useRoomStore(), social = useSocialStore(), drawing = useDrawingStore(), project = useProjectStore();
 const { t } = useI18n();
@@ -44,7 +46,8 @@ const askToReport = (m, event) => {
   reporting.value = { name: m.name, sub: m.sub, messageId: m.id, trigger: event.currentTarget };
   opened.value++;
 };
-const blockable = (m) => room.role === 'watch' && !social.isGuest && !m.mine && !m.deleted && !blocked.value.has(m.sub);
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
+const blockable = (m) => !DESKTOP && room.role === 'watch' && !social.isGuest && !m.mine && !m.deleted && !blocked.value.has(m.sub);
 const blocking = ref(null);   // { name, trigger }
 const askToBlock = (m, event) => {
   blocking.value = { name: m.name, trigger: event.currentTarget };
@@ -131,7 +134,7 @@ function askIfAtTop() {
           <h2 v-if="room.room?.name">{{ room.room.name }}</h2>
           <p v-if="room.role === 'watch' && host" class="host">
             <i18n-t keypath="social.chat.hostedBy" tag="span">
-              <template #host><UserName class="person" :name="host" /></template>
+              <template #host><UserName class="person" :name="host" :sub="room.room?.hostSub" /></template>
             </i18n-t>
           </p>
         </div>
@@ -146,13 +149,14 @@ function askIfAtTop() {
         </div>
       </header>
       <RoomPeople v-if="room.role" />
+      <JoinAsks v-if="room.role === 'host' && room.asks?.length" />
       <p v-if="room.room?.welcome" class="pinned">
         <span>{{ t('social.chat.pinnedFromHost') }}</span>
         {{ room.room.welcome }}
       </p>
       <div v-if="drawing.invitation" class="invitation" role="status">
         <i18n-t v-if="host" keypath="social.chat.invitedByHost" tag="p">
-          <template #host><UserName class="person" :name="host" /></template>
+          <template #host><UserName class="person" :name="host" :sub="room.room?.hostSub" /></template>
         </i18n-t>
         <p v-else>{{ t('social.chat.invitedFallback') }}</p>
         <p v-if="project.image && (project.isDirty || project._stroke)">{{ t('social.chat.acceptReplacesDirty') }}</p>
@@ -192,7 +196,7 @@ function askIfAtTop() {
             </p>
             <template v-else>
               <p class="who">
-                <UserName class="name" :name="m.name">{{ m.mine ? t('social.chat.youSuffix') : '' }}</UserName>
+                <UserName class="name" :name="m.name" :sub="m.sub">{{ m.mine ? t('social.chat.youSuffix') : '' }}</UserName>
                 <span v-if="m.host" class="tag">{{ t('common.host') }}</span>
                 <!-- Report and Delete take the time's place while the message is pointed at or has focus. -->
                 <span class="when">

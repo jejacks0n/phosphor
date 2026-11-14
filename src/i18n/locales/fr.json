@@ -47,7 +47,8 @@
       "terms": "Conditions d'utilisation",
       "privacy": "Politique de confidentialité",
       "guidelines": "Règles de la communauté"
-    }
+    },
+    "desktopPrivacy": "Cette application n'envoie rien à Phosphor. Dans une salle, les personnes avec qui vous vous connectez voient votre adresse IP."
   },
   "footer": {
     "about": "À propos de Phosphor",
@@ -1314,9 +1315,34 @@
       "sub": "Vous resterez dans la salle en tant qu'artiste.",
       "confirm": "Désigner hôte"
     },
+    "desktop": {
+      "yourName": "Votre nom",
+      "nameFirst": "Choisissez d'abord le nom que les autres verront.",
+      "joinHeading": "Rejoindre une salle",
+      "hostHeading": "Héberger une salle",
+      "address": "Adresse",
+      "ipSeen": "Les personnes avec qui vous vous connectez voient votre adresse IP.",
+      "copy": "Copier",
+      "copyAddress": "Copier l'adresse",
+      "copyFailed": "Impossible de copier l'adresse",
+      "addressesAria": "Où les autres peuvent rejoindre la salle",
+      "loopbackOnly": "Seul cet ordinateur peut rejoindre la salle. Connectez-vous à un réseau pour partager une adresse.",
+      "anyoneCanAsk": "Toute personne qui peut atteindre cette adresse peut demander à entrer.",
+      "forwardPort": "Par Internet, redirigez le port {port} sur votre routeur.",
+      "notEncrypted": "La connexion n'est pas chiffrée.",
+      "asksAria": "En attente d'entrer",
+      "wantsToJoin": "{name} veut entrer",
+      "letIn": "Faire entrer",
+      "turnAway": "Refuser",
+      "passwordHelp": "Chaque personne qui rejoint le saisit, et c'est toujours vous qui la faites entrer.",
+      "maxWatchersHelp": "Les salles diffusent directement depuis cet ordinateur. Jusqu'à 12 spectateurs convient à la plupart des connexions domestiques.",
+      "port": "Port",
+      "portHelp": "Les autres rejoignent la salle sur ce port. S'il est pris, le suivant de libre est utilisé."
+    },
     "watch": {
       "joining": "Connexion en cours…",
       "waiting": "En attente de l'hôte…",
+      "waitingToBeLetIn": "En attente que l'hôte vous fasse entrer.",
       "needsPassword": "Cette salle nécessite un mot de passe",
       "failed": "Impossible de joindre cet hôte",
       "hostReconnecting": "L'hôte se reconnecte…",

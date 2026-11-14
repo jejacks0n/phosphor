@@ -22,6 +22,7 @@ import { toast } from '@/composables/useToast';
 import { useTabIndicator } from '@/composables/useTabIndicator';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 import LobbyPage from '@/components/social/LobbyPage.vue';
+import DesktopStartPage from '@/components/social/DesktopStartPage.vue';
 import LayersList from '@/components/LayersList.vue';
 
 // The column at the right of the whole app, on a wide screen: LAYERS, and Social, which is CHAT while you're in a
@@ -30,6 +31,7 @@ import LayersList from '@/components/LayersList.vue';
 // and counts the messages you haven't seen, as the CHAT tab does while LAYERS shows. Width and fold are kept in the browser; going into a room opens it on CHAT, a reload into
 // one shows it as it was (folded or not, on LAYERS or CHAT), and leaving shows the lobby there.
 
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';   // no lobby: the desktop's start page (your name, Join, Start a room) in its place
 const workspace = useWorkspaceStore(), room = useRoomStore(), drawing = useDrawingStore(), social = useSocialStore();
 const { t } = useI18n();
 const panel = useTemplateRef('panel');
@@ -134,7 +136,7 @@ function key(e) {
         <LayersList/>
       </aside>
       <ChatPanel v-if="room.inRoom" v-show="tab === 'social'" :shown="chatShown"/>
-      <LobbyPage v-else-if="tab === 'social' && social.allowed"/>
+      <component :is="DESKTOP ? DesktopStartPage : LobbyPage" v-else-if="tab === 'social' && social.allowed"/>
     </div>
   </div>
 </template>

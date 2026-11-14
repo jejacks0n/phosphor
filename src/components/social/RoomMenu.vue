@@ -10,6 +10,7 @@ import HostRoomPage from './HostRoomPage.vue';
 // The host's tools in the chat panel's header: End room (which asks first), and the room menu: Copy link and
 // Settings and stats (the room's dashboard, in a box, where the welcome is edited too). Escape puts focus back on the
 // menu's button.
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';   // no link: Copy copies the first address others join at
 const room = useRoomStore();
 const { t } = useI18n();
 
@@ -41,7 +42,7 @@ async function copyLink() {
     <span class="copied" role="status">{{ copied ? t('common.copied') : '' }}</span>
     <DropdownMenu :label="t('social.menu.label')">
       <template #trigger><span aria-hidden="true">⋯</span></template>
-      <button @click="copyLink">{{ t('common.copyLink') }}</button>
+      <button @click="copyLink">{{ DESKTOP ? t('social.desktop.copyAddress') : t('common.copyLink') }}</button>
       <button @click="stats = true">{{ t('social.menu.settingsAndStats') }}</button>
     </DropdownMenu>
     <button class="danger end" @click="ending = true">{{ t('social.host.endRoom') }}</button>

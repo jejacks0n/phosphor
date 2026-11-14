@@ -20,6 +20,8 @@ import StartRoomPage from './StartRoomPage.vue';
 // SOCIAL's layer over everything, on a wide screen: its first question, the page open (social.page: signing in, the
 // account, starting a room) and a room's link asking whether to join. The question comes up once something of SOCIAL
 // is wanted (the lobby showing, a page, a link) and nothing of it runs until it's answered (SocialStore.boot).
+// The desktop has no question to ask (nothing goes to a server), no account and no room links: only Start a room's page.
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const social = useSocialStore(), room = useRoomStore(), workspace = useWorkspaceStore();
 const { t } = useI18n();
 
@@ -44,6 +46,7 @@ const wanted = computed(() => lobbyShown.value || social.page !== 'lobby' || soc
 // connecting a provider asks for Account first), and once it has, someone signed out gets none.
 const page = computed(() => {
   if (!social.allowed || social.supported !== true) return null;
+  if (DESKTOP && social.page !== 'start-room') return null;
   if ((social.page === 'account' || social.page === 'blocked') && !social.signedIn) return null;
   return PAGES[social.page] ? social.page : null;
 });
@@ -67,7 +70,7 @@ const linkIsYours = computed(() => room.reclaimable.some((r) => r.id === social.
 </script>
 
 <template>
-  <ConsentDialog v-if="!social.allowed && wanted"/>
+  <ConsentDialog v-if="!DESKTOP && !social.allowed && wanted"/>
   <ModalDialog v-else-if="page" long :wide="!!PAGES[page][3]" :focus="false" :label="t(PAGES[page][1])" :closable="!!PAGES[page][2]" @cancel="cancel">
     <div ref="body" class="people-forms" :data-page="page">
       <p v-if="social.notice" class="notice" role="status">
@@ -77,7 +80,7 @@ const linkIsYours = computed(() => room.reclaimable.some((r) => r.id === social.
       <component :is="PAGES[page][0]" />
     </div>
   </ModalDialog>
-  <ModalDialog v-if="social.allowed && social.roomInvite" closable :title="t('social.joinDialog.title')" :sub="t('social.joinDialog.sub')" @cancel="social.answerRoomInvite(false)">
+  <ModalDialog v-if="!DESKTOP && social.allowed && social.roomInvite" closable :title="t('social.joinDialog.title')" :sub="t('social.joinDialog.sub')" @cancel="social.answerRoomInvite(false)">
     <p v-if="linkIsYours && room.goingBackReplaces" class="replaces">{{ goingBackReplacesWords() }}</p>
     <div class="actions">
       <button @click="social.answerRoomInvite(false)">{{ t('common.notNow') }}</button>

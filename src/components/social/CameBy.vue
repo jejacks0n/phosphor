@@ -38,7 +38,7 @@ const where = (person) => {
       </thead>
       <tbody>
         <tr v-for="person in shown" :key="person.sub">
-          <td><div class="who"><UserName class="name" :name="person.name" /> <span v-if="person.guest" class="guest">{{ t('common.guest') }}</span></div></td>
+          <td><div class="who"><UserName class="name" :name="person.name" :sub="person.sub" /> <span v-if="person.guest" class="guest">{{ t('common.guest') }}</span></div></td>
           <td>{{ inRoom(person) }}</td>
           <td>{{ where(person) }}</td>
           <td class="said">{{ person.said }}</td>

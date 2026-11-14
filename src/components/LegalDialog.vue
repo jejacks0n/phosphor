@@ -5,7 +5,9 @@ import ReadingDialog from '@/components/ReadingDialog.vue';
 import EnLegal from '@/i18n/legal/en.vue';
 
 // The Terms, the Privacy Policy and the Community Guidelines, read over the app like About. `page` is 'terms',
-// 'privacy' or 'guidelines'; a link to another of them asks for it with open.
+// 'privacy' or 'guidelines'; a link to another of them asks for it with open. The desktop app sends nothing to Phosphor,
+// so its privacy page is a short note in place of the hosted service's policy.
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const props = defineProps({ page: { type: String, required: true } });
 const emit = defineEmits(['close', 'open']);
 const { t, locale } = useI18n();
@@ -28,7 +30,11 @@ const dialogTitle = computed(() => t(`legal.titles.${props.page}`));
 <template>
   <ReadingDialog :key="props.page" :label="dialogTitle" @close="emit('close')">
     <div class="legal-body">
-      <component :is="legalComponent" :page="props.page" @open="emit('open', $event)"/>
+      <template v-if="DESKTOP && props.page === 'privacy'">
+        <h1>{{ dialogTitle }}</h1>
+        <p>{{ t('legal.desktopPrivacy') }}</p>
+      </template>
+      <component :is="legalComponent" v-else :page="props.page" @open="emit('open', $event)"/>
     </div>
   </ReadingDialog>
 </template>
