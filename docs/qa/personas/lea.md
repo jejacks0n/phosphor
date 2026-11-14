@@ -213,7 +213,7 @@ column to see the words change, switch the theme, and open About.
 ### 13. Write a caption
 - Does: opens ⋯ and picks Edit Mode, taps where the caption goes, types "me :)" on the phone's keyboard, presses
   return and types a second line; then tries to put the cursor away.
-- Expects: the tap shows the cursor and brings up the phone's keyboard; the letters land at the cursor in her colors;
+- Expects: the tap shows the cursor without moving the view and brings up the phone's keyboard; the letters land at the cursor in her colors;
   return goes to the next line; a run of typing is one undo step. To stop typing she has to tap another tool (Escape
   isn't on her keyboard).
 - Probes: `extremes`: type an emoji and a few letters with accents; `interrupt`: halfway through typing, switch to
