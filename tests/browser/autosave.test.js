@@ -15,6 +15,7 @@ import { writeLatest, addVersion, evict, readLatest, readVersion, listDocuments,
 import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, VERSION_EVERY_MS, MAX_TOTAL_BYTES, READY_WAIT_MS } from '@/document/autosaveRules';
 import { readProject, writeProject, loadImage as decodeImage } from '@/document/projectIO';
 import { AnsiFile } from '@/lib/AnsiFile';
+import Renderer from '@/document/Renderer';
 
 vi.mock('@/document/autosaveStore', { spy: true });
 
@@ -874,6 +875,31 @@ test('restoreDocument brings back a layer\'s own character settings', async () =
   await project.restoreDocument(saved, { documentId: id });
   await settle(project);
   expect(project.charsOf('edit')).toEqual(own);
+});
+
+test('a restore renders once, though its first render moves the base\'s scale (autosave keeps none without paint)', async () => {
+  const { project } = await opened();
+  const id = project.documentId, layer = project.addLayer('cells', 'edit');
+  project.setLayerChars(layer, { chars: '#', charChoice: 'best' }); // a layer with params of its own, made anew with the drawing's
+  edit(project);
+  await settle(project);
+  await autosave.flush();
+  const saved = await readLatest(id);
+  project.clearImage();
+  const pipeline = vi.spyOn(Renderer.prototype, 'render');
+  await project.restoreDocument(saved, { documentId: id });
+  await settle(project);
+  expect(pipeline).toHaveBeenCalledTimes(1);
+});
+
+test('a reload renders once', async () => {
+  await opened();
+  await leave();
+  const pipeline = vi.spyOn(Renderer.prototype, 'render');
+  const back = await mounted();
+  await settle(back.project);
+  expect(back.project.image).toBeTruthy();
+  expect(pipeline).toHaveBeenCalledTimes(1);
 });
 
 test('a document that was unsaved stays unsaved after a restore; one that was saved does not', async () => {

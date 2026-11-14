@@ -111,3 +111,9 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   assert.equal(at(undefined, 'ansi', false), 'exact');        // not wholly in the picture's area
   assert.equal(at('█', 'ansi', false), 'exact');
 });
+
+test('parseKey reads a key as splitting it at its commas does, malformed ones too', () => {
+  const split = (key) => { const [col, row] = key.split(',').map(Number); return { col, row }; };
+  for (const key of ['0,0', '12,345', '299,4999', '7', '', ',', '3,', ',4', '1,2,3', 'a,b', ' 1, 2', '1e3,0x10', '-1,-2', '01,002'])
+    assert.deepEqual(parseKey(key), split(key), key);
+});

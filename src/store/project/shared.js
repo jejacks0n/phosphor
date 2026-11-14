@@ -5,6 +5,7 @@ import { Ledger } from '@/document/ledger.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { loadImage } from '@/document/projectIO.js';
+import { markUniform } from '@/lib/ImageProcessor.js';
 import { MOST_CHANGE_BYTES } from '@/social/wire.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
@@ -41,8 +42,9 @@ export async function blackPicture(cols, rows, scale) {
   const ctx = ctx2d(canvas);
   ctx.fillStyle = 'black';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  const blob = await canvasPng(canvas);
-  return { image: await loadImage(blob), imageBuffer: await blob.arrayBuffer() };
+  const blob = await canvasPng(canvas), image = await loadImage(blob);
+  markUniform(image, 'black');
+  return { image, imageBuffer: await blob.arrayBuffer() };
 }
 // randomUUID is only there on secure contexts; a plain-http LAN address has getRandomValues.
 export const randomId = () => crypto.randomUUID?.()
