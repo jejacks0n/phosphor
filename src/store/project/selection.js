@@ -314,7 +314,7 @@ export const selectionActions = {
   // top, fg the bottom; the ASCII styles show the pair's average, so fg to both) with its character
   // pinned, so the converter doesn't pick another. In the pixel view, colors.fg goes to every pixel of
   // each layer: the picture on the base, paint on a cells layer.
-  recolorSelection(made, view, ids, { fg, bg }) {
+  recolorSelection(made, view, ids, { fg, bg, fgIndex, bgIndex }) {
     ids = this.layersFor(ids);
     let units;
     if (made.mask) {
@@ -327,7 +327,7 @@ export const selectionActions = {
     this.ensureLayer();
     this.beginEdit();
     if (view === 'output') {
-      const colors = { ...(fg && { fg }), ...(bg && { bg }) }, ascii = this.renderStyle === 'ascii' || this.renderStyle === 'colorAscii';
+      const colors = { ...(fg && { fg, fgIndex }), ...(bg && { bg, bgIndex }) }, ascii = this.renderStyle === 'ascii' || this.renderStyle === 'colorAscii';
       const layered = ids.filter((id) => !isBase(this, id)), base = ids.find((id) => isBase(this, id));
       const owns = (id, { x, y }) => this.cellsOf(id).has(cellKey(x, y)) || painted(this.paintOf(id), x, y);
       const byLayer = new Map();
@@ -340,7 +340,7 @@ export const selectionActions = {
         if (!isBase(this, id)) return this.writeEditCells(mine.map(({ x, y }) => ({ col: x, row: y, attrs: { ...shownLook(this, x, y), ...colors } })), { clearPaint: true });
         this.writeBaseCells((ascii && !fg ? [] : mine).map(({ x, y }) => {
           const look = this.completeAt(x, y, undefined, 'base');
-          return { col: x, row: y, char: look.char, fg: fg ?? look.fg, bg: ascii ? fg : bg ?? look.bg, fgIndex: fg ? undefined : look.fgIndex, bgIndex: ascii || bg ? undefined : look.bgIndex };
+          return { col: x, row: y, char: look.char, fg: fg ?? look.fg, bg: ascii ? fg : bg ?? look.bg, fgIndex: fg ? fgIndex : look.fgIndex, bgIndex: ascii ? fgIndex : bg ? bgIndex : look.bgIndex };
         }));
       });
     } else if (fg) {

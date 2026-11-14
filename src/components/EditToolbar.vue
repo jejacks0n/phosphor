@@ -526,10 +526,10 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       <div v-if="recolored" class="tool-setting-group">
         <div class="divider"/>
         <template v-if="workspace.editorTab === 'output'">
-          <button class="text" :title="workspace.editFgNone ? t('toolbar.selection.setFgNoneTitle') : t('toolbar.selection.setFgTitle')" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">{{ t('toolbar.selection.setFg') }}</button>
-          <button v-if="!asciiStyle" class="text" :title="workspace.editBgNone ? t('toolbar.selection.setBgNoneTitle') : t('toolbar.selection.setBgTitle')" :disabled="workspace.editBgNone" @click="recolor({ bg: workspace.editBgColor })">{{ t('toolbar.selection.setBg') }}</button>
+          <button class="text" :title="workspace.editFgNone ? t('toolbar.selection.setFgNoneTitle') : t('toolbar.selection.setFgTitle')" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor, fgIndex: workspace.editFgIndex })">{{ t('toolbar.selection.setFg') }}</button>
+          <button v-if="!asciiStyle" class="text" :title="workspace.editBgNone ? t('toolbar.selection.setBgNoneTitle') : t('toolbar.selection.setBgTitle')" :disabled="workspace.editBgNone" @click="recolor({ bg: workspace.editBgColor, bgIndex: workspace.editBgIndex })">{{ t('toolbar.selection.setBg') }}</button>
         </template>
-        <button v-else class="text" :title="workspace.editFgNone ? t('toolbar.selection.fillNoneTitle') : t('toolbar.selection.fillTitle')" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor })">{{ t('toolbar.selection.fill') }}</button>
+        <button v-else class="text" :title="workspace.editFgNone ? t('toolbar.selection.fillNoneTitle') : t('toolbar.selection.fillTitle')" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor, fgIndex: workspace.editFgIndex })">{{ t('toolbar.selection.fill') }}</button>
       </div>
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>

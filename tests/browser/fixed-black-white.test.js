@@ -4,8 +4,12 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { createApp } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
-import { useTextTool } from '@/composables/useTextTool';
+import { useTextTool, typeAtCursor } from '@/composables/useTextTool';
 import { PALETTES } from '@/lib/ColorUtils';
+import { getTool } from '@/tools/index.js';
+import { pickedIndexes } from '@/store/project/reading.js';
+import ColorPopover from '@/components/ColorPopover.vue';
+import { i18n } from '@/i18n';
 
 let mounted = null;
 afterEach(() => {
@@ -152,4 +156,69 @@ test('A base cell moved, or copied onto a cells layer, keeps its index; the Brus
   project.commitEdit();
   await settle(project);
   expect(indexesOf(project)[cols]).toEqual([0, 0]);
+});
+
+// The color box's 16 and 231 are their own swatches: chosen, only that one is marked, and the color keeps its index.
+test('the color box\'s swatches 16 and 231 keep their index, and only the chosen one is marked', async () => {
+  const { workspace } = await opened('edit');
+  workspace.editorTab = 'output';
+  const host = document.createElement('div');
+  document.body.append(host);
+  mounted = createApp(ColorPopover, { slotName: 'fg' }).use(i18n);
+  mounted.mount(host);
+  const swatches = () => [...host.querySelectorAll('.swatches .swatch')];
+  const marked = async () => {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return swatches().flatMap((swatch, i) => (swatch.classList.contains('selected') ? [i] : []));
+  };
+  const chosen = [];
+  for (const i of [16, 0, 231, 15]) {
+    swatches()[i].click();
+    chosen.push([workspace.editFgColor, workspace.editFgIndex, await marked()]);
+  }
+  host.remove();
+  expect(chosen).toEqual([['#000000', 16, [16]], ['#000000', undefined, [0]], ['#ffffff', 231, [231]], ['#ffffff', undefined, [15]]]);
+});
+
+// What you draw with a 16 or 231 swatch writes 16 or 231: typing, the Bucket's solid fill, a Shapes character and Set FG,
+// on a cells layer and on the base, through undo and redo.
+test('typing, the Bucket, Shapes and Set FG write the swatch\'s 16 and 231', async () => {
+  for (const layer of ['edit', 'base']) {
+    const { project, workspace } = await opened('edit');
+    const cols = project.cols, ctx = { project, workspace, view: 'output', unit: { x: 1, y: 1 } };
+    if (layer === 'base') project.mergeDown('edit');
+    workspace.pickLayer(layer);
+    workspace.editorTab = 'output';
+    workspace.setColor('fg', '#ffffff', { index: 231 });
+    workspace.setColor('bg', '#000000', { index: 16 });
+    const steps = [
+      () => { workspace.textCursor = { col: 2, row: 1 }; typeAtCursor(project, workspace, 'Q'); project.commitEdit(); }, // over x (196 on 16)
+      () => { Object.assign(workspace, { bucketFillWith: 'cells', bucketGradient: 'solid', bucketSet: { fg: true, bg: false, char: false }, editFillContiguous: true }); getTool('bucket').begin(ctx, { x: 1.5, y: 2.5 }, { stopPropagation() {} }); }, // ▓ (15 on 0)
+      () => { Object.assign(workspace, { shapeKind: 'rect', shapeDrawWith: 'char', activeChar: '#' }); getTool('shapes').begin(ctx, { x: 3.5, y: 2.5 }); getTool('shapes').end(ctx); }, // y (0 on 16)
+      () => project.recolorSelection({ c0: 0, r0: 0, c1: 0, r1: 0 }, 'output', [layer], { bg: workspace.editBgColor, bgIndex: workspace.editBgIndex }), // A (16 on 0)
+    ];
+    const wanted = [[cols + 2, [231, 16]], [cols + 1, [231, 0]], [cols + 3, [231, 16]], [0, [16, 16]]];
+    const at = () => wanted.map(([i]) => [project.cells[i].fg.c, project.cells[i].bg.c]);
+    for (const step of steps) {
+      step();
+      await settle(project);
+    }
+    expect(at(), layer).toEqual(wanted.map(([, c]) => c));
+    steps.forEach(() => project.undo());
+    await settle(project);
+    steps.forEach(() => project.redo());
+    await settle(project);
+    expect(at(), layer).toEqual(wanted.map(([, c]) => c));
+    expect((await exported(project)).split('\r\n')[1], layer).toBe('\x1b[38;5;16m\x1b[48;5;231m\xb0\x1b[38;5;231m\x1b[48;5;0m\xb2\x1b[48;5;16mQ#\x1b[0m');
+  }
+});
+
+// The Color Picker reads 16 and 231 from what the cell shows, for the color box to keep.
+test('the Color Picker\'s cell gives its 16 and 231', async () => {
+  for (const layer of ['edit', 'base']) {
+    const { project } = await opened(layer);
+    expect([0, 1, 2, 3].map((col) => pickedIndexes(project, col, 0)), layer).toEqual([
+      { fgIndex: 16, bgIndex: undefined }, { fgIndex: undefined, bgIndex: 16 }, { fgIndex: 231, bgIndex: undefined }, { fgIndex: undefined, bgIndex: 231 },
+    ]);
+  }
 });

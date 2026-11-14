@@ -116,6 +116,13 @@ export function pickedFrom(project, col, row) {
   return { fgFrom: from(2 * row + 1, 'fg'), bgFrom: from(2 * row, 'bg'), ownBg: entries.some((entry) => entry.bg) };
 }
 
+// The 256-color indexes a picked cell's colors show as where a lower index shares the color (16, 231), for the color
+// pair to keep (workspace.pickColor): { fgIndex, bgIndex }, undefined for any other color.
+export function pickedIndexes(project, col, row) {
+  const cell = project.cells[cellIndex(col, row, project.cols)], palette = project.renderer.palette;
+  return { fgIndex: sharedIndex(cell?.fg.c, palette), bgIndex: sharedIndex(cell?.bg.c, palette) };
+}
+
 // look ({ char?, fg, bg }, stored colors) with cells layer id's cell over it: its entry's own attributes, then (withPaint)
 // its paint over each half by its alpha, bg the top, fg the bottom. A color set over another drops the index it had
 // (mergeEntry).

@@ -110,15 +110,15 @@ function halfCells(project, workspace, end, fill) {
   const outline = shape(false), all = fill ? shape(true) : outline;
   const ring = new Set(outline.map(({ x, y }) => `${x},${y}`));
   const inside = new Map(halfBlockCells(all.filter(({ x, y }) => !ring.has(`${x},${y}`)), halfRows).map((c) => [`${c.col},${c.row}`, c.mask]));
-  const fg = workspace.editFgColor, bg = workspace.editBgColor;
+  const { editFgColor: fg, editBgColor: bg, editFgIndex: fgIndex, editBgIndex: bgIndex } = workspace;
   const cells = halfBlockCells(outline, halfRows).map(({ col, row, char, mask }) => {
     const filled = (inside.get(`${col},${row}`) ?? 0) & ~mask;
     inside.delete(`${col},${row}`);
-    return { col, row, attrs: { char, fg, ...(filled ? { bg } : {}) } };
+    return { col, row, attrs: { char, fg, fgIndex, ...(filled ? { bg, bgIndex } : {}) } };
   });
   for (const [key] of inside) {
     const [col, row] = key.split(',').map(Number);
-    cells.push({ col, row, attrs: { char: ' ', bg } });
+    cells.push({ col, row, attrs: { char: ' ', bg, bgIndex } });
   }
   return cells;
 }
@@ -200,7 +200,7 @@ function apply({ project, workspace, view }, end) {
   let cells;
   if (charMode) {
     // The character in FG, backgrounds untouched.
-    const ink = { char: workspace.activeChar, fg: attrs.fg };
+    const ink = { char: workspace.activeChar, fg: attrs.fg, fgIndex: attrs.fgIndex };
     cells = [...outline, ...inside].map(({ col, row }) => ({ col, row, attrs: ink }));
   } else if (!lines) {
     // Full block: the outline in shades of FG (on BG when there is one); the rest of the shape's
@@ -209,7 +209,7 @@ function apply({ project, workspace, view }, end) {
     cells = outline.map(c => ({ ...c, char: charOf(c.cover) })).filter(c => c.char).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
     if (fill) {
       const shaded = new Set(cells.map(cellKey));
-      cells.push(...shapeOf(true).filter(c => charOf(c.cover) && !shaded.has(cellKey(c))).map(({ col, row }) => ({ col, row, attrs: { char: ' ', bg } })));
+      cells.push(...shapeOf(true).filter(c => charOf(c.cover) && !shaded.has(cellKey(c))).map(({ col, row }) => ({ col, row, attrs: { char: ' ', bg, bgIndex: workspace.editBgIndex } })));
     }
   } else {
     // Connect joins the frame to the line characters it crosses or meets that show (showsChar: not
@@ -236,7 +236,7 @@ function apply({ project, workspace, view }, end) {
     cells = boxCells(rect, drawWith, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char: join(col, row, char), ...attrs } }));
     if (fill) {
       const interior = rectCells(rect).filter(inGrid).filter(c => !isEdge(c));
-      cells.push(...interior.map(c => ({ ...c, attrs: { char: ' ', bg } })));
+      cells.push(...interior.map(c => ({ ...c, attrs: { char: ' ', bg, bgIndex: workspace.editBgIndex } })));
     }
   }
   project.writeEditCells(kept(cells), { clearPaint: true });

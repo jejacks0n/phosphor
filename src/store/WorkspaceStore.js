@@ -331,12 +331,12 @@ export const useWorkspaceStore = defineStore('workspace', {
     // The eyedropper: picks repeat while dragging, so they leave the recent colors alone until the
     // pick ends (endPick); then the color each pick replaced and the color it picked both go in,
     // so getting the old color back is one click.
-    pickColor(slot, hex) {
+    pickColor(slot, hex, index) {
       this._pickedFrom ??= {
         fg: this.editFgNone ? null : this.editFgColor,
         bg: this.editBgNone ? null : this.editBgColor,
       };
-      this.setColor(slot, hex, { remember: false });
+      this.setColor(slot, hex, { remember: false, index });
     },
     endPick() {
       const from = this._pickedFrom;
@@ -349,11 +349,14 @@ export const useWorkspaceStore = defineStore('workspace', {
         if (now) this.rememberColor(now);
       }
     },
-    // What typing writes besides the character: a none slot is left out, so that attribute stays as it is.
+    // What typing writes besides the character: a none slot is left out, so that attribute stays as it is. A color's
+    // index (16, 231) goes with it.
     typingAttrs() {
       return {
         fg: this.editFgNone ? undefined : this.editFgColor,
         bg: this.editBgNone ? undefined : this.editBgColor,
+        fgIndex: this.editFgNone ? undefined : this.editFgIndex,
+        bgIndex: this.editBgNone ? undefined : this.editBgIndex,
       };
     },
     swapColors() {

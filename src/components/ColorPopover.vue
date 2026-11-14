@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor, paletteChoices } from '@/lib/PixelTransforms';
-import { swatchSections, drawingColors } from '@/lib/ColorUtils';
+import { swatchSections, drawingColors, sharedIndex } from '@/lib/ColorUtils';
 import { nearestInDirection } from '@/lib/spatialFocus';
 import { shortcut } from '@/lib/keyLabels';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
@@ -52,6 +52,8 @@ watch(() => props.slotName, (name) => {
   workspace.vectorStop = null;
 }, { immediate: true });
 const current = computed(() => stop.value ?? (vector.value ? solidOf(style.value(SHAPE_SLOTS[props.slotName])) ?? '#000000' : props.slotName === 'fg' ? workspace.editFgColor : workspace.editBgColor));
+// The slot's index (16, 231), so its swatch is the one marked, not 0's or 15's beside it; a shape's colors have none.
+const currentIndex = computed(() => (vector.value || stop.value ? undefined : props.slotName === 'fg' ? workspace.editFgIndex : workspace.editBgIndex));
 const KINDS = ['solid', 'linear', 'radial'];
 const isNone = computed(() => (vector.value ? !style.value(SHAPE_SLOTS[props.slotName]) : props.slotName === 'fg' ? ansiView.value && workspace.editFgNone : workspace.editBgNone));
 // None means "leave what's underneath": a typing choice, so the foreground offers it only in the ANSI view. A
@@ -76,8 +78,9 @@ const painted = computed(() => {
 const showPainted = ref(false);
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 
-const choose = (hex, remember = true) => {
-  if (!vector.value) return workspace.setColor(props.slotName, hex, { remember });
+// index: a swatch's, kept when a lower index shares its color (16 and 231: sharedIndex).
+const choose = (hex, remember = true, index = undefined) => {
+  if (!vector.value) return workspace.setColor(props.slotName, hex, { remember, index });
   if (hex && remember) workspace.rememberColor(hex);
   if (stop.value) return recolorStop(project, workspace, hex, { remember });
   style.set(SHAPE_SLOTS[props.slotName], hex, { remember });
@@ -191,11 +194,11 @@ onBeforeUnmount(() => {
           v-for="color in section.colors"
           :key="color.hex + color.c"
           class="swatch"
-          :class="{ selected: color.paints && !isNone && current.toLowerCase() === color.hex.toLowerCase() }"
+          :class="{ selected: color.paints && !isNone && current.toLowerCase() === color.hex.toLowerCase() && currentIndex === sharedIndex(color.c, project.activePalette) }"
           :style="{ backgroundColor: color.paints ? shown(color.hex) : color.hex }"
           :title="color.paints ? color.hex : t('colors.cantPaint', { hex: color.hex.toLowerCase() })"
           :disabled="!color.paints"
-          @click="choose(color.hex.toLowerCase())"
+          @click="choose(color.hex.toLowerCase(), true, sharedIndex(color.c, project.activePalette))"
       ></button>
     </div>
 
