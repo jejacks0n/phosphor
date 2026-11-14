@@ -36,8 +36,9 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
   <div class="start-room">
     <h2>{{ t('social.start.heading') }}</h2>
     <!-- Laid out as the room's Settings and stats: its settings in a box, and its lobby card (for a room in the
-         lobby) with the lobby picture beside them when there's room, under them when there isn't. -->
-    <form @submit.prevent="goLive">
+         lobby) with the lobby picture beside them when there's room, under them when there isn't. A room with no
+         lobby card (link-only, or on desktop) is one column, in a narrower box (SocialDialogs). -->
+    <form :class="{ single: !listed }" @submit.prevent="goLive">
       <section class="settings">
         <h3>{{ t('social.host.roomSettings') }}</h3>
         <div class="fields">
@@ -68,8 +69,8 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
         </div>
       </section>
 
-      <div class="column">
-        <section v-if="listed" class="settings" :aria-labelledby="`${id}-card`">
+      <div v-if="listed" class="column">
+        <section class="settings" :aria-labelledby="`${id}-card`">
           <h3 :id="`${id}-card`">{{ t('social.start.lobbyCard') }}</h3>
           <div class="fields">
             <label>{{ t('social.start.signal') }}
@@ -82,9 +83,9 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
             <p v-if="!hasArt" class="no-art">{{ noArt }}</p>
           </div>
         </section>
-        <p v-else-if="!hasArt" class="no-art">{{ noArt }}</p>
-        <LobbyPicture v-if="listed && hasArt" />
+        <LobbyPicture v-if="hasArt" />
       </div>
+      <p v-else-if="!hasArt" class="no-art why">{{ noArt }}</p>
       <p v-if="cannotGoLive" class="no-art why">{{ cannotGoLive }}</p>
 
       <div class="buttons">
@@ -120,13 +121,16 @@ p.why {
   grid-column: 1 / -1;
 }
 
-/* Two columns, or one under the other when there isn't room, as Settings and stats' are; the second column is kept
-   when empty, so a link-only room's settings stay a column wide. */
+/* Two columns, or one under the other when there isn't room, as Settings and stats' are; one when there's no lobby
+   card. */
 form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   align-items: start;
   gap: 12px;
+}
+form.single {
+  grid-template-columns: 1fr;
 }
 div.column {
   display: flex;

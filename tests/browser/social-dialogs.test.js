@@ -10,6 +10,7 @@ import { CONSENT_KEY } from '@/social/consent';
 import { member } from '../support/socialServer.js';
 import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useRoomStore } from '@/store/RoomStore';
 import SocialDialogs from '@/components/social/SocialDialogs.vue';
 
 let app = null, host = null;
@@ -119,6 +120,20 @@ test('a page\'s close button (×) goes where Escape does; the name page, with no
   close().click();
   await nextTick();
   expect([social.roomInvite, dialog()]).toEqual([null, null]);
+});
+
+test('Set up your room is the wide box only with a lobby card beside its settings: a link-only room\'s is the narrow one', async () => {
+  const { social } = await mount();
+  social.supported = true;
+  const room = useRoomStore();
+  room.startDraft.isPublic = true;
+  social.page = 'start-room';
+  await nextTick();
+  expect(dialog().classList.contains('wide')).toBe(true);
+  room.startDraft.isPublic = false;
+  await nextTick();
+  expect(dialog().classList.contains('wide')).toBe(false);
+  expect(dialog().classList.contains('long')).toBe(true);
 });
 
 test('Blocked opens from Account\'s link, lists who you blocked with Unblock, and closes back to Account', async () => {
