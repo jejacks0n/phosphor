@@ -140,7 +140,7 @@ export class Host {
     try {
       if (claims) {
         w.conn = openPeer({
-          initiator: true, config: this.config, connectWithinMs: this.connectWithinMs,
+          initiator: true, peer, config: this.config, connectWithinMs: this.connectWithinMs,
           sendSignal: (data) => this.send({ type: 'signal-to', to: peer, data }),
           onOpen: (channel) => this.opened(w, channel),
           onClose: () => {
