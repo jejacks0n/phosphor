@@ -56,6 +56,7 @@ export default class Renderer {
   #pipelineData = null; // pipelineCanvas pixels
   #baseData = null;     // the pipeline with the base layer's pixels over it, from the last composite(): what edit cells sit on
   #paintData = null;    // transformed paint at grid resolution, from the last composite()
+  #noPaint = true;      // #paintData has none: its layer had none when it was drawn whole, and since
   #heldData = null;     // the output before the palette snap, while a held composite's stroke is open
   #heldPaint = null;    // and the paint layer it's drawing on, whose stroke's own paint shows in its own colors
   #dithered = null;     // { palette, key, raw, data }: #baseData dithered to the palette (raw: the #baseData it's from), while Dither is on
@@ -95,6 +96,7 @@ export default class Renderer {
     this.everyLayer = [];
     this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = this.#painted = null;
     this.#lowerEdits = this.#shownOver = null;
+    this.#noPaint = true;
     this.#matchers = new WeakMap();
     this.#upperSamples = new WeakMap();
     this.#tiles = new Map();
@@ -269,6 +271,7 @@ export default class Renderer {
     } else this.#baseData = ctx.getImageData(0, 0, w, h);
 
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params, partial ? area : null) : null;
+    this.#noPaint = !paintLayer?.hasPaint && (!partial || this.#noPaint);
     const changed = !hold && params.quantize === 'count' && !this.#chosen && this.#recount(params);
     const moved = this.#ditherUnder(ctx, params, area, !!paintLayer, open);
     const resolvedAgain = this.#resolveUnder(params, area, open, paintLayer);
@@ -1284,9 +1287,8 @@ export default class Renderer {
     const { cols, chars: charset, charMode, renderStyle } = params;
     const resolved = this.#resolvedFor(params); // for this grid only
     if (resolved && this.pinAt(col, row) === undefined) return resolved.cells[cellIndex(col, row, cols)] ?? null;
-    const data = this.#dithered?.data ?? this.#baseData; // snapped below
-    // Between a grid resize and the render it queues, the pipeline pixels are the old size.
-    if (!data || data.width !== cols || data.height !== params.rows) return null;
+    const data = this.#underData(params); // snapped below
+    if (!data) return null;
     const pixelAt = (y) => {
       const o = (Math.min(y, params.rows - 1) * cols + col) * 4;
       const p = { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2] };
@@ -1295,6 +1297,19 @@ export default class Renderer {
     const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
     const char = keepsSeed(charMode) ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
     return this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
+  }
+
+  // The pixels underCell builds a cell from, or null between a grid resize and the render it queues (they're the old size).
+  #underData(params) {
+    const data = this.#dithered?.data ?? this.#baseData;
+    return data && data.width === params.cols && data.height === params.rows ? data : null;
+  }
+
+  // Whether underCell has a cell here, without building it.
+  #hasUnder(col, row, params) {
+    const resolved = this.#resolvedFor(params);
+    if (resolved && this.pinAt(col, row) === undefined) return !!resolved.cells[cellIndex(col, row, params.cols)];
+    return !!this.#underData(params);
   }
 
   // A pinned cell with paint in it, or null: the cell the base shows (underCell), the paint over it as
@@ -1338,10 +1353,14 @@ export default class Renderer {
   // An edit cell and paint in the same cell: the edit cell's entry composes over the paint-free
   // image, then any paint in the cell shows over it (coverCell), so erasing the paint reveals the edit
   // cell again. (A rule chosen to try out; it lives only here, so it's one place to change.)
+  // An entry with its character and both colors shows nothing of the cell under it (composeCell, but in ASCII), so that
+  // cell isn't built (an opened file's every cell); only whether there is one counts.
   #composeOne(col, row, params, entry, baseCells) {
-    const under = this.underCell(col, row, params, baseCells);
-    if (!under) return baseCells[cellIndex(col, row, params.cols)];
+    const own = entry.char != null && entry.fg && entry.bg && params.renderStyle !== 'ascii';
+    const under = own ? null : this.underCell(col, row, params, baseCells);
+    if (own ? !this.#hasUnder(col, row, params) : !under) return baseCells[cellIndex(col, row, params.cols)];
     const cell = composeCell(under, entry, params.renderStyle, (hex, index) => this.effective(hex, params, index));
+    if (this.#noPaint) return cell;
     return coverCell(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), {
       renderStyle: params.renderStyle,
       palette: this.palette,
