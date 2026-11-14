@@ -56,7 +56,7 @@ test('Start a room with no art open says to open some, and Go live is disabled',
 });
 
 // The dialog is at most 860px wide, and its columns are as wide as Settings and stats' are: side by side in any window
-// wide enough for SOCIAL at all.
+// wide enough for SOCIAL at all. Link-only has Room settings alone, one column in the narrower box.
 test('Set up your room: the radio buttons look like the checkboxes; the room\'s settings beside its lobby card, down to the narrowest window; link-only has no card', async ({ page }) => {
   await startPage(page);
   const setup = shown(page, 'start-room');
@@ -90,10 +90,14 @@ test('Set up your room: the radio buttons look like the checkboxes; the room\'s 
   expect(Math.abs(box.y - first.y)).toBeLessThan(1);
 
   await page.setViewportSize({ width: 1400, height: 900 });
+  await expect.poll(async () => (await setup.boundingBox()).width).toBeGreaterThan(800);
+  const twoColumns = (await setup.boundingBox()).width;
   await setup.getByRole('radio', { name: 'Unlisted (link only)' }).check();
   await expect(card).toHaveCount(0);
+  await expect.poll(async () => (await setup.boundingBox()).width).toBeLessThan(twoColumns);   // the narrower box
   const form = await setup.locator('form').boundingBox();
-  expect((await name.boundingBox()).width).toBeLessThan(form.width * 0.6);   // still a column wide, not stretched
+  expect((await name.boundingBox()).width).toBeGreaterThan(form.width * 0.9);   // one column, filling it
+  expect((await setup.getByRole('button', { name: 'Go live' }).boundingBox()).width).toBeGreaterThan(form.width * 0.9);
 });
 
 test('going live with a public room: a name of only spaces isn\'t sent; the POST with its signal, the host back on the art with the room\'s chat, Settings and stats with its link and fitting its box, Copy link', async ({ page, baseURL }) => {
