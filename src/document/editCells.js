@@ -19,9 +19,12 @@ export const isPaintBlock = (entry) => entry?.char === '▄' && entry.fg === und
 
 export const cellKey = (col, row) => `${col},${row}`;
 
+// As key.split(',').map(Number) reads it, without the array: a redraw parses every cell's key.
 export function parseKey(key) {
-  const [col, row] = key.split(',').map(Number);
-  return { col, row };
+  const at = key.indexOf(',');
+  if (at < 0) return { col: +key, row: undefined };
+  const end = key.indexOf(',', at + 1);
+  return { col: +key.slice(0, at), row: +key.slice(at + 1, end < 0 ? key.length : end) };
 }
 
 // The merged entry for one cell: attrs' strings set, null removes, undefined leaves as is.
