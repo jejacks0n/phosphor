@@ -293,7 +293,8 @@ panel's left edge wider and double-click it back, and type a message with his na
 - Does: paints a few strokes and types a word near the host's; looks at the left column and SAUCE; presses Cmd+Z.
 - Expects: everyone sees his strokes as he makes them, and he sees the host's and `tin_owl`'s; each other artist's mark
   and name shows at their cell (Show others' cursors, on by default); he draws in the host's font and size; the
-  settings, sliders, SAUCE fields, base layer, Bake, Flatten and Merge down are off with "Only the room's host can
+  settings, sliders, SAUCE fields (Date, Font name and Letter spacing among them), base layer, Bake, Flatten and
+  Merge down are off with "Only the room's host can
   change this."; Cmd+Z takes back only his own edits ([Drawing together](../../social.md#drawing-together)).
 - Probes: `undo-redo`: undo his stroke, redo it, undo it; then have the host draw over a cell of his and undo again,
   and check the host's stays; `again`: draw on the very cells the host just drew.

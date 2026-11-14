@@ -15,7 +15,7 @@ import { generateSlug } from 'random-word-slugs';
 test("Settings schema: same keys, storage keys and reset defaults as before the schema existed, so users' persisted settings survive", async () => {
   // same 23 keys as the pre-schema SETTING_KEYS; order follows the table
   assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'renderStyle', 'chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solids', 'patternLight', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'].sort());
-  assert.deepEqual(SAUCE_KEYS, ['sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments', 'sauceRecord']);
+  assert.deepEqual(SAUCE_KEYS, ['sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments', 'sauceRecord', 'sauceLetterSpacing']);
   assert.equal(getSetting('brightness').storageKey ?? 'current_file.brightness', 'current_file.brightness');
   assert.equal(getSetting('sauceUse9pxFont').storageKey, 'current_file.sauce.use9pxFont');
   assert.deepEqual(groupDefaults('transform'), { invert: 0, hue: 0, colorizeStrength: 0 });
@@ -100,6 +100,8 @@ test('a setting\'s text from a host is as long as a person could have, and no lo
   // Counted as the record counts: an emoji is one character, though it's two UTF-16 units.
   assert.ok(settingsFromStranger({ sauceTitle: '🎨'.repeat(35), sauceAuthor: '🎨'.repeat(20) }));
   assert.equal(settingsFromStranger({ sauceTitle: '🎨'.repeat(36) }), null);
+  assert.deepEqual(settingsFromStranger({ sauceLetterSpacing: '9' }), { sauceLetterSpacing: '9' }); // a host's Letter spacing reaches artists
+  assert.equal(settingsFromStranger({ sauceLetterSpacing: 'x'.repeat(5) }), null);
   for (const key of ['chars', 'charsAscii', 'palette', 'seed', 'renderStyle', 'quantize', 'smoothing']) assert.equal(settingsFromStranger({ [key]: 'x'.repeat(64 * 1024) }), null, key);
   const everyCp437Weighted = [...CP437].map((char) => char.repeat(40)).join('');
   assert.ok(settingsFromStranger({ chars: everyCp437Weighted, charsAscii: everyCp437Weighted }));

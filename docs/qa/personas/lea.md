@@ -314,7 +314,8 @@ frames, and pinch while it plays.
 ### 23. Sign it on SAUCE
 - Does: taps SAUCE and types her name as Author on the phone's keyboard, then a title, pressing return after each.
 - Expects: SAUCE's fields fit at 390 wide; the phone's keyboard doesn't cover the field she's typing in; return moves
-  on or keeps what she typed; the fields hold their widths (Author 20 characters), with a count beside each label.
+  on or keeps what she typed; the fields hold their widths (Author 20 characters), with a count beside each label;
+  Title and Author are still at the top, with Date, the For other viewers group and Export… below them to scroll to.
 - Probes: `extremes`: type 40 characters into Author and see where it stops (20 / 20 turns the warning color above
   the field, and a line under it names what didn't go in, though it may need a scroll with the keyboard up); `interrupt`: switch to ANSI and back.
 - Rated: yes, wants return on the phone's keyboard

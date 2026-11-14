@@ -63,6 +63,9 @@ export const SETTINGS = [
   // An opened file's record, what the SAUCE tab doesn't show of it, to write again (Sauce.js keptRecord), 'none' for a file
   // with no record; empty for another drawing, whose record and comment lines are Phosphor's own.
   { key: 'sauceRecord', default: '', group: 'sauce', storageKey: 'current_file.sauce.record' },
+  // The SAUCE tab's Letter spacing: 'none', '8' or '9' once chosen (Sauce.js withLetterSpacing); '' until then, when the
+  // record's flags are an opened file's as they came, or Phosphor's own (sauceUse9pxFont's).
+  { key: 'sauceLetterSpacing', default: '', group: 'sauce', most: 4, storageKey: 'current_file.sauce.letterSpacing' },
 ];
 
 const BY_KEY = new Map(SETTINGS.map(s => [s.key, s]));

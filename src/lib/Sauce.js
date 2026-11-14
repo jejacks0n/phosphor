@@ -171,7 +171,7 @@ export class Sauce {
 // The characters a record's text can't hold in CP437, of what's written (each field cut at its width, the comments
 // at 255 lines, as the export cuts them): what each is written as and the fields it's in, in field order and as each
 // first appears. What the export dialog lists.
-const LISTED = ['title', 'author', 'group', 'comments'];
+const LISTED = ['title', 'author', 'group', 'date', 'comments', 'fontName'];   // as the SAUCE tab has them
 export function sauceUnmappable(fields) {
   const sauce = new Sauce({}, fields), found = new Map();
   for (const field of LISTED) {
@@ -237,6 +237,12 @@ export function readSauce(bytes) {
     artEnd: artEndOf(bytes),
   };
 }
+
+// Letter spacing, the flags' bits 1 and 2, as the SAUCE tab names it: 'none' (not set), '8' or '9' pixels; '' for
+// the fourth, which SAUCE reserves. A spacing chosen changes those bits alone; '' (none chosen) leaves them as they came.
+const SPACINGS = ['none', '8', '9'];
+export const letterSpacingOf = (flags) => SPACINGS[(flags >> 1) & 3] ?? '';
+export const withLetterSpacing = (flags, spacing) => (SPACINGS.includes(spacing) ? (flags & ~6) | (SPACINGS.indexOf(spacing) << 1) : flags);
 
 // What an opened file's record holds that the SAUCE tab doesn't show, as the setting keeps it (sauceRecord): its
 // flags, its size, and the grid's size (cols, lines) it was opened at; 'none' for a file with no record.

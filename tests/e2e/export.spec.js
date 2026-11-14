@@ -161,6 +161,8 @@ test.describe('on a phone', () => {
     await page.getByRole('toolbar', { name: 'Animation' }).getByRole('button', { name: 'Add frame' }).click();
     await page.getByRole('button', { name: /^Blank/ }).click();
     await page.getByRole('button', { name: 'Toggle settings' }).click();
+    // SAUCE with characters CP437 lacks and comments past 255 lines: the ANSI formats' SAUCE notes and list fit too.
+    await store(page, 'project', `(p) => { Object.assign(p, { sauceAuthor: 'Wélt Kowałski €96 re', sauceGroup: 'Ïmpure Łodz Crew €XY', sauceUserComments: ${JSON.stringify('x '.repeat(40))}.repeat(300) }); }`);
     const modal = await openExportModal(page);
     const box = page.locator('div.modal-dialog');
     for (const width of [390, 320]) {

@@ -199,24 +199,34 @@ gives other apps only its characters (see [Layers](layers.md#the-select-tool)).
   FG and Set BG in them comes out as 16 or 231, and Alt+↑ and Alt+↓ step through them in order. The Brush
   paints pixels, so its black and white are always 0 and 15, and so is a 16 or 231 cell painted over;
   the recent colors keep only the color, as 0 or 15.
-- **SAUCE**, the record after the art, says what's on the SAUCE tab: title, author, group and your
-  comments. For a converted image or a blank canvas, Phosphor's own lines come first (Created with
-  Phosphor, and the settings it was converted with), then a blank line and yours. A file you opened gets
-  none of them: it comes out with its record as it went in, its date, flags (iCE colors, letter spacing),
-  font name, size and comments changed only where you changed them on the SAUCE tab. A resize changes the
-  size it gives. Comments are lines of up to 64 characters: a longer line breaks at a space, and only a
-  word longer than 64 is split. The record holds at most 255 lines. Under Comments, the SAUCE tab counts
-  the lines the record would take ("128 of 255 SAUCE lines"), Phosphor's own included and said to be, and
-  past 255 says from which line comments won't be in the file; the export dialog says it again before you
-  export. The field keeps all you paste, so trimming is yours to do.
-  Title holds 35 characters, Author and Group 20 each, counted as the record counts them (one a character,
-  an emoji too), with a count beside each field. A field stops at its width, and a line under it names what
-  a paste or a key past the end left out, until the field next changes. The record is CP437 in .ans and
-  .utf8ans alike: a character it lacks is written as its lookalike or `?`, and the export dialog lists
-  those too, for every ANSI format, with the fields each is in. Only what reaches the record is listed.
-  SAUCE text holds no control characters (tab, ESC and the like), which a terminal printing the file would
-  act on: typed or pasted, they're left out and the line under the field says so, and an export leaves out
-  any a project or an opened file still has. A comment's line breaks stay, since they make its lines.
+- **SAUCE**, the record after the art, says what's on the SAUCE tab: title, author, group, date,
+  comments, font name and letter spacing.
+  - **A converted image or a blank canvas** gets Phosphor's own comment lines first (Created with
+    Phosphor, and the settings it was converted with), then a blank line and yours; an empty date is the
+    day you export, the font name IBM VGA and the letter spacing 8px.
+  - **A file you opened** gets none of them: it comes out with its record as it went in, its date, flags
+    (iCE colors, letter spacing), font name, size and comments changed only where you changed them on the
+    SAUCE tab. An empty date or font name stays empty, and its field says so. Letter spacing changes only
+    its own bits of the flags. A resize changes the size it gives.
+  - **Widths**: Title holds 35 characters, Author, Group and Font name 20 each, counted as the record
+    counts them (one a character, an emoji too), with a count beside each field. A field stops at its
+    width, and a line under it names what a paste or a key past the end left out, until the field next
+    changes. Date is YYYYMMDD and takes digits; a date that isn't a real day gets a note under the field,
+    and is written as typed.
+  - **Comments** are lines of up to 64 characters: a longer line breaks at a space, and only a word
+    longer than 64 is split. The record holds at most 255 lines. Under Comments, the SAUCE tab counts the
+    lines the record would take ("128 of 255 SAUCE lines"), Phosphor's own included and said to be, and
+    past 255 says from which line comments won't be in the file; the export dialog says it again before
+    you export. The field keeps all you paste, so trimming is yours to do.
+  - **Font name and Letter spacing** (Not set, 8px or 9px) tell other viewers how to show the file;
+    Phosphor's view keeps your display font.
+  - **CP437**: the record is CP437 in .ans and .utf8ans alike. A character it lacks is written as its
+    lookalike or `?`, and the export dialog lists those too, for every ANSI format, with the fields each
+    is in. Only what reaches the record is listed.
+  - **Control characters** (tab, ESC and the like), which a terminal printing the file would act on,
+    can't be in SAUCE: typed or pasted, they're left out and the line under the field says so, and an
+    export leaves out any a project or an opened file still has. A comment's line breaks stay, since
+    they make its lines.
 - **.png** is a picture of the art as the ANSI view draws it, in your display font, at one pixel per
   font pixel: the frame showing, with or without Animate. With Smooth text off (the status bar's
   **Smooth**) every pixel is one of the art's colors and the file is small. With it on, the export

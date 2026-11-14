@@ -195,11 +195,14 @@ bytes of the original and the export outside the art.
 
 ### 15. SAUCE survives the round trip
 - Does: exports .ans, reopens it in a New project, and reads the SAUCE tab.
-- Expects: Title, Author, Group and Comments as they were exported (with stand-ins for what CP437 lacks).
+- Expects: Title, Author, Group, Date, Comments, Font name and Letter spacing as they were exported (with stand-ins
+  for what CP437 lacks); long.ans's date (20261113) and font name (IBM VGA) show and come back unchanged.
 - Probes: `interrupt`: save the project instead, reload, reopen it from the start screen, and check SAUCE there too.
 - Rated: yes, wants a key for Export .ans
 
-**Free time:** he'd look for the SAUCE date and font fields, clear every field and export (an empty SAUCE), compare
+**Free time:** he'd check the SAUCE Date, Font name and Letter spacing (type a 9-digit date and a 25-character font
+name, set 9px and back to what the file had, and compare the export's record byte for byte), clear every field and
+export (an empty SAUCE: an opened file's empty date and font name stay empty), compare
 SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's help text.
 
 ## Autosave, Versions, Back and Forward

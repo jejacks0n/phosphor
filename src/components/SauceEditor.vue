@@ -4,28 +4,52 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import ProjectActions from '@/components/ProjectActions.vue';
-import { MOST_COMMENT_LINES, SAUCE_WIDTHS, charCount, fitField, sauceText } from '@/lib/Sauce.js';
+import ToggleGroup from '@/components/ToggleGroup.vue';
+import { MOST_COMMENT_LINES, SAUCE_WIDTHS, charCount, fitField, keptFields, letterSpacingOf, sauceText } from '@/lib/Sauce.js';
 import { formatNumber } from '@/i18n/format.js';
 
 const project = useProjectStore();
 const drawing = useDrawingStore();
 const { t } = useI18n();
 
-// The short fields: a count by the record's characters (an emoji is one), and a line under the field naming what an
-// edit left out. The record's width is the field's: one cut, said where it happens.
-const SHORT = [
-  { key: 'sauceTitle', id: 'sauce-title', label: 'sauce.title', placeholder: 'sauce.titlePlaceholder', width: SAUCE_WIDTHS.title },
-  { key: 'sauceAuthor', id: 'sauce-author', label: 'sauce.author', placeholder: 'sauce.authorPlaceholder', width: SAUCE_WIDTHS.author },
-  { key: 'sauceGroup', id: 'sauce-group', label: 'sauce.group', placeholder: 'sauce.groupPlaceholder', width: SAUCE_WIDTHS.group },
+// The fields in the record's order of who, when and what, then what other viewers read. Each has a line under it naming
+// what an edit left out, the record's width being the field's: one cut, said where it happens. The short text fields
+// count their characters as the record does (an emoji is one); Date takes digits; Comments count in record lines.
+// An opened file's empty Date or Font name stays empty; a new drawing's is filled in on export.
+const kept = computed(() => !!keptFields(project.sauceRecord, 0, 0));
+const FIELDS = [
+  { key: 'sauceTitle', id: 'sauce-title', label: 'sauce.title', placeholder: () => t('sauce.titlePlaceholder'), width: SAUCE_WIDTHS.title, counted: true },
+  { key: 'sauceAuthor', id: 'sauce-author', label: 'sauce.author', placeholder: () => t('sauce.authorPlaceholder'), width: SAUCE_WIDTHS.author, counted: true },
+  { key: 'sauceGroup', id: 'sauce-group', label: 'sauce.group', placeholder: () => t('sauce.groupPlaceholder'), width: SAUCE_WIDTHS.group, counted: true },
+  { key: 'sauceDate', id: 'sauce-date', label: 'sauce.dateLabel', placeholder: () => t(kept.value ? 'sauce.emptyInFile' : 'sauce.datePlaceholder'), width: SAUCE_WIDTHS.date, digits: true },
+  { key: 'sauceUserComments', id: 'sauce-comments', label: 'sauce.comments', placeholder: () => t('sauce.commentsPlaceholder'), width: SAUCE_WIDTHS.comments, lines: true },
+  { key: 'sauceFontName', id: 'sauce-font', label: 'sauce.fontName', placeholder: () => (kept.value ? t('sauce.emptyInFile') : 'IBM VGA'), width: SAUCE_WIDTHS.fontName, counted: true, viewers: true },
 ];
-const COMMENTS = { key: 'sauceUserComments', id: 'sauce-comments', width: SAUCE_WIDTHS.comments, lines: true };
+const cleanOf = ({ lines = false, digits = false }) => (digits ? (raw) => raw.replace(/\D/g, '') : (raw) => sauceText(raw, lines));
+const describedBy = (f) => [f.counted && `${f.id}-count`, f.lines && 'sauce-comments-count', f.digits && 'sauce-date-format', `${f.id}-note`].filter(Boolean).join(' ');
 
 // What an edit left out, by setting, until the field next changes; a change from elsewhere (a file opened, a host's)
 // clears it, since nothing typed was cut.
 const notes = reactive({});
 const fitted = {};
-watch(() => [...SHORT, COMMENTS].map(({ key }) => project[key]), () => {
-  for (const { key } of [...SHORT, COMMENTS]) if (project[key] !== fitted[key]) notes[key] = '';
+watch(() => FIELDS.map(({ key }) => project[key]), () => {
+  for (const { key } of FIELDS) if (project[key] !== fitted[key]) notes[key] = '';
+});
+
+// A date that isn't eight digits of a real day: written as typed, with a quiet word on what SAUCE expects.
+const dateOff = computed(() => {
+  const date = project.sauceDate;
+  if (!date) return false;
+  const [y, m, d] = [date.slice(0, 4), date.slice(4, 6), date.slice(6)].map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d));
+  return !/^\d{8}$/.test(date) || day.getUTCFullYear() !== y || day.getUTCMonth() !== m - 1 || day.getUTCDate() !== d;
+});
+
+// Letter spacing as the record will say it: an opened file's flags, or Phosphor's own, until one is chosen.
+const SPACINGS = computed(() => [['none', t('sauce.spacingNone')], ['8', '8px'], ['9', '9px']].map(([key, label]) => ({ key, label })));
+const spacing = computed({
+  get: () => Object.fromEntries(['none', '8', '9'].map((key) => [key, letterSpacingOf(project.sauceFields().flags) === key])),
+  set: (picked) => { project.sauceLetterSpacing = Object.keys(picked).find((key) => picked[key]); },
 });
 
 const quoted = (text, most = 20) => ([...text].length > most ? `${[...text].slice(0, most).join('')}…` : text);
@@ -44,17 +68,17 @@ watch(() => !!fit255.value?.cut, () => { linesSpoken.value = linesNote.value; })
 
 // Mid-composition (IME) the text isn't the person's yet: it's fitted when committed. Control characters are left out
 // (a comment's line breaks stay) and said to be, though no one types them on purpose: a paste can bring them.
-function fit(event, { key, width, lines = false }) {
+function fit(event, f) {
   if (event.isComposing) return;
-  const input = event.target;
-  const { text, caret, left, stripped } = fitField(project[key] ?? '', input.value, input.selectionEnd ?? input.value.length, width, (raw) => sauceText(raw, lines));
+  const { key, width } = f, input = event.target;
+  const { text, caret, left, stripped } = fitField(project[key] ?? '', input.value, input.selectionEnd ?? input.value.length, width, cleanOf(f));
   if (text !== input.value) {
     input.value = text;
     input.setSelectionRange(caret, caret);
   }
   fitted[key] = text;
   project[key] = text;
-  notes[key] = [left && t('sauce.cut', { width: formatNumber(width), left: quoted(left) }), stripped && t('sauce.controls')].filter(Boolean).join(' ');
+  notes[key] = [left && t('sauce.cut', { width: formatNumber(width), left: quoted(left) }), stripped && !f.digits && t('sauce.controls')].filter(Boolean).join(' ');
 }
 </script>
 
@@ -65,42 +89,53 @@ function fit(event, { key, width, lines = false }) {
       <p>{{ t('sauce.description') }}</p>
 
       <fieldset :disabled="!!drawing.hostOnly" :title="drawing.hostOnly">
-        <div v-for="f in SHORT" :key="f.key" class="field">
-          <div class="label-row">
-            <label :for="f.id">{{ t(f.label) }}</label>
-            <span
-                :id="`${f.id}-count`"
-                class="count"
-                :class="{ full: charCount(project[f.key] ?? '') >= f.width }"
-                :aria-label="t('sauce.countAria', { count: charCount(project[f.key] ?? ''), width: f.width })"
-            >{{ charCount(project[f.key] ?? '') }} / {{ f.width }}</span>
+        <template v-for="f in FIELDS" :key="f.key">
+          <h4 v-if="f.viewers">{{ t('sauce.viewers') }}</h4>
+          <div class="field">
+            <div class="label-row">
+              <label :for="f.id">{{ t(f.label) }}</label>
+              <span
+                  v-if="f.counted"
+                  :id="`${f.id}-count`"
+                  class="count"
+                  :class="{ full: charCount(project[f.key] ?? '') >= f.width }"
+                  :aria-label="t('sauce.countAria', { count: charCount(project[f.key] ?? ''), width: f.width })"
+              >{{ charCount(project[f.key] ?? '') }} / {{ f.width }}</span>
+            </div>
+            <textarea
+                v-if="f.lines"
+                :id="f.id"
+                :value="project[f.key]"
+                :placeholder="f.placeholder()"
+                :aria-describedby="describedBy(f)"
+                @input="fit($event, f)"
+                @compositionend="fit($event, f)"
+            ></textarea>
+            <input
+                v-else
+                :id="f.id"
+                :value="project[f.key]"
+                type="text"
+                :inputmode="f.digits ? 'numeric' : null"
+                :placeholder="f.placeholder()"
+                :aria-describedby="describedBy(f)"
+                @input="fit($event, f)"
+                @compositionend="fit($event, f)"
+            >
+            <template v-if="f.lines">
+              <p v-if="linesNote" id="sauce-comments-count" class="lines" :class="{ over: fit255.cut }">{{ linesNote }}</p>
+              <span id="sauce-comments-spoken" class="spoken" aria-live="polite">{{ linesSpoken }}</span>
+            </template>
+            <p v-if="f.digits && dateOff" id="sauce-date-format" class="lines">{{ t('sauce.dateFormat') }}</p>
+            <p :id="`${f.id}-note`" class="cut" aria-live="polite">{{ notes[f.key] }}</p>
           </div>
-          <input
-              :id="f.id"
-              :value="project[f.key]"
-              type="text"
-              :placeholder="t(f.placeholder)"
-              :aria-describedby="`${f.id}-count ${f.id}-note`"
-              @input="fit($event, f)"
-              @compositionend="fit($event, f)"
-          >
-          <p :id="`${f.id}-note`" class="cut" aria-live="polite">{{ notes[f.key] }}</p>
-        </div>
+        </template>
 
         <div class="field">
-          <label for="sauce-comments">{{ t('sauce.comments') }}</label>
-          <textarea
-              id="sauce-comments"
-              :value="project.sauceUserComments"
-              :placeholder="t('sauce.commentsPlaceholder')"
-              aria-describedby="sauce-comments-count sauce-comments-note"
-              @input="fit($event, COMMENTS)"
-              @compositionend="fit($event, COMMENTS)"
-          ></textarea>
-          <p v-if="linesNote" id="sauce-comments-count" class="lines" :class="{ over: fit255.cut }">{{ linesNote }}</p>
-          <span id="sauce-comments-spoken" class="spoken" aria-live="polite">{{ linesSpoken }}</span>
-          <p id="sauce-comments-note" class="cut" aria-live="polite">{{ notes.sauceUserComments }}</p>
+          <span id="sauce-spacing" class="label">{{ t('sauce.spacing') }}</span>
+          <ToggleGroup v-model="spacing" class="spacing" single :options="SPACINGS" :label="t('sauce.spacing')" aria-describedby="sauce-viewers-help"/>
         </div>
+        <p id="sauce-viewers-help">{{ t('sauce.viewersHelp') }}</p>
       </fieldset>
 
       <hr/>
@@ -160,7 +195,8 @@ div.label-row {
   gap: 8px;
 }
 
-label {
+label,
+span.label {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -183,6 +219,22 @@ p.cut {
 p.cut:empty { margin-top: -6px; }   /* stays in the page, as a live region must */
 
 p.lines { margin: 0; }
+
+h4 {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Three parts across the field, each a comfortable tap. */
+div.spacing { display: flex; }
+div.spacing :deep(button) {
+  flex: 1;
+  min-height: 32px;
+}
 p.lines.over { color: var(--warning); }
 
 /* Heard, not seen: the comments' count as it crosses 255. */

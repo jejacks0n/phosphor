@@ -284,7 +284,8 @@ look at what covers what, and check what Merge down's tooltip says.
 ### 23. Phosphor opens it the same
 - Does: notes the cells on screen, starts a New project, opens the export with Edit it, and compares cells.
 - Expects: `diffCells` empty, apart from the characters the export replaced; the SAUCE fields come back as he typed
-  them (substituted where CP437 lacks a character).
+  them (substituted where CP437 lacks a character), and the export's date, font name (IBM VGA) and 8px letter spacing
+  show on the SAUCE tab.
 - Probes: `interrupt`: reload before reopening and check the start screen's recent list; `undo-redo`: after
   reopening, Cmd+Z does nothing.
 - Rated: yes, wants Cmd+O

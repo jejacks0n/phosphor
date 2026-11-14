@@ -196,6 +196,29 @@ test('a SAUCE field the person changes is the only one that changes, and a resiz
   expect([resized.width, resized.height, resized.flags, resized.fontName]).toEqual([8, 4, 0, '']);
 });
 
+test('Date, Font name and Letter spacing change only their own bytes; set back as they came, the record is the same', async () => {
+  const project = await afterAnotherDocument();
+  const original = await openFixture(project, 'edit');
+  const record = (bytes) => [...bytes.subarray(bytes.length - 128)];
+  const changed = (bytes) => record(bytes).flatMap((byte, i) => (byte === record(original)[i] || (i >= 90 && i < 94) ? [] : [i])); // file size aside
+  expect(project.sauceFields().flags).toBe(0); // the fixture's: no letter spacing set
+
+  project.sauceLetterSpacing = '9';
+  expect(changed(await exported(project))).toEqual([105]);
+  expect(readSauce(await exported(project)).flags).toBe(4);
+  project.sauceLetterSpacing = 'none';
+  expect(tail(await exported(project))).toEqual(tail(original));
+
+  project.sauceDate = '19961113';
+  project.sauceFontName = 'IBM VGA';
+  const read = readSauce(await exported(project));
+  expect([read.date, read.fontName]).toEqual(['19961113', 'IBM VGA']);
+  expect(changed(await exported(project)).every((i) => (i >= 82 && i < 90) || (i >= 106 && i < 126))).toBe(true);
+  project.sauceDate = readSauce(original).date;
+  project.sauceFontName = readSauce(original).fontName;
+  expect(tail(await exported(project))).toEqual(tail(original));
+});
+
 test('a 256-color file opens on VGA and exports 256-color codes, not 24-bit ones', async () => {
   for (const layer of ['base', 'edit']) {
     const project = await afterAnotherDocument();
