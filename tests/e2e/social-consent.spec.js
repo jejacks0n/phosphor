@@ -188,7 +188,7 @@ test('in French, the Terms and the Privacy Policy they link to are the French co
   await page.goto('/');
   await page.getByRole('combobox', { name: 'Language' }).selectOption('fr');
   await page.locator('.side-panel').getByRole('tab', { name: 'Social' }).click();
-  await page.getByRole('dialog', { name: 'Avant d\'ouvrir SOCIAL' }).getByRole('button', { name: 'Conditions d\'utilisation', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Avant d\'utiliser les salles Social' }).getByRole('button', { name: 'Conditions d\'utilisation', exact: true }).click();
   const terms = page.getByRole('dialog', { name: 'Conditions d\'utilisation' });
   await expect(terms.getByRole('heading', { level: 1 })).toHaveText('Conditions d\'utilisation');
   await expect(terms).toContainText('Dernière mise à jour : 1er novembre 2026.');

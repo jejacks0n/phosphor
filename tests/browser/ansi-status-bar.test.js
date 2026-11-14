@@ -55,14 +55,14 @@ test('picking the vector layer names it', async () => {
   expect(layer().textContent).toBe('Vector 1');
 });
 
-test('in French the label is Calque choisi', async () => {
+test('in French the label is Calque sélectionné', async () => {
   const { workspace } = await mount();
   await setLocale('fr', { persist: false });
   await nextTick();
-  expect(layer().getAttribute('aria-label')).toBe('Calque choisi : Calque 1');
+  expect(layer().getAttribute('aria-label')).toBe('Calque sélectionné : Calque 1');
   workspace.pickLayer('base');
   await nextTick();
-  expect(layer().getAttribute('aria-label')).toBe('Calque choisi : Base');
+  expect(layer().getAttribute('aria-label')).toBe('Calque sélectionné : Base');
   await setLocale('en', { persist: false });
 });
 
