@@ -41,12 +41,13 @@ const width = computed(() => clamp(workspace.sidePanelWidth));
 const tab = computed(() => workspace.sidePanelTab);
 const chatShown = computed(() => room.inRoom && !workspace.sidePanelFolded && tab.value === 'social');
 
-// Messages (not who came and went) and an invitation to draw count while the chat isn't showing (sidePanelUnread, which
+// Messages (not who came and went), an invitation to draw and (desktop) a join waiting for the host's yes count while the chat isn't showing (sidePanelUnread, which
 // the « in EditTabs shows while the panel's folded).
 const unread = computed(() => workspace.sidePanelUnread);
 watch(chatShown, (shown) => { if (shown) workspace.sidePanelUnread = 0; });
 watch(() => room.chat.at(-1)?.id, () => { if (!chatShown.value && room.chat.length && !room.chat.at(-1).presence) workspace.sidePanelUnread++; });
 watch(() => drawing.invitation, (asked) => { if (asked && !chatShown.value) workspace.sidePanelUnread++; });
+watch(() => room.asks?.length ?? 0, (now, was) => { if (now > was && !chatShown.value) workspace.sidePanelUnread++; });   // no asks on the web
 
 // In a room the panel shows the chat, not the lobby's notice line: what SOCIAL says meanwhile (a Block that failed,
 // say) is a toast.

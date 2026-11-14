@@ -128,7 +128,7 @@ const save = () => {
         <li v-for="address in addresses" :key="address">
           <span class="link-text address">{{ address }}</span>
           <span v-if="tailscale(address)" class="tag">Tailscale</span>
-          <button @click="copyAddress(address)">{{ done === 'copied' && copiedAddress === address ? t('common.copied') : t('social.desktop.copy') }}</button>
+          <button :aria-label="t('social.desktop.copyAria', { address })" @click="copyAddress(address)">{{ done === 'copied' && copiedAddress === address ? t('common.copied') : t('social.desktop.copy') }}</button>
         </li>
       </ul>
       <p v-if="!room.addresses.length" class="help">{{ t('social.desktop.loopbackOnly') }}</p>
@@ -170,7 +170,7 @@ const save = () => {
             </label>
             <button type="submit">{{ done === 'saved' ? t('common.saved') : t('common.save') }}</button>
           </form>
-          <div class="facts">
+          <div v-if="!DESKTOP || room.hasPassword" class="facts">   <!-- on desktop only a password is set at the start -->
             <p class="help">{{ t('social.host.setAtStart') }}</p>
             <p v-if="!DESKTOP">{{ room.room.public ? t('social.host.listedInLobby') : t('social.host.onlyWithLink') }}</p>
             <p v-if="room.hasPassword">{{ t('social.host.passwordSet') }}</p>
