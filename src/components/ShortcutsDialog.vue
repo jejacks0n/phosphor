@@ -21,6 +21,7 @@ const groups = computed(() => [
       [[k('mod', 'Z')], t('shortcuts.rows.undo')],
       [[k('shift', 'mod', 'Z')], t('shortcuts.rows.redo')],
       [[k('mod', 'S')], t('shortcuts.rows.saveProject')],
+      [[k('mod', 'E')], t('shortcuts.rows.export')],
       [[k('mod', 'O')], t('shortcuts.rows.openFile')],
     ],
   },
@@ -51,6 +52,15 @@ const groups = computed(() => [
       [[t('shortcuts.holdKey', { key: k('alt') })], t('shortcuts.rows.holdAlt')],
       [[t('shortcuts.holdKey', { key: k('alt', 'shift') })], t('shortcuts.rows.holdAltShift')],
       [[t('shortcuts.holdSpace')], t('shortcuts.rows.holdSpace')],
+    ],
+  },
+  {
+    title: t('shortcuts.groups.view'),
+    rows: [
+      [[k('mod', '+'), k('mod', '-')], t('shortcuts.rows.zoomInOut')],
+      [[k('mod', '0')], t('shortcuts.rows.zoomBack')],
+      [['Page Up', 'Page Down'], t('shortcuts.rows.scrollPage')],
+      [['Home', 'End', ...(isMac ? [k('mod', '↑'), k('mod', '↓')] : [])], t('shortcuts.rows.scrollEnds')],
     ],
   },
   {

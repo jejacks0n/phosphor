@@ -64,6 +64,18 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
+  // Cmd/Ctrl+= (or +) zooms in, Cmd/Ctrl+- out and Cmd/Ctrl+0 back, in the art views, about the view's middle (EditorViewport),
+  // in place of the browser's page zoom. Not in a field.
+  const ZOOM_KEYS = { '=': 2, '+': 2, '-': 0.5, '_': 0.5, '0': 0 };
+  const _handleZoomKeys = (e) => {
+    const by = ZOOM_KEYS[e.key];
+    if (by === undefined || !(e.ctrlKey || e.metaKey) || e.altKey) return false;
+    if (!projectStore.image || !['input', 'output', 'vector'].includes(workspaceStore.editorTab) || isField(e.target)) return false;
+    e.preventDefault();
+    workspaceStore.zoomRequest = { by };
+    return true;
+  };
+
   // Held keys: Alt swaps a drawing tool for the picker (Shift added: the background color), Space any
   // tool for the hand. Let go mid-drag and the tool comes back when the drag ends, so a pick or a pan
   // never turns into a stroke.
@@ -381,6 +393,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleUndoRedo(e)) return;
     if (_handleSave(e)) return;
     if (_handleOpen(e)) return;
+    if (_handleZoomKeys(e)) return;
     if (_handleHelp(e)) return;
     if (_handleVectorKeys(e)) return;
     if (_handleActiveToolKeys(e)) return;

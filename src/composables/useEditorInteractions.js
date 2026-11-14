@@ -297,6 +297,13 @@ export function useEditorInteractions(options) {
     });
   }
 
+  // A zoom key's: about the middle of the view.
+  function zoomAtMiddle(newZoom) {
+    const rect = _getScrollParent()?.getBoundingClientRect();
+    if (!rect) return callbacks.onZoomChange(newZoom);
+    _zoomToPoint(newZoom, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  }
+
   // The viewport's pointermove. A stroke captures the pointer, so its moves come here even off the
   // viewport, once each.
   function onMouseMove(event) {
@@ -568,5 +575,6 @@ export function useEditorInteractions(options) {
     handleWheel,
     centerContent,
     updateMousePos,
+    zoomAtMiddle,
   };
 }

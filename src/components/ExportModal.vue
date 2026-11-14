@@ -172,7 +172,7 @@ function cancel() {
 
         <p v-if="problem" class="note problem" role="alert">{{ problem }}</p>
 
-        <div class="foot">
+        <form class="foot" @submit.prevent="doExport">
           <div class="filename-row">
             <input
                 v-model="name"
@@ -186,12 +186,12 @@ function cancel() {
             <span class="filename-ext">.{{ selected.ext }}</span>
           </div>
           <div class="actions">
-            <button class="cancel" @click="cancel">{{ t('common.cancel') }}</button>
-            <button class="primary" :disabled="!stem || saving" @click="doExport">
+            <button type="button" class="cancel" @click="cancel">{{ t('common.cancel') }}</button>
+            <button type="submit" class="primary" :disabled="!stem || saving">
               {{ saving ? t('common.exporting') : t('export.modal.exportBtn', { name: t(`export.modal.formats.${selectedId}.name`) }) }}
             </button>
           </div>
-        </div>
+        </form>
       </div>
 
     </div>
@@ -360,7 +360,7 @@ span.count {
 }
 p.problem { color: var(--danger); }
 
-div.foot {
+form.foot {
   margin-top: auto;
   display: flex;
   flex-direction: column;

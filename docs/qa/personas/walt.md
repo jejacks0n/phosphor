@@ -85,19 +85,19 @@ script. Every section ends with Free time.
 - Does: scrolls the ANSI view down to line 1,600 with the wheel (or a touch drag), then back to the top; then pans
   sideways to column 300 with Space held and a drag.
 - Expects: the view keeps up with no long pauses: `qa.frames` keeps frames in the `frame` budget, with few over
-  `longFrame`; the last line and column are reachable and drawn.
+  `longFrame`; the last line and column are reachable and drawn; Page Down, End and Home scroll it without a click
+  first, and the shortcut list (?) names them under View.
 - Probes: `speed`: scroll as fast as the wheel goes for three seconds; `interrupt`: switch to PIXEL and back mid-scroll
   and check where the view is.
-- Rated: yes, wants Page Down and Home and End (or Cmd+arrows) to scroll the view
+- Rated: yes, wants Page Down and Home and End (or Cmd+arrows) to scroll the view, without clicking it first
 
 ### 3. See the whole file
-- Does: zooms out with Ctrl+wheel (a pinch) or the Zoom tool (Z), then presses the zoom in the status bar to go back
-  to 100%.
-- Expects: the view zooms down to 25%; the status bar shows the zoom away from 100% and pressing it goes back; zooming
-  stays smooth at this size.
+- Does: zooms out with Cmd+minus, Ctrl+wheel (a pinch) or the Zoom tool (Z), then goes back to 100% with Cmd+0 and
+  with the zoom in the status bar.
+- Expects: the view zooms down to 25%; Cmd+minus halves the zoom about the middle of the view and Cmd+0 goes back to
+  100%; the status bar shows the zoom away from 100% and pressing it goes back; zooming stays smooth at this size.
 - Probes: `extremes`: zoom to 800% and to 25%; `speed`: zoom in and out quickly with `qa.frames`.
-- Rated: yes, wants Cmd+minus and Cmd+0. Those are the browser's own keys, which do nothing to a headless page: if
-  the app has no zoom key of its own, rate it `mouse` with that want.
+- Rated: yes, wants Cmd+minus and Cmd+0 (the app's own zoom keys in the art views, in place of the browser's)
 
 ### 4. Fix one cell
 - Measured: fix-cell
@@ -125,11 +125,12 @@ script. Every section ends with Free time.
 - Rated: yes, wants Cmd+S, then Enter
 
 ### 7. Export the .ans
-- Does: presses Export .ans and saves; times it.
-- Expects: nothing listed to replace (every character is CP437); it saves under the `file` budget.
+- Does: presses Cmd+E (or Export .ans) and Enter in the file name; times it.
+- Expects: nothing listed to replace (every character is CP437); Enter exports, as in Save project; it saves under the
+  `file` budget; the shortcut list names Cmd+E.
 - Probes: `again`: export twice and compare the two files' bytes (the same); `interrupt`: press a tool key while it's
   exporting and check the export still lands whole.
-- Rated: yes, wants a key for Export .ans
+- Rated: yes, wants Cmd+E, then Enter
 
 **Free time:** he'd hide Layer 1 and look at the black base, check the PIXEL tab at this size, select all with Cmd+A and
 look at the status bar, and take `qa.memory` again.
@@ -198,7 +199,7 @@ bytes of the original and the export outside the art.
 - Expects: Title, Author, Group, Date, Comments, Font name and Letter spacing as they were exported (with stand-ins
   for what CP437 lacks); long.ans's date (20261113) and font name (IBM VGA) show and come back unchanged.
 - Probes: `interrupt`: save the project instead, reload, reopen it from the start screen, and check SAUCE there too.
-- Rated: yes, wants a key for Export .ans
+- Rated: yes, wants Cmd+E, then Enter
 
 **Free time:** he'd check the SAUCE Date, Font name and Letter spacing (type a 9-digit date and a 25-character font
 name, set 9px and back to what the file had, and compare the export's record byte for byte), clear every field and
