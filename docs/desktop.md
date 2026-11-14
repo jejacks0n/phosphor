@@ -47,8 +47,13 @@ project opened with Open…, Open Recent or a double-click saves back to where i
 asks where the first time. A save is written whole: if it fails, the file it would have replaced is left as it was.
 Exports still ask where each time.
 
-Double-clicking a `.phosphor` file opens it in Phosphor, and `.ans` and `.utf8ans` files can open in it too (Open
-With, or as the default if you choose it). With Phosphor already open, the file opens there.
+Double-clicking a `.phosphor` file opens it in Phosphor. With Phosphor already open, the file opens there. The rest
+of what Phosphor opens is offered under **Open With**, and you can make Phosphor the default for any of them:
+
+- **`.ans`, `.utf8ans` and `.diz`**: on every system. On Windows, installing Phosphor makes it their default.
+- **`.asc`, `.nfo`, `.txt` and pictures** (PNG, JPEG, GIF, WebP, BMP, AVIF and SVG): on macOS, and on Linux except
+  `.asc`. On Windows, open them with Open… or by dropping them on the window: other apps own them there (`.nfo` is
+  Windows' System Information file), so installing Phosphor doesn't claim them.
 
 ## Your name
 
