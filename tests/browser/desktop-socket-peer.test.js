@@ -104,6 +104,21 @@ describe('openSocketPeer', () => {
       expect(t.socket().readyState).toBe(3);
     });
 
+    it('fires onbufferedamountlow for a drain between two polls, after a read saw it backed up', () => {
+      vi.useFakeTimers();
+      const t = make({ initiator: true });
+      t.socket().open();
+      const ch = t.onOpen.mock.calls[0][0];
+      const low = vi.fn();
+      ch.bufferedAmountLowThreshold = 100;
+      ch.onbufferedamountlow = low;
+      t.socket().bufferedAmount = 500;
+      expect(ch.bufferedAmount).toBe(500);
+      t.socket().bufferedAmount = 0;   // drained before the poll looked
+      vi.advanceTimersByTime(20);
+      expect(low).toHaveBeenCalledTimes(1);
+    });
+
     it('fires onbufferedamountlow when the buffer drains to its threshold', () => {
       vi.useFakeTimers();
       const t = make({ initiator: true });
