@@ -161,3 +161,28 @@ test('Export .png: the modal shows a smooth/hard toggle when smooth text is on; 
   expect(hardHeader.width % cols).toBe(0); // a whole number of font pixels a cell
   expect(hardHeader.height % rows).toBe(0);
 });
+
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  test('the Export dialog stacks its list over the format, so the description, the whole name and Export fit, down to 320 wide', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('switch', { name: 'Animate' }).check();
+    await page.getByRole('toolbar', { name: 'Animation' }).getByRole('button', { name: 'Add frame' }).click();
+    await page.getByRole('button', { name: /^Blank/ }).click();
+    await page.getByRole('button', { name: 'Toggle settings' }).click();
+    const modal = await openExportModal(page);
+    const box = page.locator('div.modal-dialog');
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 700 });
+      for (const format of ['ANS', 'UTF-8 ANS', 'PNG', 'GIF', 'Animated ANS', 'Animated UTF-8 ANS', 'Cast']) {
+        await modal.getByRole('button', { name: new RegExp(`^${format} \\.`) }).click();
+        const where = `${format}, ${width} wide`;
+        expect(await box.evaluate((d) => d.scrollWidth - d.clientWidth), where).toBeLessThanOrEqual(0); // nothing runs off to the side
+        for (const part of [modal.locator('span.filename-ext'), modal.getByRole('button', { name: new RegExp(`^Export ${format}$`) })]) {
+          const { x, width: w } = await part.boundingBox();
+          expect(x + w, where).toBeLessThanOrEqual(width);
+        }
+      }
+    }
+  });
+});
