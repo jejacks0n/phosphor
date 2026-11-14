@@ -80,7 +80,7 @@ watch(() => room.inRoom, async (inRoom, was) => {
 
 const pick = (name) => { workspace.sidePanelTab = name; };
 
-// The editor tabs' marker, sliding to the tab picked, and placed again wherever the tabs move to.
+// The marker along the picked tab's foot, sliding to the tab picked, and placed again wherever the tabs move to.
 const tabList = useTemplateRef('tabList');
 const { style: markerStyle, update: placeMarker } = useTabIndicator(tabList, '[role="tab"].on');
 watch([tab, width, () => workspace.sidePanelFolded, () => room.inRoom, unread], () => nextTick(placeMarker), { immediate: true });
@@ -180,50 +180,46 @@ div.grip:focus-visible {
   flex: 1;
   min-height: 0;
 }
-/* Its tabs, as the editor's (EditTabs.vue): a strip of the tab bar's color, the picked tab the panel's own color and open
-   into it, marked with the glowing bar along its top. */
+/* Its tabs, unlike the editor's folder tabs (EditTabs.vue): a flat strip in the panel's own color, small spaced caps, the
+   picked tab marked by a thin accent line along its foot that slides to the tab picked. */
 div.tabs {
   position: relative;
   display: flex;
-  align-items: flex-end;
-  gap: 3px;
+  align-items: stretch;
   flex-shrink: 0;
-  padding: 9px 6px 0;
+  box-sizing: border-box;
+  height: 38px;
+  padding: 0 6px;
   border-radius: 5px 5px 0 0;
   border-bottom: 1px solid var(--border);
-  background: var(--surface-0);
 }
 div.tablist {
   position: relative;
   display: flex;
   flex: 1;
-  align-items: flex-end;
-  gap: 3px;
+  align-items: stretch;
 }
 div.tabs button.panel {   /* as EditTabs' « folded, so it keeps its place */
-  align-self: center;
-  margin: 0 5px 7px 4px;   /* the right and bottom put it where EditTabs' « is (measured, at both) */
+  align-self: flex-start;
+  margin: 8.5px 5px 0 4px;   /* puts it where EditTabs' « is (measured) */
   padding: 4px;
   font-size: 14px;
 }
 div.tabs button[role='tab'] {
   position: relative;
-  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  height: 28px;
-  margin-bottom: -1px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-bottom: 1px solid transparent;
-  border-radius: 5px 5px 0 0;
+  height: auto;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
   box-shadow: none;
-  background: var(--surface-0);
+  background: none;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: normal;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
   transition: color 0.3s ease;
@@ -231,10 +227,9 @@ div.tabs button[role='tab'] {
 div.tabs button[role='tab']:hover { /* not the global button lift */
   transform: none;
   box-shadow: none;
-  border-color: var(--border) var(--border) transparent;
+  background: none;
 }
 div.tabs button[role='tab']:not(.on):hover {
-  background: var(--surface-2);
   color: var(--accent);
 }
 div.tabs button[role='tab']:focus-visible {
@@ -242,30 +237,27 @@ div.tabs button[role='tab']:focus-visible {
   outline-offset: -2px;
 }
 div.tabs button[role='tab'].on {
-  height: 31px;
-  font-weight: 500;
-  background: var(--surface-1);
+  font-weight: 600;
   color: var(--text);
-  text-shadow: 0 0 5px var(--accent-glow);
 }
-div.indicator { /* the editor tabs' marker, along the picked tab's top */
+div.indicator { /* along the picked tab's foot, over the strip's line */
   position: absolute;
-  top: 0;
+  bottom: -1px;
   left: 0;
-  height: 4px;
-  border-radius: 4px 4px 0 0;
+  height: 2px;
   z-index: 2;
   pointer-events: none;
   transition: width 0.5s cubic-bezier(0.23, 1, 0.32, 1), transform 0.1s ease;
   background: var(--accent);
-  box-shadow: 0 0 3px var(--accent), 0 0 20px var(--accent);
 }
-span.beta {   /* as the editor tabs' marks */
+span.beta {   /* raised over the end of SOCIAL */
+  position: absolute;
+  top: 6px;
+  right: 6px;
   font-size: 8px;
+  font-weight: normal;
   letter-spacing: 0.04em;
   color: var(--accent);
-  align-self: flex-start;
-  margin-top: 7px;
 }
 aside.layers {
   flex: 1;
