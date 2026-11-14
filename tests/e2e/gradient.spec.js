@@ -1,11 +1,11 @@
-// The Paint Bucket's gradients through the real UI: a drag on each tab and in each Fill mode, and Shift.
+// The Gradient tool through the real UI: a drag on each tab and in each Fill mode, and Shift.
 import { test, expect, openApp, store, tab, cellPoint, pixelPoint, drag, chars } from './support.js';
 
-// The bucket, filling the whole picture (Tolerance 100), from red to blue, set to a Gradient.
-async function gradientBucket(page, gradient) {
-  await page.keyboard.press('g');
+// The Gradient (Shift+G), filling the whole picture (Tolerance 100), from red to blue, in the shape given.
+async function gradientTool(page, shape) {
+  await page.keyboard.press('Shift+G');
   await store(page, 'workspace', (w) => { Object.assign(w, { editFillTolerance: 100, editFgColor: '#ff0000', editBgColor: '#0000ff', editFgNone: false, editBgNone: false }); });
-  await page.getByRole('group', { name: 'Gradient' }).getByRole('button', { name: gradient }).click();
+  await page.getByRole('group', { name: 'Shape', exact: true }).getByRole('button', { name: shape }).click();
 }
 const paintAt = (page, x, y) => store(page, 'project', `(p) => { const c = p.paintLayer?.pixelAt(${x}, ${y}); return c ? [c.r, c.g, c.b] : null; }`);
 const size = (page) => store(page, 'project', (p) => ({ cols: p.cols, rows: p.rows }));
@@ -13,7 +13,7 @@ const size = (page) => store(page, 'project', (p) => ({ cols: p.cols, rows: p.ro
 test('PIXEL tab, Linear: a drag fills from FG at the press to BG at the release, as one undo step', async ({ page }) => {
   await openApp(page);
   await tab(page, 'PIXEL').click();
-  await gradientBucket(page, 'Linear');
+  await gradientTool(page, 'Linear');
   const { cols } = await size(page);
   await drag(page, await pixelPoint(page, 0, 4), await pixelPoint(page, cols - 1, 4));
   await expect.poll(() => paintAt(page, 0, 10)).toEqual([255, 0, 0]);
@@ -27,7 +27,7 @@ test('PIXEL tab, Linear: a drag fills from FG at the press to BG at the release,
 
 test('ANSI tab, Fill: Normal, Spherical: the press is the center, the line shows while dragging; Shift snaps a Linear line to 45°', async ({ page }) => {
   await openApp(page);
-  await gradientBucket(page, 'Spherical');
+  await gradientTool(page, 'Spherical');
   const from = await cellPoint(page, 10, 10, 0), to = await cellPoint(page, 10, 14, 0);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
@@ -41,7 +41,7 @@ test('ANSI tab, Fill: Normal, Spherical: the press is the center, the line shows
   await page.keyboard.press('ControlOrMeta+z');
   await expect.poll(() => paintAt(page, 0, 0)).toBeNull();
 
-  await gradientBucket(page, 'Linear');
+  await gradientTool(page, 'Linear');
   const start = await cellPoint(page, 2, 4, 0), end = await cellPoint(page, 20, 6, 0); // a little downhill
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
@@ -59,7 +59,7 @@ test('ANSI tab, Fill: Normal, Spherical: the press is the center, the line shows
 
 test('ANSI tab, Fill: Cells, Linear: blend characters in the two colors', async ({ page }) => {
   await openApp(page);
-  await gradientBucket(page, 'Linear');
+  await gradientTool(page, 'Linear');
   await page.getByRole('button', { name: 'Colors only' }).click();
   await page.getByRole('button', { name: '▒▓ Cells' }).click();
   await expect(page.getByRole('group', { name: 'Set', exact: true })).toHaveCount(0); // a gradient sets the character and both colors

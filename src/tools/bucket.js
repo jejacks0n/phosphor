@@ -4,11 +4,6 @@ import { ctx2d } from '@/lib/Canvas';
 import { parseKey } from '@/document/editCells';
 import { cellIndex, charRowsOf, isSolidGlyph, showsChar } from '@/lib/Cells';
 import { selectionClip } from '@/lib/selectionClip';
-import { gradientAt, blendColor, blendChar } from '@/lib/Gradient';
-import { hex2rgb } from '@/lib/ColorUtils';
-import { toast } from '@/composables/useToast';
-import { snappedEnd } from './shapes';
-import { watch } from 'vue';
 import { t } from '@/i18n/index.js';
 
 // Grid pixels the fill stops at: the picked layer's edit cells showing a character with something to see through (text,
@@ -32,7 +27,7 @@ function wallsOf(project, clip, picked) {
 // Fill → Cells (ANSI view): the cells matching the one clicked (what bucketMatch lights: colors within
 // the Tolerance, the character exactly), connected to it or anywhere, inside the selection, as
 // { x, y } cells (none off the grid).
-function cellArea(project, workspace, pos) {
+export function cellArea(project, workspace, pos) {
   const width = project.cols, height = charRowsOf(project.rows);
   const start = { x: Math.floor(pos.x), y: Math.floor(pos.y / 2) };
   if (start.x < 0 || start.y < 0 || start.x >= width || start.y >= height) return [];
@@ -46,16 +41,16 @@ function cellArea(project, workspace, pos) {
 
 // Fill → Normal and the PIXEL view: the grid pixels the fill covers ({ x, y, alpha }, alpha below 1
 // where it feathers), by Tolerance and Contiguous, stopping at walls.
-function pixelArea(project, workspace, pos) {
+export function pixelArea(project, workspace, pos) {
   const imageData = ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, project.cols, project.rows); // with the upper layers' pixels, as the view shows
   return floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project, selectionClip(workspace), workspace.pickedLayer));
 }
 
-const fillsCells = (workspace, view) => view === 'output' && workspace.bucketFillWith === 'cells';
+export const fillsCells = (workspace, view) => view === 'output' && workspace.bucketFillWith === 'cells';
 
-// Solid: Cells gives the area what bucketSet lights (your FG and BG, None keeps the cell's, and
+// Cells gives the area what bucketSet lights (your FG and BG, None keeps the cell's, and
 // character) as edit cells over the paint; Normal paints it in the foreground color.
-function fillSolid({ project, workspace, view }, pos) {
+export function fillSolid({ project, workspace, view }, pos) {
   if (fillsCells(workspace, view)) {
     const set = workspace.bucketSet, colors = workspace.typingAttrs();
     const attrs = { ...(set.fg ? { fg: colors.fg, fgIndex: colors.fgIndex } : {}), ...(set.bg ? { bg: colors.bg, bgIndex: colors.bgIndex } : {}), ...(set.char ? { char: workspace.activeChar } : {}) };
@@ -66,33 +61,10 @@ function fillSolid({ project, workspace, view }, pos) {
   project.commitEdit();
 }
 
-// Linear or Spherical, from the drag's line: Cells gives each cell of the area its blend character
-// in your two colors (Set doesn't apply); Normal paints each pixel its blended color, at the brush
-// opacity, as a solid fill paints.
-function fillGradient({ project, workspace, view }, from, to) {
-  const shape = workspace.bucketGradient, fg = workspace.editFgColor, bg = workspace.editBgColor;
-  if (fillsCells(workspace, view)) {
-    const { editFgIndex: fgIndex, editBgIndex: bgIndex } = workspace;
-    const cells = cellArea(project, workspace, from).map(({ x, y }) => ({ col: x, row: y, attrs: { char: blendChar(shape, from, to, x, y), fg, bg, fgIndex, bgIndex } }));
-    project.writeEditCells(cells, { clearPaint: true });
-  } else {
-    const f = hex2rgb(fg), b = hex2rgb(bg);
-    const pixels = pixelArea(project, workspace, from).map((p) => ({ ...p, ...blendColor(f, b, gradientAt(shape, from, to, p.x + 0.5, p.y + 0.5)) }));
-    project.paintEditPixels(pixels, workspace.editBrushOpacity, workspace.editBrushStack);
-  }
-  project.commitEdit();
-}
-
-// The gradient's line while it's dragged: where it started, and where the pointer is before Shift
-// has its say.
-let start = null, last = null, stopShift = null;
-const lineEnd = (workspace) => (workspace.isShiftPressed ? snappedEnd(start, last) : last);
-
-function stopDrag({ workspace }) {
-  stopShift?.();
-  stopShift = null;
-  workspace.shapeDrag = null;
-  start = null;
+// A press outside the selection, where a fill has nothing to fill.
+export function outsideSelection({ workspace, view }, pos) {
+  const clip = selectionClip(workspace), x = Math.floor(pos.x), y = Math.floor(pos.y);
+  return !!clip && !(fillsCells(workspace, view) ? clip.cell(x, Math.floor(y / 2)) : clip.pixel(x, y));
 }
 
 const cellOptions = { views: ['output'], when: (ws) => ws.bucketFillWith === 'cells' };
@@ -107,6 +79,21 @@ const SET_OPTIONS = [
   { key: 'char', get label() { return t('tools.matchToggles.char'); }, get title() { return t('tools.bucket.setCharTitle'); } },
 ];
 
+// The Paint Bucket's and the Gradient's own rows: how far a fill reaches, and (ANSI view) what it fills with.
+export const FILL_OPTIONS = [
+  { key: 'editFillTolerance', get label() { return t('tools.bucket.tolerance'); }, get title() { return t('tools.bucket.toleranceTitle'); }, min: 0, max: 100 },
+  { key: 'editFillContiguous', get label() { return t('tools.bucket.contiguous'); }, get title() { return t('tools.bucket.contiguousTitle'); }, type: 'checkbox' },
+  { key: 'editFillFeather', get label() { return t('tools.bucket.feather'); }, get title() { return t('tools.bucket.featherTitle'); }, min: 0, max: 100, when: (ws) => ws.editorTab === 'input' || ws.bucketFillWith !== 'cells' },
+  { key: 'bucketMatch', get label() { return t('tools.bucket.match'); }, type: 'toggles', options: MATCH_OPTIONS, ...cellOptions },
+];
+export const FILL_WITH = {
+  key: 'bucketFillWith', get label() { return t('tools.bucket.fill'); }, type: 'dropdown', views: ['output'],
+  choices: [
+    { value: 'normal', get label() { return t('tools.drawWith.normal'); }, glyph: '' }, // the color you see, at grid resolution
+    { value: 'cells', get label() { return t('tools.drawWith.cells'); }, glyph: '▒▓' },      // whole cells: their colors and characters
+  ],
+};
+
 export default {
   id: 'bucket',
   get title() { return t('tools.bucket.title'); },
@@ -116,65 +103,16 @@ export default {
   kind: 'paint',
   altPicks: true,
   options: [
-    { key: 'editFillTolerance', get label() { return t('tools.bucket.tolerance'); }, get title() { return t('tools.bucket.toleranceTitle'); }, min: 0, max: 100 },
-    { key: 'editFillContiguous', get label() { return t('tools.bucket.contiguous'); }, get title() { return t('tools.bucket.contiguousTitle'); }, type: 'checkbox' },
-    { key: 'editFillFeather', get label() { return t('tools.bucket.feather'); }, get title() { return t('tools.bucket.featherTitle'); }, min: 0, max: 100, when: (ws) => ws.editorTab === 'input' || ws.bucketFillWith !== 'cells' },
-    { key: 'bucketMatch', get label() { return t('tools.bucket.match'); }, type: 'toggles', options: MATCH_OPTIONS, ...cellOptions },
-    { key: 'bucketSet', get label() { return t('tools.bucket.set'); }, type: 'toggles', options: SET_OPTIONS, views: ['output'], when: (ws) => ws.bucketFillWith === 'cells' && ws.bucketGradient === 'solid' },
-    {
-      key: 'bucketFillWith', get label() { return t('tools.bucket.fill'); }, type: 'dropdown', views: ['output'],
-      choices: [
-        { value: 'normal', get label() { return t('tools.drawWith.normal'); }, glyph: '' }, // the color you see, at grid resolution
-        { value: 'cells', get label() { return t('tools.drawWith.cells'); }, glyph: '▒▓' },      // whole cells: their colors and characters
-      ],
-    },
-    {
-      key: 'bucketGradient', get label() { return t('tools.bucket.gradient'); }, type: 'segmented',
-      choices: [
-        { value: 'solid', get label() { return t('tools.bucket.gradientSolid'); } },
-        { value: 'linear', get label() { return t('tools.bucket.gradientLinear'); } },
-        { value: 'spherical', get label() { return t('tools.bucket.gradientSpherical'); } },
-      ],
-    },
+    ...FILL_OPTIONS,
+    { key: 'bucketSet', get label() { return t('tools.bucket.set'); }, type: 'toggles', options: SET_OPTIONS, ...cellOptions },
+    FILL_WITH,
   ],
-  // What Shift does, for the status bar.
-  shiftHint: (ws) => (ws.bucketGradient === 'solid' ? null : t('tools.shapes.shiftSnap45')),
-  // Solid: one click fills, with no stroke to continue. Linear and Spherical: a drag draws the line
-  // (shown as Shapes shows a line) and the release fills; a press outside the selection does nothing.
+  // One click fills, with no stroke to continue; a click outside the selection does nothing.
   begin(ctx, pos, event) {
-    const { project, workspace } = ctx;
-    if (!project.renderer.outputCanvas) return false;
+    if (!ctx.project.renderer.outputCanvas) return false;
     event.stopPropagation();
-    const clip = selectionClip(workspace), x = Math.floor(pos.x), y = Math.floor(pos.y);
-    if (clip && !(fillsCells(workspace, ctx.view) ? clip.cell(x, Math.floor(y / 2)) : clip.pixel(x, y))) return false; // outside the selection: nothing to fill
-    if (workspace.bucketGradient === 'solid') {
-      fillSolid(ctx, pos);
-      return false;
-    }
-    start = last = pos;
-    workspace.shapeDrag = { from: pos, to: pos, line: true };
-    stopShift?.();
-    // Shift going down or up snaps the line at once, with the pointer still.
-    stopShift = watch(() => workspace.isShiftPressed, () => {
-      workspace.shapeDrag = { from: start, to: lineEnd(workspace), line: true };
-    }, { flush: 'sync' });
-    return true;
+    if (outsideSelection(ctx, pos)) return false;
+    fillSolid(ctx, pos);
+    return false;
   },
-  move({ workspace }, from, to) {
-    if (!start) return;
-    last = to;
-    workspace.shapeDrag = { from: start, to: lineEnd(workspace), line: true };
-  },
-  // Released on the spot it was pressed: a click, which fills solid. A gradient needs both colors.
-  end(ctx) {
-    const drag = ctx.workspace.shapeDrag, from = start;
-    stopDrag(ctx);
-    if (!from || !drag) return;
-    const to = drag.to;
-    if (Math.floor(to.x) === Math.floor(from.x) && Math.floor(to.y) === Math.floor(from.y)) fillSolid(ctx, from);
-    else if (ctx.workspace.editFgNone || ctx.workspace.editBgNone) toast(t('tools.bucket.gradientNeedsColors'));
-    else fillGradient(ctx, from, to);
-  },
-  // A pinch took over the drag: nothing is filled.
-  cancel: stopDrag,
 };

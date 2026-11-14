@@ -36,6 +36,8 @@ async function toggle() {
   else if (menu.right > width - MARGIN) position.value = { ...edge, right: `${MARGIN}px` };
 }
 const close = () => { isOpen.value = false; };
+const open = () => { if (!isOpen.value) toggle(); };
+defineExpose({ open, close });
 // An item chosen closes the menu; focus that was on the item goes back to the trigger, not to the page.
 function chosen() {
   if (!props.closeOnSelect) return;
@@ -73,6 +75,7 @@ onBeforeUnmount(() => {
 
 <template>
   <article ref="root" class="dropdown" :class="{ open: isOpen }">
+    <slot name="before"></slot><!-- inside, so the menu lines up with it too and a press on it isn't outside -->
     <button class="dropdown-trigger" :aria-label="triggerLabel" @click="toggle" :disabled="disabled" :title="label">
       <slot name="trigger">
         <span v-if="icon">{{ icon }}</span>

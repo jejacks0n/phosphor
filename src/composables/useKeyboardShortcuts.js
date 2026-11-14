@@ -281,14 +281,14 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
-  // Tool keys (each tool's keys: P Pencil, B Brush, G Paint Bucket, T or K Edit Mode...): a plain
+  // Tool keys (each tool's keys: P Pencil, B Brush, G Paint Bucket, Shift+G Gradient, T or K Edit Mode...): a
   // letter chooses the tool, when the view offers it. Not while typing (Edit Mode with its cursor, a
   // field), mid-drag, with a tool held by a key, or with the color box or palette layer open.
   const _handleToolKeys = (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || e.repeat || !/^[a-z]$/i.test(e.key)) return false;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || !/^[a-z]$/i.test(e.key)) return false;
     if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
     if (workspaceStore.isPainting || workspaceStore.heldTool || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
-    const key = e.key.toUpperCase();
+    const key = (e.shiftKey ? 'Shift+' : '') + e.key.toUpperCase();
     const tool = offeredTools(workspaceStore.editorTab, projectStore).find(({ keys }) => keys?.includes(key));
     if (!tool) return false;
     e.preventDefault();

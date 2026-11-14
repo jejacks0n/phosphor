@@ -364,6 +364,12 @@
     "titleWithKeys": "{title} · {keys}",
     "keysOr": "{a} or {b}",
     "moreTools": "More tools",
+    "groups": {
+      "fill": "Fill tools",
+      "select": "Selection tools",
+      "navigate": "View tools",
+      "vselect": "Vector selection tools"
+    },
     "pencil": {
       "title": "Pencil",
       "connect": "Connect",
@@ -400,12 +406,14 @@
       "fill": "Fill",
       "setFgTitle": "Set the cells to your foreground color",
       "setBgTitle": "Set the cells to your background color",
-      "setCharTitle": "Set the cells to your character",
-      "gradient": "Gradient",
-      "gradientSolid": "Solid",
-      "gradientLinear": "Linear",
-      "gradientSpherical": "Spherical",
-      "gradientNeedsColors": "A gradient needs both a foreground and a background color: neither can be None."
+      "setCharTitle": "Set the cells to your character"
+    },
+    "gradient": {
+      "title": "Gradient",
+      "shape": "Shape",
+      "linear": "Linear",
+      "spherical": "Spherical",
+      "needsColors": "A gradient needs both a foreground and a background color: neither can be None."
     },
     "picker": {
       "title": "Eyedropper",
@@ -1059,6 +1067,7 @@
       "brush": "Brush",
       "eraser": "Eraser (with Select and a selection: erase it)",
       "bucket": "Paint Bucket",
+      "gradient": "Gradient",
       "shapes": "Shapes",
       "picker": "Eyedropper",
       "wand": "Magic Wand: select by color or character",

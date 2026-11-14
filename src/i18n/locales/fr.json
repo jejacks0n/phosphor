@@ -364,6 +364,12 @@
     "titleWithKeys": "{title} · {keys}",
     "keysOr": "{a} ou {b}",
     "moreTools": "Plus d'outils",
+    "groups": {
+      "fill": "Outils de remplissage",
+      "select": "Outils de sélection",
+      "navigate": "Outils de vue",
+      "vselect": "Outils de sélection vectorielle"
+    },
     "pencil": {
       "title": "Crayon",
       "connect": "Connecter",
@@ -400,12 +406,14 @@
       "fill": "Remplir",
       "setFgTitle": "Appliquer votre couleur de premier plan aux cellules",
       "setBgTitle": "Appliquer votre couleur d'arrière-plan aux cellules",
-      "setCharTitle": "Appliquer votre caractère aux cellules",
-      "gradient": "Dégradé",
-      "gradientSolid": "Uni",
-      "gradientLinear": "Linéaire",
-      "gradientSpherical": "Sphérique",
-      "gradientNeedsColors": "Un dégradé nécessite une couleur de premier plan et une couleur d'arrière-plan : aucune ne peut être Aucun."
+      "setCharTitle": "Appliquer votre caractère aux cellules"
+    },
+    "gradient": {
+      "title": "Dégradé",
+      "shape": "Forme",
+      "linear": "Linéaire",
+      "spherical": "Sphérique",
+      "needsColors": "Un dégradé nécessite une couleur de premier plan et une couleur d'arrière-plan : aucune ne peut être Aucun."
     },
     "picker": {
       "title": "Pipette",
@@ -1059,6 +1067,7 @@
       "brush": "Pinceau",
       "eraser": "Gomme (avec Sélection et une sélection active : l'effacer)",
       "bucket": "Pot de peinture",
+      "gradient": "Dégradé",
       "shapes": "Formes",
       "picker": "Pipette",
       "wand": "Baguette magique : sélectionner par couleur ou caractère",

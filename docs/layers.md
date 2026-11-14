@@ -644,16 +644,16 @@ the two halves of each cell's base colors.
   foreground color (to start), background color and/or character, as edit cells. **Contiguous**
   works as in Colors only mode; there's no Feathering. Cells fills text and lines too, since it's
   matching cells rather than flowing around them.
-- **Paint Bucket**'s **Gradient** choice fills with a blend from your foreground color to your
-  background color instead of one color. **Solid** (to start) is the plain fill. In **Linear** and
-  **Spherical** you drag a line, which shows while you drag, and the fill lands when you let go. The
-  area is the bucket's usual one: the selection if there is one, otherwise what a click where the
+- **Gradient** (**Shift+G**, in the Paint Bucket's slot) fills with a blend from your foreground color to
+  your background color instead of one color. Its **Shape** is **Linear** (to start) or **Spherical**. You
+  drag a line, which shows while you drag, and the fill lands when you let go. The
+  area is the Paint Bucket's usual one: the selection if there is one, otherwise what a click where the
   drag starts would fill, by the same Tolerance, Contiguous, Feathering and Match. **Linear** is
   foreground where you press and background where you let go, with the bands square to the line, so
   a diagonal drag makes a diagonal gradient. Before the press it stays foreground, and past the
   release it stays background. **Spherical** is a circle: foreground at the press, background as far
   out as the line is long, and evenly between. **Shift** snaps the line to steps of 45°. A click
-  without a drag fills with solid foreground, and a drag with either color set to None fills nothing
+  without a drag fills nothing (the Paint Bucket fills with one color), and a drag with either color set to None fills nothing
   and says why. In the pixel view, and in the ANSI view's Colors only mode, every grid pixel gets its own
   blended color (blended in sRGB), at the Brush opacity. With the CGA or VGA palette or a color list,
   the blend shows in the palette's colors, banded, as any paint does, and comes back smooth in full
@@ -681,9 +681,15 @@ the two halves of each cell's base colors.
 ### Tool keys
 
 A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the same tool: **P**
-Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Eyedropper, **H** Hand,
+Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **Shift+G** Gradient, **U** Shapes, **I** Eyedropper, **H** Hand,
 **Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Flip and **M** Select, in the views that have the tool
 (Edit Mode and Flip are the ANSI view's). Each tool's button shows its key.
+
+Some tools share a button: the Paint Bucket and Gradient, Select and the Magic Wand, the Hand and Zoom,
+and in the vector view the Vector select and Node tools. The button shows the one you chose last (the
+first until then); click it to use that one. Its corner, a long press or a right-click opens the
+rest, each with its key (not on a phone). A tool's key chooses it whichever one the button shows.
+When the toolbar is too narrow, the ⋯ menu lists the shared button's tools one by one.
 In Edit Mode letters type, so press **Escape** to put the cursor away first. Choosing Edit Mode
 again brings the cursor back where it was if that's in view, or else to the top-left of the view
 (there the first time); choosing it never scrolls, nor does a click that places the cursor. With the Select tool
@@ -696,7 +702,7 @@ pixel or ANSI view with either of them chosen and the other view takes it too.
 
 These work in both the ANSI and the pixel view, for as long as you hold the key:
 
-- **Alt** (Option on a Mac), with the Pencil, Brush, Paint Bucket or Shapes: the Eyedropper. A
+- **Alt** (Option on a Mac), with the Pencil, Brush, Paint Bucket, Gradient or Shapes: the Eyedropper. A
   click picks the foreground color; add **Shift** to pick the background color instead. In the ANSI
   view it reads the cell as the Eyedropper does, so on an opened .ans it gets the character's colors,
   not the picture under it.
@@ -704,7 +710,7 @@ These work in both the ANSI and the pixel view, for as long as you hold the key:
   ended (with either of them, in either view) to where you click, and keeps going if you drag.
 - **Shift**, while dragging a shape: a Rectangle becomes a square and an Ellipse a circle, and a Line
   snaps to steps of 45°. A Single or Double line runs only straight across or down, Shift or not.
-- **Shift**, while dragging the Paint Bucket's Linear or Spherical gradient: the line snaps to steps
+- **Shift**, while dragging a Gradient: the line snaps to steps
   of 45°.
 - **Space**, with any tool: the Hand, to drag the view around (the middle mouse button does too).
   Space still types in Edit Mode and in text fields.
