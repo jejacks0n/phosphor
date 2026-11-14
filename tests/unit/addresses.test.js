@@ -1,5 +1,5 @@
 // The table of addresses: which tab, SOCIAL page or the lobby each path is, and where a page may land.
-import { test, expect } from 'vitest';
+import { test, expect, vi, afterEach } from 'vitest';
 import { PLACES, pathOf, arrivalPage } from '../../src/lib/addresses.js';
 
 test('every tab and page round-trips through its path; the lobby has none of its own', () => {
@@ -35,3 +35,12 @@ test.each([
   ['onboarding', {}, 'lobby'], ['onboarding', { needsOnboarding: true }, 'onboarding'],
   ['start-room', {}, 'lobby'], ['start-room', { canStart: true }, 'start-room'],
 ])('%s with %o lands on %s', (page, fields, expected) => expect(arrivalPage(page, { ...known, ...fields })).toBe(expected));
+test('desktop arrivalPage sends sign-in and account to lobby; hosting stays', () => {
+  vi.stubEnv('VITE_DESKTOP', '1');
+  for (const page of ['sign-in', 'create', 'forgot', 'account', 'blocked', 'two-factor', 'reset', 'onboarding']) {
+    expect(arrivalPage(page, { ...known, signedIn: true, needsOnboarding: true, resetToken: 't', codePending: true })).toBe('lobby');
+  }
+  expect(arrivalPage('lobby', known)).toBe('lobby');
+  expect(arrivalPage('start-room', known)).toBe('start-room');   // anyone hosts on desktop
+});
+afterEach(() => vi.unstubAllEnvs());

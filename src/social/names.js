@@ -76,8 +76,10 @@ function isReserved(name) {
   });
 }
 
+export const USERNAME_MAX = 24;
+
 export function usernameProblem(name) {
-  if (name.length < 3 || name.length > 24) return 'length';
+  if (name.length < 3 || name.length > USERNAME_MAX) return 'length';
   if (!/^[a-z0-9_-]+$/i.test(name)) return 'characters';
   // Three hyphen-joined words is a guest's nickname.
   if (isReserved(name) || /^[a-z]+-[a-z]+-[a-z]+$/i.test(name)) return 'reserved';
@@ -85,7 +87,7 @@ export function usernameProblem(name) {
 }
 
 // A Discord or GitHub name as a first try at a username: lowercase, spaces to hyphens, the rest dropped.
-export const cleanUsername = (name) => (name ?? '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, 24);
+export const cleanUsername = (name) => (name ?? '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_-]/g, '').slice(0, USERNAME_MAX);
 
 // The username onboarding starts from: the cleaned name if it would do, else its first word, else nothing
 // (a guest-shaped or reserved name is never offered).

@@ -7,6 +7,8 @@ import { messageFor } from '@/social/messages';
 import { forgetHostCopies } from '@/document/autosaveStore';
 import { ed25519Supported, loadKey } from '@/social/keys';
 import { requestPass, renewAt } from '@/social/pass';
+import { makeSelfPass } from '@/social/selfPass';
+import { USERNAME_MAX } from '@/social/names';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ROOM_ID, useRoomStore, hasReportedRoom, keepRoomReport, keptRoomReports } from '@/store/RoomStore';
 import { REASONS } from '@/social/chat';
@@ -14,6 +16,8 @@ import { CONSENT_KEY, CONSENT_VERSION } from '@/social/consent';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection } from '@/social/lobby';
 import { t } from '@/i18n/index.js';
 
+// The desktop app has no server: no question, no accounts, no lobby; its pass is signed by the key, with a name kept here.
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const RENEW_RETRY_MS = 30_000;   // after a renewal that failed for a passing reason (NETWORK, THROTTLED)
 const confirmedWords = () => t('social.notices.checkEmailConfirm');
 const relinkWords = () => t('social.notices.relinkSignIn');
@@ -77,6 +81,7 @@ const withToken = (turnstileToken) => (turnstileToken ? { 'x-turnstile-token': t
 export const useSocialStore = defineStore('social', {
   state: () => ({
     consentVersion: useLocalStorage(CONSENT_KEY, 0, { writeDefaults: false }),   // the version of SOCIAL's question this browser accepted (consent.js)
+    desktopName: useLocalStorage('phosphor-desktop-name', '', { writeDefaults: false }),   // the desktop app's name for you (setDesktopName)
     _roomGoesOn: false,  // this load is coming back to a room, which that question doesn't interrupt (allowed)
     supported: null,     // null until checked: false when this browser can't do Ed25519 or IndexedDB
     me: null,            // /api/me's body; null signed out
@@ -108,7 +113,7 @@ export const useSocialStore = defineStore('social', {
   getters: {
     // SOCIAL may run: its question is accepted, or a reload is coming back to a room you're in (from a session before
     // the question, or its new version), which asks on a later load instead of throwing you out of a live room.
-    allowed: (state) => state.consentVersion === CONSENT_VERSION || state._roomGoesOn,
+    allowed: (state) => DESKTOP || state.consentVersion === CONSENT_VERSION || state._roomGoesOn,
     signedIn: (state) => !!state.me && !state.me.needsOnboarding,
     rooms: (state) => sortedRooms(state.lobby),
     people: (state) => sortedPeople(state.lobby, state.claims?.sub),
@@ -127,6 +132,7 @@ export const useSocialStore = defineStore('social', {
     async start(location = window.location) {
       if (this.started) return;
       this.started = true;
+      if (DESKTOP) return;   // no links back
       const toCode = new URL(location.href).searchParams.get('social') === 'two-factor';
       const returned = this.readReturn(location);
       if (!toCode) keepRoom(null);   // (readReturn has taken it for a signed-in return)
@@ -139,6 +145,7 @@ export const useSocialStore = defineStore('social', {
     // link back left in the URL by a narrow window, since widened, is read now.
     async showLobby() {
       this.lobbyWanted = true;
+      if (DESKTOP) return this.boot();
       this.readReturn(window.location);
       await this.boot();
       this.joinLink();
@@ -200,7 +207,7 @@ export const useSocialStore = defineStore('social', {
           (key) => { this._key = markRaw(key); return true; },
           () => false,   // no IndexedDB (a private window in some browsers): the same plain message
         );
-        if (supported) {
+        if (supported && !DESKTOP) {
           await Promise.all([this.refreshMe(), this.loadProviders()]);
           if (this.me?.needsOnboarding) this.page = 'onboarding';
         }
@@ -529,6 +536,12 @@ export const useSocialStore = defineStore('social', {
     // it expires; a live connection keeps going, and its next hello uses the new one.
     async renewPass() {
       const run = this._passRun;
+      if (DESKTOP) {
+        const { pass, claims } = await makeSelfPass(this._key, this.desktopName);
+        if (run !== this._passRun) return;
+        Object.assign(this, { pass, claims });
+        return this.renewIn(renewAt(claims) - Date.now());
+      }
       const previous = this.claims ? (this.claims.guest ? this.pass : undefined) : (this.me ? undefined : keptGuestPass());
       const result = await requestPass(this._key, previous);
       if (run !== this._passRun) return;
@@ -562,6 +575,12 @@ export const useSocialStore = defineStore('social', {
       useRoomStore().close();   // a room's socket can't go on without one either; the page stays as set here
     },
 
+    // The desktop app's name for you, as long as a username at most: the next pass carries it.
+    setDesktopName(name) {
+      this.desktopName = name.trim().slice(0, USERNAME_MAX);
+      this.dropPass();
+    },
+
     dropPass() {
       this.stopRenewing();
       Object.assign(this, { pass: null, claims: null });
@@ -575,7 +594,7 @@ export const useSocialStore = defineStore('social', {
     },
 
     connectLobby() {
-      if (!this.supported || !this.lobbyWanted || this._connection) return;
+      if (DESKTOP || !this.supported || !this.lobbyWanted || this._connection) return;
       this._connection = markRaw(new LobbyConnection({
         url: wsOrigin(apiOrigin()) + '/api/lobby',
         getPass: () => this.getPass(),

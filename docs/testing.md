@@ -19,6 +19,7 @@ The first time, install the browser: `npx playwright install --with-deps chromiu
 | --- | --- | --- |
 | A function that takes values and returns values (cells, colors, bytes, widths, parsing) | unit | `tests/unit/*.test.js` |
 | The store, anything that needs a real canvas, WebGL, fonts or image decoding, and a component or composable mounted on its own (what a key does, what a panel shows) | browser | `tests/browser/*.test.js` |
+| The desktop build's branches (`import.meta.env.VITE_DESKTOP === '1'`): the same, built as the desktop app is (the `browser-desktop` project, which `npm run test:browser` runs too) | browser | `tests/browser/desktop-*.test.js` |
 | What only the whole page shows: focus and keys passing through fields and dialogs, real pointer events, downloads, loads, reloads and Back, layout | end-to-end | `tests/e2e/*.spec.js` |
 
 Pick the lowest layer that can see the bug. A unit test is fastest and says exactly what broke. Most
