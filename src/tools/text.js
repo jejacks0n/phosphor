@@ -22,7 +22,8 @@ const text = {
     const cell = cellAt(pos.x, pos.y, project.cols, project.rows);
     if (!cell) return false;
     project.commitPending(); // moving the cursor ends a run of typing
-    workspace.textCursor = snapCursor(project.cells, project.cols, cell, 0); // a wide character's trail: its lead
+    // A wide character's trail: its lead. Placed, so the view doesn't scroll to it (AnsiEditor).
+    workspace.textCursor = workspace.placedCursor = snapCursor(project.cells, project.cols, cell, 0);
     start = { pos, cell };
     return true; // follow the drag, in case it becomes a selection
   },

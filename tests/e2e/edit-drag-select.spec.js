@@ -16,11 +16,12 @@ test('Shift and the arrow keys in Edit Mode select from the cursor, the arrows a
   expect(await store(page, 'project', (p) => [...p.editCells.values()].map((e) => e.char).filter(Boolean))).not.toContain('t');
 });
 
-test('Edit Mode chosen before any click types at the top-left of the view, and the view stays where it is', async ({ page }) => {
+test('Edit Mode chosen before any click types at the top-left of the view, and the view stays where it is, typing too', async ({ page }) => {
   await openApp(page);
   const scroller = page.locator('.ansi-editor > article');
   await scroller.evaluate((el) => { el.scrollTop = el.scrollHeight; }); // down at the bottom
   const scrollTop = await scroller.evaluate((el) => el.scrollTop);
+  const scrollLeft = await scroller.evaluate((el) => el.scrollLeft);
   await expect.poll(() => store(page, 'workspace', (w) => w.ansiViewOrigin.row + w.ansiViewSize.rows)).toBe(40); // the last line in view
   const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
   await page.getByRole('button', { name: 'Edit Mode' }).click();
@@ -28,6 +29,8 @@ test('Edit Mode chosen before any click types at the top-left of the view, and t
   expect(await scroller.evaluate((el) => el.scrollTop)).toBe(scrollTop);
   await page.keyboard.type('a');
   expect(await store(page, 'project', (p) => [...p.editCells].find(([, e]) => e.char === 'a')?.[0])).toBe(`${col},${row}`);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+  expect(await scroller.evaluate((el) => [el.scrollLeft, el.scrollTop])).toEqual([scrollLeft, scrollTop]);
 });
 
 test('a drag in Edit Mode becomes a Select selection; Escape sets it down and goes back to typing', async ({ page }) => {

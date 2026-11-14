@@ -225,13 +225,25 @@ const textInputStyle = computed(() => {
 });
 
 // The view follows the Text tool's cursor, like a text editor: when it moves (the arrow keys,
-// typing, a paste) past the visible area, the view scrolls just enough to keep it in sight, with a
-// margin around it (the cursor's scroll-margin). Nothing scrolls while it's already in view, nor when
-// Edit Mode is chosen: it puts the cursor in view, and the view stays where it is.
+// typing, a paste, an undo) toward an edge of the view and comes within MARGIN of it, the view scrolls
+// to keep that much room ahead of it; when it lands out of view, the view scrolls just enough to show
+// it with that room. Nothing scrolls for a cursor in view moving away from an edge, nor for one placed
+// (a click, or Edit Mode chosen): the view stays where it is. The rulers lie over the view's top and left.
+const MARGIN = { x: 60, y: 40 }, RULERS = { x: 30, y: 20 }; // CSS px; RULERS as thick as GuideRulers.vue's
+// The scroll on one axis for a cursor at `at` (content px) `size` long, moving `dir`, in a view `view`
+// long scrolled to `scroll`, with `inset` of it covered at the start.
+const follow = (at, size, dir, scroll, view, inset, margin) => {
+  if (at < scroll + inset || (dir < 0 && at < scroll + inset + margin)) return at - inset - margin;
+  if (at + size > scroll + view || (dir > 0 && at + size > scroll + view - margin)) return at + size + margin - view;
+  return scroll;
+};
 const cursorRef = useTemplateRef('cursor');
-watch(() => workspaceStore.textCursor, (cursor) => {
-  if (!cursor || workspaceStore.activeTool !== 'text' || cursor === workspaceStore.placedCursor) return;
-  cursorRef.value?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+watch(() => workspaceStore.textCursor, (cursor, old) => {
+  const el = cursorRef.value, v = viewportEl;
+  if (!cursor || !el || !v || workspaceStore.activeTool !== 'text' || cursor === workspaceStore.placedCursor) return;
+  const c = el.getBoundingClientRect(), r = v.getBoundingClientRect(), inset = workspaceStore.rulers ? RULERS : { x: 0, y: 0 };
+  v.scrollLeft = follow(c.left - r.left - v.clientLeft + v.scrollLeft, c.width, Math.sign(cursor.col - (old?.col ?? cursor.col)), v.scrollLeft, v.clientWidth, inset.x, MARGIN.x);
+  v.scrollTop = follow(c.top - r.top - v.clientTop + v.scrollTop, c.height, Math.sign(cursor.row - (old?.row ?? cursor.row)), v.scrollTop, v.clientHeight, inset.y, MARGIN.y);
 }, { flush: 'post' });
 
 // The selection: marching ants, offset while it's being dragged. Its actions are on the options row.
@@ -422,7 +434,6 @@ div.ansi-editor {
 .text-cursor {
   position: absolute;
   box-sizing: border-box;
-  scroll-margin: 40px 60px; /* the view keeps this much room around the cursor when it follows it */
   pointer-events: none;
   border: 2px solid white;
   mix-blend-mode: difference;

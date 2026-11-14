@@ -684,7 +684,7 @@ Pencil, **B** Brush, **E** Eraser, **G** Paint Bucket, **U** Shapes, **I** Eyedr
 (Edit Mode and Flip are the ANSI view's). Each tool's button shows its key.
 In Edit Mode letters type, so press **Escape** to put the cursor away first. Choosing Edit Mode
 again brings the cursor back where it was if that's in view, or else to the top-left of the view
-(there the first time); choosing it never scrolls. With the Select tool
+(there the first time); choosing it never scrolls, nor does a click that places the cursor. With the Select tool
 and a selection, E, S, C and Enter act on it (see the Select tool). The letters do nothing in text fields.
 
 Each view remembers its own tool, except that Select and the Magic Wand go with you: leave the

@@ -234,8 +234,8 @@ dithered, and compare the dither at 80 and at 200 columns.
 
 ### 17. Type a caption over it
 - Does: chooses Edit Mode, clicks where the caption goes, types a short caption, presses Escape.
-- Expects: the letters land in her colors at the cursor; a run of typing is one undo step; Escape puts the cursor away
-  so letters choose tools again.
+- Expects: the click places the cursor without moving the view; the letters land in her colors at the cursor; a run
+  of typing is one undo step; Escape puts the cursor away so letters choose tools again.
 - Probes: `extremes`: type a word in Japanese and an emoji; `interrupt`: halfway through typing, switch to PIXEL and
   back, then go on typing.
 - Rated: yes, wants T

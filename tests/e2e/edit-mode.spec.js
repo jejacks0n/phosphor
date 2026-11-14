@@ -1,5 +1,5 @@
 import { test, expect } from './support.js';
-import { openApp, store, chars, editAt } from './support.js';
+import { openApp, store, chars, editAt, settled, cellPoint } from './support.js';
 
 test('typing, Enter, Backspace, a paste and an input-method composition', async ({ page }) => {
   await openApp(page);
@@ -28,6 +28,39 @@ test('the view scrolls to keep the cursor in sight', async ({ page }) => {
   const cursor = await page.locator('.ansi-editor .text-cursor').boundingBox();
   expect(cursor.y).toBeGreaterThanOrEqual(view.y);
   expect(cursor.y + cursor.height).toBeLessThanOrEqual(view.y + view.height);
+});
+
+test('a click places the cursor without scrolling, even at the view\'s edge, typing scrolls only toward the edge it moves to, and the arrows follow with room to spare', async ({ page }) => {
+  await openApp(page);
+  await store(page, 'workspace', (w) => { w.ansiZoom = 2; }); // a grid wider and taller than the view
+  await settled(page);
+  const scroller = page.locator('.ansi-editor > article');
+  await scroller.evaluate((el) => { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; el.scrollTop = (el.scrollHeight - el.clientHeight) / 2; });
+  await expect.poll(() => store(page, 'workspace', (w) => w.ansiViewOrigin.row)).toBeGreaterThan(0);
+  const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
+  const { cols, rows } = await store(page, 'workspace', (w) => w.ansiViewSize);
+  const scroll = async () => {
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+    return scroller.evaluate((el) => [el.scrollLeft, el.scrollTop]);
+  };
+  const before = await scroll();
+  await page.getByRole('button', { name: 'Edit Mode' }).click();
+  const click = async (c, r) => { const at = await cellPoint(page, c, r); await page.mouse.click(at.x, at.y); };
+  await click(col + 2, row); // the top row
+  expect(await scroll()).toEqual(before);
+  await page.keyboard.type('ab');
+  expect(await scroll()).toEqual(before);
+  await click(col + cols - 1, row + 2); // the right column
+  expect(await scroll()).toEqual(before);
+  await click(col, row + rows - 1); // the bottom row's first cell
+  expect(await scroll()).toEqual(before);
+  await page.keyboard.press('ArrowDown'); // down past the bottom edge: the view follows, a margin ahead
+  const [left, top] = await scroll();
+  expect(left).toBe(before[0]);
+  expect(top).toBeGreaterThan(before[1]);
+  const view = await scroller.evaluate((el) => { const r = el.getBoundingClientRect(); return r.top + el.clientTop + el.clientHeight; });
+  const cursor = await page.locator('.ansi-editor .text-cursor').boundingBox();
+  expect(view - (cursor.y + cursor.height)).toBeGreaterThanOrEqual(39);
 });
 
 // After a dialog or the color box closes, the text input has focus again (so input methods keep

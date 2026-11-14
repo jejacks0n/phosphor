@@ -53,7 +53,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     lastPick: null,          // the Color Picker's last ANSI pick, for the status bar: { col, row, fg, bg, fgFrom, bgFrom }
     textCursor: null,      // { col, row } of the Text tool's cursor
     lastTextCursor: null,  // where it was when Escape put it away: choosing Edit Mode puts it back there if it's in view
-    placedCursor: null,    // the cursor choosing Edit Mode placed: the view doesn't follow it there (AnsiEditor)
+    placedCursor: null,    // the cursor a click or choosing Edit Mode placed: the view doesn't follow it there (AnsiEditor)
     selectFromText: false, // the Select tool took over from Edit Mode (a drag, Shift+arrows): setting the selection down goes back
     insertMode: false,     // typing pushes the row right instead of overwriting
     paletteLayerOpen: false, // the character palette layer has the keyboard
