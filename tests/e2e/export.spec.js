@@ -39,15 +39,6 @@ test('export .ans, then .utf8ans: each download is the store\'s cells, byte for 
   }
 });
 
-test('comments stop at what a SAUCE record holds, so a room\'s artists can always take them', async ({ page }) => {
-  await openApp(page);
-  await page.getByRole('tab', { name: /sauce/i }).click();
-  await page.locator('#sauce-comments').click();
-  await expect(page.locator('#sauce-comments')).toHaveAttribute('maxlength', String(255 * 65));
-  await page.keyboard.insertText('x'.repeat(10));
-  await expect(page.locator('#sauce-comments')).toHaveValue('x'.repeat(10)); // the field takes typing
-});
-
 test('the animated export warns above 80x25 and downloads an .ans', async ({ page }) => {
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();

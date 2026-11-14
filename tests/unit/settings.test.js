@@ -92,7 +92,7 @@ test('a project file keeps the paint scale of a tall grid, so its paint opens wh
 });
 
 test('a setting\'s text from a host is as long as a person could have, and no longer', () => {
-  const widths = { sauceTitle: 35, sauceAuthor: 20, sauceGroup: 20, sauceDate: 8, sauceFontName: 20, sauceUserComments: 255 * 65 };
+  const widths = { sauceTitle: 35, sauceAuthor: 20, sauceGroup: 20, sauceDate: 8, sauceFontName: 20, sauceUserComments: 32 * 1024 }; // Comments: far past a record's 255 lines, so a paste isn't cut
   for (const [key, width] of Object.entries(widths)) {
     assert.ok(settingsFromStranger({ [key]: 'x'.repeat(width) }), key);
     assert.equal(settingsFromStranger({ [key]: 'x'.repeat(width + 1) }), null, key);

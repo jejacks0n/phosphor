@@ -17,7 +17,7 @@ import { pngBlob } from '@/lib/PngFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
-import { keptFields, keptRecord } from '@/lib/Sauce.js';
+import { commentLines, keptFields, keptRecord } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults, sauceDefaults } from '@/store/settings.js';
@@ -506,6 +506,14 @@ export const documentActions = {
       date: asIs(this.sauceDate),
       comments: own.length && typed.length ? [...own, '', ...typed] : [...own, ...typed],
     };
+  },
+
+  // How the SAUCE tab's comments fit the record, counted as the export writes them (Sauce.js commentLines), Phosphor's
+  // own lines included: the record lines, how many are Phosphor's, and past 255, the field's line the record stops in.
+  sauceCommentFit() {
+    const { comments } = this.sauceFields();
+    const typed = this.sauceUserComments ? this.sauceUserComments.split('\n').length : 0;
+    return commentLines(comments, comments.length - typed);
   },
 
   // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first. Out of an art layer

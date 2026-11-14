@@ -949,6 +949,9 @@
     "comments": "Comments",
     "commentsPlaceholder": "Notes saved inside the file…",
     "countAria": "{count} of {width} characters",
+    "commentLines": "{count} of {most} SAUCE lines",
+    "commentLinesOwn": "{count} of {most} SAUCE lines ({own} are Phosphor's own)",
+    "commentLinesOver": "{count} of {most} SAUCE lines. From line {line} (\"{text}\") on, comments won't be in the file.",
     "controls": "Control characters, like tab or ESC, can't be in SAUCE and were left out.",
     "cut": "Only {width} characters fit. Left out: \"{left}\""
   },
@@ -1003,6 +1006,7 @@
     "sauceNote": "1 character in SAUCE isn't in CP437 and will be substituted: | {count} characters in SAUCE aren't in CP437 and will be substituted:",
     "sauceReplacementsAria": "SAUCE replacements",
     "sauceHint": "SAUCE is CP437 in every ANSI file. To choose your own stand-ins, change these on the SAUCE tab.",
+    "sauceCommentsOver": "Comments: only the first {most} SAUCE lines fit. From line {line} (\"{text}\") on, they won't be in this file; they stay on the SAUCE tab.",
     "saveFailed": "Couldn't save the file.",
     "tooTall": "At {cols}×{rows}, wider or taller than a standard 80×25 terminal. Part of the drawing may clip during playback.",
     "gifTooLarge": "This animation is too large for a GIF. Try fewer frames or smaller dimensions—or export .cast, which has no size limit."

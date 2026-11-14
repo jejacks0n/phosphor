@@ -949,6 +949,9 @@
     "comments": "Commentaires",
     "commentsPlaceholder": "Notes enregistrées dans le fichier…",
     "countAria": "{count} caractères sur {width}",
+    "commentLines": "{count} ligne SAUCE sur {most} | {count} lignes SAUCE sur {most}",
+    "commentLinesOwn": "{count} lignes SAUCE sur {most} (dont {own} de Phosphor)",
+    "commentLinesOver": "{count} lignes SAUCE sur {most}. À partir de la ligne {line} (« {text} »), les commentaires ne seront pas dans le fichier.",
     "controls": "Les caractères de contrôle, comme la tabulation ou ESC, ne peuvent pas figurer dans le SAUCE et ont été laissés de côté.",
     "cut": "Seuls {width} caractères tiennent. Laissé de côté : « {left} »"
   },
@@ -1003,6 +1006,7 @@
     "sauceNote": "1 caractère du SAUCE n'est pas dans CP437 et sera substitué : | {count} caractères du SAUCE ne sont pas dans CP437 et seront substitués :",
     "sauceReplacementsAria": "Substitutions SAUCE",
     "sauceHint": "Le SAUCE est en CP437 dans tout fichier ANSI. Pour choisir vous-même les remplaçants, modifiez ces champs dans l'onglet SAUCE.",
+    "sauceCommentsOver": "Commentaires : seules les {most} premières lignes SAUCE tiennent. À partir de la ligne {line} (« {text} »), ils ne seront pas dans ce fichier ; ils restent dans l'onglet SAUCE.",
     "saveFailed": "Impossible d'enregistrer le fichier.",
     "tooTall": "À {cols}×{rows}, plus large ou plus haut qu'un terminal standard 80×25. Une partie du dessin peut être coupée pendant la lecture.",
     "gifTooLarge": "Cette animation est trop volumineuse pour un GIF. Essayez avec moins d'images ou des dimensions plus petites — ou exportez en .cast, qui n'a pas de limite de taille."

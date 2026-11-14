@@ -205,7 +205,10 @@ gives other apps only its characters (see [Layers](layers.md#the-select-tool)).
   none of them: it comes out with its record as it went in, its date, flags (iCE colors, letter spacing),
   font name, size and comments changed only where you changed them on the SAUCE tab. A resize changes the
   size it gives. Comments are lines of up to 64 characters: a longer line breaks at a space, and only a
-  word longer than 64 is split. The record holds at most 255 lines.
+  word longer than 64 is split. The record holds at most 255 lines. Under Comments, the SAUCE tab counts
+  the lines the record would take ("128 of 255 SAUCE lines"), Phosphor's own included and said to be, and
+  past 255 says from which line comments won't be in the file; the export dialog says it again before you
+  export. The field keeps all you paste, so trimming is yours to do.
   Title holds 35 characters, Author and Group 20 each, counted as the record counts them (one a character,
   an emoji too), with a count beside each field. A field stops at its width, and a line under it names what
   a paste or a key past the end left out, until the field next changes. The record is CP437 in .ans and

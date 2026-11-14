@@ -6,7 +6,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { charRowsOf } from '@/lib/Cells';
-import { sauceUnmappable } from '@/lib/Sauce';
+import { MOST_COMMENT_LINES, sauceUnmappable } from '@/lib/Sauce';
 import { fileStem, timestamped } from '@/document/projectIO';
 
 // All export formats in one modal: ANS, UTF-8 ANS, PNG (Still), GIF, Animated ANS, Animated UTF-8
@@ -51,6 +51,9 @@ watch(selectedId, (id) => {
 // export writes it, and the fields each is in.
 const SAUCE_FORMATS = ['ans', 'utf8ans', 'ansimation', 'utf8ansimation'];
 const sauceReplacements = computed(() => (SAUCE_FORMATS.includes(selectedId.value) ? sauceUnmappable(project.sauceFields()) : []));
+// Comments past 255 record lines, as the SAUCE tab counts them: from which line of the field they won't be in the file.
+const commentsCut = computed(() => (SAUCE_FORMATS.includes(selectedId.value) && project.sauceUserComments ? project.sauceCommentFit().cut : null));
+const quoted = (text) => ([...text].length > 30 ? `${[...text].slice(0, 30).join('')}…` : text);
 
 function pickFormat(id) {
   selectedId.value = id;
@@ -151,7 +154,9 @@ function cancel() {
           <p class="note">{{ t('save.keepHint') }}</p>
         </template>
 
-        <!-- Every ANSI format: SAUCE's characters it replaces -->
+        <!-- Every ANSI format: what of SAUCE won't reach the file as it is on the SAUCE tab -->
+        <div v-if="commentsCut || sauceReplacements.length" class="option-label">{{ t('tabs.sauce') }}</div>
+        <p v-if="commentsCut" class="note warn">{{ t('save.sauceCommentsOver', { most: MOST_COMMENT_LINES, line: commentsCut.line, text: quoted(commentsCut.text) }) }}</p>
         <template v-if="sauceReplacements.length">
           <p class="note">{{ t('save.sauceNote', { count: sauceReplacements.length }, sauceReplacements.length) }}</p>
           <ul class="replacements" :aria-label="t('save.sauceReplacementsAria')" tabindex="0">
