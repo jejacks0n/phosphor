@@ -1,4 +1,4 @@
-// About links the Terms, the Privacy Policy and the Community Guidelines; the report box links the Community
+// About links the GitHub repo, and the Terms, the Privacy Policy and the Community Guidelines; the report box links the Community
 // Guidelines. Each opens the page through the workspace's legalPage, as the consent question does.
 import { afterEach, expect, test } from 'vitest';
 import { createApp, nextTick } from 'vue';
@@ -35,6 +35,14 @@ test('About links the Terms, the Privacy Policy and the Community Guidelines, ea
     link(text).click();
     expect(workspace.legalPage).toBe(page);
   }
+});
+
+test('About links the GitHub repo under the version, opening in a new tab', async () => {
+  await mount(AboutPhosphor);
+  const repo = document.querySelector('header a');
+  expect(repo.href).toBe('https://github.com/jejacks0n/phosphor');
+  expect(repo.textContent).toBe('github.com/jejacks0n/phosphor');
+  expect(repo.target).toBe('_blank');
 });
 
 test('the report box links the Community Guidelines, and the link sends no report', async () => {
