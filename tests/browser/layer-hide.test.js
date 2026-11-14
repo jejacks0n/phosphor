@@ -2,6 +2,7 @@
 // changes to it (an undo, a room's) still land, to show when it's shown again.
 import { test, expect, vi, afterEach } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import { outputKey } from '../support/scenes.js';
 import { rectShape } from '@/document/shapes.js';
 import { getTool } from '@/tools/index.js';
 import { typeAtCursor, typeText } from '@/composables/useTextTool.js';
@@ -526,3 +527,47 @@ test('moving a layer under the Number palette counts the colors again: the paint
     expect(shown).toEqual(await rendered());
   }
 });
+
+// The eye of a cells layer with no paint changes no pixel the pipeline converts: the cells are laid again over the output
+// as it is. One with paint that is or becomes the lower group's, or a vector layer in it, changes the picture: a render.
+for (const settings of [{}, { quantize: 'cga', dither: 100, ditherStyle: 'floyd' }, { quantize: 'vga', charChoice: 'best', chars: '▄░▒▓█' }]) {
+  test(`a cells layer with no paint hides and shows without the pipeline, as a render shows it; paint or shapes render (${JSON.stringify(settings)})`, async () => {
+    const { project } = await picture();
+    Object.assign(project, settings);
+    project.setLayerChars('edit', settings);
+    typed(project, 3, 3, 'A');
+    const two = project.addLayer('cells', 'edit'); // over it, with no paint: the lower group's when the edit layer hides
+    project.useLayer(two);
+    typed(project, 4, 3, '漢');
+    const painted = project.addLayer('cells', two);
+    project.useLayer(painted);
+    project.paintStroke([{ x: 6, y: 6, alpha: 1 }, { x: 7, y: 7, alpha: 0.5 }], RED);
+    typed(project, 6, 3, 'C');
+    const vector = project.addLayer('vector', 'base'); // under them all: the lower group's
+    project.addShape(rectShape(1, 1, 9, 9, { fill: '#0000ff' })); // on it: a layer added is picked
+    project.commitEdit();
+    expect([...project.shapes.values()].map((shape) => shape.layer ?? 'vector')).toEqual([vector]);
+    project.render();
+    await settle(project);
+    const shown = () => [cellsKey(project), outputKey(project)];
+    const rendered = async () => { project.render(); await settle(project); return shown(); };
+    const pipeline = vi.spyOn(project.renderer, 'render');
+    for (const [id, renders] of [['edit', false], [two, false], [painted, false], [vector, true]]) { // painted is above the lower group
+      for (const hidden of [true, false]) {
+        project.setLayerHidden(id, hidden);
+        await settle(project);
+        const now = shown();
+        expect(pipeline.mock.calls.length > 0, `${id} ${hidden ? 'hidden' : 'shown'}: the pipeline`).toBe(renders);
+        expect(now, `${id} ${hidden ? 'hidden' : 'shown'}`).toEqual(await rendered());
+        pipeline.mockClear();
+      }
+    }
+    project.setLayerHidden('edit', true); // two is the lower group's now; hiding it makes painted the lower group's: a render
+    await settle(project);
+    pipeline.mockClear();
+    project.setLayerHidden(two, true);
+    await settle(project);
+    expect(pipeline).toHaveBeenCalled();
+    expect(shown()).toEqual(await rendered());
+  });
+}

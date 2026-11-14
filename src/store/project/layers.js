@@ -75,10 +75,14 @@ function putBack(store, { layer, below, data, shapes, picked }) {
 // What's drawn after change() changed the stack: when the lower group (the layers the pipeline converts as one block) and
 // the base's eye are as they were, the cells are read again from the output as it is and the upper layers laid over them
 // (rebuildCells: tens of milliseconds at the limit, no pipeline), else a render, as the picture's own conversion changes.
-// Under the Number palette always a render: it counts every layer's pixels bottom to top, so a layer moved over another's
-// paint changes the count.
+// The group's cells layer counts only with paint: its cells are laid over the output, so one without paint can come or
+// go (hidden, shown, moved) leaving the output as it is. Under the Number palette always a render: it counts every
+// layer's pixels bottom to top, so a layer moved over another's paint changes the count.
 function redrawn(store, change) {
-  const group = () => { const { vectors, cells } = store.lowerGroup; return [store.layerHidden('base'), ...vectors, cells].join(); };
+  const group = () => {
+    const { vectors, cells } = store.lowerGroup;
+    return [store.layerHidden('base'), ...vectors, store.paintOf(cells)?.hasPaint ? cells : ''].join();
+  };
   const was = group();
   change();
   if (group() !== was || store.quantize === 'count' || !store.renderedCells.length) return store.render();

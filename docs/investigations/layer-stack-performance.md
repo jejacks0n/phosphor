@@ -190,7 +190,8 @@ is within 50 ms of its single-layer cost. Add `hideTopMs`, `moveLayerMs` and `sl
 when the lower group's membership and the base's eye are as they were, and the palette isn't the Number palette (it
 counts every layer's pixels bottom to top, so a move over another layer's paint changes it), `syncShapeLayers` +
 `rebuildCells` (the cells read again from the output as it is, then the upper layers over them) and no pipeline; else
-`render()`. `applyEditCells` alone wasn't enough: it lays edits over the last full render's cells, which a stroke on the
+`render()`. The group's cells layer counts only while it has paint: its cells are laid over the output, so one without
+paint is hidden, shown or moved in or out of the group with no pipeline. `applyEditCells` alone wasn't enough: it lays edits over the last full render's cells, which a stroke on the
 lower group's layer leaves behind (the output canvas is current, `renderedCells` isn't), so a hide after such a stroke
 showed the cell from before it. Measured at the limit with 1 / 4 / 16 upper: hide 35 / 188 / 500 → 38 / 39 / 55 ms,
 show 130 / 218 / 514 → 33 / 43 / 50 ms (two frames of `settled`), move 140 / 241 / 522 → 59 / 41 / 71 ms; the
