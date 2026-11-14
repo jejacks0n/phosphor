@@ -9,7 +9,8 @@ host** and the host's reload (see [Social](social.md)). This page covers what's 
 
 ## Downloading
 
-The app is on Phosphor's [GitHub Releases](https://github.com/jejacks0n/phosphor/releases) page:
+The app is on Phosphor's [GitHub Releases](https://github.com/jejacks0n/phosphor/releases) page. Releases marked
+**Pre-release** (a version like `v1.2.0-beta`) are betas to try before the release they lead to.
 
 - **macOS**: the `.dmg` (or the `.zip`), for Apple silicon (`arm64`) or Intel (`x64`). It's signed and notarized, so
   macOS opens it without a warning.

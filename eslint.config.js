@@ -34,8 +34,8 @@ export default [
     },
   },
   {
-    // desktop/: the desktop app's main process and its preload (CommonJS) run in Node.
-    files: ['*.config.js', 'desktop/**'],
+    // desktop/: the desktop app's main process and its preload (CommonJS) run in Node, as do scripts/.
+    files: ['*.config.js', 'desktop/**', 'scripts/**'],
     languageOptions: {
       globals: { ...globals.node },
     },
