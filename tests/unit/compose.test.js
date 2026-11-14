@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { coverageOf, setGlyphRasterizer } from '../../src/lib/GlyphCoverage.js';
 import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, bakedEntry } from '../../src/lib/Cells.js';
 import { effectiveColor, getEffectiveColor } from '../../src/lib/PixelTransforms.js';
-import { rgb2hex, hex2rgb, PALETTES } from '../../src/lib/ColorUtils.js';
+import { rgb2hex, hex2rgb, PALETTES, sharedIndex } from '../../src/lib/ColorUtils.js';
 
 test('Composition of edit cells: glyph coverage, half-cell colors, edit-cell attributes over the generated cell, paint over an edit cell, and effective (adjusted + snapped) colors', async () => {
   const C = (r, g, b, c) => ({ r, g, b, hex: rgb2hex({ r, g, b }), c: c ?? [r, g, b] });
@@ -67,6 +67,9 @@ test('Composition of edit cells: glyph coverage, half-cell colors, edit-cell att
   assert.equal(effectiveColor('#ffffff', NEUTRAL, PALETTES.vga, 231).c, 231);
   assert.equal(effectiveColor('#000000', NEUTRAL, PALETTES.cga, 16).c, 0);                          // CGA has no 16
   assert.equal(effectiveColor('#000000', { ...NEUTRAL, invert: 100 }, PALETTES.vga, 16).c, 15);     // shown as white now
+  // The index kept as fgIndex or bgIndex: only one a lower index shares the color of.
+  assert.deepEqual([16, 231, 0, 15, 196, 300, [0, 0, 0], undefined].map((c) => sharedIndex(c, PALETTES.vga)), [16, 231, undefined, undefined, undefined, undefined, undefined, undefined]);
+  assert.equal(sharedIndex(0, PALETTES.cga), undefined);
   assert.deepEqual(effectiveColor('#123456', NEUTRAL), { r: 0x12, g: 0x34, b: 0x56, hex: '#123456', c: [0x12, 0x34, 0x56] });
 
   assert.equal(getEffectiveColor('#123456', NEUTRAL), '#123456');

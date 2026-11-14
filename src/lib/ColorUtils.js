@@ -144,6 +144,20 @@ export const PALETTES = {
   vga: VGA
 };
 
+// index, when a lower index in the palette has its color (xterm's 16 and 231 are 0's and 15's colors, fixed where those
+// follow a terminal's theme), else undefined: what edit cells keep as fgIndex and bgIndex, for the export to write back.
+const firstIndexes = new WeakMap(); // a palette -> its colors' (lowercase hex) first indexes
+export function sharedIndex(index, palette) {
+  const color = Number.isInteger(index) ? palette?.[index] : undefined;
+  if (!color) return undefined;
+  let first = firstIndexes.get(palette);
+  if (!first) {
+    firstIndexes.set(palette, first = new Map());
+    palette.forEach(({ hex }, i) => { if (!first.has(hex.toLowerCase())) first.set(hex.toLowerCase(), i); });
+  }
+  return first.get(color.hex.toLowerCase()) === index ? undefined : index;
+}
+
 // How the color picker lays out the active palette: one or more grids of swatches. CGA is the
 // classic 8 x 2; VGA (xterm 256) is the 16 system colors, the 6x6x6 cube and the 24 grays; custom
 // and adaptive palettes are a plain grid. 24-bit ('none') has no swatches.
