@@ -169,10 +169,11 @@ async function reload() {
   room = useRoomStore();
 }
 
-test('a host\'s reload comes back with serviceInfo\'s secret', async () => {
+test('a host\'s reload comes back with serviceInfo\'s secret, and its password for the next host', async () => {
   await goLive();
   const id = room.id;
   await reload();
+  desktop.serviceInfo.mockResolvedValue({ port: PORT, addresses: ADDRESSES, secret: SECRET, mode: 'host', password: 'sesame' });
   room.resume();
   expect([room.role, room.id, room.status]).toEqual(['host', id, 'reconnecting']);
   const socket = await lastSocket(2);
@@ -183,6 +184,9 @@ test('a host\'s reload comes back with serviceInfo\'s secret', async () => {
   expect([room.port, room.addresses]).toEqual([PORT, ADDRESSES]);
   socket.receive({ type: 'hosting', room: { id, name: 'Night shift', welcome: 'Hi', max: 5, count: 0 }, peers: [] });
   expect(room.status).toBe('live');
+  expect(room._host.handOverExtra()).toMatchObject({ password: 'sesame', name: 'Night shift', welcome: 'Hi', max: 5 });   // a hand-over now keeps it
+  window.dispatchEvent(new PageTransitionEvent('pagehide'));
+  expect(sessionStorage.getItem(RECORD)).not.toContain('sesame');
   expect(fetched).not.toHaveBeenCalled();
 });
 

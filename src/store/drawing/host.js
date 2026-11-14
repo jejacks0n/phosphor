@@ -33,6 +33,7 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
   let listHeard = null;            // the list as the room last said it
   let adopting = false;            // a document coming from an artist is still this one
   let undoTold = null;             // one whose ledger can't answer anyone's undo from before it: those told, at their hello
+  let handing = null;              // makeHost's answer, while a hand-over it started is on its way
 
   function moveHost(next) {
     if (!HOST_MOVES[hostPhase.phase].includes(next.phase)) console.warn(`A host going from ${hostPhase.phase} to ${next.phase}.`);
@@ -311,7 +312,17 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
 
   // A host's Make host: nothing more's numbered, the artist is sent the ledger, and on their word the server is
   // asked. False, with the room as it was, if that doesn't happen: new-host (becomeArtist) ends it otherwise.
-  async function makeHost(sub) {
+  // handingOver() is its answer while it's on its way (a quit waits on that), else null.
+  function makeHost(sub) {
+    const idle = hostPhase === HOST_IDLE, asked = handOverTo(sub);
+    if (idle && hostPhase.phase === 'handing-over') {   // started: the phase moves before handOverTo's first wait
+      handing = asked;
+      asked.then(() => { if (handing === asked) handing = null; });
+    }
+    return asked;
+  }
+
+  async function handOverTo(sub) {
     if (!host || hostPhase !== HOST_IDLE || !artists.value.includes(sub) || !connected.value.includes(sub)) return false;
     const theHost = host;
     hostChanging.value = true;
@@ -408,6 +419,6 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
   return {
     hosted, hosting: () => !!host, leaveHosting, noteCursor,
     hostCallbacks, invite, withdraw, backToWatching, peopleHere, resumeHosting,
-    makeHost, takeOver, becomeArtist, artistsNow, hostingAgain,
+    makeHost, handingOver: () => handing, takeOver, becomeArtist, artistsNow, hostingAgain,
   };
 }
