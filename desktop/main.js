@@ -15,8 +15,12 @@ const ORIGIN = 'app://phosphor';
 const DIST = fileURLToPath(new URL('../dist-desktop/', import.meta.url));
 const QUIT_WITHIN_MS = 20_000;
 
+// The end-to-end tests' settings, which a packaged app doesn't take (they run the app unpackaged).
+if (app.isPackaged) for (const name of ['PHOSPHOR_USER_DATA', 'PHOSPHOR_ADDRESSES', 'PHOSPHOR_RETURN_WITHIN_MS']) delete process.env[name];
 // Before anything else: the end-to-end tests run several instances, each with its own folder (and so its own lock).
 if (process.env.PHOSPHOR_USER_DATA) app.setPath('userData', process.env.PHOSPHOR_USER_DATA);
+// Their shorter wait for a host gone: a number of milliseconds above 0, or the page's own wait.
+const returnWithinMs = Number(process.env.PHOSPHOR_RETURN_WITHIN_MS);
 // standard and secure: a stable origin for IndexedDB, and a secure context for crypto.subtle.
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
@@ -115,7 +119,7 @@ function openWindow() {
       sandbox: true,
       nodeIntegration: false,
       // The end-to-end tests' shorter wait for a host gone, for the page (through the preload).
-      additionalArguments: process.env.PHOSPHOR_RETURN_WITHIN_MS ? [`--phosphor-return-within-ms=${Number(process.env.PHOSPHOR_RETURN_WITHIN_MS)}`] : [],
+      additionalArguments: Number.isFinite(returnWithinMs) && returnWithinMs > 0 ? [`--phosphor-return-within-ms=${returnWithinMs}`] : [],
     },
   });
   win.webContents.setWindowOpenHandler(({ url }) => {

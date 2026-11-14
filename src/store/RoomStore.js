@@ -231,8 +231,8 @@ const noRoom = () => ({
   role: null,          // null | 'host' | 'watch'
   id: null,
   room: null,          // a host's: the server's room and your welcome; a watcher's: { name, welcome, host, hostSub } (joined's host and its account)
-  // a host's: 'connecting' | 'live' | 'reconnecting'; a watcher's: 'joining' | 'password' | 'waiting' |
-  // 'connecting' | 'live' | 'failed'
+  // a host's: 'connecting' | 'live' | 'reconnecting'; a watcher's: 'joining' | 'password' | 'asked' (desktop: the
+  // host's yes still to come) | 'waiting' (for the host's art) | 'connecting' | 'live' | 'failed'
   status: null,
   passwordWrong: false,
   ...hostFields(),
@@ -328,11 +328,11 @@ export const useRoomStore = defineStore('room', {
     // Whether this artist could take the room over: on desktop, only one whose own room service answered.
     canBeHost: (state) => (sub) => !DESKTOP || !!state.hostable[sub]?.length,
 
-    // The names more than one person here goes by (you, the host, the watchers, the artists, who spoke): on desktop
-    // anyone can pick any name, so these are told apart by their sub (UserName).
+    // The names more than one person here goes by (you, the host, the watchers, the artists, who spoke, who asks to
+    // join): on desktop anyone can pick any name, so these are told apart by their sub (UserName).
     sameNames() {
       const drawing = useDrawingStore(), subs = new Map();
-      const people = [useSocialStore().claims, { sub: this.room?.hostSub, name: this.room?.host }, ...this.watchers, ...this.chat,
+      const people = [useSocialStore().claims, { sub: this.room?.hostSub, name: this.room?.host }, ...this.watchers, ...this.chat, ...this.asks,
         ...Object.entries(drawing.artistNames).map(([sub, name]) => ({ sub, name }))];
       for (const { sub, name } of people.filter(Boolean)) if (sub && name) subs.set(name, (subs.get(name) ?? new Set()).add(sub));
       return new Set([...subs].filter(([, held]) => held.size > 1).map(([name]) => name));
@@ -1429,7 +1429,7 @@ export const useRoomStore = defineStore('room', {
           this.following ??= msg.hostSub;
           break;
         case 'waiting':   // desktop: the join waits for the host's yes
-          if (DESKTOP && this.role === 'watch') this.status = 'waiting';
+          if (DESKTOP && this.role === 'watch') this.status = 'asked';
           break;
         case 'refused':
           this.refused(msg.reason, msg.protocol);

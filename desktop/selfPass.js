@@ -1,6 +1,9 @@
 // Self-signed passes, checked in Node (the main process and the room service). The same logic as
 // src/social/selfPass.js, written without the renderer's modules.
 import { Buffer } from 'node:buffer';
+
+const USERNAME_MAX = 24;    // src/social/names.js's
+const MOST_SECONDS = 3900;  // an hour, as makeSelfPass gives, and 5 minutes for a clock ahead of this one's
 const b64 = (text) => {
   if (!/^[A-Za-z0-9_-]*$/.test(text) || text.length % 4 === 1) throw new Error('Not base64url');
   return Buffer.from(text, 'base64url');
@@ -21,6 +24,8 @@ export async function verifyProof(keyB64, message, proofB64) {
   }
 }
 
+// The claims, or null: the pass's own key signs whatever claims it likes, so the name must be a name (a string, not
+// blank, at most USERNAME_MAX) and the pass good for no more than about an hour.
 export async function verifySelfPass(pass, now = Date.now()) {
   try {
     const [body, signature, ...rest] = pass.split('.');
@@ -28,7 +33,8 @@ export async function verifySelfPass(pass, now = Date.now()) {
     const claims = JSON.parse(b64(body).toString('utf8'));
     if (!await verifyProof(claims.key, body, signature)) return null;
     if (claims.sub !== await fingerprint(claims.key)) return null;
-    return claims.exp * 1000 > now ? claims : null;
+    const named = typeof claims.name === 'string' && claims.name.trim() !== '' && claims.name.length <= USERNAME_MAX;
+    return named && claims.exp * 1000 > now && claims.exp * 1000 <= now + MOST_SECONDS * 1000 ? claims : null;
   } catch {
     return null;
   }

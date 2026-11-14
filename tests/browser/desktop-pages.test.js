@@ -17,6 +17,7 @@ import WatchRoomPage from '@/components/social/WatchRoomPage.vue';
 import RoomPeople from '@/components/social/RoomPeople.vue';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 import UserName from '@/components/social/UserName.vue';
+import JoinAsks from '@/components/social/JoinAsks.vue';
 import SocialDialogs from '@/components/social/SocialDialogs.vue';
 import LegalDialog from '@/components/LegalDialog.vue';
 import SidePanel from '@/components/SidePanel.vue';
@@ -311,9 +312,23 @@ test('UserName adds the fingerprint only when two subs share the name', async ()
   expect(names()).toEqual(['wren #A1b2', 'wren #Q9r8', 'cy', 'wren']);   // a name with no sub can't say which
 });
 
-test('WatchRoomPage shows waiting', async () => {
-  await mount(WatchRoomPage, ({ room }) => Object.assign(room, { role: 'watch', id: 'abcdefghij', status: 'waiting', room: { name: '', welcome: '' } }));
+test('WatchRoomPage says it waits to be let in until joined, then waits for the host as the web does', async () => {
+  const { room } = await mount(WatchRoomPage, ({ room }) => Object.assign(room, { role: 'watch', id: 'abcdefghij', status: 'asked', room: { name: '', welcome: '' } }));
   expect(host.querySelector('h2').textContent).toBe('Waiting for the host to let you in.');
+  room.status = 'waiting';   // joined: the host's art is on its way
+  await nextTick();
+  expect(host.querySelector('h2').textContent).toBe('Waiting for the host…');
+});
+
+test('a join asking under the name of someone here shows the start of its sub', async () => {
+  await mount(JoinAsks, (ctx) => {
+    ctx.social.claims = claims();
+    hosting({
+      watchers: [{ peer: 'p1', sub: 'B0b1sub', name: 'bob', guest: false, tracking: true, connected: true }],
+      asks: [{ ask: 'a_1', sub: 'X9y8sub', name: 'bob' }, { ask: 'a_2', sub: 'cy-sub', name: 'cy' }],
+    })(ctx);
+  });
+  expect([...host.querySelectorAll('li p')].map((p) => p.textContent.trim())).toEqual(['bob #X9y8 wants to join', 'cy wants to join']);
 });
 
 test('SocialDialogs desktop: no question, no account pages, no room link; Start a room\'s page shows', async () => {
