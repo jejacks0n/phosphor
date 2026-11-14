@@ -186,9 +186,11 @@ bytes of the original and the export outside the art.
 
 ### 14. Comments as long as SAUCE allows
 - Does: pastes a long comment: 300 lines, some longer than 64 characters.
-- Expects: the export's comments are lines of up to 64, broken at a space, at most 255 of them; what's past that is
-  cut; reopening the export shows the comments back as the record holds them.
-- Probes: `extremes`: paste 20,000 characters; `again`: export twice and compare.
+- Expects: the count under Comments says how many of 255 SAUCE lines the comments take and, past 255, from which line
+  they won't be in the file; the Export dialog says the same before writing; the export's comments are lines of up to
+  64, broken at a space, at most 255; reopening the export shows the comments back as the record holds them.
+- Probes: `extremes`: paste 20,000 characters and check the field keeps them all (nothing cut silently); `again`:
+  export twice and compare.
 - Rated: yes, wants Tab to Comments
 
 ### 15. SAUCE survives the round trip

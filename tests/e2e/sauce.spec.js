@@ -21,3 +21,20 @@ test('a pasted title keeps the 35 characters the record holds, an emoji as one, 
   await expect(title).toBeFocused();
   expect(await store(page, 'project', (p) => p.sauceTitle)).toBe('Café € 🎨 Restaurée par Walt, été 1X');
 });
+
+test('a long paste into Comments is kept whole, and the count under it says from which line the file stops', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('tab', { name: /sauce/i }).click();
+  const comments = page.locator('#sauce-comments');
+  await comments.click();
+  const lines = Array.from({ length: 300 }, (_, i) => `${String(i + 1).padStart(3, '0')} greets: the crew, the board, and everyone who kept these files alive`).join('\n');
+  await page.evaluate((text) => navigator.clipboard.writeText(text), lines);
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect(comments).toHaveValue(lines); // not cut by characters
+  const own = await store(page, 'project', (p) => p.sauceCommentFit().own); // a converted image: Phosphor's lines come first
+  await expect(page.locator('#sauce-comments-count')).toHaveText(new RegExp(`^${600 + own} of 255 SAUCE lines\\. From line \\d+ \\(".+"\\) on, comments won't be in the file\\.$`));
+  await expect(page.locator('#sauce-comments-note')).toHaveText('');
+
+  await page.locator('.sauce-editor').getByRole('button', { name: 'Export…' }).click();
+  await expect(page.getByRole('dialog')).toContainText('Comments: only the first 255 SAUCE lines fit.');
+});

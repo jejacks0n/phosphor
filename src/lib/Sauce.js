@@ -4,13 +4,46 @@
  */
 import { CP437, cp437Byte, cp437Substitute } from './Cp437.js';
 
-// What a record holds of each text field, in characters: comments are 255 lines of 64, and the line ends between them.
-const MOST_COMMENT_LINES = 255, COMMENT_WIDTH = 64;
-export const SAUCE_WIDTHS = { title: 35, author: 20, group: 20, date: 8, fontName: 20, comments: MOST_COMMENT_LINES * (COMMENT_WIDTH + 1) };
+// What a record holds of each text field, in characters. Comments are 255 lines of 64, counted in lines (commentLines):
+// the field holds far more, so a paste is never cut by characters short of what the record could take, and the count
+// says what won't fit. Its ceiling, twice what a record holds, only guards the field, storage and a room's settings
+// message (a channel carries 256 KB, and an emoji is 4 bytes) against, say, a pasted log file.
+export const MOST_COMMENT_LINES = 255;
+const COMMENT_WIDTH = 64;
+export const SAUCE_WIDTHS = { title: 35, author: 20, group: 20, date: 8, fontName: 20, comments: 32 * 1024 };
 
 // What SAUCE text can't hold: control characters (C0, tab and ESC among them, DEL and C1), which a terminal printing
 // the file would act on. A comment's line breaks are its lines (lines: true), so they stay, CR LF and CR as LF.
 export const sauceText = (text, lines = false) => (lines ? text.replace(/\r\n?/g, '\n').replace(/[^\P{Cc}\n]/gu, '') : text.replace(/\p{Cc}/gu, ''));
+
+// A comment line as the record holds it: lines of up to 64, a longer one broken at its last space that fits; only a
+// word longer than a line is split. A blank line stays.
+function recordLines(line) {
+  const lines = [];
+  let rest = sauceText(line);
+  while (rest.length > COMMENT_WIDTH) {
+    const space = rest.lastIndexOf(' ', COMMENT_WIDTH);
+    lines.push(rest.slice(0, space > 0 ? space : COMMENT_WIDTH));
+    rest = rest.slice(space > 0 ? space + 1 : COMMENT_WIDTH);
+  }
+  lines.push(rest);
+  return lines;
+}
+
+// Comments as the export writes them (the same lines, so the count and the file never disagree): the record lines they
+// take, how many of those are Phosphor's own (the comments before typedFrom), and past 255, the line of the person's
+// (from 1) the record stops in, with the first text left out.
+export function commentLines(comments, typedFrom = 0) {
+  let count = 0, own = 0, cut = null;
+  comments.forEach((line, i) => {
+    for (const part of recordLines(line)) {
+      if (count === MOST_COMMENT_LINES && !cut) cut = { line: i - typedFrom + 1, text: part };
+      count++;
+      if (i < typedFrom) own++;
+    }
+  });
+  return { count, own, cut };
+}
 
 // Characters as the record counts them: one byte each, so one a code point (an emoji is one).
 export const charCount = (text) => [...text].length;
@@ -64,19 +97,7 @@ export class Sauce {
 
   #processComments(input) {
     if (!input) return [];
-    const lines = Array.isArray(input) ? input : [input];
-    const processed = [];
-    // A line longer than a comment line breaks at its last space that fits; only a word longer than a line is split.
-    lines.forEach(line => {
-      let rest = sauceText(line);
-      while (rest.length > COMMENT_WIDTH) {
-        const space = rest.lastIndexOf(' ', COMMENT_WIDTH);
-        processed.push(rest.slice(0, space > 0 ? space : COMMENT_WIDTH));
-        rest = rest.slice(space > 0 ? space + 1 : COMMENT_WIDTH);
-      }
-      processed.push(rest); // a blank line stays
-    });
-    return processed.slice(0, MOST_COMMENT_LINES);
+    return (Array.isArray(input) ? input : [input]).flatMap(recordLines).slice(0, MOST_COMMENT_LINES);
   }
 
   appendTo(fileBytes) {

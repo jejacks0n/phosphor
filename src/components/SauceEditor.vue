@@ -1,10 +1,11 @@
 <script setup>
-import { reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import ProjectActions from '@/components/ProjectActions.vue';
-import { SAUCE_WIDTHS, charCount, fitField, sauceText } from '@/lib/Sauce.js';
+import { MOST_COMMENT_LINES, SAUCE_WIDTHS, charCount, fitField, sauceText } from '@/lib/Sauce.js';
+import { formatNumber } from '@/i18n/format.js';
 
 const project = useProjectStore();
 const drawing = useDrawingStore();
@@ -27,7 +28,19 @@ watch(() => [...SHORT, COMMENTS].map(({ key }) => project[key]), () => {
   for (const { key } of [...SHORT, COMMENTS]) if (project[key] !== fitted[key]) notes[key] = '';
 });
 
-const quoted = (text) => ([...text].length > 20 ? `${[...text].slice(0, 20).join('')}…` : text);
+const quoted = (text, most = 20) => ([...text].length > most ? `${[...text].slice(0, most).join('')}…` : text);
+
+// Comments in record lines, counted as the export writes them, once there's text: past 255, from which line of the
+// field they won't be in the file. Said aloud only as it crosses 255, either way, not on every key.
+const fit255 = computed(() => (project.sauceUserComments ? project.sauceCommentFit() : null));
+const linesNote = computed(() => {
+  if (!fit255.value) return '';
+  const { count, own, cut } = fit255.value, most = MOST_COMMENT_LINES;
+  if (cut) return t('sauce.commentLinesOver', { count, most, line: cut.line, text: quoted(cut.text, 30) });
+  return own ? t('sauce.commentLinesOwn', { count, most, own }) : t('sauce.commentLines', { count, most }, count);
+});
+const linesSpoken = ref('');
+watch(() => !!fit255.value?.cut, () => { linesSpoken.value = linesNote.value; });
 
 // Mid-composition (IME) the text isn't the person's yet: it's fitted when committed. Control characters are left out
 // (a comment's line breaks stay) and said to be, though no one types them on purpose: a paste can bring them.
@@ -41,7 +54,7 @@ function fit(event, { key, width, lines = false }) {
   }
   fitted[key] = text;
   project[key] = text;
-  notes[key] = [left && t('sauce.cut', { width, left: quoted(left) }), stripped && t('sauce.controls')].filter(Boolean).join(' ');
+  notes[key] = [left && t('sauce.cut', { width: formatNumber(width), left: quoted(left) }), stripped && t('sauce.controls')].filter(Boolean).join(' ');
 }
 </script>
 
@@ -79,12 +92,13 @@ function fit(event, { key, width, lines = false }) {
           <textarea
               id="sauce-comments"
               :value="project.sauceUserComments"
-              :maxlength="SAUCE_WIDTHS.comments"
               :placeholder="t('sauce.commentsPlaceholder')"
-              aria-describedby="sauce-comments-note"
+              aria-describedby="sauce-comments-count sauce-comments-note"
               @input="fit($event, COMMENTS)"
               @compositionend="fit($event, COMMENTS)"
           ></textarea>
+          <p v-if="linesNote" id="sauce-comments-count" class="lines" :class="{ over: fit255.cut }">{{ linesNote }}</p>
+          <span id="sauce-comments-spoken" class="spoken" aria-live="polite">{{ linesSpoken }}</span>
           <p id="sauce-comments-note" class="cut" aria-live="polite">{{ notes.sauceUserComments }}</p>
         </div>
       </fieldset>
@@ -167,6 +181,19 @@ p.cut {
   color: var(--warning);
 }
 p.cut:empty { margin-top: -6px; }   /* stays in the page, as a live region must */
+
+p.lines { margin: 0; }
+p.lines.over { color: var(--warning); }
+
+/* Heard, not seen: the comments' count as it crosses 255. */
+span.spoken {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 textarea {
   resize: vertical;

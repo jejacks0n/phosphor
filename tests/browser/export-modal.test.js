@@ -197,3 +197,24 @@ test('the animated ANSI formats list SAUCE\'s too, GIF and Cast don\'t', async (
     unmount();
   }
 });
+
+test('the Export dialog repeats the comments\' warning when they run past 255 SAUCE lines, on every ANSI format', async () => {
+  const { project } = await drawing();
+  project.sauceRecord = 'none'; // an opened file's: none of Phosphor's own lines
+  project.sauceUserComments = Array.from({ length: 300 }, (_, i) => `${String(i + 1).padStart(3, '0')} greets: the crew, the board, and everyone who kept these files alive`).join('\n');
+  const { unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    const said = 'Comments: only the first 255 SAUCE lines fit. From line 128 ("files alive") on, they won\'t be in this file; they stay on the SAUCE tab.';
+    expect(modal.textContent).toContain(said);
+    await pick(modal, 'UTF-8 ANS');
+    expect(modal.textContent).toContain(said);
+    await pick(modal, 'PNG');
+    expect(modal.textContent).not.toContain('SAUCE lines');
+    project.sauceUserComments = 'two\nlines';
+    await pick(modal, 'ANS');
+    expect(modal.textContent).not.toContain('SAUCE lines'); // everything fits: nothing new
+  } finally {
+    unmount();
+  }
+});

@@ -130,3 +130,54 @@ test('Comments keep their line breaks, CR LF as LF, and lose their other control
   expect(project.sauceUserComments).toBe('one\ntwo[0mthree');
   expect(noteOf('sauce-comments').textContent.trim()).toBe('Control characters, like tab or ESC, can\'t be in SAUCE and were left out.');
 });
+
+// Walt's paste: 300 lines, each two record lines long.
+const LONG = Array.from({ length: 300 }, (_, i) => `${String(i + 1).padStart(3, '0')} greets: the crew, the board, and everyone who kept these files alive`).join('\n');
+const linesOf = () => host.querySelector('#sauce-comments-count');
+const paste = async (text) => {
+  const comments = field('sauce-comments');
+  comments.value = text;
+  comments.setSelectionRange(text.length, text.length);
+  comments.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+  await nextTick();
+};
+
+test('Comments count the record lines the export writes, Phosphor\'s own included and said so', async () => {
+  const { project } = await mount();
+  expect(linesOf()).toBeNull(); // nothing typed: no count
+  await paste('one\ntwo');
+  const own = project.sauceCommentFit().own;
+  expect(own).toBeGreaterThanOrEqual(5); // Created with, Params, Adjust, Effects (wrapped), and the blank line
+  expect(linesOf().textContent.trim()).toBe(`${own + 2} of 255 SAUCE lines (${own} are Phosphor's own)`);
+  expect(field('sauce-comments').getAttribute('aria-describedby')).toContain('sauce-comments-count');
+
+  project.sauceRecord = 'none'; // an opened file: none of Phosphor's
+  await nextTick();
+  expect(linesOf().textContent.trim()).toBe('2 of 255 SAUCE lines');
+});
+
+test('past 255 the count says from which line comments won\'t be in the file; the paste itself is kept whole', async () => {
+  const { project } = await mount(({ project }) => { project.sauceRecord = 'none'; });
+  const spoken = () => host.querySelector('#sauce-comments-spoken').textContent.trim();
+  await paste('fits');
+  expect(spoken()).toBe('');
+  await paste(LONG);
+  expect(project.sauceUserComments).toBe(LONG); // not cut by characters
+  expect(noteOf('sauce-comments').textContent.trim()).toBe('');
+  const over = '600 of 255 SAUCE lines. From line 128 ("files alive") on, comments won\'t be in the file.';
+  expect(linesOf().textContent.trim()).toBe(over);
+  expect(linesOf().classList.contains('over')).toBe(true);
+  expect(spoken()).toBe(over); // said once, as it crosses
+
+  await paste(`${LONG}\nmore`); // still over: not said again
+  expect(spoken()).toBe(over);
+  await paste('short again');
+  expect(spoken()).toBe('1 of 255 SAUCE lines');
+});
+
+test('a paste past the field\'s ceiling is cut, and the line under it says where', async () => {
+  const { project } = await mount();
+  await paste(`${'x'.repeat(32 * 1024)}tail end`);
+  expect(project.sauceUserComments).toBe('x'.repeat(32 * 1024));
+  expect(noteOf('sauce-comments').textContent.trim()).toBe('Only 32,768 characters fit. Left out: "tail end"');
+});
