@@ -37,7 +37,7 @@ confused, and the work still there if she comes back to the tab later.
 
 ## What they lean on
 
-- The start screen: the drop box, Choose a file, Or start with a blank canvas, Pick up where you left off.
+- The start screen: the drop box, Choose a file, Start with a blank canvas, Pick up where you left off.
 - The phone layout: the menu button (☰) that slides the settings out, the Layers button that opens LAYERS in a dialog
   ([The layers list](../../layers.md#the-layers-list)), the Actions menu, the status bar.
 - The settings she can feel: Art style, Color palette, the Characters presets and the dice, Brightness and Contrast,
@@ -94,10 +94,9 @@ script. Every section ends with Free time.
 ### 1. See what this is
 - Does: opens the app and looks at the start screen without touching anything, then scrolls it.
 - Expects: the tab bar (☰, PIXEL, ANSI and SAUCE dimmed, and the Animate switch), the Phosphor logo, the box that says
-  "Drop an image, .phosphor or ANSI file here" with Choose a file, and "Or start with a blank canvas", all inside 390
+  "Drop an image, .phosphor, or ANSI file here" with Choose a file, and "Start with a blank canvas", all inside 390
   wide with nothing cut off; no SOCIAL anywhere (a phone has no side panel).
-- Probes: `free`: tap the Animate switch before anything is open (it says "Open an image or start a canvas to
-  animate."); `interrupt`: turn the phone sideways and back, and check the start screen fits both ways;
+- Probes: `free`: tap the Animate switch before anything is open (it says "Open an image or create a canvas to animate."); `interrupt`: turn the phone sideways and back, and check the start screen fits both ways;
   `out-of-order`: tap the dimmed ANSI tab.
 - Rated: no (touch only: no keyboard shows here)
 
@@ -131,7 +130,7 @@ script. Every section ends with Free time.
 - Rated: no (touch only: no keyboard shows here)
 
 **Free time:** she'd tap the PIXEL and SAUCE tabs to see what they are, pinch the PIXEL view too, tap DOM and Smooth
-in the status bar to see what they do, and try "Or start with a blank canvas" from New project.
+in the status bar to see what they do, and try "Start with a blank canvas" from New project.
 
 ## Poking the settings
 
@@ -285,8 +284,7 @@ frames, and pinch while it plays.
 - Measured: export-gif
 - Does: turns Animate on (with the frames from step 16), opens ☰, scrolls to Export .gif and taps it; renames the file
   on the phone's keyboard and presses Go.
-- Expects: Export .gif shows only with Animate on and more than one frame; the dialog ("Looping animated GIF rendered
-  in your current display font—ready to share anywhere.") fits at 390 wide with its name, Cancel and Export; Go
+- Expects: Export .gif shows only with Animate on and more than one frame; the dialog ("Looping animated GIF rendered in your display font, ready to share anywhere.") fits at 390 wide with its name, Cancel and Export; Go
   exports; the download is a GIF (`GIF89a`) within the `file` budget, of her frames, without the ghost
   ([Exporting](../../animation.md#exporting)).
 - Probes: `again`: export twice in a row and check the names differ; `back-out`: rename, tap Cancel, reopen, and check
@@ -338,7 +336,7 @@ Terms from it and check they fit, and look for a Share button.
 - Does: turns the phone sideways (844 by 390), looks for SOCIAL, opens it, and reads the question; taps Not now; turns
   it back upright.
 - Expects: sideways is wide enough for the side panel, with LAYERS and Social (marked Beta)
-  ([Social](../../social.md)); the question "Before you open SOCIAL" fits the short screen and scrolls; Not now goes
+  ([Social](../../social.md)); the question "Before you use Social rooms" fits the short screen and scrolls; Not now goes
   back to LAYERS; turned upright, the side panel goes and the Layers button comes back, with nothing lost.
 - Probes: `back-out`: open Social again and tap outside the question instead of Not now; `interrupt`: turn upright
   while the question is open.

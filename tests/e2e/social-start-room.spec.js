@@ -40,7 +40,7 @@ test('Start a room with no art open says to open some, and Go live is disabled',
   await page.getByRole('button', { name: 'Start a room' }).click();
   await expect(shown(page, 'start-room').getByRole('heading', { name: 'Set up your room' })).toBeVisible();
   // A warning in place of the lobby picture, and in the same column for a room only the link reaches.
-  const warning = 'Open an image or start a canvas first so you have something to share.';
+  const warning = 'Open an image or create a canvas first so you have artwork to share.';
   await expect(page.getByRole('region', { name: 'Lobby card' }).getByText(warning)).toBeVisible();
   await expect(page.getByRole('region', { name: 'Lobby picture' })).toHaveCount(0);   // nothing to picture
   await page.getByRole('radio', { name: 'Unlisted (link only)' }).check();
@@ -148,7 +148,7 @@ test('going live with a public room: a name of only spaces isn\'t sent; the POST
   await expect(host.getByText(/Live for 0:0\d:\d\d/)).toBeVisible();
   await expect(tile(host, 'Here now')).toHaveText('0');
   await expect(host.getByText(link(baseURL))).toBeVisible();
-  await expect(host.getByText('Send the link and the password to anyone you want in.')).toHaveCount(0);
+  await expect(host.getByText('Share the room link and password with the people you want to invite.')).toHaveCount(0);
   expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'neon harbor', public: true, allowGuests: true, max: 12, signal: 'chat' }]);
   await expect.poll(() => room.received[0]).toMatchObject({ from: 'host', msg: { type: 'host' } });
   await expect.poll(() => store(page, 'room', (r) => r.status)).toBe('live');
@@ -173,7 +173,7 @@ test('a private room\'s password is optional: without one its link alone reaches
   await expect(page.getByRole('textbox', { name: 'Password (optional)' })).not.toHaveAttribute('required');
   await page.getByRole('button', { name: 'Go live' }).click();
   await openStats(page);
-  await expect(shown(page, 'host-room').getByText('Send the link to anyone you want in.')).toBeVisible();
+  await expect(shown(page, 'host-room').getByText('Share the room link with the people you want to invite.')).toBeVisible();
   expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'just us', public: false, allowGuests: true, max: 12, signal: null }]);
   expect([room.setup.public, room.setup.password]).toEqual([false, null]);
 });
@@ -186,7 +186,7 @@ test('a private room with a password sends it, and its page says to send both', 
   await page.getByRole('button', { name: 'Go live' }).click();
   await openStats(page);
   const host = shown(page, 'host-room');
-  await expect(host.getByText('Send the link and the password to anyone you want in.')).toBeVisible();
+  await expect(host.getByText('Share the room link and password with the people you want to invite.')).toBeVisible();
   await expect(host.getByRole('region', { name: 'Lobby picture' })).toHaveCount(0);   // only a listed room has one
   await expect(host.getByRole('checkbox', { name: 'Use this exact position' })).toHaveCount(0);
   expect(server.sent('POST', '/api/rooms').map((r) => r.body)).toEqual([{ name: 'just us', public: false, allowGuests: true, max: 12, signal: null, password: 'hunter22' }]);

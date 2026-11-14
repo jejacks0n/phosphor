@@ -43,7 +43,7 @@ test('the question waits until something of SOCIAL is wanted: the lobby showing,
   workspace.showSocial();
   await nextTick();
   expect(dialog().getAttribute('aria-labelledby')).toBe('modal-dialog-title');
-  expect(dialog().textContent).toContain('Before you open SOCIAL');
+  expect(dialog().textContent).toContain('Before you use Social rooms');
 
   social.declineConsent();
   await nextTick();
@@ -51,11 +51,11 @@ test('the question waits until something of SOCIAL is wanted: the lobby showing,
 
   social.page = 'sign-in';
   await nextTick();
-  expect(dialog().textContent).toContain('Before you open SOCIAL');   // not the page, until it's answered
+  expect(dialog().textContent).toContain('Before you use Social rooms');   // not the page, until it's answered
   social.declineConsent();
   social._roomLink = 'abcdefghij';
   await nextTick();
-  expect(dialog().textContent).toContain('Before you open SOCIAL');
+  expect(dialog().textContent).toContain('Before you use Social rooms');
 });
 
 test('a page shows in a box named by its heading once you\'re known; Escape goes back from each', async () => {

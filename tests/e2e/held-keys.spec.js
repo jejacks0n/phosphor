@@ -17,13 +17,13 @@ test('Alt picks the foreground and Alt+Shift the background, from Pencil and Sha
 
     const at = await cellPoint(page, 10, 3, 0);
     await page.keyboard.down('Alt');
-    await expect(hint(page)).toHaveText(/Picking the foreground color/);
+    await expect(hint(page)).toHaveText(/Picking foreground color/);
     await page.mouse.click(at.x, at.y);
     expect(await ws(page, (w) => w.editFgColor)).toBe(await colorAt(page, 10, 3, 'fg'));
 
     const bgAt = await cellPoint(page, 60, 20, 0);
     await page.keyboard.down('Shift');
-    await expect(hint(page)).toHaveText('Picking the background color');
+    await expect(hint(page)).toHaveText('Picking background color');
     await page.mouse.click(bgAt.x, bgAt.y);
     await page.keyboard.up('Shift');
     await page.keyboard.up('Alt');
@@ -120,7 +120,7 @@ test('Shift-click with the Pencil draws a straight line from the last point; Pen
   expect(painted).toEqual(Array(21).fill(true));
 });
 
-// An opened .ans with Edit it: gray "!" over red "!" cells, nothing but black under them.
+// An opened .ans with Edit artwork: gray "!" over red "!" cells, nothing but black under them.
 const bang = Buffer.from('\x1b[37m!!\r\n\x1b[31m!!', 'latin1');
 
 test('Alt+click with the Pencil picks what the Eyedropper picks on an opened .ans, not the black picture under it', async ({ page }) => {
@@ -130,7 +130,7 @@ test('Alt+click with the Pencil picks what the Eyedropper picks on an opened .an
     dt.items.add(new File([new Uint8Array(bytes)], 'bang.ans'));
     document.querySelector('article.drop-zone').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
   }, [...bang]);
-  await page.getByRole('dialog').getByRole('button', { name: /Edit it/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /Edit artwork/ }).click();
   await expect(page.locator('.ansi-editor .display')).toBeVisible();
   await page.waitForTimeout(500); // the picture redraws
   const colors = (w) => [w.editFgColor, w.editBgColor];

@@ -302,16 +302,16 @@ test('New cells in the frame menu sets whether what is drawn next carries on or 
   await expect.poll(() => chars(page, 2, 2, 2)).toBe('A'); // carried on to frame 2
   const menu = bar(page).getByRole('button', { name: 'Frame actions' });
   await menu.click();
-  await expect(page.getByRole('button', { name: 'Carry on to later frames' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Stay on their frame' }).click();
+  await expect(page.getByRole('button', { name: 'Carry forward to later frames' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Keep on this frame only' }).click();
   await expect.poll(() => chars(page, 2, 2, 2)).toBe('A'); // still: it was drawn to carry
   await type(page, 4, 2, 'B'); // drawn to stay
   await addFrame(page, 'Blank');
   await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
   expect(await chars(page, 2, 4, 4)).not.toBe('B');
   await menu.click();
-  await expect(page.getByRole('button', { name: 'Stay on their frame' })).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Carry on to later frames' }).click();
+  await expect(page.getByRole('button', { name: 'Keep on this frame only' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Carry forward to later frames' }).click();
   await bar(page).getByRole('button', { name: 'Previous frame' }).click();
   await expect.poll(() => chars(page, 2, 2, 4)).toMatch(/^A.B$/); // and nothing drawn changed
 });
@@ -320,14 +320,14 @@ test('cells drawn to stay show as the ghost on the next frame, and only on scree
   await openApp(page);
   await animateSwitch(page).check();
   await bar(page).getByRole('button', { name: 'Frame actions' }).click();
-  await page.getByRole('button', { name: 'Stay on their frame' }).click();
+  await page.getByRole('button', { name: 'Keep on this frame only' }).click();
   await type(page, 2, 2, 'A');
   await addFrame(page, 'Blank');
   const ghost = () => store(page, 'project', '(p) => p.shownCells[2 * p.cols + 2].char');
   await expect.poll(ghost).toBe('A');
   expect(await chars(page, 2, 2, 2)).not.toBe('A'); // not frame 2's
   await bar(page).getByRole('button', { name: 'Ghost', exact: true }).click();
-  await bar(page).getByRole('checkbox', { name: 'Show the ghost' }).uncheck();
+  await bar(page).getByRole('checkbox', { name: 'Show ghost' }).uncheck();
   await expect.poll(ghost).not.toBe('A');
 });
 
@@ -447,7 +447,7 @@ test('a canvas grown past the limit offers no Add frame, and Animate can still b
   // marked disabled, which is what the switch says it is.)
   const box = await page.locator('label.animate').boundingBox();
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(page.locator('.app-toast')).toHaveText(/60,000 cells.*up to 40,000.*Dimensions/);
+  await expect(page.locator('.app-toast')).toHaveText(/60,000 cells.*up to 40,000.*dimensions/);
   await page.locator('.app-toast').click(); // a click closes it
   await expect(page.locator('.app-toast')).toBeHidden();
   await expect(animateSwitch(page)).not.toBeChecked();
@@ -458,10 +458,10 @@ test('Ghost is one button that opens its on and off and its strength, lit while 
   await openApp(page);
   await animateSwitch(page).check();
   const ghost = bar(page).getByRole('button', { name: 'Ghost', exact: true });
-  await expect(bar(page).getByRole('button', { name: 'Ghost strength' })).toHaveCount(0); // one button, no arrow beside it
+  await expect(bar(page).getByRole('button', { name: 'Ghost opacity' })).toHaveCount(0); // one button, no arrow beside it
   await expect(ghost.locator('..')).toHaveClass(/\bactive\b/); // lit as a toolbar button is
   await expect(ghost.locator('svg').first()).toBeVisible(); // a ghost, not a word
-  const show = bar(page).getByRole('checkbox', { name: 'Show the ghost' }), slider = bar(page).getByRole('slider', { name: 'Ghost strength' });
+  const show = bar(page).getByRole('checkbox', { name: 'Show ghost' }), slider = bar(page).getByRole('slider', { name: 'Ghost opacity' });
   await expect(slider).toHaveCount(0); // a button's room until it's asked for
   await ghost.click();
   await expect(show).toBeChecked();
@@ -482,7 +482,7 @@ test('Ghost is one button that opens its on and off and its strength, lit while 
   await expect(page.locator('.ansi-editor .display')).toBeVisible();
   await animateSwitch(page).check();
   await bar(page).getByRole('button', { name: 'Ghost', exact: true }).click();
-  await expect(bar(page).getByRole('slider', { name: 'Ghost strength' })).toHaveValue('70');
+  await expect(bar(page).getByRole('slider', { name: 'Ghost opacity' })).toHaveValue('70');
 });
 
 test('on a narrow screen the bar holds two tidy lines, and every control stays on screen', async ({ page }) => {

@@ -92,7 +92,7 @@ test('with smooth text on, Export .png asks first, Smooth focused, and exports a
     const { closed, unmount } = mountDialog();
     try {
       const dialog = document.querySelector('.modal-dialog');
-      expect(dialog.textContent).toContain('Smooth text adds colors, so the PNG will be a few times bigger.');
+      expect(dialog.textContent).toContain('Smooth text adds subtle shading colors, which makes the PNG file larger.');
       expect(dialog.querySelector('form')).toBeNull();
       expect(document.activeElement.textContent).toContain('Smooth');
       [...dialog.querySelectorAll('button.choice')].find((button) => button.querySelector('b').textContent === choice).click();

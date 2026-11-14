@@ -69,8 +69,7 @@ script. Every section ends with Free time.
 ## Getting the picture in
 
 ### 1. Open my photo
-- Does: on the start screen, chooses `photo.jpg` with Choose a file (or drops it on the box that says "Drop an image,
-  .phosphor or ANSI file here").
+- Does: on the start screen, chooses `photo.jpg` with Choose a file (or drops it on the box that says "Drop an image, .phosphor, or ANSI file here").
 - Expects: it opens on ANSI as character art, 80 columns wide with its rows from the photo's shape; LAYERS shows
   Layer 1 (picked) over Base; the Characters section is titled "Characters · Layer 1"; the address shows the ANSI tab.
   Opening takes under the `file` budget.
@@ -226,7 +225,7 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Expects: paint covers half cells and shows through each cell's character (Colors only), and a cell that shows none
   (one flat color) takes it as a plain `▄`; with Build up on, two strokes at 50% make it solid; the color adjustments
   tint the paint too.
-- Probes: `out-of-order`: hide Layer 2 with its eye and try to paint ("Show the layer to draw on it"); `undo-redo`:
+- Probes: `out-of-order`: hide Layer 2 with its eye and try to paint ("Make the layer visible to draw on it"); `undo-redo`:
   undo one stroke, redo it, then paint and check redo is off; `speed`: draw fast scribbles with `qa.frames`;
   `extremes`: with a Color list and Saturation at 0, paint on Layer 2 with a swatch that isn't gray and check the Pixel
   view shows the stroke in the swatch's color, as the ANSI view does.
@@ -253,8 +252,7 @@ dithered, and compare the dither at 80 and at 200 columns.
   while dragging; then tries Cells with a gradient.
 - Expects: Linear runs from her foreground where she pressed to her background where she let go; Spherical is a
   circle; Shift snaps the line to 45°; Cells builds it from █ ▓ ▒ ░ and a space; a gradient is one undo step; a drag
-  with either color set to None fills nothing and says "A gradient needs both a foreground and a background color:
-  neither can be None."
+  with either color set to None fills nothing and says "A gradient requires both a foreground and a background color. Neither color can be None."
 - Probes: `back-out`: start a gradient drag and press Escape before letting go; `out-of-order`: set the background to
   None and drag; `undo-redo`: undo the gradient and redo it.
 - Rated: yes, wants Shift+G
@@ -267,7 +265,7 @@ dithered, and compare the dither at 80 and at 200 columns.
   white alone); Blur softens an edge; going over a spot again in one stroke adds nothing, a second stroke goes further;
   on the ANSI view the caption's letters stay and only their colors change, and a cell that shows no character still
   shows none; each stroke is one undo step; a palette shows the result in its own colors.
-- Probes: `out-of-order`: hide the layer with its eye and stroke ("Show the layer to draw on it"); `undo-redo`: undo a
+- Probes: `out-of-order`: hide the layer with its eye and stroke ("Make the layer visible to draw on it"); `undo-redo`: undo a
   stroke, redo it; `extremes`: Strength at 1% and at 100%.
 - Rated: yes, wants O, Shift+O and R
 
@@ -334,7 +332,7 @@ held.
 - Expects: no question: its cells and paint are written onto the layer under it, it leaves the stack, and nothing on
   the canvas changes; one undo brings it back, picked; redo merges it again.
 - Probes: `undo-redo`: undo, redo, undo again, then paint and check redo is off; `out-of-order`: hide the layer under it
-  and press Merge down ("Show the layer to merge it").
+  and press Merge down ("Make the layer visible to merge it").
 - Rated: yes, wants Cmd+E
 
 ### 27. Merge my paint into the picture, crisp

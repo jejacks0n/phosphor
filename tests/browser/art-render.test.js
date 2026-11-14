@@ -180,10 +180,10 @@ test('in a room, an art layer someone else is drawing in shows its box saying wh
   const options = createApp(VectorOptions).use(i18n);
   options.mount(row);
   await settle(project);
-  expect(host.querySelector(`[data-locked="${art}"] text`).textContent).toBe('Ann is drawing in this layer');
+  expect(host.querySelector(`[data-locked="${art}"] text`).textContent).toBe('Ann is currently editing this layer');
   const edit = [...row.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Edit art');
   expect(edit.disabled).toBe(true);
-  expect(edit.title).toBe('Ann is drawing in this layer');
+  expect(edit.title).toBe('Ann is currently editing this layer');
   // The canvas size is off too (it goes to the room as the project), so a keystroke can't be refused there.
   const panel = document.createElement('div');
   const controls = createApp(ControlPanel).use(i18n);
@@ -191,13 +191,13 @@ test('in a room, an art layer someone else is drawing in shows its box saying wh
   await settle(project);
   for (const id of ['cols', 'rows']) {
     expect(panel.querySelector(`#${id}`).disabled).toBe(true);
-    expect(panel.querySelector(`#${id}`).title).toBe('Ann is drawing in an art layer');
+    expect(panel.querySelector(`#${id}`).title).toBe('Ann is currently editing an art layer');
   }
   // A cursor with no name says the name the room listed, never the sub.
   drawing.artistNames = { bo: 'Bo' };
   drawing.cursors = { bo: { at: null, view: null, name: null, inside: art } };
   await settle(project);
-  expect(host.querySelector(`[data-locked="${art}"] text`).textContent).toBe('Bo is drawing in this layer');
+  expect(host.querySelector(`[data-locked="${art}"] text`).textContent).toBe('Bo is currently editing this layer');
   drawing.cursors = { ann: { at: null, view: null, name: 'Ann', inside: null } }; // stepped out
   await settle(project);
   expect(host.querySelector('[data-locked]')).toBeNull();

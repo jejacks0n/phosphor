@@ -87,7 +87,7 @@ test('a narrow window keeps a return for a computer; widened, it\'s read once an
 
 test.describe('before SOCIAL\'s question is answered', () => {
   test.use({ consented: false });
-  const consent = (page) => page.getByRole('dialog', { name: 'Before you open SOCIAL' });
+  const consent = (page) => page.getByRole('dialog', { name: 'Before you use Social rooms' });
 
   test('a link waits for the answer: Not now leaves a clean address, and accepting goes on to it', async ({ page }) => {
     const server = await fakeServer(page);

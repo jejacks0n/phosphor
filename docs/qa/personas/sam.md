@@ -68,7 +68,7 @@ script. Every section ends with Free time.
 ## A banner from text
 
 ### 1. Start from a blank canvas
-- Does: on the start screen, presses "Or start with a blank canvas".
+- Does: on the start screen, presses "Start with a blank canvas".
 - Expects: it opens on ANSI at 80 columns by 25 lines (Dimensions 80 and 50), black, with Layer 1 picked over Base;
   nothing to undo.
 - Probes: `again`: start a New project and a blank canvas again; `back-out`: press New project with unsaved changes and
@@ -144,8 +144,7 @@ title.
 
 ### 9. Wide characters at the line's end
 - Does: moves the cursor to the last column and types `漢`, then `😀`; then to the column before last and types `😀`.
-- Expects: in the last column a two-column character does nothing and says "A two-column character won't fit in the
-  last column."; one column earlier it fits, and covers the last column.
+- Expects: in the last column a two-column character does nothing and says "Two-column characters cannot fit in the last column."; one column earlier it fits, and covers the last column.
 - Probes: `extremes`: type `❤️`, `👍🏽` and `🇺🇸` at the line's end and in the middle; `again`: try the last column twice.
 - Rated: no (typing the art)
 
@@ -185,7 +184,7 @@ status bar's Col and Row as the cursor crosses wide characters, and try the Eras
 ### 14. Export .ans for old tools
 - Does: presses Export .ans.
 - Expects: the dialog lists each character CP437 lacks (`漢`, `字`, `😀` and the rest), what it becomes and how many
-  cells use it, with "Export as .utf8ans to keep exact characters."; a two-column character becomes its stand-in plus a
+  cells use it, with "Export as .utf8ans to keep all original characters."; a two-column character becomes its stand-in plus a
   space, so the grid still lines up; an emoji still in Author is listed under it, in the SAUCE list.
 - Probes: `back-out`: read the list, press Cancel, and check nothing downloaded; `again`: export after removing every
   wide character (nothing listed).
@@ -205,7 +204,7 @@ status bar's Col and Row as the cursor crosses wide characters, and try the Eras
 - Rated: yes, wants Cmd+A, Cmd+C
 
 **Free time:** Sam would export with a layer hidden, copy just the title and paste it as text into SAUCE's comments,
-open the .utf8ans back in Phosphor (Edit it) and compare cells, and look for a way to export without SAUCE.
+open the .utf8ans back in Phosphor (Edit artwork) and compare cells, and look for a way to export without SAUCE.
 
 ## A short animated splash
 
@@ -218,7 +217,7 @@ open the .utf8ans back in Phosphor (Edit it) and compare cells, and look for a w
 
 ### 18. Add frames and change each one
 - Does: presses N three times, steps with comma and period, and types a different last character on each frame (a
-  spinner: `|`, `/`, `-`, `\`), with Frame actions' New cells set to Stay on their frame.
+  spinner: `|`, `/`, `-`, `\`), with Frame actions' New cells set to Keep on this frame only.
 - Expects: N adds a frame after the one showing, of its kind; on a Blank frame what's inherited shows dimmed as the
   ghost; a cell drawn to stay shows on its frame only; Alt+comma and Alt+period step while typing.
 - Probes: `undo-redo`: undo across frames (it goes back to the frame the edit was made on); `speed`: hold N for a

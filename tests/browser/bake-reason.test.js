@@ -5,7 +5,7 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import EditToolbar from '@/components/EditToolbar.vue';
 import { i18n } from '@/i18n';
 
-const WHY = 'Nothing to bake: the sliders are at their defaults and there are no shapes on the picture.';
+const WHY = 'Nothing to bake: all sliders are at default values and there are no shapes on the image.';
 
 test('Bake says why it is off, until a slider moves', async () => {
   const { project } = await createTestApp();

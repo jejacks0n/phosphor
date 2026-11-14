@@ -249,7 +249,7 @@ test('inside, Clear, Merge down and Bake are off, saying to step out first', asy
       for (const name of ['Clear layer', 'Merge down', 'Bake', 'Flatten']) {
         const buttons = [...host.querySelectorAll(`button[aria-label="${name}"]`)];
         expect([name, buttons.length > 0]).toEqual([name, true]);
-        for (const button of buttons) expect([name, button.disabled, button.title]).toEqual([name, true, 'Step out of the art layer first: this changes the whole drawing.']);
+        for (const button of buttons) expect([name, button.disabled, button.title]).toEqual([name, true, 'Exit the art layer first: this action affects the entire drawing.']);
       }
     }
   } finally {
@@ -414,7 +414,7 @@ test('in a room, a layer someone else is drawing in can be selected, not stepped
   expect(project.enterArt(key)).toBe(false);
   toastMessage.value = null;
   project.updateShapes([[key, withShape(shape, { m: [1, 0, 0, 1, 8, 4] })]]);
-  expect(toastMessage.value).toBe('Ann is drawing in this layer');
+  expect(toastMessage.value).toBe('Ann is currently editing this layer');
   project.deleteShapes([key]);
   project.restackShapes([key], 'back');
   expect(project.shapes.get(key)).toBe(shape);
@@ -427,7 +427,7 @@ test('in a room, a layer someone else is drawing in can be selected, not stepped
   project._locks = { ann: { key } }; // no name to say: never the sub
   toastMessage.value = null;
   project.deleteShapes([key]);
-  expect(toastMessage.value).toBe('Someone else is drawing in this layer');
+  expect(toastMessage.value).toBe('Someone else is currently editing this layer');
   workspace.vectorSelected = [key];
   expect(cutShapes(project, workspace)).toBe(true);
   expect(project.shapes.get(key)).toBe(shape);
@@ -453,12 +453,12 @@ test('in a room, the host can\'t undo or redo a step that reaches a layer someon
   toastMessage.value = null;
   project.undo();
   expect(project.shapes.has(key)).toBe(true);
-  expect(toastMessage.value).toBe('Ann is drawing in this layer');
+  expect(toastMessage.value).toBe('Ann is currently editing this layer');
   const grid = [project.cols, project.rows];
   for (const act of [() => project.clearEditLayer(), () => project.mergeShapes(), () => project.mergeDown('edit'), () => project.bake(), () => project.updateCols(30), () => project.updateRows(30)]) {
     toastMessage.value = null;
     act();
-    expect(toastMessage.value).toBe('Ann is drawing in an art layer');
+    expect(toastMessage.value).toBe('Ann is currently editing an art layer');
   }
   expect(project.shapes.has(key)).toBe(true);
   expect(project.editCellAt(1, 1)?.char).toBe('X');

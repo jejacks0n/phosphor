@@ -185,7 +185,7 @@ test('steps out of an art layer first', async () => {
   expect(shown(project)).toEqual(before);
 });
 
-test('the toolbar asks Edit it or Draw on top of it', async () => {
+test('the toolbar asks Edit artwork or Draw on top', async () => {
   const { project } = await drawing();
   const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
   document.body.append(host);
@@ -195,7 +195,7 @@ test('the toolbar asks Edit it or Draw on top of it', async () => {
     expect(button?.disabled).toBe(false);
     button.click();
     await settle(project);
-    const choice = [...document.querySelectorAll('button.choice')].find((b) => b.textContent.includes('Draw on top of it'));
+    const choice = [...document.querySelectorAll('button.choice')].find((b) => b.textContent.includes('Draw on top'));
     expect(choice).toBeTruthy();
     choice.click();
     for (let i = 0; i < 100 && project.image && project.shapes.size; i++) await settle(project); // the black picture encodes first
@@ -314,8 +314,8 @@ test('Flatten drops hidden layers and says so first', async () => {
   try {
     [...host.querySelectorAll('button')].find((b) => b.title.startsWith('Flatten:')).click();
     await settle(project);
-    expect(document.querySelector('.modal-dialog').textContent).toContain('The hidden layer is removed too.');
-    [...document.querySelectorAll('button.choice')].find((b) => b.textContent.includes('Edit it')).click();
+    expect(document.querySelector('.modal-dialog').textContent).toContain('The hidden layer will also be removed.');
+    [...document.querySelectorAll('button.choice')].find((b) => b.textContent.includes('Edit artwork')).click();
     for (let i = 0; i < 100 && project.layers.length > 2; i++) await settle(project); // the black picture encodes first
     expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
     expect(shown(project)).toEqual(before);
@@ -344,7 +344,7 @@ test('image filters panel hides after flatten and shows a note', async () => {
     workspace.pickedLayer = 'base';  // flatten resets to edit; manually switch to base to see the picture section
     await nextTick();
     expect(host.querySelector('fieldset.effects')).toBeNull();
-    expect(host.querySelector('.effects-note')?.textContent).toContain('Image filters need an image');
+    expect(host.querySelector('.effects-note')?.textContent).toContain('Image filters require an image');
   } finally {
     panel.unmount();
     host.remove();

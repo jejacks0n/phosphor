@@ -24,7 +24,7 @@ async function deleteButton(account) {
 test('rename: Change opens a field, Save sends it, and the lobby shows the new name', async ({ page }) => {
   const server = await fakeServer(page, { me: member() });
   const account = await openAccount(page);
-  await expect(account.getByText('Once every 30 days. Your color and glyph come from your username.')).toBeVisible();
+  await expect(account.getByText('You can change your username once every 30 days.')).toBeVisible();
   await account.getByRole('button', { name: 'Change', exact: true }).click();
   await account.getByRole('textbox', { name: 'Username' }).fill('pixel-pal');
   await account.getByRole('button', { name: 'Save' }).click();
@@ -130,7 +130,7 @@ test('Two new passwords that differ are said in the form, and nothing is sent', 
   await account.getByRole('button', { name: 'Change password' }).click();
   await fillPassword(account, 'violet-lantern-harbor-42', 'copper-meadow-signal-77', 'copper-meadow-signal-78');
   await account.locator('form').getByRole('button', { name: 'Change password' }).click();
-  await expect(account.getByRole('alert')).toContainText("Those new passwords don't match");
+  await expect(account.getByRole('alert')).toContainText('The new passwords do not match.');
   expect(server.sent('POST', '/api/auth/change-password')).toHaveLength(0);
 });
 
@@ -331,7 +331,7 @@ test('an account without a password says deleting needs a recent sign-in', async
   const server = await fakeServer(page, { me: member({ providers: ['github'] }) });
   const account = await openAccount(page);
   await (await deleteButton(account)).click();
-  await expect(account.getByText('Requires a fresh sign-in within the last 5 minutes.')).toBeVisible();
+  await expect(account.getByText('Requires signing in within the last 5 minutes.')).toBeVisible();
   await account.getByRole('button', { name: 'Delete for good' }).click();
   await expect(shown(page, 'lobby')).toBeVisible();
   expect(server.sent('POST', '/api/auth/delete-user')[0].body).toEqual({});
@@ -367,7 +367,7 @@ test('the delete panel says what is lost, takes focus, and Cancel clears the pas
   const account = await openAccount(page);
   const open = await deleteButton(account);
   await open.click();
-  await expect(account.getByText('This removes your account, your username and your blocks. It can\'t be undone.')).toBeVisible();
+  await expect(account.getByText('Permanently deletes your account, username, and block list. This action cannot be undone.')).toBeVisible();
   await expect(account.getByLabel('Password')).toBeFocused();
   await account.getByLabel('Password').fill('secret one');
   await account.getByRole('button', { name: 'Cancel' }).click();
@@ -406,7 +406,7 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   await section.getByRole('button', { name: 'Continue' }).click();
   expect(server.sent('POST', '/api/auth/two-factor/enable')[0].body).toEqual({ password: 'correct horse battery' });
 
-  await expect(section.getByText('Scan this with your authenticator app, or enter the key:')).toBeVisible();
+  await expect(section.getByText('Scan this QR code with your authenticator app, or enter the secret key manually:')).toBeVisible();
   await expect(section.getByRole('img', { name: 'QR code' })).toBeVisible();
   await expect(section.locator('code')).toHaveText('JBSWY3DPEHPK3PXP');
   await section.getByLabel('Code from the app').fill('   ');
@@ -420,7 +420,7 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   await section.getByRole('button', { name: 'Turn on' }).click();
   expect(server.sent('POST', '/api/auth/two-factor/verify-totp').map((r) => r.body)).toEqual([{ code: '000000' }, { code: '123456' }]);
 
-  await expect(section.getByText('Save these backup codes somewhere safe. Each one works once, if you lose your phone. You won\'t see them again.')).toBeVisible();
+  await expect(section.getByText('Store these backup codes in a safe place. Each code can be used once if you lose access to your authenticator app.')).toBeVisible();
   await expect(section.locator('li')).toHaveCount(10);
   await expect(section.locator('li').first()).toHaveText('first-code0');
   await section.getByRole('button', { name: 'Done' }).click();
@@ -506,7 +506,7 @@ test('Two-factor: a Discord-only account turns it on without a password field', 
   const section = twoFactor(account);
   await section.getByRole('button', { name: 'Turn on' }).click();
   await expect(section.getByLabel('Password')).toHaveCount(0);
-  await expect(section.getByText('Requires a fresh sign-in within the last 5 minutes.')).toBeVisible();
+  await expect(section.getByText('Requires signing in within the last 5 minutes.')).toBeVisible();
   await section.getByRole('button', { name: 'Continue' }).click();
   await expect(section.locator('svg')).toBeVisible();
   expect(server.sent('POST', '/api/auth/two-factor/enable')[0].body).toEqual({});

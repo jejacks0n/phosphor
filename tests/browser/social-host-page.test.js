@@ -111,8 +111,8 @@ test('turning off Allow guests offers to kick the guests here too, unticked; sav
   const removed = vi.spyOn(room, 'remove').mockImplementation(() => {});
   const label = (text) => [...host.querySelectorAll('label')].find((l) => l.textContent.trim() === text);
   const box = label('Allow guests').querySelector('input');
-  const kick = () => label('Also remove the 2 guests currently here')?.querySelector('input')
-    ?? label('Also remove the guest currently here')?.querySelector('input') ?? null;
+  const kick = () => label('Also remove the 2 guests currently in the room')?.querySelector('input')
+    ?? label('Also remove the guest currently in the room')?.querySelector('input') ?? null;
   expect(kick()).toBe(null);
 
   box.click();
@@ -120,7 +120,7 @@ test('turning off Allow guests offers to kick the guests here too, unticked; sav
   expect(kick().checked).toBe(false);   // turning guests off alone kicks nobody
   room.watchers = [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true })];
   await nextTick();
-  expect(label('Also remove the guest currently here')).toBeTruthy();
+  expect(label('Also remove the guest currently in the room')).toBeTruthy();
   room.watchers = [watcher('p1', 'bob'), watcher('g1', 'wren', { guest: true }), watcher('g2', 'fox', { guest: true })];
   await nextTick();
 
@@ -342,7 +342,7 @@ test('three cells layers: Go live is off and says why', async () => {
   project.addLayer('cells', 'edit');
   project.addLayer('cells', 'L1'); // [base, edit, L1, L2]
   await nextTick();
-  const words = 'For now, a room holds at most Base, one vector layer and one layer above them, all with the same character settings. Merge or delete layers to go live.';
+  const words = 'Shared rooms currently support at most Base, one vector layer, and one drawing layer, all sharing the same character settings. Merge or delete extra layers to start a room.';
   expect(goLive.disabled).toBe(true);
   expect(goLive.title).toBe(words);
   expect(host.querySelector('p.no-art').textContent).toBe(words);

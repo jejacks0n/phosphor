@@ -17,10 +17,10 @@ test('copy and paste a block, in Edit Mode at the cursor, then paste text copied
   await page.getByRole('button', { name: 'Select', exact: true }).click();
 
   await select(page, 2, 2, 8, 3);
-  const paste = page.getByRole('button', { name: /^Nothing copied in this tab\. To paste from another tab or app, use (⌘V|Ctrl\+V)$/ });
+  const paste = page.getByRole('button', { name: /^Clipboard is empty in this tab\. To paste from another tab or app, press (⌘V|Ctrl\+V)$/ });
   await expect(paste).toBeDisabled();
   await page.keyboard.press('ControlOrMeta+c');
-  await expect(page.getByRole('button', { name: 'Paste what you copied in Phosphor, at the selection' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Paste copied cells at the selection' })).toBeEnabled();
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`Copy me\n${await chars(page, 3, 2, 8)}`);
 
   await select(page, 20, 10, 21, 11);

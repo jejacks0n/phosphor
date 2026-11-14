@@ -4,14 +4,14 @@ import { readFile } from 'node:fs/promises';
 import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, openApp, imageInput, otherBrowser } from './support.js';
 import { fakeRoom, member, ROOM_ID, goLive, shown, chat, hash, selected, ARTIST, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard, followLink } from './social-support.js';
 
-const WAITING_WORDS = 'Waiting for the host to reconnect—drawing paused…';
-const CHANGING_WORDS = 'Handing off to the new host—drawing paused…';
-const GETTING_WORDS = 'Syncing the room\'s canvas—drawing paused…';
+const WAITING_WORDS = 'Waiting for the host to reconnect. Drawing is paused…';
+const CHANGING_WORDS = 'Transferring host controls. Drawing is paused…';
+const GETTING_WORDS = 'Syncing canvas from the host. Drawing is paused…';
 const ONLY_HOST = 'Only the room\'s host can change this.';
 const NOT_WHILE = 'Unavailable while co-artists are drawing.';
-const MERGE_WARNING = 'Merging down can\'t be undone while drawing together.';
-const BAKE_WARNING = 'Baking can\'t be undone while drawing together.';
-const UNSAVED = 'Accepting replaces your current canvas (you have unsaved changes).';
+const MERGE_WARNING = 'Merging down cannot be undone in shared rooms.';
+const BAKE_WARNING = 'Baking cannot be undone in shared rooms.';
+const UNSAVED = 'Accepting replaces your current canvas, which has unsaved changes.';
 
 const edits = (page) => store(page, 'project', (p) => JSON.stringify([...p.editCells].sort(([a], [b]) => (a < b ? -1 : 1))));
 const shownCells = (page) => store(page, 'project', (p) => p.cells.map((c) => c.char + c.fg.hex + c.bg.hex).join());
@@ -317,7 +317,7 @@ test('host alone again has its normal controls, and with the chat folded the art
   const room = fakeRoom();
   const { artist } = await together(host, context, room);
   await typeAt(host, 1, 1, 'h');
-  await artist.getByRole('button', { name: 'Fold the panel' }).click();
+  await artist.getByRole('button', { name: 'Collapse panel' }).click();
   await fromMenu(host, 'Back to watching');
   await mayDraw(artist).toBe(false);
   await expect(artist.locator('.app-toast')).toHaveText('You\'re back to watching.');   // what the chat panel would have said
@@ -355,7 +355,7 @@ test('End room says it ends for everyone, ends it for artists too, and the art s
 
   await chat(host).getByRole('button', { name: 'End room' }).click();
   const asked = host.getByRole('dialog', { name: 'End this room?' });
-  await expect(asked.getByText('Everyone will be disconnected (including co-artists) and the room chat will clear.')).toBeVisible();
+  await expect(asked.getByText('All participants will be disconnected (including co-artists), and room chat will be cleared.')).toBeVisible();
   await asked.getByRole('button', { name: 'End room' }).click();
 
   await expect.poll(() => store(artist, 'room', (r) => r.role)).toBe(null);
@@ -704,11 +704,11 @@ test('the pause layer follows the view: folding the chat and narrowing the windo
   };
   const opened = await follows();
 
-  await artist.getByRole('button', { name: 'Fold the panel' }).click();
+  await artist.getByRole('button', { name: 'Collapse panel' }).click();
   await expect.poll(() => view.evaluate((el) => el.clientWidth)).toBeGreaterThan(opened);
   const wide = await follows();
 
-  await artist.getByRole('button', { name: 'Open the panel' }).click();
+  await artist.getByRole('button', { name: 'Expand panel' }).click();
   const { height } = artist.viewportSize();
   await artist.setViewportSize({ width: 1000, height });
   await expect.poll(() => view.evaluate((el) => el.clientWidth)).toBeLessThan(wide);
@@ -852,7 +852,7 @@ test('a followed artist who scrolls with the pointer still is followed there, an
 
 // Handing over.
 const REAPER = member({ id: 'u_3', username: 'grim_reaper', name: 'grim_reaper', email: 'reaper@example.com' });
-const UNDO_RESET = 'The host changed, so undo starts over. All the drawing is still here.';
+const UNDO_RESET = 'The host has changed, so undo history has reset. All existing artwork is preserved.';
 const agreed = (a, b) => expect.poll(async () => (await edits(a)) === (await edits(b)), { timeout: 15_000, intervals: [100] }).toBe(true);
 const roleOf = (page) => store(page, 'room', (r) => r.role);
 const isHost = (page) => expect.poll(() => roleOf(page), { timeout: 20_000, intervals: [100] });
@@ -861,7 +861,7 @@ const hereOn = (host, count) => expect.poll(() => store(host, 'drawing', (d) => 
 const makeHost = async (host, name = ARTIST.name) => {
   await fromMenu(host, 'Make host', name);
   const dialog = host.getByRole('dialog', { name: `Make ${name} the host?` });
-  await expect(dialog).toContainText('You\'ll stay in the room as an artist.');
+  await expect(dialog).toContainText('You will remain in the room as an artist.');
   await dialog.getByRole('button', { name: 'Make host' }).click();
 };
 
@@ -1051,7 +1051,7 @@ test('a host cut off who comes back as an artist is told who hosts now, with the
   await typeAt(host, 20, 12, 'm');
   await typeAt(artist, 30, 12, 'a');
   await agreed(host, artist);
-  await host.getByRole('button', { name: 'Fold the panel' }).click();
+  await host.getByRole('button', { name: 'Collapse panel' }).click();
   const before = await store(host, 'project', (p) => p.documentId);
   room.dropHost();
   await store(host, 'project', (p) => { p.typeAt(25, 12, 'o', { fg: '#ffffff', bg: '#000000' }); p.commitEdit(); });   // the page lives, and goes on drawing
@@ -1247,7 +1247,7 @@ test('an artist draws in the host\'s font and size, follows a change, and has th
   await expect(font(artist)).toBeDisabled();
   await expect(size(artist)).toBeDisabled();
   await expect(artist.getByRole('button', { name: 'Load font' })).toBeDisabled();
-  await expect(artist.getByText("Using the host's font while you draw here.")).toBeVisible();
+  await expect(artist.getByText("Using the host's font while in this room.")).toBeVisible();
   expect(await store(artist, 'project', (p) => p.cols * 8 + 4)).toBeCloseTo(await artist.locator('.ansi-editor div.display').evaluate((c) => c.getBoundingClientRect().width), 0);
 
   await size(host).fill('32');

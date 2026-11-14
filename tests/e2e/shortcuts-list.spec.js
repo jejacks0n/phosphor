@@ -8,7 +8,7 @@ test('? opens the shortcuts list; Escape and Done close it', async ({ page }) =>
   await openApp(page);
   await page.keyboard.press('?');
   await expect(list(page)).toBeVisible();
-  await expect(list(page)).toContainText('Open the color box on the foreground');
+  await expect(list(page)).toContainText('Open color picker for foreground');
   await expect(list(page)).toContainText('Nudge the selection');
   await expect(list(page).locator('dd', { hasText: /^Zoom/ })).toHaveText('Zoom'); // both views zoom
   await page.keyboard.press('Escape');

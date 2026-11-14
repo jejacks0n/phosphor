@@ -75,14 +75,14 @@ script. Every section ends with Free time.
 
 ### 1. Open my scene to edit it
 - Does: writes the files (`files.writeFiles`), and on the start screen chooses `scene.ans`; at the question "Open
-  scene.ans?" picks Edit it.
+  scene.ans?" picks Edit artwork.
 - Expects: it opens on ANSI at 80 columns by 6 lines, every cell an edit cell on Layer 1 over a black base; the line
   that runs past column 80 wraps onto the next line; Z sits ten columns past "ab", R right after Z where the cursor
   was saved; the `!` has a bright red background, not blinking; the palette is CGA; SAUCE shows "QA Scene", "Phosphor
   QA" and "QA"; Undo is off (opening isn't an edit). It opens within the `file` budget.
 - Probes: `back-out`: choose the file and press Cancel at the question, and check the start screen is as it was;
   `free`: drop the file on the start screen's box instead of the button.
-- Rated: yes, wants Cmd+O, then Enter for Edit it
+- Rated: yes, wants Cmd+O, then Enter for Edit artwork
 
 ### 2. Check it's my file, cell for cell
 - Does: plays `scene.ans` in the headless terminal (`terminal.terminalCells`, cp437) and compares it with the cells on
@@ -124,8 +124,7 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
   with CP437, Unicode, In this drawing and Recent; a character CP437 lacks is marked ("isn't in CP437"); a built-in
   palette edited makes his own copy and says so.
 - Probes: `back-out`: open Character palettes and press Escape; check focus comes back so his keys work;
-  `extremes`: put an emoji on a slot and type it in the last column ("A two-column character won't fit in the last
-  column."); `again`: Alt+→ through every palette and round.
+  `extremes`: put an emoji on a slot and type it in the last column ("Two-column characters cannot fit in the last column."); `again`: Alt+→ through every palette and round.
 - Rated: yes, wants F1–F12 and Alt+→
 
 ### 6. Draw half blocks
@@ -238,7 +237,7 @@ on a block with characters (it's off, and says why), and look for Moebius's bloc
 - Expects: no question (it's a cells layer into a cells layer): the logo's cells, its black spaces too, are written
   onto Layer 2 as they show, Layer 3 leaves the stack and nothing on the canvas changes; one undo brings Layer 3 back,
   picked. Merge down again puts Layer 2 into Layer 1 the same way.
-- Probes: `undo-redo`: undo, redo, undo; `out-of-order`: Merge down with Layer 2 hidden ("Show the layer to merge it").
+- Probes: `undo-redo`: undo, redo, undo; `out-of-order`: Merge down with Layer 2 hidden ("Make the layer visible to merge it").
 - Rated: yes, wants Cmd+E
 
 **Free time:** he'd merge only a selection, drop the logo twice and merge both, drag the logo's row under Layer 1 and
@@ -268,7 +267,7 @@ look at what covers what, and check what Merge down's tooltip says.
 - Measured: export-ans
 - Does: presses Export .ans, types a name, and saves; keeps the download in the run folder.
 - Expects: the dialog offers the document's name with the date and time; a character CP437 lacks is listed with what it
-  becomes and how many cells use it ("Export as .utf8ans to keep exact characters."); the name he typed becomes the
+  becomes and how many cells use it ("Export as .utf8ans to keep all original characters."); the name he typed becomes the
   document's name; it saves within the `file` budget.
 - Probes: `back-out`: open the dialog, press Escape, and check focus lands where his keys still work; `again`: export
   twice; `extremes`: type `€` and `漢` in a cell first and check the list.
@@ -282,7 +281,7 @@ look at what covers what, and check what Merge down's tooltip says.
 - Rated: no (a check, outside the app)
 
 ### 23. Phosphor opens it the same
-- Does: notes the cells on screen, starts a New project, opens the export with Edit it, and compares cells.
+- Does: notes the cells on screen, starts a New project, opens the export with Edit artwork, and compares cells.
 - Expects: `diffCells` empty, apart from the characters the export replaced; the SAUCE fields come back as he typed
   them (substituted where CP437 lacks a character), and the export's date, font name (IBM VGA) and 8px letter spacing
   show on the SAUCE tab.
@@ -296,12 +295,12 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 ## Drawing on top, and Flatten
 
 ### 24. Open my scene to draw on top
-- Does: starts a New project (it asks if there are unsaved changes), opens `scene.ans` and picks Draw on top of it.
+- Does: starts a New project (it asks if there are unsaved changes), opens `scene.ans` and picks Draw on top.
 - Expects: the art is the base, every character pinned; Layer 1 is empty above it; All cells is on in PIXEL, so each
   cell shows there as it looks; the sliders and the palette work on it as on a picture.
 - Probes: `back-out`: at the unsaved-changes question, cancel and check nothing changed; `interrupt`: look at PIXEL
   and back.
-- Rated: yes, wants Cmd+O, then a key for Draw on top of it
+- Rated: yes, wants Cmd+O, then a key for Draw on top
 
 ### 25. Fix the base and draw over it
 - Does: picks Base, chooses the Eraser (E) and clicks a cell (it turns black with a pinned space), types over a cell
@@ -319,12 +318,12 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Rated: yes, wants Cmd+E, then Enter
 
 ### 27. Flatten it to plain cells
-- Does: presses Flatten, picks Edit it.
+- Does: presses Flatten, picks Edit artwork.
 - Expects: everything that shows becomes plain cells on one layer over a black base; the sliders go back to neutral,
   the art style is ANSI, Dither is off, the palette stays CGA; nothing on the canvas changes; Undo brings back the image
   and his layers ([Flattening](../../layers.md#flattening)).
 - Probes: `undo-redo`: flatten, undo, redo; `again`: flatten twice; `extremes`: hide a layer first and read what the
-  dialog says ("The hidden layer is removed too.").
+  dialog says ("The hidden layer will also be removed.").
 - Rated: yes, wants a key for Flatten
 
 ### 28. Export it again and check
@@ -340,7 +339,7 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Probes: `extremes`: a 300-column drawing zoomed out.
 - Rated: yes
 
-**Free time:** he'd try Flatten's Draw on top of it, open `past-the-edge.ans` with Draw on top and fix its second row,
+**Free time:** he'd try Flatten's Draw on top, open `past-the-edge.ans` with Draw on top and fix its second row,
 try the `.xb` and `.tnd` files from the packs, and check his keyboard path for everything he did today in the shortcut
 list.
 

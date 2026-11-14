@@ -82,12 +82,12 @@ script. Every section ends with Free time.
 ## Setting up the scene
 
 ### 1. Start a canvas and turn Animate on
-- Does: on the start screen, presses "Or start with a blank canvas", then turns on the Animate switch on the tab bar.
+- Does: on the start screen, presses "Start with a blank canvas", then turns on the Animate switch on the tab bar.
 - Expects: an 80 by 25 black canvas opens on ANSI with Layer 1 picked; with Animate on, the bar shows under the canvas
   with play and pause, the steps, "1 / 1", the scrubber, Add frame, Frame actions, frames per second (8), Hold and
   Ghost ([The bar](../../animation.md#the-bar)); the shortcut list (`?`) gains its Animation keys (L, `,` and `.`, N).
 - Probes: `again`: turn Animate off and on twice and check nothing is lost; `out-of-order`: on the start screen, before
-  anything is open, try the Animate switch (it says "Open an image or start a canvas to animate.");
+  anything is open, try the Animate switch (it says "Open an image or create a canvas to animate.");
   `interrupt`: turn Animate off with the shortcut list open and check its Animation keys go.
 - Rated: yes, wants a key for Animate (Tab to the switch, then Space, is the path today)
 
@@ -104,13 +104,13 @@ script. Every section ends with Free time.
 ### 3. Bring in my SVG
 - Does: drops `gradients.svg` on the drawing and chooses Add to this drawing; scales the import down by a corner
   handle with Shift held.
-- Expects: the question offers Add to this drawing and Open instead; its four shapes land on VECTOR in the frame
+- Expects: the question offers Add to this drawing and Open as new project; its four shapes land on VECTOR in the frame
   showing, with their gradients, all selected with Vector select. At 200 by 160 the art is bigger than the 80 by 50
   canvas, so it's scaled down to fit inside it less a margin of 2 grid pixels (about 58 by 46), its proportions kept,
   and centered; check the margin. The whole import is one undo step ([Importing SVG](../../vector.md#importing-svg)).
 - Probes: `back-out`: drop it and press Escape at the question, and check nothing came in; `extremes`: drop
   `belle-verriere-mark.svg` too, time it against the `file` budget, then undo it (one step) so the layer is back to
-  its items; `free`: drop `gradients.svg` again and choose Open instead, check what happens to the canvas she had (it
+  its items; `free`: drop `gradients.svg` again and choose Open as new project, check what happens to the canvas she had (it
   asks about unsaved changes first, or says what it replaced), and cancel that question; if it opened anyway, reopen
   her scene from "Pick up where you left off" and note it.
 - Rated: yes, wants Cmd+O, then Enter on Add to this drawing
@@ -193,8 +193,7 @@ a Polygon.
   steps 26 and 29 rely on.
 - Rated: yes, wants Tab to frames per second (typing the number is content)
 
-**Free time:** she'd look for a way to select several frames and move them at once, set New cells to Stay on their
-frame and type a word on three frames, look for a way to copy a frame's timing to another, and drag the scrubber with
+**Free time:** she'd look for a way to select several frames and move them at once, set New cells to Keep on this frame only and type a word on three frames, look for a way to copy a frame's timing to another, and drag the scrubber with
 the arrow keys once it has focus.
 
 ## Tweens and keys
@@ -206,7 +205,7 @@ the arrow keys once it has focus.
   keys only its Transform there; with Ease in on the key, frames 2 to 12 show it on its way down, starting slow; the
   lane shows a bar with the easing's curve; each change is one undo step ([Tweens](../../animation.md#tweens)).
 - Probes: `undo-redo`: undo the easing, then the move, then redo both and check the frames between come back;
-  `out-of-order`: with no shape selected, look at the panel ("Select a shape to see its keys."); `interrupt`: fold the
+  `out-of-order`: with no shape selected, look at the panel ("Select a shape to view its keyframes."); `interrupt`: fold the
   panel with ▾ and reload, and check it comes back folded.
 - Rated: yes, wants a key to open the Keys panel, then F9 or a key for the easing
 
@@ -299,7 +298,7 @@ number, try Mixed by selecting keys with different easings, and Shift-click a ke
 ### 20. Have the dot follow the curve
 - Does: draws a small dot; with it selected, chooses + Add key → Follow a path… and clicks the curve; keys Along at 0%
   on frame 1 and 100% on frame 24, and gives the frame 1 Along key Linear.
-- Expects: the hint says "Follow a path: click the line or shape to follow. Esc cancels", and the curve shows thick
+- Expects: the hint says "Click a line or shape to follow. Press Esc to cancel", and the curve shows thick
   under the pointer; the dot's middle goes onto the curve; an Along row appears, whatever its keys; the dot moves along
   the whole curve over the frames at a steady speed; the dot's X and Y can't be typed while it follows
   ([Following a path](../../vector.md#following-a-path)).
@@ -309,7 +308,7 @@ number, try Mixed by selecting keys with different easings, and Shift-click a ke
 - Rated: yes, wants a key for Follow a path…
 
 ### 21. Ride the spark's tip
-- Does: draws a second dot, links it to the spark line, then opens Along ▾ and chooses With the line's end; then
+- Does: draws a second dot, links it to the spark line, then opens Along ▾ and chooses Stay with line end; then
   makes the spark line a Guide.
 - Expects: the dot sits on the spark's End on every frame whatever its own Along keys say (they're kept); its value is
   grayed; Guide hides the line in the cells and the exports and shows it on VECTOR as a thin dashed outline
@@ -319,14 +318,14 @@ number, try Mixed by selecting keys with different easings, and Shift-click a ke
   inside it (only its outline takes a click).
 - Rated: yes, wants a key for the Along ▾ menu
 
-### 22. Face the path, and step a follower by keys
-- Does: has the ellipse from the SVG follow the curve too (Follow a path…), chooses Along ▾ → Face the path; then, on
+### 22. Rotate to face path, and step a follower by keys
+- Does: has the ellipse from the SVG follow the curve too (Follow a path…), chooses Along ▾ → Rotate to face path; then, on
   frame 10, presses the right arrow five times and Shift+right twice.
 - Expects: the curve now has two followers; the ellipse turns the way the curve runs, its own turn on top; each arrow
-  steps it along by 1% (10% with Shift), keyed on the frame showing; Stop following lets go of the path on every
+  steps it along by 1% (10% with Shift), keyed on the frame showing; Stop following path lets go of the path on every
   frame, and undo brings the link back ([Following a path](../../vector.md#following-a-path)).
 - Probes: `speed`: hold the right arrow for two seconds and check how many steps undo needs; `out-of-order`: choose
-  Face the path for an art layer (it's for shapes only).
+  Rotate to face path for an art layer (it's for shapes only).
 - Rated: yes, wants the arrow keys
 
 **Free time:** she'd move the curve on frame 12 to see the dot follow it, copy the dot and paste it alone (it follows
@@ -355,7 +354,7 @@ see what happens to a Follow a path… under way.
 - Rated: yes, wants a key for Animate
 
 **Free time:** she'd look for an onion skin of the next frame as well as the last, set Ghost off and draw on a Wipe,
-type a word with New cells set to Stay on their frame and look for its ghost on the frame after, and see whether the
+type a word with New cells set to Keep on this frame only and look for its ghost on the frame after, and see whether the
 ghost shows while playing (it doesn't).
 
 ## Playing it back

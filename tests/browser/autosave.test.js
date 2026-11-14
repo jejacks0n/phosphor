@@ -21,10 +21,10 @@ vi.mock('@/document/autosaveStore', { spy: true });
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
-const BROKEN = "Autosave isn't available in this browser. Save a .phosphor file to keep your work.";
-const COULD_NOT_OPEN = "Couldn't reopen that project.";
-const STORAGE_FULL = 'Browser storage was full, so your oldest saved snapshot was removed to make room.';
-const STORAGE_FULL_STILL = "Browser storage is full—even after clearing old snapshots, this project didn't fit. Save a .phosphor file to keep your work.";
+const BROKEN = 'Autosave is not supported in this browser. Please save a .phosphor file to protect your work.';
+const COULD_NOT_OPEN = 'Could not reopen that project.';
+const STORAGE_FULL = 'Browser storage was full. Your oldest saved version was removed to make room.';
+const STORAGE_FULL_STILL = 'Browser storage is full. This project could not be saved even after clearing old versions. Please save a .phosphor file.';
 const KEPT_ID = 'phosphor-autosave-document';
 let app = null, autosave = null, started = null, deleteDatabase;
 
@@ -658,7 +658,7 @@ test('a save that fails says so in the dialog, stays open and doesn\'t count as 
   try {
     document.querySelector('.modal-dialog form').requestSubmit();
     await vi.waitUntil(() => document.querySelector('.modal-dialog [role=alert]'), { interval: 5 });
-    expect(document.querySelector('.modal-dialog [role=alert]').textContent).toBe("Couldn't save the file.");
+    expect(document.querySelector('.modal-dialog [role=alert]').textContent).toBe('Could not save the file.');
     expect(closed).not.toHaveBeenCalled();
     expect(project.savedToFile).toBe(false);
 
@@ -677,7 +677,7 @@ test('a blank canvas that can\'t be encoded says so and stays at the start', asy
   const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
   vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => done(null));
   await project.setBlankCanvas();
-  expect(alert).toHaveBeenCalledWith("Couldn't start a blank canvas.");
+  expect(alert).toHaveBeenCalledWith('Could not create a blank canvas.');
   expect(project.image).toBe(null);
 });
 
@@ -1643,7 +1643,7 @@ test('the start screen lists at most 5 recent documents; one open elsewhere is d
   expect(rows).toHaveLength(5);
   expect(rows[0].textContent).toContain('art 0');
   expect(rows[1].querySelector('button').disabled).toBe(true);
-  expect(rows[1].querySelector('button').textContent.trim()).toBe('Open in other tab');
+  expect(rows[1].querySelector('button').textContent.trim()).toBe('Open in another tab');
   rows[1].querySelector('button').click();
   rows[0].querySelector('button').click();
   expect(opened).toEqual(['d0']);
@@ -1663,7 +1663,7 @@ test('the versions dialog says so when a restore fails, and stays open with the 
     await vi.waitUntil(() => document.querySelector('.modal-dialog li button'), { interval: 5 });
     document.querySelector('.modal-dialog li button').click();
     await vi.waitUntil(() => document.querySelector('[role=alert]'), { interval: 5 });
-    expect(document.querySelector('[role=alert]').textContent).toBe("Couldn't restore that version.");
+    expect(document.querySelector('[role=alert]').textContent).toBe('Could not restore this version.');
     expect(restoreVersion).toHaveBeenCalledTimes(1);
     expect(closed).not.toHaveBeenCalled();
     expect(document.querySelector('.modal-dialog li button').disabled).toBe(false);
@@ -1728,7 +1728,7 @@ test('versions that can\'t be read say so, not that there are none', async () =>
   const flush = async () => { vi.mocked(listVersions).mockRejectedValueOnce(new Error('no database')); };
   const { unmount } = await versionsDialog({ flush });
   try {
-    expect(document.querySelector('[role=alert]').textContent).toBe("Couldn't read the versions.");
+    expect(document.querySelector('[role=alert]').textContent).toBe('Could not load saved versions.');
     expect(document.querySelector('.modal-dialog').textContent).not.toContain('No versions yet');
   } finally {
     unmount();

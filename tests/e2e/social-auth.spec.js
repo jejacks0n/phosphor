@@ -5,7 +5,7 @@ import { fakeServer, member, openLobby, shown } from './social-support.js';
 
 const social = (page) => page.locator('section.lobby, .people-forms');
 const notice = (page) => social(page).getByRole('status');
-const TERMS = /^I'm 13 or older and agree to the Terms\s*, Privacy Policy\s*, and Community Guidelines$/;
+const TERMS = /^I am 13 or older and agree to the Terms\s*, Privacy Policy\s*, and Community Guidelines$/;
 
 // The app at `url`; a plain load opens the lobby (a link back from the server opens what it brought itself).
 async function open(page, url = '/') {
@@ -140,8 +140,8 @@ test('the Terms and the Privacy Policy open over the app, like About, and link t
 test('create an account: disabled until the terms are agreed to; success is the lobby, asked to confirm the email', async ({ page }) => {
   const server = await fakeServer(page);
   const form = await openCreate(page);
-  await expect(form.getByText('How everyone sees you. Letters, numbers, - and _.')).toBeVisible();
-  await expect(form.getByText('At least 10 characters, not a known leaked password.')).toBeVisible();
+  await expect(form.getByText('How your name appears to others. Use letters, numbers, hyphens, and underscores.')).toBeVisible();
+  await expect(form.getByText('Must be at least 10 characters and not found in known data breaches.')).toBeVisible();
   await form.getByLabel('Username').fill('pixel_wren');
   await form.getByLabel('Email').fill('wren@example.com');
   await form.getByLabel('Password').fill('a long new password');

@@ -95,18 +95,18 @@ test('a follower has an Along row whatever its keys, its name a menu', async () 
   expect(row.querySelector('.along .dropdown-trigger').textContent.trim()).toBe('Along ▾');
 });
 
-test('the Along menu sets Moves, Face the path and Motion, and Stop following, each one history entry', async () => {
+test('the Along menu sets Moves, Rotate to face path and Motion, and Stop following path, each one history entry', async () => {
   const { project, f, p } = await drawing({ follow: true });
   const host = await mount(KeysPanel);
   await open(host, '.along');
-  expect(items().map((b) => b.textContent.trim())).toEqual(['Along it, on its own keys', "With the line's start", "With the line's end", 'Face the path',
-    'Smoothly', 'By half cells', 'By whole cells', 'Stop following']);
+  expect(items().map((b) => b.textContent.trim())).toEqual(['Move along path using its own keys', 'Stay with line start', 'Stay with line end', 'Rotate to face path',
+    'Smoothly', 'By half cells', 'By whole cells', 'Stop following path']);
   expect([...document.querySelectorAll('.dropdown-content .heading')].map((e) => e.textContent.trim())).toEqual(['Moves', 'Motion']);
-  expect(item('Along it, on its own keys').getAttribute('aria-pressed')).toBe('true');
+  expect(item('Move along path using its own keys').getAttribute('aria-pressed')).toBe('true');
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
   await nextTick();
   expect(menuOpen()).toBe(false);
-  const steps = [["With the line's end", { key: p, ride: 'end' }], ['Face the path', { key: p, ride: 'end', face: true }],
+  const steps = [['Stay with line end', { key: p, ride: 'end' }], ['Rotate to face path', { key: p, ride: 'end', face: true }],
     ['By whole cells', { key: p, ride: 'end', face: true, motion: 'cells' }]];
   for (const [name, follow] of steps) {
     const version = project.history.version;
@@ -118,11 +118,11 @@ test('the Along menu sets Moves, Face the path and Motion, and Stop following, e
     expect(project.history.version).toBe(version + 1);
   }
   await open(host, '.along');
-  expect(item("With the line's end").getAttribute('aria-pressed')).toBe('true');
-  expect(item('Face the path').getAttribute('aria-pressed')).toBe('true');
+  expect(item('Stay with line end').getAttribute('aria-pressed')).toBe('true');
+  expect(item('Rotate to face path').getAttribute('aria-pressed')).toBe('true');
   expect(item('By whole cells').getAttribute('aria-pressed')).toBe('true');
   const version = project.history.version;
-  item('Stop following').click();
+  item('Stop following path').click();
   await nextTick();
   expect(menuOpen()).toBe(false);
   expect(project.shapes.get(f)).not.toHaveProperty('follow');
@@ -130,15 +130,15 @@ test('the Along menu sets Moves, Face the path and Motion, and Stop following, e
   expect(host.querySelector('[data-part="along"]')).toBeNull();
 });
 
-test('an art layer\'s Along menu has no Face the path', async () => {
+test('an art layer\'s Along menu has no Rotate to face path', async () => {
   const { project, workspace, p } = await drawing();
   const art = project.addShape({ z: 5, m: [1, 0, 0, 1, 0, 0], art: { cols: 2, rows: 1, cells: [[0, 'A', '#ff0000', null]] }, follow: { key: p } });
   project.noteFrame(); // into the frame showing's keys
   workspace.vectorSelected = [art];
   const host = await mount(KeysPanel);
   await open(host, '.along');
-  expect(item('Face the path')).toBeUndefined();
-  expect(item('Stop following')).not.toBeUndefined();
+  expect(item('Rotate to face path')).toBeUndefined();
+  expect(item('Stop following path')).not.toBeUndefined();
 });
 
 test('Guide shows for a path with followers and for a guide with none, and not for a plain shape', async () => {

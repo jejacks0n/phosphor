@@ -64,7 +64,7 @@ describe('into the picture', () => {
     const encoding = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => done(null));
     try {
       await project.mergeIntoPicture();
-      expect(alert).toHaveBeenCalledWith("Couldn't merge into the image.");
+      expect(alert).toHaveBeenCalledWith('Could not merge into the image.');
     } finally {
       encoding.mockRestore();
       alert.mockRestore();
@@ -281,7 +281,7 @@ describe('down between layers', () => {
     const version = project.history.version;
     toastMessage.value = null;
     expect(project.mergeDown('edit')).toBe(false);
-    expect(toastMessage.value).toBe("Cells can't go into a vector layer. Use Make art layer instead.");
+    expect(toastMessage.value).toBe('Character cells cannot merge into a vector layer. Use Make art layer instead.');
     expect(ids(project)).toEqual(['base', 'vector', 'edit']);
     expect(project.history.version).toBe(version);
     const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
@@ -290,7 +290,7 @@ describe('down between layers', () => {
     try {
       const button = host.querySelector('button[aria-label="Merge down"]');
       expect(button.disabled).toBe(true);
-      expect(button.title).toBe("Cells can't go into a vector layer. Use Make art layer instead.");
+      expect(button.title).toBe('Character cells cannot merge into a vector layer. Use Make art layer instead.');
     } finally {
       toolbar.unmount();
       host.remove();
@@ -340,7 +340,7 @@ describe('down between layers', () => {
     try {
       toastMessage.value = null;
       expect(project.mergeDown(top)).toBe(false); // only into the bottom: the room keeps its layers
-      expect(toastMessage.value).toBe("Adding, deleting and moving layers isn't available in a room yet.");
+      expect(toastMessage.value).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
       const before = cellsKey(project);
       workspace.pickLayer('edit');
       expect(project.mergeDown('edit')).toBe(true);
@@ -362,7 +362,7 @@ describe('down between layers', () => {
       project.setLayerHidden(id, true);
       toastMessage.value = null;
       expect(project.mergeDown(top)).toBe(false);
-      expect(toastMessage.value).toBe('Show the layer to merge it');
+      expect(toastMessage.value).toBe('Make the layer visible to merge it');
       expect(ids(project)).toEqual(['base', 'edit', top]);
       project.setLayerHidden(id, false);
     }

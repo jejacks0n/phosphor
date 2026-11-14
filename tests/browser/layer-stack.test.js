@@ -103,7 +103,7 @@ test('adding a layer in a room is refused, except the missing vector layer', asy
   try {
     toastMessage.value = null;
     expect(project.addLayer('cells', 'edit')).toBe(null);
-    expect(toastMessage.value).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
+    expect(toastMessage.value).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
     expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
     toastMessage.value = null;
     expect(project.addLayer('vector', 'base')).toBe('vector');
@@ -135,10 +135,10 @@ test('the first shape is refused with the most layers, since the vector layer it
   expect(project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }))).toBe(null);
   expect(project.addShapes([rectShape(2, 2, 6, 6, { fill: '#ff0000' })])).toEqual([]); // a paste, an SVG
   project.commitEdit();
-  expect(toastMessage.value).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`);
+  expect(toastMessage.value).toBe(`A drawing can have up to ${MOST_LAYERS} layers.`);
   toastMessage.value = null;
   expect(project.addSvg('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="4" height="4" fill="red"/></svg>')).toEqual([]);
-  expect(toastMessage.value).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`); // not "Left out: other parts."
+  expect(toastMessage.value).toBe(`A drawing can have up to ${MOST_LAYERS} layers.`); // not "Left out: other parts."
   expect(project.shapes.size).toBe(0);
   expect(project.layers).toHaveLength(MOST_LAYERS);
   await expect(readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }))).resolves.toBeTruthy();
@@ -555,7 +555,7 @@ test('the bottom can\'t be deleted', async () => {
   expect(project.history.version).toBe(version);
   project._sharing = { role: 'host' };
   expect(project.deleteLayer('edit')).toBe(false);
-  expect(toastMessage.value).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
+  expect(toastMessage.value).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
   expect(project.duplicateLayer('edit')).toBe(null);
   project._sharing = null;
   expect(ids(project)).toEqual(['base', 'edit']);
@@ -627,7 +627,7 @@ test('with the only cells layer deleted, a base move stays on the base, pastes a
   expect(project.editId).toBe(gone);
   const version = project.history.version;
   expect(project.pasteSelection(block, 8, 3)).toBe(null);
-  expect(toastMessage.value).toBe('Add a layer to draw on it.');
+  expect(toastMessage.value).toBe('Add a drawing layer before drawing.');
   expect(project.history.version).toBe(version);
 
   const id = project.addLayer('cells', 'base');
@@ -666,7 +666,7 @@ test('Clear clears the picked cells layer: refused while it\'s hidden, off with 
   const both = () => [keys(project.cellsOf('edit')), keys(project.cellsOf(id))];
   project.setLayerHidden(id, true);
   project.clearEditLayer();
-  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(toastMessage.value).toBe('Make the layer visible to merge it');
   expect(both()).toEqual([['1,1'], ['2,2']]);
   project.setLayerHidden(id, false);
   workspace.pickLayer('base');
@@ -746,7 +746,7 @@ test('a picture isn\'t added to a hidden layer picked: the toast says to show it
   const version = project.history.version;
   toastMessage.value = null;
   expect(await project.addPictureToLayer(await pictureFile())).toBe(null);
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(toastMessage.value).toBe('Make the layer visible to draw on it');
   expect(project.paintOf('edit')?.hasPaint ?? false).toBe(false);
   expect(ids(project)).toEqual(['base', 'edit']);
   expect(project.history.version).toBe(version);

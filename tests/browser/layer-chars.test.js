@@ -133,7 +133,7 @@ test('the Characters legend names the picked layer, and Picture · Base and Imag
   workspace.pickLayer('edit');
   await mountPanel();
   expect(sectionOf('Characters · Layer 1')).toBeTruthy();
-  expect(sectionOf('Characters · Layer 1').textContent).toContain('Used where paint or a picture on Layer 1 becomes characters.');
+  expect(sectionOf('Characters · Layer 1').textContent).toContain('Controls how paint or images on Layer 1 convert into characters.');
   expect(sectionOf('Picture')).toBeUndefined();
   expect(sectionOf('Image filters')).toBeUndefined();
   expect(host.querySelector('#smoothing')).toBeNull();
@@ -185,7 +185,7 @@ test('the Characters note says what a vector layer converts', async () => {
   const id = project.addLayer('vector', 'edit');
   workspace.pickLayer(id);
   await mountPanel();
-  expect(sectionOf('Characters · Vector 1').textContent).toContain('Shapes and art layers on Vector 1 convert with these.');
+  expect(sectionOf('Characters · Vector 1').textContent).toContain('Shapes and art layers on Vector 1 use these character settings when converted.');
 });
 
 test('Choose characters edits the picked layer', async () => {

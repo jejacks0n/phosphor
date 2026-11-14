@@ -164,7 +164,7 @@ test('every format that writes SAUCE lists the SAUCE characters CP437 lacks, wit
 
     await pick(modal, 'UTF-8 ANS');
     expect(rows()).toEqual(expected);
-    expect(modal.textContent).not.toContain('Export as .utf8ans to keep exact characters.');
+    expect(modal.textContent).not.toContain('Export as .utf8ans to keep all original characters.');
 
     await pick(modal, 'PNG');
     expect(list()).toBeNull();

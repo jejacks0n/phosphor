@@ -45,7 +45,7 @@ test('the Keys button opens and folds the panel, and it stays as left across a r
   await expect(keysButton(page)).toHaveAttribute('aria-pressed', 'false');
   await keysButton(page).click();
   await expect(panel(page)).toBeVisible();
-  await panel(page).getByRole('button', { name: 'Fold the keys away' }).click();
+  await panel(page).getByRole('button', { name: 'Hide keyframes panel' }).click();
   await expect(panel(page)).toBeHidden();
   await autosaved(page);
   await page.reload();
@@ -229,7 +229,7 @@ test('undo after a delete leaves no stale key selected', async ({ page }) => {
 test('with no shape selected the panel says so in one line', async ({ page }) => {
   await ball(page);
   await store(page, 'workspace', (w) => { w.vectorSelected = []; });
-  await expect(panel(page)).toContainText('Select a shape to see its keys.');
+  await expect(panel(page)).toContainText('Select a shape to view its keyframes.');
   await expect(panel(page).locator('[data-part]')).toHaveCount(0);
 });
 
@@ -337,7 +337,7 @@ test('typing Width or W on an in-between frame keys only that part there', async
   await expect.poll(parts).toEqual(['width']);
   await page.keyboard.press('ControlOrMeta+z');
   await expect.poll(parts).toEqual([]);
-  const wide = row(page, 'transform').getByLabel(/^Width, as/);
+  const wide = row(page, 'transform').getByLabel(/^Width percentage/);
   await wide.fill('150');
   await wide.press('Enter');
   await expect.poll(parts).toEqual(['transform']);
@@ -645,7 +645,7 @@ test("a Duplicate's diamond is fixed, and Delete in the panel leaves it", async 
 
 test('the easing and motion menus are named for their purpose, and the fold button says it is open', async ({ page }) => {
   await ball(page);
-  await expect(panel(page).getByRole('button', { name: 'Fold the keys away' })).toHaveAttribute('aria-expanded', 'true');
+  await expect(panel(page).getByRole('button', { name: 'Hide keyframes panel' })).toHaveAttribute('aria-expanded', 'true');
   await expect(panel(page).locator('.easing .dropdown-trigger')).toHaveAttribute('aria-label', /^Easing: /);
   await expect(panel(page).locator('.motion .dropdown-trigger')).toHaveAttribute('aria-label', /^Motion: /);
 });

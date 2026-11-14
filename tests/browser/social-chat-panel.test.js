@@ -178,8 +178,8 @@ test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged muted, and their me
   // Vue skips a click in the same millisecond as the menu opened (a person is never that fast).
   const open = async () => { li().querySelector('button.dropdown-trigger').click(); await nextTick(); await new Promise((r) => setTimeout(r, 2)); };
   await open();
-  expect(item('Quiet mute (only you see them)').title).toBe('Hides their messages from everyone else without notifying them.');
-  item('Quiet mute (only you see them)').click();
+  expect(item('Quiet mute (hide their messages from others)').title).toBe('Hides their messages from everyone else without alerting them.');
+  item('Quiet mute (hide their messages from others)').click();
   expect(mute).toHaveBeenCalledWith('u_p1', true);
   expect(li().querySelector('.tag')).toBe(null);
 
@@ -187,7 +187,7 @@ test('a member\'s ⋯ has Mute, then Unmute; they\'re tagged muted, and their me
   await nextTick();
   expect(li().querySelector('.tag').textContent).toBe('muted');
   await open();
-  expect(item('Quiet mute (only you see them)')).toBe(undefined);
+  expect(item('Quiet mute (hide their messages from others)')).toBe(undefined);
   item('Unmute').click();
   expect(mute).toHaveBeenLastCalledWith('u_p1', false);
   const marks = [...host.querySelectorAll('.list .message')].map((m) => m.querySelector('.muted')?.textContent ?? null);
@@ -399,7 +399,7 @@ test('a watcher\'s Block asks first: Cancel and Escape send nothing, with focus 
     trigger.click();
     await nextTick();
     expect(dialog().querySelector('h3').textContent).toBe('Block name-0?');
-    expect(dialog().querySelector('p.sub').textContent).toBe('They can\'t join any room you host, and their messages fold here. Unblock them from Account.');
+    expect(dialog().querySelector('p.sub').textContent).toBe('They cannot join any room you host, and their messages will be hidden. You can unblock them in Account settings.');
     expect(document.activeElement).toBe(dialogButton('Cancel'));
     cancel();
     await nextTick();
@@ -460,7 +460,7 @@ test('Report room asks "Report this room?" with the inside sub, and Report sends
   await nextTick();
   const dialog = document.querySelector('[role=dialog]');
   expect(dialog.querySelector('h3').textContent).toBe('Report this room?');
-  expect(dialog.querySelector('p.sub').textContent).toBe('Moderators receive recent lobby previews plus a snapshot of the canvas right now.');
+  expect(dialog.querySelector('p.sub').textContent).toBe('Moderators will receive recent lobby previews and a snapshot of the current canvas.');
   dialog.querySelector('input[value=sexual]').click();
   await nextTick();
   [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Report').click();

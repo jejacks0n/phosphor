@@ -388,7 +388,7 @@ test.describe('between tabs', () => {
     await pickLayer(other);
     await settled(other);
     await other.keyboard.press('v');
-    await expect(other.locator('.vector-options').getByRole('button', { name: /^Nothing copied in this tab\. To paste from another tab or app, use (⌘V|Ctrl\+V)$/ })).toBeDisabled();
+    await expect(other.locator('.vector-options').getByRole('button', { name: /^Clipboard is empty in this tab\. To paste from another tab or app, press (⌘V|Ctrl\+V)$/ })).toBeDisabled();
     await other.keyboard.press('ControlOrMeta+v');
     await expect.poll(async () => (await shapeList(other)).length).toBe(2);
     const pasted = await shapeList(other);
@@ -407,7 +407,7 @@ test('Vector select\'s Copy, Cut and Paste buttons', async ({ page }) => {
   await page.keyboard.press('v');
   const button = (name) => page.locator('.vector-options').getByRole('button', { name });
   await expect(button(/^Copy/)).toBeDisabled();
-  await expect(button(/^Nothing copied in this tab/)).toBeDisabled();
+  await expect(button(/^Clipboard is empty in this tab/)).toBeDisabled();
   await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
   await button(/^Copy/).click();
   await button(/^Paste/).click();
@@ -458,9 +458,9 @@ test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', asy
   await page.keyboard.press('ControlOrMeta+z');
   expect((await shapeList(page))[0].stroke).toBe(null);
 
-  await expect(page.locator('.ansi-status .hint')).not.toContainText('pick the stroke'); // until Shift's held
+  await expect(page.locator('.ansi-status .hint')).not.toContainText('pick stroke color'); // until Shift's held
   await page.keyboard.down('Shift');
-  await expect(page.locator('.ansi-status .hint')).toContainText('pick the stroke');
+  await expect(page.locator('.ansi-status .hint')).toContainText('pick stroke color');
   await page.keyboard.up('Shift');
 
   // Stroke chosen in the options row (a phone has no Shift): a click sets the stroke, and Shift the fill.
@@ -473,7 +473,7 @@ test('the eyedropper sets the selected shape\'s fill, and Shift its stroke', asy
   await expect(row.getByRole('button', { name: 'Fill', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await row.getByRole('button', { name: 'Stroke', exact: true }).click();
   await page.keyboard.down('Shift');
-  await expect(page.locator('.ansi-status .hint')).toContainText('pick the fill');
+  await expect(page.locator('.ansi-status .hint')).toContainText('pick fill color');
   await page.keyboard.up('Shift');
   const other = await store(page, 'project', (p) => p.rawColorAt(5.5, 5.5));
   await page.mouse.click(...Object.values(await gridPoint(page, 5.5, 5.5)));
@@ -634,7 +634,7 @@ test('the Node tool (A) edits the points of the shape pressed, a two-point line\
   expect((await lineEnds(page, line)).end).toMatchObject({ x: expect.closeTo(34, 0), y: expect.closeTo(26, 0) });
   await expect(page.locator('.ansi-status .hint')).toHaveText('Space pan'); // Alt's hint shows while it's held
   await page.keyboard.down('Alt');
-  await expect(page.locator('.ansi-status .hint')).toContainText('drag a handle to break it from its partner');
+  await expect(page.locator('.ansi-status .hint')).toContainText('drag handle to adjust it independently');
   await page.keyboard.up('Alt');
   await page.keyboard.press('Escape');
   expect(await store(page, 'workspace', (w) => w.vectorPoints)).toBe(null);
@@ -1082,7 +1082,7 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
   await pickLayer(page);
   await settled(page);
   await addRect(page, 10, 10, 30, 30);
-  const clear = page.getByTitle('Clear layer: erase everything on Layer 1.');
+  const clear = page.getByTitle('Clear layer: erase all content on Layer 1.');
   await expect(clear).toHaveCount(0);
   await pickLayer(page, 'Layer 1');
   await tab(page, 'ANSI').click();
@@ -1091,7 +1091,7 @@ test('Clear isn\'t on VECTOR, and on ANSI it has nothing to clear when only shap
 
 test('dragging a row reorders the layers', async ({ page }) => {
   await openApp(page);
-  const panel = page.locator('.side-panel'), open = page.getByRole('button', { name: 'Open the panel' });
+  const panel = page.locator('.side-panel'), open = page.getByRole('button', { name: 'Expand panel' });
   if (await open.isVisible()) await open.click();
   await panel.getByRole('tab', { name: 'Layers' }).click();
   await panel.getByRole('button', { name: 'Add layer' }).click();
@@ -1233,7 +1233,7 @@ test('double-click edits points: drag a point and a handle, click the outline to
   // Alt-dragging the in handle breaks it from the out handle, which stays where it is; the status bar says how.
   const inHandle = { x: bent[0] + bent[2], y: bent[1] + bent[3] }, m = await matrix(page, key);
   await page.keyboard.down('Alt');
-  await expect(page.locator('.ansi-status .hint')).toContainText('drag a handle to break it from its partner');
+  await expect(page.locator('.ansi-status .hint')).toContainText('drag handle to adjust it independently');
   await dragPoints(page, await gridPoint(page, inHandle.x + m[4], inHandle.y + m[5]), await gridPoint(page, inHandle.x + m[4] - 4, inHandle.y + m[5]));
   await page.keyboard.up('Alt');
   const broke = await store(page, 'project', `(p) => p.shapes.get('${key}').points[1]`);
@@ -1291,7 +1291,7 @@ test('VECTOR\'s Merge down presses the selected shapes into the base', async ({ 
   const a = await addRect(page, 10, 10, 20, 20), b = await addRect(page, 40, 30, 50, 40);
   await settled(page);
   const shown = await cells(page);
-  const merge = page.getByRole('button', { name: /^Merge down: press the selected shapes/ });
+  const merge = page.getByRole('button', { name: /^Merge down: paint the selected shapes/ });
   await page.mouse.click(...Object.values(await gridPoint(page, 15, 15)));
   await merge.click();
   await expect(page.getByRole('dialog')).toHaveCount(0); // no question on VECTOR

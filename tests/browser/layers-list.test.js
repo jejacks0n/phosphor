@@ -149,11 +149,11 @@ test('in a room the ⋯ items that change the stack are off with the reason', as
   const item = await openMenu(0);
   for (const label of ['Duplicate', 'Delete', 'Move up', 'Move down']) {
     expect(item(label).disabled).toBe(true);
-    expect(item(label).title).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
+    expect(item(label).title).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
   }
   expect(item('Rename').disabled).toBe(false);
   expect(addButton('Add layer').disabled).toBe(true);
-  expect(addButton('Add layer').title).toBe('Adding, deleting and moving layers isn\'t available in a room yet.');
+  expect(addButton('Add layer').title).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
   expect(addButton().disabled).toBe(false); // the vector layer the room is missing
 });
 
@@ -161,11 +161,11 @@ test('at the most layers Add layer, Add vector layer and Duplicate are off and s
   await mount(({ project }) => { while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit'); });
   for (const label of ['Add layer', 'Add vector layer']) {
     expect(addButton(label).disabled).toBe(true);
-    expect(addButton(label).title).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`);
+    expect(addButton(label).title).toBe(`A drawing can have up to ${MOST_LAYERS} layers.`);
   }
   const item = await openMenu(0);
   expect(item('Duplicate').disabled).toBe(true);
-  expect(item('Duplicate').title).toBe(`A drawing holds at most ${MOST_LAYERS} layers.`);
+  expect(item('Duplicate').title).toBe(`A drawing can have up to ${MOST_LAYERS} layers.`);
   expect(item('Delete').disabled).toBe(false);
 });
 
@@ -271,7 +271,7 @@ test('inside an art layer the vector row shows as picked and the base row is off
   expect(names()).toEqual(['Vector 1', 'Layer 1', 'Base']); // made directly over Layer 1
   expect(pickOf(0).getAttribute('aria-pressed')).toBe('true');
   expect(pickOf(2).getAttribute('aria-disabled')).toBe('true');
-  expect(reasonOf(pickOf(2))).toBe('Inside an art layer, tools draw on the edit layer only.');
+  expect(reasonOf(pickOf(2))).toBe('Inside an art layer, drawing tools work on the art layer only.');
 });
 
 // The reason an off row gives a screen reader: the text its aria-describedby names.
@@ -317,11 +317,11 @@ test('on SAUCE it says so', async () => {
   workspace.editorTab = 'sauce';
   await nextTick();
   expect(rows()).toHaveLength(0);
-  expect(host.textContent.trim()).toBe("Layers show while a drawing's art is showing.");
+  expect(host.textContent.trim()).toBe('Layers appear while your artwork is showing.');
 });
 
 test('with nothing open it says so', async () => {
   await mount(({ project }) => { project.image = null; });
   expect(rows()).toHaveLength(0);
-  expect(host.textContent.trim()).toBe("Layers show while a drawing's art is showing.");
+  expect(host.textContent.trim()).toBe('Layers appear while your artwork is showing.');
 });

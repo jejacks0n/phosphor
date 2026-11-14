@@ -28,13 +28,13 @@ async function mount(role) {
 
 test('a watcher is told rooms need a wider screen, and Exit is the room\'s own', async () => {
   const room = await mount('watch');
-  expect(host.textContent).toContain('Rooms need a wider screen.');
+  expect(host.textContent).toContain('Shared rooms require a wider screen.');
   host.querySelector('button').click();
   expect(room.leave).toHaveBeenCalledOnce();
 });
 
 test('a host, or someone with only a link, is told, with no Exit', async () => {
   await mount('host');
-  expect(host.textContent).toContain('Rooms need a wider screen.');
+  expect(host.textContent).toContain('Shared rooms require a wider screen.');
   expect(host.querySelector('button')).toBe(null);
 });

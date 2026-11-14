@@ -127,13 +127,13 @@ test('drawing on a hidden layer does nothing and says so', async () => {
   expect(getTool('pencil').begin(ctx, { x: 2, y: 2 })).toBe(false);
   expect(project.editVersion).toBe(version);
   expect(project.editCells.size).toBe(0);
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(toastMessage.value).toBe('Make the layer visible to draw on it');
 
   closeToast();
   workspace.textCursor = { col: 1, row: 1 };
   typeAtCursor(project, workspace, 'A');
   expect(project.editVersion).toBe(version);
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(toastMessage.value).toBe('Make the layer visible to draw on it');
 
   // Navigation, the picker and VECTOR's tools aren't refused: a hidden vector layer's shapes are still edited there.
   closeToast();
@@ -203,7 +203,7 @@ test('with the vector layer hidden, Bake, Merge down and the vector merge are re
     await merge();
     expect(kept()).toEqual(before);
     expect(kept()[3]).toBe(before[3]);
-    expect(toastMessage.value).toBe('Show the layer to merge it');
+    expect(toastMessage.value).toBe('Make the layer visible to merge it');
   }
 });
 
@@ -231,13 +231,13 @@ test('with the edit layer hidden, Merge down and Into the image are refused and 
   expect(kept()).toEqual(before);
   expect(kept()[0]).toBe(before[0]);
   expect(kept()[1]).toBe(before[1]);
-  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(toastMessage.value).toBe('Make the layer visible to merge it');
 
   closeToast();
   await project.mergeIntoPicture();
   expect(kept()).toEqual(before);
   expect(kept()[0]).toBe(before[0]);
-  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(toastMessage.value).toBe('Make the layer visible to merge it');
 });
 
 // The toolbar, mounted in the page; its button whose title starts with title.
@@ -254,12 +254,12 @@ test('with a layer hidden, Merge down refuses at the press, before it asks how',
   const { project } = await picture();
   typed(project, 2, 2, 'M');
   await hide(project, 'edit');
-  const button = await toolbarButton('Merge down:');
+  const button = await toolbarButton('Merge Layer 1 down');
   expect(button?.disabled).toBe(false);
   button.click();
   await nextTick();
   expect(document.querySelectorAll('button.choice').length).toBe(0);
-  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(toastMessage.value).toBe('Make the layer visible to merge it');
   expect(project.editCells.has('2,2')).toBe(true);
 });
 
@@ -272,13 +272,13 @@ test('with the edit layer hidden, Clear edit layer is refused before it asks, an
   project.clearEditLayer();
   expect(kept()).toEqual(before);
   expect(kept()[0]).toBe(before[0]);
-  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(toastMessage.value).toBe('Make the layer visible to merge it');
 
   closeToast();
   const asked = vi.spyOn(window, 'confirm').mockReturnValue(true);
   (await toolbarButton('Clear layer:')).click();
   expect(asked).not.toHaveBeenCalled();
-  expect(toastMessage.value).toBe('Show the layer to merge it');
+  expect(toastMessage.value).toBe('Make the layer visible to merge it');
   expect(kept()[0]).toBe(before[0]);
 });
 
@@ -292,7 +292,7 @@ test('stepping into an art layer is refused while the vector layer is hidden', a
   closeToast();
   expect(project.enterArt(key)).toBe(false);
   expect(project.artInside).toBe(null);
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(toastMessage.value).toBe('Make the layer visible to draw on it');
   await hide(project, 'vector', false);
   expect(project.enterArt(key)).toBe(true);
 });
@@ -318,7 +318,7 @@ test('a paste into a hidden layer says so once', async () => {
   workspace.textCursor = { col: 1, row: 1 };
   vi.mocked(toast).mockClear();
   typeText(project, workspace, 'abc\ndef');
-  expect(vi.mocked(toast).mock.calls).toEqual([['Show the layer to draw on it']]);
+  expect(vi.mocked(toast).mock.calls).toEqual([['Make the layer visible to draw on it']]);
   expect(project.editCells.size).toBe(0);
 });
 
@@ -330,7 +330,7 @@ test('a block pasted or stamped onto a hidden layer picked, or the hidden base, 
   const shown = cellsKey(project);
   closeToast();
   expect(project.pasteSelection(block, 5, 5)).toBe(null);
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(toastMessage.value).toBe('Make the layer visible to draw on it');
   expect(project.cellsOf('edit').has('5,5')).toBe(false);
   expect(cellsKey(project)).toEqual(shown);
 
@@ -340,7 +340,7 @@ test('a block pasted or stamped onto a hidden layer picked, or the hidden base, 
   await hide(project, two);
   closeToast();
   expect(project.stampSelection({ c0: 1, r0: 1, c1: 1, r1: 1 }, workspace.selectionIds)).toBe(null); // C on a selection
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(toastMessage.value).toBe('Make the layer visible to draw on it');
   expect(project.cellsOf(two).size).toBe(0);
 
   workspace.pickLayer('base');
@@ -348,7 +348,7 @@ test('a block pasted or stamped onto a hidden layer picked, or the hidden base, 
   const pins = project.baseRecords.pins.size;
   closeToast();
   expect(project.pasteSelection(block, 5, 5)).toBe(null);
-  expect(toastMessage.value).toBe('Show the layer to draw on it');
+  expect(toastMessage.value).toBe('Make the layer visible to draw on it');
   expect(project.baseRecords.pins.size).toBe(pins);
 });
 
@@ -462,7 +462,7 @@ test('with the base hidden, Merge down, Into the image, Bake and the vector merg
     expect(kept()).toEqual(before);
     expect(kept()[0]).toBe(before[0]);
     expect(kept()[1]).toBe(before[1]);
-    expect(toastMessage.value).toBe('Show the layer to merge it');
+    expect(toastMessage.value).toBe('Make the layer visible to merge it');
   }
 });
 
