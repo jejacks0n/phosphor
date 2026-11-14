@@ -108,6 +108,45 @@ test('opened to edit, the art is edit cells over a black base, as the file shows
   expect(project.isDirty).toBe(false);
 });
 
+test('opened to edit alone, the ledger holds none of it, and an edit after it undoes back to the file', async () => {
+  const project = await afterAnotherDocument();
+  const cols = 12, rows = 4, cells = build(cols, rows, 'none', CHARS.utf8ans);
+  const submit = vi.spyOn(project._ledger, 'submit');
+  await project.openArtFile(await artFile('wide.utf8ans', cols, rows, cells, { utf8: true, colorMode: 'none', sauce: SAUCE }), { layer: 'edit' });
+  await settle(project);
+  expect(submit).not.toHaveBeenCalled(); // opening isn't an edit: clearHistory would only drop it
+  const { stacks } = project._ledger.kept();
+  expect([stacks.cells.size, stacks.strokes.size, stacks.tiles.size]).toEqual([0, 0, 0]);
+  const opened = new Map(project.editCells);
+
+  project.editCell(0, 0, { char: 'X' });
+  project.commitEdit();
+  await settle(project);
+  expect(project.cells[0].char).toBe('X');
+  project.undo();
+  await settle(project);
+  expect(project.editCells).toEqual(opened);
+  expectShows(project, cells);
+  expect(project.history.canUndo).toBe(false);
+});
+
+test('opened to edit by a room\'s host, every cell still goes out numbered', async () => {
+  const project = await afterAnotherDocument();
+  const sent = [];
+  project.startSharing({ send: (message) => sent.push(message), role: 'host', me: 'mine' });
+  try {
+    const cols = 12, rows = 4, cells = build(cols, rows, 'none', CHARS.utf8ans);
+    await project.openArtFile(await artFile('wide.utf8ans', cols, rows, cells, { utf8: true, colorMode: 'none', sauce: SAUCE }), { layer: 'edit' });
+    await settle(project);
+    const keys = new Set(sent.filter(({ t }) => t === 'numbered').flatMap((message) => message.cells.map(([key]) => key)));
+    expect(keys.size).toBe(cols * rows);
+    expect(project.history.canUndo).toBe(false);
+    expect(project.isDirty).toBe(false);
+  } finally {
+    project.stopSharing();
+  }
+});
+
 // The .ans file exportFile downloads, as bytes.
 async function exported(project) {
   const spy = vi.spyOn(URL, 'createObjectURL');

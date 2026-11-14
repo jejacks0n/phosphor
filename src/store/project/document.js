@@ -236,6 +236,9 @@ export const documentActions = {
     const cells = art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell }));
     if (layer === 'edit') this.writeEditCells(cells.map(({ col, row, ...attrs }) => ({ col, row, attrs }))); // char, fg, bg and any 256-color index
     else this.writeBaseCells(cells);
+    // Alone, the ledger needn't record it (every cell, at 500k cells half a second): clearHistory would drop it next. In a
+    // room it goes out numbered, as any host's edit does.
+    if (this._stroke && !this._sharing) this._stroke.unrecorded = true;
     this.commitEdit();
     this.clearHistory();
     this.render();

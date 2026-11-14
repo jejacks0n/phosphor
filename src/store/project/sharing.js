@@ -288,7 +288,7 @@ export const sharingActions = {
           this._sharing.held = { stroke: stroke.id, parts };
           this.sendHeldSoon();
         } else this.sendParts(stroke.id, parts);
-      } else {
+      } else if (!stroke.unrecorded) { // a file opened alone (openArtFile)
         this.sendNumbered(this._ledger.submit(this._by, stroke.id, change));
         for (const [key] of cells) this._sharing?.heardCells.delete(key); // numbered after what was waiting there
       }
