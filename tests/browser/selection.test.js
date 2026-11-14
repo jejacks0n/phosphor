@@ -281,15 +281,37 @@ test('with the Select tool, Shift+arrows grow or shrink the selection from its t
   expect(workspace.selection).toEqual({ c0: 27, r0: 2, c1: 29, r1: 2 });
 });
 
-// Edit Mode's cursor: choosing Edit Mode puts it back where it last was, or at the top-left.
-test('choosing Edit Mode with no cursor yet puts it at the top-left', async () => {
+// Edit Mode's cursor: choosing Edit Mode never moves the view. It puts the cursor back where it last
+// was if that's in view, else (and the first time) on the top-left whole cell of the view.
+test('choosing Edit Mode with no cursor yet puts it at the top-left of the view', async () => {
   const { workspace } = await editor();
+  Object.assign(workspace, { ansiViewOrigin: { col: 10, row: 8 }, ansiViewSize: { cols: 12, rows: 5 } });
+  workspace.setActiveTool('text');
+  expect(workspace.textCursor).toEqual({ col: 10, row: 8 });
+});
+
+test('choosing Edit Mode with the cursor it would come back to out of view puts it at the top-left of the view', async () => {
+  const { workspace } = await editor();
+  Object.assign(workspace, { ansiViewOrigin: { col: 0, row: 0 }, ansiViewSize: { cols: 12, rows: 5 } });
+  workspace.setActiveTool('text');
+  workspace.textCursor = { col: 3, row: 2 };
+  key('Escape');
+  workspace.ansiViewOrigin = { col: 2, row: 1 }; // scrolled a little: still in view
+  key('t');
+  expect(workspace.textCursor).toEqual({ col: 3, row: 2 });
+  key('Escape');
+  workspace.ansiViewOrigin = { col: 15, row: 9 }; // scrolled away
+  key('t');
+  expect(workspace.textCursor).toEqual({ col: 15, row: 9 });
+  workspace.setActiveTool('pencil'); // the cursor lingers, unseen, while another tool is chosen
+  workspace.ansiViewOrigin = { col: 0, row: 0 };
   workspace.setActiveTool('text');
   expect(workspace.textCursor).toEqual({ col: 0, row: 0 });
 });
 
 test('after Escape puts the cursor away, T brings it back where it was, kept on the grid', async () => {
   const { project, workspace } = await editor();
+  workspace.ansiViewSize = { cols: COLS, rows: 15 }; // the whole grid in view
   workspace.setActiveTool('text');
   workspace.textCursor = { col: 25, row: 7 };
   key('Escape');

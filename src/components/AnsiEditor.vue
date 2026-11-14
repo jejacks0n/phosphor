@@ -226,10 +226,11 @@ const textInputStyle = computed(() => {
 
 // The view follows the Text tool's cursor, like a text editor: when it moves (the arrow keys,
 // typing, a paste) past the visible area, the view scrolls just enough to keep it in sight, with a
-// margin around it (the cursor's scroll-margin). Nothing scrolls while it's already in view.
+// margin around it (the cursor's scroll-margin). Nothing scrolls while it's already in view, nor when
+// Edit Mode is chosen: it puts the cursor in view, and the view stays where it is.
 const cursorRef = useTemplateRef('cursor');
 watch(() => workspaceStore.textCursor, (cursor) => {
-  if (!cursor || workspaceStore.activeTool !== 'text') return;
+  if (!cursor || workspaceStore.activeTool !== 'text' || cursor === workspaceStore.placedCursor) return;
   cursorRef.value?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }, { flush: 'post' });
 
