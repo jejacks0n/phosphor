@@ -16,19 +16,31 @@ files:
 extraMetadata:
   main: desktop/main.js
 publish: github
-# Double-clicked, these open in Phosphor (desktop/main.js hands them to the page): its projects, which it owns, and
-# ANSI art, which it can edit as another editor may. Plain text art (.asc, .txt, .nfo, .diz) is left to other apps.
+# Double-clicked, these open in Phosphor (desktop/main.js hands them to the page): its projects, which it owns, and ANSI
+# art, which it can edit as another editor may. On Windows each one makes Phosphor the extension's default app, so only
+# extensions no other app owns are here; the rest of what it opens is under mac and linux, where Phosphor is only offered
+# in Open With. One extension an entry: Linux writes each as a single file pattern.
 fileAssociations:
   - ext: phosphor
     name: Phosphor Project
     role: Editor
     rank: Owner
     mimeType: application/x-phosphor
-  - ext: [ans, utf8ans]
+  - ext: ans
     name: ANSI Art
     role: Editor
     rank: Alternate
     mimeType: text/x-ansi
+  - ext: utf8ans
+    name: UTF-8 ANSI Art
+    role: Editor
+    rank: Alternate
+    mimeType: text/x-utf8ans
+  - ext: diz
+    name: File Description (DIZ)
+    role: Editor
+    rank: Alternate
+    mimeType: text/x-diz
 
 mac:
   category: public.app-category.graphics-design
@@ -43,6 +55,16 @@ mac:
   extendInfo:
     # macOS asks the person the first time the app reaches the local network, in these words.
     NSLocalNetworkUsageDescription: "Phosphor connects to rooms on your local network."
+  # The rest of what Phosphor opens, offered in Open With without becoming any of these extensions' default app.
+  fileAssociations:
+    - ext: [asc, nfo, txt]
+      name: Text Art
+      role: Editor
+      rank: Alternate
+    - ext: [png, jpg, jpeg, gif, webp, bmp, avif, svg]
+      name: Image
+      role: Editor
+      rank: Alternate
 
 # Signed with WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD.
 win:
@@ -53,6 +75,8 @@ win:
 # Not signed: AppImage and .deb have no signing people would check.
 linux:
   category: Graphics
+  # The rest of what Phosphor opens, by their own types: listed, Phosphor is offered for them, not made their default.
+  mimeTypes: [text/x-nfo, text/plain, image/png, image/jpeg, image/gif, image/webp, image/bmp, image/avif, image/svg+xml]
   maintainer: Jeremy Jackson <jejacks0n@users.noreply.github.com>
   target:
     - AppImage

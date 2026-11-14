@@ -3,6 +3,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { OPENABLE } from '../../desktop/files.js';
 
 const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 // The block under a top-level key, up to the next one.
@@ -20,8 +21,7 @@ test('builder config names the Local Network usage, opens projects and ANSI art,
   // Double-clicked projects and ANSI art open in Phosphor: projects as theirs, ANSI art as one editor among others.
   const associations = section(yml, 'fileAssociations');
   assert.match(associations, /- ext: phosphor\n\s+name: Phosphor Project\n\s+role: Editor\n\s+rank: Owner\n\s+mimeType: application\/x-phosphor/);
-  assert.match(associations, /- ext: \[ans, utf8ans\]\n\s+name: ANSI Art\n\s+role: Editor\n\s+rank: Alternate\n\s+mimeType: text\/x-ansi/);
-  assert.doesNotMatch(associations, /txt|asc|nfo|diz/);
+  for (const ext of ['ans', 'utf8ans', 'diz']) assert.match(associations, new RegExp(`- ext: ${ext}\\n\\s+name: .+\\n\\s+role: Editor\\n\\s+rank: Alternate\\n\\s+mimeType: text/x-${ext}`));
 
   const mac = section(yml, 'mac');
   assert.match(mac, /NSLocalNetworkUsageDescription: "Phosphor connects to rooms on your local network\."/);
@@ -75,4 +75,20 @@ test('the desktop flows run on a virtual screen bigger than the app’s 1400 by 
   const step = read('.github/workflows/deploy.yml').split('\n').find((line) => line.includes('xvfb-run') && line.includes('test:e2e:desktop'));
   const [, width, height] = /-screen 0 (\d+)x(\d+)x24/.exec(step) ?? [];
   assert.ok(Number(width) >= 1400 && Number(height) >= 900, step);
+});
+
+// Every platform's associations hold only what no other app owns, as Windows makes Phosphor each one's default app; the
+// rest of what it opens is offered on macOS (Alternate, never the default) and Linux (by its types), and nothing it opens
+// is left out of both.
+test('every file the app opens is associated, and only what no other app owns becomes Phosphor\'s on Windows', () => {
+  const yml = read('electron-builder.yml');
+  const exts = (text) => [...text.matchAll(/- ext: (?:\[(.+)\]|(\S+))$/gm)].flatMap(([, list, one]) => (list ?? one).split(', '));
+  const everywhere = exts(section(yml, 'fileAssociations'));
+  assert.deepEqual(everywhere, ['phosphor', 'ans', 'utf8ans', 'diz']);
+  const mac = exts(section(yml, 'mac'));
+  assert.deepEqual([...everywhere, ...mac].sort(), [...OPENABLE].sort());
+  assert.equal(section(yml, 'mac').match(/rank: (\w+)/g).join(), 'rank: Alternate,rank: Alternate');
+  assert.doesNotMatch(section(yml, 'win'), /fileAssociations/);
+  const linux = /mimeTypes: \[(.+)\]/.exec(section(yml, 'linux'))[1].split(', ');
+  for (const type of ['text/x-nfo', 'text/plain', 'image/png', 'image/jpeg', 'image/svg+xml']) assert.ok(linux.includes(type), type);
 });
