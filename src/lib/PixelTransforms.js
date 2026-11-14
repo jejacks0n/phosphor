@@ -180,12 +180,12 @@ export function paletteChoices(params, palette) {
   return choices.map((hex, i) => hex ?? best.get(key(palette[i].hex))?.hex ?? null);
 }
 
-// Alt+Up/Down's next swatch color: delta steps on from the palette index from, past the colors nothing paints as
-// (paletteChoices' nulls); null when there's none.
+// Alt+Up/Down's next swatch: delta steps on from the palette index from, past the colors nothing paints as
+// (paletteChoices' nulls); its index, or null when there's none.
 export function stepChoice(choices, from, delta) {
   for (let n = 1; n <= choices.length; n++) {
-    const next = choices[(((from + n * delta) % choices.length) + choices.length) % choices.length];
-    if (next) return next;
+    const next = (((from + n * delta) % choices.length) + choices.length) % choices.length;
+    if (choices[next]) return next;
   }
   return null;
 }

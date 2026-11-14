@@ -29,8 +29,8 @@ test('Swatches: a palette color no color can display as has no swatch color, and
   const params = { ...neutral, saturation: 0 }; // gray only: red is out of reach
   const choices = paletteChoices(params, palette);
   assert.equal(choices[1], null);
-  assert.equal(stepChoice(choices, 0, 1), choices[2]); // from white, down past red to gray
-  assert.equal(stepChoice(choices, 2, -1), choices[0]); // and back up past it
+  assert.equal(stepChoice(choices, 0, 1), 2); // from white, down past red to gray
+  assert.equal(stepChoice(choices, 2, -1), 0); // and back up past it
   assert.equal(stepChoice([null, null], 0, 1), null); // nothing to step to
 });
 
