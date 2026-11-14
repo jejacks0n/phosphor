@@ -8,6 +8,7 @@ npm test               # everything: lint, unit, browser, end-to-end
 npm run test:unit      # pure logic, in Node (a second or two)
 npm run test:browser   # the store, canvas and WebGL, in Chromium (a few seconds)
 npm run test:e2e       # real clicks and keys against a production build (CI splits it into 6 shards, about 6 minutes each)
+npm run test:e2e:desktop  # the desktop app in Electron (not part of npm test; CI runs it as its own job)
 npm run test:update    # rewrite the reference files (read the diff before committing)
 ```
 
@@ -118,6 +119,18 @@ SOCIAL talks to a server that these tests never reach. Each layer stands in for 
   drop the connection. Without it, the default `test` in `tests/e2e/support.js` aborts every request
   to `localhost:8787` and closes every socket, so a spec that forgot to fake the server fails
   instead of reaching a real one.
+
+### The desktop app end to end
+
+`tests/e2e/desktop-*.spec.js` run with their own config (`playwright.desktop.config.js`): it builds the
+desktop app once (`npm run build:desktop`) and launches it in Electron, with no preview server, and the web
+shards never list them. `launchApp({ name, port, env })` from `tests/e2e/desktop-support.js` starts one
+app with its own user data folder, its port as the one it last hosted on, and `127.0.0.1` as its only
+address, so two or three apps join each other's rooms by `127.0.0.1:<port>` (31401, 31402, 31403), one
+test at a time. There's no server to fake: the rooms are the apps' own room services. The native
+Leave/Stay question before a reload or quit is answered Leave. `PHOSPHOR_RETURN_WITHIN_MS` in `env`
+shortens how long a guest waits for a host that's gone; only the tests set it. On Linux the apps need a
+display: `xvfb-run -a npm run test:e2e:desktop`.
 
 ### Rooms end to end
 

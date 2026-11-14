@@ -114,6 +114,8 @@ function openWindow() {
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      // The end-to-end tests' shorter wait for a host gone, for the page (through the preload).
+      additionalArguments: process.env.PHOSPHOR_RETURN_WITHIN_MS ? [`--phosphor-return-within-ms=${Number(process.env.PHOSPHOR_RETURN_WITHIN_MS)}`] : [],
     },
   });
   win.webContents.setWindowOpenHandler(({ url }) => {

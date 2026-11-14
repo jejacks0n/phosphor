@@ -74,8 +74,42 @@ jobs:
             test-results/
           if-no-files-found: ignore
 
+  # The desktop app's flows: several Electron apps at once, joining each other on 127.0.0.1. Electron needs the
+  # libraries Chromium does, and a display (xvfb). Its own config: no preview server, and not in the shards above.
+  desktop-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - run: npx playwright install --with-deps chromium
+      # Electron's sandbox needs unprivileged user namespaces, which Ubuntu 24.04 keeps from apps without an AppArmor
+      # profile, as Electron from npm is.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: xvfb-run -a npm run test:e2e:desktop
+        env:
+          CI: true
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-e2e-results
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
   build:
-    needs: [test, e2e]
+    needs: [test, e2e, desktop-e2e]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:

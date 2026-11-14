@@ -6,6 +6,7 @@ import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { RETURN_WITHIN_MS } from '@/social/hosting';
 import { forgetKey, loadKey } from '@/social/keys';
+import { useFakeDesktop, resetDesktop } from '@/social/desktop';
 import { t } from '@/i18n/index.js';
 import { createTestApp } from '../support/app.js';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
@@ -30,6 +31,7 @@ beforeEach(async () => {
 });
 afterEach(() => {
   vi.useRealTimers();
+  resetDesktop();
   room.leave();
   room.needsPassword = null;
   social.dropPass();
@@ -192,6 +194,20 @@ test('a host gone past RETURN_WITHIN_MS closes with the host-gone words', async 
   expect(connection.status).toBe('closed');   // no retries left to join again later, unasked
   vi.advanceTimersByTime(RETURN_WITHIN_MS);
   expect(sockets).toHaveLength(made);
+});
+
+// The end-to-end tests shorten the wait (PHOSPHOR_RETURN_WITHIN_MS, through the preload); the app never sets it.
+test('a host gone past the preload\'s returnWithinMs, when it gives one, closes with the host-gone words', async () => {
+  useFakeDesktop({ returnWithinMs: 2000 });
+  const socket = await joinRoom();
+  socket.receive({ type: 'waiting' });
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  socket.serverClose();
+  vi.advanceTimersByTime(1999);
+  expect(room.role).toBe('watch');
+  vi.advanceTimersByTime(1);
+  expect(room.role).toBe(null);
+  expect(social.notice).toBe('The host went away. You can try joining again later.');
 });
 
 test('turned-away and busy refusals show their words', async () => {

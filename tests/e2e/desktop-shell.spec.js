@@ -1,19 +1,13 @@
 // The desktop app's shell: Electron serving the desktop build from app://phosphor/, its bridge to the room service,
 // and the quit that waits for the page.
-import { test, expect, launchApp } from './desktop-support.js';
-import { cellPoint, drag, fixture, imageInput, pickLayer, settled, store, tab } from './support.js';
+import { test, expect, launchApp, openImage } from './desktop-support.js';
+import { cellPoint, drag, pickLayer, store } from './support.js';
 
 let launched;
 test.afterEach(async () => {
   await launched?.close();
   launched = null;
 });
-
-const openImage = async (page) => {
-  await imageInput(page).setInputFiles(fixture('images/gradient.png'));
-  await tab(page, 'ANSI').click();
-  await settled(page);
-};
 
 test('the desktop app opens an image and shows the ANSI tab', async () => {
   launched = await launchApp();
