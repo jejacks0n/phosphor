@@ -363,9 +363,11 @@ test('Set up your room: the signal is a select in the lobby card, and choosing o
   select.dispatchEvent(new Event('change'));
   expect(room.startDraft.signal).toBe('heads-down');
   expect(host.querySelector('form').classList.contains('single')).toBe(false);
+  expect([...host.querySelectorAll('h3')].map((h) => h.textContent)).toEqual(['Room settings', 'Lobby card']);
   room.startDraft.isPublic = false;
   await nextTick();
   expect(host.querySelector('select')).toBe(null);
   expect(host.querySelector('form').classList.contains('single')).toBe(true);   // the settings alone, one column
   expect(host.querySelector('div.column')).toBe(null);
+  expect(host.querySelector('h3')).toBe(null);
 });
