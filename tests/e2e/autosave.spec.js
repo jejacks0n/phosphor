@@ -207,18 +207,18 @@ async function typeMore(page, col, row, text) {
   await expect.poll(async () => (await record(page)).editedAt).not.toBe(editedAt);
 }
 
-// A document with a version after the first edit, and a second one made past 5 minutes later.
-// Returns the cells as they were at the first.
+// A picture opened, with its state as opened kept (As opened) and a version at the first edit, and a second one
+// made past 5 minutes later. Returns the cells as they were at the first.
 async function twoVersions(page) {
   await page.clock.install();
   await openApp(page);
   await typeAndWrite(page, 3, 3, 'first');
   await settled(page);
   const first = await store(page, 'project', (p) => JSON.stringify(p.cells));
-  await expect.poll(() => versionCount(page)).toBe(1);
+  await expect.poll(() => versionCount(page)).toBe(2);
   await page.clock.fastForward('06:00');
   await typeMore(page, 3, 5, 'second');
-  await expect.poll(() => versionCount(page)).toBe(2);
+  await expect.poll(() => versionCount(page)).toBe(3);
   return first;
 }
 
@@ -228,12 +228,13 @@ test('a version appears after 5 minutes of changes; the dialog focuses, and Esca
   const second = await store(page, 'project', (p) => JSON.stringify(p.cells));
   expect(second).not.toBe(first);
   await versionsButton(page).click();
-  await expect(versionRows(page)).toHaveCount(2);
+  await expect(versionRows(page)).toHaveCount(3);
+  await expect(versionRows(page).nth(2)).toContainText('As opened');
   await expect(versionsDialog(page).locator(':focus')).toHaveCount(1);
   await page.keyboard.press('Escape');
   await expect(versionsDialog(page)).toHaveCount(0);
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells))).toBe(second);
-  expect(await versionCount(page)).toBe(2);
+  expect(await versionCount(page)).toBe(3);
 
   await versionsButton(page).click();
   await versionRows(page).nth(1).getByRole('button', { name: 'Restore' }).click();

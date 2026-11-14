@@ -1025,6 +1025,7 @@
     "title": "Versions",
     "sub": "Phosphor enregistre jusqu'à 20 instantanés dans ce navigateur (environ toutes les 5 minutes pendant votre travail). Effacer les données de navigation les supprime : enregistrez un fichier .phosphor pour tout travail que vous souhaitez conserver.",
     "beforeRestore": "Avant restauration",
+    "asOpened": "À l'ouverture",
     "empty": "Aucun instantané enregistré pour l'instant.",
     "readError": "Impossible de lire les versions.",
     "restoreError": "Impossible de restaurer cette version.",

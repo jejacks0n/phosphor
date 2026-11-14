@@ -14,9 +14,11 @@ export function versionDue({ lastVersionAt, now, changed }) {
   return changed && (lastVersionAt == null || now - lastVersionAt >= VERSION_EVERY_MS);
 }
 
-// Ids past the newest KEEP_VERSIONS. Several can share a millisecond; ids count up, so the higher is newer.
+// Ids past the newest KEEP_VERSIONS, As opened (the beginning) counted among them however old. Several can share a
+// millisecond; ids count up, so the higher is newer.
 export function versionsToDrop(versions) {
-  return [...versions].sort((a, b) => b.savedAt - a.savedAt || b.id - a.id).slice(KEEP_VERSIONS).map((v) => v.id);
+  const opened = (v) => v.reason === 'opened';
+  return [...versions].sort((a, b) => opened(b) - opened(a) || b.savedAt - a.savedAt || b.id - a.id).slice(KEEP_VERSIONS).map((v) => v.id);
 }
 
 // Ids of the least recently edited documents to delete until the rest fit in maxBytes, skipping any in keep

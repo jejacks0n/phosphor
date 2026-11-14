@@ -60,6 +60,7 @@ export function useAutosave() {
   let quiet = null, deadline = null; // the timers: edits stopped, and edits going on too long
   let running = null, again = false; // the write under way, and that another is due after it
   let openedId = null, lastVersionAt = null; // the document that's had its opening write, and its newest version
+  let openedKept = null; // the document whose stored latest state is a file as it opened (project.asOpened)
   let held = null, leftId = null, lockTurn = 0; // the lock this tab has, the id it last let go of, and the latest ask
   let openingRecent = false;
   let persistAsked = false, warned = false;
@@ -120,7 +121,7 @@ export function useAutosave() {
     }
     const doc = project._document;
     const opening = id !== openedId;
-    const real = edited;
+    const real = edited, asOpened = project.asOpened; // as of the parts read below
     const now = Date.now();
     unwritten = edited = false;
     if (real) editedAt = now; // a new document's id counts as a change; a restored one's opening write doesn't
@@ -133,6 +134,7 @@ export function useAutosave() {
         dirty: project.isDirty || !!project._stroke, // an open typing run isn't counted by isDirty yet
         savedSettings: project.savedSettings,
         ledgerN: project.documentNumber(), // with what's read next: the picture stands at this number
+        asOpened, // a reload's first change still keeps it
       };
       const parts = await project.projectParts();
       // Empty layers don't come back from a restore, so they'd make the same art read as different.
@@ -146,7 +148,12 @@ export function useAutosave() {
       if (project._document !== doc) return; // parts of two documents; the swap scheduled its own write
 
       if (opening) lastVersionAt = (await listVersions(id))[0]?.savedAt ?? null;
+      // The first change of a file as it opened: what's stored is still that, kept As opened before it's written over.
+      // lastVersionAt stays, so the change has its timed version as any first change does.
+      if (openedKept === id && !asOpened) await addVersion(id, { reason: 'opened', savedAt: now });
       await put(record, id);
+      if (asOpened) openedKept = id;
+      else if (openedKept === id) openedKept = null;
       await project.keepLedger(); // never behind the document, so a reload's document can catch up to it
       openedId = id;
       if (opening) {
@@ -210,8 +217,10 @@ export function useAutosave() {
     () => project.filename,
     () => project.imageBuffer, // merging into the image swaps it
   ], (values, before) => {
-    if (project._frameSwaps === swaps) edited = true; // going to another frame or layer replaces editCells, and is no edit
-    else {
+    if (project._frameSwaps === swaps) { // going to another frame or layer replaces editCells, and is no edit
+      edited = true;
+      project.asOpened = false;
+    } else {
       swaps = project._frameSwaps;
       const picked = project.frame === frame && values.every((value, i) => i === CELLS || value === before[i]);
       frame = project.frame;
@@ -227,6 +236,13 @@ export function useAutosave() {
     () => project.savedEditVersion,
     () => project.savedSettings,
   ], schedule, { flush: 'sync' });
+
+  // A file that's just opened is written at once, before anything can change it, so what's stored is the file as it
+  // opened. (ponytail: a write of the last document still running waits this one; a change made meanwhile is in it, and
+  // there's no As opened then.) A reload's file is stored as it opened already.
+  watch(() => project.asOpened, (now) => {
+    if (now && openedKept !== project.documentId) write();
+  }, { flush: 'sync' });
 
   // Lets go of the lock this tab has and, with an id, takes that one in its place; whether it got it.
   async function holdLock(id, options = { ifAvailable: true }) {
@@ -264,6 +280,9 @@ export function useAutosave() {
     // Its watchers have fired by now. None of that was a change.
     edited = false;
     editedAt = saved.record.editedAt;
+    // A file as it opened, unchanged: still to keep at its first change. A copy's isn't stored yet: it's written at once.
+    openedKept = saved.record.asOpened ? documentId ?? null : null;
+    project.asOpened = !!saved.record.asOpened;
   }
 
   // Brings back one of this document's versions, as a change like any other: unsaved, with the next

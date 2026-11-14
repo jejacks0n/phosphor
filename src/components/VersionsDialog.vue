@@ -64,6 +64,7 @@ async function restore(id) {
       <li v-for="version in versions" :key="version.id">
         <span class="when">{{ when(version.savedAt) }}</span>
         <span v-if="version.reason === 'before-restore'" class="reason">{{ t('versions.beforeRestore') }}</span>
+        <span v-else-if="version.reason === 'opened'" class="reason">{{ t('versions.asOpened') }}</span>
         <span class="size">{{ size(version.bytes) }}</span>
         <button type="button" :disabled="restoring" @click="restore(version.id)">{{ t('common.restore') }}</button>
       </li>

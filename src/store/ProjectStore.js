@@ -100,6 +100,7 @@ export const useProjectStore = defineStore('project', {
     documentId: null, // who the document is to autosave (useAutosave)
     fileId: null, // the drawing, across its saved files and autosave: what this browser keeps for it is kept under it
     savedToFile: false, // saved to, or opened from, a .phosphor file at least once (an export can't reopen as a project)
+    asOpened: false, // what's open is a file as it opened, with no change since: autosave keeps it as the As opened version at the first
     imageIsWorkingCopy: false, // the image is a working-size copy (after a Bake or an Into-the-picture merge), not the one loaded
     ...settingsState(),
 

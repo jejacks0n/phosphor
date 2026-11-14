@@ -178,6 +178,7 @@ export const documentActions = {
       savedToFile: false,
     });
     this.markSaved();
+    this.asOpened = true; // last, once it's all there (useAutosave writes it at once)
   },
 
   // The blank picture is BLANK_CANVAS_SCALE pixels a grid pixel, or fewer for a long grid: no more than
@@ -246,6 +247,7 @@ export const documentActions = {
     // The base holds each cell as its two colors (background over foreground), which the PIXEL tab
     // would show as stripes; All cells draws every cell there as it looks.
     useWorkspaceStore().ansiOverlayAll = true;
+    this.asOpened = true;
   },
 
   // An .svg file as a new document: a blank canvas at the default size, named for the file, on VECTOR with the
@@ -256,6 +258,7 @@ export const documentActions = {
     if (!(await this.setBlankCanvas({ cols: DEFAULT_COLS, rows: DEFAULT_ROWS, filename: file.name.replace(/\.[^/.]+$/, '') }))) return;
     useWorkspaceStore().editorTab = 'vector';
     this.addSvg(text);
+    this.asOpened = true;
   },
 
   // Swap in a new base image and start a fresh document around it (out of an art layer first).
@@ -270,6 +273,7 @@ export const documentActions = {
       paintScale: null,
       baseScale: null, // a loaded file's comes in the patch
       imageIsWorkingCopy: false,
+      asOpened: false, // an opened file says so once it's all there
       ...patch,
       image: shallowRef(image),
       imageBuffer,
@@ -305,6 +309,7 @@ export const documentActions = {
       documentId: null,
       fileId: null,
       savedToFile: false,
+      asOpened: false,
       fit: null,
       filename: null,
       cells: [],
@@ -399,6 +404,7 @@ export const documentActions = {
     try {
       await this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length) });
       this.savedToFile = true;
+      this.asOpened = true;
     } catch (e) {
       console.error('Failed to load project file', e);
       const reason = e?.code === 'INVALID_PROJECT' ? t('document.invalidProject') : e?.code === 'DECODE_IMAGE_FAILED' ? t('document.decodeImageFailed') : e.message;
