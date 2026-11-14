@@ -19,3 +19,13 @@ test('a character is at most so long: the longest real ones fit, and a cell from
   assert.equal(usableChar(`e${'\u0301'.repeat(40)}`), false);
   assert.equal(usableChar('a'.repeat(30_000_000)), false);
 });
+
+test('one code point skips the grapheme split and answers as the split does', async () => {
+  const { graphemes: split, cellWidth: width } = await import('../../src/lib/CharWidth.js');
+  const slow = (text) => split(text).length === 1 && width(split(text)[0]) > 0; // the split, as usableChar did it for every string
+  const tricky = ['', 'a', ' ', '~', '\x7f', '\0', '\t', '\n', '́', '‍', '️', '­', ' ', '\ud800', '\udc00', '\udc00\ud800',
+  '\ud83d', '漢', '▄', '█', '﷽', 'Ａ', '𝔸', '😀', '\u{1F3FB}', '\u{E0067}', '\u{10FFFF}', '￿', 'é', 'é', '👍🏽', '👨‍👩‍👧', '🇯🇵', '🇯',
+  'ab', 'á', '\r\n', '가', '漢字', '\ud800a'];
+  for (let code = 0; code < 0x3000; code++) tricky.push(String.fromCharCode(code));
+  for (const text of tricky) assert.equal(usableChar(text), slow(text), JSON.stringify(text));
+});

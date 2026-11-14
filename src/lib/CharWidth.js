@@ -36,6 +36,7 @@ export function cellWidth(cluster) {
 const MOST_CHAR_UNITS = 32;
 export function usableChar(text) {
   if (typeof text !== 'string' || !text || text.length > MOST_CHAR_UNITS) return false;
+  if (text.length === 1 || (text.length === 2 && text.codePointAt(0) > 0xffff)) return cellWidth(text) > 0; // one code point is one cluster: no split (a file's 500k cells)
   const clusters = graphemes(text);
   return clusters.length === 1 && cellWidth(clusters[0]) > 0;
 }
