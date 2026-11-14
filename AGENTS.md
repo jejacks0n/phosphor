@@ -77,7 +77,7 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   saved and kept in Open Recent). The page's side: `src/social/desktop.js` (the door to the preload),
   `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join) and
   `selfPass.js` (passes signed by their own key), with `src/components/social/DesktopStartPage.vue` in the lobby's
-  place and `src/composables/useDesktopMenu.js` running the menu's commands and Check for Updates. Packaging is `electron-builder.yml`, released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`, or `v1.2.3-beta` for a
+  place and `src/composables/useDesktopMenu.js` running the menu's commands and Check for Updates. Packaging is `electron-builder.yml` (the icon, `build/icon.png`, drawn by `node build/make-icon.mjs`), released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`, or `v1.2.3-beta` for a
   pre-release: package.json's version, higher by semver than every version tag before it, checked by
   `scripts/release-tag.mjs`). Its
   tests are the `desktop-*` files in `tests/unit`, `tests/browser` (the `browser-desktop` project) and `tests/e2e`.

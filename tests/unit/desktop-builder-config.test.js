@@ -64,3 +64,9 @@ test('the desktop workflow runs only on a version tag higher than the last, and 
   assert.doesNotMatch(yml, /--publish never/);
   assert.match(yml, /node -e "require\('electron'\)"/);
 });
+
+test('the app icon electron-builder makes every platform’s from is a 1024 px square PNG (build/make-icon.mjs draws it)', () => {
+  const png = readFileSync(new URL('../../build/icon.png', import.meta.url));
+  assert.equal(png.toString('latin1', 1, 4), 'PNG');
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1024, 1024]);
+});
