@@ -17,7 +17,12 @@ function channelOver(socket) {
     bufferedAmountLowThreshold: 0,
     onbufferedamountlow: null,
     get readyState() { return STATES[socket.readyState]; },
-    get bufferedAmount() { return socket.bufferedAmount; },
+    // A read that sees it backed up arms the event, so a drain between two polls isn't missed.
+    get bufferedAmount() {
+      const n = socket.bufferedAmount;
+      if (n > channel.bufferedAmountLowThreshold) above = true;
+      return n;
+    },
     set onmessage(fn) { socket.onmessage = fn; },
     send: (data) => socket.send(data),
     close: () => socket.close(),
@@ -54,7 +59,7 @@ export function openSocketPeer({ initiator, peer, config, sendSignal, onOpen, on
       if (done) return;
       opened = true;
       clearTimeout(timer);
-      if (initiator) {
+      if (initiator) {   // open before the guest pairs: the service holds frames, and closes an unpaired side after 20 s (onClose, failed false)
         try { Promise.resolve(sendSignal({ sdp: { type: 'offer' } })).catch(() => {}); } catch { /* the guest times out, which says so */ }
       }
       const made = channelOver(socket);
