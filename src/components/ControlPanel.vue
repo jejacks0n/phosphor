@@ -172,10 +172,10 @@ const charsetName = computed(() => {
       <hr v-if="i === 0 || !isFolded(sections[i - 1].id)"/>
 
       <fieldset :class="[group.id, { folded: isFolded(group.id) }]" :disabled="!!locked" :title="locked">
-        <legend>
+        <legend class="folds">
           <button class="fold" :aria-expanded="!isFolded(group.id)" :aria-controls="`group-${group.id}`" @click="toggleFold(group.id)">
             <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
-            {{ group.title }}
+            <span class="title" :title="group.title">{{ group.title }}</span>
             <span v-if="isFolded(group.id) && onCount(group)" class="on">{{ t('panel.onCount', onCount(group)) }}</span>
           </button>
           <button v-if="group.sliders" :disabled="!!locked" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
@@ -361,9 +361,22 @@ fieldset.folded legend {
   margin-bottom: 0;
 }
 
+/* A foldable group's title: one line, a long layer name in it cut short (the whole of it on hover), Reset beside it. */
+legend.folds {
+  display: flex;
+  gap: 8px;
+}
+
+legend.folds button {
+  float: none;
+  flex-shrink: 0;
+}
+
 legend button.fold {
   float: none;
   display: inline-flex;
+  flex-shrink: 1;
+  min-width: 0;
   align-items: center;
   gap: 6px;
   padding: 0;
@@ -373,7 +386,15 @@ legend button.fold {
   color: inherit;
 }
 
+legend button.fold span.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 legend button.fold svg.chevron {
+  flex-shrink: 0;
   width: 9px;
   height: 9px;
   fill: currentColor;
@@ -385,6 +406,7 @@ legend button.fold[aria-expanded="false"] svg.chevron {
 }
 
 legend button.fold span.on {
+  flex-shrink: 0;
   color: var(--accent-hot);
   text-transform: none;
   letter-spacing: 0;

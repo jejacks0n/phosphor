@@ -111,6 +111,23 @@ async function mountPanel() {
 const fieldsets = () => [...host.querySelectorAll('aside > fieldset')];
 const sectionOf = (words) => fieldsets().find((set) => set.querySelector('legend').textContent.includes(words));
 
+test('a long layer name in the Characters legend is cut short on one line, with the whole name on hover', async () => {
+  const { project, workspace } = await blank();
+  project.renameLayer('edit', 'W'.repeat(100)); // as long as a name can be, in wide letters
+  const name = project.layerById('edit').name;
+  workspace.pickLayer('edit');
+  await mountPanel();
+  host.style.width = '280px'; // the panel at its narrowest
+  await nextTick();
+  const legend = sectionOf(name).querySelector('legend'), fold = legend.querySelector('button.fold'), title = fold.querySelector('.title');
+  expect(title.textContent.trim()).toBe(`Characters · ${name}`);
+  expect(title.title).toBe(`Characters · ${name}`);
+  expect(title.scrollWidth).toBeGreaterThan(title.clientWidth); // cut short
+  expect(getComputedStyle(title).textOverflow).toBe('ellipsis');
+  expect(fold.getBoundingClientRect().height).toBeLessThan(20); // one line
+  expect(fold.getBoundingClientRect().right).toBeLessThanOrEqual(legend.getBoundingClientRect().right + 0.5);
+});
+
 test('the Characters legend names the picked layer, and Picture · Base and Image filters show only with Base picked', async () => {
   const { project, workspace } = await blank();
   workspace.pickLayer('edit');
@@ -128,7 +145,7 @@ test('the Characters legend names the picked layer, and Picture · Base and Imag
   expect(sectionOf('Characters · Base').textContent).not.toContain('Used where');
   expect(sectionOf('Picture · Base').disabled).toBe(false);
   expect(sectionOf('Image filters').disabled).toBe(false);
-  expect(fieldsets().map((set) => set.querySelector('legend').textContent.trim().split(/\s+/)[0]))
+  expect(fieldsets().map((set) => (set.querySelector('legend .title') ?? set.querySelector('legend')).textContent.trim().split(/\s+/)[0]))
     .toEqual(['Drawing', 'Transforms', 'Adjustments', 'Characters', 'Picture', 'Image']);
   const vector = project.addLayer('vector', 'edit');
   workspace.pickLayer(vector);
