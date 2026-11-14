@@ -104,7 +104,8 @@ jobs:
       # Electron's sandbox needs unprivileged user namespaces, which Ubuntu 24.04 keeps from apps without an AppArmor
       # profile, as Electron from npm is.
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - run: xvfb-run -a npm run test:e2e:desktop
+      # xvfb-run's own screen is 640x480, which squeezes the app's 1400x900 window until tools are out of sight.
+      - run: xvfb-run -a --server-args="-screen 0 1920x1080x24" npm run test:e2e:desktop
         env:
           CI: true
       - if: failure()
