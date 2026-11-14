@@ -138,3 +138,31 @@ test('the result exports to a .utf8ans a terminal lays out column for column', a
   expect(grid[1].slice(COLS - 3)).toEqual(['漢', '', 'x']);
   expect(grid[2].slice(3, 6)).toEqual(['é', '👍🏽', '']);
 });
+
+test('a whole render lays out every wide character, typed on any cells layer or pinned, and none taken away', async () => {
+  const { project } = await blank();
+  type(project, 0, 0, 'a漢b');
+  type(project, 3, 2, 'é字');
+  project.writeBaseCells([{ col: 5, row: 4, char: '字', ...ATTRS }]);
+  project.commitEdit();
+  project.editCell(5, 4, { fg: '#ff0000' }); // colors alone over the pin: its character shows
+  project.commitEdit();
+  const id = project.addLayer('cells', 'edit');
+  project.useLayer(id);
+  type(project, 7, 6, '漢');
+  project.useLayer('edit');
+  type(project, 0, 8, '漢');
+  project.render();
+  await settle(project);
+  expect(line(project, 0).slice(0, 4)).toBe('a漢>b');
+  expect(line(project, 2).slice(3, 6)).toBe('é字>');
+  expect(line(project, 4).slice(5, 7)).toBe('字>');
+  expect(line(project, 6).slice(7, 9)).toBe('漢>');
+  expect(line(project, 8).slice(0, 2)).toBe('漢>');
+
+  project.undo(); // row 8's 漢 goes: its row is the picture's again
+  project.render();
+  await settle(project);
+  expect(project.cells.slice(cellIndex(0, 8, COLS), cellIndex(0, 9, COLS)).some((cell) => cell.wide)).toBe(false);
+  expect(line(project, 6).slice(7, 9)).toBe('漢>');
+});

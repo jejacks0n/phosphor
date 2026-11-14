@@ -202,7 +202,8 @@ export function layoutWideRows(cells, cols, laid, rows) {
 
 // Nothing in one UTF-16 unit below U+1100 (where the wide scripts start) is two columns wide, so
 // most cells skip the width lookup: this runs over every cell of the grid.
-const isWide = (cell) => !!cell && !(cell.char.length === 1 && cell.char.charCodeAt(0) < 0x1100) && cellWidth(cell.char) === 2;
+export const isWideChar = (char) => !(char.length === 1 && char.charCodeAt(0) < 0x1100) && cellWidth(char) === 2;
+const isWide = (cell) => !!cell && isWideChar(cell.char);
 
 // A cell rect as text (for the system clipboard): the characters as they show, a line per row. A
 // wide character is written once (its trail adds nothing), so the text lines up in a terminal; a
