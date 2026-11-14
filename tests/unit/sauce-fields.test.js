@@ -3,7 +3,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
-import { MOST_COMMENT_LINES, SAUCE_WIDTHS, charCount, commentLines, fitField, readSauce, sauceText, sauceUnmappable } from '../../src/lib/Sauce.js';
+import { MOST_COMMENT_LINES, SAUCE_WIDTHS, charCount, commentLines, fitField, letterSpacingOf, readSauce, sauceText, sauceUnmappable, withLetterSpacing } from '../../src/lib/Sauce.js';
 
 test('a character is one place, an emoji included', () => {
   assert.equal(charCount('Café € 🎨'), 8);
@@ -126,4 +126,21 @@ test('the Comments field holds far more than a record could, so a paste isn\'t c
   assert.ok(SAUCE_WIDTHS.comments >= 2 * MOST_COMMENT_LINES * 64);
   const pasted = LONG.join('\n');
   assert.equal(fitField('', pasted, pasted.length, SAUCE_WIDTHS.comments, (text) => sauceText(text, true)).left, '');
+});
+
+test('letter spacing is the flags\' bits 1 and 2: Not set, 8px or 9px, and a change leaves every other bit as it came', () => {
+  assert.deepEqual([0, 2, 4, 6, 3, 0x15].map(letterSpacingOf), ['none', '8', '9', '', '8', '9']); // 6: reserved
+  assert.equal(withLetterSpacing(0x11, '9'), 0x15);
+  assert.equal(withLetterSpacing(0x15, 'none'), 0x11);
+  assert.equal(withLetterSpacing(0x13, '8'), 0x13);
+  assert.equal(withLetterSpacing(0x17, ''), 0x17); // not chosen: as it came, reserved bits included
+  assert.equal(withLetterSpacing(0x17, 'nonsense'), 0x17);
+});
+
+test('the date and font name are written as given, and listed when CP437 lacks a character of theirs', async () => {
+  const W = { r: 255, g: 255, b: 255, hex: '#ffffff', c: [255, 255, 255] };
+  const sauce = { date: '19961113', fontName: 'Amiga Topaz 1+ €', flags: withLetterSpacing(1, '9'), comments: [] };
+  const read = readSauce(new Uint8Array(await new AnsiFile(1, 1, [{ char: 'A', fg: W, bg: W }]).toBlob({ sauce }).arrayBuffer()));
+  assert.deepEqual([read.date, read.fontName, read.flags, read.use9pxFont], ['19961113', 'Amiga Topaz 1+ ?', 5, true]);
+  assert.deepEqual(sauceUnmappable(sauce), [{ char: '€', as: '?', fields: ['fontName'] }]);
 });

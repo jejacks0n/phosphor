@@ -288,7 +288,8 @@ change, ask in the chat whether people can see her box, and have a watcher Exit 
   types in the same part of the art (setup moves on `tin_owl`'s page).
 - Expects: everything their file expects, and: each sees the other's strokes as they happen, before a stroke ends; a
   block moved or pasted reaches the others when it's placed, or after 2 seconds with no further move; `tin_owl` draws
-  in her font and size; on `tin_owl`'s page the settings, sliders, SAUCE fields, the base layer, Bake, Flatten and
+  in her font and size; on `tin_owl`'s page the settings, sliders, SAUCE fields (Date, Font name and Letter spacing
+  too, their counts still showing), the base layer, Bake, Flatten and
   Merge down are off and say "Only the room's host can change this."
   ([Drawing together](../../social.md#drawing-together), [Rooms](../../vector.md#rooms)).
 - Probes: `again`: draw on the very cells `tin_owl` just drew, and check the last edit wins for both; `interrupt`: for

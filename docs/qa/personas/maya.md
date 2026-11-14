@@ -404,7 +404,8 @@ from Bake, merge with a selection, and check the merges are off with Animate on 
 - Does: presses Cmd+S, saves; starts a New project; opens the saved .phosphor with Choose a file.
 - Expects: everything comes back: the picture and its sliders, the palette and Dither, each layer with its name, its
   eye, its paint and its own character settings, the vector layer's shapes with their gradients, the art layer, the
-  SAUCE fields; the font doesn't (it's this browser's, not the project's).
+  SAUCE fields, Font name and Letter spacing among them; the display font doesn't (it's this browser's, not the
+  project's: SAUCE's Font name only tells other viewers).
 - Probes: `interrupt`: reload before reopening and check the start screen offers her work under "Pick up where you left
   off"; `undo-redo`: after reopening, press Cmd+Z (nothing to undo: opening isn't an edit).
 - Rated: yes, wants Cmd+S, then Enter

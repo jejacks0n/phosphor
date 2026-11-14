@@ -181,3 +181,56 @@ test('a paste past the field\'s ceiling is cut, and the line under it says where
   expect(project.sauceUserComments).toBe('x'.repeat(32 * 1024));
   expect(noteOf('sauce-comments').textContent.trim()).toBe('Only 32,768 characters fit. Left out: "tail end"');
 });
+
+test('Date comes after Group, takes digits only, and a date that isn\'t a real YYYYMMDD gets a quiet note', async () => {
+  const { project } = await mount();
+  const ids = [...host.querySelectorAll('input, textarea')].map((el) => el.id).filter(Boolean);
+  expect(ids.slice(0, 5)).toEqual(['sauce-title', 'sauce-author', 'sauce-group', 'sauce-date', 'sauce-comments']);
+  expect(host.querySelector('label[for="sauce-date"]').textContent.trim()).toBe('Date (YYYYMMDD)');
+  expect(field('sauce-date').getAttribute('inputmode')).toBe('numeric');
+  expect(field('sauce-date').placeholder).toBe('The day you export'); // a new drawing's
+  const dateNote = () => host.querySelector('#sauce-date-format');
+
+  await edit('sauce-date', '1996-11-13');
+  expect(project.sauceDate).toBe('19961113');
+  expect(dateNote()).toBeNull();
+  await edit('sauce-date', '19961313');
+  expect(dateNote().textContent.trim()).toBe('SAUCE dates are YYYYMMDD, like 19961113.');
+  await edit('sauce-date', '1996');
+  expect(dateNote()).not.toBeNull();
+  await edit('sauce-date', '199611134');
+  expect(project.sauceDate).toBe('19961113');
+  expect(noteOf('sauce-date').textContent.trim()).toBe('Only 8 characters fit. Left out: "4"');
+});
+
+test('For other viewers: Font name (20, counted) and Letter spacing, with a line saying what they\'re for', async () => {
+  const { project } = await mount();
+  expect(host.textContent).toContain('For other viewers');
+  expect(host.textContent).toContain('These tell other viewers how to show the file. Phosphor\'s view keeps your display font.');
+  expect(field('sauce-font').value).toBe('IBM VGA'); // what a new drawing's export writes
+  expect(countOf('sauce-font').textContent.trim()).toBe('7 / 20');
+  await edit('sauce-font', 'Amiga Topaz 1+ and then some');
+  expect(project.sauceFontName).toBe('Amiga Topaz 1+ and t');
+  expect(noteOf('sauce-font').textContent.trim()).toBe('Only 20 characters fit. Left out: "hen some"');
+
+  const spacing = () => [...host.querySelectorAll('[aria-label="Letter spacing"] button')].map((b) => `${b.textContent.trim()}${b.getAttribute('aria-pressed') === 'true' ? '*' : ''}`);
+  expect(spacing()).toEqual(['Not set', '8px*', '9px']); // a new drawing's: 8px
+  host.querySelectorAll('[aria-label="Letter spacing"] button')[2].click();
+  await nextTick();
+  expect(project.sauceLetterSpacing).toBe('9');
+  expect(spacing()).toEqual(['Not set', '8px', '9px*']);
+  expect(project.sauceFields().flags & 6).toBe(4);
+});
+
+test('an opened file\'s empty date and font name say they\'re empty in the file, and its letter spacing shows', async () => {
+  await mount(({ project }) => Object.assign(project, { sauceRecord: '17 80 25 80 25', sauceDate: '', sauceFontName: '' })); // flags 17: iCE colors and a bit of its own, no spacing
+  expect(field('sauce-date').placeholder).toBe('Empty in the file');
+  expect(field('sauce-font').placeholder).toBe('Empty in the file');
+  expect([...host.querySelectorAll('[aria-label="Letter spacing"] button')].map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false']);
+});
+
+test('for an artist in a room, Date, Font name and Letter spacing are off too', async () => {
+  await mount(({ project }) => { project._sharing = { role: 'artist' }; });
+  for (const id of ['sauce-date', 'sauce-font']) expect(field(id).matches(':disabled'), id).toBe(true);
+  expect([...host.querySelectorAll('[aria-label="Letter spacing"] button')].every((b) => b.matches(':disabled'))).toBe(true);
+});

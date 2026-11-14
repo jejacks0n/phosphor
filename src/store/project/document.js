@@ -17,7 +17,7 @@ import { pngBlob } from '@/lib/PngFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
-import { commentLines, keptFields, keptRecord } from '@/lib/Sauce.js';
+import { commentLines, keptFields, keptRecord, withLetterSpacing } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults, sauceDefaults } from '@/store/settings.js';
@@ -484,8 +484,9 @@ export const documentActions = {
   },
 
   // What an art file's SAUCE record says, from the SAUCE tab. An opened file's record comes out as it went in
-  // (sauceRecord keeps its flags and size, the size until a resize), with nothing added. Another drawing's is
-  // Phosphor's own: its empty date and font filled in, and Phosphor's comment lines before the person's.
+  // (sauceRecord keeps its flags and size, the size until a resize), with nothing added but what was changed (Letter
+  // spacing changes only its bits of the flags). Another drawing's is Phosphor's own: its empty date and font filled
+  // in, and Phosphor's comment lines before the person's.
   sauceFields() {
     const kept = keptFields(this.sauceRecord, this.cols, charRowsOf(this.rows));
     const asIs = (value) => (kept ? value : value || undefined);
@@ -498,7 +499,7 @@ export const documentActions = {
     const typed = this.sauceUserComments ? this.sauceUserComments.split('\n') : [];
     return {
       ...kept,
-      use9pxFont: this.sauceUse9pxFont,
+      flags: withLetterSpacing(kept?.flags ?? (1 | (this.sauceUse9pxFont ? 4 : 2)), this.sauceLetterSpacing),
       fontName: asIs(this.sauceFontName),
       title: this.sauceTitle,
       author: this.sauceAuthor,

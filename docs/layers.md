@@ -279,7 +279,7 @@ Either way:
   256-color codes for the others, and full color when it uses a 24-bit code. An export writes the same kind of codes,
   16 and 231 (fixed black and white) among them, where 0 and 15 would follow a terminal's theme
   ([Saving](characters.md#saving-utf8ans-and-ans)).
-- **SAUCE** fills the SAUCE tab: title, author, group, date, comments, font name and the 9px font setting.
+- **SAUCE** fills the SAUCE tab: title, author, group, date, comments, font name and letter spacing.
   Your display font stays as you have it. An export writes the record back as it came, with only what you
   changed on the SAUCE tab, and the size after a resize ([Saving](characters.md#saving-utf8ans-and-ans)).
 - **Bright backgrounds** are kept bright. Blink isn't shown.
