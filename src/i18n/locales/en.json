@@ -1583,8 +1583,22 @@
         "full": "Room is full",
         "ended": "The host ended the room",
         "removed": "The host removed you",
-        "replaced": "You're watching this room in another tab"
+        "replaced": "You're watching this room in another tab",
+        "turnedAway": "The host didn't let you in.",
+        "busy": "The host has too many people waiting. Try again in a moment.",
+        "moved": "The room moved to a new host before you were let in."
       },
+      "join": {
+        "empty": "Type the host's address.",
+        "badPort": "The port must be a number from 1 to 65535.",
+        "badHost": "That isn't an address. It looks like 192.168.1.20 or my-mac.local, with :port after it if the host chose one.",
+        "notPhosphor": "That isn't a Phosphor room.",
+        "unreachable": "Nothing answered at that address. Check it, and that the host's room is open.",
+        "noRoom": "Phosphor is there, but no room is open right now.",
+        "newer": "They're on a newer Phosphor. Update to join.",
+        "older": "They're on an older Phosphor. They need to update before you can join."
+      },
+      "hostGone": "The host went away. You can try joining again later.",
       "roomAway": "Your room closed while you were away.",
       "undoReset": "The host has changed, so undo history has reset. All existing artwork is preserved.",
       "undoRestart": "Undo history has reset. All existing artwork is preserved.",
