@@ -8,7 +8,7 @@ const tool = (page) => store(page, 'workspace', (w) => w.activeTool);
 
 test('letters choose the tools the view offers, and the buttons say which', async ({ page }) => {
   await openApp(page);
-  for (const [key, id] of [['p', 'pencil'], ['b', 'brush'], ['e', 'eraser'], ['g', 'bucket'], ['u', 'shapes'], ['i', 'picker'], ['h', 'hand'], ['f', 'flip'], ['m', 'select'], ['t', 'text'], ['Escape', 'text'], ['h', 'hand'], ['k', 'text']]) {
+  for (const [key, id] of [['p', 'pencil'], ['b', 'brush'], ['e', 'eraser'], ['g', 'bucket'], ['Shift+G', 'gradient'], ['u', 'shapes'], ['i', 'picker'], ['h', 'hand'], ['f', 'flip'], ['m', 'select'], ['t', 'text'], ['Escape', 'text'], ['h', 'hand'], ['k', 'text']]) {
     await page.keyboard.press(key); // Edit Mode comes with its cursor, so letters type there until Escape puts it away
     expect(await tool(page), key).toBe(id);
   }

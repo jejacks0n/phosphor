@@ -1,16 +1,16 @@
-// The toolbar's tools, in order, with a divider ('|') between groups: drawing, selecting, moving
-// around, then the cell tools (ANSI view only).
+// The toolbar's slots, in order, with a divider ('|') between groups: drawing, selecting, moving
+// around, then the cell tools (ANSI view only). A slot is a tool or a group of them (tools/groups.js).
 import { test, expect, openApp, store, tab, settled } from './support.js';
 import { fakeRoom, goLive } from './social-support.js';
 
-const row = (page) => page.locator('.tool-group > *').evaluateAll((els) => els.map((el) => el.dataset.tool ?? '|'));
+const row = (page) => page.locator('.tool-group > *').evaluateAll((els) => els.map((el) => el.dataset.slot ?? '|'));
 
-test('the Magic Wand and Select sit together, between the picker and the Hand, in both views', async ({ page }) => {
+test('Select and the Magic Wand share a slot between the picker and the Hand and Zoom\'s, in both views', async ({ page }) => {
   await openApp(page);
-  expect(await row(page)).toEqual(['pencil', 'brush', 'eraser', 'bucket', 'shapes', 'picker', '|', 'wand', 'select', '|', 'hand', 'zoom', '|', 'text', 'flip']);
+  expect(await row(page)).toEqual(['pencil', 'brush', 'eraser', 'fill', 'shapes', 'picker', '|', 'select', '|', 'navigate', '|', 'text', 'flip']);
   await tab(page, 'PIXEL').click();
   await settled(page);
-  expect(await row(page)).toEqual(['pencil', 'brush', 'eraser', 'bucket', 'shapes', 'picker', '|', 'wand', 'select', '|', 'hand', 'zoom']);
+  expect(await row(page)).toEqual(['pencil', 'brush', 'eraser', 'fill', 'shapes', 'picker', '|', 'select', '|', 'navigate']);
 });
 
 // The overlay controls fold into their dropdown, and the Actions into theirs, when the toolbar is narrow,

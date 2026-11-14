@@ -193,7 +193,7 @@ test('typing, the Bucket, Shapes and Set FG write the swatch\'s 16 and 231', asy
     workspace.setColor('bg', '#000000', { index: 16 });
     const steps = [
       () => { workspace.textCursor = { col: 2, row: 1 }; typeAtCursor(project, workspace, 'Q'); project.commitEdit(); }, // over x (196 on 16)
-      () => { Object.assign(workspace, { bucketFillWith: 'cells', bucketGradient: 'solid', bucketSet: { fg: true, bg: false, char: false }, editFillContiguous: true }); getTool('bucket').begin(ctx, { x: 1.5, y: 2.5 }, { stopPropagation() {} }); }, // ▓ (15 on 0)
+      () => { Object.assign(workspace, { bucketFillWith: 'cells', bucketSet: { fg: true, bg: false, char: false }, editFillContiguous: true }); getTool('bucket').begin(ctx, { x: 1.5, y: 2.5 }, { stopPropagation() {} }); }, // ▓ (15 on 0)
       () => { Object.assign(workspace, { shapeKind: 'rect', shapeDrawWith: 'char', activeChar: '#' }); getTool('shapes').begin(ctx, { x: 3.5, y: 2.5 }); getTool('shapes').end(ctx); }, // y (0 on 16)
       () => project.recolorSelection({ c0: 0, r0: 0, c1: 0, r1: 0 }, 'output', [layer], { bg: workspace.editBgColor, bgIndex: workspace.editBgIndex }), // A (16 on 0)
     ];

@@ -30,7 +30,7 @@ post, an .ans that opens the same in a terminal, and a .phosphor file she can re
   (Choose characters, the Characters set, the seed, Solids, Pattern light, Dither style and Dither) and Image filters
   ([Layers](../../layers.md#the-left-column), [Characters](../../characters.md#how-the-converter-picks-characters)).
 - LAYERS: + Layer, + Vector layer, picking, the eye, Merge down, Bake ([Layers](../../layers.md)).
-- The Brush, Edit Mode, the Paint Bucket and its Gradient choice ([Layers](../../layers.md#other-tools)).
+- The Brush, Edit Mode, the Paint Bucket and the Gradient beside it ([Layers](../../layers.md#other-tools)).
 - VECTOR's Shape tool, Fill and Stroke, gradients and art layers ([Vector shapes](../../vector.md)).
 - Save project, Export .ans and Export .png ([Characters](../../characters.md#saving-utf8ans-and-ans)).
 
@@ -249,7 +249,7 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Rated: yes, wants G
 
 ### 19. Fill with a gradient
-- Does: in the Paint Bucket's Gradient choice, picks Linear and drags across an area, then Spherical, then holds Shift
+- Does: opens the Paint Bucket's button (its corner, or a long press) and picks the Gradient, picks Linear and drags across an area, then Spherical, then holds Shift
   while dragging; then tries Cells with a gradient.
 - Expects: Linear runs from her foreground where she pressed to her background where she let go; Spherical is a
   circle; Shift snaps the line to 45°; Cells builds it from █ ▓ ▒ ░ and a space; a gradient is one undo step; a drag
@@ -257,7 +257,7 @@ dithered, and compare the dither at 80 and at 200 columns.
   neither can be None."
 - Probes: `back-out`: start a gradient drag and press Escape before letting go; `out-of-order`: set the background to
   None and drag; `undo-redo`: undo the gradient and redo it.
-- Rated: yes, wants G, then a key for the Gradient choice
+- Rated: yes, wants Shift+G
 
 ### 20. Add a vector layer and draw a shape
 - Does: presses + Vector layer, picks the Shape tool, drags an Ellipse with Shift held, then sets its Fill and its
@@ -292,7 +292,7 @@ dithered, and compare the dither at 80 and at 200 columns.
 
 ### 23. Paint inside the art layer
 - Does: steps into the art layer again (Edit art), paints a stroke with the Brush, fills an area with the Paint Bucket,
-  drags a Linear gradient with the Bucket's Gradient choice, then presses Done.
+  drags a Linear gradient with the Gradient, then presses Done.
 - Expects: the usual ANSI tools draw into the art layer and only it
   ([Editing an art layer](../../vector.md#editing-an-art-layer)); drawing past its edge grows it; each edit is one undo
   step; the change shows on VECTOR once she's out, with the layer selected.

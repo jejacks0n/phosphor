@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { bakeWarning, mergeWarning, useDrawingStore } from '@/store/DrawingStore';
-import { getTool, offeredTools, toolTitle } from '@/tools';
+import { getTool, keyLabel, slotFace, toolSlots, toolTitle } from '@/tools';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
@@ -49,23 +49,24 @@ function mergeHere() {
 }
 const warnedSub = (sub, warning = mergeWarning()) => (drawing.othersHere ? t('toolbar.mergeDialog.warnedSub', { warning, sub }) : sub);
 
-// The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing),
-// with a divider wherever the toolbar section changes (a tool's own, or its sections[tab] in that view).
+// The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing), a slot
+// each, a group's sharing one (toolSlots), with a divider wherever the toolbar section changes (a tool's own, or its
+// sections[tab] in that view). face: the tool a slot shows (slotFace).
 const tools = computed(() => {
-  const tab = workspace.editorTab, offered = offeredTools(tab, project);
-  const section = (tool) => tool.sections?.[tab] ?? tool.section ?? 'draw';
-  return offered.map((tool, i) => ({ tool, divider: i > 0 && section(tool) !== section(offered[i - 1]) }));
+  const tab = workspace.editorTab, slots = toolSlots(tab, project);
+  const section = (slot) => slot.tools[0].sections?.[tab] ?? slot.tools[0].section ?? 'draw';
+  return slots.map((slot, i) => ({ slot, face: slotFace(slot, workspace), divider: i > 0 && section(slot) !== section(slots[i - 1]) }));
 });
 const activeTool = computed(() => getTool(workspace.activeTool));
 
-// Tools that don't fit the row move into the ⋯ menu after the last one that does. All of them stay
-// in the row (clipped), so it always knows their full width. The room for tools is the tool group
-// plus the spacer after it (plus the menu's own slot while it's showing).
+// Slots that don't fit the row move into the ⋯ menu after the last one that does, a group's tools one by one. All of
+// them stay in the row (clipped, out of sight), so it always knows their full width. The room for tools is the tool
+// group plus the spacer after it (plus the menu's own slot while it's showing).
 const toolBox = useTemplateRef('toolBox');
 const toolSpacer = useTemplateRef('toolSpacer');
 const moreMenu = useTemplateRef('moreMenu');
-const hiddenTools = ref([]);
-const toolsWidth = ref(null); // the group's width while some tools are hidden: up to the last shown
+const hiddenSlots = ref([]);
+const toolsWidth = ref(null); // the group's width while some slots are hidden: up to the last shown
 const MORE_GAP = 6;           // the row's gap
 function fitTools() {
   const box = toolBox.value, spacer = toolSpacer.value;
@@ -73,20 +74,38 @@ function fitTools() {
   const items = [...box.children];
   const right = (el) => el.offsetLeft + el.offsetWidth;
   const moreSlot = (moreMenu.value?.$el.offsetWidth || 34) + MORE_GAP;
-  const room = box.clientWidth + spacer.offsetWidth + (hiddenTools.value.length ? moreSlot : 0);
+  const room = box.clientWidth + spacer.offsetWidth + (hiddenSlots.value.length ? moreSlot : 0);
   if (!items.length || right(items.at(-1)) <= room) {
-    hiddenTools.value = [];
+    hiddenSlots.value = [];
     toolsWidth.value = null;
     return;
   }
   const shown = items.filter(el => right(el) <= room - moreSlot);
-  hiddenTools.value = items.filter(el => el.dataset.tool && !shown.includes(el)).map(el => el.dataset.tool);
-  const lastTool = shown.filter(el => el.dataset.tool).at(-1);
-  toolsWidth.value = lastTool ? right(lastTool) : 0;
+  hiddenSlots.value = items.filter(el => el.dataset.slot && !shown.includes(el)).map(el => el.dataset.slot);
+  const lastSlot = shown.filter(el => el.dataset.slot).at(-1);
+  toolsWidth.value = lastSlot ? right(lastSlot) : 0;
 }
 useResizeObserver([toolBox, toolSpacer], fitTools);
 watch(() => tools.value.length, () => nextTick(fitTools));
-const moreTools = computed(() => tools.value.filter(({ tool }) => hiddenTools.value.includes(tool.id)).map(({ tool }) => tool));
+const moreTools = computed(() => tools.value.filter(({ slot }) => hiddenSlots.value.includes(slot.id)).flatMap(({ slot }) => slot.tools));
+
+// A slot with more than one tool opens them (its flyout, a DropdownMenu) from its corner, a long press or a
+// right-click (which a long press is, on some phones). A long press doesn't then also choose the tool shown.
+const flyouts = {};
+const LONG_PRESS_MS = 450;
+let pressTimer = null, longPressed = false;
+function pressSlot(id) {
+  clearTimeout(pressTimer);
+  longPressed = false;
+  pressTimer = setTimeout(() => { longPressed = true; flyouts[id]?.open(); }, LONG_PRESS_MS);
+}
+const releaseSlot = () => clearTimeout(pressTimer);
+function chooseFace(id, tool) {
+  if (longPressed) { longPressed = false; return; }
+  flyouts[id]?.close();
+  workspace.setActiveTool(tool.id);
+}
+const keysOf = (tool) => tool.keys?.map(keyLabel).join(' ');
 const MORE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M96 320a56 56 0 1 1 112 0a56 56 0 1 1-112 0zm168 0a56 56 0 1 1 112 0a56 56 0 1 1-112 0zm224-56a56 56 0 1 1 0 112a56 56 0 1 1 0-112z"/></svg>';
 // A tool's options for the current view (an option may be for one view only).
 const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option =>
@@ -158,7 +177,7 @@ const overlaySetting = computed(() => ({ ...OVERLAY_SETTING.value, label: t('too
 
 // A tool that stops being offered (flip after switching to an ASCII art style) shouldn't stay active unseen.
 watch(tools, (offered) => {
-  if (!offered.some(({ tool }) => tool.id === workspace.activeTool)) workspace.setActiveTool('hand');
+  if (!offered.some(({ slot }) => slot.tools.some((tool) => tool.id === workspace.activeTool))) workspace.setActiveTool('hand');
 });
 
 // Clear asks in the app's own dialog (clearing): after the browser's confirm, the page could be left without the keys
@@ -313,25 +332,57 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       </div>
 
       <div ref="toolBox" class="tool-group" :style="{ maxWidth: toolsWidth === null ? null : `${toolsWidth}px` }">
-        <template v-for="{ tool, divider } in tools" :key="tool.id">
+        <template v-for="{ slot, face, divider } in tools" :key="slot.id">
           <div v-if="divider" class="divider"/>
           <button
-              :data-tool="tool.id"
-              :tabindex="hiddenTools.includes(tool.id) ? -1 : null"
-              :title="toolTitle(tool)"
-              :aria-label="tool.title"
-              :aria-keyshortcuts="tool.keys?.join(' ')"
-              @click="workspace.setActiveTool(tool.id)"
-              :class="{ active: workspace.activeTool === tool.id }"
-              v-html="tool.icon"
+              v-if="slot.tools.length === 1"
+              :data-slot="slot.id"
+              :data-tool="face.id"
+              :class="{ active: workspace.activeTool === face.id, clipped: hiddenSlots.includes(slot.id) }"
+              :title="toolTitle(face)"
+              :aria-label="face.title"
+              :aria-keyshortcuts="face.keys?.join(' ')"
+              @click="workspace.setActiveTool(face.id)"
+              v-html="face.icon"
           ></button>
+          <DropdownMenu
+              v-else
+              :ref="(menu) => { flyouts[slot.id] = menu; }"
+              class="tool-slot tools-menu"
+              :class="{ clipped: hiddenSlots.includes(slot.id) }"
+              :data-slot="slot.id"
+              :label="t(`tools.groups.${slot.id}`)"
+              :trigger-label="t(`tools.groups.${slot.id}`)"
+              align="left"
+          >
+            <template #before>
+              <button
+                  :data-tool="face.id"
+                  :class="{ active: workspace.activeTool === face.id }"
+                  :title="toolTitle(face)"
+                  :aria-label="face.title"
+                  :aria-keyshortcuts="face.keys?.join(' ')"
+                  @click="chooseFace(slot.id, face)"
+                  @pointerdown="pressSlot(slot.id)"
+                  @pointerup="releaseSlot"
+                  @pointerleave="releaseSlot"
+                  @pointercancel="releaseSlot"
+                  @contextmenu.prevent="flyouts[slot.id]?.open()"
+                  v-html="face.icon"
+              ></button>
+            </template>
+            <template #trigger><span class="slot-corner" :class="{ lit: workspace.activeTool === face.id }"></span></template>
+            <button v-for="tool in slot.tools" :key="tool.id" class="choice" :class="{ on: workspace.activeTool === tool.id }" @click="workspace.setActiveTool(tool.id)">
+              <span class="tool-icon" v-html="tool.icon"></span><span class="slot-name">{{ tool.title }}</span><span v-if="!phoneLayout && tool.keys" class="slot-keys">{{ keysOf(tool) }}</span>
+            </button>
+          </DropdownMenu>
         </template>
       </div>
       <DropdownMenu
           v-if="moreTools.length"
           ref="moreMenu"
           class="tools-menu"
-          :class="{ 'holds-active': hiddenTools.includes(workspace.activeTool) }"
+          :class="{ 'holds-active': moreTools.some((tool) => tool.id === workspace.activeTool) }"
           :label="t('tools.moreTools')"
           align="left"
       >
@@ -636,6 +687,60 @@ div.tool-group > * {
 .tools-menu span.tool-icon {
   flex-shrink: 0;
   margin-right: 8px;
+}
+
+/* A slot of several tools: its tool's button, with a corner that opens the rest (a triangle, lit with the button). */
+article.tool-slot {
+  display: flex;
+}
+
+.tool-slot :deep(.dropdown-trigger) {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transform: none;
+}
+
+span.slot-corner {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  border-left: 5px solid transparent;
+  border-bottom: 5px solid var(--text-faint);
+  pointer-events: none;
+}
+
+span.slot-corner.lit,
+.tool-slot :deep(.dropdown-trigger:hover) span.slot-corner {
+  border-bottom-color: var(--white);
+}
+
+.tool-slot > button {
+  -webkit-touch-callout: none; /* a long press opens the slot, not the phone's own menu */
+}
+
+.tool-slot button.choice span.slot-name {
+  flex: 1;
+}
+
+.tool-slot button.choice span.slot-keys {
+  margin-left: 16px;
+  color: var(--text-muted);
+}
+
+.tool-slot button.choice.on span.slot-keys {
+  color: inherit;
+}
+
+/* A slot moved into the ⋯ menu stays in the row, measured but out of sight (and out of the Tab order). */
+.clipped {
+  visibility: hidden;
 }
 
 div.tool-group,

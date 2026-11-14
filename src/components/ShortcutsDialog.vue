@@ -31,6 +31,7 @@ const groups = computed(() => [
       [['B'], t('shortcuts.rows.brush')],
       [['E'], t('shortcuts.rows.eraser')],
       [['G'], t('shortcuts.rows.bucket')],
+      [[k('shift', 'G')], t('shortcuts.rows.gradient')],
       [['U'], t('shortcuts.rows.shapes')],
       [['I'], t('shortcuts.rows.picker')],
       [['W'], t('shortcuts.rows.wand')],

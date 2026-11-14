@@ -10,6 +10,7 @@ import { loadGuides, saveGuides } from '@/lib/guideStorage';
 import { snapCursor } from '@/document/wideChars';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
+import { groupOf } from '@/tools/groups';
 
 const RECENT_COLORS = 12;
 
@@ -21,6 +22,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     inputActiveTool: 'brush',
     outputActiveTool: 'hand',
     vectorActiveTool: 'vselect',
+    slotFaces: {},           // a toolbar slot's tool, by group id (tools/groups.js): the one last chosen
     heldTool: null,          // a tool held with a key: { key, tool (the one to go back to), by: 'alt' | 'space' }
     // The color pair. Paint uses the foreground; typing uses both, where a none slot leaves that
     // attribute as it is underneath (with the background none, typed text sits on the image).
@@ -103,7 +105,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     shapeAntialias: false,   // ellipses and lines: edge pixels by coverage, or ░▒▓█ cells
     shapeVerticalHalves: false, // ANSI blocks: ▌▐ too (Half-block: quadrants), for lines and ellipses
     strokeEnd: null,         // where the last Pencil or Brush stroke ended (a grid position): Shift-click draws a line from there
-    shapeDrag: null,         // { from, to, line? } grid positions while a shape (or the bucket's gradient line) is being dragged
+    shapeDrag: null,         // { from, to, line? } grid positions while a shape (or the Gradient's line) is being dragged
     editZoom:  5,
     ansiZoom:  1,            // the ANSI (and VECTOR) view's zoom: 25% to 800% of its cell size
     editorTab: 'input',      // 'input' (PIXEL), 'output' (ANSI or ASCII), 'vector', 'sauce' or 'room' (the room you watch)
@@ -148,7 +150,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     bucketFillWith: 'normal', // ANSI view: 'normal' (the color you see) | 'cells' (whole cells, by Match and Set)
     bucketMatch: { fg: true, bg: true, char: true }, // Cells: what a cell must share with the one clicked
     bucketSet: { fg: true, bg: false, char: false }, // Cells: what the fill sets (your FG, BG, character)
-    bucketGradient: 'solid', // 'solid' | 'linear' | 'spherical' (a drag from FG to BG)
+    gradientShape: 'linear', // the Gradient: 'linear' | 'spherical' (a drag from FG to BG)
 
     // The VECTOR tab
     vectorSelected: [],      // the keys of the shapes Vector select has selected (follows project.shapes: one gone drops out)
@@ -251,6 +253,8 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.heldTool = null; // a tool chosen while another is held stays chosen
       this.selectFromText = false;
       this[toolKey(this.editorTab)] = tool;
+      const group = groupOf(tool);
+      if (group) this.slotFaces[group.id] = tool;
       if (tool !== 'text' || this.editorTab !== 'output') return;
       const project = useProjectStore();
       if (this.selection || this.wand) project.changeSelection((w) => { w.selection = null; w.wand = null; });
