@@ -1,434 +1,309 @@
-# Vector shapes
+# Vector Shapes
 
-The **VECTOR** tab (at `/vector`) shows while the vector layer is picked in [LAYERS](layers.md#the-layers-list)
-(**Add vector layer** adds it). It holds shapes and curves that stay editable: you can move, scale, rotate and
-reshape them as often as you like, and the art underneath converts them to characters as you go. The tab
-shows the art exactly as ANSI does, with the editing marks for the shapes on
-top. Zoom and pan work as they do on ANSI: zoomed in as far as 800%, a cell is many screen pixels wide, for placing
-points between cells.
+The **VECTOR** workspace lets you draw scalable shapes, curves, and paths directly over your artwork. Vector shapes remain fully editable: you can move, scale, rotate, and reshape them at any time. As you work, Phosphor automatically converts your vector shapes into text characters and colors.
 
-## Where shapes sit
+The **VECTOR** tab (at `/vector`) shows while a vector layer is picked in [LAYERS](layers.md#the-layers-list); **Add vector layer** adds one. It shows the art exactly as ANSI does, with the editing marks for the shapes on top. Zoom and pan work as they do on ANSI: zoomed in as far as 800%, a cell is many screen pixels wide, for placing points between cells.
 
-Shapes are drawn over the base layer's own pixels and converted with the picture, so the color
-adjustments, the palette and dither apply to them as they do to the picture (the image filters, such as
-Blur, don't). A vector layer with Dither of its own dithers its shapes by it ([Layers](layers.md#the-left-column)). Edit
-cells and paint stay on top of them:
+---
 
-the picture → the base layer's own pixels → shapes → edit cells → paint
+## How Vector Shapes Work
 
-Shapes are drawn at the picture's own detail, finer than the grid, so with **By shape** choosing the
-characters ([Characters](characters.md#how-the-converter-picks-characters)) a shape's edge inside a cell
-can come out as a quadrant, `▐`, `▌` or a rising block. Paint can't do that: it covers whole half cells.
-Shapes are the way to draw finer than half a cell.
+Shapes are drawn into the artwork before it's converted, so the color adjustments, the palette, and dither apply to them as they do to the picture. The image filters (such as Blur) don't. A vector layer with character settings of its own (Dither included) converts its shapes with them ([Layers](layers.md#the-left-column)).
 
-Where a shape covers a pinned character (one an opened `.ans` file set), the shape's conversion shows
-instead; move the shape away and the character comes back. A drawing holds up to 1,000 shapes.
+### Drawing Order
 
-Shapes are part of the edit layer: undo and redo take every change to them back one step at a time,
-**Clear** on ANSI leaves them alone, and a drawing with shapes counts as drawn on when the canvas is
-resized (it grows or trims on the right and bottom, and shapes keep their place).
+Shapes are drawn where their vector layer sits in the stack, and a new shape goes on the vector layer picked. The vector layer your first shape brings sits directly on the base layer, under the drawing layer, so a new drawing stacks like this:
 
-## Art layers
+`Picture → Base layer's own pixels → Vector shapes → Drawing layer cells → Paint`
 
-An **art layer** is a block of hand-drawn cells that lives on the vector layer as a shape does: you can select it,
-copy it and delete it, and it stacks with the shapes. It keeps its characters and colors exactly as you drew them,
-where a shape's art is converted.
+A vector layer higher in the stack converts against everything below it: where a shape reaches a cell, the converter picks that cell's character from the shape's pixels over what the layers under it show there. The layers above then cover it as they cover anything.
 
-To make one, choose the Select tool (**M**) on ANSI and select the area (or select cells with the Magic Wand), and press **Make art layer** (beside Merge down, or in
-the Actions menu on narrow screens). What's drawn in the selection (typed cells, drawn cells and paint, on the picked cells layer) moves into a new
-art layer on the vector layer directly above that layer (one is added there when the layer above isn't a vector layer, unless the drawing has the most layers it holds, which it says), on top of its shapes, trimmed to the cells that have something in them, and the view goes to VECTOR with the
-layer selected. It's one undo step, and the canvas looks the same afterward. With the Magic Wand, only the cells it selected are taken, and the rest of the drawing stays. The base layer and the
-shapes aren't taken along, and with nothing drawn in the selection nothing happens (with the Magic Wand, Phosphor says so). A layer holds a limited amount (a piece about the size of a
-screenful of detailed art); if the selection has more, Phosphor asks for a smaller piece and leaves the drawing as it was.
+### High-Detail Shapes
 
-- **Moving it.** Drag it anywhere in its box, or use the arrow keys, and it moves by whole cells (an arrow moves a column across or a line down, and Shift moves ten times as far), whatever Snap to says. It has no size or turn handles, alone or selected with other shapes, which move with it by whole cells. A layer right at its size limit may not move far or stack much higher; Phosphor says so.
-- **What's see-through.** A cell you never drew on is see-through, and so is a half of a cell with no color of its own
-  (text typed with only a foreground color has no background, so what's under it shows). A black background you drew
-  is a color like any other: it covers what's under it.
-- **How its cells blend.** Each half of a cell shows its own color solid, covering what's under it, and a half with no
-  color shows what's under it as it is. Paint that's partly transparent comes into the layer solid when it's about half
-  opaque or more, and is left out when it's less.
-- **Characters.** A cell's character shows exactly as drawn wherever the art layer is the topmost thing at that
-  cell. Where a shape sits above the layer, or over the cell, the converter picks the character there, as it does for
-  shapes. Where two art layers overlap, the upper one's character shows, and a cell of it with no character leaves the
-  lower one's. A wide character takes the next cell too, as it does on ANSI. A cell you painted without typing a
-  character keeps the character it showed when you made the layer (or painted it inside the layer), so it no longer
-  changes with what's under it.
-- **Animation.** On an animation it starts on the frame you made it on, and a Blank frame carries it on, as it carries
-  shapes. It keys and tweens its place and stacking as a shape does, a whole cell at a time
-  ([The Keys panel](animation.md#the-keys-panel)).
-- **Copies.** Copy and paste (Cmd/Ctrl+C and V on VECTOR) make an art layer of its own: changing one leaves the other
-  as it was.
+Vector shapes render at the picture's own detail, finer than the grid. With **By shape** choosing the characters ([Characters](characters.md#how-the-converter-picks-characters)), a shape's edge inside a cell can come out as a quadrant, `▌`, `▐`, or another partial block from your character set. Paint can't do that, because it covers whole half cells: shapes are the way to draw finer than half a cell.
 
-### Editing an art layer
+### Shapes and the Rest of the Drawing
 
-To draw in an art layer, step into it, as you'd edit a symbol in Flash. Select it on VECTOR with Vector select and press
-**Edit art** in the options row, or double-click it. The view goes to ANSI, and the bar under the tools says **Editing art layer**
-with a **Done** button.
+- **Pinned characters**: Where a shape covers a pinned character (one an opened `.ans` file set), the shape's conversion shows instead. Move the shape away and the character comes back.
+- **Limit**: A drawing holds up to 1,000 shapes on a frame.
+- **Undo**: Undo and redo take every change to shapes back one step at a time.
+- **Clear layer**: Clearing a drawing layer leaves shapes alone.
+- **Canvas size**: A drawing with shapes counts as drawn on when you resize the canvas: it grows or trims on the right and bottom, and shapes keep their place.
+- **Hidden layers**: Shapes on a hidden vector layer can still be selected and edited on VECTOR.
 
-- **Drawing.** The usual drawing tools on ANSI (Pencil, Brush, Edit Mode, Eraser and the rest) draw into the layer,
-  and only it: the base layer is off while you're in. The rest of the drawing shows dimmed, and can't be changed from here.
-- **Every frame.** An art layer is one drawing wherever it shows, so each edit changes it on every frame it's on, not just the
-  one showing.
-- **Growing and erasing.** Draw past the layer's edge and it grows to hold what you drew. Erase the cells at its edge and it
-  shrinks to the cells that are left; the cells that stay don't move on the canvas. A layer holds a limited amount: if an
-  edit would make it too big on any frame it's on, nothing changes and Phosphor says so.
-- **Undo.** Each edit is one undo step, and undo goes back to where you stepped in and no further. Step out, and the steps
-  are in the history with the rest.
-- **What's off.** The settings panel, picking the base layer and the frame controls (the animation bar, and the keys that play, step
-  and add frames) are off while you're in. Changing the picture or the frame would leave the dimmed drawing out of date.
-  Clear, Merge down (and with it Into the image), Bake and Flatten are off too, since they change the whole drawing,
-  not the layer: their titles say to step out first.
-- **In a room.** One person at a time draws in an art layer ([Rooms](#rooms)).
-- **Stepping out.** Press **Done** or **Esc** (once nothing else is left to cancel: with the Text cursor showing, the first
-  **Esc** puts it away), and the view goes back to VECTOR with the layer selected. Changing tabs, opening or starting a
-  document, resizing the canvas, turning Animate off, exporting, and Make art layer step out too.
+---
 
-## Bake and Merge down
+## Art Layers
 
-- **Merge down** on VECTOR merges the picked vector layer into the layer under it
-  ([Layers](layers.md#moving-things-between-layers)). Onto the base it presses the selected shapes (or, with none
-  selected, all of them, and the layer goes) into the base layer's pixels, where they stop being shapes, with
-  nothing on the canvas changing. Any shape beneath one of them that overlaps it goes too. Onto a cells layer the
-  whole layer goes, every cell its shapes reach written there as it shows. One undo brings them back as shapes. A
-  vector layer with its own character settings can't be pressed into the base, which would change how it shows: it
-  says so. In an animation it's off: a layer is under every frame.
-- **Bake** presses the shapes on a vector layer directly on the base in on a still (not one with its own character
-  settings); shapes higher in the stack stay shapes. In an animation they stay shapes, with the sliders burnt into
-  their colors.
-- **Flatten** turns every shape and art layer, with the rest of the drawing, into plain cells as they show,
-  and the vector layers go ([Layers](layers.md#flattening)).
+An **art layer** is a block of hand-drawn cells stored on a vector layer as a shape is. You can select, move, copy, delete, and animate an art layer, and it stacks with the shapes, but it keeps your exact hand-drawn characters and colors instead of being converted.
 
-## Animation
+### Creating an Art Layer
 
-Each frame has its own shapes: a Blank frame carries the shapes before it, as it carries cells, and changing one
-there makes it that frame's ([Animation](animation.md)). On VECTOR, the outlines of the shapes a Blank frame
-carries show dimmed. Playing and the exports show each frame's shapes. A shape can tween between its keys, moving,
-turning, reshaping and changing color on the frames between; the **Keys** panel over the animation bar shows the
-selected shape's keys, part by part, to select, ease, add and delete, and shows each part's value to type over ([Tweens](animation.md#tweens)).
+1. Use the **Select** tool (**M**) to select an area, or the **Magic Wand** (**W**) to select cells.
+2. Click **Make art layer** in the options row.
+3. What's drawn in the selection (typed cells, drawn cells, and paint on the drawing layer in use) moves to a new art layer on the vector layer directly above that layer, on top of its shapes, trimmed to the cells that have something in them. If the layer above isn't a vector layer, one is added there (unless the drawing already has the most layers it can hold, which Phosphor tells you).
+4. The view switches to **VECTOR** with the new art layer selected.
 
-## Following a path
+Making an art layer is one undo step, and the canvas looks the same afterward:
+- With the Magic Wand, only the cells it selected are taken, and the rest of the drawing stays.
+- The base layer and shapes aren't taken along.
+- With nothing drawn in the selection, nothing happens (with the Magic Wand, Phosphor says so).
+- An art layer holds a limited amount. If the selection has more, Phosphor asks for a smaller area and leaves the drawing as it was.
+- You can't make an art layer from a hidden drawing layer, or onto a hidden vector layer.
 
-A shape or an art layer can follow a line or another shape, its path, so that it moves along it. It's an animation
-property, set in the **Keys** panel, so it's there only with Animate on ([Following a path in the Keys
-panel](animation.md#following-a-path)).
+### How Art Layers Behave
 
-- **Follow a path…**: select the shape or art layer, open **+ Add key** in the Keys panel and choose **Follow a
-  path…** at the bottom (it's there for one that isn't following anything). The hint says "Follow a path: click the
-  line or shape to follow. Esc cancels", and a shape that can be the path is drawn thick in the accent color under
-  the pointer. Click it, and the follower's middle goes onto the path at the point nearest where it was. **Esc**, a
-  click on empty canvas, another tool or tab, or turning Animate off cancels. An art layer can't be a path, nor can
-  a shape that follows one itself, and a shape that others follow can't follow one (a message says so).
-- The link lasts the follower's whole life: it's on its path on every frame it's on, whatever is done to the path
-  there (moved, reshaped, tweened). Where the path isn't on a frame, the follower sits where its own Transform has
-  it. A path can have any number of followers. Each of these is one undo step.
-- On VECTOR, a selected follower's path is outlined dashed in the accent color. Its own turn and size still apply
-  about its middle, and the box's handles turn and scale it as any shape's do. Dragging it in Vector select slides
-  it along its path, to the point nearest where you drag it (one undo step); the arrow keys step it along by 1%, with
-  Shift by 10%. Its X and Y in the Keys panel show where it is, and can't be typed while it follows. The Node tool
-  edits its points where it shows; moving them moves its middle, and it re-centers on its path, so the rest of it
-  shifts. Stepping into a follower art layer draws in it where it shows. Drawing outside a following art layer's box
-  grows the layer, and it re-centers on its path, so its cells shift.
-- **Along ▾**: a follower's Keys panel has an **Along** row, and its name is a menu:
-  - **Moves**: **Along it, on its own keys** (the Along row's keys say how far along it is), **With the line's
-    start** or **With the line's end** (it sits on the path's Start or End as the path is trimmed on each frame, with
-    no keys of its own);
-  - **Face the path**: the follower turns the way the path runs there, its own turn on top, so a shape drawn
-    pointing right points along the path (shapes only);
-  - **Motion**: **Smoothly**, **By half cells** or **By whole cells**, as a Transform tween's motion, for its place
-    on the path (an art layer always lands on whole cells);
-  - **Stop following**: the follower lets go of its path on every frame and goes back to where its own Transform
-    has it. Undo brings the link back.
+- **Moving**: Drag an art layer anywhere in its box, or use the arrow keys. It moves by whole cells (an arrow moves one column across or one line down, and **Shift** moves ten times as far), whatever **Snap to** says. It has no size or rotation handles, and shapes selected with it move with it by whole cells.
+- **See-through cells**: A cell you never drew on is see-through, and so is a half of a cell with no color of its own (text typed with only a foreground color has no background, so what's under it shows). A black background you drew is a color like any other: it covers what's under it.
+- **Blending**: Each half of a cell shows its own color solid. Partly transparent paint comes into the layer solid when it's about half opaque or more, and is left out when it's less.
+- **Characters**: A cell's character shows exactly as drawn wherever the art layer is the topmost thing at that cell. Where a shape sits above the layer, the converter picks the character there, as it does for shapes. Where two art layers overlap, the upper one's character shows; a cell of it with no character leaves the lower one's. A two-column character takes the next cell too, as it does on ANSI. A cell you painted without typing a character keeps the character it showed when you made the layer, so it no longer changes with what's under it.
+- **Animation**: In an animation, an art layer starts on the frame you made it on, and a Blank frame carries it on, as it carries shapes. Its position and stacking key and tween as a shape's do, a whole cell at a time ([The Keys Panel](animation.md#the-keys-panel)).
+- **Copies**: Copy and paste (**Cmd/Ctrl+C** and **Cmd/Ctrl+V** on VECTOR) make an independent art layer: changing one leaves the other as it was.
+- **Boolean operations**: Join, Add, and Subtract don't take an art layer, since it has no outline.
 
-  Each is one undo step, and the same on every frame of the follower's life.
-- **Guide**: a path you don't want drawn. With a shape selected that others follow (or that's a guide already),
-  **Guide** in the Keys panel's top line, before the easing, turns it into one: it draws nothing in the cells, the
-  exports, Merge down or Bake, and shows on VECTOR as a thin dashed outline, which is where you click it (on the
-  outline, not inside), even with Animate off. Merge down and Bake leave a guide a shape; merging a path presses its
-  followers with it.
-- **Copy and paste**: a follower copied with its path follows the pasted path; pasted alone in the same document it
-  follows the original; in another document, or where the link can't be made, it follows nothing. Join keeps the
-  bottom shape's link; Separate gives it to the piece that keeps the shape.
+### Editing an Art Layer
 
-## Rooms
+To draw inside an art layer, you step into it (like editing a symbol in Flash):
 
-In a room, everyone drawing can draw and change shapes, and everyone sees them as they're drawn. A shape is one
-piece of the drawing, like a cell: when two people change the same shape at once, the change heard last is the one
-that stays, and undo takes back only your own changes (yours to a shape someone has changed since stays theirs).
-Bake and Merge down are the host's. Watchers see the art the shapes make.
+1. In the **VECTOR** view, double-click the art layer (or select it with Vector select and click **Edit art** in the options row).
+2. The view switches to the ANSI editor. The bar under the tools says **Editing art layer**, with a **Done** button.
+3. Use the usual drawing tools (Pencil, Brush, Edit Mode, Eraser, and the rest). They draw into the art layer only; the rest of the drawing shows dimmed and can't be changed from here.
+4. When finished, click **Done** or press **Esc** to return to the VECTOR view with the layer selected. If the Text cursor is showing, the first **Esc** puts it away.
 
-Art layers travel the same way: each one is a single shape, and every edit made inside it reaches everyone as a change
-to that shape. One person at a time draws in an art layer. While someone is inside one, everyone else sees its box on
-VECTOR, labeled with who it is (for example, **Ann is drawing in this layer**). They can still select it, but they can't
-step in (**Edit art** is off, and its title says who is drawing), move, restack or delete it, or undo or redo a change to
-it: Phosphor says who's drawing there instead. If two people step into the same layer at once, the one the host hears
-first keeps it, and the other is stepped out and told who has it. While anyone else is inside an art layer, the host
-can't Clear, Merge down, merge Into the image, Bake or change the canvas size either, since those send everyone the
-whole document again. The layer is free again once that person steps out, leaves the room or stops drawing. A host can
-free a layer held by someone who has gone idle inside it with **Back to watching** in that person's **⋯** menu in
-**N here** ([Drawing together](social.md#drawing-together)); they can be made an artist again afterward.
+While you're inside an art layer:
+- **Every frame**: An art layer is one drawing wherever it shows, so each edit changes it on every frame it's on.
+- **Growing and shrinking**: Draw past the layer's edge and it grows to hold what you drew. Erase the cells at its edge and it shrinks to the cells that are left; the cells that stay don't move on the canvas. If an edit would make the layer too big on any frame it's on, nothing changes and Phosphor says so.
+- **Undo**: Each edit is one undo step, and undo goes back no further than where you stepped in. After you step out, the steps are in the history with the rest.
+- **What's off**: The settings panel, picking the base layer, and the frame controls (the animation bar, and the keys that play, step, and add frames) are off. **Clear layer**, **Merge down** (and **Blend into source image**), **Bake**, and **Flatten** are off too, since they change the whole drawing: their tooltips say to exit the art layer first.
+- **Stepping out**: Changing tabs, picking another drawing layer, opening or starting a document, resizing the canvas, turning **Animate** off, exporting, and **Make art layer** all step you out too.
+- **In a room**: One person at a time draws in an art layer ([Rooms](#rooms)).
 
-## Saving
+---
 
-Shapes are saved as shapes: a `.phosphor` file, autosave and Versions keep them editable, and an animation's
-frames each keep their own. A copy of Phosphor from before shapes opens such a file without its shapes (the
-art they made isn't there either), and drops them if it saves it. Exports (`.ans`, PNG, GIF and the rest)
-have the shapes' converted cells, as they show.
+## Vector Tools
 
-## Importing SVG
+The tools' outlines, boxes, and handles are drawn in color over a dark rim, so they read over any art, light or dark.
 
-An `.svg` file comes in as shapes, never as a picture, so its curves stay editable: move and scale them, drag
-their points into line with the cells, recolor them, or change them from frame to frame.
+### Vector Select (`V`)
 
-- **From the start screen** (dropped, or chosen with **Browse Files**) it opens as a new drawing on VECTOR, at the
-  default size, named for the file.
-- **Over a drawing**, dropping one asks, as an ANSI file does: **Add to this drawing** puts its shapes on VECTOR,
-  in the frame showing; **Open instead** opens it in place of this drawing. In a room, Add is the only choice.
-- **Where it lands:** art bigger than the canvas is scaled down to fit inside it (less a margin of 2 grid pixels),
-  its proportions kept; art that fits keeps its size, one SVG unit to a grid pixel. Either way it's centered.
-  Its size is the file's viewBox (or its width and height when there's no viewBox).
-- **Stroke widths** scale with the art when it comes in, once. After that they stay as they are when you scale
-  the shapes, as every shape's do (and between 0.5 and 64).
-- Everything that came in is **selected**, with Vector select, ready to scale. The whole import is one undo step.
-- **Colors are the file's.** Black art lands black: paint the background first, or recolor the shapes with the
-  Fill and Stroke chips.
-- **What comes in:** paths (every command, arcs included), rectangles (rounded too), circles, ellipses, lines,
-  polylines and polygons, inside groups, nested SVGs and `use`; every transform; fills and strokes from
-  attributes, `style` attributes and style sheets, inherited as SVG has them; fill rules, caps, joins and miter
-  limits; linear and radial gradients, on fills and outlines (with their focal points, either units, their
-  transforms and gradients that take from others; reflect and repeat come in as plain).
-  Each element is one shape, and a path of several parts is one shape of several outlines, its holes
-  kept. SVG strokes are always centered, so imported ones are too.
-- **What doesn't:** text, images, filters, masks, clipping, patterns, markers and dashes (a dashed line comes in
-  solid). When something is left out, a message says what. For text, convert it to curves (or paths) in the app
-  it came from before exporting.
-- **Limits:** a file that would go past 1,000 shapes in the frame, or 500 points in one shape, brings nothing in;
-  the message says how many it has, so you can simplify it first. A file that isn't SVG says so and changes
-  nothing.
-- Nothing in the file runs or loads: it's read as data, never shown as a page.
+Use Vector select to select, move, scale, and rotate shapes:
+- **Select**: Click a shape to select it. **Shift**-click adds a shape to the selection, or removes it. Drag a box over empty canvas to select every shape it touches (with **Shift**, they're added). Click empty canvas or press **Esc** to deselect.
+- **Select all**: **Cmd+A** (**Ctrl+A**) selects every shape on the frame, from any VECTOR tool (it switches to Vector select and finishes a Pen shape first).
+- **Move**: Drag inside the selection box. Hold **Shift** once you're moving to keep it straight across, straight up and down, or at 45°. The arrow keys nudge the selection one pixel (with **Shift**, 10).
+- **Scale**: Drag any of the 8 box handles to scale from the opposite side. Hold **Shift** to keep proportions locked, or **Alt** (**Option** on a Mac) to scale from the middle.
+- **Rotate**: Drag the knob above the selection box. Hold **Shift** to snap one shape to angles in 15° steps (so a rotated one can be squared up again); several shapes turn in 15° steps from where they were. One shape's box turns with it; several shapes share one box, square to the grid.
+- **Edit points**: Double-click (or double-tap) a shape to edit its points with the Node tool, or press **A**. Double-clicking an art layer steps into it.
+- **Delete**: Press **Delete** or **Backspace**, or click the trash can in the options row.
+- **Clipboard**: **Cmd+C** / **Ctrl+C** copies the selected shapes, **Cmd+X** / **Ctrl+X** cuts them, and **Cmd+V** / **Ctrl+V** pastes them on top, selected, ready to drag into place. The options row has the same Copy, Cut, and Paste buttons.
 
-## Snap to
+Pasted shapes land where they were copied from, so a paste onto another frame keeps their place. Where the frame already has copies of them there, they land a little right of and below those, so you see them land. **Cmd/Ctrl+V** also pastes shapes copied on VECTOR in another Phosphor tab; the options row's **Paste** button pastes only what this tab copied.
 
-**Snap to** in VECTOR's tool row (a magnet on a phone, lit while it snaps) puts the points you place or drag on
-the cell grid, so a shape's edges fall on cell edges and turn into clean characters:
+With one shape selected whose fill or outline is a [gradient](#gradients), its gradient's ends and stops show too: drag an end to stretch and turn it, drag a stop to slide or remove it, click a stop to select it, or double-click a stop or an end to open its color. The gradient's line isn't a handle here (a drag inside the box still moves the shape), so stops are added with the Node tool. Where a gradient's end sits on a box handle, the gradient's end comes first; click again in the same place (after a moment) for the box's handle.
 
-- **None** (to start with) leaves them where the pointer is.
-- **Cells** puts them on cells' corners.
-- **Half cells** puts them on cells' halves both ways: their corners, the middles of their edges and their
-  centers, where half-blocks (▀ ▄ ▌ ▐) split a cell.
+Each drag, nudge, or delete is one undo step, and so is each change of what's selected (a click, a box, **Esc**, Select all), so undo brings back a selection lost to a stray click. Undoing an edit brings back the shapes that were selected when it began.
 
-What snaps: the Pen's points (a curve's handles stay where you drag them), the Shape tool's two corners, a point
-dragged with the Node tool (curve handles and a gradient's handles stay free), and with Vector select the corner
-of the box nearest where you grabbed it, as you move, or the handle you drag, as you scale. Rotating doesn't
-snap. With Shift held, its straight line comes first, and the point snaps along it where it can. Hold Cmd (Ctrl
-on Windows and Linux) while you drag to place or move without snapping. The choice lasts until you reload.
+### Node (`A`)
 
-## Vector select (V)
+The Node tool edits the points, curve handles, and gradient of a shape. It shares a toolbar slot with Vector select.
 
-The tools' outlines, boxes and handles are drawn in color over a dark rim, so they read over any art, light or
-dark, ASCII included.
+- **Choose a shape**: Click a shape to show its points and curve handles, those of every outline in a compound shape (a letter's counters, a ring's hole). A press on one of its points takes it at once. Choosing the tool with shapes selected edits the first one's points.
+- **Move points**: Drag any point; its handles move with it. Hold **Shift** to constrain movement horizontally, vertically, or at 45°.
+- **Select several points**: **Shift**-click a point to add it to the selection (or remove it), or drag a box from empty canvas (or from inside the shape) over points to select those in it (with **Shift**, they're added). Drag any selected point and they all move. With no shape being edited, a box edits the top shape with points in it.
+- **Adjust curves**: Drag a curve handle to bend the curves beside its point; on a smooth point the other handle turns with it. Hold **Alt** (**Option** on a Mac) while dragging to break the handle from its partner, so each moves on its own from then on. The status bar says so while you hold **Alt**.
+- **Add points**: Click the outline to add a point there. The curve keeps its shape, and the new point is selected.
+- **Delete points**: Select points and press **Delete** or **Backspace**, or click the trash can in the options row. An outline left with fewer than two points goes, and so does the shape with its last one.
+- **Point styles**: In the options row's **Point** group, choose **Smooth** (handles stay aligned), **Free** (handles move independently), or **Sharp** (a corner with no handles). The choice changes every selected point; a point with no handles gets some for Smooth or Free.
+- **Overlapping handles**: Handles on top of each other separate as you zoom in. Or click again in the same place for the next one there; a drag then moves the one picked. Leave a moment between the clicks, since two quick clicks on a gradient's handle open its color.
+- **Finish**: Click empty canvas or press **Esc** to stop editing points; the shape stays selected. Choosing another tool stops too.
 
-- Click a shape to select it. Shift-click adds a shape to the selection, or takes it away.
-- Drag a box over empty canvas to select every shape it touches; with Shift, they're added to the selection.
-- The selection gets a box. Drag inside it to move the shapes (hold Shift once you're moving to keep them
-  straight across, straight up and down, or at 45°), drag one of its eight handles to scale them
-  from the opposite side (Shift keeps the proportions; Alt, Option on a Mac, scales them from the middle), or drag the knob above it to rotate them (Shift
-  keeps one shape at an angle in steps of 15°, so a turned one can be squared up again; several turn in steps of
-  15° from where they were). One shape's box turns with it; several shapes share one box, square to the grid.
-- With one shape selected whose fill or outline is a gradient, its gradient's handles show too, as the
-  [Node tool](#node-a)'s do: drag an end to stretch and turn it, or a stop to slide or remove it, and click a
-  stop to select it (its chip's color box then sets its color; Delete, Backspace or the row's Delete removes it,
-  and Esc lets it go). Double-click a stop or an end to open its color, as with the Node tool. Its line isn't a handle here: a drag inside the box still moves the shape, and stops are
-  added with the Node tool. Where a gradient's end sits on one of the box's handles (a Linear gradient's ends are
-  on the left and right ones), the gradient's end comes first; click again in the same place for the box's handle
-  (after a moment: two quick clicks are a double-click, which opens the end's color, below). With both
-  a gradient fill and outline, **Fill** and **Stroke** in the options row choose which one's handles show, as
-  does the side open in the color box.
-- Click empty canvas to deselect. Cmd+A (Ctrl+A) selects every shape on the frame, from any VECTOR tool (it
-  switches to Vector select), finishing a Pen shape under way first.
-- Cmd+C (Ctrl+C) copies the selected shapes and Cmd+X cuts them; Cmd+V pastes them on top, selected with
-  Vector select, to drag into place. They land where they were copied from, so a paste onto another frame
-  keeps their place; where the frame already has copies of them there, a little right of and below those, so
-  you see them land. The options row has the same Copy, Cut and Paste buttons as Select's. The paste is one
-  undo step, and goes to whatever frame is showing. Cmd+V (Ctrl+V) also pastes shapes copied on VECTOR in
-  another Phosphor tab, where they were in that drawing; the row's Paste button pastes only what this tab
-  copied, and says so when it hasn't copied anything.
-- Double-click (or double-tap) a shape to edit its points with the Node tool (below), or press A.
-- The arrow keys nudge the selection a pixel (with Shift, 10). Delete or Backspace deletes it. Esc deselects.
+A shape whose fill or outline is a [gradient](#gradients) also shows the gradient's handles: for a linear one, a line from start to end with a square at each end; for a radial one, a square at its middle and one at its edge, joined by a line. Each color stop is a dot on the line, in its color.
+- **Move the gradient**: Drag the line (or a radial gradient's middle).
+- **Stretch and turn**: Drag an end (or the edge) to stretch it and turn it about the other end (or the middle). **Shift** keeps it across, up and down, or at 45°.
+- **Add a stop**: Click the line to add a stop there, in the color the gradient has there (up to 16 stops). Double-clicking the line adds a stop and opens its color.
+- **Select a stop**: Click a stop to select it. The color box of its chip (Fill or Stroke) then sets that stop's color. **Esc** lets it go.
+- **Slide or remove a stop**: Drag a stop along the line to slide it, or well off the line to remove it (a gradient keeps at least two). **Delete** or **Backspace** removes the selected stop.
+- **Change a stop's color**: Double-click a stop to select it and open its color. Double-clicking an end opens the stop on it, or where there's none, the nearest stop whose color shows there.
+- **Which gradient**: With both a gradient fill and outline, **Fill** and **Stroke** in the options row choose which one's handles show, as does the side open in the color box. A gradient you've just made is the one shown.
 
-Each drag, nudge or delete is one undo step, and so is each change of what's selected (a click, a box, Esc,
-Select all), so undo brings back a selection lost to a stray click. Undoing an edit brings back the shapes that
-were selected when it began.
+Each drag, added point or stop, and change is one undo step. Editing works on rotated and scaled shapes too: a point or a gradient handle goes where the pointer is.
 
-## Node (A)
+### Pen (`P`)
 
-The Node tool edits a shape's points and, when it has one, its gradient.
+Draw custom paths and curves point by point:
+- **Corner point**: Click to place a sharp corner point.
+- **Smooth curve**: Click and drag to create a smooth point; its handles follow the pointer, one on each side.
+- **Straight lines**: Hold **Shift** to keep the next point straight across, straight up and down, or at 45° from the last one (and a smooth point's handles at those angles too).
+- **Preview**: The shape fills (or strokes) on the canvas as you draw, with a thin line along the path and a dashed line from the last point to the pointer.
+- **Close path**: Click the starting point (with three or more points) to close the shape.
+- **Open curve**: Press **Enter** or **Esc** to finish without closing the shape. An open curve has no fill and is stroked in its Stroke color, or the foreground color if it has none.
+- **Undo last point**: Press **Backspace** (or undo) to remove the previous point while drawing. Removing the last one leaves nothing, not even an undo step.
 
-Press a shape to edit its points (a press on one of them takes it at
-once, so a two-point path's ends can be dragged straight away); choosing the tool with shapes selected edits
-the first one's. Its points and their curve handles show over it, those of every outline of a shape of
-several (a letter's counters, a ring's hole):
+Choosing another tool or tab, moving to another frame, or saving also finishes the shape as an open curve; holding a tool for a moment (the Hand on **Space**) doesn't. A finished shape is selected, so a color change goes to it, and the whole shape is one undo step.
 
-- Drag a point to move it, its handles with it. Drag a handle to bend the curves beside its point; on a
-  smooth point the other handle turns with it. Alt-drag (Option-drag on a Mac) a handle to break it from its
-  partner: it moves alone, and from then on the point's two handles bend the curves on their own. The status
-  bar says so while you hold Alt as you edit points.
-- Shift-click a point to select it as well as those selected (Shift-click a selected one to let it go), or drag
-  a box from empty canvas (or from inside the shape) over points to select those in it; with Shift, they're
-  added. With no shape's points being edited, a box edits the top shape with points in it and selects them.
-  Drag any one of the selected points and they all move.
-- Hold Shift while you drag to keep a point on a line from where it was, straight across, straight up and down,
-  or at 45°, or a handle on such a line from its point.
-- A press on a gradient's handle (an end or a stop) takes it, even with a point or a curve handle as near or
-  nearer (a gradient's end on a corner, say); otherwise it takes the point or curve handle nearest. Handles on top of each other part as you zoom in; or click (or tap)
-  again in the same place for the next one there, and again for the one after; a drag then moves the one picked.
-  Leave a moment between the clicks: two quick ones on a gradient's handle are a double-click, which opens its color.
-- Click the outline to add a point there; the curve stays where it was, and the new point is selected.
-- The options row: **Smooth**, **Free** or **Sharp**, the selected point's (the last one selected), one of them
-  lit; a choice changes every selected point. Smooth: its handles
-  stay in line (drag one and the other turns with it; a point with no handles gets some). Free: its handles each
-  move on their own, as an Alt-dragged handle leaves them (a point with no handles gets some), so a phone can do it
-  too. Sharp: its handles go. And **Delete** (the selected points, one undo step; Delete or Backspace
-  too; an outline left with fewer than two points goes, and the shape with its last one).
-- Click empty canvas or press Esc to stop editing points; the shape stays selected. Press another shape to edit
-  its points instead. Choosing another tool stops too.
+### Shape (`U`)
 
-A shape whose fill or outline is a gradient ([Gradients](#gradients)) also shows the gradient's handles, with its
-points: for a
-linear one, a line from where it starts to where it ends, a square at each end; for a radial one, a square at its
-middle and one at its edge, joined by a line. Each color stop is a dot on the line, in its color. A press on
-a point or a curve handle is the point's; then the gradient's handles; then the outline. When the fill and outline are both gradients, **Fill** and **Stroke** in the options row choose which one's
-handles show, as does the side open in the color box; a gradient you've just made is the one shown.
+Drag from corner to corner to create a standard geometric shape. Choose the kind in the options row:
+- **Rectangle**: Hold **Shift** for a square.
+- **Ellipse**: Hold **Shift** for a circle.
+- **Polygon**: Set the number of **Sides** (3 to 12) in the options row; the polygon fits the box you drag, its first corner at the top. Hold **Shift** for a regular polygon.
 
-- **Drag the line** (or a radial gradient's middle) to move the gradient.
-- **Drag an end** (or the edge) to stretch it and turn it about the other end (or the middle). Shift keeps it
-  across, up and down, or at 45°.
-- **Click the line** to add a stop there, in the color the gradient has there.
-- **Click a stop** to select it (it's ringed); the color box of its chip (Fill
-  or Stroke) then sets that stop's color. **Drag a stop** along the line to slide it, or well off the line to
-  remove it (a gradient keeps at least two). Delete or Backspace removes the
-  selected stop; Esc lets it go. A stop or a point is selected, not both, and the row's **Delete** (the trash can) removes whichever it is.
-- **Double-click a stop** to select it and open its chip's color box for it. An end opens the stop on it; where
-  there's none (the stop there was deleted, or an imported SVG's stops start or end short of the ends), the stop
-  whose color shows there: the first at the start (a radial's middle), the last at the end (its edge).
-  Double-clicking the line adds a stop and opens its color.
+The shape is drawn as you drag, becomes an ordinary path when you let go (so its points can be edited like any other), and is selected. A click without a drag makes nothing. Each shape is one undo step.
 
-Each drag, added point or stop, and change is one undo step. This works on rotated and scaled shapes too: a point
-or a gradient goes where the pointer is.
+### Eyedropper (`I`)
 
-## Pen (P)
+Sample the color the art shows under the pointer and make it the selected shapes' **Fill** or **Stroke**, as one undo step. **Fill** or **Stroke** in the options row chooses which (Fill to start with). Hold **Shift** while sampling to set the other one; while you hold it, that one is lit and the status bar says so. With nothing selected, it sets the next shape's color.
 
-- Click for a corner point. Press and drag for a smooth point: its handles follow the pointer, one on each side.
-- The path so far shows as a thin line while you draw, whatever its fill and outline, so a tap on a phone shows
-  where it goes before there's anything to fill.
-- Hold Shift to keep the next point straight across, straight up and down, or at 45° from the last one, and a
-  smooth point's handles at those angles too. The dashed line to the pointer shows where the point will go.
-- The shape fills (or strokes) on the canvas as you draw it, with a dashed line from the last point to the
-  pointer.
-- Click the first point (with three or more) to close the shape. **Enter** or **Esc** leaves it an open curve,
-  which has no fill and is stroked in its Stroke color, or the foreground color if it has none.
-- **Backspace** or undo takes the last point away; taking the last one leaves nothing, not even an undo step.
-- Choosing another tool or tab, moving to another frame or a save also leave it an open curve. Holding a
-  tool for a moment (the Hand on Space) doesn't.
+### Snap To
 
-A finished shape is selected, as the Shape tool's is, so the color pair changes it. The whole shape is one undo
-step.
+**Snap to** in VECTOR's tool row (a magnet on a phone, lit while it snaps) puts the points you place or drag on the cell grid, so a shape's edges fall on cell edges and turn into clean characters:
+- **None** (the default): Points stay where the pointer is.
+- **Cells**: Points land on cell corners.
+- **Half cells**: Points land on cell halves both ways (corners, the middles of edges, and centers), where half-blocks (`▀`, `▄`, `▌`, `▐`) split a cell.
 
-## Shape (U)
+What snaps: the Pen's points (curve handles stay where you drag them), the Shape tool's two corners, a point dragged with the Node tool (curve handles and gradient handles stay free), and with Vector select the corner of the box nearest where you grabbed it as you move, or the handle you drag as you scale. Rotating doesn't snap. With **Shift** held, the straight line comes first, and the point snaps along it where it can. Hold **Cmd** (**Ctrl** on Windows and Linux) while you drag to place or move without snapping. The choice lasts until you reload.
 
-Drag from corner to corner for a **Rectangle**, an **Ellipse** or a **Polygon** (**Sides**: 3 to 12). Shift
-makes it a square, a circle or a regular polygon. The shape is drawn as you drag, becomes an ordinary
-path when you let go (so its points can be edited like any other), and is selected. A click without a drag
-makes nothing.
+---
 
 ## Fill and Stroke
 
-On VECTOR the color pair is the shapes' **Fill** (the front chip) and **Stroke** (the back one). With shapes
-selected, it shows the first one's colors, and a color picked there (the palette, the recent colors, a color
-of your own, or **None**) goes to every selected shape, as one undo step. It's the color box the other tabs
-have, with Fill and Stroke for FG and BG: Alt+F and Alt+B open it, and its **Swap** (or Shift+Cmd+X,
-Shift+Ctrl+X) swaps each shape's Fill and Stroke. A shape the Pen or the Shape tool just drew is selected, so a
-change goes to it; with the Pen or the Shape tool, the next shape gets it too. While the Pen is drawing a shape,
-or with nothing selected, they're what the next shape gets. Until you change them, the next shape is filled with the
-foreground color and has no outline; a shape with neither gets the foreground color as its fill. ANSI's and
-PIXEL's colors are left as they were.
+In the VECTOR view, the color pair at the start of the tool row holds the shapes' **Fill** (front chip) and **Stroke** (back chip):
 
-### The outline
+- Click a chip (or press **Alt+F** or **Alt+B**) to open the color box and choose a color from the palette, the recent colors, or a color of your own.
+- Click **None** to make the fill or stroke transparent.
+- Click **Swap** (or press **X**, or **Shift+Cmd+X** / **Shift+Ctrl+X**) to swap each selected shape's fill and stroke, gradients included.
 
-The Stroke side of the color box also sets how the outline is drawn, again the selected shapes' or the next
-shape's:
+With shapes selected, the chips show the first one's colors, and a color picked goes to every selected shape as one undo step. A shape the Pen or Shape tool just drew is selected, so a change goes to it, and with those tools the next shape gets it too. While the Pen is drawing, or with nothing selected, the chips set what the next shape gets. Until you change them, the next shape is filled with the foreground color and has no outline. ANSI's and PIXEL's colors are left as they were.
 
-- **Stroke width**, the outline's width in pixels: the slider goes from 0.5 to 16 in tenths, and the box beside it
-  takes any width from 0.5 to 64.
-- **Align**, where that width goes: inside the outline, centered on it, or outside it. Centered, a stroke
-  straddles its outline, so a rectangle snapped to cells and stroked 1 wide covers half of two cells at each
-  side; inside, it fills exactly the column of cells just within each side (top and bottom, the half cells), and
-  outside, the one just past it. An open path has no inside, so its buttons are Left, Center and Right instead:
-  the whole width on one side of the line, left or right of the way it was drawn (a mirrored path keeps its side).
-  A closed shape set to Left or Right keeps those buttons too.
-- **Cap**, the ends of an open outline: butt (cut off at the end point), round, or square (squared off half the
-  width past it).
-- **Join**, the corners: miter (a sharp point), round, or bevel (cut across).
-- **Miter**, the limit for miter joins (1 to 100): how far a sharp corner's point may reach, in stroke widths,
-  before it's cut off as a bevel. It's only for miter joins. At 1 every corner is beveled; a square corner turns
-  sharp above about 1.4, and a star's points only well above 3. With the stroke inside or outside, a point reaches
-  twice as far as it would centered (the whole width is on one side), and inside, a shape's inward corners (a
-  star's) get the points.
+### Outline Options (Stroke)
 
-- **Start** and **End**, how much of the outline is drawn: the stretch between them, measured along the outline's
-  curves from its first point, 0 to 100%. A shape with neither draws all of it. A trimmed closed shape keeps its fill
-  with it (the fill is the shape the drawn stretch makes), and its stroke is aligned as the whole outline is. Hits
-  stay on the whole outline, so a shape can be clicked anywhere on it, and VECTOR still shows the whole outline, with
-  the stretch not drawn dashed. They aren't in the color box: with Animate on they're rows of the
-  [Keys panel](animation.md#the-keys-panel), set there or by dragging their handles along the outline.
+The **Stroke** side of the color box also sets how the outline is drawn, for the selected shapes or the next shape:
+- **Stroke width**: Outline thickness in pixels. The slider goes from 0.5 to 16 in tenths, and the box beside it takes any width from 0.5 to 64.
+- **Align**: Where the width goes.
+  - **Inside**: The outline sits entirely inside the shape path. A rectangle snapped to cells and stroked 1 wide fills exactly the column of cells just within each side (top and bottom, the half cells).
+  - **Center**: The outline straddles the path, so that same rectangle covers half of two cells at each side.
+  - **Outside**: The outline sits entirely outside the path.
+  - An open path has no inside, so its choices are **Left**, **Center**, and **Right** of the way it was drawn (a mirrored path keeps its side). A closed shape set to Left or Right keeps those choices too.
+- **Cap**: The ends of an open outline: **Butt** (cut off at the end point), **Round**, or **Square** (squared off half the width past it).
+- **Join**: The corners: **Miter** (a sharp point), **Round**, or **Bevel** (cut across).
+- **Miter**: The limit for miter joins (1 to 100): how far a sharp corner's point may reach, in stroke widths, before it's cut off as a bevel. At 1 every corner is beveled; a square corner turns sharp above about 1.4, and a star's points only well above 3. With the stroke inside or outside, a point reaches twice as far as it would centered.
 
-Drawn shapes start with round caps, round joins and centered strokes. Each press is one undo step; a Stroke width drag is one step
-when you let go.
+New shapes start with round caps, round joins, centered strokes, and a miter limit of 4. Each change is one undo step; a Stroke width drag is one step when you let go.
+
+**Start** and **End** set how much of the outline is drawn: the stretch between them, measured along the outline from its first point, 0 to 100%. A trimmed closed shape keeps its fill with it, and VECTOR still shows the whole outline, with the part not drawn dashed. They're animation properties: with **Animate** on, set them in the [Keys panel](animation.md#the-keys-panel) or drag their handles along the outline with Vector select.
 
 ### Gradients
 
-A fill or an outline can be a **gradient**: linear (bands of color across the shape) or radial (rings from a
-middle point out). It moves, scales and turns with its shape, and goes through the palette and dithering as any
-color does. Make one on either side of the color box, with shapes selected, then place it with the Node
-tool ([Node](#node-a)):
+A fill or an outline can be a gradient. It moves, scales, and turns with its shape, and goes through the palette and dithering as any color does. With shapes selected, choose one on either side of the color box:
+- **Linear**: Bands of color across the shape's box, left to right, from its color to the background color.
+- **Radial**: Rings of color from the box's middle out to its farthest corner.
+- **Solid**: A single color again: the gradient's first color. Picking any color in the box does the same, with that color.
 
-- **Linear** makes the fill (or outline) a gradient across the shape's box, left to right, from its color to the
-  background color. **Radial** makes it one from the box's middle out to its farthest corner. Switching between
-  the two keeps the colors.
-- **Solid** makes it a single color again: the gradient's first color. Picking any color in the box does the
-  same, with that color.
-- Each is one undo step. With nothing selected they're off: the next shape's fill and outline are always single
-  colors.
-- The chip shows the gradient's colors. Swapping Fill and Stroke swaps the gradients too.
-- An outline's gradient runs across the shape as a fill's does, so the outline takes the colors of the bands it
-  crosses.
+Switching between Linear and Radial keeps the colors. Each change is one undo step. With nothing selected the choices are off: a new shape's fill and outline always start as single colors. The chip shows the gradient's colors. An outline's gradient runs across the shape as a fill's does, so the outline takes the colors of the bands it crosses.
 
-Gradients from an SVG file come in as gradients ([Importing SVG](#importing-svg)).
+Use the [Node tool](#node-a) (or Vector select, for one shape) to drag gradient start points, endpoints, and color stops. Double-click any color stop to change its color.
 
-## The options row
+---
 
-With Vector select, **Copy**, **Cut** and **Paste**, and with shapes selected:
+## Shape Actions and Boolean Operations
 
-- **Forward** and **Back** move the shapes just above the nearest shape they overlap, or just beneath it;
-  every other shape keeps its place.
-- **Join** makes the selected shapes one shape: the bottom one, with its colors and place, and every outline of
-  the rest. An outline inside another becomes a hole, so an "o" and a smaller circle inside it make a ring.
-  **Separate** takes a shape of several outlines apart, each outline a shape of its own in the same colors.
-- **Add** makes the selected shapes one shape that covers everything they covered, and **Subtract** cuts the
-  shapes above out of the bottom one (a shape cut out of the middle of another leaves a hole). The result is
-  the bottom shape, with its colors, outline and place; the others are gone, and curves stay curves. Edges that
-  meet exactly, as Snap to leaves them, join with no seam and no extra points. They take two or more shapes whose
-  outlines are all closed. A Subtract that leaves nothing deletes them all. The first one you use takes a moment
-  to load.
-- Join, Add and Subtract don't take an art layer, since it has no outline: with one selected, they're off.
-- **Delete** deletes the shapes.
+With Vector select, the options row has **Copy**, **Cut**, and **Paste**, and with shapes selected:
 
-The buttons are icons, each named when you hover it. Each change is one undo step. On a phone the row is the
-same, without the hint; a double tap on a shape edits its points.
+- **Forward / Back**: Move the shapes just above the nearest shape they overlap, or just beneath it. Every other shape keeps its place.
+- **Join**: Combines two or more shapes into one compound shape: the bottom one, with its colors and place, and every outline of the rest. An outline inside another becomes a cutout hole, so a circle and a smaller circle inside it make a ring.
+- **Separate**: Splits a compound shape back into independent outlines, each a shape of its own in the same colors.
+- **Add**: Merges two or more closed shapes into a single outline covering their combined area.
+- **Subtract**: Cuts the upper closed shapes out of the bottom one (a shape cut out of the middle of another leaves a hole). A Subtract that leaves nothing deletes them all.
+- **Delete**: Deletes the shapes (or, with a gradient stop selected, the stop).
+- **Edit art**: With one art layer selected, steps into it ([Editing an Art Layer](#editing-an-art-layer)).
 
-## Eyedropper (I)
+Add and Subtract keep the bottom shape's colors, outline, and place; the others are gone, and curves stay curves. Edges that meet exactly, as Snap to leaves them, join with no seam and no extra points. The first one you use takes a moment to load. A joined or combined shape can't have more than 500 points.
 
-On VECTOR the Eyedropper picks the color the art shows under the pointer and makes it the selected
-shapes' Fill or Stroke, as one undo step: **Fill** or **Stroke** in the options row chooses which (Fill to start
-with), and Shift picks for the other one (while you hold it, that one is lit, and the status bar says so). With nothing selected, it sets the next
-shape's.
+The buttons are icons, each named when you hover over it, and each change is one undo step. On a phone the row is the same, without the hint.
+
+---
+
+## Merge Down, Bake, and Flatten
+
+- **Merge down** on VECTOR merges the picked vector layer into the layer under it. Onto the base, it presses the selected shapes (or, with none selected, all of them, and the layer goes) into the base layer's pixels, where they stop being shapes, with nothing on the canvas changing. Any shape beneath one of them that overlaps it is pressed too. Onto a drawing layer, the whole layer goes, every cell its shapes reach written there as it shows. One undo brings the shapes back. A vector layer with its own character settings can't be pressed into the base, and Merge down is off in an animation.
+- **Bake**, on a still, presses the shapes on vector layers directly on the base into it (not a layer with its own character settings); shapes higher in the stack stay shapes. In an animation, shapes stay shapes, with the sliders burned into their colors ([Baking](layers.md#baking)).
+- **Flatten** turns every shape and art layer, with the rest of the drawing, into plain cells as they show, and the vector layers go ([Flattening](layers.md#flattening)).
+
+---
+
+## Animation
+
+Each frame has its own shapes. A Blank frame carries the shapes before it, as it carries cells, and changing one there makes it that frame's own. With **Animate** on, the outlines of the shapes a Blank frame carries show dimmed on VECTOR. Playing and exports show each frame's shapes.
+
+A shape can tween between its keys, moving, turning, reshaping, and changing color on the frames between. The **Keys** panel over the animation bar shows the selected shape's keys, part by part, to select, ease, add, and delete, and shows each part's value to type over ([Tweens](animation.md#tweens)).
+
+---
+
+## Following a Path
+
+You can attach any shape or art layer to a line or another shape (its path) so it moves along that path during animation ([Following a Path in the Keys Panel](animation.md#following-a-path)):
+1. Turn on **Animate**.
+2. Select the one shape or art layer you want to animate, with Vector select.
+3. In the **Keys** panel, open **+ Add key** and choose **Follow a path…** at the bottom.
+4. Click the line or shape you want to follow. A shape that can be the path is drawn thick in the accent color under the pointer. The follower's middle goes onto the path at the point nearest where it was. **Esc**, a click on empty canvas, choosing another tool or tab, or turning Animate off cancels.
+5. In the follower's **Along ▾** menu, choose how it follows the path.
+6. Mark the path as a **Guide** if you want it to remain invisible in the final artwork.
+
+An art layer can't be a path, nor can a shape that follows one itself, and a shape that others follow can't follow a path (a message says so). A path can have any number of followers.
+
+### How Followers Behave
+
+- **Every frame**: The link lasts the follower's whole life: it's on its path on every frame it's on, whatever is done to the path there (moved, reshaped, tweened). Where the path isn't on a frame, the follower sits where its own Transform has it.
+- **On VECTOR**: A selected follower's path is outlined dashed in the accent color. Its own rotation and size still apply about its middle, and the box's handles rotate and scale it as for any shape.
+- **Moving**: Dragging a follower with Vector select slides it along its path, to the point nearest where you drag it. The arrow keys step it along by 1%, with **Shift** by 10%. Its X and Y in the Keys panel show where it is, and can't be typed while it follows.
+- **Editing**: The Node tool edits a follower's points where it shows; moving them moves its middle, and it re-centers on its path. Stepping into a following art layer draws in it where it shows; drawing outside its box grows the layer, and it re-centers on its path.
+- **Copy and paste**: A follower copied with its path follows the pasted path. Pasted alone in the same document, it follows the original; in another document, or where the link can't be made, it follows nothing.
+- **Join and Separate**: Join keeps the bottom shape's link; Separate gives it to the piece that keeps the shape.
+
+### The Along Menu
+
+- **Moves**: **Move along path using its own keys** (the Along row's keys say how far along it is), **Stay with line start**, or **Stay with line end** (it sits on the path's Start or End as the path is trimmed on each frame, with no keys of its own).
+- **Rotate to face path**: The follower turns the way the path runs, its own rotation on top, so a shape drawn pointing right points along the path (shapes only).
+- **Motion**: **Smoothly**, **By half cells**, or **By whole cells**, as a Transform tween's motion, for its place on the path (an art layer always lands on whole cells).
+- **Stop following path**: The follower lets go of its path on every frame and goes back to where its own Transform has it. Undo brings the link back.
+
+Each choice is one undo step, and the same on every frame of the follower's life.
+
+### Guides
+
+A guide is a path you don't want drawn. With a shape selected that others follow (or that's a guide already), **Guide** in the Keys panel's top line turns it into one. A guide draws nothing in the cells, the exports, Merge down, or Bake, and shows on VECTOR as a thin dashed outline, even with Animate off; click it on the outline, not inside. Merge down and Bake leave a guide a shape, and merging a path presses its followers with it.
+
+---
+
+## Rooms
+
+In a room, everyone drawing can draw and change shapes, and everyone sees them as they're drawn. A shape is one piece of the drawing, like a cell: when two people change the same shape at once, the change heard last is the one that stays, and undo takes back only your own changes. **Merge down** and **Bake** are the host's. Watchers see the art the shapes make. A room holds one vector layer.
+
+Art layers travel the same way: each one is a single shape, and every edit made inside it reaches everyone as a change to that shape.
+- **One at a time**: One person at a time draws in an art layer. While someone is inside one, everyone else sees its box on VECTOR, labeled with who it is (for example, **Ann is currently editing this layer**).
+- **Locked for others**: Others can still select it, but they can't step in (**Edit art** is off, and its tooltip says who is drawing), move, restack, or delete it, or undo or redo a change to it. Phosphor says who's drawing there instead.
+- **At the same moment**: If two people step into the same layer at once, the one the host hears first keeps it, and the other is stepped out and told who has it.
+- **Host actions**: While anyone else is inside an art layer, the host can't **Clear layer**, **Merge down**, **Blend into source image**, **Bake**, **Flatten**, or change the canvas size, since those send everyone the whole document again.
+- **Freeing a layer**: The layer is free again once that person steps out, leaves the room, or stops drawing. A host can free a layer held by someone who has gone idle inside it with **Back to watching** in that person's **⋯** menu in **N here** ([Drawing Together](social.md#drawing-together)); they can be made an artist again afterward.
+
+---
+
+## Saving
+
+Shapes are saved as shapes: a `.phosphor` file, autosave, and Versions keep them editable, and an animation's frames each keep their own. Exports (`.ans`, PNG, GIF, and the rest) have the shapes' converted cells, as they show.
+
+---
+
+## Importing SVG
+
+An `.svg` file comes in as shapes, never as a picture, so its curves stay editable: move and scale them, drag their points into line with the cells, recolor them, or change them from frame to frame.
+
+- **From the start screen**: Drop an `.svg` file (or pick one with **Choose a file**) to open it as a new drawing on VECTOR, at the default size, named for the file.
+- **Over a drawing**: Dropping one asks what to do. **Add to this drawing** puts its shapes on VECTOR, on the current frame; **Open as new project** replaces the current artwork. In a room, Add is the only choice.
+- **Where it lands**: Art bigger than the canvas is scaled down to fit inside it (less a margin of 2 grid pixels), its proportions kept; art that fits keeps its size, one SVG unit to a grid pixel. Either way it's centered. Its size is the file's viewBox (or its width and height when there's no viewBox).
+- **Selected**: Everything that came in is selected with Vector select, ready to scale. The whole import is one undo step.
+- **Stroke widths**: They scale with the art when it comes in, once. After that they stay as they are when you scale the shapes, as every shape's do (between 0.5 and 64).
+- **Colors are the file's**: Black art lands black, so paint the background first, or recolor the shapes with the Fill and Stroke chips.
+- **What comes in**: Paths (every command, arcs included), rectangles (rounded too), circles, ellipses, lines, polylines, and polygons, inside groups, nested SVGs, and `use`; every transform; fills and strokes from attributes, `style` attributes, and style sheets, inherited as SVG has them; fill rules, caps, joins, and miter limits; linear and radial gradients on fills and outlines (with their focal points, either units, their transforms, and gradients that take from others; reflect and repeat come in as plain). Each element is one shape, and a path of several parts is one shape of several outlines, its holes kept. SVG strokes are always centered, so imported ones are too.
+- **What doesn't**: Text, images, filters, masks, clipping, patterns, markers, and dashes (a dashed line comes in solid). When something is left out, a message says what. Convert text to paths in your vector software before exporting to SVG.
+- **Limits**: A file that would go past 1,000 shapes on the frame, or 500 points in one shape, brings nothing in; the message says how many it has, so you can simplify it first. A file that isn't SVG says so and changes nothing.
+- **Safety**: Nothing in the file runs or loads: it's read as data, never shown as a page.

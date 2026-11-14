@@ -1,261 +1,209 @@
 # Characters
 
-A cell holds one character, and Phosphor lays characters out the way a UTF-8 terminal does, so a
-`.utf8ans` file looks in a console the way it looks in the editor. That means any script, symbol
-or emoji a terminal can show, not only the 256 characters of classic DOS ANSI art (CP437).
+In Phosphor, each grid cell holds one character. Phosphor arranges text the same way modern UTF-8 terminals do, so exported `.utf8ans` files look the same in a terminal as they do in the editor. You can use any letter, symbol, or emoji supported by modern terminals, in addition to classic DOS ANSI characters (CP437).
 
-## One column or two
+## Single-Column and Two-Column Characters
 
-Every character takes one or two columns, by the same Unicode rules terminals use:
+Every character occupies either one or two columns on the grid, following standard Unicode terminal rules:
 
-- **One column**: letters and digits, punctuation, box drawing (`╬`), block elements (`▀ ▄ █ ░ ▒ ▓`),
-  most symbols (`★ ☺ ♥`), half-width katakana (`ｱ`), and some that draw far wider than that, like
-  `﷽`. A terminal gives `﷽` one column, then draws it at its full width over the characters after
-  it, and Phosphor draws it the same way: the row keeps its columns, and the shape covers what
-  follows (to the end of its row). This applies to any character drawing wider than its columns.
-  How much wider depends on the fonts, so Phosphor measures it in the browser's; a terminal using
-  other fonts can draw it a little wider or narrower.
-- **Two columns**: Chinese, Japanese and Korean characters (`漢 か 가`), fullwidth forms (`Ａ`) and
-  emoji (`👍🏽 🇯🇵`). Emoji draw in their own colors, as a terminal shows them: the cell's
-  foreground color doesn't change them, and its background shows around them.
+### One Column Wide
+- English letters, numbers, and standard punctuation.
+- Box-drawing characters (such as `╬`).
+- Block elements (such as `▀`, `▄`, `█`, `░`, `▒`, `▓`).
+- Most symbols (such as `★`, `☺`, `♥`).
+- Half-width katakana (such as `ｱ`).
+- Characters that draw wider than their column (such as `﷽`): A terminal gives `﷽` one column, then draws its full shape over the cells after it, to the end of the row. Phosphor draws it the same way: the row keeps its columns, and the shape covers what follows. Phosphor measures how far it reaches in your display font (and the browser's fallback fonts), so a terminal using other fonts can draw it a little wider or narrower.
 
-A character can be more than one code point: `👍🏽`, a flag, or a letter with a combining accent
-is still one character in one cell.
+### Two Columns Wide
+- Chinese, Japanese, and Korean (CJK) characters (such as `漢`, `か`, `가`).
+- Full-width letters and symbols (such as `Ａ`).
+- Emoji (such as `👍🏽`, `🇯🇵`). Emoji draw in their own colors, as a terminal shows them: the cell's foreground color doesn't change them, and its background color shows around them.
 
-## Two-column characters
+A character can be more than one code point: a letter with a combining accent, a skin-tone emoji such as `👍🏽`, or a flag is still one character in one cell.
 
-A two-column character starts in its own cell and covers the cell to its right, whatever that cell
-holds, just as a terminal draws it.
+---
 
-- **The last column** has no room for one: there it shows (and exports) as a space. Typing one in
-  the last column does nothing and says why.
-- **Typing** one moves the cursor two cells. In insert mode it pushes the rest of the row right by
-  two.
-- **Writing over either half** turns the other half into a space, the way a terminal does.
-- **Backspace** over one, and **Delete** on one, removes the whole character.
-- **The cursor** never stops on the covered half: moving right skips it, and clicking it puts the
-  cursor on the character.
-- **The eraser** erases the whole character from either half.
-- **Selections** act on cells, and a two-column character belongs to the cell it starts in. A
-  selection whose right edge cuts one copies it whole, and when it's pasted it still covers one
-  cell past the paste.
-- **Shapes, Fill and the F-keys** can draw with one: each cell gets it, and every other cell ends
-  up covered, so a row of them reads as a row of characters.
+## Two-Column Characters
 
-## Generated characters
+A two-column character starts in its own cell and covers the cell to its right, whatever that cell holds, just as a terminal draws it:
 
-The converter only uses one-column characters: anything two columns wide in your **Characters**
-set is skipped, so the cells it fills never overlap.
+- **Last column**: The last column has no room for a two-column character. One that ends up there shows (and exports) as a space. Typing one in the last column does nothing, and Phosphor tells you why.
+- **Typing**: Typing a two-column character moves the text cursor two columns. In Insert mode, the rest of the row shifts right by two.
+- **Overwriting**: Writing over either half of a two-column character turns the other half into a space, the way a terminal does.
+- **Deleting**: **Backspace** over a two-column character, or **Delete** on one, removes the whole character.
+- **Cursor movement**: The text cursor never stops on the covered right half. Moving right skips it, and clicking it puts the cursor on the character.
+- **Erasing**: In the ANSI view, the Eraser erases the whole character from either half.
+- **Selections**: Selections act on cells, and a two-column character belongs to the cell it starts in. A selection that includes that cell copies the whole character, even when the selection's right edge cuts it in half, and once pasted it still covers one cell past the paste.
+- **Drawing tools**: Shapes, the Paint Bucket, and the F-key characters can draw with a two-column character. Each cell gets it and every other cell ends up covered, so a row of them reads as a row of characters.
 
-## How the converter picks characters
+---
 
-**Choose characters**, above the Characters field in the left column's **Characters** section, sets how the
-converter picks each cell's character from your set. The section is the picked layer's (its name is in the title), and
-a new drawing picks Layer 1: to change how the picture converts, pick Base in LAYERS ([Layers](layers.md#the-left-column)).
-Each Art style offers its own ways:
+## Converting Images to Characters
 
-| Art style | Ways |
-| --- | --- |
-| ANSI | Random, Best match, By shape |
-| Color ASCII | By intensity, By shape |
-| Monochrome ASCII | By brightness, By shape |
+When converting an image to text, Phosphor uses only single-column characters. Any two-column characters in your **Characters** set are skipped during conversion, so the cells it fills never overlap.
 
-- **Random** (ANSI): a character from your set at random, by the **Character seed**. The seed shows only
-  with Random, and only when the set has more than one character.
-- **By intensity** (Color ASCII) and **By brightness** (Monochrome ASCII): the brighter or stronger the
-  cell, the further along your set its character, darkest first. This is how these styles have always
-  chosen.
-- **Best match** (ANSI): for each cell, the character and its foreground and background colors that
-  come closest to the picture, with both colors taken from the palette. Each character counts by how
-  much ink it has in its top half and its bottom half, so `▄` shows one color above and another below,
-  and `░ ▒ ▓` show one flat mix of the two colors. Repeating a character in your set makes no
-  difference. With **Blocks & shades** (`▄░▒▓█`) and the CGA or VGA palette it draws gradients
-  with shades of the palette's colors. Without a palette it mostly gives `▄` or solid cells,
-  since it has no colors to mix.
-- **By shape** (every style): each cell is compared at a finer detail than the grid, 4 × 8 samples, with
-  the shape of each character in your set, and the closest wins. In ANSI it picks the character and
-  both colors; in Color ASCII the character and its ink color, on black; in Monochrome ASCII the
-  character alone, white on black. Smoothing doesn't change these samples: they're always averaged.
+### How the Converter Picks Characters
 
-**Each layer has its own character settings**: Choose characters, the Characters set, the Character seed, Solids,
-Pattern light, and (for the base and vector layers, with a palette) Dither style and Dither. The Characters section shows the layer picked in LAYERS, under its name, and what you change
-there changes only how that layer's paint, picture or shapes become characters (the base's are its picture's). A
-new layer starts with the picked layer's, and a drawing from before layers had their own gives every layer the ones
-it had, so it looks the same. Where a layer's settings differ from the base's, a seam can show where its cells meet
-the ones under it. A layer with its own Best match or By shape picks the way the base does: By shape samples a vector
-layer's shapes inside each cell over what's under them, so a circle's edge gets the same characters on its own layer
-as it would on the base's, and Best match mixes its colors before the palette, so a soft edge can get a shade. Paint
-is matched by its halves (it covers whole half cells). On such a layer its own Ordered Dither nudges each cell by its
-place, as on the base; its own Floyd–Steinberg doesn't carry error between Best match's or By shape's cells (they're
-matched one at a time over what's under them), so there it does nothing. The Art style and the palette are the whole
-drawing's ([Layers](layers.md#the-left-column)).
+In the left panel's **Characters** section, the **Choose characters** dropdown (above the **Characters** field) sets how the converter picks each cell's character from your set. The section belongs to the layer picked in **LAYERS**, and its title shows that layer's name. Opening a picture picks **Base**, the picture's own layer; to change how the picture converts while another layer is picked, pick **Base** in LAYERS ([Layers](layers.md#the-left-column)).
 
-Two sliders tune Best match and By shape:
+Each **Art style** offers its own modes:
 
-- **Solids** (ANSI): how strongly a plain solid cell (one color, whatever the character) is preferred
-  over a shade or a half-block. At 0% every cell is whatever matches best; higher gives more flat
-  cells. It isn't offered in the ASCII styles, where the background is always black.
-- **Pattern light** (Best match and By shape, every style): how a character's ink mixes its two colors.
-  At 0% the mix is a plain average; at 100% it's mixed as light mixes on a screen, so a shade reads
-  lighter than the average.
+| Art Style | Available Modes |
+| :--- | :--- |
+| **ANSI** | Random, Best match, By shape |
+| **Color ASCII** | By intensity, By shape |
+| **Monochrome ASCII** | By brightness, By shape |
 
-**Dither** (in the Characters section, with a palette) still applies. With Random, By intensity and By brightness it dithers the
-picture's pixels, as described in [Layers](layers.md). With Best match or By shape,
-Floyd–Steinberg carries each cell's error on to the cells after it (it can lag on very large
-documents, and while you edit the base layer, the cells under the edit settle when you let go), and
-Ordered (Bayer) nudges each cell by its place in the grid.
+ANSI and the ASCII styles keep separate character sets.
 
-Typed cells aren't touched by any of this, and a pinned character stays pinned. With Random and
-Best match, paint colors a cell's halves through its character (or makes a `▄` over a solid cell).
-With **By shape**, a cell with paint in it is matched again with the paint over the picture, so it
-gets the character (and colors) it would have once merged down: white paint on black shows as
-characters in Monochrome ASCII, and a stroke over part of a cell gets the shape that fits it. Erase
-the paint and the cell is the picture's again. Paint covers whole half cells, though, so there's no
-finer shape in it to find: on its own a stroke gives `▀`, `▄`, `█` and the like, as before, and the
-finer characters (quadrants, `▐ ▌`, the rising blocks) come only where paint and the picture share
-a cell. Detail finer than half a cell comes from the picture. Floyd–Steinberg's error doesn't pass through painted
-cells; it does once they're merged down.
+- **Random** (ANSI): Picks characters from your set at random, using the **Character seed**. The same seed produces the same pattern, and the dice button generates a new one. Repeating a character in your set makes it appear more often. The seed shows only with Random, and only when your set has more than one character.
+- **By intensity** (Color ASCII) and **By brightness** (Monochrome ASCII): Picks characters by how bright or strong each cell is. Darker cells get characters from the start of your set, and brighter cells get characters from the end.
+- **Best match** (ANSI): For each cell, finds the character and the foreground and background colors that come closest to the picture, with both colors taken from the palette. Each character counts by how much ink it has in its top half and its bottom half, so `▄` shows one color above and another below, and `░`, `▒`, and `▓` show one flat mix of their two colors. With **Blocks & shades** (`▄░▒▓█`) and the CGA or VGA palette, it draws gradients with shades of the palette's colors. Without a palette (Full color), it mostly gives `▄` or solid cells, since it has no colors to mix.
+- **By shape** (all styles): Samples each cell at a finer grid of 4 × 8 points and compares it with the shape of each character in your set; the closest wins. In ANSI it picks the character and both colors; in Color ASCII, the character and its ink color, on black; in Monochrome ASCII, the character alone, white on black. **Smoothing** doesn't change these samples: they're always averaged.
 
-In ANSI with a palette, the Pixel tab shows the cells Best match or By shape chose, each half its
-two colors blended by how much of it the character covers (as typed and drawn characters show
-there), so a `▒` of black and white is a gray there even when the palette has no such gray, and the
-Paint Bucket and Magic Wand go by what you see. Without a palette, and in the ASCII styles, the
-Pixel tab shows the picture. With the CGA or
-VGA palette, Bake bakes exactly, without asking how to keep the colors, when Dither is on or the
-characters come from Best match or By shape.
+Best match and By shape ignore repeated characters in your set.
 
-**The characters are measured in IBM VGA**, whichever font you view the art in, so the font never
-changes which characters are chosen: changing it changes how the cells look, not which characters
-they hold. Where two choices come out almost exactly as close, another computer (its graphics card)
-can now and then pick the other one, in a cell here and there.
+### Tuning Best Match and By Shape
 
-## The font
+- **Solids** (ANSI): Adjusts how strongly a plain solid cell (one color, whatever the character) is preferred over a shaded block or a half-block. At 0%, every cell gets whatever matches best; higher values give more flat cells and cleaner color regions. It isn't offered in the ASCII styles, where the background is always black.
+- **Pattern light** (all styles): Controls how a character's foreground and background colors blend. At 0%, colors blend by simple average. At 100%, colors blend like light on a screen, so shaded blocks read lighter than the average.
 
-**Font**, in the left column's Drawing section, sets the font the art is drawn in, in both views, and its size.
-Phosphor has four:
+### Dither
 
-- **JetBrains Mono**: the default.
-- **IBM VGA**: the VGA font of old PC screens, with Unscii for the characters it lacks.
-- **Unscii**: an 8-bit-style font with wide coverage, including Symbols for Legacy Computing.
-- **Unifont**: GNU Unifont, which covers almost everything in its own plain style.
+**Dither style** and **Dither** appear in the Characters section when a color palette is selected, for the base and vector layers (paint is never dithered):
 
-The last three are 8×16 pixel fonts that share one cell, so box drawing and blocks line up whichever
-of them draws a character. In the canvas view, the block elements (`█ ▀ ▄ ▌ ▐` and the quadrants)
-and the shades (`░ ▒ ▓`) aren't the font's: Phosphor draws them itself, as most terminals do, so
-they fill their cells exactly and the shades' dots line up from cell to cell, in any font (a dot is
-a sixteenth of the cell's height, the VGA's own pixel). Everything else is the font's: smoothed
-(anti-aliased), or pixel-sharp with **Smooth** in the ANSI view's status bar turned off, in both
-views. Pixel fonts look sharpest at their own size or a whole multiple of it (16 or 32). Wide characters (Chinese, Japanese, Korean) and emoji come from your system's fonts.
+- With **Random**, **By intensity**, and **By brightness**, Dither works on the picture's pixels, as described in [Layers](layers.md).
+- With **Best match** or **By shape**, **Floyd–Steinberg** carries each cell's error on to the cells after it, and **Ordered (Bayer)** nudges each cell by its place in the grid. Floyd–Steinberg can lag on very large documents. While you edit the base layer, the cells under the edit settle when you let go.
 
-**Load custom**, beside the field's label, adds a font from your computer: TrueType, OpenType or
-WOFF. It has to be monospaced, every character the same width as in a terminal; Phosphor checks ten
-characters (`il.' MWm@0`) and says so when they differ. A loaded font starts at 16px, keeps its own
-height (so a full block fills its cell), and stays in this browser until you remove it (**Remove**,
-shown while it's the font in use). It isn't uploaded anywhere.
+### Each Layer's Own Character Settings
 
-The font changes how the art looks in Phosphor. It also changes how the characters you draw look
-in the Pixel tab, and in the image when you merge them into it: each cell blends its colors by how
-much of it its character covers, measured in the font you see. It doesn't change how an image
-converts, or what's saved or exported; a terminal or viewer draws the file in its own font. The
-font and size are kept in this browser, not in the project.
+Each layer has its own **Choose characters**, **Characters** set, **Character seed**, **Solids**, **Pattern light**, and (for the base and vector layers, with a palette) **Dither style** and **Dither**. A change in the Characters section changes only how the picked layer's paint, picture, or shapes become characters. The **Art style** and the **Color palette** belong to the whole drawing ([Layers](layers.md#the-left-column)).
 
-While you draw in someone's room, the art is in the host's font and size, and follows them when they
-change it; the field shows it, off, and yours comes back when you stop. A font the host loaded from
-their computer can't be sent, so the room sees JetBrains Mono instead.
+- **New layers** start with the picked layer's settings. A drawing saved before layers had their own settings gives every layer the settings it had, so it looks the same.
+- **Seams**: Where a layer's settings differ from the base's, a seam can show where its cells meet the ones under it.
+- **Best match and By shape on other layers** pick the way they do on the base. By shape samples a vector layer's shapes inside each cell over what's under them, so a circle's edge gets the same characters on its own layer as on the base. Best match mixes a layer's colors before the palette, so a soft edge can get a shade. Paint is matched by its halves, since it covers whole half cells.
+- **Dither on other layers**: On a layer using Best match or By shape, its own **Ordered (Bayer)** dither nudges each cell by its place, as on the base. Its own **Floyd–Steinberg** does nothing there, because those cells are matched one at a time over what's under them.
 
-## Typing any script
+### Typed Cells, Pinned Characters, and Paint
 
-With the Text tool, you can type with your system's input method (Japanese, Chinese, Korean...),
-dead keys and accents, and the emoji picker, the same as in any text field.
+- **Typed cells** are never changed by the converter, and a pinned character stays pinned.
+- **With Random and Best match**, paint colors a cell's halves through its character (or makes a `▄` over a solid cell).
+- **With By shape**, a cell with paint in it is matched again with the paint over the picture, so it gets the character and colors it would have once merged down. White paint on black shows as characters in Monochrome ASCII, and a stroke over part of a cell gets the shape that fits it. Erase the paint, and the cell goes back to the picture's.
+- **Paint covers whole half cells**, so on its own a stroke gives `▀`, `▄`, `█` and the like. The finer characters (quadrants, `▐`, `▌`, the rising blocks) come only where paint and the picture share a cell; detail finer than half a cell comes from the picture.
+- **Floyd–Steinberg's error** doesn't pass through painted cells until they're merged down.
 
-A run of typing is one undo step: it ends when you pause for a second, move the cursor (a
-click, the arrow keys, Enter, Home, End) or paste.
+### What the PIXEL Tab Shows
 
-You can also paste text. It types from the cursor; each new line starts on the next row at the
-column where the paste began; once a row is full, the rest of that line is dropped, and lines past
-the last row are dropped too. Characters a cell can't hold (tabs, invisible ones, an accent on its
-own) are skipped. A paste is one undo step.
+In ANSI with a palette, the PIXEL tab shows the cells Best match or By shape chose. Each half blends its two colors by how much of it the character covers (as typed and drawn characters show there), so a `▒` of black and white shows as gray even when the palette has no such gray, and the Paint Bucket and Magic Wand go by what you see. Without a palette, and in the ASCII styles, the PIXEL tab shows the picture.
 
-Cmd/Ctrl+V pastes whatever you copied last: a Select-tool block you copied in Phosphor (in this tab
-or another), a block copied in Moebius, or text you copied anywhere else, such as PabloDraw, which
-gives other apps only its characters (see [Layers](layers.md#the-select-tool)).
+With the CGA or VGA palette, **Bake** bakes exactly, without asking how to keep the colors, when Dither is on or the characters come from Best match or By shape.
 
-## Saving: .utf8ans and .ans
+### Characters Are Measured in IBM VGA
 
-- **.utf8ans** keeps every character. A two-column character is written once and the terminal moves
-  two columns for it, so the rows line up.
-- **.ans** is CP437 and can't hold most of these: each character it lacks is written as its closest
-  lookalike or `?`. The export dialog lists every one, what it becomes and how many cells use it,
-  before you export. A two-column character becomes its stand-in plus a space, so the grid still
-  lines up.
-- **Colors** are written as the Color palette says: CGA as the 16 classic colors, VGA as 256-color codes
-  (`38;5`), and the rest as 24-bit ones (`38;2`). A file you opened keeps the palette it came with
-  ([Opening a file](layers.md#opening-ansi-and-text-files)), so it comes out in the same kind of codes.
-  Its black and white keep their codes too: 16 and 231 are fixed black and white in a terminal, while 0
-  and 15 follow its theme, though Phosphor shows them alike. They stay 16 and 231 opened with **Edit it**
-  or **Draw on top of it**, moved, copied, merged down (onto the base too), merged exactly into the image
-  and flattened, through undo and a saved project. The VGA color box has 16 and 231 as swatches of their
-  own, and the Color Picker picks them as they are: what you type, fill, draw with Shapes or set with Set
-  FG and Set BG in them comes out as 16 or 231, and Alt+↑ and Alt+↓ step through them in order. The Brush
-  paints pixels, so its black and white are always 0 and 15, and so is a 16 or 231 cell painted over;
-  the recent colors keep only the color, as 0 or 15.
-- **SAUCE**, the record after the art, says what's on the SAUCE tab: title, author, group, date,
-  comments, font name and letter spacing.
-  - **A converted image or a blank canvas** gets Phosphor's own comment lines first (Created with
-    Phosphor, and the settings it was converted with), then a blank line and yours; an empty date is the
-    day you export, the font name IBM VGA and the letter spacing 8px.
-  - **A file you opened** gets none of them: it comes out with its record as it went in, its date, flags
-    (iCE colors, letter spacing), font name, size and comments changed only where you changed them on the
-    SAUCE tab. An empty date or font name stays empty, and its field says so. Letter spacing changes only
-    its own bits of the flags. A resize changes the size it gives.
-  - **Widths**: Title holds 35 characters, Author, Group and Font name 20 each, counted as the record
-    counts them (one a character, an emoji too), with a count beside each field. A field stops at its
-    width, and a line under it names what a paste or a key past the end left out, until the field next
-    changes. Date is YYYYMMDD and takes digits; a date that isn't a real day gets a note under the field,
-    and is written as typed.
-  - **Comments** are lines of up to 64 characters: a longer line breaks at a space, and only a word
-    longer than 64 is split. The record holds at most 255 lines. Under Comments, the SAUCE tab counts the
-    lines the record would take ("128 of 255 SAUCE lines"), Phosphor's own included and said to be, and
-    past 255 says from which line comments won't be in the file; the export dialog says it again before
-    you export. The field keeps all you paste, so trimming is yours to do.
-  - **Font name and Letter spacing** (Not set, 8px or 9px) tell other viewers how to show the file;
-    Phosphor's view keeps your display font.
-  - **CP437**: the record is CP437 in .ans and .utf8ans alike. A character it lacks is written as its
-    lookalike or `?`, and the export dialog lists those too, for every ANSI format, with the fields each
-    is in. Only what reaches the record is listed.
-  - **Control characters** (tab, ESC and the like), which a terminal printing the file would act on,
-    can't be in SAUCE: typed or pasted, they're left out and the line under the field says so, and an
-    export leaves out any a project or an opened file still has. A comment's line breaks stay, since
-    they make its lines.
-- **.png** is a picture of the art as the ANSI view draws it, in your display font, at one pixel per
-  font pixel: the frame showing, with or without Animate. With Smooth text off (the status bar's
-  **Smooth**) every pixel is one of the art's colors and the file is small. With it on, the export
-  first asks: **Smooth** (picked first) keeps the anti-aliased edges, which add colors and make the file
-  a few times bigger, and **Hard-edged** draws the text crisp, as with Smooth text off. It asks every
-  time, and the answer doesn't change the setting.
+Best match and By shape measure characters in IBM VGA, whichever font you view the art in, so the font never changes which characters are chosen: changing it changes how the cells look, not which characters they hold. Where two choices come out almost exactly as close, another computer (its graphics card) can occasionally pick the other one, in a cell here and there.
 
-Saving a project and the exports open the same dialog, where you name the file (Cmd/Ctrl+S opens it
-for the project). It offers the document's name with the date and time (`art-20261030-131405`), so
-each save is a new file; type over it for any other name. The name you give becomes the document's
-name, so the next save starts from it, with a new time. Every browser saves it as a download with
-that name, Safari included.
+---
 
-Phosphor also keeps your work in this browser as you go. A refresh brings it back, with an empty undo
-history, and a new tab offers your recent work to pick up. **Versions** lists the snapshots it keeps
-every 5 minutes while you work (the last 20): restore one and what you had stays in the list, as
-"Before restoring" if it isn't there already. A file you open (a picture, a .phosphor project, an .ans, .utf8ans,
-.asc, .txt or .svg file) is kept as it opened, as "As opened", once you first change it, even after a reload, and
-it stays among the 20 however many come after, so Versions can always take it back to how it opened. Once the art has been saved to a file or opened from one, leaving the page no longer asks unless the
-latest edits haven't been written yet; a room you host always asks. Saving to a file is the real backup: clearing site data deletes
-what's kept in the browser, Safari can also delete it after seven days of browser use without a visit,
-and a private window's kept work is gone when the window closes.
+## The Font
 
-## When art looks wrong in someone's terminal
+In the **Drawing** section of the left panel, the **Font** dropdown sets the font the art is drawn in, in both views, and the size field beside it sets its size (6 to 64 px). Phosphor has four built-in fonts:
 
-Some characters, including the block elements, are "ambiguous width" in Unicode. Most terminals
-show them one column wide, but a terminal set to show ambiguous characters as wide (an option in
-many terminals, sometimes the default for Chinese, Japanese or Korean setups) draws them two
-columns wide, and block art falls apart there. That's the viewer's setting, not the file.
+- **JetBrains Mono** (default): A clean, modern monospaced font.
+- **IBM VGA**: The VGA font of vintage PC screens, with Unscii for the characters it lacks.
+- **Unscii**: An 8-bit style font with wide coverage, including Symbols for Legacy Computing.
+- **Unifont**: GNU Unifont, which covers almost every Unicode character in its own plain style.
 
-Terminals also differ on some newer emoji. Phosphor follows current Unicode, which recent terminals
-do too.
+IBM VGA, Unscii, and Unifont are 8×16 pixel fonts that share one cell, so box drawing and blocks line up whichever of them draws a character. Pixel fonts look sharpest at their own size or a whole multiple of it (16 or 32). Wide characters (Chinese, Japanese, Korean) and emoji come from your system's fonts.
+
+- **Blocks and shades**: In the canvas view, block elements (`█`, `▀`, `▄`, `▌`, `▐`, and the quadrants) and shade blocks (`░`, `▒`, `▓`) aren't drawn from the font. Phosphor draws them itself, as most terminals do, so they fill their cells exactly and the shades' dots line up from cell to cell, in any font (a dot is a sixteenth of the cell's height, the VGA's own pixel).
+- **Smooth text**: Everything else is drawn from the font, either smoothed (anti-aliased) or pixel-sharp. Toggle **Smooth** in the ANSI view's status bar; it applies in both views.
+
+### Custom Fonts
+
+Click **Load font** (beside the Font label) to load a TrueType (`.ttf`), OpenType (`.otf`), or WOFF (`.woff`, `.woff2`) font from your computer:
+
+- **Monospaced only**: Every character must share the same width, as in a terminal. Phosphor checks ten characters (`il.' MWm@0`) and tells you when their widths differ.
+- **Size and height**: A loaded font starts at 16px and keeps its own line height, so a full block fills its cell.
+- **Stored in your browser**: Loaded fonts stay in this browser until you remove them (click **Remove**, shown while the loaded font is in use). They're never uploaded anywhere.
+
+### What the Font Changes
+
+The font changes how the art looks in Phosphor. It also changes how the characters you draw look in the PIXEL tab, and in the image when you merge them into it: each cell blends its colors by how much of it the character covers, measured in the font you see.
+
+It doesn't change how an image converts, or what's saved or exported; a terminal or viewer draws the file in its own font. The font and its size are kept in this browser, not in the project.
+
+### Fonts in Shared Rooms
+
+While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead.
+
+---
+
+## Typing Text Directly
+
+With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, and emoji directly onto the canvas:
+
+- **Input methods**: Type with your system's input method (Japanese, Chinese, Korean...), dead keys and accents, and the emoji picker, the same as in any text field.
+- **Undo**: A run of typing is one undo step. It ends when you pause for a second, move the cursor (a click, the arrow keys, **Enter**, **Home**, **End**), or paste.
+- **Insert and Overwrite**: Press **Insert** (or click **Insert** / **Overwrite** in the ANSI view's status bar) to switch between Insert mode, which pushes the rest of the row right, and Overwrite mode, which replaces cells. On the base layer, typing always overwrites and **Delete** does nothing, since there's no row to shift.
+- **Pasting text**: Pasted text types from the cursor. Each new line starts on the next row, at the column where the paste began. Once a row is full, the rest of that line is dropped, and lines past the last row are dropped too. Characters a cell can't hold (tabs, invisible characters, an accent on its own) are skipped. A paste is one undo step.
+- **What Cmd/Ctrl+V pastes**: Whatever you copied last: a Select-tool block copied in Phosphor (in this tab or another), a block copied in Moebius, or text copied anywhere else, such as PabloDraw, which gives other apps only its characters ([Layers](layers.md#the-select-tool)).
+
+---
+
+## Saving and Exporting
+
+- **Save project** (**Cmd/Ctrl+S**) saves a `.phosphor` file: the picture, every layer, animation frames, vector shapes, and the settings, SAUCE included. The display font and the rulers' guides aren't part of it; they stay in your browser.
+- **Export…** (**Cmd/Ctrl+E**) opens the Export dialog, which lists the **Still** formats (`.ans`, `.utf8ans`, `.png`) and, once Animate is on with more than one frame, the **Animated** ones ([Animation](animation.md)).
+- **File names**: Both dialogs offer the document's name with the date and time (`art-20261030-131405`), so each save is a new file; type over it for any other name. The name you give becomes the document's name, so the next save starts from it, with a new time. Every browser saves the file as a download with that name, Safari included.
+
+### Saving .utf8ans and .ans
+
+- **`.utf8ans`**: Modern Unicode ANSI. Keeps every character. A two-column character is written once and the terminal moves two columns for it, so the rows line up.
+- **`.ans`**: Classic DOS CP437, which can't hold most Unicode characters. Each character it lacks is written as its closest lookalike, or `?`. Before you export, the Export dialog lists every one, what it becomes, and how many cells use it. A two-column character becomes its stand-in plus a space, so the grid still lines up.
+- **Colors** are written as the **Color palette** says: CGA as the 16 classic colors, VGA as 256-color codes (`38;5`), and everything else as 24-bit codes (`38;2`). A file you opened keeps the palette it came with ([Opening a file](layers.md#opening-ansi-and-text-files)), so it comes out in the same kind of codes.
+
+#### Fixed Black and White (VGA)
+
+In 256 colors, 16 and 231 are a terminal's fixed black and white, while 0 and 15 follow the terminal's theme. Phosphor shows them alike but keeps their codes apart:
+
+- An opened file's 16 and 231 stay 16 and 231, opened with **Edit artwork** or **Draw on top**, and when they're moved, copied, merged down (onto the base too), merged exactly into the image, flattened, undone, or saved in a project.
+- The color picker's VGA swatches include 16 and 231 as swatches of their own, and the Eyedropper picks them as they are. What you type, fill, draw with Shapes, or set with **Set FG** and **Set BG** in them comes out as 16 or 231, and **Alt+↑** and **Alt+↓** step through them in order.
+- The Brush paints pixels, so its black and white are always 0 and 15, and so is a 16 or 231 cell painted over. The recent colors keep only the color, as 0 or 15.
+
+### SAUCE Metadata
+
+Exported `.ans` and `.utf8ans` files end with a SAUCE metadata record, which holds what's on the **SAUCE** tab: title, author, group, date, comments, font name, and letter spacing.
+
+- **A converted image or a blank canvas** gets Phosphor's own comment lines first (Created with Phosphor, and the settings it was converted with), then a blank line and yours. An empty date is the day you export, the font name is IBM VGA, and the letter spacing is 8px.
+- **A file you opened** gets none of them: its record comes out as it went in, with its date, flags (iCE colors, letter spacing), font name, size, and comments changed only where you changed them on the SAUCE tab. An empty date or font name stays empty, and its field says so. Letter spacing changes only its own bits of the flags. A resize changes the size it gives.
+- **Widths**: Title holds 35 characters; Author, Group, and Font name hold 20 each. They're counted as the record counts them (one per character, an emoji too), with a count beside each field. A field stops at its width, and a line under it names what a paste or a key past the end left out, until the field next changes.
+- **Date** is YYYYMMDD and takes digits. A date that isn't a real day gets a note under the field, and is written as typed.
+- **Comments** are lines of up to 64 characters: a longer line breaks at a space, and only a word longer than 64 characters is split. The record holds at most 255 lines. Under Comments, the SAUCE tab counts the lines the record would take ("128 of 255 SAUCE lines"), saying how many are Phosphor's own, and past 255 says from which line comments won't be in the file; the Export dialog says it again before you export. The field keeps everything you paste, so trimming is up to you.
+- **Font name and Letter spacing** (Not set, 8px, or 9px) tell other viewers how to show the file. Phosphor's view keeps your display font.
+- **CP437**: The record is CP437 in `.ans` and `.utf8ans` alike. A character it lacks is written as its lookalike, or `?`, and the Export dialog lists those too, for every ANSI format, with the fields each is in. Only what reaches the record is listed.
+- **Control characters** (tab, ESC, and the like), which a terminal printing the file would act on, can't be in SAUCE. Typed or pasted, they're left out and the line under the field says so, and an export leaves out any that a project or an opened file still has. A comment's line breaks stay, since they make its lines.
+
+### Exporting .png
+
+A `.png` is a picture of the art as the ANSI view draws it, in your display font, at one pixel per font pixel: the frame that's showing, with or without Animate.
+
+- **With Smooth text off** (the status bar's **Smooth**), every pixel is one of the art's colors and the file is small.
+- **With Smooth text on**, the Export dialog offers a **Text rendering** choice: **Smooth** (picked first) keeps the anti-aliased edges, which add colors and make the file a few times bigger, and **Hard-edged** draws the text crisp, as with Smooth text off. The choice doesn't change the Smooth setting, and isn't remembered.
+
+### Automatic Browser Backups
+
+Phosphor keeps your work in your browser as you go:
+
+- **Reloading** brings it back, with an empty undo history, and a new tab offers your recent work to pick up.
+- **Versions** lists snapshots taken at most every 5 minutes while you work (the last 20). Restoring one keeps what you had in the list, as "Before restore" if it isn't there already.
+- **As opened**: A file you open (a picture, a `.phosphor` project, an ANSI or text file, or an SVG) is kept as "As opened" once you first change it, even after a reload. It stays among the 20 however many versions come after, so Versions can always take it back to how it opened.
+- **Leaving the page**: Once the art has been saved to a file or opened from one, leaving the page no longer asks, unless the latest edits haven't been written yet. A room you host always asks.
+
+Saving a file to your computer is the real backup. Clearing site data deletes what's kept in the browser, Safari can also delete it after seven days of browser use without a visit, and a private window's kept work is gone when the window closes.
+
+---
+
+## When Art Looks Wrong in Someone's Terminal
+
+- **Ambiguous width**: Some characters, including the block elements, are "ambiguous width" in Unicode. Most terminals show them one column wide, and so does Phosphor. A terminal set to show ambiguous characters as wide (an option in many terminals, and sometimes the default for Chinese, Japanese, or Korean setups) draws them two columns wide, and block art falls apart there. That's the viewer's setting, not the file.
+- **Newer emoji**: Terminals also differ on some newer emoji. Phosphor follows current Unicode, as recent terminals do.
