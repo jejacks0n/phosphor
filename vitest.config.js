@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, configDefaults } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import { playwright } from '@vitest/browser-playwright';
@@ -13,6 +13,17 @@ import { launchWithout } from './tests/support/chromiumArgs.js';
 const SOFTWARE_WEBGL = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 // Two connections in one machine (the room tests) reach each other by their addresses, not mDNS names.
 const launchOptions = await launchWithout(['WebRtcHideLocalIpsWithMdns'], SOFTWARE_WEBGL);
+
+const DESKTOP_TESTS = 'tests/browser/desktop-*.test.js';
+const browserTests = () => ({  // (fresh each time: Vitest names a project's instances in place)
+  testTimeout: 20_000, // software WebGL on a small CI runner
+  browser: {
+    enabled: true,
+    headless: true,
+    provider: playwright({ launchOptions }),
+    instances: [{ browser: 'chromium' }],
+  },
+});
 
 // An update run in CI would write references and pass whatever they say.
 if (process.env.CI && process.env.UPDATE_REFERENCES === '1') throw new Error('Refusing to update reference files in CI');
@@ -43,17 +54,13 @@ export default defineConfig({
       },
       {
         extends: true,
-        test: {
-          name: 'browser',
-          include: ['tests/browser/**/*.test.js'],
-          testTimeout: 20_000, // software WebGL on a small CI runner
-          browser: {
-            enabled: true,
-            headless: true,
-            provider: playwright({ launchOptions }),
-            instances: [{ browser: 'chromium' }],
-          },
-        },
+        test: { ...browserTests(), name: 'browser', include: ['tests/browser/**/*.test.js'], exclude: [...configDefaults.exclude, DESKTOP_TESTS] },
+      },
+      // The desktop build's branches (import.meta.env.VITE_DESKTOP === '1'), in their own files.
+      {
+        extends: true,
+        define: { 'import.meta.env.VITE_DESKTOP': JSON.stringify('1') },
+        test: { ...browserTests(), name: 'browser-desktop', include: [DESKTOP_TESTS] },
       },
     ],
   },

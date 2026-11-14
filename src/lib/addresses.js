@@ -27,8 +27,9 @@ export function pathOf({ tab, page = 'lobby', empty = false }) {
   return PLACES.find(([, p]) => p.tab === tab)?.[0] ?? '/';
 }
 
-// A page that can't be shown goes to the nearest one that can.
+// A page that can't be shown goes to the nearest one that can. The desktop app has no accounts: only hosting's page.
 export function arrivalPage(page, { signedIn, needsOnboarding, resetToken, codePending, canStart }) {
+  if (import.meta.env.VITE_DESKTOP === '1') return page === 'start-room' ? page : 'lobby';
   if (page === 'account' || page === 'blocked') return signedIn ? page : 'sign-in';
   if (page === 'two-factor') return codePending ? page : 'lobby';
   if (page === 'reset') return resetToken ? page : 'lobby';
