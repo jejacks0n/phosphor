@@ -1,9 +1,12 @@
 // What a QA run records as it goes: steps and their ratings, probes, notes, timings, screenshots, memory and
 // findings, written to the run's run.json after every call that records something.
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { _electron } from 'playwright';
 import { seedConsent } from '../e2e/support.js';
-import { contextOptions, storageFor } from './setup.js';
+import { DEVICES, contextOptions, storageFor } from './setup.js';
 import { BUDGETS, MARKS } from './score.js';
 import { FINDING_KINDS, PROBES, SEVERITIES, slug } from './report.js';
 
@@ -25,13 +28,44 @@ export async function qaContext(browser, traits) {
   const context = await browser.newContext(contextOptions(traits));
   await context.route(SOCIAL, (route) => route.abort('blockedbyclient')); // a failure only this can give
   await context.routeWebSocket(SOCIAL, (ws) => ws.close());
+  await chosen(context, traits);
+  return context;
+}
+
+async function chosen(context, traits) {
   await seedConsent(context);
   await context.addInitScript((storage) => {
     try {
       for (const [key, value] of Object.entries(storage)) if (localStorage.getItem(key) === null) localStorage.setItem(key, value);
     } catch { /* about:blank has no storage */ }
   }, storageFor(traits));
-  return context;
+}
+
+const root = fileURLToPath(new URL('../..', import.meta.url));
+
+// The desktop build, into dist-desktop (npm run build:desktop), for a run drawn the desktop app.
+export const buildDesktop = () => execFileSync('npm', ['run', 'build:desktop'], { cwd: root, stdio: 'pipe' });
+
+// The drawn person's desktop app (traits.desktopApp): the desktop build in Electron, in their language and theme, its
+// page the device's size, keeping what it keeps in userData. It makes no request to the SOCIAL server, so there's
+// nothing to cut off. The Leave or Stay question before a reload or quit is answered Leave, since a run can't click a
+// native box. The window opens on this computer's screen. Load the page again (page.reload()) once makeQa has set up
+// the context, so its scripts are in the page.
+export async function qaApp(traits, userData) {
+  const app = await _electron.launch({
+    args: ['desktop/main.js'],
+    cwd: root,
+    env: { ...process.env, PHOSPHOR_USER_DATA: userData },
+    locale: traits.language === 'fr' ? 'fr-FR' : 'en-US',
+    colorScheme: traits.theme,
+  });
+  await app.evaluate(({ dialog }) => { dialog.showMessageBoxSync = () => 0; });
+  const page = await app.firstWindow();
+  const { width, height } = DEVICES[traits.device];
+  await app.evaluate(({ BrowserWindow }, [width, height]) => BrowserWindow.getAllWindows()[0].setContentSize(width, height), [width, height]);
+  const context = app.context();
+  await chosen(context, traits);
+  return { app, context, page };
 }
 
 // What WebGL says draws it, or null with no WebGL.

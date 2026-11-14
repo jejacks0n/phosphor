@@ -3,7 +3,7 @@ import { test, expect } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PERSONAS, PARTNERS, DEVICES, drawTraits, contextOptions, storageFor, qaPort, runDirName, makeRunDir, runSnippet } from '../qa/setup.js';
+import { PERSONAS, PARTNERS, DEVICES, APP_PERSONAS, drawTraits, contextOptions, storageFor, qaPort, runDirName, makeRunDir, runSnippet } from '../qa/setup.js';
 import { LOCALE_STORAGE_KEY } from '../../src/i18n/index.js';
 
 const seeds = Array.from({ length: 500 }, (_, i) => i + 1);
@@ -38,6 +38,25 @@ test('across 500 seeds maya meets every device, input, language, theme and inter
   expect(seen('language')).toEqual(new Set(['en', 'fr']));
   expect(seen('theme')).toEqual(new Set(['light', 'dark']));
   expect(seen('interruption')).toEqual(new Set(['none', 'reload', 'secondTab']));
+});
+
+test('the desktop app is drawn last, so earlier seeds draw what they did (runs in docs/qa/scores.md)', () => {
+  const traits = (t) => [t.device, t.input, t.language, t.theme, t.account, t.interruption, t.partner].filter((v) => v !== null && v !== 'none').join(', ');
+  expect(traits(drawTraits('maya', 503179919))).toBe('tablet, touch, en, dark');
+  expect(traits(drawTraits('dex', 462371651))).toBe('tablet, touch, fr, dark, reload');
+  expect(traits(drawTraits('juno', 664634705))).toBe('laptop, trackpad, en, light, guest, reload, sam');
+  expect(traits(drawTraits('theo', 725575287))).toBe('tablet, touch, en, dark, guest');
+});
+
+test('the desktop app comes only on a desktop or laptop, never to Lea, Juno or Theo, and about half the time it can', () => {
+  for (const persona of PERSONAS) {
+    const draws = seeds.map((s) => drawTraits(persona, s));
+    for (const t of draws) if (t.desktopApp) expect(['desktop', 'laptop']).toContain(t.device);
+    const app = draws.filter((t) => t.desktopApp).length, could = draws.filter((t) => !DEVICES[t.device].touch).length;
+    if (APP_PERSONAS.includes(persona)) expect(app / could).toBeGreaterThan(0.4);
+    if (APP_PERSONAS.includes(persona)) expect(app / could).toBeLessThan(0.6);
+    else expect(app).toBe(0);
+  }
 });
 
 test('the browser context follows the device, language and theme', () => {

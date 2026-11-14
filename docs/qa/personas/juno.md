@@ -76,7 +76,7 @@ intact and saved as a .phosphor.
 
 ## Traits
 
-- No phone: rooms need a wide screen, so Juno is a desktop, a laptop or a tablet. On a tablet, Delete and Report on a
+- No phone: rooms need a wide screen, so Juno is a desktop, a laptop or a tablet. Never the desktop app: these rooms go through the SOCIAL server. On a tablet, Delete and Report on a
   message show by tabbing to it or a tap, not a hover.
 - `account`: decides step 2 (see What they bring). Everything after is as a signed-in member.
 - `partner`: whose art she draws. Her drawing steps (10 and 14) say "do the partner's sections"; these are their

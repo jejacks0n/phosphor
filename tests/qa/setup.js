@@ -15,6 +15,10 @@ export const DEVICES = {
   phone: { width: 390, height: 844, touch: true },
 };
 
+// The personas the desktop app can be drawn for: not Lea (always a phone), nor Juno and Theo, whose rooms go through
+// the SOCIAL server, which the desktop app doesn't use (its rooms are by address).
+export const APP_PERSONAS = ['maya', 'dex', 'priya', 'sam', 'walt'];
+
 // Which devices each persona can have; the rest may have any.
 const DEVICE_CHOICES = {
   lea: ['phone'],
@@ -46,7 +50,10 @@ export function drawTraits(persona, seed) {
   const interruption = pick(['none', 'reload', 'secondTab']);
   const account = persona === 'juno' || persona === 'theo' ? pick(['guest', 'signedIn']) : null;
   const partner = persona === 'juno' ? pick(PARTNERS) : null;
-  return { persona, seed, device, input, language, theme, account, interruption, partner };
+  // Drawn last, so every draw before it is what it was before the desktop app was: on a desktop or a laptop, half the
+  // time, the desktop app (Electron) in place of the browser.
+  const desktopApp = APP_PERSONAS.includes(persona) && !DEVICES[device].touch && pick([false, true]);
+  return { persona, seed, device, input, language, theme, account, interruption, partner, desktopApp };
 }
 
 export function contextOptions(traits) {

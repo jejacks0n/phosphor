@@ -7,8 +7,8 @@ written: a run is unattended, and there's no one to ask.
 
 A persona is a named person with a real reason to use Phosphor, and their file in `docs/qa/personas/` holds a script:
 a walk through the app the way that person uses it. A run is one agent following one script in a real browser, with
-traits drawn at random (device, input, language, theme, and for some personas an account, an interruption and a
-partner), pushing around every step the way a person would and recording bugs, visual problems, slow steps, friction,
+traits drawn at random (device, input, language, theme, and for some personas an account, an interruption, a
+partner and the desktop app), pushing around every step the way a person would and recording bugs, visual problems, slow steps, friction,
 oversights and a keyboard score. A second agent, the reviewer, then confirms or drops each finding, so what reaches
 the owner is judged, not a green check.
 
@@ -35,6 +35,21 @@ Some traits shape the run beyond the browser:
 - `partner` (Juno only): the persona whose kind of work Juno draws in her room. Where Juno's script says to draw,
   draw as that persona would, with their files and sizes.
 - `interruption`: see [Interruptions](#interruptions).
+- `desktopApp` (Maya, Dex, Priya, Sam and Walt, on a desktop or laptop, about half the time): the run is in the
+  desktop app ([docs/desktop.md](../desktop.md)) instead of the browser. The session builds the desktop build and
+  opens it in Electron, its page the device's size, in the drawn language and theme. Its window opens on this
+  computer's screen: leave it be. What's different:
+  - There's no address bar and no `page.goto`: the app opens on its start screen, and Back and Forward are the app's
+    own.
+  - Open… and Save (Cmd+O and Cmd+S, or the File menu) ask in the system's file box, which a snippet can't click.
+    Answer it before the press, as the person picking a file would, through `app`:
+    `await app.evaluate(({ dialog }, path) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [path] }); }, e2e.fixture('images/gradient.png'))`,
+    and for Save, `dialog.showSaveDialog = async () => ({ canceled: false, filePath: path })` with a path in the run
+    folder. `{ canceled: true }` is the person pressing Cancel.
+  - The menu bar is `desktop.menuLabels(app)` and `desktop.clickMenu(app, 'File', 'Save As…')`, by the labels in the
+    drawn language. A menu click isn't a key or a pointer on the page, so qa doesn't count it: note it on the step.
+  - The Leave or Stay question before a reload with unsaved work is answered Leave, as the session can't click it.
+  - Juno and Theo never get it: their rooms go through the SOCIAL server, and the desktop app's rooms are by address.
 
 ### The commands
 
@@ -108,11 +123,13 @@ A snippet is an ES module whose default export is an async function. It's called
 | --- | --- |
 | `page` | The newest page of the context. Once a second page is open it may not be the persona's: see below. |
 | `context` | The Playwright browser context (the person's browser: device, language, theme). |
-| `browser` | The Playwright browser. |
+| `browser` | The Playwright browser (not the person's on a `desktopApp` run). |
+| `app` | The desktop app (Playwright's `ElectronApplication`) on a `desktopApp` run, else `null`. |
 | `qa` | The recorder (below). |
-| `traits` | What was drawn: `{ persona, seed, device, input, language, theme, account, interruption, partner }`. |
+| `traits` | What was drawn: `{ persona, seed, device, input, language, theme, account, interruption, partner, desktopApp }`. |
 | `runDir` | The run folder's absolute path (`qa` has no `runDir` of its own). |
 | `e2e` | `tests/e2e/support.js`: `fixture(path)`, `imageInput(page)`, `settled(page)`, `store(page, name, read)`, `cellPoint`, `pixelPoint`, `drag`, `chars`, `tab`, `pickLayer`, `saveAs`, `autosaved` and the rest. |
+| `desktop` | `tests/e2e/desktop-support.js`: `menuLabels(app)` and `clickMenu(app, ...labels)`. |
 | `social` | `tests/e2e/social-support.js`: the fake SOCIAL server (`fakeServer`, `fakeRoom`, `member`, `goLive`, `watcherPage`, `artistPage` and the rest). |
 | `files` | `tests/qa/files.js`: the ANSI files the personas bring (see [Files](#files)). |
 | `terminal` | `tests/qa/terminal.js`: a headless terminal to play exports in (see [Files](#files)). |
@@ -354,6 +371,9 @@ The drawn `interruption` trait adds one break to the run, besides any `interrupt
   second.goto('/');`), look at what the second tab shows and does, then close it (`await second.close()`) and come
   back to the first, which is `qa.page` again. Check the first tab's work is as it was.
 - **`none`**: no break beyond the probes.
+
+In the desktop app, which has one window and no tabs, `secondTab` is walked as `reload`, and a reload stands for
+quitting and opening the app again: autosave brings the work back the same way.
 
 Record the break as an `interrupt` probe on the step it fell in.
 

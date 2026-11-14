@@ -74,7 +74,7 @@ invitation taken, a troll reported, and his own art (open in his other tabs) unt
 
 ## Traits
 
-- No phone: rooms need a wide screen, so Theo is a desktop, a laptop or a tablet. On a tablet, Report on a message
+- No phone: rooms need a wide screen, so Theo is a desktop, a laptop or a tablet. Never the desktop app: these rooms go through the SOCIAL server. On a tablet, Report on a message
   shows by tabbing to it or a tap, not a hover, and looking around is a touch drag.
 - `account`: a guest arrives as a guest, watches, and signs in from the chat at step 10; signed in, he arrives as
   `theo_watches`. From step 10 on both are signed in. A guest can't chat, be invited or report until then.
