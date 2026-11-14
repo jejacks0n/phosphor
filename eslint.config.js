@@ -4,7 +4,7 @@ import globals from 'globals';
 import stylistic from '@stylistic/eslint-plugin';
 
 export default [
-  { ignores: ['dist/**', 'dist-path/**', 'dist-qa/**', 'qa-runs/**', 'input/**', 'server/**', '.vitest/**', 'test-results/**', 'playwright-report/**'] },
+  { ignores: ['dist/**', 'dist-path/**', 'dist-desktop/**', 'dist-qa/**', 'qa-runs/**', 'input/**', 'server/**', '.vitest/**', 'test-results/**', 'playwright-report/**'] },
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
   {
@@ -34,7 +34,8 @@ export default [
     },
   },
   {
-    files: ['*.config.js'],
+    // desktop/: the desktop app's main process and its preload (CommonJS) run in Node.
+    files: ['*.config.js', 'desktop/**'],
     languageOptions: {
       globals: { ...globals.node },
     },

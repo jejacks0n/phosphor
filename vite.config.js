@@ -29,16 +29,22 @@ export function buildInfo() {
 // Turnstile, and the page's own inline ones by hash; connections only to the SOCIAL server (both the one built in
 // and the local one, as config.js picks by hostname) and Turnstile. Styles stay open to inline ones: the icons are
 // SVG markup with style attributes. Not in development, where Vite's own client needs more.
+// The desktop build (VITE_DESKTOP=1) has no SOCIAL server and no Turnstile: it connects only to rooms' sockets (ws:).
 const TURNSTILE = 'https://challenges.cloudflare.com';
-export function contentSecurityPolicy(html, api) {
+export function contentSecurityPolicy(html, api, { desktop = false } = {}) {
   const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
     .map(([, code]) => `'sha256-${createHash('sha256').update(code).digest('base64')}'`);
   const servers = [...new Set([api, 'http://localhost:8787'])].flatMap((origin) => [origin, origin.replace(/^http/, 'ws')]);
   return [
     "default-src 'self'",
-    `script-src 'self' ${TURNSTILE} ${inline.join(' ')}`,
-    `connect-src 'self' ${servers.join(' ')} ${TURNSTILE}`,
-    `frame-src ${TURNSTILE}`,
+    ...(desktop ? [
+      `script-src 'self' ${inline.join(' ')}`,
+      "connect-src 'self' ws:",
+    ] : [
+      `script-src 'self' ${TURNSTILE} ${inline.join(' ')}`,
+      `connect-src 'self' ${servers.join(' ')} ${TURNSTILE}`,
+      `frame-src ${TURNSTILE}`,
+    ]),
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "style-src 'self' 'unsafe-inline'",
@@ -71,7 +77,7 @@ export default defineConfig(({ mode }) => {
           order: 'post',
           handler: (html) => [{
             tag: 'meta',
-            attrs: { 'http-equiv': 'Content-Security-Policy', content: contentSecurityPolicy(html, env.VITE_SOCIAL_API || 'https://api.phosphor.work') },
+            attrs: { 'http-equiv': 'Content-Security-Policy', content: contentSecurityPolicy(html, env.VITE_SOCIAL_API || 'https://api.phosphor.work', { desktop: env.VITE_DESKTOP === '1' }) },
             injectTo: 'head-prepend',
           }],
         },
