@@ -395,6 +395,10 @@ input[type=range]:active + span.value-tooltip {
   opacity: 1;
   visibility: visible;
 }
+/* While a slider is held, nothing else answers the pointer. Safari otherwise hovers what the drag crosses (an (i), another
+   thumb, a color box) and never lets go of it, as if the pointer were still there. */
+html:has(input[type=range]:active) * { pointer-events: none; }
+html:has(input[type=range]:active) input[type=range]:active { pointer-events: auto; }
 
 /* General */
 hr {
