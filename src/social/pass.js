@@ -35,6 +35,7 @@ let passKeyRequest = null;
 // The server's raw Ed25519 public key (base64url) that its passes are signed with: asked once per page,
 // and again after a failed ask. Throws when the server can't be reached.
 export function passKey() {
+  if (import.meta.env.VITE_DESKTOP === '1') return Promise.resolve(null);   // no server: verifyPass checks a pass by its own key
   passKeyRequest ??= api('/api/pass-key').then(({ ok, data }) => {
     if (!ok || typeof data?.key !== 'string') throw new Error('No pass key');
     return data.key;

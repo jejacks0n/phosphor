@@ -22,7 +22,17 @@ import { useSocialStore } from '@/store/SocialStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { desktop } from '@/social/desktop';
 import { t } from '@/i18n/index.js';
+
+// The desktop build has no server: a room is served by the room service on the host's computer (desktop/roomService.js),
+// started through the desktop bridge, and reached on loopback with the secret it was started with.
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
+const ROOM_PROTOCOL = 1;   // the room service's
+const DESKTOP_PORT = 'phosphor-desktop-port';   // the port last chosen to host on, for Start a room's field
+const ROOM_ID_LETTERS = 'abcdefghijklmnopqrstuvwxyz234567';   // ROOM_ID's: 32 of them, so a random byte's low 5 bits pick one evenly
+const newRoomId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => ROOM_ID_LETTERS[b & 31]).join('');
+const MOST_ASKS = 5;   // the service lets no more wait at once
 
 const SEND_EVERY_MS = 100;       // the art, as it changes (a stroke shows as it's drawn)
 const VIEW_EVERY_MS = 250;       // the part of the art the host is looking at
@@ -141,6 +151,13 @@ const hostFields = () => ({
   _leaveKept: false,   // the copy and ledger in the browser aren't done with: another tab took the room, or this one couldn't open its art
   _letGoOfTab: null,   // lets go of the lock that says a tab is hosting this room
   _hostedBy: null,     // the account that took the role; another tab's sign-in can change who this tab's pass says it is
+  ...(DESKTOP ? {
+    addresses: [],     // where others on the network reach this computer's room service ('host:port')
+    port: null,        // the port it listens on
+    asks: [],          // joins waiting for the host's yes or no: [{ ask, sub, name }], at most MOST_ASKS
+    hostable: {},      // sub -> addresses an artist's own room service answered at: they could host next
+    _desktop: null,    // { secret, port }: the service's, for the host's own sockets to it
+  } : {}),
 });
 
 // A watcher's side, the same: carryOn leaves this behind as well. Hosting doesn't touch it, so becomeArtist needn't.
@@ -212,8 +229,9 @@ export const useRoomStore = defineStore('room', {
       return !!claims && !claims.guest && claims.verified;
     },
     // Reporting is for the same people (a guest can't chat, so can't be reported).
+    // On desktop there's no one to report to.
     canReport() {
-      return this.canChat;
+      return !DESKTOP && this.canChat;
     },
     // A watcher reported this room (Report room is gone).
     roomReported: (state) => state.reported.includes(ROOM_REPORT),
@@ -224,7 +242,7 @@ export const useRoomStore = defineStore('room', {
     },
     // Report room, for a watcher who can report, until they have; never in your own room (watched from a second tab).
     canReportRoom() {
-      return this.role === 'watch' && this.canReport && !this.roomReported && this.room?.hostSub !== useSocialStore().claims?.sub;
+      return !DESKTOP && this.role === 'watch' && this.canReport && !this.roomReported && this.room?.hostSub !== useSocialStore().claims?.sub;
     },
     // When your silence ends (epoch ms), while your pass says you're silenced.
     silencedUntil: () => useSocialStore().claims?.silencedUntil ?? null,
@@ -254,6 +272,9 @@ export const useRoomStore = defineStore('room', {
       return this.followable.filter((p) => p.sub !== followed).map((p) => ({ ...p, view: p.host ? this.hostView : Object.hasOwn(this.artistViews, p.sub) ? this.artistViews[p.sub] : null })).filter((p) => p.view);
     },
 
+    // Whether this artist could take the room over: on desktop, only one whose own room service answered.
+    canBeHost: (state) => (sub) => !DESKTOP || !!state.hostable[sub]?.length,
+
     // Where the lobby picture looks: the cell it's pinned to, else the middle of the shared view.
     lobbyPlace() {
       if (this.lobbyPin !== null) return { ...this.lobbyPin };
@@ -264,10 +285,11 @@ export const useRoomStore = defineStore('room', {
   actions: {
     // A new room, live with your art: false (the server's words as the notice) if it wasn't made.
     // Only a public room sends its signal: the signal shows on its lobby card, and a link-only room has none.
-    async startRoom({ name, welcome, isPublic, password, allowGuests, max, signal = null }) {
+    async startRoom({ name, welcome, isPublic, password, allowGuests, max, signal = null, port }) {
       const project = useProjectStore();
       if (project.hasFrames || !project.fitsRoom) return false;   // frames never travel, so they'd be lost at a handover; nor do more layers than a room holds (StartRoomPage says why)
       const social = useSocialStore();
+      if (DESKTOP) return this.startDesktopRoom({ name, welcome, password, max, port });
       const body = { name, public: isPublic, allowGuests, max, signal: isPublic ? signal : null, ...(!isPublic && password ? { password } : {}) };   // a private room's password is optional
       const { ok, data, code } = await social.request('/api/rooms', { method: 'POST', body });
       if (code === 'SILENCED') social.renewPass();   // a pass that says so, so Start a room is off now
@@ -287,6 +309,49 @@ export const useRoomStore = defineStore('room', {
       return true;
     },
 
+    // startRoom on desktop: this computer's room service in place of the server, with no lobby, link or guests. Every
+    // join waits for the host's yes, and the password goes only to the service.
+    async startDesktopRoom({ name, welcome, password, max, port }) {
+      const project = useProjectStore(), social = useSocialStore();
+      if (this.role === 'host') this.close();   // one service: the old room ends before a new one starts on it
+      let service;
+      try {
+        await social.getPass();   // whose service it is (the sub)
+        service = await desktop.startService({ port, mode: 'host', sub: social.claims.sub });
+      } catch (error) {
+        console.warn('The room service didn\'t start.', error);
+        social.notice = t('social.notices.serviceFailed');
+        return false;
+      }
+      if (port !== undefined) {
+        try {
+          localStorage.setItem(DESKTOP_PORT, String(port));
+        } catch { /* no storage: the field starts at the default */ }
+      }
+      await project.roomLayers();
+      social.notice = null;
+      social.page = 'lobby';
+      this.close();
+      const id = newRoomId();
+      this.hostRoom({
+        startDraft: newStartDraft(), settingsDraft: newSettingsDraft(), hasPassword: !!password, lobbyPin: null,
+        id, link: null, status: 'connecting', addresses: service.addresses, port: service.port, _desktop: { secret: service.secret, port: service.port },
+        room: { name, welcome: welcome ?? '', max, count: 0 },
+      });
+      this.share();
+      this.connect(this.desktopGreeting(password), HOST_SOCKET);
+      return true;
+    },
+
+    // A desktop host's greeting: the service's secret and the room. A later greeting (a reload) is the room the service
+    // already has, so it needn't bring the password again.
+    // ponytail: a reload before the first greeting reached the service makes the room again without its password;
+    // ask the service's /info first if that window matters.
+    desktopGreeting(password = null) {
+      const { name, welcome, max } = this.room;
+      return { type: 'host', secret: this._desktop.secret, room: { id: this.id, name, welcome, password: password || null, max, approved: [] } };
+    },
+
     // You're this room's host: these fields, and a Host (with what it kept, for a room coming back). What
     // was kept is taken first, so one that can't be taken throws with nothing changed.
     hostRoom(fields, kept = null) {
@@ -295,6 +360,8 @@ export const useRoomStore = defineStore('room', {
         ...drawing.hostCallbacks(),
         send: (msg) => this._connection?.send(msg),
         passKey, connectWithinMs: this._connectWithinMs, roomId: fields.id,
+        // A watcher's channel through the service, which pairs it with theirs; _desktop read then, as a reload sets it later.
+        ...(DESKTOP ? { config: { channelUrl: (peer) => `ws://127.0.0.1:${this._desktop.port}/channel?peer=${encodeURIComponent(peer)}&secret=${encodeURIComponent(this._desktop.secret)}` } } : {}),
         onWatchers: (list) => {
           this.watchers = list;
           drawing.peopleHere(list);
@@ -343,6 +410,12 @@ export const useRoomStore = defineStore('room', {
       const askForPass = () => social.getPass().catch(() => {});
       await social.boot();
       if (gone()) return;
+      if (DESKTOP) {   // the service outlives a reload, not a relaunch
+        const service = await desktop.serviceInfo().catch(() => null);
+        if (gone()) return;
+        if (service?.mode !== 'host') return this.over(roomAwayWords());
+        Object.assign(this, { addresses: service.addresses, port: service.port, _desktop: { secret: service.secret, port: service.port } });
+      }
       await askForPass();
       const late = !social.claims;
       for (let tries = 0; !gone() && !social.claims; tries++) {
@@ -353,7 +426,7 @@ export const useRoomStore = defineStore('room', {
       }
       if (gone()) return;
       if (social.claims.sub !== record.sub) return this.close();
-      if (late && !social.me) {   // boot's ask failed the same way
+      if (late && !social.me && !DESKTOP) {   // boot's ask failed the same way
         await social.refreshMe();
         if (gone()) return;
       }
@@ -374,7 +447,7 @@ export const useRoomStore = defineStore('room', {
       if (gone()) return;
       useDrawingStore().resumeHosting(record, kept);
       this.share();
-      this.connect({ type: 'host' }, HOST_SOCKET);
+      this.connect(DESKTOP ? this.desktopGreeting() : { type: 'host' }, HOST_SOCKET);
     },
 
     // What this tab keeps of the room you host, for resume().
@@ -404,6 +477,7 @@ export const useRoomStore = defineStore('room', {
     // SOCIAL looks every so often for a room of yours whose tab has gone: its copy is here, and no tab has held its lock
     // at any look for about 2 s. A lobby card naming someone else means the role has moved, and the copy goes.
     async lookForOwnRooms() {
+      if (DESKTOP) return;   // a desktop room doesn't outlive the app
       const social = useSocialStore(), sub = social.claims?.sub;
       const mine = sub && !this.role ? (await hostCopies().catch(() => [])).filter((copy) => copy.sub === sub) : [];
       const here = mine.filter((copy) => {
@@ -428,6 +502,7 @@ export const useRoomStore = defineStore('room', {
     // reload looks for them. What's open goes into the browser's own list first, as it would for Accept. The rest is
     // resume() and comeBack(), with what they do about a room that's over or a role that's moved.
     async goBackToRoom(id, { reload = () => location.reload() } = {}) {
+      if (DESKTOP) return;
       const social = useSocialStore(), project = useProjectStore();
       const notOffered = () => { this.reclaimable = this.reclaimable.filter((room) => room.id !== id); };
       const copy = (await hostCopies().catch(() => [])).find((row) => row.id === id && row.sub === social.claims?.sub);
@@ -538,9 +613,10 @@ export const useRoomStore = defineStore('room', {
     },
 
     // Puts the host's link on the clipboard; false (and a notice) when the browser won't.
+    // On desktop there's no link: the first address others can join at, or this computer's own with none.
     async copyLink() {
       try {
-        await navigator.clipboard.writeText(this.link);
+        await navigator.clipboard.writeText(DESKTOP ? this.addresses[0] ?? `127.0.0.1:${this.port}` : this.link);
         return true;
       } catch {
         useSocialStore().notice = t('social.notices.copyLinkFailed');
@@ -704,6 +780,7 @@ export const useRoomStore = defineStore('room', {
       if (this.role === 'host') {
         if (!passRole || !useDrawingStore().artists.length) this._connection?.send({ type: 'end' });
         this.doneHosting();
+        if (DESKTOP) desktop.stopService().catch(() => {});   // the room's service goes with it
       }
       const connection = this._connection;
       this._connection = null;
@@ -723,10 +800,13 @@ export const useRoomStore = defineStore('room', {
     connect(greeting, { liveOn, endOn }) {
       const social = useSocialStore();
       const id = this.id;
+      // On desktop, the host's own service on loopback, or the host's address for a guest.
+      const url = !DESKTOP ? `${wsOrigin(apiOrigin())}/api/rooms/${id}/ws` : this.role === 'host' ? `ws://127.0.0.1:${this._desktop.port}/room` : `ws://${this._address}/room`;
+      const protocol = DESKTOP ? { protocol: ROOM_PROTOCOL } : {};
       const connection = this._connection = markRaw(new LobbyConnection({
-        url: `${wsOrigin(apiOrigin())}/api/rooms/${id}/ws`,
+        url,
         getPass: () => social.getPass(),
-        greet: async (pass, privateKey) => ({ ...connection.greeting, pass, ...await proof(privateKey, (ts) => `room:${id}:${ts}`) }),
+        greet: async (pass, privateKey) => ({ ...connection.greeting, pass, ...await proof(privateKey, (ts) => `room:${id}:${ts}`), ...protocol }),
         liveOn, endOn,
         onMessage: (msg) => { if (connection === this._connection) this.heard(msg); },
         onStatus: (status) => {
@@ -950,6 +1030,14 @@ export const useRoomStore = defineStore('room', {
       this._host.remove(peer);
     },
 
+    // A desktop host's answer to a join waiting for it (asks): in, or turned away.
+    letIn(ask, yes = true) {
+      if (this.role === 'host' && this._connection?.send({ type: 'answer', ask, yes })) this.asks = this.asks.filter((a) => a.ask !== ask);
+    },
+    turnAway(ask) {
+      this.letIn(ask, false);
+    },
+
     // The host's Mute, for this room: what they say from now on reaches only them and the host. They aren't told.
     mute(sub, on) {
       if (this.role !== 'host' || on === this.muted.includes(sub)) return;
@@ -959,7 +1047,7 @@ export const useRoomStore = defineStore('room', {
 
     // The host's Block: the account can't join any room of yours, and they're kicked from this one.
     async block(watcher) {
-      if (this.role !== 'host' || !await useSocialStore().block(watcher.name)) return false;
+      if (DESKTOP || this.role !== 'host' || !await useSocialStore().block(watcher.name)) return false;
       sessionRemoved(this.session, watcher.sub, Date.now());   // counted even if they've left meanwhile
       this.remove(watcher.peer);
       return true;
@@ -1048,6 +1136,7 @@ export const useRoomStore = defineStore('room', {
           this._resuming = false;
           this._tookOver = false;
           this.room = { ...msg.room, welcome: chosen.welcome };
+          if (DESKTOP) this.asks = [];   // the service sends each waiting ask again after this
           if (tookOver) this.status = 'live';
           if (!this._host.room) this._host.setRoom({ name: msg.room.name, welcome: chosen.welcome });
           if (tookOver) this.carryOnFrom(msg.peers);
@@ -1061,6 +1150,21 @@ export const useRoomStore = defineStore('room', {
           break;
         case 'artists-now':
           useDrawingStore().artistsNow(msg.subs, msg.tag);
+          if (DESKTOP) this.hostable = msg.hostable && typeof msg.hostable === 'object' ? msg.hostable : {};
+          break;
+        case 'asking': {   // desktop: a join waiting for the host's answer
+          if (!DESKTOP || this.role !== 'host') break;
+          let claims;
+          try {
+            claims = decodePass(msg.pass);
+          } catch {
+            break;   // a pass that can't be read names no one
+          }
+          this.asks = [...this.asks.filter((a) => a.ask !== msg.ask), { ask: msg.ask, sub: claims.sub, name: claims.name }].slice(-MOST_ASKS);
+          break;
+        }
+        case 'ask-gone':
+          if (DESKTOP) this.asks = this.asks.filter((a) => a.ask !== msg.ask);
           break;
         case 'last-change?':
           this.answerLastChange();
