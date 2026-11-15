@@ -5,9 +5,10 @@ import { openApp, store, settled, fixture } from './support.js';
 
 // The smaller pieces of the interface: About, the help tooltips, the dropdown menus, the status
 // bar, dropping a file, and starting a new project.
-test('About opens from the footer, says which build it is, and closes', async ({ page }) => {
+test('About opens from the logo, says which build it is and who brings it, and closes', async ({ page }) => {
   await openApp(page);
-  await page.locator('footer').getByRole('button', { name: 'About Phosphor' }).click();
+  await expect(page.locator('footer').getByRole('button', { name: 'About Phosphor' })).toHaveCount(0); // the logo is the way in
+  await page.getByRole('button', { name: 'About Phosphor' }).click();
   await expect(page.locator('dialog.reading-dialog')).toBeVisible();
   // The build it is: major.minor with the day it was built as the third number, and the commit
   // (GitHub Actions' when deploying; "-dirty" with uncommitted changes), in About and in the page's
@@ -19,6 +20,8 @@ test('About opens from the footer, says which build it is, and closes', async ({
   await expect(page.locator('p.build')).toHaveText(new RegExp(`^build ${sha}(-dirty)?$`));
   const meta = await page.locator('meta[name="phosphor-build"]').getAttribute('content');
   expect(meta).toMatch(new RegExp(`^v\\d+\\.\\d+\\.${today} ${sha}(-dirty)?$`));
+  await expect(page.locator('dialog.reading-dialog').getByText('Brought to you by ishifishi.work and euphio.org')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'euphio.org' })).toHaveAttribute('href', 'https://euphio.org');
   await expect(page.getByRole('listitem').filter({ hasText: 'cmang' }).getByRole('link', { name: 'Durdraw' })).toHaveAttribute('href', 'https://github.com/cmang/durdraw');
   // Switched to Licenses: the icons credited as their license asks, and the build's packages, as the build found them,
   // each opening to its license.

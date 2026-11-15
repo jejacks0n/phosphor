@@ -290,7 +290,7 @@ aside.control-panel {
   overflow-y: auto;
 }
 
-/* The logo opens About, as the footer's About Phosphor does: a button with only the picture, no button look. */
+/* The logo opens About: a button with only the picture, no button look. */
 button.logo {
   display: block;
   width: 100%;

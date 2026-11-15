@@ -51,9 +51,7 @@
     "desktopPrivacy": "Cette application n'envoie rien à Phosphor. Dans une salle, les personnes avec qui vous vous connectez voient votre adresse IP. Quand vous choisissez Rechercher les mises à jour, elle demande à GitHub les versions de Phosphor, et GitHub voit votre adresse IP."
   },
   "footer": {
-    "about": "À propos de Phosphor",
     "language": "Langue",
-    "byline": "Créé par{br}{ishifishi} et {euphio}",
     "copyright": "© {year} Phosphor Project"
   },
   "about": {
@@ -82,6 +80,7 @@
     "assetsIntro": "Les polices et icônes qu'il utilise :",
     "packagesIntro": "Et les paquets open source avec lesquels il est construit, chacun sous sa propre licence :",
     "mitLicense": "licence MIT",
+    "byline": "Proposé par {ishifishi} et {euphio}",
     "motto": "Make Code Not War",
     "policies": "Consultez nos {terms}, notre {privacy} et nos {guidelines}."
   },
