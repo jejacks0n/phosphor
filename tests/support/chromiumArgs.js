@@ -1,5 +1,11 @@
 import { chromium } from '@playwright/test';
 
+// Software WebGL (SwiftShader), so every machine renders alike, with the page itself drawn and composited by
+// the CPU as plain software (Skia) rather than through SwiftShader: that GL emulation, for every repaint of
+// every page, kept a 4-core CI runner at full load, and its tests' waits ran out while they queued for it.
+// WebGL still goes through SwiftShader.
+export const SOFTWARE_GL = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--disable-gpu-rasterization', '--disable-gpu-compositing'];
+
 // Where the launch options are kept for the run: Playwright loads its config again in every worker, and
 // a worker inherits the environment of the run that made it.
 const KEPT = 'PHOSPHOR_CHROMIUM_LAUNCH';

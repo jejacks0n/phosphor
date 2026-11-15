@@ -1,10 +1,10 @@
 // End-to-end flows (tests/e2e): the production build served by vite preview, driven in Chromium with
 // software WebGL (SwiftShader), as the browser tests are, so every machine renders alike.
 import { defineConfig, devices } from '@playwright/test';
-import { launchWithout } from './tests/support/chromiumArgs.js';
+import { SOFTWARE_GL, launchWithout } from './tests/support/chromiumArgs.js';
 
 // Software WebGL, and no mDNS names for the room tests' connections (see vitest.config.js).
-const launchOptions = await launchWithout(['WebRtcHideLocalIpsWithMdns'], ['--use-angle=swiftshader', '--enable-unsafe-swiftshader']);
+const launchOptions = await launchWithout(['WebRtcHideLocalIpsWithMdns'], SOFTWARE_GL);
 
 export default defineConfig({
   testDir: 'tests/e2e',

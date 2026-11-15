@@ -8,6 +8,7 @@ import { _electron } from 'playwright';
 import { test, expect } from '@playwright/test';
 import { fixture, imageInput, tab, settled, store } from './support.js';
 import { fromMenu, invitation, mayDraw, openLobby } from './social-support.js';
+import { SOFTWARE_GL as SOFTWARE_GL_ARGS } from '../support/chromiumArgs.js';
 export { test, expect };
 
 // A launched app: { app, page, name, port, close }, close also removing its user data folder. Anything the page's
@@ -16,9 +17,9 @@ export { test, expect };
 // The Leave/Stay question main.js asks before a reload, a close or a quit the page would ask about is answered Leave (a
 // reload's box and the others' both), so a host's reload or an app closed with unsaved art goes ahead; a spec that
 // wants the question stands in for it again.
-// A Linux runner has no GPU, so WebGL comes from SwiftShader, as in the web flows (playwright.config.js): without it the
+// A Linux runner has no GPU, so WebGL comes from SwiftShader and the page from plain software, as in the web flows (chromiumArgs.js): without it the
 // art never renders. On macOS these switches would turn WebGL off, so they're for Linux alone.
-const SOFTWARE_GL = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
+const SOFTWARE_GL = process.platform === 'linux' ? SOFTWARE_GL_ARGS : [];
 
 export async function launchApp({ name = 'ann', port = 31401, env = {}, files = [] } = {}) {
   const userData = mkdtempSync(join(tmpdir(), `phosphor-${name}-`));
