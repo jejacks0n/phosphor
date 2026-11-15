@@ -83,9 +83,9 @@ test('a quit waits for the page to say it is ready', async () => {
   await closed;
 });
 
-// Electron shows nothing when the page asks before it goes (beforeunload), so the main process asks; the test answers
-// for the person by standing in for the dialog.
-test('a quit with unsaved changes asks: Stay keeps the app and the next quit waits again, Leave quits', async () => {
+// A window with unsaved work is asked before the page hears of the quit; the test answers for the person by standing
+// in for the dialog.
+test('a quit with unsaved changes asks first: Stay keeps the app, Leave waits for the page and quits', async () => {
   launched = await launchApp();
   const { app, page } = launched;
   await openImage(page);
@@ -98,19 +98,20 @@ test('a quit with unsaved changes asks: Stay keeps the app and the next quit wai
     dialog.showMessageBoxSync = () => { globalThis.asked++; return choice; };
   }, choice);
   const asked = () => app.evaluate(() => globalThis.asked);
+  await page.evaluate(() => window.phosphorDesktop.onQuit(() => { window.quitAsked = true; }));
 
   await answer(1);   // Stay
   await app.evaluate(({ app }) => app.quit());
   await expect.poll(asked).toBe(1);
   expect(app.process().exitCode).toBeNull();
   expect(await store(page, 'project', (p) => p.cols)).toBe(80);
-
-  await page.evaluate(() => window.phosphorDesktop.onQuit(() => { window.quitAsked = true; }));
-  await app.evaluate(({ app }) => app.quit());
-  await expect.poll(() => page.evaluate(() => window.quitAsked)).toBe(true);
-  expect(await asked()).toBe(1);   // held for the page, not asked yet
+  expect(await page.evaluate(() => window.quitAsked)).toBeUndefined();   // called off before the page heard
 
   await answer(0);   // Leave
+  await app.evaluate(({ app }) => app.quit());
+  await expect.poll(() => page.evaluate(() => window.quitAsked)).toBe(true);
+  expect(await asked()).toBe(1);
+  expect(app.process().exitCode).toBeNull();   // held for the page
   const closed = new Promise((resolve) => app.process().once('exit', resolve));
   await page.evaluate(() => window.phosphorDesktop.quitReady());
   await closed;

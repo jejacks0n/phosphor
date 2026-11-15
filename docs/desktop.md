@@ -52,9 +52,14 @@ files at once get a window each. A project that's already open in a window bring
 opening a second copy. On the start screen, a recent drawing that's open in another window says **Open in another
 window**, and can't be opened again until that window closes it.
 
-Closing a window closes that window alone, asking first when it has unsaved changes. On macOS, closing the last one
-leaves Phosphor running with its menu bar: New Window, Open… or a click on its Dock icon opens a window again. On
-Windows and Linux, closing the last window quits.
+Closing a window closes that window alone. When it has unsaved changes it asks **Close this window?** first, and
+**Stay** keeps it open as it was. A window hosting a room hands the room on before it closes, as quitting does (see
+**Quitting the app while hosting**). On macOS, closing the last one leaves Phosphor running with its menu bar: New
+Window, Open… or a click on its Dock icon opens a window again. On Windows and Linux, closing the last window quits.
+
+Quitting asks every window with unsaved changes **Leave Phosphor?**, one window at a time, before anything closes or
+any room is handed on. **Stay** in any of them calls off the whole quit: every window stays open, and every room
+carries on.
 
 ## Opening and saving
 
@@ -175,9 +180,9 @@ Someone who can't reach the new host's address is told "The room moved to ann, a
 address couldn't be reached." The host's app only checked that *it* could reach the new host: on one network or on
 Tailscale that holds for everyone; over the internet it may not.
 
-**Quitting the app while hosting** hands the room to the first
-connected artist who can be host, as **Make host** does, and waits for them to take it, up to about 16 seconds. With
-no one to hand it to, or no answer in time, the room ends. **End room** always ends it for everyone.
+**Quitting the app while hosting**, or closing the window that hosts, hands the room to the first connected artist
+who can be host, as **Make host** does, and waits for them to take it, up to about 16 seconds. With no one to hand it
+to, or no answer in time, the room ends. **End room** always ends it for everyone.
 
 ## When the host goes away
 

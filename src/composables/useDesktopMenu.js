@@ -20,7 +20,7 @@ export const MENU_LABELS = [
   'view', 'actualSize', 'zoomIn', 'zoomOut', 'fullScreen', 'window',
   'help', 'shortcuts', 'github', 'releaseNotes', 'reportIssue', 'troubleshooting', 'devTools',
   'about', 'checkUpdates', 'services', 'hide', 'hideOthers', 'showAll',
-  'openableFiles', 'projectFiles',
+  'openableFiles', 'projectFiles', 'leaveQuit', 'leaveClose', 'leaveDetail', 'leave', 'stay',
 ];
 
 // Check for Updates (the menu, and the Social tab when a room is on a newer version): the newest release after this

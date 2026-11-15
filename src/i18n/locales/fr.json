@@ -1817,6 +1817,11 @@
     "showAll": "Tout afficher",
     "openableFiles": "Images, projets et fichiers d'art",
     "projectFiles": "Projets Phosphor",
+    "leaveQuit": "Quitter Phosphor ?",
+    "leaveClose": "Fermer cette fenêtre ?",
+    "leaveDetail": "Les modifications que vous avez faites ne seront peut-être pas enregistrées.",
+    "leave": "Quitter",
+    "stay": "Rester",
     "addressCopied": "Adresse de la salle copiée.",
     "missing": "{name} n'est plus là.",
     "openFailed": "Ce fichier n'a pas pu être ouvert."
