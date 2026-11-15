@@ -48,7 +48,7 @@ test('a project opened with Cmd/Ctrl+O saves back over its file, asking once a p
   expect(await asked(page)).toEqual({ open: 1, save: 0, permission: 1 });
   const first = await fileBytes(page, 'opened.phosphor');
   expect(first).not.toEqual(original);
-  expect(String.fromCharCode(...first.slice(0, 6))).toBe('PHOSPH'); // a project file, in either form
+  expect(first.slice(0, 2)).toEqual([0x1f, 0x8b]); // a project file, gzipped as Save project writes it
 
   await page.keyboard.insertText('!');
   await settled(page);
