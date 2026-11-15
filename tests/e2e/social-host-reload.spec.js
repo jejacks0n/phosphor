@@ -424,7 +424,7 @@ test('a host reloading while an artist is ahead of autosave loses no strokes', a
   expect(await chars(host, 1, 1, 1)).toBe('h');
   await expect.poll(() => store(host, 'drawing', (d) => d.paused), ARTIST_STROKE_WAIT).toBe(false);
   await expect.poll(() => store(artist, 'drawing', (d) => d.paused), ARTIST_STROKE_WAIT).toBe(false);
-  await expect.poll(() => edits(artist)).toBe(await edits(host));
+  await expect(async () => expect(await edits(artist)).toBe(await edits(host))).toPass({ timeout: 10_000 });
 
   // The host's undo came through it, and both draw on.
   expect(await store(host, 'project', (p) => p.canUndo)).toBe(true);
@@ -434,7 +434,7 @@ test('a host reloading while an artist is ahead of autosave loses no strokes', a
   await expect.poll(() => chars(artist, 1, 1, 1), ARTIST_STROKE_WAIT).not.toBe('h');
   await typeAt(artist, 3, 3, 'z');
   await typeAt(host, 4, 4, 'y');
-  await expect.poll(() => edits(artist), ARTIST_STROKE_WAIT).toBe(await edits(host));
+  await expect(async () => expect(await edits(artist)).toBe(await edits(host))).toPass(ARTIST_STROKE_WAIT);
   expect(await store(host, 'drawing', (d) => d.notice)).toBe(null);
 });
 
@@ -459,7 +459,7 @@ test('a host returning after the role moved comes back as an artist with their s
   await expect.poll(() => store(host, 'room', (r) => r.role), ARTIST_STROKE_WAIT).toBe('watch');
   expect(await host.evaluate(() => sessionStorage.getItem('phosphor-hosting'))).toBe(null);
   await mayDrawOf(host).toBe(true);
-  await expect.poll(() => edits(host), ARTIST_STROKE_WAIT).toBe(await edits(artist));
+  await expect(async () => expect(await edits(host)).toBe(await edits(artist))).toPass(ARTIST_STROKE_WAIT);
   await tab(host, 'ANSI').click();
   await settled(host);
   await typeAt(host, 3, 3, 'c');
