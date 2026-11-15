@@ -2,60 +2,61 @@
 import { onMounted, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { keepTabIn } from '@/lib/focus';
+import { useModal } from '@/composables/useModal';
 
 // A large box of text to read over the app (About, the Terms, the Privacy Policy): a close button, and the slot,
-// scrolled when it's long. Each user styles its own text. On the body as ModalDialog is, so it can open over one.
+// scrolled when it's long. Each user styles its own text. A modal <dialog> as ModalDialog is (useModal), so it can
+// open over one; Escape, the back gesture and the backdrop close it.
 defineProps({ label: { type: String, required: true } });
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const close = useTemplateRef('close');
 onMounted(() => close.value?.focus());
+const { open, onCancel, onClose, outside } = useModal(() => emit('close'));
 
 // Keys are the dialog's while it's up (none reach the app's shortcuts); Escape closes it, and Tab keeps to it.
 function onKeyDown(event) {
   event.stopPropagation();
-  if (event.key === 'Escape') emit('close');
-  else keepTabIn(event);
+  if (event.key === 'Escape') {
+    event.preventDefault(); // not the dialog's own close as well
+    emit('close');
+  } else keepTabIn(event);
 }
 </script>
 
 <template>
   <Teleport to="body">
-    <div class="modal-backdrop" @click.self="emit('close')">
-      <article class="reading-dialog" role="dialog" aria-modal="true" :aria-label="label" @keydown="onKeyDown">
-        <button ref="close" class="close" @click="emit('close')" :title="t('common.close')" :aria-label="t('common.close')">×</button>
-        <div class="content-container">
-          <slot/>
-        </div>
-      </article>
-    </div>
+    <dialog :ref="open" class="reading-dialog" :aria-label="label" @keydown="onKeyDown" @cancel="onCancel" @close="onClose" @click="outside($event) && emit('close')">
+      <button ref="close" class="close" @click="emit('close')" :title="t('common.close')" :aria-label="t('common.close')">×</button>
+      <div class="content-container">
+        <slot/>
+      </div>
+    </dialog>
   </Teleport>
 </template>
 
 <style scoped>
-div.modal-backdrop {
-  position: fixed;
-  inset: 0;
+dialog.reading-dialog::backdrop {
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(4px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 20px;
 }
 
-article.reading-dialog {
-  position: relative;
-  max-width: 800px;
-  width: 100%;
+/* 20px clear of the window's edges, as the backdrop's padding kept it before */
+dialog.reading-dialog {
+  box-sizing: border-box;
+  width: calc(100% - 40px);
+  max-width: 802px; /* 800px inside */
   max-height: 90vh;
+  padding: 0;
+  overflow: visible; /* the content scrolls, and the close button sits over the corner */
   background: var(--surface-0);
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text);
   line-height: 1.6;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+}
+dialog.reading-dialog[open] { /* only while open: closed, the dialog's hidden */
   display: flex;
   flex-direction: column;
 }

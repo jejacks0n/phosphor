@@ -8,7 +8,7 @@ import { openApp, store, settled, fixture, cellPoint } from './support.js';
 test('About opens from the footer, says which build it is, and closes', async ({ page }) => {
   await openApp(page);
   await page.locator('footer').getByRole('button', { name: 'About Phosphor' }).click();
-  await expect(page.locator('.modal-backdrop')).toBeVisible();
+  await expect(page.locator('dialog.reading-dialog')).toBeVisible();
   // The build it is: major.minor with the day it was built as the third number, and the commit
   // (GitHub Actions' when deploying; "-dirty" with uncommitted changes), in About and in the page's
   // <meta name="phosphor-build">.
@@ -25,7 +25,7 @@ test('About opens from the footer, says which build it is, and closes', async ({
   await expect(page.getByRole('listitem').filter({ hasText: 'Font Awesome Free' }).getByRole('link', { name: 'CC BY 4.0' }))
     .toHaveAttribute('href', 'https://creativecommons.org/licenses/by/4.0/');
   await page.getByTitle('Close').click();
-  await expect(page.locator('.modal-backdrop')).toBeHidden();
+  await expect(page.locator('dialog.reading-dialog')).toBeHidden();
 });
 
 // The page itself never scrolls: nothing hangs below the window (the panel's footer, the language picker in it, scrolls

@@ -245,7 +245,7 @@ test('no Report for a guest or a member who hasn\'t confirmed their email', asyn
 });
 
 test('the report dialog: a report that can\'t go leaves it as it is; with its Report gone, focus goes to "N here" (a host) or the messages (a watcher)', async () => {
-  const dialogButton = (name) => [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === name);
+  const dialogButton = (name) => [...document.querySelectorAll('dialog button')].find((b) => b.textContent === name);
   for (const [role, back] of [['host', 'button.here'], ['watch', '[role=log]']]) {
     const room = await mount(role, 1);
     useSocialStore().claims = claims({});
@@ -253,21 +253,21 @@ test('the report dialog: a report that can\'t go leaves it as it is; with its Re
     const report = vi.spyOn(room, 'report').mockReturnValue(false);
     host.querySelector('button.report').click();
     await nextTick();
-    expect(document.querySelector('[role=dialog] h3').textContent).toBe('Report name-0?');
+    expect(document.querySelector('dialog h3').textContent).toBe('Report name-0?');
     expect(dialogButton('Report').disabled).toBe(true);
-    document.querySelector('[role=dialog] input[value=other]').click();
+    document.querySelector('dialog input[value=other]').click();
     await nextTick();
     dialogButton('Report').click();
     await nextTick();
     expect(report).toHaveBeenCalledWith({ sub: 'u_0', messageId: room.chat[0].id, reason: 'other' });
-    expect(document.querySelector('[role=dialog]')).not.toBe(null);   // still asking, as it was
+    expect(document.querySelector('dialog')).not.toBe(null);   // still asking, as it was
     expect(document.body.textContent).not.toContain('Reported.');
 
     Object.assign(room.chat[0], { deleted: true, text: '' });   // its Report goes
     await nextTick();
     dialogButton('Cancel').click();
     await nextTick();
-    expect(document.querySelector('[role=dialog]')).toBe(null);
+    expect(document.querySelector('dialog')).toBe(null);
     expect(document.activeElement).toBe(host.querySelector(back));
     app.unmount();
     host.remove();
@@ -284,9 +284,9 @@ test('once a report of someone goes, Report is gone from their messages and stay
   expect(reports()).toEqual(['Report message from name-0', 'Report message from name-1', 'Report message from name-0']);
   host.querySelector('button.report').click();
   await nextTick();
-  document.querySelector('[role=dialog] input[value=spam]').click();
+  document.querySelector('dialog input[value=spam]').click();
   await nextTick();
-  [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === 'Report').click();
+  [...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'Report').click();
   await nextTick();
   await nextTick();
   expect(room.reported).toEqual(['u_0']);
@@ -310,12 +310,12 @@ test('the report dialog, sent: "Reported" in the status line that was there from
   const status = document.querySelector('p.reported[role=status]');
   expect(status.textContent).toBe('');   // in the page before anything is said
 
-  document.querySelector('[role=dialog] input[value=spam]').click();
+  document.querySelector('dialog input[value=spam]').click();
   await nextTick();
-  [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === 'Report').click();
+  [...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'Report').click();
   await nextTick();
   expect(room.report).toHaveBeenCalledWith({ sub: 'u_2', messageId: null, reason: 'spam' });
-  expect(document.querySelector('[role=dialog]')).toBe(null);
+  expect(document.querySelector('dialog')).toBe(null);
   expect(document.querySelector('p.reported[role=status]')).toBe(status);   // the same live region, now with words
   expect(status.textContent).toBe('Reported. Thank you.');
   vi.advanceTimersByTime(3999);
@@ -330,9 +330,9 @@ test('the report dialog, sent: "Reported" in the status line that was there from
   app = createApp(ReportDialog, props).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
-  document.querySelector('[role=dialog] input[value=spam]').click();
+  document.querySelector('dialog input[value=spam]').click();
   await nextTick();
-  [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === 'Report').click();
+  [...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'Report').click();
   await nextTick();
   expect(vi.getTimerCount()).toBe(1);
   app.unmount();
@@ -348,12 +348,12 @@ test('Report again on the same message while "Reported" shows opens the dialog a
   for (let i = 0; i < 2; i++) {
     host.querySelector('button.report').click();
     await nextTick();
-    expect(document.querySelector('[role=dialog] h3').textContent).toBe('Report name-0?');
-    document.querySelector('[role=dialog] input[value=other]').click();
+    expect(document.querySelector('dialog h3').textContent).toBe('Report name-0?');
+    document.querySelector('dialog input[value=other]').click();
     await nextTick();
-    [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === 'Report').click();
+    [...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'Report').click();
     await nextTick();
-    expect(document.querySelector('[role=dialog]')).toBe(null);
+    expect(document.querySelector('dialog')).toBe(null);
     expect(document.querySelector('p.reported').textContent).toBe('Reported. Thank you.');
   }
   expect(room.report).toHaveBeenCalledTimes(2);
@@ -392,7 +392,7 @@ test('a watcher\'s Block asks first: Cancel and Escape send nothing, with focus 
   social.claims = claims({});
   room.chat = [row(0), row(1), row(2, { sub: 'u_0', name: 'name-0' })];
   await nextTick();
-  const dialog = () => document.querySelector('[role=dialog]');
+  const dialog = () => document.querySelector('dialog');
   const dialogButton = (name) => [...dialog().querySelectorAll('button')].find((b) => b.textContent === name);
   for (const cancel of [() => dialogButton('Cancel').click(), () => dialog().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))]) {
     const trigger = host.querySelector('button.block');
@@ -458,7 +458,7 @@ test('Report room asks "Report this room?" with the inside sub, and Report sends
   const trigger = reportRoomButton();
   trigger.click();
   await nextTick();
-  const dialog = document.querySelector('[role=dialog]');
+  const dialog = document.querySelector('dialog');
   expect(dialog.querySelector('h3').textContent).toBe('Report this room?');
   expect(dialog.querySelector('p.sub').textContent).toBe('Moderators will receive recent lobby previews and a snapshot of the current canvas.');
   dialog.querySelector('input[value=sexual]').click();
@@ -466,7 +466,7 @@ test('Report room asks "Report this room?" with the inside sub, and Report sends
   [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Report').click();
   await vi.waitFor(() => expect(document.querySelector('p.reported').textContent).toBe('Reported. Thank you.'));
   expect(reportRoom).toHaveBeenCalledWith('sexual');
-  expect(document.querySelector('[role=dialog]')).toBe(null);
+  expect(document.querySelector('dialog')).toBe(null);
 });
 
 test('while Report room makes its picture, the dialog\'s buttons are off and Cancel, Escape and the backdrop wait', async () => {
@@ -477,7 +477,7 @@ test('while Report room makes its picture, the dialog\'s buttons are off and Can
   vi.spyOn(room, 'reportRoom').mockReturnValue(new Promise((resolve) => { finish = resolve; }));
   reportRoomButton().click();
   await nextTick();
-  const dialog = document.querySelector('[role=dialog]');
+  const dialog = document.querySelector('dialog');
   dialog.querySelector('input[value=spam]').click();
   await nextTick();
   const button = (label) => [...dialog.querySelectorAll('button')].find((b) => b.textContent === label);
@@ -486,9 +486,9 @@ test('while Report room makes its picture, the dialog\'s buttons are off and Can
   expect(button('Report')).toBeUndefined();   // it says it's busy
   expect([button('Reporting…').disabled, button('Cancel').disabled]).toEqual([true, true]);
   dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  document.querySelector('.modal-backdrop').click();
+  document.querySelector('dialog.modal-dialog').click();   // at 0, 0: the backdrop
   await nextTick();
-  expect(document.querySelector('[role=dialog]')).toBe(dialog);
+  expect(document.querySelector('dialog')).toBe(dialog);
   finish(true);
   await vi.waitFor(() => expect(document.querySelector('p.reported').textContent).toBe('Reported. Thank you.'));
 });

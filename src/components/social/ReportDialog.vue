@@ -31,7 +31,7 @@ function read(page, event) {
   opener = event.currentTarget;
   workspace.legalPage = page;
 }
-watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); });
+watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { flush: 'post' }); // the reading dialog gone: while it's up, what's under it can't take focus
 const SHOWN_MS = 4000;
 
 const title = computed(() => (props.room ? t('social.report.titleRoom') : t('social.report.titlePerson', { name: props.name })));
@@ -45,11 +45,12 @@ const sending = ref(false);
 let timer = null;
 onUnmounted(() => clearTimeout(timer));
 
-const focusBack = () => (props.trigger?.isConnected ? props.trigger : props.back ?? document.querySelector('.chat button.here, .chat [role=log]'))?.focus();
+// Once the dialog's gone (done takes it away): while it's up, the rest can't take focus.
+const focusBack = () => nextTick(() => (props.trigger?.isConnected ? props.trigger : props.back ?? document.querySelector('.chat button.here, .chat [role=log]'))?.focus());
 const cancel = () => {
   if (sending.value) return;
-  focusBack();
   emit('done');
+  focusBack();   // after: nextTick waits for the render that done asks for
 };
 const send = () => (!props.room ? roomStore.report({ sub: props.sub, messageId: props.messageId, reason: reason.value })
   : props.room.from === 'inside' ? roomStore.reportRoom(reason.value)

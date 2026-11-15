@@ -156,18 +156,18 @@ test('End room asks first: Cancel keeps the room, End room ends it', async () =>
   const end = vi.spyOn(room, 'endRoom').mockImplementation(() => {});
   button('End room').click();
   await nextTick();
-  const ask = document.querySelector('[role=dialog]');
+  const ask = document.querySelector('dialog');
   expect(ask.textContent).toContain('End this room?');
   expect(end).not.toHaveBeenCalled();
   [...ask.querySelectorAll('button')].find((b) => b.textContent === 'Cancel').click();
   await nextTick();
-  expect(document.querySelector('[role=dialog]')).toBe(null);
+  expect(document.querySelector('dialog')).toBe(null);
   expect(end).not.toHaveBeenCalled();
   expect(document.activeElement).toBe(button('End room'));
 
   button('End room').click();
   await nextTick();
-  [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent === 'End room').click();
+  [...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'End room').click();
   expect(end).toHaveBeenCalledTimes(1);
 });
 
