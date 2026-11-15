@@ -114,9 +114,9 @@ test('a planned hand-over: ann makes bob host, cat follows bob to his address, a
 
   await makeHost(ann.page, 'bob');
   await expect.poll(() => role(bob.page), { timeout: 20_000 }).toBe('host');
-  expect(await store(bob.page, 'room', (r) => r.addresses)).toEqual(['127.0.0.1:31402']);
+  expect(await store(bob.page, 'room', (r) => r.addresses)).toEqual(['127.0.0.1:31422']);   // his standby's, 20 above his remembered port
   await expect.poll(() => role(ann.page)).toBe('watch');
-  await expect.poll(() => store(cat.page, 'room', (r) => r._address), { timeout: 20_000 }).toBe('127.0.0.1:31402');
+  await expect.poll(() => store(cat.page, 'room', (r) => r._address), { timeout: 20_000 }).toBe('127.0.0.1:31422');
   await live(cat.page);
   await sameArt(cat.page, bob.page);
 
@@ -192,7 +192,7 @@ test('quitting as host hands the room to an artist', async () => {
   await exited;
   await expect.poll(() => role(bob.page), { timeout: 20_000 }).toBe('host');
   await live(bob.page);
-  expect(await store(bob.page, 'room', (r) => r.addresses)).toEqual(['127.0.0.1:31402']);
+  expect(await store(bob.page, 'room', (r) => r.addresses)).toEqual(['127.0.0.1:31422']);   // his standby's, 20 above his remembered port
 });
 
 test('quitting as host with no artist to hand to ends the room', async () => {

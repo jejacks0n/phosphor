@@ -5,7 +5,7 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { RETURN_WITHIN_MS } from '@/social/hosting';
-import { forgetKey, loadKey } from '@/social/keys';
+import { forgetKey } from '@/social/keys';
 import { useFakeDesktop, resetDesktop } from '@/social/desktop';
 import { t } from '@/i18n/index.js';
 import { createTestApp } from '../support/app.js';
@@ -148,7 +148,7 @@ test('joinAddress joins with room id and protocol, waiting then joined', async (
   const greeting = socket.sent[0];
   expect(greeting).toMatchObject({ type: 'join', room: ID, protocol: 1, pass: social.pass });
   expect(greeting).not.toHaveProperty('password');
-  expect(await verify((await loadKey()).publicKey, `room:${ID}:${greeting.ts}`, greeting.proof)).toBe(true);
+  expect(await verify(social.claims.key, `room:${ID}:${greeting.ts}`, greeting.proof)).toBe(true);   // the window's key, which its pass names
 
   socket.receive({ type: 'waiting' });
   expect(room.status).toBe('asked');   // the host's yes is what's waited for

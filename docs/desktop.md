@@ -61,6 +61,20 @@ Quitting asks every window with unsaved changes **Leave Phosphor?**, one window 
 any room is handed on. **Stay** in any of them calls off the whole quit: every window stays open, and every room
 carries on.
 
+### A room per window
+
+Each window can be in a room of its own: one can host while another watches or draws in someone else's room, and two
+can host a room each. Every window has its own room service, which stops when the window closes. A second window
+hosting takes the next free port, so with the first on 31337 the second's room is at 31338. A window drawing in
+someone's room keeps its service ready to be made host on a port 20 above the one you last hosted on (31357 to begin
+with), so it never takes the port your own room is reached at when someone leaves the port off. Made host, it keeps
+the room on that port.
+
+You can join your own room from another window, by its address (`127.0.0.1:31337`, say). You're asked in like anyone
+else, and since both windows go by your name, the one joining shows with its fingerprint: "ann #3f9a wants to join".
+Only one window at a time holds this computer's key, the one rooms know you by; each other window that goes into a
+room makes a key of its own, kept while that window is open, through its reloads.
+
 ## Opening and saving
 
 Open… is your system's own file chooser, and Save writes a project straight back to its file: the first Save of a
