@@ -49,6 +49,7 @@ With a shape selected, its tweens show too: a band from key frame to key frame, 
 - **Pausing to draw**: Any other key pauses first, and so does starting to draw, so what you do lands on the frame showing.
 - **Changing settings while playing**: Moving a slider or changing the art style keeps playing with the change, from the frame showing, after a moment to build the frames again.
 - **Inside an art layer**: The bar's frame controls and the Animation keys are off. Exit the art layer to change frames.
+- **The screen stays on** while it plays, where the browser allows it, and can sleep again once it's paused.
 
 ---
 

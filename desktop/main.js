@@ -476,8 +476,10 @@ else {
     recent = recentFiles(path.join(app.getPath('userData'), 'recent.json'));
     for (const file of recent.list()) granted.add(file);
     protocol.handle('app', serve);
-    // No permission is given, but writing to the clipboard (a room's link is copied).
-    session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => callback(permission === 'clipboard-sanitized-write'));
+    // No permission is given, but writing to the clipboard (a room's link is copied) and keeping the screen on (in a
+    // room, or while an animation plays: useScreenAwake).
+    const ALLOWED = new Set(['clipboard-sanitized-write', 'screen-wake-lock']);
+    session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => callback(ALLOWED.has(permission)));
     openWindow();
     // The first fills the first window, the rest get their own.
     for (const file of launchFiles.splice(0)) deliver(file);

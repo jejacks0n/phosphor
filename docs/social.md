@@ -209,6 +209,9 @@ you're live and watchers see that instead.
 While you host, the side panel's **CHAT** tab is your room's: its name, the room menu (**⋯**: **Copy link** and
 **Settings and stats**), and **End room**.
 
+While you're in a room, hosting it or watching or drawing in someone's, your screen stays on where the browser allows
+it, as it does for a video. It can sleep again once you've left the room.
+
 ### Settings and Stats
 
 **Settings and stats** opens your room's dashboard in a box:
