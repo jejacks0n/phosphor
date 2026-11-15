@@ -72,7 +72,7 @@ Each window can be in a room of its own: one can host while another watches or d
 can host a room each. Every window has its own room service, which stops when the window closes. A second window
 hosting takes the next free port, so with the first on 31337 the second's room is at 31338. A window drawing in
 someone's room keeps its service ready to be made host on a port 20 above the one you last hosted on (31357 to begin
-with), so it never takes the port your own room is reached at when someone leaves the port off. Made host, it keeps
+with, or 40 below it when you last hosted within 40 of the last port, 65535), so it never takes the port your own room is reached at when someone leaves the port off. Made host, it keeps
 the room on that port.
 
 You can join your own room from another window, by its address (`127.0.0.1:31337`, say). You're asked in like anyone
