@@ -4,7 +4,7 @@
 import { describe, test, expect, afterEach, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { matchReference } from '../support/references.js';
-import { readProject, writeProject } from '@/document/projectIO.js';
+import { readProject, writeProject, gunzipped } from '@/document/projectIO.js';
 
 const fileFrom = async (url) => new File([await (await fetch(url)).blob()], url.slice(url.lastIndexOf('/') + 1));
 
@@ -118,7 +118,12 @@ describe('save, then load', () => {
 // The layers a drawing had before the stack keep the old form, magic word and all, so older copies still open it.
 describe('the old form', () => {
   afterEach(() => vi.restoreAllMocks());
-  const magicOf = async (blob) => new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 8));
+  // The form's word, under the gzip a saved file has.
+  const magicOf = async (blob) => {
+    const [a, b] = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+    const plain = a === 0x1f && b === 0x8b ? await gunzipped(blob, Infinity) : blob;
+    return new TextDecoder().decode(await plain.slice(0, 8).arrayBuffer());
+  };
   const resaved = async (project) => writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
 
   test('an old project saves in the old form and reads back the same', async () => {
