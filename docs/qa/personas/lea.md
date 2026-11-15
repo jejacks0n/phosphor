@@ -275,8 +275,9 @@ frames, and pinch while it plays.
 ### 19. Save a picture to post
 - Does: turns Animate off first (step 16 turned it on), then opens ☰, taps Export .png, keeps Smooth when it asks
   about smooth text, and presses Export.
-- Expects: a PNG of the art as it shows, saved to her phone
-  ([Characters](../../characters.md#saving-utf8ans-and-ans)).
+- Expects: a PNG of the art as it shows, saved to her phone; where the browser has a share sheet, **Share** beside
+  Export, which fits at 390 wide, sends the PNG there instead (a run's browser can't answer the share sheet: check
+  only that Share shows where `navigator.canShare` takes a PNG) ([Characters](../../characters.md#saving-utf8ans-and-ans)).
 - Probes: `out-of-order`: look on SAUCE too; `free`: long-press the picture, as she would to save any image.
 - Rated: no (touch only: no keyboard shows here)
 

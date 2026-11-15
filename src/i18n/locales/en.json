@@ -1064,6 +1064,10 @@
       "textRendering": "Text rendering",
       "tooTall": "{cols}×{rows} is wider or taller than a standard 80×25 terminal. Part of the drawing may clip during playback.",
       "exportBtn": "Export {name}",
+      "share": "Share",
+      "shareNow": "Share now",
+      "shareReady": "Your file is ready. Tap Share now to send it.",
+      "shareFailed": "Could not share the file.",
       "formats": {
         "ans": {
           "name": "ANS"

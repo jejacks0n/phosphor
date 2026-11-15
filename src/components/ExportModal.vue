@@ -64,21 +64,48 @@ function pickFormat(id) {
   problem.value = '';
 }
 
-async function doExport() {
+// Share (PNG and GIF, where the browser's share sheet takes the file: phones, Safari, Chrome): the file goes to the
+// share sheet in place of a download. The browser opens it only straight after a tap, so a file that took longer to
+// write (a long GIF) is kept ready, and Share now opens the sheet with the next tap. A new name or format drops it.
+const SHARE_TYPES = { png: 'image/png', gif: 'image/gif' };
+const shareable = computed(() => import.meta.env.VITE_DESKTOP !== '1' && !!SHARE_TYPES[selectedId.value]
+  && !!navigator.canShare?.({ files: [new File([], `art.${selected.value.ext}`, { type: SHARE_TYPES[selectedId.value] })] }));
+const ready = ref(null);
+watch([selectedId, name, smooth], () => { ready.value = null; });
+
+async function send(file) {
+  try {
+    await navigator.share({ files: [file] });
+    emit('close');
+  } catch (error) {
+    if (error.name === 'AbortError') return; // the share sheet put away: the dialog stays
+    if (error.name === 'NotAllowedError') return void (ready.value = file); // too long after the tap
+    console.warn('Could not share', error);
+    problem.value = t('export.modal.shareFailed');
+  }
+}
+
+async function doExport(share = false) {
   if (!stem.value || saving.value) return;
+  if (share && ready.value) return send(ready.value);
   saving.value = true;
   problem.value = '';
   if (['gif', 'mp4'].includes(selectedId.value)) progress.value = 0;
+  let file = null;
+  const deliver = share ? (blob, filename) => { file = new File([blob], filename, { type: blob.type }); } : undefined;
   try {
-    if (selected.value.animated) await project.exportAnimation(selectedId.value, { filename: stem.value, progress: (share) => { progress.value = share; } });
-    else await project.exportFile(selectedId.value, { filename: stem.value, smooth: smooth.value });
-    emit('close');
+    if (selected.value.animated) await project.exportAnimation(selectedId.value, { filename: stem.value, progress: (part) => { progress.value = part; }, deliver });
+    else await project.exportFile(selectedId.value, { filename: stem.value, smooth: smooth.value, deliver });
+    if (!share) return emit('close');
   } catch (error) {
     console.warn('Could not export', error);
     problem.value = error.userMessage ?? t('save.saveFailed');
+    return;
+  } finally {
     saving.value = false;
     progress.value = null;
   }
+  await send(file);
 }
 
 function cancel() {
@@ -177,8 +204,9 @@ function cancel() {
         </template>
 
         <p v-if="problem" class="note problem" role="alert">{{ problem }}</p>
+        <p v-if="ready" class="note" role="status">{{ t('export.modal.shareReady') }}</p>
 
-        <form class="foot" @submit.prevent="doExport">
+        <form class="foot" @submit.prevent="doExport()">
           <div class="filename-row">
             <input
                 v-model="name"
@@ -194,7 +222,8 @@ function cancel() {
           <div class="actions">
             <progress v-if="progress !== null" :value="progress" :aria-label="t('common.exporting')"/>
             <button type="button" class="cancel" @click="cancel">{{ t('common.cancel') }}</button>
-            <button type="submit" class="primary" :disabled="!stem || saving">
+            <button v-if="shareable" type="button" :class="{ primary: ready }" :disabled="!stem || saving" @click="doExport(true)">{{ ready ? t('export.modal.shareNow') : t('export.modal.share') }}</button>
+            <button type="submit" :class="{ primary: !ready }" :disabled="!stem || saving">
               {{ saving ? t('common.exporting') : t('export.modal.exportBtn', { name: t(`export.modal.formats.${selectedId}.name`) }) }}
             </button>
           </div>
