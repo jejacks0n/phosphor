@@ -1,5 +1,6 @@
 /**
- * A change to the edit layer, as data: { cells: [[key, Entry | null]...], runs: [[x, y, length, rgba]...] }.
+ * A change to the drawn layers, as data: { cells: [[key, Entry | null]...], runs: [[x, y, length, rgba, id?]...] }
+ * (keys and runs name their layer: layerInfo.js).
  * A cell is set to its entry (null: it went); a run is same-color pixels along one row, the color an
  * unsigned 32-bit number (r, g, b, a from the top byte; 0 is transparent). Only what differs is listed,
  * so a change can be sent, split to fit a message, applied by anyone, and hashed for the check.
@@ -69,6 +70,9 @@ export function eachPixel(runs, fn) {
 
 export const changeBytes = (change) => utf8Length(JSON.stringify(change));
 
+// A run, with the layer it names when it names one.
+const runOf = (x, y, length, rgba, id) => (id === undefined ? [x, y, length, rgba] : [x, y, length, rgba, id]);
+
 const ENVELOPE = utf8Length(JSON.stringify({ cells: [], runs: [] }));
 
 // Cut a change into several that each fit in mostBytes, by position: a cell or pixel is in exactly one.
@@ -91,17 +95,17 @@ export function splitChange({ cells, runs }, mostBytes) {
     part.cells.push(cell);
   }
 
-  for (let [x, y, length, rgba] of runs) {
+  for (let [x, y, length, rgba, id] of runs) {
     while (length > 0) {
-      const whole = utf8Length(JSON.stringify([x, y, length, rgba]));
+      const whole = utf8Length(JSON.stringify(runOf(x, y, length, rgba, id)));
       if (size + whole + (part.runs.length ? 1 : 0) <= mostBytes) {
         size += whole + (part.runs.length ? 1 : 0);
-        part.runs.push([x, y, length, rgba]);
+        part.runs.push(runOf(x, y, length, rgba, id));
         break;
       }
       if (!empty() && ENVELOPE + whole <= mostBytes) { flush(); continue; }
       // Cut: as many pixels as the digits of the length that still fit.
-      const fixed = utf8Length(JSON.stringify([x, y, '', rgba]).replace('""', ''));
+      const fixed = utf8Length(JSON.stringify(runOf(x, y, '', rgba, id)).replace('""', ''));
       const digits = mostBytes - size - (part.runs.length ? 1 : 0) - fixed;
       if (digits < 1) {
         if (empty()) fail();
@@ -110,7 +114,7 @@ export function splitChange({ cells, runs }, mostBytes) {
       }
       const piece = Math.min(length, 10 ** Math.min(digits, 15) - 1);
       size += fixed + String(piece).length + (part.runs.length ? 1 : 0);
-      part.runs.push([x, y, piece, rgba]);
+      part.runs.push(runOf(x, y, piece, rgba, id));
       x += piece;
       length -= piece;
     }
@@ -140,7 +144,9 @@ export function hashCell(key, entry) {
 }
 
 // "Within one step" doesn't chain into a hash, so a partly transparent pixel hashes by its alpha alone (see samePixel).
-export const hashPixel = (x, y, rgba) => ((rgba & 0xff) === 0 ? 0 : mix(x ^ mix(y ^ mix((rgba & 0xff) === 0xff ? rgba : rgba & 0xff))));
+// id: the layer it's on, so the same pixel on two layers doesn't cancel in the sum; the edit layer's hash is as it was.
+export const hashPixel = (x, y, rgba, id = 'edit') => ((rgba & 0xff) === 0 ? 0
+  : mix(x ^ mix(y ^ mix(((rgba & 0xff) === 0xff ? rgba : rgba & 0xff) ^ (id === 'edit' ? 0 : hashText(id))))));
 
 const TAIL_BYTES = 16 * 1024 * 1024;
 

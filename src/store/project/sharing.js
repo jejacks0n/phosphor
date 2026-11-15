@@ -28,7 +28,7 @@ import { layerKey } from '@/document/layerInfo.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, readChange } from '@/social/wire.js';
-import { ALONE, SAVED_KEYS, anyoneInside, followBase, randomId, runsPatch } from '@/store/project/shared.js';
+import { ALONE, SAVED_KEYS, anyoneInside, followBase, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
 import { toast } from '@/composables/useToast';
 import { settingsFromStranger } from '@/store/settings.js';
 
@@ -70,21 +70,22 @@ export function lockedOut(project) {
 // What a Pending reads and writes. Its positions come one at a time, and a store write or a canvas read
 // per position won't do, so reads come from a tile kept for the batch and writes gather: take() hands
 // them over, and starts the next batch. Reads go through readCell and readTile, so they follow _baseline.
+// A pixel's position is [x, y, id] (pending.js), and its runs name the layer as a change's do.
 function screenOf(project) {
   let cells = new Map(), runs = [], tiles = new Map(), last = null;
-  const tileAt = (x, y) => {
+  const tileAt = (x, y, id) => {
     const tx = x - x % TILE, ty = y - y % TILE;
-    if (last?.x === tx && last.y === ty) return last;
-    const name = `${tx},${ty}`;
+    if (last?.x === tx && last.y === ty && last.id === id) return last;
+    const name = layerKey(id, `${tx},${ty}`);
     last = tiles.get(name);
-    if (!last) tiles.set(name, last = { x: tx, y: ty, data: project.readTile(tx, ty) });
+    if (!last) tiles.set(name, last = { x: tx, y: ty, id, data: project.readTile(tx, ty, id) });
     return last;
   };
   const indexIn = (tile, x, y) => ((y - tile.y) * TILE + x - tile.x) * 4;
   return {
     read(at) {
       if (typeof at === 'string') return cells.has(at) ? cells.get(at) : project.readCell(at) ?? null;
-      const tile = tileAt(at[0], at[1]);
+      const tile = tileAt(at[0], at[1], at[2]);
       return pack(tile.data, indexIn(tile, at[0], at[1]));
     },
     write(at, value) {
@@ -92,11 +93,11 @@ function screenOf(project) {
         cells.set(at, value);
         return;
       }
-      const [x, y] = at, tile = tileAt(x, y), i = indexIn(tile, x, y);
+      const [x, y, id] = at, tile = tileAt(x, y, id), i = indexIn(tile, x, y);
       tile.data.set([value >>> 24, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff], i);
       const run = runs.at(-1);
-      if (run && run[1] === y && run[0] + run[2] === x && run[3] === value) run[2]++;
-      else runs.push([x, y, 1, value]);
+      if (run && run[1] === y && run[0] + run[2] === x && run[3] === value && (run[4] ?? 'edit') === id) run[2]++;
+      else runs.push(id === 'edit' ? [x, y, 1, value] : [x, y, 1, value, id]);
     },
     take() {
       const taken = { cells: [...cells], runs };
@@ -158,14 +159,19 @@ export function artistSharing(project, { send, me, sum, n = 0, tail = new Tail()
   };
 }
 
-// What an artist can make on this document (readChange).
-export const boundsOf = ({ cols, rows, paintLayer }) => ({ cols, rows: charRowsOf(rows), layerWidth: paintLayer.canvas.width, layerHeight: paintLayer.canvas.height });
+// What an artist can make on this document (readChange): the grid, the size every cells layer's paint is (the one in use's,
+// as they all have its size), and the stack above the bottom.
+export const boundsOf = (project) => {
+  const { width, height } = project.paintLayer.canvas;
+  return { cols: project.cols, rows: charRowsOf(project.rows), layerWidth: width, layerHeight: height, layers: stackKinds(project) };
+};
 
 // Whether a number's message can be taken as heard, from a host or an artist: a stranger, either way.
 export function readsAsHeard(project, message) {
   if (message?.t === 'settings') return !!settingsFromStranger(message.values);
-  if (message?.t === 'base') {
-    return !!readChange({ stroke: 'base', cells: [], runs: message.runs }, boundsOf({ cols: 0, rows: 0, paintLayer: project.baseLayer }))
+  if (message?.t === 'base') { // the base's own pixels: runs that name no layer, on the base layer's size
+    const { width, height } = project.baseLayer.canvas;
+    return !!readChange({ stroke: 'base', cells: [], runs: message.runs }, { cols: 0, rows: 0, layerWidth: width, layerHeight: height })
       && !!message.records && typeof message.records === 'object';
   }
   return !!readChange(message, boundsOf(project));
@@ -330,7 +336,7 @@ export const sharingActions = {
       const cells = [...sharing.heardCells], runs = sharing.heardRuns;
       sharing.heardCells = new Map();
       sharing.heardRuns = [];
-      this.applyChange({ cells, runs: [] }, { patches: [[runsPatch(runs), this.paintLayer]] });
+      this.applyChange({ cells, runs: [] }, { patches: [[runsPatch(runs), this.paintLayer]] }); // whatever layers they're on: a patch's layer is read for its scale, which every cells layer's paint shares
       return;
     }
     if (!sharing.heard.length) return;

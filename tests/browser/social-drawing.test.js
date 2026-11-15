@@ -104,18 +104,23 @@ async function artist(room, sub) {
   return person;
 }
 
-const sorted = (project) => [...project.editCells].sort(([a], [b]) => (a < b ? -1 : 1));
 const char = (project, col, row) => project.editCellAt(col, row)?.char;
 const painted = (project, x, y) => project.paintLayer.pixelAt(x, y);
 const dab = (project, x, y, color = '#ff0000') => project.paintStroke([{ x, y, alpha: 1 }], color);
 const quiet = (person) => person.project._sharing.pending.size === 0;
 
-// Everyone's edit layer the same, and the sums that follow it what a scan says.
+// Every cells layer above the bottom: its id, its cells, and its paint as the grid shows it (gridPixels).
+const layersOf = (project) => project.layers.slice(1).filter((layer) => layer.kind === 'cells').map(({ id }) => {
+  const paint = project.paintOf(id);
+  return [id, [...project.cellsOf(id)].sort(([a], [b]) => (a < b ? -1 : 1)), paint?.hasPaint ? Array.from(paint.gridPixels().data).join() : null];
+});
+
+// Everyone's layers the same, and the sums that follow them what a scan says.
 async function allMatch(room, ...people) {
   await expect.poll(() => people.every(quiet), PATIENT).toBe(true);
   room.project.flushHeard();
   for (const person of people) {
-    await expect.poll(() => JSON.stringify(sorted(person.project)), PATIENT).toBe(JSON.stringify(sorted(room.project)));
+    await expect.poll(() => JSON.stringify(layersOf(person.project)), PATIENT).toBe(JSON.stringify(layersOf(room.project)));
     await expect.poll(() => person.project.editLayerSum(), PATIENT).toBe(room.project.editLayerSum());
     expect(person.project._sharing.pending.sum).toBe(person.project.editLayerSum());
   }
@@ -202,6 +207,35 @@ test('host and artist end with equal edit layers after crossing strokes', async 
   ann.project.commitEdit();
   await allMatch(room, ann);
   for (let i = 0; i < 12; i++) expect(painted(ann.project, 2 * i, 20)).toEqual(painted(room.project, 2 * i, 20));
+});
+
+// The stack is the host's, made before the room went live (startRoom's go-live check isn't in a store's sharing); each
+// artist draws on a layer of their own at the same cells.
+test('two artists paint and type on two layers at once, and every page matches', async () => {
+  const room = await hosting();
+  const above = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+  await expect.poll(() => bo.project.layerById(above)?.kind, PATIENT).toBe('cells');
+  ann.project.useLayer('edit');
+  bo.project.useLayer(above);
+  for (let i = 0; i < 6; i++) {
+    dab(ann.project, 2 * i, 4);
+    setActivePinia(bo.pinia);
+    bo.project.typeAt(2 * i, 2, 'B', { fg: '#00ff00' });
+    dab(bo.project, 2 * i, 30, '#0000ff'); // paint on a layer the host has none on yet
+    await later();
+  }
+  ann.project.commitEdit();
+  bo.project.commitEdit();
+  await allMatch(room, ann, bo);
+  for (let i = 0; i < 6; i++) {
+    expect(room.project.cellsOf(above).get(`${2 * i},2`)?.char).toBe('B');
+    expect(room.project.cellsOf('edit').has(`${2 * i},2`)).toBe(false);
+    expect(room.project.paintOf('edit').pixelAt(2 * i, 4)).toBeTruthy();
+    expect(room.project.paintOf(above).pixelAt(2 * i, 4)).toBeNull();
+    expect(room.project.paintOf(above).pixelAt(2 * i, 30)).toBeTruthy();
+    expect(room.project.paintOf('edit').pixelAt(2 * i, 30)).toBeNull();
+  }
 });
 
 test('a change from an artist shows on the host\'s cells, so what watchers are sent follows', async () => {
