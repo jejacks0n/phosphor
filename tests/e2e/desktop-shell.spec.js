@@ -41,6 +41,14 @@ test('a GIF exports with its worker loaded from app://phosphor/, and a video wit
   expect(launched.refused).toEqual([]);
 });
 
+test('licenses.json, which About lists, comes from app://phosphor/ with the main process\'s ws in it', async () => {
+  launched = await launchApp();
+  const { page } = launched;
+  const names = await page.evaluate(async () => (await (await fetch('/licenses.json')).json()).map(({ name }) => name));
+  expect(names).toEqual(expect.arrayContaining(['vue', 'paper', 'ws']));
+  expect(launched.refused).toEqual([]);
+});
+
 test('nothing leaves the app', async () => {
   launched = await launchApp();
   const { page } = launched;
