@@ -6,7 +6,8 @@ import PaintLayer from '@/document/PaintLayer.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { loadImage } from '@/document/projectIO.js';
 import { markUniform } from '@/lib/ImageProcessor.js';
-import { MOST_CHANGE_BYTES } from '@/social/wire.js';
+import { MOST_CHANGE_BYTES, cellsFitAnyGrid } from '@/social/wire.js';
+import { MAX_CELLS } from '@/lib/Cells.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
 import { layerChars, newLayerId, nextNumber, sameChars } from '@/document/layerInfo.js';
@@ -51,6 +52,12 @@ export const randomId = () => crypto.randomUUID?.()
   ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
 // Runs (changes.js) as refreshChanged takes a patch, so a refresh is the pixels they name, not their tiles.
 export const runsPatch = (runs) => ({ tiles: runs.map(([x, y, w]) => ({ x, y, w, h: 1 })) });
+// Whether a stranger's project's cells, the edit layer's or every layer's in the stack form, are no more than a document
+// holds and all on some grid.
+export const cellsFit = ({ editCells, layerParts }) => {
+  const all = [editCells, ...(layerParts?.values() ?? []).map((part) => part.editCells)];
+  return all.reduce((sum, cells) => sum + cells.size, 0) <= MAX_CELLS && all.every((cells) => cellsFitAnyGrid([...cells]));
+};
 // Every layer above the bottom, id to kind: the layers a change in a room may name (wire.js readChange).
 export const stackKinds = (project) => new Map(project.layers.slice(1).map(({ id, kind }) => [id, kind]));
 // runs (changes.js) written on the paint of the layer each names, nothing refreshed: the layer in use's is the drawing's

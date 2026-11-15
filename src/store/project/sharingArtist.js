@@ -2,10 +2,9 @@
 import { parseKey } from '@/document/editCells.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { REFUSED_WORDS } from '@/social/messages.js';
-import { MAX_CELLS } from '@/lib/Cells.js';
-import { cellsFitAnyGrid } from '@/social/wire.js';
 import { toast } from '@/composables/useToast.js';
 import { settingsFromStranger } from '@/store/settings.js';
+import { cellsFit } from '@/store/project/shared.js';
 import { ASK_AGAIN_MS, HELD_FLOAT_MS, askForProject, flushSoon, readsAsHeard, stopAsking } from '@/store/project/sharing.js';
 
 export const sharingArtistActions = {
@@ -168,8 +167,8 @@ export const sharingArtistActions = {
   // so undo and the selection stay. A new epoch means the positions don't mean what they did, so both go.
   // documentId: what a reload had open as this art, so it's the one document in the autosave list.
   async takeProject(parts, { n, epoch = null, took = 0, filename, send, me, documentId }) {
-    const cells = [...parts.editCells], settings = settingsFromStranger(parts.settings);
-    if (!settings || cells.length > MAX_CELLS || !cellsFitAnyGrid(cells)) return false;
+    const settings = settingsFromStranger(parts.settings);
+    if (!settings || !cellsFit(parts)) return false;
     const opening = this._sharing;
     if (opening) opening.opening = true; // no check says anything while this opens
     try {

@@ -5,7 +5,6 @@ import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore, MAX_WATCHERS } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { signalWords } from '@/social/lobby';
-import { useLayerName } from '@/composables/useLayerName';
 import LobbyPicture from './LobbyPicture.vue';
 
 // Set up your room, in a box over everything: the room's settings and, for a room listed in the lobby, its lobby card
@@ -19,10 +18,8 @@ const { t } = useI18n();
 const hasArt = computed(() => !!project.image && project.cells.length > 0);
 const noArt = computed(() => t('social.start.noArt'));
 const roomsAreStill = computed(() => t('tabs.animateInRoom'));
-const layerName = useLayerName();
-const tooManyLayers = computed(() => t('social.start.tooManyLayers', { name: layerName('base') }));
 const nameFirst = computed(() => (DESKTOP && !social.desktopName ? t('social.desktop.nameFirst') : undefined));   // a pass needs a name
-const cannotGoLive = computed(() => project.hasFrames ? roomsAreStill.value : !project.fitsRoom ? tooManyLayers.value : nameFirst.value);   // why Go live is off, when it's the document (or, on desktop, no name)
+const cannotGoLive = computed(() => project.hasFrames ? roomsAreStill.value : nameFirst.value);   // why Go live is off, when it's the document (or, on desktop, no name)
 
 const draft = room.startDraft;   // kept in the store while you're on another tab
 const listed = computed(() => !DESKTOP && draft.isPublic);   // in the lobby, with its card and picture

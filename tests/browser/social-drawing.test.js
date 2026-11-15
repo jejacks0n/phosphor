@@ -238,6 +238,24 @@ test('two artists paint and type on two layers at once, and every page matches',
   }
 });
 
+test('an artist joining a four-layer room gets every layer, with the host\'s ids, names, order and character settings', async () => {
+  const room = await hosting();
+  const vector = room.project.addLayer('vector', 'edit'), above = room.project.addLayer('cells', vector);
+  room.project.renameLayer(above, 'Lettering');
+  room.project.setLayerChars(above, { chars: '#' });
+  room.project.commitLayerChars();
+  room.project.typeAt(3, 3, 'Q', { fg: '#00ff00' });
+  room.project.useLayer(above);
+  room.project.typeAt(4, 4, 'R', { fg: '#00ff00' });
+  dab(room.project, 6, 6);
+  room.project.commitEdit();
+  const ann = await artist(room, 'ann');
+  const shape = ({ id, kind, name, chars }) => ({ id, kind, name, chars });
+  await expect.poll(() => ann.project.layers.map(shape), PATIENT).toEqual(room.project.layers.map(shape));
+  expect(ann.project.layers.map((l) => l.id)).toEqual(['base', 'edit', vector, above]);
+  await allMatch(room, ann);
+});
+
 test('a change from an artist shows on the host\'s cells, so what watchers are sent follows', async () => {
   const room = await hosting();
   room.project.render();
@@ -487,6 +505,40 @@ test('a project from a host is a stranger\'s: what doesn\'t fit opens nothing, a
   expect(person.project.baseScale).toBeGreaterThan(0);
   expect(person.project._sharing.role).toBe('artist');   // kept past the grid, for when it grows back
   expect(person.project.editCells.get('299,4999')).toEqual({ char: 'p' });
+});
+
+test('a project that comes again leaves me on the layer I had picked, and the topmost cells layer if it\'s gone', async () => {
+  const room = await hosting();
+  const above = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layerById(above)?.kind, PATIENT).toBe('cells');
+  setActivePinia(ann.pinia);
+  const workspace = useWorkspaceStore();
+  ann.project.useLayer('edit');
+  workspace.pickLayer('edit');
+  const w = room.host.open().find((other) => other.peer === 'ann');
+  await room.host.sendProject(w);
+  await expect.poll(() => ann.project._sharing.pending.n === room.project._ledger.n, PATIENT).toBe(true);
+  expect(ann.project.editId).toBe('edit');
+  expect(workspace.pickedLayer).toBe('edit');
+  workspace.pickedLayer = 'gone';
+  await room.host.sendProject(w);
+  await expect.poll(() => ann.project.editId, PATIENT).toBe(above);
+  expect(workspace.pickedLayer).toBe(above);
+});
+
+test('a stack-form project from a stranger with a layer\'s cells off any grid opens nothing', async () => {
+  const room = await hosting();
+  room.project.addLayer('cells', 'edit');
+  const person = await join(room, 'ann');
+  const own = await createOwnDocument(person);
+  const { stack, settings, baseRecords } = await room.project.projectParts();
+  const layerParts = new Map(stack.slice(1).map((layer) => [layer.id, { editCells: new Map(), paintBuffer: null }]));
+  const parts = { settings: { ...settings }, imageBuffer: room.project.imageBuffer, paintBuffer: null, baseBuffer: null, editCells: new Map(), baseRecords, erasedCells: [], migrated: false, stack, layerParts };
+  layerParts.get(stack[2].id).editCells = new Map([['99999,0', { char: 'x' }]]);
+  expect(await person.project.takeProject(parts, { n: 1, filename: 'x', send: () => {}, me: 'ann' })).toBe(false);
+  expect(person.project.documentId).toBe(own);
+  expect(person.project._sharing).toBe(null);
 });
 
 test('every way of opening a document stays refused for an artist once the project\'s in', async () => {

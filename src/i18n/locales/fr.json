@@ -1293,7 +1293,6 @@
     "start": {
       "heading": "Configurer votre salle",
       "noArt": "Ouvrez une image ou créez un canevas d'abord pour avoir un dessin à partager.",
-      "tooManyLayers": "Les salles partagées prennent actuellement en charge au plus {name}, un calque vectoriel et un calque de dessin, tous partageant les mêmes réglages de caractères. Fusionnez ou supprimez les calques superflus pour créer une salle.",
       "roomName": "Nom de la salle",
       "roomNamePatternTitle": "Utilisez au moins un caractère qui n'est pas un espace",
       "welcomeMessage": "Message de bienvenue",

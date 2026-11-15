@@ -3,9 +3,9 @@ import { markRaw } from 'vue';
 import { deserializeBase } from '@/document/baseRecords.js';
 import { Tail } from '@/document/changes.js';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger.js';
-import { MAX_CELLS } from '@/lib/Cells.js';
 import { MOST_CHANGE_BYTES, MOST_PROJECT_BYTES, cellsFitAnyGrid, packProject, packValue, unpackValue } from '@/social/wire.js';
 import { settingsFromStranger } from '@/store/settings.js';
+import { cellsFit } from '@/store/project/shared.js';
 import { artistSharing, boundsOf, readsAsHeard, stopAsking } from '@/store/project/sharing.js';
 
 export const handoverActions = {
@@ -175,8 +175,8 @@ export const handoverActions = {
       this.replayOnPicture(tail);
       return true;
     }
-    const cells = [...parts.editCells], settings = settingsFromStranger(parts.settings);
-    if (!settings || cells.length > MAX_CELLS || !cellsFitAnyGrid(cells)) return false;
+    const settings = settingsFromStranger(parts.settings);
+    if (!settings || !cellsFit(parts)) return false;
     await this.openFromHost(
       { ...parts, settings, erasedCells: [], migrated: false },
       { filename: this.filename, fileExt: this.fileExt, documentId: this.documentId, fileId: this.fileId, sameDocument: true },

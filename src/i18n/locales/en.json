@@ -1293,7 +1293,6 @@
     "start": {
       "heading": "Set up your room",
       "noArt": "Open an image or create a canvas first so you have artwork to share.",
-      "tooManyLayers": "Shared rooms currently support at most {name}, one vector layer, and one drawing layer, all sharing the same character settings. Merge or delete extra layers to start a room.",
       "roomName": "Room name",
       "roomNamePatternTitle": "Use at least one character that isn't a space",
       "welcomeMessage": "Welcome message",

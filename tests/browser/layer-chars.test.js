@@ -1,6 +1,7 @@
 // Each layer's own character settings (charsOf, setLayerChars, layerParams): an old document gives every layer the
 // document's, a new layer copies the picked one's, and the left column (ControlPanel.vue) shows the picked layer's under
 // its name, with the picture's settings only while the picture's layer is picked.
+import { legacySlots } from '@/document/layerInfo.js';
 import { test, expect, afterEach, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
@@ -208,11 +209,11 @@ test('Choose characters edits the picked layer', async () => {
 
 test('a layer\'s own settings keep the room off', async () => {
   const { project } = await blank();
-  expect(project.fitsRoom).toBe(true);
+  expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
   project.setLayerChars('edit', { seed: 'another' });
-  expect(project.fitsRoom).toBe(false);
+  expect(!!legacySlots(project.layers, project.baseChars)).toBe(false);
   project.setLayerChars('edit', { seed: project.seed });
-  expect(project.fitsRoom).toBe(true);
+  expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
 });
 
 test('Flatten gives every layer the base\'s settings as they come out, and undo gives each its own back', async () => {
@@ -238,7 +239,7 @@ test('in a room a layer\'s own settings are refused, and the base\'s, the host\'
     expect(project.charsOf('edit').chars).toBe('#');
     project.applySettings({ seed: 'heard' }); // as an artist hears the host's
     expect(project.charsOf('edit').seed).toBe('heard');
-    expect(project.fitsRoom).toBe(true);
+    expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
   } finally {
     project.stopSharing();
   }
@@ -258,7 +259,7 @@ test('in a room the Characters section edits Base, whichever layer is picked, an
     await nextTick();
     expect(project.charChoice).toBe('best');
     expect(project.charsOf('edit').charChoice).toBe('best');
-    expect(project.fitsRoom).toBe(true);
+    expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
     expect(select.value).toBe('best');
   } finally {
     project.stopSharing();

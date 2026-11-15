@@ -2,6 +2,7 @@
 // layer the document's, a layer's own changes only that layer as one undo step, an upper vector layer dithers its
 // shapes as the lower group does (Ordered by place, Floyd–Steinberg held still through an edit and worked out whole at
 // its end), and the left column (ControlPanel.vue) shows Dither in the picked layer's Characters section.
+import { legacySlots } from '@/document/layerInfo.js';
 import { test, expect, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -213,7 +214,7 @@ test('a document whose layers all have the base\'s Dither saves in the old form;
   project.setLayerChars(vector, { dither: 70, ditherStyle: 'bayer' });
   project.commitLayerChars();
   await settle(project);
-  expect(project.fitsRoom).toBe(false);
+  expect(!!legacySlots(project.layers, project.baseChars)).toBe(false);
   const shown = cellsKey(project), blob = await saved(project);
   expect(await magic(blob)).toBe('PHOSPHR2');
   await project.openParts(await readProject(blob), { filename: 'own' });
@@ -232,7 +233,7 @@ test('Base\'s Dither changed keeps a cells layer, which has nothing to dither, i
   await settle(project);
   expect(project.charsOf('edit').dither).toBe(30); // it holds none: the base's
   expect(project.lowerGroup.cells).toBe('edit');
-  expect(project.fitsRoom).toBe(true);
+  expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
   expect(await magic(await saved(project))).toBe('PHOSPHOR');
 });
 
@@ -269,7 +270,7 @@ test('in a room the vector layer a host adds with Layer 1 picked takes Base\'s D
     project.setLayerChars('base', { dither: 60 });
     project.commitLayerChars();
     project.addLayer('vector', 'base'); // the room's missing vector layer
-    expect(project.fitsRoom).toBe(true);
+    expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
     expect(project.lowerGroup.upper).toEqual([]);
   } finally {
     project.stopSharing();
@@ -290,7 +291,7 @@ test('going live drops a layer\'s own Dither steps, so undo in the room never br
   project.setLayerChars(vector, { dither: 20 });
   project.commitLayerChars();
   await settle(project);
-  expect(project.fitsRoom).toBe(true);
+  expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
   try {
     project.undo();
@@ -298,7 +299,7 @@ test('going live drops a layer\'s own Dither steps, so undo in the room never br
     expect(dithers(project, vector).dither).toBe(0);
     for (let i = 0; i < 4; i++) project.undo();
     expect(dithers(project, vector).dither).toBe(project.dither);
-    expect(project.fitsRoom).toBe(true);
+    expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
   } finally {
     project.stopSharing();
   }
