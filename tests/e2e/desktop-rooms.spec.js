@@ -1,8 +1,8 @@
 // Rooms in the desktop app, end to end: two or three real apps on this computer, each with its own room service on
 // its own port, joining each other by address (127.0.0.1:<port>) with no server anywhere.
-import { test, expect, launchApp, closeAll, hostRoom, joinRoom, letIn, live, role } from './desktop-support.js';
+import { test, expect, launchApp, closeAll, hostRoom, joinRoom, letIn, live, role, inRoom, drawing, WAITING } from './desktop-support.js';
 import { autosaved, chars, editAt, settled, store, tab } from './support.js';
-import { chat, fromMenu, invitation, mayDraw } from './social-support.js';
+import { chat, fromMenu, mayDraw } from './social-support.js';
 
 let apps = [];
 test.afterEach(async () => {
@@ -15,7 +15,6 @@ const launch = async (options) => {
   return launched;
 };
 
-const WAITING = 'Waiting for the host to let you in.';
 const hostCells = (page) => store(page, 'project', (p) => p.cells.map((c) => c.char + c.fg.hex + c.bg.hex).join());
 const roomCells = (page) => store(page, 'room', (r) => r.art?.cells.map((c) => c.char + c.fg.hex + c.bg.hex).join() ?? null);
 const sameArt = async (watcher, host) => expect.poll(() => roomCells(watcher), { timeout: 10_000 }).toBe(await hostCells(host));
@@ -25,23 +24,6 @@ async function typeAt(page, col, row, text) {
   await editAt(page, col, row);
   await page.keyboard.type(text);
   await page.keyboard.press('Escape');
-}
-
-// `guest` let in to ann's room, watching it.
-async function inRoom(ann, guest, address) {
-  await joinRoom(guest, address);
-  await expect(guest.page.getByText(WAITING)).toBeVisible();
-  await letIn(ann.page, guest.name);
-  await live(guest.page);
-  await expect.poll(() => store(guest.page, 'room', (r) => !!r.art), { timeout: 20_000 }).toBe(true);
-}
-
-// `guest`, watching, asked to draw by the host and saying yes: the room's art open on ANSI.
-async function drawing(host, guest) {
-  await fromMenu(host.page, 'Make artist', guest.name);
-  await invitation(guest.page).getByRole('button', { name: 'Accept' }).click();
-  await mayDraw(guest.page).toBe(true);
-  await settled(guest.page);
 }
 
 async function makeHost(page, name) {

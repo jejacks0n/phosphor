@@ -1,5 +1,5 @@
-// The page's one way into the main process (desktop/main.js), as window.phosphorDesktop: the room service, quitting,
-// the menu bar (its words and state out, with the window's drawing, and its commands back), files opened and saved, and the releases to update to. Sandboxed, so CommonJS, with only Electron's renderer modules.
+// The page's one way into the main process (desktop/main.js), as window.phosphorDesktop: the room service, quitting and
+// closing (whether there's unsaved work), the menu bar (its words and state out, with the window's drawing, and its commands back), files opened and saved, and the releases to update to. Sandboxed, so CommonJS, with only Electron's renderer modules.
 const { contextBridge, ipcRenderer } = require('electron');
 
 let onQuit = null;
@@ -11,6 +11,16 @@ ipcRenderer.on('phosphor:quit', () => {
   } catch {
     ipcRenderer.send('phosphor:quit-ready');
   }
+});
+
+let onUnsaved = null;
+// A close or quit asks whether there's unsaved work. No answer of the page's own (or one that throws) is none.
+ipcRenderer.on('phosphor:unsaved', (_event, id) => {
+  let unsaved = false;
+  try {
+    unsaved = !!onUnsaved?.();
+  } catch { /* none */ }
+  ipcRenderer.send('phosphor:unsaved-answer', id, unsaved);
 });
 
 let onMenu = null;
@@ -28,6 +38,7 @@ contextBridge.exposeInMainWorld('phosphorDesktop', {
   stopService: () => ipcRenderer.invoke('phosphor:stop-service'),
   onQuit: (cb) => { onQuit = cb; },
   quitReady: () => ipcRenderer.send('phosphor:quit-ready'),
+  onUnsaved: (cb) => { onUnsaved = cb; },
   // The menu's words and state, and the window's drawing: its name (the window's title) and its project's path.
   setMenu: (labels, state, { title, file } = {}) => ipcRenderer.invoke('phosphor:set-menu', { labels, state, title, file }),
   onMenu: (cb) => { onMenu = cb; },

@@ -1817,6 +1817,11 @@
     "showAll": "Show All",
     "openableFiles": "Pictures, projects and art files",
     "projectFiles": "Phosphor projects",
+    "leaveQuit": "Leave Phosphor?",
+    "leaveClose": "Close this window?",
+    "leaveDetail": "Changes you made may not be saved.",
+    "leave": "Leave",
+    "stay": "Stay",
     "addressCopied": "Room address copied.",
     "missing": "{name} isn't there anymore.",
     "openFailed": "That file couldn't be opened."

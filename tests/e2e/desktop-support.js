@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { _electron } from 'playwright';
 import { test, expect } from '@playwright/test';
 import { fixture, imageInput, tab, settled, store } from './support.js';
-import { openLobby } from './social-support.js';
+import { fromMenu, invitation, mayDraw, openLobby } from './social-support.js';
 export { test, expect };
 
 // A launched app: { app, page, name, port, close }, close also removing its user data folder. Anything the page's
@@ -105,6 +105,25 @@ export async function joinRoom(launched, address, { password } = {}) {
 // The host lets `name` in, from the chat panel's asks.
 export const letIn = (host, name) => host.getByRole('button', { name: `Let ${name} in` }).first().click();
 
+export const WAITING = 'Waiting for the host to let you in.';
+
+// `guest` let in to ann's room, watching it.
+export async function inRoom(ann, guest, address) {
+  await joinRoom(guest, address);
+  await expect(guest.page.getByText(WAITING)).toBeVisible();
+  await letIn(ann.page, guest.name);
+  await live(guest.page);
+  await expect.poll(() => store(guest.page, 'room', (r) => !!r.art), { timeout: 20_000 }).toBe(true);
+}
+
+// `guest`, watching, asked to draw by the host and saying yes: the room's art open on ANSI.
+export async function drawing(host, guest) {
+  await fromMenu(host.page, 'Make artist', guest.name);
+  await invitation(guest.page).getByRole('button', { name: 'Accept' }).click();
+  await mayDraw(guest.page).toBe(true);
+  await settled(guest.page);
+}
+
 export const live = (page) => expect.poll(() => store(page, 'room', (r) => r.status), { timeout: 20_000, intervals: [100] }).toBe('live');
 export const role = (page) => store(page, 'room', (r) => r.role);
 
@@ -127,6 +146,8 @@ export const openFromSystem = (app, files) => app.evaluate(({ app }, { files, cw
 export const windowId = (app, page) => app.browserWindow(page).then((win) => win.evaluate((w) => w.webContents.id));
 export const windowTitle = (app, page) => app.browserWindow(page).then((win) => win.evaluate((w) => w.getTitle()));
 export const focusWindow = (app, page) => app.browserWindow(page).then((win) => win.evaluate((w) => w.focus()));
+// Closed as its close button closes it (the window's close event, which can ask first).
+export const closeWindow = (app, page) => app.browserWindow(page).then((win) => win.evaluate((w) => w.close()));
 export const focusedId = (app) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getFocusedWindow()?.webContents.id ?? null);
 // A menu item's enabled, by its labels down the menus.
 export const menuEnabled = (app, ...labels) => app.evaluate(({ Menu }, labels) => {

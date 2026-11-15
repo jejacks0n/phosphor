@@ -1,11 +1,12 @@
 // The desktop app's main process: windows on the desktop build (dist-desktop/, served from app://phosphor/), each its
 // own page, and the room service, which a page starts, changes, asks about and stops through the preload
-// (window.phosphorDesktop). The service outlives a reload of the page. A quit asks every window's page first, so a host
-// can hand the room over, and goes on when they all say they're ready or after 20 s. Closing a window closes it alone;
-// the last one quits the app, except on macOS. The menu bar (menu.js) is in the page's words and follows the focused
-// window, and the files it opens and saves are read and written here (files.js): a page writes only to a file someone
-// picked, opened or saved this session or before (Open Recent). A file opens in a window of its own when the window
-// it's for has a drawing (windows.js), and a project already open in a window brings that window forward.
+// (window.phosphorDesktop). The service outlives a reload of the page. A quit asks every window with unsaved work
+// whether to leave, then tells every page, so a host can hand the room over, and goes on when they all say they're
+// ready or after 20 s; Stay in any window calls it off with nothing touched. Closing a window does the same for that
+// window alone; the last one quits the app, except on macOS. The menu bar (menu.js) is in the page's words and follows
+// the focused window, and the files it opens and saves are read and written here (files.js): a page writes only to a
+// file someone picked, opened or saved this session or before (Open Recent). A file opens in a window of its own when
+// the window it's for has a drawing (windows.js), and a project already open in a window brings that window forward.
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -17,7 +18,7 @@ import { createRoomService } from './roomService.js';
 import { reachableAddresses } from './addresses.js';
 import { OPENABLE, filesIn, isProject, recentFiles, writeWhole } from './files.js';
 import { REPO, menuTemplate } from './menu.js';
-import { cascade, fileTarget } from './windows.js';
+import { cascade, fileTarget, leave } from './windows.js';
 
 const ORIGIN = 'app://phosphor';
 const DIST = fileURLToPath(new URL('../dist-desktop/', import.meta.url));
@@ -36,9 +37,8 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: t
 
 const secret = randomBytes(32).toString('base64url');   // the host's own window proves itself to the service with it
 let service = null;   // the room service, as a promise
-let quitReady = false;
-let quitTimer = null;
-let quitWaiting = new Set();   // the windows a quit waits for, by id
+let quitReady = false;   // every window has said it may go: the quit goes on without asking again
+let quitting = null;   // the quit's asking and handing over, while it lasts
 let labels = null;   // the menu's words, from a page: no menu of the app's own until one says them
 const IDLE = { hasImage: false, canChange: true, inRoom: false, hosting: false };
 let recent = null;   // the recently opened files (files.js), once the user data folder is known
@@ -47,7 +47,10 @@ const launchFiles = [];   // files to open (double-clicked, on the command line)
 
 // The open windows by their page's webContents id: { id, win, menuState, title, file (its project's path, or null),
 // filesReady (its page takes files: it says so once loaded, and a reload starts over), pending (files and commands
-// for it until then), claimed (a file is on its way to it, until its page says it has a drawing) }.
+// for it until then), claimed (a file is on its way to it, until its page says it has a drawing), leaving (a quit or
+// its close has asked and handed over: it goes without asking again), closing (its close asking, while it does),
+// handingOver (its page told of the quit, until it says it's ready or the window closes), ready (that promise's
+// resolve) }.
 const windows = new Map();
 const focusOrder = [];   // the windows' ids, the last focused last
 const entryOf = (event) => windows.get(event.sender.id);
@@ -108,17 +111,45 @@ const handle = (channel, fn) => ipcMain.handle(channel, (event, ...args) => {
   return fn(entry, ...args);
 });
 
-const finishQuit = () => {
-  quitReady = true;
-  clearTimeout(quitTimer);
-  app.quit();
-};
-// A quit the person called off (Stay): the next one asks the page again.
-const quitCalledOff = () => {
-  quitReady = false;
-  clearTimeout(quitTimer);
-  quitTimer = null;
-};
+// Whether a window's page has unsaved work: it answers phosphor:unsaved with the request's id. A window gone has none.
+let asking = 0;
+const unsavedAsked = new Map();   // request id -> { entry, resolve }
+function unsaved(entry) {
+  if (entry.win.isDestroyed()) return false;
+  return new Promise((resolve) => {
+    const id = ++asking;
+    unsavedAsked.set(id, { entry, resolve });
+    send(entry, 'phosphor:unsaved', id);
+  });
+}
+
+// Leave or Stay, for a window with unsaved work (true to leave), in the page's words once it has said them. A
+// window gone has gone.
+function ask(entry, question) {
+  if (entry.win.isDestroyed()) return true;
+  bringForward(entry);
+  return dialog.showMessageBoxSync(entry.win, {
+    type: 'question',
+    buttons: [labels?.leave ?? 'Leave', labels?.stay ?? 'Stay'],
+    defaultId: 1,
+    cancelId: 1,
+    message: question,
+    detail: labels?.leaveDetail ?? 'Changes you made may not be saved.',
+  }) === 0;
+}
+const leaveQuit = () => labels?.leaveQuit ?? 'Leave Phosphor?';
+const leaveClose = () => labels?.leaveClose ?? 'Close this window?';
+
+// A window's page told it's going (a host hands its room on), until it says it's ready or the window closes. Told
+// once: after that the window always goes.
+const handOver = (entry) => entry.handingOver ??= new Promise((resolve) => {
+  if (entry.win.isDestroyed()) return resolve();
+  entry.ready = resolve;
+  send(entry, 'phosphor:quit');
+});
+
+// The windows' question and hand-over (windows.js), within the quit's limit: true when they may go.
+const leaving = (entries, question) => leave(entries, { unsaved, ask: (entry) => ask(entry, question()), handOver, withinMs: QUIT_WITHIN_MS });
 
 // Links out of the app open in the system browser; nothing else is opened.
 const openOutside = (url) => {
@@ -305,19 +336,22 @@ function openWindow({ files = [] } = {}) {
   });
   // The title is the drawing's name, which the page says with the menu, not its own <title>.
   win.on('page-title-updated', (event) => event.preventDefault());
-  // The page asks before it goes with unsaved changes (or a room it hosts), as a browser does: Electron shows nothing
-  // for that by itself, so the question is asked here. Plain English: the main process has no app strings.
-  win.webContents.on('will-prevent-unload', (event) => {
-    const choice = dialog.showMessageBoxSync(win, {
-      type: 'question',
-      buttons: ['Leave', 'Stay'],
-      defaultId: 1,
-      cancelId: 1,
-      message: 'Leave Phosphor?',
-      detail: 'Changes you made may not be saved.',
+  // Closing the window asks first when it has unsaved work, and its page hands its room on, as a quit does. A window a
+  // quit or its own close let go closes.
+  win.on('close', (event) => {
+    if (entry.leaving) return;
+    event.preventDefault();
+    entry.closing ??= leaving([entry], leaveClose).then((going) => {
+      entry.closing = null;
+      if (!going || win.isDestroyed()) return;
+      entry.leaving = true;
+      win.close();
     });
-    if (choice === 0) event.preventDefault();   // leave: the page goes after all
-    else quitCalledOff();
+  });
+  // The page asks before it goes with unsaved changes (or a room it hosts), as a browser does: Electron shows nothing
+  // for that by itself. A window leaving was asked already; a reload is asked here.
+  win.webContents.on('will-prevent-unload', (event) => {
+    if (entry.leaving || ask(entry, leaveQuit())) event.preventDefault();   // the page goes after all
   });
   // A reload (not the router's own moves) starts a page that hasn't said it takes files yet. A file it was sent is gone
   // with the page, so it's no longer on its way; one still waiting to be sent is.
@@ -334,7 +368,13 @@ function openWindow({ files = [] } = {}) {
   win.on('closed', () => {
     windows.delete(id);
     focusOrder.splice(focusOrder.indexOf(id), 1);
-    if (quitTimer && quitWaiting.delete(id) && !quitWaiting.size) finishQuit();
+    entry.ready?.();   // a window gone is ready
+    for (const [request, { entry: asked, resolve }] of unsavedAsked) {
+      if (asked === entry) {
+        unsavedAsked.delete(request);
+        resolve(false);
+      }
+    }
     buildMenu();
   });
   win.loadURL(`${ORIGIN}/`);
@@ -363,13 +403,18 @@ else {
     if (process.platform !== 'darwin') app.quit();
   });
 
+  // A quit asks every window first, one at a time, and Stay in any calls it off; then every page hands over. One quit
+  // runs at a time.
   app.on('before-quit', (event) => {
     if (quitReady || !windows.size) return;
     event.preventDefault();
-    if (quitTimer) return;
-    quitTimer = setTimeout(finishQuit, QUIT_WITHIN_MS);
-    quitWaiting = new Set(windows.keys());
-    for (const entry of windows.values()) send(entry, 'phosphor:quit');
+    quitting ??= leaving([...windows.values()], leaveQuit).then((going) => {
+      quitting = null;
+      if (!going) return;
+      for (const entry of windows.values()) entry.leaving = true;
+      quitReady = true;
+      app.quit();
+    });
   });
 
   handle('phosphor:start-service', (_entry, options) => startService(options));
@@ -388,11 +433,16 @@ else {
       else send(entry, 'phosphor:menu', job.command);
     }
   });
-  // The quit goes on once every window has said it's ready.
+  // A window's page has handed over: it's ready to go.
   ipcMain.on('phosphor:quit-ready', (event) => {
-    if (!fromApp(event) || !quitTimer) return;
-    quitWaiting.delete(event.sender.id);
-    if (!quitWaiting.size) finishQuit();
+    if (fromApp(event)) entryOf(event)?.ready?.();
+  });
+  // Whether a window's page has unsaved work, answered to the request it was sent.
+  ipcMain.on('phosphor:unsaved-answer', (event, id, unsavedWork) => {
+    const asked = unsavedAsked.get(id);
+    if (!fromApp(event) || asked?.entry !== entryOf(event)) return;
+    unsavedAsked.delete(id);
+    asked.resolve(unsavedWork === true);
   });
 
   app.whenReady().then(() => {

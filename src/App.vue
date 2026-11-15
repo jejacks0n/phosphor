@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAutosave } from '@/composables/useAutosave';
 import { desktopQuery } from '@/social/config';
+import { desktop } from '@/social/desktop';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -28,6 +29,7 @@ import VersionsDialog from '@/components/VersionsDialog.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import AppToast from '@/components/AppToast.vue';
 
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const room = useRoomStore();
@@ -49,12 +51,18 @@ const { ready, recent, openRecent } = autosave;
 const drawing = useDrawingStore();
 drawing.autosavedBy(autosave.flush);
 
-// Leaving with unsaved changes asks first, unless they're safe in the browser and the art has been
-// saved to a file at least once. A room you host always asks.
+// Unsaved work: changes that aren't safe in the browser, or whose art has never been saved to a file.
+function unsavedWork() {
+  project.commitPending(); // text typed a moment ago counts
+  return !!(project.image && project.isDirty && !(project.savedToFile && autosave.current.value));
+}
+// The desktop app asks each window before it closes or quits (a room hosted there is handed on after, not asked about).
+if (DESKTOP) desktop.onUnsaved(unsavedWork);
+
+// Leaving with unsaved work asks first. A room you host always asks.
 function onBeforeUnload(e) {
   if (room.goingBack) return; // what's open is written, or it wouldn't be going
-  project.commitPending(); // text typed a moment ago counts
-  if ((project.image && project.isDirty && !(project.savedToFile && autosave.current.value)) || room.role === 'host') {
+  if (unsavedWork() || room.role === 'host') {
     e.preventDefault();
     e.returnValue = '';
   }
