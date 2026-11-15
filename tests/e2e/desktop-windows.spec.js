@@ -3,7 +3,7 @@
 // forward, each window's title, the menu following the focused window, closing a window and quitting with several (each
 // asks first with unsaved work, and a host's room is handed on), the last window closing, and a room per window: each
 // its own service on its own port, a second window joining the first's room as someone else, and a window's service
-// going with it.
+// going with it, and a room answering while another window's question is up.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -229,15 +229,18 @@ async function unsavedWork(page) {
 }
 
 // The Leave/Stay box stood in for: it answers each question in turn from `choices` (0 Leave, 1 Stay), and keeps what
-// each asked, as [the window's id, the question] (and says it in the main process's console, for once it's gone).
+// each asked, as [the window's id, the question] (and says it in the main process's console, for once it's gone). A
+// choice of null holds the box open until release(app, choice) answers it.
 const answer = (app, ...choices) => app.evaluate(({ dialog }, choices) => {
   globalThis.asked = [];
-  dialog.showMessageBoxSync = (win, { message }) => {
+  dialog.showMessageBox = async (win, { message }) => {
     globalThis.asked.push([win.webContents.id, message]);
     console.log(`asked: ${message}`);
-    return choices[Math.min(globalThis.asked.length, choices.length) - 1];
+    const response = choices[Math.min(globalThis.asked.length, choices.length) - 1];
+    return { response: response ?? await new Promise((resolve) => { globalThis.release = resolve; }) };
   };
 }, choices);
+const release = (app, choice) => app.evaluate((_electron, choice) => globalThis.release(choice), choice);
 const asked = (app) => app.evaluate(() => globalThis.asked);
 
 test('closing a window with unsaved work asks Close this window?: Stay keeps it, Leave closes it alone', async () => {
@@ -379,4 +382,23 @@ test('a window’s room service goes with the window', async () => {
   expect(await roomAt(page, 31401)).toMatchObject({ name: 'night shift' });
   expect(await role(page)).toBe('host');
   await live(page);
+});
+
+test('a room keeps answering while another window asks Close this window?', async () => {
+  launched = await launchApp();
+  const { app, page } = launched;
+  await hostRoom(launched);
+  const second = await newWindow(app);
+  await unsavedWork(second);
+  const id = await windowId(app, second);
+
+  await answer(app, null);   // the box stays up
+  await closeWindow(app, second);
+  await expect.poll(() => asked(app)).toEqual([[id, 'Close this window?']]);
+  expect(await roomAt(page, 31401)).toMatchObject({ type: 'info', name: 'night shift' });
+  await release(app, 1);   // Stay
+  await expect.poll(() => store(second, 'project', (p) => p.isDirty)).toBe(true);
+  expect(windowsOf(app)).toHaveLength(2);
+  await live(page);
+  await answer(app, 0);   // the app closes as the test ends
 });

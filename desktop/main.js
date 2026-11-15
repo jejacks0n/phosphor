@@ -113,11 +113,12 @@ const handle = (channel, fn) => ipcMain.handle(channel, (event, ...args) => {
   return fn(entry, ...args);
 });
 
-// Whether a window's page has unsaved work: it answers phosphor:unsaved with the request's id. A window gone has none.
+// Whether a window's page has unsaved work: it answers phosphor:unsaved with the request's id. A window gone has none,
+// nor does one handing over, which has said Leave already.
 let asking = 0;
 const unsavedAsked = new Map();   // request id -> { entry, resolve }
 function unsaved(entry) {
-  if (entry.win.isDestroyed()) return false;
+  if (entry.win.isDestroyed() || entry.handingOver) return false;
   return new Promise((resolve) => {
     const id = ++asking;
     unsavedAsked.set(id, { entry, resolve });
@@ -126,18 +127,25 @@ function unsaved(entry) {
 }
 
 // Leave or Stay, for a window with unsaved work (true to leave), in the page's words once it has said them. A
-// window gone has gone.
-function ask(entry, question) {
+// window gone has gone. The box doesn't hold up the main process, where every window's room service answers; only a
+// reload's, which must be answered at once, does (askNow).
+const leaveBox = (question) => ({
+  type: 'question',
+  buttons: [labels?.leave ?? 'Leave', labels?.stay ?? 'Stay'],
+  defaultId: 1,
+  cancelId: 1,
+  message: question,
+  detail: labels?.leaveDetail ?? 'Changes you made may not be saved.',
+});
+async function ask(entry, question) {
   if (entry.win.isDestroyed()) return true;
   bringForward(entry);
-  return dialog.showMessageBoxSync(entry.win, {
-    type: 'question',
-    buttons: [labels?.leave ?? 'Leave', labels?.stay ?? 'Stay'],
-    defaultId: 1,
-    cancelId: 1,
-    message: question,
-    detail: labels?.leaveDetail ?? 'Changes you made may not be saved.',
-  }) === 0;
+  return (await dialog.showMessageBox(entry.win, leaveBox(question))).response === 0;
+}
+function askNow(entry, question) {
+  if (entry.win.isDestroyed()) return true;
+  bringForward(entry);
+  return dialog.showMessageBoxSync(entry.win, leaveBox(question)) === 0;
 }
 const leaveQuit = () => labels?.leaveQuit ?? 'Leave Phosphor?';
 const leaveClose = () => labels?.leaveClose ?? 'Close this window?';
@@ -362,7 +370,7 @@ function openWindow({ files = [] } = {}) {
   // The page asks before it goes with unsaved changes (or a room it hosts), as a browser does: Electron shows nothing
   // for that by itself. A window leaving was asked already; a reload is asked here.
   win.webContents.on('will-prevent-unload', (event) => {
-    if (entry.leaving || ask(entry, leaveQuit())) event.preventDefault();   // the page goes after all
+    if (entry.leaving || askNow(entry, leaveQuit())) event.preventDefault();   // the page goes after all
   });
   // A reload (not the router's own moves) starts a page that hasn't said it takes files yet. A file it was sent is gone
   // with the page, so it's no longer on its way; one still waiting to be sent is.
@@ -420,10 +428,11 @@ else {
   app.on('before-quit', (event) => {
     if (quitReady || !windows.size) return;
     event.preventDefault();
-    quitting ??= leaving([...windows.values()], leaveQuit).then((going) => {
+    const asked = [...windows.values()];   // a window opened meanwhile is asked as it closes
+    quitting ??= leaving(asked, leaveQuit).then((going) => {
       quitting = null;
       if (!going) return;
-      for (const entry of windows.values()) entry.leaving = true;
+      for (const entry of asked) entry.leaving = true;
       quitReady = true;
       app.quit();
     });
