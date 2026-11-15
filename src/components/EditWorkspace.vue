@@ -98,6 +98,9 @@ async function handleFileSelected(file) {
   // An art or SVG file over a drawing asks whether to add it or open it (artDrop), even in a room: adding is a
   // paste. An SVG is never a picture: it's shapes.
   if (project.image && (isArtFile(file.name) || isSvgFile(file.name))) return (workspace.artDrop = { file, at: null });
+  // Desktop: nothing opens in place of a drawing. A project, or a picture where adding isn't offered (an animation, a
+  // drawing shared with a room), opens in a new window without asking.
+  if (DESKTOP && project.image && (isProjectFile(file.name) || project.hasFrames || project._sharing || drawing.offWithOthers)) return openInNewWindow(file);
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
   // From the start screen, an art file asks whether to edit it or draw on top of it.
   if (isArtFile(file.name)) return (workspace.artDrop = { file, at: null });
@@ -110,6 +113,16 @@ async function handleFileSelected(file) {
   else if (isArtFile(file.name) || isSvgFile(file.name)) return openArt(file);
   else { await project.setImageFromFile(file); workspace.pickLayer('base'); }
   workspace.editorTab = 'output';
+}
+
+// Desktop: the file in a window of its own (or the window that has it open, brought forward); this one stays as it is.
+async function openInNewWindow(file) {
+  try {
+    if (await desktop.openInNewWindow(file)) return;
+  } catch (error) {
+    console.warn('Could not open the file in a new window', error);
+  }
+  toast(t('menu.openFailed'));
 }
 
 // A blank canvas opens on ANSI, as everything else does (chosen first, so the address moves once).
@@ -133,7 +146,8 @@ async function openArt(file, layer) {
 // The art file's question. On the start screen: edit it (its art on the edit layer) or draw on top of it (its
 // art the base layer). Dropped on a drawing: added as a paste is (floating and selected, where it was dropped or at
 // the view's top-left), an SVG as shapes on VECTOR, or a picture as paint on the cells layer picked (else a new one);
-// or opened in place of this drawing, an art file onto either layer (not in a room where opening is off).
+// or opened in place of this drawing, an art file onto either layer (not in a room where opening is off). On the
+// desktop, opening is in a new window instead, offered in a room too.
 const layerName = useLayerName();
 const addText = (drop) => (drop.picture ? (workspace.pickedCells ? t('actions.pictureAddText', { name: layerName(workspace.pickedLayer) }) : t('actions.pictureAddNew'))
   : isSvgFile(drop.file.name) ? t('actions.svgAddText') : t(drop.at ? 'actions.artAddWhere' : 'actions.artAddTopLeft', { name: layerName(project.editId) }));
@@ -146,6 +160,7 @@ const artChoices = computed(() => {
       { id: 'base', title: t('actions.artDrawOn'), text: t('actions.artDrawOnText') },
     ];
   }
+  if (DESKTOP) return [{ id: 'add', title: t('actions.artAdd'), text: addText(drop) }, { id: 'window', title: t('actions.artOpenWindow'), text: t('actions.artOpenWindowText') }];
   const open = drop.picture || isSvgFile(drop.file.name) ? [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText') }] : [
     { id: 'edit', title: t('actions.artOpenEdit'), text: t('actions.artOpenEditText') },
     { id: 'base', title: t('actions.artOpenDrawOn'), text: t('actions.artOpenDrawOnText') },
@@ -153,10 +168,11 @@ const artChoices = computed(() => {
   return [{ id: 'add', title: t('actions.artAdd'), text: addText(drop) }, ...(drawing.offWithOthers ? [] : open)];
 });
 const artTitle = computed(() => t(project.image ? 'actions.artDropTitle' : 'actions.artOpenTitle', { name: workspace.artDrop?.file.name }));
-const artSub = computed(() => (!project.image ? t('actions.artOpenSub') : drawing.offWithOthers ? t('actions.artDropSubAddOnly') : t('actions.artDropSub')));
+const artSub = computed(() => (!project.image ? t('actions.artOpenSub') : DESKTOP ? t('actions.artDropSubWindow') : drawing.offWithOthers ? t('actions.artDropSubAddOnly') : t('actions.artDropSub')));
 async function chooseArt(choice) {
   const { file, at, picture } = workspace.artDrop;
   workspace.artDrop = null;
+  if (choice === 'window') return openInNewWindow(file);
   if (picture) {
     if (choice === 'add') return project.addPictureToLayer(file);
     project.commitPending(); // text typed a moment ago counts

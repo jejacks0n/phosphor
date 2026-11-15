@@ -52,6 +52,11 @@ files at once get a window each. A project that's already open in a window bring
 opening a second copy. On the start screen, a recent drawing that's open in another window says **Open in another
 window**, and can't be opened again until that window closes it.
 
+A file dropped on a window with a drawing asks what to do with it: **Add to this drawing**, or **Open in a new
+window**, which leaves your drawing as it was. Open in a new window is offered in a room too, even while you're
+drawing in someone else's. A project dropped on a drawing goes to a new window without asking, and so does a picture
+dropped where adding one isn't offered (on an animation, or a drawing shared with a room).
+
 Closing a window closes that window alone. When it has unsaved changes it asks **Close this window?** first, and
 **Stay** keeps it open as it was. A window hosting a room hands the room on before it closes, as quitting does (see
 **Quitting the app while hosting**). On macOS, closing the last one leaves Phosphor running with its menu bar: New
@@ -79,9 +84,9 @@ room makes a key of its own, kept while that window is open, through its reloads
 
 Open… is your system's own file chooser, and Save writes a project straight back to its file: the first Save of a
 drawing asks where (as Save As… always does), and after that Save writes over that `.phosphor` file without asking. A
-project opened with Open…, Open Recent or a double-click saves back to where it came from; one dropped on the window
-asks where the first time. A save is written whole: if it fails, the file it would have replaced is left as it was.
-Exports still ask where each time.
+project opened with Open…, Open Recent, a double-click or dropped on a drawing (it opens in a new window) saves back
+to where it came from; one dropped on the start screen asks where the first time. A save is written whole: if it
+fails, the file it would have replaced is left as it was. Exports still ask where each time.
 
 Double-clicking a `.phosphor` file opens it in Phosphor. With Phosphor already open, the file opens there: in the
 window you're in when it's on the start screen, and in a new window when it shows a drawing. The rest

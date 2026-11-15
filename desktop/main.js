@@ -17,7 +17,7 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRoomService } from './roomService.js';
 import { reachableAddresses } from './addresses.js';
-import { OPENABLE, filesIn, isProject, recentFiles, writeWhole } from './files.js';
+import { OPENABLE, filesIn, isOpenable, isProject, recentFiles, writeWhole } from './files.js';
 import { REPO, menuTemplate } from './menu.js';
 import { cascade, fileTarget, leave } from './windows.js';
 
@@ -266,6 +266,15 @@ async function openFile(entry) {
   return null;
 }
 
+// A file dropped on a window with a drawing, to open elsewhere: the window that has it open comes forward, otherwise a
+// new window opens with it (never the window that asked, which has a drawing). False for a path that isn't a file
+// Phosphor opens.
+function openInWindow(_entry, file) {
+  if (typeof file !== 'string' || !isOpenable(file) || !statSync(file, { throwIfNoEntry: false })?.isFile()) return false;
+  deliver(file, { focusedId: null });
+  return true;
+}
+
 // Save: over the project's own file when the page may write there, or where the system's save box says (Save As,
 // `as`, always asks, starting beside the file). The path written, or null when the box is canceled.
 async function saveProject(entry, { bytes, name, path: file, as = false } = {}) {
@@ -425,6 +434,7 @@ else {
   handle('phosphor:stop-service', stopService);
   handle('phosphor:set-menu', setMenu);
   handle('phosphor:open-file', openFile);
+  handle('phosphor:open-in-window', openInWindow);
   handle('phosphor:save-project', saveProject);
   handle('phosphor:releases', () => releases());
   ipcMain.on('phosphor:files-ready', (event) => {

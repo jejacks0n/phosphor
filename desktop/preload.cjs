@@ -1,6 +1,6 @@
 // The page's one way into the main process (desktop/main.js), as window.phosphorDesktop: the room service, quitting and
 // closing (whether there's unsaved work), the menu bar (its words and state out, with the window's drawing, and its commands back), files opened and saved, and the releases to update to. Sandboxed, so CommonJS, with only Electron's renderer modules.
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 let onQuit = null;
 // A quit asks the page first. A page that hasn't asked to be told (or whose answer throws) is ready at once.
@@ -48,6 +48,12 @@ contextBridge.exposeInMainWorld('phosphorDesktop', {
     ipcRenderer.send('phosphor:files-ready');
   },
   openFile: () => ipcRenderer.invoke('phosphor:open-file'),
+  // A file dropped on the page, opened in a new window (or the window that has it, brought forward). False for one
+  // with no path on this computer.
+  openInNewWindow: async (file) => {
+    const where = webUtils.getPathForFile(file);
+    return where ? ipcRenderer.invoke('phosphor:open-in-window', where) : false;
+  },
   saveProject: ({ bytes, name, path, as } = {}) => ipcRenderer.invoke('phosphor:save-project', { bytes, name, path, as }),
   releases: () => ipcRenderer.invoke('phosphor:releases'),
 });
