@@ -51,7 +51,7 @@ const paintedOnRow = (page, row) => store(page, 'project', `(p) => {
 }`);
 
 const sameArt = async (a, b) => {
-  await expect.poll(() => edits(a), { timeout: 10_000 }).toBe(await edits(b));
+  await expect(async () => expect(await edits(a)).toBe(await edits(b))).toPass({ timeout: 10_000 });
 };
 
 // The host's page goes away and comes back, as a reload does; it waits at who-you-are until release().
@@ -198,7 +198,7 @@ test('each sees the other\'s stroke before it ends', async ({ page: host, contex
     expect(await store(from, 'workspace', (w) => w.isPainting)).toBe(true);   // the press is still down
     await from.mouse.up();
   }
-  await expect.poll(() => shownCells(artist), { timeout: 10_000 }).toBe(await shownCells(host));
+  await expect(async () => expect(await shownCells(artist)).toBe(await shownCells(host))).toPass({ timeout: 10_000 });
 });
 
 test('an artist\'s host-only controls are off with the reason, Reset all and SAUCE fields too, and the host\'s still work', async ({ page: host, context }) => {
@@ -507,7 +507,7 @@ test('paused: a stroke held down ends, shows as waiting, and goes out when the h
   await expect(artist.locator('.waiting')).toHaveCount(0);
   await expect.poll(() => store(artist, 'project', (p) => p._sharing.pending.size), { timeout: 10_000 }).toBe(0);
   await expect.poll(() => store(host, 'project', (p) => p.hasPaint)).toBe(true);
-  await expect.poll(() => shownCells(artist), { timeout: 10_000 }).toBe(await shownCells(host));
+  await expect(async () => expect(await shownCells(artist)).toBe(await shownCells(host))).toPass({ timeout: 10_000 });
 
   // And drawing goes on, numbered once.
   await artist.getByRole('button', { name: 'Edit Mode' }).click();
