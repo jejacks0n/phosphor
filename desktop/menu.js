@@ -5,7 +5,7 @@
 //   state    { hasImage, canChange, inRoom, hosting }: a drawing open, the document free to replace (not drawing in a
 //            room someone else hosts), in a room, hosting it
 //   recent   the recently opened files' paths, newest first
-//   act      { command(name), openRecent(path), clearRecent(), openUrl(url) }
+//   act      { command(name), newWindow(), openRecent(path), clearRecent(), openUrl(url) }
 export const REPO = 'https://github.com/jejacks0n/phosphor';
 
 const PLATFORMS = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' };
@@ -36,6 +36,7 @@ export function menuTemplate({ labels: l, state, recent, act, mac, packaged, ver
       label: l.file,
       submenu: [
         command(l.new, 'new', { accelerator: 'CmdOrCtrl+N', enabled: state.hasImage && state.canChange }),
+        { label: l.newWindow, accelerator: 'CmdOrCtrl+Shift+N', click: act.newWindow },
         command(l.open, 'open', { accelerator: 'CmdOrCtrl+O' }),
         { label: l.openRecent, submenu: openRecent },
         sep,

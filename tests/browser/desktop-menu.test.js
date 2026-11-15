@@ -53,6 +53,20 @@ test('the menu gets every label in the language showing, and what can be done, a
   expect(lastMenu()[0].file).toBe('Fichier');
 });
 
+test('the menu says the drawing’s name, for the window’s title, and its project’s file, for which window has it open', async () => {
+  expect(lastMenu()[2]).toEqual({ title: 'Phosphor', file: null });
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
+  await nextTick();
+  expect(lastMenu()[2]).toEqual({ title: 'gradient', file: null });
+  project.rename('night');
+  await workspace.saveFile();
+  await nextTick();
+  expect(lastMenu()[2]).toEqual({ title: 'night', file: '/art/night.phosphor' });
+  project.clearImage();
+  await nextTick();
+  expect(lastMenu()[2]).toEqual({ title: 'Phosphor', file: null });   // New: no file open
+});
+
 test('commands open what they name, and Undo from the menu is the drawing’s outside a text field', async () => {
   command('about');
   command('shortcuts');

@@ -312,6 +312,7 @@ export const documentActions = {
       imageBuffer: null,
       documentId: null,
       fileId: null,
+      filePath: null,
       savedToFile: false,
       asOpened: false,
       fit: null,

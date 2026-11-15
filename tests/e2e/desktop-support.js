@@ -107,3 +107,33 @@ export const letIn = (host, name) => host.getByRole('button', { name: `Let ${nam
 
 export const live = (page) => expect.poll(() => store(page, 'room', (r) => r.status), { timeout: 20_000, intervals: [100] }).toBe('live');
 export const role = (page) => store(page, 'room', (r) => r.role);
+
+// The app's windows (pages), and the next one to open, loaded.
+export const windowsOf = (app) => app.windows();
+export async function nextWindow(app) {
+  const page = await app.waitForEvent('window');
+  await page.waitForLoadState('domcontentloaded');
+  return page;
+}
+
+// Files opened from the system while the app runs: on macOS a double-click (open-file, once per file), elsewhere a
+// second launch naming them all (second-instance).
+export const openFromSystem = (app, files) => app.evaluate(({ app }, { files, cwd }) => {
+  if (process.platform === 'darwin') for (const file of files) app.emit('open-file', { preventDefault() {} }, file);
+  else app.emit('second-instance', {}, [process.execPath, ...files], cwd);
+}, { files, cwd: process.cwd() });
+
+// A page's window in the main process: its webContents id, its title, focusing and closing it.
+export const windowId = (app, page) => app.browserWindow(page).then((win) => win.evaluate((w) => w.webContents.id));
+export const windowTitle = (app, page) => app.browserWindow(page).then((win) => win.evaluate((w) => w.getTitle()));
+export const focusWindow = (app, page) => app.browserWindow(page).then((win) => win.evaluate((w) => w.focus()));
+export const focusedId = (app) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getFocusedWindow()?.webContents.id ?? null);
+// A menu item's enabled, by its labels down the menus.
+export const menuEnabled = (app, ...labels) => app.evaluate(({ Menu }, labels) => {
+  let items = Menu.getApplicationMenu().items, item;
+  for (const label of labels) {
+    item = items.find((each) => each.label === label);
+    items = item?.submenu?.items ?? [];
+  }
+  return item?.enabled;
+}, labels);
