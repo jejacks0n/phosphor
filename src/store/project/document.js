@@ -101,7 +101,8 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
     }
     if (stack) {
       // In use, the layer a new document's pick takes (followLayerPick): the edit layer, else the topmost cells layer.
-      // A room's project keeps my pick if it's still a cells layer there, else it's the topmost cells layer.
+      // A room's project keeps my pick if that layer is still there and I may pick it (not the bottom, unless I host), else the
+      // cells layer in use: my pick if it's one, else the topmost.
       // Every other cells layer waits in _layerData, all of them there before the layers are, which the pick follows.
       const above = stack.filter((layer) => layer.kind === 'cells' && layer.id !== 'base').map((layer) => layer.id);
       const mine = above.includes(pickedBefore) ? pickedBefore : above.at(-1);
@@ -109,8 +110,10 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
       // The pick replaceImage gave the edit layer it opens with goes to that layer, so it doesn't fall to the base when
       // the stack has no edit layer.
       const workspace = useWorkspaceStore();
-      if (this._takingProject) workspace.pickedLayer = this.editId;
-      else if (workspace.pickedLayer === 'edit' && !above.includes('edit')) workspace.pickedLayer = this.editId;
+      if (this._takingProject) {
+        const layer = stack.find(({ id }) => id === pickedBefore);
+        workspace.pickedLayer = layer && (layer.id !== 'base' || this._sharing?.role === 'host') ? pickedBefore : this.editId;
+      } else if (workspace.pickedLayer === 'edit' && !above.includes('edit')) workspace.pickedLayer = this.editId;
       if (layerPaint.size) this.ensureLayer();
       for (const id of above) {
         const picture = layerPaint.get(id);
@@ -131,7 +134,8 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
     this.layers = next;
     // On VECTOR it opens on the topmost vector layer (the pick at the start over could only be the first one's id).
     const top = next.findLast((layer) => layer.kind === 'vector'), workspace = useWorkspaceStore();
-    if (top && workspace.editorTab === 'vector') workspace.pickLayer(top.id);
+    const keeps = this._takingProject && next.find((layer) => layer.id === workspace.pickedLayer)?.kind === 'vector'; // a room's project: mine, if I'd picked a vector layer still there
+    if (top && workspace.editorTab === 'vector' && !keeps) workspace.pickLayer(top.id);
     this.setBaseRecords(baseRecords);
     if (paint) {
       this.ensureLayer();

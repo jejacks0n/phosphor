@@ -54,7 +54,7 @@ export const randomId = () => crypto.randomUUID?.()
 export const runsPatch = (runs) => ({ tiles: runs.map(([x, y, w]) => ({ x, y, w, h: 1 })) });
 // Whether a stranger's project's cells, the edit layer's or each layer's in the stack form, are no more than a layer holds
 // and all on some grid. MAX_CELLS is one layer's, so layers aren't added together.
-export const cellsFit = ({ editCells, layerParts }) => [editCells, ...(layerParts?.values() ?? []).map((part) => part.editCells)]
+export const cellsFit = ({ editCells, layerParts }) => [editCells, ...Array.from(layerParts?.values() ?? [], (part) => part.editCells)]
   .every((cells) => cells.size <= MAX_CELLS && cellsFitAnyGrid([...cells]));
 // Every layer above the bottom, id to kind: the layers a change in a room may name (wire.js readChange).
 export const stackKinds = (project) => new Map(project.layers.slice(1).map(({ id, kind }) => [id, kind]));
