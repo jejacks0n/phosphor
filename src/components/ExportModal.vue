@@ -8,14 +8,16 @@ import { AnsiFile } from '@/lib/AnsiFile';
 import { charRowsOf } from '@/lib/Cells';
 import { MOST_COMMENT_LINES, sauceUnmappable } from '@/lib/Sauce';
 import { fileStem, timestamped } from '@/document/projectIO';
+import { canExportVideo } from '@/lib/VideoFile';
 
-// All export formats in one modal: ANS, UTF-8 ANS, PNG (Still), GIF, Animated ANS, Animated UTF-8
-// ANS, Cast (Animated). Opened by Cmd/Ctrl+E or the Export button in ProjectActions.
+// All export formats in one modal: ANS, UTF-8 ANS, PNG (Still), GIF, Video (where the browser encodes video), Animated
+// ANS, Animated UTF-8 ANS, Cast (Animated). Opened by Cmd/Ctrl+E or the Export button in ProjectActions.
 const FORMATS = [
   { id: 'ans',             ext: 'ans',      group: 'still' },
   { id: 'utf8ans',         ext: 'utf8ans',  group: 'still' },
   { id: 'png',             ext: 'png',      group: 'still' },
   { id: 'gif',             ext: 'gif',      group: 'animated', animated: true },
+  { id: 'mp4',             ext: 'mp4',      group: 'animated', animated: true },
   { id: 'ansimation',      ext: 'ans',      group: 'animated', animated: true },
   { id: 'utf8ansimation',  ext: 'utf8ans',  group: 'animated', animated: true },
   { id: 'cast',            ext: 'cast',     group: 'animated', animated: true },
@@ -26,12 +28,13 @@ const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 
+const formats = FORMATS.filter((f) => f.id !== 'mp4' || canExportVideo());
 const selectedId = ref(project.hasFrames && project.animate ? 'gif' : 'ans');
 const selected = computed(() => FORMATS.find(f => f.id === selectedId.value));
 const name = ref(timestamped(project.filename ?? 'untitled'));
 const smooth = ref(workspace.smoothText); // default follows the workspace setting, like SaveDialog
 const saving = ref(false);
-const progress = ref(null); // a GIF's share of frames written while it exports
+const progress = ref(null); // a GIF's or video's share of frames written while it exports
 const problem = ref('');
 const stem = computed(() => fileStem(name.value, selected.value.ext));
 
@@ -65,7 +68,7 @@ async function doExport() {
   if (!stem.value || saving.value) return;
   saving.value = true;
   problem.value = '';
-  if (selectedId.value === 'gif') progress.value = 0;
+  if (['gif', 'mp4'].includes(selectedId.value)) progress.value = 0;
   try {
     if (selected.value.animated) await project.exportAnimation(selectedId.value, { filename: stem.value, progress: (share) => { progress.value = share; } });
     else await project.exportFile(selectedId.value, { filename: stem.value, smooth: smooth.value });
@@ -90,7 +93,7 @@ function cancel() {
       <nav class="format-list" aria-label="Export format">
         <div class="group-label">{{ t('export.modal.still') }}</div>
         <button
-            v-for="f in FORMATS.filter(f => f.group === 'still')"
+            v-for="f in formats.filter(f => f.group === 'still')"
             :key="f.id"
             class="format-btn"
             :class="{ selected: f.id === selectedId }"
@@ -102,7 +105,7 @@ function cancel() {
 
         <div class="group-label animated-label">{{ t('export.modal.animated') }}</div>
         <button
-            v-for="f in FORMATS.filter(f => f.group === 'animated')"
+            v-for="f in formats.filter(f => f.group === 'animated')"
             :key="f.id"
             class="format-btn"
             :class="{ selected: f.id === selectedId }"

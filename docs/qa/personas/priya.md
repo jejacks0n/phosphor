@@ -393,12 +393,15 @@ Alt+`,` while typing in Edit Mode, and Bake with the sliders moved to see every 
 
 ## Getting it out
 
-### 28. Export a GIF
-- Does: presses Export .gif in the left column, keeps the name and saves; checks the file.
+### 28. Export a GIF and a video
+- Does: presses Export .gif in the left column, keeps the name and saves; checks the file. Then opens Export again,
+  picks Video and exports that too, for the site that takes video.
 - Expects: Export .gif shows only with more than one frame and Animate on; the dialog says "Looping animated GIF
   rendered in your current display font"; while it exports, a bar beside the buttons fills as frames are written;
   the download is a GIF (`GIF89a`) of the art as it plays, the guide not drawn
-  and the ghost absent; it saves within the `file` budget ([Exporting](../../animation.md#exporting)).
+  and the ghost absent; it saves within the `file` budget ([Exporting](../../animation.md#exporting)). Video sits
+  under GIF; its bar fills the same way, and the download is an `.mp4` (`ftyp` at bytes 4–8) as long as the frames'
+  times add up to, its edges sharp.
 - Probes: `again`: export twice and check the names differ; `back-out`: change the name, press Escape, reopen;
   `extremes`: name it with emoji and slashes.
 - Rated: yes, wants a key for Export .gif

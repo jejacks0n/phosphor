@@ -7,7 +7,7 @@ Learn how to create art, edit layers, and animate in Phosphor.
 - [Layers](layers.md) — Manage layers (selecting, hiding, and renaming), understand the base layer (your image, converted to cells) and the drawing layers, merge layers up and down, erase, and use the selection tools.
 - [Characters](characters.md) — Learn what a cell can hold, work with single-column and two-column characters (CJK and emoji), see how the converter picks characters, choose a display font, type any script, paste text, and save as `.utf8ans`, `.ans`, or `.png`.
 - [Vector Shapes](vector.md) — Use the VECTOR tab to draw, move, scale, rotate, and style vector paths and shapes that stay editable over the art and convert with it into text art.
-- [Animation](animation.md) — Create frame-by-frame animations, see what carries from one frame to the next, use onion skinning (ghosting), set frame timing, and export to animated `.ans`, `.cast`, or `.gif`.
+- [Animation](animation.md) — Create frame-by-frame animations, see what carries from one frame to the next, use onion skinning (ghosting), set frame timing, and export to animated `.ans`, `.cast`, `.gif`, or video (`.mp4`).
 - [Rulers and Guides](rulers.md) — Measure character columns and rows, drag guide lines from rulers, set origin points, and see what's kept with each drawing.
 - [Social Rooms](social.md) — Use SOCIAL in the side panel: the lobby, accounts and guests, hosting a room or watching someone draw, drawing together, chat, and blocking and reporting.
 - [The Desktop App](desktop.md) — Download Phosphor for macOS, Windows, or Linux, host a room on your computer and share its address, join a room by address, let people in, and change hosts. No account needed, and nothing is sent to Phosphor.

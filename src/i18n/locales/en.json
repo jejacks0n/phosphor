@@ -1019,6 +1019,10 @@
         "title": "Export .gif",
         "sub": "Looping animated GIF rendered in your display font, ready to share anywhere."
       },
+      "mp4": {
+        "title": "Export .mp4",
+        "sub": "A video of the animation in your display font (MP4), for sites and phones that play video but not GIFs. Plays once; each frame keeps its own timing."
+      },
       "utf8ans": {
         "title": "Export .utf8ans",
         "sub": "UTF-8 ANSI art for modern terminals, preserving all Unicode characters and colors."
@@ -1048,7 +1052,8 @@
     "projectFileType": "Phosphor project",
     "openFileType": "Files Phosphor opens",
     "tooTall": "At {cols}×{rows}, this artwork is larger than a standard 80×25 terminal. Portions may clip during playback.",
-    "gifTooLarge": "This animation is too large to export as a GIF. Try using fewer frames, smaller dimensions, or export as .cast instead."
+    "gifTooLarge": "This animation is too large to export as a GIF. Try using fewer frames, smaller dimensions, or export as .cast instead.",
+    "videoTooLarge": "This animation is too large for this browser to encode as a video. Try smaller dimensions, or export a GIF instead."
   },
   "export": {
     "modal": {
@@ -1071,6 +1076,9 @@
         },
         "gif": {
           "name": "GIF"
+        },
+        "mp4": {
+          "name": "Video"
         },
         "ansimation": {
           "name": "Animated ANS"
@@ -1796,8 +1804,7 @@
     "remove": "Remove",
     "cornerTitle": "Drag to set both ruler origins. Double-click to reset origins to the top-left corner.",
     "guideTitle": "Drag to move guide, or drag onto a ruler to delete it"
-  }
-,
+  },
   "menu": {
     "file": "File",
     "new": "New",

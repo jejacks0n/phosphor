@@ -101,7 +101,7 @@ test('an animated .utf8ans keeps every character, warns above 80x25, and lists n
   await expect(modal2.getByRole('list', { name: 'Replacements' })).toContainText('漢');
 });
 
-test('a .cast download holds a frame per event at its time, and a .gif download is a GIF', async ({ page }) => {
+test('a .cast download holds a frame per event at its time, a .gif download is a GIF and an .mp4 a video', async ({ page }) => {
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
   const bar = page.getByRole('toolbar', { name: 'Animation' });
@@ -124,6 +124,11 @@ test('a .cast download holds a frame per event at its time, and a .gif download 
   const bytes = await readFile(await gif.path());
   expect(bytes.subarray(0, 6).toString()).toBe('GIF89a');
   expect(bytes.at(-1)).toBe(0x3b);
+
+  const modal3 = await openExportModal(page, 'Video');
+  const [video] = await Promise.all([page.waitForEvent('download'), modal3.getByRole('button', { name: /^Export Video/ }).click()]);
+  expect(video.suggestedFilename()).toMatch(/\.mp4$/);
+  expect((await readFile(await video.path())).subarray(4, 8).toString()).toBe('ftyp');
 });
 
 

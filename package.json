@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@vueuse/core": "^15.0.0",
+    "mediabunny": "^1.65.0",
     "paper": "^0.17.0",
     "pinia": "^4.1.0",
     "random-word-slugs": "^0.1.7",
