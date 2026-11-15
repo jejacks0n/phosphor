@@ -4,6 +4,7 @@ import { openApp, store, cellPoint, drag, chars, editAt, fixture } from './suppo
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
+// Rows 4 and on: the top rows are in the view's edge zone, where a Select drag scrolls it by how long the drag takes.
 async function select(page, c0, r0, c1, r1) {
   await drag(page, await cellPoint(page, c0, r0), await cellPoint(page, c1, r1));
   await expect.poll(() => store(page, 'workspace', (w) => w.selection)).toEqual({ c0, r0, c1, r1 });
@@ -12,16 +13,16 @@ async function select(page, c0, r0, c1, r1) {
 // The Paste button pastes only what was copied in this tab; in Edit Mode a paste lands at the cursor.
 test('copy and paste a block, in Edit Mode at the cursor, then paste text copied elsewhere; with nothing copied in this tab, the Paste button says to use the shortcut', async ({ page }) => {
   await openApp(page);
-  await editAt(page, 2, 2);
+  await editAt(page, 2, 4);
   await page.keyboard.type('Copy me');
   await page.getByRole('button', { name: 'Select', exact: true }).click();
 
-  await select(page, 2, 2, 8, 3);
+  await select(page, 2, 4, 8, 5);
   const paste = page.getByRole('button', { name: /^Clipboard is empty in this tab\. To paste from another tab or app, press (⌘V|Ctrl\+V)$/ });
   await expect(paste).toBeDisabled();
   await page.keyboard.press('ControlOrMeta+c');
   await expect(page.getByRole('button', { name: 'Paste copied cells at the selection' })).toBeEnabled();
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`Copy me\n${await chars(page, 3, 2, 8)}`);
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`Copy me\n${' '.repeat(7)}`); // the picked layer's cells: blank under the text
 
   await select(page, 20, 10, 21, 11);
   await page.keyboard.press('ControlOrMeta+v');
@@ -44,14 +45,14 @@ const colors = (page, row, c0, c1) => store(page, 'project', `(p) => p.cells.sli
 
 test('a block copied in one tab pastes into another with its colors', async ({ page }) => {
   await openApp(page);
-  await editAt(page, 2, 2);
+  await editAt(page, 2, 4);
   await page.evaluate(() => { document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('workspace').editFgColor = '#ff3300'; });
   await page.keyboard.type('Red ink');
   await page.getByRole('button', { name: 'Select', exact: true }).click();
-  await select(page, 2, 2, 8, 3);
+  await select(page, 2, 4, 8, 5);
   await page.keyboard.press('ControlOrMeta+c');
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Red ink');
-  const copied = [await colors(page, 2, 2, 8), await colors(page, 3, 2, 8)];
+  const copied = [await colors(page, 4, 2, 8), await colors(page, 5, 2, 8)];
   expect(copied[0][0]).toMatch(/^#ff3300/);
 
   const other = await page.context().newPage();
