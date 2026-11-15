@@ -109,6 +109,10 @@ test('on a phone the status bar wraps its readout a group at a time, nothing cut
   await page.keyboard.press('t'); // Edit Mode, with its cursor's cell: the most there is to show
   await store(page, 'workspace', (w) => { w.textCursor = { col: 15, row: 19 }; });
   const bar = page.locator('footer.ansi-status');
+  // The bar's ui-monospace and Menlo aren't on Linux, whose fallback is narrower and wraps it so the buttons fit:
+  // the font the app ships, as wide as Menlo, wraps it the same everywhere.
+  await bar.evaluate((el) => { el.style.fontFamily = '"JetBrains Mono", monospace'; });
+  await page.evaluate(() => document.fonts.load('11px "JetBrains Mono"'));
   await expect(bar).toContainText('Col 16 Row 20');
   await expect(bar).toContainText('BG');
   const layout = () => bar.evaluate((el) => {
