@@ -5,7 +5,8 @@ import { usernameProblem } from '@/social/names';
 import { messageFor } from '@/social/messages';
 
 // The username field of Create an account and Pick your username, checked as you type with the
-// server's rules: from the first blur or the third character on, so the first keystroke isn't nagged.
+// server's rules: from the first blur with something typed, or the third character on, so the first keystroke isn't
+// nagged, nor a field left empty (a dialog opens with focus in it, and a click elsewhere would shift what's clicked).
 defineProps({ help: { type: String, default: null } });
 const name = defineModel({ type: String, required: true });
 
@@ -21,7 +22,7 @@ const id = useId();
 <template>
   <label>{{ t('social.auth.usernameLabel') }}
     <input v-model="name" class="mono" autocomplete="username" spellcheck="false" required
-      :aria-invalid="!!problem" :aria-describedby="`${id}-help ${id}-problem`" @blur="touched = true">
+      :aria-invalid="!!problem" :aria-describedby="`${id}-help ${id}-problem`" @blur="touched ||= name.length > 0">
   </label>
   <p v-if="help" :id="`${id}-help`" class="help">{{ help }}</p>
   <p v-if="problem" :id="`${id}-problem`" class="error">{{ problem }}</p>

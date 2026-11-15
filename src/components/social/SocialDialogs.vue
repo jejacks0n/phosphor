@@ -6,6 +6,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { goingBackReplacesWords } from '@/social/messages';
 import ModalDialog from '@/components/ModalDialog.vue';
+import { FIELD, firstField } from '@/lib/focus';
 import ConsentDialog from './ConsentDialog.vue';
 import SignInPage from './SignInPage.vue';
 import CreateAccountPage from './CreateAccountPage.vue';
@@ -56,15 +57,16 @@ const cancel = () => {
   if (to) social.page = to;
 };
 
-// A page takes focus at its heading (not left behind on the button that opened it), unless it put focus in itself
-// on mounting.
+// A page takes focus at its first field to type in, unless it put focus in one itself on mounting; with none, focus
+// stays where the page put it, else on the dialog (not left behind on the button that opened it, nor on the heading).
 const body = useTemplateRef('body');
 watch(page, async () => {
   await nextTick();
-  const heading = body.value?.querySelector('h2');
-  if (!heading || body.value.contains(document.activeElement)) return;
-  heading.tabIndex = -1;
-  heading.focus();
+  const focused = document.activeElement;
+  if (!body.value || (body.value.contains(focused) && focused.matches(FIELD))) return;
+  const field = firstField(body.value);
+  if (field) field.focus();
+  else if (!body.value.contains(focused)) body.value.closest('dialog')?.focus();
 }, { immediate: true });
 
 const linkIsYours = computed(() => room.reclaimable.some((r) => r.id === social.roomInvite));

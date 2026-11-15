@@ -56,6 +56,11 @@ test('an [autofocus] field with v-model has its text when it takes focus, as the
   expect([input.selectionStart, input.selectionEnd]).toEqual([0, 3]);
 });
 
+test('focus starts in its first field to type in that shows, ahead of an [autofocus] button and a checkbox before it', async () => {
+  await mount({}, () => [h('label', [h('input', { type: 'checkbox' })]), h('button', { autofocus: true }, 'Cancel'), h('input', { class: 'hidden', hidden: true }), h('input', { class: 'name' })]);
+  expect(document.activeElement).toBe(document.querySelector('dialog input.name'));
+});
+
 test('a close request cancels and leaves it open; the backdrop cancels a short one, not a long one', async () => {
   const { refuse, cancels, dialog } = await mount();
   refuse.value = true;
