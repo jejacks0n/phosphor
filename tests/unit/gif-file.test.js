@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { gifBytes, gifDelay } from '../../src/lib/GifFile.js';
+import { gifBytes, gifDelay, yieldToPage } from '../../src/lib/GifFile.js';
 
 // The file read back, as a decoder would: LZW included.
 function readGif(bytes) {
@@ -107,4 +107,19 @@ test('delays come from fps and holds, in hundredths of a second', () => {
   expect(gifDelay(5)).toBe(2);
   const gif = readGif(gifBytes(1, 1, [{ pixels: new Uint8Array(1), palette: palette(2), delayCs: 13 }, { pixels: new Uint8Array(1), palette: palette(2), delayCs: 500 }]));
   expect(gif.images.map((image) => image.delay)).toEqual([13, 500]);
+});
+
+test('between frames the page is given a turn: with scheduler.yield where there is one, else a timeout', async () => {
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'scheduler');
+  try {
+    let yielded = 0;
+    Object.defineProperty(globalThis, 'scheduler', { value: { yield: async () => { yielded++; } }, configurable: true });
+    await yieldToPage();
+    expect(yielded).toBe(1);
+    Object.defineProperty(globalThis, 'scheduler', { value: undefined, configurable: true });
+    await expect(yieldToPage()).resolves.toBeUndefined();
+  } finally {
+    if (had) Object.defineProperty(globalThis, 'scheduler', had);
+    else delete globalThis.scheduler;
+  }
 });

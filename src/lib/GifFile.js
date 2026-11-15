@@ -8,6 +8,10 @@ import quantize from './Quantizer.js';
 export const MAX_GIF_PIXELS = 500_000_000; // across frames: an index a pixel is held until the file's written, and it runs at about 20M pixels a second
 export const gifDelay = (ms) => Math.max(2, Math.round(ms / 10)); // hundredths of a second; browsers slow anything shorter
 
+// A pause between frames, so the page takes its clicks and paints. scheduler.yield picks up again ahead of other
+// waiting work; where there's none, a timeout.
+export const yieldToPage = () => (globalThis.scheduler?.yield ? globalThis.scheduler.yield() : new Promise((resolve) => setTimeout(resolve)));
+
 const MAX_CODE = 4096;
 const table = new Int16Array(1 << 20); // (code << 8 | index) to the code that says it, -1 when none
 
@@ -158,7 +162,7 @@ export function gifFrames(frames, cols, lines, delays, { smooth, tooLarge } = {}
       const data = rgba(frames[i]), pixels = new Uint8Array(width * height);
       for (let p = 0; p < pixels.length; p++) pixels[p] = index(data[4 * p], data[4 * p + 1], data[4 * p + 2]);
       out.push({ pixels, palette, delayCs: delays[i] });
-      await new Promise((resolve) => setTimeout(resolve)); // the page stays alive
+      await yieldToPage();
     }
     return { width, height, frames: out };
   });
