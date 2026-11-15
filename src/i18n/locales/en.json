@@ -653,6 +653,8 @@
     "bg": "BG",
     "swap": "Swap",
     "swapTitle": "Swap foreground and background (X or {key})",
+    "pickFromScreen": "Pick a color from anywhere on the screen",
+    "pickFailed": "Could not pick a color.",
     "inThisDrawing": "In this artwork",
     "painted": "{arrow} Painted ({count})",
     "none": "None",

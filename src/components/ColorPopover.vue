@@ -11,6 +11,8 @@ import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { isGradient } from '@/document/shapes.js';
 import { gradientKey, gradientSlot, recolorStop } from '@/tools/gradientHandles.js';
 import RangeField from '@/components/RangeField.vue';
+import picker from '@/tools/picker.js';
+import { toast } from '@/composables/useToast';
 
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
@@ -86,6 +88,20 @@ const choose = (hex, remember = true, index = undefined) => {
   style.set(SHAPE_SLOTS[props.slotName], hex, { remember });
 };
 const swap = () => (vector.value ? style.swap() : workspace.swapColors());
+
+// The browser's eyedropper (Chromium): a color from anywhere on the screen, another window's too, chosen as a swatch
+// is. Escape puts it away with nothing chosen.
+const canPickFromScreen = typeof window.EyeDropper === 'function';
+async function pickFromScreen() {
+  try {
+    const { sRGBHex } = await new window.EyeDropper().open();
+    choose(sRGBHex.toLowerCase());
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    console.warn('Could not pick a color from the screen', error);
+    toast(t('colors.pickFailed'));
+  }
+}
 
 // VECTOR's Stroke side: the stroke's width, caps, joins, miter limit and alignment (useVectorStyle: the selected shapes', or
 // the next shape's), each change one undo step (a Width drag when it's let go).
@@ -180,6 +196,7 @@ onBeforeUnmount(() => {
       <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">{{ vector ? t('vector.fill') : t('colors.fg') }}</button>
       <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">{{ vector ? t('vector.stroke') : t('colors.bg') }}</button>
       <span class="spacer"></span>
+      <button v-if="canPickFromScreen" class="screen" :title="t('colors.pickFromScreen')" :aria-label="t('colors.pickFromScreen')" @click="pickFromScreen" v-html="picker.icon"></button>
       <button class="swap" :title="t('colors.swapTitle', { key: shortcut('shift', 'mod', 'X') })" @click="swap">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2 1 5l3 3V6h8V4H4zm8 6v2H4v2h8v2l3-3z"/></svg>
         {{ t('colors.swap') }}
@@ -336,10 +353,16 @@ div.head button.swap {
   gap: 5px;
 }
 
-div.head button.swap svg {
+div.head button.swap svg,
+div.head button.screen :deep(svg) {
   width: 12px;
   height: 12px;
   fill: currentColor;
+}
+
+div.head button.screen {
+  display: flex;
+  padding: 3px 6px;
 }
 
 div.head button.on {

@@ -168,7 +168,7 @@ What snaps: the Pen's points (curve handles stay where you drag them), the Shape
 
 In the VECTOR view, the color pair at the start of the tool row holds the shapes' **Fill** (front chip) and **Stroke** (back chip):
 
-- Click a chip (or press **Alt+F** or **Alt+B**) to open the color box and choose a color from the palette, the recent colors, or a color of your own.
+- Click a chip (or press **Alt+F** or **Alt+B**) to open the color box and choose a color from the palette, the recent colors, or a color of your own. In Chrome, Edge and the desktop app, the eyedropper beside **Swap** takes a color from anywhere on your screen.
 - Click **None** to make the fill or stroke transparent.
 - Click **Swap** (or press **X**, or **Shift+Cmd+X** / **Shift+Ctrl+X**) to swap each selected shape's fill and stroke, gradients included.
 
