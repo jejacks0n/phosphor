@@ -64,10 +64,10 @@ function pickFormat(id) {
   problem.value = '';
 }
 
-// Share (PNG and GIF, where the browser's share sheet takes the file: phones, Safari, Chrome): the file goes to the
+// Share (PNG, GIF and video, where the browser's share sheet takes the file: phones, Safari, Chrome): the file goes to the
 // share sheet in place of a download. The browser opens it only straight after a tap, so a file that took longer to
 // write (a long GIF) is kept ready, and Share now opens the sheet with the next tap. A new name or format drops it.
-const SHARE_TYPES = { png: 'image/png', gif: 'image/gif' };
+const SHARE_TYPES = { png: 'image/png', gif: 'image/gif', mp4: 'video/mp4' };
 const shareable = computed(() => import.meta.env.VITE_DESKTOP !== '1' && !!SHARE_TYPES[selectedId.value]
   && !!navigator.canShare?.({ files: [new File([], `art.${selected.value.ext}`, { type: SHARE_TYPES[selectedId.value] })] }));
 const ready = ref(null);

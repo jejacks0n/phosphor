@@ -342,6 +342,37 @@ test('Share sends a PNG to the share sheet in place of a download, and closes; f
   }
 });
 
+test('Share sends a video to the share sheet where it takes one, and Video has no Share where it doesn\'t', async () => {
+  const { project } = await drawing();
+  project.animate = true;
+  project.addFrame('blank');
+  await settle(project);
+  const sheet = shareSheet();
+  sheet.canShare.mockImplementation(({ files }) => files.every((file) => /^(image|video)\//.test(file.type)));
+  vi.spyOn(project, 'exportAnimation').mockImplementation(async (format, { deliver }) => deliver(new Blob(['mp4'], { type: 'video/mp4' }), 'loop.mp4'));
+  const { closed, unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    await pick(modal, 'Video');
+    shareButton(modal).click();
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    const [{ files: [file] }] = sheet.share.mock.calls[0];
+    expect([file.name, file.type]).toEqual(['loop.mp4', 'video/mp4']);
+  } finally {
+    unmount();
+  }
+  sheet.canShare.mockImplementation(({ files }) => files.every((file) => file.type.startsWith('image/')));
+  const again = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    await pick(modal, 'Video');
+    expect(shareButton(modal)).toBeUndefined();
+  } finally {
+    again.unmount();
+    sheet.restore();
+  }
+});
+
 test('the share sheet put away leaves the dialog; refused for coming too long after the tap, the file waits for Share now', async () => {
   const { project } = await drawing();
   const sheet = shareSheet(async () => { throw new DOMException('Share canceled', 'AbortError'); });
