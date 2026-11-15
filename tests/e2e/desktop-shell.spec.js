@@ -95,7 +95,7 @@ test('a quit with unsaved changes asks first: Stay keeps the app, Leave waits fo
   expect(await store(page, 'project', (p) => p.isDirty)).toBe(true);
   const answer = (choice) => app.evaluate(({ dialog }, choice) => {
     globalThis.asked = 0;
-    dialog.showMessageBoxSync = () => { globalThis.asked++; return choice; };
+    dialog.showMessageBox = async () => { globalThis.asked++; return { response: choice }; };
   }, choice);
   const asked = () => app.evaluate(() => globalThis.asked);
   await page.evaluate(() => window.phosphorDesktop.onQuit(() => { window.quitAsked = true; }));

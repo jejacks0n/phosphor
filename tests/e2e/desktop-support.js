@@ -13,8 +13,9 @@ export { test, expect };
 // A launched app: { app, page, name, port, close }, close also removing its user data folder. Anything the page's
 // Content-Security-Policy refuses is kept in `refused`, for the spec to check. `env` adds to the app's environment
 // (PHOSPHOR_RETURN_WITHIN_MS, say), and `files` are named on its command line, as a file double-clicked is.
-// The Leave/Stay question main.js asks before a reload or quit the page would ask about is answered Leave, so a host's
-// reload or an app closed with unsaved art goes ahead; a spec that wants the question stands in for it again.
+// The Leave/Stay question main.js asks before a reload, a close or a quit the page would ask about is answered Leave (a
+// reload's box and the others' both), so a host's reload or an app closed with unsaved art goes ahead; a spec that
+// wants the question stands in for it again.
 // A Linux runner has no GPU, so WebGL comes from SwiftShader, as in the web flows (playwright.config.js): without it the
 // art never renders. On macOS these switches would turn WebGL off, so they're for Linux alone.
 const SOFTWARE_GL = process.platform === 'linux' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [];
@@ -25,7 +26,12 @@ export async function launchApp({ name = 'ann', port = 31401, env = {}, files = 
     args: [...SOFTWARE_GL, 'desktop/main.js', ...files],
     env: { ...process.env, PHOSPHOR_USER_DATA: userData, PHOSPHOR_ADDRESSES: '127.0.0.1', ...env },
   });
-  await app.evaluate(({ dialog }) => { dialog.showMessageBoxSync = () => 0; });
+  await app.evaluate(({ dialog }) => {
+    dialog.showMessageBoxSync = () => 0;   // a reload's question
+    // A close's or a quit's; the page's own alerts come through this box too, and are left to the spec.
+    const box = dialog.showMessageBox;
+    dialog.showMessageBox = (win, options) => (options?.buttons?.[0] === 'Leave' ? Promise.resolve({ response: 0 }) : box.call(dialog, win, options));
+  });
   const page = await app.firstWindow();
   const refused = [];
   page.on('console', (m) => { if (m.text().includes('Content Security Policy')) refused.push(m.text()); });
