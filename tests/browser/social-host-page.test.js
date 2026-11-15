@@ -328,7 +328,7 @@ test('ten people show no "and N more"', async () => {
   expect(host.querySelector('.came-by button')).toBe(null);
 });
 
-test('three cells layers: Go live is off and says why', async () => {
+test('Go live is on with many layers', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   host = document.createElement('div');
@@ -336,16 +336,12 @@ test('three cells layers: Go live is off and says why', async () => {
   app = createApp(StartRoomPage).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
-  const goLive = button('Go live');
-  expect(goLive.disabled).toBe(false);
-  expect(host.textContent).not.toContain('a room holds at most');
   project.addLayer('cells', 'edit');
-  project.addLayer('cells', 'L1'); // [base, edit, L1, L2]
+  project.addLayer('cells', 'L1');
+  project.addLayer('vector', 'L2');
   await nextTick();
-  const words = 'Shared rooms currently support at most Base, one vector layer, and one drawing layer, all sharing the same character settings. Merge or delete extra layers to start a room.';
-  expect(goLive.disabled).toBe(true);
-  expect(goLive.title).toBe(words);
-  expect(host.querySelector('p.no-art').textContent).toBe(words);
+  expect(button('Go live').disabled).toBe(false);
+  expect(host.querySelector('p.no-art')).toBe(null);
 });
 
 test('Set up your room: the signal is a select in the lobby card, and choosing one sets the room\'s; a link-only room has none', async () => {

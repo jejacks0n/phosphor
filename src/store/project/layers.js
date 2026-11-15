@@ -5,9 +5,9 @@
 // name, an eye and the layer in use aren't: they're about the layers, not edits to what's drawn on them. Only a layer in the stack
 // has data in _layerData: one taken out (deleted, its add undone) is held by the undo step that can put it back.
 import { markRaw } from 'vue';
-import { MOST_LAYERS, goodLayerName, layerChars, legacySlots, newLayerId, nextNumber } from '@/document/layerInfo.js';
+import { MOST_LAYERS, goodLayerName, layerChars, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { CHAR_KEYS, DITHER_KEYS } from '@/store/settings.js';
-import { loadImage, readProject, writeProject } from '@/document/projectIO.js';
+import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
@@ -279,39 +279,6 @@ export const layerActions = {
     const order = (list) => () => redrawn(this, () => { this.layers = list.map((each) => this.layerById(each)).filter(Boolean); }); // by id: names and eyes since aren't undone
     order(after)();
     this.pushEdit({ layerOp: true, stackOnly: true, bytes: 0, undo: order(before), redo: order(after) });
-    return true;
-  },
-
-  // Make the document ready to go live, which holds the bottom, at most one vector layer and one cells layer above them
-  // (fitsRoom), named as the room knows them. False, nothing changed, for a stack that doesn't fit. Layers with other ids
-  // (L1) are reopened from the drawing's own old-form parts, as a file would open: its filename, whether it's saved and
-  // the layer picked stay, and undo is cleared (ponytail: re-keying history in place would keep it; do that if it bites).
-  // With no cells layer an empty edit layer goes on top; that isn't an undo step.
-  async roomLayers() {
-    const slots = legacySlots(this.layers, this.baseChars);
-    if (!slots) return false;
-    if ((slots.vector ?? 'vector') !== 'vector' || (slots.cells ?? 'edit') !== 'edit') {
-      this.commitPending();
-      const workspace = useWorkspaceStore(), picked = workspace.pickedLayer;
-      const { filename, fileExt, documentId, fileId, savedToFile, isDirty, savedSettings } = this;
-      const parts = await readProject(await writeProject({ imageBuffer: this.imageBuffer, ...await this.projectParts() }));
-      // The pick moves to the layer's room id first: a layer gone from the stack mid-open would pick the one under it,
-      // the base perhaps, which the tools would then draw on while the document's parts are still going in.
-      const now = picked === slots.vector ? 'vector' : picked === slots.cells ? 'edit' : picked;
-      workspace.pickedLayer = now;
-      await this.openParts(parts, { filename, fileExt, documentId, fileId }); // the same drawing, renamed for the room
-      this.savedToFile = savedToFile;
-      if (isDirty) { // as restoreDocument leaves it
-        this.savedSettings = savedSettings;
-        this.savedEditVersion = this.editVersion - 1;
-      }
-      workspace.pickLayer(now); // the tools draw on it (the base too)
-    }
-    if (!slots.cells) {
-      const { id } = putLayer(this, 'cells');
-      if (id === this.editId) this._layerData.delete(id); // the layer in use is the fields', and they're empty
-      else this.useLayer(id);
-    }
     return true;
   },
 

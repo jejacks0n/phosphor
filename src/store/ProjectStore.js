@@ -4,7 +4,7 @@ import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
-import { layersFromOld, legacySlots, lowerGroup, sameChars } from '@/document/layerInfo.js';
+import { layersFromOld, lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { ghostedCells } from '@/lib/ghostCells.js';
 import { artBounds } from '@/document/artLayers.js';
 import { placedShapes } from '@/document/followers.js';
@@ -190,9 +190,6 @@ export const useProjectStore = defineStore('project', {
     layerById: (state) => (id) => state.layers.find((layer) => layer.id === id),
     // The vector layer is there once it's added, or with the drawing's first shape, and stays when its last one goes.
     hasVectorLayer: (state) => state.layers.some((layer) => layer.kind === 'vector'),
-    // Whether the layers are the ones a room holds: the bottom, at most one vector layer, at most one cells layer above it,
-    // all with the bottom's character settings (a room has one set).
-    fitsRoom() { return !!legacySlots(this.layers, this.baseChars); },
     // The bottom's character settings: the document's own fields (settings.js CHAR_KEYS).
     baseChars: (state) => Object.fromEntries(CHAR_KEYS.map((key) => [key, state[key]])),
     // A layer's character settings: its own (layer.chars), the bottom's for the bottom, or for a layer that has none yet;

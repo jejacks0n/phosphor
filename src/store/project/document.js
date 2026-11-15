@@ -82,6 +82,7 @@ const saving = (name) => t('document.saving', { name });
 // A stack file's layers (stack) come with each cells layer's parts (layerParts) and paint (layerPaint), by id.
 function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, stack, layerParts, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels, layerPaint }, { filename, fileExt = null, documentId, fileId }) {
   const own = this.layers; // replaceImage starts them over
+  const pickedBefore = useWorkspaceStore().pickedLayer; // and the pick
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
   this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, fileExt, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
   try {
@@ -100,13 +101,16 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
     }
     if (stack) {
       // In use, the layer a new document's pick takes (followLayerPick): the edit layer, else the topmost cells layer.
+      // A room's project keeps my pick if it's still a cells layer there, else it's the topmost cells layer.
       // Every other cells layer waits in _layerData, all of them there before the layers are, which the pick follows.
       const above = stack.filter((layer) => layer.kind === 'cells' && layer.id !== 'base').map((layer) => layer.id);
-      this.editId = above.includes('edit') ? 'edit' : above.at(-1) ?? 'edit';
+      const mine = above.includes(pickedBefore) ? pickedBefore : above.at(-1);
+      this.editId = (this._takingProject ? mine : above.includes('edit') ? 'edit' : above.at(-1)) ?? 'edit';
       // The pick replaceImage gave the edit layer it opens with goes to that layer, so it doesn't fall to the base when
       // the stack has no edit layer.
       const workspace = useWorkspaceStore();
-      if (workspace.pickedLayer === 'edit' && !above.includes('edit')) workspace.pickedLayer = this.editId;
+      if (this._takingProject) workspace.pickedLayer = this.editId;
+      else if (workspace.pickedLayer === 'edit' && !above.includes('edit')) workspace.pickedLayer = this.editId;
       if (layerPaint.size) this.ensureLayer();
       for (const id of above) {
         const picture = layerPaint.get(id);

@@ -1,7 +1,7 @@
 // A drawing's file id (project.fileId): made with the drawing, carried by its .phosphor files and kept by opening them
 // (autosave's restore: autosave.test.js), and never sent to a room.
 import { test, expect, vi, afterEach } from 'vitest';
-import { createTestApp, loadImage, settle } from '../support/app.js';
+import { createTestApp, settle } from '../support/app.js';
 import { goodFileId, readProject, writeProject } from '@/document/projectIO.js';
 
 afterEach(() => vi.restoreAllMocks());
@@ -57,20 +57,6 @@ test('a file from before file ids gets one, which the next save writes', async (
   expect(goodFileId(id)).toBe(true);
   expect(project.isDirty).toBe(false);
   expect((await readProject(await saved(project))).settings.fileId).toBe(id);
-});
-
-test('a room\'s layers being renamed keep it', async () => {
-  const { project, workspace } = await createTestApp();
-  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
-  project.ensureLayer();
-  project.addLayer('cells', 'edit');
-  workspace.pickLayer('L1');
-  project.deleteLayer('edit');
-  const id = project.fileId;
-  expect(goodFileId(id)).toBe(true);
-  await project.roomLayers();
-  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']); // reopened under the room's names
-  expect(project.fileId).toBe(id);
 });
 
 test('an artist\'s copy of the host\'s drawing has none', async () => {
