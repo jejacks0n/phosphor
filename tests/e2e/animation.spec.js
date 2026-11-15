@@ -252,6 +252,9 @@ test('the menus open above the bar, on screen', async ({ page }) => {
   expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize().height);
 });
 
+// Two frames: what a resize or a scroll sends goes out before a frame's callbacks.
+const frames = (page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+
 test('on a phone the menus stay on screen side to side too', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
@@ -260,9 +263,13 @@ test('on a phone the menus stay on screen side to side too', async ({ page }) =>
     // A menu closes on resize, so the resize has to have landed before one opens: the width, then the frame after
     // (resize events go out before a frame's callbacks).
     await page.waitForFunction((w) => innerWidth === w, width);
-    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+    await frames(page);
     for (const [name, item] of [['Add frame', /^Duplicate/], ['Frame actions', 'Move earlier']]) {
       await expect.poll(async () => (await bar(page).getByRole('button', { name }).boundingBox())?.x ?? -1).toBeGreaterThanOrEqual(0);
+      // A scroll of what holds a menu closes it too, and the click's own scroll into view is heard a frame later: on
+      // a slow machine after the click, so the menu opened and closed. It's scrolled to and heard first.
+      await bar(page).getByRole('button', { name }).scrollIntoViewIfNeeded();
+      await frames(page);
       await bar(page).getByRole('button', { name }).click();
       const menu = await page.locator('.dropdown-content').boundingBox();
       expect(menu.x, `${name} at ${width}`).toBeGreaterThanOrEqual(0);
