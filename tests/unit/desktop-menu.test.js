@@ -12,6 +12,7 @@ function menu({ state = IDLE, recent = [], mac = true, packaged = true } = {}) {
   const calls = [];
   const act = {
     command: (name) => calls.push(['command', name]),
+    newWindow: () => calls.push(['newWindow']),
     openRecent: (file) => calls.push(['openRecent', file]),
     clearRecent: () => calls.push(['clearRecent']),
     openUrl: (url) => calls.push(['openUrl', url]),
@@ -51,6 +52,16 @@ test('each app action sends its command, with the shortcuts the page also answer
   }
   // Cut, copy, paste and select all are the system's, so text fields have them on macOS.
   assert.deepEqual(top(template, '<edit>').submenu.filter((i) => i.role).map((i) => i.role), ['cut', 'copy', 'paste', 'selectAll']);
+});
+
+test('File > New Window comes second, with its shortcut, on even with no drawing, and opens a window', () => {
+  const { template, calls } = menu();
+  const newWindow = top(template, '<file>').submenu[1];
+  assert.equal(newWindow.label, '<newWindow>');
+  assert.equal(newWindow.accelerator, 'CmdOrCtrl+Shift+N');
+  assert.notEqual(newWindow.enabled, false);
+  newWindow.click();
+  assert.deepEqual(calls, [['newWindow']]);
 });
 
 test('what needs a drawing, a free document or a room is off without one', () => {

@@ -1,10 +1,12 @@
-// The desktop app's main process: one window on the desktop build (dist-desktop/, served from app://phosphor/), and
-// the room service, which the page starts, changes, asks about and stops through the preload (window.phosphorDesktop).
-// The service outlives a reload of the page. A quit (closing the window too) asks the page first, so a host can hand
-// the room over, and goes on when the page says it's ready or after 20 s. The menu bar (menu.js) is in the page's
-// words, and the files it opens and saves are read and written here (files.js): the page writes only to a file
-// someone picked, opened or saved this session or before (Open Recent).
-import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, session, shell } from 'electron';
+// The desktop app's main process: windows on the desktop build (dist-desktop/, served from app://phosphor/), each its
+// own page, and the room service, which a page starts, changes, asks about and stops through the preload
+// (window.phosphorDesktop). The service outlives a reload of the page. A quit asks every window's page first, so a host
+// can hand the room over, and goes on when they all say they're ready or after 20 s. Closing a window closes it alone;
+// the last one quits the app, except on macOS. The menu bar (menu.js) is in the page's words and follows the focused
+// window, and the files it opens and saves are read and written here (files.js): a page writes only to a file someone
+// picked, opened or saved this session or before (Open Recent). A file opens in a window of its own when the window
+// it's for has a drawing (windows.js), and a project already open in a window brings that window forward.
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -15,6 +17,7 @@ import { createRoomService } from './roomService.js';
 import { reachableAddresses } from './addresses.js';
 import { OPENABLE, filesIn, isProject, recentFiles, writeWhole } from './files.js';
 import { REPO, menuTemplate } from './menu.js';
+import { cascade, fileTarget } from './windows.js';
 
 const ORIGIN = 'app://phosphor';
 const DIST = fileURLToPath(new URL('../dist-desktop/', import.meta.url));
@@ -33,15 +36,28 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: t
 
 const secret = randomBytes(32).toString('base64url');   // the host's own window proves itself to the service with it
 let service = null;   // the room service, as a promise
-let win = null;
 let quitReady = false;
 let quitTimer = null;
-let labels = null;   // the menu's words, from the page: no menu of the app's own until it says them
-let menuState = { hasImage: false, canChange: true, inRoom: false, hosting: false };
+let quitWaiting = new Set();   // the windows a quit waits for, by id
+let labels = null;   // the menu's words, from a page: no menu of the app's own until one says them
+const IDLE = { hasImage: false, canChange: true, inRoom: false, hosting: false };
 let recent = null;   // the recently opened files (files.js), once the user data folder is known
-const granted = new Set();   // the files the page may save over: picked, opened or saved
-const pendingFiles = [];   // files to open (double-clicked, on the command line, Open Recent) before the page can
-let filesReady = false;   // the page takes files: it says so once loaded, and a reload starts over
+const granted = new Set();   // the files the pages may save over: picked, opened or saved
+const launchFiles = [];   // files to open (double-clicked, on the command line) before the first window exists
+
+// The open windows by their page's webContents id: { id, win, menuState, title, file (its project's path, or null),
+// filesReady (its page takes files: it says so once loaded, and a reload starts over), pending (files and commands
+// for it until then), claimed (a file is on its way to it, until its page says it has a drawing) }.
+const windows = new Map();
+const focusOrder = [];   // the windows' ids, the last focused last
+const entryOf = (event) => windows.get(event.sender.id);
+// The focused window, else the last focused still open.
+const focusedEntry = () => windows.get(BrowserWindow.getFocusedWindow()?.webContents.id) ?? windows.get(focusOrder.at(-1));
+const send = (entry, channel, ...args) => { if (!entry.win.isDestroyed()) entry.win.webContents.send(channel, ...args); };
+const bringForward = (entry) => {
+  if (entry.win.isMinimized()) entry.win.restore();
+  entry.win.focus();
+};
 
 // A port from the page: a whole number from 1 to 65535 (a numeric string too), or none for the default.
 const portFrom = (port) => {
@@ -85,9 +101,11 @@ async function stopService() {
 
 // Only the app's own page reaches the main process.
 const fromApp = (event) => !!event.senderFrame?.url.startsWith(`${ORIGIN}/`);
+// Each handler gets the sender's window first.
 const handle = (channel, fn) => ipcMain.handle(channel, (event, ...args) => {
-  if (!fromApp(event)) throw new Error('Not the app');
-  return fn(...args);
+  const entry = entryOf(event);
+  if (!fromApp(event) || !entry) throw new Error('Not the app');
+  return fn(entry, ...args);
 });
 
 const finishQuit = () => {
@@ -107,10 +125,21 @@ const openOutside = (url) => {
   if (/^(https?|mailto):/.test(url)) shell.openExternal(url);
 };
 
+// A command from the menu goes to the focused window's page. With no window (macOS), one opens to take it, and New
+// is that window.
+function command(name) {
+  const entry = focusedEntry();
+  if (entry) return send(entry, 'phosphor:menu', name);
+  const opened = openWindow();
+  if (name !== 'new') opened.pending.push({ command: name });
+}
+
+// The menu for the focused window: its state, or nothing open's.
 function buildMenu() {
   if (!labels) return;
   const act = {
-    command: (name) => win?.webContents.send('phosphor:menu', name),
+    command,
+    newWindow: () => openWindow(),
     openRecent: (file) => deliver(file),
     clearRecent: () => {
       recent.clear();
@@ -120,24 +149,29 @@ function buildMenu() {
     openUrl: openOutside,
   };
   const template = menuTemplate({
-    labels, state: menuState, recent: recent?.list() ?? [], act, mac: process.platform === 'darwin', packaged: app.isPackaged,
+    labels, state: focusedEntry()?.menuState ?? IDLE, recent: recent?.list() ?? [], act, mac: process.platform === 'darwin', packaged: app.isPackaged,
     version: VERSION, platform: process.platform, systemVersion: process.getSystemVersion(), arch: process.arch,
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-// The menu's words and what the page can do now. Strings and booleans only.
-function setMenu({ labels: words, state } = {}) {
+// The menu's words, what the page can do now, its drawing's name (the window's title) and its project's path. Strings
+// and booleans only. A window with a drawing is no longer waiting for a file.
+function setMenu(entry, { labels: words, state, title, file } = {}) {
   if (!words || typeof words !== 'object' || Object.values(words).some((word) => typeof word !== 'string')) throw new Error('No labels');
-  const [wereLabels, wasState] = [labels, menuState];
+  const [wereLabels, wasState] = [labels, entry.menuState];
   labels = { ...words };
-  menuState = Object.fromEntries(Object.keys(menuState).map((key) => [key, !!state?.[key]]));
+  entry.menuState = Object.fromEntries(Object.keys(IDLE).map((key) => [key, !!state?.[key]]));
   try {
     buildMenu();
   } catch (error) {
-    [labels, menuState] = [wereLabels, wasState];   // the menu that worked stays
+    [labels, entry.menuState] = [wereLabels, wasState];   // the menu that worked stays
     throw error;
   }
+  if (entry.menuState.hasImage) entry.claimed = false;
+  entry.title = typeof title === 'string' && title ? title : 'Phosphor';
+  entry.file = typeof file === 'string' && file ? file : null;
+  entry.win.setTitle(entry.title);
 }
 
 // A file opened or saved: the page may save over it, and it's first in Open Recent. Only the first can't fail: the
@@ -159,31 +193,52 @@ async function readOpened(file) {
   return { path: file, name: path.basename(file), bytes };
 }
 
-// A file to open in the page, now or once it takes files. One that can't be read is said by name, and leaves the list.
-async function deliver(file) {
-  if (!filesReady || !win) return void pendingFiles.push(file);
+// A file to open in a window's page, now or once it takes files. One that can't be read is said by name, and leaves
+// the list.
+async function sendFile(entry, file) {
+  if (!entry.filesReady) return void entry.pending.push({ file });
   try {
-    win.webContents.send('phosphor:opened-file', await readOpened(file));
+    send(entry, 'phosphor:opened-file', await readOpened(file));
   } catch {
+    entry.claimed = false;
     recent?.remove(file);
     buildMenu();
-    win?.webContents.send('phosphor:opened-file', { name: path.basename(file), missing: true });
+    send(entry, 'phosphor:opened-file', { name: path.basename(file), missing: true });
   }
 }
 
-// File > Open: the system's chooser, for what the page opens. Null when nothing's picked.
-async function openFile() {
-  const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: labels?.openableFiles ?? 'Phosphor', extensions: OPENABLE }] });
-  return canceled || !filePaths[0] ? null : readOpened(filePaths[0]);
+// A file to open (double-clicked, a second launch, Open Recent): the window that has it open comes forward; otherwise
+// it opens in the focused window (focusedId) when that's empty, or in a new window.
+const targetOf = (file, focusedId) => fileTarget([...windows.values()].map(({ id, menuState, claimed, file: open }) => ({ id, hasImage: menuState.hasImage, claimed, file: open })), focusedId, file);
+function deliver(file, { focusedId = focusedEntry()?.id } = {}) {
+  const target = targetOf(file, focusedId);
+  const entry = windows.get(target.id);
+  if (!entry) return void openWindow({ files: [file] });
+  bringForward(entry);
+  if (target.existing) return;
+  entry.claimed = true;
+  sendFile(entry, file);
+}
+
+// File > Open: the system's chooser, for what the page opens. Null when nothing's picked, or when what's picked opens
+// in another window (or is open there already).
+async function openFile(entry) {
+  const { canceled, filePaths } = await dialog.showOpenDialog(entry.win, { properties: ['openFile'], filters: [{ name: labels?.openableFiles ?? 'Phosphor', extensions: OPENABLE }] });
+  const file = !canceled && filePaths[0];
+  if (!file) return null;
+  const target = targetOf(file, entry.id);
+  if (target.id === entry.id && !target.existing) return readOpened(file);
+  deliver(file, { focusedId: entry.id });
+  return null;
 }
 
 // Save: over the project's own file when the page may write there, or where the system's save box says (Save As,
 // `as`, always asks, starting beside the file). The path written, or null when the box is canceled.
-async function saveProject({ bytes, name, path: file, as = false } = {}) {
+async function saveProject(entry, { bytes, name, path: file, as = false } = {}) {
   if (!(bytes instanceof Uint8Array) || typeof name !== 'string') throw new Error('No project');
   const own = typeof file === 'string' && granted.has(file) && isProject(file);
   if (as || !own) {
-    const chosen = await dialog.showSaveDialog(win, {
+    const chosen = await dialog.showSaveDialog(entry.win, {
       defaultPath: own ? path.join(path.dirname(file), path.basename(name)) : path.basename(name),
       filters: [{ name: labels?.projectFiles ?? 'Phosphor', extensions: ['phosphor'] }],
     });
@@ -218,10 +273,12 @@ function serve(request) {
   return net.fetch(pathToFileURL(found).toString());
 }
 
-function openWindow() {
-  win = new BrowserWindow({
-    width: 1400,
-    height: 900,
+// A new window, cascaded from the focused one, on the start screen until its page takes the files given.
+function openWindow({ files = [] } = {}) {
+  const from = focusedEntry()?.win.getBounds();
+  const { workArea } = from ? screen.getDisplayMatching(from) : screen.getPrimaryDisplay();
+  const win = new BrowserWindow({
+    ...cascade(from, workArea),
     title: 'Phosphor',
     webPreferences: {
       preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)),
@@ -232,6 +289,10 @@ function openWindow() {
       additionalArguments: Number.isFinite(returnWithinMs) && returnWithinMs > 0 ? [`--phosphor-return-within-ms=${returnWithinMs}`] : [],
     },
   });
+  const { id } = win.webContents;
+  const entry = { id, win, menuState: { ...IDLE }, title: 'Phosphor', file: null, filesReady: false, pending: files.map((file) => ({ file })), claimed: files.length > 0 };
+  windows.set(id, entry);
+  focusOrder.push(id);
   win.webContents.setWindowOpenHandler(({ url }) => {
     openOutside(url);
     return { action: 'deny' };
@@ -241,12 +302,8 @@ function openWindow() {
     event.preventDefault();
     openOutside(url);
   });
-  // Closing the window is quitting, on every platform, and waits as a quit does.
-  win.on('close', (event) => {
-    if (quitReady) return;
-    event.preventDefault();
-    app.quit();
-  });
+  // The title is the drawing's name, which the page says with the menu, not its own <title>.
+  win.on('page-title-updated', (event) => event.preventDefault());
   // The page asks before it goes with unsaved changes (or a room it hosts), as a browser does: Electron shows nothing
   // for that by itself, so the question is asked here. Plain English: the main process has no app strings.
   win.webContents.on('will-prevent-unload', (event) => {
@@ -263,49 +320,75 @@ function openWindow() {
   });
   // A reload (not the router's own moves) starts a page that hasn't said it takes files yet.
   win.webContents.on('did-start-navigation', (details) => {
-    if (details.isMainFrame && !details.isSameDocument) filesReady = false;
+    if (details.isMainFrame && !details.isSameDocument) entry.filesReady = false;
   });
-  win.on('closed', () => { win = null; });
+  win.on('focus', () => {
+    focusOrder.splice(focusOrder.indexOf(id), 1);
+    focusOrder.push(id);
+    buildMenu();
+  });
+  win.on('closed', () => {
+    windows.delete(id);
+    focusOrder.splice(focusOrder.indexOf(id), 1);
+    if (quitTimer && quitWaiting.delete(id) && !quitWaiting.size) finishQuit();
+    buildMenu();
+  });
   win.loadURL(`${ORIGIN}/`);
+  return entry;
 }
 
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  // A file double-clicked while the app is open: on Windows and Linux a second launch, naming it.
+  // A file double-clicked while the app is open: on Windows and Linux a second launch, naming it (or none: a new
+  // window).
   app.on('second-instance', (_event, argv, cwd) => {
-    if (win?.isMinimized()) win.restore();
-    win?.focus();
-    for (const file of filesIn(argv.slice(1), cwd)) deliver(file);
+    const files = filesIn(argv.slice(1), cwd);
+    if (!app.isReady()) launchFiles.push(...files);
+    else if (!files.length) openWindow();
+    else for (const file of files) deliver(file);
   });
   // On macOS, a file double-clicked or dropped on the Dock icon, before the app is ready too.
   app.on('open-file', (event, file) => {
     event.preventDefault();
-    deliver(file);
+    if (app.isReady()) deliver(file);
+    else launchFiles.push(file);
   });
-  for (const file of filesIn(process.argv.slice(1))) pendingFiles.push(file);
+  launchFiles.push(...filesIn(process.argv.slice(1)));
+  // The last window closed: the app quits, except on macOS, where its menu bar stays.
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+  });
 
   app.on('before-quit', (event) => {
-    if (quitReady || !win) return;
+    if (quitReady || !windows.size) return;
     event.preventDefault();
     if (quitTimer) return;
     quitTimer = setTimeout(finishQuit, QUIT_WITHIN_MS);
-    win.webContents.send('phosphor:quit');
+    quitWaiting = new Set(windows.keys());
+    for (const entry of windows.values()) send(entry, 'phosphor:quit');
   });
 
-  handle('phosphor:start-service', startService);
-  handle('phosphor:service-info', serviceInfo);
-  handle('phosphor:stop-service', stopService);
+  handle('phosphor:start-service', (_entry, options) => startService(options));
+  handle('phosphor:service-info', () => serviceInfo());
+  handle('phosphor:stop-service', () => stopService());
   handle('phosphor:set-menu', setMenu);
   handle('phosphor:open-file', openFile);
   handle('phosphor:save-project', saveProject);
-  handle('phosphor:releases', releases);
+  handle('phosphor:releases', () => releases());
   ipcMain.on('phosphor:files-ready', (event) => {
-    if (!fromApp(event)) return;
-    filesReady = true;
-    for (const file of pendingFiles.splice(0)) deliver(file);
+    const entry = entryOf(event);
+    if (!fromApp(event) || !entry) return;
+    entry.filesReady = true;
+    for (const job of entry.pending.splice(0)) {
+      if (job.file) sendFile(entry, job.file);
+      else send(entry, 'phosphor:menu', job.command);
+    }
   });
+  // The quit goes on once every window has said it's ready.
   ipcMain.on('phosphor:quit-ready', (event) => {
-    if (fromApp(event) && quitTimer) finishQuit();
+    if (!fromApp(event) || !quitTimer) return;
+    quitWaiting.delete(event.sender.id);
+    if (!quitWaiting.size) finishQuit();
   });
 
   app.whenReady().then(() => {
@@ -315,5 +398,11 @@ else {
     // No permission is given, but writing to the clipboard (a room's link is copied).
     session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => callback(permission === 'clipboard-sanitized-write'));
     openWindow();
+    // The first fills the first window, the rest get their own.
+    for (const file of launchFiles.splice(0)) deliver(file);
+    // A Dock click on macOS with no window open opens one.
+    app.on('activate', () => {
+      if (!windows.size) openWindow();
+    });
   });
 }

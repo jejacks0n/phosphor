@@ -29,7 +29,7 @@ beside it) or "They're on an older Phosphor. They need to update before you can 
 
 The app's own menus, in the language Phosphor shows:
 
-- **File**: New, Open… (Cmd/Ctrl+O), Open Recent, Save (Cmd/Ctrl+S), Save As… (Cmd/Ctrl+Shift+S), Export…
+- **File**: New, New Window (Cmd/Ctrl+Shift+N), Open… (Cmd/Ctrl+O), Open Recent, Save (Cmd/Ctrl+S), Save As… (Cmd/Ctrl+Shift+S), Export…
   (Cmd/Ctrl+E) and Versions…, as the buttons under the settings do.
 - **Edit**: Undo and Redo (the drawing's, or a text field's while you type in one), Cut, Copy, Paste and Select All.
 - **Room**: Start a Room… and Join a Room… open the Social tab; Copy Room Address copies the first address others can
@@ -39,6 +39,22 @@ The app's own menus, in the language Phosphor shows:
   opens a new GitHub issue with your Phosphor version and system written in. Troubleshooting has the developer tools,
   for when someone helping you asks what they say.
 
+## Windows
+
+**File > New Window** (Cmd/Ctrl+Shift+N) opens another window on the start screen, a little down and to the right of
+the one you're in. Each window is its own drawing, so you can keep a reference open beside the one you're working on.
+A window's title is its drawing's name ("Phosphor" on the start screen), and the menu bar is the front window's: Save,
+for one, is on only when that window has a drawing.
+
+Opening a file never replaces your drawing. Open…, Open Recent, a double-click and a file dropped on the Dock open it
+in the window you're in when that window is on the start screen, and in a new window when it has a drawing. Several
+files at once get a window each. A project that's already open in a window brings that window to the front instead of
+opening a second copy.
+
+Closing a window closes that window alone, asking first when it has unsaved changes. On macOS, closing the last one
+leaves Phosphor running with its menu bar: New Window, Open… or a click on its Dock icon opens a window again. On
+Windows and Linux, closing the last window quits.
+
 ## Opening and saving
 
 Open… is your system's own file chooser, and Save writes a project straight back to its file: the first Save of a
@@ -47,7 +63,8 @@ project opened with Open…, Open Recent or a double-click saves back to where i
 asks where the first time. A save is written whole: if it fails, the file it would have replaced is left as it was.
 Exports still ask where each time.
 
-Double-clicking a `.phosphor` file opens it in Phosphor. With Phosphor already open, the file opens there. The rest
+Double-clicking a `.phosphor` file opens it in Phosphor. With Phosphor already open, the file opens there: in the
+window you're in when it's on the start screen, and in a new window when it shows a drawing. The rest
 of what Phosphor opens is offered under **Open With**, and you can make Phosphor the default for any of them:
 
 - **`.ans`, `.utf8ans` and `.diz`**: on every system. On Windows, installing Phosphor makes it their default.
@@ -157,7 +174,7 @@ Someone who can't reach the new host's address is told "The room moved to ann, a
 address couldn't be reached." The host's app only checked that *it* could reach the new host: on one network or on
 Tailscale that holds for everyone; over the internet it may not.
 
-**Quitting the app while hosting** (closing the window quits it, on every platform) hands the room to the first
+**Quitting the app while hosting** hands the room to the first
 connected artist who can be host, as **Make host** does, and waits for them to take it, up to about 16 seconds. With
 no one to hand it to, or no answer in time, the room ends. **End room** always ends it for everyone.
 

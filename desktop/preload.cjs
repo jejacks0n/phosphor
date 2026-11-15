@@ -1,5 +1,5 @@
 // The page's one way into the main process (desktop/main.js), as window.phosphorDesktop: the room service, quitting,
-// the menu bar (its words and state out, its commands back), files opened and saved, and the releases to update to. Sandboxed, so CommonJS, with only Electron's renderer modules.
+// the menu bar (its words and state out, with the window's drawing, and its commands back), files opened and saved, and the releases to update to. Sandboxed, so CommonJS, with only Electron's renderer modules.
 const { contextBridge, ipcRenderer } = require('electron');
 
 let onQuit = null;
@@ -28,7 +28,8 @@ contextBridge.exposeInMainWorld('phosphorDesktop', {
   stopService: () => ipcRenderer.invoke('phosphor:stop-service'),
   onQuit: (cb) => { onQuit = cb; },
   quitReady: () => ipcRenderer.send('phosphor:quit-ready'),
-  setMenu: (labels, state) => ipcRenderer.invoke('phosphor:set-menu', { labels, state }),
+  // The menu's words and state, and the window's drawing: its name (the window's title) and its project's path.
+  setMenu: (labels, state, { title, file } = {}) => ipcRenderer.invoke('phosphor:set-menu', { labels, state, title, file }),
   onMenu: (cb) => { onMenu = cb; },
   // Files to open come once the page says it takes them: { path, name, bytes }, or { name, missing: true }.
   onOpenedFile: (cb) => {

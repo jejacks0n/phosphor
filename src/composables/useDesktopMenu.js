@@ -9,11 +9,12 @@ import { useDrawingStore } from '@/store/DrawingStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 
-// The desktop app's menu bar (desktop/menu.js builds it): its words in the language showing and what can be done now,
-// sent whenever either changes, and its commands run here. Files the app is asked to open (double-clicked, Open
+// The desktop app's menu bar (desktop/menu.js builds it): its words in the language showing, what can be done now and
+// the drawing's name and project path (the window's title, and which window has a file open), sent whenever any
+// changes, and its commands run here. Files the app is asked to open (double-clicked, Open
 // Recent) go to EditWorkspace as if chosen there. App.vue calls it on the desktop build only.
 export const MENU_LABELS = [
-  'file', 'new', 'open', 'openRecent', 'clearRecent', 'noRecent', 'save', 'saveAs', 'export', 'versions', 'closeWindow', 'quit',
+  'file', 'new', 'newWindow', 'open', 'openRecent', 'clearRecent', 'noRecent', 'save', 'saveAs', 'export', 'versions', 'closeWindow', 'quit',
   'edit', 'undo', 'redo', 'cut', 'copy', 'paste', 'selectAll',
   'room', 'hostRoom', 'joinRoom', 'copyAddress', 'leaveRoom', 'endRoom',
   'view', 'actualSize', 'zoomIn', 'zoomOut', 'fullScreen', 'window',
@@ -84,7 +85,8 @@ export function useDesktopMenu() {
     void locale.value;   // a language picked in the footer: its words
     const labels = Object.fromEntries(MENU_LABELS.map((key) => [key, t(`menu.${key}`)]));
     const state = { hasImage: !!project.image, canChange: !drawing.offWithOthers, inRoom: !!room.role, hosting: room.role === 'host' };
-    desktop.setMenu(labels, state).catch((error) => console.warn('Could not set the menu', error));
+    const art = { title: project.filename || 'Phosphor', file: project.filePath ?? null };
+    desktop.setMenu(labels, state, art).catch((error) => console.warn('Could not set the menu', error));
   });
 
   desktop.onOpenedFile((file) => {

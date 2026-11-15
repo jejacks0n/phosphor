@@ -1770,6 +1770,7 @@
   "menu": {
     "file": "File",
     "new": "New",
+    "newWindow": "New Window",
     "open": "Open…",
     "openRecent": "Open Recent",
     "clearRecent": "Clear Menu",
