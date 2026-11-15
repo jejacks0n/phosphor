@@ -75,6 +75,7 @@ import { usableChar } from '../lib/CharWidth.js';
 import { clampAnsiZoom } from '../lib/zoom.js';
 import { writeProject, readProject, gzipped, gunzipped, MOST_PROJECT_BYTES } from '../document/projectIO.js';
 import { isGoodShapeKey, isShapeKey, sameShape, shapeFromStranger } from '../document/shapes.js';
+import { keyLayer, layerKey } from '../document/layerInfo.js';
 
 export const CHUNK_BYTES = 65536;
 // An artist's message (and the host's numbered one) is a message like any other.
@@ -249,10 +250,13 @@ function goodEntry(entry) {
 }
 
 // The change in an artist's message, or null (nothing thrown) when anything in it isn't one the app
-// could have made on a grid of cols x rows cells over a paint layer layerWidth x layerHeight: a cell off
-// the grid, one that can't be drawn, a shape that isn't one, a run off the layer, a stroke id that isn't short text. The same
-// arrays come back, so what's sent on as numbered is what was sent.
-export function readChange(msg, { cols, rows, layerWidth, layerHeight }) {
+// could have made on a grid of cols x rows cells over paint layers layerWidth x layerHeight: a cell off
+// the grid, one that can't be drawn, a shape that isn't one, a run off the layer, a stroke id that isn't short text, or
+// a layer that isn't there to hold it. layers: every layer above the bottom, id to kind (stackKinds); a cell's key and a
+// run name a cells layer (layerInfo.js: bare, and a run of four, the edit layer), and a shape a vector layer, or none
+// for the one a room fills in. The same arrays come back, so what's sent on as numbered is what was sent.
+const ONLY_EDIT = new Map([['edit', 'cells']]);
+export function readChange(msg, { cols, rows, layerWidth, layerHeight, layers = ONLY_EDIT }) {
   if (!msg || typeof msg !== 'object') return null;
   const { stroke, cells, runs } = msg;
   if (!isStroke(stroke) || !Array.isArray(cells) || !Array.isArray(runs)) return null;
@@ -260,16 +264,20 @@ export function readChange(msg, { cols, rows, layerWidth, layerHeight }) {
     if (!Array.isArray(cell) || cell.length !== 2 || typeof cell[0] !== 'string') return null;
     if (isShapeKey(cell[0])) { // a shape (or null, its deletion), exactly as the app makes one
       if (!isGoodShapeKey(cell[0])) return null;
-      if (cell[1] !== null && (cell[1]?.layer !== undefined || !sameShape(shapeFromStranger(cell[1]), cell[1]))) return null; // a room has the one vector layer, which shapes don't name
+      if (cell[1] === null) continue;
+      if ((cell[1]?.layer !== undefined && layers.get(cell[1].layer) !== 'vector') || !sameShape(shapeFromStranger(cell[1]), cell[1])) return null;
       continue;
     }
-    const at = placeOf(cell[0]);
+    const { id, key } = keyLayer(cell[0]);
+    if (layers.get(id) !== 'cells' || layerKey(id, key) !== cell[0]) return null; // 'edit:' isn't how the edit layer's are named
+    const at = placeOf(key);
     if (!at || at[0] >= cols || at[1] >= rows) return null;
     if (cell[1] !== null && !(cell[1] && goodEntry(cell[1]))) return null;
   }
   for (const run of runs) {
-    if (!Array.isArray(run) || run.length !== 4) return null;
-    const [x, y, length, rgba] = run;
+    if (!Array.isArray(run) || (run.length !== 4 && (run.length !== 5 || run[4] === 'edit'))) return null;
+    const [x, y, length, rgba, id = 'edit'] = run;
+    if (layers.get(id) !== 'cells') return null;
     if (!isWhole(x) || !isWhole(y) || !Number.isInteger(length) || length < 1 || y >= layerHeight || x + length > layerWidth) return null;
     if (!Number.isInteger(rgba) || rgba < 0 || rgba > 0xffffffff) return null;
   }

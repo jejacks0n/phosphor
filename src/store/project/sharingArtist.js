@@ -1,5 +1,6 @@
 // An artist's side of sharing: slices held and sent, what's asked of the host, what's heard, and the project.
 import { parseKey } from '@/document/editCells.js';
+import { keyLayer } from '@/document/layerInfo.js';
 import { REFUSED_WORDS } from '@/social/messages.js';
 import { MAX_CELLS } from '@/lib/Cells.js';
 import { cellsFitAnyGrid } from '@/social/wire.js';
@@ -137,7 +138,9 @@ export const sharingArtistActions = {
       boxes.set(stroke, box ? { x0: Math.min(box.x0, x0), y0: Math.min(box.y0, y0), x1: Math.max(box.x1, x1), y1: Math.max(box.y1, y1) } : { x0, y0, x1, y1 });
     };
     for (const { stroke, cells, runs } of pending.waiting) {
-      for (const [key] of cells) {
+      for (const [name] of cells) {
+        const { id, key } = keyLayer(name);
+        if (id === null) continue; // a shape: no cell of its own
         const { col, row } = parseKey(key);
         grow(stroke, col, row * 2, col + 1, row * 2 + 2);
       }

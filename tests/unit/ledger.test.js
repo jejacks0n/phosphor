@@ -47,8 +47,8 @@ function picture({ cells = [], pixels = [] } = {}) {
       let sum = 0;
       for (const [key, entry] of held.cells) sum ^= hashCell(key, entry);
       for (const [at, rgba] of held.pixels) {
-        const [x, y] = keyLayer(at).key.split(',').map(Number);
-        sum ^= hashPixel(x, y, rgba);
+        const { id, key } = keyLayer(at), [x, y] = key.split(',').map(Number);
+        sum ^= hashPixel(x, y, rgba, id);
       }
       return sum;
     },

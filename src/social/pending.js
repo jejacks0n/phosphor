@@ -3,9 +3,10 @@
  * holds the agreed value beneath, so the screen ends up as the host's order has it. Nothing here touches
  * the picture except through read and write.
  *
- * A position is a cell's key ('col,row'), its value an Entry or null, or a paint pixel's [x, y], its value
- * a packed color (0 transparent). A [x, y] is made for the call and not kept: what's held for paint is in
- * typed arrays per tile, so a stroke costs what its tiles do however its pixels are spread.
+ * A position is a cell's key ('col,row', or 'L2:col,row' on another layer: layerInfo.js), its value an Entry or null,
+ * or a paint pixel's [x, y, id] (id: its layer's, 'edit' for the edit layer), its value a packed color (0 transparent). An
+ * [x, y, id] is made for the call and not kept: what's held for paint is in typed arrays per tile, a layer's tiles apart,
+ * so a stroke costs what its tiles do however its pixels are spread.
  *
  * read(position) must show the picture without the change being added, and with every Numbered heard so
  * far: a position not held is read as its agreed value.
@@ -18,6 +19,7 @@
  */
 import { eachPixel, hashCell, hashPixel, Tail } from '../document/changes.js';
 import { TILE } from '../document/History.js';
+import { layerKey } from '../document/layerInfo.js';
 
 const startOf = (at) => Math.floor(at / TILE) * TILE;
 const indexOf = (x, y) => (y - startOf(y)) * TILE + (x - startOf(x));
@@ -25,7 +27,7 @@ const indexOf = (x, y) => (y - startOf(y)) * TILE + (x - startOf(x));
 export class Pending {
   #changes = []; // oldest first, each { stroke, cells, runs }
   #cells = new Map(); // key -> { claims, agreed }
-  #tiles = new Map(); // 'x,y' -> { x, y, held, claims, agreed }: a claim count and the agreed color per pixel
+  #tiles = new Map(); // layerKey(id, 'x,y') -> { x, y, id, held, claims, agreed }: a claim count and the agreed color per pixel
   #sum = 0;
   #older = 0; // how many of the oldest changes are from before this connection, so its count isn't about them
   #handled = 0; // of the changes after those: how many are gone, by an echo or dropTaken
@@ -78,19 +80,19 @@ export class Pending {
       claim.agreed = entry;
       if (echo && !--claim.claims) this.#cells.delete(key);
     }
-    eachPixel(runs, (x, y, rgba) => {
-      const tile = this.#tile(x, y), i = indexOf(x, y);
+    eachPixel(runs, (x, y, rgba, id = 'edit') => {
+      const tile = this.#tile(x, y, id), i = indexOf(x, y);
       if (!tile?.claims[i]) {
-        this.#sum ^= hashPixel(x, y, this.read([x, y])) ^ hashPixel(x, y, rgba);
-        this.write([x, y], rgba);
+        this.#sum ^= hashPixel(x, y, this.read([x, y, id]), id) ^ hashPixel(x, y, rgba, id);
+        this.write([x, y, id], rgba);
         const last = applied.runs.at(-1);
-        if (last && last[1] === y && last[0] + last[2] === x && last[3] === rgba) last[2]++;
-        else applied.runs.push([x, y, 1, rgba]);
+        if (last && last[1] === y && last[0] + last[2] === x && last[3] === rgba && (last[4] ?? 'edit') === id) last[2]++;
+        else applied.runs.push(id === 'edit' ? [x, y, 1, rgba] : [x, y, 1, rgba, id]);
         return;
       }
-      this.#sum ^= hashPixel(x, y, tile.agreed[i]) ^ hashPixel(x, y, rgba);
+      this.#sum ^= hashPixel(x, y, tile.agreed[i], id) ^ hashPixel(x, y, rgba, id);
       tile.agreed[i] = rgba;
-      if (echo && !--tile.claims[i] && !--tile.held) this.#tiles.delete(`${tile.x},${tile.y}`);
+      if (echo && !--tile.claims[i] && !--tile.held) this.#forgetTile(tile);
     });
     return { applied, echo };
   }
@@ -104,9 +106,9 @@ export class Pending {
   // The agreed picture on screen, with what's mine still held: reapply puts it back.
   lift() {
     for (const [key, { agreed }] of this.#cells) this.write(key, agreed);
-    for (const { x, y, claims, agreed } of this.#tiles.values()) {
+    for (const { x, y, id, claims, agreed } of this.#tiles.values()) {
       for (let i = 0; i < claims.length; i++) {
-        if (claims[i]) this.write([x + i % TILE, y + Math.floor(i / TILE)], agreed[i]);
+        if (claims[i]) this.write([x + i % TILE, y + Math.floor(i / TILE), id], agreed[i]);
       }
     }
     this.#forgetClaims();
@@ -124,14 +126,14 @@ export class Pending {
         this.write(key, claim.agreed);
       }
     }
-    eachPixel(runs, (x, y) => {
-      const tile = this.#tile(x, y), i = indexOf(x, y);
+    eachPixel(runs, (x, y, rgba, id = 'edit') => {
+      const tile = this.#tile(x, y, id), i = indexOf(x, y);
       if (--tile.claims[i]) {
-        this.write([x, y], this.#newestPixel(x, y));
+        this.write([x, y, id], this.#newestPixel(x, y, id));
         return;
       }
-      this.write([x, y], tile.agreed[i]);
-      if (!--tile.held) this.#tiles.delete(`${tile.x},${tile.y}`);
+      this.write([x, y, id], tile.agreed[i]);
+      if (!--tile.held) this.#forgetTile(tile);
     });
   }
 
@@ -168,7 +170,7 @@ export class Pending {
     for (const change of this.#changes) {
       this.#claim(change);
       for (const [key, entry] of change.cells) this.write(key, entry);
-      eachPixel(change.runs, (x, y, rgba) => this.write([x, y], rgba));
+      eachPixel(change.runs, (x, y, rgba, id = 'edit') => this.write([x, y, id], rgba));
     }
   }
 
@@ -180,9 +182,9 @@ export class Pending {
     }
   }
 
-  #newestPixel(x, y) {
+  #newestPixel(x, y, id) {
     for (let at = this.#changes.length - 1; at >= 0; at--) {
-      const found = this.#changes[at].runs.findLast(([rx, ry, length]) => ry === y && x >= rx && x < rx + length);
+      const found = this.#changes[at].runs.findLast(([rx, ry, length, , on = 'edit']) => ry === y && x >= rx && x < rx + length && on === id);
       if (found) return found[3];
     }
   }
@@ -193,24 +195,28 @@ export class Pending {
       if (claim) claim.claims++;
       else this.#cells.set(key, { claims: 1, agreed: this.read(key) ?? null });
     }
-    eachPixel(runs, (x, y) => {
-      const tile = this.#tile(x, y) ?? this.#newTile(x, y), i = indexOf(x, y);
+    eachPixel(runs, (x, y, rgba, id = 'edit') => {
+      const tile = this.#tile(x, y, id) ?? this.#newTile(x, y, id), i = indexOf(x, y);
       if (!tile.claims[i]++) {
         tile.held++;
-        tile.agreed[i] = this.read([x, y]);
+        tile.agreed[i] = this.read([x, y, id]);
       }
     });
   }
 
-  #tile(x, y) {
-    return this.#tiles.get(`${startOf(x)},${startOf(y)}`);
+  #tile(x, y, id) {
+    return this.#tiles.get(layerKey(id, `${startOf(x)},${startOf(y)}`));
   }
 
   // Two arrays of TILE x TILE: the same 32 KB History counts for a tile.
-  #newTile(x, y) {
-    const tile = { x: startOf(x), y: startOf(y), held: 0, claims: new Uint32Array(TILE * TILE), agreed: new Uint32Array(TILE * TILE) };
-    this.#tiles.set(`${tile.x},${tile.y}`, tile);
+  #newTile(x, y, id) {
+    const tile = { x: startOf(x), y: startOf(y), id, held: 0, claims: new Uint32Array(TILE * TILE), agreed: new Uint32Array(TILE * TILE) };
+    this.#tiles.set(layerKey(id, `${tile.x},${tile.y}`), tile);
     return tile;
+  }
+
+  #forgetTile({ x, y, id }) {
+    this.#tiles.delete(layerKey(id, `${x},${y}`));
   }
 
   #forgetClaims() {

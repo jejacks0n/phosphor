@@ -150,6 +150,7 @@ test('the biggest snapshot is cut into chunks of CHUNK_BYTES or less and arrives
 
 // An artist's change is a stranger's data, checked as a host's cells are.
 const GRID = { cols: 10, rows: 4, layerWidth: 20, layerHeight: 8 };
+const RED_RUN = 0xff0000ff;
 const good = () => ({
   stroke: 's1',
   cells: [['0,0', { char: 'a', fg: '#ffffff', bg: '#000000' }], ['9,3', { fg: '#00aa00' }], ['3,2', null]],
@@ -223,12 +224,34 @@ test.each([
   assert.equal(readChange({ ...good(), ...bad }, GRID), null);
 });
 
-// A room carries the old shape of a drawing: its shapes are on its one vector layer, which they don't name.
-test('readChange refuses a shape that names a layer', async () => {
+// A change names the layer each cell, run and shape is on (layerInfo.js: layerKey), and the layer has to be there, above
+// the bottom, of the kind that holds it. A bare key or a four-item run is the edit layer's.
+const STACK = new Map([['edit', 'cells'], ['L2', 'cells'], ['L3', 'vector']]);
+test('a change may name any layer above the bottom', () => {
+  const layers = new Map([['edit', 'cells'], ['L2', 'cells']]);
+  const of = (key) => readChange({ t: 'change', stroke: 's', cells: [[key, { char: 'x' }]], runs: [[0, 0, 1, RED_RUN, 'L2']] }, { cols: 4, rows: 4, layerWidth: 8, layerHeight: 8, layers });
+  assert.notEqual(of('L2:1,0'), null);
+  assert.equal(of('base:1,0'), null);
+  assert.equal(of('L9:1,0'), null);
+  assert.equal(readChange({ stroke: 's', cells: [], runs: [[0, 0, 1, RED_RUN, 'L3']] }, { ...GRID, layers: STACK }), null); // a vector layer has no paint
+  assert.ok(readChange({ stroke: 's', cells: [['L2:9,3', null]], runs: [[0, 0, 20, RED_RUN, 'L2'], [0, 7, 1, 0]] }, { ...GRID, layers: STACK }));
+  assert.equal(readChange({ ...good(), cells: [['L2:10,0', null]] }, { ...GRID, layers: STACK }), null); // still on the grid
+  assert.equal(readChange({ ...good(), runs: [[19, 0, 2, 1, 'L2']] }, { ...GRID, layers: STACK }), null); // and on the layer
+  // The edit layer is named by leaving its name out, so a position has one key.
+  assert.equal(readChange({ ...good(), cells: [['edit:1,0', null]] }, { ...GRID, layers: STACK }), null);
+  assert.equal(readChange({ ...good(), runs: [[0, 0, 1, 1, 'edit']] }, { ...GRID, layers: STACK }), null);
+  assert.equal(readChange(good(), { ...GRID, layers: new Map([['L2', 'cells']]) }), null); // a bare key with no edit layer
+  assert.equal(readChange({ ...good(), runs: [[0, 0, 1, 1, 7]] }, { ...GRID, layers: STACK }), null);
+});
+
+test('a shape names a vector layer, or none', async () => {
   const { rectShape } = await import('../../src/document/shapes.js');
   const shape = JSON.parse(JSON.stringify(rectShape(0, 0, 4, 4, { fill: '#ff0000' })));
-  assert.ok(readChange({ ...good(), cells: [['v:a', shape]] }, GRID));
-  for (const layer of ['L2', 'edit', 'vector']) assert.equal(readChange({ ...good(), cells: [['v:a', { ...shape, layer }]] }, GRID), null, layer);
+  const of = (layer, layers = STACK) => readChange({ ...good(), cells: [['v:a', { ...shape, layer }]] }, { ...GRID, layers });
+  assert.ok(readChange({ ...good(), cells: [['v:a', shape]] }, GRID)); // none: the vector layer
+  assert.ok(of('L3'));
+  assert.equal(of('L3', new Map([['edit', 'cells'], ['L3', 'cells']])), null);
+  for (const layer of ['L2', 'edit', 'base', 'L9', 'vector']) assert.equal(of(layer), null, layer); // 'vector' goes unnamed
 });
 
 test('readChange takes the keys cellKey makes, zero and ten included', () => {

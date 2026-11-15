@@ -3,7 +3,7 @@ import { serializeBase } from '@/document/baseRecords.js';
 import { exactly, pixelRuns, splitChange } from '@/document/changes.js';
 import { keepRoomLedger } from '@/document/autosaveStore.js';
 import { MOST_CHANGE_BYTES, packProject, readChange } from '@/social/wire.js';
-import { SAVED_KEYS, lockedAmong, randomId } from '@/store/project/shared.js';
+import { SAVED_KEYS, lockedAmong, randomId, writeLayerRuns } from '@/store/project/shared.js';
 import { boundsOf, flushSoon } from '@/store/project/sharing.js';
 import { MOST_SHAPES, isShapeKey } from '@/document/shapes.js';
 
@@ -78,9 +78,7 @@ export const sharingHostActions = {
       : change.t === 'redo' ? this._ledger.redo(by, change.stroke)
         : this._ledger.submit(by, change.stroke, change);
     if (!numbered) return null;
-    const drawing = this._artInside ?? this; // inside an art layer, the drawing's kept aside
-    drawing.paintLayer.writeRuns(numbered.runs);
-    drawing.hasPaint = drawing.paintLayer.hasPaint;
+    writeLayerRuns(this, numbered.runs); // each on its own layer (readChange took only layers that are here, above the bottom)
     for (const [key, entry] of numbered.cells) sharing.heardCells.set(key, entry ?? null);
     for (const run of numbered.runs) sharing.heardRuns.push(run);
     if (numbered.cells.length || numbered.runs.length) this.editVersion++;

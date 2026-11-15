@@ -96,6 +96,24 @@ test('the hash of an empty position is zero and values differ', () => {
   assert.equal(p, hashPixel(3, 4, RED));
 });
 
+// The check XORs every position's hash, so the same pixel on two layers mustn't cancel out.
+test('the same pixel on two layers sums differently', () => {
+  assert.notEqual(hashPixel(1, 2, RED, 'L2'), hashPixel(1, 2, RED, 'L3'));
+  assert.notEqual(hashPixel(1, 2, RED, 'L2'), hashPixel(1, 2, RED));
+  assert.equal(hashPixel(1, 2, RED), hashPixel(1, 2, RED, 'edit'));
+  assert.equal(hashPixel(1, 2, 0, 'L2'), 0);
+});
+
+test('splitChange keeps the layer a run is on, a cut run\'s pieces too', () => {
+  const runs = [[0, 0, 2, RED, 'L2'], [0, 1, 99999, RED, 'L2'], [0, 2, 1, RED]];
+  const parts = splitChange({ cells: [], runs }, 60);
+  assert.ok(parts.length > 1 && parts.every((part) => changeBytes(part) <= 60));
+  const pieces = parts.flatMap((part) => part.runs);
+  assert.ok(pieces.filter(([, y]) => y < 2).every((run) => run[4] === 'L2'));
+  assert.deepEqual(pieces.at(-1), [0, 2, 1, RED]);
+  assert.equal(pieces.filter(([, y]) => y === 1).reduce((total, [, , length]) => total + length, 0), 99999);
+});
+
 test('Tail gives what came after n, or null once n has fallen off the end', () => {
   const tail = new Tail(1000);
   assert.deepEqual(tail.since(0), []);

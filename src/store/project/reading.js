@@ -172,7 +172,7 @@ export const readingActions = {
       const { width, height } = paintLayer.canvas;
       const { data } = ctx2d(paintLayer.canvas).getImageData(0, 0, width, height);
       for (let i = 3, at = 0; i < data.length; i += 4, at++) {
-        if (data[i]) sum ^= hashPixel(at % width, Math.floor(at / width), pack(data, i - 3));
+        if (data[i]) sum ^= hashPixel(at % width, Math.floor(at / width), pack(data, i - 3), id);
       }
     }
     return sum;

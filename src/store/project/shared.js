@@ -51,6 +51,25 @@ export const randomId = () => crypto.randomUUID?.()
   ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
 // Runs (changes.js) as refreshChanged takes a patch, so a refresh is the pixels they name, not their tiles.
 export const runsPatch = (runs) => ({ tiles: runs.map(([x, y, w]) => ({ x, y, w, h: 1 })) });
+// Every layer above the bottom, id to kind: the layers a change in a room may name (wire.js readChange).
+export const stackKinds = (project) => new Map(project.layers.slice(1).map(({ id, kind }) => [id, kind]));
+// runs (changes.js) written on the paint of the layer each names, nothing refreshed: the layer in use's is the drawing's
+// (kept aside inside an art layer). A cells layer with no paint yet gets one; a layer that isn't there gets nothing.
+export function writeLayerRuns(project, runs) {
+  const byLayer = new Map();
+  for (const run of runs) {
+    const id = run[4] ?? 'edit';
+    if (!byLayer.has(id)) byLayer.set(id, []);
+    byLayer.get(id).push(run);
+  }
+  for (const [id, own] of byLayer) {
+    const drawing = id === project.editId ? project._artInside ?? project : project._layerData.get(id);
+    if (!drawing) continue;
+    drawing.paintLayer ??= paintFrom(project.paintLayer);
+    drawing.paintLayer.writeRuns(own);
+    drawing.hasPaint = drawing.paintLayer.hasPaint;
+  }
+}
 // Who the ledger knows someone drawing alone as.
 export const ALONE = 'me';
 // A ledger for someone drawing alone, reading the store project() gives.

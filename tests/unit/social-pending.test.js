@@ -5,6 +5,7 @@ import { Pending } from '../../src/social/pending.js';
 import { Ledger } from '../../src/document/ledger.js';
 import { eachPixel, hashCell, hashPixel } from '../../src/document/changes.js';
 import { TILE } from '../../src/document/History.js';
+import { keyLayer, layerKey } from '../../src/document/layerInfo.js';
 
 const RED = 0xff0000ff, GREEN = 0x00ff00ff, BLUE = 0x0000ffff;
 const cell = (char) => Object.freeze({ char });
@@ -14,26 +15,28 @@ const cellsOf = (...cells) => ({ cells, runs: [] });
 const runsOf = (...runs) => ({ cells: [], runs });
 const from = (by, stroke, n, change) => ({ n, by, stroke, cells: [], runs: [], ...change });
 
-// A screen over Maps, as a store would be. A cell position is its key; a pixel's is [x, y].
+// A screen over Maps, as a store would be. A cell position is its key; a pixel's is [x, y, id], kept under its layer's key
+// for 'x,y' (layerKey: the edit layer's bare).
+const pixelKey = ([x, y, id]) => layerKey(id, `${x},${y}`);
 function screen({ cells = [], pixels = [] } = {}) {
   const shown = { cells: new Map(cells), pixels: new Map(pixels) };
   return Object.assign(shown, {
-    read: (at) => (typeof at === 'string' ? shown.cells.get(at) ?? null : shown.pixels.get(`${at[0]},${at[1]}`) ?? 0),
+    read: (at) => (typeof at === 'string' ? shown.cells.get(at) ?? null : shown.pixels.get(pixelKey(at)) ?? 0),
     write(at, value) {
-      const [map, key] = typeof at === 'string' ? [shown.cells, at] : [shown.pixels, `${at[0]},${at[1]}`];
+      const [map, key] = typeof at === 'string' ? [shown.cells, at] : [shown.pixels, pixelKey(at)];
       if (value) map.set(key, value);
       else map.delete(key);
     },
     show({ cells: changed = [], runs = [] }) {
       for (const [key, entry] of changed) shown.write(key, entry);
-      eachPixel(runs, (x, y, rgba) => shown.write([x, y], rgba));
+      eachPixel(runs, (x, y, rgba, id = 'edit') => shown.write([x, y, id], rgba));
     },
-    px: (x, y) => shown.pixels.get(`${x},${y}`) ?? 0,
-    readTile(x, y) {
+    px: (x, y, id = 'edit') => shown.pixels.get(pixelKey([x, y, id])) ?? 0,
+    readTile(x, y, id = 'edit') {
       const data = new Uint8ClampedArray(TILE * TILE * 4);
-      for (const [at, rgba] of shown.pixels) {
-        const [px, py] = at.split(',').map(Number);
-        if (px < x || py < y || px >= x + TILE || py >= y + TILE) continue;
+      for (const [name, rgba] of shown.pixels) {
+        const { id: on, key } = keyLayer(name), [px, py] = key.split(',').map(Number);
+        if (on !== id || px < x || py < y || px >= x + TILE || py >= y + TILE) continue;
         data.set([rgba >>> 24, (rgba >>> 16) & 0xff, (rgba >>> 8) & 0xff, rgba & 0xff], ((py - y) * TILE + (px - x)) * 4);
       }
       return data;
@@ -42,9 +45,9 @@ function screen({ cells = [], pixels = [] } = {}) {
     sum() {
       let sum = 0;
       for (const [key, entry] of shown.cells) sum ^= hashCell(key, entry);
-      for (const [at, rgba] of shown.pixels) {
-        const [x, y] = at.split(',').map(Number);
-        sum ^= hashPixel(x, y, rgba);
+      for (const [name, rgba] of shown.pixels) {
+        const { id, key } = keyLayer(name), [x, y] = key.split(',').map(Number);
+        sum ^= hashPixel(x, y, rgba, id);
       }
       return sum;
     },
@@ -185,6 +188,25 @@ test('paint: pending pixels hold; neighbors in the same tile take the other arti
   assert.equal(me.own.px(6, 5), RED);
   assert.equal(me.own.px(7, 5), GREEN);
   assert.equal(me.own.px(5, 6), GREEN);
+});
+
+test('paint on two layers at one spot is kept apart', () => {
+  const me = artist('me'), hosting = host();
+  const mine = { cells: [], runs: [[0, 0, 1, RED]] }, above = { cells: [], runs: [[0, 0, 1, GREEN, 'L2']] };
+  me.draw('s1', mine);
+  me.draw('s2', above);
+  assert.equal(me.own.px(0, 0), RED);
+  assert.equal(me.own.px(0, 0, 'L2'), GREEN);
+  me.pending.heard(hosting.submit('me', 's1', mine));
+  me.pending.heard(hosting.submit('them', 't1', runsOf([0, 0, 1, BLUE])));
+  me.pending.heard(hosting.submit('them', 't2', runsOf([0, 0, 1, BLUE, 'L2'])));
+  assert.equal(me.own.px(0, 0), BLUE, 'the edit layer\'s pixel is no longer held');
+  assert.equal(me.own.px(0, 0, 'L2'), GREEN, 'L2\'s still is');
+  me.pending.heard(hosting.submit('me', 's2', above));
+  same(me.own, hosting.own, 'after the echo');
+  assert.equal(me.pending.size, 0);
+  assert.equal(me.pending.sum, hosting.ledger.sum);
+  assert.equal(me.pending.sum, me.own.sum());
 });
 
 test('a transparent pixel is a value: it can be pending, and it can be what\'s agreed beneath', () => {
@@ -342,7 +364,7 @@ test('each position is read once, however many changes hold it', () => {
   const pending = new Pending({ me: 'me', read: (at) => { reads.push(at); return own.read(at); }, write: own.write });
   pending.add('s1', { cells: [['0,0', MINE]], runs: [[0, 0, 2, RED]] });
   pending.add('s2', { cells: [['0,0', MORE]], runs: [[0, 0, 2, GREEN]] });
-  assert.deepEqual(reads, ['0,0', [0, 0], [1, 0]]);
+  assert.deepEqual(reads, ['0,0', [0, 0, 'edit'], [1, 0, 'edit']]);
 });
 
 // A small seeded generator, so a failure repeats.

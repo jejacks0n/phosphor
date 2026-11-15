@@ -15,7 +15,7 @@ import { carriesError } from '@/lib/CharResolver.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast';
 import { keyLayer } from '@/document/layerInfo.js';
-import { ALONE, bytesHeld, lockedAmong, newLedger, randomId, runsPatch, swappable, withLayer } from '@/store/project/shared.js';
+import { ALONE, bytesHeld, lockedAmong, newLedger, paintFrom, randomId, runsPatch, swappable, withLayer } from '@/store/project/shared.js';
 
 const NO_CHANGE = { cells: [], runs: [] };
 
@@ -251,6 +251,7 @@ export const historyActions = {
         if (this._stroke && !inside && id === this.editId) this._stroke.editCells = next;
         else if (this._stroke?.layers.has(id)) this._stroke.layers.get(id).editCells = next;
       }
+      if (own.length && this.paintLayer) drawing.paintLayer ??= paintFrom(this.paintLayer); // a cells layer's first paint
       drawing.paintLayer?.writeRuns(own);
       drawing.hasPaint = drawing.paintLayer?.hasPaint ?? false;
     }

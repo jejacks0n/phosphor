@@ -353,7 +353,7 @@ export class Ledger {
   #sumPixel(tile, i, from, to) {
     if (!this.#numbering) return;
     const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
-    this.#sum ^= hashPixel(x, y, from) ^ hashPixel(x, y, to);
+    this.#sum ^= hashPixel(x, y, from, tile.id) ^ hashPixel(x, y, to, tile.id);
   }
 
   // A stack or tile with nothing showing in it (all undone) reads what's beneath again, as a new one would: on a frame
