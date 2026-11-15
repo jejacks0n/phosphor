@@ -6,6 +6,8 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { eachPixel } from '@/document/changes.js';
 import { TILE } from '@/document/History.js';
 import { MOST_CHANGE_BYTES, CHUNK_BYTES } from '@/social/wire.js';
+import { cellsFit } from '@/store/project/shared.js';
+import { MAX_CELLS } from '@/lib/Cells.js';
 import { editLayerActions } from '@/store/project/editLayer.js';
 import { selectionActions } from '@/store/project/selection.js';
 import { mergingActions } from '@/store/project/merging.js';
@@ -1370,4 +1372,11 @@ test('a drawing with four layers goes live as it is: no layer renamed, nothing u
   open.push(project);
   expect(project.layers.map((l) => l.id)).toEqual(ids);
   expect(project.canUndo).toBe(true);
+});
+
+test('a stack-form project\'s cells are held to one layer\'s limit each, not all together', () => {
+  const layer = (count) => ({ editCells: new Map(Array.from({ length: count }, (_, i) => [`${i % 300},${Math.floor(i / 300)}`, { char: 'x' }])) });
+  const each = Math.floor(MAX_CELLS * 0.6);
+  expect(cellsFit({ editCells: new Map(), layerParts: new Map([['a', layer(each)], ['b', layer(each)]]) })).toBe(true);
+  expect(cellsFit({ editCells: new Map(), layerParts: new Map([['a', layer(each)], ['b', layer(MAX_CELLS + 1)]]) })).toBe(false);
 });

@@ -52,12 +52,10 @@ export const randomId = () => crypto.randomUUID?.()
   ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
 // Runs (changes.js) as refreshChanged takes a patch, so a refresh is the pixels they name, not their tiles.
 export const runsPatch = (runs) => ({ tiles: runs.map(([x, y, w]) => ({ x, y, w, h: 1 })) });
-// Whether a stranger's project's cells, the edit layer's or every layer's in the stack form, are no more than a document
-// holds and all on some grid.
-export const cellsFit = ({ editCells, layerParts }) => {
-  const all = [editCells, ...(layerParts?.values() ?? []).map((part) => part.editCells)];
-  return all.reduce((sum, cells) => sum + cells.size, 0) <= MAX_CELLS && all.every((cells) => cellsFitAnyGrid([...cells]));
-};
+// Whether a stranger's project's cells, the edit layer's or each layer's in the stack form, are no more than a layer holds
+// and all on some grid. MAX_CELLS is one layer's, so layers aren't added together.
+export const cellsFit = ({ editCells, layerParts }) => [editCells, ...(layerParts?.values() ?? []).map((part) => part.editCells)]
+  .every((cells) => cells.size <= MAX_CELLS && cellsFitAnyGrid([...cells]));
 // Every layer above the bottom, id to kind: the layers a change in a room may name (wire.js readChange).
 export const stackKinds = (project) => new Map(project.layers.slice(1).map(({ id, kind }) => [id, kind]));
 // runs (changes.js) written on the paint of the layer each names, nothing refreshed: the layer in use's is the drawing's
