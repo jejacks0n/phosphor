@@ -102,10 +102,10 @@ test('Set up your room: the radio buttons look like the checkboxes; the room\'s 
 
 test('going live with a public room: a name of only spaces isn\'t sent; the POST with its signal, the host back on the art with the room\'s chat, Settings and stats with its link and fitting its box, Copy link', async ({ page, baseURL }) => {
   const { room, server } = await startPage(page);
-  // The setup is a dialog of its own over the art, named by its heading, which has focus.
+  // The setup is a dialog of its own over the art, named by its heading, with focus in its first field.
   const setup = shown(page, 'start-room');
   await expect(page.getByRole('dialog', { name: 'Set up your room' }).locator('.people-forms')).toHaveAttribute('data-page', 'start-room');
-  await expect(setup.getByRole('heading', { name: 'Set up your room' })).toBeFocused();
+  await expect(setup.getByRole('textbox', { name: 'Room name' })).toBeFocused();
   await expect(setup.getByRole('region', { name: 'Lobby picture' }).getByLabel('The room\'s art')).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Public in the lobby' })).toBeChecked();
   await expect(page.getByRole('checkbox', { name: 'Allow guests' })).toBeChecked();
@@ -147,7 +147,7 @@ test('going live with a public room: a name of only spaces isn\'t sent; the POST
   await openStats(page);
   const host = shown(page, 'host-room');
   await expect(page.getByRole('dialog', { name: 'Settings and stats' }).locator('div.host-room')).toBeVisible();
-  await expect(host.getByRole('button', { name: 'Copy link' })).toBeFocused();   // not lost to the page's body
+  await expect(host.getByRole('textbox', { name: 'Welcome message' })).toBeFocused();   // its first field
   await expect(host.getByRole('heading', { name: 'neon harbor' })).toBeVisible();
   await expect(host.getByText(/Live for 0:0\d:\d\d/)).toBeVisible();
   await expect(tile(host, 'Here now')).toHaveText('0');

@@ -1,12 +1,12 @@
 <script setup>
 import { onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { FOCUSABLE, keepTabIn } from '@/lib/focus';
+import { FOCUSABLE, firstField, keepTabIn } from '@/lib/focus';
 import { useModal } from '@/composables/useModal';
 
 // A box centered over the page like a confirm box, for ChoiceDialog and SaveDialog: a title, a line
 // under it, and the slot. It's a modal <dialog>: the page behind it is inert, so Tab keeps to it, and it's drawn
-// over everything. Focus goes to the slot's [autofocus] element, else its first control; Tab goes round its controls
+// over everything. Focus goes to the slot's first field to type in, else its [autofocus] element, else its first control; Tab goes round its controls
 // rather than on to the browser's.
 // While it's up, keys are the dialog's: none reach the app's shortcuts (Backspace would delete a
 // selection, the arrows nudge it). Escape, the back gesture and the backdrop cancel. `long` is for text to
@@ -33,7 +33,10 @@ const { open, onCancel, onClose, outside, element } = useModal(() => emit('cance
   opened: (el) => (props.focus ? el.contains(document.activeElement) && document.activeElement.blur() : el.focus()),
 });
 
-onMounted(() => props.focus && (element()?.querySelector('[autofocus]') ?? element()?.querySelector(FOCUSABLE))?.focus());
+onMounted(() => {
+  const el = element();
+  if (props.focus) (firstField(el) ?? el?.querySelector('[autofocus]') ?? el?.querySelector(FOCUSABLE))?.focus();
+});
 
 function onKeyDown(event) {
   event.stopPropagation();

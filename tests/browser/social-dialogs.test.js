@@ -69,7 +69,7 @@ test('a page shows in a box named by its heading once you\'re known; Escape goes
   expect(dialog().getAttribute('aria-label')).toBe('Sign in');
   expect(dialog().querySelector('[data-page="sign-in"] h2').textContent).toBe('Sign in');
   await nextTick();
-  expect(document.activeElement).toBe(dialog().querySelector('h2'));   // focus starts at its heading
+  expect(document.activeElement).toBe(dialog().querySelector('input[autocomplete=username]'));   // focus starts in its first field
 
   social.notice = 'That password is wrong.';
   await nextTick();
