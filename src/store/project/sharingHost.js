@@ -26,22 +26,25 @@ function tooManyShapes(project, cells) {
 
 export const sharingHostActions = {
   // The ledger as it is, written for this host's next reload, unless it's what was written last. Autosave calls
-  // this after each write of the document, so what's kept is never behind that.
+  // this after each write of the document, so what's kept is never behind that: one asked for while another is
+  // writing waits for it and writes after, as the one writing may have read the ledger before the last change.
   // ponytail: a whole copy per write (in the 10 s, while anything changes, and at autosave's), up to the stacks' 64 MB; write what changed if it hitches.
   async keepLedger() {
-    const sharing = this._sharing, ledger = this._ledger;
-    if (sharing?.role !== 'host' || !sharing.roomId || sharing.keeping || sharing.keptN === ledger.n) return;
-    sharing.keeping = true;
-    try {
-      await keepRoomLedger(sharing.roomId, this.documentId, () => {
-        sharing.keptN = ledger.n;
-        return ledger.kept();
-      });
-    } catch (error) {
-      console.warn('The room\'s undo couldn\'t be kept for a reload.', error);
-    } finally {
-      sharing.keeping = false;
-    }
+    const sharing = this._sharing;
+    if (sharing?.role !== 'host' || !sharing.roomId) return;
+    const keep = async () => {
+      const ledger = this._ledger;
+      if (sharing.keptN === ledger.n) return;
+      try {
+        await keepRoomLedger(sharing.roomId, this.documentId, () => {
+          sharing.keptN = ledger.n;
+          return ledger.kept();
+        });
+      } catch (error) {
+        console.warn('The room\'s undo couldn\'t be kept for a reload.', error);
+      }
+    };
+    await (sharing.keeping = (sharing.keeping ?? Promise.resolve()).then(keep));
   },
 
   // The number the document stands at, for autosave to write with it: what a host has numbered is on it first.
