@@ -401,7 +401,9 @@ Alt+`,` while typing in Edit Mode, and Bake with the sliders moved to see every 
   the download is a GIF (`GIF89a`) of the art as it plays, the guide not drawn
   and the ghost absent; it saves within the `file` budget ([Exporting](../../animation.md#exporting)). Video sits
   under GIF; its bar fills the same way, and the download is an `.mp4` (`ftyp` at bytes 4–8) as long as the frames'
-  times add up to, its edges sharp.
+  times add up to, its edges sharp. Where the browser's share sheet takes the file, GIF and Video each have
+  **Share** beside Export (the QA page has no share sheet: check only that Share shows where `navigator.canShare`
+  takes a video).
 - Probes: `again`: export twice and check the names differ; `back-out`: change the name, press Escape, reopen;
   `extremes`: name it with emoji and slashes.
 - Rated: yes, wants a key for Export .gif
