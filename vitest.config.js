@@ -4,15 +4,14 @@ import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import { playwright } from '@vitest/browser-playwright';
 import { buildInfo } from './vite.config.js';
 import { fileURLToPath } from 'node:url';
-import { launchWithout } from './tests/support/chromiumArgs.js';
+import { SOFTWARE_GL, launchWithout } from './tests/support/chromiumArgs.js';
 
 // The test layers (docs/testing.md): unit tests in Node for pure logic, and browser tests in Chromium
 // for the store and everything that needs a real canvas or WebGL. Chromium runs on software WebGL
 // (SwiftShader) on every machine, so a conversion gives the same cells locally and in CI. Adding
 // WebKit later: another entry in the browser project's instances.
-const SOFTWARE_WEBGL = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
 // Two connections in one machine (the room tests) reach each other by their addresses, not mDNS names.
-const launchOptions = await launchWithout(['WebRtcHideLocalIpsWithMdns'], SOFTWARE_WEBGL);
+const launchOptions = await launchWithout(['WebRtcHideLocalIpsWithMdns'], SOFTWARE_GL);
 
 const DESKTOP_TESTS = 'tests/browser/desktop-*.test.js';
 const browserTests = () => ({  // (fresh each time: Vitest names a project's instances in place)

@@ -192,6 +192,11 @@ machine and can be compared exactly. If a Chromium update shifts its rendering, 
 fail everywhere at once: regenerate the references (below) and check the diff is a level here and
 there, not a changed picture.
 
+Only WebGL goes through SwiftShader: the page itself is rastered and composited by plain software
+(`--disable-gpu-rasterization`, `--disable-gpu-compositing`, in `SOFTWARE_GL` in
+`tests/support/chromiumArgs.js`). Emulating GL for every repaint of every page kept a 4-core CI runner
+at full load, and the tests' waits ran out in the queue for it.
+
 The end-to-end tests turn off the dialogs' backdrop blur (`noBlur` in `tests/e2e/support.js`): with
 software compositing it's redrawn every frame, and every action under a dialog was several times
 slower in CI for it. No test looks at the blur.
