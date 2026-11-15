@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, shallowRef, nextTick, onMounted, onBeforeUnmount, useTemplateRef, useId } from 'vue';
 import { t } from '@/i18n';
 
 const props = defineProps({
@@ -15,15 +15,24 @@ const props = defineProps({
 const isOpen = ref(false);
 const position = ref(null);
 const root = useTemplateRef('root');
-const content = useTemplateRef('content');
+const content = shallowRef(null);
 const MARGIN = 4; // between the menu and the window's edge
+const anchor = `--dropdown-${useId()}`; // the name the menu is anchored to its trigger by
 
-// The menu is fixed under the trigger, so a scrolling toolbar row doesn't clip it; lined up with the trigger, then
-// moved along as far as it takes to stay in the window, which on a phone it may not.
+// The menu is a manual popover, so it's drawn over everything, a modal dialog included, and no scrolling row clips
+// it: shown from its ref as it goes in. Its own code still closes it (a press outside, Escape, a scroll), as a
+// manual popover never closes itself. Where the browser has anchor positioning, CSS places it under the trigger and
+// flips it to stay in the window. Elsewhere it's placed here: lined up with the trigger, then moved along as far as
+// it takes to stay in the window, which on a phone it may not.
+const anchored = typeof CSS !== 'undefined' && CSS.supports('position-area: block-end');
+const showMenu = (el) => {
+  content.value = el;
+  if (el && !el.matches(':popover-open')) el.showPopover();
+};
 async function toggle() {
   if (props.disabled) return;
   isOpen.value = !isOpen.value;
-  if (!isOpen.value) return;
+  if (!isOpen.value || anchored) return;
   const rect = root.value.getBoundingClientRect();
   const edge = props.up ? { bottom: `${document.documentElement.clientHeight - rect.top + 4}px` } : { top: `${rect.bottom + 4}px` };
   position.value = props.align === 'left'
@@ -74,7 +83,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <article ref="root" class="dropdown" :class="{ open: isOpen }">
+  <article ref="root" class="dropdown" :class="{ open: isOpen }" :style="{ '--anchor': anchor }">
     <slot name="before"></slot><!-- inside, so the menu lines up with it too and a press on it isn't outside -->
     <button class="dropdown-trigger" :aria-label="triggerLabel" @click="toggle" :disabled="disabled" :title="label">
       <slot name="trigger">
@@ -85,7 +94,7 @@ onBeforeUnmount(() => {
         </svg>
       </slot>
     </button>
-    <div ref="content" class="dropdown-content" v-if="isOpen" :style="position" @click="chosen">
+    <div v-if="isOpen" :ref="showMenu" popover="manual" class="dropdown-content" :class="{ up: props.up, left: props.align === 'left' }" :style="position" @click="chosen">
       <slot></slot>
     </div>
   </article>
@@ -128,10 +137,14 @@ button.dropdown-trigger svg {
   transition: transform 0.2s;
 }
 
+/* The popover's own styles undone: no centering, border or scrollbar. */
 div.dropdown-content {
   position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: visible;
+  color: inherit;
   border-radius: 6px;
-  z-index: 1000;
   min-width: 140px;
   max-width: calc(100vw - 8px);
   display: flex;
@@ -141,6 +154,50 @@ div.dropdown-content {
   background: var(--surface-1);
   border: 1px solid var(--accent);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Anchored to the trigger: lined up with its right edge (or its left, with align left), below it (or above, with
+   up), flipped to whichever side keeps it in the window. */
+@supports (position-area: block-end) {
+  article.dropdown {
+    anchor-name: var(--anchor);
+  }
+  div.dropdown-content {
+    position-anchor: var(--anchor);
+    position-area: block-end span-inline-start;
+    position-try-fallbacks: flip-inline, flip-block, flip-block flip-inline;
+    margin-block-start: 4px;
+  }
+  div.dropdown-content.left {
+    position-area: block-end span-inline-end;
+  }
+  div.dropdown-content.up {
+    position-area: block-start span-inline-start;
+    margin-block: 0 4px;
+  }
+  div.dropdown-content.up.left {
+    position-area: block-start span-inline-end;
+  }
+}
+
+/* It fades in, and slides a little from the trigger unless motion is reduced. */
+div.dropdown-content:popover-open {
+  transition: opacity 0.1s ease-out, translate 0.1s ease-out;
+}
+@starting-style {
+  div.dropdown-content:popover-open {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @starting-style {
+    div.dropdown-content:popover-open {
+      translate: 0 -4px;
+    }
+    div.dropdown-content.up:popover-open {
+      translate: 0 4px;
+    }
+  }
 }
 
 /* Deep selector to style slotted buttons */

@@ -154,7 +154,15 @@ const onArrow = (event) => {
   const next = nearestInDirection(from.getBoundingClientRect(), controls.map((el) => el.getBoundingClientRect()), event.key);
   if (next >= 0) controls[next].focus();
 };
+// A manual popover, so it's drawn over everything and nothing it's in clips it; its own code closes it. It hangs
+// under the color pair, anchored to it (the pair's --anchor) where the browser can; elsewhere placed here, once.
+const anchored = typeof CSS !== 'undefined' && CSS.supports('position-area: block-end');
 onMounted(() => {
+  if (!anchored) {
+    const pair = root.value.parentElement.getBoundingClientRect();
+    Object.assign(root.value.style, { top: `${pair.bottom + 6}px`, left: `${pair.left}px` });
+  }
+  root.value.showPopover();
   // Focus starts on the slot's color, so the arrows go from there.
   (root.value?.querySelector('.swatch.selected') ?? root.value?.querySelector('button'))?.focus();
   document.addEventListener('pointerdown', onPointerDown, true);
@@ -167,7 +175,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="color-popover" role="dialog" :aria-label="t('colors.popoverAria')" @keydown="onArrow">
+  <div ref="root" popover="manual" class="color-popover" role="dialog" :aria-label="t('colors.popoverAria')" @keydown="onArrow">
     <div class="head">
       <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">{{ vector ? t('vector.fill') : t('colors.fg') }}</button>
       <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">{{ vector ? t('vector.stroke') : t('colors.bg') }}</button>
@@ -258,11 +266,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* The popover's own styles undone: no centering, scrollbar or system colors. */
 div.color-popover {
-  position: absolute;
-  top: 36px;
-  left: 0;
-  z-index: 200;
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  overflow: visible;
+  color: inherit;
   width: 260px;
   padding: 10px;
   background: var(--surface-1);
@@ -272,6 +282,33 @@ div.color-popover {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+/* Under the pair, lined up with its left edge, flipped to whichever side keeps it in the window. */
+@supports (position-area: block-end) {
+  div.color-popover {
+    position-anchor: var(--anchor);
+    position-area: block-end span-inline-end;
+    position-try-fallbacks: flip-inline, flip-block, flip-block flip-inline;
+    margin-block-start: 6px;
+  }
+}
+
+/* It fades in, and slides a little from the pair unless motion is reduced. */
+div.color-popover:popover-open {
+  transition: opacity 0.12s ease-out, translate 0.12s ease-out;
+}
+@starting-style {
+  div.color-popover:popover-open {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @starting-style {
+    div.color-popover:popover-open {
+      translate: 0 -4px;
+    }
+  }
 }
 
 div.head,
