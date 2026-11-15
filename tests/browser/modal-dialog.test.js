@@ -8,6 +8,7 @@ import ModalDialog from '@/components/ModalDialog.vue';
 import ReadingDialog from '@/components/ReadingDialog.vue';
 import AppToast from '@/components/AppToast.vue';
 import { toast, closeToast } from '@/composables/useToast';
+import { cancelTopDialog } from '@/lib/focus';
 
 let app, host;
 afterEach(() => {
@@ -153,4 +154,35 @@ test('a toast is a popover, over a dialog: shown when said, again when a dialog 
     toasts.unmount();
     toastHost.remove();
   }
+});
+
+// And the browser's Back: a dialog over the page is canceled by it, as by Escape, the last opened first; one the
+// address shows or asks about (back false: SOCIAL's pages, its question, ending a room) is left to the router.
+const backApps = [];
+afterEach(() => backApps.splice(0).forEach((each) => each.unmount()));
+
+function show(props = {}) {
+  const cancel = vi.fn();
+  const each = createApp({ render: () => h(ModalDialog, { title: 'A dialog', onCancel: cancel, ...props }) }).use(i18n);
+  each.mount(document.createElement('div'));
+  backApps.push(each);
+  return { cancel, close: () => backApps.splice(backApps.indexOf(each), 1)[0].unmount() };
+}
+
+test('Back cancels the dialog on top, then the one under it; with none open it has nothing to cancel', () => {
+  const under = show(), top = show();
+  expect(cancelTopDialog()).toBe(true);
+  expect(top.cancel).toHaveBeenCalledTimes(1);
+  expect(under.cancel).not.toHaveBeenCalled();
+  top.close();
+  expect(cancelTopDialog()).toBe(true);
+  expect(under.cancel).toHaveBeenCalledTimes(1);
+  under.close();
+  expect(cancelTopDialog()).toBe(false);
+});
+
+test('a dialog with back false is left to the router', () => {
+  const page = show({ back: false });
+  expect(cancelTopDialog()).toBe(false);
+  expect(page.cancel).not.toHaveBeenCalled();
 });

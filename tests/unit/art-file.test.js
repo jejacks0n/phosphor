@@ -37,6 +37,24 @@ test('another extension is UTF-8 only when it is valid UTF-8 with a multi-byte s
   assert.equal(text(readArtFile(utf('abc'), 'a.txt')), 'abc');
 });
 
+test('a .utf8ans that is no UTF-8 at all (an .ans renamed) reads as an .ans does, CP437 at 80 columns, and says so', () => {
+  const art = read('\xb0\xdb\xb1 A\xdb'.repeat(20), 'renamed.utf8ans');   // 120 CP437 characters, no line end
+  assert.equal(art.notUtf8, true);
+  assert.equal(art.cols, 80);
+  assert.equal(art.rows, 2);
+  assert.equal(text(art).slice(0, 6), '░█▒ A█');
+  assert.equal(art.cells.some((cell) => cell.char === '\uFFFD'), false);
+});
+
+test('a .utf8ans with a stray bad byte among its UTF-8 stays UTF-8, the byte a replacement character', () => {
+  const bytes = Uint8Array.from([...utf('漢字 ░▒▓█'.repeat(4)), 0xb0, ...utf('x')]);   // 1 bad byte, 24 good characters
+  const art = readArtFile(bytes, 'a.utf8ans');
+  assert.equal(art.notUtf8, false);
+  assert.equal(at(art, 0).char, '漢');
+  assert.equal(art.cells.filter((cell) => cell.char === '\uFFFD').length, 1);
+  assert.equal(read('\xb0\xdb', 'a.ans').notUtf8, false);   // an .ans is CP437 by its name, nothing to say
+});
+
 test('a UTF-8 byte-order mark makes the file UTF-8 and is not a cell', () => {
   const art = readArtFile(Uint8Array.from([0xef, 0xbb, 0xbf, 0x41, 0x42]), 'a.txt');
   assert.equal(art.cols, 2);

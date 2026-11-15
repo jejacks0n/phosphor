@@ -14,3 +14,16 @@ export function keepTabIn(event) {
   event.preventDefault();
   controls[next]?.focus();
 }
+
+// The dialogs over the page that Back cancels, as Escape does (ModalDialog's), the last opened on top: the router asks
+// before a Back or Forward moves the page under one.
+const backCancels = [];
+export function cancelOnBack(cancel) {
+  backCancels.push(cancel);
+  return () => backCancels.includes(cancel) && backCancels.splice(backCancels.indexOf(cancel), 1);
+}
+export function cancelTopDialog() {
+  const top = backCancels.at(-1);
+  top?.();
+  return !!top;
+}

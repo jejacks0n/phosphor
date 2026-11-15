@@ -29,7 +29,7 @@ onBeforeUnmount(() => nextTick(() => {
 </script>
 
 <template>
-  <ModalDialog long :title="t('social.consent.title')" @cancel="social.declineConsent()">
+  <ModalDialog long :title="t('social.consent.title')" :back="false" @cancel="social.declineConsent()">
     <div class="reading" autofocus tabindex="0" role="region" :aria-label="t('social.consent.regionAria')">
       <p>{{ t('social.consent.intro') }}</p>
 

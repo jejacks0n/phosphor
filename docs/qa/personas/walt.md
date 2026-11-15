@@ -77,7 +77,8 @@ script. Every section ends with Free time.
 - Does: takes `qa.memory`; writes the files; on the start screen chooses `long.ans` and picks Edit artwork, timing it from
   the choice to the art showing.
 - Expects: 300 columns by 1,600 lines on Layer 1 over a black base, VGA (its colors are 256-color codes), SAUCE
-  titled "QA Long"; nothing to undo. Opening takes under the `file` budget; over it is a `performance` finding.
+  titled "QA Long"; nothing to undo; the view starts at the top-left, on line 1. Opening takes under the `file` budget;
+  over it is a `performance` finding.
 - Probes: `back-out`: choose it and press Cancel at the question; `free`: drop it on the start screen's box instead.
 - Rated: yes, wants Cmd+O, then Enter for Edit artwork
 
@@ -151,7 +152,8 @@ look at the status bar, and take `qa.memory` again.
 
 ### 10. The project reopens unchanged
 - Does: opens the .phosphor saved in step 6 and compares its cells with the export's.
-- Expects: the same cells, the same SAUCE, the same size; opening takes under the `file` budget.
+- Expects: New project shows the start screen (on a phone, the settings drawer closes); the same cells, the same
+  SAUCE, the same size; opening takes under the `file` budget.
 - Probes: `again`: open it twice in a row from the start screen's recent list.
 - Rated: yes, wants Cmd+O
 
@@ -163,7 +165,7 @@ look at the status bar, and take `qa.memory` again.
   both fixes.
 - Rated: yes, wants Cmd+O, then a key for Draw on top
 
-**Free time:** he'd open the exported .ans as UTF-8 by renaming it .utf8ans and see what happens, export .utf8ans and
+**Free time:** he'd open the exported .ans as UTF-8 by renaming it .utf8ans (it should read as CP437, saying so), export .utf8ans and
 compare it in the terminal, open `ansi/past-the-edge.ans` and judge its second row from the screenshot, and diff the
 bytes of the original and the export outside the art.
 
@@ -236,7 +238,8 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
 
 ### 19. Back and Forward between tabs
 - Does: from ANSI goes to PIXEL, then SAUCE; presses the browser's Back twice, Forward once; reloads on SAUCE.
-- Expects: the address names each tab; Back and Forward move between them; the reload comes back to SAUCE.
+- Expects: the address names each tab; Back and Forward move between them; the reload comes back to SAUCE; Back with a
+  dialog open (Export) closes the dialog and the tab stays.
 - Probes: `again`: Back past the first tab to the start screen's address and Forward again; `interrupt`: Back while a
   dialog is open.
 - Rated: yes, wants ← → with a tab focused. Back and Forward themselves are the browser's (Cmd+[ and Cmd+], which do
@@ -273,10 +276,11 @@ long file (time the reload), and press Back from a fresh start screen.
 - Rated: yes, wants Cmd+O
 
 ### 23. Files over the limits are refused
-- Does: makes a 300 by 1,700 file and a 301 by 100 file with `files.makeLongAns`, drops each on his open drawing and
-  picks Open to edit.
-- Expects: neither opens; a message gives the file's size and the limits (300 columns, 5,000 lines, 500,000 cells), and
-  the drawing he had stays open, unchanged.
+- Does: makes a 300 by 1,700 file and a 301 by 100 file with `files.makeLongAns`, and with unsaved work drops each on
+  his open drawing.
+- Expects: neither opens; a message gives the file's size and the limits (300 columns, 5,000 lines, 500,000 cells)
+  before anything is asked (no Add or Open question, no unsaved-changes confirm), and the drawing he had stays open,
+  unchanged.
 - Probes: `extremes`: an empty .ans (a 0-byte file written from the snippet: "There's no art in this file.");
   `again`: try the same file twice.
 - Rated: yes, wants Cmd+O

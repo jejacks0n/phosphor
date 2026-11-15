@@ -8,7 +8,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <ModalDialog :title="t('social.endDialog.title')" :sub="t('social.endDialog.sub')" @cancel="$emit('cancel')">
+  <ModalDialog :title="t('social.endDialog.title')" :sub="t('social.endDialog.sub')" :back="false" @cancel="$emit('cancel')">
     <div class="actions">
       <button autofocus @click="$emit('cancel')">{{ t('common.cancel') }}</button>
       <button class="danger" @click="$emit('end')">{{ t('social.endDialog.confirm') }}</button>

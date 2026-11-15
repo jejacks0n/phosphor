@@ -1090,7 +1090,8 @@
     "flattenFailed": "Impossible d'aplatir le dessin.",
     "mergeIntoImageFailed": "Impossible de fusionner dans l'image.",
     "artTooBig": "Ce fichier fait {cols} × {rows}. Phosphor ouvre au plus {maxCols} colonnes, {maxLines} lignes et {maxCells} cellules.",
-    "artEmpty": "Ce fichier ne contient aucun dessin."
+    "artEmpty": "Ce fichier ne contient aucun dessin.",
+    "notUtf8": "{name} n'est pas en UTF-8 : il a été lu en CP437, comme un fichier .ans."
   },
   "shortcuts": {
     "title": "Raccourcis clavier",

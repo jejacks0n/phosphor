@@ -546,6 +546,9 @@ account, Pick your username, Account, Set up your room and the rest. Back and Fo
 website (Back closes a page), and a reload brings you back to the same one. A room you host or watch is part of the
 address. The lobby has no address of its own: a link to /social opens it in the side panel.
 
+With a dialog open over the page (Export, Save project, Versions, the shortcut list, the question a file asks), Back
+closes the dialog, as Escape does, as on a phone, and the page stays where it was; the next Back goes back.
+
 - **A page you can't be on** goes to the nearest one you can. Account and Blocked show Sign in when you're signed out.
   Sign in and Create an account don't open when you're signed in, and neither does Set up your room when you're signed
   out or your email isn't confirmed, the two-factor code page when no code was asked for, or the new-password page

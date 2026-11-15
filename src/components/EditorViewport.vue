@@ -30,6 +30,7 @@ const props = defineProps({
   contentSize: { type: Object, default: null },             // { width, height } -> padded layout that keeps its center on resize
   view: { type: String, required: true },                   // 'input' (PIXEL) | 'output' (ANSI) | 'vector' (VECTOR), passed to tools
   unit: { type: Object, default: null },                    // { x, y }: CSS px per grid pixel, for tool previews
+  startTop: { type: Boolean, default: false },              // starts at the art's top-left where it doesn't fit (placeStart)
 });
 
 const projectStore = useProjectStore();
@@ -260,7 +261,7 @@ function onDrop(event) {
   event.preventDefault();
   event.stopPropagation();
   const pos = props.coordsAt(event);
-  workspaceStore.artDrop = { file, at: pos && cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows) };
+  workspaceStore.askArt(file, { at: pos && cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows) });
 }
 
 // A zoom key (useKeyboardShortcuts): double, halve or the view's own zoom, about the middle of the view.
@@ -280,6 +281,22 @@ const focusForScroll = (e) => {
 // The rulers lie over the view's top and left; the content gets room beside them (div.canvas-viewport.ruled),
 // so the art's first column and row scroll clear of them.
 const ruled = computed(() => workspaceStore.rulers && !!props.unit);
+const RULERS = { x: 30, y: 20 }; // CSS px, as thick as GuideRulers.vue's (and div.canvas-viewport.ruled's padding)
+
+// Where the view starts, shown first or on a new document: centered, or with startTop (the ANSI view, read from the
+// top as a terminal shows it) at the art's top or left edge on an axis it doesn't fit, beside the rulers.
+function placeStart() {
+  centerContent();
+  const el = rootRef.value, display = unref(props.display);
+  if (!props.startTop || !el || !display) return;
+  const v = el.getBoundingClientRect(), d = display.getBoundingClientRect(), inset = ruled.value ? RULERS : { x: 0, y: 0 };
+  if (d.width > el.clientWidth - inset.x) el.scrollLeft += d.left - v.left - inset.x;
+  if (d.height > el.clientHeight - inset.y) el.scrollTop += d.top - v.top - inset.y;
+}
+// A new document forgets the scroll (newDocument): a view that's showing starts again, after the new grid's layout.
+watch(() => workspaceStore[`${props.scrollKey}ScrollY`], (y) => {
+  if (y === null) requestAnimationFrame(() => rootRef.value && placeStart());
+});
 
 // Padded layout: room to pan the content well past each edge.
 const viewportWidth = ref(0);
@@ -332,7 +349,7 @@ onMounted(() => {
       rootRef.value.scrollLeft = x;
       rootRef.value.scrollTop = y;
     } else {
-      centerContent();
+      placeStart();
     }
     onScroll(); // establish the offset before observing resizes
 

@@ -8,7 +8,7 @@ import { useDrawingStore } from '@/store/DrawingStore';
 import { toast } from '@/composables/useToast';
 import { desktop, fileFrom } from '@/social/desktop';
 import { isProjectFile, loadImage, PROJECT_EXTENSION } from '@/document/projectIO';
-import { isArtFile, readArtFile, ART_EXTENSIONS } from '@/lib/ArtFile';
+import { isArtFile, ART_EXTENSIONS } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { useLayerName } from '@/composables/useLayerName';
@@ -97,13 +97,13 @@ async function handleFileSelected(file) {
   if (!(await canOpen(file))) return toast(t('actions.cantOpen', { name: file.name }));
   // An art or SVG file over a drawing asks whether to add it or open it (artDrop), even in a room: adding is a
   // paste. An SVG is never a picture: it's shapes.
-  if (project.image && (isArtFile(file.name) || isSvgFile(file.name))) return (workspace.artDrop = { file, at: null });
+  if (project.image && (isArtFile(file.name) || isSvgFile(file.name))) return workspace.askArt(file);
   // Desktop: nothing opens in place of a drawing. A project, or a picture where adding isn't offered (an animation, a
   // drawing shared with a room), opens in a new window without asking.
   if (DESKTOP && project.image && (isProjectFile(file.name) || project.hasFrames || project._sharing || drawing.offWithOthers)) return openInNewWindow(file);
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
   // From the start screen, an art file asks whether to edit it or draw on top of it.
-  if (isArtFile(file.name)) return (workspace.artDrop = { file, at: null });
+  if (isArtFile(file.name)) return workspace.askArt(file);
   // A picture over a still drawing (not shared with a room) asks too: added as a layer's paint, or opened in its place.
   if (project.image && !isProjectFile(file.name) && !project.hasFrames && !project._sharing) return (workspace.artDrop = { file, at: null, picture: true });
   project.commitPending(); // text typed a moment ago counts
@@ -132,10 +132,10 @@ function startBlank() {
 }
 
 // An art file opens on ANSI, onto the layer chosen ('edit' or 'base'); an SVG on VECTOR (openSvgFile chooses it).
-async function openArt(file, layer) {
+async function openArt(file, layer, art) {
   const svg = isSvgFile(file.name);
   try {
-    await (svg ? project.openSvgFile(file) : project.openArtFile(file, { layer }));
+    await (svg ? project.openSvgFile(file) : project.openArtFile(file, { layer, art }));
   } catch (error) {
     if (!error.userMessage) throw error;
     return toast(error.userMessage); // nothing changed, so stay where we are
@@ -170,7 +170,7 @@ const artChoices = computed(() => {
 const artTitle = computed(() => t(project.image ? 'actions.artDropTitle' : 'actions.artOpenTitle', { name: workspace.artDrop?.file.name }));
 const artSub = computed(() => (!project.image ? t('actions.artOpenSub') : DESKTOP ? t('actions.artDropSubWindow') : drawing.offWithOthers ? t('actions.artDropSubAddOnly') : t('actions.artDropSub')));
 async function chooseArt(choice) {
-  const { file, at, picture } = workspace.artDrop;
+  const { file, at, picture, art } = workspace.artDrop;
   workspace.artDrop = null;
   if (choice === 'window') return openInNewWindow(file);
   if (picture) {
@@ -188,17 +188,10 @@ async function chooseArt(choice) {
       project.commitPending(); // text typed a moment ago counts
       if (project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
     }
-    return openArt(file, choice);
+    return openArt(file, choice, art);
   }
   if (playback.playing) playback.pause(); // it lands on the frame showing
   if (isSvgFile(file.name)) return addSvg(file);
-  let art;
-  try {
-    art = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
-  } catch (error) {
-    if (!error.userMessage) throw error;
-    return toast(error.userMessage);
-  }
   if (project._paused) return; // refused, as a paste is
   // Dropped beside the drawing (or on the SAUCE tab): the top-left of the art view last shown, which comes back.
   workspace.editorTab = workspace.viewTab;

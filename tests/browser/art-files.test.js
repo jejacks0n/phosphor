@@ -8,6 +8,7 @@ import { AnsiFile } from '@/lib/AnsiFile';
 import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
 import { readSauce } from '@/lib/Sauce';
+import { closeToast, toastMessage } from '@/composables/useToast';
 
 const plain = (hex) => { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; return { r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] }; };
 const COLORS = {
@@ -307,6 +308,40 @@ test('a file over the limits rejects with its message, and the open document sta
   expect(project.filename).toBe(filename);
   expect(cellsKey(project)).toEqual(cells);
   expect(useWorkspaceStore().ansiOverlayAll).toBe(false);
+});
+
+test('a file that can\'t open is refused before anything is asked: too big, or empty, nothing asks how to open it', async () => {
+  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  closeToast();
+  await workspace.askArt(new File(['x'.repeat(301)], 'wide.txt'));
+  expect(workspace.artDrop).toBe(null);
+  expect(toastMessage.value).toContain('301 × 1');
+  await workspace.askArt(new File([], 'empty.ans'));
+  expect(workspace.artDrop).toBe(null);
+  expect(toastMessage.value).toBe('There\'s no art in this file.');
+  expect(project.filename).not.toBe('empty');
+});
+
+test('a file that opens asks with what it read, and opens that without reading the file again', async () => {
+  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  const file = new File(['ab\ncd'], 'boat.txt');
+  await workspace.askArt(file, { at: { col: 1, row: 1 } });
+  expect(workspace.artDrop).toMatchObject({ file, at: { col: 1, row: 1 }, art: { cols: 2, rows: 2 } });
+  const read = vi.spyOn(file, 'arrayBuffer');
+  await project.openArtFile(file, { layer: 'edit', art: workspace.artDrop.art });
+  await settle(project);
+  expect(read).not.toHaveBeenCalled();
+  expect(project.filename).toBe('boat');
+  expect(project.cells.map((cell) => cell.char).join('')).toBe('abcd');
+});
+
+test('a .utf8ans that isn\'t UTF-8 asks as an .ans would, and says it was read as CP437', async () => {
+  const workspace = (await afterAnotherDocument(), useWorkspaceStore());
+  closeToast();
+  await workspace.askArt(new File([Uint8Array.from([0xb0, 0xdb, 0xb1, 0x41, 0xdb, 0xb2])], 'renamed.utf8ans'));
+  const { art } = workspace.artDrop;
+  expect([art.cols, art.cells.slice(0, 6).map((cell) => cell.char).join('')]).toEqual([80, '░█▒A█▓']);   // 80 wide, as an .ans
+  expect(toastMessage.value).toBe('renamed.utf8ans isn\'t UTF-8, so it was read as CP437, as an .ans file is.');
 });
 
 test('paint over a file\'s cells covers them as it covers typed ones: a space or block takes the paint on the half it covers', async () => {
