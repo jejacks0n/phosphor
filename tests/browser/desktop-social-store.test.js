@@ -4,6 +4,7 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useSocialStore } from '@/store/SocialStore';
 import { forgetKey } from '@/social/keys';
+import { WINDOW_KEY } from '@/social/windowKey';
 import { verifyPass } from '@/social/pass';
 import { makeSelfPass, verifySelfPass } from '@/social/selfPass';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
@@ -11,6 +12,7 @@ import { ownSocialDatabase } from '../support/socialDatabase.js';
 let social, deleteDatabase, fetched;
 beforeEach(async () => {
   deleteDatabase = ownSocialDatabase('desktop-store');
+  sessionStorage.removeItem(WINDOW_KEY);   // each test's window starts with no key of its own
   forgetKey();
   await deleteDatabase();
   localStorage.clear();   // no consent kept

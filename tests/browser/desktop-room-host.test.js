@@ -6,7 +6,8 @@ import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore, ROOM_ID } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useFakeDesktop, resetDesktop } from '@/social/desktop';
-import { forgetKey, loadKey } from '@/social/keys';
+import { forgetKey } from '@/social/keys';
+import { WINDOW_KEY } from '@/social/windowKey';
 import { makeSelfPass } from '@/social/selfPass';
 import { toBase64url } from '@/social/base64url';
 import { createTestApp, settle } from '../support/app.js';
@@ -37,6 +38,7 @@ let deleteDatabase, social, room, project, desktop, fetched;
 beforeEach(async () => {
   deleteDatabase = ownSocialDatabase('desktop-room-host');
   sessionStorage.removeItem(RECORD);
+  sessionStorage.removeItem(WINDOW_KEY);   // each test's window starts with no key of its own
   forgetKey();
   await deleteDatabase();
   useFakeSockets();
@@ -93,7 +95,7 @@ test('desktop startRoom starts the service and greets as host with the secret an
     type: 'host', secret: SECRET, protocol: 1, pass: social.pass,
     room: { id: room.id, name: 'Night shift', welcome: 'Hi', password: 'sesame', max: 5, approved: [] },
   });
-  expect(await verify((await loadKey()).publicKey, `room:${room.id}:${greeting.ts}`, greeting.proof)).toBe(true);
+  expect(await verify(social.claims.key, `room:${room.id}:${greeting.ts}`, greeting.proof)).toBe(true);   // the window's key, which its pass names
   expect(sessionStorage.getItem(RECORD)).not.toContain('sesame');   // the password goes to the service alone
   expect(sessionStorage.getItem(RECORD)).not.toContain(SECRET);
 
