@@ -916,6 +916,9 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
 - **Alt+B**: Open it on the background.
 - **In the Color Picker**: The **arrow keys** move between the swatches (starting on the current color), **Enter**
   picks one and closes the picker, **Space** picks one and leaves it open, and **Escape** closes it.
+- **Pick from the screen** (the eyedropper beside **Swap**, in Chrome, Edge and the desktop app): Click it, then click
+  anywhere on your screen, another window or app included, to take that color for the side that's open. **Escape** puts
+  the eyedropper away without choosing. The **Picker** tool (**I**) still takes colors from the drawing itself.
 - **With a Palette** (CGA, VGA, Limited count or Custom color list): Every swatch paints its palette color whatever the
   color adjustments are. A color the adjustments can't make at all (Saturation at 0 makes only grays) shows under a "no"
   sign (a circle with a slash) and can't be picked, and the arrows, and **Alt+↑** and **Alt+↓** in Edit Mode, step past

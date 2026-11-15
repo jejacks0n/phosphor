@@ -653,6 +653,8 @@
     "bg": "AP",
     "swap": "Intervertir",
     "swapTitle": "Intervertir premier plan et arrière-plan (X ou {key})",
+    "pickFromScreen": "Prendre une couleur n'importe où à l'écran",
+    "pickFailed": "Impossible de prendre la couleur.",
     "inThisDrawing": "Dans ce dessin",
     "painted": "{arrow} Peintes ({count})",
     "none": "Aucun",
