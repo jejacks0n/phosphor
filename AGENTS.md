@@ -56,7 +56,7 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
 - `src/router.js` and `src/lib/addresses.js`: the address (which tab, SOCIAL page and room) and Back,
   Forward and reload. The stores are the truth; the router follows them, and `reconcile` is the one
   place that navigates. `addresses.js` is the table of paths and where an address may land.
-- `src/document/frames.js` (a frame as data, what it resolves to) and `src/document/FrameBuilder.js` (a frame's cells, made the way a still's are), with `src/composables/usePlayback.js` (playing) and `src/lib/CastFile.js` and `src/lib/GifFile.js` (exports): animation.
+- `src/document/frames.js` (a frame as data, what it resolves to) and `src/document/FrameBuilder.js` (a frame's cells, made the way a still's are), with `src/composables/usePlayback.js` (playing) and `src/lib/CastFile.js` and `src/lib/GifFile.js` (exports; a GIF's palette and file are made off the page in `src/lib/gifWorker.js`, with `src/lib/GifEncoder.js`): animation.
 - `src/document/`: the document's data (layers, cells, history, files); `src/lib/`: the libraries
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
 - The SOCIAL tab: `src/social/` (the network and crypto modules: API calls, the lobby socket, keys

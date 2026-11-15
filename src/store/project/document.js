@@ -12,7 +12,7 @@ import { readArtFile } from '@/lib/ArtFile.js';
 import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
 import { MOST_SHAPES } from '@/document/shapes.js';
 import { castText } from '@/lib/CastFile.js';
-import { MAX_GIF_PIXELS, drawnCells, gifBytes, gifDelay, gifFrames } from '@/lib/GifFile.js';
+import { MAX_GIF_PIXELS, drawnCells, gifDelay, gifFile } from '@/lib/GifFile.js';
 import { pngBlob } from '@/lib/PngFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
@@ -479,8 +479,8 @@ export const documentActions = {
   },
 
   // The animated formats, written from every frame: 'ansimation' (.ans), 'utf8ansimation' (.utf8ans), 'cast' or 'gif'. Throws with userMessage
-  // what the save dialog should say.
-  async exportAnimation(format, { filename = this.filename } = {}) {
+  // what the save dialog should say. A GIF tells progress the share of its frames written, as it goes.
+  async exportAnimation(format, { filename = this.filename, progress } = {}) {
     const frames = await this.animationCells(), lines = charRowsOf(this.rows);
     const durations = this.frames.map((frame) => frameDuration(frame, this.fps));
     let blob, ext = format;
@@ -491,14 +491,15 @@ export const documentActions = {
     } else if (format === 'cast') {
       blob = new Blob([castText(this.cols, lines, frames, durations.map((ms) => ms / 1000), { colorMode: this.quantize })], { type: 'application/x-asciicast' });
     } else {
-      const shot = await gifFrames(frames, this.cols, lines, durations.map(gifDelay), {
+      const bytes = await gifFile(frames, this.cols, lines, durations.map(gifDelay), {
         smooth: useWorkspaceStore().smoothText,
+        progress,
         tooLarge: (pixels) => {
           if (pixels <= MAX_GIF_PIXELS) return;
           throw Object.assign(new Error('Too large for a GIF'), { userMessage: t('save.gifTooLarge') });
         },
       });
-      blob = new Blob([gifBytes(shot.width, shot.height, shot.frames)], { type: 'image/gif' });
+      blob = new Blob([bytes], { type: 'image/gif' });
     }
     this.rename(filename);
     downloadBlob(blob, `${this.filename}.${ext}`);
