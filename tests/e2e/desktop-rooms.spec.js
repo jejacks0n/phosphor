@@ -18,6 +18,12 @@ const launch = async (options) => {
 const hostCells = (page) => store(page, 'project', (p) => p.cells.map((c) => c.char + c.fg.hex + c.bg.hex).join());
 const roomCells = (page) => store(page, 'room', (r) => r.art?.cells.map((c) => c.char + c.fg.hex + c.bg.hex).join() ?? null);
 const sameArt = async (watcher, host) => expect.poll(() => roomCells(watcher), { timeout: 10_000 }).toBe(await hostCells(host));
+// Drawing again after a hand-over or the host's reload: mayDraw is so at once, but drawing stays paused until the
+// host's room answers, and what's typed while paused changes nothing.
+const drawsAgain = async (page) => {
+  await mayDraw(page).toBe(true);
+  await expect.poll(() => store(page, 'drawing', (d) => d.paused), { timeout: 20_000, intervals: [100] }).toBe(false);
+};
 
 // Types at a cell, and the run of typing ends.
 async function typeAt(page, col, row, text) {
@@ -123,7 +129,7 @@ test('a planned hand-over: ann makes bob host, cat follows bob to his address, a
   await tab(bob.page, 'ANSI').click();
   await typeAt(bob.page, 5, 3, 'c');
   await sameArt(cat.page, bob.page);
-  await mayDraw(ann.page).toBe(true);
+  await drawsAgain(ann.page);
   await typeAt(ann.page, 7, 4, 'a');   // the old host draws on as an artist
   await expect.poll(() => chars(bob.page, 4, 7, 7), { timeout: 10_000 }).toBe('a');
   await sameArt(cat.page, bob.page);
@@ -134,7 +140,7 @@ test('a planned hand-over: ann makes bob host, cat follows bob to his address, a
   await expect.poll(() => role(ann.page), { timeout: 20_000 }).toBe('host');
   await expect.poll(() => store(cat.page, 'room', (r) => r._address), { timeout: 20_000 }).toBe('127.0.0.1:31401');
   await live(cat.page);
-  await mayDraw(bob.page).toBe(true);
+  await drawsAgain(bob.page);
   await typeAt(bob.page, 9, 5, 'd');
   await expect.poll(() => chars(ann.page, 5, 9, 9), { timeout: 10_000 }).toBe('d');
   await sameArt(cat.page, ann.page);
@@ -173,7 +179,7 @@ test('the host\'s reload keeps the room: the artist stays in and draws on, and a
   await typeAt(ann.page, 4, 4, 'R');
   expect(await role(bob.page)).toBe('watch');
   await expect.poll(() => chars(bob.page, 4, 4, 4), { timeout: 10_000 }).toBe('R');
-  await mayDraw(bob.page).toBe(true);
+  await drawsAgain(bob.page);
   await typeAt(bob.page, 6, 4, 'S');
   await expect.poll(() => chars(ann.page, 4, 6, 6), { timeout: 10_000 }).toBe('S');
   await sameArt(cat.page, ann.page);
