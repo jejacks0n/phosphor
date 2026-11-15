@@ -66,4 +66,16 @@ div.content-container {
   overflow: auto;
   padding: 40px;
 }
+
+/* It fades in, over a backdrop fading in. */
+dialog.reading-dialog[open],
+dialog.reading-dialog[open]::backdrop {
+  transition: opacity 0.15s ease-out;
+}
+@starting-style {
+  dialog.reading-dialog[open],
+  dialog.reading-dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
 </style>

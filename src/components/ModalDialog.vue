@@ -120,4 +120,16 @@ p.sub {
   font-size: 13px;
   line-height: 1.45;
 }
+
+/* It fades in, over a backdrop fading in. */
+dialog.modal-dialog[open],
+dialog.modal-dialog[open]::backdrop {
+  transition: opacity 0.15s ease-out;
+}
+@starting-style {
+  dialog.modal-dialog[open],
+  dialog.modal-dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
 </style>
