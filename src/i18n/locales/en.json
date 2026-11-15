@@ -76,6 +76,12 @@
     "creditIcons": "Icons: most icons are from {fontAwesome} by Fonticons, Inc. ({ccBy})",
     "creditScene": "And all the artists, tool builders, and ANSI scene members who keep text art alive.",
     "thanks": "Thank you for the inspiration, and for keeping the scene going.",
+    "aboutTab": "About",
+    "licensesLabel": "Licenses",
+    "licensesIntro": "Phosphor is open source under the {mit}.",
+    "assetsIntro": "The fonts and icons it uses:",
+    "packagesIntro": "And the open-source packages it's built with, each under its own license:",
+    "mitLicense": "MIT License",
     "motto": "Make Code Not War",
     "policies": "Read our {terms}, {privacy}, and {guidelines}."
   },

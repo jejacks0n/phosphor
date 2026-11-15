@@ -76,6 +76,12 @@
     "creditIcons": "Icônes : la plupart des icônes proviennent de {fontAwesome} par Fonticons, Inc. ({ccBy})",
     "creditScene": "Et tous les artistes, créateurs d'outils et membres de la scène ANSI qui font vivre l'art textuel.",
     "thanks": "Merci pour l'inspiration, et pour faire vivre la scène.",
+    "aboutTab": "À propos",
+    "licensesLabel": "Licences",
+    "licensesIntro": "Phosphor est open source sous {mit}.",
+    "assetsIntro": "Les polices et icônes qu'il utilise :",
+    "packagesIntro": "Et les paquets open source avec lesquels il est construit, chacun sous sa propre licence :",
+    "mitLicense": "licence MIT",
     "motto": "Make Code Not War",
     "policies": "Consultez nos {terms}, notre {privacy} et nos {guidelines}."
   },

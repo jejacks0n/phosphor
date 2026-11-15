@@ -3,7 +3,8 @@ import vue from '@vitejs/plugin-vue';
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 
 // What a build is, baked into it (__BUILD__ in the app; a <meta name="phosphor-build"> in index.html):
@@ -56,6 +57,35 @@ export function contentSecurityPolicy(html, api, { desktop = false } = {}) {
   ].join('; ');
 }
 
+// The open-source packages a build holds, for About's Licenses: each package any of the build's modules came from
+// (moduleIds), plus extra (the desktop app's main process, which isn't bundled), with its version, license, page and
+// license text, by name.
+export function licenseNotices(moduleIds, extra = []) {
+  const dirs = new Set();
+  for (const id of moduleIds) {
+    const match = id.replaceAll('\\', '/').match(/^(.*\/node_modules\/(?:@[^/]+\/)?[^/]+)\//);
+    if (match) dirs.add(match[1].replace(/^\0/, ''));
+  }
+  for (const name of extra) dirs.add(fileURLToPath(new URL(`./node_modules/${name}`, import.meta.url)));
+  return [...dirs].filter((dir) => existsSync(join(dir, 'package.json'))).map((dir) => { // not node_modules/.vite, say
+    const { name, version, license, homepage, repository } = JSON.parse(readFileSync(join(dir, 'package.json')));
+    const file = readdirSync(dir).find((f) => /^(licen[cs]e|copying)/i.test(f));
+    const repo = (typeof repository === 'string' ? repository : repository?.url)?.replace(/^(git\+|github:)/, '').replace(/^git:/, 'https:').replace(/\.git$/, '');
+    const page = homepage || (repo && (/^[\w.-]+\/[\w.-]+$/.test(repo) ? `https://github.com/${repo}` : repo));
+    return { name, version, license, url: page || `https://www.npmjs.com/package/${name}`, text: file ? readFileSync(join(dir, file), 'utf8').trim() : '' };
+  }).sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
+}
+
+// The development server's modules, for licenseNotices: what its prebundled dependencies were made from (their source
+// maps say) and what it served as it is.
+export function devModuleIds(depsDir, servedIds = []) {
+  const maps = existsSync(depsDir) ? readdirSync(depsDir).filter((f) => f.endsWith('.js.map')) : [];
+  return [
+    ...maps.flatMap((f) => (JSON.parse(readFileSync(join(depsDir, f), 'utf8')).sources ?? []).map((source) => resolve(depsDir, source))),
+    ...servedIds,
+  ];
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const build = buildInfo({ desktop: env.VITE_DESKTOP === '1' });
@@ -83,6 +113,23 @@ export default defineConfig(({ mode }) => {
             attrs: { 'http-equiv': 'Content-Security-Policy', content: contentSecurityPolicy(html, env.VITE_SOCIAL_API || 'https://api.phosphor.work', { desktop: env.VITE_DESKTOP === '1' }) },
             injectTo: 'head-prepend',
           }],
+        },
+      },
+      {
+        // licenses.json beside the page, which About lists: written with a build, answered by the development server.
+        name: 'phosphor-licenses',
+        configureServer(server) {
+          server.middlewares.use('/licenses.json', (req, res) => {
+            const graph = server.environments?.client?.moduleGraph ?? server.moduleGraph;
+            const ids = devModuleIds(join(server.config.cacheDir, 'deps'), graph.idToModuleMap.keys());
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(licenseNotices(ids)));
+          });
+        },
+        generateBundle() {
+          // Every module the build read, so a package that only re-exports another's (vue) is credited too.
+          const notices = licenseNotices([...this.getModuleIds()], env.VITE_DESKTOP === '1' ? ['ws'] : []);
+          this.emitFile({ type: 'asset', fileName: 'licenses.json', source: JSON.stringify(notices) });
         },
       },
     ],

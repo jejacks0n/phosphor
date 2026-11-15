@@ -20,10 +20,17 @@ test('About opens from the footer, says which build it is, and closes', async ({
   const meta = await page.locator('meta[name="phosphor-build"]').getAttribute('content');
   expect(meta).toMatch(new RegExp(`^v\\d+\\.\\d+\\.${today} ${sha}(-dirty)?$`));
   await expect(page.getByRole('listitem').filter({ hasText: 'cmang' }).getByRole('link', { name: 'Durdraw' })).toHaveAttribute('href', 'https://github.com/cmang/durdraw');
-  // The icons are credited as their license asks.
-  await expect(page.getByRole('link', { name: 'Font Awesome Free' })).toHaveAttribute('href', 'https://fontawesome.com');
-  await expect(page.getByRole('listitem').filter({ hasText: 'Font Awesome Free' }).getByRole('link', { name: 'CC BY 4.0' }))
+  // Switched to Licenses: the icons credited as their license asks, and the build's packages, as the build found them,
+  // each opening to its license.
+  await page.locator('dialog.reading-dialog').getByRole('button', { name: 'Licenses' }).click();
+  const licenses = page.getByRole('region', { name: 'Licenses' });
+  await expect(licenses.getByRole('link', { name: 'Font Awesome Free' })).toHaveAttribute('href', 'https://fontawesome.com');
+  await expect(licenses.getByRole('listitem').filter({ hasText: 'Font Awesome Free' }).getByRole('link', { name: 'CC BY 4.0' }))
     .toHaveAttribute('href', 'https://creativecommons.org/licenses/by/4.0/');
+  const vue = licenses.getByRole('listitem').filter({ has: page.locator('summary', { hasText: /^vue \d/ }) });
+  await expect(vue.locator('summary')).toHaveText(/^vue \d+\.\d+\.\d+ \(MIT\)$/);
+  await vue.locator('summary').click();
+  await expect(vue.locator('pre')).toContainText('Permission is hereby granted');
   await page.getByTitle('Close').click();
   await expect(page.locator('dialog.reading-dialog')).toBeHidden();
 });
