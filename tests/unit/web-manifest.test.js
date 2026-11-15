@@ -27,3 +27,15 @@ test('the manifest opens standalone at the root, with icons that exist', () => {
     assert.ok(served(icon.src), `${icon.src} isn't in public/`);
   }
 });
+
+test('the installed app offers to open every kind of file Phosphor opens, each in a window of its own', async () => {
+  const { ART_EXTENSIONS } = await import('../../src/lib/ArtFile.js');
+  const manifest = JSON.parse(readFileSync(new URL('public/site.webmanifest', root), 'utf8'));
+  const [handler, ...more] = manifest.file_handlers;
+  assert.equal(more.length, 0);
+  assert.equal(handler.action, '/');
+  assert.equal(handler.launch_type, 'multiple-clients');
+  const offered = Object.values(handler.accept).flat();
+  for (const ext of ['phosphor', ...ART_EXTENSIONS, 'svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif']) assert.ok(offered.includes(`.${ext}`), `.${ext} isn't offered`);
+  for (const type of Object.keys(handler.accept)) assert.match(type, /^[a-z]+\/[a-z0-9.+-]+$/);
+});

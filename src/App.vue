@@ -7,6 +7,7 @@ import { useAutosave } from '@/composables/useAutosave';
 import { useScreenAwake } from '@/composables/useScreenAwake';
 import { desktopQuery } from '@/social/config';
 import { desktop } from '@/social/desktop';
+import { onLaunchedFiles } from '@/document/projectIO';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -54,6 +55,7 @@ useScreenAwake();
 const { ready, recent, openRecent } = autosave;
 const drawing = useDrawingStore();
 drawing.autosavedBy(autosave.flush);
+onLaunchedFiles((file) => { workspace.fileRequest = file; }); // the installed web app, opening a file
 
 // Unsaved work: changes that aren't safe in the browser, or whose art has never been saved to a file.
 function unsavedWork() {
