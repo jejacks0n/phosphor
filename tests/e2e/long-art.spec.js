@@ -19,12 +19,13 @@ async function paintCell(page, col, row) {
 }
 
 // Every painted frame (a task after its frame) until stopRecording: how much of the PIXEL view's
-// viewport its canvas covers, and the scroll.
+// viewport its canvas covers, and the scroll. The ANSI view's frames don't count: it starts at the art's top, its
+// edge in view.
 const recordFrames = (page) => page.evaluate(() => {
   window.__frames = [];
   window.__framesDone = false;
   const frame = () => setTimeout(() => {
-    const el = document.querySelector('article[tabindex="0"]'), canvas = el?.querySelector('.display canvas');
+    const el = document.querySelector('article[tabindex="0"]:not(.ansi-editor > article)'), canvas = el?.querySelector('.display canvas');
     if (canvas) {
       const rect = canvas.getBoundingClientRect(), top = el.getBoundingClientRect().top + el.clientTop, bottom = top + el.clientHeight;
       window.__frames.push({ scrollTop: el.scrollTop, covered: Math.max(0, Math.min(rect.bottom, bottom) - Math.max(rect.top, top)), view: el.clientHeight });

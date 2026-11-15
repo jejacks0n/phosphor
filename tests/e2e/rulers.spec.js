@@ -116,7 +116,7 @@ test('a guide stays on its character when the view scrolls and zooms', async ({ 
   const onEdge = async () => Math.abs((await guideLine(page)).x - 0.5 - await edgeX(page, 10));   // the line's left
   const view = scroller(page);
   const before = await view.evaluate((el) => el.scrollTop);
-  await view.evaluate((el) => { el.scrollTop -= 37; });
+  await view.evaluate((el) => { el.scrollTop += 37; });   // the ANSI view starts at the art's top
   expect(await view.evaluate((el) => el.scrollTop)).not.toBe(before);
   await expect.poll(onEdge).toBeLessThanOrEqual(1);
 
