@@ -90,7 +90,12 @@
     "openAria": "Ouvrir {name}",
     "openElsewhereAria": "{name} (ouvert dans un autre onglet)",
     "openElsewhereWindow": "Ouvert dans une autre fenêtre",
-    "openElsewhereWindowAria": "{name} (ouvert dans une autre fenêtre)"
+    "openElsewhereWindowAria": "{name} (ouvert dans une autre fenêtre)",
+    "status": {
+      "unchanged": "Inchangé",
+      "changed": "Modifié",
+      "saved": "Enregistré"
+    }
   },
   "tabs": {
     "toggleSettings": "Afficher/masquer les paramètres",
@@ -617,7 +622,9 @@
       "mergeDownSelectionTitle": "Fusionner vers le bas : fusionner le contenu sélectionné dans le calque en dessous",
       "deselect": "Désélectionner",
       "deselectBlockTitle": "Désélectionner : poser la sélection sur le canevas (Échap ou Entrée)",
-      "dragHint": "Glissez pour sélectionner des cellules, ou :",
+      "dragHint": "Cliquez ou glissez pour sélectionner, ou :",
+      "tapHint": "Touchez ou glissez pour sélectionner, ou :",
+      "selectFirstTitle": "{action} : sélectionnez d'abord des cellules",
       "selectAll": "Tout sélectionner",
       "selectAllTitle": "Sélectionner tout le canevas ({key})",
       "mergeDownAllTitle": "Fusionner tout le calque dans le calque en dessous",

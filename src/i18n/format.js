@@ -48,6 +48,19 @@ export function formatMediumDateTime(ms) {
   }).format(ms);
 }
 
+// A short date and time: the year only when it isn't this one, seconds when asked for (to tell two apart).
+export function formatShortDateTime(ms, { seconds = false } = {}) {
+  const otherYear = new Date(ms).getFullYear() !== new Date().getFullYear();
+  return cached(Intl.DateTimeFormat, locale.value, `shortDateTime:${otherYear}:${seconds}`, {
+    month: 'short',
+    day: 'numeric',
+    ...(otherYear && { year: 'numeric' }),
+    hour: 'numeric',
+    minute: '2-digit',
+    ...(seconds && { second: '2-digit' }),
+  }).format(ms);
+}
+
 export function formatFullDateTime(ms) {
   return cached(Intl.DateTimeFormat, locale.value, 'fullDateTime', {
     dateStyle: 'short',

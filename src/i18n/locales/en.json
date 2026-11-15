@@ -90,7 +90,12 @@
     "openAria": "Open {name}",
     "openElsewhereAria": "{name} (open in another tab)",
     "openElsewhereWindow": "Open in another window",
-    "openElsewhereWindowAria": "{name} (open in another window)"
+    "openElsewhereWindowAria": "{name} (open in another window)",
+    "status": {
+      "unchanged": "Unchanged",
+      "changed": "Changed",
+      "saved": "Saved"
+    }
   },
   "tabs": {
     "toggleSettings": "Toggle settings",
@@ -617,7 +622,9 @@
       "mergeDownSelectionTitle": "Merge down: merge selected content into the layer below",
       "deselect": "Deselect",
       "deselectBlockTitle": "Deselect: place the selection onto the canvas (Esc or Enter)",
-      "dragHint": "Drag to select cells, or:",
+      "dragHint": "Click or drag to select, or:",
+      "tapHint": "Tap or drag to select, or:",
+      "selectFirstTitle": "{action}: select cells first",
       "selectAll": "Select all",
       "selectAllTitle": "Select the entire canvas ({key})",
       "mergeDownAllTitle": "Merge the entire layer into the layer below it",

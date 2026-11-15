@@ -303,10 +303,12 @@ frames, and pinch while it plays.
 ### 22. Come back to it
 - Does: presses New project (accepting if it asks: a browser confirm, handled with `page.once('dialog')` as in step
   21), then looks at the start screen.
-- Expects: "Pick up where you left off" lists her work with its time and an Open button; Open brings it back; the list
-  fits at 390 wide, long names cut off neatly.
-- Probes: `again`: open it twice; `extremes`: save a project under a 60-character name with emoji and check how it
-  shows in the list.
+- Expects: "Pick up where you left off" lists her work with its time, whether it's Unchanged, Changed or Saved, and an
+  Open button; Open brings it back; the list fits at 390 wide, each name whole with its extension on a line of its own
+  and the time, status and Open under it.
+- Probes: `again`: open it twice, and check the two rows read apart (the seconds, Unchanged); `extremes`: save a
+  project under a 60-character name with emoji and check it wraps to at most two lines, cut in the middle past that,
+  keeping its end.
 - Rated: no (touch only: no keyboard shows here)
 
 ### 23. Sign it on SAUCE

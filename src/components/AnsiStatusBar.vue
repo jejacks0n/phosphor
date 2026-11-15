@@ -1,6 +1,6 @@
 <script setup>
-import { computed, useTemplateRef } from 'vue';
-import { useMediaQuery } from '@vueuse/core';
+import { computed, onUpdated, ref, useTemplateRef } from 'vue';
+import { useMediaQuery, useResizeObserver } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -14,7 +14,8 @@ import { useLayerName } from '@/composables/useLayerName';
 // toggle; Select, the selection's size and place; the Color Picker, its last pick and where each color
 // came from. On the right, with a mouse or trackpad, Space's pan, or while a modifier's held, what it
 // does with the tool (in the pixel view too); the rest is in the docs, for the room it takes. Zoomed
-// out, the zoom, which goes back to 100%.
+// out, the zoom, which goes back to 100%. Too narrow for one line, the readout wraps a group at a time and only the
+// buttons at the end scroll sideways, faded at the edge while there's more.
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -31,6 +32,9 @@ const cursor = computed(() => workspace.textCursor);
 const cell = computed(() => cursor.value && project.cells[cursor.value.row * project.cols + cursor.value.col]);
 const entry = computed(() => cursor.value && project.editCellAt(cursor.value.col, cursor.value.row));
 const origin = (attr) => (entry.value?.[attr] !== undefined ? 'edit' : 'base');
+// Room for the longer origin word, so moving the cursor doesn't change how the bar wraps (nor do Col, Row and Char,
+// which keep room for their largest).
+const originWidth = computed(() => `${Math.max(t('status.origin.edit').length, t('status.origin.base').length)}ch`);
 
 const KEYS = { alt: shortcut('alt'), shift: shortcut('shift') };
 const keyboard = useMediaQuery('(pointer: fine)');
@@ -54,6 +58,13 @@ const hint = computed(() => {
 // The zoom as shown; going back to 100% takes the button away, so the focus goes to the one beside it.
 const percent = computed(() => Math.round(workspace.ansiZoom * 100));
 const renderer = useTemplateRef('renderer');
+const strip = useTemplateRef('strip'), more = ref(false);
+const measure = () => {
+  const el = strip.value;
+  more.value = !!el && el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+};
+useResizeObserver(strip, measure);
+onUpdated(measure);
 const backTo100 = () => {
   workspace.setAnsiZoom(1);
   renderer.value?.focus();
@@ -62,13 +73,13 @@ const backTo100 = () => {
 
 <template>
   <footer class="ansi-status">
-    <span class="layer" role="group" :aria-label="t('status.layerAria', { name: layer })">{{ layer }}</span>
+    <span class="layer" role="group" :title="layer" :aria-label="t('status.layerAria', { name: layer })">{{ layer }}</span>
     <template v-if="tool === 'text'">
       <template v-if="cursor && cell">
-        <span>Col <b>{{ cursor.col + 1 }}</b> Row <b>{{ cursor.row + 1 }}</b></span>
-        <span>Char <b class="glyph">{{ cell.char === ' ' ? '␣' : cell.char }}</b> {{ t(`status.origin.${origin('char')}`) }}</span>
-        <span>FG <i class="swatch" :style="{ backgroundColor: cell.fg.hex }"></i><b>{{ cell.fg.hex }}</b> {{ t(`status.origin.${origin('fg')}`) }}</span>
-        <span>BG <i class="swatch" :style="{ backgroundColor: cell.bg.hex }"></i><b>{{ cell.bg.hex }}</b> {{ t(`status.origin.${origin('bg')}`) }}</span>
+        <span>Col <b class="col">{{ cursor.col + 1 }}</b> Row <b class="row">{{ cursor.row + 1 }}</b></span>
+        <span>Char <b class="glyph">{{ cell.char === ' ' ? '␣' : cell.char }}</b> <span class="origin">{{ t(`status.origin.${origin('char')}`) }}</span></span>
+        <span>FG <i class="swatch" :style="{ backgroundColor: cell.fg.hex }"></i><b>{{ cell.fg.hex }}</b> <span class="origin">{{ t(`status.origin.${origin('fg')}`) }}</span></span>
+        <span>BG <i class="swatch" :style="{ backgroundColor: cell.bg.hex }"></i><b>{{ cell.bg.hex }}</b> <span class="origin">{{ t(`status.origin.${origin('bg')}`) }}</span></span>
       </template>
       <span v-else>{{ t('status.colRowEmpty') }}</span>
     </template>
@@ -77,62 +88,114 @@ const backTo100 = () => {
       <span>at Col <b>{{ sel.c0 + offset.dc + 1 }}</b> Row <b>{{ sel.r0 + offset.dr + 1 }}</b></span>
     </template>
     <template v-else-if="tool === 'picker' && !workspace.pickSwapped && pick">
-      <span>Picked Col <b>{{ pick.col + 1 }}</b> Row <b>{{ pick.row + 1 }}</b></span>
-      <span>FG <i class="swatch" :style="{ backgroundColor: shown(pick.fg) }"></i><b>{{ pick.fg }}</b> {{ pick.fgFrom ? t(`status.origin.${pick.fgFrom}`) : '' }}</span>
-      <span v-if="pick.bg">BG <i class="swatch" :style="{ backgroundColor: shown(pick.bg) }"></i><b>{{ pick.bg }}</b> {{ pick.bgFrom ? t(`status.origin.${pick.bgFrom}`) : '' }}</span>
+      <span>Picked Col <b class="col">{{ pick.col + 1 }}</b> Row <b class="row">{{ pick.row + 1 }}</b></span>
+      <span>FG <i class="swatch" :style="{ backgroundColor: shown(pick.fg) }"></i><b>{{ pick.fg }}</b> <span class="origin">{{ pick.fgFrom ? t(`status.origin.${pick.fgFrom}`) : '' }}</span></span>
+      <span v-if="pick.bg">BG <i class="swatch" :style="{ backgroundColor: shown(pick.bg) }"></i><b>{{ pick.bg }}</b> <span class="origin">{{ pick.bgFrom ? t(`status.origin.${pick.bgFrom}`) : '' }}</span></span>
     </template>
-    <span class="spacer"></span>
-    <span v-if="keyboard && hint" class="hint">
-      <template v-if="typeof hint === 'string'">{{ hint }}</template>
-      <template v-else v-for="([key, does], i) in hint" :key="key">{{ i ? ' · ' : '' }}<kbd>{{ key }}</kbd> {{ does }}</template>
-    </span>
-    <button
-        v-if="percent !== 100"
-        :title="t('status.zoomResetTitle')"
-        :aria-label="t('status.zoomResetAria', { percent })"
-        @click="backTo100"
-    >{{ percent }}%</button>
-    <button
-        ref="renderer"
-        :title="workspace.ansiRenderer === 'dom' ? t('status.domToCanvasTitle') : t('status.canvasToDomTitle')"
-        @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
-    >{{ workspace.ansiRenderer === 'dom' ? t('status.canvas') : t('status.dom') }}</button>
-    <button
-        :class="{ on: workspace.smoothText }"
-        :aria-pressed="workspace.smoothText"
-        :title="workspace.smoothText ? t('status.smoothOnTitle') : t('status.smoothOffTitle')"
-        @click="workspace.smoothText = !workspace.smoothText"
-    >{{ t('status.smooth') }}</button>
-    <button
-        v-if="tool === 'text'"
-        :title="workspace.insertMode ? t('status.insertTitle') : t('status.overwriteTitle')"
-        @click="workspace.insertMode = !workspace.insertMode"
-    >{{ workspace.insertMode ? t('status.insert') : t('status.overwrite') }}</button>
+    <div ref="strip" class="strip" :class="{ more }" @scroll.passive="measure">
+      <span v-if="keyboard && hint" class="hint">
+        <template v-if="typeof hint === 'string'">{{ hint }}</template>
+        <template v-else v-for="([key, does], i) in hint" :key="key">{{ i ? ' · ' : '' }}<kbd>{{ key }}</kbd> {{ does }}</template>
+      </span>
+      <button
+          v-if="percent !== 100"
+          :title="t('status.zoomResetTitle')"
+          :aria-label="t('status.zoomResetAria', { percent })"
+          @click="backTo100"
+      >{{ percent }}%</button>
+      <button
+          v-if="tool === 'text'"
+          :title="workspace.insertMode ? t('status.insertTitle') : t('status.overwriteTitle')"
+          @click="workspace.insertMode = !workspace.insertMode"
+      >{{ workspace.insertMode ? t('status.insert') : t('status.overwrite') }}</button>
+      <button
+          ref="renderer"
+          :title="workspace.ansiRenderer === 'dom' ? t('status.domToCanvasTitle') : t('status.canvasToDomTitle')"
+          @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
+      >{{ workspace.ansiRenderer === 'dom' ? t('status.canvas') : t('status.dom') }}</button>
+      <button
+          :class="{ on: workspace.smoothText }"
+          :aria-pressed="workspace.smoothText"
+          :title="workspace.smoothText ? t('status.smoothOnTitle') : t('status.smoothOffTitle')"
+          @click="workspace.smoothText = !workspace.smoothText"
+      >{{ t('status.smooth') }}</button>
+    </div>
   </footer>
 </template>
 
 <style scoped>
-/* Scrolls sideways when it doesn't fit, without a scrollbar, like the toolbar's options row. */
+/* Each readout group goes to the next line whole when it doesn't fit; the buttons take what's left of the last line
+   and scroll sideways in it, without a scrollbar, like the toolbar's options row. */
 footer.ansi-status {
   cursor: default; /* its own: the brush's and eraser's hidden cursor is set on the viewport it sits in */
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 2px 16px;
   padding: 4px 12px;
   background: var(--surface-1);
   color: var(--text-muted);
   font: 11px ui-monospace, Menlo, monospace;
   white-space: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-footer.ansi-status::-webkit-scrollbar {
-  display: none;
 }
 
 footer.ansi-status > * {
   flex-shrink: 0;
+}
+
+span.layer {
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+div.strip {
+  flex: 1 1 64px; /* stays on the last line with room for a button or so, and grows into the rest */
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+div.strip::-webkit-scrollbar {
+  display: none;
+}
+
+div.strip > * {
+  flex-shrink: 0;
+}
+
+div.strip > :first-child {
+  margin-left: auto; /* to the right while it fits */
+}
+
+div.strip.more {
+  mask-image: linear-gradient(to left, transparent, #000 24px);
+}
+
+b.col,
+b.row,
+b.glyph,
+span.origin {
+  display: inline-block;
+}
+
+b.col {
+  min-width: 3ch; /* 300 columns at most */
+}
+
+b.row {
+  min-width: 4ch; /* 5,000 lines */
+}
+
+b.glyph {
+  min-width: 2ch; /* a wide character */
+}
+
+span.origin {
+  min-width: v-bind(originWidth);
 }
 
 b {
@@ -158,10 +221,6 @@ i.swatch {
   height: 9px;
   margin: 0 4px -1px 0;
   border: 1px solid var(--border-light);
-}
-
-.spacer {
-  flex: 1;
 }
 
 button {

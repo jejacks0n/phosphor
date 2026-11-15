@@ -129,6 +129,7 @@ export function useAutosave() {
       const record = {
         id, imageBuffer,
         filename: project.filename,
+        fileExt: project.fileExt,
         editedAt,
         savedToFile: project.savedToFile,
         dirty: project.isDirty || !!project._stroke, // an open typing run isn't counted by isDirty yet
@@ -229,9 +230,10 @@ export function useAutosave() {
     schedule(); // a frame change: the frame's kept
   }, { flush: 'sync' }); // sync: beforeunload commits a typing run and reads current straight after
 
-  // A save to a file isn't a change to the art, but the record has to say it happened. Opening a
-  // document marks it saved too, in the same tick, so that's still the one opening write.
+  // A save to a file isn't a change to the art, but the record has to say it happened (and an export, the extension it
+  // went out as). Opening a document marks it saved too, in the same tick, so that's still the one opening write.
   watch([
+    () => project.fileExt,
     () => project.savedToFile,
     () => project.savedEditVersion,
     () => project.savedSettings,
@@ -267,7 +269,7 @@ export function useAutosave() {
     try {
       const [documents, open] = await Promise.all([listDocuments(), openDocuments()]);
       // Letting go of a lock takes a moment to show: the one just let go of isn't open elsewhere.
-      recent.value = documents.map(({ id, filename, editedAt }) => ({ id, filename, editedAt, openElsewhere: id !== leftId && open.includes(id) }));
+      recent.value = documents.map((row) => ({ ...row, openElsewhere: row.id !== leftId && open.includes(row.id) }));
     } catch (error) {
       console.warn('Autosave could not list documents', error);
     }

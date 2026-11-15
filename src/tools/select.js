@@ -2,13 +2,13 @@
 // tall, so the rectangle's edges keep to whole cells there too). Dragging inside the selection moves its contents on
 // the picked layer (or all visible layers when All layers is on), the block following the pointer cell by cell (a float:
 // the whole drag is one undo step); dragging its border moves just the outline; dragging elsewhere
-// draws a new one, and a click outside clears it. The actions are on the options row.
+// draws a new one, and a click outside clears it. With nothing selected, a click selects the cell under it. The actions are on the options row.
 import { normalizeRect, selectionHit, clampOffset } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 import { t } from '@/i18n/index.js';
 
 
-let drag = null; // { mode: 'select' | 'move' | 'outline', start: { col, row }, rect?, moved?: { dc, dr } }
+let drag = null; // { mode: 'select' | 'move' | 'outline', start: { col, row }, rect?, moved?: { dc, dr }, dragged? }
 
 // The cell under a position, clamped to the grid (drags may leave it).
 const cellOf = (project, pos) => ({
@@ -69,12 +69,15 @@ export default {
       workspace.selectionOffset = clampOffset(workspace.selection, dc, dr, project.cols, charRowsOf(project.rows)); // the outline stays on the grid
     } else if (dc || dr || workspace.selection) {
       workspace.selection = normalizeRect(drag.start, cell);
+      drag.dragged = true;
     }
   },
   end({ project, workspace }) {
     const sel = workspace.selection;
     const { dc, dr } = workspace.selectionOffset ?? { dc: 0, dr: 0 };
-    if (!sel) {
+    if (drag?.mode === 'select' && !drag.dragged && !drag.before.selection && !drag.before.wand) {
+      workspace.selection = normalizeRect(drag.start, drag.start); // a tap with nothing selected selects its cell
+    } else if (!sel) {
       // cleared mid-drag: nothing to move
     } else if (drag?.mode === 'outline' && (dc || dr)) {
       workspace.selection = { c0: sel.c0 + dc, r0: sel.r0 + dr, c1: sel.c1 + dc, r1: sel.r1 + dr };
