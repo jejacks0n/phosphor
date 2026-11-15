@@ -2108,6 +2108,35 @@ test('the ledger\'s record survives a reload: what it holds comes back, undo wor
   expect(await readRoomLedger('room')).toBe(null);
 });
 
+test('a keep asked for while one is writing writes after it, so what autosave waits for is never behind the document', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  // The timer's keep has read the ledger and is writing it when a change lands and autosave asks for its own.
+  const read = new Promise((resolve) => {
+    const kept = room.project._ledger.kept;
+    room.project._ledger.kept = function () {
+      this.kept = kept;
+      resolve();
+      return kept.call(this);
+    };
+  });
+  const timers = room.project.keepLedger();
+  await read;
+  const n = room.project._ledger.n;
+  room.project.editCell(2, 2, { char: 'I' });
+  room.project.commitEdit();
+  room.project.flushHeard();
+  expect(room.project._ledger.n).toBeGreaterThan(n);
+  await room.project.keepLedger();
+  expect((await readRoomLedger('room')).kept.n).toBe(room.project._ledger.n);
+  await timers;
+  expect((await readRoomLedger('room')).kept.n).toBe(room.project._ledger.n);
+  await forgetRoomLedger('room');
+});
+
 test('a kept ledger whose tail can\'t reach the document starts its stacks over, and says the undo is gone', async () => {
   const room = await hostingWithSocket();
   const ann = await artist(room, 'ann');
