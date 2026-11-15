@@ -75,7 +75,7 @@ test('the room service keeps its port and secret across a reload, changes mode w
   expect(await page.evaluate(() => window.phosphorDesktop.serviceInfo())).toBeNull();
 });
 
-test('the page can start the service only on a real port, a malformed path is not found, and permissions are denied', async () => {
+test('the page can start the service only on a real port, a malformed path is not found, and permissions are denied but the screen kept on', async () => {
   launched = await launchApp();
   const { page } = launched;
   for (const port of ['abc', 0, 70000, 1.5]) {
@@ -85,6 +85,11 @@ test('the page can start the service only on a real port, a malformed path is no
   expect((await page.evaluate(() => window.phosphorDesktop.startService({ port: ' 31403 ', mode: 'host', sub: 's' }))).port).toBe(31403);
   expect(await page.evaluate(() => fetch('/%E0%A4%A').then((r) => r.status))).toBe(404);
   expect(await page.evaluate(() => Notification.requestPermission())).toBe('denied');
+  expect(await page.evaluate(async () => {
+    const lock = await navigator.wakeLock.request('screen');
+    await lock.release();
+    return lock.type;
+  })).toBe('screen');
 });
 
 test('a quit waits for the page to say it is ready', async () => {

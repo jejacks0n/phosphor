@@ -4,6 +4,7 @@ import { useMediaQuery } from '@vueuse/core';
 import { useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAutosave } from '@/composables/useAutosave';
+import { useScreenAwake } from '@/composables/useScreenAwake';
 import { desktopQuery } from '@/social/config';
 import { desktop } from '@/social/desktop';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -49,6 +50,7 @@ watchEffect(() => {
 watch(() => project.fileId, (id) => workspace.showGuidesFor(id), { immediate: true }); // each drawing has its own guides
 
 const autosave = useAutosave();
+useScreenAwake();
 const { ready, recent, openRecent } = autosave;
 const drawing = useDrawingStore();
 drawing.autosavedBy(autosave.flush);
