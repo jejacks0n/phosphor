@@ -1,8 +1,9 @@
 // The desktop app's windows: New Window, files opened from the system or the menu going to a window of their own when
-// the one they'd open in has a drawing, a project already open brought forward, each window's title, the menu
-// following the focused window, closing a window and quitting with several (each asks first with unsaved work, and a
-// host's room is handed on), the last window closing, and a room per window: each its own service on its own port, a
-// second window joining the first's room as someone else, and a window's service going with it.
+// the one they'd open in has a drawing (a file dropped on a drawing too, when asked to), a project already open brought
+// forward, each window's title, the menu following the focused window, closing a window and quitting with several (each
+// asks first with unsaved work, and a host's room is handed on), the last window closing, and a room per window: each
+// its own service on its own port, a second window joining the first's room as someone else, and a window's service
+// going with it.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -84,6 +85,37 @@ test('Open… from a window with a drawing opens the file in a new window and le
   await expect.poll(() => store(second, 'project', (p) => p.filename)).toBe('one');
   expect(windowsOf(app)).toHaveLength(2);
   expect(await store(page, 'project', (p) => p.filename)).toBe('gradient');
+});
+
+// `file` dropped on the page's drop zone. A file put in a DataTransfer by the page has no path, so it's picked first in
+// an input of the test's own (setInputFiles gives it the real file, with its path) and dropped from there.
+async function dropFile(page, file) {
+  await page.evaluate(() => document.body.append(Object.assign(document.createElement('input'), { type: 'file', id: 'test-drop', hidden: true })));
+  await page.locator('#test-drop').setInputFiles(file);
+  await page.evaluate(() => {
+    const input = document.getElementById('test-drop');
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(input.files[0]);
+    input.remove();
+    document.querySelector('article.drop-zone').dispatchEvent(new DragEvent('drop', { dataTransfer, bubbles: true, cancelable: true }));
+  });
+}
+
+test('a picture dropped over a drawing and opened in a new window leaves the drawing', async () => {
+  launched = await launchApp();
+  const { app, page } = launched;
+  await openImage(page, 'images/one.png');
+  const drawingOf = (each) => store(each, 'project', (p) => [p.filename, p.layers.length, p.editVersion]);
+  const before = await drawingOf(page);
+  await dropFile(page, fixture('images/gradient.png'));
+  await expect(page.getByRole('button', { name: /Add to this drawing/ })).toBeVisible();
+  const next = nextWindow(app);
+  await page.getByRole('button', { name: /Open in a new window/ }).click();
+  const second = await next;
+  await expect.poll(() => store(second, 'project', (p) => [!!p.image, p.filename])).toEqual([true, 'gradient']);
+  expect(windowsOf(app)).toHaveLength(2);
+  expect(await drawingOf(page)).toEqual(before);
+  expect(before[0]).toBe('one');
 });
 
 test('a file the window couldn’t open leaves it free: Open… there opens in that window', async () => {
