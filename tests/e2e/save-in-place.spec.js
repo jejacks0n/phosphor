@@ -75,3 +75,27 @@ test('a project opened with Cmd/Ctrl+O saves back over its file, asking once a p
   await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('as-opened');
   expect((await asked(page)).save).toBe(1);
 });
+
+test('a project the installed app is launched with (a file double-clicked) opens and saves back over its file', async ({ page }) => {
+  // Chromium's own launchQueue, read-only, stood in for: a page opened by a launch, its consumer called here.
+  await page.addInitScript(() => Object.defineProperty(window, 'launchQueue', { value: { setConsumer: (take) => { window.launch = take; } } }));
+  await page.goto('/');
+  await expect(zeroState(page)).toBeVisible();
+  await page.evaluate(async (base64) => {
+    const handle = await (await navigator.storage.getDirectory()).getFileHandle('launched.phosphor', { create: true });
+    const writable = await handle.createWritable();
+    await writable.write(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
+    await writable.close();
+    await window.launch({ files: [handle] });
+  }, PROJECT);
+  await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('launched');
+  await settled(page);
+  const original = await fileBytes(page, 'launched.phosphor');
+  await editAt(page, 1, 1);
+  await page.keyboard.insertText('launched');
+  await settled(page);
+  await save(page);
+  await saved(page);
+  expect(await asked(page)).toEqual({ open: 0, save: 0, permission: 1 });
+  expect(await fileBytes(page, 'launched.phosphor')).not.toEqual(original);
+});

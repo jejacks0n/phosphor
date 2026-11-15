@@ -196,17 +196,30 @@ export function timestamped(stem, now = new Date()) {
 // its path. A function, so tests can give the page the API. Elsewhere Save is a download.
 export const savesInPlace = () => import.meta.env.VITE_DESKTOP !== '1' && typeof globalThis.showSaveFilePicker === 'function';
 
-// The open picker's file, with its handle on it (fileHandle) when it's a project, for Save to write over; null when
-// canceled. types: the picker's list.
+// A handle's file, with the handle on it (fileHandle) when it's a project, for Save to write over.
+async function fileOf(handle) {
+  const file = await handle.getFile();
+  return isProjectFile(file.name) ? Object.assign(file, { fileHandle: handle }) : file;
+}
+
+// The open picker's file (fileOf); null when canceled. types: the picker's list.
 export async function pickFile(types) {
   try {
     const [handle] = await globalThis.showOpenFilePicker({ types });
-    const file = await handle.getFile();
-    return isProjectFile(file.name) ? Object.assign(file, { fileHandle: handle }) : file;
+    return await fileOf(handle);
   } catch (error) {
     if (error.name === 'AbortError') return null;
     throw error;
   }
+}
+
+// The installed web app's files (the manifest's file_handlers: a file double-clicked, or Open With), each to open as
+// the picker's is (fileOf). Each opens a window of its own, so a launch has one. Where there's no launchQueue (not
+// installed, or a browser without File Handling), nothing comes.
+export function onLaunchedFiles(open) {
+  globalThis.launchQueue?.setConsumer(async ({ files }) => {
+    if (files?.length) open(await fileOf(files[0]));
+  });
 }
 
 // Where Save writes a project: the handle given, once the browser says it may (after a reload it asks), or else a file
