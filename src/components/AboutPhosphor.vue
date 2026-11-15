@@ -177,7 +177,7 @@ watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { fl
       <hr/>
 
       <div class="footer">
-        <p>&copy; 2026 Phosphor Project</p>
+        <p>&copy; 2026-present Phosphor Project</p>
         <p class="accent">{{ t('about.motto') }}</p>
       </div>
     </template>
