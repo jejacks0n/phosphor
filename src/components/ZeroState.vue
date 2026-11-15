@@ -10,6 +10,8 @@ defineProps({
 });
 defineEmits(['browse', 'start-blank']);
 const { t } = useI18n();
+// A drawing open elsewhere is in another tab on the web, and in another window in the desktop app.
+const elsewhere = import.meta.env.VITE_DESKTOP === '1' ? 'openElsewhereWindow' : 'openElsewhere';
 
 const MAX_RECENT = 5;
 </script>
@@ -38,10 +40,10 @@ const MAX_RECENT = 5;
           <time :datetime="new Date(row.editedAt).toISOString()">{{ formatMediumDateTime(row.editedAt) }}</time>
           <button
             :disabled="row.openElsewhere"
-            :aria-label="row.openElsewhere ? t('zero.openElsewhereAria', { name: row.filename }) : t('zero.openAria', { name: row.filename })"
+            :aria-label="row.openElsewhere ? t(`zero.${elsewhere}Aria`, { name: row.filename }) : t('zero.openAria', { name: row.filename })"
             @click="openRecent(row.id)"
           >
-            {{ row.openElsewhere ? t('zero.openElsewhere') : t('zero.open') }}
+            {{ row.openElsewhere ? t(`zero.${elsewhere}`) : t('zero.open') }}
           </button>
         </li>
       </ul>

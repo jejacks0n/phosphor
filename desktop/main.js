@@ -221,13 +221,14 @@ function deliver(file, { focusedId = focusedEntry()?.id } = {}) {
 }
 
 // File > Open: the system's chooser, for what the page opens. Null when nothing's picked, or when what's picked opens
-// in another window (or is open there already).
+// in another window (this one has a drawing, or another has the file open). A window without a drawing takes what it
+// picked itself, whether or not a file was on its way to it.
 async function openFile(entry) {
   const { canceled, filePaths } = await dialog.showOpenDialog(entry.win, { properties: ['openFile'], filters: [{ name: labels?.openableFiles ?? 'Phosphor', extensions: OPENABLE }] });
   const file = !canceled && filePaths[0];
   if (!file) return null;
   const target = targetOf(file, entry.id);
-  if (target.id === entry.id && !target.existing) return readOpened(file);
+  if (!entry.menuState.hasImage && !(target.existing && target.id !== entry.id)) return readOpened(file);
   deliver(file, { focusedId: entry.id });
   return null;
 }
@@ -318,9 +319,12 @@ function openWindow({ files = [] } = {}) {
     if (choice === 0) event.preventDefault();   // leave: the page goes after all
     else quitCalledOff();
   });
-  // A reload (not the router's own moves) starts a page that hasn't said it takes files yet.
+  // A reload (not the router's own moves) starts a page that hasn't said it takes files yet. A file it was sent is gone
+  // with the page, so it's no longer on its way; one still waiting to be sent is.
   win.webContents.on('did-start-navigation', (details) => {
-    if (details.isMainFrame && !details.isSameDocument) entry.filesReady = false;
+    if (!details.isMainFrame || details.isSameDocument) return;
+    entry.filesReady = false;
+    entry.claimed = entry.pending.some((job) => job.file);
   });
   win.on('focus', () => {
     focusOrder.splice(focusOrder.indexOf(id), 1);

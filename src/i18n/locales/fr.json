@@ -88,7 +88,9 @@
     "open": "Ouvrir",
     "openElsewhere": "Ouvrir dans un autre onglet",
     "openAria": "Ouvrir {name}",
-    "openElsewhereAria": "{name} (ouvert dans un autre onglet)"
+    "openElsewhereAria": "{name} (ouvert dans un autre onglet)",
+    "openElsewhereWindow": "Ouvert dans une autre fenêtre",
+    "openElsewhereWindowAria": "{name} (ouvert dans une autre fenêtre)"
   },
   "tabs": {
     "toggleSettings": "Afficher/masquer les paramètres",
