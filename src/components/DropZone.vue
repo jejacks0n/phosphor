@@ -1,13 +1,19 @@
 <script setup>
 import { ref } from 'vue';
+import { isProjectFile, savesInPlace } from '@/document/projectIO';
 
 const emit = defineEmits(['file-dropped']);
 const isDragging = ref(false);
 
-function handleDrop(e) {
+// What can't be opened is refused, with a message, where files are opened. A project dropped where the browser
+// savesInPlace brings its handle (fileHandle), for Save to write over; asked for during the drop, while it's there.
+async function handleDrop(e) {
   isDragging.value = false;
   const file = e.dataTransfer.files[0];
-  if (file) emit('file-dropped', file); // what can't be opened is refused, with a message, where files are opened
+  if (!file) return;
+  const handle = savesInPlace() && isProjectFile(file.name) ? e.dataTransfer.items[0]?.getAsFileSystemHandle?.() : null;
+  const fileHandle = await handle?.catch(() => null);
+  emit('file-dropped', fileHandle?.kind === 'file' ? Object.assign(file, { fileHandle }) : file);
 }
 </script>
 

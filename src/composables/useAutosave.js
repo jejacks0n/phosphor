@@ -132,6 +132,7 @@ export function useAutosave() {
         fileExt: project.fileExt,
         editedAt,
         savedToFile: project.savedToFile,
+        fileHandle: project.fileHandle, // the file Save writes over, which IndexedDB can keep (the browser asks again)
         dirty: project.isDirty || !!project._stroke, // an open typing run isn't counted by isDirty yet
         savedSettings: project.savedSettings,
         ledgerN: project.documentNumber(), // with what's read next: the picture stands at this number
@@ -232,11 +233,13 @@ export function useAutosave() {
     schedule(); // a frame change: the frame's kept
   }, { flush: 'sync' }); // sync: beforeunload commits a typing run and reads current straight after
 
-  // A save to a file isn't a change to the art, but the record has to say it happened (and an export, the extension it
-  // went out as). Opening a document marks it saved too, in the same tick, so that's still the one opening write.
+  // A save to a file isn't a change to the art, but the record has to say it happened, and which file (and an export,
+  // the extension it went out as). Opening a document marks it saved too, in the same tick, so that's still the one
+  // opening write.
   watch([
     () => project.fileExt,
     () => project.savedToFile,
+    () => project.fileHandle,
     () => project.savedEditVersion,
     () => project.savedSettings,
   ], schedule, { flush: 'sync' });
@@ -304,8 +307,10 @@ export function useAutosave() {
     if (!saved) throw new Error(`No version ${versionId}`);
     const kept = await addVersion(id, { reason: 'before-restore', savedAt: Date.now() });
     if (!kept) throw new Error('What is open could not be kept');
+    const { fileHandle } = project; // the file stays the one it's saved to, whatever the version's was
     try {
       await project.restoreDocument(saved, { documentId: id });
+      project.fileHandle = fileHandle;
     } catch (error) {
       if (project.image) throw error; // nothing was swapped: what's open is as it was
       // Gone wrong partway, which left no document. Put back what was open.

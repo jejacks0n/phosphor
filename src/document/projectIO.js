@@ -160,7 +160,45 @@ export function timestamped(stem, now = new Date()) {
   return `${stem.replace(/-\d{8}-\d{6}$/, '')}-${date}-${time}`;
 }
 
-// Every save and export is a download, named as typed in the save dialog (Safari has no save
+// Saving in place, in the web build where the browser has the File System Access API (Chromium): a .phosphor file
+// opened or saved keeps its handle (the project's fileHandle) and Save writes over it, as the desktop app writes over
+// its path. A function, so tests can give the page the API. Elsewhere Save is a download.
+export const savesInPlace = () => import.meta.env.VITE_DESKTOP !== '1' && typeof globalThis.showSaveFilePicker === 'function';
+
+// The open picker's file, with its handle on it (fileHandle) when it's a project, for Save to write over; null when
+// canceled. types: the picker's list.
+export async function pickFile(types) {
+  try {
+    const [handle] = await globalThis.showOpenFilePicker({ types });
+    const file = await handle.getFile();
+    return isProjectFile(file.name) ? Object.assign(file, { fileHandle: handle }) : file;
+  } catch (error) {
+    if (error.name === 'AbortError') return null;
+    throw error;
+  }
+}
+
+// Where Save writes a project: the handle given, once the browser says it may (after a reload it asks), or else a file
+// the save picker names (Save As, a drawing never saved, or the asking refused). Null when the picker's canceled.
+export async function projectTarget(handle, { suggestedName, description, as = false }) {
+  const mode = { mode: 'readwrite' };
+  if (handle && !as && ((await handle.queryPermission(mode)) === 'granted' || (await handle.requestPermission(mode)) === 'granted')) return handle;
+  try {
+    return await globalThis.showSaveFilePicker({ suggestedName, types: [{ description, accept: { 'application/octet-stream': [PROJECT_EXTENSION] } }] });
+  } catch (error) {
+    if (error.name === 'AbortError') return null;
+    throw error;
+  }
+}
+
+// The browser writes beside the file and swaps it in at close, so a write that fails leaves the file as it was.
+export async function writeFileHandle(handle, blob) {
+  const writable = await handle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+}
+
+// Every other save and export is a download, named as typed in the save dialog (Safari has no save
 // picker; every browser honors a download's name).
 export function downloadBlob(blob, filename) {
   const link = document.createElement('a');

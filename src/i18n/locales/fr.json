@@ -1034,6 +1034,8 @@
     "sauceHint": "Le SAUCE est en CP437 dans tout fichier ANSI. Pour choisir vous-même les remplaçants, modifiez ces champs dans l'onglet SAUCE.",
     "sauceCommentsOver": "Commentaires : seules les {most} premières lignes SAUCE tiennent. À partir de la ligne {line} (« {text} »), ils ne seront pas dans ce fichier ; ils restent dans l'onglet SAUCE.",
     "saveFailed": "Impossible d'enregistrer le fichier.",
+    "projectFileType": "Projet Phosphor",
+    "openFileType": "Fichiers que Phosphor ouvre",
     "tooTall": "À {cols}×{rows}, cette création est plus grande qu'un terminal standard 80×25. Certaines parties peuvent être tronquées lors de la lecture.",
     "gifTooLarge": "Cette animation est trop volumineuse pour être exportée en GIF. Essayez d'utiliser moins d'images, des dimensions plus petites, ou exportez en .cast à la place."
   },
@@ -1135,6 +1137,7 @@
       "undo": "Annuler",
       "redo": "Rétablir",
       "saveProject": "Enregistrer le projet",
+      "saveProjectAs": "Enregistrer le projet dans un nouveau fichier",
       "export": "Exporter",
       "openFile": "Ouvrir un fichier",
       "pencil": "Crayon",

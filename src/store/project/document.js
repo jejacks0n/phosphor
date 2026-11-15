@@ -6,7 +6,7 @@ import { layersFromOld, savedLayers, legacySlots, keyLayer, withChars } from '@/
 import PaintLayer from '@/document/PaintLayer.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
-import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION } from '@/document/projectIO.js';
+import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION, fileStem, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
 import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
@@ -287,6 +287,7 @@ export const documentActions = {
       documentId: randomId(),
       fileId: randomId(), // a new drawing's; a file opened brings its own in the patch
       filePath: null, // desktop: a project opened from its file says it after
+      fileHandle: null, // the same, on the web
       fit: null,
       paintScale: null,
       baseScale: null, // a loaded file's comes in the patch
@@ -328,6 +329,7 @@ export const documentActions = {
       documentId: null,
       fileId: null,
       filePath: null,
+      fileHandle: null,
       savedToFile: false,
       asOpened: false,
       fit: null,
@@ -373,11 +375,17 @@ export const documentActions = {
 
   // On desktop the file is written where the system's save box says, or over the project's own file (filePath) with
   // no box (Save As, `as`, always asks). False when the box is canceled. What's marked saved is the project as written:
-  // a room's changes heard while the box is open are still unsaved.
+  // a room's changes heard while the box is open are still unsaved. On the web where the browser savesInPlace, the same
+  // with its handle (fileHandle) and save picker, which come first: the browser asks only straight after a key or click.
   async saveProject(filename = this.filename, { as = false } = {}) {
     if (!this.image || !this.imageBuffer) return false;
     this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
+    let handle = null;
+    if (!DESKTOP && savesInPlace()) {
+      handle = await projectTarget(this.fileHandle, { suggestedName: `${filename}${PROJECT_EXTENSION}`, description: t('save.projectFileType'), as });
+      if (!handle) return false;
+    }
     const [settings, version] = [savedJson(this), this.editVersion];
     // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too). On desktop the note goes
     // before the system's save box comes up.
@@ -392,6 +400,13 @@ export const documentActions = {
       this.filePath = saved;
       this.rename(saved.split(/[\\/]/).pop().slice(0, -PROJECT_EXTENSION.length));
       this.fileExt = PROJECT_EXT;
+      Object.assign(this, { savedSettings: settings, savedEditVersion: version, savedToFile: true });
+      return true;
+    }
+    if (handle) {
+      await writeFileHandle(handle, blob);
+      this.fileHandle = markRaw(handle);
+      this.rename(fileStem(handle.name, PROJECT_EXTENSION.slice(1)));
       Object.assign(this, { savedSettings: settings, savedEditVersion: version, savedToFile: true });
       return true;
     }
@@ -447,6 +462,7 @@ export const documentActions = {
       this.savedToFile = true;
       this.asOpened = true;
       this.filePath = file.desktopPath ?? null; // desktop: where it was opened from, for Save to write over
+      this.fileHandle = file.fileHandle ? markRaw(file.fileHandle) : null; // the same on the web (pickFile, a drop)
     } catch (e) {
       console.error('Failed to load project file', e);
       const reason = e?.code === 'INVALID_PROJECT' ? t('document.invalidProject') : e?.code === 'DECODE_IMAGE_FAILED' ? t('document.decodeImageFailed') : e.message;
@@ -462,6 +478,8 @@ export const documentActions = {
       await this.openParts({ ...parts, imageBuffer }, { filename: record.filename, fileExt: record.fileExt, documentId });
     });
     this.savedToFile = record.savedToFile;
+    // The file it was saved to (a copy has none of its own). The browser asks again before Save writes over it.
+    this.fileHandle = documentId && record.fileHandle ? markRaw(record.fileHandle) : null;
     if (record.dirty) {
       this.savedSettings = record.savedSettings;
       this.savedEditVersion = this.editVersion - 1;

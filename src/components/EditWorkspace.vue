@@ -7,7 +7,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { toast } from '@/composables/useToast';
 import { desktop, fileFrom } from '@/social/desktop';
-import { isProjectFile, loadImage, PROJECT_EXTENSION } from '@/document/projectIO';
+import { isProjectFile, loadImage, pickFile, PROJECT_EXTENSION, savesInPlace } from '@/document/projectIO';
 import { isArtFile, ART_EXTENSIONS } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -55,8 +55,19 @@ watch(() => [project.frame, project.frames, project.renderedCells, project.anima
 // art file says so when it fails to open.
 const chooser = ref(null);
 const touch = useMediaQuery('(pointer: coarse)');
-const accept = ['image/*', '.svg', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)].join(',');
-watch(() => workspace.openRequest, () => (DESKTOP ? openChosen() : chooser.value?.click()));
+const extensions = ['.svg', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)];
+const accept = ['image/*', ...extensions].join(',');
+watch(() => workspace.openRequest, () => (DESKTOP ? openChosen() : browse()));
+// Where the browser savesInPlace, its open picker, so a project opened keeps its handle for Save to write over.
+function browse() {
+  if (!savesInPlace()) return chooser.value?.click();
+  pickFile([{ description: t('save.openFileType'), accept: { 'image/*': [], 'application/octet-stream': extensions } }]).then((file) => {
+    if (file) handleFileSelected(file);
+  }, (error) => {
+    console.warn('Could not open the file', error);
+    toast(t('menu.openFailed'));
+  });
+}
 // Desktop: the system's own chooser, in the main process, which can then save a project back where it came from; and
 // files it was asked to open (double-clicked, Open Recent), as the workspace's fileRequest.
 async function openChosen() {
@@ -235,7 +246,7 @@ async function addSvg(file) {
           <SauceEditor v-if="workspace.editorTab === 'sauce'"/>
         </div>
 
-        <ZeroState v-else :ready="ready" :recent="recent" :open-recent="openRecent" @browse="chooser.click()" @start-blank="startBlank"/>
+        <ZeroState v-else :ready="ready" :recent="recent" :open-recent="openRecent" @browse="browse" @start-blank="startBlank"/>
       </DropZone>
       <ChoiceDialog
           v-if="workspace.artDrop"

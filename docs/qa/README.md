@@ -406,7 +406,10 @@ Not findings:
 
 - style opinions with no effect on the persona;
 - anything on the persona's Known list;
-- Safari- or Firefox-only problems (runs are Chromium only).
+- Safari- or Firefox-only problems (runs are Chromium only);
+- Save writing over a project's file, and the browser's own open and save pickers: a run's page has no File System
+  Access (a headless browser can't answer the pickers), so Save is the save dialog and a download, and Choose a file
+  the file input, as in Safari and Firefox.
 
 Also not a new bug each run: the terminal check's three known differences from the app's widths (an emoji with a
 variation selector, like ❤️; skin-tone and joiner sequences, like 👍🏽 and 👨‍👩‍👧; flags, like 🇺🇸), and a hidden
