@@ -3,7 +3,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { test, expect, launchApp, openImage, menuLabels, clickMenu } from './desktop-support.js';
+import { test, expect, launchApp, openImage, menuLabels, clickMenu, menuEnabled } from './desktop-support.js';
 import { cellPoint, drag, fixture, pickLayer, store } from './support.js';
 
 let launched;
@@ -172,6 +172,9 @@ test('the menu saves a project where the box says and then over it, and it opens
     await expect.poll(() => store(page, 'project', (p) => [p.filename, p.filePath, p.cols])).toEqual(['night', file, 60]);
 
     await clickMenu(app, 'File', 'New');
+    // Open decides in main whether the file opens here, by what the page last told it: until it hears the drawing went
+    // (Save off), the file would go to a new window.
+    await expect.poll(() => menuEnabled(app, 'File', 'Save')).toBe(false);
     await app.evaluate(({ dialog }, picked) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [picked] }); }, fixture('images/gradient.png'));
     await page.keyboard.press('ControlOrMeta+o');
     await expect.poll(() => store(page, 'project', (p) => [p.filename, p.filePath])).toEqual(['gradient', null]);
