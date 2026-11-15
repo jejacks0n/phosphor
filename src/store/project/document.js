@@ -14,6 +14,7 @@ import { MOST_SHAPES } from '@/document/shapes.js';
 import { castText } from '@/lib/CastFile.js';
 import { MAX_GIF_PIXELS, drawnCells, gifDelay, gifFile } from '@/lib/GifFile.js';
 import { pngBlob } from '@/lib/PngFile.js';
+import { videoFile } from '@/lib/VideoFile.js';
 import { gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
@@ -519,8 +520,8 @@ export const documentActions = {
     return cells;
   },
 
-  // The animated formats, written from every frame: 'ansimation' (.ans), 'utf8ansimation' (.utf8ans), 'cast' or 'gif'. Throws with userMessage
-  // what the save dialog should say. A GIF tells progress the share of its frames written, as it goes.
+  // The animated formats, written from every frame: 'ansimation' (.ans), 'utf8ansimation' (.utf8ans), 'cast', 'gif' or 'mp4'. Throws with userMessage
+  // what the save dialog should say. A GIF or video tells progress the share of its frames written, as it goes.
   async exportAnimation(format, { filename = this.filename, progress } = {}) {
     const ext = { ansimation: 'ans', utf8ansimation: 'utf8ans' }[format] ?? format;
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => {
@@ -531,6 +532,15 @@ export const documentActions = {
         return new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { utf8, colorMode: this.quantize, sauce: this.sauceFields() })], { type: 'application/octet-stream' });
       } else if (format === 'cast') {
         return new Blob([castText(this.cols, lines, frames, durations.map((ms) => ms / 1000), { colorMode: this.quantize })], { type: 'application/x-asciicast' });
+      } else if (format === 'mp4') {
+        const bytes = await videoFile(frames, this.cols, lines, durations, {
+          smooth: useWorkspaceStore().smoothText,
+          progress,
+          unencodable: () => {
+            throw Object.assign(new Error('Too large for a video'), { userMessage: t('save.videoTooLarge') });
+          },
+        });
+        return new Blob([bytes], { type: 'video/mp4' });
       } else {
         const bytes = await gifFile(frames, this.cols, lines, durations.map(gifDelay), {
           smooth: useWorkspaceStore().smoothText,

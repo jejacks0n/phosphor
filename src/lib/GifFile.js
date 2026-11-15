@@ -9,8 +9,9 @@ export const gifDelay = (ms) => Math.max(2, Math.round(ms / 10)); // hundredths 
 
 const SAMPLED_FRAMES = 12; // what the palette's picked from, evenly through the animation
 
-// Cells drawn as the ANSI view draws them, offscreen at one pixel per font pixel: use gets { width, height, rgba },
-// rgba(cells) a frame's pixels, while the view's there. Throws if there's no WebGL2 to draw with.
+// Cells drawn as the ANSI view draws them, offscreen at one pixel per font pixel: use gets { width, height, rgba, draw },
+// rgba(cells) a frame's pixels and draw(cells) the view's canvas with the frame on it, to copy before the page next
+// paints, while the view's there. Throws if there's no WebGL2 to draw with.
 export async function drawnCells(cols, lines, { smooth } = {}, use) {
   const view = new CellCanvas(document.createElement('canvas'));
   try {
@@ -22,12 +23,15 @@ export async function drawnCells(cols, lines, { smooth } = {}, use) {
     copy.height = height;
     const ctx = ctx2d(copy);
     // The drawing buffer's only there straight after the draw.
-    const rgba = (cells) => {
+    const draw = (cells) => {
       view.draw(cells, { cols, rows: lines });
-      ctx.drawImage(view.canvas, 0, 0);
+      return view.canvas;
+    };
+    const rgba = (cells) => {
+      ctx.drawImage(draw(cells), 0, 0);
       return ctx.getImageData(0, 0, width, height).data;
     };
-    return await use({ width, height, rgba });
+    return await use({ width, height, rgba, draw });
   } finally {
     view.destroy();
   }

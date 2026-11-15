@@ -1019,6 +1019,10 @@
         "title": "Exporter en .gif",
         "sub": "GIF animé en boucle rendu dans votre police d'affichage, prêt à être partagé partout."
       },
+      "mp4": {
+        "title": "Exporter en .mp4",
+        "sub": "Une vidéo de l'animation dans votre police d'affichage (MP4), pour les sites et téléphones qui lisent la vidéo mais pas les GIF. Se lit une fois ; chaque image garde sa propre durée."
+      },
       "utf8ans": {
         "title": "Exporter en .utf8ans",
         "sub": "Art ANSI UTF-8 pour terminaux modernes, conservant tous les caractères et couleurs Unicode."
@@ -1048,7 +1052,8 @@
     "projectFileType": "Projet Phosphor",
     "openFileType": "Fichiers que Phosphor ouvre",
     "tooTall": "À {cols}×{rows}, cette création est plus grande qu'un terminal standard 80×25. Certaines parties peuvent être tronquées lors de la lecture.",
-    "gifTooLarge": "Cette animation est trop volumineuse pour être exportée en GIF. Essayez d'utiliser moins d'images, des dimensions plus petites, ou exportez en .cast à la place."
+    "gifTooLarge": "Cette animation est trop volumineuse pour être exportée en GIF. Essayez d'utiliser moins d'images, des dimensions plus petites, ou exportez en .cast à la place.",
+    "videoTooLarge": "Cette animation est trop grande pour que ce navigateur l'encode en vidéo. Essayez des dimensions plus petites, ou exportez plutôt en GIF."
   },
   "export": {
     "modal": {
@@ -1071,6 +1076,9 @@
         },
         "gif": {
           "name": "GIF"
+        },
+        "mp4": {
+          "name": "Vidéo"
         },
         "ansimation": {
           "name": "ANS animé"
@@ -1796,8 +1804,7 @@
     "remove": "Retirer",
     "cornerTitle": "Faites glisser pour définir les deux origines des règles. Double-cliquez pour réinitialiser les origines dans le coin supérieur gauche.",
     "guideTitle": "Faites glisser pour déplacer le repère, ou sur une règle pour le supprimer"
-  }
-,
+  },
   "menu": {
     "file": "Fichier",
     "new": "Nouveau",

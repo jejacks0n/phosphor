@@ -22,19 +22,22 @@ test('the desktop app opens an image and shows the ANSI tab', async () => {
   expect(launched.refused).toEqual([]);
 });
 
-test('a GIF exports with its worker loaded from app://phosphor/', async () => {
+test('a GIF exports with its worker loaded from app://phosphor/, and a video with its muxer', async () => {
   launched = await launchApp();
   const { page } = launched;
   await openImage(page);
   await store(page, 'project', (p) => { p.animate = true; p.addFrame('blank'); });
-  const head = await store(page, 'project', async (p) => {
+  const heads = await store(page, 'project', async (p) => {
     let blob;
     URL.createObjectURL = (made) => { blob = made; return 'about:blank'; };
     HTMLAnchorElement.prototype.click = () => {};
+    const bytes = async () => new Uint8Array(await blob.arrayBuffer());
     await p.exportAnimation('gif', { filename: 'loop' });
-    return String.fromCharCode(...new Uint8Array(await blob.arrayBuffer()).subarray(0, 6));
+    const gif = String.fromCharCode(...(await bytes()).subarray(0, 6));
+    await p.exportAnimation('mp4', { filename: 'loop' });
+    return [gif, String.fromCharCode(...(await bytes()).subarray(4, 8))];
   });
-  expect(head).toBe('GIF89a');
+  expect(heads).toEqual(['GIF89a', 'ftyp']);
   expect(launched.refused).toEqual([]);
 });
 

@@ -58,7 +58,7 @@ test('animated formats are disabled on a still drawing', async () => {
   try {
     const modal = document.querySelector('.modal-dialog');
     const disabled = [...modal.querySelectorAll('.format-btn:disabled')];
-    expect(disabled.length).toBe(4); // gif, ansimation, utf8ansimation, cast
+    expect(disabled.length).toBe(5); // gif, video, ansimation, utf8ansimation, cast
   } finally {
     unmount();
   }
@@ -113,6 +113,41 @@ test('a GIF shows a progress bar of the frames written while it exports, and an 
     expect(modal.querySelector('progress')).toBeNull();
   } finally {
     again.unmount();
+  }
+});
+
+test('Video is offered where the browser encodes video, with a progress bar as it exports; elsewhere it isn\'t', async () => {
+  const { project } = await drawing();
+  project.animate = true;
+  project.addFrame('blank');
+  await settle(project);
+  let tell, finish;
+  const exported = vi.spyOn(project, 'exportAnimation').mockImplementation((format, { progress }) => { tell = progress; return new Promise((resolve) => { finish = resolve; }); });
+  const { closed, unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    await pick(modal, 'Video');
+    expect(modal.querySelector('.filename-ext').textContent).toBe('.mp4');
+    modal.querySelector('button.primary').click();
+    await nextTick();
+    expect(exported.mock.calls[0][0]).toBe('mp4');
+    tell(0.5);
+    await nextTick();
+    expect(modal.querySelector('progress').value).toBe(0.5);
+    finish();
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+  } finally {
+    unmount();
+  }
+  vi.stubGlobal('VideoEncoder', undefined);
+  const without = mountModal();
+  try {
+    const names = [...document.querySelectorAll('.modal-dialog .format-name')].map((el) => el.textContent);
+    expect(names).toContain('GIF');
+    expect(names).not.toContain('Video');
+  } finally {
+    without.unmount();
+    vi.unstubAllGlobals();
   }
 });
 
