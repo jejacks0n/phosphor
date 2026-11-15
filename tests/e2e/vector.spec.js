@@ -1112,7 +1112,7 @@ test.describe('on a phone', () => {
     await openApp(page);
     await pickLayer(page);
     await settled(page);
-    const [cx, cy] = await store(page, 'project', (p) => [Math.round(p.cols / 2), Math.round(p.rows / 2)]); // the middle: what a phone's screen shows
+    const [cx, cy] = await store(page, 'workspace', (w) => [w.ansiViewOrigin.col + Math.floor(w.ansiViewSize.cols / 2), 2 * (w.ansiViewOrigin.row + Math.floor(w.ansiViewSize.rows / 2))]); // the middle of what a phone's screen shows
     await page.keyboard.press('p');
     const line = page.locator('.vector-overlay path.pen');
     const a = await gridPoint(page, cx - 4, cy), b = await gridPoint(page, cx + 4, cy);
