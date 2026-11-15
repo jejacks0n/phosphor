@@ -69,10 +69,12 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
   and that layer's eye decides whether you can step in and draw. The base row is off. Selecting the edit layer steps
   out of the art layer.
 - **Saving**: A `.phosphor` file and autosave keep every layer with its contents, name, eye and character settings.
-  - A drawing with no more than the base, one vector layer above it and one drawing layer on top, all with the
-    base's character settings, saves in the older form, so an older copy of Phosphor opens it.
-  - One with more layers, or a layer with character settings of its own, saves in a newer form. An older copy
-    refuses it as an invalid project file rather than opening only part of it.
+  - A saved file is compressed, so a drawing that's mostly characters is a fraction of its size as an `.ans`.
+    Project files saved before that still open. A copy of Phosphor from before compressed files (a tab left open from
+    then) refuses one as an invalid project file until you reload it.
+  - Inside, a drawing with no more than the base, one vector layer above it and one drawing layer on top, all with
+    the base's character settings, saves in the older form. One with more layers, or a layer with character settings
+    of its own, saves in a newer form, which an older copy refuses rather than opening only part of it.
 
 ---
 

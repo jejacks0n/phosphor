@@ -36,6 +36,20 @@ test('saving writes the id, and opening that file keeps it without showing unsav
   expect(project.isDirty).toBe(false);
 });
 
+test('Save project downloads the file gzipped, and it opens again as it was', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 40, rows: 40 });
+  for (let col = 0; col < 40; col++) project.typeAt(col, 3, '▒', { fg: '#aa0000', bg: '#aaaaaa' });
+  project.commitEdit();
+  const blob = await saved(project);
+  expect([...new Uint8Array(await blob.slice(0, 2).arrayBuffer())]).toEqual([0x1f, 0x8b]);
+  const plain = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
+  expect(blob.size).toBeLessThan(plain.size);
+  await project.setBlankCanvas();
+  await project.loadProject(new File([blob], 'x.phosphor'));
+  expect([project.cols, project.editCellAt(39, 3)?.char, project.isDirty]).toEqual([40, '▒', false]);
+});
+
 test('a file from before file ids gets one, which the next save writes', async () => {
   const { project } = await createTestApp();
   await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/charmode.phosphor')).arrayBuffer()], 'charmode.phosphor'));
