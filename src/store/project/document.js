@@ -6,7 +6,7 @@ import { layersFromOld, savedLayers, legacySlots, keyLayer, withChars } from '@/
 import PaintLayer from '@/document/PaintLayer.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
-import { loadImage, readProject, writeProject, downloadBlob, isProjectFile, PROJECT_EXTENSION, fileStem, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
+import { loadImage, readProject, writeProject, gzipped, downloadBlob, isProjectFile, PROJECT_EXTENSION, fileStem, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
 import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
@@ -391,7 +391,7 @@ export const documentActions = {
     // before the system's save box comes up.
     const blob = await busyWhile(saving(`${filename}${PROJECT_EXTENSION}`), async () => {
       const parts = await this.projectParts();
-      return writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } });
+      return gzipped(await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } }));
     });
     if (DESKTOP) {
       const bytes = new Uint8Array(await blob.arrayBuffer());

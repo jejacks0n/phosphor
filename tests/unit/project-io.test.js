@@ -2,7 +2,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readProject, writeProject, fileStem, timestamped, isProjectFile, goodFileId, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
+import { readProject, writeProject, gzipped, gunzipped, fileStem, timestamped, isProjectFile, goodFileId, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
 import { EMPTY_BASE, withPins } from '../../src/document/baseRecords.js';
 import { MAX_COLS, maxRowsBeside } from '../../src/lib/Cells.js';
 
@@ -258,4 +258,26 @@ test('a file id is kept when it is a short plain id, dropped otherwise', async (
   for (const bad of ['../x', '', 42, 'a'.repeat(65)]) assert.equal(await idOf(bad), undefined, String(bad));
   assert.equal(goodFileId('a'.repeat(64)), true);
   assert.equal(goodFileId(null), false);
+});
+
+test('a saved file is gzipped, and opening takes it gzipped or not; a broken gzip is no project', async () => {
+  const editCells = new Map(Array.from({ length: 2000 }, (_, i) => [`${i % 80},${Math.floor(i / 80)}`, { char: '░', fg: '#aa0000', bg: '#aaaaaa' }]));
+  const plain = await writeProject({ settings: { cols: 80, rows: 50 }, imageBuffer: new ArrayBuffer(8), paintBlob: null, editCells });
+  const zipped = await gzipped(plain);
+  const start = new Uint8Array(await zipped.arrayBuffer(), 0, 2);
+  assert.deepEqual([...start], [0x1f, 0x8b]);
+  assert.ok(zipped.size * 5 < plain.size, `${zipped.size} of ${plain.size}`); // a file's repeated cells pack small
+  const [fromZipped, fromPlain] = await Promise.all([readProject(zipped), readProject(plain)]);
+  assert.deepEqual([...fromZipped.editCells], [...editCells]);
+  assert.deepEqual([...fromZipped.editCells], [...fromPlain.editCells]);
+  assert.deepEqual(fromZipped.settings, fromPlain.settings);
+
+  const broken = new Blob([new Uint8Array([0x1f, 0x8b, 8, 0, 1, 2, 3, 4, 5, 6])]);
+  await assert.rejects(readProject(broken), (e) => e.code === 'INVALID_PROJECT');
+});
+
+test('unzipping stops past the most it may make', async () => {
+  const big = await gzipped(new Blob([new Uint8Array(100_000)]));
+  assert.equal((await gunzipped(big, 100_000)).size, 100_000);
+  await assert.rejects(gunzipped(big, 99_999), /too big/);
 });

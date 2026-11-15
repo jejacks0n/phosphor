@@ -7,6 +7,8 @@
  * A drawing whose layers don't fit that form (legacySlots) is written in the stack form: 'PHOSPHR2', the same three
  * lengths (the last, every paint PNG's together), the JSON, the image, the base layer's PNG, then each cells layer's
  * paint PNG in stack order. Older copies refuse it as no project, rather than open some of it.
+ *
+ * A saved file is either form gzipped (gzipped). Opening takes it gzipped or not, so files saved before still open.
  */
 import { serializeEditCells, deserializeEditCells, migrateCharEdits } from './editCells.js';
 import { deserializeFrames, invalidProject } from './frames.js';
@@ -19,6 +21,27 @@ import { MAX_COLS, MAX_LINES, maxRowsBeside } from '../lib/Cells.js';
 export const PROJECT_EXTENSION = '.phosphor';
 export const isProjectFile = (name) => name.toLowerCase().endsWith(PROJECT_EXTENSION);
 const MAGIC_HEADER = 'PHOSPHOR', STACK_HEADER = 'PHOSPHR2';
+// The most a project may be unzipped: a file, or a host's project for an artist that doesn't trust it.
+export const MOST_PROJECT_BYTES = 256 * 1024 * 1024;
+
+export const gzipped = (blob) => new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).blob();
+
+// What a gzip unzips to, as a Blob. It throws for what isn't one (the gzip's own check), or past mostBytes unzipped (it
+// stops reading there, so a small file can't grow into gigabytes).
+export async function gunzipped(blob, mostBytes) {
+  const reader = blob.stream().pipeThrough(new DecompressionStream('gzip')).getReader();
+  const parts = [];
+  let size = 0;
+  for (let read = await reader.read(); !read.done; read = await reader.read()) {
+    size += read.value.length;
+    if (size > mostBytes) {
+      reader.cancel();
+      throw new Error('Unzipped too big');
+    }
+    parts.push(read.value);
+  }
+  return new Blob(parts);
+}
 
 // A fit four numbers with a size, no longer than the longest grid, and a layer's scale a whole number small enough to
 // draw: within MAX_LAYER_DIM pixels a side, except that a grid longer than that still has its layers (editScaleFor), a
@@ -71,7 +94,15 @@ export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob 
 // The parts of either form: layers (the old form's key) or stack (the stack form's layers, as layers) with layerParts,
 // each cells layer's above the bottom by id, { editCells, paintBuffer (or null) }.
 export async function readProject(file) {
-  const buffer = await file.arrayBuffer();
+  let buffer = await file.arrayBuffer();
+  const start = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
+  if (start[0] === 0x1f && start[1] === 0x8b) { // gzip's mark: a saved file
+    try {
+      buffer = await (await gunzipped(new Blob([buffer]), MOST_PROJECT_BYTES)).arrayBuffer();
+    } catch {
+      throw invalidProject();
+    }
+  }
   const magic = new TextDecoder().decode(buffer.slice(0, 8));
   if (magic !== MAGIC_HEADER && magic !== STACK_HEADER) throw invalidProject();
   const stacked = magic === STACK_HEADER;

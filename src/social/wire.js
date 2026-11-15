@@ -73,15 +73,14 @@ import { DISPLAY_FONTS, MIN_FONT_SIZE, MAX_FONT_SIZE } from '../lib/displayFonts
 import { MAX_COLS, MAX_LINES, MAX_CELLS } from '../lib/Cells.js';
 import { usableChar } from '../lib/CharWidth.js';
 import { clampAnsiZoom } from '../lib/zoom.js';
-import { writeProject, readProject } from '../document/projectIO.js';
+import { writeProject, readProject, gzipped, gunzipped, MOST_PROJECT_BYTES } from '../document/projectIO.js';
 import { isGoodShapeKey, isShapeKey, sameShape, shapeFromStranger } from '../document/shapes.js';
 
 export const CHUNK_BYTES = 65536;
 // An artist's message (and the host's numbered one) is a message like any other.
 export const MOST_ARTIST_BYTES = CHUNK_BYTES;
 export const MOST_CHANGE_BYTES = CHUNK_BYTES - 512;   // what a change may be, with the rest of its message around it
-// The most a project may be unzipped, for an artist that doesn't trust its host.
-export const MOST_PROJECT_BYTES = 256 * 1024 * 1024;
+export { MOST_PROJECT_BYTES }; // the most a project may be unzipped, for an artist that doesn't trust its host
 // The most a snapshot may be, for a watcher that doesn't trust its host. The biggest document at its
 // worst (500,000 cells, every color different, wide characters) is 20 MB of JSON, 4.5 MB gzipped.
 export const MOST_SNAPSHOT_BYTES = 32 * 1024 * 1024;   // unzipped
@@ -178,7 +177,7 @@ export function changedCells(prev, next) {
 
 // A Blob gzipped, cut into pieces of CHUNK_BYTES or less.
 async function gzipChunks(blob) {
-  const bytes = new Uint8Array(await new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer());
+  const bytes = new Uint8Array(await (await gzipped(blob)).arrayBuffer());
   const chunks = [];
   for (let i = 0; i < bytes.length; i += CHUNK_BYTES) chunks.push(bytes.subarray(i, i + CHUNK_BYTES));
   return chunks;
@@ -188,18 +187,7 @@ async function gzipChunks(blob) {
 // bytes (the gzip's own check catches those), or more than mostBytes unzipped (it stops reading there).
 async function unzipped(chunks, mostBytes) {
   if (!Array.isArray(chunks) || !chunks.length || !chunks.every((c) => c instanceof Uint8Array)) throw new Error('Not chunks');
-  const reader = new Blob(chunks).stream().pipeThrough(new DecompressionStream('gzip')).getReader();
-  const parts = [];
-  let size = 0;
-  for (let read = await reader.read(); !read.done; read = await reader.read()) {
-    size += read.value.length;
-    if (size > mostBytes) {
-      reader.cancel();
-      throw new Error('Unzipped too big');
-    }
-    parts.push(read.value);
-  }
-  return new Blob(parts);
+  return gunzipped(new Blob(chunks), mostBytes);
 }
 
 // The whole document, as chunks.
