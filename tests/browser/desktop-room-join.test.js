@@ -6,6 +6,7 @@ import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { RETURN_WITHIN_MS } from '@/social/hosting';
 import { forgetKey } from '@/social/keys';
+import { WINDOW_KEY } from '@/social/windowKey';
 import { useFakeDesktop, resetDesktop } from '@/social/desktop';
 import { t } from '@/i18n/index.js';
 import { createTestApp } from '../support/app.js';
@@ -18,6 +19,7 @@ const ADDRESS = '192.168.1.20:4000';
 let deleteDatabase, social, room, fetched;
 beforeEach(async () => {
   deleteDatabase = ownSocialDatabase('desktop-room-join');
+  sessionStorage.removeItem(WINDOW_KEY);   // each test's window starts with no key of its own
   forgetKey();
   await deleteDatabase();
   useFakeSockets();
