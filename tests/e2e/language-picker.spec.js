@@ -11,11 +11,6 @@ test('switching language to French updates the UI and persists across reload', a
   await expect(langSelect).toBeVisible();
   await expect(langSelect).toHaveValue('en');
 
-  // The picker sits above the footer's About link (the logo is the other About Phosphor), not beside it
-  const picker = await langSelect.boundingBox();
-  const about = await page.locator('footer').getByRole('button', { name: 'About Phosphor' }).boundingBox();
-  expect(picker.y + picker.height).toBeLessThanOrEqual(about.y);
-
   // Select French
   await langSelect.selectOption('fr');
 
@@ -27,16 +22,16 @@ test('switching language to French updates the UI and persists across reload', a
   await expect(page.getByRole('button', { name: 'Crayon' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Gomme' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Pot de peinture' })).toBeVisible();
-  await expect(page.locator('footer').getByRole('button', { name: 'À propos de Phosphor' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'À propos de Phosphor' })).toBeVisible();
 
   // Reload keeps French from localStorage
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
   await expect(page.getByRole('combobox', { name: 'Langue' })).toHaveValue('fr');
-  await expect(page.locator('footer').getByRole('button', { name: 'À propos de Phosphor' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'À propos de Phosphor' })).toBeVisible();
 
   // Switch back to English
   await page.getByRole('combobox', { name: 'Langue' }).selectOption('en');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-  await expect(page.locator('footer').getByRole('button', { name: 'About Phosphor' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'About Phosphor' })).toBeVisible();
 });

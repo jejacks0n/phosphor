@@ -1,4 +1,4 @@
-// The logo at the top of the settings panel opens About, as the footer's About Phosphor does; it's a button, named for
+// The logo at the top of the settings panel opens About (the only way in but the desktop app's menu); it's a button, named for
 // keyboards and screen readers, and still shows the logo picture, hovered or not.
 import { afterEach, expect, test } from 'vitest';
 import { userEvent } from 'vitest/browser';

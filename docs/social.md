@@ -44,7 +44,7 @@ Guidelines**. Each of those opens over the question, and closing it brings you b
   asking. The next plain load of the page asks.
 
 The **Community Guidelines** (beside the Terms and the Privacy Policy) put section 5 of the Terms in plain words. The
-Terms govern. **About Phosphor**, in the footer, links all three.
+Terms govern. **About Phosphor** (the logo at the top of the settings column) links all three.
 
 ---
 

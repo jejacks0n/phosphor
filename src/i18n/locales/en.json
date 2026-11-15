@@ -51,9 +51,7 @@
     "desktopPrivacy": "This app sends nothing to Phosphor. In a room, the people you connect with see your IP address. When you choose Check for Updates, it asks GitHub for Phosphor's releases, and GitHub sees your IP address."
   },
   "footer": {
-    "about": "About Phosphor",
     "language": "Language",
-    "byline": "Made by{br}{ishifishi} and {euphio}",
     "copyright": "© {year} Phosphor Project"
   },
   "about": {
@@ -82,6 +80,7 @@
     "assetsIntro": "The fonts and icons it uses:",
     "packagesIntro": "And the open-source packages it's built with, each under its own license:",
     "mitLicense": "MIT License",
+    "byline": "Brought to you by {ishifishi} and {euphio}",
     "motto": "Make Code Not War",
     "policies": "Read our {terms}, {privacy}, and {guidelines}."
   },

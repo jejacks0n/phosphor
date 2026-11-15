@@ -177,6 +177,14 @@ watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { fl
       <hr/>
 
       <div class="footer">
+        <i18n-t keypath="about.byline" tag="p">
+          <template #ishifishi>
+            <a href="https://ishifishi.work" target="_blank" rel="noopener">ishifishi.work</a>
+          </template>
+          <template #euphio>
+            <a href="https://euphio.org" target="_blank" rel="noopener">euphio.org</a>
+          </template>
+        </i18n-t>
         <p>&copy; 2026-present Phosphor Project</p>
         <p class="accent">{{ t('about.motto') }}</p>
       </div>

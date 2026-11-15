@@ -6,7 +6,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { SUPPORTED_LOCALES, locale, setLocale } from '@/i18n';
 
 const { t } = useI18n();
-const { showAboutModal, theme } = storeToRefs(useWorkspaceStore());
+const { theme } = storeToRefs(useWorkspaceStore());
 const year = new Date().getFullYear();
 
 const THEME_ICONS = {
@@ -45,18 +45,6 @@ const themes = computed(() => [
         </label>
       </div>
     </div>
-    <div class="footer-controls">
-      <button class="link" @click="showAboutModal = true">{{ t('footer.about') }}</button>
-    </div>
-    <i18n-t keypath="footer.byline" tag="div">
-      <template #br><br/></template>
-      <template #ishifishi>
-        <a href="https://ishifishi.work" target="_blank">ishifishi.work</a>
-      </template>
-      <template #euphio>
-        <a href="https://euphio.org" target="_blank">euphio.org</a>
-      </template>
-    </i18n-t>
     <div class="copyright">{{ t('footer.copyright', { year }) }}</div>
   </footer>
 </template>
@@ -70,7 +58,7 @@ footer.project-footer {
   color: var(--text);
 }
 
-/* The language and the theme side by side, and the About link under them. */
+/* The language and the theme side by side. */
 .footer-controls {
   display: flex;
   justify-content: center;
@@ -120,22 +108,8 @@ div.themes input { /* unseen, over its label: the label's look, the radio's beha
   cursor: pointer;
 }
 
-a {
-  text-decoration: none;
-  font-weight: 600;
-  color: var(--accent-hover);
-}
-
-a:hover {
-  text-decoration: underline;
-}
-
 div.copyright {
   opacity: 0.5;
-}
-
-button.link {
-  text-transform: uppercase;
 }
 
 .locale-picker {
