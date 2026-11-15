@@ -53,7 +53,7 @@ export default defineConfig({
       },
       {
         extends: true,
-        test: { ...browserTests(), name: 'browser', include: ['tests/browser/**/*.test.js'], exclude: [...configDefaults.exclude, DESKTOP_TESTS] },
+        test: { ...browserTests(), name: 'browser', include: ['tests/browser/**/*.test.js'], exclude: [...configDefaults.exclude, DESKTOP_TESTS], setupFiles: ['tests/support/noFilePickers.js'] },
       },
       // The desktop build's branches (import.meta.env.VITE_DESKTOP === '1'), in their own files.
       {

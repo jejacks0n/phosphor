@@ -102,6 +102,7 @@ export const useProjectStore = defineStore('project', {
     savedToFile: false, // saved to, or opened from, a .phosphor file at least once (an export can't reopen as a project)
     asOpened: false, // what's open is a file as it opened, with no change since: autosave keeps it as the As opened version at the first
     filePath: null,     // desktop: the .phosphor file it was opened from or last saved to, which Save writes over
+    fileHandle: null,   // web, where the browser has savesInPlace: the same, as the browser's handle to it (marked raw)
     imageIsWorkingCopy: false, // the image is a working-size copy (after a Bake or an Into-the-picture merge), not the one loaded
     ...settingsState(),
 

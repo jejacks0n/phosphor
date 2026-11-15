@@ -100,7 +100,7 @@ async function removeDocument(tx, id) {
   return [document?.imageHash, ...versions.map((v) => v.imageHash)].filter(Boolean);
 }
 
-export async function writeLatest({ id, filename, fileExt = null, editedAt, savedToFile, dirty, savedSettings, ledgerN, asOpened, rest, imageBuffer }) {
+export async function writeLatest({ id, filename, fileExt = null, editedAt, savedToFile, fileHandle = null, dirty, savedSettings, ledgerN, asOpened, rest, imageBuffer }) {
   // Before the transaction: it dies across an await on crypto.
   const imageHash = await hashBytes(imageBuffer), restHash = await hashBytes(rest);
   const write = (stored) => run(STORES, 'readwrite', async (tx) => {
@@ -109,7 +109,7 @@ export async function writeLatest({ id, filename, fileExt = null, editedAt, save
       tx.objectStore('images').put({ hash: imageHash, bytes: stored(imageBuffer), size: imageBuffer.byteLength });
     }
     tx.objectStore('documents').put({
-      id, filename, fileExt, editedAt, savedToFile, dirty, savedSettings, ledgerN, asOpened,
+      id, filename, fileExt, editedAt, savedToFile, fileHandle, dirty, savedSettings, ledgerN, asOpened,
       rest: stored(rest), restSize: rest.byteLength, restHash, imageHash, imageSize: imageBuffer.byteLength,
     });
     if (before && before.imageHash !== imageHash) await freeImages(tx, [before.imageHash]);

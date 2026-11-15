@@ -1,7 +1,7 @@
 // Writing the document to the browser as you work (useAutosave): when it writes, what, and what happens
 // when it can't. Real IndexedDB, with the timers and the clock faked and the store's writes spied on.
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createApp, nextTick, watch } from 'vue';
+import { createApp, markRaw, nextTick, watch } from 'vue';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
@@ -928,6 +928,31 @@ test('a reload renders once', async () => {
   await settle(back.project);
   expect(back.project.image).toBeTruthy();
   expect(pipeline).toHaveBeenCalledTimes(1);
+});
+
+// A file in the origin's private file system: a real handle, which IndexedDB can keep, as the pickers' are.
+async function privateFile(name) {
+  const root = await navigator.storage.getDirectory();
+  return root.getFileHandle(name, { create: true });
+}
+
+test('the file a project is saved to comes back with it after a reload, and stays through a version restored; a copy has none', async () => {
+  const { project } = await opened();
+  const handle = await privateFile('kept.phosphor');
+  project.fileHandle = markRaw(handle);
+  const older = await withVersions(project);
+  await leave();
+
+  const back = await mounted();
+  expect(await back.project.fileHandle?.isSameEntry(handle)).toBe(true);
+
+  const other = await privateFile('other.phosphor');
+  back.project.fileHandle = markRaw(other);
+  await autosave.restoreVersion(older.id); // its record says the first file
+  expect(await back.project.fileHandle.isSameEntry(other)).toBe(true);
+
+  await back.project.restoreDocument(await readLatest(back.project.documentId), { documentId: undefined });
+  expect(back.project.fileHandle).toBe(null);
 });
 
 test('a document that was unsaved stays unsaved after a restore; one that was saved does not', async () => {

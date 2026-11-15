@@ -41,9 +41,9 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   const _handleSave = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
-      workspaceStore.saveFile();
+      workspaceStore.saveFile({ as: e.shiftKey });
       return true;
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 'e') {

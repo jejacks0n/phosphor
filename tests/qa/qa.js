@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { _electron } from 'playwright';
-import { seedConsent } from '../e2e/support.js';
+import { noFilePickers, seedConsent } from '../e2e/support.js';
 import { DEVICES, contextOptions, storageFor } from './setup.js';
 import { BUDGETS, MARKS } from './score.js';
 import { FINDING_KINDS, PROBES, SEVERITIES, slug } from './report.js';
@@ -34,6 +34,7 @@ export async function qaContext(browser, traits) {
 
 async function chosen(context, traits) {
   await seedConsent(context);
+  await noFilePickers(context); // saves are downloads, kept as exports are
   await context.addInitScript((storage) => {
     try {
       for (const [key, value] of Object.entries(storage)) if (localStorage.getItem(key) === null) localStorage.setItem(key, value);

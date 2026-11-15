@@ -88,6 +88,11 @@ SOCIAL server, so no spec reaches the network; a SOCIAL spec fakes it with `fake
 layer; `test.use({ consented: false })` leaves it unanswered (`tests/e2e/social-consent.spec.js`), and a
 second browser made in a spec comes from `otherBrowser(browser)`.
 
+Neither layer's page has File System Access (`noFilePickers` in `./support.js`, and `tests/support/noFilePickers.js`
+for the browser layer): Playwright can't answer Chromium's own open and save pickers, so Save is the save dialog and
+a download, as in Safari and Firefox. Saving over a file is tested with stand-in pickers giving files in the origin's
+private file system (`tests/browser/save-in-place.test.js`, `tests/e2e/save-in-place.spec.js`).
+
 `tests/e2e/path-addresses.spec.js` runs against the other way the app can be built, with path addresses
 (`/social` in place of `/#/social`): its own Playwright project, build and port.
 

@@ -26,10 +26,17 @@ const noBlur = (context) => context.addInitScript(() => {
   document.adoptedStyleSheets = [sheet];
 });
 
+// No File System Access: Playwright can't answer the browser's own open and save pickers, so Save is the save dialog
+// and a download, and Open the file input, as in Safari and Firefox. save-in-place.spec.js puts stand-ins back.
+export const noFilePickers = (context) => context.addInitScript(() => {
+  for (const name of ['showOpenFilePicker', 'showSaveFilePicker']) Object.defineProperty(window, name, { value: undefined, writable: true, configurable: true });
+});
+
 export const test = base.extend({
   consented: [true, { option: true }],
   context: async ({ context, consented }, use) => {
     await noBlur(context);
+    await noFilePickers(context);
     if (consented) await seedConsent(context);
     await context.route('http://localhost:8787/**', (route) => route.abort());
     await context.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
@@ -47,6 +54,7 @@ export const test = base.extend({
 export async function otherBrowser(browser) {
   const context = await browser.newContext();
   await noBlur(context);
+  await noFilePickers(context);
   await seedConsent(context);
   return context;
 }

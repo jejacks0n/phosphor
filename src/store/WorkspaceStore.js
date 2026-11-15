@@ -8,6 +8,7 @@ import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
 import { loadGuides, saveGuides } from '@/lib/guideStorage';
 import { snapCursor } from '@/document/wideChars';
+import { savesInPlace } from '@/document/projectIO';
 import { isArtFile, readArtFile } from '@/lib/ArtFile';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -17,7 +18,7 @@ import { toast } from '@/composables/useToast';
 import { busyWhile } from '@/composables/useBusy';
 
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
-let saving = false;   // desktop: a save under way (saveFile)
+let saving = false;   // a save under way (saveFile), where it's not the save dialog's
 
 const RECENT_COLORS = 12;
 
@@ -417,12 +418,13 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.editorTab = 'input';
       this.settingsOpen = false; // a phone's drawer: the start screen shows
     },
-    // Save project (the button, Cmd/Ctrl+S, the desktop menu): the save dialog, or on desktop straight over the
-    // project's own file, or where the system's save box says (always, for Save As: `as`).
+    // Save project (the button, Cmd/Ctrl+S, the desktop menu; Save As with Shift or from the menu): on desktop, and on
+    // the web where the browser savesInPlace, straight over the project's own file, or where the system's save box says
+    // (always, for Save As: `as`); elsewhere the save dialog, for a download.
     async saveFile({ as = false } = {}) {
       const project = useProjectStore();
       if (!project.image) return;
-      if (!DESKTOP) return void (this.saveDialog = 'phosphor');
+      if (!DESKTOP && !savesInPlace()) return void (this.saveDialog = 'phosphor');
       if (saving) return;   // one at a time: a second Save while the box is open would open another
       saving = true;
       try {
