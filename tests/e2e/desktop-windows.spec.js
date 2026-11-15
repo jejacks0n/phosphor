@@ -1,7 +1,7 @@
 // The desktop app's windows: New Window, files opened from the system or the menu going to a window of their own when
 // the one they'd open in has a drawing, a project already open brought forward, each window's title, the menu
 // following the focused window, and the last window closing.
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -65,6 +65,44 @@ test('two files at once get a window each', async () => {
   await expect.poll(() => windowsOf(app).length).toBe(3);
   for (const each of windowsOf(app)) await expect.poll(() => hasImage(each)).toBe(true);
   expect((await Promise.all(windowsOf(app).map((each) => store(each, 'project', (p) => p.filename)))).sort()).toEqual(['gradient', 'one', 'tall']);
+});
+
+// Open… with the system's chooser stood in for, picking `file`.
+const pickInOpen = (app, file) => app.evaluate(({ dialog }, picked) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [picked] }); }, file);
+
+test('Open… from a window with a drawing opens the file in a new window and leaves the drawing', async () => {
+  launched = await launchApp();
+  const { app, page } = launched;
+  await openImage(page);
+  await pickInOpen(app, fixture('images/one.png'));
+  const next = nextWindow(app);
+  await clickMenu(app, 'File', 'Open…');
+  const second = await next;
+  await expect.poll(() => store(second, 'project', (p) => p.filename)).toBe('one');
+  expect(windowsOf(app)).toHaveLength(2);
+  expect(await store(page, 'project', (p) => p.filename)).toBe('gradient');
+});
+
+test('a file the window couldn’t open leaves it free: Open… there opens in that window', async () => {
+  const folder = mkdtempSync(join(tmpdir(), 'phosphor-windows-'));
+  const bad = join(folder, 'broken.phosphor');
+  writeFileSync(bad, 'not a project');
+  try {
+    launched = await launchApp();
+    const { app, page } = launched;
+    await startScreen(page);
+    const failed = page.waitForEvent('dialog');
+    await openFromSystem(app, [bad]);
+    await (await failed).dismiss();   // the page's alert that it couldn't open it
+    expect(await hasImage(page)).toBe(false);
+
+    await pickInOpen(app, fixture('images/gradient.png'));
+    await clickMenu(app, 'File', 'Open…');
+    await expect.poll(() => hasImage(page)).toBe(true);
+    expect(windowsOf(app)).toHaveLength(1);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 });
 
 test('a project already open is brought forward, not opened twice', async () => {

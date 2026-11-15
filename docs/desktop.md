@@ -49,7 +49,8 @@ for one, is on only when that window has a drawing.
 Opening a file never replaces your drawing. Open…, Open Recent, a double-click and a file dropped on the Dock open it
 in the window you're in when that window is on the start screen, and in a new window when it has a drawing. Several
 files at once get a window each. A project that's already open in a window brings that window to the front instead of
-opening a second copy.
+opening a second copy. On the start screen, a recent drawing that's open in another window says **Open in another
+window**, and can't be opened again until that window closes it.
 
 Closing a window closes that window alone, asking first when it has unsaved changes. On macOS, closing the last one
 leaves Phosphor running with its menu bar: New Window, Open… or a click on its Dock icon opens a window again. On

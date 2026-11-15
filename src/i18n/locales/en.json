@@ -88,7 +88,9 @@
     "open": "Open",
     "openElsewhere": "Open in another tab",
     "openAria": "Open {name}",
-    "openElsewhereAria": "{name} (open in another tab)"
+    "openElsewhereAria": "{name} (open in another tab)",
+    "openElsewhereWindow": "Open in another window",
+    "openElsewhereWindowAria": "{name} (open in another window)"
   },
   "tabs": {
     "toggleSettings": "Toggle settings",
