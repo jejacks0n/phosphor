@@ -31,6 +31,8 @@ test('File > New Window opens a second window on the start screen; closing it ke
   await clickMenu(app, 'File', 'New Window');
   const second = await next;
   expect(windowsOf(app)).toHaveLength(2);
+  // Dark before the page paints, as the app's default theme is, not white: every window, the first and a new one.
+  expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().map((w) => w.getBackgroundColor().toLowerCase()))).toEqual(['#1a1a1a', '#1a1a1a']);
   await startScreen(second);
   expect(await hasImage(page)).toBe(true);
 
