@@ -1698,7 +1698,7 @@ test('the versions dialog can\'t be closed while a restore is under way', async 
     await vi.waitUntil(() => restore.disabled, { interval: 5 });
     close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     close.click();
-    document.querySelector('.modal-backdrop').click();
+    document.querySelector('dialog.modal-dialog').click();   // at 0, 0: the backdrop
     expect(closed).not.toHaveBeenCalled();
 
     finish();

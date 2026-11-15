@@ -53,9 +53,11 @@ const askToBlock = (m, event) => {
   blocking.value = { name: m.name, trigger: event.currentTarget };
 };
 const blockDone = (trigger) => (trigger.isConnected ? trigger : list.value).focus();   // its Block gone, the messages
-const cancelBlock = () => {
-  blockDone(blocking.value.trigger);
+const cancelBlock = async () => {
+  const { trigger } = blocking.value;
   blocking.value = null;
+  await nextTick();   // the dialog gone: while it's up, the rest can't take focus
+  blockDone(trigger);
 };
 const confirmBlock = async () => {
   const { name, trigger } = blocking.value;

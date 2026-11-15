@@ -61,7 +61,7 @@ export function useTextTool(project, workspace, textInput) {
   // Keys belong elsewhere while focus is in a field or a dialog (the color picker, the palette layer).
   const editableFocus = () => {
     const el = document.activeElement;
-    return isField(el) || (!!el && !isTextInput(el) && !!el.closest('[role="dialog"]'));
+    return isField(el) || (!!el && !isTextInput(el) && !!el.closest('dialog, [role="dialog"]'));
   };
 
   // Moving the cursor ends a run of typing (Backspace's move is part of it).

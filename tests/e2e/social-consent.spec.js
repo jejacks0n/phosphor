@@ -238,7 +238,7 @@ test('focus starts in the modal and stays there; a click on its text or backdrop
   await fakeServer(page);
   await page.goto('/');
   await openLobby(page);
-  const inside = () => page.evaluate(() => !!document.activeElement.closest('[role=dialog]'));
+  const inside = () => page.evaluate(() => !!document.activeElement.closest('dialog'));
   await expect.poll(inside).toBe(true);
   const stops = new Set();
   for (let i = 0; i < 12; i++) {

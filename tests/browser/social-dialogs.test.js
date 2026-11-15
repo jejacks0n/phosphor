@@ -31,7 +31,7 @@ async function mount({ consented = true } = {}) {
   await nextTick();
   return { social, workspace: useWorkspaceStore() };
 }
-const dialog = () => document.querySelector('[role=dialog]');
+const dialog = () => document.querySelector('dialog');
 const escape = async () => {
   dialog().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await nextTick();

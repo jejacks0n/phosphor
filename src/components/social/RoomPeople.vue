@@ -1,5 +1,5 @@
 <script setup>
-import { ref, useTemplateRef } from 'vue';
+import { ref, nextTick, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -26,9 +26,15 @@ const askToBlock = (watcher, event) => {
   blocking.value = { watcher, trigger: menuTrigger(event) };
 };
 const toggle = useTemplateRef('toggle');
+// Focus goes back once the dialog's gone: while it's up, the rest can't take focus.
+const focusBack = async (trigger) => {
+  await nextTick();
+  (trigger.isConnected ? trigger : toggle.value).focus();
+};
 const cancelBlock = () => {
-  (blocking.value.trigger.isConnected ? blocking.value.trigger : toggle.value).focus();
+  const { trigger } = blocking.value;
   blocking.value = null;
+  focusBack(trigger);   // after: nextTick waits for the render that takes the dialog away
 };
 const reporting = ref(null);   // { name, sub, trigger }
 const opened = ref(0);         // each Report opens a new dialog, even for the same person
@@ -41,8 +47,9 @@ const askToMakeHost = (watcher, event) => {
   handing.value = { name: watcher.name, sub: watcher.sub, trigger: menuTrigger(event) };
 };
 const cancelMakeHost = () => {
-  (handing.value.trigger.isConnected ? handing.value.trigger : toggle.value).focus();
+  const { trigger } = handing.value;
   handing.value = null;
+  focusBack(trigger);
 };
 const confirmMakeHost = () => {
   const { sub } = handing.value;

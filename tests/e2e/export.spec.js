@@ -164,7 +164,7 @@ test.describe('on a phone', () => {
     // SAUCE with characters CP437 lacks and comments past 255 lines: the ANSI formats' SAUCE notes and list fit too.
     await store(page, 'project', `(p) => { Object.assign(p, { sauceAuthor: 'Wélt Kowałski €96 re', sauceGroup: 'Ïmpure Łodz Crew €XY', sauceUserComments: ${JSON.stringify('x '.repeat(40))}.repeat(300) }); }`);
     const modal = await openExportModal(page);
-    const box = page.locator('div.modal-dialog');
+    const box = page.locator('dialog.modal-dialog');
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 700 });
       for (const format of ['ANS', 'UTF-8 ANS', 'PNG', 'GIF', 'Animated ANS', 'Animated UTF-8 ANS', 'Cast']) {

@@ -49,6 +49,6 @@ test('the report box links the Community Guidelines, and the link sends no repor
   const workspace = await mount(ReportDialog, { name: 'wren', sub: 'u_2' });
   link('Community Guidelines').click();
   expect(workspace.legalPage).toBe('guidelines');
-  expect(document.querySelector('[role=dialog] input[type=radio]:checked')).toBe(null);
-  expect(document.querySelector('[role=dialog]')).not.toBe(null);
+  expect(document.querySelector('dialog input[type=radio]:checked')).toBe(null);
+  expect(document.querySelector('dialog')).not.toBe(null);
 });
