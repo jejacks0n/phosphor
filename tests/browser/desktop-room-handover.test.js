@@ -103,7 +103,7 @@ async function hosting() {
 
 // Above the 20 ports hosts take from the remembered one, so a window drawing in a room never takes the port someone
 // reaches this computer by with no port typed.
-test('standby starts 20 above the remembered port', async () => {
+test('standby starts 20 above the remembered port, or 40 below it near the last port', async () => {
   localStorage.setItem('phosphor-desktop-port', '31401');
   await joined();
   drawingNow();
@@ -115,6 +115,20 @@ test('standby starts 20 above the remembered port', async () => {
   await joined();
   drawingNow();
   await vi.waitFor(() => expect(desktop.startService).toHaveBeenCalledWith({ port: 31357, mode: 'standby', sub: social.claims.sub }));
+  room.leave();
+
+  localStorage.setItem('phosphor-desktop-port', '65496');   // the last that leaves standby its 20 ports above: 65516 to 65535
+  desktop.startService.mockClear();
+  await joined();
+  drawingNow();
+  await vi.waitFor(() => expect(desktop.startService).toHaveBeenCalledWith({ port: 65516, mode: 'standby', sub: social.claims.sub }));
+  room.leave();
+
+  localStorage.setItem('phosphor-desktop-port', '65497');   // too near the last port: 40 below, clear of a host's 20
+  desktop.startService.mockClear();
+  await joined();
+  drawingNow();
+  await vi.waitFor(() => expect(desktop.startService).toHaveBeenCalledWith({ port: 65457, mode: 'standby', sub: social.claims.sub }));
 });
 
 test('becoming an artist starts standby and sends addresses', async () => {

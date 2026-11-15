@@ -38,6 +38,9 @@ const INFO_WITHIN_MS = 5000;   // what's at an address typed in answers /info wi
 const QUIT_HAND_OVER_MS = 16_000;   // a quitting host's hand-over: within the main process's 20 s wait, with time to end the room
 const MOVE_TRY_MS = 5000;   // a room that moved to another computer: each of its addresses goes live within this, or the next is tried
 const STANDBY_ABOVE = 20;   // standby starts this far above the remembered port, past the ports a host there may take
+// Where standby starts: above the ports a host at `port` may take, or as far below them when its own 20 would run
+// past the last port.
+const standbyPort = (port) => (port + 2 * STANDBY_ABOVE - 1 <= 65535 ? port + STANDBY_ABOVE : port - 2 * STANDBY_ABOVE);
 const keptPort = () => {   // the port last hosted on, for this computer's service; none for the default
   try {
     return Number(localStorage.getItem(DESKTOP_PORT)) || undefined;
@@ -1221,12 +1224,12 @@ export const useRoomStore = defineStore('room', {
 
     // Desktop: drawing, this window's service waits on standby, and the host hears its addresses, to know it could
     // hand the room here. It stops when drawing does, unless this window is hosting by then. It waits above the ports
-    // hosts take, so leaving the port off still reaches the room hosted here.
+    // hosts take (below them, near the last port), so leaving the port off still reaches the room hosted here.
     async standBy() {
       this._standby = [];   // close() stops it from now on, started or not
       let service;
       try {
-        service = await desktop.startService({ port: (keptPort() ?? DEFAULT_PORT) + STANDBY_ABOVE, mode: 'standby', sub: useSocialStore().claims?.sub });
+        service = await desktop.startService({ port: standbyPort(keptPort() ?? DEFAULT_PORT), mode: 'standby', sub: useSocialStore().claims?.sub });
       } catch (error) {
         console.warn('The room service didn\'t start.', error);   // the room goes on: this one can't be its next host
         this._standby = null;
