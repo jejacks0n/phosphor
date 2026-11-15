@@ -12,10 +12,12 @@ export function useModal(cancel, { opened } = {}) {
     dialog = el;
     if (el && !el.open) {
       el.showModal();
-      // A manual popover (the toast) stays over it, shown again to the top, as it was over the old backdrops.
-      for (const over of document.querySelectorAll('[popover="manual"]:popover-open')) {
-        over.hidePopover();
-        over.showPopover();
+      // The toast stays over it, shown again to the top, as it was over the old backdrops. A menu or the color box
+      // left open stays under it.
+      const toast = document.querySelector('.app-toast:popover-open');
+      if (toast) {
+        toast.hidePopover();
+        toast.showPopover();
       }
       opened?.(el);
     }

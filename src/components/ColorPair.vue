@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -29,6 +29,8 @@ const shown = (hex) => {
 // The foreground only means "none" for typing, in the ANSI view; paint always uses its color.
 const fgNone = computed(() => ansiView.value && workspace.editFgNone);
 
+const anchor = `--color-pair-${useId()}`; // what ColorPopover is anchored to
+
 const toggle = (slot) => { workspace.colorBox = workspace.colorBox === slot ? null : slot; };
 
 const vector = computed(() => workspace.editorTab === 'vector');
@@ -49,7 +51,7 @@ const chip = (slot) => {
 </script>
 
 <template>
-  <div class="color-pair">
+  <div class="color-pair" :style="{ '--anchor': anchor }">
     <button
         v-for="slot in ['fg', 'bg']"
         :key="slot"
@@ -70,6 +72,11 @@ div.color-pair {
   width: 42px;
   height: 30px;
   flex: none;
+}
+@supports (position-area: block-end) {
+  div.color-pair {
+    anchor-name: var(--anchor);
+  }
 }
 
 button.chip {

@@ -1,9 +1,10 @@
 // The color box with a palette: a swatch the sliders can't make shows its palette color, can't be picked, and says
-// why; the others paint their palette colors.
+// why; the others paint their palette colors. It's a popover anchored under the color pair, which nothing clips.
 import { test, expect } from 'vitest';
-import { createApp } from 'vue';
+import { createApp, nextTick } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
 import ColorPopover from '@/components/ColorPopover.vue';
+import ColorPair from '@/components/ColorPair.vue';
 import { i18n } from '@/i18n';
 
 test('under Saturation 0 the CGA colors show, only the grays can be picked, and the arrows skip the rest', async () => {
@@ -36,4 +37,29 @@ test('under Saturation 0 the CGA colors show, only the grays can be picked, and 
   expect(swatches.indexOf(focused)).not.toBe(7); // Left goes past cyan, which can't be picked, to a swatch that can
   expect(focused.disabled).toBe(false);
   expect(swatches.filter((s) => !s.disabled).length).toBe(4); // black, gray, dark gray and white
+});
+
+test('a chip opens the box as a popover under the pair, lined up with its left edge, out of a box that hides what overflows', async () => {
+  const { workspace } = await createTestApp();
+  const host = document.createElement('div');
+  Object.assign(host.style, { position: 'fixed', left: '40px', top: '60px', width: '42px', height: '30px', overflow: 'hidden' });
+  document.body.append(host);
+  const app = createApp(ColorPair).use(i18n);
+  app.mount(host);
+  host.querySelector('.chip.fg').click();
+  await nextTick();
+  const box = host.querySelector('.color-popover');
+  for (const animation of box.getAnimations()) animation.finish();
+  const pair = host.querySelector('.color-pair').getBoundingClientRect(), at = box.getBoundingClientRect();
+  const fg = box.querySelector('.head button'), { left, top, width, height } = fg.getBoundingClientRect();
+  try {
+    expect(workspace.colorBox).toBe('fg');
+    expect(box.matches(':popover-open')).toBe(true);
+    expect(Math.round(at.left)).toBe(Math.round(pair.left));
+    expect(Math.round(at.top - pair.bottom)).toBe(6);
+    expect(document.elementFromPoint(left + width / 2, top + height / 2)).toBe(fg); // over what hides the rest
+  } finally {
+    app.unmount();
+    host.remove();
+  }
 });
