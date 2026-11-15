@@ -72,11 +72,14 @@ export function useAutosave() {
     quiet = deadline = null;
   };
 
+  // A document's first write is at once, once it's all there (a timer runs after the swap and whatever the restore does
+  // after it), as a file's is (asOpened, below): a change made in its first second is then a write of its own, which
+  // counts toward a version, where it would be folded into the opening write, which doesn't.
   function schedule() {
     current.value = false;
     unwritten = true;
     clearTimeout(quiet);
-    quiet = setTimeout(write, SAVE_AFTER_MS);
+    quiet = setTimeout(write, project.documentId === openedId ? SAVE_AFTER_MS : 0);
     deadline ??= setTimeout(write, SAVE_AT_LEAST_EVERY_MS);
   }
 

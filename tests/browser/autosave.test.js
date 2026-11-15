@@ -215,11 +215,12 @@ test('where randomUUID is missing (plain http), a new document still gets an id'
 test('a document is written once when it opens, with no version', async () => {
   const { project } = await mounted();
   await project.setBlankCanvas();
+  const opened = Date.now();
   await pass(SAVE_AFTER_MS);
 
   expect(writeLatest).toHaveBeenCalledTimes(1);
   const row = (await readLatest(project.documentId)).record;
-  expect(row).toMatchObject({ filename: 'untitled', savedToFile: false, dirty: false, editedAt: Date.now() });
+  expect(row).toMatchObject({ filename: 'untitled', savedToFile: false, dirty: false, editedAt: opened }); // at once, not a second later
   expect(addVersion).not.toHaveBeenCalled();
   expect(evict).toHaveBeenCalledWith(new Set([project.documentId]));
   expect(autosave.current.value).toBe(true);
@@ -827,7 +828,7 @@ test('an opening write that fails to store keeps its first edit time when it is 
   expect(autosave.current.value).toBe(false);
   await vi.advanceTimersByTimeAsync(5000);
   await autosave.flush();
-  expect((await readLatest(project.documentId)).record.editedAt).toBe(first + SAVE_AFTER_MS);
+  expect((await readLatest(project.documentId)).record.editedAt).toBe(first); // the opening write's, at once
   expect(await listVersions(project.documentId)).toEqual([]);
 });
 
@@ -1984,6 +1985,39 @@ test('a blank canvas has no As opened: there is nothing to go back to', async ()
   await pass(SAVE_AFTER_MS);
   expect(await listVersions(project.documentId)).toHaveLength(1);
   expect(await openedVersions(project.documentId)).toEqual([]);
+});
+
+// A document's first write is at once, as a file's is (above), so a change in its first second is a write of its own:
+// the first change of a blank canvas has its version, and a reload's first change counts toward one.
+test('a change within a blank canvas\'s first second has a version of its own', async () => {
+  const { project } = await mounted();
+  await project.setBlankCanvas();
+  await vi.advanceTimersByTimeAsync(100);
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  await autosave.flush(); // the edit's write, queued behind the opening write
+  const [version, ...more] = await listVersions(project.documentId);
+  expect(more).toEqual([]);
+  expect(await charsOf(await readVersion(version.id))).toEqual(['0,0:a']);
+});
+
+test('a change within a reload\'s first second has its version when one is due', async () => {
+  const { project } = await mounted();
+  await project.setBlankCanvas();
+  const id = project.documentId;
+  await pass(SAVE_AFTER_MS);
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
+  await leave();
+
+  const back = await mounted();
+  await vi.advanceTimersByTimeAsync(100);
+  edit(back.project, 1);
+  await pass(SAVE_AFTER_MS);
+  const [newest, ...more] = await listVersions(id);
+  expect(more).toHaveLength(1);
+  expect(await charsOf(await readVersion(newest.id))).toEqual(['0,0:a', '1,0:a']);
 });
 
 test('a file opened and reloaded before any change still keeps As opened at its first change, even one right after the reload', async () => {
