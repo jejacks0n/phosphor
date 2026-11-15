@@ -10,7 +10,7 @@ test('? opens the shortcuts list; Escape and Done close it', async ({ page }) =>
   await expect(list(page)).toBeVisible();
   await expect(list(page)).toContainText('Open color picker for foreground');
   await expect(list(page)).toContainText('Nudge the selection');
-  await expect(list(page).locator('dd', { hasText: /^Zoom/ })).toHaveText('Zoom'); // both views zoom
+  await expect(list(page).locator('dd', { hasText: /^Zoom/ })).toHaveText(['Zoom', 'Zoom in or out around the center of the view']); // one wheel row for both views, then the View keys
   await page.keyboard.press('Escape');
   await expect(list(page)).toBeHidden();
   await page.keyboard.press('?');
