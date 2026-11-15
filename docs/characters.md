@@ -202,6 +202,8 @@ Phosphor keeps your work in your browser as you go:
 
 Saving a file to your computer is the real backup. Clearing site data deletes what's kept in the browser, Safari can also delete it after seven days of browser use without a visit, and a private window's kept work is gone when the window closes.
 
+Opening a file, picking up where you left off, saving and exporting say what they're doing at the bottom of the screen ("Opening long.ans…", "Saving night.phosphor…") when they take more than half a second, and the note goes when they're done.
+
 ---
 
 ## When Art Looks Wrong in Someone's Terminal

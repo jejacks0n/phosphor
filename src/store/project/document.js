@@ -19,6 +19,7 @@ import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
 import { commentLines, keptFields, keptRecord, withLetterSpacing } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
+import { busyWhile } from '@/composables/useBusy.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults, sauceDefaults } from '@/store/settings.js';
 import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, savedJson, randomId, blackPicture } from '@/store/project/shared.js';
@@ -68,6 +69,9 @@ function newLayers(project) {
 // A file's name as the document's: its stem, and its extension apart, lowercase (null with none).
 const nameOf = ({ name }) => ({ filename: name.replace(/\.[^/.]+$/, ''), fileExt: name.match(/\.([^/.]+)$/)?.[1].toLowerCase() ?? null });
 const PROJECT_EXT = PROJECT_EXTENSION.slice(1);
+// The note shown while it takes a while (useBusy).
+const opening = (name) => t('document.opening', { name });
+const saving = (name) => t('document.saving', { name });
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
 // A stack file's layers (stack) come with each cells layer's parts (layerParts) and paint (layerPaint), by id.
@@ -167,25 +171,27 @@ export const documentActions = {
   async setImageFromFile(file) {
     if (!file) return;
 
-    const buffer = await file.arrayBuffer();
-    let image;
-    try {
-      image = await loadImage(buffer, file.type);
-    } catch (e) {
-      const reason = e?.code === 'DECODE_IMAGE_FAILED' ? t('document.decodeImageFailed') : e.message;
-      alert(t('document.openImageFailed', { name: file.name, reason }));
-      return;
-    }
-    const ratio = (image.naturalWidth || 1) / (image.naturalHeight || 1);
+    return busyWhile(opening(file.name), async () => {
+      const buffer = await file.arrayBuffer();
+      let image;
+      try {
+        image = await loadImage(buffer, file.type);
+      } catch (e) {
+        const reason = e?.code === 'DECODE_IMAGE_FAILED' ? t('document.decodeImageFailed') : e.message;
+        alert(t('document.openImageFailed', { name: file.name, reason }));
+        return;
+      }
+      const ratio = (image.naturalWidth || 1) / (image.naturalHeight || 1);
 
-    this.replaceImage(image, buffer, {
-      ...lockedGrid(this.cols, ratio),
-      ...sauceDefaults(),
-      ...nameOf(file),
-      savedToFile: false,
+      this.replaceImage(image, buffer, {
+        ...lockedGrid(this.cols, ratio),
+        ...sauceDefaults(),
+        ...nameOf(file),
+        savedToFile: false,
+      });
+      this.markSaved();
+      this.asOpened = true; // last, once it's all there (useAutosave writes it at once)
     });
-    this.markSaved();
-    this.asOpened = true; // last, once it's all there (useAutosave writes it at once)
   },
 
   // The blank picture is BLANK_CANVAS_SCALE pixels a grid pixel, or fewer for a long grid: no more than
@@ -219,53 +225,57 @@ export const documentActions = {
   // it as the file shows it). Loading, not an edit: nothing to undo or save. A file that can't open
   // throws (with its userMessage) before anything changes. `art`: the file as read already (workspace.askArt).
   async openArtFile(file, { layer = 'base', art = null } = {}) {
-    art ??= readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
-    const { sauce } = art;
-    const opened = await this.setBlankCanvas({
-      ...settingDefaults(),
-      cols: art.cols,
-      rows: 2 * art.rows,
-      ...nameOf(file),
-      quantize: art.palette,
-      renderStyle: 'ansi',
-      savedToFile: false,
-      ...(sauce && {
-        sauceTitle: sauce.title,
-        sauceAuthor: sauce.author,
-        sauceGroup: sauce.group,
-        sauceDate: sauce.date,
-        sauceUserComments: sauce.comments.join('\n'),
-        sauceFontName: sauce.fontName,
-        sauceUse9pxFont: sauce.use9pxFont,
-      }),
-      sauceRecord: keptRecord(sauce, art.cols, art.rows),
+    return busyWhile(opening(file.name), async () => {
+      art ??= readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
+      const { sauce } = art;
+      const opened = await this.setBlankCanvas({
+        ...settingDefaults(),
+        cols: art.cols,
+        rows: 2 * art.rows,
+        ...nameOf(file),
+        quantize: art.palette,
+        renderStyle: 'ansi',
+        savedToFile: false,
+        ...(sauce && {
+          sauceTitle: sauce.title,
+          sauceAuthor: sauce.author,
+          sauceGroup: sauce.group,
+          sauceDate: sauce.date,
+          sauceUserComments: sauce.comments.join('\n'),
+          sauceFontName: sauce.fontName,
+          sauceUse9pxFont: sauce.use9pxFont,
+        }),
+        sauceRecord: keptRecord(sauce, art.cols, art.rows),
+      });
+      if (!opened) return;
+      const cells = art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell }));
+      if (layer === 'edit') this.writeEditCells(cells.map(({ col, row, ...attrs }) => ({ col, row, attrs }))); // char, fg, bg and any 256-color index
+      else this.writeBaseCells(cells);
+      // Alone, the ledger needn't record it (every cell, at 500k cells half a second): clearHistory would drop it next. In a
+      // room it goes out numbered, as any host's edit does.
+      if (this._stroke && !this._sharing) this._stroke.unrecorded = true;
+      this.commitEdit();
+      this.clearHistory();
+      this.render();
+      this.markSaved();
+      // The base holds each cell as its two colors (background over foreground), which the PIXEL tab
+      // would show as stripes; All cells draws every cell there as it looks.
+      useWorkspaceStore().ansiOverlayAll = true;
+      this.asOpened = true;
     });
-    if (!opened) return;
-    const cells = art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell }));
-    if (layer === 'edit') this.writeEditCells(cells.map(({ col, row, ...attrs }) => ({ col, row, attrs }))); // char, fg, bg and any 256-color index
-    else this.writeBaseCells(cells);
-    // Alone, the ledger needn't record it (every cell, at 500k cells half a second): clearHistory would drop it next. In a
-    // room it goes out numbered, as any host's edit does.
-    if (this._stroke && !this._sharing) this._stroke.unrecorded = true;
-    this.commitEdit();
-    this.clearHistory();
-    this.render();
-    this.markSaved();
-    // The base holds each cell as its two colors (background over foreground), which the PIXEL tab
-    // would show as stripes; All cells draws every cell there as it looks.
-    useWorkspaceStore().ansiOverlayAll = true;
-    this.asOpened = true;
   },
 
   // An .svg file as a new document: a blank canvas at the default size, named for the file, on VECTOR with the
   // file's art as shapes (addSvg). A file that isn't SVG throws (with its userMessage) before anything changes.
   async openSvgFile(file) {
-    const text = await file.text(), refusal = svgRefusal(readSvgFile(text), MOST_SHAPES);
-    if (refusal) return void toast(refusal); // the drawing stays
-    if (!(await this.setBlankCanvas({ cols: DEFAULT_COLS, rows: DEFAULT_ROWS, ...nameOf(file) }))) return;
-    useWorkspaceStore().editorTab = 'vector';
-    this.addSvg(text);
-    this.asOpened = true;
+    return busyWhile(opening(file.name), async () => {
+      const text = await file.text(), refusal = svgRefusal(readSvgFile(text), MOST_SHAPES);
+      if (refusal) return void toast(refusal); // the drawing stays
+      if (!(await this.setBlankCanvas({ cols: DEFAULT_COLS, rows: DEFAULT_ROWS, ...nameOf(file) }))) return;
+      useWorkspaceStore().editorTab = 'vector';
+      this.addSvg(text);
+      this.asOpened = true;
+    });
   },
 
   // Swap in a new base image and start a fresh document around it (out of an art layer first).
@@ -369,9 +379,12 @@ export const documentActions = {
     this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
     const [settings, version] = [savedJson(this), this.editVersion];
-    const parts = await this.projectParts();
-    // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too).
-    const blob = await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } });
+    // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too). On desktop the note goes
+    // before the system's save box comes up.
+    const blob = await busyWhile(saving(`${filename}${PROJECT_EXTENSION}`), async () => {
+      const parts = await this.projectParts();
+      return writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } });
+    });
     if (DESKTOP) {
       const bytes = new Uint8Array(await blob.arrayBuffer());
       const saved = await desktop.saveProject({ bytes, name: `${filename}${PROJECT_EXTENSION}`, path: this.filePath, as });
@@ -430,7 +443,7 @@ export const documentActions = {
     if (!file || !isProjectFile(file.name)) return;
 
     try {
-      await this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length), fileExt: PROJECT_EXT });
+      await busyWhile(opening(file.name), async () => this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length), fileExt: PROJECT_EXT }));
       this.savedToFile = true;
       this.asOpened = true;
       this.filePath = file.desktopPath ?? null; // desktop: where it was opened from, for Save to write over
@@ -444,8 +457,10 @@ export const documentActions = {
   // Autosave's record as the open document, as unsaved as it was. Without a documentId it's a new
   // document, a copy. Throws, for the caller to decide what that means.
   async restoreDocument({ record, imageBuffer }, { documentId }) {
-    const parts = await readProject(new Blob([record.rest]));
-    await this.openParts({ ...parts, imageBuffer }, { filename: record.filename, fileExt: record.fileExt, documentId });
+    await busyWhile(opening(record.fileExt ? `${record.filename}.${record.fileExt}` : record.filename), async () => {
+      const parts = await readProject(new Blob([record.rest]));
+      await this.openParts({ ...parts, imageBuffer }, { filename: record.filename, fileExt: record.fileExt, documentId });
+    });
     this.savedToFile = record.savedToFile;
     if (record.dirty) {
       this.savedSettings = record.savedSettings;
@@ -489,26 +504,27 @@ export const documentActions = {
   // The animated formats, written from every frame: 'ansimation' (.ans), 'utf8ansimation' (.utf8ans), 'cast' or 'gif'. Throws with userMessage
   // what the save dialog should say. A GIF tells progress the share of its frames written, as it goes.
   async exportAnimation(format, { filename = this.filename, progress } = {}) {
-    const frames = await this.animationCells(), lines = charRowsOf(this.rows);
-    const durations = this.frames.map((frame) => frameDuration(frame, this.fps));
-    let blob, ext = format;
-    if (format === 'ansimation' || format === 'utf8ansimation') {
-      const utf8 = format === 'utf8ansimation';
-      ext = utf8 ? 'utf8ans' : 'ans';
-      blob = new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { utf8, colorMode: this.quantize, sauce: this.sauceFields() })], { type: 'application/octet-stream' });
-    } else if (format === 'cast') {
-      blob = new Blob([castText(this.cols, lines, frames, durations.map((ms) => ms / 1000), { colorMode: this.quantize })], { type: 'application/x-asciicast' });
-    } else {
-      const bytes = await gifFile(frames, this.cols, lines, durations.map(gifDelay), {
-        smooth: useWorkspaceStore().smoothText,
-        progress,
-        tooLarge: (pixels) => {
-          if (pixels <= MAX_GIF_PIXELS) return;
-          throw Object.assign(new Error('Too large for a GIF'), { userMessage: t('save.gifTooLarge') });
-        },
-      });
-      blob = new Blob([bytes], { type: 'image/gif' });
-    }
+    const ext = { ansimation: 'ans', utf8ansimation: 'utf8ans' }[format] ?? format;
+    const blob = await busyWhile(saving(`${filename}.${ext}`), async () => {
+      const frames = await this.animationCells(), lines = charRowsOf(this.rows);
+      const durations = this.frames.map((frame) => frameDuration(frame, this.fps));
+      if (format === 'ansimation' || format === 'utf8ansimation') {
+        const utf8 = format === 'utf8ansimation';
+        return new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { utf8, colorMode: this.quantize, sauce: this.sauceFields() })], { type: 'application/octet-stream' });
+      } else if (format === 'cast') {
+        return new Blob([castText(this.cols, lines, frames, durations.map((ms) => ms / 1000), { colorMode: this.quantize })], { type: 'application/x-asciicast' });
+      } else {
+        const bytes = await gifFile(frames, this.cols, lines, durations.map(gifDelay), {
+          smooth: useWorkspaceStore().smoothText,
+          progress,
+          tooLarge: (pixels) => {
+            if (pixels <= MAX_GIF_PIXELS) return;
+            throw Object.assign(new Error('Too large for a GIF'), { userMessage: t('save.gifTooLarge') });
+          },
+        });
+        return new Blob([bytes], { type: 'image/gif' });
+      }
+    });
     this.rename(filename);
     this.fileExt = ext;
     downloadBlob(blob, `${this.filename}.${ext}`);
@@ -555,14 +571,14 @@ export const documentActions = {
   async exportFile(ext, { filename = this.filename, smooth = useWorkspaceStore().smoothText, ...opts } = {}) {
     if (this._artInside) this.leaveArt();
     const lines = charRowsOf(this.rows);
-    const blob = ext === 'png'
-      ? await drawnCells(this.cols, lines, { smooth }, ({ width, height, rgba }) => pngBlob(width, height, rgba(this.cells)))
+    const blob = await busyWhile(saving(`${filename}.${ext}`), async () => (ext === 'png'
+      ? drawnCells(this.cols, lines, { smooth }, ({ width, height, rgba }) => pngBlob(width, height, rgba(this.cells)))
       : new AnsiFile(this.cols, lines, this.cells).toBlob({
         sauce: this.sauceFields(),
         colorMode: this.quantize,
         utf8: ext === 'utf8ans',
         ...opts,
-      });
+      })));
     this.rename(filename); // once there's a file to give the name to
     this.fileExt = ext;
     downloadBlob(blob, `${this.filename}.${ext}`);

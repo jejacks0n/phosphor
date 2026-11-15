@@ -14,6 +14,7 @@ import { useDrawingStore } from '@/store/DrawingStore';
 import { groupOf } from '@/tools/groups';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
+import { busyWhile } from '@/composables/useBusy';
 
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 let saving = false;   // desktop: a save under way (saveFile)
@@ -397,7 +398,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       let art = null;
       if (isArtFile(file.name)) {
         try {
-          art = markRaw(readArtFile(new Uint8Array(await file.arrayBuffer()), file.name));
+          art = await busyWhile(t('document.opening', { name: file.name }), async () => markRaw(readArtFile(new Uint8Array(await file.arrayBuffer()), file.name)));
         } catch (error) {
           if (!error.userMessage) throw error;
           return void toast(error.userMessage);

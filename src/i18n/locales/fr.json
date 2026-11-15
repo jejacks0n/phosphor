@@ -1089,6 +1089,8 @@
     "openFailed": "Impossible de rouvrir ce projet."
   },
   "document": {
+    "opening": "Ouverture de {name}…",
+    "saving": "Enregistrement de {name}…",
     "framesLost": "Impossible de lire les images d'animation de ce fichier, il a donc été ouvert comme image fixe. L'enregistrer le remplacera en tant qu'image fixe.",
     "openImageFailed": "Impossible d'ouvrir « {name} ». Assurez-vous qu'il s'agit d'une image prise en charge ou d'un fichier .phosphor.",
     "decodeImageFailed": "Impossible de décoder l'image.",
