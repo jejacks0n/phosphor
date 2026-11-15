@@ -1,22 +1,36 @@
 <script setup>
+import { watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { toastMessage, closeToast } from '@/composables/useToast';
 
 const { t } = useI18n();
+
+// A manual popover, so it's drawn over a modal dialog (which no z-index is), and nothing but closeToast closes it.
+// Shown from its ref, as it goes in; a new message shows it again, over a dialog opened since.
+let shown = null;
+const show = (el) => {
+  shown = el;
+  if (el && !el.matches(':popover-open')) el.showPopover();
+};
+watch(toastMessage, (now, was) => {
+  if (!now || !was || !shown?.matches(':popover-open')) return; // a message replacing one: the first shows from its ref
+  shown.hidePopover();
+  shown.showPopover();
+}, { flush: 'post' });
 </script>
 
 <template>
   <Transition name="toast">
-    <div v-if="toastMessage" class="app-toast" role="status" :title="t('common.close')" @click="closeToast">{{ toastMessage }}</div>
+    <div v-if="toastMessage" :ref="show" popover="manual" class="app-toast" role="status" :title="t('common.close')" @click="closeToast">{{ toastMessage }}</div>
   </Transition>
 </template>
 
 <style scoped>
 div.app-toast {
   position: fixed;
-  left: 50%;
-  bottom: 24px;
-  z-index: 10002;
+  inset: auto auto 24px 50%; /* not the popover's centering */
+  margin: 0;
+  border: none;
   transform: translateX(-50%);
   padding: 7px 14px;
   border-radius: 6px;
