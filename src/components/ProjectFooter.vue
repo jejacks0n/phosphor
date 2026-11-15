@@ -51,32 +51,36 @@ const themes = computed(() => [
 
 <style scoped>
 footer.project-footer {
-  margin: 12px 12px 50px;
+  margin: 12px 0 50px; /* as wide as the buttons above */
   font-size: 10px;
   text-align: center;
   line-height: 1.6;
   color: var(--text);
 }
 
-/* The language and the theme side by side. */
+/* The language and the theme side by side, each half the width, one height. */
 .footer-controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
   margin-bottom: 10px;
 }
 div.themes {
   display: flex;
   gap: 2px;
-  padding: 1px;
+  height: 28px;
+  box-sizing: border-box;
+  padding: 2px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
+  background: var(--surface-1); /* the language picker's look */
 }
 div.themes label {
   position: relative;
   display: flex;
-  padding: 4px 6px;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
   border-radius: 4px;
   color: var(--text-muted);
   cursor: pointer;
@@ -85,15 +89,15 @@ div.themes label {
 }
 div.themes :deep(svg) { /* v-html: not scoped */
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 13px;
+  height: 13px;
   fill: currentColor;
 }
 div.themes label:hover {
   color: var(--text);
 }
 div.themes label.on {
-  background: var(--surface-2);
+  background: var(--surface-3);
   color: var(--text);
 }
 div.themes label:has(:focus-visible) {
@@ -113,18 +117,18 @@ div.copyright {
 }
 
 .locale-picker {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  min-width: 0;
 }
 
 .locale-select {   /* as tall as the theme picker beside it */
-  width: auto;
-  height: 24px;
+  width: 100%;
+  height: 28px;
   font-family: inherit;
-  font-size: 10px;
-  padding: 1px 4px;
+  font-size: 12px;
+  padding: 2px 8px;
   color: var(--text-dim);
-  border-radius: 3px;
+  border-radius: 6px;
   cursor: pointer;
 }
 .locale-select:not(:focus) {   /* focused, a field's own look: its accent border and glow */
