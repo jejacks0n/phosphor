@@ -54,8 +54,10 @@ const launchFiles = [];   // files to open (double-clicked, on the command line)
 const windows = new Map();
 const focusOrder = [];   // the windows' ids, the last focused last
 const entryOf = (event) => windows.get(event.sender.id);
-// The focused window, else the last focused still open.
-const focusedEntry = () => windows.get(BrowserWindow.getFocusedWindow()?.webContents.id) ?? windows.get(focusOrder.at(-1));
+// The focused window, or the last focused still open: the windows' own focus events say, not
+// BrowserWindow.getFocusedWindow(), which on Linux still names the window losing focus while the next one's focus event
+// runs (so the menu was built for the window left).
+const focusedEntry = () => windows.get(focusOrder.at(-1));
 const send = (entry, channel, ...args) => { if (!entry.win.isDestroyed()) entry.win.webContents.send(channel, ...args); };
 const bringForward = (entry) => {
   if (entry.win.isMinimized()) entry.win.restore();
