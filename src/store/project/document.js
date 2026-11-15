@@ -521,8 +521,9 @@ export const documentActions = {
   },
 
   // The animated formats, written from every frame: 'ansimation' (.ans), 'utf8ansimation' (.utf8ans), 'cast', 'gif' or 'mp4'. Throws with userMessage
-  // what the save dialog should say. A GIF or video tells progress the share of its frames written, as it goes.
-  async exportAnimation(format, { filename = this.filename, progress } = {}) {
+  // what the save dialog should say. A GIF or video tells progress the share of its frames written, as it goes. deliver
+  // takes the file (its blob and name): a download unless it's given (the Export dialog's Share).
+  async exportAnimation(format, { filename = this.filename, progress, deliver = downloadBlob } = {}) {
     const ext = { ansimation: 'ans', utf8ansimation: 'utf8ans' }[format] ?? format;
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => {
       const frames = await this.animationCells(), lines = charRowsOf(this.rows);
@@ -555,7 +556,7 @@ export const documentActions = {
     });
     this.rename(filename);
     this.fileExt = ext;
-    downloadBlob(blob, `${this.filename}.${ext}`);
+    await deliver(blob, `${this.filename}.${ext}`);
   },
 
   // What an art file's SAUCE record says, from the SAUCE tab. An opened file's record comes out as it went in
@@ -595,8 +596,8 @@ export const documentActions = {
   // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first. Out of an art layer
   // first: the cells then are the layer's alone, without the drawing.
   // 'png' is the frame showing as the ANSI view draws it, smooth or hard-edged as asked (the view's own setting by
-  // default), at one pixel per font pixel.
-  async exportFile(ext, { filename = this.filename, smooth = useWorkspaceStore().smoothText, ...opts } = {}) {
+  // default), at one pixel per font pixel. deliver takes the file (its blob and name): a download unless it's given.
+  async exportFile(ext, { filename = this.filename, smooth = useWorkspaceStore().smoothText, deliver = downloadBlob, ...opts } = {}) {
     if (this._artInside) this.leaveArt();
     const lines = charRowsOf(this.rows);
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => (ext === 'png'
@@ -609,7 +610,7 @@ export const documentActions = {
       })));
     this.rename(filename); // once there's a file to give the name to
     this.fileExt = ext;
-    downloadBlob(blob, `${this.filename}.${ext}`);
+    await deliver(blob, `${this.filename}.${ext}`);
   },
 
   // Files from before the cell layer drew char edits over paint; now paint draws over edit

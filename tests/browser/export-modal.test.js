@@ -307,3 +307,82 @@ test('the Export dialog repeats the comments\' warning when they run past 255 SA
     unmount();
   }
 });
+
+// The browser's share sheet, standing in: canShare takes images, and share does what it's given.
+function shareSheet(share = async () => {}) {
+  const had = ['canShare', 'share'].map((key) => [key, Object.getOwnPropertyDescriptor(navigator, key)]);
+  const sheet = { canShare: vi.fn(({ files }) => files.every((file) => file.type.startsWith('image/'))), share: vi.fn(share) };
+  for (const key of ['canShare', 'share']) Object.defineProperty(navigator, key, { value: sheet[key], configurable: true });
+  sheet.restore = () => had.forEach(([key, d]) => (d ? Object.defineProperty(navigator, key, d) : delete navigator[key]));
+  return sheet;
+}
+const shareButton = (modal) => [...modal.querySelectorAll('.actions button')].find((b) => /^Share/.test(b.textContent.trim()));
+
+test('Share sends a PNG to the share sheet in place of a download, and closes; formats it can\'t take have no Share', async () => {
+  await drawing();
+  const sheet = shareSheet();
+  const download = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  const { closed, unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    expect(shareButton(modal)).toBeUndefined(); // ANS
+    await pick(modal, 'PNG');
+    modal.querySelector('input.filename-input').value = 'mine';
+    modal.querySelector('input.filename-input').dispatchEvent(new Event('input'));
+    await nextTick();
+    shareButton(modal).click();
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    const [{ files: [file] }] = sheet.share.mock.calls[0];
+    expect([file.name, file.type]).toEqual(['mine.png', 'image/png']);
+    expect(new Uint8Array(await file.slice(1, 4).arrayBuffer())).toEqual(new TextEncoder().encode('PNG'));
+    expect(download).not.toHaveBeenCalled();
+  } finally {
+    unmount();
+    sheet.restore();
+  }
+});
+
+test('the share sheet put away leaves the dialog; refused for coming too long after the tap, the file waits for Share now', async () => {
+  const { project } = await drawing();
+  const sheet = shareSheet(async () => { throw new DOMException('Share canceled', 'AbortError'); });
+  const built = vi.spyOn(project, 'exportFile');
+  const { closed, unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    await pick(modal, 'PNG');
+    shareButton(modal).click();
+    await vi.waitUntil(() => sheet.share.mock.calls.length === 1, { interval: 5 });
+    await nextTick();
+    expect([closed.mock.calls.length, shareButton(modal).textContent.trim(), modal.querySelector('.problem')]).toEqual([0, 'Share', null]);
+
+    sheet.share.mockImplementationOnce(async () => { throw new DOMException('Must be handling a user gesture', 'NotAllowedError'); });
+    shareButton(modal).click();
+    await vi.waitUntil(() => shareButton(modal).textContent.trim() === 'Share now', { interval: 5 });
+    expect(modal.querySelector('[role=status]').textContent).toContain('ready');
+    expect(built).toHaveBeenCalledTimes(2);
+
+    sheet.share.mockImplementationOnce(async () => {});
+    shareButton(modal).click();
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    expect(built).toHaveBeenCalledTimes(2); // the file kept, not written again
+    expect(sheet.share.mock.calls[2][0].files[0]).toBe(sheet.share.mock.calls[1][0].files[0]);
+  } finally {
+    unmount();
+    sheet.restore();
+  }
+});
+
+test('with no share sheet there is no Share', async () => {
+  await drawing();
+  const had = Object.getOwnPropertyDescriptor(navigator, 'canShare');
+  Object.defineProperty(navigator, 'canShare', { value: undefined, configurable: true });
+  const { unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    await pick(modal, 'PNG');
+    expect(shareButton(modal)).toBeUndefined();
+  } finally {
+    unmount();
+    if (had) Object.defineProperty(navigator, 'canShare', had); else delete navigator.canShare;
+  }
+});

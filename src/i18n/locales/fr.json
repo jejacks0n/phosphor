@@ -1064,6 +1064,10 @@
       "textRendering": "Rendu du texte",
       "tooTall": "À {cols}×{rows}, plus large ou plus haut qu'un terminal standard 80×25. Une partie du dessin peut être coupée pendant la lecture.",
       "exportBtn": "Exporter {name}",
+      "share": "Partager",
+      "shareNow": "Partager maintenant",
+      "shareReady": "Votre fichier est prêt. Touchez Partager maintenant pour l'envoyer.",
+      "shareFailed": "Impossible de partager le fichier.",
       "formats": {
         "ans": {
           "name": "ANS"
