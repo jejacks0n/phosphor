@@ -66,8 +66,8 @@ test('an art file over unsaved changes warns on the choices that replace the dra
   expect(choices()).toEqual([['Add to this drawing', null], ['Open to edit', WARNING], ['Open to draw on top', WARNING]]);
   await choose('Open to edit');
   expect(workspace.unsavedAsk).toBe(null);
+  await vi.waitFor(() => expect(project.filename).toBe('tiny')); // the file opens in a moment
   expect(project.documentId).not.toBe(before);
-  expect(project.filename).toBe('tiny');
 });
 
 test('with nothing unsaved, the art file\'s choices carry no warning', async () => {
