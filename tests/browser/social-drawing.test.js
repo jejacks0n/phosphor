@@ -527,6 +527,26 @@ test('a project that comes again leaves me on the layer I had picked, and the to
   expect(workspace.pickedLayer).toBe(above);
 });
 
+test('a project that comes again leaves an artist on VECTOR with the vector layer picked', async () => {
+  const room = await hosting();
+  const vector = room.project.addLayer('vector', 'edit');
+  room.project.addLayer('vector', vector);   // a higher one, which VECTOR opens on when none was picked
+  const person = await join(room, 'ann');
+  await createOwnDocument(person);
+  const { stack, settings, baseRecords } = await room.project.projectParts();
+  const layerParts = new Map(stack.filter((layer) => layer.kind === 'cells' && layer.id !== 'base').map((layer) => [layer.id, { editCells: new Map(), paintBuffer: null }]));
+  const parts = { settings: { ...settings }, imageBuffer: room.project.imageBuffer, paintBuffer: null, baseBuffer: null, editCells: new Map(), baseRecords, erasedCells: [], migrated: false, stack, layerParts };
+  setActivePinia(person.pinia);
+  const workspace = useWorkspaceStore();
+  expect(await person.project.takeProject(parts, { n: 1, filename: 'x', send: () => {}, me: 'ann' })).toBe(true);
+  workspace.editorTab = 'vector';
+  workspace.pickedLayer = vector;
+  setActivePinia(person.pinia);
+  expect(await person.project.takeProject(parts, { n: 1, epoch: null, filename: 'x', send: () => {}, me: 'ann' })).toBe(true);
+  expect(workspace.editorTab).toBe('vector');
+  expect(workspace.pickedLayer).toBe(vector);
+});
+
 test('a stack-form project from a stranger with a layer\'s cells off any grid opens nothing', async () => {
   const room = await hosting();
   room.project.addLayer('cells', 'edit');
