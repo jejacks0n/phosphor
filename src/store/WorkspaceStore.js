@@ -22,6 +22,14 @@ let saving = false;   // a save under way (saveFile), where it's not the save di
 
 const RECENT_COLORS = 12;
 
+// A recent color as kept: its hex, with its index after a '/' when a lower index shares its color (16, 231), so 16's
+// black and 0's are two recent colors. A list kept before indexes is plain hex, which still reads.
+const recentEntry = (hex, index) => (index === undefined ? hex : `${hex}/${index}`);
+export function recentColor(entry) {
+  const [hex, index] = entry.split('/');
+  return { hex, index: index === undefined ? undefined : Number(index) };
+}
+
 // The field that holds a tab's tool: PIXEL's, VECTOR's, or ANSI's (which SAUCE and SOCIAL keep).
 const toolKey = (tab) => (tab === 'input' ? 'inputActiveTool' : tab === 'vector' ? 'vectorActiveTool' : 'outputActiveTool');
 
@@ -344,19 +352,17 @@ export const useWorkspaceStore = defineStore('workspace', {
       this[slot === 'fg' ? 'editFgColor' : 'editBgColor'] = hex;
       this[slot === 'fg' ? 'editFgIndex' : 'editBgIndex'] = index;
       this[none] = false;
-      if (remember) this.rememberColor(hex);
+      if (remember) this.rememberColor(hex, index);
     },
-    rememberColor(hex) {
-      this.recentColors = [hex, ...this.recentColors.filter(c => c !== hex)].slice(0, RECENT_COLORS);
+    rememberColor(hex, index) {
+      const entry = recentEntry(hex, index);
+      this.recentColors = [entry, ...this.recentColors.filter(c => c !== entry)].slice(0, RECENT_COLORS);
     },
     // The eyedropper: picks repeat while dragging, so they leave the recent colors alone until the
     // pick ends (endPick); then the color each pick replaced and the color it picked both go in,
     // so getting the old color back is one click.
     pickColor(slot, hex, index) {
-      this._pickedFrom ??= {
-        fg: this.editFgNone ? null : this.editFgColor,
-        bg: this.editBgNone ? null : this.editBgColor,
-      };
+      this._pickedFrom ??= { fg: this.slotEntry('fg'), bg: this.slotEntry('bg') };
       this.setColor(slot, hex, { remember: false, index });
     },
     endPick() {
@@ -364,11 +370,15 @@ export const useWorkspaceStore = defineStore('workspace', {
       this._pickedFrom = null;
       if (!from) return;
       for (const slot of ['fg', 'bg']) {
-        const now = slot === 'fg' ? (this.editFgNone ? null : this.editFgColor) : (this.editBgNone ? null : this.editBgColor);
+        const now = this.slotEntry(slot);
         if (now === from[slot]) continue;
-        if (from[slot]) this.rememberColor(from[slot]);
-        if (now) this.rememberColor(now);
+        for (const entry of [from[slot], now]) if (entry) this.rememberColor(...Object.values(recentColor(entry)));
       }
+    },
+    // A slot's color as a recent entry (recentEntry), null when it's none.
+    slotEntry(slot) {
+      const fg = slot === 'fg';
+      return this[fg ? 'editFgNone' : 'editBgNone'] ? null : recentEntry(this[fg ? 'editFgColor' : 'editBgColor'], this[fg ? 'editFgIndex' : 'editBgIndex']);
     },
     // What typing writes besides the character: a none slot is left out, so that attribute stays as it is. A color's
     // index (16, 231) goes with it.

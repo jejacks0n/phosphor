@@ -2,7 +2,7 @@
 import { computed, onMounted, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useWorkspaceStore, recentColor } from '@/store/WorkspaceStore';
 import { getEffectiveColor, paletteChoices } from '@/lib/PixelTransforms';
 import { swatchSections, drawingColors, sharedIndex } from '@/lib/ColorUtils';
 import { nearestInDirection } from '@/lib/spatialFocus';
@@ -79,6 +79,7 @@ const painted = computed(() => {
 });
 const showPainted = ref(false);
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
+const recent = computed(() => workspace.recentColors.map((entry) => ({ entry, ...recentColor(entry) })));
 
 // index: a swatch's, kept when a lower index shares its color (16 and 231: sharedIndex).
 const choose = (hex, remember = true, index = undefined) => {
@@ -249,12 +250,12 @@ onBeforeUnmount(() => {
       <span v-if="offersNone">{{ t('colors.none') }}</span>
       <span class="spacer"></span>
       <button
-          v-for="hex in workspace.recentColors"
-          :key="hex"
+          v-for="{ entry, hex, index } in recent"
+          :key="entry"
           class="swatch small"
           :style="{ backgroundColor: shown(hex) }"
           :title="t('colors.recentTitle', { hex })"
-          @click="choose(hex)"
+          @click="choose(hex, true, index)"
       ></button>
     </div>
 

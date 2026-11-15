@@ -619,10 +619,23 @@ function rotateBlock(block) {
   Object.assign(out, rotateLayer(block));
   if (block.parts) out.parts = block.parts.map((part) => ({ id: part.id, ...rotateLayer(part) }));
   if (block.base) {
-    const { pixels, scale, colors, pins } = block.base;
+    const { pixels, scale, colors, pins, indexes } = block.base;
     out.base = { pixels: turnCanvas(pixels, 'cw'), scale, colors: turnCanvas(colors, 'cw'), pins: from(pins) };
+    if (indexes) out.base.indexes = turnedIndexes(indexes, out, W, P);
   }
   return out;
+}
+
+// A base's indexes (16, 231) turned with its pixels (rotateBlock): a turned cell's top pixel is source pixel (2 row,
+// P - 1 - col) and its bottom one (2 row + 1, the same), each the top (bgIndex) or bottom (fgIndex) half of its source cell.
+function turnedIndexes(indexes, { w, h }, W, P) {
+  return Array.from({ length: w * h }, (_, i) => {
+    const col = i % w, row = Math.floor(i / w), y = P - 1 - col, half = y % 2 ? 'fgIndex' : 'bgIndex';
+    const at = (x) => (x < W ? indexes[Math.floor(y / 2) * W + x]?.[half] : undefined);
+    const bgIndex = at(2 * row), fgIndex = at(2 * row + 1);
+    return bgIndex === undefined && fgIndex === undefined ? undefined
+      : { ...(fgIndex !== undefined && { fgIndex }), ...(bgIndex !== undefined && { bgIndex }) };
+  });
 }
 
 // Which of a block picture's w x h cells have any paint.
@@ -676,14 +689,14 @@ function pasteOnBase(project, { w, h, base }, col, row) {
 }
 
 // A block whose picture part (base) is edit cells: each cell as it looked where it was copied (looks),
-// or, turned by its pixels (rotateBlock), its two pixels' stored colors under its pin, or ▄; with the
+// or, turned by its pixels (rotateBlock), its two pixels' stored colors (with their indexes) under its pin, or ▄; with the
 // block's own edit cell over that, as it was over the picture. A Half-block's ▄ (there to show paint)
 // shows its two pixels, as it did.
 function asCells(block) {
   const { w, base, looks, cells } = block;
   const { data } = ctx2d(base.colors).getImageData(0, 0, base.colors.width, base.colors.height);
   const hex = (x, y) => `#${[0, 1, 2].map((c) => data[(y * w + x) * 4 + c].toString(16).padStart(2, '0')).join('')}`;
-  const pixels = (i, char) => ({ char, fg: hex(i % w, 2 * Math.floor(i / w) + 1), bg: hex(i % w, 2 * Math.floor(i / w)) });
+  const pixels = (i, char) => ({ char, fg: hex(i % w, 2 * Math.floor(i / w) + 1), bg: hex(i % w, 2 * Math.floor(i / w)), ...base.indexes?.[i] });
   const out = base.pins.map((pin, i) => {
     const own = cells?.[i];
     if (isPaintBlock(own)) return pixels(i, '▄');
