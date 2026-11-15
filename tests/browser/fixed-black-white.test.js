@@ -10,6 +10,8 @@ import { getTool } from '@/tools/index.js';
 import { pickedIndexes } from '@/store/project/reading.js';
 import ColorPopover from '@/components/ColorPopover.vue';
 import { i18n } from '@/i18n';
+import { copySelection, decodeBlock } from '@/composables/clipboard';
+import { readClipboardHtml } from '@/lib/clipboardBlocks';
 
 let mounted = null;
 afterEach(() => {
@@ -220,5 +222,77 @@ test('the Color Picker\'s cell gives its 16 and 231', async () => {
     expect([0, 1, 2, 3].map((col) => pickedIndexes(project, col, 0)), layer).toEqual([
       { fgIndex: 16, bgIndex: undefined }, { fgIndex: undefined, bgIndex: 16 }, { fgIndex: 231, bgIndex: undefined }, { fgIndex: undefined, bgIndex: 231 },
     ]);
+  }
+});
+
+// A recent color keeps the index it was chosen with: 16's black and 0's are two recent swatches, each choosing its own.
+// A list kept before recent colors had indexes (plain hex) still chooses its colors.
+test('the recent colors keep 16 and 231 apart from 0 and 15', async () => {
+  const { workspace } = await opened('edit');
+  workspace.editorTab = 'output';
+  workspace.recentColors = ['#12ab34'];
+  workspace.setColor('fg', '#000000', { index: 16 });
+  workspace.setColor('fg', '#000000');
+  workspace.setColor('fg', '#ffffff', { index: 231 });
+  const host = document.createElement('div');
+  document.body.append(host);
+  mounted = createApp(ColorPopover, { slotName: 'fg' }).use(i18n);
+  mounted.mount(host);
+  const chosen = [];
+  for (const swatch of host.querySelectorAll('.foot .swatch.small')) {
+    swatch.click();
+    chosen.push([workspace.editFgColor, workspace.editFgIndex]);
+  }
+  host.remove();
+  expect(chosen).toEqual([['#ffffff', 231], ['#000000', undefined], ['#000000', 16], ['#12ab34', undefined]]);
+});
+
+// Half blocks (▄) in 16 and 231 only, 2 x 2 cells on the base: turned (4 x 1), every pixel is still 16 or 231, four of
+// each, turned where it is or pasted and turned while it floats. (On a cells layer a file's ▄ is a character: Rotate
+// leaves it be.)
+test('Rotate keeps 16 and 231 on the base', async () => {
+  const art = '\x1b[38;5;16m\x1b[48;5;231m\xdc\x1b[38;5;231m\x1b[48;5;16m\xdc\x1b[0m\r\n'
+    + '\x1b[38;5;16m\x1b[48;5;16m\xdc\x1b[38;5;231m\x1b[48;5;231m\xdc\x1b[0m\x1a';
+  for (const pasted of [false, true]) {
+    const { project, workspace } = await createTestApp();
+    await project.openArtFile(new File([Uint8Array.from(art, (c) => c.charCodeAt(0))], 'halves.ans'), { layer: 'base' });
+    await settle(project);
+    workspace.editorTab = 'output';
+    const rect = { c0: 0, r0: 0, c1: 1, r1: 1 }, cols = project.cols;
+    const pixels = (cells) => cells.flatMap((i) => indexesOf(project)[i]).sort((a, b) => a - b);
+    expect(pixels([0, 1, cols, cols + 1])).toEqual([16, 16, 16, 16, 231, 231, 231, 231]);
+    const turning = pasted ? project.pasteSelection(project.copySelection(rect, ['base']), 0, 0) : rect;
+    expect(project.turnSelection(turning, ['base'], 'cw'), pasted).toEqual({ c0: 0, r0: 0, c1: 3, r1: 0 });
+    project.commitPending();
+    await settle(project);
+    expect(pixels([0, 1, 2, 3]), pasted).toEqual([16, 16, 16, 16, 231, 231, 231, 231]);
+  }
+});
+
+// Copied in one tab and pasted in another (the clipboard's block, encoded and read back), 16 and 231 stay themselves.
+test('a block copied to another tab keeps 16 and 231', async () => {
+  for (const layer of ['base', 'edit']) {
+    const { project, workspace } = await opened(layer);
+    workspace.editorTab = 'output';
+    const written = [];
+    vi.spyOn(document, 'execCommand').mockImplementation(() => {
+      const clipboardData = new DataTransfer();
+      document.dispatchEvent(new ClipboardEvent('copy', { clipboardData, cancelable: true }));
+      written.push(clipboardData.getData('text/html'));
+      return true;
+    });
+    copySelection(project, workspace, { c0: 0, r0: 0, c1: 3, r1: 1 }, [layer]);
+    vi.restoreAllMocks();
+    const block = await decodeBlock(readClipboardHtml(written[0]).phosphor);
+    const at = (col, row) => [0, 1, 2, 3].map((c) => indexesOf(project)[row * project.cols + col + c]);
+    const before = [at(0, 0), at(0, 1)];
+    await project.setBlankCanvas({ cols: 20, rows: 8 }); // the other tab's drawing
+    await settle(project);
+    const id = project.addLayer('cells');
+    workspace.pickLayer(id);
+    project.pasteSelection(block, 10, 0);
+    project.commitPending();
+    await settle(project);
+    expect([at(10, 0), at(10, 1)], layer).toEqual(before);
   }
 });
