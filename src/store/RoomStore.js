@@ -37,6 +37,7 @@ const MOST_ASKS = 5;   // the service lets no more wait at once
 const INFO_WITHIN_MS = 5000;   // what's at an address typed in answers /info within this, or nothing that answers is there
 const QUIT_HAND_OVER_MS = 16_000;   // a quitting host's hand-over: within the main process's 20 s wait, with time to end the room
 const MOVE_TRY_MS = 5000;   // a room that moved to another computer: each of its addresses goes live within this, or the next is tried
+const STANDBY_ABOVE = 20;   // standby starts this far above the remembered port, past the ports a host there may take
 const keptPort = () => {   // the port last hosted on, for this computer's service; none for the default
   try {
     return Number(localStorage.getItem(DESKTOP_PORT)) || undefined;
@@ -1218,13 +1219,14 @@ export const useRoomStore = defineStore('room', {
       this.letIn(ask, false);
     },
 
-    // Desktop: drawing, this computer's service waits on standby, and the host hears its addresses, to know it could
-    // hand the room here. It stops when drawing does, unless this computer is hosting by then.
+    // Desktop: drawing, this window's service waits on standby, and the host hears its addresses, to know it could
+    // hand the room here. It stops when drawing does, unless this window is hosting by then. It waits above the ports
+    // hosts take, so leaving the port off still reaches the room hosted here.
     async standBy() {
       this._standby = [];   // close() stops it from now on, started or not
       let service;
       try {
-        service = await desktop.startService({ port: keptPort(), mode: 'standby', sub: useSocialStore().claims?.sub });
+        service = await desktop.startService({ port: (keptPort() ?? DEFAULT_PORT) + STANDBY_ABOVE, mode: 'standby', sub: useSocialStore().claims?.sub });
       } catch (error) {
         console.warn('The room service didn\'t start.', error);   // the room goes on: this one can't be its next host
         this._standby = null;

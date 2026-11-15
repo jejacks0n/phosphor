@@ -30,7 +30,7 @@ export async function launchApp({ name = 'ann', port = 31401, env = {}, files = 
   const refused = [];
   page.on('console', (m) => { if (m.text().includes('Content Security Policy')) refused.push(m.text()); });
   await page.waitForLoadState('domcontentloaded');
-  // Its port as the one it last hosted on: Start a room offers it, and drawing in someone's room stands by on it.
+  // Its port as the one it last hosted on: Start a room offers it, and drawing in someone's room stands by 20 above it.
   await page.evaluate((port) => localStorage.setItem('phosphor-desktop-port', String(port)), port);
   let closed = false;
   const close = async () => {

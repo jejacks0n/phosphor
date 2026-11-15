@@ -1,12 +1,13 @@
 // The desktop app's main process: windows on the desktop build (dist-desktop/, served from app://phosphor/), each its
-// own page, and the room service, which a page starts, changes, asks about and stops through the preload
-// (window.phosphorDesktop). The service outlives a reload of the page. A quit asks every window with unsaved work
-// whether to leave, then tells every page, so a host can hand the room over, and goes on when they all say they're
-// ready or after 20 s; Stay in any window calls it off with nothing touched. Closing a window does the same for that
-// window alone; the last one quits the app, except on macOS. The menu bar (menu.js) is in the page's words and follows
-// the focused window, and the files it opens and saves are read and written here (files.js): a page writes only to a
-// file someone picked, opened or saved this session or before (Open Recent). A file opens in a window of its own when
-// the window it's for has a drawing (windows.js), and a project already open in a window brings that window forward.
+// own page with its own room service, which the page starts, changes, asks about and stops through the preload
+// (window.phosphorDesktop). A window's service outlives a reload of its page and stops when the window closes. A quit
+// asks every window with unsaved work whether to leave, then tells every page, so a host can hand the room over, and
+// goes on when they all say they're ready or after 20 s; Stay in any window calls it off with nothing touched. Closing
+// a window does the same for that window alone; the last one quits the app, except on macOS. The menu bar (menu.js) is
+// in the page's words and follows the focused window, and the files it opens and saves are read and written here
+// (files.js): a page writes only to a file someone picked, opened or saved this session or before (Open Recent). A file
+// opens in a window of its own when the window it's for has a drawing (windows.js), and a project already open in a
+// window brings that window forward.
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -35,8 +36,6 @@ const returnWithinMs = Number(process.env.PHOSPHOR_RETURN_WITHIN_MS);
 // standard and secure: a stable origin for IndexedDB, and a secure context for crypto.subtle.
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 
-const secret = randomBytes(32).toString('base64url');   // the host's own window proves itself to the service with it
-let service = null;   // the room service, as a promise
 let quitReady = false;   // every window has said it may go: the quit goes on without asking again
 let quitting = null;   // the quit's asking and handing over, while it lasts
 let labels = null;   // the menu's words, from a page: no menu of the app's own until one says them
@@ -45,11 +44,12 @@ let recent = null;   // the recently opened files (files.js), once the user data
 const granted = new Set();   // the files the pages may save over: picked, opened or saved
 const launchFiles = [];   // files to open (double-clicked, on the command line) before the first window exists
 
-// The open windows by their page's webContents id: { id, win, menuState, title, file (its project's path, or null),
-// filesReady (its page takes files: it says so once loaded, and a reload starts over), pending (files and commands
-// for it until then), claimed (a file is on its way to it, until its page says it has a drawing), leaving (a quit or
-// its close has asked and handed over: it goes without asking again), closing (its close asking, while it does),
-// handingOver (its page told of the quit, until it says it's ready or the window closes), ready (that promise's
+// The open windows by their page's webContents id: { id, win, secret (the window's page proves itself to its room
+// service with it), service (its room service, as a promise, or null), menuState, title, file (its project's path, or
+// null), filesReady (its page takes files: it says so once loaded, and a reload starts over), pending (files and
+// commands for it until then), claimed (a file is on its way to it, until its page says it has a drawing), leaving (a
+// quit or its close has asked and handed over: it goes without asking again), closing (its close asking, while it
+// does), handingOver (its page told of the quit, until it says it's ready or the window closes), ready (that promise's
 // resolve) }.
 const windows = new Map();
 const focusOrder = [];   // the windows' ids, the last focused last
@@ -70,35 +70,37 @@ const portFrom = (port) => {
   throw new Error(`No port ${port}`);
 };
 
-async function startService({ port, mode, sub } = {}) {
+// A window's room service: each window starts, changes, asks about and stops its own, and only its own.
+async function startService(entry, { port, mode, sub } = {}) {
   if (mode !== 'host' && mode !== 'standby') throw new Error(`No mode ${mode}`);
   port = portFrom(port);
-  const running = !!service;
+  const { secret } = entry;
+  const running = !!entry.service;
   if (!running) {
     const starting = createRoomService({ port, mode, owner: { sub }, secret });
-    service = starting;
-    starting.catch(() => { if (service === starting) service = null; });
+    entry.service = starting;
+    starting.catch(() => { if (entry.service === starting) entry.service = null; });
   }
   // A running service keeps its port: only its mode and owner change.
-  const started = await service;
+  const started = await entry.service;
   if (running) started.set({ mode, owner: { sub } });
   return { port: started.port, addresses: reachableAddresses(undefined, started.port), secret };
 }
 
 // The live mode: after a hand-over the service goes back to standby on its own. The room's password, for a host back
 // from a reload to hand on (the page keeps it in memory alone).
-async function serviceInfo() {
+async function serviceInfo(entry) {
   try {
-    const running = await service;
-    return running ? { port: running.port, addresses: reachableAddresses(undefined, running.port), secret, mode: running.mode(), password: running.room()?.password ?? null } : null;
+    const running = await entry.service;
+    return running ? { port: running.port, addresses: reachableAddresses(undefined, running.port), secret: entry.secret, mode: running.mode(), password: running.room()?.password ?? null } : null;
   } catch {
     return null;
   }
 }
 
-async function stopService() {
-  const stopping = service;
-  service = null;
+async function stopService(entry) {
+  const stopping = entry.service;
+  entry.service = null;
   await stopping?.then((running) => running.close(), () => {});
 }
 
@@ -322,7 +324,7 @@ function openWindow({ files = [] } = {}) {
     },
   });
   const { id } = win.webContents;
-  const entry = { id, win, menuState: { ...IDLE }, title: 'Phosphor', file: null, filesReady: false, pending: files.map((file) => ({ file })), claimed: files.length > 0 };
+  const entry = { id, win, secret: randomBytes(32).toString('base64url'), service: null, menuState: { ...IDLE }, title: 'Phosphor', file: null, filesReady: false, pending: files.map((file) => ({ file })), claimed: files.length > 0 };
   windows.set(id, entry);
   focusOrder.push(id);
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -367,6 +369,7 @@ function openWindow({ files = [] } = {}) {
   });
   win.on('closed', () => {
     windows.delete(id);
+    stopService(entry);   // in case its page didn't
     focusOrder.splice(focusOrder.indexOf(id), 1);
     entry.ready?.();   // a window gone is ready
     for (const [request, { entry: asked, resolve }] of unsavedAsked) {
@@ -417,9 +420,9 @@ else {
     });
   });
 
-  handle('phosphor:start-service', (_entry, options) => startService(options));
-  handle('phosphor:service-info', () => serviceInfo());
-  handle('phosphor:stop-service', () => stopService());
+  handle('phosphor:start-service', startService);
+  handle('phosphor:service-info', serviceInfo);
+  handle('phosphor:stop-service', stopService);
   handle('phosphor:set-menu', setMenu);
   handle('phosphor:open-file', openFile);
   handle('phosphor:save-project', saveProject);

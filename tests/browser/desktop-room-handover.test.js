@@ -101,12 +101,28 @@ async function hosting() {
   return socket;
 }
 
+// Above the 20 ports hosts take from the remembered one, so a window drawing in a room never takes the port someone
+// reaches this computer by with no port typed.
+test('standby starts 20 above the remembered port', async () => {
+  localStorage.setItem('phosphor-desktop-port', '31401');
+  await joined();
+  drawingNow();
+  await vi.waitFor(() => expect(desktop.startService).toHaveBeenCalledWith({ port: 31421, mode: 'standby', sub: social.claims.sub }));
+  room.leave();
+
+  localStorage.removeItem('phosphor-desktop-port');   // none kept: above the default
+  desktop.startService.mockClear();
+  await joined();
+  drawingNow();
+  await vi.waitFor(() => expect(desktop.startService).toHaveBeenCalledWith({ port: 31357, mode: 'standby', sub: social.claims.sub }));
+});
+
 test('becoming an artist starts standby and sends addresses', async () => {
   localStorage.setItem('phosphor-desktop-port', '4100');   // the port last hosted on
   const socket = await joined();
   expect(desktop.startService).not.toHaveBeenCalled();   // watching needs no service
   drawingNow();
-  await vi.waitFor(() => expect(desktop.startService).toHaveBeenCalledWith({ port: 4100, mode: 'standby', sub: social.claims.sub }));
+  await vi.waitFor(() => expect(desktop.startService).toHaveBeenCalledWith({ port: 4120, mode: 'standby', sub: social.claims.sub }));
   await vi.waitFor(() => expect(socket.sent.at(-1)).toEqual({ type: 'addresses', list: MINE }));
 
   // Put back to watching: the service stops.
