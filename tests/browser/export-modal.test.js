@@ -79,6 +79,43 @@ test('export button calls exportFile with the right ext and closes', async () =>
   }
 });
 
+test('a GIF shows a progress bar of the frames written while it exports, and an ANSI format none', async () => {
+  const { project } = await drawing();
+  project.animate = true;
+  project.addFrame('blank');
+  await settle(project);
+  let tell, finish;
+  vi.spyOn(project, 'exportAnimation').mockImplementation((format, { progress }) => { tell = progress; return new Promise((resolve) => { finish = resolve; }); });
+  const { closed, unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    expect(modal.querySelector('.format-btn.selected').textContent).toContain('GIF');
+    expect(modal.querySelector('progress')).toBeNull();
+    modal.querySelector('button.primary').click();
+    await nextTick();
+    expect(modal.querySelector('progress').value).toBe(0);
+    tell(0.5);
+    await nextTick();
+    expect(modal.querySelector('progress').value).toBe(0.5);
+    expect(modal.querySelector('progress').getAttribute('aria-label')).toBe('Exporting…');
+    finish();
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+  } finally {
+    unmount();
+  }
+  vi.spyOn(project, 'exportAnimation').mockResolvedValue();
+  const again = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    await pick(modal, 'Cast');
+    modal.querySelector('button.primary').click();
+    await nextTick();
+    expect(modal.querySelector('progress')).toBeNull();
+  } finally {
+    again.unmount();
+  }
+});
+
 test('Enter in the file name exports, as it saves in Save project', async () => {
   const { project } = await drawing();
   const exported = vi.spyOn(project, 'exportFile').mockResolvedValue();

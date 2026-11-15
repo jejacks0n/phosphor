@@ -396,7 +396,8 @@ Alt+`,` while typing in Edit Mode, and Bake with the sliders moved to see every 
 ### 28. Export a GIF
 - Does: presses Export .gif in the left column, keeps the name and saves; checks the file.
 - Expects: Export .gif shows only with more than one frame and Animate on; the dialog says "Looping animated GIF
-  rendered in your current display font"; the download is a GIF (`GIF89a`) of the art as it plays, the guide not drawn
+  rendered in your current display font"; while it exports, a bar beside the buttons fills as frames are written;
+  the download is a GIF (`GIF89a`) of the art as it plays, the guide not drawn
   and the ghost absent; it saves within the `file` budget ([Exporting](../../animation.md#exporting)).
 - Probes: `again`: export twice and check the names differ; `back-out`: change the name, press Escape, reopen;
   `extremes`: name it with emoji and slashes.

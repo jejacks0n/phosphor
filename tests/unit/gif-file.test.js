@@ -1,5 +1,6 @@
 import { test, expect } from 'vitest';
-import { gifBytes, gifDelay, yieldToPage } from '../../src/lib/GifFile.js';
+import { gifBytes, gifWriter, indexer } from '../../src/lib/GifEncoder.js';
+import { gifDelay } from '../../src/lib/GifFile.js';
 
 // The file read back, as a decoder would: LZW included.
 function readGif(bytes) {
@@ -109,17 +110,15 @@ test('delays come from fps and holds, in hundredths of a second', () => {
   expect(gif.images.map((image) => image.delay)).toEqual([13, 500]);
 });
 
-test('between frames the page is given a turn: with scheduler.yield where there is one, else a timeout', async () => {
-  const had = Object.getOwnPropertyDescriptor(globalThis, 'scheduler');
-  try {
-    let yielded = 0;
-    Object.defineProperty(globalThis, 'scheduler', { value: { yield: async () => { yielded++; } }, configurable: true });
-    await yieldToPage();
-    expect(yielded).toBe(1);
-    Object.defineProperty(globalThis, 'scheduler', { value: undefined, configurable: true });
-    await expect(yieldToPage()).resolves.toBeUndefined();
-  } finally {
-    if (had) Object.defineProperty(globalThis, 'scheduler', had);
-    else delete globalThis.scheduler;
-  }
+test('frames written one at a time make the same file as all at once', () => {
+  const frames = [{ pixels: noise(40, 4), palette: palette(4), delayCs: 5 }, { pixels: noise(40, 3), palette: palette(4), delayCs: 9 }];
+  const writer = gifWriter(8, 5);
+  for (const { pixels, palette: colors, delayCs } of frames) writer.frame(pixels, colors, delayCs);
+  expect([...writer.finish()]).toEqual([...gifBytes(8, 5, frames)]);
+});
+
+test('a pixel is indexed as the nearest color of the palette', () => {
+  const index = indexer([{ r: 0, g: 0, b: 0 }, { r: 255, g: 0, b: 0 }, { r: 0, g: 0, b: 255 }]);
+  const rgba = Uint8ClampedArray.from([10, 10, 10, 255, 200, 30, 0, 255, 20, 0, 180, 255, 0, 0, 0, 0]);
+  expect([...index(rgba)]).toEqual([0, 1, 2, 0]);
 });

@@ -22,6 +22,22 @@ test('the desktop app opens an image and shows the ANSI tab', async () => {
   expect(launched.refused).toEqual([]);
 });
 
+test('a GIF exports with its worker loaded from app://phosphor/', async () => {
+  launched = await launchApp();
+  const { page } = launched;
+  await openImage(page);
+  await store(page, 'project', (p) => { p.animate = true; p.addFrame('blank'); });
+  const head = await store(page, 'project', async (p) => {
+    let blob;
+    URL.createObjectURL = (made) => { blob = made; return 'about:blank'; };
+    HTMLAnchorElement.prototype.click = () => {};
+    await p.exportAnimation('gif', { filename: 'loop' });
+    return String.fromCharCode(...new Uint8Array(await blob.arrayBuffer()).subarray(0, 6));
+  });
+  expect(head).toBe('GIF89a');
+  expect(launched.refused).toEqual([]);
+});
+
 test('nothing leaves the app', async () => {
   launched = await launchApp();
   const { page } = launched;

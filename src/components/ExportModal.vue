@@ -31,6 +31,7 @@ const selected = computed(() => FORMATS.find(f => f.id === selectedId.value));
 const name = ref(timestamped(project.filename ?? 'untitled'));
 const smooth = ref(workspace.smoothText); // default follows the workspace setting, like SaveDialog
 const saving = ref(false);
+const progress = ref(null); // a GIF's share of frames written while it exports
 const problem = ref('');
 const stem = computed(() => fileStem(name.value, selected.value.ext));
 
@@ -64,14 +65,16 @@ async function doExport() {
   if (!stem.value || saving.value) return;
   saving.value = true;
   problem.value = '';
+  if (selectedId.value === 'gif') progress.value = 0;
   try {
-    if (selected.value.animated) await project.exportAnimation(selectedId.value, { filename: stem.value });
+    if (selected.value.animated) await project.exportAnimation(selectedId.value, { filename: stem.value, progress: (share) => { progress.value = share; } });
     else await project.exportFile(selectedId.value, { filename: stem.value, smooth: smooth.value });
     emit('close');
   } catch (error) {
     console.warn('Could not export', error);
     problem.value = error.userMessage ?? t('save.saveFailed');
     saving.value = false;
+    progress.value = null;
   }
 }
 
@@ -186,6 +189,7 @@ function cancel() {
             <span class="filename-ext">.{{ selected.ext }}</span>
           </div>
           <div class="actions">
+            <progress v-if="progress !== null" :value="progress" :aria-label="t('common.exporting')"/>
             <button type="button" class="cancel" @click="cancel">{{ t('common.cancel') }}</button>
             <button type="submit" class="primary" :disabled="!stem || saving">
               {{ saving ? t('common.exporting') : t('export.modal.exportBtn', { name: t(`export.modal.formats.${selectedId}.name`) }) }}
@@ -395,8 +399,24 @@ span.filename-ext {
 div.actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 8px;
 }
+
+/* Beside the buttons, so nothing moves when it shows. */
+progress {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  appearance: none;
+  border: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+progress::-webkit-progress-bar { background: var(--surface-3); }
+progress::-webkit-progress-value { background: var(--accent-hot); }
+progress::-moz-progress-bar { background: var(--accent-hot); }
 
 button.cancel {
   padding: 6px 4px;

@@ -1,35 +1,44 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
-import { gifBytes, gifFrames } from '@/lib/GifFile.js';
+import { drawnCells, gifFile } from '@/lib/GifFile.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
-test('a browser decodes the export and its first frame matches the canvas', async () => {
+// Each frame of the file as a browser decodes it.
+async function decodedFrames(bytes, count) {
+  const decoder = new ImageDecoder({ data: bytes, type: 'image/gif' });
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const { image } = await decoder.decode({ frameIndex: i });
+    const canvas = new OffscreenCanvas(image.displayWidth, image.displayHeight), ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    image.close();
+    out.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+  }
+  decoder.close();
+  return out;
+}
+
+test('the worker writes a GIF a browser decodes, each frame matching the canvas, telling progress as it goes', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   project.typeAt(1, 1, 'A', { fg: '#ffee00', bg: '#0044aa' });
   project.commitEdit();
   project.addFrame('wipe');
   await settle(project);
-  const frames = await project.animationCells();
-  const shot = await gifFrames(frames, project.cols, 4, [13, 13], { smooth: useWorkspaceStore().smoothText });
-  const blob = new Blob([gifBytes(shot.width, shot.height, shot.frames)], { type: 'image/gif' });
-  const decoded = await createImageBitmap(blob);
-  expect([decoded.width, decoded.height]).toEqual([shot.width, shot.height]);
-  const canvas = new OffscreenCanvas(shot.width, shot.height), ctx = canvas.getContext('2d');
-  ctx.drawImage(decoded, 0, 0);
-  const { data } = ctx.getImageData(0, 0, shot.width, shot.height);
-  const { pixels, palette } = shot.frames[0];
-  let worst = 0;
-  for (let i = 0; i < pixels.length; i++) {
-    const c = palette[pixels[i]];
-    worst = Math.max(worst, Math.abs(data[4 * i] - c.r), Math.abs(data[4 * i + 1] - c.g), Math.abs(data[4 * i + 2] - c.b));
-  }
-  expect(worst).toBeLessThanOrEqual(1);
-  // And the picture is the art: the typed cell's background is there.
-  const blue = palette.findIndex((c) => c.r === 0x00 && c.g === 0x44 && c.b === 0xaa);
-  expect(blue).toBeGreaterThanOrEqual(0);
-  expect(pixels.includes(blue)).toBe(true);
-  expect(shot.frames[1].pixels.includes(blue)).toBe(false);
+  const frames = await project.animationCells(), smooth = useWorkspaceStore().smoothText, told = [];
+  const bytes = await gifFile(frames, project.cols, 4, [13, 13], { smooth, progress: (share) => told.push(share) });
+  expect(told).toEqual([0.5, 1]);
+  const drawn = await drawnCells(project.cols, 4, { smooth }, ({ width, height, rgba }) => ({ width, height, frames: frames.map((cells) => rgba(cells).slice()) }));
+  const decoded = await decodedFrames(bytes, 2);
+  decoded.forEach(({ width, height, data }, f) => {
+    expect([width, height]).toEqual([drawn.width, drawn.height]);
+    let worst = 0;
+    for (let i = 0; i < data.length; i += 4) for (let c = 0; c < 3; c++) worst = Math.max(worst, Math.abs(data[i + c] - drawn.frames[f][i + c]));
+    expect(worst).toBeLessThanOrEqual(1); // the art has fewer than 256 colors, so the palette holds each
+  });
+  // And the picture is the art: the typed cell's background is in the first frame, wiped from the second.
+  const hasBlue = ({ data }) => { for (let i = 0; i < data.length; i += 4) if (data[i] === 0x00 && data[i + 1] === 0x44 && data[i + 2] === 0xaa) return true; return false; };
+  expect(decoded.map(hasBlue)).toEqual([true, false]);
 });
 
 test('an export too large says so', async () => {
@@ -38,5 +47,5 @@ test('an export too large says so', async () => {
   project.addFrame('blank');
   await settle(project);
   const frames = await project.animationCells();
-  await expect(gifFrames(frames, project.cols, 4, [2, 2], { tooLarge: () => { throw new Error('too large'); } })).rejects.toThrow('too large');
+  await expect(gifFile(frames, project.cols, 4, [2, 2], { tooLarge: () => { throw new Error('too large'); } })).rejects.toThrow('too large');
 });
