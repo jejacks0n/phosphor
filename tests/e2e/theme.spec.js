@@ -34,19 +34,23 @@ test('Dark to begin with, even on a light computer; System follows the computer;
   expect(await background(page)).toBe('rgb(26, 26, 26)');
 });
 
-test('each choice is an icon, named for screen readers and on hover, in one row with the language, as tall as it', async ({ page }) => {
+test('each choice is an icon, named for screen readers and on hover, in one row with the language as wide as the buttons above, a half each, as tall as it', async ({ page }) => {
   await page.goto('/');
   for (const name of ['Dark', 'Light', 'System']) {
     const choice = picker(page).locator('label', { has: page.getByRole('radio', { name }) });
     await expect(choice).toHaveAttribute('title', name);
     await expect(choice).toHaveText('');
-    expect(await choice.locator('svg').boundingBox()).toMatchObject({ width: 12, height: 12 });
+    expect(await choice.locator('svg').boundingBox()).toMatchObject({ width: 13, height: 13 });
   }
   await picker(page).scrollIntoViewIfNeeded();
   const language = await page.getByRole('combobox', { name: 'Language' }).boundingBox();
   const themes = await picker(page).boundingBox();
   expect([themes.y, themes.height]).toEqual([language.y, language.height]);
   expect(themes.x).toBeGreaterThan(language.x + language.width);
+  const newProject = await page.getByRole('button', { name: 'New project' }).boundingBox();
+  expect(language.x).toBeCloseTo(newProject.x, 0);
+  expect(themes.x + themes.width).toBeCloseTo(newProject.x + newProject.width, 0);
+  expect(themes.width).toBeCloseTo(language.width, 0);
 });
 
 test('the picker is one stop for Tab, and the arrow keys move the choice', async ({ page }) => {
