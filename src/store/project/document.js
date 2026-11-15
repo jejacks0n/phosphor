@@ -65,12 +65,16 @@ function newLayers(project) {
   project.layers = withChars(layersFromOld(null, { hasShapes: false }), project.baseChars);
 }
 
+// A file's name as the document's: its stem, and its extension apart, lowercase (null with none).
+const nameOf = ({ name }) => ({ filename: name.replace(/\.[^/.]+$/, ''), fileExt: name.match(/\.([^/.]+)$/)?.[1].toLowerCase() ?? null });
+const PROJECT_EXT = PROJECT_EXTENSION.slice(1);
+
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
 // A stack file's layers (stack) come with each cells layer's parts (layerParts) and paint (layerPaint), by id.
-function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, stack, layerParts, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels, layerPaint }, { filename, documentId, fileId }) {
+function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, layers, stack, layerParts, erasedCells, migrated, animation, framesLost }, { image, paint, basePixels, layerPaint }, { filename, fileExt = null, documentId, fileId }) {
   const own = this.layers; // replaceImage starts them over
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
-  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
+  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, fileExt, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
   try {
     // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
     // files: paint at the image's size or the grid's.
@@ -177,7 +181,7 @@ export const documentActions = {
     this.replaceImage(image, buffer, {
       ...lockedGrid(this.cols, ratio),
       ...sauceDefaults(),
-      filename: file.name.replace(/\.[^/.]+$/, ''),
+      ...nameOf(file),
       savedToFile: false,
     });
     this.markSaved();
@@ -221,7 +225,7 @@ export const documentActions = {
       ...settingDefaults(),
       cols: art.cols,
       rows: 2 * art.rows,
-      filename: file.name.replace(/\.[^/.]+$/, ''),
+      ...nameOf(file),
       quantize: art.palette,
       renderStyle: 'ansi',
       savedToFile: false,
@@ -258,7 +262,7 @@ export const documentActions = {
   async openSvgFile(file) {
     const text = await file.text(), refusal = svgRefusal(readSvgFile(text), MOST_SHAPES);
     if (refusal) return void toast(refusal); // the drawing stays
-    if (!(await this.setBlankCanvas({ cols: DEFAULT_COLS, rows: DEFAULT_ROWS, filename: file.name.replace(/\.[^/.]+$/, '') }))) return;
+    if (!(await this.setBlankCanvas({ cols: DEFAULT_COLS, rows: DEFAULT_ROWS, ...nameOf(file) }))) return;
     useWorkspaceStore().editorTab = 'vector';
     this.addSvg(text);
     this.asOpened = true;
@@ -278,6 +282,7 @@ export const documentActions = {
       baseScale: null, // a loaded file's comes in the patch
       imageIsWorkingCopy: false,
       asOpened: false, // an opened file says so once it's all there
+      fileExt: null,
       ...patch,
       image: shallowRef(image),
       imageBuffer,
@@ -317,6 +322,7 @@ export const documentActions = {
       asOpened: false,
       fit: null,
       filename: null,
+      fileExt: null,
       cells: [],
       composedCells: [],
       lowerCells: [],
@@ -372,10 +378,12 @@ export const documentActions = {
       if (!saved) return false;
       this.filePath = saved;
       this.rename(saved.split(/[\\/]/).pop().slice(0, -PROJECT_EXTENSION.length));
+      this.fileExt = PROJECT_EXT;
       Object.assign(this, { savedSettings: settings, savedEditVersion: version, savedToFile: true });
       return true;
     }
     this.rename(filename); // once there's a file to give the name to
+    this.fileExt = PROJECT_EXT;
     downloadBlob(blob, `${this.filename}${PROJECT_EXTENSION}`);
     this.markSaved();
     this.savedToFile = true;
@@ -422,7 +430,7 @@ export const documentActions = {
     if (!file || !isProjectFile(file.name)) return;
 
     try {
-      await this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length) });
+      await this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length), fileExt: PROJECT_EXT });
       this.savedToFile = true;
       this.asOpened = true;
       this.filePath = file.desktopPath ?? null; // desktop: where it was opened from, for Save to write over
@@ -437,7 +445,7 @@ export const documentActions = {
   // document, a copy. Throws, for the caller to decide what that means.
   async restoreDocument({ record, imageBuffer }, { documentId }) {
     const parts = await readProject(new Blob([record.rest]));
-    await this.openParts({ ...parts, imageBuffer }, { filename: record.filename, documentId });
+    await this.openParts({ ...parts, imageBuffer }, { filename: record.filename, fileExt: record.fileExt, documentId });
     this.savedToFile = record.savedToFile;
     if (record.dirty) {
       this.savedSettings = record.savedSettings;
@@ -501,6 +509,7 @@ export const documentActions = {
       blob = new Blob([gifBytes(shot.width, shot.height, shot.frames)], { type: 'image/gif' });
     }
     this.rename(filename);
+    this.fileExt = ext;
     downloadBlob(blob, `${this.filename}.${ext}`);
   },
 
@@ -554,6 +563,7 @@ export const documentActions = {
         ...opts,
       });
     this.rename(filename); // once there's a file to give the name to
+    this.fileExt = ext;
     downloadBlob(blob, `${this.filename}.${ext}`);
   },
 

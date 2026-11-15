@@ -1,9 +1,10 @@
 <script setup>
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
-import { formatMediumDateTime } from '@/i18n/format';
+import { formatShortDateTime } from '@/i18n/format';
 
-defineProps({
+const props = defineProps({
   ready: { type: Boolean, default: true }, // nothing until it's known there's nothing to restore, so this doesn't flash
   recent: { type: Array, default: () => [] },
   openRecent: Function,
@@ -14,6 +15,24 @@ const { t } = useI18n();
 const elsewhere = import.meta.env.VITE_DESKTOP === '1' ? 'openElsewhereWindow' : 'openElsewhere';
 
 const MAX_RECENT = 5;
+// A name longer than this is cut in the middle, keeping its end (the time a save is named for, the extension).
+// ponytail: a count of characters, about two lines at a phone's width; measure the text if names come out ragged.
+const MAX_NAME = 80, KEPT_END = 30;
+
+const rows = computed(() => {
+  const shown = props.recent.slice(0, MAX_RECENT).map((row) => {
+    const name = row.fileExt ? `${row.filename}.${row.fileExt}` : row.filename;
+    const status = row.asOpened || !(row.dirty || row.savedToFile) ? 'unchanged' : row.dirty ? 'changed' : 'saved';
+    return { ...row, name, status, minute: `${name}\n${Math.floor(row.editedAt / 60_000)}` };
+  });
+  // Two rows of the same name in the same minute show their seconds, so no two read the same.
+  const twins = (row) => shown.filter((other) => other.minute === row.minute).length > 1;
+  return shown.map((row) => ({
+    ...row,
+    shortName: row.name.length > MAX_NAME ? `${row.name.slice(0, MAX_NAME - KEPT_END - 1)}…${row.name.slice(-KEPT_END)}` : row.name,
+    when: formatShortDateTime(row.editedAt, { seconds: twins(row) }),
+  }));
+});
 </script>
 
 <template>
@@ -35,16 +54,19 @@ const MAX_RECENT = 5;
     <section v-if="ready && recent.length" class="recent">
       <h2 id="recent-heading">{{ t('zero.recentHeading') }}</h2>
       <ul aria-labelledby="recent-heading">
-        <li v-for="row in recent.slice(0, MAX_RECENT)" :key="row.id">
-          <span class="name" :title="row.filename">{{ row.filename }}</span>
-          <time :datetime="new Date(row.editedAt).toISOString()">{{ formatMediumDateTime(row.editedAt) }}</time>
-          <button
-            :disabled="row.openElsewhere"
-            :aria-label="row.openElsewhere ? t(`zero.${elsewhere}Aria`, { name: row.filename }) : t('zero.openAria', { name: row.filename })"
-            @click="openRecent(row.id)"
-          >
-            {{ row.openElsewhere ? t(`zero.${elsewhere}`) : t('zero.open') }}
-          </button>
+        <li v-for="row in rows" :key="row.id">
+          <span class="name" :title="row.name">{{ row.shortName }}</span>
+          <span class="about">
+            <time :datetime="new Date(row.editedAt).toISOString()">{{ row.when }}</time>
+            · <span class="status">{{ t(`zero.status.${row.status}`) }}</span>
+            <button
+              :disabled="row.openElsewhere"
+              :aria-label="row.openElsewhere ? t(`zero.${elsewhere}Aria`, { name: row.name }) : t('zero.openAria', { name: row.name })"
+              @click="openRecent(row.id)"
+            >
+              {{ row.openElsewhere ? t(`zero.${elsewhere}`) : t('zero.open') }}
+            </button>
+          </span>
         </li>
       </ul>
     </section>
@@ -159,24 +181,48 @@ section.recent ul {
   list-style: none;
 }
 
+/* One line when the name fits beside the rest; otherwise the name takes its own line (two at most) and the time,
+   status and Open go under it. */
 section.recent li {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px 10px;
   font-size: 13px;
   color: var(--text-muted);
 }
 
 section.recent span.name {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   color: var(--text);
 }
 
+section.recent span.about {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+section.recent span.about button {
+  margin-left: auto;
+}
+
 @media (max-width: 768px) {
+  section.recent li + li {
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+  }
+
   div.logo {
     display: block;
   }

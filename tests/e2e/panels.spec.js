@@ -1,7 +1,7 @@
 import { test, expect } from './support.js';
 import { readFile } from 'node:fs/promises';
 import { execSync } from 'node:child_process';
-import { openApp, store, settled, fixture, cellPoint } from './support.js';
+import { openApp, store, settled, fixture } from './support.js';
 
 // The smaller pieces of the interface: About, the help tooltips, the dropdown menus, the status
 // bar, dropping a file, and starting a new project.
@@ -103,20 +103,39 @@ test('the Actions menu (narrow screens) opens, and closes on Escape and outside 
   await expect(menu).toBeHidden();
 });
 
-test('the status bar scrolls sideways when it doesn\'t fit, and nothing in it is cut short', async ({ page }) => {
-  await page.setViewportSize({ width: 800, height: 800 });
+test('on a phone the status bar wraps its readout a group at a time, nothing cut, and only its buttons scroll sideways', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await openApp(page);
-  await store(page, 'workspace', (w) => { w.sidePanelFolded = true; });   // the side panel would take the room the art needs
   await page.keyboard.press('t'); // Edit Mode, with its cursor's cell: the most there is to show
-  const at = await cellPoint(page, 40, 10); // the middle: the narrow view shows only part of the art
-  await page.mouse.click(at.x, at.y);
+  await store(page, 'workspace', (w) => { w.textCursor = { col: 15, row: 19 }; });
   const bar = page.locator('footer.ansi-status');
-  await expect(bar).toContainText('Col 41 Row 11');
-  expect(await bar.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true); // it doesn't fit
-  expect(await bar.evaluate((el) => [...el.children].every((c) => c.scrollWidth <= c.clientWidth))).toBe(true); // nothing squeezed
-  await bar.hover();
-  await page.mouse.wheel(200, 0);
-  await expect.poll(() => bar.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  await expect(bar).toContainText('Col 16 Row 20');
+  await expect(bar).toContainText('BG');
+  const layout = () => bar.evaluate((el) => {
+    const box = el.getBoundingClientRect();
+    const groups = [...el.children].filter((c) => !c.classList.contains('strip'));
+    return {
+      height: Math.round(box.height),
+      lines: new Set(groups.map((c) => Math.round(c.getBoundingClientRect().top))).size,
+      whole: groups.every((c) => c.scrollWidth <= c.clientWidth && c.getBoundingClientRect().right <= box.right),
+    };
+  });
+  const before = await layout();
+  expect(before.lines).toBeGreaterThan(1);
+  expect(before.whole).toBe(true);
+  expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true); // the bar itself doesn't scroll
+
+  const strip = bar.locator('.strip');
+  expect(await strip.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  await expect(strip).toHaveClass(/more/); // faded at its edge
+  await strip.hover();
+  await page.mouse.wheel(400, 0);
+  await expect.poll(() => strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  await expect(strip).not.toHaveClass(/more/); // at its end
+
+  await store(page, 'workspace', (w) => { w.textCursor = { col: 0, row: 0 }; }); // fewer digits: the bar doesn't change
+  await expect(bar).toContainText('Col 1 Row 1');
+  expect(await layout()).toEqual(before);
 });
 
 test('dropping an image onto the editor loads it', async ({ page }) => {

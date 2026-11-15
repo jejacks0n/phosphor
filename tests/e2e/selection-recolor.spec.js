@@ -52,3 +52,24 @@ test('Enter on a focused Set FG presses it and keeps the selection', async ({ pa
   expect(await store(page, 'workspace', (w) => w.selection !== null)).toBe(true); // kept
   expect([await base(page, 10, 5), await base(page, 12, 5)]).toEqual(['#ff00ff', '#ff00ff']);
 });
+
+test('with Select and nothing selected, Set FG and Set BG are there and off; a click selects its cell and they recolor it', async ({ page }) => {
+  await openApp(page);
+  await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; w.editBgColor = '#008080'; w.editBgNone = false; });
+  await page.keyboard.press('m');
+  const row = page.locator('.secondary-row .tool-setting-group').first();
+  await expect(row).toContainText('Click or drag to select, or:');
+  const setFg = page.getByRole('button', { name: 'Set FG', exact: true }), setBg = page.getByRole('button', { name: 'Set BG', exact: true });
+  await expect(setFg).toBeDisabled();
+  await expect(setBg).toBeDisabled();
+  await expect(setFg).toHaveAttribute('title', 'Set FG: select cells first');
+
+  const at = await cellPoint(page, 6, 3);
+  await page.mouse.click(at.x, at.y);
+  expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 6, r0: 3, c1: 6, r1: 3 });
+  await expect(row.locator('button').first()).toHaveText('Set FG'); // first on the row, where it was while off
+  await setBg.click();
+  await setFg.click();
+  expect([await base(page, 6, 6), await base(page, 6, 7)]).toEqual(['#008080', '#ff00ff']);
+  expect(await base(page, 7, 7)).not.toBe('#ff00ff'); // the cell beside it is left alone
+});

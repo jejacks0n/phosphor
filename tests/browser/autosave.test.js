@@ -1111,8 +1111,8 @@ test('no id: nothing is restored, and recent lists the documents, newest first, 
     const { project } = await mounted();
     expect(project.image).toBe(null);
     expect(autosave.recent.value).toEqual([
-      { id: 'newer', filename: 'newer', editedAt: 2, openElsewhere: true },
-      { id: 'older', filename: 'older', editedAt: 1, openElsewhere: false },
+      expect.objectContaining({ id: 'newer', filename: 'newer', editedAt: 2, openElsewhere: true }),
+      expect.objectContaining({ id: 'older', filename: 'older', editedAt: 1, openElsewhere: false }),
     ]);
   } finally {
     release();
@@ -1895,6 +1895,27 @@ test.each([
   await pass(SAVE_AFTER_MS);
   const [kept] = await openedVersions(id);
   expect((await readVersion(kept.id)).record.rest).toEqual(record.rest);
+});
+
+test('the record keeps the extension the drawing came with, then the one it last went out as, and a refresh brings it back', async () => {
+  const { project } = await mounted();
+  await project.openArtFile(textFile());
+  const id = project.documentId;
+  await autosave.flush();
+  const { editedAt } = (await readLatest(id)).record;
+  expect((await readLatest(id)).record).toMatchObject({ filename: 'hello', fileExt: 'txt' });
+  await vi.advanceTimersByTimeAsync(1000);
+  await project.exportFile('ans');
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record).toMatchObject({ fileExt: 'ans', editedAt, asOpened: true }); // written, but no change
+  await project.saveProject();
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(id)).record.fileExt).toBe('phosphor');
+  await leave();
+
+  const back = await mounted();
+  expect(back.project.documentId).toBe(id);
+  expect(back.project.fileExt).toBe('phosphor');
 });
 
 test('a blank canvas has no As opened: there is nothing to go back to', async () => {

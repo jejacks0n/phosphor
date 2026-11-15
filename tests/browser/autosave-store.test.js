@@ -149,15 +149,15 @@ test('an image goes when the last thing using it does', async () => {
   expect(await readLatest('a')).toBeNull();
 });
 
-test('listDocuments counts a document, its versions and each of its images once', async () => {
+test('listDocuments counts a document, its versions and each of its images once, and says where each stands', async () => {
   await save('a', sized(100, 1), { rest: sized(10, 0), editedAt: 1 });
   await addVersion('a', { reason: 'timed', savedAt: 1 });
   await save('a', sized(50, 2), { rest: sized(10, 0), editedAt: 2 });
   await addVersion('a', { reason: 'timed', savedAt: 2 });
-  await save('b', sized(5, 3), { rest: sized(1, 0), editedAt: 3 });
+  await save('b', sized(5, 3), { rest: sized(1, 0), editedAt: 3, fileExt: 'ans', dirty: false, savedToFile: true, asOpened: true });
   expect(await listDocuments()).toEqual([
-    { id: 'b', filename: 'b.phosphor', editedAt: 3, bytes: 6 },
-    { id: 'a', filename: 'a.phosphor', editedAt: 2, bytes: 10 + 10 + 10 + 100 + 50 },
+    { id: 'b', filename: 'b.phosphor', fileExt: 'ans', editedAt: 3, dirty: false, savedToFile: true, asOpened: true, bytes: 6 },
+    { id: 'a', filename: 'a.phosphor', fileExt: null, editedAt: 2, dirty: true, savedToFile: false, bytes: 10 + 10 + 10 + 100 + 50 },
   ]);
   expect(await listVersions('a')).toEqual([
     { id: expect.any(Number), savedAt: 2, reason: 'timed', bytes: 60 },

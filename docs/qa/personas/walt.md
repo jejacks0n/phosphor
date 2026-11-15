@@ -104,17 +104,20 @@ script. Every section ends with Free time.
 - Measured: fix-cell
 - Does: goes to a cell near the middle (column 150, line 800) in Edit Mode, types one character over it.
 - Expects: the character shows at once, within the `response` budget from the key; the status bar says Col 150 Row
-  800; the rest of the file doesn't move.
+  800, with Char, FG and BG, all of it in sight on the phone (the readout wraps; only its buttons scroll sideways, faded
+  at the edge); moving the cursor doesn't change the bar's height; the rest of the file doesn't move.
 - Probes: `undo-redo`: undo the fix, redo it, then type another and check redo is off, timing each against `response`;
   `again`: fix a second cell 1,000 lines away.
 - Rated: yes, wants T, then a key to go to a cell (getting there by arrows is hundreds of keys)
 
 ### 5. Match a color and fix a cell's colors
 - Does: with the Eyedropper (I), picks the colors of the cell next to his fix; then sets them on the fixed cell (Edit
-  Mode retyping the character, or Set FG and Set BG on a one-cell selection).
+  Mode retyping the character, or Set FG and Set BG on a one-cell selection: with Select and nothing selected, a tap on
+  the cell selects it, and Set FG and Set BG are first on the row).
 - Expects: the pick sets both colors; the status bar shows each color and where it came from; the recolor is one undo
   step and changes only that cell.
-- Probes: `out-of-order`: Set FG with no selection; `undo-redo`: undo the recolor.
+- Probes: `out-of-order`: Set FG with no selection (it's there but off, its tip says to select cells first, and the
+  row says "Tap or drag to select, or:"); `undo-redo`: undo the recolor, then the one-cell selection.
 - Rated: yes, wants I, or a key that picks the colors under the Edit Mode cursor
 
 ### 6. Save the project
@@ -154,7 +157,9 @@ look at the status bar, and take `qa.memory` again.
 - Does: opens the .phosphor saved in step 6 and compares its cells with the export's.
 - Expects: New project shows the start screen (on a phone, the settings drawer closes); the same cells, the same
   SAUCE, the same size; opening takes under the `file` budget.
-- Probes: `again`: open it twice in a row from the start screen's recent list.
+- Probes: `again`: open it twice in a row from the start screen's recent list, and check the rows can be told apart:
+  each whole name with its extension (`.phosphor`, `.ans`), the seconds when two share a minute, and Unchanged,
+  Changed or Saved.
 - Rated: yes, wants Cmd+O
 
 ### 11. Restore on top of the original

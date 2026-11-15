@@ -195,6 +195,7 @@ A `.png` is a picture of the art as the ANSI view draws it, in your display font
 Phosphor keeps your work in your browser as you go:
 
 - **Reloading** brings it back, with an empty undo history, and a new tab offers your recent work to pick up.
+- **Pick up where you left off**: The start screen lists your last five drawings, newest first. Each shows its whole name with the extension of the file it came from or last went to (`.phosphor`, `.ans`), when you last changed it (with the seconds when two of the same name share a minute), and whether it's **Unchanged** since it opened, **Changed**, or **Saved** to a file since its last change. Each file you open is a drawing of its own there, so a file opened twice is listed twice. On a phone the name has its own line, and a name too long for two lines is cut in the middle.
 - **Versions** lists snapshots taken at most every 5 minutes while you work (the last 20). Restoring one keeps what you had in the list, as "Before restore" if it isn't there already.
 - **As opened**: A file you open (a picture, a `.phosphor` project, an ANSI or text file, or an SVG) is kept as "As opened" once you first change it, even after a reload. It stays among the 20 however many versions come after, so Versions can always take it back to how it opened.
 - **Leaving the page**: Once the art has been saved to a file or opened from one, leaving the page no longer asks, unless the latest edits haven't been written yet. A room you host always asks.

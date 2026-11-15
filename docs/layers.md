@@ -577,7 +577,9 @@ canvas:
 
 The **Select** tool (**M**) selects a rectangle of whole cells, in either view. In the PIXEL view a cell is a pixel wide
 and two tall, so the rectangle's top and bottom keep to every second pixel row there. It's the same selection in both
-views, and it stays when you switch. Everything below works the same in both.
+views, and it stays when you switch. With nothing selected, a click (a tap) selects the one cell under it, an undo
+step as any new rectangle is; with a selection, a click outside it drops it, so the next click selects a cell again.
+Everything below works the same in both.
 
 ### What a Selection Acts On
 
@@ -722,7 +724,9 @@ How the selection behaves:
 ### Recoloring a Selection
 
 With the Magic Wand's selection (the wand being the tool) or a Select rectangle (Select being the tool), the options
-row has **Set FG** and **Set BG** in the ANSI view:
+row has **Set FG** and **Set BG** in the ANSI view. With the Select tool they're always first on its row; with nothing
+selected they're there but off, after "Click or drag to select, or:" ("Tap" on a touch screen), and pressing them does
+nothing until you select cells. With the wand they come at the end of its row, once it has selected something.
 
 - **What Changes**: Every selected cell takes your foreground or background color, on the layers that show, in one
   undo step. Only that color changes: each cell keeps the character and the other color it shows, whatever picked them
@@ -836,8 +840,12 @@ swaps the two halves of each cell's base colors.
 - **The Status Bar**: Starts with the name of the selected layer, so a folded panel or a phone still says which layer
   you're on. Then it follows the tool: Edit Mode shows the cell under the cursor, Select the selection's size and place,
   and the Eyedropper its last pick and where each color came from. On the right it shows that Space pans, and while you
-  hold Alt (Option on a Mac) or Shift, what that key does with the tool. When the view is too narrow for all of it, the
-  bar scrolls sideways, like the toolbar's options row.
+  hold Alt (Option on a Mac) or Shift, what that key does with the tool, then its buttons: the zoom (away from 100%),
+  **Overwrite** or **Insert** in Edit Mode, **Canvas** or **DOM**, and **Smooth**. When the view is too narrow for all
+  of it, the readout wraps onto another line a part at a time (Col and Row, Char, FG, BG), so nothing in it is cut off,
+  and only the buttons scroll sideways, faded at the edge while there are more. The readout keeps room for its largest
+  numbers, so moving the cursor doesn't change how it wraps. A long layer name is cut short; hover it for the whole
+  name.
 - **Zoom** (**Z**): The ANSI view zooms from 25% of its cells' size to 800% (100% is the font at its size), with
   Ctrl+wheel (a trackpad pinch), a pinch on a touch screen, or the Zoom tool: drag left to zoom out, right to zoom in,
   by half or double every 300 pixels. **Cmd++** and **Cmd+−** (Ctrl on Windows and Linux) double or halve it around

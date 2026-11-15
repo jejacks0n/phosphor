@@ -14,7 +14,8 @@ async function scene() {
   const cell = (c, r) => ({ x: c + 0.5, y: 2 * r + 1 }); // a cell's middle, in grid pixels
   const drag = (from, to) => { select.begin(ctx, cell(...from), {}); select.move(ctx, cell(...from), cell(...to)); select.end(ctx); };
   const click = (c, r, event = {}) => wand.begin(ctx, cell(c, r), event);
-  return { project, workspace, drag, click };
+  const tap = (c, r) => { select.begin(ctx, cell(c, r), {}); select.end(ctx); };
+  return { project, workspace, drag, click, tap };
 }
 
 test('a wand click undoes back to the selection before it and redoes, without changing the document', async () => {
@@ -30,6 +31,35 @@ test('a wand click undoes back to the selection before it and redoes, without ch
   project.redo();
   expect(workspace.wand).toBe(second);
   expect(project.editVersion).toBe(edits);
+});
+
+test('with nothing selected a tap selects its cell, an undo step; with a selection a tap outside only drops it', async () => {
+  const { project, workspace, drag, tap } = await scene();
+  const edits = project.editVersion;
+  tap(4, 3);
+  expect(workspace.selection).toEqual({ c0: 4, r0: 3, c1: 4, r1: 3 });
+  tap(9, 9); // outside it: dropped, nothing new
+  expect(workspace.selection).toBe(null);
+  tap(9, 9);
+  expect(workspace.selection).toEqual({ c0: 9, r0: 9, c1: 9, r1: 9 });
+  project.undo();
+  expect(workspace.selection).toBe(null);
+  project.undo();
+  expect(workspace.selection).toEqual({ c0: 4, r0: 3, c1: 4, r1: 3 });
+  project.undo();
+  expect(workspace.selection).toBe(null);
+  expect(project.editVersion).toBe(edits);
+
+  drag([2, 2], [5, 4]); // a drag is still a rectangle
+  expect(workspace.selection).toEqual({ c0: 2, r0: 2, c1: 5, r1: 4 });
+});
+
+test('a tap with the Magic Wand\'s selection drops it, and selects no cell', async () => {
+  const { workspace, click, tap } = await scene();
+  click(2, 2);
+  expect(workspace.wand).toBeTruthy();
+  tap(9, 9);
+  expect([workspace.selection, workspace.wand]).toEqual([null, null]);
 });
 
 test('a rectangle, then the wand, then Deselect: each undoes back to the one before', async () => {

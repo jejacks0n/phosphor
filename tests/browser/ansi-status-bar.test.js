@@ -73,3 +73,22 @@ test('with Shift held, Dodge (no Alt pick of its own) says Shift draws a straigh
   await nextTick();
   expect(host.querySelector('footer').textContent).toContain(i18n.global.t('status.straightLine'));
 });
+
+test('the buttons go zoom, Overwrite or Insert, Canvas or DOM, then Smooth', async () => {
+  const { workspace } = await mount();
+  workspace.setActiveTool('text');
+  workspace.setAnsiZoom(0.5);
+  await nextTick();
+  expect([...host.querySelectorAll('.strip button')].map((b) => b.textContent.trim())).toEqual(['50%', 'Overwrite', 'DOM', 'Smooth']);
+});
+
+test('a long layer name is cut short with an ellipsis, the whole name its title', async () => {
+  const { project, workspace } = await mount();
+  const name = 'The layer of the cells I am fixing today';
+  project.renameLayer('edit', name);
+  workspace.pickLayer('edit');
+  await nextTick();
+  expect(layer().title).toBe(name);
+  expect(layer().scrollWidth).toBeGreaterThan(layer().clientWidth);
+  expect(getComputedStyle(layer()).textOverflow).toBe('ellipsis');
+});

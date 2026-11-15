@@ -149,6 +149,18 @@ const deselect = () => project.changeSelection((w) => { w.selection = null; w.wa
 // What Set FG, Set BG and Fill recolor: the active tool's own selection.
 const recolored = computed(() => (workspace.activeTool === 'wand' ? wandHere.value && workspace.wand : workspace.activeTool === 'select' && workspace.selection));
 const recolor = (colors) => project.recolorSelection(recolored.value, workspace.editorTab, workspace.selectionIds, colors);
+// Set FG and Set BG (Fill in PIXEL; no Set BG in the ASCII styles). On the Select row they show with nothing selected
+// too, turned off, so they're where they'll be once there's a selection.
+const recolorButtons = computed(() => {
+  const on = !!recolored.value, sel = (key) => t(`toolbar.selection.${key}`);
+  const button = (key, none, colors) => ({
+    key, label: sel(key), colors, disabled: !on || none,
+    title: !on ? t('toolbar.selection.selectFirstTitle', { action: sel(key) }) : sel(`${key}${none ? 'None' : ''}Title`),
+  });
+  const fg = button(workspace.editorTab === 'output' ? 'setFg' : 'fill', workspace.editFgNone, { fg: workspace.editFgColor, fgIndex: workspace.editFgIndex });
+  if (workspace.editorTab !== 'output' || asciiStyle.value) return [fg];
+  return [fg, button('setBg', workspace.editBgNone, { bg: workspace.editBgColor, bgIndex: workspace.editBgIndex })];
+});
 const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.renderStyle));
 // VECTOR's options row (VectorOptions), with Vector select, the Pen and the Shape tool. It stays up with
 // nothing selected, so selecting a shape doesn't move the canvas under the pointer.
@@ -517,6 +529,8 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
         <template v-if="workspace.selection">
+          <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" @click="recolor(b.colors)">{{ b.label }}</button>
+          <div class="divider"/>
           <button :title="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :aria-label="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" @click="copySelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>
           <button :title="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" :aria-label="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" @click="cutSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M192 368A96 96 0 1 1 192 560A96 96 0 1 1 192 368ZM192 416A48 48 0 1 0 192 512A48 48 0 1 0 192 416ZM448 368A96 96 0 1 1 448 560A96 96 0 1 1 448 368ZM448 416A48 48 0 1 0 448 512A48 48 0 1 0 448 416Z"/><path d="M480 48L544 88L310 408L254 372ZM160 48L96 88L330 408L386 372Z"/></svg></button>
           <button :title="pasteTitle" :aria-label="pasteTitle" :disabled="!workspace.clipboard" @click="pasteSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M160 96H208V176H432V96H480A64 64 0 0 1 544 160V528A64 64 0 0 1 480 592H160A64 64 0 0 1 96 528V160A64 64 0 0 1 160 96ZM160 224V528H480V224Z"/><path d="M256 48H384A32 32 0 0 1 416 80V144H224V80A32 32 0 0 1 256 48Z"/></svg></button>
@@ -531,7 +545,8 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           <button class="text" :title="t('toolbar.selection.deselectBlockTitle')" aria-keyshortcuts="Escape Enter" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
         </template>
         <template v-else>
-          <span class="hint">{{ t('toolbar.selection.dragHint') }}</span>
+          <span class="hint"><span class="mouse">{{ t('toolbar.selection.dragHint') }}</span><span class="touch">{{ t('toolbar.selection.tapHint') }}</span></span>
+          <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" @click="recolor(b.colors)">{{ b.label }}</button>
           <button class="text" :title="t('toolbar.selection.selectAllTitle', { key: shortcut('mod', 'A') })" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">{{ t('toolbar.selection.selectAll') }}</button>
           <button class="text" :title="t('toolbar.selection.mergeDownAllTitle')" :disabled="!mergeOn" v-bind="mergeOff()" @click="mergeDown(picked)">{{ t('toolbar.mergeDown') }}</button>
         </template>
@@ -574,13 +589,9 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
         <div class="divider"/>
         <button class="text" :title="t('tools.hand.clearGuidesTitle')" :disabled="!workspace.guides.length" @click="workspace.clearGuides()">{{ t('tools.hand.clearGuides') }}</button>
       </div>
-      <div v-if="recolored" class="tool-setting-group">
+      <div v-if="recolored && activeTool.id === 'wand'" class="tool-setting-group">
         <div class="divider"/>
-        <template v-if="workspace.editorTab === 'output'">
-          <button class="text" :title="workspace.editFgNone ? t('toolbar.selection.setFgNoneTitle') : t('toolbar.selection.setFgTitle')" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor, fgIndex: workspace.editFgIndex })">{{ t('toolbar.selection.setFg') }}</button>
-          <button v-if="!asciiStyle" class="text" :title="workspace.editBgNone ? t('toolbar.selection.setBgNoneTitle') : t('toolbar.selection.setBgTitle')" :disabled="workspace.editBgNone" @click="recolor({ bg: workspace.editBgColor, bgIndex: workspace.editBgIndex })">{{ t('toolbar.selection.setBg') }}</button>
-        </template>
-        <button v-else class="text" :title="workspace.editFgNone ? t('toolbar.selection.fillNoneTitle') : t('toolbar.selection.fillTitle')" :disabled="workspace.editFgNone" @click="recolor({ fg: workspace.editFgColor, fgIndex: workspace.editFgIndex })">{{ t('toolbar.selection.fill') }}</button>
+        <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" @click="recolor(b.colors)">{{ b.label }}</button>
       </div>
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
@@ -772,6 +783,19 @@ div.vector-options > :deep(span.hint) {
   font-size: 12px;
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+/* "Click" for a mouse, "Tap" for a finger. */
+span.hint span.touch {
+  display: none;
+}
+@media (pointer: coarse) {
+  span.hint span.mouse {
+    display: none;
+  }
+  span.hint span.touch {
+    display: inline;
+  }
 }
 
 span.option-label,
