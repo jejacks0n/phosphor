@@ -6,6 +6,8 @@ import { createApp, defineComponent, h, nextTick, onMounted, ref, vModelText, wi
 import { i18n } from '@/i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ReadingDialog from '@/components/ReadingDialog.vue';
+import AppToast from '@/components/AppToast.vue';
+import { toast, closeToast } from '@/composables/useToast';
 
 let app, host;
 afterEach(() => {
@@ -115,5 +117,35 @@ test('a reading dialog opens over it, modal, and closes on its backdrop', async 
   } finally {
     reading.unmount();
     readingHost.remove();
+  }
+});
+
+// The top layer's order can't be read, and what's under a modal is inert, so it isn't hit either: a toast that's
+// shown again goes to the top of the top layer.
+test('a toast is a popover, over a dialog: shown when said, again when a dialog opens, and again on a new message', async () => {
+  const toastHost = document.createElement('div');
+  document.body.append(toastHost);
+  const toasts = createApp(AppToast).use(i18n);
+  toasts.mount(toastHost);
+  const shows = vi.spyOn(HTMLElement.prototype, 'showPopover');
+  try {
+    toast('Saved.');
+    await nextTick();
+    expect(document.querySelector('div.app-toast').matches(':popover-open')).toBe(true);
+    expect(shows).toHaveBeenCalledTimes(1);
+    await mount(); // the dialog shows it again, over itself
+    expect(shows).toHaveBeenCalledTimes(2);
+    expect(shows.mock.contexts[1]).toBe(document.querySelector('div.app-toast'));
+    expect(document.querySelector('dialog.modal-dialog').open).toBe(true);
+    toast('Autosave is failing.'); // and a new message, over a dialog opened since
+    await nextTick();
+    expect(shows).toHaveBeenCalledTimes(3);
+    expect(shows.mock.contexts[2]).toBe(document.querySelector('div.app-toast'));
+    expect(document.querySelector('div.app-toast').matches(':popover-open')).toBe(true);
+  } finally {
+    shows.mockRestore();
+    closeToast();
+    toasts.unmount();
+    toastHost.remove();
   }
 });
