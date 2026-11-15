@@ -166,8 +166,8 @@ test('a duplicated tab is its own copy', async ({ page, context }) => {
 test('New project keeps the old work in the list, and a refresh stays at the zero state', async ({ page }) => {
   await openApp(page);
   await typeAndWrite(page, 3, 3, 'kept');
-  page.on('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'New project' }).click();
+  await page.getByRole('dialog', { name: 'Start a new project?' }).getByRole('button', { name: /Start without saving/ }).click();
   await expect(zeroState(page)).toBeAttached();
   const button = recentList(page).getByRole('listitem').getByRole('button');
   await expect(recentList(page)).toContainText('gradient');

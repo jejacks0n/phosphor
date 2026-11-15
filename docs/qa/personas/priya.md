@@ -111,7 +111,7 @@ script. Every section ends with Free time.
 - Probes: `back-out`: drop it and press Escape at the question, and check nothing came in; `extremes`: drop
   `belle-verriere-mark.svg` too, time it against the `file` budget, then undo it (one step) so the layer is back to
   its items; `free`: drop `gradients.svg` again and choose Open as new project, check what happens to the canvas she had (it
-  asks about unsaved changes first, or says what it replaced), and cancel that question; if it opened anyway, reopen
+  says on Open as new project that it replaces her unsaved changes), and Cancel there; if it opened anyway, reopen
   her scene from "Pick up where you left off" and note it.
 - Rated: yes, wants Cmd+O, then Enter on Add to this drawing
 
@@ -414,8 +414,8 @@ Alt+`,` while typing in Edit Mode, and Bake with the sliders moved to see every 
 - Rated: yes, wants a key for Export .cast
 
 ### 30. Save it and reopen it
-- Does: presses Cmd+S and saves; starts a New project (if it asks about unsaved changes, that's a browser confirm:
-  handle it with `page.once('dialog')`); opens the .phosphor with Choose a file.
+- Does: presses Cmd+S and saves; starts a New project (if it asks about unsaved changes, that's Phosphor's "Start a
+  new project?": Start without saving); opens the .phosphor with Choose a file.
 - Expects: everything comes back: 24 frames, their holds, 12 frames per second, the frame she was on, every shape and
   art layer with its keys per part, easings, motions, Start and End, every follower's path and Along, the Guide, Face
   the path; Animate is on, since it has more than one frame ([Saving](../../animation.md#saving),

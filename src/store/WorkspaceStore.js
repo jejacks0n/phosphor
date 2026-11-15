@@ -136,6 +136,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     colorBox: null,          // the color box (ColorPair's popover) while it's open: 'fg' | 'bg'
     versionsOpen: false,     // the autosaved versions list (VersionsDialog)
     saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'png' and the animated formats (SaveDialog)
+    unsavedAsk: null,        // { name, go, saving? } while UnsavedDialog asks before leaving unsaved work (confirmLeave)
     exportModal: false,      // the export modal (ExportModal) open
 
     // Scroll state persistence
@@ -408,15 +409,23 @@ export const useWorkspaceStore = defineStore('workspace', {
       }
       this.artDrop = { file, at, ...(picture && { picture }), ...(art && { art }) };
     },
+    // Goes on (go) at once when the drawing has nothing unsaved; otherwise asks first (UnsavedDialog): save the
+    // project, then go on; go on without saving; or stay. name: the file that would open, or null for New project.
+    confirmLeave(name, go) {
+      const project = useProjectStore();
+      project.commitPending(); // text typed a moment ago counts
+      if (!project.image || !project.isDirty) return void go();
+      this.unsavedAsk = markRaw({ name, go });
+    },
     // New project (the button, the desktop menu): asked first when there's unsaved work.
     newProject() {
       const project = useProjectStore();
       if (!project.image || useDrawingStore().offWithOthers) return;
-      project.commitPending(); // text typed a moment ago counts
-      if (project.isDirty && !confirm(t('actions.confirmNew'))) return;
-      project.clearImage();
-      this.editorTab = 'input';
-      this.settingsOpen = false; // a phone's drawer: the start screen shows
+      this.confirmLeave(null, () => {
+        project.clearImage();
+        this.editorTab = 'input';
+        this.settingsOpen = false; // a phone's drawer: the start screen shows
+      });
     },
     // Save project (the button, Cmd/Ctrl+S, the desktop menu; Save As with Shift or from the menu): on desktop, and on
     // the web where the browser savesInPlace, straight over the project's own file, or where the system's save box says

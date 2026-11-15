@@ -14,14 +14,15 @@ test('New project closes the settings drawer for the start screen', async () => 
   expect(workspace.settingsOpen).toBe(false);
 });
 
-test('with unsaved work, saying no keeps the drawing and the drawer', async () => {
+test('with unsaved work, it asks first (UnsavedDialog), keeping the drawing and the drawer until told to go on', async () => {
   const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ cols: 8, rows: 4 });
   project.typeAt(1, 0, 'A', { fg: '#ffee00', bg: '#0044aa' });
-  project.commitEdit();
   workspace.settingsOpen = true;
-  vi.stubGlobal('confirm', () => false);
-  workspace.newProject();
+  workspace.newProject(); // the typing run still open counts
   expect(project.image).not.toBe(null);
   expect(workspace.settingsOpen).toBe(true);
+  expect(workspace.unsavedAsk.name).toBe(null);
+  workspace.unsavedAsk.go();
+  expect([project.image, workspace.settingsOpen]).toEqual([null, false]);
 });

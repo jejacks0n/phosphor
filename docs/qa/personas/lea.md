@@ -296,13 +296,13 @@ frames, and pinch while it plays.
 - Expects: a .phosphor downloads; after the reload she's back where she was (autosave brought it back, with its
   frames, layers and settings); New project afterwards asks about unsaved changes only if there are any.
 - Probes: `interrupt`: reload a second and a half after an edit without saving and check it came back; `back-out`:
-  press New project with unsaved changes and cancel the question (a browser confirm: handle it with
-  `page.once('dialog')`).
+  press New project with unsaved changes and Cancel Phosphor's "Start a new project?" question (Save project first,
+  Start without saving or Cancel).
 - Rated: yes, wants Go on the phone's keyboard
 
 ### 22. Come back to it
-- Does: presses New project (accepting if it asks: a browser confirm, handled with `page.once('dialog')` as in step
-  21), then looks at the start screen.
+- Does: presses New project (choosing Start without saving if it asks, as in step 21), then looks at the start
+  screen.
 - Expects: "Pick up where you left off" lists her work with its time, whether it's Unchanged, Changed or Saved, and an
   Open button; Open brings it back; the list fits at 390 wide, each name whole with its extension on a line of its own
   and the time, status and Open under it.

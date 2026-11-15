@@ -158,11 +158,9 @@ test('dropping an image onto the editor loads it', async ({ page }) => {
 test('New project asks when there are changes, then clears the document', async ({ page }) => {
   await openApp(page);
   await page.getByRole('combobox', { name: 'Color palette' }).selectOption('cga'); // a change
-  const asked = [];
-  page.on('dialog', (d) => { asked.push(d.message()); d.accept(); });
   await page.getByRole('button', { name: 'New project' }).click();
-  expect(asked[0]).toMatch(/unsaved changes/);
-  expect(await store(page, 'project', (p) => p.image)).toBe(null);
+  await page.getByRole('dialog', { name: 'Start a new project?' }).getByRole('button', { name: /Start without saving/ }).click();
+  await expect.poll(() => store(page, 'project', (p) => p.image)).toBe(null);
   await expect(page.locator('.tab-list').getByRole('tab', { selected: true })).toHaveCount(0); // the start screen, no tab
 });
 

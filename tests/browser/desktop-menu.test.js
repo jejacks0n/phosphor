@@ -94,14 +94,13 @@ test('commands open what they name, and Undo from the menu is the drawing’s ou
   field.remove();
 });
 
-test('New asks first when there are unsaved changes, and is refused with a no', async () => {
+test('New asks first when there are unsaved changes (UnsavedDialog), and goes on once told to', async () => {
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   project.cols = 9;
-  vi.stubGlobal('confirm', vi.fn(() => false));
   command('new');
   expect(project.image).not.toBe(null);
-  vi.stubGlobal('confirm', vi.fn(() => true));
-  command('new');
+  expect(workspace.unsavedAsk?.name).toBe(null);
+  workspace.unsavedAsk.go(); // Start without saving
   expect(project.image).toBe(null);
 });
 

@@ -21,11 +21,12 @@ test('dropping a .phosphor over unsaved work asks first', async ({ page }) => {
   await page.waitForTimeout(1300); // the typing run commits
   expect(await store(page, 'project', (p) => p.isDirty)).toBe(true);
 
-  const asked = [];
-  page.on('dialog', (d) => { asked.push(d.message()); d.dismiss(); });
+  page.on('dialog', () => { throw new Error('the browser asked'); });
   await dropFile(page, fixture('projects/live-main.phosphor'), 'live-main.phosphor');
-  await page.waitForTimeout(1500);
-  expect(asked.length).toBe(1);
+  const question = page.getByRole('dialog', { name: 'Open live-main.phosphor?' });
+  await expect(question).toContainText("This drawing has changes you haven't saved.");
+  await question.getByRole('button', { name: 'Cancel' }).click();
+  await expect(question).toBeHidden();
   expect(await store(page, 'project', (p) => p.filename)).toBe('gradient'); // the work is still open
 });
 

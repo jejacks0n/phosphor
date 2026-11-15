@@ -914,8 +914,7 @@
     }
   },
   "actions": {
-    "confirmNew": "Vous avez des modifications non enregistrées. Commencer un nouveau projet quand même ?",
-    "confirmOpen": "Vous avez des modifications non enregistrées. Ouvrir {name} quand même ?",
+    "replacesUnsaved": "Remplace les modifications non enregistrées de ce dessin. Il reste dans ce navigateur, sous Reprenez là où vous vous étiez arrêté.",
     "cantOpen": "Phosphor ne peut pas ouvrir {name}. Les formats pris en charge comprennent les images, les projets .phosphor, les fichiers SVG et les fichiers texte (.ans, .utf8ans, .asc, .txt, .nfo, .diz).",
     "saveProject": "Enregistrer le projet (.phosphor)",
     "exportAns": "Exporter en .ans",
@@ -980,6 +979,18 @@
     "commentLinesOver": "{count} lignes SAUCE sur {most}. À partir de la ligne {line} (« {text} »), les commentaires ne seront pas dans le fichier.",
     "controls": "Les caractères de contrôle, comme la tabulation ou ESC, ne peuvent pas figurer dans le SAUCE et ont été laissés de côté.",
     "cut": "Seuls {width} caractères tiennent. Laissé de côté : « {left} »"
+  },
+  "unsaved": {
+    "openTitle": "Ouvrir {name} ?",
+    "newTitle": "Commencer un nouveau projet ?",
+    "sub": "Ce dessin a des modifications que vous n'avez pas enregistrées.",
+    "saveFirst": "Enregistrer le projet d'abord",
+    "saveFirstOpen": "Enregistrer ce dessin dans un fichier .phosphor, puis ouvrir {name}.",
+    "saveFirstNew": "Enregistrer ce dessin dans un fichier .phosphor, puis commencer le nouveau projet.",
+    "openWithout": "Ouvrir sans enregistrer",
+    "newWithout": "Commencer sans enregistrer",
+    "withoutText": "Ce dessin reste dans ce navigateur, sous Reprenez là où vous vous étiez arrêté.",
+    "withoutTextDesktop": "Ce dessin reste dans Phosphor, sous Reprenez là où vous vous étiez arrêté."
   },
   "save": {
     "fileName": "Nom de fichier",
