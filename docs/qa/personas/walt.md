@@ -78,7 +78,8 @@ script. Every section ends with Free time.
   the choice to the art showing.
 - Expects: 300 columns by 1,600 lines on Layer 1 over a black base, VGA (its colors are 256-color codes), SAUCE
   titled "QA Long"; nothing to undo; the view starts at the top-left, on line 1. Opening takes under the `file` budget;
-  over it is a `performance` finding.
+  over it is a `performance` finding. While the file is read, and again while it opens, a note at the bottom says
+  "Opening long.ans…" with a line moving under it, then goes.
 - Probes: `back-out`: choose it and press Cancel at the question; `free`: drop it on the start screen's box instead.
 - Rated: yes, wants Cmd+O, then Enter for Edit artwork
 
@@ -123,7 +124,8 @@ script. Every section ends with Free time.
 ### 6. Save the project
 - Does: presses Cmd+S, keeps the offered name, saves; times it.
 - Expects: the dialog offers "long-" with the date and time, focus in the name; Enter saves; the download takes under
-  the `file` budget; afterwards leaving the page doesn't ask once the latest edits are written.
+  the `file` budget, with "Saving long-….phosphor…" at the bottom if it takes over half a second; afterwards leaving the
+  page doesn't ask once the latest edits are written.
 - Probes: `again`: save twice and check the second name is new; `back-out`: open the dialog and press Escape, then
   check focus is where his keys work.
 - Rated: yes, wants Cmd+S, then Enter

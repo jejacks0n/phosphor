@@ -1087,6 +1087,8 @@
     "openFailed": "Could not reopen that project."
   },
   "document": {
+    "opening": "Opening {name}…",
+    "saving": "Saving {name}…",
     "framesLost": "Could not read animation frames from this file, so it opened as a still image. Saving will replace it as a still image.",
     "openImageFailed": "Could not open “{name}”. Make sure it is a supported image or .phosphor file.",
     "decodeImageFailed": "Could not decode image.",

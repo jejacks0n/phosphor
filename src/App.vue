@@ -28,6 +28,7 @@ import ExportModal from '@/components/ExportModal.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import AppToast from '@/components/AppToast.vue';
+import BusyNote from '@/components/BusyNote.vue';
 
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const project = useProjectStore();
@@ -164,6 +165,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <VersionsDialog v-if="versionsOpen && !drawing.offWithOthers" :flush="autosave.flush" :restore-version="autosave.restoreVersion" @close="versionsOpen = false"/>
     <ShortcutsDialog v-if="shortcutsOpen" @close="shortcutsOpen = false"/>
     <LegalDialog v-if="legalPage" :page="legalPage" @open="legalPage = $event" @close="legalPage = null"/>
+    <BusyNote/>
     <AppToast/>
   </main>
 </template>

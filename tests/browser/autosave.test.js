@@ -1,13 +1,14 @@
 // Writing the document to the browser as you work (useAutosave): when it writes, what, and what happens
 // when it can't. Real IndexedDB, with the timers and the clock faked and the store's writes spied on.
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createApp, nextTick } from 'vue';
+import { createApp, nextTick, watch } from 'vue';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { useAutosave } from '@/composables/useAutosave';
 import { useProjectStore } from '@/store/ProjectStore';
 import { TOAST_MS, toastMessage } from '@/composables/useToast';
+import { busyMessage } from '@/composables/useBusy';
 import ZeroState from '@/components/ZeroState.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
@@ -872,7 +873,10 @@ test('restoreDocument brings back the cells, both layers, the settings, the name
   const { record, imageBuffer } = saved;
   project.clearImage();
 
+  const notes = [], stop = watch(busyMessage, (note) => note && notes.push(note), { flush: 'sync' });
   await project.restoreDocument({ record, imageBuffer }, { documentId: id });
+  stop();
+  expect(notes).toEqual(['Opening mine…']); // the note while it takes a while (busy-note.test.js)
   await settle(project);
   expect({
     cells: JSON.stringify(project.cells),
