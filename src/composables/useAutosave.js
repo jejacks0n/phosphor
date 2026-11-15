@@ -152,10 +152,12 @@ export function useAutosave() {
       // The first change of a file as it opened: what's stored is still that, kept As opened before it's written over.
       // lastVersionAt stays, so the change has its timed version as any first change does.
       if (openedKept === id && !asOpened) await addVersion(id, { reason: 'opened', savedAt: now });
+      // A host's ledger first, so it's never behind the document: a reload can end this page between the two, and
+      // a document behind the ledger catches up from its tail, where one ahead of it would start the undo over.
+      await project.keepLedger();
       await put(record, id);
       if (asOpened) openedKept = id;
       else if (openedKept === id) openedKept = null;
-      await project.keepLedger(); // never behind the document, so a reload's document can catch up to it
       openedId = id;
       if (opening) {
         await evict(await keeping(id));

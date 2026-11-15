@@ -368,6 +368,19 @@ test('an edit during a write is written next, and writes never overlap', async (
   expect(autosave.current.value).toBe(true);
 });
 
+test('a host\'s ledger is kept before the document is written: a page gone between the two leaves the ledger ahead, which the document catches up to', async () => {
+  const { project } = await opened();
+  let kept = null;
+  vi.spyOn(project, 'keepLedger').mockImplementation(() => new Promise((resolve) => { kept = resolve; }));
+  edit(project);
+  vi.advanceTimersByTime(SAVE_AFTER_MS);
+  await vi.waitUntil(() => kept, { interval: 5 });
+  expect(writeLatest).not.toHaveBeenCalled();
+  kept();
+  await autosave.flush();
+  expect(writeLatest).toHaveBeenCalledTimes(1);
+});
+
 test('a write during a typing run leaves it one undo step', async () => {
   const { project } = await opened();
   project.typeAt(0, 0, 'a', ATTRS);
