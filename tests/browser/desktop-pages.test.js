@@ -362,7 +362,7 @@ test('SocialDialogs desktop: no question, no account pages, no room link; Start 
     social.consentVersion = 0;
     await social.boot();
   });
-  const dialog = () => document.querySelector('[role=dialog]');
+  const dialog = () => document.querySelector('dialog');
   for (const page of ['sign-in', 'create', 'account', 'onboarding']) {
     social.page = page;
     await nextTick();
