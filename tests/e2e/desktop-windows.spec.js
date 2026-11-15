@@ -21,7 +21,8 @@ test.afterEach(async () => {
   for (const other of others.splice(0)) await other.close();
 });
 
-const hasImage = (page) => store(page, 'project', (p) => !!p.image);
+// False until the window's page has mounted its app (a new window's may not have yet).
+const hasImage = (page) => store(page, 'project', (p) => !!p.image).catch(() => false);
 
 test('File > New Window opens a second window on the start screen; closing it keeps the first', async () => {
   launched = await launchApp();
