@@ -54,7 +54,7 @@ test('an SVG dropped over a drawing asks Add or Open, and Add puts its shapes in
 
   // Open as new project: in place of this drawing.
   await dropOn(page, '.ansi-editor .display', rose, 'rose.svg');
-  page.once('dialog', (dialog) => dialog.accept()); // the drawing has changes
+  await expect(question(page).getByRole('button', { name: /Open as new project/ })).toContainText("Replaces this drawing's unsaved changes"); // the drawing has changes
   await question(page).getByRole('button', { name: /Open as new project/ }).click();
   await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
   await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('rose');

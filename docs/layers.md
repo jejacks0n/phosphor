@@ -367,7 +367,8 @@ With a drawing open, dropping one of these files on it asks what to do:
   goes on the selected layer (written into the base, with the base selected), as one undo step. Whatever runs past
   the canvas edge is cut off. The drawing's SAUCE and palette stay as they are.
 - **Open to edit** or **Open to draw on top**: It opens in place of this drawing, as **Edit artwork** or **Draw on
-  top** do above, asking first if there are unsaved changes.
+  top** do above. With unsaved changes, these choices say they replace them (the drawing stays in this browser,
+  under Pick up where you left off), and choosing one opens the file without asking again.
 - **Cancel**: Leaves everything as it was.
 
 An `.svg` dropped on a drawing offers **Add to this drawing**, which adds its shapes to VECTOR on the current frame,
@@ -382,7 +383,8 @@ A **picture** (a PNG, JPEG or other image) dropped on a still drawing asks the s
   new drawing layer above it, named after the file and selected. It's one undo step; undoing a new layer's takes the
   layer away. It's refused while the selected drawing layer is hidden, or when a new layer would pass the 64-layer
   limit.
-- **Open as new project**: Opens it in place of this drawing, asking first if there are unsaved changes.
+- **Open as new project**: Opens it in place of this drawing. With unsaved changes it says it replaces them, as
+  above.
 - **Cancel**: Leaves everything as it was.
 
 In an animation, or in a room, a dropped picture isn't added: it opens in place of the drawing.

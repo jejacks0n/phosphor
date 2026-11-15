@@ -105,9 +105,11 @@ async function handleFileSelected(file) {
   // From the start screen, an art file asks whether to edit it or draw on top of it.
   if (isArtFile(file.name)) return workspace.askArt(file);
   // A picture over a still drawing (not shared with a room) asks too: added as a layer's paint, or opened in its place.
-  if (project.image && !isProjectFile(file.name) && !project.hasFrames && !project._sharing) return (workspace.artDrop = { file, at: null, picture: true });
-  project.commitPending(); // text typed a moment ago counts
-  if (project.image && project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
+  if (project.image && !isProjectFile(file.name) && !project.hasFrames && !project._sharing) return workspace.askArt(file, { picture: true });
+  workspace.confirmLeave(file.name, () => openFile(file)); // over unsaved work, asked first (UnsavedDialog)
+}
+
+async function openFile(file) {
   if (!project.image) workspace.editorTab = isSvgFile(file.name) ? 'vector' : 'output'; // from the start screen, chosen first: the address moves once
   if (isProjectFile(file.name)) await project.loadProject(file);
   else if (isArtFile(file.name) || isSvgFile(file.name)) return openArt(file);
@@ -161,9 +163,11 @@ const artChoices = computed(() => {
     ];
   }
   if (DESKTOP) return [{ id: 'add', title: t('actions.artAdd'), text: addText(drop) }, { id: 'window', title: t('actions.artOpenWindow'), text: t('actions.artOpenWindowText') }];
-  const open = drop.picture || isSvgFile(drop.file.name) ? [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText') }] : [
-    { id: 'edit', title: t('actions.artOpenEdit'), text: t('actions.artOpenEditText') },
-    { id: 'base', title: t('actions.artOpenDrawOn'), text: t('actions.artOpenDrawOnText') },
+  // Opening in its place says what happens to unsaved changes there, so there's no second question.
+  const note = project.isDirty || project._stroke ? t('actions.replacesUnsaved') : null; // a typing run still open counts
+  const open = drop.picture || isSvgFile(drop.file.name) ? [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText'), note }] : [
+    { id: 'edit', title: t('actions.artOpenEdit'), text: t('actions.artOpenEditText'), note },
+    { id: 'base', title: t('actions.artOpenDrawOn'), text: t('actions.artOpenDrawOnText'), note },
   ];
   return [{ id: 'add', title: t('actions.artAdd'), text: addText(drop) }, ...(drawing.offWithOthers ? [] : open)];
 });
@@ -175,20 +179,14 @@ async function chooseArt(choice) {
   if (choice === 'window') return openInNewWindow(file);
   if (picture) {
     if (choice === 'add') return project.addPictureToLayer(file);
-    project.commitPending(); // text typed a moment ago counts
-    if (project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
-    await project.setImageFromFile(file);
+    await project.setImageFromFile(file); // its question said what happens to unsaved changes
     workspace.pickLayer('base');
     workspace.editorTab = 'output';
     return;
   }
   if (choice !== 'add') { // 'edit' or 'base' (an art file's layer), or 'open' (an SVG)
     if (!project.image) workspace.editorTab = 'output'; // from the start screen, chosen first: the address moves once
-    else {
-      project.commitPending(); // text typed a moment ago counts
-      if (project.isDirty && !confirm(t('actions.confirmOpen', { name: file.name }))) return;
-    }
-    return openArt(file, choice, art);
+    return openArt(file, choice, art); // its question said what happens to unsaved changes
   }
   if (playback.playing) playback.pause(); // it lands on the frame showing
   if (isSvgFile(file.name)) return addSvg(file);

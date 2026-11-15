@@ -89,18 +89,17 @@ test('a .ans dropped on the drawing can be added where it lands, as one undo ste
   expect(await store(page, 'project', (p) => p.cells.map((c) => c.char))).toEqual(before.cells);
 });
 
-test('Open to edit opens the dropped file on the edit layer, after asking about unsaved work', async ({ page }) => {
+test('Open to edit opens the dropped file on the edit layer, warning of the unsaved work it replaces, with no second question', async ({ page }) => {
   await openApp(page);
   await editAt(page, 3, 3);
   await page.keyboard.insertText('my work');
   await page.waitForTimeout(1300); // the typing run commits
   await dropOn(page, '.ansi-editor .display', tiny, 'tiny.ans', await cellPoint(page, 10, 4));
-  const asked = [];
-  page.once('dialog', (d) => { asked.push(d.message()); d.accept(); });
-  await expect(question(page).getByRole('button', { name: /Open to draw on top/ })).toBeVisible();
+  page.on('dialog', () => { throw new Error('the browser asked'); });
+  await expect(question(page).getByRole('button', { name: /Open to draw on top/ })).toContainText("Replaces this drawing's unsaved changes");
+  await expect(question(page).getByRole('button', { name: /Add to this drawing/ })).not.toContainText("Replaces this drawing's unsaved changes");
   await question(page).getByRole('button', { name: /Open to edit/ }).click();
   await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('tiny');
-  expect(asked).toEqual(['You have unsaved changes. Open tiny.ans anyway?']);
   await settled(page);
   expect(await store(page, 'project', (p) => ({ cols: p.cols, title: p.sauceTitle }))).toEqual({ cols: 3, title: 'Tiny' });
   expect(await chars(page, 0, 0, 2)).toBe('ABC');
@@ -184,8 +183,8 @@ test('a picture dropped on a drawing asks: Add puts it on the layer picked as pa
   await settled(page);
   expect(await store(page, 'project', (p) => p.paintOf('edit')?.hasPaint ?? false)).toBe(false);
 
-  page.once('dialog', (dialog) => dialog.accept()); // unsaved work
   await dropOn(page, 'article.drop-zone', photo, 'photo.jpg', null, 'image/jpeg');
+  await expect(question(page).getByRole('button', { name: /Open as new project/ })).toContainText("Replaces this drawing's unsaved changes"); // unsaved work
   await question(page).getByRole('button', { name: /Open as new project/ }).click();
   await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('photo');
 });

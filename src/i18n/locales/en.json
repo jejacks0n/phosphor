@@ -912,8 +912,7 @@
     }
   },
   "actions": {
-    "confirmNew": "You have unsaved changes. Start a new project anyway?",
-    "confirmOpen": "You have unsaved changes. Open {name} anyway?",
+    "replacesUnsaved": "Replaces this drawing's unsaved changes. It stays in this browser, under Pick up where you left off.",
     "cantOpen": "Phosphor cannot open {name}. Supported formats include images, .phosphor projects, SVGs, and text files (.ans, .utf8ans, .asc, .txt, .nfo, .diz).",
     "saveProject": "Save project (.phosphor)",
     "exportAns": "Export .ans",
@@ -978,6 +977,18 @@
     "commentLinesOver": "{count} of {most} SAUCE lines. From line {line} (\"{text}\") on, comments won't be in the file.",
     "controls": "Control characters, like tab or ESC, can't be in SAUCE and were left out.",
     "cut": "Only {width} characters fit. Left out: \"{left}\""
+  },
+  "unsaved": {
+    "openTitle": "Open {name}?",
+    "newTitle": "Start a new project?",
+    "sub": "This drawing has changes you haven't saved.",
+    "saveFirst": "Save project first",
+    "saveFirstOpen": "Save this drawing as a .phosphor file, then open {name}.",
+    "saveFirstNew": "Save this drawing as a .phosphor file, then start the new project.",
+    "openWithout": "Open without saving",
+    "newWithout": "Start without saving",
+    "withoutText": "This drawing stays in this browser, under Pick up where you left off.",
+    "withoutTextDesktop": "This drawing stays in Phosphor, under Pick up where you left off."
   },
   "save": {
     "fileName": "File name",

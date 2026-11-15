@@ -166,6 +166,8 @@ look at the status bar, and take `qa.memory` again.
 - Does: opens `long.ans` again with Draw on top, fixes a cell on Layer 1, exports, and reopens the export.
 - Expects: the art is the base with every character pinned; his fix covers it on Layer 1; the export and its reopen
   differ from the original only at the fixed cell (a 256-color file's 16 and 231 come back as 16 and 231, not 0 and 15).
+  Reopening the export asks once: an export isn't a save, so its Open choices say they replace his unsaved changes
+  (the drawing stays under Pick up where you left off), and choosing one opens it with no second question.
 - Probes: `out-of-order`: pick Base and erase a cell (black with a pinned space), then compare again; `undo-redo`: undo
   both fixes.
 - Rated: yes, wants Cmd+O, then a key for Draw on top
@@ -284,7 +286,7 @@ long file (time the reload), and press Back from a fresh start screen.
 - Does: makes a 300 by 1,700 file and a 301 by 100 file with `files.makeLongAns`, and with unsaved work drops each on
   his open drawing.
 - Expects: neither opens; a message gives the file's size and the limits (300 columns, 5,000 lines, 500,000 cells)
-  before anything is asked (no Add or Open question, no unsaved-changes confirm), and the drawing he had stays open,
+  before anything is asked (no Add or Open question), and the drawing he had stays open,
   unchanged.
 - Probes: `extremes`: an empty .ans (a 0-byte file written from the snippet: "There's no art in this file.");
   `again`: try the same file twice.

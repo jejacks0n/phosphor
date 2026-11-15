@@ -79,13 +79,12 @@ test('an art file dropped over a drawing offers Add or Open in a new window, not
 });
 
 test('a project dropped over a drawing goes to a new window without asking', async () => {
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
   const { project, workspace, opened } = await overDrawing({ before: ({ project }) => { project.editVersion += 1; } });
   const image = project.image;
   const file = new File([new Uint8Array(8)], 'night.phosphor');
   await drop(file);
   expect(opened).toEqual([file]);
-  expect(confirm).not.toHaveBeenCalled();
+  expect(workspace.unsavedAsk).toBeNull();
   expect(workspace.artDrop).toBeNull();
   expect(project.image).toBe(image);
 });
