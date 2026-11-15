@@ -955,6 +955,22 @@ test('the file a project is saved to comes back with it after a reload, and stay
   expect(back.project.fileHandle).toBe(null);
 });
 
+test('a project opened from its file is written at once with the file it saves to, for a reload straight after', async () => {
+  const { project } = await mounted();
+  await project.setBlankCanvas();
+  const handle = await privateFile('opened.phosphor');
+  const writable = await handle.createWritable();
+  await writable.write(await writeProject({ ...await project.projectParts(), imageBuffer: project.imageBuffer }));
+  await writable.close();
+  await autosave.flush();
+  vi.mocked(writeLatest).mockClear();
+  await project.loadProject(Object.assign(await handle.getFile(), { fileHandle: handle }));
+  await vi.waitUntil(() => vi.mocked(writeLatest).mock.calls.length, { timeout: 3000, interval: 5 });
+  const [first] = vi.mocked(writeLatest).mock.calls[0];
+  expect(first.asOpened).toBe(true); // the opening write, not one the handle set off later
+  expect(await first.fileHandle?.isSameEntry(handle)).toBe(true);
+});
+
 test('a document that was unsaved stays unsaved after a restore; one that was saved does not', async () => {
   const { project } = await opened();
   const id = project.documentId;

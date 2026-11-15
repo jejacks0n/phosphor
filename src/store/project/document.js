@@ -461,9 +461,9 @@ export const documentActions = {
     try {
       await busyWhile(opening(file.name), async () => this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length), fileExt: PROJECT_EXT }));
       this.savedToFile = true;
-      this.asOpened = true;
       this.filePath = file.desktopPath ?? null; // desktop: where it was opened from, for Save to write over
       this.fileHandle = file.fileHandle ? markRaw(file.fileHandle) : null; // the same on the web (pickFile, a drop)
+      this.asOpened = true; // last: autosave writes the record at once, with the file it's saved to
     } catch (e) {
       console.error('Failed to load project file', e);
       const reason = e?.code === 'INVALID_PROJECT' ? t('document.invalidProject') : e?.code === 'DECODE_IMAGE_FAILED' ? t('document.decodeImageFailed') : e.message;
