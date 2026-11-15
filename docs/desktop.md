@@ -77,8 +77,9 @@ the room on that port.
 
 You can join your own room from another window, by its address (`127.0.0.1:31337`, say). You're asked in like anyone
 else, and since both windows go by your name, the one joining shows with its fingerprint: "ann #3f9a wants to join".
-Only one window at a time holds this computer's key, the one rooms know you by; each other window that goes into a
-room makes a key of its own, kept while that window is open, through its reloads.
+Only one window at a time holds this computer's key, the one rooms know you by: the first window to open the Social tab
+or a room takes it. Each other window makes a key of its own when it first does, kept while that window is open,
+through its reloads.
 
 ## Opening and saving
 

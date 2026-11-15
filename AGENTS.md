@@ -70,13 +70,15 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   `tests/e2e/social-support.js` ([docs/testing.md](docs/testing.md)).
 - The desktop app ([docs/desktop.md](docs/desktop.md)): the web app in Electron, with rooms by address and no server.
   The build is `VITE_DESKTOP=1`, and its branches sit behind `import.meta.env.VITE_DESKTOP === '1'`, so the web build
-  leaves them out. `desktop/` is the Electron side: `main.js` (the window, the `app://phosphor/` origin it serves
+  leaves them out. `desktop/` is the Electron side: `main.js` (the windows, the `app://phosphor/` origin it serves
   `dist-desktop/` from, quitting), `preload.cjs` (`window.phosphorDesktop`, the page's one way in), `roomService.js`
   (the room API on this computer: greetings, asks, channels, hand-overs), `addresses.js` (where others can join),
-  `selfPass.js` (passes checked in Node), `menu.js` (the menu bar, in the page's words) and `files.js` (files opened,
-  saved and kept in Open Recent). The page's side: `src/social/desktop.js` (the door to the preload),
-  `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join) and
-  `selfPass.js` (passes signed by their own key), with `src/components/social/DesktopStartPage.vue` in the lobby's
+  `selfPass.js` (passes checked in Node), `menu.js` (the menu bar, in the page's words), `files.js` (files opened,
+  saved and kept in Open Recent) and `windows.js` (where a file opens, where a new window sits, the two-phase leave of
+  a close or quit). The page's side: `src/social/desktop.js` (the door to the preload),
+  `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join),
+  `selfPass.js` (passes signed by their own key) and `windowKey.js` (a window's identity: the computer's key for one
+  window at a time, its own for the others), with `src/components/social/DesktopStartPage.vue` in the lobby's
   place and `src/composables/useDesktopMenu.js` running the menu's commands and Check for Updates. Packaging is `electron-builder.yml` (the icon, `build/icon.png`, drawn by `node build/make-icon.mjs`), released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`, or `v1.2.3-beta` for a
   pre-release: package.json's version, higher by semver than every version tag before it, checked by
   `scripts/release-tag.mjs`). Its
