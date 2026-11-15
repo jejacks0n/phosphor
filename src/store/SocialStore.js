@@ -6,6 +6,7 @@ import { apiOrigin, wsOrigin, appOrigin, desktopQuery } from '@/social/config';
 import { messageFor } from '@/social/messages';
 import { forgetHostCopies } from '@/document/autosaveStore';
 import { ed25519Supported, loadKey } from '@/social/keys';
+import { windowKey } from '@/social/windowKey';
 import { requestPass, renewAt } from '@/social/pass';
 import { makeSelfPass } from '@/social/selfPass';
 import { USERNAME_MAX } from '@/social/names';
@@ -203,7 +204,7 @@ export const useSocialStore = defineStore('social', {
     boot() {
       this._boot ??= (async () => {
         if (!this.allowed) await until(() => this.allowed).toBe(true);
-        const supported = await ed25519Supported() && await loadKey().then(
+        const supported = await ed25519Supported() && await (DESKTOP ? windowKey() : loadKey()).then(
           (key) => { this._key = markRaw(key); return true; },
           () => false,   // no IndexedDB (a private window in some browsers): the same plain message
         );
