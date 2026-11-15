@@ -93,3 +93,13 @@ test('opening an art file, a project and a picture say which file, and so do sav
   const png = await (await fetch('/tests/fixtures/images/gradient.png')).blob();
   expect(await notesWhile(() => project.setImageFromFile(new File([png], 'sky.png', { type: 'image/png' })))).toEqual(['Opening sky.png…']);
 });
+
+test('the art a host sends an artist names the room', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas();
+  const parts = await project.projectParts();
+  const whole = { settings: { ...parts.settings }, imageBuffer: project.imageBuffer, paintBuffer: null, baseBuffer: null, editCells: new Map([['1,0', { char: 'x' }]]), baseRecords: parts.baseRecords };
+  const notes = await notesWhile(async () => expect(await project.takeProject(whole, { n: 1, filename: 'Night shift', send: () => {}, me: 'ann' })).toBe(true));
+  expect(notes).toEqual(['Opening Night shift…']);
+  project.stopSharing();
+});

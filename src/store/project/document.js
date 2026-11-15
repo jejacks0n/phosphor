@@ -499,17 +499,20 @@ export const documentActions = {
   // HOST_ONLY_ACTIONS, which refuse openParts and what it calls. Open only while it's written, in one go:
   // nothing a person presses can get in. What's open goes first, as it's on the document being replaced.
   // sameDocument: undo and the selection stay (takeProject says when).
+  // The busy note names it as the room does (an artist's filename is the room's name).
   async openFromHost(parts, { sameDocument = false, ...options }) {
-    const pictures = await loadParts(parts);
-    this.commitPending();
-    this._takingProject = true;
-    this._sameDocument = sameDocument;
-    try {
-      showParts.call(this, parts, pictures, { fileId: null, ...options }); // the host's drawing, not one of this browser's (unless it's mine: handover)
-    } finally {
-      this._takingProject = false;
-      this._sameDocument = false;
-    }
+    return busyWhile(opening(options.filename), async () => {
+      const pictures = await loadParts(parts);
+      this.commitPending();
+      this._takingProject = true;
+      this._sameDocument = sameDocument;
+      try {
+        showParts.call(this, parts, pictures, { fileId: null, ...options }); // the host's drawing, not one of this browser's (unless it's mine: handover)
+      } finally {
+        this._takingProject = false;
+        this._sameDocument = false;
+      }
+    });
   },
 
   // Every frame's cells, built as a still is.
