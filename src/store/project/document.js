@@ -213,9 +213,9 @@ export const documentActions = {
   // the base layer (layer 'base', to draw on top of), or as edit cells over the black base ('edit', to
   // edit it), its palette and SAUCE in the settings (the rest at their defaults, so the sliders leave
   // it as the file shows it). Loading, not an edit: nothing to undo or save. A file that can't open
-  // throws (with its userMessage) before anything changes.
-  async openArtFile(file, { layer = 'base' } = {}) {
-    const art = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
+  // throws (with its userMessage) before anything changes. `art`: the file as read already (workspace.askArt).
+  async openArtFile(file, { layer = 'base', art = null } = {}) {
+    art ??= readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
     const { sauce } = art;
     const opened = await this.setBlankCanvas({
       ...settingDefaults(),
@@ -346,6 +346,7 @@ export const documentActions = {
     this.resetFrames();
     const workspace = useWorkspaceStore();
     workspace.selection = workspace.selectionOffset = workspace.lastPick = workspace.wand = null;
+    workspace.inputScrollX = workspace.inputScrollY = workspace.ansiScrollX = workspace.ansiScrollY = null; // each view starts afresh (EditorViewport)
   },
 
   // Save and export take the name typed in the save dialog (fileStem: without the extension); it

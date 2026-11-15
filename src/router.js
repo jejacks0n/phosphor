@@ -4,6 +4,7 @@ import { nextTick, watch } from 'vue';
 import { NavigationFailureType, START_LOCATION, createRouter, createWebHashHistory, createWebHistory, isNavigationFailure } from 'vue-router';
 import { PLACES, arrivalPage, pathOf } from '@/lib/addresses';
 import { desktopQuery } from '@/social/config';
+import { cancelTopDialog } from '@/lib/focus';
 import { useProjectStore } from '@/store/ProjectStore';
 import { hasLeftRoom, useRoomStore } from '@/store/RoomStore';
 import { ERROR_PARAMS, RETURN_PARAMS, useSocialStore } from '@/store/SocialStore';
@@ -146,6 +147,8 @@ export function followAddress(router) {
   }
 
   const stops = [
+    // Back or Forward with a dialog over the page closes the dialog, as a phone's Back does, and the page stays.
+    router.beforeEach((to, from) => ours || from === START_LOCATION || !cancelTopDialog()),
     router.beforeEach(() => { pending = true; }),
     router.beforeEach(askBeforeLeavingHost),   // after the one above: pending stays true while it asks
     router.afterEach((to, from, failure) => {

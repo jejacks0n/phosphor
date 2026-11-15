@@ -1,7 +1,7 @@
 <script setup>
-import { onMounted } from 'vue';
+import { onBeforeUnmount, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { FOCUSABLE, firstField, keepTabIn } from '@/lib/focus';
+import { FOCUSABLE, cancelOnBack, firstField, keepTabIn } from '@/lib/focus';
 import { useModal } from '@/composables/useModal';
 
 // A box centered over the page like a confirm box, for ChoiceDialog and SaveDialog: a title, a line
@@ -13,7 +13,9 @@ import { useModal } from '@/composables/useModal';
 // read: wider, its slot lays out in a column that fits the window, and the backdrop does nothing (a drag selecting
 // the text can end there), not even take focus. `wide` is long with room for two columns. With no title (a slot with
 // its own heading), `label` names it; `focus` false leaves focus to the slot. `closable` adds a close button (×) at
-// the top right, which cancels as Escape does. The <dialog> itself is useModal's.
+// the top right, which cancels as Escape does. The browser's Back cancels it too, and the page stays, unless `back` is
+// false: a dialog the address itself shows or asks about (SOCIAL's pages, its question, ending a room), which Back
+// moves past. The <dialog> itself is useModal's.
 const props = defineProps({
   title: { type: String, default: '' },
   label: { type: String, default: '' },
@@ -22,6 +24,7 @@ const props = defineProps({
   wide: { type: Boolean, default: false },
   focus: { type: Boolean, default: true },
   closable: { type: Boolean, default: false },
+  back: { type: Boolean, default: true },
 });
 const { t } = useI18n();
 const emit = defineEmits(['cancel']);
@@ -37,6 +40,8 @@ onMounted(() => {
   const el = element();
   if (props.focus) (firstField(el) ?? el?.querySelector('[autofocus]') ?? el?.querySelector(FOCUSABLE))?.focus();
 });
+const stopBack = props.back ? cancelOnBack(() => emit('cancel')) : null;
+onBeforeUnmount(() => stopBack?.());
 
 function onKeyDown(event) {
   event.stopPropagation();

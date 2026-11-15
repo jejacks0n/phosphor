@@ -27,23 +27,31 @@ const DEFAULT_FG = CGA[7], DEFAULT_BG = CGA[0];
 // Bytes below 0x20 that are controls; every other byte shows as its CP437 glyph.
 const CONTROLS = new Set([7, 8, 9, 10, 13, 26, 27]);
 
-// The text as one string per character: UTF-8 when the file is (a .utf8ans always, another kind when
-// it's valid UTF-8 with a multi-byte sequence), else CP437 a byte at a time.
+// The text as one string per character: UTF-8 when the file is (another kind when it's valid UTF-8 with a multi-byte
+// sequence), else CP437 a byte at a time. A .utf8ans is UTF-8 even with a stray bad byte (a �), at most one for every
+// 20 good characters past ASCII. More, and it's no UTF-8 at all (an .ans renamed, say, where a block and a shade can
+// pass for a UTF-8 pair), so it reads as an .ans does, saying so (notUtf8).
 function decode(bytes, name) {
   const utf8 = extensionOf(name) === 'utf8ans';
-  let text = null;
+  let text = null, notUtf8 = false;
   try {
-    text = new TextDecoder('utf-8', { fatal: !utf8 }).decode(bytes);
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     if (!utf8 && !bytes.some((byte) => byte >= 0x80)) text = null; // valid UTF-8 with a high byte has a multi-byte sequence (a BOM is one)
-  } catch { /* not UTF-8 */ }
-  if (text !== null) return { items: graphemes(text), cp437: false };
-  return { items: Array.from(bytes, (byte) => (CONTROLS.has(byte) ? String.fromCharCode(byte) : CP437[byte])), cp437: true };
+  } catch {
+    if (utf8) {
+      const loose = new TextDecoder().decode(bytes), count = (re) => (loose.match(re) ?? []).length;
+      if (count(/\uFFFD/g) * 20 <= count(/[^\p{ASCII}\uFFFD]/gu)) text = loose;
+      else notUtf8 = true;
+    }
+  }
+  if (text !== null) return { items: graphemes(text), cp437: false, notUtf8 };
+  return { items: Array.from(bytes, (byte) => (CONTROLS.has(byte) ? String.fromCharCode(byte) : CP437[byte])), cp437: true, notUtf8 };
 }
 
 export function readArtFile(bytes, name) {
   const sauce = readSauce(bytes);
-  const { items, cp437 } = decode(bytes.subarray(0, artEndOf(bytes)), name);
-  const fixed = sauce && sauce.dataType === 1 && sauce.width > 0 ? sauce.width : extensionOf(name) === 'ans' ? 80 : 0; // 0: no wrapping
+  const { items, cp437, notUtf8 } = decode(bytes.subarray(0, artEndOf(bytes)), name);
+  const fixed = sauce && sauce.dataType === 1 && sauce.width > 0 ? sauce.width : extensionOf(name) === 'ans' || notUtf8 ? 80 : 0; // 0: no wrapping
 
   const end = items.indexOf('\x1a');
   const crOnly = !items.slice(0, end < 0 ? items.length : end).some((item) => item === '\n' || item === '\r\n'); // no LF in the art: a CR ends the line
@@ -202,5 +210,5 @@ export function readArtFile(bytes, name) {
     const line = lines.get(r);
     for (let c = 0; c < cols; c++) cells[r * cols + c] = line?.[c] ?? { char: ' ', fg: DEFAULT_FG, bg: DEFAULT_BG };
   }
-  return { cols, rows, cells, sauce, palette: ['cga', 'vga', 'none'][depth] };
+  return { cols, rows, cells, sauce, palette: ['cga', 'vga', 'none'][depth], notUtf8 };
 }

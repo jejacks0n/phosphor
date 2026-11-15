@@ -74,7 +74,7 @@ const linkIsYours = computed(() => room.reclaimable.some((r) => r.id === social.
 
 <template>
   <ConsentDialog v-if="!DESKTOP && !social.allowed && wanted"/>
-  <ModalDialog v-else-if="page" long :wide="!!PAGES[page][3]?.()" :focus="false" :label="t(PAGES[page][1])" :closable="!!PAGES[page][2]" @cancel="cancel">
+  <ModalDialog v-else-if="page" long :wide="!!PAGES[page][3]?.()" :focus="false" :label="t(PAGES[page][1])" :closable="!!PAGES[page][2]" :back="false" @cancel="cancel">
     <div ref="body" class="people-forms" :data-page="page">
       <p v-if="social.notice" class="notice" role="status">
         <span>{{ social.notice }}</span>

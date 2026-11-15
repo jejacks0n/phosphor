@@ -1,4 +1,4 @@
-import { shallowRef, watch } from 'vue';
+import { markRaw, shallowRef, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { StorageSerializers, useLocalStorage } from '@vueuse/core';
 import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
@@ -8,6 +8,7 @@ import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
 import { loadGuides, saveGuides } from '@/lib/guideStorage';
 import { snapCursor } from '@/document/wideChars';
+import { isArtFile, readArtFile } from '@/lib/ArtFile';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { groupOf } from '@/tools/groups';
@@ -94,7 +95,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     openRequest: 0,          // counts Cmd/Ctrl+O presses: EditWorkspace opens its file chooser for each
     fileRequest: null,       // desktop: a File to open (double-clicked, Open Recent), which EditWorkspace takes as chosen
     zoomRequest: null,       // { by }: a zoom key, for the view showing (EditorViewport): by 2 or 0.5, or 0 for the view's own zoom
-    artDrop: null,           // { file, at: { col, row } | null, picture? }: a picture on an open still drawing, asking to add it as paint or open it; an art file opening from the start screen, asking to edit it or draw on top; or dropped on an open drawing, asking to add it or open it (EditWorkspace)
+    artDrop: null,           // { file, at: { col, row } | null, picture?, art? (an art file, as read) }: a picture on an open still drawing, asking to add it as paint or open it; an art file opening from the start screen, asking to edit it or draw on top; or dropped on an open drawing, asking to add it or open it (EditWorkspace)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
     ansiViewZoom: 1,         // the ansiZoom those cells were measured at (AnsiEditor)
@@ -390,6 +391,21 @@ export const useWorkspaceStore = defineStore('workspace', {
     toggleSettings() {
       this.settingsOpen = !this.settingsOpen;
     },
+    // A file asking how it comes in (artDrop). An art file is read first, so one that can't open (too big, empty) says so
+    // before anything's asked, and what's chosen opens what was read; a .utf8ans read as CP437 says that too.
+    async askArt(file, { at = null, picture = false } = {}) {
+      let art = null;
+      if (isArtFile(file.name)) {
+        try {
+          art = markRaw(readArtFile(new Uint8Array(await file.arrayBuffer()), file.name));
+        } catch (error) {
+          if (!error.userMessage) throw error;
+          return void toast(error.userMessage);
+        }
+        if (art.notUtf8) toast(t('document.notUtf8', { name: file.name }));
+      }
+      this.artDrop = { file, at, ...(picture && { picture }), ...(art && { art }) };
+    },
     // New project (the button, the desktop menu): asked first when there's unsaved work.
     newProject() {
       const project = useProjectStore();
@@ -398,6 +414,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       if (project.isDirty && !confirm(t('actions.confirmNew'))) return;
       project.clearImage();
       this.editorTab = 'input';
+      this.settingsOpen = false; // a phone's drawer: the start screen shows
     },
     // Save project (the button, Cmd/Ctrl+S, the desktop menu): the save dialog, or on desktop straight over the
     // project's own file, or where the system's save box says (always, for Save As: `as`).

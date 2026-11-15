@@ -10,6 +10,7 @@ import { forgetKey } from '@/social/keys';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { fakeServer, member, sockets, useFakeSockets } from '../support/socialServer.js';
 import { createAddressRouter, followAddress } from '@/router';
+import { cancelOnBack } from '@/lib/focus';
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
 const ID = 'abcdefghij', OTHER = 'bcdefghijk';
@@ -82,6 +83,23 @@ test('a tab change is one step, and Back undoes it', async () => {
   router.forward();
   await settled();
   expect(workspace.editorTab).toBe('sauce');
+});
+
+test('Back with a dialog over the page closes the dialog, and the page stays; the next Back goes back', async () => {
+  await landed();
+  workspace.editorTab = 'sauce';
+  await settled();
+  const cancel = vi.fn(), stopBack = cancelOnBack(cancel);   // Export, say (ModalDialog)
+  router.back();
+  await settled();
+  stopBack();   // canceled: it closes
+  expect(cancel).toHaveBeenCalledTimes(1);
+  expect([workspace.editorTab, path()]).toEqual(['sauce', '/sauce']);
+
+  router.back();
+  await settled();
+  expect([workspace.editorTab, path()]).toEqual(['input', '/pixel']);
+  expect(cancel).toHaveBeenCalledTimes(1);
 });
 
 test('a page opening over a tab is one step, and Back closes it', async () => {

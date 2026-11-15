@@ -372,6 +372,7 @@ onBeforeUnmount(() => {
       scroll-key="ansi"
       :view="props.view"
       :unit="unit"
+      start-top
   >
     <pre v-if="useDom" ref="pre" class="display" :style="{ pointerEvents: 'none' }"></pre>
     <div v-else ref="sizer" class="display" :style="sizerStyle"><canvas ref="canvas"></canvas></div>

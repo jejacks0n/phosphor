@@ -321,7 +321,8 @@ Either way:
 
 - **The Grid**: The file's size. Its width comes from the file's SAUCE record when that describes character art with
   a width; otherwise it's 80 columns for a `.ans` and the widest line for the others. Its height is as many lines as
-  the art reaches.
+  the art reaches. The ANSI view starts at the art's top-left, its first line, as a terminal shows it (centered when
+  the whole file fits).
 - **Every Cell Keeps Its Character and Colors**: So it looks just as the file does. Opening a file isn't an edit, so
   there's nothing to undo. With **Draw on top**, the art is the base layer as if you'd used Merge down, and the color
   sliders, the palette and Bake work on it as they do on any picture. **All cells** turns on in the PIXEL view, so
@@ -334,10 +335,12 @@ Either way:
   display font stays as you have it. An export writes the record back as it came, with only what you changed on the
   SAUCE tab, and the size after a resize.
 - **Bright Backgrounds**: Kept bright. Blink isn't shown.
-- **Characters**: A `.utf8ans` is UTF-8. The other types are read as UTF-8 when they're valid UTF-8 with characters
-  beyond plain ASCII, and as CP437 otherwise.
+- **Characters**: A `.utf8ans` is UTF-8, even with a stray byte that isn't (shown as �). One that isn't UTF-8 at all
+  (a `.ans` renamed, say) is read as CP437 at 80 columns, as a `.ans` is, and a message says so. The other types are
+  read as UTF-8 when they're valid UTF-8 with characters beyond plain ASCII, and as CP437 otherwise.
 - **Limits**: A file over 300 columns, 5,000 lines or 500,000 cells doesn't open. A message gives the file's size and
-  the limits, and what you had open stays open. A file with no art in it doesn't open either.
+  the limits, and what you had open stays open. A file with no art in it doesn't open either. Either way the message
+  comes first: Phosphor reads the file before it asks how to open it, or whether to leave unsaved work.
 - **Animated Files**: An animated `.ans` (one that moves the cursor or clears the screen) opens as its last screen.
 
 An `.svg` file opens on VECTOR as shapes instead ([Importing SVG](vector.md#importing-svg)).
