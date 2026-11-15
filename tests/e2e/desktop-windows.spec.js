@@ -3,7 +3,7 @@
 // forward, each window's title, the menu following the focused window, closing a window and quitting with several (each
 // asks first with unsaved work, and a host's room is handed on), the last window closing, and a room per window: each
 // its own service on its own port, a second window joining the first's room as someone else, and a window's service
-// going with it, and a room answering while another window's question is up.
+// going with it, a room answering while another window's question is up, and each window's key through its reloads.
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,6 +12,7 @@ import {
   focusedId, menuEnabled, closeWindow, hostRoom, joinRoom, inRoom, drawing, role, live, WAITING,
 } from './desktop-support.js';
 import { cellPoint, drag, fixture, pickLayer, startScreen, store } from './support.js';
+import { openLobby } from './social-support.js';
 
 let launched, others = [];
 test.afterEach(async () => {
@@ -401,4 +402,22 @@ test('a room keeps answering while another window asks Close this window?', asyn
   expect(windowsOf(app)).toHaveLength(2);
   await live(page);
   await answer(app, 0);   // the app closes as the test ends
+});
+
+test('each window keeps its own key through its reloads', async () => {
+  launched = await launchApp();
+  const { app, page } = launched;
+  const second = await newWindow(app);
+  const keyOf = async (window) => {
+    await openLobby(window);
+    await expect.poll(() => store(window, 'social', (s) => s._key?.publicKey ?? null)).not.toBeNull();
+    return store(window, 'social', (s) => s._key.publicKey);
+  };
+  const keys = [await keyOf(page), await keyOf(second)];
+  expect(keys[0]).not.toBe(keys[1]);
+
+  for (const [i, window] of [page, second].entries()) {
+    await window.reload();
+    expect(await keyOf(window)).toBe(keys[i]);
+  }
 });
