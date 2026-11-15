@@ -52,9 +52,9 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
 
   await openApp(page);
   await page.getByRole('button', { name: 'Select', exact: true }).click();
-  await drag(page, await cellPoint(page, 2, 2), await cellPoint(page, 5, 5));
+  await drag(page, await cellPoint(page, 2, 4), await cellPoint(page, 5, 7)); // below the edge zone, where the drag would scroll
   const selection = await store(page, 'workspace', (w) => w.selection);
-  expect(selection).toEqual({ c0: 2, r0: 2, c1: 5, r1: 5 }); // room to nudge, if an arrow got through
+  expect(selection).toEqual({ c0: 2, r0: 4, c1: 5, r1: 7 }); // room to nudge, if an arrow got through
 
   await tab(page, 'PIXEL').focus(); // the order: PIXEL, ANSI, SAUCE (VECTOR takes their place when the vector layer is picked)
   await page.keyboard.press('ArrowRight');

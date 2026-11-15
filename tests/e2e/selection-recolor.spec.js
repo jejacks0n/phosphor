@@ -18,9 +18,10 @@ test("the wand's Set BG and Set FG recolor the cells it selected; Select's do th
   expect([await base(page, 4, 8), await base(page, 4, 9)]).toEqual(['#008080', '#ff00ff']);
 
   await page.keyboard.press('m');
-  await drag(page, await cellPoint(page, 10, 2), await cellPoint(page, 11, 2));
+  // Row 4, below the view's edge zone, where a Select drag scrolls it by how long the drag takes.
+  await drag(page, await cellPoint(page, 10, 4), await cellPoint(page, 11, 4));
   await page.getByRole('button', { name: 'Set FG', exact: true }).click();
-  expect([await base(page, 10, 5), await base(page, 11, 5)]).toEqual(['#ff00ff', '#ff00ff']);
+  expect([await base(page, 10, 9), await base(page, 11, 9)]).toEqual(['#ff00ff', '#ff00ff']);
 
   await store(page, 'project', (p) => { p.renderStyle = 'colorAscii'; });
   await expect(page.getByRole('button', { name: 'Set BG', exact: true })).toHaveCount(0);
@@ -43,14 +44,15 @@ test('Enter on a focused Set FG presses it and keeps the selection', async ({ pa
   await openApp(page);
   await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; });
   await page.keyboard.press('m');
-  await drag(page, await cellPoint(page, 10, 2), await cellPoint(page, 11, 2));
+  // Row 4, below the view's edge zone, where a Select drag scrolls it by how long the drag takes.
+  await drag(page, await cellPoint(page, 10, 4), await cellPoint(page, 11, 4));
   await page.keyboard.press('Shift+ArrowRight');
   const setFg = page.getByRole('button', { name: 'Set FG', exact: true });
   await setFg.focus(); // where Shift+Tab lands depends on the page's tab order, which other tests own
   await expect(setFg).toBeFocused();
   await page.keyboard.press('Enter');
   expect(await store(page, 'workspace', (w) => w.selection !== null)).toBe(true); // kept
-  expect([await base(page, 10, 5), await base(page, 12, 5)]).toEqual(['#ff00ff', '#ff00ff']);
+  expect([await base(page, 10, 9), await base(page, 12, 9)]).toEqual(['#ff00ff', '#ff00ff']);
 });
 
 test('with Select and nothing selected, Set FG and Set BG are there and off; a click selects its cell and they recolor it', async ({ page }) => {
