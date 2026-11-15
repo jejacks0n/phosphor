@@ -39,7 +39,8 @@ const drop = async (file) => {
   event.dataTransfer = new DataTransfer();
   event.dataTransfer.items.add(file);
   host.querySelector('article.drop-zone').dispatchEvent(event);
-  await settle();
+  // The file is read before its question shows, so wait for the question: a fixed settle can end first on a slow runner.
+  await vi.waitFor(() => expect(document.querySelector('button.choice')).not.toBe(null));
 };
 // The questions are modals, on the body.
 const dialog = () => document.querySelector('dialog[open]');
