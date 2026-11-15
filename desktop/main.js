@@ -331,6 +331,9 @@ function openWindow({ files = [] } = {}) {
   const win = new BrowserWindow({
     ...cascade(from, workArea),
     title: 'Phosphor',
+    // The dark theme's --surface-0 (src/assets/global.css), the app's own default, so a window doesn't flash white
+    // before its page paints. ponytail: a light theme picked in the page still shows dark for that moment.
+    backgroundColor: '#1a1a1a',
     webPreferences: {
       preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)),
       contextIsolation: true,
