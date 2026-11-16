@@ -3,7 +3,7 @@ import { markRaw } from 'vue';
 import { deserializeBase } from '@/document/baseRecords.js';
 import { Tail } from '@/document/changes.js';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger.js';
-import { MOST_CHANGE_BYTES, MOST_PROJECT_BYTES, cellsFitAnyGrid, packProject, packValue, unpackValue } from '@/social/wire.js';
+import { MOST_CHANGE_BYTES, MOST_PROJECT_BYTES, cellsFitAnyGrid, packProject, packValue, readLayers, unpackValue } from '@/social/wire.js';
 import { settingsFromStranger } from '@/store/settings.js';
 import { cellsFit } from '@/store/project/shared.js';
 import { artistSharing, boundsOf, readsAsHeard, stopAsking } from '@/store/project/sharing.js';
@@ -42,6 +42,9 @@ export const handoverActions = {
       if (item.t === 'settings') {
         land();
         this.applySettings(item.values);
+      } else if (item.t === 'layers') {
+        land();
+        this.applyLayers(item);
       } else if (item.t === 'base') {
         land();
         this.applyBase(item.runs, deserializeBase(item.records).records);
@@ -155,24 +158,35 @@ export const handoverActions = {
 
   // A host gathering takes that answer, from whoever claimed to have numbers up to has: false, with nothing taken,
   // unless it holds that claim and it's past my last number. A tail goes in the ledger and on the picture, and has to
-  // be every number from my next to the one it says. A project is the agreed document, so the stacks start over.
+  // be every number from my next to the one it says, each change read against the stack the layers messages before it
+  // leave. A project is the agreed document, so the stacks start over.
   async takeCatchUp({ n, epoch, kind, tail, parts }, has) {
     const ledger = this._ledger;
     if (!Number.isSafeInteger(has) || !Number.isSafeInteger(n) || has <= ledger.n || n < has) return false;
     if (kind === 'tail') {
       this.ensureLayer();
       const reaches = epoch === ledger.epoch && Array.isArray(tail) && tail.length === n - ledger.n && tail.every((item, i) => item?.n === ledger.n + 1 + i);
-      if (!reaches || !tail.every((item) => readsAsHeard(this, item) && (item.t === 'settings' || item.t === 'base' || typeof item.by === 'string'))) return false;
+      if (!reaches) return false;
+      let stack = this.layers;
+      const items = tail.map((item) => {
+        if (item?.t === 'layers') {
+          const read = readLayers(item);
+          if (read) stack = read.stack;
+          return read && { t: 'layers', ...read };
+        }
+        return readsAsHeard(this, item, stack) && (item.t === 'settings' || item.t === 'base' || typeof item.by === 'string') ? item : null;
+      });
+      if (items.includes(null)) return false;
       this.flushHeard();
-      for (const item of tail) {
-        if (item.t === 'settings' || item.t === 'base') {
+      for (const item of items) {
+        if (item.t === 'settings' || item.t === 'base' || item.t === 'layers') {
           this._ledger.n = item.n;
           this._ledger.tail.add(item);
         } else {
           this._ledger.takeNumbered(item);
         }
       }
-      this.replayOnPicture(tail);
+      this.replayOnPicture(items);
       return true;
     }
     const settings = settingsFromStranger(parts.settings);

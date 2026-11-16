@@ -24,12 +24,17 @@
  *
  * Drawing together. Artists send their changes to the host's browser, which numbers every change in one
  * sequence and sends it back to all of them (to the artist who made it too: that is how they learn its
- * number). A change is { stroke, cells: [[key, entry|null]], runs: [[x, y, length, rgba]] } (changes.js);
- * a stroke is one gesture's id. A message is MOST_ARTIST_BYTES at most, so senders split a change at
- * MOST_CHANGE_BYTES, leaving room for the rest of the message.
+ * number). A change is { stroke, cells: [[key, entry|null]], runs: [[x, y, length, rgba, id?]] } (changes.js);
+ * a stroke is one gesture's id. A cell's key names its layer ('L2:3,4'; bare, the edit layer's, layerInfo.js), a run's
+ * fifth item names its layer (none, the edit layer), and a shape may name its vector layer (shape.layer). A message is
+ * MOST_ARTIST_BYTES at most, so senders split a change at MOST_CHANGE_BYTES, leaving room for the rest of the message.
  *
  * Artist to host:
- *   { t: 'change', stroke, cells, runs }        paint, type, or any edit to the edit layer
+ *   { t: 'change', stroke, cells, runs }        paint, type, or any edit to a layer above the bottom
+ *   { t: 'layer-op', op }                       asks for a change to the stack (readLayerOp): one of
+ *                                               { kind: 'add', layer: 'cells'|'vector', above }, { kind: 'delete', id },
+ *                                               { kind: 'move', id, to }, { kind: 'duplicate', id }, { kind: 'rename', id, name }.
+ *                                               Nothing changes until the host's 'layers' comes
  *   { t: 'undo', stroke } / { t: 'redo', stroke }   the whole stroke, the artist's own
  *   { t: 'cursor', at, view, inside }           where the artist's pointer is, the part of the art in view, and the art layer they're in
  *   { t: 'artist-hello', has, epoch }           first thing on a connection: the last number held in that epoch
@@ -44,6 +49,9 @@
  * Host to artist:
  *   { t: 'numbered', n, by, stroke, cells, runs }   a change, by the sub who made it
  *   { t: 'settings', n, values }                the document's saved settings, changed
+ *   { t: 'layers', n, stack, by, made }         the whole stack after any change to it (readLayers): [{ id, kind, name,
+ *                                               chars }], bottom first; by, who asked (a sub, the host's too); made, the
+ *                                               id of a layer that change added or copied, else null
  *   { t: 'font', font }                         the font the art is in (fontOnWire), at hello and when it changes
  *   { t: 'base', n, runs, records }             the base layer's own pixels, and its pinned characters
  *   { t: 'project-failed' }                     the host couldn't pack the project this artist was owed
@@ -75,7 +83,7 @@ import { usableChar } from '../lib/CharWidth.js';
 import { clampAnsiZoom } from '../lib/zoom.js';
 import { writeProject, readProject, gzipped, gunzipped, MOST_PROJECT_BYTES } from '../document/projectIO.js';
 import { isGoodShapeKey, isShapeKey, sameShape, shapeFromStranger } from '../document/shapes.js';
-import { keyLayer, layerKey } from '../document/layerInfo.js';
+import { goodLayerName, goodLayers, isLayerId, keyLayer, layerKey } from '../document/layerInfo.js';
 
 export const CHUNK_BYTES = 65536;
 // An artist's message (and the host's numbered one) is a message like any other.
@@ -249,13 +257,13 @@ function goodEntry(entry) {
   return any;
 }
 
+const ONLY_EDIT = new Map([['edit', 'cells']]);
 // The change in an artist's message, or null (nothing thrown) when anything in it isn't one the app
 // could have made on a grid of cols x rows cells over paint layers layerWidth x layerHeight: a cell off
 // the grid, one that can't be drawn, a shape that isn't one, a run off the layer, a stroke id that isn't short text, or
 // a layer that isn't there to hold it. layers: every layer above the bottom, id to kind (stackKinds); a cell's key and a
 // run name a cells layer (layerInfo.js: bare, and a run of four, the edit layer), and a shape a vector layer, or none
 // for the one a room fills in. The same arrays come back, so what's sent on as numbered is what was sent.
-const ONLY_EDIT = new Map([['edit', 'cells']]);
 export function readChange(msg, { cols, rows, layerWidth, layerHeight, layers = ONLY_EDIT }) {
   if (!msg || typeof msg !== 'object') return null;
   const { stroke, cells, runs } = msg;
@@ -282,6 +290,30 @@ export function readChange(msg, { cols, rows, layerWidth, layerHeight, layers = 
     if (!Number.isInteger(rgba) || rgba < 0 || rgba > 0xffffffff) return null;
   }
   return { stroke, cells, runs };
+}
+
+// A host's layers message, or null for anything else: the stack as goodLayers takes one, its names as goodLayerName leaves
+// them (null, the default), by a sub, and made a layer in it above the bottom, or null. Only id, kind, name and chars come
+// back, chars null for none (the bottom's are the document's settings).
+const goodName = (name) => name === null || (typeof name === 'string' && goodLayerName(name) === name);
+export function readLayers(msg) {
+  const { n, stack, by, made = null } = msg ?? {};
+  if (!isWhole(n) || !isSub(by) || !Array.isArray(stack) || !stack.every((layer) => goodName(layer?.name))) return null;
+  const layers = goodLayers(stack);
+  if (!layers || (made !== null && !layers.slice(1).some((layer) => layer.id === made))) return null;
+  return { n, by, made, stack: layers.map(({ id, kind, name, chars = null }) => ({ id, kind, name, chars })) };
+}
+
+// An artist's layer-op's op, with only its own fields, or null for anything that isn't one of the five. The bottom is the
+// host's: an op may only add above it. Whether its layer is there is the host's to see when it's done.
+const OP_FIELDS = { add: ['layer', 'above'], delete: ['id'], move: ['id', 'to'], duplicate: ['id'], rename: ['id', 'name'] };
+export function readLayerOp(msg) {
+  const op = msg?.op, fields = Object.hasOwn(OP_FIELDS, op?.kind) && OP_FIELDS[op.kind];
+  if (!fields) return null;
+  if (op.kind === 'add' ? !(op.layer === 'cells' || op.layer === 'vector') || !isLayerId(op.above) : !isLayerId(op.id) || op.id === 'base') return null;
+  if (op.kind === 'move' && !(Number.isInteger(op.to) && op.to >= 1)) return null;
+  if (op.kind === 'rename' && !goodName(op.name)) return null;
+  return Object.fromEntries(['kind', ...fields].map((field) => [field, op[field]]));
 }
 
 // Whether these could be a document's cells or a ledger's on any grid the app allows: they may be past the one in use.

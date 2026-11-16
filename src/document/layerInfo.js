@@ -94,12 +94,13 @@ export const MOST_LAYERS = 64; // ponytail: 64 is plenty to draw with; each cell
 // hold (settingsFromStranger), of which only the character settings are kept. Names and numbers are cleaned as
 // layersFromOld cleans them.
 const LAYER_ID = /^(base|vector|edit|L\d+)$/;
+export const isLayerId = (id) => typeof id === 'string' && LAYER_ID.test(id);
 const OWN_KIND = { edit: 'cells', vector: 'vector' }; // the ids that keep their old meaning
 export function goodLayers(raw) {
   if (!Array.isArray(raw) || raw.length > MOST_LAYERS || raw[0]?.id !== 'base' || raw[0].kind !== 'cells') return null;
   const seen = new Set();
   for (const entry of raw) {
-    if (!isObject(entry) || typeof entry.id !== 'string' || !LAYER_ID.test(entry.id) || seen.has(entry.id) || !['cells', 'vector'].includes(entry.kind) || (OWN_KIND[entry.id] ?? entry.kind) !== entry.kind) return null;
+    if (!isObject(entry) || !isLayerId(entry.id) || seen.has(entry.id) || !['cells', 'vector'].includes(entry.kind) || (OWN_KIND[entry.id] ?? entry.kind) !== entry.kind) return null;
     seen.add(entry.id);
   }
   const charsOf = (entry) => {

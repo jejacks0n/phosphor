@@ -144,17 +144,25 @@ test('an item chosen from ⋯ with the keyboard leaves focus in the list: on the
   expect(document.activeElement).toBe(pickOf(0)); // the row is gone: the one picked now, not the page
 });
 
-test('in a room the ⋯ items that change the stack are off with the reason', async () => {
-  await mount(({ project }) => { project._sharing = { role: 'host' }; });
-  const item = await openMenu(0);
-  for (const label of ['Duplicate', 'Delete', 'Move up', 'Move down']) {
-    expect(item(label).disabled).toBe(true);
-    expect(item(label).title).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
+test('in a room the ⋯ items and the add buttons that change the stack are on, as alone, and Add layer goes above the pick', async () => {
+  const send = vi.fn();
+  const { project, workspace } = await mount(({ project }) => {
+    project.addLayer('cells', 'edit');
+    project.addLayer('cells', 'edit');
+    project.startSharing({ send, role: 'host', me: 'host' });
+  });
+  const item = await openMenu(1);
+  for (const label of ['Rename', 'Duplicate', 'Delete', 'Move up', 'Move down']) {
+    expect(item(label).disabled, label).toBe(false);
+    expect(item(label).title, label).toBe('');
   }
-  expect(item('Rename').disabled).toBe(false);
-  expect(addButton('Add layer').disabled).toBe(true);
-  expect(addButton('Add layer').title).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
-  expect(addButton().disabled).toBe(false); // the vector layer the room is missing
+  for (const label of ['Add layer', 'Add vector layer']) expect(addButton(label).disabled, label).toBe(false);
+  addButton('Add layer').click();
+  await nextTick();
+  expect(project.layers[2].id).toBe(workspace.pickedLayer);
+  expect(project.layers[1].id).toBe('edit');
+  expect(send).toHaveBeenCalledWith(expect.objectContaining({ t: 'layers', by: 'host', made: workspace.pickedLayer }));
+  project.stopSharing();
 });
 
 test('at the most layers Add layer, Add vector layer and Duplicate are off and say why', async () => {

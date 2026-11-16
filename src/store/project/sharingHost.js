@@ -2,8 +2,8 @@
 import { serializeBase } from '@/document/baseRecords.js';
 import { exactly, pixelRuns, splitChange } from '@/document/changes.js';
 import { keepRoomLedger } from '@/document/autosaveStore.js';
-import { MOST_CHANGE_BYTES, packProject, readChange } from '@/social/wire.js';
-import { SAVED_KEYS, lockedAmong, randomId, writeLayerRuns } from '@/store/project/shared.js';
+import { MOST_CHANGE_BYTES, packProject, readChange, readLayerOp } from '@/social/wire.js';
+import { SAVED_KEYS, lockedAmong, randomId, stackOnWire, writeLayerRuns } from '@/store/project/shared.js';
 import { boundsOf, flushSoon } from '@/store/project/sharing.js';
 import { MOST_SHAPES, isShapeKey } from '@/document/shapes.js';
 
@@ -131,6 +131,31 @@ export const sharingHostActions = {
     this._ledger.reset({ epoch: randomId(), sum: this.editLayerSum() });
     this._ledger.note();
     sendDocument?.();
+  },
+
+  // The stack after a change to it, to the room, numbered and kept like any change: by, who asked (a sub); made, the layer
+  // that change added or copied, or null.
+  sendLayers({ by, made = null }) {
+    const message = { t: 'layers', n: this._ledger.note(), stack: stackOnWire(this), by, made };
+    this._ledger.tail.add(message);
+    this._sharing.send(message);
+  },
+
+  // An artist's ask for a change to the stack (wire.js: layer-op), done as the host's own are (layers.js), with them as who
+  // asked (asker): the stack goes to everyone. One that isn't an op, or that's refused, does nothing.
+  takeLayerOp(by, msg) {
+    const sharing = this._sharing, op = readLayerOp(msg);
+    if (sharing?.role !== 'host' || !op) return;
+    sharing.asker = by;
+    try {
+      if (op.kind === 'add') this.addLayer(op.layer, op.above);
+      else if (op.kind === 'delete') this.deleteLayer(op.id);
+      else if (op.kind === 'move') this.moveLayer(op.id, op.to);
+      else if (op.kind === 'duplicate') this.duplicateLayer(op.id);
+      else this.renameLayer(op.id, op.name);
+    } finally {
+      sharing.asker = null;
+    }
   },
 
   // A host's settings to the room, numbered and kept like any change.

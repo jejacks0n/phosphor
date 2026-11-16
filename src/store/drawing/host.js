@@ -265,6 +265,7 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
     return {
       project: () => project.projectNow(),
       onChange: take, onUndo: take, onRedo: take,
+      onLayerOp: (sub, msg) => project.takeLayerOp(sub, msg),
       onCursor: (sub, { at, view, inside }, name) => {
         const cursor = readCursor({ at, view, name, inside });
         if (cursor) noteCursor(sub, cursor, name);
