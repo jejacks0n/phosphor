@@ -22,7 +22,7 @@ afterEach(() => { mounted?.unmount(); mounted = null; closeToast(); });
 
 async function blank() {
   const app = await createTestApp();
-  await app.project.setBlankCanvas({ cols: 20, rows: 20 });
+  await app.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(app.project);
   return app;
 }
@@ -176,7 +176,7 @@ test('a new document picks the edit layer', async () => {
   const { project, workspace } = await blank();
   const id = project.addLayer('cells', 'edit');
   workspace.pickLayer(id);
-  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await project.setBlankCanvas({ withLayer: true, cols: 10, rows: 10 });
   expect(workspace.pickedLayer).toBe('edit');
 });
 
@@ -458,7 +458,7 @@ test('a new document opens on the edit layer, whatever was picked before', async
   const { project, workspace } = await blank();
   workspace.editorTab = 'output';
   workspace.pickLayer('base');
-  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await project.setBlankCanvas({ withLayer: true, cols: 10, rows: 10 });
   expect(workspace.pickedLayer).toBe('edit');
 
   workspace.pickLayer('base');

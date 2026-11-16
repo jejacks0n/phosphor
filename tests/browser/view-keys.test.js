@@ -27,7 +27,7 @@ const frames = (n = 3) => new Promise((resolve) => {
 // A 600 × 400 view of a 120 × 200 drawing, with the app's keys.
 async function mount(tab) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 120, rows: 200 });
+  await project.setBlankCanvas({ withLayer: true, cols: 120, rows: 200 });
   workspace.editorTab = tab;
   host = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 600px; height: 400px; display: flex' });
   document.body.append(host);

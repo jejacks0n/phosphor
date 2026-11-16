@@ -163,7 +163,7 @@ test('a new document has an id, and the file calls say whether it has been saved
   expect(project.documentId).toBe(null);
   expect(project.savedToFile).toBe(false);
 
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const first = project.documentId;
   expect(first).toBeTruthy();
   expect(project.savedToFile).toBe(false);
@@ -172,7 +172,7 @@ test('a new document has an id, and the file calls say whether it has been saved
   expect(project.savedToFile).toBe(true);
   expect(project.documentId).toBe(first);
 
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   expect(project.documentId).not.toBe(first);
   expect(project.savedToFile).toBe(false);
 
@@ -194,7 +194,7 @@ test('a new document has an id, and the file calls say whether it has been saved
 
 test('opening a project file counts as saved to one', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const blob = await writeProject({ ...await project.projectParts(), imageBuffer: project.imageBuffer });
   project.clearImage();
   await project.loadProject(new File([blob], 'mine.phosphor'));
@@ -205,7 +205,7 @@ test('where randomUUID is missing (plain http), a new document still gets an id'
   const { project } = await createTestApp();
   Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
   try {
-    await project.setBlankCanvas();
+    await project.setBlankCanvas({ withLayer: true });
     expect(project.documentId).toMatch(/^[0-9a-f]{32}$/);
   } finally {
     delete crypto.randomUUID;
@@ -214,7 +214,7 @@ test('where randomUUID is missing (plain http), a new document still gets an id'
 
 test('a document is written once when it opens, with no version', async () => {
   const { project } = await mounted();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const opened = Date.now();
   await pass(SAVE_AFTER_MS);
 
@@ -304,7 +304,7 @@ test('an edit right after a save is written as soon as the page starts to leave,
 
 test('opening a project file is one write, saved, with no version', async () => {
   const { project } = await mounted();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const blob = await writeProject({ ...await project.projectParts(), imageBuffer: project.imageBuffer });
   await pass(SAVE_AFTER_MS);
   vi.mocked(writeLatest).mockClear();
@@ -468,7 +468,7 @@ test('each document goes by its own versions', async () => {
   await pass(SAVE_AFTER_MS);
   expect(await listVersions(first)).toHaveLength(1);
 
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await pass(SAVE_AFTER_MS);
   edit(project);
   await pass(SAVE_AFTER_MS);
@@ -495,7 +495,7 @@ test('a document swapped in during a write keeps the old one\'s write from being
 
   edit(project);
   vi.advanceTimersByTime(SAVE_AFTER_MS);
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   release();
   await autosave.flush();
   expect(writeLatest).not.toHaveBeenCalledWith(expect.objectContaining({ id: first }));
@@ -529,7 +529,7 @@ test('with no crypto.subtle (plain http), the same: a toast, and current stays f
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   Object.defineProperty(crypto, 'subtle', { value: undefined, configurable: true });
   try {
-    await project.setBlankCanvas(); // a new image: its hash isn't remembered
+    await project.setBlankCanvas({ withLayer: true }); // a new image: its hash isn't remembered
     await pass(SAVE_AFTER_MS);
   } finally {
     delete crypto.subtle;
@@ -691,7 +691,7 @@ test('a blank canvas that can\'t be encoded says so and stays at the start', asy
   vi.spyOn(console, 'error').mockImplementation(() => {});
   const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
   vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((done) => done(null));
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   expect(alert).toHaveBeenCalledWith('Could not create a blank canvas.');
   expect(project.image).toBe(null);
 });
@@ -806,7 +806,7 @@ test('an opening write that fails after storing leaves no change to count', asyn
   const { project } = await mounted();
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.mocked(evict).mockRejectedValueOnce(new Error('not this time'));
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await pass(SAVE_AFTER_MS);
   expect(autosave.current.value).toBe(false);
   const { editedAt } = (await readLatest(project.documentId)).record;
@@ -822,7 +822,7 @@ test('an opening write that fails to store keeps its first edit time when it is 
   const { project } = await mounted();
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.mocked(writeLatest).mockRejectedValueOnce(new Error('not this time'));
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const first = Date.now();
   await pass(SAVE_AFTER_MS);
   expect(autosave.current.value).toBe(false);
@@ -906,6 +906,23 @@ test('restoreDocument brings back a layer\'s own character settings', async () =
   expect(project.charsOf('edit')).toEqual(own);
 });
 
+test('a drawing with only the base comes back with only the base, picked, and what was typed on it', async () => {
+  const { project, workspace } = await mounted();
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  edit(project);
+  await settle(project);
+  const id = project.documentId, shown = project.cells[0].char;
+  await autosave.flush();
+  const saved = await readLatest(id);
+  project.clearImage();
+  await project.restoreDocument(saved, { documentId: id });
+  await settle(project);
+  expect(project.layers.map((layer) => layer.id)).toEqual(['base']);
+  expect(workspace.pickedLayer).toBe('base');
+  expect(shown).toBe('a');
+  expect(project.cells[0].char).toBe('a');
+});
+
 test('a restore renders once, though its first render moves the base\'s scale (autosave keeps none without paint)', async () => {
   const { project } = await opened();
   const id = project.documentId, layer = project.addLayer('cells', 'edit');
@@ -958,7 +975,7 @@ test('the file a project is saved to comes back with it after a reload, and stay
 
 test('a project opened from its file is written at once with the file it saves to, for a reload straight after', async () => {
   const { project } = await mounted();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const handle = await privateFile('opened.phosphor');
   const writable = await handle.createWritable();
   await writable.write(await writeProject({ ...await project.projectParts(), imageBuffer: project.imageBuffer }));
@@ -1000,13 +1017,13 @@ test('restoreDocument throws on a record it cannot read, leaving things as they 
 
 test('the tab keeps its document\'s id and holds its lock for as long as it has it', async () => {
   const { project } = await mounted();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await pass(SAVE_AFTER_MS);
   const first = project.documentId;
   expect(sessionStorage.getItem(KEPT_ID)).toBe(first);
   await vi.waitUntil(async () => (await heldNames()).includes(`phosphor-autosave:${first}`), { interval: 5 });
 
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await pass(SAVE_AFTER_MS);
   const second = project.documentId;
   expect(sessionStorage.getItem(KEPT_ID)).toBe(second);
@@ -1199,7 +1216,7 @@ test('a document already open isn\'t restored over', async () => {
   vi.mocked(readLatest).mockImplementationOnce(async (...args) => {
     const { readLatest: real } = await vi.importActual('@/document/autosaveStore');
     const saved = await real(...args);
-    await useProjectStore().setBlankCanvas(); // a dropped file, landing during the read
+    await useProjectStore().setBlankCanvas({ withLayer: true }); // a dropped file, landing during the read
     return saved;
   });
   const back = await mounted();
@@ -1405,7 +1422,7 @@ test('a record that fails to restore leaves alone a file opened while it was bei
   const { project } = await mounted();
   const restoreDocument = project.restoreDocument;
   vi.spyOn(project, 'restoreDocument').mockImplementationOnce(async (...args) => {
-    await project.setBlankCanvas();
+    await project.setBlankCanvas({ withLayer: true });
     return restoreDocument(...args);
   });
   await autosave.openRecent('junk');
@@ -1830,7 +1847,7 @@ test('a flush answers whether what\'s open is written', async () => {
   const { project } = await opened();
   expect(await autosave.flush()).toBe(true);
   vi.mocked(writeLatest).mockRejectedValue(new Error('no'));
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   expect(await autosave.flush()).toBe(false);
 });
 
@@ -1966,7 +1983,7 @@ test.each([
 test.each([
   ['a picture', (project) => loadImage(project, GRADIENT)],
   ['a project file', async (project) => {
-    await project.setBlankCanvas();
+    await project.setBlankCanvas({ withLayer: true });
     const blob = await writeProject({ ...await project.projectParts(), imageBuffer: project.imageBuffer });
     await autosave.flush();
     started.mockClear();
@@ -2011,7 +2028,7 @@ test('the record keeps the extension the drawing came with, then the one it last
 
 test('a blank canvas has no As opened: there is nothing to go back to', async () => {
   const { project } = await mounted();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await pass(SAVE_AFTER_MS);
   edit(project);
   await pass(SAVE_AFTER_MS);
@@ -2023,7 +2040,7 @@ test('a blank canvas has no As opened: there is nothing to go back to', async ()
 // the first change of a blank canvas has its version, and a reload's first change counts toward one.
 test('a change within a blank canvas\'s first second has a version of its own', async () => {
   const { project } = await mounted();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await vi.advanceTimersByTimeAsync(100);
   edit(project);
   await pass(SAVE_AFTER_MS);
@@ -2035,7 +2052,7 @@ test('a change within a blank canvas\'s first second has a version of its own', 
 
 test('a change within a reload\'s first second has its version when one is due', async () => {
   const { project } = await mounted();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const id = project.documentId;
   await pass(SAVE_AFTER_MS);
   edit(project);

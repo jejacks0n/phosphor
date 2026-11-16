@@ -28,7 +28,7 @@ async function overDrawing({ answer = true, before = () => {} } = {}) {
   const { project } = await createTestApp();
   const opened = [];
   useFakeDesktop({ openInNewWindow: vi.fn(async (file) => { opened.push(file); return answer; }) });
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await before({ project });
   host = document.body.appendChild(document.createElement('div'));
   mounted = createApp(EditWorkspace).use(i18n);

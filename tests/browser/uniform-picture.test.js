@@ -32,7 +32,7 @@ const pixels = (canvas) => canvas.getContext('2d').getImageData(0, 0, canvas.wid
 for (const [cols, rows] of [[24, 30], [24, 12], [10, 40]]) { // the picture's own shape, and grids wider and taller than it
   test(`a blank picture's one pixel comes out as the whole picture through the pipeline (${cols} x ${rows} grid)`, async () => {
     const { project } = await createTestApp();
-    await project.setBlankCanvas({ cols: 24, rows: 30 });
+    await project.setBlankCanvas({ withLayer: true, cols: 24, rows: 30 });
     const { image } = await blackPicture(24, 30, 10), whole = await loadImage((await blackPicture(cols, rows, 10)).imageBuffer); // one at the grid's shape, unmarked
     const keys = [...new Set(SETTINGS.flatMap(Object.keys))], defaults = Object.fromEntries(keys.map((key) => [key, project[key]]));
     for (const settings of SETTINGS) {

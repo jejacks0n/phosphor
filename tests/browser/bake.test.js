@@ -154,7 +154,7 @@ test('another image loaded while baking is left alone', async () => {
   await settle(project);
   const baking = project.bake();
   const blob = await (await fetch('/tests/fixtures/images/rgba.png')).blob();
-  await project.setImageFromFile(new File([blob], 'rgba.png', { type: 'image/png' }));
+  await project.setImageFromFile(new File([blob], 'rgba.png', { type: 'image/png' }), { withLayer: true });
   const loaded = project.image;
   await baking;
   await settle(project);
@@ -167,7 +167,7 @@ const BLOCK = () => makeArt({ z: 0, m: [1, 0, 0, 1, 5, 6], art: { cols: 3, rows:
 
 test('Bake in an animation keeps an art layer, its colors through the sliders', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
   const art = project.addShape(BLOCK());
   project.setAnimate(true);

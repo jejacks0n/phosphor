@@ -32,7 +32,7 @@ const rgbOf = (data) => data.filter((_, i) => i % 4 !== 3);
 
 async function drawing() {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 6, rows: 4 });
+  await project.setBlankCanvas({ withLayer: true, cols: 6, rows: 4 });
   project.typeAt(1, 0, 'A', { fg: '#ffee00', bg: '#0044aa' });
   project.commitEdit();
   await settle(project);

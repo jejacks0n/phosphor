@@ -96,7 +96,7 @@ test('opening an art file, a project and a picture say which file, and so do sav
 
 test('the art a host sends an artist names the room', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const parts = await project.projectParts();
   const whole = { settings: { ...parts.settings }, imageBuffer: project.imageBuffer, paintBuffer: null, baseBuffer: null, editCells: new Map([['1,0', { char: 'x' }]]), baseRecords: parts.baseRecords };
   const notes = await notesWhile(async () => expect(await project.takeProject(whole, { n: 1, filename: 'Night shift', send: () => {}, me: 'ann' })).toBe(true));

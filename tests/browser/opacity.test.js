@@ -8,7 +8,7 @@ async function canvas() {
   const { project, workspace } = await createTestApp();
   project.cols = 20;
   project.rows = 20;
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await settle(project);
   workspace.editBrushOpacity = 50;
   return { project, workspace };

@@ -241,7 +241,7 @@ test('redrawing the base doesn\'t make the next render upload the picture again'
 
 test('a canvas resize past the layers\' largest size renders once, though the base\'s scale drops in it', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 40, rows: 40 });
+  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 40 });
   await settle(project);
   project.typeAt(2, 2, 'A', { fg: '#ffffff', bg: '#000000' });
   project.commitEdit();

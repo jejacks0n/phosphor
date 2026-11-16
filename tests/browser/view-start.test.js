@@ -23,7 +23,7 @@ const frames = (n = 3) => new Promise((resolve) => {
 // The ANSI view of a cols × lines drawing, in a 600 × 400 box.
 async function mount(cols, lines) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols, rows: 2 * lines });
+  await project.setBlankCanvas({ withLayer: true, cols, rows: 2 * lines });
   workspace.editorTab = 'output';
   host = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 600px; height: 400px; display: flex' });
   document.body.append(host);
@@ -51,7 +51,7 @@ test('a file taller and wider than the view opens at its top-left', async () => 
 test('with the rulers on, it opens beside them', async () => {
   const { project, workspace, where } = await mount(200, 300);
   workspace.rulers = true;
-  await project.setBlankCanvas({ cols: 200, rows: 600 });   // a new document, so it starts again
+  await project.setBlankCanvas({ withLayer: true, cols: 200, rows: 600 });   // a new document, so it starts again
   await settle(project);
   await frames();
   expect(where().top).toBeCloseTo(20, 0);
@@ -72,7 +72,7 @@ test('a new document starts at the top again, though the view was scrolled down'
   view.scrollLeft += 500;
   await frames();
   expect(where().top).toBeLessThan(-1000);
-  await project.setBlankCanvas({ cols: 150, rows: 800 });
+  await project.setBlankCanvas({ withLayer: true, cols: 150, rows: 800 });
   await settle(project);
   await frames();
   expect(where().top).toBeCloseTo(0, 0);

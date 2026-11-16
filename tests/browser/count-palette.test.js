@@ -134,7 +134,7 @@ const block = (project, hex) => {
 
 test('hiding and showing a layer leaves the Number palette as it was', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 40, rows: 80 });
+  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 80 });
   await settle(project);
   project.quantize = 'count';
   project.colorCount = 4;
@@ -188,7 +188,7 @@ async function sameAcrossHide(project, id) {
 }
 async function blankCount() {
   const app = await createTestApp();
-  await app.project.setBlankCanvas({ cols: 40, rows: 80 });
+  await app.project.setBlankCanvas({ withLayer: true, cols: 40, rows: 80 });
   await settle(app.project);
   Object.assign(app.project, { quantize: 'count', colorCount: 4 });
   return app;

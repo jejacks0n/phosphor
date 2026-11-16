@@ -374,7 +374,7 @@ test('choosing Edit Mode clears the selection and the Magic Wand, an undo step',
 // Every shown cells layer is in a selection; the shapes are in Copy as the cells they show, and stay whole otherwise.
 async function stack({ shape = rectShape(4, 2, 7, 7, { fill: '#00ff00' }) } = {}) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 30, rows: 20 }); // 30 x 10 cells
+  await project.setBlankCanvas({ withLayer: true, cols: 30, rows: 20 }); // 30 x 10 cells
   await settle(project);
   project.beginEdit();
   project.writeBaseCells([{ col: 1, row: 1, char: 'P', fg: '#ff0000', bg: '#0000aa' }]);

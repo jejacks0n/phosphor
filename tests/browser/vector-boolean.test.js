@@ -13,7 +13,7 @@ beforeAll(() => loadBooleans());
 
 async function app() {
   const made = await createTestApp();
-  await made.project.setBlankCanvas({ cols: 60, rows: 30 });
+  await made.project.setBlankCanvas({ withLayer: true, cols: 60, rows: 30 });
   return made;
 }
 const box = (shape) => {

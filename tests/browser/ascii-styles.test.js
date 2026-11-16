@@ -9,7 +9,7 @@ async function painted(renderStyle, color) {
   project.cols = 20;
   project.rows = 20;
   project.charsAscii = ' .:#'; // the document's, before it's made: every layer has them
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   project.renderStyle = renderStyle;
   await settle(project);
   project.paintStroke([{ x: 5, y: 6, alpha: 1 }, { x: 5, y: 7, alpha: 1 }], color);

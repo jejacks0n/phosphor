@@ -17,7 +17,7 @@ afterEach(() => {
 
 async function mount() {
   const stores = await createTestApp();
-  await stores.project.setBlankCanvas({ cols: 20, rows: 10 });
+  await stores.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
   await settle(stores.project);
   stores.workspace.editorTab = 'output';
   host = document.createElement('div');

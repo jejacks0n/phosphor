@@ -49,9 +49,9 @@ export async function settle(project) {
 
 // Load an image (a URL the test server serves, e.g. /tests/fixtures/images/x.png) and, with cols
 // and rows, size the grid (aspect lock off) as tests usually want.
-export async function loadImage(project, url, { cols, rows } = {}) {
+export async function loadImage(project, url, { cols, rows, withLayer = true } = {}) {
   const blob = await (await fetch(url)).blob();
-  await project.setImageFromFile(new File([blob], url.slice(url.lastIndexOf('/') + 1), { type: blob.type }));
+  await project.setImageFromFile(new File([blob], url.slice(url.lastIndexOf('/') + 1), { type: blob.type }), { withLayer });
   if (cols || rows) {
     project.aspectLock = false;
     if (cols) project.cols = cols;

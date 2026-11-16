@@ -139,7 +139,7 @@ test('paint on a cell keeps showing as the color it gave that half', async () =>
 // copying the layer's list so far (which froze the tab at 500k cells). Counted as the array elements iterated.
 test('Set FG on a big selection goes through its cells a bounded number of times', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 80, rows: 100 }); // 4000 cells
+  await project.setBlankCanvas({ withLayer: true, cols: 80, rows: 100 }); // 4000 cells
   await settle(project);
   workspace.editorTab = 'output';
   const n = project.cols * 50, iterator = Array.prototype[Symbol.iterator];

@@ -21,7 +21,7 @@ const ADDRESSES = ['192.168.1.20:31338'];
 const gradient = await (await fetch('/tests/fixtures/images/gradient.png')).blob();   // before fetch is stubbed
 
 async function openArt() {
-  await project.setImageFromFile(new File([gradient], 'gradient.png', { type: gradient.type }));
+  await project.setImageFromFile(new File([gradient], 'gradient.png', { type: gradient.type }), { withLayer: true });
   Object.assign(project, { aspectLock: false, cols: 8, rows: 8 });
   project.render();
   await settle(project);

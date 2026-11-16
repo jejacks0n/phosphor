@@ -369,7 +369,7 @@ const HIGH_RES = '▖▗▘▝▚▞▙▛▜▟▐▌▁▂▃▄▅▆▇█';
 const LONG_RAMP = ' .\'`^",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$';
 test('By shape in Monochrome ASCII: white paint on a blank canvas shows as characters', async () => {
   const { project: p } = await createTestApp();
-  await p.setBlankCanvas({ cols: 20, rows: 20 });
+  await p.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   Object.assign(p, { renderStyle: 'ascii', charChoiceAscii: 'shape', chars: LONG_RAMP });
   await settle(p);
   const row = () => p.cells.slice(4 * p.cols + 2, 4 * p.cols + 10).map((c) => c.char);

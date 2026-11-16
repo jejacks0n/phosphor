@@ -49,7 +49,7 @@ test('shapes make a vector layer, and a new image or canvas starts from the defa
   expect(project.hasVectorLayer).toBe(true);
   project.renameLayer('edit', 'Logo');
 
-  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await project.setBlankCanvas({ withLayer: true, cols: 10, rows: 10 });
   expect(info(project)).toEqual(DEFAULTS);
   project.renameLayer('base', 'Photo');
   await loadImage(project, GRADIENT, { cols: 20, rows: 20 });

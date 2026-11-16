@@ -27,7 +27,7 @@ const topLevel = (project) => Object.fromEntries(CHAR_KEYS.map((key) => [key, pr
 
 async function blank() {
   const app = await createTestApp();
-  await app.project.setBlankCanvas({ cols: 20, rows: 10 });
+  await app.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
   await settle(app.project);
   return app;
 }
@@ -320,7 +320,7 @@ test('in a room an artist sees the picked layer\'s settings, off, with the reaso
 // looks: what Copy takes of each cell instead (storedLookAt), as it shows (with brightness at 120 to show it's stored).
 async function circleOn(where, settings, { moved = false, under = settings, looks = false } = {}) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 24, rows: 24, quantize: 'cga', ...(looks && { brightness: 120 }) });
+  await project.setBlankCanvas({ withLayer: true, cols: 24, rows: 24, quantize: 'cga', ...(looks && { brightness: 120 }) });
   await settle(project);
   const vector = project.addLayer('vector', where);
   for (const id of ['base', 'edit']) project.setLayerChars(id, under);
@@ -365,7 +365,7 @@ test('By shape on an upper vector layer over a picture of Random picks the chara
 // own, differing only in a seed they don't use), every layer set to settings: the cell it's in.
 async function paintedOn(where, settings) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 8, rows: 8, quantize: 'cga' });
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8, quantize: 'cga' });
   await settle(project);
   for (const id of ['base', 'edit']) project.setLayerChars(id, settings);
   const layer = where === 'base' ? 'base' : project.addLayer('cells', 'edit');
@@ -391,7 +391,7 @@ test('under Best match paint on an upper cells layer makes the cell the same pai
 // rendered whole at another brightness.
 async function movedInside(settings, moves) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 40, rows: 64, quantize: 'cga' });
+  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 64, quantize: 'cga' });
   await settle(project);
   const vector = project.addLayer('vector', 'edit');
   project.setLayerChars(vector, { ...settings, seed: 'its own' });
@@ -429,7 +429,7 @@ for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }]
 for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }], ['Best match', { charChoice: 'best', chars: '▄░▒▓█', solids: 0 }]]) {
   test(`under ${name} Copy takes the colors an upper vector layer's cells show under a layer above, composing it once`, async () => {
     const { project, workspace } = await createTestApp();
-    await project.setBlankCanvas({ cols: 24, rows: 24, quantize: 'cga', brightness: 120 });
+    await project.setBlankCanvas({ withLayer: true, cols: 24, rows: 24, quantize: 'cga', brightness: 120 });
     await settle(project);
     const vector = project.addLayer('vector', 'edit');
     project.setLayerChars(vector, { ...settings, seed: 'its own' });
@@ -459,7 +459,7 @@ for (const [name, settings] of [['By shape', { charChoice: 'shape', solids: 0 }]
 // and every layer's together within the renderer's budget, the oldest given up first.
 async function sampled() {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 40, rows: 64, quantize: 'cga' });
+  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 64, quantize: 'cga' });
   await settle(project);
   const vector = project.addLayer('vector', 'edit');
   project.setLayerChars(vector, { charChoice: 'shape', seed: 'its own' });

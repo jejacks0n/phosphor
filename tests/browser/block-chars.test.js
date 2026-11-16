@@ -93,7 +93,7 @@ test('with Colors only, a cell that shows no character (the black of an opened f
 
 test('with Colors only on the base, a cell that shows no character is pinned a ▄ the paint colors', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
   project.useLayer('base');
   Object.assign(workspace, { editFgColor: '#ffffff', pencilDrawWith: 'normal' });
@@ -124,7 +124,7 @@ test('with Colors only, a character the stroke itself paints into one color isn\
 // but not in the PIXEL view. Colors only's ▄ shows in ANSI alone, and the same cells take it in either view or style.
 async function stroke(view, { paintedIn = 'colorAscii', shownIn = 'colorAscii', layer = 'edit', picture = true } = {}) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 10 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
   project.renderStyle = paintedIn;
   await settle(project);
   workspace.pickLayer(layer);

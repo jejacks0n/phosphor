@@ -52,9 +52,9 @@ afterEach(() => {
 
 // The host, drawing on a 40 x 40 grid in its own pinia, named name if it's given, having done before(project) alone first.
 // Join people with join(room, sub).
-async function hosting({ cols = 40, rows = 40, name = null, before = () => {} } = {}) {
+async function hosting({ cols = 40, rows = 40, name = null, before = () => {}, withLayer = true } = {}) {
   const { project } = await createTestApp();
-  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows });
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows, withLayer });
   project.ensureLayer();
   before(project);
   const drawing = useDrawingStore();
@@ -385,6 +385,30 @@ test('the host and artists reorder, rename and duplicate, and every stack matche
   expect(room.project.history.last).toBe(hostsLast);   // the copy's cells too: no one's to undo
   for (const page of [ann, bo]) expect(page.project.history.canUndo).toBe(false);
   expect(room.project._ledger.strokesBy('host')).toEqual(hostsStrokes);
+});
+
+// A room hosted from a new drawing has only the base, which is the host's: an artist has nothing to draw on until they
+// add a layer, and then their strokes go on it on every page.
+test('a room hosted from a base-only drawing: an artist draws nothing until they add a layer, then on it everywhere', async () => {
+  const room = await hosting({ withLayer: false });
+  expect(room.project.layers.map((layer) => layer.id)).toEqual(['base']);
+  const base = JSON.stringify([...room.project.baseRecords.pins]);
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layers.map((layer) => layer.id), PATIENT).toEqual(['base']);
+  setActivePinia(ann.pinia);
+  expect(workspaceOf(ann).pickLayer('base')).toBe(false);
+  ann.project.typeAt(2, 2, 'A', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  expect(quiet(ann)).toBe(true);   // nothing went out
+  expect(JSON.stringify([...room.project.baseRecords.pins])).toBe(base);
+  expect(ann.project.addLayer('cells', 'base')).toBe(null);   // asked of the host
+  await expect.poll(() => ann.project.layers.map((layer) => layer.id), PATIENT).toEqual(['base', 'edit']);
+  expect(workspaceOf(ann).pickedLayer).toBe('edit');
+  expect(ann.project.editId).toBe('edit');
+  ann.project.typeAt(2, 2, 'A', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  await expect.poll(() => room.project.cellsOf('edit')?.get('2,2')?.char, PATIENT).toBe('A');
+  await allMatch(room, ann);
 });
 
 test('a copy of a layer has an artist\'s cells numbered on it a moment before, not yet written', async () => {

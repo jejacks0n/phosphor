@@ -7,7 +7,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 test('New project closes the settings drawer for the start screen', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 8, rows: 4 });
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 4 });
   workspace.settingsOpen = true;   // the drawer New project is pressed in, on a phone
   workspace.newProject();
   expect(project.image).toBe(null);
@@ -16,7 +16,7 @@ test('New project closes the settings drawer for the start screen', async () => 
 
 test('with unsaved work, it asks first (UnsavedDialog), keeping the drawing and the drawer until told to go on', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 8, rows: 4 });
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 4 });
   project.typeAt(1, 0, 'A', { fg: '#ffee00', bg: '#0044aa' });
   workspace.settingsOpen = true;
   workspace.newProject(); // the typing run still open counts

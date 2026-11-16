@@ -114,7 +114,7 @@ test('a layer\'s own Dither changes only that layer, and each change is one undo
 // character, and By shape's ties go either way on the GPU).
 async function squareCells(where, settings) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 24, rows: 24, quantize: 'cga' });
+  await project.setBlankCanvas({ withLayer: true, cols: 24, rows: 24, quantize: 'cga' });
   await settle(project);
   const vector = project.addLayer('vector', where);
   for (const id of ['base', 'edit', vector]) project.setLayerChars(id, settings);
@@ -226,7 +226,7 @@ test('a document whose layers all have the base\'s Dither saves in the old form;
 
 test('Base\'s Dither changed keeps a cells layer, which has nothing to dither, in the lower group and the old form', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10, quantize: 'cga' });
   await settle(project);
   project.setLayerChars('base', { dither: 30, ditherStyle: 'bayer' });
   project.commitLayerChars();
@@ -239,7 +239,7 @@ test('Base\'s Dither changed keeps a cells layer, which has nothing to dither, i
 
 test('a cells layer holds no Dither: it isn\'t saved, an old file\'s is dropped, and a layer made from it takes the base\'s', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10, quantize: 'cga' });
   await settle(project);
   project.setLayerChars('base', { dither: 50 });
   project.commitLayerChars();
@@ -262,7 +262,7 @@ test('a cells layer holds no Dither: it isn\'t saved, an old file\'s is dropped,
 
 test('in a room the vector layer a host adds with Layer 1 picked takes Base\'s Dither, and the stack stays one set', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10, quantize: 'cga' });
   await settle(project);
   workspace.pickLayer('edit');
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
@@ -279,7 +279,7 @@ test('in a room the vector layer a host adds with Layer 1 picked takes Base\'s D
 
 test('going live drops a layer\'s own Dither steps, so undo in the room never brings one back', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10, quantize: 'cga' });
   await settle(project);
   const vector = project.addLayer('vector', 'base');
   project.setLayerChars('base', { dither: 20 }); // the base's own stays a step
@@ -315,7 +315,7 @@ const sectionOf = (words) => [...host.querySelectorAll('aside > fieldset')].find
 
 test('Dither shows in Characters for Base and a vector layer, not a cells layer, and only with a palette', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 10, quantize: 'cga' });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10, quantize: 'cga' });
   await settle(project);
   const vector = project.addLayer('vector', 'edit');
   workspace.pickLayer('base');

@@ -214,7 +214,7 @@ test('a document replaced while playing stops playing', async () => {
   project.addFrame('blank');
   project.setFps(60);
   await playback.play();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await settle(project);
   await until(() => !workspace.playing, 'playback to stop');
   expect(project.shownCells).toBe(project.cells);

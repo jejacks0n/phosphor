@@ -10,7 +10,7 @@ test('on soft paint the picker picks the color shown, not the paint at full stre
   const { project } = await createTestApp();
   project.cols = 30;
   project.rows = 30;
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   project.render();
   await settle(project);
   project.paintStroke([{ x: 3, y: 7, alpha: 0.5 }], '#ff0000'); // half-strength red on black: cell (3, 3)'s bottom half
@@ -26,7 +26,7 @@ test('the status bar says a color came from a drawn layer when any shown cells l
   const { project, workspace } = await createTestApp();
   project.cols = 30;
   project.rows = 30;
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   project.render();
   await settle(project);
   const top = project.addLayer('cells', 'edit');
@@ -44,7 +44,7 @@ test('the status bar says a color came from a drawn layer when any shown cells l
 
 test('the PIXEL picker picks a shape on a vector layer above a cells layer, and not once it is hidden', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
   const vector = project.addLayer('vector', 'edit'); // above Layer 1: an upper layer
   workspace.pickLayer(vector);

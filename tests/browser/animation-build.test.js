@@ -204,7 +204,7 @@ test('a frame with only the edit layer\'s cells is built from its own map, with 
 
 test('a built frame composes the stack in order', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 10, rows: 20 }); // 10 x 10 cells
+  await project.setBlankCanvas({ withLayer: true, cols: 10, rows: 20 }); // 10 x 10 cells
   await settle(project);
   const white = { fg: '#ffffff', bg: '#000000' };
   for (const [col, row] of [[2, 2], [3, 3]]) project.typeAt(col, row, 'Y', white);
