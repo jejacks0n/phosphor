@@ -7,6 +7,7 @@ import { AnsiFile } from '@/lib/AnsiFile';
 import { buildCell, cellIndex } from '@/lib/Cells';
 import { PALETTES } from '@/lib/ColorUtils';
 import pencil from '@/tools/pencil';
+import brush from '@/tools/brush';
 
 const ids = (project) => project.layers.map((layer) => layer.id);
 const WHITE = { fg: '#ffffff', bg: '#000000' };
@@ -70,6 +71,39 @@ test('drawing on the base of a new drawing, then changing the grid, keeps the st
   expect(row2(app.project)).toBe('────');
 });
 
+// After a reload nothing is left to undo, so only what's drawn can say the grid is a canvas: the base's pinned characters
+// and its own pixels count, as a layer's cells and paint do.
+test('characters drawn on the base stay where they are when the grid changes after the drawing is reopened', async () => {
+  const app = await blank();
+  line(app);
+  await settle(app.project);
+  await reopened(app.project);
+  expect(app.project.history.canUndo).toBe(false);
+  expect(app.project.resizesCanvas).toBe(true);
+  app.project.aspectLock = false;
+  app.project.cols = 30;
+  await settle(app.project);
+  expect(row2(app.project)).toBe('────');
+});
+
+test('paint on the base makes a grid change a canvas resize after the drawing is reopened', async () => {
+  const app = await blank();
+  Object.assign(app.workspace, { editFgColor: '#ff0000' });
+  const ctx = { project: app.project, workspace: app.workspace, view: 'input' };
+  brush.begin(ctx, { x: 4, y: 4 }, {});
+  brush.end(ctx);
+  await settle(app.project);
+  await reopened(app.project);
+  expect(app.project.baseLayer.hasPaint).toBe(true);
+  expect(app.project.resizesCanvas).toBe(true);
+});
+
+test('a picture with nothing drawn on it still rescales', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { withLayer: false });
+  expect(project.resizesCanvas).toBe(false);
+});
+
 test('a base-only drawing saves and opens as base only', async () => {
   const { project, workspace } = await blank();
   await reopened(project);
@@ -112,6 +146,14 @@ test.each(['base', 'edit'])('an ANSI file opened with layer %s has Layer 1', asy
   await settle(project);
   expect(ids(project)).toEqual(['base', 'edit']);
   expect(workspace.pickedLayer).toBe('edit');
+});
+
+test('an ANSI file opened with Draw on top is a canvas to resize, not a picture to rescale', async () => {
+  const { project } = await createTestApp();
+  const cells = Array.from({ length: 8 }, () => buildCell(PALETTES.cga[0], PALETTES.cga[7], 'A', 'ansi'));
+  await project.openArtFile(new File([new AnsiFile(4, 2, cells).toBlob({ colorMode: 'cga' })], 'two.ans'), { layer: 'base' });
+  await settle(project);
+  expect(project.resizesCanvas).toBe(true);
 });
 
 test('an opened SVG starts with the base and its vector layer', async () => {

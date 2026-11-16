@@ -26,7 +26,7 @@ async function resize(project, cols, rows = project.rows) {
 
 const pinned = (project) => [...project.baseRecords.pins.keys()];
 
-test('a rescale with an empty edit layer and nothing to undo moves the pins with the picture', async () => {
+test('with base edits and nothing to undo, a grid change is a canvas resize: the pins stay where they are', async () => {
   const { project } = await grid();
   project.beginEdit();
   project.eraseBase([{ col: 10, row: 5 }]);
@@ -34,12 +34,8 @@ test('a rescale with an empty edit layer and nothing to undo moves the pins with
   project.clearHistory(); // as a project opened with base edits: nothing to undo
   expect(pinned(project)).toEqual(['10,5']);
   await resize(project, 80, 80);
-  const at = pinned(project).map((key) => key.split(',').map(Number));
-  expect(at.length).toBeGreaterThan(0);
-  for (const [col, row] of at) {
-    expect(col >= 20 && col <= 21 && row >= 10 && row <= 11).toBe(true);
-    expect(project.cells[cellIndex(col, row, 80)].char).toBe(' ');
-  }
+  expect(pinned(project)).toEqual(['10,5']);
+  expect(project.cells[cellIndex(10, 5, 80)].char).toBe(' ');
 });
 
 test('a canvas resize keeps what goes past the edge and brings it back', async () => {

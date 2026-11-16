@@ -258,7 +258,8 @@ Animate off and check the .cast export goes away, and save the project and reope
 - Expects: with text on the base, it's a canvas resize: columns and lines are added at the right and bottom, the
   banner stays where it is, every frame grows; it lands within the `setting` budget.
 - Probes: `undo-redo`: undo the resize and redo it; `interrupt`: shrink to 40 by 10 and grow back, and check the cut-off
-  text came back.
+  text came back; `again`: reload the page first (nothing left to undo), then grow it, and check the banner still stays
+  where it is.
 - Rated: yes, wants Tab to Dimensions
 
 ### 23. Fill the wide banner
