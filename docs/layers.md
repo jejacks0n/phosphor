@@ -529,7 +529,8 @@ the canvas changes. Undo brings it back, selected if it was.
   and the other paint tools work on them as on any paint. A cell where that paint would show differently (the vector
   layer has character settings of its own, or a palette or the character choice converts it differently) is written
   as the exact cell it shows now, as is a cell an art layer gives a character, and a later palette or character
-  setting doesn't convert those cells again. It goes only whole: with shapes selected on VECTOR, deselect them to merge
+  setting doesn't convert those cells again; Blur, Dodge and Burn change their colors and keep their characters. It
+  goes only whole: with shapes selected on VECTOR, deselect them to merge
   the layer. Its guides, which draw nothing, stay, and the vector layer with them.
 - **A Vector Layer Into the Base**: Its shapes are pressed into the base layer's pixels. On VECTOR, with shapes
   selected, Merge down presses only those. A vector layer with its own character settings can't be pressed: it says
@@ -863,14 +864,14 @@ swaps the two halves of each cell's base colors.
     in the same stroke adds nothing, so stroke again to go further.
   - **Range** (Dodge and Burn) chooses the colors they change most: **Shadows** the dark ones, **Highlights** the light
     ones, **Midtones** (to start) the ones between, leaving black and white alone.
-  - **Characters**: Dodge and Burn keep every character, in both views: on a drawing layer a cell with colors of its
-    own (one you typed, or one Merge down wrote exactly) keeps its character and has its colors changed, a whole cell
-    at a time (a color set to None stays None), as a character pinned on the base does. Blur fades things into the
-    clear, which a character can't do, so on a drawing layer a cell with colors of its own that Blur changes loses its
-    character, and its two halves become paint in the colors the cell showed, which Blur then fades like the rest.
-    Undo brings the characters back; to keep text as it is, put it on a layer of its own. A cell the Brush made a ▄
-    holds only its character, its colors being paint, so it stays. On the base Blur keeps a pinned character too and
-    changes its colors.
+  - **Characters Stay**: They change colors, never characters, in both views. On a drawing layer a cell with colors of
+    its own (one you typed, art you opened, or one Merge down wrote exactly) keeps its character and has its colors
+    changed, a whole cell at a time (a color set to None stays None), as a character pinned on the base does. Blur
+    evens a cell's colors with the layer's other cells around it, foreground with foreground and background with
+    background, and spreads them into the clear around it as paint, so text and ASCII art get a soft glow. A cell
+    can't be partly see-through, so the cell itself doesn't fade: the edge of a shape Merge down wrote as characters
+    stays solid, with the glow around it. A cell the Brush made a ▄ holds only its character, its colors being paint,
+    so its paint changes.
   - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels;
     a character pinned on the base keeps its background in its top pixel and its foreground in its bottom one).
   - **In the ANSI View**: The same as in the PIXEL view, pixel by pixel, as the Brush paints: a small brush can change
