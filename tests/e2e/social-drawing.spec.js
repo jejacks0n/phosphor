@@ -851,10 +851,12 @@ test('a followed artist who scrolls with the pointer still is followed there, an
   await expect.poll(() => store(host, 'drawing', `(d) => d.cursors['${ARTIST.id}']?.view ?? null`), { timeout: 20_000 }).not.toBe(null);
 });
 
-// Handing over.
-// The stack as a page shows it, bottom first, and its cells on every layer.
+// Layers together.
+// The stack as a page shows it, bottom first, and its cells on every cells layer above the bottom.
 const stackOf = (page) => store(page, 'project', (p) => p.layers.map((l) => `${l.id}:${l.name ?? ''}`).join());
-const layerCells = (page) => store(page, 'project', (p) => JSON.stringify(p.layers.map((l) => [l.id, l.cells ? [...l.cells].sort(([a], [b]) => (a < b ? -1 : 1)) : null])));
+const layerCells = (page) => store(page, 'project', (p) => JSON.stringify(p.layers.slice(1).filter((l) => l.kind === 'cells').map((l) => [l.id, [...p.cellsOf(l.id)].map(([key, { char }]) => [key, char]).sort(([a], [b]) => (a < b ? -1 : 1))])));
+// The characters on the layer with the name (its default name for one that has none), as 'key=char', in order.
+const charsOn = (page, name) => store(page, 'project', `(p) => { const l = p.layers.slice(1).find((each) => (each.name ?? 'Layer ' + each.n) === ${JSON.stringify(name)} && each.kind === 'cells'); return [...p.cellsOf(l.id)].map(([key, { char }]) => key + '=' + char).sort(); }`);
 const rowNames = (page) => page.locator('.layers-list li button.pick .name').allTextContents();
 const layerMenu = async (page, name, action) => {
   await page.getByRole('button', { name: `${name} options` }).click();
@@ -862,7 +864,7 @@ const layerMenu = async (page, name, action) => {
 };
 const bothSame = (a, b, read) => expect(async () => expect(await read(a)).toEqual(await read(b))).toPass({ timeout: 10_000 });
 
-test('two artists draw on different layers while one adds and reorders layers, and the host deletes one after its question', async ({ page: host, context }) => {
+test('the host and an artist draw on different layers while both add and reorder layers, and the host deletes one after its question', async ({ page: host, context }) => {
   const room = fakeRoom();
   const { artist } = await together(host, context, room);
 
@@ -883,6 +885,10 @@ test('two artists draw on different layers while one adds and reorders layers, a
   await expect.poll(() => rowNames(host)).toContain('owl wing');
   await bothSame(host, artist, layerCells);
   await bothSame(host, artist, shownCells);
+  for (const page of [host, artist]) {
+    expect(await charsOn(page, 'owl wing')).toEqual(['2,2=o']);
+    expect(await charsOn(page, 'Layer 1')).toEqual(['6,4=h']);
+  }
 
   // The host adds a layer of its own and moves the artist's layer down with the menu; the artist keeps drawing on theirs.
   await host.getByRole('button', { name: 'Add layer', exact: true }).click();
@@ -892,6 +898,10 @@ test('two artists draw on different layers while one adds and reorders layers, a
   await bothSame(host, artist, stackOf);
   await bothSame(host, artist, layerCells);
   await bothSame(host, artist, shownCells);
+  for (const page of [host, artist]) {
+    expect(await charsOn(page, 'owl wing')).toEqual(['2,2=o', '3,2=w']);
+    expect(await charsOn(page, 'Layer 1')).toEqual(['6,4=h']);
+  }
 
   // Deleting a layer someone else has picked is refused with a toast, and nothing goes.
   await layerMenu(host, 'owl wing', 'Delete');
@@ -917,6 +927,8 @@ test('two artists draw on different layers while one adds and reorders layers, a
   await bothSame(host, artist, shownCells);
   expect((await rowNames(artist)).length).toBe(3);
 });
+
+// Handing over.
 
 const REAPER = member({ id: 'u_3', username: 'grim_reaper', name: 'grim_reaper', email: 'reaper@example.com' });
 const UNDO_RESET = 'The host has changed, so undo history has reset. All existing artwork is preserved.';
