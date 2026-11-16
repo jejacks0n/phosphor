@@ -2613,6 +2613,40 @@ test('a handover the new host never acknowledges leaves the old host hosting', a
   await allMatch(room, ann);
 });
 
+test('a paused host changes nothing in the stack, and numbers nothing', async () => {
+  const room = await hosting();
+  const layer = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layerById(layer)?.kind, PATIENT).toBe('cells');
+  const stack = stackOf(room.project), n = room.project._ledger.n;
+  room.project.setPaused(true);
+  expect(room.project.renameLayer(layer, 'Ink')).toBeFalsy();
+  expect(room.project.addLayer('cells', 'edit')).toBeFalsy();
+  expect(room.project.duplicateLayer(layer)).toBeFalsy();
+  expect(room.project.moveLayer(layer, 1)).toBeFalsy();
+  expect(room.project.deleteLayer(layer)).toBeFalsy();
+  expect(stackOf(room.project)).toEqual(stack);
+  expect(room.project._ledger.n).toBe(n);
+  room.project.setPaused(false);
+  await allMatch(room, ann);
+  expect(stackOf(ann.project)).toEqual(stack);
+});
+
+test('an artist\'s layer-op held through a hand-over that fails is done once the host goes on', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  room.host.handOverWithinMs = 200;
+  ann.watch.onHandOver = () => {};   // never answers
+  const asked = room.drawing.makeHost('ann');
+  await later();
+  expect(room.drawing.paused).toBe(true);
+  setActivePinia(ann.pinia);
+  ann.project.renameLayer('edit', 'Ink');   // held while the host isn't numbering
+  expect(await asked).toBe(false);
+  for (const page of [room, ann]) await expect.poll(() => page.project.layerById('edit').name, PATIENT).toBe('Ink');
+  await allMatch(room, ann);
+});
+
 test('a hand-over the server never answers leaves the old host hosting too', async () => {
   const room = await hostingWithSocket();
   const ann = await artist(room, 'ann');

@@ -39,7 +39,7 @@ export const ASK_AGAIN_MS = 30_000;
 export const HELD_FLOAT_MS = 2000; // an artist's block left this long with no further move goes out
 const HIDDEN_TAB_MS = 100; // a hidden tab has no frames, and still has to catch up
 
-// Refused while paused: everything that changes the drawing. changeSelection isn't here: it's not a change
+// Refused while paused: everything that changes the drawing, and the stack. changeSelection isn't here: it's not a change
 // to the document, and Deselect goes on working.
 export const DRAWING_ACTIONS = [
   'paintEditPixels', 'putEditPixels', 'paintBasePixels', 'paintStroke', 'eraseEditPixels', 'editCell', 'typeAt', 'writeAt', 'backspaceAt', 'deleteAt', 'typing', 'shiftCells',
@@ -48,6 +48,7 @@ export const DRAWING_ACTIONS = [
   'deleteIn', 'pasteAt', 'selectionEdit',
   'addShape', 'makeArtLayer', 'setArtContent', 'enterArt', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'penPoint', 'penBack',
   'followPath', 'stopFollowing', 'setFollow', 'setGuide',
+  'addLayer', 'deleteLayer', 'moveLayer', 'duplicateLayer', 'renameLayer', // a layers message is numbered, and nothing is while paused
   'undo', 'redo',
 ];
 

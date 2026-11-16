@@ -211,8 +211,8 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
     moveHost(HOST_IDLE);
     settleNumber();
     project.numberWaiting(now.waiting);
+    goOn(); // first, as finishGathering does: what was held lands unpaused
     host?.release();
-    goOn();
   }
 
   // The tail if it reaches from what they have, in this epoch, to the last number (one taken for a project
@@ -341,8 +341,8 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
     }
     if (hostPhase === mine) moveHost(HOST_IDLE);
     if (done || host !== theHost) return true;
+    goOn(); // first: what was held lands unpaused, a layer-op too (refused while paused)
     theHost.release();
-    goOn();
     return false;
   }
 
