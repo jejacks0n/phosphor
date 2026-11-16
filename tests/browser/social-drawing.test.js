@@ -49,11 +49,13 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// The host, drawing on a 40 x 40 grid in its own pinia, named name if it's given. Join people with join(room, sub).
-async function hosting({ cols = 40, rows = 40, name = null } = {}) {
+// The host, drawing on a 40 x 40 grid in its own pinia, named name if it's given, having done before(project) alone first.
+// Join people with join(room, sub).
+async function hosting({ cols = 40, rows = 40, name = null, before = () => {} } = {}) {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows });
   project.ensureLayer();
+  before(project);
   const drawing = useDrawingStore();
   const room = { project, drawing, people: new Map(), pinia: getActivePinia() };
   room.host = new Host({
@@ -302,6 +304,39 @@ test('the host sets one layer\'s character settings and every artist has them, t
   expect(room.project.history.canUndo).toBe(false);
 });
 
+test('the host\'s change to the bottom\'s character settings is an undo step in a room, as the sliders are, and its undo reaches every artist', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const was = room.project.chars;
+  await expect.poll(() => ann.project.chars, PATIENT).toBe(was);
+  expect(room.project.setLayerChars('base', { chars: '#%' })).toBe(true);
+  room.project.commitLayerChars();
+  await expect.poll(() => ann.project.chars, PATIENT).toBe('#%');
+  expect(room.project.history.canUndo).toBe(true);
+  room.project.undo();
+  expect(room.project.chars).toBe(was);
+  await expect.poll(() => ann.project.chars, PATIENT).toBe(was);
+  await allMatch(room, ann);
+});
+
+test('a layer with no settings of its own keeps the bottom\'s as they were when the room started, on the host as on every artist', async () => {
+  let layer;
+  const room = await hosting({
+    before: (project) => {
+      layer = project.addLayer('cells', 'edit');
+      project.layers = project.layers.map((each) => (each.id === layer ? Object.freeze({ ...each, chars: null }) : each)); // as commitLayerChars' undo leaves a layer that had none
+    },
+  });
+  const ann = await artist(room, 'ann');
+  const was = room.project.chars;
+  await expect.poll(() => ann.project.charsOf(layer)?.chars, PATIENT).toBe(was);
+  room.project.setLayerChars('base', { chars: '@*' });
+  room.project.commitLayerChars();
+  await expect.poll(() => ann.project.chars, PATIENT).toBe('@*');
+  for (const page of [room, ann]) expect(page.project.charsOf(layer).chars).toBe(was);
+  await allMatch(room, ann);
+});
+
 test('a layer an artist adds above another copies that layer\'s settings, not the host\'s picked layer\'s', async () => {
   const room = await hosting();
   const top = room.project.addLayer('cells', 'edit');
@@ -349,6 +384,20 @@ test('the host and artists reorder, rename and duplicate, and every stack matche
   expect(room.project.history.last).toBe(hostsLast);   // the copy's cells too: no one's to undo
   for (const page of [ann, bo]) expect(page.project.history.canUndo).toBe(false);
   expect(room.project._ledger.strokesBy('host')).toEqual(hostsStrokes);
+});
+
+test('a copy of a layer has an artist\'s cells numbered on it a moment before, not yet written', async () => {
+  const room = await hosting();
+  const layer = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layerById(layer)?.kind, PATIENT).toBe('cells');
+  setActivePinia(room.pinia);
+  expect(room.project.takeFromArtist('ann', { t: 'change', stroke: 'a1', cells: [[`${layer}:2,2`, { char: 'A' }]], runs: [] })).toBeTruthy();
+  room.project.takeLayerOp('ann', { t: 'layer-op', op: { kind: 'duplicate', id: layer } });   // in the same moment
+  const copy = room.project.layers.at(-1).id;
+  expect(copy).not.toBe(layer);
+  for (const page of [room, ann]) await expect.poll(() => page.project.cellsOf(copy)?.get('2,2')?.char, PATIENT).toBe('A');
+  await allMatch(room, ann);
 });
 
 test('an empty layer an artist deletes goes from every page, and no one can undo it', async () => {
@@ -512,6 +561,18 @@ test('deleting a layer someone else has picked is refused, on their page and at 
   expect(room.project._ledger.n).toBe(n);   // no layers message
   expect(toastMessage.value).toBe(null);   // the host isn't told: it wasn't the host's own
   await allMatch(room, ann, bo);
+});
+
+test('the host\'s pick is known from the start, so a layer the host has picked can\'t be deleted before the host moves', async () => {
+  let layer;
+  const room = await hosting({ name: 'Hana', before: (project) => { useWorkspaceStore().pickLayer(layer = project.addLayer('cells', 'edit')); } });   // picked before the room
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.drawing.cursors.host?.layer, PATIENT).toBe(layer);
+  setActivePinia(ann.pinia);
+  const asks = vi.spyOn(ann.watch, 'post');
+  expect(ann.project.deleteLayer(layer)).toBe(false);
+  expect(asks.mock.calls.some(([msg]) => msg.t === 'layer-op')).toBe(false);
+  expect(ann.project.layerById(layer)?.kind).toBe('cells');
 });
 
 test('a layer whose own character settings were undone back to none still goes in a stack every artist reads', async () => {
@@ -4507,6 +4568,26 @@ async function withArtLayer(room, ...people) {
   await sameShapes(room, ...people);
   return key;
 }
+
+test('an artist inside an art layer stays in it when another layer is deleted, and is stepped out when its own vector layer is', async () => {
+  const room = await hosting();
+  const other = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann');
+  const key = await withArtLayer(room, ann);
+  await expect.poll(() => ann.project.layerById(other)?.kind, PATIENT).toBe('cells');
+  setActivePinia(ann.pinia);
+  expect(ann.project.enterArt(key)).toBe(true);
+  await expect.poll(() => room.drawing.lockedBy(key), PATIENT).toBe('ann');
+  setActivePinia(room.pinia);
+  expect(room.project.deleteLayer(other)).toBe(true);
+  await expect.poll(() => ann.project.layerById(other), PATIENT).toBeUndefined();
+  expect(ann.project.artInside).toBe(key);
+  const vector = ann.project.drawsOn;
+  room.project._picks = {};   // the host deletes it before hearing who's in it
+  expect(room.project.deleteLayer(vector)).toBe(true);
+  await expect.poll(() => ann.project.artInside, PATIENT).toBe(null);
+  await allMatch(room, ann);
+});
 
 test('an artist inside an art layer locks it: the host and other artists can\'t step in, and the host refuses another artist\'s move of it', async () => {
   const { withShape } = await import('@/document/shapes.js');

@@ -274,7 +274,8 @@ export function readChange(msg, { cols, rows, layerWidth, layerHeight, layers = 
     if (isShapeKey(cell[0])) { // a shape (or null, its deletion), exactly as the app makes one
       if (!isGoodShapeKey(cell[0])) return null;
       if (cell[1] === null) continue;
-      if ((cell[1]?.layer !== undefined && layers.get(cell[1].layer) !== 'vector') || !sameShape(shapeFromStranger(cell[1]), cell[1])) return null;
+      const on = cell[1]?.layer; // none: 'vector', there or the one the first shape brings, not a stack's other vector layers'
+      if ((on === undefined ? layers.get('vector') !== 'vector' && [...layers.values()].includes('vector') : layers.get(on) !== 'vector') || !sameShape(shapeFromStranger(cell[1]), cell[1])) return null;
       continue;
     }
     const { id, key } = keyLayer(cell[0]);

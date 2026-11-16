@@ -29,7 +29,7 @@ import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, readChange, readLayers } from '@/social/wire.js';
 import { ALONE, SAVED_KEYS, anyoneInside, dropFromSums, emptyFields, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
-import { layerChars, nextNumber } from '@/document/layerInfo.js';
+import { layerChars, nextNumber, withChars } from '@/document/layerInfo.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast';
 import { settingsFromStranger } from '@/store/settings.js';
@@ -207,6 +207,8 @@ export const sharingActions = {
     this.history.dropThrough((entry) => entry.frameOp || entry.layerOp); // frames and layers' structure never travel, so nothing here can bring one back
     this.history.retain((entry) => !entry.ownChars); // nor a layer's own settings: a room has one set
     this.historyVersion = this.history.version;
+    // A layer with none of its own follows the bottom's alone; an artist takes them as they are (applyLayers), so the host does too.
+    if (this.layers.some((layer, at) => at && !layer.chars)) this.layers = withChars(this.layers, this.baseChars);
     const sum = this.editLayerSum();
     let sharing;
     if (role === 'host') {

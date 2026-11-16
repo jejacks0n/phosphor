@@ -63,7 +63,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   const artistParts = artistSide({ project, workspace, me: () => me(), artists, artistNames, invitation, paused, waiting, cursors, notice, hostChanging, gettingArt, mayDraw, myCursor, pause, goOn, sayUndoRestarts, noteUndoSaid });
   const { autosavedBy, autosaved, hostChanged, lastChange, holdsTheArt, noteFormerHost, watchCallbacks, knownNow, heardArtists, accept, decline, connection } = artistParts;
-  const hostParts = hostSide({ project, me: () => me(), artist: artistParts, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts, noteUndoSaid });
+  const hostParts = hostSide({ project, me: () => me(), artist: artistParts, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sendCursor: () => sendNow(), sayUndoRestarts, noteUndoSaid });
   const { hostCallbacks, invite, withdraw, backToWatching, peopleHere, resumeHosting, makeHost, handingOver, takeOver, becomeArtist, artistsNow, hostingAgain } = hostParts;
 
   // Who this person is comes with the room's Host, or its Watch.

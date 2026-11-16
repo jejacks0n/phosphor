@@ -255,6 +255,16 @@ test('a shape names a vector layer, or none', async () => {
   for (const layer of ['L2', 'edit', 'base', 'L9', 'vector']) assert.equal(of(layer), null, layer); // 'vector' goes unnamed
 });
 
+test('a shape naming no layer is the vector layer\'s: refused when the stack has vector layers but none is that one', async () => {
+  const { rectShape } = await import('../../src/document/shapes.js');
+  const shape = JSON.parse(JSON.stringify(rectShape(0, 0, 4, 4, { fill: '#ff0000' })));
+  const of = (layers) => readChange({ ...good(), cells: [['v:a', shape]] }, { ...GRID, layers });
+  assert.equal(of(STACK), null); // L3 is a vector layer, and there's no 'vector' for it to be on
+  assert.ok(of(new Map([['edit', 'cells'], ['vector', 'vector'], ['L3', 'vector']])));
+  assert.ok(of(new Map([['edit', 'cells'], ['L2', 'cells']]))); // no vector layer yet: the first shape brings it
+  assert.ok(readChange({ ...good(), cells: [['v:a', null]] }, { ...GRID, layers: STACK })); // a deletion names nothing
+});
+
 test('readChange takes the keys cellKey makes, zero and ten included', () => {
   const cells = [['0,0', null], ['10,0', null], ['0,3', null], ['9,0', null], ['0,0', { char: 'a' }]];
   assert.equal(readChange({ ...good(), cells }, { ...GRID, cols: 11 }).cells, cells);
