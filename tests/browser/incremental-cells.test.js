@@ -5,7 +5,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { cellIndex, composeCell, coverCell, layoutWide } from '@/lib/Cells';
-import { parseKey } from '@/document/editCells';
+import { parseKey, shownEntry } from '@/document/editCells';
 import { rectShape, withShape } from '@/document/shapes.js';
 
 const ATTRS = { fg: '#ffee00', bg: '#0044aa' };
@@ -239,12 +239,13 @@ test('a stack at the most layers, with every layer hidden or shown, composes as 
 });
 
 // Each entry as #composeOne lays it: over the cell under it (underCell), with the paint over that (coverCell), or the
-// generated cell where there's none under it (a resize's render still to come).
+// generated cell where there's none under it (a resize's render still to come). A paint block in ASCII is no entry
+// (shownEntry): the generated cell, its paint converted with it.
 function composedOneByOne(project, params, base) {
   const r = project.renderer, cells = base.slice();
   for (const [key, entry] of project.editCells) {
     const { col, row } = parseKey(key), i = cellIndex(col, row, params.cols);
-    if (col >= params.cols || 2 * row >= params.rows) continue;
+    if (col >= params.cols || 2 * row >= params.rows || !shownEntry(entry, params.renderStyle)) continue;
     const under = r.underCell(col, row, params, base);
     cells[i] = under ? coverCell(composeCell(under, entry, params.renderStyle, (hex, index) => r.effective(hex, params, index)),
       r.paintAt(col, 2 * row), r.paintAt(col, 2 * row + 1), { renderStyle: params.renderStyle, palette: r.palette }) : base[i];

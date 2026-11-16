@@ -32,7 +32,7 @@ import { nearestColor, paletteIndex, withIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
 import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix } from '../lib/Cells.js';
-import { cellKey, parseKey } from './editCells.js';
+import { cellKey, parseKey, shownEntry } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
 import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatcher, resolveShapes, SAMPLES } from '../lib/CharResolver.js';
@@ -76,6 +76,7 @@ export default class Renderer {
   #baseParams = null;   // the last render's baseParams
   #chosen = null;       // a Number palette someone else picked (usePalette): composite doesn't pick its own
   #lowerEdits = null;   // the lower group's cells layer's map, from the last composeAll or updateCells: where its cells are exact
+  #lowerStyle = null;   // the render style it was composed in (shownEntry)
   #upperGrids = new WeakMap(); // an upper vector layer -> its shapes at grid resolution (#upperGrid), as #baseDrawn is the base's
   #upperStored = new WeakMap(); // an upper vector layer -> its shapes at grid resolution as stored (upperStoredAt)
   #upperPaints = new WeakMap(); // an upper cells layer's paint -> its pixels at grid resolution through the transforms (#upperPaint)
@@ -712,6 +713,7 @@ export default class Renderer {
   // baseCells (the last full render) supplies a cell's character in random mode.
   updateCells(cells, pixels, params, editCells, baseCells) {
     this.#lowerEdits = editCells;
+    this.#lowerStyle = params.renderStyle;
     if (!this.outputCanvas || !pixels.length) return cells;
     const next = cells.slice();
     const { cols, chars: charset, charMode, renderStyle } = params;
@@ -726,7 +728,7 @@ export default class Renderer {
       done.add(i);
       if (resolved) Object.assign(rebuilt, { x0: Math.min(rebuilt.x0, col), x1: Math.max(rebuilt.x1, col), r0: Math.min(rebuilt.r0, row), r1: Math.max(rebuilt.r1, row) });
 
-      const entry = editCells.get(cellKey(col, row));
+      const entry = shownEntry(editCells.get(cellKey(col, row)), renderStyle);
       if (entry) {
         next[i] = this.#composeOne(col, row, params, entry, baseCells);
         continue;
@@ -797,15 +799,16 @@ export default class Renderer {
   // Generated cells with the base's pins (and the art layers' characters) and every in-grid edit cell composed in.
   composeAll(baseCells, editCells, params) {
     this.#lowerEdits = editCells;
+    this.#lowerStyle = params.renderStyle;
     const cells = baseCells.slice();
     const rows = charRowsOf(params.rows), pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
     for (const key of this.shapes?.hasArt ? new Set([...pins.keys(), ...this.shapes.artCells()]) : pins.keys()) {
       const { col, row } = parseKey(key);
       if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#paintedPin(col, row, params) ?? this.#onBase(col, row, cells[cellIndex(col, row, params.cols)]);
     }
-    for (const [key, entry] of editCells) {
-      const { col, row } = parseKey(key);
-      if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#composeOne(col, row, params, entry, baseCells);
+    for (const [key, own] of editCells) {
+      const { col, row } = parseKey(key), entry = shownEntry(own, params.renderStyle);
+      if (entry && col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#composeOne(col, row, params, entry, baseCells);
     }
     return cells;
   }
@@ -1029,7 +1032,7 @@ export default class Renderer {
   // Whether the cell at col, row holds a character that's someone's own under the upper layers: the lower cells layer's
   // entry or the base's pin.
   #exactUnder(col, row) {
-    return !!this.#lowerEdits?.has(cellKey(col, row)) || this.pinAt(col, row) !== undefined;
+    return !!shownEntry(this.#lowerEdits?.get(cellKey(col, row)), this.#lowerStyle) || this.pinAt(col, row) !== undefined;
   }
 
   // reads: each upper layer's pixels at grid resolution (composeUpper), or null for one with nothing to lay. Only the
@@ -1063,7 +1066,7 @@ export default class Renderer {
         exact = char !== null;
         continue;
       }
-      const entry = u.cells.get(key);
+      const entry = shownEntry(u.cells.get(key), renderStyle);
       const top = read ? paintAt(read, 2 * row) : null, bottom = read ? paintAt(read, 2 * row + 1) : null;
       if (entry) {
         cell = coverCell(composeCell(cell, entry, renderStyle, (hex, index) => this.effective(hex, params, index)), top, bottom, { renderStyle, palette });
