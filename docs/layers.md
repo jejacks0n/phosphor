@@ -871,12 +871,12 @@ swaps the two halves of each cell's base colors.
     colors.
   - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels;
     a character pinned on the base keeps its background in its top pixel and its foreground in its bottom one).
-  - **In the ANSI View**: On a drawing layer, as in the PIXEL view, pixel by pixel, as the Brush paints: a small brush
-    can change one half of a cell and leave the other. On the base, each cell's
-    colors are changed and its character stays; a cell that shows no character still shows none, and Blur evens a
-    cell's colors with the cells around it, foreground with foreground and background with background. Monochrome
-    ASCII shows only characters (every cell white on black), so there the base changes as in the PIXEL view and its
-    characters follow.
+  - **In the ANSI View**: The same as in the PIXEL view, pixel by pixel, as the Brush paints: a small brush can change
+    one half of a cell and leave the other. On the base the picture's pixels change and the characters follow, picked
+    afresh from the new colors, with nothing pinned, so switching **Choose characters** afterward picks them again.
+    A character pinned on the base stays: its cell's colors change, and Blur evens them with the cells around it,
+    foreground with foreground and background with background (a pinned cell that shows no character still shows
+    none).
   - They read the colors as stored, before the color adjustments, so with a palette the result shows in the palette's
     colors, as any paint does. With a selection, they stay inside it. A stroke is one undo step.
 - **Eyedropper** (**I**): Its **FG** and **BG** toggles choose what a pick sets.

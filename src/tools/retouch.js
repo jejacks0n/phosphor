@@ -1,7 +1,7 @@
 // Retouch: Blur, Dodge and Burn, soft round brushes that change colors instead of laying a color of their own
-// (lib/Retouch.js). On the base, the colors that show: in the pixel view each grid pixel's, written back as its pixels; in
-// the ANSI view each cell's, written back with its character, which stays (a cell that shows no character keeps showing
-// none), but in Monochrome ASCII, which shows only characters, as in the pixel view. On a drawing layer, only what the layer itself holds, as
+// (lib/Retouch.js). On the base, the colors that show, each grid pixel's, written back as its pixels, in either view, so
+// the converter picks the characters afresh; but in the ANSI view a pinned character stays, its cell's colors changed
+// and written back with it (a cell that shows no character keeps showing none). On a drawing layer, only what the layer itself holds, as
 // paint, pixel by pixel in either view (as the Brush paints), where a clear pixel counts as clear (Blur fades an edge out into the
 // clear beside it); where the layer has nothing, nothing changes, whatever shows under it. Nothing is locked: a cell of
 // the layer's own with colors of its own (typed, or written exactly by a merge) that the stroke changes goes, its two
@@ -98,12 +98,13 @@ function retouchPixels(project, pixels, change, strength) {
   project.paintEditPixels([...out.values()], 100, false);
 }
 
-// Each cell: its character and colors as it shows up to the layer in use, the colors changed, as an edit cell. A cell
-// that shows no character counts its background as its foreground too, so it still shows none.
+// Each cell (on the base, a pinned one): its character and colors as it shows up to the layer in use, the colors
+// changed, as an edit cell. A cell that shows no character counts its background as its foreground too, so it still
+// shows none.
 function retouchCells(project, pixels, change, strength) {
   const { cols } = project, rows = charRowsOf(project.rows);
   const lookAt = (col, row) => {
-    const key = `${col},${row}`;
+    const key = `c${col},${row}`; // apart from the pixels' keys: a stroke on the base can take both routes
     if (!stroke.read.has(key)) {
       const cell = project.cells[row * cols + col], look = project.underlyingAt(col, row, { evenHidden: true });
       const plain = !cell || !showsChar(cell), bg = hex2rgb(look.bg);
@@ -115,12 +116,12 @@ function retouchCells(project, pixels, change, strength) {
   for (const [key, alpha] of reach) {
     const [col, row] = key.split(',').map(Number), cell = project.cells[row * cols + col];
     if (!cell || cell.wide === 'trail') continue; // a trailing half: its lead cell carries it
-    let spot = stroke.spots.get(key);
+    let spot = stroke.spots.get(`c${key}`);
     if (!spot) {
       const from = lookAt(col, row);
       const at = (part) => (dx, dy) => (inGrid(col + dx, row + dy, cols, rows) ? lookAt(col + dx, row + dy)[part] : null);
       const bg = change(from.bg, at('bg')), fg = from.plain ? bg : change(from.fg, at('fg'));
-      stroke.spots.set(key, spot = { from, to: { fg, bg }, alpha: 0 });
+      stroke.spots.set(`c${key}`, spot = { from, to: { fg, bg }, alpha: 0 });
     }
     spot.alpha = Math.max(spot.alpha, alpha);
     const k = strength * spot.alpha, { from, to } = spot, fg = rgb2hex(mix(from.fg, to.fg, k)), bg = rgb2hex(mix(from.bg, to.bg, k));
@@ -211,8 +212,11 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
       const strength = workspace.retouchStrength / 100;
       const changed = (color, at) => change(color, workspace.retouchRange, at), owned = (from, around) => own(from, around, workspace.retouchRange);
       if (!onBottom(project)) retouchOwnPaint(project, pixels, owned, strength); // a drawing layer: only what it holds, in either view
-      else if (view === 'output' && project.renderStyle !== 'ascii') retouchCells(project, pixels, changed, strength);
-      else retouchPixels(project, pixels, changed, strength); // Monochrome ASCII shows a cell's brightness as its character alone: its pixels change, and the characters follow
+      else if (view === 'output' && project.renderStyle !== 'ascii') { // the ANSI view: a pinned character stays, recolored
+        const { pins } = project.baseRecords, pinned = ({ x, y }) => pins.has(`${x},${y >> 1}`);
+        retouchPixels(project, pixels.filter((p) => !pinned(p)), changed, strength); // the converter's cells: as in the pixel view, read before the pinned ones change
+        retouchCells(project, pixels.filter(pinned), changed, strength);
+      } else retouchPixels(project, pixels, changed, strength); // Monochrome ASCII shows a cell's brightness as its character alone: its pixels change, and the characters follow
       workspace.strokeEnd = to;
     },
     end({ project }) {

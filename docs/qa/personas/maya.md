@@ -128,7 +128,9 @@ script. Every section ends with Free time.
 - Expects: edges inside cells come out as quadrants, `▐ ▌` and rising blocks; changing the font changes how the cells
   look, not which characters they hold ("The characters are measured in IBM VGA").
 - Probes: `speed`: drag Pattern light back and forth for two seconds with `qa.frames` and check frames stay in the
-  `frame` budget; `interrupt`: switch to PIXEL while it's redrawing and come back.
+  `frame` budget; `interrupt`: switch to PIXEL while it's redrawing and come back; `out-of-order`: with Base picked,
+  stroke Blur (R) over an edge in the ANSI view, then switch Choose characters to Best match and back, and check the
+  blurred cells get Best match's characters and then By shape's again, not the ones they had when she blurred.
 - Rated: yes, wants Tab to Choose characters then the arrows
 
 ### 7. Roll the seed
