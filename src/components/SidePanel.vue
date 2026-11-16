@@ -214,6 +214,22 @@ div.side-panel.overlay {
     transition: none;
   }
 }
+div.side-panel.overlay div.tabs button.tone {   /* beside it, a finger's size too */
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+}
+div.side-panel.overlay div.tabs button.panel {   /* as EditTabs' « on a narrow screen: a finger's size */
+  display: flex;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 36px;
+  margin: 0 -6px 0 0;
+  font-size: 20px;
+}
 div.scrim {
   position: fixed;
   z-index: 2000;

@@ -359,6 +359,16 @@ label.animate:has(:focus-visible) {
   button.menu-btn {
     display: flex;
   }
+
+  button.panel {   /* a finger's size, out to the screen's edge and clear of the switch, the row as tall as it was */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 36px;
+    margin: -4px -10px -4px 0;
+    font-size: 20px;
+  }
 }
 
 @media (max-width: 480px) { /* a phone upright: the tabs give way, so the switch stays on screen */
