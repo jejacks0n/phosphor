@@ -863,12 +863,14 @@ swaps the two halves of each cell's base colors.
     in the same stroke adds nothing, so stroke again to go further.
   - **Range** (Dodge and Burn) chooses the colors they change most: **Shadows** the dark ones, **Highlights** the light
     ones, **Midtones** (to start) the ones between, leaving black and white alone.
-  - **Nothing Is Locked**: On a drawing layer, a cell with colors of its own (one you typed, or one Merge down wrote
-    exactly) that a stroke changes loses its character, and its two halves become paint in the colors the cell showed,
-    which the stroke then changes like any paint, so it fades into the clear like the rest. A cell the Brush made a ▄
-    holds only its character, its colors being paint, so it stays. Undo brings the characters back. To keep text as it
-    is, put it on a layer of its own. On the base a pinned character stays, in both views: the stroke changes its
-    colors.
+  - **Characters**: Dodge and Burn keep every character, in both views: on a drawing layer a cell with colors of its
+    own (one you typed, or one Merge down wrote exactly) keeps its character and has its colors changed, a whole cell
+    at a time (a color set to None stays None), as a character pinned on the base does. Blur fades things into the
+    clear, which a character can't do, so on a drawing layer a cell with colors of its own that Blur changes loses its
+    character, and its two halves become paint in the colors the cell showed, which Blur then fades like the rest.
+    Undo brings the characters back; to keep text as it is, put it on a layer of its own. A cell the Brush made a ▄
+    holds only its character, its colors being paint, so it stays. On the base Blur keeps a pinned character too and
+    changes its colors.
   - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels;
     a character pinned on the base keeps its background in its top pixel and its foreground in its bottom one).
   - **In the ANSI View**: The same as in the PIXEL view, pixel by pixel, as the Brush paints: a small brush can change

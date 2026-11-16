@@ -1,6 +1,6 @@
-// Retouch: Blur, Dodge and Burn change the colors that show, each grid pixel's, in both views; on the base in the ANSI
-// view a pinned character stays, its cell's colors changed; on a drawing layer a cell with colors of its own that a
-// stroke changes becomes paint. A stroke is one undo step and stays inside a selection.
+// Retouch: Blur, Dodge and Burn change the colors that show, each grid pixel's, in both views. A pinned character on the
+// base stays, its colors changed, and so on a drawing layer, under Dodge and Burn, does a cell with colors of its own;
+// Blur turns such a cell into paint, to fade it. A stroke is one undo step and stays inside a selection.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { blur, dodge, burn } from '@/tools/retouch';
@@ -215,9 +215,9 @@ test('ANSI view, Monochrome ASCII: on the base its pixels change, as in the PIXE
   expect(project.baseRecords.pins.size).toBe(0); // nothing pinned: the characters stay the converter's
 });
 
-// In the PIXEL view a stroke unlocks what it reaches: a cell the layer holds (typed, or one a merge wrote exactly) and
-// a character pinned on the base go, their two halves becoming paint (the base's pixels) in the colors they showed, and
-// the stroke works on those as on any paint. Text you want kept goes on a layer of its own.
+// Blur unlocks what it reaches on a drawing layer: a cell the layer holds (typed, or one a merge wrote exactly) goes, its
+// two halves becoming paint in the colors it showed, and the stroke works on those as on any paint. Text you want kept
+// goes on a layer of its own.
 test('pixel view: on a drawing layer Blur unlocks the cells it reaches into paint and fades their edge; undo brings them back', async () => {
   const { project, workspace, ctx } = await blank();
   const cells = [];
@@ -237,16 +237,28 @@ test('pixel view: on a drawing layer Blur unlocks the cells it reaches into pain
   expect(project.paintLayer.hasPaint).toBe(false);
 });
 
-test('pixel view: a typed letter a stroke reaches becomes paint in the colors it showed, its character gone', async () => {
-  const { project, ctx } = await blank();
-  project.writeEditCells([{ col: 5, row: 5, attrs: { char: 'A', fg: '#ffffff', bg: '#000080' } }]);
-  project.commitEdit();
-  stroke(dodge, ctx, { x: 5.5, y: 11 });
-  expect(project.editCellAt(5, 5)).toBeUndefined();
-  const [top] = paintAt(project, 5, 10), [, , blue] = paintAt(project, 5, 11);
-  expect(top).toBeGreaterThan(0);  // the letter's white mixed into its blue, lightened
-  expect(blue).toBeGreaterThan(0x80);
-});
+// Dodge and Burn change each color on its own and never fade, so on a drawing layer a cell's character stays, as on the
+// base: its own colors change, a whole cell at a time. Blur, which fades, turns it into paint (above).
+for (const view of ['input', 'output']) {
+  test(`${view === 'input' ? 'pixel' : 'ANSI'} view: on a drawing layer Dodge and Burn keep a typed letter, its own colors changed`, async () => {
+    const { project, ctx } = await blank(view);
+    project.writeEditCells([{ col: 5, row: 5, attrs: { char: 'A', fg: '#808080', bg: '#000080' } }, { col: 12, row: 5, attrs: { char: 'B', fg: '#808080' } }]);
+    project.commitEdit();
+    stroke(dodge, ctx, { x: 5.5, y: 11 });
+    const lit = project.editCellAt(5, 5);
+    expect(lit.char).toBe('A');
+    expect(hex2rgb(lit.fg).r).toBeGreaterThan(0x80);
+    expect(hex2rgb(lit.bg).b).toBeGreaterThan(0x80);
+    expect(project.paintLayer?.hasPaint ?? false).toBe(false); // nothing became paint
+    stroke(burn, ctx, { x: 12.5, y: 11 });
+    const dark = project.editCellAt(12, 5);
+    expect(dark.char).toBe('B');
+    expect(hex2rgb(dark.fg).r).toBeLessThan(0x80);
+    expect(dark.bg).toBeUndefined(); // a color it doesn't have stays None
+    project.undo();
+    expect(project.editCellAt(12, 5)).toEqual({ char: 'B', fg: '#808080' });
+  });
+}
 
 test('pixel view: on the base a pinned character stays, and its two pixels (background over foreground) change', async () => {
   const { project, workspace, ctx } = await blank();

@@ -271,13 +271,13 @@ dithered, and compare the dither at 80 and at 200 columns.
   Blur along an edge; then the same on the ANSI view, over the caption she typed.
 - Expects: Dodge lightens and Burn darkens her paint, most in the Range picked (Midtones leaves black and white alone);
   Blur softens an edge, fading it into the clear beside it in the paint's own color, never the picture's under it;
-  going over a spot again in one stroke adds nothing, a second stroke goes further; on the ANSI view the caption's
-  letters a stroke changes become paint in the colors they showed (their characters go: text to keep goes on its own
-  layer), which Blur fades into the clear beside them; each stroke is one undo step, and undo brings the letters back; a
-  palette shows the result in its own colors.
+  going over a spot again in one stroke adds nothing, a second stroke goes further; on the ANSI view Dodge and Burn
+  keep the caption's letters and lighten or darken their colors, while the letters Blur changes become paint in the
+  colors they showed (their characters go: text to keep goes on its own layer), which it fades into the clear beside
+  them; each stroke is one undo step, and undo brings the letters back; a palette shows the result in its own colors.
 - Probes: `out-of-order`: stroke all three over a part of the layer with nothing on it (nothing changes, the picture
-  under it included), hide the layer with its eye and stroke ("Make the layer visible to draw on it"), Blur over the
-  caption in the PIXEL view too (the same as on the ANSI view), Dodge with Size at 1 on the ANSI view (one half of a
+  under it included), hide the layer with its eye and stroke ("Make the layer visible to draw on it"), all three over
+  the caption in the PIXEL view too (the same as on the ANSI view), Dodge with Size at 1 on the ANSI view (one half of a
   cell lightens, the other stays, as the Brush paints), and with Base picked type a letter and Dodge over it in the PIXEL
   view (the letter stays, its colors lighten); `undo-redo`: undo a stroke, redo it, and undo a Blur
   over the caption (its letters come back); `extremes`: Strength at 1% and at 100%.
