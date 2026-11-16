@@ -205,8 +205,8 @@ export const layerActions = {
     if (!before || !this.layerById(before.id)) return;
     const { id, key, values, hadNoOwn } = before, after = pick(this.charsOf(id), CHAR_KEYS), last = this._lastChars;
     if (CHAR_KEYS.every((each) => String(values[each]) === String(after[each]))) return;
-    if (this._sharing) { // no undo step in a room; the bottom's go with the document's settings, a layer's with the stack
-      if (id !== 'base') this.sendLayers({ by: this._sharing.me });
+    if (this._sharing && id !== 'base') { // a layer's go with the stack, no undo step in a room; the bottom's are the document's settings, which go with them and keep the host's undo, as the sliders do
+      this.sendLayers({ by: this._sharing.me });
       return;
     }
     if (nudge && last?.id === id && last.key === key && last.version === this.history.version && Date.now() - last.at < NUDGE_MS) {
@@ -270,6 +270,7 @@ export const layerActions = {
     const layer = this.layerById(id);
     if (!layer || id === 'base' || this.layers.length >= MOST_LAYERS || asked(this, { kind: 'duplicate', id })) return null;
     ready(this, id);
+    this.flushHeard(); // what's numbered on it and waiting for its frame is on it, and on the copy (ready doesn't for an artist's ask)
     const to = newLayerId(this.layers, layer.kind, this._sharing?.removed), { before, after, keyMap } = this.layerFrames(id, to);
     const everyShape = new Set([...this.shapes.keys(), ...this.frames.flatMap((frame) => [...frame.changes.keys()].filter(isShapeKey))]);
     if (keyMap && everyShape.size + keyMap.size > MOST_SHAPES) {

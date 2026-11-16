@@ -21,7 +21,7 @@ const HELLOS_WITHIN_MS = 5000;       // a host without all that's numbered (a re
 const HOST_IDLE = Object.freeze({ phase: 'idle' });
 const HOST_MOVES = { idle: ['gathering', 'handing-over'], gathering: ['idle'], 'handing-over': ['idle'] };
 
-export function hostSide({ project, me, artist, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sayUndoRestarts, noteUndoSaid }) {
+export function hostSide({ project, me, artist, artists, invited, invitation, paused, waiting, connected, cursors, notice, hostChanging, artistsFull, pause, goOn, sendCursor, sayUndoRestarts, noteUndoSaid }) {
   let host = null;                 // the Host
   let stops = [], cursorTimer = null;
   let peersOn = new Set();         // who peopleHere last saw connected
@@ -251,6 +251,7 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
       else project.shareWholeDocument();
       grid = gridNow;
     }));
+    sendCursor(); // my pick, before I've moved: until it's heard, an artist could delete the layer I have picked
   }
 
   function stopHostSharing() {

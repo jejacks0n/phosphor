@@ -219,7 +219,8 @@ Moving a slider in Transforms, Adjustments or Image filters is an undo step, lik
   typing there, as in any text field. Once you've pressed **Enter** or left the field, it undoes the step.
 - **In a Room**: Each layer keeps its own character settings, and they go to everyone. Only the host changes them: for
   an artist the Characters section shows the selected layer's settings, turned off, with "Only the host changes
-  character settings in a room." A change to them isn't an undo step in a room.
+  character settings in a room." A change to a layer's isn't an undo step in a room; a change to the base's is the
+  host's undo step, as the sliders are.
 - **Not Undo Steps**: The grid size, the Art style, the Color palette, the Color count, frames per second and a
   frame's hold. Changing one keeps the undo steps before it: **Cmd+Z** afterward takes back the edit you made before
   the change and leaves the setting as it is, and redo puts that edit back. One exception: paint is kept at up to the
