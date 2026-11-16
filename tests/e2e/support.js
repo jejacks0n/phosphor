@@ -66,8 +66,9 @@ export const fixture = (path) => fileURLToPath(new URL(`../fixtures/${path}`, im
 export const zeroState = (page) => page.locator('article.zero-state');
 export const imageInput = (page) => page.locator('input.open-input');
 
-// The app with an image loaded, on the ANSI tab, with Layer 1 picked: a picture opens with its own layer (the base)
-// picked, and the flows here draw on the layer above it. A page that has the app open is reopened as a new tab
+// The app with an image loaded, on the ANSI tab, with Layer 1 picked: a picture opens with only the base, picked, and
+// the flows here draw on a layer above it, added with Add layer and then as if the picture had opened with it: nothing
+// to undo, nothing unsaved. A page that has the app open is reopened as a new tab
 // would be: a tab's document comes back on a reload, so the tab forgets it first (a page still at
 // about:blank has no storage to forget).
 export async function openApp(page, image = 'images/gradient.png') {
@@ -77,6 +78,7 @@ export async function openApp(page, image = 'images/gradient.png') {
   await tab(page, 'ANSI').click();
   await settled(page);
   await pickLayer(page, 'Layer 1');
+  await store(page, 'project', (p) => { p.clearHistory(); p.markSaved(); });
 }
 
 // Save or export through the save dialog: the button, then the dialog's Save/Export; the download.
@@ -92,12 +94,13 @@ export async function saveAs(page, button, { name } = {}) {
 export const tab = (page, label) => page.getByRole('tab', { name: label, exact: true });
 
 // A layer picked in LAYERS, as the tabs follow: 'Vector 1' (the default) is VECTOR, added with Add vector layer when the
-// drawing has none (above the layer picked); 'Layer 1' is back to PIXEL or ANSI. A folded side panel is folded again after,
-// so the canvas keeps its size (a phone's, over the art, is shut again after). A row already picked isn't clicked again: a
-// click on its name would rename it.
+// drawing has none (above the layer picked); 'Layer 1' is back to PIXEL or ANSI, added with Add layer when the drawing
+// has none (a new drawing has only the base). A folded side panel is folded again after, so the canvas keeps its size (a
+// phone's, over the art, is shut again after). A row already picked isn't clicked again: a click on its name would rename it.
 const pickRow = async (list, name) => {
   const row = list.locator('li button.pick', { hasText: name });
   if (name === 'Vector 1' && !await row.count()) return list.getByRole('button', { name: 'Add vector layer' }).click();
+  if (name === 'Layer 1' && !await row.count()) return list.getByRole('button', { name: 'Add layer', exact: true }).click();
   if (await row.getAttribute('aria-pressed') !== 'true') await row.click();
 };
 export async function pickLayer(page, name = 'Vector 1') {

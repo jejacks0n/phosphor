@@ -93,6 +93,6 @@ test('the canvas follows the Smooth button: white text on black has gray edges w
     return n;
   };
   expect(await grays()).toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Smooth' }).click();
+  await page.getByRole('button', { name: 'Smooth', exact: true }).click();
   await expect.poll(grays).toBe(0);
 });
