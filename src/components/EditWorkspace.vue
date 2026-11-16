@@ -175,7 +175,7 @@ const artChoices = computed(() => {
   }
   if (DESKTOP) return [{ id: 'add', title: t('actions.artAdd'), text: addText(drop) }, { id: 'window', title: t('actions.artOpenWindow'), text: t('actions.artOpenWindowText') }];
   // Opening in its place says what happens to unsaved changes there, so there's no second question.
-  const note = project.isDirty || project._stroke ? t('actions.replacesUnsaved') : null; // a typing run still open counts
+  const note = project.unsavedChanges || project._stroke ? t('actions.replacesUnsaved') : null; // a typing run still open counts
   const open = drop.picture || isSvgFile(drop.file.name) ? [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText'), note }] : [
     { id: 'edit', title: t('actions.artOpenEdit'), text: t('actions.artOpenEditText'), note },
     { id: 'base', title: t('actions.artOpenDrawOn'), text: t('actions.artOpenDrawOnText'), note },

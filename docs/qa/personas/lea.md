@@ -298,7 +298,8 @@ frames, and pinch while it plays.
   frames, layers and settings); New project afterwards asks about unsaved changes only if there are any.
 - Probes: `interrupt`: reload a second and a half after an edit without saving and check it came back; `back-out`:
   press New project with unsaved changes and Cancel Phosphor's "Start a new project?" question (Save project first,
-  Start without saving or Cancel).
+  Start without saving or Cancel); `again`: start without saving, pick the drawing back up from "Pick up where you left
+  off" (it says Changed), and press New project at once: nothing asks, and the list still says Changed.
 - Rated: yes, wants Go on the phone's keyboard
 
 ### 22. Come back to it

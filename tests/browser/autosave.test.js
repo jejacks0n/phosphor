@@ -1244,6 +1244,38 @@ test('openRecent on a document Start New Project just left brings it back', asyn
   expect((await readLatest(id)).record.editedAt).toBe(editedAt);
 });
 
+// Picked up from the start screen's list with unsaved changes, a drawing is still unsaved (the list says Changed), but
+// leaving it again asks nothing until it changes: nothing new would be lost, and it stays in the browser either way.
+test('a drawing picked up with unsaved changes doesn\'t ask before New project until it changes again', async () => {
+  const { project, workspace } = await opened();
+  const id = project.documentId;
+  edit(project);
+  await pass(SAVE_AFTER_MS);
+  const pickUp = async () => {
+    project.clearImage();
+    await vi.waitUntil(() => autosave.recent.value.length === 1, { interval: 5 });
+    await autosave.openRecent(id);
+    expect(project.isDirty).toBe(true);
+  };
+  await pickUp();
+  workspace.newProject();
+  expect(workspace.unsavedAsk).toBe(null);
+  expect(project.image).toBe(null);
+  expect((await readLatest(id)).record.dirty).toBe(true); // still Changed
+
+  await pickUp();
+  edit(project);
+  workspace.newProject();
+  expect(workspace.unsavedAsk?.name).toBe(null); // asked
+  workspace.unsavedAsk = null;
+  await pass(SAVE_AFTER_MS);
+
+  await pickUp();
+  project.brightness = 120;
+  workspace.newProject();
+  expect(workspace.unsavedAsk?.name).toBe(null); // a setting counts too
+});
+
 test('openRecent on a lock that turned out held: a warning, a toast, the list refreshed', async () => {
   await seedDocument('elsewhere', 1, 10);
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

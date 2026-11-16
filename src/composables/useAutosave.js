@@ -283,9 +283,9 @@ export function useAutosave() {
     }
   }
 
-  async function restore(saved, documentId) {
+  async function restore(saved, documentId, options = {}) {
     project._documentN = saved.record.ledgerN ?? null;
-    await project.restoreDocument(saved, { documentId });
+    await project.restoreDocument(saved, { documentId, ...options });
     project._ledger.n = saved.record.ledgerN ?? project._ledger.n; // numbers go on from what's written with it
     // Its watchers have fired by now. None of that was a change.
     edited = false;
@@ -364,7 +364,7 @@ export function useAutosave() {
       if (project.image) return; // something else opened meanwhile
       if (!saved) throw new Error(`No record for ${id}`);
       workspace.editorTab = 'output'; // chosen first, so the address moves once
-      await restore(saved, id);
+      await restore(saved, id, { pickedUp: true });
     } catch (error) {
       console.warn('Autosave could not open the document', error);
       if (project.image) return; // something else opened meanwhile, which is what's wrong with this one
