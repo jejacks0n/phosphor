@@ -1,6 +1,7 @@
 // The layers themselves (document/layerInfo.js): their names, whether they show, their character settings, new ones,
 // their order, and which cells layer the edit layer's fields are. Adding, moving, deleting and duplicating a layer are
-// undo steps (layerOp), and so is a change to its character settings (commitLayerChars: _charsBefore, _lastChars); a
+// undo steps (layerOp; an add, of an empty layer, and a move are stackOnly: they don't tie to where anything is, so the
+// grid still rescales with them, ProjectStore resizesCanvas), and so is a change to its character settings (commitLayerChars: _charsBefore, _lastChars); a
 // name, an eye and the layer in use aren't: they're about the layers, not edits to what's drawn on them. Only a layer in the stack
 // has data in _layerData: one taken out (deleted, its add undone) is held by the undo step that can put it back.
 import { markRaw } from 'vue';
@@ -178,7 +179,7 @@ export const layerActions = {
     redrawn(this, () => { ({ id } = putLayer(this, kind, above, this.charsOf(useWorkspaceStore().pickedLayer))); }); // the groups can change: a layer put under a painted one leaves that one's paint over it
     if (this._sharing) return id;
     let held = null; // undone: takeOut's, whose layer below (by id) is where a redo puts it, as the stack can change around it meanwhile
-    this.pushEdit({ layerOp: true, bytes: 0, undo: () => redrawn(this, () => { held = takeOut(this, id); }), redo: () => redrawn(this, () => putBack(this, held)) });
+    this.pushEdit({ layerOp: true, stackOnly: true, bytes: 0, undo: () => redrawn(this, () => { held = takeOut(this, id); }), redo: () => redrawn(this, () => putBack(this, held)) });
     return id;
   },
 
@@ -277,7 +278,7 @@ export const layerActions = {
     const after = ids(moved);
     const order = (list) => () => redrawn(this, () => { this.layers = list.map((each) => this.layerById(each)).filter(Boolean); }); // by id: names and eyes since aren't undone
     order(after)();
-    this.pushEdit({ layerOp: true, bytes: 0, undo: order(before), redo: order(after) });
+    this.pushEdit({ layerOp: true, stackOnly: true, bytes: 0, undo: order(before), redo: order(after) });
     return true;
   },
 

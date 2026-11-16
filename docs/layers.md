@@ -967,9 +967,9 @@ What a new grid size (**Dimensions**) does depends on what's drawn, and on what 
   fits. What a shrink cuts off isn't lost: it comes back when you make the grid bigger again, and it's saved with the
   project. **Lock aspect ratio** is off while this applies.
 - **Rescale**: With nothing on the edit layer and no drawing step to undo (slider, settings and selection steps don't
-  count), resizing rescales: the image is converted again at the new size. Base edits (erased, moved or merged-down
-  pixels, pinned characters) scale with it, the pixels as hard-edged blocks and each pinned character to the cell over
-  where it was.
+  count, nor adding or reordering layers), resizing rescales: the image is converted again at the new size. Base edits
+  (erased, moved or merged-down pixels, pinned characters) scale with it, the pixels as hard-edged blocks and each pinned
+  character to the cell over where it was.
 - **Back to Rescaling**: Clearing or erasing everything on the edit layer brings rescaling back once there's no drawing
   step left to undo. A new document, or a project or file opened, starts with none.
 - **Limits**: The grid can be up to **300 columns** wide and **5,000 lines** tall, with **500,000 cells** in all, so

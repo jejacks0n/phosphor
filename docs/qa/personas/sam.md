@@ -80,7 +80,8 @@ script. Every section ends with Free time.
 - Expects: while Lock aspect ratio (the lock between the two numbers) is on, changing one number changes the other,
   so Sam unlocks it to set both; nothing is drawn yet, so it rescales; the sizes stay as typed; the field's help says
   the second number is pixel rows, two to a line. Locked again, a new width keeps the 40 by 20 shape (80 makes 40 pixel
-  rows), not the canvas's first one; with Invert at 20%, every cell at the new size shows the same color, no black bars.
+  rows), not the canvas's first one, and adding a layer first leaves the lock on; with Invert at 20%, every cell at the
+  new size shows the same color, no black bars.
 - Probes: `extremes`: type 0, then 99999, then `-3` and `4.5` into each number; `back-out`: type a size, press Escape,
   and check what the field shows; `undo-redo`: Cmd+Z, and check nothing changes and the size stays (a size change isn't an undo
   step, and nothing's drawn yet), then Shift+Cmd+Z.

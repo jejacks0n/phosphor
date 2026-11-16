@@ -229,9 +229,9 @@ export const useProjectStore = defineStore('project', {
     },
     // A grid change is a canvas resize (rendering.js: ensureLayer): with anything drawn, or with a step undo or redo could
     // bring back that's tied to where things are, which a rescale would leave pointing at the wrong places. Slider and
-    // character settings steps aren't, nor are selection steps (a rescale drops those).
+    // character settings steps aren't, nor are selection steps or a layer added or moved (a rescale drops those).
     resizesCanvas() {
-      return this.hasEdits || (this.historyVersion >= 0 && this.history.some((entry) => !entry.settingsOnly && !entry.selectionOnly));
+      return this.hasEdits || (this.historyVersion >= 0 && this.history.some((entry) => !entry.settingsOnly && !entry.selectionOnly && !entry.stackOnly));
     },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
     hasEditLayer: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),

@@ -304,3 +304,24 @@ test('locking a grid still at the picture\'s shape keeps the picture\'s own rati
   project.setAspectLock(true);
   expect(project.aspectRatio).toBe(0);
 });
+
+// Adding a layer (it's picked) or reordering them is an undo step about the stack, not about where anything is: the
+// grid still rescales and the lock still holds. Drawing on the new layer makes it a canvas resize, as on any other.
+test('a layer added or moved leaves the grid rescaling and the lock on; drawing on it makes it a canvas resize', async () => {
+  const { project } = await grid(40, 40);
+  project.setAspectLock(true);
+  const id = project.addLayer('cells', project.editId);
+  project.useLayer(id);
+  project.moveLayer(id, 1);
+  expect(project.canUndo).toBe(true);
+  expect(project.resizesCanvas).toBe(false);
+  project.updateCols(60);
+  await settle(project);
+  expect(project.cols / project.rows).toBeCloseTo(project.imageRatio, 1); // rescaled, the lock followed
+  expect(project.layers.some((layer) => layer.id === id)).toBe(true);
+  project.beginEdit();
+  project.writeEditCells([{ col: 2, row: 2, attrs: { char: 'A', fg: '#ffffff', bg: null } }]);
+  project.commitEdit();
+  expect(project.editId).toBe(id);
+  expect(project.resizesCanvas).toBe(true);
+});
