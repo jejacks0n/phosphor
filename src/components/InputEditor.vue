@@ -4,7 +4,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
-import { cellKey, parseKey } from '@/document/editCells';
+import { cellKey, parseKey, shownEntry } from '@/document/editCells';
 import { veilPixels } from '@/lib/ghostCells';
 import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
@@ -25,7 +25,9 @@ const canvasRef = useTemplateRef('displayCanvas');
 const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZoom, clamp: clampZoom, start: PIXEL_ZOOM_START };
 
 // Every cells layer's cells (or all, with "All cells") drawn over the image as their half-cell colors: the
-// ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible.
+// ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible. A layer's cell that
+// doesn't show in the art style (a paint block, Colors only's ▄, outside ANSI: shownEntry) isn't one: its paint shows
+// as paint, as it is converted.
 // One bitmap the grid's size, not redrawn on zoom or opacity; when the cells change, only those that
 // did are painted again (an edit keeps every other cell the same object), so a stroke costs its own
 // cells, not the grid's. A new grid size, or All cells switched, paints it all.
@@ -39,21 +41,22 @@ const shownFrame = () => {
   return { cells: projectStore.shownCells, maps: projectStore.shownLayers.filter((layer, at) => at && layer.kind === 'cells').map((layer) => projectStore.cellsOf(layer.id)) };
 };
 const sameMaps = (a, b) => a.length === b.length && a.every((map, i) => map === b[i]);
-const overlay = { canvas: null, image: null, cells: null, maps: [], edited: null, all: null, cols: 0, rows: 0, empty: true };
+const overlay = { canvas: null, image: null, cells: null, maps: [], edited: null, all: null, style: null, cols: 0, rows: 0, empty: true };
 const updateOverlay = () => {
   const { cols, rows } = projectStore;
   const { cells, maps } = shownFrame();
-  const all = workspaceStore.ansiOverlayAll;
-  if (overlay.cells === cells && sameMaps(maps, overlay.maps) && overlay.all === all) return;
+  const all = workspaceStore.ansiOverlayAll, style = projectStore.renderStyle;
+  if (overlay.cells === cells && sameMaps(maps, overlay.maps) && overlay.all === all && overlay.style === style) return;
   const picture = !workspaceStore.playing && cells !== projectStore.cells && projectStore._ghost.built, plain = projectStore.cells;
   const ghost = (i) => plain[i] !== cells[i] && projectStore._ghost.picture.has(i) && picture.editCells.has(cellKey(i % cols, Math.floor(i / cols)));
 
   // The layers' cells, by index (only those in the grid); none asked for while All cells shows every cell (a file's 500k).
   let edited = all ? null : overlay.edited;
-  if (!all && (!edited || !sameMaps(maps, overlay.maps) || cols !== overlay.cols || rows !== overlay.rows)) { // indexes are by the grid's width
+  if (!all && (!edited || !sameMaps(maps, overlay.maps) || cols !== overlay.cols || rows !== overlay.rows || style !== overlay.style)) { // indexes are by the grid's width
     edited = new Set();
     for (const map of maps) {
-      for (const key of map.keys()) {
+      for (const [key, entry] of map) {
+        if (!shownEntry(entry, style)) continue;
         const { col, row } = parseKey(key);
         if (col < cols && row < charRowsOf(rows)) edited.add(row * cols + col);
       }
@@ -84,7 +87,7 @@ const updateOverlay = () => {
     }
     if (changed.length) ctx2d(overlay.canvas).putImageData(overlay.image, 0, 0, x0, y0, x1 - x0 + 1, y1 - y0 + 1);
   }
-  Object.assign(overlay, { cells, maps, edited, all, cols, rows, empty: all ? !cells.length : !edited.size && !picture });
+  Object.assign(overlay, { cells, maps, edited, all, style, cols, rows, empty: all ? !cells.length : !edited.size && !picture });
 };
 
 // The ghost on the art: what's under the cells that shownCells dims, laid over them. The cells only say which, since

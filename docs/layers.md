@@ -608,6 +608,9 @@ canvas:
   - **Blur (`R`)**: Evens out colors with their neighbors.
   - **Dodge (`O`)**: Lightens colors in shadows, midtones, or highlights.
   - **Burn (`Shift+O`)**: Darkens colors in shadows, midtones, or highlights.
+- **Overlay**: The slider in the options bar draws the cells of your layers (or every cell, with **All cells**) over
+  the pixels, as the ANSI view shows them. Paint that the art style turns into characters (Colors only's ▄s, in Color
+  ASCII and Monochrome ASCII) isn't drawn over: you see the paint itself, blended with what's under it.
 
 ---
 
