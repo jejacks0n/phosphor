@@ -863,17 +863,18 @@ swaps the two halves of each cell's base colors.
     in the same stroke adds nothing, so stroke again to go further.
   - **Range** (Dodge and Burn) chooses the colors they change most: **Shadows** the dark ones, **Highlights** the light
     ones, **Midtones** (to start) the ones between, leaving black and white alone.
+  - **Nothing Is Locked**: On a drawing layer, a cell with colors of its own (one you typed, or one Merge down wrote
+    exactly) that a stroke changes loses its character, and its two halves become paint in the colors the cell showed,
+    which the stroke then changes like any paint, so it fades into the clear like the rest. A cell the Brush made a ▄
+    holds only its character, its colors being paint, so it stays. In the PIXEL view the same goes for a character
+    pinned on the base: its pixels take the colors it showed. Undo brings the characters back. To keep text as it is,
+    put it on a layer of its own.
   - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels).
-    Nothing there is locked: a cell the stroke reaches that holds a character (one you typed, or one Merge down wrote
-    exactly, on a drawing layer, or a character pinned on the base) loses it, and its two halves become paint (on the
-    base, pixels) in the colors the cell showed, which the stroke then changes like any paint. Undo brings the
-    characters back. To keep text as it is, put it on a layer of its own.
-  - **In the ANSI View**: Each cell's colors are, and its character stays; a cell that shows no character still shows
-    none. Blur there evens a cell's colors with the cells around it, foreground with foreground and background with
-    background. On a drawing layer that's its own typed and drawn cells, evened only with its other cells (a color set
-    to None stays None), and its paint, as in the PIXEL view. Monochrome ASCII shows only characters (every cell white
-    on black), so there the base changes as in the PIXEL view and its characters follow; typed characters stay as
-    they are, so Retouch over typed text shows no change there.
+  - **In the ANSI View**: On a drawing layer, as in the PIXEL view, a whole cell at a time. On the base, each cell's
+    colors are changed and its character stays; a cell that shows no character still shows none, and Blur evens a
+    cell's colors with the cells around it, foreground with foreground and background with background. Monochrome
+    ASCII shows only characters (every cell white on black), so there the base changes as in the PIXEL view and its
+    characters follow.
   - They read the colors as stored, before the color adjustments, so with a palette the result shows in the palette's
     colors, as any paint does. With a selection, they stay inside it. A stroke is one undo step.
 - **Eyedropper** (**I**): Its **FG** and **BG** toggles choose what a pick sets.
