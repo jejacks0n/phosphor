@@ -367,7 +367,8 @@ With the base selected, every tool draws on the base itself, as Merge down's **K
   shows: its two colors go into the base's two pixels (the background the top, the foreground the bottom) and its
   character is pinned, so the converter keeps it. A cell given only a foreground keeps the background it showed.
 - **Paint**: The Brush and other paint (the Pencil's **Colors only**, the Paint Bucket's **Colors only** fill) paint the
-  base's own pixels, which the color sliders, the palette and the image filters then treat as the picture's.
+  base's own pixels, which the color sliders, the palette and the image filters then treat as the picture's. A stroke
+  builds up there as it does on a layer over the picture: white at full Opacity is as white on the base as on a layer.
 - **Typing**: Overwrites there. **Insert** doesn't push the characters after it along, and **Delete** does nothing.
 - **Erasing and Swapping**: The Eraser turns cells black with a pinned space (ANSI view) or pixels black (PIXEL
   view), and **Swap cell FG/BG** swaps a cell's two halves.
