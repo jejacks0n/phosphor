@@ -114,11 +114,12 @@ export function goodLayers(raw) {
 }
 
 // A new layer's id: 'edit' for cells and 'vector' for a vector layer while no layer has it, else L<k>, one past the
-// highest k in the stack.
-export function newLayerId(layers, kind) {
-  const own = kind === 'vector' ? 'vector' : 'edit';
-  if (!layers.some((layer) => layer.id === own)) return own;
-  return `L${Math.max(0, ...layers.map((layer) => Number(/^L(\d+)$/.exec(layer.id)?.[1] ?? 0))) + 1}`;
+// highest k in the stack. taken: ids no new layer may have though they're not in the stack (a room's deleted layers, whose
+// strokes may still be on their way).
+export function newLayerId(layers, kind, taken = []) {
+  const own = kind === 'vector' ? 'vector' : 'edit', ids = [...layers.map((layer) => layer.id), ...taken];
+  if (!ids.includes(own)) return own;
+  return `L${Math.max(0, ...ids.map((id) => Number(/^L(\d+)$/.exec(id)?.[1] ?? 0))) + 1}`;
 }
 
 // A new layer's number, for its default name: one past the highest of its kind (the bottom, which is "Base", left out).

@@ -255,6 +255,12 @@ export const sharingActions = {
     const stroke = this._stroke;
     if (!stroke) return;
     const inside = !!this._artInside, id = this.editId; // keys and runs name the layer they're on (layerInfo.js)
+    if (!inside && !this.layerById(id)) { // its layer was deleted: what it had there went with it, and nothing's left to send
+      this.paintLayer?.strokeSlice();
+      stroke.editCells = this.editCells;
+      stroke.noted = null;
+      return;
+    }
     const tiles = inside ? [] : this.paintLayer?.strokeSlice() ?? [];
     const own = inside ? [] : changedCells(stroke, this.editCells), cells = [...own.map(([key, entry]) => [layerKey(id, key), entry]), ...cellChanges(stroke.shapes, this.shapes)];
     const baseline = markRaw({ cells: stroke.editCells, shapes: stroke.shapes, tiles: new Map(tiles.map(({ x, y, before }) => [`${x},${y}`, before])) });
@@ -414,9 +420,11 @@ export const sharingActions = {
       const own = at ? { chars: chars ? layerChars(kind, chars) : was?.chars ?? layerChars(kind, this.baseChars) } : {};
       layers.push(Object.freeze({ ...(was ?? { n: nextNumber([...had.values(), ...layers], kind), hidden: false }), id, kind, name, ...own }));
     }
-    if (gone.size && this._artInside) this.leaveArt();
+    const mine = gone.has(this.editId) || gone.has(this.drawsOn); // the layer I draw on, or the art layer I'm in, is going
+    if (mine && this._artInside) this.leaveArt();
     if (gone.size && this._sharing) { // a host's reload replays its tail before sharing starts, its kept ledger past the delete
-      this.sendSlice();
+      if (mine) this.commitPending(); // my open stroke goes in whole while its layer is here: left open, it would later send its cells' deletion
+      else this.sendSlice();
       for (const id of gone) dropFromSums(this, id);
     }
     for (const id of gone) {
