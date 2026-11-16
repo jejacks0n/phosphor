@@ -332,6 +332,45 @@ test('an empty layer an artist deletes goes from every page, and no one can undo
   await allMatch(room, ann);
 });
 
+test('a layer whose own character settings were undone back to none still goes in a stack every artist reads', async () => {
+  const room = await hosting();
+  const id = room.project.addLayer('cells', 'edit');
+  room.project.layers = room.project.layers.map((layer) => (layer.id === id ? Object.freeze({ ...layer, chars: null }) : layer)); // as commitLayerChars' undo leaves a layer that had none
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layerById(id)?.kind, PATIENT).toBe('cells');
+  const added = room.project.addLayer('cells', id);
+  await expect.poll(() => ann.project.layerById(added)?.kind, PATIENT).toBe('cells');
+  expect(stackOf(ann.project)).toEqual(stackOf(room.project));
+  await allMatch(room, ann);
+});
+
+test('an artist\'s change to another layer leaves the host inside its art layer, and its open stroke open', async () => {
+  const room = await hosting();
+  room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann');
+  const key = await withArtLayer(room, ann);
+  await expect.poll(() => ann.project.layerById('L1')?.kind, PATIENT).toBe('cells');
+  expect(room.project.enterArt(key)).toBe(true);
+  ann.project.duplicateLayer('L1');
+  await expect.poll(() => room.project.layers.length, PATIENT).toBe(5);
+  ann.project.deleteLayer(room.project.layers.at(-1).id);
+  await expect.poll(() => room.project.layers.length, PATIENT).toBe(4);
+  expect(room.project.artInside).toBe(key);
+  room.project.leaveArt();
+  room.project.typeAt(1, 1, 'H', { fg: '#00ff00' });
+  const stroke = room.project._stroke;
+  expect(stroke).toBeTruthy();
+  ann.project.addLayer('cells', 'L1');
+  await expect.poll(() => room.project.layers.length, PATIENT).toBe(5);
+  ann.project.moveLayer('L1', 4);
+  await expect.poll(() => room.project.layers.at(-1).id, PATIENT).toBe('L1');
+  expect(room.project._stroke).toBe(stroke);
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  expect(stackOf(ann.project)).toEqual(stackOf(room.project));
+  expect(ann.project.cellsOf('edit').get('1,1')?.char).toBe('H');
+});
+
 test('renaming or reordering leaves my hidden layer hidden and my pick where it was', async () => {
   const room = await hosting();
   room.project.addLayer('cells', 'edit');
