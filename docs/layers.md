@@ -422,7 +422,8 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
 
 - **Colors only** (the default): They paint over each cell's own character, which shows through. A cell that shows no
   character yet (a blank canvas's black, or the lines added when it grows) becomes a ▄ as they paint it, so a click
-  there paints a plain half-block, not the character the converter put there unseen.
+  there paints a plain half-block, not the character the converter put there unseen. In Color ASCII and Monochrome
+  ASCII there are no half-blocks: the paint becomes your ASCII characters, as it does in the PIXEL view.
 - **Half-block**: Each cell they paint becomes a ▄, and the paint colors its two halves, so you draw clean
   half-blocks. The half you don't paint keeps its color.
 - **Single line** and **Double line** (Pencil only): Draw box-drawing lines as you drag from cell to cell. Each cell

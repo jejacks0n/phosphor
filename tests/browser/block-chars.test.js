@@ -117,3 +117,28 @@ test('with Colors only, a character the stroke itself paints into one color isn\
   pencil.end(ctx);
   expect(charAt(col, row)).toBe(char);
 });
+
+// The report: painting in ASCII used only half-blocks, in stripes, never the characters chosen, and a picture on a layer
+// above showed ▄ where it had been painted (the paint showed through them as through any character drawn below it).
+test('in ASCII, Colors only paints with the ASCII characters, in the ANSI view as in the Pixel view, and writes no ▄', async () => {
+  const stroke = async (view) => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 10 });
+    project.renderStyle = 'colorAscii';
+    await settle(project);
+    Object.assign(workspace, { editFgColor: '#ff0000', brushDrawWith: 'normal', editBrushSize: 6, editBrushOpacity: 100, editBrushFlow: 100, editBrushHardness: 100 });
+    const ctx = { project, workspace, view };
+    brush.begin(ctx, { x: 4, y: 5 }, {});
+    brush.move(ctx, { x: 4, y: 5 }, { x: 12, y: 5 });
+    brush.end(ctx);
+    const two = project.addLayer('cells', 'edit');
+    workspace.pickLayer(two);
+    await project.addPictureToLayer(new File([await (await fetch('/tests/fixtures/images/gradient.png')).blob()], 'gradient.png', { type: 'image/png' }));
+    await settle(project);
+    return { project, chars: project.cells.map((cell) => cell?.char).join('') };
+  };
+  const pixel = await stroke('input'), ansi = await stroke('output');
+  expect(ansi.chars).not.toContain('▄');
+  expect([...ansi.project.cellsOf('edit').values()].map((cell) => cell.char)).not.toContain('▄');
+  expect(ansi.chars).toBe(pixel.chars);
+});
