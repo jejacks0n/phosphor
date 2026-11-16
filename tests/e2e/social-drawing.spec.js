@@ -1,13 +1,14 @@
 // Drawing together: a host and an artist, each a real page in one fake Room, joined by real WebRTC. Art never
 // passes through the server, so all of this is between the two pages; the room's socket only carries signals.
 import { readFile } from 'node:fs/promises';
-import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, openApp, imageInput, otherBrowser } from './support.js';
+import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, openApp, imageInput, otherBrowser, pickLayer } from './support.js';
 import { fakeRoom, member, ROOM_ID, goLive, shown, chat, hash, selected, ARTIST, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard, followLink } from './social-support.js';
 
 const WAITING_WORDS = 'Waiting for the host to reconnect. Drawing is paused…';
 const CHANGING_WORDS = 'Transferring host controls. Drawing is paused…';
 const GETTING_WORDS = 'Syncing canvas from the host. Drawing is paused…';
 const ONLY_HOST = 'Only the room\'s host can change this.';
+const CHARS_HOST = 'Only the host changes character settings in a room.';
 const NOT_WHILE = 'Unavailable while co-artists are drawing.';
 const MERGE_WARNING = 'Merging down cannot be undone in shared rooms.';
 const BAKE_WARNING = 'Baking cannot be undone in shared rooms.';
@@ -210,7 +211,7 @@ test('an artist\'s host-only controls are off with the reason, Reset all and SAU
   for (const control of ['#cols', '#rows', '#renderStyle', '#quantize', '#seed']) await expect(panel.locator(control)).toBeDisabled();
   await expect(panel.getByRole('slider').first()).toBeDisabled();
   await expect(panel.getByRole('button', { name: 'RESET' }).first()).toBeDisabled();
-  for (const fieldset of await panel.locator('fieldset').all()) await expect(fieldset).toHaveAttribute('title', ONLY_HOST);
+  for (const fieldset of await panel.locator('fieldset').all()) await expect(fieldset).toHaveAttribute('title', (await fieldset.getAttribute('class'))?.includes('characters') ? CHARS_HOST : ONLY_HOST);   // Characters are per layer, the host's to set
 
   const actions = artist.locator('.edit-toolbar .desktop-only button.primary');
   await expect(actions).toHaveCount(4);   // Bake, Flatten, Merge, Clear
@@ -851,6 +852,72 @@ test('a followed artist who scrolls with the pointer still is followed there, an
 });
 
 // Handing over.
+// The stack as a page shows it, bottom first, and its cells on every layer.
+const stackOf = (page) => store(page, 'project', (p) => p.layers.map((l) => `${l.id}:${l.name ?? ''}`).join());
+const layerCells = (page) => store(page, 'project', (p) => JSON.stringify(p.layers.map((l) => [l.id, l.cells ? [...l.cells].sort(([a], [b]) => (a < b ? -1 : 1)) : null])));
+const rowNames = (page) => page.locator('.layers-list li button.pick .name').allTextContents();
+const layerMenu = async (page, name, action) => {
+  await page.getByRole('button', { name: `${name} options` }).click();
+  await page.locator('.layers-list li .menu').filter({ has: page.getByRole('button', { name: `${name} options` }) }).getByRole('button', { name: action, exact: true }).click();
+};
+const bothSame = (a, b, read) => expect(async () => expect(await read(a)).toEqual(await read(b))).toPass({ timeout: 10_000 });
+
+test('two artists draw on different layers while one adds and reorders layers, and the host deletes one after its question', async ({ page: host, context }) => {
+  const room = fakeRoom();
+  const { artist } = await together(host, context, room);
+
+  // The artist adds a layer with the panel's button, renames it, and draws on it; the host draws on the first layer.
+  await artist.locator('.side-panel').getByRole('tab', { name: 'Layers' }).click();
+  await artist.getByRole('button', { name: 'Add layer', exact: true }).click();
+  await expect.poll(() => rowNames(artist)).toHaveLength(3);
+  await layerMenu(artist, 'Layer 2', 'Rename');
+  await artist.keyboard.type('owl wing');
+  await artist.keyboard.press('Enter');
+  await typeAt(artist, 2, 2, 'o');
+
+  await pickLayer(host, 'Layer 1');
+  await typeAt(host, 6, 4, 'h');
+
+  // Everyone has the layer, its name and the strokes on it, and the host's stroke is on the first layer only.
+  await bothSame(host, artist, stackOf);
+  await expect.poll(() => rowNames(host)).toContain('owl wing');
+  await bothSame(host, artist, layerCells);
+  await bothSame(host, artist, shownCells);
+
+  // The host adds a layer of its own and moves the artist's layer down with the menu; the artist keeps drawing on theirs.
+  await host.getByRole('button', { name: 'Add layer', exact: true }).click();
+  await expect.poll(() => rowNames(host)).toHaveLength(4);
+  await layerMenu(host, 'owl wing', 'Move down');
+  await typeAt(artist, 3, 2, 'w');
+  await bothSame(host, artist, stackOf);
+  await bothSame(host, artist, layerCells);
+  await bothSame(host, artist, shownCells);
+
+  // Deleting a layer someone else has picked is refused with a toast, and nothing goes.
+  await layerMenu(host, 'owl wing', 'Delete');
+  await host.getByRole('dialog', { name: 'Delete owl wing for everyone?' }).getByRole('button', { name: 'Delete layer' }).click();
+  await expect(host.getByText(`${ARTIST.name} is working on this layer.`)).toBeVisible();
+  await expect.poll(() => rowNames(artist)).toContain('owl wing');
+
+  // The artist goes to the first layer; now the host's delete asks first, Cancel keeps it, and Delete layer takes it from both.
+  await pickLayer(artist, 'Layer 1');
+  await expect.poll(() => store(host, 'project', (p) => Object.values(p._picks).map((k) => k.layer).join())).not.toContain(await store(host, 'project', (p) => p.layers.find((l) => l.name === 'owl wing').id));
+  await layerMenu(host, 'owl wing', 'Delete');
+  const ask = host.getByRole('dialog', { name: 'Delete owl wing for everyone?' });
+  await expect(ask).toContainText("Everyone in the room loses this layer and what's on it. This can't be undone.");
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect.poll(() => rowNames(host)).toContain('owl wing');
+  await layerMenu(host, 'owl wing', 'Delete');
+  await host.getByRole('dialog', { name: 'Delete owl wing for everyone?' }).getByRole('button', { name: 'Delete layer' }).click();
+
+  await expect.poll(() => rowNames(artist)).not.toContain('owl wing');
+  await expect.poll(() => rowNames(host)).not.toContain('owl wing');
+  await bothSame(host, artist, stackOf);
+  await bothSame(host, artist, layerCells);
+  await bothSame(host, artist, shownCells);
+  expect((await rowNames(artist)).length).toBe(3);
+});
+
 const REAPER = member({ id: 'u_3', username: 'grim_reaper', name: 'grim_reaper', email: 'reaper@example.com' });
 const UNDO_RESET = 'The host has changed, so undo history has reset. All existing artwork is preserved.';
 const agreed = (a, b) => expect.poll(async () => (await edits(a)) === (await edits(b)), { timeout: 15_000, intervals: [100] }).toBe(true);

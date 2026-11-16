@@ -61,10 +61,21 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
 - **On a Phone**: There's no side panel. A **Layers** button in the tab bar, left of **Animate** and there while the
   art shows, opens the same list in a dialog. Selecting a layer leaves it open, so you can select, rename or hide in
   one visit. **Done**, **Escape** or a tap outside closes it.
-- **In a Room**: Adding, deleting and reordering layers isn't supported in shared rooms yet: **Add layer**,
-  **Duplicate**, **Delete**, **Move up**, **Move down** and dragging are off. **Add vector layer** still works while the
-  room has no vector layer, and adds one directly on the base. Only the host can select the base; its row is off for
-  an artist. A rename or an eye is yours alone.
+- **In a Room**: A room starts from any stack, and everyone in it, the host and artists alike, changes the stack:
+  **Add layer**, **Add vector layer**, **Duplicate**, **Delete**, **Move up**, **Move down**, dragging and renaming all
+  work, and everyone sees the result. Artists draw on any layer but the bottom one.
+  - **The Bottom Layer**: The bottom layer is the host's. An artist can't pick it or draw on it, and its row is off for
+    an artist. **Merge down**, **Bake** and **Flatten** are the host's too.
+  - **Not Undo Steps**: A change to the stack isn't an undo step in a room, as a rename and the eye aren't alone.
+    Undoing strokes is as it always is.
+  - **Delete Asks First**: In a room **Delete** asks "Delete {name} for everyone?" and says "Everyone in the room loses
+    this layer and what's on it. This can't be undone." **Delete layer** deletes it for everyone; **Cancel** keeps it.
+    Alone, Delete doesn't ask. A layer someone else has selected can't be deleted: Phosphor says "{name} is working on
+    this layer.", with that person's name. A stroke that was on its way when its layer was deleted is left out
+    quietly.
+  - **Yours Alone**: The eye is each person's own, and so is which layer you've selected, though others see where you
+    are by your cursor. A rename goes to everyone.
+  - **Not Yet**: Adding a picture to a layer isn't supported in shared rooms yet.
 - **Inside an Art Layer**: Inside an [art layer](vector.md#art-layers), its vector layer's row shows as selected,
   and that layer's eye decides whether you can step in and draw. The base row is off. Selecting the edit layer steps
   out of the art layer.
@@ -167,8 +178,7 @@ Each section under Drawing folds and unfolds on its title, and your browser reme
 slider group says how many of its sliders are on.
 
 A layer whose character settings differ from the base's makes a drawing that saves in the newer form (see
-**Saving** under [The Layers List](#the-layers-list)) and can't go live in a room, which has one set. In a room the
-section is always **Characters · Base**, whichever layer is selected, and every layer takes what you choose there.
+**Saving** under [The Layers List](#the-layers-list)).
 
 ### Editing the Base
 
@@ -207,8 +217,9 @@ Moving a slider in Transforms, Adjustments or Image filters is an undo step, lik
   seed**, and a Solids, Pattern light or Dither drag or run of nudges.
 - **Typing in a Field**: While you're typing in the Characters or seed field, **Cmd+Z** (**Ctrl+Z**) undoes your
   typing there, as in any text field. Once you've pressed **Enter** or left the field, it undoes the step.
-- **In a Room**: These settings are Base's, and going live leaves out the steps that gave another layer settings of
-  its own.
+- **In a Room**: Each layer keeps its own character settings, and they go to everyone. Only the host changes them: for
+  an artist the Characters section shows the selected layer's settings, turned off, with "Only the host changes
+  character settings in a room." A change to them isn't an undo step in a room.
 - **Not Undo Steps**: The grid size, the Art style, the Color palette, the Color count, frames per second and a
   frame's hold. Changing one keeps the undo steps before it: **Cmd+Z** afterward takes back the edit you made before
   the change and leaves the setting as it is, and redo puts that edit back. One exception: paint is kept at up to the
@@ -499,8 +510,10 @@ the canvas changes. Undo brings it back, selected if it was.
 - **When It's Off**: With the base selected (nothing is under it), and onto a vector layer, since cells can't become
   shapes: **Make art layer** does that ([Art Layers](#art-layers)). In an [animation](animation.md) with more than one
   frame it's off, since a layer is under every frame, so one frame can't go into it.
-- **In a Room**: Only the host merges, and only into the base. The merged layer stays, emptied, since a room keeps its
-  layers. With others in the room, the dialog warns that merging down cannot be undone in shared rooms.
+- **In a Room**: Only the host merges, into the base or into any layer above it. A layer emptied by a merge leaves the
+  stack, as it does alone. With others in the room, the dialog warns that merging down cannot be undone in shared
+  rooms. **Make art layer** needs a vector layer directly above the selected layer; without one it's off and says "Add a
+  vector layer above {name} first."
 - **A Drawing Layer Into a Drawing Layer**: Each of its cells is written on the layer under it as it shows, over that
   layer's paint, and its paint is drawn over that layer's paint. Where its paint lies over a converted cell, that cell
   is written as the exact character and colors it shows.

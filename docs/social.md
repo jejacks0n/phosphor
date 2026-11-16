@@ -193,9 +193,7 @@ An unlisted room has Room settings alone, in a narrower box.
 What you've typed stays while you visit another tab. **Go live** shares the art you have open and closes the box; its
 **×** leaves without starting.
 
-- **Too many layers**: A room holds the base, at most one vector layer above it and at most one drawing layer on top,
-  all with the same character settings. A drawing with more can't go live: Go live says to merge or delete layers
-  first.
+- **Layers**: A room starts from any stack of layers.
 - **Animation**: A drawing with frames can't go live: "Shared rooms do not support animation yet."
 
 Once you're live you keep drawing as usual, and watchers see each change as you make it, with a box in your name color
@@ -426,9 +424,9 @@ then says **invited**, with **Withdraw invitation** in the menu.
 
 ### Drawing Rules
 
-- **Everyone draws on the drawing layer** and sees each other's strokes as they happen. Shapes and art layers on the
-  vector layer are shared too ([Vector Shapes](vector.md)); one person at a time draws inside an art layer, and others
-  see "{name} is currently editing this layer".
+- **Everyone draws on any layer but the bottom one** and sees each other's strokes as they happen. Shapes and art
+  layers on a vector layer are shared too ([Vector Shapes](vector.md)); one person at a time draws inside an art layer,
+  and others see "{name} is currently editing this layer".
 - **Moving and pasting**: A block an artist moves or pastes reaches the others when it's placed, or after 2 seconds
   with no further move. Moving it again after that is a new undo step, and what it covered there stays covered.
 - **Undo** takes back only your own edits and shows what's beneath, even if that's someone else's. **Redo** puts your
@@ -442,14 +440,19 @@ then says **invited**, with **Withdraw invitation** in the menu.
 - **Show others' cursors** (in the chat panel, on by default, for everyone drawing): a mark and a name at each other
   artist's cell, or a tag at the edge for someone out of view, which goes to them when pressed.
 - **Saving**: Anyone drawing can save the art. A project they save has no names in it.
-- **Layers**: While a room is live, adding, deleting, duplicating and moving layers isn't available ("Adding,
-  deleting, and reordering layers is not supported in shared rooms yet."), except **Add vector layer** when there's
-  none. No layer can have its own character settings: the host's Characters are every layer's.
+- **Layers**: Everyone in a room changes the stack: adding, deleting, reordering, renaming and duplicating layers
+  works for artists and the host alike ([Layers](layers.md#the-layers-list)). A change to the stack isn't an undo step.
+  Delete asks "Delete {name} for everyone?" first, since no one can undo it, and is refused while someone else has the
+  layer selected. The hidden eye and the layer you've selected are each person's own. The bottom layer is the host's:
+  artists can't select or draw on it.
+- **Character settings**: Each layer keeps its own, and they go to everyone, but only the host changes them. An
+  artist's Characters section is off and says "Only the host changes character settings in a room."
 
 ### What Only the Host Does
 
 - **The picture and the grid**: The settings, SAUCE fields, sliders, the base layer, Bake, Flatten and Merge down are
-  off for an artist, and say "Only the room's host can change this."
+  off for an artist, and say "Only the room's host can change this." The same goes for a layer's character settings,
+  which say "Only the host changes character settings in a room."
 - **Final while others draw**: Merge down, Bake and Flatten can't be undone while anyone's listed as an artist, since
   other people's strokes can land on them. With another artist connected, each warns first: "Merging down cannot be
   undone in shared rooms.", "Baking cannot be undone in shared rooms." or "Flattening cannot be undone in shared
@@ -599,6 +602,5 @@ closes the dialog, as Escape does, as on a phone, and the page stays where it wa
   screen." A watcher gets **Exit** with it, which leaves as the room's own Exit does. A host's room goes on, without
   Exit, and is back as it was when the window widens.
 - **Animation**: Rooms are for still drawings.
-- **More layers**: A room holds the base, one vector layer and one drawing layer, all with the same character
-  settings.
+- **A picture on a layer**: Adding a picture to a layer isn't supported in shared rooms yet.
 - **Keeping a copy** of art you're only watching.
