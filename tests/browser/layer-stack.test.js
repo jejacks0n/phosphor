@@ -552,7 +552,7 @@ test('the bottom can\'t be deleted', async () => {
   expect(project.history.version).toBe(version);
   // An artist's are asked of the host, the bottom's never, and nothing changes until the stack comes.
   const sent = [];
-  project._sharing = { role: 'artist', send: (message) => sent.push(message) };
+  project._sharing = { role: 'artist', send: (message) => sent.push(message), heard: [] };
   expect(project.deleteLayer('base')).toBe(false);
   expect(project.deleteLayer('edit')).toBe(false);
   expect(project.duplicateLayer('edit')).toBe(null);

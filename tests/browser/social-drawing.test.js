@@ -407,6 +407,54 @@ test('an artist draws on a layer while another artist deletes it', async () => {
   expect(errors).not.toHaveBeenCalled();
 });
 
+// A stroke still open on a layer when it's deleted: the stroke goes in before the layer does, so nothing of it is left
+// claiming the gone layer's cells, and a layer added after gets an id no layer in this room has had (R17).
+async function deletedUnderStroke(del) {
+  const room = await hosting();
+  const layer = room.project.addLayer('cells', 'edit');
+  room.project.useLayer(layer);
+  room.project.typeAt(5, 5, 'H', { fg: '#00ff00' });
+  room.project.commitEdit();
+  room.project.useLayer('edit');
+  const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+  await expect.poll(() => bo.project.cellsOf(layer).get('5,5')?.char, PATIENT).toBe('H');
+  setActivePinia(ann.pinia);
+  workspaceOf(ann).pickLayer(layer);
+  ann.project.typeAt(2, 2, 'A', { fg: '#00ff00' });   // left open
+  await expect.poll(() => room.project.cellsOf(layer).get('2,2')?.char, PATIENT).toBe('A');
+  expect(ann.project._stroke).toBeTruthy();
+  const posts = vi.spyOn(ann.watch, 'post');
+  await del(room, ann);
+  for (const page of [room, ann, bo]) await expect.poll(() => page.project.layerById(layer), PATIENT).toBeUndefined();
+  await allMatch(room, ann, bo);
+  await wait(250);   // a slice or two more
+  const erased = posts.mock.calls.flatMap(([msg]) => (msg.t === 'change' ? msg.cells : [])).filter(([key, entry]) => key.startsWith(`${layer}:`) && entry === null);
+  expect(erased).toEqual([]);   // the open stroke didn't send its layer's cells' deletion
+  posts.mockRestore();
+  setActivePinia(room.pinia);
+  const added = room.project.addLayer('cells', 'edit');
+  expect(added).not.toBe(layer);
+  room.project.useLayer(added);
+  room.project.typeAt(5, 5, 'Z', { fg: '#00ff00' });
+  room.project.typeAt(9, 9, 'Q', { fg: '#00ff00' });
+  room.project.commitEdit();
+  for (const page of [ann, bo]) await expect.poll(() => page.project.cellsOf(added)?.get('9,9')?.char, PATIENT).toBe('Q');
+  await allMatch(room, ann, bo);
+  for (const page of [room, ann, bo]) expect(page.project.cellsOf(added).get('5,5')?.char).toBe('Z');
+}
+
+test('an artist deletes the layer their open stroke is on, and a layer added after shows the same on every page', () => deletedUnderStroke(async (room, ann) => {
+  expect(ann.project.deleteLayer(ann.project.editId)).toBe(false);   // asked of the host
+}));
+
+test('the host deletes a layer an artist\'s open stroke is on before hearing their pick, and a layer added after shows the same on every page', () => deletedUnderStroke(async (room, ann) => {
+  const layer = ann.project.editId;
+  setActivePinia(room.pinia);
+  room.project._picks = {};   // ann's pick not heard yet
+  expect(room.project.deleteLayer(layer)).toBe(true);
+  setActivePinia(ann.pinia);
+}));
+
 test('an artist paints on L3 while the host merges it down into L2: the stroke is dropped quietly and every page matches', async () => {
   const warns = vi.spyOn(console, 'warn'), errors = vi.spyOn(console, 'error');
   const room = await hosting();
@@ -2939,6 +2987,7 @@ test('a host catching up by an artist\'s tail that deletes a layer and adds one 
   ann.project.deleteLayer(layer);
   await expect.poll(() => ann.project.layerById(layer), PATIENT).toBeUndefined();
   workspaceOf(ann).pickLayer('edit');
+  room.project._sharing.removed.clear();   // as a host reloaded since the delete has forgotten it, so its id comes again
   ann.project.addLayer('cells', 'edit');
   await expect.poll(() => ann.project.layerById(layer)?.kind, PATIENT).toBe('cells');   // the same id, a new layer
   expect(ann.project.editId).toBe(layer);
