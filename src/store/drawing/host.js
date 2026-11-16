@@ -105,9 +105,9 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
 
   // The first to step into an art layer has it: someone else inside it too, who stepped in before hearing, is inside
   // none here, and hearing that steps them out (DrawingStore).
-  function noteCursor(sub, { at, view, inside = null }, name) {
+  function noteCursor(sub, { at, view, inside = null, layer = null }, name) {
     const taken = inside && Object.entries(cursors.value).some(([other, cursor]) => other !== sub && cursor.inside === inside);
-    cursors.value = { ...cursors.value, [sub]: { at, view, name, inside: taken ? null : inside } };
+    cursors.value = { ...cursors.value, [sub]: { at, view, name, inside: taken ? null : inside, layer } };
     sendCursorsSoon();
   }
 
@@ -266,8 +266,8 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
       project: () => project.projectNow(),
       onChange: take, onUndo: take, onRedo: take,
       onLayerOp: (sub, msg) => project.takeLayerOp(sub, msg),
-      onCursor: (sub, { at, view, inside }, name) => {
-        const cursor = readCursor({ at, view, name, inside });
+      onCursor: (sub, { at, view, inside, layer }, name) => {
+        const cursor = readCursor({ at, view, name, inside, layer });
         if (cursor) noteCursor(sub, cursor, name);
       },
       // A host back from a reload or new to it: they wait until all of them have said, or the time's up. Whoever says

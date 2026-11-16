@@ -34,7 +34,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   const paused = ref(false);      // an artist's: no host to number anything
   const waiting = ref([]);        // an artist's, while paused: a box in grid pixels for each stroke with no number
   const connected = ref([]);      // a host's: the subs with a connection now (an artist can have dropped out)
-  const cursors = ref({});        // sub -> { at, view, name, inside }: inside, the art layer they're drawing in, or null
+  const cursors = ref({});        // sub -> { at, view, name, inside, layer }: inside, the art layer they're drawing in, or null; layer, the one picked
   const showCursors = ref(true);
   const notice = ref(null);
   let undoSaid = false;
@@ -88,10 +88,10 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   // Where this person's pointer is on the art, a cell or null: for others to see. Their view goes with it, and by
   // itself when it moves without the pointer (a wheel, a scrollbar, the window): someone may be following it. So
-  // does the art layer they're drawing in, and stepping in or out sends it at once: until it's heard, others could
-  // change the layer under them.
+  // does the art layer they're drawing in, and the layer they've picked: stepping in or out, or picking, sends it at once.
+  // Until it's heard, others could change the layer under them, or delete it.
   let pointedAt = null;
-  const cursorNow = () => ({ at: pointedAt, view: workspace.sharedView, inside: project.artInside });
+  const cursorNow = () => ({ at: pointedAt, view: workspace.sharedView, inside: project.artInside, layer: workspace.pickedLayer });
   function pointAt(at) {
     pointedAt = at;
     if (project._sharing && !paused.value) myCursor.push(cursorNow());
@@ -104,7 +104,7 @@ export const useDrawingStore = defineStore('drawing', () => {
     myCursor.push(cursorNow());
     myCursor.flush();
   };
-  watch(() => project.artInside, () => {
+  watch([() => project.artInside, () => workspace.pickedLayer], () => {
     if (project._sharing || hostParts.hosting()) sendNow();
   }, { flush: 'sync' });
 
@@ -117,6 +117,7 @@ export const useDrawingStore = defineStore('drawing', () => {
   watch(cursors, (all) => {
     const named = (sub, name) => name || artistNames.value[sub] || t('social.drawing.someoneElse');
     project._locks = Object.fromEntries(Object.entries(all).filter(([, { inside }]) => inside).map(([sub, { inside, name }]) => [sub, { key: inside, name: named(sub, name) }]));
+    project._picks = Object.fromEntries(Object.entries(all).filter(([, { layer }]) => layer).map(([sub, { layer, name }]) => [sub, { layer, name: named(sub, name) }]));
     const inside = project.artInside, holder = inside && Object.keys(all).find((sub) => sub !== me() && all[sub].inside === inside);
     if (holder) {
       project.leaveArt();
@@ -128,6 +129,8 @@ export const useDrawingStore = defineStore('drawing', () => {
   // What a layer someone else is drawing in says, or null; and anyone else in any layer, for what that turns off.
   const lockedWords = (key) => lockedAmong(project, [key]);
   const someoneInside = computed(() => anyoneInside(project));
+  // Everyone else's picked layer, sub -> layer id, as their cursors say.
+  const layersPicked = computed(() => new Map(Object.entries(cursors.value).filter(([sub, { layer }]) => layer && sub !== me()).map(([sub, { layer }]) => [sub, layer])));
 
   // Drawing again, after a pause, a reconnect or the host's reload: what's sent while there's no one to hear it is lost,
   // so the art layer I'm in (or that I've stepped out of it meanwhile) goes again.
@@ -164,7 +167,7 @@ export const useDrawingStore = defineStore('drawing', () => {
 
   return {
     artists, artistNames, invited, invitation, paused, hostChanging, gettingArt, waiting, connected, cursors, showCursors, notice, mayDraw, othersHere, hostOnly, offWithOthers, artistsFull, others,
-    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, lockedBy, lockedWords, someoneInside, autosavedBy, autosaved,
+    hostCallbacks, hosted, invite, withdraw, backToWatching, peopleHere, resumeHosting, pointAt, viewMoved, lockedBy, lockedWords, someoneInside, layersPicked, autosavedBy, autosaved,
     watchCallbacks, watching, knownNow, heardArtists, accept, decline, connection, close,
     makeHost, handingOver, takeOver, hostChanged, becomeArtist, artistsNow, hostingAgain, lastChange, holdsTheArt, noteFormerHost,
   };

@@ -28,7 +28,7 @@ import { layerKey } from '@/document/layerInfo.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, readChange, readLayers } from '@/social/wire.js';
-import { ALONE, SAVED_KEYS, anyoneInside, emptyFields, followBase, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
+import { ALONE, SAVED_KEYS, anyoneInside, dropFromSums, emptyFields, followBase, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
 import { layerChars, nextNumber } from '@/document/layerInfo.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast';
@@ -404,8 +404,9 @@ export const sharingActions = {
   // with its cells, paint or shapes; one it has that's not here comes, empty; and they're put in its order, with its names
   // and character settings. Hidden stays my own. Not an edit: nothing's undone, and what's drawn is laid over again once
   // (a rename alone draws nothing). The layer in use going leaves its fields empty, and the pick moves to the layer under it
-  // (followLayerPick), which is then in use. by: who asked; my own ask picks what it made.
-  // Task 4: the ledger and Pending drop what they hold on a layer that goes (dropLayer).
+  // (followLayerPick), which is then in use. by: who asked; my own ask picks what it made. The ledger and Pending let go of a
+  // layer that goes, and their sums lose its share (dropFromSums), with what I've drawn sent first: what's on screen is then
+  // what's agreed, but where Pending holds mine.
   applyLayers({ stack, by, made }) {
     const had = new Map(this.layers.map((layer) => [layer.id, layer])), gone = new Set(had.keys()), layers = [];
     for (const [at, { id, kind, name, chars }] of stack.entries()) {
@@ -415,6 +416,8 @@ export const sharingActions = {
       layers.push(Object.freeze({ ...(was ?? { n: nextNumber([...had.values(), ...layers], kind), hidden: false }), id, kind, name, ...own }));
     }
     if (gone.size && this._artInside) this.leaveArt();
+    if (gone.size) this.sendSlice();
+    for (const id of gone) dropFromSums(this, id);
     for (const id of gone) {
       if (had.get(id).kind === 'vector') this.shapes = new Map([...this.shapes].filter(([, shape]) => (shape.layer ?? 'vector') !== id));
       else if (id !== this.editId) this._layerData.delete(id);

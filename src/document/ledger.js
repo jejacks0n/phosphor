@@ -18,7 +18,7 @@
  */
 import { hashCell, hashPixel, eachPixel, pack, changeBytes, splitChange, Tail } from './changes.js';
 import { TILE } from './History.js';
-import { keyLayer, layerKey } from './layerInfo.js';
+import { keyLayer, layerKey, onLayer } from './layerInfo.js';
 
 // In a room; alone, History's limits decide and tell us through forget.
 const MOST_STROKES = 50;
@@ -295,6 +295,38 @@ export class Ledger {
     this.n = n - 1;
     this.submit(by, stroke, { cells, runs });
     this.n = n;
+  }
+
+  // The layer with the id gone from the stack: its stacks and tiles go (a vector layer's shapes' too), and strokes keep what
+  // they wrote on other layers, a stroke left with nothing going with them, so its undo is refused. share: the layer's part
+  // of the check as the picture has it, which the sum loses: nothing here reads a whole layer.
+  dropLayer(id, share = 0) {
+    const stacks = this.#stacks, emptied = new Set();
+    for (const [key, stack] of stacks.cells) {
+      if (!onLayer(key, id, [stack.base, ...stack.strokes.map((record) => record.cells.get(key))])) continue;
+      for (const record of stack.strokes) {
+        record.cells.delete(key);
+        this.#charge(record, -CELL_BYTES);
+        emptied.add(record);
+      }
+      stacks.cells.delete(key);
+    }
+    for (const [name, tile] of stacks.tiles) {
+      if (tile.id !== id) continue;
+      for (const { stroke } of tile.entries) {
+        const record = stacks.strokes.get(stroke);
+        record.paint.delete(name);
+        this.#charge(record, -TILE_BYTES);
+        emptied.add(record);
+      }
+      stacks.tiles.delete(name);
+    }
+    for (const record of emptied) {
+      if (record.cells.size || record.paint.size) continue;
+      stacks.bytes -= record.bytes;
+      stacks.strokes.delete(record.id);
+    }
+    this.#sum ^= share;
   }
 
   // The strokes of one person that can still be undone, oldest first.

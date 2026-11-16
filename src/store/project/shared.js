@@ -10,7 +10,8 @@ import { MOST_CHANGE_BYTES, cellsFitAnyGrid } from '@/social/wire.js';
 import { MAX_CELLS } from '@/lib/Cells.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
-import { layerChars, newLayerId, nextNumber, sameChars } from '@/document/layerInfo.js';
+import { layerChars, layerKey, newLayerId, nextNumber, sameChars } from '@/document/layerInfo.js';
+import { hashCell, hashPixel, pack } from '@/document/changes.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -62,6 +63,34 @@ export const stackKinds = (layers) => new Map(layers.slice(1).map(({ id, kind })
 // The stack as a layers message says it (wire.js): each layer's id, kind, name and character settings (none for the bottom,
 // whose are the document's, and none for a layer whose own were undone back to none). Hidden stays each person's own.
 export const stackOnWire = (project) => project.layers.map(({ id, kind, name, chars }) => ({ id, kind, name, ...(chars && { chars }) }));
+// A layer's part of the check (changes.js) as the document has it: a vector layer's shapes, or a cells layer's cells and paint
+// (the layer in use's kept aside inside an art layer).
+export function layerSum(project, id) {
+  let sum = 0;
+  if (project.layerById(id)?.kind === 'vector') {
+    for (const [key, shape] of project.shapes) if ((shape.layer ?? 'vector') === id) sum ^= hashCell(key, shape);
+    return sum;
+  }
+  const { editCells, paintLayer } = id === project.editId ? project._artInside ?? project : project._layerData.get(id) ?? {};
+  for (const [key, entry] of editCells ?? []) sum ^= hashCell(layerKey(id, key), entry);
+  if (!paintLayer?.hasPaint) return sum;
+  const { width, height } = paintLayer.canvas, { data } = ctx2d(paintLayer.canvas).getImageData(0, 0, width, height);
+  for (let i = 3, at = 0; i < data.length; i += 4, at++) {
+    if (data[i]) sum ^= hashPixel(at % width, Math.floor(at / width), pack(data, i - 3), id);
+  }
+  return sum;
+}
+// In a room, a layer about to leave the stack: the ledger and an artist's Pending let go of what they hold on it, and their
+// sums lose its share, read before it goes. A host's own picture is the agreed one once what's heard is written.
+export function dropFromSums(project, id) {
+  const { pending, screen, role } = project._sharing;
+  if (role === 'host') project.flushHeard();
+  const share = layerSum(project, id);
+  project._ledger.dropLayer(id, share);
+  if (!pending) return;
+  pending.dropLayer(id, share);
+  screen.take(); // only read
+}
 // runs (changes.js) written on the paint of the layer each names, nothing refreshed: the layer in use's is the drawing's
 // (kept aside inside an art layer). A cells layer with no paint yet gets one; a layer that isn't there gets nothing.
 export function writeLayerRuns(project, runs) {

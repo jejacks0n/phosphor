@@ -145,6 +145,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     versionsOpen: false,     // the autosaved versions list (VersionsDialog)
     saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'png' and the animated formats (SaveDialog)
     unsavedAsk: null,        // { name, go, saving? } while UnsavedDialog asks before leaving unsaved work (confirmLeave)
+    deleteLayerAsk: null,    // { id } while DeleteLayerDialog asks, in a room, before the layer with the id is deleted for everyone
     exportModal: false,      // the export modal (ExportModal) open
 
     // Scroll state persistence

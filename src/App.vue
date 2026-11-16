@@ -27,6 +27,7 @@ import AboutPhosphor from '@/components/AboutPhosphor.vue';
 import LegalDialog from '@/components/LegalDialog.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
 import UnsavedDialog from '@/components/UnsavedDialog.vue';
+import DeleteLayerDialog from '@/components/DeleteLayerDialog.vue';
 import ExportModal from '@/components/ExportModal.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
@@ -166,6 +167,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <EndRoomDialog v-if="room.askingEnd" @end="room.answerEnd(true)" @cancel="room.answerEnd(false)"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
     <UnsavedDialog/>
+    <DeleteLayerDialog/>
     <SaveDialog v-if="saveDialog" :ext="saveDialog" @close="saveDialog = null"/>
     <ExportModal v-if="exportModal" @close="exportModal = false"/>
     <VersionsDialog v-if="versionsOpen && !drawing.offWithOthers" :flush="autosave.flush" :restore-version="autosave.restoreVersion" @close="versionsOpen = false"/>

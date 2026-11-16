@@ -849,3 +849,33 @@ test('a ledger with as many cells as its bytes hold passes keptFromWire, and one
   ledger.submit('ann', 'more', { cells: [['0,99', { char: 'y' }]], runs: [] });
   assert.ok(keptFromWire(keptForWire(ledger.kept())));   // past its bytes, the oldest went
 });
+
+test('dropping a layer takes its cells and pixels out of the sum, and its strokes\' undo is refused', () => {
+  const { pic, ledger, go } = setup();
+  go(ledger.submit('a', 'on-l2', { cells: [['L2:0,0', X]], runs: [[0, 0, 2, RED, 'L2']] }));
+  go(ledger.submit('b', 'on-edit', { cells: [['0,0', Y]], runs: [[0, 0, 1, BLUE]] }));
+  const share = hashCell('L2:0,0', X) ^ hashPixel(0, 0, RED, 'L2') ^ hashPixel(1, 0, RED, 'L2'); // L2 as the picture has it
+  ledger.dropLayer('L2', share);
+
+  const fresh = setup();
+  fresh.go(fresh.ledger.submit('b', 'on-edit', { cells: [['0,0', Y]], runs: [[0, 0, 1, BLUE]] }));
+  assert.equal(ledger.sum, fresh.ledger.sum);
+  assert.equal(ledger.undo('a', 'on-l2'), null);
+  assert.deepEqual(ledger.strokesBy('a'), []);
+  const undone = go(ledger.undo('b', 'on-edit'));
+  assert.deepEqual(undone.cells, [['0,0', null]]);
+  assert.deepEqual(undone.runs, [[0, 0, 1, 0]]);
+  pic.cells.delete('L2:0,0');
+  for (const x of [0, 1]) pic.pixels.delete(`L2:${x},0`);
+  assert.equal(ledger.sum, pic.sum());
+});
+
+test('dropping a layer leaves a stroke\'s other layers, and a vector layer\'s shapes go by the layer they\'re on', () => {
+  const { ledger, go } = setup();
+  const SHAPE = Object.freeze({ type: 'rect', layer: 'V2' }), OTHER = Object.freeze({ type: 'rect' });
+  go(ledger.submit('a', 'both', { cells: [['L2:0,0', X], ['1,1', Y], ['v:one', SHAPE], ['v:two', OTHER]], runs: [] }));
+  ledger.dropLayer('L2');
+  ledger.dropLayer('V2');
+  assert.deepEqual(ledger.keysOf('both'), ['1,1', 'v:two']);
+  assert.deepEqual(go(ledger.undo('a', 'both')).cells, [['1,1', null], ['v:two', null]]);
+});

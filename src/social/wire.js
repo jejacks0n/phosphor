@@ -36,7 +36,8 @@
  *                                               { kind: 'move', id, to }, { kind: 'duplicate', id }, { kind: 'rename', id, name }.
  *                                               Nothing changes until the host's 'layers' comes
  *   { t: 'undo', stroke } / { t: 'redo', stroke }   the whole stroke, the artist's own
- *   { t: 'cursor', at, view, inside }           where the artist's pointer is, the part of the art in view, and the art layer they're in
+ *   { t: 'cursor', at, view, inside, layer }    where the artist's pointer is, the part of the art in view, the art layer they're in,
+ *                                               and the layer they've picked
  *   { t: 'artist-hello', has, epoch }           first thing on a connection: the last number held in that epoch
  *                                               (-1: none, send the project; also what a check that
  *                                               didn't match asks)
@@ -62,7 +63,7 @@
  *                                               artist's changes on this connection the host has handled up
  *                                               to n, refused ones too
  *   { t: 'check', n, sum }                      the edit layer's sum as of n, to compare
- *   { t: 'cursors', [sub]: { at, view, name, inside } } where everyone is
+ *   { t: 'cursors', [sub]: { at, view, name, inside, layer } } where everyone is
  *   { t: 'invite' } / { t: 'withdrawn' }        asked to draw; the ask is gone
  *   { t: 'artists', subs, names }               who may draw now, and the names of those of them who are here ({ sub: name })
  *   { t: 'hand-over', chunks, room, extra }     then `chunks` binary messages: packValue's ledger (keptForWire), for
@@ -349,14 +350,15 @@ export async function unpackValue(chunks, { mostBytes }) {
 }
 
 // Where someone is, for the screen: a cell or null (the pointer's off the art), the cells in their view or null,
-// their name, and the art layer they're drawing in (a shape key), or null. Null for anything else: what a host relays
-// is a stranger's, and this is drawn on the art. An inside that's no shape key is null: they're inside none.
+// their name, the art layer they're drawing in (a shape key), or null, and the layer they've picked (its id), or null. Null
+// for anything else: what a host relays is a stranger's, and this is drawn on the art. An inside that's no shape key is null:
+// they're inside none; a layer that's no layer id, null: they've picked none.
 const MOST_CURSORS = 64;
-export function readCursor({ at = null, view = null, name, inside = null } = {}) {
+export function readCursor({ at = null, view = null, name, inside = null, layer = null } = {}) {
   const goodAt = at === null || (isWhole(at?.col) && isWhole(at?.row));
   const goodView = view === null || ([view?.col, view?.row, view?.cols, view?.rows].every(isWhole) && (view.zoom === undefined || (typeof view.zoom === 'number' && view.zoom > 0)));
   if (!goodAt || !goodView || typeof name !== 'string' || !name || name.length > MOST_NAME) return null;
-  return { at, view, name, inside: isGoodShapeKey(inside) ? inside : null };
+  return { at, view, name, inside: isGoodShapeKey(inside) ? inside : null, layer: isLayerId(layer) ? layer : null };
 }
 
 // A view as the watcher draws it, or null for anything that isn't one: a stranger's numbers (a host's, or an

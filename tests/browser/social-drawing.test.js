@@ -317,7 +317,6 @@ test('the host and artists reorder, rename and duplicate, and every stack matche
   expect(room.project._ledger.strokesBy('host')).toEqual(hostsStrokes);
 });
 
-// A layer with something on it is Task 4's: the ledger and Pending drop it then (dropLayer).
 test('an empty layer an artist deletes goes from every page, and no one can undo it', async () => {
   const room = await hosting();
   const empty = room.project.addLayer('vector', 'edit'), kept = room.project.addLayer('cells', empty);
@@ -330,6 +329,75 @@ test('an empty layer an artist deletes goes from every page, and no one can undo
   expect(stackOf(ann.project)).toEqual(stackOf(room.project));
   expect(room.project.history.last).toBe(hostsLast);
   await allMatch(room, ann);
+});
+
+// Review Focus 1: a stroke on its way to the host when the layer it's on goes. The host leaves out what it has on that
+// layer and numbers the rest, so it isn't refused and no one is sent the project; the ledger and Pending drop the layer's
+// share (dropLayer), so every check still matches.
+test('an artist draws on a layer while another artist deletes it', async () => {
+  const warns = vi.spyOn(console, 'warn'), errors = vi.spyOn(console, 'error');
+  const room = await hosting();
+  const layer = room.project.addLayer('cells', 'edit');
+  room.project.useLayer(layer);   // something on it already, the host's
+  room.project.typeAt(5, 5, 'H', { fg: '#00ff00' });
+  dab(room.project, 8, 8);
+  room.project.commitEdit();
+  room.project.useLayer('edit');
+  const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+  await expect.poll(() => bo.project.cellsOf(layer).get('5,5')?.char, PATIENT).toBe('H');
+  const post = ann.watch.post.bind(ann.watch), held = [];
+  const posting = vi.spyOn(ann.watch, 'post').mockImplementation((msg) => (msg.t === 'change' ? held.push(msg) : post(msg)));
+  setActivePinia(ann.pinia);
+  workspaceOf(ann).pickLayer(layer);
+  ann.project.typeAt(2, 2, 'A', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  dab(ann.project, 3, 3, '#0000ff');
+  await expect.poll(() => held.length, PATIENT).toBeGreaterThan(0);
+  workspaceOf(ann).pickLayer('edit');
+  await expect.poll(() => bo.drawing.cursors.ann?.layer, PATIENT).toBe('edit');
+  setActivePinia(bo.pinia);
+  expect(bo.project.deleteLayer(layer)).toBe(false);   // asked of the host
+  for (const page of [room, ann, bo]) await expect.poll(() => page.project.layerById(layer), PATIENT).toBeUndefined();
+  const projects = vi.spyOn(room.host, 'sendProject');
+  posting.mockRestore();
+  for (const msg of held) ann.watch.post(msg);   // and now Ann's stroke reaches the host
+  await allMatch(room, ann, bo);
+  setActivePinia(ann.pinia);
+  ann.project.typeAt(6, 6, 'N', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  await expect.poll(() => room.project.cellsOf('edit').get('6,6')?.char, PATIENT).toBe('N');
+  await allMatch(room, ann, bo);
+  expect(projects).not.toHaveBeenCalled();
+  for (const page of [room, ann, bo]) expect(page.project.layerById(layer)).toBeUndefined();
+  expect(warns).not.toHaveBeenCalled();
+  expect(errors).not.toHaveBeenCalled();
+});
+
+test('deleting a layer someone else has picked is refused, on their page and at the host', async () => {
+  const room = await hosting();
+  const layer = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+  await expect.poll(() => bo.project.layerById(layer)?.kind, PATIENT).toBe('cells');
+  setActivePinia(ann.pinia);
+  workspaceOf(ann).pickLayer(layer);
+  await expect.poll(() => bo.drawing.cursors.ann?.layer, PATIENT).toBe(layer);
+  expect(bo.drawing.layersPicked.get('ann')).toBe(layer);
+  setActivePinia(bo.pinia);
+  toastMessage.value = null;
+  const asks = vi.spyOn(bo.watch, 'post');
+  expect(bo.project.deleteLayer(layer)).toBe(false);
+  expect(toastMessage.value).toBe('ann is working on this layer.');
+  expect(asks.mock.calls.some(([msg]) => msg.t === 'layer-op')).toBe(false);
+  asks.mockRestore();
+
+  toastMessage.value = null;
+  const n = room.project._ledger.n;
+  bo.watch.post({ t: 'layer-op', op: { kind: 'delete', id: layer } });   // forged: Bo's page wouldn't ask
+  await wait(100);
+  for (const page of [room, ann, bo]) expect(page.project.layerById(layer)?.kind).toBe('cells');
+  expect(room.project._ledger.n).toBe(n);   // no layers message
+  expect(toastMessage.value).toBe(null);   // the host isn't told: it wasn't the host's own
+  await allMatch(room, ann, bo);
 });
 
 test('a layer whose own character settings were undone back to none still goes in a stack every artist reads', async () => {
@@ -1135,7 +1203,7 @@ test('cursors go to the artists with a name, at most about ten times a second', 
   const sent = vi.spyOn(room.host, 'sendAll');
   for (let i = 0; i < 10; i++) ann.watch.sendCursor({ col: i, row: 1 }, { col: 0, row: 0, cols: 9, rows: 9 });
   await expect.poll(() => bob.drawing.cursors.ann?.at?.col, PATIENT).toBe(9);
-  expect(bob.drawing.cursors.ann).toEqual({ at: { col: 9, row: 1 }, view: { col: 0, row: 0, cols: 9, rows: 9 }, name: 'ann', inside: null });
+  expect(bob.drawing.cursors.ann).toEqual({ at: { col: 9, row: 1 }, view: { col: 0, row: 0, cols: 9, rows: 9 }, name: 'ann', inside: null, layer: null });
   expect(sent.mock.calls.filter(([m]) => m.t === 'cursors').length).toBeLessThan(4);
   expect(bob.drawing.showCursors).toBe(true);
 });
