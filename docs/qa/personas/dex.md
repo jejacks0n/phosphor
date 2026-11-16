@@ -124,7 +124,8 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
   with CP437, Unicode, In this drawing and Recent; a character CP437 lacks is marked ("isn't in CP437"); a built-in
   palette edited makes his own copy and says so.
 - Probes: `back-out`: open Character palettes and press Escape; check focus comes back so his keys work;
-  `extremes`: put an emoji on a slot and type it in the last column ("Two-column characters cannot fit in the last column."); `again`: Alt+→ through every palette and round.
+  `extremes`: put an emoji on a slot and type it in the last column ("Two-column characters cannot fit in the last column."); `again`: Alt+→ through every palette and round;
+  on a Mac, the shortcut list says he may need to hold Fn, and where in System Settings to change that.
 - Rated: yes, wants F1–F12 and Alt+→
 
 ### 6. Draw half blocks

@@ -1142,7 +1142,7 @@
     "title": "Keyboard shortcuts",
     "holdKey": "hold {key}",
     "holdSpace": "hold Space",
-    "macFnNote": "On Mac keyboards, hold Fn to use F1–F12.",
+    "macFnNote": "On Mac keyboards, you may need to hold Fn to use F1–F12. To use them without Fn, turn on “Use F1, F2, etc. keys as standard function keys” in System Settings → Keyboard → Keyboard Shortcuts… → Function Keys.",
     "groups": {
       "vector": "VECTOR",
       "general": "General",

@@ -17,6 +17,7 @@ import FontField from '@/components/FontField.vue';
 import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 import { resolves } from '@/lib/CharResolver';
 import { charRowsOf } from '@/lib/Cells';
+import { isUniform } from '@/lib/ImageProcessor';
 
 const { t } = useI18n();
 const store = useProjectStore();
@@ -66,7 +67,9 @@ const sections = computed(() => {
   const [transform, adjust, effects] = sliderGroups.value;
   const characters = { id: 'characters', title: t('panel.groups.characters', { name: layerName(picked.value) }) };
   const picture = { id: 'picture', title: t('panel.groups.picture', { name: layerName('base') }) };
-  return [transform, adjust, characters, ...(workspace.pickedLayer === 'base' ? [picture, ...(hasRealImage.value ? [effects] : [])] : [])];
+  // Picture (Smoothing, how the picture is scaled to the grid) only with one to scale: not a blank canvas's stand-in.
+  const scaled = store.image && !isUniform(store.image) ? [picture] : [];
+  return [transform, adjust, characters, ...(workspace.pickedLayer === 'base' ? [...scaled, ...(hasRealImage.value ? [effects] : [])] : [])];
 });
 
 const help = (key) => getSetting(key).help;

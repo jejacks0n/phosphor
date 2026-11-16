@@ -169,7 +169,7 @@ The settings on the left come in sections, each following a layer:
   - Every layer converts something (the base its picture, a drawing layer its paint, a vector layer its shapes), so
     the section is always there. A new drawing selects Layer 1: to change how the picture becomes characters, select
     the base.
-- **Picture · Base**: **Smoothing**. Only with the base selected.
+- **Picture · Base**: **Smoothing**. Only with the base selected, and only with a picture: a blank canvas has none.
 - **Image filters**: **Blur**, **Simplify**, **Sharpen**, **Edges** (with its color) and **Edge thickness**, which
   work on the picture itself. Only with the base selected, and only while the picture is the one you opened: after a
   Bake, **Blend into source image** or Flatten, a note says image filters require an image instead.
@@ -897,7 +897,8 @@ swaps the two halves of each cell's base colors.
 - **Cmd / Ctrl + C / X / V**: Copy, cut, and paste selections. **Cmd / Ctrl + A** selects the whole canvas.
 - **Cmd / Ctrl + S**: Save the project. **Cmd / Ctrl + E**: Export.
 - **F1 to F12**: In Edit Mode, type characters from your active character palette
-  ([Typing Text Directly](characters.md#typing-text-directly)). On a Mac, hold **Fn**.
+  ([Typing Text Directly](characters.md#typing-text-directly)). On a Mac you may need to hold **Fn**, or turn on
+  "Use F1, F2, etc. keys as standard function keys" in System Settings → Keyboard → Keyboard Shortcuts… → Function Keys.
 - **?**: Opens the full keyboard shortcut list ([All the Shortcuts](#all-the-shortcuts)).
 
 ### Tool Keys

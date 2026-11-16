@@ -84,7 +84,8 @@ script. Every section ends with Free time.
   appear (they're hidden while another layer is picked); the tabs stay PIXEL, ANSI and SAUCE.
 - Probes: `out-of-order`: before picking Base, change Choose characters on Layer 1 and see that the picture doesn't
   change (it's Layer 1's paint setting), then look for what told her so; `back-out`: pick Layer 1 again and back;
-  `interrupt`: switch to PIXEL and back and check Base is still picked.
+  `interrupt`: switch to PIXEL and back and check Base is still picked; `extremes`: on a blank canvas, pick Base and
+  check there's no Picture · Base (no picture for Smoothing to scale).
 - Rated: yes, wants a key to step through the layers (Alt+[ and Alt+], as in Photoshop)
 
 ### 3. Try every art style

@@ -22,6 +22,9 @@ export function markUniform(image, color) {
   uniform.set(image, one);
 }
 
+// Whether the picture is one color all over (markUniform, findUniform): a blank canvas's, a stand-in for no picture.
+export const isUniform = (image) => uniform.has(image);
+
 // Mark image uniform (markUniform) when every pixel is the same opaque color, as a blank canvas's picture reopened from its
 // file is: a picture made one color is said so where it's made, but read back it's only pixels. Stops at the first pixel
 // that differs. Whether it's uniform.
