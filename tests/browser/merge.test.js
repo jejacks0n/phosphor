@@ -452,9 +452,9 @@ describe('down between layers', () => {
     });
   }
 
-  // Over a picture a shape's soft edge doesn't show the same as paint, so its cells there are written exactly: Blur in the
-  // PIXEL view unlocks them into paint as it reaches them, and fades them like the rest.
-  test('a shape merged down over a picture: Blur in the PIXEL view unlocks the exact cells along its edge and fades them', async () => {
+  // Over a picture a shape's soft edge doesn't show the same as paint, so its cells there are written exactly: Blur keeps
+  // their characters, as it keeps every cell's, and spreads their colors into the clear beside them.
+  test('a shape merged down over a picture: Blur keeps the exact cells along its edge and spreads their colors into the clear', async () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
     const vector = project.addLayer('vector', 'edit');
@@ -469,12 +469,13 @@ describe('down between layers', () => {
     const col = Number(edge.split(',')[0]);
     workspace.editorTab = 'input';
     Object.assign(workspace, { retouchSize: 4, retouchStrength: 100, retouchHardness: 100 });
-    const ctx = { project, workspace, view: 'input' }, at = { x: col + 0.5, y: 4.5 };
+    const ctx = { project, workspace, view: 'input' }, at = { x: col + 0.5, y: 4.5 }, before = project.cellsOf('edit').get(edge);
     getTool('blur').begin(ctx, at, {});
     blur.end(ctx);
     await settle(project);
-    expect(project.cellsOf('edit').has(edge)).toBe(false);
-    expect(project.paintOf('edit').pixelAt(col, 4)?.a).toBeLessThan(1);
+    expect(project.cellsOf('edit').get(edge)?.char).toBe(before.char); // its character kept
+    expect(project.paintOf('edit').pixelAt(col, 3)?.a).toBeGreaterThan(0); // the clear above it
+    expect(project.paintOf('edit').pixelAt(col, 3)?.a).toBeLessThan(1);
   });
 
   test('Merge down of paint over cells keeps what shows under Color ASCII with the sliders off their defaults', async () => {

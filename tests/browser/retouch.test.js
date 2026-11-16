@@ -1,6 +1,6 @@
-// Retouch: Blur, Dodge and Burn change the colors that show, each grid pixel's, in both views. A pinned character on the
-// base stays, its colors changed, and so on a drawing layer, under Dodge and Burn, does a cell with colors of its own;
-// Blur turns such a cell into paint, to fade it. A stroke is one undo step and stays inside a selection.
+// Retouch: Blur, Dodge and Burn change the colors that show, each grid pixel's, in both views. A character stays, its
+// colors changed: one pinned on the base, and a drawing layer's own cell with colors of its own. A stroke is one undo
+// step and stays inside a selection.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { blur, dodge, burn } from '@/tools/retouch';
@@ -84,24 +84,36 @@ test('ANSI view: on the base Dodge recolors a cell\'s character and background, 
   expect(cell.bg.r).toBeGreaterThan(0x60);
 });
 
-test('ANSI view: on a drawing layer, Blur turns typed cells into paint, blends them and fades them into the clear beside them', async () => {
-  const { project, ctx } = await blank('output');
-  project.writeEditCells([
-    { col: 5, row: 5, attrs: { char: '█', fg: '#ff0000', bg: '#ff0000' } },
-    { col: 6, row: 5, attrs: { char: '█', fg: '#00ff00', bg: '#00ff00' } },
-  ]);
-  project.commitEdit();
-  stroke(blur, ctx, { x: 5.5, y: 11 }, { x: 6.5, y: 11 });
-  expect(project.editCellAt(5, 5)).toBeUndefined();
-  expect(project.editCellAt(6, 5)).toBeUndefined();
-  expect(paintAt(project, 5, 10)[1]).toBeGreaterThan(0); // the green beside it came in
-  expect(paintAt(project, 6, 10)[0]).toBeGreaterThan(0);
-  expect(alphaAt(project, 5, 10)).toBeLessThan(1);       // faded into the clear above and beside
-  expect(alphaAt(project, 4, 10)).toBeGreaterThan(0);
-  expect(project.editCellAt(4, 5)).toBeUndefined();      // what spread there is paint, not a cell
-  project.undo();
-  expect(project.editCellAt(5, 5)).toEqual({ char: '█', fg: '#ff0000', bg: '#ff0000' });
-});
+// A drawing layer's own cells keep their characters under all three, as the base's pinned ones do: Blur evens a cell's
+// colors with its other cells', foreground with foreground and background with background (a color set to None stays
+// None), and spreads them into the clear beside them as paint.
+for (const view of ['input', 'output']) {
+  test(`${view === 'input' ? 'pixel' : 'ANSI'} view: on a drawing layer Blur keeps typed characters, evens their colors and spreads them into the clear`, async () => {
+    const { project, ctx } = await blank(view);
+    project.writeEditCells([
+      { col: 5, row: 5, attrs: { char: 'A', fg: '#ff0000', bg: '#000080' } },
+      { col: 6, row: 5, attrs: { char: 'B', fg: '#00ff00', bg: '#000080' } },
+      { col: 12, row: 5, attrs: { char: 'C', fg: '#ff0000' } },
+    ]);
+    project.commitEdit();
+    stroke(blur, ctx, { x: 5.5, y: 11 }, { x: 6.5, y: 11 });
+    const a = project.editCellAt(5, 5), b = project.editCellAt(6, 5);
+    expect([a.char, b.char]).toEqual(['A', 'B']);
+    expect(hex2rgb(a.fg).g).toBeGreaterThan(0); // the green beside it came in
+    expect(hex2rgb(b.fg).r).toBeGreaterThan(0);
+    expect(a.bg).toBe('#000080');                // navy with navy
+    expect(alphaAt(project, 4, 10)).toBeGreaterThan(0); // spread into the clear beside it, as paint
+    expect(alphaAt(project, 4, 10)).toBeLessThan(1);
+    expect(alphaAt(project, 5, 10)).toBe(0);     // nothing laid over the letter
+    expect(project.editCellAt(4, 5)).toBeUndefined();
+    stroke(blur, ctx, { x: 12.5, y: 11 });
+    expect(project.editCellAt(12, 5)).toEqual({ char: 'C', fg: '#ff0000' }); // nothing of its own around: as it was
+    project.undo();
+    project.undo();
+    expect(project.editCellAt(5, 5)).toEqual({ char: 'A', fg: '#ff0000', bg: '#000080' });
+    expect(project.paintLayer.hasPaint).toBe(false);
+  });
+}
 
 test('a selection keeps the stroke inside it', async () => {
   const { project, workspace, ctx } = await blank();
@@ -215,30 +227,8 @@ test('ANSI view, Monochrome ASCII: on the base its pixels change, as in the PIXE
   expect(project.baseRecords.pins.size).toBe(0); // nothing pinned: the characters stay the converter's
 });
 
-// Blur unlocks what it reaches on a drawing layer: a cell the layer holds (typed, or one a merge wrote exactly) goes, its
-// two halves becoming paint in the colors it showed, and the stroke works on those as on any paint. Text you want kept
-// goes on a layer of its own.
-test('pixel view: on a drawing layer Blur unlocks the cells it reaches into paint and fades their edge; undo brings them back', async () => {
-  const { project, workspace, ctx } = await blank();
-  const cells = [];
-  for (let row = 0; row < 10; row++) for (let col = 0; col < 10; col++) cells.push({ col, row, attrs: { char: '░', fg: '#ff0000', bg: '#ff0000' } });
-  project.writeEditCells(cells);
-  project.commitEdit();
-  workspace.retouchSize = 6;
-  stroke(blur, ctx, { x: 10, y: 10.5 });
-  expect(project.editCellAt(9, 5)).toBeUndefined(); // reached: unlocked
-  expect(project.editCellAt(2, 2)).toBeDefined();   // out of reach: still a cell
-  expect(paintAt(project, 9, 10)).toEqual([255, 0, 0]);
-  expect(alphaAt(project, 9, 10)).toBeLessThan(1);  // faded into the clear beside it
-  expect(alphaAt(project, 9, 10)).toBeGreaterThan(0.5);
-  expect(project.editCellAt(7, 5)).toBeDefined();   // red all around: unchanged, so still a cell
-  project.undo();
-  expect(project.editCellAt(9, 5)).toEqual({ char: '░', fg: '#ff0000', bg: '#ff0000' });
-  expect(project.paintLayer.hasPaint).toBe(false);
-});
-
-// Dodge and Burn change each color on its own and never fade, so on a drawing layer a cell's character stays, as on the
-// base: its own colors change, a whole cell at a time. Blur, which fades, turns it into paint (above).
+// Dodge and Burn change each color on its own: on a drawing layer a cell's colors change, a whole cell at a time, and
+// its character stays, as on the base.
 for (const view of ['input', 'output']) {
   test(`${view === 'input' ? 'pixel' : 'ANSI'} view: on a drawing layer Dodge and Burn keep a typed letter, its own colors changed`, async () => {
     const { project, ctx } = await blank(view);
@@ -287,39 +277,22 @@ test('ANSI view: Retouch leaves a cell with only a character (the Brush\'s ▄) 
   expect(project.baseRecords.pins.get('12,5')).toBe('B');
 });
 
-test('pixel view: a stroke unlocks a cell once, so its later moves don\'t lay it back over what it already blurred', async () => {
-  const { project, workspace, ctx } = await blank();
-  const cells = [];
-  for (let row = 0; row < 10; row++) for (let col = 0; col < 10; col++) cells.push({ col, row, attrs: { char: '░', fg: '#ff0000', bg: '#ff0000' } });
-  project.writeEditCells(cells);
-  project.commitEdit();
-  workspace.retouchSize = 1; // a pixel at a time: the top half of cell 9,5, then its bottom half
-  getTool('blur').begin(ctx, { x: 9.5, y: 10.5 }, {});
-  const once = alphaAt(project, 9, 10);
-  blur.move(ctx, { x: 9.5, y: 11.5 }, { x: 9.5, y: 11.5 });
-  blur.end(ctx);
-  expect(once).toBeLessThan(1);
-  expect(alphaAt(project, 9, 10)).toBe(once);
-});
-
-// The report (projects/blur-shape-issue.phosphor): blurred in the ANSI view, a shape merged down kept a hard edge and
-// never faded into the clear, while a painted circle beside it did. The merge wrote most of the shape's cells exactly
-// (with Layer 1's By shape, paint wouldn't show as the shape did), with colors of their own; the circle's cells are the
-// Brush's ▄, with only a character, their colors in paint.
-test('the report: in the ANSI view Blur fades a merged shape\'s exact cells into the clear, as it does a painted circle', async () => {
+// The report (projects/blur-shape-issue.phosphor): blurred in the ANSI view, a shape merged down kept a hard edge, while
+// a painted circle beside it faded. The merge wrote some of the shape's cells exactly (with Layer 1's By shape, paint
+// wouldn't show as the shape did), with colors of their own. A cell holds a character, which can't fade, so Blur keeps
+// it, as it keeps typed text and ASCII art, and spreads its colors into the clear beside it.
+test('the report: in the ANSI view Blur keeps a merged shape\'s exact cells and spreads their colors into the clear beside them', async () => {
   const { project, workspace } = await createTestApp();
   await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/blur-shape-issue.phosphor')).arrayBuffer()], 'blur-shape-issue.phosphor'));
   await settle(project);
   workspace.editorTab = 'output';
   workspace.pickLayer('edit');
   Object.assign(workspace, { retouchSize: 6, retouchStrength: 100, retouchHardness: 50 });
-  const ctx = { project, workspace, view: 'output' };
-  expect(project.editCellAt(16, 10)?.fg).toBeDefined(); // the shape's left edge: an exact cell
+  const ctx = { project, workspace, view: 'output' }, before = project.editCellAt(16, 10), beside = alphaAt(project, 15, 20);
+  expect(before?.fg).toBeDefined(); // the shape's left edge: an exact cell
   for (let i = 0; i < 4; i++) stroke(blur, ctx, { x: 16.5, y: 16 }, { x: 16.5, y: 30 });
-  expect(project.editCellAt(16, 10)).toBeUndefined();
-  expect(alphaAt(project, 16, 20)).toBeGreaterThan(0);
-  expect(alphaAt(project, 16, 20)).toBeLessThan(0.9); // faded, as the circle's edge does
-  expect(alphaAt(project, 14, 20)).toBeGreaterThan(0); // into the clear beside it
+  expect(project.editCellAt(16, 10)?.char).toBe(before.char);
+  expect(alphaAt(project, 15, 20)).toBeGreaterThan(beside + 0.1); // its colors spread into the clear beside it
 });
 
 // ANSI view on the base: the converter's own cells change as in the PIXEL view, their pixels, and the characters follow,
