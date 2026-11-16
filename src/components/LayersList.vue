@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, useId, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useId, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -71,6 +71,13 @@ function remove(layer) {
   if (project._sharing) workspace.deleteLayerAsk = { id: layer.id };
   else if (project.deleteLayer(layer.id)) backToRow(workspace.pickedLayer);
 }
+// In a room the delete is done once the layer's gone (DeleteLayerDialog's ask, going, then goes), and focus goes to the row
+// picked now as well, unless it's somewhere else by then.
+watch(() => workspace.deleteLayerAsk, async (now, was) => {
+  if (!was?.going || project.layerById(was.id)) return;
+  await nextTick();
+  if (!document.activeElement || document.activeElement === document.body) backToRow(workspace.pickedLayer);
+});
 
 // The ⋯ menu's Merge down: the layer into the one under it, as the toolbar's (off with its reason, asking how into the base).
 const { offFor: mergeOff, mergeDown } = useMergeDown();

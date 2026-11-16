@@ -72,3 +72,49 @@ test('in a room, Delete asks first; Cancel keeps the layer; alone it doesn\'t as
   expect(workspace.deleteLayerAsk).toBe(null);
   expect(names()).toEqual(['Layer 1', 'Base']);
 });
+
+test('an ask whose layer someone else deletes meanwhile goes, and doesn\'t come back for a new layer with its id', async () => {
+  const { project, workspace } = await mount();
+  const top = project.layers.at(-1).id;
+  project._sharing = { role: 'artist', me: 'ann' };
+  await deleteTopRow();
+  expect(dialog()).not.toBe(null);
+  project.layers = project.layers.filter((layer) => layer.id !== top);   // as the host's stack, deleted by someone else, lands
+  await nextTick();
+  expect(dialog()).toBe(null);
+  expect(workspace.deleteLayerAsk).toBe(null);
+  project._sharing = null;
+  expect(project.addLayer('cells', 'edit')).toBe(top);
+  await nextTick();
+  expect(dialog()).toBe(null);
+});
+
+// The row and its ⋯ gone, focus goes to the row picked now, not the page: at once for the host, and when the host's stack
+// comes for an artist.
+for (const role of ['host', 'artist']) {
+  test(`in a room the ${role}'s delete through the question puts focus on the picked row`, async () => {
+    const { project, workspace } = await mount();
+    const top = project.layers.at(-1).id;
+    workspace.pickLayer('edit');
+    project._sharing = { role, me: role };
+    const gone = () => { project.layers = project.layers.filter((layer) => layer.id !== top); };
+    vi.spyOn(project, 'deleteLayer').mockImplementation(() => {
+      if (role === 'artist') return false;   // asked of the host
+      gone();
+      return true;
+    });
+    await deleteTopRow();
+    document.querySelector('button.choice').click();
+    await nextTick();
+    expect(dialog()).toBe(null);
+    if (role === 'artist') {
+      gone();   // the host's stack comes
+      await nextTick();
+    }
+    await nextTick();
+    await nextTick();
+    expect(names()).toEqual(['Layer 1', 'Base']);
+    expect(document.activeElement).toBe(host.querySelector('li[data-id="edit"] button.pick'));
+    project._sharing = null;
+  });
+}
