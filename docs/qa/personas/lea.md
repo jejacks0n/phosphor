@@ -38,8 +38,8 @@ confused, and the work still there if she comes back to the tab later.
 ## What they lean on
 
 - The start screen: the drop box, Choose a file, Start with a blank canvas, Pick up where you left off.
-- The phone layout: the menu button (☰) that slides the settings out, the Layers button that opens LAYERS in a dialog
-  ([The layers list](../../layers.md#the-layers-list)), the Actions menu, the status bar.
+- The phone layout: the menu button (☰) that slides the settings out, « at the tab bar's right end that slides LAYERS in over
+  the art ([The layers list](../../layers.md#the-layers-list)), the Actions menu, the status bar.
 - The settings she can feel: Art style, Color palette, the Characters presets and the dice, Brightness and Contrast,
   Dimensions ([Layers](../../layers.md#the-left-column)).
 - The Brush and Edit Mode, the color pair ([Other tools](../../layers.md#other-tools)).
@@ -102,8 +102,8 @@ script. Every section ends with Free time.
 
 ### 2. Open my selfie
 - Does: taps Choose a file and picks `photo.jpg`.
-- Expects: it opens on ANSI as character art, 80 columns wide, fitted to the screen's width; the tab bar gains the
-  Layers button; the toolbar shows the color pair, the Pencil, Brush, Eraser, Paint Bucket, Shapes, a ⋯ for the rest,
+- Expects: it opens on ANSI as character art, 80 columns wide, fitted to the screen's width; « at the tab bar's right
+  end opens LAYERS over the art; the toolbar shows the color pair, the Pencil, Brush, Eraser, Paint Bucket, Shapes, a ⋯ for the rest,
   and Actions; the status bar says "Layer 1". Opening takes under the `file` budget.
 - Probes: `out-of-order`: first pick `fonts/wide.ttf` by mistake (it says "Couldn't open … Make sure it's a supported
   image or .phosphor file."); `again`: press New project and open `p3.png`, then `photo.webp`, then `rgba.png`, then
@@ -329,10 +329,9 @@ Terms from it and check they fit, and look for a Share button.
 
 ### 24. Open a room link a friend sent
 - Does: opens the app at a room's address (`/#/social?room=abc123`), as a link in a message would.
-- Expects: rooms aren't on a phone ([Not in this version](../../social.md#not-in-this-version): a link to a room
-  opened on a narrow screen does nothing there), so she expects to be told so in plain words: that rooms need a bigger
-  screen, or the phone turned sideways. Nothing saying so is an `oversight` finding; her work in progress must still be
-  there either way.
+- Expects: it asks "Join this room?" with the lobby open over the art; Join takes her to ROOM with the host's art and
+  the panel shut; « opens CHAT over the art, with what was said counted beside it, and a tap on the strip of art shuts
+  it ([The Side Panel](../../social.md#the-side-panel)). Her work in progress is still there when she leaves.
 - Probes: `interrupt`: open the link with work in progress, and check nothing was lost; `again`: open it twice.
 - Rated: no (touch only: no keyboard shows here)
 
@@ -341,7 +340,7 @@ Terms from it and check they fit, and look for a Share button.
   it back upright.
 - Expects: sideways is wide enough for the side panel, with LAYERS and Social (marked Beta)
   ([Social](../../social.md)); the question "Before you use Social rooms" fits the short screen and scrolls; Not now goes
-  back to LAYERS; turned upright, the side panel goes and the Layers button comes back, with nothing lost.
+  back to LAYERS; turned upright, the side panel goes behind « at the tab bar's right end, with nothing lost.
 - Probes: `back-out`: open Social again and tap outside the question instead of Not now; `interrupt`: turn upright
   while the question is open.
 - Rated: no (touch only: no keyboard shows here)

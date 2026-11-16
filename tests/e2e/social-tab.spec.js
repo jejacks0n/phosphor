@@ -39,24 +39,15 @@ test('the Social tab is tagged beta, for screen readers as well; its name stays 
   await expect(tab(page, 'Layers').locator('.beta')).toHaveCount(0);
 });
 
-// The side panel isn't there, so the link is left as it came: it still works opened on a computer.
-test('a link back opened on a narrow screen is left alone, and nothing SOCIAL runs', async ({ page }) => {
-  const server = await fakeServer(page);
+// A link back on a narrow screen is read as on a wide one: it comes off the address, and says so at the lobby's top.
+test('a link back opened on a narrow screen is read, and says so in the lobby over the art', async ({ page }) => {
+  await fakeServer(page);
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto('/?verified=1&error=TOKEN_EXPIRED');
   await startScreen(page);
-  await page.waitForLoadState('networkidle');
-  expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('input');
-  expect(new URL(page.url()).search).toBe('?verified=1&error=TOKEN_EXPIRED');
-  expect(await store(page, 'social', (s) => [s.notice, s.supported])).toEqual([null, null]);
-  expect(server.requests).toEqual([]);
-  await expect(page.locator('.side-panel')).toHaveCount(0);
-
-  // Widened, the link is read when the lobby is first shown, and says so at its top.
-  await page.setViewportSize({ width: 1400, height: 900 });
+  await expect.poll(() => new URL(page.url()).search).toBe('');
   await openLobby(page);
   await expect(shown(page, 'lobby').locator('p.notice')).toContainText('That link has expired or was already used');
-  expect(new URL(page.url()).search).toBe('');
 });
 
 // Content blockers hide anything whose class or id says "social", as they do share buttons; the page loads, and is blank.
@@ -103,7 +94,7 @@ test('a second page in the context is cut off from localhost:8787 too', async ({
   expect((await failed).failure().errorText).toBe('net::ERR_FAILED');
 });
 
-test('while you watch a room, ROOM is the last tab and the tablist\'s arrow keys reach it; the host has none; narrowed, it goes and PIXEL shows', async ({ page: host, context }) => {
+test('while you watch a room, ROOM is the last tab and the tablist\'s arrow keys reach it; the host has none; narrowed, it stays', async ({ page: host, context }) => {
   const room = fakeRoom();
   await goLive(host, room);
   const watcher = await watcherPage(context, room);
@@ -121,25 +112,27 @@ test('while you watch a room, ROOM is the last tab and the tablist\'s arrow keys
 
   await tab(watcher, 'ROOM').click();
   await watcher.setViewportSize({ width: 700, height: 900 });
-  await expect(tab(watcher, 'ROOM')).toHaveCount(0);
-  await selected(watcher, 'PIXEL');
+  await selected(watcher, 'ROOM');
+  await expect(shown(watcher, 'watch-room')).toBeVisible();
 });
 
-test('narrow screens have no side panel, so no lobby; narrowing while it shows takes it away and leaves the art (the start screen, with nothing open)', async ({ page }) => {
+test('a narrow screen\'s panel is shut over the art until « opens it, the lobby in it; narrowing while it shows shuts it behind «', async ({ page }) => {
   await fakeServer(page);
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto('/');
   await expect(tab(page, 'PIXEL')).toBeVisible();
-  await expect(page.locator('.side-panel')).toHaveCount(0);
-
-  await page.setViewportSize({ width: 1400, height: 900 });
+  await expect(page.locator('.side-panel')).toBeHidden();
   await openLobby(page);
   await expect(shown(page, 'lobby')).toBeVisible();
+  await expect(page.locator('.side-panel')).toHaveCSS('position', 'fixed');
+
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await expect(page.locator('.side-panel')).toHaveCSS('position', 'relative');
+  await expect(shown(page, 'lobby')).toBeVisible();
   await page.setViewportSize({ width: 700, height: 900 });
-  await expect(page.locator('.side-panel')).toHaveCount(0);
-  await expect(shown(page, 'lobby')).toHaveCount(0);
+  await expect(page.locator('.side-panel')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Expand panel' })).toBeVisible();
   await startScreen(page);
-  expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('input');
 });
 
 // Review focus 5: typing in a SOCIAL field (a password, a message) never reaches the art; on ROOM, where your own

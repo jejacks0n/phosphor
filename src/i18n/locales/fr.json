@@ -1226,7 +1226,6 @@
     }
   },
   "social": {
-    "narrow": "Les salles partagées nécessitent un écran plus large.",
     "unsupported": "Ce navigateur ne prend pas en charge les fonctionnalités de sécurité requises pour les salles Social.",
     "agreeTerms": "J'ai 13 ans ou plus et j'accepte les {terms}, la {privacy} et les {guidelines}",
     "nav": {

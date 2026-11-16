@@ -1,19 +1,28 @@
 <script>
 // Its width in px: the narrowest and widest it drags to, where a double-click puts it, and an arrow key's step.
 export const SIDE_PANEL = { min: 240, max: 480, width: 280, step: 16 };
+const STRIP = 72;   // on a narrow screen, the art left showing beside it at the least (a tap there shuts it)
 
-// Fold or open it. The button that did it goes with it (» there, « in EditTabs), so focus follows to the one that's left.
-export async function toggleSidePanel(workspace) {
-  workspace.sidePanelFolded = !workspace.sidePanelFolded;
+// Fold or open it (on a narrow screen, over the art or not). The button that did it goes with it (» there, « in
+// EditTabs), so focus follows to the one that's left.
+export async function toggleSidePanel(workspace, open) {
+  workspace.toggleSidePanel(open);
   await nextTick();
   document.querySelector('button.panel')?.focus();
+}
+
+// Whether it shows: a wide screen's unless it's folded, a narrow screen's while it's open over the art.
+export function useSidePanelShown(workspace) {
+  const wide = useMediaQuery(desktopQuery);
+  return { wide, shown: computed(() => (wide.value ? !workspace.sidePanelFolded : workspace.sidePanelOpen)) };
 }
 </script>
 
 <script setup>
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useSessionStorage } from '@vueuse/core';
+import { useMediaQuery, useSessionStorage } from '@vueuse/core';
+import { desktopQuery } from '@/social/config';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -25,12 +34,14 @@ import LobbyPage from '@/components/social/LobbyPage.vue';
 import DesktopStartPage from '@/components/social/DesktopStartPage.vue';
 import LayersList from '@/components/LayersList.vue';
 
-// The column at the right of the whole app, on a wide screen: LAYERS, and Social, which is CHAT while you're in a
+// The column at the right of the whole app: LAYERS, and Social, which is CHAT while you're in a
 // room. Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and the
 // » at the right end of its tabs folds it away entirely; EditTabs then shows « in that same spot, which brings it back
 // and counts the messages you haven't seen, as the CHAT tab does while LAYERS shows. In a room a speaker sits left of the », on
 // either tab, for the tone for new messages. Width and fold are kept in the browser; going into a room opens it on CHAT, a reload into
 // one shows it as it was (folded or not, on LAYERS or CHAT), and leaving shows the lobby there.
+// On a narrow screen it comes over the art from the right instead, shut until « opens it, with a strip of the art
+// left showing: », Escape or a tap on that strip shuts it. No edge to drag there; going into a room shuts it.
 
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';   // no lobby: the desktop's start page (your name, Join, Start a room) in its place
 const workspace = useWorkspaceStore(), room = useRoomStore(), drawing = useDrawingStore(), social = useSocialStore();
@@ -40,13 +51,22 @@ const panel = useTemplateRef('panel');
 const clamp = (px) => Math.round(Math.min(SIDE_PANEL.max, Math.max(SIDE_PANEL.min, px)));
 const width = computed(() => clamp(workspace.sidePanelWidth));
 const tab = computed(() => workspace.sidePanelTab);
-const chatShown = computed(() => room.inRoom && !workspace.sidePanelFolded && tab.value === 'social');
+const { wide, shown } = useSidePanelShown(workspace);
+const chatShown = computed(() => room.inRoom && shown.value && tab.value === 'social');
+watch(wide, () => { workspace.sidePanelOpen = false; });   // narrowed again, it starts shut
 
-// Messages (not who came and went), an invitation to draw and (desktop) a join waiting for the host's yes count while the chat isn't showing (sidePanelUnread, which
+// On a narrow screen Escape shuts it (one in a dialog over it is the dialog's), as a tap on the art beside it does.
+function shut(event) {
+  if (wide.value || event.target.closest('dialog')) return;
+  event.preventDefault();
+  toggleSidePanel(workspace, false);
+}
+
+// Messages (not who came and went, nor those from before you came in), an invitation to draw and (desktop) a join waiting for the host's yes count while the chat isn't showing (sidePanelUnread, which
 // the « in EditTabs shows while the panel's folded).
 const unread = computed(() => workspace.sidePanelUnread);
 watch(chatShown, (shown) => { if (shown) workspace.sidePanelUnread = 0; });
-watch(() => room.chat.at(-1)?.id, () => { if (!chatShown.value && room.chat.length && !room.chat.at(-1).presence) workspace.sidePanelUnread++; });
+watch(() => room.chat.at(-1)?.id, (id) => { if (!chatShown.value && room.chat.length && !room.chat.at(-1).presence && id !== room.joinedAt) workspace.sidePanelUnread++; });   // not what came before you did
 watch(() => drawing.invitation, (asked) => { if (asked && !chatShown.value) workspace.sidePanelUnread++; });
 watch(() => room.asks?.length ?? 0, (now, was) => { if (now > was && !chatShown.value) workspace.sidePanelUnread++; });   // no asks on the web
 
@@ -69,7 +89,8 @@ watch(() => room.inRoom, async (inRoom, was) => {
     first = false;
     if (back) workspace.sidePanelTab = roomTab.value;
     else {
-      workspace.showSocial();
+      if (wide.value) workspace.showSocial();
+      else Object.assign(workspace, { sidePanelTab: 'social', sidePanelOpen: false });   // a narrow screen's shuts, for the art you came for: « counts what's said
       roomTab.value = 'social';   // (the tab may have been Social already, in the lobby)
     }
     return;
@@ -87,7 +108,7 @@ const pick = (name) => { workspace.sidePanelTab = name; };
 // The marker along the picked tab's foot, sliding to the tab picked, and placed again wherever the tabs move to.
 const tabList = useTemplateRef('tabList');
 const { style: markerStyle, update: placeMarker } = useTabIndicator(tabList, '[role="tab"].on');
-watch([tab, width, () => workspace.sidePanelFolded, () => room.inRoom, unread], () => nextTick(placeMarker), { immediate: true });
+watch([tab, width, shown, () => room.inRoom, unread], () => nextTick(placeMarker), { immediate: true });
 
 // Resizing: the edge follows the pointer (captured, so it keeps up off the edge), arrows step it.
 let drag = null;
@@ -112,9 +133,10 @@ function key(e) {
 </script>
 
 <template>
-  <div ref="panel" class="side-panel" :class="{ folded: workspace.sidePanelFolded }" :style="workspace.sidePanelFolded ? null : { width: `${width}px` }">
+  <div v-if="!wide && shown" class="scrim" @click="toggleSidePanel(workspace, false)"></div>
+  <div ref="panel" class="side-panel" :class="{ folded: !shown, overlay: !wide }" :style="shown ? { width: wide ? `${width}px` : `min(${width}px, calc(100vw - ${STRIP}px))` } : null" @keydown.esc="shut">
     <div
-        v-if="!workspace.sidePanelFolded"
+        v-if="shown && wide"
         class="grip" role="separator" aria-orientation="vertical" tabindex="0" :aria-label="t('sidePanel.resizeAria')"
         :aria-valuenow="width" :aria-valuemin="SIDE_PANEL.min" :aria-valuemax="SIDE_PANEL.max"
         @pointerdown="grab" @pointermove="move" @pointerup="drop" @pointercancel="drop" @lostpointercapture="drop"
@@ -167,6 +189,35 @@ div.side-panel {
 }
 div.side-panel.folded {   /* folded away: no width at all, EditTabs' « brings it back */
   display: none;
+}
+/* A narrow screen's: over the art from the right, as the settings drawer comes from the left, with a strip of the art
+   left showing; a tap on it (the scrim over it) shuts the panel. */
+div.side-panel.overlay {
+  position: fixed;
+  z-index: 2001;   /* over the art's own layers (the overlays and cursors are 1001) */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding-right: env(safe-area-inset-right, 0px);
+  border-radius: 0;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease;
+}
+@starting-style {
+  div.side-panel.overlay {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  div.side-panel.overlay {
+    transition: none;
+  }
+}
+div.scrim {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
 }
 
 /* The left edge, a few px either side of it, drags the width. */

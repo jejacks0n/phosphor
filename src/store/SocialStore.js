@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { markRaw, shallowRef } from 'vue';
 import { until, useLocalStorage } from '@vueuse/core';
 import { api } from '@/social/api';
-import { apiOrigin, wsOrigin, appOrigin, desktopQuery } from '@/social/config';
+import { apiOrigin, wsOrigin, appOrigin } from '@/social/config';
 import { messageFor } from '@/social/messages';
 import { forgetHostCopies } from '@/document/autosaveStore';
 import { ed25519Supported, loadKey } from '@/social/keys';
@@ -142,12 +142,10 @@ export const useSocialStore = defineStore('social', {
       this.joinLink();
     },
 
-    // The lobby is showing (the side panel's Social tab): once you're known, it connects, and stays connected. A
-    // link back left in the URL by a narrow window, since widened, is read now.
+    // The lobby is showing (the side panel's Social tab): once you're known, it connects, and stays connected.
     async showLobby() {
       this.lobbyWanted = true;
       if (DESKTOP) return this.boot();
-      this.readReturn(window.location);
       await this.boot();
       this.joinLink();
       this.connectLobby();
@@ -218,9 +216,8 @@ export const useSocialStore = defineStore('social', {
     },
 
     // The params an email link or an OAuth return brought, read and then taken off the URL (others stay).
-    // True if there were any, on a desktop.
+    // True if there were any.
     readReturn(location) {
-      if (!matchMedia(desktopQuery).matches) return false;
       const url = new URL(location.href);
       const params = url.searchParams;
       // With path addresses, the room on an entry of yours is the address's own: the router's to follow, not a link.

@@ -2,7 +2,8 @@
 // its port, the host's addresses and the joins waiting for a yes, and what the web's pages have that the desktop
 // doesn't (sign-in, Block, Report, the hosted service's privacy policy). The room store is set as the room leaves it;
 // what the store does with these is tests/browser/desktop-room-*.test.js.
-import { test, expect, afterEach, vi } from 'vitest';
+import { test, expect, afterEach, vi, onTestFinished } from 'vitest';
+import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
@@ -98,6 +99,8 @@ test('the side panel\'s Social tab is the start page, not the lobby', async () =
 });
 
 test('a join waiting counts as unread while the chat isn\'t showing', async () => {
+  await page.viewport(1200, 800);   // a wide window, where the panel shows unless it's folded
+  onTestFinished(() => page.viewport(414, 896));
   const { room } = await mount(SidePanel, ({ room, social }) => {
     social.claims = claims();
     hosting()({ room });

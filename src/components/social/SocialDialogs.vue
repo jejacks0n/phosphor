@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useSidePanelShown } from '@/components/SidePanel.vue';
 import { goingBackReplacesWords } from '@/social/messages';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { FIELD, firstField } from '@/lib/focus';
@@ -41,7 +42,8 @@ const PAGES = {
   'start-room': [StartRoomPage, 'social.start.heading', 'lobby', () => !DESKTOP && room.startDraft.isPublic],
 };
 
-const lobbyShown = computed(() => !room.inRoom && !workspace.sidePanelFolded && workspace.sidePanelTab === 'social');
+const { shown: sidePanelShown } = useSidePanelShown(workspace);
+const lobbyShown = computed(() => !room.inRoom && sidePanelShown.value && workspace.sidePanelTab === 'social');
 const wanted = computed(() => lobbyShown.value || social.page !== 'lobby' || social._roomLink !== null);
 
 // Account and Blocked are only for someone signed in: until /api/me has answered nothing shows (a link back from

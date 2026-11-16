@@ -234,5 +234,4 @@ address." Your drawings, name and settings stay on your computer.
 - Joining a desktop room from a browser, or a web room from the app.
 - Rooms without an address someone can reach: there's no relay, so behind a network that won't let connections in,
   use Tailscale or forward the port.
-- A narrow window: rooms need a wider one, as on the web ("Rooms need a wider screen."). Widen the window.
 - Updating itself: Check for Updates finds the next release, and you download it.

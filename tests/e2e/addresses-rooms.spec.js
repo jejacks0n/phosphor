@@ -1,6 +1,6 @@
 // The room you're watching in the address: Back, Forward and reload, with a real history (its entries'
 // marks are what tell your own room from a link).
-import { test, expect, tab, store, openApp, startScreen } from './support.js';
+import { test, expect, tab, store, startScreen } from './support.js';
 import { fakeRoom, ROOM_ID, shown, goLive, watcherPage, followLink, joinFromCard, selected, hash, asked, chat, outOfRoom, live, joins } from './social-support.js';
 
 const UNAVAILABLE = "This room isn't available";
@@ -169,31 +169,13 @@ test('with storage that can\'t be read, reloading on an entry of yours doesn\'t 
   expect(joins(room)).toBe(1);
 });
 
-test('a server ?room= link on a phone still stays in the URL for a computer', async ({ context }) => {
+test('a server ?room= link on a phone asks, as on a computer, with the lobby over the art', async ({ context }) => {
   const room = fakeRoom();
   const watcher = await watcherPage(context, room);
   await watcher.setViewportSize({ width: 700, height: 900 });
   await watcher.goto(`/?room=${ROOM_ID}`);
-  await startScreen(watcher);
-  await expect.poll(() => new URL(watcher.url()).search).toBe(`?room=${ROOM_ID}`);
-  await expect(asked(watcher)).toHaveCount(0);
-  expect(room.received).toEqual([]);
-});
-
-test('a ?room= moved between a phone\'s tabs is no mark of yours: widened and reloaded, it still asks', async ({ context }) => {
-  const room = fakeRoom();
-  const watcher = await watcherPage(context, room);
-  await watcher.setViewportSize({ width: 700, height: 900 });
-  await openApp(watcher);
-  await watcher.goto(`/#/pixel?room=${ROOM_ID}`);
-  await hash(watcher, `/pixel?room=${ROOM_ID}`);
-  await tab(watcher, 'ANSI').click();
-  await hash(watcher, `/ansi?room=${ROOM_ID}`);
-
-  await watcher.setViewportSize({ width: 1400, height: 900 });
-  await watcher.reload();
   await expect(asked(watcher)).toBeVisible();
-  expect(room.received).toEqual([]);
+  await expect(watcher.locator('.side-panel')).toHaveCSS('position', 'fixed');
 });
 
 // Hosting: going live is a step (Set up your room's dialog closes onto the art tab, ANSI here), and Back past it asks. The browser has moved already by then, so while

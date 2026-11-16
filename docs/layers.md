@@ -58,9 +58,9 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
   - A name can be up to 40 characters. A blank name puts the default back. A name too long for the row shows in full
     when you hover over it.
   - Names are saved with the drawing. A rename isn't an undo step.
-- **On a Phone**: There's no side panel. A **Layers** button in the tab bar, left of **Animate** and there while the
-  art shows, opens the same list in a dialog. Selecting a layer leaves it open, so you can select, rename or hide in
-  one visit. **Done**, **Escape** or a tap outside closes it.
+- **On a Phone**: The side panel comes in over the art from the right. **«** at the right end of the tab bar opens it,
+  and selecting a layer leaves it open, so you can select, rename or hide in one visit. **»**, **Escape** or a tap on the
+  strip of art beside it shuts it ([The Side Panel](social.md#the-side-panel)).
 - **In a Room**: A room starts from any stack, and everyone in it, the host and artists alike, changes the stack:
   **Add layer**, **Add vector layer**, **Duplicate**, **Delete**, **Move up**, **Move down**, dragging and renaming all
   work, and everyone sees the result. Artists draw on any layer but the bottom one.

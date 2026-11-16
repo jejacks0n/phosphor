@@ -69,13 +69,10 @@ test('a return from the server is read once: it leaves the address, and no later
   await expect(page.getByText('Your email is confirmed')).toHaveCount(0);
 });
 
-test('a narrow window keeps a return for a computer; widened, it\'s read once and doesn\'t come back', async ({ page }) => {
+test('a narrow window reads a return as a wide one does: once, and it doesn\'t come back', async ({ page }) => {
   await fakeServer(page);
   await page.setViewportSize({ width: 500, height: 800 });
   await page.goto('/?verified=1');
-  await expect.poll(() => new URL(page.url()).search).toBe('?verified=1');
-
-  await page.setViewportSize({ width: 1400, height: 900 });
   await openLobby(page);
   await expect(page.getByText('Your email is confirmed')).toBeVisible();
   await expect.poll(() => new URL(page.url()).search).toBe('');

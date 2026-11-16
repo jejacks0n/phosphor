@@ -158,7 +158,7 @@ script. Every section ends with Free time.
 **Free time:** he'd open the link in a second tab while watching in the first ("You're watching this room in another
 tab" in the older one), then join again from the first and close the second, so he's watching there for step 6;
 point at the host's name on a card, look for a way to see a room before joining it, and
-narrow the window until the side panel goes.
+narrow the window until the side panel comes in over the art instead.
 
 ## Watching
 

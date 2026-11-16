@@ -1,7 +1,7 @@
 // The side panel (SidePanel.vue): LAYERS, and Social, which is CHAT while you're in a room; its width from its edge's keys,
 // kept in the browser and held between its narrowest and widest; folding away on the » at its tabs' right end (and the « of EditTabs.vue in the same spot),
 // and the count of what was said while the chat wasn't showing. Dragging the edge with a real pointer is tests/e2e/side-panel.spec.js.
-import { test, expect, afterEach, beforeAll, afterAll } from 'vitest';
+import { test, expect, afterEach, beforeAll, afterAll, onTestFinished } from 'vitest';
 import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -268,4 +268,76 @@ test('in a room, a speaker beside the fold turns the tone for new messages off a
   await nextTick();
   expect(workspace.chatTone).toBe(true);
   expect(speaker().getAttribute('aria-pressed')).toBe('true');
+});
+
+// A narrow screen: the panel over the art from the right, shut until « opens it.
+async function narrow() {
+  await page.viewport(414, 896);
+  onTestFinished(() => page.viewport(1200, 800));
+}
+
+test('on a narrow screen it\'s shut until « opens it over the art, leaving a strip; », Escape and a tap on the strip shut it, and it and the settings drawer take turns', async () => {
+  await narrow();
+  const { workspace } = await mount();
+  expect(panel().getBoundingClientRect().width).toBe(0);
+  expect(host.querySelector('.scrim')).toBe(null);
+  arrow().click();   // «
+  await nextTick();
+  await nextTick();
+  expect(getComputedStyle(panel()).position).toBe('fixed');
+  await expect.poll(() => panel().getBoundingClientRect().right).toBe(414);   // slid in
+  expect(panel().getBoundingClientRect().width).toBe(SIDE_PANEL.width);   // 134 px of the art beside it
+  expect(grip()).toBe(null);   // no edge to drag
+  expect(document.activeElement).toBe(arrow());   // », in its tabs
+  expect(workspace.sidePanelFolded).toBe(false);   // a wide screen's fold is its own
+
+  arrow().click();   // »
+  await nextTick();
+  expect(panel().getBoundingClientRect().width).toBe(0);
+  workspace.toggleSidePanel();
+  await nextTick();
+  panel().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await nextTick();
+  expect(workspace.sidePanelOpen).toBe(false);
+  workspace.toggleSidePanel();
+  await nextTick();
+  host.querySelector('.scrim').click();
+  await nextTick();
+  expect([workspace.sidePanelOpen, panel().getBoundingClientRect().width]).toEqual([false, 0]);
+
+  workspace.toggleSettings();
+  workspace.toggleSidePanel();
+  expect([workspace.sidePanelOpen, workspace.settingsOpen]).toEqual([true, false]);
+  workspace.toggleSettings();
+  expect([workspace.sidePanelOpen, workspace.settingsOpen]).toEqual([false, true]);
+  workspace.settingsOpen = false;
+});
+
+test('on a narrow screen, going into a room leaves it shut on CHAT, « counting what\'s said; opened, the chat shows and the count goes', async () => {
+  await narrow();
+  const { room, workspace } = await mount();
+  room.joinedAt = row(0).id;   // the history it came in on: nothing new
+  await enter(room, [row(0)]);
+  expect([workspace.sidePanelOpen, workspace.sidePanelTab]).toEqual([false, 'social']);
+  expect(host.querySelector('span.unread')).toBe(null);
+  await say(room, row(1));
+  expect(host.querySelector('nav span.unread').textContent).toBe('1');
+  arrow().click();
+  await nextTick();
+  expect(host.querySelector('span.unread')).toBe(null);
+  expect(host.querySelector('aside.chat').checkVisibility()).toBe(true);
+  expect(tabs()).toEqual([['Layers', 'false'], ['Chat', 'true']]);
+});
+
+test('a narrow screen\'s panel, open when the window widens, is the wide one (folded or not, as kept); narrowed again, it starts shut', async () => {
+  await narrow();
+  const { workspace } = await mount();
+  arrow().click();
+  await nextTick();
+  await page.viewport(1200, 800);
+  await expect.poll(() => getComputedStyle(panel()).position).toBe('relative');
+  expect(panel().getBoundingClientRect().width).toBe(SIDE_PANEL.width);
+  await page.viewport(414, 896);
+  await expect.poll(() => panel().getBoundingClientRect().width).toBe(0);
+  expect(workspace.sidePanelOpen).toBe(false);
 });

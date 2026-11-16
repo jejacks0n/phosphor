@@ -280,13 +280,13 @@ test('/social on a computer opens the lobby in the side panel, and the tab\'s ad
   expect(replace).toHaveBeenCalledTimes(1);
 });
 
-test('/social on a phone falls back to the art tab, replacing', async () => {
+test('/social on a phone opens the lobby in the side panel over the art, and the tab\'s address takes its place', async () => {
   desktop(false);
   await landed();
   await router.push('/social');
   push.mockClear();
   await settled();
-  expect(workspace.editorTab).toBe('input');
+  expect([workspace.sidePanelOpen, workspace.sidePanelTab, social.page, workspace.editorTab]).toEqual([true, 'social', 'lobby', 'input']);
   expect(path()).toBe('/pixel');
   expect(push).not.toHaveBeenCalled();
   expect(replace).toHaveBeenCalledTimes(1);
@@ -342,7 +342,7 @@ test('navigating keeps the query', async () => {
   expect(router.currentRoute.value.fullPath).toBe('/sauce?theirs=1');
 });
 
-test('on a computer a step leaves a return from the server behind, read already; a phone keeps it for a computer', async () => {
+test('a step leaves a return from the server behind, read already, on a phone as on a computer', async () => {
   await landed('/pixel?verified=1&error=X&theirs=1');
   workspace.editorTab = 'sauce';
   await settled();
@@ -353,7 +353,7 @@ test('on a computer a step leaves a return from the server behind, read already;
   await landed('/pixel?verified=1');
   workspace.editorTab = 'sauce';
   await settled();
-  expect(router.currentRoute.value.fullPath).toBe('/sauce?verified=1');
+  expect(router.currentRoute.value.fullPath).toBe('/sauce');
 });
 
 test('stop ends the sync', async () => {
@@ -807,18 +807,16 @@ test('an unmarked ?room= asks with the lobby open, and the address it came in on
   expect(social.roomInvite).toBe(null);
 });
 
-test('on a phone a ?room= is left alone: no join, no asking, still in the address', async () => {
+test('on a phone an unmarked ?room= asks too, with the lobby open over the art, and the address it came in on goes', async () => {
   desktop(false);
-  await loadImage(project, GRADIENT);   // before fetch is the fake's
   useFakeSockets();
   serverFor(member());
-  await landed(`/pixel?room=${ID}`);
-  expect(address()).toBe(`/pixel?room=${ID}`);
-  workspace.editorTab = 'output';
+  await landed();
+  await router.push(`/pixel?room=${ID}`);
+  await expect.poll(() => social.roomInvite).toBe(ID);
   await settled();
-  expect(address()).toBe(`/ansi?room=${ID}`);
-  expect([room.role, social.roomInvite, social._roomLink]).toEqual([null, null, null]);
-  expect(roomSockets()).toEqual([]);
+  expect([workspace.editorTab, workspace.sidePanelTab, workspace.sidePanelOpen]).toEqual(['input', 'social', true]);
+  expect(address()).toBe('/pixel');
 });
 
 test('other query params stay as the room comes and goes', async () => {
