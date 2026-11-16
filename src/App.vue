@@ -61,7 +61,7 @@ onLaunchedFiles((file) => { workspace.fileRequest = file; }); // the installed w
 // Unsaved work: changes that aren't safe in the browser, or whose art has never been saved to a file.
 function unsavedWork() {
   project.commitPending(); // text typed a moment ago counts
-  return !!(project.image && project.isDirty && !(project.savedToFile && autosave.current.value));
+  return !!(project.image && project.unsavedChanges && !(project.savedToFile && autosave.current.value));
 }
 // The desktop app asks each window before it closes or quits (a room hosted there is handed on after, not asked about).
 if (DESKTOP) desktop.onUnsaved(unsavedWork);

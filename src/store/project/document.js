@@ -304,6 +304,7 @@ export const documentActions = {
       fileHandle: null, // the same, on the web
       fit: null,
       aspectRatio: 0, // a new picture's lock keeps its own shape; a loaded file's comes in the patch
+      pickedUp: null, // a picked-up drawing's (restoreDocument says so after)
       paintScale: null,
       baseScale: null, // a loaded file's comes in the patch
       imageIsWorkingCopy: false,
@@ -348,6 +349,7 @@ export const documentActions = {
       savedToFile: false,
       asOpened: false,
       fit: null,
+      pickedUp: null, // a picked-up drawing's (restoreDocument says so after)
       filename: null,
       fileExt: null,
       cells: [],
@@ -489,7 +491,8 @@ export const documentActions = {
 
   // Autosave's record as the open document, as unsaved as it was. Without a documentId it's a new
   // document, a copy. Throws, for the caller to decide what that means.
-  async restoreDocument({ record, imageBuffer }, { documentId }) {
+  // pickedUp: from the start screen's list (unsavedChanges).
+  async restoreDocument({ record, imageBuffer }, { documentId, pickedUp = false }) {
     await busyWhile(opening(record.fileExt ? `${record.filename}.${record.fileExt}` : record.filename), async () => {
       const parts = await readProject(new Blob([record.rest]));
       await this.openParts({ ...parts, imageBuffer }, { filename: record.filename, fileExt: record.fileExt, documentId });
@@ -500,6 +503,7 @@ export const documentActions = {
     if (record.dirty) {
       this.savedSettings = record.savedSettings;
       this.savedEditVersion = this.editVersion - 1;
+      if (pickedUp) this.pickedUp = { editVersion: this.editVersion, settings: savedJson(this) };
     }
   },
 

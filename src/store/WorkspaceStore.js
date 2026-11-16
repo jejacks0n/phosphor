@@ -425,7 +425,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     confirmLeave(name, go) {
       const project = useProjectStore();
       project.commitPending(); // text typed a moment ago counts
-      if (!project.image || !project.isDirty) return void go();
+      if (!project.image || !project.unsavedChanges) return void go();
       this.unsavedAsk = markRaw({ name, go });
     },
     // New project (the button, the desktop menu): asked first when there's unsaved work.

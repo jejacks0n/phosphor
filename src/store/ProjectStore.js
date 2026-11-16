@@ -144,6 +144,7 @@ export const useProjectStore = defineStore('project', {
     savedSettings: null,
     editVersion: 0,
     savedEditVersion: 0,
+    pickedUp: null, // picked up from the start screen's list with unsaved changes: its edit version and settings as it came (unsavedChanges)
 
     // History for undo/redo
     history: markRaw(new History(50, MAX_HISTORY_BYTES)),
@@ -272,6 +273,12 @@ export const useProjectStore = defineStore('project', {
       return workspace.ghost ? workspace.ghostStrength / 100 : 0;
     },
     isDirty: (state) => savedJson(state) !== state.savedSettings || state.editVersion !== state.savedEditVersion,
+    // Unsaved changes to ask about before the drawing is left: dirty, but not a drawing picked up from the start
+    // screen's list as it came (it's in the browser already, and leaving it again loses nothing new).
+    unsavedChanges() {
+      const { pickedUp } = this;
+      return this.isDirty && !(pickedUp && pickedUp.editVersion === this.editVersion && pickedUp.settings === savedJson(this));
+    },
     imageRatio: (state) => {
       if (!state.image) return 1;
       const w = state.image.naturalWidth || state.image.width || 1;
