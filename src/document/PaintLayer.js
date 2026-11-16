@@ -114,6 +114,10 @@ export default class PaintLayer {
   // pixels: { x, y, r, g, b, alpha }[] in grid pixels. Paint builds up to `opacity`, then blends. With
   // stack, `opacity` is what one stroke (beginStroke to endStroke; outside one, this call) lays at
   // most, on top of what's there: strokes stack, so two at 50% make it opaque.
+  // Over a pixel already opaque when a stroke reaches it (the base's, all of them, or a layer's solid paint), the
+  // stroke builds up as it would on clear pixels (own: its paint, by cell rect) and is laid over what the pixel was
+  // before it (beneath: per 64-pixel tile, its RGB and a saved flag), so a stroke shows the same on the base as on a layer over it; each dab blended into the
+  // opaque pixel made it dimmer.
   paint(pixels, opacity = 100, stack = false) {
     const rects = [];
     for (const { x, y, r, g, b, alpha } of pixels) {
@@ -132,17 +136,50 @@ export default class PaintLayer {
     const maxA = Math.round((opacity / 100) * 255);
     const ceiling = stack ? 255 : maxA;
     const laid = this.#stroke?.laid ?? new Map(); // with stack: the alpha this stroke has added to each cell rect
+    const own = this.#stroke?.own, beneath = this.#stroke?.beneath;
+    let saved = null, savedKey = -1; // beneath's block for the tile last painted
 
     for (const { x: cx, y: cy, w: cw, h: ch, r, g, b, a } of rects) {
       if (a === 0) continue;
       const key = cx + cy * 65536, added = laid.get(key) ?? 0;
       const adds = stack ? Math.min(a, maxA - added) : a, weight = stack ? adds : a; // the new color's share
       if (stack && adds > 0) laid.set(key, added + adds);
+      // The stroke's own paint in this rect, as on clear pixels: begun where the rect was opaque when a dab first came.
+      const first = ((cy - bounds.y) * bounds.w + (cx - bounds.x)) * 4;
+      let mine = own?.get(key) ?? null;
+      if (own && !mine && data[first + 3] === 255) own.set(key, mine = { r, g, b, a: 0 });
+      if (mine) {
+        if (adds <= 0 || mine.a >= ceiling) {
+          const blend = Math.min(1, a / 255);
+          mine.r += (r - mine.r) * blend;
+          mine.g += (g - mine.g) * blend;
+          mine.b += (b - mine.b) * blend;
+        } else {
+          const below = mine.a * (255 - weight) / 255;
+          mine.r = (mine.r * below + r * weight) / (weight + below);
+          mine.g = (mine.g * below + g * weight) / (weight + below);
+          mine.b = (mine.b * below + b * weight) / (weight + below);
+          mine.a = Math.min(ceiling, mine.a + adds);
+        }
+      }
       for (let py = cy; py < cy + ch; py++) {
         for (let px = cx; px < cx + cw; px++) {
           const idx = ((py - bounds.y) * bounds.w + (px - bounds.x)) * 4;
           const existingA = data[idx + 3];
-          if (adds <= 0 || existingA >= ceiling) {
+          if (mine) {
+            const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE), tileKey = tx + ty * 65536;
+            if (tileKey !== savedKey) {
+              savedKey = tileKey;
+              saved = beneath.get(tileKey);
+              if (!saved) beneath.set(tileKey, saved = new Uint8Array(TILE * TILE * 4));
+            }
+            const s = ((py - ty * TILE) * TILE + (px - tx * TILE)) * 4;
+            if (!saved[s + 3]) { saved[s] = data[idx]; saved[s + 1] = data[idx + 1]; saved[s + 2] = data[idx + 2]; saved[s + 3] = 1; }
+            const shown = mine.a / 255;
+            data[idx]     = Math.round(saved[s] + (mine.r - saved[s]) * shown);
+            data[idx + 1] = Math.round(saved[s + 1] + (mine.g - saved[s + 1]) * shown);
+            data[idx + 2] = Math.round(saved[s + 2] + (mine.b - saved[s + 2]) * shown);
+          } else if (adds <= 0 || existingA >= ceiling) {
             // The paint is as opaque as it gets, or the stroke has laid its opacity: the color blends in.
             const blend = Math.min(1, a / 255);
             data[idx]     = Math.round(data[idx]     + (r - data[idx])     * blend);
@@ -420,7 +457,7 @@ export default class PaintLayer {
   }
 
   beginStroke() {
-    this.#stroke = { tiles: new Map(), touched: new Set(), hadPaint: this.hasPaint, erased: false, laid: new Map() };
+    this.#stroke = { tiles: new Map(), touched: new Set(), hadPaint: this.hasPaint, erased: false, laid: new Map(), own: new Map(), beneath: new Map() };
   }
 
   // Finish recording; null when the stroke changed nothing. A stroke that erased may have left no

@@ -37,3 +37,28 @@ test('at 100% Flow and Hardness a stroke is solid right out to its edge, as it a
   const at = await paint(across, { size: 10, flow: 100, hardness: 100 });
   expect(Array.from({ length: 9 }, (_, i) => at(20, 16 + i))).toEqual(Array(9).fill(255));
 });
+
+// A stroke builds up the same on the base as on a layer: within it, its dabs add up as they do on a layer's clear
+// pixels, and the stroke is then laid over what was there, rather than each dab blending into the opaque pixel
+// (which left white paint on the base's black a dimmer gray than on a layer over it).
+for (const hardness of [100, 0]) {
+  test(`a white stroke on the base shows as it does on a layer over it (hardness ${hardness})`, async () => {
+    const shown = async (layer) => {
+      const { project, workspace } = await createTestApp();
+      await project.setBlankCanvas({ cols: 20, rows: 20 });
+      await settle(project);
+      workspace.editorTab = 'input';
+      workspace.pickLayer(layer);
+      Object.assign(workspace, { editFgColor: '#ffffff', editBrushSize: 6, editBrushHardness: hardness, editBrushOpacity: 100 });
+      const ctx = { project, workspace, view: 'input' };
+      brush.begin(ctx, { x: 10, y: 10 }, {});
+      brush.move(ctx, { x: 10, y: 10 }, { x: 10, y: 10.5 });
+      brush.end(ctx);
+      await settle(project);
+      return [8, 9, 10, 11, 12].flatMap((col) => { const cell = project.cells[col + 5 * 20]; return [parseInt(cell.fg.hex.slice(1, 3), 16), parseInt(cell.bg.hex.slice(1, 3), 16)]; });
+    };
+    const onLayer = await shown('edit'), onBase = await shown('base');
+    expect(onLayer.some((v) => v > 100)).toBe(true);
+    onBase.forEach((v, i) => expect(Math.abs(v - onLayer[i])).toBeLessThanOrEqual(2));
+  });
+}
