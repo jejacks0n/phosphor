@@ -133,8 +133,8 @@ export const renderingActions = {
     }
   },
 
-  // Create the paint and base pixel layers on first use, and follow grid changes. With anything on
-  // the edit layer, or a step to undo that's tied to where things are (resizesCanvas), a grid change is a canvas resize:
+  // Create the paint and base pixel layers on first use, and follow grid changes. With anything drawn (on a layer, or the
+  // base's pins and own pixels), or a step to undo that's tied to where things are (resizesCanvas), a grid change is a canvas resize:
   // the image and every layer stay where they are, and the grid gains or loses cells at the right and bottom (what's
   // past the edge is kept, for when it grows back), so every undo step still fits. Otherwise it rescales: the image
   // refits the grid, and the base's own pixels (hard-edged) and pins move with it. The base layer is at the pipeline's processing scale
