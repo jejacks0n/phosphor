@@ -21,7 +21,7 @@ import { deserializeEditCells, parseKey, sameEntry } from './editCells.js';
 import { isShape, isShapeKey, sameShape, shapeFromStranger, isGoodShapeKey, MOST_SHAPES } from './shapes.js';
 import { keyLayer, layerKey } from './layerInfo.js';
 import { EASINGS, MOTIONS, lifeAt, setPartsAt, shapeAt, strayEasings } from './tweens.js';
-import { PARTS, partsOf, samePart, withParts } from './parts.js';
+import { PARTS, partsOf, samePart } from './parts.js';
 import { MAX_ANIMATION_CELLS, MAX_CELLS, MAX_COLS, MAX_LINES, charRowsOf, maxFramesFor } from '../lib/Cells.js';
 
 export const FRAME_KINDS = ['blank', 'duplicate', 'wipe'];
@@ -132,46 +132,6 @@ export function sameChanges(a, b) {
     if (!other || !sameState(state, other)) return false;
   }
   return true;
-}
-
-// The frame after a deleted one, so the rest of the movie looks the same: a Blank takes in what it inherited
-// from the deleted frame, and the deleted frame's kind when that was what cut it off from the frames before; the
-// tweens of the shapes it takes in, which start there now; and of a shape both set parts of, the parts the deleted
-// frame set that it didn't, with their easings (and the Transform's motion, if that's one of them).
-export function foldDeleted(deleted, next) {
-  if (next.kind !== 'blank') return { kind: next.kind, changes: next.changes, tweens: next.tweens, motions: next.motions, parts: next.parts };
-  const takeIn = (name) => {
-    const map = new Map([...(deleted[name] ?? [])].filter(([key]) => !next.changes.has(key)));
-    for (const [key, value] of next[name] ?? []) map.set(key, value);
-    return map.size ? map : null;
-  };
-  const tweens = takeIn('tweens') ?? new Map(), motions = takeIn('motions') ?? new Map();
-  // The next frame never showed the deleted one's staying cells: what was under them, which comes to it as before; nor
-  // the deleted one's cells of a layer it cuts.
-  const cut = carriedInto(deleted.changes, next);
-  const changes = new Map([...[...cut].filter(([, state]) => !state.stays), ...next.changes]);
-  const parts = new Map([...(deleted.parts ?? [])].filter(([key]) => !next.changes.has(key)));
-  for (const [key, { cell }] of next.changes) {
-    const own = next.parts?.get(key), was = deleted.changes.get(key)?.cell;
-    if (!own || !cell) continue; // all of it, or an erase
-    if (!was) {
-      parts.set(key, own);
-      continue;
-    }
-    const theirs = [...(deleted.parts?.get(key) ?? partsOf(cell))].filter((name) => !own.has(name)), both = new Set([...own, ...theirs]);
-    changes.set(key, cellState(withParts(cell, was, theirs), 0, 0));
-    if (both.size < partsOf(cell).length) parts.set(key, both);
-    const eases = new Map(PARTS.flatMap((name) => {
-      const easing = (own.has(name) ? next : theirs.includes(name) ? deleted : null)?.tweens?.get(key)?.get(name);
-      return easing ? [[name, easing]] : [];
-    }));
-    if (eases.size) tweens.set(key, eases);
-    else tweens.delete(key);
-    const motion = (own.has('transform') ? next : deleted).motions?.get(key);
-    if (motion && eases.has('transform')) motions.set(key, motion);
-    else motions.delete(key);
-  }
-  return { kind: deleted.kind, changes, tweens: tweens.size ? tweens : null, motions: motions.size ? motions : null, parts: parts.size ? parts : null };
 }
 
 // A resolved frame's paint as an image cols x rows, a pixel a grid pixel (PaintLayer.loadGrid takes it).

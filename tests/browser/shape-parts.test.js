@@ -123,17 +123,20 @@ test('Bake keeps every frame looking as it did', async () => {
   expect(looks(project, key)).toEqual(was);
 });
 
-test('deleting a key frame keeps the movie looking the same', async () => {
+test('deleting a key frame takes its key with it: the frames after take that part from the key before', async () => {
   const { project } = await animated();
   const key = ball(project);
   project.showFrame(7);
   restyle(project, key, { fill: '#0000ff' });
   project.noteFrame();
   const was = looks(project, key);
-  project.showFrame(6);
+  project.showFrame(6); // the move down
   project.deleteFrame();
-  expect(looks(project, key)).toEqual([...was.slice(0, 6), ...was.slice(7)]);
-  expect(partsOf(project, 6, key)).toEqual(['fill', 'transform']);
+  expect(looks(project, key).slice(0, 6)).toEqual(was.slice(0, 6));
+  expect(partsOf(project, 6, key)).toEqual(['fill']);
+  expect(shown(project, key, 6).m[5]).toBe(shown(project, key, 0).m[5]);
+  expect(shown(project, key, 6).fill).toBe('#0000ff');
+  expect(looks(project, key)[11]).toEqual(was[12]); // the next move's own key
 });
 
 test('a moved key frame keeps what it set, and takes the rest from where it lands', async () => {
@@ -226,7 +229,7 @@ test('deleting a Duplicate that starts a tween redraws the frames after it', asy
   easeAt(project, key, 3, 'easeOut');
   const all = () => project.frames.map((_, i) => JSON.stringify(shown(project, key, i)));
   all();
-  project.deleteFrame(); // frame 4 takes it in, and the tween is a frame shorter
+  project.deleteFrame(); // frame 4 carries from frame 2 now, and the tween that started on the Duplicate goes
   const cached = all();
   for (const frame of project.frames) frame.resolved = null;
   expect(cached).toEqual(all());

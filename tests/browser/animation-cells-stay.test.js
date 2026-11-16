@@ -120,7 +120,7 @@ test('deleting a frame leaves the next as it was: its staying cells go with it',
   expect(row(project, 1)).toBe('HELLO');
 });
 
-test('deleting the frame a staying cell was drawn over keeps the frames after it as they were', async () => {
+test('deleting the frame a staying cell was drawn over: the frames after it show what the cell is over now', async () => {
   const { project, workspace } = await animated();
   word(project, 1, 1, 'HELLO');
   project.addFrame('blank');
@@ -135,7 +135,7 @@ test('deleting the frame a staying cell was drawn over keeps the frames after it
   const fresh = () => { for (const frame of project.frames) frame.resolved = null; }; // not what was cached
   fresh();
   expect(row(project, 1)).toBe('HELPO');
-  expect(row(project, 2)).toBe('HELXO'); // what the P was over, still on after it
+  expect(row(project, 2)).toBe('HELLO'); // the X went with its frame: the P is over frame 0's L now
   project.undo();
   fresh();
   expect([0, 1, 2, 3].map((i) => row(project, i))).toEqual(['HELLO', 'HELXO', 'HELPO', 'HELXO']);
