@@ -11,9 +11,11 @@ vi.mock('@/document/editCells', { spy: true });
 
 const COLS = 20, ROWS = 20, RED = { fg: '#ff0000', bg: '#ff0000' };
 
-async function mounted() {
+async function mounted(file = null) {
   const { project, workspace } = await createTestApp();
-  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: COLS, rows: ROWS });
+  if (file) await project.loadProject(new File([await (await fetch(file)).arrayBuffer()], 'x.phosphor'));
+  else await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: COLS, rows: ROWS });
+  const [cols, rows] = [project.cols, project.rows];
   Object.assign(workspace, { editorTab: 'input', ansiOverlay: 100 });
   const host = document.createElement('div');
   host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
@@ -27,7 +29,7 @@ async function mounted() {
   // A grid pixel's color as the view shows it.
   const seen = (x, y) => {
     const { width, height } = canvas, c = canvas.getContext('2d');
-    return [...c.getImageData(Math.floor((x + 0.5) * (width / COLS)), Math.floor((y + 0.5) * (height / ROWS)), 1, 1).data].slice(0, 3);
+    return [...c.getImageData(Math.floor((x + 0.5) * (width / cols)), Math.floor((y + 0.5) * (height / rows)), 1, 1).data].slice(0, 3);
   };
   return { project, workspace, seen, done: () => { app.unmount(); host.remove(); } };
 }
@@ -59,5 +61,46 @@ test('All cells finds no layer\'s cells; turned off, it shows the layers\' cells
   await settle(project);
   expect(vi.mocked(parseKey).mock.calls.length).toBe(parsed + project.editCells.size);
   expect(seen(6, 6)).toEqual([255, 0, 0]);
+  done();
+});
+
+// The report (projects/layer-blending-ascii.phosphor): in Color ASCII the paint in the PIXEL view didn't blend. Colors
+// only had made each blank cell it painted a ▄ with no colors (a paint block), which only ANSI shows, but the overlay
+// drew it as the layer's own cell: the ASCII character the paint converts to, on black, over the paint's own pixels.
+test('in the ASCII styles a paint block isn\'t drawn over its paint; a typed cell still is', async () => {
+  const { project, workspace, seen, done } = await mounted();
+  workspace.pickLayer(project.addLayer('cells', 'base'));
+  project.renderStyle = 'colorAscii';
+  project.writeEditCells([{ col: 8, row: 4, attrs: { char: '▄' } }]); // as Colors only leaves a blank cell it paints
+  project.paintEditPixels([{ x: 8, y: 8, r: 255, g: 255, b: 255, alpha: 0.5 }]); // a soft stroke's edge, over the picture
+  project.commitEdit();
+  project.typeAt(12, 4, 'A', RED);
+  project.commitEdit();
+  await settle(project);
+  expect(project.editCellAt(8, 4)).toEqual({ char: '▄' });
+  const typed = seen(12, 8);
+  workspace.ansiOverlay = 0;
+  await settle(project);
+  const [paint, under] = [seen(8, 8), seen(8, 9)];
+  workspace.ansiOverlay = 100;
+  await settle(project);
+  expect([seen(8, 8), seen(8, 9)]).toEqual([paint, under]); // the paint's own pixels, as with no overlay
+  expect(typed).toEqual(seen(12, 8));
+  workspace.ansiOverlay = 0;
+  await settle(project);
+  expect(seen(12, 8)).not.toEqual(typed); // the typed cell is the overlay's
+  done();
+});
+
+test('the report: the strokes under and over the shape show blended with the Overlay on, as with it off', async () => {
+  const { project, workspace, seen, done } = await mounted('/tests/fixtures/projects/layer-blending-ascii.phosphor');
+  const spots = [[40, 22], [40, 23], [50, 14], [60, 12]]; // the stroke under the shape's edge, and beside it
+  const at = () => spots.map(([x, y]) => seen(x, y));
+  workspace.ansiOverlay = 0;
+  await settle(project);
+  const paint = at();
+  workspace.ansiOverlay = 100;
+  await settle(project);
+  expect(at()).toEqual(paint);
   done();
 });
