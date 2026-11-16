@@ -70,7 +70,7 @@ intact and saved as a .phosphor.
 - Up to 7 people drawing (her and six artists), where the room's own limit stops Make artist.
 - Her art is her partner's: `photo.jpg` at 80 by 27 lines (2,160 cells), `scene.ans` at 80 by 6, a blank canvas at 80
   by 25 (2,000 cells), or `long.ans` at 300 by 1,600 (480,000 cells, the biggest art a room is sent).
-- A room holds the base, at most one vector layer and one layer above them: 3 layers at most, no frames.
+- A room holds any stack of layers (up to the most a drawing holds), no frames.
 - Chat: a few hundred messages in a session (the host keeps the last 5,000), messages of up to 300 characters.
 - A session of an hour or more, with `qa.memory` at the start and end of each section.
 
@@ -90,13 +90,12 @@ intact and saved as a .phosphor.
   | `sam` | a blank canvas | [A banner from text](sam.md#a-banner-from-text) (steps 2 to 7) | [Widths](sam.md#widths) (steps 8 to 10) |
   | `walt` | `long.ans`, Edit artwork | [The long file](walt.md#the-long-file) (steps 2 to 7) | [SAUCE at its limits](walt.md#sauce-at-its-limits) (steps 12 to 15) |
 
-  A room refuses some of what those steps do, and says so: no adding, deleting, duplicating or moving layers while
-  live (only Add vector layer when there's none, added directly on the base), no layer's own character settings (the
-  Characters section is always Base's), no Animate ("Shared rooms do not support animation yet."), and while anyone else
-  is drawing no Open, new image, blank canvas, restoring a version or Clear ("Unavailable while co-artists are
-  drawing."). A partner's step that runs into one of these is tried once; a refusal the docs promise
-  ([Drawing together](../../social.md#drawing-together)) isn't a finding, and the step goes on without it (Dex's step
-  11 moves its block on Layer 1, Priya's step 2 skips step 1's Animate). A refusal with no reason given is.
+  A room refuses some of what those steps do, and says so: no Animate ("Shared rooms do not support animation yet."),
+  no adding a picture to a layer ("Adding a picture to a layer isn't supported in shared rooms yet."), and while anyone
+  else is drawing no Open, new image, blank canvas, restoring a version or Clear ("Unavailable while co-artists are
+  drawing."). Layers are not refused: the stack is hers and the artists' to change. A partner's step that runs into one
+  of these is tried once; a refusal the docs promise ([Drawing together](../../social.md#drawing-together)) isn't a
+  finding, and the step goes on without it (Priya's step 2 skips step 1's Animate). A refusal with no reason given is.
 - `language`: on a French run, the `social` helpers that press buttons by their English names (`goLive`,
   `joinFromCard`, `followLink`, `openStats`, `fromMenu`, `invitedPage`, `artistPage`) fail. Make the other people's
   moves by the names their pages show; `fakeServer`, `fakeRoom`, `member`, `watcherPage` and the store reads work in any
@@ -146,13 +145,13 @@ script. Every section ends with Free time.
 - Rated: yes, wants a key to reach the side panel's Social tab (Tab-walking is the path today)
 
 ### 3. Check my art fits a room
-- Does: presses Add layer to add a second cells layer, opens Start a room and looks at Go live; closes it, undoes the
-  layer; then turns Animate on, adds a frame, and looks again; undoes the frame and turns Animate off.
-- Expects: with a layer too many, Go live is off and says "Shared rooms currently support at most Base, one vector layer, and one drawing layer, all sharing the same character settings. Merge or delete extra layers to start a room."; with two frames it
-  says "Shared rooms do not support animation yet."; once the art fits again, Go live is on
-  ([Drawing together](../../social.md#drawing-together)).
-- Probes: `undo-redo`: undo the layer, redo it, undo it again, and check Go live follows; `out-of-order`: give Layer 1
-  character settings of its own and check Go live says why, then undo them.
+- Does: presses Add layer to add a second cells layer and Add vector layer, opens Start a room and looks at Go live;
+  closes it; then turns Animate on, adds a frame, and looks again; undoes the frame and turns Animate off.
+- Expects: with any stack of layers, Go live is on, with nothing said about layers; with two frames it is off and
+  says "Shared rooms do not support animation yet."; once the art has one frame again, Go live is on
+  ([Starting a room](../../social.md#starting-a-room)).
+- Probes: `undo-redo`: undo the layers, redo them, and check Go live stays on; `out-of-order`: give Layer 1 character
+  settings of its own and check Go live is still on, and that the settings come to everyone once she's live.
 - Rated: yes, wants a key for Start a room
 
 **Free time:** she'd open Edit account and look at her name's cell and glyph, try Start a room with nothing open
@@ -241,7 +240,7 @@ and drag the panel wider.
   ([Starting a room](../../social.md#starting-a-room)). For `walt`, watchers receive the 480,000-cell art: time how
   long until a watcher shows it, and take `qa.memory` on her page and theirs.
 - Probes: `interrupt`: scroll and zoom while a watcher tracks, and check the watcher's box follows; `out-of-order`:
-  where a partner step adds or moves a layer or opens a file, check the room's refusal says why.
+  where a partner step adds a picture to a layer or opens a file, check the room's refusal says why.
 - Rated: no (the partner's work; their steps are rated in their own runs)
 
 ### 11. Choose what the lobby card shows
@@ -288,12 +287,30 @@ change, ask in the chat whether people can see her box, and have a watcher Exit 
   block moved or pasted reaches the others when it's placed, or after 2 seconds with no further move; `tin_owl` draws
   in her font and size; on `tin_owl`'s page the settings, sliders, SAUCE fields (Date, Font name and Letter spacing
   too, their counts still showing), the base layer, Bake, Flatten and
-  Merge down are off and say "Only the room's host can change this."
+  Merge down are off and say "Only the room's host can change this."; the Characters section shows the selected layer's
+  settings, off, and says "Only the host changes character settings in a room."
   ([Drawing together](../../social.md#drawing-together), [Rooms](../../vector.md#rooms)).
 - Probes: `again`: draw on the very cells `tin_owl` just drew, and check the last edit wins for both; `interrupt`: for
   `priya`, have `tin_owl` step into an art layer while she tries to (Edit art is off and its title says who is
   drawing); for the others, switch tabs while `tin_owl` draws.
 - Rated: no (the partner's work; their steps are rated in their own runs)
+
+**Layers together** (part of this step, once the partner's sections are done, with the room still drawing; rated with it, so no rating of its own):
+- Does: `tin_owl` presses Add layer in her LAYERS and draws on the new layer while Juno draws on Layer 1; Juno adds a
+  layer too, renames `tin_owl`'s layer (Rename in its ⋯), and moves it down with Move down; then she tries Delete on
+  that layer while `tin_owl` still has it selected, and again once `tin_owl` has selected Layer 1 (Cancel at the
+  question once, then Delete layer); `tin_owl` tries the base layer's row and Duplicate on a layer of Juno's.
+- Expects: each layer, its name and its place reach every page, and each person's strokes stay on their own layer; the
+  new layer is selected for whoever added it, and no one else's selection moves; the first Delete is refused with
+  "tin_owl is working on this layer."; the second asks "Delete <the layer's new name> for everyone?" with
+  "Everyone in the room loses this layer and what's on it. This can't be undone.", Cancel keeps the layer, Delete layer
+  takes it and what was on it from every page; none of it is an undo step (her Cmd+Z takes back her last stroke, not a
+  layer change); the base's row is off for `tin_owl`; the duplicate arrives on every page above the layer it copies; the
+  hidden eye on one page hides it on that page only; every page ends showing the same art
+  ([Layers](../../layers.md#the-layers-list), [Drawing together](../../social.md#drawing-together)).
+- Probes: `again`: press Delete on the same layer twice quickly and check one question; `back-out`: Escape at the
+  question keeps the layer; `out-of-order`: have `tin_owl` draw a stroke on the layer as Juno deletes it, and check
+  nothing is said and every page agrees.
 
 ### 15. Undo only what I drew
 - Does: draws a stroke; has `tin_owl` draw over half of it; presses Cmd+Z; then Shift+Cmd+Z; then has `tin_owl` press
