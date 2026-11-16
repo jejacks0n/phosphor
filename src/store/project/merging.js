@@ -71,14 +71,19 @@ const withData = ({ layers, data }, id, own) => ({ layers, data: new Map(data).s
 // stack when that's nothing and the whole layer merged (rect: a selection's didn't).
 const leftOn = (project, stack, id, rect, own) => (!rect && !own.editCells.size && !own.hasPaint ? without(stack, id) : withData(stack, id, own));
 
+// A merge's before or after (mergeStep's) put in place, with nothing drawn again.
+function putState(project, state) {
+  if ('base' in state) project.baseLayer.restore(state.base);
+  if (state.baseRecords) project.setBaseRecords(state.baseRecords);
+  if (state.shapes) project.shapes = state.shapes;
+  putStack(project, state.stack);
+}
+
 // A merge's step, already worked out: before and after hold what it changes (base, a snapshot; baseRecords; shapes; stack,
 // stackState's), put in place now. One whole-layer step that can change the stack (layerOp).
 function mergeStep(project, before, after, bytes) {
   const apply = (state) => {
-    if ('base' in state) project.baseLayer.restore(state.base);
-    if (state.baseRecords) project.setBaseRecords(state.baseRecords);
-    if (state.shapes) project.shapes = state.shapes;
-    putStack(project, state.stack);
+    putState(project, state);
     project.render();
   };
   apply(after);
@@ -150,15 +155,34 @@ function mergedPaint(project, into, erased, from, rect) {
   return paint;
 }
 const halvesOf = (col, row) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }];
+const sameLook = (a, b) => a?.char === b?.char && a?.fg?.hex === b?.fg?.hex && a?.bg?.hex === b?.bg?.hex;
 
-// The cells at indexes as they show up to the upper layer with the id (the renderer's upper walk stopped there), each
-// written as an exact cell: the character that shows there, and the stored colors that show as it (storedLookAt up to the
-// layer, or a shown color itself where it shows as itself, as at neutral sliders). A later palette or character setting
-// doesn't convert it again (frozen). Maps 'col,row' to the cell.
-function frozenCells(project, id, indexes) {
+// The cells at indexes (row * cols + col) a merge into the cells layer with the id under would change, with its after
+// (state, mergeStep's) put in place: each worked out as it shows up to that layer (through the pipeline for the lower
+// group's, its paint composited again first) and set against was, levelCells' up to the merged layer before. What goes in
+// as paint converts there once, which can show otherwise than converted under it and again over it (a palette's snap,
+// Best match, By shape's finer samples, a layer's own settings): those cells are frozen instead. The state stays put, as
+// the merge's step puts its after next.
+function unlike(project, state, under, indexes, was) {
+  if (!indexes.length) return [];
+  putState(project, state);
+  if (project.lowerGroup.cells === under) {
+    const { cols, rows } = project;
+    project.composite();
+    project.recompose(indexes.flatMap((i) => halvesOf(i % cols, Math.floor(i / cols))).filter(({ y }) => y < rows));
+  }
+  const now = levelCells(project, under, indexes);
+  return indexes.filter((i) => !sameLook(now[i], was[i]));
+}
+
+// The cells at indexes as they show up to the upper layer with the id (level: levelCells', the renderer's upper walk
+// stopped there), each written as an exact cell: the character that shows there, and the stored colors that show as it
+// (storedLookAt up to the layer, or a shown color itself where it shows as itself, as at neutral sliders). A later palette
+// or character setting doesn't convert it again (frozen). Maps 'col,row' to the cell.
+function frozenCells(project, id, indexes, level = indexes.length && levelCells(project, id, indexes)) {
   const frozen = new Map();
   if (!indexes.length) return frozen;
-  const level = levelCells(project, id, indexes), params = project.processParams, cols = project.cols;
+  const params = project.processParams, cols = project.cols;
   const as = (stored, target) => (target && project.renderer.effective(target, params).hex.toLowerCase() === target.toLowerCase() ? target : stored);
   const batch = { indexes, levels: new Map() };
   for (const i of indexes) {
@@ -170,9 +194,9 @@ function frozenCells(project, id, indexes) {
 
 // Merge down of the cells layer with the id into the cells layer under it (inside rect, or all of it), so that what shows
 // doesn't change: each entry completed against the look under it (completeAt) and written there, where that layer's paint
-// is erased, and its paint drawn over the paint under it. Where its paint lies over a cell it has no entry for, that cell
-// goes in frozen as it shows (frozenCells) and the paint there with it: laid over again, paint on paint over a converted
-// cell would convert once instead of twice, and show otherwise. Entries past the grid go in as they are.
+// is erased, and its paint drawn over the paint under it, so it stays paint (Blur and the rest work on it as on any). A
+// cell its paint lies over that it has no entry for, where that paint on paint shows otherwise (unlike), goes in frozen as
+// it showed (frozenCells) instead, the paint there erased. Entries past the grid go in as they are.
 function onCells(project, id, under, rect) {
   const cells = project.cellsOf(id), paint = project.paintOf(id), rows = charRowsOf(project.rows), { cols } = project;
   const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
@@ -194,40 +218,64 @@ function onCells(project, id, under, rect) {
     }
   }
   if (rect && !erased.length && !painted.length) return false; // nothing drawn inside: no empty undo step
-  const frozen = frozenCells(project, id, painted);
-  const from = paint && paintFrom(paint, paint.snapshot());
-  for (const [key, cell] of frozen) {
-    const { col, row } = parseKey(key);
-    next.set(key, cell);
-    erased.push(...halvesOf(col, row));
-    from.erase(halvesOf(col, row));
-  }
+  const was = painted.length && levelCells(project, id, painted), frozen = frozenCells(project, id, painted, was);
   const before = { stack: stackState(project) };
-  const into = mergedPaint(project, project.paintOf(under), erased, from, rect);
+  const into = mergedPaint(project, project.paintOf(under), erased, paint && paintFrom(paint, paint.snapshot()), rect);
   const left = rect && paint ? paintFrom(paint, paint.snapshot()) : null;
   left?.clearCells(rect);
-  let stack = withData(before.stack, under, { editCells: next, paintLayer: into, hasPaint: into.hasPaint });
-  stack = rect ? withData(stack, id, { editCells: kept, paintLayer: left, hasPaint: !!left?.hasPaint }) : without(stack, id);
-  return mergeStep(project, before, { stack }, bytesHeld(into, next, left, kept));
+  const after = () => {
+    const stack = withData(before.stack, under, { editCells: next, paintLayer: into, hasPaint: into.hasPaint });
+    return { stack: rect ? withData(stack, id, { editCells: kept, paintLayer: left, hasPaint: !!left?.hasPaint }) : without(stack, id) };
+  };
+  freezeUnlike(project, after(), under, painted, was, frozen, next, into);
+  return mergeStep(project, before, after(), bytesHeld(into, next, left, kept));
 }
 
-// Merge down of the vector layer with the id into the cells layer under it: every cell its shapes reach is written there
-// frozen, exactly as it shows (frozenCells), where that layer's paint is erased, and the layer and its shapes go (its guides,
-// which draw nothing, stay, and the layer with them).
-function freezeLayer(project, id, under) {
+// The cells at indexes that a merge's after (state) would show otherwise (unlike), and those at always, written into next
+// frozen (frozen's), the paint into has there erased.
+function freezeUnlike(project, state, under, indexes, was, frozen, next, into, always = []) {
+  const { cols } = project;
+  for (const i of [...always, ...unlike(project, state, under, indexes, was)]) {
+    const col = i % cols, row = (i - col) / cols, key = cellKey(col, row);
+    next.set(key, frozen.get(key));
+    into.erase(halvesOf(col, row));
+  }
+  into.recheckPaint();
+}
+
+// Merge down of the vector layer with the id into the cells layer under it: its shapes go in as paint (their stored
+// colors at grid resolution, as the Eyedropper reads them) drawn over that layer's paint, so Blur and the rest work on them
+// as on any paint, and the layer and its shapes go (its guides, which draw nothing, stay, and the layer with them). A cell
+// an art layer gives a character, or where the paint shows otherwise than the shapes did (unlike), is written there frozen
+// instead, exactly as it showed (frozenCells), where that layer's paint is erased.
+function shapesOnCells(project, id, under) {
   project.syncShapeLayers();
   const shapes = project._upperShapes.get(id), { cols } = project, reached = [];
   if (shapes?.drawsShapes) {
     for (let row = 0, rows = charRowsOf(project.rows); row < rows; row++) for (let col = 0; col < cols; col++) if (shapes.charAt(col, row) !== undefined) reached.push(row * cols + col);
   }
-  const frozen = frozenCells(project, id, reached), erased = [...frozen.keys()].flatMap((key) => { const { col, row } = parseKey(key); return halvesOf(col, row); });
+  const was = reached.length && levelCells(project, id, reached), frozen = frozenCells(project, id, reached, was);
+  const from = paintFrom(project.paintLayer), art = [], painted = [], pixels = [];
+  for (const i of reached) {
+    const col = i % cols, row = (i - col) / cols;
+    if (shapes.charAt(col, row) !== null) { art.push(i); continue; } // a character paint can't hold
+    painted.push(i);
+    for (const { x, y } of halvesOf(col, row)) {
+      const p = y < project.rows && project.renderer.upperStoredAt(shapes, x, y);
+      if (p) pixels.push({ x, y, ...p });
+    }
+  }
+  from.put(pixels);
   const before = { stack: stackState(project), shapes: project.shapes };
-  const into = mergedPaint(project, project.paintOf(under), erased, null, null), next = new Map([...project.cellsOf(under), ...frozen]);
+  const into = mergedPaint(project, project.paintOf(under), [], from, null), next = new Map(project.cellsOf(under));
   const kept = new Map([...project.shapes].filter((entry) => !onLayerId(id)(entry) || entry[1].guide)); // guides draw nothing: they stay
-  const merged = withData(before.stack, under, { editCells: next, paintLayer: into, hasPaint: into.hasPaint });
   const guided = [...kept].some(onLayerId(id));
-  const after = { stack: guided ? merged : without(merged, id), shapes: kept };
-  return mergeStep(project, before, after, bytesHeld(into, next));
+  const after = () => {
+    const merged = withData(before.stack, under, { editCells: next, paintLayer: into, hasPaint: into.hasPaint });
+    return { stack: guided ? merged : without(merged, id), shapes: kept };
+  };
+  freezeUnlike(project, after(), under, painted, was, frozen, next, into, art);
+  return mergeStep(project, before, after(), bytesHeld(into, next));
 }
 
 export const mergingActions = {
@@ -609,9 +657,10 @@ export const mergingActions = {
   // layer with its own character settings onto the bottom (its shapes can't be pressed in as they show), and part of a
   // vector layer onto a cells layer above the bottom. Into the bottom: a cells layer exactly as it shows (onBase; the
   // toolbar asks first, Into the image the other way), a vector layer's shapes pressed into the base's pixels (pressLayer).
-  // Into another cells layer: each entry completed against what shows under it and written there (onCells), and every
-  // cell a vector layer's shapes reach frozen there exactly as it shows (freezeLayer). One whole-layer step; the merged
-  // layer leaves the stack when it's left with nothing on it.
+  // Into another cells layer: each entry completed against what shows under it and written there, its paint staying paint
+  // (onCells), and a vector layer's shapes going in as paint (shapesOnCells); a cell that paint would show otherwise is
+  // frozen there exactly as it showed. One whole-layer step; the merged layer leaves the stack when it's left with nothing
+  // on it.
   mergeDown(id, rect = null, keys = null) {
     const at = this.layers.findIndex((layer) => layer.id === id), layer = this.layers[at], below = this.layers[at - 1];
     if (!(at > 0) || !this.image || this.hasFrames) return false;
@@ -626,7 +675,7 @@ export const mergingActions = {
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     this.commitPending();
-    if (layer.kind === 'vector') return below.id === 'base' ? pressLayer(this, id, rect, keys) : freezeLayer(this, id, below.id);
+    if (layer.kind === 'vector') return below.id === 'base' ? pressLayer(this, id, rect, keys) : shapesOnCells(this, id, below.id);
     return below.id === 'base' ? onBase(this, id, rect) : onCells(this, id, below.id, rect);
   },
 };

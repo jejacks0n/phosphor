@@ -568,14 +568,10 @@ for (const into of ['a cells layer above the bottom', 'the bottom']) {
       expect(page.project.layers.map(({ id }) => id)).toEqual(stack);
     }
     await sameShapes(room, ann, bo);
-    if (cells !== 'base') {
-      expect(room.project.cellsOf(cells).size).toBeGreaterThan(10);   // the shape's cells, frozen on the layer
-      for (const page of [ann, bo]) expect(page.project.cellsOf(cells).size).toBe(room.project.cellsOf(cells).size);
-    } else {
-      const base = (page) => page.project.baseLayer.pixelAt(6, 7);   // inside the rectangle
-      expect(base(room)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
-      for (const page of [ann, bo]) await expect.poll(() => base(page), PATIENT).toEqual(base(room));
-    }
+    // Inside the rectangle: the layer's paint (where it converts as the shape did), or the base's pixels.
+    const at = (page) => (cells === 'base' ? page.project.baseLayer : page.project.paintOf(cells))?.pixelAt(6, 7);
+    expect(at(room)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+    for (const page of [ann, bo]) await expect.poll(() => at(page), PATIENT).toEqual(at(room));
   });
 }
 

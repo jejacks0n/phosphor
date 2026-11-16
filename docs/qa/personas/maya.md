@@ -337,9 +337,11 @@ held.
 ## Merging and baking
 
 ### 26. Merge my two paint layers
-- Does: picks Layer 2, which sits directly above Layer 1, and presses Merge down (top toolbar), into Layer 1.
+- Does: picks Layer 2, which sits directly above Layer 1, and presses Merge down (top toolbar), into Layer 1. Then,
+  with Layer 1 picked, strokes Blur along the edge of the paint that came down.
 - Expects: no question: its cells and paint are written onto the layer under it, it leaves the stack, and nothing on
-  the canvas changes; one undo brings it back, picked; redo merges it again.
+  the canvas changes; one undo brings it back, picked; redo merges it again. The paint stays paint, so Blur fades its
+  edge into the clear beside it, as on any paint.
 - Probes: `undo-redo`: undo, redo, undo again, then paint and check redo is off; `out-of-order`: hide the layer under it
   and press Merge down ("Make the layer visible to merge it").
 - Rated: yes, wants Cmd+E
