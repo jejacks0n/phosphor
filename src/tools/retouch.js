@@ -1,7 +1,7 @@
 // Retouch: Blur, Dodge and Burn, soft round brushes that change colors instead of laying a color of their own
 // (lib/Retouch.js). On the base, the colors that show: in the pixel view each grid pixel's, written back as its pixels; in
 // the ANSI view each cell's, written back with its character, which stays (a cell that shows no character keeps showing
-// none). On a drawing layer, only what the layer itself holds: its paint, where a clear pixel counts as clear (Blur fades
+// none), but in Monochrome ASCII, which shows only characters, as in the pixel view. On a drawing layer, only what the layer itself holds: its paint, where a clear pixel counts as clear (Blur fades
 // an edge out into the clear beside it), and in the ANSI view its own cells' colors too, characters kept; where the layer
 // has nothing, nothing changes, whatever shows under it. A stroke works out each spot's new color from what was there
 // before it, and goes as far toward it as its Strength at the brush's falloff, so going over a spot again in the same
@@ -201,8 +201,8 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
       if (!onBottom(project)) { // a drawing layer: only what it holds
         if (view === 'output') retouchOwnCells(project, pixels, changed, owned, strength);
         else retouchOwnPaint(project, pixels, owned, strength);
-      } else if (view === 'output') retouchCells(project, pixels, changed, strength);
-      else retouchPixels(project, pixels, changed, strength);
+      } else if (view === 'output' && project.renderStyle !== 'ascii') retouchCells(project, pixels, changed, strength);
+      else retouchPixels(project, pixels, changed, strength); // Monochrome ASCII shows a cell's brightness as its character alone: its pixels change, and the characters follow
       workspace.strokeEnd = to;
     },
     end({ project }) {

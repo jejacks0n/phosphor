@@ -1,7 +1,7 @@
 // Retouch: Blur, Dodge and Burn change the colors that show. In the pixel view each grid pixel's, as paint; in the ANSI
 // view each cell's, keeping its character. A stroke is one undo step and stays inside a selection.
 import { test, expect } from 'vitest';
-import { createTestApp, settle } from '../support/app.js';
+import { createTestApp, loadImage, settle } from '../support/app.js';
 import { blur, dodge, burn } from '@/tools/retouch';
 import { getTool } from '@/tools';
 import { hex2rgb } from '@/lib/ColorUtils';
@@ -184,4 +184,21 @@ test('pixel view: on a drawing layer Dodge lightens its paint and keeps its alph
   stroke(dodge, ctx, { x: 10, y: 10 });
   expect(paintAt(project, 10, 10)[0]).toBeGreaterThan(180);
   expect(alphaAt(project, 10, 10)).toBeCloseTo(before, 2);
+});
+
+// The report: in Monochrome ASCII, Retouch in the ANSI view did nothing that showed. It changed the base's cells' colors and
+// kept their characters, and Monochrome ASCII shows every cell white on black: a cell's brightness is its character.
+test('ANSI view, Monochrome ASCII: on the base its pixels change, as in the PIXEL view, and the characters follow', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  project.renderStyle = 'ascii';
+  await settle(project);
+  workspace.pickLayer('base');
+  Object.assign(workspace, { retouchSize: 8, retouchStrength: 100, retouchHardness: 100, retouchRange: 'midtones' });
+  const row = () => project.cells.slice(5 * 20, 5 * 20 + 20).map((cell) => cell?.char).join('');
+  const before = row();
+  stroke(dodge, { project, workspace, view: 'output' }, { x: 6, y: 10.5 });
+  await settle(project);
+  expect(row()).not.toBe(before);
+  expect(project.baseRecords.pins.size).toBe(0); // nothing pinned: the characters stay the converter's
 });
