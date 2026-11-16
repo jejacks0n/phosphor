@@ -405,7 +405,7 @@ export const documentActions = {
     // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too). On desktop the note goes
     // before the system's save box comes up.
     const blob = await busyWhile(saving(`${filename}${PROJECT_EXTENSION}`), async () => {
-      const parts = await this.projectParts();
+      const parts = await this.projectParts({ forFile: true });
       return gzipped(await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } }));
     });
     if (DESKTOP) {
@@ -438,9 +438,10 @@ export const documentActions = {
   // is the one kept aside (enterArt).
   // Layers that fit the old form (legacySlots) are written in it: its cells layer's cells and paint as the edit layer's,
   // whatever its id, its frame keys bare and its shapes naming no layer. Any other stack is written in the stack form,
-  // every cells layer with its own cells and paint; always so in a room.
-  async projectParts() {
-    const slots = this._sharing ? null : legacySlots(this.layers, this.baseChars); // a room's keeps every layer's id: the old form renames them
+  // every cells layer with its own cells and paint; always so in a room (what it's sent, and autosave, which a host's reload
+  // reads back), as the old form renames them, but for a file (forFile: Save), which older copies of Phosphor can then open.
+  async projectParts({ forFile = false } = {}) {
+    const slots = this._sharing && !forFile ? null : legacySlots(this.layers, this.baseChars);
     const drawingOf = (id) => (id === this.editId ? this._artInside ?? this : this._layerData.get(id)) ?? NO_DRAWING;
     const above = this.layers.filter((layer) => layer.kind === 'cells' && layer.id !== 'base');
     const drawings = slots ? [drawingOf(slots.cells)] : above.map(({ id }) => drawingOf(id));
