@@ -60,8 +60,8 @@ export const cellsFit = ({ editCells, layerParts }) => [editCells, ...Array.from
 // layers a change in a room may name (wire.js readChange).
 export const stackKinds = (layers) => new Map(layers.slice(1).map(({ id, kind }) => [id, kind]));
 // The stack as a layers message says it (wire.js): each layer's id, kind, name and character settings (none for the bottom,
-// whose are the document's). Hidden stays each person's own.
-export const stackOnWire = (project) => project.layers.map(({ id, kind, name, chars }) => ({ id, kind, name, chars }));
+// whose are the document's, and none for a layer whose own were undone back to none). Hidden stays each person's own.
+export const stackOnWire = (project) => project.layers.map(({ id, kind, name, chars }) => ({ id, kind, name, ...(chars && { chars }) }));
 // runs (changes.js) written on the paint of the layer each names, nothing refreshed: the layer in use's is the drawing's
 // (kept aside inside an art layer). A cells layer with no paint yet gets one; a layer that isn't there gets nothing.
 export function writeLayerRuns(project, runs) {

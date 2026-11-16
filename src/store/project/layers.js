@@ -127,8 +127,15 @@ function shareCopy(store, { layer, below, data, shapes }) {
   store.sendNumbered(numbered);
 }
 
-// Ready for a step that changes the stack: out of an art layer, the layers made, what's open committed.
-function ready(store) {
+// Whether a change to the stack that the host is making for an artist (takeLayerOp) leaves what the host is doing alone:
+// its open stroke and the art layer it's inside go on, unless the change is to the layer the host draws on or is inside
+// (id), whose open stroke is then numbered before the stack goes out.
+const asideFromHost = (store, id = null) => !!store._sharing?.asker && id !== store.editId && id !== store.drawsOn;
+
+// Ready for a step that changes the stack (id: the layer it changes): out of an art layer, the layers made, what's open
+// committed. The layers made only, for an artist's that's aside from the host's (asideFromHost).
+function ready(store, id) {
+  if (asideFromHost(store, id)) return store.ensureLayer();
   if (store._artInside) store.leaveArt();
   store.ensureLayer();
   store.commitPending();
@@ -212,7 +219,7 @@ export const layerActions = {
   // (it's asked of the host).
   addLayer(kind, above) {
     if (this.layers.length >= MOST_LAYERS || asked(this, { kind: 'add', layer: kind, above })) return null;
-    this.commitPending();
+    if (!asideFromHost(this)) this.commitPending();
     let id;
     redrawn(this, () => { ({ id } = putLayer(this, kind, above, this.charsOf(useWorkspaceStore().pickedLayer))); }); // the groups can change: a layer put under a painted one leaves that one's paint over it
     if (this._sharing) {
@@ -229,7 +236,7 @@ export const layerActions = {
   // picks the one that was under it (followLayerPick).
   deleteLayer(id) {
     if (!(this.layers.findIndex((layer) => layer.id === id) > 0) || asked(this, { kind: 'delete', id })) return false;
-    ready(this);
+    ready(this, id);
     if (this._sharing) {
       takeOut(this, id);
       this.render();
@@ -249,7 +256,7 @@ export const layerActions = {
   duplicateLayer(id) {
     const layer = this.layerById(id);
     if (!layer || id === 'base' || this.layers.length >= MOST_LAYERS || asked(this, { kind: 'duplicate', id })) return null;
-    ready(this);
+    ready(this, id);
     const to = newLayerId(this.layers, layer.kind), { before, after, keyMap } = this.layerFrames(id, to);
     const everyShape = new Set([...this.shapes.keys(), ...this.frames.flatMap((frame) => [...frame.changes.keys()].filter(isShapeKey))]);
     if (keyMap && everyShape.size + keyMap.size > MOST_SHAPES) {
@@ -322,7 +329,7 @@ export const layerActions = {
   moveLayer(id, toIndex) {
     const from = this.layers.findIndex((layer) => layer.id === id);
     if (from < 1 || toIndex < 1 || toIndex >= this.layers.length || toIndex === from || asked(this, { kind: 'move', id, to: toIndex })) return false;
-    this.commitPending();
+    if (!asideFromHost(this, id)) this.commitPending();
     const ids = (layers) => layers.map((layer) => layer.id), before = ids(this.layers), moved = [...this.layers];
     moved.splice(toIndex, 0, ...moved.splice(from, 1));
     const after = ids(moved);
