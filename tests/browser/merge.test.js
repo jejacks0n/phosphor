@@ -10,6 +10,8 @@ import { toastMessage } from '@/composables/useToast.js';
 import { createApp } from 'vue';
 import EditToolbar from '@/components/EditToolbar.vue';
 import { i18n } from '@/i18n';
+import { blur } from '@/tools/retouch';
+import { getTool } from '@/tools';
 
 const maxDiff = (a, b, only) => (only ?? a.map((_, i) => i)).reduce((m, i) => Math.max(m, ...a[i].map((v, k) => Math.abs(v - b[i][k]))), 0);
 const drawnCells = (project, rect) => {
@@ -297,7 +299,10 @@ describe('down between layers', () => {
     }
   });
 
-  test('Merge down of a vector layer into a cells layer freezes what shows', async () => {
+  // A vector layer's shapes go into a cells layer as paint where that shows the same. With its own character settings
+  // they're converted with its characters, which the cells layer's paint wouldn't be: there they freeze, exactly as they
+  // showed, and a later palette doesn't convert them again.
+  test('Merge down of a vector layer into a cells layer puts its shapes in as paint, and freezes what paint would show otherwise', async () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
     project.charChoice = 'best'; // its characters follow the colors: a palette change picks others
@@ -312,14 +317,29 @@ describe('down between layers', () => {
     project.render();
     await settle(project);
     expect(ids(project)).toEqual(['base', 'edit', vector]);
-    const before = cellsKey(project);
+    let before = cellsKey(project);
     expect(project.mergeDown(vector)).toBe(true);
     await settle(project);
     expect(ids(project)).toEqual(['base', 'edit']);
     expect(project.shapes.size).toBe(0);
     expect(cellsKey(project)).toEqual(before);
+    expect(project.paintOf('edit').pixelAt(4, 10)).toEqual({ r: 255, g: 0, b: 0, a: 1 }); // the red rectangle, as paint
+    project.undo();
+    await settle(project);
+    expect(project.shapes.size).toBe(2);
+    expect(cellsKey(project)).toEqual(before);
+
+    project.setLayerChars(vector, { chars: '#' });
+    project.commitLayerChars();
+    project.render();
+    await settle(project);
+    before = cellsKey(project);
+    expect(project.mergeDown(vector)).toBe(true);
+    await settle(project);
+    expect(cellsKey(project)).toEqual(before);
     const reached = [...project.cellsOf('edit').keys()].map((key) => key.split(',').map(Number)).map(([c, r]) => r * project.cols + c);
     expect(reached.length).toBeGreaterThan(20);
+    expect(project.paintOf('edit').pixelAt(4, 10)).toBeNull(); // frozen: its paint went with it
     const chars = reached.map((i) => project.cells[i].char);
     project.quantize = 'cga';
     project.render();
@@ -373,6 +393,65 @@ describe('down between layers', () => {
     expect(project.mergeDown('base')).toBe(false);
     expect(ids(project).length).toBe(3);
   });
+  // The report: a shape merged down into a drawing layer couldn't be blurred. It went in as frozen cells, and Blur on a
+  // drawing layer changes its paint (in the ANSI view its cells too, but only with its other cells, so a one-color shape
+  // stayed one color). It goes in as paint now, where that shows the same, and so does a drawing layer's paint.
+  const blurredEdge = async (project, workspace, view) => {
+    workspace.editorTab = view;
+    workspace.pickLayer('edit');
+    Object.assign(workspace, { retouchSize: 6, retouchStrength: 100, retouchHardness: 100 });
+    const ctx = { project, workspace, view }, at = { x: 10, y: 10.5 };
+    getTool('blur').begin(ctx, at, {});
+    blur.move(ctx, at, at);
+    blur.end(ctx);
+    await settle(project);
+    return project.paintLayer.pixelAt(9, 10)?.a ?? 0;
+  };
+  for (const view of ['input', 'output']) {
+    test(`a shape merged down into a drawing layer goes in as paint, nothing on the canvas changing, and Blur fades its edge (${view === 'input' ? 'PIXEL' : 'ANSI'} view)`, async () => {
+      const { project, workspace } = await createTestApp();
+      await project.setBlankCanvas({ cols: 20, rows: 20 });
+      await settle(project);
+      const vector = project.addLayer('vector', 'edit');
+      workspace.pickLayer(vector);
+      project.addShape(rectShape(0, 0, 10, 20, { fill: '#ff0000' }));
+      project.commitEdit();
+      await settle(project);
+      const before = cellsKey(project);
+      expect(project.mergeDown(vector)).toBe(true);
+      await settle(project);
+      expect(ids(project)).toEqual(['base', 'edit']);
+      expect(cellsKey(project)).toEqual(before);
+      expect(project.cellsOf('edit').size).toBe(0);
+      expect(project.paintOf('edit').pixelAt(5, 5)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+      const alpha = await blurredEdge(project, workspace, view);
+      expect(alpha).toBeGreaterThan(0.5);
+      expect(alpha).toBeLessThan(1);
+    });
+
+    test(`a drawing layer's paint merged down into another stays paint, and Blur fades its edge (${view === 'input' ? 'PIXEL' : 'ANSI'} view)`, async () => {
+      const { project, workspace } = await createTestApp();
+      await project.setBlankCanvas({ cols: 20, rows: 20 });
+      await settle(project);
+      const top = project.addLayer('cells', 'edit');
+      workspace.pickLayer(top);
+      const red = [];
+      for (let y = 0; y < 20; y++) for (let x = 0; x < 10; x++) red.push({ x, y, alpha: 1 });
+      project.paintStroke(red, '#ff0000');
+      project.commitEdit();
+      await settle(project);
+      const before = cellsKey(project);
+      expect(project.mergeDown(top)).toBe(true);
+      await settle(project);
+      expect(cellsKey(project)).toEqual(before);
+      expect(project.cellsOf('edit').size).toBe(0);
+      expect(project.paintOf('edit').pixelAt(5, 5)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+      const alpha = await blurredEdge(project, workspace, view);
+      expect(alpha).toBeGreaterThan(0.5);
+      expect(alpha).toBeLessThan(1);
+    });
+  }
+
   test('Merge down of paint over cells keeps what shows under Color ASCII with the sliders off their defaults', async () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
