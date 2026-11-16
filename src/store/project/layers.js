@@ -271,7 +271,7 @@ export const layerActions = {
     if (!layer || id === 'base' || this.layers.length >= MOST_LAYERS || asked(this, { kind: 'duplicate', id })) return null;
     ready(this, id);
     this.flushHeard(); // what's numbered on it and waiting for its frame is on it, and on the copy (ready doesn't for an artist's ask)
-    const to = newLayerId(this.layers, layer.kind, this._sharing?.removed), { before, after, keyMap } = this.layerFrames(id, to);
+    const to = newLayerId(this.layers, layer.kind), { before, after, keyMap } = this.layerFrames(id, to);
     const everyShape = new Set([...this.shapes.keys(), ...this.frames.flatMap((frame) => [...frame.changes.keys()].filter(isShapeKey))]);
     if (keyMap && everyShape.size + keyMap.size > MOST_SHAPES) {
       toast(t('vector.tooMany', { count: MOST_SHAPES }));
