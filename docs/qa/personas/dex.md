@@ -94,9 +94,9 @@ script. Every section ends with Free time.
 - Rated: no (a check, outside the app)
 
 ### 3. Make room: 80 by 200
-- Does: sets Dimensions' second number to 400 (200 lines).
+- Does: turns Lock aspect ratio off, then sets Dimensions' second number to 400 (200 lines).
 - Expects: with art on the edit layer, it's a canvas resize: lines are added at the bottom, his art stays where it is,
-  and the aspect lock is off; it lands within the `setting` budget.
+  and the width stays 80 (with the lock on, it would follow); it lands within the `setting` budget.
 - Probes: `extremes`: type 99999, then 0, and see where it stops (80 columns reach 5,000 lines); `undo-redo`: undo after the
   resize and check it takes back his last edit and leaves the size (a resize isn't an undo step, and mustn't forget
   the steps before it), then redo it; `interrupt`: shrink to 3 lines, then back to 200, and check the cut-off lines came back.

@@ -325,3 +325,25 @@ test('a layer added or moved leaves the grid rescaling and the lock on; drawing 
   expect(project.editId).toBe(id);
   expect(project.resizesCanvas).toBe(true);
 });
+
+// The lock works after drawing too: it keeps the grid's shape while the resize adds or trims cells, and what's drawn
+// stays where it is. A grid that's left the lock's shape meanwhile (animation on, an older file) is kept as it is.
+test('after drawing, the lock keeps the grid\'s shape while the canvas grows, and what\'s drawn stays put', async () => {
+  const { project } = await grid(40, 20); // unlocked, off the picture's shape
+  project.setAspectLock(true);
+  project.beginEdit();
+  project.writeEditCells([{ col: 3, row: 2, attrs: { char: 'A', fg: '#ffffff', bg: null } }]);
+  project.commitEdit();
+  expect(project.resizesCanvas).toBe(true);
+  project.updateCols(80);
+  await settle(project);
+  expect([project.cols, project.rows]).toEqual([80, 40]);
+  expect(project.cells[cellIndex(3, 2, project.cols)].char).toBe('A');
+  project.aspectLock = false;
+  project.updateRows(30);
+  await settle(project);
+  project.aspectLock = true; // as an older file has it: on, but the grid isn't at its shape
+  project.updateCols(160);
+  await settle(project);
+  expect([project.cols, project.rows]).toEqual([160, 60]);
+});
