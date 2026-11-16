@@ -445,8 +445,9 @@ export const documentActions = {
     const above = this.layers.filter((layer) => layer.kind === 'cells' && layer.id !== 'base');
     const drawings = slots ? [drawingOf(slots.cells)] : above.map(({ id }) => drawingOf(id));
     const scaled = drawings.find((drawing) => drawing.paintLayer) ?? NO_DRAWING;
+    // paintScale: with no layer painted yet, the grid's, or the artist's would be the default.
     const parts = {
-      settings: { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, key === 'hasPaint' ? drawings.some((drawing) => drawing.hasPaint) : this[key]])), paintScale: scaled.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null },
+      settings: { ...Object.fromEntries([...SAVED_KEYS, 'hasPaint', 'fit', 'imageIsWorkingCopy'].map(key => [key, key === 'hasPaint' ? drawings.some((drawing) => drawing.hasPaint) : this[key]])), paintScale: scaled.paintLayer?.scale ?? this.paintLayer?.scale ?? null, baseScale: this.baseLayer?.scale ?? null },
       baseRecords: this.baseRecords,
       shapes: slots ? new Map([...this.shapes].map(([key, shape]) => [key, withoutLayer(shape)])) : this.shapes,
     };
