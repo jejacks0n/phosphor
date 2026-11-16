@@ -440,7 +440,9 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
 
 - **Colors only** (the default): They paint over each cell's own character, which shows through. A cell that shows no
   character yet (a blank canvas's black, or the lines added when it grows) becomes a ▄ as they paint it, so a click
-  there paints a plain half-block, not the character the converter put there unseen. Painting in the PIXEL view does
+  there paints a plain half-block, not the character the converter put there unseen. So does a cell of the layer's
+  own that shows no character (a space, or a character in its background's color, as Merge down writes along a
+  shape's edge): its colors become paint first, so the half you don't paint looks as it did. Painting in the PIXEL view does
   the same, so the view you paint in never changes what you get; only **Half-block** makes every cell a ▄. In Color
   ASCII and Monochrome ASCII there are no half-blocks: the paint becomes your ASCII characters, whichever style you
   painted it in, and its half-blocks show again when you switch back to ANSI.
