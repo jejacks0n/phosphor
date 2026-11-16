@@ -11,7 +11,8 @@
  *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox' }
  *   begin(ctx, pos, event) -> false when there's no stroke to continue; move(ctx, from, to); end(ctx).
  *              A paint tool's (not VECTOR's, nor Select's and the Wand's, which select what shows) is refused while the
- *              picked layer is hidden (refusesHidden).
+ *              picked layer is hidden (refusesHidden), and with no cells layer to draw on (an artist's, in a room with
+ *              only the base: refusedNoCells), each saying why.
  *   cancel?(ctx)  end without applying (a second finger landed: a pinch); without it, end(ctx)
  *   keydown?(ctx, event) -> true when the tool took the key (useKeyboardShortcuts asks it first)
  * ctx = { project, workspace, view, unit (CSS px per grid pixel, { x, y }) }; positions are fractional grid pixels.
@@ -35,6 +36,7 @@ import vnode from './vnode';
 import vshape from './vshape';
 import pen from './pen';
 import { toast } from '@/composables/useToast';
+import { refusedNoCells } from '@/store/project/shared.js';
 import { shortcut } from '@/lib/keyLabels';
 import { groupOf } from './groups';
 import { t } from '@/i18n/index.js';
@@ -53,7 +55,7 @@ export function refusesHidden({ project, workspace, view }) {
 for (const tool of TOOLS) {
   if (tool.kind !== 'paint' || tool.views.includes('vector') || tool.section === 'select') continue;
   const begin = tool.begin;
-  tool.begin = (ctx, ...rest) => !refusesHidden(ctx) && begin.call(tool, ctx, ...rest);
+  tool.begin = (ctx, ...rest) => !refusesHidden(ctx) && !refusedNoCells(ctx.project) && begin.call(tool, ctx, ...rest);
 }
 
 const BY_ID = new Map(TOOLS.map(tool => [tool.id, tool]));

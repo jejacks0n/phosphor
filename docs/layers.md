@@ -51,7 +51,8 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
   the strokes you made on it before can then be undone too.
 - **The Base**: The base has no ⋯ menu. It can't be deleted, duplicated or moved.
 - **No Drawing Layer Left**: A new drawing starts this way, and deleting the last drawing layer comes back to it:
-  the base is selected, so the tools draw there. With a
+  the base is selected, so the tools draw there. In a room an artist can't draw on the base, so a stroke or typing
+  says "Add a drawing layer before drawing." until a drawing layer is added. With a
   vector layer selected and no drawing layer to draw on, a paste or pasted text says "Add a drawing layer before
   drawing." A layer you add then starts empty.
 - **Renaming**: Click the selected row's name, double-click any name, or press **F2** while its row has keyboard

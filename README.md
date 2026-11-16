@@ -14,7 +14,7 @@ Or open a `.ans`, `.utf8ans`, `.asc` or `.txt` file. Its art goes on the base la
 
 Colors can stay full 24-bit, snap to the CGA or VGA palettes, be picked from the picture (a color count you choose), or come from a list you type, with dithering (Floyd–Steinberg or ordered) to smooth gradients between a palette's colors. Characters come from a set you pick or type yourself; the ANSI style picks them at random from a seed, or the ones that best match the picture or its shapes, and the two ASCII styles (color and monochrome) pick them by brightness or by shape.
 
-Then you draw. There are two layers: the base layer is the converted picture, and the edit layer is everything you add on top with the pencil, brush, paint bucket, shapes and eraser, or by typing. Merge down puts your drawing into the base; merge up lifts the base into editable cells. Select lets you cut, copy, paste and drag blocks around, and pastes plain text from other apps.
+Then you draw. A new drawing has one layer, the base: the converted picture, which the pencil, brush, paint bucket, shapes and eraser, and typing, draw on. Add a layer when you want your drawing kept apart from it, on top. Merge down puts your drawing into the base; merge up lifts the base into editable cells. Select lets you cut, copy, paste and drag blocks around, and pastes plain text from other apps.
 
 Typing works the way a terminal does. Chinese, Japanese and Korean characters and most emoji take two columns. F1 to F12 type from a palette of twelve characters (box drawing, blocks, shades, arrows and more), and you can switch palettes or make your own. Anything CP437 doesn't have still saves in `.utf8ans`.
 
