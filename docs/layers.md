@@ -5,9 +5,10 @@ Everything in Phosphor is organized into layers:
 2. **Vector Layers**: Layers holding editable [vector shapes](vector.md), curves, and [art layers](vector.md#art-layers).
 3. **Drawing Layers**: Layers where you draw, paint, and type text cells.
 
-Layers stack from bottom to top. Upper layers cover the layers beneath them. A new drawing has the base and one
-drawing layer on it, the **edit layer** ("Layer 1"). Your first shape brings a vector layer ("Vector 1"), placed directly
-on the base. You can add more of either kind and put them in any order. Knowing which is which explains what the
+Layers stack from bottom to top. Upper layers cover the layers beneath them. A new drawing (a blank canvas or an
+opened picture) has only the base, selected, and the tools draw on it ([Drawing on the Base](#drawing-on-the-base)).
+A drawing layer comes when you add one: the first is the **edit layer** ("Layer 1"). Your first shape brings a vector
+layer ("Vector 1"), placed directly on the base. You can add more of either kind and put them in any order. Knowing which is which explains what the
 tools, Merge down and the Eraser do.
 
 ---
@@ -49,7 +50,8 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
   Undoing a delete brings the layer back with its name and everything on every frame, selected again if it was, and
   the strokes you made on it before can then be undone too.
 - **The Base**: The base has no ⋯ menu. It can't be deleted, duplicated or moved.
-- **No Drawing Layer Left**: Delete the last drawing layer and the base is selected, so the tools draw there. With a
+- **No Drawing Layer Left**: A new drawing starts this way, and deleting the last drawing layer comes back to it:
+  the base is selected, so the tools draw there. With a
   vector layer selected and no drawing layer to draw on, a paste or pasted text says "Add a drawing layer before
   drawing." A layer you add then starts empty.
 - **Renaming**: Click the selected row's name, double-click any name, or press **F2** while its row has keyboard
@@ -167,8 +169,8 @@ The settings on the left come in sections, each following a layer:
     says so for a layer above the base.
   - A drawing layer has no Dither: paint is never dithered.
   - Every layer converts something (the base its picture, a drawing layer its paint, a vector layer its shapes), so
-    the section is always there. A new drawing selects Layer 1: to change how the picture becomes characters, select
-    the base.
+    the section is always there. A new drawing selects the base, so the picture's own settings show first: select a
+    drawing layer to change how its paint becomes characters.
 - **Picture · Base**: **Smoothing**. Only with the base selected, and only with a picture: a blank canvas has none.
 - **Image filters**: **Blur**, **Simplify**, **Sharpen**, **Edges** (with its color) and **Edge thickness**, which
   work on the picture itself. Only with the base selected, and only while the picture is the one you opened: after a
@@ -328,7 +330,7 @@ file**, and Phosphor asks what you'd like to do with the art, then opens it as a
 
 - **Edit artwork**: The art goes on a drawing layer, over a plain black base, as if you'd drawn it. Every cell is a
   drawing-layer cell, so the Eraser, **Clear layer** and everything else that works on what you've drawn works on it.
-- **Draw on top**: The art is the base layer, and what you draw goes on top of it.
+- **Draw on top**: The art is the base layer, and what you draw goes on top of it, on an empty Layer 1, selected.
 - **Cancel**: Opens nothing.
 
 Either way:
@@ -408,7 +410,8 @@ In an animation, or in a room, a dropped picture isn't added: it opens in place 
 
 ## The Edit Layer
 
-The edit layer ("Layer 1"), like every drawing layer, holds what you draw: typed text (Edit Mode), cells drawn with the
+The edit layer ("Layer 1", the first drawing layer you add, or the one an ANSI file opens with), like every drawing
+layer, holds what you draw: typed text (Edit Mode), cells drawn with the
 Pencil's lines and Shapes, pasted cells, and paint (Pencil, Brush, Paint Bucket). A drawing layer covers the layers
 under it, and the last edit to a cell wins.
 

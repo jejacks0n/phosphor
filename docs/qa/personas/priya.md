@@ -83,7 +83,7 @@ script. Every section ends with Free time.
 
 ### 1. Start a canvas and turn Animate on
 - Does: on the start screen, presses "Start with a blank canvas", then turns on the Animate switch on the tab bar.
-- Expects: an 80 by 25 black canvas opens on ANSI with Layer 1 picked; with Animate on, the bar shows under the canvas
+- Expects: an 80 by 25 black canvas opens on ANSI with only Base in LAYERS, picked; with Animate on, the bar shows under the canvas
   with play and pause, the steps, "1 / 1", the scrubber, Add frame, Frame actions, frames per second (8), Hold and
   Ghost ([The bar](../../animation.md#the-bar)); the shortcut list (`?`) gains its Animation keys (L, `,` and `.`, N).
 - Probes: `again`: turn Animate off and on twice and check nothing is lost; `out-of-order`: on the start screen, before
@@ -94,7 +94,7 @@ script. Every section ends with Free time.
 ### 2. Draw the ball
 - Does: presses Add vector layer in LAYERS, picks the Shape tool (U), chooses Ellipse, drags a circle near the top with
   Shift held, then gives it a Fill from the color box (Alt+F).
-- Expects: "Vector 1" is added above Layer 1 and picked, the tabs become VECTOR and SAUCE, and the Keys button (a
+- Expects: "Vector 1" is added directly above Base and picked, the tabs become VECTOR and SAUCE, and the Keys button (a
   diamond) appears on the bar; the circle is selected, and the color goes to it as one undo step
   ([Shape](../../vector.md#shape-u), [Fill and Stroke](../../vector.md#fill-and-stroke)).
 - Probes: `again`: draw a second circle right away, then delete it with Delete; `undo-redo`: undo the fill and the
@@ -126,7 +126,8 @@ script. Every section ends with Free time.
 - Rated: yes, wants P (the points themselves aren't rated)
 
 ### 5. Make three art layers
-- Does: picks Layer 1, types a short word in Edit Mode, presses Escape, picks Select (M), selects the word and presses
+- Does: picks Base and presses Add layer ("Layer 1" lands directly on the base, under Vector 1, picked), types a
+  short word in Edit Mode, presses Escape, picks Select (M), selects the word and presses
   Make art layer; does the same twice more with a block of drawn cells (the Pencil) and a line of paint (the Brush).
 - Expects: each piece moves into an art layer on Vector 1 (directly above Layer 1), the canvas looks the same, the
   view goes to VECTOR with it selected; it's one undo step each; with nothing drawn in the selection nothing happens

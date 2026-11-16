@@ -125,8 +125,9 @@ script. Every section ends with Free time.
 ### 1. Open tonight's art
 - Does: takes `qa.memory`; on the start screen opens what her partner opens (the table in Traits): the photo with
   Choose a file, an .ans with Choose a file and Edit artwork, or "Start with a blank canvas".
-- Expects: it opens as it does for that persona (their step 1); LAYERS shows Layer 1 over Base; the side panel shows
-  LAYERS and Social (marked Beta). Opening takes under the `file` budget.
+- Expects: it opens as it does for that persona (their step 1); LAYERS shows only Base (the photo, the blank
+  canvas) or Layer 1 over Base (the .ans); with only Base she presses Add layer, since an artist can't draw on the
+  base, and Layer 1 lands over Base, picked; the side panel shows LAYERS and Social (marked Beta). Opening takes under the `file` budget.
 - Probes: `back-out`: for an .ans, press Cancel at the question first; `again`: open the same art a second time, and
   check New project asks about unsaved changes only if there are any.
 - Rated: yes, wants Cmd+O (Cmd+N for a blank canvas)
