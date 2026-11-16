@@ -3,7 +3,7 @@
 // the other side of a room is a real Watch (or a raw peer) made here, over real WebRTC without STUN,
 // its signals relayed through the fake socket. Watchers' passes are signed by a test key, served as
 // the server's.
-import { test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { test, expect, vi, beforeEach, afterEach, onTestFinished } from 'vitest';
 import { nextTick } from 'vue';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore, hasReportedRoom } from '@/store/RoomStore';
@@ -19,6 +19,7 @@ import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { DISPLAY_FONT, setDisplayFont } from '@/lib/displayFonts';
 import { MOST_KEPT, signedText } from '@/social/chat';
+import { TONE_GAP_MS, tone } from '@/social/tone';
 import { fontFor } from '@/social/wire';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
@@ -1035,6 +1036,78 @@ test('A chat entry whose id is already shown is ignored', async () => {
   room._watch.onChat({ type: 'chat', ...said(1) });
   room._watch.onChat({ type: 'chat', ...said(2) });
   expect(room.chat.map((m) => m.id)).toEqual([1, 2].map(chatId));
+});
+
+// The tone for a new message (RoomStore.chime), its sound stubbed. A clock that moves only when a test moves it.
+function toneHeard() {
+  const clock = { now: 50_000 };
+  vi.spyOn(Date, 'now').mockImplementation(() => clock.now);
+  return { play: vi.spyOn(tone, 'play').mockImplementation(() => {}), clock };
+}
+
+test('Someone else\'s message as it comes plays the tone; the kept log, yours, comings and goings and a blocked sender don\'t', async () => {
+  await watching();
+  const { play, clock } = toneHeard();
+  room._watch.onChat({ type: 'history', messages: [said(1), said(2)], more: false, earlier: false });
+  room._watch.onChat({ type: 'chat', ...said(3, { sub: 'u_1', name: 'ansi-fan' }) });
+  room._watch.onChat({ type: 'presence', entry: { pass: 'p', id: chatId(4), ts: 1004, presence: 'joined' }, claims: said(4).claims });
+  social.blocked = [{ id: 'u_5', username: 'pest', since: 0 }];
+  room._watch.onChat({ type: 'chat', ...said(5, { sub: 'u_5', name: 'pest' }) });
+  expect(play).not.toHaveBeenCalled();
+  room._watch.onChat({ type: 'chat', ...said(6) });
+  expect(play).toHaveBeenCalledTimes(1);
+  clock.now += TONE_GAP_MS;
+  room._watch.onChat({ type: 'chat', ...said(6) });   // shown already: nothing new
+  expect(play).toHaveBeenCalledTimes(1);
+});
+
+test('A burst of messages is one tone, and the next after the gap is another', async () => {
+  await watching();
+  const { play, clock } = toneHeard();
+  for (const n of [1, 2, 3]) room._watch.onChat({ type: 'chat', ...said(n) });
+  clock.now += TONE_GAP_MS - 1;
+  room._watch.onChat({ type: 'chat', ...said(4) });
+  expect(play).toHaveBeenCalledTimes(1);
+  clock.now += 1;
+  room._watch.onChat({ type: 'chat', ...said(5) });
+  expect(play).toHaveBeenCalledTimes(2);
+});
+
+test('No tone while focus is in the chat panel, nor with the tone turned off', async () => {
+  await watching();
+  const { play, clock } = toneHeard();
+  const chat = document.createElement('aside');
+  chat.className = 'chat';
+  chat.innerHTML = '<textarea></textarea>';
+  document.body.append(chat);
+  onTestFinished(() => chat.remove());
+  chat.querySelector('textarea').focus();
+  await expect.poll(() => document.hasFocus()).toBe(true);
+  room._watch.onChat({ type: 'chat', ...said(1) });
+  expect(play).not.toHaveBeenCalled();
+  chat.querySelector('textarea').blur();
+  const workspace = useWorkspaceStore();
+  workspace.chatTone = false;
+  onTestFinished(() => { workspace.chatTone = true; });
+  room._watch.onChat({ type: 'chat', ...said(2) });
+  expect(play).not.toHaveBeenCalled();
+  workspace.chatTone = true;
+  clock.now += TONE_GAP_MS;
+  room._watch.onChat({ type: 'chat', ...said(3) });
+  expect(play).toHaveBeenCalledTimes(1);
+});
+
+test('A host hears a watcher\'s message, not its own nor a muted sender\'s', async () => {
+  const socket = await goLive();
+  await watcherOn(socket);
+  const { play, clock } = toneHeard();
+  const pass = await passFor('u_p9', 'tin-owl');
+  room._host.onChat({ type: 'chat', entry: { pass, id: 'm1', ts: 101_000, text: 'hi' }, muted: true });
+  expect(await room.say('hello')).toBe(true);
+  expect(play).not.toHaveBeenCalled();
+  clock.now += TONE_GAP_MS;
+  room._host.onChat({ type: 'chat', entry: { pass, id: 'm2', ts: 102_000, text: 'there' } });
+  expect(play).toHaveBeenCalledTimes(1);
 });
 
 test('A watcher\'s deleted marks the message deleted and drops its text; an unknown id is ignored', async () => {

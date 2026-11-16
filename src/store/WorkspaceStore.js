@@ -192,6 +192,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorSides: 5,          // a polygon's sides, 3 to 12
     sidePanelWidth: useLocalStorage('phosphor.sidePanelWidth', 280, { serializer: StorageSerializers.number, listenToStorageChanges: false }), // the side panel's (SidePanel) width in px, as dragged: each tab its own, the last kept for the next
     sidePanelFolded: useLocalStorage('phosphor.sidePanelFolded', false, { listenToStorageChanges: false }), // the side panel folded away (it starts open; a fold is kept in the browser)
+    chatTone: useLocalStorage('phosphor.chatTone', true), // a tone for someone else's chat message while you aren't in the chat (RoomStore.chime)
     sidePanelUnread: 0,      // what was said while the chat wasn't showing (SidePanel counts it)
     sidePanelTab: 'layers',  // the side panel's tab: 'layers' | 'social' (Social out of a room, CHAT in one)
     keysOpen: useLocalStorage('phosphor.keysOpen', true), // the Keys panel (KeysPanel) open, or folded away

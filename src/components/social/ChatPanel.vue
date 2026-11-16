@@ -5,6 +5,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import UserName from './UserName.vue';
 import { clock } from '@/social/chat';
 import { toast } from '@/composables/useToast';
@@ -16,7 +17,8 @@ import ReportDialog from './ReportDialog.vue';
 import ModalDialog from '@/components/ModalDialog.vue';
 
 // The chat of the room you host or watch, the side panel's CHAT tab (SidePanel, every tab, while you're in
-// one): the room's name (and, watching, who hosts it, and Exit; hosting, the room menu and who is here;
+// one): the room's name (and, watching, who hosts it, and Exit; hosting, the room menu and who is here; for both, the
+// speaker that turns the tone for new messages on and off (RoomStore.chime);
 // a watcher's list of who to follow is there once an artist is), the host's welcome pinned, the messages, and the box to write in. The panel
 // counts what came while it isn't shown. The list keeps its place: a new message scrolls it only
 // when it was already at the bottom, and earlier ones (asked for on reaching the top) go in above
@@ -28,7 +30,7 @@ import ModalDialog from '@/components/ModalDialog.vue';
 // watcher has Block beside it (the host's is in "N here"), which asks first and blocks them from the watcher's own rooms;
 // the desktop has no Block (nor Report: there's no one to report to). A desktop host sees the joins waiting for a yes.
 // An invitation to draw waits here, blocking nothing, until it's answered, withdrawn or they leave.
-const room = useRoomStore(), social = useSocialStore(), drawing = useDrawingStore(), project = useProjectStore();
+const room = useRoomStore(), social = useSocialStore(), drawing = useDrawingStore(), project = useProjectStore(), workspace = useWorkspaceStore();
 const { t } = useI18n();
 
 const props = defineProps({ shown: { type: Boolean, default: true } });   // in view: not folded away or behind LAYERS
@@ -141,6 +143,13 @@ function askIfAtTop() {
           </p>
         </div>
         <div class="tools">
+          <button class="tone" :aria-label="t('social.chat.toneAria')" :title="t('social.chat.toneAria')" :aria-pressed="workspace.chatTone" @click="workspace.chatTone = !workspace.chatTone">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"/>
+              <path v-if="workspace.chatTone" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424"/>
+              <path v-else d="M17.25 9.75 21.75 14.25M21.75 9.75l-4.5 4.5"/>
+            </svg>
+          </button>
           <RoomMenu v-if="room.role === 'host'" />
           <template v-else-if="room.role === 'watch'">
             <div class="leave">
@@ -284,6 +293,22 @@ div.leave {   /* Exit, and Report room under it */
   flex-direction: column;
   align-items: flex-end;
   gap: 2px;
+}
+button.tone {   /* as tall as Exit and the host's ⋯ */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+button.tone[aria-pressed="false"] {
+  color: var(--text-faint);
+}
+button.tone:hover {
+  color: var(--text);
 }
 button.exit {   /* as the host's ⋯ in its place */
   height: 26px;

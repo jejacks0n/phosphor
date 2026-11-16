@@ -1453,6 +1453,7 @@
       "panelAria": "Chat",
       "hostedBy": "hosted by {host}",
       "exit": "Exit",
+      "toneAria": "Sound for new messages",
       "reportRoomAria": "Report room",
       "report": "Report",
       "pinnedFromHost": "Pinned note",

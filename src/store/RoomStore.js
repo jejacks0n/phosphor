@@ -24,6 +24,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { desktop } from '@/social/desktop';
+import { TONE_GAP_MS, chatFocused, tone } from '@/social/tone';
 import { t } from '@/i18n/index.js';
 
 // The desktop build has no server: a room is served by the room service on the host's computer (desktop/roomService.js),
@@ -247,6 +248,7 @@ const noRoom = () => ({
   reported: [],        // the subs you reported in this room (Report is gone for them there, rejoining too), and ROOM_REPORT once you reported the room
   _allowance: null,    // the composer's Allowance (markRaw)
   _asking: false,      // a watcher's earlier() is waiting for its answer
+  _toneAt: -Infinity,  // when the last chat tone played (chime)
   _askTimer: null,     // gives up on that answer after ASK_FOR_MS
   _stops: [],          // what close() undoes: the host's watches, timers and pagehide listener
   _tookOver: false,    // named host by the room: the hosting that follows starts the Host off
@@ -1298,6 +1300,7 @@ export const useRoomStore = defineStore('room', {
           if (this.role === 'watch' && row.presence === 'left' && row.sub === this.following && row.sub !== this.room?.hostSub) this.follow(this.room?.hostSub);   // the artist followed has gone
           this.keep([...this.chat, event.muted ? { ...row, muted: true } : row]);
           if (this.role === 'host') this.counted(event);
+          if (event.type === 'chat' && !event.muted) this.chime(row);
         }
       } else if (event.type === 'history') {
         const rows = event.messages.map((m) => (m.deleted ? deletedRow(m) : this.chatRow(m.entry, m.claims)))
@@ -1329,6 +1332,16 @@ export const useRoomStore = defineStore('room', {
         }
         this.stopAsking();
       }
+    },
+
+    // Someone else's message as it comes (never a history's), while you aren't in the chat: a tone, unless it's
+    // turned off or they're blocked. One in TONE_GAP_MS at most, so a burst is one tone.
+    chime(row) {
+      const now = Date.now();
+      if (row.mine || !useWorkspaceStore().chatTone || useSocialStore().blocked.some((b) => b.id === row.sub)) return;
+      if (chatFocused() || now - this._toneAt < TONE_GAP_MS) return;
+      this._toneAt = now;
+      tone.play();
     },
 
     // A host's session counts a message, or a person coming or going (the entry's pass has who).
