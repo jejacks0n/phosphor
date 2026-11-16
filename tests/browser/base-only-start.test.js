@@ -1,6 +1,9 @@
 // A new drawing (a blank canvas, an opened picture or SVG) starts with only the base, picked, and the tools draw on the
 // base until a layer is added. Opened ANSI files and projects that have a drawing layer keep it.
 import { test, expect } from 'vitest';
+import { toastMessage } from '@/composables/useToast';
+import { getTool } from '@/tools';
+import { typeAtCursor, typeText } from '@/composables/useTextTool.js';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile';
@@ -102,6 +105,40 @@ test('a picture with nothing drawn on it still rescales', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { withLayer: false });
   expect(project.resizesCanvas).toBe(false);
+});
+
+// The base is the same on every frame, so what's drawn on it doesn't animate: the first stroke on it in a movie says so,
+// once a drawing, and a stroke on a still or on a layer doesn't.
+test('drawing on the base with more than one frame says once that the base is on every frame', async () => {
+  const app = await blank();
+  const ctx = { project: app.project, workspace: app.workspace, view: 'output' }, stroke = () => {
+    toastMessage.value = null;
+    getTool('pencil').begin(ctx, { x: 3.5, y: 5 }, {});
+    getTool('pencil').end(ctx);
+    return toastMessage.value;
+  };
+  expect(stroke()).toBe(null);   // a still
+  app.project.addFrame('blank');
+  const said = 'The base is the same on every frame. Add a layer to animate what you draw.';
+  expect(stroke()).toBe(said);
+  expect(stroke()).toBe(null);   // once
+  app.workspace.pickLayer(app.project.addLayer('cells', 'base'));
+  expect(stroke()).toBe(null);
+  await app.project.setBlankCanvas({ cols: 20, rows: 20 });
+  app.project.addFrame('blank');
+  expect(stroke()).toBe(said);   // a new drawing says it again
+});
+
+test.each([
+  ['a key', (project, workspace) => typeAtCursor(project, workspace, 'a')],
+  ['a paste', (project, workspace) => typeText(project, workspace, 'ab')],
+])('typing on the base with more than one frame says the base is on every frame: %s', async (_, type) => {
+  const { project, workspace } = await blank();
+  project.addFrame('blank');
+  workspace.textCursor = { col: 1, row: 1 };
+  toastMessage.value = null;
+  type(project, workspace);
+  expect(toastMessage.value).toBe('The base is the same on every frame. Add a layer to animate what you draw.');
 });
 
 test('a base-only drawing saves and opens as base only', async () => {

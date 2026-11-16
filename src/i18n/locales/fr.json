@@ -793,6 +793,7 @@
   },
   "animation": {
     "toolbarAria": "Animation",
+    "baseEveryFrame": "La base est la même sur chaque image. Ajoutez un calque pour animer ce que vous dessinez.",
     "kinds": {
       "blank": "Vierge — calque de dessin vide (affiche le fantôme)",
       "duplicate": "Dupliquer — copier tous les dessins de l'image actuelle",
