@@ -1077,6 +1077,8 @@
       "shareNow": "Share now",
       "shareReady": "Your file is ready. Tap Share now to send it.",
       "shareFailed": "Could not share the file.",
+      "includeSauce": "Include SAUCE (title, author, font…)",
+      "noSauceNote": "Without SAUCE, other viewers don't know the art's title, author, width or font, and some show bright backgrounds blinking.",
       "formats": {
         "ans": {
           "name": "ANS"

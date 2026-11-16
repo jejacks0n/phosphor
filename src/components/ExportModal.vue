@@ -51,12 +51,14 @@ watch(selectedId, (id) => {
   });
 }, { immediate: true });
 
-// Every ANSI format writes a SAUCE record, in CP437 whatever the art is in: the characters of it CP437 lacks, as the
-// export writes it, and the fields each is in.
+// Every ANSI format writes a SAUCE record unless Include SAUCE is unchecked (checked each time the dialog opens), in
+// CP437 whatever the art is in: the characters of it CP437 lacks, as the export writes it, and the fields each is in.
 const SAUCE_FORMATS = ['ans', 'utf8ans', 'ansimation', 'utf8ansimation'];
-const sauceReplacements = computed(() => (SAUCE_FORMATS.includes(selectedId.value) ? sauceUnmappable(project.sauceFields()) : []));
+const carriesSauce = computed(() => SAUCE_FORMATS.includes(selectedId.value));
+const withSauce = ref(true);
+const sauceReplacements = computed(() => (carriesSauce.value && withSauce.value ? sauceUnmappable(project.sauceFields()) : []));
 // Comments past 255 record lines, as the SAUCE tab counts them: from which line of the field they won't be in the file.
-const commentsCut = computed(() => (SAUCE_FORMATS.includes(selectedId.value) && project.sauceUserComments ? project.sauceCommentFit().cut : null));
+const commentsCut = computed(() => (carriesSauce.value && withSauce.value && project.sauceUserComments ? project.sauceCommentFit().cut : null));
 const quoted = (text) => ([...text].length > 30 ? `${[...text].slice(0, 30).join('')}…` : text);
 
 function pickFormat(id) {
@@ -94,8 +96,8 @@ async function doExport(share = false) {
   let file = null;
   const deliver = share ? (blob, filename) => { file = new File([blob], filename, { type: blob.type }); } : undefined;
   try {
-    if (selected.value.animated) await project.exportAnimation(selectedId.value, { filename: stem.value, progress: (part) => { progress.value = part; }, deliver });
-    else await project.exportFile(selectedId.value, { filename: stem.value, smooth: smooth.value, deliver });
+    if (selected.value.animated) await project.exportAnimation(selectedId.value, { filename: stem.value, progress: (part) => { progress.value = part; }, deliver, sauce: withSauce.value });
+    else await project.exportFile(selectedId.value, { filename: stem.value, smooth: smooth.value, deliver, sauce: withSauce.value });
     if (!share) return emit('close');
   } catch (error) {
     console.warn('Could not export', error);
@@ -187,8 +189,12 @@ function cancel() {
           <p class="note">{{ t('save.keepHint') }}</p>
         </template>
 
-        <!-- Every ANSI format: what of SAUCE won't reach the file as it is on the SAUCE tab -->
-        <div v-if="commentsCut || sauceReplacements.length" class="option-label">{{ t('tabs.sauce') }}</div>
+        <!-- Every ANSI format: with or without SAUCE, and what of it won't reach the file as it is on the SAUCE tab -->
+        <template v-if="carriesSauce">
+          <div class="option-label">{{ t('tabs.sauce') }}</div>
+          <label class="sauce-choice"><input v-model="withSauce" type="checkbox"> {{ t('export.modal.includeSauce') }}</label>
+          <p v-if="!withSauce" class="note">{{ t('export.modal.noSauceNote') }}</p>
+        </template>
         <p v-if="commentsCut" class="note warn">{{ t('save.sauceCommentsOver', { most: MOST_COMMENT_LINES, line: commentsCut.line, text: quoted(commentsCut.text) }) }}</p>
         <template v-if="sauceReplacements.length">
           <p class="note">{{ t('save.sauceNote', { count: sauceReplacements.length }, sauceReplacements.length) }}</p>
@@ -349,6 +355,14 @@ button.smooth-btn:hover { border-color: var(--accent); }
 button.smooth-btn.selected { border-color: var(--accent); }
 button.smooth-btn b { font-size: 13px; }
 button.smooth-btn span { font-size: 12px; color: var(--text-muted); }
+
+label.sauce-choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
 
 p.note {
   font-size: 12px;

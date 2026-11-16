@@ -1077,6 +1077,8 @@
       "shareNow": "Partager maintenant",
       "shareReady": "Votre fichier est prêt. Touchez Partager maintenant pour l'envoyer.",
       "shareFailed": "Impossible de partager le fichier.",
+      "includeSauce": "Inclure le SAUCE (titre, auteur, police…)",
+      "noSauceNote": "Sans SAUCE, les autres visionneuses ne connaissent ni le titre, ni l'auteur, ni la largeur, ni la police, et certaines font clignoter les fonds clairs.",
       "formats": {
         "ans": {
           "name": "ANS"

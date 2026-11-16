@@ -184,6 +184,32 @@ test('an opened file exports with its SAUCE record as it went in, and Phosphor a
   }
 });
 
+test('exported without SAUCE, a still or an animated ANSI file ends with its art: no record, no EOF byte', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 4, rows: 4 });
+  project.sauceTitle = 'Boat';
+  const download = async (run) => {
+    const spy = vi.spyOn(URL, 'createObjectURL');
+    await run();
+    const blob = spy.mock.calls.at(-1)[0];
+    spy.mockRestore();
+    return new Uint8Array(await blob.arrayBuffer());
+  };
+  const files = [
+    await download(() => project.exportFile('ans', { sauce: false })),
+    await download(() => project.exportFile('utf8ans', { sauce: false })),
+  ];
+  project.animate = true;
+  project.addFrame('blank');
+  await settle(project);
+  files.push(await download(() => project.exportAnimation('ansimation', { sauce: false })));
+  for (const bytes of files) {
+    expect(readSauce(bytes)).toBeNull();
+    expect(bytes.includes(0x1a)).toBe(false);
+  }
+  expect(readSauce(await download(() => project.exportAnimation('utf8ansimation'))).title).toBe('Boat'); // with it, as before
+});
+
 test('a SAUCE field the person changes is the only one that changes, and a resize changes the size', async () => {
   const project = await afterAnotherDocument();
   const original = readSauce(await openFixture(project, 'edit'));
