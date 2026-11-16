@@ -870,7 +870,8 @@ swaps the two halves of each cell's base colors.
     pinned on the base: its pixels take the colors it showed. Undo brings the characters back. To keep text as it is,
     put it on a layer of its own.
   - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels).
-  - **In the ANSI View**: On a drawing layer, as in the PIXEL view, a whole cell at a time. On the base, each cell's
+  - **In the ANSI View**: On a drawing layer, as in the PIXEL view, pixel by pixel, as the Brush paints: a small brush
+    can change one half of a cell and leave the other. On the base, each cell's
     colors are changed and its character stays; a cell that shows no character still shows none, and Blur evens a
     cell's colors with the cells around it, foreground with foreground and background with background. Monochrome
     ASCII shows only characters (every cell white on black), so there the base changes as in the PIXEL view and its

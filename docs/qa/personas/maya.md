@@ -274,8 +274,9 @@ dithered, and compare the dither at 80 and at 200 columns.
   layer), which Blur fades into the clear beside them; each stroke is one undo step, and undo brings the letters back; a
   palette shows the result in its own colors.
 - Probes: `out-of-order`: stroke all three over a part of the layer with nothing on it (nothing changes, the picture
-  under it included), hide the layer with its eye and stroke ("Make the layer visible to draw on it"), and Blur over the
-  caption in the PIXEL view too (the same as on the ANSI view); `undo-redo`: undo a stroke, redo it, and undo a Blur
+  under it included), hide the layer with its eye and stroke ("Make the layer visible to draw on it"), Blur over the
+  caption in the PIXEL view too (the same as on the ANSI view), and Dodge with Size at 1 on the ANSI view (one half of a
+  cell lightens, the other stays, as the Brush paints); `undo-redo`: undo a stroke, redo it, and undo a Blur
   over the caption (its letters come back); `extremes`: Strength at 1% and at 100%.
 - Rated: yes, wants O, Shift+O and R
 

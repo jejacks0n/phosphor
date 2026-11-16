@@ -176,6 +176,15 @@ for (const view of ['input', 'output']) {
   });
 }
 
+test('ANSI view: on a drawing layer Retouch works pixel by pixel, as the Brush paints: one half of a cell, the other left', async () => {
+  const { project, workspace, ctx } = await blank('output');
+  paintGray(project);
+  workspace.retouchSize = 1;
+  stroke(dodge, ctx, { x: 5.5, y: 10.5 });
+  expect(paintAt(project, 5, 10)[0]).toBeGreaterThan(128);
+  expect(paintAt(project, 5, 11)).toEqual([128, 128, 128]);
+});
+
 test('pixel view: on a drawing layer Dodge lightens its paint and keeps its alpha', async () => {
   const { project, ctx } = await overGreen();
   const pixels = [];

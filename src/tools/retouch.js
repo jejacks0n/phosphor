@@ -2,7 +2,7 @@
 // (lib/Retouch.js). On the base, the colors that show: in the pixel view each grid pixel's, written back as its pixels; in
 // the ANSI view each cell's, written back with its character, which stays (a cell that shows no character keeps showing
 // none), but in Monochrome ASCII, which shows only characters, as in the pixel view. On a drawing layer, only what the layer itself holds, as
-// paint (in the ANSI view a whole cell at a time), where a clear pixel counts as clear (Blur fades an edge out into the
+// paint, pixel by pixel in either view (as the Brush paints), where a clear pixel counts as clear (Blur fades an edge out into the
 // clear beside it); where the layer has nothing, nothing changes, whatever shows under it. Nothing is locked: a cell of
 // the layer's own with colors of its own (typed, or written exactly by a merge) that the stroke changes goes, its two
 // halves becoming paint in the colors it showed (unlockChanged), and so, in the pixel view, does a character pinned on
@@ -183,15 +183,6 @@ function retouchOwnPaint(project, pixels, own, strength) {
   if (unlocked.length) project.clearEditCells(unlocked);
 }
 
-// A drawing layer in the ANSI view: as in the pixel view, a whole cell at a time (both its halves, at the most the brush
-// gives the cell).
-function retouchOwnCells(project, pixels, own, strength) {
-  retouchOwnPaint(project, [...reachOf(pixels)].flatMap(([key, alpha]) => {
-    const [col, row] = key.split(',').map(Number);
-    return [{ x: col, y: 2 * row, alpha }, { x: col, y: 2 * row + 1, alpha }].filter(({ y }) => y < project.rows);
-  }), own, strength);
-}
-
 // The cells grid pixels reach, by key, each with the most the brush gives it.
 function reachOf(pixels) {
   const reach = new Map();
@@ -237,10 +228,8 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
       const strength = workspace.retouchStrength / 100;
       stroke.unlocking ??= !onBottom(project) || view !== 'output'; // the base's ANSI view keeps its characters
       const changed = (color, at) => change(color, workspace.retouchRange, at), owned = (from, around) => own(from, around, workspace.retouchRange);
-      if (!onBottom(project)) { // a drawing layer: only what it holds
-        if (view === 'output') retouchOwnCells(project, pixels, owned, strength);
-        else retouchOwnPaint(project, pixels, owned, strength);
-      } else if (view === 'output' && project.renderStyle !== 'ascii') retouchCells(project, pixels, changed, strength);
+      if (!onBottom(project)) retouchOwnPaint(project, pixels, owned, strength); // a drawing layer: only what it holds, in either view
+      else if (view === 'output' && project.renderStyle !== 'ascii') retouchCells(project, pixels, changed, strength);
       else retouchPixels(project, pixels, changed, strength); // Monochrome ASCII shows a cell's brightness as its character alone: its pixels change, and the characters follow
       workspace.strokeEnd = to;
     },
