@@ -106,7 +106,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
     return {
       takesProjects,
       onProjectFailed: projectFailed,
-      onNumbered: heard, onSettings: heard, onBase: heard, onCheck: heard,
+      onNumbered: heard, onSettings: heard, onLayers: heard, onBase: heard, onCheck: heard,
       onCaughtUp: () => {
         project.flushHeard();   // what came before this has landed: its echoes are heard
         caughtUp();

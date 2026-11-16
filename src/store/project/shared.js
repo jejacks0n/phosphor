@@ -56,8 +56,12 @@ export const runsPatch = (runs) => ({ tiles: runs.map(([x, y, w]) => ({ x, y, w,
 // and all on some grid. MAX_CELLS is one layer's, so layers aren't added together.
 export const cellsFit = ({ editCells, layerParts }) => [editCells, ...Array.from(layerParts?.values() ?? [], (part) => part.editCells)]
   .every((cells) => cells.size <= MAX_CELLS && cellsFitAnyGrid([...cells]));
-// Every layer above the bottom, id to kind: the layers a change in a room may name (wire.js readChange).
-export const stackKinds = (project) => new Map(project.layers.slice(1).map(({ id, kind }) => [id, kind]));
+// Every layer of a stack (bottom first: a document's layers, or a layers message's) above the bottom, id to kind: the
+// layers a change in a room may name (wire.js readChange).
+export const stackKinds = (layers) => new Map(layers.slice(1).map(({ id, kind }) => [id, kind]));
+// The stack as a layers message says it (wire.js): each layer's id, kind, name and character settings (none for the bottom,
+// whose are the document's). Hidden stays each person's own.
+export const stackOnWire = (project) => project.layers.map(({ id, kind, name, chars }) => ({ id, kind, name, chars }));
 // runs (changes.js) written on the paint of the layer each names, nothing refreshed: the layer in use's is the drawing's
 // (kept aside inside an art layer). A cells layer with no paint yet gets one; a layer that isn't there gets nothing.
 export function writeLayerRuns(project, runs) {
@@ -204,11 +208,10 @@ export function putStack(project, { layers = project.layers, data, pick = null }
   if (back && project.layerById(pick)) useWorkspaceStore().pickLayer(pick);
 }
 
-// Whether a change to the layers' structure (adding, deleting, moving, or a merge that removes one) is refused because the
-// document is shared with a room, which holds the layers it always did, with a toast saying so. fills: it adds the vector
-// layer the room is missing, which is allowed (directly on the bottom, where a room's one goes).
-export function refusedInRoom(project, { fills = false } = {}) {
-  if (!project._sharing || fills) return false;
+// Whether a change a room doesn't take yet (a layer's own character settings, a merge into a layer above the bottom, a
+// picture on a layer) is refused because the document is shared with a room, with a toast saying so.
+export function refusedInRoom(project) {
+  if (!project._sharing) return false;
   toast(t('layers.notInRoom'));
   return true;
 }

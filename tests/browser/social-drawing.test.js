@@ -54,7 +54,7 @@ async function hosting({ cols = 40, rows = 40, name = null } = {}) {
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows });
   project.ensureLayer();
   const drawing = useDrawingStore();
-  const room = { project, drawing, people: new Map() };
+  const room = { project, drawing, people: new Map(), pinia: getActivePinia() };
   room.host = new Host({
     config, passKey, roomId: 'room',
     send: async (msg) => {
@@ -254,6 +254,164 @@ test('an artist joining a four-layer room gets every layer, with the host\'s ids
   await expect.poll(() => ann.project.layers.map(shape), PATIENT).toEqual(room.project.layers.map(shape));
   expect(ann.project.layers.map((l) => l.id)).toEqual(['base', 'edit', vector, above]);
   await allMatch(room, ann);
+});
+
+// A layer change in a room is the host's to make, and no one's undo step: the host makes its own and an artist's (asked
+// with a layer-op), and says the whole stack, which every artist brings theirs into line with, by id.
+const workspaceOf = (page) => useWorkspaceStore(page.pinia);
+const stackOf = (project) => project.layers.map(({ id, kind, name }) => ({ id, kind, name }));
+
+test('an artist adds a layer above the one they picked: everyone gets it, it\'s picked for them alone, and it\'s no undo step', async () => {
+  const room = await hosting();
+  const top = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+  await expect.poll(() => bo.project.layerById(top)?.kind, PATIENT).toBe('cells');
+  workspaceOf(room).pickLayer(top);
+  workspaceOf(ann).pickLayer('edit');
+  const bosPick = workspaceOf(bo).pickedLayer;
+  expect(ann.project.addLayer('cells', 'edit')).toBe(null);
+  expect(ann.project.layers.length).toBe(3);   // nothing changes until the host says
+  await expect.poll(() => room.project.layers.length, PATIENT).toBe(4);
+  const made = room.project.layers[2].id;
+  for (const page of [ann, bo]) await expect.poll(() => page.project.layers.map((layer) => layer.id), PATIENT).toEqual(['base', 'edit', made, top]);
+  await allMatch(room, ann, bo);
+  expect(workspaceOf(ann).pickedLayer).toBe(made);
+  expect(ann.project.editId).toBe(made);
+  expect(workspaceOf(bo).pickedLayer).toBe(bosPick);
+  expect(workspaceOf(room).pickedLayer).toBe(top);
+  expect(room.project.history.canUndo).toBe(false);
+  expect(ann.project.history.canUndo).toBe(false);
+});
+
+test('the host and artists reorder, rename and duplicate, and every stack matches', async () => {
+  const room = await hosting();
+  room.project.addLayer('cells', 'edit');
+  room.project.addLayer('cells', 'L1');
+  room.project.typeAt(3, 3, 'Q', { fg: '#00ff00' });
+  dab(room.project, 6, 6);
+  room.project.commitEdit();
+  const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+  await expect.poll(() => bo.project.layerById('L2')?.kind, PATIENT).toBe('cells');
+  const hostsLast = room.project.history.last, hostsStrokes = room.project._ledger.strokesBy('host');   // the strokes before the room
+  expect(room.project.moveLayer('L2', 1)).toBe(true);
+  ann.project.renameLayer('L2', 'Logo');
+  expect(bo.project.duplicateLayer('edit')).toBe(null);
+  await expect.poll(() => room.project.layers.length, PATIENT).toBe(5);
+  await expect.poll(() => room.project.layerById('L2').name, PATIENT).toBe('Logo');
+  await allMatch(room, ann, bo);
+  const copy = room.project.layers[3].id;
+  expect(stackOf(room.project)).toEqual([
+    { id: 'base', kind: 'cells', name: null }, { id: 'L2', kind: 'cells', name: 'Logo' }, { id: 'edit', kind: 'cells', name: null },
+    { id: copy, kind: 'cells', name: 'Layer 1 copy' }, { id: 'L1', kind: 'cells', name: null },
+  ]);
+  for (const page of [ann, bo]) expect(stackOf(page.project)).toEqual(stackOf(room.project));
+  for (const page of [room, ann, bo]) {
+    expect([...page.project.cellsOf(copy)]).toEqual([...page.project.cellsOf('edit')]);
+    expect(page.project.cellsOf(copy).get('3,3')?.char).toBe('Q');
+    expect(page.project.paintOf(copy).pixelAt(6, 6)).toEqual(page.project.paintOf('edit').pixelAt(6, 6));
+  }
+  expect(workspaceOf(bo).pickedLayer).toBe(copy);
+  expect(workspaceOf(room).pickedLayer).toBe('edit');
+  expect(room.project.history.last).toBe(hostsLast);   // the copy's cells too: no one's to undo
+  for (const page of [ann, bo]) expect(page.project.history.canUndo).toBe(false);
+  expect(room.project._ledger.strokesBy('host')).toEqual(hostsStrokes);
+});
+
+// A layer with something on it is Task 4's: the ledger and Pending drop it then (dropLayer).
+test('an empty layer an artist deletes goes from every page, and no one can undo it', async () => {
+  const room = await hosting();
+  const empty = room.project.addLayer('vector', 'edit'), kept = room.project.addLayer('cells', empty);
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layerById(kept)?.kind, PATIENT).toBe('cells');
+  const hostsLast = room.project.history.last;
+  expect(ann.project.deleteLayer(empty)).toBe(false);   // asked of the host
+  await expect.poll(() => room.project.layerById(empty), PATIENT).toBeUndefined();
+  await expect.poll(() => ann.project.layerById(empty), PATIENT).toBeUndefined();
+  expect(stackOf(ann.project)).toEqual(stackOf(room.project));
+  expect(room.project.history.last).toBe(hostsLast);
+  await allMatch(room, ann);
+});
+
+test('renaming or reordering leaves my hidden layer hidden and my pick where it was', async () => {
+  const room = await hosting();
+  room.project.addLayer('cells', 'edit');
+  room.project.addLayer('cells', 'edit');   // L2, under L1
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layerById('L2')?.kind, PATIENT).toBe('cells');
+  ann.project.setLayerHidden('L2', true);
+  workspaceOf(ann).pickLayer('edit');
+  const edits = ann.project.editVersion;
+  room.project.renameLayer('L2', 'Logo');
+  room.project.moveLayer('L2', 3);
+  await expect.poll(() => ann.project.layers.map((layer) => layer.id).join(), PATIENT).toBe('base,edit,L1,L2');
+  expect(ann.project.layerById('L2')).toMatchObject({ name: 'Logo', hidden: true });
+  expect(room.project.layerById('L2').hidden).toBe(false);
+  expect(workspaceOf(ann).pickedLayer).toBe('edit');
+  expect(ann.project.editId).toBe('edit');
+  expect(ann.project.editVersion).toBe(edits);
+  await allMatch(room, ann);
+});
+
+test('someone joining while the stack changes gets the same stack', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const pack = room.host.project;
+  room.host.project = () => {
+    const made = pack();
+    return { ...made, chunks: gate.then(() => made.chunks) };
+  };
+  const bo = await join(room, 'bo');
+  room.drawing.invite('bo');
+  await expect.poll(() => bo.drawing.invitation, PATIENT).toBe(true);
+  bo.drawing.accept();
+  await expect.poll(() => room.host.open().find((w) => w.peer === 'bo').projecting, PATIENT).toBe(true);
+  const added = room.project.addLayer('cells', 'edit');
+  room.project.renameLayer(added, 'Late');
+  room.project.useLayer(added);
+  room.project.typeAt(2, 2, 'Z', { fg: '#00ff00' });   // on the layer the message before it adds
+  room.project.commitEdit();
+  release();
+  await expect.poll(() => bo.drawing.mayDraw, PATIENT).toBe(true);
+  await expect.poll(() => bo.project.cellsOf(added).get('2,2')?.char, PATIENT).toBe('Z');
+  expect(stackOf(bo.project)).toEqual(stackOf(room.project));
+  await allMatch(room, ann, bo);
+});
+
+test('a hello the tail reaches brings the stack in it, and what\'s drawn on a layer it adds', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const w = room.host.open().find((other) => other.peer === 'ann');
+  const has = room.project._ledger.n, epoch = room.project._ledger.epoch;
+  w.drawing = false;   // the channel to it went quiet: the changes below don't reach it
+  const added = room.project.addLayer('cells', 'edit');
+  room.project.useLayer(added);
+  room.project.typeAt(1, 1, 'H', { fg: '#00ff00' });
+  room.project.commitEdit();
+  await wait(30);
+  expect(ann.project.layerById(added)).toBeUndefined();
+  const projects = vi.spyOn(room.host, 'sendProject');
+  ann.watch.post({ t: 'artist-hello', has, epoch });
+  await expect.poll(() => ann.project.cellsOf(added).get('1,1')?.char, PATIENT).toBe('H');
+  expect(projects).not.toHaveBeenCalled();
+  expect(stackOf(ann.project)).toEqual(stackOf(room.project));
+  await allMatch(room, ann);
+});
+
+test('an artist\'s layer-op waits while the host holds what artists send, and is done on release', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  room.host.hold();
+  ann.project.addLayer('vector', 'edit');
+  await wait(50);
+  expect(room.project.layers.length).toBe(2);
+  room.host.release();
+  await expect.poll(() => room.project.layers.map((layer) => layer.kind).join(), PATIENT).toBe('cells,cells,vector');
+  await expect.poll(() => stackOf(ann.project), PATIENT).toEqual(stackOf(room.project));
+  setActivePinia(ann.pinia);
+  expect(workspaceOf(ann).pickedLayer).toBe(room.project.layers[2].id);   // a vector layer of mine, picked: VECTOR
+  expect(workspaceOf(ann).editorTab).toBe('vector');
 });
 
 test('a change from an artist shows on the host\'s cells, so what watchers are sent follows', async () => {
@@ -2330,6 +2488,57 @@ test('a host back with no way to know joins the artists\' ahead of it: it catche
   expect(room.project.canUndo).toBe(true);
   ann.project.undo();
   await expect.poll(() => char(room.project, 2, 2), PATIENT).toBe(undefined);
+  await allMatch({ project: room.project }, ann);
+});
+
+test('a host catching up by an artist\'s tail takes the stack in it, and a stroke on the layer it adds', async () => {
+  const room = await hostingWithSocket();
+  const ann = await artist(room, 'ann');
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  const behind = room.project._ledger.kept(), behindCells = room.project.editCells, behindLayers = room.project.layers;
+  const row = { documentId: room.project.documentId, kept: structuredClone(behind) };
+  workspaceOf(ann).pickLayer('edit');
+  ann.project.addLayer('cells', 'edit');
+  await expect.poll(() => ann.project.layers.length, PATIENT).toBe(3);
+  const added = ann.project.layers[2].id;
+  expect(ann.project.editId).toBe(added);
+  ann.project.typeAt(2, 2, 'A', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  await expect.poll(() => quiet(ann), PATIENT).toBe(true);
+  room.project.flushHeard();
+
+  // The host reloads: the ledger and the document as of before ann's layer, and ann reconnects.
+  room.host.close();
+  ann.drawing.connection('lost');
+  room.drawing.close();
+  setActivePinia(room.pinia);
+  room.project.layers = behindLayers;
+  room.project._layerData.delete(added);
+  room.project.editCells = behindCells;
+  room.project._documentN = behind.n;
+  const again = new Host({
+    config, passKey, roomId: 'room',
+    send: async (msg) => {
+      if (msg.type !== 'signal-to') return;
+      await later();
+      ann.watch.signalFrom('host', msg.data);
+    },
+    ...room.drawing.hostCallbacks(),
+  });
+  room.drawing.hosted(again, { me: () => 'host' });
+  again.setRoom({ name: 'Night shift', welcome: '' });
+  toStop.push(() => again.close());
+  ann.watch.send = async (msg) => { await later(); again.signalFrom('ann', msg.data); };
+  room.drawing.resumeHosting({ artists: ['ann'], invited: [] }, row);
+  room.drawing.hostingAgain();
+  await again.peer('ann', await passFor('ann'));
+
+  await expect.poll(() => room.project.cellsOf(added).get('2,2')?.char, PATIENT).toBe('A');
+  await expect.poll(() => room.drawing.paused, PATIENT).toBe(false);
+  expect(stackOf(room.project)).toEqual(stackOf(ann.project));
+  expect(room.project._ledger.tail.items.some((item) => item.t === 'layers')).toBe(true);
   await allMatch({ project: room.project }, ann);
 });
 

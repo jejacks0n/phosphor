@@ -58,10 +58,10 @@ export class Host {
   // settings), or null.
   constructor({
     send, passKey, config, connectWithinMs, roomId, returnWithinMs = RETURN_WITHIN_MS, onWatchers = () => {}, onChat = () => {},
-    project = null, onChange = () => null, onUndo = () => {}, onRedo = () => {}, onCursor = () => {}, onHello = () => {}, onAnswer = () => {},
+    project = null, onChange = () => null, onUndo = () => {}, onRedo = () => {}, onLayerOp = () => {}, onCursor = () => {}, onHello = () => {}, onAnswer = () => {},
     handOverExtra = () => null,
   }) {
-    Object.assign(this, { send, passKey, config, connectWithinMs, roomId, returnWithinMs, onWatchers, onChat, project, onChange, onUndo, onRedo, onCursor, onHello, onAnswer, handOverExtra });
+    Object.assign(this, { send, passKey, config, connectWithinMs, roomId, returnWithinMs, onWatchers, onChat, project, onChange, onUndo, onRedo, onLayerOp, onCursor, onHello, onAnswer, handOverExtra });
     this.artists = new Set();   // the subs who may draw
     // peer -> { peer, pass, claims, tracking, conn, channel, has (the art it has), packing, behind,
     // allowance, heard (its chat, checked one at a time), following (the sub of the artist whose view it's sent, or
@@ -481,7 +481,7 @@ export class Host {
   // that can't be done has moved nothing, so it's only told.
   drawn(w, msg) {
     const { sub, name } = w.claims;
-    if (this.holding && (msg?.t === 'change' || msg?.t === 'undo' || msg?.t === 'redo')) return void this.holding.push([w, msg]);
+    if (this.holding && (msg?.t === 'change' || msg?.t === 'undo' || msg?.t === 'redo' || msg?.t === 'layer-op')) return void this.holding.push([w, msg]);
     try {
       if (msg?.t === 'hand-over-ok') w.handedOver?.(true);
       else if (msg?.t === 'catch-up-start') this.catchUpStart(w, msg);
@@ -493,7 +493,8 @@ export class Host {
         if (!this.onUndo(sub, msg)) this.refuse(w, msg);
       } else if (msg?.t === 'redo') {
         if (!this.onRedo(sub, msg)) this.refuse(w, msg);
-      } else if (msg?.t === 'cursor') this.onCursor(sub, msg, name);
+      } else if (msg?.t === 'layer-op') this.onLayerOp(sub, msg);
+      else if (msg?.t === 'cursor') this.onCursor(sub, msg, name);
       else if (msg?.t === 'artist-hello') {
         w.drawing = true;
         if (this.art) this.sendTo(w, { t: 'font', font: this.art.font });

@@ -97,20 +97,17 @@ test('a new image or canvas starts from the bottom and the edit layer', async ()
   expect(project._layerData.size).toBe(0);
 });
 
-test('adding a layer in a room is refused, except the missing vector layer', async () => {
+test('in a room the host\'s new layer is no undo step and goes to the room as the whole stack', async () => {
   const { project } = await blank();
-  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  const sent = [];
+  project.startSharing({ send: (message) => sent.push(message), role: 'host', me: 'mine' });
   try {
-    toastMessage.value = null;
-    expect(project.addLayer('cells', 'edit')).toBe(null);
-    expect(toastMessage.value).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
-    expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
-    toastMessage.value = null;
-    expect(project.addLayer('vector', 'base')).toBe('vector');
-    expect(toastMessage.value).toBe(null);
-    expect(project.layers.map((l) => l.id)).toEqual(['base', 'vector', 'edit']);
-    expect(project.addLayer('vector', 'base')).toBe(null); // one is there now
-    expect(project.layers).toHaveLength(3);
+    const version = project.history.version;
+    const id = project.addLayer('cells', 'edit');
+    expect(ids(project)).toEqual(['base', 'edit', id]);
+    expect(project.history.version).toBe(version);
+    expect(sent).toEqual([{ t: 'layers', n: project._ledger.n, by: 'mine', made: id, stack: project.layers.map(({ id: each, kind, name, chars }) => ({ id: each, kind, name, chars })) }]);
+    expect(project._ledger.tail.items.at(-1)).toBe(sent[0]);
   } finally {
     project.stopSharing();
   }
@@ -553,12 +550,16 @@ test('the bottom can\'t be deleted', async () => {
   expect(project.deleteLayer('nope')).toBe(false);
   expect(project.duplicateLayer('base')).toBe(null);
   expect(project.history.version).toBe(version);
-  project._sharing = { role: 'host' };
+  // An artist's are asked of the host, the bottom's never, and nothing changes until the stack comes.
+  const sent = [];
+  project._sharing = { role: 'artist', send: (message) => sent.push(message) };
+  expect(project.deleteLayer('base')).toBe(false);
   expect(project.deleteLayer('edit')).toBe(false);
-  expect(toastMessage.value).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
   expect(project.duplicateLayer('edit')).toBe(null);
   project._sharing = null;
+  expect(sent).toEqual([{ t: 'layer-op', op: { kind: 'delete', id: 'edit' } }, { t: 'layer-op', op: { kind: 'duplicate', id: 'edit' } }]);
   expect(ids(project)).toEqual(['base', 'edit']);
+  expect(project.history.version).toBe(version);
 });
 
 test('an undo step whose layer is gone writes no other layer', async () => {

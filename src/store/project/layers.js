@@ -4,14 +4,17 @@
 // grid still rescales with them, ProjectStore resizesCanvas), and so is a change to its character settings (commitLayerChars: _charsBefore, _lastChars); a
 // name, an eye and the layer in use aren't: they're about the layers, not edits to what's drawn on them. Only a layer in the stack
 // has data in _layerData: one taken out (deleted, its add undone) is held by the undo step that can put it back.
+// In a room a change to the stack (an add, a delete, a move, a copy, a name) is no one's undo step: the host makes it and
+// says the whole stack (sendLayers), and an artist asks the host for it (askLayerOp) and has it when that comes.
 import { markRaw } from 'vue';
-import { MOST_LAYERS, goodLayerName, layerChars, newLayerId, nextNumber } from '@/document/layerInfo.js';
+import { MOST_LAYERS, goodLayerName, layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
+import { exactly, pixelRuns } from '@/document/changes.js';
 import { CHAR_KEYS, DITHER_KEYS } from '@/store/settings.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
-import { NUDGE_MS, bytesHeld, emptyFields, followBase, layerName, putLayer, swapLayer, refusedInRoom } from '@/store/project/shared.js';
+import { NUDGE_MS, bytesHeld, emptyFields, followBase, layerName, putLayer, randomId, swapLayer, refusedInRoom } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -91,6 +94,39 @@ function redrawn(store, change) {
   store.rebuildCells();
 }
 
+// Whether this change to the stack (a layer-op's op, wire.js) is an artist's in a room, and so asked of the host instead,
+// with nothing changed here.
+function asked(store, op) {
+  if (store._sharing?.role !== 'artist') return false;
+  store.askLayerOp(op);
+  return true;
+}
+// Who a host's change to the stack in a room is for: the artist whose op it's doing (takeLayerOp), else the host.
+const askedBy = (store) => store._sharing.asker ?? store._sharing.me;
+
+// A copy made in a room: it goes in the stack empty and the room hears the stack (made: the copy), then what's on it
+// (held's data or shapes) as a change of the host's, numbered after. No one can undo that: the ledger forgets it at once,
+// so it's beneath every stroke, and the host's undo has no step for it.
+function shareCopy(store, { layer, below, data, shapes }) {
+  const { id } = layer;
+  putBack(store, { layer, below, ...(data && { data: { editCells: new Map(), paintLayer: null, hasPaint: false } }) });
+  store.render();
+  store.sendLayers({ by: askedBy(store), made: id });
+  const cells = shapes ? [...shapes] : [...data.editCells].map(([key, entry]) => [layerKey(id, key), entry]);
+  const runs = [];
+  if (data?.paintLayer) {
+    const { canvas } = data.paintLayer, { data: after } = ctx2d(canvas).getImageData(0, 0, canvas.width, canvas.height);
+    runs.push(...pixelRuns(new Uint8ClampedArray(after.length), after, canvas.width, canvas.height, 0, 0, exactly));
+    if (id !== 'edit') for (const run of runs) run.push(id);
+  }
+  if (!cells.length && !runs.length) return;
+  const stroke = randomId(), numbered = store._ledger.submit(store._by, stroke, { cells, runs });
+  store._ledger.forget(stroke);
+  store.applyChange({ cells, runs });
+  store.editVersion++;
+  store.sendNumbered(numbered);
+}
+
 // Ready for a step that changes the stack: out of an art layer, the layers made, what's open committed.
 function ready(store) {
   if (store._artInside) store.leaveArt();
@@ -114,7 +150,10 @@ function stackStep(store, { held, undo, redo, before, after }) {
 export const layerActions = {
   // name: as typed; blank is the default name.
   renameLayer(id, name) {
-    changed(this, id, { name: goodLayerName(name) });
+    const layer = this.layerById(id), named = goodLayerName(name);
+    if (!layer || layer.name === named || asked(this, { kind: 'rename', id, name: named })) return;
+    changed(this, id, { name: named });
+    if (this._sharing) this.sendLayers({ by: askedBy(this) });
   },
 
   // Hidden layers leave the screen and the exports: the whole grid is drawn again (rendering.js hands the renderer only
@@ -169,26 +208,34 @@ export const layerActions = {
 
   // A new layer of kind directly above the layer with the id above (on top when there's none), and its id, with the picked
   // layer's character settings. A cells layer starts empty, its paint made when it's first used. One undo step: undone, the layer leaves the stack and what's on it
-  // waits in _layerData for a redo. Null, nothing added, when the drawing has the most layers, or when it's shared with a
-  // room (the room's toast says so), which holds the layers it always did: the one thing it takes is the vector layer it's
-  // missing, directly on the bottom, and that's no undo step (a room's layers aren't undone).
+  // waits in _layerData for a redo. Null, nothing added, when the drawing has the most layers, and for an artist in a room
+  // (it's asked of the host).
   addLayer(kind, above) {
-    if (this.layers.length >= MOST_LAYERS || refusedInRoom(this, { fills: kind === 'vector' && above === 'base' && !this.hasVectorLayer })) return null;
+    if (this.layers.length >= MOST_LAYERS || asked(this, { kind: 'add', layer: kind, above })) return null;
     this.commitPending();
     let id;
     redrawn(this, () => { ({ id } = putLayer(this, kind, above, this.charsOf(useWorkspaceStore().pickedLayer))); }); // the groups can change: a layer put under a painted one leaves that one's paint over it
-    if (this._sharing) return id;
+    if (this._sharing) {
+      this.sendLayers({ by: askedBy(this), made: id });
+      return id;
+    }
     let held = null; // undone: takeOut's, whose layer below (by id) is where a redo puts it, as the stack can change around it meanwhile
     this.pushEdit({ layerOp: true, stackOnly: true, bytes: 0, undo: () => redrawn(this, () => { held = takeOut(this, id); }), redo: () => redrawn(this, () => putBack(this, held)) });
     return id;
   },
 
   // The layer with the id deleted, on every frame at once, one undo step that puts it back as it was, with what's on it;
-  // whether it went. Not the bottom, nor while the drawing's shared with a room (the room's toast says so). The picked
-  // layer going picks the one that was under it (followLayerPick).
+  // whether it went. Not the bottom, and not here for an artist in a room (it's asked of the host). The picked layer going
+  // picks the one that was under it (followLayerPick).
   deleteLayer(id) {
-    if (!(this.layers.findIndex((layer) => layer.id === id) > 0) || refusedInRoom(this)) return false;
+    if (!(this.layers.findIndex((layer) => layer.id === id) > 0) || asked(this, { kind: 'delete', id })) return false;
     ready(this);
+    if (this._sharing) {
+      takeOut(this, id);
+      this.render();
+      this.sendLayers({ by: askedBy(this) });
+      return true;
+    }
     const { before, after } = this.layerFrames(id);
     let held = takeOut(this, id);
     stackStep(this, { held, before, after, undo: () => putBack(this, held), redo: () => { held = takeOut(this, id); } });
@@ -198,10 +245,10 @@ export const layerActions = {
   // A copy of the layer with the id directly above it, picked: its cells and paint, or its shapes under new keys (a
   // follower following its path's copy, an art layer's drawing copied), on every frame, named "… copy". One undo step; the
   // copy's id. Null, nothing copied, for the bottom, at the most layers, past a frame's most shapes (a toast says so) and
-  // while shared with a room (its toast).
+  // for an artist in a room (it's asked of the host). In a room the copy is picked by whoever asked for it (shareCopy).
   duplicateLayer(id) {
     const layer = this.layerById(id);
-    if (!layer || id === 'base' || this.layers.length >= MOST_LAYERS || refusedInRoom(this)) return null;
+    if (!layer || id === 'base' || this.layers.length >= MOST_LAYERS || asked(this, { kind: 'duplicate', id })) return null;
     ready(this);
     const to = newLayerId(this.layers, layer.kind), { before, after, keyMap } = this.layerFrames(id, to);
     const everyShape = new Set([...this.shapes.keys(), ...this.frames.flatMap((frame) => [...frame.changes.keys()].filter(isShapeKey))]);
@@ -217,9 +264,12 @@ export const layerActions = {
       own?.restore(paint.snapshot());
       held.data = { editCells: new Map(this.cellsOf(id)), paintLayer: own, hasPaint: !!own?.hasPaint };
     }
-    putBack(this, held);
-    stackStep(this, { held, before, after, undo: () => { held = takeOut(this, to); }, redo: () => putBack(this, held) });
-    useWorkspaceStore().pickLayer(to);
+    if (this._sharing) shareCopy(this, held);
+    else {
+      putBack(this, held);
+      stackStep(this, { held, before, after, undo: () => { held = takeOut(this, to); }, redo: () => putBack(this, held) });
+    }
+    if (!this._sharing?.asker) useWorkspaceStore().pickLayer(to);
     return to;
   },
 
@@ -267,18 +317,19 @@ export const layerActions = {
   },
 
   // The layer with the id moved to toIndex in the stack (bottom first), one undo step; whether it moved. Not the bottom,
-  // nothing to below it or past the top, nothing while it's shared with a room (the room's toast says so). What's drawn
-  // is laid over again in the new order.
+  // nothing to below it or past the top, and not here for an artist in a room (it's asked of the host). What's drawn is
+  // laid over again in the new order.
   moveLayer(id, toIndex) {
     const from = this.layers.findIndex((layer) => layer.id === id);
-    if (from < 1 || toIndex < 1 || toIndex >= this.layers.length || toIndex === from || refusedInRoom(this)) return false;
+    if (from < 1 || toIndex < 1 || toIndex >= this.layers.length || toIndex === from || asked(this, { kind: 'move', id, to: toIndex })) return false;
     this.commitPending();
     const ids = (layers) => layers.map((layer) => layer.id), before = ids(this.layers), moved = [...this.layers];
     moved.splice(toIndex, 0, ...moved.splice(from, 1));
     const after = ids(moved);
     const order = (list) => () => redrawn(this, () => { this.layers = list.map((each) => this.layerById(each)).filter(Boolean); }); // by id: names and eyes since aren't undone
     order(after)();
-    this.pushEdit({ layerOp: true, stackOnly: true, bytes: 0, undo: order(before), redo: order(after) });
+    if (this._sharing) this.sendLayers({ by: askedBy(this) });
+    else this.pushEdit({ layerOp: true, stackOnly: true, bytes: 0, undo: order(before), redo: order(after) });
     return true;
   },
 

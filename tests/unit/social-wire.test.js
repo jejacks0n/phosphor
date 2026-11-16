@@ -3,8 +3,9 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import {
   CHUNK_BYTES, MOST_SNAPSHOT_BYTES, MOST_ARTIST_BYTES, MOST_PROJECT_BYTES, MOST_CHANGE_BYTES, encodeCells, decodeCells, decodeChange, changedCells,
-  fontOnWire, fontFor, packSnapshot, unpackSnapshot, readChange, packProject, unpackProject, readCursor, readCursors,
+  fontOnWire, fontFor, packSnapshot, unpackSnapshot, readChange, packProject, unpackProject, readCursor, readCursors, readLayers, readLayerOp,
 } from '../../src/social/wire.js';
+import { MOST_LAYERS } from '../../src/document/layerInfo.js';
 import { withPins, EMPTY_BASE } from '../../src/document/baseRecords.js';
 import { hex2rgb } from '../../src/lib/ColorUtils.js';
 import { DISPLAY_FONTS } from '../../src/lib/displayFonts.js';
@@ -381,4 +382,48 @@ test('readChange takes a valid shape and its deletion, and refuses a bad one or 
   assert.equal(of([['v:a b', shape]]), null);
   assert.equal(of([['0,0', shape]]), null); // a shape isn't a cell
   assert.equal(of([['v:abc', { char: 'A' }]]), null); // nor a cell a shape
+});
+
+// The stack as the host says it after any change to it: bottom first, the bottom a cells layer, ids a layer can have and
+// each once, names as goodLayerName leaves them, and chars a layer could hold.
+const STACK_SENT = [{ id: 'base', kind: 'cells', name: null }, { id: 'edit', kind: 'cells', name: 'Ink', chars: { chars: '#' } }, { id: 'L2', kind: 'vector', name: null, chars: { chars: '#' } }];
+test('a layers message reads only a good stack', () => {
+  const of = (stack, rest = {}) => readLayers({ t: 'layers', n: 4, stack, by: 'ann', ...rest });
+  assert.deepEqual(of(STACK_SENT), {
+    n: 4, by: 'ann', made: null,
+    stack: [{ id: 'base', kind: 'cells', name: null, chars: null }, { id: 'edit', kind: 'cells', name: 'Ink', chars: { chars: '#' } }, { id: 'L2', kind: 'vector', name: null, chars: { chars: '#' } }],
+  });
+  assert.equal(of(STACK_SENT, { made: 'L2' }).made, 'L2');
+  assert.equal(of([{ id: 'base', kind: 'vector', name: null }, STACK_SENT[1]]), null); // the bottom is a cells layer
+  assert.equal(of([...STACK_SENT, { id: 'L2', kind: 'cells', name: null }]), null);
+  const most = Array.from({ length: MOST_LAYERS }, (_, i) => ({ id: i ? `L${i}` : 'base', kind: 'cells', name: null }));
+  assert.ok(of(most));
+  assert.equal(of([...most, { id: 'L99', kind: 'cells', name: null }]), null);
+  assert.equal(of([STACK_SENT[0], { id: 'edit', kind: 'cells', name: 'x'.repeat(41) }]), null);
+  assert.equal(of([STACK_SENT[0], { id: 'edit', kind: 'cells', name: ' Ink' }]), null); // not as goodLayerName leaves it
+  assert.equal(of([STACK_SENT[0], { id: 'edit', kind: 'cells', name: null, chars: 'x' }]), null);
+  assert.equal(of([STACK_SENT[0], { id: 'L 2', kind: 'cells', name: null }]), null);
+  assert.equal(of(STACK_SENT, { made: 'L9' }), null);
+  assert.equal(of(STACK_SENT, { made: 'base' }), null);
+  assert.equal(of(STACK_SENT, { n: -1 }), null);
+  assert.equal(of(STACK_SENT, { by: 7 }), null);
+  assert.equal(readLayers(null), null);
+});
+
+test('a layer-op reads only the five kinds, with good fields', () => {
+  const of = (op) => readLayerOp({ t: 'layer-op', op });
+  for (const op of [
+    { kind: 'add', layer: 'cells', above: 'edit' }, { kind: 'add', layer: 'vector', above: 'base' }, { kind: 'delete', id: 'L2' },
+    { kind: 'move', id: 'L2', to: 1 }, { kind: 'duplicate', id: 'edit' }, { kind: 'rename', id: 'L2', name: 'Logo' }, { kind: 'rename', id: 'L2', name: null },
+  ]) assert.deepEqual(of(op), op);
+  assert.deepEqual(of({ kind: 'delete', id: 'L2', extra: 1 }), { kind: 'delete', id: 'L2' }); // only its own fields
+  assert.equal(of({ kind: 'move', id: 'L2', to: 1.5 }), null);
+  assert.equal(of({ kind: 'move', id: 'L2', to: 0 }), null); // never below the bottom
+  assert.equal(of({ kind: 'rename', id: 'L2', name: 'x'.repeat(500) }), null);
+  assert.equal(of({ kind: 'add', layer: 'paint', above: 'edit' }), null);
+  assert.equal(of({ kind: 'add', layer: 'cells', above: 'no such' }), null);
+  for (const kind of ['delete', 'move', 'duplicate', 'rename']) assert.equal(of({ kind, id: 'base', to: 1, name: null }), null, kind); // the bottom is the host's
+  assert.equal(of({ kind: 'merge', id: 'L2' }), null);
+  assert.equal(readLayerOp({ t: 'layer-op' }), null);
+  assert.equal(readLayerOp(null), null);
 });

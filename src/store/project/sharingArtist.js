@@ -2,6 +2,7 @@
 import { parseKey } from '@/document/editCells.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { REFUSED_WORDS } from '@/social/messages.js';
+import { readLayers } from '@/social/wire.js';
 import { toast } from '@/composables/useToast.js';
 import { settingsFromStranger } from '@/store/settings.js';
 import { cellsFit } from '@/store/project/shared.js';
@@ -50,6 +51,12 @@ export const sharingArtistActions = {
     }
   },
 
+  // A change to the stack (wire.js: a layer-op's op), asked of the host. Nothing changes here until its layers message
+  // comes (applyLayers).
+  askLayerOp(op) {
+    this._sharing.send({ t: 'layer-op', op });
+  },
+
   // An undo or redo that can't be done: its step goes, here as anywhere it still is, and that's said. An older
   // one is still there for the next press. A host's own (ownStroke) asks no one; for an artist, a host's word on
   // anything not asked is nothing.
@@ -78,11 +85,17 @@ export const sharingArtistActions = {
   },
 
   // An artist's message from the host, for the next frame. Off this document (a host is a stranger) it's
-  // ignored; the check notices what that costs.
+  // ignored; the check notices what that costs. A change is read against the stack as the layers message heard before it
+  // leaves it, which lands first.
   hearDrawing(message) {
     const sharing = this._sharing;
     if (!sharing?.pending || !this.paintLayer) return;
-    if (message.t !== 'check' && !readsAsHeard(this, message)) return;
+    if (message.t === 'layers') {
+      const read = readLayers(message);
+      if (!read) return;
+      message = { t: 'layers', ...read };
+      sharing.heardStack = read.stack;
+    } else if (message.t !== 'check' && !readsAsHeard(this, message, sharing.heardStack ?? this.layers)) return;
     sharing.heard.push(message);
     flushSoon(this, sharing);
   },

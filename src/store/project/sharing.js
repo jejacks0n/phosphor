@@ -27,8 +27,10 @@ import { TILE } from '@/document/History.js';
 import { layerKey } from '@/document/layerInfo.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
-import { MOST_CHANGE_BYTES, readChange } from '@/social/wire.js';
-import { ALONE, SAVED_KEYS, anyoneInside, followBase, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
+import { MOST_CHANGE_BYTES, readChange, readLayers } from '@/social/wire.js';
+import { ALONE, SAVED_KEYS, anyoneInside, emptyFields, followBase, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
+import { layerChars, nextNumber } from '@/document/layerInfo.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast';
 import { settingsFromStranger } from '@/store/settings.js';
 
@@ -152,7 +154,7 @@ export function artistSharing(project, { send, me, sum, n = 0, tail = new Tail()
   pending.seedSum(sum);
   return {
     send, role: 'artist', me, held: null, takenBack: null, strokesAsked: [], timer: setInterval(() => project.sendSlice(), SLICE_MS),
-    heard: [], heardCells: new Map(), heardRuns: [], cancelFlush: null,
+    heard: [], heardCells: new Map(), heardRuns: [], cancelFlush: null, heardStack: null,
     // The project's epoch; a project being opened; one asked for that hasn't landed, and when to ask again.
     epoch, opening: false, asked: false, askAgain: null,
     screen, pending,
@@ -160,21 +162,23 @@ export function artistSharing(project, { send, me, sum, n = 0, tail = new Tail()
 }
 
 // What an artist can make on this document (readChange): the grid, the size every cells layer's paint is (the one in use's,
-// as they all have its size), and the stack above the bottom.
-export const boundsOf = (project) => {
+// as they all have its size), and the stack above the bottom (stack: the layers, the document's unless said).
+export const boundsOf = (project, stack = project.layers) => {
   const { width, height } = project.paintLayer.canvas;
-  return { cols: project.cols, rows: charRowsOf(project.rows), layerWidth: width, layerHeight: height, layers: stackKinds(project) };
+  return { cols: project.cols, rows: charRowsOf(project.rows), layerWidth: width, layerHeight: height, layers: stackKinds(stack) };
 };
 
-// Whether a number's message can be taken as heard, from a host or an artist: a stranger, either way.
-export function readsAsHeard(project, message) {
+// Whether a number's message can be taken as heard, from a host or an artist: a stranger, either way. stack: the layers a
+// change may name, which a layers message heard before it and not yet landed has changed (the document's unless said).
+export function readsAsHeard(project, message, stack = project.layers) {
   if (message?.t === 'settings') return !!settingsFromStranger(message.values);
+  if (message?.t === 'layers') return !!readLayers(message);
   if (message?.t === 'base') { // the base's own pixels: runs that name no layer, on the base layer's size
     const { width, height } = project.baseLayer.canvas;
     return !!readChange({ stroke: 'base', cells: [], runs: message.runs }, { cols: 0, rows: 0, layerWidth: width, layerHeight: height })
       && !!message.records && typeof message.records === 'object';
   }
-  return !!readChange(message, boundsOf(project));
+  return !!readChange(message, boundsOf(project, stack));
 }
 
 // What the open stroke's cells have changed since its last slice.
@@ -344,6 +348,7 @@ export const sharingActions = {
     if (!this.paintLayer) return;
     const heard = sharing.heard;
     sharing.heard = [];
+    sharing.heardStack = null;
     // A number that won't land costs the picture, not the rest of what's here: the project puts it right.
     const landing = (fn) => {
       try {
@@ -373,6 +378,7 @@ export const sharingActions = {
       sharing.pending.tail.add(message);
       landing(() => {
         if (message.t === 'settings') this.applySettings(message.values);
+        else if (message.t === 'layers') this.applyLayers(message);
         else this.applyBase(message.runs, deserializeBase(message.records).records);
       });
     }
@@ -384,7 +390,7 @@ export const sharingActions = {
     const sharing = this._sharing;
     if (!sharing) return;
     sharing.cancelFlush?.();
-    Object.assign(sharing, { cancelFlush: null, heard: [], heardCells: new Map(), heardRuns: [] });
+    Object.assign(sharing, { cancelFlush: null, heard: [], heardCells: new Map(), heardRuns: [], heardStack: null });
   },
 
   // From the host, so only what a document saves. A room has one set of character settings: every layer takes the
@@ -392,6 +398,34 @@ export const sharingActions = {
   applySettings(values) {
     this.$patch(Object.fromEntries(SAVED_KEYS.filter((key) => key in values && key !== 'cols' && key !== 'rows').map((key) => [key, values[key]])));
     followBase(this);
+  },
+
+  // The stack as the host says it (a layers message, read: wire.js readLayers) brought in by id: a layer not in it goes,
+  // with its cells, paint or shapes; one it has that's not here comes, empty; and they're put in its order, with its names
+  // and character settings. Hidden stays my own. Not an edit: nothing's undone, and what's drawn is laid over again once
+  // (a rename alone draws nothing). The layer in use going leaves its fields empty, and the pick moves to the layer under it
+  // (followLayerPick), which is then in use. by: who asked; my own ask picks what it made.
+  // Task 4: the ledger and Pending drop what they hold on a layer that goes (dropLayer).
+  applyLayers({ stack, by, made }) {
+    const had = new Map(this.layers.map((layer) => [layer.id, layer])), gone = new Set(had.keys()), layers = [];
+    for (const [at, { id, kind, name, chars }] of stack.entries()) {
+      const was = had.get(id)?.kind === kind ? had.get(id) : null;
+      if (was) gone.delete(id);
+      const own = at ? { chars: chars ? layerChars(kind, chars) : was?.chars ?? layerChars(kind, this.baseChars) } : {};
+      layers.push(Object.freeze({ ...(was ?? { n: nextNumber([...had.values(), ...layers], kind), hidden: false }), id, kind, name, ...own }));
+    }
+    if (gone.size && this._artInside) this.leaveArt();
+    for (const id of gone) {
+      if (had.get(id).kind === 'vector') this.shapes = new Map([...this.shapes].filter(([, shape]) => (shape.layer ?? 'vector') !== id));
+      else if (id !== this.editId) this._layerData.delete(id);
+      else emptyFields(this);
+    }
+    for (const { id, kind } of layers.slice(1)) if (kind === 'cells' && had.get(id)?.kind !== kind) this._layerData.set(id, { editCells: new Map(), paintLayer: null, hasPaint: false });
+    const drawn = (list) => JSON.stringify(list.map(({ id, kind, chars }) => [id, kind, chars]));
+    const redraw = drawn(layers) !== drawn(this.layers);
+    this.layers = layers;
+    if (by === this._sharing?.me && made) useWorkspaceStore().pickLayer(made);
+    if (redraw) this.render();
   },
 
   // The base layer's own pixels (runs in its pixels) and its records (baseRecords.js).

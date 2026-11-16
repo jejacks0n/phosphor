@@ -31,7 +31,6 @@ const ICONS = {   // a 16-unit box: cells, a path with its points, pixels
 };
 
 const showing = computed(() => !!project.image && workspace.editMode);
-const inRoom = computed(() => !!project._sharing);   // a room holds the layers it always did (layers.notInRoom)
 const layers = computed(() => [...project.layers].reverse().map(({ id, kind, hidden }, i, all) => ({
   id,
   at: all.length - 1 - i,   // its place in the stack, bottom first
@@ -49,19 +48,19 @@ function pick(layer, e) {
   else workspace.pickLayer(layer.id);
 }
 
-// Add layer and Add vector layer: directly above the pick, and picked. Off at the most layers, and in a room, except the
-// vector layer a room is missing, which goes directly on the bottom, where a room's one is.
+// Add layer and Add vector layer: directly above the pick, and picked (an artist's in a room when the host's stack comes,
+// project.applyLayers). Off at the most layers.
 const full = computed(() => project.layers.length >= MOST_LAYERS);
 const ADD_BADGE = 'M11.7 9h1.6v2.7H16v1.6h-2.7V16h-1.6v-2.7H9v-1.6h2.7z';   // the + on an add button's layer icon, its bottom right
-const addOff = (kind) => (full.value ? t('layers.full', { n: MOST_LAYERS }) : inRoom.value && (kind !== 'vector' || project.hasVectorLayer) ? t('layers.notInRoom') : null);
+const addOff = computed(() => (full.value ? t('layers.full', { n: MOST_LAYERS }) : null));
 function add(kind) {
-  const id = project.addLayer(kind, inRoom.value ? 'base' : workspace.shownPick);
+  const id = project.addLayer(kind, workspace.shownPick);
   if (id) workspace.pickLayer(id);
 }
 
 // The ⋯ menu's Duplicate (the copy goes directly above and is picked, project.duplicateLayer) and Delete, each an undo
-// step: off in a room, and Duplicate at the most layers.
-const duplicateOff = computed(() => (full.value ? t('layers.full', { n: MOST_LAYERS }) : inRoom.value ? t('layers.notInRoom') : null));
+// step alone: Duplicate off at the most layers.
+const duplicateOff = computed(() => (full.value ? t('layers.full', { n: MOST_LAYERS }) : null));
 const duplicate = (layer) => project.duplicateLayer(layer.id);
 // Its row (and ⋯) gone, focus goes to the row picked now (the one under it) rather than the page.
 const remove = (layer) => project.deleteLayer(layer.id) && backToRow(workspace.pickedLayer);
@@ -69,8 +68,8 @@ const remove = (layer) => project.deleteLayer(layer.id) && backToRow(workspace.p
 // The ⋯ menu's Merge down: the layer into the one under it, as the toolbar's (off with its reason, asking how into the base).
 const { offFor: mergeOff, mergeDown } = useMergeDown();
 
-// The ⋯ menu's moves: a step up or down the stack, as an undo step (project.moveLayer).
-const moveOff = (layer, by) => (inRoom.value ? t('layers.notInRoom') : (by > 0 ? layer.at === project.layers.length - 1 : layer.at === 1) ? '' : null);
+// The ⋯ menu's moves: a step up or down the stack, as an undo step alone (project.moveLayer).
+const moveOff = (layer, by) => ((by > 0 ? layer.at === project.layers.length - 1 : layer.at === 1) ? '' : null);
 const move = (layer, by) => project.moveLayer(layer.id, layer.at + by);
 
 // Dragging a row (pointer events on it, with the mouse; a touch scrolls) moves its layer to where it's dropped: between
@@ -149,8 +148,8 @@ function cancel() {
       <div class="head">
         <span class="count">{{ t('layers.count', { n: project.layers.length, most: MOST_LAYERS }, project.layers.length) }}</span>
         <button
-            v-for="kind in ['cells', 'vector']" :key="kind" class="add" :disabled="addOff(kind) !== null"
-            :aria-label="t(kind === 'cells' ? 'layers.addCells' : 'layers.addVector')" :title="addOff(kind) ?? t(kind === 'cells' ? 'layers.addCells' : 'layers.addVector')" @click="add(kind)"
+            v-for="kind in ['cells', 'vector']" :key="kind" class="add" :disabled="addOff !== null"
+            :aria-label="t(kind === 'cells' ? 'layers.addCells' : 'layers.addVector')" :title="addOff ?? t(kind === 'cells' ? 'layers.addCells' : 'layers.addVector')" @click="add(kind)"
         >
           <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="ICONS[kind]" transform="scale(.7)"/><path :d="ADD_BADGE"/></svg>
         </button>
@@ -188,7 +187,7 @@ function cancel() {
             </template>
             <button @click="rename(layer)">{{ t('layers.rename') }}</button>
             <button :disabled="duplicateOff !== null" :title="duplicateOff" @click="duplicate(layer)">{{ t('layers.duplicate') }}</button>
-            <button :disabled="inRoom" :title="inRoom ? t('layers.notInRoom') : null" @click="remove(layer)">{{ t('layers.delete') }}</button>
+            <button @click="remove(layer)">{{ t('layers.delete') }}</button>
             <button :disabled="mergeOff(layer.id) !== null" :title="mergeOff(layer.id)" @click="mergeDown(layer.id)">{{ t('toolbar.mergeDown') }}</button>
             <button :disabled="moveOff(layer, 1) !== null" :title="moveOff(layer, 1) || null" @click="move(layer, 1)">{{ t('layers.moveUp') }}</button>
             <button :disabled="moveOff(layer, -1) !== null" :title="moveOff(layer, -1) || null" @click="move(layer, -1)">{{ t('layers.moveDown') }}</button>
