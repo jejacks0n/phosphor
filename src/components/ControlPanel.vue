@@ -27,6 +27,8 @@ const layerName = useLayerName();
 // Why the settings are off, if they are: only the host's in a room; and inside an art layer the dimmed rest is a snapshot
 // of how they had the picture, which a change would leave stale.
 const locked = computed(() => drawing.hostOnly || (store.artInside ? t('art.settingsOff') : null));
+// Characters in a room are the host's alone, and each layer has its own: an artist sees the picked layer's, with that reason.
+const lockedFor = (group) => (group.id === 'characters' && drawing.hostOnly ? t('layers.charsHostOnly') : locked.value);
 
 // The slider groups: Transforms and Adjustments are the whole drawing's, Image filters the picture's.
 const sliderGroups = computed(() => [
@@ -36,10 +38,8 @@ const sliderGroups = computed(() => [
 ].map(group => ({ ...group, sliders: SETTINGS.filter(s => s.group === group.id && s.min !== undefined) })));
 
 // The layer the Characters section shows: the one picked, or inside an art layer its vector layer. A pick that isn't in
-// the stack yet (VECTOR before the first shape brings its layer) shows the bottom's, and so does a room, where every
-// layer has the bottom's (followBase).
+// the stack yet (VECTOR before the first shape brings its layer) shows the bottom's.
 const picked = computed(() => {
-  if (store._sharing) return 'base';
   const id = store.artInside ? store.drawsOn : workspace.pickedLayer;
   return store.layerById(id) ? id : 'base';
 });
@@ -171,7 +171,7 @@ const charsetName = computed(() => {
       <!-- Under a folded group its title's line is the separator. -->
       <hr v-if="i === 0 || !isFolded(sections[i - 1].id)"/>
 
-      <fieldset :class="[group.id, { folded: isFolded(group.id) }]" :disabled="!!locked" :title="locked">
+      <fieldset :class="[group.id, { folded: isFolded(group.id) }]" :disabled="!!locked" :title="lockedFor(group)">
         <legend class="folds">
           <button class="fold" :aria-expanded="!isFolded(group.id)" :aria-controls="`group-${group.id}`" @click="toggleFold(group.id)">
             <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>

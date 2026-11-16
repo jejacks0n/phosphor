@@ -295,11 +295,10 @@ test('going live drops a layer\'s own Dither steps, so undo in the room never br
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
   try {
     project.undo();
-    expect(project.dither).toBe(0); // the base's step, undone: every layer follows
-    expect(dithers(project, vector).dither).toBe(0);
+    expect(project.dither).toBe(0); // the base's step, undone: the layer keeps its own
+    expect(dithers(project, vector).dither).toBe(20);
     for (let i = 0; i < 4; i++) project.undo();
-    expect(dithers(project, vector).dither).toBe(project.dither);
-    expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
+    expect(dithers(project, vector).dither).toBe(20); // none of its own steps came back
   } finally {
     project.stopSharing();
   }

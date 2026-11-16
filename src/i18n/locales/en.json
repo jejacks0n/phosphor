@@ -375,7 +375,8 @@
     "hiddenToast": "Make the layer visible to draw on it",
     "hiddenMergeToast": "Make the layer visible to merge it",
     "noCellsLayer": "Add a drawing layer before drawing.",
-    "notInRoom": "Adding, deleting, and reordering layers is not supported in shared rooms yet."
+    "notInRoom": "Adding, deleting, and reordering layers is not supported in shared rooms yet.",
+    "charsHostOnly": "Only the host changes character settings in a room."
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",

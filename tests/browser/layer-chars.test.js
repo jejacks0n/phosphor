@@ -229,38 +229,61 @@ test('Flatten gives every layer the base\'s settings as they come out, and undo 
   expect(project.charsOf('edit')).toEqual(own);
 });
 
-test('in a room a layer\'s own settings are refused, and the base\'s, the host\'s or heard, are every layer\'s', async () => {
+test('in a room the host sets one layer\'s settings, and the others keep theirs, with no undo step', async () => {
   const { project } = await blank();
+  const other = project.addLayer('cells', 'edit');
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
   try {
-    expect(project.setLayerChars('edit', { chars: '#' })).toBe(false);
-    expect(project.charsOf('edit').chars).not.toBe('#');
-    project.setLayerChars('base', { chars: '#' });
+    const sent = vi.spyOn(project, 'sendLayers');
+    expect(project.setLayerChars('edit', { chars: '#' })).toBe(true);
+    project.commitLayerChars();
     expect(project.charsOf('edit').chars).toBe('#');
+    expect(project.charsOf(other).chars).toBe(project.chars);
+    expect(project.chars).not.toBe('#');
+    expect(sent).toHaveBeenCalledWith({ by: 'mine' });
+    expect(project.history.canUndo).toBe(false);
+    project.setLayerChars('base', { seed: 'the base' });
+    project.commitLayerChars();
+    expect(project.charsOf('edit').seed).not.toBe('the base'); // the base's own change leaves the layers' alone
     project.applySettings({ seed: 'heard' }); // as an artist hears the host's
-    expect(project.charsOf('edit').seed).toBe('heard');
-    expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
+    expect(project.charsOf('edit').chars).toBe('#');
+    expect(project.seed).toBe('heard');
   } finally {
     project.stopSharing();
   }
 });
 
-test('in a room the Characters section edits Base, whichever layer is picked, and every layer follows', async () => {
+test('in a room the Characters section follows the pick, as alone, and the host edits the picked layer', async () => {
   const { project, workspace } = await blank();
   workspace.pickLayer('edit');
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
   try {
     await mountPanel();
-    expect(sectionOf('Characters · Base')).toBeTruthy();
-    expect(sectionOf('Characters · Base').textContent).not.toContain('Used where');
+    expect(sectionOf('Characters · Layer 1')).toBeTruthy();
     const select = host.querySelector('#charChoice');
     select.value = 'best';
     select.dispatchEvent(new Event('change'));
     await nextTick();
-    expect(project.charChoice).toBe('best');
     expect(project.charsOf('edit').charChoice).toBe('best');
-    expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
+    expect(project.charChoice).toBe('random');
     expect(select.value).toBe('best');
+  } finally {
+    project.stopSharing();
+  }
+});
+
+test('in a room an artist sees the picked layer\'s settings, off, with the reason', async () => {
+  const { project, workspace } = await blank();
+  project.setLayerChars('edit', { charChoice: 'best' });
+  project.commitLayerChars();
+  workspace.pickLayer('edit');
+  project.startSharing({ send: () => {}, role: 'artist', me: 'ann' });
+  try {
+    await mountPanel();
+    const section = sectionOf('Characters · Layer 1');
+    expect(section.disabled).toBe(true);
+    expect(section.title).toBe('Only the host changes character settings in a room.');
+    expect(host.querySelector('#charChoice').value).toBe('best');
   } finally {
     project.stopSharing();
   }

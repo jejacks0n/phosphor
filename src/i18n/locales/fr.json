@@ -375,7 +375,8 @@
     "hiddenToast": "Rendez le calque visible pour dessiner dessus",
     "hiddenMergeToast": "Rendez le calque visible pour le fusionner",
     "noCellsLayer": "Ajoutez un calque de dessin avant de dessiner.",
-    "notInRoom": "L'ajout, la suppression et le réordonnancement des calques ne sont pas encore pris en charge dans les salons partagés."
+    "notInRoom": "L'ajout, la suppression et le réordonnancement des calques ne sont pas encore pris en charge dans les salons partagés.",
+    "charsHostOnly": "Seul l'hôte modifie les réglages de caractères dans un salon."
   },
   "tools": {
     "titleWithKeys": "{title} · {keys}",
