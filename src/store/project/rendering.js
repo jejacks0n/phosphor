@@ -95,28 +95,37 @@ function cellsUnder(pixels, cols) {
   return [...indexes];
 }
 
+// Whether the aspect lock holds a size change, with the grid's shape kept first (aspectRatio): the one it kept before
+// while the grid still has it, the picture's own while the grid is at that (neither rounded to whole cells), or the
+// grid's own when it's left both (unlocked, animation on, an older file). It holds after drawing too: a canvas resize
+// keeps the shape as a rescale does. Not with animation on.
+function locked(project) {
+  if (!project.aspectLock || !project.image || project.hasFrames) return false;
+  const fits = (ratio) => { const at = lockedGrid(project.cols, ratio); return at.cols === project.cols && at.rows === project.rows; };
+  if (!fits(project.lockRatio)) project.aspectRatio = fits(project.imageRatio) ? 0 : project.cols / project.rows;
+  return true;
+}
+
 export const renderingActions = {
   updateCols(val) {
     let num = parseInt(val);
     if (isNaN(num) || num < 1) return;
 
-    if (this.aspectLock && this.image && !this.resizesCanvas && !this.hasFrames) this.$patch(lockedGrid(num, this.lockRatio));
+    if (locked(this)) this.$patch(lockedGrid(num, this.lockRatio));
     else this.cols = Math.min(num, this.hasFrames ? this.maxCols : maxColsBeside(this.rows));
   },
 
-  // The aspect lock on or off. Turned on, it keeps the shape the grid has now (aspectRatio): the one it kept before while
-  // the grid still has it, the picture's own while the grid is at that, so neither is rounded to the grid's whole cells.
+  // The aspect lock on or off. Turned on, it keeps the shape the grid has now (locked).
   setAspectLock(on) {
-    const fits = (ratio) => { const at = lockedGrid(this.cols, ratio); return at.cols === this.cols && at.rows === this.rows; };
-    if (on && this.image && !fits(this.lockRatio)) this.aspectRatio = fits(this.imageRatio) ? 0 : this.cols / this.rows;
     this.aspectLock = on;
+    locked(this);
   },
 
   updateRows(val) {
     let num = parseInt(val);
     if (isNaN(num) || num < 1) return;
 
-    if (this.aspectLock && this.image && !this.resizesCanvas && !this.hasFrames) {
+    if (locked(this)) {
       const cols = Math.max(1, Math.round(num * this.lockRatio));
       this.$patch(gridFits(cols, num) ? { cols, rows: num } : lockedGrid(cols, this.lockRatio));
     } else {

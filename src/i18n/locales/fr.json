@@ -145,7 +145,6 @@
     "charRows": "{n} ligne | {n} lignes",
     "rowsAria": "Lignes",
     "aspectLock": "Conserver les proportions",
-    "aspectFreeWithEdits": "Après avoir dessiné sur le canevas, le redimensionnement ajoute ou rogne des cellules le long des bords droit et inférieur.",
     "renderStyle": {
       "label": "Style artistique",
       "ansi": "ANSI",

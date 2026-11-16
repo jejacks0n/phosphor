@@ -145,7 +145,6 @@
     "charRows": "{n} row | {n} rows",
     "rowsAria": "Rows",
     "aspectLock": "Lock aspect ratio",
-    "aspectFreeWithEdits": "After you draw on the canvas, resizing adds or trims cells along the right and bottom edges.",
     "renderStyle": {
       "label": "Art style",
       "ansi": "ANSI",

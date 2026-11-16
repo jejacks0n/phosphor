@@ -430,7 +430,8 @@ from it.
 - Does: at 200 columns, moves Brightness, Dither and Pattern light, switches Choose characters to By shape, and paints
   a stroke on Layer 1.
 - Expects: each change lands within the `setting` budget; strokes draw without long frames; with a stroke drawn, a
-  later size change grows or trims the canvas on the right and bottom instead of rescaling, and the lock goes off.
+  later size change grows or trims the canvas on the right and bottom instead of rescaling, the lock still keeping the
+  grid's shape.
 - Probes: `speed`: drag Brightness for two seconds with `qa.frames`; `interrupt`: change a size with paint on Layer 1
   and check the paint stays where it was.
 - Rated: yes, wants Tab to Brightness then the arrows

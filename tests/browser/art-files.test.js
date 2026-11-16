@@ -191,6 +191,7 @@ test('a SAUCE field the person changes is the only one that changes, and a resiz
   const renamed = readSauce(await exported(project));
   expect({ ...renamed, artEnd: 0 }).toEqual({ ...original, title: 'Renamed', artEnd: 0 });
 
+  project.setAspectLock(false); // on, the width would follow
   project.updateRows(2 * 4);
   await settle(project);
   const resized = readSauce(await exported(project));

@@ -965,7 +965,7 @@ What a new grid size (**Dimensions**) does depends on what's drawn, and on what 
   (a base edit, a cleared layer, a stroke you undid), resizing is a canvas resize. The picture and everything on it
   stay exactly where they are; columns and rows are added or removed at the right and bottom, and every undo step still
   fits. What a shrink cuts off isn't lost: it comes back when you make the grid bigger again, and it's saved with the
-  project. **Lock aspect ratio** is off while this applies.
+  project. **Lock aspect ratio** still works: on, the other number follows to keep the shape.
 - **Rescale**: With nothing on the edit layer and no drawing step to undo (slider, settings and selection steps don't
   count, nor adding or reordering layers), resizing rescales: the image is converted again at the new size. Base edits
   (erased, moved or merged-down pixels, pinned characters) scale with it, the pixels as hard-edged blocks and each pinned
@@ -976,8 +976,8 @@ What a new grid size (**Dimensions**) does depends on what's drawn, and on what 
   narrow art can run long: 80 and 100 columns reach the full 5,000 lines, 160 columns stops at 3,125 and 300 at 1,666.
   With animation on, a drawing holds at most 40,000 cells, and the aspect ratio lock doesn't apply.
 - **Lock Aspect Ratio**: The lock keeps the shape the grid had when you turned it on: unlock, set both numbers, lock
-  again, and changing one number keeps the other in that shape. It's saved with the project. A new picture starts with
-  its own shape.
+  again, and changing one number keeps the other in that shape, whether it rescales or resizes the canvas. It's saved
+  with the project. A new picture starts with its own shape.
 - **Blank Canvas**: A blank canvas is one color all over, so it fills the grid at any size, and the adjustments
   (Invert, Brightness and the rest) reach every cell.
 - **Opening a Picture**: A picture opens at the current width, or narrower if that's what it takes to fit its shape.

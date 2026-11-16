@@ -289,11 +289,11 @@ export const useProjectStore = defineStore('project', {
     mostFrames: (state) => maxFramesFor(state.cols * charRowsOf(state.rows)),
     maxCols() {
       if (this.hasFrames) return Math.max(1, Math.min(maxColsBeside(this.rows), Math.floor(this.frameCellLimit / Math.max(1, charRowsOf(this.rows)))));
-      return this.aspectLock && this.image && !this.resizesCanvas ? lockedGrid(MAX_COLS, this.lockRatio).cols : maxColsBeside(this.rows);
+      return this.aspectLock && this.image ? lockedGrid(MAX_COLS, this.lockRatio).cols : maxColsBeside(this.rows);
     },
     maxRows() {
       if (this.hasFrames) return Math.max(2, Math.min(maxRowsBeside(this.cols), 2 * Math.floor(this.frameCellLimit / Math.max(1, this.cols))));
-      return this.aspectLock && this.image && !this.resizesCanvas ? lockedGrid(MAX_COLS, this.lockRatio).rows : maxRowsBeside(this.cols);
+      return this.aspectLock && this.image ? lockedGrid(MAX_COLS, this.lockRatio).rows : maxRowsBeside(this.cols);
     },
     // In a room: hosting it, or drawing in someone else's.
     inRoom: (state) => !!state._sharing || state._hosting,
