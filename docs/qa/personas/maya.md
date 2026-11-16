@@ -224,8 +224,10 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Does: picks the Brush, sets its Size and Opacity, and paints a few strokes on Layer 2.
 - Expects: paint covers half cells and shows through each cell's character (Colors only), and a cell that shows none
   (one flat color) takes it as a plain `▄`; with Build up on, two strokes at 50% make it solid; the color adjustments
-  tint the paint too. In Color ASCII the strokes become ASCII characters, never `▄`.
-- Probes: `out-of-order`: hide Layer 2 with its eye and try to paint ("Make the layer visible to draw on it"); `undo-redo`:
+  tint the paint too. A stroke painted in the PIXEL view comes out the same in ANSI; in Color ASCII the strokes become
+  ASCII characters, never `▄`, and their `▄` show again back in ANSI.
+- Probes: `interrupt`: switch to PIXEL, paint a stroke on a flat part, and back in ANSI check it shows the `▄` an ANSI
+  stroke there does, then set Art style to Color ASCII and back (no stripes, then the `▄` again); `out-of-order`: hide Layer 2 with its eye and try to paint ("Make the layer visible to draw on it"); `undo-redo`:
   undo one stroke, redo it, then paint and check redo is off; `speed`: draw fast scribbles with `qa.frames`;
   `extremes`: with a Color list and Saturation at 0, paint on Layer 2 with a swatch that isn't gray and check the Pixel
   view shows the stroke in the swatch's color, as the ANSI view does.
