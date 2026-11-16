@@ -31,13 +31,12 @@ export const editLayerActions = {
   // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity,
   // stacking or not (Stack opacity). blockChars (the Pencil's and Brush's Half-block, ANSI view)
   // makes each cell painted a ▄ first, which the paint colors half by half, instead of showing through
-  // the cell's own character; 'plain' (their Colors only, ANSI view) only the cells that show no character (a blank
-  // canvas's, in their own background color) as the stroke first reaches them, so the paint doesn't bring a hidden one
-  // out (a cell the stroke itself paints into one color stays as it was). On a layer that ▄ shows in ANSI alone
-  // (editCells.js shownEntry); the base's pins show in every style, so in ASCII the base takes none and the paint is
-  // converted with the ASCII characters.
+  // the cell's own character; 'plain' (their Colors only, in either view) only the cells that show no character in ANSI
+  // (showsNoChar: a blank canvas's, in their own background color) as the stroke first reaches them, so the paint
+  // doesn't bring a hidden one out (a cell the stroke itself paints into one color stays as it was). The same cells take
+  // it whichever view and art style the stroke is laid in; the ▄ shows in ANSI alone (editCells.js shownEntry, and the
+  // base's ▄ pins: Renderer.pinAt), and in ASCII the paint is converted with the ASCII characters.
   paintStroke(pixels, color, { blockChars = false } = {}) {
-    if (blockChars === 'plain' && this.renderStyle !== 'ansi' && onBottom(this)) blockChars = false;
     const workspace = useWorkspaceStore();
     const { r, g, b } = hex2rgb(color ?? workspace.editFgColor);
     const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill
@@ -53,7 +52,7 @@ export const editLayerActions = {
         cells = !seen ? [] : cells.filter(({ col, row }) => {
           const key = cellKey(col, row), first = !seen.has(key), cell = this.cells[cellIndex(col, row, cols)];
           seen.add(key);
-          return first && !!cell && !showsChar(cell);
+          return first && !!cell && showsNoChar(this, col, row, cell);
         });
       }
       this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
@@ -279,6 +278,15 @@ export const editLayerActions = {
 // Cells written on the base ([{ col, row, attrs }], attrs as writeEditCells takes them: undefined keeps, null clears):
 // each as it then shows, its own attributes over the base's look (completeAt), its character pinned; the half of a wide
 // character one breaks becomes a space, as on a cells layer.
+// Whether the cell at col, row shows no character in ANSI, as a stroke first reaching it reads it: in ANSI as it's drawn
+// (cell), or in any style its two halves one color as stored up to the layer in use (the base alone when it's picked),
+// which ANSI draws as no character. So which view or art style a stroke is laid in doesn't change the cells it makes ▄.
+function showsNoChar(project, col, row, cell) {
+  if (project.renderStyle === 'ansi' && !showsChar(cell)) return true;
+  const look = onBottom(project) ? { bg: project.baseColorAt(col, 2 * row), fg: project.baseColorAt(col, 2 * row + 1) } : project.underlyingAt(col, row, { evenHidden: true });
+  return look.bg.toLowerCase() === look.fg.toLowerCase();
+}
+
 function writeOnBottom(project, list) {
   const own = (attrs) => Object.fromEntries(Object.entries(attrs).filter(([, value]) => value != null));
   const blanks = overwritesAll(project.cells, project.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));

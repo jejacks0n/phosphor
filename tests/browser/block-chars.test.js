@@ -120,8 +120,9 @@ test('with Colors only, a character the stroke itself paints into one color isn\
 
 // The report: painting in ASCII used only half-blocks, in stripes, never the characters chosen, and a picture on a layer
 // above showed ▄ where it had been painted (the paint showed through them as through any character drawn below it). And
-// a drawing painted in ANSI showed those stripes once it was switched to ASCII. Colors only's ▄ is ANSI's alone.
-async function asciiStroke(view, { paintedIn = 'colorAscii', layer = 'edit', picture = true } = {}) {
+// a drawing painted in ANSI showed those stripes once it was switched to ASCII, and Colors only made ▄ in the ANSI view
+// but not in the PIXEL view. Colors only's ▄ shows in ANSI alone, and the same cells take it in either view or style.
+async function stroke(view, { paintedIn = 'colorAscii', shownIn = 'colorAscii', layer = 'edit', picture = true } = {}) {
   const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ cols: 20, rows: 10 });
   project.renderStyle = paintedIn;
@@ -136,30 +137,35 @@ async function asciiStroke(view, { paintedIn = 'colorAscii', layer = 'edit', pic
     workspace.pickLayer(project.addLayer('cells', layer));
     await project.addPictureToLayer(new File([await (await fetch('/tests/fixtures/images/gradient.png')).blob()], 'gradient.png', { type: 'image/png' }));
   }
-  project.renderStyle = 'colorAscii';
+  project.renderStyle = shownIn;
   await settle(project);
   const shown = () => project.cells.map((cell) => cell?.char).join('');
   return { project, shown, chars: shown() };
 }
 
 test('in ASCII, Colors only paints with the ASCII characters, in the ANSI view as in the Pixel view', async () => {
-  const pixel = await asciiStroke('input'), ansi = await asciiStroke('output');
+  const pixel = await stroke('input'), ansi = await stroke('output');
   expect(ansi.chars).not.toContain('▄');
   expect(ansi.chars).toBe(pixel.chars);
 });
 
-test('a layer painted with Colors only in ANSI shows the ASCII characters once switched to ASCII, and its ▄ again back in ANSI', async () => {
-  const pixel = await asciiStroke('input', { picture: false });
-  const { project, shown, chars } = await asciiStroke('output', { paintedIn: 'ansi', picture: false });
-  expect(chars).not.toContain('▄');
-  expect(chars).toBe(pixel.chars);
-  project.renderStyle = 'ansi';
-  await settle(project);
-  expect(shown().slice(20 + 2, 20 + 14)).toBe('▄'.repeat(12));
-});
+for (const layer of ['edit', 'base']) {
+  test(`${layer}: painted with Colors only in ANSI, it shows the ASCII characters once switched to ASCII, and its ▄ again back in ANSI`, async () => {
+    const pixel = await stroke('input', { layer, picture: false });
+    const { project, shown, chars } = await stroke('output', { paintedIn: 'ansi', layer, picture: false });
+    expect(chars).not.toContain('▄');
+    expect(chars).toBe(pixel.chars);
+    project.renderStyle = 'ansi';
+    await settle(project);
+    expect(shown().slice(20 + 2, 20 + 14)).toBe('▄'.repeat(12));
+  });
 
-test('the base painted with Colors only in ASCII takes no ▄, as its pins show in every style', async () => {
-  const pixel = await asciiStroke('input', { layer: 'base', picture: false }), ansi = await asciiStroke('output', { layer: 'base', picture: false });
-  expect(ansi.chars).not.toContain('▄');
-  expect(ansi.chars).toBe(pixel.chars);
-});
+  test(`${layer}: Colors only makes the same cells ▄ in the PIXEL view as in the ANSI view, and painted in ASCII as in ANSI`, async () => {
+    const ansi = { paintedIn: 'ansi', shownIn: 'ansi', layer, picture: false };
+    const inAnsiView = await stroke('output', ansi);
+    expect(inAnsiView.chars.slice(20 + 2, 20 + 14)).toBe('▄'.repeat(12));
+    expect((await stroke('input', ansi)).chars).toBe(inAnsiView.chars);
+    expect((await stroke('output', { ...ansi, paintedIn: 'colorAscii' })).chars).toBe(inAnsiView.chars);
+    expect((await stroke('input', { ...ansi, paintedIn: 'colorAscii' })).chars).toBe(inAnsiView.chars);
+  });
+}

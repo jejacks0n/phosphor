@@ -77,6 +77,7 @@ export default class Renderer {
   #chosen = null;       // a Number palette someone else picked (usePalette): composite doesn't pick its own
   #lowerEdits = null;   // the lower group's cells layer's map, from the last composeAll or updateCells: where its cells are exact
   #lowerStyle = null;   // the render style it was composed in (shownEntry)
+  #pinStyle = 'ansi';   // the render style of the last composite: a ▄ pin is ANSI's alone (pinAt)
   #upperGrids = new WeakMap(); // an upper vector layer -> its shapes at grid resolution (#upperGrid), as #baseDrawn is the base's
   #upperStored = new WeakMap(); // an upper vector layer -> its shapes at grid resolution as stored (upperStoredAt)
   #upperPaints = new WeakMap(); // an upper cells layer's paint -> its pixels at grid resolution through the transforms (#upperPaint)
@@ -243,6 +244,7 @@ export default class Renderer {
   // waits for it to end to carry a change to the base on to every cell after it: #resolveUnder).
   composite(paintLayer, params, { hold = false, rect = null, open = false } = {}) {
     if (!this.outputCanvas || !this.pipelineCanvas) return false;
+    this.#pinStyle = params.renderStyle;
 
     const ctx = ctx2d(this.outputCanvas);
     const w = this.outputCanvas.width, h = this.outputCanvas.height;
@@ -1337,9 +1339,12 @@ export default class Renderer {
   }
 
   // The character a cell keeps, or undefined (the conversion's): the topmost art layer's there, else the base
-  // layer's pin; none where a shape reaches over either (the pin shows again once no shape covers it).
+  // layer's pin; none where a shape reaches over either (the pin shows again once no shape covers it). A ▄ pin is two
+  // pixels as ANSI shows them (Colors only pins one where paint meets a cell that shows no character), and ASCII has no
+  // ▄, so there it's no pin and the pixels are converted with the ASCII characters.
   pinAt(col, row) {
-    const pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins, pin = pins.size ? pins.get(cellKey(col, row)) : undefined; // no key made for none: asked once a cell
+    const pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins, kept = pins.size ? pins.get(cellKey(col, row)) : undefined; // no key made for none: asked once a cell
+    const pin = kept === '▄' && this.#pinStyle !== 'ansi' ? undefined : kept;
     if (pin === undefined && !this.shapes?.hasArt) return undefined;
     const shown = this.shapes?.charAt(col, row);
     return shown === undefined ? pin : shown ?? undefined;
