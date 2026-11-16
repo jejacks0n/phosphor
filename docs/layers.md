@@ -843,7 +843,9 @@ swaps the two halves of each cell's base colors.
   - **In the ANSI View**: Each cell's colors are, and its character stays; a cell that shows no character still shows
     none. Blur there evens a cell's colors with the cells around it, foreground with foreground and background with
     background. On a drawing layer that's its own typed and drawn cells, evened only with its other cells (a color set
-    to None stays None), and its paint, as in the PIXEL view.
+    to None stays None), and its paint, as in the PIXEL view. Monochrome ASCII shows only characters (every cell white
+    on black), so there the base changes as in the PIXEL view and its characters follow; typed characters stay as
+    they are, so Retouch over typed text shows no change there.
   - They read the colors as stored, before the color adjustments, so with a palette the result shows in the palette's
     colors, as any paint does. With a selection, they stay inside it. A stroke is one undo step.
 - **Eyedropper** (**I**): Its **FG** and **BG** toggles choose what a pick sets.
