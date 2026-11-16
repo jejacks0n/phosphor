@@ -850,6 +850,20 @@ test('a ledger with as many cells as its bytes hold passes keptFromWire, and one
   assert.ok(keptFromWire(keptForWire(ledger.kept())));   // past its bytes, the oldest went
 });
 
+test('a ledger kept for the wire and read back keeps each tile\'s layer', () => {
+  const { pic, ledger, go } = setup({ pixels: [['L2:1,0', GREEN]] }, { epoch: 'e' });
+  go(ledger.submit('a', 's', { cells: [['L2:2,3', X]], runs: [[0, 0, 4, RED], [0, 0, 2, BLUE, 'L2']] }));
+  go(ledger.submit('b', 't', { cells: [['2,3', Y]], runs: [[1, 0, 1, RED, 'L2'], [TILE, 0, 1, BLUE, 'L2']] }));
+  const back = Ledger.restore(keptFromWire(JSON.parse(JSON.stringify(keptForWire(ledger.kept())))), { readCell: pic.readCell, readTile: pic.readTile });
+  const tileIds = (kept) => [...kept.stacks.tiles].map(([name, { id }]) => [name, id]);
+  assert.deepEqual(tileIds(back.kept()), [['0,0', 'edit'], ['L2:0,0', 'L2'], [`L2:${TILE},0`, 'L2']]);
+  assert.deepEqual(tileIds(back.kept()), tileIds(ledger.kept()));
+  assert.deepEqual(keptForWire(back.kept()), keptForWire(ledger.kept()));
+  assert.equal(back.sum, ledger.sum);
+  assert.deepEqual(back.undo('a', 's'), ledger.undo('a', 's'));
+  assert.deepEqual(back.undo('b', 't').runs, [[1, 0, 1, GREEN, 'L2'], [TILE, 0, 1, 0, 'L2']]);
+});
+
 test('dropping a layer takes its cells and pixels out of the sum, and its strokes\' undo is refused', () => {
   const { pic, ledger, go } = setup();
   go(ledger.submit('a', 'on-l2', { cells: [['L2:0,0', X]], runs: [[0, 0, 2, RED, 'L2']] }));

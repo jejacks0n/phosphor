@@ -2,10 +2,11 @@
 import { markRaw } from 'vue';
 import { deserializeBase } from '@/document/baseRecords.js';
 import { Tail } from '@/document/changes.js';
+import { keyLayer } from '@/document/layerInfo.js';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger.js';
 import { MOST_CHANGE_BYTES, MOST_PROJECT_BYTES, cellsFitAnyGrid, packProject, packValue, readLayers, unpackValue } from '@/social/wire.js';
 import { settingsFromStranger } from '@/store/settings.js';
-import { cellsFit } from '@/store/project/shared.js';
+import { cellsFit, stackKinds } from '@/store/project/shared.js';
 import { artistSharing, boundsOf, readsAsHeard, stopAsking } from '@/store/project/sharing.js';
 
 export const handoverActions = {
@@ -64,15 +65,20 @@ export const handoverActions = {
   },
 
   // The same on the other side, or null for anything that isn't one: an old host is a stranger, and what's in
-  // these stacks can reach the picture.
+  // these stacks can reach the picture. Its cells and tiles are on layers above the bottom of my stack as what I've heard
+  // leaves it, as a change's are.
   async readHandOver(chunks) {
     try {
       const plain = await unpackValue(chunks, { mostBytes: MOST_PROJECT_BYTES });
       this.ensureLayer();
-      const { layerWidth: width, layerHeight: height } = boundsOf(this);
+      const { layerWidth: width, layerHeight: height } = boundsOf(this), layers = stackKinds(this._sharing?.heardStack ?? this.layers);
       const kept = keptFromWire(plain, { width, height });
-      for (const { cells } of kept.stacks.strokes.values()) if (!cellsFitAnyGrid([...cells])) return null;
-      for (const [key, { base }] of kept.stacks.cells) if (!cellsFitAnyGrid([[key, base]])) return null;
+      const paints = (id) => layers.get(id) === 'cells';
+      for (const { cells, paint } of kept.stacks.strokes.values()) {
+        if (!cellsFitAnyGrid([...cells], layers) || ![...paint.keys()].every((name) => paints(keyLayer(name).id))) return null;
+      }
+      for (const [key, { base }] of kept.stacks.cells) if (!cellsFitAnyGrid([[key, base]], layers)) return null;
+      for (const { id } of kept.stacks.tiles.values()) if (!paints(id)) return null;
       return kept;
     } catch {
       return null;
@@ -178,15 +184,21 @@ export const handoverActions = {
       });
       if (items.includes(null)) return false;
       this.flushHeard();
-      for (const item of items) {
+      // A layers item lands before what's after it is taken, so a layer it lets go of (applyLayers) is the one held then,
+      // not a later one of the same id.
+      let landed = 0;
+      items.forEach((item, i) => {
         if (item.t === 'settings' || item.t === 'base' || item.t === 'layers') {
           this._ledger.n = item.n;
           this._ledger.tail.add(item);
         } else {
           this._ledger.takeNumbered(item);
         }
-      }
-      this.replayOnPicture(items);
+        if (item.t !== 'layers') return;
+        this.replayOnPicture(items.slice(landed, i + 1));
+        landed = i + 1;
+      });
+      this.replayOnPicture(items.slice(landed));
       return true;
     }
     const settings = settingsFromStranger(parts.settings);
