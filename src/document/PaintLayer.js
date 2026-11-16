@@ -164,6 +164,28 @@ export default class PaintLayer {
     return bounds;
   }
 
+  // pixels: { x, y, r, g, b, a }[] in grid pixels, a 0..1: each set to exactly that color and alpha, whatever was there
+  // (Retouch on a layer's own paint), recorded as paint is. An a of 0 clears it.
+  put(pixels) {
+    const rects = [];
+    for (const { x, y, r, g, b, a } of pixels) {
+      const rect = this.#cellRect(x, y);
+      if (rect) rects.push({ ...rect, rgba: [r, g, b, Math.round(a * 255)] });
+    }
+    if (!rects.length) return null;
+    const bounds = unionRect(rects), clears = rects.some(({ rgba }) => !rgba[3]);
+    this.#changed(bounds);
+    this.#record(bounds, { erasing: clears });
+    const ctx = ctx2d(this.canvas), image = ctx.getImageData(bounds.x, bounds.y, bounds.w, bounds.h), { data } = image;
+    for (const { x, y, w, h, rgba } of rects) {
+      for (let py = y; py < y + h; py++) for (let px = x; px < x + w; px++) data.set(rgba, ((py - bounds.y) * bounds.w + px - bounds.x) * 4);
+    }
+    ctx.putImageData(image, bounds.x, bounds.y);
+    if (rects.some(({ rgba }) => rgba[3])) this.hasPaint = true;
+    else if (!this.#stroke) this.recheckPaint();
+    return bounds;
+  }
+
   // pixels: { x, y }[] in grid pixels.
   // Erases (and records) nothing where there's no paint, so a pass over bare cells isn't an undo step.
   erase(pixels) {

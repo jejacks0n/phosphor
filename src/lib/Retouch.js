@@ -22,3 +22,22 @@ export function averaged(colors) {
   const sum = colors.reduce((s, c) => ({ r: s.r + c.r, g: s.g + c.g, b: s.b + c.b }), { r: 0, g: 0, b: 0 });
   return { r: Math.round(sum.r / colors.length), g: Math.round(sum.g / colors.length), b: Math.round(sum.b / colors.length) };
 }
+
+// Blur's over a drawing layer's own paint, pixels { r, g, b, a } (a 0..1) or null where there's none: each weighed by
+// its alpha, so a clear one adds clearness and no color. { r, g, b, a } (a the share painted), or null when none is.
+export function averagedPaint(pixels) {
+  let r = 0, g = 0, b = 0, a = 0;
+  for (const p of pixels) {
+    if (!p) continue;
+    r += p.r * p.a; g += p.g * p.a; b += p.b * p.a; a += p.a;
+  }
+  return a ? { r: Math.round(r / a), g: Math.round(g / a), b: Math.round(b / a), a: a / pixels.length } : null;
+}
+
+// Paint k of the way from one pixel to another (null: clear), by alpha: toward clear it fades, keeping its color.
+export function mixPaint(from, to, k) {
+  const fa = from?.a ?? 0, ta = to?.a ?? 0, a = fa + (ta - fa) * k;
+  if (a <= 0) return null;
+  const part = (c) => Math.round(((from?.[c] ?? 0) * fa * (1 - k) + (to?.[c] ?? 0) * ta * k) / a);
+  return { r: part('r'), g: part('g'), b: part('b'), a };
+}

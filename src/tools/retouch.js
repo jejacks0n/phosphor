@@ -1,20 +1,25 @@
-// Retouch: Blur, Dodge and Burn, soft round brushes that change the colors that show on the picked layer instead of
-// laying a color of their own (lib/Retouch.js). In the pixel view each grid pixel's color, written back as paint; in the
-// ANSI view each cell's colors, written back with its character, which stays (a cell that shows no character keeps
-// showing none). A stroke works out each spot's new color from what showed there before it, and goes as far toward it as
-// its Strength at the brush's falloff, so going over a spot again in the same stroke adds nothing; another stroke does.
+// Retouch: Blur, Dodge and Burn, soft round brushes that change colors instead of laying a color of their own
+// (lib/Retouch.js). On the base, the colors that show: in the pixel view each grid pixel's, written back as its pixels; in
+// the ANSI view each cell's, written back with its character, which stays (a cell that shows no character keeps showing
+// none). On a drawing layer, only what the layer itself holds: its paint, where a clear pixel counts as clear (Blur fades
+// an edge out into the clear beside it), and in the ANSI view its own cells' colors too, characters kept; where the layer
+// has nothing, nothing changes, whatever shows under it. A stroke works out each spot's new color from what was there
+// before it, and goes as far toward it as its Strength at the brush's falloff, so going over a spot again in the same
+// stroke adds nothing; another stroke does.
 import { brushPixels } from '@/lib/Brushes';
 import { selectionClip } from '@/lib/selectionClip';
 import { charRowsOf, mix, showsChar } from '@/lib/Cells.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { averaged, burned, dodged } from '@/lib/Retouch.js';
+import { averaged, averagedPaint, burned, dodged, mixPaint } from '@/lib/Retouch.js';
+import { onBottom } from '@/store/project/shared.js';
 import { t } from '@/i18n/index.js';
 
 const AROUND = [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => [dx, dy]));
 const inGrid = (x, y, cols, rows) => x >= 0 && y >= 0 && x < cols && y < rows;
 
 // A tool's change(color, range, at): the color a full pass makes of a spot's color; at(dx, dy) is the color dx, dy from
-// the spot (null off the grid).
+// the spot (null off the grid, or on a drawing layer where it has none). own(from, around, range): what a full pass makes
+// of a drawing layer's paint pixel ({ r, g, b, a } or null: clear), around it and the pixels around it on the grid.
 
 // This stroke's spots, by key: { from (the color or a cell's colors before it), to, alpha (the most the brush gave) },
 // and the colors it read (Blur's neighbors too).
@@ -59,12 +64,7 @@ function retouchCells(project, pixels, change, strength) {
     }
     return stroke.read.get(key);
   };
-  const reach = new Map();
-  for (const { x, y, alpha } of pixels) {
-    const key = `${x},${Math.floor(y / 2)}`;
-    reach.set(key, Math.max(reach.get(key) ?? 0, alpha));
-  }
-  const out = [];
+  const reach = reachOf(pixels), out = [];
   for (const [key, alpha] of reach) {
     const [col, row] = key.split(',').map(Number), cell = project.cells[row * cols + col];
     if (!cell || cell.wide === 'trail') continue; // a trailing half: its lead cell carries it
@@ -83,13 +83,94 @@ function retouchCells(project, pixels, change, strength) {
   project.writeEditCells(out, { clearPaint: true });
 }
 
+// A drawing layer's own paint at grid pixel x, y ({ r, g, b, a }, or null where it has none), and its own cell's entry
+// at col, row, as the stroke first read them.
+function ownPaintAt(project, x, y) {
+  const key = `p${x},${y}`;
+  if (!stroke.read.has(key)) stroke.read.set(key, project.paintLayer?.pixelAt(x, y) ?? null);
+  return stroke.read.get(key);
+}
+function ownEntryAt(project, col, row) {
+  const key = `c${col},${row}`;
+  if (!stroke.read.has(key)) stroke.read.set(key, project.editCellAt(col, row) ?? null);
+  return stroke.read.get(key);
+}
+const samePaint = (a, b) => (!a || !b ? !a && !b : a.r === b.r && a.g === b.g && a.b === b.b && Math.round(a.a * 255) === Math.round(b.a * 255));
+
+// Each grid pixel of a drawing layer's own paint, changed by own. A pixel own leaves clear where it was clear (Dodge
+// and Burn always, Blur with no paint in reach) isn't written.
+function retouchOwnPaint(project, pixels, own, strength) {
+  const { cols, rows } = project, out = [];
+  for (const { x, y, alpha } of pixels) {
+    const key = `${x},${y}`;
+    let spot = stroke.spots.get(key);
+    if (!spot) {
+      const from = ownPaintAt(project, x, y);
+      const around = AROUND.filter(([dx, dy]) => inGrid(x + dx, y + dy, cols, rows)).map(([dx, dy]) => ownPaintAt(project, x + dx, y + dy));
+      stroke.spots.set(key, spot = { from, to: own(from, around), alpha: 0 });
+    }
+    if (!spot.from && !spot.to) continue;
+    spot.alpha = Math.max(spot.alpha, alpha);
+    const p = mixPaint(spot.from, spot.to, strength * spot.alpha);
+    if (!samePaint(p, spot.from)) out.push(p ? { x, y, ...p } : { x, y, r: 0, g: 0, b: 0, a: 0 });
+  }
+  project.putEditPixels(out);
+}
+
+// A drawing layer in the ANSI view: the paint in each cell the brush reaches, as in the pixel view, and each of the
+// layer's own cells there its colors (the FG and BG its entry has: one set to None it hasn't) changed, each with the same
+// color of the layer's cells around it (one with nothing there counts for nothing), its character kept. A cell the layer
+// has nothing in isn't written; a cell drawn in one color (no character showing) keeps showing none.
+function retouchOwnCells(project, pixels, change, own, strength) {
+  const { cols } = project, rows = charRowsOf(project.rows), reach = reachOf(pixels);
+  retouchOwnPaint(project, [...reach].flatMap(([key, alpha]) => {
+    const [col, row] = key.split(',').map(Number);
+    return [{ x: col, y: 2 * row, alpha }, { x: col, y: 2 * row + 1, alpha }].filter(({ y }) => y < project.rows);
+  }), own, strength);
+  const colorAt = (col, row, part) => {
+    const hex = inGrid(col, row, cols, rows) ? ownEntryAt(project, col, row)?.[part] : null;
+    return hex ? hex2rgb(hex) : null;
+  };
+  const out = [];
+  for (const [key, alpha] of reach) {
+    const [col, row] = key.split(',').map(Number), entry = ownEntryAt(project, col, row);
+    if (!entry || (!entry.fg && !entry.bg) || project.cells[row * cols + col]?.wide === 'trail') continue;
+    let spot = stroke.spots.get(`c${key}`);
+    if (!spot) {
+      const at = (part) => (dx, dy) => colorAt(col + dx, row + dy, part), from = { fg: colorAt(col, row, 'fg'), bg: colorAt(col, row, 'bg') };
+      const plain = !!entry.fg && !!entry.bg && entry.fg.toLowerCase() === entry.bg.toLowerCase();
+      const bg = from.bg && change(from.bg, at('bg')), fg = plain ? bg : from.fg && change(from.fg, at('fg'));
+      stroke.spots.set(`c${key}`, spot = { from, to: { fg, bg }, alpha: 0 });
+    }
+    spot.alpha = Math.max(spot.alpha, alpha);
+    const attrs = {};
+    for (const part of ['fg', 'bg']) {
+      if (!spot.from[part]) continue;
+      const hex = rgb2hex(mix(spot.from[part], spot.to[part], strength * spot.alpha));
+      if (hex !== rgb2hex(spot.from[part])) attrs[part] = hex;
+    }
+    if (Object.keys(attrs).length) out.push({ col, row, attrs });
+  }
+  project.writeEditCells(out);
+}
+
+// The cells grid pixels reach, by key, each with the most the brush gives it.
+function reachOf(pixels) {
+  const reach = new Map();
+  for (const { x, y, alpha } of pixels) {
+    const key = `${x},${Math.floor(y / 2)}`;
+    reach.set(key, Math.max(reach.get(key) ?? 0, alpha));
+  }
+  return reach;
+}
+
 
 const RANGE = {
   key: 'retouchRange', get label() { return t('tools.retouch.range'); }, type: 'segmented',
   choices: ['shadows', 'midtones', 'highlights'].map((value) => ({ value, get label() { return t(`tools.retouch.${value}`); } })),
 };
 
-function retouchTool({ id, keys, icon, change, range = false }) {
+function retouchTool({ id, keys, icon, change, own, range = false }) {
   const tool = {
     id,
     get title() { return t(`tools.${id}.title`); },
@@ -116,9 +197,12 @@ function retouchTool({ id, keys, icon, change, range = false }) {
       let pixels = brushPixels(from, to, { size: workspace.retouchSize, flow: 1, hardness: workspace.retouchHardness / 100 }, cols, rows);
       if (clip) pixels = pixels.filter(({ x, y }) => clip.pixel(x, y));
       const strength = workspace.retouchStrength / 100;
-      const own = (color, at) => change(color, workspace.retouchRange, at);
-      if (view === 'output') retouchCells(project, pixels, own, strength);
-      else retouchPixels(project, pixels, own, strength);
+      const changed = (color, at) => change(color, workspace.retouchRange, at), owned = (from, around) => own(from, around, workspace.retouchRange);
+      if (!onBottom(project)) { // a drawing layer: only what it holds
+        if (view === 'output') retouchOwnCells(project, pixels, changed, owned, strength);
+        else retouchOwnPaint(project, pixels, owned, strength);
+      } else if (view === 'output') retouchCells(project, pixels, changed, strength);
+      else retouchPixels(project, pixels, changed, strength);
       workspace.strokeEnd = to;
     },
     end({ project }) {
@@ -134,6 +218,7 @@ export const blur = retouchTool({
   keys: ['R'],
   icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-64 -48 512 608"><path d="M192 512C86 512 0 426 0 320 0 228.8 130.2 45.9 166.6-3.5 172.5-11.5 181.8-16 191.8-16l.4 0c10 0 19.3 4.5 25.2 12.5 36.4 49.4 166.6 232.3 166.6 323.5 0 106-86 192-192 192zM112 312c0-13.3-10.7-24-24-24s-24 10.7-24 24c0 75.1 60.9 136 136 136 13.3 0 24-10.7 24-24s-10.7-24-24-24c-48.6 0-88-39.4-88-88z"/></svg>',
   change: (color, range, at) => averaged(AROUND.map(([dx, dy]) => at(dx, dy)).filter(Boolean)), // the spot and those around it, evenly
+  own: (from, around) => averagedPaint(around), // the same, a clear pixel counting as clear
 });
 
 export const dodge = retouchTool({
@@ -142,6 +227,7 @@ export const dodge = retouchTool({
   range: true,
   icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-32 -64 640 640"><path d="M288-32c8.4 0 16.3 4.4 20.6 11.7L364.1 72.3 468.9 46c8.2-2 16.9 .4 22.8 6.3S500 67 498 75.1l-26.3 104.7 92.7 55.5c7.2 4.3 11.7 12.2 11.7 20.6s-4.4 16.3-11.7 20.6L471.7 332.1 498 436.8c2 8.2-.4 16.9-6.3 22.8S477 468 468.9 466l-104.7-26.3-55.5 92.7c-4.3 7.2-12.2 11.7-20.6 11.7s-16.3-4.4-20.6-11.7L211.9 439.7 107.2 466c-8.2 2-16.8-.4-22.8-6.3S76 445 78 436.8l26.2-104.7-92.6-55.5C4.4 272.2 0 264.4 0 256s4.4-16.3 11.7-20.6L104.3 179.9 78 75.1c-2-8.2 .3-16.8 6.3-22.8S99 44 107.2 46l104.7 26.2 55.5-92.6 1.8-2.6c4.5-5.7 11.4-9.1 18.8-9.1zm0 144a144 144 0 1 0 0 288 144 144 0 1 0 0-288zm0 240a96 96 0 1 1 0-192 96 96 0 1 1 0 192z"/></svg>',
   change: (color, range) => dodged(color, range),
+  own: (from, around, range) => from && { ...dodged(from, range), a: from.a },
 });
 
 export const burn = retouchTool({
@@ -150,4 +236,5 @@ export const burn = retouchTool({
   range: true,
   icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-64 -64 640 640"><path d="M256 0C114.6 0 0 114.6 0 256S114.6 512 256 512c68.8 0 131.3-27.2 177.3-71.4 7.3-7 9.4-17.9 5.3-27.1s-13.7-14.9-23.8-14.1c-4.9 .4-9.8 .6-14.8 .6-101.6 0-184-82.4-184-184 0-72.1 41.5-134.6 102.1-164.8 9.1-4.5 14.3-14.3 13.1-24.4S322.6 8.5 312.7 6.3C294.4 2.2 275.4 0 256 0z"/></svg>',
   change: (color, range) => burned(color, range),
+  own: (from, around, range) => from && { ...burned(from, range), a: from.a },
 });

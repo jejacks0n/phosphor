@@ -828,16 +828,22 @@ swaps the two halves of each cell's base colors.
     the edge mid-cell. Set doesn't apply to a gradient: it gives each cell its character and both colors.
   - **Undo**: A gradient is one undo step.
 - **Retouch** (one button): **Blur** (**R**), **Dodge** (**O**) and **Burn** (**Shift+O**), in both views. They're soft
-  round brushes, like the Brush, that change the colors that show on the selected layer instead of laying your own:
+  round brushes, like the Brush, that change colors instead of laying your own:
   - **Dodge** lightens, **Burn** darkens, and **Blur** evens each spot out with the ones around it.
+  - **On a Drawing Layer**: They change only what that layer holds, never the layers under it: where it has nothing,
+    nothing changes. Its empty parts count as clear, so Blur fades the edge of your paint out into the clear beside it
+    (a little paint spreads just past the edge, in its own color), while a solid patch stays solid; Dodge and Burn
+    keep paint as see-through as it was.
+  - **On the Base**: They change the picture's colors as they show.
   - **Size** and **Hardness** work as the Brush's. **Strength** is how far one stroke goes, and going over a spot again
     in the same stroke adds nothing, so stroke again to go further.
   - **Range** (Dodge and Burn) chooses the colors they change most: **Shadows** the dark ones, **Highlights** the light
     ones, **Midtones** (to start) the ones between, leaving black and white alone.
-  - **In the PIXEL View**: Each grid pixel's color is changed and laid back as paint.
+  - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels).
   - **In the ANSI View**: Each cell's colors are, and its character stays; a cell that shows no character still shows
     none. Blur there evens a cell's colors with the cells around it, foreground with foreground and background with
-    background.
+    background. On a drawing layer that's its own typed and drawn cells, evened only with its other cells (a color set
+    to None stays None), and its paint, as in the PIXEL view.
   - They read the colors as stored, before the color adjustments, so with a palette the result shows in the palette's
     colors, as any paint does. With a selection, they stay inside it. A stroke is one undo step.
 - **Eyedropper** (**I**): Its **FG** and **BG** toggles choose what a pick sets.

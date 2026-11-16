@@ -60,6 +60,18 @@ export const editLayerActions = {
     this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
   },
 
+  // Set the picked layer's paint at grid pixels ({ x, y, r, g, b, a }, a 0..1) to exactly those colors and alphas,
+  // whatever was there (Retouch on a layer's own paint). Not on the base, whose pixels are all opaque.
+  putEditPixels(pixels) {
+    if (!pixels.length || !this.renderer.outputCanvas || onBottom(this) || refusedNoCells(this, { toast: false })) return;
+    this.ensureLayer();
+    this.beginEdit();
+    this.noteDrawn(pixels);
+    this.paintLayer.put(pixels);
+    this.hasPaint = this.paintLayer.hasPaint;
+    this.refreshEdit(pixels);
+  },
+
   eraseEditPixels(pixels) {
     if (!pixels.length || !this.renderer.outputCanvas || refusedNoCells(this, { toast: false })) return;
     if (onBottom(this)) return this.eraseBasePixels(pixels);
