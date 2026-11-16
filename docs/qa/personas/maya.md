@@ -275,8 +275,9 @@ dithered, and compare the dither at 80 and at 200 columns.
   palette shows the result in its own colors.
 - Probes: `out-of-order`: stroke all three over a part of the layer with nothing on it (nothing changes, the picture
   under it included), hide the layer with its eye and stroke ("Make the layer visible to draw on it"), Blur over the
-  caption in the PIXEL view too (the same as on the ANSI view), and Dodge with Size at 1 on the ANSI view (one half of a
-  cell lightens, the other stays, as the Brush paints); `undo-redo`: undo a stroke, redo it, and undo a Blur
+  caption in the PIXEL view too (the same as on the ANSI view), Dodge with Size at 1 on the ANSI view (one half of a
+  cell lightens, the other stays, as the Brush paints), and with Base picked type a letter and Dodge over it in the PIXEL
+  view (the letter stays, its colors lighten); `undo-redo`: undo a stroke, redo it, and undo a Blur
   over the caption (its letters come back); `extremes`: Strength at 1% and at 100%.
 - Rated: yes, wants O, Shift+O and R
 

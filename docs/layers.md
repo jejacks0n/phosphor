@@ -866,10 +866,11 @@ swaps the two halves of each cell's base colors.
   - **Nothing Is Locked**: On a drawing layer, a cell with colors of its own (one you typed, or one Merge down wrote
     exactly) that a stroke changes loses its character, and its two halves become paint in the colors the cell showed,
     which the stroke then changes like any paint, so it fades into the clear like the rest. A cell the Brush made a ▄
-    holds only its character, its colors being paint, so it stays. In the PIXEL view the same goes for a character
-    pinned on the base: its pixels take the colors it showed. Undo brings the characters back. To keep text as it is,
-    put it on a layer of its own.
-  - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels).
+    holds only its character, its colors being paint, so it stays. Undo brings the characters back. To keep text as it
+    is, put it on a layer of its own. On the base a pinned character stays, in both views: the stroke changes its
+    colors.
+  - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels;
+    a character pinned on the base keeps its background in its top pixel and its foreground in its bottom one).
   - **In the ANSI View**: On a drawing layer, as in the PIXEL view, pixel by pixel, as the Brush paints: a small brush
     can change one half of a cell and leave the other. On the base, each cell's
     colors are changed and its character stays; a cell that shows no character still shows none, and Blur evens a

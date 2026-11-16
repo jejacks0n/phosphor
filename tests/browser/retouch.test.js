@@ -5,6 +5,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { blur, dodge, burn } from '@/tools/retouch';
 import { getTool } from '@/tools';
+import { hex2rgb } from '@/lib/ColorUtils.js';
 
 async function blank(view = 'input') {
   const { project, workspace } = await createTestApp();
@@ -247,16 +248,17 @@ test('pixel view: a typed letter a stroke reaches becomes paint in the colors it
   expect(blue).toBeGreaterThan(0x80);
 });
 
-test('pixel view: on the base a stroke unpins the characters it reaches; undo pins them again', async () => {
+test('pixel view: on the base a pinned character stays, and its two pixels (background over foreground) change', async () => {
   const { project, workspace, ctx } = await blank();
   workspace.pickLayer('base');
-  project.writeBaseCells([{ col: 5, row: 5, char: 'A', fg: '#ffffff', bg: '#000080' }, { col: 15, row: 5, char: 'B', fg: '#ffffff', bg: '#000080' }]);
+  project.writeBaseCells([{ col: 5, row: 5, char: 'A', fg: '#ffffff', bg: '#000080' }]);
   project.commitEdit();
-  stroke(blur, ctx, { x: 5.5, y: 11 });
-  expect(project.baseRecords.pins.has('5,5')).toBe(false);
-  expect(project.baseRecords.pins.get('15,5')).toBe('B'); // out of reach
-  project.undo();
+  stroke(dodge, ctx, { x: 5.5, y: 11 });
   expect(project.baseRecords.pins.get('5,5')).toBe('A');
+  expect(hex2rgb(project.baseColorAt(5, 10)).b).toBeGreaterThan(0x80); // its navy background, lightened
+  expect(project.baseColorAt(5, 11)).toBe('#ffffff');                  // its white foreground: Midtones leaves white
+  project.undo();
+  expect(project.baseColorAt(5, 10)).toBe('#000080');
 });
 
 test('ANSI view: Retouch leaves a cell with only a character (the Brush\'s ▄) a cell, and keeps the base\'s pins', async () => {
