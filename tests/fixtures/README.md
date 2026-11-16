@@ -23,6 +23,7 @@ Inputs the tests read, and (under `reference/`) the outputs they must reproduce.
 | `projects/one-sided-curve.phosphor` | an open curve with a sharp corner, stroked to its right with a miter limit of 8 (a report: the stroke showed on its left too) | saved by the app |
 | `projects/colorize-sharpen.phosphor` | a face under Sharpen, Brightness, Contrast and Saturation, colorized red at 100% on CGA (a report: the red it showed couldn't be picked) | saved by the app |
 | `projects/upper-paint-palette.phosphor` | a white, brown and black color list under Saturation 0, with Layer 1's own character settings making it an upper layer (a report: the brown swatch painted dark gray in the PIXEL view) | saved by the app |
+| `projects/blur-shape-issue.phosphor` | a shape merged down into Layer 1 (By shape, so most of its cells were written exactly) beside a painted circle, both blurred in the ANSI view (a report: the shape kept a hard edge and never faded into the clear) | saved by the app |
 | `../../examples/*.phosphor` | real projects from earlier versions | committed by hand |
 | `clipboard/moebius-16-colors.html` | Moebius's clipboard HTML, 16 colors only (the Advanced Color fork, 2026-11-02) | copied in Moebius, read from the Mac clipboard |
 | `clipboard/moebius-24-bit.html` | the same with one cell in 24-bit color (`fg_rgb`, `fg_idx`) | copied in Moebius, read from the Mac clipboard |
