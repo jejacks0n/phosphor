@@ -1124,49 +1124,54 @@ test.describe('on a phone', () => {
     expect(box.width).toBeGreaterThan((b.x - a.x) * 0.9); // from the first point to the second
   });
 
-  test('Layers picks the vector layer', async ({ page }) => {
+  test('« opens LAYERS over the art and picks the vector layer; », Escape and a tap on the art beside it shut it', async ({ page }) => {
     await page.goto('/');
     await startScreen(page);
-    await expect(page.getByRole('button', { name: 'Layers', exact: true })).toHaveCount(0);   // nothing open: nothing to list
     await openApp(page);
-    const layers = page.getByRole('button', { name: 'Layers', exact: true });
-    const dialog = page.getByRole('dialog', { name: 'Layers' });
+    const open = page.getByRole('button', { name: 'Expand panel' });
+    const panel = page.locator('.side-panel');
     const apart = () => page.waitForTimeout(400);   // a second tap this soon after the first is read as a double tap, not a click
-    await layers.tap();
-    await expect(dialog).toBeVisible();
+    await expect(panel).toBeHidden();
+    await open.tap();
+    await expect(panel).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Collapse panel' })).toBeFocused();
+    await panel.getByRole('tab', { name: 'Layers' }).tap();
     await apart();
-    await page.getByRole('button', { name: 'Add vector layer' }).tap();
-    await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');   // the tabs follow, behind the dialog
+    await panel.getByRole('button', { name: 'Add vector layer' }).tap();
+    await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');   // the tabs follow, beside the panel
     await expect(tab(page, 'PIXEL')).toHaveCount(0);
-    await expect(dialog).toBeVisible();   // which stays open, for a rename or an eye
+    await expect(panel).toBeVisible();   // which stays open, for a rename or an eye
     await apart();
-    await dialog.getByRole('button', { name: 'Done' }).tap();
-    await expect(dialog).toHaveCount(0);
-    await expect(layers).toBeFocused();   // focus comes back to the button that opened it
-    await apart();
-    await layers.tap();
-    await apart();
-    await dialog.locator('li button.pick', { hasText: 'Layer 1' }).tap();
-    await expect(tab(page, 'VECTOR')).toHaveCount(0);
+    await panel.locator('li button.pick', { hasText: 'Layer 1' }).tap();
     await expect(tab(page, 'PIXEL')).toBeVisible();
     await apart();
-    await dialog.locator('li button.pick .name', { hasText: 'Layer 1' }).tap();   // a tap on the picked row's name renames it
-    const box = dialog.getByRole('textbox', { name: 'Rename Layer 1' });
+    await panel.locator('li button.pick .name', { hasText: 'Layer 1' }).tap();   // a tap on the picked row's name renames it
+    const box = panel.getByRole('textbox', { name: 'Rename Layer 1' });
     await expect(box).toBeFocused();
     await box.fill('Ink');
     await box.press('Enter');
-    await expect(dialog.locator('li button.pick', { hasText: 'Ink' })).toBeFocused();
-    await page.keyboard.press('Escape');   // Escape closes it too
-    await expect(dialog).toHaveCount(0);
-    await expect(layers).toBeFocused();
+    await expect(panel.locator('li button.pick', { hasText: 'Ink' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+    await expect(open).toBeFocused();
+
+    await apart();
+    await open.tap();
+    await expect(panel).toBeVisible();
+    await expect.poll(async () => (await panel.boundingBox()).x).toBe(390 - 280);   // slid in, the art beside it
+    const before = await store(page, 'project', (p) => p.editVersion);
+    await apart();
+    await page.touchscreen.tap(55, 400);
+    await expect(panel).toBeHidden();
+    expect(await store(page, 'project', (p) => p.editVersion)).toBe(before);   // the tap shut it, and drew nothing
   });
 
-  test('the Layers dialog closes when the window widens to a computer\'s', async ({ page }) => {
+  test('the panel over the art becomes the side panel when the window widens', async ({ page }) => {
     await openApp(page);
-    await page.getByRole('button', { name: 'Layers', exact: true }).tap();
-    await expect(page.getByRole('dialog', { name: 'Layers' })).toBeVisible();
+    await page.getByRole('button', { name: 'Expand panel' }).tap();
+    await expect(page.locator('.side-panel')).toBeVisible();
     await page.setViewportSize({ width: 1200, height: 844 });
-    await expect(page.getByRole('dialog')).toHaveCount(0);   // its button is gone, and the side panel has the list
+    await expect(page.locator('.side-panel')).toHaveCSS('position', 'relative');
   });
 
   test('the options row has every button, as icons, and no hint; Stroke width is in the Stroke box', async ({ page }) => {

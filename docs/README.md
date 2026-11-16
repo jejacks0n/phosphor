@@ -28,7 +28,7 @@ The browser address bar updates to reflect your current workspace tab and, on SO
 - **Opening**: Opening an image, project file, ANSI or text file, or blank canvas opens the **ANSI** view. An SVG opened from the start screen opens on **VECTOR**.
 - **Tabs**: The top tabs follow the layer picked in LAYERS: a drawing layer or the base shows **PIXEL** and **ANSI** (labeled **ASCII** in the ASCII styles), a vector layer shows **VECTOR**, and **SAUCE** is always there ([Layers](layers.md#the-layers-list)).
 - **Back to the start screen**: While you watch a room on the **ROOM** tab with nothing of your own open, any art tab takes you back to the start screen.
-- **Narrow windows**: A narrow window has no ROOM tab or SOCIAL, so a window narrowed while on ROOM goes to PIXEL (or `/`, with nothing open).
+- **Narrow windows**: The side panel (LAYERS and SOCIAL) comes in over the art from the right, opened by **«** at the right end of the tab bar.
 - For details on room URLs, see [Social](social.md).
 
 ---

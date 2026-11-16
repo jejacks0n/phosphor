@@ -3,7 +3,6 @@
 import { nextTick, watch } from 'vue';
 import { NavigationFailureType, START_LOCATION, createRouter, createWebHashHistory, createWebHistory, isNavigationFailure } from 'vue-router';
 import { PLACES, arrivalPage, pathOf } from '@/lib/addresses';
-import { desktopQuery } from '@/social/config';
 import { cancelTopDialog } from '@/lib/focus';
 import { useProjectStore } from '@/store/ProjectStore';
 import { hasLeftRoom, useRoomStore } from '@/store/RoomStore';
@@ -16,8 +15,8 @@ export function defaultHistory() {
   return import.meta.env.VITE_ADDRESSES === 'path' ? createWebHistory() : createWebHashHistory();
 }
 
-// With path addresses a return from the server shares the query. A computer has read it (readReturn takes it off
-// the URL, which the route doesn't hear), so a step doesn't carry it along; a phone keeps it for a computer.
+// With path addresses a return from the server shares the query. It's been read (readReturn takes it off the URL,
+// which the route doesn't hear), so a step doesn't carry it along.
 const withoutReturn = (query) => Object.fromEntries(Object.entries(query).filter(([name]) => ![...RETURN_PARAMS, ...ERROR_PARAMS].includes(name)));
 
 export function createAddressRouter(history = defaultHistory()) {
@@ -67,21 +66,19 @@ export function followAddress(router) {
     const { tab, page, lobby } = to.meta, start = !tab && !page && !lobby;
     if (start && from === START_LOCATION && !router.options.history.state.inRoom) return;
     if (landing && tab) workspace.tabAddressed = true;
-    const computer = matchMedia(desktopQuery).matches;
-    if (computer) enterRoomOf(to, from);
+    enterRoomOf(to, from);
     if (tab || start) {
       social.page = 'lobby';   // Back past a page closes it
       // The ROOM tab only while you watch (or your room is coming back): the art tab you were on otherwise.
-      const watching = computer && (room.role === 'watch' || joining);
+      const watching = room.role === 'watch' || joining;
       workspace.editorTab = tab === 'room' && !watching ? artTab : tab ?? artTab;
       if (tab && workspace.editorTab !== tab) replaceNext = true;
       return;
     }
-    // A phone has no SOCIAL (a link stays, for a computer). The lobby opens in the side panel, and the tab's address
-    // takes the place of its own.
-    if (!computer || lobby) {
+    // The lobby opens in the side panel, and the tab's address takes the place of its own.
+    if (lobby) {
       social.page = 'lobby';
-      if (lobby && computer) workspace.showSocial();
+      workspace.showSocial();
       replaceNext = true;
       return;
     }
@@ -102,8 +99,7 @@ export function followAddress(router) {
     // stays as it is (a document coming back moves it once, to its tab).
     const empty = workspace.documentSettled ? !project.image : !current.meta.tab;
     const path = pathOf({ tab: workspace.editorTab, page: social.page, empty });
-    const computer = matchMedia(desktopQuery).matches;
-    const wanted = going ?? (computer || router.options.history.state.inRoom ? null : was);   // a phone has no rooms: a link stays, for a computer (but not the entry of a room you've left)
+    const wanted = going ?? null;
     if (path === current.path && wanted === was) {
       replaceNext = false;
       return;
@@ -123,8 +119,8 @@ export function followAddress(router) {
     ours = true;
     pending = true;   // beforeEach is a few promises off, and a second call before it would navigate again
     router[replace ? 'replace' : 'push']({
-      path, query: { ...(computer ? withoutReturn(current.query) : current.query), room: wanted ?? undefined },
-      state: { inRoom: going ? room.role ?? 'watch' : null },   // a phone's kept link is no room of yours
+      path, query: { ...withoutReturn(current.query), room: wanted ?? undefined },
+      state: { inRoom: going ? room.role ?? 'watch' : null },
     });
   }
 

@@ -276,12 +276,10 @@ test('in a window too short for it, the modal scrolls and its buttons stay reach
   await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 });
 
-test('a narrow screen has no SOCIAL: an address for it lands on the start screen, unasked', async ({ page }) => {
-  const server = await fakeServer(page);
+test('a narrow screen asks first too: an address for SOCIAL opens the panel over the art, with the question', async ({ page }) => {
+  await fakeServer(page);
   await page.setViewportSize({ width: 700, height: 900 });
   await page.goto('/#/social');
-  await startScreen(page);
-  await expect(consent(page)).toHaveCount(0);
-  await page.waitForLoadState('networkidle');
-  expect(server.requests).toEqual([]);
+  await expect(consent(page)).toBeVisible();
+  await expect(page.locator('.side-panel')).toHaveCSS('position', 'fixed');
 });

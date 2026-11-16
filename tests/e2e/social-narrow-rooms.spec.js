@@ -1,34 +1,48 @@
-// A narrow screen says rooms need a wider one, and a watcher can leave from it; widening brings the room back.
-import { test, expect } from './support.js';
-import { fakeRoom, ROOM_ID, watching, goLive, watcherPage, outOfRoom, live } from './social-support.js';
+// Rooms on a narrow screen: a link joins and the art shows on ROOM, the side panel shut over it; « opens CHAT over the
+// art with what was said counted, a message goes from there, and a tap on the art beside the panel shuts it.
+import { test, expect, tab } from './support.js';
+import { fakeRoom, goLive, watcherPage, followLink, member, live, selected, chat } from './social-support.js';
 
-const words = (page) => page.getByText('Shared rooms require a wider screen.');
+const wren = member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren' });
+const messages = (page) => chat(page).getByRole('log').locator('.message');
 
-test('a watcher whose window narrows is told, can Exit, and widening brings the room back', async ({ page: host, context }) => {
+async function say(page, text) {
+  const box = chat(page).getByRole('textbox', { name: 'Message' });
+  await box.fill(text);
+  await box.press('Enter');
+}
+
+test('a phone joins from a link and watches on ROOM; « opens CHAT over the art, counting what was said, and a tap beside it shuts it', async ({ page: host, context }) => {
   const room = fakeRoom();
-  const watcher = await watching(host, context, room);
-  await watcher.setViewportSize({ width: 760, height: 800 });
-  await expect(words(watcher)).toBeVisible();
-  await watcher.setViewportSize({ width: 1200, height: 800 });
-  await expect(words(watcher)).toHaveCount(0);
+  await goLive(host, room);
+  const watcher = await watcherPage(context, room, { me: wren });
+  await watcher.setViewportSize({ width: 390, height: 844 });
+  await followLink(watcher);
+  await live(watcher);
+  await selected(watcher, 'ROOM');
+  const panel = watcher.locator('.side-panel'), open = watcher.getByRole('button', { name: 'Expand panel' });
+  await expect(panel).toBeHidden();   // the art you came for
 
-  await watcher.setViewportSize({ width: 760, height: 800 });
-  await words(watcher).locator('..').getByRole('button', { name: 'Exit' }).click();
-  await outOfRoom(watcher);
-  await expect(words(watcher)).toHaveCount(0);
+  await say(host, 'welcome');
+  await expect(watcher.locator('nav.workspace-tabs span.unread')).toHaveText('1');
+  await open.click();
+  await expect(messages(watcher)).toHaveCount(1);
+  await expect(watcher.locator('span.unread')).toHaveCount(0);
+  await say(watcher, 'hi from a phone');
+  await expect(messages(host)).toHaveCount(2);
+  await expect(messages(host).nth(1)).toContainText('hi from a phone');
+
+  await expect.poll(async () => (await panel.boundingBox()).x).toBe(390 - 280);   // slid in
+  await watcher.mouse.click(55, 400);   // the strip of art beside it
+  await expect(panel).toBeHidden();
+  await expect(tab(watcher, 'ROOM')).toHaveAttribute('aria-selected', 'true');
 });
 
-test('a host whose window narrows is told, with no Exit, and the room goes on', async ({ page: host }) => {
+test('a host whose window narrows keeps the room, and « shows its chat', async ({ page: host }) => {
   await goLive(host, fakeRoom());
   await host.setViewportSize({ width: 760, height: 800 });
-  await expect(words(host)).toBeVisible();
-  await expect(host.getByRole('button', { name: 'Exit' })).toHaveCount(0);
+  await expect(host.locator('.side-panel')).toBeHidden();
+  await host.getByRole('button', { name: 'Expand panel' }).click();
+  await expect(chat(host).getByRole('button', { name: 'End room' })).toBeVisible();
   await live(host);
-});
-
-test('a room link opened at phone width says so where it lands', async ({ context }) => {
-  const watcher = await watcherPage(context, fakeRoom());
-  await watcher.setViewportSize({ width: 390, height: 800 });
-  await watcher.goto(`/#/social?room=${ROOM_ID}`);
-  await expect(words(watcher)).toBeVisible();
 });

@@ -16,6 +16,7 @@ import { groupOf } from '@/tools/groups';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { busyWhile } from '@/composables/useBusy';
+import { desktopQuery } from '@/social/config';
 
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 let saving = false;   // a save under way (saveFile), where it's not the save dialog's
@@ -193,6 +194,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     sidePanelWidth: useLocalStorage('phosphor.sidePanelWidth', 280, { serializer: StorageSerializers.number, listenToStorageChanges: false }), // the side panel's (SidePanel) width in px, as dragged: each tab its own, the last kept for the next
     sidePanelFolded: useLocalStorage('phosphor.sidePanelFolded', false, { listenToStorageChanges: false }), // the side panel folded away (it starts open; a fold is kept in the browser)
     chatTone: useLocalStorage('phosphor.chatTone', true), // a tone for someone else's chat message while you aren't in the chat (RoomStore.chime)
+    sidePanelOpen: false,    // a narrow screen's side panel, over the art (not kept: each load starts with it shut); a wide one's is sidePanelFolded
     sidePanelUnread: 0,      // what was said while the chat wasn't showing (SidePanel counts it)
     sidePanelTab: 'layers',  // the side panel's tab: 'layers' | 'social' (Social out of a room, CHAT in one)
     keysOpen: useLocalStorage('phosphor.keysOpen', true), // the Keys panel (KeysPanel) open, or folded away
@@ -405,6 +407,12 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     toggleSettings() {
       this.settingsOpen = !this.settingsOpen;
+      if (this.settingsOpen) this.sidePanelOpen = false;   // a narrow screen shows one drawer at a time
+    },
+    // The side panel folded or open on a wide screen; on a narrow one, over the art or not (and the settings drawer shut).
+    toggleSidePanel(open = matchMedia(desktopQuery).matches ? this.sidePanelFolded : !this.sidePanelOpen) {
+      if (matchMedia(desktopQuery).matches) this.sidePanelFolded = !open;
+      else Object.assign(this, { sidePanelOpen: open, settingsOpen: open ? false : this.settingsOpen });
     },
     // A file asking how it comes in (artDrop). An art file is read first, so one that can't open (too big, empty) says so
     // before anything's asked, and what's chosen opens what was read; a .utf8ans read as CP437 says that too.
@@ -459,7 +467,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     // The side panel open on its Social (or, in a room, CHAT) tab.
     showSocial() {
-      this.sidePanelFolded = false;
+      this.toggleSidePanel(true);
       this.sidePanelTab = 'social';
     },
   }

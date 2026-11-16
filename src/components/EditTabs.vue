@@ -1,9 +1,7 @@
 <script setup>
-import { ref, computed, watch, watchEffect, nextTick, useTemplateRef } from 'vue';
+import { computed, watch, nextTick, useTemplateRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
-import { useMediaQuery } from '@vueuse/core';
-import { desktopQuery } from '@/social/config';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -12,9 +10,7 @@ import { MAX_ANIMATION_CELLS, charRowsOf } from '@/lib/Cells';
 import { toast } from '@/composables/useToast';
 import { formatNumber } from '@/i18n/format';
 import { useTabIndicator } from '@/composables/useTabIndicator';
-import ModalDialog from '@/components/ModalDialog.vue';
-import LayersList from '@/components/LayersList.vue';
-import { toggleSidePanel } from '@/components/SidePanel.vue';
+import { toggleSidePanel, useSidePanelShown } from '@/components/SidePanel.vue';
 
 const props = defineProps({
   modelValue: { type: String, required: true },
@@ -59,19 +55,7 @@ function switchAnimate(event) {
 const tabList = useTemplateRef('tabList');
 const { style: indicatorStyle, update: updateIndicator } = useTabIndicator(tabList, '[role="tab"].active'); // the underline
 
-const isDesktop = useMediaQuery(desktopQuery);
-
-// A phone has no side panel: its LAYERS list opens from a button here, in a dialog. A pick leaves it open (a rename
-// takes a click on a name already picked, and the eye is for hiding what's picked); Done, Escape and the backdrop close it,
-// and focus goes back to the button.
-const showLayers = computed(() => !isDesktop.value && !!image.value && workspace.editMode);
-const layersOpen = ref(false);
-const layersButton = useTemplateRef('layersButton');
-function closeLayers() {
-  layersOpen.value = false;
-  nextTick(() => layersButton.value?.focus());
-}
-watch(showLayers, (shown) => { if (!shown) layersOpen.value = false; });   // no button behind it: the window widened, or the art went
+const { shown: sidePanelShown } = useSidePanelShown(workspace);
 
 // The art tabs wait for something to show. From ROOM they're the way back to the start screen.
 const noArt = computed(() => !image.value && props.modelValue !== 'room');
@@ -84,17 +68,12 @@ const tabs = computed(() => [
   ...(isVector(workspace.shownPick) ? [{ id: 'vector', label: t('tabs.vector'), disabled: noArt.value }] : []),
   ...(!isVector(workspace.pickedLayer) || project.artInside ? [{ id: 'output', label: renderStyle.value === 'ansi' ? t('tabs.ansi') : t('tabs.ascii'), disabled: noArt.value }] : []),
   { id: 'sauce', label: t('tabs.sauce'), disabled: noArt.value },
-  ...(isDesktop.value && (room.role === 'watch' || props.modelValue === 'room') ? [{ id: 'room', label: t('tabs.room'), disabled: false }] : []),   // the room you watch
+  ...(room.role === 'watch' || props.modelValue === 'room' ? [{ id: 'room', label: t('tabs.room'), disabled: false }] : []),   // the room you watch
 ]);
 // With nothing open no tab is selected: the start screen isn't a view of the art. The tab stays chosen
 // underneath, for when something opens.
 const selected = computed(() => tabs.value.find((tab) => tab.id === props.modelValue && !tab.disabled)?.id);
 const focusable = computed(() => selected.value ?? tabs.value.find((tab) => !tab.disabled)?.id); // the tab list's one Tab stop
-
-// Rooms are desktop only: a window narrowed while on ROOM goes to PIXEL.
-watchEffect(() => {
-  if (!isDesktop.value && props.modelValue === 'room') emit('update:modelValue', 'input');
-});
 
 // The tabs pattern: Left/Right (wrapping), Home and End move to a tab and select it, skipping
 // disabled ones. The keys stop here, so they don't also nudge a selection or move the text cursor.
@@ -150,18 +129,13 @@ watch(tabs, () => nextTick(updateIndicator), { deep: true });
       </button>
       <div class="indicator" :style="indicatorStyle" aria-hidden="true"></div>
     </div>
-    <button v-if="showLayers" ref="layersButton" class="layers" @click="layersOpen = true">{{ t('layers.label') }}</button>
-    <ModalDialog v-if="layersOpen" :label="t('layers.label')" @cancel="closeLayers">
-      <LayersList/>
-      <div class="actions"><button class="primary" @click="closeLayers">{{ t('common.done') }}</button></div>
-    </ModalDialog>
     <label class="animate" :class="{ on: project.animate, off: !canSwitch }" :title="switchTitle">
       <input type="checkbox" role="switch" :aria-label="t('tabs.animate')" :checked="project.animate" :aria-disabled="blocked || null" @change="switchAnimate">
       <span class="track" aria-hidden="true"></span>
       <span class="word">{{ t('tabs.animate') }}</span>
     </label>
-    <!-- The side panel's fold on a wide screen (a phone has none): while it's open the » is in the panel's own tabs; folded, it takes no room, and this « sits where that » was, with a count of what was said. -->
-    <template v-if="isDesktop && workspace.sidePanelFolded">
+    <!-- The side panel's fold: while it's open the » is in the panel's own tabs; folded (on a narrow screen, shut), this « sits where that » was, with a count of what was said. -->
+    <template v-if="!sidePanelShown">
       <span v-if="workspace.sidePanelUnread" class="unread">{{ workspace.sidePanelUnread }}</span>
       <button class="panel link" :aria-label="t('sidePanel.openAria')" aria-expanded="false" @click="toggleSidePanel(workspace)">«</button>
     </template>
@@ -305,21 +279,6 @@ div.indicator {
   transition: width 0.5s cubic-bezier(0.23, 1, 0.32, 1), transform 0.1s ease;
   background: var(--accent);
   box-shadow: 0 0 3px var(--accent), 0 0 20px var(--accent);
-}
-
-button.layers {
-  margin-left: auto;
-  padding: 3px 8px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-div.actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
-button.layers ~ label.animate {
-  margin-left: 0;
 }
 
 button.panel {

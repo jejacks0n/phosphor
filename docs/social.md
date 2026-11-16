@@ -7,8 +7,9 @@ Social lives in the side panel on the right of the workspace. Its **SOCIAL** tab
 and is there even before you've opened any art. While you're in a room it becomes **CHAT**. Signing in, your account
 and starting a room open in boxes over everything, each with a close button (**×**) at its top right (or Escape).
 
-Social needs a wide screen: a window at least 769 pixels wide, such as a laptop, a desktop monitor or a tablet in
-landscape. A phone held sideways can be wide enough. See [Not in This Version](#not-in-this-version).
+On a narrow screen (a phone, or a window under 769 pixels wide) the side panel comes in over the art from the right
+instead: **«** at the right end of the tab bar opens it ([The Side Panel](#the-side-panel)). Everything in Social works
+there too.
 
 ---
 
@@ -358,6 +359,10 @@ The side panel stays open as you move between tabs, so you can work on your own 
 - **Kept**: Its width and whether it's folded are kept in the browser, for a reload or the next tab. Going into a room
   opens it on CHAT. A reload in a room shows it as it was: folded or open, on CHAT or LAYERS.
 - **Toasts**: What the chat panel says about the drawing also shows as a toast while the chat isn't showing.
+- **Narrow screens**: The panel comes in over the art from the right, leaving a strip of the art showing, and starts
+  shut. **«** at the right end of the tab bar opens it, with the count of what was said beside it, and **»**, Escape or
+  a tap on the strip of art shuts it. Opening it closes the settings (☰), and opening those shuts it. Its edge doesn't
+  drag. Going into a room shuts it, so you see the art, and **«** counts what's said.
 
 ---
 
@@ -605,10 +610,6 @@ closes the dialog, as Escape does, as on a phone, and the page stays where it wa
 
 ## Not in This Version
 
-- **Narrow screens**: Social needs a wide window, and the side panel isn't shown on a narrow one. A link to a room
-  opened on a narrow screen, or a room you're in when the window narrows, shows "Shared rooms require a wider
-  screen." A watcher gets **Exit** with it, which leaves as the room's own Exit does. A host's room goes on, without
-  Exit, and is back as it was when the window widens.
 - **Animation**: Rooms are for still drawings.
 - **A picture on a layer**: Adding a picture to a layer isn't supported in shared rooms yet.
 - **Keeping a copy** of art you're only watching.
