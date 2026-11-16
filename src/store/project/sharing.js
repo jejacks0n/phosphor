@@ -40,7 +40,7 @@ const HIDDEN_TAB_MS = 100; // a hidden tab has no frames, and still has to catch
 // Refused while paused: everything that changes the drawing. changeSelection isn't here: it's not a change
 // to the document, and Deselect goes on working.
 export const DRAWING_ACTIONS = [
-  'paintEditPixels', 'paintBasePixels', 'paintStroke', 'eraseEditPixels', 'editCell', 'typeAt', 'writeAt', 'backspaceAt', 'deleteAt', 'typing', 'shiftCells',
+  'paintEditPixels', 'putEditPixels', 'paintBasePixels', 'paintStroke', 'eraseEditPixels', 'editCell', 'typeAt', 'writeAt', 'backspaceAt', 'deleteAt', 'typing', 'shiftCells',
   'writeEditCells', 'clearEditCells', 'flipCell', 'flipPaint', 'clearEditLayer',
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
   'deleteIn', 'pasteAt', 'selectionEdit',

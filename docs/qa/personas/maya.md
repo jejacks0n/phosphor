@@ -263,11 +263,13 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Does: opens the Paint Bucket's neighbor, the Retouch button (its corner, or a long press), picks Dodge and strokes
   over a dark part of her paint, then Burn over a light part, switches the Range to Shadows and to Highlights, then
   Blur along an edge; then the same on the ANSI view, over the caption she typed.
-- Expects: Dodge lightens and Burn darkens the colors that show, most in the Range picked (Midtones leaves black and
-  white alone); Blur softens an edge; going over a spot again in one stroke adds nothing, a second stroke goes further;
-  on the ANSI view the caption's letters stay and only their colors change, and a cell that shows no character still
-  shows none; each stroke is one undo step; a palette shows the result in its own colors.
-- Probes: `out-of-order`: hide the layer with its eye and stroke ("Make the layer visible to draw on it"); `undo-redo`: undo a
+- Expects: Dodge lightens and Burn darkens her paint, most in the Range picked (Midtones leaves black and white alone);
+  Blur softens an edge, fading it into the clear beside it in the paint's own color, never the picture's under it;
+  going over a spot again in one stroke adds nothing, a second stroke goes further; on the ANSI view the caption's
+  letters stay and only their colors change, the empty cells beside them stay empty, and a cell that shows no character
+  still shows none; each stroke is one undo step; a palette shows the result in its own colors.
+- Probes: `out-of-order`: stroke all three over a part of the layer with nothing on it (nothing changes, the picture
+  under it included), and hide the layer with its eye and stroke ("Make the layer visible to draw on it"); `undo-redo`: undo a
   stroke, redo it; `extremes`: Strength at 1% and at 100%.
 - Rated: yes, wants O, Shift+O and R
 

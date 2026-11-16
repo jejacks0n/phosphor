@@ -82,15 +82,22 @@ test('ANSI view: Dodge recolors a cell\'s character and background, and the char
   expect(hex2rgb(cell.bg).r).toBeGreaterThan(0x60);
 });
 
-test('ANSI view: Blur by a colored cell leaves a cell that shows no character showing none', async () => {
+test('ANSI view: on a drawing layer, Blur leaves the empty cells beside a typed one empty, and blends typed cells, keeping their characters', async () => {
   const { project, ctx } = await blank('output');
-  project.writeEditCells([{ col: 5, row: 5, attrs: { char: 'A', fg: '#ff0000', bg: '#0000ff' } }]);
+  project.writeEditCells([
+    { col: 5, row: 5, attrs: { char: 'A', fg: '#ff0000', bg: '#0000ff' } },
+    { col: 6, row: 5, attrs: { char: 'B', fg: '#00ff00', bg: '#0000ff' } },
+  ]);
   project.commitEdit();
-  stroke(blur, ctx, { x: 6.5, y: 11 });
-  const next = project.editCellAt(6, 5);
-  expect(next.fg).toBe(next.bg);
-  expect(next.bg).not.toBe('#000000'); // the blue around it came in
-  expect(project.editCellAt(5, 5).char).toBe('A');
+  stroke(blur, ctx, { x: 5.5, y: 11 }, { x: 6.5, y: 11 });
+  expect(project.editCellAt(4, 5)).toBeUndefined();
+  expect(project.editCellAt(7, 5)).toBeUndefined();
+  expect(project.editCellAt(5, 6)).toBeUndefined();
+  const [a, b] = [project.editCellAt(5, 5), project.editCellAt(6, 5)];
+  expect([a.char, b.char]).toEqual(['A', 'B']);
+  expect(hex2rgb(a.fg).g).toBeGreaterThan(0); // the green beside it came in
+  expect(hex2rgb(b.fg).r).toBeGreaterThan(0);
+  expect([a.bg, b.bg]).toEqual(['#0000ff', '#0000ff']); // blue around blue: blue
 });
 
 test('a selection keeps the stroke inside it', async () => {
@@ -118,4 +125,63 @@ test('ANSI view: a cell the stroke doesn\'t change is left as it is, its 256-col
   stroke(dodge, ctx, { x: 5.5, y: 11 }); // Midtones: black and white stay
   expect(project.editCellAt(5, 5)).toEqual({ char: 'A', fg: '#ffffff', fgIndex: 231, bg: '#000000', bgIndex: 16 });
   expect(project.editCellAt(4, 5)).toBeUndefined(); // the blank canvas's black, untouched
+});
+
+// On a drawing layer Retouch works on the layer's own paint alone: nothing where it has none, whatever shows under it, and
+// a clear pixel counts as clear, so Blur fades an edge out into the clear around it.
+async function overGreen(view = 'input') {
+  const app = await blank(view);
+  app.workspace.pickLayer('base');
+  paintGray(app.project, 0); // the base, so there's something under the layer
+  const green = [];
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) green.push({ x, y, r: 0, g: 200, b: 0, alpha: 1 });
+  app.project.paintEditPixels(green);
+  app.project.commitEdit();
+  app.workspace.pickLayer('edit');
+  return app;
+}
+const alphaAt = (project, x, y) => project.paintLayer?.pixelAt(x, y)?.a ?? 0;
+
+for (const view of ['input', 'output']) {
+  test(`${view === 'input' ? 'pixel' : 'ANSI'} view: on an empty drawing layer Blur, Dodge and Burn change nothing, whatever is under it`, async () => {
+    const { project, ctx } = await overGreen(view);
+    const cells = project.cells.map((cell) => cell && `${cell.char}${cell.fg.hex}${cell.bg.hex}`).join();
+    for (const tool of [blur, dodge, burn]) stroke(tool, ctx, { x: 10, y: 10 });
+    expect(project.paintLayer.hasPaint).toBe(false);
+    expect(project.editCells.size).toBe(0);
+    expect(project.cells.map((cell) => cell && `${cell.char}${cell.fg.hex}${cell.bg.hex}`).join()).toBe(cells);
+  });
+
+  test(`${view === 'input' ? 'pixel' : 'ANSI'} view: on a drawing layer Blur fades paint's edge into the clear beside it, in its own color, and a solid patch stays solid`, async () => {
+    const { project, workspace, ctx } = await overGreen(view);
+    const red = [];
+    for (let y = 0; y < 20; y++) for (let x = 0; x < 10; x++) red.push({ x, y, r: 255, g: 0, b: 0, alpha: 1 });
+    project.paintEditPixels(red);
+    project.commitEdit();
+    workspace.retouchSize = 6;
+    stroke(blur, ctx, { x: 10, y: 10.5 });
+    expect(alphaAt(project, 9, 10)).toBeLessThan(1);
+    expect(alphaAt(project, 9, 10)).toBeGreaterThan(0.5);
+    expect(alphaAt(project, 10, 10)).toBeGreaterThan(0); // spread a little into the clear
+    expect(alphaAt(project, 10, 10)).toBeLessThan(0.5);
+    expect(alphaAt(project, 12, 10)).toBe(0); // nothing painted within reach
+    expect(paintAt(project, 10, 10)).toEqual([255, 0, 0]); // its own color, none of the green under it
+    expect(paintAt(project, 8, 10)).toEqual([255, 0, 0]);
+    expect(alphaAt(project, 7, 10)).toBe(1); // red all around: still solid
+    project.undo();
+    expect(alphaAt(project, 9, 10)).toBe(1);
+    expect(alphaAt(project, 10, 10)).toBe(0);
+  });
+}
+
+test('pixel view: on a drawing layer Dodge lightens its paint and keeps its alpha', async () => {
+  const { project, ctx } = await overGreen();
+  const pixels = [];
+  for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) pixels.push({ x, y, r: 128, g: 128, b: 128, alpha: 1 });
+  project.paintEditPixels(pixels, 50);
+  project.commitEdit();
+  const before = alphaAt(project, 10, 10);
+  stroke(dodge, ctx, { x: 10, y: 10 });
+  expect(paintAt(project, 10, 10)[0]).toBeGreaterThan(180);
+  expect(alphaAt(project, 10, 10)).toBeCloseTo(before, 2);
 });
