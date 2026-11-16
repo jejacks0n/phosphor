@@ -155,7 +155,12 @@ function mergedPaint(project, into, erased, from, rect) {
   return paint;
 }
 const halvesOf = (col, row) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }];
-const sameLook = (a, b) => a?.char === b?.char && a?.fg?.hex === b?.fg?.hex && a?.bg?.hex === b?.bg?.hex;
+// Whether two cells look the same: one character, and colors no more than ROUNDING apart on any channel. The same color
+// reached two ways rounds a step or two apart (By shape works a shape's colors out from its finer samples, paint from
+// its grid pixels), which shows the same; a real difference (a soft edge seen at half-cell scale) is more.
+const ROUNDING = 2;
+const near = (a, b) => a === b || (!!a && !!b && Math.abs(a.r - b.r) <= ROUNDING && Math.abs(a.g - b.g) <= ROUNDING && Math.abs(a.b - b.b) <= ROUNDING);
+const sameLook = (a, b) => a?.char === b?.char && near(a?.fg, b?.fg) && near(a?.bg, b?.bg);
 
 // The cells at indexes (row * cols + col) a merge into the cells layer with the id under would change, with its after
 // (state, mergeStep's) put in place: each worked out as it shows up to that layer (through the pipeline for the lower
