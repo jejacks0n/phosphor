@@ -120,18 +120,19 @@ export async function startScreen(page) {
 }
 
 // Autosave has written the open document, so a reload can bring it back. Its first write is a second after the
-// document opens: a reload before that hangs on the write as the page goes, which a slow runner can lose.
-export const autosaved = (page) => expect.poll(async () => {
+// document opens: a reload before that hangs on the write as the page goes, which a slow runner can lose. changed: and
+// a change since it opened (a layer added, say), which is written a second after it's made.
+export const autosaved = (page, { changed = false } = {}) => expect.poll(async () => {
   const id = await store(page, 'project', (p) => p.documentId);
-  return page.evaluate((id) => new Promise((resolve, reject) => {
+  return page.evaluate(([id, changed]) => new Promise((resolve, reject) => {
     const open = indexedDB.open('phosphor-autosave', 1);
     open.onerror = () => reject(open.error);
     open.onsuccess = () => {
       const db = open.result;
       const get = db.transaction('documents').objectStore('documents').get(id);
-      get.onsuccess = () => { db.close(); resolve(!!get.result); };
+      get.onsuccess = () => { db.close(); resolve(!!get.result && !(changed && get.result.asOpened)); };
     };
-  }), id);
+  }), [id, changed]);
 }).toBe(true);
 
 // A store's state, or an expression over it: store(page, 'project', (p) => p.cells.length).
