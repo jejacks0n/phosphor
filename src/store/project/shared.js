@@ -280,6 +280,14 @@ export function refusedNoCells(project, { toast: say = true } = {}) {
   return true;
 }
 
+// Drawing on the base in a movie: the base is the same on every frame, so what's drawn there doesn't animate. Said once a
+// drawing (by its documentId), the first time a stroke or typing starts on the base with more than one frame.
+export function sayBaseOnEveryFrame(project) {
+  if (!onBottom(project) || !project.hasFrames || project._saidBaseFrames === project.documentId) return;
+  project._saidBaseFrames = project.documentId;
+  toast(t('animation.baseEveryFrame'));
+}
+
 // The lower group's cells layer's cells and paint (ProjectStore.lowerGroup): what the renderer's pipeline is handed. None
 // while the group has no cells layer. Functions, not getters: a layer that isn't in use waits in _layerData, which isn't
 // reactive, so a cached value could be stale.

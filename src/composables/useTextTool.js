@@ -10,13 +10,14 @@ import { isField, isTextInput } from '@/lib/fields';
 import { snapCursor } from '@/document/wideChars';
 import { t } from '@/i18n/index.js';
 import { refusesHidden } from '@/tools';
-import { refusedNoCells } from '@/store/project/shared.js';
+import { refusedNoCells, sayBaseOnEveryFrame } from '@/store/project/shared.js';
 
 // Type one character at the Text tool's cursor and move right by its width (the keyboard and the
 // F-key strip). The cursor never rests on a wide character's trail.
 export function typeAtCursor(project, workspace, char) {
   const cursor = workspace.textCursor;
   if (!cursor || refusesHidden({ project, workspace })) return;
+  sayBaseOnEveryFrame(project);
   const typed = project.typeAt(cursor.col, cursor.row, char, workspace.typingAttrs(), { insert: workspace.insertMode });
   if (typed === false) toast(t('palette.wideLastColToast'));
   if (!typed) return; // false, or nothing at all: refused while paused

@@ -793,6 +793,7 @@
   },
   "animation": {
     "toolbarAria": "Animation",
+    "baseEveryFrame": "The base is the same on every frame. Add a layer to animate what you draw.",
     "kinds": {
       "blank": "Blank — empty drawing layer (shows onion skin)",
       "duplicate": "Duplicate — copy all drawings from the current frame",

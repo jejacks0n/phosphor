@@ -4,6 +4,8 @@ Phosphor lets you create frame-by-frame text animations. You can draw each frame
 
 The base layer (your background image, with its pixels and pins) stays fixed beneath all animation frames. Your drawing layers and vector shapes change across frames, and every frame is drawn with the same tools as a still.
 
+A new drawing starts with only the base, so what you draw on it shows on every frame. To animate it, add a layer first: the first time you draw on the base with more than one frame, Phosphor says so.
+
 ---
 
 ## Turning It On

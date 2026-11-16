@@ -161,7 +161,9 @@ a Polygon.
   the scrubber shows a short tick for each frame with nothing drawn; every frame shows the scene, carried from frame 1
   ([The bar](../../animation.md#the-bar)). Each frame swap stays under 60 ms (the README's Budgets).
 - Probes: `speed`: hold N for two seconds with `qa.frames` and count what it added; `undo-redo`: undo the last three
-  frames, then redo them; `extremes`: hold N on to 60 frames, then undo back to 24 and time the undos.
+  frames, then redo them; `extremes`: hold N on to 60 frames, then undo back to 24 and time the undos;
+  `out-of-order`: pick Base and draw a cell with the Pencil, and check it says once "The base is the same on every
+  frame. Add a layer to animate what you draw." (a second cell says nothing), then undo it.
 - Rated: yes, wants N
 
 ### 8. Add a Duplicate and a Wipe
