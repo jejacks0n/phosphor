@@ -510,7 +510,7 @@ the canvas changes. Undo brings it back, selected if it was.
 - **When It's Off**: With the base selected (nothing is under it), and onto a vector layer, since cells can't become
   shapes: **Make art layer** does that ([Art Layers](#art-layers)). In an [animation](animation.md) with more than one
   frame it's off, since a layer is under every frame, so one frame can't go into it.
-- **In a Room**: Only the host merges, into the base or into any layer above it. A layer emptied by a merge leaves the
+- **In a Room**: Only the host merges, into the layer under it, the base included. A layer emptied by a merge leaves the
   stack, as it does alone. With others in the room, the dialog warns that merging down cannot be undone in shared
   rooms. **Make art layer** needs a vector layer directly above the selected layer; without one it's off and says "Add a
   vector layer above {name} first."
