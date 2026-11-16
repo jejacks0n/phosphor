@@ -8,7 +8,6 @@ import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { nameColor, nameGlyph } from '@/social/names';
 import ChatPanel from '@/components/social/ChatPanel.vue';
 import ReportDialog from '@/components/social/ReportDialog.vue';
@@ -512,19 +511,4 @@ test('unmounting while shown changes does not throw on the scroll', async () => 
   wrapApp.unmount();     // unmount before that internal nextTick resolves, clearing list.value
   el.remove();
   await nextTick();      // let any pending microtasks run; must not throw
-});
-
-test('The speaker in the header turns the tone for new messages off and on, and says which it is', async () => {
-  await mount('watch', 1);
-  const workspace = useWorkspaceStore();
-  const speaker = host.querySelector('header button.tone');
-  expect(speaker.getAttribute('aria-label')).toBe('Sound for new messages');
-  expect(speaker.getAttribute('aria-pressed')).toBe('true');
-  speaker.click();
-  await nextTick();
-  expect(workspace.chatTone).toBe(false);
-  expect(speaker.getAttribute('aria-pressed')).toBe('false');
-  speaker.click();
-  await nextTick();
-  expect(workspace.chatTone).toBe(true);
 });

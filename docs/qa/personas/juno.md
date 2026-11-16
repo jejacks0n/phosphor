@@ -217,8 +217,8 @@ and drag the panel wider.
 - Does: types a hello in the chat box and presses Enter; has `tin_owl` answer.
 - Expects: her message shows with her name, a host tag and a time, and reaches every watcher; Shift+Enter makes a new
   line and the box grows to 5 lines, then scrolls; Send is gray with nothing to send; her own message plays no tone,
-  and `tin_owl`'s answer plays one only if she's back on her art (focus out of the chat), and the speaker at the top
-  of the chat panel turns that off and on ([Chat](../../social.md#chat)).
+  and `tin_owl`'s answer plays one only if she's back on her art (focus out of the chat), and the speaker beside the
+  side panel's » turns that off and on ([Chat](../../social.md#chat)).
 - Probes: `extremes`: a 300-character message with emoji (the 301st character can't be typed), then the full room: 9
   more members join (12 watchers) and each says a line, and she times her own message reaching a watcher against
   `response`, then the nine leave (their pages closed), so later steps aren't refused as "Room is full"; `speed`: send five messages as fast as she can ("Please wait a moment before sending another message." after

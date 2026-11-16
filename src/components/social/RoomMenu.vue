@@ -64,6 +64,7 @@ div.room-menu {
 }
 button.end {   /* as Exit, in its place for a watcher */
   height: 26px;
+  white-space: nowrap;   /* a long room name wraps instead */
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 12px;

@@ -340,8 +340,8 @@ an unconfirmed member sees **Confirm your email to chat**.
 - **A tone**: Someone else's message plays a short, quiet tone unless you're in the chat (the cursor is in the message
   box, or you clicked in the messages) with the window in front. Messages that arrive together play one tone, and
   the earlier messages you see when you join play none. Messages from someone you blocked don't play it either. The
-  speaker at the top of the chat panel (**Sound for new messages**) turns it off and on, and the browser keeps that
-  setting. A browser plays nothing until you've clicked or typed on the page.
+  speaker in the side panel's tabs, left of **»** (**Sound for new messages**, on CHAT and LAYERS alike), turns it off
+  and on, and the browser keeps that setting. A browser plays nothing until you've clicked or typed on the page.
 - **Where it goes**: Chat goes from browser to browser through the host, like the art, never through Phosphor's server
   (which sees chat only in a report). The host's browser keeps the last 5,000 messages for as long as the room lasts,
   and a watcher can scroll back no further than that. When the room ends, so does its chat.
