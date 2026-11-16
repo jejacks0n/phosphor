@@ -17,6 +17,11 @@ const ATTRS = ['char', 'fg', 'bg', 'fgIndex', 'bgIndex'];
 // A ▄ with no colors of its own: Half-block wrote it to show the paint over its cell.
 export const isPaintBlock = (entry) => entry?.char === '▄' && entry.fg === undefined && entry.bg === undefined;
 
+// The entry a cell shows in renderStyle: a paint block is ANSI's way of showing paint (Colors only makes a cell with no
+// character a ▄), and ASCII has no ▄, so there it's as if there were none and the paint is converted with the layer's
+// ASCII characters, as paint is in a cell with no entry. Switching style back to ANSI shows the ▄ again.
+export const shownEntry = (entry, renderStyle) => (renderStyle !== 'ansi' && isPaintBlock(entry) ? undefined : entry);
+
 export const cellKey = (col, row) => `${col},${row}`;
 
 // As key.split(',').map(Number) reads it, without the array: a redraw parses every cell's key.
