@@ -287,7 +287,8 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Does: with the shape selected, opens the Fill side of the color box and picks Linear, then Radial; then uses the Node
   tool to drag the gradient's ends and add a stop on its line.
 - Expects: the fill becomes a gradient from its color to the background color, across the shape's box; switching kind
-  keeps the colors; the Node tool shows the gradient's handles; each change is one undo step.
+  keeps the colors; its line, ends and stops show at once, still on the Shape tool, and its ends and stops drag there
+  (a drag off them draws a new shape); the Node tool shows the gradient's handles; each change is one undo step.
 - Probes: `undo-redo`: undo the stop, the drag and the gradient one at a time; `back-out`: open the color box and press
   Escape; `extremes`: drag a stop well off the line (it's removed, keeping at least two).
 - Rated: yes, wants Alt+F, then a key for Linear (A for the Node tool)

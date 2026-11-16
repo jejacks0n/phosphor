@@ -12,6 +12,7 @@ import { toastMessage } from '@/composables/useToast';
 import { shapeAt } from '@/lib/shapeHits.js';
 import vnode, { pickedPoints } from '@/tools/vnode.js';
 import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
+import vshape from '@/tools/vshape.js';
 import { gradientHandles, gradientKey } from '@/tools/gradientHandles.js';
 import { DOUBLE_MS } from '@/tools/handlePick.js';
 
@@ -952,6 +953,43 @@ test('Vector select edits one selected shape\'s gradient: its ends and stops dra
   workspace.vectorStop = 0;
   project.selectShapes([other]);
   expect(workspace.vectorStop).toBe(null);
+});
+
+// The Shape tool shows a selected shape's gradient as Vector select does (its box shows with every tool), and its ends
+// and stops are handles there too; anywhere else a drag draws a new shape.
+test('the Shape tool shows and edits a selected shape\'s gradient ends and stops; off them, a drag draws a shape', async () => {
+  const { project, workspace } = await gradient(40, 40);
+  const fill = { type: 'linear', stops: [[0, '#ff0000'], [0.5, '#00ff00'], [1, '#0000ff']], m: [20, 0, 0, 20, 10, 15] };
+  const key = project.addShape(withShape(rectShape(10, 10, 30, 20, RED), { fill }));
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
+  workspace.setActiveTool('vshape');
+  const drag = (from, ...to) => {
+    vshape.begin(ctx, from, {});
+    let at = from;
+    for (const p of to) {
+      vshape.move(ctx, at, p);
+      at = p;
+    }
+    vshape.end(ctx);
+  };
+  const shape = () => project.shapes.get(key);
+  project.selectShapes([key]);
+  expect(gradientKey(project, workspace)).toBe(key);
+
+  drag({ x: 20, y: 15 }, { x: 22, y: 15 }, { x: 25, y: 15 }); // the middle stop slides
+  expect(shape().fill.stops[1][0]).toBeCloseTo(0.75, 5);
+  expect(project.shapes.size).toBe(1);
+  expect(workspace.vectorStop).toBe(1);
+  expect(vshape.keydown(ctx, new KeyboardEvent('keydown', { key: 'Delete' }))).toBe(true);
+  expect(shape().fill.stops).toHaveLength(2);
+  expect(workspace.vectorStop).toBe(null);
+  drag({ x: 30, y: 15 }, { x: 30, y: 17 }, { x: 30, y: 19 }); // the end turns it
+  expect(gradientHandles(shape()).p1.y).toBeCloseTo(19, 5);
+  expect(project.shapes.size).toBe(1);
+
+  drag({ x: 14, y: 12 }, { x: 18, y: 18 }); // inside the shape, off the handles: a new shape, selected
+  expect(project.shapes.size).toBe(2);
+  expect(workspace.vectorSelected).not.toEqual([key]);
 });
 
 test('vector layers above the picture share one canvas to draw their shapes on, and none of one shows on another', async () => {
