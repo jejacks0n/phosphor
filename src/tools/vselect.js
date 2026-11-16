@@ -21,7 +21,7 @@ import { measure } from '@/document/pathLength.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 import { shapeAt, shapesAt, shapesTouching } from '@/lib/shapeHits.js';
-import { gradientDrag, removeStop } from '@/tools/gradientHandles.js';
+import { gradientDrag, stopKeys } from '@/tools/gradientHandles.js';
 import { centerOf, placedShapes } from '@/document/followers.js';
 import { DOUBLE_MS, DOUBLE_PX, handlePicker } from '@/tools/handlePick.js';
 
@@ -325,10 +325,7 @@ export default {
       workspace.pickingPath = null;
       return true;
     }
-    const stop = workspace.vectorStop !== null && !event.metaKey && !event.ctrlKey && !event.altKey;
-    if (stop && event.key === 'Escape') workspace.vectorStop = null;
-    else if (stop && (event.key === 'Delete' || event.key === 'Backspace')) removeStop(project, workspace);
-    if (stop && ['Escape', 'Delete', 'Backspace'].includes(event.key)) return true;
+    if (stopKeys(project, workspace, event)) return true;
     if (event.key === 'Escape') {
       if (!keys.length) return false;
       project.selectShapes([]);

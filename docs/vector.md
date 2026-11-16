@@ -149,6 +149,8 @@ Drag from corner to corner to create a standard geometric shape. Choose the kind
 
 The shape is drawn as you drag, becomes an ordinary path when you let go (so its points can be edited like any other), and is selected. A click without a drag makes nothing. Each shape is one undo step.
 
+With one shape selected whose fill or outline is a [gradient](#gradients) (choose Linear or Radial in the color box right after drawing it, say), its gradient's ends and stops show and work as they do with [Vector select](#vector-select-v): drag them, click a stop to select it (**Delete** removes it, **Esc** lets it go), or double-click one to open its color. A drag anywhere else draws a new shape.
+
 ### Eyedropper (`I`)
 
 Sample the color the art shows under the pointer and make it the selected shapes' **Fill** or **Stroke**, as one undo step. **Fill** or **Stroke** in the options row chooses which (Fill to start with). Hold **Shift** while sampling to set the other one; while you hold it, that one is lit and the status bar says so. With nothing selected, it sets the next shape's color.
@@ -200,7 +202,7 @@ A fill or an outline can be a gradient. It moves, scales, and turns with its sha
 
 Switching between Linear and Radial keeps the colors. Each change is one undo step. With nothing selected the choices are off: a new shape's fill and outline always start as single colors. The chip shows the gradient's colors. An outline's gradient runs across the shape as a fill's does, so the outline takes the colors of the bands it crosses.
 
-Use the [Node tool](#node-a) (or Vector select, for one shape) to drag gradient start points, endpoints, and color stops. Double-click any color stop to change its color.
+Use the [Node tool](#node-a) (or Vector select or the Shape tool, for one selected shape) to drag gradient start points, endpoints, and color stops. Double-click any color stop to change its color. With one shape selected, its gradient's line shows with any tool, as its box does.
 
 ---
 

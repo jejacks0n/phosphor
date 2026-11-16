@@ -1,5 +1,6 @@
-// A gradient's handles, for the Node tool's shape (workspace.vectorPoints) or Vector select's one selected shape
-// (its line isn't, there: a drag inside moves the shape), when its fill or stroke is a gradient
+// A gradient's handles, for the Node tool's shape (workspace.vectorPoints) or the one selected shape with any other tool,
+// as its box shows (Vector select and the Shape tool take its ends and stops, not its line: a drag inside moves the
+// shape, or draws one), when its fill or stroke is a gradient
 // (with both, workspace.vectorGradientSlot's; gradientSlot): a linear one shows a line
 // from its start to its end, a radial one its center and a radius handle, and both a dot for each stop along it
 // (gradientHandles). Drag the line (or a radial's center) to move the gradient, an end (or the radius handle) to
@@ -22,11 +23,11 @@ let drag = null; // { kind: 'line' | 'move' | 'end' | 'stop', key, slot, start, 
 let last = null; // the last click on a stop, for a double-click: { key, slot, stop, time, at }
 
 const hasGradient = (shape) => !!shape && (isGradient(shape.fill) || isGradient(shape.stroke));
-// The key of the shape whose gradient's handles show, when it has a gradient: the Node tool's, or Vector select's
-// one selected shape; or null.
+// The key of the shape whose gradient's handles show, when it has a gradient: the Node tool's, or the one selected
+// shape (whatever the tool, as the selection's box shows); or null.
 export const gradientKey = (project, workspace) => {
   const { activeTool: tool, vectorSelected: chosen } = workspace;
-  const key = tool === 'vnode' ? workspace.vectorPoints : tool === 'vselect' && chosen.length === 1 && chosen[0];
+  const key = tool === 'vnode' ? workspace.vectorPoints : chosen.length === 1 && chosen[0];
   return key && hasGradient(project.shapes.get(key)) ? key : null;
 };
 // Which of its gradients the tool edits: workspace.vectorGradientSlot's when that's one, else the one it has.
@@ -73,6 +74,15 @@ export function recolorStop(project, workspace, hex, { remember = true } = {}) {
   if (!remember) project.beginEdit();
   project.updateShapes([[key, withPaint(shape, slot, { stops: shape[slot].stops.map((s, j) => (j === i ? [s[0], hex] : s)) })]]);
   if (remember && project._stroke && !project._stroke.typing) project.commitEdit();
+}
+
+// Esc lets the selected stop go, Delete or Backspace removes it: whether the key was the stop's.
+export function stopKeys(project, workspace, event) {
+  if (workspace.vectorStop === null || event.metaKey || event.ctrlKey || event.altKey) return false;
+  if (event.key === 'Escape') workspace.vectorStop = null;
+  else if (event.key === 'Delete' || event.key === 'Backspace') removeStop(project, workspace);
+  else return false;
+  return true;
 }
 
 export function removeStop(project, workspace) {
