@@ -22,7 +22,7 @@ const settle = (ms = 50) => new Promise((resolve) => setTimeout(resolve, ms));
 // A blank canvas open in the workspace, with a change not saved unless `clean`.
 async function drawing({ clean = false } = {}) {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 10 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
   if (!clean) {
     project.typeAt(1, 1, 'A', { fg: '#ffee00', bg: '#0044aa' });
     project.commitEdit();

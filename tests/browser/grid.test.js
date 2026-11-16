@@ -168,7 +168,7 @@ test('a new blank canvas opens at the full line limit', async () => {
   const { project } = await createTestApp();
   project.cols = 80;
   project.rows = 2 * MAX_LINES; // its picture at 10 pixels a cell would be past what a canvas can be
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await settle(project);
   expect(project.cells).toHaveLength(80 * MAX_LINES);
   expect(new Set(project.cells.map((c) => c.bg.hex))).toEqual(new Set(['#000000']));
@@ -181,7 +181,7 @@ test('a picture as long as the grid, longer than the GPU draws, keeps its colors
   ctx.fillStyle = '#3366cc';
   ctx.fillRect(0, 0, 80, 20_000);
   const blob = await new Promise((resolve) => picture.toBlob(resolve, 'image/png'));
-  await project.setImageFromFile(new File([blob], 'long.png', { type: 'image/png' }));
+  await project.setImageFromFile(new File([blob], 'long.png', { type: 'image/png' }), { withLayer: true });
   project.render();
   await settle(project);
   const lines = project.rows / 2;
@@ -195,7 +195,7 @@ async function longBlank() {
   const { project } = await createTestApp();
   project.cols = 80;
   project.rows = 2 * MAX_LINES;
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await settle(project);
   return project;
 }
@@ -247,7 +247,7 @@ async function reopened(project) {
 // the black around it never saw Invert.
 test('a blank canvas resized shows its own color edge to edge under Invert, grown after drawing too, and reopened', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 40, rows: 50 });
+  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 50 });
   project.setSlider('invert', 20);
   project.commitSliders();
   project.aspectLock = false;

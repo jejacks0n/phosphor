@@ -15,10 +15,10 @@ async function saved(project) {
 
 test('a new drawing gets a file id; closing it clears it', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const first = project.fileId;
   expect(goodFileId(first)).toBe(true);
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   expect(goodFileId(project.fileId)).toBe(true);
   expect(project.fileId).not.toBe(first);
   project.clearImage();
@@ -27,10 +27,10 @@ test('a new drawing gets a file id; closing it clears it', async () => {
 
 test('saving writes the id, and opening that file keeps it without showing unsaved', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const id = project.fileId;
   const blob = await saved(project);
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await project.loadProject(new File([blob], 'x.phosphor'));
   expect(project.fileId).toBe(id);
   expect(project.isDirty).toBe(false);
@@ -38,14 +38,14 @@ test('saving writes the id, and opening that file keeps it without showing unsav
 
 test('Save project downloads the file gzipped, and it opens again as it was', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 40, rows: 40 });
+  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 40 });
   for (let col = 0; col < 40; col++) project.typeAt(col, 3, '▒', { fg: '#aa0000', bg: '#aaaaaa' });
   project.commitEdit();
   const blob = await saved(project);
   expect([...new Uint8Array(await blob.slice(0, 2).arrayBuffer())]).toEqual([0x1f, 0x8b]);
   const plain = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
   expect(blob.size).toBeLessThan(plain.size);
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await project.loadProject(new File([blob], 'x.phosphor'));
   expect([project.cols, project.editCellAt(39, 3)?.char, project.isDirty]).toEqual([40, '▒', false]);
 });
@@ -61,7 +61,7 @@ test('a file from before file ids gets one, which the next save writes', async (
 
 test('an artist\'s copy of the host\'s drawing has none', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   const parts = await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }));
   await project.openFromHost({ ...parts, imageBuffer: project.imageBuffer }, {});
   await settle(project);
@@ -70,7 +70,7 @@ test('an artist\'s copy of the host\'s drawing has none', async () => {
 
 test('a room message never carries it', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   expect(project.fileId).toBeTruthy();
   expect((await project.projectParts()).settings.fileId).toBe(undefined);
 });

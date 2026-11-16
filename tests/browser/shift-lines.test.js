@@ -9,7 +9,7 @@ async function canvas() {
   const { project, workspace } = await createTestApp();
   project.cols = 40;
   project.rows = 40;
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await settle(project);
   Object.assign(workspace, { editorTab: 'input', editFgColor: '#ff0000' });
   const ctx = { project, workspace, view: 'input' };

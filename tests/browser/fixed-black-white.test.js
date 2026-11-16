@@ -286,7 +286,7 @@ test('a block copied to another tab keeps 16 and 231', async () => {
     const block = await decodeBlock(readClipboardHtml(written[0]).phosphor);
     const at = (col, row) => [0, 1, 2, 3].map((c) => indexesOf(project)[row * project.cols + col + c]);
     const before = [at(0, 0), at(0, 1)];
-    await project.setBlankCanvas({ cols: 20, rows: 8 }); // the other tab's drawing
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 8 }); // the other tab's drawing
     await settle(project);
     const id = project.addLayer('cells');
     workspace.pickLayer(id);

@@ -8,7 +8,7 @@ async function paint(moves, { size = 5, flow, hardness = 50 }) {
   const { project, workspace } = await createTestApp();
   project.cols = 40;
   project.rows = 40;
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await settle(project);
   workspace.editorTab = 'input';
   Object.assign(workspace, { editBrushSize: size, editBrushFlow: flow, editBrushHardness: hardness });

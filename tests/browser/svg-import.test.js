@@ -16,7 +16,7 @@ const svg = (body, attrs = 'viewBox="0 0 100 100"') => `<svg xmlns="http://www.w
 
 async function blank(cols = 160, rows = 200) {
   const app = await createTestApp();
-  await app.project.setBlankCanvas({ cols, rows });
+  await app.project.setBlankCanvas({ withLayer: true, cols, rows });
   return app;
 }
 

@@ -24,7 +24,7 @@ const arts = (project) => [...project.shapes].filter(([, shape]) => isArt(shape)
 
 async function blank() {
   const app = await createTestApp();
-  await app.project.setBlankCanvas({ cols: 20, rows: 20 });
+  await app.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(app.project);
   return app;
 }
@@ -143,7 +143,7 @@ test('nothing drawn in the selection: no layer and no step', async () => {
 
 test('too big for one layer: refused, the drawing untouched', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 200, rows: 80 });
+  await project.setBlankCanvas({ withLayer: true, cols: 200, rows: 80 });
   await settle(project);
   const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
   const cells = [];
@@ -506,7 +506,7 @@ test('an edit that fits where the layer shows but not on another frame it is on 
 
 test('Make art layer checks the record at the stacking it gets, so a drawing at the limit is refused, not erased', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 100, rows: 200 });
+  await project.setBlankCanvas({ withLayer: true, cols: 100, rows: 200 });
   await settle(project);
   const rect = project.addShape(rectShape(0, 0, 2, 2, { fill: '#0000ff' }));
   project.updateShapes([[rect, withShape(project.shapes.get(rect), { z: 99 })]]); // the layer would be z 100

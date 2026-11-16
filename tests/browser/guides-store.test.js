@@ -6,7 +6,7 @@ beforeEach(() => localStorage.clear());
 
 async function setup() {
   const stores = await createTestApp();
-  await stores.project.setBlankCanvas({ cols: 20, rows: 10 });
+  await stores.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
   await settle(stores.project);
   return stores;
 }
@@ -17,7 +17,7 @@ test('guides belong to the drawing they were placed on', async () => {
   workspace.showGuidesFor(a);
   workspace.addGuide('v', 40);
   workspace.setRulerZero('x', 40.5);
-  await project.setBlankCanvas({ cols: 20, rows: 10 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
   workspace.showGuidesFor(project.fileId);
   expect(workspace.guides).toEqual([]);
   expect(workspace.rulerZero).toEqual({ x: 0, y: 0 });

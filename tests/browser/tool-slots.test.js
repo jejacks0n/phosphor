@@ -17,7 +17,7 @@ const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 
 async function toolbar(tab = 'output', width = 1200) {
   const app = await createTestApp();
-  await app.project.setBlankCanvas({ cols: 20, rows: 20 });
+  await app.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(app.project);
   app.workspace.editorTab = tab;
   host = document.createElement('div');

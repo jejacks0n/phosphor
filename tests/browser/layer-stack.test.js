@@ -17,7 +17,7 @@ const keys = (cells) => [...cells.keys()];
 
 async function blank() {
   const app = await createTestApp();
-  await app.project.setBlankCanvas({ cols: 20, rows: 20 });
+  await app.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(app.project);
   return app;
 }
@@ -90,7 +90,7 @@ test('a new image or canvas starts from the bottom and the edit layer', async ()
   const id = project.addLayer('cells', 'edit');
   project.useLayer(id);
   project.renameLayer('edit', 'Logo');
-  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await project.setBlankCanvas({ withLayer: true, cols: 10, rows: 10 });
   expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit']);
   expect(project.layerById('edit').name).toBe(null);
   expect(project.editId).toBe('edit');
@@ -168,7 +168,7 @@ const cellAt = (project, col, row) => project.cells[row * project.cols + col];
 async function stacked() {
   const app = await createTestApp();
   const { project } = app;
-  await project.setBlankCanvas({ cols: 10, rows: 20 }); // 10 x 10 cells
+  await project.setBlankCanvas({ withLayer: true, cols: 10, rows: 20 }); // 10 x 10 cells
   await settle(project);
   const black = look(cellAt(project, 6, 6));
   for (const [col, row] of [[2, 2], [3, 3]]) project.typeAt(col, row, 'Y', WHITE);
@@ -394,7 +394,7 @@ test('a shape drawn with Vector 2 picked lands on it, draws in its place in the 
 
 test('after an edit on an upper layer, the PIXEL canvas is redrawn only where the edit was', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 60, rows: 60 });
+  await project.setBlankCanvas({ withLayer: true, cols: 60, rows: 60 });
   await settle(project);
   const top = project.addLayer('cells', 'edit');
   project.useLayer(top);

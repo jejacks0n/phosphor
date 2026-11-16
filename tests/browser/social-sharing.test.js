@@ -894,7 +894,7 @@ test('an artist\'s Merge, Bake, slider, Clear and base paste do nothing', async 
   project.writeBase([{ x: 8, y: 8, hex: '#ffffff' }]);
   project.updateCols(10);
   project.updateRows(10);
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   project.clearImage();
   project.randomizeSeed();
 
@@ -932,7 +932,7 @@ test('every way of opening a document is refused for an artist', async () => {
   const { project } = await drawing('artist');
   const image = project.image;
   const blob = await (await fetch('/tests/fixtures/images/gradient.png')).blob();
-  await project.setImageFromFile(new File([blob], 'gradient.png', { type: blob.type }));
+  await project.setImageFromFile(new File([blob], 'gradient.png', { type: blob.type }), { withLayer: true });
   await project.loadProject(new File([blob], 'x.phosphor'));
   await project.openParts({}, {});
   await project.restoreDocument({}, {});
@@ -1210,7 +1210,7 @@ test('Fill, Connect and the picker read another\'s work like your own', async ()
   const { project, workspace } = await createTestApp();
   project.cols = 30;
   project.rows = 30;
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   project.render();
   await settle(project);
   project.ensureLayer();

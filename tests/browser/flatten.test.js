@@ -132,7 +132,7 @@ test('ASCII styles become ANSI as they showed', async () => {
 
 test('a wide character keeps its layout', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ cols: 12, rows: 8 });
+  await project.setBlankCanvas({ withLayer: true, cols: 12, rows: 8 });
   project.typeAt(2, 2, '漢', { fg: '#ffee00', bg: '#0044aa' });
   project.commitEdit();
   project.render();

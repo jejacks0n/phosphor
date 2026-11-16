@@ -9,7 +9,7 @@ async function blank(cols = 30, rows = 30) {
   const { project, workspace } = await createTestApp();
   project.cols = cols;
   project.rows = rows;
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   project.render();
   await settle(project);
   workspace.editorTab = 'output';

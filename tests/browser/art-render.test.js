@@ -25,7 +25,7 @@ const RED_RECT = rectShape(0, 0, 20, 20, { fill: '#ff0000' });
 
 async function blank() {
   const app = await createTestApp();
-  await app.project.setBlankCanvas({ cols: 20, rows: 20 });
+  await app.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(app.project);
   return app;
 }

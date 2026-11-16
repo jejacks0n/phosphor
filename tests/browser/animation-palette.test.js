@@ -32,7 +32,7 @@ test('a blank canvas does not end up with an all-black palette', async () => {
   const { project } = await createTestApp();
   project.cols = 20;
   project.rows = 20;
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await settle(project);
   project.quantize = 'count';
   project.colorCount = 8;

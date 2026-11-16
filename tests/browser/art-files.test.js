@@ -302,7 +302,7 @@ test('a converted image or a blank canvas has Phosphor\'s comment lines, wrapped
   expect([sauce.flags, sauce.fontName]).toEqual([3, 'IBM VGA']);
   expect(sauce.date).toMatch(/^\d{8}$/);
 
-  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await project.setBlankCanvas({ withLayer: true, cols: 10, rows: 10 });
   await settle(project);
   project.sauceUserComments = '';
   expect(readSauce(await exported(project)).comments.join(' ')).toMatch(PHOSPHOR_LINES);
@@ -387,7 +387,7 @@ test('paint over a file\'s cells covers them as it covers typed ones: a space or
 
 test('a new blank canvas clears all SAUCE fields to their defaults', async () => {
   const project = await afterAnotherDocument();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
   expect([project.sauceTitle, project.sauceAuthor, project.sauceGroup, project.sauceDate, project.sauceUserComments, project.sauceFontName, project.sauceUse9pxFont])
     .toEqual(['', '', '', '', '', 'IBM VGA', false]);

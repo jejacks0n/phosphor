@@ -19,7 +19,7 @@ afterEach(() => {
 // A 400 × 300 view with the drawing (20 × 10 characters, 10 × 20 px each) at left 50, top 40.
 async function mount() {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   workspace.rulers = true;
   root = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 400px; height: 300px; overflow: hidden' });
   const display = Object.assign(document.createElement('div'), { style: 'position: absolute; left: 50px; top: 40px; width: 200px; height: 200px' });
@@ -231,7 +231,7 @@ test('zero dragged to an edge reads before the first column or after the last', 
 
 test('in a real view the Brush and Eraser circle draws over the rulers, which stay under others\' cursors', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   workspace.rulers = true;
   root = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 400px; height: 300px' });
   document.body.append(root);

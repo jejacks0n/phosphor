@@ -163,7 +163,7 @@ test('a new image or new document resets to one frame', async () => {
   const { project } = await animated();
   type(project, 1, 1, 'A');
   project.addFrame('blank');
-  await project.setBlankCanvas();
+  await project.setBlankCanvas({ withLayer: true });
   await settle(project);
   expect(project.frames).toHaveLength(1);
   expect(project.frame).toBe(0);

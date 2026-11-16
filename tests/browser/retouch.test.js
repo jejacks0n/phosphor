@@ -8,7 +8,7 @@ import { hex2rgb } from '@/lib/ColorUtils';
 
 async function blank(view = 'input') {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
   workspace.editorTab = view;
   Object.assign(workspace, { retouchSize: 4, retouchStrength: 100, retouchHardness: 100, retouchRange: 'midtones' });

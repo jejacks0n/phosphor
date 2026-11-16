@@ -60,15 +60,16 @@ const oldFrames = (frames, id) => {
   }));
 };
 
-// A new document's layers: the bottom and the edit layer, in use, with the document's character settings. Set, not
+// A new document's layers: the bottom and the edit layer, in use, with the document's character settings, or with
+// baseOnly the bottom alone, in use (a new drawing: a layer comes only when someone adds one). Set, not
 // patched: a patch would merge into the last document's. Counted, so the pick that follows the layers (followLayerPick)
 // takes it as a new document even under the same id (a version brought back).
-function newLayers(project) {
-  project.editId = 'edit'; // first: the pick that follows the layers finds it in use
+function newLayers(project, { baseOnly = false } = {}) {
+  project.editId = baseOnly ? 'base' : 'edit'; // first: the pick that follows the layers finds it in use
   project._layersStarted++;
   project._layerData.clear();
   project._upperShapes.clear();
-  project.layers = withChars(layersFromOld(null, { hasShapes: false }), project.baseChars);
+  project.layers = withChars(layersFromOld(baseOnly ? { noEdit: true } : null, { hasShapes: false }), project.baseChars);
 }
 
 // A file's name as the document's: its stem, and its extension apart, lowercase (null with none).
@@ -181,7 +182,8 @@ export const documentActions = {
     if (this.setLayerChars(id, { seed: generateSlug(2) })) this.commitLayerChars(); // one undo step
   },
 
-  async setImageFromFile(file) {
+  // A picture as a new document, with the base alone (withLayer: and Layer 1 above it).
+  async setImageFromFile(file, { withLayer = false } = {}) {
     if (!file) return;
 
     return busyWhile(opening(file.name), async () => {
@@ -201,7 +203,7 @@ export const documentActions = {
         ...sauceDefaults(),
         ...nameOf(file),
         savedToFile: false,
-      });
+      }, { baseOnly: !withLayer });
       this.markSaved();
       this.asOpened = true; // last, once it's all there (useAutosave writes it at once)
     });
@@ -209,8 +211,9 @@ export const documentActions = {
 
   // The blank picture is BLANK_CANVAS_SCALE pixels a grid pixel, or fewer for a long grid: no more than
   // the GPU processes (gpuMaxSide) and Safari draws (16M pixels a canvas). cols, rows: its size
-  // (grid pixels), else the grid's; patch: more for replaceImage. False when it couldn't start.
-  async setBlankCanvas({ cols = this.cols || DEFAULT_COLS, rows = this.rows || DEFAULT_ROWS, ...patch } = {}) {
+  // (grid pixels), else the grid's; withLayer: with Layer 1 above the base (an opened ANSI file), else the base alone;
+  // patch: more for replaceImage. False when it couldn't start.
+  async setBlankCanvas({ cols = this.cols || DEFAULT_COLS, rows = this.rows || DEFAULT_ROWS, withLayer = false, ...patch } = {}) {
     const scale = Math.max(1, Math.min(BLANK_CANVAS_SCALE, Math.floor(gpuMaxSide() / Math.max(cols, rows)), Math.floor(Math.sqrt(16_000_000 / (cols * rows)))));
     let picture;
     try {
@@ -227,7 +230,7 @@ export const documentActions = {
       filename: t('common.untitled'),
       savedToFile: false,
       ...patch,
-    });
+    }, { baseOnly: !withLayer });
     this.markSaved(); // nothing to lose until something is drawn
     return true;
   },
@@ -242,6 +245,7 @@ export const documentActions = {
       art ??= readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
       const { sauce } = art;
       const opened = await this.setBlankCanvas({
+        withLayer: true,
         ...settingDefaults(),
         cols: art.cols,
         rows: 2 * art.rows,
@@ -291,8 +295,9 @@ export const documentActions = {
     });
   },
 
-  // Swap in a new base image and start a fresh document around it (out of an art layer first).
-  replaceImage(image, imageBuffer, patch = {}) {
+  // Swap in a new base image and start a fresh document around it (out of an art layer first): with the base and the
+  // edit layer, which a project's own layers replace as it opens, or with baseOnly the base alone (newLayers).
+  replaceImage(image, imageBuffer, patch = {}, { baseOnly = false } = {}) {
     if (this._artInside) this.leaveArt();
     if (imageBuffer && imageBuffer.byteLength <= UNIFORM_MOST_BYTES) findUniform(image); // a blank canvas reopened fills the grid again
     this.renderer.reset();
@@ -319,7 +324,7 @@ export const documentActions = {
       shapes: new Map(),
       hasPaint: false,
     });
-    newLayers(this);
+    newLayers(this, { baseOnly });
     this.newDocument();
   },
 

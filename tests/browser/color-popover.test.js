@@ -11,7 +11,7 @@ import { useVectorStyle } from '@/composables/useVectorStyle.js';
 
 test('under Saturation 0 the CGA colors show, only the grays can be picked, and the arrows skip the rest', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   project.quantize = 'cga';
   project.saturation = 0; // only grays
   await settle(project);
@@ -84,7 +84,7 @@ async function openBox(props) {
 
 test('Pick from the screen chooses the color the eyedropper gives for the slot open; put away, it chooses nothing and says nothing', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 8, rows: 4 });
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 4 });
   workspace.editorTab = 'output';
   let answer = async () => ({ sRGBHex: '#12AB34' });
   const restore = eyeDropper(() => answer());
@@ -108,7 +108,7 @@ test('Pick from the screen chooses the color the eyedropper gives for the slot o
 
 test('on VECTOR the eyedropper colors the Fill; with no eyedropper there is no button', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 8, rows: 4 });
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 4 });
   workspace.editorTab = 'vector';
   let restore = eyeDropper(async () => ({ sRGBHex: '#0088ff' }));
   let box = await openBox({ slotName: 'fg' });

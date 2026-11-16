@@ -175,7 +175,7 @@ describe('into the picture', () => {
     await drawnDocument(project, workspace);
     const merging = project.mergeIntoPicture();
     const blob = await (await fetch('/tests/fixtures/images/rgba.png')).blob();
-    await project.setImageFromFile(new File([blob], 'rgba.png', { type: 'image/png' }));
+    await project.setImageFromFile(new File([blob], 'rgba.png', { type: 'image/png' }), { withLayer: true });
     const loaded = project.image;
     await merging;
     await settle(project);
@@ -273,7 +273,7 @@ describe('down between layers', () => {
 
   test('Merge down is off onto a vector layer', async () => {
     const { project } = await createTestApp();
-    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
     await settle(project);
     project.addLayer('vector', 'base');
     project.typeAt(2, 2, 'A', { fg: '#ffffff' });
