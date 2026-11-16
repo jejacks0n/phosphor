@@ -284,7 +284,7 @@ export class AnsiFile {
     writer.sgr(0);
     if (utf8) writer.output.push(13, 10);
 
-    return this.#appendSauce(writer.output.bytes, { ...sauce, fileType: 1 });
+    return this.#appendSauce(writer.output.bytes, sauce, 1);
   }
 
   // An ANSiMation: a screen cleared once, then each frame as only the cells that differ from the one before, so a
@@ -296,12 +296,15 @@ export class AnsiFile {
     writer.clear();
     frames.forEach((frame, i) => frameDiffBytes(frames[i - 1] ?? null, frame, cols, writer));
     writer.sgr(0);
-    return new AnsiFile(cols, rows, null).#appendSauce(writer.output.bytes, { ...sauce, fileType: 2 });
+    return new AnsiFile(cols, rows, null).#appendSauce(writer.output.bytes, sauce, 2);
   }
 
-  #appendSauce(output, details) {
+  // sauce: the record's fields (null: Phosphor's own), or false for a file with no record, and no EOF before it.
+  #appendSauce(output, sauce, fileType) {
+    if (sauce === false) return output;
     return new Sauce(this, {
-      ...details,
+      ...sauce,
+      fileType,
       dataType: 1,
       fileSize: output.length,
     }).appendTo(output);

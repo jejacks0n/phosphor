@@ -267,9 +267,9 @@ look at what covers what, and check what Merge down's tooltip says.
 ### 21. Export my .ans
 - Measured: export-ans
 - Does: presses Export .ans, types a name, and saves; keeps the download in the run folder.
-- Expects: the dialog offers the document's name with the date and time; a character CP437 lacks is listed with what it
-  becomes and how many cells use it ("Export as .utf8ans to keep all original characters."); the name he typed becomes the
-  document's name; it saves within the `file` budget.
+- Expects: the dialog offers the document's name with the date and time; Include SAUCE is checked, and he leaves it
+  so; a character CP437 lacks is listed with what it becomes and how many cells use it ("Export as .utf8ans to keep all
+  original characters."); the name he typed becomes the document's name; it saves within the `file` budget.
 - Probes: `back-out`: open the dialog, press Escape, and check focus lands where his keys still work; `again`: export
   twice; `extremes`: type `€` and `漢` in a cell first and check the list.
 - Rated: yes, wants a key for Export .ans

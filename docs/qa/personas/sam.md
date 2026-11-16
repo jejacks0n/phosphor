@@ -171,7 +171,7 @@ status bar's Col and Row as the cursor crosses wide characters, and try the Eras
 - Does: presses Export .utf8ans and saves under the offered name.
 - Expects: the name is the document's with the date and time; it saves within the `file` budget; nothing of the art is
   listed to replace (every character is kept); a SAUCE character CP437 lacks (the probe's emoji in Author) is, with
-  its field, since SAUCE is CP437 in every ANSI file.
+  its field, since SAUCE is CP437 in every ANSI file; Include SAUCE is checked, and the file ends with his SAUCE.
 - Probes: `again`: export twice and check the names differ; `back-out`: Escape from the dialog, then Cmd+S (the project
   dialog, not this one).
 - Rated: yes, wants a key for Export .utf8ans
@@ -206,7 +206,8 @@ status bar's Col and Row as the cursor crosses wide characters, and try the Eras
 - Rated: yes, wants Cmd+A, Cmd+C
 
 **Free time:** Sam would export with a layer hidden, copy just the title and paste it as text into SAUCE's comments,
-open the .utf8ans back in Phosphor (Edit artwork) and compare cells, and look for a way to export without SAUCE.
+open the .utf8ans back in Phosphor (Edit artwork) and compare cells, and export once with Include SAUCE unchecked to
+check the file ends with the art and opens with an empty SAUCE tab.
 
 ## A short animated splash
 

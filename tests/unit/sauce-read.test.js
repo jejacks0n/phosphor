@@ -98,3 +98,15 @@ test('keptFields gives the record\'s flags, and its size only while the grid is 
   assert.equal(keptFields('', 80, 25), null);
   assert.equal(keptFields('1 2 x 4 5', 80, 25), null); // a stranger's setting that isn't one
 });
+
+test('sauce: false writes the art alone: no EOF byte, no comment block, no record', async () => {
+  const withRecord = await bytesOf({ sauce });
+  const without = await bytesOf({ sauce: false });
+  assert.deepEqual([...without], [...withRecord.subarray(0, artEndOf(withRecord))]);
+  assert.ok(!without.includes(0x1a));
+  assert.equal(readSauce(without), null);
+  const frames = [cells, cells.map((cell) => ({ ...cell, char: 'B' }))];
+  const animated = AnsiFile.animationBytes(4, 2, frames, { sauce: false });
+  assert.equal(readSauce(animated), null);
+  assert.deepEqual([...animated], [...AnsiFile.animationBytes(4, 2, frames, { sauce }).subarray(0, animated.length)]);
+});

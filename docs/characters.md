@@ -175,7 +175,9 @@ In 256 colors, 16 and 231 are a terminal's fixed black and white, while 0 and 15
 
 ### SAUCE Metadata
 
-Exported `.ans` and `.utf8ans` files end with a SAUCE metadata record, which holds what's on the **SAUCE** tab: title, author, group, date, comments, font name, and letter spacing.
+Exported `.ans` and `.utf8ans` files, animated ones too, end with a SAUCE metadata record, which holds what's on the **SAUCE** tab: title, author, group, date, comments, font name, and letter spacing.
+
+- **Include SAUCE**: The Export dialog's checkbox for the ANSI formats, checked each time the dialog opens. Unchecked, the file ends with the art: no record, no comments, and no end-of-file byte before them. The dialog then says what other viewers lose without it: the title, author, width, and font, and some show bright backgrounds blinking. Phosphor opens such a file with an empty SAUCE tab ([Opening a file](layers.md#opening-ansi-and-text-files)).
 
 - **A converted image or a blank canvas** gets Phosphor's own comment lines first (Created with Phosphor, and the settings it was converted with), then a blank line and yours. An empty date is the day you export, the font name is IBM VGA, and the letter spacing is 8px.
 - **A file you opened** gets none of them: its record comes out as it went in, with its date, flags (iCE colors, letter spacing), font name, size, and comments changed only where you changed them on the SAUCE tab. An empty date or font name stays empty, and its field says so. Letter spacing changes only its own bits of the flags. A resize changes the size it gives.

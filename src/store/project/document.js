@@ -545,15 +545,16 @@ export const documentActions = {
 
   // The animated formats, written from every frame: 'ansimation' (.ans), 'utf8ansimation' (.utf8ans), 'cast', 'gif' or 'mp4'. Throws with userMessage
   // what the save dialog should say. A GIF or video tells progress the share of its frames written, as it goes. deliver
-  // takes the file (its blob and name): a download unless it's given (the Export dialog's Share).
-  async exportAnimation(format, { filename = this.filename, progress, deliver = downloadBlob } = {}) {
+  // takes the file (its blob and name): a download unless it's given (the Export dialog's Share). sauce: false writes
+  // an animated ANSI file with no SAUCE record.
+  async exportAnimation(format, { filename = this.filename, progress, deliver = downloadBlob, sauce = true } = {}) {
     const ext = { ansimation: 'ans', utf8ansimation: 'utf8ans' }[format] ?? format;
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => {
       const frames = await this.animationCells(), lines = charRowsOf(this.rows);
       const durations = this.frames.map((frame) => frameDuration(frame, this.fps));
       if (format === 'ansimation' || format === 'utf8ansimation') {
         const utf8 = format === 'utf8ansimation';
-        return new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { utf8, colorMode: this.quantize, sauce: this.sauceFields() })], { type: 'application/octet-stream' });
+        return new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { utf8, colorMode: this.quantize, sauce: sauce && this.sauceFields() })], { type: 'application/octet-stream' });
       } else if (format === 'cast') {
         return new Blob([castText(this.cols, lines, frames, durations.map((ms) => ms / 1000), { colorMode: this.quantize })], { type: 'application/x-asciicast' });
       } else if (format === 'mp4') {
@@ -620,13 +621,14 @@ export const documentActions = {
   // first: the cells then are the layer's alone, without the drawing.
   // 'png' is the frame showing as the ANSI view draws it, smooth or hard-edged as asked (the view's own setting by
   // default), at one pixel per font pixel. deliver takes the file (its blob and name): a download unless it's given.
-  async exportFile(ext, { filename = this.filename, smooth = useWorkspaceStore().smoothText, deliver = downloadBlob, ...opts } = {}) {
+  // sauce: false writes an ANSI file with no SAUCE record.
+  async exportFile(ext, { filename = this.filename, smooth = useWorkspaceStore().smoothText, deliver = downloadBlob, sauce = true, ...opts } = {}) {
     if (this._artInside) this.leaveArt();
     const lines = charRowsOf(this.rows);
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => (ext === 'png'
       ? drawnCells(this.cols, lines, { smooth }, ({ width, height, rgba }) => pngBlob(width, height, rgba(this.cells)))
       : new AnsiFile(this.cols, lines, this.cells).toBlob({
-        sauce: this.sauceFields(),
+        sauce: sauce && this.sauceFields(),
         colorMode: this.quantize,
         utf8: ext === 'utf8ans',
         ...opts,

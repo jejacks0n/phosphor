@@ -308,6 +308,50 @@ test('the Export dialog repeats the comments\' warning when they run past 255 SA
   }
 });
 
+test('Include SAUCE: checked on every ANSI format and each time the dialog opens; unchecked, the export has no record and SAUCE\'s notes give way to what viewers lose', async () => {
+  const { project } = await drawing();
+  project.animate = true;
+  project.addFrame('blank');
+  await settle(project);
+  Object.assign(project, WALT);
+  const still = vi.spyOn(project, 'exportFile').mockResolvedValue();
+  const animated = vi.spyOn(project, 'exportAnimation').mockResolvedValue();
+  const { closed, unmount } = mountModal();
+  const box = () => document.querySelector('.modal-dialog label.sauce-choice input');
+  const lost = 'Without SAUCE, other viewers don\'t know';
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    for (const [name, offered] of [['ANS', true], ['UTF-8 ANS', true], ['PNG', false], ['GIF', false], ['Cast', false], ['Animated UTF-8 ANS', true], ['Animated ANS', true]]) {
+      await pick(modal, name);
+      expect(!!box(), name).toBe(offered);
+      if (offered) expect(box().checked, name).toBe(true);
+    }
+    expect(modal.querySelector('ul[aria-label="SAUCE replacements"]')).not.toBeNull();
+    expect(modal.textContent).not.toContain(lost);
+    await userEvent.click(box());
+    expect(modal.querySelector('ul[aria-label="SAUCE replacements"]')).toBeNull();
+    expect(modal.textContent).toContain(lost);
+    await pick(modal, 'UTF-8 ANS'); // the choice holds across formats while the dialog is open
+    expect(box().checked).toBe(false);
+    modal.querySelector('button.primary').click();
+    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    expect(still).toHaveBeenCalledWith('utf8ans', expect.objectContaining({ sauce: false }));
+  } finally {
+    unmount();
+  }
+  const again = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    await pick(modal, 'Animated ANS');
+    expect(box().checked).toBe(true); // not remembered
+    modal.querySelector('button.primary').click();
+    await vi.waitUntil(() => again.closed.mock.calls.length, { interval: 5 });
+    expect(animated).toHaveBeenCalledWith('ansimation', expect.objectContaining({ sauce: true }));
+  } finally {
+    again.unmount();
+  }
+});
+
 // The browser's share sheet, standing in: canShare takes images, and share does what it's given.
 function shareSheet(share = async () => {}) {
   const had = ['canShare', 'share'].map((key) => [key, Object.getOwnPropertyDescriptor(navigator, key)]);
