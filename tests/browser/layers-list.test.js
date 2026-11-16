@@ -18,9 +18,9 @@ afterEach(() => {
   app = host = null;
 });
 
-async function mount(before = () => {}) {
+async function mount(before = () => {}, { withLayer = true } = {}) {
   const stores = await createTestApp();
-  await stores.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
+  await stores.project.setBlankCanvas({ withLayer, cols: 20, rows: 10 });
   await settle(stores.project);
   stores.workspace.editorTab = 'output';
   before(stores);
@@ -74,6 +74,16 @@ test('Add layer adds directly above the pick and picks it', async () => {
   await nextTick();
   expect(names()).toEqual(['Layer 2', 'Layer 1', 'Layer 3', 'Base']);
   expect(workspace.pickedLayer).toBe(project.layers[1].id);
+});
+
+test('a new drawing lists only the base, counted as 1 of the most layers, and Add layer makes Layer 1', async () => {
+  const { workspace } = await mount(() => {}, { withLayer: false });
+  expect(names()).toEqual(['Base']);
+  expect(count()).toBe(`1 of ${MOST_LAYERS} layers`);
+  addButton('Add layer').click();
+  await nextTick();
+  expect(names()).toEqual(['Layer 1', 'Base']);
+  expect(workspace.pickedLayer).toBe('edit');
 });
 
 test('Add vector layer always shows and adds above the pick', async () => {
