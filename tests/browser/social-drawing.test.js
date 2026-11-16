@@ -406,6 +406,38 @@ test('an artist draws on a layer while another artist deletes it', async () => {
   expect(errors).not.toHaveBeenCalled();
 });
 
+test('an artist paints on L3 while the host merges it down into L2: the stroke is dropped quietly and every page matches', async () => {
+  const warns = vi.spyOn(console, 'warn'), errors = vi.spyOn(console, 'error');
+  const room = await hosting();
+  room.project.editCell(1, 1, { char: 'H' });
+  room.project.commitEdit();
+  const l2 = room.project.addLayer('cells', 'edit'), l3 = room.project.addLayer('cells', l2);
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layerById(l3)?.kind, PATIENT).toBe('cells');
+  const post = ann.watch.post.bind(ann.watch), held = [];
+  const posting = vi.spyOn(ann.watch, 'post').mockImplementation((msg) => (msg.t === 'change' ? held.push(msg) : post(msg)));
+  setActivePinia(ann.pinia);
+  ann.project.useLayer(l3);
+  ann.project.typeAt(2, 2, 'A', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  dab(ann.project, 3, 3, '#0000ff');
+  await expect.poll(() => held.length, PATIENT).toBeGreaterThan(0);   // not numbered yet
+  setActivePinia(room.pinia);
+  expect(room.project.mergeDown(l3)).not.toBe(false);
+  await expect.poll(() => ann.project.layerById(l3), PATIENT).toBeUndefined();
+  posting.mockRestore();
+  for (const msg of held) ann.watch.post(msg);   // and now Ann's stroke reaches the host
+  setActivePinia(ann.pinia);
+  ann.project.useLayer(l2);
+  ann.project.typeAt(6, 6, 'N', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  await expect.poll(() => room.project.cellsOf(l2).get('6,6')?.char, PATIENT).toBe('N');
+  await allMatch(room, ann);
+  for (const page of [room, ann]) expect(page.project.layerById(l3)).toBeUndefined();
+  expect(warns).not.toHaveBeenCalled();
+  expect(errors).not.toHaveBeenCalled();
+});
+
 test('deleting a layer someone else has picked is refused, on their page and at the host', async () => {
   const room = await hosting();
   const layer = room.project.addLayer('cells', 'edit');
@@ -3640,6 +3672,7 @@ test('what an artist draws while Into the image encodes survives on every screen
   const merging = room.project.mergeIntoPicture(null, 'edit');
   await expect.poll(() => spy.mock.calls.length, PATIENT).toBeGreaterThan(0);
   ann.project.editCell(1, 1, { char: 'A' });   // on a cell the merge's layer had, on the layer that stays
+  dab(ann.project, 8, 8);
   ann.project.commitEdit();
   await wait(150);
   go();
@@ -3648,6 +3681,7 @@ test('what an artist draws while Into the image encodes survives on every screen
   await allMatch(room, ann);
   for (const { project } of [room, ann]) {
     expect(project.cellsOf('L1').get('1,1')?.char).toBe('A');
+    expect(project.paintOf('L1')?.pixelAt(8, 8)?.a).toBe(1);
   }
   expect(room.host.holding).toBe(null);
 });
