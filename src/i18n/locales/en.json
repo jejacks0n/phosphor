@@ -355,7 +355,7 @@
     "vectorDefault": "Vector {n}",
     "addVector": "Add vector layer",
     "addCells": "Add layer",
-    "count": "{n} of {most} layer | {n} of {most} layers",
+    "count": "{n} of {most} layers",
     "full": "A drawing can have up to {n} layers.",
     "menuAria": "{name} options",
     "moveUp": "Move up",
