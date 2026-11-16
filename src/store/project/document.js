@@ -15,7 +15,11 @@ import { castText } from '@/lib/CastFile.js';
 import { MAX_GIF_PIXELS, drawnCells, gifDelay, gifFile } from '@/lib/GifFile.js';
 import { pngBlob } from '@/lib/PngFile.js';
 import { videoFile } from '@/lib/VideoFile.js';
-import { gpuMaxSide } from '@/lib/ImageProcessor.js';
+import { findUniform, gpuMaxSide } from '@/lib/ImageProcessor.js';
+
+// The most bytes a picture's file can be and still be looked at for one color all over (findUniform): a one-color PNG
+// packs into almost nothing (a blank canvas's largest, 16 million pixels, is about 64 KB), and a photo is far larger.
+const UNIFORM_MOST_BYTES = 256 * 1024;
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
 import { commentLines, keptFields, keptRecord, withLetterSpacing } from '@/lib/Sauce.js';
@@ -282,6 +286,7 @@ export const documentActions = {
   // Swap in a new base image and start a fresh document around it (out of an art layer first).
   replaceImage(image, imageBuffer, patch = {}) {
     if (this._artInside) this.leaveArt();
+    if (imageBuffer && imageBuffer.byteLength <= UNIFORM_MOST_BYTES) findUniform(image); // a blank canvas reopened fills the grid again
     this.renderer.reset();
     this.activePalette = [];
     this.$patch({
@@ -290,6 +295,7 @@ export const documentActions = {
       filePath: null, // desktop: a project opened from its file says it after
       fileHandle: null, // the same, on the web
       fit: null,
+      aspectRatio: 0, // a new picture's lock keeps its own shape; a loaded file's comes in the patch
       paintScale: null,
       baseScale: null, // a loaded file's comes in the patch
       imageIsWorkingCopy: false,

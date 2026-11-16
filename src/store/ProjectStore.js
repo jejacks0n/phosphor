@@ -280,18 +280,20 @@ export const useProjectStore = defineStore('project', {
       const h = state.image.naturalHeight || state.image.height || 1;
       return w / h;
     },
-    // The grid's largest size (Cells.js): aspect locked, the biggest that keeps the picture's ratio;
+    // The shape the aspect lock keeps: the one it was locked at (aspectRatio), or the picture's own.
+    lockRatio() { return Number(this.aspectRatio) > 0 ? Number(this.aspectRatio) : this.imageRatio; },
+    // The grid's largest size (Cells.js): aspect locked, the biggest that keeps the lock's ratio (lockRatio);
     // otherwise the most there's room for beside the other side.
     // With frames, whichever is less: that and an animation's own limit.
     frameCellLimit: (state) => Math.min(MAX_ANIMATION_CELLS, Math.floor(MAX_FRAME_CELLS / state.frames.length)),
     mostFrames: (state) => maxFramesFor(state.cols * charRowsOf(state.rows)),
     maxCols() {
       if (this.hasFrames) return Math.max(1, Math.min(maxColsBeside(this.rows), Math.floor(this.frameCellLimit / Math.max(1, charRowsOf(this.rows)))));
-      return this.aspectLock && this.image && !this.resizesCanvas ? lockedGrid(MAX_COLS, this.imageRatio).cols : maxColsBeside(this.rows);
+      return this.aspectLock && this.image && !this.resizesCanvas ? lockedGrid(MAX_COLS, this.lockRatio).cols : maxColsBeside(this.rows);
     },
     maxRows() {
       if (this.hasFrames) return Math.max(2, Math.min(maxRowsBeside(this.cols), 2 * Math.floor(this.frameCellLimit / Math.max(1, this.cols))));
-      return this.aspectLock && this.image && !this.resizesCanvas ? lockedGrid(MAX_COLS, this.imageRatio).rows : maxRowsBeside(this.cols);
+      return this.aspectLock && this.image && !this.resizesCanvas ? lockedGrid(MAX_COLS, this.lockRatio).rows : maxRowsBeside(this.cols);
     },
     // In a room: hosting it, or drawing in someone else's.
     inRoom: (state) => !!state._sharing || state._hosting,
