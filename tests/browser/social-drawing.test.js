@@ -457,7 +457,8 @@ test('an artist draws on a layer while another artist deletes it', async () => {
 });
 
 // A stroke still open on a layer when it's deleted: the stroke goes in before the layer does, so nothing of it is left
-// claiming the gone layer's cells, and a layer added after gets an id no layer in this room has had (R17).
+// claiming the gone layer's cells. A layer added after takes the deleted one's id again, and what the host types on it,
+// where the stroke was too, shows on every page, the stroke's artist's included.
 async function deletedUnderStroke(del) {
   const room = await hosting();
   const layer = room.project.addLayer('cells', 'edit');
@@ -477,32 +478,61 @@ async function deletedUnderStroke(del) {
   for (const page of [room, ann, bo]) await expect.poll(() => page.project.layerById(layer), PATIENT).toBeUndefined();
   await allMatch(room, ann, bo);
   await wait(250);   // a slice or two more
-  const erased = posts.mock.calls.flatMap(([msg]) => (msg.t === 'change' ? msg.cells : [])).filter(([key, entry]) => key.startsWith(`${layer}:`) && entry === null);
-  expect(erased).toEqual([]);   // the open stroke didn't send its layer's cells' deletion
-  posts.mockRestore();
   setActivePinia(room.pinia);
   const added = room.project.addLayer('cells', 'edit');
-  expect(added).not.toBe(layer);
+  expect(added).toBe(layer);   // the deleted layer's id, again
+  for (const page of [ann, bo]) await expect.poll(() => page.project.cellsOf(added), PATIENT).toBeTruthy();
   room.project.useLayer(added);
+  room.project.typeAt(2, 2, 'Y', { fg: '#00ff00' });
   room.project.typeAt(5, 5, 'Z', { fg: '#00ff00' });
   room.project.typeAt(9, 9, 'Q', { fg: '#00ff00' });
   room.project.commitEdit();
   for (const page of [ann, bo]) await expect.poll(() => page.project.cellsOf(added)?.get('9,9')?.char, PATIENT).toBe('Q');
+  await wait(250);
+  const erased = posts.mock.calls.flatMap(([msg]) => (msg.t === 'change' ? msg.cells : [])).filter(([key, entry]) => key.startsWith(`${layer}:`) && entry === null);
+  expect(erased).toEqual([]);   // the open stroke never sent its layer's cells' deletion, before the layer came back or after
+  posts.mockRestore();
   await allMatch(room, ann, bo);
-  for (const page of [room, ann, bo]) expect(page.project.cellsOf(added).get('5,5')?.char).toBe('Z');
+  for (const page of [room, ann, bo]) expect([...page.project.cellsOf(added)].map(([key, entry]) => `${key}${entry.char}`).sort()).toEqual(['2,2Y', '5,5Z', '9,9Q']);
 }
 
-test('an artist deletes the layer their open stroke is on, and a layer added after shows the same on every page', () => deletedUnderStroke(async (room, ann) => {
+test('an artist deletes the layer their open stroke is on, and a layer added after takes its id and shows the same on every page', () => deletedUnderStroke(async (room, ann) => {
   expect(ann.project.deleteLayer(ann.project.editId)).toBe(false);   // asked of the host
 }));
 
-test('the host deletes a layer an artist\'s open stroke is on before hearing their pick, and a layer added after shows the same on every page', () => deletedUnderStroke(async (room, ann) => {
+test('the host deletes a layer an artist\'s open stroke is on before hearing their pick, and a layer added after takes its id and shows the same on every page', () => deletedUnderStroke(async (room, ann) => {
   const layer = ann.project.editId;
   setActivePinia(room.pinia);
   room.project._picks = {};   // ann's pick not heard yet
   expect(room.project.deleteLayer(layer)).toBe(true);
   setActivePinia(ann.pinia);
 }));
+
+// A room's first shape makes its vector layer on each page by itself, with no stack sent: after the room deletes it, the
+// next first shape has to make the same id everywhere, or a page with another id hides the shape and every check matches.
+test('the room deletes its only vector layer, then the host and an artist each draw a shape: every page has the same stack and shows both', async () => {
+  const { rectShape } = await import('@/document/shapes.js');
+  const room = await hosting();
+  const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+  room.project.addShape(rectShape(2, 2, 12, 9, { fill: '#0000ff' }));
+  for (const page of [ann, bo]) await expect.poll(() => page.project.layerById('vector')?.kind, PATIENT).toBe('vector');
+  expect(room.project.deleteLayer('vector')).toBe(true);
+  for (const page of [room, ann, bo]) await expect.poll(() => page.project.hasVectorLayer, PATIENT).toBe(false);
+  const red = room.project.addShape(rectShape(2, 2, 12, 9, { fill: '#ff0000' }));
+  await expect.poll(() => ann.project.shapes.has(red), PATIENT).toBe(true);
+  setActivePinia(ann.pinia);
+  const green = ann.project.addShape(rectShape(20, 20, 30, 30, { fill: '#00ff00' }));
+  setActivePinia(room.pinia);
+  for (const page of [room, bo]) await expect.poll(() => page.project.shapes.has(green), PATIENT).toBe(true);
+  await sameShapes(room, ann, bo);
+  const stack = (page) => page.project.layers.map((layer) => `${layer.id}:${layer.kind}`).join(' ');
+  expect(stack(room)).toContain('vector:vector');
+  for (const page of [ann, bo]) expect(stack(page)).toBe(stack(room));
+  for (const page of [room, ann, bo]) {
+    await expect.poll(() => page.project.rawColorAt(6, 5), PATIENT).toBe('#ff0000');
+    await expect.poll(() => page.project.rawColorAt(25, 25), PATIENT).toBe('#00ff00');
+  }
+});
 
 test('an artist paints on L3 while the host merges it down into L2: the stroke is dropped quietly and every page matches', async () => {
   const warns = vi.spyOn(console, 'warn'), errors = vi.spyOn(console, 'error');
@@ -3082,7 +3112,6 @@ test('a host catching up by an artist\'s tail that deletes a layer and adds one 
   ann.project.deleteLayer(layer);
   await expect.poll(() => ann.project.layerById(layer), PATIENT).toBeUndefined();
   workspaceOf(ann).pickLayer('edit');
-  room.project._sharing.removed.clear();   // as a host reloaded since the delete has forgotten it, so its id comes again
   ann.project.addLayer('cells', 'edit');
   await expect.poll(() => ann.project.layerById(layer)?.kind, PATIENT).toBe('cells');   // the same id, a new layer
   expect(ann.project.editId).toBe(layer);

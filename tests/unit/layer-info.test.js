@@ -99,12 +99,6 @@ test('newLayerId: edit and vector while no layer has them, else one past the hig
   assert.equal(newLayerId([BASE, EDIT, VECTOR], 'vector'), 'L1');
 });
 
-test('newLayerId: never an id taken, as a room\'s deleted layers are', () => {
-  assert.equal(newLayerId([BASE, EDIT], 'cells', new Set(['L1'])), 'L2');
-  assert.equal(newLayerId([BASE, VECTOR], 'cells', ['edit']), 'L1');
-  assert.equal(newLayerId([BASE, EDIT, layer('L3', 'cells')], 'cells', ['L5']), 'L6');
-});
-
 test('nextNumber: one past the highest of the kind, the bottom left out', () => {
   assert.equal(nextNumber([BASE, EDIT, layer('L3', 'cells', 2)], 'cells'), 3);
   assert.equal(nextNumber([BASE], 'cells'), 1);

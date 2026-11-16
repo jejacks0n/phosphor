@@ -249,7 +249,7 @@ export function refusedInRoom(project) {
 // layer a first shape brings, or the edit layer a room is missing, has none.
 // chars: its character settings (charsOf's), the bottom's unless said.
 export function putLayer(project, kind, above, chars = project.baseChars) {
-  const id = newLayerId(project.layers, kind, project._sharing?.removed), at = project.layers.findIndex((layer) => layer.id === above) + 1 || project.layers.length;
+  const id = newLayerId(project.layers, kind), at = project.layers.findIndex((layer) => layer.id === above) + 1 || project.layers.length;
   const layer = Object.freeze({ id, kind, n: nextNumber(project.layers, kind), name: null, hidden: false, chars: layerChars(kind, chars) });
   // The last cells layer was deleted: this one takes the fields, empty (not inside an art layer: they're its drawing then).
   const none = kind === 'cells' && !project._artInside && !project.layerById(project.editId);
