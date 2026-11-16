@@ -7,7 +7,7 @@ import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
-import { createTestApp, settle, cellsKey } from '../support/app.js';
+import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
 import { rectShape, ellipseShape, makeShape } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
@@ -29,6 +29,14 @@ async function blank() {
   const app = await createTestApp();
   await app.project.setBlankCanvas({ cols: 20, rows: 10 });
   await settle(app.project);
+  return app;
+}
+
+// A picture opened, as a new drawing: Layer 1 picked over it.
+async function picture() {
+  const app = await createTestApp();
+  await loadImage(app.project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 10 });
+  app.workspace.pickLayer('edit');
   return app;
 }
 
@@ -130,7 +138,7 @@ test('a long layer name in the Characters legend is cut short on one line, with 
 });
 
 test('the Characters legend names the picked layer, and Picture · Base and Image filters show only with Base picked', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace } = await picture();
   workspace.pickLayer('edit');
   await mountPanel();
   expect(sectionOf('Characters · Layer 1')).toBeTruthy();
@@ -155,8 +163,23 @@ test('the Characters legend names the picked layer, and Picture · Base and Imag
   expect(sectionOf('Picture')).toBeUndefined();
 });
 
+// A blank canvas has no picture of its own (its black is a stand-in, markUniform), so there's nothing for Smoothing to do.
+test('a blank canvas, new or reopened, shows no Picture · Base (Smoothing) with Base picked', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('base');
+  await mountPanel();
+  expect(sectionOf('Characters · Base')).toBeTruthy();
+  expect(sectionOf('Picture')).toBeUndefined();
+  expect(host.querySelector('#smoothing')).toBeNull();
+  await project.openParts(await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })), { filename: 'blank' });
+  await settle(project);
+  workspace.pickLayer('base');
+  await nextTick();
+  expect(sectionOf('Picture')).toBeUndefined();
+});
+
 test('Characters and Picture fold on their titles like the slider groups, and stay folded when the panel comes back', async () => {
-  const { workspace } = await blank();
+  const { workspace } = await picture();
   workspace.pickLayer('base');
   await mountPanel();
   const fold = (words) => sectionOf(words).querySelector('legend button.fold');
