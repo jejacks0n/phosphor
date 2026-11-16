@@ -467,6 +467,9 @@ then says **invited**, with **Withdraw invitation** in the menu.
 - **The host is reconnecting**: Drawing pauses for the artists: "Waiting for the host to reconnect. Drawing is
   paused…". A stroke being drawn ends, and strokes that haven't reached the host are marked. Scrolling and zooming
   still work. When the host is back, what's waiting is sent and drawing goes on.
+- **While drawing is paused**, for any reason, LAYERS' add buttons and its ⋯ menu's Rename, Duplicate, Delete and
+  moves are off, saying "Not while drawing is paused.", for the host and artists alike. Picking a layer and its eye
+  still work.
 - **Back to watching**: The host can choose **Back to watching** in an artist's menu, and the artist sees "You're back
   to watching." They keep the art open as an ordinary document to save or keep working on, with its undo emptied, and
   nothing they do there reaches the room. ROOM shows the host's art again at once. The same happens to anyone drawing

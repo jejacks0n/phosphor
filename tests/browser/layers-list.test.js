@@ -8,6 +8,7 @@ import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { rectShape } from '@/document/shapes.js';
 import LayersList from '@/components/LayersList.vue';
+import { useDrawingStore } from '@/store/DrawingStore';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
 
 let app = null, host = null;
@@ -162,6 +163,27 @@ test('in a room the ⋯ items and the add buttons that change the stack are on, 
   expect(project.layers[2].id).toBe(workspace.pickedLayer);
   expect(project.layers[1].id).toBe('edit');
   expect(send).toHaveBeenCalledWith(expect.objectContaining({ t: 'layers', by: 'host', made: workspace.pickedLayer }));
+  project.stopSharing();
+});
+
+test('while a room\'s drawing is paused, nothing that changes the stack is on, and says why', async () => {
+  const { project } = await mount(({ project }) => {
+    project.addLayer('cells', 'edit');
+    project.startSharing({ send: vi.fn(), role: 'host', me: 'host' });
+    useDrawingStore().paused = true;
+  });
+  const why = 'Not while drawing is paused.';
+  for (const label of ['Add layer', 'Add vector layer']) {
+    expect(addButton(label).disabled, label).toBe(true);
+    expect(addButton(label).title, label).toBe(why);
+  }
+  const item = await openMenu(0);
+  for (const label of ['Rename', 'Duplicate', 'Delete', 'Move up', 'Move down']) {
+    expect(item(label).disabled, label).toBe(true);
+    expect(item(label).title, label).toBe(why);
+  }
+  await key(pickOf(0), 'F2');
+  expect(host.querySelector('input')).toBe(null);   // no rename by its key either
   project.stopSharing();
 });
 
