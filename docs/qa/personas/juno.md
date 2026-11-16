@@ -299,12 +299,13 @@ change, ask in the chat whether people can see her box, and have a watcher Exit 
 - Does: `tin_owl` presses Add layer in her LAYERS and draws on the new layer while Juno draws on Layer 1; Juno adds a
   layer too, renames `tin_owl`'s layer (Rename in its ⋯), and moves it down with Move down; then she tries Delete on
   that layer while `tin_owl` still has it selected, and again once `tin_owl` has selected Layer 1 (Cancel at the
-  question once, then Delete layer); `tin_owl` tries the base layer's row and Duplicate on a layer of Juno's.
+  question once, then Delete layer); `tin_owl` tries the base layer's row and Duplicate on a layer of Juno's; Juno hides
+  the duplicate with its eye on her page.
 - Expects: each layer, its name and its place reach every page, and each person's strokes stay on their own layer; the
   new layer is selected for whoever added it, and no one else's selection moves; the first Delete is refused with
   "tin_owl is working on this layer."; the second asks "Delete <the layer's new name> for everyone?" with
   "Everyone in the room loses this layer and what's on it. This can't be undone.", Cancel keeps the layer, Delete layer
-  takes it and what was on it from every page; none of it is an undo step (her Cmd+Z takes back her last stroke, not a
+  takes it and what was on it from every page, with focus on the row selected now; none of it is an undo step (her Cmd+Z takes back her last stroke, not a
   layer change); the base's row is off for `tin_owl`; the duplicate arrives on every page above the layer it copies; the
   hidden eye on one page hides it on that page only; every page ends showing the same art
   ([Layers](../../layers.md#the-layers-list), [Drawing together](../../social.md#drawing-together)).
