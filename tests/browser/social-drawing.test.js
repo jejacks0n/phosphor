@@ -18,6 +18,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { serializeBase, withPins } from '@/document/baseRecords';
 import { CHUNK_BYTES, packValue } from '@/social/wire';
+import { writeProject } from '@/document/projectIO';
 import { hashCell } from '@/document/changes';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger';
 import { forgetRoomLedger, readRoomLedger } from '@/document/autosaveStore';
@@ -2389,6 +2390,49 @@ test('after a planned handover, the old host\'s undo can\'t move the room\'s sli
   expect(room.project.brightness).toBe(140);
 });
 
+// base, edit, L2 and L3: a stack whose ids aren't the first ones, as a drawing that lost a layer has.
+function fourLayers(project) {
+  const first = project.addLayer('cells', 'edit'), l2 = project.addLayer('cells', first), l3 = project.addLayer('cells', l2);
+  project.deleteLayer(first);
+  expect(project.layers.map((layer) => layer.id)).toEqual(['base', 'edit', 'L2', 'L3']);
+  return [l2, l3];
+}
+
+test('a host hands over a four-layer room: the new host\'s stack and ledger match, and an artist\'s earlier stroke on L2 still undoes', async () => {
+  const room = await hostingWithSocket();
+  const [l2, l3] = fourLayers(room.project);
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await expect.poll(() => bob.project.layerById(l3)?.kind, PATIENT).toBe('cells');
+  bob.project.useLayer(l2);
+  bob.project.editCell(1, 1, { char: 'B' });
+  dab(bob.project, 9, 9);
+  bob.project.commitEdit();
+  room.project.useLayer(l3);
+  room.project.editCell(1, 1, { char: 'H' });
+  dab(room.project, 9, 9, '#0000ff');
+  room.project.commitEdit();
+  ann.project.editCell(2, 2, { char: 'A' });
+  ann.project.commitEdit();
+  await allMatch(room, ann, bob);
+  const ledger = keptForWire(room.project._ledger.kept()), stack = stackOf(room.project);
+
+  const next = await plannedHandOver(room, ann);
+  expect(ann.project._sharing.role).toBe('host');
+  for (const page of [ann, bob, next.former]) expect(stackOf(page.project)).toEqual(stack);
+  expect(ann.project.layers.map((layer) => layer.id)).toEqual(['base', 'edit', l2, l3]);
+  expect(keptForWire(ann.project._ledger.kept())).toEqual(ledger);
+  expect(bob.project.canUndo).toBe(true);
+
+  bob.project.undo();   // his cell and dab on L2
+  await expect.poll(() => ann.project.cellsOf(l2).get('1,1'), PATIENT).toBeUndefined();
+  expect(ann.project.paintOf(l2).pixelAt(9, 9)).toBeNull();
+  expect(ann.project.cellsOf(l3).get('1,1')?.char).toBe('H');
+  room.project.undo();   // the old host's on L3, asked of the new one
+  await expect.poll(() => ann.project.cellsOf(l3).get('1,1'), PATIENT).toBeUndefined();
+  expect(ann.project.cellsOf('edit').get('2,2')?.char).toBe('A');
+  await allMatch(next, bob, next.former);
+});
+
 test('a sudden handover keeps all the drawing, empties undo and shows the notice', async () => {
   const room = await hosting();
   room.pinia = getActivePinia();
@@ -2713,6 +2757,69 @@ test('a host reloaded with a delete of a layer with something on it in the kept 
   await forgetRoomLedger('room');
 });
 
+// A reload as autosave and the room's record bring it back (useAutosave, RoomStore.resume): the document written in its stack
+// form and opened on a page of its own, and the ledger as it was kept.
+test('a host reloads a four-layer room: the stack and ids come back, artists\' stacks don\'t change, and undo of an earlier stroke on L3 still works', async () => {
+  const room = await hostingWithSocket();
+  const [l2, l3] = fourLayers(room.project);
+  room.project.renameLayer(l3, 'Lettering');
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layerById(l3)?.name, PATIENT).toBe('Lettering');
+  ann.project.useLayer(l3);
+  ann.project.editCell(4, 4, { char: 'A' });
+  dab(ann.project, 12, 12);
+  ann.project.commitEdit();
+  room.project.useLayer(l2);
+  room.project.editCell(4, 4, { char: 'H' });
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  const old = room.project, stack = stackOf(old), annStack = stackOf(ann.project), documentId = old.documentId;
+  const ledgerN = old.documentNumber();
+  const rest = await (await writeProject({ ...(await old.projectParts()), imageBuffer: new ArrayBuffer(0) })).arrayBuffer();
+  const saved = { record: { rest, filename: old.filename, fileExt: old.fileExt, ledgerN }, imageBuffer: old.imageBuffer };
+  await old.keepLedger();
+  const row = await readRoomLedger('room');
+
+  room.host.close();
+  ann.drawing.connection('lost');
+  room.drawing.close();
+  const { project } = await createTestApp();
+  const drawing = useDrawingStore();
+  project._documentN = ledgerN;
+  await project.restoreDocument(saved, { documentId });
+  project._ledger.n = ledgerN;
+  expect(stackOf(project)).toEqual(stack);
+  const again = new Host({
+    config, passKey, roomId: 'room',
+    send: async (msg) => {
+      if (msg.type !== 'signal-to') return;
+      await later();
+      ann.watch.signalFrom('host', msg.data);
+    },
+    ...drawing.hostCallbacks(),
+  });
+  drawing.hosted(again, { me: () => 'host' });
+  again.setRoom({ name: 'Night shift', welcome: '' });
+  toStop.push(() => { drawing.close(); again.close(); });
+  ann.watch.send = async (msg) => { await later(); again.signalFrom('ann', msg.data); };
+  drawing.resumeHosting({ artists: ['ann'], invited: [] }, row);
+  drawing.hostingAgain();
+  await again.peer('ann', await passFor('ann'));
+  await expect.poll(() => drawing.paused, PATIENT).toBe(false);
+  await expect.poll(() => ann.drawing.paused, PATIENT).toBe(false);
+  expect(stackOf(project)).toEqual(stack);
+  expect(stackOf(ann.project)).toEqual(annStack);
+  expect(project.canUndo).toBe(true);
+  expect(ann.project.canUndo).toBe(true);
+
+  ann.project.undo();   // her cell and dab on L3
+  await expect.poll(() => project.cellsOf(l3).get('4,4'), PATIENT).toBeUndefined();
+  expect(project.paintOf(l3).pixelAt(12, 12)).toBeNull();
+  expect(project.cellsOf(l2).get('4,4')?.char).toBe('H');
+  await allMatch({ project }, ann);
+  await forgetRoomLedger('room');
+});
+
 test('a host back with no way to know joins the artists\' ahead of it: it catches up by their tail, and no stroke goes', async () => {
   const room = await hostingWithSocket();
   const ann = await artist(room, 'ann');
@@ -2813,6 +2920,65 @@ test('a host catching up by an artist\'s tail with a delete of a layer with some
   await expect.poll(() => room.drawing.paused, PATIENT).toBe(false);
   expect(caughtUp.mock.calls.map(([answer]) => answer.kind)).toEqual(['tail']);
   expect(room.project.layerById(layer)).toBeUndefined();
+  await allMatch({ project: room.project }, ann);
+});
+
+test('a host catching up by an artist\'s tail that deletes a layer and adds one with its id keeps the later stroke\'s undo', async () => {
+  const room = await hostingWithSocket();
+  const layer = room.project.addLayer('cells', 'edit');
+  room.project.useLayer(layer);
+  room.project.typeAt(5, 5, 'H', { fg: '#00ff00' });
+  room.project.commitEdit();
+  room.project.useLayer('edit');
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.cellsOf(layer).get('5,5')?.char, PATIENT).toBe('H');
+  await allMatch(room, ann);
+  const behind = room.project._ledger.kept(), behindLayers = room.project.layers, behindData = room.project._layerData.get(layer);
+  const row = { documentId: room.project.documentId, kept: structuredClone(behind) };
+  setActivePinia(ann.pinia);
+  ann.project.deleteLayer(layer);
+  await expect.poll(() => ann.project.layerById(layer), PATIENT).toBeUndefined();
+  workspaceOf(ann).pickLayer('edit');
+  ann.project.addLayer('cells', 'edit');
+  await expect.poll(() => ann.project.layerById(layer)?.kind, PATIENT).toBe('cells');   // the same id, a new layer
+  expect(ann.project.editId).toBe(layer);
+  ann.project.typeAt(5, 5, 'A', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  await expect.poll(() => quiet(ann), PATIENT).toBe(true);
+  room.project.flushHeard();
+
+  // The host reloads: the ledger and the document as of before the delete, and ann reconnects.
+  room.host.close();
+  ann.drawing.connection('lost');
+  room.drawing.close();
+  setActivePinia(room.pinia);
+  room.project.layers = behindLayers;
+  room.project._layerData.set(layer, behindData);
+  room.project._documentN = behind.n;
+  const again = new Host({
+    config, passKey, roomId: 'room',
+    send: async (msg) => {
+      if (msg.type !== 'signal-to') return;
+      await later();
+      ann.watch.signalFrom('host', msg.data);
+    },
+    ...room.drawing.hostCallbacks(),
+  });
+  room.drawing.hosted(again, { me: () => 'host' });
+  again.setRoom({ name: 'Night shift', welcome: '' });
+  toStop.push(() => again.close());
+  ann.watch.send = async (msg) => { await later(); again.signalFrom('ann', msg.data); };
+  const caughtUp = vi.spyOn(room.project, 'takeCatchUp');
+  room.drawing.resumeHosting({ artists: ['ann'], invited: [] }, row);
+  room.drawing.hostingAgain();
+  await again.peer('ann', await passFor('ann'));
+
+  await expect.poll(() => room.project.cellsOf(layer).get('5,5')?.char, PATIENT).toBe('A');
+  await expect.poll(() => room.drawing.paused, PATIENT).toBe(false);
+  expect(caughtUp.mock.calls.map(([answer]) => answer.kind)).toEqual(['tail']);
+  await allMatch({ project: room.project }, ann);
+  ann.project.undo();
+  await expect.poll(() => room.project.cellsOf(layer).get('5,5'), PATIENT).toBeUndefined();
   await allMatch({ project: room.project }, ann);
 });
 
@@ -3024,7 +3190,18 @@ test('a hand-over that isn\'t what a ledger could be is refused, whatever part o
   expect(await read({ ...plain(), tail: [null] })).not.toBe(null);   // the sender's tail isn't used at all
 
   const live = (wire) => wire.strokes.find((stroke) => !stroke.undone && stroke.paint.length);
+  // A cell's key, or a tile's name, said as another everywhere it's said: what a ledger on that layer would hold.
+  const onLayer = (to, from = '1,1') => (w) => {
+    for (const stroke of w.strokes) for (const list of [stroke.cells, stroke.paint]) for (const each of list) if (each[0] === from) each[0] = to;
+    for (const each of [...w.cells, ...w.tiles]) if (each[0] === from) each[0] = to;
+  };
   const bad = {
+    'a cell on the bottom': onLayer('base:1,1'),
+    'a cell on a layer not in the stack': onLayer('L9:1,1'),
+    'a cell on the edit layer by another name': onLayer('edit:1,1'),
+    'paint on the bottom': onLayer('base:0,0', '0,0'),
+    'paint on a layer not in the stack': onLayer('L9:0,0', '0,0'),
+    'paint on the edit layer by another name': onLayer('edit:0,0', '0,0'),
     'no number': (w) => { w.n = 'x'; },
     'a negative number': (w) => { w.n = -2; },
     'no epoch': (w) => { w.epoch = null; },

@@ -317,8 +317,9 @@ export function readLayerOp(msg) {
   return Object.fromEntries(['kind', ...fields].map((field) => [field, op[field]]));
 }
 
-// Whether these could be a document's cells or a ledger's on any grid the app allows: they may be past the one in use.
-export const cellsFitAnyGrid = (cells) => !!readChange({ stroke: 'any', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES });
+// Whether these could be a document's cells or a ledger's on any grid the app allows: they may be past the one in use. layers:
+// what their keys may name, as readChange takes it (a ledger's are any layer of the stack; a document's layer's are bare).
+export const cellsFitAnyGrid = (cells, layers = ONLY_EDIT) => !!readChange({ stroke: 'any', cells, runs: [] }, { cols: MAX_COLS, rows: MAX_LINES, layers });
 
 // The whole document, as chunks. The parts are projectParts()'
 // (with the imageBuffer, as writeProject has it): the file's own form, so a project that opens from a

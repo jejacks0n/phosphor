@@ -18,7 +18,7 @@
  */
 import { hashCell, hashPixel, eachPixel, pack, changeBytes, splitChange, Tail } from './changes.js';
 import { TILE } from './History.js';
-import { keyLayer, layerKey, onLayer } from './layerInfo.js';
+import { isLayerId, keyLayer, layerKey, onLayer } from './layerInfo.js';
 
 // In a room; alone, History's limits decide and tell us through forget.
 const MOST_STROKES = 50;
@@ -85,6 +85,11 @@ export function keptFromWire({ n, epoch, limits, sum, bytes, strokes, cells, til
   must(arrays.length <= MOST_WIRE_TILES && tiles.length <= MOST_WIRE_TILES && arrays.every(isPairs));
   must(strokes.length <= MOST_WIRE_STROKES && cells.length <= MOST_WIRE_CELLS);
   const inLayer = (x, y) => isCount(x) && isCount(y) && !(x % TILE) && !(y % TILE) && x < width && y < height;
+  // A tile's name, layerKey(id, 'x,y') with a place inside, as its layer and place; null for any other string.
+  const tileAt = (name) => {
+    const { id, key } = typeof name === 'string' ? keyLayer(name) : {};
+    return isLayerId(id) && layerKey(id, key) === name && /^\d+,\d+$/.test(key) && inLayer(...key.split(',').map(Number)) ? { id, key } : null;
+  };
   const pixels = arrays.map(filled);
   const pixelsAt = (at) => {
     must(Number.isInteger(at) && at >= 0 && at < pixels.length);
@@ -94,7 +99,7 @@ export function keptFromWire({ n, epoch, limits, sum, bytes, strokes, cells, til
   for (const { id, by, undone, bytes: held, cells: own, paint } of strokes.map((stroke) => stroke ?? {})) {
     must(typeof id === 'string' && id && !records.has(id) && typeof by === 'string' && typeof undone === 'boolean' && isCount(held));
     must(Array.isArray(own) && Array.isArray(paint) && own.every((cell) => Array.isArray(cell) && cell.length === 2 && typeof cell[0] === 'string'));
-    must(paint.every((tile) => Array.isArray(tile) && tile.length === 2 && inLayer(...String(tile[0]).split(',').map(Number)) && /^\d+,\d+$/.test(tile[0])));
+    must(paint.every((tile) => Array.isArray(tile) && tile.length === 2 && tileAt(tile[0])));
     records.set(id, { id, by, undone, bytes: held, cells: new Map(own), paint: new Map(paint.map(([name, at]) => [name, pixelsAt(at)])) });
   }
   const stacks = {
@@ -111,10 +116,10 @@ export function keptFromWire({ n, epoch, limits, sum, bytes, strokes, cells, til
       }];
     })),
     tiles: new Map(tiles.map((tile) => {
-      must(Array.isArray(tile) && tile.length === 5 && inLayer(tile[1], tile[2]) && tile[0] === `${tile[1]},${tile[2]}` && isPairs(tile[3]) && Array.isArray(tile[4]));
+      must(Array.isArray(tile) && tile.length === 5 && inLayer(tile[1], tile[2]) && tileAt(tile[0])?.key === `${tile[1]},${tile[2]}` && isPairs(tile[3]) && Array.isArray(tile[4]));
       const [name, x, y, base, entries] = tile;
       return [name, {
-        x, y, id: 'edit', base: filled(base),
+        x, y, id: tileAt(name).id, base: filled(base),
         entries: entries.map((entry) => {
           must(Array.isArray(entry) && entry.length === 2 && records.get(entry[0])?.paint.has(name));
           return { stroke: entry[0], px: pixelsAt(entry[1]) };
