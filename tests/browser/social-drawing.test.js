@@ -24,6 +24,7 @@ import { hashCell } from '@/document/changes';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger';
 import { forgetRoomLedger, readRoomLedger } from '@/document/autosaveStore';
 import { toastMessage } from '@/composables/useToast';
+import { getTool } from '@/tools';
 
 const config = { iceServers: [] };
 const later = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -399,6 +400,9 @@ test('a room hosted from a base-only drawing: an artist draws nothing until they
   expect(workspaceOf(ann).pickLayer('base')).toBe(false);
   ann.project.typeAt(2, 2, 'A', { fg: '#00ff00' });
   ann.project.commitEdit();
+  toastMessage.value = null;
+  expect(getTool('pencil').begin({ project: ann.project, workspace: workspaceOf(ann), view: 'output' }, { x: 3.5, y: 5 }, {})).toBe(false);
+  expect(toastMessage.value).toBe('Add a drawing layer before drawing.');   // a stroke says why, as typing does
   expect(quiet(ann)).toBe(true);   // nothing went out
   expect(JSON.stringify([...room.project.baseRecords.pins])).toBe(base);
   expect(ann.project.addLayer('cells', 'base')).toBe(null);   // asked of the host
