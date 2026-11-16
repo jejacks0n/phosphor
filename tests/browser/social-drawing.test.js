@@ -15,6 +15,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { ASK_AGAIN_MS, HELD_FLOAT_MS } from '@/store/project/sharing';
 import { followParams } from '@/store/project/rendering';
 import { useRoomStore } from '@/store/RoomStore';
+import { onLayer } from '@/document/layerInfo';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { serializeBase, withPins } from '@/document/baseRecords';
 import { CHUNK_BYTES, packValue } from '@/social/wire';
@@ -477,6 +478,14 @@ async function deletedUnderStroke(del) {
   await del(room, ann);
   for (const page of [room, ann, bo]) await expect.poll(() => page.project.layerById(layer), PATIENT).toBeUndefined();
   await allMatch(room, ann, bo);
+  // Nothing of the artist's still holds a claim or a waiting change on the gone layer, so reusing its id can't bring them back.
+  const { pending } = ann.project._sharing, held = [];
+  expect(pending.waiting.flatMap(({ cells, runs }) => [...cells.filter(([key, value]) => onLayer(key, layer, [value])), ...runs.filter(([, , , , on = 'edit']) => on === layer)])).toEqual([]);
+  const write = pending.write;
+  pending.write = (position) => held.push(position);   // lift writes every position still claimed
+  pending.lift();
+  pending.write = write;
+  expect(held.filter((position) => (Array.isArray(position) ? position[2] === layer : onLayer(position, layer, [])))).toEqual([]);
   await wait(250);   // a slice or two more
   setActivePinia(room.pinia);
   const added = room.project.addLayer('cells', 'edit');
@@ -507,6 +516,40 @@ test('the host deletes a layer an artist\'s open stroke is on before hearing the
   expect(room.project.deleteLayer(layer)).toBe(true);
   setActivePinia(ann.pinia);
 }));
+
+// The host merges a vector layer down in a room: its shapes pressed into the cells layer under it, or into the base, and the
+// vector layer gone from every page, with its shapes.
+for (const into of ['a cells layer above the bottom', 'the bottom']) {
+  test(`the host merges a vector layer down into ${into}, and the layer and its shapes are gone and its cells are where they go on every page`, async () => {
+    const { rectShape } = await import('@/document/shapes.js');
+    const room = await hosting();
+    const cells = into === 'the bottom' ? 'base' : room.project.addLayer('cells', 'edit');
+    const vector = room.project.addLayer('vector', cells);
+    const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+    setActivePinia(room.pinia);
+    useWorkspaceStore(room.pinia).pickLayer(vector);
+    room.project.addShape(rectShape(2, 4, 12, 10, { fill: '#ff0000' }));
+    room.project.commitEdit();
+    await sameShapes(room, ann, bo);
+    for (const page of [ann, bo]) expect(page.project.layerById(vector)?.kind).toBe('vector');
+    const stack = room.project.layers.map(({ id }) => id).filter((id) => id !== vector);
+    expect(room.project.mergeDown(vector)).toBe(true);
+    for (const page of [room, ann, bo]) {
+      await expect.poll(() => page.project.layerById(vector), PATIENT).toBeUndefined();
+      await expect.poll(() => page.project.shapes.size, PATIENT).toBe(0);
+      expect(page.project.layers.map(({ id }) => id)).toEqual(stack);
+    }
+    await sameShapes(room, ann, bo);
+    if (cells !== 'base') {
+      expect(room.project.cellsOf(cells).size).toBeGreaterThan(10);   // the shape's cells, frozen on the layer
+      for (const page of [ann, bo]) expect(page.project.cellsOf(cells).size).toBe(room.project.cellsOf(cells).size);
+    } else {
+      const base = (page) => page.project.baseLayer.pixelAt(6, 7);   // inside the rectangle
+      expect(base(room)).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+      for (const page of [ann, bo]) await expect.poll(() => base(page), PATIENT).toEqual(base(room));
+    }
+  });
+}
 
 // A room's first shape makes its vector layer on each page by itself, with no stack sent: after the room deletes it, the
 // next first shape has to make the same id everywhere, or a page with another id hides the shape and every check matches.
