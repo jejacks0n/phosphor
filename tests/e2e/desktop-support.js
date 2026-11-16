@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { _electron } from 'playwright';
 import { test, expect } from '@playwright/test';
-import { fixture, imageInput, tab, settled, store } from './support.js';
+import { fixture, imageInput, tab, settled, store, pickLayer } from './support.js';
 import { fromMenu, invitation, mayDraw, openLobby } from './social-support.js';
 import { SOFTWARE_GL as SOFTWARE_GL_ARGS } from '../support/chromiumArgs.js';
 export { test, expect };
@@ -83,10 +83,12 @@ async function startPage({ page, name }) {
   await page.getByRole('textbox', { name: 'Your name' }).fill(name);
 }
 
-// The launched app hosting a room on its own port through Start a room, with an image open; its address.
+// The launched app hosting a room on its own port through Start a room, with an image open and Layer 1 added for the
+// room's artists to draw on (a new drawing has only the base); its address.
 export async function hostRoom(launched, { roomName = 'night shift', password = '' } = {}) {
   const { page, port } = launched;
   await openImage(page);
+  await pickLayer(page, 'Layer 1');
   await startPage(launched);
   await page.getByRole('button', { name: 'Start a room' }).click();
   await page.getByRole('textbox', { name: 'Room name' }).fill(roomName);

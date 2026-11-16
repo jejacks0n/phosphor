@@ -168,7 +168,7 @@ test('the host\'s reload keeps the room: the artist stays in and draws on, and a
   await expect(cat.page.getByText(WAITING)).toBeVisible();
   await expect(ann.page.getByRole('button', { name: 'Let cat in' }).first()).toBeVisible();
 
-  await autosaved(ann.page);   // a reload before autosave's first write has no art to come back to
+  await autosaved(ann.page, { changed: true });   // a reload before autosave has Layer 1 (hostRoom's) comes back without it
   await ann.page.reload();
   await live(ann.page);
   expect(await role(ann.page)).toBe('host');
