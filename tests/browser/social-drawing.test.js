@@ -1330,12 +1330,18 @@ test('Make art layer in a room uses the vector layer above the picked one, and i
   toastMessage.value = null;
   expect(ann.project.makeArtLayer()).toBe(null);
   expect(toastMessage.value).toBe('Add a vector layer above Layer 1 first.');
-  const vector = room.project.addLayer('vector', 'edit');
-  await expect.poll(() => ann.project.layerById(vector)?.kind, PATIENT).toBe('vector');
+  const first = room.project.addLayer('vector', 'edit'), cells = room.project.addLayer('cells', first), second = room.project.addLayer('vector', cells);
+  expect(room.project.layers.map((layer) => layer.id)).toEqual(['base', 'edit', first, cells, second]);
+  await expect.poll(() => ann.project.layerById(second)?.kind, PATIENT).toBe('vector');
+  workspaceOf(ann).pickLayer(cells);
+  ann.project.typeAt(2, 2, 'Q', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  workspaceOf(ann).selection = { c0: 2, r0: 2, c1: 3, r1: 2 };
   const key = ann.project.makeArtLayer();
   expect(key).toBeTruthy();
-  expect(ann.project.shapes.get(key).layer ?? 'vector').toBe(vector); // the first vector layer's shapes have no layer field
-  await expect.poll(() => room.project.shapes.get(key)?.layer ?? 'vector', PATIENT).toBe(vector);
+  expect(second).not.toBe('vector'); // not the first vector layer, whose shapes name none
+  expect(ann.project.shapes.get(key).layer).toBe(second);
+  await expect.poll(() => room.project.shapes.get(key)?.layer, PATIENT).toBe(second);
   await allMatch(room, ann);
 });
 
