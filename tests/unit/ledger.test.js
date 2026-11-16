@@ -683,8 +683,12 @@ test('forget of a stroke nobody knows does nothing', () => {
   assert.equal(ledger.sum, 0);
 });
 
-// The same rules the slow way, one object per position, against the ledger through a long random run.
-test.each([1, 2, 3, 4, 5, 6])('many hands, in any order, end as position-by-position stacks would (seed %i)', (seed) => {
+// The same rules the slow way, one object per position, against the ledger through a long random run. Positions are on
+// the edit layer and on a second layer, which is sometimes dropped (dropLayer, its share read from the picture) and
+// another one with a new id put in its place, as a room's delete and add do.
+const FUZZ_SEEDS = Number(process.env.VITE_FUZZ_SEEDS ?? 0);
+const fuzzSeeds = (seeds) => (FUZZ_SEEDS ? Array.from({ length: FUZZ_SEEDS }, (_, i) => i + 1) : seeds);
+test.each(fuzzSeeds([1, 2, 3, 4, 5, 6]))('many hands, in any order, end as position-by-position stacks would (seed %i)', (seed) => {
   let state = seed * 2654435761;
   const random = (under) => {
     state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
@@ -698,9 +702,18 @@ test.each([1, 2, 3, 4, 5, 6])('many hands, in any order, end as position-by-posi
   for (const x of [1, 2, 3, TILE - 1, TILE, TILE + 1]) for (const y of [2, 3]) {
     positions.set(`p${x},${y}`, { x, y, base: pic.px(x, y), stack: [] });
   }
+  let layer = 0;
+  const addLayer = () => { // its cells and pixels, empty to start
+    const id = `L${++layer + 1}`;
+    for (let i = 0; i < 4; i++) positions.set(`${id}:${i},0`, { cell: true, base: null, stack: [] });
+    for (const x of [2, TILE]) positions.set(`p${id}:${x},2`, { x, y: 2, id, base: 0, stack: [] });
+    for (const [name, spot] of positions) spot.name = name;
+    return id;
+  };
+  let other = addLayer();
   const strokes = new Map(); // id: { by, undone, values: Map<position, value> }; an undone one keeps its place
   const pixelValues = [RED, GREEN, BLUE, 0], cellValues = [X, Y, Z, null];
-  const names = [...positions.keys()];
+  let names = [...positions.keys()];
   const shown = (spot) => {
     const top = spot.stack.findLast((id) => !strokes.get(id).undone);
     return top ? strokes.get(top).values.get(spot.name) : spot.base;
@@ -715,13 +728,16 @@ test.each([1, 2, 3, 4, 5, 6])('many hands, in any order, end as position-by-posi
       const carryOn = live.length && random(2);
       const id = carryOn ? live[random(live.length)][0] : `s${step}`;
       const by = carryOn ? strokes.get(id).by : `person${random(3)}`;
-      if (!strokes.has(id)) strokes.set(id, { by, undone: false, values: new Map() });
+      if (!strokes.has(id)) strokes.set(id, { by, undone: false, values: new Map(), tiles: new Set() }); // tiles: the ledger's paint, kept after what's above is forgotten
       const stroke = strokes.get(id), change = { cells: [], runs: [] };
       for (let i = random(4) + 1; i > 0; i--) {
         const name = names[random(names.length)], spot = positions.get(name);
         const value = spot.cell ? cellValues[random(4)] : pixelValues[random(4)];
         if (spot.cell) change.cells.push([name, value]);
-        else change.runs.push([spot.x, spot.y, 1, value]);
+        else {
+          change.runs.push(spot.id ? [spot.x, spot.y, 1, value, spot.id] : [spot.x, spot.y, 1, value]);
+          stroke.tiles.add(`${spot.id ?? 'edit'}|${Math.floor(spot.x / TILE)},${Math.floor(spot.y / TILE)}`);
+        }
         removeFrom(spot, id);
         spot.stack.push(id);
         stroke.values.set(name, value);
@@ -738,6 +754,26 @@ test.each([1, 2, 3, 4, 5, 6])('many hands, in any order, end as position-by-posi
         return positions.get(name).cell ? JSON.stringify(a) !== JSON.stringify(b) : a !== b;
       }).length;
       assert.equal(listed, changed, 'an undo or redo lists exactly what changes');
+    } else if (roll === 9 && random(3) === 0) { // the second layer deleted, and another added
+      const on = (at) => keyLayer(at).id === other;
+      let share = 0;
+      for (const [key, entry] of pic.cells) if (on(key)) share ^= hashCell(key, entry);
+      for (const [at, rgba] of pic.pixels) if (on(at)) share ^= hashPixel(...keyLayer(at).key.split(',').map(Number), rgba, other);
+      ledger.dropLayer(other, share);
+      for (const key of [...pic.cells.keys()]) if (on(key)) pic.cells.delete(key);
+      for (const at of [...pic.pixels.keys()]) if (on(at)) pic.pixels.delete(at);
+      const gone = new Set([...positions].filter(([name, spot]) => (spot.cell ? on(name) : spot.id === other)).map(([name]) => name));
+      for (const name of gone) positions.delete(name);
+      for (const [id, stroke] of [...strokes]) { // one that had something there and has nothing left anywhere goes: its undo is refused
+        const tiles = [...stroke.tiles].filter((tile) => tile.startsWith(`${other}|`));
+        const had = tiles.length || [...stroke.values.keys()].some((name) => gone.has(name));
+        for (const name of gone) stroke.values.delete(name);
+        for (const tile of tiles) stroke.tiles.delete(tile);
+        if (had && !stroke.values.size && !stroke.tiles.size) strokes.delete(id);
+      }
+      for (const [id, { by, undone }] of strokes) assert.equal(ledger.strokesBy(by).includes(id), !undone, `stroke ${id} kept`);
+      other = addLayer();
+      names = [...positions.keys()];
     } else if (strokes.size) {
       const ids = [...strokes.keys()], id = ids[random(ids.length)], stroke = strokes.get(id);
       if (stroke.undone) for (const spot of positions.values()) removeFrom(spot, id);
@@ -755,7 +791,7 @@ test.each([1, 2, 3, 4, 5, 6])('many hands, in any order, end as position-by-posi
 
     for (const [name, spot] of positions) {
       if (spot.cell) assert.deepEqual(pic.cells.get(name) ?? null, shown(spot), `cell ${name} at step ${step}`);
-      else assert.equal(pic.px(spot.x, spot.y), shown(spot), `pixel ${name} at step ${step}`);
+      else assert.equal(pic.px(spot.x, spot.y, spot.id), shown(spot), `pixel ${name} at step ${step}`);
     }
     assert.equal(ledger.sum, pic.sum(), `sum at step ${step}`);
   }

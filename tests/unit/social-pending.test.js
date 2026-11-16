@@ -74,6 +74,7 @@ function host(start) {
   const ledger = new Ledger({ readCell: (key) => own.cells.get(key), readTile: own.readTile, sum: own.sum() });
   const numbered = [];
   const take = (message) => {
+    if (!message) return null; // refused
     own.show(message);
     numbered.push(message);
     return message;
@@ -376,25 +377,57 @@ function random(seed) {
   };
 }
 
-for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+// The layer with the id taken off a screen, after drop(share) with its part of the check as the screen showed it, as a
+// room's delete reads it before the layer goes (dropFromSums).
+function dropFrom(shown, id, drop) {
+  const on = (at) => keyLayer(at).id === id;
+  let share = 0;
+  for (const [key, entry] of shown.cells) if (on(key)) share ^= hashCell(key, entry);
+  for (const [at, rgba] of shown.pixels) if (on(at)) share ^= hashPixel(...keyLayer(at).key.split(',').map(Number), rgba, id);
+  drop(share);
+  for (const key of [...shown.cells.keys()]) if (on(key)) shown.cells.delete(key);
+  for (const at of [...shown.pixels.keys()]) if (on(at)) shown.pixels.delete(at);
+}
+
+// VITE_FUZZ_SEEDS=n runs seeds 1..n.
+const FUZZ_SEEDS = Number(process.env.VITE_FUZZ_SEEDS ?? 0);
+const fuzzSeeds = (seeds) => (FUZZ_SEEDS ? Array.from({ length: FUZZ_SEEDS }, (_, i) => i + 1) : seeds);
+
+// Drawing on the edit layer and a second one, which the host sometimes deletes (a numbered stack change: the ledger and
+// each Pending drop it as they hear it, the share read from their own screen) and adds another in its place, with a new
+// id. A change drawn on it before the artist heard has that part left out at the host (withoutRemoved), the rest numbered.
+for (const seed of fuzzSeeds([1, 2, 3, 4, 5, 6, 7, 8])) {
   test(`every order of drawing, numbering, undoing and hearing ends with the same picture (seed ${seed})`, () => {
     const roll = random(seed);
     const start = { cells: [['0,0', START]], pixels: [[`${TILE - 1},0`, BLUE]] };
-    const hosting = host(start), sumAt = new Map();
-    const people = ['a', 'b'].map((me) => Object.assign(artist(me, start), { outbox: [], heardUpTo: 0, strokes: [], made: 0 }));
+    const hosting = host(start), sumAt = new Map(), removed = new Set();
+    let layers = 0;
+    const people = ['a', 'b'].map((me) => Object.assign(artist(me, start), { outbox: [], heardUpTo: 0, strokes: [], made: 0, layers: 0 }));
     const colors = [RED, GREEN, BLUE, 0], values = [MINE, THEIRS, MORE, null];
+    const layerOf = (count) => `L${count + 2}`; // the second layer, as someone who's heard count deletes has it
 
-    const anyChange = () => {
-      const cells = roll(2) ? [[`${roll(3)},0`, values[roll(values.length)]]] : [];
-      const runs = roll(2) ? [[TILE - 2 + roll(4), roll(2), 1 + roll(3), colors[roll(colors.length)]]] : [];
+    const anyChange = (person) => {
+      const id = roll(2) ? 'edit' : layerOf(person.layers);
+      const cells = roll(2) ? [[layerKey(id, `${roll(3)},0`), values[roll(values.length)]]] : [];
+      const run = [TILE - 2 + roll(4), roll(2), 1 + roll(3), colors[roll(colors.length)]];
+      const runs = roll(2) ? [id === 'edit' ? run : [...run, id]] : [];
       return cells.length || runs.length ? { cells, runs } : { cells: [['0,0', MINE]], runs: [] };
+    };
+    const dropLayer = () => {
+      const id = layerOf(layers++);
+      dropFrom(hosting.own, id, (share) => hosting.ledger.dropLayer(id, share));
+      removed.add(id);
+      const message = { t: 'layers', n: hosting.ledger.note(), id };
+      hosting.numbered.push(message);
+      sumAt.set(message.n, hosting.ledger.sum);
+      assert.equal(hosting.ledger.sum, hosting.own.sum(), 'the host\'s check after a delete');
     };
     const draw = (person) => {
       // Sometimes the next slice of the stroke being drawn, so one stroke has several numbers.
       const last = person.strokes.at(-1);
       const stroke = last && !last.undone && roll(2) ? last : { id: `${person.me}${person.made++}`, undone: false };
       if (stroke !== last) person.strokes.push(stroke);
-      const change = anyChange();
+      const change = anyChange(person);
       person.draw(stroke.id, change);
       person.outbox.push({ stroke: stroke.id, change });
     };
@@ -407,25 +440,35 @@ for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
     const number = (person) => {
       const message = person.outbox.shift();
       if (!message) return;
-      const numbered = message.change
-        ? hosting.submit(person.me, message.stroke, message.change)
+      const kept = (id) => !removed.has(id);
+      const change = message.change && {
+        cells: message.change.cells.filter(([key]) => kept(keyLayer(key).id)),
+        runs: message.change.runs.filter((run) => kept(run[4] ?? 'edit')),
+      };
+      const numbered = change
+        ? hosting.submit(person.me, message.stroke, change)
         : hosting.undo(person.me, message.stroke);
-      sumAt.set(numbered.n, hosting.ledger.sum);
+      if (numbered) sumAt.set(numbered.n, hosting.ledger.sum); // an undo of a stroke left with nothing is refused
     };
     const hear = (person) => {
       const numbered = hosting.numbered[person.heardUpTo++];
       if (!numbered) { person.heardUpTo--; return; }
-      person.pending.heard(numbered);
+      if (numbered.t === 'layers') {
+        dropFrom(person.own, numbered.id, (share) => person.pending.dropLayer(numbered.id, share));
+        person.pending.n = numbered.n;
+        person.layers++;
+      } else person.pending.heard(numbered);
       assert.equal(person.pending.sum, sumAt.get(numbered.n), `${person.me}'s check at ${numbered.n}`);
     };
 
     for (let step = 0; step < 300; step++) {
       const person = people[roll(2)];
-      const what = roll(10);
-      if (what < 3) draw(person);
-      else if (what === 3) undo(person);
-      else if (what < 7) number(person);
-      else hear(person);
+      const what = roll(21);
+      if (what < 6) draw(person);
+      else if (what < 8) undo(person);
+      else if (what < 14) number(person);
+      else if (what < 20) hear(person);
+      else dropLayer();
     }
     for (const person of people) while (person.outbox.length) number(person);
     for (const person of people) while (person.heardUpTo < hosting.numbered.length) hear(person);
