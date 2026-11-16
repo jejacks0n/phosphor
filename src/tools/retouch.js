@@ -12,10 +12,10 @@
 // the brush's falloff, so going over a spot again in the same stroke adds nothing; another stroke does.
 import { brushPixels } from '@/lib/Brushes';
 import { selectionClip } from '@/lib/selectionClip';
-import { charRowsOf, halfColors, mix, showsChar } from '@/lib/Cells.js';
+import { charRowsOf, mix, showsChar } from '@/lib/Cells.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { averaged, averagedPaint, burned, dodged, mixPaint } from '@/lib/Retouch.js';
-import { onBottom } from '@/store/project/shared.js';
+import { onBottom, ownHalves } from '@/store/project/shared.js';
 import { t } from '@/i18n/index.js';
 
 const AROUND = [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => [dx, dy]));
@@ -44,19 +44,12 @@ function ownCellAt(project, col, row) {
   return stroke.read.get(key);
 }
 
-// Its two halves ([top, bottom], { r, g, b }) as it shows at pixel scale (completed against what's under it, the
-// layer's paint over it); null where it has no color of its own.
+// Its two halves ([top, bottom], { r, g, b }) as it shows at pixel scale (ownHalves); null where it has no color of its
+// own.
 function ownCellHalves(project, col, row) {
   const key = `h${col},${row}`;
   if (stroke.read.has(key)) return stroke.read.get(key);
-  let halves = null;
-  if (ownCellAt(project, col, row)) {
-    const look = project.underlyingAt(col, row, { withPaint: false, evenHidden: true });
-    halves = halfColors({ char: look.char, bg: hex2rgb(look.bg), fg: hex2rgb(look.fg) }).map((half, k) => {
-      const paint = project.paintLayer?.pixelAt(col, 2 * row + k);
-      return paint ? mix(half, paint, paint.a) : half;
-    });
-  }
+  const halves = ownCellAt(project, col, row) ? ownHalves(project, col, row) : null;
   stroke.read.set(key, halves);
   return halves;
 }

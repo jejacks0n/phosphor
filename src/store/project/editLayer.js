@@ -10,10 +10,11 @@ import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, cellsOfPixels, showsChar } from '@/lib/Cells.js';
+import { coverageOf } from '@/lib/GlyphCoverage.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, bytesHeld, onBottom, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, onBottom, ownHalves, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
 
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100, stack = false) {
@@ -52,8 +53,15 @@ export const editLayerActions = {
         cells = !seen ? [] : cells.filter(({ col, row }) => {
           const key = cellKey(col, row), first = !seen.has(key), cell = this.cells[cellIndex(col, row, cols)];
           seen.add(key);
-          return first && !!cell && showsNoChar(this, col, row, cell);
+          if (!first || !cell) return false;
+          return ownColored(this, col, row) ? !showsChar(cell) || coverageOf(cell.char).every((c) => c === 0) : showsNoChar(this, col, row, cell);
         });
+        // A cell of the layer's own with colors shows them itself, and a ▄ with colors of its own isn't a paint block
+        // (ASCII would show it): its colors go into paint, as it showed, and the ▄ has none.
+        const own = cells.filter(({ col, row }) => ownColored(this, col, row));
+        this.putEditPixels(own.flatMap(({ col, row }) => ownHalves(this, col, row).map((color, k) => ({ x: col, y: 2 * row + k, ...color, a: 1 }))).filter(({ y }) => y < rows));
+        this.writeEditCells(cells.map((c) => ({ ...c, attrs: ownColored(this, c.col, c.row) ? { char: '▄', fg: null, bg: null, fgIndex: null, bgIndex: null } : { char: '▄' } })));
+        cells = [];
       }
       this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
     }
@@ -287,9 +295,13 @@ export const editLayerActions = {
   },
 };
 
-// Cells written on the base ([{ col, row, attrs }], attrs as writeEditCells takes them: undefined keeps, null clears):
-// each as it then shows, its own attributes over the base's look (completeAt), its character pinned; the half of a wide
-// character one breaks becomes a space, as on a cells layer.
+// Whether the layer in use (not the base, whose cells are pins) has a cell of its own at col, row with a color of its own.
+function ownColored(project, col, row) {
+  if (onBottom(project)) return false;
+  const entry = project.editCellAt(col, row);
+  return !!(entry?.fg || entry?.bg);
+}
+
 // Whether the cell at col, row shows no character in ANSI, as a stroke first reaching it reads it: in ANSI as it's drawn
 // (cell), or in any style its two halves one color as stored up to the layer in use (the base alone when it's picked),
 // which ANSI draws as no character. So which view or art style a stroke is laid in doesn't change the cells it makes ▄.
@@ -299,6 +311,9 @@ function showsNoChar(project, col, row, cell) {
   return look.bg.toLowerCase() === look.fg.toLowerCase();
 }
 
+// Cells written on the base ([{ col, row, attrs }], attrs as writeEditCells takes them: undefined keeps, null clears):
+// each as it then shows, its own attributes over the base's look (completeAt), its character pinned; the half of a wide
+// character one breaks becomes a space, as on a cells layer.
 function writeOnBottom(project, list) {
   const own = (attrs) => Object.fromEntries(Object.entries(attrs).filter(([, value]) => value != null));
   const blanks = overwritesAll(project.cells, project.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));

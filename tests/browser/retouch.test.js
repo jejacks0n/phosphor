@@ -115,6 +115,27 @@ for (const view of ['input', 'output']) {
   });
 }
 
+// In the ASCII styles a cell shows its character on black, whatever is under it: Blur spreads it as that, none of the
+// picture under it.
+test('Color ASCII: on a drawing layer Blur spreads a typed character as it shows, on black, not over the base under it', async () => {
+  const { project, workspace, ctx } = await blank('output');
+  project.renderStyle = 'colorAscii';
+  workspace.pickLayer('base');
+  paintGray(project, 0);
+  const red = [];
+  for (let y = 8; y < 14; y++) for (let x = 3; x < 8; x++) red.push({ x, y, r: 255, g: 0, b: 0, alpha: 1 });
+  project.paintEditPixels(red);
+  project.commitEdit();
+  workspace.pickLayer(project.addLayer('cells', 'base'));
+  project.writeEditCells([{ col: 5, row: 5, attrs: { char: '.', fg: '#00ff00' } }]);
+  project.commitEdit();
+  await settle(project);
+  stroke(blur, ctx, { x: 5.5, y: 11 });
+  const [r, g] = paintAt(project, 4, 11);
+  expect(g).toBeGreaterThan(0);
+  expect(r).toBe(0);
+});
+
 test('a selection keeps the stroke inside it', async () => {
   const { project, workspace, ctx } = await blank();
   paintGray(project);

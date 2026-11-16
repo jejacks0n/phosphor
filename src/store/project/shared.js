@@ -7,7 +7,8 @@ import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { loadImage } from '@/document/projectIO.js';
 import { markUniform } from '@/lib/ImageProcessor.js';
 import { MOST_CHANGE_BYTES, cellsFitAnyGrid } from '@/social/wire.js';
-import { MAX_CELLS } from '@/lib/Cells.js';
+import { MAX_CELLS, halfColors, mix } from '@/lib/Cells.js';
+import { hex2rgb } from '@/lib/ColorUtils.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
 import { layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
@@ -319,6 +320,19 @@ export function shapesOfStack(project) {
   return result;
 }
 // A color ({ r, g, b, a }, a in 0..1) laid over another ({ r, g, b }).
+// The two halves ([top, bottom], { r, g, b }, stored colors) the layer in use's own cell at col, row shows at pixel
+// scale: its character in its foreground over its background, mixed as the glyph covers each half (a color it hasn't
+// got from under it; in the ASCII styles, which show characters on black, black under), the layer's paint over that.
+// What it becomes as paint: Retouch reads it so, and Colors only lays it under the Brush.
+export function ownHalves(project, col, row) {
+  const look = project.underlyingAt(col, row, { withPaint: false, evenHidden: true });
+  const bg = project.renderStyle === 'colorAscii' || project.renderStyle === 'ascii' ? { r: 0, g: 0, b: 0 } : hex2rgb(look.bg);
+  return halfColors({ char: look.char, bg, fg: hex2rgb(look.fg) }).map((half, k) => {
+    const paint = project.paintLayer?.pixelAt(col, 2 * row + k);
+    return paint ? mix(half, paint, paint.a) : half;
+  });
+}
+
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
 
 // The Transforms, Adjustments and Image Filters settings (sliders and their colors): what a slider

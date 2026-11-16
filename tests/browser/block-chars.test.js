@@ -4,6 +4,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
+import { ellipseShape } from '@/document/shapes.js';
 import pencil from '@/tools/pencil';
 import brush from '@/tools/brush';
 import eraser from '@/tools/eraser';
@@ -89,6 +90,68 @@ test('with Colors only, a cell that shows no character (the black of an opened f
   project.render(); // a whole render shows them the same way
   await settle(project);
   expect(hidden.map(shows)).toEqual([['▄', '#ffffff', '#000000'], ['▄', '#ffffff', '#000000']]);
+});
+
+// The report (projects/paint-over-merged-shape.phosphor): Color ASCII, a shape merged down, then painted along its edge
+// with Colors only, and the paint came out as half-blocks. The merge wrote some edge cells exactly, a space in the
+// shape's color among them; Colors only made each a ▄ and kept its color, and a ▄ with colors of its own isn't a paint
+// block, so ASCII showed it. What counts is what shows: a % in the red of the base under it shows in Color ASCII (on
+// black), and was made a ▄ too, while in ANSI it shows no character.
+for (const renderStyle of ['colorAscii', 'ansi']) {
+  test(`${renderStyle}: with Colors only, a layer's own cell that shows no character becomes a plain ▄, its colors paint; one that shows a character keeps it`, async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    project.renderStyle = renderStyle;
+    await settle(project);
+    workspace.pickLayer('base');
+    project.paintEditPixels([{ x: 12, y: 10, r: 255, g: 0, b: 0, alpha: 1 }, { x: 12, y: 11, r: 255, g: 0, b: 0, alpha: 1 }]);
+    project.commitEdit();
+    workspace.pickLayer(project.addLayer('cells', 'base'));
+    project.writeEditCells([
+      { col: 5, row: 5, attrs: { char: ' ', fg: '#ff0000' } },       // shows nothing: the black background
+      { col: 6, row: 5, attrs: { char: ' ', fg: '#000000', bg: '#0000ff' } }, // shows its blue background in ANSI
+      { col: 12, row: 5, attrs: { char: '%', fg: '#ff0000' } },      // in the red of the base under it
+    ]);
+    project.commitEdit();
+    await settle(project);
+    Object.assign(workspace, { editFgColor: '#ffffff', brushDrawWith: 'normal', editBrushSize: 1, editBrushHardness: 100, editBrushFlow: 100, editBrushOpacity: 100 });
+    const ctx = { project, workspace, view: 'output' };
+    for (const col of [5, 6, 12]) {
+      brush.begin(ctx, { x: col + 0.5, y: 10.5 }, {}); // the cell's top half
+      brush.end(ctx);
+    }
+    await settle(project);
+    expect(project.editCellAt(5, 5)).toEqual({ char: '▄' });
+    expect(project.editCellAt(6, 5)).toEqual({ char: '▄' });
+    expect(project.paintLayer.pixelAt(6, 11)).toMatchObject(renderStyle === 'ansi' ? { r: 0, g: 0, b: 255, a: 1 } : { r: 0, g: 0, b: 0, a: 1 }); // its unpainted half, as it showed
+    expect(project.editCellAt(12, 5)?.char).toBe(renderStyle === 'ansi' ? '▄' : '%');
+    if (renderStyle !== 'ansi') expect(project.cells.slice(5 * 20, 6 * 20).map((cell) => cell.char).join('')).not.toContain('▄');
+    project.undo();
+    expect(project.editCellAt(12, 5)).toEqual({ char: '%', fg: '#ff0000' }); // the last stroke undone
+  });
+}
+
+test('the report: in Color ASCII a shape merged down, then brushed along its edge with Colors only, shows no ▄', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 60, rows: 40 });
+  Object.assign(project, { renderStyle: 'colorAscii', charChoiceAscii: 'shape' });
+  await settle(project);
+  const layer = project.addLayer('cells', 'base'), vector = project.addLayer('vector', layer);
+  workspace.pickLayer(vector);
+  project.addShape(ellipseShape(10.3, 6.4, 40.7, 36.2, { fill: '#ff2000' }));
+  project.commitEdit();
+  await settle(project);
+  expect(project.mergeDown(vector)).toBe(true);
+  await settle(project);
+  expect([...project.cellsOf(layer).values()].some((entry) => entry.char === ' ' && entry.fg)).toBe(true); // its edge's exact blanks
+  workspace.pickLayer(layer);
+  Object.assign(workspace, { editFgColor: '#ffffff', brushDrawWith: 'normal', editBrushSize: 6, editBrushOpacity: 100 });
+  const ctx = { project, workspace, view: 'output' };
+  brush.begin(ctx, { x: 6, y: 8 }, {});
+  brush.move(ctx, { x: 6, y: 8 }, { x: 44, y: 36 });
+  brush.end(ctx);
+  await settle(project);
+  expect(project.cells.filter((cell) => cell.char === '▄')).toHaveLength(0);
 });
 
 test('with Colors only on the base, a cell that shows no character is pinned a ▄ the paint colors', async () => {
