@@ -4,7 +4,7 @@
 import { describe, test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
-import { rectShape } from '@/document/shapes.js';
+import { rectShape, ellipseShape, fillAs } from '@/document/shapes.js';
 import { brushPixels } from '@/lib/Brushes';
 import { toastMessage } from '@/composables/useToast.js';
 import { createApp } from 'vue';
@@ -477,6 +477,31 @@ describe('down between layers', () => {
     expect(project.paintOf('edit').pixelAt(col, 3)?.a).toBeGreaterThan(0); // the clear above it
     expect(project.paintOf('edit').pixelAt(col, 3)?.a).toBeLessThan(1);
   });
+
+  // The report (projects/blur-ascii-test.phosphor): a gradient shape merged down under By shape came in as exact cells
+  // nearly all over, not paint, so Blur kept their characters and Keep crisp cells into the base pinned them all. By
+  // shape works a cell's colors out from the shape's finer samples, and paint from its grid pixels: the same gradient
+  // rounds a step or two apart, which no one can see, but the merge compared colors exactly.
+  for (const style of [{ renderStyle: 'colorAscii', charChoiceAscii: 'shape' }, { renderStyle: 'ansi', charChoice: 'shape' }]) {
+    test(`a gradient shape merged down under By shape (${style.renderStyle}) is paint, exact only where it shows differently`, async () => {
+      const { project, workspace } = await createTestApp();
+      await project.setBlankCanvas({ cols: 60, rows: 30 });
+      Object.assign(project, style);
+      await settle(project);
+      const layer = project.addLayer('cells', 'base'), vector = project.addLayer('vector', layer);
+      workspace.pickLayer(vector);
+      const shape = ellipseShape(20.3, 6.4, 50.7, 50.2, { fill: '#ff2000' });
+      project.addShape({ ...shape, fill: fillAs(shape, 'linear', { to: '#ffffff' }) });
+      project.commitEdit();
+      await settle(project);
+      const before = project.cells.map((cell) => cell.char);
+      expect(project.mergeDown(vector)).toBe(true);
+      await settle(project);
+      expect(project.cells.map((cell) => cell.char)).toEqual(before); // nothing that shows changed
+      expect(project.cellsOf(layer).size).toBeLessThan(70); // its edge (258 and 144 cells before, nearly all of it)
+      expect(project.paintOf(layer).pixelAt(35, 20)).toMatchObject({ a: 1 }); // the middle: paint
+    });
+  }
 
   test('Merge down of paint over cells keeps what shows under Color ASCII with the sliders off their defaults', async () => {
     const { project, workspace } = await createTestApp();

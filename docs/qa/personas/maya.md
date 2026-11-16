@@ -349,7 +349,9 @@ held.
   the canvas changes; one undo brings it back, picked; redo merges it again. The paint stays paint, so Blur fades its
   edge into the clear beside it, as on any paint.
 - Probes: `undo-redo`: undo, redo, undo again, then paint and check redo is off; `out-of-order`: hide the layer under it
-  and press Merge down ("Make the layer visible to merge it").
+  and press Merge down ("Make the layer visible to merge it"); `again`: with Choose characters on By shape (Color
+  ASCII too), add a vector layer over Layer 1, draw a shape with a gradient fill, Merge down, and Blur across it: it
+  came down as paint, so it blurs and fades all over, only cells along its edge kept as characters.
 - Rated: yes, wants Cmd+E
 
 ### 27. Merge my paint into the picture, crisp

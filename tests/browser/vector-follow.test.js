@@ -134,6 +134,15 @@ test('Merge down of everything leaves the guide a shape, and presses the followe
   expect(red(project, 14, 10)).toBe(true);
 });
 
+// What shows: each cell's character and colors. A merge into a drawing layer leaves its shapes as paint where that shows
+// the same, to within the step or two the same color rounds apart when reached another way (merging.js, ROUNDING).
+const looks = (project) => project.cells.map(({ char, fg, bg }) => ({ char, fg: { r: fg.r, g: fg.g, b: fg.b }, bg: { r: bg.r, g: bg.g, b: bg.b } }));
+const apart = (a, b) => Math.max(Math.abs(a.r - b.r), Math.abs(a.g - b.g), Math.abs(a.b - b.b));
+function expectLooksAlike(now, was) {
+  expect(now.map(({ char }) => char)).toEqual(was.map(({ char }) => char));
+  expect(Math.max(...now.map((cell, i) => Math.max(apart(cell.fg, was[i].fg), apart(cell.bg, was[i].bg))))).toBeLessThanOrEqual(2);
+}
+
 test('Merge down of a vector layer into a cells layer keeps its guides, and the layer with them', async () => {
   const { project, workspace } = await drawing();
   const vector = project.addLayer('vector', 'edit');
@@ -141,12 +150,12 @@ test('Merge down of a vector layer into a cells layer keeps its guides, and the 
   const g = project.addShape(path({ guide: true }));
   project.addShape(square(5, 5));
   await settle(project);
-  const cells = cellsKey(project);
+  const cells = looks(project);
   expect(project.mergeDown(vector)).toBe(true);
   await settle(project);
   expect([...project.shapes.keys()]).toEqual([g]);
   expect(project.layers.map((layer) => layer.id)).toEqual(['base', 'edit', vector]);
-  expect(cellsKey(project)).toEqual(cells);
+  expectLooksAlike(looks(project), cells);
 });
 
 test('Bake leaves a guide a shape too', async () => {

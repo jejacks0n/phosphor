@@ -523,11 +523,14 @@ the canvas changes. Undo brings it back, selected if it was.
 - **A Drawing Layer Into a Drawing Layer**: Each of its cells is written on the layer under it as it shows, over that
   layer's paint, and its paint is drawn over that layer's paint. It stays paint, so Blur, Dodge, Burn and the Eraser
   work on it as on any. A cell where the paint would show differently after the merge (a palette or the character
-  choice can convert it differently once it's on the layer under) is written as the exact character and colors it
+  choice can convert it differently once it's on the layer under), by more than the step or two the same color can
+  round apart when it's worked out another way, is written as the exact character and colors it
   showed instead, and a later palette or character setting doesn't convert that cell again.
 - **A Vector Layer Into a Drawing Layer**: Its shapes become paint on the layer under it, in their own colors, so Blur
   and the other paint tools work on them as on any paint. A cell where that paint would show differently (the vector
-  layer has character settings of its own, or a palette or the character choice converts it differently) is written
+  layer has character settings of its own, or a palette or the character choice converts it differently), by more
+  than a step or two of rounding (By shape works a shape's colors out from finer samples than paint has, so a
+  gradient comes out a step or two apart all over), is written
   as the exact cell it shows now, as is a cell an art layer gives a character, and a later palette or character
   setting doesn't convert those cells again; Blur, Dodge and Burn change their colors and keep their characters. It
   goes only whole: with shapes selected on VECTOR, deselect them to merge
