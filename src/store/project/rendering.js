@@ -100,8 +100,16 @@ export const renderingActions = {
     let num = parseInt(val);
     if (isNaN(num) || num < 1) return;
 
-    if (this.aspectLock && this.image && !this.resizesCanvas && !this.hasFrames) this.$patch(lockedGrid(num, this.imageRatio));
+    if (this.aspectLock && this.image && !this.resizesCanvas && !this.hasFrames) this.$patch(lockedGrid(num, this.lockRatio));
     else this.cols = Math.min(num, this.hasFrames ? this.maxCols : maxColsBeside(this.rows));
+  },
+
+  // The aspect lock on or off. Turned on, it keeps the shape the grid has now (aspectRatio): the one it kept before while
+  // the grid still has it, the picture's own while the grid is at that, so neither is rounded to the grid's whole cells.
+  setAspectLock(on) {
+    const fits = (ratio) => { const at = lockedGrid(this.cols, ratio); return at.cols === this.cols && at.rows === this.rows; };
+    if (on && this.image && !fits(this.lockRatio)) this.aspectRatio = fits(this.imageRatio) ? 0 : this.cols / this.rows;
+    this.aspectLock = on;
   },
 
   updateRows(val) {
@@ -109,8 +117,8 @@ export const renderingActions = {
     if (isNaN(num) || num < 1) return;
 
     if (this.aspectLock && this.image && !this.resizesCanvas && !this.hasFrames) {
-      const cols = Math.max(1, Math.round(num * this.imageRatio));
-      this.$patch(gridFits(cols, num) ? { cols, rows: num } : lockedGrid(cols, this.imageRatio));
+      const cols = Math.max(1, Math.round(num * this.lockRatio));
+      this.$patch(gridFits(cols, num) ? { cols, rows: num } : lockedGrid(cols, this.lockRatio));
     } else {
       this.rows = Math.min(num, this.hasFrames ? this.maxRows : maxRowsBeside(this.cols));
     }

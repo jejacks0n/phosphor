@@ -22,6 +22,22 @@ export function markUniform(image, color) {
   uniform.set(image, one);
 }
 
+// Mark image uniform (markUniform) when every pixel is the same opaque color, as a blank canvas's picture reopened from its
+// file is: a picture made one color is said so where it's made, but read back it's only pixels. Stops at the first pixel
+// that differs. Whether it's uniform.
+export function findUniform(image) {
+  if (uniform.has(image)) return true;
+  const w = image.naturalWidth || image.width, h = image.naturalHeight || image.height;
+  if (!w || !h) return false;
+  const canvas = Object.assign(document.createElement('canvas'), { width: w, height: h }), ctx = ctx2d(canvas);
+  ctx.drawImage(image, 0, 0);
+  const pixels = new Uint32Array(ctx.getImageData(0, 0, w, h).data.buffer), first = pixels[0];
+  if (first >>> 24 !== 0xff) return false; // not opaque
+  for (let i = 1; i < pixels.length; i++) if (pixels[i] !== first) return false;
+  markUniform(image, `rgb(${first & 0xff}, ${(first >>> 8) & 0xff}, ${(first >>> 16) & 0xff})`);
+  return true;
+}
+
 // A tw x th ImageData, opaque black, with [r, g, b] over dx, dy, dw, dh: what boxFiltered makes of a one-color picture.
 function filled(tw, th, dx, dy, dw, dh, [r, g, b]) {
   const image = new ImageData(tw, th), pixels = new Uint32Array(image.data.buffer); // little-endian RGBA, as blackImage
@@ -177,7 +193,8 @@ export async function processImage(image, params, { samples = true } = {}) {
   const { dx, dy, dw, dh, pw, ph, glParams } = prepare(image, params);
   glProcessor ??= new WebGLProcessor();
   // A one-color picture stays one color through every pass: each pixel is adjusted alike, and blur, Flatten, Edges and
-  // Sharpen read neighbors of that color (the edges clamped). So one pixel goes through, and every grid pixel is it.
+  // Sharpen read neighbors of that color (the edges clamped). So one pixel goes through, and every grid pixel is it: it has
+  // no shape to keep, so it fills the grid at any size, never letterboxed (whose black the adjustments don't reach).
   const one = uniform.get(image);
   glProcessor.process(one ?? image, glParams, one ? 1 : pw, one ? 1 : ph);
   const pixel = one && boxFiltered(glProcessor.canvas, 1, 1, 0, 0, 1, 1).data;
@@ -188,11 +205,11 @@ export async function processImage(image, params, { samples = true } = {}) {
   canvas.ctx.imageSmoothingEnabled = true;
   canvas.ctx.imageSmoothingQuality = smoothing;
   // Fit by the image's natural aspect (the store's fit), not pw x ph
-  if (one) canvas.ctx.putImageData(filled(cols, rows, dx, dy, dw, dh, pixel), 0, 0);
+  if (one) canvas.ctx.putImageData(filled(cols, rows, 0, 0, cols, rows, pixel), 0, 0);
   else canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
   const s = SAMPLES.w; // a grid pixel's samples each way (a cell is two grid pixels tall)
   const sampled = !(samples && params.charMode === 'shape') ? null
-    : one ? filled(cols * s, rows * s, dx * s, dy * s, dw * s, dh * s, pixel) : boxFiltered(glProcessor.canvas, cols * s, rows * s, dx * s, dy * s, dw * s, dh * s);
+    : one ? filled(cols * s, rows * s, 0, 0, cols * s, rows * s, pixel) : boxFiltered(glProcessor.canvas, cols * s, rows * s, dx * s, dy * s, dw * s, dh * s);
 
   // Quantization happens after paint is composited (Renderer), not here. The Number palette is picked
   // there too, from the composited picture (Renderer.composite), so it isn't worked out here.

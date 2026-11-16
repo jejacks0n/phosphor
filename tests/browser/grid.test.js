@@ -9,6 +9,7 @@ import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
+import { readProject, writeProject } from '@/document/projectIO.js';
 import ControlPanel from '@/components/ControlPanel.vue';
 
 async function grid(cols = 40, rows = 40) {
@@ -233,4 +234,73 @@ test('Dimensions reads the height in character rows above the inputs, which coun
   expect(readout()).toBe('1 row');
   app.unmount();
   host.remove();
+});
+
+async function reopened(project) {
+  const blob = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
+  await project.openParts(await readProject(blob), { filename: 'reopened' });
+  await settle(project);
+}
+
+// The report: resizing a blank canvas with Invert at 20% showed black bars at its sides, or its top and bottom. A blank
+// canvas is one color all over, so it has no shape to keep: it fills the grid at any size. Letterboxed as a picture is,
+// the black around it never saw Invert.
+test('a blank canvas resized shows its own color edge to edge under Invert, grown after drawing too, and reopened', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 40, rows: 50 });
+  project.setSlider('invert', 20);
+  project.commitSliders();
+  project.aspectLock = false;
+  await settle(project);
+  const shown = project.cells[0].bg.hex, colors = () => [...new Set(project.cells.map((cell) => cell.bg.hex))];
+  expect(shown).not.toBe('#000000');
+  for (const rows of [30, 70]) {
+    project.updateRows(rows);
+    await settle(project);
+    expect(colors()).toEqual([shown]);
+  }
+  await reopened(project);
+  project.aspectLock = false;
+  project.updateCols(60);
+  await settle(project);
+  expect(colors()).toEqual([shown]);
+  project.writeEditCells([{ col: 0, row: 0, attrs: { char: 'A', fg: '#ffffff', bg: '#ff0000' } }]);
+  project.commitEdit();
+  project.updateCols(80); // a canvas resize now: the grid gains columns at the right
+  await settle(project);
+  expect(new Set(project.cells.slice(1).map((cell) => cell.bg.hex))).toEqual(new Set([shown]));
+});
+
+// The report: unlocked, the height changed, and locked again, the next change went back to the picture's shape instead of
+// keeping the one locked in.
+test('the lock keeps the shape the grid had when it was locked, through a save and reopen; a new picture has its own', async () => {
+  const { project } = await grid(40, 40); // unlocked, at 40 x 40
+  const picture = project.imageRatio;
+  project.updateRows(20);
+  await settle(project);
+  const locked = project.cols / project.rows;
+  expect(Math.abs(locked - picture)).toBeGreaterThan(0.5); // not the picture's shape
+  project.setAspectLock(true);
+  project.updateRows(40);
+  await settle(project);
+  expect(project.cols / project.rows).toBeCloseTo(locked, 1);
+  project.updateCols(30);
+  await settle(project);
+  expect(project.cols / project.rows).toBeCloseTo(locked, 1);
+  await reopened(project);
+  expect(project.aspectLock).toBe(true);
+  project.updateCols(60);
+  await settle(project);
+  expect(project.cols / project.rows).toBeCloseTo(locked, 1);
+  await loadImage(project, '/tests/fixtures/images/gradient.png'); // the lock stays on
+  project.updateCols(60);
+  await settle(project);
+  expect(project.cols / project.rows).toBeCloseTo(picture, 1);
+});
+
+test('locking a grid still at the picture\'s shape keeps the picture\'s own ratio, not a rounded one', async () => {
+  const { project } = await grid(40, 40);
+  project.setAspectLock(false);
+  project.setAspectLock(true);
+  expect(project.aspectRatio).toBe(0);
 });
