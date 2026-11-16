@@ -375,7 +375,7 @@
     "hiddenToast": "Rendez le calque visible pour dessiner dessus",
     "hiddenMergeToast": "Rendez le calque visible pour le fusionner",
     "noCellsLayer": "Ajoutez un calque de dessin avant de dessiner.",
-    "notInRoom": "L'ajout, la suppression et le réordonnancement des calques ne sont pas encore pris en charge dans les salons partagés.",
+    "notInRoom": "L'ajout d'une image à un calque n'est pas encore pris en charge dans les salons partagés.",
     "charsHostOnly": "Seul l'hôte modifie les réglages de caractères dans un salon."
   },
   "tools": {
@@ -1712,6 +1712,7 @@
     "wholeLayerOff": "Quittez d'abord le calque d'art : cette action affecte l'ensemble du dessin."
   },
   "vector": {
+    "artLayerNeedsVectorAbove": "Ajoutez d'abord un calque vectoriel au-dessus de {name}.",
     "tooMany": "Un dessin peut contenir au plus {count} formes.",
     "followArt": "Les calques d'art ne peuvent pas être suivis. Veuillez sélectionner un tracé ou une forme.",
     "followFollower": "Cette forme suit déjà un tracé et ne peut pas être suivie.",

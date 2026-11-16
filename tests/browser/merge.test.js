@@ -333,21 +333,20 @@ describe('down between layers', () => {
     expect(cellsKey(project)).toEqual(before);
   });
 
-  test('in a room, Merge down into the bottom keeps the layer, emptied', async () => {
+  test('in a room, Merge down goes to the room as the whole document, the emptied layer gone as alone', async () => {
     const { project, workspace, top } = await twoLayers();
     project.shareWholeDocument = vi.fn(); // the host's step goes to the room as the whole document
     project._sharing = { role: 'host', heardCells: new Map(), heardRuns: [] };
     try {
-      toastMessage.value = null;
-      expect(project.mergeDown(top)).toBe(false); // only into the bottom: the room keeps its layers
-      expect(toastMessage.value).toBe('Adding, deleting, and reordering layers is not supported in shared rooms yet.');
       const before = cellsKey(project);
+      expect(project.mergeDown(top)).toBe(true); // into a layer above the bottom too
+      await settle(project);
+      expect(ids(project)).toEqual(['base', 'edit']);
+      expect(cellsKey(project)).toEqual(before);
       workspace.pickLayer('edit');
       expect(project.mergeDown('edit')).toBe(true);
       await settle(project);
-      expect(ids(project)).toEqual(['base', 'edit', top]);
-      expect(project.cellsOf('edit').size).toBe(0);
-      expect(project.paintOf('edit').hasPaint).toBe(false);
+      expect(ids(project)).toEqual(['base']);
       expect(cellsKey(project)).toEqual(before);
       expect(project.shareWholeDocument).toHaveBeenCalled();
     } finally {

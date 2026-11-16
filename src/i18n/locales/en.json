@@ -375,7 +375,7 @@
     "hiddenToast": "Make the layer visible to draw on it",
     "hiddenMergeToast": "Make the layer visible to merge it",
     "noCellsLayer": "Add a drawing layer before drawing.",
-    "notInRoom": "Adding, deleting, and reordering layers is not supported in shared rooms yet.",
+    "notInRoom": "Adding a picture to a layer isn't supported in shared rooms yet.",
     "charsHostOnly": "Only the host changes character settings in a room."
   },
   "tools": {
@@ -1712,6 +1712,7 @@
     "wholeLayerOff": "Exit the art layer first: this action affects the entire drawing."
   },
   "vector": {
+    "artLayerNeedsVectorAbove": "Add a vector layer above {name} first.",
     "tooMany": "A drawing can hold at most {count} shapes.",
     "followArt": "Art layers cannot be followed. Please select a path or shape.",
     "followFollower": "That shape already follows a path and cannot be followed.",
