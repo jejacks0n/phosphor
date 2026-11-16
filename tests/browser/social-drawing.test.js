@@ -2550,6 +2550,60 @@ test('a ledger crosses a channel whole: shared arrays stay shared, and it undoes
   expect(ledger.redo('host', [...back.stacks.strokes.values()].find((r) => r.undone && r.by === 'host').id).cells).toEqual([['5,5', expect.objectContaining({ char: 'Z' })]]);
 });
 
+// The ledger is kept on its own timer, so it can be ahead of the autosaved document by a delete: the reload lands it on the
+// picture from the tail before sharing starts, and the room resumes.
+test('a host reloaded with a delete of a layer with something on it in the kept tail resumes the room', async () => {
+  const room = await hostingWithSocket();
+  const layer = room.project.addLayer('cells', 'edit');
+  room.project.useLayer(layer);
+  room.project.typeAt(5, 5, 'H', { fg: '#00ff00' });
+  dab(room.project, 8, 8);
+  room.project.commitEdit();
+  room.project.useLayer('edit');
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.cellsOf(layer).get('5,5')?.char, PATIENT).toBe('H');
+  await allMatch(room, ann);
+  const documentN = room.project._ledger.n, layersBefore = room.project.layers, dataBefore = room.project._layerData.get(layer);
+  expect(room.project.deleteLayer(layer)).toBe(true);
+  await expect.poll(() => ann.project.layerById(layer), PATIENT).toBeUndefined();
+  await room.project.keepLedger();
+  const row = await readRoomLedger('room');
+
+  // The host reloads: the document as autosave last had it, with the layer, and the ledger past its delete.
+  room.host.close();
+  ann.drawing.connection('lost');
+  room.drawing.close();
+  setActivePinia(room.pinia);
+  room.project.layers = layersBefore;
+  room.project._layerData.set(layer, dataBefore);
+  room.project._documentN = documentN;
+  const again = new Host({
+    config, passKey, roomId: 'room',
+    send: async (msg) => {
+      if (msg.type !== 'signal-to') return;
+      await later();
+      ann.watch.signalFrom('host', msg.data);
+    },
+    ...room.drawing.hostCallbacks(),
+  });
+  room.drawing.hosted(again, { me: () => 'host' });
+  again.setRoom({ name: 'Night shift', welcome: '' });
+  toStop.push(() => again.close());
+  ann.watch.send = async (msg) => { await later(); again.signalFrom('ann', msg.data); };
+  room.drawing.resumeHosting({ artists: ['ann'], invited: [] }, row);
+  room.drawing.hostingAgain();
+  expect(room.project.layerById(layer)).toBeUndefined();
+  expect(room.project._sharing?.role).toBe('host');
+  await again.peer('ann', await passFor('ann'));
+  await expect.poll(() => room.drawing.paused, PATIENT).toBe(false);
+  await expect.poll(() => ann.drawing.paused, PATIENT).toBe(false);
+  ann.project.typeAt(6, 6, 'N', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  await expect.poll(() => char(room.project, 6, 6), PATIENT).toBe('N');
+  await allMatch({ project: room.project }, ann);
+  await forgetRoomLedger('room');
+});
+
 test('a host back with no way to know joins the artists\' ahead of it: it catches up by their tail, and no stroke goes', async () => {
   const room = await hostingWithSocket();
   const ann = await artist(room, 'ann');
@@ -2595,6 +2649,61 @@ test('a host back with no way to know joins the artists\' ahead of it: it catche
   expect(room.project.canUndo).toBe(true);
   ann.project.undo();
   await expect.poll(() => char(room.project, 2, 2), PATIENT).toBe(undefined);
+  await allMatch({ project: room.project }, ann);
+});
+
+test('a host catching up by an artist\'s tail with a delete of a layer with something on it ends matching', async () => {
+  const room = await hostingWithSocket();
+  const layer = room.project.addLayer('cells', 'edit');
+  room.project.useLayer(layer);
+  room.project.typeAt(5, 5, 'H', { fg: '#00ff00' });
+  dab(room.project, 8, 8);
+  room.project.commitEdit();
+  room.project.useLayer('edit');
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.cellsOf(layer).get('5,5')?.char, PATIENT).toBe('H');
+  await allMatch(room, ann);
+  const behind = room.project._ledger.kept(), behindLayers = room.project.layers, behindData = room.project._layerData.get(layer);
+  const row = { documentId: room.project.documentId, kept: structuredClone(behind) };
+  setActivePinia(ann.pinia);
+  ann.project.deleteLayer(layer);
+  await expect.poll(() => ann.project.layerById(layer), PATIENT).toBeUndefined();
+  ann.project.typeAt(2, 2, 'A', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  await expect.poll(() => quiet(ann), PATIENT).toBe(true);
+  room.project.flushHeard();
+
+  // The host reloads: the ledger and the document as of before the delete, and ann reconnects.
+  room.host.close();
+  ann.drawing.connection('lost');
+  room.drawing.close();
+  setActivePinia(room.pinia);
+  room.project.layers = behindLayers;
+  room.project._layerData.set(layer, behindData);
+  room.project.editCells = new Map();
+  room.project._documentN = behind.n;
+  const again = new Host({
+    config, passKey, roomId: 'room',
+    send: async (msg) => {
+      if (msg.type !== 'signal-to') return;
+      await later();
+      ann.watch.signalFrom('host', msg.data);
+    },
+    ...room.drawing.hostCallbacks(),
+  });
+  room.drawing.hosted(again, { me: () => 'host' });
+  again.setRoom({ name: 'Night shift', welcome: '' });
+  toStop.push(() => again.close());
+  ann.watch.send = async (msg) => { await later(); again.signalFrom('ann', msg.data); };
+  const caughtUp = vi.spyOn(room.project, 'takeCatchUp');
+  room.drawing.resumeHosting({ artists: ['ann'], invited: [] }, row);
+  room.drawing.hostingAgain();
+  await again.peer('ann', await passFor('ann'));
+
+  await expect.poll(() => char(room.project, 2, 2), PATIENT).toBe('A');
+  await expect.poll(() => room.drawing.paused, PATIENT).toBe(false);
+  expect(caughtUp.mock.calls.map(([answer]) => answer.kind)).toEqual(['tail']);
+  expect(room.project.layerById(layer)).toBeUndefined();
   await allMatch({ project: room.project }, ann);
 });
 

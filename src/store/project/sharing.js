@@ -406,7 +406,8 @@ export const sharingActions = {
   // (a rename alone draws nothing). The layer in use going leaves its fields empty, and the pick moves to the layer under it
   // (followLayerPick), which is then in use. by: who asked; my own ask picks what it made. The ledger and Pending let go of a
   // layer that goes, and their sums lose its share (dropFromSums), with what I've drawn sent first: what's on screen is then
-  // what's agreed, but where Pending holds mine.
+  // what's agreed, but where Pending holds mine. Replayed from a host's kept tail before sharing starts (restoreLedger), there's
+  // nothing to drop: the kept ledger dropped it at the delete, and sharing seeds the sum from the picture.
   applyLayers({ stack, by, made }) {
     const had = new Map(this.layers.map((layer) => [layer.id, layer])), gone = new Set(had.keys()), layers = [];
     for (const [at, { id, kind, name, chars }] of stack.entries()) {
@@ -416,8 +417,10 @@ export const sharingActions = {
       layers.push(Object.freeze({ ...(was ?? { n: nextNumber([...had.values(), ...layers], kind), hidden: false }), id, kind, name, ...own }));
     }
     if (gone.size && this._artInside) this.leaveArt();
-    if (gone.size) this.sendSlice();
-    for (const id of gone) dropFromSums(this, id);
+    if (gone.size && this._sharing) { // a host's reload replays its tail before sharing starts, its kept ledger past the delete
+      this.sendSlice();
+      for (const id of gone) dropFromSums(this, id);
+    }
     for (const id of gone) {
       if (had.get(id).kind === 'vector') this.shapes = new Map([...this.shapes].filter(([, shape]) => (shape.layer ?? 'vector') !== id));
       else if (id !== this.editId) this._layerData.delete(id);
