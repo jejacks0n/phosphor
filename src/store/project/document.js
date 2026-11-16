@@ -438,9 +438,9 @@ export const documentActions = {
   // is the one kept aside (enterArt).
   // Layers that fit the old form (legacySlots) are written in it: its cells layer's cells and paint as the edit layer's,
   // whatever its id, its frame keys bare and its shapes naming no layer. Any other stack is written in the stack form,
-  // every cells layer with its own cells and paint.
+  // every cells layer with its own cells and paint; always so in a room.
   async projectParts() {
-    const slots = legacySlots(this.layers, this.baseChars);
+    const slots = this._sharing ? null : legacySlots(this.layers, this.baseChars); // a room's keeps every layer's id: the old form renames them
     const drawingOf = (id) => (id === this.editId ? this._artInside ?? this : this._layerData.get(id)) ?? NO_DRAWING;
     const above = this.layers.filter((layer) => layer.kind === 'cells' && layer.id !== 'base');
     const drawings = slots ? [drawingOf(slots.cells)] : above.map(({ id }) => drawingOf(id));

@@ -1271,13 +1271,51 @@ test('a host\'s base edit reaches the artist, its undo too, as the same numbered
   expect(ann.project.history.canUndo).toBe(false);
 });
 
+test('the host merges L3 down into L2 in a four-layer room: every page gets the merged stack in a new epoch', async () => {
+  const room = await hosting();
+  const l2 = room.project.addLayer('cells', 'edit'), l3 = room.project.addLayer('cells', l2);
+  room.project.editId = l3;
+  room.project.editCell(2, 2, { char: 'Z' });
+  room.project.commitEdit();
+  const ann = await artist(room, 'ann');
+  await allMatch(room, ann);
+  const epoch = room.project._ledger.epoch;
+  expect(room.project.mergeDown(l3)).not.toBe(false);
+  expect(room.project._ledger.epoch).not.toBe(epoch);
+  for (const page of [room, ann]) {
+    await expect.poll(() => page.project.layers.map((layer) => layer.id), PATIENT).toEqual(['base', 'edit', l2]);
+    expect(page.project.cellsOf(l2).get('2,2')?.char).toBe('Z');
+  }
+  await allMatch(room, ann);
+});
+
+test('Make art layer in a room uses the vector layer above the picked one, and is off with the reason when there isn\'t one', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  ann.project.typeAt(2, 2, 'Q', { fg: '#00ff00' });
+  ann.project.commitEdit();
+  useWorkspaceStore(ann.pinia).selection = { c0: 2, r0: 2, c1: 3, r1: 2 };
+  toastMessage.value = null;
+  expect(ann.project.makeArtLayer()).toBe(null);
+  expect(toastMessage.value).toBe('Add a vector layer above Layer 1 first.');
+  const vector = room.project.addLayer('vector', 'edit');
+  await expect.poll(() => ann.project.layerById(vector)?.kind, PATIENT).toBe('vector');
+  const key = ann.project.makeArtLayer();
+  expect(key).toBeTruthy();
+  expect(ann.project.shapes.get(key).layer ?? 'vector').toBe(vector); // the first vector layer's shapes have no layer field
+  await expect.poll(() => room.project.shapes.get(key)?.layer ?? 'vector', PATIENT).toBe(vector);
+  await allMatch(room, ann);
+});
+
 test('a merge with an artist listed goes to everyone as the project, and is final', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann');
   const epoch = room.project._ledger.epoch;
   room.project.editCell(1, 1, { char: 'H' });
   room.project.commitEdit();
+  room.project.addLayer('cells', 'edit'); // the merged layer goes, and the artist draws on this one
   await allMatch(room, ann);
+  for (const { project } of [room, ann]) project.useLayer('L1');
   room.project.mergeDown('edit');
   expect(room.project.canUndo).toBe(false);
   expect(room.project._ledger.epoch).not.toBe(epoch);
@@ -1287,7 +1325,7 @@ test('a merge with an artist listed goes to everyone as the project, and is fina
   ann.project.editCell(3, 3, { char: 'A' });
   ann.project.commitEdit();
   await allMatch(room, ann);
-  expect(char(room.project, 3, 3)).toBe('A');
+  expect(room.project.cellsOf('L1').get('3,3')?.char).toBe('A');
 });
 
 test('a grid resize goes to everyone as the project', async () => {
@@ -3594,23 +3632,23 @@ test('what an artist draws while Into the image encodes survives on every screen
   const ann = await artist(room, 'ann');
   room.project.editCell(1, 1, { char: 'H' });
   room.project.commitEdit();
+  room.project.addLayer('cells', 'edit'); // the layer merged goes, and the artist draws on this one
   await allMatch(room, ann);
+  ann.project.useLayer('L1');
 
   const { spy, go } = holdEncoding();
-  const merging = room.project.mergeIntoPicture();
+  const merging = room.project.mergeIntoPicture(null, 'edit');
   await expect.poll(() => spy.mock.calls.length, PATIENT).toBeGreaterThan(0);
-  ann.project.editCell(1, 1, { char: 'A' });   // on a cell being merged
-  dab(ann.project, 8, 8);
+  ann.project.editCell(1, 1, { char: 'A' });   // on a cell the merge's layer had, on the layer that stays
   ann.project.commitEdit();
   await wait(150);
   go();
   await merging;
 
-  for (const { project } of [room, ann]) {
-    await expect.poll(() => char(project, 1, 1), PATIENT).toBe('A');
-    await expect.poll(() => painted(project, 8, 8)?.a, PATIENT).toBe(1);
-  }
   await allMatch(room, ann);
+  for (const { project } of [room, ann]) {
+    expect(project.cellsOf('L1').get('1,1')?.char).toBe('A');
+  }
   expect(room.host.holding).toBe(null);
 });
 
@@ -4421,6 +4459,7 @@ test('a host who steps out once the last artist has gone leaves no lock behind f
 
 test('an art layer and its edits travel to everyone in the room', async () => {
   const room = await hosting();
+  room.project.addLayer('vector', 'edit');
   const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
   ann.project.typeAt(2, 2, 'Q', { fg: '#00ff00' });
   ann.project.commitEdit();

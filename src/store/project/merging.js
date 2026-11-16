@@ -19,7 +19,7 @@ import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putStack, refusedHidden, refusedInRoom, stackState } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putStack, refusedHidden, stackState } from '@/store/project/shared.js';
 import { layerChars, lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { placedShapes } from '@/document/followers.js';
 import { CHAR_KEYS, RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
@@ -68,8 +68,8 @@ const FLATTENED = ['renderStyle', 'dither', 'charChoice', 'charChoiceAscii'];
 const without = ({ layers, data }, id) => ({ layers: layers.filter((layer) => layer.id !== id), data: new Map([...data].filter(([key]) => key !== id)) });
 const withData = ({ layers, data }, id, own) => ({ layers, data: new Map(data).set(id, own) });
 // The stack after a merge took what it could off the layer with the id, own (its data) being what's left: it leaves the
-// stack when that's nothing and the whole layer merged (rect: a selection's didn't), outside a room, which keeps its layers.
-const leftOn = (project, stack, id, rect, own) => (!rect && !project._sharing && !own.editCells.size && !own.hasPaint ? without(stack, id) : withData(stack, id, own));
+// stack when that's nothing and the whole layer merged (rect: a selection's didn't).
+const leftOn = (project, stack, id, rect, own) => (!rect && !own.editCells.size && !own.hasPaint ? without(stack, id) : withData(stack, id, own));
 
 // A merge's step, already worked out: before and after hold what it changes (base, a snapshot; baseRecords; shapes; stack,
 // stackState's), put in place now. One whole-layer step that can change the stack (layerOp).
@@ -133,7 +133,7 @@ function pressLayer(project, id, rect, keys) {
   const named = keys ?? [...placedShapes(project)].filter(onLayerId(id)).filter(([, shape]) => !area || meets(shapeBounds(shape), area)).map(([key]) => key);
   // The whole layer goes too, unless it has guides: they're never pressed, so the layer stays with them.
   const guided = [...project.shapes].some((entry) => onLayerId(id)(entry) && entry[1].guide);
-  const pressed = project.pressedKeys(named, id), whole = !rect && !keys && !project._sharing && !guided;
+  const pressed = project.pressedKeys(named, id), whole = !rect && !keys && !guided;
   if (!pressed.size && !whole) return false; // none, or guides alone with no followers: nothing to press, and no step
   const before = { base: project.baseLayer.snapshot(), shapes: project.shapes, baseRecords: project.baseRecords, stack: stackState(project) };
   const done = pressed.size ? project.pressShapes(pressed) : { base: before.base, shapes: project.shapes, baseRecords: project.baseRecords };
@@ -611,7 +611,7 @@ export const mergingActions = {
   // toolbar asks first, Into the image the other way), a vector layer's shapes pressed into the base's pixels (pressLayer).
   // Into another cells layer: each entry completed against what shows under it and written there (onCells), and every
   // cell a vector layer's shapes reach frozen there exactly as it shows (freezeLayer). One whole-layer step; the merged
-  // layer leaves the stack when it's left with nothing on it, outside a room (there it stays, emptied).
+  // layer leaves the stack when it's left with nothing on it.
   mergeDown(id, rect = null, keys = null) {
     const at = this.layers.findIndex((layer) => layer.id === id), layer = this.layers[at], below = this.layers[at - 1];
     if (!(at > 0) || !this.image || this.hasFrames) return false;
@@ -621,7 +621,6 @@ export const mergingActions = {
     };
     if (refusedHidden(this, [id, below.id])) return false;
     if (below.kind === 'vector') return refuse(t('toolbar.mergeOntoVector'));
-    if (below.id !== 'base' && refusedInRoom(this)) return false;
     if (layer.kind === 'vector' && below.id === 'base' && !sameChars(layer.chars, this.baseChars)) return refuse(t('toolbar.mergeOwnChars', { name: layerName(layer) }));
     if (layer.kind === 'vector' && below.id !== 'base' && (rect || keys)) return refuse(t('toolbar.mergeShapesWhole', { name: layerName(layer) }));
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in

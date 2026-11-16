@@ -237,8 +237,7 @@ export function putStack(project, { layers = project.layers, data, pick = null }
   if (back && project.layerById(pick)) useWorkspaceStore().pickLayer(pick);
 }
 
-// Whether a change a room doesn't take yet (a merge into a layer above the bottom, a
-// picture on a layer) is refused because the document is shared with a room, with a toast saying so.
+// Whether a change a room doesn't take yet (a picture on a layer) is refused because the document is shared with a room, with a toast saying so.
 export function refusedInRoom(project) {
   if (!project._sharing) return false;
   toast(t('layers.notInRoom'));

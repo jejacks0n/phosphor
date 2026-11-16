@@ -277,7 +277,12 @@ const selectionHasEdits = computed(() => {
 });
 
 // Make art layer: the Select tool's selection or the Magic Wand's, with something drawn in it.
-const artReady = computed(() => (workspace.activeTool === 'wand' ? project.hasEdits : selectionHasEdits.value)); // the wand's cells are checked when it's made
+const artReady = computed(() => !artOff.value && (workspace.activeTool === 'wand' ? project.hasEdits : selectionHasEdits.value)); // the wand's cells are checked when it's made
+// In a room it goes on the vector layer above the one in use: with none, it's off, as adding one is a stack change.
+const artOff = computed(() => {
+  const above = project.layers[project.layers.findIndex((layer) => layer.id === project.editId) + 1];
+  return project._sharing && above?.kind !== 'vector' ? t('vector.artLayerNeedsVectorAbove', { name: layerName(project.editId) }) : null;
+});
 
 // Rotate turns only pixels: not while the selection has characters on its layers.
 const selectionHasCharacters = computed(() => {
@@ -541,7 +546,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           <button :title="selectionHasCharacters ? t('toolbar.selection.rotateCharsDisabled') : t('toolbar.selection.rotateTitle')" :aria-label="t('toolbar.selection.rotateAria')" :disabled="selectionHasCharacters" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
           <div class="divider"/>
           <button class="text" :title="t('toolbar.selection.mergeDownSelectionTitle')" :disabled="!selectionHasEdits" v-bind="mergeOff()" @click="mergeDown(picked, workspace.selection)">{{ t('toolbar.mergeDown') }}</button>
-          <button class="text" :title="t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
+          <button class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
           <button class="text" :title="t('toolbar.selection.deselectBlockTitle')" aria-keyshortcuts="Escape Enter" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
         </template>
         <template v-else>
@@ -596,7 +601,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
         <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectionIds)">{{ t('common.delete') }}</button>
-        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
         <button class="text" :title="t('toolbar.selection.wandDeselectTitle')" aria-keyshortcuts="Escape" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
       </div>
     </div>

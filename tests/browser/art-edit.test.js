@@ -443,6 +443,7 @@ test('in a room, a layer someone else is drawing in can be selected, not stepped
 test('in a room, the host can\'t undo or redo a step that reaches a layer someone else is drawing in, nor take a whole-layer step', async () => {
   const { project, workspace } = await blank();
   project.startSharing({ send: () => {}, sendDocument: () => {}, role: 'host', me: 'me' });
+  project.addLayer('vector', 'edit'); // in a room Make art layer needs one above
   project.typeAt(1, 1, 'X', { fg: GREEN });
   project.commitEdit();
   project.typeAt(4, 2, 'A', { fg: RED });
