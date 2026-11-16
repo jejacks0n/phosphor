@@ -4,8 +4,9 @@
 // and written back with it (a cell that shows no character keeps showing none). On a drawing layer, only what the layer itself holds, as
 // paint, pixel by pixel in either view (as the Brush paints), where a clear pixel counts as clear (Blur fades an edge out into the
 // clear beside it); where the layer has nothing, nothing changes, whatever shows under it. Nothing is locked: a cell of
-// the layer's own with colors of its own (typed, or written exactly by a merge) that the stroke changes goes, its two
-// halves becoming paint in the colors it showed (unlockChanged). A character pinned on the base stays: its pixels hold
+// the layer's own with colors of its own (typed, or written exactly by a merge) that Blur changes goes, its two halves
+// becoming paint in the colors it showed (unlockChanged), so it fades with the rest; Dodge and Burn, which never fade,
+// change its colors and keep its character (recolorOwnCells). A character pinned on the base stays: its pixels hold
 // its colors, and those change. A cell with only a character (the Brush's ▄) holds no colors, and stays.
 // A stroke works out each spot's new color from what was there before it, and goes as far toward it as its Strength at
 // the brush's falloff, so going over a spot again in the same stroke adds nothing; another stroke does.
@@ -25,11 +26,12 @@ const inGrid = (x, y, cols, rows) => x >= 0 && y >= 0 && x < cols && y < rows;
 // of a drawing layer's paint pixel ({ r, g, b, a } or null: clear), around it and the pixels around it on the grid.
 
 // This stroke's spots, by key: { from (the color or a cell's colors before it), to, alpha (the most the brush gave) },
-// the colors it read (Blur's neighbors too), and the locked cells it has unlocked.
+// the colors it read (Blur's neighbors too), whether it unlocks a drawing layer's cells (Blur does), and the cells it
+// has unlocked.
 let stroke = null;
 
 function newStroke() {
-  stroke = { spots: new Map(), read: new Map(), unlocked: new Set() };
+  stroke = { spots: new Map(), read: new Map(), unlocking: true, unlocked: new Set() };
 }
 
 // The two halves ([top, bottom], { r, g, b }) of the drawing layer's own cell at col, row as it shows at pixel scale,
@@ -136,7 +138,7 @@ function retouchCells(project, pixels, change, strength) {
 function ownPaintAt(project, x, y) {
   const key = `p${x},${y}`;
   if (!stroke.read.has(key)) {
-    const locked = lockedHalves(project, x, Math.floor(y / 2));
+    const locked = stroke.unlocking && lockedHalves(project, x, Math.floor(y / 2));
     stroke.read.set(key, locked ? { ...locked[y % 2], a: 1 } : project.paintLayer?.pixelAt(x, y) ?? null);
   }
   return stroke.read.get(key);
@@ -162,9 +164,33 @@ function retouchOwnPaint(project, pixels, own, strength) {
     out.set(key, p ? { x, y, ...p } : { x, y, r: 0, g: 0, b: 0, a: 0 });
     changed.add(`${x},${y >> 1}`);
   }
-  const unlocked = unlockChanged(project, changed, out, (x, y, color) => ({ x, y, ...color, a: 1 }));
+  const unlocked = stroke.unlocking ? unlockChanged(project, changed, out, (x, y, color) => ({ x, y, ...color, a: 1 })) : [];
   project.putEditPixels([...out.values()]);
   if (unlocked.length) project.clearEditCells(unlocked);
+}
+
+// A drawing layer's own cells with colors of their own (typed, or written exactly by a merge), for Dodge and Burn, which
+// change each color on its own and never fade: the colors it has change, a whole cell at a time, and its character stays.
+function recolorOwnCells(project, pixels, change, strength) {
+  const out = [];
+  for (const [key, alpha] of reachOf(pixels)) {
+    const [col, row] = key.split(',').map(Number), entry = project.editCellAt(col, row);
+    if ((!entry?.fg && !entry?.bg) || project.cells[row * project.cols + col]?.wide === 'trail') continue;
+    let spot = stroke.spots.get(`e${key}`); // apart from the paint's keys
+    if (!spot) {
+      const from = { fg: entry.fg && hex2rgb(entry.fg), bg: entry.bg && hex2rgb(entry.bg) };
+      stroke.spots.set(`e${key}`, spot = { from, to: { fg: from.fg && change(from.fg, null), bg: from.bg && change(from.bg, null) }, alpha: 0 });
+    }
+    spot.alpha = Math.max(spot.alpha, alpha);
+    const attrs = {};
+    for (const part of ['fg', 'bg']) {
+      if (!spot.from[part]) continue; // None stays None
+      const hex = rgb2hex(mix(spot.from[part], spot.to[part], strength * spot.alpha));
+      if (hex !== rgb2hex(spot.from[part])) attrs[part] = hex; // unchanged: kept as it is (a file's 16 stays 16)
+    }
+    if (Object.keys(attrs).length) out.push({ col, row, attrs });
+  }
+  project.writeEditCells(out);
 }
 
 // The cells grid pixels reach, by key, each with the most the brush gives it.
@@ -183,7 +209,7 @@ const RANGE = {
   choices: ['shadows', 'midtones', 'highlights'].map((value) => ({ value, get label() { return t(`tools.retouch.${value}`); } })),
 };
 
-function retouchTool({ id, keys, icon, change, own, range = false }) {
+function retouchTool({ id, keys, icon, change, own, range = false, keepsChars = false }) {
   const tool = {
     id,
     get title() { return t(`tools.${id}.title`); },
@@ -211,8 +237,11 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
       if (clip) pixels = pixels.filter(({ x, y }) => clip.pixel(x, y));
       const strength = workspace.retouchStrength / 100;
       const changed = (color, at) => change(color, workspace.retouchRange, at), owned = (from, around) => own(from, around, workspace.retouchRange);
-      if (!onBottom(project)) retouchOwnPaint(project, pixels, owned, strength); // a drawing layer: only what it holds, in either view
-      else if (view === 'output' && project.renderStyle !== 'ascii') { // the ANSI view: a pinned character stays, recolored
+      if (!onBottom(project)) { // a drawing layer: only what it holds, in either view
+        stroke.unlocking = !keepsChars;
+        if (keepsChars) recolorOwnCells(project, pixels, changed, strength);
+        retouchOwnPaint(project, pixels, owned, strength);
+      } else if (view === 'output' && project.renderStyle !== 'ascii') { // the ANSI view: a pinned character stays, recolored
         const { pins } = project.baseRecords, pinned = ({ x, y }) => pins.has(`${x},${y >> 1}`);
         retouchPixels(project, pixels.filter((p) => !pinned(p)), changed, strength); // the converter's cells: as in the pixel view, read before the pinned ones change
         retouchCells(project, pixels.filter(pinned), changed, strength);
@@ -240,6 +269,7 @@ export const dodge = retouchTool({
   keys: ['O'],
   range: true,
   icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-32 -64 640 640"><path d="M288-32c8.4 0 16.3 4.4 20.6 11.7L364.1 72.3 468.9 46c8.2-2 16.9 .4 22.8 6.3S500 67 498 75.1l-26.3 104.7 92.7 55.5c7.2 4.3 11.7 12.2 11.7 20.6s-4.4 16.3-11.7 20.6L471.7 332.1 498 436.8c2 8.2-.4 16.9-6.3 22.8S477 468 468.9 466l-104.7-26.3-55.5 92.7c-4.3 7.2-12.2 11.7-20.6 11.7s-16.3-4.4-20.6-11.7L211.9 439.7 107.2 466c-8.2 2-16.8-.4-22.8-6.3S76 445 78 436.8l26.2-104.7-92.6-55.5C4.4 272.2 0 264.4 0 256s4.4-16.3 11.7-20.6L104.3 179.9 78 75.1c-2-8.2 .3-16.8 6.3-22.8S99 44 107.2 46l104.7 26.2 55.5-92.6 1.8-2.6c4.5-5.7 11.4-9.1 18.8-9.1zm0 144a144 144 0 1 0 0 288 144 144 0 1 0 0-288zm0 240a96 96 0 1 1 0-192 96 96 0 1 1 0 192z"/></svg>',
+  keepsChars: true, // it never fades, so a drawing layer's cells keep their characters
   change: (color, range) => dodged(color, range),
   own: (from, around, range) => from && { ...dodged(from, range), a: from.a },
 });
@@ -249,6 +279,7 @@ export const burn = retouchTool({
   keys: ['Shift+O'],
   range: true,
   icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="-64 -64 640 640"><path d="M256 0C114.6 0 0 114.6 0 256S114.6 512 256 512c68.8 0 131.3-27.2 177.3-71.4 7.3-7 9.4-17.9 5.3-27.1s-13.7-14.9-23.8-14.1c-4.9 .4-9.8 .6-14.8 .6-101.6 0-184-82.4-184-184 0-72.1 41.5-134.6 102.1-164.8 9.1-4.5 14.3-14.3 13.1-24.4S322.6 8.5 312.7 6.3C294.4 2.2 275.4 0 256 0z"/></svg>',
+  keepsChars: true,
   change: (color, range) => burned(color, range),
   own: (from, around, range) => from && { ...burned(from, range), a: from.a },
 });
