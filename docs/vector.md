@@ -276,7 +276,7 @@ A guide is a path you don't want drawn. With a shape selected that others follow
 
 ## Rooms
 
-In a room, everyone drawing can draw and change shapes, and everyone sees them as they're drawn. A shape is one piece of the drawing, like a cell: when two people change the same shape at once, the change heard last is the one that stays, and undo takes back only your own changes. **Merge down** and **Bake** are the host's. Watchers see the art the shapes make. A room can hold any number of vector layers.
+In a room, everyone drawing can draw and change shapes, and everyone sees them as they're drawn. A shape is one piece of the drawing, like a cell: when two people change the same shape at once, the change heard last is the one that stays, and undo takes back only your own changes. **Merge down** and **Bake** are the host's. Watchers see the art the shapes make. A room's drawing can have as many vector layers as any drawing, up to its 64 layers in all.
 
 Art layers travel the same way: each one is a single shape, and every edit made inside it reaches everyone as a change to that shape.
 - **One at a time**: One person at a time draws in an art layer. While someone is inside one, everyone else sees its box on VECTOR, labeled with who it is (for example, **Ann is currently editing this layer**).
