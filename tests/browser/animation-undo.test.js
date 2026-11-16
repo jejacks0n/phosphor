@@ -116,12 +116,14 @@ test('steps on the frame after a deleted one still undo correctly', async () => 
   project.showFrame(2);
   type(project, 2, 2, 'B');
   project.showFrame(1);
-  project.deleteFrame(); // frame 2's look stays, now holding the A
-  expect(charAt(project, 1, 1)).toBe('A');
+  project.deleteFrame(); // the A goes with its frame
+  expect(charAt(project, 1, 1)).not.toBe('A');
+  expect(charAt(project, 2, 2)).toBe('B');
   type(project, 3, 3, 'C');
   project.undo(); // C
   expect(charAt(project, 3, 3)).not.toBe('C');
-  expect(charAt(project, 1, 1)).toBe('A');
+  expect(charAt(project, 1, 1)).not.toBe('A');
+  expect(charAt(project, 2, 2)).toBe('B');
   project.undo(); // the delete
   expect(project.frames).toHaveLength(3);
   project.undo(); // B

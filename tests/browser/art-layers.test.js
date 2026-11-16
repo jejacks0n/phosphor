@@ -423,7 +423,7 @@ test('setArtContent on a still is one step', async () => {
 test('the same art, or too big: no step', async () => {
   for (const frames of [0, 2]) {
     const { project } = await tweenedArt();
-    while (project.frames.length > frames + 1) project.deleteFrame(); // 0: a still
+    while (project.frames.length > frames + 1) project.showFrame(project.frames.length - 1), project.deleteFrame(); // 0: a still
     const key = [...project.shapes.keys()][0], shape = project.shapes.get(key), version = project.history.version;
     expect(project.setArtContent(key, JSON.parse(JSON.stringify(shape.art)))).toBe(false);
     const cells = Array.from({ length: 3000 }, (_, i) => [i, String.fromCharCode(0x4e00 + i), '#123456', '#654321']);

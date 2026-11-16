@@ -78,7 +78,7 @@ A frame keeps only what changed on it. On a Blank frame, everything else carries
 - **Giving a cell back**: Edit a cell back to exactly what the frame before shows and it's inherited again: the frame no longer owns it, and fixes carry through it.
 - **Clear layer**: On a Blank frame, **Clear layer** stops the carry of the picked layer there. Nothing that layer has on earlier frames shows on the cleared frame or the Blank frames after it, not even what you draw on those earlier frames later, and no ghost of it shows either. What you then draw on the cleared frame is its own and carries on as usual. The frame stays a Blank, so other layers and the shapes still carry into it. Undo puts the carry back.
 - **Moving a frame**: A frame keeps its changes, not its look. A Blank moved earlier or later sits over different frames, so what it shows can change.
-- **Deleting a frame**: The frames after it look the same as before.
+- **Deleting a frame**: What's drawn on it goes with it, cells and shapes alike, and so do its keys. The frames after it keep their own changes and their kind, and show what they would if it had never been there. A Blank after a deleted Wipe or Duplicate stays a Blank and carries from the frames before again. Undo brings the frame back.
 - **Undo**: Undo works across frames. It goes back to the frame the edit was made on and undoes it there.
 
 ### Cells That Stay on Their Frame
@@ -97,7 +97,7 @@ It works like a brush setting. Each cell keeps the way it was drawn, so switchin
 - **Undo and redo**: Each cell comes back the way it was drawn, whatever New cells says now.
 - **On the frame after**: A staying cell shows as the ghost to draw by ([The Ghost](#the-ghost)), but it isn't that frame's. Selecting, moving, or copying there doesn't pick it up, it doesn't play, and with the ghost off it doesn't show. To keep a character on the next frame too, type it there again.
 - **Duplicates**: A Duplicate copies what its frame shows, staying cells and all, but not what they were over. After it, those spots show what's under the drawing layer.
-- **Deleting a frame**: The frames after it stay as they were, staying cells or not.
+- **Deleting a frame**: A staying cell on the frame after it now shows over what the frame before the deleted one passes on, and the frame after that shows what that was.
 - **What carries regardless**: The picture under the cells and the shapes carry on as ever.
 
 ### Shapes on Frames

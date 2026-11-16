@@ -172,7 +172,9 @@ a Polygon.
 - Expects: the menu offers Blank, Duplicate and Wipe, each with a line saying what it is; a Duplicate shows everything
   solid and starts with its own copy of every shape, so no tween runs across it; a Wipe starts clean with no
   ghost; the scrubber shows a block for a Duplicate and a diamond for a Wipe
-  ([The three kinds of frame](../../animation.md#the-three-kinds-of-frame)).
+  ([The three kinds of frame](../../animation.md#the-three-kinds-of-frame)). Each delete takes its block or diamond off
+  the scrubber and what was drawn on it with it: the Blank after it stays a Blank and carries from the frames before
+  again ([Carrying and owning a cell](../../animation.md#carrying-and-owning-a-cell)).
 - Probes: `again`: on the Duplicate, press N and check it adds another Duplicate (the same kind), then delete it;
   `undo-redo`: undo the delete of the Duplicate and check its block comes back on the scrubber, then redo it.
 - Rated: yes, wants a key for each kind (Shift+N, say)

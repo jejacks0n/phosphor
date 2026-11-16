@@ -257,19 +257,20 @@ test('Clear edit layer on a still leaves it a still', async () => {
   expect(project.currentFrame.kind).toBe('blank');
 });
 
-test('adding inserts after the current frame; deleting leaves the rest looking the same', async () => {
+test('adding inserts after the current frame; deleting takes its drawing with it', async () => {
   const { project } = await animated();
   type(project, 1, 1, 'A');
   project.addFrame('blank');
   type(project, 2, 2, 'B');
   project.addFrame('blank');
   type(project, 3, 3, 'C');
-  const last = structuredClone(project.cells);
   project.showFrame(1);
   project.deleteFrame();
   expect(project.frames).toHaveLength(2);
-  expect(project.frame).toBe(1);
-  expect(structuredClone(project.cells)).toEqual(last);
+  expect(project.frame).toBe(1); // the old frame 2, now carrying from frame 0
+  expect(charAt(project, 1, 1)).toBe('A');
+  expect(charAt(project, 2, 2)).not.toBe('B');
+  expect(charAt(project, 3, 3)).toBe('C');
   project.deleteFrame();
   expect(project.frames).toHaveLength(1);
   expect(charAt(project, 1, 1)).toBe('A');
@@ -277,6 +278,29 @@ test('adding inserts after the current frame; deleting leaves the rest looking t
   project.deleteFrame();
   expect(project.frames).toHaveLength(1);
 });
+
+// A Wipe or Duplicate deleted from before a Blank went entirely: the Blank stayed a Blank, holding its own drawing, and
+// carried from the frames before again (it took the deleted frame's kind and drawing, so the frame never seemed to go).
+for (const kind of ['wipe', 'duplicate']) {
+  test(`deleting a ${kind} before a Blank leaves the Blank as it is, carrying from before`, async () => {
+    const { project } = await animated();
+    type(project, 1, 1, 'A');
+    project.addFrame(kind);
+    type(project, 2, 2, 'B');
+    project.addFrame('blank');
+    type(project, 3, 3, 'C');
+    project.showFrame(1);
+    project.deleteFrame();
+    expect(project.frames.map(({ kind }) => kind)).toEqual(['blank', 'blank']);
+    expect(project.frame).toBe(1);
+    expect(charAt(project, 1, 1)).toBe('A');
+    expect(charAt(project, 2, 2)).not.toBe('B');
+    expect(charAt(project, 3, 3)).toBe('C');
+    project.undo();
+    expect(project.frames.map(({ kind }) => kind)).toEqual(['blank', kind, 'blank']);
+    expect(charAt(project, 2, 2)).toBe('B');
+  });
+}
 
 test('moving a frame keeps its changes, so its look follows what comes before it', async () => {
   const { project } = await animated();

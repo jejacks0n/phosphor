@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import assert from 'node:assert/strict';
-import { EMPTY_STATE, FRAME_KINDS, cellState, cutKey, deserializeFrames, drawnKeys, foldDeleted, frameDiff, isEmptyState, newFrame, passedOn, resolveOver, serializeFrames } from '../../src/document/frames.js';
+import { EMPTY_STATE, FRAME_KINDS, cellState, cutKey, deserializeFrames, drawnKeys, frameDiff, isEmptyState, newFrame, passedOn, resolveOver, serializeFrames } from '../../src/document/frames.js';
 import { MAX_CELLS, MAX_COLS, MAX_FRAMES, MAX_LINES } from '../../src/lib/Cells.js';
 import { rectShape, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { shapeAt } from '../../src/document/tweens.js';
@@ -61,7 +61,6 @@ test('a cut stops one layer\'s carry on a Blank frame and after it, whatever the
   const resolved = resolveAll(frames);
   assert.deepEqual([...resolved[1].keys()].sort(), ['1,1', L1('3,3')]); // the edit layer's A still carries
   assert.deepEqual([...resolved[2].keys()].sort(), ['1,1', L1('3,3')]);
-  assert.ok(!foldDeleted(frames[0], frames[1]).changes.has(L1('2,2'))); // frame 0 deleted: the cut frame still never showed it
   const layers = { cells: new Set(['edit', 'L1']), vector: new Set() };
   const json = { frames: serializeFrames(frames), frame: 0, fps: 8 };
   const read = deserializeFrames(JSON.parse(JSON.stringify(json)), 20, 20, layers);
@@ -95,39 +94,6 @@ test('a change owns the whole cell: frame 2 painting one half stops frame 1 fixi
   assert.equal(resolved[0].get('1,1').top, BLUE);
   assert.equal(resolved[1].get('1,1').top, RED);
   assert.equal(resolved[1].get('1,1').bottom, BLUE);
-});
-
-for (const kind of FRAME_KINDS) {
-  test(`deleting a ${kind} frame leaves the resolved frames after it unchanged`, () => {
-    const first = blank([['1,1', cellState(A, 0, 0)], ['2,2', cellState(A, 0, 0)]]);
-    const deleted = newFrame(kind, new Map([['1,1', cellState(B, 0, 0)], ['3,3', EMPTY_STATE]]));
-    const next = blank([['4,4', cellState(B, 0, RED)]]);
-    const last = newFrame('wipe', new Map([['5,5', cellState(A, 0, 0)]]));
-    const before = resolveAll([first, deleted, next, last]);
-
-    const folded = foldDeleted(deleted, next);
-    Object.assign(next, folded);
-    const after = resolveAll([first, next, last]);
-
-    assert.deepEqual(after[1], before[2]);
-    assert.deepEqual(after[2], before[3]);
-  });
-
-  test(`deleting a ${kind} frame before a Wipe leaves that frame alone`, () => {
-    const deleted = newFrame(kind, new Map([['1,1', cellState(B, 0, 0)]]));
-    const next = newFrame('wipe', new Map([['4,4', cellState(B, 0, 0)]]));
-    const { kind: was, changes } = foldDeleted(deleted, next);
-    assert.equal(was, 'wipe');
-    assert.deepEqual([...changes.keys()], ['4,4']);
-  });
-}
-
-test('deleting frame 0 keeps the next frame looking the same', () => {
-  const first = blank([['1,1', cellState(A, 0, 0)], ['2,2', cellState(A, 0, 0)]]);
-  const next = blank([['2,2', EMPTY_STATE]]);
-  const before = resolveAll([first, next])[1];
-  Object.assign(next, foldDeleted(first, next));
-  assert.deepEqual(resolveAll([next])[0], before);
 });
 
 test('frameDiff records nothing when live equals previous', () => {
@@ -265,40 +231,6 @@ describe('saving frames', () => {
   });
 });
 
-test("a deleted key frame's tweens fold into the Blank frame after it", () => {
-  const shape = Object.freeze({ points: [] });
-  const deleted = newFrame('blank', new Map([['v:a', cellState(shape, 0, 0)], ['v:c', cellState(shape, 0, 0)]]));
-  deleted.tweens = new Map([['v:a', eased('easeIn')], ['v:b', eased('easeOut')], ['v:c', eased('linear')]]);
-  const next = newFrame('blank', new Map([['v:b', cellState(shape, 0, 0)], ['v:c', cellState(shape, 0, 0)]]));
-  next.tweens = new Map([['v:b', eased('linear')]]);
-  // v:a goes on from the deleted frame; next's own shapes keep their own tweens, or none (v:c).
-  assert.deepEqual(foldDeleted(deleted, next).tweens, new Map([['v:a', eased('easeIn')], ['v:b', eased('linear')]]));
-  const wipe = newFrame('wipe');
-  wipe.tweens = new Map([['v:b', eased('linear')]]);
-  assert.equal(foldDeleted(deleted, wipe).tweens, wipe.tweens);
-});
-
-test('foldDeleted merges tweens per part, and the motion follows the Transform it keeps', () => {
-  const deleted = newFrame('blank', new Map([['v:a', cellState(withShape(BALL, { fill: '#0000ff' }), 0, 0)]]));
-  deleted.parts = new Map([['v:a', new Set(['transform', 'fill'])]]);
-  deleted.tweens = new Map([['v:a', new Map([['transform', 'easeIn'], ['fill', 'easeOut']])]]);
-  deleted.motions = new Map([['v:a', 'cells']]);
-  const next = newFrame('blank', new Map([['v:a', cellState(BALL, 0, 0)]]));
-  next.parts = new Map([['v:a', new Set(['outline'])]]);
-  next.tweens = new Map([['v:a', new Map([['outline', 'linear'], ['fill', 'elastic']])]]); // the fill isn't next's
-  const folded = foldDeleted(deleted, next);
-  assert.deepEqual(folded.tweens.get('v:a'), new Map([['transform', 'easeIn'], ['outline', 'linear'], ['fill', 'easeOut']]));
-  assert.deepEqual(folded.motions, new Map([['v:a', 'cells']]));
-  next.parts = new Map([['v:a', new Set(['transform'])]]);
-  next.tweens = new Map([['v:a', new Map([['transform', 'linear']])]]);
-  next.motions = new Map([['v:a', 'half']]);
-  const theirs = foldDeleted(deleted, next);
-  assert.deepEqual(theirs.tweens.get('v:a'), new Map([['transform', 'linear'], ['fill', 'easeOut']]));
-  assert.deepEqual(theirs.motions, new Map([['v:a', 'half']]));
-  next.motions = null;
-  assert.equal(foldDeleted(deleted, next).motions, null);
-});
-
 test('eases round-trip, parts in order; a frame without the shape writes none', () => {
   const ball = rectShape(0, 0, 4, 4, { fill: '#ff0000' });
   const frames = Array.from({ length: 9 }, () => newFrame('blank'));
@@ -337,7 +269,7 @@ test("easings that can't be read are left out, and the file still opens", () => 
   assert.ok(read(older).frames.every((frame) => frame.tweens === null));
 });
 
-// Parts: a key frame that sets only some of a shape keeps saying so, folded, saved and read.
+// Parts: a key frame that sets only some of a shape keeps saying so, saved and read.
 const BALL = rectShape(2, 2, 6, 6, { fill: '#ff0000' });
 const GRADIENT = { type: 'linear', stops: [[0, '#ff0000'], [1, '#0000ff']], m: [1, 0, 0, 1, 0, 0] };
 function ballFrames() {
@@ -351,17 +283,6 @@ function ballFrames() {
 }
 const read = (list) => deserializeFrames({ frames: list, frame: 0, fps: 8 }, 20, 20);
 const looks = (frames) => frames.map((_, i) => JSON.stringify(shapeAt(frames, 'v:a', i)));
-
-test('a deleted key frame folds what it set into the Blank frame after it', () => {
-  const deleted = newFrame('blank', new Map([['v:a', cellState(withShape(BALL, { fill: '#0000ff' }), 0, 0)]]));
-  deleted.parts = new Map([['v:a', new Set(['fill'])]]);
-  const next = newFrame('blank', new Map([['v:a', cellState(transformed(BALL, translation(0, 4)), 0, 0)]]));
-  next.parts = new Map([['v:a', new Set(['transform'])]]);
-  const folded = foldDeleted(deleted, next);
-  assert.deepEqual(folded.parts.get('v:a'), new Set(['transform', 'fill']));
-  assert.equal(folded.changes.get('v:a').cell.fill, '#0000ff');
-  assert.equal(folded.changes.get('v:a').cell.m[5], 4);
-});
 
 test('which parts a key frame set is saved and read back, and the saved shape is the one it shows', () => {
   const frames = ballFrames();
@@ -526,7 +447,3 @@ test('which cells stay is saved and read back; a file whose whole movie stayed r
   assert.equal(deserializeFrames({ frames: [{ ...json[0], stays: ['9,9'] }], frame: 0, fps: 8 }, 20, 20), null); // a cell it doesn't change
 });
 
-test('a deleted frame\'s staying cells aren\'t folded into the next', () => {
-  const deleted = blank([['1,1', cellState(A, 0, 0, true)], ['2,2', cellState(B, 0, 0)]]);
-  assert.deepEqual([...foldDeleted(deleted, blank()).changes.keys()], ['2,2']);
-});

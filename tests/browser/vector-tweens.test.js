@@ -282,7 +282,7 @@ test('adding, deleting or moving a frame inside a tween redraws the frames it re
   const at = (i) => (project.showFrame(i), y(project, key));
   const eased = (t) => Math.round(24 * ease('easeIn', t) * 1e4) / 1e4;
   project.showFrame(6);
-  project.addFrame('blank'); // a frame after the far key, for it to fold into when deleted
+  project.addFrame('blank'); // a frame after the far key, so it isn't the last when deleted
   for (let i = 1; i < 6; i++) at(i); // every frame between resolved, so a cache left behind would show
   project.showFrame(3);
   project.addFrame('blank'); // 0 to 7 now
@@ -297,9 +297,9 @@ test('adding, deleting or moving a frame inside a tween redraws the frames it re
   expect(at(4)).toBe(eased(4 / 5));
   project.undo();
   project.showFrame(6);
-  project.deleteFrame(); // the far key: the frame after it takes its shape, 0 to 6 again
-  expect(project.frames[6].changes.has(key)).toBe(true);
-  expect(at(3)).toBe(3);
+  project.deleteFrame(); // the far key: its move goes with it, so no tween now
+  expect(project.frames[6].changes.has(key)).toBe(false);
+  expect(at(3)).toBe(0);
   project.undo();
   project.moveFrame(6, 2); // the far key moved to frame 2: 0 to 2
   expect(at(1)).toBe(eased(1 / 2));
@@ -404,23 +404,6 @@ test("undoing an edit on a frame between gives the shape back to its tween as it
   expect(project.frames[4].changes.has(key)).toBe(false);
   project.showFrame(4);
   expect(y(project, key)).toBe(Math.round(24 * ease('easeOut', 4 / 5) * 1e4) / 1e4);
-});
-
-test('undoing an edit on a frame puts back the shape it had then, though a frame folded into it since', async () => {
-  const { project } = await animated();
-  const key = project.addShape(rectShape(2, 2, 6, 6, { fill: '#ff0000' }));
-  project.addFrame('blank');
-  project.addFrame('blank');
-  project.updateShapes([[key, withShape(project.shapes.get(key), { fill: '#ff0000' })]]); // the color it has: inherited still
-  project.showFrame(1);
-  project.updateShapes([[key, transformed(project.shapes.get(key), rotation(0.4, 8, 8))]]);
-  const turned = project.shapes.get(key);
-  project.deleteFrame(); // frame 2, now 1, takes in the turn
-  moveBy(project, key, -4, 2);
-  project.undo();
-  project.showFrame(0);
-  project.showFrame(1);
-  expect(project.shapes.get(key)).toEqual(turned);
 });
 
 // Random frame changes, edits, tweens, keys, Clears, and art layers made and drawn on (and with followers, a line too,

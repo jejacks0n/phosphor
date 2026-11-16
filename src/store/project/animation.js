@@ -5,7 +5,7 @@
 // frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
 // builds frames for playing, and what it was prepared for).
 import FrameBuilder from '@/document/FrameBuilder.js';
-import { BASE, CUT, EMPTY_STATE, carriedInto, cellState, dropStrays, foldDeleted, frameDiff, isEmptyState, newFrame, paintImage, passedOn, resolveOver, sameChanges, sameState, drawnKeys, staysAt, withEases } from '@/document/frames.js';
+import { BASE, CUT, EMPTY_STATE, carriedInto, cellState, dropStrays, frameDiff, isEmptyState, newFrame, paintImage, passedOn, resolveOver, sameChanges, drawnKeys, staysAt, withEases } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
@@ -286,24 +286,6 @@ function settleFrame(project, { keys = false, stay = false } = {}) {
   project._float = null;
   note(project);
   if (!keys) keepShown(project); // what's about to change which frames there are can cut a shape's key frames off
-}
-
-// After the frame before frame at went: what frame at's staying cells were over (handed, what the frame that went
-// passed on) is what the frames after them showed there, so where that's changed it goes on to the first of them that
-// doesn't draw over it too, as its own.
-function handOn(project, at, handed) {
-  const frame = project.frames[at], under = at && frame.kind === 'blank' ? (project.resolvedOf(at - 1), carriedInto(project.frames[at - 1].passes, frame)) : NOTHING;
-  for (const [key, state] of frame.changes) {
-    if (!state.stays) continue;
-    const was = handed.get(key) ?? EMPTY_STATE;
-    if (sameState(was, under.get(key) ?? EMPTY_STATE)) continue;
-    for (let i = at + 1; i < project.frames.length && project.frames[i].kind === 'blank'; i++) {
-      const later = project.frames[i], held = later.changes.get(key);
-      if (held?.stays) continue;
-      if (!held) later.changes = new Map(later.changes).set(key, cellState(was.cell, was.top, was.bottom));
-      break;
-    }
-  }
 }
 
 // An edit on the frame showing undone (before: shapesBefore's): what the frame set of each shape it had of its own, as
@@ -715,19 +697,16 @@ export const animationActions = {
     });
   },
 
-  // The rest of the movie looks the same (foldDeleted). The only frame can't go.
+  // The frame goes with what's drawn on it: the frames after it keep their own changes and kinds, and show what they
+  // would if it had never been there. The only frame can't go.
   deleteFrame() {
     if (!this.hasFrames) return;
     settleFrame(this);
     frameStep(this, () => {
-      const deleted = this.currentFrame, at = this.frame, next = this.frames[at + 1];
-      const before = this.frames.map((frame) => ({ ...frame })); // as they were, next before its fold
-      const handed = next?.kind === 'blank' ? (this.resolvedOf(at), deleted.passes) : null; // what next drew over
-      if (next) Object.assign(next, foldDeleted(deleted, next));
+      const deleted = this.currentFrame, at = this.frame, before = this.frames;
       this.frames = this.frames.filter((frame) => frame !== deleted);
       deleted.resolved = deleted.built = null; // history holds it, and these are only worked out
-      if (handed) handOn(this, at, handed);
-      if (next) this.staleFrames(at);
+      this.staleFrames(at);
       staleTweens(this, before, at);
       return this.frames[Math.min(at, this.frames.length - 1)];
     });
