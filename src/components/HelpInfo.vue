@@ -121,10 +121,19 @@ button.help-icon {
   padding: 0;
   border: 0;
   background: none;
+  box-shadow: none;
   font: inherit;
   color: inherit;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+/* None of the global button look: no lift, shadow or press on hover or a click; the circle lights up instead. */
+button.help-icon:hover,
+button.help-icon:active:not(:disabled) {
+  background: none;
+  box-shadow: none;
+  transform: none;
 }
 
 /* A finger gets a tap target of 24 px around the small circle; a mouse keeps the layout as it was. */

@@ -710,7 +710,9 @@ article.tool-slot {
   display: flex;
 }
 
-.tool-slot :deep(.dropdown-trigger) {
+/* Its hover, too (DropdownMenu's trigger look): clear, only the triangle lit. */
+.tool-slot :deep(.dropdown-trigger),
+.tool-slot :deep(button.dropdown-trigger:hover:not(:disabled)) {
   position: absolute;
   right: 0;
   bottom: 0;
