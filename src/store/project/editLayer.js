@@ -33,8 +33,10 @@ export const editLayerActions = {
   // makes each cell painted a ▄ first, which the paint colors half by half, instead of showing through
   // the cell's own character; 'plain' (their Colors only, ANSI view) only the cells that show no character (a blank
   // canvas's, in their own background color) as the stroke first reaches them, so the paint doesn't bring a hidden one
-  // out (a cell the stroke itself paints into one color stays as it was).
+  // out (a cell the stroke itself paints into one color stays as it was). 'plain' is ANSI's alone, as is the ▄ a cell with
+  // nothing to show through takes (Cells.js coverCell): in ASCII the paint is converted with the ASCII characters.
   paintStroke(pixels, color, { blockChars = false } = {}) {
+    if (blockChars === 'plain' && this.renderStyle !== 'ansi') blockChars = false;
     const workspace = useWorkspaceStore();
     const { r, g, b } = hex2rgb(color ?? workspace.editFgColor);
     const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill
