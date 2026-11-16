@@ -249,3 +249,23 @@ test('the marker on its picked tab is a line along its foot that slides to the t
   const tab = host.querySelectorAll('.side-panel [role=tab]')[1].getBoundingClientRect();
   expect(Math.abs(marker().getBoundingClientRect().top - (tab.bottom - 1))).toBeLessThan(1.5); // along its foot, not its top
 });
+
+test('in a room, a speaker beside the fold turns the tone for new messages off and on, on CHAT and LAYERS alike; out of one there is none', async () => {
+  const { room, workspace } = await mount();
+  const speaker = () => host.querySelector('.side-panel div.tabs button.tone');
+  expect(speaker()).toBe(null);
+  await enter(room);
+  expect(speaker().getAttribute('aria-label')).toBe('Sound for new messages');
+  expect(speaker().nextElementSibling).toBe(arrow());
+  expect(speaker().getAttribute('aria-pressed')).toBe('true');
+  speaker().click();
+  await nextTick();
+  expect(workspace.chatTone).toBe(false);
+  expect(speaker().getAttribute('aria-pressed')).toBe('false');
+  workspace.sidePanelTab = 'layers';
+  await nextTick();
+  speaker().click();
+  await nextTick();
+  expect(workspace.chatTone).toBe(true);
+  expect(speaker().getAttribute('aria-pressed')).toBe('true');
+});
