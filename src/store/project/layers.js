@@ -14,7 +14,7 @@ import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
-import { NUDGE_MS, bytesHeld, dropFromSums, emptyFields, followBase, layerName, putLayer, randomId, swapLayer, refusedInRoom } from '@/store/project/shared.js';
+import { NUDGE_MS, bytesHeld, dropFromSums, emptyFields, layerName, putLayer, randomId, swapLayer, refusedInRoom } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -24,12 +24,10 @@ function changed(store, id, patch) {
   if (store.layerById(id)) store.layers = store.layers.map((layer) => (layer.id === id ? Object.freeze({ ...layer, ...patch }) : layer));
 }
 
-// own (some of CHAR_KEYS) as the layer with the id's character settings: the document's fields for the bottom, with every
-// layer following them in a room (followBase).
+// own (some of CHAR_KEYS) as the layer with the id's character settings: the document's fields for the bottom.
 function putChars(store, id, own) {
   if (id !== 'base') return changed(store, id, { chars: layerChars(store.layerById(id)?.kind, { ...store.charsOf(id), ...own }) });
   store.$patch(own);
-  if (store._sharing) followBase(store);
 }
 
 const pick = (from, keys) => Object.fromEntries(keys.map((key) => [key, from[key]]));
@@ -182,15 +180,13 @@ export const layerActions = {
   // A layer's own character settings changed: the CHAR_KEYS in patch (the rest is left out; a cells layer has no Dither).
   // The bottom's are the document's fields. They're noted as they were, and commitLayerChars makes the change one undo
   // step (a slider's drag, a pick, a set typed, the seed rolled). What's drawn follows (EditWorkspace renders on a change
-  // to layerParams). While the drawing's shared with a room, which has one set, a layer above the bottom is refused (the
-  // room's toast says so) and the bottom's change every layer's with them. Whether it changed.
+  // to layerParams). In a room only the host does it (HOST_ONLY_ACTIONS), and each layer keeps its own. Whether it changed.
   setLayerChars(id, patch) {
     const layer = this.layerById(id), holds = (key) => id === 'base' || layer.kind !== 'cells' || !DITHER_KEYS.includes(key);
     if (!layer) return false;
     const own = Object.fromEntries(CHAR_KEYS.filter((key) => key in patch && holds(key)).map((key) => [key, patch[key]]));
     const was = this.charsOf(id);
     if (Object.keys(own).every((key) => own[key] === was[key])) return false;
-    if (id !== 'base' && refusedInRoom(this)) return false;
     if (this._charsBefore?.id !== id) {
       this.commitLayerChars();
       this._charsBefore = { id, key: Object.keys(own)[0], values: pick(was, CHAR_KEYS), hadNoOwn: id !== 'base' && !layer.chars };
@@ -208,29 +204,33 @@ export const layerActions = {
     if (!before || !this.layerById(before.id)) return;
     const { id, key, values, hadNoOwn } = before, after = pick(this.charsOf(id), CHAR_KEYS), last = this._lastChars;
     if (CHAR_KEYS.every((each) => String(values[each]) === String(after[each]))) return;
+    if (this._sharing) { // no undo step in a room; the bottom's go with the document's settings, a layer's with the stack
+      if (id !== 'base') this.sendLayers({ by: this._sharing.me });
+      return;
+    }
     if (nudge && last?.id === id && last.key === key && last.version === this.history.version && Date.now() - last.at < NUDGE_MS) {
       last.at = Date.now();
       last.entry.after = after;
       return;
     }
     this.commitPending();
-    // settingsOnly: kept when the grid changes (rendering.js dropEdits). ownChars: a layer's own, which a room (one set of
-    // settings) can't hold: going live drops it (startSharing).
+    // settingsOnly: kept when the grid changes (rendering.js dropEdits). ownChars: a layer's own, which going live drops
+    // (startSharing): a room has no undo for it.
     const restoreOwn = hadNoOwn ? () => changed(this, id, { chars: null }) : () => putChars(this, id, values);
     const entry = { settingsOnly: true, ownChars: id !== 'base', after, undo: restoreOwn, redo: () => putChars(this, id, entry.after) };
     this.pushEdit(entry);
     this._lastChars = nudge ? { id, key, entry, version: this.history.version, at: Date.now() } : null;
   },
 
-  // A new layer of kind directly above the layer with the id above (on top when there's none), and its id, with the picked
-  // layer's character settings. A cells layer starts empty, its paint made when it's first used. One undo step: undone, the layer leaves the stack and what's on it
+  // A new layer of kind directly above the layer with the id above (on top when there's none), and its id, with the character
+  // settings of the layer it's above (the bottom's when there's none). A cells layer starts empty, its paint made when it's first used. One undo step: undone, the layer leaves the stack and what's on it
   // waits in _layerData for a redo. Null, nothing added, when the drawing has the most layers, and for an artist in a room
   // (it's asked of the host).
   addLayer(kind, above) {
     if (this.layers.length >= MOST_LAYERS || asked(this, { kind: 'add', layer: kind, above })) return null;
     if (!asideFromHost(this)) this.commitPending();
     let id;
-    redrawn(this, () => { ({ id } = putLayer(this, kind, above, this.charsOf(useWorkspaceStore().pickedLayer))); }); // the groups can change: a layer put under a painted one leaves that one's paint over it
+    redrawn(this, () => { ({ id } = putLayer(this, kind, above, this.charsOf(above))); }); // the groups can change: a layer put under a painted one leaves that one's paint over it
     if (this._sharing) {
       this.sendLayers({ by: askedBy(this), made: id });
       return id;

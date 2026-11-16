@@ -283,6 +283,39 @@ test('an artist adds a layer above the one they picked: everyone gets it, it\'s 
   expect(ann.project.history.canUndo).toBe(false);
 });
 
+test('the host sets one layer\'s character settings and every artist has them, the other layers keeping theirs', async () => {
+  const room = await hosting();
+  const top = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+  await expect.poll(() => bo.project.layerById(top)?.kind, PATIENT).toBe('cells');
+  room.project.setLayerChars(top, { chars: '#%' });
+  room.project.commitLayerChars();
+  await allMatch(room, ann, bo);
+  for (const page of [room, ann, bo]) {
+    await expect.poll(() => page.project.layerById(top).chars?.chars, PATIENT).toBe('#%');
+    expect(page.project.charsOf('edit').chars).toBe(page.project.chars);
+    expect(page.project.charsOf('edit').chars).not.toBe('#%');
+  }
+  expect(ann.project.setLayerChars(top, { chars: 'x' })).toBeFalsy(); // an artist's is refused
+  expect(ann.project.layerById(top).chars.chars).toBe('#%');
+  expect(room.project.history.canUndo).toBe(false);
+});
+
+test('a layer an artist adds above another copies that layer\'s settings, not the host\'s picked layer\'s', async () => {
+  const room = await hosting();
+  const top = room.project.addLayer('cells', 'edit');
+  room.project.setLayerChars(top, { chars: '#%' });
+  room.project.commitLayerChars();
+  const ann = await artist(room, 'ann'), bo = await artist(room, 'bo');
+  await expect.poll(() => ann.project.layerById(top)?.chars?.chars, PATIENT).toBe('#%');
+  workspaceOf(room).pickLayer('edit');
+  ann.project.addLayer('cells', top);
+  await expect.poll(() => room.project.layers.length, PATIENT).toBe(4);
+  const made = room.project.layers[room.project.layers.findIndex((l) => l.id === top) + 1].id;
+  for (const page of [room, ann, bo]) await expect.poll(() => page.project.layerById(made)?.chars?.chars, PATIENT).toBe('#%');
+  await allMatch(room, ann, bo);
+});
+
 test('the host and artists reorder, rename and duplicate, and every stack matches', async () => {
   const room = await hosting();
   room.project.addLayer('cells', 'edit');

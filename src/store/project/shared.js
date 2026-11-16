@@ -10,7 +10,7 @@ import { MOST_CHANGE_BYTES, cellsFitAnyGrid } from '@/social/wire.js';
 import { MAX_CELLS } from '@/lib/Cells.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
-import { layerChars, layerKey, newLayerId, nextNumber, sameChars } from '@/document/layerInfo.js';
+import { layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { hashCell, hashPixel, pack } from '@/document/changes.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
@@ -237,7 +237,7 @@ export function putStack(project, { layers = project.layers, data, pick = null }
   if (back && project.layerById(pick)) useWorkspaceStore().pickLayer(pick);
 }
 
-// Whether a change a room doesn't take yet (a layer's own character settings, a merge into a layer above the bottom, a
+// Whether a change a room doesn't take yet (a merge into a layer above the bottom, a
 // picture on a layer) is refused because the document is shared with a room, with a toast saying so.
 export function refusedInRoom(project) {
   if (!project._sharing) return false;
@@ -260,14 +260,6 @@ export function putLayer(project, kind, above, chars = project.baseChars) {
     emptyFields(project);
   } else if (kind === 'cells') project._layerData.set(id, { editCells: new Map(), paintLayer: null, hasPaint: false });
   return layer;
-}
-
-// Every layer's character settings made the bottom's, for a drawing shared with a room, which has one set: the layers
-// that already have them stay the same objects, and the array is replaced only when one changed.
-export function followBase(project) {
-  const base = project.baseChars;
-  if (project.layers.every((layer, at) => !at || sameChars(layer.chars, base, layer.kind))) return;
-  project.layers = project.layers.map((layer, at) => (!at || sameChars(layer.chars, base, layer.kind) ? layer : Object.freeze({ ...layer, chars: layerChars(layer.kind, base) })));
 }
 
 // The edit layer's fields emptied, a paint layer of the same size kept: for a drawing left with no cells layer above the

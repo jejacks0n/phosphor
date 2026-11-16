@@ -28,7 +28,7 @@ import { layerKey } from '@/document/layerInfo.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, readChange, readLayers } from '@/social/wire.js';
-import { ALONE, SAVED_KEYS, anyoneInside, dropFromSums, emptyFields, followBase, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
+import { ALONE, SAVED_KEYS, anyoneInside, dropFromSums, emptyFields, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
 import { layerChars, nextNumber } from '@/document/layerInfo.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast';
@@ -393,11 +393,9 @@ export const sharingActions = {
     Object.assign(sharing, { cancelFlush: null, heard: [], heardCells: new Map(), heardRuns: [], heardStack: null });
   },
 
-  // From the host, so only what a document saves. A room has one set of character settings: every layer takes the
-  // bottom's, as the host's do (setLayerChars).
+  // From the host, so only what a document saves.
   applySettings(values) {
     this.$patch(Object.fromEntries(SAVED_KEYS.filter((key) => key in values && key !== 'cols' && key !== 'rows').map((key) => [key, values[key]])));
-    followBase(this);
   },
 
   // The stack as the host says it (a layers message, read: wire.js readLayers) brought in by id: a layer not in it goes,
