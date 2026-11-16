@@ -1,8 +1,8 @@
-// Retouch: Blur, Dodge and Burn change the colors that show. In the pixel view each grid pixel's, as paint; in the ANSI
-// view each cell's, on the base keeping its character; on a drawing layer a cell with colors of its own that a stroke
-// changes becomes paint. A stroke is one undo step and stays inside a selection.
+// Retouch: Blur, Dodge and Burn change the colors that show, each grid pixel's, in both views; on the base in the ANSI
+// view a pinned character stays, its cell's colors changed; on a drawing layer a cell with colors of its own that a
+// stroke changes becomes paint. A stroke is one undo step and stays inside a selection.
 import { test, expect } from 'vitest';
-import { createTestApp, loadImage, settle } from '../support/app.js';
+import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { blur, dodge, burn } from '@/tools/retouch';
 import { getTool } from '@/tools';
 import { hex2rgb } from '@/lib/ColorUtils.js';
@@ -309,3 +309,31 @@ test('the report: in the ANSI view Blur fades a merged shape\'s exact cells into
   expect(alphaAt(project, 16, 20)).toBeLessThan(0.9); // faded, as the circle's edge does
   expect(alphaAt(project, 14, 20)).toBeGreaterThan(0); // into the clear beside it
 });
+
+// ANSI view on the base: the converter's own cells change as in the PIXEL view, their pixels, and the characters follow,
+// nothing pinned, however characters are chosen (a pin would outlast a switch of Choose characters); a pinned character
+// stays, its colors changed, foreground with foreground and background with background.
+const HIGH_RES = '▖▗▘▝▚▞▙▛▜▟▐▌▁▂▃▄▅▆▇█';
+async function blurBase(view, charChoice) { // each app done before the next is made (its stores are the active ones)
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  Object.assign(project, { quantize: 'cga', charChoice, chars: HIGH_RES });
+  await settle(project);
+  workspace.pickLayer('base');
+  project.writeBaseCells([{ col: 10, row: 5, char: 'A', fg: '#ffffff', bg: '#000080' }]);
+  project.commitEdit();
+  Object.assign(workspace, { retouchSize: 8, retouchStrength: 100, retouchHardness: 100, retouchRange: 'midtones' });
+  stroke(blur, { project, workspace, view }, { x: 4, y: 10.5 }, { x: 16, y: 10.5 });
+  await settle(project);
+  const pinned = project.cells[5 * 20 + 10];
+  return { pins: [...project.baseRecords.pins.keys()], pinned: [pinned.char, pinned.bg.hex], others: cellsKey(project).filter((_, i) => i !== 5 * 20 + 10) };
+}
+for (const charChoice of ['random', 'shape']) {
+  test(`ANSI view, ${charChoice}: on the base Blur changes the converter's cells as in the PIXEL view, and keeps a pinned character, recolored`, async () => {
+    const ansi = await blurBase('output', charChoice), pixel = await blurBase('input', charChoice);
+    expect(ansi.pins).toEqual(['10,5']);
+    expect(ansi.others).toEqual(pixel.others);
+    expect(ansi.pinned[0]).toBe('A');
+    expect(ansi.pinned[1]).not.toBe('#000080'); // its background evened with the cells around it
+  });
+}
