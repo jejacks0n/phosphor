@@ -71,21 +71,23 @@ script. Every section ends with Free time.
 ### 1. Open my photo
 - Does: on the start screen, chooses `photo.jpg` with Choose a file (or drops it on the box that says "Drop an image, .phosphor, or ANSI file here").
 - Expects: it opens on ANSI as character art, 80 columns wide with its rows from the photo's shape; LAYERS shows
-  Layer 1 (picked) over Base; the Characters section is titled "Characters · Layer 1"; the address shows the ANSI tab.
+  only Base, picked; the Characters section is titled "Characters · Base", with Picture · Base and Image filters
+  under it; the address shows the ANSI tab.
   Opening takes under the `file` budget.
 - Probes: `free`: drop the file on the box instead of using the button; `again`: press New project and open the same
   `photo.jpg` a second time, checking New project asks about unsaved changes only if there are any;
   `extremes`: open `tall.png` and `rgba.png` and look at where the transparency and the long edge land.
 - Rated: yes, wants Cmd+O
 
-### 2. Pick the picture itself, to tune it
-- Does: picks Base in LAYERS, because a new drawing picks Layer 1 and she wants to change how the picture converts.
-- Expects: the Characters section becomes "Characters · Base", and the Picture · Base and Image filters sections
-  appear (they're hidden while another layer is picked); the tabs stay PIXEL, ANSI and SAUCE.
-- Probes: `out-of-order`: before picking Base, change Choose characters on Layer 1 and see that the picture doesn't
-  change (it's Layer 1's paint setting), then look for what told her so; `back-out`: pick Layer 1 again and back;
-  `interrupt`: switch to PIXEL and back and check Base is still picked; `extremes`: on a blank canvas, pick Base and
-  check there's no Picture · Base (no picture for Smoothing to scale).
+### 2. Check the picture itself is what she's tuning
+- Does: looks at LAYERS and the side panel before changing anything, since she wants to change how the picture
+  converts.
+- Expects: Base is picked (a new drawing picks it), Characters says "Characters · Base", and the Picture · Base and
+  Image filters sections show (they're hidden while another layer is picked); the tabs are PIXEL, ANSI and SAUCE.
+- Probes: `out-of-order`: press Add layer, change Choose characters on the new Layer 1 and see that the picture
+  doesn't change (it's Layer 1's paint setting), then look for what told her so, and undo the add; `back-out`: pick
+  Base again after the add, then undo it; `interrupt`: switch to PIXEL and back and check Base is still picked;
+  `extremes`: on a blank canvas, check there's no Picture · Base (no picture for Smoothing to scale).
 - Rated: yes, wants a key to step through the layers (Alt+[ and Alt+], as in Photoshop)
 
 ### 3. Try every art style
@@ -146,7 +148,8 @@ the help (the i beside a label) for Choose characters, and try the same settings
 - Does: moves Blur (in Image filters, with Base picked) up, then down to half.
 - Expects: the picture's fine grain softens before it converts; the edit layer isn't changed; the move lands within the
   `setting` budget; a whole drag is one undo step.
-- Probes: `out-of-order`: pick Layer 1 and look for Blur (it's hidden while another layer is picked); `undo-redo`:
+- Probes: `out-of-order`: press Add layer and look for Blur (it's hidden while another layer is picked), then undo
+  the add; `undo-redo`:
   drag, undo, redo, and check the slider and the picture move together.
 - Rated: yes, wants Tab to Blur then the arrows
 
@@ -208,16 +211,16 @@ gives her a painterly look, look for a way to reorder the filters, and check the
   shows for Best match's cells (each half its two colors blended).
 - Rated: yes, wants Tab to Choose characters then the arrows
 
-**Free time:** she'd try Limited count with 4 colors and each dither, paint a stroke on Layer 1 to see paint isn't
+**Free time:** she'd try Limited count with 4 colors and each dither, paint a stroke on a layer she adds to see paint isn't
 dithered, and compare the dither at 80 and at 200 columns.
 
 ## Layers to draw on
 
 ### 15. Add a layer to paint on
-- Does: picks Layer 1, presses Add layer.
-- Expects: "Layer 2" appears directly above Layer 1 and is picked; Characters says "Characters · Layer 2"; adding it
-  is one undo step.
-- Probes: `again`: add another right away (Layer 3), then delete it from its ⋯ menu; `undo-redo`: undo the add and
+- Does: with Base picked, presses Add layer twice.
+- Expects: "Layer 1" appears directly above Base and is picked, then "Layer 2" directly above Layer 1, picked;
+  Characters says "Characters · Layer 2"; each add is one undo step.
+- Probes: `again`: add another right away (Layer 3), then delete it from its ⋯ menu; `undo-redo`: undo the last add and
   check the layer goes and Layer 1 is picked again.
 - Rated: yes, wants Shift+Cmd+N
 

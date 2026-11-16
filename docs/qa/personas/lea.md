@@ -57,7 +57,7 @@ confused, and the work still there if she comes back to the tab later.
 
 - The default: her selfie opens at 80 columns by 54 pixel rows (27 lines, 2,160 cells); a blank canvas is 80 by 25
   (Dimensions 80 by 50, 2,000 cells).
-- 2 or 3 layers: Base, Layer 1 and one she adds.
+- 1 or 2 layers: Base, and one she adds.
 - An animation of 3 to 6 frames at 8 frames per second.
 - Exports: a .gif of a few hundred KB, a .phosphor of a few hundred KB.
 
@@ -104,7 +104,7 @@ script. Every section ends with Free time.
 - Does: taps Choose a file and picks `photo.jpg`.
 - Expects: it opens on ANSI as character art, 80 columns wide, fitted to the screen's width; « at the tab bar's right
   end opens LAYERS over the art; the toolbar shows the color pair, the Pencil, Brush, Eraser, Paint Bucket, Shapes, a ⋯ for the rest,
-  and Actions; the status bar says "Layer 1". Opening takes under the `file` budget.
+  and Actions; the status bar says "Base"; LAYERS has only Base. Opening takes under the `file` budget.
 - Probes: `out-of-order`: first pick `fonts/wide.ttf` by mistake (it says "Couldn't open … Make sure it's a supported
   image or .phosphor file."); `again`: press New project and open `p3.png`, then `photo.webp`, then `rgba.png`, then
   `tiny.gif`, and come back to `photo.jpg`; `extremes`: look at where `rgba.png`'s transparency lands.
@@ -203,8 +203,9 @@ column to see the words change, switch the theme, and open About.
 ### 12. Paint on my selfie
 - Does: picks the Brush, picks a color from the color pair, and paints a few strokes with a finger.
 - Expects: the color box opens fitting the screen, and a pick closes it or shows which color she has; the strokes land
-  where her finger went, after the short wait a touch has (in case of a pinch); each stroke is one undo step
-  ([Other tools](../../layers.md#other-tools)).
+  where her finger went, after the short wait a touch has (in case of a pinch), on the picture itself (Base is
+  picked); each stroke is one undo step ([Other tools](../../layers.md#other-tools),
+  [Drawing on the Base](../../layers.md#drawing-on-the-base)).
 - Probes: `back-out`: open the color box and tap outside it; `speed`: scribble fast with `qa.frames`; `out-of-order`:
   pick a color of None and paint.
 - Rated: no (drawing)
@@ -223,7 +224,7 @@ column to see the words change, switch the theme, and open About.
 - Does: taps Layers, taps Add layer (the header's cells icon with a plus), taps its name and types "doodles" on the
   phone's keyboard and presses return; hides it with its eye and shows it again; taps Done.
 - Expects: the dialog fits at 390 wide, with the header's count and both add buttons and every row's name, eye and ⋯
-  visible; "Layer 2" is added above Layer 1 and picked, and stays open after a pick; return keeps the new name; the status bar then says "doodles"
+  visible; "Layer 1" is added above Base and picked, and stays open after a pick; return keeps the new name; the status bar then says "doodles"
   ([The layers list](../../layers.md#the-layers-list)).
 - Probes: `extremes`: rename it to 40 characters with emoji and check the row, then back to "doodles"; `back-out`: start
   a rename and tap outside the dialog; `again`: add three layers in a row.

@@ -69,8 +69,8 @@ script. Every section ends with Free time.
 
 ### 1. Start from a blank canvas
 - Does: on the start screen, presses "Start with a blank canvas".
-- Expects: it opens on ANSI at 80 columns by 25 lines (Dimensions 80 and 50), black, with Layer 1 picked over Base;
-  nothing to undo.
+- Expects: it opens on ANSI at 80 columns by 25 lines (Dimensions 80 and 50), black, with only Base in LAYERS,
+  picked; nothing to undo.
 - Probes: `again`: start a New project and a blank canvas again; `back-out`: press New project with unsaved changes and
   cancel the question.
 - Rated: yes, wants Cmd+N, or Tab to the button then Enter
@@ -255,7 +255,7 @@ Animate off and check the .cast export goes away, and save the project and reope
 
 ### 22. Grow it to 132 by 50
 - Does: sets Dimensions to 132 and 100.
-- Expects: with text on the edit layer, it's a canvas resize: columns and lines are added at the right and bottom, the
+- Expects: with text on the base, it's a canvas resize: columns and lines are added at the right and bottom, the
   banner stays where it is, every frame grows; it lands within the `setting` budget.
 - Probes: `undo-redo`: undo the resize and redo it; `interrupt`: shrink to 40 by 10 and grow back, and check the cut-off
   text came back.
