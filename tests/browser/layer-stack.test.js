@@ -113,6 +113,24 @@ test('in a room the host\'s new layer is no undo step and goes to the room as th
   }
 });
 
+test('Save in a room writes a drawing that fits the old form in it, which older copies open; what a room is sent keeps the stack form', async () => {
+  const { project } = await blank();
+  project.typeAt(2, 2, 'A', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  try {
+    const download = vi.spyOn(URL, 'createObjectURL');
+    expect(await project.saveProject()).toBe(true);
+    const file = await readProject(download.mock.calls.at(-1)[0]);
+    expect(file.stack).toBeUndefined();
+    expect(file.editCells.get('2,2')?.char).toBe('A');
+    expect((await project.projectParts()).stack.map(({ id }) => id)).toEqual(['base', 'edit']);
+  } finally {
+    project.stopSharing();
+    vi.restoreAllMocks();
+  }
+});
+
 test('addLayer refuses past MOST_LAYERS, without a toast', async () => {
   const { project } = await blank();
   while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit');
