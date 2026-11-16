@@ -3,15 +3,19 @@
 // the ANSI view each cell's, written back with its character, which stays (a cell that shows no character keeps showing
 // none), but in Monochrome ASCII, which shows only characters, as in the pixel view. On a drawing layer, only what the layer itself holds: its paint, where a clear pixel counts as clear (Blur fades
 // an edge out into the clear beside it), and in the ANSI view its own cells' colors too, characters kept; where the layer
-// has nothing, nothing changes, whatever shows under it. A stroke works out each spot's new color from what was there
-// before it, and goes as far toward it as its Strength at the brush's falloff, so going over a spot again in the same
-// stroke adds nothing; another stroke does.
+// has nothing, nothing changes, whatever shows under it. In the pixel view nothing is locked: a cell the stroke reaches
+// that holds a character (a drawing layer's own cell, typed or written exactly by a merge, or a character pinned on the
+// base) goes, its two halves becoming paint (the base's pixels) in the colors it showed (unlock), and the stroke works on
+// those as on any paint. A stroke works out each spot's new color from what was there before it, and goes as far toward
+// it as its Strength at the brush's falloff, so going over a spot again in the same stroke adds nothing; another stroke
+// does.
 import { brushPixels } from '@/lib/Brushes';
 import { selectionClip } from '@/lib/selectionClip';
-import { charRowsOf, mix, showsChar } from '@/lib/Cells.js';
+import { charRowsOf, halfColors, mix, showsChar } from '@/lib/Cells.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { averaged, averagedPaint, burned, dodged, mixPaint } from '@/lib/Retouch.js';
 import { onBottom } from '@/store/project/shared.js';
+import { withoutPins } from '@/document/baseRecords.js';
 import { t } from '@/i18n/index.js';
 
 const AROUND = [-1, 0, 1].flatMap((dy) => [-1, 0, 1].map((dx) => [dx, dy]));
@@ -22,18 +26,75 @@ const inGrid = (x, y, cols, rows) => x >= 0 && y >= 0 && x < cols && y < rows;
 // of a drawing layer's paint pixel ({ r, g, b, a } or null: clear), around it and the pixels around it on the grid.
 
 // This stroke's spots, by key: { from (the color or a cell's colors before it), to, alpha (the most the brush gave) },
-// and the colors it read (Blur's neighbors too).
+// the colors it read (Blur's neighbors too), whether it unlocks what it reaches (the pixel view's), and the cells it has.
 let stroke = null;
 
 function newStroke() {
-  stroke = { spots: new Map(), read: new Map() };
+  stroke = { spots: new Map(), read: new Map(), unlocking: null, unlocked: new Set() };
 }
 
-// Each grid pixel: its color up to the layer in use (the base's on the base), changed, as opaque paint.
+// The two halves ([top, bottom], { r, g, b }) of the cell at col, row as it shows at pixel scale, where the layer in use
+// locks it: a character pinned on the base (its pixels hold its background over its foreground), or the drawing layer's
+// own cell (completed against what's under it, the layer's paint over it); null where nothing's locked. As the stroke
+// first read it.
+function lockedHalves(project, col, row) {
+  const key = `l${col},${row}`;
+  if (stroke.read.has(key)) return stroke.read.get(key);
+  let halves = null;
+  if (onBottom(project)) {
+    const char = project.baseRecords.pins.get(`${col},${row}`);
+    if (char !== undefined) halves = halfColors({ char, bg: hex2rgb(project.baseColorAt(col, 2 * row)), fg: hex2rgb(project.baseColorAt(col, 2 * row + 1)) });
+  } else if (project.editCellAt(col, row)) {
+    const look = project.underlyingAt(col, row, { withPaint: false, evenHidden: true });
+    halves = halfColors({ char: look.char, bg: hex2rgb(look.bg), fg: hex2rgb(look.fg) }).map((half, k) => {
+      const paint = project.paintLayer?.pixelAt(col, 2 * row + k);
+      return paint ? mix(half, paint, paint.a) : half;
+    });
+  }
+  stroke.read.set(key, halves);
+  return halves;
+}
+
+// The pixel view: every locked cell the pixels reach (a wide character's other half with it) unlocked, its halves laid
+// as opaque paint (the base's pixels) in lockedHalves' colors and the cell (the pin) taken away, in the stroke's step.
+// Once a stroke: its later moves leave what it changed there.
+function unlock(project, pixels) {
+  const { cols, rows } = project, seen = new Set(), cells = [];
+  const add = (col, row) => {
+    const key = `${col},${row}`;
+    if (col < 0 || col >= cols || seen.has(key) || stroke.unlocked.has(key)) return;
+    seen.add(key);
+    if (!lockedHalves(project, col, row)) return;
+    stroke.unlocked.add(key);
+    cells.push({ col, row });
+  };
+  for (const key of reachOf(pixels).keys()) {
+    const [col, row] = key.split(',').map(Number), wide = project.cells[row * cols + col]?.wide;
+    add(col, row);
+    if (wide === 'trail') add(col - 1, row);
+    if (wide === 'lead') add(col + 1, row);
+  }
+  if (!cells.length) return;
+  const halves = cells.flatMap(({ col, row }) => lockedHalves(project, col, row).map((c, k) => ({ x: col, y: 2 * row + k, ...c }))).filter(({ y }) => y < rows);
+  if (onBottom(project)) {
+    project.writeBase(halves.map(({ x, y, r, g, b }) => ({ x, y, hex: rgb2hex({ r, g, b }) })));
+    project.setBaseRecords(withoutPins(project.baseRecords, cells));
+    project.recompose(halves);
+  } else {
+    project.putEditPixels(halves.map((half) => ({ ...half, a: 1 })));
+    project.clearEditCells(cells);
+  }
+}
+
+// Each grid pixel: its color up to the layer in use (the base's on the base; a pinned cell's as it shows, unlocking),
+// changed, as opaque paint.
 function retouchPixels(project, pixels, change, strength) {
   const colorAt = (x, y) => {
     const key = `${x},${y}`;
-    if (!stroke.read.has(key)) stroke.read.set(key, hex2rgb(project.rawColorAt(x, y, { upTo: project.editId })));
+    if (!stroke.read.has(key)) {
+      const locked = stroke.unlocking && lockedHalves(project, x, Math.floor(y / 2));
+      stroke.read.set(key, locked ? locked[y % 2] : hex2rgb(project.rawColorAt(x, y, { upTo: project.editId })));
+    }
     return stroke.read.get(key);
   };
   const out = new Map();
@@ -83,11 +144,14 @@ function retouchCells(project, pixels, change, strength) {
   project.writeEditCells(out, { clearPaint: true });
 }
 
-// A drawing layer's own paint at grid pixel x, y ({ r, g, b, a }, or null where it has none), and its own cell's entry
-// at col, row, as the stroke first read them.
+// A drawing layer's own paint at grid pixel x, y ({ r, g, b, a }, or null where it has none; unlocking, a cell of its own
+// there as it shows, opaque), and its own cell's entry at col, row, as the stroke first read them.
 function ownPaintAt(project, x, y) {
   const key = `p${x},${y}`;
-  if (!stroke.read.has(key)) stroke.read.set(key, project.paintLayer?.pixelAt(x, y) ?? null);
+  if (!stroke.read.has(key)) {
+    const locked = stroke.unlocking && lockedHalves(project, x, Math.floor(y / 2));
+    stroke.read.set(key, locked ? { ...locked[y % 2], a: 1 } : project.paintLayer?.pixelAt(x, y) ?? null);
+  }
   return stroke.read.get(key);
 }
 function ownEntryAt(project, col, row) {
@@ -197,6 +261,8 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
       let pixels = brushPixels(from, to, { size: workspace.retouchSize, flow: 1, hardness: workspace.retouchHardness / 100 }, cols, rows);
       if (clip) pixels = pixels.filter(({ x, y }) => clip.pixel(x, y));
       const strength = workspace.retouchStrength / 100;
+      stroke.unlocking ??= view !== 'output'; // the pixel view: nothing's locked
+      if (stroke.unlocking) unlock(project, pixels);
       const changed = (color, at) => change(color, workspace.retouchRange, at), owned = (from, around) => own(from, around, workspace.retouchRange);
       if (!onBottom(project)) { // a drawing layer: only what it holds
         if (view === 'output') retouchOwnCells(project, pixels, changed, owned, strength);

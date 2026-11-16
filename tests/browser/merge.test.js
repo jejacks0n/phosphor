@@ -452,6 +452,31 @@ describe('down between layers', () => {
     });
   }
 
+  // Over a picture a shape's soft edge doesn't show the same as paint, so its cells there are written exactly: Blur in the
+  // PIXEL view unlocks them into paint as it reaches them, and fades them like the rest.
+  test('a shape merged down over a picture: Blur in the PIXEL view unlocks the exact cells along its edge and fades them', async () => {
+    const { project, workspace } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+    const vector = project.addLayer('vector', 'edit');
+    workspace.pickLayer(vector);
+    project.addShape(rectShape(5.3, 4.6, 30.7, 30.2, { fill: '#ff0000' }));
+    project.commitEdit();
+    await settle(project);
+    expect(project.mergeDown(vector)).toBe(true);
+    await settle(project);
+    const edge = [...project.cellsOf('edit').keys()].find((key) => key.endsWith(',2'));
+    expect(edge).toBeDefined(); // the top edge, written exactly
+    const col = Number(edge.split(',')[0]);
+    workspace.editorTab = 'input';
+    Object.assign(workspace, { retouchSize: 4, retouchStrength: 100, retouchHardness: 100 });
+    const ctx = { project, workspace, view: 'input' }, at = { x: col + 0.5, y: 4.5 };
+    getTool('blur').begin(ctx, at, {});
+    blur.end(ctx);
+    await settle(project);
+    expect(project.cellsOf('edit').has(edge)).toBe(false);
+    expect(project.paintOf('edit').pixelAt(col, 4)?.a).toBeLessThan(1);
+  });
+
   test('Merge down of paint over cells keeps what shows under Color ASCII with the sliders off their defaults', async () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });

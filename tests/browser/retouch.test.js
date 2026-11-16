@@ -202,3 +202,76 @@ test('ANSI view, Monochrome ASCII: on the base its pixels change, as in the PIXE
   expect(row()).not.toBe(before);
   expect(project.baseRecords.pins.size).toBe(0); // nothing pinned: the characters stay the converter's
 });
+
+// In the PIXEL view a stroke unlocks what it reaches: a cell the layer holds (typed, or one a merge wrote exactly) and
+// a character pinned on the base go, their two halves becoming paint (the base's pixels) in the colors they showed, and
+// the stroke works on those as on any paint. Text you want kept goes on a layer of its own.
+test('pixel view: on a drawing layer Blur unlocks the cells it reaches into paint and fades their edge; undo brings them back', async () => {
+  const { project, workspace, ctx } = await blank();
+  const cells = [];
+  for (let row = 0; row < 10; row++) for (let col = 0; col < 10; col++) cells.push({ col, row, attrs: { char: '░', fg: '#ff0000', bg: '#ff0000' } });
+  project.writeEditCells(cells);
+  project.commitEdit();
+  workspace.retouchSize = 6;
+  stroke(blur, ctx, { x: 10, y: 10.5 });
+  expect(project.editCellAt(9, 5)).toBeUndefined(); // reached: unlocked
+  expect(project.editCellAt(2, 2)).toBeDefined();   // out of reach: still a cell
+  expect(paintAt(project, 9, 10)).toEqual([255, 0, 0]);
+  expect(alphaAt(project, 9, 10)).toBeLessThan(1);  // faded into the clear beside it
+  expect(alphaAt(project, 9, 10)).toBeGreaterThan(0.5);
+  expect(alphaAt(project, 7, 10)).toBe(1);          // red all around: still solid
+  project.undo();
+  expect(project.editCellAt(9, 5)).toEqual({ char: '░', fg: '#ff0000', bg: '#ff0000' });
+  expect(project.paintLayer.hasPaint).toBe(false);
+});
+
+test('pixel view: a typed letter a stroke reaches becomes paint in the colors it showed, its character gone', async () => {
+  const { project, ctx } = await blank();
+  project.writeEditCells([{ col: 5, row: 5, attrs: { char: 'A', fg: '#ffffff', bg: '#000080' } }]);
+  project.commitEdit();
+  stroke(dodge, ctx, { x: 5.5, y: 11 });
+  expect(project.editCellAt(5, 5)).toBeUndefined();
+  const [top] = paintAt(project, 5, 10), [, , blue] = paintAt(project, 5, 11);
+  expect(top).toBeGreaterThan(0);  // the letter's white mixed into its blue, lightened
+  expect(blue).toBeGreaterThan(0x80);
+});
+
+test('pixel view: on the base a stroke unpins the characters it reaches; undo pins them again', async () => {
+  const { project, workspace, ctx } = await blank();
+  workspace.pickLayer('base');
+  project.writeBaseCells([{ col: 5, row: 5, char: 'A', fg: '#ffffff', bg: '#000080' }, { col: 15, row: 5, char: 'B', fg: '#ffffff', bg: '#000080' }]);
+  project.commitEdit();
+  stroke(blur, ctx, { x: 5.5, y: 11 });
+  expect(project.baseRecords.pins.has('5,5')).toBe(false);
+  expect(project.baseRecords.pins.get('15,5')).toBe('B'); // out of reach
+  project.undo();
+  expect(project.baseRecords.pins.get('5,5')).toBe('A');
+});
+
+test('ANSI view: Retouch keeps a drawing layer\'s characters and the base\'s pins', async () => {
+  const { project, workspace, ctx } = await blank('output');
+  project.writeEditCells([{ col: 5, row: 5, attrs: { char: 'A', fg: '#808080', bg: '#606060' } }]);
+  project.commitEdit();
+  stroke(blur, ctx, { x: 5.5, y: 11 });
+  expect(project.editCellAt(5, 5).char).toBe('A');
+  workspace.pickLayer('base');
+  project.writeBaseCells([{ col: 12, row: 5, char: 'B', fg: '#ffffff', bg: '#000080' }]);
+  project.commitEdit();
+  stroke(dodge, ctx, { x: 12.5, y: 11 });
+  expect(project.baseRecords.pins.get('12,5')).toBe('B');
+});
+
+test('pixel view: a stroke unlocks a cell once, so its later moves don\'t lay it back over what it already blurred', async () => {
+  const { project, workspace, ctx } = await blank();
+  const cells = [];
+  for (let row = 0; row < 10; row++) for (let col = 0; col < 10; col++) cells.push({ col, row, attrs: { char: '░', fg: '#ff0000', bg: '#ff0000' } });
+  project.writeEditCells(cells);
+  project.commitEdit();
+  workspace.retouchSize = 1; // a pixel at a time: the top half of cell 9,5, then its bottom half
+  getTool('blur').begin(ctx, { x: 9.5, y: 10.5 }, {});
+  const once = alphaAt(project, 9, 10);
+  blur.move(ctx, { x: 9.5, y: 11.5 }, { x: 9.5, y: 11.5 });
+  blur.end(ctx);
+  expect(once).toBeLessThan(1);
+  expect(alphaAt(project, 9, 10)).toBe(once);
+});

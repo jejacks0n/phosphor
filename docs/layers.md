@@ -864,6 +864,10 @@ swaps the two halves of each cell's base colors.
   - **Range** (Dodge and Burn) chooses the colors they change most: **Shadows** the dark ones, **Highlights** the light
     ones, **Midtones** (to start) the ones between, leaving black and white alone.
   - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels).
+    Nothing there is locked: a cell the stroke reaches that holds a character (one you typed, or one Merge down wrote
+    exactly, on a drawing layer, or a character pinned on the base) loses it, and its two halves become paint (on the
+    base, pixels) in the colors the cell showed, which the stroke then changes like any paint. Undo brings the
+    characters back. To keep text as it is, put it on a layer of its own.
   - **In the ANSI View**: Each cell's colors are, and its character stays; a cell that shows no character still shows
     none. Blur there evens a cell's colors with the cells around it, foreground with foreground and background with
     background. On a drawing layer that's its own typed and drawn cells, evened only with its other cells (a color set

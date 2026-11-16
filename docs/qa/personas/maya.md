@@ -273,8 +273,10 @@ dithered, and compare the dither at 80 and at 200 columns.
   letters stay and only their colors change, the empty cells beside them stay empty, and a cell that shows no character
   still shows none; each stroke is one undo step; a palette shows the result in its own colors.
 - Probes: `out-of-order`: stroke all three over a part of the layer with nothing on it (nothing changes, the picture
-  under it included), and hide the layer with its eye and stroke ("Make the layer visible to draw on it"); `undo-redo`: undo a
-  stroke, redo it; `extremes`: Strength at 1% and at 100%.
+  under it included), hide the layer with its eye and stroke ("Make the layer visible to draw on it"), and Blur over the
+  caption in the PIXEL view (its letters go, their colors becoming paint the stroke softens); `undo-redo`: undo a
+  stroke, redo it, and undo the PIXEL view's Blur over the caption (its letters come back); `extremes`: Strength at 1%
+  and at 100%.
 - Rated: yes, wants O, Shift+O and R
 
 ### 21. Add a vector layer and draw a shape
