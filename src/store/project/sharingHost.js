@@ -6,6 +6,7 @@ import { MOST_CHANGE_BYTES, packProject, readChange, readLayerOp } from '@/socia
 import { SAVED_KEYS, lockedAmong, randomId, stackOnWire, writeLayerRuns } from '@/store/project/shared.js';
 import { boundsOf, flushSoon } from '@/store/project/sharing.js';
 import { MOST_SHAPES, isShapeKey } from '@/document/shapes.js';
+import { onLayer } from '@/document/layerInfo.js';
 
 const LEAST_BASE_RUNS_BYTES = 4096; // of a base message, beside its pins; less and it's the project instead
 
@@ -22,6 +23,15 @@ function tooManyShapes(project, cells) {
     after.set(key, value !== null);
   }
   return size > MOST_SHAPES;
+}
+
+// An artist's change without what it has on a layer deleted in this room (removed) and not back, as drawn before they heard:
+// the rest is theirs to number. A layer the room never had is still refused (readChange).
+function withoutRemoved(project, msg) {
+  const gone = [...project._sharing.removed ?? []].filter((id) => !project.layerById(id));
+  if (!gone.length || !Array.isArray(msg.cells) || !Array.isArray(msg.runs)) return msg;
+  const on = (cell) => Array.isArray(cell) && typeof cell[0] === 'string' && gone.some((id) => onLayer(cell[0], id, [cell[1]]));
+  return { ...msg, cells: msg.cells.filter((cell) => !on(cell)), runs: msg.runs.filter((run) => !(Array.isArray(run) && gone.includes(run[4] ?? 'edit'))) };
 }
 
 export const sharingHostActions = {
@@ -64,13 +74,14 @@ export const sharingHostActions = {
 
   // An artist's change, undo or redo reaching the host, in the order they're heard. Null when it can't be
   // taken, for the room to answer (hosting.js): one that would change an art layer someone else is drawing in can't
-  // be, nor can one past the shapes a drawing holds. Otherwise it's numbered and
+  // be, nor can one past the shapes a drawing holds. What it has on a layer deleted since is left out (withoutRemoved), even
+  // all of it: a change with nothing left still takes a number, so its echo comes. Otherwise it's numbered and
   // sent, and it's what was numbered that comes back. My open stroke's slice goes first, or the ledger would
   // read my unsent paint as what's beneath theirs.
   takeFromArtist(by, message) {
     const sharing = this._sharing;
     if (sharing?.role !== 'host' || !this.paintLayer) return null;
-    const change = message.t === 'change' ? readChange(message, boundsOf(this)) : message;
+    const change = message.t === 'change' ? readChange(withoutRemoved(this, message), boundsOf(this)) : message;
     if (!change || (change.cells && tooManyShapes(this, change.cells))) return null;
     if (lockedAmong(this, change.cells?.map(([key]) => key) ?? this._ledger.keysOf(change.stroke), by)) return null;
     this.sendSlice();

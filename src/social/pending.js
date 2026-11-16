@@ -19,7 +19,7 @@
  */
 import { eachPixel, hashCell, hashPixel, Tail } from '../document/changes.js';
 import { TILE } from '../document/History.js';
-import { layerKey } from '../document/layerInfo.js';
+import { layerKey, onLayer } from '../document/layerInfo.js';
 
 const startOf = (at) => Math.floor(at / TILE) * TILE;
 const indexOf = (x, y) => (y - startOf(y)) * TILE + (x - startOf(x));
@@ -135,6 +135,35 @@ export class Pending {
       this.write([x, y, id], tile.agreed[i]);
       if (!--tile.held) this.#forgetTile(tile);
     });
+  }
+
+  // A layer gone from the stack: what's held on it is forgotten, and so is what the changes have on it, so nothing here
+  // writes it again; the changes stay, for their numbers. share: the layer's part of the check as the screen shows it. The
+  // sum loses the agreed picture's, which is the screen's but where mine are held. Read before the layer goes.
+  dropLayer(id, share = 0) {
+    const gone = new Set();
+    for (const { cells } of this.#changes) for (const [key, value] of cells) if (onLayer(key, id, [value])) gone.add(key);
+    for (const [key, { agreed }] of this.#cells) if (onLayer(key, id, [agreed])) gone.add(key);
+    for (const key of gone) {
+      const claim = this.#cells.get(key);
+      if (!claim) continue;
+      this.#sum ^= hashCell(key, this.read(key)) ^ hashCell(key, claim.agreed);
+      this.#cells.delete(key);
+    }
+    for (const tile of [...this.#tiles.values()]) {
+      if (tile.id !== id) continue;
+      for (let i = 0; i < tile.claims.length; i++) {
+        if (!tile.claims[i]) continue;
+        const x = tile.x + i % TILE, y = tile.y + Math.floor(i / TILE);
+        this.#sum ^= hashPixel(x, y, this.read([x, y, id]), id) ^ hashPixel(x, y, tile.agreed[i], id);
+      }
+      this.#forgetTile(tile);
+    }
+    for (const change of this.#changes) {
+      change.cells = change.cells.filter(([key]) => !gone.has(key));
+      change.runs = change.runs.filter(([, , , , on = 'edit']) => on !== id);
+    }
+    this.#sum ^= share;
   }
 
   // A host came back: what it may never have numbered, oldest first, each with its stroke.

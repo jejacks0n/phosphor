@@ -59,11 +59,14 @@ function add(kind) {
 }
 
 // The ⋯ menu's Duplicate (the copy goes directly above and is picked, project.duplicateLayer) and Delete, each an undo
-// step alone: Duplicate off at the most layers.
+// step alone: Duplicate off at the most layers. In a room Delete asks first (DeleteLayerDialog): no one can undo it.
 const duplicateOff = computed(() => (full.value ? t('layers.full', { n: MOST_LAYERS }) : null));
 const duplicate = (layer) => project.duplicateLayer(layer.id);
 // Its row (and ⋯) gone, focus goes to the row picked now (the one under it) rather than the page.
-const remove = (layer) => project.deleteLayer(layer.id) && backToRow(workspace.pickedLayer);
+function remove(layer) {
+  if (project._sharing) workspace.deleteLayerAsk = { id: layer.id };
+  else if (project.deleteLayer(layer.id)) backToRow(workspace.pickedLayer);
+}
 
 // The ⋯ menu's Merge down: the layer into the one under it, as the toolbar's (off with its reason, asking how into the base).
 const { offFor: mergeOff, mergeDown } = useMergeDown();

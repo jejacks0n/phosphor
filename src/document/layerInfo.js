@@ -148,3 +148,6 @@ export function keyLayer(key) {
   const at = key.indexOf(':');
   return at < 0 ? { id: 'edit', key } : { id: key.slice(0, at), key: key.slice(at + 1) };
 }
+// Whether a position is on the layer with the id: a cell's key says, and a shape's values do (any of them not null: a shape
+// stays on the vector layer it was drawn on).
+export const onLayer = (key, id, values) => (isShapeKey(key) ? values.some((value) => value && (value.layer ?? 'vector') === id) : keyLayer(key).id === id);

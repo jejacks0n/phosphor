@@ -161,6 +161,7 @@ export const useProjectStore = defineStore('project', {
     _layersStarted: 0, // how many times the layers have started over for a document opened (document.js: newLayers)
     _artInside: null, // the art layer stepped into, and the drawing kept aside meanwhile (vector.js: enterArt)
     _locks: {}, // in a room, sub -> { key, name }: the art layer they're drawing in, as their cursors say (DrawingStore keeps it)
+    _picks: {}, // in a room, sub -> { layer, name }: the layer they've picked, as their cursors say (DrawingStore keeps it)
   }),
 
   getters: {

@@ -1,17 +1,16 @@
 // Reading the document without changing it: the colors under a grid pixel (the image, the base, the
 // paint), what's under a cell, edit cells, and rects on the grid.
 import { wholeTile } from '@/document/PaintLayer.js';
-import { hashCell, hashPixel, pack } from '@/document/changes.js';
+import { hashCell } from '@/document/changes.js';
 import { cellKey, parseKey, mergeEntry } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
-import { keyLayer, layerKey } from '@/document/layerInfo.js';
+import { keyLayer } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
-import { ctx2d } from '@/lib/Canvas.js';
 import { bakedEntry, cellIndex, charRowsOf, halfColors, isSolidGlyph, mix } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { resolves } from '@/lib/CharResolver.js';
-import { levelCells, over } from '@/store/project/shared.js';
+import { layerSum, levelCells, over } from '@/store/project/shared.js';
 
 // For each palette color, a stored color that shows as it under the adjustments (paletteChoices), kept while
 // the palette and the settings stay the same: asked once a cell by a whole grid's Merge up.
@@ -165,16 +164,7 @@ export const readingActions = {
   editLayerSum() {
     let sum = 0;
     for (const [key, shape] of this.shapes) sum ^= hashCell(key, shape);
-    for (const id of new Set([this.editId, ...this.layers.slice(1).filter((layer) => layer.kind === 'cells').map((layer) => layer.id)])) {
-      const { editCells, paintLayer } = id === this.editId ? this._artInside ?? this : this._layerData.get(id) ?? {};
-      for (const [key, entry] of editCells ?? []) sum ^= hashCell(layerKey(id, key), entry);
-      if (!paintLayer?.hasPaint) continue;
-      const { width, height } = paintLayer.canvas;
-      const { data } = ctx2d(paintLayer.canvas).getImageData(0, 0, width, height);
-      for (let i = 3, at = 0; i < data.length; i += 4, at++) {
-        if (data[i]) sum ^= hashPixel(at % width, Math.floor(at / width), pack(data, i - 3), id);
-      }
-    }
+    for (const id of new Set([this.editId, ...this.layers.slice(1).filter((layer) => layer.kind === 'cells').map((layer) => layer.id)])) sum ^= layerSum(this, id);
     return sum;
   },
 

@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 
 // A choice in a centered confirm box (Merge down: exactly or into the picture; Bake under CGA/VGA:
-// keep full color or lock to the palette). choices: [{ id, title, text, note? }], the first
+// keep full color or lock to the palette). choices: [{ id, title, text?, note? }], the first
 // focused, the second accented as the alternative; choosing emits its id.
 const props = defineProps({
   title: { type: String, required: true },
@@ -24,7 +24,7 @@ const { t } = useI18n();
         @click="emit('choose', choice.id)"
     >
       <b>{{ choice.title }}</b>
-      <span>{{ choice.text }}</span>
+      <span v-if="choice.text">{{ choice.text }}</span>
       <span v-if="choice.note" class="warn">{{ choice.note }}</span>
     </button>
     <div class="actions">

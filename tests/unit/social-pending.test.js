@@ -528,3 +528,21 @@ test('dropTaken from a host saying too many stops at what there is', () => {
   pending.dropTaken(99);
   assert.equal(pending.size, 0);
 });
+
+test('dropping a layer forgets what waits on it', () => {
+  const me = artist('me', { cells: [['L2:1,1', START]], pixels: [['L2:0,0', BLUE]] });
+  me.draw('s1', { cells: [['L2:2,2', MINE], ['3,3', MINE]], runs: [[0, 0, 1, RED, 'L2'], [0, 0, 1, RED]] });
+  const share = hashCell('L2:1,1', START) ^ hashCell('L2:2,2', MINE) ^ hashPixel(0, 0, RED, 'L2'); // L2 as the screen shows it
+  me.pending.dropLayer('L2', share);
+  for (const map of [me.own.cells, me.own.pixels]) for (const key of map.keys()) if (keyLayer(key).id === 'L2') map.delete(key); // the layer goes
+  me.pending.lift();
+  assert.equal(me.own.px(0, 0, 'L2'), 0, 'nothing written on the layer that went');
+  assert.equal(me.own.cells.get('L2:2,2'), undefined);
+  assert.equal(me.own.px(0, 0), 0, 'the edit layer\'s run was still held: lift shows what\'s agreed');
+  assert.equal(me.own.cells.get('3,3'), undefined);
+  assert.equal(me.pending.sum, me.own.sum());
+  assert.equal(me.pending.size, 1, 'its number still comes');
+  me.pending.heard(from('me', 's1', 1, { cells: [['3,3', MINE]], runs: [[0, 0, 1, RED]] })); // the host numbers the rest
+  assert.equal(me.pending.size, 0);
+  assert.equal(me.pending.sum, me.own.sum());
+});

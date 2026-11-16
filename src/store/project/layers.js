@@ -14,7 +14,7 @@ import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
-import { NUDGE_MS, bytesHeld, emptyFields, followBase, layerName, putLayer, randomId, swapLayer, refusedInRoom } from '@/store/project/shared.js';
+import { NUDGE_MS, bytesHeld, dropFromSums, emptyFields, followBase, layerName, putLayer, randomId, swapLayer, refusedInRoom } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -103,6 +103,15 @@ function asked(store, op) {
 }
 // Who a host's change to the stack in a room is for: the artist whose op it's doing (takeLayerOp), else the host.
 const askedBy = (store) => store._sharing.asker ?? store._sharing.me;
+
+// In a room, whether someone other than who's deleting it has the layer with the id picked, as their cursor says: a delete
+// is refused then, with a toast saying who, but for an artist's ask (takeLayerOp), refused saying nothing.
+function pickedElsewhere(store, id) {
+  if (!store._sharing) return false;
+  const picker = Object.entries(store._picks).find(([sub, { layer }]) => layer === id && sub !== askedBy(store))?.[1];
+  if (picker && !store._sharing.asker) toast(t('layers.pickedBySomeone', { name: picker.name }));
+  return !!picker;
+}
 
 // A copy made in a room: it goes in the stack empty and the room hears the stack (made: the copy), then what's on it
 // (held's data or shapes) as a change of the host's, numbered after. No one can undo that: the ledger forgets it at once,
@@ -232,12 +241,15 @@ export const layerActions = {
   },
 
   // The layer with the id deleted, on every frame at once, one undo step that puts it back as it was, with what's on it;
-  // whether it went. Not the bottom, and not here for an artist in a room (it's asked of the host). The picked layer going
-  // picks the one that was under it (followLayerPick).
+  // whether it went. Not the bottom, not one someone else in a room has picked (pickedElsewhere), and not here for an artist
+  // in a room (it's asked of the host). The picked layer going picks the one that was under it (followLayerPick). In a room
+  // the host remembers it went (removed), for what artists drew on it before they heard (takeFromArtist).
   deleteLayer(id) {
-    if (!(this.layers.findIndex((layer) => layer.id === id) > 0) || asked(this, { kind: 'delete', id })) return false;
+    if (!(this.layers.findIndex((layer) => layer.id === id) > 0) || pickedElsewhere(this, id) || asked(this, { kind: 'delete', id })) return false;
     ready(this, id);
     if (this._sharing) {
+      dropFromSums(this, id);
+      (this._sharing.removed ??= new Set()).add(id);
       takeOut(this, id);
       this.render();
       this.sendLayers({ by: askedBy(this) });
