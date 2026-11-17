@@ -482,7 +482,8 @@
       "clearGuidesTitle": "Supprimer tous les repères de ce dessin"
     },
     "zoom": {
-      "title": "Zoom"
+      "title": "Zoom",
+      "tip": "Zoom : cliquez pour zoomer, {alt}-clic pour dézoomer, faites glisser pour zoomer en douceur"
     },
     "flip": {
       "title": "Inverser PP/AP de la cellule"
@@ -769,6 +770,11 @@
     "breakHandle": "faire glisser la poignée pour l'ajuster indépendamment",
     "spaceKey": "Espace",
     "pan": "panoramique",
+    "clickKey": "Clic",
+    "altClickKey": "{alt} Clic",
+    "zoomIn": "zoom avant",
+    "zoomOut": "zoom arrière",
+    "zoomingOut": "Zoom arrière · faites glisser d'un côté ou de l'autre pour zoomer en douceur",
     "colRow": "Col {col} Lig {row}",
     "colRowEmpty": "Col — Lig —",
     "charOrigin": "Car. {char} {origin}",
@@ -1187,7 +1193,7 @@
       "picker": "Pipette",
       "wand": "Baguette magique : sélectionner des zones par couleur ou caractère",
       "hand": "Main",
-      "zoom": "Zoom",
+      "zoom": "Zoom (clic : avant, {alt}-clic : arrière, glisser)",
       "editMode": "Mode Édition : taper directement des caractères (appuyez sur Échap pour utiliser les raccourcis d'outils)",
       "flip": "Inverser (vue ANSI)",
       "select": "Sélection",

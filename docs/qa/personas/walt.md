@@ -97,7 +97,8 @@ script. Every section ends with Free time.
 - Does: zooms out with Cmd+minus, Ctrl+wheel (a pinch) or the Zoom tool (Z), then goes back to 100% with Cmd+0 and
   with the zoom in the status bar.
 - Expects: the view zooms down to 25%; Cmd+minus halves the zoom about the middle of the view and Cmd+0 goes back to
-  100%; the status bar shows the zoom away from 100% and pressing it goes back; zooming stays smooth at this size.
+  100%; with the Zoom tool, Alt-click (Option-click) zooms out a step around the point (100% to 50% to 25%), a click in
+  a step, and the status bar's hint says so; the status bar shows the zoom away from 100% and pressing it goes back; zooming stays smooth at this size.
 - Probes: `extremes`: zoom to 800% and to 25%; `speed`: zoom in and out quickly with `qa.frames`.
 - Rated: yes, wants Cmd+minus and Cmd+0 (the app's own zoom keys in the art views, in place of the browser's)
 

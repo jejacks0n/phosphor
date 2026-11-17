@@ -41,7 +41,7 @@ const groups = computed(() => [
       [['I'], t('shortcuts.rows.picker')],
       [['W'], t('shortcuts.rows.wand')],
       [['H'], t('shortcuts.rows.hand')],
-      [['Z'], t('shortcuts.rows.zoom')],
+      [['Z'], t('shortcuts.rows.zoom', { alt: k('alt') })],
       [['T', 'K'], t('shortcuts.rows.editMode')],
       [['F'], t('shortcuts.rows.flip')],
       [['M'], t('shortcuts.rows.select')],

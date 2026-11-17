@@ -482,7 +482,8 @@
       "clearGuidesTitle": "Remove all guides from this drawing"
     },
     "zoom": {
-      "title": "Zoom"
+      "title": "Zoom",
+      "tip": "Zoom: click to zoom in, {alt}-click to zoom out, drag to zoom smoothly"
     },
     "flip": {
       "title": "Swap cell FG/BG"
@@ -769,6 +770,11 @@
     "breakHandle": "drag handle to adjust it independently",
     "spaceKey": "Space",
     "pan": "pan",
+    "clickKey": "Click",
+    "altClickKey": "{alt} Click",
+    "zoomIn": "zoom in",
+    "zoomOut": "zoom out",
+    "zoomingOut": "Zooming out · drag either way to zoom smoothly",
     "colRow": "Col {col} Row {row}",
     "colRowEmpty": "Col — Row —",
     "charOrigin": "Char {char} {origin}",
@@ -1187,7 +1193,7 @@
       "picker": "Eyedropper",
       "wand": "Magic Wand: select areas by color or character",
       "hand": "Hand",
-      "zoom": "Zoom",
+      "zoom": "Zoom (click in, {alt}-click out, drag)",
       "editMode": "Edit Mode: type characters directly (press Esc to use tool shortcuts)",
       "flip": "Flip (ANSI view)",
       "select": "Select",

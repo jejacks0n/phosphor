@@ -7,6 +7,7 @@ import { i18n, setLocale } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { rectShape } from '@/document/shapes.js';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
+import { shortcut } from '@/lib/keyLabels';
 
 let app = null, host = null;
 afterEach(() => {
@@ -91,4 +92,16 @@ test('a long layer name is cut short with an ellipsis, the whole name its title'
   expect(layer().title).toBe(name);
   expect(layer().scrollWidth).toBeGreaterThan(layer().clientWidth);
   expect(getComputedStyle(layer()).textOverflow).toBe('ellipsis');
+});
+
+// dex-13: the Zoom tool's hint said only Space pan, so nothing said a click zooms or how to zoom out.
+test('the Zoom tool says a click zooms in and Alt-click out; with Alt held, that it zooms out and a drag zooms smoothly', async () => {
+  const { workspace } = await mount();
+  workspace.setActiveTool('zoom');
+  await nextTick();
+  const hint = () => host.querySelector('.hint').textContent;
+  expect(hint()).toBe(`Click zoom in · ${shortcut('alt')} Click zoom out · Space pan`);
+  workspace.isAltPressed = true;
+  await nextTick();
+  expect(hint()).toBe('Zooming out · drag either way to zoom smoothly');
 });
