@@ -84,7 +84,7 @@ function signOut() { social.signOut(); }
       <div class="box">
         <span class="who-am-i">
           [ <UserName :name="social.myName" :sub="social.claims?.sub" /> ]
-          <DropdownMenu v-if="!DESKTOP" class="account-menu" :label="t('common.actions')" align="left" up>
+          <DropdownMenu v-if="!DESKTOP" class="account-menu" :label="t('common.actions')" :trigger-label="t('common.actions')" align="left" up>
             <template #trigger>…</template>
             <button @click="editAccount">{{ t('social.lobby.editAccount') }}</button>
             <button @click="signOut">{{ t('social.lobby.signOut') }}</button>
