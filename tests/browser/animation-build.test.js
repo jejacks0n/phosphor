@@ -59,6 +59,27 @@ for (const style of ['ansi', 'ascii', 'colorAscii']) {
   }
 }
 
+// docs/model.md R7: a frame's upper vector layer draws at the paint's scale, as the still's does, so By shape samples
+// its shapes alike and a built frame equals the still.
+test('built frames equal the still with a vector layer above a painted layer, under By shape', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 24, rows: 24 });
+  Object.assign(project, { renderStyle: 'colorAscii', charChoiceAscii: 'shape' });
+  project.paintStroke(Array.from({ length: 10 }, (_, k) => ({ x: 4 + k, y: 10, alpha: 1 })), '#ffffff');
+  project.commitEdit();
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(2.3, 4.6, 16.7, 18.2, { fill: '#ff4000' }));
+  project.commitEdit();
+  project.addFrame('duplicate');
+  await settle(project);
+  for (let i = 0; i < project.frames.length; i++) {
+    project.showFrame(i);
+    await settle(project);
+    expect(cellValues((await project.builtFrame(i)).cells)).toEqual(cellValues(project.cells));
+  }
+});
+
 test('built output and edit cells are the frame’s own', async () => {
   const { project } = await movie('ansi', 'none');
   const built = await project.builtFrame(0);

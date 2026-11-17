@@ -515,6 +515,29 @@ where the picture falls between them, so a gradient comes out smooth instead of 
 
 ---
 
+## How Layers Blend
+
+A few rules hold across every tool, view and art style, so what you see while you draw is what a merge, an export
+and the PIXEL view give you:
+
+- **Paint is paint on any layer.** A stroke converts over what's under it (the picture, and the paint and shapes of
+  the layers below) the same way whichever layer it's on, in ANSI and in the ASCII styles. A layer moved up or down,
+  with nothing between it and where it was, looks the same.
+- **Your characters stay yours.** A cell you typed, pasted or opened from a file keeps its character: paint over it
+  tints it, Blur, Dodge and Burn recolor it, Colors only tints it. A character with nothing to tint (a space, or one
+  drawn in its own background color) lets the paint show: as a ▄ in ANSI, as your ASCII characters in Color ASCII
+  and Monochrome ASCII.
+- **Merging changes nothing.** Merge down keeps paint as paint, so the paint tools keep working on it. Where the
+  converter would have to pick a cell differently in its new place, the merge pins the cell as it showed, and that
+  pin is paint to everything but the converter: the PIXEL view shows the paint, paint above lays over it as before,
+  and painting, erasing, Blur or Colors only there takes the pin off.
+- **Color ASCII is ANSI in spirit.** The converter's cells are ink on black, but a cell of yours with a background
+  shows it, and keeps it when merged onto the base.
+- **The PIXEL view is the pixels.** Its Overlay draws only your characters, never the converter's over paint.
+
+The engineering rules behind these, with where each lives in the code and the tests that hold it, are in
+[docs/model.md](model.md); Maya's QA script walks them ([How my layers blend](qa/personas/maya.md#how-my-layers-blend)).
+
 ## Moving Things Between Layers
 
 ### Merge Down

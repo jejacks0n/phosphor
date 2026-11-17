@@ -165,6 +165,16 @@ current style (a paint block outside ANSI) isn't drawn: its paint is already the
 - Checked by: `tests/browser/pixel-overlay.test.js › in the ASCII styles a paint block isn't drawn over its paint …` and
   `… the report: the strokes under and over the shape …`.
 
+## Where the rules are walked and what else they reach
+
+Maya's QA script walks R2–R8 as a person would, in ANSI and in Color ASCII ([How my layers blend](qa/personas/maya.md#how-my-layers-blend));
+Dex's step 26 walks typing, Blur and Colors only on one layer in ANSI. [layers.md](layers.md#how-layers-blend) says the
+same in plain words. The rules reach past the stack view: animation frames are built by the same walk with the same
+scales (FrameBuilder: a built frame equals the still, `tests/browser/animation-build.test.js`); a room's artists and
+watchers compose with the same code; exports, Flatten and the thumbnail read the composed cells; copy and paste carry
+entries and paint with their kinds, frozen cells included; a layer moved up or down converts the same (R7,
+`tests/browser/layer-stack.test.js`).
+
 ## Known departures
 
 - An art layer's `▄` (what `artCellOf` makes of paint, paint blocks and solid glyphs) is kept as a character in every

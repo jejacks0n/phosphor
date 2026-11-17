@@ -45,6 +45,7 @@ function shapesOf(resolved) {
 export default class FrameBuilder {
   #renderer = new Renderer();
   #scratch = null;
+  #paintScale = null;  // the drawing's paint scale (prepare)
   #shapes = null; // its own ShapeLayer over the store's base layer: each frame has its own shapes
   #layers = layersFromOld(null, { hasShapes: false });
   #lower = lowerGroup(this.#layers, {}); // these layers have no chars of their own
@@ -55,7 +56,10 @@ export default class FrameBuilder {
   // The picture through the pipeline, for these settings. stores: the store's base layer and records, which
   // are under every frame, and layers: the drawing's, bottom first, whose eyes say what's left out. baseChars: the
   // bottom's character settings, and layerParams each layer's params (the store's), when layers have their own.
-  async prepare(image, params, { baseLayer, baseRecords, layers = this.#layers, baseChars, layerParams = null }) {
+  // paintScale: the drawing's paint layers' scale, which its upper vector layers draw at (syncShapeLayers), so a frame's
+  // shapes convert as the still's do (docs/model.md R7).
+  async prepare(image, params, { baseLayer, baseRecords, layers = this.#layers, baseChars, layerParams = null, paintScale = null }) {
+    this.#paintScale = paintScale;
     const shown = layers.filter((layer, at) => !at || !layer.hidden), hideBase = !!layers[0]?.hidden;
     this.#layers = layers;
     this.#lower = lowerGroup(shown, baseChars);
@@ -71,7 +75,7 @@ export default class FrameBuilder {
       const { kind } = layers.find((layer) => layer.id === id), own = layerParams?.get(id) ?? params;
       if (kind === 'cells') return { id, kind, paint: new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 }), params: own };
       const layer = new ShapeLayer(null);
-      layer.grid(params.cols, params.rows, baseLayer?.scale ?? 1);
+      layer.grid(params.cols, params.rows, paintScale ?? baseLayer?.scale ?? 1);
       return { id, kind, layer, params: own };
     });
     this.#renderer.upper = this.#upper; // a layer's own Best match or By shape waits for the reference font too
@@ -129,7 +133,7 @@ export default class FrameBuilder {
       upper: every.upper.map(({ kind }) => {
         if (kind === 'cells') return paint();
         const layer = new ShapeLayer(null);
-        layer.grid(cols, rows, renderer.baseLayer?.scale ?? 1);
+        layer.grid(cols, rows, this.#paintScale ?? renderer.baseLayer?.scale ?? 1);
         return layer;
       }),
     };

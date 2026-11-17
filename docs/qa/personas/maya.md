@@ -415,9 +415,77 @@ held.
 **Free time:** she'd look for a Merge visible (all layers into one) as Photoshop has, try Flatten to see how it differs
 from Bake, merge with a selection, and check the merges are off with Animate on and more than one frame.
 
+## How my layers blend
+
+She's learned the rules the layers follow and checks them when something looks off, since a wrong one costs her an
+afternoon. Each step she does twice: in ANSI, and in Color ASCII with Choose characters on By shape over her photo. The
+engineering rules behind these steps are docs/model.md (R1–R8); a finding here names the step and the view.
+
+### 31. Paint blends the same on any layer
+- Does: on Layer 1 paints a white patch; on Layer 2, above it, a soft red stroke (Opacity 40, Hardness low) across the
+  patch's edge; then the same stroke on Layer 1 beside it. Drags Layer 2 below Layer 1 in LAYERS, then back.
+- Expects: the stroke on Layer 2 looks like the one on Layer 1, the same characters and colors over the white and over
+  the photo, in the ANSI and PIXEL views alike; in Color ASCII, soft paint over white comes out near-white, never a
+  darker character; a layer dragged below another with nothing between them looks as it did.
+- Probes: `pixel-view`: the Overlay at 100% and at 0% show the same strokes; `again`: by intensity instead of By shape.
+- Rated: no (drawing)
+
+### 32. Merging changes nothing, and merged paint stays paint
+- Does: merges Layer 2 down into Layer 1; then draws a soft-edged shape on a vector layer over Layer 1 (a gradient
+  fill too) and merges it down; then, with a white stroke on a layer above crossing the shape's edge, merges the
+  shape's layer down under it.
+- Expects: each merge leaves the canvas as it was, the ANSI and PIXEL views alike and the stroke above included; the
+  merged shape and paint are paint afterward (Blur fades them, the Eraser erases them, the Paint Bucket flows across
+  them); nothing along the shape's edge is written as characters, or only a cell or two in ANSI, and those still
+  look as they did.
+- Probes: `undo-redo`: each merge; `again`: with the vector layer given its own character set first, so the merge has
+  to write cells along the edge: the canvas still doesn't change, and Blur across the edge afterward fades those cells
+  like the paint beside them.
+- Rated: yes, wants Cmd+E
+
+### 33. My letters stay letters
+- Does: types a caption on Layer 1, then Blur, Dodge and Burn across it and across the merged shape's edge; then
+  brushes with Colors only across both.
+- Expects: the letters keep their characters under all three (their colors change; Blur spreads a glow into the clear
+  around them); the merged edge fades and paints like paint; Colors only tints a letter and keeps it, and turns a cell
+  the merge wrote into plain paint (a ▄ in ANSI, her ASCII characters in Color ASCII).
+- Probes: `undo-redo`: a stroke of each; `extremes`: Strength at 100% ten times over the caption (the letters are still
+  there).
+- Rated: yes, wants R, O and Shift+O
+
+### 34. Paint over letters and spaces
+- Does: brushes a stroke across the caption and across a run of typed spaces beside it, with Colors only.
+- Expects: in ANSI the letters are tinted and the spaces become ▄ of the paint; in Color ASCII the letters are tinted
+  and the paint shows over the spaces as her ASCII characters, never hidden.
+- Probes: `again`: over an opened .ans file's spaces (Draw on top) in Color ASCII.
+- Rated: no (drawing)
+
+### 35. Color ASCII keeps my backgrounds
+- Does: in Color ASCII, types dark text over white paint on Layer 1 (its cells take the paint's color as their
+  background), Blur across it, and merges Layer 1 onto the base with Keep crisp cells; undoes; then on a fresh layer
+  paints a Colors only stroke, types over the paint again, and merges with Blend into source image; then, with Base
+  picked, Set FG on a few cells.
+- Expects: the text keeps its light background after either merge; no cell anywhere gets a background it didn't
+  show; the Colors only stroke goes into the picture as paint; Set FG on the base writes ink on black.
+- Probes: `undo-redo`: each merge; `again`: the same in ANSI (backgrounds are ANSI's as ever).
+- Rated: yes, wants Cmd+E
+
+### 36. The PIXEL view tells the truth
+- Does: after each of the steps above, compares the PIXEL view with the Overlay at 100%, 50% and 0% against the ANSI
+  view.
+- Expects: paint in the PIXEL view is the paint itself, blended with what's under it, never ASCII characters drawn
+  over it; a typed letter shows in the Overlay; a merged shape's edge has no holes, dark lines or half-blocks that
+  the ANSI view doesn't have.
+- Probes: `pixel-view`: a stroke in the PIXEL view over a merged edge and over the caption, then the same stroke in
+  ANSI (the same result).
+- Rated: no (looking)
+
+**Free time:** she'd try all of it in Monochrome ASCII, move a layer with a merged shape above a layer of paint and
+back, hide the base under it all, and export the .ans after each merge to see it opens the same.
+
 ## Getting it out
 
-### 31. Export a PNG to post
+### 37. Export a PNG to post
 - Does: presses Export .png (in the left column, or on SAUCE), keeps Smooth when it asks about smooth text, and saves;
   then turns the status bar's Smooth off and exports again.
 - Expects: a PNG of the art as it shows, same palette, dithering and layers
@@ -426,7 +494,7 @@ from Bake, merge with a selection, and check the merges are off with Animate on 
   right-click on the canvas.
 - Rated: yes, wants a key for Export PNG
 
-### 32. Export an .ans for the terminal
+### 38. Export an .ans for the terminal
 - Does: presses Export .ans, keeps the offered name, and saves; then checks it in the headless terminal against the
   screen (the README's Files).
 - Expects: the dialog offers "photo-" with the date and time; any character CP437 lacks is listed with what it becomes
@@ -436,7 +504,7 @@ from Bake, merge with a selection, and check the merges are off with Animate on 
   reopen and check the offered name; `extremes`: name the file with emoji and slashes.
 - Rated: yes, wants a key for Export .ans
 
-### 33. Save the project and reopen it
+### 39. Save the project and reopen it
 - Does: presses Cmd+S, saves; starts a New project; opens the saved .phosphor with Choose a file.
 - Expects: everything comes back: the picture and its sliders, the palette and Dither, each layer with its name, its
   eye, its paint and its own character settings, the vector layer's shapes with their gradients, the art layer, the
@@ -452,7 +520,7 @@ from it.
 
 ## Bigger: 200 columns
 
-### 34. Make it 200 columns wide
+### 40. Make it 200 columns wide
 - Does: opens her photo fresh, sets Dimensions to 200 columns with Lock aspect ratio on.
 - Expects: nothing drawn yet, so the picture is converted again at the new size and the rows follow its shape; the
   change lands within the `setting` budget.
@@ -460,7 +528,7 @@ from it.
   size change.
 - Rated: yes, wants Tab to Dimensions (typing the number is content)
 
-### 35. Tune it at the bigger size
+### 41. Tune it at the bigger size
 - Does: at 200 columns, moves Brightness, Dither and Pattern light, switches Choose characters to By shape, and paints
   a stroke on Layer 1.
 - Expects: each change lands within the `setting` budget; strokes draw without long frames; with a stroke drawn, a
