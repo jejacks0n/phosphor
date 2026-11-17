@@ -31,7 +31,7 @@ import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex, withIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix } from '../lib/Cells.js';
+import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint } from '../lib/Cells.js';
 import { cellKey, parseKey, shownEntry } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
@@ -1071,21 +1071,28 @@ export default class Renderer {
       const entry = shownEntry(u.cells.get(key), renderStyle);
       const top = read ? paintAt(read, 2 * row) : null, bottom = read ? paintAt(read, 2 * row + 1) : null;
       if (entry) {
-        cell = coverCell(composeCell(cell, entry, renderStyle, (hex, index) => this.effective(hex, params, index)), top, bottom, { renderStyle, palette });
+        cell = composeCell(cell, entry, renderStyle, (hex, index) => this.effective(hex, params, index));
         exact = true;
-        continue;
       }
-      if (!top && !bottom) continue;
-      if (exact) {
-        cell = coverCell(cell, top, bottom, { renderStyle, palette });
-        continue;
-      }
-      const halves = halfColors(cell), [ht, hb] = halves;
-      // Paint is drawn a grid pixel at a time (PaintLayer.paint, drawOver): its halves are its samples.
-      cell = this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, null, snap);
+      cell = this.#paintOver(cell, top, bottom, exact, col, row, params, palette);
     }
     this.#exact = exact;
     return cell;
+  }
+
+  // Paint (top and bottom: the cell's two grid pixels of it, { r, g, b, a } or null) over a cell at col, row, in a layer's
+  // settings (params; palette: the colors it snaps to, or null while a stroke is held). Over a character that's someone's
+  // own (exact) the paint tints the character, which stays (coverCell; in ANSI one with nothing to tint becomes a ▄). Over
+  // anything else it's paint over paint: mixed into the cell's two halves and converted as the layer converts paint
+  // (#upperChar; the paint's halves are its samples, as it's drawn a grid pixel at a time). So is paint over a character
+  // with no ink to tint in the ASCII styles (opensToPaint), where there's no ▄ to make of it. docs/model.md, R2.
+  #paintOver(cell, top, bottom, exact, col, row, params, palette) {
+    if (!top && !bottom) return cell;
+    const { renderStyle } = params;
+    if (exact && (renderStyle === 'ansi' || !opensToPaint(cell, renderStyle))) return coverCell(cell, top, bottom, { renderStyle, palette });
+    const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
+    const halves = halfColors(cell), [ht, hb] = halves;
+    return this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, null, snap);
   }
 
   // The cell an upper layer's settings (params, its own) make of a converted cell at col, row: under, its two half colors
@@ -1325,7 +1332,7 @@ export default class Renderer {
     const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
     if (!top && !bottom) return null;
     const under = this.underCell(col, row, params, []);
-    return under && coverCell(under, top, bottom, { renderStyle: params.renderStyle, palette: this.#heldData ? null : this.palette });
+    return under && this.#paintOver(under, top, bottom, true, col, row, params, this.#heldData ? null : this.palette);
   }
 
   // A converted cell with the base layer's pin (if any) as its character, and the 256-color indexes kept beside the pin
@@ -1369,10 +1376,7 @@ export default class Renderer {
     if (own ? !this.#hasUnder(col, row, params) : !under) return baseCells[cellIndex(col, row, params.cols)];
     const cell = composeCell(under, entry, params.renderStyle, (hex, index) => this.effective(hex, params, index));
     if (this.#noPaint) return cell;
-    return coverCell(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), {
-      renderStyle: params.renderStyle,
-      palette: this.palette,
-    });
+    return this.#paintOver(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), true, col, row, params, this.palette);
   }
 }
 

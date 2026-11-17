@@ -423,8 +423,10 @@ under it, and the last edit to a cell wins.
 - **Nothing to Show Through**: A cell whose character is solid or empty (a space, █, ▀ or ▄), or doesn't show (drawn
   in its own background color), has nothing to show paint through, so under paint it becomes a ▄ half-block instead.
   The same goes for the base layer's pinned characters (an opened file's, or ones Merge down left), shown in the
-  colors they show. In the ASCII styles a pinned ▄ is its two colors, converted with your ASCII characters, as there
-  are no half-blocks there; the other pinned characters show as they are.
+  colors they show. In Color ASCII and Monochrome ASCII there are no half-blocks: a character with nothing to show
+  paint through (a space, or one in its own background color) is converted with your ASCII characters, paint and all,
+  as an empty cell under paint is, so painting over a typed or opened space shows the paint; a character with ink,
+  `█` included, keeps it and is tinted. A pinned ▄ is its two colors, converted the same way.
 - **Cells Over Paint**: Typing or drawing cells (a line box, a Character shape, block glyphs) over paint replaces the
   paint in those cells, so what you wrote shows. With the background set to None, each cell keeps the background
   color the paint gave it, as it keeps the picture's or an earlier cell's.

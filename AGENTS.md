@@ -59,6 +59,10 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
 - `src/document/frames.js` (a frame as data, what it resolves to) and `src/document/FrameBuilder.js` (a frame's cells, made the way a still's are), with `src/composables/usePlayback.js` (playing) and `src/lib/CastFile.js` and `src/lib/GifFile.js` (exports; a GIF's palette and file are made off the page in `src/lib/gifWorker.js`, with `src/lib/GifEncoder.js`): animation.
 - `src/document/`: the document's data (layers, cells, history, files); `src/lib/`: the libraries
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
+- What a cells layer holds (paint, paint blocks, characters of someone's own) and what paint, Merge down, Retouch,
+  Colors only and the PIXEL view's Overlay do with each: [docs/model.md](docs/model.md), numbered rules that say where
+  each lives and which tests hold it. Read it before changing any of those paths; a change to a rule changes it there,
+  in the same commit, and its tests name the rule.
 - The SOCIAL tab: `src/social/` (the network and crypto modules: API calls, the lobby socket, keys
   and passes, Turnstile, names, the server's error words; for rooms `wire.js` (messages between
   browsers), `peer.js` (WebRTC), `hosting.js`, `watching.js`, `pending.js` (an artist's changes with no number yet), `thumbnail.js`

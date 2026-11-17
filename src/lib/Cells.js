@@ -270,6 +270,12 @@ export const showsChar = (cell) => cell.fg.hex !== cell.bg.hex;
 // through: under paint they become a real half-block instead.
 export const isSolidGlyph = (char) => coverageOf(char).every(c => c === 0 || c === 1);
 
+// Whether paint over a cell shows as paint, not as the cell's character tinted: the character has no ink to tint
+// (docs/model.md, R2). One in its own background color in any style; in ANSI a solid or empty glyph too (coverCell makes
+// a ▄ of it, each half its color under the paint); in the ASCII styles, which draw no half-blocks, one with no ink at
+// all (a space), which the paint is converted over as it is over a cell with no character of anyone's.
+export const opensToPaint = (cell, renderStyle) => !showsChar(cell) || (renderStyle === 'ansi' ? isSolidGlyph(cell.char) : coverageOf(cell.char).every((c) => c === 0));
+
 // Paint over a cell: a textured character stays, the paint tinting the background (top half) and
 // foreground (bottom half), the way image cells are built (buildCell); a solid or empty one, or one
 // that doesn't show (drawn in its own background color), becomes ▄, each half the glyph's own color

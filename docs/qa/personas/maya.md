@@ -279,7 +279,9 @@ dithered, and compare the dither at 80 and at 200 columns.
   under it included), hide the layer with its eye and stroke ("Make the layer visible to draw on it"), all three over
   the caption in the PIXEL view too (the same as on the ANSI view), Dodge with Size at 1 on the ANSI view (one half of a
   cell lightens, the other stays, as the Brush paints), and with Base picked type a letter and Dodge over it in the PIXEL
-  view (the letter stays, its colors lighten); `undo-redo`: undo a stroke, redo it, and undo a Blur
+  view (the letter stays, its colors lighten), and in Color ASCII type a few spaces into the caption and brush white
+  over them (the paint shows as characters there, as over empty cells; the letters beside them are tinted and stay);
+  `undo-redo`: undo a stroke, redo it, and undo a Blur
   over the caption (its colors and the glow go back); `extremes`: Strength at 1% and at 100%.
 - Rated: yes, wants O, Shift+O and R
 
