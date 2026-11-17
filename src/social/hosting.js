@@ -493,8 +493,10 @@ export class Host {
         if (!this.onUndo(sub, msg)) this.refuse(w, msg);
       } else if (msg?.t === 'redo') {
         if (!this.onRedo(sub, msg)) this.refuse(w, msg);
-      } else if (msg?.t === 'layer-op') this.onLayerOp(sub, msg);
-      else if (msg?.t === 'cursor') this.onCursor(sub, msg, name);
+      } else if (msg?.t === 'layer-op') {
+        const reason = this.onLayerOp(sub, msg);
+        if (typeof reason === 'string') this.sendTo(w, { t: 'layer-op-refused', reason });
+      } else if (msg?.t === 'cursor') this.onCursor(sub, msg, name);
       else if (msg?.t === 'artist-hello') {
         w.drawing = true;
         if (this.art) this.sendTo(w, { t: 'font', font: this.art.font });

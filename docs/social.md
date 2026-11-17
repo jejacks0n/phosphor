@@ -453,9 +453,11 @@ then says **invited**, with **Withdraw invitation** in the menu.
 - **Layers**: Everyone in a room changes the stack: adding, deleting, reordering, renaming and duplicating layers
   works for artists and the host alike ([Layers](layers.md#the-layers-list)). A change to the stack isn't an undo step.
   Delete asks "Delete {name} for everyone?" first, since no one can undo it, and is refused while someone else has the
-  layer selected. The hidden eye and the layer you've selected are each person's own. The bottom layer is the host's:
-  artists can't select or draw on it. A room hosted from a new drawing has only the base, so an artist presses **Add
-  layer** before drawing; a stroke before then says "Add a drawing layer before drawing."
+  layer selected. Duplicate of a vector layer whose copy would take the drawing past the shapes it holds is refused, and
+  the page that pressed it says "A drawing can hold at most 1000 shapes." The hidden eye and the layer you've selected
+  are each person's own. The bottom layer is the host's: artists can't select or draw on it. A room hosted from a new
+  drawing has only the base, so an artist presses **Add layer** before drawing; a stroke before then says "Add a drawing
+  layer before drawing."
 - **Character settings**: Each layer keeps its own, and they go to everyone, but only the host changes them. An
   artist's Characters section is off and says "Only the host changes character settings in a room."
 

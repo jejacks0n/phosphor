@@ -264,8 +264,9 @@ export const layerActions = {
 
   // A copy of the layer with the id directly above it, picked: its cells and paint, or its shapes under new keys (a
   // follower following its path's copy, an art layer's drawing copied), on every frame, named "… copy". One undo step; the
-  // copy's id. Null, nothing copied, for the bottom, at the most layers, past a frame's most shapes (a toast says so) and
-  // for an artist in a room (it's asked of the host). In a room the copy is picked by whoever asked for it (shareCopy).
+  // copy's id. Null, nothing copied, for the bottom, at the most layers, past a frame's most shapes (a toast says so; for an
+  // artist's ask, the host tells them instead: takeLayerOp's 'shapes') and for an artist in a room (it's asked of the host). In a
+  // room the copy is picked by whoever asked for it (shareCopy).
   duplicateLayer(id) {
     const layer = this.layerById(id);
     if (!layer || id === 'base' || this.layers.length >= MOST_LAYERS || asked(this, { kind: 'duplicate', id })) return null;
@@ -274,7 +275,8 @@ export const layerActions = {
     const to = newLayerId(this.layers, layer.kind), { before, after, keyMap } = this.layerFrames(id, to);
     const everyShape = new Set([...this.shapes.keys(), ...this.frames.flatMap((frame) => [...frame.changes.keys()].filter(isShapeKey))]);
     if (keyMap && everyShape.size + keyMap.size > MOST_SHAPES) {
-      toast(t('vector.tooMany', { count: MOST_SHAPES }));
+      if (this._sharing?.asker) this._sharing.refused = 'shapes';
+      else toast(t('vector.tooMany', { count: MOST_SHAPES }));
       return null;
     }
     const copy = Object.freeze({ ...layer, id: to, n: nextNumber(this.layers, layer.kind), name: goodLayerName(t('layers.copyName', { name: layerName(layer) })) });

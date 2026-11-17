@@ -4732,6 +4732,28 @@ test('a host refuses an artist\'s shape past MOST_SHAPES', async () => {
   expect(room.project.shapes.has(key)).toBe(false);
 });
 
+test('an artist\'s Duplicate past MOST_SHAPES is refused with its message on the artist\'s page, and none on the host\'s', async () => {
+  const { MOST_SHAPES, rectShape } = await import('@/document/shapes.js');
+  const room = await hosting();
+  const vector = room.project.addLayer('vector', 'edit');
+  const ann = await artist(room, 'ann');
+  const full = Array.from({ length: MOST_SHAPES }, (_, i) => [`v:host${i}`, rectShape(i % 30, 1, i % 30 + 2, 3, { fill: '#ff0000', layer: vector })]);
+  room.project.applyChange({ cells: full, runs: [] }); // the host's own, not sent: ann doesn't know it's full
+  await expect.poll(() => ann.project.layerById(vector)?.kind, PATIENT).toBe('vector');
+  toastMessage.value = null;
+  setActivePinia(room.pinia);
+  expect(room.project.takeLayerOp('ann', { t: 'layer-op', op: { kind: 'duplicate', id: vector } })).toBe('shapes'); // ann's ask, refused: told to ann
+  expect(toastMessage.value).toBe(null); // nothing on the host's page
+  expect(room.project.layers.length).toBe(3);
+  setActivePinia(ann.pinia);
+  expect(ann.project.duplicateLayer(vector)).toBe(null); // asked of the host
+  await expect.poll(() => toastMessage.value, PATIENT).toBe(`A drawing can hold at most ${MOST_SHAPES} shapes.`); // ann hears why
+  expect(ann.project.layers.length).toBe(3);
+  setActivePinia(room.pinia);
+  expect(room.project.duplicateLayer(vector)).toBe(null); // the host's own: its toast, as alone
+  expect(toastMessage.value).toBe(`A drawing can hold at most ${MOST_SHAPES} shapes.`);
+});
+
 // Art layers: one record each, a shape like any, and while someone draws in one it's theirs alone.
 async function withArtLayer(room, ...people) {
   const { makeArt } = await import('@/document/artLayers.js');

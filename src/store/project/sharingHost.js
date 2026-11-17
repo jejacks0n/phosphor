@@ -154,19 +154,23 @@ export const sharingHostActions = {
   },
 
   // An artist's ask for a change to the stack (wire.js: layer-op), done as the host's own are (layers.js), with them as who
-  // asked (asker): the stack goes to everyone. One that isn't an op, or that's refused, does nothing.
+  // asked (asker): the stack goes to everyone. One that isn't an op, or that's refused, does nothing. A refusal the artist
+  // should hear of comes back as its reason (wire.js: layer-op-refused), for the room to tell them; null otherwise.
   takeLayerOp(by, msg) {
     const sharing = this._sharing, op = readLayerOp(msg);
-    if (sharing?.role !== 'host' || !op) return;
+    if (sharing?.role !== 'host' || !op) return null;
     sharing.asker = by;
+    sharing.refused = null;
     try {
       if (op.kind === 'add') this.addLayer(op.layer, op.above);
       else if (op.kind === 'delete') this.deleteLayer(op.id);
       else if (op.kind === 'move') this.moveLayer(op.id, op.to);
       else if (op.kind === 'duplicate') this.duplicateLayer(op.id);
       else this.renameLayer(op.id, op.name);
+      return sharing.refused;
     } finally {
       sharing.asker = null;
+      sharing.refused = null;
     }
   },
 

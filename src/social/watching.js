@@ -28,12 +28,12 @@ const text = (value, most) => (typeof value === 'string' ? value.slice(0, most) 
 export class Watch {
   constructor({
     send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat = NOTHING,
-    onNumbered = NOTHING, onSettings = NOTHING, onLayers = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING, onHandOver = NOTHING, onCatchUp = NOTHING, onUndoReset = NOTHING, onRefused = NOTHING, onProjectFailed = NOTHING, onFont = NOTHING,
+    onNumbered = NOTHING, onSettings = NOTHING, onLayers = NOTHING, onBase = NOTHING, onProject = NOTHING, onCheck = NOTHING, onCaughtUp = NOTHING, onCursors = NOTHING, onViews = NOTHING, onInvite = NOTHING, onWithdrawn = NOTHING, onArtists = NOTHING, onHandOver = NOTHING, onCatchUp = NOTHING, onUndoReset = NOTHING, onRefused = NOTHING, onLayerOpRefused = NOTHING, onProjectFailed = NOTHING, onFont = NOTHING,
     takesProjects = () => false, onHandOverExtra = NOTHING,
   }) {
     Object.assign(this, {
       send, config, connectWithinMs, roomId, passKey, onRoom, onArt, onView, onState, onChat,
-      onNumbered, onSettings, onLayers, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, onHandOver, onCatchUp, onUndoReset, onRefused, onProjectFailed, onFont, takesProjects, onHandOverExtra,
+      onNumbered, onSettings, onLayers, onBase, onProject, onCheck, onCaughtUp, onCursors, onViews, onInvite, onWithdrawn, onArtists, onHandOver, onCatchUp, onUndoReset, onRefused, onLayerOpRefused, onProjectFailed, onFont, takesProjects, onHandOverExtra,
     });
     this.mostWaiting = MOST_WAITING;
     this.conn = null;
@@ -203,6 +203,7 @@ export class Watch {
     else if (msg.t === 'catch-up') this.onCatchUp({ has: msg.has, epoch: msg.epoch });
     else if (msg.t === 'undo-reset') this.onUndoReset();
     else if ((msg.t === 'undo-refused' || msg.t === 'redo-refused') && isStroke(msg.stroke)) this.onRefused(msg.t === 'undo-refused' ? 'undo' : 'redo', msg.stroke);
+    else if (msg.t === 'layer-op-refused' && msg.reason === 'shapes') this.onLayerOpRefused(msg.reason);
     else if (msg.t === 'cursors') this.onCursors(Object.fromEntries(Object.entries(msg).filter(([key]) => key !== 't')));
     else if (msg.t === 'invite') this.onInvite();
     else if (msg.t === 'withdrawn') this.onWithdrawn();
