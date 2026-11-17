@@ -47,8 +47,9 @@ const updateOverlay = () => {
   const { cells, maps } = shownFrame();
   const all = workspaceStore.ansiOverlayAll, style = projectStore.renderStyle;
   if (overlay.cells === cells && sameMaps(maps, overlay.maps) && overlay.all === all && overlay.style === style) return;
-  const picture = !workspaceStore.playing && cells !== projectStore.cells && projectStore._ghost.built, plain = projectStore.cells;
-  const ghost = (i) => plain[i] !== cells[i] && projectStore._ghost.picture.has(i) && picture.editCells.has(cellKey(i % cols, Math.floor(i / cols)));
+  const owners = !workspaceStore.playing && cells !== projectStore.cells && projectStore._ghost.owners, plain = projectStore.cells;
+  const picture = !!owners?.size;
+  const ghost = (i) => plain[i] !== cells[i] && !!owners.get(i)?.built.editCells.has(cellKey(i % cols, Math.floor(i / cols)));
 
   // The layers' cells, by index (only those in the grid); none asked for while All cells shows every cell (a file's 500k).
   let edited = all ? null : overlay.edited;
@@ -97,16 +98,22 @@ const drawVeil = (ctx, win, width, height) => {
   const shown = projectStore.shownCells, { cells, cols, rows } = projectStore;
   if (workspaceStore.playing || shown === cells) return;
   if (veil.shown !== shown) {
-    // Over the inherited cells, what's under them; over the picture ghost's, the frame before's art (opaque as strong
-    // as the ghost).
+    // Over the inherited cells, what's under them; over a picture ghost's, its frame's art (opaque as strong as that
+    // frame's ghost, and tinted for a frame after).
     const base = projectStore.renderer.basePixels; // read only when it's needed: under Best match it's snapped on asking
     if (!base || base.width !== cols || base.height !== rows) return;
-    const { picture, built } = projectStore._ghost, inherited = [], pictured = [];
-    const pic = (i) => built && picture.has(built.cells[i]?.wide === 'trail' ? i - 1 : i);
-    for (let i = 0; i < cells.length; i++) if (shown[i] !== cells[i]) (pic(i) ? pictured : inherited).push(i);
-    const image = new ImageData(cols, rows), strength = projectStore.ghostStrength;
-    veilPixels(image.data, base.data, inherited, cols, strength);
-    if (pictured.length) veilPixels(image.data, ctx2d(built.output).getImageData(0, 0, cols, rows).data, pictured, cols, 1 - strength);
+    const owners = projectStore._ghost.owners, inherited = [], pictured = new Map();
+    for (let i = 0; i < cells.length; i++) {
+      if (shown[i] === cells[i]) continue;
+      const picture = owners?.get(i);
+      if (picture) (pictured.get(picture) ?? pictured.set(picture, []).get(picture)).push(i);
+      else inherited.push(i);
+    }
+    const image = new ImageData(cols, rows);
+    veilPixels(image.data, base.data, inherited, cols, projectStore.ghostStrength);
+    for (const [{ built, strength, tint }, indexes] of pictured) {
+      veilPixels(image.data, ctx2d(built.output).getImageData(0, 0, cols, rows).data, indexes, cols, 1 - strength, tint);
+    }
     veil.canvas ??= document.createElement('canvas');
     veil.canvas.width = cols;
     veil.canvas.height = rows;

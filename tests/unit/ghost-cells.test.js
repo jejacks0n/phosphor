@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { ghostCell, ghostedCells, veilPixels } from '../../src/lib/ghostCells.js';
+import { ghostCell, ghostFade, ghostedCells, pictureOwners, tinted, veilPixels } from '../../src/lib/ghostCells.js';
 import { frameDuration } from '../../src/document/frames.js';
 
 const color = (r, g, b) => ({ r, g, b, hex: `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`, c: [r, g, b] });
@@ -55,4 +55,35 @@ test('veilPixels covers both halves of a ghost cell in what’s under it, enough
 test('a ghost at strength 0 is the cell under it, character and all', () => {
   const under = cell('▄', color(0, 0, 0), color(100, 100, 100));
   assert.equal(ghostCell(cell('A', color(200, 100, 0), color(0, 0, 100)), under, 0), under);
+});
+
+test('ghostFade: the nearest of n frames keeps the whole strength, each further one a share less', () => {
+  assert.equal(ghostFade(1, 1), 1);
+  assert.deepEqual([1, 2, 3].map((k) => ghostFade(k, 3)), [1, 2 / 3, 1 / 3]);
+});
+
+test('tinted: a frame after\'s cell, both colors most of the way to the cool tint as bright as they are (black stays black), the character kept', () => {
+  const ghost = tinted(cell('A', color(255, 0, 0), color(0, 0, 0)));
+  assert.equal(ghost.char, 'A');
+  assert.deepEqual(ghost.fg.c, [99, 160, 204]);
+  assert.deepEqual(ghost.bg.c, [0, 0, 0]);
+  assert.deepEqual(tinted(cell('A', color(128, 0, 0), color(0, 0, 0))).fg.c, [50, 80, 102]);
+});
+
+test('veilPixels with a tint veils in the tinted color', () => {
+  const base = Uint8ClampedArray.from([255, 0, 0, 255, 0, 0, 0, 255]); // 1 x 2: one cell
+  const veil = new Uint8ClampedArray(8);
+  veilPixels(veil, base, [0], 1, 0, true);
+  assert.deepEqual([...veil], [99, 160, 204, 255, 0, 0, 0, 255]);
+});
+
+test('pictureOwners: each ghost cell goes to the first (nearest) picture that has it, a wide character\'s trail with its lead', () => {
+  const plain = cell('A', color(1, 1, 1), color(0, 0, 0)), trail = { ...plain, wide: 'trail' };
+  const near = { cells: new Set([1]), built: { cells: [plain, plain, plain, plain] } };
+  const far = { cells: new Set([1, 2]), built: { cells: [plain, plain, plain, trail] } };
+  const owners = pictureOwners([near, far]);
+  assert.deepEqual([...owners.keys()].sort(), [1, 2, 3]);
+  assert.equal(owners.get(1), near);
+  assert.equal(owners.get(2), far);
+  assert.equal(owners.get(3), far);
 });

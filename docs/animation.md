@@ -28,7 +28,7 @@ Left to right:
 - **Frame actions** (three squares): **Move earlier**, **Move later**, **Delete frame**, and the **New cells** setting ([Cells That Stay on Their Frame](#cells-that-stay-on-their-frame)).
 - **fps**: Frames per second for the whole movie ([Timing](#timing)).
 - **Hold**: How long this frame stays, in seconds.
-- **Ghost** (a ghost, lit while it's on): Opens a box with **Show ghost** and the **Ghost opacity** slider ([The Ghost](#the-ghost)).
+- **Ghost** (a ghost, lit while it's on): Opens a box with **Show ghost**, the **Ghost opacity** slider, **Frames before** and **Frames after** ([The Ghost](#the-ghost)).
 - **Keys** (a diamond, lit while the panel is open): On VECTOR only, opens and folds the Keys panel ([The Keys Panel](#the-keys-panel)).
 
 Play and the steps are off until there are two frames. When the canvas can't take another frame, Add frame is off and the bar says why.
@@ -262,17 +262,21 @@ An [art layer](vector.md#art-layers) has only two parts, Transform and Stack (an
 
 ## The Ghost
 
-Onion skinning shows earlier frames dimmed so you can use them as drawing references:
+Onion skinning shows nearby frames dimmed so you can use them as drawing references:
 
 - **Where it shows**: On a Blank frame, what's inherited shows dimmed on the PIXEL and ANSI tabs, in its own colors, so you can see what you're drawing over. On VECTOR, the shapes a Blank frame carries show dimmed outlines (whether or not the ghost is on).
 - **What you draw**: What you draw on this frame shows at full strength as soon as you draw it, even in exactly the color a cell inherited. The project file and autosave keep it that way; undoing that drawing dims it again.
 - **Staying cells**: Cells the frame before drew to stay ([Cells That Stay on Their Frame](#cells-that-stay-on-their-frame)) aren't inherited, so they show as a picture of that frame instead, dimmed over this one wherever this frame shows nothing. It's only on screen: this frame's cells are its own.
+- **More frames before**: With **Frames before** above 1, the staying cells of more frames before show the same way, each fainter the further back it is: with 3 at 35%, the frame before shows at 35%, the one before that at 23%, and the third at 12%. Where two of them drew the same cell, the nearer one shows. They stop at a Wipe: the Wipe frame shows, the frames before it don't.
+- **Frames after**: With **Frames after** above 0, what the frames after this one drew shows wherever this frame shows nothing, in one cool blue tint so a pose ahead never reads as something already drawn. The next frame shows at the ghost's opacity, and each one further on is fainter, as the frames before are.
 - **Only a guide**: The ghost never plays and never reaches an export.
 
 **Ghost** on the bar opens a box:
 
 - **Show ghost** (on by default): Turn it off and inherited cells show solid, and the picture of staying cells goes.
-- **Ghost opacity**: From 0% (it doesn't show) to 100% (solid). It starts at 35%, and this browser remembers it.
+- **Ghost opacity**: From 0% (it doesn't show) to 100% (solid). It starts at 35%, and this browser remembers it. It's how strong the nearest frame shows.
+- **Frames before**: How many frames before this one show, 1 to 5. It starts at 1, and this browser remembers it.
+- **Frames after**: How many frames after this one show, 0 to 5. It starts at 0 (none), and this browser remembers it.
 
 ---
 

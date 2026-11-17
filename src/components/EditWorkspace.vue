@@ -43,9 +43,9 @@ const playback = usePlayback();
 
 onMounted(() => project.render());
 followParams(project);
-// The frame before's staying cells are a ghost from its picture: built when there's a new frame before, or it went
-// stale (a render).
-watch(() => [project.frame, project.frames, project.renderedCells, project.animate, workspace.ghost, workspace.playing], () => {
+// The frames near the one showing are a ghost from their pictures: built when the frames or how many the Ghost box
+// asks for change, or they went stale (a render).
+watch(() => [project.frame, project.frames, project.renderedCells, project.animate, workspace.ghost, workspace.playing, project.ghostReach], () => {
   if (!workspace.playing && workspace.ghost) project.buildGhost();
 });
 

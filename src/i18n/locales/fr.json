@@ -848,6 +848,8 @@
     "ghost": "Fantôme",
     "ghostTitle": "Pelure d'oignon : afficher les images précédentes estompées derrière les images vierges",
     "ghostStrength": "Opacité du fantôme",
+    "ghostFramesBefore": "Images avant",
+    "ghostFramesAfter": "Images après",
     "ghostOn": "Afficher le fantôme",
     "ghostOnTitle": "Pelure d'oignon : activée, {percent} %",
     "ghostOffTitle": "Pelure d'oignon : désactivée"

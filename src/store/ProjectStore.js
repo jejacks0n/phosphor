@@ -5,7 +5,7 @@ import Renderer from '@/document/Renderer.js';
 import History from '@/document/History.js';
 import { newFrame } from '@/document/frames.js';
 import { layersFromOld, lowerGroup, sameChars } from '@/document/layerInfo.js';
-import { ghostedCells } from '@/lib/ghostCells.js';
+import { MOST_GHOST_FRAMES, ghostCell, ghostFade, ghostedCells, pictureOwners, tinted } from '@/lib/ghostCells.js';
 import { artBounds } from '@/document/artLayers.js';
 import { placedShapes } from '@/document/followers.js';
 import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
@@ -127,7 +127,7 @@ export const useProjectStore = defineStore('project', {
     frames: shallowRef([newFrame('blank')]),
     frame: 0,    // which one's showing
     fps: 8,
-    ghostBefore: null, // { frame, built }: the frame before the one showing, built for its staying cells' ghost (buildGhost)
+    ghostFrames: [], // [{ frame, built, at }]: frames near the one showing (at: how far, before negative), built for their pictures' ghost (buildGhost)
     animate: false, // the bar is up
     _frameSwaps: 0, // how many times the frame showing was swapped in: autosave doesn't count those as edits
     _ghost: markRaw({ memo: new WeakMap() }), // what shownCells worked out last, kept out of what it reacts to
@@ -238,21 +238,20 @@ export const useProjectStore = defineStore('project', {
     hasEditLayer: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
     currentFrame: (state) => state.frames[state.frame],
     // What the ANSI view shows: while playing, the built frame; on a Blank frame, its ghost: what's inherited dimmed,
-    // and where the frame before has cells that stay and this one shows nothing, the frame before's picture
-    // (ghostBefore) dimmed over this one. cells is never ghosted, so exports can't see one.
+    // and over it, pictures of the frames near this one (ghostPictures) where they drew and this one shows nothing.
+    // cells is never ghosted, so exports can't see one.
     shownCells() {
       const workspace = useWorkspaceStore(), { cells } = this;
       if (workspace.playing && workspace.played) return workspace.played.cells;
       if (this._artInside) return insideCells(this, this._artInside, cells);
       if (!this.animate || !workspace.ghost || !this.frame || this.currentFrame?.kind !== 'blank') return cells;
       const held = this._ghost, frame = this.currentFrame, version = this.historyVersion, rendered = this.renderedCells;
-      const before = this.ghostBefore, strength = this.ghostStrength;
-      const built = before?.frame === this.frames[this.frame - 1] && before.built.cells.length === cells.length ? before.built : null;
+      const strength = this.ghostStrength, pictures = this.ghostPictures;
       if (held.frame !== frame || (!this._stroke && (held.version !== version || held.rendered !== rendered))) {
-        Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells(), picture: this.pictureCells(), over: new WeakMap() });
+        Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells(), sets: new Map(), owners: null, over: new Map() });
       }
-      if (held.strength !== strength) Object.assign(held, { strength, memo: new WeakMap(), over: new WeakMap() });
-      if (held.built !== built) Object.assign(held, { built, over: new WeakMap() });
+      if (held.strength !== strength) Object.assign(held, { strength, memo: new WeakMap(), over: new Map() });
+      if (held.pictures !== pictures) Object.assign(held, { pictures, owners: null, over: new Map() });
       const still = (i) => held.inherited.has(i) && sameLook(cells[i], held.cells[i]); // a stroke's new object: no longer a ghost
       const { cols } = this, params = this.processParams;
       const shown = ghostedCells(
@@ -262,11 +261,37 @@ export const useProjectStore = defineStore('project', {
         held.memo,
         strength,
       );
-      if (!built || !held.picture.size) return shown;
-      // The picture's ghosts are over this frame's cells, so they go (over) when those may have changed.
-      const at = (i) => (built.cells[i].wide === 'trail' ? i - 1 : i);
-      const pictured = (i) => held.picture.has(at(i)) && cells[i] === held.cells[i]; // drawn on in a stroke: no longer a ghost
-      return ghostedCells(shown, (i) => cells[i], pictured, held.over, strength, (i) => built.cells[i]);
+      if (!pictures.length) return shown;
+      // Each index the nearest picture's that has it. The pictures' ghosts are over this frame's cells, so they go (over)
+      // when those may have changed.
+      held.owners ??= pictureOwners(pictures.map((picture) => {
+        if (!held.sets.has(picture.at)) held.sets.set(picture.at, this.pictureCells(this.frame + picture.at));
+        return { ...picture, cells: held.sets.get(picture.at) };
+      }));
+      let out = null;
+      for (const [i, picture] of held.owners) {
+        if (cells[i] !== held.cells[i]) continue; // drawn on in a stroke: no longer a ghost
+        const memo = held.over.get(picture.at) ?? held.over.set(picture.at, new WeakMap()).get(picture.at), cell = picture.built.cells[i];
+        let ghost = memo.get(cell);
+        if (!ghost) memo.set(cell, ghost = ghostCell(picture.tint ? tinted(cell) : cell, cells[i], picture.strength));
+        (out ??= shown.slice())[i] = ghost;
+      }
+      return out ?? shown;
+    },
+    // The frames near the one showing whose pictures shownCells ghosts, nearest first (the frame before ahead of the
+    // frame after at the same distance): ghostFrames as many as the Ghost box asks for, each with its strength, the
+    // nearest the ghost's and each further one less, and the frames after tinted.
+    ghostPictures() {
+      const { before, after } = this.ghostReach, strength = this.ghostStrength;
+      return this.ghostFrames
+        .filter(({ frame, built, at }) => (at < 0 ? -at <= before : at <= after) && this.frames[this.frame + at] === frame && built.cells.length === this.cells.length)
+        .map((picture) => ({ ...picture, tint: picture.at > 0, strength: strength * ghostFade(Math.abs(picture.at), picture.at < 0 ? before : after) }))
+        .sort((a, b) => Math.abs(a.at) - Math.abs(b.at) || a.at - b.at);
+    },
+    // How many frames before (1 to 5) and after (0 to 5) the Ghost box asks for.
+    ghostReach() {
+      const workspace = useWorkspaceStore(), count = (value, least) => Math.min(MOST_GHOST_FRAMES, Math.max(least, Math.round(Number(value)) || least));
+      return { before: count(workspace.ghostFramesBefore, 1), after: count(workspace.ghostFramesAfter, 0) };
     },
     hasFrames: (state) => state.frames.length > 1,
     // How much of its own colors a ghost keeps, 0 to 1: the bar's strength, or with Ghost off none.

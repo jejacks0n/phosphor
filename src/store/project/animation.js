@@ -28,6 +28,10 @@ const MOST_FPS = 60;
 
 const clamped = (value, least, most) => Math.min(most, Math.max(least, value));
 
+// Whether a frame near the one showing has anything for the ghost to picture (pictureCells): a frame after, anything
+// it drew; a frame before, cells that stay.
+const ghostFrame = (frame, after) => [...frame.changes].some(([key, state]) => !isShapeKey(key) && (after ? !isEmptyState(state) : state.stays));
+
 // The cells layers frames hold, the one in use first: those in the stack, so a layer gone (deleted, or its add undone)
 // leaves no keys behind, even with its fields still in use (a document without an edit layer still has them, empty). The
 // bottom's cells and pixels are the document's, the same on every frame.
@@ -611,13 +615,27 @@ export const animationActions = {
     }
   },
 
-  // The frame before's picture, when cells of its stay, built for shownCells to show them as the ghost: ghostBefore.
+  // The frames near the one showing that have pictures to ghost (ghostFrame), as many as the Ghost box asks for, built
+  // for shownCells: ghostFrames.
   async buildGhost() {
-    const at = this.frame, prior = this.frames[at - 1];
-    if (!this.animate || !prior || this.currentFrame.kind !== 'blank' || ![...prior.changes.values()].some((state) => state.stays)) return;
-    if (this.ghostBefore?.frame === prior && this.ghostBefore.built === prior.built) return;
-    const built = await this.builtFrame(at - 1);
-    if (built && this.frames[this.frame - 1] === prior) this.ghostBefore = markRaw({ frame: prior, built });
+    if (!this.animate || !this.frame || this.currentFrame.kind !== 'blank') return;
+    const { before, after } = this.ghostReach, near = [];
+    for (let at = -1; at >= -before && this.frame + at >= 0; at--) {
+      near.push(at);
+      if (this.frames[this.frame + at].kind !== 'blank') break; // a clean slate has nothing behind it
+    }
+    for (let at = 1; at <= after && this.frame + at < this.frames.length; at++) near.push(at);
+    const showing = this.currentFrame, wanted = near.map((at) => this.frames[this.frame + at]).filter((frame, i) => ghostFrame(frame, near[i] > 0));
+    const kept = new Map(this.ghostFrames.map((ghost) => [ghost.frame, ghost]));
+    if (wanted.length === this.ghostFrames.length && wanted.every((frame) => kept.get(frame)?.built === frame.built)) return;
+    const ghosts = [];
+    for (const frame of wanted) {
+      const i = this.frames.indexOf(frame), held = kept.get(frame);
+      const built = held?.built === frame.built ? held.built : await this.builtFrame(i);
+      if (this.currentFrame !== showing) return; // moved on meanwhile
+      if (built) ghosts.push({ frame, built, at: this.frames.indexOf(frame) - this.frame });
+    }
+    this.ghostFrames = markRaw(ghosts);
   },
 
   // The open stroke went over these pixels ({ x, y }), whether or not that changed them. Frame 0 has no ghost.
@@ -646,14 +664,16 @@ export const animationActions = {
     return inherited;
   },
 
-  // The frame before's staying cells where the frame showing shows nothing, by index on the grid: the picture ghost.
-  pictureCells() {
-    const picture = new Set();
-    if (!this.frame || this.currentFrame.kind !== 'blank') return picture;
-    const prior = this.frames[this.frame - 1], { cols } = this, rows = charRowsOf(this.rows);
-    let live = null;
-    for (const [key, state] of carriedInto(prior.changes, this.currentFrame)) { // none of a layer it cuts
-      if (!state.stays || isEmptyState(state) || (live ??= liveStates(this)).has(key)) continue;
+  // Frame i's picture ghost, by index on the grid: what it drew itself (a frame before, only its cells that stay: the
+  // others carry on, and show as inherited) where the frame showing shows nothing. Nothing of a layer cut between them.
+  pictureCells(i = this.frame - 1) {
+    const picture = new Set(), source = this.frames[i];
+    if (!this.frame || this.currentFrame.kind !== 'blank' || !source || i === this.frame) return picture;
+    const after = i > this.frame, { cols } = this, rows = charRowsOf(this.rows);
+    let changes = source.changes, live = null;
+    if (!after) for (let at = i + 1; at <= this.frame; at++) changes = carriedInto(changes, this.frames[at]);
+    for (const [key, state] of changes) {
+      if (!(after || state.stays) || isEmptyState(state) || isShapeKey(key) || (live ??= liveStates(this)).has(key)) continue;
       const { col, row } = parseKey(keyLayer(key).key);
       if (col < cols && row < rows) picture.add(cellIndex(col, row, cols));
     }
