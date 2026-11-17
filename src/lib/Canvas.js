@@ -14,7 +14,9 @@ export function canvasPng(canvas) {
 }
 
 // Letterbox sw x sh into tw x th. Shared by the pipeline and the store so they agree exactly.
-// Rounds (not floors) dw/dh so a grid-aspect image (e.g. a flattened one) fits as identity.
+// Rounds (not floors) dw/dh so a grid-aspect image (e.g. a flattened one) fits as identity. A side less than a
+// pixel short of the grid fills it: a grid made for a picture is up to a pixel longer than it (lockedGrid rounds
+// up), and rounding down there would leave a black row along the edge.
 export function fitRect(sw, sh, tw, th) {
   const sa = sw / sh, ta = tw / th;
   let dw, dh;
@@ -25,8 +27,8 @@ export function fitRect(sw, sh, tw, th) {
     dw = th * sa;
     dh = th;
   }
-  dw = Math.max(1, Math.round(dw));
-  dh = Math.max(1, Math.round(dh));
+  dw = tw - dw < 1 ? tw : Math.max(1, Math.round(dw));
+  dh = th - dh < 1 ? th : Math.max(1, Math.round(dh));
   return { dx: Math.floor((tw - dw) * 0.5), dy: Math.floor((th - dh) * 0.5), dw, dh };
 }
 
