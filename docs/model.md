@@ -65,13 +65,17 @@ converted with the layer's settings. `█` has ink there and stays.
   one above, in both ASCII styles); `tests/browser/incremental-cells.test.js › composeAll lays every kind of entry …`
   (the one-by-one reference converts open cells); `tests/unit/compose.test.js` (coverCell's tint in ANSI).
 
-### R3. Merge down moves each kind as itself, and nothing on the canvas changes.
+### R3. Merge down moves each kind as itself, and nothing on the canvas changes but a soft edge, which stays paint.
 
 A character of someone's own is completed against the look under it and written there (`completeAt`); paint is drawn
 over the paint under it and stays paint; a paint block goes in as a block (where the layer under has no character of
 its own there) and its paint as paint. Only where paint would convert otherwise in its new place (`unlike`, compared
-up to the layer merged into with `ROUNDING` steps of tolerance per channel, characters exact) is it pinned: the paint
-stays, and the cell it showed is written over it (`frozenCells`), marked frozen. A vector layer merged into a vector layer moves its shapes there as shapes, numbered to stay
+up to the layer merged into with `ROUNDING` steps of tolerance per channel, characters exact) and covers the cell whole
+(both halves opaque, `freezeUnlike`) is it pinned: the paint stays, and the cell it showed is written over it
+(`frozenCells`), marked frozen. A cell the paint covers only in part (a stroke's or a shape's soft edge) stays paint,
+though it may convert otherwise (a character of the layer's own set, a color a step or a palette entry off): what it
+showed held the colors under the paint (the picture's, or a hidden base's black), and a pin would keep them after they
+changed, a gray or black border round a merged shape once the base is hidden or shown. A vector layer merged into a vector layer moves its shapes there as shapes, numbered to stay
 above that layer's own (`shapesOnVector`), and only when the two layers' character settings are the same: under other
 ones the shapes would convert otherwise, and there's nothing to freeze a shape into. A merged vector layer's shapes go into
 the paint at their own detail (the base layer's scale), not a grid pixel at a time, so By shape samples them as it
@@ -93,7 +97,9 @@ colors as its two pixels, its character pinned.
   `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `layerOver` and `storedLookAt`
   (`src/store/project/reading.js`) mirror the walk; a paste keeps a frozen cell's paint (`src/store/project/selection.js`).
 - Checked by: `tests/browser/merge.test.js › R3: the report: Keep crisp cells under soft paint …` (Keep crisp cells on
-  CGA under Best match, soft Brush and Blur strokes and a dithered vector layer above);
+  CGA under Best match, soft Brush and Blur strokes and a dithered vector layer above); `› R3: the report: a shape
+  merged into Layer 1 leaves no border …` (the soft edge stays paint, the base shown or hidden before or after) and
+  `› … keeps every cell with a palette and Levels on, the soft edges paint`;
   `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
   the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, freezing
   nothing as saved (R7) and, with the shape's own characters, its frozen cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and
