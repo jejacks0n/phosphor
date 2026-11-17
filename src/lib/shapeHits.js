@@ -43,20 +43,21 @@ export function hitsShape(shape, x, y, tol) {
 }
 
 // The keys of the shapes at (x, y), topmost first, found as they're asked for. art false: art layers pass unseen.
-export function* shapesAt(shapes, x, y, tol, art = true) {
-  const order = stacked(shapes).filter(([, shape]) => art || !isArt(shape));
+// rank: a shape's vector layer's place in the stack (the store's shapeRank), which comes before its z.
+export function* shapesAt(shapes, x, y, tol, art = true, rank = null) {
+  const order = stacked(shapes, rank).filter(([, shape]) => art || !isArt(shape));
   for (let i = order.length - 1; i >= 0; i--) if (hitsShape(order[i][1], x, y, tol)) yield order[i][0];
 }
 
 // The key of the topmost shape at (x, y), or null. art false: art layers pass unseen (the Node tool has no points on them).
-export const shapeAt = (shapes, x, y, tol, art = true) => shapesAt(shapes, x, y, tol, art).next().value ?? null;
+export const shapeAt = (shapes, x, y, tol, art = true, rank = null) => shapesAt(shapes, x, y, tol, art, rank).next().value ?? null;
 
 // The keys of the shapes a box (grid pixels) touches, bottom to top: wholly inside it, or its fill or stroke
 // found at points sampled over where the two overlap.
 // ponytail: about 4000 samples a shape, each grown by half the spacing, so over a big overlap a shape that
 // close to the box's edge counts; exact geometry (curves against the box's edges) if that's ever noticed.
-export function shapesTouching(shapes, { x0, y0, x1, y1 }) {
-  return stacked(shapes).filter(([, shape]) => {
+export function shapesTouching(shapes, { x0, y0, x1, y1 }, rank = null) {
+  return stacked(shapes, rank).filter(([, shape]) => {
     const b = curveBounds(shape), pad = strokeReach(shape);
     if (b.x0 >= x0 && b.y0 >= y0 && b.x1 <= x1 && b.y1 <= y1) return true;
     if (isArt(shape)) return b.x0 <= x1 && b.x1 >= x0 && b.y0 <= y1 && b.y1 >= y0; // its box, touched

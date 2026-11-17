@@ -193,7 +193,7 @@ function endDrag(project, workspace) {
   if (kind === 'marquee') {
     const box = workspace.vectorMarquee;
     workspace.vectorMarquee = null;
-    const touched = box ? shapesTouching(placedShapes(project), box) : [];
+    const touched = box ? shapesTouching(placedShapes(project), box, project.shapeRank) : [];
     if (box || !shift) project.selectShapes(shift ? [...keys, ...touched.filter((key) => !keys.includes(key))] : touched);
     return;
   }
@@ -209,6 +209,24 @@ function endDrag(project, workspace) {
 
 const selected = (workspace, project) => workspace.vectorSelected.filter((key) => project.shapes.has(key));
 
+// A drag of the shapes keys begun: each [key, record, where it shows]; of one follower on its path alone, a slide along it.
+const grab = (project, placed, keys, box, pos, shift) => (kind, extra = {}) => {
+  const start = (extra.keys ?? keys).map((key) => [key, project.shapes.get(key), placed.get(key)]);
+  if (kind === 'move' && start.length === 1 && start[0][1] !== start[0][2]) kind = 'slide';
+  drag = { kind, from: pos, box, start, shift, ...extra };
+  project.beginEdit();
+  return true;
+};
+
+// The box's knob and 8 handles as a press's candidates (handlePick), each with how far it is from pos in CSS px: at
+// starts the drag (grab's). None for a box with an art layer in it.
+function boxGrips(box, unit, pos, at, workspace) {
+  if (box.cells) return [];
+  const { handles, knob } = boxHandles(box, unit), letStop = () => { workspace.vectorStop = null; };
+  const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
+  return [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle, grip: h }), picked: letStop }))];
+}
+
 export default {
   id: 'vselect',
   get title() { return t('tools.vselect.title'); },
@@ -221,30 +239,22 @@ export default {
   begin(ctx, pos, event) {
     const { project, workspace, unit } = ctx, shift = !!event?.shiftKey, radius = handleRadius(), tol = radius / unit.x;
     const placed = placedShapes(project), keys = selected(workspace, project), box = selectionBox(placed, keys); // where they show
-    // A drag of the shapes, each [key, record, where it shows]; of one follower on its path alone, a slide along it.
-    const at = (kind, extra = {}) => {
-      const start = (extra.keys ?? keys).map((key) => [key, project.shapes.get(key), placed.get(key)]);
-      if (kind === 'move' && start.length === 1 && start[0][1] !== start[0][2]) kind = 'slide';
-      drag = { kind, from: pos, box, start, shift, ...extra };
-      project.beginEdit();
-      return true;
-    };
+    const at = grab(project, placed, keys, box, pos, shift);
     if (workspace.pickingPath) { // Follow a path…: a click picks the path, or on empty canvas, ends the pick
       const path = pathAt(placed, workspace.pickingPath, pos, tol);
       if (path) project.followPath(workspace.pickingPath, path);
-      if (path || !shapeAt(placed, pos.x, pos.y, tol)) workspace.pickingPath = null;
+      if (path || !shapeAt(placed, pos.x, pos.y, tol, true, project.shapeRank)) workspace.pickingPath = null;
       return false;
     }
     if (box && !shift) {
       // The box's handles and the knob, and (one shape) its gradient's, which come first; or a click again's.
-      const { handles, knob } = boxHandles(box, unit), letStop = () => { workspace.vectorStop = null; };
       const d = (p) => Math.hypot((p.x - pos.x) * unit.x, (p.y - pos.y) * unit.y);
       const trim = trimHandles(project, workspace);
       const trims = (trim?.handles ?? []).map(({ part, at: place }) => ({ id: part, d: d(place), take: () => at('trim', { part, placed: trim.shape }) }));
-      const own = box.cells ? [] : [{ id: 'knob', d: d(knob), take: () => at('rotate'), picked: letStop }, ...handles.map((h, handle) => ({ id: `h${handle}`, d: d(h), take: () => at('scale', { handle, grip: h }), picked: letStop }))];
+      const own = boxGrips(box, unit, pos, at, workspace);
       if (pick.press([...trims.filter((c) => c.d <= REACH), ...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
     } else pick.reset();
-    const hit = shapeAt(placed, pos.x, pos.y, tol);
+    const hit = shapeAt(placed, pos.x, pos.y, tol, true, project.shapeRank);
     // A second click edits points; an art layer has none, so it steps into the layer (see endDrag).
     const now = performance.now(), second = hit && lastPress?.key === hit && now - lastPress.time < DOUBLE_MS && near(pos, lastPress.pos, unit, DOUBLE_PX);
     const art = isArt(project.shapes.get(hit)), again = second && !art, enter = second && art;
@@ -265,6 +275,16 @@ export default {
       return at('move', { keys: [hit], box: selectionBox(placed, [hit]), again: again && hit, enter: enter && hit });
     }
     return marquee(); // let go where it was pressed: a click on empty canvas, which deselects
+  },
+
+  // A press on the selection's handles alone, for a tool that shows the box but has its own drag (the Shape tool): the
+  // knob, a size handle, or the one selected shape's gradient ends and stops, as begin takes them; whether one was taken,
+  // which this tool's move, end and cancel then carry on. Anywhere else, the box's inside too, is the other tool's.
+  pressHandles(ctx, pos) {
+    const { project, workspace, unit } = ctx, radius = handleRadius();
+    const placed = placedShapes(project), keys = selected(workspace, project), box = selectionBox(placed, keys);
+    const grips = box ? boxGrips(box, unit, pos, grab(project, placed, keys, box, pos, false), workspace).filter((c) => c.d <= radius) : [];
+    return pick.press([...grips, ...gradientDrag.candidates(ctx, pos, radius)], pos, unit);
   },
 
   move(ctx, from, to) {

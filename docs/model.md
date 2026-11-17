@@ -71,7 +71,9 @@ A character of someone's own is completed against the look under it and written 
 over the paint under it and stays paint; a paint block goes in as a block (where the layer under has no character of
 its own there) and its paint as paint. Only where paint would convert otherwise in its new place (`unlike`, compared
 up to the layer merged into with `ROUNDING` steps of tolerance per channel, characters exact) is it pinned: the paint
-stays, and the cell it showed is written over it (`frozenCells`), marked frozen. A merged vector layer's shapes go into
+stays, and the cell it showed is written over it (`frozenCells`), marked frozen. A vector layer merged into a vector layer moves its shapes there as shapes, numbered to stay
+above that layer's own (`shapesOnVector`), and only when the two layers' character settings are the same: under other
+ones the shapes would convert otherwise, and there's nothing to freeze a shape into. A merged vector layer's shapes go into
 the paint at their own detail (the base layer's scale), not a grid pixel at a time, so By shape samples them as it
 sampled the shapes (R7). The converter shows the pin and leaves the paint under it alone (the Renderer's `#composeOne` and `#upperCell` lay no paint of the cell's own layer over a
 frozen entry; `layerOver` in `reading.js` the same). Everything else sees paint: the PIXEL view draws the paint, the
@@ -82,14 +84,15 @@ left converts as the layer converts paint. A frozen cell merged further down kee
 base, its pin's colors go in and become a pin there, not the paint's. An art layer's characters are written as someone's
 own, unmarked, the paint under them erased.
 
-- Lives in: `onCells`, `onBase`, `shapesOnCells`, `unlike`, `frozenCells`, `freezeUnlike` in
+- Lives in: `onCells`, `onBase`, `shapesOnCells`, `shapesOnVector`, `unlike`, `frozenCells`, `freezeUnlike` in
   `src/store/project/merging.js`; `unfreeze` in `src/store/project/editLayer.js`; the Renderer's `#exactUnder`,
   `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `layerOver` and `storedLookAt`
   (`src/store/project/reading.js`) mirror the walk; a paste keeps a frozen cell's paint (`src/store/project/selection.js`).
 - Checked by: `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
   the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, freezing
   nothing as saved (R7) and, with the shape's own characters, its frozen cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and
-  `› Merge down of a vector layer into a cells layer puts its shapes in as paint …`; `tests/browser/block-chars.test.js ›
+  `› Merge down of a vector layer into a cells layer puts its shapes in as paint …` and `› Merge down of a vector layer
+  into the vector layer under it …`; `tests/browser/block-chars.test.js ›
   R3: the Eraser in the PIXEL view, or paint laid, in a frozen cell drops the mark …`.
 
 ### R4. Retouch keeps a character of someone's own and recolors it; a frozen cell is paint to it.
@@ -114,8 +117,17 @@ it and is tinted. On the base under Best match and By shape a cell the converter
 character is a rendering of the base's pixels (R7), so it hides none, and the paint goes into the pixels with no ▄ (a
 pinned one would outlast a switch of how characters are chosen). A pinned character there is someone's own, as anywhere.
 
-- Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`).
-- Checked by: `tests/browser/block-chars.test.js › R5: …` (the base under Random, Best match and By shape among them) and
+A cell a shape covers under the layer (the topmost thing under it there is a vector layer's fill or stroke) gets no ▄
+either. Why: the ▄ exists so paint doesn't bring out a character hidden in its own background color (a blank canvas's).
+A flat shape's cell has both halves one color too, which is all `showsNoChar` used to ask, but it hides no character:
+it's a rendering of the shape's pixels (R7), as the picture's cells are. A ▄ there made a stroke that crossed from the
+picture onto a shape switch from the layer's Characters to half-blocks, so what a vector layer held changed how the
+layer above it painted. An art layer's character is someone's own and keeps the rule above.
+
+- Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`), with `showsNoChar` and
+  `shapeUnder` there.
+- Checked by: `tests/browser/block-chars.test.js › R5: …` (the base under Random, Best match and By shape among them,
+  and a flat shape under the layer) and
   `› …with Colors only, a layer's own cell that shows no character becomes a plain ▄ …`.
 
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
@@ -172,9 +184,47 @@ current style (a paint block outside ANSI) isn't drawn: its paint is already the
 - Checked by: `tests/browser/pixel-overlay.test.js › in the ASCII styles a paint block isn't drawn over its paint …` and
   `… the report: the strokes under and over the shape …`.
 
+### R9. A layer's change redraws what's over and under it, and changes nothing of theirs.
+
+The views show one grid of cells, each a character and two colors, so the layers are composed into it: a shape drawn,
+moved or deleted works out again the cells it covered, for the whole stack. That's all it does. It writes nothing on
+another layer, and what it redraws over is the other layers as they are now.
+
+An upper layer's redraw lays the upper layers over `lowerCells` as they stand (`recomposeUpper`, with pixels or, past
+a quarter of the grid, every cell). It never goes through `applyEditCells`, which makes `lowerCells` again from
+`renderedCells`: those are the last full render's, and paint laid on the lower group since is in the output and in
+`lowerCells` (`updateCells`) but not in them. The report: with base, Layer 1 and a vector layer above it, a shape
+dragged past a quarter of the grid made Layer 1's brush strokes vanish until the next render. `applyEditCells` is for
+after `renderedCells` was made (`render`, `rebuildCells`).
+
+- Lives in: `recomposeUpper` and `layUpper` in `src/store/project/rendering.js`; `redrawRects`
+  (`src/store/project/vector.js`) and `commitEdit` (`src/store/project/history.js`) call it.
+- Checked by: `tests/browser/layer-stack.test.js › R9: …`.
+
+### R10. Which shape is over which is its vector layer's place first, then its number; a shape stays on its layer.
+
+A shape's `z` is numbered across every vector layer, in the order the shapes were drawn: a shape on a lower layer can
+have a higher `z` than one on a layer above it. So `stacked(shapes)` alone is not the order they show in. Everything
+that asks what's on top or underneath asks `stacked(shapes, project.shapeRank)`: a click and a box (`shapeHits.js`),
+the Node tool's box, Join's and Add/Subtract's bottom shape, a copy's order, Select all, the Keys panel's place. Bring
+forward and Send back step only past a shape on the same layer (past one on another layer the press showed nothing).
+Merge down between vector layers numbers every shape again in that order, so the moved ones stay over the layer's own.
+
+A shape's `layer` field says which vector layer it's on (none: the first one, `'vector'`), and anything that builds a
+shape's record again from parts must carry it: the Shape tool's drag and an art layer's drawing read back
+(`setArtContent`) each dropped it once, and the shape jumped to the first vector layer. `withShape(shape, changes)` on
+the stored shape keeps it; a record made from scratch needs `layer` named. A selection follows to its shape's layer
+(`selectShapes` moves the pick), so the layer picked is where the selection is.
+
+- Lives in: `shapeRank` (`src/store/ProjectStore.js`), `stacked` (`src/document/shapes.js`), `src/lib/shapeHits.js`,
+  `restackShapes`, `joinShapes`, `combineShapes`, `setArtContent` (`src/store/project/vector.js`), `selectShapes`
+  (`src/store/project/selection.js`), `src/tools/vshape.js`, `shapesOnVector` (`src/store/project/merging.js`).
+- Checked by: `tests/browser/vector-render.test.js › R10: …`; `tests/browser/art-layers.test.js › R10: …`;
+  `tests/browser/merge.test.js › Merge down of a vector layer into the vector layer under it …`.
+
 ## Where the rules are walked and what else they reach
 
-Maya's QA script walks R2–R8 as a person would, in ANSI and in Color ASCII ([How my layers blend](qa/personas/maya.md#how-my-layers-blend));
+Maya's QA script walks R2–R10 as a person would, in ANSI and in Color ASCII ([How my layers blend](qa/personas/maya.md#how-my-layers-blend));
 Dex's step 26 walks typing, Blur and Colors only on one layer in ANSI. [layers.md](layers.md#how-layers-blend) says the
 same in plain words. The rules reach past the stack view: animation frames are built by the same walk with the same
 scales (FrameBuilder: a built frame equals the still, `tests/browser/animation-build.test.js`); a room's artists and

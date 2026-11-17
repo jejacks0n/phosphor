@@ -414,9 +414,14 @@ export const selectionActions = {
   },
 
   // VECTOR's selection set to keys, as an undo step (changeSelection): a click, Esc, a box, Select all.
+  // With a vector layer picked, the pick follows to the vector layer of the shape selected last, so the next shape drawn,
+  // Merge down and LAYERS all act where the selection is.
   selectShapes(keys) {
     this.changeSelection((w) => { w.vectorSelected = keys; });
-    useWorkspaceStore().vectorStop = null; // the selected stop was a selected shape's
+    const workspace = useWorkspaceStore(), last = this.shapes.get(keys.at(-1));
+    workspace.vectorStop = null; // the selected stop was a selected shape's
+    const on = last && (last.layer ?? 'vector');
+    if (on && on !== workspace.pickedLayer && this.layerById(on) && (this.layerById(workspace.pickedLayer)?.kind === 'vector')) workspace.pickedLayer = on;
   },
 
   // One undo step for a selection operation's changes (cells, paint, base pixels, pins); the cells in

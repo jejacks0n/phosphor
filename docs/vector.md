@@ -30,6 +30,7 @@ Vector shapes render at the picture's own detail, finer than the grid. With **By
 - **Clear layer**: Clearing a drawing layer leaves shapes alone.
 - **Canvas size**: A drawing with shapes counts as drawn on when you resize the canvas: it grows or trims on the right and bottom, and shapes keep their place.
 - **Hidden layers**: Shapes on a hidden vector layer can still be selected and edited on VECTOR.
+- **Several vector layers**: The tools reach the shapes on every vector layer. A click picks the shape that shows on top there, whichever layer it's on, and the layer picked in LAYERS follows the shape you select, so the next shape you draw and **Merge down** act on that layer.
 
 ---
 
@@ -139,7 +140,7 @@ Draw custom paths and curves point by point:
 - **Open curve**: Press **Enter** or **Esc** to finish without closing the shape. An open curve has no fill and is stroked in its Stroke color, or the foreground color if it has none.
 - **Undo last point**: Press **Backspace** (or undo) to remove the previous point while drawing. Removing the last one leaves nothing, not even an undo step.
 
-Choosing another tool or tab, moving to another frame, or saving also finishes the shape as an open curve; holding a tool for a moment (the Hand on **Space**) doesn't. A finished shape is selected, so a color change goes to it, and the whole shape is one undo step.
+Choosing another tool or tab, moving to another frame, or saving also finishes the shape as an open curve; holding a tool for a moment (the Hand on **Space**) doesn't. A finished shape is selected, so a color change goes to it, and the whole shape is one undo step. Its box shows, and until you start the next shape its handles work without changing tools, as with [Vector select](#vector-select-v): drag a handle to scale, or the knob above the box to rotate. A click anywhere else, inside the box too, starts a new shape.
 
 ### Shape (`U`)
 
@@ -149,6 +150,8 @@ Drag from corner to corner to create a standard geometric shape. Choose the kind
 - **Polygon**: Set the number of **Sides** (3 to 12) in the options row; the polygon fits the box you drag, its first corner at the top. Hold **Shift** for a regular polygon.
 
 The shape is drawn as you drag, becomes an ordinary path when you let go (so its points can be edited like any other), and is selected. A click without a drag makes nothing. Each shape is one undo step.
+
+The selected shape's box shows, and its handles work without changing tools, as they do with [Vector select](#vector-select-v): drag a handle to scale (**Shift** keeps the proportions, **Alt** scales from the middle) or the knob above the box to rotate (**Shift**: steps of 15°). A drag anywhere else, inside the box too, draws a new shape, so shapes can go inside one another; to move a shape, use Vector select.
 
 With one shape selected whose fill or outline is a [gradient](#gradients) (choose Linear or Radial in the color box right after drawing it, say), its gradient's ends and stops show and work as they do with [Vector select](#vector-select-v): drag them, click a stop to select it (**Delete** removes it, **Esc** lets it go), or double-click one to open its color. A drag anywhere else draws a new shape.
 
@@ -211,8 +214,8 @@ Use the [Node tool](#node-a) (or Vector select or the Shape tool, for one select
 
 With Vector select, the options row has **Copy**, **Cut**, and **Paste**, and with shapes selected:
 
-- **Forward / Back**: Move the shapes just above the nearest shape they overlap, or just beneath it. Every other shape keeps its place.
-- **Join**: Combines two or more shapes into one compound shape: the bottom one, with its colors and place, and every outline of the rest. An outline inside another becomes a cutout hole, so a circle and a smaller circle inside it make a ring.
+- **Forward / Back**: Move the shapes just above the nearest shape they overlap on their own vector layer, or just beneath it. Every other shape keeps its place. Between two vector layers, the layers' order in LAYERS decides which shape is over which.
+- **Join**: Combines two or more shapes into one compound shape: the bottom one as they show (on the lowest vector layer, when they're on several), with its colors, place, and layer, and every outline of the rest. An outline inside another becomes a cutout hole, so a circle and a smaller circle inside it make a ring.
 - **Separate**: Splits a compound shape back into independent outlines, each a shape of its own in the same colors.
 - **Add**: Merges two or more closed shapes into a single outline covering their combined area.
 - **Subtract**: Cuts the upper closed shapes out of the bottom one (a shape cut out of the middle of another leaves a hole). A Subtract that leaves nothing deletes them all.
@@ -227,7 +230,7 @@ The buttons are icons, each named when you hover over it, and each change is one
 
 ## Merge Down, Bake, and Flatten
 
-- **Merge down** on VECTOR merges the picked vector layer into the layer under it. Onto the base, it presses the selected shapes (or, with none selected, all of them, and the layer goes) into the base layer's pixels, where they stop being shapes, with nothing on the canvas changing. Any shape beneath one of them that overlaps it is pressed too. Onto a drawing layer, the whole layer goes, its shapes becoming paint there (or, where paint would show differently by more than a step or two of rounding, cells frozen as they showed, which the converter leaves alone and the paint tools treat as paint), with nothing on the canvas changing. One undo brings the shapes back. A vector layer with its own character settings can't be pressed into the base, and Merge down is off in an animation.
+- **Merge down** on VECTOR merges the picked vector layer into the layer under it. Onto the base, it presses the selected shapes (or, with none selected, all of them, and the layer goes) into the base layer's pixels, where they stop being shapes, with nothing on the canvas changing. Any shape beneath one of them that overlaps it is pressed too. Onto a drawing layer, the whole layer goes, its shapes becoming paint there (or, where paint would show differently by more than a step or two of rounding, cells frozen as they showed, which the converter leaves alone and the paint tools treat as paint), with nothing on the canvas changing. Onto another vector layer, the shapes move to that layer and stay shapes, above the ones already there, so they can still be edited: the selected shapes (the layer stays with the rest), or with none selected all of them, and the layer goes. That needs both vector layers to have the same character settings, since the shapes would look different under other ones. One undo brings the shapes back. A vector layer with its own character settings can't be pressed into the base, and Merge down is off in an animation.
 - **Bake**, on a still, presses the shapes on vector layers directly on the base into it (not a layer with its own character settings); shapes higher in the stack stay shapes. In an animation, shapes stay shapes, with the sliders burned into their colors ([Baking](layers.md#baking)).
 - **Flatten** turns every shape and art layer, with the rest of the drawing, into plain cells as they show, and the vector layers go ([Flattening](layers.md#flattening)).
 

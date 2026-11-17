@@ -190,6 +190,10 @@ export const useProjectStore = defineStore('project', {
     lockedBy: (state) => (key) => (state._artInside?.key === key ? state._by
       : Object.keys(state._locks).find((sub) => sub !== state._by && state._locks[sub].key === key) ?? null),
     layerById: (state) => (id) => state.layers.find((layer) => layer.id === id),
+    // A shape's vector layer's place in the stack, for stacked(shapes, rank): shapes are numbered (z) across every vector
+    // layer in the order they were drawn, so which is over which is its layer's place first, then its z. Everything that
+    // asks what's on top (a click, a box, Join's bottom shape, a copy's order) asks with this.
+    shapeRank: (state) => (shape) => state.layers.findIndex((layer) => layer.id === (shape.layer ?? 'vector')),
     // The vector layer is there once it's added, or with the drawing's first shape, and stays when its last one goes.
     hasVectorLayer: (state) => state.layers.some((layer) => layer.kind === 'vector'),
     // The bottom's character settings: the document's own fields (settings.js CHAR_KEYS).

@@ -21,7 +21,8 @@ export function useMergeDown() {
     if (drawing.hostOnly) return drawing.hostOnly;
     if (!layer || !under) return t('toolbar.mergeBase');
     if (project.hasFrames) return t(layer.kind === 'vector' ? 'toolbar.mergeShapesOneFrame' : 'toolbar.mergeOneFrame');
-    if (under.kind === 'vector') return t('toolbar.mergeOntoVector');
+    if (under.kind === 'vector' && layer.kind !== 'vector') return t('toolbar.mergeOntoVector');
+    if (under.kind === 'vector' && !sameChars(project.charsOf(id), project.charsOf(under.id))) return t('toolbar.mergeOwnChars', { name: layerName(id) });
     if (layer.kind === 'vector' && under.id === 'base' && !sameChars(layer.chars, project.baseChars)) return t('toolbar.mergeOwnChars', { name: layerName(id) });
     return null;
   };

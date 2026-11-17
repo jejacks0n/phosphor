@@ -12,7 +12,7 @@ import { copyEvent } from '@/composables/clipboard.js';
 
 const OFFSET = 2; // grid pixels
 
-const chosen = (project, workspace) => stacked(project.shapes).filter(([key]) => workspace.vectorSelected.includes(key));
+const chosen = (project, workspace) => stacked(project.shapes, project.shapeRank).filter(([key]) => workspace.vectorSelected.includes(key));
 const moved = (shapes, by) => shapes.map((shape) => transformed(shape, translation(by, by)));
 
 // copied: [key, shape], bottom to top.

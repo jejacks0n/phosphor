@@ -254,9 +254,11 @@ export const renderingActions = {
   },
 
   // The cells under grid pixels (an upper layer's edit) laid over again from the lower group's cells as they are: the
-  // pipeline and its cells aren't touched.
-  recomposeUpper(pixels) {
+  // pipeline and its cells aren't touched. Every cell with null, for a change past where pixels are worth listing: not
+  // applyEditCells, whose lower cells are the last render's, without the paint drawn on the lower group since.
+  recomposeUpper(pixels = null) {
     if (!this.lowerCells.length || this.lowerCells.length !== this.composedCells.length) return; // a render's on its way
+    if (!pixels) return layUpper(this);
     const rows = new Set();
     for (const { y } of pixels) rows.add(y >> 1);
     this.setCells(this.overLower(cellsUnder(pixels, this.cols)), settledRows(this, rows));
@@ -317,16 +319,20 @@ export const renderingActions = {
   applyEditCells() {
     if (!this.renderedCells.length) return;
     this.lowerCells = this.renderer.composeAll(this.renderedCells, lowerEdits(this), this.processParams);
-    const composed = this.overLower();
-    // The converter's characters are one column wide (Cells.glyphsOf), so only a row with a wide character in a cell of a
-    // cells layer or a pin, or with an art layer's character, can hold one: the rest are laid out as they are (composed
-    // anew, so a row whose wide character went has nothing to lay out). Keys are parsed only for those: at 500k cells,
-    // parsing every one took 300 ms a redraw.
-    const rows = new Set();
-    for (const layer of this.shownLayers) if (layer.id !== 'base' && layer.kind === 'cells') for (const [key, { char }] of this.cellsOf(layer.id)) if (char && isWideChar(char)) rows.add(parseKey(key).row);
-    if (!this.renderer.hideBase) for (const [key, char] of this.baseRecords.pins) if (char && isWideChar(char)) rows.add(parseKey(key).row);
-    for (const shapes of [this.renderer.shapes, ...this.renderer.upper.map((u) => u.layer)]) if (shapes?.hasArt) for (const key of shapes.artCells()) rows.add(parseKey(key).row);
-    this.setCells(composed, rows, composed);
+    layUpper(this);
   },
 };
 
+// Every upper layer laid over lowerCells as they are, and the cells the views show laid out.
+function layUpper(project) {
+  const composed = project.overLower();
+  // The converter's characters are one column wide (Cells.glyphsOf), so only a row with a wide character in a cell of a
+  // cells layer or a pin, or with an art layer's character, can hold one: the rest are laid out as they are (composed
+  // anew, so a row whose wide character went has nothing to lay out). Keys are parsed only for those: at 500k cells,
+  // parsing every one took 300 ms a redraw.
+  const rows = new Set();
+  for (const layer of project.shownLayers) if (layer.id !== 'base' && layer.kind === 'cells') for (const [key, { char }] of project.cellsOf(layer.id)) if (char && isWideChar(char)) rows.add(parseKey(key).row);
+  if (!project.renderer.hideBase) for (const [key, char] of project.baseRecords.pins) if (char && isWideChar(char)) rows.add(parseKey(key).row);
+  for (const shapes of [project.renderer.shapes, ...project.renderer.upper.map((u) => u.layer)]) if (shapes?.hasArt) for (const key of shapes.artCells()) rows.add(parseKey(key).row);
+  project.setCells(composed, rows, composed);
+}

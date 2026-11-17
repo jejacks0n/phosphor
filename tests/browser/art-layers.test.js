@@ -734,6 +734,16 @@ async function artOnUpper() {
   return { ...app, upper, key };
 }
 
+test('R10: an art layer on a vector layer above the first stays on it when it\'s drawn in', async () => {
+  const { project, upper, key } = await artOnUpper();
+  expect(project.enterArt(key)).toBe(true);
+  project.typeAt(3, 1, 'I', { fg: RED }); // a stroke inside: commitArt reads the drawing back into the layer
+  project.commitEdit();
+  project.leaveArt();
+  expect(project.shapes.get(key).art.cells.map((cell) => cell[1])).toEqual(['H', 'I']);
+  expect(project.shapes.get(key).layer).toBe(upper);
+});
+
 test('an art layer on a vector layer above the first goes by its own layer\'s eye, and its row shows as picked inside', async () => {
   const { project, workspace, upper, key } = await artOnUpper();
   project.setLayerHidden(upper, true);

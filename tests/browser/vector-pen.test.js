@@ -3,6 +3,8 @@
 // leaves nothing, not even an undo step. Undo while it's drawn takes back its last point.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import pen from '@/tools/pen.js';
+import { boxHandles, selectionBox } from '@/tools/vselect.js';
 
 async function drawing() {
   const app = await createTestApp();
@@ -153,4 +155,38 @@ test('a shape the Pen finishes is selected, as the Shape tool\'s is; one with un
   project.penPoint(10, 10);
   project.finishPen();
   expect(workspace.vectorSelected).toEqual([before]);
+});
+
+// A finished shape is selected and its box shows with the Pen, as with the Shape tool (issue #198): its handles work
+// there; while a shape is being drawn every press is a point.
+test('after the Pen finishes a shape, its box\'s handles scale and turn it; a press off them starts a new shape', async () => {
+  const { project, workspace } = await drawing();
+  const unit = { x: 8, y: 8 }, ctx = { project, workspace, view: 'vector', unit };
+  workspace.setActiveTool('pen');
+  const click = (pos) => { pen.begin(ctx, pos, {}); pen.end(ctx); };
+  const drag = (from, to) => { if (pen.begin(ctx, from, {})) pen.move(ctx, from, to); pen.end(ctx); };
+  click({ x: 4, y: 4 });
+  click({ x: 20, y: 4 });
+  click({ x: 20, y: 20 });
+  const key = project._stroke.pen;
+  // Still drawing: a press where a handle would be is a point.
+  drag(boxHandles(selectionBox(project.shapes, [key]), unit).handles[3], { x: 2, y: 22 });
+  expect(project.shapes.get(key).points).toHaveLength(4);
+  click({ x: 4, y: 4 }); // closes it
+  expect(project._stroke).toBe(null);
+  expect(workspace.vectorSelected).toEqual([key]);
+
+  const corner = () => selectionBox(project.shapes, [key]).corners[2], version = steps(project), was = corner();
+  drag(boxHandles(selectionBox(project.shapes, [key]), unit).handles[2], { x: was.x + 6, y: was.y + 4 });
+  expect(project.shapes.size).toBe(1);
+  expect(corner().x).toBeCloseTo(was.x + 6, 2); // the record's transform is kept to 4 places
+  expect(corner().y).toBeCloseTo(was.y + 4, 2);
+  expect(steps(project)).toBe(version + 1);
+  const { center } = selectionBox(project.shapes, [key]);
+  drag(boxHandles(selectionBox(project.shapes, [key]), unit).knob, { x: center.x + 10, y: center.y });
+  expect(Math.atan2(project.shapes.get(key).m[1], project.shapes.get(key).m[0])).toBeCloseTo(Math.PI / 2, 5);
+  expect(workspace.activeTool).toBe('pen');
+
+  click({ x: center.x, y: center.y }); // inside the box, off the handles: a new shape's first point
+  expect(project.shapes.size).toBe(2);
 });
