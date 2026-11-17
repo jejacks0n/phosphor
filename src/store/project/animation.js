@@ -25,6 +25,7 @@ import { markRaw } from 'vue';
 const NOTHING = new Map();
 const MOST_HOLD = 60;
 const MOST_FPS = 60;
+const SETTLE_MS = 80; // how long the frame showing stays before buildGhost builds the frames near it
 
 const clamped = (value, least, most) => Math.min(most, Math.max(least, value));
 
@@ -628,11 +629,15 @@ export const animationActions = {
     const showing = this.currentFrame, wanted = near.map((at) => this.frames[this.frame + at]).filter((frame, i) => ghostFrame(frame, near[i] > 0));
     const kept = new Map(this.ghostFrames.map((ghost) => [ghost.frame, ghost]));
     if (wanted.length === this.ghostFrames.length && wanted.every((frame) => kept.get(frame)?.built === frame.built)) return;
+    // A frame to build first waits a moment: a scrubber dragged across the frames shows each for an instant, and
+    // building the frames near every one it passes would hold the drag up.
+    if (wanted.some((frame) => !frame.built)) await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
     const ghosts = [];
     for (const frame of wanted) {
+      if (this.currentFrame !== showing) return; // moved on meanwhile
       const i = this.frames.indexOf(frame), held = kept.get(frame);
       const built = held?.built === frame.built ? held.built : await this.builtFrame(i);
-      if (this.currentFrame !== showing) return; // moved on meanwhile
+      if (this.currentFrame !== showing) return;
       if (built) ghosts.push({ frame, built, at: this.frames.indexOf(frame) - this.frame });
     }
     this.ghostFrames = markRaw(ghosts);
@@ -666,14 +671,16 @@ export const animationActions = {
 
   // Frame i's picture ghost, by index on the grid: what it drew itself (a frame before, only its cells that stay: the
   // others carry on, and show as inherited) where the frame showing shows nothing. Nothing of a layer cut between them.
-  pictureCells(i = this.frame - 1) {
+  // shared: an object kept across calls for one look at the frame showing, so what it shows (its paint read back, which
+  // is slow on a phone) is worked out once for all the frames near it.
+  pictureCells(i = this.frame - 1, shared = {}) {
     const picture = new Set(), source = this.frames[i];
     if (!this.frame || this.currentFrame.kind !== 'blank' || !source || i === this.frame) return picture;
     const after = i > this.frame, { cols } = this, rows = charRowsOf(this.rows);
-    let changes = source.changes, live = null;
+    let changes = source.changes;
     if (!after) for (let at = i + 1; at <= this.frame; at++) changes = carriedInto(changes, this.frames[at]);
     for (const [key, state] of changes) {
-      if (!(after || state.stays) || isEmptyState(state) || isShapeKey(key) || (live ??= liveStates(this)).has(key)) continue;
+      if (!(after || state.stays) || isEmptyState(state) || isShapeKey(key) || (shared.live ??= liveStates(this)).has(key)) continue;
       const { col, row } = parseKey(keyLayer(key).key);
       if (col < cols && row < rows) picture.add(cellIndex(col, row, cols));
     }

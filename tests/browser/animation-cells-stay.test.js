@@ -1,7 +1,7 @@
 // Cells that stay on their frame: drawn with New cells set to Stay (workspace.cellsStay), a cell shows on its own frame
 // only, and the frame after shows what was there before it. Each cell keeps the mode it was drawn in, so switching it
 // changes nothing already drawn. The frame before's staying cells show as a picture ghost, only on screen.
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells.js';
 import { cellKey } from '@/document/editCells.js';
@@ -241,6 +241,36 @@ test('with Frames after, what the frames after drew shows in one cool tint, the 
   expect(project.cells[i(1)].char).not.toBe('D'); // only on screen
   workspace.ghost = false;
   expect(project.shownCells[i(1)].char).not.toBe('D');
+});
+
+test('the ghost reads the frame showing\'s paint back once however many frames it shows: slow on a phone, and done for every frame a scrubber passes', async () => {
+  const { project, workspace } = await animated();
+  workspace.cellsStay = true;
+  for (let f = 0; f < 7; f++) {
+    if (f) project.addFrame('blank');
+    type(project, f + 1, 1, 'A');
+    project.paintStroke([{ x: f + 1, y: 8, alpha: 1 }], '#ff0000');
+    project.commitEdit();
+  }
+  const reads = vi.spyOn(project.paintLayer, 'gridPixels');
+  // How many times arriving on frame 3 and showing it with its ghost reads the paint back.
+  const readsShowing = async (before, after) => {
+    Object.assign(workspace, { ghostFramesBefore: before, ghostFramesAfter: after });
+    project.showFrame(2);
+    project.showFrame(3);
+    await project.buildGhost();
+    project.showFrame(2);
+    reads.mockClear();
+    project.showFrame(3);
+    const shown = project.shownCells;
+    expect(shown[cellIndex(3, 1, project.cols)].char).toBe('A'); // the frame before's ghost is there
+    return reads.mock.calls.length;
+  };
+  const one = await readsShowing(1, 0);
+  expect(project.ghostPictures).toHaveLength(1);
+  const six = await readsShowing(3, 3);
+  expect(project.ghostPictures).toHaveLength(6);
+  expect(six).toBe(one);
 });
 
 test('moving a selection over the ghost doesn\'t make the frame own it', async () => {

@@ -93,7 +93,13 @@ const updateOverlay = () => {
 
 // The ghost on the art: what's under the cells that shownCells dims, laid over them. The cells only say which, since
 // paint is in the output, not in a cell's colors alone. Worked out again only when they change.
-const veil = { canvas: null, shown: null, any: false };
+const veil = { canvas: null, shown: null, any: false, art: new WeakMap() };
+// A frame near this one's art, read back once (slow on a phone) and kept while it's built the same.
+const artOf = (built) => {
+  let art = veil.art.get(built);
+  if (!art) veil.art.set(built, art = ctx2d(built.output).getImageData(0, 0, projectStore.cols, projectStore.rows).data);
+  return art;
+};
 const drawVeil = (ctx, win, width, height) => {
   const shown = projectStore.shownCells, { cells, cols, rows } = projectStore;
   if (workspaceStore.playing || shown === cells) return;
@@ -112,7 +118,7 @@ const drawVeil = (ctx, win, width, height) => {
     const image = new ImageData(cols, rows);
     veilPixels(image.data, base.data, inherited, cols, projectStore.ghostStrength);
     for (const [{ built, strength, tint }, indexes] of pictured) {
-      veilPixels(image.data, ctx2d(built.output).getImageData(0, 0, cols, rows).data, indexes, cols, 1 - strength, tint);
+      veilPixels(image.data, artOf(built), indexes, cols, 1 - strength, tint);
     }
     veil.canvas ??= document.createElement('canvas');
     veil.canvas.width = cols;

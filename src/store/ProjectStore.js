@@ -248,7 +248,7 @@ export const useProjectStore = defineStore('project', {
       const held = this._ghost, frame = this.currentFrame, version = this.historyVersion, rendered = this.renderedCells;
       const strength = this.ghostStrength, pictures = this.ghostPictures;
       if (held.frame !== frame || (!this._stroke && (held.version !== version || held.rendered !== rendered))) {
-        Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells(), sets: new Map(), owners: null, over: new Map() });
+        Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells(), sets: new Map(), shared: {}, owners: null, over: new Map() });
       }
       if (held.strength !== strength) Object.assign(held, { strength, memo: new WeakMap(), over: new Map() });
       if (held.pictures !== pictures) Object.assign(held, { pictures, owners: null, over: new Map() });
@@ -265,7 +265,7 @@ export const useProjectStore = defineStore('project', {
       // Each index the nearest picture's that has it. The pictures' ghosts are over this frame's cells, so they go (over)
       // when those may have changed.
       held.owners ??= pictureOwners(pictures.map((picture) => {
-        if (!held.sets.has(picture.at)) held.sets.set(picture.at, this.pictureCells(this.frame + picture.at));
+        if (!held.sets.has(picture.at)) held.sets.set(picture.at, this.pictureCells(this.frame + picture.at, held.shared));
         return { ...picture, cells: held.sets.get(picture.at) };
       }));
       let out = null;
@@ -282,9 +282,9 @@ export const useProjectStore = defineStore('project', {
     // frame after at the same distance): ghostFrames as many as the Ghost box asks for, each with its strength, the
     // nearest the ghost's and each further one less, and the frames after tinted.
     ghostPictures() {
-      const { before, after } = this.ghostReach, strength = this.ghostStrength;
+      const { before, after } = this.ghostReach, strength = this.ghostStrength, size = this.cols * charRowsOf(this.rows); // not cells: a redraw isn't a new list
       return this.ghostFrames
-        .filter(({ frame, built, at }) => (at < 0 ? -at <= before : at <= after) && this.frames[this.frame + at] === frame && built.cells.length === this.cells.length)
+        .filter(({ frame, built, at }) => (at < 0 ? -at <= before : at <= after) && this.frames[this.frame + at] === frame && built.cells.length === size)
         .map((picture) => ({ ...picture, tint: picture.at > 0, strength: strength * ghostFade(Math.abs(picture.at), picture.at < 0 ? before : after) }))
         .sort((a, b) => Math.abs(a.at) - Math.abs(b.at) || a.at - b.at);
     },
