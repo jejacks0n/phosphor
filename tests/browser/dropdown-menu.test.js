@@ -65,3 +65,29 @@ test('nothing it\'s in clips it: in a small box that hides what overflows, and i
   const last = [...menu.querySelectorAll('button')].at(-1), { left, top, width, height } = last.getBoundingClientRect();
   expect(document.elementFromPoint(left + width / 2, top + height / 2)).toBe(last);
 });
+
+test('a phone\'s keyboard coming up for a field in it (the window resized and scrolled) leaves it open; otherwise either closes it', async () => {
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp({
+    render: () => h(DropdownMenu, { label: 'Menu', closeOnSelect: false }, () => [h('input', { type: 'number' }), h('button', 'One')]),
+  }).use(i18n);
+  app.mount(host);
+  host.querySelector('.dropdown-trigger').click();
+  await nextTick();
+  const isOpen = () => !!host.querySelector('.dropdown-content');
+  host.querySelector('.dropdown-content input').focus();
+  window.dispatchEvent(new Event('resize'));
+  document.dispatchEvent(new Event('scroll'));
+  await nextTick();
+  expect(isOpen()).toBe(true);
+  host.querySelector('.dropdown-content button').focus(); // no keyboard for a button
+  window.dispatchEvent(new Event('resize'));
+  await nextTick();
+  expect(isOpen()).toBe(false);
+  host.querySelector('.dropdown-trigger').click();
+  await nextTick();
+  document.dispatchEvent(new Event('scroll'));
+  await nextTick();
+  expect(isOpen()).toBe(false);
+});

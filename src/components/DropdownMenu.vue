@@ -45,6 +45,11 @@ async function toggle() {
   else if (menu.right > width - MARGIN) position.value = { ...edge, right: `${MARGIN}px` };
 }
 const close = () => { isOpen.value = false; };
+// A field in the menu that takes typing has the focus: a phone's keyboard coming up for it resizes the window and
+// scrolls the page to show the field, which isn't leaving the menu.
+const TYPED = 'input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]), textarea, select, [contenteditable]';
+const typing = () => !!content.value?.contains(document.activeElement) && document.activeElement.matches(TYPED);
+const handleResize = () => { if (!typing()) close(); };
 const open = () => { if (!isOpen.value) toggle(); };
 defineExpose({ open, close });
 // An item chosen closes the menu; focus that was on the item goes back to the trigger, not to the page.
@@ -56,7 +61,7 @@ function chosen() {
 }
 // Scrolling what holds the menu would leave it behind, so it closes. Something beside it, a chat
 // keeping up with its messages, say, doesn't move it.
-const handleScroll = (e) => { if (isOpen.value && !root.value.contains(e.target) && e.target.contains(root.value)) close(); };
+const handleScroll = (e) => { if (isOpen.value && !typing() && !root.value.contains(e.target) && e.target.contains(root.value)) close(); };
 // Pointer presses, in the capture phase: the canvas cancels its pointerdowns, so no mousedown
 // follows a click there.
 const handleOutsideClick = (e) => { if (isOpen.value && !root.value.contains(e.target)) close(); };
@@ -71,13 +76,13 @@ const handleKeydown = (e) => {
 onMounted(() => {
   document.addEventListener('pointerdown', handleOutsideClick, true);
   window.addEventListener('keydown', handleKeydown, true);
-  window.addEventListener('resize', close);
+  window.addEventListener('resize', handleResize);
   document.addEventListener('scroll', handleScroll, true);
 });
 onBeforeUnmount(() => {
   document.removeEventListener('pointerdown', handleOutsideClick, true);
   window.removeEventListener('keydown', handleKeydown, true);
-  window.removeEventListener('resize', close);
+  window.removeEventListener('resize', handleResize);
   document.removeEventListener('scroll', handleScroll, true);
 });
 </script>
