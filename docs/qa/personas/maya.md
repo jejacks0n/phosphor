@@ -360,7 +360,8 @@ held.
 - Does: picks Layer 2, which sits directly above Layer 1, and presses Merge down (top toolbar), into Layer 1. Then,
   with Layer 1 picked, strokes Blur along the edge of the paint that came down.
 - Expects: no question: its cells and paint are written onto the layer under it, it leaves the stack, and nothing on
-  the canvas changes; one undo brings it back, picked; redo merges it again. The paint stays paint, so Blur fades its
+  the canvas changes, but a soft edge's cells, which stay paint, can come out a character or a color step different;
+  one undo brings it back, picked; redo merges it again. The paint stays paint, so Blur fades its
   edge into the clear beside it, as on any paint.
 - Probes: `undo-redo`: undo, redo, undo again, then paint and check redo is off; `out-of-order`: hide the layer under it
   and press Merge down ("Make the layer visible to merge it"); `again`: with Choose characters on By shape (Color
@@ -371,9 +372,11 @@ held.
   above, brush white with Colors only over blank cells and Merge down: nothing changes, and no ▄ appears; `stack`:
   with a shape over paint on Layer 1 and a white stroke on a layer above crossing its edge, Merge down the shape
   into Layer 1: nothing on the canvas changes, the stroke above included, and the PIXEL view shows the shape's edge
-  as before (no dark line where its cells were written as characters), with the Overlay at 100% too.
+  as before (no dark line where its cells were written as characters), with the Overlay at 100% too; then hide the
+  base: no gray border of the picture's colors stays round the shape (and merged with the base hidden, no black one
+  once it shows again).
   `photo`: on a detailed photo with By shape, draw a soft-edged shape on a vector layer over Layer 1 and Merge down:
-  nothing changes, and Blur across the edge afterward fades all of it (nothing was written as characters).
+  nothing changes but a character or a color step along the soft edge, and Blur across the edge afterward fades all of it (nothing was written as characters).
   `pixel-view`: in Color ASCII, brush white over a shape and again on a layer above it, then go to the PIXEL view with
   the Overlay at 100%: each stroke blends with what's under it, as with the Overlay at 0%; a typed letter still shows
   as its cell.
