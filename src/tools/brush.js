@@ -18,7 +18,7 @@ const brush = {
   shiftLines: true, // Shift-click: a straight line from where the last stroke ended
   preview: { shape: 'circle', size: (workspace) => workspace.editBrushSize },
   options: [
-    { key: 'editBrushSize', get label() { return t('tools.brush.size'); }, get title() { return t('tools.brush.sizeTitle'); }, min: 1, max: 20, step: 0.1, decimals: 1 },
+    { key: 'editBrushSize', size: true, get label() { return t('tools.brush.size'); }, get title() { return t('tools.brush.sizeTitle'); }, min: 1, max: 20, step: 0.1, decimals: 1 },
     { key: 'editBrushOpacity', get label() { return t('tools.brush.opacity'); }, get title() { return t('tools.brush.opacityTitle'); }, min: 1, max: 100, unit: '%' },
     { key: 'editBrushFlow', get label() { return t('tools.brush.flow'); }, get title() { return t('tools.brush.flowTitle'); }, min: 1, max: 100, unit: '%' },
     { key: 'editBrushHardness', get label() { return t('tools.brush.hardness'); }, get title() { return t('tools.brush.hardnessTitle'); }, min: 0, max: 100, unit: '%' },

@@ -19,8 +19,8 @@ const eraser = {
   kind: 'paint',
   preview: { shape: 'square', size: sizeIn, snap: true },
   options: [
-    { key: 'editEraserSize', get label() { return t('tools.eraser.sizePixels'); }, get title() { return t('tools.eraser.sizePixelsTitle'); }, min: 1, max: 20, step: 1, views: ['input'] },
-    { key: 'editEraserCells', get label() { return t('tools.eraser.sizeCells'); }, get title() { return t('tools.eraser.sizeCellsTitle'); }, min: 1, max: 20, step: 1, views: ['output'] },
+    { key: 'editEraserSize', size: true, get label() { return t('tools.eraser.sizePixels'); }, get title() { return t('tools.eraser.sizePixelsTitle'); }, min: 1, max: 20, step: 1, views: ['input'] },
+    { key: 'editEraserCells', size: true, get label() { return t('tools.eraser.sizeCells'); }, get title() { return t('tools.eraser.sizeCellsTitle'); }, min: 1, max: 20, step: 1, views: ['output'] },
   ],
   begin(ctx, pos) {
     eraser.move(ctx, pos, pos);

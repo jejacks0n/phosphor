@@ -233,7 +233,7 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Rated: yes, wants Shift+Cmd+N
 
 ### 16. Paint over the picture
-- Does: picks the Brush, sets its Size and Opacity, and paints a few strokes on Layer 2.
+- Does: picks the Brush, sets its Size (] grows it, [ shrinks it) and Opacity, and paints a few strokes on Layer 2.
 - Expects: paint covers half cells and shows through each cell's character (Colors only), and a cell that shows none
   (one flat color) takes it as a plain `▄`; with Build up on, two strokes at 50% make it solid; the color adjustments
   tint the paint too. A stroke painted in the PIXEL view comes out the same in ANSI; in Color ASCII the strokes become

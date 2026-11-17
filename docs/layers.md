@@ -996,6 +996,9 @@ A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the s
 Eyedropper, **H** Hand, **Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Swap cell FG/BG and **M** Select,
 in the views that have the tool (Edit Mode and Swap cell FG/BG are the ANSI view's). Each tool's tooltip shows its key.
 
+**]** and **[** grow and shrink the Size of the Brush, the Eraser (the Size of the view you're in: cells or pixels), Blur,
+Dodge and Burn by 1 a press, from 1 to 20, as in Photoshop. In Edit Mode, while you type, they type.
+
 - **Shared Buttons**: Some tools share a button: the Paint Bucket and Gradient; Blur, Dodge and Burn; Select and the
   Magic Wand; the Hand and Zoom; and on VECTOR the Vector select and Node tools. The button shows the one you chose
   last (the first until then); click it to use that one. Its corner, a long press or a right-click opens the rest, each
