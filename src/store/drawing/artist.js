@@ -9,6 +9,7 @@
 //   formerHost    the next project also says I'm back as an artist
 //   gettingArt    back from a reload with no document to draw on; the room's project, or nothing coming, ends it
 import { t } from '@/i18n';
+import { MOST_SHAPES } from '@/document/shapes';
 import { fontFor, readCursors } from '@/social/wire';
 import { artNotOpenedWords, undoResetWords, backAsArtistWords } from '@/social/messages';
 import { toast } from '@/composables/useToast';
@@ -152,6 +153,7 @@ export function artistSide({ project, workspace, me, artists, artistNames, invit
         sayUndoRestarts();
       },
       onRefused: (kind, stroke) => { if (mayDraw.value) project.strokeRefused(kind, stroke); },
+      onLayerOpRefused: () => { if (mayDraw.value) toast(t('vector.tooMany', { count: MOST_SHAPES })); }, // 'shapes' is the one reason (watching.js)
       onInvite: () => { invitation.value = true; },
       onWithdrawn: () => {
         invitation.value = false;

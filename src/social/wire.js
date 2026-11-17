@@ -76,6 +76,8 @@
  *   { t: 'undo-reset' }                         the host's stacks started over: everyone's undo goes with them
  *   { t: 'undo-refused', stroke } / { t: 'redo-refused', stroke }
  *                                               the host can't do that undo or redo, and no number is coming for it
+ *   { t: 'layer-op-refused', reason }           the host didn't do this artist's layer-op, for a reason they should hear:
+ *                                               'shapes', a copy past the shapes a drawing holds
  * Pausing and resuming are the 'away' message and the channel closing.
  */
 import { hex2rgb } from '../lib/ColorUtils.js';
