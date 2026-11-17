@@ -12,7 +12,7 @@ import EditToolbar from '@/components/EditToolbar.vue';
 import { i18n } from '@/i18n';
 import { blur } from '@/tools/retouch';
 import { getTool } from '@/tools';
-import { isFrozen } from '@/document/editCells.js';
+import { isFrozen, ownEntry } from '@/document/editCells.js';
 import { ctx2d } from '@/lib/Canvas.js';
 
 const looks = (project) => project.cells.map(({ char, fg, bg }) => ({ char, fg: { r: fg.r, g: fg.g, b: fg.b }, bg: { r: bg.r, g: bg.g, b: bg.b } }));
@@ -84,6 +84,47 @@ describe('exactly', () => {
     await settle(project);
     expectLooksAlike(looks(project), before);
     expect(project.baseRecords.pins.get('26,10')).toBe('t');
+  });
+
+  // docs/model.md R1 and R8: Into the image in Color ASCII. The report (projects/text-merge-base.phosphor): Layer 1's
+  // Colors only ▄s counted as characters, so their cells went in as pins with each half's paint over the picture's black,
+  // two pixels that differ, which a pin now shows as a background: 331 cells got one. A paint block outside ANSI is the
+  // converter's paint, into the picture; a cell on black folds the paint over it into its ink and stays on black.
+  test('R1: the report: Into the image in Color ASCII gives no cell a background it didn\'t show, and keeps the text\'s', async () => {
+    const { project } = await createTestApp();
+    await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/text-merge-base.phosphor')).arrayBuffer()], 'x.phosphor'));
+    await settle(project);
+    const before = project.cells.map((c) => c.bg.hex), at = 10 * project.cols + 26;
+    const typed = [...project.cellsOf('edit').values()].filter((entry) => ownEntry(entry, 'colorAscii')).length; // the text; the rest are Colors only's ▄s
+    await project.mergeIntoPicture();
+    await settle(project);
+    const after = project.cells.map((c) => c.bg.hex);
+    expect(after.filter((bg, i) => bg !== '#000000' && before[i] === '#000000')).toHaveLength(0);
+    expect([project.cells[at].char, project.cells[at].bg.hex]).toEqual(['t', '#999898']);
+    expect(project.baseRecords.pins.size).toBe(typed); // the text pinned, not the stroke's cells
+  });
+
+  test('R8: in Color ASCII a letter tinted by paint stays ink on black through Keep crisp cells and Into the image', async () => {
+    for (const into of [false, true]) {
+      const { project, workspace } = await createTestApp();
+      await project.setBlankCanvas({ cols: 20, rows: 20 });
+      project.renderStyle = 'colorAscii';
+      await settle(project);
+      workspace.pickLayer('edit');
+      project.typeAt(4, 4, 'A', { fg: '#ff0000' });
+      project.commitEdit();
+      project.paintEditPixels([{ x: 4, y: 8, r: 255, g: 255, b: 255, alpha: 1 }]); // the top half tinted
+      project.commitEdit();
+      await settle(project);
+      const shown = project.cells[4 * 20 + 4];
+      expect(shown.bg.hex).toBe('#000000');
+      if (into) await project.mergeIntoPicture();
+      else expect(project.mergeDown('edit')).toBe(true);
+      await settle(project);
+      const cell = project.cells[4 * 20 + 4];
+      expect([cell.char, cell.bg.hex]).toEqual(['A', '#000000']);
+      expect(Math.max(...['r', 'g', 'b'].map((k) => Math.abs(cell.fg[k] - shown.fg[k])))).toBeLessThanOrEqual(1);
+    }
   });
 
   test('R8: in Color ASCII a typed cell with a background merges onto the base as its two colors, one without as ink on black, and a pin of one color shows on black', async () => {
