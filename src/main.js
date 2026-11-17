@@ -19,9 +19,15 @@ import { readingActions } from './store/project/reading.js';
 import { renderingActions } from './store/project/rendering.js';
 
 const pinia = createPinia();
-// Development only: the side panel's HISTORY tab logs every step taken (src/dev/actionLog.js). Queries, render internals
-// and what autosave calls on its own are left out.
-if (import.meta.env.DEV) installActionLog(pinia, new Set([...Object.keys(readingActions), ...Object.keys(renderingActions), 'commitPending', 'documentNumber', 'keepLedger', 'projectParts']));
+// Development only: the side panel's HISTORY tab logs every step taken (src/dev/actionLog.js). Queries, render internals,
+// what autosave calls on its own and what watchers call as the document changes are left out.
+if (import.meta.env.DEV) {
+  installActionLog(pinia, new Set([
+    ...Object.keys(readingActions), ...Object.keys(renderingActions),
+    'commitPending', 'documentNumber', 'keepLedger', 'projectParts', // autosave's (useAutosave.js)
+    'buildGhost', 'syncShapeLayers', 'viewMoved', 'showGuidesFor', 'autosavedBy', // watchers' (EditWorkspace, vector.js, EditorViewport, App.vue)
+  ]));
+}
 
 const app = createApp(App);
 app.use(pinia);
