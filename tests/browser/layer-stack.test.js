@@ -1,7 +1,7 @@
 // The drawing's layers as an ordered list in the store: an old document opens as the bottom, the vector layer and the
 // edit layer, and the edit layer's fields (editCells, paintLayer, hasPaint) follow the cells layer in use (editId).
 import { test, expect, vi } from 'vitest';
-import { createTestApp, settle, cellsKey } from '../support/app.js';
+import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
 import { makeShape, rectShape, transformed, translation } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
@@ -254,6 +254,28 @@ for (const [renderStyle, charChoiceAscii] of [['colorAscii', 'intensity'], ['col
     expect(light.g).toBeGreaterThan(220);
     expect(light.b).toBeGreaterThan(220);
     if (charChoiceAscii === 'intensity') expect(cell.char).toBe('@');
+  });
+}
+
+// docs/model.md R7: paint converts the same above the lower group as in it, so a layer moved down into the lower group
+// (past an empty one) shows as it did.
+for (const [renderStyle, charChoiceAscii] of [['colorAscii', 'intensity'], ['colorAscii', 'shape'], ['ansi', null]]) {
+  test(`R7: ${renderStyle}${charChoiceAscii ? ` by ${charChoiceAscii}` : ''}: a painted layer moved down into the lower group looks the same`, async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 24, rows: 24 });
+    Object.assign(project, { renderStyle, charChoice: 'shape', ...(charChoiceAscii && { charChoiceAscii }) });
+    await settle(project);
+    const top = project.addLayer('cells', 'edit'); // Layer 1 stays empty under it
+    project.useLayer(top);
+    project.paintEditPixels(Array.from({ length: 40 }, (_, k) => ({ x: 2 + (k % 20), y: 8 + Math.floor(k / 20) * 3, r: 255, g: 64, b: 0, alpha: 0.35 + (k % 5) / 10 })));
+    project.commitEdit();
+    await settle(project);
+    const before = project.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`);
+    expect(project.moveLayer(top, 1)).toBe(true);
+    await settle(project);
+    expect(project.layers.map((l) => l.id)).toEqual(['base', top, 'edit']);
+    const after = project.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`);
+    expect(after.filter((cell, i) => cell !== before[i])).toEqual([]);
   });
 }
 

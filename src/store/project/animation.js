@@ -500,7 +500,7 @@ async function readyBuilder(project) {
       continue;
     }
     const builder = new FrameBuilder();
-    const preparing = builder.prepare(key.image, project.processParams, { baseLayer: project.baseLayer, baseRecords: project.baseRecords, layers: project.layers, baseChars: project.baseChars, layerParams: project.layerParams });
+    const preparing = builder.prepare(key.image, project.processParams, { baseLayer: project.baseLayer, baseRecords: project.baseRecords, layers: project.layers, baseChars: project.baseChars, layerParams: project.layerParams, paintScale: project.paintLayer?.scale ?? null });
     project._builder = markRaw({ key, builder, preparing });
     for (const frame of project.frames) frame.built = null;
     await preparing;

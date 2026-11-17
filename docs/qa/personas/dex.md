@@ -315,7 +315,10 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Does: picks Layer 1, presses Merge down, chooses Keep crisp cells.
 - Expects: the question offers Keep crisp cells and Blend into source image; crisp keeps his typed cells pinned on the
   base, exactly as they show.
-- Probes: `back-out`: press Escape at the question; `undo-redo`: undo and redo.
+- Probes: `back-out`: press Escape at the question; `undo-redo`: undo and redo; `blend`: first, on Layer 1, type a
+  word over a white Brush patch and Blur across it (the letters keep their characters, their colors even out, the
+  patch's edge fades), then Colors only across the word (the letters are tinted, the spaces beside them become ▄),
+  then Keep crisp cells: the word is pinned as it shows, nothing else changes (docs/model.md R2 to R4).
 - Rated: yes, wants Cmd+E, then Enter
 
 ### 27. Flatten it to plain cells
