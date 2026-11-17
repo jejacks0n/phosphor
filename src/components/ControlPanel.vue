@@ -61,8 +61,9 @@ const charsNote = computed(() => {
 });
 // The sections under Drawing, in order: the drawing's slider groups, the picked layer's Characters (every layer converts
 // something: the base its picture, a cells layer its paint, a vector layer its shapes), and only with the base picked the
-// picture's own Smoothing and Image filters (effects only when a real image is loaded).
-const hasRealImage = computed(() => !!store.image && store.pictureIsOriginal);
+// picture's own Smoothing and Image filters (effects only with a real image: not a blank canvas's or a flattened
+// drawing's stand-in; a working copy, after Bake or Blend into source image, is one the filters work on).
+const hasRealImage = computed(() => !!store.image && !isUniform(store.image));
 const sections = computed(() => {
   const [transform, adjust, effects] = sliderGroups.value;
   const characters = { id: 'characters', title: t('panel.groups.characters', { name: layerName(picked.value) }) };
