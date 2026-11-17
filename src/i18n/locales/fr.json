@@ -143,7 +143,7 @@
     "onCount": "{count} actif | {count} actifs",
     "colsAria": "Colonnes",
     "charRows": "{n} ligne | {n} lignes",
-    "rowsAria": "Lignes",
+    "rowsAria": "Lignes de pixels",
     "aspectLock": "Conserver les proportions",
     "renderStyle": {
       "label": "Style artistique",
