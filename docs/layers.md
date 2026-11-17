@@ -543,8 +543,9 @@ the canvas changes. Undo brings it back, selected if it was.
   fades like a painted one. The ▄s **Colors only**
   leaves on the cells it painted are paint too, and come down as they are, so in Color ASCII and Monochrome ASCII,
   where they aren't shown, the paint still shows as your ASCII characters.
-- **A Vector Layer Into a Drawing Layer**: Its shapes become paint on the layer under it, in their own colors, so Blur
-  and the other paint tools work on them as on any paint. A cell where that paint would show differently (the vector
+- **A Vector Layer Into a Drawing Layer**: Its shapes become paint on the layer under it, in their own colors and at
+  their own detail (finer than the grid, as paint is), so Blur and the other paint tools work on them as on any paint
+  and By shape reads their edges as it did. A cell where that paint would show differently (the vector
   layer has character settings of its own, or a palette or the character choice converts it differently), by more
   than a step or two of rounding (By shape works a shape's colors out from finer samples than paint has, so a
   gradient comes out a step or two apart all over), is written

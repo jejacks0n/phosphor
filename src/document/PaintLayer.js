@@ -75,6 +75,23 @@ export default class PaintLayer {
     return { x: rx, y: ry, w: Math.max(1, Math.floor((x + 1) * k) - rx), h: Math.max(1, Math.floor((y + 1) * k) - ry) };
   }
 
+  // A grid pixel's paint is the average of its block of layer pixels (alpha-weighted color, mean alpha): what every read
+  // of the layer at grid resolution gives (pixelAt, gridPixels, the Renderer's drawing of it), so paint drawn finer than
+  // the grid (a shape merged down at its own detail) shows and reads as its average, as a vector layer's shapes do, and
+  // paint laid a block at a time (the Brush's) reads back exactly. data: the layer pixels of a rect, from (x, y) in it.
+  static average(data, width, x, y, w, h) {
+    let r = 0, g = 0, b = 0, a = 0;
+    for (let py = y; py < y + h; py++) {
+      for (let px = x; px < x + w; px++) {
+        const o = (py * width + px) * 4, al = data[o + 3];
+        if (!al) continue;
+        r += data[o] * al; g += data[o + 1] * al; b += data[o + 2] * al; a += al;
+      }
+    }
+    if (!a) return null;
+    return { r: Math.round(r / a), g: Math.round(g / a), b: Math.round(b / a), a: a / (w * h) / 255 };
+  }
+
   // How many grid pixels hold each paint color, sampled one per grid pixel. Only (nearly) opaque
   // paint counts: soft edges and overlaps blend into one-off colors nobody picked.
   // ponytail: skips paint laid at under ~98% brush opacity; bucket it by color if that matters.
@@ -90,12 +107,18 @@ export default class PaintLayer {
     return counts;
   }
 
-  // The whole layer a grid pixel at a time, as the Renderer draws it: an ImageData cols x rows.
+  // The whole layer a grid pixel at a time, as the Renderer draws it (average): an ImageData cols x rows.
   gridPixels() {
-    const ctx = ctx2d(newCanvas(this.cols, this.rows));
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.canvas, 0, 0, this.cols, this.rows);
-    return ctx.getImageData(0, 0, this.cols, this.rows);
+    const { width, height } = this.canvas, { data } = ctx2d(this.canvas).getImageData(0, 0, width, height), out = new ImageData(this.cols, this.rows);
+    for (let y = 0; y < this.rows; y++) {
+      for (let x = 0; x < this.cols; x++) {
+        const rect = this.#cellRect(x, y), p = rect && PaintLayer.average(data, width, rect.x, rect.y, rect.w, rect.h);
+        if (!p) continue;
+        const o = (y * this.cols + x) * 4;
+        out.data[o] = p.r; out.data[o + 1] = p.g; out.data[o + 2] = p.b; out.data[o + 3] = Math.round(p.a * 255);
+      }
+    }
+    return out;
   }
 
   // Replace the layer with gridPixels' kind of image, each grid pixel a whole block. Unlike load, never smooths.
@@ -237,12 +260,12 @@ export default class PaintLayer {
     return bounds;
   }
 
-  // Raw paint at grid pixel (x, y) with its alpha (0..1), or null where there's none.
+  // Raw paint at grid pixel (x, y) with its alpha (0..1): its block's average, or null where there's none.
   pixelAt(x, y) {
     const rect = this.#cellRect(x, y);
     if (!rect) return null;
-    const [r, g, b, a] = ctx2d(this.canvas).getImageData(rect.x, rect.y, 1, 1).data;
-    return a > 0 ? { r, g, b, a: a / 255 } : null;
+    const { data } = ctx2d(this.canvas).getImageData(rect.x, rect.y, rect.w, rect.h);
+    return PaintLayer.average(data, rect.w, 0, 0, rect.w, rect.h);
   }
 
   // Selection blocks. A cell rect ({ c0, r0, c1, r1 }) is scale x 2·scale layer pixels per cell.

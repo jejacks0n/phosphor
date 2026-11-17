@@ -102,7 +102,7 @@ export const vectorActions = {
         if (!shapes.size) continue;
         this._upperShapes.set(id, layer = markRaw(new ShapeLayer(null)));
       }
-      layer.grid(this.cols, this.rows, this.baseLayer.scale);
+      layer.grid(this.cols, this.rows, this.paintLayer.scale); // the paint's scale: Merge down draws its shapes into a cells layer's paint as they are, and By shape samples both alike (docs/model.md R7)
       const rect = layer.set(shapes);
       if (rect) rects.upper = union(rects.upper, rect);
     }

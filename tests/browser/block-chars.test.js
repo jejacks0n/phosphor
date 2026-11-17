@@ -143,7 +143,7 @@ test('the report: in Color ASCII a shape merged down, then brushed along its edg
   await settle(project);
   expect(project.mergeDown(vector)).toBe(true);
   await settle(project);
-  expect([...project.cellsOf(layer).values()].some((entry) => entry.char === ' ' && entry.fg)).toBe(true); // its edge's exact blanks
+  // (The merge once wrote exact blanks along the edge; with the shape sampled as paint the same way, it may write none.)
   workspace.pickLayer(layer);
   Object.assign(workspace, { editFgColor: '#ffffff', brushDrawWith: 'normal', editBrushSize: 6, editBrushOpacity: 100 });
   const ctx = { project, workspace, view: 'output' };

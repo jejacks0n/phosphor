@@ -91,3 +91,20 @@ test('the PNG is made once while the paint stays, and again after a change or a 
   expect(layer.toBlob()).not.toBe(second);
   expect(await pixel(layer.toBlob(), 5, 1)).toEqual([0, 0, 0, 0]);
 });
+
+// A grid pixel of paint is the average of its block (docs/model.md R7): paint drawn finer than the grid (a shape merged
+// down at its own detail) reads and shows as its average, as a vector layer's shapes do; paint laid a block at a time
+// reads back exactly (above).
+test('paint finer than the grid reads as its block\'s average, in pixelAt and gridPixels', () => {
+  const layer = layerAt(4), ctx = layer.canvas.getContext('2d');
+  ctx.fillStyle = '#ff0000';
+  ctx.fillRect(8, 12, 2, 4); // the left half of grid pixel 2,3
+  ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
+  ctx.fillRect(10, 12, 2, 4); // the right half, half-transparent blue
+  layer.hasPaint = true;
+  const p = layer.pixelAt(2, 3);
+  expect(p.a).toBeCloseTo(0.75, 2); // half opaque, half at 0.5
+  expect([p.r, p.g, p.b]).toEqual([170, 0, 85]); // red weighted 2:1 over blue
+  expect(at(layer.gridPixels(), 2, 3)).toEqual([170, 0, 85, 192]); // the canvas keeps the half-transparent half at 128/255
+  expect(layer.pixelAt(3, 3)).toBeNull();
+});

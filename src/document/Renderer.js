@@ -89,6 +89,8 @@ export default class Renderer {
   sampleBudget = 32 * 1024 * 1024; // the most bytes of By shape samples upper layers keep, together
   #cellSamples = null;  // one cell's samples, for By shape on an upper layer (#upperChar)
   #exact = false;       // whether the cell #upperCell made last holds a character that's someone's own
+  #fineSamples = null;  // #fineUnder's one cell of samples, reused
+  #lowerPaint = null;   // the lower group's paint layer, from the last composite() (#fineUnder samples it finely)
   #lowerPx = null;      // the output's pixels under the cells a composeUpper walks (#pixelsUnder)
   settled = null;       // the cells the last composeUpper laid over again with indexes, past them too, as a Floyd–Steinberg layer was worked out again (#settled), or null
 
@@ -275,6 +277,7 @@ export default class Renderer {
     } else this.#baseData = ctx.getImageData(0, 0, w, h);
 
     this.#paintData = paintLayer ? this.#drawLayer(ctx, paintLayer, params, partial ? area : null) : null;
+    this.#lowerPaint = paintLayer?.hasPaint ? paintLayer : null;
     this.#noPaint = !paintLayer?.hasPaint && (!partial || this.#noPaint);
     const changed = !hold && params.quantize === 'count' && !this.#chosen && this.#recount(params);
     const moved = this.#ditherUnder(ctx, params, area, !!paintLayer, open);
@@ -684,31 +687,24 @@ export default class Renderer {
   // #drawLayer's drawing of area alone: the transformed pixels of that rect (#paintPart), drawn onto ctx.
   #drawLayerArea(ctx, layer, params, area) {
     const pixels = this.#paintPart(layer, params, area), { x, y, w: aw, h: ah } = area;
-    if (transformsOn(params)) ctx2d(this.#scratch).putImageData(pixels, x, y);
     ctx.drawImage(this.#scratch, x, y, aw, ah, x, y, aw, ah);
     return pixels;
   }
 
-  // A layer's pixels over area at grid resolution (a grid pixel at a time, as the lower group's paint is drawn) with the
-  // color transforms applied: an ImageData of the rect. The scratch canvas holds the untransformed draw after.
+  // A layer's pixels over area at grid resolution, each grid pixel the average of its block (PaintLayer.average: what a
+  // grid pixel of paint is, so paint finer than the grid shows as a vector layer's shapes do), with the color transforms
+  // applied: an ImageData of the rect, which the scratch canvas holds after, for drawing.
   #paintPart(layer, params, area) {
-    const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
+    const w = this.outputCanvas.width, h = this.outputCanvas.height;
     const { x, y, w: aw, h: ah } = area;
-
-    // Persistent scratch canvas for downsampling and transforming a layer
     if (!this.#scratch) this.#scratch = document.createElement('canvas');
     if (this.#scratch.width !== w || this.#scratch.height !== h) {
       this.#scratch.width = w;
       this.#scratch.height = h;
     }
-
-    const scratchCtx = ctx2d(this.#scratch);
-    scratchCtx.clearRect(x, y, aw, ah);
-    scratchCtx.imageSmoothingEnabled = false;
-    scratchCtx.drawImage(layer.canvas, x * k, y * k, aw * k, ah * k, x, y, aw, ah); // the grid's part (a layer can reach past it)
-
-    const pixels = scratchCtx.getImageData(x, y, aw, ah);
-    if (transformsOn(params)) applyTransforms(pixels.data, params);
+    const pixels = new ImageData(aw, ah);
+    baseSamplesOver(pixels.data, aw, layer, params, area, 1, true); // the grid's part (a layer can reach past it), transformed, averaged
+    ctx2d(this.#scratch).putImageData(pixels, x, y);
     return pixels;
   }
 
@@ -1082,7 +1078,8 @@ export default class Renderer {
           const v = bayerNudge(col, 2 * row + k, size, 1);
           return palette[paletteIndex(byte(c.r + v), byte(c.g + v), byte(c.b + v), palette)];
         });
-        cell = char === null ? this.#upperChar(halves, top, bottom, col, row, params, u.layer, snap, ordered ? 0 : bayerNudge(col, row, size, 1)) : buildCell(snap(top), snap(bottom), char, renderStyle);
+        const pixel = (k) => { const o = ((2 * row + k) * width + col) * 4; return data[o + 3] ? { r: data[o], g: data[o + 1], b: data[o + 2], a: data[o + 3] / 255 } : null; };
+        cell = char === null ? this.#upperChar(halves, top, bottom, col, row, params, u.layer, snap, ordered ? 0 : bayerNudge(col, row, size, 1), () => this.#fineUnder(col, row, reads, at, [pixel(0), pixel(1)], params)) : buildCell(snap(top), snap(bottom), char, renderStyle);
         exact = char !== null;
         continue;
       }
@@ -1093,10 +1090,53 @@ export default class Renderer {
         exact = !isFrozen(entry); // a frozen cell shows its character, and is paint to what's over it (docs/model.md R3)
         if (!exact) continue; // its own paint under it is what it stands for: not laid over it
       }
-      cell = this.#paintOver(cell, () => this.#pixelsUnder(cell, col, row, reads, at), top, bottom, exact, col, row, params, palette);
+      cell = this.#paintOver(cell, () => this.#pixelsUnder(cell, col, row, reads, at), top, bottom, exact, col, row, params, palette, () => this.#fineUnder(col, row, reads, at, [top, bottom], params));
     }
     this.#exact = exact;
     return cell;
+  }
+
+  // By shape's samples under the upper layer at `upTo` in the cell at col, row (SAMPLES a cell), as the lower group
+  // matches its own: the picture's samples (#shapeSamples', with the base's own pixels; the lower group's picture alone
+  // where those are stale), then each layer below laid over them by its alpha, sampled as finely as it's drawn
+  // (#samplesAt: the lower group's paint, an upper cells layer's paint, an upper vector layer's shapes; a layer with no
+  // more detail than the grid, its pixel at each half). over: the layer's own pixel at each half ([top, bottom],
+  // { r, g, b, a } or null), laid last by #upperChar; null for the lower group's own cells, whose paint is laid here.
+  // { data: Float64Array (r, g, b a sample), paint } for #upperChar, or null where the picture has no samples (the lower
+  // group isn't By shape, or it's between a resize and its render): the halves then. docs/model.md R7: paint and shapes
+  // above convert over what the lower group's would, finer samples included.
+  #fineUnder(col, row, reads, upTo, over, params) {
+    const base = this.#baseData, picture = this.#picture, n = SAMPLES.w;
+    if (!base || !picture || picture.width !== base.width * n || picture.height !== base.height * n || 2 * row + 1 >= base.height) return null;
+    const samples = this.#samples?.picture === picture ? this.#samples.data : picture, width = picture.width, src = samples.data;
+    const out = this.#fineSamples ??= new Float64Array(SAMPLES.w * SAMPLES.h * 3);
+    const lays = []; // each { fine } (#samplesAt's, alpha kept) or { grid: [top, bottom] }
+    const lay = (layer, bytes) => {
+      const fine = layer && this.#samplesAt(layer, params, col, row);
+      if (fine) lays.push({ fine });
+      else if (bytes) lays.push({ grid: [0, 1].map((k) => { const o = ((2 * row + k) * base.width + col) * 4; return bytes[o + 3] ? { r: bytes[o], g: bytes[o + 1], b: bytes[o + 2], a: bytes[o + 3] / 255 } : null; }) });
+    };
+    if (this.#lowerPaint) lay(this.#lowerPaint, this.#paintData?.data);
+    for (let at = 0; at < upTo; at++) {
+      const u = this.upper[at];
+      if (!reads[at]) continue;
+      lay(u.kind === 'cells' ? u.paint : u.layer, u.kind === 'cells' ? reads[at] : reads[at].data);
+    }
+    for (let sy = 0, j = 0; sy < SAMPLES.h; sy++) {
+      const half = sy < SAMPLES.h / 2 ? 0 : 1, y = 2 * row * n + sy;
+      for (let sx = 0; sx < SAMPLES.w; sx++, j += 3) {
+        const o = (y * width + col * n + sx) * 4;
+        let r = src[o], g = src[o + 1], b = src[o + 2];
+        for (const { fine, grid } of lays) {
+          let p;
+          if (fine) { const f = ((fine.y + sy) * fine.width + fine.x + sx) * 4; p = fine.data[f + 3] ? { r: fine.data[f], g: fine.data[f + 1], b: fine.data[f + 2], a: fine.data[f + 3] / 255 } : null; }
+          else p = grid[half];
+          if (p) { r += (p.r - r) * p.a; g += (p.g - g) * p.a; b += (p.b - b) * p.a; }
+        }
+        out[j] = r; out[j + 1] = g; out[j + 2] = b;
+      }
+    }
+    return { data: out, paint: over };
   }
 
   // The cell's two grid pixels under the upper layer at `upTo` (top, bottom: { r, g, b }), as the PIXEL view shows them
@@ -1126,13 +1166,13 @@ export default class Renderer {
   // #pixelsUnder's for an upper layer) and converted as the layer converts paint (#upperChar; the paint's pixels are its
   // samples, as it's drawn a grid pixel at a time). So is paint over a character with no ink to tint in the ASCII styles
   // (opensToPaint), where there's no ▄ to make of it. docs/model.md, R2 and R7.
-  #paintOver(cell, under, top, bottom, exact, col, row, params, palette) {
+  #paintOver(cell, under, top, bottom, exact, col, row, params, palette, fine = null) {
     if (!top && !bottom) return cell;
     const { renderStyle } = params;
     if (exact && (renderStyle === 'ansi' || !opensToPaint(cell, renderStyle))) return coverCell(cell, top, bottom, { renderStyle, palette });
     const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
     const halves = under(), [ht, hb] = halves;
-    return this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, null, snap);
+    return this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, null, snap, 0, fine);
   }
 
   // The cell's two pixels of the picture (the lower group's, before its paint and the palette), as underCell builds a
@@ -1151,7 +1191,10 @@ export default class Renderer {
   // as the lower group's are: the layer's own samples in the cell (#samplesAt) over the halves under it. Else the halves
   // snapped with Random's seed character (its own seed's in its own set) or one by weight (weightedChar). nudge: Ordered
   // dither's for the cell (bayerNudge), added to every sample Best match or By shape matches, as walkCells adds it.
-  #upperChar(under, top, bottom, col, row, params, layer, snap, nudge = 0) {
+  // fine: for By shape, a thunk for the finer samples under the layer with its own pixel at each half (#fineUnder), so
+  // paint and shapes above a detailed picture match as they would on the lower group (docs/model.md R7); null, or one
+  // that gives null, and the halves stand in.
+  #upperChar(under, top, bottom, col, row, params, layer, snap, nudge = 0, fine = null) {
     if (resolves(params) && this.#fontReady) {
       let m = this.#matchers.get(params);
       if (m?.palette !== this.palette) {
@@ -1164,13 +1207,19 @@ export default class Renderer {
         const r = matcher.match([clamp(top.r + nudge), clamp(top.g + nudge), clamp(top.b + nudge)], [clamp(bottom.r + nudge), clamp(bottom.g + nudge), clamp(bottom.b + nudge)]);
         return { char: r.char, fg: r.fg, bg: r.bg };
       }
-      const s = (this.#cellSamples ??= new Float64Array(SAMPLES.w * SAMPLES.h * 3)), own = this.#samplesAt(layer, params, col, row);
+      const s = (this.#cellSamples ??= new Float64Array(SAMPLES.w * SAMPLES.h * 3)), own = this.#samplesAt(layer, params, col, row), finer = fine?.();
       for (let sy = 0, j = 0; sy < SAMPLES.h; sy++) {
-        const half = sy < SAMPLES.h / 2 ? 0 : 1, u = under[half], c = half ? bottom : top;
+        const half = sy < SAMPLES.h / 2 ? 0 : 1, c = half ? bottom : top;
         for (let sx = 0; sx < SAMPLES.w; sx++, j += 3) {
-          if (!own) { s[j] = clamp(c.r + nudge); s[j + 1] = clamp(c.g + nudge); s[j + 2] = clamp(c.b + nudge); continue; }
-          const o = ((own.y + sy) * own.width + own.x + sx) * 4, a = own.data[o + 3] / 255;
-          s[j] = clamp(Math.round(own.data[o] * a + u.r * (1 - a)) + nudge); s[j + 1] = clamp(Math.round(own.data[o + 1] * a + u.g * (1 - a)) + nudge); s[j + 2] = clamp(Math.round(own.data[o + 2] * a + u.b * (1 - a)) + nudge);
+          const u = finer ? { r: finer.data[j], g: finer.data[j + 1], b: finer.data[j + 2] } : under[half]; // under this sample
+          if (own) {
+            const o = ((own.y + sy) * own.width + own.x + sx) * 4, a = own.data[o + 3] / 255;
+            s[j] = clamp(Math.round(own.data[o] * a + u.r * (1 - a)) + nudge); s[j + 1] = clamp(Math.round(own.data[o + 1] * a + u.g * (1 - a)) + nudge); s[j + 2] = clamp(Math.round(own.data[o + 2] * a + u.b * (1 - a)) + nudge);
+            continue;
+          }
+          if (!finer) { s[j] = clamp(c.r + nudge); s[j + 1] = clamp(c.g + nudge); s[j + 2] = clamp(c.b + nudge); continue; }
+          const p = finer.paint?.[half], m = p ? mix(u, p, p.a) : u; // the layer's own pixel over the sample
+          s[j] = clamp(m.r + nudge); s[j + 1] = clamp(m.g + nudge); s[j + 2] = clamp(m.b + nudge);
         }
       }
       const r = matcher.match(s);
@@ -1382,7 +1431,7 @@ export default class Renderer {
     const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
     if (!top && !bottom) return null;
     const under = this.underCell(col, row, params, []);
-    return under && this.#paintOver(under, () => this.pictureUnder(under, col, row, params), top, bottom, true, col, row, params, this.#heldData ? null : this.palette);
+    return under && this.#paintOver(under, () => this.pictureUnder(under, col, row, params), top, bottom, true, col, row, params, this.#heldData ? null : this.palette, () => this.#fineUnder(col, row, null, 0, null, params));
   }
 
   // A converted cell with the base layer's pin (if any) as its character, and the 256-color indexes kept beside the pin
@@ -1432,7 +1481,8 @@ export default class Renderer {
     if (own ? !this.#hasUnder(col, row, params) : !under) return baseCells[cellIndex(col, row, params.cols)];
     const cell = composeCell(under, entry, params.renderStyle, (hex, index) => this.effective(hex, params, index));
     if (this.#noPaint || isFrozen(entry)) return cell; // a frozen cell's paint under it is what it stands for (docs/model.md R3)
-    return this.#paintOver(cell, () => this.pictureUnder(cell, col, row, params), this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), true, col, row, params, this.palette);
+    const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
+    return this.#paintOver(cell, () => this.pictureUnder(cell, col, row, params), top, bottom, true, col, row, params, this.palette, () => this.#fineUnder(col, row, null, 0, null, params));
   }
 }
 

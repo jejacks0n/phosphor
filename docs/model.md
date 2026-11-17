@@ -15,7 +15,7 @@ Each cell of it is one of these:
 
 | Kind | What it is | Converted? | Paint over it |
 | --- | --- | --- | --- |
-| **Paint** | Pixels with alpha, no character | Yes, where it lies, by its layer's settings | Mixes in, converts again |
+| **Paint** | Pixels with alpha, no character, kept finer than the grid (a grid pixel of it reads and shows as its block's average: `PaintLayer.average`) | Yes, where it lies, by its layer's settings | Mixes in, converts again |
 | **Paint block** `{ char: '▄' }` | Paint with a hint: in ANSI, show my two halves as a ▄. Not a cell of anyone's; outside ANSI it's nothing (`shownEntry`) | As paint (ANSI shows the ▄) | As paint |
 | **A character of someone's own** | A character someone chose: typed, opened from a file, pasted, pinned on the base, an art layer's | Never | Tints its ink; the character stays (R2) |
 | **Frozen cell** `{ …, frozen: true }` | Paint, still there under it, with Merge down's pinned conversion of it over it: the character and colors it showed, kept because it would convert otherwise in its new place. Paint to everything but the converter, which shows the pin instead of converting the paint | Never again, until paint is written or erased in it: then the pin goes and it's paint | As paint: mixes into its halves, converts (R3) |
@@ -71,8 +71,9 @@ A character of someone's own is completed against the look under it and written 
 over the paint under it and stays paint; a paint block goes in as a block (where the layer under has no character of
 its own there) and its paint as paint. Only where paint would convert otherwise in its new place (`unlike`, compared
 up to the layer merged into with `ROUNDING` steps of tolerance per channel, characters exact) is it pinned: the paint
-stays, and the cell it showed is written over it (`frozenCells`), marked frozen. The converter shows the pin and leaves
-the paint under it alone (the Renderer's `#composeOne` and `#upperCell` lay no paint of the cell's own layer over a
+stays, and the cell it showed is written over it (`frozenCells`), marked frozen. A merged vector layer's shapes go into
+the paint at their own detail (the base layer's scale), not a grid pixel at a time, so By shape samples them as it
+sampled the shapes (R7). The converter shows the pin and leaves the paint under it alone (the Renderer's `#composeOne` and `#upperCell` lay no paint of the cell's own layer over a
 frozen entry; `layerOver` in `reading.js` the same). Everything else sees paint: the PIXEL view draws the paint, the
 layers above lay their paint over it as over converted paint (`#exactUnder`, `#upperCell`), so the check up to the
 merged-into layer is enough, and paint written or erased in the cell (`paintEditPixels`, `putEditPixels`,
@@ -121,15 +122,21 @@ Paint and shapes on an upper layer, where they don't tint a character of someone
 grid pixels the PIXEL view shows under that layer: the lower group's output (the picture with its paint, before the
 palette) with each upper layer below laid over by its alpha. Never over the shown character's halves (in the ASCII
 styles those are ink on black, far darker than the pixels, so a faint stroke one layer up came out dark). The lower
-group's own paint converts over the picture the same way. So the ASCII view says what the PIXEL view shows, and paint
+group's own paint converts over the picture the same way. Under By shape, which matches finer samples of the picture
+(4 × 8 a cell), the layer above matches the same samples with the layers between and its own pixels laid over them
+(`#fineUnder`), so a photo's detail under soft paint counts there as it does on the lower group; where the picture has no
+samples (the lower group isn't By shape) the two pixels stand in. An upper vector layer draws its shapes at the paint's
+scale, and Merge down draws them into the paint as they are, so By shape samples the merged paint as it sampled the
+shapes, and the PIXEL view, which shows a grid pixel of paint as its block's average, shows them as it did. So the ASCII view says what the PIXEL view shows, and paint
 merged down converts to what it converted to above, except for the converter's own differences (a palette snapped at
 another step, dither error, By shape's finer samples), which R3 freezes.
 
-- Lives in: `Renderer.#pixelsUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and for `#paintOver`'s
-  convert path, with `#pictureUnder` for the lower group; `storedLookAt` (`src/store/project/reading.js`) tracks the
-  stored pixels under the same way.
+- Lives in: `Renderer.#pixelsUnder` and `#fineUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and
+  for `#paintOver`'s convert path, with `pictureUnder` for the lower group; `storedLookAt` (`src/store/project/reading.js`)
+  tracks the stored pixels under the same way.
 - Checked by: `tests/browser/layer-stack.test.js › R7: …` (faint red over white, in Color ASCII by intensity and By
-  shape and in ANSI; the report's file).
+  shape and in ANSI; the report's file); `tests/browser/merge.test.js › R7: under By shape …` (soft paint over a photo
+  merges down with nothing frozen).
 
 ### R8. Color ASCII is ANSI in spirit: a character of someone's own keeps its background, on the base too.
 

@@ -475,8 +475,9 @@ test('after an edit on an upper layer, the PIXEL canvas is redrawn only where th
       const again = project.renderer.shownCanvas();
       expect(again).toBe(first); // the same canvas, caught up
       const sizes = [...draws.mock.calls.map((args) => (args.length === 9 ? args[7] * args[8] : Infinity)), ...reads.mock.calls.map((args) => args[2] * args[3])];
+      const k = project.paintOf(top).scale;
       expect(sizes.length).toBeGreaterThan(0);
-      for (const size of sizes) expect(size).toBeLessThanOrEqual(2); // one cell's two grid pixels at most
+      for (const size of sizes) expect(size).toBeLessThanOrEqual(2 * k * k); // one cell's two grid pixels at most: their blocks of layer pixels read (PaintLayer.average), two pixels drawn
     } finally {
       draws.mockRestore();
       reads.mockRestore();

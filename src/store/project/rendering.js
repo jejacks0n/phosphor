@@ -55,7 +55,7 @@ function countedLayers(project) {
     else if (shown.upper.includes(id)) counted.push({ layer: project._upperShapes.get(id) });
     else {
       const alone = new ShapeLayer(null);
-      alone.grid(project.cols, project.rows, project.baseLayer.scale);
+      alone.grid(project.cols, project.rows, project.paintLayer.scale); // as syncShapeLayers grids an upper vector layer
       alone.set(shapesOn([id]));
       counted.push({ layer: alone });
     }

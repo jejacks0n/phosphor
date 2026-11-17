@@ -14,14 +14,23 @@ import { blur } from '@/tools/retouch';
 import { getTool } from '@/tools';
 import { isFrozen, ownEntry } from '@/document/editCells.js';
 import { ctx2d } from '@/lib/Canvas.js';
+import { coverageOf } from '@/lib/GlyphCoverage.js';
 
 const looks = (project) => project.cells.map(({ char, fg, bg }) => ({ char, fg: { r: fg.r, g: fg.g, b: fg.b }, bg: { r: bg.r, g: bg.g, b: bg.b } }));
 const apart = (a, b) => Math.max(Math.abs(a.r - b.r), Math.abs(a.g - b.g), Math.abs(a.b - b.b));
-// The same characters, and colors no more than the step or two apart that the same color rounds to when worked out
-// another way (merging.js ROUNDING).
+// The one color a cell shows all over (a █, a space, or a character in its background's color), or null: two such cells
+// look the same whatever their characters (merging.js sameLook: By shape breaks the tie between them one way above a
+// layer and another on it).
+const flatColor = ({ char, fg, bg }) => (apart(fg, bg) <= 2 ? bg : coverageOf(char).every((v) => v === 0) ? bg : coverageOf(char).every((v) => v === 1) ? fg : null);
+// The same look: the same characters, and colors no more than the step or two apart that the same color rounds to when
+// worked out another way (merging.js ROUNDING), or two cells of one color each, those colors as near.
 function expectLooksAlike(now, was) {
-  expect(now.map(({ char }) => char)).toEqual(was.map(({ char }) => char));
-  expect(Math.max(...now.map((cell, i) => Math.max(apart(cell.fg, was[i].fg), apart(cell.bg, was[i].bg))))).toBeLessThanOrEqual(2);
+  const off = now.map((cell, i) => {
+    const fa = flatColor(cell), fb = flatColor(was[i]);
+    if (fa && fb) return apart(fa, fb) <= 2 ? null : `${i}: ${cell.char} vs ${was[i].char}`;
+    return cell.char === was[i].char && apart(cell.fg, was[i].fg) <= 2 && apart(cell.bg, was[i].bg) <= 2 ? null : `${i}: ${cell.char} ${JSON.stringify(cell.fg)} vs ${was[i].char} ${JSON.stringify(was[i].fg)}`;
+  }).filter(Boolean);
+  expect(off).toEqual([]);
 }
 
 const maxDiff = (a, b, only) => (only ?? a.map((_, i) => i)).reduce((m, i) => Math.max(m, ...a[i].map((v, k) => Math.abs(v - b[i][k]))), 0);
@@ -444,30 +453,32 @@ describe('down between layers', () => {
     project.render();
     await settle(project);
     expect(ids(project)).toEqual(['base', 'edit', vector]);
-    let before = cellsKey(project);
+    let before = looks(project);
     expect(project.mergeDown(vector)).toBe(true);
     await settle(project);
     expect(ids(project)).toEqual(['base', 'edit']);
     expect(project.shapes.size).toBe(0);
-    expect(cellsKey(project)).toEqual(before);
+    expectLooksAlike(looks(project), before);
     expect(project.paintOf('edit').pixelAt(4, 10)).toEqual({ r: 255, g: 0, b: 0, a: 1 }); // the red rectangle, as paint
     project.undo();
     await settle(project);
     expect(project.shapes.size).toBe(2);
-    expect(cellsKey(project)).toEqual(before);
+    expectLooksAlike(looks(project), before);
 
     project.setLayerChars(vector, { chars: '#' });
     project.commitLayerChars();
     project.render();
     await settle(project);
-    before = cellsKey(project);
+    before = looks(project);
     expect(project.mergeDown(vector)).toBe(true);
     await settle(project);
-    expect(cellsKey(project)).toEqual(before);
+    expectLooksAlike(looks(project), before);
     const reached = [...project.cellsOf('edit').keys()].map((key) => key.split(',').map(Number)).map(([c, r]) => r * project.cols + c);
     expect(reached.length).toBeGreaterThan(20);
-    expect(project.paintOf('edit').pixelAt(4, 10)).toEqual({ r: 255, g: 0, b: 0, a: 1 }); // frozen, over its paint (docs/model.md R3)
-    expect(isFrozen(project.cellsOf('edit').get('4,5'))).toBe(true);
+    expect(project.paintOf('edit').pixelAt(4, 10)).toEqual({ r: 255, g: 0, b: 0, a: 1 }); // the red rectangle, still paint
+    const frozen = [...project.cellsOf('edit')].filter(([, entry]) => isFrozen(entry)).map(([key]) => key.split(',').map(Number));
+    expect(frozen.length).toBeGreaterThan(0); // the blue outline's cells, which the layer's '#' showed otherwise than the lower set does
+    expect(frozen.every(([c, r]) => project.paintOf('edit').pixelAt(c, 2 * r) || project.paintOf('edit').pixelAt(c, 2 * r + 1))).toBe(true); // frozen, over their paint (docs/model.md R3)
     const chars = reached.map((i) => project.cells[i].char);
     project.quantize = 'cga';
     project.render();
@@ -478,7 +489,7 @@ describe('down between layers', () => {
     await settle(project);
     expect(ids(project)).toEqual(['base', 'edit', vector]);
     expect(project.shapes.size).toBe(2);
-    expect(cellsKey(project)).toEqual(before);
+    expectLooksAlike(looks(project), before);
   });
 
   test('in a room, Merge down goes to the room as the whole document, the emptied layer gone as alone', async () => {
@@ -595,7 +606,6 @@ describe('down between layers', () => {
     expect(project.mergeDown('vector')).toBe(true);
     await settle(project);
     expectLooksAlike(looks(project), before);
-    expect([...project.cellsOf('edit').values()].filter(isFrozen).length).toBeGreaterThan(20); // its edge, frozen
     expect(project.mergeDown('L1')).toBe(true);
     await settle(project);
     expectLooksAlike(looks(project), before);
@@ -620,13 +630,46 @@ describe('down between layers', () => {
     expect(frozen.every(([key]) => { const [col, row] = key.split(',').map(Number); return project.paintOf('L2').pixelAt(col, 2 * row) || project.paintOf('L2').pixelAt(col, 2 * row + 1); })).toBe(true);
   });
 
+  // docs/model.md R7: under By shape the lower group matches each cell against finer samples of the picture, so a photo's
+  // detail shows through soft paint; a layer above now matches the same samples, and a merged vector layer's shapes go
+  // into the paint at their own detail, so soft paint and shapes above convert as they will once merged down and the
+  // merge freezes nothing. On the report's photo (projects/merge-base-banding.phosphor) soft strokes froze 407 cells and a
+  // shape 160 before, in Color ASCII; the file's own merge had frozen 51 at a shape's edge.
+  for (const [renderStyle, kind] of [['colorAscii', 'paint'], ['colorAscii', 'shape'], ['ansi', 'paint'], ['ansi', 'shape']]) {
+    test(`R7: under By shape (${renderStyle}), soft ${kind} on a layer above a photo merges down with nothing frozen`, async () => {
+      const { project, workspace } = await createTestApp();
+      await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/merge-base-banding.phosphor')).arrayBuffer()], 'x.phosphor'));
+      Object.assign(project, { renderStyle, charChoice: 'shape' });
+      workspace.pickLayer('edit');
+      project.clearEditCells([...project.cellsOf('edit')].filter(([, entry]) => isFrozen(entry)).map(([key]) => { const [col, row] = key.split(',').map(Number); return { col, row }; })); // the file's own, from an earlier merge: paint under them would be re-frozen
+      project.commitEdit();
+      project.render();
+      await settle(project);
+      const top = project.addLayer(kind === 'paint' ? 'cells' : 'vector', 'edit');
+      workspace.pickLayer(top);
+      if (kind === 'paint') {
+        const soft = (x0, x1, y0, dy) => brushPixels({ x: x0, y: y0 }, { x: x1, y: y0 + dy }, { size: 6, flow: 1, hardness: 0.3 }, project.cols, project.rows);
+        for (let y = 20; y < 140; y += 12) project.paintStroke(soft(4, 76, y, 4), '#ff4000');
+      } else project.addShape(ellipseShape(10.3, 30.4, 70.7, 120.2, { fill: '#ff4000' }));
+      project.commitEdit();
+      await settle(project);
+      const before = looks(project);
+      expect(project.mergeDown(top)).toBe(true);
+      await settle(project);
+      expectLooksAlike(looks(project), before);
+      // ANSI picks two colors a cell, so at a shape's soft edge the paint's 8-bit rounding can tip By shape's pick in a
+      // handful of cells, which the merge freezes as it should; the rest convert alike.
+      expect([...project.cellsOf('edit').values()].filter(isFrozen).length).toBeLessThanOrEqual(renderStyle === 'ansi' && kind === 'shape' ? 20 : 0);
+    });
+  }
+
   // docs/model.md R4: a frozen cell is paint to Retouch too: Blur turns it back into paint where it changes it, so a
   // merged shape fades at its edge like a painted one; a typed character beside it stays (retouch.test.js).
   test('R4: a shape merged down over a picture: Blur turns the frozen cells along its edge back into paint and fades them', async () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
     const vector = project.addLayer('vector', 'edit');
-    project.setLayerChars(vector, { chars: '█' }); // its own characters: its cells convert otherwise on the layer under, so the merge freezes them (R7 freezes nothing otherwise)
+    project.setLayerChars(vector, { chars: '▀' }); // its own characters: its edge cells convert otherwise on the layer under (a ▀ of two colors, not the lower set's characters), so the merge freezes them (R7 freezes nothing otherwise)
     workspace.pickLayer(vector);
     project.addShape(rectShape(5.3, 4.6, 30.7, 30.2, { fill: '#ff0000' }));
     project.commitEdit();

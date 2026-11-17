@@ -15,6 +15,7 @@ import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isP
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors, mix } from '@/lib/Cells.js';
+import { coverageOf } from '@/lib/GlyphCoverage.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
@@ -162,11 +163,22 @@ function mergedPaint(project, into, erased, from, rect) {
 const halvesOf = (col, row) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }];
 // Whether two cells look the same: one character, and colors no more than ROUNDING apart on any channel. The same color
 // reached two ways rounds a step or two apart (By shape works a shape's colors out from its finer samples, paint from
-// its grid pixels), which shows the same; a real difference (a soft edge seen at half-cell scale) is more. The character
-// is compared as it is, even where it doesn't show (a █ and a space, both white on white): an export writes it.
+// its grid pixels), which shows the same; a real difference (a soft edge seen at half-cell scale) is more. Two cells that
+// each show one color all over (a █, a space, or any character in its background's color: the inside of a shape, where
+// By shape's choice between them is a tie it breaks one way above and another below) compare by that color alone.
 const ROUNDING = 2;
 const near = (a, b) => a === b || (!!a && !!b && Math.abs(a.r - b.r) <= ROUNDING && Math.abs(a.g - b.g) <= ROUNDING && Math.abs(a.b - b.b) <= ROUNDING);
-const sameLook = (a, b) => a?.char === b?.char && near(a?.fg, b?.fg) && near(a?.bg, b?.bg);
+const flatColor = (c) => {
+  if (!c) return null;
+  if (near(c.fg, c.bg)) return c.bg;
+  const coverage = coverageOf(c.char);
+  return coverage.every((v) => v === 0) ? c.bg : coverage.every((v) => v === 1) ? c.fg : null;
+};
+const sameLook = (a, b) => {
+  const fa = flatColor(a), fb = flatColor(b);
+  if (fa && fb) return near(fa, fb);
+  return a?.char === b?.char && near(a?.fg, b?.fg) && near(a?.bg, b?.bg);
+};
 
 // The cells at indexes (row * cols + col) a merge into the cells layer with the id under would change, with its after
 // (state, mergeStep's) put in place: each worked out as it shows up to that layer (through the pipeline for the lower
@@ -277,17 +289,16 @@ function shapesOnCells(project, id, under) {
     for (let row = 0, rows = charRowsOf(project.rows); row < rows; row++) for (let col = 0; col < cols; col++) if (shapes.charAt(col, row) !== undefined) reached.push(row * cols + col);
   }
   const was = reached.length && levelCells(project, id, reached), frozen = frozenCells(project, id, reached, was);
-  const from = paintFrom(project.paintLayer), art = [], painted = [], pixels = [];
+  const from = paintFrom(project.paintLayer), art = [], painted = [];
   for (const i of reached) {
     const col = i % cols, row = (i - col) / cols;
     if (shapes.charAt(col, row) !== null) { art.push(i); continue; } // a character paint can't hold
     painted.push(i);
-    for (const { x, y } of halvesOf(col, row)) {
-      const p = y < project.rows && project.renderer.upperStoredAt(shapes, x, y);
-      if (p) pixels.push({ x, y, ...p });
-    }
   }
-  from.put(pixels);
+  // The shapes at their own detail (the base layer's scale, finer than the grid), not a grid pixel at a time, so By
+  // shape samples the paint as it sampled the shapes above (docs/model.md R7) and little needs freezing; what an art
+  // layer draws is erased under its characters (freezeUnlike).
+  if (shapes?.drawsShapes) from.drawOver(shapes);
   const before = { stack: stackState(project), shapes: project.shapes };
   const into = mergedPaint(project, project.paintOf(under), [], from, null), next = new Map(project.cellsOf(under));
   const kept = new Map([...project.shapes].filter((entry) => !onLayerId(id)(entry) || entry[1].guide)); // guides draw nothing: they stay
