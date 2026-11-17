@@ -341,10 +341,12 @@ see what happens to a Follow a path… under way.
 
 ### 23. Draw by the ghost
 - Does: picks Layer 1, draws a few cells with the Pencil on frame 5, steps to frame 6 (a Blank) and draws a few more
-  beside them, looking at the dimmed ones; opens Ghost's box, moves its strength to 70%, then unchecks it.
+  beside them, looking at the dimmed ones; opens Ghost's box, moves its strength to 70%, sets Frames after to 1 and
+  steps back to frame 5, then unchecks Show ghost.
 - Expects: inherited cells show dimmed on ANSI in their own colors; what she draws on this frame shows at full
-  strength; the strength starts at 35% and this browser remembers it; Ghost off shows inherited cells solid; the ghost
-  never plays or reaches an export ([The ghost](../../animation.md#the-ghost)).
+  strength; the strength starts at 35% and this browser remembers it, as it does Frames before (1) and Frames after
+  (0); on frame 5, what she drew on frame 6 shows in a cool blue tint where frame 5 shows nothing; Ghost off shows
+  inherited cells solid; the ghost never plays or reaches an export ([The ghost](../../animation.md#the-ghost)).
 - Probes: `extremes`: strength at 0% and 100%; `interrupt`: reload and check the strength came back; `back-out`: open
   the box and press Escape, and check where focus went.
 - Rated: yes, wants a key for Ghost on and off
@@ -358,8 +360,8 @@ see what happens to a Follow a path… under way.
   selection; `again`: off and on three times quickly.
 - Rated: yes, wants a key for Animate
 
-**Free time:** she'd look for an onion skin of the next frame as well as the last, set Ghost off and draw on a Wipe,
-type a word with New cells set to Keep on this frame only and look for its ghost on the frame after, and see whether the
+**Free time:** she'd set Frames before to 3 and draw a word on three frames in a row with New cells set to Keep on this
+frame only, looking for each one fainter on the frame after them; set Ghost off and draw on a Wipe; and see whether the
 ghost shows while playing (it doesn't).
 
 ## Playing it back

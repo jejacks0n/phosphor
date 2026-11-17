@@ -86,6 +86,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     ghost: true,             // earlier frames show dimmed on a Blank frame
     cellsStay: false,        // cells drawn from now on show on their frame only (frames.js: stays)
     ghostStrength: useLocalStorage('phosphor.ghostStrength', 35), // % of their own colors they keep: 0 gone, 100 solid
+    ghostFramesBefore: useLocalStorage('phosphor.ghostFramesBefore', 1), // how many frames before the ghost pictures (1 to 5)
+    ghostFramesAfter: useLocalStorage('phosphor.ghostFramesAfter', 0),   // and after (0 to 5)
     ansiOverlay: 100,        // % opacity of the edit cells drawn over the pixel view
     ansiOverlayAll: false,   // draw every cell over the pixel view, not just the edit cells
     wand: null,              // the Magic Wand's selection: { view, width, height, mask (markRaw'd, a byte per unit: cells or grid pixels) }

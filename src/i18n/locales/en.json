@@ -848,6 +848,8 @@
     "ghost": "Ghost",
     "ghostTitle": "Onion skin: show previous frames dimmed behind Blank frames",
     "ghostStrength": "Ghost opacity",
+    "ghostFramesBefore": "Frames before",
+    "ghostFramesAfter": "Frames after",
     "ghostOn": "Show ghost",
     "ghostOnTitle": "Onion skin: on, {percent}%",
     "ghostOffTitle": "Onion skin: off"

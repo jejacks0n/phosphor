@@ -172,6 +172,77 @@ test('the frame before\'s staying cells show as its picture, dimmed, only on scr
   expect(project.shownCells[i].char).not.toBe('A');
 });
 
+// How far a shown cell's foreground is from the cell under it: how strongly its ghost shows.
+const strength = (project, col, row) => {
+  const i = cellIndex(col, row, project.cols), shown = project.shownCells[i].fg, under = project.cells[i].fg;
+  return Math.abs(shown.r - under.r) + Math.abs(shown.g - under.g) + Math.abs(shown.b - under.b);
+};
+
+test('with Frames before at 3, the staying cells of the three frames before show, each fainter, the nearest winning', async () => {
+  const { project, workspace } = await animated();
+  workspace.cellsStay = true;
+  for (const [col, char] of [[1, 'A'], [2, 'B'], [3, 'C']]) {
+    project.addFrame('blank');
+    type(project, col, 1, char);
+    type(project, 5, 1, char); // each frame draws here too
+  }
+  project.addFrame('blank'); // frame 4
+  const chars = () => [1, 2, 3, 5].map((col) => project.shownCells[cellIndex(col, 1, project.cols)].char).join('');
+  await project.buildGhost();
+  expect(chars()[2]).toBe('C'); // one before, as it always was
+  expect(chars()[3]).toBe('C');
+  expect(chars()).not.toContain('A');
+  workspace.ghostFramesBefore = 3;
+  await project.buildGhost();
+  expect(chars()).toBe('ABCC'); // frame 3's C over frame 1's A and frame 2's B
+  expect(strength(project, 3, 1)).toBeGreaterThan(strength(project, 2, 1));
+  expect(strength(project, 2, 1)).toBeGreaterThan(strength(project, 1, 1));
+  expect(project.cells[cellIndex(1, 1, project.cols)].char).not.toBe('A'); // only on screen
+  workspace.ghostFramesBefore = 2; // fewer: no rebuild needed
+  expect(chars()).toBe('·BCC'.replace('·', project.cells[cellIndex(1, 1, project.cols)].char));
+});
+
+test('the frames before stop at a Wipe: it shows, the frames before it don\'t', async () => {
+  const { project, workspace } = await animated();
+  workspace.cellsStay = true;
+  workspace.ghostFramesBefore = 3;
+  project.addFrame('blank');
+  type(project, 1, 1, 'A');
+  project.addFrame('wipe');
+  type(project, 2, 1, 'B');
+  project.addFrame('blank');
+  await project.buildGhost();
+  const i = (col) => cellIndex(col, 1, project.cols);
+  expect(project.shownCells[i(2)].char).toBe('B');
+  expect(project.shownCells[i(1)].char).not.toBe('A');
+});
+
+test('with Frames after, what the frames after drew shows in one cool tint, the nearest stronger, over nothing of this frame', async () => {
+  const { project, workspace } = await animated();
+  type(project, 4, 1, 'X'); // carried on to every frame: no ghost of it
+  project.addFrame('blank'); // frame 1, where we stand
+  project.addFrame('blank');
+  type(project, 1, 1, 'D'); // drawn to carry on: a frame after's still shows
+  project.addFrame('blank');
+  workspace.cellsStay = true;
+  type(project, 2, 1, 'E');
+  type(project, 4, 1, 'Y'); // over the X this frame shows
+  project.showFrame(1);
+  const i = (col) => cellIndex(col, 1, project.cols);
+  await project.buildGhost();
+  expect(project.shownCells[i(1)].char).not.toBe('D'); // Frames after starts at 0
+  workspace.ghostFramesAfter = 2;
+  await project.buildGhost();
+  const d = project.shownCells[i(1)], e = project.shownCells[i(2)];
+  expect([d.char, e.char]).toEqual(['D', 'E']);
+  expect(d.bg.b).toBeGreaterThan(d.bg.r); // tinted
+  expect(strength(project, 1, 1)).toBeGreaterThan(strength(project, 2, 1));
+  expect(project.shownCells[i(4)].char).toBe('X');
+  expect(project.cells[i(1)].char).not.toBe('D'); // only on screen
+  workspace.ghost = false;
+  expect(project.shownCells[i(1)].char).not.toBe('D');
+});
+
 test('moving a selection over the ghost doesn\'t make the frame own it', async () => {
   const { project, workspace } = await animated();
   workspace.cellsStay = true;

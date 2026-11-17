@@ -395,6 +395,33 @@ test('cells drawn to stay on their frame show on PIXEL on the frame after as the
   host.remove();
 });
 
+test('with Frames after, what a frame after painted shows on PIXEL in the cool tint, at the ghost\'s strength', async () => {
+  const { project, workspace } = await animated();
+  workspace.editorTab = 'input';
+  project.addFrame('blank');
+  project.addFrame('blank');
+  project.paintStroke([{ x: 8, y: 8, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  project.showFrame(1);
+  workspace.ghostFramesAfter = 1;
+  const host = document.createElement('div');
+  host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
+  document.body.append(host);
+  const app = createApp({ render: () => h(InputEditor) });
+  app.use(getActivePinia());
+  app.mount(host);
+  await nextTick();
+  await project.buildGhost();
+  workspace.ghostStrength = 100;
+  await settle(project);
+  const canvas = host.querySelector('canvas');
+  const c = canvas.getContext('2d'), { width, height } = canvas;
+  const px = [...c.getImageData(Math.floor(8.5 * (width / 20)), Math.floor(8.5 * (height / 20)), 1, 1).data].slice(0, 3);
+  [99, 160, 204].forEach((value, i) => expect(Math.abs(px[i] - value)).toBeLessThanOrEqual(2)); // red, most of the way to the tint
+  app.unmount();
+  host.remove();
+});
+
 test('the ghost’s strength sets how far inherited cells dim, in both views, from gone to solid', async () => {
   const { project, workspace } = await animated();
   workspace.editorTab = 'input';

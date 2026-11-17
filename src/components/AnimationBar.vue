@@ -5,6 +5,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePlayback } from '@/composables/usePlayback';
 import { frameMarks } from '@/lib/frameMarks';
+import { MOST_GHOST_FRAMES } from '@/lib/ghostCells';
 import { tweenBands } from '@/document/tweens.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
@@ -158,6 +159,12 @@ const setFps = (event) => {
           <input v-model.number="workspace.ghostStrength" type="range" :aria-label="t('animation.ghostStrength')" min="0" max="100" step="1" :disabled="!workspace.ghost" @pointerup="$event.target.blur()">
         </label>
       </div>
+      <!-- How many frames around this one the ghost shows: those before in their own colors, those after tinted. -->
+      <label v-for="side in ['before', 'after']" :key="side" class="ghost-frames" :class="{ off: !workspace.ghost }">
+        <span class="swatch" :class="side" aria-hidden="true"></span>
+        {{ t(side === 'before' ? 'animation.ghostFramesBefore' : 'animation.ghostFramesAfter') }}
+        <input v-model.number="workspace[side === 'before' ? 'ghostFramesBefore' : 'ghostFramesAfter']" type="number" :min="side === 'before' ? 1 : 0" :max="MOST_GHOST_FRAMES" step="1" :disabled="!workspace.ghost" @change="workspace[side === 'before' ? 'ghostFramesBefore' : 'ghostFramesAfter'] = project.ghostReach[side]">
+      </label>
     </DropdownMenu>
     <button v-if="workspace.editorTab === 'vector'" class="keys" :class="{ active: workspace.keysOpen }" :aria-label="t('keysPanel.button')" :aria-pressed="workspace.keysOpen" :title="t('keysPanel.buttonTitle')" @click="workspace.keysOpen = !workspace.keysOpen">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14.5 8 8 14.5 1.5 8z"/></svg>
@@ -375,8 +382,35 @@ div.ghost-row > input[type=checkbox] {
   accent-color: var(--accent);
   cursor: pointer;
 }
-label.strength.off {
+label.strength.off, label.ghost-frames.off {
   opacity: 0.4;
+}
+/* Frames before and after: the name, its swatch before it, the count at the end of the row. */
+label.ghost-frames {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+label.ghost-frames input {
+  width: 52px;
+  height: 26px;
+  margin-left: auto;
+  padding: 2px 4px;
+}
+span.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+span.swatch.before { /* their own colors, dimmed */
+  background: color-mix(in srgb, var(--text) 35%, transparent);
+}
+span.swatch.after { /* the tint they show in (ghostCells.js) */
+  background: rgb(60 200 255 / 0.6);
 }
 label.strength {
   display: flex;
@@ -468,12 +502,12 @@ button.keys.active svg {
   label.field {
     gap: 3px;
   }
-  label.field input { /* 16px: Safari on a phone zooms the page to anything smaller when it's focused */
+  label.field input, label.ghost-frames input { /* 16px: Safari on a phone zooms the page to anything smaller when it's focused */
     width: 44px;
     font-size: 16px;
     appearance: textfield;
   }
-  label.field input::-webkit-inner-spin-button {
+  label.field input::-webkit-inner-spin-button, label.ghost-frames input::-webkit-inner-spin-button {
     display: none;
   }
   label.fps input {

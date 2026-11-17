@@ -1,5 +1,5 @@
 // Ghost on the animation bar is one button, lit while the ghost is on. It opens a box holding both of the ghost's
-// settings: a checkbox that turns it on or off, and its strength.
+// settings: a checkbox that turns it on or off, its strength, and how many frames before and after it shows.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -20,6 +20,8 @@ async function bar() {
   project.setAnimate(true);
   workspace.ghost = true;
   workspace.ghostStrength = 35;
+  workspace.ghostFramesBefore = 1;
+  workspace.ghostFramesAfter = 0;
   const host = document.createElement('div');
   document.body.append(host);
   app = createApp({ render: () => h(AnimationBar) }).use(getActivePinia()).use(i18n);
@@ -70,4 +72,27 @@ test('its box turns the ghost on and off and sets its strength, and stays open w
   await nextTick();
   expect(workspace.ghost).toBe(true);
   expect(slider.disabled).toBe(false);
+});
+
+test('its box sets how many frames before (1 to 5) and after (0 to 5) the ghost shows, starting at 1 and 0', async () => {
+  const { workspace, host } = await bar();
+  named(host, 'Ghost')[0].click();
+  await nextTick();
+  const box = host.querySelector('.ghost .dropdown-content');
+  const field = (name) => [...box.querySelectorAll('label')].find((label) => label.textContent.trim() === name).querySelector('input[type=number]');
+  const before = field('Frames before'), after = field('Frames after');
+  expect([before.value, after.value]).toEqual(['1', '0']);
+  expect([before.min, before.max, after.min, after.max]).toEqual(['1', '5', '0', '5']);
+  before.value = '3';
+  before.dispatchEvent(new Event('input'));
+  after.value = '9'; // too many: the most there is
+  after.dispatchEvent(new Event('input'));
+  after.dispatchEvent(new Event('change'));
+  await nextTick();
+  expect([workspace.ghostFramesBefore, workspace.ghostFramesAfter]).toEqual([3, 5]);
+  expect(after.value).toBe('5');
+  expect(host.querySelector('.ghost .dropdown-content')).not.toBeNull(); // still open
+  workspace.ghost = false;
+  await nextTick();
+  expect(before.disabled && after.disabled).toBe(true);
 });
