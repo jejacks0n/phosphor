@@ -72,12 +72,14 @@ function remove(layer) {
   else if (project.deleteLayer(layer.id)) backToRow(workspace.pickedLayer);
 }
 // In a room the delete is done once the layer's gone (DeleteLayerDialog's ask, going, then goes), and focus goes to the row
-// picked now as well, unless it's somewhere else by then.
+// picked now as well, unless it's somewhere else by then. Watched as it changes (sync): the host's ask goes to going and
+// then goes in one tick, and a list mounted after the question (a narrow screen's sheet) would otherwise hear of both at
+// once, after the question has already let the ask go, and never see it going.
 watch(() => workspace.deleteLayerAsk, async (now, was) => {
   if (!was?.going || project.layerById(was.id)) return;
   await nextTick();
   if (!document.activeElement || document.activeElement === document.body) backToRow(workspace.pickedLayer);
-});
+}, { flush: 'sync' });
 
 // The ⋯ menu's Merge down: the layer into the one under it, as the toolbar's (off with its reason, asking how into the base).
 const { offFor: mergeOff, mergeDown } = useMergeDown();

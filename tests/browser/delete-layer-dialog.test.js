@@ -16,14 +16,17 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-async function mount() {
+// listFirst: the list mounted before the question, as the side panel is from page load; false, after it, as the layers
+// sheet of a narrow screen is, mounted on demand.
+async function mount({ listFirst = true } = {}) {
   const stores = await createTestApp();
   await stores.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
   stores.project.addLayer('cells', 'edit');
   await settle(stores.project);
   stores.workspace.editorTab = 'output';
   host = document.body.appendChild(document.createElement('div'));
-  app = createApp({ render: () => [h(LayersList), h(DeleteLayerDialog)] }).use(getActivePinia()).use(i18n);
+  const parts = listFirst ? [h(LayersList), h(DeleteLayerDialog)] : [h(DeleteLayerDialog), h(LayersList)];
+  app = createApp({ render: () => parts }).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
   return stores;
@@ -90,10 +93,11 @@ test('an ask whose layer someone else deletes meanwhile goes, and doesn\'t come 
 });
 
 // The row and its ⋯ gone, focus goes to the row picked now, not the page: at once for the host, and when the host's stack
-// comes for an artist.
-for (const role of ['host', 'artist']) {
-  test(`in a room the ${role}'s delete through the question puts focus on the picked row`, async () => {
-    const { project, workspace } = await mount();
+// comes for an artist. Whichever mounted first: the host's delete and the question's going happen in one tick, and a list
+// mounted after the question (a narrow screen's sheet) hears of them after it.
+for (const role of ['host', 'artist']) for (const listFirst of [true, false]) {
+  test(`in a room the ${role}'s delete through the question puts focus on the picked row, the list mounted ${listFirst ? 'before' : 'after'} the question`, async () => {
+    const { project, workspace } = await mount({ listFirst });
     const top = project.layers.at(-1).id;
     workspace.pickLayer('edit');
     project._sharing = { role, me: role };
