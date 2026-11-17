@@ -241,8 +241,8 @@ function frozenCells(project, id, indexes, level = indexes.length && levelCells(
 // is erased, and its paint drawn over the paint under it, so it stays paint (Blur and the rest work on it as on any). A
 // paint block (Colors only's bare ▄) is paint, not an entry: it goes in as it is where the layer under has no cell of its
 // own, and nothing under it is erased. A cell its paint lies over that it has no entry for, or a paint block, where that
-// paint on paint shows otherwise (unlike), goes in frozen as it showed (frozenCells) instead, the paint there erased.
-// Entries past the grid go in as they are.
+// paint on paint shows otherwise (unlike) and covers the cell whole, goes in frozen as it showed (frozenCells) instead
+// (freezeUnlike); at a soft edge it stays paint. Entries past the grid go in as they are.
 function onCells(project, id, under, rect) {
   const cells = project.cellsOf(id), paint = project.paintOf(id), rows = charRowsOf(project.rows), { cols } = project;
   const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
@@ -284,8 +284,9 @@ function onCells(project, id, under, rect) {
 // The cells at indexes that a merge's after (state) would show otherwise (unlike) written into next as they showed
 // (frozen's), marked frozen (docs/model.md R3): the paint into has there stays under them (the PIXEL view shows it, the
 // layers above lay over it as they did, and paint written or erased there drops the mark), and the converter shows the
-// mark instead of converting it. Those at always (an art layer's characters, someone's own) are written unmarked, the
-// paint there erased.
+// mark instead of converting it. Only a cell into's paint covers whole: at a soft edge what showed held the colors under
+// the paint (the picture's, or a hidden base's black), which a pin would keep after they changed, so it stays paint.
+// Those at always (an art layer's characters, someone's own) are written unmarked, the paint there erased.
 function freezeUnlike(project, state, under, indexes, was, frozen, next, into, always = []) {
   const { cols } = project;
   const write = (i, mark) => {
@@ -294,15 +295,16 @@ function freezeUnlike(project, state, under, indexes, was, frozen, next, into, a
     if (!mark) into.erase(halvesOf(col, row));
   };
   for (const i of always) write(i, false);
-  for (const i of unlike(project, state, under, indexes, was)) write(i, true);
+  const covered = (i) => { const col = i % cols, row = (i - col) / cols; return halvesOf(col, row).every(({ x, y }) => into.pixelAt(x, y)?.a === 1); };
+  for (const i of unlike(project, state, under, indexes.filter(covered), was)) write(i, true);
   into.recheckPaint();
 }
 
 // Merge down of the vector layer with the id into the cells layer under it: its shapes go in as paint (their stored
 // colors at grid resolution, as the Eyedropper reads them) drawn over that layer's paint, so Blur and the rest work on them
 // as on any paint, and the layer and its shapes go (its guides, which draw nothing, stay, and the layer with them). A cell
-// an art layer gives a character, or where the paint shows otherwise than the shapes did (unlike), is written there frozen
-// instead, exactly as it showed (frozenCells), where that layer's paint is erased.
+// an art layer gives a character, or one the shapes cover whole where the paint shows otherwise than they did (unlike), is
+// written there instead, exactly as it showed (frozenCells; freezeUnlike): at the shapes' soft edge it stays paint.
 function shapesOnCells(project, id, under) {
   project.syncShapeLayers();
   const shapes = project._upperShapes.get(id), { cols } = project, reached = [];

@@ -23,14 +23,35 @@ const apart = (a, b) => Math.max(Math.abs(a.r - b.r), Math.abs(a.g - b.g), Math.
 // layer and another on it).
 const flatColor = ({ char, fg, bg }) => (apart(fg, bg) <= 2 ? bg : coverageOf(char).every((v) => v === 0) ? bg : coverageOf(char).every((v) => v === 1) ? fg : null);
 // The same look: the same characters, and colors no more than the step or two apart that the same color rounds to when
-// worked out another way (merging.js ROUNDING), or two cells of one color each, those colors as near.
-function expectLooksAlike(now, was) {
+// worked out another way (merging.js ROUNDING), or two cells of one color each, those colors as near. Cells at skip
+// (indexes) aren't compared.
+function expectLooksAlike(now, was, skip = new Set()) {
   const off = now.map((cell, i) => {
+    if (skip.has(i)) return null;
     const fa = flatColor(cell), fb = flatColor(was[i]);
     if (fa && fb) return apart(fa, fb) <= 2 ? null : `${i}: ${cell.char} vs ${was[i].char}`;
     return cell.char === was[i].char && apart(cell.fg, was[i].fg) <= 2 && apart(cell.bg, was[i].bg) <= 2 ? null : `${i}: ${cell.char} ${JSON.stringify(cell.fg)} vs ${was[i].char} ${JSON.stringify(was[i].fg)}`;
   }).filter(Boolean);
   expect(off).toEqual([]);
+}
+
+// The cells (indexes) a cells layer's paint covers only in part, a half clear or see-through: a shape's or a stroke's
+// soft edge, where what's under it shows through. A merge leaves them paint, never frozen (docs/model.md R3), so they
+// convert as the layer converts its paint: a step or a character off what showed, the rest as it showed.
+function softCells(project, id) {
+  const paint = project.paintOf(id), soft = new Set(), rows = Math.floor(project.rows / 2);
+  for (let row = 0; row < rows; row++) for (let col = 0; col < project.cols; col++) {
+    const a = [paint?.pixelAt(col, 2 * row)?.a ?? 0, paint?.pixelAt(col, 2 * row + 1)?.a ?? 0];
+    if (a.some((v) => v > 0) && a.some((v) => v < 1)) soft.add(row * project.cols + col);
+  }
+  return soft;
+}
+// The merge kept every cell but the soft ones, which are paint.
+function expectKeptButSoft(project, id, was) {
+  const soft = softCells(project, id);
+  expectLooksAlike(looks(project), was, soft);
+  expect([...soft].filter((i) => isFrozen(project.cellsOf(id).get(`${i % project.cols},${Math.floor(i / project.cols)}`)))).toEqual([]);
+  return soft;
 }
 
 const maxDiff = (a, b, only) => (only ?? a.map((_, i) => i)).reduce((m, i) => Math.max(m, ...a[i].map((v, k) => Math.abs(v - b[i][k]))), 0);
@@ -404,20 +425,20 @@ describe('down between layers', () => {
     return { ...app, soft };
   };
 
-  test('Merge down of soft paint over paint keeps every cell with a palette and Levels on', async () => {
+  test('Merge down of soft paint over paint keeps every cell with a palette and Levels on, the soft edges paint', async () => {
     const { project, workspace, soft } = await filtered();
     const top = project.addLayer('cells', 'edit');
     workspace.pickLayer(top);
     for (let y = 9; y < 34; y += 4) project.paintStroke(soft(12, 34, y, -2), '#6068ff');
     project.commitEdit();
     await settle(project);
-    const before = cellsKey(project);
+    const before = looks(project);
     expect(project.mergeDown(top)).toBe(true);
     await settle(project);
-    expect(cellsKey(project)).toEqual(before);
+    expectKeptButSoft(project, 'edit', before);
   });
 
-  test('Merge down of a vector layer over paint keeps every cell with a palette and Levels on', async () => {
+  test('Merge down of a vector layer over paint keeps every cell with a palette and Levels on, the soft edges paint', async () => {
     const { project, workspace } = await filtered();
     const vector = project.addLayer('vector', 'edit');
     workspace.pickLayer(vector);
@@ -425,10 +446,10 @@ describe('down between layers', () => {
     project.commitEdit();
     project.render();
     await settle(project);
-    const before = cellsKey(project);
+    const before = looks(project);
     expect(project.mergeDown(vector)).toBe(true);
     await settle(project);
-    expect(cellsKey(project)).toEqual(before);
+    expectKeptButSoft(project, 'edit', before);
   });
 
   test('Merge down is off onto a vector layer', async () => {
@@ -458,8 +479,8 @@ describe('down between layers', () => {
   });
 
   // A vector layer's shapes go into a cells layer as paint where that shows the same. With its own character settings
-  // they're converted with its characters, which the cells layer's paint wouldn't be: there they freeze, exactly as they
-  // showed, and a later palette doesn't convert them again.
+  // they're converted with its characters, which the cells layer's paint wouldn't be: where they cover a cell whole they
+  // freeze, exactly as they showed, and a later palette doesn't convert them again; along a soft edge they stay paint.
   test('Merge down of a vector layer into a cells layer puts its shapes in as paint, and freezes what paint would show otherwise', async () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
@@ -480,7 +501,7 @@ describe('down between layers', () => {
     await settle(project);
     expect(ids(project)).toEqual(['base', 'edit']);
     expect(project.shapes.size).toBe(0);
-    expectLooksAlike(looks(project), before);
+    expectKeptButSoft(project, 'edit', before);
     expect(project.paintOf('edit').pixelAt(4, 10)).toEqual({ r: 255, g: 0, b: 0, a: 1 }); // the red rectangle, as paint
     project.undo();
     await settle(project);
@@ -494,7 +515,7 @@ describe('down between layers', () => {
     before = looks(project);
     expect(project.mergeDown(vector)).toBe(true);
     await settle(project);
-    expectLooksAlike(looks(project), before);
+    expectKeptButSoft(project, 'edit', before);
     const reached = [...project.cellsOf('edit').keys()].map((key) => key.split(',').map(Number)).map(([c, r]) => r * project.cols + c);
     expect(reached.length).toBeGreaterThan(20);
     expect(project.paintOf('edit').pixelAt(4, 10)).toEqual({ r: 255, g: 0, b: 0, a: 1 }); // the red rectangle, still paint
@@ -633,6 +654,31 @@ describe('down between layers', () => {
     expectLooksAlike(looks(project), before);
   });
 
+  // docs/model.md R3: the report (projects/vector-into-layer-edge.phosphor): Vector 1's pentagon merged into Layer 1 over
+  // the photo froze the cells along its soft edge with the photo's gray in them, so hiding the base afterward showed a
+  // gray border round it (and merged with the base hidden, a black one once the base showed again). A cell the merged
+  // paint covers only in part stays paint, over whatever is under it.
+  test('R3: the report: a shape merged into Layer 1 leaves no border of what was under its edge, the base shown or hidden', async () => {
+    const merged = async (hidden) => {
+      const { project } = await createTestApp();
+      await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/vector-into-layer-edge.phosphor')).arrayBuffer()], 'x.phosphor'));
+      project.setLayerHidden('base', hidden);
+      await settle(project);
+      expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit', 'vector', 'L1']);
+      const before = looks(project);
+      expect(project.mergeDown('vector')).toBe(true);
+      await settle(project);
+      expect(expectKeptButSoft(project, 'edit', before).size).toBeGreaterThan(50);
+      const shown = cellsKey(project);
+      project.setLayerHidden('base', !hidden);
+      await settle(project);
+      return { shown, toggled: cellsKey(project) };
+    };
+    const visible = await merged(false), hidden = await merged(true);
+    expect(visible.toggled).toEqual(hidden.shown); // merged with the base shown, then hidden: no gray border
+    expect(hidden.toggled).toEqual(visible.shown); // merged with it hidden, then shown: no black one
+  });
+
   // docs/model.md R3: the report (projects/merge-dark-edge.phosphor): the PIXEL view showed dark lines along a merged
   // shape's edge, where the frozen cells had lost their paint and the Overlay drew their characters' ink instead. A
   // frozen cell keeps its paint under it, so the PIXEL view shows it as before the merge. As saved, the shape goes into
@@ -648,7 +694,7 @@ describe('down between layers', () => {
       const before = shown(), cells = looks(project);
       expect(project.mergeDown('vector')).toBe(true);
       await settle(project);
-      expectLooksAlike(looks(project), cells);
+      expectKeptButSoft(project, 'L2', cells);
       const after = shown();
       expect(Math.max(...before.map((v, i) => Math.abs(v - after[i])))).toBeLessThanOrEqual(2);
       const frozen = [...project.cellsOf('L2')].filter(([, entry]) => isFrozen(entry));
@@ -684,28 +730,31 @@ describe('down between layers', () => {
       const before = looks(project);
       expect(project.mergeDown(top)).toBe(true);
       await settle(project);
-      expectLooksAlike(looks(project), before);
+      expectKeptButSoft(project, 'edit', before);
       // ANSI picks two colors a cell, so at a shape's soft edge the paint's 8-bit rounding can tip By shape's pick in a
-      // handful of cells, which the merge freezes as it should; the rest convert alike.
+      // handful of cells, which the merge freezes where the shape covers them whole (at its soft edge they stay paint,
+      // R3); the rest convert alike.
       expect([...project.cellsOf('edit').values()].filter(isFrozen).length).toBeLessThanOrEqual(renderStyle === 'ansi' && kind === 'shape' ? 20 : 0);
     });
   }
 
   // docs/model.md R4: a frozen cell is paint to Retouch too: Blur turns it back into paint where it changes it, so a
-  // merged shape fades at its edge like a painted one; a typed character beside it stays (retouch.test.js).
-  test('R4: a shape merged down over a picture: Blur turns the frozen cells along its edge back into paint and fades them', async () => {
+  // merged shape fades like a painted one; a typed character beside it stays (retouch.test.js).
+  test('R4: shapes merged down over a picture: Blur turns the frozen cells along their top back into paint and fades them', async () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
     const vector = project.addLayer('vector', 'edit');
-    project.setLayerChars(vector, { chars: '▀' }); // its own characters: its edge cells convert otherwise on the layer under (a ▀ of two colors, not the lower set's characters), so the merge freezes them (R7 freezes nothing otherwise)
+    project.setLayerChars(vector, { chars: '▀' }); // its own characters: a cell of two colors converts otherwise on the layer under (a ▀, not the lower set's characters), so the merge freezes it (R7 freezes nothing otherwise)
     workspace.pickLayer(vector);
-    project.addShape(rectShape(5.3, 4.6, 30.7, 30.2, { fill: '#ff0000' }));
+    project.addShape(rectShape(5, 4, 31, 30.2, { fill: '#ff0000' }));
+    project.commitEdit();
+    project.addShape(rectShape(5, 4, 31, 5, { fill: '#0000ff' })); // row 2: blue over red, both halves covered whole
     project.commitEdit();
     await settle(project);
     expect(project.mergeDown(vector)).toBe(true);
     await settle(project);
     const edge = [...project.cellsOf('edit').keys()].find((key) => key.endsWith(',2'));
-    expect(edge).toBeDefined(); // the top edge, written frozen
+    expect(edge).toBeDefined(); // the top, written frozen
     const col = Number(edge.split(',')[0]);
     expect(isFrozen(project.cellsOf('edit').get(edge))).toBe(true);
     workspace.editorTab = 'input';
@@ -835,20 +884,20 @@ const filtered = async () => {
   return { ...app, soft };
 };
 
-test('Merge down of soft paint over paint keeps every cell with a palette and Levels on', async () => {
+test('Merge down of soft paint over paint keeps every cell with a palette and Levels on, the soft edges paint', async () => {
   const { project, workspace, soft } = await filtered();
   const top = project.addLayer('cells', 'edit');
   workspace.pickLayer(top);
   for (let y = 9; y < 34; y += 4) project.paintStroke(soft(12, 34, y, -2), '#6068ff');
   project.commitEdit();
   await settle(project);
-  const before = cellsKey(project);
+  const before = looks(project);
   expect(project.mergeDown(top)).toBe(true);
   await settle(project);
-  expect(cellsKey(project)).toEqual(before);
+  expectKeptButSoft(project, 'edit', before);
 });
 
-test('Merge down of a vector layer over paint keeps every cell with a palette and Levels on', async () => {
+test('Merge down of a vector layer over paint keeps every cell with a palette and Levels on, the soft edges paint', async () => {
   const { project, workspace } = await filtered();
   const vector = project.addLayer('vector', 'edit');
   workspace.pickLayer(vector);
@@ -856,10 +905,10 @@ test('Merge down of a vector layer over paint keeps every cell with a palette an
   project.commitEdit();
   project.render();
   await settle(project);
-  const before = cellsKey(project);
+  const before = looks(project);
   expect(project.mergeDown(vector)).toBe(true);
   await settle(project);
-  expect(cellsKey(project)).toEqual(before);
+  expectKeptButSoft(project, 'edit', before);
 });
 
 test('Merge down of a cells layer into another with the base hidden keeps what shows', async () => {

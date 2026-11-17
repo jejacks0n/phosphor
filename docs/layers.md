@@ -452,8 +452,8 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
   character yet (a blank canvas's black, or the lines added when it grows) becomes a ▄ as they paint it, so a click
   there paints a plain half-block, not the character the converter put there unseen. So does a cell of the layer's
   own that shows no character (a space, or a character in its background's color): its colors become paint first, so
-  the half you don't paint looks as it did. So does a cell Merge down froze along a merged shape's edge, whatever its
-  character, whose paint is under it already. Painting in the PIXEL view does
+  the half you don't paint looks as it did. So does a cell Merge down froze where a merged shape covered it, whatever
+  its character, whose paint is under it already. Painting in the PIXEL view does
   the same, so the view you paint in never changes what you get; only **Half-block** makes every cell a ▄. In Color
   ASCII and Monochrome ASCII there are no half-blocks: the paint becomes your ASCII characters, whichever style you
   painted it in, and its half-blocks show again when you switch back to ANSI. On the base under **Best match** and **By
@@ -534,7 +534,9 @@ and the PIXEL view give you:
 - **Merging changes nothing.** Merge down keeps paint as paint, so the paint tools keep working on it. Where the
   converter would have to pick a cell differently in its new place, the merge pins the cell as it showed, and that
   pin is paint to everything but the converter: the PIXEL view shows the paint, paint above lays over it as before,
-  and painting, erasing, Blur or Colors only there takes the pin off.
+  and painting, erasing, Blur or Colors only there takes the pin off. A soft edge, where the paint only partly covers
+  a cell, isn't pinned: it stays paint over whatever is under it, so it can come out a character or a color step
+  different.
 - **Color ASCII is ANSI in spirit.** The converter's cells are ink on black, but a cell of yours with a background
   shows it, and keeps it when merged onto the base.
 - **The PIXEL view is the pixels.** Its Overlay draws only your characters, never the converter's over paint.
@@ -567,7 +569,9 @@ the canvas changes. Undo brings it back, selected if it was.
   over it, frozen: a later palette or character setting doesn't convert that cell again, but to everything else it's
   still paint. The PIXEL view shows the paint, paint on a layer above lays over it as it did, and any paint laid or
   erased in the cell (the Brush, the Paint Bucket, Blur, Dodge, Burn, the Eraser) takes the pin off, so a merged edge
-  fades like a painted one. The ▄s **Colors only**
+  fades like a painted one. Only a cell the paint covers whole is pinned: a soft edge, which lets what's under it show,
+  stays paint, so hiding or changing the base later shows through it as it does through any paint, though the cell can
+  come out a character or a color step different than before the merge. The ▄s **Colors only**
   leaves on the cells it painted are paint too, and come down as they are, so in Color ASCII and Monochrome ASCII,
   where they aren't shown, the paint still shows as your ASCII characters.
 - **A Vector Layer Into a Drawing Layer**: Its shapes become paint on the layer under it, in their own colors and at
@@ -576,7 +580,8 @@ the canvas changes. Undo brings it back, selected if it was.
   layer has character settings of its own, or a palette or the character choice converts it differently), by more
   than a step or two of rounding (By shape works a shape's colors out from finer samples than paint has, so a
   gradient comes out a step or two apart all over), is written
-  as the cell it shows now, frozen as above (paint to everything but the converter); a cell an art layer gives a
+  as the cell it shows now, frozen as above (paint to everything but the converter), where the shapes cover it whole;
+  along their soft edge it stays paint, as above, so no border of the base's colors stays round them; a cell an art layer gives a
   character is written as that character, yours to keep. It
   goes only whole: with shapes selected on VECTOR, deselect them to merge
   the layer. Its guides, which draw nothing, stay, and the vector layer with them.
