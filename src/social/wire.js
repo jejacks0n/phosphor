@@ -240,14 +240,19 @@ function placeOf(key) {
   return row >= 0 && digits ? [col, row] : null;
 }
 
-// An entry as Watch's cells are held to: only char, fg and bg, a char a cell can hold, colors that are hexes, and a
-// color's 256-color index (fgIndex, bgIndex: a whole number under 256, with its color).
+// An entry as Watch's cells are held to: only char, fg and bg, a char a cell can hold, colors that are hexes, a
+// color's 256-color index (fgIndex, bgIndex: a whole number under 256, with its color), and Merge down's frozen mark
+// (true alone, and no cell by itself), as editCells.js cleanEntry takes an entry from a file.
 function goodEntry(entry) {
   if (typeof entry !== 'object' || Array.isArray(entry)) return false;
   let any = false;
   for (const name in entry) {
     const value = entry[name];
     if (value === undefined) continue;
+    if (name === 'frozen') {
+      if (value !== true) return false;
+      continue;
+    }
     if (name === 'fgIndex' || name === 'bgIndex') {
       if (!Number.isInteger(value) || value < 0 || value > 255 || entry[name.slice(0, 2)] === undefined) return false;
       continue;

@@ -3,7 +3,7 @@
 // being applied) and _typingTimer (the pause that ends a typing run). With the base picked (onBottom)
 // it all goes on the base: a cell written as it then shows (completeAt, writeBaseCells), paint as base
 // pixels, and typing overwrites (a row of pins and pixels doesn't shift).
-import { cellKey, withCellEdit, mergeEntry, withoutCells, shiftRow, isFrozen } from '@/document/editCells.js';
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, isFrozen, isPaintBlock, ownEntry } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
@@ -43,7 +43,7 @@ export const editLayerActions = {
     const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill
     const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows);
     if (blockChars) {
-      let cells = cellsOfPixels(inGrid, cols, rows).filter(({ col, row }) => this.editCellAt(col, row)?.char !== '▄');
+      let cells = cellsOfPixels(inGrid, cols, rows).filter(({ col, row }) => !isPaintBlock(this.editCellAt(col, row))); // a block already; a frozen ▄ is a frozen cell (R5)
       if (blockChars === 'plain' && cells.length) {
         if (!refusedNoCells(this, { toast: false })) {
           this.ensureLayer();
@@ -178,11 +178,19 @@ export const editLayerActions = {
     }, TYPING_PAUSE_MS);
   },
 
-  // Move a row's edit cells (insert/delete); paint stays where it is. Not on the base.
+  // Move a row's characters of someone's own (insert/delete); paint stays where it is, and so does what's paint to it
+  // (a paint block, a frozen cell: docs/model.md R1), a character moved onto it taking its place. Not on the base.
   shiftCells(row, fromCol, delta) {
     if (onBottom(this)) return;
-    const next = shiftRow(this.editCells, row, fromCol, delta, this.cols);
-    if (next === this.editCells) return;
+    const stays = [];
+    for (const [key, entry] of this.editCells) {
+      const at = parseKey(key);
+      if (at.row === row && at.col >= fromCol + Math.min(delta, 0) && !ownEntry(entry, this.renderStyle)) stays.push([key, entry]);
+    }
+    const moved = shiftRow(stays.length ? withoutCells(this.editCells, stays.map(([key]) => parseKey(key))) : this.editCells, row, fromCol, delta, this.cols);
+    if (moved === this.editCells) return;
+    const next = stays.length ? new Map(moved) : moved;
+    for (const [key, entry] of stays) if (!next.has(key)) next.set(key, entry);
     this.setEditCells(next, Array.from({ length: this.cols }, (_, col) => cellKey(col, row)));
     const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
     this.recomposeEdit(pixels);

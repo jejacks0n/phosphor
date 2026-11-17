@@ -32,7 +32,7 @@ import { nearestColor, paletteIndex, withIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
 import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint } from '../lib/Cells.js';
-import { cellKey, parseKey, shownEntry, isFrozen, ownEntry } from './editCells.js';
+import { cellKey, parseKey, shownEntry, isFrozen, tintedEntry } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
 import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatcher, resolveShapes, SAMPLES } from '../lib/CharResolver.js';
@@ -1048,10 +1048,11 @@ export default class Renderer {
     return kept.data;
   }
 
-  // Whether the cell at col, row holds a character that's someone's own under the upper layers: the lower cells layer's
-  // entry (ownEntry: shown, and not one Merge down froze, which is paint to the layers above) or the base's pin.
+  // Whether the cell at col, row holds a character the upper layers' paint tints rather than converts over: the lower
+  // cells layer's entry (tintedEntry: shown, and not one Merge down froze, which is paint to the layers above) or the
+  // base's pin.
   #exactUnder(col, row) {
-    return !!ownEntry(this.#lowerEdits?.get(cellKey(col, row)), this.#lowerStyle) || this.pinAt(col, row) !== undefined;
+    return !!tintedEntry(this.#lowerEdits?.get(cellKey(col, row)), this.#lowerStyle) || this.pinAt(col, row) !== undefined;
   }
 
   // reads: each upper layer's pixels at grid resolution (composeUpper), or null for one with nothing to lay. Only the

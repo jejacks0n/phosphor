@@ -43,7 +43,7 @@ const HIDDEN_TAB_MS = 100; // a hidden tab has no frames, and still has to catch
 // to the document, and Deselect goes on working.
 export const DRAWING_ACTIONS = [
   'paintEditPixels', 'putEditPixels', 'paintBasePixels', 'paintStroke', 'eraseEditPixels', 'editCell', 'typeAt', 'writeAt', 'backspaceAt', 'deleteAt', 'typing', 'shiftCells',
-  'writeEditCells', 'clearEditCells', 'flipCell', 'flipPaint', 'clearEditLayer',
+  'writeEditCells', 'clearEditCells', 'unlockCells', 'flipCell', 'flipPaint', 'clearEditLayer',
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
   'deleteIn', 'pasteAt', 'selectionEdit',
   'addShape', 'makeArtLayer', 'setArtContent', 'enterArt', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'penPoint', 'penBack',

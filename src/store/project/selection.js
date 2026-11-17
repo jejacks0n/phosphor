@@ -433,9 +433,10 @@ export const selectionActions = {
 // What a cell shows, as an edit cell would hold it (stored colors): its edit cell over the picture
 // (completeAt), and where it has paint, the character it shows and each painted half's color.
 function shownLook(project, col, row) {
-  const look = project.completeAt(col, row, project.editCellAt(col, row));
+  const entry = project.editCellAt(col, row);
+  const look = { ...project.completeAt(col, row, entry), frozen: null }; // a color written over a frozen cell is someone's own (docs/model.md R1)
   const top = project.paintLayer?.pixelAt(col, 2 * row), bottom = project.paintLayer?.pixelAt(col, 2 * row + 1);
-  if (!top?.a && !bottom?.a) return look;
+  if (isFrozen(entry) || (!top?.a && !bottom?.a)) return look; // a frozen cell's pin is its look; the paint under it isn't shown (R3)
   const half = (hex, paint) => (paint?.a && hex ? rgb2hex(over(hex2rgb(hex), paint)) : hex);
   return { ...look, char: project.cells[cellIndex(col, row, project.cols)].char, fg: half(look.fg, bottom), bg: half(look.bg, top) };
 }
@@ -612,7 +613,7 @@ function rotateBlock(block) {
     if (paint) layer.paint = turnCanvas(paint, 'cw');
     if (cells) {
       const shows = layer.paint && paintedCells(layer.paint, out.w, out.h);
-      layer.cells = from(cells).map((entry, i) => (entry && shows?.[i] ? entry : null));
+      layer.cells = from(cells).map((entry, i) => (entry && shows?.[i] && isPaintBlock(entry) ? entry : null)); // a frozen cell's pin belongs to the paint it stood over, not the turned paint
     }
     return layer;
   };

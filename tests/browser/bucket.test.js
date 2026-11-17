@@ -18,6 +18,29 @@ async function blank(cols = 30, rows = 30) {
 
 const ev = { stopPropagation() {} };
 
+// docs/model.md R1: only a character of someone's own is a wall. Colors only's ▄ paint blocks and the cells Merge down
+// froze are paint, which a fill crosses as it crosses any paint (within its Tolerance; here every color is within it).
+test('R1: a fill crosses a Colors only line and a frozen cell in Color ASCII; a typed line still stops it', async () => {
+  const { project, workspace } = await blank(20, 20);
+  project.renderStyle = 'colorAscii';
+  await settle(project);
+  const column = (col) => Array.from({ length: 20 }, (_, y) => ({ x: col, y, r: 255, g: 255, b: 255, alpha: 1 }));
+  project.paintEditPixels([...column(5), ...column(8)]);
+  project.writeEditCells(Array.from({ length: 10 }, (_, row) => ({ col: 5, row, attrs: { char: '▄' } }))); // as Colors only leaves them
+  project.writeEditCells(Array.from({ length: 10 }, (_, row) => ({ col: 12, row, attrs: { char: '|', fg: '#ffffff', bg: '#000000' } })));
+  project.commitEdit();
+  project.setEditCells(new Map([...project.editCells, ...Array.from({ length: 10 }, (_, row) => [`8,${row}`, Object.freeze({ char: '#', fg: '#ffffff', bg: '#000000', frozen: true })])]), Array.from({ length: 10 }, (_, row) => `8,${row}`));
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  Object.assign(workspace, { editFgColor: '#ff0000', editFillTolerance: 100, editFillContiguous: true });
+  bucket.begin({ project, workspace, view: 'output' }, { x: 2.5, y: 10.5 }, ev);
+  await settle(project);
+  expect(project.paintLayer.colorAt(6, 10)).not.toBeNull();  // past the Colors only line
+  expect(project.paintLayer.colorAt(10, 10)).not.toBeNull(); // past the frozen cells
+  expect(project.paintLayer.colorAt(14, 10)).toBeNull();     // not past the typed line
+});
+
 test('a fill inside a box drawn with Shapes (Double) stays inside it, and the frame keeps its character', async () => {
   const { project, workspace } = await blank();
   const ctx = { project, workspace, view: 'output' };

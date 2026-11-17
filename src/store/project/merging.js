@@ -11,7 +11,7 @@ import { EMPTY_BASE, withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { makeArt, isArt } from '@/document/artLayers.js';
 import { finerStops, isGradient, isShape, shapeBounds, withShape } from '@/document/shapes.js';
-import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock, isFrozen } from '@/document/editCells.js';
+import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock, isFrozen, shownEntry } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors } from '@/lib/Cells.js';
@@ -108,7 +108,7 @@ function onBase(project, id, rect) {
   for (const [key, entry] of cells) {
     const { col, row } = parseKey(key);
     if (col >= project.cols || row >= rows || !inRect(col, row)) kept.set(key, entry);
-    else merged.push(project.mergeCellOf(col, row, entry, shownChar(col, row)));
+    else if (shownEntry(entry, project.renderStyle)) merged.push(project.mergeCellOf(col, row, entry, shownChar(col, row))); // a paint block outside ANSI is its paint, which comes down as pixels
   }
   if (rect && !merged.length && !paint?.hasPaintIn(rect)) return false; // nothing drawn inside: no empty undo step
   const paintedPins = [...project.baseRecords.pins.keys()].map(parseKey)
@@ -595,7 +595,9 @@ export const mergingActions = {
       for (const [key, { col, row }] of covered) {
         const entry = this.editCellAt(col, row);
         const pin = this.baseRecords.pins.get(key);
-        const kind = mergeKind({ char: entry?.char ?? pin, renderStyle: this.renderStyle, inPicture: inPicture(col, row) });
+        // A frozen cell's pin is its look; its paint under it stays out (as onBase keeps it out). docs/model.md R3.
+        const kind = isFrozen(entry) ? 'exact' : mergeKind({ char: entry?.char ?? pin, renderStyle: this.renderStyle, inPicture: inPicture(col, row) });
+        const paintOver = (half, y) => (isFrozen(entry) ? half : over(half, paintAt(col, y)));
         let top, bottom;
         if (kind === 'exact') {
           const merged = this.mergeCellOf(col, row, entry, level[cellIndex(col, row, this.cols)]?.char);
@@ -611,7 +613,7 @@ export const mergingActions = {
           else unpins.push({ col, row });
           pictureCells.push({ col, row });
         }
-        const shown = [over(top, paintAt(col, 2 * row)), over(bottom, paintAt(col, 2 * row + 1))];
+        const shown = [paintOver(top, 2 * row), paintOver(bottom, 2 * row + 1)];
         if (kind === 'exact') {
           exactPixels.push({ x: col, y: 2 * row, ...shown[0], alpha: 1 }, { x: col, y: 2 * row + 1, ...shown[1], alpha: 1 });
         } else {

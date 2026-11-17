@@ -27,12 +27,20 @@ export const isFrozen = (entry) => entry?.frozen === true;
 // ASCII characters, as paint is in a cell with no entry. Switching style back to ANSI shows the ▄ again.
 export const shownEntry = (entry, renderStyle) => (renderStyle !== 'ansi' && isPaintBlock(entry) ? undefined : entry);
 
-// The entry where it's a character of someone's own in renderStyle (typed, opened, pasted, an art layer's): shown, and
-// not frozen. The one answer to whose a cell's character is (docs/model.md, R1): paint over it tints it, and Retouch
-// and Colors only keep it; anything else is paint to them.
-export const ownEntry = (entry, renderStyle) => {
+// The entry where paint over the cell tints its character rather than converting over it (coverCell): shown, and not
+// frozen. A shown paint block is one: ANSI's ▄, which tints as a solid glyph does, into a ▄ with the paint in it (R2).
+export const tintedEntry = (entry, renderStyle) => {
   const shown = shownEntry(entry, renderStyle);
   return shown && !isFrozen(shown) ? shown : undefined;
+};
+
+// The entry where it's a character of someone's own in renderStyle (typed, opened, pasted, an art layer's): shown, not
+// frozen, and not a paint block (paint's, in any style). The one answer to whose a cell's character is (docs/model.md,
+// R1): Retouch and Colors only keep it, the Paint Bucket stops at it, Insert and Delete move it; anything else is paint
+// to them.
+export const ownEntry = (entry, renderStyle) => {
+  const tinted = tintedEntry(entry, renderStyle);
+  return tinted && !isPaintBlock(tinted) ? tinted : undefined;
 };
 
 export const cellKey = (col, row) => `${col},${row}`;
