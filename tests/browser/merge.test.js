@@ -95,6 +95,28 @@ describe('exactly', () => {
     expect(project.baseRecords.pins.get('26,10')).toBe('t');
   });
 
+  // docs/model.md R3: the report (projects/keep-crisp-under-vectors.phosphor): a photo on CGA under Best match, Layer 1
+  // with Brush paint, a typed caption and Blur strokes, and a vector layer above it with its own Ordered dither. Keep
+  // crisp cells changed dozens of cells: soft paint over a cell was mixed into its stored colors before the palette's
+  // snap instead of after, and paint with no cell under it was picked again from the base's snapped pixels. A cell that
+  // would show otherwise as base pixels is written as it showed, pinned.
+  test('R3: the report: Keep crisp cells under soft paint and a dithered vector layer changes nothing on the canvas', async () => {
+    const { project } = await createTestApp();
+    await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/keep-crisp-under-vectors.phosphor')).arrayBuffer()], 'x.phosphor'));
+    await settle(project);
+    expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit', 'L2']);
+    const before = looks(project);
+    expect(project.mergeDown('edit')).toBe(true);
+    await settle(project);
+    expectLooksAlike(looks(project), before);
+    project.undo();
+    await settle(project);
+    expectLooksAlike(looks(project), before);
+    project.redo();
+    await settle(project);
+    expectLooksAlike(looks(project), before);
+  });
+
   // docs/model.md R1 and R8: Into the image in Color ASCII. The report (projects/text-merge-base.phosphor): Layer 1's
   // Colors only ▄s counted as characters, so their cells went in as pins with each half's paint over the picture's black,
   // two pixels that differ, which a pin now shows as a background: 331 cells got one. A paint block outside ANSI is the

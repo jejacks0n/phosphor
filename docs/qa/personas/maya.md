@@ -375,8 +375,8 @@ held.
 - Does: picks Layer 1, which sits directly on the base (anything between them she moves up first, with ⋯ and Move up
   or a drag in LAYERS), presses Merge down, and chooses Keep crisp cells.
 - Expects: the question "Choose how to merge … into Base" with Keep crisp cells and Blend into source image; Keep crisp
-  cells makes her paint and cells base pixels exactly as they show, typed cells pinned; nothing on the canvas changes;
-  undo and redo work.
+  cells makes her paint and cells base pixels exactly as they show, typed cells pinned; nothing on the canvas changes,
+  soft Brush and Blur strokes on a palette and the cells of a vector layer above included; undo and redo work.
 - Probes: `back-out`: press Escape at the question and check nothing merged; `undo-redo`: undo, redo, undo; `again`: in
   Color ASCII, type dark text over white paint on Layer 1 (its cells take the paint's color as their background), Blur
   across it, then Keep crisp cells: the text keeps its light background on the base, as it showed.
