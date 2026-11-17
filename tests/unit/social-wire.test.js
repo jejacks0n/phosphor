@@ -414,10 +414,15 @@ const STACK_SENT = [{ id: 'base', kind: 'cells', name: null }, { id: 'edit', kin
 test('a layers message reads only a good stack', () => {
   const of = (stack, rest = {}) => readLayers({ t: 'layers', n: 4, stack, by: 'ann', ...rest });
   assert.deepEqual(of(STACK_SENT), {
-    n: 4, by: 'ann', made: null,
+    n: 4, by: 'ann', made: null, gone: [],
     stack: [{ id: 'base', kind: 'cells', name: null, chars: null }, { id: 'edit', kind: 'cells', name: 'Ink', chars: { chars: '#' } }, { id: 'L2', kind: 'vector', name: null, chars: { chars: '#' } }],
   });
   assert.equal(of(STACK_SENT, { made: 'L2' }).made, 'L2');
+  assert.deepEqual(of(STACK_SENT).gone, []);
+  assert.deepEqual(of(STACK_SENT, { gone: ['L3', 'L7'] }).gone, ['L3', 'L7']); // the layers this change took out of the stack
+  assert.equal(of(STACK_SENT, { gone: 'L3' }), null);
+  assert.equal(of(STACK_SENT, { gone: ['base'] }), null);
+  assert.equal(of(STACK_SENT, { gone: ['L 3'] }), null);
   assert.equal(of([{ id: 'base', kind: 'vector', name: null }, STACK_SENT[1]]), null); // the bottom is a cells layer
   assert.equal(of([...STACK_SENT, { id: 'L2', kind: 'cells', name: null }]), null);
   const most = Array.from({ length: MOST_LAYERS }, (_, i) => ({ id: i ? `L${i}` : 'base', kind: 'cells', name: null }));

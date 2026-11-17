@@ -145,9 +145,10 @@ export const sharingHostActions = {
   },
 
   // The stack after a change to it, to the room, numbered and kept like any change: by, who asked (a sub); made, the layer
-  // that change added or copied, or null.
-  sendLayers({ by, made = null }) {
-    const message = { t: 'layers', n: this._ledger.note(), stack: stackOnWire(this), by, made };
+  // that change added or copied, or null; gone, the layers it took out. The tail keeps gone for the host's memory of deleted
+  // layers (startSharing's removed), across a reload (restoreLedger) and a handover (takeLedger).
+  sendLayers({ by, made = null, gone = [] }) {
+    const message = { t: 'layers', n: this._ledger.note(), stack: stackOnWire(this), by, made, gone };
     this._ledger.tail.add(message);
     this._sharing.send(message);
   },

@@ -2901,6 +2901,51 @@ test('a keep asked for while one is writing writes after it, so what autosave wa
   await forgetRoomLedger('room');
 });
 
+// A stroke to a layer deleted in the room, drawn before its artist heard, is dropped quietly (takeFromArtist: numbered with
+// nothing left on it), not refused with the project sent again. The host remembers the deleted layers from the tail's layers
+// messages, so a reload and a handover remember them too.
+const lateStroke = (layer) => ({ t: 'change', stroke: 'late', cells: [[`${layer}:2,2`, { char: 'A' }]], runs: [] });
+
+test('a stroke to a layer deleted before the host reloaded is dropped quietly, not refused', async () => {
+  const room = await hostingWithSocket();
+  const layer = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => ann.project.layerById(layer)?.kind, PATIENT).toBe('cells');
+  setActivePinia(room.pinia);
+  expect(room.project.deleteLayer(layer)).toBe(true);
+  await allMatch(room, ann);
+  await room.project.keepLedger();
+  const row = await readRoomLedger('room');
+  const { project } = room;
+  room.host.close();
+  project.stopSharing();
+  project.clearHistory();
+  project._documentN = project._ledger.n;
+  expect(project.restoreLedger(row, 'host')).toBe(true);
+  project.startSharing({ send: () => {}, role: 'host', me: 'host' });
+  const numbered = project.takeFromArtist('ann', lateStroke(layer));
+  expect(numbered).toBeTruthy();
+  expect(numbered.cells).toEqual([]);
+  expect(project.takeFromArtist('ann', lateStroke('L9'))).toBe(null); // a layer the room never had is still refused
+  await forgetRoomLedger('room');
+});
+
+test('a stroke to a layer deleted before a handover is dropped quietly by the new host, not refused', async () => {
+  const room = await hostingWithSocket();
+  const layer = room.project.addLayer('cells', 'edit');
+  const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
+  await expect.poll(() => ann.project.layerById(layer)?.kind && bob.project.layerById(layer)?.kind, PATIENT).toBe('cells');
+  setActivePinia(room.pinia);
+  expect(room.project.deleteLayer(layer)).toBe(true);
+  await allMatch(room, ann, bob);
+  const next = await plannedHandOver(room, ann);
+  setActivePinia(ann.pinia);
+  const numbered = ann.project.takeFromArtist('bob', lateStroke(layer));
+  expect(numbered).toBeTruthy();
+  expect(numbered.cells).toEqual([]);
+  await allMatch(next, bob, next.former);
+});
+
 test('a kept ledger whose tail can\'t reach the document starts its stacks over, and says the undo is gone', async () => {
   const room = await hostingWithSocket();
   const ann = await artist(room, 'ann');

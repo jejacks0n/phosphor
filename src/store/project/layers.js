@@ -253,7 +253,7 @@ export const layerActions = {
       (this._sharing.removed ??= new Set()).add(id);
       takeOut(this, id);
       this.render();
-      this.sendLayers({ by: askedBy(this) });
+      this.sendLayers({ by: askedBy(this), gone: [id] });
       return true;
     }
     const { before, after } = this.layerFrames(id);
