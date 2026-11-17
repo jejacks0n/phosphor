@@ -88,6 +88,7 @@ Each layer has its own **Choose characters**, **Characters** set, **Character se
 
 - **Typed cells** are never changed by the converter, and a pinned character stays pinned.
 - **With Random and Best match**, paint colors a cell's halves through its character (or makes a `▄` over a solid cell).
+- **On the base under Best match and By shape**, paint goes into the base's pixels and the cell is matched again from them, with no `▄` (except over a pinned space), so switching between the two picks its character afresh.
 - **With By shape**, a cell with paint in it is matched again with the paint over the picture, so it gets the character and colors it would have once merged down. White paint on black shows as characters in Monochrome ASCII, and a stroke over part of a cell gets the shape that fits it. Erase the paint, and the cell goes back to the picture's.
 - **Paint covers whole half cells**, so on its own a stroke gives `▀`, `▄`, `█` and the like. The finer characters (quadrants, `▐`, `▌`, the rising blocks) come only where paint and the picture share a cell; detail finer than half a cell comes from the picture.
 - **Floyd–Steinberg's error** doesn't pass through painted cells until they're merged down.

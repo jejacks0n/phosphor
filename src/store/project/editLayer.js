@@ -11,6 +11,7 @@ import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
+import { resolves } from '@/lib/CharResolver.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { TYPING_PAUSE_MS, bytesHeld, onBottom, ownHalves, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
@@ -50,10 +51,14 @@ export const editLayerActions = {
           this.beginEdit();
         }
         const seen = this._stroke && (this._stroke.plainSeen ??= new Set());
+        // The base under Best match and By shape: a cell the converter drew is matched again from the painted pixels, so
+        // it hides no character and gets no ▄ (one pinned would outlast a switch of resolver); a pinned one is someone's
+        // own (R5).
+        const converted = onBottom(this) && resolves(this.processParams) ? (key) => !this.baseRecords.pins.has(key) : null;
         cells = !seen ? [] : cells.filter(({ col, row }) => {
           const key = cellKey(col, row), first = !seen.has(key), cell = this.cells[cellIndex(col, row, cols)];
           seen.add(key);
-          if (!first || !cell) return false;
+          if (!first || !cell || converted?.(key)) return false;
           // docs/model.md R5 (a frozen cell is paint) and R2 (a character with nothing to tint)
           return isFrozen(this.editCellAt(col, row)) || (ownColored(this, col, row) ? opensToPaint(cell, this.renderStyle) : showsNoChar(this, col, row, cell));
         });

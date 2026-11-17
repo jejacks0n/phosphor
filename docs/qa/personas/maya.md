@@ -130,7 +130,8 @@ script. Every section ends with Free time.
 - Probes: `speed`: drag Pattern light back and forth for two seconds with `qa.frames` and check frames stay in the
   `frame` budget; `interrupt`: switch to PIXEL while it's redrawing and come back; `out-of-order`: with Base picked,
   stroke Blur (R) over an edge in the ANSI view, then switch Choose characters to Best match and back, and check the
-  blurred cells get Best match's characters and then By shape's again, not the ones they had when she blurred; `layer`:
+  blurred cells get Best match's characters and then By shape's again, not the ones they had when she blurred; the same
+  with the Brush (Colors only) over a flat part, whose cells are matched to the paint, never left as a ▄; `layer`:
   with Base selected, drop a second picture on the drawing, choose Add to this drawing, and switch its new layer to By
   shape: its edges get `▐ ▌` and rising blocks as the base's do, not half blocks alone.
 - Rated: yes, wants Tab to Choose characters then the arrows
