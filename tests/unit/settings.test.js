@@ -123,3 +123,10 @@ test('Choose characters has its own help in the ASCII styles, about their ways o
   assert.doesNotMatch(ascii, /Random|Best match/);
   assert.match(getSetting('charChoice').help, /Random/);
 });
+
+test('Edges moves in tenths: an arrow press is a step you can see, 200 presses end to end, and its label shows one decimal', () => {
+  const edges = getSetting('edges');
+  assert.equal(edges.step, 0.1);
+  assert.equal(edges.decimals, 1);
+  assert.equal(Math.round((edges.max - edges.min) / edges.step), 200);
+});

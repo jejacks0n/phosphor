@@ -52,7 +52,7 @@ export const SETTINGS = [
   { key: 'blur', default: 0, group: 'effects', get label() { return t('settings.blur.label'); }, min: 0, max: 10, ticks: [0], get help() { return t('settings.blur.help'); } },
   { key: 'flatten', default: 0, group: 'effects', get label() { return t('settings.flatten.label'); }, min: 0, max: 10, ticks: [0], get help() { return t('settings.flatten.help'); } },
   { key: 'sharpen', default: 0, group: 'effects', get label() { return t('settings.sharpen.label'); }, min: 0, max: 100, ticks: [0], get help() { return t('settings.sharpen.help'); } },
-  { key: 'edges', default: 0, group: 'effects', get label() { return t('settings.edges.label'); }, min: 0, max: 20, step: 0.01, decimals: 2, ticks: [0], companion: 'edgeColor', get help() { return t('settings.edges.help'); } },
+  { key: 'edges', default: 0, group: 'effects', get label() { return t('settings.edges.label'); }, min: 0, max: 20, step: 0.1, decimals: 1, ticks: [0], companion: 'edgeColor', get help() { return t('settings.edges.help'); } },
   { key: 'edgeColor', default: '#000000', group: 'effects' },
   { key: 'edgeThickness', default: 1, group: 'effects', get label() { return t('settings.edgeThickness.label'); }, min: 0, max: 5, step: 0.1, decimals: 1, get help() { return t('settings.edgeThickness.help'); } },
 
