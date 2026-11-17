@@ -70,7 +70,8 @@ script. Every section ends with Free time.
 
 ### 1. Open my photo
 - Does: on the start screen, chooses `photo.jpg` with Choose a file (or drops it on the box that says "Drop an image, .phosphor, or ANSI file here").
-- Expects: it opens on ANSI as character art, 80 columns wide with its rows from the photo's shape; LAYERS shows
+- Expects: it opens on ANSI as character art, 80 columns wide with its rows from the photo's shape, the photo filling
+  the grid edge to edge (no dark strip of characters along the bottom line); LAYERS shows
   only Base, picked; the Characters section is titled "Characters · Base", with Picture · Base and Image filters
   under it; the address shows the ANSI tab.
   Opening takes under the `file` budget.
