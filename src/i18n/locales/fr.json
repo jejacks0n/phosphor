@@ -584,6 +584,7 @@
     "mergeBase": "Le calque de base est déjà tout en bas et ne peut pas être fusionné vers le bas.",
     "mergeOneFrame": "La fusion dans le calque de base partagé n'est disponible que pour les créations à image unique.",
     "mergeShapesTitle": "Fusionner vers le bas : peindre les formes sélectionnées dans les pixels du calque de base. Les formes fusionnées ne peuvent plus être modifiées en tant que vecteurs.",
+    "mergeShapesOntoVectorTitle": "Fusionner vers le bas : déplacer les formes sélectionnées vers le calque vectoriel en dessous. Elles restent des formes.",
     "mergeShapesOneFrame": "La fusion des formes dans le calque de base partagé n'est disponible que pour les créations à image unique.",
     "clearEdit": "Effacer le calque",
     "moreOptions": "Plus d'options",

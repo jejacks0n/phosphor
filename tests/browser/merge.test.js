@@ -409,6 +409,49 @@ describe('down between layers', () => {
     expect(cellsKey(project)).toEqual(before);
   });
 
+  test('Merge down of a vector layer into the vector layer under it moves its shapes there, above that layer\'s, and nothing on the canvas changes', async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+    await settle(project);
+    const lower = project.addLayer('vector', 'edit'), upper = project.addLayer('vector', lower);
+    workspace.pickLayer(upper);
+    const over = project.addShape(rectShape(4, 4, 8, 8, { fill: '#00ff00' })); // drawn first: the lower z
+    workspace.pickLayer(lower);
+    const under = project.addShape(rectShape(2, 2, 8, 8, { fill: '#ff0000' })); // drawn after, on the layer below
+    await settle(project);
+    const shown = cellsKey(project), version = project.history.version;
+    expect(project.mergeDown(upper)).toBe(true);
+    await settle(project);
+    expect(ids(project)).toEqual(['base', 'edit', lower]);
+    expect([under, over].map((key) => project.shapes.get(key).layer ?? 'vector')).toEqual([lower, lower]);
+    expect(project.shapes.get(over).z).toBeGreaterThan(project.shapes.get(under).z); // still over it
+    expect(cellsKey(project)).toEqual(shown);
+    expect(project.history.version).toBe(version + 1);
+    project.undo();
+    await settle(project);
+    expect(ids(project)).toEqual(['base', 'edit', lower, upper]);
+    expect(project.shapes.get(over).layer).toBe(upper);
+    expect(cellsKey(project)).toEqual(shown);
+    // Only the selected shapes: the layer stays with the rest.
+    workspace.pickLayer(upper);
+    const stays = project.addShape(rectShape(12, 12, 4, 4, { fill: '#0000ff' }));
+    expect(project.mergeDown(upper, null, [over])).toBe(true);
+    expect(ids(project)).toEqual(['base', 'edit', lower, upper]);
+    expect([over, stays].map((key) => project.shapes.get(key).layer ?? 'vector')).toEqual([lower, upper]);
+  });
+
+  test('Merge down of a vector layer with its own character settings into a vector layer is refused', async () => {
+    const { project } = await createTestApp();
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+    await settle(project);
+    const lower = project.addLayer('vector', 'edit'), upper = project.addLayer('vector', lower);
+    project.setLayerChars(upper, { chars: 'xyz' });
+    toastMessage.value = null;
+    expect(project.mergeDown(upper)).toBe(false);
+    expect(toastMessage.value).toBe('Vector 2 uses custom character settings and cannot merge into the layer below.');
+    expect(ids(project)).toEqual(['base', 'edit', lower, upper]);
+  });
+
   test('Merge down is off onto a vector layer', async () => {
     const { project } = await createTestApp();
     await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });

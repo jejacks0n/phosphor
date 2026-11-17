@@ -584,6 +584,7 @@
     "mergeBase": "The base layer is already at the bottom and cannot merge down.",
     "mergeOneFrame": "Merging into the shared base layer is only available for single-frame artwork.",
     "mergeShapesTitle": "Merge down: paint the selected shapes into the base layer's pixels. Merged shapes can no longer be edited as vectors.",
+    "mergeShapesOntoVectorTitle": "Merge down: move the selected shapes to the vector layer below. They stay shapes.",
     "mergeShapesOneFrame": "Merging shapes into the shared base layer is only available for single-frame artwork.",
     "clearEdit": "Clear layer",
     "moreOptions": "More options",

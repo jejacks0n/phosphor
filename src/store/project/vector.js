@@ -233,7 +233,7 @@ export const vectorActions = {
   setArtContent(key, art, [dx, dy] = [0, 0]) {
     const shape = this.shapes.get(key);
     if (!isArt(shape)) return false;
-    const moved = ({ z, m, follow, along }) => artFromStranger({ z, m: [m[0], m[1], m[2], m[3], m[4] + dx, m[5] + dy], art, ...(follow && { follow }), ...(along && { along }) }); // its link kept
+    const moved = ({ z, m, follow, along, layer }) => artFromStranger({ z, m: [m[0], m[1], m[2], m[3], m[4] + dx, m[5] + dy], art, ...(follow && { follow }), ...(along && { along }), ...(layer && { layer }) }); // its link and its vector layer kept
     const next = moved(shape);
     if (next && sameShape(next, shape)) return false;
     if (!next || (this.hasFrames && !this.frames.every(({ changes }) => !isArt(changes.get(key)?.cell) || moved(changes.get(key).cell)))) {
@@ -470,8 +470,8 @@ export const vectorActions = {
   },
 
   // VECTOR's Merge down: the shapes keys, with those beneath on their layer that overlap them, pressed into the base
-  // layer's pixels, where they stop being shapes, and their layer stays; with none, the whole vector layer picked merges
-  // down (mergeDown, which says why when it can't). Whether it merged.
+  // layer's pixels, where they stop being shapes, and their layer stays (onto a vector layer they move there, still
+  // shapes); with none, the whole vector layer picked merges down (mergeDown, which says why when it can't). Whether it merged.
   mergeShapes(keys = null) {
     const picked = useWorkspaceStore().pickedLayer, first = keys?.length && this.shapes.get(keys[0]);
     const id = this.layerById(picked)?.kind === 'vector' ? picked : first ? first.layer ?? 'vector' : 'vector';
@@ -567,7 +567,7 @@ export const vectorActions = {
   // that an outline inside another is a hole. One step; the key, or null with under two, an art layer among them (it
   // has no outlines: joined, it would be lost), or past a shape's points.
   joinShapes(keys) {
-    const order = stacked(this.shapes).filter(([key]) => keys.includes(key));
+    const order = stacked(this.shapes, this.shapeRank).filter(([key]) => keys.includes(key)); // as they show: a layer's place before z
     if (order.length < 2 || order.some(([, shape]) => isArt(shape))) return null;
     const [[bottomKey, bottom], ...rest] = order, shape = joined(bottom, rest.map(([, s]) => s));
     if (!shape || !keeps(shape)) {
@@ -583,7 +583,7 @@ export const vectorActions = {
   // step; the key, or null with under two shapes, an open outline or an art layer among them (allClosed: it has no
   // outline), past a shape's points, or nothing left (then they all go).
   combineShapes(keys, op) {
-    const order = stacked(this.shapes).filter(([key]) => keys.includes(key));
+    const order = stacked(this.shapes, this.shapeRank).filter(([key]) => keys.includes(key)); // as they show: a layer's place before z
     if (order.length < 2 || !order.every(([, shape]) => allClosed(shape))) return null;
     const [[bottomKey, bottom], ...rest] = order, shape = combined(bottom, rest.map(([, s]) => s), op);
     if (shape && !keeps(shape)) {
@@ -618,14 +618,16 @@ export const vectorActions = {
   // just beneath the nearest beneath it (back); one with none there stays. Every other pair keeps its order:
   // the shapes are numbered again from the bottom, and those whose number changed are the step.
   restackShapes(keys, direction) {
-    const order = stacked(this.shapes).map(([key]) => key);
+    const order = stacked(this.shapes).map(([key]) => key), layerOf = (key) => this.shapes.get(key).layer ?? 'vector';
     const moving = new Set(keys), up = direction === 'forward', sequence = up ? [...order].reverse() : [...order];
     for (const key of sequence) {
       if (!moving.has(key)) continue;
       const at = order.indexOf(key), bounds = shapeBounds(this.shapes.get(key));
       for (let i = at + (up ? 1 : -1); i >= 0 && i < order.length; i += up ? 1 : -1) {
         const other = order[i];
-        if (moving.has(other) || !meets(bounds, shapeBounds(this.shapes.get(other)))) continue;
+        // Only past a shape on its own vector layer: the layers' order decides between two on different ones, so a step
+        // past one of those would show nothing.
+        if (moving.has(other) || layerOf(other) !== layerOf(key) || !meets(bounds, shapeBounds(this.shapes.get(other)))) continue;
         order.splice(at, 1);
         order.splice(i, 0, key);
         break;
@@ -814,7 +816,7 @@ function redrawRects(project, { lower, upper }) {
   }
   if (low) project.refreshCells(pixelsOf(low));
   if (!up) return;
-  if (up.w * up.h > quarter) project.applyEditCells();
+  if (up.w * up.h > quarter) project.recomposeUpper();
   else project.recomposeUpper(pixelsOf(up));
 }
 

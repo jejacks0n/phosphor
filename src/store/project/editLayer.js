@@ -335,10 +335,31 @@ function ownColored(project, col, row) {
   return !!(entry?.fg || entry?.bg);
 }
 
+// Whether the topmost thing under the layer in use at col, row is a shape's fill or stroke (not an art layer's character,
+// which is someone's own): a shown vector layer's shape reaches the cell, with no shown cells layer's entry or paint
+// between. A flat shape's cell has both halves one color, as a blank canvas's does, but it hides no character: it's
+// converted pixels, as the picture's are, so Colors only lays paint there with no ▄ and the layer's Characters convert it
+// (docs/model.md R5).
+function shapeUnder(project, col, row) {
+  if (onBottom(project) || project._artInside) return false;
+  const { layers } = project, lower = project.lowerGroup.vectors, key = cellKey(col, row);
+  for (let i = layers.findIndex((layer) => layer.id === project.editId) - 1; i > 0; i--) {
+    const { id, kind, hidden } = layers[i];
+    if (hidden) continue;
+    if (kind === 'vector') {
+      const char = (lower.includes(id) ? project._shapeLayer : project._upperShapes.get(id))?.charAt(col, row);
+      if (char !== undefined) return char === null;
+    } else if (project.cellsOf(id).has(key) || project.paintOf(id)?.pixelAt(col, 2 * row) || project.paintOf(id)?.pixelAt(col, 2 * row + 1)) return false;
+  }
+  return false;
+}
+
 // Whether the cell at col, row shows no character in ANSI, as a stroke first reaching it reads it: in ANSI as it's drawn
 // (cell), or in any style its two halves one color as stored up to the layer in use (the base alone when it's picked),
 // which ANSI draws as no character. So which view or art style a stroke is laid in doesn't change the cells it makes ▄.
+// Not a cell a shape under the layer covers (shapeUnder).
 function showsNoChar(project, col, row, cell) {
+  if (shapeUnder(project, col, row)) return false;
   if (project.renderStyle === 'ansi' && !showsChar(cell)) return true;
   const look = onBottom(project) ? { bg: project.baseColorAt(col, 2 * row), fg: project.baseColorAt(col, 2 * row + 1) } : project.underlyingAt(col, row, { evenHidden: true });
   return look.bg.toLowerCase() === look.fg.toLowerCase();

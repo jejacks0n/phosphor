@@ -122,7 +122,9 @@ script. Every section ends with Free time.
   foreground; each finished shape is selected and is one undo step ([Pen](../../vector.md#pen-p)).
 - Probes: `undo-redo`: press Backspace mid-curve to take the last point away, then undo the finished curve and redo
   it; `interrupt`: halfway through a curve, switch to SAUCE and back (choosing another tab leaves it an open
-  curve); `extremes`: a curve of 60 points clicked quickly.
+  curve); `extremes`: a curve of 60 points clicked quickly; `handles`: with a curve just finished and still on the
+  Pen, drag a handle of its box (it scales) and the knob above it (it turns), then click inside the box (a new
+  curve starts there); mid-curve, a click where a handle would be is just a point.
 - Rated: yes, wants P (the points themselves aren't rated)
 
 ### 5. Make three art layers

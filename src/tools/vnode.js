@@ -105,7 +105,7 @@ function endMarquee(project, workspace) {
   let key = project.shapes.has(workspace.vectorPoints) ? workspace.vectorPoints : null;
   const placed = placedShapes(project);
   if (!key) {
-    key = stacked(placed).reverse().find(([, shape]) => pointsIn(shape, box).length)?.[0];
+    key = stacked(placed, project.shapeRank).reverse().find(([, shape]) => pointsIn(shape, box).length)?.[0];
     if (!key) return;
     workspace.vectorPoints = key;
     project.selectShapes([key]);
@@ -128,7 +128,7 @@ export default {
     if (workspace.vectorPoints && project.shapes.has(workspace.vectorPoints)) {
       if (handlesPress(ctx, pos, radius, event) || gradientDrag.line(ctx, pos, radius) || outlinePress(project, workspace, pos, unit, radius)) return true;
     }
-    const hit = shapeAt(placedShapes(project), pos.x, pos.y, radius / unit.x, false); // an art layer has no points: passed over
+    const hit = shapeAt(placedShapes(project), pos.x, pos.y, radius / unit.x, false, project.shapeRank); // an art layer has no points: passed over
     if (!hit || hit === workspace.vectorPoints) { // empty canvas, or inside the shape edited: a box over points (end)
       drag = { kind: 'marquee', from: pos, shift: !!event?.shiftKey, empty: !hit };
       return true;

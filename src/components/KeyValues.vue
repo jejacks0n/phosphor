@@ -32,7 +32,7 @@ const values = computed(() => {
 const tip = computed(() => (onPath.value && shape.value.follow.ride ? project.shapes.get(shape.value.follow.key) : null));
 const look = computed(() => (shape.value ? strokeOf(shape.value) : null));
 const pointCount = computed(() => allPoints(shape.value).length);
-const place = computed(() => stacked(project.shapes).findIndex(([key]) => key === props.shapeKey) + 1);
+const place = computed(() => stacked(project.shapes, project.shapeRank).findIndex(([key]) => key === props.shapeKey) + 1);
 const FIELDS = [['x', 0.5], ['y', 0.5], ['turn', 1], ['scaleX', 1], ['scaleY', 1]];
 // An art layer's: its corner, on whole cells (a column across, two grid pixels down).
 const ART_FIELDS = [['x', 1, 'artX'], ['y', 2, 'artY']];

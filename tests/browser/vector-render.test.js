@@ -5,7 +5,7 @@ import { test, expect, onTestFinished, vi } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
-import { MOST_SHAPES, deletePoint, makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, withShape, worldPoints } from '@/document/shapes';
+import { MOST_SHAPES, deletePoint, makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, stacked, withShape, worldPoints } from '@/document/shapes';
 import ShapeLayer, { paintShape } from '@/document/ShapeLayer.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { toastMessage } from '@/composables/useToast';
@@ -955,6 +955,20 @@ test('Vector select edits one selected shape\'s gradient: its ends and stops dra
   expect(workspace.vectorStop).toBe(null);
 });
 
+test('R10: a shape drawn with the Shape tool stays on the vector layer picked through the drag', async () => {
+  const { project, workspace } = await gradient(40, 40);
+  project.addLayer('vector', 'base');
+  const second = project.addLayer('vector', 'vector');
+  workspace.pickLayer(second);
+  workspace.setActiveTool('vshape');
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
+  vshape.begin(ctx, { x: 4, y: 4 }, {});
+  vshape.move(ctx, { x: 4, y: 4 }, { x: 10, y: 10 }); // the shape is added
+  vshape.move(ctx, { x: 10, y: 10 }, { x: 20, y: 20 }); // and changed as the drag goes on
+  vshape.end(ctx);
+  expect([...project.shapes.values()].map((shape) => shape.layer)).toEqual([second]);
+});
+
 // The Shape tool shows a selected shape's gradient as Vector select does (its box shows with every tool), and its ends
 // and stops are handles there too; anywhere else a drag draws a new shape.
 test('the Shape tool shows and edits a selected shape\'s gradient ends and stops; off them, a drag draws a shape', async () => {
@@ -1010,4 +1024,81 @@ test('vector layers above the picture share one canvas to draw their shapes on, 
       expect([x, y, inside ? data[o + 1] === 255 && data[o + 3] === 255 : data[o + 3] === 0]).toEqual([x, y, true]);
     }
   }
+});
+
+// Two vector layers, the upper one's shape drawn first: shapes are numbered across every layer as they're drawn, so the
+// lower layer's shapes have the higher numbers. Which is over which is the layers' order first.
+async function twoVectorLayers() {
+  const app = await gradient(40, 40), { project, workspace } = app;
+  const lower = project.addLayer('vector', 'base'), upper = project.addLayer('vector', lower);
+  workspace.pickLayer(upper);
+  const top = project.addShape(rectShape(4, 4, 20, 20, { fill: '#00ff00' }));
+  workspace.pickLayer(lower);
+  const under = project.addShape(rectShape(8, 8, 24, 24, RED)), over = project.addShape(rectShape(10, 10, 26, 26, { fill: '#0000ff' }));
+  expect([top, under, over].map((key) => project.shapes.get(key).z)).toEqual([0, 1, 2]);
+  return { ...app, lower, upper, top, under, over };
+}
+
+test('R10: a click picks the shape that shows on top, on whichever vector layer, and the pick follows it', async () => {
+  const { project, workspace, lower, upper, top, over } = await twoVectorLayers();
+  workspace.setActiveTool('vselect');
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 8 } };
+  const click = (pos) => { vselect.begin(ctx, pos, {}); vselect.end(ctx); };
+  expect(workspace.pickedLayer).toBe(lower);
+  click({ x: 15, y: 15 }); // all three overlap here: the upper layer's is what shows
+  expect(workspace.vectorSelected).toEqual([top]);
+  expect(workspace.pickedLayer).toBe(upper);
+  project.selectShapes([]);
+  click({ x: 25, y: 25 }); // past the upper layer's shape
+  expect(workspace.vectorSelected).toEqual([over]);
+  expect(workspace.pickedLayer).toBe(lower);
+});
+
+test('R10: Bring forward steps past the next shape on its own vector layer, not one on another layer', async () => {
+  const { project, lower, top, under, over } = await twoVectorLayers();
+  project.updateShapes([[under, withShape(project.shapes.get(under), { z: 0 })], [top, withShape(project.shapes.get(top), { z: 1 })]]); // the upper layer's shape numbered between the lower's two
+  const onLower = () => stacked(project.shapes).filter(([, shape]) => (shape.layer ?? 'vector') === lower).map(([key]) => key);
+  expect(onLower()).toEqual([under, over]);
+  project.restackShapes([under], 'forward');
+  expect(onLower()).toEqual([over, under]); // one press: over the one it shows under, not past the other layer's
+  project.restackShapes([top], 'back'); // alone on its layer: nothing to step past
+  expect(onLower()).toEqual([over, under]);
+});
+
+test('R10: Join across vector layers keeps the shape that shows underneath', async () => {
+  const { project, lower, top, under } = await twoVectorLayers();
+  expect(project.joinShapes([top, under])).toBe(under); // the lower layer's, though it was drawn later
+  expect(project.shapes.has(top)).toBe(false);
+  expect(project.shapes.get(under).layer ?? 'vector').toBe(lower);
+  expect(project.shapes.get(under).fill).toBe('#ff0000');
+});
+
+// The Shape tool shows the selected shape's box as Vector select does (VectorOverlay), so its handles and knob work
+// there too (issue #198); a drag anywhere else, inside the box too, draws a new shape.
+test('the Shape tool\'s handles scale and turn the selected shape; a drag off them draws a new one', async () => {
+  const { project, workspace } = await gradient(40, 40);
+  const unit = { x: 8, y: 8 }, ctx = { project, workspace, view: 'vector', unit };
+  workspace.setActiveTool('vshape');
+  const drag = (from, to) => { vshape.begin(ctx, from, {}); vshape.move(ctx, from, to); vshape.end(ctx); };
+  drag({ x: 10, y: 10 }, { x: 20, y: 20 });
+  const [key] = workspace.vectorSelected, shape = () => project.shapes.get(key);
+  const grips = () => boxHandles(selectionBox(project.shapes, [key]), unit);
+  expect(project.shapes.size).toBe(1);
+
+  const version = project.history.version;
+  drag(grips().handles[2], { x: 30, y: 25 }); // the bottom-right corner
+  expect(project.shapes.size).toBe(1);
+  expect(selectionBox(project.shapes, [key]).corners[2]).toEqual({ x: 30, y: 25 });
+  expect(selectionBox(project.shapes, [key]).corners[0]).toEqual({ x: 10, y: 10 });
+  expect(project.history.version).toBe(version + 1); // one undo step
+
+  const { knob } = grips(), { center } = selectionBox(project.shapes, [key]);
+  drag(knob, { x: center.x + 10, y: center.y }); // from straight up to straight right: a quarter turn
+  expect(project.shapes.size).toBe(1);
+  expect(Math.atan2(shape().m[1], shape().m[0])).toBeCloseTo(Math.PI / 2, 5);
+  expect(workspace.activeTool).toBe('vshape');
+  expect(workspace.vectorSelected).toEqual([key]);
+
+  drag({ x: center.x - 1, y: center.y - 1 }, { x: center.x + 2, y: center.y + 2 }); // inside its box, off the handles
+  expect(project.shapes.size).toBe(2);
 });

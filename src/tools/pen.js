@@ -3,16 +3,20 @@
 // puts a point on the grid, its handles left free). The
 // shape converts live as it's drawn, all one undo step (penPoint, finishPen). Clicking the first point (with 3
 // or more) closes it; Enter or Esc leaves it an open curve; Backspace or undo takes the last point away. A tool or
-// tab change, a frame or a save finishes it as an open curve (commitEdit).
+// tab change, a frame or a save finishes it as an open curve (commitEdit). With no shape being drawn, the selection's
+// box shows (the shape just finished is selected) and its handles work as with Vector select (vselect.pressHandles): the
+// size handles, the turn knob and one shape's gradient ends and stops; a press anywhere else starts a new shape.
 import { t } from '@/i18n/index.js';
 import { withShape, worldPoints } from '@/document/shapes.js';
-import { handleRadius } from '@/tools/vselect.js';
+import vselect, { handleRadius } from '@/tools/vselect.js';
 import { snappedEnd } from '@/tools/shapes.js';
+import { stopKeys } from '@/tools/gradientHandles.js';
 import { snapAlong, snapMode, snapPoint } from '@/lib/vectorSnap.js';
 
 const SMOOTH_PX = 3; // a drag past this many CSS px makes the point smooth
 
 let press = null; // { key, at, unit }: the point this press made
+let onHandle = false; // the press took one of the selection's handles: Vector select's drag carries it
 
 const near = (a, b, unit, radius) => Math.hypot((a.x - b.x) * unit.x, (a.y - b.y) * unit.y) <= radius;
 
@@ -25,7 +29,9 @@ export default {
   kind: 'paint',
   section: 'vector',
 
-  begin({ project, workspace, unit }, pos) {
+  begin(ctx, pos) {
+    const { project, workspace, unit } = ctx;
+    if (!project._stroke?.pen && vselect.pressHandles(ctx, pos)) return (onHandle = true); // while one's drawn, every press is a point
     const key = project._stroke?.pen, shape = key && project.shapes.get(key), world = shape ? worldPoints(shape) : [];
     if (world.length >= 3 && near(pos, world[0], unit, handleRadius())) {
       project.finishPen({ closed: true });
@@ -40,7 +46,9 @@ export default {
     return !!press;
   },
 
-  move({ project, workspace }, from, to) {
+  move(ctx, from, to) {
+    if (onHandle) return vselect.move(ctx, from, to);
+    const { project, workspace } = ctx;
     const shape = press && project.shapes.get(press.key);
     if (!shape) return;
     if (workspace.isShiftPressed) to = snappedEnd(press.at, to);
@@ -51,17 +59,26 @@ export default {
     project.updateShapes([[press.key, withShape(shape, { points: [...shape.points.slice(0, -1), point] })]]);
   },
 
-  end() {
+  end(ctx) {
+    if (onHandle) {
+      onHandle = false;
+      return vselect.end(ctx);
+    }
     press = null; // the shape's edit stays open for the next point
   },
 
   // A pinch: the point this press made goes (cancelEdit leaves the Pen's edit open).
-  cancel({ project }) {
-    if (press) project.penBack();
+  cancel(ctx) {
+    if (onHandle) {
+      onHandle = false;
+      return vselect.cancel(ctx);
+    }
+    if (press) ctx.project.penBack();
     press = null;
   },
 
-  keydown({ project }, event) {
+  keydown({ project, workspace }, event) {
+    if (!project._stroke?.pen && stopKeys(project, workspace, event)) return true; // a selected gradient stop's keys
     if (!project._stroke?.pen || event.metaKey || event.ctrlKey || event.altKey) return false;
     if (event.key === 'Enter' || event.key === 'Escape') project.finishPen({ closed: false });
     else if (event.key === 'Backspace' || event.key === 'Delete') project.penBack();

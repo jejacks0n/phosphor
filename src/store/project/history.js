@@ -111,7 +111,7 @@ export const historyActions = {
     } else if (stroke && this.renderer.upperHoldsDither) {
       const pixels = strokePixels();
       if (pixels) this.recomposeUpper(pixels);
-      else this.applyEditCells();
+      else this.recomposeUpper();
     }
     if (!stroke || (!patch && !basePatch && others.every(([own]) => !own) && !stroke.wroteCells && stroke.baseRecords === this.baseRecords)) {
       if (stroke) {

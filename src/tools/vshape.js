@@ -1,18 +1,18 @@
 // The Shape tool (the VECTOR tab): drag from corner to corner for a rectangle, an ellipse or a polygon
 // (Sides: 3 to 12), drawn live and made an ordinary path, one undo step. Shift makes it a square, a circle
 // or a regular polygon; Snap to puts both corners on the grid. It gets the next shape's style (workspace.vectorStyle) and is selected when it's
-// made; a click without a drag makes nothing. The one selected shape's gradient ends and stops are handles here as
-// with Vector select (gradientHandles.js), ahead of drawing.
+// made; a click without a drag makes nothing. The selection's box shows here as with Vector select, and its handles
+// work the same (vselect.pressHandles): the size handles, the turn knob, and the one selected shape's gradient ends and
+// stops, ahead of drawing. A drag anywhere else, inside the box too, draws a new shape.
 import { t } from '@/i18n/index.js';
 import { ellipseShape, polygonShape, rectShape, styleColors, withShape } from '@/document/shapes.js';
 import shapes from '@/tools/shapes.js';
 import { snapMode, snapPoint } from '@/lib/vectorSnap.js';
-import { gradientDrag, stopKeys } from '@/tools/gradientHandles.js';
-import { handlePicker } from '@/tools/handlePick.js';
-import { handleRadius } from '@/tools/vselect.js';
+import { stopKeys } from '@/tools/gradientHandles.js';
+import vselect from '@/tools/vselect.js';
 
 let drag = null; // { from, key }
-const pick = handlePicker();
+let onHandle = false; // the press took one of the selection's handles: Vector select's drag carries it
 
 function shapeFor(workspace, from, to, square) {
   let dx = to.x - from.x, dy = to.y - from.y;
@@ -56,28 +56,29 @@ export default {
 
   begin(ctx, pos) {
     const { project, workspace } = ctx;
-    if (pick.press(gradientDrag.candidates(ctx, pos, handleRadius()), pos, ctx.unit)) return true;
+    if (vselect.pressHandles(ctx, pos)) return (onHandle = true);
     drag = { from: snapPoint(pos, snapMode(workspace)), key: null };
     project.beginEdit();
     return true;
   },
 
   move(ctx, from, to) {
-    pick.move(to, ctx.unit);
-    if (gradientDrag.active) return gradientDrag.move(ctx, from, to);
+    if (onHandle) return vselect.move(ctx, from, to);
     const { project, workspace } = ctx;
     to = snapPoint(to, snapMode(workspace));
     if (!drag || (to.x === drag.from.x && to.y === drag.from.y)) return;
     const shape = shapeFor(workspace, drag.from, to, workspace.isShiftPressed);
     if (!drag.key) drag.key = project.addShape(shape);
-    else project.updateShapes([[drag.key, withShape(shape, { z: project.shapes.get(drag.key).z })]]);
+    else {
+      const { z, layer } = project.shapes.get(drag.key); // what addShape gave it: its place in the stack and its vector layer
+      project.updateShapes([[drag.key, withShape(shape, { z, layer })]]);
+    }
   },
 
   end(ctx) {
-    if (gradientDrag.active) {
-      if (gradientDrag.end(ctx)) pick.reset(); // a stop's color opened
-      else pick.end();
-      return;
+    if (onHandle) {
+      onHandle = false;
+      return vselect.end(ctx);
     }
     const { project, workspace } = ctx, key = drag?.key;
     drag = null;
@@ -87,8 +88,8 @@ export default {
 
   cancel(ctx) {
     drag = null; // the viewport took the edit back
-    pick.reset();
-    gradientDrag.cancel(ctx);
+    onHandle = false;
+    vselect.cancel(ctx);
   },
 
   keydown({ project, workspace }, event) {

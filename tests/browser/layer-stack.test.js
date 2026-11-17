@@ -292,6 +292,35 @@ test('R7: the report: a blurred shape\'s soft edge over the white stroke under i
   expect([[52, 8], [53, 8]].map(([col, row]) => cellAt(project, col, row).char)).toEqual(['@', '@']);
 });
 
+test('the Brush paints on a cells layer above a vector layer with no shapes yet, itself above a cells layer', async () => {
+  const { project } = await blank();
+  const vector = project.addLayer('vector', 'edit'); // above the lower group: an upper vector layer with no shape layer yet
+  project.useLayer(project.addLayer('cells', vector));
+  project.paintStroke([{ x: 5, y: 6, alpha: 1 }], '#0000ff', { blockChars: 'plain' }); // Colors only reads what's under the cell
+  project.commitEdit();
+  expect(project.hasPaint).toBe(true);
+  expect(look(cellAt(project, 5, 3)).bg).toBe('#0000ff');
+  expect(project.underlyingAt(5, 3, { evenHidden: true }).bg).toBe('#0000ff'); // what Colors only asks over a picture
+  expect(() => project.storedLookAt(5, 3)).not.toThrow();
+});
+
+test('R9: a shape past a quarter of the grid on an upper vector layer keeps the paint drawn under it since the last render', async () => {
+  const { project } = await blank();
+  project.render();
+  await settle(project);
+  project.addLayer('vector', 'edit');
+  project.paintStroke([{ x: 18, y: 18, alpha: 1 }, { x: 18, y: 19, alpha: 1 }], '#0000ff'); // in the output, not in the last render's cells
+  project.commitEdit();
+  const painted = look(cellAt(project, 18, 9));
+  project.beginEdit(); // a drag: the edit stays open
+  const key = project.addShape(rectShape(0, 0, 12, 12, { fill: '#ff0000' }));
+  expect(look(cellAt(project, 18, 9))).toEqual(painted);
+  project.updateShapes([[key, rectShape(0, 0, 16, 16, { fill: '#ff0000', z: 0 })]]);
+  expect(look(cellAt(project, 18, 9))).toEqual(painted);
+  project.commitEdit();
+  expect(look(cellAt(project, 18, 9))).toEqual(painted);
+});
+
 test('undo and redo of an upper layer\'s edits, a fill of the whole layer among them, don\'t run the lower group or the pipeline', async () => {
   const { project } = await blank();
   project.render();

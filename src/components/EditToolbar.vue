@@ -33,7 +33,7 @@ const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-l
 // change the drawing kept aside, not the layer (the store steps out first all the same).
 const insideOff = computed(() => (project.artInside ? t('art.wholeLayerOff') : null));
 // Merge down acts on the picked layer: off with the reason (useMergeDown's offFor), and only with something on it. On
-// VECTOR, with shapes selected, it presses those, without asking how.
+// VECTOR, with shapes selected, it presses those (or, onto a vector layer, moves them there), without asking how.
 const picked = computed(() => workspace.pickedLayer);
 const mergeOff = () => off(offFor(picked.value), t('toolbar.mergeDown'));
 const onVector = computed(() => workspace.editorTab === 'vector');
@@ -42,7 +42,7 @@ const mergeOn = computed(() => {
   void project.editCells; void project.hasPaint; void project.shapes; void project.historyVersion; // re-check after edits
   return hasAny(picked.value);
 });
-const mergeTitle = computed(() => (onVector.value && vectorSelection.value.length ? t('toolbar.mergeShapesTitle') : t('toolbar.mergeDownTitle', { name: layerName(picked.value) })));
+const mergeTitle = computed(() => (onVector.value && vectorSelection.value.length ? t(below(picked.value)?.kind === 'vector' ? 'toolbar.mergeShapesOntoVectorTitle' : 'toolbar.mergeShapesTitle') : t('toolbar.mergeDownTitle', { name: layerName(picked.value) })));
 function mergeHere() {
   if (!onVector.value || !vectorSelection.value.length) return mergeDown(picked.value);
   if (project.mergeShapes(vectorSelection.value)) workspace.vectorSelected = []; // or refused: still selected

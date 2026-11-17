@@ -10,7 +10,7 @@ import { toast } from '@/composables/useToast';
 import { EMPTY_BASE, withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { makeArt, isArt } from '@/document/artLayers.js';
-import { finerStops, isGradient, isShape, shapeBounds, withShape } from '@/document/shapes.js';
+import { finerStops, isGradient, isShape, shapeBounds, shapeFromStranger, stacked, withShape } from '@/document/shapes.js';
 import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock, isFrozen, shownEntry } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
@@ -309,6 +309,25 @@ function shapesOnCells(project, id, under) {
   };
   freezeUnlike(project, after(), under, painted, was, frozen, next, into, art);
   return mergeStep(project, before, after(), bytesHeld(into, next));
+}
+
+// Merge down of the vector layer with the id into the vector layer under it: its shapes (only those with keys, when
+// given) move onto that layer and stay shapes, above the ones already there, as they showed. Every shape is numbered
+// again in the order it's stacked (its layer's place, then z), so the moved ones' numbers are above that layer's own
+// whatever order they were drawn in. With no keys the layer leaves the stack, its guides moved with the rest. False, and
+// no step, with nothing to move, or (with a toast) when an art layer has no room for its new number.
+function shapesOnVector(project, id, under, keys) {
+  const rank = (shape) => project.layers.findIndex((layer) => layer.id === (shape.layer ?? 'vector'));
+  const moves = ([key, shape]) => (shape.layer ?? 'vector') === id && (!keys || keys.includes(key));
+  if (keys && ![...project.shapes].some(moves)) return false;
+  const next = new Map(), to = under === 'vector' ? undefined : under; // a shape on the first vector layer names none
+  stacked(project.shapes, rank).forEach((entry, z) => next.set(entry[0], withShape(entry[1], { z, ...(moves(entry) && { layer: to }) })));
+  if (![...next.values()].every((shape) => shapeFromStranger(shape))) {
+    toast(t('art.tooBig'));
+    return false;
+  }
+  const before = { stack: stackState(project), shapes: project.shapes };
+  return mergeStep(project, before, { stack: keys ? before.stack : without(before.stack, id), shapes: next }, 0);
 }
 
 export const mergingActions = {
@@ -700,14 +719,15 @@ export const mergingActions = {
   // Merge down: the layer with the id into the one under it (docs/layers.md, "Moving things between layers"); whether it
   // merged. rect: only what's inside a cell rect (a selection's); keys: only those shapes of a vector layer (VECTOR's Merge
   // down of a selection); either way the layer stays with the rest. Off (false) for the bottom, with nothing under it, and
-  // in an animation (the base is under every frame). Refused, with a toast saying why: onto a vector layer (Make art layer
-  // does that), a hidden layer either side, onto a layer above the bottom in a room (which keeps its layers), a vector
+  // in an animation (the base is under every frame). Refused, with a toast saying why: a cells layer onto a vector layer
+  // (Make art layer does that), a vector layer onto a vector layer whose character settings differ, a hidden layer either side, onto a layer above the bottom in a room (which keeps its layers), a vector
   // layer with its own character settings onto the bottom (its shapes can't be pressed in as they show), and part of a
   // vector layer onto a cells layer above the bottom. Into the bottom: a cells layer exactly as it shows (onBase; the
   // toolbar asks first, Into the image the other way), a vector layer's shapes pressed into the base's pixels (pressLayer).
   // Into another cells layer: each entry completed against what shows under it and written there, its paint staying paint
   // (onCells), and a vector layer's shapes going in as paint (shapesOnCells); a cell that paint would show otherwise is
-  // frozen there exactly as it showed. One whole-layer step; the merged layer leaves the stack when it's left with nothing
+  // frozen there exactly as it showed. Into another vector layer: its shapes (or only keys) move there, still shapes
+  // (shapesOnVector). One whole-layer step; the merged layer leaves the stack when it's left with nothing
   // on it.
   mergeDown(id, rect = null, keys = null) {
     const at = this.layers.findIndex((layer) => layer.id === id), layer = this.layers[at], below = this.layers[at - 1];
@@ -717,12 +737,15 @@ export const mergingActions = {
       return false;
     };
     if (refusedHidden(this, [id, below.id])) return false;
-    if (below.kind === 'vector') return refuse(t('toolbar.mergeOntoVector'));
+    const ontoVector = layer.kind === 'vector' && below.kind === 'vector';
+    if (below.kind === 'vector' && !ontoVector) return refuse(t('toolbar.mergeOntoVector'));
     if (layer.kind === 'vector' && below.id === 'base' && !sameChars(layer.chars, this.baseChars)) return refuse(t('toolbar.mergeOwnChars', { name: layerName(layer) }));
-    if (layer.kind === 'vector' && below.id !== 'base' && (rect || keys)) return refuse(t('toolbar.mergeShapesWhole', { name: layerName(layer) }));
+    if (ontoVector && !sameChars(this.charsOf(id), this.charsOf(below.id))) return refuse(t('toolbar.mergeOwnChars', { name: layerName(layer) })); // its shapes would convert otherwise there
+    if (layer.kind === 'vector' && below.kind === 'cells' && below.id !== 'base' && (rect || keys)) return refuse(t('toolbar.mergeShapesWhole', { name: layerName(layer) }));
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     this.commitPending();
+    if (ontoVector) return shapesOnVector(this, id, below.id, keys);
     if (layer.kind === 'vector') return below.id === 'base' ? pressLayer(this, id, rect, keys) : shapesOnCells(this, id, below.id);
     return below.id === 'base' ? onBase(this, id, rect) : onCells(this, id, below.id, rect);
   },

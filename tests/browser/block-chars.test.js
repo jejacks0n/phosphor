@@ -4,7 +4,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
-import { ellipseShape } from '@/document/shapes.js';
+import { ellipseShape, rectShape } from '@/document/shapes.js';
 import pencil from '@/tools/pencil';
 import brush from '@/tools/brush';
 import eraser from '@/tools/eraser';
@@ -68,6 +68,20 @@ test('a Shift-click line in Half-block makes each cell along it a ▄', async ()
   pencil.begin(ctx, { x: 25.5, y: 20.5 }, { shiftKey: true });
   pencil.end(ctx);
   for (let col = 5; col <= 25; col++) expect(charAt(col, 10), `col ${col}`).toBe('▄');
+});
+
+test('R5: Colors only over a flat shape on a vector layer under the layer makes no ▄: the paint converts with the layer\'s characters, as over the picture', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  await settle(project);
+  const vector = project.addLayer('vector', 'edit');
+  project.addShape(rectShape(2, 2, 8, 8, { fill: '#ff0000' })); // cells 2..9 x 1..4, both halves of each one color
+  project.commitEdit();
+  project.useLayer(project.addLayer('cells', vector));
+  project.paintStroke([{ x: 5, y: 6, alpha: 1 }, { x: 15, y: 6, alpha: 1 }], '#0000ff', { blockChars: 'plain' }); // over the shape, and over blank canvas
+  project.commitEdit();
+  expect(project.editCellAt(5, 3)).toBeUndefined();
+  expect(project.editCellAt(15, 3)).toEqual({ char: '▄' }); // a blank canvas's cell, as ever
 });
 
 test('with Colors only, a cell that shows no character (the black of an opened file\'s grown lines) takes the paint as a plain ▄', async () => {

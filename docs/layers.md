@@ -457,7 +457,8 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
   there paints a plain half-block, not the character the converter put there unseen. So does a cell of the layer's
   own that shows no character (a space, or a character in its background's color): its colors become paint first, so
   the half you don't paint looks as it did. So does a cell Merge down froze along a merged shape's edge, whatever its
-  character, whose paint is under it already. Painting in the PIXEL view does
+  character, whose paint is under it already. A shape on a vector layer under the layer isn't such a cell, even
+  filled with one flat color: paint over it becomes the layer's characters, as it does over the picture. Painting in the PIXEL view does
   the same, so the view you paint in never changes what you get; only **Half-block** makes every cell a ▄. In Color
   ASCII and Monochrome ASCII there are no half-blocks: the paint becomes your ASCII characters, whichever style you
   painted it in, and its half-blocks show again when you switch back to ANSI. On the base under **Best match** and **By
@@ -556,8 +557,9 @@ the canvas changes. Undo brings it back, selected if it was.
 - **Where It Is**: The toolbar, a row's **⋯** menu in LAYERS, and the Select tool's row. The toolbar and ⋯ always merge
   the whole layer. The Select tool's row merges only what's drawn inside the selection while there is one (the layer
   stays with the rest), or the whole layer without one.
-- **When It's Off**: With the base selected (nothing is under it), and onto a vector layer, since cells can't become
-  shapes: **Make art layer** does that ([Art Layers](#art-layers)). In an [animation](animation.md) with more than one
+- **When It's Off**: With the base selected (nothing is under it), and for a drawing layer onto a vector layer, since
+  cells can't become shapes: **Make art layer** does that ([Art Layers](#art-layers)). A vector layer does merge into a
+  vector layer under it: its shapes move there and stay shapes ([Vector](vector.md)). In an [animation](animation.md) with more than one
   frame it's off, since a layer is under every frame, so one frame can't go into it.
 - **In a Room**: Only the host merges, into the layer under it, the base included. A layer emptied by a merge leaves the
   stack, as it does alone. With others in the room, the dialog warns that merging down cannot be undone in shared

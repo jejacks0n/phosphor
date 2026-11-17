@@ -662,9 +662,10 @@ export default class Renderer {
   }
 
   // An upper vector layer's color at grid pixel (x, y) as stored (before adjustments), as baseStoredAt reads the base's,
-  // with its alpha (0..1), or null where it draws nothing (or it isn't one of the upper layers).
+  // with its alpha (0..1), or null where it draws nothing (or it isn't one of the upper layers). No layer (a vector layer
+  // with no shape yet has none) draws nothing: asked first, as an upper cells layer has no layer either and would match it.
   upperStoredAt(layer, x, y) {
-    const u = this.upper.find((each) => each.layer === layer);
+    const u = layer && this.upper.find((each) => each.layer === layer);
     if (!u || !layer.drawsShapes || !this.outputCanvas) return null;
     layer.sync();
     const result = this.#gridOf(layer, u.params, this.#upperStored.get(layer), true);

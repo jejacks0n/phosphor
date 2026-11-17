@@ -301,7 +301,9 @@ dithered, and compare the dither at 80 and at 200 columns.
   circle, selected, converted with the picture (palette and dither reach it); a color picked with it selected goes to
   it as one undo step.
 - Probes: `out-of-order`: with Vector 1 picked, look for ANSI to paint on (it isn't offered until a cells layer is
-  picked) and record how she gets back; `again`: draw a second shape right away.
+  picked) and record how she gets back; `again`: draw a second shape right away; `handles`: still on the Shape tool,
+  drag a corner handle of the new shape's box (it scales) and the knob above it (it turns), then drag inside the box
+  (a new shape is drawn there, the first one stays put).
 - Rated: yes, wants U
 
 ### 22. Give the shape a gradient
@@ -407,7 +409,11 @@ held.
   its own character settings, so its shapes can't be pressed into the layer under it", and nothing changes. With its
   settings the base's again, the second press presses its shapes into the base's pixels, where they stop being shapes
   (its art layer's characters pinned); nothing on the canvas changes, and one undo brings them back as shapes.
-- Probes: `out-of-order`: try it with the vector layer hidden; `undo-redo`: undo and redo the press.
+- Probes: `out-of-order`: try it with the vector layer hidden; `undo-redo`: undo and redo the press; `stack`: before
+  pressing, add a second vector layer over Vector 1, pick it and draw a shape (it's on the layer picked, not Vector 1),
+  then Merge down: the shape moves to Vector 1, still a shape she can edit, over Vector 1's own, the second layer goes,
+  and nothing on the canvas changes. With shapes overlapping on both vector layers, a click selects the one that shows
+  on top and LAYERS picks its layer; Forward and Back change what she sees in one press.
 - Rated: yes, wants Cmd+E
 
 ### 30. Bake it
@@ -466,7 +472,10 @@ engineering rules behind these steps are docs/model.md (R1–R8); a finding here
 - Does: brushes a stroke across the caption and across a run of typed spaces beside it, with Colors only.
 - Expects: in ANSI the letters are tinted and the spaces become ▄ of the paint; in Color ASCII the letters are tinted
   and the paint shows over the spaces as her ASCII characters, never hidden.
-- Probes: `again`: over an opened .ans file's spaces (Draw on top) in Color ASCII.
+- Probes: `again`: over an opened .ans file's spaces (Draw on top) in Color ASCII; `stack`: with a flat-filled shape
+  on a vector layer between the picture and her layer, one Colors only stroke from the picture across the shape (the
+  same characters of her layer's on both, no ▄ over the shape), and while she drags a new shape across most of the
+  canvas on a vector layer above Layer 1, Layer 1's strokes stay.
 - Rated: no (drawing)
 
 ### 35. Color ASCII keeps my backgrounds
