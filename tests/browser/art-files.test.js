@@ -392,3 +392,19 @@ test('a new blank canvas clears all SAUCE fields to their defaults', async () =>
   expect([project.sauceTitle, project.sauceAuthor, project.sauceGroup, project.sauceDate, project.sauceUserComments, project.sauceFontName, project.sauceUse9pxFont])
     .toEqual(['', '', '', '', '', 'IBM VGA', false]);
 });
+
+// #125: every way to start a new drawing starts with an empty SAUCE tab, whatever the drawing before had in it.
+const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="5" height="5" fill="red"/></svg>';
+for (const [name, start] of [
+  ['a picture', async (project) => loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 })],
+  ['an SVG', (project) => project.openSvgFile(new File([SVG], 'box.svg', { type: 'image/svg+xml' }))],
+]) {
+  test(`${name} opened as a new drawing starts with every SAUCE field at its default`, async () => {
+    const project = await afterAnotherDocument();
+    Object.assign(project, { sauceGroup: 'Crew', sauceDate: '20261102', sauceUserComments: 'Rowing out', sauceFontName: 'IBM VGA50', sauceUse9pxFont: true });
+    await start(project);
+    await settle(project);
+    expect([project.sauceTitle, project.sauceAuthor, project.sauceGroup, project.sauceDate, project.sauceUserComments, project.sauceFontName, project.sauceUse9pxFont])
+      .toEqual(['', '', '', '', '', 'IBM VGA', false]);
+  });
+}
