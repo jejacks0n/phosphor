@@ -1,5 +1,5 @@
 import { ref, unref } from 'vue';
-import { dragZoom } from '@/lib/zoom';
+import { dragZoom, stepZoom } from '@/lib/zoom';
 import { onIOS } from '@/lib/platform';
 import { usePlayback } from '@/composables/usePlayback';
 
@@ -8,6 +8,8 @@ const TOUCH_MOVE_THRESHOLD = 5; // Pixels to move before immediate paint start
 // A pen's tap wobbles: its moves count once it's this many pixels from where it touched down, so a
 // tap that crosses a cell edge still places the Edit Mode cursor instead of selecting two cells.
 const PEN_SLOP = 6;
+// The Zoom tool's press is a click until it moves this far, the same allowance a pen's tap has; past it, it's the drag.
+const ZOOM_CLICK_SLOP = PEN_SLOP;
 // A drag with a tool that asks for it (autoScroll: Select) scrolls the view when it nears an edge:
 // from EDGE_PX inside it, faster the further in or past, up to EDGE_MAX_SPEED px a 60 Hz frame. Each
 // step covers the time since the last (at most EDGE_MAX_STEP_MS, so a stall doesn't jump), so it's as
@@ -71,6 +73,7 @@ export function useEditorInteractions(options) {
   let _edgeFrame = null; // the next edge-scroll step, while a drag is at an edge
   let _edgeTime = null;  // when the last edge-scroll step ran, while they run
   let _penDown = null;   // { clientX, clientY } where a pen stroke began, until it moves past PEN_SLOP
+  let _zoomPress = null; // { clientX, clientY, out } a Zoom tool press, until it moves past ZOOM_CLICK_SLOP (a drag then)
 
   function _getTouchDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -100,6 +103,7 @@ export function useEditorInteractions(options) {
     _pan = null;
     if (tool.id === 'zoom' && !disableZoom && !_isMiddleClick) {
       _initialZoom = unref(editZoom);
+      _zoomPress = { ..._lastMousePos, out: !!event.altKey };
     }
 
     if (event.pointerId !== undefined && event.currentTarget) {
@@ -335,6 +339,10 @@ export function useEditorInteractions(options) {
         _lastMousePos = { clientX, clientY };
         _refreshMousePos();
       } else if (!disableZoom) {
+        if (_zoomPress) {
+          if (Math.hypot(clientX - _zoomPress.clientX, clientY - _zoomPress.clientY) < ZOOM_CLICK_SLOP) return;
+          _zoomPress = null; // a drag: it goes on from where it began, and its release zooms no step
+        }
         _zoomToPoint(dragZoomBy(_initialZoom, clientX - _lastMousePos.clientX), _lastMousePos.clientX, _lastMousePos.clientY);
       }
       return;
@@ -394,6 +402,14 @@ export function useEditorInteractions(options) {
     cancelAnimationFrame(_edgeFrame);
     _edgeFrame = null;
     _edgeTime = null;
+
+    // A Zoom tool press that never became a drag is a click: a step in (Alt: out) around where it was pressed.
+    const click = !cancel && _zoomPress;
+    _zoomPress = null;
+    if (click) {
+      const to = stepZoom(unref(editZoom), click.out, clampZoom);
+      if (to !== unref(editZoom)) _zoomToPoint(to, click.clientX, click.clientY);
+    }
 
     _lastPos = null;
     _lastMousePos = null;

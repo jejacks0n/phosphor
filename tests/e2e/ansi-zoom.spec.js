@@ -188,8 +188,9 @@ test('the zoom and the place survive going to PIXEL and back', async ({ page }) 
   await expect.poll(() => store(page, 'workspace', (w) => w.ansiViewOrigin)).toEqual(origin);
 });
 
-test('Z picks Zoom on the ANSI view; a drag zooms', async ({ page }) => {
-  await openApp(page);
+test('Z picks Zoom on the ANSI view; a drag zooms, a click steps in and Alt-click out', async ({ page }) => {
+  await openApp(page, 'images/tall.png'); // tall enough to scroll, so the point clicked can stay put
+  await scroller(page).evaluate((el) => { el.scrollTop = el.scrollHeight / 2; });
   await page.keyboard.press('z');
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('zoom');
   const view = await scroller(page).boundingBox();
@@ -199,4 +200,29 @@ test('Z picks Zoom on the ANSI view; a drag zooms', async ({ page }) => {
   await page.mouse.move(from.x - 300, from.y, { steps: 5 }); // left: out, by half every 300 px
   await page.mouse.up();
   expect(await zoom(page)).toBeCloseTo(0.5, 6);
+
+  // dex-13: a click zooms in a step, around the point clicked; a press that wobbles a few pixels is still a click.
+  const at = { x: view.x + view.width / 2, y: view.y + view.height / 2 };
+  const line = await lineAt(page, at.y);
+  await page.mouse.click(at.x, at.y);
+  await expect.poll(() => zoom(page)).toBe(1);
+  await expect.poll(async () => Math.abs(await lineAt(page, at.y) - line)).toBeLessThan(0.5); // the line clicked stays put
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.move(at.x + 3, at.y + 2);
+  await page.mouse.up();
+  await expect.poll(() => zoom(page)).toBe(2);
+  // Alt-click (Option-click) zooms out a step.
+  await page.keyboard.down('Alt');
+  await page.mouse.click(at.x, at.y);
+  await page.keyboard.up('Alt');
+  await expect.poll(() => zoom(page)).toBe(1);
+  // A press that goes past the wobble is a drag, even one that comes back to where it began: nothing changes.
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.move(at.x - 100, at.y, { steps: 3 });
+  await page.mouse.move(at.x, at.y, { steps: 3 });
+  await page.mouse.up();
+  await frames(page);
+  expect(await zoom(page)).toBeCloseTo(1, 6);
 });

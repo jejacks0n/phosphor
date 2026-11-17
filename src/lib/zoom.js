@@ -14,3 +14,9 @@ export const clampViewZoom = (z) => Math.max(ANSI_ZOOM_MIN, Math.min(VIEW_ZOOM_M
 export const dragZoom = (from, dx, clamp) => clamp(from + dx * ((clamp(Infinity) - clamp(-Infinity)) / 1500));
 // The ANSI view's, by ratios across its range (25% to 800%, 32 times): 300 px halves or doubles it.
 export const dragViewZoom = (from, dx) => clampViewZoom(from * (VIEW_ZOOM_MAX / ANSI_ZOOM_MIN) ** (dx / 1500));
+// The Zoom tool's click: the next power of two up (out: down) inside the range, from a zoom between steps too (130%
+// goes to 200%, or out to 100%). A zoom a hair off a step, from a drag's or a wheel's rounding, counts as on it.
+export const stepZoom = (from, out, clamp) => {
+  const n = Math.log2(from);
+  return clamp(2 ** (out ? Math.ceil(n - 1e-6) - 1 : Math.floor(n + 1e-6) + 1));
+};

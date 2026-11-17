@@ -38,7 +38,7 @@ const workspace = useWorkspaceStore();
 const room = useRoomStore();
 const { image } = storeToRefs(project);
 const wide = useMediaQuery(desktopQuery);   // a narrow screen's settings are a drawer
-const { activeTool, isPainting, isCtrlPressed, isMiddleClick, showAboutModal, saveDialog, exportModal, shortcutsOpen, legalPage, versionsOpen } = storeToRefs(workspace);
+const { activeTool, isPainting, isCtrlPressed, isAltPressed, isMiddleClick, showAboutModal, saveDialog, exportModal, shortcutsOpen, legalPage, versionsOpen } = storeToRefs(workspace);
 
 // The theme on <html>, for global.css: the one picked, or with System the computer's (and it follows a change).
 const prefersLight = useMediaQuery('(prefers-color-scheme: light)');
@@ -154,7 +154,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
 </script>
 
 <template>
-  <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'middle-clicking': isMiddleClick }]">
+  <main :class="[`tool-${activeTool}`, { 'is-painting': isPainting, 'with-image': !!image, 'ctrl-pressed': isCtrlPressed, 'alt-pressed': isAltPressed, 'middle-clicking': isMiddleClick }]">
     <!-- On a phone the settings are a drawer under the workspace: out of reach until it opens. -->
     <ControlPanel :inert="!wide && !workspace.settingsOpen"/>
     <EditWorkspace :ready="ready" :recent="recent" :open-recent="openRecent"/>

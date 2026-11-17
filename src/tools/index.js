@@ -99,7 +99,8 @@ export const keyLabel = (key) => (key.startsWith('Shift+') ? shortcut('shift', k
 
 // A tool's name with its keys, for its button's tooltip: 'Pencil (1px) · P'.
 export const toolTitle = (tool) => {
-  if (!tool.keys?.length) return tool.title;
+  const title = tool.tip ?? tool.title; // a tool's longer tooltip, where it has one
+  if (!tool.keys?.length) return title;
   const keys = tool.keys.map(keyLabel).reduce((acc, key) => t('tools.keysOr', { a: acc, b: key }));
-  return t('tools.titleWithKeys', { title: tool.title, keys });
+  return t('tools.titleWithKeys', { title, keys });
 };

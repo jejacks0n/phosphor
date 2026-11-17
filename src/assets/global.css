@@ -471,6 +471,10 @@ main.tool-zoom div.edit-viewport.editing,
 main.with-image.ctrl-pressed div.edit-viewport.editing {
   cursor: zoom-in !important;
 }
+/* With Alt held, a Zoom tool click zooms out; a drag's arrows (below) still win. */
+main.tool-zoom.alt-pressed div.edit-viewport.editing {
+  cursor: zoom-out !important;
+}
 main.tool-zoom.is-painting,
 main.tool-zoom.is-painting div.edit-viewport.editing {
   cursor: ew-resize !important;

@@ -950,8 +950,11 @@ swaps the two halves of each cell's base colors.
   numbers, so moving the cursor doesn't change how it wraps. A long layer name is cut short; hover it for the whole
   name.
 - **Zoom** (**Z**): The ANSI view zooms from 25% of its cells' size to 800% (100% is the font at its size), with
-  Ctrl+wheel (a trackpad pinch), a pinch on a touch screen, or the Zoom tool: drag left to zoom out, right to zoom in,
-  by half or double every 300 pixels. **Cmd++** and **Cmd+−** (Ctrl on Windows and Linux) double or halve it around
+  Ctrl+wheel (a trackpad pinch), a pinch on a touch screen, or the Zoom tool. With the Zoom tool, a click (a tap) zooms
+  in one step around the point clicked and **Alt**-click (**Option**-click on a Mac) zooms out one, the steps being the
+  powers of two (25%, 50%, 100% … 800%; in the PIXEL view 1× to 16×), so from between steps a click goes to the next
+  one; the cursor shows a minus while Alt is held. Drag left to zoom out, right to zoom in, smoothly, by half or double
+  every 300 pixels: a press that moves more than a few pixels is a drag. **Cmd++** and **Cmd+−** (Ctrl on Windows and Linux) double or halve it around
   the center of the view, and **Cmd+0** goes back to 100%; in the PIXEL view they zoom it too, and Cmd+0 goes back to
   the zoom it opens at. In the art views these keys replace the browser's own zoom. Away from 100%, the status bar
   shows the zoom; press it to go back to 100%. A room's watchers see the art at up to 100%. The zoom stays when you go to the PIXEL view and back, and a new font or
