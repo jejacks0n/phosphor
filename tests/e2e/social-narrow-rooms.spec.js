@@ -32,7 +32,7 @@ test('a phone joins from a link and watches on ROOM; « opens CHAT over the art,
   await expect(messages(host)).toHaveCount(2);
   await expect(messages(host).nth(1)).toContainText('hi from a phone');
   // The … by the name opens the account's actions: Edit account opens the Account page over the room, here too.
-  await chat(watcher).locator('footer .who-am-i').getByRole('button', { name: '…' }).click();
+  await chat(watcher).locator('footer .who-am-i').getByRole('button', { name: 'Actions' }).click();
   await watcher.getByRole('button', { name: 'Edit account' }).click();
   await expect(shown(watcher, 'account').getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
   await watcher.keyboard.press('Escape');

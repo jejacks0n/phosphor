@@ -79,7 +79,7 @@ test('the panel is beside every tab for the host and the watcher, with the welco
     expect(at.x + at.width).toBeLessThan(frame.x + frame.width);
     await expect(tag).not.toHaveCSS('background-image', 'none');
     // The … opens the account's actions: Edit account opens the Account page over the room, and closing it leaves the room as it was.
-    await tag.getByRole('button', { name: '…' }).click();
+    await tag.getByRole('button', { name: 'Actions' }).click();
     await page.getByRole('button', { name: 'Edit account' }).click();
     await expect(shown(page, 'account')).toBeVisible();
     await expect(shown(page, 'account').getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
