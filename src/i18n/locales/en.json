@@ -405,7 +405,7 @@
       "hardness": "Hardness",
       "hardnessTitle": "Edge softness",
       "stack": "Build up",
-      "stackTitle": "Build up brush strokes additively. For example, two passes at 50% opacity reach 100%. When turned off, overlapping strokes never exceed the set Opacity."
+      "stackTitle": "Build up brush strokes, each laid over the paint as if on a layer above it. For example, two passes at 50% opacity reach 75%. When turned off, overlapping strokes never exceed the set Opacity."
     },
     "eraser": {
       "title": "Eraser",
