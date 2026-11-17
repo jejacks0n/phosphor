@@ -25,6 +25,7 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
 - **What Tools Act On**: Every drawing tool acts on the selected layer, the base too
   ([Drawing on the Base](#drawing-on-the-base)), and every tool is offered whichever layer is selected.
   [Selections](#the-select-tool) are the exception: most of what they do acts on every drawing layer that shows.
+  Dragging inside one moves only the selected layer's part, unless **All layers** is on in the options row.
 - **Adding Layers**: The header over the list counts your layers ("3 of 64 layers", the base included), with two
   buttons on its right:
   - Click **Add layer** (the cells icon with a plus) to add a new drawing layer directly above the selected layer, or
