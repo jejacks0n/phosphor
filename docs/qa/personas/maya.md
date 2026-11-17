@@ -383,7 +383,9 @@ held.
 - Expects: her paint becomes part of the picture (Into the image), so Edges outlines it and the sliders keep changing
   it; letters merge exactly; undo brings back the layer and the picture.
 - Probes: `undo-redo`: undo the slider moves and then the merge, one step at a time, and redo them; `again`: merge a
-  second time into the already blended picture.
+  second time into the already blended picture; `ascii`: in Color ASCII, with a Colors only stroke and dark text typed
+  over white paint on the layer, Blend into source image: the stroke goes into the picture with no new backgrounds
+  anywhere, and the text keeps its light one.
 - Rated: yes, wants Cmd+E, then the arrows to the second choice
 
 ### 29. Press the shapes into the picture

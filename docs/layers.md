@@ -563,7 +563,8 @@ the canvas changes. Undo brings it back, selected if it was.
   - **Blend into source image**: Your drawing becomes part of the image itself, so every slider applies to it, live,
     like the photo. Paint and solid cells (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep showing their
     two halves; letters and other characters can't become picture pixels, so they merge exactly, as does anything
-    drawn in the bars around a picture that doesn't fill the grid. Like Bake, the first time makes the picture the
+    drawn in the bars around a picture that doesn't fill the grid. In Color ASCII and Monochrome ASCII, **Colors
+    only**'s paint goes into the picture as paint, and a typed cell keeps its background as Keep crisp cells keeps it. Like Bake, the first time makes the picture the
     working-size copy the preview is made from, so growing the grid later works from that, effects like Edges can
     shift slightly that first time, and the **Image filters** section no longer shows. With a Limited count palette,
     the palette is worked out again from the merged picture, so some colors can shift. When the graphics card can't

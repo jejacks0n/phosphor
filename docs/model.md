@@ -138,8 +138,10 @@ ANSI. The base holds a cell as two pixels and a pin, so a pin in Color ASCII sho
 where they differ (`pinnedCell`), and Keep crisp cells writes a cell that shows a background (its own, or a pin's under
 it) as its two colors, so the look survives the merge. Two pixels of one color show as that color's ink on black: what a
 converted cell is, what Merge down wrote before pins kept a background, and what Set FG on the base writes (the base
-can't easily be given a background by hand; a merge gives it one). The one cost: a cell whose character is its own
-background's color (a plain colored box) merges as that color's ink on black.
+can't easily be given a background by hand; a merge gives it one). A cell on black stays on black: the paint over it
+is folded into its ink (the average of its two tinted halves, as it showed) rather than laid over each pixel, which would
+make them differ. The one cost: a cell whose character is its own background's color (a plain colored box) merges as
+that color's ink on black.
 
 - Lives in: `pinnedCell` in `src/lib/Cells.js`, used by `Renderer.#onBase`; `baseLook` (`src/store/project/reading.js`)
   completes an entry against such a pin with its background; `mergeCellOf` (`src/store/project/merging.js`) writes the
@@ -170,5 +172,3 @@ current style (a paint block outside ANSI) isn't drawn: its paint is already the
 
 - `storedLookAt` and `layerOver` (`src/store/project/reading.js`) re-walk the stack by hand for stored colors; they follow
   the Renderer's exactness (R1) but count a paint block's ▄ in a completed look in every style.
-- Merge into the picture (`mergeIntoPicture`) judges a paint block by its ▄ in the ASCII styles too (`mergeKind`), so
-  Colors only's paint merges there as exact cells, out of the image filters' reach.

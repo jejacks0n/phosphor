@@ -14,7 +14,7 @@ import { finerStops, isGradient, isShape, shapeBounds, withShape } from '@/docum
 import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock, isFrozen, shownEntry } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
-import { cellIndex, charRowsOf, halfColors } from '@/lib/Cells.js';
+import { cellIndex, charRowsOf, halfColors, mix } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
@@ -108,7 +108,7 @@ function onBase(project, id, rect) {
   for (const [key, entry] of cells) {
     const { col, row } = parseKey(key);
     if (col >= project.cols || row >= rows || !inRect(col, row)) kept.set(key, entry);
-    else if (shownEntry(entry, project.renderStyle)) merged.push(project.mergeCellOf(col, row, entry, shownChar(col, row))); // a paint block outside ANSI is its paint, which comes down as pixels
+    else if (shownEntry(entry, project.renderStyle)) merged.push(project.mergeCellOf(col, row, entry, shownChar(col, row), paint)); // a paint block outside ANSI is its paint, which comes down as pixels
   }
   if (rect && !merged.length && !paint?.hasPaintIn(rect)) return false; // nothing drawn inside: no empty undo step
   const paintedPins = [...project.baseRecords.pins.keys()].map(parseKey)
@@ -119,8 +119,9 @@ function onBase(project, id, rect) {
   const pixels = merged.flatMap(({ col, row, top, bottom }) => [{ x: col, y: 2 * row, ...top, alpha: 1 }, { x: col, y: 2 * row + 1, ...bottom, alpha: 1 }]);
   project.baseLayer.erase(pixels);
   project.baseLayer.paint(pixels);
-  // A frozen cell's paint under it is what its entry stands for: the entry's colors go in, not the paint's.
-  const under = merged.filter(({ col, row }) => isFrozen(cells.get(cellKey(col, row)))).flatMap(({ col, row }) => halvesOf(col, row));
+  // A frozen cell's paint under it is what its entry stands for: the entry's colors go in, not the paint's; a Color ASCII
+  // cell on black has its paint folded into its ink already (mergeCellOf).
+  const under = merged.filter(({ col, row, folded }) => folded || isFrozen(cells.get(cellKey(col, row)))).flatMap(({ col, row }) => halvesOf(col, row));
   const drawn = paint?.hasPaint && under.length ? paintFrom(paint, paint.snapshot()) : paint;
   if (under.length) drawn.erase(under);
   if (drawn?.hasPaint) project.baseLayer.drawOver(drawn, rect);
@@ -502,17 +503,25 @@ export const mergingActions = {
   // entry: the cells layer's own there (the one in use's unless said); shown: the character it shows there, before the
   // wide layout, so a wide character's trail pins its own character, not its lead's (levelCells': what's over the layer
   // isn't in it).
-  mergeCellOf(col, row, entry = this.editCellAt(col, row), shown = levelCells(this, this.editId)[cellIndex(col, row, this.cols)]?.char) {
+  // paint: the layer's, laid over the cell (the caller draws it over the pixels it writes, half by half, as coverCell
+  // tints the character); a Color ASCII cell on black folds it into its ink instead (folded: the caller draws none there).
+  mergeCellOf(col, row, entry = this.editCellAt(col, row), shown = levelCells(this, this.editId)[cellIndex(col, row, this.cols)]?.char, paint = this.paintLayer) {
     const cell = entry ? mergeEntry(this.baseCellAt(col, row), entry) : this.baseCellAt(col, row);
     const char = shown ?? cell.char;
     // Color ASCII: a cell that shows a background (its own, or a pin's under it whose two pixels differ) goes in as its
-    // two colors, which a pin keeps showing (Cells.js pinnedCell, docs/model.md R8); one on black as its ink twice.
+    // two colors, which a pin keeps showing (Cells.js pinnedCell, docs/model.md R8). One on black shows one ink, the
+    // average of its two halves with the paint over them (coverCell, then buildCell), and goes in as that ink twice.
     const ascii = this.renderStyle === 'colorAscii';
     const showsBg = ascii && (!!entry?.bg || (this.renderer.pinAt(col, row) !== undefined && this.baseColorAt(col, 2 * row).toLowerCase() !== this.baseColorAt(col, 2 * row + 1).toLowerCase()));
-    const [top, bottom] = ascii ? (showsBg ? [hex2rgb(cell.bg), hex2rgb(cell.fg)] : [hex2rgb(cell.fg), hex2rgb(cell.fg)])
+    if (ascii && !showsBg) {
+      const fg = hex2rgb(cell.fg), pTop = paint?.pixelAt(col, 2 * row), pBottom = paint?.pixelAt(col, 2 * row + 1);
+      const ink = pTop || pBottom ? mix(pTop ? over({ r: 0, g: 0, b: 0 }, pTop) : { r: 0, g: 0, b: 0 }, pBottom ? over(fg, pBottom) : fg, 0.5) : fg;
+      return { col, row, top: ink, bottom: { ...ink }, char, folded: !!(pTop || pBottom) };
+    }
+    const [top, bottom] = ascii ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
       : char === cell.char ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
         : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
-    const exact = this.renderStyle !== 'colorAscii' && char === cell.char;
+    const exact = !ascii && char === cell.char;
     return { col, row, top, bottom, char, ...(exact && { fgIndex: cell.fgIndex, bgIndex: cell.bgIndex }) };
   },
 
@@ -599,13 +608,14 @@ export const mergingActions = {
       for (const [key, { col, row }] of covered) {
         const entry = this.editCellAt(col, row);
         const pin = this.baseRecords.pins.get(key);
-        // A frozen cell's pin is its look; its paint under it stays out (as onBase keeps it out). docs/model.md R3.
-        const kind = isFrozen(entry) ? 'exact' : mergeKind({ char: entry?.char ?? pin, renderStyle: this.renderStyle, inPicture: inPicture(col, row) });
-        const paintOver = (half, y) => (isFrozen(entry) ? half : over(half, paintAt(col, y)));
-        let top, bottom;
+        // A frozen cell's pin is its look; its paint under it stays out (as onBase keeps it out). docs/model.md R3. A paint
+        // block outside ANSI is its paint (R1): the converter's, into the picture.
+        const kind = isFrozen(entry) ? 'exact' : mergeKind({ char: shownEntry(entry, this.renderStyle)?.char ?? pin, renderStyle: this.renderStyle, inPicture: inPicture(col, row) });
+        let top, bottom, folded = false;
+        const paintOver = (half, y) => (isFrozen(entry) || folded ? half : over(half, paintAt(col, y)));
         if (kind === 'exact') {
           const merged = this.mergeCellOf(col, row, entry, level[cellIndex(col, row, this.cols)]?.char);
-          ({ top, bottom } = merged);
+          ({ top, bottom, folded = false } = merged);
           // its indexes as onBase keeps them, where no paint is over that half
           const fgIndex = paintAt(col, 2 * row + 1).a ? undefined : merged.fgIndex, bgIndex = paintAt(col, 2 * row).a ? undefined : merged.bgIndex;
           if (entry || pin) pins.push({ col, row, char: entry ? merged.char : level[cellIndex(col, row, this.cols)]?.char ?? pin, fgIndex, bgIndex });
