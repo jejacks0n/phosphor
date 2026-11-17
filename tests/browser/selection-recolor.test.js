@@ -50,6 +50,20 @@ test('on Edit, the cells in the selection take the color as edit cells, keeping 
   expect(halves(2, 2)).toEqual(base);
 });
 
+// docs/model.md R1: a color written over a cell Merge down froze is someone's own: the mark goes with the paint under it,
+// so the PIXEL view shows the recolored character (the Overlay skips frozen cells), not a hole.
+test('on Edit, Set FG over a frozen cell makes it a character of its own, unmarked', async () => {
+  const { project, wandOf } = await scene();
+  project.paintEditPixels([{ x: 2, y: 4, r: 255, g: 0, b: 0, alpha: 1 }, { x: 2, y: 5, r: 255, g: 0, b: 0, alpha: 1 }]);
+  project.commitEdit();
+  project.setEditCells(new Map([...project.editCells, ['2,2', Object.freeze({ char: '%', fg: '#ff0000', bg: '#000000', frozen: true })]]), ['2,2']);
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  project.recolorSelection(wandOf('output', [[2, 2]]), 'output', ['edit'], { fg: PINK });
+  expect(project.editCellAt(2, 2)).toEqual({ char: '%', fg: PINK, bg: '#000000' });
+});
+
 test('a Select rectangle works the same: every cell in it', async () => {
   const { project, halves } = await scene();
   const outside = halves(4, 1);

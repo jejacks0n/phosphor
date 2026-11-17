@@ -28,15 +28,24 @@ cell merged onto the base becomes an ordinary pin.
 ### R1. One answer to whose a character is.
 
 `ownEntry(entry, renderStyle)` (`src/document/editCells.js`) says whether a cell holds a character of someone's own:
-its entry is shown in this style (`shownEntry`: a paint block outside ANSI isn't) and not frozen (`isFrozen`). Every
+its entry is shown in this style (`shownEntry`: a paint block outside ANSI isn't), not frozen (`isFrozen`), and not a
+paint block (paint's, in any style). The Renderer asks the wider `tintedEntry` (shown and not frozen) for whether paint
+above tints the cell or converts over it: a shown ▄ block tints as a solid glyph does, into a ▄ with the paint in it, so
+Colors only's half-blocks stay half-blocks under paint above. Every
 path that treats someone's character differently from paint asks it, or the two it's made of; none asks
-`entry.fg || entry.bg`, `cells.has(key)` or `char === '▄'` for that. The mark travels with the entry (`mergeEntry` keeps
+`entry.fg || entry.bg`, `cells.has(key)` or `char === '▄'` for that. That includes every path that walks a layer's
+entries to act on them (the Paint Bucket's walls, Rotate, Insert and Delete, Keep crisp cells): an entry in the map isn't
+a cell until `ownEntry` says so. Insert and Delete move characters of someone's own along the row and leave paint, paint
+blocks and frozen cells where they are; Rotate turns pixels and drops a frozen cell's pin with the paint it stood over. The mark travels with the entry (`mergeEntry` keeps
 it when a whole entry moves, as Merge down's `completeAt` does), goes when a character or color is written over it
 (that's someone's own now), is accepted from files and the clipboard only as `true` (`cleanEntry`), and is part of a
 room change's hash as any field is.
 
 - Lives in: `src/document/editCells.js` (`isFrozen`, `ownEntry`, `mergeEntry`, `cleanEntry`, `sameEntry`).
-- Checked by: `tests/unit/edit-cells.test.js › R1: …`.
+- Checked by: `tests/unit/edit-cells.test.js › R1: …`; `tests/unit/social-wire.test.js` (the mark through a room's change,
+  as `cleanEntry` takes it); `tests/browser/bucket.test.js › R1: …`; `tests/browser/block-chars.test.js › R1: shiftCells …`;
+  `tests/browser/selection-recolor.test.js › … Set FG over a frozen cell …`; `tests/browser/merge.test.js › R1: Keep crisp
+  cells …`; `tests/browser/selection-turn.test.js › R3: a frozen cell in a rotated block …`.
 
 ### R2. Paint over a character tints its ink and never picks another character. With no ink to tint, the paint shows as paint.
 
@@ -132,6 +141,16 @@ current style (a paint block outside ANSI) isn't drawn: its paint is already the
   `… the report: the strokes under and over the shape …`.
 
 ## Known departures
+
+- An art layer's `▄` (what `artCellOf` makes of paint, paint blocks and solid glyphs) is kept as a character in every
+  style (`Renderer.pinAt` applies the "▄ is pixels outside ANSI" rule to base pins only; `#upperCell`'s vector branch,
+  `storedLookAt` and `shapesOnCells` don't). In Color ASCII, Make art layer over a Colors only stroke shows ▄ glyphs.
+  The fix is one `shownChar(char, renderStyle)` beside `shownEntry`, used at those sites.
+- `lookUnder` (`completeAt`'s look under a layer) lays only the cells layers under it, not an upper vector layer between
+  them, as `underlyingAt` does; a BG None cell typed over such a shape merges down with the wrong background.
+- `drawnIn` (`src/store/project/vector.js`, Make art layer) takes a frozen cell's paint halves over its pinned colors.
+- Minor: `asCells` pastes a paint block from the base as an own `▄` in every style; `flatBlock` gives a paint block over a
+  lower part's character that character; the Flip tool takes a frozen cell down the paint route.
 
 - `storedLookAt` and `layerOver` (`src/store/project/reading.js`) re-walk the stack by hand for stored colors; they follow
   the Renderer's exactness (R1) but count a paint block's ▄ in a completed look in every style.

@@ -56,6 +56,24 @@ test("a Half-block's ▄ goes with its paint when it rotates, and only to cells 
   expect([project.editCellAt(2, 2), project.editCellAt(3, 2)?.char]).toEqual([undefined, '▄']);
 });
 
+// docs/model.md R3: a frozen cell's pin belongs to the paint it stood over; Rotate turns the paint, and the pin goes.
+test('R3: a frozen cell in a rotated block goes with the turn; its paint turns as any paint', async () => {
+  const { project, paint } = await scene();
+  project.paintStroke([{ x: 2, y: 4, alpha: 1 }], '#ff0000');
+  project.paintStroke([{ x: 2, y: 5, alpha: 1 }], '#0000ff');
+  project.paintStroke([{ x: 3, y: 4, alpha: 1 }], '#00ff00');
+  project.paintStroke([{ x: 3, y: 5, alpha: 1 }], '#ffffff');
+  project.commitEdit();
+  project.setEditCells(new Map([...project.editCells, ['2,2', Object.freeze({ char: '%', fg: '#ff0000', bg: '#0000ff', frozen: true })]]), ['2,2']);
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  expect(project.hasCharacters({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT)).toBe(false); // paint: Rotate is on
+  expect(project.turnSelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT, 'cw')).toEqual({ c0: 2, r0: 2, c1: 3, r1: 2 });
+  expect([...project.editCells.values()].some((entry) => entry.frozen)).toBe(false);
+  expect(paint(2, 4)).toBe('#0000ff'); // turned clockwise: the left column's bottom comes to the top left
+});
+
 test('a block an odd number of cells wide turns into whole cells: the half row to spare keeps what was under it', async () => {
   const { project, paint } = await scene();
   project.paintStroke([2, 3, 4].flatMap((x) => [{ x, y: 4, alpha: 1 }, { x, y: 5, alpha: 1 }]), '#ff0000'); // cells 2-4 of row 2

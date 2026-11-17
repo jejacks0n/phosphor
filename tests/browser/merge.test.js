@@ -52,6 +52,25 @@ describe('exactly', () => {
     expect(cellsKey(project)).toEqual(before);
   });
 
+  // docs/model.md R1: a paint block outside ANSI is its paint: Keep crisp cells makes base pixels of it, nothing pinned.
+  test('R1: Keep crisp cells in Color ASCII brings Colors only\'s paint down as pixels, with no pin, and nothing changes', async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    project.renderStyle = 'colorAscii';
+    await settle(project);
+    workspace.pickLayer('edit');
+    project.writeEditCells([{ col: 5, row: 3, attrs: { char: '▄' } }]);
+    project.paintEditPixels([{ x: 5, y: 6, r: 255, g: 255, b: 255, alpha: 1 }, { x: 5, y: 7, r: 255, g: 255, b: 255, alpha: 1 }]);
+    project.commitEdit();
+    await settle(project);
+    const before = cellsKey(project);
+    expect(project.mergeDown('edit')).toBe(true);
+    await settle(project);
+    expect(cellsKey(project)).toEqual(before);
+    expect(project.baseRecords.pins.get('5,3')).toBeUndefined();
+    expect(project.baseColorAt(5, 6)).toBe('#ffffff');
+  });
+
   test('a selection: only what is inside merges; edits and paint outside stay', async () => {
     const { project, workspace } = await createTestApp();
     await drawnDocument(project, workspace);
@@ -100,6 +119,24 @@ describe('into the picture', () => {
     expect(char(20, 8)).toBe('▄');
     expect(project.imageIsWorkingCopy).toBe(true);
     expect(project.editCells.size).toBe(0);
+  });
+
+  // docs/model.md R3: a frozen cell's pin is its look; the paint under it stays out of the picture (onBase keeps it out too).
+  test('R3: Into the image takes a frozen cell\'s pinned colors, not the paint under it', async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    await settle(project);
+    workspace.pickLayer('edit');
+    project.paintEditPixels([{ x: 5, y: 10, r: 255, g: 0, b: 0, alpha: 1 }, { x: 5, y: 11, r: 255, g: 0, b: 0, alpha: 1 }]);
+    project.commitEdit();
+    project.setEditCells(new Map([...project.editCells, ['5,5', Object.freeze({ char: 'A', fg: '#00ff00', bg: '#0000ff', frozen: true })]]), ['5,5']);
+    project.commitEdit();
+    project.render();
+    await settle(project);
+    await project.mergeIntoPicture();
+    await settle(project);
+    expect(project.baseRecords.pins.get('5,5')).toBe('A');
+    expect([project.baseColorAt(5, 10), project.baseColorAt(5, 11)]).toEqual(['#0000ff', '#00ff00']);
   });
 
   test('with Edges on, the effects reach the merged drawing and follow the slider', async () => {

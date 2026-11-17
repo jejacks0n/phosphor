@@ -1,7 +1,7 @@
 import { floodFill, colorDistance } from '@/lib/FloodFill';
 import { selectMatching, unitsOf } from '@/lib/MagicWand';
 import { ctx2d } from '@/lib/Canvas';
-import { parseKey } from '@/document/editCells';
+import { parseKey, ownEntry } from '@/document/editCells';
 import { cellIndex, charRowsOf, isSolidGlyph, showsChar } from '@/lib/Cells';
 import { selectionClip } from '@/lib/selectionClip';
 import { t } from '@/i18n/index.js';
@@ -13,7 +13,8 @@ import { t } from '@/i18n/index.js';
 function wallsOf(project, clip, picked) {
   const walls = new Uint8Array(project.cols * project.rows);
   if (clip) for (let i = 0; i < walls.length; i++) walls[i] = clip.pixel(i % project.cols, Math.floor(i / project.cols)) ? 0 : 1;
-  for (const key of project.cellsOf(picked).keys()) {
+  for (const [key, entry] of project.cellsOf(picked)) {
+    if (!ownEntry(entry, project.renderStyle)) continue; // a paint block or a frozen cell is paint (docs/model.md R1)
     const { col, row } = parseKey(key);
     const cell = project.cells[cellIndex(col, row, project.cols)];
     if (!cell || isSolidGlyph(cell.char) || !showsChar(cell)) continue;

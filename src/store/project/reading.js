@@ -2,7 +2,7 @@
 // paint), what's under a cell, edit cells, and rects on the grid.
 import { wholeTile } from '@/document/PaintLayer.js';
 import { hashCell } from '@/document/changes.js';
-import { cellKey, parseKey, mergeEntry, ownEntry, shownEntry, isFrozen } from '@/document/editCells.js';
+import { cellKey, parseKey, mergeEntry, tintedEntry, shownEntry, isFrozen } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
@@ -249,7 +249,7 @@ export const readingActions = {
     const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii', key = cellKey(col, row);
     let look = baseLook(this, col, row);
     if (cells) look = layerOver(this, cells, col, row, look);
-    let exact = !!(cells && ownEntry(this.cellsOf(cells).get(key), this.renderStyle)) || this.renderer.pinAt(col, row) !== undefined; // as the renderer's upper walk (#exactUnder)
+    let exact = !!(cells && tintedEntry(this.cellsOf(cells).get(key), this.renderStyle)) || this.renderer.pinAt(col, row) !== undefined; // as the renderer's upper walk (#exactUnder)
     // The stored pixels under the upper layers, as the PIXEL view shows them (Renderer.#pixelsUnder): the picture's with
     // the lower group's paint, then each upper layer's paint or shapes over them. What paint and shapes convert over.
     const under = [hex2rgb(this.baseColorAt(col, 2 * row)), hex2rgb(this.baseColorAt(col, 2 * row + 1))];

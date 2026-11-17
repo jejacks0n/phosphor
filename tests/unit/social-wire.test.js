@@ -6,6 +6,7 @@ import {
   fontOnWire, fontFor, packSnapshot, unpackSnapshot, readChange, packProject, unpackProject, readCursor, readCursors, readLayers, readLayerOp,
 } from '../../src/social/wire.js';
 import { MOST_LAYERS } from '../../src/document/layerInfo.js';
+import { cleanEntry } from '../../src/document/editCells.js';
 import { withPins, EMPTY_BASE } from '../../src/document/baseRecords.js';
 import { hex2rgb } from '../../src/lib/ColorUtils.js';
 import { DISPLAY_FONTS } from '../../src/lib/displayFonts.js';
@@ -165,6 +166,13 @@ test('readChange gives back a good change unchanged, the same arrays', () => {
   assert.equal(read.cells, msg.cells);
   assert.equal(read.runs, msg.runs);
   assert.deepEqual(readChange({ stroke: 'x', cells: [], runs: [] }, GRID), { stroke: 'x', cells: [], runs: [] });
+  // docs/model.md R1: Merge down's frozen mark goes through a room as through a file (editCells.js cleanEntry): true alone, and no cell by itself.
+  const frozen = { char: '.', fg: '#ff4915', frozen: true };
+  assert.deepEqual(readChange({ ...good(), cells: [['0,0', frozen]] }, GRID).cells[0][1], frozen);
+  for (const bad of [{ ...frozen, frozen: 'yes' }, { ...frozen, frozen: 1 }, { frozen: true }]) {
+    assert.equal(readChange({ ...good(), cells: [['0,0', bad]] }, GRID), null, JSON.stringify(bad));
+    assert.equal(cleanEntry(bad)?.frozen, undefined);
+  }
   assert.equal(readChange({ ...good(), stroke: 'é'.repeat(40) }, GRID).stroke.length, 40);
   assert.ok(readChange({ ...good(), runs: [[0, 0, 1, 0xffffffff]] }, GRID));
   assert.ok(readChange({ ...good(), cells: [['0,0', { char: 'a', fg: '#000000', fgIndex: 16, bg: '#ffffff', bgIndex: 231 }]] }, GRID)); // a file's 256-color indexes
