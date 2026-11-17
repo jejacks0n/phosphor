@@ -1,7 +1,7 @@
 // Rooms on a narrow screen: a link joins and the art shows on ROOM, the side panel shut over it; « opens CHAT over the
 // art with what was said counted, a message goes from there, and a tap on the art beside the panel shuts it.
 import { test, expect, tab } from './support.js';
-import { fakeRoom, goLive, watcherPage, followLink, member, live, selected, chat } from './social-support.js';
+import { fakeRoom, goLive, watcherPage, followLink, member, live, selected, chat, shown } from './social-support.js';
 
 const wren = member({ id: 'u_2', username: 'pixel_wren', name: 'pixel_wren' });
 const messages = (page) => chat(page).getByRole('log').locator('.message');
@@ -31,6 +31,13 @@ test('a phone joins from a link and watches on ROOM; « opens CHAT over the art,
   await say(watcher, 'hi from a phone');
   await expect(messages(host)).toHaveCount(2);
   await expect(messages(host).nth(1)).toContainText('hi from a phone');
+  // The … by the name opens the account's actions: Edit account opens the Account page over the room, here too.
+  await chat(watcher).locator('footer .who-am-i').getByRole('button', { name: '…' }).click();
+  await watcher.getByRole('button', { name: 'Edit account' }).click();
+  await expect(shown(watcher, 'account').getByRole('heading', { name: 'Account', exact: true })).toBeVisible();
+  await watcher.keyboard.press('Escape');
+  await expect(shown(watcher, 'account')).toHaveCount(0);
+  await expect(messages(watcher)).toHaveCount(2);
 
   await expect.poll(async () => (await panel.boundingBox()).x).toBe(390 - 280);   // slid in
   await watcher.mouse.click(55, 400);   // the strip of art beside it
