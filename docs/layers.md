@@ -992,8 +992,8 @@ in the views that have the tool (Edit Mode and Swap cell FG/BG are the ANSI view
   with its key (not on a phone). A tool's key chooses it whichever one the button shows. When the toolbar is too
   narrow, the ⋯ menu lists the shared button's tools one by one.
 - **The Options Row**: Under the tools, the chosen tool's options. When its buttons and checkboxes don't all fit, those
-  at its end move into a **⋯** menu at the row's end, in the row's order, each as it is in the row: a button that's off
-  stays off with its tooltip, and a checkbox shows its check. A row that's too wide even then (it's mostly sliders)
+  at its end move into a **⋯** menu after the last one that fits, in the row's order, each as it is in the row: a button
+  that's off stays off with its tooltip, and a checkbox shows a check when it's on. A row that's too wide even then (it's mostly sliders)
   keeps them all and scrolls sideways instead.
 - **Edit Mode**: Letters type, so press **Escape** to put the cursor away first. Choosing Edit Mode again brings the
   cursor back where it was if that's in view, or else to the top-left of the view (there the first time); choosing it

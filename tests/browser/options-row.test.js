@@ -1,9 +1,9 @@
 // The toolbar's options row (EditToolbar's second row): when its buttons don't fit, those at its end move into a ⋯
-// menu at the row's end, as the tool row's do, so nothing that can be pressed sits past the edge with no sign. The report
+// menu after the last that fits, as the tool row's do, so nothing that can be pressed sits past the edge with no sign. The report
 // (dex-10): at 1280 wide with both panels open, the Select row went past the view's edge and Deselect and All layers
 // were out of sight, reachable only by Shift+wheel.
 import { test, expect, afterEach, beforeAll, afterAll } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { createApp } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
 import { i18n } from '@/i18n';
@@ -53,6 +53,9 @@ test('at 1280 with both panels open, the Select row folds its end into ⋯ and n
   await frames();
   const names = menuItems().map((b) => b.textContent.trim());
   expect(names.slice(-2)).toEqual(['Deselect', 'All layers']); // in the row's order
+  // The ⋯ follows what's left of the row, as the tool row's does, not pushed to its far end.
+  const last = [...row().querySelectorAll('.tool-setting-group > button')].filter((el) => el.offsetParent).at(-1);
+  expect(more().getBoundingClientRect().left - last.getBoundingClientRect().right).toBeLessThan(20);
   expect(new Set([...shown(), ...names]).size).toBe(shown().length + names.length); // each in one place
 
   menuItems().find((b) => b.textContent.trim() === 'Deselect').click();
@@ -74,15 +77,22 @@ test('a folded button keeps its disabled state and the tooltip that says why; a 
   expect(rotate.title).toBe(i18n.global.t('toolbar.selection.rotateCharsDisabled'));
 
   const all = () => menuItems().find((b) => b.textContent.trim() === 'All layers');
+  const opened = async () => { await userEvent.click(more().querySelector('.dropdown-trigger')); await frames(); };
+  await userEvent.click(more().querySelector('.dropdown-trigger')); // shut
   workspace.selectAllLayers = false;
   await frames();
+  await opened();
   expect(all().getAttribute('aria-checked')).toBe('false');
-  all().click();
+  expect(all().querySelector('svg')).toBe(null); // off: no check
+  await userEvent.click(all());
   await frames();
   expect(workspace.selectAllLayers).toBe(true);
-  more().querySelector('.dropdown-trigger').click();
-  await frames();
+  await opened();
   expect(all().getAttribute('aria-checked')).toBe('true');
+  expect(all().querySelector('svg')).not.toBe(null); // on: a check you can see
+  await userEvent.click(all());
+  await frames();
+  expect(workspace.selectAllLayers).toBe(false);
 });
 
 test('with room for everything, nothing folds and there is no ⋯', async () => {

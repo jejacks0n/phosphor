@@ -89,22 +89,26 @@ useResizeObserver([toolBox, toolSpacer], fitTools);
 watch(() => tools.value.length, () => nextTick(fitTools));
 const moreTools = computed(() => tools.value.filter(({ slot }) => hiddenSlots.value.includes(slot.id)).flatMap(({ slot }) => slot.tools));
 
-// The options row: its buttons and checkboxes that don't fit move, from the end, into a ⋯ menu at the row's end, as the
-// tool row's slots do, so nothing that can be pressed sits past the edge with no sign. A folded one stays where it is,
-// out of the layout (data-folded: an attribute, so Vue's class patching leaves it), and the menu's items are copies of
-// it that press it, taken again as the menu opens (a disabled state, a title or a check may have changed since). A
-// divider, or a group, left with nothing after it folds too. A row too wide even with all of them folded (sliders and
-// segmented choices can't fold) folds nothing and scrolls, as before.
+// The options row: its buttons and checkboxes that don't fit move, from the end, into a ⋯ menu after the last that
+// fits, as the tool row's slots do, so nothing that can be pressed sits past the edge with no sign. A folded one stays
+// where it is, out of the layout (data-folded: an attribute, so Vue's class patching leaves it), and the menu's items
+// are copies of it that press it, taken again as the menu opens (a disabled state, a title or a check may have changed
+// since). A divider, or a group, left with nothing after it folds too. A row too wide even with all of them folded
+// (sliders and segmented choices can't fold) folds nothing and scrolls, as before.
 const optionsRow = useTemplateRef('optionsRow');
 const foldedOptions = ref([]);
 const FOLDABLE = ':scope > .tool-setting-group > button, :scope > .tool-setting-group > label.checkbox-wrapper';
 const isFolded = (el) => el.hasAttribute('data-folded');
+const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></svg>';
+// A folded checkbox's item presses its box, not its label (a label passing a script's click on to its box is the
+// browser's to do), and shows a check where it's on.
 function foldedItem(el) {
   const box = el.matches('label') ? el.querySelector('input') : null;
   return {
-    el,
+    row: el,
+    el: box ?? el,
     label: (el.getAttribute('aria-label') || el.textContent).trim(),
-    icon: el.querySelector('svg')?.outerHTML ?? '',
+    icon: box ? (box.checked ? CHECK_ICON : '') : el.querySelector('svg')?.outerHTML ?? '',
     title: el.title,
     disabled: !!(box ?? el).disabled,
     checked: box ? String(box.checked) : null,
@@ -138,7 +142,7 @@ function fitOptions() {
       folded.length = 0;
     }
   }
-  const same = folded.length === foldedOptions.value.length && folded.every((el, k) => foldedOptions.value[k].el === el);
+  const same = folded.length === foldedOptions.value.length && folded.every((el, k) => foldedOptions.value[k].row === el);
   if (!same) takeFolded();
 }
 useResizeObserver(optionsRow, fitOptions);
@@ -663,7 +667,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
         <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
         <button class="text" :title="t('toolbar.selection.wandDeselectTitle')" aria-keyshortcuts="Escape" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
       </div>
-      <DropdownMenu class="options-more" hidden :label="t('toolbar.moreOptions')" align="right" @click.capture="takeFolded">
+      <DropdownMenu class="options-more" hidden :label="t('toolbar.moreOptions')" align="left" @click.capture="takeFolded">
         <template #trigger><span v-html="MORE_ICON"></span></template>
         <button
             v-for="item in foldedOptions"
@@ -720,11 +724,6 @@ div.secondary-row::-webkit-scrollbar {
 div.secondary-row [data-folded],
 div.secondary-row > .options-more[hidden] {
   display: none;
-}
-
-/* The ⋯ sits at the row's end, after what's left of it. */
-div.secondary-row > .options-more {
-  margin-left: auto;
 }
 
 div.secondary-row > *,
@@ -789,6 +788,11 @@ div.tool-group > * {
 .options-more span.tool-icon {
   flex-shrink: 0;
   margin-right: 8px;
+}
+
+/* A checkbox's item may have no icon (it's off): its label stays in the column. */
+.options-more span.tool-icon {
+  min-width: 16px;
 }
 
 /* A slot of several tools: its tool's button, with a corner that opens the rest (a triangle, lit with the button). */

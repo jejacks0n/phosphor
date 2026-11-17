@@ -174,7 +174,8 @@ with Connect, type a box with the F-keys' line characters, and check the shortcu
   pasted block with the arrows and sets it down with Enter.
 - Expects: the paste lands floating and selected at the selection; arrows nudge it a cell; Enter sets it down; the
   paste is one undo step and the move another; with both side panels open, nothing in the Select row is past the view's
-  edge: what doesn't fit (Deselect, All layers) is in the row's ⋯, and works from there.
+  edge: what doesn't fit (Deselect, All layers) is in the ⋯ just after the row's last button, and works from there (All layers shows a check
+  when it's on).
 - Probes: `undo-redo`: undo the move (the block goes back where it was pasted, floating), undo again (it's gone);
   `again`: paste twice in a row; `speed`: hold an arrow for two seconds moving the block.
 - Rated: yes, wants Cmd+C, Cmd+V
