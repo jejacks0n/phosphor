@@ -1,6 +1,6 @@
 <script setup>
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import { useElementSize, useMediaQuery, useResizeObserver } from '@vueuse/core';
+import { computed, nextTick, onUpdated, ref, useTemplateRef, watch } from 'vue';
+import { useElementSize, useMediaQuery, useMutationObserver, useResizeObserver } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -88,6 +88,65 @@ function fitTools() {
 useResizeObserver([toolBox, toolSpacer], fitTools);
 watch(() => tools.value.length, () => nextTick(fitTools));
 const moreTools = computed(() => tools.value.filter(({ slot }) => hiddenSlots.value.includes(slot.id)).flatMap(({ slot }) => slot.tools));
+
+// The options row: its buttons and checkboxes that don't fit move, from the end, into a ⋯ menu at the row's end, as the
+// tool row's slots do, so nothing that can be pressed sits past the edge with no sign. A folded one stays where it is,
+// out of the layout (data-folded: an attribute, so Vue's class patching leaves it), and the menu's items are copies of
+// it that press it, taken again as the menu opens (a disabled state, a title or a check may have changed since). A
+// divider, or a group, left with nothing after it folds too. A row too wide even with all of them folded (sliders and
+// segmented choices can't fold) folds nothing and scrolls, as before.
+const optionsRow = useTemplateRef('optionsRow');
+const foldedOptions = ref([]);
+const FOLDABLE = ':scope > .tool-setting-group > button, :scope > .tool-setting-group > label.checkbox-wrapper';
+const isFolded = (el) => el.hasAttribute('data-folded');
+function foldedItem(el) {
+  const box = el.matches('label') ? el.querySelector('input') : null;
+  return {
+    el,
+    label: (el.getAttribute('aria-label') || el.textContent).trim(),
+    icon: el.querySelector('svg')?.outerHTML ?? '',
+    title: el.title,
+    disabled: !!(box ?? el).disabled,
+    checked: box ? String(box.checked) : null,
+  };
+}
+const takeFolded = () => {
+  const row = optionsRow.value;
+  foldedOptions.value = row ? [...row.querySelectorAll(FOLDABLE)].filter(isFolded).map(foldedItem) : [];
+};
+function fitOptions() {
+  const row = optionsRow.value, more = row?.querySelector(':scope > .options-more');
+  if (!more) return;
+  const over = () => row.scrollWidth > row.clientWidth + 1;
+  row.querySelectorAll('[data-folded]').forEach((el) => el.removeAttribute('data-folded'));
+  more.hidden = true;
+  const folded = [];
+  if (over()) {
+    more.hidden = false;
+    const foldables = [...row.querySelectorAll(FOLDABLE)];
+    while (foldables.length && over()) {
+      const el = foldables.pop();
+      el.setAttribute('data-folded', '');
+      folded.unshift(el);
+      const group = el.parentElement, rest = [...group.children];
+      for (let k = rest.length - 1; k >= 0 && (isFolded(rest[k]) || rest[k].matches('.divider')); k--) rest[k].setAttribute('data-folded', '');
+      if (rest.every(isFolded)) group.setAttribute('data-folded', '');
+    }
+    if (over()) { // what overflows can't fold (sliders, say): folding wouldn't help, so the row scrolls as it is
+      row.querySelectorAll('[data-folded]').forEach((el) => el.removeAttribute('data-folded'));
+      more.hidden = true;
+      folded.length = 0;
+    }
+  }
+  const same = folded.length === foldedOptions.value.length && folded.every((el, k) => foldedOptions.value[k].el === el);
+  if (!same) takeFolded();
+}
+useResizeObserver(optionsRow, fitOptions);
+// Its buttons come and go with the tool and the selection; the menu's own items aren't the row's.
+useMutationObserver(optionsRow, (records) => {
+  if (records.some(({ target }) => !target.closest?.('.options-more') && !target.parentElement?.closest('.options-more'))) fitOptions();
+}, { childList: true, subtree: true, characterData: true });
+onUpdated(() => nextTick(fitOptions));
 
 // A slot with more than one tool opens them (its flyout, a DropdownMenu) from its corner, a long press or a
 // right-click (which a long press is, on some phones). A long press doesn't then also choose the tool shown.
@@ -523,7 +582,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       </div>
     </div>
 
-    <div class="toolbar-row secondary-row" v-if="project.artInside || toolOptions.length || activeTool.palette || activeTool.id === 'select' || kept || vectorRow">
+    <div ref="optionsRow" class="toolbar-row secondary-row" v-if="project.artInside || toolOptions.length || activeTool.palette || activeTool.id === 'select' || kept || vectorRow">
       <!-- Stepped into an art layer: say so, and the way out (also Esc: useKeyboardShortcuts). -->
       <div v-if="project.artInside" class="tool-setting-group">
         <span class="option-label">{{ t('art.editing') }}</span>
@@ -604,6 +663,19 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
         <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
         <button class="text" :title="t('toolbar.selection.wandDeselectTitle')" aria-keyshortcuts="Escape" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
       </div>
+      <DropdownMenu class="options-more" hidden :label="t('toolbar.moreOptions')" align="right" @click.capture="takeFolded">
+        <template #trigger><span v-html="MORE_ICON"></span></template>
+        <button
+            v-for="item in foldedOptions"
+            :key="item.label"
+            class="choice"
+            :title="item.title"
+            :disabled="item.disabled"
+            :role="item.checked && 'menuitemcheckbox'"
+            :aria-checked="item.checked"
+            @click="item.el.click()"
+        ><span class="tool-icon" v-html="item.icon"></span><span>{{ item.label }}</span></button>
+      </DropdownMenu>
     </div>
   </article>
 </template>
@@ -645,6 +717,16 @@ div.secondary-row::-webkit-scrollbar {
   display: none;
 }
 
+div.secondary-row [data-folded],
+div.secondary-row > .options-more[hidden] {
+  display: none;
+}
+
+/* The ⋯ sits at the row's end, after what's left of it. */
+div.secondary-row > .options-more {
+  margin-left: auto;
+}
+
 div.secondary-row > *,
 div.tool-setting-group > * {
   flex-shrink: 0;
@@ -667,6 +749,7 @@ div.tool-group > * {
 }
 
 .tools-menu :deep(svg),
+.options-more :deep(svg),
 .snap-menu :deep(.dropdown-trigger svg) {
   display: block;
   width: 16px;
@@ -675,6 +758,7 @@ div.tool-group > * {
 }
 
 .tools-menu :deep(.dropdown-trigger:hover) svg,
+.options-more :deep(.dropdown-trigger:hover) svg,
 .snap-menu :deep(.dropdown-trigger:hover svg),
 .tools-menu button.choice.on :deep(svg) {
   fill: var(--white);
@@ -694,13 +778,15 @@ div.tool-group > * {
 
 /* Menu items are an icon (or glyph) and a label; a label that wraps stays in its own column. */
 .tools-menu button.choice,
+.options-more button.choice,
 .option-menu button.choice {
   display: flex;
   align-items: flex-start;
   text-align: left;
 }
 
-.tools-menu span.tool-icon {
+.tools-menu span.tool-icon,
+.options-more span.tool-icon {
   flex-shrink: 0;
   margin-right: 8px;
 }

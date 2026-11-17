@@ -584,6 +584,7 @@
     "mergeShapesTitle": "Fusionner vers le bas : peindre les formes sélectionnées dans les pixels du calque de base. Les formes fusionnées ne peuvent plus être modifiées en tant que vecteurs.",
     "mergeShapesOneFrame": "La fusion des formes dans le calque de base partagé n'est disponible que pour les créations à image unique.",
     "clearEdit": "Effacer le calque",
+    "moreOptions": "Plus d'options",
     "clearEditTitle": "Effacer le calque : effacer tout le contenu de {name}.",
     "clearDialog": {
       "title": "Effacer {name} ?",

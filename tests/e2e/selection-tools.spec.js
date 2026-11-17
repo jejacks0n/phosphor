@@ -10,6 +10,7 @@ test('a selection made with Select stays with the Brush, and Deselect or Escape 
   await drag(page, await cellPoint(page, 5, 5), await cellPoint(page, 9, 7));
   await page.keyboard.press('b');
   expect(await selection(page)).toEqual({ c0: 5, r0: 5, c1: 9, r1: 7 });
+  await page.getByRole('button', { name: 'More options' }).click(); // the options row's end folds into ⋯ at this width
   await page.getByRole('button', { name: 'Deselect' }).click();
   expect(await selection(page)).toBe(null);
 
