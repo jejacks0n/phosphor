@@ -510,6 +510,7 @@ describe('down between layers', () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
     const vector = project.addLayer('vector', 'edit');
+    project.setLayerChars(vector, { chars: '█' }); // its own characters: its cells convert otherwise on the layer under, so the merge freezes them (R7 freezes nothing otherwise)
     workspace.pickLayer(vector);
     project.addShape(rectShape(5.3, 4.6, 30.7, 30.2, { fill: '#ff0000' }));
     project.commitEdit();

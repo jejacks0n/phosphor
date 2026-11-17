@@ -274,7 +274,8 @@ dithered, and compare the dither at 80 and at 200 columns.
   going over a spot again in one stroke adds nothing, a second stroke goes further; on the ANSI view the caption's
   letters stay under all three: Dodge and Burn lighten or darken their colors, and Blur evens them with the letters
   beside them and spreads them as a soft glow into the clear around the caption; each stroke is one undo step; a
-  palette shows the result in its own colors.
+  palette shows the result in its own colors; a blurred edge on a layer above white paint on the layer under it looks
+  as light on the ANSI view as on the PIXEL view (in Color ASCII too, By shape or by intensity).
 - Probes: `out-of-order`: stroke all three over a part of the layer with nothing on it (nothing changes, the picture
   under it included), hide the layer with its eye and stroke ("Make the layer visible to draw on it"), all three over
   the caption in the PIXEL view too (the same as on the ANSI view), Dodge with Size at 1 on the ANSI view (one half of a

@@ -6,7 +6,7 @@ import { cellKey, parseKey, mergeEntry, ownEntry, shownEntry, isFrozen } from '@
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
-import { bakedEntry, cellIndex, charRowsOf, halfColors, isSolidGlyph, mix, opensToPaint } from '@/lib/Cells.js';
+import { bakedEntry, cellIndex, charRowsOf, isSolidGlyph, mix, opensToPaint } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { resolves } from '@/lib/CharResolver.js';
@@ -250,27 +250,37 @@ export const readingActions = {
     let look = baseLook(this, col, row);
     if (cells) look = layerOver(this, cells, col, row, look);
     let exact = !!(cells && ownEntry(this.cellsOf(cells).get(key), this.renderStyle)) || this.renderer.pinAt(col, row) !== undefined; // as the renderer's upper walk (#exactUnder)
-    // The look with paint pixels (or shape pixels) top and bottom over the halves, as the ASCII styles show it: averaged, no BG.
-    const asciiOver = (top, bottom, halvesOf = halfColors) => {
-      const halves = halvesOf({ char: look.char ?? ' ', bg: hex2rgb(storedBlack(this.processParams)), fg: hex2rgb(look.fg) });
-      const [t, b] = halves.map((half, k) => { const px = k ? bottom : top; return px ? over(half, px) : half; });
+    // The stored pixels under the upper layers, as the PIXEL view shows them (Renderer.#pixelsUnder): the picture's with
+    // the lower group's paint, then each upper layer's paint or shapes over them. What paint and shapes convert over.
+    const under = [hex2rgb(this.baseColorAt(col, 2 * row)), hex2rgb(this.baseColorAt(col, 2 * row + 1))];
+    const lay = (top, bottom) => { if (top) under[0] = over(under[0], top); if (bottom) under[1] = over(under[1], bottom); };
+    if (cells) lay(this.paintOf(cells)?.pixelAt(col, 2 * row), this.paintOf(cells)?.pixelAt(col, 2 * row + 1));
+    // The look with paint pixels (or shape pixels) top and bottom over base's two halves, as the ASCII styles show it:
+    // averaged, no BG. The base: a character's own background and foreground where the paint tints it (coverCell), else
+    // the pixels under (#paintOver's convert path).
+    const asciiOver = (top, bottom, base = under) => {
+      const [t, b] = base.map((half, k) => { const px = k ? bottom : top; return px ? over(half, px) : half; });
       return { char: look.char, fg: rgb2hex(mix(t, b, 0.5)) };
     };
+    const tinted = () => exact && !isSolidGlyph(look.char ?? ' ') && !opensToPaint({ char: look.char ?? ' ', fg: { hex: look.fg }, bg: { hex: storedBlack(this.processParams) } }, this.renderStyle);
     for (const id of through ? upper.slice(0, upper.indexOf(through) + 1) : upper) {
       if (this.layerById(id).kind === 'cells') {
-        if (!ascii) { look = layerOver(this, id, col, row, look); continue; }
+        const paint = this.paintOf(id), top = paint?.pixelAt(col, 2 * row), bottom = paint?.pixelAt(col, 2 * row + 1);
+        if (!ascii) { look = layerOver(this, id, col, row, look); lay(top, bottom); continue; }
         look = layerOver(this, id, col, row, look, false);
         const own = this.cellsOf(id).get(key);
         if (shownEntry(own, this.renderStyle)) exact = !isFrozen(own); // as #upperCell: a frozen cell is paint to what's over it
-        if (isFrozen(own)) continue; // and its own paint under it is what it stands for
-        const paint = this.paintOf(id), top = paint?.pixelAt(col, 2 * row), bottom = paint?.pixelAt(col, 2 * row + 1);
-        if (top || bottom) look = asciiOver(top, bottom, exact && !isSolidGlyph(look.char ?? ' ') && !opensToPaint({ char: look.char ?? ' ', fg: { hex: look.fg }, bg: { hex: storedBlack(this.processParams) } }, this.renderStyle) ? (cell) => [cell.bg, cell.fg] : halfColors); // as #paintOver tints a character of someone's own (coverCell), or converts paint over its halves
+        if (isFrozen(own)) { lay(top, bottom); continue; } // and its own paint under it is what it stands for
+        if (top || bottom) look = asciiOver(top, bottom, tinted() ? [hex2rgb(storedBlack(this.processParams)), hex2rgb(look.fg)] : under);
+        lay(top, bottom);
         continue;
       }
       const shapes = this._upperShapes.get(id), char = shapes?.charAt(col, row);
       if (char === undefined) continue;
       const top = this.renderer.upperStoredAt(shapes, col, 2 * row), bottom = this.renderer.upperStoredAt(shapes, col, 2 * row + 1);
       exact = char !== null;
+      const was = [under[0], under[1]];
+      lay(top, bottom);
       const own = this.layerParams.get(id);
       if (char === null && (resolves(own) || (own.dither > 0 && this.renderer.palette?.length))) { // Best match's, By shape's or Dither's colors, not its halves'
         const cell = levelAt(this, id, col, row, through, shown, batch);
@@ -279,8 +289,8 @@ export const readingActions = {
           continue;
         }
       }
-      if (ascii) { // as buildCell lays them: the halves of the character's ink on black, shapes over each, averaged, no BG
-        look = { ...asciiOver(top, bottom), char: char ?? look.char };
+      if (ascii) { // as buildCell lays them: shapes over the pixels under, averaged, no BG
+        look = { ...asciiOver(top, bottom, was), char: char ?? look.char };
         continue;
       }
       if (top) look = { ...look, bg: rgb2hex(over(hex2rgb(look.bg), top)) };

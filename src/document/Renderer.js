@@ -89,6 +89,7 @@ export default class Renderer {
   sampleBudget = 32 * 1024 * 1024; // the most bytes of By shape samples upper layers keep, together
   #cellSamples = null;  // one cell's samples, for By shape on an upper layer (#upperChar)
   #exact = false;       // whether the cell #upperCell made last holds a character that's someone's own
+  #lowerPx = null;      // the output's pixels under the cells a composeUpper walks (#pixelsUnder)
   settled = null;       // the cells the last composeUpper laid over again with indexes, past them too, as a Floyd–Steinberg layer was worked out again (#settled), or null
 
   // Forget the previous image's canvases so nothing paints against them before the next render.
@@ -779,6 +780,12 @@ export default class Renderer {
       x0 = Math.min(x0, x); x1 = Math.max(x1, x);
       y0 = Math.min(y0, 2 * row); y1 = Math.max(y1, 2 * row + 1);
     }
+    return this.#outputReader(x0, y0, x1, y1);
+  }
+
+  // The output canvas's pixels in a rect (grid pixels, inclusive), read once: pixelAt(x, y) ({ r, g, b, a }, or undefined
+  // outside the rect or the grid).
+  #outputReader(x0, y0, x1, y1) {
     const { width, height } = this.outputCanvas;
     x0 = Math.max(0, x0); y0 = Math.max(0, y0);
     x1 = Math.min(width - 1, x1); y1 = Math.min(height - 1, y1);
@@ -848,6 +855,16 @@ export default class Renderer {
     if (settles.includes(true)) visited = indexes && !open ? this.#settled(indexes, settles, lower.length) : Int32Array.from(visited).sort();
     this.settled = indexes && visited !== indexes && !open && settles.includes(true) ? visited : null;
     const n = visited.length;
+    // The lower group's pixels under the visited cells (#pixelsUnder), read once for the walk.
+    let px0 = Infinity, px1 = -Infinity, pr0 = Infinity, pr1 = -Infinity;
+    for (let k = 0; k < n; k++) {
+      const i = visited[k], col = i % cols, row = (i - col) / cols;
+      if (col < px0) px0 = col;
+      if (col > px1) px1 = col;
+      if (row < pr0) pr0 = row;
+      if (row > pr1) pr1 = row;
+    }
+    this.#lowerPx = n ? this.#outputReader(px0, 2 * pr0, px1, 2 * pr1 + 1) : null;
     if (settles.includes(true)) this.#composeSettling(out, lower, visited, palette, reads, settles, cols);
     else {
       for (let k = 0; k < n; k++) {
@@ -1054,7 +1071,7 @@ export default class Renderer {
         if (!read) continue;
         const char = u.layer.charAt(col, row);
         if (char === undefined) continue;
-        const { data } = read, halves = halfColors(cell), size = char === null ? this.#bayerOf(params) : 0;
+        const { data } = read, halves = this.#pixelsUnder(cell, col, row, reads, at), size = char === null ? this.#bayerOf(params) : 0;
         const ordered = size && !resolves(params); // each half it covers nudged by its own place, then snapped
         const [top, bottom] = halves.map((half, k) => {
           const o = ((2 * row + k) * width + col) * 4;
@@ -1075,25 +1092,56 @@ export default class Renderer {
         exact = !isFrozen(entry); // a frozen cell shows its character, and is paint to what's over it (docs/model.md R3)
         if (!exact) continue; // its own paint under it is what it stands for: not laid over it
       }
-      cell = this.#paintOver(cell, top, bottom, exact, col, row, params, palette);
+      cell = this.#paintOver(cell, () => this.#pixelsUnder(cell, col, row, reads, at), top, bottom, exact, col, row, params, palette);
     }
     this.#exact = exact;
     return cell;
   }
 
+  // The cell's two grid pixels under the upper layer at `upTo` (top, bottom: { r, g, b }), as the PIXEL view shows them
+  // (shownCanvas): the lower group's output (the picture with its paint, before the palette) with each upper layer below
+  // laid over by its alpha. Paint and shapes there convert over these (docs/model.md R7), as the lower group's own convert
+  // over the picture, so the characters are a rendering of the pixels; the shown cell's halves stand in where the output
+  // can't be read (an odd last pixel row, or between a resize and its render).
+  #pixelsUnder(cell, col, row, reads, upTo) {
+    const px = this.#lowerPx, top = px?.(col, 2 * row), bottom = px?.(col, 2 * row + 1);
+    if (!top || !bottom) return halfColors(cell);
+    const under = [{ r: top.r, g: top.g, b: top.b }, { r: bottom.r, g: bottom.g, b: bottom.b }], width = this.outputCanvas.width;
+    for (let at = 0; at < upTo; at++) {
+      const bytes = this.upper[at].kind === 'cells' ? reads[at] : reads[at]?.data;
+      if (!bytes) continue;
+      for (const k of [0, 1]) {
+        const o = ((2 * row + k) * width + col) * 4, a = bytes[o + 3] / 255;
+        if (a) under[k] = mix(under[k], { r: bytes[o], g: bytes[o + 1], b: bytes[o + 2] }, a);
+      }
+    }
+    return under;
+  }
+
   // Paint (top and bottom: the cell's two grid pixels of it, { r, g, b, a } or null) over a cell at col, row, in a layer's
   // settings (params; palette: the colors it snaps to, or null while a stroke is held). Over a character that's someone's
   // own (exact) the paint tints the character, which stays (coverCell; in ANSI one with nothing to tint becomes a ▄). Over
-  // anything else it's paint over paint: mixed into the cell's two halves and converted as the layer converts paint
-  // (#upperChar; the paint's halves are its samples, as it's drawn a grid pixel at a time). So is paint over a character
-  // with no ink to tint in the ASCII styles (opensToPaint), where there's no ▄ to make of it. docs/model.md, R2.
-  #paintOver(cell, top, bottom, exact, col, row, params, palette) {
+  // anything else it's paint over paint: mixed into the two pixels under the cell (under(): the picture's, or
+  // #pixelsUnder's for an upper layer) and converted as the layer converts paint (#upperChar; the paint's pixels are its
+  // samples, as it's drawn a grid pixel at a time). So is paint over a character with no ink to tint in the ASCII styles
+  // (opensToPaint), where there's no ▄ to make of it. docs/model.md, R2 and R7.
+  #paintOver(cell, under, top, bottom, exact, col, row, params, palette) {
     if (!top && !bottom) return cell;
     const { renderStyle } = params;
     if (exact && (renderStyle === 'ansi' || !opensToPaint(cell, renderStyle))) return coverCell(cell, top, bottom, { renderStyle, palette });
     const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
-    const halves = halfColors(cell), [ht, hb] = halves;
+    const halves = under(), [ht, hb] = halves;
     return this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, null, snap);
+  }
+
+  // The cell's two pixels of the picture (the lower group's, before its paint and the palette), as underCell builds a
+  // cell from them: what the lower group's paint converts over (docs/model.md R7); the cell's halves between a resize
+  // and its render.
+  pictureUnder(cell, col, row, params) {
+    const data = this.#underData(params);
+    if (!data) return halfColors(cell);
+    const at = (y) => { const o = (y * data.width + col) * 4; return { r: data.data[o], g: data.data[o + 1], b: data.data[o + 2] }; };
+    return [at(2 * row), 2 * row + 1 < data.height ? at(2 * row + 1) : at(2 * row)];
   }
 
   // The cell an upper layer's settings (params, its own) make of a converted cell at col, row: under, its two half colors
@@ -1333,7 +1381,7 @@ export default class Renderer {
     const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
     if (!top && !bottom) return null;
     const under = this.underCell(col, row, params, []);
-    return under && this.#paintOver(under, top, bottom, true, col, row, params, this.#heldData ? null : this.palette);
+    return under && this.#paintOver(under, () => this.pictureUnder(under, col, row, params), top, bottom, true, col, row, params, this.#heldData ? null : this.palette);
   }
 
   // A converted cell with the base layer's pin (if any) as its character, and the 256-color indexes kept beside the pin
@@ -1377,7 +1425,7 @@ export default class Renderer {
     if (own ? !this.#hasUnder(col, row, params) : !under) return baseCells[cellIndex(col, row, params.cols)];
     const cell = composeCell(under, entry, params.renderStyle, (hex, index) => this.effective(hex, params, index));
     if (this.#noPaint || isFrozen(entry)) return cell; // a frozen cell's paint under it is what it stands for (docs/model.md R3)
-    return this.#paintOver(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), true, col, row, params, this.palette);
+    return this.#paintOver(cell, () => this.pictureUnder(cell, col, row, params), this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), true, col, row, params, this.palette);
   }
 }
 
