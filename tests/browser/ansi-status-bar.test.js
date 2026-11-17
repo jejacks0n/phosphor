@@ -105,3 +105,63 @@ test('the Zoom tool says a click zooms in and Alt-click out; with Alt held, that
   await nextTick();
   expect(hint()).toBe('Zooming out · drag either way to zoom smoothly');
 });
+
+const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+const width = (el) => el.getBoundingClientRect().width;
+const sum = (els) => els.reduce((total, el) => total + width(el), 0);
+
+// dex-10: at 1280 with both panels open, Edit Mode's readout squeezed the buttons until the last was cut. Too narrow for
+// it all, the FG and BG hex codes give way first (each stays on its swatch's hover and in the text read out), and the
+// buttons stay whole. The width is measured from the bar's own parts, so it holds with any font.
+test('too narrow for both hex codes, they give way first and the buttons stay whole; with room, they show', async () => {
+  const { workspace } = await mount();
+  workspace.setActiveTool('text');
+  workspace.textCursor = { col: 0, row: 0 };
+  host.style.width = '2000px';
+  await frames();
+  const footer = host.querySelector('footer'), strip = footer.querySelector('.strip');
+  const hexes = [...footer.querySelectorAll('b.hex')];
+  expect(hexes.map((b) => b.textContent)).toEqual([expect.stringMatching(/^#[0-9a-f]{6}$/), expect.stringMatching(/^#[0-9a-f]{6}$/)]);
+  const fg = hexes[0].textContent;
+  const style = getComputedStyle(footer), gap = parseFloat(style.columnGap);
+  const readout = [...footer.children].filter((el) => el !== strip), buttons = [...strip.children];
+  const need = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + sum(readout) + gap * readout.length
+    + sum(buttons) + parseFloat(getComputedStyle(strip).columnGap) * (buttons.length - 1);
+
+  host.style.width = `${Math.floor(need - sum(hexes) / 2)}px`; // short of room for the hex codes, not for the rest
+  await frames();
+  expect(hexes.every((b) => width(b) <= 1)).toBe(true);
+  expect(strip.scrollWidth).toBeLessThanOrEqual(strip.clientWidth + 1);
+  expect(footer.textContent).toContain(fg);
+  expect(footer.querySelector('i.swatch').title).toBe(fg);
+
+  host.style.width = `${Math.ceil(need) + 8}px`;
+  await frames();
+  expect(hexes.every((b) => width(b) > 20)).toBe(true);
+  expect(strip.scrollWidth).toBeLessThanOrEqual(strip.clientWidth + 1);
+});
+
+// What's still past the edge on a phone fades out there, and a plain mouse wheel scrolls it sideways (it took Shift).
+test('a plain wheel over the buttons scrolls them sideways while there is more', async () => {
+  const { workspace } = await mount();
+  workspace.setActiveTool('text');
+  workspace.textCursor = { col: 0, row: 0 };
+  workspace.setAnsiZoom(0.5);
+  host.style.width = '200px';
+  await frames();
+  const strip = host.querySelector('.strip');
+  expect(strip.scrollWidth).toBeGreaterThan(strip.clientWidth);
+  expect(strip.classList.contains('more')).toBe(true); // the fade
+  const wheel = new WheelEvent('wheel', { deltaY: 40, bubbles: true, cancelable: true });
+  strip.dispatchEvent(wheel);
+  expect(strip.scrollLeft).toBeGreaterThan(0);
+  expect(wheel.defaultPrevented).toBe(true);
+  // Scrolled to its end, it stays there: measuring whether the hex codes fit shows them for a moment, which leaves the
+  // strip less to scroll, and that would pull it back.
+  strip.dispatchEvent(new WheelEvent('wheel', { deltaY: 4000, bubbles: true, cancelable: true }));
+  const end = strip.scrollLeft;
+  expect(end).toBe(strip.scrollWidth - strip.clientWidth);
+  await frames();
+  expect(strip.scrollLeft).toBe(end);
+  expect(host.querySelector('footer').classList.contains('tight')).toBe(true);
+});

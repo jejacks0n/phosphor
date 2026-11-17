@@ -584,6 +584,7 @@
     "mergeShapesTitle": "Merge down: paint the selected shapes into the base layer's pixels. Merged shapes can no longer be edited as vectors.",
     "mergeShapesOneFrame": "Merging shapes into the shared base layer is only available for single-frame artwork.",
     "clearEdit": "Clear layer",
+    "moreOptions": "More options",
     "clearEditTitle": "Clear layer: erase all content on {name}.",
     "clearDialog": {
       "title": "Clear {name}?",

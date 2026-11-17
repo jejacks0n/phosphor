@@ -112,7 +112,8 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 ### 4. Type a line of text
 - Does: presses T, moves the cursor with the arrows, types a line, presses Insert and types into the middle of it,
   then Home, End, Backspace and Delete, then Enter.
-- Expects: letters land in his colors; Insert pushes the row right and Overwrite replaces (the status bar says which);
+- Expects: letters land in his colors; Insert pushes the row right and Overwrite replaces (the status bar says which,
+  its buttons whole at any width: short of room, the FG and BG hex codes give way, each on its swatch's hover);
   Enter goes to the start of the next line; a run of typing is one undo step, ending when he pauses or moves the
   cursor.
 - Probes: `speed`: hold Backspace for two seconds; `undo-redo`: undo the typing, redo it, then type and check redo is
@@ -172,7 +173,8 @@ with Connect, type a box with the F-keys' line characters, and check the shortcu
 - Does: with Select, drags over a block, presses Cmd+C, moves the selection with the arrows, presses Cmd+V, nudges the
   pasted block with the arrows and sets it down with Enter.
 - Expects: the paste lands floating and selected at the selection; arrows nudge it a cell; Enter sets it down; the
-  paste is one undo step and the move another.
+  paste is one undo step and the move another; with both side panels open, nothing in the Select row is past the view's
+  edge: what doesn't fit (Deselect, All layers) is in the row's ⋯, and works from there.
 - Probes: `undo-redo`: undo the move (the block goes back where it was pasted, floating), undo again (it's gone);
   `again`: paste twice in a row; `speed`: hold an arrow for two seconds moving the block.
 - Rated: yes, wants Cmd+C, Cmd+V

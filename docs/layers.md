@@ -773,7 +773,8 @@ Where a paste lands:
   Bucket, Gradient, Blur, Dodge, Burn, Shapes, Swap cell FG/BG), in either view, change only what's inside it.
 - **Edit Mode Drops It**: Choosing Edit Mode drops the selection (and the Magic Wand's), since typing goes anywhere;
   undo brings it back.
-- **Deselect**: Every tool's options row ends with **Deselect** while there's a selection, and **Escape** drops it too.
+- **Deselect**: Every tool's options row ends with **Deselect** while there's a selection (in its **⋯** when the row is
+  short of room), and **Escape** drops it too.
 
 ---
 
@@ -945,8 +946,9 @@ swaps the two halves of each cell's base colors.
   and the Eyedropper its last pick and where each color came from. On the right it shows that Space pans, and while you
   hold Alt (Option on a Mac) or Shift, what that key does with the tool, then its buttons: the zoom (away from 100%),
   **Overwrite** or **Insert** in Edit Mode, **Canvas** or **DOM**, and **Smooth**. When the view is too narrow for all
-  of it, the readout wraps onto another line a part at a time (Col and Row, Char, FG, BG), so nothing in it is cut off,
-  and only the buttons scroll sideways, faded at the edge while there are more. The readout keeps room for its largest
+  of it, the FG and BG hex codes go first (hover a swatch for its code), so the buttons stay whole; then the readout
+  wraps onto another line a part at a time (Col and Row, Char, FG, BG), so nothing in it is cut off, and only the
+  buttons scroll sideways, faded at the edge while there are more, with the mouse wheel too. The readout keeps room for its largest
   numbers, so moving the cursor doesn't change how it wraps. A long layer name is cut short; hover it for the whole
   name.
 - **Zoom** (**Z**): The ANSI view zooms from 25% of its cells' size to 800% (100% is the font at its size), with
@@ -989,6 +991,10 @@ in the views that have the tool (Edit Mode and Swap cell FG/BG are the ANSI view
   last (the first until then); click it to use that one. Its corner, a long press or a right-click opens the rest, each
   with its key (not on a phone). A tool's key chooses it whichever one the button shows. When the toolbar is too
   narrow, the ⋯ menu lists the shared button's tools one by one.
+- **The Options Row**: Under the tools, the chosen tool's options. When its buttons and checkboxes don't all fit, those
+  at its end move into a **⋯** menu at the row's end, in the row's order, each as it is in the row: a button that's off
+  stays off with its tooltip, and a checkbox shows its check. A row that's too wide even then (it's mostly sliders)
+  keeps them all and scrolls sideways instead.
 - **Edit Mode**: Letters type, so press **Escape** to put the cursor away first. Choosing Edit Mode again brings the
   cursor back where it was if that's in view, or else to the top-left of the view (there the first time); choosing it
   never scrolls, nor does a click that places the cursor.

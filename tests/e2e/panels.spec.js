@@ -113,7 +113,7 @@ test('the Actions menu (narrow screens) opens, and closes on Escape and outside 
   await expect(menu).toBeHidden();
 });
 
-test('on a phone the status bar wraps its readout a group at a time, nothing cut, and only its buttons scroll sideways', async ({ page }) => {
+test('on a phone the status bar wraps its readout a group at a time, nothing cut, the hex codes give way to the buttons, and a wheel scrolls what is still past the edge', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openApp(page);
   await page.keyboard.press('t'); // Edit Mode, with its cursor's cell: the most there is to show
@@ -140,16 +140,21 @@ test('on a phone the status bar wraps its readout a group at a time, nothing cut
   expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true); // the bar itself doesn't scroll
 
   const strip = bar.locator('.strip');
-  expect(await strip.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
-  await expect(strip).toHaveClass(/more/); // faded at its edge
-  await strip.hover();
-  await page.mouse.wheel(400, 0);
-  await expect.poll(() => strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
-  await expect(strip).not.toHaveClass(/more/); // at its end
+  await expect(bar).toHaveClass(/tight/); // no room for the FG and BG hex codes: they give way, each on its swatch's hover
+  expect(await strip.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true); // and the buttons are whole
 
   await store(page, 'workspace', (w) => { w.textCursor = { col: 0, row: 0 }; }); // fewer digits: the bar doesn't change
   await expect(bar).toContainText('Col 1 Row 1');
   expect(await layout()).toEqual(before);
+
+  await store(page, 'workspace', (w) => w.setAnsiZoom(0.5)); // a zoom button too, on a small phone: more than fits
+  await page.setViewportSize({ width: 320, height: 640 });
+  await expect.poll(() => strip.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);
+  await expect(strip).toHaveClass(/more/); // faded at its edge
+  await strip.hover();
+  await page.mouse.wheel(0, 400); // a plain mouse wheel, no Shift
+  await expect.poll(() => strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+  await expect(strip).not.toHaveClass(/more/); // at its end
 });
 
 test('dropping an image onto the editor loads it', async ({ page }) => {
