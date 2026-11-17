@@ -41,13 +41,16 @@ test("a skipped action's own calls are not recorded either", () => {
   expect(log.entries).toEqual([]);
 });
 
-test('a repeat with different scalar arguments is its own line (a tool or layer picked, then another)', () => {
-  store.paint('brush');
-  store.paint('pencil');
+test('a repeat with different scalar arguments folds too, showing the first and the latest (a zoom\'s notches; this tool, then that)', () => {
   store.paint(1);
+  store.paint(1.5);
   store.paint(2);
   store.paint(2);
-  expect(log.entries.map((e) => [e.args, e.count])).toEqual([['("brush")', 1], ['("pencil")', 1], ['(1)', 1], ['(2)', 2]]);
+  expect(log.entries.map((e) => [e.args, e.count])).toEqual([['(1 → 2)', 4]]);
+  store.stroke();
+  store.paint('brush');
+  store.paint('pencil', true);
+  expect(log.entries.at(-1)).toMatchObject({ args: '("brush" → "pencil", true)', count: 2 });
 });
 
 test('the same action again folds into one line with a count, its arguments the latest', () => {

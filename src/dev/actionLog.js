@@ -11,7 +11,8 @@ const MOST_TEXT = 40; // of a string argument
 const MOST_KEYS = 8; // of a plain object's
 
 // Each entry: { at (ms since the log started), kind: 'action' | 'error', text ('project.paintStroke', or the error's
-// message), args ('("brush")', or ''), count }. Entries are replaced, never changed in place, so a shallow watch sees them.
+// message), args ('("brush")', or ''), first (the args of the first of a folded run), count }. Entries are replaced, never
+// changed in place, so a shallow watch sees them.
 export const log = shallowReactive({ entries: [], start: performance.now() });
 
 let busy = false;
@@ -42,18 +43,18 @@ export function recordError(message) {
   push('error', String(message), '');
 }
 
+// A repeat of the last line folds into it with a count. Its arguments are the latest; when they're scalars that changed
+// (a zoom's notches, this tool then that), the first ones too: (1 → 2.5), ("brush" → "pencil"). Collections (a stroke's
+// pixels, a shape's fields) are the per-move calls' and show the latest alone.
 function push(kind, text, args) {
   const at = performance.now() - log.start, last = log.entries.at(-1);
-  if (last && last.kind === kind && last.text === text && folds(args, last.args)) {
-    log.entries = [...log.entries.slice(0, -1), { ...last, at, args, count: last.count + 1 }];
+  if (last && last.kind === kind && last.text === text) {
+    const shown = args === last.first || /[[{]|\w\(\d/.test(args) ? args : `(${last.first.slice(1, -1)} → ${args.slice(1, -1)})`;
+    log.entries = [...log.entries.slice(0, -1), { ...last, at, args: shown, count: last.count + 1 }];
     return;
   }
-  log.entries = [...log.entries.slice(-(LIMIT - 1)), { at, kind, text, args, count: 1 }];
+  log.entries = [...log.entries.slice(-(LIMIT - 1)), { at, kind, text, args, first: args, count: 1 }];
 }
-
-// A repeat folds into the line before it when its arguments are the same, or hold a collection (a stroke's pixels, a
-// shape's fields: the per-move calls). A different scalar is a step of its own: this tool, then that one.
-const folds = (args, before) => args === before || /[[{]|\w\(\d/.test(args);
 
 export function clearLog() {
   log.entries = [];
