@@ -394,7 +394,9 @@ export const selectionActions = {
   // A selection made, changed or dropped (the Select tool's rectangle, the Magic Wand's, Deselect):
   // change(workspace) sets workspace.selection and/or .wand, and it's one undo step that isn't a
   // change to the document (nothing when the selection stays as it was). before: the selection to go
-  // back to, when it changed already (a drag). A move or paste it ends is kept with it (undo).
+  // back to, when it changed already (a drag). A move or paste a new selection ends is kept with it
+  // (undo); one that's dropped (Deselect, Escape, Enter, a tap outside) just sets the block down, no
+  // step of its own, so the next undo takes the move or paste back.
   changeSelection(change, before = null) {
     const workspace = useWorkspaceStore();
     this.commitPending();
@@ -405,6 +407,7 @@ export const selectionActions = {
     const after = { selection: workspace.selection, wand: workspace.wand, vectorSelected: workspace.vectorSelected };
     const sameShapes = after.vectorSelected.length === before.vectorSelected.length && after.vectorSelected.every((key, i) => key === before.vectorSelected[i]);
     if (toRaw(after.selection) === toRaw(before.selection) && toRaw(after.wand) === toRaw(before.wand) && sameShapes) return;
+    if (float && !after.selection && !after.wand && sameShapes) return void (this._float = null);
     const apply = (side) => Object.assign(workspace, side);
     this.history.push({ undo: () => apply(before), redo: () => apply(after), selectionOnly: true, float, bytes: after.wand?.mask.length ?? 0 });
     this.historyVersion = this.history.version;
