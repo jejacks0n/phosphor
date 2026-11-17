@@ -93,8 +93,11 @@ function reaching(project, target) {
 // The base's cell as the render style shows it, in stored colors (bakedEntry of baseCellAt), its Color ASCII FG one that
 // shows as the base's does.
 function baseLook(project, col, row) {
-  const look = bakedEntry(project.renderStyle, project.baseCellAt(col, row));
-  if (project.renderStyle !== 'colorAscii') return look;
+  const base = project.baseCellAt(col, row);
+  // Color ASCII: a pin whose two pixels differ shows them as its background and ink, as ANSI does (Cells.js pinnedCell, R8).
+  const pinnedBg = project.renderStyle === 'colorAscii' && project.renderer.pinAt(col, row) !== undefined && base.bg.toLowerCase() !== base.fg.toLowerCase();
+  const look = bakedEntry(pinnedBg ? 'ansi' : project.renderStyle, base);
+  if (project.renderStyle !== 'colorAscii' || pinnedBg) return look;
   const shown = project.renderer.underCell(col, row, project.processParams, project.renderedCells);
   return shown ? { ...look, fg: shownAs(project, look.fg, shown.fg.hex) } : look;
 }

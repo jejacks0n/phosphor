@@ -316,6 +316,17 @@ export function putCellPixels(data, cols, i, cell) {
   }
 }
 
+// A pinned cell on the base from its two pixels (top, bottom) and its pin (docs/model.md R8): as buildCell makes a
+// converted cell of them (ANSI: the top its background, the bottom its ink; Monochrome ASCII: white on black), but in
+// Color ASCII, where a converted cell is the pair's average on black, a pin keeps a background: two pixels that differ
+// show as the top on the bottom, as ANSI shows them (a typed cell's background and ink merged onto the base keep
+// showing), and two that are one color as that color's ink on black (what Merge down wrote before pins kept a
+// background there, and still writes for a cell with none).
+export function pinnedCell(top, bottom, char, renderStyle, color = colorOf) {
+  if (renderStyle === 'colorAscii' && (top.r !== bottom.r || top.g !== bottom.g || top.b !== bottom.b)) return { char, bg: color(top), fg: color(bottom) };
+  return buildCell(top, bottom, char, renderStyle, color);
+}
+
 // The entry that freezes a base cell as an edit cell (merge up, copy, move), from its underlying colors
 // ({ char, bg: top half, fg: bottom half, fgIndex?, bgIndex? }), so it looks as the render style builds it: ANSI keeps
 // both halves, with their 256-color indexes; Color ASCII shows their average on no background; ASCII shows only the

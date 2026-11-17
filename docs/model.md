@@ -131,6 +131,22 @@ another step, dither error, By shape's finer samples), which R3 freezes.
 - Checked by: `tests/browser/layer-stack.test.js › R7: …` (faint red over white, in Color ASCII by intensity and By
   shape and in ANSI; the report's file).
 
+### R8. Color ASCII is ANSI in spirit: a character of someone's own keeps its background, on the base too.
+
+Color ASCII converts the picture to ink on black, but a typed cell with a background shows it, in Color ASCII as in
+ANSI. The base holds a cell as two pixels and a pin, so a pin in Color ASCII shows its two pixels as background and ink
+where they differ (`pinnedCell`), and Keep crisp cells writes a cell that shows a background (its own, or a pin's under
+it) as its two colors, so the look survives the merge. Two pixels of one color show as that color's ink on black: what a
+converted cell is, what Merge down wrote before pins kept a background, and what Set FG on the base writes (the base
+can't easily be given a background by hand; a merge gives it one). The one cost: a cell whose character is its own
+background's color (a plain colored box) merges as that color's ink on black.
+
+- Lives in: `pinnedCell` in `src/lib/Cells.js`, used by `Renderer.#onBase`; `baseLook` (`src/store/project/reading.js`)
+  completes an entry against such a pin with its background; `mergeCellOf` (`src/store/project/merging.js`) writes the
+  pixels.
+- Checked by: `tests/unit/compose.test.js › R8: …`; `tests/browser/merge.test.js › R8: …` (the report's file, and a
+  typed cell with and without a background, and Set FG's two equal pixels).
+
 ### R6. The PIXEL view's Overlay draws only what the pixels can't show.
 
 The Overlay draws the cells of the layers (or every cell, with All cells) over the pixels. A cell that's paint in the

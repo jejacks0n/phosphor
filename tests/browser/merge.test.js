@@ -71,6 +71,44 @@ describe('exactly', () => {
     expect(project.baseColorAt(5, 6)).toBe('#ffffff');
   });
 
+  // docs/model.md R8: Color ASCII shows a typed cell's background; the base shows a pin's two pixels as background and
+  // ink where they differ, so Keep crisp cells keeps the look. The report (projects/text-merge-base.phosphor): black text
+  // typed over white paint, blurred, then Layer 1 merged onto the base, came back black on black.
+  test('R8: the report: text with a background merged onto the base in Color ASCII keeps its background', async () => {
+    const { project } = await createTestApp();
+    await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/text-merge-base.phosphor')).arrayBuffer()], 'x.phosphor'));
+    await settle(project);
+    const before = looks(project), at = 10 * project.cols + 26; // the 't' of "this"
+    expect([project.cells[at].char, project.cells[at].fg.hex, project.cells[at].bg.hex]).toEqual(['t', '#000000', '#999898']);
+    expect(project.mergeDown('edit')).toBe(true);
+    await settle(project);
+    expectLooksAlike(looks(project), before);
+    expect(project.baseRecords.pins.get('26,10')).toBe('t');
+  });
+
+  test('R8: in Color ASCII a typed cell with a background merges onto the base as its two colors, one without as ink on black, and a pin of one color shows on black', async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    project.renderStyle = 'colorAscii';
+    await settle(project);
+    workspace.pickLayer('edit');
+    project.typeAt(4, 4, 'A', { fg: '#000000', bg: '#ffffff' });
+    project.typeAt(6, 4, 'B', { fg: '#ff0000' });
+    project.commitEdit();
+    await settle(project);
+    const before = cellsKey(project);
+    expect(project.mergeDown('edit')).toBe(true);
+    await settle(project);
+    expect(cellsKey(project)).toEqual(before);
+    expect([project.baseColorAt(4, 8), project.baseColorAt(4, 9)]).toEqual(['#ffffff', '#000000']); // its two colors
+    expect([project.baseColorAt(6, 8), project.baseColorAt(6, 9)]).toEqual(['#ff0000', '#ff0000']); // ink on black: the ink twice
+    project.writeBaseCells([{ col: 8, row: 4, char: 'C', fg: '#00ff00', bg: '#00ff00' }]); // as Set FG writes on the base
+    project.commitEdit();
+    await settle(project);
+    const c = project.cells[4 * 20 + 8];
+    expect([c.char, c.fg.hex, c.bg.hex]).toEqual(['C', '#00ff00', '#000000']);
+  });
+
   test('a selection: only what is inside merges; edits and paint outside stay', async () => {
     const { project, workspace } = await createTestApp();
     await drawnDocument(project, workspace);
