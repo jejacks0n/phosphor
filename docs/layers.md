@@ -455,7 +455,10 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
   character, whose paint is under it already. Painting in the PIXEL view does
   the same, so the view you paint in never changes what you get; only **Half-block** makes every cell a ▄. In Color
   ASCII and Monochrome ASCII there are no half-blocks: the paint becomes your ASCII characters, whichever style you
-  painted it in, and its half-blocks show again when you switch back to ANSI.
+  painted it in, and its half-blocks show again when you switch back to ANSI. On the base under **Best match** and **By
+  shape** nothing the converter drew hides a character, so there's no ▄: the paint goes into the base's pixels and the
+  cell is matched again from them, so switching **Choose characters** afterward picks it afresh. A pinned space there
+  still becomes a ▄.
 - **Half-block**: Each cell they paint becomes a ▄, and the paint colors its two halves, so you draw clean
   half-blocks. The half you don't paint keeps its color.
 - **Single line** and **Double line** (Pencil only): Draw box-drawing lines as you drag from cell to cell. Each cell

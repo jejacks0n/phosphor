@@ -110,11 +110,13 @@ stroke doesn't change stays), and recolor its characters of someone's own a whol
 The Brush's and Pencil's Colors only makes a bare ▄ (a paint block) of each cell it reaches that shows no character
 (R2's predicate for the layer's own cells with colors: their halves become paint first, `unlockCells`) and of each frozen
 cell, whatever its character (its paint is under it already; the pin goes); a character of someone's own with ink keeps
-it and is tinted.
+it and is tinted. On the base under Best match and By shape a cell the converter drew is paint to it in full: its
+character is a rendering of the base's pixels (R7), so it hides none, and the paint goes into the pixels with no ▄ (a
+pinned one would outlast a switch of how characters are chosen). A pinned character there is someone's own, as anywhere.
 
 - Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`).
-- Checked by: `tests/browser/block-chars.test.js › R5: …` and `› …with Colors only, a layer's own cell that shows no
-  character becomes a plain ▄ …`.
+- Checked by: `tests/browser/block-chars.test.js › R5: …` (the base under Random, Best match and By shape among them) and
+  `› …with Colors only, a layer's own cell that shows no character becomes a plain ▄ …`.
 
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
 

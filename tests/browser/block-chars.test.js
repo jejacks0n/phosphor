@@ -325,3 +325,26 @@ for (const layer of ['edit', 'base']) {
     expect((await stroke('input', { ...ansi, paintedIn: 'colorAscii' })).chars).toBe(inAnsiView.chars);
   });
 }
+
+// docs/model.md R5 on the base: under Best match and By shape the converter picks a base cell's character from its pixels,
+// so Colors only lays its paint there and makes no ▄ of a cell the converter drew (a pinned ▄ would outlast a switch of
+// how characters are chosen, as Retouch's pins did); a character someone pinned is theirs, and a pinned space still opens
+// to the paint as a ▄ (R2). Under Random, whose blank cell hides a character the paint would bring out, the ▄ stays.
+for (const charChoice of ['random', 'best', 'shape']) {
+  test(`R5: ${charChoice}: on the base Colors only makes a ▄ of a pinned space${charChoice === 'random' ? ' and of a blank cell' : ', and of no cell the converter drew'}`, async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    Object.assign(project, { quantize: 'cga', charChoice });
+    await settle(project);
+    workspace.pickLayer('base');
+    project.writeEditCells([{ col: 5, row: 5, attrs: { char: ' ', fg: '#000000', bg: '#000000' } }]); // a pinned space, as the Eraser leaves
+    project.commitEdit();
+    project.paintStroke([{ x: 5, y: 11, alpha: 1 }, { x: 12, y: 11, alpha: 1 }], '#ff5555', { blockChars: 'plain' }); // the bottom halves of a pinned space and a blank cell
+    project.commitEdit();
+    await settle(project);
+    const { pins } = project.baseRecords, at = (col) => project.cells[cellIndex(col, 5, 20)];
+    expect([pins.get('5,5'), at(5).char, at(5).fg.hex]).toEqual(['▄', '▄', '#ff5555']); // the paint shows in the pinned space's lower half
+    expect(pins.get('12,5')).toBe(charChoice === 'random' ? '▄' : undefined);
+    expect(at(12).fg.hex === '#ff5555' || at(12).bg.hex === '#ff5555').toBe(true); // the paint shows in the converter's cell too
+  });
+}
