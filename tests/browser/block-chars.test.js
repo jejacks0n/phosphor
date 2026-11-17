@@ -100,7 +100,7 @@ test('with Colors only, a cell that shows no character (the black of an opened f
 for (const renderStyle of ['colorAscii', 'ansi']) {
   test(`${renderStyle}: with Colors only, a layer's own cell that shows no character becomes a plain ▄, its colors paint; one that shows a character keeps it`, async () => {
     const { project, workspace } = await createTestApp();
-    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
     project.renderStyle = renderStyle;
     await settle(project);
     workspace.pickLayer('base');
@@ -133,7 +133,7 @@ for (const renderStyle of ['colorAscii', 'ansi']) {
 
 test('the report: in Color ASCII a shape merged down, then brushed along its edge with Colors only, shows no ▄', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 60, rows: 40 });
+  await project.setBlankCanvas({ withLayer: true, cols: 60, rows: 40 });
   Object.assign(project, { renderStyle: 'colorAscii', charChoiceAscii: 'shape' });
   await settle(project);
   const layer = project.addLayer('cells', 'base'), vector = project.addLayer('vector', layer);
@@ -159,7 +159,7 @@ test('the report: in Color ASCII a shape merged down, then brushed along its edg
 for (const renderStyle of ['ansi', 'colorAscii']) {
   test(`R5: ${renderStyle}: Colors only over a frozen cell makes it a plain ▄, its colors paint, and keeps a typed letter`, async () => {
     const { project, workspace } = await createTestApp();
-    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
     project.renderStyle = renderStyle;
     await settle(project);
     workspace.pickLayer('edit');
@@ -194,7 +194,7 @@ for (const renderStyle of ['ansi', 'colorAscii']) {
 // is, and so do a paint block and a frozen cell, which are paint; a character moved onto one takes its place.
 test('R1: shiftCells moves a typed character and leaves the paint blocks and frozen cells with their paint', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
   workspace.pickLayer('edit');
   project.paintEditPixels([4, 6].flatMap((x) => [{ x, y: 10, r: 255, g: 255, b: 255, alpha: 1 }, { x, y: 11, r: 255, g: 0, b: 0, alpha: 1 }]));
@@ -223,7 +223,7 @@ test('R1: shiftCells moves a typed character and leaves the paint blocks and fro
 // it is paint again, so the mark goes, and the Paint Bucket, a shape's fill or the Eraser never leave a stale character.
 test('R3: the Eraser in the PIXEL view, or paint laid, in a frozen cell drops the mark; the paint left shows converted', async () => {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
   workspace.pickLayer('edit');
   project.paintEditPixels([4, 6].flatMap((x) => [{ x, y: 10, r: 255, g: 255, b: 255, alpha: 1 }, { x, y: 11, r: 255, g: 0, b: 0, alpha: 1 }]));
