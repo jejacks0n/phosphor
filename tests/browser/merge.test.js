@@ -503,6 +503,31 @@ describe('down between layers', () => {
     });
   }
 
+  // The report (projects/layer-blending-ascii.phosphor): Colors only leaves each blank cell it paints a ▄ with no colors
+  // (a paint block), which only ANSI shows. Merge down completed it against the look under it, so it came down a ▄ with
+  // colors of its own, which Color ASCII showed as a half-block over the paint. A block is paint: it comes down as one.
+  // Where its paint is soft over the picture, an upper layer and the lower group can't blend it the same in the ASCII
+  // styles (the one mixes with the shown character's ink on black, the other with the picture), so those cells are
+  // written as they showed, as any paint that would show otherwise is; an opaque one stays a block over its paint.
+  test.each(['colorAscii', 'ansi'])('Merge down of Colors only paint keeps what shows in %s, its blank cells still paint blocks', async (renderStyle) => {
+    const { project, workspace } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+    project.renderStyle = renderStyle;
+    const under = project.addLayer('cells', 'base'), top = project.addLayer('cells', under);
+    workspace.pickLayer(top);
+    project.writeEditCells([4, 5, 6].map((col) => ({ col, row: 3, attrs: { char: '▄' } }))); // as Colors only leaves them
+    project.paintEditPixels([4, 5, 6].flatMap((x) => [{ x, y: 6, r: 255, g: 255, b: 255, alpha: x === 4 ? 1 : 0.4 }, { x, y: 7, r: 255, g: 255, b: 255, alpha: 1 }]));
+    project.commitEdit();
+    await settle(project);
+    const before = cellsKey(project);
+    expect(project.mergeDown(top)).toBe(true);
+    await settle(project);
+    expect(cellsKey(project)).toEqual(before);
+    expect(project.cellsOf(under).get('4,3')).toEqual({ char: '▄' }); // the opaque one: a block over its paint
+    expect(project.cellHasPaint(4, 3)).toBe(true); // still paint, for Blur and the rest
+    expect([...project.cellsOf(under).values()].some((entry) => entry.char === '▄' && (entry.fg || entry.bg))).toBe(false); // no ▄ with colors of its own
+  });
+
   test('Merge down of paint over cells keeps what shows under Color ASCII with the sliders off their defaults', async () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });

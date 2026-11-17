@@ -529,7 +529,9 @@ the canvas changes. Undo brings it back, selected if it was.
   work on it as on any. A cell where the paint would show differently after the merge (a palette or the character
   choice can convert it differently once it's on the layer under), by more than the step or two the same color can
   round apart when it's worked out another way, is written as the exact character and colors it
-  showed instead, and a later palette or character setting doesn't convert that cell again.
+  showed instead, and a later palette or character setting doesn't convert that cell again. The ▄s **Colors only**
+  leaves on the cells it painted are paint too, and come down as they are, so in Color ASCII and Monochrome ASCII,
+  where they aren't shown, the paint still shows as your ASCII characters.
 - **A Vector Layer Into a Drawing Layer**: Its shapes become paint on the layer under it, in their own colors, so Blur
   and the other paint tools work on them as on any paint. A cell where that paint would show differently (the vector
   layer has character settings of its own, or a palette or the character choice converts it differently), by more
