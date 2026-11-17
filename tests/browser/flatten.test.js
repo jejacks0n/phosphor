@@ -329,6 +329,32 @@ test('Flatten drops hidden layers and says so first', async () => {
   }
 });
 
+test('image filters stay after Blend into source image, a working copy the filters work on', async () => {
+  const { project } = await createTestApp(), workspace = useWorkspaceStore();
+  await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 40, rows: 40 });
+  project.paintStroke(Array.from({ length: 12 }, (_, k) => ({ x: 10 + k, y: 20, alpha: 1 })), '#ff3300');
+  project.commitEdit();
+  await settle(project);
+  workspace.pickedLayer = 'base';
+  const host = document.createElement('div'), panel = createApp(ControlPanel).use(i18n);
+  document.body.append(host);
+  panel.mount(host);
+  try {
+    await nextTick();
+    expect(host.querySelector('fieldset.effects')).not.toBeNull();
+    await project.mergeIntoPicture(null, 'edit');
+    await settle(project);
+    expect(project.imageIsWorkingCopy).toBe(true);
+    workspace.pickedLayer = 'base';
+    await nextTick();
+    expect(host.querySelector('fieldset.effects')).not.toBeNull();
+    expect(host.querySelector('.effects-note')).toBeNull();
+  } finally {
+    panel.unmount();
+    host.remove();
+  }
+});
+
 test('image filters panel hides after flatten and shows a note', async () => {
   const { project, workspace } = await drawing();
   workspace.pickedLayer = 'base';

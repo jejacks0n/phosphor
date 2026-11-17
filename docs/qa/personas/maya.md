@@ -383,7 +383,8 @@ held.
 - Does: picks Base, presses Add layer (it lands directly on the base), paints a few strokes and types a word on it,
   presses Merge down and chooses Blend into source image; then moves Edges and Sharpen.
 - Expects: her paint becomes part of the picture (Into the image), so Edges outlines it and the sliders keep changing
-  it; letters merge exactly; undo brings back the layer and the picture.
+  it (the Image filters section stays, with Base picked, as it does after Bake); letters merge exactly; undo brings
+  back the layer and the picture.
 - Probes: `undo-redo`: undo the slider moves and then the merge, one step at a time, and redo them; `again`: merge a
   second time into the already blended picture; `ascii`: in Color ASCII, with a Colors only stroke and dark text typed
   over white paint on the layer, Blend into source image: the stroke goes into the picture with no new backgrounds

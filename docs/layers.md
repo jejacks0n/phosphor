@@ -174,8 +174,9 @@ The settings on the left come in sections, each following a layer:
     drawing layer to change how its paint becomes characters.
 - **Picture · Base**: **Smoothing**. Only with the base selected, and only with a picture: a blank canvas has none.
 - **Image filters**: **Blur**, **Simplify**, **Sharpen**, **Edges** (with its color) and **Edge thickness**, which
-  work on the picture itself. Only with the base selected, and only while the picture is the one you opened: after a
-  Bake, **Blend into source image** or Flatten, a note says image filters require an image instead.
+  work on the picture itself. Only with the base selected, and only with a picture: on a blank canvas, or after
+  Flatten, a note says image filters require an image instead. After a Bake or **Blend into source image** the picture
+  is a working copy, and the filters work on it as on the one you opened.
 
 Each section under Drawing folds and unfolds on its title, and your browser remembers which are folded. A folded
 slider group says how many of its sliders are on.
@@ -262,8 +263,7 @@ so. Nothing on the canvas changes when you bake:
     own colors either way.
 - **Undo**: Brings the original image and the sliders back. Once you've baked, saving keeps only the baked image.
 - **Working Size**: The baked image is the size Phosphor works from to make the preview, not your photo's full size,
-  so making the grid bigger afterward works from that smaller image. The baked image counts as a working copy, so the
-  **Image filters** section no longer shows.
+  so making the grid bigger afterward works from that smaller image. The **Image filters** keep working on it.
 - **In a Room**: Only the host can bake. With others in the room, Bake asks first and warns that baking cannot be
   undone in shared rooms.
 
