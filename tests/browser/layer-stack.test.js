@@ -207,6 +207,35 @@ test('paint on an upper layer over a typed cell covers it as paint covers edit c
   expect(look(cellAt(project, 2, 2))).toEqual(look(coverCell(before, red, null, { renderStyle: 'ansi', palette: project.renderer.palette })));
 });
 
+// docs/model.md R2: paint over a character with no ink to tint (a space, or one in its own background color) shows as
+// paint in every style. ANSI makes a ▄ of it (coverCell); the ASCII styles, with no half-blocks, convert it as paint.
+for (const [renderStyle, where] of [['colorAscii', 'own layer'], ['colorAscii', 'layer above'], ['ascii', 'layer above']]) {
+  test(`R2: in ${renderStyle} paint over a typed space (on the ${where}) shows as paint; a letter is tinted and kept`, async () => {
+    const { project } = await blank();
+    project.renderStyle = renderStyle;
+    await settle(project);
+    project.typeAt(2, 2, ' ', WHITE);
+    project.typeAt(5, 2, 'A', { fg: '#ff0000', bg: '#000000' });
+    project.commitEdit();
+    if (where === 'layer above') project.useLayer(project.addLayer('cells', 'edit'));
+    await settle(project);
+    const blank2 = cellAt(project, 2, 2).char;
+    for (const x of [2, 5]) project.paintStroke([{ x, y: 4, alpha: 1 }, { x, y: 5, alpha: 1 }], '#ffffff');
+    project.commitEdit();
+    await settle(project);
+    const painted = cellAt(project, 2, 2), letter = cellAt(project, 5, 2), asPaint = cellAt(project, 8, 2);
+    expect(blank2).toBe(' ');
+    expect(painted.char).not.toBe(' '); // the paint shows, converted
+    expect(painted.fg.hex.toLowerCase()).toBe('#ffffff');
+    project.paintStroke([{ x: 8, y: 4, alpha: 1 }, { x: 8, y: 5, alpha: 1 }], '#ffffff'); // the same paint with no cell under it
+    project.commitEdit();
+    await settle(project);
+    expect(painted.char).toBe(cellAt(project, 8, 2).char);
+    expect(asPaint.char).toBe(' '); // was blank before
+    expect(letter.char).toBe('A'); // ink: tinted, kept
+  });
+}
+
 test('undo and redo of an upper layer\'s edits, a fill of the whole layer among them, don\'t run the lower group or the pipeline', async () => {
   const { project } = await blank();
   project.render();

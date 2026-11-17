@@ -4,7 +4,8 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
-import { cellIndex, composeCell, coverCell, layoutWide } from '@/lib/Cells';
+import { buildCell, cellIndex, composeCell, coverCell, halfColors, layoutWide, mix, opensToPaint, weightedChar } from '@/lib/Cells';
+import { nearestColor } from '@/lib/ColorUtils.js';
 import { parseKey, shownEntry } from '@/document/editCells';
 import { rectShape, withShape } from '@/document/shapes.js';
 
@@ -240,15 +241,21 @@ test('a stack at the most layers, with every layer hidden or shown, composes as 
 
 // Each entry as #composeOne lays it: over the cell under it (underCell), with the paint over that (coverCell), or the
 // generated cell where there's none under it (a resize's render still to come). A paint block in ASCII is no entry
-// (shownEntry): the generated cell, its paint converted with it.
+// (shownEntry): the generated cell, its paint converted with it. In the ASCII styles, paint over a character with no ink
+// to tint (docs/model.md R2: opensToPaint) is converted over the cell's halves as paint is, by weight here.
 function composedOneByOne(project, params, base) {
-  const r = project.renderer, cells = base.slice();
+  const r = project.renderer, cells = base.slice(), { renderStyle } = params;
   for (const [key, entry] of project.editCells) {
     const { col, row } = parseKey(key), i = cellIndex(col, row, params.cols);
-    if (col >= params.cols || 2 * row >= params.rows || !shownEntry(entry, params.renderStyle)) continue;
+    if (col >= params.cols || 2 * row >= params.rows || !shownEntry(entry, renderStyle)) continue;
     const under = r.underCell(col, row, params, base);
-    cells[i] = under ? coverCell(composeCell(under, entry, params.renderStyle, (hex, index) => r.effective(hex, params, index)),
-      r.paintAt(col, 2 * row), r.paintAt(col, 2 * row + 1), { renderStyle: params.renderStyle, palette: r.palette }) : base[i];
+    if (!under) { cells[i] = base[i]; continue; }
+    const composed = composeCell(under, entry, renderStyle, (hex, index) => r.effective(hex, params, index)), top = r.paintAt(col, 2 * row), bottom = r.paintAt(col, 2 * row + 1);
+    if (renderStyle !== 'ansi' && (top || bottom) && opensToPaint(composed, renderStyle)) {
+      const snap = (c) => (r.palette?.length ? nearestColor(c, r.palette) : c), [ht, hb] = halfColors(composed);
+      const t = snap(top ? mix(ht, top, top.a) : ht), b = snap(bottom ? mix(hb, bottom, bottom.a) : hb);
+      cells[i] = buildCell(t, b, weightedChar(t, b, params.chars, params.charMode), renderStyle);
+    } else cells[i] = coverCell(composed, top, bottom, { renderStyle, palette: r.palette });
   }
   return cells;
 }

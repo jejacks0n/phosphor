@@ -9,8 +9,7 @@ import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { cellIndex, cellsOfPixels, showsChar } from '@/lib/Cells.js';
-import { coverageOf } from '@/lib/GlyphCoverage.js';
+import { cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -54,7 +53,7 @@ export const editLayerActions = {
           const key = cellKey(col, row), first = !seen.has(key), cell = this.cells[cellIndex(col, row, cols)];
           seen.add(key);
           if (!first || !cell) return false;
-          return ownColored(this, col, row) ? !showsChar(cell) || coverageOf(cell.char).every((c) => c === 0) : showsNoChar(this, col, row, cell);
+          return ownColored(this, col, row) ? opensToPaint(cell, this.renderStyle) : showsNoChar(this, col, row, cell); // docs/model.md R2
         });
         // A cell of the layer's own with colors shows them itself, and a ▄ with colors of its own isn't a paint block
         // (ASCII would show it): its colors go into paint, as it showed, and the ▄ has none.

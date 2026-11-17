@@ -6,7 +6,7 @@ import { cellKey, parseKey, mergeEntry } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
-import { bakedEntry, cellIndex, charRowsOf, halfColors, isSolidGlyph, mix } from '@/lib/Cells.js';
+import { bakedEntry, cellIndex, charRowsOf, halfColors, isSolidGlyph, mix, opensToPaint } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { resolves } from '@/lib/CharResolver.js';
@@ -262,7 +262,7 @@ export const readingActions = {
         look = layerOver(this, id, col, row, look, false);
         if (this.cellsOf(id).has(key)) exact = true;
         const paint = this.paintOf(id), top = paint?.pixelAt(col, 2 * row), bottom = paint?.pixelAt(col, 2 * row + 1);
-        if (top || bottom) look = asciiOver(top, bottom, exact && !isSolidGlyph(look.char ?? ' ') ? (cell) => [cell.bg, cell.fg] : halfColors);
+        if (top || bottom) look = asciiOver(top, bottom, exact && !isSolidGlyph(look.char ?? ' ') && !opensToPaint({ char: look.char ?? ' ', fg: { hex: look.fg }, bg: { hex: storedBlack(this.processParams) } }, this.renderStyle) ? (cell) => [cell.bg, cell.fg] : halfColors); // as #paintOver tints a character of someone's own (coverCell), or converts paint over its halves
         continue;
       }
       const shapes = this._upperShapes.get(id), char = shapes?.charAt(col, row);
