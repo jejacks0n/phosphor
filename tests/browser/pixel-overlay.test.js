@@ -92,6 +92,28 @@ test('in the ASCII styles a paint block isn\'t drawn over its paint; a typed cel
   done();
 });
 
+// docs/model.md R6: a frozen cell (Merge down's pinned conversion of the paint under it) is its paint: not drawn either.
+test('R6: a frozen cell isn\'t drawn over its paint; a typed cell still is', async () => {
+  const { project, workspace, seen, done } = await mounted();
+  workspace.pickLayer(project.addLayer('cells', 'base'));
+  project.paintEditPixels([{ x: 8, y: 8, r: 255, g: 255, b: 255, alpha: 1 }, { x: 8, y: 9, r: 255, g: 0, b: 0, alpha: 1 }]);
+  project.commitEdit();
+  project.setEditCells(new Map([...project.editCells, ['8,4', Object.freeze({ char: '%', fg: '#ff0000', bg: '#ffffff', frozen: true })]]), ['8,4']);
+  project.commitEdit();
+  project.typeAt(12, 4, 'A', RED);
+  project.commitEdit();
+  await settle(project);
+  const typed = seen(12, 8);
+  workspace.ansiOverlay = 0;
+  await settle(project);
+  const paint = [seen(8, 8), seen(8, 9)];
+  workspace.ansiOverlay = 100;
+  await settle(project);
+  expect([seen(8, 8), seen(8, 9)]).toEqual(paint); // its paint, as with no Overlay
+  expect(seen(12, 8)).toEqual(typed);
+  done();
+});
+
 test('the report: the strokes under and over the shape show blended with the Overlay on, as with it off', async () => {
   const { project, workspace, seen, done } = await mounted('/tests/fixtures/projects/layer-blending-ascii.phosphor');
   const spots = [[40, 22], [40, 23], [50, 14], [60, 12]]; // the stroke under the shape's edge, and beside it

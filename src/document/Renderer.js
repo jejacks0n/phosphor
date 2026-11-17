@@ -1073,6 +1073,7 @@ export default class Renderer {
       if (entry) {
         cell = composeCell(cell, entry, renderStyle, (hex, index) => this.effective(hex, params, index));
         exact = !isFrozen(entry); // a frozen cell shows its character, and is paint to what's over it (docs/model.md R3)
+        if (!exact) continue; // its own paint under it is what it stands for: not laid over it
       }
       cell = this.#paintOver(cell, top, bottom, exact, col, row, params, palette);
     }
@@ -1375,8 +1376,8 @@ export default class Renderer {
     const under = own ? null : this.underCell(col, row, params, baseCells);
     if (own ? !this.#hasUnder(col, row, params) : !under) return baseCells[cellIndex(col, row, params.cols)];
     const cell = composeCell(under, entry, params.renderStyle, (hex, index) => this.effective(hex, params, index));
-    if (this.#noPaint) return cell;
-    return this.#paintOver(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), !isFrozen(entry), col, row, params, this.palette);
+    if (this.#noPaint || isFrozen(entry)) return cell; // a frozen cell's paint under it is what it stands for (docs/model.md R3)
+    return this.#paintOver(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), true, col, row, params, this.palette);
   }
 }
 

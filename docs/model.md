@@ -18,7 +18,7 @@ Each cell of it is one of these:
 | **Paint** | Pixels with alpha, no character | Yes, where it lies, by its layer's settings | Mixes in, converts again |
 | **Paint block** `{ char: '▄' }` | Paint with a hint: in ANSI, show my two halves as a ▄. Not a cell of anyone's; outside ANSI it's nothing (`shownEntry`) | As paint (ANSI shows the ▄) | As paint |
 | **A character of someone's own** | A character someone chose: typed, opened from a file, pasted, pinned on the base, an art layer's | Never | Tints its ink; the character stays (R2) |
-| **Frozen cell** `{ …, frozen: true }` | Paint that Merge down wrote as the character and colors it showed, because it would convert otherwise in its new place. Paint to everything but the converter | Never again | As paint: mixes into its halves, converts (R3) |
+| **Frozen cell** `{ …, frozen: true }` | Paint, still there under it, with Merge down's pinned conversion of it over it: the character and colors it showed, kept because it would convert otherwise in its new place. Paint to everything but the converter, which shows the pin instead of converting the paint | Never again, until paint is written or erased in it: then the pin goes and it's paint | As paint: mixes into its halves, converts (R3) |
 
 The base is the picture plus pinned characters (`baseRecords.pins`); a pin is a character of someone's own. A frozen
 cell merged onto the base becomes an ordinary pin.
@@ -61,27 +61,36 @@ converted with the layer's settings. `█` has ink there and stays.
 A character of someone's own is completed against the look under it and written there (`completeAt`); paint is drawn
 over the paint under it and stays paint; a paint block goes in as a block (where the layer under has no character of
 its own there) and its paint as paint. Only where paint would convert otherwise in its new place (`unlike`, compared
-up to the layer merged into with `ROUNDING` steps of tolerance per channel, characters exact) is it written as the cell
-it showed (`frozenCells`), marked frozen. Because a frozen cell is paint to the layers above (R1: the Renderer's
-`#exactUnder` and `#upperCell` lay their paint over it as over converted paint), the check up to the merged-into layer is
-enough: what's above sees the same halves it saw. An art layer's characters are written as someone's own, unmarked.
+up to the layer merged into with `ROUNDING` steps of tolerance per channel, characters exact) is it pinned: the paint
+stays, and the cell it showed is written over it (`frozenCells`), marked frozen. The converter shows the pin and leaves
+the paint under it alone (the Renderer's `#composeOne` and `#upperCell` lay no paint of the cell's own layer over a
+frozen entry; `layerOver` in `reading.js` the same). Everything else sees paint: the PIXEL view draws the paint, the
+layers above lay their paint over it as over converted paint (`#exactUnder`, `#upperCell`), so the check up to the
+merged-into layer is enough, and paint written or erased in the cell (`paintEditPixels`, `putEditPixels`,
+`eraseEditPixels`: every tool's one way in, Retouch and the Eraser included) drops the pin (`unfreeze`), so the paint
+left converts as the layer converts paint. A frozen cell merged further down keeps its paint and its pin; merged onto the
+base, its pin's colors go in and become a pin there, not the paint's. An art layer's characters are written as someone's
+own, unmarked, the paint under them erased.
 
-- Lives in: `onCells`, `shapesOnCells`, `unlike`, `frozenCells`, `freezeUnlike` in `src/store/project/merging.js`; the
-  Renderer's `#exactUnder`, `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `storedLookAt`
-  (`src/store/project/reading.js`) mirrors the walk's exactness.
-- Checked by: `tests/browser/merge.test.js › R3: the report: …` (the fixture's two merges keep the canvas, the paint on
-  the layer above included), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …`
-  and `› Merge down of a vector layer into a cells layer puts its shapes in as paint …`.
+- Lives in: `onCells`, `onBase`, `shapesOnCells`, `unlike`, `frozenCells`, `freezeUnlike` in
+  `src/store/project/merging.js`; `unfreeze` in `src/store/project/editLayer.js`; the Renderer's `#exactUnder`,
+  `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `layerOver` and `storedLookAt`
+  (`src/store/project/reading.js`) mirror the walk; a paste keeps a frozen cell's paint (`src/store/project/selection.js`).
+- Checked by: `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
+  the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, the frozen
+  cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and
+  `› Merge down of a vector layer into a cells layer puts its shapes in as paint …`; `tests/browser/block-chars.test.js ›
+  R3: the Eraser in the PIXEL view, or paint laid, in a frozen cell drops the mark …`.
 
 ### R4. Retouch keeps a character of someone's own and recolors it; a frozen cell is paint to it.
 
-On a drawing layer, Blur, Dodge and Burn change the layer's paint pixel by pixel, recolor its characters of someone's own
-a whole cell at a time (Blur spreads their colors into the clear around them as a glow), and read a frozen cell as its
-two halves: the first pixel of one a stroke changes turns the cell back into the paint it showed (`unlockCells`), and the
-stroke goes on over it, so a merged shape's edge fades like a painted one. A frozen cell the stroke doesn't change stays.
-On the base, a pin is someone's own in the ANSI view (recolored) and its pixels in the PIXEL view.
+On a drawing layer, Blur, Dodge and Burn change the layer's paint pixel by pixel, a frozen cell's paint among it (the
+first pixel of it a stroke writes drops the pin, R3, so a merged shape's edge fades like a painted one; a frozen cell the
+stroke doesn't change stays), and recolor its characters of someone's own a whole cell at a time, their characters kept
+(Blur spreads their colors into the clear around them as a glow). On the base, a pin is someone's own in the ANSI view
+(recolored) and its pixels in the PIXEL view.
 
-- Lives in: `src/tools/retouch.js` (`coloredCellAt`, `retouchOwnPaint`, `recolorOwnCells`); `unlockCells` in
+- Lives in: `src/tools/retouch.js` (`ownCellAt`, `retouchOwnPaint`, `recolorOwnCells`); `unfreeze` in
   `src/store/project/editLayer.js`.
 - Checked by: `tests/browser/retouch.test.js › R4: …` (both views), `tests/browser/merge.test.js › R4: …` (a merged
   shape's edge), and the typed-character tests in `retouch.test.js`.
@@ -89,8 +98,9 @@ On the base, a pin is someone's own in the ANSI view (recolored) and its pixels 
 ### R5. Colors only makes paint of what's paint to it, and tints a character of someone's own.
 
 The Brush's and Pencil's Colors only makes a bare ▄ (a paint block) of each cell it reaches that shows no character
-(R2's predicate for the layer's own cells with colors: their halves become paint first) and of each frozen cell, whatever
-its character (`unlockCells`); a character of someone's own with ink keeps it and is tinted.
+(R2's predicate for the layer's own cells with colors: their halves become paint first, `unlockCells`) and of each frozen
+cell, whatever its character (its paint is under it already; the pin goes); a character of someone's own with ink keeps
+it and is tinted.
 
 - Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`).
 - Checked by: `tests/browser/block-chars.test.js › R5: …` and `› …with Colors only, a layer's own cell that shows no

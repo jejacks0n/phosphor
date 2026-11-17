@@ -6,9 +6,9 @@
 // pixel by pixel in either view (as the Brush paints), where a clear pixel counts as clear (Blur fades an edge out into
 // the clear beside it), and its own cells with colors of their own (typed, opened from a file), whose colors change a
 // whole cell at a time, their characters kept (recolorOwnCells); Blur reads such a cell as it shows, so its colors spread
-// into the paint around it. A cell Merge down froze (docs/model.md R4) is paint: read as its two halves, and turned back
-// into paint where the stroke changes it (unlockCells). Where the layer has nothing, nothing changes, whatever shows
-// under it. A cell with only a character (the Brush's ▄) holds no colors: its paint changes.
+// into the paint around it. A cell Merge down froze (docs/model.md R4) is paint: its paint lies under it, and the mark
+// goes where the stroke writes a pixel of it (editLayer.js unfreeze). Where the layer has nothing, nothing changes,
+// whatever shows under it. A cell with only a character (the Brush's ▄) holds no colors: its paint changes.
 // A stroke works out each spot's new color from what was there before it, and goes as far toward it as its Strength at
 // the brush's falloff, so going over a spot again in the same stroke adds nothing; another stroke does.
 import { brushPixels } from '@/lib/Brushes';
@@ -28,32 +28,30 @@ const inGrid = (x, y, cols, rows) => x >= 0 && y >= 0 && x < cols && y < rows;
 // of a drawing layer's paint pixel ({ r, g, b, a } or null: clear), around it and the pixels around it on the grid.
 
 // This stroke's spots, by key: { from (the color or a cell's colors before it), to, alpha (the most the brush gave) },
-// the colors it read (Blur's neighbors too), and the frozen cells it has turned into paint.
+// and the colors it read (Blur's neighbors too).
 let stroke = null;
 
 function newStroke() {
-  stroke = { spots: new Map(), read: new Map(), unlocked: new Set() };
+  stroke = { spots: new Map(), read: new Map() };
 }
 
-// The drawing layer's own cell at col, row where it holds colors, as the stroke first read it: { entry, own } for a
-// character of someone's own with a color of its own (recolored, its character kept), { entry, frozen } for a cell Merge
-// down froze (paint: its halves, unlocked where the stroke changes them); null where it holds none.
-function coloredCellAt(project, col, row) {
+// The drawing layer's own cell at col, row where it's a character of someone's own with a color of its own (recolored,
+// its character kept), as the stroke first read it; null where it has none, or a frozen cell (paint).
+function ownCellAt(project, col, row) {
   const key = `e${col},${row}`;
   if (!stroke.read.has(key)) {
     const entry = project.editCellAt(col, row);
-    stroke.read.set(key, isFrozen(entry) ? { entry, frozen: true } : entry?.fg || entry?.bg ? { entry, own: true } : null);
+    stroke.read.set(key, (entry?.fg || entry?.bg) && !isFrozen(entry) ? entry : null);
   }
   return stroke.read.get(key);
 }
-const ownCellAt = (project, col, row) => coloredCellAt(project, col, row)?.own ? coloredCellAt(project, col, row).entry : null;
 
-// A colored cell's two halves ([top, bottom], { r, g, b }) as it shows at pixel scale (ownHalves); null where the layer
-// holds no colors in the cell.
+// Its two halves ([top, bottom], { r, g, b }) as it shows at pixel scale (ownHalves); null where it has no color of its
+// own.
 function ownCellHalves(project, col, row) {
   const key = `h${col},${row}`;
   if (stroke.read.has(key)) return stroke.read.get(key);
-  const halves = coloredCellAt(project, col, row) ? ownHalves(project, col, row) : null;
+  const halves = ownCellAt(project, col, row) ? ownHalves(project, col, row) : null;
   stroke.read.set(key, halves);
   return halves;
 }
@@ -127,10 +125,10 @@ const samePaint = (a, b) => (!a || !b ? !a && !b : a.r === b.r && a.g === b.g &&
 
 // Each grid pixel of a drawing layer's own paint, changed by own. A pixel own leaves as it was (clear where it was clear:
 // Dodge and Burn always, Blur with no paint in reach) isn't written, nor one in a cell of the layer's own with colors
-// (recolorOwnCells changes those), so nothing is laid over its character. A frozen cell's pixels are its halves: the
-// first one the stroke changes turns the cell into paint (unlockCells, once a stroke), and the stroke's pixels go over it.
+// (recolorOwnCells changes those), so nothing is laid over its character. A frozen cell's paint is paint: a pixel of it
+// written drops the mark (putEditPixels).
 function retouchOwnPaint(project, pixels, own, strength) {
-  const { cols, rows } = project, out = new Map(), unlock = [];
+  const { cols, rows } = project, out = new Map();
   for (const { x, y, alpha } of pixels) {
     const key = `${x},${y}`;
     if (ownCellAt(project, x, y >> 1)) continue;
@@ -145,13 +143,7 @@ function retouchOwnPaint(project, pixels, own, strength) {
     const p = mixPaint(spot.from, spot.to, strength * spot.alpha);
     if (samePaint(p, spot.from)) continue;
     out.set(key, p ? { x, y, ...p } : { x, y, r: 0, g: 0, b: 0, a: 0 });
-    const cell = `${x},${y >> 1}`;
-    if (coloredCellAt(project, x, y >> 1)?.frozen && !stroke.unlocked.has(cell)) {
-      stroke.unlocked.add(cell);
-      unlock.push({ col: x, row: y >> 1 });
-    }
   }
-  project.unlockCells(unlock);
   project.putEditPixels([...out.values()]);
 }
 

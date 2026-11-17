@@ -4,7 +4,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
-import { cellKey, parseKey, shownEntry } from '@/document/editCells';
+import { cellKey, parseKey, ownEntry } from '@/document/editCells';
 import { veilPixels } from '@/lib/ghostCells';
 import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
@@ -25,9 +25,9 @@ const canvasRef = useTemplateRef('displayCanvas');
 const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZoom, clamp: clampZoom, start: PIXEL_ZOOM_START };
 
 // Every cells layer's cells (or all, with "All cells") drawn over the image as their half-cell colors: the
-// ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible. A layer's cell that
-// doesn't show in the art style (a paint block, Colors only's ▄, outside ANSI: shownEntry) isn't one: its paint shows
-// as paint, as it is converted.
+// ANSI layer at pixel scale. Composed cells already have paint on top, so paint stays visible. A layer's cell that's
+// paint to it (a paint block, Colors only's ▄, outside ANSI; a cell Merge down froze over its paint: ownEntry) isn't
+// drawn: its paint is the pixels already (docs/model.md R6).
 // One bitmap the grid's size, not redrawn on zoom or opacity; when the cells change, only those that
 // did are painted again (an edit keeps every other cell the same object), so a stroke costs its own
 // cells, not the grid's. A new grid size, or All cells switched, paints it all.
@@ -56,7 +56,7 @@ const updateOverlay = () => {
     edited = new Set();
     for (const map of maps) {
       for (const [key, entry] of map) {
-        if (!shownEntry(entry, style)) continue;
+        if (!ownEntry(entry, style)) continue; // docs/model.md R6: a paint block outside ANSI, or a frozen cell, is its paint, already the pixels
         const { col, row } = parseKey(key);
         if (col < cols && row < charRowsOf(rows)) edited.add(row * cols + col);
       }

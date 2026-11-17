@@ -358,7 +358,8 @@ held.
   its edge with the Brush in Color ASCII: the paint shows as ASCII characters, never as half-blocks; then, on a layer
   above, brush white with Colors only over blank cells and Merge down: nothing changes, and no ▄ appears; `stack`:
   with a shape over paint on Layer 1 and a white stroke on a layer above crossing its edge, Merge down the shape
-  into Layer 1: nothing on the canvas changes, the stroke above included.
+  into Layer 1: nothing on the canvas changes, the stroke above included, and the PIXEL view shows the shape's edge
+  as before (no dark line where its cells were written as characters), with the Overlay at 100% too.
   `pixel-view`: in Color ASCII, brush white over a shape and again on a layer above it, then go to the PIXEL view with
   the Overlay at 100%: each stroke blends with what's under it, as with the Overlay at 0%; a typed letter still shows
   as its cell.

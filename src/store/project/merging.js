@@ -11,7 +11,7 @@ import { EMPTY_BASE, withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { makeArt, isArt } from '@/document/artLayers.js';
 import { finerStops, isGradient, isShape, shapeBounds, withShape } from '@/document/shapes.js';
-import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock } from '@/document/editCells.js';
+import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock, isFrozen } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors } from '@/lib/Cells.js';
@@ -119,10 +119,14 @@ function onBase(project, id, rect) {
   const pixels = merged.flatMap(({ col, row, top, bottom }) => [{ x: col, y: 2 * row, ...top, alpha: 1 }, { x: col, y: 2 * row + 1, ...bottom, alpha: 1 }]);
   project.baseLayer.erase(pixels);
   project.baseLayer.paint(pixels);
-  if (paint?.hasPaint) project.baseLayer.drawOver(paint, rect);
+  // A frozen cell's paint under it is what its entry stands for: the entry's colors go in, not the paint's.
+  const under = merged.filter(({ col, row }) => isFrozen(cells.get(cellKey(col, row)))).flatMap(({ col, row }) => halvesOf(col, row));
+  const drawn = paint?.hasPaint && under.length ? paintFrom(paint, paint.snapshot()) : paint;
+  if (under.length) drawn.erase(under);
+  if (drawn?.hasPaint) project.baseLayer.drawOver(drawn, rect);
   const left = paint && paintFrom(paint, rect ? paint.snapshot() : null);
   if (rect) left?.clearCells(rect);
-  const unpainted = (col, y, index) => (paint?.colorAt(col, y) ? undefined : index);
+  const unpainted = (col, y, index) => (drawn?.colorAt(col, y) ? undefined : index);
   const pins = [...merged.map(({ col, row, char, fgIndex, bgIndex }) => ({ col, row, char, fgIndex: unpainted(col, 2 * row + 1, fgIndex), bgIndex: unpainted(col, 2 * row, bgIndex) })), ...paintedPins];
   const after = {
     base: project.baseLayer.snapshot(), baseRecords: withPins(before.baseRecords, pins),
@@ -218,7 +222,7 @@ function onCells(project, id, under, rect) {
       blocks.push(row * cols + col);
     } else {
       next.set(key, project.completeAt(col, row, entry, id));
-      erased.push(...halvesOf(col, row));
+      if (!isFrozen(entry)) erased.push(...halvesOf(col, row)); // a frozen cell's paint under it comes down with it
     }
   }
   const painted = [];
@@ -244,15 +248,16 @@ function onCells(project, id, under, rect) {
 }
 
 // The cells at indexes that a merge's after (state) would show otherwise (unlike) written into next as they showed
-// (frozen's), marked frozen (docs/model.md R3: paint to everything but the converter, so the layers above lay over them as
-// they did, and Retouch and Colors only turn them back into paint), and those at always (an art layer's characters,
-// someone's own) written unmarked; the paint into has there erased.
+// (frozen's), marked frozen (docs/model.md R3): the paint into has there stays under them (the PIXEL view shows it, the
+// layers above lay over it as they did, and paint written or erased there drops the mark), and the converter shows the
+// mark instead of converting it. Those at always (an art layer's characters, someone's own) are written unmarked, the
+// paint there erased.
 function freezeUnlike(project, state, under, indexes, was, frozen, next, into, always = []) {
   const { cols } = project;
   const write = (i, mark) => {
     const col = i % cols, row = (i - col) / cols, key = cellKey(col, row);
     next.set(key, mark ? Object.freeze({ ...frozen.get(key), frozen: true }) : frozen.get(key));
-    into.erase(halvesOf(col, row));
+    if (!mark) into.erase(halvesOf(col, row));
   };
   for (const i of always) write(i, false);
   for (const i of unlike(project, state, under, indexes, was)) write(i, true);
