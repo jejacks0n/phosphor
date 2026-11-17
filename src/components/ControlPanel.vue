@@ -135,6 +135,7 @@ const charsetName = computed(() => {
           <input
               type="number"
               id="rows"
+              :aria-label="t('panel.rowsAria')"
               :value="store.rows"
               @input="stepped($event) && store.updateRows($event.target.value)"
               @change="store.updateRows($event.target.value); $event.target.value = store.rows"
@@ -221,7 +222,7 @@ const charsetName = computed(() => {
               <div class="label-group"><label for="seed">{{ t('panel.seed.label') }}</label><HelpInfo :name="t('panel.seed.label')" :text="help('seed')" /></div>
               <div class="row-inputs">
                 <input type="text" id="seed" v-model.lazy="own.seed" :placeholder="t('panel.seed.placeholder')">
-                <button @click="store.randomizeSeed(picked)" :title="t('panel.seed.randomize')">🎲</button>
+                <button @click="store.randomizeSeed(picked)" :title="t('panel.seed.randomize')" :aria-label="t('panel.seed.randomize')">🎲</button>
               </div>
             </div>
 
