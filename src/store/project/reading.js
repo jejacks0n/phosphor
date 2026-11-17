@@ -129,7 +129,7 @@ function layerOver(project, id, col, row, look, withPaint = true) {
   const entry = project.cellsOf(id).get(cellKey(col, row));
   let out = entry ? mergeEntry(look, entry) : look;
   const paint = withPaint && project.paintOf(id);
-  if (!paint?.hasPaint) return out;
+  if (!paint?.hasPaint || isFrozen(entry)) return out; // a frozen cell's paint under it is what the entry stands for
   const top = paint.pixelAt(col, 2 * row), bottom = paint.pixelAt(col, 2 * row + 1);
   if (top) out = mergeEntry(out, { bg: rgb2hex(over(hex2rgb(out.bg), top)) });
   if (bottom) out = mergeEntry(out, { fg: rgb2hex(over(hex2rgb(out.fg), bottom)) });
@@ -262,6 +262,7 @@ export const readingActions = {
         look = layerOver(this, id, col, row, look, false);
         const own = this.cellsOf(id).get(key);
         if (shownEntry(own, this.renderStyle)) exact = !isFrozen(own); // as #upperCell: a frozen cell is paint to what's over it
+        if (isFrozen(own)) continue; // and its own paint under it is what it stands for
         const paint = this.paintOf(id), top = paint?.pixelAt(col, 2 * row), bottom = paint?.pixelAt(col, 2 * row + 1);
         if (top || bottom) look = asciiOver(top, bottom, exact && !isSolidGlyph(look.char ?? ' ') && !opensToPaint({ char: look.char ?? ' ', fg: { hex: look.fg }, bg: { hex: storedBlack(this.processParams) } }, this.renderStyle) ? (cell) => [cell.bg, cell.fg] : halfColors); // as #paintOver tints a character of someone's own (coverCell), or converts paint over its halves
         continue;

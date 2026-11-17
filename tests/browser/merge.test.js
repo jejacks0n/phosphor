@@ -13,6 +13,7 @@ import { i18n } from '@/i18n';
 import { blur } from '@/tools/retouch';
 import { getTool } from '@/tools';
 import { isFrozen } from '@/document/editCells.js';
+import { ctx2d } from '@/lib/Canvas.js';
 
 const looks = (project) => project.cells.map(({ char, fg, bg }) => ({ char, fg: { r: fg.r, g: fg.g, b: fg.b }, bg: { r: bg.r, g: bg.g, b: bg.b } }));
 const apart = (a, b) => Math.max(Math.abs(a.r - b.r), Math.abs(a.g - b.g), Math.abs(a.b - b.b));
@@ -349,7 +350,8 @@ describe('down between layers', () => {
     expect(cellsKey(project)).toEqual(before);
     const reached = [...project.cellsOf('edit').keys()].map((key) => key.split(',').map(Number)).map(([c, r]) => r * project.cols + c);
     expect(reached.length).toBeGreaterThan(20);
-    expect(project.paintOf('edit').pixelAt(4, 10)).toBeNull(); // frozen: its paint went with it
+    expect(project.paintOf('edit').pixelAt(4, 10)).toEqual({ r: 255, g: 0, b: 0, a: 1 }); // frozen, over its paint (docs/model.md R3)
+    expect(isFrozen(project.cellsOf('edit').get('4,5'))).toBe(true);
     const chars = reached.map((i) => project.cells[i].char);
     project.quantize = 'cga';
     project.render();
@@ -481,6 +483,25 @@ describe('down between layers', () => {
     expect(project.mergeDown('L1')).toBe(true);
     await settle(project);
     expectLooksAlike(looks(project), before);
+  });
+
+  // docs/model.md R3: the report (projects/merge-dark-edge.phosphor): the PIXEL view showed dark lines along a merged
+  // shape's edge, where the frozen cells had lost their paint and the Overlay drew their characters' ink instead. A
+  // frozen cell keeps its paint under it, so the PIXEL view shows it as before the merge.
+  test('R3: the report: a shape merged into the layer under it looks the same in the PIXEL view, its frozen cells over their paint', async () => {
+    const { project } = await createTestApp();
+    await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/merge-dark-edge.phosphor')).arrayBuffer()], 'x.phosphor'));
+    await settle(project);
+    const { cols, rows } = project, shown = () => [...ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, cols, rows).data];
+    const before = shown(), cells = looks(project);
+    expect(project.mergeDown('vector')).toBe(true);
+    await settle(project);
+    expectLooksAlike(looks(project), cells);
+    const after = shown();
+    expect(Math.max(...before.map((v, i) => Math.abs(v - after[i])))).toBeLessThanOrEqual(2);
+    const frozen = [...project.cellsOf('L2')].filter(([, entry]) => isFrozen(entry));
+    expect(frozen.length).toBeGreaterThan(20);
+    expect(frozen.every(([key]) => { const [col, row] = key.split(',').map(Number); return project.paintOf('L2').pixelAt(col, 2 * row) || project.paintOf('L2').pixelAt(col, 2 * row + 1); })).toBe(true);
   });
 
   // docs/model.md R4: a frozen cell is paint to Retouch too: Blur turns it back into paint where it changes it, so a

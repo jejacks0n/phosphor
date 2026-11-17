@@ -164,6 +164,7 @@ for (const renderStyle of ['ansi', 'colorAscii']) {
     await settle(project);
     workspace.pickLayer('edit');
     project.writeEditCells([{ col: 10, row: 5, attrs: { char: 'A', fg: '#ff0000', bg: '#000000' } }]);
+    project.paintEditPixels([{ x: 4, y: 10, r: 255, g: 255, b: 255, alpha: 1 }, { x: 4, y: 11, r: 255, g: 0, b: 0, alpha: 1 }]); // a frozen cell keeps its paint under it
     project.commitEdit();
     project.setEditCells(new Map([...project.editCells, ['4,5', Object.freeze({ char: '%', fg: '#ff0000', bg: '#ffffff', frozen: true })]]), ['4,5']);
     project.commitEdit();
@@ -175,9 +176,9 @@ for (const renderStyle of ['ansi', 'colorAscii']) {
       brush.end(ctx);
     }
     await settle(project);
-    expect(project.editCellAt(4, 5)).toEqual({ char: '▄' }); // a paint block over its own colors as paint, the green over the top half
+    expect(project.editCellAt(4, 5)).toEqual({ char: '▄' }); // a paint block over its paint, the green over the top half
     expect(project.paintLayer.pixelAt(4, 10)).toMatchObject({ r: 0, g: 255, b: 0, a: 1 });
-    expect(project.paintLayer.pixelAt(4, 11)).toMatchObject({ a: 1 });
+    expect(project.paintLayer.pixelAt(4, 11)).toMatchObject({ r: 255, g: 0, b: 0, a: 1 });
     expect(project.editCellAt(10, 5)?.char).toBe('A'); // a letter: tinted, kept
     project.undo(); // the letter's stroke
     project.undo(); // the frozen cell's: as it was
@@ -185,6 +186,34 @@ for (const renderStyle of ['ansi', 'colorAscii']) {
     expect(project.editCellAt(4, 5)).toEqual({ char: '%', fg: '#ff0000', bg: '#ffffff', frozen: true });
   });
 }
+
+// docs/model.md R3: a frozen cell is Merge down's pinned conversion of the paint under it; paint written or erased in
+// it is paint again, so the mark goes, and the Paint Bucket, a shape's fill or the Eraser never leave a stale character.
+test('R3: the Eraser in the PIXEL view, or paint laid, in a frozen cell drops the mark; the paint left shows converted', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await settle(project);
+  workspace.pickLayer('edit');
+  project.paintEditPixels([4, 6].flatMap((x) => [{ x, y: 10, r: 255, g: 255, b: 255, alpha: 1 }, { x, y: 11, r: 255, g: 0, b: 0, alpha: 1 }]));
+  project.commitEdit();
+  project.setEditCells(new Map([...project.editCells, ['4,5', Object.freeze({ char: '%', fg: '#ff0000', bg: '#ffffff', frozen: true })], ['6,5', Object.freeze({ char: '%', fg: '#ff0000', bg: '#ffffff', frozen: true })]]), ['4,5', '6,5']);
+  project.commitEdit();
+  await settle(project);
+  expect(project.cells[5 * 20 + 4].char).toBe('%');
+  workspace.editEraserSize = 1;
+  const ctx = { project, workspace, view: 'input' };
+  eraser.begin(ctx, { x: 4.5, y: 10.5 }, {});
+  eraser.end(ctx);
+  project.paintEditPixels([{ x: 6, y: 10, r: 0, g: 0, b: 255, alpha: 1 }]);
+  project.commitEdit();
+  await settle(project);
+  expect(project.editCellAt(4, 5)).toBeUndefined();
+  expect(project.paintLayer.pixelAt(4, 10)).toBeNull();
+  expect(project.paintLayer.pixelAt(4, 11)).toMatchObject({ r: 255, g: 0, b: 0, a: 1 }); // the other half stays, converted
+  expect([project.cells[5 * 20 + 4].bg.hex, project.cells[5 * 20 + 4].fg.hex]).toEqual(['#000000', '#ff0000']); // the converter's cell of what's left, not the frozen white and red
+  expect(project.editCellAt(6, 5)).toBeUndefined();
+  expect(project.paintLayer.pixelAt(6, 10)).toMatchObject({ r: 0, g: 0, b: 255, a: 1 });
+});
 
 test('with Colors only on the base, a cell that shows no character is pinned a ▄ the paint colors', async () => {
   const { project, workspace } = await createTestApp();

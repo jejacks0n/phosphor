@@ -21,6 +21,7 @@ export const editLayerActions = {
     if (onBottom(this)) return this.paintBasePixels(pixels, opacity, stack);
     this.ensureLayer();
     this.beginEdit();
+    unfreeze(this, pixels);
     this.noteDrawn(pixels);
     this.paintLayer.paint(pixels, opacity, stack);
     this.hasPaint = this.paintLayer.hasPaint;
@@ -67,13 +68,14 @@ export const editLayerActions = {
     this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
   },
 
-  // Cells of the layer in use ([{ col, row }]) turned back into paint: the two halves each shows (ownHalves) laid as
-  // opaque paint, and the entry taken away. What Retouch and Colors only do to a frozen cell (docs/model.md R4 and R5),
-  // and Colors only to a cell with colors of its own that shows no character (R2). Not on the base.
+  // Cells of the layer in use ([{ col, row }]) turned into paint: a cell with colors of its own has the two halves it
+  // shows (ownHalves) laid as opaque paint, a frozen cell has its paint under it already (docs/model.md R3), and the entry
+  // goes. What Colors only does to a frozen cell (R5) and to a cell with colors of its own that shows no character (R2).
+  // Not on the base.
   unlockCells(cells) {
     if (!cells.length || onBottom(this)) return;
-    const { rows } = this;
-    this.putEditPixels(cells.flatMap(({ col, row }) => ownHalves(this, col, row).map((color, k) => ({ x: col, y: 2 * row + k, ...color, a: 1 }))).filter(({ y }) => y < rows));
+    const { rows } = this, colored = cells.filter(({ col, row }) => !isFrozen(this.editCellAt(col, row)));
+    this.putEditPixels(colored.flatMap(({ col, row }) => ownHalves(this, col, row).map((color, k) => ({ x: col, y: 2 * row + k, ...color, a: 1 }))).filter(({ y }) => y < rows));
     this.clearEditCells(cells);
   },
 
@@ -83,6 +85,7 @@ export const editLayerActions = {
     if (!pixels.length || !this.renderer.outputCanvas || onBottom(this) || refusedNoCells(this, { toast: false })) return;
     this.ensureLayer();
     this.beginEdit();
+    unfreeze(this, pixels);
     this.noteDrawn(pixels);
     this.paintLayer.put(pixels);
     this.hasPaint = this.paintLayer.hasPaint;
@@ -94,6 +97,7 @@ export const editLayerActions = {
     if (onBottom(this)) return this.eraseBasePixels(pixels);
     this.ensureLayer();
     this.beginEdit();
+    unfreeze(this, pixels);
     this.paintLayer.erase(pixels);
 
     this.refreshEdit(pixels);
@@ -303,6 +307,13 @@ export const editLayerActions = {
     this.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(before.paintLayer, before.editCells));
   },
 };
+
+// The frozen cells (docs/model.md R3: Merge down's pinned conversion of the paint under them) among the cells the grid
+// pixels touch lose their mark: paint written or erased there is paint again, converted as the layer converts it.
+function unfreeze(project, pixels) {
+  const cells = cellsOfPixels(pixels, project.cols, project.rows).filter(({ col, row }) => isFrozen(project.editCellAt(col, row)));
+  if (cells.length) project.clearEditCells(cells);
+}
 
 // Whether the layer in use (not the base, whose cells are pins) has a cell of its own at col, row with a color of its own.
 function ownColored(project, col, row) {

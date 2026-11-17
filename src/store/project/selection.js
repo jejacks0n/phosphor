@@ -14,7 +14,7 @@
 // (flatBlock), on top of what's drawn there: its picture as cells looking as it did (asCells), each part over the one
 // under it, the shown cells over those; on the base, as drawing there does. A block made elsewhere (a Moebius block, an
 // older tab's) is { w, h, cells?, paint? }: one layer's. Rects are clipped to the grid.
-import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry, isPaintBlock } from '@/document/editCells.js';
+import { cellKey, withoutCells, rectCells, pasteBlock, mergeEntry, isPaintBlock, isFrozen } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { cellIndex, cellsOfPixels, charRowsOf } from '@/lib/Cells.js';
@@ -269,7 +269,7 @@ export const selectionActions = {
     const run = this._float;
     if (run?.block && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)) {
       const { parts, cells, base, shown } = run.block;
-      return (parts ?? [{ cells }]).some((part) => !!part.cells?.some((entry) => entry && !isPaintBlock(entry)))
+      return (parts ?? [{ cells }]).some((part) => !!part.cells?.some((entry) => entry && !isPaintBlock(entry) && !isFrozen(entry)))
         || !!base?.pins.some((pin) => pin && pin !== '▄') || !!shown?.some(Boolean);
     }
     ids = this.layersFor(ids);
@@ -277,7 +277,7 @@ export const selectionActions = {
       const key = cellKey(col, row);
       if (isBase(this, id)) return ((pin) => !!pin && pin !== '▄')(this.baseRecords.pins.get(key));
       const entry = this.cellsOf(id).get(key);
-      return !!entry && !isPaintBlock(entry);
+      return !!entry && !isPaintBlock(entry) && !isFrozen(entry);
     }));
   },
 
@@ -496,7 +496,7 @@ export function flatBlock(block) {
     cells = cells.map((lower, i) => {
       const entry = part.cells[i];
       if (!entry) return lower;
-      if (paint && !isPaintBlock(entry)) ctx2d(paint).clearRect((i % w) * k, 2 * Math.floor(i / w) * k, k, 2 * k);
+      if (paint && !isPaintBlock(entry) && !isFrozen(entry)) ctx2d(paint).clearRect((i % w) * k, 2 * Math.floor(i / w) * k, k, 2 * k); // a frozen cell's paint under it stays
       if (part.exact || !lower) return entry;
       return isPaintBlock(entry) ? lower : mergeEntry(lower, entry);
     });

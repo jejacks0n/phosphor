@@ -324,6 +324,7 @@ for (const view of ['input', 'output']) {
     const { project, workspace, ctx } = await blank(view);
     workspace.pickLayer('edit');
     project.writeEditCells([{ col: 10, row: 5, attrs: { char: 'A', fg: '#ff0000', bg: '#000000' } }]);
+    project.paintEditPixels([4, 14].flatMap((x) => [{ x, y: 10, r: 255, g: 255, b: 255, alpha: 1 }, { x, y: 11, r: 255, g: 0, b: 0, alpha: 1 }])); // a frozen cell keeps its paint under it
     project.commitEdit();
     project.setEditCells(new Map([...project.editCells, ['4,5', Object.freeze({ char: '▚', fg: '#ff0000', bg: '#ffffff', frozen: true })], ['14,5', Object.freeze({ char: '▚', fg: '#ff0000', bg: '#ffffff', frozen: true })]]), ['4,5', '14,5']);
     project.commitEdit();
@@ -331,9 +332,10 @@ for (const view of ['input', 'output']) {
     stroke(blur, ctx, { x: 4.5, y: 11 });  // over the frozen cell at 4,5 and the clear around it
     stroke(blur, ctx, { x: 10.5, y: 11 }); // over the letter
     await settle(project);
-    expect(project.editCellAt(4, 5)).toBeUndefined(); // paint now, its halves blurred with the clear
+    expect(project.editCellAt(4, 5)).toBeUndefined(); // paint now, blurred with the clear around it
     expect(alphaAt(project, 4, 10)).toBeGreaterThan(0);
-    expect(alphaAt(project, 4, 11)).toBeGreaterThan(0);
+    expect(alphaAt(project, 4, 10)).toBeLessThan(1);
+    expect(alphaAt(project, 3, 10)).toBeGreaterThan(0); // spread into the clear beside it
     expect(project.editCellAt(14, 5)).toEqual({ char: '▚', fg: '#ff0000', bg: '#ffffff', frozen: true }); // out of reach: as it was
     expect(project.editCellAt(10, 5)?.char).toBe('A'); // a character of someone's own: recolored, kept
   });
