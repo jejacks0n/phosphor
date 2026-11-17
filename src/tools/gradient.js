@@ -24,10 +24,14 @@ function fillGradient({ project, workspace, view }, from, to) {
 }
 
 // The line while it's dragged: where it started, and where the pointer is before Shift has its say.
-let start = null, last = null, stopShift = null;
+let start = null, last = null, stopShift = null, dragCtx = null;
+// Escape before letting go throws the drag away: the line goes, and the release fills nothing.
+const onEscape = (event) => { if (event.key === 'Escape') stopDrag(dragCtx); };
 const lineEnd = (workspace) => (workspace.isShiftPressed ? snappedEnd(start, last) : last);
 
 function stopDrag({ workspace }) {
+  window.removeEventListener('keydown', onEscape);
+  dragCtx = null;
   stopShift?.();
   stopShift = null;
   workspace.shapeDrag = null;
@@ -69,6 +73,8 @@ export default {
     stopShift = watch(() => workspace.isShiftPressed, () => {
       workspace.shapeDrag = { from: start, to: lineEnd(workspace), line: true };
     }, { flush: 'sync' });
+    dragCtx = ctx;
+    window.addEventListener('keydown', onEscape);
     return true;
   },
   move({ workspace }, from, to) {

@@ -266,7 +266,8 @@ dithered, and compare the dither at 80 and at 200 columns.
   while dragging; then tries Cells with a gradient.
 - Expects: Linear runs from her foreground where she pressed to her background where she let go; Spherical is a
   circle; Shift snaps the line to 45°; Cells builds it from █ ▓ ▒ ░ and a space; a gradient is one undo step; a drag
-  with either color set to None fills nothing and says "A gradient requires both a foreground and a background color. Neither color can be None."
+  with either color set to None fills nothing and says "A gradient requires both a foreground and a background color. Neither color can be None.";
+  Escape before letting go takes the line away, and the release fills nothing.
 - Probes: `back-out`: start a gradient drag and press Escape before letting go; `out-of-order`: set the background to
   None and drag; `undo-redo`: undo the gradient and redo it.
 - Rated: yes, wants Shift+G

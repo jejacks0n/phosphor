@@ -907,7 +907,8 @@ swaps the two halves of each cell's base colors.
     background.
   - **Spherical**: A circle: foreground at the press, background as far out as the line is long, and evenly between.
   - **Shift** snaps the line to steps of 45°. A click without a drag fills nothing, and a drag with either color set to
-    None fills nothing and says why.
+    None fills nothing and says why. **Escape** before you let go throws the drag away: the line goes, and nothing is
+    filled.
   - **Colors**: In the PIXEL view, and in the ANSI view's **Colors only**, every grid pixel gets its own blended color
     (blended in sRGB), at the Brush opacity. With the CGA or VGA palette or a color list, the blend shows in the
     palette's colors, banded, as any paint does, and comes back smooth in full color.
