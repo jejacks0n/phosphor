@@ -330,7 +330,8 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Does: steps into the art layer again (Edit art), paints a stroke with the Brush, fills an area with the Paint Bucket,
   drags a Linear gradient with the Gradient, then presses Done.
 - Expects: the usual ANSI tools draw into the art layer and only it
-  ([Editing an art layer](../../vector.md#editing-an-art-layer)); drawing past its edge grows it; each edit is one undo
+  ([Editing an art layer](../../vector.md#editing-an-art-layer)); drawing past its edge grows it; a fill or gradient
+  started on the layer's own paint stays in that paint at any Tolerance, with nothing selected; each edit is one undo
   step; the change shows on VECTOR once she's out, with the layer selected.
 - Probes: `undo-redo`: undo the gradient, the fill and the stroke inside, and check undo stops where she stepped in;
   `out-of-order`: try to pick Base or change a setting in the left column while inside (they're off);

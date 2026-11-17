@@ -495,7 +495,7 @@ test('an edit that fits where the layer shows but not on another frame it is on 
   await opened.loadProject(file);
   expect(opened.frames.length).toBe(2);
   expect(changed).toBe(false);
-  expect(toastMessage.value).toBe('Selection is too large for an art layer. Please select a smaller area.');
+  expect(toastMessage.value).toBe('That would make the art layer too big, so nothing changed.');
   expect(project.history.version).toBe(version);
   expect(project.shapes.get(key)).toBe(shape);
   // With room on every frame it's on, it's taken everywhere.
@@ -530,8 +530,16 @@ test('a move or restack an art layer at the limit has no room for is refused, an
     toastMessage.value = null;
     project.updateShapes([[key, withShape(shape, change)]]);
     expect(project.shapes.get(key)).toBe(shape);
-    expect(toastMessage.value).toBe('Selection is too large for an art layer. Please select a smaller area.');
+    expect(toastMessage.value).toBe('That would make the art layer too big, so nothing changed.');
   }
+  // With frames, changed on every frame it's on, the same.
+  project.setAnimate(true);
+  project.addFrame('blank');
+  const version = project.history.version;
+  toastMessage.value = null;
+  expect(project.changeEverywhere([[key, (cell) => withShape(cell, { z: 10 })]])).toBe(false);
+  expect(toastMessage.value).toBe('That would make the art layer too big, so nothing changed.');
+  expect(project.history.version).toBe(version);
 });
 
 test('Fill, Stroke and Swap leave an art layer as it is: no step, nothing unsaved, and in a room a mixed selection with a locked layer still restyles the rest', async () => {

@@ -1713,6 +1713,7 @@
     "make": "Créer un calque d'art",
     "makeTitle": "Convertir les cellules sélectionnées en calque d'art que vous pouvez déplacer et animer",
     "tooBig": "La sélection est trop grande pour un calque d'art. Veuillez sélectionner une zone plus petite.",
+    "tooBigEdit": "Le calque d'art deviendrait trop grand : rien n'a changé.",
     "nothingDrawn": "Rien n'est dessiné dans les cellules sélectionnées.",
     "edit": "Modifier l'art",
     "editTitle": "Dessiner à l'intérieur de ce calque d'art. Les modifications apparaîtront sur toutes les images où ce calque est utilisé",

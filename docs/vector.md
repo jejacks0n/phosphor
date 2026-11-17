@@ -73,6 +73,7 @@ To draw inside an art layer, you step into it (like editing a symbol in Flash):
 While you're inside an art layer:
 - **Every frame**: An art layer is one drawing wherever it shows, so each edit changes it on every frame it's on.
 - **Growing and shrinking**: Draw past the layer's edge and it grows to hold what you drew. Erase the cells at its edge and it shrinks to the cells that are left; the cells that stay don't move on the canvas. If an edit would make the layer too big on any frame it's on, nothing changes and Phosphor says so.
+- **Fills**: A **Paint Bucket** fill or a **Gradient** started on the art layer's own drawing stays in it, whatever the **Tolerance**: the dimmed drawing around it is a wall. Started on the dimmed drawing, it reads that drawing's colors as usual, and the layer grows to hold what it fills.
 - **Undo**: Each edit is one undo step, and undo goes back no further than where you stepped in. After you step out, the steps are in the history with the rest.
 - **What's off**: The settings panel, picking the base layer, and the frame controls (the animation bar, and the keys that play, step, and add frames) are off. **Clear layer**, **Merge down** (and **Blend into source image**), **Bake**, and **Flatten** are off too, since they change the whole drawing: their tooltips say to exit the art layer first.
 - **Stepping out**: Changing tabs, picking another drawing layer, opening or starting a document, resizing the canvas, turning **Animate** off, exporting, and **Make art layer** all step you out too.
