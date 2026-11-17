@@ -195,7 +195,7 @@
   "settings": {
     "cols": {
       "label": "Dimensions",
-      "help": "Canvas width in columns and height in pixel rows. Two pixel rows equal one character row."
+      "help": "Canvas width in columns and height in pixel rows. Two pixel rows equal one character row. A typed size applies on Enter, Tab or a click elsewhere; Escape puts the field back."
     },
     "renderStyle": {
       "help": "ANSI mode sets colors for both the character and its background. Color ASCII draws colored characters on a black background, using denser shapes for stronger colors. Monochrome ASCII uses one color and maps brightness from light to dark."

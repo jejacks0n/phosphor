@@ -195,7 +195,7 @@
   "settings": {
     "cols": {
       "label": "Dimensions",
-      "help": "Largeur du canevas en colonnes et hauteur en lignes de pixels. Deux lignes de pixels correspondent à une ligne de caractères."
+      "help": "Largeur du canevas en colonnes et hauteur en lignes de pixels. Deux lignes de pixels correspondent à une ligne de caractères. Une taille tapée s'applique avec Entrée, Tab ou un clic ailleurs ; Échap remet le champ comme avant."
     },
     "renderStyle": {
       "help": "Le mode ANSI définit les couleurs pour le caractère et son arrière-plan. L'ASCII couleur dessine des caractères colorés sur fond noir, en utilisant des formes plus denses pour les couleurs plus vives. L'ASCII monochrome n'utilise qu'une seule couleur et fait correspondre la luminosité du sombre au clair."

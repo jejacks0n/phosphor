@@ -4,6 +4,7 @@
 // grows). Random characters belong to their cell's position, so they survive a width change. A step undo could
 // bring back keeps its cells where they are too: a grid change never forgets the undo steps before it.
 import { test, expect } from 'vitest';
+import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
@@ -230,6 +231,46 @@ test('Dimensions reads the height in character rows above the inputs, which coun
   expect(readout()).toBe('1 row');
   app.unmount();
   host.remove();
+});
+
+// The report (dex-6): each digit typed into Dimensions was a resize (1, then 12, then 123 pixel rows), and Escape kept
+// the half-typed size. A typed size now waits for Enter, Tab or a click elsewhere; Escape puts the field back to the
+// grid's size. The stepper arrows and the up and down keys stay live: each is a whole size.
+test('Dimensions: typed digits wait for Enter or a blur, Escape puts the field back, and the arrow keys stay live', async () => {
+  const { project } = await grid(40, 40);
+  project.aspectLock = false;
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const rows = host.querySelector('#rows');
+  try {
+    await userEvent.tripleClick(rows);
+    await userEvent.keyboard('123');
+    expect(rows.value).toBe('123');
+    expect(project.rows).toBe(40); // nothing applied yet
+    await userEvent.keyboard('{Escape}');
+    expect(rows.value).toBe('40');
+    expect(project.rows).toBe(40);
+    expect(document.activeElement).toBe(rows); // where focus goes after is dex-16's, left as it is
+
+    await userEvent.tripleClick(rows);
+    await userEvent.keyboard('12{Enter}');
+    expect(project.rows).toBe(12); // one resize, on the commit
+
+    await userEvent.tripleClick(rows);
+    await userEvent.keyboard('30');
+    rows.blur(); // Tab or a click elsewhere
+    expect(project.rows).toBe(30);
+
+    rows.focus();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(project.rows).toBe(31); // a step is a whole size
+  } finally {
+    app.unmount();
+    host.remove();
+  }
 });
 
 async function reopened(project) {
