@@ -82,13 +82,19 @@ merged-into layer is enough, and paint written or erased in the cell (`paintEdit
 `eraseEditPixels`: every tool's one way in, Retouch and the Eraser included) drops the pin (`unfreeze`), so the paint
 left converts as the layer converts paint. A frozen cell merged further down keeps its paint and its pin; merged onto the
 base, its pin's colors go in and become a pin there, not the paint's. An art layer's characters are written as someone's
-own, unmarked, the paint under them erased.
+own, unmarked, the paint under them erased. Merged onto the base (Keep crisp cells), entries and paint become the base's
+pixels, which the base snaps to the palette a pixel at a time; where a cell would show otherwise there (`unlike`, the
+same check: soft paint over a cell mixed into its colors before the snap instead of after, paint with no cell under it
+that the converter picks again from the snapped pixels), it's written as it showed instead (`frozenCells`): its stored
+colors as its two pixels, its character pinned.
 
 - Lives in: `onCells`, `onBase`, `shapesOnCells`, `shapesOnVector`, `unlike`, `frozenCells`, `freezeUnlike` in
   `src/store/project/merging.js`; `unfreeze` in `src/store/project/editLayer.js`; the Renderer's `#exactUnder`,
   `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `layerOver` and `storedLookAt`
   (`src/store/project/reading.js`) mirror the walk; a paste keeps a frozen cell's paint (`src/store/project/selection.js`).
-- Checked by: `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
+- Checked by: `tests/browser/merge.test.js › R3: the report: Keep crisp cells under soft paint …` (Keep crisp cells on
+  CGA under Best match, soft Brush and Blur strokes and a dithered vector layer above);
+  `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
   the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, freezing
   nothing as saved (R7) and, with the shape's own characters, its frozen cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and
   `› Merge down of a vector layer into a cells layer puts its shapes in as paint …` and `› Merge down of a vector layer
@@ -238,6 +244,9 @@ entries and paint with their kinds, frozen cells included; a layer moved up or d
   style (`Renderer.pinAt` applies the "▄ is pixels outside ANSI" rule to base pins only; `#upperCell`'s vector branch,
   `storedLookAt` and `shapesOnCells` don't). In Color ASCII, Make art layer over a Colors only stroke shows ▄ glyphs.
   The fix is one `shownChar(char, renderStyle)` beside `shownEntry`, used at those sites.
+- A frozen cell merged onto the base goes in as its pin's colors (R3), which an upper layer converting over the cell (a
+  vector layer's soft shape edge) then converts over instead of the paint it saw there: that cell can show otherwise.
+  The base holds a pin's colors as its pixels, so it can't keep both.
 - `lookUnder` (`completeAt`'s look under a layer) lays only the cells layers under it, not an upper vector layer between
   them, as `underlyingAt` does; a BG None cell typed over such a shape merges down with the wrong background.
 - `drawnIn` (`src/store/project/vector.js`, Make art layer) takes a frozen cell's paint halves over its pinned colors.
