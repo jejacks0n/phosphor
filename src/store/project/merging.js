@@ -157,7 +157,8 @@ function mergedPaint(project, into, erased, from, rect) {
 const halvesOf = (col, row) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }];
 // Whether two cells look the same: one character, and colors no more than ROUNDING apart on any channel. The same color
 // reached two ways rounds a step or two apart (By shape works a shape's colors out from its finer samples, paint from
-// its grid pixels), which shows the same; a real difference (a soft edge seen at half-cell scale) is more.
+// its grid pixels), which shows the same; a real difference (a soft edge seen at half-cell scale) is more. The character
+// is compared as it is, even where it doesn't show (a █ and a space, both white on white): an export writes it.
 const ROUNDING = 2;
 const near = (a, b) => a === b || (!!a && !!b && Math.abs(a.r - b.r) <= ROUNDING && Math.abs(a.g - b.g) <= ROUNDING && Math.abs(a.b - b.b) <= ROUNDING);
 const sameLook = (a, b) => a?.char === b?.char && near(a?.fg, b?.fg) && near(a?.bg, b?.bg);
@@ -242,15 +243,19 @@ function onCells(project, id, under, rect) {
   return mergeStep(project, before, after(), bytesHeld(into, next, left, kept));
 }
 
-// The cells at indexes that a merge's after (state) would show otherwise (unlike), and those at always, written into next
-// frozen (frozen's), the paint into has there erased.
+// The cells at indexes that a merge's after (state) would show otherwise (unlike) written into next as they showed
+// (frozen's), marked frozen (docs/model.md R3: paint to everything but the converter, so the layers above lay over them as
+// they did, and Retouch and Colors only turn them back into paint), and those at always (an art layer's characters,
+// someone's own) written unmarked; the paint into has there erased.
 function freezeUnlike(project, state, under, indexes, was, frozen, next, into, always = []) {
   const { cols } = project;
-  for (const i of [...always, ...unlike(project, state, under, indexes, was)]) {
+  const write = (i, mark) => {
     const col = i % cols, row = (i - col) / cols, key = cellKey(col, row);
-    next.set(key, frozen.get(key));
+    next.set(key, mark ? Object.freeze({ ...frozen.get(key), frozen: true }) : frozen.get(key));
     into.erase(halvesOf(col, row));
-  }
+  };
+  for (const i of always) write(i, false);
+  for (const i of unlike(project, state, under, indexes, was)) write(i, true);
   into.recheckPaint();
 }
 

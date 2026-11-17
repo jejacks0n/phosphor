@@ -13,14 +13,27 @@ import { getEffectiveColor } from '../lib/PixelTransforms.js';
 import { isSolidGlyph } from '../lib/Cells.js';
 
 const ATTRS = ['char', 'fg', 'bg', 'fgIndex', 'bgIndex'];
+const WRITTEN = ['char', 'fg', 'bg']; // what makes a cell someone's own when written
 
 // A ▄ with no colors of its own: Half-block wrote it to show the paint over its cell.
 export const isPaintBlock = (entry) => entry?.char === '▄' && entry.fg === undefined && entry.bg === undefined;
+
+// A cell Merge down wrote as a character so the look stayed (paint that would convert otherwise in its new place),
+// marked frozen: it's paint to everything but the converter (docs/model.md, R1 and R3).
+export const isFrozen = (entry) => entry?.frozen === true;
 
 // The entry a cell shows in renderStyle: a paint block is ANSI's way of showing paint (Colors only makes a cell with no
 // character a ▄), and ASCII has no ▄, so there it's as if there were none and the paint is converted with the layer's
 // ASCII characters, as paint is in a cell with no entry. Switching style back to ANSI shows the ▄ again.
 export const shownEntry = (entry, renderStyle) => (renderStyle !== 'ansi' && isPaintBlock(entry) ? undefined : entry);
+
+// The entry where it's a character of someone's own in renderStyle (typed, opened, pasted, an art layer's): shown, and
+// not frozen. The one answer to whose a cell's character is (docs/model.md, R1): paint over it tints it, and Retouch
+// and Colors only keep it; anything else is paint to them.
+export const ownEntry = (entry, renderStyle) => {
+  const shown = shownEntry(entry, renderStyle);
+  return shown && !isFrozen(shown) ? shown : undefined;
+};
 
 export const cellKey = (col, row) => `${col},${row}`;
 
@@ -34,7 +47,9 @@ export function parseKey(key) {
 
 // The merged entry for one cell: attrs' strings set, null removes, undefined leaves as is.
 // Returns `old` itself when nothing changes and null when no attributes remain. Bulk operations
-// apply this per cell on a single Map copy.
+// apply this per cell on a single Map copy. The frozen mark stays while the cell only moves (a whole entry merged
+// over a look, as Merge down does), is set or cleared when attrs say (true, null), and goes when a character or color
+// is written: that's someone's own now (docs/model.md, R1).
 export function mergeEntry(old, attrs) {
   const next = { ...old };
   for (const attr of ATTRS) {
@@ -42,8 +57,10 @@ export function mergeEntry(old, attrs) {
     else if (attrs[attr] !== undefined) next[attr] = attrs[attr];
   }
   for (const color of ['fg', 'bg']) if (attrs[color] !== undefined && attrs[`${color}Index`] === undefined) delete next[`${color}Index`]; // a color set anew has no file's index
+  if (attrs.frozen === true) next.frozen = true;
+  else if (attrs.frozen === null || WRITTEN.some((attr) => attrs[attr] !== undefined)) delete next.frozen;
   if (!ATTRS.some(attr => attr in next)) return null;
-  if (old && ATTRS.every(attr => old[attr] === next[attr])) return old;
+  if (old && ATTRS.every(attr => old[attr] === next[attr]) && isFrozen(old) === isFrozen(next)) return old;
   return Object.freeze(next);
 }
 
@@ -81,7 +98,9 @@ const VALID = {
 export function cleanEntry(entry) {
   if (!entry || typeof entry !== 'object') return null;
   const clean = Object.fromEntries(ATTRS.filter(attr => VALID[attr](entry[attr], entry)).map(attr => [attr, entry[attr]]));
-  return Object.keys(clean).length ? Object.freeze(clean) : null;
+  if (!Object.keys(clean).length) return null;
+  if (entry.frozen === true) clean.frozen = true;
+  return Object.freeze(clean);
 }
 
 export function deserializeEditCells(pairs) {
@@ -182,7 +201,7 @@ export function pasteBlock(map, block, col, row, cols, rows) {
   return result ?? map;
 }
 
-export const sameEntry = (a, b) => !!a && !!b && ATTRS.every(attr => a[attr] === b[attr]);
+export const sameEntry = (a, b) => !!a && !!b && ATTRS.every(attr => a[attr] === b[attr]) && isFrozen(a) === isFrozen(b);
 
 // Every cell of a rect merged with attrsFor(col, row, entry), on one Map copy (merge up).
 // Returns the same Map when nothing changed.

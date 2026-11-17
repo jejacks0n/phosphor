@@ -302,7 +302,10 @@ test('ANSI view: Retouch leaves a cell with only a character (the Brush\'s ▄) 
 // a painted circle beside it faded. The merge wrote some of the shape's cells exactly (with Layer 1's By shape, paint
 // wouldn't show as the shape did), with colors of their own. A cell holds a character, which can't fade, so Blur keeps
 // it, as it keeps typed text and ASCII art, and spreads its colors into the clear beside it.
-test('the report: in the ANSI view Blur keeps a merged shape\'s exact cells and spreads their colors into the clear beside them', async () => {
+// docs/model.md R4: the report's file (projects/blur-shape-issue.phosphor) was saved before cells a merge wrote were
+// marked, so its edge cells are characters of someone's own and stay; a merge made now marks them, and Blur turns those
+// back into paint (merge.test.js, R4). Both: the colors spread into the clear beside them.
+test('the report: in the ANSI view Blur keeps a merged shape\'s cells from before the mark, and spreads their colors into the clear beside them', async () => {
   const { project, workspace } = await createTestApp();
   await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/blur-shape-issue.phosphor')).arrayBuffer()], 'blur-shape-issue.phosphor'));
   await settle(project);
@@ -310,11 +313,31 @@ test('the report: in the ANSI view Blur keeps a merged shape\'s exact cells and 
   workspace.pickLayer('edit');
   Object.assign(workspace, { retouchSize: 6, retouchStrength: 100, retouchHardness: 50 });
   const ctx = { project, workspace, view: 'output' }, before = project.editCellAt(16, 10), beside = alphaAt(project, 15, 20);
-  expect(before?.fg).toBeDefined(); // the shape's left edge: an exact cell
+  expect(before?.fg).toBeDefined(); // the shape's left edge: a cell with colors, unmarked
   for (let i = 0; i < 4; i++) stroke(blur, ctx, { x: 16.5, y: 16 }, { x: 16.5, y: 30 });
   expect(project.editCellAt(16, 10)?.char).toBe(before.char);
   expect(alphaAt(project, 15, 20)).toBeGreaterThan(beside + 0.1); // its colors spread into the clear beside it
 });
+
+for (const view of ['input', 'output']) {
+  test(`R4: ${view === 'input' ? 'pixel' : 'ANSI'} view: on a drawing layer Blur turns a frozen cell it changes back into paint and leaves one it doesn't, and a typed letter stays`, async () => {
+    const { project, workspace, ctx } = await blank(view);
+    workspace.pickLayer('edit');
+    project.writeEditCells([{ col: 10, row: 5, attrs: { char: 'A', fg: '#ff0000', bg: '#000000' } }]);
+    project.commitEdit();
+    project.setEditCells(new Map([...project.editCells, ['4,5', Object.freeze({ char: '▚', fg: '#ff0000', bg: '#ffffff', frozen: true })], ['14,5', Object.freeze({ char: '▚', fg: '#ff0000', bg: '#ffffff', frozen: true })]]), ['4,5', '14,5']);
+    project.commitEdit();
+    await settle(project);
+    stroke(blur, ctx, { x: 4.5, y: 11 });  // over the frozen cell at 4,5 and the clear around it
+    stroke(blur, ctx, { x: 10.5, y: 11 }); // over the letter
+    await settle(project);
+    expect(project.editCellAt(4, 5)).toBeUndefined(); // paint now, its halves blurred with the clear
+    expect(alphaAt(project, 4, 10)).toBeGreaterThan(0);
+    expect(alphaAt(project, 4, 11)).toBeGreaterThan(0);
+    expect(project.editCellAt(14, 5)).toEqual({ char: '▚', fg: '#ff0000', bg: '#ffffff', frozen: true }); // out of reach: as it was
+    expect(project.editCellAt(10, 5)?.char).toBe('A'); // a character of someone's own: recolored, kept
+  });
+}
 
 // ANSI view on the base: the converter's own cells change as in the PIXEL view, their pixels, and the characters follow,
 // nothing pinned, however characters are chosen (a pin would outlast a switch of Choose characters); a pinned character

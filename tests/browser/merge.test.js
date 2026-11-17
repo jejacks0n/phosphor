@@ -12,6 +12,16 @@ import EditToolbar from '@/components/EditToolbar.vue';
 import { i18n } from '@/i18n';
 import { blur } from '@/tools/retouch';
 import { getTool } from '@/tools';
+import { isFrozen } from '@/document/editCells.js';
+
+const looks = (project) => project.cells.map(({ char, fg, bg }) => ({ char, fg: { r: fg.r, g: fg.g, b: fg.b }, bg: { r: bg.r, g: bg.g, b: bg.b } }));
+const apart = (a, b) => Math.max(Math.abs(a.r - b.r), Math.abs(a.g - b.g), Math.abs(a.b - b.b));
+// The same characters, and colors no more than the step or two apart that the same color rounds to when worked out
+// another way (merging.js ROUNDING).
+function expectLooksAlike(now, was) {
+  expect(now.map(({ char }) => char)).toEqual(was.map(({ char }) => char));
+  expect(Math.max(...now.map((cell, i) => Math.max(apart(cell.fg, was[i].fg), apart(cell.bg, was[i].bg))))).toBeLessThanOrEqual(2);
+}
 
 const maxDiff = (a, b, only) => (only ?? a.map((_, i) => i)).reduce((m, i) => Math.max(m, ...a[i].map((v, k) => Math.abs(v - b[i][k]))), 0);
 const drawnCells = (project, rect) => {
@@ -454,7 +464,28 @@ describe('down between layers', () => {
 
   // Over a picture a shape's soft edge doesn't show the same as paint, so its cells there are written exactly: Blur keeps
   // their characters, as it keeps every cell's, and spreads their colors into the clear beside them.
-  test('a shape merged down over a picture: Blur keeps the exact cells along its edge and spreads their colors into the clear', async () => {
+  // docs/model.md R3: the fixture of the report (projects/layer-blending-ascii.phosphor). Vector 1's red shape lies over
+  // Layer 1's white paint, and Layer 2's white paint over its edge. Merging the shape into Layer 1 wrote cells along its
+  // edge as characters; those counted as someone's own for Layer 2's paint above, which tinted them instead of covering
+  // them, so white cells turned into dark '.' and blanks. A frozen cell is paint to the layers above.
+  test('R3: the report: Vector 1 merged into Layer 1 under Layer 2\'s paint keeps what shows, and so does Layer 2 merged after it', async () => {
+    const { project } = await createTestApp();
+    await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/layer-blending-ascii.phosphor')).arrayBuffer()], 'x.phosphor'));
+    await settle(project);
+    expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit', 'vector', 'L1']);
+    const before = looks(project);
+    expect(project.mergeDown('vector')).toBe(true);
+    await settle(project);
+    expectLooksAlike(looks(project), before);
+    expect([...project.cellsOf('edit').values()].filter(isFrozen).length).toBeGreaterThan(20); // its edge, frozen
+    expect(project.mergeDown('L1')).toBe(true);
+    await settle(project);
+    expectLooksAlike(looks(project), before);
+  });
+
+  // docs/model.md R4: a frozen cell is paint to Retouch too: Blur turns it back into paint where it changes it, so a
+  // merged shape fades at its edge like a painted one; a typed character beside it stays (retouch.test.js).
+  test('R4: a shape merged down over a picture: Blur turns the frozen cells along its edge back into paint and fades them', async () => {
     const { project, workspace } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
     const vector = project.addLayer('vector', 'edit');
@@ -465,15 +496,18 @@ describe('down between layers', () => {
     expect(project.mergeDown(vector)).toBe(true);
     await settle(project);
     const edge = [...project.cellsOf('edit').keys()].find((key) => key.endsWith(',2'));
-    expect(edge).toBeDefined(); // the top edge, written exactly
+    expect(edge).toBeDefined(); // the top edge, written frozen
     const col = Number(edge.split(',')[0]);
+    expect(isFrozen(project.cellsOf('edit').get(edge))).toBe(true);
     workspace.editorTab = 'input';
     Object.assign(workspace, { retouchSize: 4, retouchStrength: 100, retouchHardness: 100 });
-    const ctx = { project, workspace, view: 'input' }, at = { x: col + 0.5, y: 4.5 }, before = project.cellsOf('edit').get(edge);
+    const ctx = { project, workspace, view: 'input' }, at = { x: col + 0.5, y: 4.5 };
     getTool('blur').begin(ctx, at, {});
     blur.end(ctx);
     await settle(project);
-    expect(project.cellsOf('edit').get(edge)?.char).toBe(before.char); // its character kept
+    expect(project.cellsOf('edit').get(edge)).toBeUndefined(); // paint now
+    expect(project.paintOf('edit').pixelAt(col, 4)?.a).toBeGreaterThan(0); // its two halves
+    expect(project.paintOf('edit').pixelAt(col, 5)?.a).toBeGreaterThan(0);
     expect(project.paintOf('edit').pixelAt(col, 3)?.a).toBeGreaterThan(0); // the clear above it
     expect(project.paintOf('edit').pixelAt(col, 3)?.a).toBeLessThan(1);
   });

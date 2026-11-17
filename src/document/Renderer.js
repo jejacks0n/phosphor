@@ -32,7 +32,7 @@ import { nearestColor, paletteIndex, withIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
 import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint } from '../lib/Cells.js';
-import { cellKey, parseKey, shownEntry } from './editCells.js';
+import { cellKey, parseKey, shownEntry, isFrozen, ownEntry } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
 import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatcher, resolveShapes, SAMPLES } from '../lib/CharResolver.js';
@@ -1032,9 +1032,9 @@ export default class Renderer {
   }
 
   // Whether the cell at col, row holds a character that's someone's own under the upper layers: the lower cells layer's
-  // entry or the base's pin.
+  // entry (ownEntry: shown, and not one Merge down froze, which is paint to the layers above) or the base's pin.
   #exactUnder(col, row) {
-    return !!shownEntry(this.#lowerEdits?.get(cellKey(col, row)), this.#lowerStyle) || this.pinAt(col, row) !== undefined;
+    return !!ownEntry(this.#lowerEdits?.get(cellKey(col, row)), this.#lowerStyle) || this.pinAt(col, row) !== undefined;
   }
 
   // reads: each upper layer's pixels at grid resolution (composeUpper), or null for one with nothing to lay. Only the
@@ -1072,7 +1072,7 @@ export default class Renderer {
       const top = read ? paintAt(read, 2 * row) : null, bottom = read ? paintAt(read, 2 * row + 1) : null;
       if (entry) {
         cell = composeCell(cell, entry, renderStyle, (hex, index) => this.effective(hex, params, index));
-        exact = true;
+        exact = !isFrozen(entry); // a frozen cell shows its character, and is paint to what's over it (docs/model.md R3)
       }
       cell = this.#paintOver(cell, top, bottom, exact, col, row, params, palette);
     }
@@ -1376,7 +1376,7 @@ export default class Renderer {
     if (own ? !this.#hasUnder(col, row, params) : !under) return baseCells[cellIndex(col, row, params.cols)];
     const cell = composeCell(under, entry, params.renderStyle, (hex, index) => this.effective(hex, params, index));
     if (this.#noPaint) return cell;
-    return this.#paintOver(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), true, col, row, params, this.palette);
+    return this.#paintOver(cell, this.paintAt(col, 2 * row), this.paintAt(col, 2 * row + 1), !isFrozen(entry), col, row, params, this.palette);
   }
 }
 

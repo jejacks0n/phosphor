@@ -3,7 +3,7 @@
 // being applied) and _typingTimer (the pause that ends a typing run). With the base picked (onBottom)
 // it all goes on the base: a cell written as it then shows (completeAt, writeBaseCells), paint as base
 // pixels, and typing overwrites (a row of pins and pixels doesn't shift).
-import { cellKey, withCellEdit, mergeEntry, withoutCells, shiftRow } from '@/document/editCells.js';
+import { cellKey, withCellEdit, mergeEntry, withoutCells, shiftRow, isFrozen } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
@@ -53,18 +53,28 @@ export const editLayerActions = {
           const key = cellKey(col, row), first = !seen.has(key), cell = this.cells[cellIndex(col, row, cols)];
           seen.add(key);
           if (!first || !cell) return false;
-          return ownColored(this, col, row) ? opensToPaint(cell, this.renderStyle) : showsNoChar(this, col, row, cell); // docs/model.md R2
+          // docs/model.md R5 (a frozen cell is paint) and R2 (a character with nothing to tint)
+          return isFrozen(this.editCellAt(col, row)) || (ownColored(this, col, row) ? opensToPaint(cell, this.renderStyle) : showsNoChar(this, col, row, cell));
         });
         // A cell of the layer's own with colors shows them itself, and a ▄ with colors of its own isn't a paint block
-        // (ASCII would show it): its colors go into paint, as it showed, and the ▄ has none.
-        const own = cells.filter(({ col, row }) => ownColored(this, col, row));
-        this.putEditPixels(own.flatMap(({ col, row }) => ownHalves(this, col, row).map((color, k) => ({ x: col, y: 2 * row + k, ...color, a: 1 }))).filter(({ y }) => y < rows));
-        this.writeEditCells(cells.map((c) => ({ ...c, attrs: ownColored(this, c.col, c.row) ? { char: '▄', fg: null, bg: null, fgIndex: null, bgIndex: null } : { char: '▄' } })));
+        // (ASCII would show it): its colors go into paint, as it showed (unlockCells), and the ▄ has none.
+        this.unlockCells(cells.filter(({ col, row }) => ownColored(this, col, row)));
+        this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
         cells = [];
       }
       this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
     }
     this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
+  },
+
+  // Cells of the layer in use ([{ col, row }]) turned back into paint: the two halves each shows (ownHalves) laid as
+  // opaque paint, and the entry taken away. What Retouch and Colors only do to a frozen cell (docs/model.md R4 and R5),
+  // and Colors only to a cell with colors of its own that shows no character (R2). Not on the base.
+  unlockCells(cells) {
+    if (!cells.length || onBottom(this)) return;
+    const { rows } = this;
+    this.putEditPixels(cells.flatMap(({ col, row }) => ownHalves(this, col, row).map((color, k) => ({ x: col, y: 2 * row + k, ...color, a: 1 }))).filter(({ y }) => y < rows));
+    this.clearEditCells(cells);
   },
 
   // Set the picked layer's paint at grid pixels ({ x, y, r, g, b, a }, a 0..1) to exactly those colors and alphas,
