@@ -62,3 +62,34 @@ for (const hardness of [100, 0]) {
     onBase.forEach((v, i) => expect(Math.abs(v - onLayer[i])).toBeLessThanOrEqual(2));
   });
 }
+
+// A stroke over paint that's partly see-through shows as it does on a layer above that paint: the stroke builds up as on
+// clear pixels and is laid over the paint (the alpha of the two as two layers', not their sum), so the picture under
+// shows through as much (maya-13: soft red over 50% white came out near-white on the white's own layer).
+for (const hardness of [100, 10]) {
+  test(`a soft stroke over 50% white paint shows the same on the white's own layer as on the layer above (hardness ${hardness})`, async () => {
+    const shown = async (above) => {
+      const { project, workspace } = await createTestApp();
+      await project.setBlankCanvas({ cols: 20, rows: 20, withLayer: true });
+      await settle(project);
+      workspace.editorTab = 'input';
+      const ctx = { project, workspace, view: 'input' };
+      const stroke = (from, to) => {
+        brush.begin(ctx, from, {});
+        brush.move(ctx, from, to);
+        brush.end(ctx);
+      };
+      Object.assign(workspace, { editFgColor: '#ffffff', editBrushSize: 8, editBrushHardness: 100, editBrushOpacity: 50, editBrushStack: true });
+      stroke({ x: 2, y: 18 }, { x: 18, y: 18 });
+      if (above) workspace.pickLayer(project.addLayer('cells', workspace.pickedLayer));
+      Object.assign(workspace, { editFgColor: '#ff5555', editBrushSize: 4, editBrushHardness: hardness, editBrushOpacity: 40 });
+      stroke({ x: 2, y: 18.5 }, { x: 18, y: 18.5 });
+      await settle(project);
+      return [6, 8, 10].flatMap((col) => { const cell = project.cells[col + 9 * 20]; return [cell.fg.hex, cell.bg.hex]; })
+        .flatMap((hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)));
+    };
+    const onLayerAbove = await shown(true), onOwnLayer = await shown(false);
+    expect(onLayerAbove.some((v, i) => i % 3 && v < 200)).toBe(true); // green and blue: the black shows through
+    onOwnLayer.forEach((v, i) => expect(Math.abs(v - onLayerAbove[i])).toBeLessThanOrEqual(3));
+  });
+}

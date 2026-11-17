@@ -236,8 +236,8 @@ dithered, and compare the dither at 80 and at 200 columns.
 ### 16. Paint over the picture
 - Does: picks the Brush, sets its Size (] grows it, [ shrinks it) and Opacity, and paints a few strokes on Layer 2.
 - Expects: paint covers half cells and shows through each cell's character (Colors only), and a cell that shows none
-  (one flat color) takes it as a plain `▄`; with Build up on, two strokes at 50% make it solid; the color adjustments
-  tint the paint too. A stroke painted in the PIXEL view comes out the same in ANSI; in Color ASCII the strokes become
+  (one flat color) takes it as a plain `▄`; with Build up on, two strokes at 50% make it 75%, as two layers at 50% do;
+  the color adjustments tint the paint too. A stroke painted in the PIXEL view comes out the same in ANSI; in Color ASCII the strokes become
   ASCII characters, never `▄`, and their `▄` show again back in ANSI.
 - Probes: `interrupt`: switch to PIXEL, paint a stroke on a flat part, and back in ANSI check it shows the `▄` an ANSI
   stroke there does, then set Art style to Color ASCII and back (no stripes, then the `▄` again); `out-of-order`: hide Layer 2 with its eye and try to paint ("Make the layer visible to draw on it"); `undo-redo`:
@@ -443,8 +443,9 @@ engineering rules behind these steps are docs/model.md (R1–R8); a finding here
 - Does: on Layer 1 paints a white patch; on Layer 2, above it, a soft red stroke (Opacity 40, Hardness low) across the
   patch's edge; then the same stroke on Layer 1 beside it. Drags Layer 2 below Layer 1 in LAYERS, then back.
 - Expects: the stroke on Layer 2 looks like the one on Layer 1, the same characters and colors over the white and over
-  the photo, in the ANSI and PIXEL views alike; in Color ASCII, soft paint over white comes out near-white, never a
-  darker character; a layer dragged below another with nothing between them looks as it did.
+  the photo, in the ANSI and PIXEL views alike, over the white's soft edge and over white at Opacity 50 too (the photo
+  shows through as much); in Color ASCII, soft paint over white comes out near-white, never a darker character; a
+  layer dragged below another with nothing between them looks as it did.
 - Probes: `pixel-view`: the Overlay at 100% and at 0% show the same strokes; `again`: by intensity instead of By shape.
 - Rated: no (drawing)
 

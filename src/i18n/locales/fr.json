@@ -405,7 +405,7 @@
       "hardness": "Dureté",
       "hardnessTitle": "Douceur des contours",
       "stack": "Cumuler",
-      "stackTitle": "Superposer les traits de pinceau de façon additive. Par exemple, deux passages à 50 % d'opacité atteignent 100 %. Si désactivé, les traits superposés ne dépassent jamais l'Opacité définie."
+      "stackTitle": "Superposer les traits de pinceau, chacun posé sur la peinture comme sur un calque au-dessus. Par exemple, deux passages à 50 % d'opacité atteignent 75 %. Si désactivé, les traits superposés ne dépassent jamais l'Opacité définie."
     },
     "eraser": {
       "title": "Gomme",

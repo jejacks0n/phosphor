@@ -136,11 +136,12 @@ export default class PaintLayer {
 
   // pixels: { x, y, r, g, b, alpha }[] in grid pixels. Paint builds up to `opacity`, then blends. With
   // stack, `opacity` is what one stroke (beginStroke to endStroke; outside one, this call) lays at
-  // most, on top of what's there: strokes stack, so two at 50% make it opaque.
-  // Over a pixel already opaque when a stroke reaches it (the base's, all of them, or a layer's solid paint), the
-  // stroke builds up as it would on clear pixels (own: its paint, by cell rect) and is laid over what the pixel was
-  // before it (beneath: per 64-pixel tile, its RGB and a saved flag), so a stroke shows the same on the base as on a layer over it; each dab blended into the
-  // opaque pixel made it dimmer.
+  // most, on top of what's there: strokes stack, as layers do, so two at 50% make it 75%.
+  // Over a pixel with paint when a stroke reaches it (opaque: the base's, all of them, or a layer's solid paint; with
+  // stack, any), the stroke builds up as it would on clear pixels (own: its paint, by cell rect) and is laid over what
+  // the pixel was before it (beneath: per 64-pixel tile, its RGBA, the alpha + 1 so 0 is unsaved), so a stroke shows the
+  // same on the base, or on a layer's paint, as on a layer over it; each dab blended into the opaque pixel made it
+  // dimmer, and over paint partly see-through the alphas added up, hiding the picture under more than a layer does.
   paint(pixels, opacity = 100, stack = false) {
     const rects = [];
     for (const { x, y, r, g, b, alpha } of pixels) {
@@ -167,10 +168,11 @@ export default class PaintLayer {
       const key = cx + cy * 65536, added = laid.get(key) ?? 0;
       const adds = stack ? Math.min(a, maxA - added) : a, weight = stack ? adds : a; // the new color's share
       if (stack && adds > 0) laid.set(key, added + adds);
-      // The stroke's own paint in this rect, as on clear pixels: begun where the rect was opaque when a dab first came.
+      // The stroke's own paint in this rect, as on clear pixels: begun where the rect had paint (without stack, opaque
+      // paint: Opacity is a ceiling on the layer's paint) when a dab first came.
       const first = ((cy - bounds.y) * bounds.w + (cx - bounds.x)) * 4;
-      let mine = own?.get(key) ?? null;
-      if (own && !mine && data[first + 3] === 255) own.set(key, mine = { r, g, b, a: 0 });
+      let mine = own?.get(key) ?? null; // null: the rect was clear at the first dab, and the stroke's paint is the pixels
+      if (own && !own.has(key)) own.set(key, mine = data[first + 3] === 255 || (stack && data[first + 3]) ? { r, g, b, a: 0 } : null);
       if (mine) {
         if (adds <= 0 || mine.a >= ceiling) {
           const blend = Math.min(1, a / 255);
@@ -194,14 +196,17 @@ export default class PaintLayer {
             if (tileKey !== savedKey) {
               savedKey = tileKey;
               saved = beneath.get(tileKey);
-              if (!saved) beneath.set(tileKey, saved = new Uint8Array(TILE * TILE * 4));
+              if (!saved) beneath.set(tileKey, saved = new Uint16Array(TILE * TILE * 4));
             }
             const s = ((py - ty * TILE) * TILE + (px - tx * TILE)) * 4;
-            if (!saved[s + 3]) { saved[s] = data[idx]; saved[s + 1] = data[idx + 1]; saved[s + 2] = data[idx + 2]; saved[s + 3] = 1; }
-            const shown = mine.a / 255;
-            data[idx]     = Math.round(saved[s] + (mine.r - saved[s]) * shown);
-            data[idx + 1] = Math.round(saved[s + 1] + (mine.g - saved[s + 1]) * shown);
-            data[idx + 2] = Math.round(saved[s + 2] + (mine.b - saved[s + 2]) * shown);
+            if (!saved[s + 3]) { saved[s] = data[idx]; saved[s + 1] = data[idx + 1]; saved[s + 2] = data[idx + 2]; saved[s + 3] = existingA + 1; }
+            // Its paint over what was there, as a layer's over the one under it.
+            const under = (saved[s + 3] - 1) * (255 - mine.a) / 255, total = mine.a + under;
+            if (!total) continue;
+            data[idx + 3] = Math.round(total);
+            data[idx]     = Math.round((mine.r * mine.a + saved[s] * under) / total);
+            data[idx + 1] = Math.round((mine.g * mine.a + saved[s + 1] * under) / total);
+            data[idx + 2] = Math.round((mine.b * mine.a + saved[s + 2] * under) / total);
           } else if (adds <= 0 || existingA >= ceiling) {
             // The paint is as opaque as it gets, or the stroke has laid its opacity: the color blends in.
             const blend = Math.min(1, a / 255);
@@ -523,9 +528,9 @@ export default class PaintLayer {
 
   // Set pixels to exact colors (runs: changes.js), without blending, whatever was there. Returns the tiles
   // written, as a patch has them. Tile by tile, since a soft stroke's runs are mostly a pixel long. A stroke
-  // being recorded takes them in what it saved: they aren't its own.
+  // being recorded takes them in what it saved, and under the paint it lays (beneath): they aren't its own.
   writeRuns(runs) {
-    const ctx = ctx2d(this.canvas), { width, height } = this.canvas, images = new Map();
+    const ctx = ctx2d(this.canvas), { width, height } = this.canvas, images = new Map(), beneath = this.#stroke?.beneath;
     let tile = null, erased = false;
     eachPixel(runs, (x, y, rgba) => {
       if (x < 0 || y < 0 || x >= width || y >= height) return;
@@ -541,6 +546,8 @@ export default class PaintLayer {
       const i = ((y - ty) * tile.w + x - tx) * 4;
       setPixel(tile.image.data, i, rgba);
       if (tile.saved) setPixel(tile.saved, i, rgba);
+      const under = beneath?.get(tx / TILE + (ty / TILE) * 65536), s = ((y - ty) * TILE + x - tx) * 4;
+      if (under?.[s + 3]) { setPixel(under, s, rgba); under[s + 3] = (rgba & 0xff) + 1; }
       if (rgba) this.hasPaint = true;
       else erased = true;
     });

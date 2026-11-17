@@ -476,8 +476,10 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
 ### Opacity, Build Up, and Flow
 
 - **Opacity**: How much one stroke lays at most. Going back over the same spot within a stroke doesn't add more.
-- **Build up** (on by default): Strokes stack, so two strokes at 50% make the paint solid. With it off, Opacity is a
-  ceiling: paint never gets more solid than it, and more strokes only change its color.
+- **Build up** (on by default): Strokes stack, as layers do: each lays over the paint already there as it would on a
+  layer above it, so two strokes at 50% make the paint 75%, and a soft stroke over see-through paint looks the same on
+  that paint's own layer as on the layer above. With it off, Opacity is a ceiling: paint never gets more solid than
+  it, and more strokes only change its color.
 - **Flow**: Within a stroke, how quickly the paint builds up.
 - **Shared Settings**: The Pencil, Shapes' paint and the Paint Bucket's **Colors only** fill lay paint at the Brush's
   Opacity and Build up.
