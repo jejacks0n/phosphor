@@ -26,7 +26,7 @@ import { commentLines, keptFields, keptRecord, withLetterSpacing } from '@/lib/S
 import { toast } from '@/composables/useToast.js';
 import { busyWhile } from '@/composables/useBusy.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { settingDefaults, sauceDefaults } from '@/store/settings.js';
+import { settingDefaults, sauceDefaults, sliderDefaults } from '@/store/settings.js';
 import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, savedJson, randomId, blackPicture } from '@/store/project/shared.js';
 import { desktop } from '@/social/desktop.js';
 import { generateSlug } from 'random-word-slugs';
@@ -201,6 +201,7 @@ export const documentActions = {
       this.replaceImage(image, buffer, {
         ...lockedGrid(this.cols, ratio),
         ...sauceDefaults(),
+        ...sliderDefaults(),
         ...nameOf(file),
         savedToFile: false,
       }, { baseOnly: !withLayer });
@@ -227,6 +228,7 @@ export const documentActions = {
       cols: Math.max(1, cols),
       rows: Math.max(1, rows),
       ...sauceDefaults(),
+      ...sliderDefaults(),
       filename: t('common.untitled'),
       savedToFile: false,
       ...patch,
@@ -367,6 +369,7 @@ export const documentActions = {
       editCells: new Map(),
       shapes: new Map(),
       hasPaint: false,
+      ...sliderDefaults(), // the start screen's, for the next drawing
     });
     newLayers(this);
     this.newDocument();

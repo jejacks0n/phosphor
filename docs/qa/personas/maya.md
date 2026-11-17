@@ -74,8 +74,9 @@ script. Every section ends with Free time.
   only Base, picked; the Characters section is titled "Characters · Base", with Picture · Base and Image filters
   under it; the address shows the ANSI tab.
   Opening takes under the `file` budget.
-- Probes: `free`: drop the file on the box instead of using the button; `again`: press New project and open the same
-  `photo.jpg` a second time, checking New project asks about unsaved changes only if there are any;
+- Probes: `free`: drop the file on the box instead of using the button; `again`: nudge Brightness to 101%, press New
+  project and open the same `photo.jpg` a second time, checking New project asks about unsaved changes only if there
+  are any, and that the start screen and the photo both show Brightness at 100%;
   `extremes`: open `tall.png` and `rgba.png` and look at where the transparency and the long edge land.
 - Rated: yes, wants Cmd+O
 
