@@ -97,7 +97,10 @@ const onLayerId = (id) => ([, shape]) => (shape.layer ?? 'vector') === id;
 // (top) and foreground (bottom) pixels with its character pinned (a cell that showed a different character, ▄ for a solid
 // one under paint, as its two half colors with the shown character pinned), then its paint over them, a grid pixel at a
 // time as it shows. Paint over a pinned cell (an erased one's space) pins what it shows too. Nothing is resampled or put
-// through the effects. A color's 256-color index goes with it (mergeCellOf's) where no paint is over that half. Entries past
+// through the effects. A color's 256-color index goes with it (mergeCellOf's) where no paint is over that half. A cell
+// that would show otherwise as base pixels (unlike: soft paint mixed in before the palette's snap rather than after, paint
+// the converter picks again from the base's snapped pixels) is written as it showed instead, its stored colors as its two
+// pixels and its character pinned (frozenCells), as Drawing on the base writes a cell (docs/model.md R3). Entries past
 // the grid (after a canvas resize shrank it) or outside rect stay on the layer.
 function onBase(project, id, rect) {
   const cells = project.cellsOf(id), paint = project.paintOf(id), rows = charRowsOf(project.rows);
@@ -115,6 +118,14 @@ function onBase(project, id, rect) {
   const paintedPins = [...project.baseRecords.pins.keys()].map(parseKey)
     .filter(({ col, row }) => inRect(col, row) && !cells.has(cellKey(col, row)) && painted(col, row))
     .map(({ col, row }) => ({ col, row, char: shownChar(col, row) ?? '▄' }));
+
+  // Every cell the merge writes in, as it shows now, for unlike.
+  const { cols } = project, written = new Set(merged.map(({ col, row }) => row * cols + col));
+  if (paint?.hasPaint) {
+    const r = rect ?? project.gridRect();
+    for (let row = r.r0; row <= r.r1; row++) for (let col = r.c0; col <= r.c1; col++) if (painted(col, row)) written.add(row * cols + col);
+  }
+  const indexes = [...written], was = indexes.length && levelCells(project, id, indexes), looks = frozenCells(project, id, indexes, was);
 
   const before = { base: project.baseLayer.snapshot(), baseRecords: project.baseRecords, stack: stackState(project) };
   const pixels = merged.flatMap(({ col, row, top, bottom }) => [{ x: col, y: 2 * row, ...top, alpha: 1 }, { x: col, y: 2 * row + 1, ...bottom, alpha: 1 }]);
@@ -134,6 +145,16 @@ function onBase(project, id, rect) {
     base: project.baseLayer.snapshot(), baseRecords: withPins(before.baseRecords, pins),
     stack: leftOn(project, before.stack, id, rect, { editCells: kept, paintLayer: left, hasPaint: !!left?.hasPaint }),
   };
+  const shifted = unlike(project, after, 'base', indexes, was).map((i) => {
+    const col = i % cols, row = (i - col) / cols;
+    return { col, row, ...looks.get(cellKey(col, row)) };
+  });
+  if (shifted.length) {
+    const exact = shifted.flatMap(({ col, row, fg, bg }) => [{ x: col, y: 2 * row, ...hex2rgb(bg ?? fg), alpha: 1 }, { x: col, y: 2 * row + 1, ...hex2rgb(fg), alpha: 1 }]);
+    project.baseLayer.erase(exact);
+    project.baseLayer.paint(exact);
+    Object.assign(after, { base: project.baseLayer.snapshot(), baseRecords: withPins(after.baseRecords, shifted.map(({ col, row, char }) => ({ col, row, char }))) });
+  }
   return mergeStep(project, before, after, bytesHeld(before.base, after.base, left, kept));
 }
 
@@ -182,14 +203,14 @@ const sameLook = (a, b) => {
 
 // The cells at indexes (row * cols + col) a merge into the cells layer with the id under would change, with its after
 // (state, mergeStep's) put in place: each worked out as it shows up to that layer (through the pipeline for the lower
-// group's, its paint composited again first) and set against was, levelCells' up to the merged layer before. What goes in
-// as paint converts there once, which can show otherwise than converted under it and again over it (a palette's snap,
-// Best match, By shape's finer samples, a layer's own settings): those cells are frozen instead. The state stays put, as
-// the merge's step puts its after next.
+// group's or the base's, its pixels and paint composited again first) and set against was, levelCells' up to the merged
+// layer before. What goes in as paint converts there once, which can show otherwise than converted under it and again
+// over it (a palette's snap, Best match, By shape's finer samples, a layer's own settings): those cells are frozen
+// instead (pinned, on the base). The state stays put, as the merge's step puts its after next.
 function unlike(project, state, under, indexes, was) {
   if (!indexes.length) return [];
   putState(project, state);
-  if (project.lowerGroup.cells === under) {
+  if (under === 'base' || project.lowerGroup.cells === under) {
     const { cols, rows } = project;
     project.composite();
     project.recompose(indexes.flatMap((i) => halvesOf(i % cols, Math.floor(i / cols))).filter(({ y }) => y < rows));

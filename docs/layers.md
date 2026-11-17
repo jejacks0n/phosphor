@@ -593,7 +593,8 @@ the canvas changes. Undo brings it back, selected if it was.
   - **Keep crisp cells**: Paint and cells become base pixels exactly as they show, and your typed and drawn cells keep
     their characters, pinned on the base layer (in Color ASCII and Monochrome ASCII, **Colors only**'s paint is paint:
     it becomes pixels, with nothing pinned; in Color ASCII a typed cell's background comes along, shown by its pin). Nothing is resampled or re-filtered, and the image filters never touch
-    it.
+    it. The base snaps its pixels to the palette one at a time, so a cell soft paint or a Blur stroke would show
+    otherwise as pixels is pinned as it showed.
   - **Blend into source image**: Your drawing becomes part of the image itself, so every slider applies to it, live,
     like the photo. Paint and solid cells (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep showing their
     two halves; letters and other characters can't become picture pixels, so they merge exactly, as does anything
