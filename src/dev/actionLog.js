@@ -2,7 +2,7 @@
 // components/dev/HistoryPanel.vue). Every store action is a step, so a Pinia plugin records them: a top-level action
 // only (the ones it calls through `this` are its own business, until it returns; an async one's continuation after an await is a new
 // top level, so a step during a long open still shows), none of the names in `skip` (queries, render internals, what
-// autosave calls on its own), a repeat of the last line folded into it with a count (a stroke's per-move calls), and
+// autosave calls on its own), a repeat of the last line folded into it with a count (a stroke's per-move calls; see folds), and
 // arguments summarized, never kept. Window errors are lines too. The newest LIMIT lines stay.
 import { shallowReactive } from 'vue';
 
@@ -19,13 +19,13 @@ let busy = false;
 export function installActionLog(pinia, skip = new Set()) {
   pinia.use(({ store }) => {
     store.$onAction(({ name, args, after, onError }) => {
-      if (busy || skip.has(name)) return;
-      busy = true;
+      if (busy) return;
+      busy = true; // a skipped one's too: what it calls is its own business
       const done = () => { busy = false; };
       after(done); // a sync action: when it returns, so the next action in the same handler is its own line
       onError(done);
       queueMicrotask(done); // an async one: its continuation is a new top level
-      record(store.$id, name, args.length ? `(${args.map(summarize).join(', ')})` : ''); // before it runs: a throw still leaves its line
+      if (!skip.has(name)) record(store.$id, name, args.length ? `(${args.map(summarize).join(', ')})` : ''); // before it runs: a throw still leaves its line
     });
   });
   if (typeof window !== 'undefined') {
@@ -44,12 +44,16 @@ export function recordError(message) {
 
 function push(kind, text, args) {
   const at = performance.now() - log.start, last = log.entries.at(-1);
-  if (last && last.kind === kind && last.text === text) {
+  if (last && last.kind === kind && last.text === text && folds(args, last.args)) {
     log.entries = [...log.entries.slice(0, -1), { ...last, at, args, count: last.count + 1 }];
     return;
   }
   log.entries = [...log.entries.slice(-(LIMIT - 1)), { at, kind, text, args, count: 1 }];
 }
+
+// A repeat folds into the line before it when its arguments are the same, or hold a collection (a stroke's pixels, a
+// shape's fields: the per-move calls). A different scalar is a step of its own: this tool, then that one.
+const folds = (args, before) => args === before || /[[{]|\w\(\d/.test(args);
 
 export function clearLog() {
   log.entries = [];

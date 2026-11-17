@@ -83,8 +83,8 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   pre-release: package.json's version, higher by semver than every version tag before it, checked by
   `scripts/release-tag.mjs`). Its
   tests are the `desktop-*` files in `tests/unit`, `tests/browser` (the `browser-desktop` project) and `tests/e2e`.
-- `src/dev/actionLog.js` and `src/components/dev/HistoryPanel.vue`: the development-only HISTORY tab, every
-  step taken this session as a log to paste into a bug report ([docs/testing.md](docs/testing.md)).
+- `src/dev/actionLog.js` (and `skipped.js`, the actions it leaves out) and `src/components/dev/HistoryPanel.vue`: the
+  development-only HISTORY tab, every step taken this session as a log to paste into a bug report ([docs/testing.md](docs/testing.md)).
 - `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be
   worked on side by side. Commit and push inside `server/`; its commits go to its repo, never this
   one. A fresh checkout makes the link with `ln -s <the server's checkout> server`.

@@ -12,13 +12,14 @@ const useToy = defineStore('toy', {
     stroke() { this.paint([1]); this.paint([2]); },
     boom() { throw new Error('no'); },
     read() { return this.n; },
+    peek() { this.paint([1]); }, // skipped, and calls one that isn't
   },
 });
 
 let store;
 beforeEach(() => {
   const pinia = createPinia();
-  installActionLog(pinia, new Set(['read']));
+  installActionLog(pinia, new Set(['read', 'peek']));
   createApp({}).use(pinia); // plugins wait for an app, as in main.js
   setActivePinia(pinia);
   store = useToy();
@@ -33,6 +34,20 @@ test('a top-level action is one entry; the ones it calls are not', () => {
 test('a skipped action is not recorded', () => {
   store.read();
   expect(log.entries).toEqual([]);
+});
+
+test("a skipped action's own calls are not recorded either", () => {
+  store.peek();
+  expect(log.entries).toEqual([]);
+});
+
+test('a repeat with different scalar arguments is its own line (a tool or layer picked, then another)', () => {
+  store.paint('brush');
+  store.paint('pencil');
+  store.paint(1);
+  store.paint(2);
+  store.paint(2);
+  expect(log.entries.map((e) => [e.args, e.count])).toEqual([['("brush")', 1], ['("pencil")', 1], ['(1)', 1], ['(2)', 2]]);
 });
 
 test('the same action again folds into one line with a count, its arguments the latest', () => {
