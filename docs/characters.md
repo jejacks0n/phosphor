@@ -81,7 +81,7 @@ Each layer has its own **Choose characters**, **Characters** set, **Character se
 
 - **New layers** start with the picked layer's settings. A drawing saved before layers had their own settings gives every layer the settings it had, so it looks the same.
 - **Seams**: Where a layer's settings differ from the base's, a seam can show where its cells meet the ones under it.
-- **Best match and By shape on other layers** pick the way they do on the base. By shape samples a vector layer's shapes inside each cell over what's under them, so a circle's edge gets the same characters on its own layer as on the base. Best match mixes a layer's colors before the palette, so a soft edge can get a shade. Paint is matched by its halves, since it covers whole half cells.
+- **Best match and By shape on other layers** pick the way they do on the base. By shape samples a vector layer's shapes inside each cell over what's under them, so a circle's edge gets the same characters on its own layer as on the base. Best match mixes a layer's colors before the palette, so a soft edge can get a shade. By shape samples a drawing layer's paint inside each cell too: brush strokes cover whole half cells, but a picture added to the layer (dropped on the drawing, then **Add to this drawing**) gets the characters its edges would get on the base.
 - **Dither on other layers**: On a layer using Best match or By shape, its own **Ordered (Bayer)** dither nudges each cell by its place, as on the base. Its own **Floyd–Steinberg** does nothing there, because those cells are matched one at a time over what's under them.
 
 ### Typed Cells, Pinned Characters, and Paint
