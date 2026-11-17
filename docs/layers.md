@@ -221,6 +221,8 @@ Moving a slider in Transforms, Adjustments or Image filters is an undo step, lik
 - **Slider Steps**: A whole drag is one step, a run of arrow-key nudges on one slider is one step, and so are
   **Reset**, **Reset all**, and picking the Colorize, Threshold or Edges colors. Undo goes back through slider moves
   and drawing in the order you made them.
+- **A New Drawing**: Starts with every slider back at its default, whatever the drawing before had them at: a picture,
+  an SVG or a blank canvas, and the start screen after **New project**.
 - **Characters Steps**: The Characters section's settings are undo steps the same way, on the layer they belong to: a
   choice picked (Choose characters, a preset from ▾, Dither style), a Characters set or seed typed, **Generate new
   seed**, and a Solids, Pattern light or Dither drag or run of nudges.

@@ -142,6 +142,8 @@ export function settingsState() {
 
 export const settingDefaults = () => Object.fromEntries(SETTINGS.map(s => [s.key, defaultOf(s)]));
 export const sauceDefaults = () => Object.fromEntries(SETTINGS.filter(s => s.group === 'sauce').map(s => [s.key, defaultOf(s)]));
+// Every slider at its default (a new drawing's, which Reset all gives too).
+export const sliderDefaults = () => Object.assign({}, ...RESET_GROUPS.map(groupDefaults));
 
 export function groupDefaults(group) {
   return Object.fromEntries(SETTINGS.filter(s => s.group === group && s.reset !== false).map(s => [s.key, defaultOf(s)]));

@@ -9,6 +9,7 @@ import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
 import { readSauce } from '@/lib/Sauce';
 import { closeToast, toastMessage } from '@/composables/useToast';
+import { slidersAtDefaults } from '@/store/settings';
 
 const plain = (hex) => { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; return { r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] }; };
 const COLORS = {
@@ -406,5 +407,23 @@ for (const [name, start] of [
     await settle(project);
     expect([project.sauceTitle, project.sauceAuthor, project.sauceGroup, project.sauceDate, project.sauceUserComments, project.sauceFontName, project.sauceUse9pxFont])
       .toEqual(['', '', '', '', '', 'IBM VGA', false]);
+  });
+}
+
+// Maya: every slider back at its default for a new drawing, however it starts, and on the start screen after New
+// project, whatever the drawing before had them at (Brightness 101% carried into every picture opened after it).
+for (const [name, start] of [
+  ['a picture', async (project) => loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 })],
+  ['an SVG', (project) => project.openSvgFile(new File([SVG], 'box.svg', { type: 'image/svg+xml' }))],
+  ['a blank canvas', (project) => project.setBlankCanvas({ cols: 20, rows: 20 })],
+  ['New project', (project) => project.clearImage()],
+]) {
+  test(`${name} starts with every slider at its default`, async () => {
+    const project = await afterAnotherDocument();
+    Object.assign(project, { brightness: 101, blur: 3, levelsMid: 1.5, colorizeStrength: 40 });
+    await start(project);
+    await settle(project);
+    expect(slidersAtDefaults(project)).toBe(true);
+    expect(project.brightness).toBe(100);
   });
 }
