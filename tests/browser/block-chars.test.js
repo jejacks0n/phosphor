@@ -362,3 +362,77 @@ for (const charChoice of ['random', 'best', 'shape']) {
     expect(at(12).fg.hex === '#ff5555' || at(12).bg.hex === '#ff5555').toBe(true); // the paint shows in the converter's cell too
   });
 }
+
+// docs/model.md R5 on a layer: a ▄ is only for where paint would bring out a character the converter hid, the base's
+// Random and a layer that shares it. The report (projects/random-layer-blocks.phosphor: a white canvas under Best match
+// with paint on the base and Layer 1, and Layer 2 above with Random and a seed of its own): Layer 2's strokes came out
+// as half-blocks wherever the canvas under them was flat, and as Random's characters only along the edges of what was
+// under them. Colors only made a ▄ of every cell that showed no character, and a ▄ isn't converted, whatever the layer's
+// settings are; Layer 1's, under Best match, then held Layer 2's paint over them to half-blocks too (R1).
+test('R5: the report: Colors only on a layer with its own Random makes no ▄ of a flat canvas, and its paint shows Random\'s characters', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/random-layer-blocks.phosphor')).arrayBuffer()], 'x.phosphor'));
+  await settle(project);
+  expect([project.charChoice, project.charsOf('edit').charChoice, project.charsOf('L1').charChoice]).toEqual(['best', 'best', 'random']);
+  Object.assign(workspace, { editFgColor: '#ff0000', brushDrawWith: 'normal', editBrushSize: 1, editBrushOpacity: 100, editBrushFlow: 100, editBrushHardness: 100 });
+  const ctx = { project, workspace, view: 'output' }, cols = [...Array(16).keys()].map((i) => i + 2);
+  const line = (row) => { // the top halves of cols 2 to 17, in a part of the canvas nothing is drawn on
+    brush.begin(ctx, { x: 2.5, y: 2 * row + 0.5 }, {});
+    brush.move(ctx, { x: 2.5, y: 2 * row + 0.5 }, { x: 17.5, y: 2 * row + 0.5 });
+    brush.end(ctx);
+  };
+  const shown = (row) => cols.map((col) => project.cells[cellIndex(col, row, project.cols)]);
+  workspace.pickLayer('L1'); // Layer 2: Random, its own seed
+  line(44);
+  await settle(project);
+  expect(cols.filter((col) => project.editCellAt(col, 44))).toEqual([]);
+  expect(shown(44).every((cell) => cell.fg.hex !== cell.bg.hex)).toBe(true); // the paint over the white
+  expect(new Set(shown(44).map((cell) => cell.char)).size).toBeGreaterThan(4); // Random's, not a row of ▄
+  workspace.pickLayer('edit'); // Layer 1: Best match, as the base
+  line(46);
+  await settle(project);
+  expect(cols.filter((col) => project.editCellAt(col, 46))).toEqual([]);
+  expect(shown(46).every((cell) => cell.fg.hex !== cell.bg.hex)).toBe(true);
+});
+
+// On a layer with the base's settings the base's rule holds: under Random a blank cell hides a character the paint would
+// bring out, so the ▄ stays; under Best match and By shape the cell is matched again from the painted pixels. A layer
+// with settings of its own converts its paint by them over the pixels under it (R7), Random's among them.
+for (const charChoice of ['random', 'best', 'shape']) {
+  test(`R5: ${charChoice}: on a layer Colors only makes ${charChoice === 'random' ? 'a ▄ of a blank cell with the base\'s seed, and none with a seed of its own' : 'no ▄ of a cell the converter drew'}`, async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    Object.assign(project, { quantize: 'cga', charChoice });
+    await settle(project);
+    workspace.pickLayer('base');
+    project.writeEditCells([{ col: 5, row: 5, attrs: { char: ' ', fg: '#000000', bg: '#000000' } }]); // a pinned space, as the Eraser leaves
+    project.commitEdit();
+    const layer = project.addLayer('cells', 'base');
+    workspace.pickLayer(layer);
+    expect(project.lowerGroup.cells).toBe(layer); // the base's settings
+    const paint = (col) => {
+      project.paintStroke([{ x: col, y: 11, alpha: 1 }], '#ff5555', { blockChars: 'plain' }); // a blank cell's bottom half
+      project.commitEdit();
+    };
+    const at = (col) => project.cells[cellIndex(col, 5, 20)];
+    paint(12);
+    await settle(project);
+    expect(project.editCellAt(12, 5)).toEqual(charChoice === 'random' ? { char: '▄' } : undefined);
+    expect(at(12).fg.hex === '#ff5555' || at(12).bg.hex === '#ff5555').toBe(true); // the paint shows either way
+    paint(5); // over the pinned space the paint shows as a ▄ (R2), with an entry or without
+    await settle(project);
+    expect([at(5).char, at(5).fg.hex, at(5).bg.hex]).toEqual(['▄', '#ff5555', '#000000']);
+    if (charChoice !== 'random') return;
+    project.setLayerChars(layer, { seed: 'a-seed-of-its-own' });
+    await settle(project);
+    expect(project.lowerGroup.cells).toBe(null);
+    paint(14);
+    await settle(project);
+    expect(project.editCellAt(14, 5)).toBeUndefined();
+    expect(at(14).fg.hex === '#ff5555' || at(14).bg.hex === '#ff5555').toBe(true);
+    project.paintStroke([{ x: 5, y: 10, alpha: 1 }], '#55ff55', { blockChars: 'plain' }); // the pinned space's other half, from a layer of its own settings
+    project.commitEdit();
+    await settle(project);
+    expect([at(5).char, at(5).fg.hex, at(5).bg.hex]).toEqual(['▄', '#ff5555', '#55ff55']);
+  });
+}
