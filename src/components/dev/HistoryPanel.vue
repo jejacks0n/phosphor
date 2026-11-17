@@ -65,7 +65,7 @@ li.error {
 }
 time {
   flex-shrink: 0;
-  width: 5ch;
+  width: 7ch;   /* +123.4s */
   text-align: right;
   color: var(--text-muted);
 }
