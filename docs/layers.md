@@ -420,6 +420,9 @@ under it, and the last edit to a cell wins.
 
 - **Paint Shows Through**: Paint covers half-cells, so it shows through a cell's character: paint on the top half
   colors the cell's background, paint on the bottom half its foreground.
+- **Paint Over Paint**: Where there's no character of your own under it, paint converts over what the PIXEL view
+  shows under it (the picture, the paint and shapes of the layers below), on whichever layer it sits, so a soft stroke
+  over white looks the same one layer up as it does on the same layer, in every art style.
 - **Nothing to Show Through**: A cell whose character is solid or empty (a space, █, ▀ or ▄), or doesn't show (drawn
   in its own background color), has nothing to show paint through, so under paint it becomes a ▄ half-block instead.
   The same goes for the base layer's pinned characters (an opened file's, or ones Merge down left), shown in the

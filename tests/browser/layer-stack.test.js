@@ -236,6 +236,40 @@ for (const [renderStyle, where] of [['colorAscii', 'own layer'], ['colorAscii', 
   });
 }
 
+// docs/model.md R7: an upper layer converts its paint and shapes over the pixels the PIXEL view shows under it, not over
+// the shown character's halves. Faint red over white paint on the layer below is near-white, as it is in the PIXEL view.
+for (const [renderStyle, charChoiceAscii] of [['colorAscii', 'intensity'], ['colorAscii', 'shape'], ['ansi', null]]) {
+  test(`R7: ${renderStyle}${charChoiceAscii ? ` by ${charChoiceAscii}` : ''}: faint paint on a layer above converts over the pixels under it`, async () => {
+    const { project } = await blank();
+    Object.assign(project, { renderStyle, ...(charChoiceAscii && { charChoiceAscii }) });
+    await settle(project);
+    project.paintEditPixels([{ x: 5, y: 4, r: 255, g: 255, b: 255, alpha: 1 }, { x: 5, y: 5, r: 255, g: 255, b: 255, alpha: 1 }]); // white on the lower group
+    project.commitEdit();
+    project.useLayer(project.addLayer('cells', 'edit'));
+    project.paintEditPixels([{ x: 5, y: 4, r: 255, g: 0, b: 0, alpha: 0.1 }, { x: 5, y: 5, r: 255, g: 0, b: 0, alpha: 0.1 }]); // faint red over it
+    project.commitEdit();
+    await settle(project);
+    const cell = cellAt(project, 5, 2), light = renderStyle === 'ansi' ? cell.bg : cell.fg;
+    expect(light.r).toBe(255); // 255,230,230: white with a tenth of red, not the glyph's gray halves with red
+    expect(light.g).toBeGreaterThan(220);
+    expect(light.b).toBeGreaterThan(220);
+    if (charChoiceAscii === 'intensity') expect(cell.char).toBe('@');
+  });
+}
+
+// The report (projects/blur-merged-upper.phosphor): a shape merged into Layer 3 and blurred, its soft edge over Layer 1's
+// white stroke, came out as dark '#' and '=' cells in Color ASCII while the PIXEL view showed near-white.
+test('R7: the report: a blurred shape\'s soft edge over the white stroke under it is light, as the PIXEL view shows it', async () => {
+  const { project } = await createTestApp();
+  await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/blur-merged-upper.phosphor')).arrayBuffer()], 'x.phosphor'));
+  await settle(project);
+  const light = (cell) => cell.fg.r > 240 && cell.fg.g > 200 && cell.fg.b > 200;
+  expect([[52, 8], [53, 8]].map(([col, row]) => light(cellAt(project, col, row)))).toEqual([true, true]); // #7f6058 and #75625e before
+  project.charChoiceAscii = 'intensity';
+  await settle(project);
+  expect([[52, 8], [53, 8]].map(([col, row]) => cellAt(project, col, row).char)).toEqual(['@', '@']);
+});
+
 test('undo and redo of an upper layer\'s edits, a fill of the whole layer among them, don\'t run the lower group or the pipeline', async () => {
   const { project } = await blank();
   project.render();

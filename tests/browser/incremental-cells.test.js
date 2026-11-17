@@ -4,7 +4,7 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
-import { buildCell, cellIndex, composeCell, coverCell, halfColors, layoutWide, mix, opensToPaint, weightedChar } from '@/lib/Cells';
+import { buildCell, cellIndex, composeCell, coverCell, layoutWide, mix, opensToPaint, weightedChar } from '@/lib/Cells';
 import { nearestColor } from '@/lib/ColorUtils.js';
 import { parseKey, shownEntry } from '@/document/editCells';
 import { rectShape, withShape } from '@/document/shapes.js';
@@ -242,7 +242,7 @@ test('a stack at the most layers, with every layer hidden or shown, composes as 
 // Each entry as #composeOne lays it: over the cell under it (underCell), with the paint over that (coverCell), or the
 // generated cell where there's none under it (a resize's render still to come). A paint block in ASCII is no entry
 // (shownEntry): the generated cell, its paint converted with it. In the ASCII styles, paint over a character with no ink
-// to tint (docs/model.md R2: opensToPaint) is converted over the cell's halves as paint is, by weight here.
+// to tint (docs/model.md R2: opensToPaint) is converted over the picture's pixels as paint is (R7), by weight here.
 function composedOneByOne(project, params, base) {
   const r = project.renderer, cells = base.slice(), { renderStyle } = params;
   for (const [key, entry] of project.editCells) {
@@ -252,7 +252,7 @@ function composedOneByOne(project, params, base) {
     if (!under) { cells[i] = base[i]; continue; }
     const composed = composeCell(under, entry, renderStyle, (hex, index) => r.effective(hex, params, index)), top = r.paintAt(col, 2 * row), bottom = r.paintAt(col, 2 * row + 1);
     if (renderStyle !== 'ansi' && (top || bottom) && opensToPaint(composed, renderStyle)) {
-      const snap = (c) => (r.palette?.length ? nearestColor(c, r.palette) : c), [ht, hb] = halfColors(composed);
+      const snap = (c) => (r.palette?.length ? nearestColor(c, r.palette) : c), [ht, hb] = r.pictureUnder(composed, col, row, params);
       const t = snap(top ? mix(ht, top, top.a) : ht), b = snap(bottom ? mix(hb, bottom, bottom.a) : hb);
       cells[i] = buildCell(t, b, weightedChar(t, b, params.chars, params.charMode), renderStyle);
     } else cells[i] = coverCell(composed, top, bottom, { renderStyle, palette: r.palette });

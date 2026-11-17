@@ -106,6 +106,22 @@ it and is tinted.
 - Checked by: `tests/browser/block-chars.test.js › R5: …` and `› …with Colors only, a layer's own cell that shows no
   character becomes a plain ▄ …`.
 
+### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
+
+Paint and shapes on an upper layer, where they don't tint a character of someone's own (R2), convert over the two
+grid pixels the PIXEL view shows under that layer: the lower group's output (the picture with its paint, before the
+palette) with each upper layer below laid over by its alpha. Never over the shown character's halves (in the ASCII
+styles those are ink on black, far darker than the pixels, so a faint stroke one layer up came out dark). The lower
+group's own paint converts over the picture the same way. So the ASCII view says what the PIXEL view shows, and paint
+merged down converts to what it converted to above, except for the converter's own differences (a palette snapped at
+another step, dither error, By shape's finer samples), which R3 freezes.
+
+- Lives in: `Renderer.#pixelsUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and for `#paintOver`'s
+  convert path, with `#pictureUnder` for the lower group; `storedLookAt` (`src/store/project/reading.js`) tracks the
+  stored pixels under the same way.
+- Checked by: `tests/browser/layer-stack.test.js › R7: …` (faint red over white, in Color ASCII by intensity and By
+  shape and in ANSI; the report's file).
+
 ### R6. The PIXEL view's Overlay draws only what the pixels can't show.
 
 The Overlay draws the cells of the layers (or every cell, with All cells) over the pixels. A cell that's paint in the
@@ -117,9 +133,6 @@ current style (a paint block outside ANSI) isn't drawn: its paint is already the
 
 ## Known departures
 
-- An upper layer mixes translucent paint with the shown cell's halves (a character's ink on black, in the ASCII styles);
-  the lower group mixes it with the picture's pixels. The same soft stroke lands darker one layer up in Color ASCII, and
-  merging it down freezes the cells that differ (R3). Left as is, documented in [layers.md](layers.md).
 - `storedLookAt` and `layerOver` (`src/store/project/reading.js`) re-walk the stack by hand for stored colors; they follow
   the Renderer's exactness (R1) but count a paint block's ▄ in a completed look in every style.
 - Merge into the picture (`mergeIntoPicture`) judges a paint block by its ▄ in the ASCII styles too (`mergeKind`), so
