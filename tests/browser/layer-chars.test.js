@@ -163,6 +163,20 @@ test('the Characters legend names the picked layer, and Picture · Base and Imag
   expect(sectionOf('Picture')).toBeUndefined();
 });
 
+// The start screen has no drawing, so no Layer 1: the left column shows the base's character settings, the ones the next
+// drawing starts with, whether the app just opened or New project left a drawing with Layer 1 picked.
+test('with no drawing open, Characters shows the base\'s, not Layer 1\'s', async () => {
+  const { project, workspace } = await picture();
+  await mountPanel();
+  expect(sectionOf('Characters · Layer 1')).toBeTruthy();
+  project.clearImage(); // New project, Start without saving
+  workspace.pickLayer('edit');
+  await nextTick();
+  expect(sectionOf('Characters · Layer 1')).toBeUndefined();
+  expect(sectionOf('Characters · Base')).toBeTruthy();
+  expect(host.textContent).not.toContain('Layer 1');
+});
+
 // A blank canvas has no picture of its own (its black is a stand-in, markUniform), so there's nothing for Smoothing to do.
 test('a blank canvas, new or reopened, shows no Picture · Base (Smoothing) with Base picked', async () => {
   const { project, workspace } = await blank();
