@@ -15,7 +15,7 @@ watch(() => log.entries.length, async () => {
 
 function copy() {
   const text = logText({ version, sha, userAgent: navigator.userAgent, viewport: `${window.innerWidth}×${window.innerHeight}` });
-  navigator.clipboard.writeText(text).then(() => toast('Copied'), () => toast('Copy failed'));
+  Promise.resolve().then(() => navigator.clipboard.writeText(text)).then(() => toast('Copied'), () => toast('Copy failed')); // no clipboard API (http over a LAN) fails the same way
 }
 </script>
 

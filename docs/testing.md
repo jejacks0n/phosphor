@@ -222,8 +222,8 @@ loaded: tool picks, edits (a stroke's moves folded into one line with a count), 
 room events, and any error the page threw, with the seconds since load. Steps undo can't reach are
 there too. Copy puts the whole list on the clipboard, headed by the build, browser and viewport, to
 paste into a bug report; Clear starts it over. Built apps (web, desktop, the end-to-end preview) have
-none of it: it's `src/dev/actionLog.js` and `src/components/dev/HistoryPanel.vue`, behind
-`import.meta.env.DEV`.
+none of it: it's `src/dev/actionLog.js` (with `skipped.js`, the actions left out: queries, renders, what
+autosave and watchers call on their own) and `src/components/dev/HistoryPanel.vue`, behind `import.meta.env.DEV`.
 
 ## Turning a bug report into a test
 

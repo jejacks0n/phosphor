@@ -9,6 +9,7 @@ import HistoryPanel from '@/components/dev/HistoryPanel.vue';
 import SidePanel from '@/components/SidePanel.vue';
 import { createTestApp } from '../support/app.js';
 import { clearLog, installActionLog } from '@/dev/actionLog.js';
+import { SKIPPED } from '@/dev/skipped.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { closeToast, toastMessage } from '@/composables/useToast';
 import '@/assets/global.css';
@@ -54,6 +55,22 @@ test('Copy refused says so, and Clear empties the list', async () => {
   await userEvent.click(host.querySelector('button.clear'));
   await nextTick();
   expect(host.querySelectorAll('li')).toHaveLength(0);
+});
+
+test('without a clipboard API (http over a LAN) Copy says it failed, and nothing is thrown', async () => {
+  workspace.setActiveTool('brush');
+  Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+  try {
+    await userEvent.click(host.querySelector('button.copy'));
+    await vi.waitFor(() => expect(toastMessage.value).toBe('Copy failed'));
+  } finally {
+    delete navigator.clipboard;
+  }
+});
+
+test('the skip set leaves out queries and renders, but keeps the grid-size steps a person takes', () => {
+  for (const name of ['readCell', 'render', 'composite', 'commitPending']) expect(SKIPPED.has(name), name).toBe(true);
+  for (const name of ['updateCols', 'updateRows', 'setAspectLock', 'undo', 'paintStroke']) expect(SKIPPED.has(name), name).toBe(false);
 });
 
 // The tab itself, in SidePanel (dev builds only: import.meta.env.DEV, which tests run with). Mounted as side-panel.test.js does.
