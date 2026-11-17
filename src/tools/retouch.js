@@ -206,7 +206,7 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
     shiftLines: true, // Shift-click: a straight line from where the last stroke ended
     preview: { shape: 'circle', size: (workspace) => workspace.retouchSize },
     options: [
-      { key: 'retouchSize', get label() { return t('tools.brush.size'); }, get title() { return t('tools.brush.sizeTitle'); }, min: 1, max: 20, step: 0.1, decimals: 1 },
+      { key: 'retouchSize', size: true, get label() { return t('tools.brush.size'); }, get title() { return t('tools.brush.sizeTitle'); }, min: 1, max: 20, step: 0.1, decimals: 1 },
       { key: 'retouchStrength', get label() { return t('tools.retouch.strength'); }, get title() { return t('tools.retouch.strengthTitle'); }, min: 1, max: 100, unit: '%' },
       { key: 'retouchHardness', get label() { return t('tools.brush.hardness'); }, get title() { return t('tools.brush.hardnessTitle'); }, min: 0, max: 100, unit: '%' },
       ...(range ? [RANGE] : []),

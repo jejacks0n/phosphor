@@ -8,7 +8,7 @@
  *   autoScroll? a drag near the view's edge scrolls it (useEditorInteractions)
  *   preview?   { shape: 'circle' | 'square' | 'cell', size?: (workspace) => grid pixels }
  *   cursor?    (ctx, pos) => CSS cursor | null: the pointer over the content, at grid pixel pos
- *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox' }
+ *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox', size?: true (the one ] and [ change) }
  *   begin(ctx, pos, event) -> false when there's no stroke to continue; move(ctx, from, to); end(ctx).
  *              A paint tool's (not VECTOR's, nor Select's and the Wand's, which select what shows) is refused while the
  *              picked layer is hidden (refusesHidden), and with no cells layer to draw on (an artist's, in a room with

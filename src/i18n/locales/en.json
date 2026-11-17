@@ -1205,6 +1205,7 @@
       "holdAlt": "Sample color with Eyedropper (Pencil, Brush, Paint Bucket, Gradient, Shapes)",
       "holdAltShift": "Sample background color",
       "holdSpace": "Pan canvas with any tool (or drag with middle mouse button)",
+      "size": "Shrink or grow the tool size (Brush, Eraser, Blur, Dodge, Burn)",
       "zoomInOut": "Zoom in or out around the center of the view",
       "zoomBack": "Reset zoom to 100% (pixel view: its starting zoom)",
       "scrollPage": "Scroll up or down one screen",

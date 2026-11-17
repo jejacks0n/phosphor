@@ -53,6 +53,7 @@ const groups = computed(() => [
       [[t('shortcuts.holdKey', { key: k('alt') })], t('shortcuts.rows.holdAlt')],
       [[t('shortcuts.holdKey', { key: k('alt', 'shift') })], t('shortcuts.rows.holdAltShift')],
       [[t('shortcuts.holdSpace')], t('shortcuts.rows.holdSpace')],
+      [['[', ']'], t('shortcuts.rows.size')],
     ],
   },
   {
