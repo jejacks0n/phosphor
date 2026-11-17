@@ -19,7 +19,7 @@ export function useSidePanelShown(workspace) {
 </script>
 
 <script setup>
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { computed, defineAsyncComponent, nextTick, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMediaQuery, useSessionStorage } from '@vueuse/core';
 import { desktopQuery } from '@/social/config';
@@ -34,8 +34,12 @@ import LobbyPage from '@/components/social/LobbyPage.vue';
 import DesktopStartPage from '@/components/social/DesktopStartPage.vue';
 import LayersList from '@/components/LayersList.vue';
 
+// Development only: a HISTORY tab logging every step taken (dev/actionLog.js, installed in main.js). The panel loads lazily, so built apps leave it out.
+const DEV = import.meta.env.DEV;
+const HistoryPanel = DEV ? defineAsyncComponent(() => import('@/components/dev/HistoryPanel.vue')) : null;
+
 // The column at the right of the whole app: LAYERS, and Social, which is CHAT while you're in a
-// room. Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and the
+// room (and in development, HISTORY, the log of the session's steps). Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and the
 // » at the right end of its tabs folds it away entirely; EditTabs then shows « in that same spot, which brings it back
 // and counts the messages you haven't seen, as the CHAT tab does while LAYERS shows. In a room a speaker sits left of the », on
 // either tab, for the tone for new messages. Width and fold are kept in the browser; going into a room opens it on CHAT, a reload into
@@ -151,6 +155,7 @@ function key(e) {
           <span v-if="unread" class="unread">{{ unread }}</span>
           <span v-else-if="!room.inRoom" class="beta" aria-hidden="true">{{ t('tabs.beta') }}</span>
         </button>
+        <button v-if="DEV" role="tab" :aria-selected="tab === 'history'" :class="{ on: tab === 'history' }" @click="pick('history')">History</button>
         <div class="indicator" :style="markerStyle" aria-hidden="true"></div>
         </div>
         <!-- In a room, the speaker that turns the tone for new messages off and on (RoomStore.chime), on either tab. -->
@@ -169,6 +174,7 @@ function key(e) {
       </aside>
       <ChatPanel v-if="room.inRoom" v-show="tab === 'social'" :shown="chatShown"/>
       <component :is="DESKTOP ? DesktopStartPage : LobbyPage" v-else-if="tab === 'social' && social.allowed"/>
+      <HistoryPanel v-if="DEV && tab === 'history'"/>
     </div>
   </div>
 </template>
