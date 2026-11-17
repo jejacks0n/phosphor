@@ -760,6 +760,28 @@ test('an undo or redo the host can\'t do is told to its sender, and only with a 
   expect(refused.length).toBe(2);
 });
 
+test('a layer-op the host refuses is told to its sender with the reason, and only a reason the watch knows is heard', async () => {
+  const r = await room(['p1']);
+  drawingCalls(r);
+  await seated(r, 'p1');
+  r.host.setArtists(['u_p1']);
+  const asked = [];
+  r.host.onLayerOp = (sub, msg) => { asked.push(msg.op); return msg.op.kind === 'duplicate' ? 'shapes' : null; };
+  const refused = [];
+  r.log.p1.watch.onLayerOpRefused = (reason) => refused.push(reason);
+  const w = connected(r, 'p1');
+  w.drawing = true;
+  const send = vi.spyOn(w.channel, 'send');
+  r.host.heard(w, JSON.stringify({ t: 'layer-op', op: { kind: 'duplicate', id: 'L1' } }));
+  r.host.heard(w, JSON.stringify({ t: 'layer-op', op: { kind: 'rename', id: 'L1', name: 'Ink' } }));
+  await expect.poll(() => refused, PATIENT).toEqual(['shapes']);
+  expect(asked.length).toBe(2);
+  expect(send).toHaveBeenCalledTimes(1);
+  w.channel.send(JSON.stringify({ t: 'layer-op-refused', reason: 'x' }));
+  await wait(60);
+  expect(refused).toEqual(['shapes']);
+});
+
 test('accept and decline come from anyone; undo, redo, cursor and hello from artists reach their callbacks', async () => {
   const r = await room(['p1']);
   const calls = drawingCalls(r);
