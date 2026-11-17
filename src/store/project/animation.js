@@ -432,7 +432,7 @@ function putRecords(project, records, unkey, keyLike) {
 // Whether every record a change makes is one a file would keep; an art layer's that isn't says it's too big.
 function kept(shapes) {
   const bad = shapes.find((shape) => !shapeFromStranger(shape));
-  if (isArt(bad)) toast(t('art.tooBig'));
+  if (isArt(bad)) toast(t('art.tooBigEdit'));
   return !bad;
 }
 

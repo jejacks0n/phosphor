@@ -1713,6 +1713,7 @@
     "make": "Make art layer",
     "makeTitle": "Convert the selected cells into an art layer that you can move and animate",
     "tooBig": "Selection is too large for an art layer. Please select a smaller area.",
+    "tooBigEdit": "That would make the art layer too big, so nothing changed.",
     "nothingDrawn": "Nothing is drawn in the selected cells.",
     "edit": "Edit art",
     "editTitle": "Draw inside this art layer. Changes will appear across all frames where this layer is used",

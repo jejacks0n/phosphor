@@ -4,6 +4,8 @@ import { ctx2d } from '@/lib/Canvas';
 import { parseKey, ownEntry } from '@/document/editCells';
 import { cellIndex, charRowsOf, isSolidGlyph, showsChar } from '@/lib/Cells';
 import { selectionClip } from '@/lib/selectionClip';
+import { placedShapes } from '@/document/followers';
+import { isArt } from '@/document/artLayers';
 import { t } from '@/i18n/index.js';
 
 // Grid pixels the fill stops at: the picked layer's edit cells showing a character with something to see through (text,
@@ -25,6 +27,23 @@ function wallsOf(project, clip, picked) {
   return walls;
 }
 
+// Inside an art layer, the grid pixels its own drawing covers (a byte each, from its record where it shows: a ▄ cell's
+// halves with a color, any other cell whole); null outside one. A fill started on them stays in them: the dimmed rest
+// of the drawing is no part of the layer, however near its colors are (docs/vector.md, Editing an Art Layer).
+function artPixels(project) {
+  const shape = project.artInside && placedShapes(project).get(project.artInside);
+  if (!isArt(shape)) return null;
+  const own = new Uint8Array(project.cols * project.rows), { cols, cells } = shape.art, [, , , , c0, y0] = shape.m;
+  for (const [i, char, top, bottom] of cells) {
+    const x = c0 + i % cols, y = y0 + 2 * Math.floor(i / cols);
+    if (x < 0 || x >= project.cols) continue;
+    [top, bottom].forEach((half, k) => {
+      if ((char !== '▄' || half) && y + k >= 0 && y + k < project.rows) own[(y + k) * project.cols + x] = 1;
+    });
+  }
+  return own;
+}
+
 // Fill → Cells (ANSI view): the cells matching the one clicked (what bucketMatch lights: colors within
 // the Tolerance, the character exactly), connected to it or anywhere, inside the selection, as
 // { x, y } cells (none off the grid).
@@ -35,16 +54,24 @@ export function cellArea(project, workspace, pos) {
   const cells = project.cells, seed = cells[start.y * width + start.x], { fg, bg, char } = workspace.bucketMatch;
   const near = (a, b) => colorDistance(a.r, a.g, a.b, b.r, b.g, b.b) <= workspace.editFillTolerance;
   const same = (i) => (!fg || near(seed.fg, cells[i].fg)) && (!bg || near(seed.bg, cells[i].bg)) && (!char || seed.char === cells[i].char);
-  const clip = selectionClip(workspace);
-  const allowed = clip && ((i) => clip.cell(i % width, Math.floor(i / width)));
+  const clip = selectionClip(workspace), own = artPixels(project);
+  const ownCell = (x, y) => own[2 * y * width + x] || own[(2 * y + 1) * width + x];
+  const inArt = own && ownCell(start.x, start.y);
+  const allowed = (clip || inArt) && ((i) => {
+    const x = i % width, y = Math.floor(i / width);
+    return (!clip || clip.cell(x, y)) && (!inArt || ownCell(x, y));
+  });
   return unitsOf(selectMatching({ width, height, start, same, contiguous: workspace.editFillContiguous, allowed }), width);
 }
 
 // Fill → Normal and the PIXEL view: the grid pixels the fill covers ({ x, y, alpha }, alpha below 1
-// where it feathers), by Tolerance and Contiguous, stopping at walls.
+// where it feathers), by Tolerance and Contiguous, stopping at walls, and inside an art layer's own drawing when it starts
+// there.
 export function pixelArea(project, workspace, pos) {
   const imageData = ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, project.cols, project.rows); // with the upper layers' pixels, as the view shows
-  return floodFill(imageData, Math.floor(pos.x), Math.floor(pos.y), workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, wallsOf(project, selectionClip(workspace), workspace.pickedLayer));
+  const x = Math.floor(pos.x), y = Math.floor(pos.y), walls = wallsOf(project, selectionClip(workspace), workspace.pickedLayer), own = artPixels(project);
+  if (own && x >= 0 && x < project.cols && own[y * project.cols + x]) own.forEach((mine, i) => { if (!mine) walls[i] = 1; });
+  return floodFill(imageData, x, y, workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, walls);
 }
 
 export const fillsCells = (workspace, view) => view === 'output' && workspace.bucketFillWith === 'cells';

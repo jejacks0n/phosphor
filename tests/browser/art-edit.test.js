@@ -3,6 +3,8 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import eraser from '@/tools/eraser';
+import bucket from '@/tools/bucket';
+import gradient from '@/tools/gradient';
 import { makeArt } from '@/document/artLayers.js';
 import { withShape, isShapeKey } from '@/document/shapes.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
@@ -519,4 +521,77 @@ test('stepping in while an animation plays pauses it first, so a later pause doe
   expect(project.frame).not.toBe(0); // paused on the frame it was showing
   playback.pause(); // a canvas press or key would
   expect(project.artInside).toBe(key);
+});
+
+// Inside an art layer, a fill or a gradient started on the layer's own drawing stays in it: the dimmed picture around
+// it is no part of the layer, however near its colors are, so it's a wall. Started off the layer, it reads the picture
+// as ever, and grows the layer as far as it reaches.
+async function fillInside() {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 4, 8], art: { cols: 2, rows: 1, cells: [[0, '▄', RED, RED], [1, '▄', RED, RED]] } }));
+  expect(project.enterArt(key)).toBe(true);
+  await settle(project);
+  Object.assign(workspace, { editorTab: 'output', editFgColor: GREEN, editBgColor: '#0000ff', editFgNone: false, editBgNone: false, editFillTolerance: 100, editFillContiguous: true, selection: null });
+  return { project, workspace, key, ctx: { project, workspace, view: 'output' } };
+}
+const ev = { stopPropagation() {} };
+const fillsIn = (project, key, pick) => {
+  const { art } = project.shapes.get(key);
+  expect([art.cols, art.rows]).toEqual([2, 1]);
+  expect(art.cells.map(pick)).toEqual([GREEN, GREEN]);
+};
+
+test('a fill on an art layer\'s own paint stays in it, at any Tolerance and with nothing selected', async () => {
+  const { project, workspace, key, ctx } = await fillInside();
+  workspace.bucketFillWith = 'normal';
+  toastMessage.value = null;
+  bucket.begin(ctx, { x: 4.5, y: 8.5 }, ev);
+  expect(toastMessage.value).toBe(null);
+  fillsIn(project, key, (cell) => cell[2]);
+  expect(project.shapes.get(key).m.slice(4)).toEqual([4, 8]);
+});
+
+test('a Cells fill on an art layer\'s own cells stays in them', async () => {
+  const { project, workspace, key, ctx } = await fillInside();
+  Object.assign(workspace, { bucketFillWith: 'cells', bucketMatch: { fg: true, bg: true, char: false }, bucketSet: { fg: true, bg: false, char: false } });
+  bucket.begin(ctx, { x: 5.5, y: 9.5 }, ev);
+  fillsIn(project, key, (cell) => cell[3]);
+});
+
+test('a gradient dragged from an art layer\'s own paint stays in it', async () => {
+  const { project, workspace, key, ctx } = await fillInside();
+  workspace.bucketFillWith = 'normal';
+  workspace.editFgColor = GREEN;
+  workspace.editBgColor = GREEN; // one color, so each pixel's blend is known
+  expect(gradient.begin(ctx, { x: 4.5, y: 8.5 }, ev)).toBe(true);
+  gradient.move(ctx, { x: 4.5, y: 8.5 }, { x: 15.5, y: 18.5 });
+  gradient.end(ctx);
+  fillsIn(project, key, (cell) => cell[2]);
+});
+
+test('a fill started on the picture around an art layer still reads the picture, and the layer grows to hold it', async () => {
+  const { project, workspace, key, ctx } = await fillInside();
+  workspace.bucketFillWith = 'normal';
+  bucket.begin(ctx, { x: 15.5, y: 18.5 }, ev);
+  const { art } = project.shapes.get(key);
+  expect(art.cols * art.rows).toBeGreaterThan(2);
+});
+
+test('an edit inside an art layer that would make it too big is refused, and says so in terms of the edit', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 200, rows: 80 });
+  await settle(project);
+  const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 0, 0], art: { cols: 1, rows: 1, cells: [[0, 'A', RED, null]] } }));
+  expect(project.enterArt(key)).toBe(true);
+  const shape = project.shapes.get(key), version = project.history.version;
+  const hex = (n) => `#${n.toString(16).padStart(6, '0')}`;
+  const cells = [];
+  for (let row = 0; row < 40; row++) for (let col = 0; col < 200; col++) cells.push({ col, row, attrs: { char: String.fromCharCode(0x4e00 + col), fg: hex(0x100000 + row * 200 + col), bg: hex(0x800000 + row * 200 + col) } });
+  project.writeEditCells(cells);
+  toastMessage.value = null;
+  project.commitEdit();
+  expect(toastMessage.value).toBe('That would make the art layer too big, so nothing changed.');
+  expect(project.shapes.get(key)).toBe(shape);
+  expect(project.history.version).toBe(version);
 });

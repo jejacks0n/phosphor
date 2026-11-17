@@ -213,7 +213,7 @@ export const vectorActions = {
     for (const [key, shape] of changes) {
       if (!this.shapes.has(key) || sameShape(this.shapes.get(key), shape)) continue;
       if (shape && !keeps(shape)) {
-        if (isArt(shape)) toast(t('art.tooBig'));
+        if (isArt(shape)) toast(t('art.tooBigEdit'));
         continue;
       }
       if (next === this.shapes) next = new Map(this.shapes);
@@ -237,7 +237,7 @@ export const vectorActions = {
     const next = moved(shape);
     if (next && sameShape(next, shape)) return false;
     if (!next || (this.hasFrames && !this.frames.every(({ changes }) => !isArt(changes.get(key)?.cell) || moved(changes.get(key).cell)))) {
-      toast(t('art.tooBig'));
+      toast(t('art.tooBigEdit'));
       return false;
     }
     if (this.hasFrames) this.setFramesArt(key, next.art, [dx, dy]);
