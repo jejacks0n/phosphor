@@ -443,8 +443,9 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
 - **Colors only** (the default): They paint over each cell's own character, which shows through. A cell that shows no
   character yet (a blank canvas's black, or the lines added when it grows) becomes a ▄ as they paint it, so a click
   there paints a plain half-block, not the character the converter put there unseen. So does a cell of the layer's
-  own that shows no character (a space, or a character in its background's color, as Merge down writes along a
-  shape's edge): its colors become paint first, so the half you don't paint looks as it did. Painting in the PIXEL view does
+  own that shows no character (a space, or a character in its background's color), and so does a cell Merge down
+  froze along a merged shape's edge, whatever its character: its colors become paint first, so the half you don't
+  paint looks as it did. Painting in the PIXEL view does
   the same, so the view you paint in never changes what you get; only **Half-block** makes every cell a ▄. In Color
   ASCII and Monochrome ASCII there are no half-blocks: the paint becomes your ASCII characters, whichever style you
   painted it in, and its half-blocks show again when you switch back to ANSI.
@@ -528,8 +529,10 @@ the canvas changes. Undo brings it back, selected if it was.
   layer's paint, and its paint is drawn over that layer's paint. It stays paint, so Blur, Dodge, Burn and the Eraser
   work on it as on any. A cell where the paint would show differently after the merge (a palette or the character
   choice can convert it differently once it's on the layer under), by more than the step or two the same color can
-  round apart when it's worked out another way, is written as the exact character and colors it
-  showed instead, and a later palette or character setting doesn't convert that cell again. The ▄s **Colors only**
+  round apart when it's worked out another way, is written as the character and colors it showed instead, frozen: a
+  later palette or character setting doesn't convert that cell again, but to everything else it's still paint. Paint
+  on a layer above lays over it as it did, and Blur, Dodge, Burn and Colors only turn it back into paint where they
+  reach it, so a merged edge fades like a painted one. The ▄s **Colors only**
   leaves on the cells it painted are paint too, and come down as they are, so in Color ASCII and Monochrome ASCII,
   where they aren't shown, the paint still shows as your ASCII characters.
 - **A Vector Layer Into a Drawing Layer**: Its shapes become paint on the layer under it, in their own colors, so Blur
@@ -537,8 +540,8 @@ the canvas changes. Undo brings it back, selected if it was.
   layer has character settings of its own, or a palette or the character choice converts it differently), by more
   than a step or two of rounding (By shape works a shape's colors out from finer samples than paint has, so a
   gradient comes out a step or two apart all over), is written
-  as the exact cell it shows now, as is a cell an art layer gives a character, and a later palette or character
-  setting doesn't convert those cells again; Blur, Dodge and Burn change their colors and keep their characters. It
+  as the cell it shows now, frozen as above (paint to everything but the converter); a cell an art layer gives a
+  character is written as that character, yours to keep. It
   goes only whole: with shapes selected on VECTOR, deselect them to merge
   the layer. Its guides, which draw nothing, stay, and the vector layer with them.
 - **A Vector Layer Into the Base**: Its shapes are pressed into the base layer's pixels. On VECTOR, with shapes
@@ -877,13 +880,13 @@ swaps the two halves of each cell's base colors.
   - **Range** (Dodge and Burn) chooses the colors they change most: **Shadows** the dark ones, **Highlights** the light
     ones, **Midtones** (to start) the ones between, leaving black and white alone.
   - **Characters Stay**: They change colors, never characters, in both views. On a drawing layer a cell with colors of
-    its own (one you typed, art you opened, or one Merge down wrote exactly) keeps its character and has its colors
-    changed, a whole cell at a time (a color set to None stays None), as a character pinned on the base does. Blur
-    evens a cell's colors with the layer's other cells around it, foreground with foreground and background with
-    background, and spreads them into the clear around it as paint, so text and ASCII art get a soft glow. A cell
-    can't be partly see-through, so the cell itself doesn't fade: the edge of a shape Merge down wrote as characters
-    stays solid, with the glow around it. A cell the Brush made a ▄ holds only its character, its colors being paint,
-    so its paint changes.
+    its own (one you typed, or art you opened) keeps its character and has its colors changed, a whole cell at a time
+    (a color set to None stays None), as a character pinned on the base does. Blur evens a cell's colors with the
+    layer's other cells around it, foreground with foreground and background with background, and spreads them into
+    the clear around it as paint, so text and ASCII art get a soft glow. A cell can't be partly see-through, so the
+    cell itself doesn't fade. A cell Merge down froze (the edge of a merged shape) is paint to them: where a stroke
+    changes it, it becomes the paint it showed and fades like the paint beside it. A cell the Brush made a ▄ holds
+    only its character, its colors being paint, so its paint changes.
   - **In the PIXEL View**: Each grid pixel's color is changed and laid back (as the layer's paint, or the base's pixels;
     a character pinned on the base keeps its background in its top pixel and its foreground in its bottom one).
   - **In the ANSI View**: The same as in the PIXEL view, pixel by pixel, as the Brush paints: a small brush can change

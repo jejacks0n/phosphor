@@ -154,6 +154,38 @@ test('the report: in Color ASCII a shape merged down, then brushed along its edg
   expect(project.cells.filter((cell) => cell.char === '▄')).toHaveLength(0);
 });
 
+// docs/model.md R5: a frozen cell (Merge down's, paint written as a character so the look stayed) is paint to Colors
+// only too: its halves become paint and the cell a bare ▄, as a blank cell's do, whatever its character.
+for (const renderStyle of ['ansi', 'colorAscii']) {
+  test(`R5: ${renderStyle}: Colors only over a frozen cell makes it a plain ▄, its colors paint, and keeps a typed letter`, async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    project.renderStyle = renderStyle;
+    await settle(project);
+    workspace.pickLayer('edit');
+    project.writeEditCells([{ col: 10, row: 5, attrs: { char: 'A', fg: '#ff0000', bg: '#000000' } }]);
+    project.commitEdit();
+    project.setEditCells(new Map([...project.editCells, ['4,5', Object.freeze({ char: '%', fg: '#ff0000', bg: '#ffffff', frozen: true })]]), ['4,5']);
+    project.commitEdit();
+    await settle(project);
+    Object.assign(workspace, { editFgColor: '#00ff00', brushDrawWith: 'normal', editBrushSize: 1, editBrushHardness: 100, editBrushFlow: 100, editBrushOpacity: 100 });
+    const ctx = { project, workspace, view: 'output' };
+    for (const col of [4, 10]) {
+      brush.begin(ctx, { x: col + 0.5, y: 10.5 }, {});
+      brush.end(ctx);
+    }
+    await settle(project);
+    expect(project.editCellAt(4, 5)).toEqual({ char: '▄' }); // a paint block over its own colors as paint, the green over the top half
+    expect(project.paintLayer.pixelAt(4, 10)).toMatchObject({ r: 0, g: 255, b: 0, a: 1 });
+    expect(project.paintLayer.pixelAt(4, 11)).toMatchObject({ a: 1 });
+    expect(project.editCellAt(10, 5)?.char).toBe('A'); // a letter: tinted, kept
+    project.undo(); // the letter's stroke
+    project.undo(); // the frozen cell's: as it was
+    await settle(project);
+    expect(project.editCellAt(4, 5)).toEqual({ char: '%', fg: '#ff0000', bg: '#ffffff', frozen: true });
+  });
+}
+
 test('with Colors only on the base, a cell that shows no character is pinned a ▄ the paint colors', async () => {
   const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });

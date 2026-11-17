@@ -2,7 +2,7 @@
 // paint), what's under a cell, edit cells, and rects on the grid.
 import { wholeTile } from '@/document/PaintLayer.js';
 import { hashCell } from '@/document/changes.js';
-import { cellKey, parseKey, mergeEntry } from '@/document/editCells.js';
+import { cellKey, parseKey, mergeEntry, ownEntry, shownEntry, isFrozen } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
@@ -249,7 +249,7 @@ export const readingActions = {
     const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii', key = cellKey(col, row);
     let look = baseLook(this, col, row);
     if (cells) look = layerOver(this, cells, col, row, look);
-    let exact = !!(cells && this.cellsOf(cells).has(key)) || this.renderer.pinAt(col, row) !== undefined; // as the renderer's upper walk
+    let exact = !!(cells && ownEntry(this.cellsOf(cells).get(key), this.renderStyle)) || this.renderer.pinAt(col, row) !== undefined; // as the renderer's upper walk (#exactUnder)
     // The look with paint pixels (or shape pixels) top and bottom over the halves, as the ASCII styles show it: averaged, no BG.
     const asciiOver = (top, bottom, halvesOf = halfColors) => {
       const halves = halvesOf({ char: look.char ?? ' ', bg: hex2rgb(storedBlack(this.processParams)), fg: hex2rgb(look.fg) });
@@ -260,7 +260,8 @@ export const readingActions = {
       if (this.layerById(id).kind === 'cells') {
         if (!ascii) { look = layerOver(this, id, col, row, look); continue; }
         look = layerOver(this, id, col, row, look, false);
-        if (this.cellsOf(id).has(key)) exact = true;
+        const own = this.cellsOf(id).get(key);
+        if (shownEntry(own, this.renderStyle)) exact = !isFrozen(own); // as #upperCell: a frozen cell is paint to what's over it
         const paint = this.paintOf(id), top = paint?.pixelAt(col, 2 * row), bottom = paint?.pixelAt(col, 2 * row + 1);
         if (top || bottom) look = asciiOver(top, bottom, exact && !isSolidGlyph(look.char ?? ' ') && !opensToPaint({ char: look.char ?? ' ', fg: { hex: look.fg }, bg: { hex: storedBlack(this.processParams) } }, this.renderStyle) ? (cell) => [cell.bg, cell.fg] : halfColors); // as #paintOver tints a character of someone's own (coverCell), or converts paint over its halves
         continue;

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeEditCells, deserializeEditCells, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  selectionHit, clampOffset, bakeEditCells, mergeKind,
+  selectionHit, clampOffset, bakeEditCells, mergeKind, cleanEntry, isFrozen, ownEntry, sameEntry,
 } from '../../src/document/editCells.js';
 
 test('Edit cell map: merge/remove semantics, grid-position keys, (de)serialization and the migration of older index-keyed char edits', async () => {
@@ -110,6 +110,26 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   assert.equal(at(undefined, 'ascii'), 'picture');
   assert.equal(at(undefined, 'ansi', false), 'exact');        // not wholly in the picture's area
   assert.equal(at('█', 'ansi', false), 'exact');
+});
+
+// docs/model.md R1 and R3: a frozen cell is paint Merge down wrote as a character so the look stays, marked so. The mark
+// stays while the cell only moves (completeAt merges the whole entry), and goes when someone writes a character or color.
+test('R1: the frozen mark travels with an entry, goes when a character or color is written, and is cleaned from outside', () => {
+  const frozen = mergeEntry(undefined, { char: '.', fg: '#ff4915', frozen: true });
+  assert.deepEqual(frozen, { char: '.', fg: '#ff4915', frozen: true });
+  assert.equal(isFrozen(frozen), true);
+  assert.deepEqual(mergeEntry({ char: 'A', bg: '#0000aa' }, frozen), { char: '.', fg: '#ff4915', bg: '#0000aa', frozen: true }); // moved whole: still frozen
+  assert.deepEqual(mergeEntry(frozen, { fg: '#00ff00' }), { char: '.', fg: '#00ff00' });    // a color of someone's own
+  assert.deepEqual(mergeEntry(frozen, { char: '▄' }), { char: '▄', fg: '#ff4915' });        // a character of someone's own
+  assert.deepEqual(mergeEntry(frozen, { fgIndex: undefined }), frozen);                       // nothing written: as it was
+  assert.deepEqual(mergeEntry(frozen, { frozen: null }), { char: '.', fg: '#ff4915' });      // cleared when said
+  assert.equal(sameEntry(frozen, { char: '.', fg: '#ff4915' }), false);
+  assert.equal(ownEntry(frozen, 'ansi'), undefined);                                         // nobody's character
+  assert.deepEqual(ownEntry({ char: 'A' }, 'ansi'), { char: 'A' });
+  assert.equal(ownEntry({ char: '▄' }, 'colorAscii'), undefined);                           // a paint block outside ANSI
+  assert.equal(cleanEntry({ char: '.', fg: '#ff4915', frozen: 'yes' }).frozen, undefined);  // only true is a mark
+  assert.deepEqual(deserializeEditCells(JSON.parse(JSON.stringify(serializeEditCells(new Map([['1,2', frozen]]))))).get('1,2'), frozen); // a saved file keeps it
+  assert.equal(cleanEntry({ frozen: true }), null);                                          // a mark alone is no cell
 });
 
 test('parseKey reads a key as splitting it at its commas does, malformed ones too', () => {
