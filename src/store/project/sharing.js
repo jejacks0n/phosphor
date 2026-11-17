@@ -24,7 +24,8 @@ import { markRaw } from 'vue';
 import { deserializeBase } from '@/document/baseRecords.js';
 import { cellChanges, exactly, keepBaseline, pixelRuns, splitChange, pack, Tail } from '@/document/changes.js';
 import { TILE } from '@/document/History.js';
-import { layerKey } from '@/document/layerInfo.js';
+import { layerKey, onLayer } from '@/document/layerInfo.js';
+import { isShapeKey } from '@/document/shapes.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, readChange, readLayers } from '@/social/wire.js';
@@ -181,6 +182,9 @@ export function readsAsHeard(project, message, stack = project.layers) {
   }
   return !!readChange(message, boundsOf(project, stack));
 }
+
+// Whether an artist's changes with no number yet put a shape on the layer with the id.
+const holdsShapesOn = (sharing, id) => !!sharing.pending?.waiting.some(({ cells }) => cells.some(([key, value]) => isShapeKey(key) && onLayer(key, id, [value])));
 
 // What the open stroke's cells have changed since its last slice.
 function changedCells(stroke, now) {
@@ -418,8 +422,10 @@ export const sharingActions = {
   // layer that goes, and their sums lose its share (dropFromSums), with what I've drawn sent first: what's on screen is then
   // what's agreed, but where Pending holds mine. Replayed from a host's kept tail before sharing starts (restoreLedger), there's
   // nothing to drop: the kept ledger dropped it at the delete, and sharing seeds the sum from the picture. A host replaying an
-  // artist's tail (takeCatchUp) remembers what went (removed), as its own delete does.
-  applyLayers({ stack, by, made }) {
+  // artist's tail (takeCatchUp) remembers what went (removed), as its own delete does. gone: the layers the host's change took
+  // out. A vector layer that's not in the stack and not among them is one my own first shape brought (refreshShapes) and the
+  // host hasn't numbered yet: it stays, with its shapes, as the host's stack has it once the shape is numbered.
+  applyLayers({ stack, by, made, gone: took = [] }) {
     const had = new Map(this.layers.map((layer) => [layer.id, layer])), gone = new Set(had.keys()), layers = [];
     for (const [at, { id, kind, name, chars }] of stack.entries()) {
       const was = had.get(id)?.kind === kind ? had.get(id) : null;
@@ -432,6 +438,11 @@ export const sharingActions = {
     if (gone.size && this._sharing) { // a host's reload replays its tail before sharing starts, its kept ledger past the delete
       if (mine) this.commitPending(); // my open stroke goes in whole while its layer is here: left open, it would later send its cells' deletion
       else this.sendSlice();
+      for (const id of gone) { // the first shape's layer, where the first shape puts it: directly above the bottom
+        if (had.get(id).kind !== 'vector' || took.includes(id) || !holdsShapesOn(this._sharing, id)) continue;
+        gone.delete(id);
+        layers.splice(1, 0, had.get(id));
+      }
       for (const id of gone) {
         dropFromSums(this, id);
         this._sharing.removed?.add(id);

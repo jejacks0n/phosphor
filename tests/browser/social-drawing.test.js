@@ -4640,6 +4640,36 @@ async function sameShapes(room, ...people) {
   for (const person of people) await expect.poll(() => shapesOf(person.project), PATIENT).toBe(shapesOf(room.project));
 }
 
+// A room with no vector layer: an artist's first shape brings one on their own page at once, before the host has numbered the
+// shape and brought its own. A layers message from the host in that window has no vector layer in its stack, and it isn't
+// one the host deleted (gone), so the artist's stays, with the shape on it, until the echo makes every page the same.
+test('an artist\'s first shape and its vector layer stay through a layers message heard before the shape is numbered', async () => {
+  const { rectShape } = await import('@/document/shapes.js');
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const post = ann.watch.post.bind(ann.watch), held = [];
+  const posting = vi.spyOn(ann.watch, 'post').mockImplementation((msg) => (msg.t === 'change' ? held.push(msg) : post(msg)));
+  setActivePinia(ann.pinia);
+  const key = ann.project.addShape(rectShape(2, 2, 12, 9, { fill: '#ff0000' }));
+  ann.project.commitEdit();
+  await expect.poll(() => held.length, PATIENT).toBeGreaterThan(0);   // not numbered yet
+  expect(ann.project.hasVectorLayer).toBe(true);
+  setActivePinia(room.pinia);
+  room.project.renameLayer('edit', 'Ink');   // a layers message with no vector layer in its stack
+  await expect.poll(() => ann.project.layerById('edit')?.name, PATIENT).toBe('Ink');
+  expect(ann.project.hasVectorLayer).toBe(true);
+  expect(ann.project.shapes.has(key)).toBe(true);
+  posting.mockRestore();
+  for (const msg of held) post(msg);
+  await expect.poll(() => room.project.shapes.has(key), PATIENT).toBe(true);
+  await sameShapes(room, ann);
+  expect(ann.project.layers.map((layer) => layer.id)).toEqual(room.project.layers.map((layer) => layer.id));
+  // The host deletes the vector layer: it goes from the artist's page, shape and all.
+  expect(room.project.deleteLayer('vector')).toBe(true);
+  await expect.poll(() => ann.project.hasVectorLayer, PATIENT).toBe(false);
+  expect(ann.project.shapes.size).toBe(0);
+});
+
 test('an artist\'s shape reaches the host and back, and the checks agree', async () => {
   const { rectShape } = await import('@/document/shapes.js');
   const room = await hosting();
