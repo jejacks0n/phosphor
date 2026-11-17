@@ -83,7 +83,7 @@ export default class Renderer {
   #upperPaints = new WeakMap(); // an upper cells layer's paint -> its pixels at grid resolution through the transforms (#upperPaint)
   #shownOver = null;    // { of, canvas, dirty }: the output with the upper layers' pixels over it (shownCanvas); dirty, the grid rect a compose changed since, or null for all of it
   #matchers = new WeakMap(); // an upper layer's params -> { palette, matcher }: Best match's or By shape's matcher for one of its cells (#upperChar)
-  #upperSamples = new WeakMap(); // an upper vector layer -> { params, w, h, k, key, version, tiles }: its own samples at By shape's resolution, a tile of cells at a time (#samplesAt)
+  #upperSamples = new WeakMap(); // an upper vector layer's shapes or cells layer's paint -> { params, w, h, k, key, version, tiles }: its own samples at By shape's resolution, a tile of cells at a time (#samplesAt)
   #tiles = new Map();   // every upper layer's tile -> its layer's #upperSamples entry, least recently used first, within sampleBudget
   #tileBytes = 0;       // what #tiles hold
   sampleBudget = 32 * 1024 * 1024; // the most bytes of By shape samples upper layers keep, together
@@ -122,7 +122,7 @@ export default class Renderer {
       await loadReferenceFont().catch((error) => console.warn('IBM VGA did not load: Best match and By shape measure glyphs in a fallback font', error));
       this.#fontReady = true;
     }
-    this.#dropTiles((kept) => !this.upper.some((u) => u.layer === kept.layer && u.params.charMode === 'shape'));
+    this.#dropTiles((kept) => !this.upper.some((u) => (u.layer ?? u.paint) === kept.layer && u.params.charMode === 'shape'));
     const { canvas: pipeline, paletteColors, samples } = await processImage(image, params);
     // A hidden base: black in the picture's place, so nothing reads it (Best match and By shape included).
     this.pipelineCanvas = this.hideBase ? blackCanvas(params.cols, params.rows) : pipeline.canvas;
@@ -1090,7 +1090,7 @@ export default class Renderer {
         exact = !isFrozen(entry); // a frozen cell shows its character, and is paint to what's over it (docs/model.md R3)
         if (!exact) continue; // its own paint under it is what it stands for: not laid over it
       }
-      cell = this.#paintOver(cell, () => this.#pixelsUnder(cell, col, row, reads, at), top, bottom, exact, col, row, params, palette, () => this.#fineUnder(col, row, reads, at, [top, bottom], params));
+      cell = this.#paintOver(cell, () => this.#pixelsUnder(cell, col, row, reads, at), top, bottom, exact, col, row, params, palette, () => this.#fineUnder(col, row, reads, at, [top, bottom], params), u.paint);
     }
     this.#exact = exact;
     return cell;
@@ -1163,16 +1163,18 @@ export default class Renderer {
   // settings (params; palette: the colors it snaps to, or null while a stroke is held). Over a character that's someone's
   // own (exact) the paint tints the character, which stays (coverCell; in ANSI one with nothing to tint becomes a ▄). Over
   // anything else it's paint over paint: mixed into the two pixels under the cell (under(): the picture's, or
-  // #pixelsUnder's for an upper layer) and converted as the layer converts paint (#upperChar; the paint's pixels are its
-  // samples, as it's drawn a grid pixel at a time). So is paint over a character with no ink to tint in the ASCII styles
-  // (opensToPaint), where there's no ▄ to make of it. docs/model.md, R2 and R7.
-  #paintOver(cell, under, top, bottom, exact, col, row, params, palette, fine = null) {
+  // #pixelsUnder's for an upper layer) and converted as the layer converts paint (#upperChar). layer: the paint's own
+  // PaintLayer, for an upper cells layer: By shape samples it finely (#samplesAt), since a picture added to it, a block
+  // pasted on it or a shape merged into it is finer than the grid pixels a brush lays; null and its two pixels are its
+  // samples. So is paint over a character with no ink to tint in the ASCII styles (opensToPaint), where there's no ▄ to
+  // make of it. docs/model.md, R2 and R7.
+  #paintOver(cell, under, top, bottom, exact, col, row, params, palette, fine = null, layer = null) {
     if (!top && !bottom) return cell;
     const { renderStyle } = params;
     if (exact && (renderStyle === 'ansi' || !opensToPaint(cell, renderStyle))) return coverCell(cell, top, bottom, { renderStyle, palette });
     const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
     const halves = under(), [ht, hb] = halves;
-    return this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, null, snap, 0, fine);
+    return this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, layer, snap, 0, fine);
   }
 
   // The cell's two pixels of the picture (the lower group's, before its paint and the palette), as underCell builds a
@@ -1229,7 +1231,7 @@ export default class Renderer {
     return buildCell(t, b, keepsSeed(params.charMode) ? seededChar(params.chars, params.seed, col, row) : weightedChar(t, b, params.chars, params.charMode), params.renderStyle);
   }
 
-  // An upper vector layer's own samples in the cell at col, row (its shapes, SAMPLES a cell, alpha their coverage, through
+  // An upper layer's own samples in the cell at col, row (a vector layer's shapes or a cells layer's paint, SAMPLES a cell, alpha their coverage, through
   // the color transforms, as baseSamplesOver reads the base's): { data, width, x, y }, the cell's first sample at x, y of
   // data (RGBA), width samples wide. Read from the layer a tile of cells at a time
   // where it's first asked for (only cells the layer reaches ask), and kept until the grid, its scale or the color settings

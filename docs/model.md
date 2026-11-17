@@ -87,8 +87,8 @@ own, unmarked, the paint under them erased.
   `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `layerOver` and `storedLookAt`
   (`src/store/project/reading.js`) mirror the walk; a paste keeps a frozen cell's paint (`src/store/project/selection.js`).
 - Checked by: `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
-  the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, the frozen
-  cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and
+  the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, freezing
+  nothing as saved (R7) and, with the shape's own characters, its frozen cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and
   `› Merge down of a vector layer into a cells layer puts its shapes in as paint …`; `tests/browser/block-chars.test.js ›
   R3: the Eraser in the PIXEL view, or paint laid, in a frozen cell drops the mark …`.
 
@@ -125,7 +125,10 @@ styles those are ink on black, far darker than the pixels, so a faint stroke one
 group's own paint converts over the picture the same way. Under By shape, which matches finer samples of the picture
 (4 × 8 a cell), the layer above matches the same samples with the layers between and its own pixels laid over them
 (`#fineUnder`), so a photo's detail under soft paint counts there as it does on the lower group; where the picture has no
-samples (the lower group isn't By shape) the two pixels stand in. An upper vector layer draws its shapes at the paint's
+samples (the lower group isn't By shape) the two pixels stand in. Its own pixels are sampled as finely as they're drawn
+(`#samplesAt`: a vector layer's shapes, and a cells layer's paint, which `#paintOver` is handed), so a picture added to
+the layer, a block pasted on it or a shape merged into it keeps its detail there, as it would on the lower group; a
+brush's paint, a grid pixel at a time, samples the same as its two pixels. An upper vector layer draws its shapes at the paint's
 scale, and Merge down draws them into the paint as they are, so By shape samples the merged paint as it sampled the
 shapes, and the PIXEL view, which shows a grid pixel of paint as its block's average, shows them as it did. So the ASCII view says what the PIXEL view shows, and paint
 merged down converts to what it converted to above, except for the converter's own differences (a palette snapped at
@@ -136,7 +139,9 @@ another step, dither error, By shape's finer samples), which R3 freezes.
   tracks the stored pixels under the same way.
 - Checked by: `tests/browser/layer-stack.test.js › R7: …` (faint red over white, in Color ASCII by intensity and By
   shape and in ANSI; the report's file); `tests/browser/merge.test.js › R7: under By shape …` (soft paint over a photo
-  merges down with nothing frozen).
+  merges down with nothing frozen) and `› R3: the report (as saved) …` (a shape merged into an upper By shape layer,
+  nothing frozen); `tests/browser/layer-chars.test.js › R7: By shape on a picture added as a layer …` (the same
+  characters on its own layer as in the lower group).
 
 ### R8. Color ASCII is ANSI in spirit: a character of someone's own keeps its background, on the base too.
 

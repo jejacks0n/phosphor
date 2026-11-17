@@ -613,22 +613,28 @@ describe('down between layers', () => {
 
   // docs/model.md R3: the report (projects/merge-dark-edge.phosphor): the PIXEL view showed dark lines along a merged
   // shape's edge, where the frozen cells had lost their paint and the Overlay drew their characters' ink instead. A
-  // frozen cell keeps its paint under it, so the PIXEL view shows it as before the merge.
-  test('R3: the report: a shape merged into the layer under it looks the same in the PIXEL view, its frozen cells over their paint', async () => {
-    const { project } = await createTestApp();
-    await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/merge-dark-edge.phosphor')).arrayBuffer()], 'x.phosphor'));
-    await settle(project);
-    const { cols, rows } = project, shown = () => [...ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, cols, rows).data];
-    const before = shown(), cells = looks(project);
-    expect(project.mergeDown('vector')).toBe(true);
-    await settle(project);
-    expectLooksAlike(looks(project), cells);
-    const after = shown();
-    expect(Math.max(...before.map((v, i) => Math.abs(v - after[i])))).toBeLessThanOrEqual(2);
-    const frozen = [...project.cellsOf('L2')].filter(([, entry]) => isFrozen(entry));
-    expect(frozen.length).toBeGreaterThan(20);
-    expect(frozen.every(([key]) => { const [col, row] = key.split(',').map(Number); return project.paintOf('L2').pixelAt(col, 2 * row) || project.paintOf('L2').pixelAt(col, 2 * row + 1); })).toBe(true);
-  });
+  // frozen cell keeps its paint under it, so the PIXEL view shows it as before the merge. As saved, the shape goes into
+  // L2 (an upper layer under By shape) at its own detail and L2 samples its paint as finely (R7), so nothing is frozen;
+  // with the vector layer's own characters its edge converts otherwise on L2, and the frozen cells are the report's.
+  for (const [kind, own] of [['as saved', null], ['with the shape\'s own characters', { charsAscii: '#' }]]) {
+    test(`R3: the report (${kind}): a shape merged into the layer under it looks the same in the PIXEL view, any frozen cells over their paint`, async () => {
+      const { project } = await createTestApp();
+      await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/merge-dark-edge.phosphor')).arrayBuffer()], 'x.phosphor'));
+      if (own) project.setLayerChars('vector', own);
+      await settle(project);
+      const { cols, rows } = project, shown = () => [...ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, cols, rows).data];
+      const before = shown(), cells = looks(project);
+      expect(project.mergeDown('vector')).toBe(true);
+      await settle(project);
+      expectLooksAlike(looks(project), cells);
+      const after = shown();
+      expect(Math.max(...before.map((v, i) => Math.abs(v - after[i])))).toBeLessThanOrEqual(2);
+      const frozen = [...project.cellsOf('L2')].filter(([, entry]) => isFrozen(entry));
+      if (!own) expect(frozen.length).toBe(0); // R7
+      else expect(frozen.length).toBeGreaterThan(20);
+      expect(frozen.every(([key]) => { const [col, row] = key.split(',').map(Number); return project.paintOf('L2').pixelAt(col, 2 * row) || project.paintOf('L2').pixelAt(col, 2 * row + 1); })).toBe(true);
+    });
+  }
 
   // docs/model.md R7: under By shape the lower group matches each cell against finer samples of the picture, so a photo's
   // detail shows through soft paint; a layer above now matches the same samples, and a merged vector layer's shapes go

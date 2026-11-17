@@ -386,6 +386,36 @@ test('under Best match paint on an upper cells layer makes the cell the same pai
   expect(await paintedOn('edit', settings)).toBe(base);
 });
 
+// The report: a picture added to a drawing as a layer, then By shape picked for that layer, showed half blocks alone.
+// A picture on a layer's paint holds more than a grid pixel's detail, as shapes do. Added with Base picked (the paint
+// finer than the grid), every layer set to settings: in the lower group (its settings Base's) or an upper
+// layer (its own, differing only in a seed they don't use), the cells shown.
+async function pictureOn(where, settings) {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 24, rows: 24, quantize: 'cga' });
+  await settle(project);
+  for (const id of ['base', 'edit']) project.setLayerChars(id, settings);
+  workspace.pickLayer('base');
+  const canvas = Object.assign(document.createElement('canvas'), { width: 240, height: 240 }), ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ff5555';
+  ctx.arc(120, 120, 100, 0, 2 * Math.PI);
+  ctx.fill(); // a circle on nothing: its edges cross cells
+  const blob = await new Promise((done) => canvas.toBlob(done, 'image/png'));
+  const id = await project.addPictureToLayer(new File([blob], 'circle.png', { type: 'image/png' }));
+  if (where !== 'base') project.setLayerChars(id, { ...settings, seed: 'its own' });
+  await settle(project);
+  expect(project.paintOf(id).scale).toBeGreaterThan(1);
+  expect(project.lowerGroup.upper.length).toBe(where === 'base' ? 1 : 2);
+  return cellsKey(project);
+}
+
+test('R7: By shape on a picture added as a layer picks the characters it does in the lower group', async () => {
+  const settings = { charChoice: 'shape', chars: '▄▀▌▐█', solids: 0 };
+  const lower = await pictureOn('base', settings), upper = await pictureOn('own', settings);
+  expect(lower.some((cell) => !halfBlocks.has(cell[0]))).toBe(true); // ▌ at the circle's sides: finer than a grid pixel
+  expect(upper).toEqual(lower);
+});
+
 // A small rect inside a big ellipse on an upper vector layer of its own settings, on a 40 x 64 canvas: moved times
 // (each an edit of its own) 0.7 grid pixels down and right, or drawn there to begin with (none), then
 // rendered whole at another brightness.
