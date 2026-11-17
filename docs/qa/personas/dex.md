@@ -310,8 +310,9 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Rated: yes, wants Cmd+O, then a key for Draw on top
 
 ### 25. Fix the base and draw over it
-- Does: picks Base, chooses the Eraser (E) and clicks a cell (it turns black with a pinned space), types over a cell
-  in Edit Mode (it overwrites; Insert doesn't push there), then picks Layer 1 and types on top.
+- Does: picks Base, chooses the Eraser (E) and clicks a cell at its starting size (Size · cells, 1: that one cell turns
+  black with a pinned space, its neighbors stay), types over a cell in Edit Mode (it overwrites; Insert doesn't push
+  there), then picks Layer 1 and types on top.
 - Expects: on the base, the Pencil and text write each cell as it shows, pinned; Delete in Insert mode does nothing
   there; on Layer 1 his typing covers the base.
 - Probes: `out-of-order`: press Insert on the base and type; `undo-redo`: undo the base edit and the typing in order.

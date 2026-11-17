@@ -303,6 +303,21 @@ test('the eraser on the base erases the base, on the edit layer the edit layer',
   expect(project.baseRecords.pins.get('3,3')).toBe('P');
 });
 
+// Each view has its own Eraser size: the ANSI view's in cells (starting at 1), the PIXEL view's in pixels (5).
+test('the eraser in the ANSI view starts at one cell: a click on the base pins one space, whatever the PIXEL view\'s size', async () => {
+  const { project, workspace } = await blank();
+  expect([workspace.editEraserCells, workspace.editEraserSize]).toEqual([1, 5]);
+  const ctx = { project, workspace, view: 'output' };
+  workspace.pickLayer('base');
+  eraser.begin(ctx, { x: 5.5, y: 8.5 });
+  eraser.end(ctx);
+  expect([...project.baseRecords.pins.keys()]).toEqual(['5,4']);
+  workspace.editEraserCells = 2; // the extra column right, the extra row below
+  eraser.begin(ctx, { x: 10.5, y: 8.5 });
+  eraser.end(ctx);
+  expect([...project.baseRecords.pins.keys()].sort()).toEqual(['10,4', '10,5', '11,4', '11,5', '5,4']);
+});
+
 // Selections work on what's shown (workspace.selectionIds), whatever layer is picked; hiding a layer leaves it out.
 async function selecting() {
   const app = await blank();

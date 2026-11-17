@@ -124,6 +124,16 @@ for (const renderer of ['canvas', 'DOM']) {
     const changed = (await row(7)).map((v, i) => v !== before[i]);
     expect(changed.flatMap((c, i) => (c ? [i] : []))).toEqual([4]);
 
+    // The Eraser's outline in ANSI is its size in cells, 1 to begin with: the one cell under the pointer.
+    await page.getByRole('button', { name: 'Eraser' }).click();
+    const eraseAt = await cellPoint(page, 5, 5);
+    await page.mouse.move(eraseAt.x, eraseAt.y);
+    await expectAt(page, '.tool-preview', 5, 5);
+    const [outline, next] = [await page.locator('.ansi-editor .tool-preview').boundingBox(), await cellCorner(page, 6, 6)];
+    const corner = await cellCorner(page, 5, 5);
+    expect(Math.abs(outline.width - (next.x - corner.x))).toBeLessThan(0.5);
+    expect(Math.abs(outline.height - (next.y - corner.y))).toBeLessThan(0.5);
+
     await page.getByRole('button', { name: 'Select', exact: true }).click();
     await drag(page, await cellPoint(page, 3, 3), await cellPoint(page, 8, 6));
     expect(await store(page, 'workspace', (w) => w.selection)).toEqual({ c0: 3, r0: 3, c1: 8, r1: 6 });
