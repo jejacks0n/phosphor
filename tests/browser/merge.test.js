@@ -64,7 +64,7 @@ describe('exactly', () => {
   // docs/model.md R1: a paint block outside ANSI is its paint: Keep crisp cells makes base pixels of it, nothing pinned.
   test('R1: Keep crisp cells in Color ASCII brings Colors only\'s paint down as pixels, with no pin, and nothing changes', async () => {
     const { project, workspace } = await createTestApp();
-    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
     project.renderStyle = 'colorAscii';
     await settle(project);
     workspace.pickLayer('edit');
@@ -116,7 +116,7 @@ describe('exactly', () => {
   test('R8: in Color ASCII a letter tinted by paint stays ink on black through Keep crisp cells and Into the image', async () => {
     for (const into of [false, true]) {
       const { project, workspace } = await createTestApp();
-      await project.setBlankCanvas({ cols: 20, rows: 20 });
+      await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
       project.renderStyle = 'colorAscii';
       await settle(project);
       workspace.pickLayer('edit');
@@ -138,7 +138,7 @@ describe('exactly', () => {
 
   test('R8: in Color ASCII a typed cell with a background merges onto the base as its two colors, one without as ink on black, and a pin of one color shows on black', async () => {
     const { project, workspace } = await createTestApp();
-    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
     project.renderStyle = 'colorAscii';
     await settle(project);
     workspace.pickLayer('edit');
@@ -212,7 +212,7 @@ describe('into the picture', () => {
   // docs/model.md R3: a frozen cell's pin is its look; the paint under it stays out of the picture (onBase keeps it out too).
   test('R3: Into the image takes a frozen cell\'s pinned colors, not the paint under it', async () => {
     const { project, workspace } = await createTestApp();
-    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
     await settle(project);
     workspace.pickLayer('edit');
     project.paintEditPixels([{ x: 5, y: 10, r: 255, g: 0, b: 0, alpha: 1 }, { x: 5, y: 11, r: 255, g: 0, b: 0, alpha: 1 }]);
@@ -549,7 +549,7 @@ describe('down between layers', () => {
   for (const view of ['input', 'output']) {
     test(`a shape merged down into a drawing layer goes in as paint, nothing on the canvas changing, and Blur fades its edge (${view === 'input' ? 'PIXEL' : 'ANSI'} view)`, async () => {
       const { project, workspace } = await createTestApp();
-      await project.setBlankCanvas({ cols: 20, rows: 20 });
+      await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
       await settle(project);
       const vector = project.addLayer('vector', 'edit');
       workspace.pickLayer(vector);
@@ -570,7 +570,7 @@ describe('down between layers', () => {
 
     test(`a drawing layer's paint merged down into another stays paint, and Blur fades its edge (${view === 'input' ? 'PIXEL' : 'ANSI'} view)`, async () => {
       const { project, workspace } = await createTestApp();
-      await project.setBlankCanvas({ cols: 20, rows: 20 });
+      await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
       await settle(project);
       const top = project.addLayer('cells', 'edit');
       workspace.pickLayer(top);
@@ -700,7 +700,7 @@ describe('down between layers', () => {
   for (const style of [{ renderStyle: 'colorAscii', charChoiceAscii: 'shape' }, { renderStyle: 'ansi', charChoice: 'shape' }]) {
     test(`a gradient shape merged down under By shape (${style.renderStyle}) is paint, exact only where it shows differently`, async () => {
       const { project, workspace } = await createTestApp();
-      await project.setBlankCanvas({ cols: 60, rows: 30 });
+      await project.setBlankCanvas({ withLayer: true, cols: 60, rows: 30 });
       Object.assign(project, style);
       await settle(project);
       const layer = project.addLayer('cells', 'base'), vector = project.addLayer('vector', layer);
