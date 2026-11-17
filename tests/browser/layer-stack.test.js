@@ -106,7 +106,7 @@ test('in a room the host\'s new layer is no undo step and goes to the room as th
     const id = project.addLayer('cells', 'edit');
     expect(ids(project)).toEqual(['base', 'edit', id]);
     expect(project.history.version).toBe(version);
-    expect(sent).toEqual([{ t: 'layers', n: project._ledger.n, by: 'mine', made: id, stack: project.layers.map(({ id: each, kind, name, chars }) => ({ id: each, kind, name, chars })) }]);
+    expect(sent).toEqual([{ t: 'layers', n: project._ledger.n, by: 'mine', made: id, gone: [], stack: project.layers.map(({ id: each, kind, name, chars }) => ({ id: each, kind, name, chars })) }]);
     expect(project._ledger.tail.items.at(-1)).toBe(sent[0]);
   } finally {
     project.stopSharing();

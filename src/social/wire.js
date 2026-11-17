@@ -50,9 +50,10 @@
  * Host to artist:
  *   { t: 'numbered', n, by, stroke, cells, runs }   a change, by the sub who made it
  *   { t: 'settings', n, values }                the document's saved settings, changed
- *   { t: 'layers', n, stack, by, made }         the whole stack after any change to it (readLayers): [{ id, kind, name,
+ *   { t: 'layers', n, stack, by, made, gone }   the whole stack after any change to it (readLayers): [{ id, kind, name,
  *                                               chars }], bottom first; by, who asked (a sub, the host's too); made, the
- *                                               id of a layer that change added or copied, else null
+ *                                               id of a layer that change added or copied, else null; gone, the ids of the
+ *                                               layers it took out (a delete's), else []
  *   { t: 'font', font }                         the font the art is in (fontOnWire), at hello and when it changes
  *   { t: 'base', n, runs, records }             the base layer's own pixels, and its pinned characters
  *   { t: 'project-failed' }                     the host couldn't pack the project this artist was owed
@@ -304,11 +305,12 @@ export function readChange(msg, { cols, rows, layerWidth, layerHeight, layers = 
 // back, chars null for none (the bottom's are the document's settings).
 const goodName = (name) => name === null || (typeof name === 'string' && goodLayerName(name) === name);
 export function readLayers(msg) {
-  const { n, stack, by, made = null } = msg ?? {};
+  const { n, stack, by, made = null, gone = [] } = msg ?? {};
   if (!isWhole(n) || !isSub(by) || !Array.isArray(stack) || !stack.every((layer) => goodName(layer?.name))) return null;
+  if (!Array.isArray(gone) || !gone.every((id) => isLayerId(id) && id !== 'base')) return null;
   const layers = goodLayers(stack);
   if (!layers || (made !== null && !layers.slice(1).some((layer) => layer.id === made))) return null;
-  return { n, by, made, stack: layers.map(({ id, kind, name, chars = null }) => ({ id, kind, name, chars })) };
+  return { n, by, made, gone, stack: layers.map(({ id, kind, name, chars = null }) => ({ id, kind, name, chars })) };
 }
 
 // An artist's layer-op's op, with only its own fields, or null for anything that isn't one of the five. The bottom is the

@@ -1,7 +1,7 @@
 // The document shared with a room: an edit goes out as it happens, a change heard is written, and undo
-// asks the host. Owns _sharing ({ send(message), role, me }, what's waiting for its frame, and, for an artist,
-// its Pending, what that reads and writes through, and what's held), _paused, and _floating (a float's move
-// is being made).
+// asks the host. Owns _sharing ({ send(message), role, me }, what's waiting for its frame, for a host the layers
+// deleted in this room (removed), and, for an artist, its Pending, what that reads and writes through, and what's
+// held), _paused, and _floating (a float's move is being made).
 //
 // A stroke goes out in slices: what's changed since the last one, every 100 ms and at commitEdit, under
 // the stroke's id. For a host, and for anyone alone, a slice goes in the ledger; a host also sends what
@@ -212,7 +212,10 @@ export const sharingActions = {
     const sum = this.editLayerSum();
     let sharing;
     if (role === 'host') {
-      sharing = { send, sendDocument, hold, release, role, me, roomId, timer: setInterval(() => this.sendSlice(), SLICE_MS), heardCells: new Map(), heardRuns: [], heard: [], cancelFlush: null, held: null };
+      // removed: the layers deleted in this room, for artists' strokes to them (takeFromArtist). The tail's layers messages say
+      // which went, so a host back from a reload (restoreLedger) or new to the room (takeLedger) remembers them too.
+      const removed = new Set(this._ledger.tail.items.flatMap((item) => item.gone ?? []));
+      sharing = { send, sendDocument, hold, release, role, me, roomId, timer: setInterval(() => this.sendSlice(), SLICE_MS), heardCells: new Map(), heardRuns: [], heard: [], cancelFlush: null, held: null, removed };
       this._ledger.epoch ??= randomId();
       this._ledger.rename(this._by, me);
       this._ledger.startNumbering({ sum });
@@ -414,7 +417,8 @@ export const sharingActions = {
   // (followLayerPick), which is then in use. by: who asked; my own ask picks what it made. The ledger and Pending let go of a
   // layer that goes, and their sums lose its share (dropFromSums), with what I've drawn sent first: what's on screen is then
   // what's agreed, but where Pending holds mine. Replayed from a host's kept tail before sharing starts (restoreLedger), there's
-  // nothing to drop: the kept ledger dropped it at the delete, and sharing seeds the sum from the picture.
+  // nothing to drop: the kept ledger dropped it at the delete, and sharing seeds the sum from the picture. A host replaying an
+  // artist's tail (takeCatchUp) remembers what went (removed), as its own delete does.
   applyLayers({ stack, by, made }) {
     const had = new Map(this.layers.map((layer) => [layer.id, layer])), gone = new Set(had.keys()), layers = [];
     for (const [at, { id, kind, name, chars }] of stack.entries()) {
@@ -428,7 +432,10 @@ export const sharingActions = {
     if (gone.size && this._sharing) { // a host's reload replays its tail before sharing starts, its kept ledger past the delete
       if (mine) this.commitPending(); // my open stroke goes in whole while its layer is here: left open, it would later send its cells' deletion
       else this.sendSlice();
-      for (const id of gone) dropFromSums(this, id);
+      for (const id of gone) {
+        dropFromSums(this, id);
+        this._sharing.removed?.add(id);
+      }
     }
     for (const id of gone) {
       if (had.get(id).kind === 'vector') this.shapes = new Map([...this.shapes].filter(([, shape]) => (shape.layer ?? 'vector') !== id));
