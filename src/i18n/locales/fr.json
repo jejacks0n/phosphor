@@ -409,8 +409,10 @@
     },
     "eraser": {
       "title": "Gomme",
-      "size": "Taille",
-      "sizeTitle": "Taille de la gomme"
+      "sizePixels": "Taille · px",
+      "sizePixelsTitle": "Taille de la gomme, en pixels",
+      "sizeCells": "Taille · cellules",
+      "sizeCellsTitle": "Taille de la gomme, en cellules"
     },
     "bucket": {
       "title": "Pot de peinture",

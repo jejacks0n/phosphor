@@ -45,6 +45,21 @@ export function squarePixels(from, to, size, cols, rows) {
   return [...pixels.values()];
 }
 
+// Hard square of `size` whole cells around the cell under the stroke (the ANSI view's eraser): { col, row }, the extra
+// column right and the extra row below when size is even. rows: grid pixels, two to a cell.
+export function squareCells(from, to, size, cols, rows) {
+  const cells = new Map(), before = Math.floor((size - 1) / 2), lines = Math.ceil(rows / 2);
+  for (const { x, y } of interpolate(from, to)) {
+    const c0 = Math.floor(x) - before, r0 = Math.floor(y / 2) - before;
+    for (let row = r0; row < r0 + size; row++) {
+      for (let col = c0; col < c0 + size; col++) {
+        if (inGrid(col, row, cols, lines)) cells.set(`${col},${row}`, { col, row });
+      }
+    }
+  }
+  return [...cells.values()];
+}
+
 // Soft round brush. flow and hardness are 0..1. Overlapping stamps are kept (they build up paint).
 export function brushPixels(from, to, { size, flow, hardness }, cols, rows) {
   const radius = size / 2;

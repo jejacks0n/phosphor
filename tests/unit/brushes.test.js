@@ -1,7 +1,7 @@
 // Brush pixel generation shared by both editors (grid pixels, clipped to the grid).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { interpolate, pencilPixels, squarePixels, brushPixels, linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
+import { interpolate, pencilPixels, squarePixels, squareCells, brushPixels, linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
 
 test('Brush pixel generation shared by both editors (grid pixels, clipped to the grid)', async () => {
   assert.deepEqual(interpolate({ x: 0, y: 0 }, { x: 1, y: 0 }), [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }]);
@@ -143,4 +143,17 @@ test('Half steps: whole blocks placed to the nearest half cell, so one between t
   // Filled: the inside too.
   const disc = halfStepEllipse({ x: 0.5, y: 0.5 }, { x: 16.5, y: 13.5 }, true, 30, 30);
   assert.ok(disc.length > halfStepEllipse({ x: 0.5, y: 0.5 }, { x: 16.5, y: 13.5 }, false, 30, 30).length * 3);
+});
+
+// The ANSI view's Eraser counts in cells: size N is an N by N square of cells around the cell under the pointer, the
+// extra column right and the extra row below when N is even. rows are grid pixels, two to a cell.
+test('squareCells: an N by N square of whole cells around the cell under the pointer', () => {
+  const sq = (from, to, size) => squareCells(from, to, size, 10, 20).map(({ col, row }) => [col, row]);
+  assert.deepEqual(sq({ x: 4.5, y: 6.5 }, { x: 4.5, y: 6.5 }, 1), [[4, 3]]);
+  assert.deepEqual(sq({ x: 4.9, y: 7.9 }, { x: 4.9, y: 7.9 }, 1), [[4, 3]]); // anywhere in the cell
+  assert.deepEqual(sq({ x: 4.5, y: 6.5 }, { x: 4.5, y: 6.5 }, 2), [[4, 3], [5, 3], [4, 4], [5, 4]]);
+  assert.equal(sq({ x: 4.5, y: 6.5 }, { x: 4.5, y: 6.5 }, 3).length, 9);
+  assert.deepEqual(sq({ x: 4.5, y: 6.5 }, { x: 4.5, y: 6.5 }, 3)[0], [3, 2]);
+  assert.deepEqual(sq({ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }, 3), [[0, 0], [1, 0], [0, 1], [1, 1]]); // clipped at the edge
+  assert.deepEqual(sq({ x: 1.5, y: 0.5 }, { x: 3.5, y: 0.5 }, 1), [[1, 0], [2, 0], [3, 0]]); // a drag, each cell once
 });

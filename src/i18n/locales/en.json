@@ -409,8 +409,10 @@
     },
     "eraser": {
       "title": "Eraser",
-      "size": "Size",
-      "sizeTitle": "Eraser size"
+      "sizePixels": "Size · px",
+      "sizePixelsTitle": "Eraser size, in pixels",
+      "sizeCells": "Size · cells",
+      "sizeCellsTitle": "Eraser size, in cells"
     },
     "bucket": {
       "title": "Paint Bucket",

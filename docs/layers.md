@@ -618,7 +618,10 @@ The **Eraser** (**E**) erases the selected layer:
 
 - **On a Drawing Layer**: Removes that layer's paint and cells. The layers over and under it stay.
 - **On the Base**: Erases the base layer: the cells go black with a pinned space. Your edits on top stay.
-- **Size 1**: Erases exactly what's under the pointer: one character in the ANSI view, one pixel in the PIXEL view.
+- **Size**: Each view has its own. In the ANSI view it counts cells (**Size · cells**, starting at 1): one click erases
+  the character under the pointer, and size N erases an N by N square of cells around it (with an even N, the extra
+  column is on the right and the extra row below). In the PIXEL view it counts pixels (**Size · px**, starting at 5),
+  and size 1 is the one pixel under the pointer. Changing one leaves the other as it is.
 - **In the PIXEL View**: The Eraser removes paint (on a drawing layer) and turns base pixels black (on the base),
   leaving the characters as they are, except a ▄ that Half-block made to show paint (one with no colors of its own):
   when its cell's last paint is erased, the cell gets its own character back.

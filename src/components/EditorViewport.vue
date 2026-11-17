@@ -9,8 +9,8 @@ import PauseLayer from '@/components/social/PauseLayer.vue';
 import GuideRulers from '@/components/GuideRulers.vue';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
 import { getTool } from '@/tools';
-import { charRowsOf, cellAt, cellsOfPixels } from '@/lib/Cells';
-import { squarePixels } from '@/lib/Brushes';
+import { charRowsOf, cellAt } from '@/lib/Cells';
+import { squarePixels, squareCells } from '@/lib/Brushes';
 import { pickMode, pickTargetOf } from '@/lib/pickMode';
 import { drawsCells } from '@/tools/shapes';
 import { snapCursor } from '@/document/wideChars';
@@ -144,12 +144,12 @@ const previewStyle = computed(() => {
     };
   }
 
-  const size = preview.size(workspaceStore);
-  // The eraser outlines exactly what it covers: whole cells in the ANSI view, pixels in the pixel view.
+  const size = preview.size(workspaceStore, props.view);
+  // The eraser outlines exactly what it covers: whole cells in the ANSI view (its size counts cells), pixels in the
+  // pixel view.
   if (preview.snap) {
-    const square = squarePixels(gridPos(pos), gridPos(pos), size, projectStore.cols, projectStore.rows);
-    const ansi = props.view === 'output';
-    const parts = ansi ? cellsOfPixels(square, projectStore.cols, projectStore.rows).map(c => ({ x: c.col, y: c.row })) : square;
+    const ansi = props.view === 'output', { cols, rows } = projectStore;
+    const parts = ansi ? squareCells(gridPos(pos), gridPos(pos), size, cols, rows).map(c => ({ x: c.col, y: c.row })) : squarePixels(gridPos(pos), gridPos(pos), size, cols, rows);
     if (!parts.length) return { display: 'none' };
     const x0 = Math.min(...parts.map(c => c.x)), x1 = Math.max(...parts.map(c => c.x));
     const y0 = Math.min(...parts.map(c => c.y)), y1 = Math.max(...parts.map(c => c.y));
