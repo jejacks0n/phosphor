@@ -78,7 +78,9 @@ test('a rectangle, then the wand, then Deselect: each undoes back to the one bef
   expect([workspace.selection, workspace.wand]).toEqual([null, null]);
 });
 
-test('a move, then Deselect: undo brings the selection back on the block, then the block and its selection back where they were', async () => {
+// Setting a floating block down (Deselect, Escape, Enter, a tap outside) isn't an undo step of its own: it belongs to
+// the move or paste it ends, so the next undo takes that back.
+test('a move, then Deselect: one undo puts the block and its selection back where they were, floating', async () => {
   const { project, workspace, drag } = await scene();
   project.typeAt(3, 3, 'x', { fg: '#ff0000', bg: '#000000' });
   project.commitEdit();
@@ -86,13 +88,74 @@ test('a move, then Deselect: undo brings the selection back on the block, then t
   drag([3, 3], [9, 3]); // inside it: the block moves 6 cells right
   expect(workspace.selection).toEqual({ c0: 8, r0: 2, c1: 11, r1: 4 });
   expect(project.editCellAt(9, 3)?.char).toBe('x');
+  const steps = project.historyVersion;
   project.changeSelection((w) => { w.selection = null; });
-  project.undo();
-  expect(workspace.selection).toEqual({ c0: 8, r0: 2, c1: 11, r1: 4 });
+  expect(project.historyVersion).toBe(steps); // no step
   project.undo();
   expect(project.editCellAt(3, 3)?.char).toBe('x');
   expect(project.editCellAt(9, 3)).toBe(undefined);
   expect(workspace.selection).toEqual({ c0: 2, r0: 2, c1: 5, r1: 4 });
+  drag([3, 3], [4, 3]); // floating again: it moves on
+  expect(project.editCellAt(4, 3)?.char).toBe('x');
+});
+
+test('a paste, a nudge and a set-down: two undos take back the nudge, then the paste; redo floats it, and setting it down adds nothing', async () => {
+  const { project, workspace, drag, tap } = await scene();
+  project.typeAt(3, 3, 'x', { fg: '#ff0000', bg: '#000000' });
+  project.commitEdit();
+  const block = project.copySelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, ['base', 'edit']);
+  workspace.selectAll(project.pasteSelection(block, 10, 5));
+  drag([10, 5], [12, 5]);
+  tap(17, 8); // outside it: set down
+  expect(workspace.selection).toBe(null);
+  expect(project.editCellAt(12, 5)?.char).toBe('x');
+
+  project.undo();
+  expect(project.editCellAt(10, 5)?.char).toBe('x');
+  expect(project.editCellAt(12, 5)).toBe(undefined);
+  expect(workspace.selection).toEqual({ c0: 10, r0: 5, c1: 10, r1: 5 });
+  project.undo();
+  expect(project.editCellAt(10, 5)).toBe(undefined);
+  expect(workspace.selection).toBe(null);
+
+  project.redo();
+  project.redo();
+  expect(project.editCellAt(12, 5)?.char).toBe('x');
+  expect(workspace.selection).toEqual({ c0: 12, r0: 5, c1: 12, r1: 5 }); // floating where it was left
+  expect(project.history.canRedo).toBe(false);
+  project.changeSelection((w) => { w.selection = null; });
+  expect(project.history.canRedo).toBe(false);
+  project.undo();
+  expect(project.editCellAt(10, 5)?.char).toBe('x');
+});
+
+test('a paste set down with no move: one undo takes it away', async () => {
+  const { project, workspace } = await scene();
+  project.typeAt(3, 3, 'x', { fg: '#ff0000', bg: '#000000' });
+  project.commitEdit();
+  const block = project.copySelection({ c0: 3, r0: 3, c1: 3, r1: 3 }, ['base', 'edit']);
+  workspace.selectAll(project.pasteSelection(block, 10, 5));
+  project.changeSelection((w) => { w.selection = null; });
+  project.undo();
+  expect(project.editCellAt(10, 5)).toBe(undefined);
+  expect(workspace.selection).toBe(null);
+  expect(project.editCellAt(3, 3)?.char).toBe('x');
+});
+
+test('a new rectangle drawn while a block floats is still a selection step: undo brings the floating block back', async () => {
+  const { project, workspace, drag } = await scene();
+  project.typeAt(3, 3, 'x', { fg: '#ff0000', bg: '#000000' });
+  project.commitEdit();
+  drag([2, 2], [5, 4]);
+  drag([3, 3], [9, 3]);
+  drag([14, 7], [16, 8]); // a new selection ends the float
+  expect(workspace.selection).toEqual({ c0: 14, r0: 7, c1: 16, r1: 8 });
+  project.undo();
+  expect(workspace.selection).toEqual({ c0: 8, r0: 2, c1: 11, r1: 4 });
+  expect(project.editCellAt(9, 3)?.char).toBe('x');
+  drag([9, 3], [10, 3]); // floating again: the same move
+  project.undo();
+  expect(project.editCellAt(3, 3)?.char).toBe('x');
 });
 
 // A paste, then a drag: the paste is one step and the drag another, and undo or redo leaves the block

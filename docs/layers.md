@@ -835,6 +835,10 @@ nothing until you select cells. With the wand they come at the end of its row, o
 - **Selection Steps**: Making, changing or dropping a selection is an undo step too: a wand click, a new rectangle,
   moving the rectangle's outline, **Select all**, **Escape** and **Deselect**. Undo brings back the selection you had
   before, so a stray wand click is one undo away.
+- **Setting a Block Down**: Dropping the selection of a floating block (**Escape**, **Enter**, **Deselect**, a click
+  outside) sets it down and isn't a step of its own: it belongs to the move or paste it ends, so the next undo takes
+  that back, with the block floating and selected again. Redo leaves the block floating where you left it, to set down
+  again. A new selection made while a block floats is still a step.
 - **Not Changes**: These steps don't count as changes to the document (nothing new to save).
 - **Moves and Pastes**: A move or paste keeps its selection with it: undoing a move puts the selection back where the
   block came from, undoing a pasted block's moves puts it back where the block was pasted, and redo puts it back on the

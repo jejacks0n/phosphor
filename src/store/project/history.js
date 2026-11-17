@@ -394,12 +394,13 @@ export const historyActions = {
       return;
     }
     // Undoing a step of a move or paste: the block floats as it was before it, the selection with it
-    // (a paste's first step: the selection is dropped; a stamp's goes back to the copy it left).
+    // (a paste's first step: the selection is dropped; a stamp's goes back to the copy it left), also
+    // when it was set down since (a dropped selection isn't a step: changeSelection).
     if (entry.floats) {
       const { before, after } = entry.floats;
       this._float = before && { ...before, version: this.history.version };
-      const workspace = useWorkspaceStore();
-      if (toRaw(workspace.selection) === toRaw(after.landed)) workspace.selection = before ? before.landed : after.paste && !after.stamped ? null : after.from;
+      const workspace = useWorkspaceStore(), shown = toRaw(workspace.selection);
+      if (shown === toRaw(after.landed) || (!shown && !workspace.wand)) workspace.selection = before ? before.landed : after.paste && !after.stamped ? null : after.from;
     }
     this.editVersion++; // undo moves away from what was saved (undoing back to it still counts as dirty)
     if (this.hasFrames && this.quantize === 'count') this.pickPalette();
