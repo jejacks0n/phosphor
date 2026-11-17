@@ -218,8 +218,9 @@ tests/fixtures/reference` and commit only what you meant to change.
 ## Reporting a bug with the History tab
 
 In `npm run dev` the side panel has a third tab, HISTORY. It lists every step taken since the page
-loaded: tool picks, edits (a stroke's moves folded into one line with a count), layers, frames, files,
-room events, and any error the page threw, with the seconds since load. Steps undo can't reach are
+loaded: tool picks, edits, layers, frames, files, room events, and any error the page threw, with the
+seconds since load. A run of one action is one line with a count: a stroke's moves, or a zoom's notches
+shown as its first and last amount. Steps undo can't reach are
 there too. Copy puts the whole list on the clipboard, headed by the build, browser and viewport, to
 paste into a bug report; Clear starts it over. Built apps (web, desktop, the end-to-end preview) have
 none of it: it's `src/dev/actionLog.js` (with `skipped.js`, the actions left out: queries, renders, what
