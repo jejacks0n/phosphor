@@ -11,7 +11,7 @@ import { EMPTY_BASE, withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { makeArt, isArt } from '@/document/artLayers.js';
 import { finerStops, isGradient, isShape, shapeBounds, withShape } from '@/document/shapes.js';
-import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind } from '@/document/editCells.js';
+import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors } from '@/lib/Cells.js';
@@ -200,17 +200,22 @@ function frozenCells(project, id, indexes, level = indexes.length && levelCells(
 // Merge down of the cells layer with the id into the cells layer under it (inside rect, or all of it), so that what shows
 // doesn't change: each entry completed against the look under it (completeAt) and written there, where that layer's paint
 // is erased, and its paint drawn over the paint under it, so it stays paint (Blur and the rest work on it as on any). A
-// cell its paint lies over that it has no entry for, where that paint on paint shows otherwise (unlike), goes in frozen as
-// it showed (frozenCells) instead, the paint there erased. Entries past the grid go in as they are.
+// paint block (Colors only's bare ▄) is paint, not an entry: it goes in as it is where the layer under has no cell of its
+// own, and nothing under it is erased. A cell its paint lies over that it has no entry for, or a paint block, where that
+// paint on paint shows otherwise (unlike), goes in frozen as it showed (frozenCells) instead, the paint there erased.
+// Entries past the grid go in as they are.
 function onCells(project, id, under, rect) {
   const cells = project.cellsOf(id), paint = project.paintOf(id), rows = charRowsOf(project.rows), { cols } = project;
   const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
-  const next = new Map(project.cellsOf(under)), kept = new Map(), erased = [];
+  const next = new Map(project.cellsOf(under)), kept = new Map(), erased = [], blocks = [];
   for (const [key, entry] of cells) {
     const { col, row } = parseKey(key);
     if (!inRect(col, row)) kept.set(key, entry);
     else if (col >= cols || row >= rows) next.set(key, entry);
-    else {
+    else if (isPaintBlock(entry)) { // paint, not a cell of its own: it stays one over the paint under it, or goes
+      if (!next.has(key) || isPaintBlock(next.get(key))) next.set(key, entry);
+      blocks.push(row * cols + col);
+    } else {
       next.set(key, project.completeAt(col, row, entry, id));
       erased.push(...halvesOf(col, row));
     }
@@ -222,6 +227,7 @@ function onCells(project, id, under, rect) {
       if (!cells.has(cellKey(col, row)) && (paint.colorAt(col, 2 * row) || paint.colorAt(col, 2 * row + 1))) painted.push(row * cols + col);
     }
   }
+  painted.push(...blocks);
   if (rect && !erased.length && !painted.length) return false; // nothing drawn inside: no empty undo step
   const was = painted.length && levelCells(project, id, painted), frozen = frozenCells(project, id, painted, was);
   const before = { stack: stackState(project) };
