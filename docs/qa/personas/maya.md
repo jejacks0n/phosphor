@@ -107,7 +107,8 @@ script. Every section ends with Free time.
 - Does: in Color palette, tries Full color (24-bit), VGA (256 colors), CGA (16 colors), Limited count (and moves its
   Color count) and Custom color list.
 - Expects: each one recolors the picture to its colors; Limited count shows a Color count slider; Custom color list
-  shows Palette colors to edit; Dither style and Dither appear in the Characters section once there's a palette.
+  shows Palette colors to edit, where Escape puts back the list in use; Dither style and Dither appear in the Characters
+  section once there's a palette.
 - Probes: `extremes`: set Color count to its least and its most; `undo-redo`: undo back to Full color and check the
   Dither controls go away again; `again`: pick CGA twice in a row.
 - Rated: yes, wants Tab to Color palette then the arrows

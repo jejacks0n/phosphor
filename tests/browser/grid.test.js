@@ -273,6 +273,31 @@ test('Dimensions: typed digits wait for Enter or a blur, Escape puts the field b
   }
 });
 
+// The report (maya-5): Escape in Palette colors kept the typed list, and a click elsewhere then applied it. Escape now
+// puts the field back to the palette in use, as it does in Dimensions.
+test('Palette colors: Escape puts the field back to the palette in use, and a blur after it changes nothing', async () => {
+  const { project } = await grid(40, 40);
+  project.quantize = 'palette';
+  project.palette = '#FFFFFF #000000';
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const field = host.querySelector('#palette');
+  try {
+    await userEvent.tripleClick(field);
+    await userEvent.keyboard('#FFFFFF #00FF00');
+    await userEvent.keyboard('{Escape}');
+    expect(field.value).toBe('#FFFFFF #000000');
+    field.blur(); // a click elsewhere
+    expect(project.palette).toBe('#FFFFFF #000000');
+  } finally {
+    app.unmount();
+    host.remove();
+  }
+});
+
 async function reopened(project) {
   const blob = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
   await project.openParts(await readProject(blob), { filename: 'reopened' });

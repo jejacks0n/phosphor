@@ -157,7 +157,8 @@ The settings on the left come in sections, each following a layer:
 
 - **Drawing** (all layers): **Dimensions**, **Art style** (ANSI, Color ASCII, Monochrome ASCII), **Font**, and
   **Color palette** with its **Color count** or **Palette colors**. These belong to the whole drawing, whichever
-  layer is selected.
+  layer is selected. A list typed into **Palette colors** takes effect on **Enter** or leaving the field; **Escape** puts
+  back the one in use.
 - **Transforms**: **Colorize** (with its color), **Hue shift** and **Invert**.
 - **Adjustments**: **Brightness**, **Contrast**, **Black point**, **White point**, **Midtones**, **Saturation**,
   **Posterize** and **Threshold** (with its **Dark color** and **Light color**).
