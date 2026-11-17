@@ -1047,7 +1047,9 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
 
 ## When the Grid Changes
 
-What a new grid size (**Dimensions**) does depends on what's drawn, and on what Undo could bring back:
+What a new grid size (**Dimensions**) does depends on what's drawn, and on what Undo could bring back. A size you type
+applies when you press **Enter** or **Tab** or click elsewhere, not digit by digit; **Escape** puts the field back to
+the grid's size. The stepper arrows and the **↑** and **↓** keys change the size at once, a step at a time.
 
 - **Canvas Resize**: With anything drawn (cells, shapes or paint on any layer, or on the base: its pinned characters
   and its own pixels, from drawing on it, erasing it, Merge down or an ANSI file opened with Draw on top), or any drawing

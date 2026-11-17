@@ -28,6 +28,10 @@ const layerName = useLayerName();
 // Why the settings are off, if they are: only the host's in a room; and inside an art layer the dimmed rest is a snapshot
 // of how they had the picture, which a change would leave stale.
 const locked = computed(() => drawing.hostOnly || (store.artInside ? t('art.settingsOff') : null));
+// Dimensions: a size typed digit by digit waits for Enter, Tab or a click elsewhere (the field's change), and Escape puts
+// the field back to the grid's size, so a half-typed number never reaches the grid, a room or the undo history. The
+// stepper arrows and the up and down keys give a whole size at a time, so they resize at once: their input isn't typing.
+const stepped = (e) => !e.inputType;
 // Characters in a room are the host's alone, and each layer has its own: an artist sees the picked layer's, with that reason.
 const lockedFor = (group) => (group.id === 'characters' && drawing.hostOnly ? t('layers.charsHostOnly') : locked.value);
 
@@ -115,8 +119,9 @@ const charsetName = computed(() => {
               type="number"
               id="cols"
               :value="store.cols"
-              @input="store.updateCols($event.target.value)"
-              @change="$event.target.value = store.cols"
+              @input="stepped($event) && store.updateCols($event.target.value)"
+              @change="store.updateCols($event.target.value); $event.target.value = store.cols"
+              @keydown.esc="$event.target.value = store.cols"
               :disabled="!!drawing.someoneInside"
               :title="drawing.someoneInside"
               min="1"
@@ -131,8 +136,9 @@ const charsetName = computed(() => {
               type="number"
               id="rows"
               :value="store.rows"
-              @input="store.updateRows($event.target.value)"
-              @change="$event.target.value = store.rows"
+              @input="stepped($event) && store.updateRows($event.target.value)"
+              @change="store.updateRows($event.target.value); $event.target.value = store.rows"
+              @keydown.esc="$event.target.value = store.rows"
               :disabled="!!drawing.someoneInside"
               :title="drawing.someoneInside"
               min="1"
