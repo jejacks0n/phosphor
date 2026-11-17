@@ -372,7 +372,9 @@ held.
 - Expects: the question "Choose how to merge … into Base" with Keep crisp cells and Blend into source image; Keep crisp
   cells makes her paint and cells base pixels exactly as they show, typed cells pinned; nothing on the canvas changes;
   undo and redo work.
-- Probes: `back-out`: press Escape at the question and check nothing merged; `undo-redo`: undo, redo, undo.
+- Probes: `back-out`: press Escape at the question and check nothing merged; `undo-redo`: undo, redo, undo; `again`: in
+  Color ASCII, type dark text over white paint on Layer 1 (its cells take the paint's color as their background), Blur
+  across it, then Keep crisp cells: the text keeps its light background on the base, as it showed.
 - Rated: yes, wants Cmd+E, then Enter on Keep crisp cells
 
 ### 28. Merge my paint into the image itself

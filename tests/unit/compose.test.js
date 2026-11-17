@@ -3,7 +3,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { coverageOf, setGlyphRasterizer } from '../../src/lib/GlyphCoverage.js';
-import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, bakedEntry } from '../../src/lib/Cells.js';
+import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, bakedEntry, pinnedCell } from '../../src/lib/Cells.js';
 import { effectiveColor, getEffectiveColor } from '../../src/lib/PixelTransforms.js';
 import { rgb2hex, hex2rgb, PALETTES, sharedIndex } from '../../src/lib/ColorUtils.js';
 
@@ -89,4 +89,17 @@ test('Composition of edit cells: glyph coverage, half-cell colors, edit-cell att
   assert.deepEqual(bakedEntry('ansi', imageCell), { char: '▄', fg: '#0000ff', bg: '#ff0000' });
   assert.deepEqual(bakedEntry('colorAscii', imageCell), { char: '▄', fg: '#800080' });
   assert.deepEqual(bakedEntry('ascii', imageCell), { char: '▄' });
+});
+
+// docs/model.md R8: how a pinned cell shows its two pixels. In Color ASCII a pin keeps a background where its pixels
+// differ; one color is ink on black, as a converted cell and as pins merged before this were written.
+test('R8: pinnedCell shows a pin\'s two pixels as ANSI does, and in Color ASCII as background and ink where they differ, else ink on black', () => {
+  const px = (r, g, b) => ({ r, g, b }), gray = px(150, 150, 150), black = px(0, 0, 0);
+  const typed = pinnedCell(gray, black, 'A', 'colorAscii');
+  assert.deepEqual([typed.char, typed.bg.hex, typed.fg.hex], ['A', '#969696', '#000000']);
+  const old = pinnedCell(gray, gray, 'A', 'colorAscii');
+  assert.deepEqual([old.char, old.bg.hex, old.fg.hex], ['A', '#000000', '#969696']);
+  const ansi = pinnedCell(gray, black, 'A', 'ansi');
+  assert.deepEqual([ansi.bg.hex, ansi.fg.hex], ['#969696', '#000000']);
+  assert.deepEqual([pinnedCell(gray, black, 'A', 'ascii').bg.hex, pinnedCell(gray, black, 'A', 'ascii').fg.hex], ['#000000', '#FFFFFF']);
 });

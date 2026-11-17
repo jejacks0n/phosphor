@@ -495,7 +495,7 @@ export const mergingActions = {
   },
 
   // What merging a cell into the base shows: its two halves (top, bottom) under the paint, and
-  // the character to pin. Color ASCII shows only the foreground (on black) and rebuilds it as the
+  // the character to pin. Color ASCII shows a converted cell's foreground on black and rebuilds it as the
   // halves' average; a cell showing another character than its own (▄ for a solid one under
   // paint) goes in as its two half colors. A cell going in as it shows keeps its colors' 256-color indexes (fgIndex,
   // bgIndex: an entry's own, or the base's under it).
@@ -505,7 +505,11 @@ export const mergingActions = {
   mergeCellOf(col, row, entry = this.editCellAt(col, row), shown = levelCells(this, this.editId)[cellIndex(col, row, this.cols)]?.char) {
     const cell = entry ? mergeEntry(this.baseCellAt(col, row), entry) : this.baseCellAt(col, row);
     const char = shown ?? cell.char;
-    const [top, bottom] = this.renderStyle === 'colorAscii' ? [hex2rgb(cell.fg), hex2rgb(cell.fg)]
+    // Color ASCII: a cell that shows a background (its own, or a pin's under it whose two pixels differ) goes in as its
+    // two colors, which a pin keeps showing (Cells.js pinnedCell, docs/model.md R8); one on black as its ink twice.
+    const ascii = this.renderStyle === 'colorAscii';
+    const showsBg = ascii && (!!entry?.bg || (this.renderer.pinAt(col, row) !== undefined && this.baseColorAt(col, 2 * row).toLowerCase() !== this.baseColorAt(col, 2 * row + 1).toLowerCase()));
+    const [top, bottom] = ascii ? (showsBg ? [hex2rgb(cell.bg), hex2rgb(cell.fg)] : [hex2rgb(cell.fg), hex2rgb(cell.fg)])
       : char === cell.char ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
         : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
     const exact = this.renderStyle !== 'colorAscii' && char === cell.char;

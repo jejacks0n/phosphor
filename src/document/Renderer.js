@@ -31,7 +31,7 @@ import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex, withIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint } from '../lib/Cells.js';
+import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint, pinnedCell } from '../lib/Cells.js';
 import { cellKey, parseKey, shownEntry, isFrozen, tintedEntry } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
@@ -748,7 +748,7 @@ export default class Renderer {
           continue;
         }
         const half = (y) => this.#held(col, y, cols) ?? this.#pictureAt(col, y);
-        next[i] = this.#onBase(col, row, buildCell(half(2 * row), half(2 * row + 1), resolved.cells[i].char, renderStyle));
+        next[i] = this.#onBase(col, row, buildCell(half(2 * row), half(2 * row + 1), resolved.cells[i].char, renderStyle), params, [half(2 * row), half(2 * row + 1)]);
         continue;
       }
 
@@ -763,7 +763,7 @@ export default class Renderer {
 
       // Random mode keeps the cell's rendered character
       const char = keepsSeed(charMode) ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
-      next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
+      next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle), params, [top, bottom]);
     }
     if (rebuilt.x1 >= 0 && this.#showsResolved(params)) {
       this.#showResolved(ctx2d(this.outputCanvas), params, { x: rebuilt.x0, y: 2 * rebuilt.r0, w: rebuilt.x1 - rebuilt.x0 + 1, h: 2 * (rebuilt.r1 - rebuilt.r0 + 1) });
@@ -813,7 +813,7 @@ export default class Renderer {
     const rows = charRowsOf(params.rows), pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
     for (const key of this.shapes?.hasArt ? new Set([...pins.keys(), ...this.shapes.artCells()]) : pins.keys()) {
       const { col, row } = parseKey(key);
-      if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#paintedPin(col, row, params) ?? this.#onBase(col, row, cells[cellIndex(col, row, params.cols)]);
+      if (col < params.cols && row < rows) cells[cellIndex(col, row, params.cols)] = this.#paintedPin(col, row, params) ?? this.#onBase(col, row, cells[cellIndex(col, row, params.cols)], params);
     }
     for (const [key, own] of editCells) {
       const { col, row } = parseKey(key), entry = shownEntry(own, params.renderStyle);
@@ -1358,7 +1358,7 @@ export default class Renderer {
     };
     const top = pixelAt(2 * row), bottom = pixelAt(2 * row + 1);
     const char = keepsSeed(charMode) ? baseCells[cellIndex(col, row, cols)]?.char ?? ' ' : weightedChar(top, bottom, charset || '▄', charMode);
-    return this.#onBase(col, row, buildCell(top, bottom, char, renderStyle));
+    return this.#onBase(col, row, buildCell(top, bottom, char, renderStyle), params, [top, bottom]);
   }
 
   // The pixels underCell builds a cell from, or null between a grid resize and the render it queues (they're the old size).
@@ -1387,9 +1387,15 @@ export default class Renderer {
 
   // A converted cell with the base layer's pin (if any) as its character, and the 256-color indexes kept beside the pin
   // (16 and 231, which 0 and 15 share the colors of) as its colors' c while the pin is what shows and so are the colors.
-  #onBase(col, row, cell) {
+  // In Color ASCII a pin shows its two pixels as its background and ink where they differ (pinnedCell, docs/model.md R8):
+  // pixels, the two the cell was built from, else the picture's (composeAll's cells come without them).
+  #onBase(col, row, cell, params, pixels = null) {
     const pin = this.pinAt(col, row);
     if (pin === undefined) return cell;
+    if (params?.renderStyle === 'colorAscii') {
+      const [top, bottom] = pixels ?? (this.#baseData && 2 * row + 1 < this.#baseData.height ? [this.#pictureAt(col, 2 * row), this.#pictureAt(col, 2 * row + 1)] : [null, null]);
+      if (top && bottom) cell = pinnedCell(top, bottom, cell.char, 'colorAscii');
+    }
     const { indexes } = this.hideBase ? EMPTY_BASE : this.baseRecords, kept = indexes.size ? indexes.get(cellKey(col, row)) : undefined;
     if (!kept || (this.shapes?.hasArt && this.shapes.charAt(col, row) !== undefined)) return { ...cell, char: pin }; // an art layer's character
     return { ...cell, char: pin, fg: withIndex(cell.fg, kept.fgIndex, this.palette), bg: withIndex(cell.bg, kept.bgIndex, this.palette) };
