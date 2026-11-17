@@ -51,10 +51,15 @@ export const editLayerActions = {
           this.beginEdit();
         }
         const seen = this._stroke && (this._stroke.plainSeen ??= new Set());
-        // The base under Best match and By shape: a cell the converter drew is matched again from the painted pixels, so
-        // it hides no character and gets no ▄ (one pinned would outlast a switch of resolver); a pinned one is someone's
-        // own (R5).
-        const converted = onBottom(this) && resolves(this.processParams) ? (key) => !this.baseRecords.pins.has(key) : null;
+        // Where the layer in use converts its paint afresh, a cell the converter drew hides no character from it and gets
+        // no ▄ (one would outlast a change of its settings): under Best match and By shape, which match the cell again
+        // from the painted pixels, and on a layer with character settings of its own, whose paint becomes the characters
+        // they choose over the pixels under it (R7), Random's among them. That leaves the base's Random and a layer that
+        // shares it, whose blank cells do hide one. A pinned character (the base), or a cell of the layer's own, is
+        // someone's own (R5); over one under the layer the paint shows as R2 has it, with no entry.
+        const params = this._artInside ? null : this.layerParams.get(this.editId);
+        const afresh = !!params && (resolves(params) || params !== this.processParams);
+        const converted = afresh ? (key) => !(onBottom(this) ? this.baseRecords.pins : this.editCells).has(key) : null;
         cells = !seen ? [] : cells.filter(({ col, row }) => {
           const key = cellKey(col, row), first = !seen.has(key), cell = this.cells[cellIndex(col, row, cols)];
           seen.add(key);
