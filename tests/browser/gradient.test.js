@@ -141,3 +141,19 @@ test('typed text stays a wall, and with Animate on the gradient lands on the fra
   await settle(project);
   expect(project.cellHasPaint(20, 20)).toBe(false);
 });
+
+test('Escape before letting go throws the drag away: the release fills nothing', async () => {
+  const { project, workspace } = await blank(30, 60);
+  const ctx = { project, workspace, view: 'output' };
+  Object.assign(workspace, GRADIENT, { gradientShape: 'linear' });
+  project.clearHistory();
+  gradient.begin(ctx, { x: 0, y: 0 }, ev);
+  gradient.move(ctx, { x: 0, y: 0 }, { x: 20, y: 0 });
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  expect(workspace.shapeDrag).toBeNull(); // the line is gone at once
+  gradient.move(ctx, { x: 20, y: 0 }, { x: 25, y: 0 });
+  gradient.end(ctx);
+  await settle(project);
+  expect(project.canUndo).toBe(false);
+  expect(paintAt(project, 20, 40)).toBeNull();
+});
