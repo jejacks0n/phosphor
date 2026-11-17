@@ -165,7 +165,8 @@ The settings on the left come in sections, each following a layer:
 - **Characters · (layer name)**: The selected layer's **Choose characters**, **Characters** set (with presets in
   its ▾ menu), **Character seed** (**Generate new seed** shuffles it), **Solids**, **Pattern light**, and for the base
   and a vector layer with a palette, **Dither style** and **Dither**. Inside an [art layer](vector.md#art-layers) it's
-  its vector layer's. Some only show when they apply: the seed with Random, Pattern light with Best match or By shape,
+  its vector layer's. On the start screen, with no drawing open, it's the base's: the settings the next drawing starts
+  with. Some only show when they apply: the seed with Random, Pattern light with Best match or By shape,
   Solids in ANSI with Best match or By shape.
   - Each layer has its own ([Each Layer's Own Character Settings](characters.md#each-layers-own-character-settings)):
     changing them changes only how that layer's paint, picture or shapes become characters. A line under the title

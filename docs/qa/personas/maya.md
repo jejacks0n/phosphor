@@ -77,7 +77,8 @@ script. Every section ends with Free time.
   Opening takes under the `file` budget.
 - Probes: `free`: drop the file on the box instead of using the button; `again`: nudge Brightness to 101%, press New
   project and open the same `photo.jpg` a second time, checking New project asks about unsaved changes only if there
-  are any, and that the start screen and the photo both show Brightness at 100%;
+  are any, that the start screen and the photo both show Brightness at 100%, and that the start screen's Characters
+  section is "Characters · Base", with no Layer 1 named;
   `extremes`: open `tall.png` and `rgba.png` and look at where the transparency and the long edge land.
 - Rated: yes, wants Cmd+O
 

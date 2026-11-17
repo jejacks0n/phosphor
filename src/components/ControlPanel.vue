@@ -43,10 +43,11 @@ const sliderGroups = computed(() => [
 ].map(group => ({ ...group, sliders: SETTINGS.filter(s => s.group === group.id && s.min !== undefined) })));
 
 // The layer the Characters section shows: the one picked, or inside an art layer its vector layer. A pick that isn't in
-// the stack yet (VECTOR before the first shape brings its layer) shows the bottom's.
+// the stack yet (VECTOR before the first shape brings its layer) shows the bottom's, and so does the start screen: with
+// no drawing open there's no Layer 1, only the settings the next drawing starts with.
 const picked = computed(() => {
   const id = store.artInside ? store.drawsOn : workspace.pickedLayer;
-  return store.layerById(id) ? id : 'base';
+  return store.image && store.layerById(id) ? id : 'base';
 });
 const pickedKind = computed(() => store.layerById(picked.value).kind);
 // Its character settings, read and written as its own (charsOf, setLayerChars), each change an undo step: a pick or a set
