@@ -3,11 +3,12 @@ import { ref, onMounted, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
+import { arrowsBetween } from '@/lib/focus';
 import { listVersions } from '@/document/autosaveStore';
 import { formatMediumDateTime } from '@/i18n/format';
 
 // The versions autosave has kept of this document, newest first, to go back to. useAutosave is called
-// once, in App, so it hands over what this needs.
+// once, in App, so it hands over what this needs. Up and Down move between the Restore buttons and Close.
 const props = defineProps({
   flush: { type: Function, required: true }, // writes what's waiting, so the list is up to date
   restoreVersion: { type: Function, required: true },
@@ -22,6 +23,7 @@ const restoring = ref(false);
 const closeButton = useTemplateRef('closeButton');
 
 const when = (ms) => formatMediumDateTime(ms);
+const arrows = (event) => arrowsBetween(event, event.currentTarget.closest('dialog').querySelectorAll('button'));
 const size = (bytes) => (bytes < 2 ** 20 ? t('versions.kb', { n: Math.max(1, Math.round(bytes / 1024)) }) : t('versions.mb', { n: (bytes / 2 ** 20).toFixed(1) }));
 
 onMounted(async () => {
@@ -60,7 +62,7 @@ async function restore(id) {
     :sub="t('versions.sub')"
     @cancel="close"
   >
-    <ul v-if="versions?.length" :aria-label="t('versions.title')">
+    <ul v-if="versions?.length" :aria-label="t('versions.title')" @keydown="arrows">
       <li v-for="version in versions" :key="version.id">
         <span class="when">{{ when(version.savedAt) }}</span>
         <span v-if="version.reason === 'before-restore'" class="reason">{{ t('versions.beforeRestore') }}</span>
@@ -73,7 +75,7 @@ async function restore(id) {
 
     <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
 
-    <div class="actions">
+    <div class="actions" @keydown="arrows">
       <button ref="closeButton" type="button" class="cancel" @click="close">{{ t('common.close') }}</button>
     </div>
   </ModalDialog>

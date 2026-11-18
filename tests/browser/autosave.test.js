@@ -1832,6 +1832,21 @@ test('after a failed restore, focus is on Close and the dialog closes again', as
   }
 });
 
+test('Up and Down move between the versions\' Restore buttons and Close', async () => {
+  const { close, restore, unmount } = await versionsDialog();
+  const press = (key) => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+  try {
+    const restores = [...document.querySelectorAll('.modal-dialog li button')];
+    restore.focus();
+    restores.forEach(() => press('ArrowDown'));
+    expect(document.activeElement).toBe(close);
+    press('ArrowUp');
+    expect(document.activeElement).toBe(restores.at(-1));
+  } finally {
+    unmount();
+  }
+});
+
 test('versions that can\'t be read say so, not that there are none', async () => {
   const flush = async () => { vi.mocked(listVersions).mockRejectedValueOnce(new Error('no database')); };
   const { unmount } = await versionsDialog({ flush });

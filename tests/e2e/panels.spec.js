@@ -170,13 +170,30 @@ test('dropping an image onto the editor loads it', async ({ page }) => {
   await settled(page);
 });
 
-test('New project asks when there are changes, then clears the document', async ({ page }) => {
+// The question answered by keys: Down and Up move between its choices and Cancel, and Enter presses the one with focus.
+// On the start screen they move between its buttons, and go no further: no tab is chosen.
+test('New project asks when there are changes, then clears the document; Up and Down move between the question\'s choices, and the start screen\'s buttons', async ({ page }) => {
   await openApp(page);
   await page.getByRole('combobox', { name: 'Color palette' }).selectOption('cga'); // a change
   await page.getByRole('button', { name: 'New project' }).click();
-  await page.getByRole('dialog', { name: 'Start a new project?' }).getByRole('button', { name: /Start without saving/ }).click();
+  const question = page.getByRole('dialog', { name: 'Start a new project?' });
+  await expect(question.getByRole('button', { name: /Save project first/ })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(question.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await expect(question.getByRole('button', { name: /Start without saving/ })).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect.poll(() => store(page, 'project', (p) => p.image)).toBe(null);
-  await expect(page.locator('.tab-list').getByRole('tab', { selected: true })).toHaveCount(0); // the start screen, no tab
+  const noTab = () => expect(page.locator('.tab-list').getByRole('tab', { selected: true })).toHaveCount(0); // the start screen, no tab
+  await noTab();
+
+  await page.getByRole('button', { name: 'Choose a file' }).focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('button', { name: 'Start with a blank canvas' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('button', { name: /^Open / })).toBeFocused(); // the drawing just left, under Pick up where you left off
+  await noTab();
 });
 
 test('the tool options row is the same height for every tool, its options on one line', async ({ page }) => {

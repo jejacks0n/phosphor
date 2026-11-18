@@ -15,6 +15,21 @@ export function keepTabIn(event) {
   controls[next]?.focus();
 }
 
+// Up and Down between buttons stacked as a list (a dialog's choices, the start screen's), from the list's keydown: with
+// focus on one of them, the next or the one before takes it, past any that's disabled, stopping at the ends as a menu
+// does. The key stops here then, so the page doesn't scroll and the app's shortcuts don't hear it. Any other key, or one
+// from anything else (a field, a slider), is left alone.
+export function arrowsBetween(event, buttons) {
+  const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+  const list = [...buttons];
+  let at = list.indexOf(event.target);
+  if (!step || at < 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  event.preventDefault();
+  event.stopPropagation();
+  do at += step; while (list[at]?.disabled);
+  list[at]?.focus();
+}
+
 // The dialogs over the page that Back cancels, as Escape does (ModalDialog's), the last opened on top: the router asks
 // before a Back or Forward moves the page under one.
 const backCancels = [];

@@ -24,6 +24,7 @@ const groups = computed(() => [
       [[k('shift', 'mod', 'S')], t('shortcuts.rows.saveProjectAs')],
       [[k('mod', 'E')], t('shortcuts.rows.export')],
       [[k('mod', 'O')], t('shortcuts.rows.openFile')],
+      [['↑ ↓'], t('shortcuts.rows.dialogChoices')],
     ],
   },
   {

@@ -1198,6 +1198,7 @@
       "saveProjectAs": "Enregistrer le projet dans un nouveau fichier",
       "export": "Exporter",
       "openFile": "Ouvrir un fichier",
+      "dialogChoices": "Parcourir les choix d'une boîte de dialogue, ou les boutons de l'écran d'accueil",
       "pencil": "Crayon",
       "brush": "Pinceau",
       "eraser": "Gomme (avec l'outil Sélection et une sélection active : effacer le contenu de la sélection)",
