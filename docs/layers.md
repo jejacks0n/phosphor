@@ -454,20 +454,20 @@ under it, and the last edit to a cell wins.
 In the ANSI view, the Pencil and Brush have a **Draw with** menu:
 
 - **Colors only** (the default): They paint over each cell's own character, which shows through. A cell that shows no
-  character yet (a blank canvas's black, or the lines added when it grows) becomes a ▄ as they paint it, so a click
-  there paints a plain half-block, not the character the converter put there unseen. So does a cell of the layer's
-  own that shows no character (a space, or a character in its background's color): its colors become paint first, so
-  the half you don't paint looks as it did. So does a cell Merge down froze where a merged shape covered it, whatever
-  its character, whose paint is under it already. A shape on a vector layer under the layer isn't such a cell, even
-  filled with one flat color: paint over it becomes the layer's characters, as it does over the picture. Painting in the PIXEL view does
-  the same, so the view you paint in never changes what you get; only **Half-block** makes every cell a ▄. In Color
-  ASCII and Monochrome ASCII there are no half-blocks: the paint becomes your ASCII characters, whichever style you
-  painted it in, and its half-blocks show again when you switch back to ANSI. Under **Best match** and **By shape**
-  nothing the converter drew hides a character, so there's no ▄, on the base or on a layer: the cell is matched again
-  from the paint (on the base, the paint goes into the base's pixels), so switching **Choose characters** afterward
-  picks it afresh. A layer whose character settings differ from the base's makes no ▄ either: its paint becomes the
-  characters its own settings choose, so strokes on a layer set to **Random** come out in Random's characters over a
-  flat canvas too. A pinned space on the base still becomes a ▄.
+  character yet (a blank canvas's black, or the lines added when it grows) takes the paint in the character **Choose
+  characters** gives it, on the base or on a layer: on **Random**, a stroke over a blank canvas comes out in Random's
+  characters, which show where a cell's two halves differ (a stroke's edge, a half-cell or soft stroke) and look solid
+  where the paint covers the cell whole; under **Best match** and **By shape** the cell is matched to the paint. Nothing
+  the converter drew becomes a ▄, so switching **Choose characters** afterward picks it afresh (on the base, the paint
+  goes into the base's pixels), and a layer with character settings of its own paints in those. A shape on a vector
+  layer under the layer is the same, even filled with one flat color: paint over it becomes the layer's characters, as
+  it does over the picture. A cell of the layer's own that shows no character (a space, or a character in its
+  background's color) becomes a ▄ as they paint it: its colors become paint first, so the half you don't paint looks as
+  it did. So does a cell Merge down froze where a merged shape covered it, whatever its character, whose paint is under
+  it already, and a pinned space on the base. Painting in the PIXEL view does the same, so the view you paint in never
+  changes what you get. In Color ASCII and Monochrome ASCII there are no half-blocks: the paint becomes your ASCII
+  characters, whichever style you painted it in, and what it showed in ANSI shows again when you switch back. For clean
+  half-blocks, use **Half-block**.
 - **Half-block**: Each cell they paint becomes a ▄, and the paint colors its two halves, so you draw clean
   half-blocks. The half you don't paint keeps its color.
 - **Single line** and **Double line** (Pencil only): Draw box-drawing lines as you drag from cell to cell. Each cell

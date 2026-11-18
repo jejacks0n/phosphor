@@ -236,12 +236,12 @@ dithered, and compare the dither at 80 and at 200 columns.
 ### 16. Paint over the picture
 - Does: picks the Brush, sets its Size (] grows it, [ shrinks it) and Opacity, and paints a few strokes on Layer 2.
 - Expects: paint covers half cells and shows through each cell's character (Colors only); with Choose characters on
-  Random, as the base's is, a cell that shows none (one flat color) takes it as a plain `▄`, and on Best match or By
-  shape it's matched to the paint; with Build up on, two strokes at 50% make it 75%, as two layers at 50% do;
+  Random, as the base's is, a cell that shows none (one flat color) takes it in Random's characters (solid where the
+  paint covers it whole), never a row of `▄`, and on Best match or By shape it's matched to the paint; with Build up on, two strokes at 50% make it 75%, as two layers at 50% do;
   the color adjustments tint the paint too. A stroke painted in the PIXEL view comes out the same in ANSI; in Color ASCII the strokes become
-  ASCII characters, never `▄`, and their `▄` show again back in ANSI.
-- Probes: `interrupt`: switch to PIXEL, paint a stroke on a flat part, and back in ANSI check it shows the `▄` an ANSI
-  stroke there does, then set Art style to Color ASCII and back (no stripes, then the `▄` again); `layer`: with the
+  ASCII characters, never `▄`, and their ANSI characters show again back in ANSI. Half-block draws `▄`.
+- Probes: `interrupt`: switch to PIXEL, paint a stroke on a flat part, and back in ANSI check it shows the characters an
+  ANSI stroke there does, then set Art style to Color ASCII and back (no stripes, then the same characters again); `layer`: with the
   base on Best match, set Layer 2's Choose characters to Random, roll its seed, and paint over a flat part: every cell
   the stroke reaches gets Random's characters, never a row of `▄`, and they change with each roll; `out-of-order`: hide Layer 2 with its eye and try to paint ("Make the layer visible to draw on it"); `undo-redo`:
   undo one stroke, redo it, then paint and check redo is off; `speed`: draw fast scribbles with `qa.frames`;
