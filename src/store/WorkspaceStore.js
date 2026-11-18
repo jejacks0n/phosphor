@@ -172,6 +172,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // Fill Settings
     editFillTolerance:  10,
     editFillContiguous:  true,
+    editFillAllLayers: true, // the Paint Bucket's and the Gradient's area: by what every shown layer shows together, or (off) the layer in use alone
     editFillFeather: 2,
     bucketFillWith: 'normal', // ANSI view: 'normal' (the color you see) | 'cells' (whole cells, by Match and Set)
     bucketMatch: { fg: true, bg: true, char: true }, // Cells: what a cell must share with the one clicked
