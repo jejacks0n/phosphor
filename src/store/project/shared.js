@@ -133,6 +133,34 @@ function baseFields(project, was) {
 // the base itself, cells as pins and pixels (writeBaseCells), paint as base pixels.
 export const onBottom = (project) => project.editId === 'base' && !project._artInside;
 
+// What typing pushes past a row's right edge (Insert and Partial shift the row: shiftCells, shiftBaseCells), remembered so
+// a left shift of the row (Backspace there, Delete) brings it back cell for cell: project._pastEdge = { at, rows:
+// Map<'layer id|row', slot[]> }, a row's slots nearest the edge first, null for a gap. A layer's slot is { entry, paint }
+// (its cell's paint, a canvas, when the paint moved with it); the base's { pin, index, pixels }. In memory only: never
+// saved, never sent to a room (what comes back is an edit like any other). It belongs to the canvas width and frame it
+// was made on (at) and starts over anywhere else, and after anything that replaces a whole layer (pushWholeLayer); each
+// change makes a new one, so an undo step keeps the one before it and the one after (commitEdit). Not inside an art
+// layer, whose drawing isn't the canvas's row. Returns the row's slots on the layer in use, and keep(slots), which
+// remembers them in their place.
+export function pastEdge(project, row) {
+  if (project._artInside) return { was: [], keep() {} };
+  const at = [project.cols, project.currentFrame];
+  const kept = project._pastEdge?.at.every((v, i) => v === at[i]) ? project._pastEdge.rows : new Map();
+  const name = `${project.editId}|${row}`, was = kept.get(name) ?? [];
+  const keep = (slots) => {
+    const next = [...slots];
+    while (next.length && !next.at(-1)) next.pop(); // nothing further out: a gap there is no memory
+    if (!next.length && !was.length) return;
+    const stroke = project._stroke;
+    if (stroke && stroke.pastEdge === undefined) stroke.pastEdge = project._pastEdge ?? null;
+    const rows = new Map(kept);
+    if (next.length) rows.set(name, next);
+    else rows.delete(name);
+    project._pastEdge = { at, rows };
+  };
+  return { was, keep };
+}
+
 // Cells layer id's data (or the bottom's, baseFields) becomes the edit layer's fields (editCells, paintLayer, hasPaint) as
 // it is, nothing committed (that's useLayer's), and the layer in use waits in _layerData. A layer with no paint yet gets an
 // empty one the size of the one in use. Autosave doesn't count it as an edit.

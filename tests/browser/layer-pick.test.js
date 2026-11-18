@@ -334,9 +334,10 @@ test('Insert on the base pushes every cell after the cursor along, paint and all
   await settle(project);
   expect(pins()).toBe('.AB...');
   expect(own(4)).toMatchObject(BLUE_PAINT);
-  expect(project.baseRecords.pins.get(`${project.cols - 1},1`)).toBe(' '); // the cell left at the row's end: erased
+  expect(project.baseRecords.pins.has(`${project.cols - 1},1`)).toBe(false); // the cell the Insert pushed past the row's end is back as it was, with no pin
   expect(project.backspaceAt(2, 1, { fg: '#ffffff' }, { mode: 'insert' })).toBe(1);
   project.commitEdit();
+  expect(project.baseRecords.pins.get(`${project.cols - 1},1`)).toBe(' '); // nothing more past the edge: the cell left at the row's end is erased
   expect(pins()).toBe('.B....');
   expect(own(3)).toMatchObject(BLUE_PAINT);
   project.undo();

@@ -13,7 +13,7 @@ import { blockOver, cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
 
 // A typed character with the colors it's typed in. A space has no ink, so it takes the background alone: the cell keeps
 // the foreground it had (on the base that's its lower pixel, which the PIXEL view shows; on a layer a color no one sees
@@ -215,7 +215,8 @@ export const editLayerActions = {
   },
 
   // Move a row along from fromCol by delta cells (typing's Insert, Partial and Delete); what's pushed past the row's
-  // end is lost. Without paint (Partial, and Delete in Overwrite), its characters of someone's own: paint stays where
+  // end is remembered, and comes back when the row moves left again (pastEdge). Without paint (Partial, and Delete in
+  // Overwrite), its characters of someone's own: paint stays where
   // it is, and so does what's paint to it (a paint block, a frozen cell: docs/model.md R1), a character moved onto it
   // taking its place. With paint (Insert), everything the layer has there: every entry, and the paint. On the base,
   // shiftBaseCells.
@@ -226,23 +227,48 @@ export const editLayerActions = {
       const at = parseKey(key);
       if (at.row === row && at.col >= fromCol + Math.min(delta, 0) && !ownEntry(entry, this.renderStyle)) stays.push([key, entry]);
     }
-    const moved = shiftRow(stays.length ? withoutCells(this.editCells, stays.map(([key]) => parseKey(key))) : this.editCells, row, fromCol, delta, this.cols);
-    const span = paint && this.clipRect({ c0: Math.min(fromCol, fromCol + delta), r0: row, c1: this.cols - 1, r1: row });
+    const from = stays.length ? withoutCells(this.editCells, stays.map(([key]) => parseKey(key))) : this.editCells;
+    let moved = shiftRow(from, row, fromCol, delta, this.cols);
+    // Past the edge (pastEdge): a right shift's last cells are remembered, each with its paint when the paint moves too,
+    // and a left shift brings back as many: with paint, the cell as it was; without, a character of someone's own alone.
+    const { cols } = this, { was, keep } = pastEdge(this, row), back = [], cellAt = (col) => ({ c0: col, r0: row, c1: col, r1: row });
+    if (delta > 0) {
+      keep([...Array.from({ length: delta }, (_, i) => {
+        const col = cols - delta + i, falls = col >= fromCol, entry = falls ? from.get(cellKey(col, row)) ?? null : null;
+        const own = paint && falls && this.paintLayer?.hasPaintIn(cellAt(col)) ? this.paintLayer.copyCells(cellAt(col)) : null;
+        return entry || own ? { entry, paint: own } : null;
+      }), ...was]);
+    } else if (was.length && fromCol >= 1) {
+      was.slice(0, -delta).forEach((slot, i) => {
+        const col = cols + delta + i;
+        if (slot?.entry && (paint || ownEntry(slot.entry, this.renderStyle))) {
+          if (moved === from) moved = new Map(from); // shiftRow moved nothing on the grid: the map is still the caller's
+          moved.set(cellKey(col, row), slot.entry);
+        }
+        if (paint && slot?.paint) back.push({ col, paint: slot.paint });
+      });
+      keep(was.slice(-delta));
+    }
+    const span = paint && this.clipRect({ c0: Math.min(fromCol, fromCol + delta), r0: row, c1: cols - 1, r1: row });
     const painted = !!span && !!this.paintLayer?.hasPaintIn(span);
-    if (moved === this.editCells && !painted) return;
-    const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
-    if (painted) {
+    if (moved === this.editCells && !painted && !back.length) return;
+    const pixels = Array.from({ length: cols }, (_, x) => ({ x, y: 2 * row }));
+    if (painted || back.length) {
       this.beginEdit();
       pixels.push(...pixels.map(({ x, y }) => ({ x, y: y + 1 })));
       this.noteDrawn(pixels);
-      const tail = fromCol < this.cols && this.paintLayer.copyCells({ ...span, c0: fromCol });
-      this.paintLayer.eraseCells(span);
-      if (tail) this.paintLayer.pasteCells(tail, fromCol + delta, row, this.cols - fromCol, 1, span);
+      if (painted) {
+        const tail = fromCol < cols && this.paintLayer.copyCells({ ...span, c0: fromCol });
+        this.paintLayer.eraseCells(span);
+        if (tail) this.paintLayer.pasteCells(tail, fromCol + delta, row, cols - fromCol, 1, span);
+      }
+      for (const { col, paint: cell } of back) this.paintLayer.pasteCells(cell, col, row, 1, 1);
+      this.hasPaint = this.paintLayer.hasPaint;
     }
     const next = stays.length ? new Map(moved) : moved;
     for (const [key, entry] of stays) if (!next.has(key)) next.set(key, entry);
     if (next !== this.editCells) this.setEditCells(next, Array.from({ length: this.cols }, (_, col) => cellKey(col, row)));
-    this.recomposeEdit(pixels, { composited: painted });
+    this.recomposeEdit(pixels, { composited: painted || back.length > 0 });
   },
 
   // A whole entry for a cell as the cell layer shows it: its own attributes, the rest frozen from

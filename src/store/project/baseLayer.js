@@ -5,6 +5,7 @@ import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { BLANK, cellKey, parseKey } from '@/document/editCells.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
+import { pastEdge } from '@/store/project/shared.js';
 
 export const baseLayerActions = {
   // Erase the base in these cells: black, with a pinned space (and no 256-color index).
@@ -65,7 +66,8 @@ export const baseLayerActions = {
   },
 
   // Move a row of the base along from fromCol by delta cells (typing's Insert, Partial and Delete, as shiftCells moves
-  // a layer's); what's pushed past the row's end is lost. With paint (Insert), every cell: its pixels as they show (the
+  // a layer's); what's pushed past the row's end is remembered, and comes back when the row moves left again
+  // (pastEdge). With paint (Insert), every cell: its pixels as they show (the
   // picture's among them, as a moved selection's are), its pin and its indexes, and a cell nothing lands on is erased.
   // Without (Partial), the pinned characters alone, each with its cell's pixels: the base's other pixels stay, a
   // character moved onto them taking their place, and a cell one leaves has no pixels of the base's own and no pin, so
@@ -79,23 +81,44 @@ export const baseLayerActions = {
       left.push(col);
       if (col >= fromCol && col + delta < cols) landed.push([col + delta, col]);
     }
-    if (!left.length) return;
+    // Past the edge (pastEdge): a left shift brings back what a right shift pushed there, to the row's last cells: with
+    // paint, each cell as it was; without, the pinned characters alone, each with its cell's pixels.
+    const { was, keep } = pastEdge(this, row);
+    const back = delta < 0 ? was.slice(0, -delta).flatMap((slot, i) => (slot && (paint || slot.pin != null) ? [{ col: cols + delta + i, ...slot }] : [])) : [];
+    if (delta < 0 && was.length) keep(was.slice(-delta));
+    if (!left.length && !back.length) return;
     this.ensureLayer();
     this.beginEdit();
     const k = this.baseLayer.scale, span = { c0, r0: row, c1: cols - 1, r1: row };
     const own = this.baseLayer.copyCells(span), shown = this.basePixelsOf(span), ctx = ctx2d(own);
     ctx.imageSmoothingEnabled = false;
+    if (delta > 0) { // the cells this pushes past the edge, as they show, each with its pin
+      keep([...Array.from({ length: delta }, (_, i) => {
+        const col = cols - delta + i;
+        if (col < fromCol || !left.includes(col)) return null;
+        const pixels = Object.assign(document.createElement('canvas'), { width: k, height: 2 * k });
+        ctx2d(pixels).drawImage(shown, (col - c0) * k, 0, k, 2 * k, 0, 0, k, 2 * k);
+        return { pin: pins.get(key(col)) ?? null, index: indexes.get(key(col)), pixels };
+      }), ...was]);
+    }
     for (const col of left) ctx.clearRect((col - c0) * k, 0, k, 2 * k);
     for (const [to, col] of landed) {
       ctx.clearRect((to - c0) * k, 0, k, 2 * k);
       ctx.drawImage(shown, (col - c0) * k, 0, k, 2 * k, (to - c0) * k, 0, k, 2 * k);
     }
+    for (const { col, pixels } of back) {
+      ctx.clearRect((col - c0) * k, 0, k, 2 * k);
+      ctx.drawImage(pixels, 0, 0, pixels.width, pixels.height, (col - c0) * k, 0, k, 2 * k);
+    }
     this.baseLayer.pasteCells(own, c0, row, cols - c0, 1);
-    const moved = landed.filter(([, col]) => pins.has(key(col))).map(([to, col]) => ({ col: to, row, char: pins.get(key(col)), ...indexes.get(key(col)) }));
-    const touched = [...new Set([...left, ...landed.map(([to]) => to)])];
+    const moved = [
+      ...landed.filter(([, col]) => pins.has(key(col))).map(([to, col]) => ({ col: to, row, char: pins.get(key(col)), ...indexes.get(key(col)) })),
+      ...back.filter(({ pin }) => pin != null).map(({ col, pin, index }) => ({ col, row, char: pin, ...index })),
+    ];
+    const lands = new Set([...landed.map(([to]) => to), ...back.map(({ col }) => col)]);
+    const touched = [...new Set([...left, ...lands])];
     this.setBaseRecords(withPins(withoutPins(this.baseRecords, touched.map((col) => ({ col, row }))), moved));
     this.refreshCells(Array.from({ length: cols - c0 }, (_, i) => [{ x: c0 + i, y: 2 * row }, { x: c0 + i, y: 2 * row + 1 }]).flat());
-    const lands = new Set(landed.map(([to]) => to));
     if (paint) this.eraseBase(left.filter((col) => !lands.has(col)).map((col) => ({ col, row })));
   },
 
