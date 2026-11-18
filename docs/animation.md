@@ -189,7 +189,7 @@ On VECTOR with Animate on, the Keys panel sits over the bar, its frames lined up
 - **Start**, **End**, and **Along**: Percents.
 - **Stack**: The shape's place among the shapes, such as "3 of 5".
 
-Type a value and press Enter, or leave the field, and the part is keyed on the frame showing with it, as if you had edited the shape there. Undo takes it back.
+Type a value and press Enter, or leave the field, and the part is keyed on the frame showing with it, as if you had edited the shape there. Undo takes it back. Escape before Enter puts the field back to the value in use and changes nothing.
 
 **Selecting keys**:
 
@@ -216,7 +216,7 @@ Type a value and press Enter, or leave the field, and the part is keyed on the f
 - **Frame numbers**: When frames are tight their numbers thin out to every 5th or 10th. The frame showing always has its number.
 - **Staying in view**: Stepping, playing, and scrubbing keep the frame showing in view. A key dragged to either end of the window scrolls it, faster the closer you go, and lands on a frame in view.
 
-**Narrow panels**: Where the panel is too narrow for its lanes and its buttons beside them (a tablet with the side panel open, say), the top line stays one line: the part names, **+ Add key** and the trash can keep their room, the easing menu shows only its curve, and the lanes and their ruler narrow to what's left, still lined up with each other, scrolling and zooming as above. A row whose values don't fit beside it (Transform's, usually) has a button there instead that opens them in a box over the row. The box stays open while you type, and closes with Escape or a click outside it.
+**Narrow panels**: Where the panel is too narrow for its lanes and its buttons beside them (a tablet with the side panel open, say), the top line stays one line: the part names, **+ Add key** and the trash can keep their room, the easing menu shows only its curve, and the lanes and their ruler narrow to what's left, still lined up with each other, scrolling and zooming as above. A row whose values don't fit beside it (Transform's, usually) has a button there instead that opens them in a box over the row. The box stays open while you type, and closes with Escape or a click outside it. Escape in one of its fields puts back what you typed as it closes the box.
 
 **On a phone**: There's no values column and no **◀** or **▶**. A **◇** (lit **◆** where there's a key) ends each row and does what the middle one does on a wide screen, and the button beside it opens the row's values in a box. The top line is the **▾**, **+ Add key**, then the easing, the motion, and the trash can; the ruler, with **−** and **+**, has the line under it. The diamonds are taller, for a finger.
 
@@ -284,6 +284,7 @@ Onion skinning shows nearby frames dimmed so you can use them as drawing referen
 
 - **fps**: One frames-per-second number holds for the whole movie: 8 to begin with, from 1 to 60.
 - **Hold**: A frame with a hold, in seconds (up to 60), stays that long instead of one tick. A hold of 0 advances on the normal frame tick.
+- **Escape** in either field, before Enter, puts back the number in use: a click away after it keeps that number.
 - **Looping**: Playback loops.
 
 ---

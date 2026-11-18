@@ -193,7 +193,8 @@ a Polygon.
 ### 10. Set the timing
 - Does: types 12 in frames per second, then on frame 24 types a hold of 0.5.
 - Expects: the movie plays at 12 frames a second, with frame 24 staying half a second
-  ([Timing](../../animation.md#timing)); each change is kept, and the project keeps it.
+  ([Timing](../../animation.md#timing)); each change is kept, and the project keeps it. Escape before Enter puts the
+  field back to the number in use, and a click away after it changes nothing.
 - Probes: `extremes`: type 0, 61 and 999 in frames per second (it holds to 1 to 60) and a hold of 61 and -1;
   `back-out`: type a number and press Escape or click away before Enter, and check what's kept; `undo-redo`: undo after
   the hold and check it takes back the edit before it and leaves the timing (timing isn't an undo step), then redo it. Then put back 12 frames per second and frame 24's hold of 0.5, which
@@ -231,7 +232,8 @@ the arrow keys once it has focus.
 ### 13. Type a value into a key
 - Does: on frame 13, in the Transform row's values, types 30 in Y and 45 in Turn, pressing Enter after each.
 - Expects: each typed value keys the part on the frame showing, as if she had edited the shape there; undo takes it
-  back; the Turn tweens the short way round ([The Keys panel](../../animation.md#the-keys-panel)).
+  back; the Turn tweens the short way round ([The Keys panel](../../animation.md#the-keys-panel)). Escape before Enter
+  puts the field back and leaves the shape as it was, in the row and in its values box (which closes).
 - Probes: `extremes`: type -99999, 99999, an empty value and letters in X, undoing each that took; `back-out`: type
   a value and press Escape before Enter; `undo-redo`: undo the Turn, redo it, then type a W and check redo is off.
 - Rated: yes, wants Tab to the field (the number is content)

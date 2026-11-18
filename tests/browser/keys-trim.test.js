@@ -10,6 +10,8 @@ import { makeArt } from '@/document/artLayers.js';
 import KeysPanel from '@/components/KeysPanel.vue';
 import VectorOverlay from '@/components/VectorOverlay.vue';
 import KeyValues from '@/components/KeyValues.vue';
+import DropdownMenu from '@/components/DropdownMenu.vue';
+import { userEvent } from 'vitest/browser';
 
 let app = null;
 afterEach(() => {
@@ -139,4 +141,33 @@ test('the stretch not drawn is dashed in the shape\'s stroke color', async () =>
   const undrawn = host.querySelectorAll('[data-vector-overlay] path.undrawn');
   expect(undrawn.length).toBe(1);
   expect(undrawn[0].style.stroke).toBe('rgb(255, 0, 0)');
+});
+
+// Priya's run: in the Transform row's values menu, X typed and then Escape closed the menu and moved the shape there,
+// keyed. Escape backs out of the typing: the field goes back to the value in use and the menu closes, the shape as it was.
+test('Escape in a key value backs out of the typing, in the row and in its values menu', async () => {
+  const { project, key } = await animatedLine();
+  const before = project.shapes.get(key);
+  const inRow = (await mount(KeyValues, { part: 'transform', shapeKey: key })).querySelector('input');
+  const was = inRow.value;
+  await userEvent.tripleClick(inRow);
+  await userEvent.keyboard('5');
+  await userEvent.keyboard('{Escape}');
+  expect(inRow.value).toBe(was);
+  inRow.blur();
+  await nextTick();
+  expect(project.shapes.get(key)).toBe(before);
+  app.unmount();
+
+  const host = await mount({ render: () => h(DropdownMenu, { label: 'Transform values', closeOnSelect: false },
+    () => h(KeyValues, { part: 'transform', shapeKey: key })) });
+  host.querySelector('.dropdown-trigger').click();
+  await nextTick();
+  const inMenu = document.querySelector('.dropdown-content input');
+  await userEvent.tripleClick(inMenu);
+  await userEvent.keyboard('5');
+  await userEvent.keyboard('{Escape}');
+  await nextTick();
+  expect(document.querySelector('.dropdown-content')).toBeNull(); // the menu closes
+  expect(project.shapes.get(key)).toBe(before);
 });
