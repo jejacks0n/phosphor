@@ -915,9 +915,16 @@ test('Into the image from a row that isn\'t the layer in use merges that row\'s 
   }
 });
 
-test('Blend into source image warns that a layer with its own characters has its paint redrawn in the base\'s, and still merges', async () => {
+// What Blend into source image gives up: a layer's own characters (its paint is redrawn in the base's), and only a real
+// picture's original resolution (a blank canvas's is one color, the same at any size).
+test.each([
+  ['a picture', true],
+  ['a blank canvas', false],
+])('Blend into source image over %s lists what it gives up, and still merges', async (_, picture) => {
   const { project, workspace } = await createTestApp();
-  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  if (picture) await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  else await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await settle(project);
   const top = project.addLayer('cells', 'base');
   workspace.pickLayer(top);
   project.paintStroke([{ x: 3, y: 6, alpha: 1 }, { x: 6, y: 6, alpha: 1 }], '#ff3300');
@@ -928,17 +935,24 @@ test('Blend into source image warns that a layer with its own characters has its
   document.body.append(host);
   toolbar.mount(host);
   const blend = () => [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Blend into source image'));
-  const warning = /You give up:.*Layer \d+'s custom characters: its paint is redrawn in Base's\./s;
-  try {
+  const ask = async () => {
+    asking.value = null;
+    await settle(project);
     asking.value = { id: top, rect: null };
     await settle(project);
-    expect(blend().textContent).not.toMatch(warning); // the base's characters: nothing to warn of
-    asking.value = null;
+    return blend().textContent;
+  };
+  const chars = /Layer \d+'s custom characters: its paint is redrawn in Base's\./, resolution = "The source image's original resolution";
+  try {
+    const before = await ask(); // the base's characters
+    expect(before).not.toMatch(chars);
+    expect(before.includes('You give up:')).toBe(picture);
+    expect(before.includes(resolution)).toBe(picture);
     project.setLayerChars(top, { chars: '▖▗▘▝▚▞' });
     project.commitLayerChars();
-    asking.value = { id: top, rect: null };
-    await settle(project);
-    expect(blend().textContent).toMatch(warning);
+    const after = await ask();
+    expect(after).toMatch(new RegExp(`You give up:.*${chars.source}`, 's'));
+    expect(after.includes(resolution)).toBe(picture);
     blend().click(); // a warning, not a refusal
     await vi.waitFor(() => expect(project.layerById(top)).toBe(undefined), { timeout: 10_000 });
   } finally {
