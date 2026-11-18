@@ -188,12 +188,12 @@ with Connect, type a box with the F-keys' line characters, and check the shortcu
 - Rated: yes, wants Cmd+C, Cmd+V
 
 ### 11. Move a block through empty cells
-- Does: presses Add layer, types a word on Layer 2 with spaces around it, hides Layer 1 with its eye (a move takes every
-  cells layer that shows), selects a block larger than the word, moves it with the arrows onto where his art is, sets
-  it down with Enter, and shows Layer 1 again.
-- Expects: the block's cells with nothing on Layer 2 are see-through: Layer 1's art shows through them; what the block
-  passed over is as it was.
-- Probes: `out-of-order`: move a block with Layer 1 showing too, and check each layer's part moves on its own layer;
+- Does: presses Add layer, types a word on Layer 2 with spaces around it, selects a block larger than the word (All
+  layers is off, so a move takes only Layer 2's part), moves it with the arrows onto where his art is, and sets it down
+  with Enter.
+- Expects: the block's cells with nothing on Layer 2 are see-through: Layer 1's art shows through them and stays where
+  it is; what the block passed over is as it was.
+- Probes: `out-of-order`: turn All layers on and move a block, and check each layer's part moves on its own layer;
   `back-out`: press Escape mid-move and check the block is set down where it is.
 - Rated: yes, wants the arrows
 
@@ -206,8 +206,8 @@ with Connect, type a box with the F-keys' line characters, and check the shortcu
 
 ### 13. Stamp and erase
 - Does: with a block selected, presses S, moves it with the arrows, presses C, moves again, then E on a selection.
-- Expects: each stamp leaves a copy and floats the block on, one undo step each; E deletes the selection (Delete and
-  Backspace too).
+- Expects: each stamp leaves a copy and floats the block on, one undo step each, with only the picked layer's own
+  drawing in it (All layers is off); E deletes the selection on that layer (Delete and Backspace too).
 - Probes: `speed`: press S ten times quickly; `undo-redo`: undo the stamps one by one.
 - Rated: yes, wants S
 

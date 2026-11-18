@@ -973,6 +973,7 @@ test('an artist\'s selection and flip act on the drawing, whatever layer is pick
   const { project, workspace } = await drawing('artist');
   project.editCell(3, 3, { char: 'A', fg: '#ffffff', bg: '#000000' });
   project.commitEdit();
+  workspace.selectAllLayers = true;
   const baseOnly = workspace.selectionIds; // the base among them
   expect(baseOnly).toEqual(['base', 'edit']);
 

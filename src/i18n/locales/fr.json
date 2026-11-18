@@ -498,7 +498,7 @@
     "select": {
       "title": "Sélection",
       "allLayers": "Tous les calques",
-      "allLayersTitle": "Déplacer tous les calques visibles. Désactivez pour déplacer uniquement le calque sélectionné"
+      "allLayersTitle": "Les actions sur la sélection touchent tous les calques visibles. Désactivez pour ne toucher que le calque sélectionné"
     },
     "wand": {
       "title": "Baguette magique",

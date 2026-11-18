@@ -93,6 +93,7 @@ const COLORS = ['#ff0000', '#00ff00', '#0000ff', '#ffee00', '#ffffff', '#123456'
 const MODES = ['overwrite', 'insert', 'partial']; // typing's (workspace.typingMode)
 
 function makeActions(project, workspace, r, opts) {
+  workspace.selectAllLayers = true; // selections reach every shown layer (off, only the picked one: far less for undo to get wrong)
   const pick = (a) => a[Math.floor(r() * a.length)];
   const int = (n) => Math.floor(r() * n);
   const rows = () => Math.floor(project.rows / 2);

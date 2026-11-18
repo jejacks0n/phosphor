@@ -1,12 +1,13 @@
 // Recoloring a selection through the toolbar: Set FG and Set BG in the ANSI view (no Set BG in the
-// ASCII styles), Fill in the pixel view, for the Magic Wand's selection and the Select tool's.
+// ASCII styles), Fill in the pixel view, for the Magic Wand's selection and the Select tool's. Layer 1 is picked and
+// these read the picture under it: the wand's reach every shown layer, Select's with All layers on.
 import { test, expect, openApp, store, cellPoint, pixelPoint, drag, tab, settled } from './support.js';
 
 const base = (page, x, y) => store(page, 'project', `(p) => p.baseColorAt(${x}, ${y})`);
 
 test("the wand's Set BG and Set FG recolor the cells it selected; Select's do the rectangle", async ({ page }) => {
   await openApp(page);
-  await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; w.editBgColor = '#008080'; });
+  await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; w.editBgColor = '#008080'; w.selectAllLayers = true; });
   await page.keyboard.press('w');
   await expect(page.getByRole('button', { name: 'Set BG', exact: true })).toHaveCount(0); // nothing selected yet
   const at = await cellPoint(page, 4, 4);
@@ -42,7 +43,7 @@ test('in the PIXEL view, Fill paints the pixels selected your foreground color',
 
 test('Enter on a focused Set FG presses it and keeps the selection', async ({ page }) => {
   await openApp(page);
-  await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; });
+  await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; w.selectAllLayers = true; });
   await page.keyboard.press('m');
   // Row 4, below the view's edge zone, where a Select drag scrolls it by how long the drag takes.
   await drag(page, await cellPoint(page, 10, 4), await cellPoint(page, 11, 4));
@@ -57,7 +58,7 @@ test('Enter on a focused Set FG presses it and keeps the selection', async ({ pa
 
 test('with Select and nothing selected, Set FG and Set BG are there and off; a click selects its cell and they recolor it', async ({ page }) => {
   await openApp(page);
-  await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; w.editBgColor = '#008080'; w.editBgNone = false; });
+  await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; w.editBgColor = '#008080'; w.editBgNone = false; w.selectAllLayers = true; });
   await page.keyboard.press('m');
   const row = page.locator('.secondary-row .tool-setting-group').first();
   await expect(row).toContainText('Click or drag to select, or:');

@@ -176,7 +176,7 @@ const MORE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
 const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option =>
   (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));
 
-// The actions on the Select tool's selection (one undo step each), on the shown layers.
+// The actions on the Select tool's selection (one undo step each), on the picked layer, or the shown layers with All layers on.
 const copySelection = () => copyToClipboards(project, workspace, workspace.selection, workspace.selectionIds);
 const cutSelection = () => {
   copySelection();
@@ -211,9 +211,10 @@ const shownChoice = (option) => {
 const wandHere = computed(() => !!workspace.wand && ['input', 'output'].includes(workspace.editorTab));
 const kept = computed(() => wandHere.value || (!!workspace.selection && ['input', 'output'].includes(workspace.editorTab)));
 const deselect = () => project.changeSelection((w) => { w.selection = null; w.wand = null; });
-// What Set FG, Set BG and Fill recolor: the active tool's own selection.
+// What Set FG, Set BG and Fill recolor: the active tool's own selection, on the layers that tool's actions reach (the
+// wand's: every shown one; Select's: the picked one, or every shown one with All layers on).
 const recolored = computed(() => (workspace.activeTool === 'wand' ? wandHere.value && workspace.wand : workspace.activeTool === 'select' && workspace.selection));
-const recolor = (colors) => project.recolorSelection(recolored.value, workspace.editorTab, workspace.selectionIds, colors);
+const recolor = (colors) => project.recolorSelection(recolored.value, workspace.editorTab, workspace.activeTool === 'wand' ? workspace.shownIds : workspace.selectionIds, colors);
 // Set FG and Set BG (Fill in PIXEL; no Set BG in the ASCII styles). On the Select row they show with nothing selected
 // too, turned off, so they're where they'll be once there's a selection.
 const recolorButtons = computed(() => {
@@ -674,7 +675,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       </div>
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
-        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectionIds)">{{ t('common.delete') }}</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.shownIds)">{{ t('common.delete') }}</button>
         <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
         <button class="text" :title="t('toolbar.selection.wandDeselectTitle')" aria-keyshortcuts="Escape" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
       </div>

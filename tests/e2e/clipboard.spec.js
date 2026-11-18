@@ -50,6 +50,7 @@ test('a block copied in one tab pastes into another with its colors', async ({ p
   await page.keyboard.type('Red ink');
   await page.getByRole('button', { name: 'Select', exact: true }).click();
   await select(page, 2, 4, 8, 5);
+  await store(page, 'workspace', (w) => { w.selectAllLayers = true; }); // All layers: the picture under the typed row comes too
   await page.keyboard.press('ControlOrMeta+c');
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain('Red ink');
   const copied = [await colors(page, 4, 2, 8), await colors(page, 5, 2, 8)];
