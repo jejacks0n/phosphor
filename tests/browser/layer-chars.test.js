@@ -192,6 +192,28 @@ test('a blank canvas, new or reopened, shows no Picture · Base (Smoothing) with
   expect(sectionOf('Picture')).toBeUndefined();
 });
 
+// #200: Bake swaps in a new picture of its own making, which was never looked at for one color: a blank canvas baked was
+// still all one color, but Smoothing and Image filters showed until a reload looked again and hid them.
+test('#200: a blank canvas baked is still a blank canvas: no Picture · Base (Smoothing) and no Image filters, before a reload as after', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('base');
+  await mountPanel();
+  project.invert = 100; // a slider moved, so there's something to bake: black comes out white, all over
+  await settle(project);
+  expect(project.canBake).toBe(true);
+  await project.bake();
+  await settle(project);
+  await nextTick();
+  expect(project.invert).toBe(0);
+  expect(sectionOf('Characters · Base')).toBeTruthy();
+  expect([sectionOf('Picture'), sectionOf('Image filters')]).toEqual([undefined, undefined]);
+  expect(host.querySelector('#smoothing')).toBeNull();
+  project.undo(); // the picture before the bake is the blank canvas's own, as marked
+  await settle(project);
+  await nextTick();
+  expect(sectionOf('Picture')).toBeUndefined();
+});
+
 test('Characters and Picture fold on their titles like the slider groups, and stay folded when the panel comes back', async () => {
   const { workspace } = await picture();
   workspace.pickLayer('base');

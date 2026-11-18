@@ -25,11 +25,18 @@ export function markUniform(image, color) {
 // Whether the picture is one color all over (markUniform, findUniform): a blank canvas's, a stand-in for no picture.
 export const isUniform = (image) => uniform.has(image);
 
+// The most bytes a picture's file can be and still be looked at for one color all over (findUniform): a one-color PNG
+// packs into almost nothing (a blank canvas's largest, 16 million pixels, is about 64 KB), and a photo is far larger.
+const UNIFORM_MOST_BYTES = 256 * 1024;
+
 // Mark image uniform (markUniform) when every pixel is the same opaque color, as a blank canvas's picture reopened from its
-// file is: a picture made one color is said so where it's made, but read back it's only pixels. Stops at the first pixel
-// that differs. Whether it's uniform.
-export function findUniform(image) {
+// file is, or one Bake made of it: a picture made one color is said so where it's made, but read back it's only pixels.
+// Asked wherever a whole picture is swapped in (a document opened, Bake, Blend into source image), so the settings that
+// need a picture show the same before a reload as after. imageBuffer: its file, when there is one: one too big to be a
+// one-color picture's isn't looked at. Stops at the first pixel that differs. Whether it's uniform.
+export function findUniform(image, imageBuffer = null) {
   if (uniform.has(image)) return true;
+  if (imageBuffer && imageBuffer.byteLength > UNIFORM_MOST_BYTES) return false;
   const w = image.naturalWidth || image.width, h = image.naturalHeight || image.height;
   if (!w || !h) return false;
   const canvas = Object.assign(document.createElement('canvas'), { width: w, height: h }), ctx = ctx2d(canvas);

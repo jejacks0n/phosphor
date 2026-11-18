@@ -17,9 +17,6 @@ import { pngBlob } from '@/lib/PngFile.js';
 import { videoFile } from '@/lib/VideoFile.js';
 import { findUniform, gpuMaxSide } from '@/lib/ImageProcessor.js';
 
-// The most bytes a picture's file can be and still be looked at for one color all over (findUniform): a one-color PNG
-// packs into almost nothing (a blank canvas's largest, 16 million pixels, is about 64 KB), and a photo is far larger.
-const UNIFORM_MOST_BYTES = 256 * 1024;
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { rgb2hex } from '@/lib/ColorUtils.js';
 import { commentLines, keptFields, keptRecord, withLetterSpacing } from '@/lib/Sauce.js';
@@ -301,7 +298,7 @@ export const documentActions = {
   // edit layer, which a project's own layers replace as it opens, or with baseOnly the base alone (newLayers).
   replaceImage(image, imageBuffer, patch = {}, { baseOnly = false } = {}) {
     if (this._artInside) this.leaveArt();
-    if (imageBuffer && imageBuffer.byteLength <= UNIFORM_MOST_BYTES) findUniform(image); // a blank canvas reopened fills the grid again
+    if (imageBuffer) findUniform(image, imageBuffer); // a blank canvas reopened fills the grid again
     this.renderer.reset();
     this.activePalette = [];
     this.$patch({

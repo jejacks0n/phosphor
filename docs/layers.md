@@ -175,7 +175,8 @@ The settings on the left come in sections, each following a layer:
   - Every layer converts something (the base its picture, a drawing layer its paint, a vector layer its shapes), so
     the section is always there. A new drawing selects the base, so the picture's own settings show first: select a
     drawing layer to change how its paint becomes characters.
-- **Picture · Base**: **Smoothing**. Only with the base selected, and only with a picture: a blank canvas has none.
+- **Picture · Base**: **Smoothing**. Only with the base selected, and only with a picture: a blank canvas has none,
+  and still has none after a Bake.
 - **Image filters**: **Blur**, **Simplify**, **Sharpen**, **Edges** (with its color) and **Edge thickness**, which
   work on the picture itself. Only with the base selected, and only with a picture: on a blank canvas, or after
   Flatten, a note says image filters require an image instead. After a Bake or **Blend into source image** the picture
