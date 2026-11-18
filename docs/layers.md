@@ -473,7 +473,8 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
   characters, whichever style you painted it in, and what it showed in ANSI shows again when you switch back. For clean
   half-blocks, use **Half-block**.
 - **Half-block**: Each cell they paint becomes a ▄, and the paint colors its two halves, so you draw clean
-  half-blocks. The half you don't paint keeps its color.
+  half-blocks. The half you don't paint keeps the cell's background: a character there goes, and its color with it, so a
+  stroke across a line you typed is a half block too, not a whole cell.
 - **Single line** and **Double line** (Pencil only): Draw box-drawing lines as you drag from cell to cell. Each cell
   gets the piece its path needs (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼), so the line turns corners and joins itself where it crosses
   back, in the foreground color (and the background color, unless it's None). A diagonal drag becomes a staircase.
@@ -889,7 +890,8 @@ swaps the two halves of each cell's base colors.
     frames. With **Connect** on, a box joins its frame to the lines it crosses or meets, the ones you can see: a line
     hidden under paint isn't joined.
   - **Half-block** and **Full-block**: paint over the cells, showing through their characters, at half-cell or whole-cell
-    detail. **Write block glyphs** (off to start) writes real ▄ or █ characters instead.
+    detail. **Write block glyphs** (off to start) writes real ▄ or █ characters instead. In Half-block, each ▄ replaces
+    the character it's written over, and that character's color, as the Pencil's and Brush's Half-block does.
   - **Character**: the shape is the active character in the foreground color, and the cells' backgrounds are left
     alone. **Fill** fills the inside with the character too. It isn't offered when the active character is ▀, ▄ or █.
 - **Line**: Draws a straight line from where you start dragging to where you let go, in the foreground color: one pixel

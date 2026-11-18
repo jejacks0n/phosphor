@@ -7,6 +7,7 @@ import { cellIndex } from '@/lib/Cells';
 import { ellipseShape, rectShape } from '@/document/shapes.js';
 import pencil from '@/tools/pencil';
 import brush from '@/tools/brush';
+import shapes from '@/tools/shapes';
 import eraser from '@/tools/eraser';
 
 async function scene(settings = {}) {
@@ -498,3 +499,60 @@ for (const charChoice of ['random', 'best', 'shape']) {
     expect([at(5).fg.hex, at(5).bg.hex]).toEqual(['#ff5555', '#55ff55']);
   });
 }
+
+// The report (projects/boxes.phosphor: a double-line box typed in blue on Layer 1): a Half-block box drawn over it with
+// Write block glyphs on came out as full cells where it crossed the lines. Each crossed cell became a ▄ that kept the
+// line's blue foreground, a character of the layer's own and no paint block, so its bottom half showed the blue under the
+// paint's top half. The Brush's and Pencil's Half-block did the same. A block written over a cell takes its character
+// and its foreground: a bare ▄, as over any other cell (docs/model.md R5).
+test('R5: the report: a Half-block box with Write block glyphs over a line box makes bare ▄ blocks where it crosses the lines', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/boxes.phosphor')).arrayBuffer()], 'x.phosphor'));
+  await settle(project);
+  workspace.pickLayer('edit');
+  project.setLayerHidden('base', true); // black under every cell, so a crossed cell can be held to one that isn't
+  Object.assign(workspace, { editFgColor: '#ffffff', editBgNone: true, shapeKind: 'rect', shapeDrawWith: 'half', shapeBlockChars: true, brushDrawWith: 'half', editBrushSize: 1, editBrushOpacity: 100, editBrushFlow: 100, editBrushHardness: 100 });
+  expect(project.editCellAt(35, 5)).toMatchObject({ char: '═', fg: '#0061ff' });
+  const ctx = { project, workspace, view: 'output' }, shown = (col, row) => project.cells[cellIndex(col, row, project.cols)];
+  // Its top edge on pixel row 11, the bottom halves of row 5: cols 30 to 40 cross the line box's top, 41 to 50 don't.
+  shapes.begin(ctx, { x: 30.5, y: 11.5 });
+  shapes.move(ctx, { x: 30.5, y: 11.5 }, { x: 50.5, y: 19.5 });
+  shapes.end(ctx);
+  // The Brush along pixel row 14, the top halves of row 7, across the box's left side (col 14) and a letter typed on a
+  // background of its own (col 16), which stays in the half the Brush leaves.
+  project.typeAt(16, 7, 'A', { fg: '#ff0000', bg: '#00ff00' });
+  project.commitEdit();
+  brush.begin(ctx, { x: 8.5, y: 14.5 }, {});
+  brush.move(ctx, { x: 8.5, y: 14.5 }, { x: 18.5, y: 14.5 });
+  brush.end(ctx);
+  await settle(project);
+  const look = ({ char, fg, bg }) => ({ char, fg, bg });
+  for (const col of [30, 35, 40]) {
+    expect(project.editCellAt(col, 5)).toEqual({ char: '▄' });
+    expect(look(shown(col, 5))).toEqual(look(shown(45, 5)));
+  }
+  expect(project.editCellAt(14, 7)).toEqual({ char: '▄' });
+  expect(look(shown(14, 7))).toEqual(look(shown(10, 7)));
+  expect(project.editCellAt(16, 7)).toEqual({ char: '▄' });
+  expect([shown(16, 7).char, shown(16, 7).bg.hex, shown(16, 7).fg.hex]).toEqual(['▄', shown(10, 7).bg.hex, '#00ff00']);
+});
+
+// The same on the base, where a pinned character's colors are its two pixels, its foreground the lower one: a block
+// written there kept the line's blue in that pixel.
+test('R5: on the base, a Half-block box with Write block glyphs over a typed line makes ▄s in the line\'s background, as elsewhere', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 40, rows: 20 });
+  await settle(project);
+  workspace.pickLayer('base');
+  for (let col = 5; col < 15; col++) project.typeAt(col, 5, '═', { fg: '#0061ff' });
+  project.commitEdit();
+  Object.assign(workspace, { editFgColor: '#ffffff', editBgNone: true, shapeKind: 'rect', shapeDrawWith: 'half', shapeBlockChars: true });
+  const ctx = { project, workspace, view: 'output' };
+  shapes.begin(ctx, { x: 8.5, y: 10.5 }); // its top edge on the top halves of row 5: cols 8 to 14 cross the line
+  shapes.move(ctx, { x: 8.5, y: 10.5 }, { x: 20.5, y: 16.5 });
+  shapes.end(ctx);
+  await settle(project);
+  const look = (col, row) => { const { char, fg, bg } = project.cells[cellIndex(col, row, project.cols)]; return [char, fg.hex, bg.hex]; };
+  expect(look(10, 5)).toEqual(['▄', '#000000', '#ffffff']);
+  expect(look(10, 5)).toEqual(look(18, 5));
+});

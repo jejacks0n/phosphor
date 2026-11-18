@@ -159,7 +159,7 @@ function apply({ project, workspace, view }, end) {
   // Half-block: paint at grid resolution. Block characters makes each touched cell a ▄, so the
   // paint colors its halves; without it the paint shows through the cell's own character.
   if (!drawsCells(workspace)) {
-    if (blockChars) project.writeEditCells(kept(cellsOfPixels(pixelsOf(fill), project.cols, project.rows).map(c => ({ ...c, attrs: { char: '▄' } }))));
+    if (blockChars) project.writeBlocks(kept(cellsOfPixels(pixelsOf(fill), project.cols, project.rows)));
     paintShape();
     return;
   }

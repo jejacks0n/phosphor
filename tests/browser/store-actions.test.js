@@ -14,7 +14,7 @@ const ACTIONS = [
   'rename', 'renameLayer', 'render', 'replaceImage', 'replayOnPicture', 'resendPending', 'resetFrames', 'resetGroup', 'resetSliders', 'resolvedOf', 'restackShapes', 'restoreDocument', 'restoreLedger', 'sauceCommentFit', 'sauceFields', 'saveProject', 'selectShapes', 'selectionEdit', 'sendBase', 'sendHeld', 'sendHeldSoon', 'sendLayers', 'sendNumbered',
   'sendParts', 'sendSettings', 'sendSlice', 'separateShape', 'setAllFrames', 'setAnimate', 'setArtContent', 'setAspectLock', 'setBaseRecords', 'setBlankCanvas', 'setCells', 'setEditCells', 'setFollow', 'setFps', 'setFrameState', 'setFramesArt', 'setGuide', 'setHold', 'setImageFromFile', 'setKeyEasing', 'setKeyMotion', 'setLayerChars', 'setLayerHidden', 'setPaused',
   'setShapes', 'setSlider', 'shapeRank', 'shapesBefore', 'shareWholeDocument', 'shiftBaseCells', 'shiftCells', 'showFrame', 'sliderValues', 'staleFrames', 'stampSelection', 'startSharing', 'stepFrame', 'stopFollowing', 'stopSharing', 'storedLookAt', 'strokeRefused', 'syncShapeLayers', 'takeCatchUp', 'takeFromArtist', 'takeLayerOp', 'takeLedger', 'takeProject', 'throughPending', 'turnSelection', 'typeAt',
-  'typing', 'underlyingAt', 'undo', 'undoStroke', 'unlockCells', 'updateCols', 'updateRows', 'updateShapes', 'useLayer', 'waitForAnswer', 'waitingBoxes', 'writeAt', 'writeBase', 'writeBaseCells', 'writeEditCells',
+  'typing', 'underlyingAt', 'undo', 'undoStroke', 'unlockCells', 'updateCols', 'updateRows', 'updateShapes', 'useLayer', 'waitForAnswer', 'waitingBoxes', 'writeAt', 'writeBase', 'writeBaseCells', 'writeBlocks', 'writeEditCells',
 ];
 
 test('the project store has exactly its actions', async () => {
