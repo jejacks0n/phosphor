@@ -915,6 +915,38 @@ test('Into the image from a row that isn\'t the layer in use merges that row\'s 
   }
 });
 
+test('Blend into source image warns that a layer with its own characters has its paint redrawn in the base\'s, and still merges', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  const top = project.addLayer('cells', 'base');
+  workspace.pickLayer(top);
+  project.paintStroke([{ x: 3, y: 6, alpha: 1 }, { x: 6, y: 6, alpha: 1 }], '#ff3300');
+  project.commitEdit();
+  await settle(project);
+  const { asking } = await import('@/composables/useMergeDown.js');
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  document.body.append(host);
+  toolbar.mount(host);
+  const blend = () => [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Blend into source image'));
+  const warning = 'uses custom character settings. Its paint will be redrawn in Base\'s characters.';
+  try {
+    asking.value = { id: top, rect: null };
+    await settle(project);
+    expect(blend().textContent).not.toContain(warning); // the base's characters: nothing to warn of
+    asking.value = null;
+    project.setLayerChars(top, { chars: '▖▗▘▝▚▞' });
+    project.commitLayerChars();
+    asking.value = { id: top, rect: null };
+    await settle(project);
+    expect(blend().textContent).toMatch(new RegExp(`Layer \\d+ ${warning}`));
+    blend().click(); // a warning, not a refusal
+    await vi.waitFor(() => expect(project.layerById(top)).toBe(undefined), { timeout: 10_000 });
+  } finally {
+    toolbar.unmount();
+    host.remove();
+  }
+});
+
 // With a palette and Levels on, what a cell shows can be a palette color its stored colors don't show as: the frozen
 // cells are written in stored colors that do (M12: soft paint over paint recolored #aa5500 cells #aa0000).
 const filtered = async () => {

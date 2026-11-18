@@ -77,6 +77,7 @@ span.warn {
   margin-top: 6px;
   color: #ffcf6e !important;
   font-size: 12px !important;
+  white-space: pre-line; /* a note of several, one to a line */
 }
 
 div.actions {

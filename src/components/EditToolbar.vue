@@ -17,6 +17,7 @@ import { shortcut } from '@/lib/keyLabels';
 import { snapsLate } from '@/lib/CharResolver';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
 import { refusedHidden } from '@/store/project/shared.js';
+import { sameChars } from '@/document/layerInfo.js';
 import { useLayerName } from '@/composables/useLayerName';
 import { asking as merging, useMergeDown } from '@/composables/useMergeDown';
 
@@ -288,7 +289,12 @@ const mergeChoices = computed(() => {
     { id: 'exact', title: t('toolbar.mergeDialog.exactTitle'), text: t('toolbar.mergeDialog.exactText') },
     { id: 'picture', title: t('toolbar.mergeDialog.intoImageTitle'), text: t('toolbar.mergeDialog.intoImageText') },
   ];
-  return project.pictureIsOriginal ? [choices[0], { ...choices[1], note: t('toolbar.mergeDialog.originalNote') }] : choices;
+  // Into the picture, paint is pixels the base converts with its own characters: a layer with others of its own loses them.
+  const { id } = merging.value ?? {}, layer = project.layerById(id);
+  const ownChars = layer && project.paintOf(id)?.hasPaint && !sameChars(layer.chars, project.baseChars, 'cells')
+    && t('toolbar.mergeDialog.ownCharsNote', { name: layerName(id), below: layerName(below(id)?.id) });
+  const note = [ownChars, project.pictureIsOriginal && t('toolbar.mergeDialog.originalNote')].filter(Boolean).join('\n');
+  return note ? [choices[0], { ...choices[1], note }] : choices;
 });
 
 // Bake under CGA or VGA asks whether to lock the picture to the palette (exact, but the in-between

@@ -403,7 +403,8 @@ held.
   it (the Image filters section stays, with Base picked, as it does after Bake); letters merge exactly; undo brings
   back the layer and the picture.
 - Probes: `undo-redo`: undo the slider moves and then the merge, one step at a time, and redo them; `again`: merge a
-  second time into the already blended picture; `ascii`: in Color ASCII, with a Colors only stroke and dark text typed
+  second time into the already blended picture, then a third from a layer given its own Characters (Blend into source
+  image says its paint will be redrawn in Base's characters, and choosing it still merges); `ascii`: in Color ASCII, with a Colors only stroke and dark text typed
   over white paint on the layer, Blend into source image: the stroke goes into the picture with no new backgrounds
   anywhere, and the text keeps its light one.
 - Rated: yes, wants Cmd+E, then the arrows to the second choice
