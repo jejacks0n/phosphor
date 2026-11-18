@@ -1,6 +1,6 @@
-// The Eraser's Hard and Soft (the PIXEL view's): Hard is a square that clears what it covers at once; Soft is round and
-// feathered and takes paint away a little at a time, by its Flow, as the Brush lays it. On the base, where erasing is
-// black, Soft lays the black the same way. The ANSI view erases whole cells either way.
+// The Eraser's Hard and Soft: Hard is a square that clears what it covers at once (pixels in the PIXEL view, whole cells
+// with their characters in the ANSI view); Soft is round and feathered and takes paint away a little at a time, by its
+// Flow, as the Brush lays it, the same in both views. On the base, where erasing is black, Soft lays the black that way.
 import { test, expect } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
 import eraser from '@/tools/eraser';
@@ -88,25 +88,55 @@ test('Soft on the base lays black a little at a time; Hard turns it black at onc
   expect(project.baseColorAt(7, 7)).toBe('#000000');
 });
 
-test('the ANSI view erases whole cells, Soft on or off', async () => {
+test('Hard in the ANSI view erases whole cells, characters with them', async () => {
   const { project, workspace, ctx, alpha } = await painted();
-  Object.assign(workspace, { editEraserCells: 1, editEraserSoft: true, editEraserFlow: 1 });
+  project.typeAt(10, 5, 'A', { fg: '#ffffff' });
+  project.commitEdit();
+  workspace.editEraserCells = 1;
   const ansi = { ...ctx, view: 'output' };
   eraser.begin(ansi, { x: 10.5, y: 10.5 });   // cell (10, 5): grid pixels (10, 10) and (10, 11)
   eraser.end(ansi);
   expect([alpha(10, 10), alpha(10, 11)]).toEqual([0, 0]);
   expect([alpha(9, 10), alpha(11, 10), alpha(10, 9), alpha(10, 12)]).toEqual([1, 1, 1, 1]);
-  expect(project.hasPaint).toBe(true);
+  expect(project.editCellAt(10, 5)).toBeUndefined();
 });
 
-test('the options row: Hard or Soft and Flow are the PIXEL view\'s, Flow only with Soft; the outline is a circle then', async () => {
+// Soft is the same eraser in both views, as the Brush is the same brush: round, in grid pixels at the PIXEL view's Size,
+// taking paint away by its Flow. It works on paint, so a character someone typed stays, as it does under the Eraser in
+// the PIXEL view; Hard is what takes characters.
+test('Soft in the ANSI view takes paint away as it does in PIXEL, and leaves typed characters where they are', async () => {
+  const { project, workspace, ctx, alpha } = await painted();
+  project.typeAt(3, 2, 'A', { fg: '#ffffff' });   // typing clears the paint in its cell: the next cell along still has it
+  project.commitEdit();
+  Object.assign(workspace, { editEraserSize: 6, editEraserCells: 1, editEraserSoft: true, editEraserFlow: 50 });
+  const ansi = { ...ctx, view: 'output' };
+  const click = (x, y) => { eraser.begin(ansi, { x, y }); eraser.end(ansi); };
+  click(10, 10);
+  const once = alpha(10, 10);
+  expect(once).toBeGreaterThan(0.5);
+  expect(once).toBeLessThan(1);
+  expect(alpha(12, 10)).toBeGreaterThan(once);   // feathered
+  expect(alpha(7, 7)).toBe(1);                   // round, and six pixels across: not one cell
+  click(10, 10);
+  expect(alpha(10, 10)).toBeLessThan(once);
+  click(4, 5);   // over the typed A, cell (3, 2), and the paint beside it
+  expect(project.editCellAt(3, 2)?.char).toBe('A');
+  expect(alpha(4, 5)).toBeLessThan(1);
+});
+
+test('the options row: Hard or Soft in both views; Soft brings Flow and the PIXEL Size to the ANSI view, and its outline is a circle', async () => {
   const { workspace } = await painted();
-  const offered = (view) => eraser.options.filter((o) => (!o.views || o.views.includes(view)) && (!o.when || o.when(workspace))).map((o) => o.key);
+  const offered = (view) => {
+    workspace.editorTab = view;
+    return eraser.options.filter((o) => (!o.views || o.views.includes(view)) && (!o.when || o.when(workspace))).map((o) => o.key);
+  };
   expect(offered('input')).toEqual(['editEraserSize', 'editEraserSoft']);
-  expect(offered('output')).toEqual(['editEraserCells']);
-  expect(eraser.preview.soft(workspace, 'input')).toBe(false);
+  expect(offered('output')).toEqual(['editEraserCells', 'editEraserSoft']);
+  expect([eraser.preview.soft(workspace, 'input'), eraser.preview.soft(workspace, 'output')]).toEqual([false, false]);
+  expect([eraser.preview.size(workspace, 'input'), eraser.preview.size(workspace, 'output')]).toEqual([5, 1]);
   workspace.editEraserSoft = true;
   expect(offered('input')).toEqual(['editEraserSize', 'editEraserSoft', 'editEraserFlow']);
-  expect(offered('output')).toEqual(['editEraserCells']);
-  expect([eraser.preview.soft(workspace, 'input'), eraser.preview.soft(workspace, 'output')]).toEqual([true, false]);
+  expect(offered('output')).toEqual(['editEraserSize', 'editEraserSoft', 'editEraserFlow']);
+  expect([eraser.preview.soft(workspace, 'input'), eraser.preview.soft(workspace, 'output')]).toEqual([true, true]);
+  expect([eraser.preview.size(workspace, 'input'), eraser.preview.size(workspace, 'output')]).toEqual([5, 5]);   // grid pixels in both
 });

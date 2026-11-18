@@ -161,7 +161,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     editBrushSize:  2.5,
     editEraserSize: 5,  // the PIXEL view's Eraser, in grid pixels
     editEraserCells: 1, // the ANSI view's, in cells
-    editEraserSoft: false, // the PIXEL view's: a round, feathered eraser that takes paint away by its Flow, or (off) a hard square
+    editEraserSoft: false, // a round, feathered eraser that takes paint away by its Flow, in grid pixels in both views, or (off) a hard square
     editEraserFlow: 50, // a soft eraser's Flow, as the Brush's (brush.js: stampFlow)
     editBrushOpacity:  100,
     brushDrawWith: 'normal', // Brush, ANSI view: 'normal' (paint) | 'half' (each cell painted becomes a ▄ the paint colors)

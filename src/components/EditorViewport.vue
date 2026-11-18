@@ -168,7 +168,7 @@ const previewStyle = computed(() => {
   return {
     display: 'block',
     width: `${size * unit.x}px`,
-    height: `${size * unit.y * (preview.snap && ansi ? 2 : 1)}px`, // the ANSI view's eraser counts cells, two grid pixels tall
+    height: `${size * unit.y * (preview.snap && ansi && !round ? 2 : 1)}px`, // the ANSI view's hard eraser counts cells, two grid pixels tall
     left: `${pos.x + (display?.clientLeft ?? 0)}px`,
     top: `${pos.y + (display?.clientTop ?? 0)}px`,
     borderRadius: round ? '50%' : '0',

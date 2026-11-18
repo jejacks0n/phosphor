@@ -649,10 +649,14 @@ The **Eraser** (**E**) erases the selected layer:
 - **In the PIXEL View**: The Eraser removes paint (on a drawing layer) and turns base pixels black (on the base),
   leaving the characters as they are, except a ▄ that Half-block made to show paint (one with no colors of its own):
   when its cell's last paint is erased, the cell gets its own character back.
-- **Hard or Soft** (the PIXEL view): **Hard**, as it starts, is a square that clears everything under it at once.
-  **Soft** is round with a feathered edge, like the Brush, and takes paint away a little with each pass: its **Flow**
-  sets how much, so a low Flow fades paint gently and a few passes clear it. On the base, where erasing is black, Soft
-  lays the black the same way. The ANSI view erases whole cells either way.
+- **Hard or Soft**: **Hard**, as it starts, is a square that clears everything under it at once: pixels in the PIXEL
+  view, whole cells with their characters in the ANSI view. **Soft** is round with a feathered edge, like the Brush,
+  and takes paint away a little with each pass: its **Flow** sets how much, so a low Flow fades paint gently and a few
+  passes clear it. On the base, where erasing is black, Soft lays the black the same way.
+- **Soft in the ANSI View**: Soft is the same eraser in both views, as the Brush is the same brush: it works in pixels,
+  at the PIXEL view's **Size · px** (which the ANSI view's row shows in place of **Size · cells** while Soft is on).
+  It takes paint, not characters: a character you typed or drew stays where it is, as it does under the Eraser in the
+  PIXEL view. To take characters, use Hard.
 - **Its Outline**: The pointer shows what the Eraser covers: the square of cells or pixels it would clear, or Soft's
   circle. Off the canvas, where there's nothing to erase, the outline still follows the pointer.
 
@@ -1045,7 +1049,7 @@ A letter chooses a tool, as in Photoshop, with Moebius's keys where it has the s
 Eyedropper, **H** Hand, **Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, **F** Swap cell FG/BG and **M** Select,
 in the views that have the tool (Edit Mode and Swap cell FG/BG are the ANSI view's). Each tool's tooltip shows its key.
 
-**]** and **[** grow and shrink the Size of the Brush, the Eraser (the Size of the view you're in: cells or pixels), Blur,
+**]** and **[** grow and shrink the Size of the Brush, the Eraser (the Size its row shows: cells or pixels), Blur,
 Dodge and Burn by 1 a press, from 1 to 20, as in Photoshop. In Edit Mode, while you type, they type.
 
 - **Shared Buttons**: Some tools share a button: the Paint Bucket and Gradient; Blur, Dodge and Burn; Select and the

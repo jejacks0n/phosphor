@@ -8,11 +8,14 @@ import { t } from '@/i18n/index.js';
 
 // The eraser erases the picked layer: a cells layer's paint and edit cells; the base, black with a pinned space in
 // the ANSI view (eraseBase), black pixels in the Pixel view (eraseBasePixels), as the edit layer's writers route there.
-// Each view has its own size: the ANSI view's in whole cells (editEraserCells), the Pixel view's in grid pixels.
-// In the Pixel view it's Hard (a square, cleared at once) or Soft: round and feathered as the Brush is, taking paint away
-// a stamp at a time by its Flow (on the base, laying black that way). The ANSI view erases whole cells either way.
-const sizeIn = (workspace, view) => (view === 'output' ? workspace.editEraserCells : workspace.editEraserSize);
-const soft = (workspace, view) => view === 'input' && workspace.editEraserSoft;
+// It's Hard (a square, cleared at once) or Soft: round and feathered as the Brush is, taking paint away a stamp at a time
+// by its Flow (on the base, laying black that way). Hard has each view's own size: the ANSI view's in whole cells
+// (editEraserCells), which go with their characters, the Pixel view's in grid pixels. Soft is the same in both views, as
+// the Brush is: in grid pixels at the Pixel view's size, and on paint alone, so in the ANSI view too a character of
+// someone's own stays (the Pixel view's Eraser never took one).
+const soft = (workspace) => workspace.editEraserSoft;
+const inPixels = (workspace, view) => view === 'input' || soft(workspace);
+const sizeIn = (workspace, view) => (inPixels(workspace, view) ? workspace.editEraserSize : workspace.editEraserCells);
 const SOFT_HARDNESS = 0.5; // ponytail: the Brush's starting Hardness, fixed; a Hardness slider of its own if that's ever asked for
 
 const eraser = {
@@ -24,16 +27,16 @@ const eraser = {
   kind: 'paint',
   preview: { shape: 'square', size: sizeIn, snap: true, soft },
   options: [
-    { key: 'editEraserSize', size: true, get label() { return t('tools.eraser.sizePixels'); }, get title() { return t('tools.eraser.sizePixelsTitle'); }, min: 1, max: 20, step: 1, views: ['input'] },
-    { key: 'editEraserCells', size: true, get label() { return t('tools.eraser.sizeCells'); }, get title() { return t('tools.eraser.sizeCellsTitle'); }, min: 1, max: 20, step: 1, views: ['output'] },
+    { key: 'editEraserSize', size: true, get label() { return t('tools.eraser.sizePixels'); }, get title() { return t('tools.eraser.sizePixelsTitle'); }, min: 1, max: 20, step: 1, when: (workspace) => inPixels(workspace, workspace.editorTab) },
+    { key: 'editEraserCells', size: true, get label() { return t('tools.eraser.sizeCells'); }, get title() { return t('tools.eraser.sizeCellsTitle'); }, min: 1, max: 20, step: 1, views: ['output'], when: (workspace) => !soft(workspace) },
     {
-      key: 'editEraserSoft', get label() { return t('tools.eraser.edge'); }, type: 'segmented', views: ['input'],
+      key: 'editEraserSoft', get label() { return t('tools.eraser.edge'); }, type: 'segmented',
       choices: [
         { value: false, get label() { return t('tools.eraser.hard'); } },
         { value: true, get label() { return t('tools.eraser.soft'); } },
       ],
     },
-    { key: 'editEraserFlow', get label() { return t('tools.eraser.flow'); }, get title() { return t('tools.eraser.flowTitle'); }, min: 1, max: 100, unit: '%', views: ['input'], when: (workspace) => workspace.editEraserSoft },
+    { key: 'editEraserFlow', get label() { return t('tools.eraser.flow'); }, get title() { return t('tools.eraser.flowTitle'); }, min: 1, max: 100, unit: '%', when: soft },
   ],
   begin(ctx, pos) {
     eraser.move(ctx, pos, pos);
@@ -42,23 +45,22 @@ const eraser = {
   move({ project, workspace, view }, from, to) {
     if (!project.renderer.outputCanvas) return;
     // A selection keeps it to the cells or pixels inside.
-    const clip = selectionClip(workspace), size = sizeIn(workspace, view);
-    // The ANSI view erases whole cells (size 1 is one character, and a wide character's trail takes
-    // its lead with it); the pixel view, exact pixels.
-    const stamps = soft(workspace, view)
+    const clip = selectionClip(workspace), size = sizeIn(workspace, view), exact = inPixels(workspace, view);
+    // Hard in the ANSI view erases whole cells (size 1 is one character, and a wide character's trail takes its lead
+    // with it); the pixel view, and Soft in either, exact pixels: Soft's stamps carry how much each takes (alpha).
+    const stamps = !exact ? null : soft(workspace)
       ? brushPixels(from, to, { size, flow: stampFlow(workspace.editEraserFlow), hardness: SOFT_HARDNESS }, project.cols, project.rows)
       : squarePixels(from, to, size, project.cols, project.rows);
-    const square = view === 'output' ? null : stamps.filter(({ x, y }) => !clip || clip.pixel(x, y));
-    const cells = view === 'output'
-      ? withLeads(project.cells, project.cols, squareCells(from, to, size, project.cols, project.rows)).filter(({ col, row }) => !clip || clip.cell(col, row))
-      : cellsOfPixels(square, project.cols, project.rows);
-    const pixels = view === 'output' ? cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]) : square;
+    const square = stamps?.filter(({ x, y }) => !clip || clip.pixel(x, y));
+    const cells = exact
+      ? cellsOfPixels(square, project.cols, project.rows)
+      : withLeads(project.cells, project.cols, squareCells(from, to, size, project.cols, project.rows)).filter(({ col, row }) => !clip || clip.cell(col, row));
+    const pixels = exact ? square : cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
     // A ▄ with no colors of its own (Half-block: it was there to show the paint) whose last
-    // paint this erases goes too, so the cell's own character comes back. The ANSI view clears
-    // the edit cells it erases anyway.
-    const blocks = view === 'input' ? cells.filter(({ col, row }) => isPaintBlock(project.editCellAt(col, row)) && project.cellHasPaint(col, row)) : [];
+    // paint this erases goes too, so the cell's own character comes back. Whole cells are cleared anyway.
+    const blocks = exact ? cells.filter(({ col, row }) => isPaintBlock(project.editCellAt(col, row)) && project.cellHasPaint(col, row)) : [];
     project.eraseEditPixels(pixels);
-    if (view === 'output') project.clearEditCells(cells);
+    if (!exact) project.clearEditCells(cells);
     else project.clearEditCells(blocks.filter(({ col, row }) => !project.cellHasPaint(col, row)));
   },
   end({ project }) {
