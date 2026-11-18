@@ -30,6 +30,9 @@ test("The Text tool's keys -> editing actions, cursor clamping, and row shifting
   assert.deepEqual(k('Backspace'), { type: 'backspace' });
   assert.deepEqual(k('Delete'), { type: 'delete' });
   assert.deepEqual(k('Insert'), { type: 'toggleInsert' });
+  assert.deepEqual(k('Enter', { altKey: true }), { type: 'toggleInsert' });   // for keyboards with no Insert key (a MacBook's): it types nothing on any layout
+  assert.deepEqual(k('Enter', { altKey: true, code: 'NumpadEnter' }), { type: 'toggleInsert' });
+  assert.deepEqual(k('Dead', { altKey: true, code: 'KeyI' }), null);          // Option+I still starts a circumflex: the tool leaves accents alone
   assert.equal(k('Shift'), null);
   assert.equal(k('Tab'), null);
   assert.equal(k('Escape'), null);

@@ -83,7 +83,7 @@ const groups = computed(() => [
       [['Home', 'End'], t('shortcuts.rows.homeEnd')],
       [['Enter'], t('shortcuts.rows.nextLine')],
       [['Backspace', 'Delete'], t('shortcuts.rows.erase')],
-      [['Insert'], t('shortcuts.rows.insertOverwrite')],
+      [['Insert', k('alt', 'Enter')], t('shortcuts.rows.insertOverwrite')],
       [['F1–F12'], t('shortcuts.rows.typeFKey')],
       [[k('ctrl', 'F1–F12')], t('shortcuts.rows.grabFKey')],
       [[k('alt', '←'), k('alt', '→')], t('shortcuts.rows.prevNextPalette')],

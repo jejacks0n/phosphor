@@ -131,7 +131,7 @@ const backTo100 = () => {
       >{{ percent }}%</button>
       <button
           v-if="tool === 'text'"
-          :title="t(`status.${workspace.typingMode}Title`)"
+          :title="t(`status.${workspace.typingMode}Title`, { key: shortcut('alt', 'Enter') })"
           @click="workspace.cycleTypingMode()"
       >{{ t(`status.${workspace.typingMode}`) }}</button>
       <button
