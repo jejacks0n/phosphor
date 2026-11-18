@@ -75,8 +75,9 @@ const tinted = (page) => page.locator('[data-wand-overlay]').evaluate((canvas) =
   return n;
 });
 
-test("the wand's Delete takes away every shown layer: with the base hidden it is left alone, shown the picture goes black", async ({ page }) => {
+test("with All layers on, the wand's Delete takes away every shown layer: with the base hidden it is left alone, shown the picture goes black", async ({ page }) => {
   await openApp(page);
+  await store(page, 'workspace', (w) => { w.selectAllLayers = true; });
   await page.keyboard.press('w');
   const base = (col, row) => store(page, 'project', `(p) => [p.baseColorAt(${col}, ${2 * row}), p.baseColorAt(${col}, ${2 * row + 1})]`);
   const at = await cellPoint(page, 4, 4);

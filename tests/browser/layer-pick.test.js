@@ -430,8 +430,9 @@ test('the eraser in the ANSI view starts at one cell: a click on the base pins o
   expect([...project.baseRecords.pins.keys()].sort()).toEqual(['10,4', '10,5', '11,4', '11,5', '5,4']);
 });
 
-// The Select tool's actions act on the picked layer, or with All layers on (its option) on every shown cells layer
-// (workspace.selectionIds); the Magic Wand's on every shown one (workspace.shownIds). Hiding a layer leaves it out either way.
+// A selection's actions (the Select tool's, and the Magic Wand's Delete, Set FG and Set BG) act on the picked layer, or
+// with All layers on (on both tools' rows) on every shown cells layer (workspace.selectionIds). Hiding a layer leaves it
+// out either way.
 async function selecting({ all = true } = {}) {
   const app = await blank();
   const { project, workspace } = app;
@@ -461,7 +462,6 @@ test('selectionIds is the picked layer, unless it\'s hidden; with All layers on,
   expect(workspace.selectionIds).toEqual([]);
   project.setLayerHidden('base', false);
   workspace.pickLayer('edit');
-  expect(workspace.shownIds).toEqual(['base', 'edit', top]); // the wand's, whatever is picked
   workspace.selectAllLayers = true;
   expect(workspace.selectionIds).toEqual(['base', 'edit', top]);
   project.setLayerHidden('base', true);
@@ -614,7 +614,7 @@ test('with All layers on, Cut takes and removes every shown layer; with the base
   expect(pin(project)).toBe(' ');
 });
 
-test('with All layers on, Delete with Select, and a nudge, act on the shown layers; the Wand\'s Delete does, on or off', async () => {
+test('with All layers on, Delete with Select, and a nudge, act on the shown layers; the Wand\'s Delete too', async () => {
   const { project, workspace, press } = await selecting();
   project.setLayerHidden('base', true);
   press('Delete');
@@ -629,7 +629,6 @@ test('with All layers on, Delete with Select, and a nudge, act on the shown laye
   project.undo();
 
   workspace.selection = null;
-  workspace.selectAllLayers = false;
   workspace.setActiveTool('wand');
   const mask = new Uint8Array(20 * 10);
   mask[3 * 20 + 3] = 1;
@@ -643,6 +642,49 @@ test('with All layers on, Delete with Select, and a nudge, act on the shown laye
   press('Delete');
   expect(project.editCellAt(3, 3)).toBeUndefined();
   expect(pin(project)).toBe(' ');
+});
+
+// The Magic Wand follows All layers as Select does. Its checkbox is with the selection's own buttons, after them, so on a
+// narrow toolbar it's what moves into the ⋯ menu, not Delete.
+test('with All layers off, the Magic Wand\'s Delete and Set FG keep to the picked layer; its row has All layers once it has selected', async () => {
+  const { project, workspace, press } = await selecting({ all: false });
+  workspace.selection = null;
+  workspace.setActiveTool('wand');
+  const host = document.createElement('div');
+  document.body.append(host);
+  const toolbar = createApp(EditToolbar).use(i18n);
+  toolbar.mount(host);
+  const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+  const box = () => [...host.querySelectorAll('label.checkbox-wrapper')].find((label) => label.textContent.trim() === 'All layers')?.querySelector('input');
+  try {
+    await frame();
+    expect(box()).toBeUndefined();   // nothing selected: nothing for it to decide
+    const mask = new Uint8Array(20 * 10);
+    mask[3 * 20 + 3] = 1;
+    workspace.wand = markRaw({ view: 'output', width: 20, height: 10, mask, within: null });
+    await frame();
+    expect(box().checked).toBe(false);
+    const row = [...box().closest('.tool-setting-group').children];
+    expect(row.indexOf(box().closest('label'))).toBe(row.length - 1);   // last, after Deselect
+    press('Delete');
+    expect(project.editCellAt(3, 3)).toBeUndefined();
+    expect(pin(project)).toBe('P');   // the base under it stays
+    project.undo();
+    workspace.editFgColor = '#00ff00';
+    await frame();   // the button holds the color it was drawn with
+    [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Set FG').click();
+    expect(project.editCellAt(3, 3).fg).toBe('#00ff00');
+    expect(project.baseColorAt(3, 7)).toBe('#000000');   // the base cell's foreground, its lower pixel, as it was
+    project.undo();
+    box().click();
+    await frame();
+    expect(workspace.selectAllLayers).toBe(true);
+    press('Delete');
+    expect(pin(project)).toBe(' ');   // on: the base too
+  } finally {
+    toolbar.unmount();
+    host.remove();
+  }
 });
 
 test('a new document opens on the edit layer, whatever was picked before', async () => {

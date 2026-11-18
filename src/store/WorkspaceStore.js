@@ -115,7 +115,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     inputView: { col: 0, row: 0, cols: 0, rows: 0, zoom: 5 }, // the whole cells on screen in the PIXEL view, and the editZoom they were measured at (InputEditor)
     viewToRestore: null,     // a resumed room's view { tab: 'input' | 'output', col, row }: that tab's editor scrolls there once, and publishes only after
     pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
-    selectAllLayers: false,  // the Select tool's actions (selectionIds): true = every shown cells layer, false = the picked layer only
+    selectAllLayers: false,  // a selection's actions (selectionIds), Select's and the Magic Wand's: true = every shown cells layer, false = the picked layer only
     pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)
     pencilConnect: true,     // Pencil's Single and Double: join the lines it crosses or lands on
     shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse' | 'line'
@@ -213,16 +213,13 @@ export const useWorkspaceStore = defineStore('workspace', {
     activeTool(state) {
       return state[toolKey(state.editorTab)];
     },
-    // Every shown cells layer, the base among them, bottom first: what the Magic Wand's Delete, Set FG and Set BG act on
-    // (it selects what shows), whatever is picked. To leave a layer out, hide it.
-    shownIds() {
-      return useProjectStore().layers.filter((layer) => layer.kind === 'cells' && !layer.hidden).map((layer) => layer.id);
-    },
-    // The layers the Select tool's actions act on (Copy, Cut, Delete, Stamp, moves by drag or arrow key, flip and turn,
-    // Set FG / Set BG), every one of them: the picked layer, or with All layers on (selectAllLayers) every shown one.
-    // A hidden layer is left out either way.
+    // The layers a selection's actions act on (Select's Copy, Cut, Delete, Stamp, moves by drag or arrow key, flip and
+    // turn; the Magic Wand's Delete; Set FG / Set BG), every one of them: the picked layer, or with All layers on
+    // (selectAllLayers, on both tools' rows) every shown cells layer, the base among them, bottom first. A hidden layer
+    // is left out either way.
     selectionIds(state) {
-      return state.selectAllLayers ? this.shownIds : this.shownIds.filter((id) => id === state.pickedLayer);
+      const shown = useProjectStore().layers.filter((layer) => layer.kind === 'cells' && !layer.hidden).map((layer) => layer.id);
+      return state.selectAllLayers ? shown : shown.filter((id) => id === state.pickedLayer);
     },
     // Whether a cells layer above the bottom is picked: what Clear clears (off with the base or a vector layer picked).
     pickedCells(state) {
