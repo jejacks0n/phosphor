@@ -189,8 +189,9 @@ in the status bar to see what they do, and try "Start with a blank canvas" from 
 
 ### 11. Undo, from a phone
 - Does: makes three changes, then looks for Undo: opens Actions and taps Undo three times, then Redo once.
-- Expects: Actions holds Undo, Redo, Bake, Flatten, Merge down and Clear layer, each named, the ones that can't act
-  dimmed; Undo takes back one step each time; the menu fits on screen.
+- Expects: Actions holds Undo, Redo, Bake, Flatten and Merge down, each named, the ones that can't act dimmed (Clear
+  layer isn't there while Base is picked: it comes with a drawing layer, step 14); Undo takes back one step each time;
+  the menu fits on screen.
 - Probes: `speed`: tap Undo ten times as fast as the menu allows (does it close after each tap?); `undo-redo`: redo
   after a new change and check Redo is off.
 - Rated: no (touch only: no keyboard shows here)
