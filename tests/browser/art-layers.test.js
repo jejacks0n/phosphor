@@ -128,6 +128,25 @@ test('made on a later frame, the layer starts there', async () => {
   expect(has).toEqual([false, false, true, true]);
 });
 
+test('made while a typing run is still open, the typing is its own step, before the layer\'s', async () => {
+  const { project, workspace } = await blank();
+  project.typeAt(2, 1, 'H', { fg: RED });
+  project.commitEdit();
+  project.typeAt(8, 1, 'x', { fg: RED }); // a run left open: nothing has ended it yet
+  select(workspace, 1, 0, 4, 2);
+  expect(project.makeArtLayer()).toBeTruthy();
+  expect(arts(project).length).toBe(1);
+  project.undo(); // the layer: the H is back in the drawing, and the x typed before it is still there
+  expect(arts(project).length).toBe(0);
+  expect([project.editCellAt(2, 1)?.char, project.editCellAt(8, 1)?.char]).toEqual(['H', 'x']);
+  project.undo(); // the typing
+  expect([project.editCellAt(2, 1)?.char, project.editCellAt(8, 1)?.char]).toEqual(['H', undefined]);
+  project.redo();
+  project.redo();
+  expect(arts(project).length).toBe(1);
+  expect([project.editCellAt(2, 1)?.char, project.editCellAt(8, 1)?.char]).toEqual([undefined, 'x']);
+});
+
 test('nothing drawn in the selection: no layer and no step', async () => {
   const { project, workspace } = await blank();
   drawn(project);
