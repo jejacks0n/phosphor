@@ -1,6 +1,7 @@
 // A Color count palette covers the whole movie, so colors don't shift between frames. Worked out, not saved.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import { PALETTES } from '@/lib/ColorUtils.js';
 
 const hexes = (project) => project.activePalette.map((p) => p.hex.toLowerCase());
 const stroke = (project, pixels, hex) => { project.paintStroke(pixels.map(([x, y]) => ({ x, y, alpha: 1 })), hex); project.commitEdit(); };
@@ -156,4 +157,32 @@ test('leaving Color count lets the palette go', async () => {
   project.render();
   await settle(project);
   expect(project.activePalette ?? []).toHaveLength(0);
+});
+
+// Priya's run: Color count at 2, then CGA again: the screen showed CGA, but the GIF (every frame built for playing and
+// export) came out in the two colors. The frames' builder kept the movie's palette after Color count was left.
+const CGA = PALETTES.cga.map((c) => c.hex.toLowerCase());
+const colorsOf = (cells) => new Set(cells.flatMap((c) => [c.fg.hex.toLowerCase(), c.bg.hex.toLowerCase()]));
+
+test('leaving Color count for CGA builds the frames in CGA, after a render and while playing alike', async () => {
+  for (const playing of [false, true]) {
+    const project = await counted(2, '/tests/fixtures/images/gradient.png');
+    project.colorCount = 2;
+    project.render();
+    await settle(project);
+    await project.pickPalette();
+    expect(colorsOf((await project.builtFrame(1)).cells).size).toBeLessThanOrEqual(2);
+    project.quantize = 'cga';
+    if (!playing) {
+      project.render();
+      await settle(project);
+    }
+    const built = (await project.builtFrame(1)).cells; // playing asks before the render comes
+    if (playing) await settle(project);
+    for (const [n, frame] of [built, (await project.builtFrame(0)).cells, ...(await project.animationCells())].entries()) {
+      const colors = colorsOf(frame);
+      for (const hex of colors) expect(CGA, `playing: ${playing}, frame ${n}`).toContain(hex);
+      expect(colors.size).toBeGreaterThan(2);
+    }
+  }
 });
