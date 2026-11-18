@@ -725,6 +725,25 @@ test('a stack opened without an edit layer picks the layer in use', async () => 
   expect(workspace.pickedLayer).toBe(two);
 });
 
+test('with the only cells layer deleted over a vector layer, a shape edit is still an undo step', async () => {
+  const { project } = await blank();
+  project.addShape(rectShape(2, 2, 12, 10, { fill: '#ff0000' }));
+  project.commitEdit();
+  expect(project.deleteLayer('edit')).toBe(true);
+  expect(ids(project)).toEqual(['base', 'vector']);
+  project.addShape(rectShape(4, 4, 8, 8, { fill: '#00ff00' }));
+  project.commitEdit();
+  expect(project.shapes.size).toBe(2);
+  project.undo(); // the shape drawn since, not the layer's delete
+  expect(project.shapes.size).toBe(1);
+  expect(ids(project)).toEqual(['base', 'vector']);
+  project.redo();
+  expect(project.shapes.size).toBe(2);
+  project.undo();
+  project.undo(); // the delete
+  expect(ids(project)).toEqual(['base', 'vector', 'edit']);
+});
+
 test('with the only cells layer deleted, a base move stays on the base, pastes and typing land on the base, and Add layer starts empty', async () => {
   const { project, workspace } = await blank();
   project.typeAt(1, 1, 'Q', WHITE);
