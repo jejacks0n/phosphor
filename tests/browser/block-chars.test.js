@@ -81,10 +81,10 @@ test('R5: Colors only over a flat shape on a vector layer under the layer makes 
   project.paintStroke([{ x: 5, y: 6, alpha: 1 }, { x: 15, y: 6, alpha: 1 }], '#0000ff', { blockChars: 'plain' }); // over the shape, and over blank canvas
   project.commitEdit();
   expect(project.editCellAt(5, 3)).toBeUndefined();
-  expect(project.editCellAt(15, 3)).toEqual({ char: '▄' }); // a blank canvas's cell, as ever
+  expect(project.editCellAt(15, 3)).toBeUndefined(); // nor a blank canvas's cell: the converter drew it too
 });
 
-test('with Colors only, a cell that shows no character (the black of an opened file\'s grown lines) takes the paint as a plain ▄', async () => {
+test('with Colors only, a cell that shows no character (the black of an opened file\'s grown lines) takes the paint in the converter\'s character, no ▄', async () => {
   const { project, workspace } = await createTestApp();
   await project.openArtFile(new File(['ab  \nab  '], 'note.txt'), { layer: 'edit' });
   project.updateRows(40); // lines added under the art: the black base, converted
@@ -94,16 +94,18 @@ test('with Colors only, a cell that shows no character (the black of an opened f
   const hidden = project.cells.map((cell, i) => i).filter((i) => i >= 2 * project.cols && !['▄', ' '].includes(project.cells[i].char)).slice(0, 2);
   expect(hidden.map((i) => project.cells[i].fg.hex === project.cells[i].bg.hex)).toEqual([true, true]);
   const shows = (i) => { const { char, fg, bg } = project.cells[i]; return [char, bg.hex.toLowerCase(), fg.hex.toLowerCase()]; };
+  const chars = hidden.map((i) => project.cells[i].char); // the converter's, hidden in the black: the paint brings them out (R5)
   for (const [tool, i] of [[pencil, hidden[0]], [brush, hidden[1]]]) {
     const col = i % project.cols, row = (i - col) / project.cols, ctx = { project, workspace, view: 'output' };
     tool.begin(ctx, { x: col + 0.5, y: 2 * row + 0.5 }, {}); // its top half
     tool.end(ctx);
     await settle(project);
-    expect(shows(i), tool.id).toEqual(['▄', '#ffffff', '#000000']);
+    expect(shows(i), tool.id).toEqual([chars[hidden.indexOf(i)], '#ffffff', '#000000']);
+    expect(project.editCellAt(col, row), tool.id).toBeUndefined();
   }
   project.render(); // a whole render shows them the same way
   await settle(project);
-  expect(hidden.map(shows)).toEqual([['▄', '#ffffff', '#000000'], ['▄', '#ffffff', '#000000']]);
+  expect(hidden.map(shows)).toEqual(chars.map((char) => [char, '#ffffff', '#000000']));
 });
 
 // The report (projects/paint-over-merged-shape.phosphor): Color ASCII, a shape merged down, then painted along its edge
@@ -261,19 +263,20 @@ test('R3: the Eraser in the PIXEL view, or paint laid, in a frozen cell drops th
   expect(project.paintLayer.pixelAt(6, 10)).toMatchObject({ r: 0, g: 0, b: 255, a: 1 });
 });
 
-test('with Colors only on the base, a cell that shows no character is pinned a ▄ the paint colors', async () => {
+test('with Colors only on the base, a cell that shows no character takes the paint in the converter\'s character, unpinned', async () => {
   const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
   project.useLayer('base');
   Object.assign(workspace, { editFgColor: '#ffffff', pencilDrawWith: 'normal' });
-  const ctx = { project, workspace, view: 'output' };
+  const ctx = { project, workspace, view: 'output' }, chars = project.cells.slice(0, 6).map(({ char }) => char);
   pencil.begin(ctx, { x: 0.5, y: 0.5 }, {});
   pencil.move(ctx, { x: 0.5, y: 0.5 }, { x: 5.5, y: 0.5 }); // the top halves of row 0's first six cells
   pencil.end(ctx);
   await settle(project);
   const row = project.cells.slice(0, 6).map(({ char, fg, bg }) => [char, bg.hex.toLowerCase(), fg.hex.toLowerCase()]);
-  expect(row).toEqual(Array(6).fill(['▄', '#ffffff', '#000000']));
+  expect(row).toEqual(chars.map((char) => [char, '#ffffff', '#000000'])); // Random's, the paint over the black
+  expect([0, 1, 2, 3, 4, 5].filter((col) => project.renderer.pinAt(col, 0) !== undefined)).toEqual([]);
 });
 
 test('with Colors only, a character the stroke itself paints into one color isn\'t made a ▄ by the rest of the stroke', async () => {
@@ -291,7 +294,8 @@ test('with Colors only, a character the stroke itself paints into one color isn\
 // The report: painting in ASCII used only half-blocks, in stripes, never the characters chosen, and a picture on a layer
 // above showed ▄ where it had been painted (the paint showed through them as through any character drawn below it). And
 // a drawing painted in ANSI showed those stripes once it was switched to ASCII, and Colors only made ▄ in the ANSI view
-// but not in the PIXEL view. Colors only's ▄ shows in ANSI alone, and the same cells take it in either view or style.
+// but not in the PIXEL view. A stroke shows the same cells whichever view or style it's laid in (Colors only makes no ▄
+// of a cell the converter drew now, docs/model.md R5, so they're the converter's in every style).
 async function stroke(view, { paintedIn = 'colorAscii', shownIn = 'colorAscii', layer = 'edit', picture = true } = {}) {
   const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
@@ -320,20 +324,21 @@ test('in ASCII, Colors only paints with the ASCII characters, in the ANSI view a
 });
 
 for (const layer of ['edit', 'base']) {
-  test(`${layer}: painted with Colors only in ANSI, it shows the ASCII characters once switched to ASCII, and its ▄ again back in ANSI`, async () => {
+  test(`${layer}: painted with Colors only in ANSI, it shows the ASCII characters once switched to ASCII, and what it showed again back in ANSI`, async () => {
     const pixel = await stroke('input', { layer, picture: false });
+    const inAnsi = await stroke('output', { paintedIn: 'ansi', shownIn: 'ansi', layer, picture: false });
     const { project, shown, chars } = await stroke('output', { paintedIn: 'ansi', layer, picture: false });
     expect(chars).not.toContain('▄');
     expect(chars).toBe(pixel.chars);
     project.renderStyle = 'ansi';
     await settle(project);
-    expect(shown().slice(20 + 2, 20 + 14)).toBe('▄'.repeat(12));
+    expect(shown()).toBe(inAnsi.chars);
   });
 
-  test(`${layer}: Colors only makes the same cells ▄ in the PIXEL view as in the ANSI view, and painted in ASCII as in ANSI`, async () => {
+  test(`${layer}: Colors only paints the same cells in the PIXEL view as in the ANSI view, and painted in ASCII as in ANSI`, async () => {
     const ansi = { paintedIn: 'ansi', shownIn: 'ansi', layer, picture: false };
     const inAnsiView = await stroke('output', ansi);
-    expect(inAnsiView.chars.slice(20 + 2, 20 + 14)).toBe('▄'.repeat(12));
+    expect(new Set(inAnsiView.chars.slice(20 + 2, 20 + 14)).size).toBeGreaterThan(1); // Random's, not a row of ▄
     expect((await stroke('input', ansi)).chars).toBe(inAnsiView.chars);
     expect((await stroke('output', { ...ansi, paintedIn: 'colorAscii' })).chars).toBe(inAnsiView.chars);
     expect((await stroke('input', { ...ansi, paintedIn: 'colorAscii' })).chars).toBe(inAnsiView.chars);
@@ -343,9 +348,9 @@ for (const layer of ['edit', 'base']) {
 // docs/model.md R5 on the base: under Best match and By shape the converter picks a base cell's character from its pixels,
 // so Colors only lays its paint there and makes no ▄ of a cell the converter drew (a pinned ▄ would outlast a switch of
 // how characters are chosen, as Retouch's pins did); a character someone pinned is theirs, and a pinned space still opens
-// to the paint as a ▄ (R2). Under Random, whose blank cell hides a character the paint would bring out, the ▄ stays.
+// to the paint as a ▄ (R2). Under Random the same: a blank cell's hidden character is Random's, and the paint brings it out.
 for (const charChoice of ['random', 'best', 'shape']) {
-  test(`R5: ${charChoice}: on the base Colors only makes a ▄ of a pinned space${charChoice === 'random' ? ' and of a blank cell' : ', and of no cell the converter drew'}`, async () => {
+  test(`R5: ${charChoice}: on the base Colors only makes a ▄ of a pinned space, and of no cell the converter drew`, async () => {
     const { project, workspace } = await createTestApp();
     await project.setBlankCanvas({ cols: 20, rows: 20 });
     Object.assign(project, { quantize: 'cga', charChoice });
@@ -358,13 +363,12 @@ for (const charChoice of ['random', 'best', 'shape']) {
     await settle(project);
     const { pins } = project.baseRecords, at = (col) => project.cells[cellIndex(col, 5, 20)];
     expect([pins.get('5,5'), at(5).char, at(5).fg.hex]).toEqual(['▄', '▄', '#ff5555']); // the paint shows in the pinned space's lower half
-    expect(pins.get('12,5')).toBe(charChoice === 'random' ? '▄' : undefined);
+    expect(pins.get('12,5')).toBeUndefined();
     expect(at(12).fg.hex === '#ff5555' || at(12).bg.hex === '#ff5555').toBe(true); // the paint shows in the converter's cell too
   });
 }
 
-// docs/model.md R5 on a layer: a ▄ is only for where paint would bring out a character the converter hid, the base's
-// Random and a layer that shares it. The report (projects/random-layer-blocks.phosphor: a white canvas under Best match
+// docs/model.md R5 on a layer: Colors only makes no ▄ of a cell the converter drew. The report (projects/random-layer-blocks.phosphor: a white canvas under Best match
 // with paint on the base and Layer 1, and Layer 2 above with Random and a seed of its own): Layer 2's strokes came out
 // as half-blocks wherever the canvas under them was flat, and as Random's characters only along the edges of what was
 // under them. Colors only made a ▄ of every cell that showed no character, and a ▄ isn't converted, whatever the layer's
@@ -393,6 +397,33 @@ test('R5: the report: Colors only on a layer with its own Random makes no ▄ of
   await settle(project);
   expect(cols.filter((col) => project.editCellAt(col, 46))).toEqual([]);
   expect(shown(46).every((cell) => cell.fg.hex !== cell.bg.hex)).toBe(true);
+});
+
+// docs/model.md R5 on the base: the report, a fresh blank canvas under the base's Random and the default characters,
+// where the Brush (Colors only) wrote a pinned ▄ into every cell it reached, so a stroke showed half-blocks and never
+// Random's characters. A cell the converter drew is paint to Colors only wherever it's drawn: the paint goes into the
+// base's pixels and Random chooses over them, as it does over a picture.
+test('R5: the report: the Brush on a blank canvas under the base\'s Random paints Random\'s characters, no ▄', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 40, rows: 40 });
+  await settle(project);
+  expect([project.charChoice, project.editId, project.layers.length]).toEqual(['random', 'base', 1]);
+  Object.assign(workspace, { editFgColor: '#ff0000', brushDrawWith: 'normal', editBrushSize: 1, editBrushOpacity: 100, editBrushFlow: 100, editBrushHardness: 100 });
+  const ctx = { project, workspace, view: 'output' }, cols = [...Array(16).keys()].map((i) => i + 2), row = 4;
+  brush.begin(ctx, { x: 2.5, y: 2 * row + 0.5 }, {}); // the top halves of cols 2 to 17
+  brush.move(ctx, { x: 2.5, y: 2 * row + 0.5 }, { x: 17.5, y: 2 * row + 0.5 });
+  brush.end(ctx);
+  await settle(project);
+  const shown = cols.map((col) => project.cells[cellIndex(col, row, project.cols)]);
+  expect(cols.filter((col) => project.renderer.pinAt(col, row) !== undefined)).toEqual([]); // no ▄ pinned
+  expect(shown.every((cell) => cell.fg.hex !== cell.bg.hex)).toBe(true); // the red over the black
+  expect(new Set(shown.map((cell) => cell.char)).size).toBeGreaterThan(4); // Random's, not a row of ▄
+  workspace.brushDrawWith = 'half'; // Half-block still makes blocks
+  brush.begin(ctx, { x: 2.5, y: 2 * (row + 2) + 0.5 }, {});
+  brush.move(ctx, { x: 2.5, y: 2 * (row + 2) + 0.5 }, { x: 17.5, y: 2 * (row + 2) + 0.5 });
+  brush.end(ctx);
+  await settle(project);
+  expect(cols.every((col) => project.cells[cellIndex(col, row + 2, project.cols)].char === '▄')).toBe(true);
 });
 
 // docs/model.md R2 on a layer with characters of its own. The report (projects/random-over-pins.phosphor: a flattened
@@ -424,11 +455,11 @@ test('R2: the report: paint on a layer with its own Random over open pinned char
   expect(shown(40).every((cell) => cell.char !== '▄')).toBe(true);
 });
 
-// On a layer with the base's settings the base's rule holds: under Random a blank cell hides a character the paint would
-// bring out, so the ▄ stays; under Best match and By shape the cell is matched again from the painted pixels. A layer
-// with settings of its own converts its paint by them over the pixels under it (R7), Random's among them.
+// On a layer, with the base's settings or its own, Colors only makes no ▄ of a cell the converter drew: its paint
+// converts over the pixels under it (R7), under Random (its blank cell's hidden character brought out), Best match and By
+// shape alike.
 for (const charChoice of ['random', 'best', 'shape']) {
-  test(`R5: ${charChoice}: on a layer Colors only makes ${charChoice === 'random' ? 'a ▄ of a blank cell with the base\'s seed, and none with a seed of its own' : 'no ▄ of a cell the converter drew'}`, async () => {
+  test(`R5: ${charChoice}: on a layer Colors only makes no ▄ of a cell the converter drew${charChoice === 'random' ? ', with the base\'s seed or its own' : ''}`, async () => {
     const { project, workspace } = await createTestApp();
     await project.setBlankCanvas({ cols: 20, rows: 20 });
     Object.assign(project, { quantize: 'cga', charChoice });
@@ -446,7 +477,7 @@ for (const charChoice of ['random', 'best', 'shape']) {
     const at = (col) => project.cells[cellIndex(col, 5, 20)];
     paint(12);
     await settle(project);
-    expect(project.editCellAt(12, 5)).toEqual(charChoice === 'random' ? { char: '▄' } : undefined);
+    expect(project.editCellAt(12, 5)).toBeUndefined();
     expect(at(12).fg.hex === '#ff5555' || at(12).bg.hex === '#ff5555').toBe(true); // the paint shows either way
     paint(5); // over the pinned space the paint shows as a ▄ (R2), with an entry or without
     await settle(project);

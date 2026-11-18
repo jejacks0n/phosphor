@@ -133,27 +133,26 @@ stroke doesn't change stays), and recolor its characters of someone's own a whol
 The Brush's and Pencil's Colors only makes a bare ▄ (a paint block) of each cell it reaches that shows no character
 (R2's predicate for the layer's own cells with colors: their halves become paint first, `unlockCells`) and of each frozen
 cell, whatever its character (its paint is under it already; the pin goes); a character of someone's own with ink keeps
-it and is tinted. That ▄ is for the one place paint would bring out a character the converter hid: the base's Random, on
-the base and on a layer that shares its settings, whose blank cell holds one in its own background color. Where the
-layer in use converts its paint afresh, a cell the converter drew is paint to it in full and gets no ▄ (a ▄ isn't
-converted, so one would outlast a change of how characters are chosen): on the base and on any layer under Best match
-and By shape, where the cell's character is a rendering of the pixels (R7), so it hides none (on the base the paint goes
-into the pixels), and on a layer with character settings of its own, whose paint becomes the characters they choose over
-the pixels under it (R7), Random's among them. A pinned character on the base, or a cell of the layer's own, is someone's
-own, as anywhere; over a character of someone's own under the layer the paint shows as R2 has it, with no entry.
+it and is tinted. A cell the converter drew is paint to it in full and gets no ▄, on the base and on any layer, whatever
+chooses its characters (a ▄ isn't converted, so one would outlast a change of how characters are chosen): its character
+is a rendering of the pixels (R7), and the paint becomes the character the layer's settings choose over the pixels under
+it (on the base the paint goes into the pixels). Under Random that brings out the character a blank cell held in its own
+background color, which is Random's: a stroke on a blank canvas shows Random's characters
+(the base's Random had kept a ▄ there, so the default Brush painted half-blocks on a fresh canvas). Half-block is the way
+to draw ▄. A pinned character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a
+character of someone's own under the layer the paint shows as R2 has it, with no entry.
 
-A cell a shape covers under the layer (the topmost thing under it there is a vector layer's fill or stroke) gets no ▄
-either, on a layer that shares the base's Random too. Why: the ▄ exists so paint doesn't bring out a character hidden in
-its own background color (a blank canvas's). A flat shape's cell has both halves one color too, which is all
-`showsNoChar` used to ask, but it hides no character: it's a rendering of the shape's pixels (R7), as the picture's
-cells are. A ▄ there made a stroke that crossed from the picture onto a shape switch from the layer's Characters to
-half-blocks, so what a vector layer held changed how the layer above it painted. An art layer's character is someone's
-own and keeps the rule above.
+A cell a shape covers under the layer (the topmost thing under it there is a vector layer's fill or stroke) is drawn
+by the converter too and gets no ▄: a ▄ there made a stroke that crossed from the picture onto a shape switch from the
+layer's Characters to half-blocks, so what a vector layer held changed how the layer above it painted. Inside an art
+layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoChar`).
 
-- Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`; `afresh` says whether the layer in
-  use converts its paint afresh), with `showsNoChar` and `shapeUnder` there.
+- Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`; `converted` says which cells the
+  converter drew), with `showsNoChar` and `shapeUnder` there.
 - Checked by: `tests/browser/block-chars.test.js › R5: …` (the base and a layer under Random, Best match and By shape;
-  the report: a layer with its own Random over a flat canvas; a flat shape under the layer) and
+  the reports: the Brush on a blank canvas under the base's Random, a layer with its own Random over a flat canvas; a
+  flat shape under the layer), `› with Colors only on the base, a cell that shows no character …`, `› with Colors only,
+  a cell that shows no character (the black of an opened file's grown lines) …` and
   `› …with Colors only, a layer's own cell that shows no character becomes a plain ▄ …`.
 
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
