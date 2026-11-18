@@ -111,7 +111,7 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 
 ### 4. Type a line of text
 - Does: presses T, moves the cursor with the arrows, types a line, brushes a stroke across the row after it, presses
-  Insert and types into the middle of the line, presses Insert again (Partial) and types there again, then Home, End,
+  Insert and types into the middle of the line, presses Alt+Enter (the same as Insert: Partial) and types there again, then Home, End,
   Backspace and Delete, then Enter.
 - Expects: letters land in his colors; Insert pushes the rest of the row right, the stroke with the letters; Partial
   pushes the letters and leaves the stroke where it is; Overwrite replaces (the status bar says which of the three,

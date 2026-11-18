@@ -3,7 +3,8 @@
  * tool's (focus in a field, Cmd/Ctrl shortcuts, keys with no meaning here).
  *
  * Action = { type: 'char', char } | { type: 'move', dc, dr } | { type: 'home' } | { type: 'end' }
- *        | { type: 'newline' } | { type: 'backspace' } | { type: 'delete' } | { type: 'toggleInsert' }
+ *        | { type: 'newline' } | { type: 'backspace' } | { type: 'delete' }
+ *        | { type: 'toggleInsert' } (Insert, or Alt+Enter: the next typing mode)
  *        | { type: 'slot', index } (F1–F12) | { type: 'grab', index } (Ctrl+F1–F12)
  *        | { type: 'palette', delta } (Alt+←/→) | { type: 'color', slot, delta } (Alt+↑/↓, Shift for bg)
  */
@@ -52,6 +53,9 @@ export function textKeyAction(e, { editable, animate = false }) {
   if (e.altKey) {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') return { type: 'palette', delta: e.key === 'ArrowLeft' ? -1 : 1 };
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') return { type: 'color', slot: e.shiftKey ? 'bg' : 'fg', delta: e.key === 'ArrowUp' ? -1 : 1 };
+    // The Insert key's work for a keyboard that has none (a MacBook's): Alt+Enter types nothing on any layout, where
+    // an Alt+letter is a character or an accent someone types (Option+I starts ê).
+    if (e.key === 'Enter') return { type: 'toggleInsert' };
     return single(e.key) ? { type: 'char', char: e.key } : null;
   }
   const index = fKey(e.key);

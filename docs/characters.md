@@ -146,7 +146,7 @@ With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, 
 
 - **Input methods**: Type with your system's input method (Japanese, Chinese, Korean...), dead keys and accents, and the emoji picker, the same as in any text field.
 - **Undo**: A run of typing is one undo step. It ends when you pause for a second, move the cursor (a click, the arrow keys, **Enter**, **Home**, **End**), or paste.
-- **Overwrite, Insert and Partial**: Press **Insert** (or click the mode's button in the ANSI view's status bar) to go from one typing mode to the next:
+- **Overwrite, Insert and Partial**: Press **Insert**, or **Alt+Enter** (**Option+Enter** on a Mac, whose keyboards have no Insert key), or click the mode's button in the ANSI view's status bar, to go from one typing mode to the next:
   - **Overwrite** (the default) replaces the cell under the cursor and moves nothing.
   - **Insert** pushes the rest of the row right first, its characters and its paint together, so a row moves as one thing. What's pushed past the row's end is lost.
   - **Partial** pushes the row's characters right and leaves its paint where it is: text slides along over what's painted under it.

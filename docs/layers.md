@@ -659,8 +659,8 @@ details.
 
 In the **ANSI** view, you work with text characters, foreground colors, and background colors:
 - **Edit Mode (`T` or `K`)**: Click anywhere on the grid to position the text cursor and type characters, accents, or
-  emoji ([Typing Text Directly](characters.md#typing-text-directly)). Press **Insert** (or the mode's button in the
-  status bar) to go between Overwrite, Insert and Partial modes. Edit Mode is only in the ANSI view.
+  emoji ([Typing Text Directly](characters.md#typing-text-directly)). Press **Insert** or **Alt+Enter** (or the mode's
+  button in the status bar) to go between Overwrite, Insert and Partial modes. Edit Mode is only in the ANSI view.
 - **Pencil (`P`)**: Paints the foreground color, or draws box-drawing lines with **Single line** and **Double line**
   ([Draw With](#draw-with)).
 - **Paint Bucket (`G`)**: Fills the color you see, or with **Cells**, whole cells with your colors and character.

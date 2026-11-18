@@ -94,8 +94,9 @@ test('the typing mode button goes Overwrite, Insert, Partial and round again, it
     button().click();
     await nextTick();
   }
-  const t = i18n.global.t;
-  expect(seen).toEqual([['Overwrite', t('status.overwriteTitle')], ['Insert', t('status.insertTitle')], ['Partial', t('status.partialTitle')], ['Overwrite', t('status.overwriteTitle')]]);
+  const title = (mode) => i18n.global.t(`status.${mode}Title`, { key: shortcut('alt', 'Enter') }); // the Insert key, and the keys that stand in for it
+  expect(seen).toEqual([['Overwrite', title('overwrite')], ['Insert', title('insert')], ['Partial', title('partial')], ['Overwrite', title('overwrite')]]);
+  expect(title('partial')).toMatch(/Insert key, or (⌥Enter|Alt\+Enter)\)$/);
 });
 
 test('a long layer name is cut short with an ellipsis, the whole name its title', async () => {
