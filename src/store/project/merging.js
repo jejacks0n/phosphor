@@ -548,9 +548,6 @@ export const mergingActions = {
       apply(after, before);
       workspace.pickLayer(layer); // the layer it's on now
       this.pushWholeLayer(() => apply(before, after), () => apply(after, before), bytesHeld(before.base, before.image, before.imageBuffer, after.base, after.image, after.imageBuffer, editCells), { everyFrame: true, layerOp: true });
-      // The base layer holds each cell as its two halves, which the PIXEL tab would show as stripes: All cells shows
-      // each as it looks, as after opening an ANSI file onto the base.
-      if (layer === 'base') workspace.ansiOverlayAll = true;
       return true;
     } catch (e) {
       if (base) this.baseLayer.restore(base); // written before the step was recorded: the drawing stays as it was

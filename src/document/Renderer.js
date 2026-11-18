@@ -1389,9 +1389,9 @@ export default class Renderer {
     if (!dirty.w || r1 <= r0) return s.canvas;
     const { x, w } = dirty, y = 2 * r0, image = new ImageData(w, 2 * (r1 - r0)), d = image.data;
     const stored = ctx2d(this.outputCanvas).getImageData(x, y, w, image.height).data, reads = this.#upperReads();
-    const put = (col, row, pin) => {
+    const put = (col, row, pin, key = null) => {
       const o = ((2 * row - y) * w + col - x) * 4, below = o + 4 * w;
-      const look = this.#lookAt(col, row, pin, { r: stored[o], g: stored[o + 1], b: stored[o + 2] }, { r: stored[below], g: stored[below + 1], b: stored[below + 2] }, params, reads);
+      const look = this.#lookAt(col, row, key, pin, { r: stored[o], g: stored[o + 1], b: stored[o + 2] }, { r: stored[below], g: stored[below + 1], b: stored[below + 2] }, params, reads);
       if (!look) return;
       const [top, bottom] = look;
       d[o] = top.r; d[o + 1] = top.g; d[o + 2] = top.b; d[o + 3] = 255;
@@ -1408,12 +1408,12 @@ export default class Renderer {
     } else {
       for (const [key, kept] of pins) {
         const { col, row } = parseKey(key);
-        if (inside(col, row)) put(col, row, this.#pinOf(kept, col, row));
+        if (inside(col, row)) put(col, row, this.#pinOf(kept, col, row), key);
       }
       for (const layer of arts) {
         for (const key of layer.artCells()) {
           const { col, row } = parseKey(key);
-          if (inside(col, row) && !pins.has(key)) put(col, row, this.pinAt(col, row));
+          if (inside(col, row) && !pins.has(key)) put(col, row, this.pinAt(col, row), key);
         }
       }
     }
@@ -1429,50 +1429,66 @@ export default class Renderer {
   }
 
   // looksCanvas's look for the cell at col, row ([top, bottom], { r, g, b } each), or null where its pixels show as they
-  // are. Worked out bottom to top, as the cell itself is laid (composeAll, #upperCell). pin: pinAt's answer for it; top
-  // and bottom, the output's two pixels there.
-  // - The base's pin, or the lower group's art layer's character: its cell's halves. The output's two pixels are its
-  //   colors where no paint lies on them, which is nearly always, so the cell is made of those (pinnedCell, as #onBase
-  //   makes it in each art style); under the lower group's paint it's the base's own cell (underCell).
-  // - Paint over a look, the lower group's or an upper cells layer's, lies over each half it covers (#paintedLook).
-  // - An upper vector layer's shape reaching the cell takes it: the converter's cell there is a rendering of the pixels
-  //   (R7), so they show. Its art layer's character starts over: the look of the cell #upperCell builds, from the two
-  //   pixels under the layers so far with its own over them (#pixelsUnder).
-  #lookAt(col, row, pin, top, bottom, params, reads) {
+  // are: the halves (halfColors) of the cell the ANSI view shows there, while that's still the character. Worked out
+  // bottom to top, as the cell itself is laid (#composeOne, #paintedPin, #upperCell). pin: pinAt's answer for it; key:
+  // its 'col,row' when the caller has it; top and bottom, the output's two pixels there.
+  // - The base's pin, or the lower group's art layer's character: its cell. The output's two pixels are its colors
+  //   where nothing lies on them, which is nearly always, so the cell is made of those (pinnedCell, as #onBase makes it
+  //   in each art style); under the lower group's paint or paint block it's the base's own cell (underCell).
+  // - A paint block over it (a Half-block's ▄, on the lower group's cells layer or one above) takes its place, as
+  //   blockOver has it: a solid glyph's own halves, a textured character's background in both.
+  // - Paint over it, the lower group's or an upper cells layer's, tints it (#lookPainted).
+  // - A frozen cell over it (Merge down's, R3) is its paint, and an upper vector layer's shape reaching the cell makes it
+  //   a rendering of the pixels (R7): no look, the pixels show. An upper art layer's character starts over: the cell
+  //   #upperCell builds, from the two pixels under the layers so far with its own over them (#pixelsUnder).
+  // A character typed on a cells layer over it is the Overlay's to draw (R6); the look goes on under it.
+  #lookAt(col, row, key, pin, top, bottom, params, reads) {
     const { renderStyle } = params, width = this.outputCanvas.width;
-    let cell = null, look = null;
+    let cell = null; // the character's cell with what's over it so far, or null: no look
     if (pin !== undefined) {
       const over = this.#noPaint ? null : this.paintAt(col, 2 * row), overBelow = this.#noPaint ? null : this.paintAt(col, 2 * row + 1);
-      cell = over || overBelow ? this.underCell(col, row, params, []) : pinnedCell(top, bottom, pin, renderStyle, asIs);
-      look = this.#paintedLook(cell && halfColors(cell), cell, over, overBelow, renderStyle);
+      const entry = this.#lowerEdits?.size ? shownEntry(this.#lowerEdits.get(key ??= cellKey(col, row)), this.#lowerStyle) : undefined;
+      if (!isFrozen(entry)) {
+        const block = isPaintBlock(entry);
+        cell = over || overBelow || block ? this.underCell(col, row, params, []) : pinnedCell(top, bottom, pin, renderStyle, asIs);
+        if (cell && block) cell = blockOver(cell);
+        if (cell) cell = this.#lookPainted(cell, over, overBelow, false, renderStyle);
+      }
     }
     for (let at = 0; at < reads.length; at++) {
       const u = this.upper[at], bytes = u.kind === 'cells' ? reads[at] : reads[at]?.data;
-      const char = u.kind === 'vector' ? u.layer.charAt(col, row) : null;
-      if (!bytes || char === undefined) continue;
+      const char = u.kind === 'vector' ? (bytes ? u.layer.charAt(col, row) : undefined) : null;
+      if (char === undefined) continue;
       const o = (2 * row * width + col) * 4, below = o + 4 * width;
-      const over = bytes[o + 3] ? { r: bytes[o], g: bytes[o + 1], b: bytes[o + 2], a: bytes[o + 3] / 255 } : null;
-      const overBelow = bytes[below + 3] ? { r: bytes[below], g: bytes[below + 1], b: bytes[below + 2], a: bytes[below + 3] / 255 } : null;
+      const over = bytes?.[o + 3] ? { r: bytes[o], g: bytes[o + 1], b: bytes[o + 2], a: bytes[o + 3] / 255 } : null;
+      const overBelow = bytes?.[below + 3] ? { r: bytes[below], g: bytes[below + 1], b: bytes[below + 2], a: bytes[below + 3] / 255 } : null;
       if (over) top = mix(top, over, over.a);
       if (overBelow) bottom = mix(bottom, overBelow, overBelow.a);
-      if (u.kind === 'cells') look = this.#paintedLook(look, cell, over, overBelow, renderStyle);
-      else if (char === null) look = null;
-      else {
+      if (u.kind === 'vector') {
         const palette = this.#heldData ? null : this.palette;
-        look = halfColors(cell = buildCell(nearestColor(top, palette), nearestColor(bottom, palette), char, renderStyle, asIs));
+        cell = char === null ? null : buildCell(nearestColor(top, palette), nearestColor(bottom, palette), char, renderStyle);
+        continue;
       }
+      if (!cell) continue;
+      const entry = u.cells.size ? shownEntry(u.cells.get(key ??= cellKey(col, row)), renderStyle) : undefined;
+      if (isFrozen(entry)) cell = null;
+      else cell = this.#lookPainted(isPaintBlock(entry) ? blockOver(cell) : cell, over, overBelow, u.ownChars, renderStyle);
     }
-    return look;
+    return cell && halfColors(cell);
   }
 
-  // A look (of cell) with paint over it, top and bottom ({ r, g, b, a } or null): over each half it covers, snapped as the
-  // output snaps paint, so the paint shows where it is, as over any pixels. Null (the pixels show) where the paint is
-  // converted over the cell's two pixels instead: over a character with no ink, in the ASCII styles (#paintOver, R2).
-  #paintedLook(look, cell, top, bottom, renderStyle) {
-    if (!look || (!top && !bottom)) return look;
-    if (renderStyle !== 'ansi' && opensToPaint({ char: cell.char, fg: withHex(cell.fg), bg: withHex(cell.bg) }, renderStyle)) return null;
-    const palette = this.#heldData ? null : this.palette;
-    return [top ? nearestColor(mix(look[0], top, top.a), palette) : look[0], bottom ? nearestColor(mix(look[1], bottom, bottom.a), palette) : look[1]];
+  // #lookAt's cell with a layer's paint over it, top and bottom ({ r, g, b, a } or null): tinted as the ANSI view tints
+  // a character of someone's own (coverCell, R2), so the look is the one All cells draws and a soft stroke over a file's
+  // characters shows no step the ANSI view doesn't have. The paint goes into the character's two colors, each snapped
+  // as paint is, and the glyph's ink blends them again; the blend itself isn't snapped (a shade's mix isn't a palette
+  // color, and the first trace of paint would turn it into one, a hard ring round every stroke). Null where the paint
+  // is converted over the cell's two pixels instead, so those show (#paintOver: a character with no ink to tint, in the
+  // ASCII styles, and in ANSI too under a layer with characters of its own, ownChars).
+  #lookPainted(cell, top, bottom, ownChars, renderStyle) {
+    if (!top && !bottom) return cell;
+    const under = realCell(cell);
+    if (opensToPaint(under, renderStyle) && (renderStyle !== 'ansi' || ownChars)) return null;
+    return coverCell(under, top, bottom, { renderStyle, palette: this.#heldData ? null : this.palette });
   }
 
   // A stored color as it displays: color adjustments, then the active palette.
@@ -1634,10 +1650,10 @@ function blackCanvas(w, h) {
 
 const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
 const byte = (v) => Math.round(clamp(v));
-// looksCanvas: a pixel as a cell's color with no Color made of it (a hex a cell: it runs over every pin), and the Color
-// for the few asked whether their character shows (opensToPaint).
+// looksCanvas: a pixel as a cell's color with no Color made of it (a hex a cell: it runs over every pin), and the cell
+// with Colors, for the few that paint lies over (coverCell and opensToPaint ask whether the character shows).
 const asIs = (p) => p;
-const withHex = (c) => (c.hex ? c : colorOf(c));
+const realCell = (cell) => (cell.fg.hex ? cell : { ...cell, fg: colorOf(cell.fg), bg: colorOf(cell.bg) });
 // looksCanvas asks each cell of a rect for its pin up to MOST_ASKED cells, and past that while the pins are more than
 // ASK_COST times the rect's cells; else it walks the pins. Asking makes a key and looks it up, about four times the
 // cost of reading a pin's key (500k cells: 180 ms asked, 60 ms walked).

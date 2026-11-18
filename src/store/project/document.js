@@ -274,9 +274,6 @@ export const documentActions = {
       this.clearHistory();
       this.render();
       this.markSaved();
-      // The base holds each cell as its two colors (background over foreground). The PIXEL tab draws the
-      // characters there as they look (docs/model.md R11); All cells draws every cell that way, paint over them too.
-      useWorkspaceStore().ansiOverlayAll = true;
       this.asOpened = true;
     });
   },
