@@ -150,7 +150,7 @@ test('a setting changed with the pointer gives the keyboard back to typing, and 
   expect(await store(page, 'workspace', (w) => w.displayFont)).toBe('unscii');
 
   const size = page.getByRole('spinbutton', { name: 'Font size' });
-  await size.click();
+  await size.click({ position: { x: 6, y: 8 } }); // its left edge: on Linux the middle of this narrow field is its stepper, which a click would press
   await page.keyboard.type('9'); // typed into the field, not the canvas
   expect(await store(page, 'workspace', (w) => w.textCursor)).toEqual({ col: 4, row: 2 }); // nothing typed
   await page.keyboard.press('Escape'); // the size is put back, and typing has the keyboard again, its cursor where it was
