@@ -511,17 +511,20 @@ async function readyBuilder(project) {
     await preparing;
     if (project._builder?.builder === builder) {
       project._builder.preparing = null;
-      builder.usePalette(project._moviePalette ?? null);
+      // Only while it's wanted: a builder made for new settings (playing asks at once) comes before the render that
+      // lets a movie's palette go, and would keep it, building CGA's frames in Color count's colors.
+      builder.usePalette(moviePaletteWanted(project) ? project._moviePalette ?? null : null);
     }
   }
 }
 
 const samePalette = (a, b) => a?.length === b?.length && a?.every((color, i) => color.hex === b[i].hex);
 
+const moviePaletteWanted = (project) => project.hasFrames && project.quantize === 'count';
+
 // The movie's Number palette, for whatever's showing now. Between frames only with frames and Color count.
 async function pick(project) {
-  const wanted = project.hasFrames && project.quantize === 'count';
-  if (!wanted) {
+  if (!moviePaletteWanted(project)) {
     if (!project._moviePalette) return;
     project._moviePalette = null;
     project.renderer.usePalette(null);
