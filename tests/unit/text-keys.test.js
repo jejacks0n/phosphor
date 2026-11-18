@@ -12,7 +12,10 @@ test("The Text tool's keys -> editing actions, cursor clamping, and row shifting
   assert.equal(textKeyAction({ key: 'a' }, { editable: true }), null);      // focus in a field: not ours
   assert.equal(k('z', { metaKey: true }), null);                              // Cmd shortcuts still work
   assert.equal(k('z', { ctrlKey: true }), null);
-  assert.deepEqual(k('F5', { ctrlKey: true }), { type: 'grab', index: 4 });
+  assert.deepEqual(k('F5', { ctrlKey: true, shiftKey: true }), { type: 'grab', index: 4 });
+  // The report (bug bash 2): Ctrl+F-key alone is macOS's own (Ctrl+F1 keyboard access, Ctrl+F8 the status menus...), so
+  // the grab takes Shift too, and Ctrl+F-key alone is left to the system.
+  for (const key of ['F1', 'F5', 'F8', 'F12']) assert.equal(k(key, { ctrlKey: true }), null);
   assert.deepEqual(k('F12'), { type: 'slot', index: 11 });
   assert.deepEqual(k('F1'), { type: 'slot', index: 0 });
   assert.equal(k('F13'), null);

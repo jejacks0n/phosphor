@@ -5,7 +5,7 @@
  * Action = { type: 'char', char } | { type: 'move', dc, dr } | { type: 'home' } | { type: 'end' }
  *        | { type: 'newline' } | { type: 'backspace' } | { type: 'delete' }
  *        | { type: 'toggleInsert' } (Insert, or Alt+Enter: the next typing mode)
- *        | { type: 'slot', index } (F1–F12) | { type: 'grab', index } (Ctrl+F1–F12)
+ *        | { type: 'slot', index } (F1–F12) | { type: 'grab', index } (Ctrl+Shift+F1–F12)
  *        | { type: 'palette', delta } (Alt+←/→) | { type: 'color', slot, delta } (Alt+↑/↓, Shift for bg)
  */
 import { graphemes, usableChar } from './CharWidth.js';
@@ -47,7 +47,8 @@ export function textKeyAction(e, { editable, animate = false }) {
   // AltGr (Windows/Linux) arrives as Ctrl+Alt and produces characters such as @ or €: those type.
   if (e.ctrlKey && e.altKey) return single(e.key) ? { type: 'char', char: e.key } : null;
   if (e.ctrlKey) {
-    const index = fKey(e.key);
+    // With Shift: Ctrl+F-key alone is macOS's own (Ctrl+F1 keyboard access, Ctrl+F8 the status menus...).
+    const index = e.shiftKey ? fKey(e.key) : -1;
     return index >= 0 ? { type: 'grab', index } : null;
   }
   if (e.altKey) {
