@@ -2,11 +2,11 @@
 // paint), what's under a cell, edit cells, and rects on the grid.
 import { wholeTile } from '@/document/PaintLayer.js';
 import { hashCell } from '@/document/changes.js';
-import { cellKey, parseKey, mergeEntry, tintedEntry, shownEntry, isFrozen } from '@/document/editCells.js';
+import { cellKey, parseKey, mergeEntry, tintedEntry, shownEntry, isFrozen, isPaintBlock } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
-import { bakedEntry, cellIndex, charRowsOf, isSolidGlyph, mix, opensToPaint } from '@/lib/Cells.js';
+import { bakedEntry, blockOver, cellIndex, charRowsOf, isSolidGlyph, mix, opensToPaint } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { resolves } from '@/lib/CharResolver.js';
@@ -127,10 +127,11 @@ export function pickedIndexes(project, col, row) {
 
 // look ({ char?, fg, bg }, stored colors) with cells layer id's cell over it: its entry's own attributes, then (withPaint)
 // its paint over each half by its alpha, bg the top, fg the bottom. A color set over another drops the index it had
-// (mergeEntry).
-function layerOver(project, id, col, row, look, withPaint = true) {
+// (mergeEntry). exact: look is a character of someone's own, which a paint block takes the place of in ANSI (blockOver), as
+// the Renderer shows it.
+function layerOver(project, id, col, row, look, withPaint = true, exact = false) {
   const entry = project.cellsOf(id).get(cellKey(col, row));
-  let out = entry ? mergeEntry(look, entry) : look;
+  let out = entry ? mergeEntry(exact && isPaintBlock(entry) && project.renderStyle === 'ansi' ? blockOver(look) : look, entry) : look;
   const paint = withPaint && project.paintOf(id);
   if (!paint?.hasPaint || isFrozen(entry)) return out; // a frozen cell's paint under it is what the entry stands for
   const top = paint.pixelAt(col, 2 * row), bottom = paint.pixelAt(col, 2 * row + 1);
@@ -234,8 +235,12 @@ export const readingActions = {
   // What a cell layer's entry is completed against (completeAt): the base's cell as the render style shows it, with the
   // shown cells layers under the layer with the id below over it, each as underlyingAt lays them.
   lookUnder(col, row, below = this.editId) {
-    let look = baseLook(this, col, row);
-    for (const id of cellsUnder(this, below)) look = layerOver(this, id, col, row, look);
+    let look = baseLook(this, col, row), exact = this.renderer.pinAt(col, row) !== undefined; // as the Renderer's walk
+    for (const id of cellsUnder(this, below)) {
+      look = layerOver(this, id, col, row, look, true, exact);
+      const own = shownEntry(this.cellsOf(id).get(cellKey(col, row)), this.renderStyle);
+      if (own) exact = !isFrozen(own);
+    }
     return look;
   },
 
@@ -251,7 +256,7 @@ export const readingActions = {
   storedLookAt(col, row, { through = null, shown = this.cells[cellIndex(col, row, this.cols)], batch = null } = {}) {
     const { cells, upper } = this.lowerGroup, ascii = this.renderStyle === 'colorAscii' || this.renderStyle === 'ascii', key = cellKey(col, row);
     let look = baseLook(this, col, row);
-    if (cells) look = layerOver(this, cells, col, row, look);
+    if (cells) look = layerOver(this, cells, col, row, look, true, this.renderer.pinAt(col, row) !== undefined);
     let exact = !!(cells && tintedEntry(this.cellsOf(cells).get(key), this.renderStyle)) || this.renderer.pinAt(col, row) !== undefined; // as the renderer's upper walk (#exactUnder)
     // The stored pixels under the upper layers, as the PIXEL view shows them (Renderer.#pixelsUnder): the picture's with
     // the lower group's paint, then each upper layer's paint or shapes over them. What paint and shapes convert over.
@@ -269,10 +274,10 @@ export const readingActions = {
     for (const id of through ? upper.slice(0, upper.indexOf(through) + 1) : upper) {
       if (this.layerById(id).kind === 'cells') {
         const paint = this.paintOf(id), top = paint?.pixelAt(col, 2 * row), bottom = paint?.pixelAt(col, 2 * row + 1);
-        if (!ascii) { look = layerOver(this, id, col, row, look); lay(top, bottom); continue; }
-        look = layerOver(this, id, col, row, look, false);
         const own = this.cellsOf(id).get(key);
+        look = layerOver(this, id, col, row, look, !ascii, exact);
         if (shownEntry(own, this.renderStyle)) exact = !isFrozen(own); // as #upperCell: a frozen cell is paint to what's over it
+        if (!ascii) { lay(top, bottom); continue; }
         if (isFrozen(own)) { lay(top, bottom); continue; } // and its own paint under it is what it stands for
         if (top || bottom) look = asciiOver(top, bottom, tinted() ? [hex2rgb(storedBlack(this.processParams)), hex2rgb(look.fg)] : under);
         lay(top, bottom);

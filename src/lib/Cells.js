@@ -261,6 +261,16 @@ export function composeCell(under, entry, renderStyle, effective) {
   };
 }
 
+// What a paint block (a bare ▄, paint's) over a character of someone's own shows of it, before the block's paint: a solid
+// or empty glyph's halves are its own colors and stay; a textured character's ink can't be split in halves, so the block
+// takes its place and both halves are its background (docs/model.md R5). A Half-block box across a line is half-blocks,
+// not whole cells in the line's color. It only picks colors, so it takes a cell's or a look's (stored hexes, indexes).
+export function blockOver(cell) {
+  const [top, bottom] = isSolidGlyph(cell.char ?? ' ') ? coverageOf(cell.char ?? ' ') : [0, 0];
+  const pick = (ink, attr) => (ink ? cell[`fg${attr}`] : cell[`bg${attr}`]);
+  return { ...cell, char: '▄', fg: pick(bottom, ''), bg: pick(top, ''), fgIndex: pick(bottom, 'Index'), bgIndex: pick(top, 'Index') };
+}
+
 // Whether a cell's character shows at all: one drawn in its own background color (a line under
 // paint of one color) shows nothing, so Connect doesn't join to it and the Paint Bucket doesn't stop
 // at it.
