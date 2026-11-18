@@ -1014,3 +1014,53 @@ test('Merge down of a cells layer into another with the base hidden keeps what s
   await settle(project);
   expect(cellsKey(project)).toEqual(shown);
 });
+
+// Text with no background typed over a photo, merged onto the base under a palette and a slider moved: the issue's table
+// (#201). The cell's background is the base's own, and stays its pixels: written as a stored color instead (baseCellAt's),
+// the base snapped it on the graphics card, which broke a tie between two palette colors the other way (VGA's d7 and ff
+// under Midtones 2), or never made the color at all (the picture's cell showed a mix of its pixels' snaps, as under
+// Posterize 5). Keep crisp cells and Blend into source image both write the letters as base pixels (mergeCellOf).
+describe('R3: Merge down of text with no background onto the base keeps the canvas with a palette and a slider moved', () => {
+  const cases = [
+    ['VGA, Midtones 2', 'vga', { levelsMid: 2 }], ['VGA, Midtones 1.4', 'vga', { levelsMid: 1.4 }], ['VGA, Midtones 0.5', 'vga', { levelsMid: 0.5 }],
+    ['VGA, White point 200', 'vga', { levelsWhite: 200 }], ['VGA, Posterize 5', 'vga', { posterize: 5 }], ['VGA, Contrast 140', 'vga', { contrast: 140 }],
+    ['VGA, Saturation 60', 'vga', { saturation: 60 }], ['VGA, Brightness 140', 'vga', { brightness: 140 }], ['VGA, Hue 30', 'vga', { hue: 30 }],
+    ['CGA, Invert 100', 'cga', { invert: 100 }], ['no palette, Midtones 2', 'none', { levelsMid: 2 }],
+  ];
+  const typed = async (quantize, sliders, { blended = false } = {}) => {
+    const { project, workspace } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 30, rows: 30 });
+    Object.assign(project, { quantize, ...sliders });
+    project.render();
+    await settle(project);
+    if (blended) { // the first Blend makes the picture its working-size copy, which can round a level here and there
+      project.typeAt(0, 0, 'P', { fg: '#ffffff' });
+      project.commitEdit();
+      await project.mergeIntoPicture();
+      workspace.pickLayer(project.addLayer('cells', 'base'));
+      await settle(project);
+    }
+    const letters = 'Phosphor';
+    for (let row = 0; row < 15; row++) for (let col = 0; col < 30; col++) project.typeAt(col, row, letters[(row + col) % letters.length], { fg: '#ffffff' });
+    project.commitEdit();
+    project.render();
+    await settle(project);
+    return project;
+  };
+  const changed = (now, was) => now.map((c, i) => (c === was[i] ? null : `${i}: ${was[i]} -> ${c}`)).filter(Boolean);
+
+  test.each(cases)('Keep crisp cells, %s: the canvas unchanged', async (_, quantize, sliders) => {
+    const project = await typed(quantize, sliders), was = cellsKey(project);
+    expect(project.mergeDown('edit')).toBe(true);
+    await settle(project);
+    expect(changed(cellsKey(project), was)).toEqual([]);
+  });
+
+  test.each(cases)('Blend into source image, %s: the canvas unchanged', async (_, quantize, sliders) => {
+    const project = await typed(quantize, sliders, { blended: true }), was = cellsKey(project);
+    await project.mergeIntoPicture();
+    await settle(project);
+    expect(project.layers).toHaveLength(1); // the layer went into the picture
+    expect(changed(cellsKey(project), was)).toEqual([]);
+  });
+});

@@ -99,12 +99,16 @@ merged-into layer is enough, and paint written or erased in the cell (`paintEdit
 left converts as the layer converts paint. A frozen cell merged further down keeps its paint and its pin; merged onto the
 base, its pin's colors go in and become a pin there, not the paint's. An art layer's characters are written as someone's
 own, unmarked, the paint under them erased. Merged onto the base (Keep crisp cells), entries and paint become the base's
-pixels, which the base snaps to the palette a pixel at a time; where a cell would show otherwise there (`unlike`, the
+pixels, which the base snaps to the palette a pixel at a time. A half an entry leaves to the base (a typed letter's with
+no background, its top half) with no paint over it isn't written: the base keeps its own pixels there, which show as
+they showed (`mergeCellOf`'s `kept`). Written as a stored color instead, it shifted a palette step under a slider: the
+base snaps on the graphics card, which breaks a tie between two palette colors its own way (VGA's `d7` and `ff` under
+Midtones 2), and a picture's cell can show a mix of its pixels' snaps that no one stored color makes (Posterize). Where a cell would show otherwise there (`unlike`, the
 same check: soft paint over a cell mixed into its colors before the snap instead of after, paint with no cell under it
 that the converter picks again from the snapped pixels), it's written as it showed instead (`frozenCells`): its stored
 colors as its two pixels, its character pinned.
 
-- Lives in: `onCells`, `onBase`, `shapesOnCells`, `shapesOnVector`, `unlike`, `frozenCells`, `freezeUnlike` in
+- Lives in: `onCells`, `onBase`, `mergeCellOf`, `shapesOnCells`, `shapesOnVector`, `unlike`, `frozenCells`, `freezeUnlike` in
   `src/store/project/merging.js`; `unfreeze` in `src/store/project/editLayer.js`; the Renderer's `#exactUnder`,
   `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `layerOver` and `storedLookAt`
   (`src/store/project/reading.js`) mirror the walk; a paste keeps a frozen cell's paint (`src/store/project/selection.js`).
@@ -112,6 +116,9 @@ colors as its two pixels, its character pinned.
   CGA under Best match, soft Brush and Blur strokes and a dithered vector layer above); `› R3: the report: a shape
   merged into Layer 1 leaves no border …` (the soft edge stays paint, the base shown or hidden before or after) and
   `› … keeps every cell with a palette and Levels on, the soft edges paint`;
+  `› R3: Merge down of text with no background onto the base keeps the canvas with a palette and a slider moved`
+  (#201: VGA and CGA under Levels, Posterize, Contrast, Saturation, Brightness, Hue, Invert, and none; Keep crisp cells
+  and Blend into source image);
   `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
   the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, freezing
   nothing as saved (R7) and, with the shape's own characters, its frozen cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and
