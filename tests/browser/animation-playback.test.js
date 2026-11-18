@@ -2,10 +2,13 @@
 import { test, expect } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
+import { userEvent } from 'vitest/browser';
+import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { usePlayback } from '@/composables/usePlayback.js';
 import { cellIndex } from '@/lib/Cells.js';
 import InputEditor from '@/components/InputEditor.vue';
+import AnimationBar from '@/components/AnimationBar.vue';
 
 const INK = { fg: '#ffee00', bg: '#0044aa' };
 
@@ -524,4 +527,35 @@ test('what’s drawn in exactly the inherited color stays solid once undo can’
   expect([project.frames.length, project.frame]).toEqual([2, 1]);
   expect([dim(crossed), dim(left)]).toEqual([false, true]);
   expect(project.currentFrame.changes.has('8,4')).toBe(false); // still inherited: only how it shows differs
+});
+
+// Priya's run: Escape in FPS kept the typed 20, and a tap away then set it. Escape puts a typed field back to the value in
+// use, as Dimensions and Palette colors do; Hold the same.
+test('Escape in FPS or Hold puts the field back, and a blur after it changes nothing', async () => {
+  const { project } = await animated();
+  project.addFrame('blank');
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp({ render: () => h(AnimationBar) }).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const fps = project.fps, hold = project.currentFrame.hold;
+  try {
+    for (const [label, typed, now] of [['Frames per second', '20', () => project.fps], ['Hold', '3', () => project.currentFrame.hold]]) {
+      const field = host.querySelector(`input[aria-label="${label}"]`);
+      const was = field.value;
+      await userEvent.tripleClick(field);
+      await userEvent.keyboard(typed);
+      expect(field.value).toBe(typed);
+      await userEvent.keyboard('{Escape}');
+      expect(field.value).toBe(was);
+      field.blur(); // a tap away
+      await nextTick();
+      expect(field.value).toBe(was);
+      expect(now()).toBe(label === 'Hold' ? hold : fps);
+    }
+  } finally {
+    app.unmount();
+    host.remove();
+  }
 });

@@ -71,7 +71,7 @@ const add = paused((kind) => project.addFrame(kind));
 const move = paused((by) => project.moveFrame(project.frame, project.frame + by));
 const remove = paused(() => project.deleteFrame());
 // What's being typed in FPS and Hold, until it's set or left: the bar redraws with every frame played, and a field
-// bound to the value alone would be written back over the typing.
+// bound to the value alone would be written back over the typing. Escape puts the field back to the value in use.
 const typing = reactive({ fps: null, hold: null });
 const setHold = paused((event) => {
   typing.hold = null;
@@ -136,12 +136,12 @@ const setFps = (event) => {
     </div>
     <div class="settings">
     <label class="field fps" :title="t('animation.fpsTitle')">
-      <input type="number" :aria-label="t('animation.fpsTitle')" min="1" max="60" step="1" :value="typing.fps ?? project.fps" @input="typing.fps = $event.target.value" @change="setFps" @blur="typing.fps = null">
+      <input type="number" :aria-label="t('animation.fpsTitle')" min="1" max="60" step="1" :value="typing.fps ?? project.fps" @input="typing.fps = $event.target.value" @change="setFps" @blur="typing.fps = null" @keydown.esc="typing.fps = null; $event.target.value = project.fps">
       {{ t('animation.fpsUnit') }}
     </label>
     <label class="field" :title="t('animation.holdTitle')">
       {{ t('animation.hold') }}
-      <input type="number" :aria-label="t('animation.hold')" min="0" max="60" step="0.05" :value="typing.hold ?? project.frames[at]?.hold" @input="typing.hold = $event.target.value" @change="setHold" @blur="typing.hold = null">
+      <input type="number" :aria-label="t('animation.hold')" min="0" max="60" step="0.05" :value="typing.hold ?? project.frames[at]?.hold" @input="typing.hold = $event.target.value" @change="setHold" @blur="typing.hold = null" @keydown.esc="typing.hold = null; $event.target.value = project.frames[at]?.hold">
       {{ t('animation.holdUnit') }}
     </label>
     <span v-if="full" class="full">{{ full }}</span>

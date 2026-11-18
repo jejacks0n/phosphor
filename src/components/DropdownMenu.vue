@@ -65,9 +65,14 @@ const handleScroll = (e) => { if (isOpen.value && !typing() && !root.value.conta
 // Pointer presses, in the capture phase: the canvas cancels its pointerdowns, so no mousedown
 // follows a click there.
 const handleOutsideClick = (e) => { if (isOpen.value && !root.value.contains(e.target)) close(); };
-// Escape, heard first (the capture phase): it closes an open menu and does nothing else, so what's selected stays.
+// Escape, heard first (the capture phase): it closes an open menu and does nothing else, so what's selected stays. In a
+// field of the menu's that takes typing, the field hears it first, to back out of what was typed (puts its value back),
+// and then the menu's content closes it (escaped).
 const handleKeydown = (e) => {
-  if (!isOpen.value || e.key !== 'Escape') return;
+  if (!isOpen.value || e.key !== 'Escape' || typing()) return;
+  escaped(e);
+};
+const escaped = (e) => {
   e.preventDefault();
   e.stopImmediatePropagation();
   close();
@@ -99,7 +104,7 @@ onBeforeUnmount(() => {
         </svg>
       </slot>
     </button>
-    <div v-if="isOpen" :ref="showMenu" popover="manual" class="dropdown-content" :class="{ up: props.up, left: props.align === 'left' }" :style="position" @click="chosen">
+    <div v-if="isOpen" :ref="showMenu" popover="manual" class="dropdown-content" :class="{ up: props.up, left: props.align === 'left' }" :style="position" @click="chosen" @keydown.esc="escaped">
       <slot></slot>
     </div>
   </article>

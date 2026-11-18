@@ -56,8 +56,14 @@ const set = (name, event) => {
         : withTransformValue(shape.value, name, value);
     project.updateShapes([[props.shapeKey, next]]);
   }
-  event.target.value = name === 'width' ? shape.value.width : share ? percent(name) : values.value[name];
+  event.target.value = inUse(name);
 };
+// Escape backs out of the typing: the field shows the value in use again, and the blur after it sets nothing.
+const back = (name, event) => {
+  typing[name] = null;
+  event.target.value = inUse(name);
+};
+const inUse = (name) => (name === 'width' ? shape.value.width : SHARES.includes(name) ? percent(name) : values.value[name]);
 const shown = (name, now) => typing[name] ?? now;
 
 const chipStyle = (color) => {
@@ -77,18 +83,18 @@ const cased = (word) => word[0].toUpperCase() + word.slice(1);
     <template v-if="part === 'transform'">
       <label v-for="[name, step, title = name] in fields" :key="name" :title="t(`keysPanel.values.${title}Title`)">
         {{ t(`keysPanel.values.${name}`) }}
-        <input type="number" :aria-label="t(`keysPanel.values.${title}Title`)" :step="step" :min="name === 'scaleX' ? 1 : undefined" :disabled="onPath && (name === 'x' || name === 'y')" :value="shown(name, values[name])" @input="typing[name] = $event.target.value" @change="set(name, $event)" @blur="typing[name] = null">
+        <input type="number" :aria-label="t(`keysPanel.values.${title}Title`)" :step="step" :min="name === 'scaleX' ? 1 : undefined" :disabled="onPath && (name === 'x' || name === 'y')" :value="shown(name, values[name])" @input="typing[name] = $event.target.value" @change="set(name, $event)" @blur="typing[name] = null" @keydown.esc="back(name, $event)">
       </label>
     </template>
     <label v-else-if="part === 'width'" :title="t('keysPanel.values.widthTitle')">
-      <input type="number" :aria-label="t('keysPanel.values.widthTitle')" min="0.5" max="64" step="0.5" :value="shown('width', shape.width)" @input="typing.width = $event.target.value" @change="set('width', $event)" @blur="typing.width = null">
+      <input type="number" :aria-label="t('keysPanel.values.widthTitle')" min="0.5" max="64" step="0.5" :value="shown('width', shape.width)" @input="typing.width = $event.target.value" @change="set('width', $event)" @blur="typing.width = null" @keydown.esc="back('width', $event)">
     </label>
     <label v-else-if="part === 'start' || part === 'end'" :title="t(`keysPanel.values.${part}Title`)">
-      <input type="number" :aria-label="t(`keysPanel.values.${part}Title`)" min="0" max="100" step="1" :value="shown(part, percent(part))" @input="typing[part] = $event.target.value" @change="set(part, $event)" @blur="typing[part] = null">
+      <input type="number" :aria-label="t(`keysPanel.values.${part}Title`)" min="0" max="100" step="1" :value="shown(part, percent(part))" @input="typing[part] = $event.target.value" @change="set(part, $event)" @blur="typing[part] = null" @keydown.esc="back(part, $event)">
       %
     </label>
     <label v-else-if="part === 'along'" :title="t('keysPanel.values.alongTitle')">
-      <input type="number" :aria-label="t('keysPanel.values.alongTitle')" step="1" :disabled="!!tip" :value="shown('along', alongPercent)" @input="typing.along = $event.target.value" @change="set('along', $event)" @blur="typing.along = null">
+      <input type="number" :aria-label="t('keysPanel.values.alongTitle')" step="1" :disabled="!!tip" :value="shown('along', alongPercent)" @input="typing.along = $event.target.value" @change="set('along', $event)" @blur="typing.along = null" @keydown.esc="back('along', $event)">
       %
     </label>
     <button v-else-if="part === 'fill'" class="chip" :class="{ none: !shape.fill }" :style="chipStyle(shape.fill)" :aria-label="t('keysPanel.values.fill')" :title="t('keysPanel.values.fill')" @click="openColor('fg')"></button>
