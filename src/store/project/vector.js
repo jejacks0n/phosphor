@@ -514,6 +514,7 @@ export const vectorActions = {
       return null;
     }
     if (this._artInside) this.leaveArt(); // made from the drawing, not the art layer you're in
+    this.commitPending(); // a typing run still open is its own step, before this one: the layer's step holds the drawing as it is now
     const drawn = drawnIn(this, rect, wand ? new Set(picked.map(({ col, row }) => cellKey(col, row))) : null);
     if (!drawn.length) {
       toast(t('art.nothingDrawn')); // the wand's button can't tell beforehand: it's on whenever anything's drawn
