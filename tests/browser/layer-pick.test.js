@@ -234,6 +234,26 @@ test('every tool is offered with the base picked', async () => {
   expect(workspace.outputActiveTool).toBe('pencil'); // the tool out stays out
 });
 
+// The report (bug bash 2): with the base picked the toolbar still had Clear layer, turned off. The base has nothing of
+// its own for Clear to take, so it isn't offered there at all, as it isn't on VECTOR.
+test('Clear layer isn\'t on the toolbar with the base picked, and is back with a drawing layer picked', async () => {
+  const { workspace } = await blank();
+  workspace.editorTab = 'output';
+  workspace.pickLayer('edit');
+  const host = document.createElement('div');
+  mounted = createApp(EditToolbar).use(i18n);
+  mounted.mount(host);
+  const clears = async () => {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return [...host.querySelectorAll('button')].filter((b) => b.title.startsWith('Clear layer:')).length;
+  };
+  expect(await clears()).toBe(1);
+  workspace.pickLayer('base');
+  expect(await clears()).toBe(0);
+  workspace.pickLayer('edit');
+  expect(await clears()).toBe(1);
+});
+
 test('the Pencil on the base writes the cell as it shows', async () => {
   const { project, workspace } = await blank();
   const BLUE = '#0000aa';

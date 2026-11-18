@@ -628,8 +628,8 @@ the canvas changes. Undo brings it back, selected if it was.
 **Clear layer** (toolbar) removes everything you've drawn on the selected drawing layer, after asking "Clear (layer
 name)?". Undo brings it back.
 
-- **What It Leaves**: The base layer isn't touched. With the base or a vector layer selected it's off, and it isn't on
-  the toolbar on VECTOR. In a room only the host can clear, and not while others are drawing.
+- **What It Leaves**: The base layer isn't touched: with the base selected, and on VECTOR, **Clear layer** isn't on the
+  toolbar. In a room only the host can clear, and not while others are drawing.
 - **In an Animation**: It clears that layer on the frame showing and stops its carry there: what earlier frames have on
   that layer no longer shows on the cleared frame, even what's drawn on them later, until you draw on it
   ([Carrying and Owning a Cell](animation.md#carrying-and-owning-a-cell)). The frame's other layers and shapes stay.
