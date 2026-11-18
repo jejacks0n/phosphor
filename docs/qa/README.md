@@ -266,7 +266,9 @@ says beside you for the keyboard score. Then, for each step of the script:
 6. **Time what the persona waits on**, with `qa.time` (a click's response, a setting, opening or exporting a file)
    or `qa.frames` (a drag), against its budget.
 7. **Check the basics**: focus lands somewhere sensible after the step, Escape closes what opened, and the controls
-   you used have names (an icon button with no name shows as a bare `button` in the aria snapshot). Where focus is:
+   you used have names. A control that's there but can't act is a question, not a checkmark: a button dimmed with
+   nothing to act on, a setting that changes nothing in this document. Ask whether it belongs on the screen in this
+   state, and record an `oversight` when it doesn't (an icon button with no name shows as a bare `button` in the aria snapshot). Where focus is:
    `page.evaluate(() => [document.activeElement?.tagName, document.activeElement?.getAttribute('aria-label')])`;
    `BODY` means focus went nowhere.
 8. **Record findings** with `qa.finding`, each with a screenshot or a timing.
@@ -330,12 +332,14 @@ value for `qa.probe`:
 
 | Kind | What it means | For example |
 | --- | --- | --- |
-| `again` | Do it twice. | Export the same file twice in a row; add a layer, then add another right away. |
+| `again` | Do it twice, and choose what's already chosen: the same color, the same number in the field, the same item in the menu. It takes, rather than being swallowed for being no change. | Export the same file twice in a row; add a layer, then add another right away; with the background None over black, choose black. |
 | `undo-redo` | Undo, redo, undo again, and redo after a different edit (which should have nothing to redo). | Draw a stroke, Cmd+Z, Shift+Cmd+Z, Cmd+Z, then type a letter and try to redo; undo a slider's move and check both the picture and the slider went back. |
 | `back-out` | Leave midway: Escape, Cancel, a click away. | Open the save dialog, change the name, press Escape, and open it again; start a drag-select and press Escape before letting go. |
 | `interrupt` | Break off and come back: reload, Back, a second tab, switch layer, frame or tab. | Halfway through typing, switch to PIXEL and back; reload a second and a half after a stroke and check autosave brought it back. |
+| `carry-over` | Start a new drawing, or open another file, and look at what the editor kept from the one before: switches, tool settings, what the panel shows, what's picked. | Turn Animate on, press New project, and look for the bar; move a slider, open a picture, and read the panel's sections. |
 | `out-of-order` | Do it with nothing to act on, or before it makes sense. | Press Delete with no selection; paint on a hidden layer, or an empty one. |
-| `extremes` | Empty, zero, huge, junk pasted in, long names, emoji and wide characters, the persona's biggest sizes. | Rename a layer to 200 characters with emoji in it; set the width to 0, then to 99999. |
+| `scope` | Do it again somewhere else: another layer picked, the other view, the other of a pair of tools, or the setting that says how far it reaches turned the other way. Look at what it touched, and at what it left alone. | Select all and Delete with two layers: the one you didn't pick keeps its cells. Stamp, and check what came with it. Fill with All layers off, then on. |
+| `extremes` | Empty, zero, huge, junk pasted in, long names, emoji and wide characters, the persona's biggest sizes, and the canvas's edges: the last column and row, and the pointer off the art. | Rename a layer to 200 characters with emoji in it; set the width to 0, then to 99999; type at the start of a full row in Insert mode, then backspace it back; move the pointer off the canvas with each tool. |
 | `speed` | Rapid repeats, a held key, undo mashed. | Press Cmd+Z thirty times as fast as the page takes it; hold an arrow key moving a selection for two seconds (`keyboard.down` again and again sends repeats, then `up`). |
 | `free` | An off-script move in [Free time](#free-time). | Try the right-click menu on a layer; drag a file onto the canvas instead of using the button. |
 

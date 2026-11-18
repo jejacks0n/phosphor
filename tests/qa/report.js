@@ -3,7 +3,7 @@ import { keyboardScore, eventCheck } from './score.js';
 
 export const FINDING_KINDS = ['bug', 'visual', 'performance', 'friction', 'oversight', 'keyboard', 'a11y'];
 export const SEVERITIES = ['blocker', 'major', 'minor', 'polish'];
-export const PROBES = ['again', 'undo-redo', 'back-out', 'interrupt', 'out-of-order', 'extremes', 'speed', 'free'];
+export const PROBES = ['again', 'undo-redo', 'back-out', 'interrupt', 'carry-over', 'out-of-order', 'scope', 'extremes', 'speed', 'free'];
 
 // A step's name as a file name: lower case words joined by dashes, never empty and never long.
 export function slug(text) {

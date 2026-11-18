@@ -136,7 +136,7 @@ script. Every section ends with Free time.
   `frame` budget; `interrupt`: switch to PIXEL while it's redrawing and come back; `out-of-order`: with Base picked,
   stroke Blur (R) over an edge in the ANSI view, then switch Choose characters to Best match and back, and check the
   blurred cells get Best match's characters and then By shape's again, not the ones they had when she blurred; the same
-  with the Brush (Colors only) over a flat part, whose cells are matched to the paint, never left as a ▄; `layer`:
+  with the Brush (Colors only) over a flat part, whose cells are matched to the paint, never left as a ▄; `scope`:
   with Base selected, drop a second picture on the drawing, choose Add to this drawing, and switch its new layer to By
   shape: its edges get `▐ ▌` and rising blocks as the base's do, not half blocks alone.
 - Rated: yes, wants Tab to Choose characters then the arrows
@@ -242,7 +242,7 @@ dithered, and compare the dither at 80 and at 200 columns.
   the color adjustments tint the paint too. A stroke painted in the PIXEL view comes out the same in ANSI; in Color ASCII the strokes become
   ASCII characters, never `▄`, and their ANSI characters show again back in ANSI. Half-block draws `▄`.
 - Probes: `interrupt`: switch to PIXEL, paint a stroke on a flat part, and back in ANSI check it shows the characters an
-  ANSI stroke there does, then set Art style to Color ASCII and back (no stripes, then the same characters again); `layer`: with the
+  ANSI stroke there does, then set Art style to Color ASCII and back (no stripes, then the same characters again); `scope`: with the
   base on Best match, set Layer 2's Choose characters to Random, roll its seed, and paint over a flat part: every cell
   the stroke reaches gets Random's characters, never a row of `▄`, and they change with each roll; `out-of-order`: hide Layer 2 with its eye and try to paint ("Make the layer visible to draw on it"); `undo-redo`:
   undo one stroke, redo it, then paint and check redo is off; `again`: in PIXEL, pick the Eraser, set it to Soft and
@@ -267,7 +267,7 @@ dithered, and compare the dither at 80 and at 200 columns.
   again with Match and Set.
 - Expects: the color fill stops at text and lines she's drawn (they're walls) and stays inside a selection; Cells fills
   whole cells that match the one she clicked (FG, BG and Char to start).
-- Probes: `extremes`: Tolerance at 0 and at its most; `undo-redo`: undo the fill, redo it; `layer`: with the Brush,
+- Probes: `extremes`: Tolerance at 0 and at its most; `undo-redo`: undo the fill, redo it; `scope`: with the Brush,
   paint a closed outline on Layer 2 over the photo, turn the Paint Bucket's All layers off and click inside it (the
   fill floods the inside of the outline and stops at it, whatever the photo looks like under it; on, it follows the
   photo's colors), then with it still off drag a Gradient inside the outline (the same area).
@@ -312,7 +312,7 @@ dithered, and compare the dither at 80 and at 200 columns.
   circle, selected, converted with the picture (palette and dither reach it); a color picked with it selected goes to
   it as one undo step.
 - Probes: `out-of-order`: with Vector 1 picked, look for ANSI to paint on (it isn't offered until a cells layer is
-  picked) and record how she gets back; `again`: draw a second shape right away; `handles`: still on the Shape tool,
+  picked) and record how she gets back; `again`: draw a second shape right away; `out-of-order`: still on the Shape tool,
   drag a corner handle of the new shape's box (it scales) and the knob above it (it turns), then drag inside the box
   (a new shape is drawn there, the first one stays put).
 - Rated: yes, wants U
@@ -380,15 +380,15 @@ held.
   came down as paint, so it blurs and fades all over, its edge too (the cells written there as characters turn back
   into paint under the stroke); then paint along
   its edge with the Brush in Color ASCII: the paint shows as ASCII characters, never as half-blocks; then, on a layer
-  above, brush white with Colors only over blank cells and Merge down: nothing changes, and no ▄ appears; `stack`:
+  above, brush white with Colors only over blank cells and Merge down: nothing changes, and no ▄ appears; `scope`:
   with a shape over paint on Layer 1 and a white stroke on a layer above crossing its edge, Merge down the shape
   into Layer 1: nothing on the canvas changes, the stroke above included, and the PIXEL view shows the shape's edge
   as before (no dark line where its cells were written as characters), with the Overlay at 100% too; then hide the
   base: no gray border of the picture's colors stays round the shape (and merged with the base hidden, no black one
   once it shows again).
-  `photo`: on a detailed photo with By shape, draw a soft-edged shape on a vector layer over Layer 1 and Merge down:
+  `again`: on a detailed photo with By shape, draw a soft-edged shape on a vector layer over Layer 1 and Merge down:
   nothing changes but a character or a color step along the soft edge, and Blur across the edge afterward fades all of it (nothing was written as characters).
-  `pixel-view`: in Color ASCII, brush white over a shape and again on a layer above it, then go to the PIXEL view with
+  `scope`: in Color ASCII, brush white over a shape and again on a layer above it, then go to the PIXEL view with
   the Overlay at 100%: each stroke blends with what's under it, as with the Overlay at 0%; a typed letter still shows
   as its cell.
 - Rated: yes, wants Cmd+E
@@ -412,7 +412,7 @@ held.
   back the layer and the picture.
 - Probes: `undo-redo`: undo the slider moves and then the merge, one step at a time, and redo them; `again`: merge a
   second time into the already blended picture, then a third from a layer given its own Characters (Blend into source
-  image lists her layer's custom characters under "You give up:", and choosing it still merges); `ascii`: in Color ASCII, with a Colors only stroke and dark text typed
+  image lists her layer's custom characters under "You give up:", and choosing it still merges); `scope`: in Color ASCII, with a Colors only stroke and dark text typed
   over white paint on the layer, Blend into source image: the stroke goes into the picture with no new backgrounds
   anywhere, and the text keeps its light one.
 - Rated: yes, wants Cmd+E, then the arrows to the second choice
@@ -424,7 +424,7 @@ held.
   its own character settings, so its shapes can't be pressed into the layer under it", and nothing changes. With its
   settings the base's again, the second press presses its shapes into the base's pixels, where they stop being shapes
   (its art layer's characters pinned); nothing on the canvas changes, and one undo brings them back as shapes.
-- Probes: `out-of-order`: try it with the vector layer hidden; `undo-redo`: undo and redo the press; `stack`: before
+- Probes: `out-of-order`: try it with the vector layer hidden; `undo-redo`: undo and redo the press; `scope`: before
   pressing, add a second vector layer over Vector 1, pick it and draw a shape (it's on the layer picked, not Vector 1),
   then Merge down: the shape moves to Vector 1, still a shape she can edit, over Vector 1's own, the second layer goes,
   and nothing on the canvas changes. With shapes overlapping on both vector layers, a click selects the one that shows
@@ -458,7 +458,7 @@ engineering rules behind these steps are docs/model.md (R1–R8); a finding here
   the photo, in the ANSI and PIXEL views alike, over the white's soft edge and over white at Opacity 50 too (the photo
   shows through as much); in Color ASCII, soft paint over white comes out near-white, never a darker character; a
   layer dragged below another with nothing between them looks as it did.
-- Probes: `pixel-view`: the Overlay at 100% and at 0% show the same strokes; `again`: by intensity instead of By shape.
+- Probes: `scope`: the Overlay at 100% and at 0% show the same strokes; `again`: by intensity instead of By shape.
 - Rated: no (drawing)
 
 ### 32. Merging changes nothing, and merged paint stays paint
@@ -488,7 +488,7 @@ engineering rules behind these steps are docs/model.md (R1–R8); a finding here
 - Does: brushes a stroke across the caption and across a run of typed spaces beside it, with Colors only.
 - Expects: in ANSI the letters are tinted and the spaces become ▄ of the paint; in Color ASCII the letters are tinted
   and the paint shows over the spaces as her ASCII characters, never hidden.
-- Probes: `again`: over an opened .ans file's spaces (Draw on top) in Color ASCII; `stack`: with a flat-filled shape
+- Probes: `again`: over an opened .ans file's spaces (Draw on top) in Color ASCII; `scope`: with a flat-filled shape
   on a vector layer between the picture and her layer, one Colors only stroke from the picture across the shape (the
   same characters of her layer's on both, no ▄ over the shape), and while she drags a new shape across most of the
   canvas on a vector layer above Layer 1, Layer 1's strokes stay.
@@ -510,7 +510,7 @@ engineering rules behind these steps are docs/model.md (R1–R8); a finding here
 - Expects: paint in the PIXEL view is the paint itself, blended with what's under it, never ASCII characters drawn
   over it; a typed letter shows in the Overlay; a merged shape's edge has no holes, dark lines or half-blocks that
   the ANSI view doesn't have.
-- Probes: `pixel-view`: a stroke in the PIXEL view over a merged edge and over the caption, then the same stroke in
+- Probes: `scope`: a stroke in the PIXEL view over a merged edge and over the caption, then the same stroke in
   ANSI (the same result).
 - Rated: no (looking)
 

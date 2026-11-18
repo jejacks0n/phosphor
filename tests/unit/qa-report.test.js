@@ -1,6 +1,8 @@
 // The report a QA run writes: plain Markdown, the score first, findings worst first.
 import { test, expect } from 'vitest';
-import { slug, renderReport, safeReport } from '../qa/report.js';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { PROBES, slug, renderReport, safeReport } from '../qa/report.js';
 
 const run = (over = {}) => ({
   persona: 'maya', seed: 7, traits: { device: 'desktop', input: 'mouse' }, commit: 'abc1234', scriptCommit: 'def5678',
@@ -92,4 +94,25 @@ test('a note shows under its own step, not with the session warnings', () => {
   const text = renderReport(run({ steps: [step('Packs', null, { rated: false, notes: ['input/qa/ is missing, so this step is skipped'] }), step('Next', 'keys')] }));
   expect(text).toMatch(/### Packs\n[\s\S]*- Note: input\/qa\/ is missing, so this step is skipped[\s\S]*### Next/);
   expect(text).not.toContain('## Session warnings');
+});
+
+// A script names each probe it asks for (`- Probes: \`again\`: …`), and the run passes that name to qa.probe, which
+// refuses a kind the kit doesn't have. Scripts drifted into names of their own (`layer`, `stack`, `pixel-view`), which
+// would have thrown mid-run, so the two are held together here.
+test('every probe a persona script names is one of the kit\'s kinds', () => {
+  const dir = new URL('../../docs/qa/personas/', import.meta.url).pathname;
+  const files = readdirSync(dir).filter((name) => name.endsWith('.md') && name !== '_template.md');
+  expect(files.length).toBeGreaterThan(0);
+  const named = [];
+  for (const file of files) {
+    const lines = readFileSync(join(dir, file), 'utf8').split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      if (!lines[i].startsWith('- Probes:')) continue;
+      const block = [lines[i]];   // the bullet, with the lines it wraps onto
+      while (++i < lines.length && lines[i].startsWith('  ') && !lines[i].trimStart().startsWith('- ')) block.push(lines[i]);
+      for (const [, kind] of block.join(' ').matchAll(/`([^`]+)`:/g)) named.push(`${file}: ${kind}`);
+    }
+  }
+  expect(named.length).toBeGreaterThan(100);
+  expect(named.filter((one) => !PROBES.includes(one.split(': ')[1]))).toEqual([]);
 });
