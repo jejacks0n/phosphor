@@ -17,7 +17,7 @@ import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors, mix } from '@/lib/Cells.js';
 import { coverageOf } from '@/lib/GlyphCoverage.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
-import { processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
+import { findUniform, processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putStack, refusedHidden, stackState } from '@/store/project/shared.js';
@@ -395,6 +395,7 @@ export const mergingActions = {
       const blob = await canvasPng(canvas);
       const image = await loadImage(blob);
       const imageBuffer = await blob.arrayBuffer();
+      findUniform(image, imageBuffer); // still one color (a blank canvas's): nothing for Smoothing or the image filters to work on (#200)
       // Meanwhile: another document is left alone; a change to this one (a stroke begun is closed
       // now, so its undo isn't recorded against the baked layers) means baking what shows now.
       if (this._document !== doc) return;
@@ -707,6 +708,7 @@ export const mergingActions = {
       const blob = await canvasPng(canvas);
       const image = await loadImage(blob);
       const imageBuffer = await blob.arrayBuffer();
+      findUniform(image, imageBuffer); // still one color (a blank canvas's): nothing for Smoothing or the image filters to work on (#200)
       // What's merged was read before encoding: a change since (or an edit still open) means it's stale.
       if (this._document !== doc) return;
       this.commitPending();

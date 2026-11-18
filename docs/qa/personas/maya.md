@@ -90,7 +90,8 @@ script. Every section ends with Free time.
 - Probes: `out-of-order`: press Add layer, change Choose characters on the new Layer 1 and see that the picture
   doesn't change (it's Layer 1's paint setting), then look for what told her so, and undo the add; `back-out`: pick
   Base again after the add, then undo it; `interrupt`: switch to PIXEL and back and check Base is still picked;
-  `extremes`: on a blank canvas, check there's no Picture · Base (no picture for Smoothing to scale).
+  `extremes`: on a blank canvas, check there's no Picture · Base (no picture for Smoothing to scale), then move a
+  slider, Bake, and check there's still none, and no Image filters.
 - Rated: yes, wants a key to step through the layers (Alt+[ and Alt+], as in Photoshop)
 
 ### 3. Try every art style
