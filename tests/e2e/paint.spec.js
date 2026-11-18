@@ -101,3 +101,35 @@ test('Shift while dragging a shape makes a square, a circle or a 45° line, and 
   const { held } = await dragTo('line', 'snap to 45°');
   expect(Math.abs(held.to.y - held.from.y)).toBe(Math.abs(held.to.x - held.from.x));   // 12 across and 3 rows (6 pixels) down is 26.6°: the diagonal
 });
+
+// The report (bug bash 2): with the Eraser the pointer vanished off the canvas. The pointer itself is hidden for the
+// Brush and the Eraser, which draw their own outline, and the Eraser's was drawn only over what it would erase.
+test('the Eraser\'s outline follows the pointer off the canvas too, and with Soft it\'s the Brush\'s circle', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'PIXEL').click();
+  await settled(page);
+  await page.keyboard.press('e');
+  const outline = () => page.locator('.canvas-viewport:has(.pixel-display) .tool-preview').evaluate((el) => {
+    const box = el.getBoundingClientRect(), style = getComputedStyle(el);
+    return { shown: style.display !== 'none', round: style.borderRadius === '50%', x: box.x + box.width / 2, y: box.y + box.height / 2, width: box.width };
+  });
+  const art = await page.locator('.pixel-display').boundingBox(), px = art.width / await store(page, 'project', (p) => p.cols);
+  const size = await store(page, 'workspace', (w) => w.editEraserSize);
+
+  await page.mouse.move(art.x + 50, art.y + 50);
+  expect(await outline()).toMatchObject({ shown: true, round: false }); // over the art: the square it would clear
+
+  const off = { x: art.x - 30, y: art.y + 50 }; // in the view, left of the art
+  await page.mouse.move(off.x, off.y);
+  const there = await outline();
+  expect(there).toMatchObject({ shown: true, round: false });
+  expect([Math.abs(there.x - off.x), Math.abs(there.y - off.y)].every((d) => d < 1.5)).toBe(true); // on the pointer
+  expect(Math.abs(there.width - size * px)).toBeLessThan(2.5); // at its size (its border included)
+
+  await page.getByRole('group', { name: 'Eraser edge' }).getByRole('button', { name: 'Soft' }).click();
+  await expect(page.getByRole('slider', { name: 'Flow' })).toBeVisible(); // Soft has a Flow
+  await page.mouse.move(art.x + 50, art.y + 50);
+  expect(await outline()).toMatchObject({ shown: true, round: true });
+  await page.mouse.move(off.x, off.y);
+  expect(await outline()).toMatchObject({ shown: true, round: true });
+});

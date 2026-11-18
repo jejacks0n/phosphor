@@ -6,7 +6,8 @@
  *   available? (project) => boolean: offered in the toolbar only when true (e.g. flip needs the ANSI art style)
  *   section?   toolbar group ('select', 'navigate', 'cell', 'vector'); a divider separates groups
  *   autoScroll? a drag near the view's edge scrolls it (useEditorInteractions)
- *   preview?   { shape: 'circle' | 'square' | 'cell', size?: (workspace) => grid pixels }
+ *   preview?   { shape: 'circle' | 'square' | 'cell', size?: (workspace, view) => grid pixels (the ANSI view's eraser: cells),
+ *                snap?: the outline keeps to the cells or pixels covered, soft?: (workspace, view) => a circle after all }
  *   cursor?    (ctx, pos) => CSS cursor | null: the pointer over the content, at grid pixel pos
  *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox', size?: true (the one ] and [ change) }
  *   begin(ctx, pos, event) -> false when there's no stroke to continue; move(ctx, from, to); end(ctx).

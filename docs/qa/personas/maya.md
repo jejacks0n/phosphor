@@ -244,7 +244,10 @@ dithered, and compare the dither at 80 and at 200 columns.
   ANSI stroke there does, then set Art style to Color ASCII and back (no stripes, then the same characters again); `layer`: with the
   base on Best match, set Layer 2's Choose characters to Random, roll its seed, and paint over a flat part: every cell
   the stroke reaches gets Random's characters, never a row of `▄`, and they change with each roll; `out-of-order`: hide Layer 2 with its eye and try to paint ("Make the layer visible to draw on it"); `undo-redo`:
-  undo one stroke, redo it, then paint and check redo is off; `speed`: draw fast scribbles with `qa.frames`;
+  undo one stroke, redo it, then paint and check redo is off; `again`: in PIXEL, pick the Eraser, set it to Soft and
+  rub a stroke's end at a low Flow (its outline is a circle, the paint fades a little with each pass and a few passes
+  clear it), then set it back to Hard (a square, cleared at once), and move the pointer off the canvas's edge with each
+  (the outline follows it); `speed`: draw fast scribbles with `qa.frames`;
   `extremes`: with a Color list and Saturation at 0, paint on Layer 2 with a swatch that isn't gray and check the Pixel
   view shows the stroke in the swatch's color, as the ANSI view does.
 - Rated: yes, wants B (the strokes themselves aren't rated), and ] or [ for the brush size
