@@ -48,6 +48,10 @@ test('the Eraser\'s keys change the size of the view it\'s in; Blur\'s change Re
   workspace.setActiveTool('blur');
   key(']');
   expect(workspace.retouchSize).toBe(7);
+  workspace.editorTab = 'output'; // a Soft eraser's Size is the PIXEL one, in the ANSI view too
+  workspace.editEraserSoft = true;
+  key(']');
+  expect([workspace.editEraserCells, workspace.editEraserSize]).toEqual([2, 5]);
 });
 
 test('[ and ] change nothing while typing in Edit Mode, or with a tool that has no Size', async () => {

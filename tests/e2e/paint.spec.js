@@ -132,4 +132,16 @@ test('the Eraser\'s outline follows the pointer off the canvas too, and with Sof
   expect(await outline()).toMatchObject({ shown: true, round: true });
   await page.mouse.move(off.x, off.y);
   expect(await outline()).toMatchObject({ shown: true, round: true });
+
+  // Soft is the same eraser in the ANSI view: a circle there too, where Hard outlines whole cells.
+  await tab(page, 'ANSI').click();
+  await settled(page);
+  await page.keyboard.press('e');
+  const at = await cellPoint(page, 6, 6);
+  await page.mouse.move(at.x, at.y);
+  const ansi = () => page.locator('.ansi-editor .tool-preview').evaluate((el) => getComputedStyle(el).borderRadius);
+  expect(await ansi()).toBe('50%');
+  await page.getByRole('group', { name: 'Eraser edge' }).getByRole('button', { name: 'Hard' }).click();
+  await page.mouse.move(at.x, at.y);
+  expect(await ansi()).toBe('0px');
 });

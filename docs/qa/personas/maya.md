@@ -247,7 +247,8 @@ dithered, and compare the dither at 80 and at 200 columns.
   undo one stroke, redo it, then paint and check redo is off; `again`: in PIXEL, pick the Eraser, set it to Soft and
   rub a stroke's end at a low Flow (its outline is a circle, the paint fades a little with each pass and a few passes
   clear it), then set it back to Hard (a square, cleared at once), and move the pointer off the canvas's edge with each
-  (the outline follows it); `speed`: draw fast scribbles with `qa.frames`;
+  (the outline follows it), then try Soft in ANSI (the same circle and Flow, Size in px, and it fades the paint but
+  leaves her caption's letters); `speed`: draw fast scribbles with `qa.frames`;
   `extremes`: with a Color list and Saturation at 0, paint on Layer 2 with a swatch that isn't gray and check the Pixel
   view shows the stroke in the swatch's color, as the ANSI view does.
 - Rated: yes, wants B (the strokes themselves aren't rated), and ] or [ for the brush size

@@ -308,13 +308,13 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
-  // ] and [ grow and shrink the tool's Size (its option marked size, for this view) a whole step, within the
+  // ] and [ grow and shrink the tool's Size (its option marked size, the one on offer in this view) a whole step, within the
   // slider's range, as in Photoshop. In the art views, not while typing, mid-drag, or with the color box or palette open.
   const _handleSizeKeys = (e) => {
     const by = { ']': 1, '[': -1 }[e.key];
     if (!by || e.ctrlKey || e.metaKey || e.altKey || isField(e.target) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
     if (!['input', 'output'].includes(workspaceStore.editorTab) || workspaceStore.isPainting || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
-    const option = getTool(workspaceStore.activeTool).options?.find((o) => o.size && (!o.views || o.views.includes(workspaceStore.editorTab)));
+    const option = getTool(workspaceStore.activeTool).options?.find((o) => o.size && (!o.views || o.views.includes(workspaceStore.editorTab)) && (!o.when || o.when(workspaceStore)));
     if (!option) return false;
     const round = 10 ** (option.decimals ?? 0);
     workspaceStore[option.key] = Math.min(option.max, Math.max(option.min, Math.round((workspaceStore[option.key] + by) * round) / round));
