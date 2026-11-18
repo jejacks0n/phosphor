@@ -1091,7 +1091,10 @@ export default class Renderer {
         exact = !isFrozen(entry); // a frozen cell shows its character, and is paint to what's over it (docs/model.md R3)
         if (!exact) continue; // its own paint under it is what it stands for: not laid over it
       }
-      cell = this.#paintOver(cell, () => this.#pixelsUnder(cell, col, row, reads, at), top, bottom, exact, col, row, params, palette, () => this.#fineUnder(col, row, reads, at, [top, bottom], params), u.paint);
+      // A layer with characters of its own converts its paint over a character with no ink to tint, in ANSI as in the
+      // ASCII styles: its paint is its characters, not the base's ▄ (docs/model.md R2).
+      const tints = exact && !(u.ownChars && renderStyle === 'ansi' && opensToPaint(cell, renderStyle));
+      cell = this.#paintOver(cell, () => this.#pixelsUnder(cell, col, row, reads, at), top, bottom, tints, col, row, params, palette, () => this.#fineUnder(col, row, reads, at, [top, bottom], params), u.paint);
     }
     this.#exact = exact;
     return cell;

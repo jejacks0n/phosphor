@@ -52,18 +52,26 @@ room change's hash as any field is.
 A character of someone's own under paint keeps its character; the paint colors the half it lies on (the top half the
 background, the bottom half the foreground). A character with no ink to tint is open: the paint shows there as paint
 does in that style. In ANSI that's a ▄ with the paint in each half it covers (a solid or empty glyph, or one in its own
-background color). In Color ASCII and Monochrome ASCII, which have no half-blocks, an open character (a space, or one in
-its own background color) is converted over as paint over a cell with no character is: mixed into the cell's halves and
-converted with the layer's settings. `█` has ink there and stays.
+background color), except under a layer with character settings of its own, whose paint is its characters: there the
+open character is converted over as in the ASCII styles. A ▄ would show the base's look in place of the layer's, so a
+layer set to its own Random painted half-blocks over a flattened drawing, every cell of which is a pin. In Color ASCII
+and Monochrome ASCII, which have no half-blocks, an open character (a space, or one in its own background color) is
+converted over as paint over a cell with no character is: mixed into the cell's halves and converted with the layer's
+settings. `█` has ink there and stays.
 
 - Lives in: `Renderer.#paintOver` (`src/document/Renderer.js`), which every paint-over-cell path goes through: the lower
-  group's `#composeOne`, a base pin under paint (`#paintedPin`) and the upper walk (`#upperCell`). The predicate is
+  group's `#composeOne`, a base pin under paint (`#paintedPin`) and the upper walk (`#upperCell`, which hands an open
+  character under a layer of its own characters to the convert path: `ownChars` on the upper layers, from `upperOf` in
+  `src/store/project/rendering.js` and `FrameBuilder.prepare`). The predicate is
   `opensToPaint` in `src/lib/Cells.js`; `coverCell` there is the tint. `storedLookAt` (`src/store/project/reading.js`)
   mirrors it in stored colors, and Colors only (`paintStroke` in `src/store/project/editLayer.js`) uses the predicate to
   tell which of the layer's own cells become paint blocks.
 - Checked by: `tests/browser/layer-stack.test.js › R2: …` (a typed space and a letter under paint, on the layer and on
   one above, in both ASCII styles); `tests/browser/incremental-cells.test.js › composeAll lays every kind of entry …`
-  (the one-by-one reference converts open cells); `tests/unit/compose.test.js` (coverCell's tint in ANSI).
+  (the one-by-one reference converts open cells); `tests/unit/compose.test.js` (coverCell's tint in ANSI);
+  `tests/browser/block-chars.test.js › R2: the report: paint on a layer with its own Random …` (a flattened drawing under
+  a layer of its own Random, the Brush in ANSI) and `› R5: random: …` (a pinned space under a layer of its own seed);
+  `tests/browser/animation-build.test.js › built frames equal the still with a layer of its own characters …`.
 
 ### R3. Merge down moves each kind as itself, and nothing on the canvas changes but a soft edge, which stays paint.
 

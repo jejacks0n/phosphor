@@ -329,10 +329,12 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Rated: yes, wants Cmd+E, then Enter
 
 ### 27. Flatten it to plain cells
-- Does: presses Flatten, picks Edit artwork.
+- Does: presses Flatten, picks Edit artwork. Then adds a layer over the flattened art, gives it Characters of its own
+  (Random, ░▒▓█) and brushes a stroke across the art and across the black.
 - Expects: everything that shows becomes plain cells on one layer over a black base; the sliders go back to neutral,
   the art style is ANSI, Dither is off, the palette stays CGA; nothing on the canvas changes; Undo brings back the image
-  and his layers ([Flattening](../../layers.md#flattening)).
+  and his layers ([Flattening](../../layers.md#flattening)). The new layer's stroke shows its ░▒▓█ everywhere, not
+  half-blocks ([Paint and Characters](../../layers.md#paint-and-characters)).
 - Probes: `undo-redo`: flatten, undo, redo; `again`: flatten twice; `extremes`: hide a layer first and read what the
   dialog says ("The hidden layer will also be removed.").
 - Rated: yes, wants a key for Flatten
