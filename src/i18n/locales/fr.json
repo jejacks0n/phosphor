@@ -798,9 +798,11 @@
     "smoothOnTitle": "Le texte lissé est activé (caractères avec anticrénelage). Cliquez pour des contours de pixels nets.",
     "smoothOffTitle": "Le texte lissé est désactivé (contours de pixels nets). Cliquez pour des caractères avec anticrénelage.",
     "smooth": "Lissé",
-    "insertTitle": "Mode insertion : la frappe décale les cellules existantes vers la droite (touche Inser)",
+    "insertTitle": "Mode insertion : la frappe pousse le reste de la ligne vers la droite, ses caractères et sa peinture (touche Inser)",
+    "partialTitle": "Mode partiel : la frappe pousse les caractères de la ligne vers la droite et laisse sa peinture en place (touche Inser)",
     "overwriteTitle": "Mode refrappe : la frappe remplace les cellules existantes (touche Inser)",
     "insert": "Insertion",
+    "partial": "Partiel",
     "overwrite": "Refrappe"
   },
   "animation": {
@@ -1223,7 +1225,7 @@
       "homeEnd": "Début ou fin de la ligne",
       "nextLine": "Début de la ligne suivante",
       "erase": "Effacer le caractère avant le curseur ou sous le curseur",
-      "insertOverwrite": "Basculer entre le mode Insertion et le mode Refrappe",
+      "insertOverwrite": "Passer du mode Refrappe au mode Insertion, puis au mode Partiel",
       "typeFKey": "Taper le caractère depuis l'emplacement de palette actif",
       "grabFKey": "Enregistrer le caractère sous le curseur dans cet emplacement de palette",
       "prevNextPalette": "Palette de caractères précédente ou suivante",

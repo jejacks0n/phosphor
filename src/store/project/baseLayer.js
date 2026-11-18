@@ -1,7 +1,7 @@
 // The base layer's own pixels and pins: erasing (black, with a pinned space), flipping a cell's
 // halves, and writing pixels. Base edits are exact: over the image as the pipeline shows it, never
 // resampled or put through the effects. Each is part of the current edit; the caller commits it.
-import { withPins } from '@/document/baseRecords.js';
+import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { BLANK, cellKey, parseKey } from '@/document/editCells.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
@@ -59,6 +59,41 @@ export const baseLayerActions = {
       })));
     }
     this.refreshCells(cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
+  },
+
+  // Move a row of the base along from fromCol by delta cells (typing's Insert, Partial and Delete, as shiftCells moves
+  // a layer's); what's pushed past the row's end is lost. With paint (Insert), every cell: its pixels as they show (the
+  // picture's among them, as a moved selection's are), its pin and its indexes, and a cell nothing lands on is erased.
+  // Without (Partial), the pinned characters alone, each with its cell's pixels: the base's other pixels stay, a
+  // character moved onto them taking their place, and a cell one leaves has no pixels of the base's own and no pin, so
+  // the picture shows there again.
+  shiftBaseCells(row, fromCol, delta, { paint = false } = {}) {
+    const { cols } = this, { pins, indexes } = this.baseRecords, c0 = Math.max(0, Math.min(fromCol, fromCol + delta));
+    if (!delta || c0 >= cols || (delta < 0 && fromCol < 1)) return;
+    const key = (col) => cellKey(col, row), left = [], landed = []; // the cells that move or are covered; [to, from]
+    for (let col = c0; col < cols; col++) {
+      if (!paint && !pins.has(key(col))) continue;
+      left.push(col);
+      if (col >= fromCol && col + delta < cols) landed.push([col + delta, col]);
+    }
+    if (!left.length) return;
+    this.ensureLayer();
+    this.beginEdit();
+    const k = this.baseLayer.scale, span = { c0, r0: row, c1: cols - 1, r1: row };
+    const own = this.baseLayer.copyCells(span), shown = this.basePixelsOf(span), ctx = ctx2d(own);
+    ctx.imageSmoothingEnabled = false;
+    for (const col of left) ctx.clearRect((col - c0) * k, 0, k, 2 * k);
+    for (const [to, col] of landed) {
+      ctx.clearRect((to - c0) * k, 0, k, 2 * k);
+      ctx.drawImage(shown, (col - c0) * k, 0, k, 2 * k, (to - c0) * k, 0, k, 2 * k);
+    }
+    this.baseLayer.pasteCells(own, c0, row, cols - c0, 1);
+    const moved = landed.filter(([, col]) => pins.has(key(col))).map(([to, col]) => ({ col: to, row, char: pins.get(key(col)), ...indexes.get(key(col)) }));
+    const touched = [...new Set([...left, ...landed.map(([to]) => to)])];
+    this.setBaseRecords(withPins(withoutPins(this.baseRecords, touched.map((col) => ({ col, row }))), moved));
+    this.refreshCells(Array.from({ length: cols - c0 }, (_, i) => [{ x: c0 + i, y: 2 * row }, { x: c0 + i, y: 2 * row + 1 }]).flat());
+    const lands = new Set(landed.map(([to]) => to));
+    if (paint) this.eraseBase(left.filter((col) => !lands.has(col)).map((col) => ({ col, row })));
   },
 
   // Paint grid pixels ({ x, y, r, g, b, alpha }) onto the base's own pixels at an opacity, stacking or not, as a cells

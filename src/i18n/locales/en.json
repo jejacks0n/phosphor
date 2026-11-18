@@ -798,9 +798,11 @@
     "smoothOnTitle": "Smooth text is on (anti-aliased characters). Click for sharp pixel edges.",
     "smoothOffTitle": "Smooth text is off (sharp pixel edges). Click for anti-aliased characters.",
     "smooth": "Smooth",
-    "insertTitle": "Insert mode: typing shifts existing cells to the right (Insert key)",
+    "insertTitle": "Insert mode: typing pushes the rest of the row right, its characters and its paint (Insert key)",
+    "partialTitle": "Partial mode: typing pushes the row's characters right and leaves its paint where it is (Insert key)",
     "overwriteTitle": "Overwrite mode: typing replaces existing cells (Insert key)",
     "insert": "Insert",
+    "partial": "Partial",
     "overwrite": "Overwrite"
   },
   "animation": {
@@ -1223,7 +1225,7 @@
       "homeEnd": "Start or end of the row",
       "nextLine": "Start of the next line",
       "erase": "Erase character before or at cursor",
-      "insertOverwrite": "Toggle between Insert and Overwrite mode",
+      "insertOverwrite": "Switch between Overwrite, Insert and Partial mode",
       "typeFKey": "Type character from active palette slot",
       "grabFKey": "Save character under cursor to this palette slot",
       "prevNextPalette": "Previous or next character palette",

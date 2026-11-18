@@ -28,7 +28,7 @@ A character can be more than one code point: a letter with a combining accent, a
 A two-column character starts in its own cell and covers the cell to its right, whatever that cell holds, just as a terminal draws it:
 
 - **Last column**: The last column has no room for a two-column character. One that ends up there shows (and exports) as a space. Typing one in the last column does nothing, and Phosphor tells you why.
-- **Typing**: Typing a two-column character moves the text cursor two columns. In Insert mode, the rest of the row shifts right by two.
+- **Typing**: Typing a two-column character moves the text cursor two columns. In Insert and Partial mode, the rest of the row shifts right by two.
 - **Overwriting**: Writing over either half of a two-column character turns the other half into a space, the way a terminal does.
 - **Deleting**: **Backspace** over a two-column character, or **Delete** on one, removes the whole character.
 - **Cursor movement**: The text cursor never stops on the covered right half. Moving right skips it, and clicking it puts the cursor on the character.
@@ -146,7 +146,12 @@ With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, 
 
 - **Input methods**: Type with your system's input method (Japanese, Chinese, Korean...), dead keys and accents, and the emoji picker, the same as in any text field.
 - **Undo**: A run of typing is one undo step. It ends when you pause for a second, move the cursor (a click, the arrow keys, **Enter**, **Home**, **End**), or paste.
-- **Insert and Overwrite**: Press **Insert** (or click **Insert** / **Overwrite** in the ANSI view's status bar) to switch between Insert mode, which pushes the rest of the row right, and Overwrite mode, which replaces cells. On the base layer, typing always overwrites and **Delete** does nothing, since there's no row to shift.
+- **Overwrite, Insert and Partial**: Press **Insert** (or click the mode's button in the ANSI view's status bar) to go from one typing mode to the next:
+  - **Overwrite** (the default) replaces the cell under the cursor and moves nothing.
+  - **Insert** pushes the rest of the row right first, its characters and its paint together, so a row moves as one thing. What's pushed past the row's end is lost.
+  - **Partial** pushes the row's characters right and leaves its paint where it is: text slides along over what's painted under it.
+
+  **Backspace** and **Delete** follow the mode: in Insert they pull the rest of the row left, paint and all, and in Partial its characters alone. In Overwrite, Backspace leaves a space and Delete pulls the characters left. Only the layer you're typing on moves. On the base layer the modes work the same way ([Drawing on the base](layers.md#drawing-on-the-base)).
 - **Pasting text**: Pasted text types from the cursor. Each new line starts on the next row, at the column where the paste began. Once a row is full, the rest of that line is dropped, and lines past the last row are dropped too. Characters a cell can't hold (tabs, invisible characters, an accent on its own) are skipped. A paste is one undo step.
 - **What Cmd/Ctrl+V pastes**: Whatever you copied last: a Select-tool block copied in Phosphor (in this tab or another), a block copied in Moebius, or text copied anywhere else, such as PabloDraw, which gives other apps only its characters ([Layers](layers.md#the-select-tool)).
 

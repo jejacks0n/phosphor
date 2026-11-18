@@ -35,8 +35,10 @@ Colors only's half-blocks stay half-blocks under paint above. Every
 path that treats someone's character differently from paint asks it, or the two it's made of; none asks
 `entry.fg || entry.bg`, `cells.has(key)` or `char === '▄'` for that. That includes every path that walks a layer's
 entries to act on them (the Paint Bucket's walls, Rotate, Insert and Delete, Keep crisp cells): an entry in the map isn't
-a cell until `ownEntry` says so. Insert and Delete move characters of someone's own along the row and leave paint, paint
-blocks and frozen cells where they are; Rotate turns pixels and drops a frozen cell's pin with the paint it stood over. The mark travels with the entry (`mergeEntry` keeps
+a cell until `ownEntry` says so. Typing's Partial mode, and Delete in Overwrite, move characters of someone's own along
+the row and leave paint, paint blocks and frozen cells where they are; its Insert mode moves everything the layer has
+in the row, the paint and every entry with it, so it asks nothing (`shiftCells`; on the base `shiftBaseCells`, where a
+pinned character is someone's own and every other pixel is paint); Rotate turns pixels and drops a frozen cell's pin with the paint it stood over. The mark travels with the entry (`mergeEntry` keeps
 it when a whole entry moves, as Merge down's `completeAt` does), goes when a character or color is written over it
 (that's someone's own now), is accepted from files and the clipboard only as `true` (`cleanEntry`), and is part of a
 room change's hash as any field is.

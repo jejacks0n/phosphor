@@ -10,7 +10,7 @@ import { shortcut } from '@/lib/keyLabels';
 import { useLayerName } from '@/composables/useLayerName';
 
 // Under the ANSI and VECTOR views, starting with the picked layer's name, then following the tool: Edit
-// Mode shows its cursor's cell (each attribute from the edit layer or the base) and the overwrite/insert
+// Mode shows its cursor's cell (each attribute from the edit layer or the base) and the overwrite/insert/partial
 // toggle; Select, the selection's size and place; the Color Picker, its last pick and where each color
 // came from. On the right, with a mouse or trackpad, Space's pan (the Zoom tool's click and Alt-click too), or while a
 // modifier's held, what it does with the tool (in the pixel view too); the rest is in the docs, for the room it takes. Zoomed
@@ -131,9 +131,9 @@ const backTo100 = () => {
       >{{ percent }}%</button>
       <button
           v-if="tool === 'text'"
-          :title="workspace.insertMode ? t('status.insertTitle') : t('status.overwriteTitle')"
-          @click="workspace.insertMode = !workspace.insertMode"
-      >{{ workspace.insertMode ? t('status.insert') : t('status.overwrite') }}</button>
+          :title="t(`status.${workspace.typingMode}Title`)"
+          @click="workspace.cycleTypingMode()"
+      >{{ t(`status.${workspace.typingMode}`) }}</button>
       <button
           ref="renderer"
           :title="workspace.ansiRenderer === 'dom' ? t('status.domToCanvasTitle') : t('status.canvasToDomTitle')"

@@ -381,7 +381,11 @@ With the base selected, every tool draws on the base itself, as Merge down's **K
 - **Paint**: The Brush and other paint (the Pencil's **Colors only**, the Paint Bucket's **Colors only** fill) paint the
   base's own pixels, which the color sliders, the palette and the image filters then treat as the picture's. A stroke
   builds up there as it does on a layer over the picture: white at full Opacity is as white on the base as on a layer.
-- **Typing**: Overwrites there. **Insert** doesn't push the characters after it along, and **Delete** does nothing.
+- **Typing**: The three typing modes work there as on a layer ([Typing Text Directly](characters.md#typing-text-directly)).
+  **Insert** pushes every cell after the cursor along the row: its colors, the picture's among them, and its pinned
+  character, as moving a selection there does, and the cell left empty at the row's end by **Delete** or **Backspace**
+  is erased (black, with a pinned space). **Partial** pushes the pinned characters alone, each with its two colors,
+  and leaves the rest of the base where it is; a cell a character leaves shows the picture again.
 - **Erasing and Swapping**: The Eraser turns cells black with a pinned space (ANSI view) or pixels black (PIXEL
   view), and **Swap cell FG/BG** swaps a cell's two halves.
 
@@ -655,8 +659,8 @@ details.
 
 In the **ANSI** view, you work with text characters, foreground colors, and background colors:
 - **Edit Mode (`T` or `K`)**: Click anywhere on the grid to position the text cursor and type characters, accents, or
-  emoji ([Typing Text Directly](characters.md#typing-text-directly)). Press **Insert** (or the Insert / Overwrite
-  button in the status bar) to toggle between Insert and Overwrite modes. Edit Mode is only in the ANSI view.
+  emoji ([Typing Text Directly](characters.md#typing-text-directly)). Press **Insert** (or the mode's button in the
+  status bar) to go between Overwrite, Insert and Partial modes. Edit Mode is only in the ANSI view.
 - **Pencil (`P`)**: Paints the foreground color, or draws box-drawing lines with **Single line** and **Double line**
   ([Draw With](#draw-with)).
 - **Paint Bucket (`G`)**: Fills the color you see, or with **Cells**, whole cells with your colors and character.
@@ -971,7 +975,7 @@ swaps the two halves of each cell's base colors.
   you're on. Then it follows the tool: Edit Mode shows the cell under the cursor, Select the selection's size and place,
   and the Eyedropper its last pick and where each color came from. On the right it shows that Space pans, and while you
   hold Alt (Option on a Mac) or Shift, what that key does with the tool, then its buttons: the zoom (away from 100%),
-  **Overwrite** or **Insert** in Edit Mode, **Canvas** or **DOM**, and **Smooth**. When the view is too narrow for all
+  **Overwrite**, **Insert** or **Partial** in Edit Mode, **Canvas** or **DOM**, and **Smooth**. When the view is too narrow for all
   of it, the FG and BG hex codes go first (hover a swatch for its code), so the buttons stay whole; then the readout
   wraps onto another line a part at a time (Col and Row, Char, FG, BG), so nothing in it is cut off, and only the
   buttons scroll sideways, faded at the edge while there are more, with the mouse wheel too. The readout keeps room for its largest
