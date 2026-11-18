@@ -175,8 +175,11 @@ The settings on the left come in sections, each following a layer:
   - Every layer converts something (the base its picture, a drawing layer its paint, a vector layer its shapes), so
     the section is always there. A new drawing selects the base, so the picture's own settings show first: select a
     drawing layer to change how its paint becomes characters.
-- **Picture · Base**: **Smoothing**. Only with the base selected, and only with a picture: a blank canvas has none,
-  and still has none after a Bake.
+- **Picture · Base**: **Smoothing**, how the picture and the base's own pixels are scaled to the grid. Only with the
+  base selected, and only where it changes something: a picture, or a picture merged down onto the base (it lives in
+  the base's pixels then, finer than a grid pixel). A blank canvas has none, and still has none after a Bake, after
+  paint on the base, or after **Blend into source image**, which paints each grid pixel into the picture whole: Image
+  filters work on that picture, but Smoothing has nothing finer to scale.
 - **Image filters**: **Blur**, **Simplify**, **Sharpen**, **Edges** (with its color) and **Edge thickness**, which
   work on the picture itself. Only with the base selected, and only with a picture: on a blank canvas, or after
   Flatten, a note says image filters require an image instead. After a Bake or **Blend into source image** the picture

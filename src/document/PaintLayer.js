@@ -14,7 +14,7 @@
  * wrote is never part of the stroke.
  * LayerPatch = { tiles: { x, y, w, h, before: ImageData, after: ImageData }[], hadPaint, hasPaint }
  */
-import { ctx2d, canvasPng } from '../lib/Canvas.js';
+import { ctx2d, canvasPng, flatBlock } from '../lib/Canvas.js';
 import { rgb2hex } from '../lib/ColorUtils.js';
 import { eachPixel } from './changes.js';
 import { TILE, tilesForRect } from './History.js';
@@ -459,6 +459,35 @@ export default class PaintLayer {
     const since = this.#changes.filter((change) => change.version > version);
     if (since.length !== this.version - version || since.some(({ rect }) => !rect)) return null;
     return unionRect(since.map(({ rect }) => rect));
+  }
+
+  // Whether any grid pixel's block of layer pixels holds more than one color (a picture merged down onto the base, a soft
+  // stroke's edge): what Smoothing, which scales the base's own pixels to the grid, changes (#200). Kept a grid pixel at a
+  // time and looked at again only where the pixels changed since it was last asked (changedSince); all of them after a
+  // resize, or a change too long ago to say where.
+  #fine = null; // { version, cols, rows, scale, flags: a byte a grid pixel, 1 where it's finer, count: how many are }
+  finerThanGrid() {
+    const { cols, rows, scale: k } = this;
+    if (k === 1) return false; // a pixel a grid pixel: nothing finer
+    let fine = this.#fine;
+    if (fine?.version === this.version) return fine.count > 0;
+    const same = fine && fine.cols === cols && fine.rows === rows && fine.scale === k;
+    const changed = same ? this.changedSince(fine.version) : null;
+    if (!changed) fine = this.#fine = { cols, rows, scale: k, flags: new Uint8Array(cols * rows), count: 0 };
+    const x0 = changed ? Math.max(0, Math.floor(changed.x / k)) : 0, y0 = changed ? Math.max(0, Math.floor(changed.y / k)) : 0;
+    const x1 = changed ? Math.min(cols, Math.ceil((changed.x + changed.w) / k)) : cols, y1 = changed ? Math.min(rows, Math.ceil((changed.y + changed.h) / k)) : rows;
+    if (x1 > x0 && y1 > y0) {
+      const width = (x1 - x0) * k, pixels = new Uint32Array(ctx2d(this.canvas).getImageData(x0 * k, y0 * k, width, (y1 - y0) * k).data.buffer);
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const i = y * cols + x, was = fine.flags[i];
+          fine.flags[i] = flatBlock(pixels, width, k, x - x0, y - y0) ? 0 : 1;
+          fine.count += fine.flags[i] - was;
+        }
+      }
+    }
+    fine.version = this.version;
+    return fine.count > 0;
   }
 
   clear() {

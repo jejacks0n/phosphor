@@ -10,6 +10,7 @@ import { artBounds } from '@/document/artLayers.js';
 import { placedShapes } from '@/document/followers.js';
 import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { charModeOf } from '@/lib/CharResolver.js';
+import { onGrid } from '@/lib/ImageProcessor.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -335,6 +336,15 @@ export const useProjectStore = defineStore('project', {
     inRoom: (state) => !!state._sharing || state._hosting,
     // Why the Animate switch is off, if it is; rooms hold one still document, and frames never travel.
     canAnimate: (state) => !state._sharing && !state._hosting && state.cols * charRowsOf(state.rows) <= MAX_ANIMATION_CELLS,
+    // Whether Smoothing changes the drawing, so the panel shows it (#200). It scales the picture to the grid, and the base's
+    // own pixels: not a picture with nothing finer than a grid pixel (a blank canvas's, or what Into the image makes of
+    // one), nor base pixels laid a grid pixel at a time; a picture merged down onto the base, yes. editVersion: the base's
+    // pixels aren't reactive, and every change to them is an edit (or an undo, or a room's).
+    smoothingMatters() {
+      if (!this.image) return false;
+      void this.editVersion;
+      return !onGrid(this.image, this.processParams) || !!this.baseLayer?.finerThanGrid();
+    },
     processParams: (state) => ({
       ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
       chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,

@@ -32,6 +32,16 @@ export function fitRect(sw, sh, tw, th) {
   return { dx: Math.floor((tw - dw) * 0.5), dy: Math.floor((th - dh) * 0.5), dw, dh };
 }
 
+// Whether the k x k block of pixels (little-endian RGBA words, width a row) at block (bx, by) is one color: a grid
+// pixel's own block in a layer or picture at k pixels a grid pixel, with nothing finer than the grid in it.
+export function flatBlock(pixels, width, k, bx, by) {
+  const first = pixels[by * k * width + bx * k];
+  for (let y = by * k; y < (by + 1) * k; y++) {
+    for (let x = bx * k, row = y * width; x < (bx + 1) * k; x++) if (pixels[row + x] !== first) return false;
+  }
+  return true;
+}
+
 export default class Canvas {
   constructor(sourceCanvas) {
     this.canvas = sourceCanvas || Object.assign(document.createElement('canvas'), { width: 1, height: 1 });

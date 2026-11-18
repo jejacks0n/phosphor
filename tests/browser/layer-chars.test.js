@@ -214,6 +214,72 @@ test('#200: a blank canvas baked is still a blank canvas: no Picture · Base (Sm
   expect(sectionOf('Picture')).toBeUndefined();
 });
 
+// #200: Smoothing shows when it changes the drawing, and Image filters when there's a picture for them to work on.
+// Into the image on a blank canvas puts the merged cells into the picture, a flat block for every grid pixel: the filters
+// work on that, but Smoothing has nothing finer than a grid pixel to scale. Before a reload as after.
+test('#200: Into the image on a blank canvas shows Image filters and no Picture · Base (Smoothing), before a reload as after', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('edit');
+  project.paintStroke(Array.from({ length: 6 }, (_, k) => ({ x: 4 + k, y: 6, alpha: 1 })), '#ff5555');
+  project.commitEdit();
+  await project.mergeIntoPicture();
+  await settle(project);
+  workspace.pickLayer('base');
+  await mountPanel();
+  expect(sectionOf('Image filters')).toBeTruthy();
+  expect(sectionOf('Picture')).toBeUndefined();
+  await project.openParts(await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })), { filename: 'into' });
+  await settle(project);
+  workspace.pickLayer('base');
+  await nextTick();
+  expect(sectionOf('Image filters')).toBeTruthy();
+  expect(sectionOf('Picture')).toBeUndefined();
+});
+
+// #200: Smoothing scales the base's own pixels to the grid as well as the picture. A picture merged down onto a blank
+// canvas's base lives in those pixels, finer than a grid pixel, so Smoothing changes it and shows; paint laid a grid pixel
+// at a time doesn't. Undo takes it away again, redo brings it back, and a reload keeps it.
+test('#200: a picture merged down onto the base shows Picture · Base (Smoothing); paint on the base alone does not', async () => {
+  const { project, workspace } = await blank();
+  workspace.pickLayer('base');
+  project.paintStroke(Array.from({ length: 6 }, (_, k) => ({ x: 4 + k, y: 6, alpha: 1 })), '#ff5555');
+  project.commitEdit();
+  await settle(project);
+  await mountPanel();
+  expect(sectionOf('Picture')).toBeUndefined();
+  const canvas = Object.assign(document.createElement('canvas'), { width: 200, height: 100 }), ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#55ff55';
+  ctx.arc(100, 50, 40, 0, 2 * Math.PI);
+  ctx.fill(); // a circle: its edges cross grid pixels
+  const blob = await new Promise((done) => canvas.toBlob(done, 'image/png'));
+  const id = await project.addPictureToLayer(new File([blob], 'circle.png', { type: 'image/png' }));
+  await settle(project);
+  workspace.pickLayer('base');
+  await nextTick();
+  expect(sectionOf('Picture')).toBeUndefined(); // on a layer of its own, Smoothing doesn't reach it
+  project.mergeDown(id);
+  await settle(project);
+  workspace.pickLayer('base');
+  await nextTick();
+  expect(sectionOf('Picture')).toBeTruthy();
+  expect(sectionOf('Image filters')).toBeUndefined(); // still no picture of its own for the filters
+  project.undo();
+  await settle(project);
+  workspace.pickLayer('base');
+  await nextTick();
+  expect(sectionOf('Picture')).toBeUndefined();
+  project.redo();
+  await settle(project);
+  workspace.pickLayer('base');
+  await nextTick();
+  expect(sectionOf('Picture')).toBeTruthy();
+  await project.openParts(await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })), { filename: 'merged' });
+  await settle(project);
+  workspace.pickLayer('base');
+  await nextTick();
+  expect(sectionOf('Picture')).toBeTruthy();
+});
+
 test('Characters and Picture fold on their titles like the slider groups, and stay folded when the panel comes back', async () => {
   const { workspace } = await picture();
   workspace.pickLayer('base');
