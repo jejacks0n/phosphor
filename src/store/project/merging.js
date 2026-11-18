@@ -11,7 +11,7 @@ import { EMPTY_BASE, withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { makeArt, isArt } from '@/document/artLayers.js';
 import { finerStops, isGradient, isShape, shapeBounds, shapeFromStranger, stacked, withShape } from '@/document/shapes.js';
-import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock, isFrozen, shownEntry } from '@/document/editCells.js';
+import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock, isFrozen, ownEntry, shownEntry } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors, mix } from '@/lib/Cells.js';
@@ -175,9 +175,10 @@ function pressLayer(project, id, rect, keys) {
 
 // The paint layer under a merged layer, a new one: its own paint (if any) with the cells merged in erased (they show what
 // the layer above showed now) and the paint from above (from, if any) drawn over it, inside rect or all of it.
-function mergedPaint(project, into, erased, from, rect) {
+function mergedPaint(project, into, erased, from, rect, backs = []) {
   const paint = paintFrom(project.paintLayer, into?.hasPaint ? into.snapshot() : null);
   paint.erase(erased);
+  if (backs.length) paint.put(backs);
   if (from?.hasPaint) paint.drawOver(from, rect);
   return paint;
 }
@@ -246,13 +247,26 @@ function frozenCells(project, id, indexes, level = indexes.length && levelCells(
 function onCells(project, id, under, rect) {
   const cells = project.cellsOf(id), paint = project.paintOf(id), rows = charRowsOf(project.rows), { cols } = project;
   const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
-  const next = new Map(project.cellsOf(under)), kept = new Map(), erased = [], blocks = [];
+  const next = new Map(project.cellsOf(under)), kept = new Map(), erased = [], blocks = [], backs = [];
+  const underPaint = project.paintOf(under);
   for (const [key, entry] of cells) {
     const { col, row } = parseKey(key);
     if (!inRect(col, row)) kept.set(key, entry);
     else if (col >= cols || row >= rows) next.set(key, entry);
     else if (isPaintBlock(entry)) { // paint, not a cell of its own: it stays one over the paint under it, or goes
-      if (!next.has(key) || isPaintBlock(next.get(key))) next.set(key, entry);
+      const below = next.get(key);
+      if (!below || isPaintBlock(below)) next.set(key, entry);
+      else if (project.renderStyle === 'ansi' && ownEntry(below, 'ansi')) {
+        // In ANSI it showed in place of the character under it (blockOver, docs/model.md R5): it takes that place, as a
+        // block written on that layer does (writeBlocks), the character's own background going into the paint under.
+        next.set(key, entry);
+        if (below.bg) {
+          backs.push(...halvesOf(col, row).filter(({ y }) => y < project.rows).map(({ x, y }) => {
+            const bg = hex2rgb(below.bg), paint = underPaint?.pixelAt(x, y);
+            return { x, y, ...(paint ? over(bg, paint) : bg), a: 1 };
+          }));
+        }
+      }
       blocks.push(row * cols + col);
     } else {
       next.set(key, project.completeAt(col, row, entry, id));
@@ -270,7 +284,7 @@ function onCells(project, id, under, rect) {
   if (rect && !erased.length && !painted.length) return false; // nothing drawn inside: no empty undo step
   const was = painted.length && levelCells(project, id, painted), frozen = frozenCells(project, id, painted, was);
   const before = { stack: stackState(project) };
-  const into = mergedPaint(project, project.paintOf(under), erased, paint && paintFrom(paint, paint.snapshot()), rect);
+  const into = mergedPaint(project, underPaint, erased, paint && paintFrom(paint, paint.snapshot()), rect, backs);
   const left = rect && paint ? paintFrom(paint, paint.snapshot()) : null;
   left?.clearCells(rect);
   const after = () => {

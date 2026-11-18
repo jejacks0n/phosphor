@@ -31,8 +31,8 @@ import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex, withIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint, pinnedCell } from '../lib/Cells.js';
-import { cellKey, parseKey, shownEntry, isFrozen, tintedEntry } from './editCells.js';
+import { blockOver, buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint, pinnedCell } from '../lib/Cells.js';
+import { cellKey, parseKey, shownEntry, isFrozen, isPaintBlock, tintedEntry } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
 import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatcher, resolveShapes, SAMPLES } from '../lib/CharResolver.js';
@@ -1087,7 +1087,8 @@ export default class Renderer {
       const entry = shownEntry(u.cells.get(key), renderStyle);
       const top = read ? paintAt(read, 2 * row) : null, bottom = read ? paintAt(read, 2 * row + 1) : null;
       if (entry) {
-        cell = composeCell(cell, entry, renderStyle, (hex, index) => this.effective(hex, params, index));
+        // A paint block over a character of someone's own takes its place (blockOver), as it does on the character's layer.
+        cell = isPaintBlock(entry) && exact ? blockOver(cell) : composeCell(cell, entry, renderStyle, (hex, index) => this.effective(hex, params, index));
         exact = !isFrozen(entry); // a frozen cell shows its character, and is paint to what's over it (docs/model.md R3)
         if (!exact) continue; // its own paint under it is what it stands for: not laid over it
       }
@@ -1485,7 +1486,7 @@ export default class Renderer {
     const own = entry.char != null && entry.fg && entry.bg && params.renderStyle !== 'ascii';
     const under = own ? null : this.underCell(col, row, params, baseCells);
     if (own ? !this.#hasUnder(col, row, params) : !under) return baseCells[cellIndex(col, row, params.cols)];
-    const cell = composeCell(under, entry, params.renderStyle, (hex, index) => this.effective(hex, params, index));
+    const cell = isPaintBlock(entry) && this.pinAt(col, row) !== undefined ? blockOver(under) : composeCell(under, entry, params.renderStyle, (hex, index) => this.effective(hex, params, index));
     if (this.#noPaint || isFrozen(entry)) return cell; // a frozen cell's paint under it is what it stands for (docs/model.md R3)
     const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
     return this.#paintOver(cell, () => this.pictureUnder(cell, col, row, params), top, bottom, true, col, row, params, this.palette, () => this.#fineUnder(col, row, null, 0, null, params));

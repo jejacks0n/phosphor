@@ -9,7 +9,7 @@ import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.js';
+import { blockOver, cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -95,14 +95,15 @@ export const editLayerActions = {
   // character of the layer's own, so its bottom half showed that color under paint on the top half, a whole cell where
   // the stroke drew half of one. A background of the cell's own stays: it goes into paint in both halves, under the
   // layer's paint there, as the cell showed it. A frozen cell's paint is under it already. On the base a pinned
-  // character's colors are its two pixels, its foreground the lower one, so its block takes its background in both; a
-  // cell the converter drew keeps the halves it had.
+  // character's colors are its two pixels, its foreground the lower one, so its block takes its background in both
+  // (blockOver: a solid glyph, a ▄ among them, keeps its halves); a cell the converter drew keeps the halves it had.
   writeBlocks(cells) {
     if (onBottom(this)) {
       const { pins } = this.baseRecords;
       return this.writeEditCells(cells.map((c) => {
-        const bg = pins.has(cellKey(c.col, c.row)) && this.completeAt(c.col, c.row).bg;
-        return { ...c, attrs: bg ? { char: '▄', fg: bg, bg } : { char: '▄' } };
+        if (!pins.has(cellKey(c.col, c.row))) return { ...c, attrs: { char: '▄' } };
+        const { fg, bg } = blockOver(this.completeAt(c.col, c.row)); // a ▄ pinned already (a stroke back over it) keeps its halves
+        return { ...c, attrs: { char: '▄', fg, bg } };
       }));
     }
     const { rows } = this, backed = cells.filter(({ col, row }) => this.editCellAt(col, row)?.bg && !isFrozen(this.editCellAt(col, row)));

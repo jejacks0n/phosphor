@@ -474,7 +474,8 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
   half-blocks, use **Half-block**.
 - **Half-block**: Each cell they paint becomes a ▄, and the paint colors its two halves, so you draw clean
   half-blocks. The half you don't paint keeps the cell's background: a character there goes, and its color with it, so a
-  stroke across a line you typed is a half block too, not a whole cell.
+  stroke across a line you typed is a half block too, not a whole cell, whether the line is on the same layer or one
+  under it.
 - **Single line** and **Double line** (Pencil only): Draw box-drawing lines as you drag from cell to cell. Each cell
   gets the piece its path needs (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼), so the line turns corners and joins itself where it crosses
   back, in the foreground color (and the background color, unless it's None). A diagonal drag becomes a staircase.

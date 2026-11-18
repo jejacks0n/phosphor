@@ -31,7 +31,8 @@ cell merged onto the base becomes an ordinary pin.
 its entry is shown in this style (`shownEntry`: a paint block outside ANSI isn't), not frozen (`isFrozen`), and not a
 paint block (paint's, in any style). The Renderer asks the wider `tintedEntry` (shown and not frozen) for whether paint
 above tints the cell or converts over it: a shown ▄ block tints as a solid glyph does, into a ▄ with the paint in it, so
-Colors only's half-blocks stay half-blocks under paint above. Every
+Colors only's half-blocks stay half-blocks under paint above. A ▄ block over a character of someone's own on a layer
+under it, or a pin, takes that character's place (`blockOver`, R5). Every
 path that treats someone's character differently from paint asks it, or the two it's made of; none asks
 `entry.fg || entry.bg`, `cells.has(key)` or `char === '▄'` for that. That includes every path that walks a layer's
 entries to act on them (the Paint Bucket's walls, Rotate, Insert and Delete, Keep crisp cells): an entry in the map isn't
@@ -79,7 +80,8 @@ settings. `█` has ink there and stays.
 
 A character of someone's own is completed against the look under it and written there (`completeAt`); paint is drawn
 over the paint under it and stays paint; a paint block goes in as a block (where the layer under has no character of
-its own there) and its paint as paint. Only where paint would convert otherwise in its new place (`unlike`, compared
+its own there; in ANSI, where it has one, in its place, as it showed: its background goes into the paint under, as a
+block written there does, R5) and its paint as paint. Only where paint would convert otherwise in its new place (`unlike`, compared
 up to the layer merged into with `ROUNDING` steps of tolerance per channel, characters exact) and covers the cell whole
 (both halves opaque, `freezeUnlike`) is it pinned: the paint stays, and the cell it showed is written over it
 (`frozenCells`), marked frozen. A cell the paint covers only in part (a stroke's or a shape's soft edge) stays paint,
@@ -144,7 +146,11 @@ background color, which is Random's: a stroke on a blank canvas shows Random's c
 to draw ▄, and its ▄ (the Shape tool's Write block glyphs' too) is a paint block over any cell: the character it
 replaces goes with its foreground, which a ▄ kept would show in its bottom half, a whole cell where the paint drew half
 of one. A background of the cell's own stays, as paint under the layer's; on the base a pinned character's block takes
-its background in both pixels, and a cell the converter drew keeps its halves. A pinned character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a
+its background in both pixels (a ▄ pinned already, a stroke passing back over it, keeps its halves), and a cell the
+converter drew keeps its halves. A block on a layer above a character of someone's own (on a layer under it, or a pin)
+shows the same in ANSI: it takes the character's place, a textured character's halves its background and a solid
+glyph's its own halves (`blockOver` in `src/lib/Cells.js`), where it had shown the character's foreground in its bottom
+half; Merge down puts it there (R3). A pinned character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a
 character of someone's own under the layer the paint shows as R2 has it, with no entry.
 
 A cell a shape covers under the layer (the topmost thing under it there is a vector layer's fill or stroke) is drawn
@@ -154,13 +160,17 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
 
 - Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`; `converted` says which cells the
   converter drew), with `showsNoChar` and `shapeUnder` there; Half-block's and Write block glyphs' ▄ in `writeBlocks`
-  there.
+  there; a block over a character under it in `blockOver` (`src/lib/Cells.js`), which the Renderer's `#upperCell` and
+  `#composeOne`, `layerOver` in `src/store/project/reading.js` and Merge down's `onCells` use.
 - Checked by: `tests/browser/block-chars.test.js › R5: …` (the base and a layer under Random, Best match and By shape;
   the reports: the Brush on a blank canvas under the base's Random, a layer with its own Random over a flat canvas; a
   flat shape under the layer), `› with Colors only on the base, a cell that shows no character …`, `› with Colors only,
   a cell that shows no character (the black of an opened file's grown lines) …` and
   `› …with Colors only, a layer's own cell that shows no character becomes a plain ▄ …`; `› R5: the report: a Half-block
-  box with Write block glyphs over a line box …` and `› R5: on the base, a Half-block box …`.
+  box with Write block glyphs over a line box …`, `› R5: on the base, a Half-block box …`, `› R5: a Half-block box with
+  Write block glyphs on the layer above a line …` (with Merge down and the stored look), `› blockOver: …` and
+  `› R5: the report: Half-block boxes over a line box …` (projects/boxes2.phosphor: the Shape tool and the Pencil, on the
+  base and a layer, a half cell apart, Merge down and undo).
 
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
 

@@ -3,7 +3,8 @@
 // that paint in the Pixel view gives the cell its generated character back.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
-import { cellIndex } from '@/lib/Cells';
+import { blockOver, cellIndex } from '@/lib/Cells';
+import { coverageOf } from '@/lib/GlyphCoverage.js';
 import { ellipseShape, rectShape } from '@/document/shapes.js';
 import pencil from '@/tools/pencil';
 import brush from '@/tools/brush';
@@ -556,3 +557,103 @@ test('R5: on the base, a Half-block box with Write block glyphs over a typed lin
   expect(look(10, 5)).toEqual(['▄', '#000000', '#ffffff']);
   expect(look(10, 5)).toEqual(look(18, 5));
 });
+
+// The same box on a layer above the line: a line on the base under Layer 1, or on Layer 1 under Layer 2. The ▄ there was
+// shown with the line's foreground in its bottom half, the colors of the cell under it, so it showed whole cells too; it
+// takes the character's place (blockOver), Merge down puts it there, and the stored look (the Eyedropper's, a freeze's)
+// says what shows.
+for (const linesOn of ['base', 'layer'])
+  for (const merge of [false, true]) {
+    test(`R5: a Half-block box with Write block glyphs on the layer above a line ${linesOn === 'base' ? 'on the base' : 'on a layer'} shows ▄s in the line's background${merge ? ', and Merge down keeps them' : ''}`, async () => {
+      const { project, workspace } = await createTestApp();
+      await project.setBlankCanvas({ cols: 40, rows: 20 });
+      await settle(project);
+      let lines = 'base';
+      if (linesOn === 'layer') lines = project.addLayer('cells', 'base');
+      workspace.pickLayer(lines);
+      for (let col = 5; col < 15; col++) project.typeAt(col, 5, '═', { fg: '#0061ff' });
+      project.typeAt(15, 5, 'A', { fg: '#ff0000', bg: '#00ff00' }); // a background of its own, which the block keeps
+      project.commitEdit();
+      const box = project.addLayer('cells', lines);
+      workspace.pickLayer(box);
+      Object.assign(workspace, { editFgColor: '#ffffff', editBgNone: true, shapeKind: 'rect', shapeDrawWith: 'half', shapeBlockChars: true });
+      const ctx = { project, workspace, view: 'output' };
+      shapes.begin(ctx, { x: 8.5, y: 10.5 }); // its top edge on the top halves of row 5: cols 8 to 15 cross the line
+      shapes.move(ctx, { x: 8.5, y: 10.5 }, { x: 20.5, y: 16.5 });
+      shapes.end(ctx);
+      await settle(project);
+      if (merge) {
+        project.mergeDown(box);
+        await settle(project);
+      }
+      const look = (col, row) => { const { char, fg, bg } = project.cells[cellIndex(col, row, project.cols)]; return [char, fg.hex, bg.hex]; };
+      expect(look(10, 5)).toEqual(['▄', '#000000', '#ffffff']);
+      expect(look(10, 5)).toEqual(look(18, 5));
+      expect(look(15, 5)).toEqual(['▄', '#00ff00', '#ffffff']);
+      for (const col of [10, 15]) {
+        const stored = project.storedLookAt(col, 5);
+        expect([stored.char, stored.fg.toLowerCase(), stored.bg.toLowerCase()]).toEqual(look(col, 5));
+      }
+    });
+  }
+
+test('blockOver: a textured character\'s block is its background in both halves; a solid or empty glyph keeps its halves', () => {
+  expect(blockOver({ char: '═', fg: 'F', bg: 'B', fgIndex: 1, bgIndex: 2 })).toEqual({ char: '▄', fg: 'B', bg: 'B', fgIndex: 2, bgIndex: 2 });
+  expect(blockOver({ char: '█', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'F', bg: 'F' });
+  expect(blockOver({ char: '▀', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'B', bg: 'F' });
+  expect(blockOver({ char: ' ', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'B', bg: 'B' });
+});
+
+// The report (projects/boxes2.phosphor: a double-line box pinned on the base): Half-block boxes placed over it a half
+// cell apart came out otherwise, whole cells at some offsets. With the Shape tool's Write block glyphs and the Pencil's
+// Half-block, on the base or on a layer above, each cell a box touches shows its paint in the half it paints and, in the
+// other, what was there with the character gone (a pin's background, else the pixel); a corner the Pencil passes twice
+// keeps its halves (a ▄ pinned already isn't given its top color twice); Merge down onto the base changes nothing, and
+// undo puts every cell back.
+for (const on of ['base', 'layer'])
+  for (const tool of ['shape', 'pencil']) {
+    test(`R5: the report: Half-block boxes over a line box, ${tool === 'shape' ? 'the Shape tool with Write block glyphs' : 'the Pencil'}, on ${on === 'base' ? 'the base' : 'a layer'}, a half cell apart`, async () => {
+      const halves = (cell) => { const cov = coverageOf(cell.char); return cov.every((c) => c === 0 || c === 1) ? cov.map((c) => (c ? cell.fg.hex : cell.bg.hex)) : cell.char; };
+      for (const [x0, y0, x1, y1] of [[20, 10, 30, 20], [20, 11, 30, 21], [12, 9, 16, 12], [46, 24, 50, 27]]) { // the line box: cols 15 to 48, rows 5 to 12
+        const { project, workspace } = await createTestApp();
+        await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/boxes2.phosphor')).arrayBuffer()], 'x.phosphor'));
+        await settle(project);
+        workspace.pickLayer(on === 'base' ? 'base' : project.addLayer('cells', 'base'));
+        Object.assign(workspace, { editFgColor: '#ffffff', editBgNone: true, shapeKind: 'rect', shapeDrawWith: 'half', shapeBlockChars: true, pencilDrawWith: 'half' });
+        const ctx = { project, workspace, view: 'output' }, { cols } = project, at = (x, y) => ({ x: x + 0.5, y: y + 0.5 });
+        const before = project.cells.map(halves);
+        const left = project.cells.map((c, i) => { // what a half the box leaves shows
+          const col = i % cols, row = (i - col) / cols, top = project.baseColorAt(col, 2 * row).toLowerCase();
+          return project.baseRecords.pins.has(`${col},${row}`) ? [top, top] : [top, project.baseColorAt(col, 2 * row + 1).toLowerCase()];
+        });
+        if (tool === 'shape') {
+          shapes.begin(ctx, at(x0, y0));
+          shapes.move(ctx, at(x0, y0), at(x1, y1));
+          shapes.end(ctx);
+        } else {
+          const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]];
+          pencil.begin(ctx, at(...corners[0]), {});
+          for (let i = 1; i < corners.length; i++) pencil.move(ctx, at(...corners[i - 1]), at(...corners[i]));
+          pencil.end(ctx);
+        }
+        await settle(project);
+        const painted = (x, y) => (x === x0 || x === x1 ? y >= y0 && y <= y1 : (y === y0 || y === y1) && x >= x0 && x <= x1);
+        const wrong = project.cells.map((cell, i) => {
+          const col = i % cols, row = (i - col) / cols, paint = [painted(col, 2 * row), painted(col, 2 * row + 1)];
+          const want = paint.some(Boolean) ? paint.map((p, k) => (p ? '#ffffff' : left[i][k])) : before[i];
+          return JSON.stringify(halves(cell)) === JSON.stringify(want) ? null : `(${col},${row}) ${cell.char} ${cell.fg.hex}/${cell.bg.hex}, not ${want}`;
+        }).filter(Boolean);
+        expect(wrong).toEqual([]);
+        if (on === 'layer') {
+          const shown = project.cells.map(halves);
+          project.mergeDown(project.editId);
+          await settle(project);
+          expect(project.cells.map(halves)).toEqual(shown);
+          project.undo();
+        }
+        project.undo();
+        await settle(project);
+        expect(project.cells.map(halves)).toEqual(before);
+      }
+    });
+  }
