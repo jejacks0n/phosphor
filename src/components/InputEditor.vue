@@ -117,6 +117,14 @@ const drawVeil = (ctx, win, width, height) => {
     }
     const image = new ImageData(cols, rows);
     veilPixels(image.data, base.data, inherited, cols, projectStore.ghostStrength);
+    // Over a character on the base, what's under is its look, as the view shows it there (docs/model.md R11).
+    // ponytail: each inherited cell is asked for its pin, every time the cells change (an animation's 40,000 cells, all
+    // inherited over a base that's all pins: 16 to 20 ms); work out only the cells that changed if that shows.
+    const params = projectStore.processParams;
+    for (const i of inherited) {
+      const col = i % cols, row = (i - col) / cols, look = projectStore.renderer.baseLook(col, row, params);
+      look?.forEach(({ r, g, b }, half) => image.data.set([r, g, b], 4 * ((2 * row + half) * cols + col)));
+    }
     for (const [{ built, strength, tint }, indexes] of pictured) {
       veilPixels(image.data, artOf(built), indexes, cols, 1 - strength, tint);
     }
@@ -150,7 +158,8 @@ const place = (dc, win, zoom) => Object.assign(dc.style, { width: `${win.cols * 
 
 const redrawDisplay = () => {
   const dc = canvasRef.value, sizer = sizerRef.value;
-  const output = (workspaceStore.playing && workspaceStore.played?.output) || projectStore.renderer.shownCanvas(); // the upper layers' pixels over it
+  const played = workspaceStore.playing && workspaceStore.played?.output;
+  const output = played || projectStore.renderer.shownCanvas(); // the upper layers' pixels over it
   if (!dc || !sizer || !viewportEl || !output) return;
   const zoom = workspaceStore.editZoom, view = viewIn(sizer, viewportEl);
   // A grid pixel is a column wide and half a line tall: the whole cells in view, and the zoom they're
@@ -174,6 +183,10 @@ const redrawDisplay = () => {
   ctx.imageSmoothingEnabled = false;
   // Drawn to the backing size, not the CSS size: at a fractional zoom the two differ by under a pixel.
   ctx.drawImage(output, win.col, win.row, win.cols, win.rows, 0, 0, dc.width, dc.height);
+  // A character on the base, or an art layer's, as it looks at this scale, over the two colors the pixels hold it as
+  // (docs/model.md R11): the Renderer's image of them, kept as the Overlay's is. A frame playing has them in its output.
+  const looks = !played && projectStore.renderer.looksCanvas(projectStore.processParams);
+  if (looks) ctx.drawImage(looks, win.col, win.row, win.cols, win.rows, 0, 0, dc.width, dc.height);
   drawVeil(ctx, win, dc.width, dc.height);
   drawOverlay(ctx, win, dc.width, dc.height);
 };

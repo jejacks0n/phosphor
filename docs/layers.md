@@ -352,8 +352,9 @@ Either way:
   the whole file fits).
 - **Every Cell Keeps Its Character and Colors**: So it looks just as the file does. Opening a file isn't an edit, so
   there's nothing to undo. With **Draw on top**, the art is the base layer as if you'd used Merge down, and the color
-  sliders, the palette and Bake work on it as they do on any picture. **All cells** turns on in the PIXEL view, so
-  each cell shows there as it looks rather than as its two colors.
+  sliders, the palette and Bake work on it as they do on any picture. The PIXEL view shows each of its characters as
+  it looks at that scale ([PIXEL View](#pixel-view)), and **All cells** turns on there, so every cell shows as the
+  ANSI view has it, paint over the file included.
 - **The Palette**: Follows the file: CGA when every color is one of the 16 classic colors, VGA when it uses 256-color
   codes for the others, and full color when it uses a 24-bit code. An export writes the same kind of codes, 16 and 231
   (fixed black and white) among them, where 0 and 15 would follow a terminal's theme
@@ -378,7 +379,8 @@ With the base selected, every tool draws on the base itself, as Merge down's **K
 
 - **Cells**: The Pencil's lines, Shapes, the Paint Bucket's **Cells**, Edit Mode and a paste write each cell as it
   shows: its two colors go into the base's two pixels (the background the top, the foreground the bottom) and its
-  character is pinned, so the converter keeps it. A cell given only a foreground keeps the background it showed.
+  character is pinned, so the converter keeps it. A cell given only a foreground keeps the background it showed. The
+  PIXEL view shows the cell as its character looks there, not as those two pixels ([PIXEL View](#pixel-view)).
 - **Paint**: The Brush and other paint (the Pencil's **Colors only**, the Paint Bucket's **Colors only** fill) paint the
   base's own pixels, which the color sliders, the palette and the image filters then treat as the picture's. A stroke
   builds up there as it does on a layer over the picture: white at full Opacity is as white on the base as on a layer.
@@ -556,7 +558,9 @@ and the PIXEL view give you:
   different.
 - **Color ASCII is ANSI in spirit.** The converter's cells are ink on black, but a cell of yours with a background
   shows it, and keeps it when merged onto the base.
-- **The PIXEL view is the pixels.** Its Overlay draws only your characters, never the converter's over paint.
+- **The PIXEL view is the pixels, and the base's characters as they look.** A character on the base is kept as two
+  pixels, its background over its foreground; the PIXEL view shows it as it looks at that scale, with paint from the
+  layers above over it. Its Overlay draws only your characters, never the converter's over paint.
 
 The engineering rules behind these, with where each lives in the code and the tests that hold it, are in
 [docs/model.md](model.md); Maya's QA script walks them ([How my layers blend](qa/personas/maya.md#how-my-layers-blend)).
@@ -695,6 +699,18 @@ canvas:
 - **Overlay**: The slider in the options bar draws the cells of your layers (or every cell, with **All cells**) over
   the pixels, as the ANSI view shows them. Paint that the art style turns into characters (Colors only's ▄s, in Color
   ASCII and Monochrome ASCII) isn't drawn over: you see the paint itself, blended with what's under it.
+- **Characters on the Base**: A character drawn, typed or opened on the base (and an art layer's) shows as it looks
+  at this scale, whatever the Overlay is set to. Each of the cell's two pixels is its background blended toward its
+  foreground by how much of that half the character inks: `█` is solid, `▓`, `▒` and `░` are three quarters, a half
+  and a quarter of the way, `▐` and `▌` a half (a pixel here is one column wide, so it can't split sideways), `▄`
+  is its two colors, and a thin character like `═` shows faintly. In Color ASCII and Monochrome ASCII it's the cell
+  as that style shows it.
+  - **Paint Above It**: Paint on a layer over the character shows over it, where you painted it. A shape over it
+    takes the cell, as it does in the ANSI view.
+  - **What the Tools Work On**: The cell's two stored colors, as before: its background in the upper pixel and its
+    foreground in the lower one. The Eyedropper on a gray `▒` picks one of those two, and the Brush with the base
+    picked changes the color of the half it touches, which the character may hide (a `█` shows only its
+    foreground). Nothing saved or exported changes.
 
 ---
 

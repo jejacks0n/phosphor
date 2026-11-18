@@ -197,6 +197,8 @@ export default class FrameBuilder {
     output.width = cols;
     output.height = rows;
     ctx2d(output).drawImage(renderer.shownCanvas(), 0, 0);
+    const looks = renderer.looksCanvas(params); // its characters as they look, as the PIXEL view lays them (docs/model.md R11)
+    if (looks) ctx2d(output).drawImage(looks, 0, 0);
     return { cells, output, editCells: every ?? editCells };
   }
 }

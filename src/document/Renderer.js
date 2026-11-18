@@ -31,7 +31,7 @@ import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex, withIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { blockOver, buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint, pinnedCell } from '../lib/Cells.js';
+import { blockOver, buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, colorOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint, pinnedCell } from '../lib/Cells.js';
 import { cellKey, parseKey, shownEntry, isFrozen, isPaintBlock, tintedEntry } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
@@ -82,6 +82,7 @@ export default class Renderer {
   #upperStored = new WeakMap(); // an upper vector layer -> its shapes at grid resolution as stored (upperStoredAt)
   #upperPaints = new WeakMap(); // an upper cells layer's paint -> its pixels at grid resolution through the transforms (#upperPaint)
   #shownOver = null;    // { of, canvas, dirty }: the output with the upper layers' pixels over it (shownCanvas); dirty, the grid rect a compose changed since, or null for all of it
+  #looks = null;        // { of, canvas, dirty }: the characters of someone's own at pixel scale (looksCanvas); of and dirty as #shownOver's
   #matchers = new WeakMap(); // an upper layer's params -> { palette, matcher }: Best match's or By shape's matcher for one of its cells (#upperChar)
   #upperSamples = new WeakMap(); // an upper vector layer's shapes or cells layer's paint -> { params, w, h, k, key, version, tiles }: its own samples at By shape's resolution, a tile of cells at a time (#samplesAt)
   #tiles = new Map();   // every upper layer's tile -> its layer's #upperSamples entry, least recently used first, within sampleBudget
@@ -100,7 +101,7 @@ export default class Renderer {
     this.pipelineCanvas = this.outputCanvas = this.palette = this.#chosen = this.#pictureCanvas = null;
     this.everyLayer = [];
     this.#pipelineData = this.#baseData = this.#paintData = this.#source = this.#processed = this.#baseDrawn = this.#baseStored = this.#baseParams = this.#snapped = this.#dithered = this.#resolved = this.#baseSnapped = this.#picture = this.#samples = this.#painted = null;
-    this.#lowerEdits = this.#shownOver = null;
+    this.#lowerEdits = this.#shownOver = this.#looks = null;
     this.#noPaint = true;
     this.#matchers = new WeakMap();
     this.#upperSamples = new WeakMap();
@@ -718,7 +719,7 @@ export default class Renderer {
     const next = cells.slice();
     const { cols, chars: charset, charMode, renderStyle } = params;
     const done = new Set();
-    const resolved = this.#resolvedFor(params), rebuilt = { x0: Infinity, x1: -1, r0: Infinity, r1: -1 }; // the cells' bounds, for #showResolved
+    const resolved = this.#resolvedFor(params), rebuilt = { x0: Infinity, x1: -1, r0: Infinity, r1: -1 }; // the cells' bounds, for #showResolved and the looks
     const pixelAt = !resolved && this.#outputPixels(pixels); // the resolved cells don't read the output
 
     for (const { x, y } of pixels) {
@@ -726,7 +727,7 @@ export default class Renderer {
       const i = cellIndex(col, row, cols);
       if (done.has(i) || !next[i]) continue;
       done.add(i);
-      if (resolved) Object.assign(rebuilt, { x0: Math.min(rebuilt.x0, col), x1: Math.max(rebuilt.x1, col), r0: Math.min(rebuilt.r0, row), r1: Math.max(rebuilt.r1, row) });
+      Object.assign(rebuilt, { x0: Math.min(rebuilt.x0, col), x1: Math.max(rebuilt.x1, col), r0: Math.min(rebuilt.r0, row), r1: Math.max(rebuilt.r1, row) });
 
       const entry = shownEntry(editCells.get(cellKey(col, row)), renderStyle);
       if (entry) {
@@ -762,8 +763,10 @@ export default class Renderer {
       const char = keepsSeed(charMode) ? (baseCells[i] ?? next[i]).char : weightedChar(top, bottom, charset, charMode);
       next[i] = this.#onBase(col, row, buildCell(top, bottom, char, renderStyle), params, [top, bottom]);
     }
-    if (rebuilt.x1 >= 0 && this.#showsResolved(params)) {
-      this.#showResolved(ctx2d(this.outputCanvas), params, { x: rebuilt.x0, y: 2 * rebuilt.r0, w: rebuilt.x1 - rebuilt.x0 + 1, h: 2 * (rebuilt.r1 - rebuilt.r0 + 1) });
+    if (rebuilt.x1 >= 0) {
+      const area = { x: rebuilt.x0, y: 2 * rebuilt.r0, w: rebuilt.x1 - rebuilt.x0 + 1, h: 2 * (rebuilt.r1 - rebuilt.r0 + 1) };
+      if (this.#showsResolved(params)) this.#showResolved(ctx2d(this.outputCanvas), params, area);
+      this.#looksDirty(area); // a pin can change with its pixels as they were (another character written in the same colors)
     }
     return next;
   }
@@ -806,6 +809,7 @@ export default class Renderer {
   composeAll(baseCells, editCells, params) {
     this.#lowerEdits = editCells;
     this.#lowerStyle = params.renderStyle;
+    this.#looksDirty(null);
     const cells = baseCells.slice();
     const rows = charRowsOf(params.rows), pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
     for (const key of this.shapes?.hasArt ? new Set([...pins.keys(), ...this.shapes.artCells()]) : pins.keys()) {
@@ -839,13 +843,7 @@ export default class Renderer {
   composeUpper(lower, indexes, palette, composed = null, { open = false } = {}) {
     const out = (indexes && composed?.length === lower.length ? composed : lower).slice();
     const cols = this.upper[0]?.params.cols ?? 1;
-    // Each layer's pixels at grid resolution, read once for the walk: a cells layer's paint, a vector layer's shapes.
-    const reads = this.upper.map((u) => {
-      if (u.kind === 'cells') return u.paint?.hasPaint ? this.#upperPaint(u.paint, u.params) : null;
-      if (!u.layer?.drawsShapes) return null;
-      u.layer.sync();
-      return this.#upperGrid(u.layer, u.params).data;
-    });
+    const reads = this.#upperReads();
     const settles = this.upper.map((u, at) => u.kind === 'vector' && !!reads[at] && this.holdsDither(u.params));
     // Every cell: only those some upper layer touches, as the rest come out as they went in.
     let visited = indexes ?? this.#touched(reads, cols, lower.length);
@@ -881,6 +879,17 @@ export default class Renderer {
     }
     this.#shownDirty(indexes ? { x: x0, y: 2 * y0, w: n ? x1 - x0 + 1 : 0, h: n ? 2 * (y1 - y0 + 1) : 0 } : null);
     return out;
+  }
+
+  // Each upper layer's pixels at grid resolution, read once for a walk over them (composeUpper, looksCanvas): a cells
+  // layer's paint (bytes), a vector layer's shapes (an ImageData), or null for one with nothing to lay.
+  #upperReads() {
+    return this.upper.map((u) => {
+      if (u.kind === 'cells') return u.paint?.hasPaint ? this.#upperPaint(u.paint, u.params) : null;
+      if (!u.layer?.drawsShapes) return null;
+      u.layer.sync();
+      return this.#upperGrid(u.layer, u.params).data;
+    });
   }
 
   // indexes (into n cells) and, for each Floyd–Steinberg layer (settles) that reaches any of them, every cell it reaches,
@@ -1021,10 +1030,17 @@ export default class Renderer {
 
   // The shown canvas (shownCanvas) has this grid rect to catch up on too, or all of it (null): a compose changed it.
   #shownDirty(rect) {
+    this.#looksDirty(rect);
     const s = this.#shownOver;
     if (!s) return;
     if (!rect) this.#shownOver = null; // a whole compose: a new copy next time
     else s.dirty = union(s.dirty, rect);
+  }
+
+  // The looks (looksCanvas) have this grid rect to work out again, or all of them (null): its cells were made again.
+  #looksDirty(rect) {
+    if (!rect) this.#looks = null;
+    else if (this.#looks) this.#looks.dirty = union(this.#looks.dirty, rect);
   }
 
   // An upper cells layer's paint at grid resolution through the color transforms, as #drawLayer draws the lower group's:
@@ -1354,6 +1370,111 @@ export default class Renderer {
     return s.canvas;
   }
 
+  // What the PIXEL view draws over shownCanvas (docs/model.md R11): each character of someone's own that the pixels hold as
+  // its two colors (a pin on the base, an art layer's character) as it looks at pixel scale, in a canvas the output's
+  // size that's see-through everywhere else; null with no pin and no art layer. A cell's two pixels are its background
+  // over its foreground whatever its character, so a █ shows there as half a cell; its look is each half's background
+  // blended toward its foreground by the ink the glyph has in it (halfColors). Display only: the output, the cells and
+  // what the tools read (shownCanvas) stay the two colors. Kept, and worked out again only over the rect the cells
+  // rebuilt since cover (#looksDirty), so a redraw draws it and an edit costs its own cells.
+  looksCanvas(params) {
+    const pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
+    const arts = [this.shapes, ...this.upper.map((u) => u.layer)].filter((layer) => layer?.hasArt);
+    if (!this.outputCanvas || (!pins.size && !arts.length)) return null;
+    const { width, height } = this.outputCanvas;
+    let s = this.#looks;
+    if (s?.of !== this.outputCanvas) s = this.#looks = { of: this.outputCanvas, canvas: Object.assign(document.createElement('canvas'), { width, height }), dirty: { x: 0, y: 0, w: width, h: height } };
+    const dirty = clipped(s.dirty, width, height), r0 = dirty.y >> 1, r1 = Math.min(charRowsOf(height), (dirty.y + dirty.h + 1) >> 1);
+    s.dirty = { x: 0, y: 0, w: 0, h: 0 };
+    if (!dirty.w || r1 <= r0) return s.canvas;
+    const { x, w } = dirty, y = 2 * r0, image = new ImageData(w, 2 * (r1 - r0)), d = image.data;
+    const stored = ctx2d(this.outputCanvas).getImageData(x, y, w, image.height).data, reads = this.#upperReads();
+    const put = (col, row, pin) => {
+      const o = ((2 * row - y) * w + col - x) * 4, below = o + 4 * w;
+      const look = this.#lookAt(col, row, pin, { r: stored[o], g: stored[o + 1], b: stored[o + 2] }, { r: stored[below], g: stored[below + 1], b: stored[below + 2] }, params, reads);
+      if (!look) return;
+      const [top, bottom] = look;
+      d[o] = top.r; d[o + 1] = top.g; d[o + 2] = top.b; d[o + 3] = 255;
+      d[below] = bottom.r; d[below + 1] = bottom.g; d[below + 2] = bottom.b; d[below + 3] = 255;
+    };
+    // Each cell of the rect asked for its pin, while the rect is small or far smaller than the pins (an edit's); else
+    // each pin and each art layer's cell, those in the rect (a whole grid's): asking a cell makes its key, and a grid
+    // with a few characters typed on it has 500k cells to ask.
+    // ponytail: a file that's all pins reads 500k keys for a whole grid, 60 ms of a render's first draw
+    // (bench/pixel-view.bench.js); keep the pins' places per pins map if that shows.
+    const cells = w * (r1 - r0), inside = (col, row) => col >= x && col < x + w && row >= r0 && row < r1;
+    if (cells <= MOST_ASKED || cells * ASK_COST < pins.size) {
+      for (let row = r0; row < r1; row++) for (let col = x; col < x + w; col++) put(col, row, this.pinAt(col, row));
+    } else {
+      for (const [key, kept] of pins) {
+        const { col, row } = parseKey(key);
+        if (inside(col, row)) put(col, row, this.#pinOf(kept, col, row));
+      }
+      for (const layer of arts) {
+        for (const key of layer.artCells()) {
+          const { col, row } = parseKey(key);
+          if (inside(col, row) && !pins.has(key)) put(col, row, this.pinAt(col, row));
+        }
+      }
+    }
+    ctx2d(s.canvas).putImageData(image, x, y);
+    return s.canvas;
+  }
+
+  // The base's own look at col, row ([top, bottom]), nothing over it: its cell's halves where it holds a character of
+  // someone's own (pinAt), else null. What the PIXEL view's ghost dims a cell toward there, in place of its two pixels.
+  baseLook(col, row, params) {
+    const cell = this.pinAt(col, row) === undefined ? null : this.underCell(col, row, params, []);
+    return cell && halfColors(cell);
+  }
+
+  // looksCanvas's look for the cell at col, row ([top, bottom], { r, g, b } each), or null where its pixels show as they
+  // are. Worked out bottom to top, as the cell itself is laid (composeAll, #upperCell). pin: pinAt's answer for it; top
+  // and bottom, the output's two pixels there.
+  // - The base's pin, or the lower group's art layer's character: its cell's halves. The output's two pixels are its
+  //   colors where no paint lies on them, which is nearly always, so the cell is made of those (pinnedCell, as #onBase
+  //   makes it in each art style); under the lower group's paint it's the base's own cell (underCell).
+  // - Paint over a look, the lower group's or an upper cells layer's, lies over each half it covers (#paintedLook).
+  // - An upper vector layer's shape reaching the cell takes it: the converter's cell there is a rendering of the pixels
+  //   (R7), so they show. Its art layer's character starts over: the look of the cell #upperCell builds, from the two
+  //   pixels under the layers so far with its own over them (#pixelsUnder).
+  #lookAt(col, row, pin, top, bottom, params, reads) {
+    const { renderStyle } = params, width = this.outputCanvas.width;
+    let cell = null, look = null;
+    if (pin !== undefined) {
+      const over = this.#noPaint ? null : this.paintAt(col, 2 * row), overBelow = this.#noPaint ? null : this.paintAt(col, 2 * row + 1);
+      cell = over || overBelow ? this.underCell(col, row, params, []) : pinnedCell(top, bottom, pin, renderStyle, asIs);
+      look = this.#paintedLook(cell && halfColors(cell), cell, over, overBelow, renderStyle);
+    }
+    for (let at = 0; at < reads.length; at++) {
+      const u = this.upper[at], bytes = u.kind === 'cells' ? reads[at] : reads[at]?.data;
+      const char = u.kind === 'vector' ? u.layer.charAt(col, row) : null;
+      if (!bytes || char === undefined) continue;
+      const o = (2 * row * width + col) * 4, below = o + 4 * width;
+      const over = bytes[o + 3] ? { r: bytes[o], g: bytes[o + 1], b: bytes[o + 2], a: bytes[o + 3] / 255 } : null;
+      const overBelow = bytes[below + 3] ? { r: bytes[below], g: bytes[below + 1], b: bytes[below + 2], a: bytes[below + 3] / 255 } : null;
+      if (over) top = mix(top, over, over.a);
+      if (overBelow) bottom = mix(bottom, overBelow, overBelow.a);
+      if (u.kind === 'cells') look = this.#paintedLook(look, cell, over, overBelow, renderStyle);
+      else if (char === null) look = null;
+      else {
+        const palette = this.#heldData ? null : this.palette;
+        look = halfColors(cell = buildCell(nearestColor(top, palette), nearestColor(bottom, palette), char, renderStyle, asIs));
+      }
+    }
+    return look;
+  }
+
+  // A look (of cell) with paint over it, top and bottom ({ r, g, b, a } or null): over each half it covers, snapped as the
+  // output snaps paint, so the paint shows where it is, as over any pixels. Null (the pixels show) where the paint is
+  // converted over the cell's two pixels instead: over a character with no ink, in the ASCII styles (#paintOver, R2).
+  #paintedLook(look, cell, top, bottom, renderStyle) {
+    if (!look || (!top && !bottom)) return look;
+    if (renderStyle !== 'ansi' && opensToPaint({ char: cell.char, fg: withHex(cell.fg), bg: withHex(cell.bg) }, renderStyle)) return null;
+    const palette = this.#heldData ? null : this.palette;
+    return [top ? nearestColor(mix(look[0], top, top.a), palette) : look[0], bottom ? nearestColor(mix(look[1], bottom, bottom.a), palette) : look[1]];
+  }
+
   // A stored color as it displays: color adjustments, then the active palette.
   effective(hex, params, index) {
     const key = index === undefined ? hex : `${hex}/${index}`;
@@ -1462,7 +1583,12 @@ export default class Renderer {
   // pixels as ANSI shows them (Colors only pins one where paint meets a cell that shows no character), and ASCII has no
   // ▄, so there it's no pin and the pixels are converted with the ASCII characters.
   pinAt(col, row) {
-    const pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins, kept = pins.size ? pins.get(cellKey(col, row)) : undefined; // no key made for none: asked once a cell
+    const pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
+    return this.#pinOf(pins.size ? pins.get(cellKey(col, row)) : undefined, col, row); // no key made for none: asked once a cell
+  }
+
+  // pinAt for a cell whose pin is at hand (kept: the base's, or undefined), as a walk over the pins has it.
+  #pinOf(kept, col, row) {
     const pin = kept === '▄' && this.#pinStyle !== 'ansi' ? undefined : kept;
     if (pin === undefined && !this.shapes?.hasArt) return undefined;
     const shown = this.shapes?.charAt(col, row);
@@ -1508,6 +1634,14 @@ function blackCanvas(w, h) {
 
 const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
 const byte = (v) => Math.round(clamp(v));
+// looksCanvas: a pixel as a cell's color with no Color made of it (a hex a cell: it runs over every pin), and the Color
+// for the few asked whether their character shows (opensToPaint).
+const asIs = (p) => p;
+const withHex = (c) => (c.hex ? c : colorOf(c));
+// looksCanvas asks each cell of a rect for its pin up to MOST_ASKED cells, and past that while the pins are more than
+// ASK_COST times the rect's cells; else it walks the pins. Asking makes a key and looks it up, about four times the
+// cost of reading a pin's key (500k cells: 180 ms asked, 60 ms walked).
+const MOST_ASKED = 4096, ASK_COST = 4;
 
 // A canvas's pixels snapped to a palette in place, read and written once as bytes (no object per
 // pixel: this runs over the whole output). Returns its bytes and each pixel's palette entry, or
