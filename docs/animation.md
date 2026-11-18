@@ -12,7 +12,7 @@ A new drawing starts with only the base, so what you draw on it shows on every f
 
 - **Turn on**: Toggle the **Animate** switch on the tab bar, to the right of the tabs. The animation bar appears under the canvas on the PIXEL, ANSI, and VECTOR tabs.
 - **Turn off**: Toggle the switch off. Your frames are kept and the canvas stays on the frame it was on, but everything of animation is hidden until you turn Animate back on: the bar, the Keys panel, the ghost, the animated exports, the Animation keys and their group in the shortcuts list (`?`), and VECTOR's dimmed outlines of the shapes a Blank frame carries.
-- **Opening a movie**: A document opened with more than one frame has Animate on.
+- **Opening a movie**: A document opened with more than one frame has Animate on. Animate follows the drawing: a new project, a new canvas or picture, or a drawing opened with a single frame starts with it off, whatever the switch was before.
 - **When it's off limits**: The switch is unavailable without an image or canvas, in a room, and on a canvas over 40,000 cells. Clicking or tapping it says why. A document with more than one frame can't start a room.
 
 ---

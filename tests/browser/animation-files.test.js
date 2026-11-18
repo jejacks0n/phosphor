@@ -71,6 +71,41 @@ test('save and open: frames, holds, fps, current frame and every picture come ba
   }
 });
 
+// #206: Animate was the switch's and an opened movie's alone, so it stayed on, with the bar under a drawing that has
+// nothing to animate, after New project, a new picture or canvas, or a still opened. It follows the document: off for a
+// new one and for one with a single frame, on for a file with frames.
+test('#206: Animate follows the document: off after New project, a new canvas, a picture or a still opened; on for a movie', async () => {
+  const { project } = await movie();
+  const film = await fileOf(project);
+  expect(project.animate).toBe(true);
+  project.clearImage(); // New project
+  expect(project.animate).toBe(false);
+
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  await settle(project);
+  expect(project.animate).toBe(false);
+  project.setAnimate(true); // turned on by hand, on a drawing with one frame
+  const still = await fileOf(project, 'still.phosphor');
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 }); // another canvas
+  expect(project.animate).toBe(false);
+
+  project.setAnimate(true);
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 }); // a picture opened
+  expect(project.animate).toBe(false);
+
+  project.setAnimate(true);
+  await project.loadProject(still); // a one-frame project, saved with the switch on
+  await settle(project);
+  expect([project.frames.length, project.animate]).toEqual([1, false]);
+
+  await project.loadProject(film); // a movie turns it on, as before
+  await settle(project);
+  expect([project.frames.length, project.animate]).toEqual([3, true]);
+  await project.loadProject(still);
+  await settle(project);
+  expect(project.animate).toBe(false);
+});
+
 test('a frame reopened, then left untouched, keeps only what it changed', async () => {
   const { project } = await movie();
   const held = project.frames.map((f) => [...f.changes.keys()].sort());

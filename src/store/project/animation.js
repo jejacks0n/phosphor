@@ -964,11 +964,14 @@ export const animationActions = {
     this.setAnimate(true);
   },
 
-  // A fresh document's one frame. Autosave doesn't count this one, or a frame's swap, as editing.
+  // A fresh document's one frame, with Animate off: the switch follows the document (#206), off for a new one or a
+  // still, and on again for a file that has frames (openFrames, after this). Autosave doesn't count this one, or a
+  // frame's swap, as editing.
   resetFrames() {
     this.frames = [newFrame('blank')];
     this.frame = 0;
     this.fps = 8;
+    this.animate = false;
     this._arrived = this._noted = this._moviePalette = null;
     this.renderer.usePalette(null);
   },
