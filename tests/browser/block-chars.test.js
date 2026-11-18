@@ -657,3 +657,43 @@ for (const on of ['base', 'layer'])
       }
     });
   }
+
+// The same report with Write block glyphs off, how the Shape tool starts (and is again after a reload): its Half-block
+// laid paint alone, which tints a character of someone's own, an edge on a line's top half its background, the whole
+// cell, and one on its bottom half the line itself, so a box half a cell up or down crossed the line otherwise. The
+// cells that show someone's character (ownCharAt) become ▄s, the paint in the half it covers; the rest stay paint, which
+// brings Random's characters out of the blank canvas as paint there does (R5), no ▄ written.
+for (const on of ['base', 'layer']) {
+  test(`R5: the report: with Write block glyphs off, a Half-block box on ${on === 'base' ? 'the base' : 'a layer'} crosses a line in ▄s, and over the canvas its paint is Random's characters`, async () => {
+    const halves = (cell) => { const cov = coverageOf(cell.char); return cov.every((c) => c === 0 || c === 1) ? cov.map((c) => (c ? cell.fg.hex : cell.bg.hex)) : cell.char; };
+    for (const [x0, y0, x1, y1] of [[20, 10, 30, 20], [20, 11, 30, 21]]) { // the top edge on the ═ row's top halves, then its bottom halves
+      const { project, workspace } = await createTestApp();
+      await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/boxes2.phosphor')).arrayBuffer()], 'x.phosphor'));
+      await settle(project);
+      workspace.pickLayer(on === 'base' ? 'base' : project.addLayer('cells', 'base'));
+      Object.assign(workspace, { editFgColor: '#ffffff', editBgNone: true, shapeKind: 'rect', shapeDrawWith: 'half', shapeBlockChars: false });
+      const ctx = { project, workspace, view: 'output' }, { cols } = project, before = project.cells.map(halves);
+      const pinned = (col, row) => project.baseRecords.pins.has(`${col},${row}`), lines = new Set([...project.baseRecords.pins.keys()]);
+      const top = (col, row) => project.baseColorAt(col, 2 * row).toLowerCase(), bg = new Map([...lines].map((key) => [key, top(...key.split(',').map(Number))]));
+      shapes.begin(ctx, { x: x0 + 0.5, y: y0 + 0.5 });
+      shapes.move(ctx, { x: x0 + 0.5, y: y0 + 0.5 }, { x: x1 + 0.5, y: y1 + 0.5 });
+      shapes.end(ctx);
+      await settle(project);
+      const painted = (x, y) => (x === x0 || x === x1 ? y >= y0 && y <= y1 : (y === y0 || y === y1) && x >= x0 && x <= x1);
+      const crossed = [], canvas = [];
+      project.cells.forEach((cell, i) => {
+        const col = i % cols, row = (i - col) / cols, paint = [painted(col, 2 * row), painted(col, 2 * row + 1)];
+        if (!paint.some(Boolean)) return expect(halves(cell)).toEqual(before[i]);
+        (lines.has(`${col},${row}`) ? crossed : canvas).push({ col, row, cell, paint });
+      });
+      expect(crossed.length).toBeGreaterThan(10);
+      for (const { col, row, cell, paint } of crossed) expect([col, row, halves(cell)]).toEqual([col, row, paint.map((p) => (p ? '#ffffff' : bg.get(`${col},${row}`)))]);
+      // No ▄ written over the canvas, on the base or the layer, and what shows there is Random's set, not ▄ alone.
+      expect(canvas.filter(({ col, row }) => (on === 'base' ? pinned(col, row) : project.editCellAt(col, row)))).toEqual([]);
+      expect(new Set(canvas.map(({ cell }) => cell.char)).size).toBeGreaterThan(1);
+      project.undo();
+      await settle(project);
+      expect(project.cells.map(halves)).toEqual(before);
+    }
+  });
+}

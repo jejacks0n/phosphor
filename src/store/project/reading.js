@@ -234,6 +234,19 @@ export const readingActions = {
 
   // What a cell layer's entry is completed against (completeAt): the base's cell as the render style shows it, with the
   // shown cells layers under the layer with the id below over it, each as underlyingAt lays them.
+  // Whether the cell at col, row shows a character of someone's own (typed, opened, pasted, pinned, an art layer's; a
+  // paint block too) on the layer in use or under it: what paint laid there tints, where anything else converts over
+  // it (docs/model.md R2). The Renderer's walk up to the layer (#exactUnder, #upperCell), the topmost entry deciding.
+  ownCharAt(col, row) {
+    const key = cellKey(col, row), ids = cellsUnder(this, this.editId);
+    let own = this.renderer.pinAt(col, row) !== undefined;
+    for (const entry of [...ids.map((id) => this.cellsOf(id).get(key)), this.editId === 'base' ? undefined : this.editCellAt(col, row)]) {
+      const shown = shownEntry(entry, this.renderStyle);
+      if (shown) own = !isFrozen(shown);
+    }
+    return own;
+  },
+
   lookUnder(col, row, below = this.editId) {
     let look = baseLook(this, col, row), exact = this.renderer.pinAt(col, row) !== undefined; // as the Renderer's walk
     for (const id of cellsUnder(this, below)) {

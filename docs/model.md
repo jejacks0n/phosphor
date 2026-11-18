@@ -150,7 +150,11 @@ its background in both pixels (a ▄ pinned already, a stroke passing back over 
 converter drew keeps its halves. A block on a layer above a character of someone's own (on a layer under it, or a pin)
 shows the same in ANSI: it takes the character's place, a textured character's halves its background and a solid
 glyph's its own halves (`blockOver` in `src/lib/Cells.js`), where it had shown the character's foreground in its bottom
-half; Merge down puts it there (R3). A pinned character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a
+half; Merge down puts it there (R3). The Shape tool's Half-block with Write block glyphs off lays paint, which is the
+layer's characters over a cell the converter drew (Random's out of a blank canvas), and in ANSI makes a block of each
+cell that shows a character of someone's own on the layer in use or under it (`ownCharAt`): R2's tint there took the
+whole cell from an edge on its top half (the background) and only recolored the character from one on its bottom half,
+so a box half a cell up or down crossed a line otherwise. A pinned character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a
 character of someone's own under the layer the paint shows as R2 has it, with no entry.
 
 A cell a shape covers under the layer (the topmost thing under it there is a vector layer's fill or stroke) is drawn
@@ -160,7 +164,9 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
 
 - Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`; `converted` says which cells the
   converter drew), with `showsNoChar` and `shapeUnder` there; Half-block's and Write block glyphs' ▄ in `writeBlocks`
-  there; a block over a character under it in `blockOver` (`src/lib/Cells.js`), which the Renderer's `#upperCell` and
+  there, which the Shape tool's Half-block asks for every cell with Write block glyphs on and for the cells `ownCharAt`
+  (`src/store/project/reading.js`) names with it off (`apply` in `src/tools/shapes.js`); a block over a character under
+  it in `blockOver` (`src/lib/Cells.js`), which the Renderer's `#upperCell` and
   `#composeOne`, `layerOver` in `src/store/project/reading.js` and Merge down's `onCells` use.
 - Checked by: `tests/browser/block-chars.test.js › R5: …` (the base and a layer under Random, Best match and By shape;
   the reports: the Brush on a blank canvas under the base's Random, a layer with its own Random over a flat canvas; a
@@ -170,7 +176,8 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
   box with Write block glyphs over a line box …`, `› R5: on the base, a Half-block box …`, `› R5: a Half-block box with
   Write block glyphs on the layer above a line …` (with Merge down and the stored look), `› blockOver: …` and
   `› R5: the report: Half-block boxes over a line box …` (projects/boxes2.phosphor: the Shape tool and the Pencil, on the
-  base and a layer, a half cell apart, Merge down and undo).
+  base and a layer, a half cell apart, Merge down and undo) and `› R5: the report: with Write block glyphs off …`
+  (the crossings ▄s, Random's characters over the canvas, no ▄ written there).
 
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
 
