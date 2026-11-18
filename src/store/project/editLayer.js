@@ -13,7 +13,7 @@ import { cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.j
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, bytesHeld, onBottom, ownHalves, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
 
 // A typed character with the colors it's typed in. A space has no ink, so it takes the background alone: the cell keeps
 // the foreground it had (on the base that's its lower pixel, which the PIXEL view shows; on a layer a color no one sees
@@ -74,7 +74,7 @@ export const editLayerActions = {
         this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
         cells = [];
       }
-      this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
+      this.writeBlocks(cells);
     }
     this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
   },
@@ -88,6 +88,29 @@ export const editLayerActions = {
     const { rows } = this, colored = cells.filter(({ col, row }) => !isFrozen(this.editCellAt(col, row)));
     this.putEditPixels(colored.flatMap(({ col, row }) => ownHalves(this, col, row).map((color, k) => ({ x: col, y: 2 * row + k, ...color, a: 1 }))).filter(({ y }) => y < rows));
     this.clearEditCells(cells);
+  },
+
+  // Cells ([{ col, row }]) made paint blocks, bare ▄s, for paint laid next to color (Half-block, and the Shape tool's
+  // Write block glyphs). The character goes and its foreground with it; a ▄ that kept a typed line's foreground was a
+  // character of the layer's own, so its bottom half showed that color under paint on the top half, a whole cell where
+  // the stroke drew half of one. A background of the cell's own stays: it goes into paint in both halves, under the
+  // layer's paint there, as the cell showed it. A frozen cell's paint is under it already. On the base a pinned
+  // character's colors are its two pixels, its foreground the lower one, so its block takes its background in both; a
+  // cell the converter drew keeps the halves it had.
+  writeBlocks(cells) {
+    if (onBottom(this)) {
+      const { pins } = this.baseRecords;
+      return this.writeEditCells(cells.map((c) => {
+        const bg = pins.has(cellKey(c.col, c.row)) && this.completeAt(c.col, c.row).bg;
+        return { ...c, attrs: bg ? { char: '▄', fg: bg, bg } : { char: '▄' } };
+      }));
+    }
+    const { rows } = this, backed = cells.filter(({ col, row }) => this.editCellAt(col, row)?.bg && !isFrozen(this.editCellAt(col, row)));
+    this.putEditPixels(backed.flatMap(({ col, row }) => [0, 1].map((k) => {
+      const bg = hex2rgb(this.editCellAt(col, row).bg), paint = this.paintLayer?.pixelAt(col, 2 * row + k);
+      return { x: col, y: 2 * row + k, ...(paint ? over(bg, paint) : bg), a: 1 };
+    })).filter(({ y }) => y < rows));
+    this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄', fg: null, bg: null } })));
   },
 
   // Set the picked layer's paint at grid pixels ({ x, y, r, g, b, a }, a 0..1) to exactly those colors and alphas,

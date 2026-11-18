@@ -141,7 +141,10 @@ is a rendering of the pixels (R7), and the paint becomes the character the layer
 it (on the base the paint goes into the pixels). Under Random that brings out the character a blank cell held in its own
 background color, which is Random's: a stroke on a blank canvas shows Random's characters
 (the base's Random had kept a ▄ there, so the default Brush painted half-blocks on a fresh canvas). Half-block is the way
-to draw ▄. A pinned character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a
+to draw ▄, and its ▄ (the Shape tool's Write block glyphs' too) is a paint block over any cell: the character it
+replaces goes with its foreground, which a ▄ kept would show in its bottom half, a whole cell where the paint drew half
+of one. A background of the cell's own stays, as paint under the layer's; on the base a pinned character's block takes
+its background in both pixels, and a cell the converter drew keeps its halves. A pinned character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a
 character of someone's own under the layer the paint shows as R2 has it, with no entry.
 
 A cell a shape covers under the layer (the topmost thing under it there is a vector layer's fill or stroke) is drawn
@@ -150,12 +153,14 @@ layer's Characters to half-blocks, so what a vector layer held changed how the l
 layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoChar`).
 
 - Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`; `converted` says which cells the
-  converter drew), with `showsNoChar` and `shapeUnder` there.
+  converter drew), with `showsNoChar` and `shapeUnder` there; Half-block's and Write block glyphs' ▄ in `writeBlocks`
+  there.
 - Checked by: `tests/browser/block-chars.test.js › R5: …` (the base and a layer under Random, Best match and By shape;
   the reports: the Brush on a blank canvas under the base's Random, a layer with its own Random over a flat canvas; a
   flat shape under the layer), `› with Colors only on the base, a cell that shows no character …`, `› with Colors only,
   a cell that shows no character (the black of an opened file's grown lines) …` and
-  `› …with Colors only, a layer's own cell that shows no character becomes a plain ▄ …`.
+  `› …with Colors only, a layer's own cell that shows no character becomes a plain ▄ …`; `› R5: the report: a Half-block
+  box with Write block glyphs over a line box …` and `› R5: on the base, a Half-block box …`.
 
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
 

@@ -138,7 +138,9 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 - Does: presses P, sets Draw with to Half-block, and draws a small shape in two colors.
 - Expects: each cell he paints becomes `▄`, and the half he doesn't paint keeps its color; a straight line with Shift
   from his last stroke.
-- Probes: `undo-redo`: undo the shape stroke by stroke; `again`: draw over the same cells twice in another color.
+- Probes: `undo-redo`: undo the shape stroke by stroke; `again`: draw over the same cells twice in another color, and
+  across a box of double lines he typed, with the Pencil and with the Shape tool's Half-block and Write block glyphs:
+  each crossed cell is a `▄` with the line gone, not a whole cell.
 - Rated: yes, wants P, then a key for Draw with
 
 ### 7. Set my colors from the keys
