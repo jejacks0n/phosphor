@@ -265,16 +265,15 @@ export const sharingActions = {
     const stroke = this._stroke;
     if (!stroke) return;
     const inside = !!this._artInside, id = this.editId; // keys and runs name the layer they're on (layerInfo.js)
-    if (!inside && !this.layerById(id)) { // its layer was deleted: what it had there went with it, and nothing's left to send
-      this.paintLayer?.strokeSlice();
-      stroke.editCells = this.editCells;
-      stroke.noted = null;
-      return;
-    }
+    // Its layer was deleted (the last cells layer leaves editId as it was, its fields empty): what it had there went with
+    // it, and none of that's left to send. Its shapes are on their own layers and go as ever, or an edit to them with no
+    // cells layer left would be no step at all.
+    const gone = !inside && !this.layerById(id);
     const tiles = inside ? [] : this.paintLayer?.strokeSlice() ?? [];
-    const own = inside ? [] : changedCells(stroke, this.editCells), cells = [...own.map(([key, entry]) => [layerKey(id, key), entry]), ...cellChanges(stroke.shapes, this.shapes)];
+    if (gone) tiles.length = 0;
+    const own = inside || gone ? [] : changedCells(stroke, this.editCells), cells = [...own.map(([key, entry]) => [layerKey(id, key), entry]), ...cellChanges(stroke.shapes, this.shapes)];
     const baseline = markRaw({ cells: stroke.editCells, shapes: stroke.shapes, tiles: new Map(tiles.map(({ x, y, before }) => [`${x},${y}`, before])) });
-    stroke.wroteCells ||= stroke.editCells !== this.editCells || stroke.shapes !== this.shapes;
+    stroke.wroteCells ||= (!gone && stroke.editCells !== this.editCells) || stroke.shapes !== this.shapes;
     if (!inside) {
       stroke.editCells = this.editCells;
       stroke.noted = null;
