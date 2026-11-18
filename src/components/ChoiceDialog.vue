@@ -3,8 +3,9 @@ import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 
 // A choice in a centered confirm box (Merge down: exactly or into the picture; Bake under CGA/VGA:
-// keep full color or lock to the palette). choices: [{ id, title, text?, costs? }], costs what that choice gives up, one
-// line each, listed under "You give up:"; the first focused, the second accented as the alternative; choosing emits its id.
+// keep full color or lock to the palette). choices: [{ id, title, text?, note?, costs? }]: note a warning under the choice
+// (opening over unsaved changes), costs what the choice gives up, one line each, listed under "You give up:". The first
+// is focused, the second accented as the alternative; choosing emits its id.
 const props = defineProps({
   title: { type: String, required: true },
   sub: { type: String, required: true },
@@ -25,6 +26,7 @@ const { t } = useI18n();
     >
       <b>{{ choice.title }}</b>
       <span v-if="choice.text">{{ choice.text }}</span>
+      <span v-if="choice.note" class="warn">{{ choice.note }}</span>
       <span v-if="choice.costs?.length" class="warn">
         {{ t('common.youGiveUp') }}
         <span v-for="cost in choice.costs" :key="cost" class="cost">{{ cost }}</span>
