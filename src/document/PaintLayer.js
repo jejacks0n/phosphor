@@ -251,17 +251,36 @@ export default class PaintLayer {
     return bounds;
   }
 
-  // pixels: { x, y }[] in grid pixels.
-  // Erases (and records) nothing where there's no paint, so a pass over bare cells isn't an undo step.
+  // pixels: { x, y, alpha? }[] in grid pixels.
+  // Erases (and records) nothing where there's no paint, so a pass over bare cells isn't an undo step. alpha (0..1, a
+  // soft eraser's stamp): how much of the paint's alpha it takes, as paint() adds it, each stamp at least a step so a
+  // faint one still gets to nothing; without one, all of it.
   erase(pixels) {
-    const rects = pixels.map(({ x, y }) => this.#cellRect(x, y)).filter(Boolean);
+    const rects = [];
+    for (const { x, y, alpha = 1 } of pixels) {
+      const rect = this.#cellRect(x, y);
+      if (rect) rects.push({ ...rect, a: Math.max(1, Math.round(alpha * 255)) });
+    }
     if (!rects.length || !this.hasPaint) return null;
     const bounds = unionRect(rects);
     if (!this.#anyPaint(bounds)) return null;
     this.#record(bounds, { erasing: true });
     this.#changed(bounds);
     const ctx = ctx2d(this.canvas);
-    for (const { x, y, w, h } of rects) ctx.clearRect(x, y, w, h);
+    if (rects.every(({ a }) => a >= 255)) {
+      for (const { x, y, w, h } of rects) ctx.clearRect(x, y, w, h);
+      return bounds;
+    }
+    const image = ctx.getImageData(bounds.x, bounds.y, bounds.w, bounds.h), { data } = image;
+    for (const { x, y, w, h, a } of rects) {
+      for (let py = y; py < y + h; py++) {
+        for (let px = x; px < x + w; px++) {
+          const at = ((py - bounds.y) * bounds.w + (px - bounds.x)) * 4 + 3;
+          data[at] = Math.max(0, data[at] - a);
+        }
+      }
+    }
+    ctx.putImageData(image, bounds.x, bounds.y);
     return bounds;
   }
 

@@ -145,30 +145,33 @@ const previewStyle = computed(() => {
   }
 
   const size = preview.size(workspaceStore, props.view);
-  // The eraser outlines exactly what it covers: whole cells in the ANSI view (its size counts cells), pixels in the
-  // pixel view.
-  if (preview.snap) {
-    const ansi = props.view === 'output', { cols, rows } = projectStore;
+  const ansi = props.view === 'output', round = preview.shape !== 'square' || !!preview.soft?.(workspaceStore, props.view);
+  // The hard eraser outlines exactly what it covers: whole cells in the ANSI view (its size counts cells), pixels in the
+  // pixel view. Off the canvas it covers nothing, and its outline follows the pointer at its size as the Brush's circle
+  // does: the pointer itself is hidden for both (global.css), so with no outline there'd be nothing to see.
+  if (preview.snap && !round) {
+    const { cols, rows } = projectStore;
     const parts = ansi ? squareCells(gridPos(pos), gridPos(pos), size, cols, rows).map(c => ({ x: c.col, y: c.row })) : squarePixels(gridPos(pos), gridPos(pos), size, cols, rows);
-    if (!parts.length) return { display: 'none' };
-    const x0 = Math.min(...parts.map(c => c.x)), x1 = Math.max(...parts.map(c => c.x));
-    const y0 = Math.min(...parts.map(c => c.y)), y1 = Math.max(...parts.map(c => c.y));
-    const w = unit.x, h = ansi ? unit.y * 2 : unit.y;
-    const display = unref(props.display);
-    return {
-      display: 'block', boxSizing: 'border-box', borderRadius: '0', transform: 'none',
-      width: `${(x1 - x0 + 1) * w}px`, height: `${(y1 - y0 + 1) * h}px`,
-      left: `${x0 * w + (display?.clientLeft ?? 0)}px`, top: `${y0 * h + (display?.clientTop ?? 0)}px`,
-    };
+    if (parts.length) {
+      const x0 = Math.min(...parts.map(c => c.x)), x1 = Math.max(...parts.map(c => c.x));
+      const y0 = Math.min(...parts.map(c => c.y)), y1 = Math.max(...parts.map(c => c.y));
+      const w = unit.x, h = ansi ? unit.y * 2 : unit.y;
+      const display = unref(props.display);
+      return {
+        display: 'block', boxSizing: 'border-box', borderRadius: '0', transform: 'none',
+        width: `${(x1 - x0 + 1) * w}px`, height: `${(y1 - y0 + 1) * h}px`,
+        left: `${x0 * w + (display?.clientLeft ?? 0)}px`, top: `${y0 * h + (display?.clientTop ?? 0)}px`,
+      };
+    }
   }
   const display = unref(props.display); // pos is inside its border; the preview sits in its box
   return {
     display: 'block',
     width: `${size * unit.x}px`,
-    height: `${size * unit.y}px`,
+    height: `${size * unit.y * (preview.snap && ansi ? 2 : 1)}px`, // the ANSI view's eraser counts cells, two grid pixels tall
     left: `${pos.x + (display?.clientLeft ?? 0)}px`,
     top: `${pos.y + (display?.clientTop ?? 0)}px`,
-    borderRadius: preview.shape === 'square' ? '0' : '50%',
+    borderRadius: round ? '50%' : '0',
   };
 });
 

@@ -5,7 +5,7 @@ import { t } from '@/i18n/index.js';
 // A stamp's flow from the Flow slider (1-100): squared, so the low end builds up gently (a stroke's
 // stamps overlap and add up: 10% used to lay 70% in one pass at size 5), and never under the
 // paint layer's smallest step (1/255), which would round to nothing.
-const stampFlow = (percent) => Math.max(1 / 255, (percent / 100) ** 2);
+export const stampFlow = (percent) => Math.max(1 / 255, (percent / 100) ** 2);
 
 const brush = {
   id: 'brush',

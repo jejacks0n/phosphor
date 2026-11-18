@@ -30,7 +30,10 @@ export const baseLayerActions = {
 
   // Erase base pixels (the Pixel view): black, the characters left as they are.
   eraseBasePixels(pixels) {
-    this.writeBase(pixels.map(({ x, y }) => ({ x, y, hex: BLANK.bg })));
+    // A soft eraser's stamps (alpha under 1) lay the black as the Brush would lay it; the rest turn black at once.
+    const soft = pixels.filter(({ alpha = 1 }) => alpha < 1);
+    if (soft.length) this.paintBasePixels(soft.map(({ x, y, alpha }) => ({ x, y, ...hex2rgb(BLANK.bg), alpha })));
+    if (soft.length < pixels.length) this.writeBase(pixels.filter(({ alpha = 1 }) => alpha >= 1).map(({ x, y }) => ({ x, y, hex: BLANK.bg })));
   },
 
   // Flip the base in these cells: swap each cell's two halves (background and foreground), every

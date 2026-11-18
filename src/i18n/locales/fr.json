@@ -413,7 +413,12 @@
       "sizePixels": "Taille · px",
       "sizePixelsTitle": "Taille de la gomme, en pixels",
       "sizeCells": "Taille · cellules",
-      "sizeCellsTitle": "Taille de la gomme, en cellules"
+      "sizeCellsTitle": "Taille de la gomme, en cellules",
+      "edge": "Bord de la gomme",
+      "hard": "Dur",
+      "soft": "Doux",
+      "flow": "Flux",
+      "flowTitle": "Débit d'effacement pendant le tracé"
     },
     "bucket": {
       "title": "Pot de peinture",

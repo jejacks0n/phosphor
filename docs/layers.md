@@ -650,6 +650,12 @@ The **Eraser** (**E**) erases the selected layer:
 - **In the PIXEL View**: The Eraser removes paint (on a drawing layer) and turns base pixels black (on the base),
   leaving the characters as they are, except a ▄ that Half-block made to show paint (one with no colors of its own):
   when its cell's last paint is erased, the cell gets its own character back.
+- **Hard or Soft** (the PIXEL view): **Hard**, as it starts, is a square that clears everything under it at once.
+  **Soft** is round with a feathered edge, like the Brush, and takes paint away a little with each pass: its **Flow**
+  sets how much, so a low Flow fades paint gently and a few passes clear it. On the base, where erasing is black, Soft
+  lays the black the same way. The ANSI view erases whole cells either way.
+- **Its Outline**: The pointer shows what the Eraser covers: the square of cells or pixels it would clear, or Soft's
+  circle. Off the canvas, where there's nothing to erase, the outline still follows the pointer.
 
 ---
 
