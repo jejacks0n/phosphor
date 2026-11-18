@@ -298,6 +298,31 @@ test('Palette colors: Escape puts the field back to the palette in use, and a bl
   }
 });
 
+// The report (bug bash 2): Escape in the font's size kept the typed number, and a click elsewhere then applied it. Escape
+// now puts the field back to the size in use, as it does in Dimensions and Palette colors. A typed field that waits for
+// Enter or a blur takes Escape this way: a new one needs it too.
+test('Font size: Escape puts the field back to the size in use, and a blur after it changes nothing', async () => {
+  const { workspace } = await grid(40, 40);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const field = host.querySelector('input.size'), size = workspace.displayFontSpec.size;
+  try {
+    await userEvent.tripleClick(field);
+    await userEvent.keyboard('31');
+    expect(field.value).toBe('31');
+    await userEvent.keyboard('{Escape}');
+    expect(field.value).toBe(String(size));
+    field.blur(); // a click elsewhere
+    expect(workspace.displayFontSpec.size).toBe(size);
+  } finally {
+    app.unmount();
+    host.remove();
+  }
+});
+
 async function reopened(project) {
   const blob = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
   await project.openParts(await readProject(blob), { filename: 'reopened' });

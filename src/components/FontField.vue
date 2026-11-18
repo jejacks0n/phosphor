@@ -41,7 +41,8 @@ const onSelect = (event) => {
   workspace.displayFont = event.target.value;
 };
 
-// A size in px, kept for this font; its own size is kept as no size at all.
+// A size in px, kept for this font; its own size is kept as no size at all. Typed, it waits for Enter or a click
+// elsewhere, and Escape puts the field back to the size in use, as in Dimensions (ControlPanel).
 const onSize = (event) => {
   const px = Math.round(Number(event.target.value)), { id } = current.value;
   if (!(px >= MIN_SIZE && px <= MAX_SIZE)) {
@@ -89,6 +90,7 @@ const remove = async () => {
           :max="MAX_SIZE"
           :disabled="hostsFont"
           @change="onSize"
+          @keydown.esc="$event.target.value = current.size"
       >
     </div>
     <p v-if="hostsFont" class="hosts-font">{{ t('font.hostsFont') }}</p>

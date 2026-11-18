@@ -108,7 +108,7 @@ Best match and By shape measure characters in IBM VGA, whichever font you view t
 
 ## The Font
 
-In the **Drawing** section of the left panel, the **Font** dropdown sets the font the art is drawn in, in both views, and the size field beside it sets its size (6 to 64 px). Phosphor has four built-in fonts:
+In the **Drawing** section of the left panel, the **Font** dropdown sets the font the art is drawn in, in both views, and the size field beside it sets its size (6 to 64 px). A size typed takes effect on **Enter** or leaving the field; **Escape** puts back the one in use. Phosphor has four built-in fonts:
 
 - **JetBrains Mono** (default): A clean, modern monospaced font.
 - **IBM VGA**: The VGA font of vintage PC screens, with Unscii for the characters it lacks.
