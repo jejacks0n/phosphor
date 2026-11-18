@@ -113,7 +113,8 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 - Does: presses T, moves the cursor with the arrows, types a line, brushes a stroke across the row after it, presses
   Insert and types into the middle of the line, presses Alt+Enter (the same as Insert: Partial) and types there again, then Home, End,
   Backspace and Delete, then Enter.
-- Expects: letters land in his colors; Insert pushes the rest of the row right, the stroke with the letters; Partial
+- Expects: letters land in his colors, and a space takes his BG alone (the status bar's FG over it is what the cell had
+  before); Insert pushes the rest of the row right, the stroke with the letters; Partial
   pushes the letters and leaves the stroke where it is; Overwrite replaces (the status bar says which of the three,
   its buttons whole at any width: short of room, the FG and BG hex codes give way, each on its swatch's hover);
   Enter goes to the start of the next line; a run of typing is one undo step, ending when he pauses or moves the

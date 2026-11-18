@@ -139,6 +139,23 @@ test('the Insert key goes from Overwrite to Insert to Partial and back', async (
   expect(seen).toEqual(['overwrite', 'insert', 'partial', 'overwrite']);
 });
 
+// A space has no ink: typing one sets the cell's background and leaves the foreground it had (docs/characters.md).
+test('a typed space, and the space Backspace leaves, take the background and no foreground', async () => {
+  const { project } = await blank();
+  const ATTRS = { fg: '#ff0000', bg: '#0000ff', fgIndex: 9, bgIndex: 12 };
+  project.typeAt(2, 0, ' ', ATTRS);
+  project.typeAt(3, 0, '\u00a0', ATTRS); // a no-break space is as empty
+  project.typeAt(5, 0, 'A', { fg: '#00ff00' });
+  project.typeAt(5, 0, ' ', ATTRS); // over a letter: its foreground stays, unseen
+  project.typeAt(8, 0, 'B', ATTRS);
+  expect(project.backspaceAt(9, 0, ATTRS)).toBe(1);
+  project.commitEdit();
+  expect(project.editCellAt(2, 0)).toEqual({ char: ' ', bg: '#0000ff', bgIndex: 12 });
+  expect(project.editCellAt(3, 0)).toEqual({ char: '\u00a0', bg: '#0000ff', bgIndex: 12 });
+  expect(project.editCellAt(5, 0)).toEqual({ char: ' ', fg: '#00ff00', bg: '#0000ff', bgIndex: 12 });
+  expect(project.editCellAt(8, 0)).toEqual({ char: ' ', fg: '#ff0000', bg: '#0000ff', fgIndex: 9, bgIndex: 12 }); // B's own, kept
+});
+
 test('Delete in overwrite mode removes a cell typed in the same run', async () => {
   const { project, workspace } = await blank();
   workspace.textCursor = { col: 0, row: 0 };

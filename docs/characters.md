@@ -145,6 +145,7 @@ While you draw in someone's room, the art is drawn in the host's font and size, 
 With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, and emoji directly onto the canvas:
 
 - **Input methods**: Type with your system's input method (Japanese, Chinese, Korean...), dead keys and accents, and the emoji picker, the same as in any text field.
+- **Spaces**: A space has nothing to draw in the foreground color, so typing one (or the space **Backspace** leaves in Overwrite mode) sets the cell's background and leaves its foreground as it was. On the base, a cell's foreground is its lower half in the PIXEL view, so a typed space puts no stripe of your foreground color there.
 - **Undo**: A run of typing is one undo step. It ends when you pause for a second, move the cursor (a click, the arrow keys, **Enter**, **Home**, **End**), or paste.
 - **Overwrite, Insert and Partial**: Press **Insert**, or **Alt+Enter** (**Option+Enter** on a Mac, whose keyboards have no Insert key), or click the mode's button in the ANSI view's status bar, to go from one typing mode to the next:
   - **Overwrite** (the default) replaces the cell under the cursor and moves nothing.
