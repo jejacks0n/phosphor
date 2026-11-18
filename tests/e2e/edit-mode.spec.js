@@ -35,10 +35,20 @@ test('a click places the cursor without scrolling, even at the view\'s edge, typ
   await store(page, 'workspace', (w) => { w.ansiZoom = 2; }); // a grid wider and taller than the view
   await settled(page);
   const scroller = page.locator('.ansi-editor > article');
-  await scroller.evaluate((el) => { el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2; el.scrollTop = (el.scrollHeight - el.clientHeight) / 2; });
-  await expect.poll(() => store(page, 'workspace', (w) => w.ansiViewOrigin.row)).toBeGreaterThan(0);
+  const scrolledTo = await scroller.evaluate((el) => {
+    el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
+    el.scrollTop = (el.scrollHeight - el.clientHeight) / 2;
+    return el.scrollTop;
+  });
+  // The whole cells in view are published a frame after a scroll is heard (AnsiEditor's publishOrigin). Zooming scrolled
+  // the view too, so its origin was past row 0 already: read as soon as that was so, the cells could still be the zoom's,
+  // a row or two short of these, and "the bottom row" then wasn't the bottom one, so the arrow below had no edge to
+  // cross. Wait for this scroll to be heard (the view keeps where it's scrolled to), and a frame more.
+  await expect.poll(() => store(page, 'workspace', (w) => w.ansiScrollY)).toBe(scrolledTo);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
   const { col, row } = await store(page, 'workspace', (w) => w.ansiViewOrigin);
   const { cols, rows } = await store(page, 'workspace', (w) => w.ansiViewSize);
+  expect(row).toBeGreaterThan(0);
   const scroll = async () => {
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
     return scroller.evaluate((el) => [el.scrollLeft, el.scrollTop]);
