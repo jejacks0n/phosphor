@@ -121,7 +121,9 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
   cursor.
 - Probes: `interrupt`: mid-line, pick another Font with the mouse and keep typing (the letters land on the canvas, not
   in the menu), then click the font's size, type a digit and press Escape (the size is put back and typing carries on
-  at the cursor); `speed`: hold Backspace for two seconds; `undo-redo`: undo the typing, redo it, then type and check redo is
+  at the cursor); `extremes`: in Insert mode, type five characters at the start of a full row so its end goes off the
+  canvas, wait two seconds, then Backspace five times (the row's end comes back as it was, gaps included);
+  `speed`: hold Backspace for two seconds; `undo-redo`: undo the typing, redo it, then type and check redo is
   off; `out-of-order`: press Delete at the end of a row and Backspace at column 0.
 - Rated: yes, wants T
 

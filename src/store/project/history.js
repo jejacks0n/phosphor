@@ -123,6 +123,8 @@ export const historyActions = {
 
     // The entry mustn't close over stroke or patch: the old map and the tiles are the ledger's to hold now.
     const { cursor, id, sent, drawn } = stroke, chosen = stroke.startShapes !== this.shapes && stroke.vectorSelected;
+    // What typing pushed past a row's edge, or brought back from there (shared.js: pastEdge), goes with the step.
+    const pastEdge = stroke.pastEdge === undefined ? null : { before: stroke.pastEdge, after: this._pastEdge };
     const drawnAsArtist = this._sharing?.role === 'artist';
     const records = { before: stroke.baseRecords, after: this.baseRecords };
     const frame = this.currentFrame, ledger = this._ledger; // undoing goes back to the frame it was drawn on, and its ledger
@@ -143,6 +145,7 @@ export const historyActions = {
         if (side === 'before') frame.modes.delete(id);
         else withModes(frame).set(id, mode);
       }
+      if (pastEdge) this._pastEdge = pastEdge[side];
       if (side === 'before' && cursor) useWorkspaceStore().textCursor = cursor; // typing undone: the cursor goes back to where it started
       if (side === 'before' && chosen) useWorkspaceStore().vectorSelected = chosen; // a shapes edit undone: its selection back
       if (this._sharing?.role === 'artist') { // the host says what happens; an artist has no base edits to put back
@@ -340,6 +343,7 @@ export const historyActions = {
   // a layer deleted since is back by then (the delete's own undo puts it back); one that's nowhere is left as it is, never
   // written on another. layerOp: it changes the stack (deleting, duplicating), and puts the layers back itself.
   pushWholeLayer(undo, redo, bytes, { everyFrame = false, layerOp = false } = {}) {
+    this._pastEdge = null; // what typing pushed past a row's edge was the replaced layer's (shared.js: pastEdge)
     if (this._sharing?.role === 'host') {
       this.editVersion++;
       this.shareWholeDocument();
