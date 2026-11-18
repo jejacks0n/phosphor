@@ -83,6 +83,21 @@ test('the buttons go zoom, Overwrite or Insert, Canvas or DOM, then Smooth', asy
   expect([...host.querySelectorAll('.strip button')].map((b) => b.textContent.trim())).toEqual(['50%', 'Overwrite', 'DOM', 'Smooth']);
 });
 
+test('the typing mode button goes Overwrite, Insert, Partial and round again, its title saying what the mode moves', async () => {
+  const { workspace } = await mount();
+  workspace.setActiveTool('text');
+  await nextTick();
+  const button = () => [...host.querySelectorAll('.strip button')].find((b) => ['Overwrite', 'Insert', 'Partial'].includes(b.textContent.trim()));
+  const seen = [];
+  for (let k = 0; k < 4; k++) {
+    seen.push([button().textContent.trim(), button().title]);
+    button().click();
+    await nextTick();
+  }
+  const t = i18n.global.t;
+  expect(seen).toEqual([['Overwrite', t('status.overwriteTitle')], ['Insert', t('status.insertTitle')], ['Partial', t('status.partialTitle')], ['Overwrite', t('status.overwriteTitle')]]);
+});
+
 test('a long layer name is cut short with an ellipsis, the whole name its title', async () => {
   const { project, workspace } = await mount();
   const name = 'The layer of the cells I am fixing today';

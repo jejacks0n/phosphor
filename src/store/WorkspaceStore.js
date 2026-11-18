@@ -78,7 +78,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     lastTextCursor: null,  // where it was when Escape put it away: choosing Edit Mode puts it back there if it's in view
     placedCursor: null,    // the cursor a click or choosing Edit Mode placed: the view doesn't follow it there (AnsiEditor)
     selectFromText: false, // the Select tool took over from Edit Mode (a drag, Shift+arrows): setting the selection down goes back
-    insertMode: false,     // typing pushes the row right instead of overwriting
+    typingMode: 'overwrite', // typing replaces the cell ('overwrite'), or pushes the row right: its characters and paint ('insert'), or its characters alone ('partial')
     paletteLayerOpen: false, // the character palette layer has the keyboard
     playing: false,          // an animation is playing (usePlayback)
     playFrame: 0,            // and this frame is on screen
@@ -389,6 +389,10 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     // What typing writes besides the character: a none slot is left out, so that attribute stays as it is. A color's
     // index (16, 231) goes with it.
+    // The Insert key, and the status bar's button: Overwrite, Insert, Partial, and round again.
+    cycleTypingMode() {
+      this.typingMode = { overwrite: 'insert', insert: 'partial', partial: 'overwrite' }[this.typingMode];
+    },
     typingAttrs() {
       return {
         fg: this.editFgNone ? undefined : this.editFgColor,

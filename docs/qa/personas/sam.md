@@ -139,7 +139,7 @@ title.
 - Does: types `漢字` and `😀` in the middle of a line, then Backspace over one, Delete on another, and the arrows
   across them.
 - Expects: each takes two columns and the cursor moves two; Backspace and Delete remove the whole character; the
-  cursor never stops on a covered half; in Insert mode the rest of the row is pushed right by two
+  cursor never stops on a covered half; in Insert and Partial mode the rest of the row is pushed right by two
   ([Two-column characters](../../characters.md#two-column-characters)).
 - Probes: `undo-redo`: undo and redo the wide characters; `out-of-order`: type a letter over the second half of `漢`
   (the other half turns into a space).

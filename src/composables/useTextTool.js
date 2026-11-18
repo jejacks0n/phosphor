@@ -18,7 +18,7 @@ export function typeAtCursor(project, workspace, char) {
   const cursor = workspace.textCursor;
   if (!cursor || refusesHidden({ project, workspace })) return;
   sayBaseOnEveryFrame(project);
-  const typed = project.typeAt(cursor.col, cursor.row, char, workspace.typingAttrs(), { insert: workspace.insertMode });
+  const typed = project.typeAt(cursor.col, cursor.row, char, workspace.typingAttrs(), { mode: workspace.typingMode });
   if (typed === false) toast(t('palette.wideLastColToast'));
   if (!typed) return; // false, or nothing at all: refused while paused
   workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(cursor, cellWidth(char), 0, project.cols, charRowsOf(project.rows)), 1);
@@ -85,7 +85,7 @@ export function useTextTool(project, workspace, textInput) {
 
   const apply = (action) => {
     const { col, row } = workspace.textCursor ?? {};
-    const insert = workspace.insertMode;
+    const mode = workspace.typingMode;
     switch (action.type) {
       case 'char': typeAtCursor(project, workspace, action.char); break;
       case 'move': move(action.dc, action.dr); break;
@@ -94,10 +94,10 @@ export function useTextTool(project, workspace, textInput) {
       case 'newline': move(-col, 1); break;
       case 'backspace':
         if (refusesHidden({ project, workspace })) break;
-        move(-(project.backspaceAt(col, row, workspace.typingAttrs(), { insert }) ?? 0), 0, { typing: true }); // nothing, while paused
+        move(-(project.backspaceAt(col, row, workspace.typingAttrs(), { mode }) ?? 0), 0, { typing: true }); // nothing, while paused
         break;
-      case 'delete': if (!refusesHidden({ project, workspace })) project.deleteAt(col, row); break;
-      case 'toggleInsert': workspace.insertMode = !workspace.insertMode; break;
+      case 'delete': if (!refusesHidden({ project, workspace })) project.deleteAt(col, row, { mode }); break;
+      case 'toggleInsert': workspace.cycleTypingMode(); break;
       case 'color': stepColor(action.slot, action.delta); break;
       case 'slot': {
         const glyph = palettes.active.glyphs[action.index];

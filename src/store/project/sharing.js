@@ -55,7 +55,7 @@ export const DRAWING_ACTIONS = [
 
 // Refused for artists: the picture, the settings, the grid and which document this is.
 export const HOST_ONLY_ACTIONS = [
-  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'paintBasePixels', 'addPictureToLayer',
+  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'shiftBaseCells', 'paintBasePixels', 'addPictureToLayer',
   'bake', 'flattenDrawing', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'clearEditLayer',
   'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed', 'setLayerChars',
   'updateCols', 'updateRows',

@@ -273,17 +273,95 @@ test('the Brush on the base paints base pixels', async () => {
   expect(project.baseLayer.pixelAt(5, 5)).toBe(null);
 });
 
-test('Text on the base overwrites in insert mode', async () => {
-  const { project, workspace } = await blank();
+// Typing's three modes on the base (docs/layers.md, Typing): Overwrite replaces the cell; Insert pushes every cell after
+// the cursor along, its pixels, pin and all; Partial pushes the pinned characters, each with its colors, and leaves the
+// base's paint where it is. Row 1: A and B pinned in red at 1 and 2, blue paint (no pin) at 4.
+const BLUE_PAINT = { r: 0, g: 0, b: 255 };
+async function baseRow() {
+  const app = await blank(), { project, workspace } = app;
   project.beginEdit();
   project.writeBaseCells([{ col: 1, row: 1, char: 'A', fg: RED, bg: '#000000' }, { col: 2, row: 1, char: 'B', fg: RED, bg: '#000000' }]);
+  project.writeBase([{ x: 4, y: 2, hex: '#0000ff' }, { x: 4, y: 3, hex: '#0000ff' }]);
   project.commitEdit();
   workspace.pickLayer('base');
-  expect(project.typeAt(1, 1, 'X', { fg: '#ffffff' }, { insert: true })).toBe(true);
+  const pins = () => Array.from({ length: 6 }, (_, col) => project.baseRecords.pins.get(`${col},1`) ?? '.').join('');
+  const own = (col) => project.baseLayer.pixelAt(col, 2);
+  const shown = (col) => { const cell = project.cells[project.cols + col]; return [cell.char, cell.fg.hex]; };
+  return { ...app, pins, own, shown };
+}
+
+test('Overwrite on the base replaces the cell and moves nothing', async () => {
+  const { project, pins, own } = await baseRow();
+  expect(project.typeAt(1, 1, 'X', { fg: '#ffffff' })).toBe(true);
   project.commitEdit();
-  const pins = project.baseRecords.pins;
-  expect([pins.get('1,1'), pins.get('2,1'), pins.get('3,1')]).toEqual(['X', 'B', undefined]);
+  expect(pins()).toBe('.XB...');
+  expect(own(4)).toMatchObject(BLUE_PAINT);
   expect(project.cellsOf('edit').size).toBe(0);
+});
+
+test('Insert on the base pushes every cell after the cursor along, paint and all; Delete pulls them back', async () => {
+  const { project, pins, own, shown } = await baseRow();
+  expect(project.typeAt(1, 1, 'X', { fg: '#ffffff' }, { mode: 'insert' })).toBe(true);
+  project.commitEdit();
+  await settle(project);
+  expect(pins()).toBe('.XAB..');
+  expect([shown(1), shown(2), shown(3)]).toEqual([['X', '#ffffff'], ['A', RED], ['B', RED]]);
+  expect(own(5)).toMatchObject(BLUE_PAINT); // the paint moved with the row
+  expect(own(4)).toMatchObject({ r: 0, g: 0, b: 0 }); // the black that was before it
+  expect(project.cellsOf('edit').size).toBe(0);
+  project.deleteAt(1, 1, { mode: 'insert' });
+  project.commitEdit();
+  await settle(project);
+  expect(pins()).toBe('.AB...');
+  expect(own(4)).toMatchObject(BLUE_PAINT);
+  expect(project.baseRecords.pins.get(`${project.cols - 1},1`)).toBe(' '); // the cell left at the row's end: erased
+  expect(project.backspaceAt(2, 1, { fg: '#ffffff' }, { mode: 'insert' })).toBe(1);
+  project.commitEdit();
+  expect(pins()).toBe('.B....');
+  expect(own(3)).toMatchObject(BLUE_PAINT);
+  project.undo();
+  project.undo();
+  project.undo();
+  await settle(project);
+  expect(pins()).toBe('.AB...');
+  expect(own(4)).toMatchObject(BLUE_PAINT);
+  expect(project.baseRecords.pins.has(`${project.cols - 1},1`)).toBe(false);
+});
+
+test('Partial on the base pushes the pinned characters with their colors and leaves the paint; a cell one leaves shows the picture again', async () => {
+  const { project, pins, own, shown } = await baseRow();
+  expect(project.typeAt(1, 1, 'X', { fg: '#ffffff' }, { mode: 'partial' })).toBe(true);
+  project.commitEdit();
+  await settle(project);
+  expect(pins()).toBe('.XAB..');
+  expect([shown(1), shown(2), shown(3)]).toEqual([['X', '#ffffff'], ['A', RED], ['B', RED]]);
+  expect(own(4)).toMatchObject(BLUE_PAINT); // the paint, where it was
+  expect(own(5)).toBeNull();
+  project.deleteAt(1, 1, { mode: 'partial' });
+  project.commitEdit();
+  await settle(project);
+  expect(pins()).toBe('.AB...');
+  expect(own(3)).toBeNull(); // B left it: the base's own pixels there are gone, and the picture shows
+  expect(shown(2)).toEqual(['B', RED]);
+  project.typeAt(3, 1, 'C', { fg: RED }, { mode: 'partial' }); // a character moved onto paint takes its place
+  project.typeAt(3, 1, 'D', { fg: RED }, { mode: 'partial' });
+  project.commitEdit();
+  expect(pins()).toBe('.ABDC.');
+  expect(own(4)).toMatchObject({ r: 0, g: 0, b: 0 }); // C's background, over the blue
+  project.undo();
+  project.undo();
+  project.undo();
+  await settle(project);
+  expect(pins()).toBe('.AB...');
+  expect(own(4)).toMatchObject(BLUE_PAINT);
+});
+
+test('Delete on the base in Overwrite mode pulls the pinned characters, as it does a layer\'s', async () => {
+  const { project, pins, own } = await baseRow();
+  project.deleteAt(1, 1);
+  project.commitEdit();
+  expect(pins()).toBe('.B....');
+  expect(own(4)).toMatchObject(BLUE_PAINT);
 });
 
 test('the eraser on the base erases the base, on the edit layer the edit layer', async () => {

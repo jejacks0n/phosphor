@@ -110,9 +110,11 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 ## Drawing character by character
 
 ### 4. Type a line of text
-- Does: presses T, moves the cursor with the arrows, types a line, presses Insert and types into the middle of it,
-  then Home, End, Backspace and Delete, then Enter.
-- Expects: letters land in his colors; Insert pushes the row right and Overwrite replaces (the status bar says which,
+- Does: presses T, moves the cursor with the arrows, types a line, brushes a stroke across the row after it, presses
+  Insert and types into the middle of the line, presses Insert again (Partial) and types there again, then Home, End,
+  Backspace and Delete, then Enter.
+- Expects: letters land in his colors; Insert pushes the rest of the row right, the stroke with the letters; Partial
+  pushes the letters and leaves the stroke where it is; Overwrite replaces (the status bar says which of the three,
   its buttons whole at any width: short of room, the FG and BG hex codes give way, each on its swatch's hover);
   Enter goes to the start of the next line; a run of typing is one undo step, ending when he pauses or moves the
   cursor.
@@ -311,11 +313,13 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 
 ### 25. Fix the base and draw over it
 - Does: picks Base, chooses the Eraser (E) and clicks a cell at its starting size (Size · cells, 1: that one cell turns
-  black with a pinned space, its neighbors stay), types over a cell in Edit Mode (it overwrites; Insert doesn't push
-  there), then picks Layer 1 and types on top.
-- Expects: on the base, the Pencil and text write each cell as it shows, pinned; Delete in Insert mode does nothing
-  there; on Layer 1 his typing covers the base.
-- Probes: `out-of-order`: press Insert on the base and type; `undo-redo`: undo the base edit and the typing in order.
+  black with a pinned space, its neighbors stay), types over a cell in Edit Mode (it overwrites), then picks Layer 1 and
+  types on top.
+- Expects: on the base, the Pencil and text write each cell as it shows, pinned; on Layer 1 his typing covers the base.
+- Probes: `out-of-order`: press Insert on the base and type into the middle of a line with a Brush stroke after it (the
+  whole row moves right, stroke and all), press Insert again for Partial and type (the letters move, the stroke
+  stays), then Delete in each (the row comes back the same way; in Insert the cell at the row's end is black);
+  `undo-redo`: undo the base edit and the typing in order.
 - Rated: yes, wants a key to pick the base
 
 ### 26. Merge my layer into the base

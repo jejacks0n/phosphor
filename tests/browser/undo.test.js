@@ -74,9 +74,9 @@ async function snap(project, workspace, { forceRender = true } = {}) {
 // Count the undoable depth by wrapping the history.
 function trackDepth(project) {
   const h = project.history;
-  const t = { depth: 0 };
+  const t = { depth: 0, strokes: new Set() }; // strokes: the ids of the edits that became steps
   const push = h.push.bind(h), undo = h.undo.bind(h), redo = h.redo.bind(h), clear = h.clear.bind(h);
-  h.push = (e) => { push(e); t.depth = Math.min(t.depth + 1, h.limit); };
+  h.push = (e) => { push(e); t.depth = Math.min(t.depth + 1, h.limit); if (e.stroke) t.strokes.add(e.stroke); };
   h.undo = () => { const ok = undo(); if (ok) t.depth--; return ok; };
   h.redo = () => { const ok = redo(); if (ok) t.depth++; return ok; };
   h.clear = () => { clear(); t.depth = 0; t.cleared = (t.cleared ?? 0) + 1; };
@@ -90,6 +90,7 @@ const SLIDERS = [
 ];
 const CHARS = ['A', 'x', '█', '▀', ' ', '#', '漢'];
 const COLORS = ['#ff0000', '#00ff00', '#0000ff', '#ffee00', '#ffffff', '#123456'];
+const MODES = ['overwrite', 'insert', 'partial']; // typing's (workspace.typingMode)
 
 function makeActions(project, workspace, r, opts) {
   const pick = (a) => a[Math.floor(r() * a.length)];
@@ -158,9 +159,9 @@ function makeActions(project, workspace, r, opts) {
       let col = c;
       for (let k = 0; k < 1 + int(5); k++) {
         const op = int(6);
-        if (op === 0) col -= project.backspaceAt(col, rr, { fg: '#aaaaaa', bg: '#000000' }, { insert: r() < 0.5 });
-        else if (op === 1) project.deleteAt(col, rr);
-        else { const ch = pick(CHARS); if (project.typeAt(Math.min(col, project.cols - 1), rr, ch, { fg: pick(COLORS) }, { insert: r() < 0.3 })) col = Math.min(project.cols - 1, col + (ch === '漢' ? 2 : 1)); }
+        if (op === 0) col -= project.backspaceAt(col, rr, { fg: '#aaaaaa', bg: '#000000' }, { mode: pick(MODES) });
+        else if (op === 1) project.deleteAt(col, rr, { mode: pick(MODES) });
+        else { const ch = pick(CHARS); if (project.typeAt(Math.min(col, project.cols - 1), rr, ch, { fg: pick(COLORS) }, { mode: pick(MODES) })) col = Math.min(project.cols - 1, col + (ch === '漢' ? 2 : 1)); }
       }
     },
     pasteFloat: () => { // the paste is a step and its moves another: the state between comes back
@@ -269,17 +270,18 @@ function pickOf(project, workspace, state) {
 // The stack of expected states, kept in step with the history. An open typing run is on the stack
 // (provisionally) but not yet in the history; it becomes a step when committed, if it changed anything.
 // between: the document's state between an action's two steps (a paste, then its moves), when it has two.
-function account(stack, s, d, project, acc, between) {
+function account(stack, s, d, project, acc, between, t) {
   const nowOpen = !!project._stroke?.typing;
   if (acc.open && !nowOpen) { // the run was committed by this step
     acc.open = false;
-    if (d >= 1) d--; // its step
-    else stack.pop(); // it changed nothing: no step
+    if (t.strokes.has(acc.id)) d--; // its step
+    else stack.pop(); // it changed nothing (a Backspace or Delete on an empty row): no step, whatever the action added
   }
   if (nowOpen && !acc.open) {
     if (d === 1) stack.push(s); // (cannot know the state between; rare)
     stack.push(s);
     acc.open = true;
+    acc.id = project._stroke.id;
     return d > 1 ? `depth ${d}` : null;
   }
   if (nowOpen && acc.open && d === 0) { stack[stack.length - 1] = s; return null; }
@@ -323,7 +325,7 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
     log.push(`${name}(${d >= 0 ? '+' : ''}${d})`);
     if (globalThis.__debug) console.log(i, name, d, 'stroke', !!project._stroke, project._stroke?.typing, 'cells', JSON.stringify([...project.editCells.keys()]), 'strokeCells', project._stroke && JSON.stringify([...project._stroke.editCells.keys()]));
     if (t.cleared) return { seed, log, problem: 'history cleared mid-run' };
-    const err = account(stack, s, d, project, acc, done?.between);
+    const err = account(stack, s, d, project, acc, done?.between, t);
     if (err) return { seed, log, problem: err };
     // a shown state should match a full render of the same document; not while a typing run on the base is open under
     // the Number palette, which holds still through an open edit (rendering.js: composite) and is picked when it ends
@@ -375,7 +377,9 @@ function diffCells(a, b) {
 // A few seeds by default, the ones that once failed (a removed pin kept showing: sync 18, 28, 29;
 // bake+merge 7; a shape edit after a typing run left open, a base restored by undo drawn under a shape a
 // shade apart: shapes 6; a gradient stroke drawn a shade apart from one render to the next: shapes 4; paint from
-// before a typing run shown unsnapped: count 23); VITE_FUZZ_SEEDS=n runs
+// before a typing run shown unsnapped: count 23; an art layer made while a typing run was open, its step recorded before
+// the typing's: layers 19; a shape edit once the only cells layer was deleted, no step at all: sync 20; a typing run
+// that changed nothing, ended by a paste, counted as a step: bake+merge 1); VITE_FUZZ_SEEDS=n runs
 // seeds 1..n (30 takes about eight minutes), VITE_FUZZ_ONLY=6,23 just those.
 beforeAll(() => loadBooleans());
 const FUZZ_SEEDS = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0);
@@ -385,7 +389,7 @@ const seeds = (failed) => ONLY_SEEDS ?? (FUZZ_SEEDS ? Array.from({ length: FUZZ_
 for (const quantize of ['none', 'count']) {
   test(`fuzz: sync actions, quantize ${quantize}`, async () => {
     const failures = [];
-    for (const seed of seeds(quantize === 'count' ? [18, 23, 28] : [18, 28])) {
+    for (const seed of seeds(quantize === 'count' ? [18, 20, 23, 28] : [18, 20, 28])) {
       const f = await fuzz(seed, { quantize, async: false, steps: 20 });
       if (f) failures.push(f);
     }
@@ -406,7 +410,7 @@ test('fuzz: shapes among typing, paint, selections and merges', async () => {
 test('fuzz: typing, paint and selections across two cells layers and the base, added, deleted, duplicated and picked', async () => {
   const failures = [];
   const only = ['type', 'typingRun', 'paint', 'move', 'del', 'copyPaste', 'clearEdit', 'addLayer', 'addLayer', 'pickLayer', 'pickLayer', 'pickBase', 'deleteLayer', 'duplicateLayer', 'mergeDown', 'makeArtLayer'];
-  for (const seed of seeds([1, 2, 3, 4])) {
+  for (const seed of seeds([1, 2, 3, 4, 19])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
   }
@@ -415,7 +419,7 @@ test('fuzz: typing, paint and selections across two cells layers and the base, a
 
 test('fuzz: with bake and merge into the picture', async () => {
   const failures = [];
-  for (const seed of seeds([7])) {
+  for (const seed of seeds([1, 7])) {
     const f = await fuzz(seed, { async: true, steps: 15 });
     if (f) failures.push(f);
   }
@@ -586,7 +590,7 @@ async function fuzzSettings(seed, { steps = 20, forceRender = false } = {}) {
     log.push(`${name}(${d})`);
     if (t.cleared) return { seed, log, problem: 'history cleared' };
     if (done?.between) done.between.vectorOwn ??= s.vectorOwn; // a state within the action (docState's): its chars are the same
-    const err = account(stack, s, d, project, acc, done?.between);
+    const err = account(stack, s, d, project, acc, done?.between, t);
     if (err) return { seed, log, problem: err };
   }
   closeRun(stack, project, t, acc);

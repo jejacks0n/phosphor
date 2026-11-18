@@ -73,7 +73,7 @@ test('the cursor never rests on a trail', async () => {
 test('Backspace and Delete take a whole wide character', async () => {
   const { project } = await blank();
   type(project, 0, 0, 'a漢b');
-  expect(project.backspaceAt(3, 0, ATTRS, { insert: true })).toBe(2);
+  expect(project.backspaceAt(3, 0, ATTRS, { mode: 'insert' })).toBe(2);
   project.commitEdit();
   expect(line(project, 0).slice(0, 2)).toBe('ab');
   type(project, 1, 1, '字');
@@ -86,7 +86,7 @@ test('Backspace and Delete take a whole wide character', async () => {
 test('insert mode shifts the row by the character\'s width', async () => {
   const { project } = await blank();
   type(project, 0, 0, 'abc');
-  project.typeAt(1, 0, '漢', ATTRS, { insert: true });
+  project.typeAt(1, 0, '漢', ATTRS, { mode: 'insert' });
   project.commitEdit();
   expect(line(project, 0).slice(0, 5)).toBe('a漢>bc');
 });

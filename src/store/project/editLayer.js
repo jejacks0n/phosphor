@@ -2,7 +2,7 @@
 // characters), flipping a cell's colors, and clearing the layer. Owns _typingNow (a keystroke is
 // being applied) and _typingTimer (the pause that ends a typing run). With the base picked (onBottom)
 // it all goes on the base: a cell written as it then shows (completeAt, writeBaseCells), paint as base
-// pixels, and typing overwrites (a row of pins and pixels doesn't shift).
+// pixels, and a row pushed along by typing as shiftBaseCells moves it.
 import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, isFrozen, isPaintBlock, ownEntry } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { EMPTY_STATE, cutKey } from '@/document/frames.js';
@@ -125,14 +125,14 @@ export const editLayerActions = {
 
   // Typing: one undo entry per keystroke. Typed cells sit above paint (the last edit wins). A
   // two-column character takes the cell to its right too, so there's no room for one in the last
-  // column: false, and nothing is typed.
-  typeAt(col, row, char, attrs, { insert = false } = {}) {
+  // column: false, and nothing is typed. mode (workspace.typingMode): 'overwrite' replaces the cell; 'insert' pushes
+  // the rest of the row right first, its characters and its paint; 'partial' its characters alone (shiftCells).
+  typeAt(col, row, char, attrs, { mode = 'overwrite' } = {}) {
     const width = cellWidth(char);
     if (refusedNoCells(this, { toast: false })) return null; // no cells layer to type on (typeLines says so)
     if (width === 2 && col === this.cols - 1) return false;
-    insert &&= !onBottom(this);
     this.typing(() => {
-      if (insert) this.shiftCells(row, col, width);
+      if (mode !== 'overwrite') this.shiftCells(row, col, width, { paint: mode === 'insert' });
       this.writeAt(col, row, { char, ...attrs });
     });
     return true;
@@ -145,23 +145,24 @@ export const editLayerActions = {
   },
 
   // Backspace over a wide character takes all of it: the columns the cursor moves back (0 at the
-  // row's start).
-  backspaceAt(col, row, attrs, { insert = false } = {}) {
+  // row's start). In Overwrite mode it leaves a space; in the others it pulls the rest of the row left, as typing
+  // there pushes it right.
+  backspaceAt(col, row, attrs, { mode = 'overwrite' } = {}) {
     if (col < 1) return 0;
     const target = this.cells[cellIndex(col - 1, row, this.cols)]?.wide === 'trail' ? col - 2 : col - 1;
     const k = col - target;
-    insert &&= !onBottom(this);
     this.typing(() => {
-      if (insert) this.shiftCells(row, col, -k);
+      if (mode !== 'overwrite') this.shiftCells(row, col, -k, { paint: mode === 'insert' });
       else this.writeAt(target, row, { char: ' ', ...attrs });
     });
     return k;
   },
 
-  // Delete on a wide character takes all of it.
-  deleteAt(col, row) {
+  // Delete on a wide character takes all of it. It pulls the rest of the row left in every mode: its characters, and
+  // in Insert mode its paint too.
+  deleteAt(col, row, { mode = 'overwrite' } = {}) {
     const k = this.cells[cellIndex(col, row, this.cols)]?.wide === 'lead' ? 2 : 1;
-    this.typing(() => this.shiftCells(row, col + k, -k));
+    this.typing(() => this.shiftCells(row, col + k, -k, { paint: mode === 'insert' }));
   },
 
   // A run of typing is one undo step: its stroke stays open across keystrokes and is committed
@@ -184,22 +185,35 @@ export const editLayerActions = {
     }, TYPING_PAUSE_MS);
   },
 
-  // Move a row's characters of someone's own (insert/delete); paint stays where it is, and so does what's paint to it
-  // (a paint block, a frozen cell: docs/model.md R1), a character moved onto it taking its place. Not on the base.
-  shiftCells(row, fromCol, delta) {
-    if (onBottom(this)) return;
+  // Move a row along from fromCol by delta cells (typing's Insert, Partial and Delete); what's pushed past the row's
+  // end is lost. Without paint (Partial, and Delete in Overwrite), its characters of someone's own: paint stays where
+  // it is, and so does what's paint to it (a paint block, a frozen cell: docs/model.md R1), a character moved onto it
+  // taking its place. With paint (Insert), everything the layer has there: every entry, and the paint. On the base,
+  // shiftBaseCells.
+  shiftCells(row, fromCol, delta, { paint = false } = {}) {
+    if (onBottom(this)) return this.shiftBaseCells(row, fromCol, delta, { paint });
     const stays = [];
-    for (const [key, entry] of this.editCells) {
+    for (const [key, entry] of paint ? [] : this.editCells) {
       const at = parseKey(key);
       if (at.row === row && at.col >= fromCol + Math.min(delta, 0) && !ownEntry(entry, this.renderStyle)) stays.push([key, entry]);
     }
     const moved = shiftRow(stays.length ? withoutCells(this.editCells, stays.map(([key]) => parseKey(key))) : this.editCells, row, fromCol, delta, this.cols);
-    if (moved === this.editCells) return;
+    const span = paint && this.clipRect({ c0: Math.min(fromCol, fromCol + delta), r0: row, c1: this.cols - 1, r1: row });
+    const painted = !!span && !!this.paintLayer?.hasPaintIn(span);
+    if (moved === this.editCells && !painted) return;
+    const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
+    if (painted) {
+      this.beginEdit();
+      pixels.push(...pixels.map(({ x, y }) => ({ x, y: y + 1 })));
+      this.noteDrawn(pixels);
+      const tail = fromCol < this.cols && this.paintLayer.copyCells({ ...span, c0: fromCol });
+      this.paintLayer.eraseCells(span);
+      if (tail) this.paintLayer.pasteCells(tail, fromCol + delta, row, this.cols - fromCol, 1, span);
+    }
     const next = stays.length ? new Map(moved) : moved;
     for (const [key, entry] of stays) if (!next.has(key)) next.set(key, entry);
-    this.setEditCells(next, Array.from({ length: this.cols }, (_, col) => cellKey(col, row)));
-    const pixels = Array.from({ length: this.cols }, (_, x) => ({ x, y: 2 * row }));
-    this.recomposeEdit(pixels);
+    if (next !== this.editCells) this.setEditCells(next, Array.from({ length: this.cols }, (_, col) => cellKey(col, row)));
+    this.recomposeEdit(pixels, { composited: painted });
   },
 
   // A whole entry for a cell as the cell layer shows it: its own attributes, the rest frozen from
