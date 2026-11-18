@@ -2,7 +2,8 @@
 // nothing changes), and a moved or pasted block floating until the selection is set down. Owns
 // _float (the move in progress).
 //
-// They act on layers by id, bottom first (workspace.selectionIds: every shown cells layer, through layersFor): a cells
+// They act on layers by id, bottom first (workspace.selectionIds: the picked layer, or with All layers on every shown
+// cells layer; the Magic Wand's, workspace.shownIds: every shown one; each through layersFor): a cells
 // layer's cells and paint (stored apart but one thing to the user), and the base's colors and pins (the converter's own
 // characters belong to their cells and stay). Block = { w, h, px?, parts: [{ id, cells: (Entry | null)[], paint?: canvas }],
 // base?: { pixels: canvas (at scale, basePixelsOf), scale, colors: canvas (its stored colors, a grid pixel each), pins:
@@ -56,7 +57,8 @@ function eachLayer(project, ids, fn) {
 }
 
 export const selectionActions = {
-  // shapes: the cells shapes on shown vector layers show in rect come too, as shown (a move's block leaves them).
+  // shapes: the cells shapes on shown vector layers show in rect come too, as shown (a move's block leaves them, and so
+  // do a Copy and a Stamp without All layers).
   copySelection(rect, ids, { shapes = true } = {}) {
     this.ensureLayer();
     const block = { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1, parts: [] };
@@ -178,10 +180,11 @@ export const selectionActions = {
   }),
 
   // Stamp (Moebius's S while moving, and C on a selection): a copy of what's selected stays where it
-  // is, and the block floats on from there as a paste of it, so moving it leaves the copy behind.
+  // is, and the block floats on from there as a paste of it, so moving it leaves the copy behind. Of the layers alone:
+  // what shapes show there comes too only with All layers on.
   stampSelection(rect, ids) {
     this.commitPending();
-    const landed = this.pasteSelection(this.copySelection(rect, this.layersFor(ids)), rect.c0, rect.r0);
+    const landed = this.pasteSelection(this.copySelection(rect, this.layersFor(ids), { shapes: useWorkspaceStore().selectAllLayers }), rect.c0, rect.r0);
     if (landed && this._float) this._float.stamped = this._float.start.stamped = true;
     return landed;
   },

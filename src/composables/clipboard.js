@@ -3,7 +3,7 @@ import { ctx2d } from '@/lib/Canvas';
 import { VERSION, clipboardHtml, moebiusData } from '@/lib/clipboardBlocks';
 import { flatBlock } from '@/store/project/selection.js';
 
-// Copy a selection: the block (each shown layer's cells and paint, the base's pixels, what shapes show) on Phosphor's own
+// Copy a selection: the block (the picked layer's cells and paint; with All layers on, each shown layer's, the base's pixels and what shapes show) on Phosphor's own
 // clipboard, and on the system clipboard its characters as plain text (for a terminal, a chat, a
 // text editor) and, in the HTML slot, what it shows as Moebius's block, with the block itself
 // alongside for another Phosphor tab as one layer's (flatBlock; clipboardBlocks.js). Without the HTML, the text alone. The
@@ -14,7 +14,7 @@ import { flatBlock } from '@/store/project/selection.js';
 export function copySelection(project, workspace, rect, ids) {
   const lit = project.layersFor(ids);
   if (!lit.length) return; // every layer hidden: nothing to copy, as with no selection
-  const block = project.copySelection(rect, lit), id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+  const block = project.copySelection(rect, lit, { shapes: workspace.selectAllLayers }), id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
   workspace.clipboard = block;
   workspace.clipboardId = id;
   workspace.clipboardText = null;

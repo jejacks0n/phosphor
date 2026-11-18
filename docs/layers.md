@@ -24,8 +24,9 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
   tab you last had.
 - **What Tools Act On**: Every drawing tool acts on the selected layer, the base too
   ([Drawing on the Base](#drawing-on-the-base)), and every tool is offered whichever layer is selected.
-  [Selections](#the-select-tool) are the exception: most of what they do acts on every drawing layer that shows.
-  Dragging inside one moves only the selected layer's part, unless **All layers** is on in the options row.
+  The [Select tool](#the-select-tool) acts on the selected layer too, unless **All layers** is on in its options row,
+  when it acts on every drawing layer that shows. The [Magic Wand](#the-magic-wand)'s Delete and recoloring always act
+  on every drawing layer that shows.
 - **Adding Layers**: The header over the list counts your layers ("3 of 64 layers", the base included), with two
   buttons on its right:
   - Click **Add layer** (the cells icon with a plus) to add a new drawing layer directly above the selected layer, or
@@ -696,14 +697,15 @@ Everything below works the same in both.
 
 ### What a Selection Acts On
 
-- **Every Layer That Shows**: Copy, Cut, **Delete**, nudging, **Stamp**, flipping, rotating, **Set FG** and **Set BG**
-  act on every drawing layer that shows, the base among them, whatever is selected. Hide a layer (its eye in LAYERS)
-  to leave it out. Moved, flipped or rotated, each layer's part stays on its own layer.
-- **Dragging and All Layers**: Dragging inside the selection moves only the selected layer's part, unless **All
-  layers** is on in the options row (it's off to start), which moves every visible layer. A pasted or stamped block
-  drags as one block whatever the setting.
-- **Shapes**: Shapes are VECTOR's. Cut, Delete and moves leave them whole where they are, but **Copy** also takes what
-  the shapes on the vector layers that show show there, as cells, so a paste looks like what you copied.
+- **The Selected Layer**: Copy, Cut, **Delete**, moving (a drag or the arrow keys), **Stamp**, flipping, rotating,
+  **Set FG** and **Set BG** act on the selected layer alone. What other layers have there, under it or over it, stays
+  as it is, so Select all and Delete empties one layer, not the drawing.
+- **All Layers**: Turn on **All layers** in the options row (it's off to start) and all of those act on every drawing
+  layer that shows, the base among them. Hide a layer (its eye in LAYERS) to leave it out. Moved, flipped or rotated,
+  each layer's part stays on its own layer. A pasted or stamped block moves as one block whatever the setting.
+- **Shapes**: Shapes are VECTOR's. Cut, Delete and moves leave them whole where they are. With **All layers** on,
+  **Copy** and **Stamp** also take what the shapes on the vector layers that show show there, as cells, so a paste
+  looks like what you copied.
 - **The Base**: The base is the picture. Moved, flipped or rotated, its own pixels and pinned characters go with the
   block, on the base, and the area it came from is erased (black, with pinned spaces). Pasted or stamped, each cell
   lands as it showed: as drawing-layer cells that look just as they did where they came from (reduced colors, Best
@@ -711,8 +713,9 @@ Everything below works the same in both.
 - **A Drawing Layer**: Your typed and drawn cells and paint. A cell with nothing typed, drawn or painted in it on that
   layer is see-through: moved, pasted or stamped, it leaves what it lands on showing, while it floats and once it's
   set down. A cell with anything in it, even half a cell of paint, covers the whole cell under it.
-- **Delete**: The **Delete** button, or the **Delete**, **Backspace** or **E** key, removes your edits from each drawing
-  layer that shows and erases the base, if it shows.
+- **Delete**: The **Delete** button, or the **Delete**, **Backspace** or **E** key, removes what's drawn there on the
+  selected layer (with the base selected, it erases the base). With **All layers** on it removes your edits from each
+  drawing layer that shows and erases the base, if it shows.
 
 ### Moving a Selection
 
@@ -742,6 +745,9 @@ outside the tab:
 - **A Terminal, Chat or Text Editor**: As plain text, a line per row. A cell that shows nothing (its character and
   background are the same color, black on black included) is a space, as in an export.
 
+Outside Phosphor there are no layers: Moebius and plain text get what the selection shows, whichever layers the copy
+took.
+
 **Paste** (**Cmd/Ctrl+V**) pastes whatever you copied last, wherever you copied it:
 
 - **From Phosphor**: A block, with its colors and layers.
@@ -758,8 +764,9 @@ Where a paste lands:
   bigger than the canvas is cut at its edge.
 - **Layer**: On the selected layer, as one: the base's cells, then each layer's cells and paint over the one under it,
   then what the shapes showed. With the base selected it's written into the base, as drawing there is
-  ([Drawing on the Base](#drawing-on-the-base)). A block keeps floating on the layer it was pasted on, and a moved one
-  on the layers it was lifted from, whatever you select meanwhile.
+  ([Drawing on the Base](#drawing-on-the-base)). A block keeps floating on the layer it was pasted on, whatever you
+  select meanwhile. A moved one stays on the layers it was lifted from; with **All layers** off, selecting another
+  layer sets it down, and the next move lifts that layer's part.
 - **The Paste Button**: Pastes only what you copied in this tab. With nothing copied here it's off, and its tooltip
   points you to **Cmd/Ctrl+V**. If your browser doesn't let Phosphor write the clipboard, **Cmd/Ctrl+V** in the same
   tab still pastes the block you copied.
@@ -767,8 +774,10 @@ Where a paste lands:
 ### Stamp, Flip, and Rotate
 
 - **Stamp** (**S**, or **C** as in Moebius): Leaves a copy of the selection where it is and floats the block on from
-  there, so you can drag or nudge it away and stamp again. Each stamp is its own undo step.
-- **Flip horizontally** (a mirror) and **Flip vertically**: Turn the selection in place, on the layers that show. The
+  there, so you can drag or nudge it away and stamp again. Each stamp is its own undo step. It stamps the selected
+  layer's own drawing; what's under it on other layers comes too only with **All layers** on.
+- **Flip horizontally** (a mirror) and **Flip vertically**: Turn the selection in place, on the selected layer (with
+  **All layers** on, on every layer that shows). The
   characters turn with it: box lines (┌ → ┐, ╒ → ╕), half-blocks and quadrants (▀ → ▄, ▌ → ▐), arrows and triangles
   (→ ←, ▲ ▼), and brackets and slashes (( ), < >, / \). Letters, digits and shades stay as they are. They're buttons,
   with no key.
@@ -776,7 +785,7 @@ Where a paste lands:
   a square (two cells side by side, a cell being twice as tall as it's wide, turn into two cells side by side).
   - The turned picture lands as ▄ half-blocks in its pixels' colors, and a Half-block's ▄ goes with its paint.
   - Characters can't turn that way (a cell would land across half of two), so Rotate is off while the selection has
-    any on the layers that show: typed or drawn characters on a drawing layer, or characters pinned on the base.
+    any on the layers it acts on: typed or drawn characters on a drawing layer, or characters pinned on the base.
   - A block an odd number of cells wide turns into a row and a half; the half row left over keeps what was under it.
   - The rotated block starts at the same top-left corner (moved back onto the canvas if it would run off it).
   - It's a button, with no key.
@@ -846,7 +855,9 @@ nothing until you select cells. With the wand they come at the end of its row, o
   undo step. Only that color changes: each cell keeps the character and the other color it shows, whatever picked them
   (Best match, By shape, dithering, the palette), and paint on it keeps showing the color it gave its half.
 - **Which Layer**: Each cell is recolored on the topmost layer that shows with a cell or paint of its own there, else
-  on the base. Hide a layer to leave it out.
+  on the base. Hide a layer to leave it out. With the Select tool and **All layers** off, every cell is recolored on
+  the selected layer: one with nothing of its own there becomes a drawing-layer cell that looks as the cell did, in
+  the new color.
 - **On a Drawing Layer**: The cells take it as drawing-layer cells, replacing the paint there.
 - **On the Base**: It goes into the picture's own colors (a cell's background is its top pixel, its foreground its
   bottom one), with the cell's character pinned, so the converter doesn't pick another for the new colors.

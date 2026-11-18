@@ -1,6 +1,6 @@
 // Selects a rectangle of cells, in either view (in the pixel view a cell is a grid pixel wide and two
 // tall, so the rectangle's edges keep to whole cells there too). Dragging inside the selection moves its contents on
-// the picked layer (or all visible layers when All layers is on), the block following the pointer cell by cell (a float:
+// the picked layer (or all visible layers when All layers is on: workspace.selectionIds, as every action on a selection), the block following the pointer cell by cell (a float:
 // the whole drag is one undo step); dragging its border moves just the outline; dragging elsewhere
 // draws a new one, and a click outside clears it. With nothing selected, a click selects the cell under it. The actions are on the options row.
 import { normalizeRect, selectionHit, clampOffset } from '@/document/editCells';
@@ -27,7 +27,7 @@ export default {
   kind: 'paint',
   section: 'select',
   autoScroll: true,
-  options: [
+  options: [ // All layers: what every action on the selection reaches (workspace.selectionIds), not only a drag
     { key: 'selectAllLayers', get label() { return t('tools.select.allLayers'); }, get title() { return t('tools.select.allLayersTitle'); }, type: 'checkbox' },
   ],
   // before: the selection to undo back to, when the caller changed it already (Edit Mode's drag).
@@ -59,8 +59,7 @@ export default {
         dr: Math.max(-rect.r1, Math.min(charRowsOf(project.rows) - 1 - rect.r0, dr)),
       };
       if (offset.dc === moved.dc && offset.dr === moved.dr) return;
-      const ids = workspace.selectAllLayers ? workspace.selectionIds : [workspace.pickedLayer];
-      const landed = project.floatSelection(workspace.selection, ids, offset.dc - moved.dc, offset.dr - moved.dr);
+      const landed = project.floatSelection(workspace.selection, workspace.selectionIds, offset.dc - moved.dc, offset.dr - moved.dr);
       if (landed) {
         workspace.selection = landed;
         drag.moved = offset;

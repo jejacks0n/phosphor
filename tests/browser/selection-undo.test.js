@@ -233,6 +233,7 @@ test('a move undone and redone still floats: dragging on is the same move, one u
 // lands on its own layer, the shape stays where it is, and one undo puts everything back.
 test('a move across three layers and a shape', async () => {
   const { project, workspace } = await scene();
+  workspace.selectAllLayers = true;
   const WHITE = { fg: '#ffffff', bg: '#000000' };
   project.beginEdit();
   project.writeBaseCells([{ col: 2, row: 2, char: 'P', fg: '#ff0000', bg: '#000000' }]);
@@ -268,9 +269,12 @@ test('a move across three layers and a shape', async () => {
   expect([...project.cellsOf(top).keys()]).toEqual(['4,4']);
 });
 
-// A float is tied to the layers it lifted: picking another layer between two nudges of it doesn't move it there.
+// A float is tied to the layers it lifted: with All layers on, picking another layer between two nudges of it doesn't
+// move it there. (Off, the layers a nudge takes change with the pick, which sets the block down: the next lifts the
+// newly picked layer's part.)
 test('a floating move stays on the layers it lifted when another layer is picked', async () => {
   const { project, workspace } = await scene();
+  workspace.selectAllLayers = true;
   const other = project.addLayer('cells', 'edit');
   project.typeAt(3, 3, 'x', { fg: '#ff0000', bg: '#000000' });
   project.commitEdit();

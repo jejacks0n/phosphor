@@ -498,7 +498,7 @@
     "select": {
       "title": "Select",
       "allLayers": "All layers",
-      "allLayersTitle": "Move all visible layers. Turn off to move only the selected layer"
+      "allLayersTitle": "Selection actions affect all visible layers. Turn off to affect only the selected layer"
     },
     "wand": {
       "title": "Magic Wand",

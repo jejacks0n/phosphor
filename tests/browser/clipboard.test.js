@@ -209,8 +209,9 @@ test('a block from another tab pastes as it would in its own, into a base at ano
   expect(await into(await decodeBlock(phosphor))).toEqual(own);
 });
 
-test('copy for other apps takes every shown layer', async () => {
+test('copy for other apps takes every shown layer, with All layers on', async () => {
   const { project, workspace } = await createTestApp();
+  workspace.selectAllLayers = true;
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: COLS, rows: 20 });
   project.typeAt(0, 0, 'a', ATTRS);
   project.commitEdit();
