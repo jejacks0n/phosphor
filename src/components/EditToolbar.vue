@@ -15,6 +15,7 @@ import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import VectorOptions from '@/components/VectorOptions.vue';
 import { shortcut } from '@/lib/keyLabels';
 import { snapsLate } from '@/lib/CharResolver';
+import { isUniform } from '@/lib/ImageProcessor';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
 import { refusedHidden } from '@/store/project/shared.js';
 import { sameChars } from '@/document/layerInfo.js';
@@ -293,7 +294,9 @@ const mergeChoices = computed(() => {
   const { id } = merging.value ?? {}, layer = project.layerById(id);
   const ownChars = layer && project.paintOf(id)?.hasPaint && !sameChars(layer.chars, project.baseChars, 'cells')
     && t('toolbar.mergeDialog.ownCharsNote', { name: layerName(id), below: layerName(below(id)?.id) });
-  const costs = [ownChars, project.pictureIsOriginal && t('toolbar.mergeDialog.originalNote')].filter(Boolean);
+  // A blank canvas's picture is one color, the same at any size: resizing it gives up nothing.
+  const resized = project.pictureIsOriginal && !isUniform(project.image) && t('toolbar.mergeDialog.originalNote');
+  const costs = [ownChars, resized].filter(Boolean);
   return costs.length ? [choices[0], { ...choices[1], costs }] : choices;
 });
 
