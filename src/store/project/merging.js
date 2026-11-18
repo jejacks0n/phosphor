@@ -128,7 +128,7 @@ function onBase(project, id, rect) {
   const indexes = [...written], was = indexes.length && levelCells(project, id, indexes), looks = frozenCells(project, id, indexes, was);
 
   const before = { base: project.baseLayer.snapshot(), baseRecords: project.baseRecords, stack: stackState(project) };
-  const pixels = merged.flatMap(({ col, row, top, bottom }) => [{ x: col, y: 2 * row, ...top, alpha: 1 }, { x: col, y: 2 * row + 1, ...bottom, alpha: 1 }]);
+  const pixels = merged.flatMap(({ col, row, top, bottom, kept }) => [{ x: col, y: 2 * row, ...top, alpha: 1 }, { x: col, y: 2 * row + 1, ...bottom, alpha: 1 }].filter((_, half) => !kept?.[half]));
   project.baseLayer.erase(pixels);
   project.baseLayer.paint(pixels);
   // A frozen cell's paint under it is what its entry stands for: the entry's colors go in, not the paint's; a Color ASCII
@@ -590,7 +590,13 @@ export const mergingActions = {
       : char === cell.char ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
         : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
     const exact = !ascii && char === cell.char;
-    return { col, row, top, bottom, char, ...(exact && { fgIndex: cell.fgIndex, bgIndex: cell.bgIndex }) };
+    // A half the entry leaves to the base (a typed letter's with no BG), with no paint over it, keeps the base's own pixels
+    // (kept: [top, bottom]), which show as they showed. Written as a stored color instead, the base's snap of it (on the
+    // graphics card) can land a palette step off (a tie broken the other way) or never make it at all (the picture's cell
+    // can show a mix of its pixels' snaps, as under Posterize). docs/model.md R3.
+    const leaves = (y) => exact && !paint?.pixelAt(col, y);
+    const kept = [!entry?.bg && leaves(2 * row), !entry?.fg && leaves(2 * row + 1)];
+    return { col, row, top, bottom, char, kept, ...(exact && { fgIndex: cell.fgIndex, bgIndex: cell.bgIndex }) };
   },
 
   // Merge into the picture: the cells layer with the id (the one in use by default; another is picked first), inside rect
@@ -679,11 +685,11 @@ export const mergingActions = {
         // A frozen cell's pin is its look; its paint under it stays out (as onBase keeps it out). docs/model.md R3. A paint
         // block outside ANSI is its paint (R1): the converter's, into the picture.
         const kind = isFrozen(entry) ? 'exact' : mergeKind({ char: shownEntry(entry, this.renderStyle)?.char ?? pin, renderStyle: this.renderStyle, inPicture: inPicture(col, row) });
-        let top, bottom, folded = false;
+        let top, bottom, folded = false, kept = [];
         const paintOver = (half, y) => (isFrozen(entry) || folded ? half : over(half, paintAt(col, y)));
         if (kind === 'exact') {
           const merged = this.mergeCellOf(col, row, entry, level[cellIndex(col, row, this.cols)]?.char);
-          ({ top, bottom, folded = false } = merged);
+          ({ top, bottom, folded = false, kept } = merged);
           // its indexes as onBase keeps them, where no paint is over that half
           const fgIndex = paintAt(col, 2 * row + 1).a ? undefined : merged.fgIndex, bgIndex = paintAt(col, 2 * row).a ? undefined : merged.bgIndex;
           if (entry || pin) pins.push({ col, row, char: entry ? merged.char : level[cellIndex(col, row, this.cols)]?.char ?? pin, fgIndex, bgIndex });
@@ -697,7 +703,7 @@ export const mergingActions = {
         }
         const shown = [paintOver(top, 2 * row), paintOver(bottom, 2 * row + 1)];
         if (kind === 'exact') {
-          exactPixels.push({ x: col, y: 2 * row, ...shown[0], alpha: 1 }, { x: col, y: 2 * row + 1, ...shown[1], alpha: 1 });
+          exactPixels.push(...[{ x: col, y: 2 * row, ...shown[0], alpha: 1 }, { x: col, y: 2 * row + 1, ...shown[1], alpha: 1 }].filter((_, half) => !kept[half]));
         } else {
           shown.forEach(({ r, g, b }, half) => {
             ctx.fillStyle = rgb2hex({ r, g, b });
