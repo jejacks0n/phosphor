@@ -1,7 +1,7 @@
 # Cells and paint: the model
 
 What a drawing layer holds, how paint lays over each kind of thing, and what the operations that move them (Merge
-down, Retouch, Colors only, the PIXEL view's Overlay) must keep. These are the engineering rules; [layers.md](layers.md)
+down, Retouch, Colors only, the PIXEL view and its Overlay) must keep. These are the engineering rules; [layers.md](layers.md)
 describes the behavior for people who draw. When the code and this file disagree, this file wins and one of them is
 fixed. A change to a rule changes this file in the same commit, and the tests named under it.
 
@@ -240,6 +240,48 @@ current style (a paint block outside ANSI) isn't drawn: its paint is already the
 - Checked by: `tests/browser/pixel-overlay.test.js › in the ASCII styles a paint block isn't drawn over its paint …` and
   `… the report: the strokes under and over the shape …`.
 
+### R11. The PIXEL view shows a character on the base as it looks; what's stored, and what the tools read, stays its two pixels.
+
+The base holds a character of someone's own as a pin and two pixels: its background the top one, its foreground the
+bottom one (`writeBaseCells`), whatever the character is. An art layer's cells are drawn the same way. Shown as they
+are, every such cell is its background over its foreground: a `█` is half a cell, and a line of `█ ░ ▒ ▓` a row of
+dashes. So the PIXEL view draws each one's look over those pixels: per half, its background blended toward its
+foreground by the ink the glyph has there (`halfColors`, as the Overlay draws a layer's cell and `#showResolved` Best
+match's). `█` is solid, `▓ ▒ ░` are three quarters, a half and a quarter of the way, `▐ ▌` a half (a grid pixel is a
+column wide, so it can't split sideways), `▄` as it was, a thin character faint. The cell is the one the art style
+shows (`pinnedCell`: R8's background in Color ASCII, white on black in Monochrome ASCII).
+
+Display only. The output, the cells, saved files and exports hold the two colors as before, and every tool in the PIXEL
+view reads and writes those (`shownCanvas`, the base's own pixels), not the look: the Eyedropper on a gray `▒` picks one
+of its two colors, and the Brush on the base over a `█`'s upper pixel changes its background, which doesn't show.
+
+What's over the character counts, bottom to top, as the cell itself is laid (`composeAll`, `#upperCell`):
+
+- **Paint on a layer above** (the lower group's, an upper cells layer's) lies over the look in each half it covers,
+  snapped as the output snaps paint: the paint shows where it is, as over any pixels. Where the paint doesn't tint the
+  character but is converted over the cell's two pixels (R2: a character with no ink, in the ASCII styles), the pixels
+  show, as the conversion reads them.
+- **A shape reaching the cell** takes it, and the pixels show: under the lower group's shapes the pin gives way
+  (`pinAt`), and an upper vector layer's shape makes the cell a rendering of the pixels (R7).
+- **An upper art layer's character** has a look of its own, of the cell `#upperCell` builds there.
+- **A hidden base** has no pins. A layer's own characters aren't pixels at all: the Overlay draws them (R6), over
+  whatever is under them.
+- **A frame built for playing** has the looks in its output (`FrameBuilder.build`), and the ghost dims an inherited
+  cell toward the base's look where it has one (`baseLook`), not toward its two pixels.
+
+The looks are one image the output's size (`looksCanvas`), see-through but in those cells. It's kept, and worked out
+again only over the cells made again since (`#looksDirty`, marked by `composite`, `updateCells`, `composeAll` and
+`composeUpper`: every way a cell is made), so a redraw is one more `drawImage` and an edit costs its own cells. A large
+rect walks its pins, not its cells (`MOST_ASKED`): asking a cell for its pin makes a key, several times the cost of
+reading one.
+
+- Lives in: `looksCanvas`, `#lookAt`, `#paintedLook` and `baseLook` (`src/document/Renderer.js`); drawn by
+  `redrawDisplay` and `drawVeil` (`src/components/InputEditor.vue`) and `FrameBuilder.build`.
+- Checked by: `tests/browser/pixel-characters.test.js › R11: …` (the report's file; a character written, written over
+  and undone; paint over one on the layer above and on one above that; shapes; a hidden base; both ASCII styles; a
+  palette with Best match; art layers above and in the lower group; a built frame; the ghost; the Overlay; a redraw
+  that asks no cell). Timed by `bench/pixel-view.bench.js`.
+
 ### R9. A layer's change redraws what's over and under it, and changes nothing of theirs.
 
 The views show one grid of cells, each a character and two colors, so the layers are composed into it: a shape drawn,
@@ -280,8 +322,9 @@ the stored shape keeps it; a record made from scratch needs `layer` named. A sel
 
 ## Where the rules are walked and what else they reach
 
-Maya's QA script walks R2–R10 as a person would, in ANSI and in Color ASCII ([How my layers blend](qa/personas/maya.md#how-my-layers-blend));
-Dex's step 26 walks typing, Blur and Colors only on one layer in ANSI. [layers.md](layers.md#how-layers-blend) says the
+Maya's QA script walks R2–R11 as a person would, in ANSI and in Color ASCII ([How my layers blend](qa/personas/maya.md#how-my-layers-blend));
+Dex's step 26 walks typing, Blur and Colors only on one layer in ANSI, and his step 25 the base's characters in the
+PIXEL view (R11). [layers.md](layers.md#how-layers-blend) says the
 same in plain words. The rules reach past the stack view: animation frames are built by the same walk with the same
 scales (FrameBuilder: a built frame equals the still, `tests/browser/animation-build.test.js`); a room's artists and
 watchers compose with the same code; exports, Flatten and the thumbnail read the composed cells; copy and paste carry

@@ -314,8 +314,9 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 
 ### 24. Open my scene to draw on top
 - Does: starts a New project (it asks if there are unsaved changes), opens `scene.ans` and picks Draw on top.
-- Expects: the art is the base, every character pinned; Layer 1 is empty above it; All cells is on in PIXEL, so each
-  cell shows there as it looks; the sliders and the palette work on it as on a picture.
+- Expects: the art is the base, every character pinned; Layer 1 is empty above it; in PIXEL each character shows as it
+  looks (a `█` solid, a `▒` a mix of its two colors), with All cells on and with it turned off or the Overlay at 0%
+  too; the sliders and the palette work on it as on a picture.
 - Probes: `back-out`: at the unsaved-changes question, cancel and check nothing changed; `interrupt`: look at PIXEL
   and back.
 - Rated: yes, wants Cmd+O, then a key for Draw on top
@@ -325,6 +326,8 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
   black with a pinned space, its neighbors stay), types over a cell in Edit Mode (it overwrites), then picks Layer 1 and
   types on top.
 - Expects: on the base, the Pencil and text write each cell as it shows, pinned; on Layer 1 his typing covers the base.
+  In PIXEL with the Overlay at 0%, a `█` he drew on the base is a whole solid cell, not half of one, and a line of
+  `░ ▒ ▓` is shades, not dashes; a Brush stroke on Layer 1 across them shows over them, where he painted it.
 - Probes: `out-of-order`: press Insert on the base and type into the middle of a line with a Brush stroke after it (the
   whole row moves right, stroke and all), press Insert again for Partial and type (the letters move, the stroke
   stays), then Delete in each (the row comes back the same way; in Insert the cell at the row's end is black);
