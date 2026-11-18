@@ -80,6 +80,24 @@ test('built frames equal the still with a vector layer above a painted layer, un
   }
 });
 
+// docs/model.md R2: a frame's layer with characters of its own converts its paint over an open pinned character, as the
+// still's does (the report: projects/random-over-pins.phosphor, a flattened drawing under Layer 1's own Random).
+test('built frames equal the still with a layer of its own characters painting over open pinned characters', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/random-over-pins.phosphor')).arrayBuffer()], 'x.phosphor'));
+  await settle(project);
+  workspace.pickLayer('edit');
+  project.paintStroke(Array.from({ length: 16 }, (_, k) => ({ x: 2 + k, y: 80, alpha: 1 })), '#ff0000');
+  project.commitEdit();
+  project.addFrame('duplicate');
+  await settle(project);
+  for (let i = 0; i < project.frames.length; i++) {
+    project.showFrame(i);
+    await settle(project);
+    expect(cellValues((await project.builtFrame(i)).cells)).toEqual(cellValues(project.cells));
+  }
+});
+
 test('built output and edit cells are the frame’s own', async () => {
   const { project } = await movie('ansi', 'none');
   const built = await project.builtFrame(0);

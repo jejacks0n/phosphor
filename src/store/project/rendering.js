@@ -9,7 +9,7 @@ import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer
 import ShapeLayer from '@/document/ShapeLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
 import { shownShapes } from '@/document/followers.js';
-import { lowerGroup } from '@/document/layerInfo.js';
+import { lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { parseKey } from '@/document/editCells.js';
 import { fitRect } from '@/lib/Canvas.js';
 import { isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
@@ -20,11 +20,12 @@ import { markRaw, watch } from 'vue';
 
 // The renderer's upper layers, as the stack is now: each upper cells layer's cells and paint, each upper vector layer's
 // own ShapeLayer (none yet while it never had a shape), each with its own params (layerParams: its character settings).
+// ownChars: a cells layer's character settings are its own, not the base's (docs/model.md R2).
 function upperOf(project) {
   const own = project.layerParams;
   return project.lowerGroup.upper.map((id) => (project.layerById(id).kind === 'vector'
     ? { id, kind: 'vector', layer: project._upperShapes.get(id) ?? null, params: own.get(id) }
-    : { id, kind: 'cells', cells: project.cellsOf(id), paint: project.paintOf(id), params: own.get(id) }));
+    : { id, kind: 'cells', cells: project.cellsOf(id), paint: project.paintOf(id), params: own.get(id), ownChars: !sameChars(project.layerById(id).chars, project.baseChars, 'cells') }));
 }
 
 // What the Number palette counts over the picture (Renderer.everyLayer): the stack as it would show with every eye open,

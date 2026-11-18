@@ -395,6 +395,35 @@ test('R5: the report: Colors only on a layer with its own Random makes no ▄ of
   expect(shown(46).every((cell) => cell.fg.hex !== cell.bg.hex)).toBe(true);
 });
 
+// docs/model.md R2 on a layer with characters of its own. The report (projects/random-over-pins.phosphor: a flattened
+// drawing, every base cell pinned, under Layer 1 with Random, ░▒▓█ and a seed of its own): Layer 1's strokes came out as
+// half-blocks in ANSI. Paint over an open character (one with no ink to tint: in its own background color, or a solid
+// glyph) became a ▄, where Color ASCII converted it with the layer's characters; the layer's paint is its characters.
+test('R2: the report: paint on a layer with its own Random over open pinned characters shows its characters in ANSI', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/random-over-pins.phosphor')).arrayBuffer()], 'x.phosphor'));
+  await settle(project);
+  expect([project.renderStyle, project.charsOf('edit').chars, project.charsOf('edit').charChoice]).toEqual(['ansi', '░▒▓█', 'random']);
+  Object.assign(workspace, { editFgColor: '#ff0000', editBrushSize: 1, editBrushOpacity: 100, editBrushFlow: 100, editBrushHardness: 100 });
+  const ctx = { project, workspace, view: 'output' }, cols = [...Array(16).keys()].map((i) => i + 2);
+  const shown = (row) => cols.map((col) => project.cells[cellIndex(col, row, project.cols)]);
+  workspace.pickLayer('edit');
+  for (const [row, brushDrawWith] of [[40, 'normal'], [42, 'plain']]) { // the top halves of cols 2 to 17, open pins under each
+    expect(cols.every((col) => project.renderer.pinAt(col, row) !== undefined)).toBe(true);
+    workspace.brushDrawWith = brushDrawWith;
+    brush.begin(ctx, { x: 2.5, y: 2 * row + 0.5 }, {});
+    brush.move(ctx, { x: 2.5, y: 2 * row + 0.5 }, { x: 17.5, y: 2 * row + 0.5 });
+    brush.end(ctx);
+    await settle(project);
+    expect(cols.filter((col) => project.editCellAt(col, row))).toEqual([]); // no ▄ written
+    expect(shown(row).every((cell) => '░▒▓█'.includes(cell.char))).toBe(true); // the layer's characters, not ▄
+    expect(new Set(shown(row).map((cell) => cell.char)).size).toBeGreaterThan(1); // Random's, not one
+  }
+  project.renderStyle = 'colorAscii'; // as it always was there: converted with the layer's characters
+  await settle(project);
+  expect(shown(40).every((cell) => cell.char !== '▄')).toBe(true);
+});
+
 // On a layer with the base's settings the base's rule holds: under Random a blank cell hides a character the paint would
 // bring out, so the ▄ stays; under Best match and By shape the cell is matched again from the painted pixels. A layer
 // with settings of its own converts its paint by them over the pixels under it (R7), Random's among them.
@@ -423,7 +452,7 @@ for (const charChoice of ['random', 'best', 'shape']) {
     await settle(project);
     expect([at(5).char, at(5).fg.hex, at(5).bg.hex]).toEqual(['▄', '#ff5555', '#000000']);
     if (charChoice !== 'random') return;
-    project.setLayerChars(layer, { seed: 'a-seed-of-its-own' });
+    project.setLayerChars(layer, { seed: 'a-seed-of-its-own', chars: '░▒▓' }); // no ▄ Random could pick by chance
     await settle(project);
     expect(project.lowerGroup.cells).toBe(null);
     paint(14);
@@ -433,6 +462,8 @@ for (const charChoice of ['random', 'best', 'shape']) {
     project.paintStroke([{ x: 5, y: 10, alpha: 1 }], '#55ff55', { blockChars: 'plain' }); // the pinned space's other half, from a layer of its own settings
     project.commitEdit();
     await settle(project);
-    expect([at(5).char, at(5).fg.hex, at(5).bg.hex]).toEqual(['▄', '#ff5555', '#55ff55']);
+    // Its paint over the open space is its characters now (R2), the halves as the ▄ had them.
+    expect('░▒▓'.includes(at(5).char)).toBe(true);
+    expect([at(5).fg.hex, at(5).bg.hex]).toEqual(['#ff5555', '#55ff55']);
   });
 }
