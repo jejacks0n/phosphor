@@ -311,7 +311,9 @@ frames, and pinch while it plays.
 - Expects: "Pick up where you left off" lists her work with its time, whether it's Unchanged, Changed or Saved, and an
   Open button; Open brings it back; the list fits at 390 wide, each name whole with its extension on a line of its own
   and the time, status and Open under it.
-- Probes: `again`: open it twice, and check the two rows read apart (the seconds, Unchanged); `extremes`: save a
+- Probes: `out-of-order`: from the start screen, start a blank canvas first: Animate is off and no bar shows, though
+  it was on in the drawing she left; then open her work again and check Animate is back on with its frames;
+  `again`: open it twice, and check the two rows read apart (the seconds, Unchanged); `extremes`: save a
   project under a 60-character name with emoji and check it wraps to at most two lines, cut in the middle past that,
   keeping its end.
 - Rated: no (touch only: no keyboard shows here)
