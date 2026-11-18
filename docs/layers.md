@@ -890,9 +890,13 @@ swaps the two halves of each cell's base colors.
   - **Single line** and **Double line** (rectangles and lines; an ellipse set to them draws as Half-block): box-drawing
     frames. With **Connect** on, a box joins its frame to the lines it crosses or meets, the ones you can see: a line
     hidden under paint isn't joined.
-  - **Half-block** and **Full-block**: paint over the cells, showing through their characters, at half-cell or whole-cell
-    detail. **Write block glyphs** (off to start) writes real ▄ or █ characters instead. In Half-block, each ▄ replaces
-    the character it's written over, and that character's color, as the Pencil's and Brush's Half-block does.
+  - **Half-block** and **Full-block**: paint over the cells at half-cell or whole-cell detail, which comes out in the
+    layer's characters: on a blank canvas under Random, Random's. **Write block glyphs** (off to start) writes real ▄ or
+    █ characters instead. In Half-block, each ▄ replaces the character it's written over, and that character's color,
+    as the Pencil's and Brush's Half-block does. With it off, Half-block still makes a ▄ of each cell where the shape
+    crosses a character someone drew (a line box, a letter), on its layer or one under it, so the crossing is a clean
+    half-block whichever half of the cell the edge falls in; paint alone would fill the whole cell from one half and
+    only recolor the character from the other.
   - **Character**: the shape is the active character in the foreground color, and the cells' backgrounds are left
     alone. **Fill** fills the inside with the character too. It isn't offered when the active character is ▀, ▄ or █.
 - **Line**: Draws a straight line from where you start dragging to where you let go, in the foreground color: one pixel

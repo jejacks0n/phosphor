@@ -156,10 +156,14 @@ function apply({ project, workspace, view }, end) {
     return;
   }
 
-  // Half-block: paint at grid resolution. Block characters makes each touched cell a ▄, so the
-  // paint colors its halves; without it the paint shows through the cell's own character.
+  // Half-block: paint at grid resolution. Block characters makes each touched cell a ▄, so the paint colors its
+  // halves; without it the paint is the layer's characters (Random's come out of a blank canvas). Either way a cell
+  // that shows a character of someone's own (a line, a letter: ownCharAt) becomes a ▄: paint alone tints one, an edge
+  // on its top half its background, the whole cell, and one on its bottom half the character, so a box half a cell up
+  // or down crossed a line otherwise, in whole cells. In ANSI, which has the ▄.
   if (!drawsCells(workspace)) {
-    if (blockChars) project.writeBlocks(kept(cellsOfPixels(pixelsOf(fill), project.cols, project.rows)));
+    const cells = kept(cellsOfPixels(pixelsOf(fill), project.cols, project.rows));
+    project.writeBlocks(blockChars ? cells : project.renderStyle === 'ansi' ? cells.filter(({ col, row }) => project.ownCharAt(col, row)) : []);
     paintShape();
     return;
   }
