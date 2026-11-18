@@ -74,7 +74,10 @@ test('R11: a character written on the base shows its look at once, another writt
   done();
 });
 
-test('R11: paint on a layer over a character on the base lays over its look, on the layer above the base and on one above that', async () => {
+// Paint over a character tints it, as in the ANSI view (R2), and the look is of that cell: over a solid block the paint
+// shows in the half it's in (the block becomes a ▄ of its two halves); over a shade it's in the shade's background or
+// foreground, and shows through the whole cell by the ink.
+test('R11: paint on a layer over a character on the base shows as the ANSI view tints it, on the layer above the base and on one above that', async () => {
   const { project, workspace, seen, done } = await mountPixelView(null, { overlay: 0 });
   for (const col of [4, 10]) pin(project, col, 3, '█');
   for (const col of [6, 12]) pin(project, col, 3, '▒');
@@ -92,9 +95,116 @@ test('R11: paint on a layer over a character on the base lays over its look, on 
   expect(soft.a).toBeGreaterThan(0.4);
   expect(soft.a).toBeLessThan(0.6);
   expect(shown(seen, 4, 3)).toEqual([rgb(mix({ r: 255, g: 255, b: 255 }, soft, soft.a)), WHITE]); // half red over the block's white, not over its black background
-  expect(shown(seen, 6, 3)).toEqual([RED, gray(0.5)]); // the paint where it is, the shade where it isn't
+  expect(shown(seen, 6, 3)).toEqual([[255, 128, 128], [255, 128, 128]]); // ▒ white on red now: half and half
+  for (const col of [4, 6, 10, 12]) expect(shown(seen, col, 3), `column ${col}`).toEqual(look(project, col, 3));
   expect(shown(seen, 10, 3)).toEqual(shown(seen, 4, 3));
   expect(shown(seen, 12, 3)).toEqual(shown(seen, 6, 3));
+  done();
+});
+
+// On a palette the paint goes into the character's two colors, each snapped as paint is, and they blend by the ink
+// again. A soft stroke's faint edge then leaves a shade as it was, where snapping the blend itself would turn it to a
+// palette color at the first trace of paint: a hard ring round every stroke over an ANSI file's shades.
+test('R11: on a palette, faint paint over a shade leaves its look as it was, and one paint over the whole cell shows as the ANSI view has it', async () => {
+  const { project, workspace, seen, done } = await mountPixelView(null, { overlay: 0 });
+  project.quantize = 'cga';
+  await settle(project);
+  for (const col of [4, 6, 8]) pin(project, col, 3, '▒');
+  project.commitEdit();
+  workspace.pickLayer('edit');
+  project.paintEditPixels([red(4, 6, 0.03), red(4, 7, 0.03), red(6, 6, 0.6), red(6, 7, 0.6), red(8, 6, 1), red(8, 7, 1)]);
+  project.commitEdit();
+  await settle(project);
+  expect(project.renderer.paintAt(4, 6)).toBeTruthy();
+  expect(shown(seen, 4, 3)).toEqual([gray(0.5), gray(0.5)]);
+  expect(shown(seen, 6, 3)).not.toEqual([gray(0.5), gray(0.5)]);
+  for (const col of [4, 6, 8]) expect(shown(seen, col, 3), `column ${col}`).toEqual(look(project, col, 3));
+  done();
+});
+
+// An opened ANSI file is all characters on the base. It used to turn All cells on, so the Overlay drew each cell as it
+// looks. They show that way on their own now, soft paint over them too: to the pixel what All cells shows, so leaving
+// it off adds no banding to a stroke.
+test('R11: an opened ANSI file shows every cell as it looks with All cells left off, the same as with it on, under soft strokes too', async () => {
+  const { project, workspace, seen, done } = await mountPixelView('/tests/fixtures/ansi/past-the-edge.ans');
+  expect(workspace.ansiOverlayAll).toBe(false);
+  const lines = project.rows / 2, every = () => {
+    const cells = [];
+    for (let row = 0; row < lines; row++) for (let col = 0; col < project.cols; col++) cells.push(shown(seen, col, row));
+    return cells;
+  };
+  const off = every();
+  expect(off).toEqual(Array.from({ length: lines * project.cols }, (_, i) => look(project, i % project.cols, Math.floor(i / project.cols))));
+  expect(new Set(off.flat().map(String)).size).toBeGreaterThan(4); // the file's art, not a blank canvas
+  workspace.ansiOverlayAll = true;
+  await settle(project);
+  expect(every()).toEqual(off);
+
+  // Three soft strokes across the art on Layer 1, as the Brush lays them, each fading down the canvas and crossing the last.
+  workspace.ansiOverlayAll = false;
+  workspace.pickLayer('edit');
+  const stroke = (hex, opacity, from, slope) => {
+    const pixels = [];
+    for (let x = 4; x < project.cols - 4; x++) for (let d = -5; d <= 5; d++) pixels.push({ x, y: Math.round(from + slope * x) + d, alpha: 1 - Math.abs(d) / 6 });
+    workspace.editBrushOpacity = opacity;
+    project.paintStroke(pixels, hex, { blockChars: 'plain' });
+    project.commitEdit();
+  };
+  stroke('#ffffff', 70, 6, 0.3);
+  stroke('#ff2020', 60, 30, -0.3);
+  stroke('#000000', 25, 18, 0);
+  await settle(project);
+  const painted = every();
+  expect(painted).not.toEqual(off);
+  expect(painted).toEqual(Array.from({ length: lines * project.cols }, (_, i) => look(project, i % project.cols, Math.floor(i / project.cols))));
+  workspace.ansiOverlayAll = true;
+  await settle(project);
+  expect(every()).toEqual(painted);
+  done();
+});
+
+// A Half-block's ▄ over a character takes its place (blockOver): a textured character's background in both halves, with
+// the block's paint over it. The view shows that block, not the character under it.
+test('R11: a Half-block ▄ over a character on the base shows as the block, on the layer above the base and on one above that', async () => {
+  const { project, workspace, seen, done } = await mountPixelView(null, { overlay: 0 });
+  for (const col of [4, 10]) pin(project, col, 3, 'A', '#ffffff', '#0000ff');
+  project.commitEdit();
+  const block = (col) => {
+    project.writeEditCells([{ col, row: 3, attrs: { char: '▄' } }]);
+    project.paintEditPixels([red(col, 6, 1)]);
+    project.commitEdit();
+  };
+  workspace.pickLayer('edit');
+  block(4);
+  workspace.pickLayer(project.addLayer('cells', 'edit'));
+  block(10);
+  await settle(project);
+  for (const col of [4, 10]) {
+    expect(project.cells[3 * project.cols + col].char, `column ${col}`).toBe('▄');
+    expect(shown(seen, col, 3), `column ${col}`).toEqual([RED, [0, 0, 255]]);
+    expect(shown(seen, col, 3)).toEqual(look(project, col, 3));
+  }
+  done();
+});
+
+// A layer with characters of its own converts its paint over a character with no ink to tint (R2), a █ among them: the
+// cell is a rendering of the pixels then, so those show, as the conversion reads them.
+test('R11: paint from a layer with its own characters over a █ on the base shows over its two pixels, as it converts', async () => {
+  const { project, workspace, seen, done } = await mountPixelView(null, { overlay: 0 });
+  pin(project, 4, 3, '█');
+  pin(project, 10, 3, '▒');
+  project.commitEdit();
+  const top = project.addLayer('cells', 'edit');
+  project.setLayerChars(top, { seed: 'a-seed-of-its-own', chars: '░▒▓' });
+  workspace.pickLayer(top);
+  project.paintEditPixels([red(4, 6, 0.5), red(4, 7, 0.5), red(10, 6, 0.5), red(10, 7, 0.5)]);
+  project.commitEdit();
+  await settle(project);
+  expect(project.cells[3 * project.cols + 4].char).not.toBe('█');
+  expect(shown(seen, 4, 3)).toEqual(stored(project, 4, 3));
+  expect(shown(seen, 4, 3)[0]).not.toEqual(shown(seen, 4, 3)[1]); // half red over its black background, and over its white
+  expect(project.cells[3 * project.cols + 10].char).toBe('▒'); // ink to tint: the shade stays, and its look with it
+  expect(shown(seen, 10, 3)).toEqual(look(project, 10, 3));
   done();
 });
 

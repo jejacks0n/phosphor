@@ -1,5 +1,5 @@
-// The PIXEL view mounted on its own, over fresh stores: a project file's drawing, or the gradient at cols x rows with a
-// layer. seen(x, y) is a grid pixel's color as the view shows it.
+// The PIXEL view mounted on its own, over fresh stores: a project file's drawing, an ANSI or text file opened to draw
+// on top of, or the gradient at cols x rows with a layer. seen(x, y) is a grid pixel's color as the view shows it.
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { createTestApp, loadImage, settle } from './app.js';
@@ -7,7 +7,9 @@ import InputEditor from '@/components/InputEditor.vue';
 
 export async function mountPixelView(file = null, { cols = 20, rows = 20, overlay = 100 } = {}) {
   const { project, workspace } = await createTestApp();
-  if (file) await project.loadProject(new File([await (await fetch(file)).arrayBuffer()], 'x.phosphor'));
+  const bytes = file && await (await fetch(file)).arrayBuffer();
+  if (file?.endsWith('.phosphor')) await project.loadProject(new File([bytes], 'x.phosphor'));
+  else if (file) await project.openArtFile(new File([bytes], file.slice(file.lastIndexOf('/') + 1)));
   else await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows });
   Object.assign(workspace, { editorTab: 'input', ansiOverlay: overlay });
   const host = document.createElement('div');

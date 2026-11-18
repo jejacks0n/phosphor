@@ -298,7 +298,6 @@ Afterward:
 - **The Palette Stays**: A Limited count palette is kept as the colors it had, so it isn't picked again. If the cells
   show a color the palette doesn't have (Color ASCII's in-between colors, or ASCII's white with a palette without
   it), it switches to full color, so nothing snaps. Changing the palette later can't bring back colors that are gone.
-- **All Cells**: With **Draw on top**, **All cells** turns on in the PIXEL view, as it does for an opened ANSI file.
 - **Undo**: Brings the image, the sliders and your layers back.
 
 Unlike Bake, which keeps an image for the sliders to keep working on, Flatten ends the picture. It's off in an
@@ -353,8 +352,8 @@ Either way:
 - **Every Cell Keeps Its Character and Colors**: So it looks just as the file does. Opening a file isn't an edit, so
   there's nothing to undo. With **Draw on top**, the art is the base layer as if you'd used Merge down, and the color
   sliders, the palette and Bake work on it as they do on any picture. The PIXEL view shows each of its characters as
-  it looks at that scale ([PIXEL View](#pixel-view)), and **All cells** turns on there, so every cell shows as the
-  ANSI view has it, paint over the file included.
+  it looks at that scale, paint over them included ([PIXEL View](#pixel-view)), so **All cells** stays as you left
+  it.
 - **The Palette**: Follows the file: CGA when every color is one of the 16 classic colors, VGA when it uses 256-color
   codes for the others, and full color when it uses a 24-bit code. An export writes the same kind of codes, 16 and 231
   (fixed black and white) among them, where 0 and 15 would follow a terminal's theme
@@ -559,8 +558,9 @@ and the PIXEL view give you:
 - **Color ASCII is ANSI in spirit.** The converter's cells are ink on black, but a cell of yours with a background
   shows it, and keeps it when merged onto the base.
 - **The PIXEL view is the pixels, and the base's characters as they look.** A character on the base is kept as two
-  pixels, its background over its foreground; the PIXEL view shows it as it looks at that scale, with paint from the
-  layers above over it. Its Overlay draws only your characters, never the converter's over paint.
+  pixels, its background over its foreground; the PIXEL view shows it as it looks at that scale, tinted by paint from
+  the layers above as the ANSI view shows it. Its Overlay draws only your characters, never the converter's over
+  paint.
 
 The engineering rules behind these, with where each lives in the code and the tests that hold it, are in
 [docs/model.md](model.md); Maya's QA script walks them ([How my layers blend](qa/personas/maya.md#how-my-layers-blend)).
@@ -705,8 +705,11 @@ canvas:
   and a quarter of the way, `▐` and `▌` a half (a pixel here is one column wide, so it can't split sideways), `▄`
   is its two colors, and a thin character like `═` shows faintly. In Color ASCII and Monochrome ASCII it's the cell
   as that style shows it.
-  - **Paint Above It**: Paint on a layer over the character shows over it, where you painted it. A shape over it
-    takes the cell, as it does in the ANSI view.
+  - **Paint Above It**: Paint on a layer over the character tints it, as in the ANSI view: over a solid block the
+    paint shows in the half you painted, and over a shade or a letter it colors the character's background (its upper
+    half) or foreground (its lower half), which shows through the whole cell. So a soft stroke across an opened ANSI
+    file looks the same with **All cells** on or off. A shape over the character takes the cell, as it does in the
+    ANSI view.
   - **What the Tools Work On**: The cell's two stored colors, as before: its background in the upper pixel and its
     foreground in the lower one. The Eyedropper on a gray `▒` picks one of those two, and the Brush with the base
     picked changes the color of the half it touches, which the character may hide (a `█` shows only its

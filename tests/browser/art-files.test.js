@@ -71,7 +71,7 @@ test('a CGA .ans opens as a document: its cells, size, palette and SAUCE, nothin
   });
   expect(project.history.canUndo).toBe(false);
   expect(project.isDirty).toBe(false);
-  expect(useWorkspaceStore().ansiOverlayAll).toBe(true); // the PIXEL tab shows each cell as it looks, not its two colors as stripes
+  expect(useWorkspaceStore().ansiOverlayAll).toBe(false); // the PIXEL tab shows each character as it looks without it (docs/model.md R11)
 });
 
 test('a 24-bit .utf8ans opens in full color, wide characters and all', async () => {

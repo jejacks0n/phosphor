@@ -219,11 +219,12 @@ test('a palette without every color the cells show goes full color, so nothing s
   }
 });
 
-test('drawn on top of, the PIXEL tab shows each cell as it looks, as an opened ANSI file does', async () => {
+// The PIXEL tab shows the base's characters as they look without All cells (docs/model.md R11; tests/browser/pixel-characters.test.js).
+test('drawn on top of, All cells stays as it was, as when an ANSI file opens', async () => {
   const { project } = await drawing();
   useWorkspaceStore().ansiOverlayAll = false;
   await project.flattenDrawing({ layer: 'base' });
-  expect(useWorkspaceStore().ansiOverlayAll).toBe(true);
+  expect(useWorkspaceStore().ansiOverlayAll).toBe(false);
 });
 
 test('edit cells past a shrunk grid\'s edge keep their look', async () => {

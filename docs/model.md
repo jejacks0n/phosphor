@@ -245,9 +245,9 @@ current style (a paint block outside ANSI) isn't drawn: its paint is already the
 The base holds a character of someone's own as a pin and two pixels: its background the top one, its foreground the
 bottom one (`writeBaseCells`), whatever the character is. An art layer's cells are drawn the same way. Shown as they
 are, every such cell is its background over its foreground: a `█` is half a cell, and a line of `█ ░ ▒ ▓` a row of
-dashes. So the PIXEL view draws each one's look over those pixels: per half, its background blended toward its
-foreground by the ink the glyph has there (`halfColors`, as the Overlay draws a layer's cell and `#showResolved` Best
-match's). `█` is solid, `▓ ▒ ░` are three quarters, a half and a quarter of the way, `▐ ▌` a half (a grid pixel is a
+dashes. So the PIXEL view draws each one's look over those pixels: the cell the ANSI view shows there, at pixel scale.
+Per half, its background blended toward its foreground by the ink the glyph has there (`halfColors`, as the Overlay
+draws a layer's cell and `#showResolved` Best match's). `█` is solid, `▓ ▒ ░` are three quarters, a half and a quarter of the way, `▐ ▌` a half (a grid pixel is a
 column wide, so it can't split sideways), `▄` as it was, a thin character faint. The cell is the one the art style
 shows (`pinnedCell`: R8's background in Color ASCII, white on black in Monochrome ASCII).
 
@@ -255,12 +255,20 @@ Display only. The output, the cells, saved files and exports hold the two colors
 view reads and writes those (`shownCanvas`, the base's own pixels), not the look: the Eyedropper on a gray `▒` picks one
 of its two colors, and the Brush on the base over a `█`'s upper pixel changes its background, which doesn't show.
 
-What's over the character counts, bottom to top, as the cell itself is laid (`composeAll`, `#upperCell`):
+What's over the character counts, bottom to top, as the cell itself is laid (`#composeOne`, `#paintedPin`,
+`#upperCell`), so the look stays the ANSI view's cell while that's still the character:
 
-- **Paint on a layer above** (the lower group's, an upper cells layer's) lies over the look in each half it covers,
-  snapped as the output snaps paint: the paint shows where it is, as over any pixels. Where the paint doesn't tint the
-  character but is converted over the cell's two pixels (R2: a character with no ink, in the ASCII styles), the pixels
-  show, as the conversion reads them.
+- **Paint on a layer above** (the lower group's, an upper cells layer's) tints the character as the ANSI view tints it
+  (`coverCell`, R2): it goes into the cell's two colors, each snapped as paint is, and the glyph's ink blends them
+  again. Over a solid or empty glyph that's a `▄` with the paint in the half it's in; over a shade or a letter the
+  paint is in its background (upper half) or foreground (lower half) and shows through the whole cell by the ink. The
+  blend itself is never snapped: a shade's mix isn't a palette color, and the first trace of paint (a soft stroke's
+  edge) would turn it into one, a hard ring round every stroke. Where the paint doesn't tint the character but is
+  converted over the cell's two pixels (R2: a character with no ink, in the ASCII styles, and in ANSI under a layer
+  with characters of its own), the pixels show, as the conversion reads them.
+- **A paint block over it** (a Half-block's `▄`, R5) takes its place, as `blockOver` has it: a solid glyph's own
+  halves, a textured character's background in both.
+- **A frozen cell over it** (R3) is its paint, and the pixels show.
 - **A shape reaching the cell** takes it, and the pixels show: under the lower group's shapes the pin gives way
   (`pinAt`), and an upper vector layer's shape makes the cell a rendering of the pixels (R7).
 - **An upper art layer's character** has a look of its own, of the cell `#upperCell` builds there.
@@ -269,17 +277,23 @@ What's over the character counts, bottom to top, as the cell itself is laid (`co
 - **A frame built for playing** has the looks in its output (`FrameBuilder.build`), and the ghost dims an inherited
   cell toward the base's look where it has one (`baseLook`), not toward its two pixels.
 
+So for a character on the base, All cells changes nothing: the look is, to the pixel, the cell the Overlay would draw
+there, soft paint over it included. An opened ANSI file and Flatten's Draw on top, whose every cell is a pin, leave All
+cells as it is (they turned it on while the base's characters showed as stripes).
+
 The looks are one image the output's size (`looksCanvas`), see-through but in those cells. It's kept, and worked out
 again only over the cells made again since (`#looksDirty`, marked by `composite`, `updateCells`, `composeAll` and
 `composeUpper`: every way a cell is made), so a redraw is one more `drawImage` and an edit costs its own cells. A large
 rect walks its pins, not its cells (`MOST_ASKED`): asking a cell for its pin makes a key, several times the cost of
 reading one.
 
-- Lives in: `looksCanvas`, `#lookAt`, `#paintedLook` and `baseLook` (`src/document/Renderer.js`); drawn by
+- Lives in: `looksCanvas`, `#lookAt`, `#lookPainted` and `baseLook` (`src/document/Renderer.js`); drawn by
   `redrawDisplay` and `drawVeil` (`src/components/InputEditor.vue`) and `FrameBuilder.build`.
 - Checked by: `tests/browser/pixel-characters.test.js › R11: …` (the report's file; a character written, written over
-  and undone; paint over one on the layer above and on one above that; shapes; a hidden base; both ASCII styles; a
-  palette with Best match; art layers above and in the lower group; a built frame; the ghost; the Overlay; a redraw
+  and undone; paint over one on the layer above and on one above that, as the ANSI view tints it; on a palette, faint
+  paint that leaves a shade as it was; an opened ANSI file under soft strokes, the same to the pixel with All cells off
+  and on; a Half-block `▄` over a character; a layer with its own characters; shapes; a hidden base; both ASCII styles;
+  a palette with Best match; art layers above and in the lower group; a built frame; the ghost; the Overlay; a redraw
   that asks no cell). Timed by `bench/pixel-view.bench.js`.
 
 ### R9. A layer's change redraws what's over and under it, and changes nothing of theirs.
