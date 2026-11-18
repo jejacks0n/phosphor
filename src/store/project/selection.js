@@ -3,7 +3,7 @@
 // _float (the move in progress).
 //
 // They act on layers by id, bottom first (workspace.selectionIds: the picked layer, or with All layers on every shown
-// cells layer; the Magic Wand's, workspace.shownIds: every shown one; each through layersFor): a cells
+// cells layer, through layersFor): a cells
 // layer's cells and paint (stored apart but one thing to the user), and the base's colors and pins (the converter's own
 // characters belong to their cells and stay). Block = { w, h, px?, parts: [{ id, cells: (Entry | null)[], paint?: canvas }],
 // base?: { pixels: canvas (at scale, basePixelsOf), scale, colors: canvas (its stored colors, a grid pixel each), pins:

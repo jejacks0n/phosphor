@@ -269,14 +269,14 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
-  // The Magic Wand's selection: Escape drops it; Delete or Backspace takes away what's drawn in it, on every shown layer
-  // (not in Edit Mode, where they edit the text).
+  // The Magic Wand's selection: Escape drops it; Delete or Backspace takes away what's drawn in it, on the picked layer or
+  // the shown layers with All layers on (not in Edit Mode, where they edit the text).
   const _handleWandKeys = (e) => {
     const wand = workspaceStore.wand;
     if (!wand || e.defaultPrevented || isField(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
     if (workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false; // the palette has the keys; mid-drag, the drag's end decides
     if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
-    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.shownIds);
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectionIds);
     else return false;
     e.preventDefault();
     return true;

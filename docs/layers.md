@@ -24,9 +24,8 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
   tab you last had.
 - **What Tools Act On**: Every drawing tool acts on the selected layer, the base too
   ([Drawing on the Base](#drawing-on-the-base)), and every tool is offered whichever layer is selected.
-  The [Select tool](#the-select-tool) acts on the selected layer too, unless **All layers** is on in its options row,
-  when it acts on every drawing layer that shows. The [Magic Wand](#the-magic-wand)'s Delete and recoloring always act
-  on every drawing layer that shows.
+  The [Select tool](#the-select-tool) and the [Magic Wand](#the-magic-wand) act on the selected layer too, unless
+  **All layers** is on in their options row, when they act on every drawing layer that shows.
 - **Adding Layers**: The header over the list counts your layers ("3 of 64 layers", the base included), with two
   buttons on its right:
   - Click **Add layer** (the cells icon with a plus) to add a new drawing layer directly above the selected layer, or
@@ -846,9 +845,14 @@ How the selection behaves:
   its pixels selected is selected in the ANSI view.
 - **Dropping It**: **Escape**, **Deselect**, a new rectangle, a grid change and a new document drop it.
 - **Delete**: **Delete** on the wand's options row (or the **Delete** or **Backspace** key, with any tool but Edit Mode)
-  takes away what's in the selection on the layers that show, in one undo step: from each drawing layer its cells and
-  paint, from the base the picture, which turns black, as the Eraser does on the base (whole cells in the ANSI view,
-  just the selected pixels in the PIXEL view).
+  takes away what's in the selection, in one undo step: from a drawing layer its cells and paint, from the base the
+  picture, which turns black, as the Eraser does on the base (whole cells in the ANSI view, just the selected pixels in
+  the PIXEL view).
+- **All Layers**: The wand selects what shows, whichever layer it's on, but **Delete**, **Set FG** and **Set BG** act
+  on the selected layer alone, as the Select tool's do. Once the wand has selected something, **All layers** is at the
+  end of its row (it's the same setting as the Select tool's, off to start): on, they act on every drawing layer that
+  shows, the base among them. So if Delete seems to do nothing, what you selected is on another layer: select that
+  layer, or turn **All layers** on.
 
 ### Recoloring a Selection
 
@@ -857,13 +861,12 @@ row has **Set FG** and **Set BG** in the ANSI view. With the Select tool they're
 selected they're there but off, after "Click or drag to select, or:" ("Tap" on a touch screen), and pressing them does
 nothing until you select cells. With the wand they come at the end of its row, once it has selected something.
 
-- **What Changes**: Every selected cell takes your foreground or background color, on the layers that show, in one
-  undo step. Only that color changes: each cell keeps the character and the other color it shows, whatever picked them
+- **What Changes**: Every selected cell takes your foreground or background color, in one undo step. Only that color changes: each cell keeps the character and the other color it shows, whatever picked them
   (Best match, By shape, dithering, the palette), and paint on it keeps showing the color it gave its half.
-- **Which Layer**: Each cell is recolored on the topmost layer that shows with a cell or paint of its own there, else
-  on the base. Hide a layer to leave it out. With the Select tool and **All layers** off, every cell is recolored on
-  the selected layer: one with nothing of its own there becomes a drawing-layer cell that looks as the cell did, in
-  the new color.
+- **Which Layer**: With **All layers** off, every cell is recolored on the selected layer: one with nothing of its
+  own there becomes a drawing-layer cell that looks as the cell did, in the new color. With it on, each cell is
+  recolored on the topmost layer that shows with a cell or paint of its own there, else on the base; hide a layer to
+  leave it out.
 - **On a Drawing Layer**: The cells take it as drawing-layer cells, replacing the paint there.
 - **On the Base**: It goes into the picture's own colors (a cell's background is its top pixel, its foreground its
   bottom one), with the cell's character pinned, so the converter doesn't pick another for the new colors.
