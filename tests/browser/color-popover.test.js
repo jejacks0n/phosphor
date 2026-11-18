@@ -128,3 +128,44 @@ test('on VECTOR the eyedropper colors the Fill; with no eyedropper there is no b
     restore();
   }
 });
+
+// #199: in Full color the box is the browser's own color input, which reports a color only when it changes. With BG None
+// it still held the color None was laid over (black, to start), so choosing that color said nothing and BG stayed None.
+// Pressing the color while the slot is None chooses it, whatever is picked after; and the label says None, not a hex.
+test('#199: in Full color with BG None, pressing the color it holds chooses it; the label says None until then', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  await settle(project);
+  workspace.editorTab = 'output';
+  expect([project.quantize, workspace.editBgNone, workspace.editBgColor]).toEqual(['none', true, '#000000']); // as a drawing starts
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp(ColorPopover, { slotName: 'bg' }).use(i18n);
+  app.mount(host);
+  try {
+    await nextTick();
+    const input = host.querySelector('label.native input[type=color]'), label = () => host.querySelector('label.native span').textContent.trim();
+    expect(label()).toBe('None');
+    input.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); // opening it: black is what it shows
+    await nextTick();
+    expect([workspace.editBgNone, workspace.editBgColor]).toEqual([false, '#000000']);
+    expect(label()).toBe('#000000');
+    expect(host.querySelector('.swatch.none').classList.contains('selected')).toBe(false);
+
+    // With a color chosen, pressing it again changes nothing: it only opens the picker.
+    workspace.setColor('bg', '#123456');
+    await nextTick();
+    input.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect([workspace.editBgNone, workspace.editBgColor]).toEqual([false, '#123456']);
+
+    // None again keeps the color under it, and pressing that color brings it back.
+    workspace.setColor('bg', null);
+    await nextTick();
+    expect(label()).toBe('None');
+    input.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect([workspace.editBgNone, workspace.editBgColor]).toEqual([false, '#123456']);
+  } finally {
+    app.unmount();
+    host.remove();
+  }
+});

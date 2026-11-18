@@ -89,6 +89,10 @@ const choose = (hex, remember = true, index = undefined) => {
   style.set(SHAPE_SLOTS[props.slotName], hex, { remember });
 };
 const swap = () => (vector.value ? style.swap() : workspace.swapColors());
+// The browser's color input reports a color only when it changes, and while the slot is None it still holds the color
+// None was laid over (black, to start): choosing that same color would say nothing, and the slot would stay None. So
+// pressing it while the slot is None chooses the color it shows; what's picked in it after changes it as ever.
+const pressNative = () => { if (isNone.value) choose(current.value, false); };
 
 // The browser's eyedropper (Chromium): a color from anywhere on the screen, another window's too, chosen as a swatch
 // is. Escape puts it away with nothing chosen.
@@ -230,8 +234,8 @@ onBeforeUnmount(() => {
 
     <template v-if="!sections.length">
       <label class="native">
-        <input type="color" :value="current" @input="choose($event.target.value, false)" @change="choose($event.target.value)"/>
-        <span>{{ current }}</span>
+        <input type="color" :value="current" @click="pressNative" @input="choose($event.target.value, false)" @change="choose($event.target.value)"/>
+        <span>{{ isNone ? t('colors.none') : current }}</span>
       </label>
       <div v-if="inUse.length" class="row-label">{{ t('colors.inThisDrawing') }}</div>
       <div v-if="inUse.length" class="swatches" style="grid-template-columns: repeat(8, 1fr)">

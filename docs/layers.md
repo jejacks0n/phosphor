@@ -1010,6 +1010,9 @@ swaps the two halves of each cell's base colors.
     the background.
   - **In the PIXEL View**: One is lit at a time, and **Shift** picks into the other one (while you hold it, that one is
     lit).
+  - **In Color ASCII**: A cell the picture made is ink on black with no background of its own, so picking its
+    background sets yours to **None**, not black. Only a cell you typed or drew with a background gives you that
+    color. For a black background, choose black in the color picker.
 - **The Status Bar**: Starts with the name of the selected layer, so a folded panel or a phone still says which layer
   you're on. Then it follows the tool: Edit Mode shows the cell under the cursor, Select the selection's size and place,
   and the Eyedropper its last pick and where each color came from. On the right it shows that Space pans, and while you
@@ -1106,6 +1109,10 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
 - **Pick from the screen** (the eyedropper beside **Swap**, in Chrome, Edge and the desktop app): Click it, then click
   anywhere on your screen, another window or app included, to take that color for the side that's open. **Escape** puts
   the eyedropper away without choosing. The **Picker** tool (**I**) still takes colors from the drawing itself.
+- **In Full Color**: The picker is your browser's own color picker, with the colors already in the drawing under it.
+  While the side is **None**, the label beside it says None and the color it shows is the one None was laid over (black,
+  for a new drawing's background). Pressing it chooses that color at once, so black is one press away, and whatever you
+  pick in it after replaces it.
 - **With a Palette** (CGA, VGA, Limited count or Custom color list): Every swatch paints its palette color whatever the
   color adjustments are. A color the adjustments can't make at all (Saturation at 0 makes only grays) shows under a "no"
   sign (a circle with a slash) and can't be picked, and the arrows, and **Alt+↑** and **Alt+↓** in Edit Mode, step past
