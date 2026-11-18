@@ -9,6 +9,7 @@
   "common": {
     "help": "Aide : {name}",
     "close": "Fermer",
+    "youGiveUp": "Vous renoncez à :",
     "cancel": "Annuler",
     "done": "Terminé",
     "save": "Enregistrer",
@@ -605,8 +606,8 @@
       "exactText": "Préserve chaque cellule de caractère exactement telle qu'affichée. Les filtres d'image comme Contours et Netteté n'affecteront pas ces cellules.",
       "intoImageTitle": "Fondre dans l'image source",
       "intoImageText": "Dessine directement dans l'image de base afin que les curseurs et les filtres d'image s'y appliquent.",
-      "ownCharsNote": "{name} utilise des réglages de caractères personnalisés. Sa peinture sera redessinée avec les caractères de {below}.",
-      "originalNote": "Redimensionne l'image source à sa résolution de travail (comme Figer). Les filtres comme Contours peuvent varier légèrement."
+      "ownCharsNote": "Les caractères personnalisés de {name} : sa peinture est redessinée avec ceux de {below}.",
+      "originalNote": "La résolution d'origine de l'image source : elle est ramenée à sa résolution de travail, comme Figer, et les filtres comme Contours peuvent varier légèrement."
     },
     "bakeDialog": {
       "title": "Figer",

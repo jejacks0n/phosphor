@@ -293,8 +293,8 @@ const mergeChoices = computed(() => {
   const { id } = merging.value ?? {}, layer = project.layerById(id);
   const ownChars = layer && project.paintOf(id)?.hasPaint && !sameChars(layer.chars, project.baseChars, 'cells')
     && t('toolbar.mergeDialog.ownCharsNote', { name: layerName(id), below: layerName(below(id)?.id) });
-  const note = [ownChars, project.pictureIsOriginal && t('toolbar.mergeDialog.originalNote')].filter(Boolean).join('\n');
-  return note ? [choices[0], { ...choices[1], note }] : choices;
+  const costs = [ownChars, project.pictureIsOriginal && t('toolbar.mergeDialog.originalNote')].filter(Boolean);
+  return costs.length ? [choices[0], { ...choices[1], costs }] : choices;
 });
 
 // Bake under CGA or VGA asks whether to lock the picture to the palette (exact, but the in-between

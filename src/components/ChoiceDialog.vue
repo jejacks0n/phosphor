@@ -3,8 +3,8 @@ import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 
 // A choice in a centered confirm box (Merge down: exactly or into the picture; Bake under CGA/VGA:
-// keep full color or lock to the palette). choices: [{ id, title, text?, note? }], the first
-// focused, the second accented as the alternative; choosing emits its id.
+// keep full color or lock to the palette). choices: [{ id, title, text?, costs? }], costs what that choice gives up, one
+// line each, listed under "You give up:"; the first focused, the second accented as the alternative; choosing emits its id.
 const props = defineProps({
   title: { type: String, required: true },
   sub: { type: String, required: true },
@@ -25,7 +25,10 @@ const { t } = useI18n();
     >
       <b>{{ choice.title }}</b>
       <span v-if="choice.text">{{ choice.text }}</span>
-      <span v-if="choice.note" class="warn">{{ choice.note }}</span>
+      <span v-if="choice.costs?.length" class="warn">
+        {{ t('common.youGiveUp') }}
+        <span v-for="cost in choice.costs" :key="cost" class="cost">{{ cost }}</span>
+      </span>
     </button>
     <div class="actions">
       <button class="cancel" @click="emit('cancel')">{{ t('common.cancel') }}</button>
@@ -77,7 +80,13 @@ span.warn {
   margin-top: 6px;
   color: #ffcf6e !important;
   font-size: 12px !important;
-  white-space: pre-line; /* a note of several, one to a line */
+}
+
+span.cost {
+  display: list-item; /* a list in a button, which can't hold a <ul> */
+  margin-left: 16px;
+  color: inherit !important;
+  font-size: inherit !important;
 }
 
 div.actions {

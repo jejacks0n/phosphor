@@ -928,17 +928,17 @@ test('Blend into source image warns that a layer with its own characters has its
   document.body.append(host);
   toolbar.mount(host);
   const blend = () => [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Blend into source image'));
-  const warning = 'uses custom character settings. Its paint will be redrawn in Base\'s characters.';
+  const warning = /You give up:.*Layer \d+'s custom characters: its paint is redrawn in Base's\./s;
   try {
     asking.value = { id: top, rect: null };
     await settle(project);
-    expect(blend().textContent).not.toContain(warning); // the base's characters: nothing to warn of
+    expect(blend().textContent).not.toMatch(warning); // the base's characters: nothing to warn of
     asking.value = null;
     project.setLayerChars(top, { chars: '▖▗▘▝▚▞' });
     project.commitLayerChars();
     asking.value = { id: top, rect: null };
     await settle(project);
-    expect(blend().textContent).toMatch(new RegExp(`Layer \\d+ ${warning}`));
+    expect(blend().textContent).toMatch(warning);
     blend().click(); // a warning, not a refusal
     await vi.waitFor(() => expect(project.layerById(top)).toBe(undefined), { timeout: 10_000 });
   } finally {
