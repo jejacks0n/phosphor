@@ -107,7 +107,7 @@ export function useTextTool(project, workspace, textInput) {
         break;
       }
       case 'grab': {
-        // Ctrl+F-key: the character under the cursor (what's showing there) goes onto that slot.
+        // Ctrl+Shift+F-key: the character under the cursor (what's showing there) goes onto that slot.
         const char = project.underlyingAt(col, row).char;
         if (!char) break;
         const { forked } = palettes.setSlot(palettes.active.id, action.index, char);

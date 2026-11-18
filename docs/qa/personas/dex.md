@@ -31,7 +31,7 @@ again unchanged.
 
 ## What they lean on
 
-- Edit Mode and its keys, the character palettes (F1 to F12, Ctrl+F-key, Alt+← and Alt+→), the color keys
+- Edit Mode and its keys, the character palettes (F1 to F12, Ctrl+Shift+F-key, Alt+← and Alt+→), the color keys
   ([Layers](../../layers.md#tool-keys), [Color keys](../../layers.md#color-keys)).
 - The Pencil's Half-block, the Eyedropper, the Select tool, Shift and the arrows, Stamp, the Magic Wand, Set FG and
   Set BG ([The Select tool](../../layers.md#the-select-tool), [The Magic Wand](../../layers.md#the-magic-wand)).
@@ -125,7 +125,7 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 
 ### 5. Draw with CP437 from the character palettes
 - Does: in Edit Mode, types F1 to F12, switches palettes with Alt+→ and Alt+←, puts the character under the cursor on a
-  slot with Ctrl+F5, and opens Character palettes to pick `╬` from CP437 onto a slot.
+  slot with Ctrl+Shift+F5, and opens Character palettes to pick `╬` from CP437 onto a slot.
 - Expects: each F-key types its slot's character; the strip under the tools shows each slot; Character palettes opens
   with CP437, Unicode, In this drawing and Recent; a character CP437 lacks is marked ("isn't in CP437"); a built-in
   palette edited makes his own copy and says so.

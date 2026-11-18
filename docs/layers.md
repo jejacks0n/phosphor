@@ -1014,6 +1014,8 @@ swaps the two halves of each cell's base colors.
 - **F1 to F12**: In Edit Mode, type characters from your active character palette
   ([Typing Text Directly](characters.md#typing-text-directly)). On a Mac you may need to hold **Fn**, or turn on
   "Use F1, F2, etc. keys as standard function keys" in System Settings → Keyboard → Keyboard Shortcuts… → Function Keys.
+- **Ctrl + Shift + F1 to F12**: In Edit Mode, puts the character under the cursor on that slot of your active character
+  palette. It takes Shift because macOS keeps Ctrl+F1 to Ctrl+F8 for itself.
 - **?**: Opens the full keyboard shortcut list ([All the Shortcuts](#all-the-shortcuts)).
 
 ### Tool Keys
