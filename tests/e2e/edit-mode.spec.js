@@ -122,6 +122,35 @@ test('after Versions is canceled with Escape, the text input has focus and Space
   await expect.poll(() => chars(page, 2, 2, 4)).toBe('a b');
 });
 
+// The report (bug bash 2): in Edit Mode, changing the font left the keyboard in the Font menu with the cursor still
+// blinking: letters went to the menu (and chose fonts), and only a click on the canvas, which moves the cursor, brought
+// typing back. A setting that doesn't type hands the keyboard back once the pointer has changed it, as a button does;
+// a field that types keeps it until Escape.
+test('a setting changed with the pointer gives the keyboard back to typing, and Escape does from a field typed in', async ({ page }) => {
+  await openApp(page);
+  await editAt(page, 2, 2);
+  await page.keyboard.type('a');
+  const font = page.locator('#displayFont');
+  await font.click();
+  await font.selectOption('unscii');
+  expect(await store(page, 'workspace', (w) => w.displayFont)).toBe('unscii');
+  await expect.poll(() => typingFocused(page)).toBe(true);
+  await page.keyboard.type('v'); // would choose IBM VGA in the menu
+  await expect.poll(() => chars(page, 2, 2, 3)).toBe('av');
+  expect(await store(page, 'workspace', (w) => w.displayFont)).toBe('unscii');
+
+  const size = page.getByRole('spinbutton', { name: 'Font size' });
+  await size.click();
+  await page.keyboard.type('9'); // typed into the field, not the canvas
+  expect(await store(page, 'workspace', (w) => w.textCursor)).toEqual({ col: 4, row: 2 }); // nothing typed
+  await page.keyboard.press('Escape'); // the size is put back, and typing has the keyboard again, its cursor where it was
+  await expect(size).toHaveValue('16');
+  await expect.poll(() => typingFocused(page)).toBe(true);
+  expect(await store(page, 'workspace', (w) => w.textCursor)).toEqual({ col: 4, row: 2 });
+  await page.keyboard.type('b');
+  await expect.poll(() => chars(page, 2, 2, 4)).toBe('avb');
+});
+
 test('after Tab moves focus off the text input, Space still types (pointer over the canvas)', async ({ page }) => {
   await openApp(page);
   await editAt(page, 2, 2);

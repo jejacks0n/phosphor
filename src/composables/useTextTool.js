@@ -60,9 +60,10 @@ function typeLines(project, workspace, text) {
 export function useTextTool(project, workspace, textInput) {
   const palettes = usePaletteStore();
   // Keys belong elsewhere while focus is in a field or a dialog (the color picker, the palette layer).
+  const inDialog = (el) => !!el.closest?.('dialog, [role="dialog"]');
   const editableFocus = () => {
     const el = document.activeElement;
-    return isField(el) || (!!el && !isTextInput(el) && !!el.closest('dialog, [role="dialog"]'));
+    return isField(el) || (!!el && !isTextInput(el) && inDialog(el));
   };
 
   // Moving the cursor ends a run of typing (Backspace's move is part of it).
@@ -124,6 +125,12 @@ export function useTextTool(project, workspace, textInput) {
   const onKeyDown = (event) => {
     if (event.defaultPrevented) return;
     if (workspace.editorTab !== 'output' || workspace.activeTool !== 'text' || workspace.paletteLayerOpen) return;
+    // Escape in a field (a size, the Characters set, a menu reached with Tab), once the field has done its own (put its
+    // value back): typing has the keyboard again, the cursor where it was. A dialog's fields are the dialog's.
+    if (event.key === 'Escape' && inUse() && isField(document.activeElement) && !inDialog(document.activeElement)) {
+      event.preventDefault();
+      return textInput?.value?.focus({ preventScroll: true });
+    }
     const action = textKeyAction(event, { editable: editableFocus(), animate: project.animate });
     if (!action) return;
     // Without a cursor only palette flips and slot choices apply (a slot still sets the character to draw with).
@@ -173,7 +180,8 @@ export function useTextTool(project, workspace, textInput) {
   // back, so an input method keeps typing into cells. Only after a pointer: Tab and other keyboard
   // moves keep their focus.
   let pointerDown = false;
-  const onPointerDown = () => { pointerDown = true; };
+  let byPointer = false; // the last press was a pointer's, not a key's (onChange)
+  const onPointerDown = () => { pointerDown = byPointer = true; };
   const onPointerUp = () => setTimeout(() => { pointerDown = false; });
   const onFocusOut = () => {
     if (!pointerDown) return;
@@ -183,8 +191,21 @@ export function useTextTool(project, workspace, textInput) {
     });
   };
 
+  // A setting that doesn't type (a menu, a checkbox, a slider), changed with the pointer, hands the keyboard back as a
+  // pressed button does: left there, letters would go to the Font menu while the cursor blinks. One changed with the
+  // keyboard (Tab to it, the arrows) keeps it until Escape; so does a field that types. (Not :focus-visible, which a
+  // menu matches after a click too.)
+  const TYPES = 'input:not([type=range], [type=checkbox], [type=radio], [type=color]), textarea, [contenteditable]';
+  const onAnyKey = () => { byPointer = false; };
+  const onChange = ({ target }) => {
+    if (!byPointer || !inUse() || !isField(target) || target.matches(TYPES) || inDialog(target)) return;
+    textInput?.value?.focus({ preventScroll: true });
+  };
+
   onMounted(() => {
     window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onAnyKey, true);
+    document.addEventListener('change', onChange, true);
     window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('pointerup', onPointerUp, true);
     textInput?.value?.addEventListener('beforeinput', onBeforeInput);
@@ -194,6 +215,8 @@ export function useTextTool(project, workspace, textInput) {
   });
   onBeforeUnmount(() => {
     window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keydown', onAnyKey, true);
+    document.removeEventListener('change', onChange, true);
     window.removeEventListener('pointerdown', onPointerDown, true);
     window.removeEventListener('pointerup', onPointerUp, true);
     textInput?.value?.removeEventListener('beforeinput', onBeforeInput);

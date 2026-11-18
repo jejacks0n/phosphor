@@ -119,7 +119,9 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
   its buttons whole at any width: short of room, the FG and BG hex codes give way, each on its swatch's hover);
   Enter goes to the start of the next line; a run of typing is one undo step, ending when he pauses or moves the
   cursor.
-- Probes: `speed`: hold Backspace for two seconds; `undo-redo`: undo the typing, redo it, then type and check redo is
+- Probes: `interrupt`: mid-line, pick another Font with the mouse and keep typing (the letters land on the canvas, not
+  in the menu), then click the font's size, type a digit and press Escape (the size is put back and typing carries on
+  at the cursor); `speed`: hold Backspace for two seconds; `undo-redo`: undo the typing, redo it, then type and check redo is
   off; `out-of-order`: press Delete at the end of a row and Backspace at column 0.
 - Rated: yes, wants T
 
