@@ -15,6 +15,11 @@ import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { TYPING_PAUSE_MS, bytesHeld, onBottom, ownHalves, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
 
+// A typed character with the colors it's typed in. A space has no ink, so it takes the background alone: the cell keeps
+// the foreground it had (on the base that's its lower pixel, which the PIXEL view shows; on a layer a color no one sees
+// till Merge down brings it out).
+const typed = (char, attrs) => (char.trim() ? { char, ...attrs } : { char, ...attrs, fg: undefined, fgIndex: undefined });
+
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100, stack = false) {
     if (!pixels.length || !this.renderer.outputCanvas || refusedNoCells(this, { toast: false })) return; // no cells layer has the fields
@@ -133,7 +138,7 @@ export const editLayerActions = {
     if (width === 2 && col === this.cols - 1) return false;
     this.typing(() => {
       if (mode !== 'overwrite') this.shiftCells(row, col, width, { paint: mode === 'insert' });
-      this.writeAt(col, row, { char, ...attrs });
+      this.writeAt(col, row, typed(char, attrs));
     });
     return true;
   },
@@ -153,7 +158,7 @@ export const editLayerActions = {
     const k = col - target;
     this.typing(() => {
       if (mode !== 'overwrite') this.shiftCells(row, col, -k, { paint: mode === 'insert' });
-      else this.writeAt(target, row, { char: ' ', ...attrs });
+      else this.writeAt(target, row, typed(' ', attrs));
     });
     return k;
   },

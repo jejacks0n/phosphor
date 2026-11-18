@@ -356,6 +356,19 @@ test('Partial on the base pushes the pinned characters with their colors and lea
   expect(own(4)).toMatchObject(BLUE_PAINT);
 });
 
+test('a space typed on the base puts no foreground color in the cell: its lower pixel stays as it was, in the PIXEL view too', async () => {
+  const { project, own } = await baseRow();
+  project.typeAt(8, 1, ' ', { fg: RED, bg: '#000000' });
+  project.typeAt(9, 1, ' ', { fg: RED }); // BG None
+  project.typeAt(1, 1, ' ', { fg: '#00ff00', bg: '#000000' }); // over the red A: its foreground stays, unseen
+  project.commitEdit();
+  await settle(project);
+  expect([8, 9, 1].map((col) => project.baseRecords.pins.get(`${col},1`))).toEqual([' ', ' ', ' ']);
+  expect([8, 9].map((col) => [project.rawColorAt(col, 2), project.rawColorAt(col, 3)])).toEqual([['#000000', '#000000'], ['#000000', '#000000']]);
+  expect(project.rawColorAt(1, 3)).toBe(RED);
+  expect(own(1)).toMatchObject({ r: 0, g: 0, b: 0 });
+});
+
 test('Delete on the base in Overwrite mode pulls the pinned characters, as it does a layer\'s', async () => {
   const { project, pins, own } = await baseRow();
   project.deleteAt(1, 1);
