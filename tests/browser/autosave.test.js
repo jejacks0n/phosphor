@@ -1148,7 +1148,7 @@ test('a lock still held after the wait is a duplicated tab: a copy with its own 
     expect(sessionStorage.getItem(KEPT_ID)).toBe(copy);
     expect([...back.project.editCells.keys()]).toEqual(['0,0']);
 
-    await pass(SAVE_AFTER_MS);
+    await autosave.flush(); // the copy's own write, begun while mounted waited (vi.waitUntil moves the timers): pass wouldn't see it start
     expect((await readLatest(copy)).record.editedAt).toBe(editedAt);
     expect(await listVersions(copy)).toEqual([]);
     expect(await listVersions(id)).toHaveLength(1);
@@ -2064,6 +2064,7 @@ test('a change within a reload\'s first second has its version when one is due',
   await vi.advanceTimersByTimeAsync(100);
   edit(back.project, 1);
   await pass(SAVE_AFTER_MS);
+  await autosave.flush(); // the edit's write, queued behind the restore's own, which began while mounted waited
   const [newest, ...more] = await listVersions(id);
   expect(more).toHaveLength(1);
   expect(await charsOf(await readVersion(newest.id))).toEqual(['0,0:a', '1,0:a']);
