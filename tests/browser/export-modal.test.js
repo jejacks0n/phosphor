@@ -52,6 +52,31 @@ test('clicking another format selects it', async () => {
   }
 });
 
+test('Up and Down move between the formats, not on to the animated ones a still drawing can\'t use; the file name keeps its arrows', async () => {
+  await drawing();
+  const { unmount } = mountModal();
+  const press = (key) => !document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    const formats = [...modal.querySelectorAll('.format-btn:not(:disabled)')];
+    formats[0].focus();
+    formats.slice(1).forEach((format) => {
+      expect(press('ArrowDown')).toBe(true);
+      expect(document.activeElement).toBe(format);
+    });
+    press('ArrowDown'); // the last a still drawing has
+    expect(document.activeElement).toBe(formats.at(-1));
+    press('ArrowUp');
+    expect(document.activeElement).toBe(formats.at(-2));
+    expect(modal.querySelector('.format-btn.selected')).toBe(formats[0]); // focus moved; Enter or Space picks
+
+    modal.querySelector('input.filename-input').focus();
+    expect(press('ArrowDown')).toBe(false);
+  } finally {
+    unmount();
+  }
+});
+
 test('animated formats are disabled on a still drawing', async () => {
   await drawing();
   const { unmount } = mountModal();

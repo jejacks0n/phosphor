@@ -1,6 +1,7 @@
 // The start screen's "Pick up where you left off" rows (ZeroState.vue): the whole name with its extension, where that
-// copy stands, and a time that tells two rows apart; on a phone, the name on its own line above the time and Open.
-import { test, expect, afterEach } from 'vitest';
+// copy stands, and a time that tells two rows apart; on a phone, the name on its own line above the time and Open. And
+// its buttons as a list: Up and Down move between Choose a file, Start blank and each Open.
+import { test, expect, afterEach, vi } from 'vitest';
 import { createApp } from 'vue';
 import ZeroState from '@/components/ZeroState.vue';
 import { i18n, setLocale } from '@/i18n';
@@ -65,6 +66,28 @@ test('a name too long for two lines is cut in the middle, keeping its end', () =
   expect(shown).toContain('…');
   expect(shown.endsWith('-20261113-214338.ans')).toBe(true);
   expect(li.querySelector('.name').title).toBe(`${name}.ans`);
+});
+
+test('Up and Down move between Choose a file, Start blank and each Open, past a drawing open in another tab, and the app\'s shortcuts don\'t hear them', () => {
+  mount([row('a', { openElsewhere: true }), row('b'), row('c')]);
+  const [browse, blank, elsewhere, openB, openC] = host.querySelectorAll('button');
+  expect(elsewhere.disabled).toBe(true);
+  const heard = vi.fn(); // where the app's shortcuts listen
+  window.addEventListener('keydown', heard);
+  const press = (key) => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+  try {
+    browse.focus();
+    const landed = ['ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowUp', 'ArrowUp', 'ArrowUp', 'ArrowUp'].map((key) => {
+      press(key);
+      return document.activeElement;
+    });
+    expect(landed).toEqual([blank, openB, openC, openC, openB, blank, browse, browse]); // it stops at the ends
+    expect(heard).not.toHaveBeenCalled();
+    press('ArrowRight'); // not theirs
+    expect(heard).toHaveBeenCalledTimes(1);
+  } finally {
+    window.removeEventListener('keydown', heard);
+  }
 });
 
 test('on a phone the name has its own line, whole, with the time, status and Open under it; wider, it\'s one line', async () => {

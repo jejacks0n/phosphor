@@ -173,7 +173,7 @@ look at the status bar, and take `qa.memory` again.
   (the drawing stays under Pick up where you left off), and choosing one opens it with no second question.
 - Probes: `out-of-order`: pick Base and erase a cell (black with a pinned space), then compare again; `undo-redo`: undo
   both fixes.
-- Rated: yes, wants Cmd+O, then a key for Draw on top
+- Rated: yes, wants Cmd+O, then ↓ and Enter for Draw on top
 
 **Free time:** he'd open the exported .ans as UTF-8 by renaming it .utf8ans (it should read as CP437, saying so), export .utf8ans and
 compare it in the terminal, open `ansi/past-the-edge.ans` and judge its second row from the screenshot, and diff the

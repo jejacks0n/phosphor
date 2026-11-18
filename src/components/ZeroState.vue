@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
 import { formatShortDateTime } from '@/i18n/format';
+import { arrowsBetween } from '@/lib/focus';
 
 const props = defineProps({
   ready: { type: Boolean, default: true }, // nothing until it's known there's nothing to restore, so this doesn't flash
@@ -36,7 +37,8 @@ const rows = computed(() => {
 </script>
 
 <template>
-  <article class="zero-state">
+  <!-- Up and Down move between its buttons, top to bottom: Choose a file, Start blank, each Open. -->
+  <article class="zero-state" @keydown="arrowsBetween($event, $event.currentTarget.querySelectorAll('button'))">
     <div v-if="ready" class="drop-zone">
       <div class="logo"></div>
       <span class="icon">⬆</span>

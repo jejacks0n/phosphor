@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { arrowsBetween } from '@/lib/focus';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { charRowsOf } from '@/lib/Cells';
 import { MOST_COMMENT_LINES, sauceUnmappable } from '@/lib/Sauce';
@@ -119,7 +120,8 @@ function cancel() {
   <ModalDialog :title="t('export.modal.title')" :sub="t('export.modal.sub')" wide @cancel="cancel">
     <div class="export-body">
 
-      <nav class="format-list" aria-label="Export format">
+      <!-- Up and Down move between the formats; Enter or Space picks the one focused. -->
+      <nav class="format-list" aria-label="Export format" @keydown="arrowsBetween($event, $event.currentTarget.querySelectorAll('button'))">
         <div class="group-label">{{ t('export.modal.still') }}</div>
         <button
             v-for="f in formats.filter(f => f.group === 'still')"

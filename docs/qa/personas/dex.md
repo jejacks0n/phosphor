@@ -316,10 +316,11 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Does: starts a New project (it asks if there are unsaved changes), opens `scene.ans` and picks Draw on top.
 - Expects: the art is the base, every character pinned; Layer 1 is empty above it; in PIXEL each character shows as it
   looks (a `█` solid, a `▒` a mix of its two colors) with All cells off, as it's left, and the same with it turned on
-  or the Overlay at 0%; the sliders and the palette work on it as on a picture.
+  or the Overlay at 0%; the sliders and the palette work on it as on a picture. At each question ↓ and ↑ move between
+  the choices and Cancel, stopping at the ends, and Enter presses the one with focus.
 - Probes: `back-out`: at the unsaved-changes question, cancel and check nothing changed; `interrupt`: look at PIXEL
   and back.
-- Rated: yes, wants Cmd+O, then a key for Draw on top
+- Rated: yes, wants Cmd+O, then ↓ and Enter for Draw on top
 
 ### 25. Fix the base and draw over it
 - Does: picks Base, chooses the Eraser (E) and clicks a cell at its starting size (Size · cells, 1: that one cell turns

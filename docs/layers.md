@@ -1150,7 +1150,14 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   Option+? on a Mac). It doesn't open from a text field.
 - **Opening a File**: **Cmd+O** (Ctrl+O) opens the file chooser, from anywhere in the app except while you type in a
   field or in Edit Mode's text. What you pick opens as a dropped file does, asking first where a drop would.
-- **The Start Screen**: **Tab** reaches **Choose a file**, and **Enter** or **Space** presses it.
+- **The Start Screen**: **Tab** reaches **Choose a file**, and **Enter** or **Space** presses it. From there **↓** and
+  **↑** move between its buttons, top to bottom: **Choose a file**, **Start with a blank canvas**, and each drawing's
+  **Open** (not one that's open in another tab).
+- **A Dialog's Choices**: Where a dialog lists its choices one under another (unsaved changes, opening an art file,
+  Merge down, Bake, deleting a layer in a room), **↓** and **↑** move between the choices and **Cancel**, and **Enter**
+  or **Space** presses the one with focus. They stop at the first and the last. The same goes for **Versions** (each
+  **Restore**, then **Close**) and for the list of formats in **Export**, where the arrows move focus and Enter or
+  Space picks the format. In a field, a slider or a menu, the arrows do what they do there.
 - **Scrolling**: **Page Up** and **Page Down** scroll the view one screen, and **Home** and **End** (or **Cmd+↑** and
   **Cmd+↓** on a Mac) scroll to its top and bottom. They reach the view whenever nothing else has focus, as after a file
   opens, so you don't need to click it first. In Edit Mode, while you type, Home and End move the cursor instead.

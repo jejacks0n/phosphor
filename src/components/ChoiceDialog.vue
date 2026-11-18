@@ -1,11 +1,13 @@
 <script setup>
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
+import { arrowsBetween } from '@/lib/focus';
 
 // A choice in a centered confirm box (Merge down: exactly or into the picture; Bake under CGA/VGA:
 // keep full color or lock to the palette). choices: [{ id, title, text?, note?, costs? }]: note a warning under the choice
 // (opening over unsaved changes), costs what the choice gives up, one line each, listed under "You give up:". The first
-// is focused, the second accented as the alternative; choosing emits its id.
+// is focused, the second accented as the alternative; choosing emits its id. Up and Down move between the choices and
+// Cancel.
 const props = defineProps({
   title: { type: String, required: true },
   sub: { type: String, required: true },
@@ -13,6 +15,7 @@ const props = defineProps({
 });
 const emit = defineEmits(['choose', 'cancel']);
 const { t } = useI18n();
+const arrows = (event) => arrowsBetween(event, event.currentTarget.closest('dialog').querySelectorAll('button'));
 </script>
 
 <template>
@@ -23,6 +26,7 @@ const { t } = useI18n();
         class="choice"
         :class="{ alternative: i === 1 }"
         @click="emit('choose', choice.id)"
+        @keydown="arrows"
     >
       <b>{{ choice.title }}</b>
       <span v-if="choice.text">{{ choice.text }}</span>
@@ -33,7 +37,7 @@ const { t } = useI18n();
       </span>
     </button>
     <div class="actions">
-      <button class="cancel" @click="emit('cancel')">{{ t('common.cancel') }}</button>
+      <button class="cancel" @click="emit('cancel')" @keydown="arrows">{{ t('common.cancel') }}</button>
     </div>
   </ModalDialog>
 </template>
