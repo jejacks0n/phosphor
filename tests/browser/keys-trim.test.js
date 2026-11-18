@@ -145,12 +145,15 @@ test('the stretch not drawn is dashed in the shape\'s stroke color', async () =>
 
 // Priya's run: in the Transform row's values menu, X typed and then Escape closed the menu and moved the shape there,
 // keyed. Escape backs out of the typing: the field goes back to the value in use and the menu closes, the shape as it was.
+// The fields get focus the way Tab gives it, their number selected, not by a click: a number field's arrows start near
+// its middle, a pixel or two either way by the browser's build, and a triple click landing on one steps X three times.
 test('Escape in a key value backs out of the typing, in the row and in its values menu', async () => {
   const { project, key } = await animatedLine();
   const before = project.shapes.get(key);
   const inRow = (await mount(KeyValues, { part: 'transform', shapeKey: key })).querySelector('input');
   const was = inRow.value;
-  await userEvent.tripleClick(inRow);
+  inRow.focus();
+  inRow.select();
   await userEvent.keyboard('5');
   await userEvent.keyboard('{Escape}');
   expect(inRow.value).toBe(was);
@@ -164,7 +167,8 @@ test('Escape in a key value backs out of the typing, in the row and in its value
   host.querySelector('.dropdown-trigger').click();
   await nextTick();
   const inMenu = document.querySelector('.dropdown-content input');
-  await userEvent.tripleClick(inMenu);
+  inMenu.focus();
+  inMenu.select();
   await userEvent.keyboard('5');
   await userEvent.keyboard('{Escape}');
   await nextTick();
