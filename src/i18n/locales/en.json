@@ -605,6 +605,7 @@
       "exactText": "Preserves each character cell exactly as shown. Image filters like Edges and Sharpen will not affect these cells.",
       "intoImageTitle": "Blend into source image",
       "intoImageText": "Draws directly into the base image so sliders and image filters will apply to it.",
+      "ownCharsNote": "{name} uses custom character settings. Its paint will be redrawn in {below}'s characters.",
       "originalNote": "Resizes the source image to its working resolution (like Bake). Filters like Edges may shift slightly."
     },
     "bakeDialog": {

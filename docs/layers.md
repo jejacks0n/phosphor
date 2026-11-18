@@ -613,7 +613,8 @@ the canvas changes. Undo brings it back, selected if it was.
     shift slightly that first time, and the **Image filters** section no longer shows. With a Limited count palette,
     the palette is worked out again from the merged picture, so some colors can shift. When the graphics card can't
     process a picture as long as the grid (most handle the full 5,000 lines; some phones stop at 2,000 or 4,000), it
-    merges exactly instead. Shapes stay shapes.
+    merges exactly instead. Shapes stay shapes. A layer with character settings of its own loses them here: its paint is
+    redrawn in the base's characters, and the choice says so.
 
 ### Clear Layer
 
