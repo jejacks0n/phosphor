@@ -426,6 +426,8 @@
       "toleranceTitle": "Tolérance de remplissage",
       "contiguous": "Contigu",
       "contiguousTitle": "Remplir uniquement les zones connectées. Désactivez pour remplir les cellules correspondantes sur l'ensemble du canevas",
+      "allLayers": "Tous les calques",
+      "allLayersTitle": "Remplir d'après ce que montrent ensemble tous les calques visibles. Désactivez pour ne tenir compte que du dessin du calque sélectionné",
       "feather": "Adoucir",
       "featherTitle": "Adoucir les contours du remplissage",
       "match": "Critère",

@@ -941,17 +941,25 @@ swaps the two halves of each cell's base colors.
   - **Options**: **Tolerance**, **Contiguous** (off fills every match across the canvas) and **Feather**, which softens
     the filled edge.
   - **Selections**: With a selection, the fill stays inside it, and a click outside it fills nothing.
+  - **All Layers**: On, as it starts, the fill goes by what you see: every layer that shows, together. Off, it goes by
+    the selected layer alone, and where that layer has nothing is a color of its own. So inside an outline you painted
+    on a layer, a click fills the clear inside the outline, whatever the picture under it looks like, and a click on
+    the layer's paint fills that paint and not the same color elsewhere in the picture. With the base selected, off
+    goes by the picture alone, as if nothing were drawn over it. Either way the fill lands on the selected layer. It's
+    the Paint Bucket's and the Gradient's own setting, apart from the Select tool's **All layers**.
   - **Cells**: In the ANSI view its **Fill** menu offers **Colors only** (to start) and **Cells**: whole cells instead of
     the color you see. **Match** chooses what a cell must share with the one you click (its **FG**, **BG** and/or
     character, **Char**; all three to start, so cells that look the same), with the colors within the Tolerance, and
     **Set** what the fill gives the cells: your foreground color (to start), background color and/or character. There's
-    no Feather. Cells fills text and lines too, since it's matching cells rather than flowing around them.
+    no Feather. Cells fills text and lines too, since it's matching cells rather than flowing around them. With
+    **All layers** off it matches the selected layer's own cells: a character with its own colors, a painted cell by
+    its paint, and a cell with nothing on that layer only with other empty ones.
 - **Gradient** (**Shift+G**, sharing the Paint Bucket's button): Fills with a blend from your foreground color to your
   background color instead of one color.
   - **Shape**: **Linear** (to start) or **Spherical**. You drag a line, which shows while you drag, and the fill lands
     when you let go.
   - **The Area**: The Paint Bucket's usual one: the selection if there is one, otherwise what a click where the drag
-    starts would fill, by the same Tolerance, Contiguous, Feather and Match.
+    starts would fill, by the same Tolerance, Contiguous, **All layers**, Feather and Match.
   - **Linear**: Foreground where you press and background where you let go, with the bands square to the line, so a
     diagonal drag makes a diagonal gradient. Before the press it stays foreground, and past the release it stays
     background.

@@ -1,11 +1,13 @@
 import { floodFill, colorDistance } from '@/lib/FloodFill';
 import { selectMatching, unitsOf } from '@/lib/MagicWand';
 import { ctx2d } from '@/lib/Canvas';
-import { parseKey, ownEntry } from '@/document/editCells';
+import { cellKey, parseKey, ownEntry } from '@/document/editCells';
 import { cellIndex, charRowsOf, isSolidGlyph, showsChar } from '@/lib/Cells';
 import { selectionClip } from '@/lib/selectionClip';
 import { placedShapes } from '@/document/followers';
 import { isArt } from '@/document/artLayers';
+import { hex2rgb } from '@/lib/ColorUtils';
+import { onBottom } from '@/store/project/shared.js';
 import { t } from '@/i18n/index.js';
 
 // Grid pixels the fill stops at: the picked layer's edit cells showing a character with something to see through (text,
@@ -44,16 +46,56 @@ function artPixels(project) {
   return own;
 }
 
+// All layers off (workspace.editFillAllLayers), a fill reads the layer in use alone, not what every shown layer shows
+// together; it fills the layer in use either way. The Gradient's too: it fills the Paint Bucket's area.
+//
+// The layer's own pixels, a grid pixel each: a drawing layer's paint, clear where it has none (null with no paint at all:
+// all clear), or the base's picture with its own pixels over it, as it shows with nothing above.
+function ownPixels(project) {
+  if (onBottom(project)) return project.renderer.basePixels;
+  return project.paintLayer?.hasPaint ? project.paintLayer.gridPixels() : new ImageData(project.cols, project.rows);
+}
+
+// The layer's own cell at index i, as { char, fg, bg } (colors as { r, g, b }), each null where the layer has none: a
+// character of its own with its colors (ownEntry: docs/model.md R1), a painted cell as the ▄ its halves show (top the
+// background), and nothing in a cell it holds nothing in. The base's is its cell as it shows with nothing above. Each
+// cell is worked out once: a fill asks about a cell from every side.
+function ownCells(project) {
+  const { cols } = project, rgb = (hex) => (hex ? hex2rgb(hex) : null), kept = [];
+  const once = (cellAt) => (i) => (kept[i] ??= cellAt(i));
+  if (onBottom(project)) {
+    return once((i) => {
+      const look = project.lookUnder(i % cols, Math.floor(i / cols), 'base');
+      return { char: look.char, fg: rgb(look.fg), bg: rgb(look.bg) };
+    });
+  }
+  const entries = project.editCells, paint = project.paintLayer?.hasPaint ? project.paintLayer.gridPixels().data : null;
+  const half = (x, y) => {
+    const o = (y * cols + x) * 4;
+    return paint?.[o + 3] ? { r: paint[o], g: paint[o + 1], b: paint[o + 2] } : null;
+  };
+  return once((i) => {
+    const col = i % cols, row = Math.floor(i / cols), entry = entries.get(cellKey(col, row));
+    const mine = entry && ownEntry(entry, project.renderStyle) ? entry : null, top = half(col, 2 * row), bottom = half(col, 2 * row + 1);
+    return { char: mine?.char ?? (top || bottom ? '▄' : null), fg: rgb(mine?.fg) ?? bottom, bg: rgb(mine?.bg) ?? top };
+  });
+}
+
 // Fill → Cells (ANSI view): the cells matching the one clicked (what bucketMatch lights: colors within
 // the Tolerance, the character exactly), connected to it or anywhere, inside the selection, as
-// { x, y } cells (none off the grid).
+// { x, y } cells (none off the grid). All layers off: matched as the layer in use's own cells (ownCells), where a color
+// or character it doesn't have matches only another it doesn't have.
 export function cellArea(project, workspace, pos) {
   const width = project.cols, height = charRowsOf(project.rows);
   const start = { x: Math.floor(pos.x), y: Math.floor(pos.y / 2) };
   if (start.x < 0 || start.y < 0 || start.x >= width || start.y >= height) return [];
-  const cells = project.cells, seed = cells[start.y * width + start.x], { fg, bg, char } = workspace.bucketMatch;
-  const near = (a, b) => colorDistance(a.r, a.g, a.b, b.r, b.g, b.b) <= workspace.editFillTolerance;
-  const same = (i) => (!fg || near(seed.fg, cells[i].fg)) && (!bg || near(seed.bg, cells[i].bg)) && (!char || seed.char === cells[i].char);
+  const cells = project.cells, cellAt = workspace.editFillAllLayers ? (i) => cells[i] : ownCells(project);
+  const seed = cellAt(start.y * width + start.x), { fg, bg, char } = workspace.bucketMatch;
+  const near = (a, b) => (a && b ? colorDistance(a.r, a.g, a.b, b.r, b.g, b.b) <= workspace.editFillTolerance : !a && !b);
+  const same = (i) => {
+    const cell = cellAt(i);
+    return (!fg || near(seed.fg, cell.fg)) && (!bg || near(seed.bg, cell.bg)) && (!char || seed.char === cell.char);
+  };
   const clip = selectionClip(workspace), own = artPixels(project);
   const ownCell = (x, y) => own[2 * y * width + x] || own[(2 * y + 1) * width + x];
   const inArt = own && ownCell(start.x, start.y);
@@ -66,12 +108,13 @@ export function cellArea(project, workspace, pos) {
 
 // Fill → Normal and the PIXEL view: the grid pixels the fill covers ({ x, y, alpha }, alpha below 1
 // where it feathers), by Tolerance and Contiguous, stopping at walls, and inside an art layer's own drawing when it starts
-// there.
+// there. All layers off: by the layer in use's own pixels (ownPixels), where clear is a color of its own.
 export function pixelArea(project, workspace, pos) {
-  const imageData = ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, project.cols, project.rows); // with the upper layers' pixels, as the view shows
+  const alone = !workspace.editFillAllLayers && ownPixels(project);
+  const imageData = alone || ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, project.cols, project.rows); // with the upper layers' pixels, as the view shows
   const x = Math.floor(pos.x), y = Math.floor(pos.y), walls = wallsOf(project, selectionClip(workspace), workspace.pickedLayer), own = artPixels(project);
   if (own && x >= 0 && x < project.cols && own[y * project.cols + x]) own.forEach((mine, i) => { if (!mine) walls[i] = 1; });
-  return floodFill(imageData, x, y, workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, walls);
+  return floodFill(imageData, x, y, workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, walls, !!alone);
 }
 
 export const fillsCells = (workspace, view) => view === 'output' && workspace.bucketFillWith === 'cells';
@@ -111,6 +154,7 @@ const SET_OPTIONS = [
 export const FILL_OPTIONS = [
   { key: 'editFillTolerance', get label() { return t('tools.bucket.tolerance'); }, get title() { return t('tools.bucket.toleranceTitle'); }, min: 0, max: 100 },
   { key: 'editFillContiguous', get label() { return t('tools.bucket.contiguous'); }, get title() { return t('tools.bucket.contiguousTitle'); }, type: 'checkbox' },
+  { key: 'editFillAllLayers', get label() { return t('tools.bucket.allLayers'); }, get title() { return t('tools.bucket.allLayersTitle'); }, type: 'checkbox' },
   { key: 'editFillFeather', get label() { return t('tools.bucket.feather'); }, get title() { return t('tools.bucket.featherTitle'); }, min: 0, max: 100, when: (ws) => ws.editorTab === 'input' || ws.bucketFillWith !== 'cells' },
   { key: 'bucketMatch', get label() { return t('tools.bucket.match'); }, type: 'toggles', options: MATCH_OPTIONS, ...cellOptions },
 ];

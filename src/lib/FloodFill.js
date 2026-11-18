@@ -13,7 +13,9 @@ export function colorDistance(r1, g1, b1, r2, g2, b2) {
   return Math.sqrt(dr * dr + dg * dg + db * db) / 4.4167;
 }
 
-export function floodFill(imageData, startX, startY, tolerance, contiguous = true, feather = 2.0, walls = null) {
+// own: the pixels are one layer's own, so how see-through they are counts: clear is a color of its own, far from any
+// paint, and faint paint is near it (colors compared as they'd show over nothing, with the alpha beside them).
+export function floodFill(imageData, startX, startY, tolerance, contiguous = true, feather = 2.0, walls = null, own = false) {
   const { width, height, data } = imageData;
 
   if (startX < 0 || startX >= width || startY < 0 || startY >= height || walls?.[startY * width + startX]) {
@@ -21,9 +23,16 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
   }
 
   const targetIdx = (startY * width + startX) * 4;
-  const targetR = data[targetIdx];
-  const targetG = data[targetIdx + 1];
-  const targetB = data[targetIdx + 2];
+  const targetA = own ? data[targetIdx + 3] : 255, shown = targetA / 255;
+  const targetR = data[targetIdx] * shown;
+  const targetG = data[targetIdx + 1] * shown;
+  const targetB = data[targetIdx + 2] * shown;
+  // How far the pixel at a data offset is from the one clicked.
+  const distanceAt = (offset) => {
+    if (!own) return colorDistance(targetR, targetG, targetB, data[offset], data[offset + 1], data[offset + 2]);
+    const a = data[offset + 3], k = a / 255;
+    return Math.hypot(colorDistance(targetR, targetG, targetB, data[offset] * k, data[offset + 1] * k, data[offset + 2] * k), (targetA - a) / 4.4167);
+  };
 
   const result = [];
   const falloff = Math.max(0.1, feather); // Ensure a tiny falloff even if feather is 0 to avoid div by zero
@@ -33,12 +42,7 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         if (walls?.[y * width + x]) continue;
-        const offset = (y * width + x) * 4;
-        const r = data[offset];
-        const g = data[offset + 1];
-        const b = data[offset + 2];
-
-        const dist = colorDistance(targetR, targetG, targetB, r, g, b);
+        const dist = distanceAt((y * width + x) * 4);
         if (dist <= tolerance) {
           result.push({ x, y, alpha: 1 });
         } else if (dist <= tolerance + falloff) {
@@ -76,12 +80,7 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
       const nidx = ny * width + nx;
       if (visited[nidx] !== -1 || walls?.[nidx]) continue;
 
-      const offset = nidx * 4;
-      const r = data[offset];
-      const g = data[offset + 1];
-      const b = data[offset + 2];
-
-      const dist = colorDistance(targetR, targetG, targetB, r, g, b);
+      const dist = distanceAt(nidx * 4);
 
       if (dist <= tolerance) {
         visited[nidx] = 1.0;

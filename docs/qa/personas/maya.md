@@ -266,7 +266,10 @@ dithered, and compare the dither at 80 and at 200 columns.
   again with Match and Set.
 - Expects: the color fill stops at text and lines she's drawn (they're walls) and stays inside a selection; Cells fills
   whole cells that match the one she clicked (FG, BG and Char to start).
-- Probes: `extremes`: Tolerance at 0 and at its most; `undo-redo`: undo the fill, redo it.
+- Probes: `extremes`: Tolerance at 0 and at its most; `undo-redo`: undo the fill, redo it; `layer`: with the Brush,
+  paint a closed outline on Layer 2 over the photo, turn the Paint Bucket's All layers off and click inside it (the
+  fill floods the inside of the outline and stops at it, whatever the photo looks like under it; on, it follows the
+  photo's colors), then with it still off drag a Gradient inside the outline (the same area).
 - Rated: yes, wants G
 
 ### 19. Fill with a gradient
