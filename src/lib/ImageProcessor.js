@@ -3,7 +3,7 @@
  */
 
 import { rgb2hex, hex2rgb, parseColorList, PALETTES } from './ColorUtils.js';
-import Canvas, { fitRect, ctx2d, boxFiltered } from './Canvas.js';
+import Canvas, { fitRect, ctx2d, boxFiltered, flatBlock } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
 import quantizeColors from './Quantizer.js';
 import { snapsLate, SAMPLES } from './CharResolver.js';
@@ -46,6 +46,31 @@ export function findUniform(image, imageBuffer = null) {
   for (let i = 1; i < pixels.length; i++) if (pixels[i] !== first) return false;
   markUniform(image, `rgb(${first & 0xff}, ${(first >>> 8) & 0xff}, ${(first >>> 16) & 0xff})`);
   return true;
+}
+
+// Whether the picture has nothing finer than a grid pixel where params put it: one color all over (a blank canvas's), or
+// a whole multiple of its fit in each direction with every grid pixel's block one color (Into the image on a blank
+// canvas paints every grid pixel in as a flat block). Smoothing, which scales the picture to the grid, changes nothing
+// then (#200). Looked at once for a picture and the fit's size, stopping at the first block that isn't flat.
+const onGridSizes = new WeakMap(); // picture -> Map 'dw,dh' -> whether it's on the grid at that size
+export function onGrid(image, params) {
+  if (uniform.has(image)) return true;
+  const w = image.naturalWidth || image.width, h = image.naturalHeight || image.height;
+  const { dw, dh } = params.fit ?? fitRect(w, h, params.cols, params.rows), key = `${dw},${dh}`;
+  const known = onGridSizes.get(image) ?? new Map();
+  onGridSizes.set(image, known);
+  if (!known.has(key)) {
+    const k = w / dw;
+    let flat = Number.isInteger(k) && h === dh * k;
+    if (flat && k > 1) {
+      const canvas = Object.assign(document.createElement('canvas'), { width: w, height: h }), ctx = ctx2d(canvas);
+      ctx.drawImage(image, 0, 0);
+      const pixels = new Uint32Array(ctx.getImageData(0, 0, w, h).data.buffer);
+      for (let by = 0; flat && by < dh; by++) for (let bx = 0; flat && bx < dw; bx++) flat = flatBlock(pixels, w, k, bx, by);
+    }
+    known.set(key, flat);
+  }
+  return known.get(key);
 }
 
 // A tw x th ImageData, opaque black, with [r, g, b] over dx, dy, dw, dh: what boxFiltered makes of a one-color picture.
