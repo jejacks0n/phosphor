@@ -1,5 +1,5 @@
 // The SAUCE tab (SauceEditor.vue): a count on each short field as the record counts characters, a line under a field
-// naming what an edit left out, and the fields off for an artist in a room.
+// saying how many characters fit when an edit went past it, and the fields off for an artist in a room.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -54,12 +54,12 @@ test('each short field counts its characters as the record does, an emoji as one
   expect(noteOf('sauce-title').textContent.trim()).toBe(''); // nothing typed was cut
 });
 
-test('a paste past the width keeps what fits, and a line under the field names the rest until the next change', async () => {
+test('a paste past the width keeps what fits, and a line under the field says how many fit until the next change', async () => {
   const { project } = await mount();
   await edit('sauce-title', 'Café € 🎨 Restaurée par Walt, été 1996 xyz');
   expect(project.sauceTitle).toBe('Café € 🎨 Restaurée par Walt, été 19');
   expect(field('sauce-title').value).toBe('Café € 🎨 Restaurée par Walt, été 19');
-  expect(noteOf('sauce-title').textContent.trim()).toBe('Only 35 characters fit. Left out: "96 xyz"');
+  expect(noteOf('sauce-title').textContent.trim()).toBe('Only 35 characters fit.');
   expect(noteOf('sauce-title').getAttribute('aria-live')).toBe('polite');
   expect(field('sauce-title').getAttribute('aria-describedby')).toContain('sauce-title-note');
 
@@ -67,14 +67,11 @@ test('a paste past the width keeps what fits, and a line under the field names t
   expect(noteOf('sauce-title').textContent.trim()).toBe('');
 });
 
-test('a key pressed in a full field is named, and a long left-out part is cut short', async () => {
-  const { project } = await mount(({ project }) => { project.sauceAuthor = 'x'.repeat(20); });
-  await edit('sauce-author', `${'x'.repeat(20)}Q`, 21, 'insertText');
-  expect(project.sauceAuthor).toBe('x'.repeat(20));
-  expect(noteOf('sauce-author').textContent.trim()).toBe('Only 20 characters fit. Left out: "Q"');
-
-  await edit('sauce-group', 'g'.repeat(20) + 'abcdefghijklmnopqrstuvwxyz');
-  expect(noteOf('sauce-group').textContent.trim()).toBe('Only 20 characters fit. Left out: "abcdefghijklmnopqrst…"');
+test('keys typed one by one past a full field say only how many fit, never just the last key', async () => {
+  const { project } = await mount(({ project }) => { project.sauceTitle = 'Restored by Walt from the 1996 pack'; });
+  for (const key of '!XYZW') await edit('sauce-title', `${project.sauceTitle}${key}`, 36, 'insertText');
+  expect(project.sauceTitle).toBe('Restored by Walt from the 1996 pack');
+  expect(noteOf('sauce-title').textContent.trim()).toBe('Only 35 characters fit.'); // not Left out: "W"
 });
 
 test('a change from elsewhere (a file opened, a host\'s) clears the line, and raises none', async () => {
@@ -98,7 +95,7 @@ test('IME text is fitted once it\'s committed, not while it\'s composed', async 
   input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: 'かな' }));
   await nextTick();
   expect(project.sauceAuthor).toBe(`${'x'.repeat(19)}か`);
-  expect(noteOf('sauce-author').textContent.trim()).toBe('Only 20 characters fit. Left out: "な"');
+  expect(noteOf('sauce-author').textContent.trim()).toBe('Only 20 characters fit.');
 });
 
 test('for an artist in a room, the fields are off and the counts still show', async () => {
@@ -117,7 +114,7 @@ test('control characters typed or pasted are left out, and the line under the fi
 
   await edit('sauce-group', `${'g'.repeat(19)}\u001bxy`);
   expect(project.sauceGroup).toBe(`${'g'.repeat(19)}x`);
-  expect(noteOf('sauce-group').textContent.trim()).toBe('Only 20 characters fit. Left out: "y"\nControl characters, like tab or ESC, can\'t be in SAUCE and were left out.');
+  expect(noteOf('sauce-group').textContent.trim()).toBe('Only 20 characters fit.\nControl characters, like tab or ESC, can\'t be in SAUCE and were left out.');
 });
 
 test('Comments keep their line breaks, CR LF as LF, and lose their other control characters', async () => {
@@ -179,7 +176,7 @@ test('a paste past the field\'s ceiling is cut, and the line under it says where
   const { project } = await mount();
   await paste(`${'x'.repeat(32 * 1024)}tail end`);
   expect(project.sauceUserComments).toBe('x'.repeat(32 * 1024));
-  expect(noteOf('sauce-comments').textContent.trim()).toBe('Only 32,768 characters fit. Left out: "tail end"');
+  expect(noteOf('sauce-comments').textContent.trim()).toBe('Only 32,768 characters fit.');
 });
 
 test('Date comes after Group, takes digits only, and a date that isn\'t a real YYYYMMDD gets a quiet note', async () => {
@@ -200,7 +197,7 @@ test('Date comes after Group, takes digits only, and a date that isn\'t a real Y
   expect(dateNote()).not.toBeNull();
   await edit('sauce-date', '199611134');
   expect(project.sauceDate).toBe('19961113');
-  expect(noteOf('sauce-date').textContent.trim()).toBe('Only 8 characters fit. Left out: "4"');
+  expect(noteOf('sauce-date').textContent.trim()).toBe('Only 8 characters fit.');
 });
 
 test('For other viewers: Font name (20, counted) and Letter spacing, with a line saying what they\'re for', async () => {
@@ -211,7 +208,7 @@ test('For other viewers: Font name (20, counted) and Letter spacing, with a line
   expect(countOf('sauce-font').textContent.trim()).toBe('7 / 20');
   await edit('sauce-font', 'Amiga Topaz 1+ and then some');
   expect(project.sauceFontName).toBe('Amiga Topaz 1+ and t');
-  expect(noteOf('sauce-font').textContent.trim()).toBe('Only 20 characters fit. Left out: "hen some"');
+  expect(noteOf('sauce-font').textContent.trim()).toBe('Only 20 characters fit.');
 
   const spacing = () => [...host.querySelectorAll('[aria-label="Letter spacing"] button')].map((b) => `${b.textContent.trim()}${b.getAttribute('aria-pressed') === 'true' ? '*' : ''}`);
   expect(spacing()).toEqual(['Not set', '8px*', '9px']); // a new drawing's: 8px

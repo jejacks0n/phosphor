@@ -324,7 +324,7 @@ frames, and pinch while it plays.
   on or keeps what she typed; the fields hold their widths (Author 20 characters), with a count beside each label;
   Title and Author are still at the top, with Date, the For other viewers group and Export… below them to scroll to.
 - Probes: `extremes`: type 40 characters into Author and see where it stops (20 / 20 turns the warning color above
-  the field, and a line under it names what didn't go in, though it may need a scroll with the keyboard up); `interrupt`: switch to ANSI and back.
+  the field, and a line under it says only 20 characters fit, though it may need a scroll with the keyboard up); `interrupt`: switch to ANSI and back.
 - Rated: yes, wants return on the phone's keyboard
 
 **Free time:** she'd open Versions and look at its list, try Export .ans and wonder what it is, open About and the
