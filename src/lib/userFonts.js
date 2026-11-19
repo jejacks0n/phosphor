@@ -9,7 +9,7 @@
  */
 
 import { t } from '@/i18n';
-import { fontId, parseRawFont, parseFontSheet } from './BitmapFont.js';
+import { fontId, fontName, parseRawFont, parseFontSheet } from './BitmapFont.js';
 import { ttfOf } from './BitmapTtf.js';
 
 // Checked to be one width: the narrowest and widest characters of a proportional font, and a digit.
@@ -154,7 +154,7 @@ export async function addFont(file) {
 // Load a bitmap font file (a raw .F## or a PNG sheet, told by its name or type) and store it:
 // { id, name, kind: 'bitmap', height }. Rejects with the not-a-bitmap-font message. The same font twice is one entry.
 export async function addBitmapFont(file) {
-  const name = file.name.replace(/\.[^.]*$/, '');
+  const name = fontName(file.name);
   let font;
   if (/\.png$/i.test(file.name) || file.type === 'image/png') {
     let image;

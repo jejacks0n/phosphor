@@ -100,7 +100,7 @@ test('Save .F## and Save PNG download the drawing\'s font, named for it', async 
   expect(new Uint8Array(await saved[0].blob.arrayBuffer())).toEqual(bytes);
   press('Save PNG');
   await expect.poll(() => saved.length).toBe(2);
-  expect(saved[1].name).toBe('My Font.F16.png');
+  expect(saved[1].name).toBe('My Font.png'); // its name without the .F16 it was loaded from
   const image = await createImageBitmap(saved[1].blob), canvas = document.createElement('canvas');
   canvas.width = image.width;
   canvas.height = image.height;
@@ -112,6 +112,13 @@ test('Save .F## and Save PNG download the drawing\'s font, named for it', async 
   await nextTick();
   press('Save .F16');
   expect(saved[2].name).toBe('font.F16');
+  // Named for an XBin it came in: the file's name, less its .xb.
+  project.setDrawingFont({ name: 'ACID-55.XB', height: 16, bytes });
+  await nextTick();
+  press('Save .F16');
+  press('Save PNG');
+  await expect.poll(() => saved.length).toBe(5);
+  expect(saved.slice(3).map((s) => s.name)).toEqual(['ACID-55.F16', 'ACID-55.png']);
 });
 
 test('Remove clears the browser\'s copy of the drawing\'s font and leaves the drawing drawing in it, at its size', async () => {

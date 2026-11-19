@@ -1,7 +1,7 @@
 // XBin files (16colo.rs, ansilove, Moebius): a header, an optional palette and 8×N font, then the cells,
 // optionally run-length compressed. A cell is a character byte (a slot of the file's font) and an attribute.
 import { CP437 } from './Cp437.js';
-import { SLOT_CHARS, fitFont, slotOf } from './BitmapFont.js';
+import { SLOT_CHARS, fitFont, fontName, slotOf } from './BitmapFont.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES } from './Cells.js';
 import { PALETTES, nearestIndex } from './ColorUtils.js';
 import { Sauce, readSauce } from './Sauce.js';
@@ -44,7 +44,7 @@ export function readXBin(bytes, name) {
   let font = null;
   if (flags & FONT) {
     if (!size || size > 32 || data.length < at + size * 256) broken();
-    font = { name, height: size, bytes: data.slice(at, at + size * 256) };
+    font = { name: fontName(name), height: size, bytes: data.slice(at, at + size * 256) };
     at += size * 256;
   }
 

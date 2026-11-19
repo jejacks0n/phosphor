@@ -5,7 +5,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { DISPLAY_FONTS, MIN_FONT_SIZE as MIN_SIZE, MAX_FONT_SIZE as MAX_SIZE } from '@/lib/displayFonts';
 import { useProjectStore } from '@/store/ProjectStore';
 import { addFont, addBitmapFont, storedBitmapFont, removeFont } from '@/lib/userFonts';
-import { fontId, fontSheet } from '@/lib/BitmapFont';
+import { fontId, fontName, fontSheet } from '@/lib/BitmapFont';
 import { downloadBlob, fileStem } from '@/document/projectIO';
 import HelpInfo from '@/components/HelpInfo.vue';
 
@@ -63,7 +63,7 @@ const onSelect = async (event) => {
   }
 };
 
-const stem = (ext) => fileStem(drawn.value.name, ext) || 'font'; // a nameless font still gets a name
+const stem = (ext) => fileStem(fontName(drawn.value.name), ext) || 'font'; // a nameless font still gets a name
 
 const saveRaw = () => downloadBlob(new Blob([drawn.value.bytes]), `${stem(`F${pad(drawn.value)}`)}.F${pad(drawn.value)}`);
 

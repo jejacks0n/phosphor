@@ -82,6 +82,7 @@ describe('XBin', () => {
     expect(chars(art)).toBe('␀A');
     expect([...art.font.bytes]).toEqual(fontBytes);
     expect(art.font.height).toBe(8);
+    expect(readXBin(file(2, 1, 2, fontBytes, [65, 7, 66, 7]), 'ACID-55.XB').font.name).toBe('ACID-55'); // named for the file, less its .xb
     // non-blink: the background is 4 bits
     expect(art.cells[0]).toMatchObject({ fg: '#000000', bg: '#ffffff' });
     expect(art.cells[1]).toMatchObject({ fg: '#ffffff', bg: '#000000' });

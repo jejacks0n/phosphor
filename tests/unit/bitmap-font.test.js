@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet } from '@/lib/BitmapFont.js';
+import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet } from '@/lib/BitmapFont.js';
 
 const solidLowerHalf = (h) => { const b = new Uint8Array(256 * h); for (let r = h / 2; r < h; r++) b[220 * h + r] = 0xff; return b; };
 
@@ -33,6 +33,9 @@ describe('slots', () => {
 });
 
 describe('raw fonts', () => {
+  it('is named for its file, less the one extension a font comes in', () => {
+    expect(['My Font.F16', 'SHEET.png', 'ACID-55.XB', 'a.F16.png', 'plain', 'v1.2'].map(fontName)).toEqual(['My Font', 'SHEET', 'ACID-55', 'a.F16', 'plain', 'v1.2']);
+  });
   it('takes its height from its size', () => {
     expect(parseRawFont(new Uint8Array(256 * 14), 'X.F14').height).toBe(14);
     expect(parseRawFont(new Uint8Array(256), 'one.F01').height).toBe(1);

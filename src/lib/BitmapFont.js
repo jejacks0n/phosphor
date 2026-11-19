@@ -37,6 +37,9 @@ const notBitmap = (name) => {
 
 const heightOk = (h) => Number.isInteger(h) && h >= 1 && h <= MAX_FONT_HEIGHT;
 
+// A font's name from the file it came in: less a .F##, .png or .xb at its end (once: 'a.F16.png' is 'a.F16').
+export const fontName = (fileName) => fileName.replace(/\.(f\d\d|png|xb)$/i, '');
+
 export function parseRawFont(bytes, name) {
   const height = bytes.length / 256;
   if (!heightOk(height)) throw notBitmap(name);
