@@ -15,6 +15,7 @@ afterEach(() => {
   mounted = host = null;
   closeToast();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 // Every note shown while `run` runs.
@@ -30,6 +31,9 @@ async function notesWhile(run) {
 }
 
 test('the note is up from the start of the work, drawn before it, and gone after; work inside work keeps the first', async () => {
+  // Only a frame starts the work here. The timer that starts it in a hidden tab, 100 ms on, is held still: a machine
+  // busy with other test files can go longer than that between frames, and the work then began with none counted.
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   let framesBefore = null;
   const frames = { n: 0 };
   const count = () => { frames.n++; requestAnimationFrame(count); };
