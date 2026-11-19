@@ -79,15 +79,16 @@ export function loadReferenceFont() {
   return referenceLoaded ??= loadFontFaces(REFERENCE).then(() => { referenceReady = true; });
 }
 
-// IBM VGA as a bitmap font, for an XBin of a drawing with no font of its own: each CP437 glyph drawn sharp at 8 x 16,
-// one bit a pixel, slot 0 blank.
+// IBM VGA as a bitmap font, for an XBin of a drawing with no font of its own: each CP437 glyph drawn at 8 x 16, one
+// bit a pixel, slot 0 blank. A pixel is lit only when nearly opaque: Chrome on a Mac smooths a pixel font's lit pixels
+// into their neighbors at about half alpha, over the half a sharp drawing cuts at.
 export async function vgaBitmapFont() {
   await loadReferenceFont();
   const bytes = new Uint8Array(16 * 256);
   for (let slot = 1; slot < 256; slot++) {
-    const data = drawGlyph(SLOT_CHARS[slot], REF_W, REF_H, 1, '#fff', false, REFERENCE);
+    const data = drawGlyph(SLOT_CHARS[slot], REF_W, REF_H, 1, '#fff', true, REFERENCE);
     for (let y = 0; y < REF_H; y++) {
-      for (let x = 0; x < REF_W; x++) if (data[(y * REF_W + x) * 4 + 3] > 127) bytes[slot * 16 + y] |= 0x80 >> x;
+      for (let x = 0; x < REF_W; x++) if (data[(y * REF_W + x) * 4 + 3] > 200) bytes[slot * 16 + y] |= 0x80 >> x;
     }
   }
   return { name: 'IBM VGA', height: 16, bytes };

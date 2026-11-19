@@ -7,7 +7,7 @@ import { fontId, encodeFont, fontChars } from '@/lib/BitmapFont.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
 import { registerBitmapFont } from '@/lib/userFonts.js';
-import { coverageOf, setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage } from '@/lib/GlyphCoverage.js';
+import { coverageOf, setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage, vgaBitmapFont } from '@/lib/GlyphCoverage.js';
 
 afterEach(async () => {
   await setDisplayFont('jetbrains');
@@ -246,6 +246,15 @@ it('exports IBM VGA when the drawing has no font', async () => {
   const { font } = await exported(project);
   expect(font.height).toBe(16);
   expect([...font.bytes.subarray(219 * 16, 220 * 16)]).toEqual(Array(16).fill(0xff));
+});
+
+// The IBM VGA font's own rows (its ROM's, which the font the app draws in copies): glyphs with edges, where Chrome on a
+// Mac bleeds a lit pixel's light into its neighbors.
+it('IBM VGA as a bitmap font has the font\'s own pixels, edges and all', async () => {
+  const { bytes } = await vgaBitmapFont();
+  const rows = (slot) => [...bytes.subarray(slot * 16, slot * 16 + 16)];
+  expect(rows(65)).toEqual([0, 0, 0x10, 0x38, 0x6c, 0xc6, 0xc6, 0xfe, 0xc6, 0xc6, 0xc6, 0xc6, 0, 0, 0, 0]); // A
+  expect(rows(176)).toEqual(Array.from({ length: 16 }, (_, r) => (r % 2 ? 0x44 : 0x11))); // ░
 });
 
 it('exports a character outside CP437 as its substitute, with no font', async () => {
