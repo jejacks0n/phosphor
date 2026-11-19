@@ -131,7 +131,7 @@ test('only connected watchers count in N here; one still connecting is listed, s
   toggle.click();
   await nextTick();
   expect(toggle.getAttribute('aria-expanded')).toBe('true');
-  await expect.poll(() => getComputedStyle(chevron).transform).toBe('matrix(-1, 0, 0, -1, 0, 0)');
+  await expect.poll(() => getComputedStyle(chevron).transform, { timeout: 5000 }).toBe('matrix(-1, 0, 0, -1, 0, 0)'); // its turn is frames, and a busy machine draws few
   const rows = [...host.querySelectorAll('.people li')];
   expect(rows.map((li) => li.querySelector('.name').textContent)).toEqual(['tin-lantern-owl', 'quiet-amber-fox', 'wren']);
   expect(rows.map((li) => li.querySelector('.what').textContent)).toEqual(['tracking', 'connecting…', 'looking around']);

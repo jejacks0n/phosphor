@@ -8,6 +8,9 @@ import { charRowsOf } from '@/lib/Cells.js';
 import SaveDialog from '@/components/SaveDialog.vue';
 
 afterEach(() => vi.restoreAllMocks());
+// An export waits for a frame to show its note, then draws and packs the picture, on a machine that may be busy with
+// other test files: 0.1 to 1.7 seconds, measured, so its waits get longer than the default second.
+const PATIENT = { interval: 5, timeout: 10_000 };
 
 // The next download: its name and bytes.
 function nextDownload() {
@@ -76,7 +79,7 @@ test('with smooth text off, Export .png asks nothing and exports hard-edged', as
   try {
     expect(document.querySelector('.modal-dialog button.choice')).toBeNull();
     document.querySelector('.modal-dialog form').requestSubmit();
-    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
     expect(exported).toHaveBeenCalledWith('png', expect.objectContaining({ smooth: false }));
   } finally {
     unmount();
@@ -98,7 +101,7 @@ test('with smooth text on, Export .png asks first, Smooth focused, and exports a
       [...dialog.querySelectorAll('button.choice')].find((button) => button.querySelector('b').textContent === choice).click();
       await nextTick();
       document.querySelector('.modal-dialog form').requestSubmit();
-      await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+      await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
       expect(exported).toHaveBeenLastCalledWith('png', expect.objectContaining({ smooth }));
     } finally {
       unmount();

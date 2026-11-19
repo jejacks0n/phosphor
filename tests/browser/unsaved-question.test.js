@@ -18,6 +18,9 @@ afterEach(() => {
 });
 
 const settle = (ms = 50) => new Promise((resolve) => setTimeout(resolve, ms));
+// A file read or opened waits for a frame to show its note, then draws, on a machine that may be busy with other test
+// files: this tiny file's open took from 0.2 to 4.9 seconds, measured, so these waits get longer than the default second.
+const PATIENT = { timeout: 10_000 };
 
 // A blank canvas open in the workspace, with a change not saved unless `clean`.
 async function drawing({ clean = false } = {}) {
@@ -40,7 +43,7 @@ const drop = async (file) => {
   event.dataTransfer.items.add(file);
   host.querySelector('article.drop-zone').dispatchEvent(event);
   // The file is read before its question shows, so wait for the question: a fixed settle can end first on a slow runner.
-  await vi.waitFor(() => expect(document.querySelector('button.choice')).not.toBe(null));
+  await vi.waitFor(() => expect(document.querySelector('button.choice')).not.toBe(null), PATIENT);
 };
 // The questions are modals, on the body.
 const dialog = () => document.querySelector('dialog[open]');
@@ -67,7 +70,7 @@ test('an art file over unsaved changes warns on the choices that replace the dra
   expect(choices()).toEqual([['Add to this drawing', null], ['Open to edit', WARNING], ['Open to draw on top', WARNING]]);
   await choose('Open to edit');
   expect(workspace.unsavedAsk).toBe(null);
-  await vi.waitFor(() => expect(project.filename).toBe('tiny')); // the file opens in a moment
+  await vi.waitFor(() => expect(project.filename).toBe('tiny'), PATIENT); // the file opens in a moment
   expect(project.documentId).not.toBe(before);
 });
 
@@ -92,7 +95,7 @@ test('a project over unsaved changes asks: Cancel stays, Open without saving ope
 
   await drop(await projectFile());
   await choose('Open without saving');
-  await vi.waitFor(() => expect(project.filename).toBe('night'));
+  await vi.waitFor(() => expect(project.filename).toBe('night'), PATIENT);
 });
 
 test('Save project first opens the save dialog; canceled it stays, saved it goes on', async () => {
@@ -111,7 +114,7 @@ test('Save project first opens the save dialog; canceled it stays, saved it goes
   await choose('Save project first');
   await project.saveProject();
   workspace.saveDialog = null; // saved
-  await vi.waitFor(() => expect(project.filename).toBe('night'));
+  await vi.waitFor(() => expect(project.filename).toBe('night'), PATIENT);
 });
 
 test('New project asks Start a new project?, and Start without saving goes to the start screen', async () => {

@@ -6,6 +6,10 @@ import { createTestApp, settle } from '../support/app.js';
 import ExportModal from '@/components/ExportModal.vue';
 
 afterEach(() => vi.restoreAllMocks());
+// An export waits for a frame to show its note, then draws and packs the picture, on a machine that may be busy with
+// other test files: up to 1.7 seconds for a small PNG, measured (png-export.test.js), so its waits get longer than the
+// default second.
+const PATIENT = { interval: 5, timeout: 10_000 };
 
 function mountModal() {
   const closed = vi.fn();
@@ -97,7 +101,7 @@ test('export button calls exportFile with the right ext and closes', async () =>
   try {
     const modal = document.querySelector('.modal-dialog');
     modal.querySelector('button.primary').click();
-    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
     expect(exported).toHaveBeenCalledWith('ans', expect.objectContaining({ smooth: expect.any(Boolean) }));
   } finally {
     unmount();
@@ -124,7 +128,7 @@ test('a GIF shows a progress bar of the frames written while it exports, and an 
     expect(modal.querySelector('progress').value).toBe(0.5);
     expect(modal.querySelector('progress').getAttribute('aria-label')).toBe('Exporting…');
     finish();
-    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
   } finally {
     unmount();
   }
@@ -160,7 +164,7 @@ test('Video is offered where the browser encodes video, with a progress bar as i
     await nextTick();
     expect(modal.querySelector('progress').value).toBe(0.5);
     finish();
-    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
   } finally {
     unmount();
   }
@@ -184,7 +188,7 @@ test('Enter in the file name exports, as it saves in Save project', async () => 
     const name = document.querySelector('.modal-dialog input.filename-input');
     name.focus();
     await userEvent.keyboard('{Enter}');
-    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
     expect(exported).toHaveBeenCalledTimes(1);
     expect(exported).toHaveBeenCalledWith('ans', expect.anything());
   } finally {
@@ -359,7 +363,7 @@ test('Include SAUCE: checked on every ANSI format and each time the dialog opens
     await pick(modal, 'UTF-8 ANS'); // the choice holds across formats while the dialog is open
     expect(box().checked).toBe(false);
     modal.querySelector('button.primary').click();
-    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
     expect(still).toHaveBeenCalledWith('utf8ans', expect.objectContaining({ sauce: false }));
   } finally {
     unmount();
@@ -370,7 +374,7 @@ test('Include SAUCE: checked on every ANSI format and each time the dialog opens
     await pick(modal, 'Animated ANS');
     expect(box().checked).toBe(true); // not remembered
     modal.querySelector('button.primary').click();
-    await vi.waitUntil(() => again.closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => again.closed.mock.calls.length, PATIENT);
     expect(animated).toHaveBeenCalledWith('ansimation', expect.objectContaining({ sauce: true }));
   } finally {
     again.unmount();
@@ -400,7 +404,7 @@ test('Share sends a PNG to the share sheet in place of a download, and closes; f
     modal.querySelector('input.filename-input').dispatchEvent(new Event('input'));
     await nextTick();
     shareButton(modal).click();
-    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
     const [{ files: [file] }] = sheet.share.mock.calls[0];
     expect([file.name, file.type]).toEqual(['mine.png', 'image/png']);
     expect(new Uint8Array(await file.slice(1, 4).arrayBuffer())).toEqual(new TextEncoder().encode('PNG'));
@@ -424,7 +428,7 @@ test('Share sends a video to the share sheet where it takes one, and Video has n
     const modal = document.querySelector('.modal-dialog');
     await pick(modal, 'Video');
     shareButton(modal).click();
-    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
     const [{ files: [file] }] = sheet.share.mock.calls[0];
     expect([file.name, file.type]).toEqual(['loop.mp4', 'video/mp4']);
   } finally {
@@ -451,19 +455,19 @@ test('the share sheet put away leaves the dialog; refused for coming too long af
     const modal = document.querySelector('.modal-dialog');
     await pick(modal, 'PNG');
     shareButton(modal).click();
-    await vi.waitUntil(() => sheet.share.mock.calls.length === 1, { interval: 5 });
+    await vi.waitUntil(() => sheet.share.mock.calls.length === 1, PATIENT);
     await nextTick();
     expect([closed.mock.calls.length, shareButton(modal).textContent.trim(), modal.querySelector('.problem')]).toEqual([0, 'Share', null]);
 
     sheet.share.mockImplementationOnce(async () => { throw new DOMException('Must be handling a user gesture', 'NotAllowedError'); });
     shareButton(modal).click();
-    await vi.waitUntil(() => shareButton(modal).textContent.trim() === 'Share now', { interval: 5 });
+    await vi.waitUntil(() => shareButton(modal).textContent.trim() === 'Share now', PATIENT);
     expect(modal.querySelector('[role=status]').textContent).toContain('ready');
     expect(built).toHaveBeenCalledTimes(2);
 
     sheet.share.mockImplementationOnce(async () => {});
     shareButton(modal).click();
-    await vi.waitUntil(() => closed.mock.calls.length, { interval: 5 });
+    await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
     expect(built).toHaveBeenCalledTimes(2); // the file kept, not written again
     expect(sheet.share.mock.calls[2][0].files[0]).toBe(sheet.share.mock.calls[1][0].files[0]);
   } finally {
