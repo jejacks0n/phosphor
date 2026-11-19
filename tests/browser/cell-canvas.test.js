@@ -6,14 +6,16 @@ import { createTestApp } from '../support/app.js';
 import CellCanvas, { MAX_BACKING_AREA } from '@/lib/CellCanvas';
 import { layoutWide } from '@/lib/Cells';
 import { fontFor } from '@/social/wire';
+import { encodeFont, fontId } from '@/lib/BitmapFont';
+import { registerBitmapFont } from '@/lib/userFonts';
 
 const rgb = (hex) => ({ hex, r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
 const cell = (char, fg, bg) => ({ char, fg: rgb(fg), bg: rgb(bg) });
 
 // Draw and read the pixels back, top row first, in the same task (the drawing buffer isn't kept).
-function drawAndRead(cols, rows, cells, dpr = 1, { smooth = true } = {}) {
+function drawAndRead(cols, rows, cells, dpr = 1, { smooth = true, font = null } = {}) {
   const canvas = document.createElement('canvas');
-  const view = new CellCanvas(canvas);
+  const view = new CellCanvas(canvas, { font });
   view.smooth = smooth;
   view.resize(cols, rows, dpr);
   view.draw(cells);
@@ -373,5 +375,17 @@ test('a full atlas draws what doesn\'t fit as blank, however many characters a g
     view.destroy();
   } finally {
     WebGL2RenderingContext.prototype.getParameter = real;
+  }
+});
+
+test('draws █ from a bitmap font, not as a block', async () => {
+  await createTestApp();
+  const f = { name: 'No block', height: 16, bytes: new Uint8Array(256 * 16).fill(0xff) };
+  f.bytes.fill(0, 219 * 16, 220 * 16); // █ is an empty glyph
+  const font = { id: fontId(f), name: f.name, family: await registerBitmapFont(f), size: 16, lineHeight: 1, bitmap: true, source: encodeFont(f) };
+  for (const smooth of [true, false]) {
+    const { width, height, at } = drawAndRead(1, 1, [cell('█', '#ffffff', '#000000')], 1, { smooth, font });
+    expect(width * height).toBeGreaterThan(0);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) expect(at(x, y)).toEqual([0, 0, 0]);
   }
 });

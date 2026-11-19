@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { StorageSerializers, useLocalStorage } from '@vueuse/core';
 import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
+import { fontId } from '@/lib/BitmapFont';
 import { clampZoom, clampViewZoom, PIXEL_ZOOM_START } from '@/lib/zoom';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
@@ -250,10 +251,16 @@ export const useWorkspaceStore = defineStore('workspace', {
       return measureAdvance(DISPLAY_FONT);
     },
     pickSwapped: (state) => state.heldTool?.by === 'alt', // the picker is only held by Alt from a drawing tool
-    // The font the art is drawn in, at its size (a font displayFonts.js can set). A loaded font
-    // starts at 16px; an unknown one (a loaded font since removed) is the default.
+    // The font the art is drawn in, at its size (a font displayFonts.js can set): a room's, else the
+    // drawing's own bitmap font (at its height), else the one picked. A loaded font starts at 16px; an
+    // unknown one (a loaded font since removed) is the default.
     displayFontSpec(state) {
       if (state.roomFont) return state.roomFont;
+      const project = useProjectStore(), drawn = project.drawingFont;
+      if (drawn) {
+        const id = fontId(drawn);
+        return { id, name: drawn.name, family: familyOf(id), size: state.displayFontSizes[id] ?? drawn.height, lineHeight: 1, bitmap: true, source: project.fontBitmap };
+      }
       const loaded = state.userFonts?.find((f) => f.id === state.displayFont);
       const font = loaded
         ? { id: loaded.id, name: loaded.name, family: familyOf(loaded.id), size: 16, lineHeight: loaded.lineHeight }

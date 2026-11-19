@@ -8,6 +8,9 @@
  * The 8x16 fonts share the IBM VGA font's cell, so a character one lacks falls back to the next on
  * the same grid (src/assets/fonts/README.md); wide characters and emoji come from the system's fonts.
  */
+import { decodeFont, glyphRows, slotOf } from './BitmapFont.js';
+import { registerBitmapFont } from './userFonts.js';
+
 export const DISPLAY_FONTS = Object.freeze([
   { id: 'jetbrains', name: 'JetBrains Mono', family: '"JetBrains Mono", monospace', size: 17, lineHeight: 1.2 },
   { id: 'vga', name: 'IBM VGA', family: '"IBM VGA 8x16", "Phosphor Unscii", monospace', size: 16, lineHeight: 1 },
@@ -18,8 +21,8 @@ export const DISPLAY_FONTS = Object.freeze([
 // The sizes FontField allows, in CSS px (and a host's font is held to: wire.fontFor).
 export const MIN_FONT_SIZE = 6, MAX_FONT_SIZE = 64;
 
-// The current font: { id, name, family, size (CSS px), lineHeight }. Read it when it's used; it
-// changes in place.
+// The current font: { id, name, family, size (CSS px), lineHeight }, and for a drawing's bitmap font
+// bitmap: true and source (its base64, BitmapFont.encodeFont). Read it when it's used; it changes in place.
 export const DISPLAY_FONT = { ...DISPLAY_FONTS[0] };
 
 // The current font (or another) as a canvas/CSS font shorthand.
@@ -32,7 +35,8 @@ let scratch = null;
 // leading, to the whole pixel), squeezed into the box when wider. Its RGBA bytes: anti-aliased (canvas text
 // always is) when smooth, as the canvas view draws it; otherwise a pixel over half covered is
 // fully the fill's and the rest clear, as glyph coverage counts it. A color glyph (an emoji) keeps
-// its own colors.
+// its own colors. A bitmap font's glyph is its own pixels, scaled to the box, sharp either way: text
+// drawn in its TrueType font bleeds into the pixels around (Chrome on a Mac), which would draw it fat.
 export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth = false, font = DISPLAY_FONT) {
   scratch ??= document.createElement('canvas');
   if (scratch.width !== width || scratch.height !== height) {
@@ -41,6 +45,19 @@ export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth 
   }
   const ctx = scratch.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, width, height);
+  const bitmap = font.bitmap && bitmapOf(font);
+  if (bitmap) {
+    ctx.fillStyle = fill;
+    const rows = glyphRows(bitmap, slotOf(char) ?? 32), edge = (n, of, size) => Math.ceil(n * size / of);
+    for (let r = 0; r < bitmap.height; r++) {
+      for (let b = 0; b < 8; b++) {
+        if (!((rows[r] >> (7 - b)) & 1)) continue;
+        const x0 = edge(b, 8, width), y0 = edge(r, bitmap.height, height); // the pixels whose nearest bit is this one
+        ctx.fillRect(x0, y0, edge(b + 1, 8, width) - x0, edge(r + 1, bitmap.height, height) - y0);
+      }
+    }
+    return ctx.getImageData(0, 0, width, height).data;
+  }
   ctx.font = `${font.size * scale}px ${font.family}`;
   ctx.fillStyle = fill;
   const { fontBoundingBoxAscent: ascent, fontBoundingBoxDescent: descent } = ctx.measureText('M');
@@ -50,16 +67,26 @@ export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth 
   return data;
 }
 
+const bitmaps = new Map(); // a bitmap font's source -> the font
+function bitmapOf({ source, name }) {
+  if (!bitmaps.has(source)) bitmaps.set(source, decodeFont(source, name));
+  return bitmaps.get(source);
+}
+
 // Make a font the current one, and the CSS variables the views style their text with: one of
 // DISPLAY_FONTS by id (the first, for an unknown one), or a font of its shape. Resolves once every
-// font in its stack has loaded, so what's measured next is measured in them.
+// font in its stack has loaded, so what's measured next is measured in them. A bitmap font (bitmap:
+// true) is registered first, from its source.
 export async function setDisplayFont(font) {
-  Object.assign(DISPLAY_FONT, typeof font === 'string' ? DISPLAY_FONTS.find((f) => f.id === font) ?? DISPLAY_FONTS[0] : font);
+  const next = typeof font === 'string' ? DISPLAY_FONTS.find((f) => f.id === font) ?? DISPLAY_FONTS[0] : font;
+  for (const key of Object.keys(DISPLAY_FONT)) if (!(key in next)) delete DISPLAY_FONT[key]; // a bitmap font's bitmap and source go with it
+  Object.assign(DISPLAY_FONT, next);
   const style = globalThis.document?.documentElement.style;
   if (!style) return;
   style.setProperty('--display-font-family', DISPLAY_FONT.family);
   style.setProperty('--display-font-size', `${DISPLAY_FONT.size}px`);
   style.setProperty('--display-line-height', String(DISPLAY_FONT.lineHeight));
+  if (next.bitmap) await registerBitmapFont(decodeFont(next.source, next.name));
   await loadFontFaces(DISPLAY_FONT);
 }
 

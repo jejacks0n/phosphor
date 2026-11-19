@@ -11,6 +11,7 @@ import { remapBaseRecords } from '@/document/baseRecords.js';
 import { shownShapes } from '@/document/followers.js';
 import { lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { parseKey } from '@/document/editCells.js';
+import { fitCells } from '@/lib/BitmapFont.js';
 import { fitRect } from '@/lib/Canvas.js';
 import { isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
@@ -264,7 +265,9 @@ export const renderingActions = {
   // New composed cells: laid out with their wide characters as what the views show and export.
   // rows: the only rows that need laying out again (an edit's, or the only ones that can hold a wide
   // character), and laid: the layout the other rows keep.
+  // With a drawing font, a character it lacks is swapped for its stand-in (BitmapFont.fitCells); the edit cells keep it.
   setCells(composed, rows = null, laid = this.cells) {
+    if (this.drawingFont) composed = fitCells(composed); // ponytail: fits every cell each edit; fit only `rows` if 500k-cell drawings feel it
     const partial = rows && laid.length === composed.length;
     this.composedCells = composed;
     this.cells = partial ? layoutWideRows(composed, this.cols, laid, rows) : layoutWide(composed, this.cols);

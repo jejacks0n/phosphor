@@ -383,7 +383,8 @@ export default class CellCanvas {
     if (index !== undefined) return index;
     if (this.#glyphs.size >= this.#mostGlyphs()) return 0;
     const { cw, ch } = this.#geom;
-    const block = blockMask(char, cw, ch), shade = SHADES.get(char);
+    const own = this.#fontNow.bitmap; // a bitmap font draws its blocks and shades from its own pixels
+    const block = !own && blockMask(char, cw, ch), shade = !own && SHADES.get(char);
     if (shade) return this.#store(char, shadeTexels(shade, cw, ch));
     return this.#store(char, block ? inkTexels(block) : this.#rasterize(char, 1));
   }

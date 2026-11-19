@@ -492,6 +492,7 @@ function buildKey(project) {
     image, settings: JSON.stringify(params), baseLayer: project.baseLayer, baseVersion: project.baseLayer?.version, baseRecords: project.baseRecords,
     layers: JSON.stringify(project.layers.map(({ id, kind, hidden, chars }) => ({ id, kind, hidden, chars }))), // their order, eyes and own character settings: a name shows nowhere
     solvers: JSON.stringify([...project.layerParams].map(([id, p]) => [id, p.solver, p.solverHash, p.standIn])), // each layer's plugin solver as used: a Reload or a stand-in changes it
+    font: project.fontBitmap, // a new drawing font builds again
   };
 }
 const sameKey = (a, b) => !!a && !!b && Object.keys(a).every((name) => a[name] === b[name]);
@@ -506,7 +507,7 @@ async function readyBuilder(project) {
       continue;
     }
     const builder = new FrameBuilder();
-    const preparing = builder.prepare(key.image, project.processParams, { baseLayer: project.baseLayer, baseRecords: project.baseRecords, layers: project.layers, baseChars: project.baseChars, layerParams: project.layerParams, paintScale: project.paintLayer?.scale ?? null });
+    const preparing = builder.prepare(key.image, project.processParams, { baseLayer: project.baseLayer, baseRecords: project.baseRecords, layers: project.layers, baseChars: project.baseChars, layerParams: project.layerParams, paintScale: project.paintLayer?.scale ?? null, font: project.drawingFont });
     project._builder = markRaw({ key, builder, preparing });
     for (const frame of project.frames) frame.built = null;
     await preparing;

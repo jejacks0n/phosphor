@@ -8,6 +8,8 @@
  */
 
 import { t } from '@/i18n';
+import { fontId } from './BitmapFont.js';
+import { ttfOf } from './BitmapTtf.js';
 
 // Checked to be one width: the narrowest and widest characters of a proportional font, and a digit.
 export const MONOSPACE_SAMPLE = Object.freeze([...'il.\' MWm@0']);
@@ -48,6 +50,13 @@ async function register(id, data) {
   document.fonts.add(face);
   faces.set(id, face);
   return face;
+}
+
+// A drawing's bitmap font, registered with the page as a TrueType font; its CSS family.
+export async function registerBitmapFont(font) {
+  const id = fontId(font);
+  await register(id, ttfOf(font));
+  return familyOf(id);
 }
 
 function unregister(id) {

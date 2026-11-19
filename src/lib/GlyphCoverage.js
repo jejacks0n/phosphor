@@ -18,16 +18,19 @@ const EXACT = new Map([
 ]);
 const UNKNOWN = [0.5, 0.5];
 
-let rasterizer = null;
+let rasterizer = null, useExact = true;
 const cache = new Map();
 
-export function setGlyphRasterizer(fn) {
+// fn: a character's coverage. exact false: block elements and the space are measured by it too (a
+// bitmap font's own pixels, which may draw them otherwise).
+export function setGlyphRasterizer(fn, { exact = true } = {}) {
   rasterizer = fn;
+  useExact = exact;
   cache.clear();
 }
 
 export function coverageOf(char) {
-  const exact = EXACT.get(char);
+  const exact = useExact && EXACT.get(char);
   if (exact) return exact;
   if (!rasterizer) return UNKNOWN;
   if (!cache.has(char)) cache.set(char, rasterizer(char) ?? UNKNOWN);

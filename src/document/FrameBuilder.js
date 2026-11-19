@@ -22,6 +22,7 @@ import Renderer from './Renderer.js';
 import { paintImage } from './frames.js';
 import { getPaletteColors } from '../lib/ImageProcessor.js';
 import { layoutWide } from '../lib/Cells.js';
+import { fitCells } from '../lib/BitmapFont.js';
 import { ctx2d } from '../lib/Canvas.js';
 
 const sameColor = (a, b) => a === b || (a.hex === b.hex && (a.c === b.c || typeof a.c !== 'number'));
@@ -46,6 +47,7 @@ export default class FrameBuilder {
   #renderer = new Renderer();
   #scratch = null;
   #paintScale = null;  // the drawing's paint scale (prepare)
+  #font = null; // the drawing's bitmap font (prepare): its cells show only what it holds
   #shapes = null; // its own ShapeLayer over the store's base layer: each frame has its own shapes
   #layers = layersFromOld(null, { hasShapes: false });
   #lower = lowerGroup(this.#layers, {}); // these layers have no chars of their own
@@ -57,9 +59,10 @@ export default class FrameBuilder {
   // are under every frame, and layers: the drawing's, bottom first, whose eyes say what's left out. baseChars: the
   // bottom's character settings, and layerParams each layer's params (the store's), when layers have their own.
   // paintScale: the drawing's paint layers' scale, which its upper vector layers draw at (syncShapeLayers), so a frame's
-  // shapes convert as the still's do (docs/model.md R7).
-  async prepare(image, params, { baseLayer, baseRecords, layers = this.#layers, baseChars, layerParams = null, paintScale = null }) {
+  // shapes convert as the still's do (docs/model.md R7). font: the drawing's bitmap font, or null.
+  async prepare(image, params, { baseLayer, baseRecords, layers = this.#layers, baseChars, layerParams = null, paintScale = null, font = null }) {
     this.#paintScale = paintScale;
+    this.#font = font;
     const shown = layers.filter((layer, at) => !at || !layer.hidden), hideBase = !!layers[0]?.hidden;
     this.#layers = layers;
     this.#lower = lowerGroup(shown, baseChars);
@@ -189,6 +192,7 @@ export default class FrameBuilder {
       return { kind: 'cells', cells: cellsIn(own), paint: u.paint, params: u.params, ownChars: u.ownChars };
     });
     if (renderer.upper.length) cells = renderer.composeUpper(cells, null, renderer.palette);
+    if (this.#font) cells = fitCells(cells);
     cells = layoutWide(cells, cols);
     if (previous?.cells.length === cells.length) {
       for (let i = 0; i < cells.length; i++) if (sameCell(cells[i], previous.cells[i])) cells[i] = previous.cells[i];

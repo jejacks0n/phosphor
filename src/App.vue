@@ -14,6 +14,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
+import { decodeFont, inkOf, slotOf } from '@/lib/BitmapFont';
 import { loadFonts } from '@/lib/userFonts';
 import { charRowsOf } from '@/lib/Cells';
 
@@ -126,14 +127,17 @@ loadFonts().then((fonts) => { workspace.userFonts = fonts; }, () => { workspace.
 
 // Glyph coverage is measured in the font the art is drawn in, which loads lazily; either view can be
 // shown first, so install the rasterizer here once that font is ready (again when it or its size
-// changes: that drops what was measured before), then re-render.
+// changes: that drops what was measured before), then re-render. A drawing's bitmap font is measured
+// from its own pixels, blocks and the space too.
 let fontChange = 0;
 watch(() => workspace.userFonts && JSON.stringify(workspace.displayFontSpec), (spec) => {
   if (!spec) return;
   const font = JSON.parse(spec), change = ++fontChange;
   setDisplayFont(font).then(() => {
     if (change !== fontChange) return; // changed again meanwhile
-    setGlyphRasterizer(rasterizeCoverage);
+    const bitmap = font.bitmap && decodeFont(font.source, font.name);
+    if (bitmap) setGlyphRasterizer((char) => inkOf(bitmap, slotOf(char) ?? 32), { exact: false });
+    else setGlyphRasterizer(rasterizeCoverage);
     workspace.displayFontLoaded = font;
     if (project.image) project.render();
   });
