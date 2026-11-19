@@ -1,8 +1,8 @@
 // The drawing's bitmap font as document state: one undo step, saved with the project, gone on a new drawing.
 import { test, it, expect, afterEach } from 'vitest';
-import { createTestApp, settle } from '../support/app.js';
+import { createTestApp, loadImage, settle } from '../support/app.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
-import { fontId, encodeFont } from '@/lib/BitmapFont.js';
+import { fontId, encodeFont, fontChars } from '@/lib/BitmapFont.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
 import { registerBitmapFont } from '@/lib/userFonts.js';
@@ -133,4 +133,66 @@ it('registering a font twice at once adds one face', async () => {
   const [a, b] = await Promise.all([registerBitmapFont(f), registerBitmapFont(f)]);
   expect(a).toBe(b);
   expect([...document.fonts].filter((face) => face.family.replace(/"/g, '') === `Phosphor Font ${fontId(f)}`)).toHaveLength(1);
+});
+
+// A 16-tall font whose only lit glyphs are the full block (219) and an A with its left half lit (65), or, top, its top half.
+function halfA({ top = false } = {}) {
+  const f = { name: 'Half A', height: 16, bytes: new Uint8Array(256 * 16) };
+  f.bytes.fill(0xff, 219 * 16, 220 * 16);
+  if (top) f.bytes.fill(0xff, 65 * 16, 65 * 16 + 8);
+  else f.bytes.fill(0xf0, 65 * 16, 66 * 16);
+  return f;
+}
+async function gradient(settings) {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+  Object.assign(project, settings);
+  project.setLayerChars('edit', settings);
+  await settle(project);
+  return project;
+}
+
+for (const charChoice of ['best', 'shape']) it(`conversion picks only font glyphs (${charChoice})`, async () => {
+  const project = await gradient({ charChoice, chars: '█A▙', quantize: 'cga', solids: 0 });
+  const top = charChoice === 'shape'; // a gradient's cell is a shape of two halves, as a half shade Best match's
+  project.setDrawingFont(halfA({ top }));
+  await settle(project);
+  const chars = new Set(project.cells.map((c) => c.char));
+  expect([...chars].every((c) => [' ', '█', 'A', '▄'].includes(c)), [...chars].join('')).toBe(true); // ▙ fits to ▄
+  expect(chars.has('A')).toBe(true); // half lit in this font
+  expect(project.processParams.chars).toBe('█A▄');
+  expect(project.layerParams.get('edit').chars).toBe('█A▄');
+  const cells = project.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`).join();
+  project.setDrawingFont(halfA({ top: !top })); // the same characters, another A: measured in the font, it's chosen elsewhere
+  await settle(project);
+  expect(project.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`).join()).not.toBe(cells);
+});
+
+it('undo restores candidates', async () => {
+  const project = await gradient({ charChoice: 'best', chars: '▙' });
+  project.setDrawingFont(halfA());
+  await settle(project);
+  expect(project.cells.some((c) => c.char === '▙')).toBe(false);
+  project.undo();
+  await settle(project);
+  expect(project.cells.some((c) => c.char === '▙')).toBe(true);
+});
+
+it('Random chooses among the fitted characters', async () => {
+  const project = await gradient({ charChoice: 'random', chars: '▙▚' });
+  project.setDrawingFont(halfA());
+  await settle(project);
+  const fitted = fontChars('▙▚');
+  expect(project.processParams.chars).toBe(fitted); // the string Random draws from (glyphsOf)
+  expect(project.lowerCells.every((c) => fitted.includes(c.char))).toBe(true); // as converted, before the screen's fit
+});
+
+it('typing fits to the font', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10, withLayer: true });
+  project.setDrawingFont(font());
+  await settle(project);
+  project.typeAt(0, 0, '—', {});
+  project.commitPending();
+  expect(project.editCellAt(0, 0).char).toBe('?');
 });

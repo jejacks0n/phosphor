@@ -15,7 +15,7 @@ import { isSolverRef, solverFor, standInOf, optionValues, filterFor } from '@/pl
 import { filterGroups, runningFilters } from '@/plugins/filters.js';
 import { usePluginStore } from '@/store/PluginStore.js';
 import { useRoomStore } from '@/store/RoomStore.js';
-import { decodeFont } from '@/lib/BitmapFont.js';
+import { decodeFont, fontChars, fontId } from '@/lib/BitmapFont.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -71,7 +71,9 @@ const NO_CELLS = new Map(); // a hidden or empty layer's cells, never changed
 const NO_FILTERS = Object.freeze([]); // no plugin filter runs: one array, so params made again compare the same
 
 // A layer's params: the drawing's (processParams) with its own character settings over them, made once per processParams
-// and chars (layerParams), so each keeps its identity while neither changes: the Renderer's caches go by it.
+// and chars (layerParams), so each keeps its identity while neither changes: the Renderer's caches go by it. With a
+// drawing font (params.font) the characters are the font's (fontChars), as processParams' are.
+const fitted = (font, chars) => (font ? fontChars(chars) : chars);
 const OWN_PARAMS = new WeakMap(); // processParams -> WeakMap(chars -> params)
 
 // What a layer's plugin solver comes to in its params: the solver to use (null for a built-in, or a stand-in), its options,
@@ -98,7 +100,7 @@ function ownParams(params, chars, inRoom) {
     const { renderStyle } = params;
     made = {
       ...params,
-      chars: renderStyle === 'ansi' ? chars.chars : chars.charsAscii,
+      chars: fitted(params.font, renderStyle === 'ansi' ? chars.chars : chars.charsAscii),
       charMode: charModeOf(renderStyle, chars.charChoice, chars.charChoiceAscii),
       charChoice: chars.charChoice,
       ...solverParams(chars, renderStyle, inRoom),
@@ -402,13 +404,15 @@ export const useProjectStore = defineStore('project', {
         .map(({ ref, pluginId, found }) => ({ ref, pluginId, hash: found.hash, def: found.def }));
       return filterGroups({ saved: this.filterOptions, installed, pluginState: plugins.pluginState, pluginsOff: plugins.off, failures: plugins.filterFailures });
     },
+    // font: the drawing font's id (BitmapFont.fontId), or null; with one, chars are only what it holds (fontChars).
     processParams(state) {
       const plugins = usePluginStore();
       void plugins.solverStamp; void plugins.off; void plugins.plugins.map(({ id, enabled }) => id + enabled); // the params made anew when the plugins change
       const running = runningFilters(this.filterGroups);
       return {
         ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
-        chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,
+        font: state.drawingFont && fontId(state.drawingFont),
+        chars: fitted(state.drawingFont, state.renderStyle === 'ansi' ? state.chars : state.charsAscii),
         charMode: charModeOf(state.renderStyle, state.charChoice, state.charChoiceAscii), // how a cell's character is picked (Cells.js)
         charChoice: state.charChoice,
         ...solverParams(state, state.renderStyle, this.inRoom),

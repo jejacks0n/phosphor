@@ -63,6 +63,7 @@ export default class FrameBuilder {
   async prepare(image, params, { baseLayer, baseRecords, layers = this.#layers, baseChars, layerParams = null, paintScale = null, font = null }) {
     this.#paintScale = paintScale;
     this.#font = font;
+    this.#renderer.useFont(font);
     const shown = layers.filter((layer, at) => !at || !layer.hidden), hideBase = !!layers[0]?.hidden;
     this.#layers = layers;
     this.#lower = lowerGroup(shown, baseChars);

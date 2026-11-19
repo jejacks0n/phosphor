@@ -243,6 +243,7 @@ export const renderingActions = {
           this._moviePalette = null;
           this.renderer.usePalette(null);
         }
+        this.renderer.useFont(this.drawingFont); // Best match and By shape measure glyphs in it
         this.renderer.hideBase = this.layerHidden('base');
         if (this._shapeLayer) this._shapeLayer.hideBase = this.renderer.hideBase;
         this.syncShapeLayers();
@@ -267,7 +268,11 @@ export const renderingActions = {
   // character), and laid: the layout the other rows keep.
   // With a drawing font, a character it lacks is swapped for its stand-in (BitmapFont.fitCells); the edit cells keep it.
   setCells(composed, rows = null, laid = this.cells) {
-    if (this.drawingFont) composed = fitCells(composed); // ponytail: fits every cell each edit; fit only `rows` if 500k-cell drawings feel it
+    if (this.drawingFont) { // ponytail: fits every cell each edit; fit only `rows` if 500k-cell drawings feel it
+      const fitted = fitCells(composed);
+      if (laid === composed) laid = fitted; // layUpper's rows kept as composed: fitted too
+      composed = fitted;
+    }
     const partial = rows && laid.length === composed.length;
     this.composedCells = composed;
     this.cells = partial ? layoutWideRows(composed, this.cols, laid, rows) : layoutWide(composed, this.cols);

@@ -41,6 +41,7 @@ import ShapeMatcher from '../lib/ShapeMatcher.js';
 import { pluginMatcher, resolvePlugin, grownArea, SolverError } from '../lib/PluginSolve.js';
 import { solverFor, failSolver, faultSolver, failureOf, offShader } from '../plugins/solvers.js';
 import { beginRun, endRun } from '../plugins/hangMark.js';
+import { fontId, fontChars, inkOf, maskOf, slotOf } from '../lib/BitmapFont.js';
 
 export default class Renderer {
   pipelineCanvas = null;
@@ -69,7 +70,9 @@ export default class Renderer {
   #painted = null;      // { of, layer, version, cells }: By shape's cells under paint (#resolvePainted), of the #resolved they go over
   #baseSnapped = null;  // { from, palette, data }: #baseData (from) snapped to the palette, for basePixels under Best match
   #fontReady = false;   // the reference font has loaded: Best match and By shape can measure glyphs
-  #glyphs = new Map();  // chars -> the set's glyphs with their inks and masks in the reference font (a few sets: each layer can have its own)
+  #glyphs = new Map();  // font id|chars -> the set's glyphs with their inks and masks in the font measured in (a few sets: each layer can have its own)
+  #font = null;         // the drawing's bitmap font (useFont), or null: glyphs are measured in it, else in the reference font
+  #fontId = null;
   #snapped = null;      // the whole output's bytes and palette entries, from the composite that just snapped it
   #effective = new Map(); // stored color -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
@@ -369,7 +372,7 @@ export default class Renderer {
     }
     const { width: w, height: h } = this.#baseData, r = this.#resolved, plugin = solverOf(params);
     const key = resolvedKey(params, w, h, plugin), whole = r?.palette !== this.palette || r.key !== key;
-    const glyphs = this.#glyphsOf(params.chars, plugin?.def.chars), solids = params.solids / 100, light = params.patternLight / 100;
+    const glyphs = this.#glyphsOf(params, plugin?.def.chars), solids = params.solids / 100, light = params.patternLight / 100;
     const palette = !!this.palette?.length; // without one Dither does nothing (as #ditherUnder), Bayer too
     const opts = { strength: palette ? params.dither / 100 : 0, style: params.ditherStyle };
     const carries = palette && carriesError(params);
@@ -520,18 +523,32 @@ export default class Renderer {
   }
 
   // The set's one-column characters (as the converter's, Cells.glyphsOf), each once, with their ink
-  // (Best match) and mask (By shape) in the reference font; then extra's (a plugin solver's own) not among them, own.
-  #glyphsOf(chars, extra = '') {
-    const key = extra ? `${chars}\u0000${extra}` : chars;
+  // (Best match) and mask (By shape) in the drawing's bitmap font when params have it (their chars are
+  // then all its own: fontChars), else in the reference font; then extra's (a plugin solver's own, fitted to the font
+  // too) not among them, own.
+  #glyphsOf(params, extra = '') {
+    const font = params.font && params.font === this.#fontId ? this.#font : null;
+    const key = `${font ? this.#fontId : ''}|${params.chars}${extra ? `\u0000${extra}` : ''}`;
     let glyphs = this.#glyphs.get(key);
     if (!glyphs) {
       if (this.#glyphs.size >= 16) this.#glyphs.clear();
-      const glyph = (char, own) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h), ...(own && { own }) });
-      const set = [...new Set(glyphsOf(chars))];
-      glyphs = [...set.map((char) => glyph(char, false)), ...[...new Set(extra ? glyphsOf(extra) : [])].filter((char) => !set.includes(char)).map((char) => glyph(char, true))];
+      const measure = font
+        ? (char) => ({ char, ink: inkOf(font, slotOf(char)), mask: maskOf(font, slotOf(char), SAMPLES.w, SAMPLES.h) })
+        : (char) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h) });
+      const glyph = (char, own) => ({ ...measure(char), ...(own && { own }) });
+      const set = [...new Set(glyphsOf(params.chars))], more = extra ? glyphsOf(font ? fontChars(extra) : extra) : [];
+      glyphs = [...set.map((char) => glyph(char, false)), ...[...new Set(more)].filter((char) => !set.includes(char)).map((char) => glyph(char, true))];
       this.#glyphs.set(key, glyphs);
     }
     return glyphs;
+  }
+
+  // The drawing's bitmap font, or null: Best match and By shape measure glyphs in it from the next render on.
+  useFont(font) {
+    if (font === this.#font) return;
+    this.#font = font;
+    this.#fontId = font && fontId(font);
+    this.#matchers = new WeakMap(); // an upper layer's, made before the render that brings the font
   }
 
   // A Number palette chosen from outside (one for a whole animation), until it's null: cells then use it, and
@@ -1262,7 +1279,7 @@ export default class Renderer {
     if (resolves(params) && this.#fontReady) {
       let m = this.#matchers.get(params);
       if (m?.palette !== this.palette) {
-        const plugin = solverOf(params), glyphs = this.#glyphsOf(params.chars, plugin?.def.chars), solids = params.solids / 100, light = params.patternLight / 100;
+        const plugin = solverOf(params), glyphs = this.#glyphsOf(params, plugin?.def.chars), solids = params.solids / 100, light = params.patternLight / 100;
         const matcher = plugin ? pluginMatcher({ def: plugin.def, ref: params.solver, palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle, options: params.solverOptions })
           : params.charMode === 'shape' ? shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle }) : bestMatcher({ palette: this.palette, glyphs, solids, light });
         this.#matchers.set(params, m = { palette: this.palette, matcher, plugin });
@@ -1294,7 +1311,7 @@ export default class Renderer {
           if (!(error instanceof SolverError)) throw error;
           // The solver failed: the layer goes on with By shape (as #resolveUnder), its next params standing in.
           failSolver(error.ref, error.message, m.plugin.hash);
-          m.matcher = shapeMatcher({ palette: this.palette, glyphs: this.#glyphsOf(params.chars), solids: params.solids / 100, light: params.patternLight / 100, renderStyle: params.renderStyle });
+          m.matcher = shapeMatcher({ palette: this.palette, glyphs: this.#glyphsOf(params), solids: params.solids / 100, light: params.patternLight / 100, renderStyle: params.renderStyle });
         }
       }
       const r = m.matcher.match(s);
@@ -1766,7 +1783,7 @@ function rowsOf(data, width, { x, y, w, h }) {
 
 // What Best match's or By shape's cells (Renderer #resolved) are worked out from, besides the picture and the palette:
 // with a plugin solver (solverOf's), its ref, its script and its options too.
-const resolvedKey = (params, cols, rows, plugin = solverOf(params)) => JSON.stringify([params.charMode, params.chars, params.solids, params.patternLight, params.dither, params.ditherStyle, params.renderStyle, cols, rows,
+const resolvedKey = (params, cols, rows, plugin = solverOf(params)) => JSON.stringify([params.charMode, params.font, params.chars, params.solids, params.patternLight, params.dither, params.ditherStyle, params.renderStyle, cols, rows,
   plugin ? params.solver : null, plugin?.hash ?? null, plugin ? JSON.stringify(params.solverOptions) : null]);
 
 // The plugin solver a By shape layer's params name, as the renderer can use it now: registered, and not failed

@@ -7,6 +7,7 @@ import { usePaletteStore } from '@/store/PaletteStore';
 import { UNICODE_BLOCKS, fitsGrid, parseFind } from '@/lib/charPalettes';
 import { CP437, cp437Byte, isCp437 } from '@/lib/Cp437';
 import { cellWidth } from '@/lib/CharWidth';
+import { SLOT_CHARS, slotOf } from '@/lib/BitmapFont';
 import { ownsKey } from '@/lib/fields';
 import { toast } from '@/composables/useToast';
 
@@ -39,8 +40,8 @@ const builtins = computed(() => palettes.all.filter(p => p.builtin && matches(p)
 const yours = computed(() => palettes.all.filter(p => !p.builtin && matches(p)));
 const visible = computed(() => [...builtins.value, ...yours.value]);
 
-// Whether a glyph can go in a cell: one or two columns wide, as a terminal lays it out.
-const fits = fitsGrid;
+// Whether a glyph can go in a cell: one or two columns wide, as a terminal lays it out; with a drawing font, one it holds.
+const fits = (char) => fitsGrid(char) && (!project.drawingFont || slotOf(char) !== null);
 const code = (char) => `U+${char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
 
 // The glyphs the source pane shows, plus a note above them.
@@ -50,7 +51,13 @@ const visibleBlocks = computed(() => {
   const query = findResult.value?.kind === 'block' ? findResult.value.query.toLowerCase() : '';
   return UNICODE_BLOCKS.map((b, i) => ({ name: b[0], index: i })).filter(b => !query || b.name.toLowerCase().includes(query));
 });
+// With a drawing font, only its glyphs: CP437 is its 256 slots (slot 0 too), the other panes what it holds of theirs.
 const pane = computed(() => {
+  const shown = allPane.value;
+  if (!project.drawingFont) return shown;
+  return { ...shown, chars: source.value === 'cp437' && !findResult.value ? SLOT_CHARS : shown.chars.filter((c) => slotOf(c) !== null) };
+});
+const allPane = computed(() => {
   const found = findResult.value;
   if (found?.kind === 'code') return { note: t('palette.layer.notes.codePoint'), chars: found.chars };
   if (found?.kind === 'paste') return { note: t('palette.layer.notes.pasted'), chars: found.chars };
@@ -87,7 +94,7 @@ const assign = (index, char, advance = true) => {
   }
   followFork(palettes.setSlot(current.value.id, index, char));
   if (char && advance) target.value = Math.min(11, index + 1);
-  if (char && !isCp437(char)) setHint(t('palette.layer.notCp437Warning', { char }), true);
+  if (char && !isCp437(char) && !project.drawingFont) setHint(t('palette.layer.notCp437Warning', { char }), true);
   else aimHint();
 };
 const pickGlyph = (char) => {
@@ -308,7 +315,7 @@ onBeforeUnmount(() => {
                 v-for="(char, i) in pane.chars"
                 :key="i + char"
                 class="g"
-                :class="{ inset: char && current.glyphs.includes(char), utf: char && !isCp437(char), bad: char && !fits(char) }"
+                :class="{ inset: char && current.glyphs.includes(char), utf: char && !isCp437(char) && !project.drawingFont, bad: char && !fits(char) }"
                 :disabled="!char || !fits(char)"
                 :draggable="!!char && fits(char)"
                 @mouseenter="onGlyphHover(char)"

@@ -1,6 +1,10 @@
 // Choosing characters: Best match picks each base cell's character and colors from the picture, in
 // the reference font whatever the display font, with paint, pins and frames as a still has them.
-import { test, expect, vi } from 'vitest';
+import { test, it, expect, vi } from 'vitest';
+import { createApp, h, nextTick } from 'vue';
+import { getActivePinia } from 'pinia';
+import { i18n } from '@/i18n';
+import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import ShapeMatcher from '@/lib/ShapeMatcher.js';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
@@ -404,3 +408,33 @@ for (const [renderStyle, shape, chars] of [['ansi', { charChoice: 'shape' }, HIG
     expect(key(p.cells)).toEqual(base);
   });
 }
+
+it('offers only the font\'s glyphs', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  project.setDrawingFont({ name: 'Blank', height: 8, bytes: new Uint8Array(256 * 8) });
+  const host = document.body.appendChild(document.createElement('div'));
+  const app = createApp({ render: () => h(CharPaletteLayer) }).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  try {
+    const button = (text) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
+    button('Edit ▸').click();
+    await nextTick();
+    const glyphs = () => [...host.querySelectorAll('.grid button.g')];
+    expect(glyphs()).toHaveLength(256);
+    expect(glyphs().every((b) => !b.disabled)).toBe(true);
+    expect(glyphs()[0].textContent).toBe('␀');
+    button('Unicode').click();
+    await nextTick();
+    const find = host.querySelector('.sources input');
+    find.value = 'Blocks'; // the block ▙▚▞ are in
+    find.dispatchEvent(new Event('input'));
+    await nextTick();
+    const shown = glyphs().map((b) => b.textContent);
+    expect(shown.filter((c) => '▙▚▞'.includes(c))).toEqual([]);
+    expect(shown).toContain('▄'); // the font's ones are there
+  } finally {
+    app.unmount();
+    host.remove();
+  }
+});

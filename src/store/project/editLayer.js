@@ -11,6 +11,7 @@ import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { blockOver, cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
+import { fitFont } from '@/lib/BitmapFont.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, refusedHidden, refusedNoCells, takePins } from '@/store/project/shared.js';
@@ -165,6 +166,7 @@ export const editLayerActions = {
   // column: false, and nothing is typed. mode (workspace.typingMode): 'overwrite' replaces the cell; 'insert' pushes
   // the rest of the row right first, its characters and its paint; 'partial' its characters alone (shiftCells).
   typeAt(col, row, char, attrs, { mode = 'overwrite' } = {}) {
+    if (this.drawingFont) char = fitFont(char); // only what the drawing's font holds
     const width = cellWidth(char);
     if (refusedNoCells(this, { toast: false })) return null; // no cells layer to type on (typeLines says so)
     if (width === 2 && col === this.cols - 1) return false;
