@@ -62,7 +62,7 @@ function glyphOf(rows, height) {
   return { data, xMin, points: pts.length, contours: rects.length };
 }
 
-const utf16 = (text) => pack('H'.repeat(text.length), [...text].map((c) => c.charCodeAt(0)));
+const utf16 = (text) => pack('H'.repeat(text.length), Array.from({ length: text.length }, (_, i) => text.charCodeAt(i)));
 
 export function ttfOf(font) {
   const { height } = font;
@@ -86,7 +86,7 @@ export function ttfOf(font) {
     pack('H'.repeat(sc), segs.map(() => 0)),
   ]);
 
-  const psName = font.name.replace(/[^A-Za-z0-9]/g, '') || 'Bitmap';
+  const psName = font.name.replace(/[^\x21-\x7e]|[[\](){}<>/%]/g, '').slice(0, 63) || 'PhosphorBitmap';
   const strings = [[1, font.name], [2, 'Regular'], [4, font.name], [6, psName]];
   let at = 0;
   const records = strings.map(([id, s]) => (at += s.length * 2, pack('HHHHHH', 3, 1, 0x409, id, s.length * 2, at - s.length * 2)));
@@ -106,7 +106,7 @@ export function ttfOf(font) {
       pack('hhHHH', 0, em, 0, 32, 0),
     ]),
     cmap,
-    glyf: join(padded),
+    glyf: join([...padded, new Uint8Array(4)]), // never empty: a blank font's table would be rejected
     head: pack('LLLLHHLLLLhhhhHHhhh', 0x10000, 0x10000, 0, 0x5f0f3cf5, 3, em, 0, 0, 0, 0, 0, 0, ADVANCE, em, 0, 8, 2, 1, 0),
     hhea: pack('LhhhHhhhhhhhhhhhH', 0x10000, em, 0, 0, ADVANCE, 0, 0, ADVANCE, 1, 0, 0, 0, 0, 0, 0, 0, n),
     hmtx: pack('Hh'.repeat(n), glyphs.flatMap((g) => [ADVANCE, g.xMin])),

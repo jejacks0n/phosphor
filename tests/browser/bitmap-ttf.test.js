@@ -29,3 +29,9 @@ it('is 8 pixels wide at its height', () => {
   ctx.font = '16px "BT"';
   expect(ctx.measureText('M').width).toBe(8);
 });
+it('loads a font whose name has a character above U+FFFF', async () => {
+  await new FontFace('BT2', ttfOf({ name: 'A😀', height: 8, bytes: new Uint8Array(256 * 8).fill(1) })).load();
+});
+it('loads a font with no pixels lit', async () => {
+  await new FontFace('BT3', ttfOf({ name: 'Blank', height: 8, bytes: new Uint8Array(256 * 8) })).load();
+});

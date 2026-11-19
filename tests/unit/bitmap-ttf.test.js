@@ -30,3 +30,13 @@ it('sizes its fixed tables as the format says', () => {
   const t = tables(ttfOf(font(16)));
   expect([t.head.length, t.hhea.length, t.maxp.length, t.post.length, t['OS/2'].length]).toEqual([54, 36, 32, 32, 96]);
 });
+it('declares name lengths that match its bytes, for a name above U+FFFF', () => {
+  const buf = ttfOf({ ...font(8), name: 'A😀' }), { name } = tables(buf), v = new DataView(buf);
+  const count = v.getUint16(name.offset + 2), storage = v.getUint16(name.offset + 4);
+  let end = 0;
+  for (let i = 0; i < count; i++) {
+    const r = name.offset + 6 + i * 12;
+    end = Math.max(end, v.getUint16(r + 8) + v.getUint16(r + 10));
+  }
+  expect(storage + end).toBe(name.length);
+});
