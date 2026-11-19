@@ -67,8 +67,8 @@ test('a file with no type that holds a picture opens', async () => {
 
 test('a file with no type that is not a picture is refused with its name', async () => {
   const { project, host } = await startScreen();
-  await choose(host, new File([new Uint8Array(64).fill(7)], 'mystery.xb', { type: '' }));
-  expect(message()).toContain('Phosphor cannot open mystery.xb');
+  await choose(host, new File([new Uint8Array(64).fill(7)], 'mystery.dat', { type: '' }));
+  expect(message()).toContain('Phosphor cannot open mystery.dat');
   expect(project.image).toBeFalsy();
 });
 
