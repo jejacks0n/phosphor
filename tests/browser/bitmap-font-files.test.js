@@ -7,6 +7,7 @@ import { createTestApp } from '../support/app.js';
 import FontField from '@/components/FontField.vue';
 import { parseFontSheet } from '@/lib/BitmapFont';
 import { addBitmapFont, loadFonts, storedBitmapFont, removeFont } from '@/lib/userFonts';
+import { setDisplayFont } from '@/lib/displayFonts';
 
 let app = null, host = null;
 afterEach(async () => {
@@ -111,4 +112,30 @@ test('Save .F## and Save PNG download the drawing\'s font, named for it', async 
   await nextTick();
   press('Save .F16');
   expect(saved[2].name).toBe('font.F16');
+});
+
+test('Remove clears the browser\'s copy of the drawing\'s font and leaves the drawing drawing in it, at its size', async () => {
+  const { project, workspace } = await createTestApp();
+  const font = await addBitmapFont(rawFile(16, 'SIXTEEN.F16', 0x3c));
+  workspace.userFonts = await loadFonts();
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp({ render: () => h(FontField) }).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const select = host.querySelector('select');
+  select.value = font.id;
+  select.dispatchEvent(new Event('change'));
+  await expect.poll(() => project.drawingFont?.height).toBe(16);
+  workspace.displayFontSizes = { [font.id]: 24 };
+  await setDisplayFont(workspace.displayFontSpec); // as App.vue does: the drawing's font registered and in use
+  await nextTick();
+  host.querySelector('button[aria-label="Remove font"]').click();
+  await expect.poll(async () => (await loadFonts()).length).toBe(0);
+  await nextTick();
+  expect(project.drawingFont).not.toBeNull();
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = `16px ${workspace.displayFontSpec.family}`;
+  expect(ctx.measureText('M').width).toBe(8); // still the font's 8-pixel cells, not a fallback's
+  expect(workspace.displayFontSizes).toEqual({ [font.id]: 24 });
 });

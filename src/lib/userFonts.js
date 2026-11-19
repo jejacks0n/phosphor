@@ -183,8 +183,8 @@ export async function storedBitmapFont(id) {
   return { name: record.name, height: record.height, bytes: record.data };
 }
 
-// Forget a stored font.
-export async function removeFont(id) {
-  unregister(id);
+// Forget a stored font. keepFace: the drawing still draws in it (its own bitmap font), so the page keeps it registered.
+export async function removeFont(id, { keepFace = false } = {}) {
+  if (!keepFace) unregister(id);
   await inStore('readwrite', (fonts) => fonts.delete(id));
 }

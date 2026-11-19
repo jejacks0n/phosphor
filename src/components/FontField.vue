@@ -87,10 +87,10 @@ const onSize = (event) => {
 };
 
 const remove = async () => {
-  const { id } = current.value;
-  await removeFont(id);
+  const { id } = current.value, drawsIn = !!drawn.value && fontId(drawn.value) === id; // the drawing's own: it stays, at its size
+  await removeFont(id, { keepFace: drawsIn });
   workspace.userFonts = loaded.value.filter((font) => font.id !== id);
-  workspace.displayFontSizes = without(workspace.displayFontSizes, id);
+  if (!drawsIn) workspace.displayFontSizes = without(workspace.displayFontSizes, id);
   if (!drawn.value) workspace.displayFont = DISPLAY_FONTS[0].id; // a drawing keeps its own font: it's the document's
 };
 </script>
