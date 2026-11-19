@@ -711,6 +711,9 @@
     "recentTitle": "Recent: {hex}"
   },
   "palette": {
+    "file": {
+      "notPalettes": "“{name}” isn't a Phosphor palette file."
+    },
     "untitled": "Untitled palette",
     "copyName": "{name} copy",
     "forkName": "{name} (custom)",
