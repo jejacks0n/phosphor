@@ -804,6 +804,35 @@
       "export": "Export",
       "fontTab": "{name} · 256",
       "unloaded": "For fonts not loaded ({n})"
+    },
+    "pages": {
+      "aria": "Palettes or fonts",
+      "palettes": "Palettes",
+      "fonts": "Fonts"
+    },
+    "fonts": {
+      "filterPlaceholder": "Filter fonts…",
+      "filterAria": "Filter fonts",
+      "load": "+ Load",
+      "loadTitle": "Load a font from your computer: a bitmap font (.F01 to .F32, or a PNG sheet), or a monospaced TrueType, OpenType, or WOFF font",
+      "thisDrawing": "This drawing",
+      "trueType": "TrueType",
+      "drawingsFont": "the drawing's font",
+      "inBrowser": "in your browser",
+      "palettes": "no palettes | 1 palette | {n} palettes",
+      "use": "Use in this drawing",
+      "view": "View in it",
+      "saveRaw": "Save .F{height}",
+      "savePng": "Save PNG",
+      "exportPalettes": "Export palettes",
+      "toPalettes": "Palettes ▸",
+      "remove": "Remove",
+      "removeTitle": "Forget this browser's copy of the font",
+      "sheetNote": "All 256 slots, as the font draws them",
+      "slot": "Slot {n} {char}",
+      "slotHint": "Hover a slot to see its number.",
+      "trueTypeNote": "A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. Viewing in it takes the drawing's bitmap font away.",
+      "pangram": "The quick brown fox jumps over the lazy dog"
     }
   },
   "status": {

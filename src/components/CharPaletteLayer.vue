@@ -12,12 +12,13 @@ import { ownsKey } from '@/lib/fields';
 import { toast } from '@/composables/useToast';
 import { writePaletteFile, readPaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
+import FontsPage from '@/components/FontsPage.vue';
 
 // The character palette layer: one element in two sizes. Compact, it's the list of palettes (each
 // shown as its 12 glyphs) for choosing one; Edit grows the same element into the editor, with the
 // selected palette's slots and glyph sources. Built-ins are locked: the first edit makes your copy.
 // The list puts the drawing's bitmap font's palettes first, then the built-ins, yours, and (folded)
-// yours for fonts not loaded.
+// yours for fonts not loaded. Beside the Palettes page is the Fonts page (FontsPage), always the wide size.
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const project = useProjectStore();
@@ -37,6 +38,7 @@ const hoveredChar = ref(null);
 const tieOpen = ref(false);         // the editor head's tie menu
 const unloadedOpen = ref(false);    // the For fonts not loaded group, unfolded
 const importer = useTemplateRef('importer');
+const onFonts = computed(() => workspace.paletteLayerPage === 'fonts');
 
 const current = computed(() => palettes.all.find(p => p.id === currentId.value) ?? palettes.active);
 const matches = (p) => {
@@ -221,6 +223,12 @@ const onKeyDown = (event) => {
     if (event.key === 'Escape') event.target.blur();
     return;
   }
+  if (onFonts.value) { // the Fonts page has no keys of its own but Escape
+    if (event.key !== 'Escape') return;
+    emit('close');
+    event.preventDefault();
+    return;
+  }
   const list = visible.value;
   const i = list.findIndex(p => p.id === currentId.value);
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -268,9 +276,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="root" class="palette-layer" :class="{ editing }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
-    <!-- the Palettes page (a sibling page can sit beside it) -->
-    <div class="page">
+  <div ref="root" class="palette-layer" :class="{ editing: editing || onFonts }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
+    <div class="pages" role="group" :aria-label="t('palette.pages.aria')">
+      <button :class="{ on: !onFonts }" :aria-pressed="!onFonts" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.pages.palettes') }}</button>
+      <button :class="{ on: onFonts }" :aria-pressed="onFonts" @click="workspace.paletteLayerPage = 'fonts'">{{ t('palette.pages.fonts') }}</button>
+    </div>
+    <FontsPage v-if="onFonts"/>
+    <!-- the Palettes page -->
+    <div v-else class="page">
       <!-- the list: choose a palette -->
       <div class="list-side">
         <div class="top">
@@ -400,6 +413,7 @@ div.palette-layer {
   right: 10px;
   z-index: 300;
   display: flex;
+  flex-direction: column;
   width: 300px;
   max-width: calc(100% - 20px); /* never wider than the toolbar it opens from */
   max-height: min(560px, calc(100vh - 160px));
@@ -418,6 +432,30 @@ div.palette-layer.editing {
   width: 940px;
 }
 
+/* The Palettes | Fonts switch, over the page. */
+div.pages {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px 0;
+}
+
+div.pages button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+div.pages button.on {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* The rules below that the Fonts page shares reach into it (:deep). */
 div.page {
   display: flex;
   flex: 1;
@@ -427,7 +465,7 @@ div.page {
 
 /* While editing, the list is only as wide as a palette's row of glyphs (they never wrap; long
    names do), so the editor gets the rest. */
-div.palette-layer.editing div.list-side {
+div.palette-layer.editing :deep(div.list-side) {
   width: min-content;
 }
 
@@ -456,19 +494,19 @@ div.palette-layer.editing div.row div.glyphs {
     flex-direction: column;
   }
 
-  div.palette-layer.editing div.list-side {
+  div.palette-layer.editing :deep(div.list-side) {
     width: auto;
     max-height: 35vh;
     border-right: none;
     border-bottom: 1px solid var(--surface-3);
   }
 
-  div.palette-layer.editing div.edit-side {
+  div.palette-layer.editing :deep(div.edit-side) {
     max-height: 65vh;
   }
 }
 
-div.list-side {
+:deep(div.list-side) {
   display: flex;
   flex-direction: column;
   flex: 1 1 300px;
@@ -476,14 +514,14 @@ div.list-side {
   border-right: 1px solid var(--surface-3);
 }
 
-div.top {
+:deep(div.top) {
   display: flex;
   gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--surface-3);
 }
 
-div.top input {
+:deep(div.top input) {
   flex: 1;
   min-width: 0;
   padding: 5px 8px;
@@ -495,7 +533,7 @@ div.top input {
   font-size: 12px;
 }
 
-div.top button {
+:deep(div.top button) {
   padding: 5px 10px;
   border: none;
   border-radius: 4px;
@@ -507,18 +545,18 @@ div.top button {
   white-space: nowrap;
 }
 
-div.top button:hover {
+:deep(div.top button:hover) {
   background: var(--accent);
   color: var(--white);
 }
 
-div.list {
+:deep(div.list) {
   flex: 1;
   overflow-y: auto;
   padding: 6px 0;
 }
 
-div.group {
+:deep(div.group) {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -605,7 +643,7 @@ span.tie span.menu button:hover {
   color: var(--white);
 }
 
-div.row {
+:deep(div.row) {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -614,19 +652,19 @@ div.row {
   border-left: 2px solid transparent;
 }
 
-div.row:hover {
+:deep(div.row:hover) {
   background: var(--surface-2);
 }
 
-div.row.current {
+:deep(div.row.current) {
   background: var(--surface-2);
 }
 
-div.row.active {
+:deep(div.row.active) {
   border-left-color: var(--accent);
 }
 
-div.name {
+:deep(div.name) {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -634,7 +672,7 @@ div.name {
   color: var(--text);
 }
 
-div.name em {
+:deep(div.name em) {
   font-size: 9px;
   font-style: normal;
   letter-spacing: 0.05em;
@@ -647,7 +685,7 @@ div.glyphs {
   overflow: hidden;
 }
 
-div.edit-side {
+:deep(div.edit-side) {
   display: flex;
   flex-direction: column;
   flex: 2 1 600px;
@@ -656,13 +694,13 @@ div.edit-side {
   gap: 10px;
 }
 
-div.head {
+:deep(div.head) {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-span.title {
+:deep(span.title) {
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
@@ -690,7 +728,7 @@ span.lock svg {
   fill: currentColor;
 }
 
-button.ghost {
+:deep(button.ghost) {
   padding: 4px 8px;
   border: none;
   border-radius: 4px;
@@ -701,7 +739,7 @@ button.ghost {
   cursor: pointer;
 }
 
-button.ghost:hover {
+:deep(button.ghost:hover) {
   background: var(--surface-3);
   color: var(--text);
 }
@@ -864,7 +902,7 @@ div.pane {
   gap: 6px;
 }
 
-div.note {
+:deep(div.note) {
   font-size: 11px;
   color: var(--text-muted);
   padding: 2px 4px;
@@ -894,7 +932,7 @@ div.blocks button.on {
   border-color: var(--accent);
 }
 
-div.grid {
+:deep(div.grid) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
   gap: 2px;
@@ -969,14 +1007,14 @@ div.legend span.l3::before {
   content: '—';
 }
 
-div.info {
+:deep(div.info) {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--text-dim);
   min-height: 16px;
 }
 
-.spacer {
+:deep(.spacer) {
   flex: 1;
 }
 </style>

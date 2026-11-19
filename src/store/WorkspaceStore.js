@@ -85,6 +85,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     selectFromText: false, // the Select tool took over from Edit Mode (a drag, Shift+arrows): setting the selection down goes back
     typingMode: 'overwrite', // typing replaces the cell ('overwrite'), or pushes the row right: its characters and paint ('insert'), or its characters alone ('partial')
     paletteLayerOpen: false, // the character palette layer has the keyboard
+    paletteLayerPage: 'palettes', // the palette layer's page: 'palettes' | 'fonts'
     playing: false,          // an animation is playing (usePlayback)
     playFrame: 0,            // and this frame is on screen
     played: shallowRef(null), // that frame, built (FrameBuilder): what the views show meanwhile

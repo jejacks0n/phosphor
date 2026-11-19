@@ -804,6 +804,35 @@
       "export": "Exporter",
       "fontTab": "{name} · 256",
       "unloaded": "Pour des polices non chargées ({n})"
+    },
+    "pages": {
+      "aria": "Palettes ou polices",
+      "palettes": "Palettes",
+      "fonts": "Polices"
+    },
+    "fonts": {
+      "filterPlaceholder": "Filtrer les polices…",
+      "filterAria": "Filtrer les polices",
+      "load": "+ Charger",
+      "loadTitle": "Charger une police depuis votre ordinateur : une police matricielle (.F01 à .F32, ou une planche PNG), ou une police à chasse fixe TrueType, OpenType ou WOFF",
+      "thisDrawing": "Ce dessin",
+      "trueType": "TrueType",
+      "drawingsFont": "la police du dessin",
+      "inBrowser": "dans votre navigateur",
+      "palettes": "aucune palette | 1 palette | {n} palettes",
+      "use": "Utiliser dans ce dessin",
+      "view": "Afficher avec",
+      "saveRaw": "Enregistrer .F{height}",
+      "savePng": "Enregistrer en PNG",
+      "exportPalettes": "Exporter les palettes",
+      "toPalettes": "Palettes ▸",
+      "remove": "Retirer",
+      "removeTitle": "Oublier la copie de cette police dans votre navigateur",
+      "sheetNote": "Les 256 emplacements, tels que la police les dessine",
+      "slot": "Emplacement {n} {char}",
+      "slotHint": "Survolez un emplacement pour voir son numéro.",
+      "trueTypeNote": "Une police TrueType dessine n'importe quel caractère : elle n'a donc pas d'emplacements, et elle n'est pas enregistrée dans le dessin. L'afficher retire la police matricielle du dessin.",
+      "pangram": "Portez ce vieux whisky au juge blond qui fume"
     }
   },
   "status": {

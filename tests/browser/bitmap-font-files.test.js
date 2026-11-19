@@ -1,10 +1,12 @@
 // Bitmap fonts as files: Load font takes raw .F01-.F32 fonts and PNG sheets, kept in this browser (userFonts.js),
-// and picking one in the Font field gives the drawing that font.
+// and picking one in the Font field gives the drawing that font. Saving and removing one are on the Fonts page.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
+import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import FontField from '@/components/FontField.vue';
+import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { parseFontSheet } from '@/lib/BitmapFont';
 import { addBitmapFont, loadFonts, storedBitmapFont, removeFont } from '@/lib/userFonts';
 import { setDisplayFont } from '@/lib/displayFonts';
@@ -14,8 +16,18 @@ afterEach(async () => {
   app?.unmount();
   host?.remove();
   app = host = null;
+  vi.restoreAllMocks();
   for (const font of await loadFonts()) await removeFont(font.id);
 });
+
+// The palette layer, on its Fonts page.
+const mountFontsPage = async (workspace) => {
+  workspace.paletteLayerPage = 'fonts';
+  host = document.body.appendChild(document.createElement('div'));
+  app = createApp({ render: () => h(CharPaletteLayer) }).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+};
 
 const rawFile = (height, name = `T${height}.F${String(height).padStart(2, '0')}`, fill = 0) => new File([new Uint8Array(256 * height).fill(fill)], name);
 
@@ -82,24 +94,21 @@ test('choosing a bitmap font gives the drawing that font, and a built-in takes i
 });
 
 test('Save .F## and Save PNG download the drawing\'s font, named for it', async () => {
-  const { project } = await createTestApp();
+  const { project, workspace } = await createTestApp();
   const bytes = Uint8Array.from({ length: 256 * 16 }, (_, i) => (i * 7) % 256);
   project.setDrawingFont({ name: 'My Font.F16', height: 16, bytes });
   const saved = [];
   vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => { saved.push({ blob }); return 'blob:x'; });
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { saved.at(-1).name = this.download; });
-  host = document.createElement('div');
-  document.body.append(host);
-  app = createApp({ render: () => h(FontField) }).use(i18n);
-  app.mount(host);
-  await nextTick();
+  await mountFontsPage(workspace);
   const press = (label) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === label).click();
   press('Save .F16');
   await expect.poll(() => saved.length).toBe(1);
   expect(saved[0].name).toBe('My Font.F16');
   expect(new Uint8Array(await saved[0].blob.arrayBuffer())).toEqual(bytes);
   press('Save PNG');
-  await expect.poll(() => saved.length).toBe(2);
+  // Chrome makes a PNG in idle time, waiting up to a second for some: longer while other files' tests keep it busy.
+  await expect.poll(() => saved.length, { timeout: 5000 }).toBe(2);
   expect(saved[1].name).toBe('My Font.png'); // its name without the .F16 it was loaded from
   const image = await createImageBitmap(saved[1].blob), canvas = document.createElement('canvas');
   canvas.width = image.width;
@@ -117,7 +126,7 @@ test('Save .F## and Save PNG download the drawing\'s font, named for it', async 
   await nextTick();
   press('Save .F16');
   press('Save PNG');
-  await expect.poll(() => saved.length).toBe(5);
+  await expect.poll(() => saved.length, { timeout: 5000 }).toBe(5);
   expect(saved.slice(3).map((s) => s.name)).toEqual(['ACID-55.F16', 'ACID-55.png']);
 });
 
@@ -125,19 +134,14 @@ test('Remove clears the browser\'s copy of the drawing\'s font and leaves the dr
   const { project, workspace } = await createTestApp();
   const font = await addBitmapFont(rawFile(16, 'SIXTEEN.F16', 0x3c));
   workspace.userFonts = await loadFonts();
-  host = document.createElement('div');
-  document.body.append(host);
-  app = createApp({ render: () => h(FontField) }).use(i18n);
-  app.mount(host);
-  await nextTick();
-  const select = host.querySelector('select');
-  select.value = font.id;
-  select.dispatchEvent(new Event('change'));
+  await mountFontsPage(workspace);
+  const press = (label) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === label).click();
+  press('Use in this drawing');
   await expect.poll(() => project.drawingFont?.height).toBe(16);
   workspace.displayFontSizes = { [font.id]: 24 };
   await setDisplayFont(workspace.displayFontSpec); // as App.vue does: the drawing's font registered and in use
   await nextTick();
-  host.querySelector('button[aria-label="Remove font"]').click();
+  press('Remove'); // shown for the drawing's font: it's kept in this browser too
   await expect.poll(async () => (await loadFonts()).length).toBe(0);
   await nextTick();
   expect(project.drawingFont).not.toBeNull();
