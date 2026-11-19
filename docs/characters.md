@@ -158,7 +158,7 @@ IBM VGA, Unscii, and Unifont are 8×16 pixel fonts that share one cell, so box d
 
 The Font dropdown chooses the font; loading, saving and removing fonts happen on the **Fonts** page of the character palette layer. Click **Manage fonts ▸** beside the Font field to open it. It opens with any tool in hand (from the SAUCE tab it switches to ANSI first) and is off while no drawing is open. Close the layer with **Escape**, a click outside it, or the Type tool's palette button.
 
-In someone else's room **Manage fonts ▸** is off with the rest of the Drawing settings. There, reach the Fonts page through the Type tool's palette button and the layer's **Fonts** switch ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
+In someone else's room, and while you're inside an art layer, **Manage fonts ▸** is off with the rest of the Drawing settings. There, reach the Fonts page through the Type tool's palette button and the layer's **Fonts** switch ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
 The character palette layer has a **Palettes | Fonts** switch at the top. **Palettes** is the palette editor ([Palettes That Belong to a Font](#palettes-that-belong-to-a-font)).
 
@@ -221,7 +221,14 @@ Palettes tied to a font that isn't loaded in this browser (because you removed i
 
 ### Palette Files
 
-**Export** writes one palette, and **Export palettes** on the Fonts page writes every palette tied to a font, as `<name>.palettes.json`. The file keeps each palette's name, its empty slots and the font it's tied to. **Import** adds the palettes in such a file to **Yours**. For a font that isn't loaded they go under **For fonts not loaded**, and Phosphor says "Added N palettes for <font>. Load that font to see them." A file that isn't a palette file is refused and nothing you keep changes.
+In the editor, **Export** writes one palette; under **Yours**, **Export** writes all your palettes, each keeping its font (it's off while you have none); and **Export palettes** on the Fonts page writes every palette tied to that font. Each is a `<name>.palettes.json` file, which keeps each palette's name, its empty slots and the font it's tied to. **Import** adds the palettes in such a file, under their own names (a name you already have gets " (custom)"). Where each goes depends on its font:
+
+- A palette for any font goes under **Yours**.
+- One for the font in use goes under **For <font>**.
+- One for a font kept in this browser but not in use waits for that font, and Phosphor says "Added N palettes for <font>. Use that font to see them."
+- One for a font that isn't loaded goes under **For fonts not loaded**, and Phosphor says "Added N palettes for <font>. Load that font to see them."
+
+A character one cell can't hold (a word, a control character) comes in as an empty slot. A file that isn't a palette file is refused and nothing you keep changes.
 
 ### Fonts in Shared Rooms
 
