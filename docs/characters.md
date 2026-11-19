@@ -169,8 +169,8 @@ Click **Load font** and pick a raw bitmap font (`.F01` to `.F32`, the number bei
 A bitmap font belongs to the drawing, not to your browser:
 
 - **It's saved**: A project keeps it, and so does an XBin export ([Saving .xb](#saving-xb)). Opening an XBin that holds a font gives the drawing that font.
-- **It's one undo step**: Setting it and removing it are each a step you can undo. It's listed under **This drawing** in the Font dropdown; choosing any other font takes it away.
-- **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots. A character the font lacks is shown as its nearest classic (CP437) stand-in, but the character you typed is kept: remove the font and the original comes back.
+- **It's one undo step**: Setting it, and taking it off by choosing another font, are each a step you can undo. It's listed under **This drawing** in the Font dropdown; choosing any other font takes it away. **Remove** only clears a loaded font from your browser; the drawing keeps its own.
+- **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots. A character the font lacks is shown as its nearest classic (CP437) stand-in, but the character you typed is kept: choose another font and the original comes back.
 - **Blocks and shades come from it**: Block elements and shades are drawn from the font's own pixels, so they look as the font draws them.
 - **The converter measures in it**: Best match and By shape compare each cell with the font's characters, so a photo converts into the shapes your font has.
 - **The status bar shows the code**: In the ANSI view, after **Char** and its character, the status bar gives the character's code in decimal: its slot in the drawing's font, or its classic (CP437) byte when there's no bitmap font. A character with no code shows none. On a narrow bar the code is the first thing to go.

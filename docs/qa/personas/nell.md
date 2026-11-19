@@ -25,7 +25,7 @@ that reopens in Phosphor with the same cells, font and palette, and that looks t
 
 ## What they lean on
 
-- Load font and the bitmap fonts it takes, Remove, Save .F## and Save PNG
+- Load font and the bitmap fonts it takes, Save .F## and Save PNG
   ([Bitmap Fonts](../../characters.md#bitmap-fonts)).
 - The character palette, the status bar's code, Best match and By shape
   ([How the Converter Picks Characters](../../characters.md#how-the-converter-picks-characters)).
@@ -73,9 +73,10 @@ script. Every section ends with Free time.
   the wrong size.
 - Rated: no (drawing)
 
-### 3. Remove it and undo
-- Does: removes the font from the drawing, then undoes, then redoes.
-- Expects: removing is one undo step; undo brings the font back with the art drawn in it; redo removes it again; the
+### 3. Take it off and undo
+- Does: chooses a built-in font in the Font dropdown (that takes the font off the drawing), then undoes, then redoes.
+  Remove, beside the dropdown, only clears the browser's copy of a loaded font: the drawing keeps its own.
+- Expects: taking it off is one undo step; undo brings the font back with the art drawn in it; redo takes it off again; the
   characters she typed are the same ones after each.
 - Probes: `undo-redo`: undo three times in a row and check nothing else was undone; `interrupt`: reload with the font
   set and check it's still the drawing's.
@@ -87,9 +88,9 @@ built-in one, and check what the Font field says while the drawing has its own.
 ## Draw in it
 
 ### 4. Type a character my font lacks
-- Does: in Edit Mode, types a letter with an accent and a character from another script, then removes the font.
+- Does: in Edit Mode, types a letter with an accent and a character from another script, then chooses a built-in font in the Font dropdown.
 - Expects: each shows as its nearest classic stand-in while the font is on, and the status bar's code is the font's
-  slot or nothing; after the font is removed the characters she typed are back as she typed them.
+  slot or nothing; after the font is taken off the characters she typed are back as she typed them.
 - Probes: `undo-redo`: undo the typing with the font on and off; `again`: type the same character in ten cells.
 - Rated: yes, wants T, then typing
 
