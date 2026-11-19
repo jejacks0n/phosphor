@@ -1,6 +1,7 @@
 // The drawing's bitmap font as document state: one undo step, saved with the project, gone on a new drawing.
 import { test, it, expect, afterEach } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
+import { readXBin } from '@/lib/XBinFile.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { fontId, encodeFont, fontChars } from '@/lib/BitmapFont.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
@@ -226,4 +227,45 @@ it('a frame built for playing is matched in the font, as the still is', async ()
   const built = (await project.builtFrame(1)).cells;
   expect(built.some((c) => c.char === 'A')).toBe(true);
   expect(cellKeys(built)).toBe(cellKeys(project.cells));
+});
+
+const exported = async (project) => {
+  let blob;
+  await project.exportFile('xb', { deliver: (b) => { blob = b; }, sauce: false });
+  return readXBin(new Uint8Array(await blob.arrayBuffer()), 'x.xb');
+};
+
+it('exports IBM VGA when the drawing has no font', async () => {
+  const project = await blank();
+  project.quantize = 'cga';
+  await settle(project);
+  expect(project.drawingFont).toBeNull();
+  const { font } = await exported(project);
+  expect(font.height).toBe(16);
+  expect([...font.bytes.subarray(219 * 16, 220 * 16)]).toEqual(Array(16).fill(0xff));
+});
+
+it('exports a character outside CP437 as its substitute, with no font', async () => {
+  const project = await blank();
+  project.quantize = 'cga';
+  project.typeAt(0, 0, '★', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  await settle(project);
+  const { cells } = await exported(project);
+  expect(cells[0].char).not.toBe('★');
+});
+
+it('a Limited count of 8 exports its 8 colors and black after', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 20, rows: 20 });
+  project.quantize = 'count';
+  project.colorCount = 8;
+  project.render();
+  await settle(project);
+  const active = project.activePalette.map((p) => p.hex.toLowerCase());
+  expect(active).toHaveLength(8);
+  const { palette } = await exported(project);
+  const near = (a, b) => [1, 3, 5].every((i) => Math.abs(parseInt(a.slice(i, i + 2), 16) - parseInt(b.slice(i, i + 2), 16)) < 4); // the file keeps 6 bits a channel
+  expect(palette.slice(0, 8).every((hex, i) => near(hex, active[i]))).toBe(true);
+  expect(palette.slice(8)).toEqual(Array(8).fill('#000000'));
 });

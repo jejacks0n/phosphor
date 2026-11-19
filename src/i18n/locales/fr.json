@@ -1088,6 +1088,10 @@
       "png": {
         "title": "Exporter en .png",
         "sub": "Exportation d'image rendue dans votre police d'affichage, exactement telle qu'affichée dans la vue ANSI."
+      },
+      "xb": {
+        "title": "Exporter en .xb",
+        "sub": "XBin : l'art avec sa police et ses 16 couleurs à l'intérieur, comme l'affiche 16colo.rs."
       }
     },
     "png": {
@@ -1152,11 +1156,17 @@
         },
         "cast": {
           "name": "Cast"
+        },
+        "xb": {
+          "name": "XBin"
         }
       }
     },
     "filtersLeftOut": "Laissé de côté : le filtre de plugin {names}. | Laissés de côté : les filtres de plugin {names}.",
-    "standIns": "{names} s'affiche Par forme à la place de son solveur de plugin. | {names} s'affichent Par forme à la place de leurs solveurs de plugin."
+    "standIns": "{names} s'affiche Par forme à la place de son solveur de plugin. | {names} s'affichent Par forme à la place de leurs solveurs de plugin.",
+    "errors": {
+      "xbinPalette": "XBin contient 16 couleurs : choisissez CGA, un nombre limité de 16 ou moins, ou une liste de couleurs personnalisée de 16 au maximum."
+    }
   },
   "versions": {
     "title": "Versions",

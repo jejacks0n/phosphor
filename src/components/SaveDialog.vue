@@ -13,7 +13,7 @@ import { fileStem, timestamped } from '@/document/projectIO';
 // with it, Safari included), and for .ans the characters CP437 can't hold, with what's written instead. A .png with
 // smooth text on asks first whether to keep it smooth (more colors, a bigger file) or hard-edged; nothing's remembered.
 const props = defineProps({
-  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'ansimation' | 'utf8ansimation' | 'cast' | 'gif' | 'png'
+  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'xb' | 'ansimation' | 'utf8ansimation' | 'cast' | 'gif' | 'png'
 });
 const emit = defineEmits(['close']);
 const { t } = useI18n();
@@ -28,6 +28,7 @@ const FORMAT_META = {
   gif: { action: 'export', busy: 'exporting', animated: true },
   utf8ans: { action: 'export', busy: 'exporting' },
   png: { action: 'export', busy: 'exporting' },
+  xb: { action: 'export', busy: 'exporting' },
 };
 
 const meta = computed(() => FORMAT_META[props.ext]);

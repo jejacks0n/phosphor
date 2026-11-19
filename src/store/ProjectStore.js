@@ -15,6 +15,8 @@ import { isSolverRef, solverFor, standInOf, optionValues, filterFor } from '@/pl
 import { filterGroups, runningFilters } from '@/plugins/filters.js';
 import { usePluginStore } from '@/store/PluginStore.js';
 import { useRoomStore } from '@/store/RoomStore.js';
+import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
+import { PALETTES, parseColorList } from '@/lib/ColorUtils.js';
 import { decodeFont, fontChars, fontId } from '@/lib/BitmapFont.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -204,6 +206,14 @@ export const useProjectStore = defineStore('project', {
   getters: {
     // The drawing's bitmap font, or null: decoded once for each fontBitmap.
     drawingFont: (state) => fontFor(state.fontBitmap, state.fontName),
+    // The 16 colors an XBin export holds, as hexes in XBin's DOS order, or null when the drawing's palette is more.
+    xbinPalette(state) {
+      const hexes = (colors) => (colors.length >= 1 && colors.length <= 16 ? colors.map((c) => c.hex) : null);
+      if (state.quantize === 'cga') return ANSI_OF_DOS.map((i) => PALETTES.cga[i].hex);
+      if (state.quantize === 'count') return state.colorCount <= 16 ? hexes(state.activePalette) : null;
+      if (state.quantize === 'palette') return hexes(parseColorList(state.palette));
+      return null;
+    },
     // Inside an art layer, only as far back as where you stepped in, and on only to what was done inside.
     canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo && (!state._artInside || state._artInside.entries.has(state.history.last)),
     // Something to bake: an image, and a Transform, Adjustment or Effect slider off its default.

@@ -8,7 +8,7 @@
  */
 
 import { DISPLAY_FONT, DISPLAY_FONTS, displayFontCss, drawGlyph, loadFontFaces } from './displayFonts.js';
-import { inkOf, slotOf } from './BitmapFont.js';
+import { SLOT_CHARS, inkOf, slotOf } from './BitmapFont.js';
 
 const EXACT = new Map([
   [' ', [0, 0]], ['\u00a0', [0, 0]],
@@ -77,6 +77,20 @@ const REF_W = 8, REF_H = 16;
 let referenceLoaded = null, referenceReady = false;
 export function loadReferenceFont() {
   return referenceLoaded ??= loadFontFaces(REFERENCE).then(() => { referenceReady = true; });
+}
+
+// IBM VGA as a bitmap font, for an XBin of a drawing with no font of its own: each CP437 glyph drawn sharp at 8 x 16,
+// one bit a pixel, slot 0 blank.
+export async function vgaBitmapFont() {
+  await loadReferenceFont();
+  const bytes = new Uint8Array(16 * 256);
+  for (let slot = 1; slot < 256; slot++) {
+    const data = drawGlyph(SLOT_CHARS[slot], REF_W, REF_H, 1, '#fff', false, REFERENCE);
+    for (let y = 0; y < REF_H; y++) {
+      for (let x = 0; x < REF_W; x++) if (data[(y * REF_W + x) * 4 + 3] > 127) bytes[slot * 16 + y] |= 0x80 >> x;
+    }
+  }
+  return { name: 'IBM VGA', height: 16, bytes };
 }
 
 const referenceInks = new Map();

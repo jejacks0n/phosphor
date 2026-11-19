@@ -508,3 +508,27 @@ test('names the layers showing a stand-in', async () => {
     unmount();
   }
 });
+
+// XBin holds 16 colors: it's offered with CGA, and not with VGA, full color or a list past 16.
+test('offers XBin only for 16 colors or fewer', async () => {
+  const { project } = await drawing();
+  const state = async (settings) => {
+    Object.assign(project, settings);
+    await settle(project);
+    const { unmount } = mountModal();
+    try {
+      const modal = document.querySelector('.modal-dialog');
+      [...modal.querySelectorAll('.format-btn')].find((b) => b.textContent.includes('XBin')).click();
+      await nextTick();
+      return { disabled: modal.querySelector('button[type=submit]').disabled, words: modal.textContent.includes('XBin holds 16 colors') };
+    } finally {
+      unmount();
+    }
+  };
+  expect(await state({ quantize: 'cga' })).toEqual({ disabled: false, words: false });
+  expect(await state({ quantize: 'vga' })).toEqual({ disabled: true, words: true });
+  expect(await state({ quantize: 'none' })).toEqual({ disabled: true, words: true });
+  const list = (n) => Array.from({ length: n }, (_, i) => '#' + (i + 1).toString(16).padStart(2, '0').repeat(3)).join(' ');
+  expect(await state({ quantize: 'palette', palette: list(16) })).toEqual({ disabled: false, words: false });
+  expect(await state({ quantize: 'palette', palette: list(17) })).toEqual({ disabled: true, words: true });
+});

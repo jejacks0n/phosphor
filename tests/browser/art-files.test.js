@@ -9,6 +9,7 @@ import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
 import { readSauce } from '@/lib/Sauce';
 import { readXBin, writeXBin } from '@/lib/XBinFile';
+import { SLOT_CHARS } from '@/lib/BitmapFont';
 import { closeToast, toastMessage } from '@/composables/useToast';
 import { slidersAtDefaults } from '@/store/settings';
 
@@ -501,4 +502,24 @@ test('a .xb file without the XBIN signature is refused as broken', async () => {
   await workspace.askArt(new File(['just text'], 'fake.xb'));
   expect(toastMessage.value).toMatch(/fake\.xb/);
   expect(workspace.artDrop).toBeNull();
+});
+
+test('opens an XBin and exports the same cells', async () => {
+  const project = await afterAnotherDocument(), { font } = xbinFile();
+  const dos = [0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15].map((i) => PALETTES.cga[i].hex);
+  const cells = [SLOT_CHARS[0], ' ', SLOT_CHARS[255], 'A', SLOT_CHARS[0], ' '].map((char, i) => ({ char, fg: dos[(i + 1) % 16], bg: dos[i] }));
+  const bytes = writeXBin({ cols: 3, rows: 2, cells, palette: dos, font });
+  await project.openArtFile(new File([bytes], 'f.xb'));
+  await settle(project);
+  expect(project.quantize).toBe('cga');
+  let blob;
+  await project.exportFile('xb', { deliver: (b) => { blob = b; }, sauce: false });
+  const again = readXBin(new Uint8Array(await blob.arrayBuffer()), 'f.xb');
+  const first = readXBin(bytes, 'f.xb');
+  expect(again.cells).toEqual(first.cells);
+  expect(again.palette).toEqual(first.palette);
+  expect([...again.font.bytes]).toEqual([...first.font.bytes]);
+  await project.openArtFile(new File([blob], 'again.xb'));
+  await settle(project);
+  expect(project.quantize).toBe('cga'); // DOS order out, recognized as CGA again
 });

@@ -10,7 +10,8 @@ import { loadImage, readProject, writeProject, gzipped, downloadBlob, isProjectF
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
 import { encodeFont } from '@/lib/BitmapFont.js';
-import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
+import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
+import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
 import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
 import { MOST_SHAPES } from '@/document/shapes.js';
 import { castText } from '@/lib/CastFile.js';
@@ -648,14 +649,17 @@ export const documentActions = {
   async exportFile(ext, { filename = this.filename, smooth = useWorkspaceStore().smoothText, deliver = downloadBlob, sauce = true, ...opts } = {}) {
     if (this._artInside) this.leaveArt();
     const lines = charRowsOf(this.rows);
+    if (ext === 'xb' && !this.xbinPalette) throw Object.assign(new Error('XBin holds 16 colors'), { userMessage: t('export.errors.xbinPalette') });
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => (ext === 'png'
       ? drawnCells(this.cols, lines, { smooth }, ({ width, height, rgba }) => pngBlob(width, height, rgba(this.cells)))
-      : new AnsiFile(this.cols, lines, this.cells).toBlob({
-        sauce: sauce && this.sauceFields(),
-        colorMode: this.quantize,
-        utf8: ext === 'utf8ans',
-        ...opts,
-      })));
+      : ext === 'xb'
+        ? new Blob([writeXBin({ cols: this.cols, rows: lines, cells: this.cells, palette: this.xbinPalette, font: this.drawingFont ?? await vgaBitmapFont(), sauce: sauce && this.sauceFields() })], { type: 'application/octet-stream' })
+        : new AnsiFile(this.cols, lines, this.cells).toBlob({
+          sauce: sauce && this.sauceFields(),
+          colorMode: this.quantize,
+          utf8: ext === 'utf8ans',
+          ...opts,
+        })));
     exported.call(this, filename, ext);
     await deliver(blob, `${filename.trim() || this.filename}.${ext}`);
   },

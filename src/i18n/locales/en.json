@@ -1088,6 +1088,10 @@
       "png": {
         "title": "Export .png",
         "sub": "Image export rendered in your display font, exactly as shown in the ANSI view."
+      },
+      "xb": {
+        "title": "Export .xb",
+        "sub": "XBin: the art with its font and 16 colors inside, as 16colo.rs shows it."
       }
     },
     "png": {
@@ -1152,11 +1156,17 @@
         },
         "cast": {
           "name": "Cast"
+        },
+        "xb": {
+          "name": "XBin"
         }
       }
     },
     "filtersLeftOut": "Left out: the plugin filter {names}. | Left out: the plugin filters {names}.",
-    "standIns": "{names} shows By shape in place of its plugin solver. | {names} show By shape in place of their plugin solvers."
+    "standIns": "{names} shows By shape in place of its plugin solver. | {names} show By shape in place of their plugin solvers.",
+    "errors": {
+      "xbinPalette": "XBin holds 16 colors: pick CGA, Limited count of 16 or fewer, or a Custom color list of up to 16."
+    }
   },
   "versions": {
     "title": "Versions",
