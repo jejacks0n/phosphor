@@ -67,7 +67,7 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
   expect(await store(page, 'workspace', (w) => w.editorTab)).toBe('sauce');
   await page.keyboard.press('ArrowRight'); // wraps
   await expect(tab(page, 'PIXEL')).toBeFocused();
-  await page.keyboard.press('End');
+  await page.keyboard.press('ArrowLeft'); // and back
   await expect(tab(page, 'SAUCE')).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
@@ -77,4 +77,11 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
   await expect(tab(page, 'ANSI')).toBeFocused(); // the selected tab is the one Tab stop
+
+  // Home and End aren't a tab's: after a click on PIXEL, then ANSI, End scrolls the art, which takes the focus.
+  await tab(page, 'PIXEL').click();
+  await tab(page, 'ANSI').click();
+  await page.keyboard.press('End');
+  await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('article:has(textarea[data-text-input])')).toBeFocused();
 });

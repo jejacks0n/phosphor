@@ -6,7 +6,7 @@ import { sharedIndex } from '@/lib/ColorUtils';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { toast } from '@/composables/useToast';
 import { cellWidth } from '@/lib/CharWidth';
-import { isField, isTextInput } from '@/lib/fields';
+import { isFormField, isTextInput, ownsKey, typesIn } from '@/lib/fields';
 import { snapCursor } from '@/document/wideChars';
 import { t } from '@/i18n/index.js';
 import { refusesHidden } from '@/tools';
@@ -59,12 +59,14 @@ function typeLines(project, workspace, text) {
 // keys (arrows, Backspace, F-keys...) still come through keydown.
 export function useTextTool(project, workspace, textInput) {
   const palettes = usePaletteStore();
-  // Keys belong elsewhere while focus is in a field or a dialog (the color picker, the palette layer).
+  // Focus stays in a form field or a dialog (the color picker, the palette layer); a key belongs elsewhere when the
+  // focused element uses it itself (ownsKey), or focus is in a dialog.
   const inDialog = (el) => !!el.closest?.('dialog, [role="dialog"]');
-  const editableFocus = () => {
+  const inDialogFocus = () => {
     const el = document.activeElement;
-    return isField(el) || (!!el && !isTextInput(el) && inDialog(el));
+    return !!el && !isTextInput(el) && inDialog(el);
   };
+  const editableFocus = () => isFormField(document.activeElement) || inDialogFocus();
 
   // Moving the cursor ends a run of typing (Backspace's move is part of it).
   const move = (dc, dr, { typing = false } = {}) => {
@@ -127,11 +129,11 @@ export function useTextTool(project, workspace, textInput) {
     if (workspace.editorTab !== 'output' || workspace.activeTool !== 'text' || workspace.paletteLayerOpen) return;
     // Escape in a field (a size, the Characters set, a menu reached with Tab), once the field has done its own (put its
     // value back): typing has the keyboard again, the cursor where it was. A dialog's fields are the dialog's.
-    if (event.key === 'Escape' && inUse() && isField(document.activeElement) && !inDialog(document.activeElement)) {
+    if (event.key === 'Escape' && inUse() && isFormField(document.activeElement) && !inDialog(document.activeElement)) {
       event.preventDefault();
       return textInput?.value?.focus({ preventScroll: true });
     }
-    const action = textKeyAction(event, { editable: editableFocus(), animate: project.animate });
+    const action = textKeyAction(event, { editable: ownsKey(document.activeElement, event) || inDialogFocus(), animate: project.animate });
     if (!action) return;
     // Without a cursor only palette flips and slot choices apply (a slot still sets the character to draw with).
     if (!workspace.textCursor && action.type !== 'palette' && action.type !== 'slot') return;
@@ -195,10 +197,9 @@ export function useTextTool(project, workspace, textInput) {
   // pressed button does: left there, letters would go to the Font menu while the cursor blinks. One changed with the
   // keyboard (Tab to it, the arrows) keeps it until Escape; so does a field that types. (Not :focus-visible, which a
   // menu matches after a click too.)
-  const TYPES = 'input:not([type=range], [type=checkbox], [type=radio], [type=color]), textarea, [contenteditable]';
   const onAnyKey = () => { byPointer = false; };
   const onChange = ({ target }) => {
-    if (!byPointer || !inUse() || !isField(target) || target.matches(TYPES) || inDialog(target)) return;
+    if (!byPointer || !inUse() || !isFormField(target) || typesIn(target) || inDialog(target)) return;
     textInput?.value?.focus({ preventScroll: true });
   };
 

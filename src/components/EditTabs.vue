@@ -75,12 +75,13 @@ const tabs = computed(() => [
 const selected = computed(() => tabs.value.find((tab) => tab.id === props.modelValue && !tab.disabled)?.id);
 const focusable = computed(() => selected.value ?? tabs.value.find((tab) => !tab.disabled)?.id); // the tab list's one Tab stop
 
-// The tabs pattern: Left/Right (wrapping), Home and End move to a tab and select it, skipping
-// disabled ones. The keys stop here, so they don't also nudge a selection or move the text cursor.
+// The tabs pattern: Left/Right (wrapping) move to a tab and select it, skipping disabled ones. The keys stop here, so
+// they don't also nudge a selection or move the text cursor. Home and End scroll the art (EditorViewport), as they do
+// with the art focused.
 function onKeyDown(event) {
   const enabled = [...event.currentTarget.querySelectorAll('[role="tab"]:not(:disabled)')];
   const at = enabled.indexOf(document.activeElement);
-  const next = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: enabled.length - 1 }[event.key];
+  const next = { ArrowRight: at + 1, ArrowLeft: at - 1 }[event.key];
   if (next === undefined || at < 0) return;
   event.preventDefault();
   event.stopPropagation();

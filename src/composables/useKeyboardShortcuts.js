@@ -7,7 +7,7 @@ import { copySelection, decodeBlock } from '@/composables/clipboard';
 import { readClipboardHtml } from '@/lib/clipboardBlocks';
 import { typeText } from '@/composables/useTextTool';
 import { colorBoxKey, frameStepKey, helpKey } from '@/lib/TextKeys';
-import { isField } from '@/lib/fields';
+import { ownsKey, typesIn } from '@/lib/fields';
 import { usePlayback } from '@/composables/usePlayback';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
@@ -22,9 +22,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // set, the seed, a size) while it holds typing it hasn't committed: it undoes that itself. Once it has (Enter, its
   // change), the app's undo takes the step back, and the field shows what that leaves. A slider, a menu or a button
   // doesn't type.
-  const TYPED = 'input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]), textarea, [contenteditable]';
   const typing = new WeakSet(); // the fields with typing not committed yet
-  const _onInput = (e) => { if (isField(e.target) && e.target.matches?.(TYPED)) typing.add(e.target); };
+  const _onInput = (e) => { if (typesIn(e.target)) typing.add(e.target); };
   const _onChange = (e) => typing.delete(e.target); // and on focusout: what's left was committed, or never typed
   const _handleUndoRedo = (e) => {
     if (typing.has(e.target)) return false;
@@ -58,7 +57,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // in a field. With the Text tool's caret placed too, as Save: typing never uses the key.
   const _handleOpen = (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'o') return false;
-    if (isField(e.target)) return false;
+    if (ownsKey(e.target, e)) return false;
     e.preventDefault();
     workspaceStore.openRequest++;
     return true;
@@ -70,7 +69,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleZoomKeys = (e) => {
     const by = ZOOM_KEYS[e.key];
     if (by === undefined || !(e.ctrlKey || e.metaKey) || e.altKey) return false;
-    if (!projectStore.image || !['input', 'output', 'vector'].includes(workspaceStore.editorTab) || isField(e.target)) return false;
+    if (!projectStore.image || !['input', 'output', 'vector'].includes(workspaceStore.editorTab) || ownsKey(e.target, e)) return false;
     e.preventDefault();
     workspaceStore.zoomRequest = { by };
     return true;
@@ -86,16 +85,13 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
   watch(() => workspaceStore.isPainting, (painting) => { if (!painting && _releasePending) _release(); });
 
-  // Space pans unless the art isn't showing (SAUCE, SOCIAL), it types (a text field, Edit Mode's
-  // typing) or it presses a focused control (a button, a menu) while the pointer isn't over the canvas.
-  const TYPES = 'input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select, [contenteditable]';
-  const PRESSES = 'button, a, [role="tab"], [role="button"], [role="menuitem"], summary, input[type=checkbox], input[type=radio]';
+  // Space pans unless the art isn't showing (SAUCE, SOCIAL), it types (a text field, a menu, Edit Mode's
+  // typing) or it presses a focused control (a button, a checkbox) while the pointer isn't over the canvas.
   const _spacePans = (e) => {
     if (!workspaceStore.editMode || workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false;
     if (workspaceStore.activeTool === 'text' && workspaceStore.textCursor && workspaceStore.editorTab === 'output') return false; // typing, wherever focus is
-    const target = e.target?.closest ? e.target : null;
-    if (target?.closest(TYPES)) return false;
-    return !target?.closest(PRESSES) || workspaceStore.pointerOverEditor;
+    if (typesIn(e.target) || e.target?.tagName === 'SELECT') return false;
+    return !ownsKey(e.target, e) || workspaceStore.pointerOverEditor;
   };
 
   const _handleToolSwap = (e) => {
@@ -122,7 +118,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const slot = colorBoxKey(e);
     const swap = e.code === 'KeyX' && e.shiftKey && (e.metaKey || e.ctrlKey) && !e.altKey;
     if (!slot && !swap) return false;
-    if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || workspaceStore.paletteLayerOpen) return false;
+    if (ownsKey(e.target, e) || !projectStore.image || !workspaceStore.editMode || workspaceStore.paletteLayerOpen) return false;
     e.preventDefault();
     if (swap) {
       swapColors();
@@ -141,12 +137,12 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // or inside an art layer. Alt+, and Alt+. step while typing too (typing: true).
   const _animationKeysApply = (e, { typing = false } = {}) => projectStore.animate && projectStore.image && !projectStore.artInside
     && (typing || (!e.ctrlKey && !e.metaKey && !e.altKey && !_typing()))
-    && workspaceStore.editMode && !isField(e.target)
+    && workspaceStore.editMode && !ownsKey(e.target, e)
     && !workspaceStore.isPainting && !workspaceStore.paletteLayerOpen && !workspaceStore.colorBox;
 
   // The shortcuts list: ?, or Alt+? while typing in Edit Mode (where ? types). Not in a field.
   const _handleHelp = (e) => {
-    if (!helpKey(e, { typing: _typing() }) || isField(e.target) || workspaceStore.paletteLayerOpen) return false;
+    if (!helpKey(e, { typing: _typing() }) || ownsKey(e.target, e) || workspaceStore.paletteLayerOpen) return false;
     e.preventDefault();
     workspaceStore.shortcutsOpen = true;
     return true;
@@ -154,7 +150,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
   const _handleSwapColors = (e) => {
     if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
-    if (isField(e.target) || !workspaceStore.editMode || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
+    if (ownsKey(e.target, e) || !workspaceStore.editMode || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
     swapColors();
     return true;
   };
@@ -198,7 +194,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (workspaceStore.isPainting) return false; // mid-drag: the drag's end decides
     // The Text tool's textarea isn't a field: Cmd/Ctrl+V there still pastes a Select block (and only
     // pastes text, through the textarea, when there's no block).
-    if (isField(e.target)) return false;
+    if (ownsKey(e.target, e)) return false;
     if (e.shiftKey) {
       if (!ARROWS[e.key] || e.metaKey || e.ctrlKey || !_shiftSelect(...ARROWS[e.key])) return false;
       e.preventDefault();
@@ -209,7 +205,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const command = e.metaKey || e.ctrlKey;
     if (!command) {
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      if ((e.key === 'Escape' || (selecting && e.key === 'Enter' && !e.target?.closest?.(PRESSES))) && sel) { // Enter on a focused control presses it
+      if ((e.key === 'Escape' || (selecting && e.key === 'Enter')) && sel) {
         projectStore.changeSelection((w) => { w.selection = null; });
         if (workspaceStore.activeTool === 'select' && workspaceStore.selectFromText) workspaceStore.setActiveTool('text'); // back to typing, at the cursor
       } else if (e.key === 'Escape' && _typing()) [workspaceStore.lastTextCursor, workspaceStore.textCursor] = [workspaceStore.textCursor, null];
@@ -254,7 +250,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleVectorKeys = (e) => {
     const key = e.key.toLowerCase();
     if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || !['a', 'c', 'x', 'v'].includes(key)) return false;
-    if (workspaceStore.editorTab !== 'vector' || isField(e.target) || workspaceStore.isPainting || !projectStore.image) return false;
+    if (workspaceStore.editorTab !== 'vector' || ownsKey(e.target, e) || workspaceStore.isPainting || !projectStore.image) return false;
     projectStore.commitPending();
     if (key === 'v') {
       clearTimeout(_pendingPaste?.timer);
@@ -273,7 +269,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // the shown layers with All layers on (not in Edit Mode, where they edit the text).
   const _handleWandKeys = (e) => {
     const wand = workspaceStore.wand;
-    if (!wand || e.defaultPrevented || isField(e.target) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
+    if (!wand || e.defaultPrevented || ownsKey(e.target, e) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
     if (workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false; // the palette has the keys; mid-drag, the drag's end decides
     if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
     else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectionIds);
@@ -285,7 +281,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Escape inside an art layer, with nothing else to cancel (the handlers before this one took it if there was): out of
   // the layer, to VECTOR.
   const _handleArtKeys = (e) => {
-    if (e.key !== 'Escape' || e.defaultPrevented || !projectStore.artInside || isField(e.target)) return false;
+    if (e.key !== 'Escape' || e.defaultPrevented || !projectStore.artInside || ownsKey(e.target, e)) return false;
     if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || workspaceStore.paletteLayerOpen || workspaceStore.colorBox || workspaceStore.isPainting) return false;
     projectStore.leaveArt();
     workspaceStore.editorTab = 'vector';
@@ -298,7 +294,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // field), mid-drag, with a tool held by a key, or with the color box or palette layer open.
   const _handleToolKeys = (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || !/^[a-z]$/i.test(e.key)) return false;
-    if (isField(e.target) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
+    if (ownsKey(e.target, e) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
     if (workspaceStore.isPainting || workspaceStore.heldTool || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
     const key = (e.shiftKey ? 'Shift+' : '') + e.key.toUpperCase();
     const tool = offeredTools(workspaceStore.editorTab, projectStore).find(({ keys }) => keys?.includes(key));
@@ -312,7 +308,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // slider's range, as in Photoshop. In the art views, not while typing, mid-drag, or with the color box or palette open.
   const _handleSizeKeys = (e) => {
     const by = { ']': 1, '[': -1 }[e.key];
-    if (!by || e.ctrlKey || e.metaKey || e.altKey || isField(e.target) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
+    if (!by || e.ctrlKey || e.metaKey || e.altKey || ownsKey(e.target, e) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
     if (!['input', 'output'].includes(workspaceStore.editorTab) || workspaceStore.isPainting || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
     const option = getTool(workspaceStore.activeTool).options?.find((o) => o.size && (!o.views || o.views.includes(workspaceStore.editorTab)) && (!o.when || o.when(workspaceStore)));
     if (!option) return false;
@@ -365,7 +361,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // The active tool's own keys (Vector select's nudges, say), before the rest: not in a field, mid-drag, or
   // with the palette layer or the color box open.
   const _handleActiveToolKeys = (e) => {
-    if (e.defaultPrevented || isField(e.target) || !workspaceStore.editMode || workspaceStore.isPainting) return false;
+    if (e.defaultPrevented || ownsKey(e.target, e) || !workspaceStore.editMode || workspaceStore.isPainting) return false;
     if (workspaceStore.paletteLayerOpen || workspaceStore.colorBox || !projectStore.image) return false;
     const tool = getTool(workspaceStore.activeTool);
     if (!tool.keydown?.({ project: projectStore, workspace: workspaceStore, view: workspaceStore.editorTab }, e)) return false;
@@ -388,7 +384,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     }
     // A key while playing pauses first, on the frame showing, so what it does lands there. The bar's
     // own controls have their keys, and they pause for themselves.
-    if (workspaceStore.playing && !isField(e.target) && !e.target?.closest?.('[role="toolbar"]') && !['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) playback.pause();
+    if (workspaceStore.playing && !ownsKey(e.target, e) && !e.target?.closest?.('[role="toolbar"]') && !['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) playback.pause();
 
     const step = frameStepKey(e) || (e.key === ',' ? -1 : e.key === '.' ? 1 : 0);
     if (step && _animationKeysApply(e, { typing: !!frameStepKey(e) })) {

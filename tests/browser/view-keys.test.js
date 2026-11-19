@@ -125,11 +125,29 @@ test('with nothing focused, Page Down, End and Home scroll the view, which takes
   await scrolls(view, '{Home}', () => view.scrollTop === 0);
 });
 
-test('a focused control keeps its keys: Home on a button doesn\'t move the focus to the view', async () => {
+test('a focused control keeps the keys it uses: Home on a slider stays there; End on a tab just clicked scrolls the view', async () => {
   const { view } = await mount('output');
-  const button = host.appendChild(document.createElement('button'));
-  button.focus();
+  const slider = host.appendChild(Object.assign(document.createElement('input'), { type: 'range' }));
+  slider.focus();
   await userEvent.keyboard('{Home}');
-  expect(document.activeElement).toBe(button);
-  expect(document.activeElement).not.toBe(view);
+  expect(document.activeElement).toBe(slider);
+  const tab = host.appendChild(Object.assign(document.createElement('button'), { textContent: 'ANSI' }));
+  tab.setAttribute('role', 'tab');
+  view.scrollTop = 0;
+  tab.focus(); // as a click leaves it
+  await userEvent.keyboard('{End}');
+  expect(document.activeElement).toBe(view);
+  await vi.waitUntil(() => view.scrollTop === view.scrollHeight - view.clientHeight);
+});
+
+test('the pointer is over the view for a mouse, not after a tap (Space pans a focused button only with the mouse over it)', async () => {
+  const { workspace, view } = await mount('output');
+  const enter = (pointerType, type = 'pointerenter') => view.dispatchEvent(new PointerEvent(type, { pointerType }));
+  enter('touch');
+  view.dispatchEvent(new MouseEvent('mouseenter')); // a tap's mouse events follow, with no mouseleave after
+  expect(workspace.pointerOverEditor).toBe(false);
+  enter('mouse');
+  expect(workspace.pointerOverEditor).toBe(true);
+  enter('mouse', 'pointerleave');
+  expect(workspace.pointerOverEditor).toBe(false);
 });
