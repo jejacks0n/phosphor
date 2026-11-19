@@ -165,6 +165,15 @@ export function sharedIndex(index, palette) {
   return first.get(color.hex.toLowerCase()) === index ? undefined : index;
 }
 
+// The palette index a recent color ({ hex, index }, as recentColor reads it) stands for: its index when that index has its
+// color (16, 231), else the first with its color, else the nearest (a color kept in Full color, or before Recent held
+// palette colors).
+export function recentIndex({ hex, index }, palette) {
+  if (palette[index]?.hex.toLowerCase() === hex.toLowerCase()) return index;
+  const { r, g, b } = hex2rgb(hex);
+  return paletteIndex(r, g, b, palette);
+}
+
 // How the color picker lays out the active palette: one or more grids of swatches. CGA is the
 // classic 8 x 2; VGA (xterm 256) is the 16 system colors, the 6x6x6 cube and the 24 grays; custom
 // and adaptive palettes are a plain grid. 24-bit ('none') has no swatches.

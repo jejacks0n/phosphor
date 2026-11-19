@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { coverageOf, setGlyphRasterizer } from '../../src/lib/GlyphCoverage.js';
 import { halfColors, composeCell, coverCell, cellsOfPixels, cellsToPixels, bakedEntry, pinnedCell } from '../../src/lib/Cells.js';
 import { effectiveColor, getEffectiveColor } from '../../src/lib/PixelTransforms.js';
-import { rgb2hex, hex2rgb, PALETTES, sharedIndex } from '../../src/lib/ColorUtils.js';
+import { rgb2hex, hex2rgb, PALETTES, sharedIndex, recentIndex } from '../../src/lib/ColorUtils.js';
 
 test('Composition of edit cells: glyph coverage, half-cell colors, edit-cell attributes over the generated cell, paint over an edit cell, and effective (adjusted + snapped) colors', async () => {
   const C = (r, g, b, c) => ({ r, g, b, hex: rgb2hex({ r, g, b }), c: c ?? [r, g, b] });
@@ -102,4 +102,11 @@ test('R8: pinnedCell shows a pin\'s two pixels as ANSI does, and in Color ASCII 
   const ansi = pinnedCell(gray, black, 'A', 'ansi');
   assert.deepEqual([ansi.bg.hex, ansi.fg.hex], ['#969696', '#000000']);
   assert.deepEqual([pinnedCell(gray, black, 'A', 'ascii').bg.hex, pinnedCell(gray, black, 'A', 'ascii').fg.hex], ['#000000', '#FFFFFF']);
+});
+
+test('a recent color stands for its palette index: its own kept index, else the first with its color, else the nearest', () => {
+  assert.deepEqual([
+    { hex: '#000000', index: 16 }, { hex: '#000000' }, { hex: '#5F5FFF' }, { hex: '#5f5fff', index: 16 }, { hex: '#5c5cfc' },
+  ].map((c) => recentIndex(c, PALETTES.vga)), [16, 0, 63, 63, 63]);
+  assert.equal(recentIndex({ hex: '#5050ff' }, PALETTES.cga), 12);
 });

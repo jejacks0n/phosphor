@@ -1142,10 +1142,11 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   While the side is **None**, the label beside it says None and the color it shows is the one None was laid over (black,
   for a new drawing's background). Pressing it chooses that color at once, so black is one press away, and whatever you
   pick in it after replaces it.
-- **With a Palette** (CGA, VGA, Limited count or Custom color list): Every swatch paints its palette color whatever the
-  color adjustments are. A color the adjustments can't make at all (Saturation at 0 makes only grays) shows under a "no"
-  sign (a circle with a slash) and can't be picked, and the arrows, and **Alt+↑** and **Alt+↓** in Edit Mode, step past
-  it.
+- **With a Palette** (CGA, VGA, Limited count or Custom color list): Every swatch, in the grid and in **Recent**, paints
+  its palette color whatever the color adjustments are. A color the adjustments can't make at all (Saturation at 0 makes
+  only grays) shows under a "no" sign (a circle with a slash) and can't be picked, in **Recent** too, and the arrows, and
+  **Alt+↑** and **Alt+↓** in Edit Mode, step past it. **Recent** keeps the palette colors you picked; a recent color
+  the palette doesn't have (one picked in Full Color) shows as the palette's nearest.
 - **Shift+Cmd+X** (Shift+Ctrl+X): Swap the foreground and background. Plain **X** swaps them too, except in Edit Mode,
   where it types.
 
