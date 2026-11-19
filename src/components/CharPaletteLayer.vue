@@ -305,7 +305,7 @@ onBeforeUnmount(() => {
               <span v-if="g.key === 'tied' || g.key === 'yours'" class="actions">
                 <template v-if="g.key === 'yours'">
                   <button class="new" @click="importer.click()">{{ t('palette.layer.import') }}</button>
-                  <button class="new" @click="exportYours">{{ t('palette.layer.export') }}</button>
+                  <button class="new" :disabled="!palettes.all.some(p => !p.builtin)" @click="exportYours">{{ t('palette.layer.export') }}</button>
                 </template>
                 <button class="new" @click="createPalette(g.key === 'tied')">{{ t('palette.layer.newBtn') }}</button>
               </span>
@@ -585,8 +585,13 @@ button.new {
   cursor: pointer;
 }
 
-button.new:hover {
+button.new:hover:not(:disabled) {
   background: var(--surface-3);
+}
+
+button.new:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 button.fold {

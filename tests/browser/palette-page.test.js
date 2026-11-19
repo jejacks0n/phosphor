@@ -62,6 +62,7 @@ test('the drawing\'s font\'s palettes come first', async () => {
   host.remove();
   await mount({ font: false });
   expect(headers()).toEqual(['Built-in', 'Yours']);
+  expect(button('Export', group('Yours')).disabled).toBe(true); // none of yours to export
 });
 
 test('+ New under the font\'s group makes a tied palette', async () => {
