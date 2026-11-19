@@ -1,6 +1,6 @@
-# A Porpoise review: {persona}, seed {seed}
+# A Persona Studio review: {persona}, seed {seed}
 
-You're the reviewer for the run of {persona}'s script in `{runDir}`, started by Porpoise. You're a different agent
+You're the reviewer for the run of {persona}'s script in `{runDir}`, started by Persona Studio. You're a different agent
 from the one that ran. The review is unattended, and there's no one to ask.
 
 ## How to review
@@ -12,13 +12,21 @@ wins for this run.
 - A run split across sessions has more folders beside the first: `{runDir}-2`, `{runDir}-3`. Read them all.
 - If `node_modules/` isn't there, run `npm install` first.
 - Start each reproduction session in a folder of its own: `QA_PERSONA={persona} QA_SEED={seed}
-  QA_RUN_DIR={runDir}-repro-1 npm run qa` (then `-repro-2`). If port 4210 is taken, use another `QA_PORT` (say
-  `4211`); never `5173`, `4180` or `4181`.
-- The script the run walked is `{script}`. If it isn't the persona sheet, the persona's Who, Traits and Known still
-  come from `docs/qa/personas/{persona}.md`.
+  QA_PORT={port} QA_RUN_DIR={runDir}-repro-1 npm run qa` (then `-repro-2`). `{port}` is this run's own port, so
+  don't pick another: other personas may be running on the ports nearby.
+- The script the run walked is `{script}`, {persona}'s persona file.
+- The run was asked to check these fixes again, and left a `Recheck <id>:` note for each. Give each one a
+  `rechecks` entry in the results file, `fixed` or `still`, from that note; if it's still wrong, report it as a
+  finding too:
 
-Not for Porpoise runs: skip "After a review". Don't add a line to `scores.md`, and don't commit anything. The
-workspace is reset before every run, and Porpoise keeps the trends. The run folder is your only output:
+{recheck}
+
+- The owner closed these. Leave them out of the findings, along with the persona file's `## Known` problems:
+
+{closed}
+
+Not for Persona Studio runs: skip "After a review". Don't add a line to `scores.md`, and don't commit anything. The
+workspace is reset before every run, and Persona Studio keeps the trends. The run folder is your only output:
 `review.md` as the README says, and `results.json` below. Don't change any other file but `{doneFile}`.
 
 ## The results file
@@ -27,7 +35,7 @@ Write `{runDir}/results.json`, in exactly this shape (the comments are for you, 
 
 ```jsonc
 {
-  "runId": "2026-11-10-maya-503179919-l2",   // the run folder's name: the last part of {runDir}
+  "runId": "maya-mhx3k2a",                   // the run folder's name: the last part of {runDir}
   "persona": "{persona}",
   "seed": {seed},                             // a number, not text
   "appCommit": "b03fd01...",                  // `commit` in run.json
@@ -47,6 +55,9 @@ Write `{runDir}/results.json`, in exactly this shape (the comments are for you, 
     { "goal": "Export my .ans from the keys in three presses or fewer.", "value": 2 },
     { "goal": "When a dialog closes, my keys work again without a click.", "judgment": "notMet",
       "evidence": "After Export .ans closed, focus was on the page's body.", "shot": "shots/051-export-closed.png" }
+  ],
+  "rechecks": [                               // one for each fix the run checked again; [] when none
+    { "findingId": "f12", "result": "fixed", "note": "The help opens on tap now." }   // fixed or still
   ],
   "scores": { "keyboard": 60 }
 }

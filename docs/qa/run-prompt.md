@@ -1,6 +1,6 @@
-# A Porpoise run: {persona}, seed {seed}
+# A Persona Studio run: {persona}, seed {seed}
 
-You're the QA agent for one run of {persona}'s script against Phosphor, started by Porpoise. The run is
+You're the QA agent for one run of {persona}'s script against Phosphor, started by Persona Studio. The run is
 unattended, and there's no one to ask.
 
 ## How to run
@@ -9,16 +9,17 @@ Follow `docs/qa/README.md` from the top through "The end of a run", as written: 
 walking each step, the probe kit, Free time, interruptions, findings and the keyboard score. Read the Rules in
 `AGENTS.md` first. Where this page and the README differ, this page wins for this run.
 
-- If `node_modules/` isn't there, run `npm install` first (Porpoise's workspaces skip setup), and
+- If `node_modules/` isn't there, run `npm install` first (Persona Studio's workspaces skip setup), and
   `npx playwright install chromium` if Playwright says its Chromium is missing.
-- Start the session with these three set, as the README says (in the background, with the longest timeout):
+- Start the session with these four set, as the README says (in the background, with the longest timeout):
 
   ```bash
-  QA_PERSONA={persona} QA_SEED={seed} QA_RUN_DIR={runDir} npm run qa
+  QA_PERSONA={persona} QA_SEED={seed} QA_PORT={port} QA_RUN_DIR={runDir} npm run qa
   ```
 
 - `{runDir}` is this run's folder, and its only output. Keep your snippets and `agent-log.md` in it too.
-- If port 4210 is taken, do as the README says: another `QA_PORT` (say `4211`). Never `5173`, `4180` or `4181`.
+- `{port}` is this run's own port: other personas may be running beside you on the ports nearby, so don't pick
+  another. If it's taken anyway, find out what holds it as the README says, then end with `"ok": false` and say so.
 - If the session ends before the run is done, start the next one with `QA_RUN_DIR={runDir}-2` (then `-3`), at the
   same seed, and carry on as the README says. The reviewer looks for those folders by name.
 
@@ -26,10 +27,8 @@ walking each step, the probe kit, Free time, interruptions, findings and the key
 
 Walk the script at `{script}`.
 
-- If it's the persona sheet, `docs/qa/personas/{persona}.md`, walk its `## Script` section.
-- Otherwise it's the script Porpoise wrote for this loop: walk its steps instead of the sheet's. Who {persona} is
-  and their Traits still come from `docs/qa/personas/{persona}.md`: read its Who, Why they're here, What they bring,
-  What they lean on, What makes them give up, Sizes, Traits and Known.
+It's {persona}'s persona file: walk its `## Script` section. Read the rest of it too: Who, Why they're here,
+What they bring, What they lean on, What makes them give up, Sizes, Traits and Known.
 
 Name each step as the script does, its number and heading (`qa.step('21. Export my .ans')`). A `Measured: <task>`
 marker, on its own line under the heading or at the end of the step, isn't part of the name.
@@ -42,6 +41,26 @@ marker, on its own line under the heading or at the end of the step, isn't part 
 
 Walk the script as it is; don't bend it toward the goals. When you see something that bears on a goal, put it in a
 `qa.note` on that step, with a shot, so the reviewer can judge the goal.
+
+## Fixes to check again
+
+These were fixed since {persona} reported them. Before the script, try each one the way it was reported, and put
+what you saw in a `qa.note` (`Recheck f12: fixed, the help opens on tap now` or `Recheck f12: still, nothing
+opens`), with a shot:
+
+{recheck}
+
+## Already closed
+
+The owner closed these. Don't report them again, or the persona file's `## Known` problems:
+
+{closed}
+
+## Focus
+
+What the owner asked you to look at, if anything: {focus}
+
+When it names something, spend your Free time there first.
 
 ## Measured steps
 
