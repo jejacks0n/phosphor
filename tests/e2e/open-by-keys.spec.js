@@ -37,7 +37,6 @@ test('on a phone the settings drawer is out of the Tab order while closed: Choos
 
   const menu = page.getByRole('button', { name: 'Toggle settings' });
   await menu.focus();
-  await page.keyboard.press('Enter');
-  await page.keyboard.press('Shift+Tab'); // the drawer comes before the workspace
-  expect(await inPanel()).toBe(true);
+  await page.keyboard.press('Enter'); // opened from the keys, focus goes to the drawer's first control
+  await expect.poll(inPanel).toBe(true);
 });
