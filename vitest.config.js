@@ -11,7 +11,10 @@ import { SOFTWARE_GL, launchWithout } from './tests/support/chromiumArgs.js';
 // (SwiftShader) on every machine, so a conversion gives the same cells locally and in CI. Adding
 // WebKit later: another entry in the browser project's instances.
 // Two connections in one machine (the room tests) reach each other by their addresses, not mDNS names.
-const launchOptions = await launchWithout(['WebRtcHideLocalIpsWithMdns'], SOFTWARE_GL);
+// The unit tests alone (npm run test:unit, and CI's test job, which has no Chromium) don't launch one to ask it.
+const projects = process.argv.flatMap((arg, i, all) => (arg === '--project' ? [all[i + 1]] : arg.startsWith('--project=') ? [arg.slice(10)] : []));
+const unitOnly = projects.length > 0 && projects.every((name) => name === 'unit');
+const launchOptions = unitOnly ? {} : await launchWithout(['WebRtcHideLocalIpsWithMdns'], SOFTWARE_GL);
 
 const DESKTOP_TESTS = 'tests/browser/desktop-*.test.js';
 const browserTests = () => ({  // (fresh each time: Vitest names a project's instances in place)
