@@ -712,6 +712,8 @@
   },
   "palette": {
     "file": {
+      "added": "1 palette ajoutée. | {n} palettes ajoutées.",
+      "addedWaiting": "1 palette ajoutée pour {fonts}. Chargez cette police pour la voir. | {n} palettes ajoutées pour {fonts}. Chargez cette police pour les voir.",
       "notPalettes": "« {name} » n'est pas un fichier de palettes Phosphor."
     },
     "untitled": "Palette sans titre",

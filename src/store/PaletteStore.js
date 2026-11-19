@@ -2,6 +2,9 @@ import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
 import { BUILTIN_PALETTES, normalizeGlyphs, forkName } from '@/lib/charPalettes';
 import { t } from '@/i18n/index.js';
+import { fontId } from '@/lib/BitmapFont.js';
+import { useProjectStore } from '@/store/ProjectStore.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 
 const RECENT_CHARS = 24;
 const newId = () => `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -10,7 +13,7 @@ const newId = () => `u${Date.now().toString(36)}${Math.random().toString(36).sli
 // characters. Yours and the recents belong to you, not to a project (kept in localStorage).
 export const usePaletteStore = defineStore('palettes', {
   state: () => ({
-    userPalettes: useLocalStorage('phosphor.palettes', []),       // { id, name, glyphs }[]
+    userPalettes: useLocalStorage('phosphor.palettes', []),       // { id, name, glyphs, font? }[]; font is { id, name, height } of the bitmap font it belongs to
     activeId: useLocalStorage('phosphor.activePalette', 'shades'),
     recentChars: useLocalStorage('phosphor.recentChars', []),
     flashIndex: null, // the F-key slot that just changed (the strip flashes it)
@@ -22,16 +25,41 @@ export const usePaletteStore = defineStore('palettes', {
       ...BUILTIN_PALETTES,
       ...(Array.isArray(state.userPalettes) ? state.userPalettes : [])
         .filter(p => p && typeof p.id === 'string')
-        .map(p => ({ ...p, name: String(p.name ?? t('palette.untitled')), glyphs: normalizeGlyphs(Array.isArray(p.glyphs) ? p.glyphs.map(g => (typeof g === 'string' ? g : '')) : '') })),
+        .map(p => ({ ...p, name: String(p.name ?? t('palette.untitled')), glyphs: normalizeGlyphs(Array.isArray(p.glyphs) ? p.glyphs.map(g => (typeof g === 'string' ? g : '')) : ''), font: p.font && typeof p.font.id === 'string' ? p.font : null })),
     ],
+    // The drawing's bitmap font, as a palette's tie names it.
+    currentFont() {
+      const font = useProjectStore().drawingFont;
+      return font ? { id: fontId(font), name: font.name, height: font.height } : null;
+    },
+    tied() {
+      const id = this.currentFont?.id;
+      return id ? this.all.filter(p => !p.builtin && p.font?.id === id) : [];
+    },
+    builtins: () => BUILTIN_PALETTES,
+    general() {
+      return this.all.filter(p => !p.builtin && !p.font);
+    },
+    shown() {
+      return [...this.tied, ...this.builtins, ...this.general];
+    },
+    // Yours tied to a font that isn't in use and isn't kept in this browser.
+    unloaded() {
+      const known = new Set([this.currentFont?.id, ...(useWorkspaceStore().userFonts ?? []).map(f => f.id)]);
+      return this.all.filter(p => p.font && !known.has(p.font.id));
+    },
+    countFor() {
+      return (id) => this.all.filter(p => p.font?.id === id).length;
+    },
+    // The chosen palette when it's shown; else the font's first, else Shades (activeId stays as chosen).
     active() {
-      return this.all.find(p => p.id === this.activeId) ?? this.all[0];
+      return this.shown.find(p => p.id === this.activeId) ?? this.tied[0] ?? BUILTIN_PALETTES.find(p => p.id === 'shades');
     },
   },
 
   actions: {
     flip(delta) {
-      const all = this.all;
+      const all = this.shown;
       const i = all.findIndex(p => p.id === this.active.id);
       this.activeId = all[(i + delta + all.length) % all.length].id;
     },
@@ -41,9 +69,9 @@ export const usePaletteStore = defineStore('palettes', {
     ensureEditable(id) {
       const palette = this.all.find(p => p.id === id);
       if (!palette?.builtin) return { id, forked: null };
-      const copy = { id: newId(), name: forkName(palette.name, this.all.map(p => p.name)), glyphs: [...palette.glyphs] };
+      const copy = { id: newId(), name: forkName(palette.name, this.all.map(p => p.name)), glyphs: [...palette.glyphs], font: this.currentFont };
       this.userPalettes = [...this.userPalettes, copy];
-      if (this.activeId === id) this.activeId = copy.id;
+      if (this.active.id === id) this.activeId = copy.id;
       return { id: copy.id, forked: copy.name };
     },
 
@@ -61,7 +89,7 @@ export const usePaletteStore = defineStore('palettes', {
     },
 
     create() {
-      const palette = { id: newId(), name: t('palette.untitled'), glyphs: normalizeGlyphs('') };
+      const palette = { id: newId(), name: t('palette.untitled'), glyphs: normalizeGlyphs(''), font: this.currentFont };
       this.userPalettes = [...this.userPalettes, palette];
       return palette.id;
     },
@@ -69,9 +97,29 @@ export const usePaletteStore = defineStore('palettes', {
     duplicate(id) {
       const source = this.all.find(p => p.id === id);
       if (!source) return null;
-      const palette = { id: newId(), name: t('palette.copyName', { name: source.name }), glyphs: [...source.glyphs] };
+      const palette = { id: newId(), name: t('palette.copyName', { name: source.name }), glyphs: [...source.glyphs], font: source.builtin ? this.currentFont : source.font };
       this.userPalettes = [...this.userPalettes, palette];
       return palette.id;
+    },
+
+    // Ties one of yours to a font (or to none: it shows with any font).
+    tie(id, font) {
+      this.userPalettes = this.userPalettes.map(p => (p.id === id ? { ...p, font: font ? { id: font.id, name: font.name, height: font.height } : null } : p));
+    },
+
+    // Palettes from a file ({ name, glyphs, font }[]), kept under new ids and unique names. waiting:
+    // the names of the fonts they're tied to that aren't loaded or in use.
+    importPalettes(list) {
+      const names = this.all.map(p => p.name);
+      const added = list.map((p) => {
+        const name = forkName(p.name, names);
+        names.push(name);
+        return { id: newId(), name, glyphs: [...p.glyphs], font: p.font ?? null };
+      });
+      this.userPalettes = [...this.userPalettes, ...added];
+      const missing = new Set(this.unloaded.map(p => p.id));
+      const waiting = [...new Set(added.filter(p => missing.has(p.id)).map(p => p.font.name))];
+      return { added: added.length, waiting };
     },
 
     rename(id, name) {
