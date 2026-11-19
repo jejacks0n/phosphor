@@ -57,7 +57,7 @@ export const DRAWING_ACTIONS = [
 export const HOST_ONLY_ACTIONS = [
   'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'shiftBaseCells', 'paintBasePixels', 'addPictureToLayer',
   'bake', 'flattenDrawing', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'clearEditLayer',
-  'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed', 'setLayerChars',
+  'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed', 'setLayerChars', 'setDrawingFont',
   'updateCols', 'updateRows',
   'setImageFromFile', 'setBlankCanvas', 'replaceImage', 'newDocument', 'clearImage', 'loadProject', 'restoreDocument', 'openParts', 'openArtFile',
 ];

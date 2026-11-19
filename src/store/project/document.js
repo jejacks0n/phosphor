@@ -237,6 +237,8 @@ export const documentActions = {
       rows: Math.max(1, rows),
       ...sauceDefaults(),
       ...sliderDefaults(),
+      fontBitmap: '',
+      fontName: '',
       filename: t('common.untitled'),
       savedToFile: false,
       ...patch,

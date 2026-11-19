@@ -15,6 +15,7 @@ import { isSolverRef, solverFor, standInOf, optionValues, filterFor } from '@/pl
 import { filterGroups, runningFilters } from '@/plugins/filters.js';
 import { usePluginStore } from '@/store/PluginStore.js';
 import { useRoomStore } from '@/store/RoomStore.js';
+import { decodeFont } from '@/lib/BitmapFont.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -25,6 +26,7 @@ import { editLayerActions } from '@/store/project/editLayer.js';
 import { renderingActions } from '@/store/project/rendering.js';
 import { readingActions } from '@/store/project/reading.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
+import { fontActions } from '@/store/project/font.js';
 import { sliderActions } from '@/store/project/sliders.js';
 import { historyActions } from '@/store/project/history.js';
 import { sharingActions, DRAWING_ACTIONS, HOST_ONLY_ACTIONS, WHOLE_LAYER_ACTIONS, lockedOut } from '@/store/project/sharing.js';
@@ -117,6 +119,14 @@ function firstLedger() {
   return newLedger(() => useProjectStore(pinia));
 }
 
+// decodeFont's last answer, so the getter doesn't decode the same string for each store.
+let lastFont = { text: '', name: '', font: null };
+function fontFor(text, name) {
+  if (!text) return null;
+  if (lastFont.text !== text || lastFont.name !== name) lastFont = { text, name, font: decodeFont(text, name) };
+  return lastFont.font;
+}
+
 export const useProjectStore = defineStore('project', {
   state: () => ({
     image: shallowRef(null),
@@ -190,6 +200,8 @@ export const useProjectStore = defineStore('project', {
   }),
 
   getters: {
+    // The drawing's bitmap font, or null: decoded once for each fontBitmap.
+    drawingFont: (state) => fontFor(state.fontBitmap, state.fontName),
     // Inside an art layer, only as far back as where you stepped in, and on only to what was done inside.
     canUndo: (state) => state.historyVersion >= 0 && state.history.canUndo && (!state._artInside || state._artInside.entries.has(state.history.last)),
     // Something to bake: an image, and a Transform, Adjustment or Effect slider off its default.
@@ -420,6 +432,7 @@ export const useProjectStore = defineStore('project', {
     selectionActions,
     mergingActions,
     sliderActions,
+    fontActions,
     historyActions,
     sharingActions,
     sharingHostActions,
