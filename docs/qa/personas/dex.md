@@ -139,8 +139,9 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 - Rated: yes, wants F1–F12 and Alt+→
 
 ### 6. Draw half blocks
-- Does: presses P, sets Draw with to Half-block, and draws a small shape in two colors.
-- Expects: each cell he paints becomes `▄`, and the half he doesn't paint keeps its color; a straight line with Shift
+- Does: presses P, sets Draw with to Half-block from the keys (Tab to it, Enter, ↓ to Half-block, Enter), and draws a
+  small shape in two colors.
+- Expects: the arrows walk the menu's items and Enter picks one; each cell he paints becomes `▄`, and the half he doesn't paint keeps its color; a straight line with Shift
   from his last stroke.
 - Probes: `undo-redo`: undo the shape stroke by stroke; `again`: draw over the same cells twice in another color, and
   across a box of double lines he typed, with the Pencil and with the Shape tool's Half-block, Write block glyphs on

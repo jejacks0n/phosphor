@@ -1,6 +1,7 @@
 <script setup>
 import { ref, shallowRef, nextTick, onMounted, onBeforeUnmount, useTemplateRef, useId } from 'vue';
 import { t } from '@/i18n';
+import { arrowsBetween } from '@/lib/focus';
 
 const props = defineProps({
   label: { type: String, default: () => t('common.actions') },
@@ -72,6 +73,11 @@ const handleKeydown = (e) => {
   if (!isOpen.value || e.key !== 'Escape' || typing()) return;
   escaped(e);
 };
+// Down and Up, with the menu open, from its trigger into its items and between them, as a menu's do (a field's or a
+// slider's own arrows are left to it). Enter or Space then picks the one with focus.
+const arrows = (e) => {
+  if (isOpen.value) arrowsBetween(e, [root.value.querySelector('.dropdown-trigger'), ...content.value?.querySelectorAll('button') ?? []]);
+};
 const escaped = (e) => {
   e.preventDefault();
   e.stopImmediatePropagation();
@@ -93,7 +99,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <article ref="root" class="dropdown" :class="{ open: isOpen }" :style="{ '--anchor': anchor }">
+  <article ref="root" class="dropdown" :class="{ open: isOpen }" :style="{ '--anchor': anchor }" @keydown="arrows">
     <slot name="before"></slot><!-- inside, so the menu lines up with it too and a press on it isn't outside -->
     <button class="dropdown-trigger" :aria-label="triggerLabel" @click="toggle" :disabled="disabled" :title="label">
       <slot name="trigger">

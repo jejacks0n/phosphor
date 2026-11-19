@@ -2,6 +2,7 @@
 // trigger, below it lined up with one edge (or above it, with up), flipped to stay in the window.
 import { afterEach, expect, test } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
+import { userEvent } from 'vitest/browser';
 import { i18n } from '@/i18n';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
@@ -90,4 +91,33 @@ test('a phone\'s keyboard coming up for a field in it (the window resized and sc
   document.dispatchEvent(new Event('scroll'));
   await nextTick();
   expect(isOpen()).toBe(false);
+});
+
+test('from the keys: Enter opens it, Down and Up move between its items (past a disabled one, stopping at the ends), and Enter picks one', async () => {
+  host = document.createElement('div');
+  document.body.append(host);
+  let picked = null;
+  const item = (name, disabled = false) => h('button', { disabled, onClick: () => { picked = name; } }, name);
+  app = createApp({
+    render: () => h(DropdownMenu, { label: 'Menu' }, () => [item('One'), item('Two'), item('Off', true), item('Three')]),
+  }).use(i18n);
+  app.mount(host);
+  const trigger = host.querySelector('.dropdown-trigger');
+  trigger.focus();
+  await userEvent.keyboard('{Enter}');
+  await nextTick();
+  const named = () => document.activeElement.textContent;
+  await userEvent.keyboard('{ArrowDown}');
+  expect(named()).toBe('One');
+  await userEvent.keyboard('{ArrowDown}{ArrowDown}');
+  expect(named()).toBe('Three'); // past the disabled one
+  await userEvent.keyboard('{ArrowDown}');
+  expect(named()).toBe('Three'); // the end: it stays
+  await userEvent.keyboard('{ArrowUp}');
+  expect(named()).toBe('Two');
+  await userEvent.keyboard('{Enter}');
+  await nextTick();
+  expect(picked).toBe('Two');
+  expect(host.querySelector('.dropdown-content')).toBe(null);
+  expect(document.activeElement).toBe(trigger);
 });

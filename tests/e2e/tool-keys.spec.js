@@ -94,3 +94,17 @@ test("the Pencil's Single draws lines of box characters: drag across, then down,
   expect(await chars(page, 3, 4, 12)).toBe('────────┐');
   expect(await chars(page, 7, 12, 12)).toBe('│');
 });
+
+test("the Pencil's Draw with menu from the keys: Enter opens it, Down walks its items, Enter picks one and focus goes back to it", async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('p');
+  const trigger = page.getByRole('button', { name: 'Colors only' });
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowDown'); // Colors only, Single line, Double line
+  await expect(page.getByRole('button', { name: 'Double line' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  expect(await store(page, 'workspace', (w) => w.pencilDrawWith)).toBe('half');
+  await expect(page.getByRole('button', { name: 'Half-block' })).toBeFocused();
+});
