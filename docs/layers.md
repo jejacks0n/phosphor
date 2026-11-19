@@ -1149,7 +1149,8 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
 - **The List**: Press **?** for the list of every keyboard shortcut (in Edit Mode, where ? types, press **Alt+?**,
   Option+? on a Mac). It doesn't open from a text field.
 - **Opening a File**: **Cmd+O** (Ctrl+O) opens the file chooser, from anywhere in the app except while you type in a
-  field or in Edit Mode's text. What you pick opens as a dropped file does, asking first where a drop would.
+  field; with the Text tool's caret placed too. What you pick opens as a dropped file does, asking first where a drop
+  would. A new or opened drawing starts with the caret put away.
 - **The Start Screen**: **Tab** reaches **Choose a file**, and **Enter** or **Space** presses it. From there **↓** and
   **↑** move between its buttons, top to bottom: **Choose a file**, **Start with a blank canvas**, and each drawing's
   **Open** (not one that's open in another tab).

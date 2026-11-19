@@ -109,7 +109,8 @@ script. Every section ends with Free time.
   800, with Char, FG and BG, all of it in sight on the phone (the readout wraps; only its buttons scroll sideways, faded
   at the edge); moving the cursor doesn't change the bar's height; the rest of the file doesn't move.
 - Probes: `undo-redo`: undo the fix, redo it, then type another and check redo is off, timing each against `response`;
-  `again`: fix a second cell 1,000 lines away.
+  `again`: fix a second cell 1,000 lines away; `out-of-order`: with the caret still placed, press Cmd+O (the file
+  chooser opens), then start a new project (no caret is left in it).
 - Rated: yes, wants T, then a key to go to a cell (getting there by arrows is hundreds of keys)
 
 ### 5. Match a color and fix a cell's colors
