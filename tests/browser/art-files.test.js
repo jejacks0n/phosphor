@@ -467,3 +467,38 @@ test('an XBin of 512 characters is refused with its reason, and the open drawing
   expect(workspace.artDrop).toBeNull();
   expect(project.documentId).toBe(before);
 });
+
+// An XBin with no palette and no font: the header, then uncompressed cells.
+const bareXBin = () => new File([Uint8Array.from([0x58, 0x42, 0x49, 0x4e, 0x1a, 2, 0, 1, 0, 16, 0, 65, 7, 66, 7])], 'bare.xb');
+
+test('an XBin with no font opens with no drawing font, and no palette opens as CGA', async () => {
+  const project = await afterAnotherDocument(), { file } = xbinFile();
+  await project.openArtFile(file);
+  expect(project.drawingFont).not.toBeNull();
+  await project.openArtFile(bareXBin());
+  await settle(project);
+  expect(project.drawingFont).toBeNull();
+  expect(project.quantize).toBe('cga');
+});
+
+test('an XBin whose 16 colors are CGA in DOS order opens as CGA; one channel off, as its own list', async () => {
+  const project = await afterAnotherDocument();
+  const dos = [0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15].map((i) => PALETTES.cga[i].hex);
+  const font = { name: 'F', height: 8, bytes: new Uint8Array(8 * 256) };
+  const open = async (palette) => {
+    await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: dos[7], bg: dos[0] }], palette, font })], 'p.xb'));
+    await settle(project);
+  };
+  await open(dos);
+  expect(project.quantize).toBe('cga');
+  await open(dos.map((hex, i) => (i === 3 ? '#aaaa00' : hex)));
+  expect(project.quantize).toBe('palette');
+});
+
+test('a .xb file without the XBIN signature is refused as broken', async () => {
+  const workspace = (await afterAnotherDocument(), useWorkspaceStore());
+  closeToast();
+  await workspace.askArt(new File(['just text'], 'fake.xb'));
+  expect(toastMessage.value).toMatch(/fake\.xb/);
+  expect(workspace.artDrop).toBeNull();
+});

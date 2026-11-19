@@ -22,6 +22,7 @@ test('builder config names the Local Network usage, opens projects and ANSI art,
   const associations = section(yml, 'fileAssociations');
   assert.match(associations, /- ext: phosphor\n\s+name: Phosphor Project\n\s+role: Editor\n\s+rank: Owner\n\s+mimeType: application\/x-phosphor/);
   for (const ext of ['ans', 'utf8ans', 'diz']) assert.match(associations, new RegExp(`- ext: ${ext}\\n\\s+name: .+\\n\\s+role: Editor\\n\\s+rank: Alternate\\n\\s+mimeType: text/x-${ext}`));
+  assert.match(associations, /- ext: xb\n\s+name: .+\n\s+role: Editor\n\s+rank: Alternate\n\s+mimeType: application\/x-xbin/);
 
   const mac = section(yml, 'mac');
   assert.match(mac, /NSLocalNetworkUsageDescription: "Phosphor connects to rooms on your local network\."/);
@@ -84,11 +85,11 @@ test('every file the app opens is associated, and only what no other app owns be
   const yml = read('electron-builder.yml');
   const exts = (text) => [...text.matchAll(/- ext: (?:\[(.+)\]|(\S+))$/gm)].flatMap(([, list, one]) => (list ?? one).split(', '));
   const everywhere = exts(section(yml, 'fileAssociations'));
-  assert.deepEqual(everywhere, ['phosphor', 'ans', 'utf8ans', 'diz']);
+  assert.deepEqual(everywhere, ['phosphor', 'ans', 'utf8ans', 'diz', 'xb']);
   const mac = exts(section(yml, 'mac'));
   assert.deepEqual([...everywhere, ...mac].sort(), [...OPENABLE].sort());
-  assert.equal(section(yml, 'mac').match(/rank: (\w+)/g).join(), 'rank: Alternate,rank: Alternate,rank: Alternate');
+  assert.equal(section(yml, 'mac').match(/rank: (\w+)/g).join(), 'rank: Alternate,rank: Alternate');
   assert.doesNotMatch(section(yml, 'win'), /fileAssociations/);
   const linux = /mimeTypes: \[(.+)\]/.exec(section(yml, 'linux'))[1].split(', ');
-  for (const type of ['text/x-nfo', 'application/x-xbin', 'text/plain', 'image/png', 'image/jpeg', 'image/svg+xml']) assert.ok(linux.includes(type), type);
+  for (const type of ['text/x-nfo', 'text/plain', 'image/png', 'image/jpeg', 'image/svg+xml']) assert.ok(linux.includes(type), type);
 });

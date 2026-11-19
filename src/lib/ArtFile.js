@@ -50,7 +50,7 @@ function decode(bytes, name) {
 }
 
 export function readArtFile(bytes, name) {
-  if (isXBin(bytes)) return readXBin(bytes, name); // by its bytes, whatever the name
+  if (isXBin(bytes) || extensionOf(name) === 'xb') return readXBin(bytes, name); // by its bytes, whatever the name; a .xb without them is broken
   const sauce = readSauce(bytes);
   const { items, cp437, notUtf8 } = decode(bytes.subarray(0, artEndOf(bytes)), name);
   const fixed = sauce && sauce.dataType === 1 && sauce.width > 0 ? sauce.width : extensionOf(name) === 'ans' || notUtf8 ? 80 : 0; // 0: no wrapping
