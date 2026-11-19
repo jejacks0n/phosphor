@@ -78,7 +78,7 @@ function fit(event, f) {
   }
   fitted[key] = text;
   project[key] = text;
-  notes[key] = [left && t('sauce.cut', { width: formatNumber(width), left: quoted(left) }), stripped && !f.digits && t('sauce.controls')].filter(Boolean).join('\n'); // one line each
+  notes[key] = [left && t('sauce.cut', { width: formatNumber(width) }), stripped && !f.digits && t('sauce.controls')].filter(Boolean).join('\n'); // one line each
 }
 </script>
 

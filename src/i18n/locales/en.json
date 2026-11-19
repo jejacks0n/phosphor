@@ -1011,7 +1011,7 @@
     "commentLinesOwn": "{count} of {most} SAUCE lines ({own} are Phosphor's own)",
     "commentLinesOver": "{count} of {most} SAUCE lines. From line {line} (\"{text}\") on, comments won't be in the file.",
     "controls": "Control characters, like tab or ESC, can't be in SAUCE and were left out.",
-    "cut": "Only {width} characters fit. Left out: \"{left}\""
+    "cut": "Only {width} characters fit."
   },
   "unsaved": {
     "openTitle": "Open {name}?",

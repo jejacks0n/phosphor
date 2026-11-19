@@ -1011,7 +1011,7 @@
     "commentLinesOwn": "{count} lignes SAUCE sur {most} (dont {own} de Phosphor)",
     "commentLinesOver": "{count} lignes SAUCE sur {most}. À partir de la ligne {line} (« {text} »), les commentaires ne seront pas dans le fichier.",
     "controls": "Les caractères de contrôle, comme la tabulation ou ESC, ne peuvent pas figurer dans le SAUCE et ont été laissés de côté.",
-    "cut": "Seuls {width} caractères tiennent. Laissé de côté : « {left} »"
+    "cut": "Seuls {width} caractères tiennent."
   },
   "unsaved": {
     "openTitle": "Ouvrir {name} ?",

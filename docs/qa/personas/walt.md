@@ -183,14 +183,14 @@ bytes of the original and the export outside the art.
 
 ### 12. Fill the Title to the brim
 - Does: on SAUCE, types a 40-character title.
-- Expects: the field stops at 35, the count beside it reads 35 / 35, and a line under it names what didn't fit.
+- Expects: the field stops at 35, the count beside it reads 35 / 35, and a line under it says only 35 characters fit.
 - Probes: `extremes`: paste 40 characters with `é`, `€` and an emoji (the emoji takes one of the 35, and the line
-  quotes what was left out); `back-out`: type, press Escape, and check the field.
+  says only 35 characters fit); `back-out`: type, press Escape, and check the field.
 - Rated: yes, wants ← → with a tab focused, then Tab to Title
 
 ### 13. Author and Group at 20
 - Does: types 25 characters into Author and Group each, with a CP437 accent and a character CP437 lacks.
-- Expects: each stops at 20, with 20 / 20 beside it and a line naming what didn't fit; on export a character CP437 lacks is written as its stand-in or `?`,
+- Expects: each stops at 20, with 20 / 20 beside it and a line saying only 20 characters fit; on export a character CP437 lacks is written as its stand-in or `?`,
   and the Export dialog lists it first, with what it becomes and the fields it's in.
 - Probes: `undo-redo`: Cmd+Z in the field undoes his typing there; then outside it, Cmd+Z, and see what it undoes;
   `interrupt`: reload and check the fields came back; `extremes`: paste text with a tab, BEL and `ESC[31m` into
