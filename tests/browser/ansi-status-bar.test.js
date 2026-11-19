@@ -129,6 +129,21 @@ const sum = (els) => els.reduce((total, el) => total + width(el), 0);
 // dex-10: at 1280 with both panels open, Edit Mode's readout squeezed the buttons until the last was cut. Too narrow for
 // it all, the FG and BG hex codes give way first (each stays on its swatch's hover and in the text read out), and the
 // buttons stay whole. The width is measured from the bar's own parts, so it holds with any font.
+test('shows the character code under the cursor', async () => {
+  const { project, workspace } = await mount();
+  workspace.setActiveTool('text');
+  const at = async (char) => {
+    project.typeAt(0, 0, char, {});
+    workspace.textCursor = { col: 0, row: 0 };
+    await nextTick();
+    return host.querySelector('b.code')?.textContent;
+  };
+  expect(await at('█')).toBe('219');
+  expect(await at('😀')).toBeUndefined();
+  project.setDrawingFont({ name: 'Topaz', height: 8, bytes: new Uint8Array(256 * 8) });
+  expect(await at('␀')).toBe('0');
+});
+
 test('too narrow for both hex codes, they give way first and the buttons stay whole; with room, they show', async () => {
   const { workspace } = await mount();
   workspace.setActiveTool('text');

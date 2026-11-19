@@ -6,6 +6,8 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools';
+import { slotOf } from '@/lib/BitmapFont';
+import { cp437Byte } from '@/lib/Cp437';
 import { shortcut } from '@/lib/keyLabels';
 import { useLayerName } from '@/composables/useLayerName';
 
@@ -14,7 +16,7 @@ import { useLayerName } from '@/composables/useLayerName';
 // toggle; Select, the selection's size and place; the Color Picker, its last pick and where each color
 // came from. On the right, with a mouse or trackpad, Space's pan (the Zoom tool's click and Alt-click too), or while a
 // modifier's held, what it does with the tool (in the pixel view too); the rest is in the docs, for the room it takes. Zoomed
-// out, the zoom, which goes back to 100%. Too narrow for one line, the FG and BG hex codes give way first (each stays
+// out, the zoom, which goes back to 100%. Too narrow for one line, the character's code and the FG and BG hex codes give way first (each stays
 // on its swatch's hover and in the text read out); still too narrow, the readout wraps a group at a time and only the
 // buttons at the end scroll sideways, faded at the edge while there's more, by a plain mouse wheel too.
 const { t } = useI18n();
@@ -27,6 +29,8 @@ const sel = computed(() => workspace.selection);
 const offset = computed(() => workspace.selectionOffset ?? { dc: 0, dr: 0 }); // while it's being dragged
 const pick = computed(() => workspace.lastPick);
 // A picked (stored) color as it shows: the swatch matches the canvas, the hex is what was picked.
+// The character's code, in decimal: its slot in the drawing's font, else its CP437 byte; none when it has neither.
+const code = (char) => (project.drawingFont ? slotOf(char) : cp437Byte(char));
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 
 const cursor = computed(() => workspace.textCursor);
@@ -103,7 +107,7 @@ const backTo100 = () => {
     <template v-if="tool === 'text'">
       <template v-if="cursor && cell">
         <span>Col <b class="col">{{ cursor.col + 1 }}</b> Row <b class="row">{{ cursor.row + 1 }}</b></span>
-        <span>Char <b class="glyph">{{ cell.char === ' ' ? '␣' : cell.char }}</b> <span class="origin">{{ t(`status.origin.${origin('char')}`) }}</span></span>
+        <span>Char <b class="glyph">{{ cell.char === ' ' ? '␣' : cell.char }}</b><template v-if="code(cell.char) !== null"> <b class="code">{{ code(cell.char) }}</b></template> <span class="origin">{{ t(`status.origin.${origin('char')}`) }}</span></span>
         <span>FG <i class="swatch" :title="cell.fg.hex" :style="{ backgroundColor: cell.fg.hex }"></i><b class="hex">{{ cell.fg.hex }}</b> <span class="origin">{{ t(`status.origin.${origin('fg')}`) }}</span></span>
         <span>BG <i class="swatch" :title="cell.bg.hex" :style="{ backgroundColor: cell.bg.hex }"></i><b class="hex">{{ cell.bg.hex }}</b> <span class="origin">{{ t(`status.origin.${origin('bg')}`) }}</span></span>
       </template>
@@ -251,7 +255,8 @@ i.swatch {
 }
 
 /* Too narrow for it all: the hex codes give way, out of sight but still in the text read out (and on the swatch's hover). */
-footer.tight b.hex {
+footer.tight b.hex,
+footer.tight b.code {
   position: absolute;
   width: 1px;
   height: 1px;
