@@ -270,7 +270,10 @@ test('in a room, a speaker beside the fold turns the tone for new messages off a
   expect(speaker().getAttribute('aria-pressed')).toBe('true');
 });
 
-// A narrow screen: the panel over the art from the right, shut until « opens it.
+// A narrow screen: the panel over the art from the right, shut until « opens it. Its slide, and a screen's new width
+// reaching it (a media query's change), each wait on a frame, and a machine busy with other test files draws few: five in
+// a second and a half, measured, so these waits get longer than the default second.
+const PATIENT = { timeout: 5000 };
 async function narrow() {
   await page.viewport(414, 896);
   onTestFinished(() => page.viewport(1200, 800));
@@ -285,7 +288,7 @@ test('on a narrow screen it\'s shut until « opens it over the art, leaving a st
   await nextTick();
   await nextTick();
   expect(getComputedStyle(panel()).position).toBe('fixed');
-  await expect.poll(() => panel().getBoundingClientRect().right).toBe(414);   // slid in
+  await expect.poll(() => panel().getBoundingClientRect().right, PATIENT).toBe(414);   // slid in
   expect(panel().getBoundingClientRect().width).toBe(SIDE_PANEL.width);   // 134 px of the art beside it
   expect(grip()).toBe(null);   // no edge to drag
   expect(document.activeElement).toBe(arrow());   // », in its tabs
@@ -335,9 +338,11 @@ test('a narrow screen\'s panel, open when the window widens, is the wide one (fo
   arrow().click();
   await nextTick();
   await page.viewport(1200, 800);
-  await expect.poll(() => getComputedStyle(panel()).position).toBe('relative');
-  expect(panel().getBoundingClientRect().width).toBe(SIDE_PANEL.width);
+  await expect.poll(() => getComputedStyle(panel()).position, PATIENT).toBe('relative');
+  // Once it has slid in: the slide « began goes on after the window widens, and mid-slide the width reads a hair off
+  // (279.99997, the rounding of a box that's moving).
+  await expect.poll(() => panel().getBoundingClientRect().width, PATIENT).toBe(SIDE_PANEL.width);
   await page.viewport(414, 896);
-  await expect.poll(() => panel().getBoundingClientRect().width).toBe(0);
+  await expect.poll(() => panel().getBoundingClientRect().width, PATIENT).toBe(0);
   expect(workspace.sidePanelOpen).toBe(false);
 });
