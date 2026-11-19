@@ -188,11 +188,13 @@ test('New project asks when there are changes, then clears the document; Up and 
   const noTab = () => expect(page.locator('.tab-list').getByRole('tab', { selected: true })).toHaveCount(0); // the start screen, no tab
   await noTab();
 
+  const open = page.getByRole('button', { name: /^Open / }); // the drawing just left, under Pick up where you left off
+  await expect(open).toBeEnabled(); // the list comes a moment after the start screen: a Down before it has nowhere to go
   await page.getByRole('button', { name: 'Choose a file' }).focus();
   await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('button', { name: 'Start with a blank canvas' })).toBeFocused();
   await page.keyboard.press('ArrowDown');
-  await expect(page.getByRole('button', { name: /^Open / })).toBeFocused(); // the drawing just left, under Pick up where you left off
+  await expect(open).toBeFocused();
   await noTab();
 });
 
