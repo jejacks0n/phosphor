@@ -4,9 +4,16 @@ import { openApp, store, fixture, tab, editAt, settled, screenPixels } from './s
 // The grid's CSS width (the canvas view's sizer): 2px borders on each side of its cells.
 const canvasWidth = (page) => page.locator('.ansi-editor div.display').evaluate((c) => c.getBoundingClientRect().width);
 
-// Load a font with the Font field's Load font button.
+// The palette layer, opened on its Fonts page by the Font field's Manage fonts.
+const fontsPage = async (page) => {
+  await page.getByRole('button', { name: 'Manage fonts ▸' }).click();
+  return page.locator('.palette-layer');
+};
+
+// Load a font with the Fonts page's + Load button.
 async function loadFont(page, path) {
-  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Load font' }).click()]);
+  const layer = await fontsPage(page);
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), layer.getByRole('button', { name: '+ Load' }).click()]);
   await chooser.setFiles(path);
 }
 
@@ -48,10 +55,26 @@ test('a monospaced font from your computer is used and kept; a proportional one 
   await expect.poll(() => canvasWidth(page)).toBeCloseTo(cols * 10 + 4, 0); // 0.6 × 16 = 9.6, to whole pixels
   await openApp(page);
   await expect(page.getByLabel('Font', { exact: true }).locator('option:checked')).toHaveText('tall');
-  // Removed: back to the default.
-  await page.getByRole('button', { name: 'Remove font' }).click();
+  // Removed on the Fonts page: back to the default.
+  await (await fontsPage(page)).getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(page.getByLabel('Font', { exact: true })).toHaveValue('jetbrains');
   await expect(page.getByLabel('Font', { exact: true }).locator('option', { hasText: 'tall' })).toHaveCount(0);
+});
+
+test('Manage fonts opens the Fonts page with any tool, and Escape gives the keys back', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'PIXEL').click();
+  await page.keyboard.press('h');
+  await expect.poll(() => store(page, 'workspace', (w) => w.activeTool)).toBe('hand');
+  const layer = await fontsPage(page);
+  await expect(layer.getByRole('button', { name: '+ Load' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Manage fonts ▸' })).toBeVisible(); // a second click leaves it open
+  await page.getByRole('button', { name: 'Manage fonts ▸' }).click();
+  await expect(layer).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(layer).toHaveCount(0);
+  await page.keyboard.press('b');
+  await expect.poll(() => store(page, 'workspace', (w) => w.activeTool)).toBe('brush');
 });
 
 // Each toggle's tooltip says what's on now and what a click does (the renderer's button is named for the other one).

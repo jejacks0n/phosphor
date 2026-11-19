@@ -4,15 +4,19 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { typeAtCursor } from '@/composables/useTextTool';
-import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 
 // The Text tool's F-key strip: the active palette's 12 glyphs (tap one to type it, which is how
 // touch screens use F-keys), and the palette controls on the right. No palette name, so the strip
-// never shifts; names are in the palette layer.
+// never shifts; names are in the palette layer (EditToolbar's, which this opens on its Palettes page).
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const palettes = usePaletteStore();
+
+const toggle = () => {
+  if (!workspace.paletteLayerOpen) workspace.paletteLayerPage = 'palettes';
+  workspace.paletteLayerOpen = !workspace.paletteLayerOpen;
+};
 
 const use = (glyph) => {
   if (!glyph) return;
@@ -48,16 +52,14 @@ const use = (glyph) => {
         :title="t('palette.strip.palettes')"
         :aria-label="t('palette.strip.palettes')"
         @mousedown.prevent
-        @click="workspace.paletteLayerOpen = !workspace.paletteLayerOpen"
+        @click="toggle"
     ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true"><rect x="144" y="42" width="60" height="60" rx="8"/><rect x="226" y="42" width="60" height="60" rx="8"/><rect x="308" y="42" width="60" height="60" rx="8"/><rect x="144" y="154" width="60" height="60" rx="8"/><rect x="226" y="154" width="60" height="60" rx="8"/><rect x="308" y="154" width="60" height="60" rx="8"/><rect x="144" y="266" width="60" height="60" rx="8"/><rect x="226" y="266" width="60" height="60" rx="8"/><rect x="308" y="266" width="60" height="60" rx="8"/><rect x="144" y="377" width="60" height="60" rx="8"/><rect x="226" y="377" width="60" height="60" rx="8"/><rect x="308" y="377" width="60" height="60" rx="8"/></svg></button>
     <button class="nav" :title="t('palette.strip.nextTitle', { key: 'Alt+→' })" :aria-label="t('palette.strip.nextAria')" @mousedown.prevent @click="palettes.flip(1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2v12l8-6z"/></svg></button>
-    <CharPaletteLayer v-if="workspace.paletteLayerOpen" @close="workspace.paletteLayerOpen = false"/>
   </div>
 </template>
 
 <style scoped>
-/* As wide as the row, or its content when the row is narrower (the row scrolls). The palette
-   layer opens from the toolbar, not the strip, so the scrolling row doesn't clip it. */
+/* As wide as the row, or its content when the row is narrower (the row scrolls). */
 div.palette-strip {
   display: flex;
   align-items: center;

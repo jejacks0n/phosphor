@@ -1,4 +1,4 @@
-// Bitmap fonts as files: Load font takes raw .F01-.F32 fonts and PNG sheets, kept in this browser (userFonts.js),
+// Bitmap fonts as files: the Fonts page's + Load takes raw .F01-.F32 fonts and PNG sheets, kept in this browser (userFonts.js),
 // and picking one in the Font field gives the drawing that font. Saving and removing one are on the Fonts page.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
@@ -86,7 +86,6 @@ test('choosing a bitmap font gives the drawing that font, and a built-in takes i
   await expect.poll(() => project.drawingFont?.height).toBe(8);
   await nextTick();
   expect(host.querySelector('optgroup[label="This drawing"] option').value).toBe(font.id);
-  expect([...host.querySelectorAll('button')].map((b) => b.textContent.trim())).toEqual(expect.arrayContaining(['Save .F08', 'Save PNG']));
   select.value = 'jetbrains';
   select.dispatchEvent(new Event('change'));
   await nextTick();

@@ -10,6 +10,7 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
 import PaletteStrip from '@/components/PaletteStrip.vue';
+import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import VectorOptions from '@/components/VectorOptions.vue';
@@ -699,6 +700,8 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
         ><span class="tool-icon" v-html="item.icon"></span><span>{{ item.label }}</span></button>
       </DropdownMenu>
     </div>
+    <!-- Opened by the Text tool's strip or the Font field's Manage fonts, with any tool; from the toolbar's bottom edge, so no scrolling row clips it. -->
+    <CharPaletteLayer v-if="workspace.paletteLayerOpen" @close="workspace.paletteLayerOpen = false"/>
   </article>
 </template>
 

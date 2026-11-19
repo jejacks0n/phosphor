@@ -1,15 +1,15 @@
 <script setup>
-import { ref, computed, useTemplateRef } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { DISPLAY_FONTS, MIN_FONT_SIZE as MIN_SIZE, MAX_FONT_SIZE as MAX_SIZE } from '@/lib/displayFonts';
 import { useProjectStore } from '@/store/ProjectStore';
 import { fontId } from '@/lib/BitmapFont';
-import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
+import { useFontActions } from '@/composables/useFontActions';
 import HelpInfo from '@/components/HelpInfo.vue';
 
-// The font the art is drawn in, and its size: one of Phosphor's, or a monospaced one you load from
-// your computer (userFonts.js). Kept in this browser, not in the project.
+// The font the art is drawn in, and its size: one of Phosphor's, or one you loaded (userFonts.js). Kept in this
+// browser, not in the project. Fonts are loaded, saved and removed on the palette layer's Fonts page: Manage fonts.
 const { t } = useI18n();
 const workspace = useWorkspaceStore();
 const project = useProjectStore();
@@ -17,36 +17,18 @@ const current = computed(() => workspace.displayFontSpec);
 const loaded = computed(() => workspace.userFonts ?? []);
 const drawn = computed(() => project.drawingFont);   // the drawing's own bitmap font, if it has one (the document's)
 const yours = computed(() => loaded.value.filter((font) => font.id !== (drawn.value && current.value.id)));
-const pad = (font) => String(font.height).padStart(2, '0');
-const isLoaded = computed(() => loaded.value.some((font) => font.id === current.value.id));
-const { loadFile, choose, saveRaw, savePng, remove, hostsFont } = useFontActions();
-const problem = ref('');
-const fileInput = useTemplateRef('file');
+const { choose, hostsFont } = useFontActions();
 
 const without = (sizes, id) => Object.fromEntries(Object.entries(sizes).filter(([key]) => key !== id));
 const naturalSize = (id) => (drawn.value && fontId(drawn.value) === id ? drawn.value.height : DISPLAY_FONTS.find((font) => font.id === id)?.size ?? 16);
 
-// The picked file, used when it's a font Phosphor can use; otherwise we say why not. (The picker
-// opens from a button's click: Safari opens one only in answer to a click, not a menu choice.)
-const onFile = async (event) => {
-  const [file] = event.target.files;
-  event.target.value = ''; // so the same file can be picked again
-  if (!file) return;
-  problem.value = '';
-  try {
-    await loadFile(file);
-  } catch (error) {
-    problem.value = error.message;
-  }
-};
+const onSelect = (event) => choose(event.target.value);
 
-const onSelect = async (event) => {
-  problem.value = '';
-  try {
-    await choose(event.target.value);
-  } catch (error) {
-    problem.value = error.message;
-  }
+// The palette layer on its Fonts page, whatever tool is in hand; from SAUCE, the art is shown first.
+const manage = () => {
+  if (!workspace.editMode) workspace.editorTab = 'output';
+  workspace.paletteLayerPage = 'fonts';
+  workspace.paletteLayerOpen = true;
 };
 
 // A size in px, kept for this font; its own size is kept as no size at all. Typed, it waits for Enter or a click
@@ -65,13 +47,15 @@ const onSize = (event) => {
   <div class="field">
     <div class="label-row">
       <div class="label-group"><label for="displayFont">{{ t('font.label') }}</label><HelpInfo :name="t('font.label')" :text="t('font.help')"/></div>
-      <span class="actions">
-        <button v-if="drawn" class="text" @click="saveRaw(drawn)">{{ t('font.saveRaw', { height: pad(drawn) }) }}</button>
-        <button v-if="drawn" class="text" @click="savePng(drawn)">{{ t('font.savePng') }}</button>
-        <button v-if="isLoaded" class="text" :title="t('font.removeTitle')" :aria-label="t('font.removeAria')" @click="remove(current.id)">{{ t('font.remove') }}</button>
-        <button class="text" :title="t('font.loadTitle')" :disabled="hostsFont" @click="fileInput.click()">{{ t('font.load') }}</button>
-      </span>
-      <input ref="file" type="file" :accept="FONT_FILES" hidden @change="onFile">
+      <!-- Doesn't take focus, so the open layer keeps the keyboard (Escape); data-palette-toggle: it doesn't close the layer first. -->
+      <button
+          class="text"
+          data-palette-toggle
+          :disabled="!project.image"
+          :title="project.image ? t('font.manageTitle') : t('font.manageNeedsDrawing')"
+          @mousedown.prevent
+          @click="manage"
+      >{{ t('font.manage') }}</button>
     </div>
     <div class="row-inputs">
       <select id="displayFont" :value="current.id" :disabled="hostsFont" @change="onSelect">
@@ -99,7 +83,6 @@ const onSize = (event) => {
       >
     </div>
     <p v-if="hostsFont" class="hosts-font">{{ t('font.hostsFont') }}</p>
-    <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
   </div>
 </template>
 
@@ -115,11 +98,6 @@ input.size {
 }
 
 /* Beside the label, styled like the panel's RESET buttons: small, quiet, uppercase. */
-span.actions {
-  display: flex;
-  gap: 8px;
-}
-
 button.text {
   padding: 3px 0;
   border: none;
@@ -150,12 +128,5 @@ p.hosts-font {
   font-size: 12px;
   line-height: 1.4;
   color: var(--text-faint);
-}
-
-p.problem {
-  margin: 6px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--danger);
 }
 </style>
