@@ -180,6 +180,7 @@ export async function addBitmapFont(file) {
 // A stored bitmap font as a drawing holds one: { name, height, bytes }.
 export async function storedBitmapFont(id) {
   const record = await inStore('readonly', (fonts) => fonts.get(id));
+  if (!record) throw new Error(t('font.errors.missing'));
   return { name: record.name, height: record.height, bytes: record.data };
 }
 

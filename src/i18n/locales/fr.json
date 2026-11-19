@@ -357,7 +357,8 @@
       "unreadable": "Impossible de lire « {name} » comme un fichier de police. Veuillez utiliser un fichier TrueType (.ttf), OpenType (.otf) ou WOFF.",
       "notMonospaced": "« {name} » n'est pas à chasse fixe ({narrow} mesure {narrowPx} px de large, alors que {wide} en mesure {widePx} px). Phosphor nécessite des polices à espacement fixe où chaque caractère occupe la même largeur de cellule.",
       "aSpace": "espace",
-      "notBitmap": "{name} n'est pas une police matricielle que Phosphor peut lire : il faut 256 glyphes, de 8 pixels de large et de 1 à 32 de haut."
+      "notBitmap": "{name} n'est pas une police matricielle que Phosphor peut lire : il faut 256 glyphes, de 8 pixels de large et de 1 à 32 de haut.",
+      "missing": "Cette police n'est plus dans ce navigateur. Chargez-la à nouveau."
     }
   },
   "sidePanel": {

@@ -357,7 +357,8 @@
       "unreadable": "Could not read “{name}” as a font file. Please use a TrueType (.ttf), OpenType (.otf), or WOFF file.",
       "notMonospaced": "“{name}” isn't monospaced ({narrow} is {narrowPx}px wide, while {wide} is {widePx}px). Phosphor needs fixed-width fonts where every character shares one cell width.",
       "aSpace": "space",
-      "notBitmap": "{name} isn't a bitmap font Phosphor can read: it needs 256 glyphs, 8 pixels wide and 1 to 32 tall."
+      "notBitmap": "{name} isn't a bitmap font Phosphor can read: it needs 256 glyphs, 8 pixels wide and 1 to 32 tall.",
+      "missing": "That font isn't in this browser anymore. Load it again."
     }
   },
   "sidePanel": {

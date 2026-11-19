@@ -64,7 +64,7 @@ test('a font that can\'t be chosen says why, and the dropdown goes back to the f
   const select = host.querySelector('select');
   select.value = 'gone';
   select.dispatchEvent(new Event('change'));
-  await expect.poll(() => host.querySelector('[role="alert"]')?.textContent).toBeTruthy();
+  await expect.poll(() => host.querySelector('[role="alert"]')?.textContent).toBe('That font isn\'t in this browser anymore. Load it again.');
   expect(select.value).toBe('jetbrains');
   expect(project.drawingFont).toBeNull();
   // The next choice clears it.
