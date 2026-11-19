@@ -693,6 +693,9 @@ test('an artist\'s change to another layer leaves the host inside its art layer,
   expect(room.project.enterArt(key)).toBe(true);
   ann.project.duplicateLayer('L1');
   await expect.poll(() => room.project.layers.length, PATIENT).toBe(5);
+  // Ann hears of her copy a message after the host has it, and a layer she hasn't got isn't hers to delete (nothing's
+  // asked, and the host's stack stays at five): she has the stack before each next change.
+  await expect.poll(() => stackOf(ann.project), PATIENT).toEqual(stackOf(room.project));
   ann.project.deleteLayer(room.project.layers.at(-1).id);
   await expect.poll(() => room.project.layers.length, PATIENT).toBe(4);
   expect(room.project.artInside).toBe(key);
@@ -702,6 +705,7 @@ test('an artist\'s change to another layer leaves the host inside its art layer,
   expect(stroke).toBeTruthy();
   ann.project.addLayer('cells', 'L1');
   await expect.poll(() => room.project.layers.length, PATIENT).toBe(5);
+  await expect.poll(() => stackOf(ann.project), PATIENT).toEqual(stackOf(room.project)); // the top of a stack of four isn't a place to move to
   ann.project.moveLayer('L1', 4);
   await expect.poll(() => room.project.layers.at(-1).id, PATIENT).toBe('L1');
   expect(room.project._stroke).toBe(stroke);
