@@ -438,7 +438,7 @@ const xbinFile = (name = 'font.xb') => {
   const bytes = new Uint8Array(16 * 256).fill(0);
   bytes.fill(0xff, 0, 16);
   const palette = Array.from({ length: 16 }, (_, i) => '#' + (i * 16 + 8).toString(16).padStart(2, '0').repeat(3));
-  const cells = Array.from({ length: 6 }, (_, i) => ({ char: i % 2 ? 'A' : ' ', fg: palette[1], bg: palette[0] }));
+  const cells = Array.from({ length: 6 }, (_, i) => ({ char: i % 2 ? 'A' : '█', fg: plain(palette[i + 1]), bg: plain(palette[i]) })); // colors as the store's cells hold them
   const font = { name: 'Solid', height: 16, bytes };
   return { file: new File([writeXBin({ cols: 3, rows: 2, cells, palette, font })], name), font };
 };
@@ -447,11 +447,13 @@ test('an XBin opens with its font and palette', async () => {
   const project = await afterAnotherDocument(), { file, font } = xbinFile();
   await project.openArtFile(file);
   await settle(project);
+  const { palette } = readXBin(new Uint8Array(await file.arrayBuffer()), 'f.xb'); // the file's 6-bit colors
+  expect(project.cells.slice(0, 6).map((c) => [c.fg.hex, c.bg.hex])).toEqual(Array.from({ length: 6 }, (_, i) => [palette[i + 1], palette[i]]));
   expect(project.drawingFont.bytes).toEqual(font.bytes);
   expect(project.drawingFont.height).toBe(16);
   expect([project.cols, project.rows]).toEqual([3, 4]);
   expect(project.quantize).toBe('palette');
-  expect(project.palette).toBe(readXBin(new Uint8Array(await file.arrayBuffer()), 'f.xb').palette.join(' ')); // the file's 6-bit colors
+  expect(project.palette).toBe(palette.join(' '));
 });
 
 test('a renamed XBin opens as one', async () => {
@@ -490,7 +492,7 @@ test('an XBin whose 16 colors are CGA in DOS order opens as CGA; one channel off
   const dos = [0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15].map((i) => PALETTES.cga[i].hex);
   const font = { name: 'F', height: 8, bytes: new Uint8Array(8 * 256) };
   const open = async (palette) => {
-    await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: dos[7], bg: dos[0] }], palette, font })], 'p.xb'));
+    await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: plain(dos[7]), bg: plain(dos[0]) }], palette, font })], 'p.xb'));
     await settle(project);
   };
   await open(dos);
@@ -510,7 +512,7 @@ test('a .xb file without the XBIN signature is refused as broken', async () => {
 test('opens an XBin and exports the same cells', async () => {
   const project = await afterAnotherDocument(), { font } = xbinFile();
   const dos = [0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15].map((i) => PALETTES.cga[i].hex);
-  const cells = [SLOT_CHARS[0], ' ', SLOT_CHARS[255], 'A', SLOT_CHARS[0], ' '].map((char, i) => ({ char, fg: dos[(i + 1) % 16], bg: dos[i] }));
+  const cells = [SLOT_CHARS[0], ' ', SLOT_CHARS[255], 'A', SLOT_CHARS[0], ' '].map((char, i) => ({ char, fg: plain(dos[(i + 1) % 16]), bg: plain(dos[i]) }));
   const bytes = writeXBin({ cols: 3, rows: 2, cells, palette: dos, font });
   await project.openArtFile(new File([bytes], 'f.xb'));
   await settle(project);
@@ -519,6 +521,7 @@ test('opens an XBin and exports the same cells', async () => {
   await project.exportFile('xb', { deliver: (b) => { blob = b; }, sauce: false });
   const again = readXBin(new Uint8Array(await blob.arrayBuffer()), 'f.xb');
   const first = readXBin(bytes, 'f.xb');
+  expect(first.cells.map((c) => [c.fg, c.bg])).toEqual(cells.map((c) => [c.fg.hex, c.bg.hex].map((hex) => hex.toLowerCase()))); // every index as written
   expect(again.cells).toEqual(first.cells);
   expect(again.palette).toEqual(first.palette);
   expect([...again.font.bytes]).toEqual([...first.font.bytes]);
