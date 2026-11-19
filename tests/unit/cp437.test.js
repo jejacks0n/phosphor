@@ -56,3 +56,8 @@ test("The CP437 table: every character maps to exactly the byte .ans export has 
   assert.equal(cp437Byte('e\u0301'), 130);              // e + a combining accent: é, composed
   assert.equal(cp437Substitute('▏'), '▌');
 });
+
+test('a font\'s slot 0 (␀, which CP437 shows as a space) is written to .ans as a space, not a ?', () => {
+  assert.equal(cp437Substitute('␀'), ' ');
+  assert.equal(AnsiFile.unicodeToCP437('␀'), 32);
+});

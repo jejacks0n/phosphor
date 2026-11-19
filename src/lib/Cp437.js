@@ -49,8 +49,10 @@ export function ansByte(char) {
 }
 
 // Unicode block characters CP437 lacks, and the glyphs on control bytes, written as the closest
-// glyph .ans can hold (the earlier default character set used ▁▂▃▅). Anything else has no lookalike.
+// glyph .ans can hold (the earlier default character set used ▁▂▃▅); a bitmap font's slot 0 (␀,
+// BitmapFont.SLOT_CHARS), as CP437 shows byte 0. Anything else has no lookalike.
 const LOOKALIKES = {
+  '␀': ' ',
   '•': '∙', '◘': '█', '○': 'o', '◙': '█', '♪': '♫', '→': '>', '←': '<',
   '▁': '_', '▂': '▄', '▃': '▄', '▅': '▄', '▆': '█', '▇': '█', '▉': '█', '▊': '█', '▋': '▌', '▍': '▌',
   '▎': '▌', '▏': '▌', '▔': '▀', '▕': '▐', '▖': '▄', '▗': '▄', '▘': '▀', '▝': '▀', '▙': '▄', '▟': '▄',

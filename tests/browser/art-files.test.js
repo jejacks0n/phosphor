@@ -2,6 +2,9 @@
 // character pinned, or on the edit layer over a black base; its palette and SAUCE in the settings,
 // and nothing to undo or save.
 import { test, expect, vi } from 'vitest';
+import { createApp, nextTick } from 'vue';
+import { i18n } from '@/i18n';
+import EditWorkspace from '@/components/EditWorkspace.vue';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { AnsiFile } from '@/lib/AnsiFile';
@@ -522,4 +525,33 @@ test('opens an XBin and exports the same cells', async () => {
   await project.openArtFile(new File([blob], 'again.xb'));
   await settle(project);
   expect(project.quantize).toBe('cga'); // DOS order out, recognized as CGA again
+});
+
+test('an XBin with a font, added to a drawing without one, brings its slot 0 in as a space; to a drawing with one, as ␀', async () => {
+  const { project } = await createTestApp(), workspace = useWorkspaceStore();
+  await project.setBlankCanvas({ cols: 10, rows: 10, withLayer: true });
+  const font = { name: 'F', height: 16, bytes: new Uint8Array(16 * 256) };
+  const cells = [SLOT_CHARS[0], 'A'].map((char) => ({ char, fg: plain('#aaaaaa'), bg: plain('#000000') }));
+  const file = new File([writeXBin({ cols: 2, rows: 1, cells, palette: PALETTES.cga.map((c) => c.hex), font, sauce: false })], 'slot0.xb');
+  const host = document.body.appendChild(document.createElement('div'));
+  const app = createApp(EditWorkspace).use(i18n);
+  app.mount(host);
+  const add = async () => {
+    await workspace.askArt(file, { at: { col: 0, row: 0 } });
+    await nextTick();
+    [...document.querySelectorAll('button.choice')].find((b) => b.textContent.includes('Add to this drawing')).click();
+    await vi.waitFor(() => expect(workspace.selection).not.toBeNull());
+    await settle(project);
+  };
+  try {
+    await add();
+    expect(project.cells.slice(0, 2).map((c) => c.char)).toEqual([' ', 'A']);
+    workspace.selection = null;
+    project.setDrawingFont(font);
+    await add();
+    expect(project.editCellAt(0, 0).char).toBe(SLOT_CHARS[0]);
+  } finally {
+    app.unmount();
+    host.remove();
+  }
 });
