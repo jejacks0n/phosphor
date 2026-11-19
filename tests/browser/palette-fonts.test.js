@@ -86,6 +86,8 @@ test('import adds, renames and says which fonts are missing', async () => {
   expect(result).toEqual({ added: 2, waiting: ['Topaz'] });
   const names = palettes.userPalettes.map(p => p.name);
   expect(new Set(names).size).toBe(3);
+  palettes.importPalettes([{ name: 'Frogs', glyphs: [], font: null }, { name: 'Frogs', glyphs: [], font: null }]);
+  expect(palettes.userPalettes.slice(-2).map(p => p.name)).toEqual(['Frogs', 'Frogs (custom)']); // a free name is kept
 });
 
 test('palettes saved before ties read as for any font', async () => {

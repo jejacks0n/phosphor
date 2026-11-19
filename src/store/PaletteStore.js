@@ -107,12 +107,12 @@ export const usePaletteStore = defineStore('palettes', {
       this.userPalettes = this.userPalettes.map(p => (p.id === id ? { ...p, font: font ? { id: font.id, name: font.name, height: font.height } : null } : p));
     },
 
-    // Palettes from a file ({ name, glyphs, font }[]), kept under new ids and unique names. waiting:
+    // Palettes from a file ({ name, glyphs, font }[]), kept under new ids and their own names (made unique). waiting:
     // the names of the fonts they're tied to that aren't loaded or in use.
     importPalettes(list) {
       const names = this.all.map(p => p.name);
       const added = list.map((p) => {
-        const name = forkName(p.name, names);
+        const name = names.includes(p.name) ? forkName(p.name, names) : p.name; // a name already taken gets a suffix
         names.push(name);
         return { id: newId(), name, glyphs: [...p.glyphs], font: p.font ?? null };
       });
