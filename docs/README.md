@@ -5,7 +5,7 @@ Learn how to create art, edit layers, and animate in Phosphor.
 ## User Guides
 
 - [Layers](layers.md) — Manage layers (selecting, hiding, and renaming), understand the base layer (your image, converted to cells) and the drawing layers, merge layers up and down, erase, and use the selection tools.
-- [Characters](characters.md) — Learn what a cell can hold, work with single-column and two-column characters (CJK and emoji), see how the converter picks characters, choose a display font, type any script, paste text, and save as `.utf8ans`, `.ans`, or `.png`.
+- [Characters](characters.md) — Learn what a cell can hold, work with single-column and two-column characters (CJK and emoji), see how the converter picks characters, choose a display font, type any script, paste text, and save as `.utf8ans`, `.ans`, `.xb`, or `.png`, with bitmap fonts of your own.
 - [Vector Shapes](vector.md) — Use the VECTOR tab to draw, move, scale, rotate, and style vector paths and shapes that stay editable over the art and convert with it into text art.
 - [Animation](animation.md) — Create frame-by-frame animations, see what carries from one frame to the next, use onion skinning (ghosting), set frame timing, and export to animated `.ans`, `.cast`, `.gif`, or video (`.mp4`).
 - [Rulers and Guides](rulers.md) — Measure character columns and rows, drag guide lines from rulers, set origin points, and see what's kept with each drawing.

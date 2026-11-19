@@ -349,7 +349,7 @@ ones above. Its cells keep their characters and colors exactly, where an art lay
 
 ## Opening ANSI and Text Files
 
-Drop a `.ans`, `.utf8ans`, `.asc`, `.txt`, `.nfo` or `.diz` file on the start screen, or pick one with **Choose a
+Drop a `.ans`, `.utf8ans`, `.xb`, `.asc`, `.txt`, `.nfo` or `.diz` file on the start screen, or pick one with **Choose a
 file**, and Phosphor asks what you'd like to do with the art, then opens it as a new document:
 
 - **Edit artwork**: The art goes on a drawing layer, over a plain black base, as if you'd drawn it. Every cell is a
@@ -382,6 +382,7 @@ Either way:
 - **Limits**: A file over 300 columns, 5,000 lines or 500,000 cells doesn't open. A message gives the file's size and
   the limits, and what you had open stays open. A file with no art in it doesn't open either. Either way the message
   comes first: Phosphor reads the file before it asks how to open it, or whether to leave unsaved work.
+- **XBin Files**: An `.xb` opens with its cells, its font and its palette. A palette that's exactly the 16 classic colors opens as CGA, and any other opens as a **Custom** color list. A file with no font opens with no bitmap font of its own. A file that uses 512 characters is refused, with a message saying so, and so is one that's cut short or isn't XBin. Drawing with it, and saving one back, are in [Bitmap Fonts](characters.md#bitmap-fonts) and [Saving .xb](characters.md#saving-xb).
 - **Animated Files**: An animated `.ans` (one that moves the cursor or clears the screen) opens as its last screen.
 
 An `.svg` file opens on VECTOR as shapes instead ([Importing SVG](vector.md#importing-svg)).
@@ -412,7 +413,7 @@ With a drawing open, dropping one of these files on it asks what to do:
 - **Add to this drawing**: The file's art lands as a paste does, floating and selected with the Select tool, at the
   cell you dropped it on (or the top-left of the view, when it's dropped beside the drawing), to drag into place. It
   goes on the selected layer (written into the base, with the base selected), as one undo step. Whatever runs past
-  the canvas edge is cut off. The drawing's SAUCE and palette stay as they are.
+  the canvas edge is cut off. The drawing's SAUCE, palette and font stay as they are, an `.xb`'s too: only its cells land.
 - **Open to edit** or **Open to draw on top**: It opens in place of this drawing, as **Edit artwork** or **Draw on
   top** do above. With unsaved changes, these choices say they replace them (the drawing stays in this browser,
   under Pick up where you left off), and choosing one opens the file without asking again.

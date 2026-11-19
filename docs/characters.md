@@ -136,13 +136,13 @@ With the CGA or VGA palette, **Bake** bakes exactly, without asking how to keep 
 
 ### Characters Are Measured in IBM VGA
 
-Best match and By shape measure characters in IBM VGA, whichever font you view the art in, so the font never changes which characters are chosen: changing it changes how the cells look, not which characters they hold. Where two choices come out almost exactly as close, another computer (its graphics card) can occasionally pick the other one, in a cell here and there.
+Best match and By shape measure characters in IBM VGA, whichever font you view the art in (a drawing's own bitmap font is the exception: [Bitmap Fonts](#bitmap-fonts)), so the font never changes which characters are chosen: changing it changes how the cells look, not which characters they hold. Where two choices come out almost exactly as close, another computer (its graphics card) can occasionally pick the other one, in a cell here and there.
 
 ---
 
 ## The Font
 
-In the **Drawing** section of the left panel, the **Font** dropdown sets the font the art is drawn in, in both views, and the size field beside it sets its size (6 to 64 px). A size typed takes effect on **Enter** or leaving the field; **Escape** puts back the one in use. Phosphor has four built-in fonts:
+In the **Drawing** section of the left panel, the **Font** dropdown sets the font the art is drawn in, in both views, and the size field beside it sets its size (6 to 64 px). A size typed takes effect on **Enter** or leaving the field; **Escape** puts back the one in use. Phosphor has four built-in fonts, and can load bitmap fonts of your own ([Bitmap Fonts](#bitmap-fonts)):
 
 - **JetBrains Mono** (default): A clean, modern monospaced font.
 - **IBM VGA**: The VGA font of vintage PC screens, with Unscii for the characters it lacks.
@@ -162,15 +162,29 @@ Click **Load font** (beside the Font label) to load a TrueType (`.ttf`), OpenTyp
 - **Size and height**: A loaded font starts at 16px and keeps its own line height, so a full block fills its cell.
 - **Stored in your browser**: Loaded fonts stay in this browser until you remove them (click **Remove**, shown while the loaded font is in use). They're never uploaded anywhere.
 
+### Bitmap Fonts
+
+Click **Load font** and pick a raw bitmap font (`.F01` to `.F32`, the number being the height of a character in pixels) or a PNG sheet of one (16 characters across and 16 down, 256 in all) to draw in it the way old DOS art does. **Save .F##** and **Save PNG** write the drawing's font back out, as either.
+
+A bitmap font belongs to the drawing, not to your browser:
+
+- **It's saved**: A project keeps it, and so does an XBin export ([Saving .xb](#saving-xb)). Opening an XBin that holds a font gives the drawing that font.
+- **It's one undo step**: Setting it and removing it are each a step you can undo. It's listed under **This drawing** in the Font dropdown; choosing any other font takes it away.
+- **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots. A character the font lacks is shown as its nearest classic (CP437) stand-in, but the character you typed is kept: remove the font and the original comes back.
+- **Blocks and shades come from it**: Block elements and shades are drawn from the font's own pixels, so they look as the font draws them.
+- **The converter measures in it**: Best match and By shape compare each cell with the font's characters, so a photo converts into the shapes your font has.
+- **The status bar shows the code**: In the ANSI view, after **Char** and its character, the status bar gives the character's code in decimal: its slot in the drawing's font, or its classic (CP437) byte when there's no bitmap font. A character with no code shows none. On a narrow bar the code is the first thing to go.
+- **In a shared room**: The font is the host's. While you draw there, the Font field shows it, turned off ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
+
 ### What the Font Changes
 
 The font changes how the art looks in Phosphor. It also changes how the characters you draw look in the PIXEL tab, and in the image when you merge them into it: each cell blends its colors by how much of it the character covers, measured in the font you see.
 
-It doesn't change how an image converts, or what's saved or exported; a terminal or viewer draws the file in its own font. The font and its size are kept in this browser, not in the project.
+Those fonts don't change how an image converts, or what's saved or exported; a terminal or viewer draws the file in its own font. Their font and size are kept in this browser, not in the project. A bitmap font is different: it's saved in the project and written into an XBin export, and the converter measures in it ([Bitmap Fonts](#bitmap-fonts)).
 
 ### Fonts in Shared Rooms
 
-While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead.
+While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A bitmap font is part of the host's drawing, so it goes to the room with it.
 
 ---
 
@@ -196,11 +210,11 @@ With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, 
 
 ## Saving and Exporting
 
-- **Save project** (**Cmd/Ctrl+S**) saves a `.phosphor` file: the picture, every layer, animation frames, vector shapes, and the settings, SAUCE included. The display font and the rulers' guides aren't part of it; they stay in your browser.
-- **Export…** (**Cmd/Ctrl+E**) opens the Export dialog, which lists the **Still** formats (`.ans`, `.utf8ans`, `.png`) and, once Animate is on with more than one frame, the **Animated** ones ([Animation](animation.md)).
+- **Save project** (**Cmd/Ctrl+S**) saves a `.phosphor` file: the picture, every layer, animation frames, vector shapes, and the settings, SAUCE included. A bitmap font is part of it. The display font and the rulers' guides aren't; they stay in your browser.
+- **Export…** (**Cmd/Ctrl+E**) opens the Export dialog, which lists the **Still** formats (`.ans`, `.utf8ans`, `.xb`, `.png`) and, once Animate is on with more than one frame, the **Animated** ones ([Animation](animation.md)).
 - **Share** (PNG, GIF and video, where the browser has a share sheet that takes the file: phones, Safari, and Chrome and Edge on most computers): Sends the file to your system's share sheet instead of downloading it, to post it, message it, or put it in your photos. A long GIF or video can take longer to write than the browser allows after a tap; it waits, and **Share now** opens the sheet with your next tap.
 - **Saving over the file** (Chrome, Edge and other Chromium browsers): Save writes a project straight back to its file. A `.phosphor` file opened with Choose a file, Cmd/Ctrl+O, dropped on the page or opened from your computer (below) saves back over itself; a drawing that has never been saved, or **Save As** (**Shift+Cmd/Ctrl+S**), asks where with the browser's own save box, and Save writes over that file after. Before Phosphor first writes over a file you opened, and again after a reload, the browser asks whether it may. The file stays the drawing's after a reload; a duplicated tab's copy has none until it's saved. A save is written whole: if it fails, the file is left as it was. Exports are still downloads, or go to the share sheet. In Safari and Firefox every save is a download, named in the save dialog, as below.
-- **Opening files from your computer** (Phosphor installed from Chrome or Edge on a computer, with **Install** in the address bar or the browser's menu): Phosphor is offered under **Open With** for `.phosphor` projects, ANSI and text art (`.ans`, `.utf8ans`, `.asc`, `.nfo`, `.diz`, `.txt`), SVGs and pictures. The browser asks the first time whether Phosphor may open them. Each file opens in a window of its own, the way a file chosen on the start screen opens, and a project saves back over its file. The [desktop app](desktop.md) does the same without a browser.
+- **Opening files from your computer** (Phosphor installed from Chrome or Edge on a computer, with **Install** in the address bar or the browser's menu): Phosphor is offered under **Open With** for `.phosphor` projects, ANSI and text art (`.ans`, `.utf8ans`, `.xb`, `.asc`, `.nfo`, `.diz`, `.txt`), SVGs and pictures. The browser asks the first time whether Phosphor may open them. Each file opens in a window of its own, the way a file chosen on the start screen opens, and a project saves back over its file. The [desktop app](desktop.md) does the same without a browser.
 - **File names**: Both dialogs offer the document's name with the date and time (`art-20261030-131405`), so each save is a new file; type over it for any other name. The name you give becomes the document's name, so the next save starts from it, with a new time. Every browser saves the file as a download with that name, Safari included.
 
 ### Saving .utf8ans and .ans
@@ -208,6 +222,13 @@ With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, 
 - **`.utf8ans`**: Modern Unicode ANSI. Keeps every character. A two-column character is written once and the terminal moves two columns for it, so the rows line up.
 - **`.ans`**: Classic DOS CP437, which can't hold most Unicode characters. Each character it lacks is written as its closest lookalike, or `?`. Before you export, the Export dialog lists every one, what it becomes, and how many cells use it. A two-column character becomes its stand-in plus a space, so the grid still lines up.
 - **Colors** are written as the **Color palette** says: CGA as the 16 classic colors, VGA as 256-color codes (`38;5`), and everything else as 24-bit codes (`38;2`). A file you opened keeps the palette it came with ([Opening a file](layers.md#opening-ansi-and-text-files)), so it comes out in the same kind of codes.
+
+### Saving .xb
+
+- **`.xb`**: XBin, the format 16colo.rs shows with the art's own font and 16 colors inside the file. The export holds your cells, the drawing's bitmap font (IBM VGA 8×16 when it has none) and the palette.
+- **Needs 16 colors or fewer**: XBin is offered when the **Color palette** is CGA, **Limited count** of 16 or fewer, or a **Custom** list of up to 16 colors. With any other palette the **Export** button is off and the dialog says what to pick.
+- **SAUCE** is optional, as it is for `.ans`: **Include SAUCE** is the Export dialog's checkbox.
+- **Opening** an `.xb` gives the drawing its cells, font and palette ([Opening ANSI and text files](layers.md#opening-ansi-and-text-files)).
 
 #### Fixed Black and White (VGA)
 

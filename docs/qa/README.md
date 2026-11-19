@@ -35,7 +35,7 @@ Some traits shape the run beyond the browser:
 - `partner` (Juno only): the persona whose kind of work Juno draws in her room. Where Juno's script says to draw,
   draw as that persona would, with their files and sizes.
 - `interruption`: see [Interruptions](#interruptions).
-- `desktopApp` (Maya, Dex, Priya, Sam and Walt, on a desktop or laptop, about half the time): the run is in the
+- `desktopApp` (Maya, Dex, Priya, Sam, Walt and Nell, on a desktop or laptop, about half the time): the run is in the
   desktop app ([docs/desktop.md](../desktop.md)) instead of the browser. The session builds the desktop build and
   opens it in Electron, its page the device's size, in the drawn language and theme. Its window opens on this
   computer's screen: leave it be. What's different:
@@ -69,7 +69,7 @@ or until it's stopped (Ctrl+C or a kill); every way of stopping writes `report.m
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `QA_PERSONA` | (required) | `maya`, `dex`, `priya`, `juno`, `theo`, `sam`, `lea` or `walt`. A misspelled one stops before the build; an unset one stops the session as it starts, after the build. |
+| `QA_PERSONA` | (required) | `maya`, `dex`, `priya`, `juno`, `theo`, `sam`, `lea`, `walt` or `nell`. A misspelled one stops before the build; an unset one stops the session as it starts, after the build. |
 | `QA_SEED` | random | A whole number. The same persona and seed always draw the same traits. Unset, a random seed is drawn and recorded. |
 | `QA_RUN_DIR` | (dated) | The run's folder, when something hands the run its own (see [The run folder](#the-run-folder)). |
 | `QA_PORT` | `4210` | The port the QA build is served on. Never `5173`, `4180` or `4181` (refused). A port in use stops the run: it never tests someone else's server. |
@@ -506,7 +506,7 @@ file `performance` findings; note it on the first step.
 - **Real packs:** `input/qa/packs/` holds real scene packs from 16colo.rs, listed in `input/qa/README.txt`
   (acdu0793, acid-50a, acid-55a, mist1216, blocktronics_blocktober, impure88, fire-41). The folder is local and
   ignored by git: never commit anything from it or copy its files into `tests/fixtures/`. Its path from a snippet is
-  `join(runDir, '..', '..', 'input', 'qa', 'packs')`. The packs hold .ans, .asc and .txt, and also .xb, .sue, .tnd,
+  `join(runDir, '..', '..', 'input', 'qa', 'packs')`. The packs hold .ans, .asc, .txt and .xb, and also .sue, .tnd,
   .nfo and .diz files the app may not open: trying those is part of a run, and what happens is recorded (a refusal
   that says why is fine; nothing at all, or the wrong art, is a finding). When the folder is there, use it and say so
   in a note on the first step that does. When it isn't, skip the steps that need it, each opened and noted (see

@@ -22,7 +22,7 @@ never a lost hour of work, whatever the browser does.
   (`blocktronics_blocktober/ungenannt_oceanvs.ans`, 137 KB), the longest (`acid-50a/RA-FIFTY.ANS`, about 1,675
   lines), the member list (`blocktronics_blocktober/__BLOCKTRONICS_BLOCKTOBER_MEMBERLIST_AND_STATS.ans`, about 240
   lines), .asc files from `acid-50a`, .txt from
-  `impure88`, and the formats he'd try even though Phosphor may not open them: `.xb` (`acid-55a/ACID-55.XB`), `.sue`
+  `impure88`, the XBins (`acid-55a/ACID-55.XB`, and those beside the other packs), and the formats he'd try even though Phosphor may not open them: `.sue`
   (`acid-55a/WE-WILL.SUE`), `.tnd` (`blocktronics_blocktober/_Pumpkin_by_TCF.tnd`), `.nfo` and `.diz`. When the folder
   is missing, those steps are skipped with a note.
 - To drop a file: a headless browser can't drag from the desktop, so send the drop to the start screen or the
@@ -284,15 +284,26 @@ long file (time the reload), and press Back from a fresh start screen.
 - Probes: `out-of-order`: drop one on an open drawing and pick Add to this drawing.
 - Rated: yes, wants Cmd+O
 
-### 22. Try the formats it may not open
-- Does: drops `.xb`, `.sue`, `.tnd`, `.nfo` and `.diz` files on the start screen one at a time, then chooses one with
+### 22. Open an XBin, fix a cell, export it again
+- Does: opens the pack's XBins (`acid-55a/ACID-55.XB` and the others) one at a time, and checks the cells, the font
+  and the palette against what the file holds. Fixes one cell, exports XBin, and decodes the export, comparing its
+  cells, font and palette with the file's (not its bytes: the compression may differ). Opens a 512-character XBin, made
+  in the snippet by setting that flag in a file's header.
+- Expects: the art, its font and its palette are the file's; the file's palette is CGA when it's exactly the 16 classic
+  colors and a Custom list otherwise; the export differs from the original only in the fixed cell; the 512-character
+  file is refused with a message that says why, and a cut-short one says it's broken (the README's Files).
+- Probes: `back-out`: Cancel any question it asks; `again`: export twice and compare the two decodes.
+- Rated: yes, wants Cmd+O
+
+### 23. Try the formats it may not open
+- Does: drops `.sue`, `.tnd`, `.nfo` and `.diz` files on the start screen one at a time, then chooses one with
   Choose a file.
 - Expects: each either opens, or is refused with a message saying why; nothing at all, or the wrong art, is a finding
   (the README's Files).
 - Probes: `back-out`: Cancel any question it asks; `again`: drop the same file twice.
 - Rated: yes, wants Cmd+O
 
-### 23. Files over the limits are refused
+### 24. Files over the limits are refused
 - Does: makes a 300 by 1,700 file and a 301 by 100 file with `files.makeLongAns`, and with unsaved work drops each on
   his open drawing.
 - Expects: neither opens; a message gives the file's size and the limits (300 columns, 5,000 lines, 500,000 cells)
@@ -302,7 +313,7 @@ long file (time the reload), and press Back from a fresh start screen.
   `again`: try the same file twice.
 - Rated: yes, wants Cmd+O
 
-### 24. Grow the grid to its limit
+### 25. Grow the grid to its limit
 - Does: on the long file, sets Dimensions' lines to 1,700 (3,400 pixel rows), then 1,666; then turns Lock aspect ratio
   off and does it again.
 - Expects: with the lock on, the size stays at 1,600 lines and a message says the lock keeps the shape, 300 × 3200 the
@@ -312,7 +323,7 @@ long file (time the reload), and press Back from a fresh start screen.
   the size (a size change isn't an undo step, and mustn't forget the steps before it), then redo it; `extremes`: 5,000 lines at 100 columns.
 - Rated: yes, wants Tab to Dimensions
 
-### 25. Memory after a long session
+### 26. Memory after a long session
 - Does: takes `qa.memory` and compares it with step 1's; reopens the long file once more and takes it again.
 - Expects: no steady growth: reopening the same file doesn't add its size each time.
 - Probes: `again`: open and close the long file three times, taking `qa.memory` after each.

@@ -5,7 +5,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const PERSONAS = ['maya', 'dex', 'priya', 'juno', 'theo', 'sam', 'lea', 'walt'];
+export const PERSONAS = ['maya', 'dex', 'priya', 'juno', 'theo', 'sam', 'lea', 'walt', 'nell'];
 export const PARTNERS = ['maya', 'dex', 'priya', 'sam', 'walt'];
 
 export const DEVICES = {
@@ -17,7 +17,7 @@ export const DEVICES = {
 
 // The personas the desktop app can be drawn for: not Lea (always a phone), nor Juno and Theo, whose rooms go through
 // the SOCIAL server, which the desktop app doesn't use (its rooms are by address).
-export const APP_PERSONAS = ['maya', 'dex', 'priya', 'sam', 'walt'];
+export const APP_PERSONAS = ['maya', 'dex', 'priya', 'sam', 'walt', 'nell'];
 
 // Which devices each persona can have; the rest may have any.
 const DEVICE_CHOICES = {

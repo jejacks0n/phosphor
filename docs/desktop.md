@@ -96,7 +96,7 @@ Double-clicking a `.phosphor` file opens it in Phosphor. With Phosphor already o
 window you're in when it's on the start screen, and in a new window when it shows a drawing. The rest
 of what Phosphor opens is offered under **Open With**, and you can make Phosphor the default for any of them:
 
-- **`.ans`, `.utf8ans` and `.diz`**: on every system. On Windows, installing Phosphor makes it their default.
+- **`.ans`, `.utf8ans`, `.xb` and `.diz`**: on every system. On Windows, installing Phosphor makes it their default.
 - **`.asc`, `.nfo`, `.txt` and pictures** (PNG, JPEG, GIF, WebP, BMP, AVIF and SVG): on macOS, and on Linux except
   `.asc`. On Windows, open them with Open… or by dropping them on the window: other apps own them there (`.nfo` is
   Windows' System Information file), so installing Phosphor doesn't claim them.

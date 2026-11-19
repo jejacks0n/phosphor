@@ -245,7 +245,7 @@ on a block with characters (it's off, and says why), and look for Moebius's bloc
   floating and selected at the cell he dropped it on, on Layer 3, as one undo step; the drawing's SAUCE and palette
   stay his.
 - Probes: `back-out`: drop it and press Cancel; `extremes`: drop it near the right edge and check what runs past is cut
-  off; `out-of-order`: drop an `.xb` from the packs and see what it says.
+  off; `out-of-order`: drop an `.xb` from the packs and expect the same Add question; on Add its cells land, and his drawing's font and palette stay his.
 - Rated: yes, wants a key to add a file to the drawing
 
 ### 17. Move it into place by keys
