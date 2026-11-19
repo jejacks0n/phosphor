@@ -356,7 +356,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     // hex: choose that color (and clear the slot's none flag); null: set the slot to none.
     // remember: false while a native picker is being dragged, so only the final color is recent.
     // index: the swatch's, when a lower index shares its color (sharedIndex); otherwise the color has none.
-    setColor(slot, hex, { remember = true, index } = {}) {
+    // kept: what the recent colors keep, when it isn't hex: a palette swatch's palette color, not the color it stores.
+    setColor(slot, hex, { remember = true, index, kept = hex } = {}) {
       const none = slot === 'fg' ? 'editFgNone' : 'editBgNone';
       if (hex === null) {
         this[none] = true;
@@ -365,7 +366,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       this[slot === 'fg' ? 'editFgColor' : 'editBgColor'] = hex;
       this[slot === 'fg' ? 'editFgIndex' : 'editBgIndex'] = index;
       this[none] = false;
-      if (remember) this.rememberColor(hex, index);
+      if (remember) this.rememberColor(kept, index);
     },
     rememberColor(hex, index) {
       const entry = recentEntry(hex, index);

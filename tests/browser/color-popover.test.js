@@ -169,3 +169,58 @@ test('#199: in Full color with BG None, pressing the color it holds chooses it; 
     host.remove();
   }
 });
+
+// f1: Recent holds palette colors, as the grid does: a Recent color the sliders can't make shows under the "no" sign and
+// can't be picked (nor reached with the arrows), and one they can make picks what its grid swatch picks.
+test('under Saturation 0 a Recent color the grid blocks is blocked in Recent too; a gray picks as its grid swatch does', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  project.quantize = 'cga';
+  project.saturation = 0;
+  await settle(project);
+  workspace.editorTab = 'output';
+  workspace.recentColors = ['#ffff55', '#5555ff', '#aaaaaa'];
+  const { host, close } = await openBox({ slotName: 'fg' });
+  try {
+    const [yellow, blue, gray] = host.querySelectorAll('.foot .swatch.small');
+    const grid = [...host.querySelectorAll('.swatches .swatch')];
+    expect([yellow.disabled, blue.disabled, gray.disabled]).toEqual([true, true, false]);
+    expect(blue.title).toBe(grid[12].title); // the grid's words for a color that can't be picked
+    expect(blue.style.backgroundColor).toBe('rgb(85, 85, 255)'); // its palette color, as the grid shows it
+    blue.click();
+    expect(workspace.editFgColor).not.toBe('#5555ff');
+    gray.focus();
+    gray.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(document.activeElement.disabled).toBe(false); // past blue and yellow
+    gray.click();
+    grid[7].click();
+    expect(workspace.recentColors[0]).toBe('#aaaaaa');
+  } finally {
+    close();
+  }
+});
+
+test('with Hue moved, Recent keeps the palette color picked, and picking it again paints what its grid swatch paints', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  project.quantize = 'cga';
+  project.hue = 90;
+  await settle(project);
+  workspace.editorTab = 'output';
+  workspace.recentColors = [];
+  const { host, close } = await openBox({ slotName: 'fg' });
+  try {
+    const grid = [...host.querySelectorAll('.swatches .swatch:not(:disabled)')];
+    const red = [...host.querySelectorAll('.swatches .swatch')][1];
+    if (red.disabled) throw new Error('red should be makeable with Hue moved');
+    red.click();
+    const stored = workspace.editFgColor;
+    expect(workspace.recentColors[0]).toBe('#aa0000');
+    await nextTick();
+    grid.find((s) => s !== red)?.click();
+    host.querySelector('.foot .swatch.small[title*="#aa0000"]').click();
+    expect(workspace.editFgColor).toBe(stored);
+  } finally {
+    close();
+  }
+});

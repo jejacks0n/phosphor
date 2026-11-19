@@ -6,6 +6,7 @@ import { createApp } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
 import { useTextTool, typeAtCursor } from '@/composables/useTextTool';
 import { PALETTES } from '@/lib/ColorUtils';
+import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools/index.js';
 import { pickedIndexes } from '@/store/project/reading.js';
 import ColorPopover from '@/components/ColorPopover.vue';
@@ -230,7 +231,7 @@ test('the Color Picker\'s cell gives its 16 and 231', async () => {
 test('the recent colors keep 16 and 231 apart from 0 and 15', async () => {
   const { workspace } = await opened('edit');
   workspace.editorTab = 'output';
-  workspace.recentColors = ['#12ab34'];
+  workspace.recentColors = ['#00af5f'];
   workspace.setColor('fg', '#000000', { index: 16 });
   workspace.setColor('fg', '#000000');
   workspace.setColor('fg', '#ffffff', { index: 231 });
@@ -244,7 +245,7 @@ test('the recent colors keep 16 and 231 apart from 0 and 15', async () => {
     chosen.push([workspace.editFgColor, workspace.editFgIndex]);
   }
   host.remove();
-  expect(chosen).toEqual([['#ffffff', 231], ['#000000', undefined], ['#000000', 16], ['#12ab34', undefined]]);
+  expect(chosen).toEqual([['#ffffff', 231], ['#000000', undefined], ['#000000', 16], ['#00af5f', undefined]]);
 });
 
 // Half blocks (▄) in 16 and 231 only, 2 x 2 cells on the base: turned (4 x 1), every pixel is still 16 or 231, four of
@@ -295,4 +296,18 @@ test('a block copied to another tab keeps 16 and 231', async () => {
     await settle(project);
     expect([at(10, 0), at(10, 1)], layer).toEqual(before);
   }
+});
+
+// f1: Recent keeps the palette color stepped to, not the color stored for it under the adjustments.
+test('Alt+Down with Hue moved puts the palette color in Recent, not the color stored for it', async () => {
+  const { project, workspace } = await opened('edit');
+  mounted = createApp({ setup: () => { useTextTool(project, workspace, null); return () => null; } });
+  mounted.mount(document.createElement('div'));
+  Object.assign(workspace, { editorTab: 'output', outputActiveTool: 'text', textCursor: { col: 0, row: 0 } });
+  project.hue = 90;
+  await settle(project);
+  workspace.setColor('fg', '#000000');
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true, cancelable: true }));
+  const stepped = project.activePalette.findIndex((p) => getEffectiveColor(workspace.editFgColor, project, project.activePalette) === p.hex.toLowerCase());
+  expect(workspace.recentColors[0]).toBe(project.activePalette[stepped].hex.toLowerCase());
 });

@@ -82,7 +82,7 @@ export function useTextTool(project, workspace, textInput) {
     const fg = slot === 'fg';
     const { c } = effectiveColor(fg ? workspace.editFgColor : workspace.editBgColor, project, palette, fg ? workspace.editFgIndex : workspace.editBgIndex);
     const choices = paletteChoices(project, palette), next = stepChoice(choices, c, delta);
-    if (next !== null) workspace.setColor(slot, choices[next].toLowerCase(), { index: sharedIndex(next, palette) });
+    if (next !== null) workspace.setColor(slot, choices[next].toLowerCase(), { index: sharedIndex(next, palette), kept: palette[next].hex.toLowerCase() });
   };
 
   const apply = (action) => {

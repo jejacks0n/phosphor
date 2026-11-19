@@ -156,7 +156,8 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
   Shift+Cmd+X there).
 - Probes: `back-out`: open the box and press Escape, then check where focus is and that tool keys work; `speed`: hold
   Alt+↓ for two seconds; `extremes`: with Saturation at 0, open the box again: the colors that aren't gray show under
-  a "no" sign, say why when hovered, can't be picked, and the arrows and Alt+↓ go past them to the grays.
+  a "no" sign, say why when hovered, can't be picked, and the arrows and Alt+↓ go past them to the grays; the
+  Recent row under the grid does the same.
 - Rated: yes, wants Alt+F, then Enter
 
 ### 8. Pick a color off the art

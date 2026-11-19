@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore, recentColor } from '@/store/WorkspaceStore';
 import { getEffectiveColor, paletteChoices } from '@/lib/PixelTransforms';
-import { swatchSections, drawingColors, sharedIndex } from '@/lib/ColorUtils';
+import { swatchSections, drawingColors, sharedIndex, recentIndex } from '@/lib/ColorUtils';
 import { nearestInDirection } from '@/lib/spatialFocus';
 import { shortcut } from '@/lib/keyLabels';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
@@ -18,8 +18,9 @@ import { toast } from '@/composables/useToast';
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
 // 24-bit. A palette swatch stores a color that displays as its palette color under the color
 // adjustments (paletteChoices), so every palette color the adjustments can make can be painted with; one
-// they can't shows its palette color under a "no" sign and can't be picked. Other swatches show how their color
-// displays (adjusted, snapped) and store the color itself.
+// they can't shows its palette color under a "no" sign and can't be picked. The recent colors are palette colors too,
+// shown and picked as their grid swatches are (recentIndex), and kept as the palette color, not the color stored. Other
+// swatches show how their color displays (adjusted, snapped) and store the color itself.
 // On VECTOR the slots are the shapes' Fill and Stroke (useVectorStyle), each of which can be none, and the selected
 // shapes' Fill and Stroke can each be Solid, Linear or Radial; with a gradient's stop selected (the Node tool), the chip for
 // the gradient it edits (gradientSlot) is that stop's color.
@@ -63,11 +64,13 @@ const isNone = computed(() => (vector.value ? !style.value(SHAPE_SLOTS[props.slo
 const offersNone = computed(() => !stop.value && (vector.value || props.slotName === 'bg' || ansiView.value));
 
 // The palette as the colors its swatches store, or (paints false) a palette color nothing paints as.
-const sections = computed(() => {
+// kept: the palette color, for the recent colors.
+const swatches = computed(() => {
   const palette = project.activePalette ?? [];
   const choices = paletteChoices(project, palette);
-  return swatchSections(project.quantize, palette.map((p, i) => ({ ...p, hex: choices[i] ?? p.hex, paints: !!choices[i] })));
+  return palette.map((p, i) => ({ ...p, hex: choices[i] ?? p.hex, paints: !!choices[i], kept: p.hex.toLowerCase() }));
 });
+const sections = computed(() => swatchSections(project.quantize, swatches.value));
 // Colors every cells layer's edit cells use, and (folded away until asked for) the other colors in their paint.
 // Paint is read when the popover opens: the layers aren't reactive, and don't change while this is open.
 const cellsLayers = () => project.layers.filter((layer, at) => at && layer.kind === 'cells').map((layer) => layer.id);
@@ -79,12 +82,19 @@ const painted = computed(() => {
 });
 const showPainted = ref(false);
 const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
-const recent = computed(() => workspace.recentColors.map((entry) => ({ entry, ...recentColor(entry) })));
+// With a palette, a recent color is its palette color's swatch; in Full color, the color as it was kept.
+const recent = computed(() => workspace.recentColors.map((entry) => {
+  const { hex, index } = recentColor(entry);
+  if (!sections.value.length) return { entry, hex, index, paints: true, kept: hex };
+  const at = recentIndex({ hex, index }, project.activePalette);
+  return { entry, ...swatches.value[at], index: sharedIndex(at, project.activePalette) };
+}));
 
 // index: a swatch's, kept when a lower index shares its color (16 and 231: sharedIndex).
-const choose = (hex, remember = true, index = undefined) => {
-  if (!vector.value) return workspace.setColor(props.slotName, hex, { remember, index });
-  if (hex && remember) workspace.rememberColor(hex);
+// kept: what the recent colors keep, when it isn't hex (a palette swatch's palette color).
+const choose = (hex, remember = true, index = undefined, kept = hex) => {
+  if (!vector.value) return workspace.setColor(props.slotName, hex, { remember, index, kept });
+  if (hex && remember) workspace.rememberColor(kept);
   if (stop.value) return recolorStop(project, workspace, hex, { remember });
   style.set(SHAPE_SLOTS[props.slotName], hex, { remember });
 };
@@ -228,7 +238,7 @@ onBeforeUnmount(() => {
           :style="{ backgroundColor: color.paints ? shown(color.hex) : color.hex }"
           :title="color.paints ? color.hex : t('colors.cantPaint', { hex: color.hex.toLowerCase() })"
           :disabled="!color.paints"
-          @click="choose(color.hex.toLowerCase(), true, sharedIndex(color.c, project.activePalette))"
+          @click="choose(color.hex.toLowerCase(), true, sharedIndex(color.c, project.activePalette), color.kept)"
       ></button>
     </div>
 
@@ -254,12 +264,13 @@ onBeforeUnmount(() => {
       <span v-if="offersNone">{{ t('colors.none') }}</span>
       <span class="spacer"></span>
       <button
-          v-for="{ entry, hex, index } in recent"
-          :key="entry"
+          v-for="color in recent"
+          :key="color.entry"
           class="swatch small"
-          :style="{ backgroundColor: shown(hex) }"
-          :title="t('colors.recentTitle', { hex })"
-          @click="choose(hex, true, index)"
+          :style="{ backgroundColor: color.paints ? shown(color.hex) : color.hex }"
+          :title="color.paints ? t('colors.recentTitle', { hex: color.kept }) : t('colors.cantPaint', { hex: color.kept })"
+          :disabled="!color.paints"
+          @click="choose(color.hex.toLowerCase(), true, color.index, color.kept)"
       ></button>
     </div>
 
