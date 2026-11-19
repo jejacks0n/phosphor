@@ -74,6 +74,13 @@ function updatePosition() {
   };
 }
 
+// Escape shuts an open tip and nothing else (not the settings drawer it's in).
+function onEscape(event) {
+  if (!isVisible.value) return;
+  event.preventDefault();
+  hide();
+}
+
 onBeforeUnmount(hide);
 </script>
 
@@ -88,7 +95,7 @@ onBeforeUnmount(hide);
         :aria-expanded="isVisible"
         @pointerdown="onPointerDown"
         @click.stop="onClick"
-        @keydown.esc="hide"
+        @keydown.esc="onEscape"
         @blur="hide"
     ><span class="help-glyph">i</span></button>
 

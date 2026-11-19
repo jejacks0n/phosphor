@@ -188,6 +188,11 @@ The settings on the left come in sections, each following a layer:
 Each section under Drawing folds and unfolds on its title, and your browser remembers which are folded. A folded
 slider group says how many of its sliders are on.
 
+On a phone the settings slide out from **☰** at the left end of the tab bar. Opened with the keys, focus goes into them,
+to the Phosphor logo, so **Tab** goes on to **Dimensions**. **Escape** shuts them and puts focus back on **☰**. In a field
+you type in, such as Dimensions or **Palette colors**, Escape is the field's: it puts back what was there, and the
+settings stay open.
+
 A layer whose character settings differ from the base's makes a drawing that saves in the newer form (see
 **Saving** under [The Layers List](#the-layers-list)).
 

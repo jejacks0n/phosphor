@@ -1,7 +1,7 @@
 <script setup>
-import { computed, reactive } from 'vue';
+import { computed, reactive, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useLocalStorage } from '@vueuse/core';
+import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -18,6 +18,9 @@ import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 import { resolves } from '@/lib/CharResolver';
 import { charRowsOf } from '@/lib/Cells';
 import { isUniform } from '@/lib/ImageProcessor';
+import { FOCUSABLE } from '@/lib/focus';
+import { ownsKey } from '@/lib/fields';
+import { desktopQuery } from '@/social/config';
 
 const { t } = useI18n();
 const store = useProjectStore();
@@ -102,10 +105,26 @@ const charsetName = computed(() => {
   const [chars, presets] = store.renderStyle === 'ansi' ? [own.chars, ANSI_CHARSETS] : [own.charsAscii, ASCII_CHARSETS];
   return presets.find((p) => p.chars === chars)?.name ?? t('common.custom');
 });
+
+// On a narrow screen the settings are a drawer, opened by the menu button (EditTabs). Opened, focus goes to its first
+// control, so Tab goes on through the settings; Escape shuts it, and focus goes back to the menu button. Escape in a
+// field you type in is the field's (it puts back what was typed), and a tip or a menu open in the drawer takes it first.
+const panel = useTemplateRef('panel');
+const wide = useMediaQuery(desktopQuery);
+watch(() => workspace.settingsOpen, (open) => {
+  if (open && !wide.value) panel.value?.querySelector(FOCUSABLE)?.focus();
+}, { flush: 'post' }); // once App has taken the drawer's inert off
+function onKeyDown(event) {
+  if (event.key !== 'Escape' || event.defaultPrevented || wide.value || !workspace.settingsOpen || ownsKey(event.target, event)) return;
+  event.preventDefault();
+  event.stopPropagation(); // the drawer's Escape, not also the art's (a selection kept)
+  workspace.toggleSettings();
+  document.querySelector('nav.workspace-tabs button.menu-btn')?.focus();
+}
 </script>
 
 <template>
-  <aside class="control-panel">
+  <aside ref="panel" class="control-panel" @keydown="onKeyDown">
     <button class="logo" :aria-label="t('about.label')" :title="t('about.label')" @click="workspace.showAboutModal = true"></button>
     <fieldset class="drawing" :disabled="!!locked" :title="locked">
       <legend>{{ t('panel.groups.drawing') }} <span class="sub">{{ t('panel.groups.drawingSub') }}</span></legend>
