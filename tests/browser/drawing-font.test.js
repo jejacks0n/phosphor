@@ -94,7 +94,10 @@ it('measures coverage from the font\'s pixels', () => {
   useBitmapCoverage(f); // as App.vue installs it
   expect(coverageOf(' ')).toEqual([1, 1]);
   expect(coverageOf('█')).toEqual([0, 0]); // a block too: this font's is blank
-  expect(coverageOf('▙')).toEqual([1, 1]); // no slot: measured as the space
+  expect(coverageOf('▙')).toEqual(coverageOf('▄')); // no slot: measured as its stand-in, the ▄ the ANSI view shows
+  expect(coverageOf('▄')).toEqual([0, 0]);
+  const spec = { id: fontId(f), name: f.name, family: 'monospace', size: 8, lineHeight: 1, bitmap: true, source: encodeFont(f) };
+  expect(drawGlyph('▙', 8, 8, 1, '#fff', false, spec)).toEqual(drawGlyph('▄', 8, 8, 1, '#fff', false, spec)); // drawn as it, too
 });
 
 it('draws a bitmap glyph exactly, sharp or smooth', () => {

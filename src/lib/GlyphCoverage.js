@@ -8,7 +8,7 @@
  */
 
 import { DISPLAY_FONT, DISPLAY_FONTS, displayFontCss, drawGlyph, loadFontFaces } from './displayFonts.js';
-import { SLOT_CHARS, inkOf, slotOf } from './BitmapFont.js';
+import { SLOT_CHARS, fitFont, inkOf, slotOf } from './BitmapFont.js';
 
 const EXACT = new Map([
   [' ', [0, 0]], ['\u00a0', [0, 0]],
@@ -31,8 +31,8 @@ export function setGlyphRasterizer(fn, { exact = true } = {}) {
 }
 
 // Coverage measured from a bitmap font's own pixels (BitmapFont.inkOf), blocks and the space too; a
-// character it has no slot for counts as its space.
-export const useBitmapCoverage = (font) => setGlyphRasterizer((char) => inkOf(font, slotOf(char) ?? 32), { exact: false });
+// character it has no slot for is measured as its stand-in (fitFont), the character the views show.
+export const useBitmapCoverage = (font) => setGlyphRasterizer((char) => inkOf(font, slotOf(fitFont(char)) ?? 32), { exact: false });
 
 export function coverageOf(char) {
   const exact = useExact && EXACT.get(char);

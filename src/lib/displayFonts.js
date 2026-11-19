@@ -8,7 +8,7 @@
  * The 8x16 fonts share the IBM VGA font's cell, so a character one lacks falls back to the next on
  * the same grid (src/assets/fonts/README.md); wide characters and emoji come from the system's fonts.
  */
-import { decodeFont, glyphRows, slotOf } from './BitmapFont.js';
+import { decodeFont, fitFont, glyphRows, slotOf } from './BitmapFont.js';
 import { registerBitmapFont } from './userFonts.js';
 
 export const DISPLAY_FONTS = Object.freeze([
@@ -35,8 +35,9 @@ let scratch = null;
 // leading, to the whole pixel), squeezed into the box when wider. Its RGBA bytes: anti-aliased (canvas text
 // always is) when smooth, as the canvas view draws it; otherwise a pixel over half covered is
 // fully the fill's and the rest clear, as glyph coverage counts it. A color glyph (an emoji) keeps
-// its own colors. A bitmap font's glyph is its own pixels, scaled to the box, sharp either way: text
-// drawn in its TrueType font bleeds into the pixels around (Chrome on a Mac), which would draw it fat.
+// its own colors. A bitmap font's glyph is its own pixels (a character it lacks, its stand-in's: BitmapFont.fitFont),
+// scaled to the box, sharp either way: text drawn in its TrueType font bleeds into the pixels around (Chrome on a Mac),
+// which would draw it fat.
 export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth = false, font = DISPLAY_FONT) {
   scratch ??= document.createElement('canvas');
   if (scratch.width !== width || scratch.height !== height) {
@@ -48,7 +49,7 @@ export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth 
   const bitmap = font.bitmap && bitmapOf(font);
   if (bitmap) {
     ctx.fillStyle = fill;
-    const rows = glyphRows(bitmap, slotOf(char) ?? 32), edge = (n, of, size) => Math.ceil(n * size / of);
+    const rows = glyphRows(bitmap, slotOf(fitFont(char)) ?? 32), edge = (n, of, size) => Math.ceil(n * size / of);
     for (let r = 0; r < bitmap.height; r++) {
       for (let b = 0; b < 8; b++) {
         if (!((rows[r] >> (7 - b)) & 1)) continue;
