@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
 import { formatShortDateTime } from '@/i18n/format';
@@ -12,6 +12,14 @@ const props = defineProps({
 });
 defineEmits(['browse', 'start-blank']);
 const { t } = useI18n();
+
+// A fresh tab starts on Choose a file, so Tab goes on from it as it would natively; focus something else already has
+// (a dialog's, a button just used) stays where it is.
+const browse = ref(null);
+watch(() => props.ready, async (ready) => {
+  await nextTick();
+  if (ready && (!document.activeElement || document.activeElement === document.body)) browse.value?.focus();
+}, { immediate: true });
 // A drawing open elsewhere is in another tab on the web, and in another window in the desktop app.
 const elsewhere = import.meta.env.VITE_DESKTOP === '1' ? 'openElsewhereWindow' : 'openElsewhere';
 
@@ -43,7 +51,7 @@ const rows = computed(() => {
       <div class="logo"></div>
       <span class="icon">⬆</span>
       <p>{{ t('zero.dropPrompt', { ext: PROJECT_EXTENSION }) }}</p>
-      <button class="browse" @click="$emit('browse')">
+      <button ref="browse" class="browse" @click="$emit('browse')">
         <span class="mobile">{{ t('zero.browseMobile') }}</span>
         <span class="desktop">{{ t('zero.browseDesktop') }}</span>
       </button>

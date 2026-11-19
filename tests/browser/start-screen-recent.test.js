@@ -1,8 +1,9 @@
 // The start screen's "Pick up where you left off" rows (ZeroState.vue): the whole name with its extension, where that
 // copy stands, and a time that tells two rows apart; on a phone, the name on its own line above the time and Open. And
-// its buttons as a list: Up and Down move between Choose a file, Start blank and each Open.
+// its buttons as a list: Up and Down move between Choose a file, Start blank and each Open, and Choose a file has focus
+// in a fresh tab, so Tab goes on from it.
 import { test, expect, afterEach, vi } from 'vitest';
-import { createApp } from 'vue';
+import { createApp, h, nextTick, ref } from 'vue';
 import ZeroState from '@/components/ZeroState.vue';
 import { i18n, setLocale } from '@/i18n';
 
@@ -106,4 +107,27 @@ test('on a phone the name has its own line, whole, with the time, status and Ope
 
   await setLocale('fr', { persist: false });
   expect(text(li, '.status')).toBe('Inchangé');
+});
+
+test('Choose a file has focus once the start screen is ready, unless something else already has it', async () => {
+  const field = document.body.appendChild(document.createElement('input'));
+  field.focus();
+  mount([row('a')]);
+  await nextTick();
+  expect(document.activeElement).toBe(field);
+  field.remove();
+  mounted.unmount();
+  host.remove();
+
+  host = Object.assign(document.createElement('div'), { style: 'width: 900px; display: flex' });
+  document.body.append(host);
+  const ready = ref(false);
+  mounted = createApp({ render: () => h(ZeroState, { ready: ready.value, recent: [row('a')], openRecent: () => {} }) }).use(i18n);
+  mounted.mount(host);
+  await nextTick();
+  expect(document.activeElement).toBe(document.body);
+  ready.value = true;
+  await nextTick();
+  await nextTick();
+  expect(document.activeElement).toBe(host.querySelector('button.browse'));
 });
