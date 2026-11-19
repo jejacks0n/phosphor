@@ -40,16 +40,22 @@ export function notMonospacedMessage(name, widths, { narrow, wide }) {
 export const familyOf = (id) => `"Phosphor Font ${id}", monospace`;
 const faceFamily = (id) => `Phosphor Font ${id}`;
 
-const faces = new Map(); // id -> its FontFace, once registered
+const faces = new Map(); // id -> its FontFace's loading (a promise), from the first register
 
-// Register a font's bytes with the page under its id's family; its FontFace, loaded.
-async function register(id, data) {
-  if (faces.has(id)) return faces.get(id);
-  const face = new FontFace(faceFamily(id), data);
-  await face.load();
-  document.fonts.add(face);
-  faces.set(id, face);
-  return face;
+// Register a font's bytes with the page under its id's family; its FontFace, loaded. Registering
+// again while it loads waits for the same face, so an id never gets two.
+function register(id, data) {
+  if (!faces.has(id)) {
+    const face = new FontFace(faceFamily(id), data);
+    faces.set(id, face.load().then(() => {
+      document.fonts.add(face);
+      return face;
+    }, (error) => {
+      faces.delete(id);
+      throw error;
+    }));
+  }
+  return faces.get(id);
 }
 
 // A drawing's bitmap font, registered with the page as a TrueType font; its CSS family.
@@ -60,8 +66,7 @@ export async function registerBitmapFont(font) {
 }
 
 function unregister(id) {
-  const face = faces.get(id);
-  if (face) document.fonts.delete(face);
+  faces.get(id)?.then((face) => document.fonts.delete(face), () => {});
   faces.delete(id);
 }
 

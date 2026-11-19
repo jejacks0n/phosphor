@@ -12,9 +12,9 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
-import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
+import { setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
-import { decodeFont, inkOf, slotOf } from '@/lib/BitmapFont';
+import { decodeFont } from '@/lib/BitmapFont';
 import { loadFonts } from '@/lib/userFonts';
 import { charRowsOf } from '@/lib/Cells';
 
@@ -136,7 +136,7 @@ watch(() => workspace.userFonts && JSON.stringify(workspace.displayFontSpec), (s
   setDisplayFont(font).then(() => {
     if (change !== fontChange) return; // changed again meanwhile
     const bitmap = font.bitmap && decodeFont(font.source, font.name);
-    if (bitmap) setGlyphRasterizer((char) => inkOf(bitmap, slotOf(char) ?? 32), { exact: false });
+    if (bitmap) useBitmapCoverage(bitmap);
     else setGlyphRasterizer(rasterizeCoverage);
     workspace.displayFontLoaded = font;
     if (project.image) project.render();

@@ -2,10 +2,11 @@
 import { test, it, expect, afterEach } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
-import { fontId, encodeFont, inkOf, slotOf } from '@/lib/BitmapFont.js';
+import { fontId, encodeFont } from '@/lib/BitmapFont.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
-import { coverageOf, setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage.js';
+import { registerBitmapFont } from '@/lib/userFonts.js';
+import { coverageOf, setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage } from '@/lib/GlyphCoverage.js';
 
 afterEach(async () => {
   await setDisplayFont('jetbrains');
@@ -89,8 +90,10 @@ it('fitCells swaps what the font lacks', async () => {
 it('measures coverage from the font\'s pixels', () => {
   const f = { name: 'Solid space', height: 8, bytes: new Uint8Array(256 * 8) };
   f.bytes.fill(0xff, 32 * 8, 33 * 8);
-  setGlyphRasterizer((char) => inkOf(f, slotOf(char) ?? 32), { exact: false });
+  useBitmapCoverage(f); // as App.vue installs it
   expect(coverageOf(' ')).toEqual([1, 1]);
+  expect(coverageOf('█')).toEqual([0, 0]); // a block too: this font's is blank
+  expect(coverageOf('▙')).toEqual([1, 1]); // no slot: measured as the space
 });
 
 it('draws a bitmap glyph exactly, sharp or smooth', () => {
@@ -109,4 +112,25 @@ it('draws a bitmap glyph exactly, sharp or smooth', () => {
       }
     }
   }
+});
+
+it('a font after a bitmap one draws in its own glyphs, the bitmap\'s gone', async () => {
+  const f = { name: 'Solid', height: 16, bytes: new Uint8Array(256 * 16).fill(0xff) };
+  const spec = { id: fontId(f), name: f.name, family: 'monospace', size: 16, lineHeight: 1, bitmap: true, source: encodeFont(f) };
+  await setDisplayFont(spec);
+  const lit = (data) => data.filter((_, i) => i % 4 === 3 && data[i]).length;
+  expect(lit(drawGlyph('A', 8, 16))).toBe(8 * 16); // every pixel of the solid glyph
+  await setDisplayFont('jetbrains');
+  expect(DISPLAY_FONT.bitmap).toBeUndefined();
+  expect(DISPLAY_FONT.source).toBeUndefined();
+  const n = lit(drawGlyph('A', 8, 16));
+  expect(n).toBeGreaterThan(0);
+  expect(n).toBeLessThan(8 * 16); // JetBrains Mono's A, not a solid block
+});
+
+it('registering a font twice at once adds one face', async () => {
+  const f = { name: 'Twice', height: 8, bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => (i * 7) % 256) };
+  const [a, b] = await Promise.all([registerBitmapFont(f), registerBitmapFont(f)]);
+  expect(a).toBe(b);
+  expect([...document.fonts].filter((face) => face.family.replace(/"/g, '') === `Phosphor Font ${fontId(f)}`)).toHaveLength(1);
 });
