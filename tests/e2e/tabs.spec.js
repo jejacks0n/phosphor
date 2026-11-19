@@ -83,5 +83,5 @@ test('the editor tabs are a tablist: Tab reaches the selected one, arrows move a
   await tab(page, 'ANSI').click();
   await page.keyboard.press('End');
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('article:has(textarea[data-text-input])')).toBeFocused();
+  await expect(page.locator('article[tabindex="0"]:has(textarea[data-text-input])')).toBeFocused();
 });
