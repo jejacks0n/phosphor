@@ -83,11 +83,25 @@ test('import adds, renames and says which fonts are missing', async () => {
     { name: 'Mine', glyphs: [], font },
     { name: 'Mine', glyphs: [], font },
   ]);
-  expect(result).toEqual({ added: 2, waiting: ['Topaz'] });
+  expect(result).toEqual({ added: 2, waiting: ['Topaz'], unused: [] });
   const names = palettes.userPalettes.map(p => p.name);
   expect(new Set(names).size).toBe(3);
   palettes.importPalettes([{ name: 'Frogs', glyphs: [], font: null }, { name: 'Frogs', glyphs: [], font: null }]);
   expect(palettes.userPalettes.slice(-2).map(p => p.name)).toEqual(['Frogs', 'Frogs (custom)']); // a free name is kept
+});
+
+test('import says which kept fonts its palettes wait for', async () => {
+  const { project, palettes, workspace } = await setup();
+  project.setDrawingFont(fontA());
+  workspace.userFonts = [{ id: fontId(fontB()), name: 'B', kind: 'bitmap', height: 8 }];
+  const a = { id: fontId(fontA()), name: 'A', height: 8 }, b = { id: fontId(fontB()), name: 'B', height: 8 };
+  const result = palettes.importPalettes([
+    { name: 'One', glyphs: [], font: a },
+    { name: 'Two', glyphs: [], font: b },
+    { name: 'Three', glyphs: [], font: b },
+    { name: 'Four', glyphs: [], font: null },
+  ]);
+  expect(result).toEqual({ added: 4, waiting: [], unused: ['B'] });
 });
 
 test('palettes saved before ties read as for any font', async () => {

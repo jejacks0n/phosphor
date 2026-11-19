@@ -163,10 +163,15 @@ const onImport = async (event) => {
   event.target.value = ''; // so the same file can be picked again
   if (!file) return;
   try {
-    const { added, waiting } = palettes.importPalettes(readPaletteFile(await file.text(), file.name));
-    toast(waiting.length
-      ? t('palette.file.addedWaiting', { n: added, fonts: waiting.join(', ') }, added)
-      : t('palette.file.added', { n: added }, added));
+    const list = readPaletteFile(await file.text(), file.name);
+    const { added, waiting, unused } = palettes.importPalettes(list);
+    // Palettes for a font not in use are said apart, each sentence counting those for its fonts.
+    const says = (key, fonts) => {
+      const n = list.filter(p => fonts.includes(p.font?.name)).length;
+      return fonts.length ? [t(key, { n, fonts: fonts.join(', ') }, n)] : [];
+    };
+    const notes = [...says('palette.file.addedWaiting', waiting), ...says('palette.file.addedUnused', unused)];
+    toast(notes.length ? notes.join(' ') : t('palette.file.added', { n: added }, added));
   } catch (error) {
     toast(error.message);
   }

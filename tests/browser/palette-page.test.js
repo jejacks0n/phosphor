@@ -7,8 +7,9 @@ import { i18n } from '@/i18n';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { createTestApp } from '../support/app.js';
 import { usePaletteStore } from '@/store/PaletteStore.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { fontId } from '@/lib/BitmapFont.js';
-import { readPaletteFile } from '@/lib/PaletteFile.js';
+import { readPaletteFile, writePaletteFile } from '@/lib/PaletteFile.js';
 import { toastMessage } from '@/composables/useToast.js';
 
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
@@ -205,4 +206,23 @@ test('export and import', async () => {
   await expect.poll(() => saved.length).toBe(2);
   expect(saved[1].name).toBe('Frogs.palettes.json');
   expect(readPaletteFile(await saved[1].blob.text(), saved[1].name).map((p) => p.name)).toEqual(['Frogs']);
+});
+
+test('import says where palettes for other fonts went', async () => {
+  await mount();
+  useWorkspaceStore().userFonts = [{ id: 'bitmap-b', name: 'B', kind: 'bitmap', height: 8 }]; // kept, not in use
+  const topaz = { id: 'bitmap-topaz', name: 'Topaz', height: 8 }, b = { id: 'bitmap-b', name: 'B', height: 8 };
+  const input = host.querySelector('input[type="file"]');
+  const choose = async (list) => {
+    toastMessage.value = null;
+    const files = new DataTransfer();
+    files.items.add(new File([writePaletteFile(list.map((font, i) => ({ name: `P${i}`, glyphs: [], font })))], 'p.palettes.json'));
+    input.files = files.files;
+    input.dispatchEvent(new Event('change'));
+    await expect.poll(() => toastMessage.value).not.toBeNull();
+    return toastMessage.value;
+  };
+  expect(await choose([topaz])).toBe('Added 1 palette for Topaz. Load that font to see it.');
+  expect(await choose([b, b])).toBe('Added 2 palettes for B. Use that font to see them.');
+  expect(await choose([topaz, b])).toBe('Added 1 palette for Topaz. Load that font to see it. Added 1 palette for B. Use that font to see it.');
 });

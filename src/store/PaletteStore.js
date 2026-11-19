@@ -108,7 +108,7 @@ export const usePaletteStore = defineStore('palettes', {
     },
 
     // Palettes from a file ({ name, glyphs, font }[]), kept under new ids and their own names (made unique). waiting:
-    // the names of the fonts they're tied to that aren't loaded or in use.
+    // the names of the fonts they're tied to that aren't loaded or in use; unused: those kept here but not in use.
     importPalettes(list) {
       const names = this.all.map(p => p.name);
       const added = list.map((p) => {
@@ -119,7 +119,8 @@ export const usePaletteStore = defineStore('palettes', {
       this.userPalettes = [...this.userPalettes, ...added];
       const missing = new Set(this.unloaded.map(p => p.id));
       const waiting = [...new Set(added.filter(p => missing.has(p.id)).map(p => p.font.name))];
-      return { added: added.length, waiting };
+      const unused = [...new Set(added.filter(p => p.font && p.font.id !== this.currentFont?.id && !missing.has(p.id)).map(p => p.font.name))];
+      return { added: added.length, waiting, unused };
     },
 
     rename(id, name) {

@@ -710,6 +710,7 @@
     "file": {
       "added": "Added 1 palette. | Added {n} palettes.",
       "addedWaiting": "Added 1 palette for {fonts}. Load that font to see it. | Added {n} palettes for {fonts}. Load that font to see them.",
+      "addedUnused": "Added 1 palette for {fonts}. Use that font to see it. | Added {n} palettes for {fonts}. Use that font to see them.",
       "notPalettes": "“{name}” isn't a Phosphor palette file."
     },
     "untitled": "Untitled palette",
