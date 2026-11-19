@@ -6,8 +6,8 @@ fails, the site isn't deployed.
 ```bash
 npm test               # everything: lint, unit, browser, end-to-end
 npm run test:unit      # pure logic, in Node (a second or two)
-npm run test:browser   # the store, canvas and WebGL, in Chromium (a few seconds)
-npm run test:e2e       # real clicks and keys against a production build (CI splits it into 6 shards, about 6 minutes each)
+npm run test:browser   # the store, canvas and WebGL, in Chromium (a few minutes; CI splits it into 2 shards)
+npm run test:e2e       # real clicks and keys against a production build (CI splits it into 6 shards, three to four minutes each)
 npm run test:e2e:desktop  # the desktop app in Electron (not part of npm test; CI runs it as its own job)
 npm run test:update    # rewrite the reference files (read the diff before committing)
 ```

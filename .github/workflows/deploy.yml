@@ -24,25 +24,39 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - id: playwright
-        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-      - run: npx playwright install --with-deps chromium
       - run: npm run lint
       - run: npm run test:unit
-      - run: npm run test:browser
       - run: npm run build
+
+  # The browser tests were four of the test job's five minutes, so they run in two shards beside it, each about as
+  # long as an end-to-end shard (a third would wait on those). Vitest's own --shard deals the files out by a hash of
+  # their paths: not evenly (one half had 58% of the time when this was written), and still under an end-to-end
+  # shard. On the runner and not in Playwright's image, whose fallback fonts draw some characters wider than their
+  # cells.
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false # one shard's failure still shows the other's
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: ./.github/actions/chromium
+      - run: npm run test:browser -- --shard=${{ matrix.shard }}/2
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: browser-results-${{ matrix.shard }}
           path: .vitest/attachments/
           if-no-files-found: ignore
 
-  # The end-to-end tests are most of the time, so they run in shards, each on its own runner beside the job above.
+  # The end-to-end tests are most of the time, so they run in shards, each on its own runner beside the jobs above.
   # In Playwright's image, which has Chromium and the packages it needs: installing them from Ubuntu's mirror took
   # nine minutes on some runners. The image's version is the Playwright in package-lock.json, and goes up with it.
   e2e:
@@ -86,20 +100,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - id: versions
-        run: |
-          echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
-          echo "electron=$(node -p "require('electron/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.versions.outputs.version }}
-      - run: npx playwright install --with-deps chromium
+      - uses: ./.github/actions/chromium
       # Electron downloads itself the first time it's required, not on install: here, rather than inside a test.
+      - id: electron
+        run: echo "version=$(node -p "require('electron/package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@v4
         with:
           path: ~/.cache/electron
-          key: electron-${{ runner.os }}-${{ steps.versions.outputs.electron }}
+          key: electron-${{ runner.os }}-${{ steps.electron.outputs.version }}
       - run: node -e "require('electron')"
       # Electron's sandbox needs unprivileged user namespaces, which Ubuntu 24.04 keeps from apps without an AppArmor
       # profile, as Electron from npm is.
@@ -118,7 +126,7 @@ jobs:
           if-no-files-found: ignore
 
   build:
-    needs: [test, e2e, desktop-e2e]
+    needs: [test, browser, e2e, desktop-e2e]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,40 @@
+name: Chromium and its fonts
+description: >
+  Playwright's Chromium and the packages its --with-deps adds to a runner, from the cache when they're there.
+  After checkout and npm ci.
+
+# On a runner --with-deps adds only fonts, which the browser tests need (a CJK character draws nothing without them,
+# and the fallback font decides what a glyph covers). They're 22 MB that Ubuntu's mirror has taken five minutes to
+# send, in about one run in six: so the packages are kept in the cache, and installed from it with no download.
+runs:
+  using: composite
+  steps:
+    - id: versions
+      shell: bash
+      run: |
+        echo "playwright=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+        echo "ubuntu=$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.versions.outputs.playwright }}
+    - id: packages
+      uses: actions/cache@v4
+      with:
+        path: ~/playwright-packages
+        key: playwright-packages-ubuntu-${{ steps.versions.outputs.ubuntu }}-${{ steps.versions.outputs.playwright }}
+    - if: steps.packages.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        find ~/playwright-packages -name '*.deb' -exec sudo dpkg -i {} +
+        npx playwright install chromium
+    # Nothing kept yet (a new Playwright, a new Ubuntu, a week with no run): the mirror installs them as before, and
+    # whatever that added is fetched again as files to keep.
+    - if: steps.packages.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        dpkg-query -W -f='${Package}\n' | sort > "$RUNNER_TEMP/packages-before"
+        npx playwright install --with-deps chromium
+        dpkg-query -W -f='${Package}\n' | sort > "$RUNNER_TEMP/packages-after"
+        mkdir -p ~/playwright-packages && cd ~/playwright-packages
+        comm -13 "$RUNNER_TEMP/packages-before" "$RUNNER_TEMP/packages-after" | xargs -r apt-get download
