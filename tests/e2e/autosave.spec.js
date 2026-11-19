@@ -180,6 +180,25 @@ test('New project keeps the old work in the list, and a refresh stays at the zer
   await expect(button).toBeEnabled();
 });
 
+test('a fresh tab\'s start screen starts on Choose a file, and Down reaches Pick up where you left off', async ({ page }) => {
+  await openApp(page);
+  await typeAndWrite(page, 3, 3, 'kept');
+  await page.getByRole('button', { name: 'New project' }).click();
+  await page.getByRole('dialog', { name: 'Start a new project?' }).getByRole('button', { name: /Start without saving/ }).click();
+  await page.reload();
+  const open = recentList(page).getByRole('button', { name: /gradient/ });
+  await expect(open).toBeEnabled();
+
+  await expect(zeroState(page).getByRole('button', { name: 'Choose a file' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(zeroState(page).getByRole('button', { name: 'Start with a blank canvas' })).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(open).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(zeroState(page)).toHaveCount(0);
+  await expect.poll(() => chars(page, 3, 3, 6)).toBe('kept');
+});
+
 const versionsButton = (page) => page.getByRole('button', { name: 'Versions', exact: true });
 const versionsDialog = (page) => page.getByRole('dialog', { name: 'Versions' });
 const versionRows = (page) => versionsDialog(page).getByRole('listitem');

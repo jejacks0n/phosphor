@@ -232,7 +232,7 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
 ### 17. A second tab offers my work
 - Does: opens the app in a second tab of the same browser and looks at the start screen; then closes it.
 - Expects: "Pick up where you left off" lists his work, marked as already open in another tab ("Open in another tab");
-  the first tab's work is as it was.
+  the first tab's work is as it was. Choose a file has focus as the page opens, so Down reaches the rest at once.
 - Probes: `out-of-order`: open it in the second tab anyway, fix a cell there, close it, and see what the first tab has.
 - Rated: yes, wants Tab to the entry, then Enter
 
