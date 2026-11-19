@@ -3,7 +3,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
-import { MOST_COMMENT_LINES, SAUCE_WIDTHS, charCount, commentLines, fitField, letterSpacingOf, readSauce, sauceText, sauceUnmappable, withLetterSpacing } from '../../src/lib/Sauce.js';
+import { MOST_COMMENT_LINES, Sauce, SAUCE_WIDTHS, charCount, commentLines, fitField, letterSpacingOf, readSauce, sauceText, sauceUnmappable, withLetterSpacing } from '../../src/lib/Sauce.js';
 
 test('a character is one place, an emoji included', () => {
   assert.equal(charCount('Café € 🎨'), 8);
@@ -143,4 +143,9 @@ test('the date and font name are written as given, and listed when CP437 lacks a
   const read = readSauce(new Uint8Array(await new AnsiFile(1, 1, [{ char: 'A', fg: W, bg: W }]).toBlob({ sauce }).arrayBuffer()));
   assert.deepEqual([read.date, read.fontName, read.flags, read.use9pxFont], ['19961113', 'Amiga Topaz 1+ ?', 5, true]);
   assert.deepEqual(sauceUnmappable(sauce), [{ char: '€', as: '?', fields: ['fontName'] }]);
+});
+
+test('a record is written with the FileType 0 and DataType 6 it is given, not 1', () => {
+  const bytes = new Sauce({ cols: 1, rows: 1 }, { fileType: 0, dataType: 6 }).appendTo(new Uint8Array(1));
+  assert.deepEqual([readSauce(bytes).dataType, readSauce(bytes).fileType], [6, 0]);
 });

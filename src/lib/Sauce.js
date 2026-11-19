@@ -78,8 +78,8 @@ export class Sauce {
     this.cols = opts.width ?? file.cols;
     this.rows = opts.height ?? file.rows;
 
-    this.dataType = opts.dataType || 1;
-    this.fileType = opts.fileType || 1;
+    this.dataType = opts.dataType ?? 1;
+    this.fileType = opts.fileType ?? 1;
     this.fileSize = opts.fileSize || 0;
 
     this.title = cut(opts.title, SAUCE_WIDTHS.title);

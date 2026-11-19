@@ -1190,6 +1190,8 @@
     "flattenFailed": "Could not flatten the artwork.",
     "mergeIntoImageFailed": "Could not merge into the image.",
     "artTooBig": "This file is {cols} × {rows}. Phosphor opens at most {maxCols} columns, {maxLines} lines and {maxCells} cells.",
+    "xbin512": "{name} uses 512 characters, which Phosphor can't draw yet.",
+    "xbinBroken": "{name} is cut short or isn't an XBin file.",
     "artEmpty": "There's no art in this file.",
     "notUtf8": "{name} isn't UTF-8, so it was read as CP437, as an .ans file is."
   },

@@ -1190,6 +1190,8 @@
     "flattenFailed": "Impossible d'aplatir le dessin.",
     "mergeIntoImageFailed": "Impossible de fusionner dans l'image.",
     "artTooBig": "Ce fichier fait {cols} × {rows}. Phosphor ouvre au plus {maxCols} colonnes, {maxLines} lignes et {maxCells} cellules.",
+    "xbin512": "{name} utilise 512 caractères, que Phosphor ne sait pas encore dessiner.",
+    "xbinBroken": "{name} est tronqué ou n'est pas un fichier XBin.",
     "artEmpty": "Ce fichier ne contient aucun dessin.",
     "notUtf8": "{name} n'est pas en UTF-8 : il a été lu en CP437, comme un fichier .ans."
   },
