@@ -117,6 +117,31 @@ test('choosing another font only shows it; Use in this drawing applies it', asyn
   expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
 });
 
+test('the arrow keys choose the next and previous fonts', async () => {
+  await mount();
+  const layer = host.querySelector('.palette-layer'), key = async (k) => {
+    layer.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+    await nextTick();
+  };
+  expect(title()).toBe('A');
+  await key('ArrowDown');
+  expect(title()).toBe('B');
+  expect(host.querySelector('.row.current .name span').textContent).toBe('B');
+  await key('ArrowUp');
+  expect(title()).toBe('A');
+  await key('ArrowUp'); // already the first
+  expect(title()).toBe('A');
+  const filter = host.querySelector('.top input');
+  filter.value = 'Tall';
+  filter.dispatchEvent(new Event('input'));
+  await nextTick();
+  await key('ArrowDown'); // through the rows the filter leaves
+  expect(title()).toBe('Tall Mono');
+  filter.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true })); // the filter keeps its keys
+  await nextTick();
+  expect(title()).toBe('Tall Mono');
+});
+
 test('a TrueType font shows a sample and View in it', async () => {
   const { project, workspace, tt } = await mount();
   await press(row('Tall Mono'));

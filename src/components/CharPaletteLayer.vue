@@ -39,6 +39,7 @@ const tieOpen = ref(false);         // the editor head's tie menu
 const unloadedOpen = ref(false);    // the For fonts not loaded group, unfolded
 const importer = useTemplateRef('importer');
 const onFonts = computed(() => workspace.paletteLayerPage === 'fonts');
+const fontsPage = useTemplateRef('fontsPage');
 
 const current = computed(() => palettes.all.find(p => p.id === currentId.value) ?? palettes.active);
 const matches = (p) => {
@@ -223,9 +224,10 @@ const onKeyDown = (event) => {
     if (event.key === 'Escape') event.target.blur();
     return;
   }
-  if (onFonts.value) { // the Fonts page has no keys of its own but Escape
-    if (event.key !== 'Escape') return;
-    emit('close');
+  if (onFonts.value) { // the Fonts page: the arrow keys choose a font, Escape closes
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') fontsPage.value?.step(event.key === 'ArrowDown' ? 1 : -1);
+    else if (event.key === 'Escape') emit('close');
+    else return;
     event.preventDefault();
     return;
   }
@@ -281,7 +283,7 @@ onBeforeUnmount(() => {
       <button :class="{ on: !onFonts }" :aria-pressed="!onFonts" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.pages.palettes') }}</button>
       <button :class="{ on: onFonts }" :aria-pressed="onFonts" @click="workspace.paletteLayerPage = 'fonts'">{{ t('palette.pages.fonts') }}</button>
     </div>
-    <FontsPage v-if="onFonts"/>
+    <FontsPage v-if="onFonts" ref="fontsPage"/>
     <!-- the Palettes page -->
     <div v-else class="page">
       <!-- the list: choose a palette -->

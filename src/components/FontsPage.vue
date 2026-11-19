@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, useTemplateRef } from 'vue';
+import { ref, computed, watch, useTemplateRef, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -19,6 +19,7 @@ const workspace = useWorkspaceStore();
 const palettes = usePaletteStore();
 const { loadFile, choose, saveRaw, savePng, remove, hostsFont } = useFontActions();
 const fileInput = useTemplateRef('file');
+const page = useTemplateRef('page');
 
 const SAMPLE = 'Aa░▒▓█▄▀╔═╗☺';
 const lines = computed(() => [
@@ -99,6 +100,16 @@ const apply = () => run(() => choose(chosen.value.id));
 // The drawing's font saves at once; one only in this browser is read from it first.
 const save = (as) => run(async () => as(isDrawn.value ? drawn.value : await storedBitmapFont(chosen.value.id)));
 const forget = () => run(() => remove(chosen.value.id));
+// The next or previous font on screen, in the list's order (the layer passes its arrow keys here).
+const step = (delta) => {
+  const rows = groups.value.flatMap((g) => g.rows), i = rows.findIndex((f) => f.id === chosen.value?.id);
+  const next = rows[Math.max(0, Math.min(rows.length - 1, i + delta))];
+  if (!next) return;
+  chosenId.value = next.id;
+  nextTick(() => page.value?.querySelector('.row.current')?.scrollIntoView({ block: 'nearest' }));
+};
+defineExpose({ step });
+
 const exportPalettes = () => {
   const list = palettes.all.filter((p) => p.font?.id === chosen.value.id);
   downloadBlob(new Blob([writePaletteFile(list)], { type: 'application/json' }), paletteFileName(chosen.value.name));
@@ -106,8 +117,8 @@ const exportPalettes = () => {
 </script>
 
 <template>
-  <div class="page">
-    <!-- the list: choose a font to see it -->
+  <div ref="page" class="page">
+    <!-- the list: choose a font to see it (or with the arrow keys) -->
     <div class="list-side">
       <div class="top">
         <input v-model="filter" :placeholder="t('palette.fonts.filterPlaceholder')" :aria-label="t('palette.fonts.filterAria')">
