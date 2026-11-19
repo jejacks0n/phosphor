@@ -130,5 +130,6 @@ export function writeXBin({ cols, rows, cells, palette, font, sauce }) {
   }
   const bytes = Uint8Array.from(out);
   if (sauce === false) return bytes;
-  return new Sauce({ cols, rows }, { ...sauce, dataType: 6, fileType: 0, flags: 0, width: 0, height: 0, fileSize: bytes.length }).appendTo(bytes);
+  // XBin's record names no font (TInfoS empty): the font is in the file.
+  return new Sauce({ cols, rows }, { ...sauce, dataType: 6, fileType: 0, flags: 0, width: 0, height: 0, fontName: '', fileSize: bytes.length }).appendTo(bytes);
 }

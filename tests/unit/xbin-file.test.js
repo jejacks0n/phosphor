@@ -35,8 +35,8 @@ describe('XBin', () => {
     expect(art.cells[0]).toMatchObject({ char: ' ', fg: '#ffffff', bg: '#0000aa' });
   });
   it('writes SAUCE as XBin', () => {
-    const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: PAL, font, sauce: { title: 'T' } });
-    expect(readSauce(bytes)).toMatchObject({ dataType: 6, fileType: 0, title: 'T' });
+    const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: PAL, font, sauce: { title: 'T', fontName: 'IBM VGA50' } });
+    expect(readSauce(bytes)).toMatchObject({ dataType: 6, fileType: 0, title: 'T', fontName: '' }); // the font is in the file: XBin's TInfoS is empty
     expect(readXBin(bytes, 'a.xb').cells[0].char).toBe('A');
   });
   it('refuses broken files', () => {
