@@ -342,9 +342,6 @@
     "longRamp": "Rampe étendue"
   },
   "font": {
-    "errors": {
-      "notBitmap": "{name} n'est pas une police matricielle que Phosphor peut lire : il faut 256 glyphes, de 8 pixels de large et de 1 à 32 de haut."
-    },
     "label": "Police",
     "help": "Définit la police d'affichage de votre canevas. Cliquez sur Charger une police pour ajouter une police à chasse fixe TrueType, OpenType ou WOFF depuis votre ordinateur. Les polices matricielles (bitmap) sont optimales à des multiples de leur taille native (comme 16 px ou 32 px pour les polices 8×16). Votre choix de police est enregistré dans votre navigateur. Dans un salon partagé, vous voyez la police de l'hôte.",
     "remove": "Retirer",
@@ -354,13 +351,17 @@
     "loadTitle": "Charger une police à chasse fixe depuis votre ordinateur",
     "groupBuiltIn": "Intégrées",
     "groupYours": "Les vôtres",
+    "thisDrawing": "Ce dessin",
+    "saveRaw": "Enregistrer .F{height}",
+    "savePng": "Enregistrer en PNG",
     "sizeAria": "Taille de police",
     "sizeTitle": "Taille de police en pixels",
     "hostsFont": "Utilisation de la police de l'hôte dans ce salon.",
     "errors": {
       "unreadable": "Impossible de lire « {name} » comme un fichier de police. Veuillez utiliser un fichier TrueType (.ttf), OpenType (.otf) ou WOFF.",
       "notMonospaced": "« {name} » n'est pas à chasse fixe ({narrow} mesure {narrowPx} px de large, alors que {wide} en mesure {widePx} px). Phosphor nécessite des polices à espacement fixe où chaque caractère occupe la même largeur de cellule.",
-      "aSpace": "espace"
+      "aSpace": "espace",
+      "notBitmap": "{name} n'est pas une police matricielle que Phosphor peut lire : il faut 256 glyphes, de 8 pixels de large et de 1 à 32 de haut."
     }
   },
   "sidePanel": {

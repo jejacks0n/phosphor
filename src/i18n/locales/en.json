@@ -342,9 +342,6 @@
     "longRamp": "Long ramp"
   },
   "font": {
-    "errors": {
-      "notBitmap": "{name} isn't a bitmap font Phosphor can read: it needs 256 glyphs, 8 pixels wide and 1 to 32 tall."
-    },
     "label": "Font",
     "help": "Sets the display font for your canvas. Click Load font to add a monospaced TrueType, OpenType, or WOFF font from your computer. Bitmap fonts look best at multiples of their native size (such as 16px or 32px for 8×16 fonts). Your font choice is saved in your browser. In a shared room, you see the host's font.",
     "remove": "Remove",
@@ -354,13 +351,17 @@
     "loadTitle": "Load a monospaced font from your computer",
     "groupBuiltIn": "Built-in",
     "groupYours": "Yours",
+    "thisDrawing": "This drawing",
+    "saveRaw": "Save .F{height}",
+    "savePng": "Save PNG",
     "sizeAria": "Font size",
     "sizeTitle": "Font size in pixels",
     "hostsFont": "Using the host's font while in this room.",
     "errors": {
       "unreadable": "Could not read “{name}” as a font file. Please use a TrueType (.ttf), OpenType (.otf), or WOFF file.",
       "notMonospaced": "“{name}” isn't monospaced ({narrow} is {narrowPx}px wide, while {wide} is {widePx}px). Phosphor needs fixed-width fonts where every character shares one cell width.",
-      "aSpace": "space"
+      "aSpace": "space",
+      "notBitmap": "{name} isn't a bitmap font Phosphor can read: it needs 256 glyphs, 8 pixels wide and 1 to 32 tall."
     }
   },
   "sidePanel": {

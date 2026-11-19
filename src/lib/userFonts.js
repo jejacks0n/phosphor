@@ -4,11 +4,12 @@
  * fonts are too big for localStorage) and never leaves it.
  *
  * A stored font: { id, name, lineHeight, data (the file's bytes) }. lineHeight: its own height
- * (ascent + descent) per em, so a full block fills its cell.
+ * (ascent + descent) per em, so a full block fills its cell. A bitmap font (a raw .F## or a PNG sheet)
+ * is { id, name, kind: 'bitmap', height, data (its glyph bytes) }; a record with no kind is an outline font.
  */
 
 import { t } from '@/i18n';
-import { fontId } from './BitmapFont.js';
+import { fontId, parseRawFont, parseFontSheet } from './BitmapFont.js';
 import { ttfOf } from './BitmapTtf.js';
 
 // Checked to be one width: the narrowest and widest characters of a proportional font, and a digit.
@@ -108,15 +109,20 @@ async function inStore(mode, use) {
   }
 }
 
-// Every stored font, registered with the page: [{ id, name, lineHeight }]. One that no longer loads
-// (the browser stopped accepting it) is left out.
+// Every stored font: [{ id, name, kind, lineHeight | height }]. Outline fonts are registered with the page; one that
+// no longer loads (the browser stopped accepting it) is left out. Bitmap fonts are only listed: a drawing registers
+// the one it uses.
 export async function loadFonts() {
   const stored = await inStore('readonly', (fonts) => fonts.getAll());
   const usable = [];
-  for (const { id, name, lineHeight, data } of stored) {
+  for (const { id, name, kind, lineHeight, height, data } of stored) {
+    if (kind === 'bitmap') {
+      usable.push({ id, name, kind, height });
+      continue;
+    }
     try {
       await register(id, data);
-      usable.push({ id, name, lineHeight });
+      usable.push({ id, name, kind: 'outline', lineHeight });
     } catch {
       // not usable here: left in the store, unshown
     }
@@ -140,9 +146,41 @@ export async function addFont(file) {
     unregister(id);
     throw new Error(notMonospacedMessage(name, widths, mismatch));
   }
-  const font = { id, name, lineHeight: naturalLineHeight(id) };
+  const font = { id, name, kind: 'outline', lineHeight: naturalLineHeight(id) };
   await inStore('readwrite', (fonts) => fonts.put({ ...font, data }));
   return font;
+}
+
+// Load a bitmap font file (a raw .F## or a PNG sheet, told by its name or type) and store it:
+// { id, name, kind: 'bitmap', height }. Rejects with the not-a-bitmap-font message. The same font twice is one entry.
+export async function addBitmapFont(file) {
+  const name = file.name.replace(/\.[^.]*$/, '');
+  let font;
+  if (/\.png$/i.test(file.name) || file.type === 'image/png') {
+    let image;
+    try {
+      image = await createImageBitmap(file);
+    } catch {
+      throw new Error(t('font.errors.notBitmap', { name: file.name }));
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(image, 0, 0);
+    font = parseFontSheet(ctx.getImageData(0, 0, image.width, image.height), name);
+  } else {
+    font = parseRawFont(new Uint8Array(await file.arrayBuffer()), name);
+  }
+  const id = fontId(font), entry = { id, name, kind: 'bitmap', height: font.height };
+  await inStore('readwrite', (fonts) => fonts.put({ ...entry, data: font.bytes }));
+  return entry;
+}
+
+// A stored bitmap font as a drawing holds one: { name, height, bytes }.
+export async function storedBitmapFont(id) {
+  const record = await inStore('readonly', (fonts) => fonts.get(id));
+  return { name: record.name, height: record.height, bytes: record.data };
 }
 
 // Forget a stored font.
