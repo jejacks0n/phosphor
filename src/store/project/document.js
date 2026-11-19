@@ -371,7 +371,7 @@ export const documentActions = {
   },
 
   // A fresh document: no base records or pixels, no history, and the selection (and the Picker's
-  // last pick) dropped.
+  // last pick) dropped, and the Text tool's caret put away.
   newDocument() {
     this._document = (this._document ?? 0) + 1; // Bake and Merge into the image check they're still in the same one
     this.setBaseRecords(EMPTY_BASE);
@@ -383,6 +383,7 @@ export const documentActions = {
     this.resetFrames();
     const workspace = useWorkspaceStore();
     workspace.selection = workspace.selectionOffset = workspace.lastPick = workspace.wand = null;
+    workspace.textCursor = workspace.lastTextCursor = null;
     workspace.inputScrollX = workspace.inputScrollY = workspace.ansiScrollX = workspace.ansiScrollY = null; // each view starts afresh (EditorViewport)
   },
 

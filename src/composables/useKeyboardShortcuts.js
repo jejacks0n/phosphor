@@ -55,10 +55,10 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   // Cmd/Ctrl+O opens the file chooser (EditWorkspace's, the start screen's too), so the browser's own box stays shut. Not
-  // while typing, in a field or in Edit Mode's text.
+  // in a field. With the Text tool's caret placed too, as Save: typing never uses the key.
   const _handleOpen = (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'o') return false;
-    if (isField(e.target) || _typing()) return false;
+    if (isField(e.target)) return false;
     e.preventDefault();
     workspaceStore.openRequest++;
     return true;
