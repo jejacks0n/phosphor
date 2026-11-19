@@ -78,6 +78,23 @@ or what a key does without opening the whole app: `tests/browser/social-chat-pan
 `ChatPanel` with `createApp(...).use(pinia).use(i18n)`, and the selection tests mount the keyboard
 shortcuts and dispatch `keydown`.
 
+A test waits for the thing itself (`expect.poll`, `vi.waitFor`, `vi.waitUntil`), not for a length of time. What has
+made tests fail now and then, on a machine running a dozen test files at once (it draws few frames, five in a second
+and a half, measured, and the files share one software WebGL):
+
+- A wait on a frame (a slide, a hover's transition, a smooth scroll, a media query's change), on a render or on an
+  export gives up after the default second: it gets a longer deadline, a `PATIENT` constant in its file.
+- A fixed time "past the transition" can pass with no frame drawn: wait for the transitions themselves (`hover` in
+  `tests/browser/hover-looks.test.js`).
+- A box that's still sliding reads a hair off its size (279.99997 for 280): wait for the slide before measuring it.
+- A key pressed just as a smooth scroll gets to its place can lose its own scroll: wait for `scrollend` before the
+  next key (`scrolls` in `tests/browser/view-keys.test.js`).
+- In a room, an artist hears of a change a message after the host has it: before the artist's next change, wait for
+  the artist's store, not the host's.
+- A store asked for after an `await` can be another test's: a test that finishes late makes its own Pinia the active
+  one again (every Pinia action and getter does). Take `getActivePinia()` right after `createTestApp()`, before the
+  next `await`, and ask for later stores by it (`useRoomStore(pinia)`).
+
 ### End-to-end
 
 Playwright against `npm run build` served by `vite preview`. Act through the UI only (roles, labels,
