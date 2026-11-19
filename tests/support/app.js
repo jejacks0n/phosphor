@@ -26,10 +26,13 @@ export async function createTestApp() {
   localStorage.clear();
   await setLocale('en', { persist: false });
   seedConsent();
-  setActivePinia(createPinia());
+  const pinia = createPinia();
+  setActivePinia(pinia);
   await setDisplayFont('jetbrains');
   setGlyphRasterizer(rasterizeCoverage);
-  const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
+  // Asked of this Pinia by name (which makes it the active one again): a test before this one, finishing late while the
+  // font loaded, makes its own active (every Pinia action and getter does), and these would be that test's stores.
+  const project = useProjectStore(pinia), workspace = useWorkspaceStore(pinia), drawing = useDrawingStore(pinia);
   workspace.displayFontLoaded = workspace.displayFontSpec;
   project.seed = 'phosphor-tests'; // the default is a random slug: random characters would differ every run
   stopWatching = followParams(project);

@@ -1486,8 +1486,11 @@ test('cursors go to the artists with a name, at most about ten times a second', 
 
 test('the room store hands a Host and a Watch to the drawing store, and closing the room stops sharing', async () => {
   const { project } = await createTestApp();
+  // A test before this one, finishing late while the image loads, makes its own Pinia the active one again (every Pinia
+  // action does): the room's stores are asked of this test's by name, or closing the room stops another project's sharing.
+  const pinia = getActivePinia();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
-  const room = useRoomStore(), drawing = useDrawingStore();
+  const room = useRoomStore(pinia), drawing = useDrawingStore(pinia);
   room.hostRoom({ id: 'abcdefghij', room: { name: 'R' } });
   expect(room._host.onAnswer).toBeInstanceOf(Function);
   project.startSharing({ send: () => {}, role: 'host', me: 'host' });
