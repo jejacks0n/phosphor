@@ -23,14 +23,21 @@ function mount(component) {
   app.mount(host);
   return nextTick();
 }
-const settled = () => new Promise((resolve) => setTimeout(resolve, 300)); // past the 0.2 s transitions
+// Hovered, and the transitions that started run to their end. A hover is heard and a transition moves on frames, and a
+// machine busy with other test files draws few: 300 ms could pass with none, the look still as it was before the hover
+// (the two took 0.3 to 2.4 seconds, measured). So they're waited for, not timed.
+const PATIENT = { timeout: 5000 };
+async function hover(el) {
+  await userEvent.hover(el);
+  await expect.poll(() => el.matches(':hover'), PATIENT).toBe(true);
+  await Promise.all(el.getAnimations({ subtree: true }).map((animation) => animation.finished));
+}
 
 test('the help i doesn\'t move or cast a shadow on hover; it lights up', async () => {
   await mount({ render: () => h(HelpInfo, { text: 'Some help.', name: 'Seed' }) });
   const button = host.querySelector('button.help-icon'), glyph = button.querySelector('.help-glyph');
   const before = button.getBoundingClientRect(), color = getComputedStyle(glyph).backgroundColor;
-  await userEvent.hover(button);
-  await settled();
+  await hover(button);
   expect(button.getBoundingClientRect().toJSON()).toEqual(before.toJSON());
   expect(getComputedStyle(button).boxShadow).toBe('none');
   expect(getComputedStyle(glyph).backgroundColor).not.toBe(color);
@@ -43,8 +50,7 @@ test('a tool slot\'s flyout corner has no background on hover; its triangle ligh
   await new Promise((resolve) => requestAnimationFrame(resolve));
   const corner = host.querySelector('.tool-slot .dropdown-trigger'), triangle = corner.querySelector('.slot-corner');
   const lit = getComputedStyle(triangle).borderBottomColor;
-  await userEvent.hover(corner);
-  await settled();
+  await hover(corner);
   expect(getComputedStyle(corner).backgroundColor).toBe('rgba(0, 0, 0, 0)');
   expect(getComputedStyle(corner).boxShadow).toBe('none');
   expect(getComputedStyle(triangle).borderBottomColor).not.toBe(lit);
