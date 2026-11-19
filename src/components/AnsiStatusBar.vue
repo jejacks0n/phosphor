@@ -29,9 +29,9 @@ const sel = computed(() => workspace.selection);
 const offset = computed(() => workspace.selectionOffset ?? { dc: 0, dr: 0 }); // while it's being dragged
 const pick = computed(() => workspace.lastPick);
 // A picked (stored) color as it shows: the swatch matches the canvas, the hex is what was picked.
+const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 // The character's code, in decimal: its slot in the drawing's font, else its CP437 byte; none when it has neither.
 const code = (char) => (project.drawingFont ? slotOf(char) : cp437Byte(char));
-const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
 
 const cursor = computed(() => workspace.textCursor);
 const cell = computed(() => cursor.value && project.cells[cursor.value.row * project.cols + cursor.value.col]);

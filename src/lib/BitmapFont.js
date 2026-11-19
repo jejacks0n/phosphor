@@ -22,6 +22,7 @@ export function fontChars(chars) {
 export function fitCells(cells) {
   let out = cells;
   cells.forEach((cell, i) => {
+    if (!cell) return; // a hole in the grid, as layoutWide allows
     const char = fitFont(cell.char);
     if (char === cell.char) return;
     if (out === cells) out = cells.slice();

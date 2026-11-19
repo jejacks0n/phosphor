@@ -29,6 +29,7 @@ describe('slots', () => {
     expect(fitted[1]).toEqual({ char: '▄', fg: 1 });
     const same = [{ char: 'A' }];
     expect(fitCells(same)).toBe(same);
+    expect(fitCells([undefined, { char: '▙' }])).toEqual([undefined, { char: '▄' }]); // a hole in the grid stays one, as layoutWide leaves it
   });
 });
 
