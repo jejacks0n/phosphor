@@ -196,3 +196,34 @@ it('typing fits to the font', async () => {
   project.commitPending();
   expect(project.editCellAt(0, 0).char).toBe('?');
 });
+
+const cellKeys = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`).join();
+const erase = (project) => {
+  project.beginEdit();
+  project.eraseBasePixels([{ x: 4, y: 6 }, { x: 5, y: 7 }]);
+  project.commitEdit();
+};
+
+it('an edit before the font\'s render leaves no cells matched in the reference font', async () => {
+  const settings = { charChoice: 'best', chars: '█A▙', quantize: 'cga', solids: 0, dither: 0 };
+  const gap = await gradient(settings);
+  gap.setDrawingFont(halfA());
+  erase(gap); // composites before the render that brings the font to the renderer
+  await settle(gap);
+  const clean = await gradient(settings);
+  clean.setDrawingFont(halfA());
+  await settle(clean);
+  erase(clean);
+  await settle(clean);
+  expect(cellKeys(gap.cells)).toBe(cellKeys(clean.cells));
+});
+
+it('a frame built for playing is matched in the font, as the still is', async () => {
+  const project = await gradient({ charChoice: 'best', chars: '█A▙', quantize: 'cga', solids: 0, dither: 0 });
+  project.setDrawingFont(halfA());
+  await settle(project);
+  project.addFrame('duplicate');
+  const built = (await project.builtFrame(1)).cells;
+  expect(built.some((c) => c.char === 'A')).toBe(true);
+  expect(cellKeys(built)).toBe(cellKeys(project.cells));
+});

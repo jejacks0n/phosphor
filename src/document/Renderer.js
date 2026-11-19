@@ -548,7 +548,10 @@ export default class Renderer {
     if (font === this.#font) return;
     this.#font = font;
     this.#fontId = font && fontId(font);
-    this.#matchers = new WeakMap(); // an upper layer's, made before the render that brings the font
+    // Cells matched before the render that brings the font (an edit between the change and it) were measured in the
+    // one before, under params that already name this one: resolved again.
+    this.#matchers = new WeakMap();
+    this.#resolved = this.#painted = null;
   }
 
   // A Number palette chosen from outside (one for a whole animation), until it's null: cells then use it, and
