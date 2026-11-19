@@ -113,11 +113,12 @@ function compressRow(out, chars, attrs) {
   }
 }
 
+// palette is in XBin's order, DOS: index 1 is blue (PALETTES.cga is in ANSI order, where 1 is red). font is an {name, height, bytes}.
 export function writeXBin({ cols, rows, cells, palette, font, sauce }) {
   const hexes = Array.from({ length: 16 }, (_, i) => palette[i] ?? '#000000');
   const colors = hexes.map((h) => ({ r: parseInt(h.slice(1, 3), 16), g: parseInt(h.slice(3, 5), 16), b: parseInt(h.slice(5, 7), 16) }));
   const out = [...MAGIC, cols & 255, cols >> 8, rows & 255, rows >> 8, font.height, PALETTE | FONT | COMPRESS | NON_BLINK];
-  for (const { r, g, b } of colors) out.push(Math.round(r * 63 / 255), Math.round(g * 63 / 255), Math.round(b * 63 / 255));
+  for (const { r, g, b } of colors) out.push(r >> 2, g >> 2, b >> 2); // 6 bits a channel
   out.push(...font.bytes);
   for (let y = 0; y < rows; y++) {
     const row = cells.slice(y * cols, (y + 1) * cols);
@@ -129,5 +130,5 @@ export function writeXBin({ cols, rows, cells, palette, font, sauce }) {
   }
   const bytes = Uint8Array.from(out);
   if (sauce === false) return bytes;
-  return new Sauce({ cols, rows }, { ...sauce, dataType: 6, fileType: 0, flags: 0, width: 0, height: 0 }).appendTo(bytes);
+  return new Sauce({ cols, rows }, { ...sauce, dataType: 6, fileType: 0, flags: 0, width: 0, height: 0, fileSize: bytes.length }).appendTo(bytes);
 }

@@ -48,4 +48,68 @@ describe('XBin', () => {
     expect(() => readXBin(truncated.slice(0, -1), 'bad.xb')).toThrow(expect.objectContaining({ userMessage: expect.any(String) }));
     expect(isXBin(head(1, 1))).toBe(true);
   });
+
+  // Hand-built files: header, then optional palette (48 bytes) and font, then the cells.
+  const file = (cols, rows, flags, ...parts) => Uint8Array.from([88, 66, 73, 78, 0x1a, cols & 255, cols >> 8, rows & 255, rows >> 8, 8, flags, ...parts.flat()]);
+  const asc = (text) => [...text].map((c) => c.charCodeAt(0));
+  const chars = (art) => art.cells.map((c) => c.char).join('');
+
+  it('reads a run of one character with its own attributes (type 1)', () => {
+    const art = readXBin(file(3, 1, 4, [0x42, 65, 0x07, 0x1f, 0x70]), 'a.xb');
+    expect(chars(art)).toBe('AAA');
+    // blink on: the background is 3 bits
+    expect(art.cells.map((c) => [c.fg, c.bg])).toEqual([['#aaaaaa', '#000000'], ['#ffffff', '#0000aa'], ['#000000', '#aaaaaa']]);
+  });
+  it('reads a run of one attribute with its own characters (type 2)', () => {
+    const art = readXBin(file(3, 1, 4, [0x82, 0x1f, ...asc('ABC')]), 'a.xb');
+    expect(chars(art)).toBe('ABC');
+    expect(art.cells.every((c) => c.fg === '#ffffff' && c.bg === '#0000aa')).toBe(true);
+  });
+  it('reads a plain run and a run of both (types 0 and 3)', () => {
+    const art = readXBin(file(5, 1, 4, [0x02, 65, 7, 66, 7, 67, 0x1f], [0xc1, 68, 0x1f]), 'a.xb');
+    expect(chars(art)).toBe('ABCDD');
+    expect(art.cells[2].bg).toBe('#0000aa');
+  });
+  it('expands a 6-bit channel to 8 bits and ignores the two bits above it', () => {
+    const art = readXBin(file(1, 1, 1, [0x3f, 0x01, 0xc1], new Array(45).fill(0), [65, 0x00]), 'a.xb');
+    expect(art.palette[0]).toBe('#ff0404'); // 0x3f -> ff, 0x01 -> 04, 0xc1 is 0x01 with two bits above it
+  });
+  it('reads an uncompressed file with a palette and a font', () => {
+    const pal = new Array(48).fill(0);
+    pal.splice(45, 3, 63, 63, 63); // color 15
+    const fontBytes = Array.from({ length: 2048 }, (_, i) => (i * 7) & 0xff);
+    const art = readXBin(file(2, 1, 1 | 2 | 8, pal, fontBytes, [0, 0xf0, 65, 0x0f]), 'a.xb');
+    expect(chars(art)).toBe('␀A');
+    expect([...art.font.bytes]).toEqual(fontBytes);
+    expect(art.font.height).toBe(8);
+    // non-blink: the background is 4 bits
+    expect(art.cells[0]).toMatchObject({ fg: '#000000', bg: '#ffffff' });
+    expect(art.cells[1]).toMatchObject({ fg: '#ffffff', bg: '#000000' });
+  });
+  it('refuses a run that goes past the last cell', () => {
+    expect(() => readXBin(file(2, 1, 4, [0xc2, 65, 7]), 'a.xb')).toThrow(expect.objectContaining({ userMessage: expect.any(String) }));
+  });
+
+  const put = (cols, items) => writeXBin({ cols, rows: 1, cells: items.map(([char, k]) => ({ char, fg: rgb(PAL[k]), bg: rgb(PAL[0]) })), palette: PAL, font, sauce: false }).slice(11 + 48 + 2048);
+  it('writes a row of mixed run kinds', () => {
+    const data = put(12, [['X', 1], ['X', 2], ['X', 3], ['Y', 5], ['Z', 5], ['W', 5], ['P', 1], ['Q', 2], ['R', 7], ['R', 7], ['R', 7], ['R', 7]]);
+    expect([...data]).toEqual([0x42, 88, 1, 2, 3, 0x82, 5, 89, 90, 87, 0x01, 80, 1, 81, 2, 0xc3, 82, 7]);
+    expect(chars(readXBin(Uint8Array.from([88, 66, 73, 78, 0x1a, 12, 0, 1, 0, 8, 4, ...data]), 'a.xb'))).toBe('XXXYZWPQRRRR');
+  });
+  it('splits a run of more than 64, and a plain run at 64', () => {
+    expect([...put(100, Array.from({ length: 100 }, () => [' ', 7]))]).toEqual([0xff, 32, 7, 0xe3, 32, 7]);
+    const data = put(70, Array.from({ length: 70 }, (_, i) => [i % 2 ? 'B' : 'A', i % 2 ? 2 : 1]));
+    expect(data.length).toBe(1 + 128 + 1 + 12);
+    expect([data[0], data[129]]).toEqual([63, 5]);
+  });
+  it('writes a 6-bit palette as the channel shifted two bits', () => {
+    const pal = [...PAL]; pal[0] = '#ff0483';
+    const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: pal, font, sauce: false });
+    expect([...bytes.slice(11, 14)]).toEqual([63, 1, 32]);
+  });
+  it('writes the size of the art in SAUCE, not one an opened file had', () => {
+    const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: PAL, font, sauce: { fileSize: 999 } });
+    const record = bytes.length - 128;
+    expect(bytes[record + 90] | (bytes[record + 91] << 8)).toBe(11 + 48 + 2048 + 3);
+  });
 });
