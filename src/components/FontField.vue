@@ -63,14 +63,16 @@ const onSelect = async (event) => {
   }
 };
 
-const saveRaw = () => downloadBlob(new Blob([drawn.value.bytes]), `${fileStem(drawn.value.name, `F${pad(drawn.value)}`)}.F${pad(drawn.value)}`);
+const stem = (ext) => fileStem(drawn.value.name, ext) || 'font'; // a nameless font still gets a name
+
+const saveRaw = () => downloadBlob(new Blob([drawn.value.bytes]), `${stem(`F${pad(drawn.value)}`)}.F${pad(drawn.value)}`);
 
 const savePng = async () => {
   const { width, height, data } = fontSheet(drawn.value), canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   canvas.getContext('2d').putImageData(new ImageData(data, width, height), 0, 0);
-  downloadBlob(await new Promise((resolve) => canvas.toBlob(resolve, 'image/png')), `${fileStem(drawn.value.name, 'png')}.png`);
+  downloadBlob(await new Promise((resolve) => canvas.toBlob(resolve, 'image/png')), `${stem('png')}.png`);
 };
 
 // A size in px, kept for this font; its own size is kept as no size at all. Typed, it waits for Enter or a click

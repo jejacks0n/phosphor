@@ -1,10 +1,11 @@
 // Bitmap fonts as files: Load font takes raw .F01-.F32 fonts and PNG sheets, kept in this browser (userFonts.js),
 // and picking one in the Font field gives the drawing that font.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import FontField from '@/components/FontField.vue';
+import { parseFontSheet } from '@/lib/BitmapFont';
 import { addBitmapFont, loadFonts, storedBitmapFont, removeFont } from '@/lib/userFonts';
 
 let app = null, host = null;
@@ -77,4 +78,37 @@ test('choosing a bitmap font gives the drawing that font, and a built-in takes i
   select.dispatchEvent(new Event('change'));
   await nextTick();
   expect(project.drawingFont).toBeNull();
+});
+
+test('Save .F## and Save PNG download the drawing\'s font, named for it', async () => {
+  const { project } = await createTestApp();
+  const bytes = Uint8Array.from({ length: 256 * 16 }, (_, i) => (i * 7) % 256);
+  project.setDrawingFont({ name: 'My Font.F16', height: 16, bytes });
+  const saved = [];
+  vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => { saved.push({ blob }); return 'blob:x'; });
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { saved.at(-1).name = this.download; });
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp({ render: () => h(FontField) }).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const press = (label) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === label).click();
+  press('Save .F16');
+  await expect.poll(() => saved.length).toBe(1);
+  expect(saved[0].name).toBe('My Font.F16');
+  expect(new Uint8Array(await saved[0].blob.arrayBuffer())).toEqual(bytes);
+  press('Save PNG');
+  await expect.poll(() => saved.length).toBe(2);
+  expect(saved[1].name).toBe('My Font.F16.png');
+  const image = await createImageBitmap(saved[1].blob), canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0);
+  expect(parseFontSheet(ctx.getImageData(0, 0, image.width, image.height), 'x').bytes).toEqual(bytes);
+  // No name at all: still a file name.
+  project.setDrawingFont({ name: '', height: 16, bytes });
+  await nextTick();
+  press('Save .F16');
+  expect(saved[2].name).toBe('font.F16');
 });
