@@ -146,6 +146,8 @@
     "charRows": "{n} row | {n} rows",
     "rowsAria": "Pixel rows",
     "aspectLock": "Lock aspect ratio",
+    "sizeLocked": "Lock aspect ratio keeps this shape, and {cols} × {rows} is the largest it fits. Turn off the lock to change one number alone.",
+    "sizeMin": "The smallest size is 1 column by 1 pixel row.",
     "renderStyle": {
       "label": "Art style",
       "ansi": "ANSI",

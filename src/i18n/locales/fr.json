@@ -146,6 +146,8 @@
     "charRows": "{n} ligne | {n} lignes",
     "rowsAria": "Lignes de pixels",
     "aspectLock": "Conserver les proportions",
+    "sizeLocked": "Conserver les proportions garde cette forme, et {cols} × {rows} est la plus grande taille qui y tient. Désactivez-le pour changer un seul nombre.",
+    "sizeMin": "La plus petite taille est 1 colonne sur 1 ligne de pixels.",
     "renderStyle": {
       "label": "Style artistique",
       "ansi": "ANSI",

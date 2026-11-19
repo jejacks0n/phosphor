@@ -16,6 +16,8 @@ import { isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBe
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
 import { boundsOf, lowerEdits, lowerPaint } from '@/store/project/shared.js';
+import { toast } from '@/composables/useToast.js';
+import { t } from '@/i18n';
 import { markRaw, watch } from 'vue';
 
 // The renderer's upper layers, as the stack is now: each upper cells layer's cells and paint, each upper vector layer's
@@ -107,13 +109,22 @@ function locked(project) {
   return true;
 }
 
+// A size the lock held smaller than the grid could be without it: a toast says why, or the field only snaps back.
+const heldByLock = (project) => toast(t('panel.sizeLocked', { cols: project.cols, rows: project.rows }));
+
 export const renderingActions = {
   updateCols(val) {
     let num = parseInt(val);
-    if (isNaN(num) || num < 1) return;
+    if (num < 1) return void toast(t('panel.sizeMin'));
+    if (isNaN(num)) return;
 
-    if (locked(this)) this.$patch(lockedGrid(num, this.lockRatio));
-    else this.cols = Math.min(num, this.hasFrames ? this.maxCols : maxColsBeside(this.rows));
+    if (locked(this)) {
+      const unlocked = Math.min(num, maxColsBeside(this.rows));
+      this.$patch(lockedGrid(num, this.lockRatio));
+      if (this.cols < unlocked) heldByLock(this);
+    } else {
+      this.cols = Math.min(num, this.hasFrames ? this.maxCols : maxColsBeside(this.rows));
+    }
   },
 
   // The aspect lock on or off. Turned on, it keeps the shape the grid has now (locked).
@@ -124,11 +135,13 @@ export const renderingActions = {
 
   updateRows(val) {
     let num = parseInt(val);
-    if (isNaN(num) || num < 1) return;
+    if (num < 1) return void toast(t('panel.sizeMin'));
+    if (isNaN(num)) return;
 
     if (locked(this)) {
-      const cols = Math.max(1, Math.round(num * this.lockRatio));
+      const cols = Math.max(1, Math.round(num * this.lockRatio)), unlocked = Math.min(num, maxRowsBeside(this.cols));
       this.$patch(gridFits(cols, num) ? { cols, rows: num } : lockedGrid(cols, this.lockRatio));
+      if (this.rows < unlocked) heldByLock(this);
     } else {
       this.rows = Math.min(num, this.hasFrames ? this.maxRows : maxRowsBeside(this.cols));
     }
