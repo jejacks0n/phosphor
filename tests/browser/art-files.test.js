@@ -8,6 +8,7 @@ import { AnsiFile } from '@/lib/AnsiFile';
 import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
 import { readSauce } from '@/lib/Sauce';
+import { readXBin, writeXBin } from '@/lib/XBinFile';
 import { closeToast, toastMessage } from '@/composables/useToast';
 import { slidersAtDefaults } from '@/store/settings';
 
@@ -427,3 +428,42 @@ for (const [name, start] of [
     expect(project.brightness).toBe(100);
   });
 }
+
+// An XBin with a font whose slot 0 is solid, and its own colors.
+const xbinFile = (name = 'font.xb') => {
+  const bytes = new Uint8Array(16 * 256).fill(0);
+  bytes.fill(0xff, 0, 16);
+  const palette = Array.from({ length: 16 }, (_, i) => '#' + (i * 16 + 8).toString(16).padStart(2, '0').repeat(3));
+  const cells = Array.from({ length: 6 }, (_, i) => ({ char: i % 2 ? 'A' : ' ', fg: palette[1], bg: palette[0] }));
+  const font = { name: 'Solid', height: 16, bytes };
+  return { file: new File([writeXBin({ cols: 3, rows: 2, cells, palette, font })], name), font };
+};
+
+test('an XBin opens with its font and palette', async () => {
+  const project = await afterAnotherDocument(), { file, font } = xbinFile();
+  await project.openArtFile(file);
+  await settle(project);
+  expect(project.drawingFont.bytes).toEqual(font.bytes);
+  expect(project.drawingFont.height).toBe(16);
+  expect([project.cols, project.rows]).toEqual([3, 4]);
+  expect(project.quantize).toBe('palette');
+  expect(project.palette).toBe(readXBin(new Uint8Array(await file.arrayBuffer()), 'f.xb').palette.join(' ')); // the file's 6-bit colors
+});
+
+test('a renamed XBin opens as one', async () => {
+  const workspace = (await afterAnotherDocument(), useWorkspaceStore());
+  await workspace.askArt(xbinFile('renamed.txt').file);
+  expect(workspace.artDrop.art.font.height).toBe(16);
+});
+
+test('an XBin of 512 characters is refused with its reason, and the open drawing stays', async () => {
+  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  const before = project.documentId;
+  closeToast();
+  const bytes = new Uint8Array(await xbinFile('big.xb').file.arrayBuffer());
+  bytes[10] |= 0x10;
+  await workspace.askArt(new File([bytes], 'big.xb'));
+  expect(toastMessage.value).toMatch(/512 characters/);
+  expect(workspace.artDrop).toBeNull();
+  expect(project.documentId).toBe(before);
+});

@@ -11,7 +11,7 @@ import { formatNumber } from '@/i18n/format';
 const MAGIC = [88, 66, 73, 78, 0x1a]; // XBIN, EOF
 const PALETTE = 1, FONT = 2, COMPRESS = 4, NON_BLINK = 8, CHARS512 = 16;
 // XBin's colors are in DOS order (1 is blue); the editor's CGA list is in ANSI order (1 is red).
-const ANSI_OF_DOS = [0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15];
+export const ANSI_OF_DOS = [0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15];
 
 const fail = (userMessage) => { throw Object.assign(new Error(userMessage), { userMessage }); };
 const hex = (r, g, b) => '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');

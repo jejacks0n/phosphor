@@ -6,7 +6,7 @@ import { rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 // Pictures, projects, SVGs and art files (src/lib/ArtFile.js's ART_EXTENSIONS), as the page opens them.
-export const OPENABLE = ['phosphor', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg', 'ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz'];
+export const OPENABLE = ['phosphor', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg', 'ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb'];
 export const isOpenable = (file) => OPENABLE.includes(path.extname(file).slice(1).toLowerCase());
 export const isProject = (file) => path.extname(file).toLowerCase() === '.phosphor';
 

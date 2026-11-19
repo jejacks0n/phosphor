@@ -61,6 +61,10 @@ mac:
       name: Text Art
       role: Editor
       rank: Alternate
+    - ext: xb
+      name: XBin Art
+      role: Editor
+      rank: Alternate
     - ext: [png, jpg, jpeg, gif, webp, bmp, avif, svg]
       name: Image
       role: Editor
@@ -76,7 +80,7 @@ win:
 linux:
   category: Graphics
   # The rest of what Phosphor opens, by their own types: listed, Phosphor is offered for them, not made their default.
-  mimeTypes: [text/x-nfo, text/plain, image/png, image/jpeg, image/gif, image/webp, image/bmp, image/avif, image/svg+xml]
+  mimeTypes: [text/x-nfo, application/x-xbin, text/plain, image/png, image/jpeg, image/gif, image/webp, image/bmp, image/avif, image/svg+xml]
   maintainer: Jeremy Jackson <jejacks0n@users.noreply.github.com>
   target:
     - AppImage

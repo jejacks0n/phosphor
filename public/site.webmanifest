@@ -20,6 +20,7 @@
         "application/x-phosphor": [".phosphor"],
         "text/x-ansi": [".ans", ".asc", ".nfo", ".diz"],
         "text/x-utf8ans": [".utf8ans"],
+        "application/x-xbin": [".xb"],
         "text/plain": [".txt"],
         "image/svg+xml": [".svg"],
         "image/png": [".png"],

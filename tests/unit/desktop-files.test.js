@@ -13,7 +13,7 @@ const folder = () => (dir = mkdtempSync(path.join(tmpdir(), 'phosphor-files-')))
 afterEach(() => dir && rmSync(dir, { recursive: true, force: true }));
 
 test('it opens what the page opens: projects, pictures, SVGs and every art file', () => {
-  for (const ext of ['phosphor', 'png', 'jpg', 'svg', ...ART_EXTENSIONS]) assert.ok(OPENABLE.includes(ext), ext);
+  for (const ext of ['phosphor', 'png', 'jpg', 'svg', 'xb', ...ART_EXTENSIONS]) assert.ok(OPENABLE.includes(ext), ext);
   assert.ok(isOpenable('/a/Art.ANS') && isOpenable('b.Phosphor') && !isOpenable('main.js') && !isOpenable('notes'));
   assert.ok(isProject('/a/b.PHOSPHOR') && !isProject('/a/b.phosphor.png'));
 });

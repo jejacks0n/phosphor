@@ -12,12 +12,13 @@ const text = (art, row = 0) => art.cells.slice(row * art.cols, (row + 1) * art.c
 const error = (fn) => { try { fn(); } catch (e) { return e; } assert.fail('did not throw'); };
 
 test('isArtFile checks the extension, ignoring case', () => {
-  assert.deepEqual(ART_EXTENSIONS, ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz']);
+  assert.deepEqual(ART_EXTENSIONS, ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb']);
   assert.equal(isArtFile('A.ANS'), true);
   assert.equal(isArtFile('release.NFO'), true);
   assert.equal(isArtFile('file_id.diz'), true);
-  for (const name of ['a.xb', 'a.sue', 'a.tnd', 'a.ttf']) assert.equal(isArtFile(name), false);
+  for (const name of ['a.sue', 'a.tnd', 'a.ttf']) assert.equal(isArtFile(name), false);
   assert.equal(isArtFile('x.utf8ans'), true);
+  assert.equal(isArtFile('A.XB'), true);
   assert.equal(isArtFile('a.png'), false);
   assert.equal(isArtFile('ans'), false);
 });

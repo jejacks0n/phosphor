@@ -9,6 +9,8 @@ import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, gzipped, downloadBlob, isProjectFile, PROJECT_EXTENSION, fileStem, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
+import { encodeFont } from '@/lib/BitmapFont.js';
+import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
 import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
 import { MOST_SHAPES } from '@/document/shapes.js';
 import { castText } from '@/lib/CastFile.js';
@@ -18,7 +20,7 @@ import { videoFile } from '@/lib/VideoFile.js';
 import { findUniform, gpuMaxSide } from '@/lib/ImageProcessor.js';
 
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
-import { rgb2hex } from '@/lib/ColorUtils.js';
+import { PALETTES, rgb2hex } from '@/lib/ColorUtils.js';
 import { commentLines, keptFields, keptRecord, withLetterSpacing } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
 import { busyWhile } from '@/composables/useBusy.js';
@@ -262,7 +264,10 @@ export const documentActions = {
         cols: art.cols,
         rows: 2 * art.rows,
         ...nameOf(file),
-        quantize: art.palette,
+        ...(art.font && { fontBitmap: encodeFont(art.font), fontName: art.font.name }),
+        ...(Array.isArray(art.palette) && art.palette.some((hex, i) => hex !== PALETTES.cga[ANSI_OF_DOS[i]].hex)
+          ? { quantize: 'palette', palette: art.palette.join(' ') } // an XBin's own 16, in its DOS order
+          : { quantize: Array.isArray(art.palette) ? 'cga' : art.palette }),
         renderStyle: 'ansi',
         savedToFile: false,
         ...(sauce && {

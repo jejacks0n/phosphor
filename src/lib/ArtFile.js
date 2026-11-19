@@ -9,10 +9,11 @@ import { cellWidth, graphemes } from './CharWidth.js';
 import { PALETTES } from './ColorUtils.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES } from './Cells.js';
 import { artEndOf, readSauce } from './Sauce.js';
+import { isXBin, readXBin } from './XBinFile.js';
 import { t } from '@/i18n';
 import { formatNumber } from '@/i18n/format';
 
-export const ART_EXTENSIONS = ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz'];
+export const ART_EXTENSIONS = ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb'];
 
 const extensionOf = (name) => /\.([^./\\]+)$/.exec(name ?? '')?.[1].toLowerCase() ?? '';
 export const isArtFile = (name) => ART_EXTENSIONS.includes(extensionOf(name));
@@ -49,6 +50,7 @@ function decode(bytes, name) {
 }
 
 export function readArtFile(bytes, name) {
+  if (isXBin(bytes)) return readXBin(bytes, name); // by its bytes, whatever the name
   const sauce = readSauce(bytes);
   const { items, cp437, notUtf8 } = decode(bytes.subarray(0, artEndOf(bytes)), name);
   const fixed = sauce && sauce.dataType === 1 && sauce.width > 0 ? sauce.width : extensionOf(name) === 'ans' || notUtf8 ? 80 : 0; // 0: no wrapping
