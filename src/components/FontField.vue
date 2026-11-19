@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { DISPLAY_FONTS, MIN_FONT_SIZE as MIN_SIZE, MAX_FONT_SIZE as MAX_SIZE } from '@/lib/displayFonts';
@@ -18,11 +18,20 @@ const loaded = computed(() => workspace.userFonts ?? []);
 const drawn = computed(() => project.drawingFont);   // the drawing's own bitmap font, if it has one (the document's)
 const yours = computed(() => loaded.value.filter((font) => font.id !== (drawn.value && current.value.id)));
 const { choose, hostsFont } = useFontActions();
+const problem = ref(''); // why the font picked in the dropdown couldn't be used
 
 const without = (sizes, id) => Object.fromEntries(Object.entries(sizes).filter(([key]) => key !== id));
 const naturalSize = (id) => (drawn.value && fontId(drawn.value) === id ? drawn.value.height : DISPLAY_FONTS.find((font) => font.id === id)?.size ?? 16);
 
-const onSelect = (event) => choose(event.target.value);
+const onSelect = async (event) => {
+  problem.value = '';
+  try {
+    await choose(event.target.value);
+  } catch (error) {
+    problem.value = error.message;
+    event.target.value = current.value.id; // back to the font in use
+  }
+};
 
 // The palette layer on its Fonts page, whatever tool is in hand; from SAUCE, the art is shown first.
 const manage = () => {
@@ -83,6 +92,7 @@ const onSize = (event) => {
       >
     </div>
     <p v-if="hostsFont" class="hosts-font">{{ t('font.hostsFont') }}</p>
+    <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
   </div>
 </template>
 
@@ -121,6 +131,13 @@ button.text:hover:not(:disabled) {
   transform: none;
   background: transparent;
   color: var(--accent-hot);
+}
+
+p.problem {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--danger);
 }
 
 p.hosts-font {

@@ -56,3 +56,19 @@ test('Manage fonts waits for a drawing', async () => {
   manage().click();
   expect(workspace.paletteLayerOpen).toBe(false);
 });
+
+test('a font that can\'t be chosen says why, and the dropdown goes back to the font in use', async () => {
+  const { project, workspace } = await mount({ drawing: false });
+  workspace.userFonts = [{ id: 'gone', name: 'Gone', kind: 'bitmap', height: 16 }]; // listed, but not kept in this browser
+  await nextTick();
+  const select = host.querySelector('select');
+  select.value = 'gone';
+  select.dispatchEvent(new Event('change'));
+  await expect.poll(() => host.querySelector('[role="alert"]')?.textContent).toBeTruthy();
+  expect(select.value).toBe('jetbrains');
+  expect(project.drawingFont).toBeNull();
+  // The next choice clears it.
+  select.value = 'vga';
+  select.dispatchEvent(new Event('change'));
+  await expect.poll(() => host.querySelector('[role="alert"]')).toBeNull();
+});
