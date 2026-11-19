@@ -173,8 +173,8 @@ A bitmap font belongs to the drawing, not to your browser:
 - **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots. A character the font lacks is shown as its nearest classic (CP437) stand-in, but the character you typed is kept: choose another font and the original comes back.
 - **Blocks and shades come from it**: Block elements and shades are drawn from the font's own pixels, so they look as the font draws them.
 - **The converter measures in it**: Best match and By shape compare each cell with the font's characters, so a photo converts into the shapes your font has.
-- **The status bar shows the code**: In the ANSI view, after **Char** and its character, the status bar gives the character's code in decimal: its slot in the drawing's font, or its classic (CP437) byte when there's no bitmap font. A character with no code shows none. On a narrow bar the code is the first thing to go.
-- **In a shared room**: The font is the host's. While you draw there, the Font field shows it, turned off ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
+- **The status bar shows the code**: In the ANSI view, after **Char** and its character, the status bar gives the character's code in decimal: its slot in the drawing's font, or its classic (CP437) byte when there's no bitmap font. A character with no code shows none. On a narrow bar the code gives way, with the FG and BG hex codes, before anything else does.
+- **In a shared room**: For now the font stays on the host's screen: the room sees the drawing's characters, stand-ins and all, in JetBrains Mono. Only the host can change the font ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
 ### What the Font Changes
 
@@ -184,7 +184,7 @@ Those fonts don't change how an image converts, or what's saved or exported; a t
 
 ### Fonts in Shared Rooms
 
-While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A bitmap font is part of the host's drawing, so it goes to the room with it.
+While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A bitmap font isn't sent yet either: the room sees the host's drawing in JetBrains Mono, each character as the font has it (one the font lacks as its stand-in).
 
 ---
 
@@ -227,8 +227,8 @@ With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, 
 
 - **`.xb`**: XBin, the format 16colo.rs shows with the art's own font and 16 colors inside the file. The export holds your cells, the drawing's bitmap font (IBM VGA 8×16 when it has none) and the palette.
 - **Needs 16 colors or fewer**: XBin is offered when the **Color palette** is CGA, **Limited count** of 16 or fewer, or a **Custom** list of up to 16 colors. With any other palette the **Export** button is off and the dialog says what to pick.
-- **SAUCE** is optional, as it is for `.ans`: **Include SAUCE** is the Export dialog's checkbox.
-- **Opening** an `.xb` gives the drawing its cells, font and palette ([Opening ANSI and text files](layers.md#opening-ansi-and-text-files)).
+- **SAUCE** is optional, as it is for `.ans`: **Include SAUCE** is the Export dialog's checkbox. An XBin's record names no font (the font is in the file), whatever **Font name** holds.
+- **Opening** an `.xb` gives the drawing its cells, font and palette ([Opening ANSI and text files](layers.md#opening-ansi-and-text-files)). The font is listed under **This drawing** by the file's name, without the `.xb`.
 
 #### Fixed Black and White (VGA)
 

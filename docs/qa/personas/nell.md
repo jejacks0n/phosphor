@@ -60,7 +60,8 @@ script. Every section ends with Free time.
 ### 1. Load a raw font
 - Does: starts a new canvas, clicks Load font, picks her `.F08` file.
 - Expects: the font is chosen at once and listed under This drawing; the art is drawn in it; Save .F08 and Save PNG
-  are offered; a failed file says why in words.
+  are offered, and save files named for hers without its `.F08` (`name.F08`, `name.png`); a failed file says why in
+  words.
 - Probes: `back-out`: open the file box and cancel; `extremes`: a file of the wrong size (100 bytes) says why it isn't a
   font.
 - Rated: yes, wants a key or a drop on the page to load a font
@@ -77,7 +78,8 @@ script. Every section ends with Free time.
 - Does: chooses a built-in font in the Font dropdown (that takes the font off the drawing), then undoes, then redoes.
   Remove, beside the dropdown, only clears the browser's copy of a loaded font: the drawing keeps its own.
 - Expects: taking it off is one undo step; undo brings the font back with the art drawn in it; redo takes it off again; the
-  characters she typed are the same ones after each.
+  characters she typed are the same ones after each. Remove with the drawing's font chosen leaves the art drawn in it,
+  its cells as wide as before, the character palette too.
 - Probes: `undo-redo`: undo three times in a row and check nothing else was undone; `interrupt`: reload with the font
   set and check it's still the drawing's.
 - Rated: yes, wants Cmd+Z
@@ -97,7 +99,8 @@ built-in one, and check what the Font field says while the drawing has its own.
 ### 5. Pick from the palette's 256
 - Does: opens the character palette and picks characters from it, then draws with them.
 - Expects: the palette shows the font's 256 slots, not another set; what she picks is what lands; the status bar's
-  code after Char is the slot of the character under the cursor, in decimal, and gives way on a narrow bar.
+  code after Char is the slot of the character under the cursor, in decimal, and gives way with the hex codes on a
+  narrow bar.
 - Probes: `extremes`: pick the first and the last slot; `speed`: pick and type fast.
 - Rated: yes, wants F1 to F12 for characters, as moebiusXBIN has them
 
@@ -128,9 +131,11 @@ see what that does to the same photo, and save a project and reopen it.
 ### 8. Export with CGA
 - Does: with CGA as the Color palette, exports XBin (Export, then `.xb`), with and without SAUCE; reopens the file with
   Choose a file.
-- Expects: it reopens with the same cells, the same font (hers) and CGA as the palette; with no font of her own the
-  export holds IBM VGA 8×16; Include SAUCE is optional.
-- Probes: `again`: export twice and open both; `back-out`: close the dialog without exporting.
+- Expects: it reopens with the same cells, the same font (hers, under This drawing named for the file without its
+  `.xb`) and CGA as the palette; with no font of her own the export holds IBM VGA 8×16, its glyphs as crisp as the
+  font's; Include SAUCE is optional, and the record names no font.
+- Probes: `again`: export twice and open both; `back-out`: close the dialog without exporting; `again`: add the file
+  to a new canvas with no font of its own, and check a cell in the font's first slot comes in as a space.
 - Rated: yes, wants Cmd+E
 
 ### 9. Export with a Custom list of 16

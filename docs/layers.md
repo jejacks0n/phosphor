@@ -382,7 +382,7 @@ Either way:
 - **Limits**: A file over 300 columns, 5,000 lines or 500,000 cells doesn't open. A message gives the file's size and
   the limits, and what you had open stays open. A file with no art in it doesn't open either. Either way the message
   comes first: Phosphor reads the file before it asks how to open it, or whether to leave unsaved work.
-- **XBin Files**: An `.xb` opens with its cells, its font and its palette. A palette that's exactly the 16 classic colors opens as CGA, and any other opens as a **Custom** color list. A file with no font opens with no bitmap font of its own. A file that uses 512 characters is refused, with a message saying so, and so is one that's cut short or isn't XBin. Drawing with it, and saving one back, are in [Bitmap Fonts](characters.md#bitmap-fonts) and [Saving .xb](characters.md#saving-xb).
+- **XBin Files**: An `.xb` opens with its cells, its font and its palette. A palette that's exactly the 16 classic colors opens as CGA, and any other opens as a **Custom** color list. A file with no font opens with no bitmap font of its own. Added to a drawing with no bitmap font, a cell in the font's first slot (`␀`) comes in as a space, as classic CP437 shows it. A file that uses 512 characters is refused, with a message saying so, and so is one that's cut short or isn't XBin. Drawing with it, and saving one back, are in [Bitmap Fonts](characters.md#bitmap-fonts) and [Saving .xb](characters.md#saving-xb).
 - **Animated Files**: An animated `.ans` (one that moves the cursor or clears the screen) opens as its last screen.
 
 An `.svg` file opens on VECTOR as shapes instead ([Importing SVG](vector.md#importing-svg)).
