@@ -1159,6 +1159,10 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   or **Space** presses the one with focus. They stop at the first and the last. The same goes for **Versions** (each
   **Restore**, then **Close**) and for the list of formats in **Export**, where the arrows move focus and Enter or
   Space picks the format. In a field, a slider or a menu, the arrows do what they do there.
+- **Menus**: With a menu open from its button (**Enter** or **Space**: **Draw with**, a layer's menu, **⋯**), **↓** goes
+  from the button to the first item, and **↓** and **↑** move between the items, past any that's off. They stop at the
+  last item, and **↑** from the first goes back to the button. **Enter** or **Space** picks the item with focus and
+  focus goes back to the button. **Escape** closes the menu.
 - **Scrolling**: **Page Up** and **Page Down** scroll the view one screen, and **Home** and **End** (or **Cmd+↑** and
   **Cmd+↓** on a Mac) scroll to its top and bottom. They reach the view whenever nothing else has focus, as after a file
   opens, or what has it doesn't use them (a tab you just clicked, a checkbox), so you don't need to click the view
