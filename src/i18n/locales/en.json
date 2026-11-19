@@ -342,6 +342,9 @@
     "longRamp": "Long ramp"
   },
   "font": {
+    "errors": {
+      "notBitmap": "{name} isn't a bitmap font Phosphor can read: it needs 256 glyphs, 8 pixels wide and 1 to 32 tall."
+    },
     "label": "Font",
     "help": "Sets the display font for your canvas. Click Load font to add a monospaced TrueType, OpenType, or WOFF font from your computer. Bitmap fonts look best at multiples of their native size (such as 16px or 32px for 8×16 fonts). Your font choice is saved in your browser. In a shared room, you see the host's font.",
     "remove": "Remove",
