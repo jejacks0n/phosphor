@@ -88,7 +88,7 @@ script. Every section ends with Free time.
   sideways to column 300 with Space held and a drag.
 - Expects: the view keeps up with no long pauses: `qa.frames` keeps frames in the `frame` budget, with few over
   `longFrame`; the last line and column are reachable and drawn; Page Down, End and Home scroll it without a click
-  first, and the shortcut list (?) names them under View.
+  first, after a click on a tab (PIXEL, then ANSI) too, and the shortcut list (?) names them under View.
 - Probes: `speed`: scroll as fast as the wheel goes for three seconds; `interrupt`: switch to PIXEL and back mid-scroll
   and check where the view is.
 - Rated: yes, wants Page Down and Home and End (or Cmd+arrows) to scroll the view, without clicking it first

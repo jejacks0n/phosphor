@@ -7,7 +7,7 @@ import { usePaletteStore } from '@/store/PaletteStore';
 import { UNICODE_BLOCKS, fitsGrid, parseFind } from '@/lib/charPalettes';
 import { CP437, cp437Byte, isCp437 } from '@/lib/Cp437';
 import { cellWidth } from '@/lib/CharWidth';
-import { isField } from '@/lib/fields';
+import { ownsKey } from '@/lib/fields';
 import { toast } from '@/composables/useToast';
 
 // The character palette layer: one element in two sizes. Compact, it's the list of palettes (each
@@ -166,7 +166,7 @@ const onGlyphHover = (char) => {
 };
 
 const onKeyDown = (event) => {
-  if (isField(event.target)) {
+  if (ownsKey(event.target, event)) {
     if (event.key === 'Escape') event.target.blur();
     return;
   }

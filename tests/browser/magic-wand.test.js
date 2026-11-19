@@ -139,6 +139,36 @@ test('Delete or Backspace deletes in the wand selection, but Backspace in Edit M
   expect(read(2, 2, 2)).not.toBe('a');
 });
 
+test('with a checkbox focused (All layers, just tapped), Delete takes the wand cells and Escape drops the wand; a text box keeps both', async () => {
+  const { project, workspace, type, click, read } = await scene();
+  app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
+  app.mount(document.createElement('div'));
+  const box = document.body.appendChild(Object.assign(document.createElement('input'), { type: 'checkbox' }));
+  const field = document.body.appendChild(Object.assign(document.createElement('input'), { type: 'text' }));
+  try {
+    type(2, 2, ['aBa']);
+    workspace.wandContiguous = false;
+    click(2, 2);
+    const press = (el, key) => el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    field.focus();
+    press(field, 'Delete');
+    press(field, 'Escape');
+    await settle(project);
+    expect(read(2, 2, 4)).toBe('aBa');
+    expect(workspace.wand).not.toBe(null);
+    box.focus();
+    press(box, 'Delete');
+    await settle(project);
+    expect(read(3, 2, 3)).toBe('B');
+    expect(read(2, 2, 2)).not.toBe('a');
+    press(box, 'Escape');
+    expect(workspace.wand).toBe(null);
+  } finally {
+    box.remove();
+    field.remove();
+  }
+});
+
 test('a wand click outside the rectangle keeps the rectangle and selects nothing', async () => {
   const { workspace, type, click } = await scene();
   type(2, 2, ['aBa']);

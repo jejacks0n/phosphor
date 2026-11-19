@@ -1161,7 +1161,12 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   Space picks the format. In a field, a slider or a menu, the arrows do what they do there.
 - **Scrolling**: **Page Up** and **Page Down** scroll the view one screen, and **Home** and **End** (or **Cmd+↑** and
   **Cmd+↓** on a Mac) scroll to its top and bottom. They reach the view whenever nothing else has focus, as after a file
-  opens, so you don't need to click it first. In Edit Mode, while you type, Home and End move the cursor instead.
+  opens, or what has it doesn't use them (a tab you just clicked, a checkbox), so you don't need to click the view
+  first. In Edit Mode, while you type, Home and End move the cursor instead.
+- **Keys and Focus**: A focused control keeps only the keys it uses, and the rest are the app's. A field you type in or
+  a menu keeps every key; a slider its arrows, Home, End, Page Up and Page Down; a checkbox or a button Space and Enter
+  (a radio button its arrows too, a tab ← and →). So after you click **All layers**, say, Delete and Escape still work
+  on the selection.
 - **Saving and Exporting**: **Cmd+S** (Ctrl+S) saves the project and **Cmd+E** (Ctrl+E) opens Export. In either
   dialog, **Enter** in the file name saves or exports.
 

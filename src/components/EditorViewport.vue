@@ -16,6 +16,7 @@ import { drawsCells } from '@/tools/shapes';
 import { snapCursor } from '@/document/wideChars';
 import { isArtFile } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
+import { isControl, ownsKey } from '@/lib/fields';
 import { withShape } from '@/document/shapes.js';
 import { pickedFrom, pickedIndexes } from '@/store/project/reading.js';
 
@@ -273,12 +274,18 @@ watch(() => workspaceStore.zoomRequest, (request) => {
   zoomAtMiddle(request.by ? props.zoom.clamp(props.zoom.get() * request.by) : props.zoom.start);
 }, { flush: 'sync' }); // each press, though two land before Vue's next flush
 
+// The pointer over the canvas, for Space (useKeyboardShortcuts): a mouse's or a pen's. A finger isn't over anything
+// once it's lifted, and a tap sends no pointerleave.
+const overEditor = (e) => { if (e.pointerType !== 'touch') workspaceStore.pointerOverEditor = e.type === 'pointerenter'; };
+
 // The keys that scroll a focused view (Page Up and Down, Home, End, the arrows: Cmd+arrows on a Mac), with nothing
-// focused (a file just opened, say), scroll this one, as if it had been clicked: it takes the focus first, and the
-// browser's own scroll follows the key.
+// focused (a file just opened, say) or focus on something that doesn't use the key itself (a tab just clicked), scroll
+// this one, as if it had been clicked: it takes the focus first, and the browser's own scroll follows the key.
 const SCROLL_KEYS = new Set(['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 const focusForScroll = (e) => {
-  if (SCROLL_KEYS.has(e.key) && (!document.activeElement || document.activeElement === document.body)) rootRef.value?.focus({ preventScroll: true });
+  const el = document.activeElement;
+  if (!SCROLL_KEYS.has(e.key)) return;
+  if (!el || el === document.body || (isControl(el) && !ownsKey(el, e) && !el.closest('dialog, [role="dialog"]'))) rootRef.value?.focus({ preventScroll: true });
 };
 
 // The rulers lie over the view's top and left; the content gets room beside them (div.canvas-viewport.ruled),
@@ -384,8 +391,10 @@ defineExpose({ centerContent });
       tabindex="0"
       :style="{ cursor: toolCursor }"
       @contextmenu.prevent
-      @mouseenter="isMouseOver = workspaceStore.pointerOverEditor = true"
-      @mouseleave="isMouseOver = workspaceStore.pointerOverEditor = false"
+      @mouseenter="isMouseOver = true"
+      @mouseleave="isMouseOver = false"
+      @pointerenter="overEditor"
+      @pointerleave="overEditor"
       @pointermove="onMouseMove"
       @pointerdown="startPaint"
       @mousedown="startPaint"

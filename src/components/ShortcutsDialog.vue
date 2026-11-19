@@ -128,7 +128,7 @@ const groups = computed(() => [
   {
     title: t('shortcuts.groups.tabs'),
     rows: [
-      [['← →', 'Home', 'End'], t('shortcuts.rows.switchTabs')],
+      [['← →'], t('shortcuts.rows.switchTabs')],
     ],
   },
 ].filter(Boolean));

@@ -219,7 +219,8 @@ with Connect, type a box with the F-keys' line characters, and check the shortcu
 - Does: presses W, sets Match to FG only, clicks a cell, Shift-clicks another color, then presses Delete; Escape.
 - Expects: the wand selects what matches (Contiguous on: only what touches), tinted while the wand is the tool;
   Shift-click adds; Delete takes away what's in it on the picked layer (All layers, at the end of the wand's row once
-  it has selected, is off; on, on every layer that shows), one undo step; Escape drops it.
+  it has selected, is off; on, on every layer that shows), one undo step; Escape drops it. Right after a tap on All
+  layers or Contiguous, Delete and Escape work the same: the checkbox keeps only Space and Enter.
 - Probes: `out-of-order`: press Delete with nothing selected; `again`: click the same cell twice; `undo-redo`: undo the
   delete and the selections.
 - Rated: yes, wants W, then a key for Match

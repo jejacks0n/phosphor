@@ -2,6 +2,7 @@ import { watchEffect } from 'vue';
 import { locale, t } from '@/i18n';
 import { desktop, fileFrom } from '@/social/desktop';
 import { newerRelease } from '@/lib/semver';
+import { typesIn } from '@/lib/fields';
 import { toast } from '@/composables/useToast';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -38,15 +39,13 @@ export async function checkForUpdates() {
   if (confirm(t('updates.available', { version: next.tag.slice(1), current: found.version }))) window.open(next.url, '_blank');
 }
 
-const TYPED = 'input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=color]), textarea, [contenteditable]';
-
 export function useDesktopMenu() {
   const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore(), room = useRoomStore(), social = useSocialStore();
 
   // Undo and Redo from the menu: a text field's own while one has focus, otherwise the drawing's (not on the room's tab,
   // as Cmd/Ctrl+Z).
   const undoOrRedo = (which) => {
-    if (document.activeElement?.matches?.(TYPED)) document.execCommand(which);
+    if (typesIn(document.activeElement)) document.execCommand(which);
     else if (workspace.editorTab !== 'room') project[which]();
   };
 
