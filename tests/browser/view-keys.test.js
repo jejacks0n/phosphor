@@ -101,17 +101,28 @@ test('the zoom keys are the browser\'s in a field, with Alt, and off the art vie
   expect(workspace.zoomRequest).toBe(null);
 });
 
+// A key pressed, and its scroll heard to its end (scrollend) before `there` is asked. The scroll is the browser's own,
+// and smooth: in Chromium a key that lands just as the scroll before it gets to its place sometimes loses its own, so
+// the next key pressed as soon as the position got there didn't always scroll (12 of 600 presses, measured; none of
+// 600 this way). A smooth scroll is made of frames, and a machine busy with other test files draws few: PATIENT.
+const PATIENT = { timeout: 5000 };
+async function scrolls(view, key, there) {
+  let ended = false;
+  const heard = () => { ended = there(); };
+  view.addEventListener('scrollend', heard);
+  await userEvent.keyboard(key);
+  await vi.waitUntil(() => ended, PATIENT);
+  view.removeEventListener('scrollend', heard);
+}
+
 test('with nothing focused, Page Down, End and Home scroll the view, which takes the focus', async () => {
   const { view } = await mount('output');
   document.activeElement?.blur();
   view.scrollTop = 0;
-  await userEvent.keyboard('{PageDown}');
+  await scrolls(view, '{PageDown}', () => view.scrollTop > 200);
   expect(document.activeElement).toBe(view);
-  await vi.waitUntil(() => view.scrollTop > 200); // a smooth scroll
-  await userEvent.keyboard('{End}');
-  await vi.waitUntil(() => view.scrollTop === view.scrollHeight - view.clientHeight);
-  await userEvent.keyboard('{Home}');
-  await vi.waitUntil(() => view.scrollTop === 0);
+  await scrolls(view, '{End}', () => view.scrollTop === view.scrollHeight - view.clientHeight);
+  await scrolls(view, '{Home}', () => view.scrollTop === 0);
 });
 
 test('a focused control keeps its keys: Home on a button doesn\'t move the focus to the view', async () => {
