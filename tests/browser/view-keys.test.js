@@ -11,6 +11,7 @@ import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import InputEditor from '@/components/InputEditor.vue';
 import AnsiEditor from '@/components/AnsiEditor.vue';
 import { PIXEL_ZOOM_START } from '@/lib/zoom';
+import { cellIndex } from '@/lib/Cells';
 
 let app = null, host = null;
 afterEach(() => {
@@ -143,6 +144,7 @@ test('a focused control keeps the keys it uses: Home on a slider stays there; En
 test('the pointer is over the view for a mouse, not after a tap (Space pans a focused button only with the mouse over it)', async () => {
   const { workspace, view } = await mount('output');
   const enter = (pointerType, type = 'pointerenter') => view.dispatchEvent(new PointerEvent(type, { pointerType }));
+  workspace.pointerOverEditor = false; // where the test page's own pointer last was doesn't count
   enter('touch');
   view.dispatchEvent(new MouseEvent('mouseenter')); // a tap's mouse events follow, with no mouseleave after
   expect(workspace.pointerOverEditor).toBe(false);
@@ -150,4 +152,23 @@ test('the pointer is over the view for a mouse, not after a tap (Space pans a fo
   expect(workspace.pointerOverEditor).toBe(true);
   enter('mouse', 'pointerleave');
   expect(workspace.pointerOverEditor).toBe(false);
+});
+
+test('in Edit Mode, with Tab gone on to a button, Space and Enter still type and press nothing', async () => {
+  const { project, workspace } = await mount('output');
+  workspace.outputActiveTool = 'text';
+  workspace.textCursor = { col: 2, row: 2 };
+  await frames();
+  const typing = host.querySelector('textarea[data-text-input]');
+  typing.focus();
+  await userEvent.keyboard('{Tab}'); // to the status bar's typing mode button
+  const button = document.activeElement;
+  expect(button.tagName).toBe('BUTTON');
+  const mode = workspace.typingMode;
+  await userEvent.keyboard('a b{Enter}c');
+  await settle(project);
+  const read = (c0, row, n) => Array.from({ length: n }, (_, c) => project.cells[cellIndex(c0 + c, row, project.cols)].char).join('');
+  expect(read(2, 2, 3)).toBe('a b');
+  expect(read(0, 3, 1)).toBe('c'); // Enter: the next row's first column
+  expect(workspace.typingMode).toBe(mode); // the button wasn't pressed
 });

@@ -6,7 +6,7 @@ import { sharedIndex } from '@/lib/ColorUtils';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { toast } from '@/composables/useToast';
 import { cellWidth } from '@/lib/CharWidth';
-import { isFormField, isTextInput, ownsKey, typesIn } from '@/lib/fields';
+import { isFormField, isTextInput, typesIn } from '@/lib/fields';
 import { snapCursor } from '@/document/wideChars';
 import { t } from '@/i18n/index.js';
 import { refusesHidden } from '@/tools';
@@ -59,14 +59,13 @@ function typeLines(project, workspace, text) {
 // keys (arrows, Backspace, F-keys...) still come through keydown.
 export function useTextTool(project, workspace, textInput) {
   const palettes = usePaletteStore();
-  // Focus stays in a form field or a dialog (the color picker, the palette layer); a key belongs elsewhere when the
-  // focused element uses it itself (ownsKey), or focus is in a dialog.
+  // Keys belong elsewhere while focus is in a form field or a dialog (the color picker, the palette layer). Not on a
+  // button: with the cursor placed, Space and Enter there type, as everything else does (Tab only moved past it).
   const inDialog = (el) => !!el.closest?.('dialog, [role="dialog"]');
-  const inDialogFocus = () => {
+  const editableFocus = () => {
     const el = document.activeElement;
-    return !!el && !isTextInput(el) && inDialog(el);
+    return isFormField(el) || (!!el && !isTextInput(el) && inDialog(el));
   };
-  const editableFocus = () => isFormField(document.activeElement) || inDialogFocus();
 
   // Moving the cursor ends a run of typing (Backspace's move is part of it).
   const move = (dc, dr, { typing = false } = {}) => {
@@ -133,7 +132,7 @@ export function useTextTool(project, workspace, textInput) {
       event.preventDefault();
       return textInput?.value?.focus({ preventScroll: true });
     }
-    const action = textKeyAction(event, { editable: ownsKey(document.activeElement, event) || inDialogFocus(), animate: project.animate });
+    const action = textKeyAction(event, { editable: editableFocus(), animate: project.animate });
     if (!action) return;
     // Without a cursor only palette flips and slot choices apply (a slot still sets the character to draw with).
     if (!workspace.textCursor && action.type !== 'palette' && action.type !== 'slot') return;
