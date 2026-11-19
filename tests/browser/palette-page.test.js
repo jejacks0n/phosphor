@@ -104,6 +104,26 @@ test('a font drawing\'s sources are the font', async () => {
   expect(host.querySelector('.legend').textContent).toContain('not in CP437');
 });
 
+test('the Unicode tab gives way to the font tab when the drawing gets a font', async () => {
+  const on = () => host.querySelector('.sources .tabs button.on')?.textContent.trim();
+  const glyphs = () => [...host.querySelectorAll('.grid button.g')].map((b) => b.textContent);
+  const { project } = await mount({ font: false });
+  await press(button('Edit ▸'));
+  await press(button('Unicode'));
+  expect(on()).toBe('Unicode');
+  project.setDrawingFont(fontA());
+  await nextTick();
+  expect(on()).toBe('A · 256');
+  expect(glyphs()).toHaveLength(256);
+  const find = host.querySelector('.sources input');
+  find.value = 'Blocks'; // a block find still works, on the font's glyphs, under the font tab
+  find.dispatchEvent(new Event('input'));
+  await nextTick();
+  expect(on()).toBe('A · 256');
+  expect(glyphs()).toContain('▄');
+  expect(glyphs().filter((c) => '▙▚▞'.includes(c))).toEqual([]);
+});
+
 test('tying keeps what the font lacks, marked', async () => {
   let id;
   const { palettes } = await mount({

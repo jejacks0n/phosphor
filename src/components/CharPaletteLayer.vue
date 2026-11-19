@@ -69,22 +69,24 @@ const visibleBlocks = computed(() => {
 const pane = computed(() => {
   const shown = allPane.value;
   if (!project.drawingFont) return shown;
-  return { ...shown, chars: source.value === 'cp437' && !findResult.value ? SLOT_CHARS : shown.chars.filter((c) => slotOf(c) !== null) };
+  return { ...shown, chars: tab.value === 'cp437' && !findResult.value ? SLOT_CHARS : shown.chars.filter((c) => slotOf(c) !== null) };
 });
+// A font drawing has no Unicode tab: its font tab stands in for it (a block find still shows under it, filtered).
+const tab = computed(() => (font.value && source.value === 'unicode' ? 'cp437' : source.value));
 const allPane = computed(() => {
   const found = findResult.value;
   if (found?.kind === 'code') return { note: t('palette.layer.notes.codePoint'), chars: found.chars };
   if (found?.kind === 'paste') return { note: t('palette.layer.notes.pasted'), chars: found.chars };
-  if (found?.kind === 'block' || source.value === 'unicode') {
+  if (found?.kind === 'block' || tab.value === 'unicode') {
     const shown = visibleBlocks.value;
     const index = shown.some(b => b.index === block.value) ? block.value : shown[0]?.index ?? 0;
     return { blocks: shown, block: index, chars: range(UNICODE_BLOCKS[index][1], UNICODE_BLOCKS[index][2]) };
   }
-  if (source.value === 'drawing') return { note: t('palette.layer.notes.inDrawing'), chars: [...new Set(project.cells.map(c => c.char))] };
-  if (source.value === 'recent') return { note: t('palette.layer.notes.recent'), chars: palettes.recentChars };
+  if (tab.value === 'drawing') return { note: t('palette.layer.notes.inDrawing'), chars: [...new Set(project.cells.map(c => c.char))] };
+  if (tab.value === 'recent') return { note: t('palette.layer.notes.recent'), chars: palettes.recentChars };
   return { chars: [...CP437].map((c, i) => (i === 0 ? '' : c)) };
 });
-const sourceTab = computed(() => (findResult.value?.kind === 'block' ? 'unicode' : source.value));
+const sourceTab = computed(() => (findResult.value?.kind === 'block' && !font.value ? 'unicode' : tab.value));
 
 const setHint = (text = '', warn = false) => { hint.value = { text, warn }; };
 const aimHint = () => {
