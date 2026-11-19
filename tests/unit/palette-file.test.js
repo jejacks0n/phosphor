@@ -31,6 +31,11 @@ describe('palette files', () => {
     expect(c.font).toBeNull();
   });
 
+  it('keeps only glyphs one cell can hold', () => {
+    const text = JSON.stringify({ phosphor: 'palettes', version: 1, palettes: [{ name: 'A', glyphs: ['hello', '\u0007', '☺', '中'] }] });
+    expect(readPaletteFile(text, 'x')[0].glyphs.slice(0, 4)).toEqual(['', '', '☺', '中']);
+  });
+
   it("refuses what isn't a palette file", () => {
     for (const text of [
       'not json',

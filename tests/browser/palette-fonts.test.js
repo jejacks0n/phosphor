@@ -106,7 +106,8 @@ test('import says which kept fonts its palettes wait for', async () => {
 
 test('palettes saved before ties read as for any font', async () => {
   const { palettes } = await setup();
-  palettes.userPalettes = [{ id: 'old', name: 'Old', glyphs: [] }];
+  palettes.userPalettes = [{ id: 'old', name: 'Old', glyphs: ['hello', '☺'] }];
   expect(palettes.general.map(p => p.id)).toEqual(['old']);
   expect(palettes.all.find(p => p.id === 'old').font).toBeNull();
+  expect(palettes.all.find(p => p.id === 'old').glyphs.slice(0, 2)).toEqual(['', '☺']); // a cell holds one character
 });

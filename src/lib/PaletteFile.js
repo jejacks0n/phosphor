@@ -1,8 +1,9 @@
-import { normalizeGlyphs } from './charPalettes.js';
+import { normalizeGlyphs, fitsGrid } from './charPalettes.js';
 import { fileStem } from '../document/projectIO.js';
 import { t } from '@/i18n/index.js';
 
-// Palettes as a file: each one's name, its twelve slots ('' for an empty one) and the font it's tied to, if any.
+// Palettes as a file: each one's name, its twelve slots ('' for an empty one, or one a cell can't hold) and the font
+// it's tied to, if any.
 
 const font = (f) =>
   f && typeof f.id === 'string' && Number.isInteger(f.height) && f.height >= 1 && f.height <= 32
@@ -26,7 +27,7 @@ export function readPaletteFile(text, fileName) {
   }
   return data.palettes.map((p) => ({
     name: typeof p?.name === 'string' && p.name ? p.name : t('palette.untitled'),
-    glyphs: normalizeGlyphs(Array.isArray(p?.glyphs) ? p.glyphs.map((g) => (typeof g === 'string' ? g : '')) : []),
+    glyphs: normalizeGlyphs(Array.isArray(p?.glyphs) ? p.glyphs.map((g) => (typeof g === 'string' && fitsGrid(g) ? g : '')) : []),
     font: font(p?.font),
   }));
 }

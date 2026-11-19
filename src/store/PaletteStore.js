@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { useLocalStorage } from '@vueuse/core';
-import { BUILTIN_PALETTES, normalizeGlyphs, forkName } from '@/lib/charPalettes';
+import { BUILTIN_PALETTES, normalizeGlyphs, forkName, fitsGrid } from '@/lib/charPalettes';
 import { t } from '@/i18n/index.js';
 import { fontId } from '@/lib/BitmapFont.js';
 import { useProjectStore } from '@/store/ProjectStore.js';
@@ -25,7 +25,7 @@ export const usePaletteStore = defineStore('palettes', {
       ...BUILTIN_PALETTES,
       ...(Array.isArray(state.userPalettes) ? state.userPalettes : [])
         .filter(p => p && typeof p.id === 'string')
-        .map(p => ({ ...p, name: String(p.name ?? t('palette.untitled')), glyphs: normalizeGlyphs(Array.isArray(p.glyphs) ? p.glyphs.map(g => (typeof g === 'string' ? g : '')) : ''), font: p.font && typeof p.font.id === 'string' ? p.font : null })),
+        .map(p => ({ ...p, name: String(p.name ?? t('palette.untitled')), glyphs: normalizeGlyphs(Array.isArray(p.glyphs) ? p.glyphs.map(g => (typeof g === 'string' && fitsGrid(g) ? g : '')) : ''), font: p.font && typeof p.font.id === 'string' ? p.font : null })),
     ],
     // The drawing's bitmap font, as a palette's tie names it.
     currentFont() {
