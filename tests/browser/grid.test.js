@@ -153,6 +153,33 @@ test('a tall picture opens at the current width, and can grow as large as the li
   expect([project.maxCols, project.maxRows]).toEqual([182, 5460]); // aspect locked: the cell budget binds
 });
 
+// The report: on a 300-column file with Lock aspect ratio on, more pixel rows snapped back with no word, as 0 did with it
+// off. The lock holds the size, and a toast says so; a size under 1 isn't taken, and a toast gives the smallest.
+test('a size the aspect lock holds back, or one under 1, says why in a toast', async () => {
+  const { toastMessage } = await import('@/composables/useToast');
+  const { project } = await grid(300, 600);
+  project.setAspectLock(true);
+  toastMessage.value = null;
+  project.updateRows(700);
+  expect([project.cols, project.rows]).toEqual([300, 600]);
+  expect(toastMessage.value).toBe('Lock aspect ratio keeps this shape, and 300 × 600 is the largest it fits. Turn off the lock to change one number alone.');
+  toastMessage.value = null;
+  project.updateCols(400); // 300 columns is the limit with or without the lock
+  expect(toastMessage.value).toBe(null);
+  project.aspectLock = false;
+  project.updateRows(0);
+  expect(project.rows).toBe(600);
+  expect(toastMessage.value).toBe('The smallest size is 1 column by 1 pixel row.');
+  toastMessage.value = null;
+  project.updateCols(-3);
+  expect(project.cols).toBe(300);
+  expect(toastMessage.value).toBe('The smallest size is 1 column by 1 pixel row.');
+  toastMessage.value = null;
+  project.updateRows(99_999); // stops at what 300 columns allow, which the field shows
+  expect(project.rows).toBe(2 * Math.floor(MAX_CELLS / 300));
+  expect(toastMessage.value).toBe(null);
+});
+
 test('before there is a picture, the aspect lock has no shape to keep: rows and columns set alone', async () => {
   const { project } = await createTestApp();
   expect(project.aspectLock).toBe(true);

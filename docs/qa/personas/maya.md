@@ -562,7 +562,8 @@ from it.
 - Does: opens her photo fresh, sets Dimensions to 200 columns with Lock aspect ratio on.
 - Expects: nothing drawn yet, so the picture is converted again at the new size and the rows follow its shape; the
   change lands within the `setting` budget.
-- Probes: `extremes`: try 0, then 301, then 99999 columns and check where it stops (300 at most); `undo-redo`: undo the
+- Probes: `extremes`: try 0, then 301, then 99999 columns and check where it stops (300 at most; 0 stays put, and a
+  message gives the smallest size); `undo-redo`: undo the
   size change.
 - Rated: yes, wants Tab to Dimensions (typing the number is content)
 

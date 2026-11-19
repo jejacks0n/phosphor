@@ -1188,7 +1188,9 @@ the grid's size. The stepper arrows and the **↑** and **↓** keys change the 
   With animation on, a drawing holds at most 40,000 cells, and the aspect ratio lock doesn't apply.
 - **Lock Aspect Ratio**: The lock keeps the shape the grid had when you turned it on: unlock, set both numbers, lock
   again, and changing one number keeps the other in that shape, whether it rescales or resizes the canvas. It's saved
-  with the project. A new picture starts with its own shape.
+  with the project. A new picture starts with its own shape. A number past the largest size that keeps the shape stops
+  there, and a message says the lock held it: turn the lock off to grow one number alone, up to the limits. A number
+  under 1 isn't taken, and a message gives the smallest size, 1 column by 1 pixel row.
 - **Blank Canvas**: A blank canvas is one color all over, so it fills the grid at any size, and the adjustments
   (Invert, Brightness and the rest) reach every cell.
 - **Opening a Picture**: A picture opens at the current width, or narrower if that's what it takes to fit its shape.

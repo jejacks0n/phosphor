@@ -99,9 +99,9 @@ script. Every section ends with Free time.
   and the width stays 80 (with the lock on, it would follow); the grid changes once, when he presses Enter or Tab, not
   as each digit lands; it lands within the `setting` budget.
 - Probes: `back-out`: select the second number, type a few digits, press Escape, and check the grid never moved and the
-  field shows its size again; `extremes`: type 99999, then 0, and see where it stops (80 columns reach 5,000 lines); `undo-redo`: undo after the
-  resize and check it takes back his last edit and leaves the size (a resize isn't an undo step, and mustn't forget
-  the steps before it), then redo it; `interrupt`: shrink to 3 lines, then back to 200, and check the cut-off lines came back.
+  field shows its size again; `extremes`: type 99999, then 0, and see where it stops (80 columns reach 5,000 lines; 0
+  stays put, and a message gives the smallest size); `undo-redo`: undo after the resize and check it takes back his
+  last edit and leaves the size (a resize isn't an undo step, and mustn't forget the steps before it), then redo it; `interrupt`: shrink to 3 lines, then back to 200, and check the cut-off lines came back.
 - Rated: yes, wants Tab to Dimensions
 
 **Free time:** he'd press `?` and read the shortcut list, open the SAUCE tab to check the fields, try the PIXEL tab to
