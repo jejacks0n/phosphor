@@ -13,7 +13,7 @@ import { addFont, addBitmapFont, loadFonts, removeFont } from '@/lib/userFonts';
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
 const rawFile = (height, name, fill = 0) => new File([new Uint8Array(256 * height).fill(fill)], name);
 const ttfFile = async () => new File([await (await fetch('/tests/fixtures/fonts/tall.ttf')).arrayBuffer()], 'Tall Mono.ttf');
-let app = null, host = null;
+let app = null, host = null, closes = 0;
 
 afterEach(async () => {
   app?.unmount();
@@ -33,7 +33,8 @@ async function mount({ drawing = true } = {}) {
   workspace.userFonts = await loadFonts();
   workspace.paletteLayerPage = 'fonts';
   host = document.body.appendChild(document.createElement('div'));
-  app = createApp({ render: () => h(CharPaletteLayer) }).use(getActivePinia()).use(i18n);
+  closes = 0;
+  app = createApp({ render: () => h(CharPaletteLayer, { onClose: () => { closes += 1; } }) }).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
   return { project, workspace, palettes: usePaletteStore(), b, tt };
@@ -140,6 +141,25 @@ test('the arrow keys choose the next and previous fonts', async () => {
   filter.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true })); // the filter keeps its keys
   await nextTick();
   expect(title()).toBe('Tall Mono');
+});
+
+test('the keys stay with the layer when the button pressed goes away', async () => {
+  const { project, b } = await mount();
+  const escape = () => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  const pressFocused = (el) => {
+    el.focus();
+    el.click();
+  };
+  await press(row('B'));
+  pressFocused(button('Use in this drawing')); // gone once B is the drawing's
+  await expect.poll(() => project.drawingFont && fontId(project.drawingFont)).toBe(b.id);
+  await expect.poll(() => host.contains(document.activeElement)).toBe(true);
+  escape();
+  expect(closes).toBe(1);
+  pressFocused(button('Palettes ▸')); // the page it's on goes away
+  await expect.poll(() => host.contains(document.activeElement)).toBe(true);
+  escape();
+  expect(closes).toBe(2);
 });
 
 test('a TrueType font shows a sample and View in it', async () => {

@@ -85,8 +85,10 @@ test('the editor shows the tie and changes it', async () => {
   expect(palettes.general.map((p) => p.id)).toContain(id);
   expect(tieButton().textContent.trim()).toBe('Any font ▾');
   await press(tieButton());
+  button('Tie to A').focus(); // the menu, and its focused item, go away once chosen
   await press(button('Tie to A'));
   expect(palettes.tied.map((p) => p.id)).toEqual([id]);
+  await expect.poll(() => host.contains(document.activeElement)).toBe(true); // the layer keeps the keys
   expect(tieButton().textContent.trim()).toBe('For A ▾');
   await press(row('Shades & blocks'));
   expect(tieButton()).toBeNull(); // built-ins show no tie
@@ -137,8 +139,10 @@ test('tying keeps what the font lacks, marked', async () => {
   });
   await edit('Stars');
   await press(tieButton());
+  button('Tie to A').focus(); // the menu, and its focused item, go away once chosen
   await press(button('Tie to A'));
   expect(palettes.tied.map((p) => p.id)).toEqual([id]);
+  await expect.poll(() => host.contains(document.activeElement)).toBe(true); // the layer keeps the keys
   const slot = host.querySelectorAll('.slots .slot')[0];
   expect(slot.querySelector('.glyph-cell').textContent).toBe('★');
   expect(slot.classList.contains('bad')).toBe(true);

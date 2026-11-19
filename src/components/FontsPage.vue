@@ -13,6 +13,7 @@ import { downloadBlob } from '@/document/projectIO';
 // The palette layer's Fonts page: the drawing's bitmap font and yours on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
 // font here only shows it: Use in this drawing and View in it apply it, as the Font field's dropdown does.
+const emit = defineEmits(['acted']);
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -81,7 +82,7 @@ watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => f.id).join('
   }
 }, { immediate: true });
 
-// An action, with what went wrong said under the list.
+// An action, with what went wrong said under the list. acted: done (its button may be gone).
 const run = async (action) => {
   problem.value = '';
   try {
@@ -89,6 +90,7 @@ const run = async (action) => {
   } catch (error) {
     problem.value = error.message;
   }
+  emit('acted');
 };
 
 const onFile = (event) => {

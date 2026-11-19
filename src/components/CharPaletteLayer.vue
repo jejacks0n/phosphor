@@ -154,6 +154,7 @@ const createPalette = (tied) => {
 const tie = (to) => {
   palettes.tie(current.value.id, to);
   tieOpen.value = false;
+  keepKeys();
 };
 
 const exportPalettes = (list, name) => downloadBlob(new Blob([writePaletteFile(list)], { type: 'application/json' }), paletteFileName(name));
@@ -270,6 +271,11 @@ const onPointerDown = (event) => {
 watch(editing, (on) => {
   if (!on) nextTick(() => root.value?.focus());
 });
+// The same for any button that goes away once pressed (a page's, the tie menu's, the Fonts page's actions).
+const keepKeys = () => nextTick(() => {
+  if (root.value && !root.value.contains(document.activeElement)) root.value.focus();
+});
+watch(() => workspace.paletteLayerPage, keepKeys);
 watch([currentId, editing], () => { tieOpen.value = false; });
 
 onMounted(() => {
@@ -288,7 +294,7 @@ onBeforeUnmount(() => {
       <button :class="{ on: !onFonts }" :aria-pressed="!onFonts" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.pages.palettes') }}</button>
       <button :class="{ on: onFonts }" :aria-pressed="onFonts" @click="workspace.paletteLayerPage = 'fonts'">{{ t('palette.pages.fonts') }}</button>
     </div>
-    <FontsPage v-if="onFonts" ref="fontsPage"/>
+    <FontsPage v-if="onFonts" ref="fontsPage" @acted="keepKeys"/>
     <!-- the Palettes page -->
     <div v-else class="page">
       <!-- the list: choose a palette -->
