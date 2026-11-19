@@ -142,7 +142,7 @@ Best match and By shape measure characters in IBM VGA, whichever font you view t
 
 ## The Font
 
-In the **Drawing** section of the left panel, the **Font** dropdown sets the font the art is drawn in, in both views, and the size field beside it sets its size (6 to 64 px). A size typed takes effect on **Enter** or leaving the field; **Escape** puts back the one in use. Phosphor has four built-in fonts, and can load bitmap fonts of your own ([Bitmap Fonts](#bitmap-fonts)):
+In the **Drawing** section of the left panel, the **Font** dropdown sets the font the art is drawn in, in both views, and the size field beside it sets its size (6 to 64 px); **Manage fonts ▸** opens the Fonts page ([Managing Fonts](#managing-fonts)). A size typed takes effect on **Enter** or leaving the field; **Escape** puts back the one in use. Phosphor has four built-in fonts, and can load fonts of your own ([Managing Fonts](#managing-fonts), [Bitmap Fonts](#bitmap-fonts)):
 
 - **JetBrains Mono** (default): A clean, modern monospaced font.
 - **IBM VGA**: The VGA font of vintage PC screens, with Unscii for the characters it lacks.
@@ -154,23 +154,45 @@ IBM VGA, Unscii, and Unifont are 8×16 pixel fonts that share one cell, so box d
 - **Blocks and shades**: In the canvas view, block elements (`█`, `▀`, `▄`, `▌`, `▐`, and the quadrants) and shade blocks (`░`, `▒`, `▓`) aren't drawn from the font. Phosphor draws them itself, as most terminals do, so they fill their cells exactly and the shades' dots line up from cell to cell, in any font (a dot is a sixteenth of the cell's height, the VGA's own pixel).
 - **Smooth text**: Everything else is drawn from the font, either smoothed (anti-aliased) or pixel-sharp. Toggle **Smooth** in the ANSI view's status bar; it applies in both views.
 
+### Managing Fonts
+
+The Font dropdown chooses the font; loading, saving and removing fonts happen on the **Fonts** page of the character palette layer. Click **Manage fonts ▸** beside the Font field to open it. It opens with any tool in hand (from the SAUCE tab it switches to ANSI first) and is off while no drawing is open. Close the layer with **◂ Done** or **Escape**.
+
+In someone else's room **Manage fonts ▸** is off with the rest of the Drawing settings. There, reach the Fonts page through the Type tool's palette button and the layer's **Fonts** switch ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
+
+The character palette layer has a **Palettes | Fonts** switch at the top. **Palettes** is the palette editor ([Palettes That Belong to a Font](#palettes-that-belong-to-a-font)).
+
+### The Fonts Page
+
+The page has a filter and **+ Load**, which loads a bitmap font (`.F01` to `.F32`, the number being the height of a character in pixels, or a PNG sheet of one, 16 characters across and 16 down, 256 in all) or a monospaced TrueType (`.ttf`), OpenType (`.otf`) or WOFF (`.woff`, `.woff2`) font from your computer. Below are two groups: **This drawing** (the font the drawing carries) and **Yours** (the fonts kept in this browser). Each row has the font's name, its size and a sample of text drawn in that font.
+
+Choosing a row shows that font's name, a line of facts (its size, whether it's the drawing's font or in your browser, and how many palettes are tied to it), its actions, and its 256 slots drawn in the font. Hover a slot to see its number. The Up and Down arrow keys choose the previous and next font in the list. Choosing a row only shows it; nothing changes in the drawing until you use it.
+
+- **The drawing's font**: **Save .F##**, **Save PNG**, **Export palettes** and **Palettes ▸** (which opens the Palettes page). If the same font is also kept in this browser, **Remove** is there too.
+- **Another bitmap font**: **Use in this drawing**, **Save .F##**, **Save PNG**, **Export palettes** and **Remove**. **Use in this drawing** gives the drawing that font, as one undo step.
+- **A TrueType font**: a sample of text, **View in it** and **Remove**. A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. **View in it** takes the drawing's bitmap font away (one undo step) and draws in the TrueType font.
+- **In someone else's room**: **Use in this drawing** and **View in it** are off. Loading, saving, **Remove** and the palettes still work.
+- **Remove**: forgets this browser's copy of the font. A drawing keeps its own font, and the palettes tied to the removed font stay ([For Fonts Not Loaded](#for-fonts-not-loaded)).
+
+Loaded fonts stay in this browser until you remove them. They're never uploaded anywhere.
+
 ### Custom Fonts
 
-Click **Load font** (beside the Font label) to load a TrueType (`.ttf`), OpenType (`.otf`), or WOFF (`.woff`, `.woff2`) font from your computer:
+A TrueType (`.ttf`), OpenType (`.otf`) or WOFF (`.woff`, `.woff2`) font loaded with **+ Load** shows in the Font dropdown under **Yours**:
 
 - **Monospaced only**: Every character must share the same width, as in a terminal. Phosphor checks ten characters (`il.' MWm@0`) and tells you when their widths differ.
 - **Size and height**: A loaded font starts at 16px and keeps its own line height, so a full block fills its cell.
-- **Stored in your browser**: Loaded fonts stay in this browser until you remove them (click **Remove**, shown while the loaded font is in use). They're never uploaded anywhere.
+- **Stored in your browser**: Loaded fonts stay in this browser until you remove them (**Remove** on the Fonts page). They're never uploaded anywhere.
 
 ### Bitmap Fonts
 
-Click **Load font** and pick a raw bitmap font (`.F01` to `.F32`, the number being the height of a character in pixels) or a PNG sheet of one (16 characters across and 16 down, 256 in all) to draw in it the way old DOS art does. **Save .F##** and **Save PNG** write the drawing's font back out, as either.
+Use **+ Load** on the Fonts page to pick a raw bitmap font (`.F01` to `.F32`) or a PNG sheet of one, then **Use in this drawing** to draw in it the way old DOS art does. **Save .F##** and **Save PNG** write the drawing's font back out, as either.
 
 A bitmap font belongs to the drawing, not to your browser:
 
 - **It's saved**: A project keeps it, and so does an XBin export ([Saving .xb](#saving-xb)). Opening an XBin that holds a font gives the drawing that font.
-- **It's one undo step**: Setting it, and taking it off by choosing another font, are each a step you can undo. It's listed under **This drawing** in the Font dropdown; choosing any other font takes it away. **Remove** only clears a loaded font from your browser; the drawing keeps its own.
-- **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots. A character the font lacks is shown as its nearest classic (CP437) stand-in, but the character you typed is kept: choose another font and the original comes back.
+- **It's one undo step**: Setting it, and taking it off by choosing another font, are each a step you can undo. It's listed under **This drawing** in the Font dropdown; choosing any other font takes it away. **Remove** (on the Fonts page) only clears a loaded font from your browser; the drawing keeps its own.
+- **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots ([The Fonts Page](#the-fonts-page)). A character the font lacks is shown as its nearest classic (CP437) stand-in, but the character you typed is kept: choose another font and the original comes back.
 - **Blocks and shades come from it**: Block elements and shades are drawn from the font's own pixels, so they look as the font draws them.
 - **The converter measures in it**: Best match and By shape compare each cell with the font's characters, so a photo converts into the shapes your font has.
 - **The status bar shows the code**: In the ANSI view, after **Char** and its character, the status bar gives the character's code in decimal: its slot in the drawing's font, or its classic (CP437) byte when there's no bitmap font. A character with no code shows none. On a narrow bar the code gives way, with the FG and BG hex codes, before anything else does.
@@ -181,6 +203,25 @@ A bitmap font belongs to the drawing, not to your browser:
 The font changes how the art looks in Phosphor. It also changes how the characters you draw look in the PIXEL tab, and in the image when you merge them into it: each cell blends its colors by how much of it the character covers, measured in the font you see.
 
 Those fonts don't change how an image converts, or what's saved or exported; a terminal or viewer draws the file in its own font. Their font and size are kept in this browser, not in the project. A bitmap font is different: it's saved in the project and written into an XBin export, and the converter measures in it ([Bitmap Fonts](#bitmap-fonts)).
+
+### Palettes That Belong to a Font
+
+In a drawing with a bitmap font, a palette you make (or a built-in one you copy by editing it) belongs to that font. The Palettes page lists, in this order:
+
+- **For <font>**: the palettes tied to the font in use, shown first while it's in use.
+- **Built-in**.
+- **Yours**, with **+ New**, **Import** and **Export**.
+- **For fonts not loaded (N)**, collapsed ([For Fonts Not Loaded](#for-fonts-not-loaded)).
+
+Palettes tied to a font are hidden while another font is in use, and the one you had chosen comes back with its font (including when you undo **Use in this drawing**). The editor's head says **For <font> ▾** or **Any font ▾**; its menu has **Use with any font** or **Tie to <font>**. **Export** sits beside **Duplicate**. In a font drawing the source tabs are the font's own (**<font> · 256**), **In this drawing** and **Recent**; there's no Unicode tab. A character the font lacks can stay in a palette tied to it, marked as not fitting.
+
+### For Fonts Not Loaded
+
+Palettes tied to a font that isn't loaded in this browser (because you removed it, or they came in from a file) wait in a collapsed group, **For fonts not loaded (N)**. Load that font and they show under its name.
+
+### Palette Files
+
+**Export** writes one palette, and **Export palettes** on the Fonts page writes every palette tied to a font, as `<name>.palettes.json`. The file keeps each palette's name, its empty slots and the font it's tied to. **Import** adds the palettes in such a file to **Yours**. For a font that isn't loaded they go under **For fonts not loaded**, and Phosphor says "Added N palettes for <font>. Load that font to see them." A file that isn't a palette file is refused and nothing you keep changes.
 
 ### Fonts in Shared Rooms
 
