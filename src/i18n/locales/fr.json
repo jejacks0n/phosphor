@@ -795,7 +795,15 @@
       "infoOnSlot": "déjà assigné à F{slot}",
       "legendInPalette": "déjà dans cette palette",
       "legendNotCp437": "pas dans CP437 (substitué dans les exports .ans)",
-      "legendDoesntFit": "ne rentre pas dans une cellule"
+      "legendDoesntFit": "ne rentre pas dans une cellule",
+      "forFont": "Pour {name}",
+      "anyFont": "Toute police",
+      "untie": "Utiliser avec toute police",
+      "tieTo": "Lier à {name}",
+      "import": "Importer",
+      "export": "Exporter",
+      "fontTab": "{name} · 256",
+      "unloaded": "Pour des polices non chargées ({n})"
     }
   },
   "status": {

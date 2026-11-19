@@ -424,15 +424,9 @@ it('offers only the font\'s glyphs', async () => {
     expect(glyphs()).toHaveLength(256);
     expect(glyphs().every((b) => !b.disabled)).toBe(true);
     expect(glyphs()[0].textContent).toBe('␀');
-    button('Unicode').click();
-    await nextTick();
-    const find = host.querySelector('.sources input');
-    find.value = 'Blocks'; // the block ▙▚▞ are in
-    find.dispatchEvent(new Event('input'));
-    await nextTick();
-    const shown = glyphs().map((b) => b.textContent);
-    expect(shown.filter((c) => '▙▚▞'.includes(c))).toEqual([]);
-    expect(shown).toContain('▄'); // the font's ones are there
+    const tabs = [...host.querySelectorAll('.sources .tabs button')].map((b) => b.textContent.trim());
+    expect(tabs[0]).toBe('Blank · 256');
+    expect(tabs).not.toContain('Unicode');
   } finally {
     app.unmount();
     host.remove();

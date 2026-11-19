@@ -795,7 +795,15 @@
       "infoOnSlot": "already assigned to F{slot}",
       "legendInPalette": "already in this palette",
       "legendNotCp437": "not in CP437 (substituted in .ans exports)",
-      "legendDoesntFit": "does not fit in one cell"
+      "legendDoesntFit": "does not fit in one cell",
+      "forFont": "For {name}",
+      "anyFont": "Any font",
+      "untie": "Use with any font",
+      "tieTo": "Tie to {name}",
+      "import": "Import",
+      "export": "Export",
+      "fontTab": "{name} · 256",
+      "unloaded": "For fonts not loaded ({n})"
     }
   },
   "status": {

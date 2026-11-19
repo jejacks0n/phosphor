@@ -10,10 +10,14 @@ import { cellWidth } from '@/lib/CharWidth';
 import { SLOT_CHARS, slotOf } from '@/lib/BitmapFont';
 import { ownsKey } from '@/lib/fields';
 import { toast } from '@/composables/useToast';
+import { writePaletteFile, readPaletteFile, paletteFileName } from '@/lib/PaletteFile';
+import { downloadBlob } from '@/document/projectIO';
 
 // The character palette layer: one element in two sizes. Compact, it's the list of palettes (each
 // shown as its 12 glyphs) for choosing one; Edit grows the same element into the editor, with the
 // selected palette's slots and glyph sources. Built-ins are locked: the first edit makes your copy.
+// The list puts the drawing's bitmap font's palettes first, then the built-ins, yours, and (folded)
+// yours for fonts not loaded.
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const project = useProjectStore();
@@ -30,15 +34,25 @@ const source = ref('cp437');
 const block = ref(0);
 const hint = ref({ text: '', warn: false });
 const hoveredChar = ref(null);
+const tieOpen = ref(false);         // the editor head's tie menu
+const unloadedOpen = ref(false);    // the For fonts not loaded group, unfolded
+const importer = useTemplateRef('importer');
 
 const current = computed(() => palettes.all.find(p => p.id === currentId.value) ?? palettes.active);
 const matches = (p) => {
   const f = filter.value.trim().toLowerCase();
   return !f || p.name.toLowerCase().includes(f) || p.glyphs.join('').includes(f);
 };
-const builtins = computed(() => palettes.all.filter(p => p.builtin && matches(p)));
-const yours = computed(() => palettes.all.filter(p => !p.builtin && matches(p)));
-const visible = computed(() => [...builtins.value, ...yours.value]);
+const font = computed(() => palettes.currentFont);
+const isUnloaded = (p) => palettes.unloaded.some(u => u.id === p.id);
+const groups = computed(() => [
+  font.value && { key: 'tied', label: t('palette.layer.forFont', { name: font.value.name }), rows: palettes.tied.filter(matches) },
+  { key: 'builtin', label: t('common.builtIn'), rows: palettes.builtins.filter(matches) },
+  { key: 'yours', label: t('common.yours'), rows: palettes.general.filter(matches) },
+  palettes.unloaded.length && { key: 'unloaded', label: t('palette.layer.unloaded', { n: palettes.unloaded.length }), rows: palettes.unloaded.filter(matches) },
+].filter(Boolean));
+// The rows on screen, in order (the folded group's only while it's open).
+const visible = computed(() => groups.value.flatMap(g => (g.key === 'unloaded' && !unloadedOpen.value ? [] : g.rows)));
 
 // Whether a glyph can go in a cell: one or two columns wide, as a terminal lays it out; with a drawing font, one it holds.
 const fits = (char) => fitsGrid(char) && (!project.drawingFont || slotOf(char) !== null);
@@ -103,10 +117,15 @@ const pickGlyph = (char) => {
   assign(target.value, char);
 };
 
-const use = (id) => { palettes.activeId = id; };
+// Only a palette that shows can be the one in use; one for a font not loaded opens in the editor instead.
+const use = (id) => {
+  if (palettes.shown.some(p => p.id === id)) palettes.activeId = id;
+};
 const onRowClick = (p) => {
   currentId.value = p.id;
-  if (editing.value) {
+  if (!editing.value && isUnloaded(p)) {
+    startEditing();
+  } else if (editing.value) {
     target.value = 0;
     aimHint();
   } else {
@@ -120,9 +139,32 @@ const startEditing = () => {
 };
 const toggleEditing = () => (editing.value ? (editing.value = false) : startEditing());
 
-const createPalette = () => {
-  currentId.value = palettes.create();
+// + New under For <font> makes one tied to it; under Yours, one for any font.
+const createPalette = (tied) => {
+  const id = palettes.create();
+  if (!tied) palettes.tie(id, null);
+  currentId.value = id;
   startEditing();
+};
+const tie = (to) => {
+  palettes.tie(current.value.id, to);
+  tieOpen.value = false;
+};
+
+const exportPalettes = (list, name) => downloadBlob(new Blob([writePaletteFile(list)], { type: 'application/json' }), paletteFileName(name));
+const exportYours = () => exportPalettes(palettes.all.filter(p => !p.builtin), t('common.yours'));
+const onImport = async (event) => {
+  const [file] = event.target.files;
+  event.target.value = ''; // so the same file can be picked again
+  if (!file) return;
+  try {
+    const { added, waiting } = palettes.importPalettes(readPaletteFile(await file.text(), file.name));
+    toast(waiting.length
+      ? t('palette.file.addedWaiting', { n: added, fonts: waiting.join(', ') }, added)
+      : t('palette.file.added', { n: added }, added));
+  } catch (error) {
+    toast(error.message);
+  }
 };
 const duplicate = () => {
   const id = palettes.duplicate(current.value.id);
@@ -193,7 +235,8 @@ const onKeyDown = (event) => {
   } else if (event.key === 'Backspace' && editing.value) {
     assign(target.value, '', false);
   } else if (event.key === 'Escape') {
-    if (editing.value) editing.value = false;
+    if (tieOpen.value) tieOpen.value = false;
+    else if (editing.value) editing.value = false;
     else emit('close');
   } else {
     return;
@@ -202,6 +245,7 @@ const onKeyDown = (event) => {
 };
 
 const onPointerDown = (event) => {
+  if (tieOpen.value && !event.target.closest?.('.tie')) tieOpen.value = false;
   if (root.value && !root.value.contains(event.target) && !event.target.closest('[data-palette-toggle]')) emit('close');
 };
 
@@ -209,6 +253,7 @@ const onPointerDown = (event) => {
 watch(editing, (on) => {
   if (!on) nextTick(() => root.value?.focus());
 });
+watch([currentId, editing], () => { tieOpen.value = false; });
 
 onMounted(() => {
   document.addEventListener('pointerdown', onPointerDown, true);
@@ -222,110 +267,124 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="root" class="palette-layer" :class="{ editing }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
-    <!-- the list: choose a palette -->
-    <div class="list-side">
-      <div class="top">
-        <input v-model="filter" :placeholder="t('palette.layer.filterPlaceholder')" :aria-label="t('palette.layer.filterAria')">
-        <button @click="toggleEditing">{{ editing ? t('palette.layer.doneBtn') : t('palette.layer.editBtn') }}</button>
-      </div>
-      <div class="list">
-        <div class="group">{{ t('common.builtIn') }}</div>
-        <div
-            v-for="p in builtins"
-            :key="p.id"
-            class="row"
-            :class="{ current: p.id === currentId, active: p.id === palettes.active.id }"
-            @click="onRowClick(p)"
-            @dblclick="use(p.id); startEditing()"
-        >
-          <div class="name"><span>{{ p.name }}</span><em>{{ p.glyphs.every(g => !g || isCp437(g)) ? '' : t('palette.layer.utf8') }}</em></div>
-          <div class="glyphs"><span v-for="(g, i) in p.glyphs" :key="i" class="glyph-cell" :class="{ empty: !g }">{{ g || '·' }}</span></div>
+    <!-- the Palettes page (a sibling page can sit beside it) -->
+    <div class="page">
+      <!-- the list: choose a palette -->
+      <div class="list-side">
+        <div class="top">
+          <input v-model="filter" :placeholder="t('palette.layer.filterPlaceholder')" :aria-label="t('palette.layer.filterAria')">
+          <button @click="toggleEditing">{{ editing ? t('palette.layer.doneBtn') : t('palette.layer.editBtn') }}</button>
         </div>
-        <div class="group">{{ t('common.yours') }}<button class="new" @click="createPalette">{{ t('palette.layer.newBtn') }}</button></div>
-        <div
-            v-for="p in yours"
-            :key="p.id"
-            class="row"
-            :class="{ current: p.id === currentId, active: p.id === palettes.active.id }"
-            @click="onRowClick(p)"
-            @dblclick="use(p.id); startEditing()"
-        >
-          <div class="name"><span>{{ p.name }}</span></div>
-          <div class="glyphs"><span v-for="(g, i) in p.glyphs" :key="i" class="glyph-cell" :class="{ empty: !g }">{{ g || '·' }}</span></div>
+        <div class="list">
+          <template v-for="g in groups" :key="g.key">
+            <div class="group">
+              <button v-if="g.key === 'unloaded'" class="label fold" :aria-expanded="unloadedOpen" @click="unloadedOpen = !unloadedOpen">{{ g.label }}</button>
+              <span v-else class="label">{{ g.label }}</span>
+              <span v-if="g.key === 'tied' || g.key === 'yours'" class="actions">
+                <template v-if="g.key === 'yours'">
+                  <button class="new" @click="importer.click()">{{ t('palette.layer.import') }}</button>
+                  <button class="new" @click="exportYours">{{ t('palette.layer.export') }}</button>
+                </template>
+                <button class="new" @click="createPalette(g.key === 'tied')">{{ t('palette.layer.newBtn') }}</button>
+              </span>
+            </div>
+            <template v-if="g.key !== 'unloaded' || unloadedOpen">
+              <div
+                  v-for="p in g.rows"
+                  :key="p.id"
+                  class="row"
+                  :class="{ current: p.id === currentId, active: p.id === palettes.active.id }"
+                  @click="onRowClick(p)"
+                  @dblclick="use(p.id); startEditing()"
+              >
+                <div class="name"><span>{{ g.key === 'unloaded' ? `${p.name} · ${p.font.name}` : p.name }}</span><em v-if="p.builtin">{{ p.glyphs.every(c => !c || isCp437(c)) ? '' : t('palette.layer.utf8') }}</em></div>
+                <div class="glyphs"><span v-for="(c, i) in p.glyphs" :key="i" class="glyph-cell" :class="{ empty: !c }">{{ c || '·' }}</span></div>
+              </div>
+            </template>
+          </template>
         </div>
-      </div>
-    </div>
-
-    <!-- the editor: slots and glyph sources -->
-    <div v-if="editing" class="edit-side">
-      <div class="head">
-        <span
-            class="title"
-            :contenteditable="!current.builtin"
-            spellcheck="false"
-            @blur="rename"
-            @keydown.enter.prevent="$event.target.blur()"
-        >{{ current.name }}</span>
-        <span v-if="current.builtin" class="lock"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M192 288V192A128 128 0 0 1 448 192V288H384V192A64 64 0 0 0 256 192V288ZM176 288H464A48 48 0 0 1 512 336V528A48 48 0 0 1 464 576H176A48 48 0 0 1 128 528V336A48 48 0 0 1 176 288Z"/></svg>{{ t('palette.layer.lockedNote') }}</span>
-        <span class="spacer"></span>
-        <button class="ghost" @click="duplicate">{{ t('palette.layer.duplicateBtn') }}</button>
-        <button v-if="!current.builtin" class="ghost icon" :title="t('palette.layer.deletePalette')" :aria-label="t('palette.layer.deletePalette')" @click="remove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
+        <input ref="importer" type="file" accept=".json,application/json" hidden @change="onImport">
       </div>
 
-      <div class="slots">
-        <div
-            v-for="(g, i) in current.glyphs"
-            :key="i"
-            class="slot"
-            :class="{ target: i === target, over: i === dragOver }"
-            role="button"
-            tabindex="0"
-            :aria-label="t('palette.layer.aimAtAria', { n: i + 1 })"
-            :draggable="!!g"
-            @click="target = i; aimHint()"
-            @keydown.enter.space.prevent.stop="target = i; aimHint()"
-            @dragstart="onDragStart($event, `slot:${i}`)"
-            @dragover.prevent="dragOver = i"
-            @dragleave="dragOver = -1"
-            @drop.prevent="onDrop($event, i)"
-        >
-          <small>F{{ i + 1 }}</small>
-          <span class="glyph-cell">{{ g || ' ' }}</span>
-          <button v-if="g" class="clear" :title="t('common.clear')" :aria-label="t('palette.layer.clearSlotAria')" @click.stop="assign(i, '', false)">×</button>
-          <span v-if="g && !isCp437(g)" class="badge">{{ t('palette.layer.utf8') }}</span>
+      <!-- the editor: slots and glyph sources -->
+      <div v-if="editing" class="edit-side">
+        <div class="head">
+          <span
+              class="title"
+              :contenteditable="!current.builtin"
+              spellcheck="false"
+              @blur="rename"
+              @keydown.enter.prevent="$event.target.blur()"
+          >{{ current.name }}</span>
+          <span v-if="current.builtin" class="lock"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M192 288V192A128 128 0 0 1 448 192V288H384V192A64 64 0 0 0 256 192V288ZM176 288H464A48 48 0 0 1 512 336V528A48 48 0 0 1 464 576H176A48 48 0 0 1 128 528V336A48 48 0 0 1 176 288Z"/></svg>{{ t('palette.layer.lockedNote') }}</span>
+          <span v-if="!current.builtin" class="tie">
+            <button class="ghost" :disabled="!current.font && !font" :aria-expanded="tieOpen" @click="tieOpen = !tieOpen">{{ current.font ? t('palette.layer.forFont', { name: current.font.name }) : t('palette.layer.anyFont') }} ▾</button>
+            <span v-if="tieOpen" class="menu">
+              <button v-if="current.font" @click="tie(null)">{{ t('palette.layer.untie') }}</button>
+              <button v-if="font && current.font?.id !== font.id" @click="tie(font)">{{ t('palette.layer.tieTo', { name: font.name }) }}</button>
+            </span>
+          </span>
+          <span class="spacer"></span>
+          <button class="ghost" @click="duplicate">{{ t('palette.layer.duplicateBtn') }}</button>
+          <button class="ghost" @click="exportPalettes([current], current.name)">{{ t('palette.layer.export') }}</button>
+          <button v-if="!current.builtin" class="ghost icon" :title="t('palette.layer.deletePalette')" :aria-label="t('palette.layer.deletePalette')" @click="remove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
         </div>
-      </div>
-      <div class="hint" :class="{ warn: hint.warn }">{{ hint.text }}</div>
 
-      <div class="sources">
-        <div class="tabs">
-          <button :class="{ on: sourceTab === 'cp437' }" @click="source = 'cp437'; find = ''">{{ t('palette.layer.tabs.cp437') }}</button>
-          <button :class="{ on: sourceTab === 'unicode' }" @click="source = 'unicode'; find = ''">{{ t('palette.layer.tabs.unicode') }}</button>
-          <button :class="{ on: sourceTab === 'drawing' }" @click="source = 'drawing'; find = ''">{{ t('palette.layer.tabs.inDrawing') }}</button>
-          <button :class="{ on: sourceTab === 'recent' }" @click="source = 'recent'; find = ''">{{ t('palette.layer.tabs.recent') }}</button>
-          <input v-model="find" :placeholder="t('palette.layer.findPlaceholder')" :aria-label="t('palette.layer.findAria')">
-        </div>
-        <div class="pane">
-          <div v-if="pane.note" class="note">{{ pane.note }}</div>
-          <div v-if="pane.blocks" class="blocks">
-            <button v-for="b in pane.blocks" :key="b.index" :class="{ on: b.index === pane.block }" @click="block = b.index">{{ b.name }}</button>
-          </div>
-          <div class="grid">
-            <button
-                v-for="(char, i) in pane.chars"
-                :key="i + char"
-                class="g"
-                :class="{ inset: char && current.glyphs.includes(char), utf: char && !isCp437(char) && !project.drawingFont, bad: char && !fits(char) }"
-                :disabled="!char || !fits(char)"
-                :draggable="!!char && fits(char)"
-                @mouseenter="onGlyphHover(char)"
-                @dragstart="onDragStart($event, `glyph:${char}`)"
-                @click="pickGlyph(char)"
-            ><span class="glyph-cell">{{ char || ' ' }}</span></button>
+        <div class="slots">
+          <div
+              v-for="(g, i) in current.glyphs"
+              :key="i"
+              class="slot"
+              :class="{ target: i === target, over: i === dragOver, bad: g && !fits(g) }"
+              role="button"
+              tabindex="0"
+              :aria-label="t('palette.layer.aimAtAria', { n: i + 1 })"
+              :draggable="!!g"
+              @click="target = i; aimHint()"
+              @keydown.enter.space.prevent.stop="target = i; aimHint()"
+              @dragstart="onDragStart($event, `slot:${i}`)"
+              @dragover.prevent="dragOver = i"
+              @dragleave="dragOver = -1"
+              @drop.prevent="onDrop($event, i)"
+          >
+            <small>F{{ i + 1 }}</small>
+            <span class="glyph-cell">{{ g || ' ' }}</span>
+            <button v-if="g" class="clear" :title="t('common.clear')" :aria-label="t('palette.layer.clearSlotAria')" @click.stop="assign(i, '', false)">×</button>
+            <span v-if="g && !isCp437(g)" class="badge">{{ t('palette.layer.utf8') }}</span>
           </div>
         </div>
-        <div class="legend"><span class="l1">{{ t('palette.layer.legendInPalette') }}</span><span class="l2">{{ t('palette.layer.legendNotCp437') }}</span><span class="l3">{{ t('palette.layer.legendDoesntFit') }}</span></div>
-        <div class="info">{{ info }}</div>
+        <div class="hint" :class="{ warn: hint.warn }">{{ hint.text }}</div>
+
+        <div class="sources">
+          <div class="tabs">
+            <button :class="{ on: sourceTab === 'cp437' }" @click="source = 'cp437'; find = ''">{{ font ? t('palette.layer.fontTab', { name: font.name }) : t('palette.layer.tabs.cp437') }}</button>
+            <button v-if="!font" :class="{ on: sourceTab === 'unicode' }" @click="source = 'unicode'; find = ''">{{ t('palette.layer.tabs.unicode') }}</button>
+            <button :class="{ on: sourceTab === 'drawing' }" @click="source = 'drawing'; find = ''">{{ t('palette.layer.tabs.inDrawing') }}</button>
+            <button :class="{ on: sourceTab === 'recent' }" @click="source = 'recent'; find = ''">{{ t('palette.layer.tabs.recent') }}</button>
+            <input v-model="find" :placeholder="t('palette.layer.findPlaceholder')" :aria-label="t('palette.layer.findAria')">
+          </div>
+          <div class="pane">
+            <div v-if="pane.note" class="note">{{ pane.note }}</div>
+            <div v-if="pane.blocks" class="blocks">
+              <button v-for="b in pane.blocks" :key="b.index" :class="{ on: b.index === pane.block }" @click="block = b.index">{{ b.name }}</button>
+            </div>
+            <div class="grid">
+              <button
+                  v-for="(char, i) in pane.chars"
+                  :key="i + char"
+                  class="g"
+                  :class="{ inset: char && current.glyphs.includes(char), utf: char && !isCp437(char) && !project.drawingFont, bad: char && !fits(char) }"
+                  :disabled="!char || !fits(char)"
+                  :draggable="!!char && fits(char)"
+                  @mouseenter="onGlyphHover(char)"
+                  @dragstart="onDragStart($event, `glyph:${char}`)"
+                  @click="pickGlyph(char)"
+              ><span class="glyph-cell">{{ char || ' ' }}</span></button>
+            </div>
+          </div>
+          <div class="legend"><span class="l1">{{ t('palette.layer.legendInPalette') }}</span><span v-if="!font" class="l2">{{ t('palette.layer.legendNotCp437') }}</span><span class="l3">{{ t('palette.layer.legendDoesntFit') }}</span></div>
+          <div class="info">{{ info }}</div>
+        </div>
       </div>
     </div>
   </div>
@@ -357,6 +416,13 @@ div.palette-layer.editing {
   width: 940px;
 }
 
+div.page {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* While editing, the list is only as wide as a palette's row of glyphs (they never wrap; long
    names do), so the editor gets the rest. */
 div.palette-layer.editing div.list-side {
@@ -384,7 +450,7 @@ div.palette-layer.editing div.row div.glyphs {
 }
 
 @media (max-width: 700px) {
-  div.palette-layer.editing {
+  div.palette-layer.editing div.page {
     flex-direction: column;
   }
 
@@ -474,6 +540,67 @@ button.new {
 
 button.new:hover {
   background: var(--surface-3);
+}
+
+button.fold {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+button.fold::before {
+  content: '▸ ';
+}
+
+button.fold[aria-expanded="true"]::before {
+  content: '▾ ';
+}
+
+/* The editor head's tie: its button opens a small menu under it. */
+span.tie {
+  position: relative;
+}
+
+span.tie button.ghost:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+span.tie span.menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+span.tie span.menu button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+span.tie span.menu button:hover {
+  background: var(--accent);
+  color: var(--white);
 }
 
 div.row {
@@ -610,6 +737,12 @@ div.slot:hover {
 div.slot.target {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* A slot holding what the drawing's font lacks (kept, marked as the sources mark it). */
+div.slot.bad span.glyph-cell {
+  opacity: 0.4;
+  text-decoration: line-through;
 }
 
 div.slot.over {
