@@ -156,7 +156,7 @@ IBM VGA, Unscii, and Unifont are 8×16 pixel fonts that share one cell, so box d
 
 ### Managing Fonts
 
-The Font dropdown chooses the font; loading, saving and removing fonts happen on the **Fonts** page of the character palette layer. Click **Manage fonts ▸** beside the Font field to open it. It opens with any tool in hand (from the SAUCE tab it switches to ANSI first) and is off while no drawing is open. Close the layer with **◂ Done** or **Escape**.
+The Font dropdown chooses the font; loading, saving and removing fonts happen on the **Fonts** page of the character palette layer. Click **Manage fonts ▸** beside the Font field to open it. It opens with any tool in hand (from the SAUCE tab it switches to ANSI first) and is off while no drawing is open. Close the layer with **Escape**, a click outside it, or the Type tool's palette button.
 
 In someone else's room **Manage fonts ▸** is off with the rest of the Drawing settings. There, reach the Fonts page through the Type tool's palette button and the layer's **Fonts** switch ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
@@ -164,9 +164,9 @@ The character palette layer has a **Palettes | Fonts** switch at the top. **Pale
 
 ### The Fonts Page
 
-The page has a filter and **+ Load**, which loads a bitmap font (`.F01` to `.F32`, the number being the height of a character in pixels, or a PNG sheet of one, 16 characters across and 16 down, 256 in all) or a monospaced TrueType (`.ttf`), OpenType (`.otf`) or WOFF (`.woff`, `.woff2`) font from your computer. Below are two groups: **This drawing** (the font the drawing carries) and **Yours** (the fonts kept in this browser). Each row has the font's name, its size and a sample of text drawn in that font.
+The page has a filter and **+ Load**, which loads and uses a bitmap font (`.F01` to `.F32`, the number being the height of a character in pixels, or a PNG sheet of one, 16 characters across and 16 down, 256 in all) or a monospaced TrueType (`.ttf`), OpenType (`.otf`) or WOFF (`.woff`, `.woff2`) font from your computer. Below are two groups: **This drawing** (the font the drawing carries) and **Yours** (the fonts kept in this browser). Each row has the font's name, its size and a sample of text drawn in that font.
 
-Choosing a row shows that font's name, a line of facts (its size, whether it's the drawing's font or in your browser, and how many palettes are tied to it), its actions, and its 256 slots drawn in the font. Hover a slot to see its number. The Up and Down arrow keys choose the previous and next font in the list. Choosing a row only shows it; nothing changes in the drawing until you use it.
+Choosing a row shows that font's name, a line of facts (its size, whether it's the drawing's font or in your browser, and how many palettes are tied to it), its actions, and its 256 slots drawn in the font. Hover a slot to see its number. The Up and Down arrow keys choose the previous and next font in the list. Choosing a row only shows it; nothing changes in the drawing until you use it. Loading a file is different: the font you load is put to use at once (except in someone else's room), and **Use in this drawing** is for fonts already loaded.
 
 - **The drawing's font**: **Save .F##**, **Save PNG**, **Export palettes** and **Palettes ▸** (which opens the Palettes page). If the same font is also kept in this browser, **Remove** is there too.
 - **Another bitmap font**: **Use in this drawing**, **Save .F##**, **Save PNG**, **Export palettes** and **Remove**. **Use in this drawing** gives the drawing that font, as one undo step.
@@ -186,7 +186,7 @@ A TrueType (`.ttf`), OpenType (`.otf`) or WOFF (`.woff`, `.woff2`) font loaded w
 
 ### Bitmap Fonts
 
-Use **+ Load** on the Fonts page to pick a raw bitmap font (`.F01` to `.F32`) or a PNG sheet of one, then **Use in this drawing** to draw in it the way old DOS art does. **Save .F##** and **Save PNG** write the drawing's font back out, as either.
+Use **+ Load** on the Fonts page to pick a raw bitmap font (`.F01` to `.F32`) or a PNG sheet of one. The drawing is drawn in it at once, the way old DOS art is (not in someone else's room). Later, **Use in this drawing** gives the drawing any font you've loaded. **Save .F##** and **Save PNG** write the drawing's font back out, as either.
 
 A bitmap font belongs to the drawing, not to your browser:
 
