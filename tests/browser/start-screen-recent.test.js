@@ -109,25 +109,44 @@ test('on a phone the name has its own line, whole, with the time, status and Ope
   expect(text(li, '.status')).toBe('Inchangé');
 });
 
-test('Choose a file has focus once the start screen is ready, unless something else already has it', async () => {
-  const field = document.body.appendChild(document.createElement('input'));
-  field.focus();
-  mount([row('a')]);
-  await nextTick();
-  expect(document.activeElement).toBe(field);
-  field.remove();
-  mounted.unmount();
-  host.remove();
-
+// Mounted waiting (ready false), as a fresh tab's is: Choose a file takes focus once it's ready, unless something has it.
+function mountWaiting(recent) {
   host = Object.assign(document.createElement('div'), { style: 'width: 900px; display: flex' });
   document.body.append(host);
   const ready = ref(false);
-  mounted = createApp({ render: () => h(ZeroState, { ready: ready.value, recent: [row('a')], openRecent: () => {} }) }).use(i18n);
+  mounted = createApp({ render: () => h(ZeroState, { ready: ready.value, recent, openRecent: () => {} }) }).use(i18n);
   mounted.mount(host);
+  return ready;
+}
+
+test('in a fresh tab Choose a file has focus once the start screen is ready, unless something else already has it', async () => {
+  let ready = mountWaiting([row('a')]);
   await nextTick();
   expect(document.activeElement).toBe(document.body);
   ready.value = true;
   await nextTick();
   await nextTick();
   expect(document.activeElement).toBe(host.querySelector('button.browse'));
+  mounted.unmount();
+  host.remove();
+
+  const field = document.body.appendChild(document.createElement('input'));
+  try {
+    field.focus();
+    ready = mountWaiting([row('a')]);
+    ready.value = true;
+    await nextTick();
+    await nextTick();
+    expect(document.activeElement).toBe(field);
+  } finally {
+    field.remove();
+  }
+});
+
+test('a start screen come back to, already ready (New project, leaving a room), leaves focus alone', async () => {
+  document.activeElement?.blur();
+  mount([row('a')]);
+  await nextTick();
+  await nextTick();
+  expect(document.activeElement).toBe(document.body);
 });
