@@ -153,22 +153,22 @@ const drawOverlay = (ctx, win, width, height) => {
 let viewportEl = null;
 let drawnWindow = null; // the window the canvas holds, from the last redraw
 
-// The canvas over its window at a zoom: CSS px.
-const place = (dc, win, zoom) => Object.assign(dc.style, { width: `${win.cols * zoom}px`, height: `${win.rows * zoom}px`, left: `${win.col * zoom}px`, top: `${win.row * zoom}px` });
+// The canvas over its window at a unit (CSS px per grid pixel, across and down).
+const place = (dc, win, u) => Object.assign(dc.style, { width: `${win.cols * u.x}px`, height: `${win.rows * u.y}px`, left: `${win.col * u.x}px`, top: `${win.row * u.y}px` });
 
 const redrawDisplay = () => {
   const dc = canvasRef.value, sizer = sizerRef.value;
   const played = workspaceStore.playing && workspaceStore.played?.output;
   const output = played || projectStore.renderer.shownCanvas(); // the upper layers' pixels over it
   if (!dc || !sizer || !viewportEl || !output) return;
-  const zoom = workspaceStore.editZoom, view = viewIn(sizer, viewportEl);
+  const u = unit.value, view = viewIn(sizer, viewportEl);
   // A grid pixel is a column wide and half a line tall: the whole cells in view, and the zoom they're
   // at, are what a room's watchers are shown. Set only when they changed, so a redraw doesn't send the view again.
-  const cells = { ...wholeCellsIn(view, { cellWidth: zoom, lineHeight: 2 * zoom }, projectStore.cols, charRowsOf(projectStore.rows)), zoom };
+  const cells = { ...wholeCellsIn(view, { cellWidth: u.x, lineHeight: 2 * u.y }, projectStore.cols, charRowsOf(projectStore.rows)), zoom: u.x };
   // Not over a room's view that's coming back (restoreView).
   if (workspaceStore.viewToRestore?.tab !== 'input' && Object.keys(cells).some((k) => cells[k] !== workspaceStore.inputView[k])) workspaceStore.inputView = cells;
-  const win = viewWindow(view, { x: zoom, y: zoom }, projectStore.cols, projectStore.rows);
-  const width = win.cols * zoom, height = win.rows * zoom;
+  const win = viewWindow(view, u, projectStore.cols, projectStore.rows);
+  const width = win.cols * u.x, height = win.rows * u.y;
   // Resizing clears the canvas, so only when the window's size changes; otherwise a clear, for an
   // output with transparent pixels.
   const ctx = ctx2d(dc);
@@ -178,7 +178,7 @@ const redrawDisplay = () => {
   } else {
     ctx.clearRect(0, 0, dc.width, dc.height);
   }
-  place(dc, win, zoom);
+  place(dc, win, u);
   drawnWindow = win;
   ctx.imageSmoothingEnabled = false;
   // Drawn to the backing size, not the CSS size: at a fractional zoom the two differ by under a pixel.
@@ -196,8 +196,8 @@ const redrawDisplay = () => {
 const restoreView = () => {
   const to = workspaceStore.viewToRestore, sizer = sizerRef.value;
   if (to?.tab !== 'input' || !sizer || !viewportEl || projectStore.cells.length !== projectStore.cols * charRowsOf(projectStore.rows)) return;
-  const zoom = workspaceStore.editZoom;
-  const { left, top } = scrollToCell(viewIn(sizer, viewportEl), { cellWidth: zoom, lineHeight: 2 * zoom }, to.col, to.row);
+  const u = unit.value;
+  const { left, top } = scrollToCell(viewIn(sizer, viewportEl), { cellWidth: u.x, lineHeight: 2 * u.y }, to.col, to.row);
   viewportEl.scrollLeft += left;
   viewportEl.scrollTop += top;
   viewportEl.dispatchEvent(new Event('scroll'));   // now, not next frame: the viewport's first resize, this frame, keeps the place it last heard
@@ -223,26 +223,28 @@ const coordsAt = (event) => {
   const clientX = event.touches ? event.touches[0].clientX : event.clientX;
   const clientY = event.touches ? event.touches[0].clientY : event.clientY;
   return {
-    x: (clientX - rect.left) / workspaceStore.editZoom,
-    y: (clientY - rect.top) / workspaceStore.editZoom,
+    x: (clientX - rect.left) / unit.value.x,
+    y: (clientY - rect.top) / unit.value.y,
   };
 };
 
+// CSS px per grid pixel: editZoom across, and down in the drawing's cell shape (pixelAspect: half that in an 8×8 font).
+// Even in a font of odd height its pixels are all one height here; only the ANSI view splits a cell unevenly.
+const unit = computed(() => ({ x: workspaceStore.editZoom, y: workspaceStore.editZoom * projectStore.pixelAspect }));
 const contentSize = computed(() => ({
-  width: projectStore.cols * workspaceStore.editZoom,
-  height: projectStore.rows * workspaceStore.editZoom,
+  width: projectStore.cols * unit.value.x,
+  height: projectStore.rows * unit.value.y,
 }));
-const unit = computed(() => ({ x: workspaceStore.editZoom, y: workspaceStore.editZoom }));
 
 // The Select tool's rectangle: marching ants around its cells (a grid pixel wide, two tall), offset
 // while its outline is dragged.
 const marquee = computed(() => {
-  const sel = workspaceStore.selection, z = workspaceStore.editZoom;
+  const sel = workspaceStore.selection, { x, y } = unit.value;
   if (!sel) return null;
   const { dc, dr } = workspaceStore.selectionOffset ?? { dc: 0, dr: 0 };
   return {
-    left: `${(sel.c0 + dc) * z}px`, top: `${2 * (sel.r0 + dr) * z}px`,
-    width: `${(sel.c1 - sel.c0 + 1) * z}px`, height: `${2 * (sel.r1 - sel.r0 + 1) * z}px`,
+    left: `${(sel.c0 + dc) * x}px`, top: `${2 * (sel.r0 + dr) * y}px`,
+    width: `${(sel.c1 - sel.c0 + 1) * x}px`, height: `${2 * (sel.r1 - sel.r0 + 1) * y}px`,
   };
 });
 
@@ -251,11 +253,11 @@ const marquee = computed(() => {
 const publishOrigin = () => {
   const sizer = sizerRef.value, view = sizer?.closest('article');
   if (!sizer || !view) return;
-  const p = sizer.getBoundingClientRect(), v = view.getBoundingClientRect(), z = workspaceStore.editZoom;
+  const p = sizer.getBoundingClientRect(), v = view.getBoundingClientRect(), u = unit.value;
   const clamp = (n, max) => Math.max(0, Math.min(max, n));
   workspaceStore.pixelViewOrigin = {
-    col: clamp(Math.ceil((v.left - p.left) / z), projectStore.cols - 1),
-    row: clamp(Math.ceil((v.top - p.top) / (2 * z)), charRowsOf(projectStore.rows) - 1),
+    col: clamp(Math.ceil((v.left - p.left) / u.x), projectStore.cols - 1),
+    row: clamp(Math.ceil((v.top - p.top) / (2 * u.y)), charRowsOf(projectStore.rows) - 1),
   };
 };
 
@@ -282,8 +284,8 @@ watch(() => projectStore.cells, () => {
 // the canvas already drawn is scaled to the new zoom at once, as the sizer is: a frame painted before
 // the redraw (a pinch on a phone can land late in a frame) shows it where it belongs, a little soft,
 // rather than out of line with everything around it (a flicker on every step of a fast zoom).
-watch(() => workspaceStore.editZoom, (zoom) => {
-  if (drawnWindow && canvasRef.value) place(canvasRef.value, drawnWindow, zoom);
+watch(unit, (u) => {
+  if (drawnWindow && canvasRef.value) place(canvasRef.value, drawnWindow, u);
   queueRedraw();
 });
 watch(() => [workspaceStore.ansiOverlay, workspaceStore.ansiOverlayAll], queueRedraw);
@@ -361,7 +363,7 @@ div.grid-overlay {
   top: -1px;
   left: -1px;
   pointer-events: none;
-  background-size: v-bind('workspaceStore.editZoom + "px"') v-bind('workspaceStore.editZoom + "px"');
+  background-size: v-bind('unit.x + "px"') v-bind('unit.y + "px"');
   background-image:
       linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
       linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
