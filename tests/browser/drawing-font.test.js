@@ -342,7 +342,8 @@ it('a drawing in a font whose lower half moved draws paint in that slot, and exp
   let blob;
   await project.exportFile('xb', { deliver: (b) => { blob = b; }, sauce: false });
   const bytes = new Uint8Array(await blob.arrayBuffer());
-  expect(bytes.slice(11 + 48 + 256 * 16).includes(240)).toBe(true); // the byte in the file
+  expect(readXBin(bytes, 'out.xb').cells[0].char).toBe('▄'); // read back through the same found blocks
+  expect(bytes[11 + 48 + 256 * 16 + 1]).toBe(240); // the byte in the file: the first run's character, after its count
 });
 
 it('a block edit is one undo step, and undo draws in the old map at once', async () => {
@@ -376,18 +377,30 @@ it('set blocks come back with the project, and a project with a slot twice falls
 
 it('the canvas draws a block edit and its undo at once', async () => {
   const { project, workspace } = await movedHalf();
-  const lit = async () => {
-    const spec = workspace.displayFontSpec;
-    await setDisplayFont(spec);
+  const litOf = async (spec) => {
+    await setDisplayFont(spec); // as App.vue's watch does when the spec changes
     return [...drawGlyph('▄', 8, 16, 1, '#fff', false, spec)].filter((_, i) => i % 4 === 3 && _).length;
   };
-  const whole = 8 * 8; // half of an 8 x 16 cell
-  expect(await lit()).toBe(whole); // slot 240's lower half
+  const before = JSON.stringify(workspace.displayFontSpec); // what App.vue watches
+  expect(await litOf(workspace.displayFontSpec)).toBe(64); // slot 240's lower half: 8 rows of 8
   project.setDrawingFont({ ...project.drawingFont, blocks: withBlock(blocksOf(project.drawingFont), 'lower', 220) });
+  const edited = JSON.stringify(workspace.displayFontSpec);
+  expect(edited).not.toBe(before); // so the watch loads the font again, and the canvas drops its atlas
   expect(workspace.displayFontSpec.family).toContain(fontKey(project.drawingFont));
-  expect(await lit()).not.toBe(whole); // slot 220's mark
+  expect(await litOf(workspace.displayFontSpec)).toBe(24); // slot 220's mark: 6 rows of 4
   project.undo();
-  expect(await lit()).toBe(whole);
+  expect(JSON.stringify(workspace.displayFontSpec)).toBe(before);
+  expect(await litOf(workspace.displayFontSpec)).toBe(64);
+});
+
+it('a layer with its own characters, in a drawing with a bitmap font, renders and fits them to the font', async () => {
+  const { project } = await movedHalf();
+  project.setLayerChars('edit', { chars: '▙█★' });
+  await settle(project);
+  const own = project.layerParams.get('edit');
+  expect(own.font).toBe(fontKey(project.drawingFont));
+  expect(own.chars).toBe(fontChars('▙█★', project.drawingFont));
+  expect(project.cells.length).toBeGreaterThan(0);
 });
 
 it('set blocks stay through an .ans opened after, and an XBin with no blocks of its own resets them', async () => {

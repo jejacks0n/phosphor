@@ -94,7 +94,7 @@ function solverParams(chars, renderStyle, inRoom) {
     solverHash: found?.hash ?? null, wantedSolver: choice, standIn,
   };
 }
-function ownParams(params, chars, inRoom) {
+function ownParams(params, chars, inRoom, font) {
   let own = OWN_PARAMS.get(params);
   if (!own) OWN_PARAMS.set(params, own = new WeakMap());
   let made = own.get(chars);
@@ -102,7 +102,7 @@ function ownParams(params, chars, inRoom) {
     const { renderStyle } = params;
     made = {
       ...params,
-      chars: fitted(params.font, renderStyle === 'ansi' ? chars.chars : chars.charsAscii),
+      chars: fitted(font, renderStyle === 'ansi' ? chars.chars : chars.charsAscii),
       charMode: charModeOf(renderStyle, chars.charChoice, chars.charChoiceAscii),
       charChoice: chars.charChoice,
       ...solverParams(chars, renderStyle, inRoom),
@@ -265,7 +265,7 @@ export const useProjectStore = defineStore('project', {
     // layer whose settings are the bottom's (ownParams keeps each one's identity while nothing changes).
     layerParams() {
       const params = this.processParams, base = this.baseChars;
-      return new Map(this.layers.map((layer) => [layer.id, sameChars(layer.chars, base, layer.kind) ? params : ownParams(params, layer.chars, this.inRoom)]));
+      return new Map(this.layers.map((layer) => [layer.id, sameChars(layer.chars, base, layer.kind) ? params : ownParams(params, layer.chars, this.inRoom, this.drawingFont)]));
     },
     // The base and the layers whose characters are a plugin's solver, a stand-in or not, in stack order.
     pluginSolverLayers() {
