@@ -25,19 +25,20 @@ afterEach(async () => {
 
 // The layer on its Fonts page over a blank canvas: the drawing in font A unless drawing is false, with B (an 8×16
 // bitmap font) and a TrueType font kept in this browser.
-async function mount({ drawing = true } = {}) {
+async function mount({ drawing = true, canvas = true } = {}) {
   const { project, workspace } = await createTestApp();
-  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  const pinia = getActivePinia(); // before the awaits: a late await of an earlier test can make its own Pinia active again
+  if (canvas) await project.setBlankCanvas({ cols: 10, rows: 10 });
   if (drawing) project.setDrawingFont(fontA());
   const b = await addBitmapFont(rawFile(16, 'B.F16', 3)), tt = await addFont(await ttfFile());
   workspace.userFonts = await loadFonts();
   workspace.paletteLayerPage = 'fonts';
   host = document.body.appendChild(document.createElement('div'));
   closes = 0;
-  app = createApp({ render: () => h(CharPaletteLayer, { onClose: () => { closes += 1; } }) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(CharPaletteLayer, { onClose: () => { closes += 1; } }) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
-  return { project, workspace, palettes: usePaletteStore(), b, tt };
+  return { project, workspace, palettes: usePaletteStore(pinia), b, tt };
 }
 const button = (text) => [...host.querySelectorAll('button')].find((el) => el.textContent.trim() === text);
 const row = (name) => [...host.querySelectorAll('.row')].find((r) => r.querySelector('.name span').textContent === name);
@@ -221,4 +222,13 @@ test('in someone else\'s room, applying is off', async () => {
   expect(button('Remove').disabled).toBe(false);
   await press(row('Tall Mono'));
   expect(button('View in it').disabled).toBe(true);
+});
+
+test('before any drawing is open, the font chosen is the next drawing\'s', async () => {
+  await mount({ canvas: false });
+  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['Next drawing', 'Yours']);
+  expect(host.querySelector('.edit-side .meta').textContent).toContain('the next drawing\'s font');
+  await press(row('B'));
+  expect(button('Use in the next drawing')).toBeTruthy();
+  expect(button('Use in this drawing')).toBeUndefined();
 });

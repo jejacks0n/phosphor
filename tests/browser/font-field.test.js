@@ -74,3 +74,13 @@ test('a font that can\'t be chosen says why, and the dropdown goes back to the f
   select.dispatchEvent(new Event('change'));
   await expect.poll(() => host.querySelector('[role="alert"]')).toBeNull();
 });
+
+test('a font chosen before a drawing is listed as the next drawing\'s', async () => {
+  const { project } = await mount({ drawing: false });
+  project.setDrawingFont({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
+  await nextTick();
+  expect([...host.querySelectorAll('optgroup')].map((g) => g.label)).toContain('Next drawing');
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await nextTick();
+  expect([...host.querySelectorAll('optgroup')].map((g) => g.label)).toContain('This drawing');
+});

@@ -71,7 +71,7 @@ const onSize = (event) => {
         <optgroup :label="t('font.groupBuiltIn')">
           <option v-for="font in DISPLAY_FONTS" :key="font.id" :value="font.id">{{ font.name }}</option>
         </optgroup>
-        <optgroup v-if="drawn" :label="t('font.thisDrawing')">
+        <optgroup v-if="drawn" :label="project.image ? t('font.thisDrawing') : t('font.nextDrawing')">
           <option :value="current.id">{{ current.name }}</option>
         </optgroup>
         <optgroup v-if="yours.length" :label="t('font.groupYours')">

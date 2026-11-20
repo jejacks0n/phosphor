@@ -47,7 +47,7 @@ const all = computed(() => [
 const groups = computed(() => {
   const query = filter.value.trim().toLowerCase(), shown = all.value.filter((f) => f.name.toLowerCase().includes(query));
   return [
-    { key: 'drawing', label: t('palette.fonts.thisDrawing'), rows: shown.filter((f) => f.id === drawnId.value) },
+    { key: 'drawing', label: project.image ? t('palette.fonts.thisDrawing') : t('palette.fonts.nextDrawing'), rows: shown.filter((f) => f.id === drawnId.value) },
     { key: 'yours', label: t('common.yours'), rows: shown.filter((f) => f.id !== drawnId.value) },
   ].filter((g) => g.rows.length);
 });
@@ -63,7 +63,7 @@ const size = (f) => (f.kind === 'bitmap' ? `8×${f.height}` : t('palette.fonts.t
 const styleOf = (f) => ({ fontFamily: familyOf(f.id), fontSize: `${f.kind === 'bitmap' && f.height < 12 ? 2 * f.height : f.height ?? 16}px` });
 const meta = computed(() => [
   size(chosen.value),
-  isDrawn.value ? t('palette.fonts.drawingsFont') : t('palette.fonts.inBrowser'),
+  isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : t('palette.fonts.inBrowser'),
   bitmap.value && t('palette.fonts.palettes', { n: count.value }, count.value),
 ].filter(Boolean).join(' · '));
 
@@ -152,7 +152,7 @@ const exportPalettes = () => {
         <span class="meta">{{ meta }}</span>
       </div>
       <div class="actions">
-        <button v-if="bitmap && !isDrawn" class="ghost" :disabled="hostsFont" @click="apply">{{ t('palette.fonts.use') }}</button>
+        <button v-if="bitmap && !isDrawn" class="ghost" :disabled="hostsFont" @click="apply">{{ t(project.image ? 'palette.fonts.use' : 'palette.fonts.useNext') }}</button>
         <button v-if="!bitmap" class="ghost" :disabled="hostsFont" @click="apply">{{ t('palette.fonts.view') }}</button>
         <template v-if="bitmap">
           <button class="ghost" @click="save(saveRaw)">{{ t('palette.fonts.saveRaw', { height: String(chosen.height).padStart(2, '0') }) }}</button>
