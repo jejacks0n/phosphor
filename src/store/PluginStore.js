@@ -124,6 +124,7 @@ export const usePluginStore = defineStore('plugins', {
     solverStamp: 0,                          // bumped whenever the solvers or one's failure change
     pendingCode: {},                         // { [id]: { manifest, scriptText, handle, following } }: a reload that adds a script, asked about; not kept
     market: { status: 'idle', entries: [], built: null }, // the marketplace's list: idle, loading, ready or failed; not kept
+    dialogTab: null,                         // the Plugins dialog's tab, 'market' or 'installed', once it's opened this visit; not kept
   }),
 
   getters: {

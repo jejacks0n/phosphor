@@ -71,3 +71,7 @@ export function marketState(entry, record) {
   if (!sameListing(entry, record.listing)) return 'replace';
   return compare(`v${entry.manifest.version}`, `v${record.manifest.version}`) > 0 ? 'update' : 'installed';
 }
+
+// A manifest's theme colors as a card or row shows them: each theme's background, surface and accent, in that order,
+// a slot the theme leaves to its base left out.
+export const swatches = (manifest) => manifest.themes.flatMap(({ colors }) => ['background', 'surface-0', 'accent'].map((slot) => colors[slot]).filter(Boolean));
