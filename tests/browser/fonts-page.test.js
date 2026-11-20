@@ -57,6 +57,7 @@ test('the switch moves between the pages', async () => {
   await press(button('Palettes'));
   expect(workspace.paletteLayerPage).toBe('palettes');
   expect(row('Shades & blocks')).toBeTruthy();
+  expect(host.querySelector('.palette-layer').classList.contains('editing')).toBe(true); // from Fonts, the palette editor: it doesn't shrink
   await press(button('Fonts'));
   expect(workspace.paletteLayerPage).toBe('fonts');
 });

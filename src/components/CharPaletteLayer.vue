@@ -254,7 +254,7 @@ const onKeyDown = (event) => {
     assign(target.value, '', false);
   } else if (event.key === 'Escape') {
     if (tieOpen.value) tieOpen.value = false;
-    else if (editing.value) editing.value = false;
+    else if (editing.value && !fromFonts.value) editing.value = false;
     else emit('close');
   } else {
     return;
@@ -275,7 +275,17 @@ watch(editing, (on) => {
 const keepKeys = () => nextTick(() => {
   if (root.value && !root.value.contains(document.activeElement)) root.value.focus();
 });
-watch(() => workspace.paletteLayerPage, keepKeys);
+// From the wide Fonts page, the Palettes page opens in the editor, so the layer keeps its width; Escape there closes
+// the layer, as it does on Fonts, rather than shrinking it to the list.
+const fromFonts = ref(false);
+watch(() => workspace.paletteLayerPage, (page, was) => {
+  if (page === 'palettes' && was === 'fonts') {
+    startEditing();
+    fromFonts.value = true;
+  }
+  keepKeys();
+});
+watch(editing, (on) => { if (!on) fromFonts.value = false; });
 watch([currentId, editing], () => { tieOpen.value = false; });
 
 onMounted(() => {

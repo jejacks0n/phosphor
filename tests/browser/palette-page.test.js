@@ -231,3 +231,26 @@ test('import says where palettes for other fonts went', async () => {
   expect(await choose([b, b])).toBe('Added 2 palettes for B. Use that font to see them.');
   expect(await choose([topaz, b])).toBe('Added 1 palette for Topaz. Load that font to see it. Added 1 palette for B. Use that font to see it.');
 });
+
+test('Escape leaves the editor for the list, and closes the layer from the editor reached from Fonts', async () => {
+  await mount({ font: false });
+  const workspace = useWorkspaceStore(), layer = () => host.querySelector('.palette-layer');
+  const escape = async () => {
+    layer().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await nextTick();
+  };
+  await edit('Shades & blocks');
+  await escape();
+  expect(layer().classList.contains('editing')).toBe(false); // the list, still open
+  const close = vi.fn();
+  app.unmount();
+  app = createApp({ render: () => h(CharPaletteLayer, { onClose: close }) }).use(getActivePinia()).use(i18n);
+  workspace.paletteLayerPage = 'fonts';
+  app.mount(host);
+  await nextTick();
+  workspace.paletteLayerPage = 'palettes';
+  await nextTick();
+  expect(layer().classList.contains('editing')).toBe(true); // the editor, as wide as Fonts
+  await escape();
+  expect(close).toHaveBeenCalledOnce();
+});
