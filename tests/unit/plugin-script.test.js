@@ -60,4 +60,10 @@ describe('readSolvers', () => {
     expect(() => readSolvers({ default: { solvers: [boom] } })).toThrow(shape('solvers[0]'));
     expect(() => readSolvers({ get default() { throw new Error('no'); } })).toThrow(shape('default'));
   });
+
+  it('refuses an id that is an object with a toString', () => {
+    const id = { toString: () => 'ok' };
+    expect(() => read({ id })).toThrow(shape('solvers[0].id'));
+    expect(() => read({ options: [{ id, kind: 'checkbox', name: 'A', default: true }] })).toThrow(shape('solvers[0].options[0]'));
+  });
 });
