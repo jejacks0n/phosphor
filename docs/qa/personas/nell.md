@@ -138,9 +138,9 @@ the same through each.
 - Rated: yes, wants Cmd+Z
 
 ### 10. A font with no lower half
-- Does: builds a copy of her `.F16` with slot 220 blanked and no other half-block shape in the font, loads it, then looks at the tool buttons for Pencil, Brush, Paint Bucket, Shapes, Gradient, Retouch's Blur, Dodge and Burn, the Eraser, Text and Flip. On a phone or tablet she taps a button that's off instead of hovering. Then picks Lower and clicks slot 254 (the small square) in the sheet, and paints again. Opens a photo in the blanked font first.
+- Does: builds a copy of her `.F16` with slot 220 blanked and no other half-block shape in the font, loads it, then looks at the tool buttons for Pencil, Brush, Paint Bucket, Shapes, Gradient, Retouch's Blur, Dodge and Burn, the Eraser, Text and Flip. On a phone or tablet she taps a button that's off instead of hovering. Opens a photo in the blanked font. Then picks Lower and clicks slot 254 (the small square) in the sheet, and paints again.
 - Expects: with the lower half missing those paint tools are off, and the reason (the font's name and that it has no lower half) is the tooltip on a desktop and a toast on a tap on a phone or tablet (a swipe over them shows none); the Eraser, Text and Flip stay on; the photo converts with Best match; after she gives the font a lower half the tools come on and paint draws as the small square.
-- Probes: `out-of-order`: start a stroke with the tool just before it goes off; `speed`: tap an off button ten times fast; `again`: tap a button that's off on top of the button laid over it and check the reason doesn't show for the wrong one.
+- Probes: `out-of-order`: start a stroke with the tool just before it goes off; `speed`: tap an off button ten times fast; `back-out`: on a phone, start a swipe on a button that's off, slide off it, and check no reason shows.
 - Rated: yes, wants the reason on the button as a tooltip on a phone too
 
 **Free time:** she'd set every block to a slot of her own and export the XBin, undo the lot, and check the Blocks row after a reload.
