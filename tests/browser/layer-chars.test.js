@@ -871,7 +871,32 @@ test('options kept per solver are cut to what a file holds, the layer\'s own sol
 test('as host, a setting changed can be kept for a reload: the ledger clones', async () => {
   const { project } = await blank();
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  project.setLayerChars('base', { solverOptions: { 'plugin:p/q': { a: 1 } } });
   project.sendSettings();
   expect(() => structuredClone(project._ledger.kept())).not.toThrow();
   project.stopSharing();
+});
+
+test('the base\'s options are replaced by a write, not merged: a dropped ref is gone and the total stays under the cap', async () => {
+  const { project } = await blank();
+  const ref = await onSolver(OUTLINES);
+  project.setLayerChars('base', { charChoice: ref, solverOptions: { 'plugin:p/old': { a: 1 }, [ref]: { threshold: 5 } } });
+  project.setLayerChars('base', { solverOptions: { [ref]: { threshold: 6 } } });
+  expect(project.solverOptions).toEqual({ [ref]: { threshold: 6 } });
+  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p/s${i}`, { a: i }]));
+  project.setLayerChars('base', { solverOptions: many });
+  project.setLayerChars('base', { solverOptions: { [ref]: { threshold: 7 }, ...many } });
+  expect(JSON.stringify(project.solverOptions).length).toBeLessThanOrEqual(4096);
+  expect(project.solverOptions[ref]).toEqual({ threshold: 7 });
+});
+
+test('a heard settings message is cleaned before it is applied: bad entries gone, an over-cap value trimmed, the old refs replaced', async () => {
+  const { project } = await blank();
+  project.setLayerChars('base', { solverOptions: { 'plugin:p/old': { a: 1 } } });
+  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p/s${i}`, { a: i }]));
+  project.applySettings({ solverOptions: { ...many, 'plugin:p/bad': { a: 'x' }, nope: { a: 1 } } });
+  expect(project.solverOptions['plugin:p/old']).toBeUndefined();
+  expect(project.solverOptions.nope).toBeUndefined();
+  expect(JSON.stringify(project.solverOptions).length).toBeLessThanOrEqual(4096);
+  expect(project.solverOptions['plugin:p/bad']).toEqual({});
 });
