@@ -28,20 +28,55 @@ describe('publishing the plugin list', () => {
     expect(build).not.toContain('--refresh');
   });
 
-  it('the refresh runs on wiki edits, daily and by hand, and shares the deploy concurrency group', () => {
+  it('the refresh runs on wiki edits, daily and by hand, in its own concurrency group (never cancelling a pending deploy)', () => {
     const on = refresh.slice(refresh.indexOf('\non:'), refresh.indexOf('\npermissions:'));
     expect(on).toMatch(/\n {2}gollum:/);
     expect(on).toMatch(/\n {2}schedule:\n\s+- cron: '\d+ \d+ \* \* \*'/);
     expect(on).toMatch(/\n {2}workflow_dispatch:/);
-    expect(refresh).toMatch(/concurrency:\n {2}group: pages( #.*)?\n {2}cancel-in-progress: false/);
+    expect(refresh).toMatch(/concurrency:\n {2}group: plugin-list( #.*)?\n {2}cancel-in-progress: false/);
+    expect(refresh).not.toMatch(/group: pages/);
+  });
+
+  // A pull request's run of deploy.yml ends in success without deploying, and one from a fork's main has the head branch
+  // main: only this repository's runs that weren't pull requests (pushes and runs by hand) count as deployed.
+  const OURS = `OURS: '[.workflow_runs[] | select(.event != "pull_request" and .head_repository.full_name == $repo)]'`;
+  const RUNS = 'gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main';
+  const LAST = 'jq -r --arg repo "$GITHUB_REPOSITORY" "$OURS | .[0].head_sha // empty"';
+
+  it('the last deployed commit is this repository\'s last successful deploy.yml run on main that was no pull request', () => {
+    expect(refresh).toContain(OURS);
+    const build = job(refresh, 'build');
+    expect(build).toContain(`runs=$(${RUNS}&status=success&per_page=50")`);
+    expect(build).toContain(`sha=$(${LAST} <<<"$runs")`);
+    expect(build).not.toContain('gh run list');
+    expect(build).toMatch(/outputs:\n\s+sha: \$\{\{ steps\.last\.outputs\.sha \}\}/);
+  });
+
+  it('the refresh publishes only when no deploy is on its way and the last deploy is still the commit it built', () => {
+    const dep = job(refresh, 'deploy');
+    expect(dep).toContain('actions: read');
+    expect(dep).toContain('GH_TOKEN: ${{ github.token }}');
+    expect(dep).toContain('SHA: ${{ needs.build.outputs.sha }}');
+    const check = dep.indexOf('id: check');
+    const publish = dep.indexOf('actions/deploy-pages@v4');
+    expect(check).toBeGreaterThan(-1);
+    expect(publish).toBeGreaterThan(check);
+    const checking = dep.slice(check, publish);
+    expect(checking).toContain(`${RUNS}&per_page=50")`); // every status, to see a queued or running one
+    expect(checking).toContain('jq --arg repo "$GITHUB_REPOSITORY" "$OURS | map(select(.status != \\"completed\\")) | length"');
+    expect(checking).toContain(`${RUNS}&status=success&per_page=50")`);
+    expect(checking).toContain(`last=$(${LAST} <<<"$deployed")`);
+    expect(checking).toContain('[ "$last" != "$SHA" ]');
+    expect(checking).toContain('::notice::');
+    expect(checking).toContain('echo "publish=true" >> "$GITHUB_OUTPUT"');
+    expect(dep.slice(0, publish)).toContain('ponytail:'); // the race left between the check and the publish
+    expect(dep.slice(publish - 200, publish)).toContain("if: steps.check.outputs.publish == 'true'");
   });
 
   it('the refresh builds the last deployed commit and runs the script with --refresh on that commit', () => {
     const build = job(refresh, 'build');
-    expect(build).toContain('--workflow deploy.yml');
-    expect(build).toContain('--status success');
-    expect(build).toContain('--branch main');
-    expect(build).toContain('headSha');
+    expect(build).toContain('actions/workflows/deploy.yml/runs?branch=main&status=success');
+    expect(build).toContain('head_sha');
     expect(build).not.toContain('deployments');
     expect(build).toContain('::error::');
     expect(build).toContain('env -u GITHUB_SHA npm run build'); // the build names the checked-out commit, not main's head
