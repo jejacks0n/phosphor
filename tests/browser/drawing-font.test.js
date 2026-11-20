@@ -3,7 +3,7 @@ import { test, it, expect, afterEach } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { readXBin, writeXBin } from '@/lib/XBinFile.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
-import { fontId, encodeFont, fontChars } from '@/lib/BitmapFont.js';
+import { fontId, encodeFont, fontChars, findBlocks, CP437_BLOCKS } from '@/lib/BitmapFont.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
 import { registerBitmapFont } from '@/lib/userFonts.js';
@@ -288,6 +288,10 @@ it('IBM VGA as a bitmap font has the font\'s own pixels, edges and all', async (
   const rows = (slot) => [...bytes.subarray(slot * 16, slot * 16 + 16)];
   expect(rows(65)).toEqual([0, 0, 0x10, 0x38, 0x6c, 0xc6, 0xc6, 0xfe, 0xc6, 0xc6, 0xc6, 0xc6, 0, 0, 0, 0]); // A
   expect(rows(176)).toEqual(Array.from({ length: 16 }, (_, r) => (r % 2 ? 0x44 : 0x11))); // ░
+});
+
+it('finds the eight blocks in the app\'s own IBM VGA, uneven shades and all', async () => {
+  expect(findBlocks(await vgaBitmapFont())).toEqual([...CP437_BLOCKS]);
 });
 
 it('exports a character outside CP437 as its substitute, with no font', async () => {

@@ -10,20 +10,89 @@ export const MAX_FONT_HEIGHT = 32;
 export const SLOT_CHARS = Object.freeze([...CP437].map((c, i) => (i === 0 ? '␀' : c)));
 const SLOTS = new Map(SLOT_CHARS.map((c, i) => [c, i]));
 
-export const slotOf = (char) => SLOTS.get(char.normalize('NFC')) ?? null;
-export const fitFont = (char) => (slotOf(char) !== null ? char : cp437Substitute(char));
+// The eight block characters, in the order a font's blocks are kept, with the slot CP437 draws each in.
+export const BLOCKS = Object.freeze([
+  ['full', '█', 219], ['lower', '▄', 220], ['upper', '▀', 223], ['left', '▌', 221],
+  ['right', '▐', 222], ['light', '░', 176], ['medium', '▒', 177], ['dark', '▓', 178],
+].map(([key, char, slot]) => Object.freeze({ key, char, slot })));
+export const CP437_BLOCKS = Object.freeze(BLOCKS.map((b) => b.slot));
+const BLOCK_CHARS = new Set(BLOCKS.map((b) => b.char));
 
-export function fontChars(chars) {
+// What each solid block's quarters (top-left, top-right, bottom-left, bottom-right) should hold.
+const IDEALS = { full: [1, 1, 1, 1], lower: [0, 0, 1, 1], upper: [1, 1, 0, 0], left: [1, 0, 1, 0], right: [0, 1, 0, 1] };
+
+// The slot of each block in a font, found from its pixels: null where it has none. A slot goes to one block.
+export function findBlocks(font) {
+  const taken = new Set();
+  return BLOCKS.map(({ key, slot: home }) => {
+    let found = null;
+    const ideal = IDEALS[key];
+    if (ideal) {
+      const score = (s) => maskOf(font, s, 2, 2).reduce((sum, v, i) => sum + Math.abs(v - ideal[i]), 0);
+      if (!taken.has(home) && score(home) < 0.7) found = home;
+      else {
+        let best = 0.7;
+        for (let s = 0; s < 256; s++) {
+          const v = taken.has(s) || s === home ? Infinity : score(s);
+          if (v < best) [best, found] = [v, s];
+        }
+      }
+    } else if (!taken.has(home)) {
+      const ink = maskOf(font, home, 1, 1)[0];
+      if (ink > 0.08 && ink < 0.92 && maskOf(font, home, 2, 2).every((v) => Math.abs(v - ink) < 0.2)) found = home;
+    }
+    if (found !== null) taken.add(found);
+    return found;
+  });
+}
+
+const memo = (make) => {
+  const cache = new WeakMap();
+  return (font) => {
+    if (!cache.has(font)) cache.set(font, make(font));
+    return cache.get(font);
+  };
+};
+
+export const blocksOf = memo((font) => font.blocks ?? findBlocks(font));
+
+// The character each slot is held as: the block characters at their font's slots, and the characters
+// those slots displaced in the slots left over.
+export const slotChars = (font) => (font ? fontSlotChars(font) : SLOT_CHARS);
+const fontSlotChars = memo((font) => {
+  const chars = new Array(256);
+  const displaced = [];
+  blocksOf(font).forEach((s, i) => {
+    if (s === null) return;
+    chars[s] = BLOCKS[i].char;
+    if (!BLOCK_CHARS.has(SLOT_CHARS[s])) displaced.push(SLOT_CHARS[s]);
+  });
+  displaced.sort((a, b) => SLOT_CHARS.indexOf(a) - SLOT_CHARS.indexOf(b));
+  for (let i = 0; i < 256; i++) if (!chars[i] && !BLOCK_CHARS.has(SLOT_CHARS[i])) chars[i] = SLOT_CHARS[i];
+  for (let i = 0; i < 256; i++) if (!chars[i]) chars[i] = displaced.shift() ?? String.fromCodePoint(0xE000 + i);
+  return chars;
+});
+
+const slotsOf = memo((font) => new Map(slotChars(font).map((c, i) => [c, i])));
+
+export const slotOf = (char, font = null) => (font ? slotsOf(font) : SLOTS).get(char.normalize('NFC')) ?? null;
+export const fitFont = (char, font = null) => {
+  if (slotOf(char, font) !== null) return char;
+  const near = cp437Substitute(char);
+  return slotOf(near, font) !== null ? near : ' ';
+};
+
+export function fontChars(chars, font = null) {
   const seen = new Set();
-  for (const g of graphemes(chars)) seen.add(fitFont(g));
+  for (const g of graphemes(chars)) seen.add(fitFont(g, font));
   return [...seen].join('');
 }
 
-export function fitCells(cells) {
+export function fitCells(cells, font = null) {
   let out = cells;
   cells.forEach((cell, i) => {
     if (!cell) return; // a hole in the grid, as layoutWide allows
-    const char = fitFont(cell.char);
+    const char = fitFont(cell.char, font);
     if (char === cell.char) return;
     if (out === cells) out = cells.slice();
     out[i] = { ...cell, char };
@@ -93,6 +162,28 @@ export function fontId(font) {
   let h = 0x811c9dc5;
   for (const b of [font.height, ...font.bytes]) h = Math.imul(h ^ b, 0x01000193) >>> 0;
   return `bitmap-${h.toString(16).padStart(8, '0')}`;
+}
+
+// A font's id, and its blocks too once they aren't where CP437 puts them.
+export function fontKey(font) {
+  const blocks = blocksOf(font);
+  return blocks.every((s, i) => s === CP437_BLOCKS[i]) ? fontId(font) : `${fontId(font)}-${blocks.map((s) => s ?? 'x').join('.')}`;
+}
+
+export const encodeBlocks = (blocks) => blocks.map((s) => s ?? 'x').join('.');
+
+export function decodeBlocks(text) {
+  const parts = text.split('.');
+  if (parts.length !== BLOCKS.length) return undefined;
+  const blocks = parts.map((p) => (p === 'x' ? null : /^\d{1,3}$/.test(p) && +p < 256 ? +p : undefined));
+  const slots = blocks.filter((s) => s !== null);
+  return blocks.includes(undefined) || new Set(slots).size !== slots.length ? undefined : blocks;
+}
+
+// A copy of blocks with this block at slot (or none), and any other block that was there moved off it.
+export function withBlock(blocks, key, slot) {
+  const at = BLOCKS.findIndex((b) => b.key === key);
+  return blocks.map((s, i) => (i === at ? slot : s === slot ? null : s));
 }
 
 export const encodeFont = (font) => btoa(String.fromCharCode(...font.bytes));

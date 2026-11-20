@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet } from '@/lib/BitmapFont.js';
+import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet, CP437_BLOCKS, findBlocks, slotChars, fontKey, encodeBlocks, decodeBlocks, withBlock } from '@/lib/BitmapFont.js';
+import { cp437Font, lowerAt240, noLowerHalf, solidAt220, lightAt240, slantedLike, nineRowFontWithLowerHalfRows4to8, nineRowFontWithLowerHalfRows5to8 } from '../support/blockFonts.js';
 
 const solidLowerHalf = (h) => { const b = new Uint8Array(256 * h); for (let r = h / 2; r < h; r++) b[220 * h + r] = 0xff; return b; };
 
@@ -72,5 +73,56 @@ describe('raw fonts', () => {
     expect([sheet.width, sheet.height]).toEqual([128, 128]);
     expect([...parseFontSheet(sheet, 'f').bytes]).toEqual([...font.bytes]);
     expect(() => parseFontSheet({ width: 100, height: 128, data: new Uint8ClampedArray(100 * 128 * 4) }, 'f')).toThrow();
+  });
+});
+
+describe('blocks', () => {
+  it('finds the eight blocks where CP437 puts them', () => {
+    expect(findBlocks(cp437Font)).toEqual([219, 220, 223, 221, 222, 176, 177, 178]);
+  });
+  it('finds a block that moved, and blocks offset a pixel or a row long', () => {
+    expect(findBlocks(lowerAt240)[1]).toBe(240); // slot 220 holds a mark
+    expect(findBlocks(slantedLike)).toEqual(CP437_BLOCKS);
+  });
+  it('finds nothing for a block the font lacks', () => { expect(findBlocks(noLowerHalf)[1]).toBeNull(); });
+  it('gives a slot to one block at most, in BLOCKS order', () => {
+    expect(findBlocks(solidAt220)).toEqual([220, null, 223, 221, 222, 176, 177, 178]);
+  });
+  it('takes no other slot for a shade', () => { expect(findBlocks(lightAt240)[5]).toBeNull(); });
+  it('finds the lower half of an odd-height font', () => {
+    expect(findBlocks(nineRowFontWithLowerHalfRows4to8)[1]).toBe(220);
+    expect(findBlocks(nineRowFontWithLowerHalfRows5to8)[1]).toBe(220);
+  });
+  it('maps the block characters to the font\u2019s block slots, and the characters they displace to the slots left', () => {
+    const chars = slotChars(lowerAt240);
+    expect(chars[240]).toBe('▄');
+    expect(chars[220]).toBe('≡'); // CP437's character at 240
+    expect(slotOf('▄', lowerAt240)).toBe(240);
+    expect(new Set(chars).size).toBe(256);
+  });
+  it('holds a slot no character is left for as a private-use character', () => {
+    expect(slotChars(noLowerHalf)[220]).toBe(String.fromCodePoint(0xE000 + 220));
+    expect(slotOf('▄', noLowerHalf)).toBeNull();
+  });
+  it('draws a character with no slot in the font blank', () => {
+    expect(fitFont('▄', noLowerHalf)).toBe(' ');
+    expect(fitFont('é', null)).toBe('é');
+  });
+  it('keys a font by its bytes, and by its blocks once they differ from CP437', () => {
+    expect(fontKey(cp437Font)).toBe(fontId(cp437Font));
+    expect(fontKey(lowerAt240)).toBe(`${fontId(lowerAt240)}-219.240.223.221.222.176.177.178`);
+    expect(fontKey({ ...cp437Font, blocks: withBlock(CP437_BLOCKS, 'dark', null) })).toMatch(/\.x$/);
+  });
+  it('round-trips blocks as text, and refuses a slot twice', () => {
+    const blocks = [219, 240, 223, 221, 222, 176, 177, null];
+    expect(encodeBlocks(CP437_BLOCKS)).toBe('219.220.223.221.222.176.177.178');
+    expect(decodeBlocks(encodeBlocks(blocks))).toEqual(blocks);
+    expect(decodeBlocks('')).toBeUndefined();
+    expect(decodeBlocks('219.219.223.221.222.176.177.178')).toBeUndefined();
+    expect(decodeBlocks('219.220')).toBeUndefined();
+    expect(decodeBlocks('219.256.223.221.222.176.177.178')).toBeUndefined();
+  });
+  it('moves a block off a slot another block takes', () => {
+    expect(withBlock(CP437_BLOCKS, 'dark', 219)).toEqual([null, 220, 223, 221, 222, 176, 177, 219]);
   });
 });
