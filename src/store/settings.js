@@ -24,6 +24,8 @@ export const SETTINGS = [
   { key: 'seed', default: () => generateSlug(2), group: 'setup', get help() { return t('settings.seed.help'); } },
   { key: 'charChoice', default: 'random', group: 'setup', pipeline: false, get help() { return t('settings.charChoice.help'); } },
   { key: 'charChoiceAscii', default: 'weight', group: 'setup', pipeline: false, get help() { return t('settings.charChoiceAscii.help'); } },
+  // A plugin solver's options, kept per solver: { [ref]: { [optionId]: number | boolean } } (plugins/solvers.js optionValues).
+  { key: 'solverOptions', default: () => ({}), object: true, group: 'setup', pipeline: false },
   { key: 'solids', default: 25, group: 'setup', pipeline: false, get label() { return t('settings.solids.label'); }, min: 0, max: 100, unit: '%', ticks: [0], get help() { return t('settings.solids.help'); } },
   { key: 'patternLight', default: 100, group: 'setup', pipeline: false, get label() { return t('settings.patternLight.label'); }, min: 0, max: 100, unit: '%', ticks: [0, 100], get help() { return t('settings.patternLight.help'); } },
   { key: 'quantize', default: 'none', group: 'setup', get help() { return t('settings.quantize.help'); } },
@@ -80,7 +82,7 @@ export const SAUCE_KEYS = SETTINGS.filter(s => s.group === 'sauce').map(s => s.k
 export const RESET_GROUPS = ['transform', 'adjust', 'effects'];
 // The character settings each layer has its own of (the bottom's are these fields themselves): how its paint, its
 // picture or its shapes become characters, and how they're dithered. The rest are the whole drawing's, or the picture's.
-export const CHAR_KEYS = ['chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solids', 'patternLight', 'ditherStyle', 'dither'];
+export const CHAR_KEYS = ['chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solverOptions', 'solids', 'patternLight', 'ditherStyle', 'dither'];
 // Of those, the ones a cells layer above the bottom doesn't hold: nothing on it dithers (paint never does).
 export const DITHER_KEYS = ['ditherStyle', 'dither'];
 
@@ -95,7 +97,15 @@ export function slidersAtDefaults(state) {
 // string), a color a hex, text no longer than it could be (in characters, as SAUCE counts them: an emoji is one).
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const asNumber = (value) => (typeof value === 'string' && value.trim() ? Number(value) : value);
-function goodSetting({ default: usual, min = -Infinity, max = Infinity, most = MOST_TEXT }, value) {
+const plain = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
+const goodOptions = (value) => plain(value) && JSON.stringify(value).length <= MOST_TEXT * 4 && Object.values(value).every((own) =>
+  plain(own) && Object.values(own).every((each) => typeof each === 'boolean' || (typeof each === 'number' && Number.isFinite(each))));
+
+// Whether two values of a character setting are the same one (an object by its JSON, the rest by their text: a slider can hold a numeric string).
+export const sameSetting = (a, b) => (plain(a) || plain(b) ? JSON.stringify(a) === JSON.stringify(b) : String(a) === String(b));
+
+function goodSetting({ default: usual, object, min = -Infinity, max = Infinity, most = MOST_TEXT }, value) {
+  if (object) return goodOptions(value);
   if (typeof usual === 'boolean') return typeof value === 'boolean';
   if (typeof usual === 'number') return typeof asNumber(value) === 'number' && Number.isFinite(asNumber(value)) && asNumber(value) >= min && asNumber(value) <= max;
   return typeof value === 'string' && charCount(value) <= most && (typeof usual !== 'string' || !HEX_COLOR.test(usual) || HEX_COLOR.test(value));

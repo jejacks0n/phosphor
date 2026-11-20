@@ -10,6 +10,10 @@ import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
 import { rectShape, ellipseShape, makeShape } from '@/document/shapes.js';
+import { readSolvers } from '@/plugins/script';
+import { unregisterSolvers } from '@/plugins/solvers';
+import { usePluginStore } from '@/store/PluginStore';
+import { onSolver } from '../support/pluginSolvers.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { CHAR_KEYS } from '@/store/settings.js';
 import ControlPanel from '@/components/ControlPanel.vue';
@@ -18,6 +22,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 let app = null, host = null;
 afterEach(() => {
+  unregisterSolvers('jane.outlines');
   app?.unmount();
   host?.remove();
   app = host = null;
@@ -752,4 +757,98 @@ test('with real keys: a seed typed and entered, then Cmd+Z, undoes the step and 
   } finally {
     keys.unmount();
   }
+});
+
+// A plugin solver of the kind By shape is: Outlines, with a slider, a checkbox and a choice.
+const OUTLINES = readSolvers({ default: { solvers: [{
+  id: 'outlines', name: 'Outlines', styles: ['ansi', 'ascii'], reach: 1, chars: '/\\-|', solve: () => ({ char: '|', fg: 0, bg: 0 }),
+  options: [
+    { id: 'threshold', kind: 'slider', name: 'Threshold', min: 0, max: 100, step: 1, default: 40 },
+    { id: 'thin', kind: 'checkbox', name: 'Thin', default: false },
+    { id: 'look', kind: 'choice', name: 'Look', choices: ['a', 'b', 'c'], default: 0 },
+  ],
+}] } })[0];
+
+test('a layer on a plugin solver: params carry it while it is registered and on; a stand-in reason otherwise', async () => {
+  const { project } = await blank();
+  const plugins = usePluginStore();
+  const ref = await onSolver(OUTLINES);
+  project.setLayerChars('edit', { charChoice: ref });
+  project.commitLayerChars();
+  expect(project.layerParams.get('edit')).toMatchObject({ charMode: 'shape', solver: ref, wantedSolver: ref, standIn: null, solverOptions: { threshold: 40, thin: false, look: 0 } });
+  project.setLayerChars('base', { charChoice: ref });
+  expect(project.processParams).toMatchObject({ charMode: 'shape', solver: ref, standIn: null });
+  plugins.dropSolvers('jane.outlines');
+  expect(project.layerParams.get('edit')).toMatchObject({ charMode: 'shape', solver: null, wantedSolver: ref, standIn: 'missing', solverOptions: {} });
+  expect(project.processParams).toMatchObject({ solver: null, standIn: 'missing' });
+  plugins.useSolvers('jane.outlines', 'h', [OUTLINES]);
+  expect(project.layerParams.get('edit').solver).toBe(ref);
+  await plugins.setEnabled?.('jane.outlines', false);
+  if (plugins.setEnabled) expect(project.layerParams.get('edit')).toMatchObject({ solver: null, standIn: 'off' });
+  project.setLayerChars('edit', { charChoice: 'shape' });
+  expect(project.layerParams.get('edit')).toMatchObject({ solver: null, wantedSolver: null, standIn: null, solverOptions: {} });
+});
+
+test('a plugin solver chosen for the other style does not count', async () => {
+  const { project } = await blank();
+  const ref = await onSolver(OUTLINES);
+  project.setLayerChars('edit', { charChoiceAscii: ref });
+  expect(project.layerParams.get('edit')).toMatchObject({ solver: null, wantedSolver: null, standIn: null });
+  project.renderStyle = 'ascii';
+  expect(project.layerParams.get('edit')).toMatchObject({ solver: ref, charMode: 'shape' });
+});
+
+test('options are one undo step each, kept per solver ref, and survive a save and an open', async () => {
+  const { project } = await blank();
+  const ref = await onSolver(OUTLINES);
+  project.setLayerChars('edit', { charChoice: ref });
+  project.commitLayerChars();
+  const steps = project.history.version;
+  project.setLayerChars('edit', { solverOptions: { [ref]: { threshold: 70, thin: true } } });
+  project.commitLayerChars();
+  expect(project.history.version).toBe(steps + 1);
+  expect(project.layerParams.get('edit').solverOptions).toEqual({ threshold: 70, thin: true, look: 0 });
+  expect(project.setLayerChars('edit', { solverOptions: { [ref]: { threshold: 70, thin: true } } })).toBe(false); // the same by value
+  project.setLayerChars('edit', { solverOptions: { [ref]: { threshold: 70, thin: true }, 'plugin:other/x': { a: 1 } } });
+  project.commitLayerChars();
+  project.undo();
+  expect(project.charsOf('edit').solverOptions).toEqual({ [ref]: { threshold: 70, thin: true } });
+  project.redo();
+  const own = project.charsOf('edit');
+  const blob = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
+  await project.openParts(await readProject(blob), { filename: 'options' });
+  await settle(project);
+  expect(project.charsOf('edit')).toEqual(own);
+  expect(project.charsOf('edit').solverOptions['plugin:other/x']).toEqual({ a: 1 });
+});
+
+test('options of an older or newer version fall back to their defaults', async () => {
+  const { project } = await blank();
+  const ref = await onSolver(OUTLINES);
+  project.setLayerChars('edit', { charChoice: ref, solverOptions: { [ref]: { threshold: 900, thin: 'yes', look: 7, gone: 1 } } });
+  expect(project.layerParams.get('edit').solverOptions).toEqual({ threshold: 40, thin: false, look: 0 });
+  project.setLayerChars('edit', { solverOptions: { [ref]: { threshold: 10, look: 2 } } });
+  expect(project.layerParams.get('edit').solverOptions).toEqual({ threshold: 10, thin: false, look: 2 });
+});
+
+test('pluginSolverLayers names the layers on a plugin solver, stand-ins included', async () => {
+  const { project } = await blank();
+  const plugins = usePluginStore();
+  const ref = await onSolver(OUTLINES);
+  expect(project.pluginSolverLayers).toEqual([]);
+  project.setLayerChars('edit', { charChoice: ref });
+  project.setLayerChars('base', { charChoice: ref });
+  expect(project.pluginSolverLayers).toEqual([{ id: 'base', name: 'Base' }, { id: 'edit', name: 'Layer 1' }]);
+  plugins.dropSolvers('jane.outlines');
+  expect(project.pluginSolverLayers.map(({ id }) => id)).toEqual(['base', 'edit']);
+});
+
+test('in a room a plugin choice stands in as room', async () => {
+  const { project } = await blank();
+  const ref = await onSolver(OUTLINES);
+  project.setLayerChars('edit', { charChoice: ref });
+  expect(project.layerParams.get('edit').solver).toBe(ref);
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  expect(project.layerParams.get('edit')).toMatchObject({ solver: null, wantedSolver: ref, standIn: 'room', charMode: 'shape' });
+  project.stopSharing?.();
 });

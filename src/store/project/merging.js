@@ -515,7 +515,7 @@ export const mergingActions = {
 
       // The layers left: the bottom, and for 'edit' the edit layer (as it was, or a new one), each shown, with the base's
       // character settings as they come out.
-      const chars = Object.freeze(Object.fromEntries(CHAR_KEYS.map((key) => [key, key in settings ? settings[key] : this[key]])));
+      const chars = Object.freeze(Object.fromEntries(CHAR_KEYS.map((key) => [key, key in settings ? settings[key] : toRaw(this[key])])));
       const edit = this.layerById('edit') ?? { id: 'edit', kind: 'cells', n: 1, name: null };
       const layers = [Object.freeze({ ...this.layers[0], hidden: false }), ...(layer === 'edit' ? [Object.freeze({ ...edit, hidden: false, chars: layerChars('cells', chars) })] : [])];
       const editCells = new Map([...(layer === 'edit' ? grid.map(({ col, row, ...entry }) => [cellKey(col, row), entry]) : []), ...bakeEditCells(new Map(past), params)]);

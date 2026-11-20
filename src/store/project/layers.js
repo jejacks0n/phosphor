@@ -9,7 +9,7 @@
 import { markRaw } from 'vue';
 import { MOST_LAYERS, goodLayerName, layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { exactly, pixelRuns } from '@/document/changes.js';
-import { CHAR_KEYS, DITHER_KEYS } from '@/store/settings.js';
+import { CHAR_KEYS, DITHER_KEYS, sameSetting } from '@/store/settings.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
@@ -187,7 +187,7 @@ export const layerActions = {
     if (!layer) return false;
     const own = Object.fromEntries(CHAR_KEYS.filter((key) => key in patch && holds(key)).map((key) => [key, patch[key]]));
     const was = this.charsOf(id);
-    if (Object.keys(own).every((key) => own[key] === was[key])) return false;
+    if (Object.keys(own).every((key) => sameSetting(own[key], was[key]))) return false;
     if (this._charsBefore?.id !== id) {
       this.commitLayerChars();
       this._charsBefore = { id, key: Object.keys(own)[0], values: pick(was, CHAR_KEYS), hadNoOwn: id !== 'base' && !layer.chars };
@@ -204,7 +204,7 @@ export const layerActions = {
     this._charsBefore = null;
     if (!before || !this.layerById(before.id)) return;
     const { id, key, values, hadNoOwn } = before, after = pick(this.charsOf(id), CHAR_KEYS), last = this._lastChars;
-    if (CHAR_KEYS.every((each) => String(values[each]) === String(after[each]))) return;
+    if (CHAR_KEYS.every((each) => sameSetting(values[each], after[each]))) return;
     if (this._sharing && id !== 'base') { // a layer's go with the stack, no undo step in a room; the bottom's are the document's settings, which go with them and keep the host's undo, as the sliders do
       this.sendLayers({ by: this._sharing.me });
       return;

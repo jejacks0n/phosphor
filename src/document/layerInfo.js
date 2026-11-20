@@ -5,7 +5,7 @@
 // chars: a layer's own character settings (settings.js CHAR_KEYS), frozen; every layer but the bottom has them once it's
 // in a document (the bottom's are the document's own fields).
 import { isShapeKey } from './shapes.js';
-import { CHAR_KEYS, DITHER_KEYS, settingsFromStranger } from '../store/settings.js';
+import { CHAR_KEYS, DITHER_KEYS, sameSetting, settingsFromStranger } from '../store/settings.js';
 
 export const MAX_LAYER_NAME = 40;
 
@@ -38,7 +38,7 @@ const needChars = (baseChars) => {
 export function sameChars(chars, baseChars, kind = null) {
   needChars(baseChars);
   // Read at the call, not at load: settings.js imports this module by way of projectIO.js, so CHAR_KEYS can be unset then.
-  return !chars || CHAR_KEYS.every((key) => (kind === 'cells' && DITHER_KEYS.includes(key)) || String(chars[key]) === String(baseChars[key]));
+  return !chars || CHAR_KEYS.every((key) => (kind === 'cells' && DITHER_KEYS.includes(key)) || sameSetting(chars[key], baseChars[key]));
 }
 
 // layers with every layer but the bottom given chars, a frozen copy of these, under whatever of its own it has.
