@@ -1159,8 +1159,8 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   field; with the Text tool's caret placed too. What you pick opens as a dropped file does, asking first where a drop
   would. A new or opened drawing starts with the caret put away.
 - **The Start Screen**: A fresh tab starts with **Choose a file** focused, so **Tab** goes on from there, and **Enter** or
-  **Space** presses it. From there **↓** and **↑** move between its buttons, top to bottom: **Choose a file**, **Start
-  with a blank canvas**, and each drawing's **Open** (not one that's open in another tab).
+  **Space** presses it. From there **↓** and **↑** move between its buttons in order: **Choose a file**, **Start
+  with a blank canvas**, and each drawing's **Resume** (not one that's open in another tab).
 - **A Dialog's Choices**: Where a dialog lists its choices one under another (unsaved changes, opening an art file,
   Merge down, Bake, deleting a layer in a room), **↓** and **↑** move between the choices and **Cancel**, and **Enter**
   or **Space** presses the one with focus. They stop at the first and the last. The same goes for **Versions** (each

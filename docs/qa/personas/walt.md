@@ -25,7 +25,7 @@ never a lost hour of work, whatever the browser does.
   `impure88`, and the formats he'd try even though Phosphor may not open them: `.xb` (`acid-55a/ACID-55.XB`), `.sue`
   (`acid-55a/WE-WILL.SUE`), `.tnd` (`blocktronics_blocktober/_Pumpkin_by_TCF.tnd`), `.nfo` and `.diz`. When the folder
   is missing, those steps are skipped with a note.
-- To drop a file: a headless browser can't drag from the desktop, so send the drop to the start screen's box or the
+- To drop a file: a headless browser can't drag from the desktop, so send the drop to the start screen or the
   canvas with the file in it, as `tests/e2e/art-files.spec.js` does (a DataTransfer holding the file).
 - Habits: saves often, reloads to check things stuck, keeps two tabs open, uses Back and Forward, leaves the app
   open for hours.
@@ -80,7 +80,7 @@ script. Every section ends with Free time.
   titled "QA Long"; nothing to undo; the view starts at the top-left, on line 1. Opening takes under the `file` budget;
   over it is a `performance` finding. While the file is read, and again while it opens, a note at the bottom says
   "Opening long.ans…" with a line moving under it, then goes.
-- Probes: `back-out`: choose it and press Cancel at the question; `free`: drop it on the start screen's box instead.
+- Probes: `back-out`: choose it and press Cancel at the question; `free`: drop it on the start screen instead, anywhere inside its dashed line.
 - Rated: yes, wants Cmd+O, then Enter for Edit artwork
 
 ### 2. Scroll to the bottom and back

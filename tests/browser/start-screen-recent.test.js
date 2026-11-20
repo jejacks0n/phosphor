@@ -1,10 +1,14 @@
-// The start screen's "Pick up where you left off" rows (ZeroState.vue), in the drop box under its band: the whole name
-// with its extension, where that copy stands, and a time that tells two rows apart; every row two lines, the name over
-// the time and state, with Resume beside both, at any width. And its buttons as a list: Up and Down move between Choose
-// a file, Start blank and each row, and Choose a file has focus in a fresh tab, so Tab goes on from it.
-import { test, expect, afterEach, vi } from 'vitest';
+// The start screen (ZeroState.vue): a dashed line around the whole canvas, which is what takes a dropped file, with
+// Choose a file and Start with a blank canvas side by side in its middle as two buttons of one height; on a phone no
+// line, and the two a finger's size, one over the other. And its "Pick up where you left off" rows under them: the whole
+// name with its extension, where that copy stands, and a time that tells two rows apart; every row two lines, the name
+// over the time and state, with Resume beside both, at any width. And its buttons as a list: Up and Down move between
+// Choose a file, Start blank and each row, and Choose a file has focus in a fresh tab, so Tab goes on from it.
+import { test, expect, afterEach, onTestFinished, vi } from 'vitest';
+import { page } from 'vitest/browser';
 import { createApp, h, nextTick, ref } from 'vue';
 import ZeroState from '@/components/ZeroState.vue';
+import '@/assets/global.css'; // the app's colors and buttons, as the start screen is drawn with them
 import { i18n, setLocale } from '@/i18n';
 
 let mounted = null, host = null;
@@ -122,16 +126,63 @@ test('every row is two lines, the name over the time and state, with Resume cent
   expect(text(host, '.go')).toBe('Reprendre ›');
 });
 
-test('the list sits in the drop box under its band, one width with it; with no recent work there\'s no list', () => {
+const rect = (selector) => host.querySelector(selector).getBoundingClientRect();
+const middle = (box) => (box.left + box.right) / 2;
+// These tests' window is a phone's; a computer's for the test that asks, and a phone's again after it.
+const PHONE = [414, 896];
+async function sized(width, height) {
+  await page.viewport(width, height);
+  await expect.poll(() => window.innerWidth).toBe(width); // the rules by width follow the window, a frame later
+}
+async function onAComputer() {
+  await sized(1200, 800);
+  onTestFinished(() => sized(...PHONE));
+}
+
+test('on a computer the dashed line runs around the whole canvas, list or no list, with the list a 480px column in its middle', async () => {
+  await onAComputer();
   mount([row('a')]);
   const zone = host.querySelector('.drop-zone');
   expect(zone.contains(host.querySelector('section.recent'))).toBe(true);
-  expect(zone.getBoundingClientRect().width).toBe(480);
+  expect(getComputedStyle(zone).borderTopStyle).toBe('dashed');
+  expect(rect('.drop-zone').width).toBe(900 - 2 * 16); // the canvas, less the gap the line keeps from its edge
+  expect(rect('section.recent').width).toBe(480);
+  expect(Math.abs(middle(rect('section.recent')) - middle(rect('.drop-zone')))).toBeLessThanOrEqual(1);
+  expect(rect('.actions').left).toBeGreaterThan(rect('svg.icon').right); // the band: the arrow, then the two starts
+  expect(rect('.actions').bottom).toBeLessThanOrEqual(rect('section.recent').top);
   mounted.unmount();
   host.remove();
   mount([]);
   expect(host.querySelector('section.recent')).toBe(null);
-  expect(host.querySelector('.drop-zone').getBoundingClientRect().width).toBeLessThan(480);
+  expect(rect('.drop-zone').width).toBe(900 - 2 * 16);
+});
+
+test('the two starts are two buttons of one height, side by side under a drawn arrow; on a phone one over the other at a finger\'s size, with no dashed line', async () => {
+  await onAComputer();
+  mount([]);
+  let browse = rect('button.browse'), blank = rect('button.blank');
+  expect(host.querySelector('.drop-zone svg.icon path')).not.toBe(null); // drawn, not a character of some font
+  expect(host.querySelector('.drop-zone').textContent).not.toContain('⬆');
+  expect(blank.height).toBe(browse.height);
+  expect(blank.top).toBe(browse.top);
+  expect(blank.left - browse.right).toBeGreaterThanOrEqual(16); // room for the focus ring before the next button
+  expect(rect('.drop-zone p').bottom).toBeLessThan(browse.top);
+  expect(Math.abs((browse.left + blank.right) / 2 - middle(rect('.drop-zone')))).toBeLessThanOrEqual(1);
+  mounted.unmount();
+  host.remove();
+
+  await sized(...PHONE);
+  mount([row('a')], 390);
+  browse = rect('button.browse');
+  blank = rect('button.blank');
+  expect(getComputedStyle(host.querySelector('.drop-zone')).borderTopStyle).toBe('none');
+  expect(browse.height).toBeGreaterThanOrEqual(44);
+  expect(blank.height).toBe(browse.height);
+  expect(blank.top).toBeGreaterThan(browse.bottom);
+  expect([blank.left, blank.width]).toEqual([browse.left, browse.width]);
+  expect(rect('section.recent').top).toBeGreaterThan(blank.bottom);
+  expect(rect('section.recent').right).toBeLessThanOrEqual(rect('.zero-state').right);
+  expect(rect('svg.icon').width).toBe(0); // the arrow and the prompt are a drop's, and a phone has none
 });
 
 // Mounted waiting (ready false), as a fresh tab's is: Choose a file takes focus once it's ready, unless something has it.

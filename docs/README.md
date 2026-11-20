@@ -24,7 +24,7 @@ Your theme choice is saved in your browser.
 
 ### Navigation and URLs
 The browser address bar updates to reflect your current workspace tab and, on SOCIAL, its page, so Back and Forward move between them and a reload comes back to the same place:
-- **Start screen**: With nothing open, you are on the start screen, not a tab. The art tabs wait for something to show, none is selected, and the address is plain (`/`).
+- **Start screen**: With nothing open, you are on the start screen, not a tab. The art tabs wait for something to show, none is selected, and the address is plain (`/`). A dashed line runs around the canvas: drop a file anywhere inside it, or use **Choose a file** or **Start with a blank canvas** in its middle. On a phone there is no line, only the two buttons.
 - **Opening**: Opening an image, project file, ANSI or text file, or blank canvas opens the **ANSI** view. An SVG opened from the start screen opens on **VECTOR**.
 - **Tabs**: The top tabs follow the layer picked in LAYERS: a drawing layer or the base shows **PIXEL** and **ANSI** (labeled **ASCII** in the ASCII styles), a vector layer shows **VECTOR**, and **SAUCE** is always there ([Layers](layers.md#the-layers-list)).
 - **Back to the start screen**: While you watch a room on the **ROOM** tab with nothing of your own open, any art tab takes you back to the start screen.
