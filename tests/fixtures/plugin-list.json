@@ -1,0 +1,89 @@
+{
+  "format": 1,
+  "built": "2026-11-20T12:00:00.000Z",
+  "plugins": [
+    {
+      "official": true,
+      "repo": "jejacks0n/phosphor",
+      "path": "plugins/outlines",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifest": {
+        "phosphor": 1,
+        "id": "phosphor.outlines",
+        "name": "Outlines",
+        "version": "1.0.0",
+        "author": "Phosphor",
+        "description": "Draws - | / and \\ along a picture's outlines, darker side on lighter, and leaves the rest to By shape.",
+        "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/outlines",
+        "script": "outlines.js",
+        "license": "MIT",
+        "preview": " ╱──╲ \n│    │\n ╲──╱ ",
+        "themes": []
+      },
+      "manifestHash": "4a745682c7fa22fa0de78a10cff0ec8dada5e3a3d2a34d506dfd245b3932fb27",
+      "scriptHash": "188ee7ef7e77c6d04ce7a4d58c0d40d79542e02b47ebe50241d59bf85e0a471a"
+    },
+    {
+      "official": true,
+      "repo": "jejacks0n/phosphor",
+      "path": "plugins/midnight",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifest": {
+        "phosphor": 1,
+        "id": "phosphor.midnight",
+        "name": "Midnight",
+        "version": "1.0.0",
+        "author": "Phosphor",
+        "description": "A deep blue theme for late nights.",
+        "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/midnight",
+        "script": "",
+        "license": "MIT",
+        "preview": "",
+        "themes": [
+          {
+            "id": "midnight",
+            "name": "Midnight",
+            "base": "dark",
+            "colors": {
+              "background": "#0b1020",
+              "accent": "#7aa2f7",
+              "surface-0": "#10162b"
+            }
+          }
+        ]
+      },
+      "manifestHash": "8002a74b766695d0dbe1266acf54d909b155e8fa9b0f148c1f1b3855a8df153a"
+    },
+    {
+      "official": false,
+      "repo": "kim/phosphor-rain",
+      "path": "",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifest": {
+        "phosphor": 1,
+        "id": "kim.rain",
+        "name": "Rain",
+        "version": "1.2.0",
+        "author": "Kim",
+        "description": "A gray, rainy theme.",
+        "homepage": "https://github.com/kim/phosphor-rain",
+        "script": "",
+        "license": "MIT",
+        "preview": "",
+        "themes": [
+          {
+            "id": "rain",
+            "name": "Rain",
+            "base": "dark",
+            "colors": {
+              "background": "#1c2024",
+              "accent": "#8fa3b5",
+              "surface-0": "#23282d"
+            }
+          }
+        ]
+      },
+      "manifestHash": "6863a9208d726dbb8fc6b4436ff1a992e58e304d84743fe7cb67dd7a39aa0f56"
+    }
+  ]
+}

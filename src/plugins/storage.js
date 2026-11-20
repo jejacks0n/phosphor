@@ -1,6 +1,7 @@
 // Installed plugins, kept in this browser (IndexedDB phosphor-plugins): one record per plugin,
-// { id, manifest, enabled, source: 'file', installedAt, handle? (a file or folder picked), script? and scriptHash? (its text
-// and SHA-256, for a plugin with one) }.
+// { id, manifest, enabled, source: 'file' or 'marketplace', installedAt, listing? ({ repo, path, commit, official }, for
+// one from the marketplace), handle? (a file or folder picked), script? and scriptHash? (its text and SHA-256, for a
+// plugin with one) }.
 function database() {
   return new Promise((resolve, reject) => {
     const open = indexedDB.open('phosphor-plugins', 1);

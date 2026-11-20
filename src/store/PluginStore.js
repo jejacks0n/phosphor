@@ -5,6 +5,8 @@
 // Picked with the browser's picker (Chrome, Edge), a plugin keeps its file's or folder's handle, for an author: Reload
 // reads it again, and Follow file looks at it every FOLLOW_MS and takes each save, keeping the last good version when a
 // save isn't a good plugin. A save that gives a plugin a script for the first time waits for the person (pendingCode).
+// The marketplace's list loads once a visit (market); a listed plugin is read from its files at the listed commit,
+// hash-checked, and installed as from a file, keeping its listing.
 import { toRaw } from 'vue';
 import { defineStore } from 'pinia';
 import { t } from '@/i18n';
@@ -15,6 +17,8 @@ import { readPackage, folderStamp } from '@/plugins/package';
 import { sha256, importScript, readSolvers } from '@/plugins/script';
 import { beginRun, endRun, hungLastTime } from '@/plugins/hangMark';
 import { loadPlugins, putPlugin, deletePlugin } from '@/plugins/storage';
+import { sameListing } from '@/plugins/listing';
+import { loadList, fetchListed } from '@/plugins/market';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 const refused = (error) => {
@@ -104,6 +108,9 @@ function listen(store) {
   stopListening = () => stops.forEach((stop) => stop());
 }
 
+// Each loadMarket's turn: only the latest one's answer is taken.
+let marketLoads = 0;
+
 const byName = (a, b) => a.manifest.name.localeCompare(b.manifest.name) || a.id.localeCompare(b.id);
 
 export const usePluginStore = defineStore('plugins', {
@@ -116,6 +123,7 @@ export const usePluginStore = defineStore('plugins', {
     solvers: {},                             // { [ref]: { pluginId, name, styles, reach, chars, options } }, data only; not kept
     solverStamp: 0,                          // bumped whenever the solvers or one's failure change
     pendingCode: {},                         // { [id]: { manifest, scriptText, handle, following } }: a reload that adds a script, asked about; not kept
+    market: { status: 'idle', entries: [], built: null }, // the marketplace's list: idle, loading, ready or failed; not kept
   }),
 
   getters: {
@@ -125,6 +133,13 @@ export const usePluginStore = defineStore('plugins', {
     },
     themes: (state) => (state.off ? [] : state.plugins.filter(({ enabled }) => enabled).flatMap(({ id, manifest }) =>
       manifest.themes.map(({ id: theme, name, base, colors }) => ({ ref: themeRef(id, theme), name, base, colors })))),
+    // The loaded list's entry with that id, or null.
+    marketFor: (state) => (id) => state.market.entries.find(({ manifest }) => manifest.id === id) ?? null,
+    // A marketplace plugin whose repo and path the loaded list no longer has; never before the list has loaded.
+    notListed: (state) => (id) => {
+      const listing = state.plugins.find((plugin) => plugin.id === id)?.listing;
+      return !!listing && state.market.status === 'ready' && !state.market.entries.some((entry) => sameListing(entry, listing));
+    },
   },
 
   actions: {
@@ -203,6 +218,36 @@ export const usePluginStore = defineStore('plugins', {
       }
     },
 
+    // The marketplace's list, once a visit unless again; one that can't be had (or read) leaves it failed and empty.
+    async loadMarket({ again = false } = {}) {
+      if (!again && this.market.status !== 'idle') return;
+      const mine = ++marketLoads;
+      this.market = { status: 'loading', entries: [], built: null };
+      try {
+        const { built, entries } = await loadList();
+        if (mine === marketLoads) this.market = { status: 'ready', entries, built };
+      } catch {
+        if (mine === marketLoads) this.market = { status: 'failed', entries: [], built: null };
+      }
+    },
+
+    // A listed plugin's files fetched and checked against the list, nothing of its script run: what read gives, with its
+    // listing ({ repo, path, commit, official }), or an Error with its userMessage.
+    async readListed(entry) {
+      try {
+        const { manifestText, scriptText } = await fetchListed(entry);
+        const manifest = readManifest(manifestText);
+        if (manifest.id !== entry.manifest.id) throw new ManifestError('changedSinceListed');
+        const { repo, path, commit, official } = entry;
+        return {
+          manifest, script: scriptText, replaces: this.plugins.find(({ id }) => id === manifest.id) ?? null, handle: null,
+          listing: { repo, path, commit, official },
+        };
+      } catch (error) {
+        throw refused(error);
+      }
+    },
+
     // The browser's file picker, a .zip or a lone manifest: what read gives, with a manifest's file handle kept (a
     // zip's isn't: Reload reads a lone manifest only); null when it's canceled.
     async pick() {
@@ -234,7 +279,8 @@ export const usePluginStore = defineStore('plugins', {
 
     // With no handle, a link to an earlier file is forgotten, and it isn't followed. A script is imported and its
     // solvers checked before anything is kept: one that fails throws with its userMessage, and an older version stays.
-    async install(manifest, { script = null, handle = null } = {}) {
+    // With a listing (readListed's), it's kept as from the marketplace.
+    async install(manifest, { script = null, handle = null, listing = null } = {}) {
       const id = manifest.id;
       if (manifest.script && script === null) throw problem('noScript', { path: manifest.script });
       if (script !== null && this.off) throw problem('codeWhileOff');
@@ -243,7 +289,8 @@ export const usePluginStore = defineStore('plugins', {
       const scriptHash = script === null ? null : await sha256(script);
       const defs = script === null ? null : await solversOf(id, script);
       await this.changing(id, {
-        id, manifest, enabled, source: 'file', installedAt: Date.now(),
+        id, manifest, enabled, source: listing ? 'marketplace' : 'file', installedAt: Date.now(),
+        ...(listing && { listing: { repo: listing.repo, path: listing.path, commit: listing.commit, official: listing.official } }),
         ...(handle && { handle }), ...(script !== null && { script, scriptHash }),
       });
       delete this.pendingCode[id];

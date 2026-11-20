@@ -31,9 +31,10 @@ export function buildInfo({ desktop = false } = {}) {
 
 // The built page's Content-Security-Policy, as a <meta> (GitHub Pages can't send headers): scripts only from here,
 // Turnstile, and the page's own inline ones by hash; connections only to the SOCIAL server (both the one built in
-// and the local one, as config.js picks by hostname) and Turnstile. Styles stay open to inline ones: the icons are
+// and the local one, as config.js picks by hostname), Turnstile, and raw GitHub files (the plugin marketplace). Styles stay open to inline ones: the icons are
 // SVG markup with style attributes. Not in development, where Vite's own client needs more.
-// The desktop build (VITE_DESKTOP=1) has no SOCIAL server and no Turnstile: it connects only to rooms' sockets (ws:).
+// The desktop build (VITE_DESKTOP=1) has no SOCIAL server and no Turnstile: it connects only to rooms' sockets (ws:),
+// and its marketplace fetches are the main process's (desktop/pluginList.js).
 const TURNSTILE = 'https://challenges.cloudflare.com';
 export function contentSecurityPolicy(html, api, { desktop = false } = {}) {
   const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
@@ -46,7 +47,7 @@ export function contentSecurityPolicy(html, api, { desktop = false } = {}) {
       "connect-src 'self' ws:",
     ] : [
       `script-src 'self' blob: ${TURNSTILE} ${inline.join(' ')}`,
-      `connect-src 'self' ${servers.join(' ')} ${TURNSTILE}`,
+      `connect-src 'self' ${servers.join(' ')} ${TURNSTILE} https://raw.githubusercontent.com`,
       `frame-src ${TURNSTILE}`,
     ]),
     "img-src 'self' data: blob:",

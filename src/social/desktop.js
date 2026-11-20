@@ -1,7 +1,7 @@
 // The renderer's only door to the desktop app's main process: window.phosphorDesktop, from desktop/preload.cjs (the
-// room service, quitting, the menu bar, files opened and saved, the releases to update to, and returnWithinMs, which
-// only the end-to-end tests set). Null in the web build. Browser tests put a fake in its place with useFakeDesktop,
-// and take it out with resetDesktop.
+// room service, quitting, the menu bar, files opened and saved, the releases to update to, the marketplace's plugin
+// list and files, and returnWithinMs, which only the end-to-end tests set). Null in the web build. Browser tests put a
+// fake in its place with useFakeDesktop, and take it out with resetDesktop.
 const real = globalThis.window?.phosphorDesktop ?? null;
 
 export let desktop = real;

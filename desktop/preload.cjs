@@ -1,5 +1,5 @@
 // The page's one way into the main process (desktop/main.js), as window.phosphorDesktop: the room service, quitting and
-// closing (whether there's unsaved work), the menu bar (its words and state out, with the window's drawing, and its commands back), files opened and saved, and the releases to update to. Sandboxed, so CommonJS, with only Electron's renderer modules.
+// closing (whether there's unsaved work), the menu bar (its words and state out, with the window's drawing, and its commands back), files opened and saved, the releases to update to, and the marketplace's plugin list and files. Sandboxed, so CommonJS, with only Electron's renderer modules.
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 let onQuit = null;
@@ -56,4 +56,7 @@ contextBridge.exposeInMainWorld('phosphorDesktop', {
   },
   saveProject: ({ bytes, name, path, as } = {}) => ipcRenderer.invoke('phosphor:save-project', { bytes, name, path, as }),
   releases: () => ipcRenderer.invoke('phosphor:releases'),
+  // The marketplace's list, and a listed plugin's file (a raw GitHub URL) of at most `most` bytes, as text.
+  pluginList: () => ipcRenderer.invoke('phosphor:plugin-list'),
+  pluginFile: (url, most) => ipcRenderer.invoke('phosphor:plugin-file', url, most),
 });
