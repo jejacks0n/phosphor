@@ -63,6 +63,9 @@ async function keptSolvers(record) {
   return solversOf(record.id, record.script);
 }
 
+// A record read before an await is still the one kept: nothing replaced it meanwhile.
+const isCurrent = (store, record) => toRaw(store.plugins.find(({ id }) => id === record.id)) === toRaw(record);
+
 // The stores whose first load has read the hang mark: later loads this visit don't (an import of their own holds it).
 const hangRead = new WeakSet();
 
@@ -101,7 +104,7 @@ export const usePluginStore = defineStore('plugins', {
     problems: {},                            // { [id]: words } for a file that couldn't be taken; not kept
     solvers: {},                             // { [ref]: { pluginId, name, styles, reach, chars, options } }, data only; not kept
     solverStamp: 0,                          // bumped whenever the solvers or one's failure change
-    pendingCode: {},                         // { [id]: { manifest, scriptText, handle } }: a reload that adds a script, asked about; not kept
+    pendingCode: {},                         // { [id]: { manifest, scriptText, handle, following } }: a reload that adds a script, asked about; not kept
   }),
 
   getters: {
@@ -136,7 +139,7 @@ export const usePluginStore = defineStore('plugins', {
     // ponytail: a change made while a load is reading is overwritten by what it read; count loads if that ever bites.
     // Two loads at once may import one script twice (harmless: its solvers are registered once more).
     async load() {
-      const hung = hangRead.has(this) ? null : hungLastTime();
+      const hang = hangRead.has(this) ? null : hungLastTime(); // read alongside the records, not before them
       hangRead.add(this);
       let records;
       try {
@@ -154,6 +157,7 @@ export const usePluginStore = defineStore('plugins', {
       }
       this.plugins = usable.sort(byName);
       this.unavailable = false;
+      const hung = await hang;
       const stuck = this.plugins.find(({ id }) => id === hung);
       if (stuck?.enabled) {
         await this.changing(stuck.id, { ...toRaw(stuck), enabled: false });
@@ -163,11 +167,15 @@ export const usePluginStore = defineStore('plugins', {
       for (const record of this.plugins) {
         // what this visit already has (the dialog loads each time it opens) isn't imported again
         if (!record.enabled || !record.script || registeredHash(record.id) === record.scriptHash) continue;
+        let defs;
         try {
-          this.useSolvers(record.id, record.scriptHash, await keptSolvers(record));
+          defs = await keptSolvers(record);
         } catch (error) {
-          this.problems[record.id] = error.userMessage ?? t('plugins.errors.notKept');
+          if (isCurrent(this, record)) this.problems[record.id] = error.userMessage ?? t('plugins.errors.notKept');
+          continue;
         }
+        // a Reload, a switch or another load while it imported: what they did stands
+        if (isCurrent(this, record)) this.useSolvers(record.id, record.scriptHash, defs);
       }
     },
 
@@ -248,7 +256,7 @@ export const usePluginStore = defineStore('plugins', {
         if (manifest.id !== id) throw problem('otherPlugin', { id: manifest.id });
         delete this.problems[id];
         if (script !== null && !record.script) {
-          this.pendingCode[id] = { manifest, scriptText: script, handle };
+          this.pendingCode[id] = { manifest, scriptText: script, handle, following: !!this.following[id] };
           this.unfollow(id);
           return false;
         }
@@ -260,8 +268,8 @@ export const usePluginStore = defineStore('plugins', {
       }
     },
 
-    // The person allowed a reload's new script (pendingCode): installed, as Install would. False with the reason in
-    // problems when it fails its checks.
+    // The person allowed a reload's new script (pendingCode): installed, as Install would, and followed again if it was.
+    // False with the reason in problems when it fails its checks.
     async allowCode(id) {
       const pending = toRaw(this.pendingCode[id]);
       if (!pending) return false;
@@ -269,15 +277,20 @@ export const usePluginStore = defineStore('plugins', {
       try {
         await this.install(pending.manifest, { script: pending.scriptText, handle: pending.handle });
         delete this.problems[id];
-        return true;
       } catch (error) {
         this.problems[id] = error.userMessage ?? t('plugins.errors.notKept');
         return false;
       }
+      if (pending.following) await this.follow(id, true);
+      return true;
     },
 
-    declineCode(id) {
+    // Declined, the new script isn't taken; only the code was declined, so a followed folder is followed again (its next
+    // save asks again while it names a script).
+    async declineCode(id) {
+      const pending = this.pendingCode[id];
       delete this.pendingCode[id];
+      if (pending?.following) await this.follow(id, true);
     },
 
     async follow(id, on) {
@@ -333,9 +346,10 @@ export const usePluginStore = defineStore('plugins', {
         try {
           defs = await keptSolvers(record);
         } catch (error) {
-          this.problems[id] = error.userMessage ?? t('plugins.errors.notKept');
+          if (isCurrent(this, record)) this.problems[id] = error.userMessage ?? t('plugins.errors.notKept');
           return;
         }
+        if (!isCurrent(this, record)) return; // switched off, reloaded or removed while it imported: that stands
         delete this.problems[id];
       }
       await this.changing(id, { ...toRaw(record), enabled: on });

@@ -3,7 +3,7 @@
 // of this file's own; the registry outlives a Pinia, so each test drops what it registered.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { HANG_KEY } from '@/plugins/hangMark';
+import { HANG_KEY, beginRun } from '@/plugins/hangMark';
 import { sha256 } from '@/plugins/script';
 import { solverRef } from '@/plugins/solvers';
 import { loadPlugins, putPlugin } from '@/plugins/storage';
@@ -158,7 +158,7 @@ test('a stored script whose hash no longer matches is not loaded and says so', a
 test('a hang mark left by the last visit switches that plugin off with the reason', async () => {
   await installed();
   store.dropSolvers(ID);
-  localStorage.setItem(HANG_KEY, ID);
+  localStorage.setItem(HANG_KEY, JSON.stringify({ pluginId: ID, page: 'a-page-no-one-holds' }));
   store = newStore();
   await store.load();
   expect(localStorage.getItem(HANG_KEY)).toBe(null);
@@ -173,10 +173,49 @@ test('a hang mark left by the last visit switches that plugin off with the reaso
   expect(store.solvers[EDGES]).toBeDefined();
   expect(store.problems[ID]).toBeUndefined();
 
-  localStorage.setItem(HANG_KEY, ID); // as an import of this visit's own would hold it
+  localStorage.setItem(HANG_KEY, ID); // a later load this visit doesn't read the mark at all
   await store.load();
   expect(store.plugins[0].enabled).toBe(true);
   expect(store.problems[ID]).toBeUndefined();
+});
+
+test('a mark another open page holds is not a hang', async () => {
+  await installed();
+  store.dropSolvers(ID);
+  beginRun(ID); // this page stands in for the other: it holds its lock
+  store = newStore();
+  await store.load();
+  expect(store.plugins[0].enabled).toBe(true);
+  expect(store.problems[ID]).toBeUndefined();
+});
+
+// A script whose import waits: ran goes up first, so a test knows the import is under way.
+const slow = (name) => script({ name, top: 'globalThis.ran++; await new Promise((resolve) => setTimeout(resolve, 300));' });
+
+test('a new script installed while a load imports the old one is the one registered', async () => {
+  await installed(pkg(manifest(), slow('Edges')));
+  store.dropSolvers(ID);
+  globalThis.ran = 0;
+  store = newStore();
+  const loading = store.load();
+  await vi.waitFor(() => expect(globalThis.ran).toBe(1));
+  await installed(pkg(manifest((m) => { m.version = '1.1.0'; }), script({ name: 'Edges 2' })));
+  await loading;
+  expect(store.solvers[EDGES].name).toBe('Edges 2');
+  expect(store.plugins[0].manifest.version).toBe('1.1.0');
+});
+
+test('switched off while switching on imports, it stays off', async () => {
+  await installed(pkg(manifest(), slow('Edges')));
+  await store.setEnabled(ID, false);
+  globalThis.ran = 0;
+  const on = store.setEnabled(ID, true);
+  await vi.waitFor(() => expect(globalThis.ran).toBe(1));
+  await store.setEnabled(ID, false);
+  await on;
+  expect(store.plugins[0].enabled).toBe(false);
+  expect((await loadPlugins())[0].enabled).toBe(false);
+  expect(store.solvers[EDGES]).toBeUndefined();
 });
 
 // A folder in the origin's private file system stands in for a picked one.
@@ -193,7 +232,7 @@ async function folder(files) {
   return { dir, put, remove: () => root.removeEntry(name, { recursive: true }) };
 }
 
-test('a reload that adds a script waits for allowCode; declineCode drops it', async () => {
+test('a reload that adds a script waits for allowCode; declineCode drops it; Follow resumes after either', async () => {
   const theme = { id: 'ink', name: 'Ink', base: 'dark', colors: {} };
   const plain = manifest((m) => { delete m.script; m.themes = [theme]; });
   const { dir, put, remove } = await folder({ 'phosphor-plugin.json': plain });
@@ -213,12 +252,15 @@ test('a reload that adds a script waits for allowCode; declineCode drops it', as
     expect(globalThis.ran).toBe(0);
     expect(store.plugins[0].manifest.script).toBe('');
 
-    store.declineCode(ID);
+    await store.declineCode(ID);
     expect(store.pendingCode[ID]).toBeUndefined();
     expect(store.plugins[0].manifest.script).toBe('');
+    expect(store.following[ID]).toBe(true); // only the code was declined
 
     expect(await store.reload(ID)).toBe(false);
+    expect(store.following[ID]).toBeUndefined();
     expect(await store.allowCode(ID)).toBe(true);
+    expect(store.following[ID]).toBe(true);
     expect(globalThis.ran).toBe(1);
     expect(store.pendingCode[ID]).toBeUndefined();
     expect(store.solvers[EDGES]).toBeDefined();

@@ -208,7 +208,7 @@ test('the hang mark is set during the first whole resolve and cleared after', as
   const { project } = await stripes();
   const during = new Set();
   const ref = await onSolver(solver({ solve(cell, look) {
-    during.add(localStorage.getItem(HANG_KEY));
+    during.add(JSON.parse(localStorage.getItem(HANG_KEY))?.pluginId ?? null);
     return look.byShape();
   } }), { pluginId: 'jane.hang' });
   await choose(project, ref);
@@ -224,7 +224,7 @@ test('the hang mark is set for the base\'s first whole resolve even after an upp
   const { project, workspace } = await stripes();
   const during = [];
   const ref = await onSolver(solver({ solve(cell, look) {
-    during.push(localStorage.getItem(HANG_KEY));
+    during.push(JSON.parse(localStorage.getItem(HANG_KEY))?.pluginId ?? null);
     return look.byShape();
   } }), { pluginId: 'jane.hang', hash: 'another' }); // a script not yet run this visit (the mark's kept per page)
   project.setLayerChars('edit', { charChoice: ref, chars: '▄▀█ ' }); // an upper layer of its own
