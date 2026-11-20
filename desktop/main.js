@@ -7,7 +7,7 @@
 // in the page's words and follows the focused window, and the files it opens and saves are read and written here
 // (files.js): a page writes only to a file someone picked, opened or saved this session or before (Open Recent). A file
 // opens in a window of its own when the window it's for has a drawing (windows.js), and a project already open in a
-// window brings that window forward.
+// window brings that window forward. The Plugins dialog's marketplace fetches through here too (pluginList.js).
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -20,6 +20,7 @@ import { reachableAddresses } from './addresses.js';
 import { OPENABLE, filesIn, isOpenable, isProject, recentFiles, writeWhole } from './files.js';
 import { REPO, menuTemplate } from './menu.js';
 import { cascade, fileTarget, leave } from './windows.js';
+import { LIST_URL, MOST_LIST_BYTES, fetchText, fetchFile } from './pluginList.js';
 
 const ORIGIN = 'app://phosphor';
 const DIST = fileURLToPath(new URL('../dist-desktop/', import.meta.url));
@@ -451,6 +452,9 @@ else {
   handle('phosphor:open-in-window', openInWindow);
   handle('phosphor:save-project', saveProject);
   handle('phosphor:releases', () => releases());
+  // The Plugins dialog's marketplace: the list from phosphor.work and a listed plugin's files from raw GitHub.
+  handle('phosphor:plugin-list', () => fetchText(LIST_URL, { fetch: net.fetch, most: MOST_LIST_BYTES }));
+  handle('phosphor:plugin-file', (_entry, url, most) => fetchFile(url, most, { fetch: net.fetch }));
   ipcMain.on('phosphor:files-ready', (event) => {
     const entry = entryOf(event);
     if (!fromApp(event) || !entry) return;
