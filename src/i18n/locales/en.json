@@ -1215,7 +1215,7 @@
       "hand": "Hand",
       "zoom": "Zoom (click in, {alt}-click out, drag)",
       "editMode": "Edit Mode: type characters directly (press Esc to use tool shortcuts)",
-      "flip": "Flip (ANSI view)",
+      "flip": "Swap cell FG/BG (ANSI view)",
       "select": "Select",
       "holdAlt": "Sample color with Eyedropper (Pencil, Brush, Paint Bucket, Gradient, Shapes)",
       "holdAltShift": "Sample background color",

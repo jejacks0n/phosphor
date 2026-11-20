@@ -1215,7 +1215,7 @@
       "hand": "Main",
       "zoom": "Zoom (clic : avant, {alt}-clic : arrière, glisser)",
       "editMode": "Mode Édition : taper directement des caractères (appuyez sur Échap pour utiliser les raccourcis d'outils)",
-      "flip": "Inverser (vue ANSI)",
+      "flip": "Inverser PP/AP de la cellule (vue ANSI)",
       "select": "Sélection",
       "holdAlt": "Échantillonner la couleur à la pipette (Crayon, Pinceau, Pot de peinture, Dégradé, Formes)",
       "holdAltShift": "Échantillonner la couleur d'arrière-plan",
