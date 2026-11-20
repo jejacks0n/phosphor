@@ -231,6 +231,14 @@ export function refusedHidden(project, ids) {
 }
 
 // A layer's name as shown (useLayerName's, in the store): its own, else "Base", "Layer n" or "Vector n".
+// values as the document's settings: patched in, except solverOptions, which is replaced (a patch merges objects, and keeps
+// a ref that was dropped, or more than a file holds).
+export function putSettings(store, values) {
+  const { solverOptions, ...rest } = values;
+  store.$patch(rest);
+  if (solverOptions) store.solverOptions = solverOptions;
+}
+
 export const layerName = (layer) => layer.name ?? (layer.id === 'base' ? t('layers.base') : t(layer.kind === 'vector' ? 'layers.vectorDefault' : 'layers.editDefault', { n: layer.n }));
 
 // A new paint layer the size of grid (a PaintLayer), holding snapshot (a snapshot(), or null for none): a layer's paint

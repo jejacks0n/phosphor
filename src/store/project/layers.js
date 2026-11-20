@@ -14,7 +14,7 @@ import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
 import { MOST_SHAPES, copyShapes, isShapeKey } from '@/document/shapes.js';
-import { NUDGE_MS, bytesHeld, dropFromSums, emptyFields, layerName, putLayer, randomId, swapLayer, refusedInRoom } from '@/store/project/shared.js';
+import { NUDGE_MS, bytesHeld, dropFromSums, emptyFields, layerName, putLayer, putSettings, randomId, swapLayer, refusedInRoom } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -27,7 +27,7 @@ function changed(store, id, patch) {
 // own (some of CHAR_KEYS) as the layer with the id's character settings: the document's fields for the bottom.
 function putChars(store, id, own) {
   if (id !== 'base') return changed(store, id, { chars: layerChars(store.layerById(id)?.kind, { ...store.charsOf(id), ...own }) });
-  store.$patch(own);
+  putSettings(store, own);
 }
 
 const pick = (from, keys) => Object.fromEntries(keys.map((key) => [key, from[key]]));

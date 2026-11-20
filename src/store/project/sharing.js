@@ -29,7 +29,7 @@ import { isShapeKey } from '@/document/shapes.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import { Pending } from '@/social/pending.js';
 import { MOST_CHANGE_BYTES, readChange, readLayers } from '@/social/wire.js';
-import { ALONE, SAVED_KEYS, anyoneInside, dropFromSums, emptyFields, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
+import { ALONE, SAVED_KEYS, anyoneInside, dropFromSums, emptyFields, putSettings, randomId, runsPatch, stackKinds } from '@/store/project/shared.js';
 import { layerChars, nextNumber, withChars } from '@/document/layerInfo.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast';
@@ -410,7 +410,8 @@ export const sharingActions = {
 
   // From the host, so only what a document saves.
   applySettings(values) {
-    this.$patch(Object.fromEntries(SAVED_KEYS.filter((key) => key in values && key !== 'cols' && key !== 'rows').map((key) => [key, values[key]])));
+    const taken = settingsFromStranger(values); // cleaned, not as heard (solverOptions is cut to what a file holds)
+    if (taken) putSettings(this, Object.fromEntries(SAVED_KEYS.filter((key) => key in taken && key !== 'cols' && key !== 'rows').map((key) => [key, taken[key]])));
   },
 
   // The stack as the host says it (a layers message, read: wire.js readLayers) brought in by id: a layer not in it goes,
