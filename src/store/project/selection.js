@@ -609,13 +609,14 @@ function turnCanvas(canvas, op) {
   return out;
 }
 
-// A block rotated 90° clockwise by its picture's shape: W x P grid pixels turn into P x W on screen, a grid
-// pixel being 8 wide and 8 × aspect tall (pixelAspect: 1 for no bitmap font or an 8×16 one, 1/2 for 8×8). The turned block is round(P × aspect) columns and round(W / aspect) pixel rows
-// down, so it is P cells across at aspect 1. When its pixel rows are odd, its last row's bottom half isn't the block's
-// (px marks it; pasteAt fills it from what's under). Turned grid pixel (X, Y) comes from source pixel
-// (floor((Y + .5) aspect), floor(P - (X + .5) / aspect)), which at aspect 1 is (Y, P - 1 - X). Only pixels turn (no
-// characters: hasCharacters); a Half-block's ▄ (an edit cell or a pin) goes to each cell showing a pixel from one of its
-// cells, an edit cell's only where that cell has paint (it's there to show it).
+// A block rotated 90° clockwise by its picture's shape: W x P grid pixels turn into P x W on screen, a grid pixel being
+// 8 wide and 8 × aspect tall (pixelAspect: 1 for no bitmap font or an 8×16 one, 1/2 for 8×8). The turned block is
+// round(P × aspect) columns and round(W / aspect) pixel rows down, so it is P cells across at aspect 1. When its pixel
+// rows are odd, its last row's bottom half isn't the block's (px marks it; pasteAt fills it from what's under). Turned
+// grid pixel (X, Y) comes from source pixel (floor((Y + .5) aspect), floor(P - (X + .5) / aspect)), which at aspect 1
+// is (Y, P - 1 - X). Only pixels turn (no characters: hasCharacters); a Half-block's ▄ (an edit cell or a pin) goes to
+// each cell showing a pixel from one of its cells, an edit cell's only where that cell has paint (it's there to show
+// it).
 function rotateBlock(block, aspect = 1) {
   const W = block.w, P = block.px ?? 2 * block.h;
   const px = Math.max(1, Math.round(W / aspect));
