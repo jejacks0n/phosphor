@@ -1412,10 +1412,11 @@ export default class Renderer {
   // What the upper layers' By shape samples hold, in bytes (#samplesAt).
   get sampleBytes() { return this.#tileBytes; }
 
-  // What the PIXEL view shows and the Paint Bucket reads: the output, with every upper layer's pixels (its shapes at grid
-  // resolution, its paint) drawn over it when there are any, snapped to the palette where they cover it, as the output
-  // snaps the lower group's paint (cells keep their blends). Kept, and caught up only over the rect the composes since
-  // changed (#shownDirty): an edit on an upper layer costs its own cells here too.
+  // What the PIXEL view shows under the looks (looksCanvas), and what the drawing tools and the Eyedropper read: the
+  // output, with every upper layer's pixels (its shapes at grid resolution, its paint) drawn over it when there are any,
+  // snapped to the palette where they cover it, as the output snaps the lower group's paint (cells keep their blends).
+  // Kept, and caught up only over the rect the composes since changed (#shownDirty): an edit on an upper layer costs its
+  // own cells here too. The fills and the Wand read it with the looks over it (pixelsAsSeen).
   shownCanvas() {
     if (!this.upper.length || !this.outputCanvas) return this.outputCanvas;
     const { width, height } = this.outputCanvas;
@@ -1462,9 +1463,10 @@ export default class Renderer {
   // its two colors (a pin on the base, an art layer's character) as it looks at pixel scale, in a canvas the output's
   // size that's see-through everywhere else; null with no pin and no art layer. A cell's two pixels are its background
   // over its foreground whatever its character, so a █ shows there as half a cell; its look is each half's background
-  // blended toward its foreground by the ink the glyph has in it (halfColors). Display only: the output, the cells and
-  // what the tools read (shownCanvas) stay the two colors. Kept, and worked out again only over the rect the cells
-  // rebuilt since cover (#looksDirty), so a redraw draws it and an edit costs its own cells.
+  // blended toward its foreground by the ink the glyph has in it (halfColors). The output, the cells and what the
+  // drawing tools and the Eyedropper read (shownCanvas) stay the two colors; the fills and the Wand read this over it
+  // (pixelsAsSeen). Kept, and worked out again only over the rect the cells rebuilt since cover (#looksDirty), so a
+  // redraw draws it and an edit costs its own cells.
   looksCanvas(params) {
     const pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
     const arts = [this.shapes, ...this.upper.map((u) => u.layer)].filter((layer) => layer?.hasArt);

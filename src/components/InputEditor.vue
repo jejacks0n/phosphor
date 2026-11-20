@@ -4,7 +4,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf, putCellPixels } from '@/lib/Cells';
-import { cellKey, parseKey, ownEntry } from '@/document/editCells';
+import { cellKey, ownIndexes } from '@/document/editCells';
 import { veilPixels } from '@/lib/ghostCells';
 import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
@@ -38,7 +38,7 @@ const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZo
 const shownFrame = () => {
   const played = workspaceStore.playing && workspaceStore.played;
   if (played) return { cells: played.cells, maps: [played.editCells] };
-  return { cells: projectStore.shownCells, maps: projectStore.shownLayers.filter((layer, at) => at && layer.kind === 'cells').map((layer) => projectStore.cellsOf(layer.id)) };
+  return { cells: projectStore.shownCells, maps: projectStore.ownCellMaps };
 };
 const sameMaps = (a, b) => a.length === b.length && a.every((map, i) => map === b[i]);
 const overlay = { canvas: null, image: null, cells: null, maps: [], edited: null, all: null, style: null, cols: 0, rows: 0, empty: true };
@@ -54,14 +54,7 @@ const updateOverlay = () => {
   // The layers' cells, by index (only those in the grid); none asked for while All cells shows every cell (a file's 500k).
   let edited = all ? null : overlay.edited;
   if (!all && (!edited || !sameMaps(maps, overlay.maps) || cols !== overlay.cols || rows !== overlay.rows || style !== overlay.style)) { // indexes are by the grid's width
-    edited = new Set();
-    for (const map of maps) {
-      for (const [key, entry] of map) {
-        if (!ownEntry(entry, style)) continue; // docs/model.md R6: a paint block outside ANSI, or a frozen cell, is its paint, already the pixels
-        const { col, row } = parseKey(key);
-        if (col < cols && row < charRowsOf(rows)) edited.add(row * cols + col);
-      }
-    }
+    edited = ownIndexes(maps, cols, rows, style); // docs/model.md R6
   }
   const shown = (i) => (all || edited.has(i) || (picture && ghost(i)) ? cells[i] ?? null : null);
   const whole = !overlay.image || overlay.cols !== cols || overlay.rows !== rows || overlay.all !== all || overlay.cells?.length !== cells.length;

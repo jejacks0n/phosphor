@@ -1,6 +1,7 @@
 // The PIXEL view shows a character of someone's own on the base (a pin, an art layer's) as it looks at half-cell scale:
 // per half, its background blended toward its foreground by how much of that half the glyph inks (docs/model.md R11).
-// Nothing stored changes: the pixels under it are still the cell's two colors, which the tools read.
+// Nothing stored changes: the pixels under it are still the cell's two colors, which the drawing tools and the Eyedropper
+// read (the fills and the Wand read the look: look-read.test.js).
 import { test, expect, vi } from 'vitest';
 import { settle } from '../support/app.js';
 import { mountPixelView } from '../support/pixelView.js';
@@ -11,7 +12,7 @@ import { rectShape } from '@/document/shapes.js';
 const WHITE = [255, 255, 255], BLACK = [0, 0, 0], RED = [255, 0, 0];
 const gray = (ink) => Array(3).fill(Math.round(255 * ink));
 const rgb = ({ r, g, b }) => [r, g, b];
-// A cell's two grid pixels as the view shows them, and as the output holds them (what the tools read).
+// A cell's two grid pixels as the view shows them, and as the output holds them (what the drawing tools and the Eyedropper read).
 const shown = (seen, col, row) => [seen(col, 2 * row), seen(col, 2 * row + 1)];
 const storedAt = (project, x, y) => [...ctx2d(project.renderer.shownCanvas()).getImageData(x, y, 1, 1).data].slice(0, 3);
 const stored = (project, col, row) => [storedAt(project, col, 2 * row), storedAt(project, col, 2 * row + 1)];

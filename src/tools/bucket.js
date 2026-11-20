@@ -1,6 +1,5 @@
 import { floodFill, colorDistance } from '@/lib/FloodFill';
 import { selectMatching, unitsOf } from '@/lib/MagicWand';
-import { ctx2d } from '@/lib/Canvas';
 import { cellKey, parseKey, ownEntry } from '@/document/editCells';
 import { cellIndex, charRowsOf, isSolidGlyph, showsChar } from '@/lib/Cells';
 import { selectionClip } from '@/lib/selectionClip';
@@ -50,9 +49,10 @@ function artPixels(project) {
 // together; it fills the layer in use either way. The Gradient's too: it fills the Paint Bucket's area.
 //
 // The layer's own pixels, a grid pixel each: a drawing layer's paint, clear where it has none (null with no paint at all:
-// all clear), or the base's picture with its own pixels over it, as it shows with nothing above.
+// all clear), or the base's picture with its own pixels over it, as it shows with nothing above: its characters as they
+// look (docs/model.md R11).
 function ownPixels(project) {
-  if (onBottom(project)) return project.renderer.basePixels;
+  if (onBottom(project)) return project.pixelsAsSeen({ baseOnly: true }); // its pins as they look (docs/model.md R11)
   return project.paintLayer?.hasPaint ? project.paintLayer.gridPixels() : new ImageData(project.cols, project.rows);
 }
 
@@ -111,7 +111,8 @@ export function cellArea(project, workspace, pos) {
 // there. All layers off: by the layer in use's own pixels (ownPixels), where clear is a color of its own.
 export function pixelArea(project, workspace, pos) {
   const alone = !workspace.editFillAllLayers && ownPixels(project);
-  const imageData = alone || ctx2d(project.renderer.shownCanvas()).getImageData(0, 0, project.cols, project.rows); // with the upper layers' pixels, as the view shows
+  const imageData = alone || project.pixelsAsSeen(); // with the upper layers, as the view shows (docs/model.md R11)
+  if (!imageData) return [];
   const x = Math.floor(pos.x), y = Math.floor(pos.y), walls = wallsOf(project, selectionClip(workspace), workspace.pickedLayer), own = artPixels(project);
   if (own && x >= 0 && x < project.cols && own[y * project.cols + x]) own.forEach((mine, i) => { if (!mine) walls[i] = 1; });
   return floodFill(imageData, x, y, workspace.editFillTolerance, workspace.editFillContiguous, workspace.editFillFeather, walls, !!alone);

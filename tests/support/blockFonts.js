@@ -46,3 +46,6 @@ export const nineRowFontWithLowerHalfRows5to8 = fontWith({ 220: rowsFrom(5) }, 9
 // CP437's blocks in an 8×8 and an 8×11 font: a half cell 8 wide and 4 (or 5.5) tall.
 export const font8 = { ...fontWith(cp437, 8), name: 'Eight' };
 export const font11 = { ...fontWith(cp437, 11), name: 'Eleven' };
+// font8 with a blank space and an A that inks its two halves alike (a bar down the middle), for tests that measure the
+// glyphs in it (useBitmapCoverage, as App.vue does): a space looks like its background, an A the same in both halves.
+export const font8Text = { ...fontWith({ ...cp437, 32: blank, 65: (h) => solid(h, 0x18) }, 8), name: 'Eight text' };

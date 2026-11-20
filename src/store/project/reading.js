@@ -2,11 +2,12 @@
 // paint), what's under a cell, edit cells, and rects on the grid.
 import { wholeTile } from '@/document/PaintLayer.js';
 import { hashCell } from '@/document/changes.js';
-import { cellKey, parseKey, mergeEntry, tintedEntry, shownEntry, isFrozen, isPaintBlock } from '@/document/editCells.js';
+import { cellKey, parseKey, mergeEntry, tintedEntry, shownEntry, isFrozen, isPaintBlock, ownIndexes } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
+import { ctx2d } from '@/lib/Canvas.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
-import { bakedEntry, blockOver, cellIndex, charRowsOf, isSolidGlyph, mix, opensToPaint } from '@/lib/Cells.js';
+import { bakedEntry, blockOver, cellIndex, charRowsOf, isSolidGlyph, mix, opensToPaint, putCellPixels } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { resolves } from '@/lib/CharResolver.js';
@@ -237,6 +238,39 @@ export const readingActions = {
   // Whether the cell at col, row shows a character of someone's own (typed, opened, pasted, pinned, an art layer's; a
   // paint block too) on the layer in use or under it: what paint laid there tints, where anything else converts over
   // it (docs/model.md R2). The Renderer's walk up to the layer (#exactUnder, #upperCell), the topmost entry deciding.
+  // The grid as the PIXEL view shows it, cols × rows and opaque, for the fills and the Wand to read (docs/model.md R11):
+  // each character of someone's own as it looks at half-cell scale, not its two stored pixels. All of it: what shows
+  // (shownCanvas) with the looks over it (looksCanvas), and the characters of the cells layers that show as the Overlay
+  // draws them (R6), at full strength whatever its opacity. baseOnly: the base as it shows with nothing above, its pins
+  // as they look (baseLook). Null before the first render.
+  // ponytail: worked out whole on every fill and Wand click (each shown layer's cells walked, or each pin's look asked
+  // for); keep it per render and cells if a grid that's all pins makes a click slow.
+  pixelsAsSeen({ baseOnly = false } = {}) {
+    const { renderer, cols, rows } = this;
+    if (baseOnly) {
+      const base = renderer.basePixels;
+      if (!base) return null;
+      const image = new ImageData(new Uint8ClampedArray(base.data), base.width, base.height), params = this.processParams;
+      for (const key of renderer.baseRecords.pins.keys()) {
+        const { col, row } = parseKey(key);
+        if (col >= base.width || 2 * row >= base.height) continue;
+        renderer.baseLook(col, row, params)?.forEach(({ r, g, b }, half) => { // null under a hidden base, and for a ▄ outside ANSI
+          if (2 * row + half < base.height) image.data.set([r, g, b], 4 * ((2 * row + half) * base.width + col));
+        });
+      }
+      return image;
+    }
+    const shown = renderer.shownCanvas();
+    if (!shown) return null;
+    const canvas = Object.assign(document.createElement('canvas'), { width: cols, height: rows }), ctx = ctx2d(canvas);
+    ctx.drawImage(shown, 0, 0);
+    const looks = renderer.looksCanvas(this.processParams);
+    if (looks) ctx.drawImage(looks, 0, 0);
+    const image = ctx.getImageData(0, 0, cols, rows);
+    for (const i of ownIndexes(this.ownCellMaps, cols, rows, this.renderStyle)) if (this.cells[i]) putCellPixels(image.data, cols, i, this.cells[i]);
+    return image;
+  },
+
   ownCharAt(col, row) {
     const key = cellKey(col, row), ids = cellsUnder(this, this.editId);
     let own = this.renderer.pinAt(col, row) !== undefined;

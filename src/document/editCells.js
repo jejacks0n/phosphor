@@ -10,7 +10,7 @@
  */
 import { usableChar } from '../lib/CharWidth.js';
 import { getEffectiveColor } from '../lib/PixelTransforms.js';
-import { isSolidGlyph } from '../lib/Cells.js';
+import { charRowsOf, isSolidGlyph } from '../lib/Cells.js';
 
 const ATTRS = ['char', 'fg', 'bg', 'fgIndex', 'bgIndex'];
 const WRITTEN = ['char', 'fg', 'bg']; // what makes a cell someone's own when written
@@ -44,6 +44,20 @@ export const ownEntry = (entry, renderStyle) => {
 };
 
 export const cellKey = (col, row) => `${col},${row}`;
+
+// The grid indexes (row * cols + col) of the cells in maps that are someone's own (ownEntry), inside cols × the grid's
+// lines: the cells the PIXEL view's Overlay draws, and that fills and the Wand read as they look (docs/model.md R6, R11).
+export function ownIndexes(maps, cols, rows, renderStyle) {
+  const indexes = new Set();
+  for (const map of maps) {
+    for (const [key, entry] of map) {
+      if (!ownEntry(entry, renderStyle)) continue; // a paint block outside ANSI, or a frozen cell, is its paint, already the pixels
+      const { col, row } = parseKey(key);
+      if (col < cols && row < charRowsOf(rows)) indexes.add(row * cols + col);
+    }
+  }
+  return indexes;
+}
 
 // As key.split(',').map(Number) reads it, without the array: a redraw parses every cell's key.
 export function parseKey(key) {

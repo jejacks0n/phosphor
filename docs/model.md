@@ -244,7 +244,7 @@ current style (a paint block outside ANSI) isn't drawn: its paint is already the
 - Checked by: `tests/browser/pixel-overlay.test.js › in the ASCII styles a paint block isn't drawn over its paint …` and
   `… the report: the strokes under and over the shape …`.
 
-### R11. The PIXEL view shows a character on the base as it looks; what's stored, and what the tools read, stays its two pixels.
+### R11. The PIXEL view shows a character on the base as it looks; what's stored stays its two pixels; fills and the Wand read the look.
 
 The base holds a character of someone's own as a pin and two pixels: its background the top one, its foreground the
 bottom one (`writeBaseCells`), whatever the character is. An art layer's cells are drawn the same way. Shown as they
@@ -255,9 +255,14 @@ draws a layer's cell and `#showResolved` Best match's). `█` is solid, `▓ ▒
 column wide, so it can't split sideways), `▄` as it was, a thin character faint. The cell is the one the art style
 shows (`pinnedCell`: R8's background in Color ASCII, white on black in Monochrome ASCII).
 
-Display only. The output, the cells, saved files and exports hold the two colors as before, and every tool in the PIXEL
-view reads and writes those (`shownCanvas`, the base's own pixels), not the look: the Eyedropper on a gray `▒` picks one
-of its two colors, and the Brush on the base over a `█`'s upper pixel changes its background, which doesn't show.
+Display only. The output, the cells, saved files and exports hold the two colors as before. The Eyedropper and the
+drawing tools read and write those (`shownCanvas`, the base's own pixels), not the look: the Eyedropper on a gray `▒`
+picks one of its two colors, and the Brush on the base over a `█`'s upper pixel changes its background, which doesn't
+show. The Paint Bucket, the Gradient (through the Bucket's area) and the Magic Wand in PIXEL read the look
+(`pixelsAsSeen`), with the characters of the layers above as the Overlay draws them (R6), at full strength whatever the
+Overlay's opacity: a fill covers a cell of spaces whose two colors differ whole, stays inside a block of `░`, and stops
+at text typed on a layer above. With All layers off, a fill on the base reads the base's own look (its pixels, its pins
+as they look: `baseLook`). What a fill writes is still paint.
 
 What's over the character counts, bottom to top, as the cell itself is laid (`#composeOne`, `#paintedPin`,
 `#upperCell`), so the look stays the ANSI view's cell while that's still the character:
@@ -292,13 +297,18 @@ rect walks its pins, not its cells (`MOST_ASKED`): asking a cell for its pin mak
 reading one.
 
 - Lives in: `looksCanvas`, `#lookAt`, `#lookPainted` and `baseLook` (`src/document/Renderer.js`); drawn by
-  `redrawDisplay` and `drawVeil` (`src/components/InputEditor.vue`) and `FrameBuilder.build`.
+  `redrawDisplay` and `drawVeil` (`src/components/InputEditor.vue`) and `FrameBuilder.build`; read by the fills and the
+  Wand through `pixelsAsSeen` (`src/store/project/reading.js`), with the Overlay's cells (`ownIndexes`,
+  `src/document/editCells.js`).
 - Checked by: `tests/browser/pixel-characters.test.js › R11: …` (the report's file; a character written, written over
   and undone; paint over one on the layer above and on one above that, as the ANSI view tints it; on a palette, faint
   paint that leaves a shade as it was; an opened ANSI file under soft strokes, the same to the pixel with All cells off
   and on; a Half-block `▄` over a character; a layer with its own characters; shapes; a hidden base; both ASCII styles;
   a palette with Best match; art layers above and in the lower group; a built frame; the ghost; the Overlay; a redraw
-  that asks no cell). Timed by `bench/pixel-view.bench.js`.
+  that asks no cell), and `tests/browser/look-read.test.js › R11: …` (spaces of two colors filled whole in both views,
+  as in 022.xb; a `░`, a letter and a `█` filled whole with no leak; a `▀` by its top halves; the base's own look with
+  All layers off; a fill on the base stopped by characters typed on a layer above with the Overlay at 0, and running
+  under them with All layers off; the Wand selecting what the fill fills). Timed by `bench/pixel-view.bench.js`.
 
 ### R9. A layer's change redraws what's over and under it, and changes nothing of theirs.
 

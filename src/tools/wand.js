@@ -7,7 +7,6 @@
 import { markRaw } from 'vue';
 import { selectMatching, wandIn } from '@/lib/MagicWand';
 import { colorDistance } from '@/lib/FloodFill';
-import { ctx2d } from '@/lib/Canvas';
 import { charRowsOf } from '@/lib/Cells';
 import { t } from '@/i18n/index.js';
 
@@ -16,9 +15,9 @@ function matcher(project, workspace, view) {
   const tolerance = workspace.wandTolerance;
   const near = (a, b) => colorDistance(a.r, a.g, a.b, b.r, b.g, b.b) <= tolerance;
   if (view === 'input') {
-    const output = project.renderer.shownCanvas(); // with the upper layers' pixels, as the view shows
-    if (!output) return null;
-    const { data } = ctx2d(output).getImageData(0, 0, project.cols, project.rows);
+    const seen = project.pixelsAsSeen(); // with the upper layers, as the view shows (docs/model.md R11)
+    if (!seen) return null;
+    const { data } = seen;
     const rgb = (i) => ({ r: data[4 * i], g: data[4 * i + 1], b: data[4 * i + 2] });
     return { width: project.cols, height: project.rows, same: (seed) => (i) => near(rgb(seed), rgb(i)) };
   }
