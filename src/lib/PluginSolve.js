@@ -180,7 +180,8 @@ function makePluginMatcher(def, ref, palette, glyphs, solids, light, style, opti
     }
   };
 
-  function run(raw, cols, lines, { strength, style: ditherStyle, area, cells, first, alone }) {
+  function run(raw, cols, lines, { strength, style: ditherStyle, area, cells, first, alone, origin }) {
+    const ox = origin?.col ?? 0, oy = origin?.line ?? 0;
     const reach = alone ? 0 : most, spread = nudgeSpread(pal), bayer = strength > 0 && ditherStyle === 'bayer';
     Object.assign(state, { raw, cols, lines, width: cols * SAMPLES.w, reach, spread, strength, bayer, first });
     // Only Floyd–Steinberg's walk over the whole grid reads what a cell shows (walkCells passes nothing on with an area).
@@ -189,7 +190,7 @@ function makePluginMatcher(def, ref, palette, glyphs, solids, light, style, opti
     let faults = 0;
     try {
       walkCells(raw, cols, lines, { sw: SAMPLES.w, sh: SAMPLES.h, strength, style: ditherStyle, area: grownArea(area, reach, cols, lines), spread, keep: false }, (i, col, line, s) => {
-        state.own = s; state.col = solveCell.col = col; state.line = solveCell.line = line;
+        state.own = s; state.col = col; state.line = line; solveCell.col = col + ox; solveCell.line = line + oy;
         const { cell, fault } = call(solve, solveCell, shows);
         picks[i] = cell;
         if (fault) faults++;
@@ -206,7 +207,7 @@ function makePluginMatcher(def, ref, palette, glyphs, solids, light, style, opti
               const p = ((line * SAMPLES.h + Math.floor(i / SAMPLES.w)) * width + col * SAMPLES.w + i % SAMPLES.w) * 4;
               ownSamples[j] = clamp(raw[p] + nudge); ownSamples[j + 1] = clamp(raw[p + 1] + nudge); ownSamples[j + 2] = clamp(raw[p + 2] + nudge);
             }
-            state.col = refineCell.col = col; state.line = refineCell.line = line;
+            state.col = col; state.line = line; refineCell.col = col + ox; refineCell.line = line + oy;
             const { cell, fault } = call(refine, refineCell, false);
             cells[line * cols + col] = cell;
             if (fault) faults++;
@@ -233,10 +234,11 @@ export const holdCell = (result, matcher) => matcher.hold(result);
 // error carried, Bayer's nudge), over area grown by reach, into first; pass 2 (refine, when the solver has one and
 // not alone) over area grown by 2 x reach, from first, with Bayer's nudge and none of the error, into cells. With
 // area, cells and first are the last resolve's, kept by the caller (refine with no first resolves the whole grid).
-// alone (over paint, upper layers): reach 0, no pass 2. first is null without a pass 2. faults: results whose
-// character was held.
-export function resolvePlugin(samples, cols, lines, matcher, { strength = 0, style = 'floyd', area = null, cells = new Array(cols * lines), first = null, alone = false } = {}) {
+// alone (over paint, upper layers): reach 0, no pass 2. origin ({ col, line }): where the samples' first cell is in the
+// drawing, added to the col and line the solver is told (an upper layer's one cell), not to what it reads. first is
+// null without a pass 2. faults: results whose character was held.
+export function resolvePlugin(samples, cols, lines, matcher, { strength = 0, style = 'floyd', area = null, cells = new Array(cols * lines), first = null, alone = false, origin = null } = {}) {
   const refines = !alone && !!matcher.def.refine;
   if (refines && area && !first) area = null;
-  return matcher.run(samples, cols, lines, { strength, style, area, cells, first: refines ? first ?? new Array(cols * lines) : null, alone });
+  return matcher.run(samples, cols, lines, { strength, style, area, cells, first: refines ? first ?? new Array(cols * lines) : null, alone, origin });
 }
