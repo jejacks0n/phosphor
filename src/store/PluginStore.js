@@ -28,6 +28,7 @@ export const usePluginStore = defineStore('plugins', {
   },
 
   actions: {
+    // ponytail: a change made while a load is reading is overwritten by what it read; count loads if that ever bites.
     async load() {
       let records;
       try {

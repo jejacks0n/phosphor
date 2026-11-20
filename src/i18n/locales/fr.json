@@ -1916,6 +1916,30 @@
   },
   "plugins": {
     "open": "Plugins",
+    "title": "Plugins",
+    "sub": "Les plugins ajoutent à Phosphor, des thèmes pour l'instant. Ils viennent dans un fichier nommé phosphor-plugin.json, et sont gardés dans ce navigateur.",
+    "empty": "Aucun plugin pour le moment.",
+    "docs": "Comment marchent les plugins",
+    "by": "par {author}",
+    "themes": "{n} thème | {n} thèmes",
+    "on": "Activé",
+    "off": "Désactivé",
+    "remove": "Retirer",
+    "removeNamed": "Retirer {name}",
+    "installFile": "Installer depuis un fichier…",
+    "startedOff": "Les plugins sont désactivés pour cette visite. Désactivez-en un ou retirez-le ici, puis rechargez Phosphor sans plugins=off.",
+    "unavailable": "Ce navigateur ne garde pas les plugins, donc aucun ne peut être installé.",
+    "install": {
+      "title": "Installer {name} {version} ?",
+      "replaceTitle": "Remplacer {name} {old} par {version} ?",
+      "go": "Installer",
+      "replace": "Remplacer",
+      "adds": "Ajoute {adds}. N'exécute aucun code."
+    },
+    "removeQuestion": {
+      "title": "Retirer {name} ?",
+      "sub": "Ses thèmes partent avec lui."
+    },
     "errors": {
       "tooBig": "Ce fichier est trop gros pour être le manifeste d'un plugin.",
       "notJson": "Ce fichier n'est pas le manifeste d'un plugin.",
