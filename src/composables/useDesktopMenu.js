@@ -20,7 +20,7 @@ export const MENU_LABELS = [
   'room', 'hostRoom', 'joinRoom', 'copyAddress', 'leaveRoom', 'endRoom',
   'view', 'actualSize', 'zoomIn', 'zoomOut', 'fullScreen', 'window',
   'help', 'shortcuts', 'github', 'releaseNotes', 'reportIssue', 'troubleshooting', 'devTools',
-  'about', 'checkUpdates', 'services', 'hide', 'hideOthers', 'showAll',
+  'about', 'checkUpdates', 'plugins', 'startPluginsOff', 'services', 'hide', 'hideOthers', 'showAll',
   'openableFiles', 'projectFiles', 'leaveQuit', 'leaveClose', 'leaveDetail', 'leave', 'stay',
 ];
 
@@ -38,6 +38,12 @@ export async function checkForUpdates() {
   if (!next) return toast(t('updates.upToDate', { version: found.version }));
   if (confirm(t('updates.available', { version: next.tag.slice(1), current: found.version }))) window.open(next.url, '_blank');
 }
+
+// The window loaded again with ?plugins=off (docs/plugins.md), asked first with unsaved work as any reload is. An object,
+// so a test can stand in for the navigation.
+export const reloading = {
+  withPluginsOff: () => { location.search = '?plugins=off'; },
+};
 
 export function useDesktopMenu() {
   const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore(), room = useRoomStore(), social = useSocialStore();
@@ -61,6 +67,8 @@ export function useDesktopMenu() {
     about: () => { workspace.showAboutModal = true; },
     shortcuts: () => { workspace.shortcutsOpen = true; },
     checkUpdates: checkForUpdates,
+    plugins: () => { workspace.pluginsOpen = true; },
+    pluginsOff: () => reloading.withPluginsOff(),
     hostRoom: () => {
       workspace.showSocial();
       if (social.desktopName) social.page = 'start-room';   // without a name, the page that asks for it first

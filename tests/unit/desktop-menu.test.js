@@ -26,12 +26,16 @@ test('the menus, in the page’s words: the app menu only on macOS, where About 
   const mac = menu().template;
   assert.deepEqual(mac.map((m) => m.label), ['Phosphor', '<file>', '<edit>', '<room>', '<view>', '<window>', '<help>']);
   assert.ok(item(mac, 'Phosphor', '<about>') && item(mac, 'Phosphor', '<checkUpdates>'));
+  assert.deepEqual(top(mac, 'Phosphor').submenu.slice(0, 3).map((i) => i.label), ['<about>', '<checkUpdates>', '<plugins>']);
   assert.equal(item(mac, '<help>', '<about>'), undefined);
+  assert.equal(item(mac, '<help>', '<plugins>'), undefined);
   assert.equal(item(mac, '<file>', '<quit>'), undefined);
 
   const other = menu({ mac: false }).template;
   assert.deepEqual(other.map((m) => m.label), ['<file>', '<edit>', '<room>', '<view>', '<help>']);
   assert.ok(item(other, '<help>', '<about>') && item(other, '<help>', '<checkUpdates>'));
+  const help = top(other, '<help>').submenu.map((i) => i.label);
+  assert.equal(help.indexOf('<plugins>'), help.indexOf('<checkUpdates>') + 1);
   assert.equal(item(other, '<file>', '<quit>').role, 'quit');
 });
 
@@ -43,6 +47,7 @@ test('each app action sends its command, with the shortcuts the page also answer
     ['<edit>', '<undo>', 'undo', 'CmdOrCtrl+Z'], ['<edit>', '<redo>', 'redo', 'CmdOrCtrl+Shift+Z'],
     ['<room>', '<hostRoom>', 'hostRoom', undefined], ['<room>', '<joinRoom>', 'joinRoom', undefined],
     ['<help>', '<shortcuts>', 'shortcuts', undefined], ['Phosphor', '<about>', 'about', undefined], ['Phosphor', '<checkUpdates>', 'checkUpdates', undefined],
+    ['Phosphor', '<plugins>', 'plugins', undefined],
   ];
   for (const [menuLabel, label, name, accelerator] of expected) {
     const found = item(template, menuLabel, label);
@@ -103,9 +108,14 @@ test('Help links GitHub, this version’s release notes and a new issue naming t
   assert.match(new URL(issueUrl({ ...SYSTEM, platform: 'win32', systemVersion: '10.0.22631', arch: 'x64' })).searchParams.get('body'), /Windows 10\.0\.22631 \(x64\)$/);
 });
 
-test('the developer tools are under Help > Troubleshooting; reload only unpackaged', () => {
-  const packaged = menu().template;
-  assert.deepEqual(item(packaged, '<help>', '<troubleshooting>').submenu, [{ role: 'toggleDevTools', label: '<devTools>' }]);
+test('the developer tools and a reload with plugins off are under Help > Troubleshooting; reload only unpackaged', () => {
+  const { template: packaged, calls } = menu();
+  const [devTools, pluginsOff, ...rest] = item(packaged, '<help>', '<troubleshooting>').submenu;
+  assert.deepEqual(devTools, { role: 'toggleDevTools', label: '<devTools>' });
+  assert.equal(pluginsOff.label, '<startPluginsOff>');
+  assert.deepEqual(rest, []);
+  pluginsOff.click();
+  assert.deepEqual(calls.pop(), ['command', 'pluginsOff']);
   assert.ok(!top(packaged, '<view>').submenu.some((i) => i.role === 'reload'));
   assert.ok(top(menu({ packaged: false }).template, '<view>').submenu.some((i) => i.role === 'reload'));
 });
