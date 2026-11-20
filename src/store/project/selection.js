@@ -43,6 +43,10 @@ const floated = (action) => function (...args) {
 };
 const canTakeBack = (project, run, steps = run.recorded) => !steps || project._sharing?.role !== 'artist' || !!project._sharing.held;
 const sameIds = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
+// Two selections alike: a Select rectangle, or a Magic Wand's (its view, size, mask and the rectangle it kept to).
+const sameRect = (a, b) => a === b || (!!a && !!b && a.c0 === b.c0 && a.r0 === b.r0 && a.c1 === b.c1 && a.r1 === b.r1);
+const sameWand = (a, b) => a === b || (!!a && !!b && a.view === b.view && a.width === b.width && a.height === b.height
+  && sameRect(a.within, b.within) && a.mask.length === b.mask.length && a.mask.every((bit, i) => bit === b.mask[i]));
 
 // Whether id is the base itself: inside an art layer the one id there is (layersFor) is its drawing's, whatever's in use.
 const isBase = (project, id) => id === 'base' && !project._artInside;
@@ -396,7 +400,7 @@ export const selectionActions = {
 
   // A selection made, changed or dropped (the Select tool's rectangle, the Magic Wand's, Deselect):
   // change(workspace) sets workspace.selection and/or .wand, and it's one undo step that isn't a
-  // change to the document (nothing when the selection stays as it was). before: the selection to go
+  // change to the document (nothing when the selection stays as it was, or is made again alike). before: the selection to go
   // back to, when it changed already (a drag). A move or paste a new selection ends is kept with it
   // (undo); one that's dropped (Deselect, Escape, Enter, a tap outside) just sets the block down, no
   // step of its own, so the next undo takes the move or paste back.
@@ -408,8 +412,8 @@ export const selectionActions = {
     const float = this._float?.version === this.history.version ? this._float : null;
     change?.(workspace);
     const after = { selection: workspace.selection, wand: workspace.wand, vectorSelected: workspace.vectorSelected };
-    const sameShapes = after.vectorSelected.length === before.vectorSelected.length && after.vectorSelected.every((key, i) => key === before.vectorSelected[i]);
-    if (toRaw(after.selection) === toRaw(before.selection) && toRaw(after.wand) === toRaw(before.wand) && sameShapes) return;
+    const sameShapes = sameIds(after.vectorSelected, before.vectorSelected);
+    if (sameRect(toRaw(after.selection), toRaw(before.selection)) && sameWand(toRaw(after.wand), toRaw(before.wand)) && sameShapes) return; // the same selection again: no step
     if (float && !after.selection && !after.wand && sameShapes) return void (this._float = null);
     const apply = (side) => Object.assign(workspace, side);
     this.history.push({ undo: () => apply(before), redo: () => apply(after), selectionOnly: true, float, bytes: after.wand?.mask.length ?? 0 });
