@@ -52,7 +52,7 @@ const guarded = (field, read) => {
 function readOption(raw, field) {
   if (!isObject(raw)) throw shape(field);
   const option = pick(raw, ['id', 'kind', 'name', 'min', 'max', 'step', 'default', 'choices']);
-  if (!OPTION_ID.test(option.id) || !text(option.name)) throw shape(field);
+  if (typeof option.id !== 'string' || !OPTION_ID.test(option.id) || !text(option.name)) throw shape(field);
   const { id, kind, name, min, max, step, default: value } = option;
   if (kind === 'slider') {
     if (![min, max, step, value].every(num) || !(min < max) || !(step > 0) || value < min || value > max) throw shape(field);
@@ -97,7 +97,7 @@ function readSolver(raw, index) {
   return guarded(at, () => {
     if (!isObject(raw)) throw shape(at);
     const { id, name, reach, solve, refine, chars: rawChars, shader, ...rest } = pick(raw, ['id', 'name', 'styles', 'reach', 'chars', 'options', 'solve', 'refine', 'shader']);
-    if (!ID.test(id)) throw shape(`${at}.id`);
+    if (typeof id !== 'string' || !ID.test(id)) throw shape(`${at}.id`);
     if (!text(name)) throw shape(`${at}.name`);
     const styles = copy(rest.styles);
     if (!styles || !styles.length || !styles.every((style) => STYLES.includes(style))) throw shape(`${at}.styles`);
