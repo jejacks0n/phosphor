@@ -61,6 +61,18 @@ export function onSolverFailure(listener) {
   return () => listeners.delete(listener);
 }
 
+// A resolve held some of a solver's results to the set's first character (it returned one it doesn't draw with): told
+// once a resolve. hash as failSolver's.
+const faultListeners = new Set();
+export function faultSolver(ref, hash = solverFor(ref)?.hash) {
+  if (hash !== solverFor(ref)?.hash) return;
+  for (const listener of faultListeners) listener(ref);
+}
+export function onSolverFault(listener) {
+  faultListeners.add(listener);
+  return () => faultListeners.delete(listener);
+}
+
 // A solver's shader is off for the visit (the renderer's check): why is { log } (it didn't build), { lost: true } (the
 // context was lost while it ran) or { count, total, col, line } (cells that differed from its JavaScript, the first's
 // place). hash as failSolver's.

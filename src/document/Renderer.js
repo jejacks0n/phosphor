@@ -39,7 +39,7 @@ import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatch
 import { loadReferenceFont, referenceInk, referenceMask, coverageOf } from '../lib/GlyphCoverage.js';
 import ShapeMatcher from '../lib/ShapeMatcher.js';
 import { pluginMatcher, resolvePlugin, grownArea, SolverError } from '../lib/PluginSolve.js';
-import { solverFor, failSolver, failureOf, offShader } from '../plugins/solvers.js';
+import { solverFor, failSolver, faultSolver, failureOf, offShader } from '../plugins/solvers.js';
 import { beginRun, endRun } from '../plugins/hangMark.js';
 
 export default class Renderer {
@@ -472,7 +472,7 @@ export default class Renderer {
     const o = { ...opts, area: cellsIn, cells: painted.cells };
     if (plugin) {
       marks(plugin, 'painted');
-      resolvePlugin(data, w, lines, matcher, { ...o, alone: true }); // its own cell only
+      tally(params.solver, plugin.hash, resolvePlugin(data, w, lines, matcher, { ...o, alone: true }).faults); // its own cell only
     } else if (!resolveBy(r.gpu, false, () => resolveShapes(data, w, lines, matcher, o), data, w, lines, matcher, o)) resolveShapes(data, w, lines, matcher, o);
     // A cell the paint didn't change is the base's.
     const rowBytes = SAMPLES.w * 4;
@@ -1312,7 +1312,9 @@ export default class Renderer {
     for (let i = 0, j = 0; j < s.length; i += 4, j += 3) { raw[i] = s[j]; raw[i + 1] = s[j + 1]; raw[i + 2] = s[j + 2]; }
     const { cells: [cell] } = inRun(() => {
       marks(m.plugin, 'cell');
-      return resolvePlugin(raw, 1, 1, m.matcher, { alone: true, cells: [null], origin: { col, line: row } });
+      const out = resolvePlugin(raw, 1, 1, m.matcher, { alone: true, cells: [null], origin: { col, line: row } });
+      tally(m.matcher.ref, m.plugin.hash, out.faults);
+      return out;
     });
     return { char: cell.char, fg: cell.fg, bg: cell.bg };
   }
@@ -1774,21 +1776,26 @@ const solverOf = (params) => (params.charMode === 'shape' && params.solver && !f
 // over the cells laid over others, a lone cell). marks() in it sets the hang mark (plugins/hangMark.js) the first time a
 // plugin's script runs one way (what: a whole resolve, the cells under paint, a cell laid over others) this visit, and
 // the mark stays to the run's end, so a solver that hangs on any of the run's cells leaves it behind. Each way is its own
-// first: one run first doesn't leave another unmarked.
+// first: one run first doesn't leave another unmarked. A solver's faults in the run (tally: results held to the set's
+// first character) are told once, at its end (faultSolver), unless it threw.
 // ponytail: the page has one mark, so two plugins first run in one run leave the later's, and a hang in the earlier
 // blames it; the earlier is found by the hang after. A mark per plugin if that's ever seen.
 const ran = new Set(); // what, plugin id and script hash
-let run = null; // the run going on: { marked }
+let run = null; // the run going on: { marked, faults: ref -> script hash }
 function inRun(work) {
   if (run) return work();
-  const own = (run = { marked: false });
+  const own = (run = { marked: false, faults: new Map() });
+  let out;
   try {
-    return work();
+    out = work();
   } finally {
     run = null;
     if (own.marked) endRun();
   }
+  for (const [ref, hash] of own.faults) faultSolver(ref, hash);
+  return out;
 }
+const tally = (ref, hash, faults) => { if (faults && run) run.faults.set(ref, hash); };
 function marks({ pluginId, hash }, what) {
   const key = `${what}\u0000${pluginId}\u0000${hash}`;
   if (!run || ran.has(key)) return;
@@ -1819,7 +1826,12 @@ function resolveBy(gpu, carries, js, ...args) {
 // cells are used.
 const shaderChecks = new Map(); // ref, hash and the glyphs' characters -> true once it agreed, false once it's off
 function resolvePluginBy({ hash }, ref, gpu, carries, samples, cols, lines, matcher, o) {
-  const at = `${ref}\u0000${hash}\u0000${matcher.glyphs.map((g) => g.char).join('')}`, js = () => resolvePlugin(samples, cols, lines, matcher, o);
+  const at = `${ref}\u0000${hash}\u0000${matcher.glyphs.map((g) => g.char).join('')}`;
+  const js = () => { // its faults tallied: the shader's cells have none to count
+    const out = resolvePlugin(samples, cols, lines, matcher, o);
+    tally(ref, hash, out.faults);
+    return out;
+  };
   const checks = !shaderChecks.has(at), lostBefore = checks && ShapeMatcher.shared()?.lost();
   const got = resolveBy(shaderChecks.get(at) === false ? false : gpu, carries, js, samples, cols, lines, matcher, o);
   if (!got || !checks) return got;

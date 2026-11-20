@@ -1990,6 +1990,7 @@
       "hashMismatch": "Le script gardé de {name} n'est pas celui qui a été installé, il n'est donc pas chargé. Installez-le à nouveau.",
       "codeWhileOff": "Les plugins sont désactivés pour cette visite, donc un plugin qui exécute du code ne peut pas être installé maintenant.",
       "solverFailed": "Le solveur « {name} » a échoué : {message}",
+      "solverFault": "Le solveur « {name} » a renvoyé un caractère avec lequel il ne dessine pas : le premier caractère du jeu s'affiche à sa place.",
       "badZip": "Ce fichier n'est pas un .zip lisible.",
       "zipEncrypted": "Ce .zip est protégé par un mot de passe, et Phosphor ne peut pas l'ouvrir.",
       "zip64": "Ce .zip utilise le format des grandes archives, que Phosphor ne sait pas lire.",
