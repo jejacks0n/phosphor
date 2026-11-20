@@ -50,3 +50,21 @@ test('blendChar uses a half-block where a cell spans the blend, and never on a l
   expect(blendChar('linear', { x: 4.75, y: 1 }, { x: 4.25, y: 1 }, 4, 0)).toBe('▐');
   for (let col = 0; col < 40; col++) expect('▀▄▌▐').not.toContain(across(col));
 });
+
+test('at aspect 1 gradientAt and blendChar are what they were', () => {
+  const a = { x: 0, y: 0 }, b = { x: 10, y: 6 };
+  for (const shape of ['linear', 'spherical']) {
+    for (let x = -3; x < 14; x += 2.5) for (let y = -3; y < 12; y += 2.5) {
+      expect(gradientAt(shape, a, b, x, y, 1)).toBe(gradientAt(shape, a, b, x, y));
+    }
+    for (let col = 0; col < 8; col++) for (let row = 0; row < 5; row++) {
+      expect(blendChar(shape, a, b, col, row, 1)).toBe(blendChar(shape, a, b, col, row));
+    }
+  }
+});
+
+test('at aspect 0.5 Spherical is round on screen and Linear is square to its line on screen', () => {
+  expect(gradientAt('spherical', { x: 0, y: 0 }, { x: 10, y: 0 }, 0, 20, 0.5)).toBe(1); // 20 rows down is 10 across
+  expect(gradientAt('spherical', { x: 0, y: 0 }, { x: 10, y: 0 }, 0, 10, 0.5)).toBe(0.5);
+  expect(gradientAt('linear', { x: 0, y: 0 }, { x: 10, y: 20 }, 10, 0, 0.5)).toBe(0.5);
+});

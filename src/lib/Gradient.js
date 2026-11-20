@@ -4,11 +4,12 @@
 
 // Linear: along the line from `from` to `to`, square to it, held at each end. Spherical: the distance
 // from `from`, the line's length the radius. The line has length (a zero-length one is a click).
-export function gradientAt(shape, from, to, x, y) {
-  const dx = to.x - from.x, dy = to.y - from.y, length2 = dx * dx + dy * dy;
+// aspect (pixelAspect): the y deltas count on screen, so Spherical is round and Linear square to its line on screen.
+export function gradientAt(shape, from, to, x, y, aspect = 1) {
+  const dx = to.x - from.x, dy = (to.y - from.y) * aspect, length2 = dx * dx + dy * dy;
   const t = shape === 'spherical'
-    ? Math.hypot(x - from.x, y - from.y) / Math.sqrt(length2)
-    : ((x - from.x) * dx + (y - from.y) * dy) / length2;
+    ? Math.hypot(x - from.x, (y - from.y) * aspect) / Math.sqrt(length2)
+    : ((x - from.x) * dx + (y - from.y) * aspect * dy) / length2;
   return Math.min(1, Math.max(0, t));
 }
 
@@ -29,8 +30,8 @@ const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
 // A cell's blend character, foreground over background. Its level is read at its center and
 // dithered; a half-block (▀▄ up and down, ▌▐ left and right) takes its place where the blend changes
 // so fast across the cell that two solid halves are closer to it than any even shade.
-export function blendChar(shape, from, to, col, row) {
-  const cover = (x, y) => 1 - gradientAt(shape, from, to, x, y);
+export function blendChar(shape, from, to, col, row, aspect = 1) {
+  const cover = (x, y) => 1 - gradientAt(shape, from, to, x, y, aspect);
   const pairs = [
     [cover(col + 0.5, 2 * row + 0.5), cover(col + 0.5, 2 * row + 1.5), '▀', '▄'],
     [cover(col + 0.25, 2 * row + 1), cover(col + 0.75, 2 * row + 1), '▌', '▐'],

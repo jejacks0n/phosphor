@@ -207,7 +207,7 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
     move({ project, workspace, view }, from, to) {
       if (!stroke) newStroke();
       const clip = selectionClip(workspace), { cols, rows } = project;
-      let pixels = brushPixels(from, to, { size: workspace.retouchSize, flow: 1, hardness: workspace.retouchHardness / 100 }, cols, rows);
+      let pixels = brushPixels(from, to, { size: workspace.retouchSize, flow: 1, hardness: workspace.retouchHardness / 100 }, cols, rows, project.pixelAspect);
       if (clip) pixels = pixels.filter(({ x, y }) => clip.pixel(x, y));
       const strength = workspace.retouchStrength / 100;
       const changed = (color, at) => change(color, workspace.retouchRange, at), owned = (from, around) => own(from, around, workspace.retouchRange);

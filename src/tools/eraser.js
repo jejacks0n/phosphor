@@ -50,8 +50,8 @@ const eraser = {
     // Hard in the ANSI view erases whole cells (size 1 is one character, and a wide character's trail takes its lead
     // with it); the pixel view, and Soft in either, exact pixels: Soft's stamps carry how much each takes (alpha).
     const stamps = !exact ? null : soft(workspace)
-      ? brushPixels(from, to, { size, flow: stampFlow(workspace.editEraserFlow), hardness: SOFT_HARDNESS }, project.cols, project.rows)
-      : squarePixels(from, to, size, project.cols, project.rows);
+      ? brushPixels(from, to, { size, flow: stampFlow(workspace.editEraserFlow), hardness: SOFT_HARDNESS }, project.cols, project.rows, project.pixelAspect)
+      : squarePixels(from, to, size, project.cols, project.rows, project.pixelAspect);
     const square = stamps?.filter(({ x, y }) => !clip || clip.pixel(x, y));
     const cells = exact
       ? cellsOfPixels(square, project.cols, project.rows)

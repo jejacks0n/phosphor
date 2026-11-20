@@ -153,7 +153,7 @@ const previewStyle = computed(() => {
   // does: the pointer itself is hidden for both (global.css), so with no outline there'd be nothing to see.
   if (preview.snap && !round) {
     const { cols, rows } = projectStore;
-    const parts = ansi ? squareCells(gridPos(pos), gridPos(pos), size, cols, rows).map(c => ({ x: c.col, y: c.row })) : squarePixels(gridPos(pos), gridPos(pos), size, cols, rows);
+    const parts = ansi ? squareCells(gridPos(pos), gridPos(pos), size, cols, rows).map(c => ({ x: c.col, y: c.row })) : squarePixels(gridPos(pos), gridPos(pos), size, cols, rows, projectStore.pixelAspect);
     if (parts.length) {
       const x0 = Math.min(...parts.map(c => c.x)), x1 = Math.max(...parts.map(c => c.x));
       const y0 = Math.min(...parts.map(c => c.y)), y1 = Math.max(...parts.map(c => c.y));
@@ -170,7 +170,7 @@ const previewStyle = computed(() => {
   return {
     display: 'block',
     width: `${size * unit.x}px`,
-    height: `${size * unit.y * (preview.snap && ansi && !round ? 2 : 1)}px`, // the ANSI view's hard eraser counts cells, two grid pixels tall
+    height: `${size * unit.y * (preview.snap && ansi && !round ? 2 : 1 / projectStore.pixelAspect)}px`, // the ANSI view's hard eraser counts cells, two grid pixels tall
     left: `${pos.x + (display?.clientLeft ?? 0)}px`,
     top: `${pos.y + (display?.clientTop ?? 0)}px`,
     borderRadius: round ? '50%' : '0',

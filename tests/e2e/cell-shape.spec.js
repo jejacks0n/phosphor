@@ -28,4 +28,11 @@ test('in an 8×8 font a click in the PIXEL view lands on the grid pixel under it
   await page.mouse.click(box.x + 5.5 * w, box.y + 11.5 * w * 0.5);
   // Lit (brighter than half), its neighbors above and below black. Before, the click landed on the grid pixel at y 5.
   await expect.poll(() => store(page, 'project', (p) => [10, 11, 12].map((y) => (p.baseLayer.pixelAt(5, y)?.r ?? 0) > 128))).toEqual([false, true, false]);
+  // The Brush's outline is as tall as it is wide on screen (it is a circle), though a grid pixel is half as tall as wide.
+  await page.keyboard.press('b');
+  await page.mouse.move(box.x + 20 * w, box.y + 20 * w * 0.5);
+  await expect.poll(async () => {
+    const o = await page.locator('.canvas-viewport:has(.pixel-display) .tool-preview').boundingBox();
+    return o && Math.abs(o.width - o.height) < 1.5 && o.width > 4;
+  }).toBe(true);
 });

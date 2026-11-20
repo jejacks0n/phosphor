@@ -30,13 +30,14 @@ export function pencilPixels(from, to, cols, rows) {
 }
 
 // Hard square of `size` grid pixels centered on the stroke (the eraser).
-export function squarePixels(from, to, size, cols, rows) {
-  const half = size / 2;
+// aspect: a grid pixel's height over its width on screen (pixelAspect), so the square is square on screen.
+export function squarePixels(from, to, size, cols, rows, aspect = 1) {
+  const half = size / 2, halfY = half / aspect;
   const pixels = new Map();
   for (const { x, y } of interpolate(from, to)) {
     // The pixels whose centers (i + 0.5) lie inside the square (x - half, x + half]: size 1 is the
     // pixel under the pointer, including exactly on a pixel edge.
-    for (let iy = Math.floor(y - half - 0.5) + 1; iy <= Math.floor(y + half - 0.5); iy++) {
+    for (let iy = Math.floor(y - halfY - 0.5) + 1; iy <= Math.floor(y + halfY - 0.5); iy++) {
       for (let ix = Math.floor(x - half - 0.5) + 1; ix <= Math.floor(x + half - 0.5); ix++) {
         if (inGrid(ix, iy, cols, rows)) pixels.set(`${ix},${iy}`, { x: ix, y: iy, alpha: 1 });
       }
@@ -61,15 +62,16 @@ export function squareCells(from, to, size, cols, rows) {
 }
 
 // Soft round brush. flow and hardness are 0..1. Overlapping stamps are kept (they build up paint).
-export function brushPixels(from, to, { size, flow, hardness }, cols, rows) {
-  const radius = size / 2;
+// aspect (pixelAspect): the distance counts dy on screen, so the round brush is round on screen.
+export function brushPixels(from, to, { size, flow, hardness }, cols, rows, aspect = 1) {
+  const radius = size / 2, radiusY = radius / aspect;
   const pixels = [];
   for (const { x, y } of interpolate(from, to)) {
-    for (let iy = Math.floor(y - radius); iy < Math.ceil(y + radius); iy++) {
+    for (let iy = Math.floor(y - radiusY); iy < Math.ceil(y + radiusY); iy++) {
       for (let ix = Math.floor(x - radius); ix < Math.ceil(x + radius); ix++) {
         if (!inGrid(ix, iy, cols, rows)) continue;
 
-        const dx = ix + 0.5 - x, dy = iy + 0.5 - y;
+        const dx = ix + 0.5 - x, dy = (iy + 0.5 - y) * aspect;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > radius) continue;
 

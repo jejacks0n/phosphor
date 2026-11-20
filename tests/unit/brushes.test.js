@@ -157,3 +157,22 @@ test('squareCells: an N by N square of whole cells around the cell under the poi
   assert.deepEqual(sq({ x: 0.5, y: 0.5 }, { x: 0.5, y: 0.5 }, 3), [[0, 0], [1, 0], [0, 1], [1, 1]]); // clipped at the edge
   assert.deepEqual(sq({ x: 1.5, y: 0.5 }, { x: 3.5, y: 0.5 }, 1), [[1, 0], [2, 0], [3, 0]]); // a drag, each cell once
 });
+
+test('at aspect 1 the brush and the square are what they were', () => {
+  for (let size = 1; size <= 9; size++) {
+    for (const [x, y] of [[20, 20], [20.5, 20.5], [20.3, 20.3]]) {
+      const from = { x, y }, to = { x: x + 3, y: y + 2 };
+      const opts = { size, flow: 0.8, hardness: 0.5 };
+      assert.deepEqual(brushPixels(from, to, opts, 40, 40, 1), brushPixels(from, to, opts, 40, 40));
+      assert.deepEqual(squarePixels(from, to, size, 40, 40, 1), squarePixels(from, to, size, 40, 40));
+    }
+  }
+});
+
+test('at aspect 0.5 a size-6 brush covers 6 columns and 12 rows; a size-4 square 4 columns and 8 rows', () => {
+  const span = (ps, k) => Math.max(...ps.map((p) => p[k])) - Math.min(...ps.map((p) => p[k])) + 1;
+  const b = brushPixels({ x: 20, y: 20 }, { x: 20, y: 20 }, { size: 6, flow: 1, hardness: 1 }, 40, 40, 0.5);
+  assert.deepEqual([span(b, 'x'), span(b, 'y')], [6, 12]);
+  const s = squarePixels({ x: 20, y: 20 }, { x: 20, y: 20 }, 4, 40, 40, 0.5);
+  assert.deepEqual([span(s, 'x'), span(s, 'y')], [4, 8]);
+});

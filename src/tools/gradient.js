@@ -13,11 +13,11 @@ function fillGradient({ project, workspace, view }, from, to) {
   const shape = workspace.gradientShape, fg = workspace.editFgColor, bg = workspace.editBgColor;
   if (fillsCells(workspace, view)) {
     const { editFgIndex: fgIndex, editBgIndex: bgIndex } = workspace;
-    const cells = cellArea(project, workspace, from).map(({ x, y }) => ({ col: x, row: y, attrs: { char: blendChar(shape, from, to, x, y), fg, bg, fgIndex, bgIndex } }));
+    const cells = cellArea(project, workspace, from).map(({ x, y }) => ({ col: x, row: y, attrs: { char: blendChar(shape, from, to, x, y, project.pixelAspect), fg, bg, fgIndex, bgIndex } }));
     project.writeEditCells(cells, { clearPaint: true });
   } else {
     const f = hex2rgb(fg), b = hex2rgb(bg);
-    const pixels = pixelArea(project, workspace, from).map((p) => ({ ...p, ...blendColor(f, b, gradientAt(shape, from, to, p.x + 0.5, p.y + 0.5)) }));
+    const pixels = pixelArea(project, workspace, from).map((p) => ({ ...p, ...blendColor(f, b, gradientAt(shape, from, to, p.x + 0.5, p.y + 0.5, project.pixelAspect)) }));
     project.paintEditPixels(pixels, workspace.editBrushOpacity, workspace.editBrushStack);
   }
   project.commitEdit();
