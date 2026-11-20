@@ -73,6 +73,7 @@ test('loading the same font twice keeps one', async () => {
 
 test('choosing a bitmap font gives the drawing that font, and a built-in takes it away', async () => {
   const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
   const font = await addBitmapFont(rawFile(8, 'EIGHT.F08', 5));
   workspace.userFonts = await loadFonts();
   host = document.createElement('div');
@@ -135,7 +136,7 @@ test('Remove clears the browser\'s copy of the drawing\'s font and leaves the dr
   workspace.userFonts = await loadFonts();
   await mountFontsPage(workspace);
   const press = (label) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === label).click();
-  press('Use in this drawing');
+  press('Use this font');
   await expect.poll(() => project.drawingFont?.height).toBe(16);
   workspace.displayFontSizes = { [font.id]: 24 };
   await setDisplayFont(workspace.displayFontSpec); // as App.vue does: the drawing's font registered and in use

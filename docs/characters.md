@@ -164,14 +164,14 @@ The character palette layer has a **Palettes | Fonts** switch at the top. **Pale
 
 ### The Fonts Page
 
-The page has a filter and **+ Load**, which loads and uses a bitmap font (`.F01` to `.F32`, the number being the height of a character in pixels, or a PNG sheet of one, 16 characters across and 16 down, 256 in all) or a monospaced TrueType (`.ttf`), OpenType (`.otf`) or WOFF (`.woff`, `.woff2`) font from your computer. Below are two groups: **This drawing** (the font the drawing carries; **Next drawing** on the start screen, where its button reads **Use in the next drawing**) and **Yours** (the fonts kept in this browser). Each row has the font's name, its size and a sample of text drawn in that font.
+The page has a filter and **+ Load**, which loads and uses a bitmap font (`.F01` to `.F32`, the number being the height of a character in pixels, or a PNG sheet of one, 16 characters across and 16 down, 256 in all) or a monospaced TrueType (`.ttf`), OpenType (`.otf`) or WOFF (`.woff`, `.woff2`) font from your computer. Below are two groups: **This drawing** (the font the drawing carries; **Next drawing** on the start screen) and **Yours** (the fonts kept in this browser). Each row has the font's name, its size and a sample of text drawn in that font.
 
-Choosing a row shows that font's name, a line of facts (its size, whether it's the drawing's font or in your browser, and how many palettes are tied to it), its actions, and its 256 slots drawn in the font. Hover a slot to see its number. The Up and Down arrow keys choose the previous and next font in the list. Choosing a row only shows it; nothing changes in the drawing until you use it. Loading a file is different: the font you load is put to use at once (except in someone else's room), and **Use in this drawing** is for fonts already loaded.
+Choosing a row shows that font's name, a line of facts (its size, whether it's the drawing's font or in your browser, and how many palettes are tied to it), its actions, and its 256 slots drawn in the font. Hover a slot to see its number. The Up and Down arrow keys choose the previous and next font in the list. Choosing a row only shows it; nothing changes in the drawing until you use it. Loading a file is different: the font you load is put to use at once (except in someone else's room), and **Use this font** is for fonts already loaded. It does what choosing the font in the Font dropdown does.
 
 - **The drawing's font**: **Save .F##**, **Save PNG**, **Export palettes** and **Palettes ▸** (which opens the Palettes page). If the same font is also kept in this browser, **Remove** is there too.
-- **Another bitmap font**: **Use in this drawing**, **Save .F##**, **Save PNG**, **Export palettes** and **Remove**. **Use in this drawing** gives the drawing that font, as one undo step.
-- **A TrueType font**: a sample of text, **View in it** and **Remove**. A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. **View in it** takes the drawing's bitmap font away (one undo step) and draws in the TrueType font.
-- **In someone else's room**: **Use in this drawing** and **View in it** are off. Loading, saving, **Remove** and the palettes still work.
+- **Another bitmap font**: **Use this font**, **Save .F##**, **Save PNG**, **Export palettes** and **Remove**. **Use this font** gives the drawing that font, as one undo step; it's saved with the drawing.
+- **A TrueType font**: a sample of text, **Use this font** and **Remove**. A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. **Use this font** takes the drawing's bitmap font away (one undo step) and draws in the TrueType font, for you only: it's kept in your browser, not in the drawing.
+- **In someone else's room**: **Use this font** is off. Loading, saving, **Remove** and the palettes still work.
 - **Remove**: forgets this browser's copy of the font. A drawing keeps its own font, and the palettes tied to the removed font stay ([For Fonts Not Loaded](#for-fonts-not-loaded)).
 
 Loaded fonts stay in this browser until you remove them. They're never uploaded anywhere.
@@ -186,7 +186,7 @@ A TrueType (`.ttf`), OpenType (`.otf`) or WOFF (`.woff`, `.woff2`) font loaded w
 
 ### Bitmap Fonts
 
-Use **+ Load** on the Fonts page to pick a raw bitmap font (`.F01` to `.F32`) or a PNG sheet of one. The drawing is drawn in it at once, the way old DOS art is (not in someone else's room). Later, **Use in this drawing** gives the drawing any font you've loaded. **Save .F##** and **Save PNG** write the drawing's font back out, as either.
+Use **+ Load** on the Fonts page to pick a raw bitmap font (`.F01` to `.F32`) or a PNG sheet of one. The drawing is drawn in it at once, the way old DOS art is (not in someone else's room). Later, **Use this font** gives the drawing any font you've loaded. **Save .F##** and **Save PNG** write the drawing's font back out, as either.
 
 A bitmap font belongs to the drawing, not to your browser:
 
@@ -213,7 +213,7 @@ In a drawing with a bitmap font, a palette you make (or a built-in one you copy 
 - **Yours**, with **+ New**, **Import** and **Export**.
 - **For fonts not loaded (N)**, collapsed ([For Fonts Not Loaded](#for-fonts-not-loaded)).
 
-Palettes tied to a font are hidden while another font is in use, and the one you had chosen comes back with its font (including when you undo **Use in this drawing**). The editor's head says **For <font> ▾** or **Any font ▾**; its menu has **Use with any font** or **Tie to <font>**. **Export** sits beside **Duplicate**. In a font drawing the source tabs are the font's own (**<font> · 256**), **In this drawing** and **Recent**; there's no Unicode tab. A character the font lacks can stay in a palette tied to it, marked as not fitting.
+Palettes tied to a font are hidden while another font is in use, and the one you had chosen comes back with its font (including when you undo **Use this font**). The editor's head says **For <font> ▾** or **Any font ▾**; its menu has **Use with any font** or **Tie to <font>**. **Export** sits beside **Duplicate**. In a font drawing the source tabs are the font's own (**<font> · 256**), **In this drawing** and **Recent**; there's no Unicode tab. A character the font lacks can stay in a palette tied to it, marked as not fitting.
 
 ### For Fonts Not Loaded
 

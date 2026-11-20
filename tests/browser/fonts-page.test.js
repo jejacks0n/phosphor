@@ -1,5 +1,5 @@
 // The palette layer's Fonts page: the drawing's font and yours, each sampled in its own glyphs; the chosen one's
-// 256 slots and its actions (Load, Save, Use in this drawing, View in it, Export palettes, Remove).
+// 256 slots and its actions (Load, Save, Use this font, Export palettes, Remove).
 import { test, expect, vi, afterEach } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -107,14 +107,14 @@ test('Export palettes saves the font\'s palettes', async () => {
   expect(JSON.parse(await saved[0].blob.text()).palettes.map((p) => p.name)).toEqual(['Frogs']);
 });
 
-test('choosing another font only shows it; Use in this drawing applies it', async () => {
+test('choosing another font only shows it; Use this font applies it', async () => {
   const { project, b } = await mount();
   await press(row('B'));
   expect(title()).toBe('B');
   expect(host.querySelector('.edit-side .meta').textContent).toBe('8×16 · in your browser · no palettes');
   expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
-  expect(actions()).toEqual(['Use in this drawing', 'Save .F16', 'Save PNG', 'Export palettes', 'Remove']);
-  await press(button('Use in this drawing'));
+  expect(actions()).toEqual(['Use this font', 'Save .F16', 'Save PNG', 'Export palettes', 'Remove']);
+  await press(button('Use this font'));
   await expect.poll(() => project.drawingFont && fontId(project.drawingFont)).toBe(b.id);
   project.undo();
   expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
@@ -153,7 +153,7 @@ test('the keys stay with the layer when the button pressed goes away', async () 
     el.click();
   };
   await press(row('B'));
-  pressFocused(button('Use in this drawing')); // gone once B is the drawing's
+  pressFocused(button('Use this font')); // gone once B is the drawing's
   await expect.poll(() => project.drawingFont && fontId(project.drawingFont)).toBe(b.id);
   await expect.poll(() => host.contains(document.activeElement)).toBe(true);
   escape();
@@ -164,15 +164,15 @@ test('the keys stay with the layer when the button pressed goes away', async () 
   expect(closes).toBe(2);
 });
 
-test('a TrueType font shows a sample and View in it', async () => {
+test('a TrueType font shows a sample and Use this font', async () => {
   const { project, workspace, tt } = await mount();
   await press(row('Tall Mono'));
   expect(host.querySelector('.sheet')).toBeNull();
   expect(host.querySelectorAll('.edit-side .sample-text div')).toHaveLength(5);
   expect(host.querySelector('.edit-side .sample-text').style.fontFamily).toContain(tt.id);
   expect(host.querySelector('.edit-side .note').textContent).toContain('A TrueType font draws any character');
-  expect(actions()).toEqual(['View in it', 'Remove']);
-  await press(button('View in it'));
+  expect(actions()).toEqual(['Use this font', 'Remove']);
+  await press(button('Use this font'));
   await expect.poll(() => workspace.displayFont).toBe(tt.id);
   expect(project.drawingFont).toBeNull();
 });
@@ -217,11 +217,11 @@ test('in someone else\'s room, applying is off', async () => {
   const { workspace } = await mount();
   workspace.roomFont = { id: 'jetbrains', name: 'JetBrains Mono', family: 'JetBrains Mono', size: 16, lineHeight: 1.2 };
   await press(row('B'));
-  expect(button('Use in this drawing').disabled).toBe(true);
+  expect(button('Use this font').disabled).toBe(true);
   expect(button('Save .F16').disabled).toBe(false);
   expect(button('Remove').disabled).toBe(false);
   await press(row('Tall Mono'));
-  expect(button('View in it').disabled).toBe(true);
+  expect(button('Use this font').disabled).toBe(true);
 });
 
 test('before any drawing is open, the font chosen is the next drawing\'s', async () => {
@@ -229,6 +229,5 @@ test('before any drawing is open, the font chosen is the next drawing\'s', async
   expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['Next drawing', 'Yours']);
   expect(host.querySelector('.edit-side .meta').textContent).toContain('the next drawing\'s font');
   await press(row('B'));
-  expect(button('Use in the next drawing')).toBeTruthy();
-  expect(button('Use in this drawing')).toBeUndefined();
+  expect(button('Use this font')).toBeTruthy();
 });

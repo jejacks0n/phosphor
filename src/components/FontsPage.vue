@@ -12,7 +12,7 @@ import { downloadBlob } from '@/document/projectIO';
 
 // The palette layer's Fonts page: the drawing's bitmap font and yours on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
-// font here only shows it: Use in this drawing and View in it apply it, as the Font field's dropdown does.
+// font here only shows it: Use this font applies it, as the Font field's dropdown does.
 const emit = defineEmits(['acted']);
 const { t } = useI18n();
 const project = useProjectStore();
@@ -152,8 +152,7 @@ const exportPalettes = () => {
         <span class="meta">{{ meta }}</span>
       </div>
       <div class="actions">
-        <button v-if="bitmap && !isDrawn" class="ghost" :disabled="hostsFont" @click="apply">{{ t(project.image ? 'palette.fonts.use' : 'palette.fonts.useNext') }}</button>
-        <button v-if="!bitmap" class="ghost" :disabled="hostsFont" @click="apply">{{ t('palette.fonts.view') }}</button>
+        <button v-if="!isDrawn" class="ghost" :disabled="hostsFont" @click="apply">{{ t('palette.fonts.use') }}</button>
         <template v-if="bitmap">
           <button class="ghost" @click="save(saveRaw)">{{ t('palette.fonts.saveRaw', { height: String(chosen.height).padStart(2, '0') }) }}</button>
           <button class="ghost" @click="save(savePng)">{{ t('palette.fonts.savePng') }}</button>
