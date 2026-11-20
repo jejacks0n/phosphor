@@ -305,7 +305,7 @@ div.tabs button.tone:hover {
 }
 div.tabs button.panel {   /* as EditTabs' « folded, so it keeps its place */
   align-self: flex-start;
-  margin: 8.5px 5px 0 4px;   /* puts it where EditTabs' « is (measured) */
+  margin: 6.5px 5px 0 4px;   /* where EditTabs' « is (measured) */
   padding: 4px;
   font-size: 14px;
 }
@@ -315,7 +315,7 @@ div.tabs button[role='tab'] {
   align-items: center;
   gap: 6px;
   height: auto;
-  padding: 0 12px;
+  padding: 4px 12px 0;   /* its words 2px under its middle, level with EditTabs' Animate beside them; the tab as tall as the strip all the same */
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -329,7 +329,7 @@ div.tabs button[role='tab'] {
   transition: color 0.3s ease;
 }
 div.tabs button[role='tab'].icon {
-  padding: 0 10px;
+  padding: 4px 10px 0;
 }
 div.tabs button[role='tab']:hover { /* not the global button lift */
   transform: none;
@@ -359,7 +359,7 @@ div.indicator { /* along the picked tab's foot, over the strip's line */
 }
 span.beta {   /* raised over the end of SOCIAL */
   position: absolute;
-  top: 6px;
+  top: 8px;
   right: 6px;
   font-size: 8px;
   font-weight: normal;

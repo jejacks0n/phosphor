@@ -60,6 +60,12 @@ test('out of a room it has LAYERS and Social (marked Beta); its edge\'s keys res
   expect(panel().getBoundingClientRect().width).toBe(SIDE_PANEL.width);
   expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['»', 'Collapse panel', 'true']);
   expect(arrow().parentElement.matches('.side-panel div.tabs')).toBe(true);   // at the right end of the panel's tabs
+  const mid = (el) => (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2;
+  expect(arrow().getBoundingClientRect().top - arrow().parentElement.getBoundingClientRect().top).toBeCloseTo(6.5, 1);   // where the « will be
+  const layers = host.querySelector('.side-panel [role=tab]'), word = document.createRange();
+  word.selectNodeContents(layers);
+  expect(mid(word) - mid(layers)).toBeCloseTo(2, 0);   // a tab's word sits 2px under its middle
+  expect(layers.getBoundingClientRect().height).toBe(layers.parentElement.getBoundingClientRect().height);   // in a tab as tall as the strip
   expect(arrow().previousElementSibling.matches('[role=tablist]')).toBe(true);
   expect(host.querySelector('nav button.panel')).toBe(null);
   arrow().click();   // folded, it takes no width at all; and a fold is kept in the browser
@@ -67,6 +73,7 @@ test('out of a room it has LAYERS and Social (marked Beta); its edge\'s keys res
   expect(panel().getBoundingClientRect().width).toBe(0);
   expect(panel().checkVisibility()).toBe(false);
   expect(arrow().parentElement.matches('nav.workspace-tabs')).toBe(true);   // and the « is in the nav
+  expect(mid(host.querySelector('label.animate')) - mid(arrow())).toBeCloseTo(1, 0);   // as high as the » was: 2px above the row's middle, where Animate is 1px above it
   await nextTick();
   expect(document.activeElement).toBe(arrow());   // focus went with it
   expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['«', 'Expand panel', 'false']);
