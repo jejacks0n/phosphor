@@ -8,7 +8,7 @@ export const OFFICIAL_REPO = 'jejacks0n/phosphor';
 export const OFFICIAL_PREFIX = 'phosphor.';
 
 const NAME = /^[A-Za-z0-9._-]+$/;
-const REPO = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
+const isRepo = (value) => typeof value === 'string' && value.split('/').length === 2 && value.split('/').every(segment);
 const COMMIT = /^[0-9a-f]{40}$/;
 const HASH = /^[0-9a-f]{64}$/;
 const segment = (value) => NAME.test(value) && value !== '.' && value !== '..';
@@ -42,7 +42,7 @@ export function wikiLinks(markdown) {
 function readEntry(raw) {
   if (raw === null || typeof raw !== 'object') return null;
   const { official, repo, path, commit, manifestHash, scriptHash } = raw;
-  if (typeof official !== 'boolean' || !REPO.test(repo ?? '') || !isPath(path) || !COMMIT.test(commit ?? '') || !HASH.test(manifestHash ?? '')) return null;
+  if (typeof official !== 'boolean' || !isRepo(repo) || !isPath(path) || !COMMIT.test(commit ?? '') || !HASH.test(manifestHash ?? '')) return null;
   let manifest;
   try { manifest = readManifest(JSON.stringify(raw.manifest)); } catch { return null; }
   if (official !== (manifest.id.startsWith(OFFICIAL_PREFIX))) return null; // only Phosphor's own ids are official
