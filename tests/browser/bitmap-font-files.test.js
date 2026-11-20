@@ -4,7 +4,7 @@ import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
-import { createTestApp } from '../support/app.js';
+import { createTestApp, settle } from '../support/app.js';
 import FontField from '@/components/FontField.vue';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { writeXBin } from '@/lib/XBinFile';
@@ -96,6 +96,7 @@ test('an XBin opens with the blocks kept for its font, before the font list is r
   const palette = ['#000000', '#0000aa', '#00aa00', '#00aaaa', '#aa0000', '#aa00aa', '#aa5500', '#aaaaaa', '#555555', '#5555ff', '#55ff55', '#55ffff', '#ff5555', '#ff55ff', '#ffff55', '#ffffff'];
   await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells, palette, font: { name: 'K', height: 16, bytes, blocks } })], 'k.xb'));
   expect(project.fontBlocks).toBe(blocks.join('.'));
+  await settle(project); // so no late work reaches the next test
 });
 
 test('choosing a bitmap font gives the drawing that font, and a built-in takes it away', async () => {
