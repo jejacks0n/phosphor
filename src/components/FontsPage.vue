@@ -6,7 +6,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
 import { storedBitmapFont, registerBitmapFont, familyOf, storeBlocks, loadFonts } from '@/lib/userFonts';
-import { fontId, fontKey, encodeBlocks, blocksOf, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
+import { fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
@@ -98,7 +98,7 @@ const blockAt = computed(() => new Map((font.value ? blocksOf(font.value) : []).
 const readout = (n) => {
   const i = blockAt.value.get(n), char = chars.value[n];
   if (i === undefined) return t('palette.fonts.slot', { n, char });
-  return t(font.value.blocks ? 'palette.fonts.slotBlockSet' : 'palette.fonts.slotBlock', { n, char, block: t(`palette.fonts.blockLong.${BLOCKS[i].key}`) });
+  return t(font.value.blocks && findBlocks({ ...font.value, blocks: undefined })[i] !== n ? 'palette.fonts.slotBlockSet' : 'palette.fonts.slotBlock', { n, char, block: t(`palette.fonts.blockLong.${BLOCKS[i].key}`) });
 };
 
 // Every listed bitmap font registered with the page, so its sample and sheet draw in its own glyphs. (TrueType fonts

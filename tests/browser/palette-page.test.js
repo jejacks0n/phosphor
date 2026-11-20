@@ -9,11 +9,11 @@ import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { createTestApp } from '../support/app.js';
 import { usePaletteStore } from '@/store/PaletteStore.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { fontId } from '@/lib/BitmapFont.js';
+import { fontId, CP437_BLOCKS } from '@/lib/BitmapFont.js';
 import { readPaletteFile, writePaletteFile } from '@/lib/PaletteFile.js';
 import { toastMessage } from '@/composables/useToast.js';
 
-const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
+const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1), blocks: CP437_BLOCKS }); // no block can be found in these bytes, so they're given
 let app = null, host = null;
 
 afterEach(() => {

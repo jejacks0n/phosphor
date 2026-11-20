@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { BLOCKS, CP437_BLOCKS, blocksOf, slotChars } from '@/lib/BitmapFont';
+import { BLOCKS, CP437_BLOCKS, blocksOf, findBlocks, slotChars } from '@/lib/BitmapFont';
 
 // The Fonts page's Blocks row: the slot that draws each of a bitmap font's eight block characters, in the font's own
 // glyphs, and one line on what was found. Picking a tile is the page's: the sheet's slots are clicked to set it.
@@ -17,7 +17,8 @@ const { t } = useI18n();
 
 const blocks = computed(() => blocksOf(props.font));
 const chars = computed(() => slotChars(props.font));
-const set = computed(() => !!props.font.blocks);
+// the blocks whose slot the person chose: those that differ from what the pixels say
+const byYou = computed(() => (props.font.blocks ? findBlocks({ ...props.font, blocks: undefined }) : blocks.value).map((s, i) => s !== blocks.value[i]));
 const long = (i) => t(`palette.fonts.blockLong.${BLOCKS[i].key}`);
 
 const note = computed(() => {
@@ -28,11 +29,11 @@ const note = computed(() => {
   const others = missing.filter((i) => i !== 1);
   if (others.length) lines.push(t('palette.fonts.noBlocks', { names: others.map((i) => long(i).toLowerCase()).join(', ') }));
   for (const i of moved) {
-    lines.push(t(set.value ? 'palette.fonts.blockMovedSet' : 'palette.fonts.blockMovedFound', { name: long(i), n: blocks.value[i], home: CP437_BLOCKS[i], char: chars.value[CP437_BLOCKS[i]] }));
+    lines.push(t(byYou.value[i] ? 'palette.fonts.blockMovedSet' : 'palette.fonts.blockMovedFound', { name: long(i), n: blocks.value[i], home: CP437_BLOCKS[i], char: chars.value[CP437_BLOCKS[i]] }));
   }
-  if (!lines.length) lines.push(t(set.value ? 'palette.fonts.blocksSet' : 'palette.fonts.blocksFound'));
+  if (!lines.length) lines.push(t(byYou.value.some(Boolean) ? 'palette.fonts.blocksSet' : 'palette.fonts.blocksFound'));
   if (!props.picked) lines.push(t('palette.fonts.blocksHint'));
-  return { text: lines.join(' '), tone: missing.length ? 'warn' : moved.length || set.value ? 'accent' : '' };
+  return { text: lines.join(' '), tone: missing.length ? 'warn' : moved.length || byYou.value.some(Boolean) ? 'accent' : '' };
 });
 </script>
 

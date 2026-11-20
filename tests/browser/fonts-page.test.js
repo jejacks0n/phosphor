@@ -338,6 +338,9 @@ test('picking Lower and clicking a slot sets it, as one undo step, and Find bloc
   slotCell(254).dispatchEvent(new Event('mouseenter'));
   await nextTick();
   expect(host.querySelector('.edit-side .info').textContent).toBe('Slot 254 ▄ · Lower half (set by you)');
+  slotCell(219).dispatchEvent(new Event('mouseenter'));
+  await nextTick();
+  expect(host.querySelector('.edit-side .info').textContent).toBe('Slot 219 █ · Full block'); // found, so not "set by you"
   project.undo();
   await nextTick();
   expect(blocksOf(project.drawingFont)[1]).toBe(240);
@@ -385,12 +388,12 @@ test('an edit to a font only in the browser is kept with it and leaves the drawi
 test('a palette tied to the font stays tied after its blocks change', async () => {
   const { project, palettes } = await mount({ font: lowerAt240 });
   const id = fontId(lowerAt240);
-  expect(palettes.countFor(id)).toBe(palettes.countFor(fontId(project.drawingFont)));
-  const before = palettes.countFor(id);
+  palettes.create(); // made in the drawing, so tied to its font
+  expect(palettes.countFor(id)).toBe(1);
   await press(tile('Lower'));
   await press(slotCell(254));
   expect(fontId(project.drawingFont)).toBe(id);
-  expect(palettes.countFor(id)).toBe(before);
+  expect(palettes.countFor(id)).toBe(1);
 });
 
 test('block edits on the drawing\u2019s font are off in a room', async () => {
