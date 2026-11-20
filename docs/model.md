@@ -90,7 +90,7 @@ showed held the colors under the paint (the picture's, or a hidden base's black)
 changed, a gray or black border round a merged shape once the base is hidden or shown. A vector layer merged into a vector layer moves its shapes there as shapes, numbered to stay
 above that layer's own (`shapesOnVector`), and only when the two layers' character settings are the same: under other
 ones the shapes would convert otherwise, and there's nothing to freeze a shape into. A merged vector layer's shapes go into
-the paint at their own detail (the base layer's scale), not a grid pixel at a time, so By shape samples them as it
+the paint at their own detail (the base layer's scale), not a grid pixel at a time, so By shape (and plugin solvers, R12) samples them as it
 sampled the shapes (R7). The converter shows the pin and leaves the paint under it alone (the Renderer's `#composeOne` and `#upperCell` lay no paint of the cell's own layer over a
 frozen entry; `layerOver` in `reading.js` the same). Everything else sees paint: the PIXEL view draws the paint, the
 layers above lay their paint over it as over converted paint (`#exactUnder`, `#upperCell`), so the check up to the
@@ -192,17 +192,17 @@ Paint and shapes on an upper layer, where they don't tint a character of someone
 grid pixels the PIXEL view shows under that layer: the lower group's output (the picture with its paint, before the
 palette) with each upper layer below laid over by its alpha. Never over the shown character's halves (in the ASCII
 styles those are ink on black, far darker than the pixels, so a faint stroke one layer up came out dark). The lower
-group's own paint converts over the picture the same way. Under By shape, which matches finer samples of the picture
+group's own paint converts over the picture the same way. Under By shape (and plugin solvers, R12), which matches finer samples of the picture
 (4 × 8 a cell), the layer above matches the same samples with the layers between and its own pixels laid over them
 (`#fineUnder`), so a photo's detail under soft paint counts there as it does on the lower group; where the picture has no
-samples (the lower group isn't By shape) the two pixels stand in. Its own pixels are sampled as finely as they're drawn
+samples (the lower group isn't By shape or a plugin solver) the two pixels stand in. Its own pixels are sampled as finely as they're drawn
 (`#samplesAt`: a vector layer's shapes, and a cells layer's paint, which `#paintOver` is handed), so a picture added to
 the layer, a block pasted on it or a shape merged into it keeps its detail there, as it would on the lower group; a
 brush's paint, a grid pixel at a time, samples the same as its two pixels. An upper vector layer draws its shapes at the paint's
-scale, and Merge down draws them into the paint as they are, so By shape samples the merged paint as it sampled the
+scale, and Merge down draws them into the paint as they are, so By shape (and plugin solvers, R12) samples the merged paint as it sampled the
 shapes, and the PIXEL view, which shows a grid pixel of paint as its block's average, shows them as it did. So the ASCII view says what the PIXEL view shows, and paint
 merged down converts to what it converted to above, except for the converter's own differences (a palette snapped at
-another step, dither error, By shape's finer samples), which R3 freezes.
+another step, dither error, By shape's finer samples, a plugin solver's neighbors, R12), which R3 freezes.
 
 - Lives in: `Renderer.#pixelsUnder` and `#fineUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and
   for `#paintOver`'s convert path, with `pictureUnder` for the lower group; `storedLookAt` (`src/store/project/reading.js`)
@@ -333,6 +333,34 @@ the stored shape keeps it; a record made from scratch needs `layer` named. A sel
   (`src/store/project/selection.js`), `src/tools/vshape.js`, `shapesOnVector` (`src/store/project/merging.js`).
 - Checked by: `tests/browser/vector-render.test.js › R10: …`; `tests/browser/art-layers.test.js › R10: …`;
   `tests/browser/merge.test.js › Merge down of a vector layer into the vector layer under it …`.
+
+### R12. A plugin solver is a kind of By shape: it sees the picture's neighbors, and paint and upper layers only its own cell.
+
+A layer whose Choose characters is a plugin's solver ([plugins.md](plugins.md#writing-a-solver)) is sampled as By shape is:
+the same 32 samples a cell, the same Bayer nudge, the same finer samples under an upper layer (R7), the same set, palette
+and style holding its answer. So every rule here that says By shape covers it ("By shape (and plugin solvers, R12)").
+What differs is what it may read. Over the picture, on the lower group, a solver reads the samples of the cells within its
+`reach` (pass 1) and pass 1's characters within it (pass 2, the `refine`). Over paint, and on every layer above the lower
+group, where a cell is matched one at a time over what's under it, it gets its own cell alone: reach 0, no pass 2
+(`alone`). Neighbors through paint aren't read at all, so a cell's answer there doesn't depend on a neighbor's paint, and a
+stroke's redraw needs no area grown by reach. Floyd–Steinberg's error is carried by pass 1's walk only; pass 2 has none.
+
+The consequence is R3's. Paint merged onto the base is the base's pixels, which a solver reads with their neighbors, so
+a cell of it can convert otherwise than it did over the picture: the solver saw that cell alone, and now sees what's beside it.
+Merge down pins exactly those cells (`unlike`, `freezeUnlike`, R3) so the canvas stays as it showed, as it does for By
+shape's finer samples. A solver that throws, or whose plugin is gone, off or doesn't do the style, is By shape for the
+layer (a stand-in), and so the same rules.
+
+- Lives in: `resolvePlugin` and `pluginMatcher` in `src/lib/PluginSolve.js` (`alone` is the own-cell case, and `origin`
+  tells the solver the cell's place in the drawing); in the Renderer, `#resolveShapes` (the lower group: reach, pass 2,
+  `resolvePluginBy`), `#resolvePainted` (paint over the picture: `alone`) and `#upperChar` / `#pluginCell` (an upper
+  layer's cell, alone).
+- Checked by: `tests/browser/plugin-render.test.js › R12: Merge down under a plugin solver freezes what it showed` (a
+  white rect on Layer 1, merged onto the base: the cells that would convert otherwise are pinned and the canvas is the
+  same; unlike R3's tests it merges the paint onto the base and checks the pins), and in the same file `› over paint
+  and on an upper layer the solver sees only its own cell`, `› a stroke recomputes only the grown area, and the result
+  equals a whole resolve` and `› a solver keyed on the cell's col and line draws an upper layer as it draws the lower
+  group`.
 
 ### R13. In Monochrome ASCII, paint on the base takes the pins it lands on.
 

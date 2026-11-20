@@ -377,6 +377,52 @@ and sideways.
   use and check it's Dark, with the dialog saying plugins are off for this visit.
 - Rated: no (touch only: no keyboard shows here)
 
-**Free time:** she'd open Midnight's homepage link and How plugins work, and switch the language with Midnight in use.
+### 28. Add Outlines
+- Does: with her selfie open, opens the settings, taps Plugins, taps Install from a file… and picks
+  `plugins/outlines.zip` (a phone's file picker gives a .zip, not a folder, so this is how she installs it); reads the question and taps Install; then taps Install from a
+  folder… to see what her phone offers.
+- Expects: the question says "Install Outlines 1.0.0?", "by Phosphor" and "Adds a script.", with "⚠ This plugin runs
+  code in Phosphor. Install it only if you trust where it came from." under it, all fitting 390 wide with Install and
+  Cancel reachable; after Install the row shows Outlines, 1.0.0, by Phosphor and "Runs code", with no Reload or Follow file
+  (a phone keeps no link to the file); Cancel leaves nothing in the list. The folder button opens her phone's own picker or
+  does nothing it can explain, and either way leaves the dialog as it was (installing from a folder is checked in the
+  end-to-end tests, not here) ([Installing a plugin](../../plugins.md#installing-a-plugin)).
+- Probes: `back-out`: tap Cancel at the question, check the list is unchanged, and start again; `out-of-order`: pick
+  `images/photo.jpg` with Install from a file… (it says "That file isn't a plugin's manifest." or that it isn't a
+  readable .zip); `again`: install the zip twice (the second asks "Replace Outlines 1.0.0 with 1.0.0?").
+- Rated: no (touch only: no keyboard shows here)
+
+### 29. Draw her selfie in lines
+- Does: closes the dialog, picks Outlines in Choose characters (under Random, Best match and By shape), and tries each
+  of its options: drags Threshold from 0 to 100, picks Lines → Box drawing and back, picks Elsewhere → Blank and back,
+  and taps Clean up off and on; then switches Art style to Color ASCII and Monochrome ASCII and picks the Classic ramp
+  preset, and goes back to ANSI.
+- Expects: Choose characters lists Outlines after the built-ins, and its four options (Threshold, Lines, Elsewhere,
+  Clean up) show under it in its own words, fitting the column; the picture redraws with `- | / \` along its edges
+  ("Working out the characters…" may show for a moment on a large drawing), fewer lines at a higher Threshold and none
+  at 100; Box drawing swaps in `─ │ ╱ ╲`; Blank leaves flat cells where there's no line; Clean up off keeps stray
+  lines; in Color ASCII and Monochrome ASCII it still draws lines, and the Classic ramp changes only what's elsewhere;
+  every option change is one undo step; and a pinch or a stroke afterward still works.
+  ([Characters](../../characters.md#plugin-solvers)).
+- Probes: `speed`: drag Threshold back and forth for two seconds, and check the frames stay in the `frame` budget
+  after she lets go; `undo-redo`: undo three option changes from Actions → Undo, then Redo, and check the options and
+  the picture go back together; `extremes`: Threshold 0 and 100 with Elsewhere on Blank; `interrupt`: turn the phone
+  sideways while a change is working out, and back upright.
+- Rated: no (touch only: no keyboard shows here)
+
+### 30. Take Outlines away
+- Does: with Outlines chosen, opens Plugins and taps Outlines's switch to Off; looks at Choose characters and at LAYERS;
+  taps Export .png and looks at the dialog before closing it; then taps the switch back On, and reloads the page.
+- Expects: with it Off the picture is By shape's, Choose characters says "Outlines is off. Showing By shape." and
+  LAYERS' Base row has a ⚠; the export dialog says "Base shows By shape in place of its plugin solver."; back On the
+  look comes back with the options she had; after the reload Outlines is still chosen with its options, and the picture
+  is the same. Hosting a room isn't on a phone, so Phosphor refusing to host while a layer uses a plugin solver is
+  checked in the browser tests, not here ([Characters](../../characters.md#plugin-solvers)).
+- Probes: `interrupt`: open the app at `/?plugins=off` with Outlines chosen and check the note says "Plugins are off
+  for this visit. Showing By shape.", and the Plugins dialog says plugins are off for this visit; `again`: switch it Off and On three times; `back-out`: tap Remove, then Cancel at "Remove Outlines?", and check
+  Outlines is still chosen.
+- Rated: no (touch only: no keyboard shows here)
+
+**Free time:** she'd open Midnight's homepage link and How plugins work, switch the language with Midnight in use, and tap Remove on Outlines to see what her drawing says when its plugin is gone (the note then says "outlines isn't installed", the solver's id, as the plugin's name is gone with it).
 
 ## Known
