@@ -42,12 +42,13 @@ export function sayMissingBlocks(font) {
   toast(said(t('palette.fonts.setupMissing', { names }, missing.length), font), button(font));
 }
 
-// Installed once (App.vue): the toast that stays follows the drawing's font. Lower given a slot says paint is on.
+// Installed once (App.vue): the toast that stays follows the drawing's font, and comes back with each document opened
+// (project._layersStarted counts them). Lower given a slot, in the same document and font, says paint is on.
 export function useFontSetup() {
   const project = useProjectStore();
-  watch(() => [project.paintOff, project.drawingFont && fontId(project.drawingFont)], ([off, id], was) => {
+  watch(() => [project.paintOff, project.drawingFont && fontId(project.drawingFont), project._layersStarted], ([off, id, opened], was) => {
     if (off) return showFontSetup();
     closeToast(shown);
-    if (was?.[0] && id && id === was[1]) toast(t('palette.fonts.setupFixed', { n: blocksOf(project.drawingFont)[1] }));
+    if (was?.[0] && id && id === was[1] && opened === was[2]) toast(t('palette.fonts.setupFixed', { n: blocksOf(project.drawingFont)[1] }));
   }, { immediate: true });
 }

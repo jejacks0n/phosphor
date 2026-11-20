@@ -84,6 +84,25 @@ test('a drawing brought back in such a font (a reload, a restore) says so too', 
   expect(toastMessage.value).toBe(NO_LOWER);
 });
 
+test('closed, it comes back when another drawing opens in the same font', async () => {
+  const { project } = await drawing();
+  closeToast();
+  await project.openArtFile(new File(['hi'], 'note.txt')); // an art file keeps the font in use
+  await nextTick();
+  expect(project.drawingFont.name).toBe('Slab');
+  expect(toastMessage.value).toBe(NO_LOWER);
+});
+
+test('a drawing opened in the same font once it has a lower half says nothing about slots', async () => {
+  const { project } = await drawing();
+  project.setDrawingFont({ ...noLowerHalf, name: 'Slab', blocks: LOWER });
+  await nextTick();
+  closeToast();
+  await project.openArtFile(new File(['hi'], 'note.txt'));
+  await nextTick();
+  expect(toastMessage.value).toBe(null);
+});
+
 test('in a room it has no button, and says only the host can set the blocks, outside the room', async () => {
   const { project } = await drawing(cp437Font);
   project._hosting = true;

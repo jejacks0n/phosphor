@@ -1,4 +1,4 @@
-import { test, expect, openApp } from './support.js';
+import { test, expect, openApp, store } from './support.js';
 
 // Phones show no tooltips, so a tap on a button that's off says why in a toast.
 test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
@@ -64,11 +64,25 @@ test('a tap on something laid over a disabled button shows no toast', async ({ p
 
 // On a wide screen that also takes touch: a drawing whose font has no lower half (an 8×16 font of zero bytes has no
 // blocks at all), loaded with the Fonts page's + Load.
+// The hash of what autosave kept of this document's settings (its font among them), or null before it's written.
+async function keptHash(page) {
+  const id = await store(page, 'project', (p) => p.documentId);
+  return page.evaluate((id) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('phosphor-autosave', 1);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const get = open.result.transaction('documents').objectStore('documents').get(id);
+      get.onsuccess = () => { open.result.close(); resolve(get.result?.restHash ?? null); };
+    };
+  }), id);
+}
+
 test.describe('a paint tool that\u2019s off', () => {
   test.use({ isMobile: false, viewport: { width: 1280, height: 800 } });
 
   test('a mouse click or a tap on it brings back the toast that sets up the font, and its button opens the font\u2019s blocks', async ({ page }) => {
     await openApp(page);
+    const before = await keptHash(page);
     await page.getByRole('button', { name: 'Manage fonts ▸' }).click();
     const layer = page.locator('.palette-layer');
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), layer.getByRole('button', { name: '+ Load' }).click()]);
@@ -77,6 +91,9 @@ test.describe('a paint tool that\u2019s off', () => {
     await expect(toast).toContainText('This drawing\u2019s font, Slab, has no lower half block');
     await page.keyboard.press('Escape');
     await expect(layer).toHaveCount(0);
+    await expect.poll(() => keptHash(page)).not.toBe(before); // written with its font
+    await page.reload(); // and again once the drawing comes back
+    await expect(toast).toContainText('This drawing\u2019s font, Slab, has no lower half block');
     await toast.click(); // closed
     await expect(toast).toHaveCount(0);
     const brush = page.locator('button[data-tool="brush"]');
