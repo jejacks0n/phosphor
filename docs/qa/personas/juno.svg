@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+<title>Juno</title>
+<defs><clipPath id="juno-clip"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+<circle cx="128" cy="128" r="128" fill="#c94a9a"/>
+<g clip-path="url(#juno-clip)">
+<g fill="#2a1a14">
+<circle cx="128" cy="44" r="30"/>
+<circle cx="96" cy="52" r="28"/>
+<circle cx="160" cy="52" r="28"/>
+<circle cx="76" cy="80" r="26"/>
+<circle cx="180" cy="80" r="26"/>
+<circle cx="70" cy="112" r="22"/>
+<circle cx="186" cy="112" r="22"/>
+<circle cx="78" cy="140" r="18"/>
+<circle cx="178" cy="140" r="18"/>
+</g>
+<path d="M38 256 C42 214 66 194 102 188 L154 188 C190 194 214 214 218 256 Z" fill="#23304f"/>
+<path d="M110 150 L146 150 L148 196 C138 204 118 204 108 196 Z" fill="#8a5230"/>
+<path d="M104 188 C114 206 142 206 152 188" stroke="#3b4c75" stroke-width="7" stroke-linecap="round" fill="none"/>
+<ellipse cx="128" cy="112" rx="52" ry="60" fill="#a0623a"/>
+<g fill="#2a1a14">
+<circle cx="100" cy="64" r="16"/>
+<circle cx="122" cy="58" r="17"/>
+<circle cx="146" cy="60" r="17"/>
+<circle cx="164" cy="70" r="13"/>
+<circle cx="86" cy="76" r="12"/>
+</g>
+<path d="M74 112 C68 26 188 26 182 112" stroke="#2d2d35" stroke-width="10" stroke-linecap="round" fill="none"/>
+<rect x="62" y="94" width="26" height="42" rx="11" fill="#2d2d35"/>
+<rect x="168" y="94" width="26" height="42" rx="11" fill="#2d2d35"/>
+<rect x="68" y="102" width="10" height="26" rx="5" fill="#5ef0e0"/>
+<rect x="178" y="102" width="10" height="26" rx="5" fill="#5ef0e0"/>
+<path d="M76 134 C78 160 92 168 106 164" stroke="#2d2d35" stroke-width="6" stroke-linecap="round" fill="none"/>
+<ellipse cx="110" cy="162" rx="9" ry="7" fill="#2d2d35"/>
+<circle cx="113" cy="161" r="3" fill="#5ef0e0"/>
+<path d="M94 96 Q106 88 118 94 M138 94 Q150 88 162 96" stroke="#2a1a14" stroke-width="6" stroke-linecap="round" fill="none"/>
+<ellipse cx="106" cy="113" rx="11" ry="12" fill="#fff"/>
+<ellipse cx="150" cy="113" rx="11" ry="12" fill="#fff"/>
+<circle cx="107" cy="114" r="7.5" fill="#2a1d18"/>
+<circle cx="151" cy="114" r="7.5" fill="#2a1d18"/>
+<circle cx="109.5" cy="111.5" r="2.5" fill="#fff"/>
+<circle cx="153.5" cy="111.5" r="2.5" fill="#fff"/>
+<ellipse cx="94" cy="136" rx="9" ry="6" fill="#d9536a" opacity="0.35"/>
+<ellipse cx="162" cy="136" rx="9" ry="6" fill="#d9536a" opacity="0.35"/>
+<path d="M120 132 Q128 138 136 132" stroke="#7a4426" stroke-width="5" stroke-linecap="round" fill="none"/>
+<path d="M112 146 Q128 148 146 146 Q144 168 128 168 Q114 168 112 146 Z" fill="#4a1f1a"/>
+<path d="M115 148 L143 148 L142 154 L116 154 Z" fill="#fff"/>
+<path d="M120 164 Q128 158 136 164 Q128 168 120 164 Z" fill="#e86a7a"/>
+</g>
+</svg>

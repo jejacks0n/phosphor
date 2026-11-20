@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+<title>Theo</title>
+<defs><clipPath id="theo-clip"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+<circle cx="128" cy="128" r="128" fill="#2fa8b0"/>
+<g clip-path="url(#theo-clip)">
+<path d="M34 256 C38 214 64 192 100 186 L156 186 C192 192 218 214 222 256 Z" fill="#e0a83a"/>
+<path d="M110 150 L146 150 L148 196 C138 204 118 204 108 196 Z" fill="#4a2c1a"/>
+<path d="M100 186 L114 212 L128 198 L142 212 L156 186 Z" fill="#f4f1ea"/>
+<ellipse cx="74" cy="120" rx="11" ry="15" fill="#54331f"/>
+<ellipse cx="182" cy="120" rx="11" ry="15" fill="#54331f"/>
+<ellipse cx="128" cy="114" rx="56" ry="60" fill="#5e3a24"/>
+<path d="M74 100 C72 66 98 50 128 50 C158 50 184 66 182 100 C176 86 168 80 160 78 L96 78 C88 80 80 86 74 100 Z" fill="#161010"/>
+<g fill="#161010">
+<circle cx="90" cy="72" r="16"/>
+<circle cx="108" cy="56" r="18"/>
+<circle cx="130" cy="50" r="19"/>
+<circle cx="152" cy="56" r="18"/>
+<circle cx="168" cy="72" r="16"/>
+<circle cx="118" cy="70" r="14"/>
+<circle cx="142" cy="70" r="14"/>
+</g>
+<path d="M92 96 Q104 86 118 92 M138 90 Q152 84 164 94" stroke="#161010" stroke-width="6" stroke-linecap="round" fill="none"/>
+<ellipse cx="106" cy="113" rx="11" ry="12" fill="#fff"/>
+<ellipse cx="150" cy="113" rx="11" ry="12" fill="#fff"/>
+<circle cx="111" cy="113" r="7.5" fill="#1a0f0a"/>
+<circle cx="155" cy="113" r="7.5" fill="#1a0f0a"/>
+<circle cx="113.5" cy="110.5" r="2.5" fill="#fff"/>
+<circle cx="157.5" cy="110.5" r="2.5" fill="#fff"/>
+<path d="M126 120 Q120 134 132 136" stroke="#3e2516" stroke-width="5" stroke-linecap="round" fill="none"/>
+<path d="M106 146 Q128 150 152 144 Q148 170 128 170 Q108 170 106 146 Z" fill="#2a0f0c"/>
+<path d="M110 147 Q128 151 148 146 L147 153 Q128 157 111 154 Z" fill="#fff"/>
+</g>
+</svg>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+<title>Sam</title>
+<defs><clipPath id="sam-clip"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+<circle cx="128" cy="128" r="128" fill="#4caf6e"/>
+<g clip-path="url(#sam-clip)">
+<path d="M38 256 C42 214 66 194 102 188 L154 188 C190 194 214 214 218 256 Z" fill="#3b2f5c"/>
+<path d="M110 150 L146 150 L148 196 C138 204 118 204 108 196 Z" fill="#a8714a"/>
+<ellipse cx="77" cy="120" rx="10" ry="14" fill="#b67e54"/>
+<ellipse cx="179" cy="120" rx="10" ry="14" fill="#b67e54"/>
+<ellipse cx="128" cy="114" rx="52" ry="60" fill="#c48a5c"/>
+<path d="M74 112 C66 60 94 34 126 32 C152 30 186 46 184 108 C180 94 176 86 170 80 C162 86 150 80 146 72 C136 82 112 86 100 76 C94 86 82 94 74 112 Z" fill="#3a2618"/>
+<path d="M92 99 L118 97 M138 97 L164 99" stroke="#3a2618" stroke-width="6" stroke-linecap="round" fill="none"/>
+<ellipse cx="106" cy="116" rx="11" ry="12" fill="#fff"/>
+<ellipse cx="150" cy="116" rx="11" ry="12" fill="#fff"/>
+<circle cx="107" cy="117" r="7.5" fill="#2a1d18"/>
+<circle cx="151" cy="117" r="7.5" fill="#2a1d18"/>
+<circle cx="109.5" cy="114.5" r="2.5" fill="#fff"/>
+<circle cx="153.5" cy="114.5" r="2.5" fill="#fff"/>
+<rect x="88" y="102" width="36" height="28" rx="6" fill="none" stroke="#1c1c1c" stroke-width="5"/>
+<rect x="132" y="102" width="36" height="28" rx="6" fill="none" stroke="#1c1c1c" stroke-width="5"/>
+<path d="M124 112 L132 112 M88 110 L78 108 M168 110 L178 108" stroke="#1c1c1c" stroke-width="5" stroke-linecap="round"/>
+<path d="M128 122 Q122 136 132 138" stroke="#a06a42" stroke-width="5" stroke-linecap="round" fill="none"/>
+<path d="M114 154 Q126 160 142 152" stroke="#4a1f1a" stroke-width="6" stroke-linecap="round" fill="none"/>
+<path d="M72 236 L184 236 L198 250 L58 250 Z" fill="#9aa0aa"/>
+<rect x="70" y="174" width="116" height="64" rx="7" fill="#b9bec7"/>
+<rect x="78" y="182" width="100" height="48" rx="3" fill="#121a16"/>
+<g fill="#5df08a">
+<rect x="86" y="190" width="44" height="7" rx="2"/>
+<rect x="86" y="203" width="64" height="7" rx="2"/>
+<rect x="86" y="216" width="22" height="7" rx="2"/>
+<rect x="114" y="214" width="9" height="11"/>
+</g>
+<rect x="58" y="196" width="18" height="36" rx="9" fill="#c48a5c"/>
+<rect x="180" y="196" width="18" height="36" rx="9" fill="#c48a5c"/>
+</g>
+</svg>

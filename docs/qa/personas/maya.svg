@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img">
+<title>Maya</title>
+<defs><clipPath id="maya-clip"><circle cx="128" cy="128" r="128"/></clipPath></defs>
+<circle cx="128" cy="128" r="128" fill="#e2604f"/>
+<g clip-path="url(#maya-clip)">
+<path d="M66 120 C60 50 96 30 128 30 C160 30 196 50 190 120 L192 170 C178 178 166 174 160 168 L96 168 C90 174 78 178 64 170 Z" fill="#1e1b1d"/>
+<path d="M38 256 C42 214 66 194 102 188 L154 188 C190 194 214 214 218 256 Z" fill="#f1e4c8"/>
+<path d="M112 150 L144 150 L144 176 L112 176 Z" fill="#c08a5c"/>
+<rect x="104" y="166" width="48" height="30" rx="12" fill="#e3d2b0"/>
+<ellipse cx="128" cy="112" rx="50" ry="60" fill="#dca677"/>
+<path d="M76 98 C74 52 100 38 128 38 C156 38 182 52 180 98 C178 92 176 88 172 86 C152 82 104 82 84 86 C80 88 78 92 76 98 Z" fill="#1e1b1d"/>
+<path d="M78 92 L76 140 C76 150 82 156 84 150 L84 96 Z M178 92 L180 140 C180 150 174 156 172 150 L172 96 Z" fill="#1e1b1d"/>
+<path d="M94 100 Q106 94 118 99 M138 99 Q150 94 162 100" stroke="#1e1b1d" stroke-width="6" stroke-linecap="round" fill="none"/>
+<ellipse cx="106" cy="116" rx="11" ry="12" fill="#fff"/>
+<ellipse cx="150" cy="116" rx="11" ry="12" fill="#fff"/>
+<circle cx="107" cy="117" r="7.5" fill="#2a1d18"/>
+<circle cx="151" cy="117" r="7.5" fill="#2a1d18"/>
+<circle cx="109.5" cy="114.5" r="2.5" fill="#fff"/>
+<circle cx="153.5" cy="114.5" r="2.5" fill="#fff"/>
+<path d="M95 108 L91 105 M161 108 L165 105" stroke="#1e1b1d" stroke-width="4" stroke-linecap="round"/>
+<ellipse cx="94" cy="138" rx="9" ry="6" fill="#e0605a" opacity="0.3"/>
+<ellipse cx="162" cy="138" rx="9" ry="6" fill="#e0605a" opacity="0.3"/>
+<path d="M128 120 Q122 134 132 136" stroke="#b9845a" stroke-width="5" stroke-linecap="round" fill="none"/>
+<path d="M114 152 Q128 162 144 150" stroke="#8a2f2a" stroke-width="6" stroke-linecap="round" fill="none"/>
+<path d="M98 202 L108 176 M158 202 L148 176" stroke="#5a3a28" stroke-width="5" stroke-linecap="round"/>
+<rect x="114" y="188" width="28" height="14" rx="3" fill="#cfd2d8"/>
+<rect x="150" y="190" width="10" height="7" rx="2" fill="#2a2a2e"/>
+<rect x="86" y="196" width="84" height="46" rx="8" fill="#cfd2d8"/>
+<rect x="86" y="206" width="84" height="28" fill="#2a2a2e"/>
+<circle cx="128" cy="220" r="20" fill="#8d9199"/>
+<circle cx="128" cy="220" r="15" fill="#1b1b1f"/>
+<circle cx="128" cy="220" r="9" fill="#3f6f9a"/>
+<circle cx="124" cy="216" r="3.5" fill="#fff"/>
+</g>
+</svg>
