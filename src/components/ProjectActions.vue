@@ -17,9 +17,9 @@ const { exportModal, versionsOpen } = storeToRefs(workspace);
   <article class="project-actions">
     <button @click="workspace.saveFile()" :disabled="!image" class="primary">{{ t('actions.saveProject') }}</button>
     <button @click="exportModal = true" :disabled="!image" class="secondary">{{ t('actions.export') }}</button>
-    <button @click="versionsOpen = true" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="secondary">{{ t('actions.versions') }}</button>
+    <button @click="versionsOpen = true" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" :data-off-reason="drawing.offWithOthers ? '' : undefined" class="secondary">{{ t('actions.versions') }}</button>
     <hr/>
-    <button @click="workspace.newProject()" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" class="danger">{{ t('actions.newProject') }}</button>
+    <button @click="workspace.newProject()" :disabled="!image || !!drawing.offWithOthers" :title="drawing.offWithOthers" :data-off-reason="drawing.offWithOthers ? '' : undefined" class="danger">{{ t('actions.newProject') }}</button>
   </article>
 </template>
 

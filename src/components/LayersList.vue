@@ -206,12 +206,12 @@ function cancel() {
             <template #trigger>
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6.5h3v3H2zM6.5 6.5h3v3h-3zM11 6.5h3v3h-3z"/></svg>
             </template>
-            <button :disabled="pausedOff !== null" :title="pausedOff" @click="rename(layer)">{{ t('layers.rename') }}</button>
-            <button :disabled="duplicateOff !== null" :title="duplicateOff" @click="duplicate(layer)">{{ t('layers.duplicate') }}</button>
-            <button :disabled="pausedOff !== null" :title="pausedOff" @click="remove(layer)">{{ t('layers.delete') }}</button>
-            <button :disabled="mergeOff(layer.id) !== null" :title="mergeOff(layer.id)" @click="mergeDown(layer.id)">{{ t('toolbar.mergeDown') }}</button>
-            <button :disabled="moveOff(layer, 1) !== null" :title="moveOff(layer, 1) || null" @click="move(layer, 1)">{{ t('layers.moveUp') }}</button>
-            <button :disabled="moveOff(layer, -1) !== null" :title="moveOff(layer, -1) || null" @click="move(layer, -1)">{{ t('layers.moveDown') }}</button>
+            <button :disabled="pausedOff !== null" :title="pausedOff" :data-off-reason="pausedOff !== null ? '' : undefined" @click="rename(layer)">{{ t('layers.rename') }}</button>
+            <button :disabled="duplicateOff !== null" :title="duplicateOff" :data-off-reason="duplicateOff !== null ? '' : undefined" @click="duplicate(layer)">{{ t('layers.duplicate') }}</button>
+            <button :disabled="pausedOff !== null" :title="pausedOff" :data-off-reason="pausedOff !== null ? '' : undefined" @click="remove(layer)">{{ t('layers.delete') }}</button>
+            <button :disabled="mergeOff(layer.id) !== null" :title="mergeOff(layer.id)" :data-off-reason="mergeOff(layer.id) !== null ? '' : undefined" @click="mergeDown(layer.id)">{{ t('toolbar.mergeDown') }}</button>
+            <button :disabled="moveOff(layer, 1) !== null" :title="moveOff(layer, 1) || null" :data-off-reason="moveOff(layer, 1) !== null ? '' : undefined" @click="move(layer, 1)">{{ t('layers.moveUp') }}</button>
+            <button :disabled="moveOff(layer, -1) !== null" :title="moveOff(layer, -1) || null" :data-off-reason="moveOff(layer, -1) !== null ? '' : undefined" @click="move(layer, -1)">{{ t('layers.moveDown') }}</button>
           </DropdownMenu>
         </li>
       </ul>

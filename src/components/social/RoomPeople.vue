@@ -83,10 +83,10 @@ const confirmBlock = async () => {
         </DropdownMenu>
         <DropdownMenu v-else-if="!watcher.guest" :label="t('social.people.moreFor', { name: watcher.name })">
           <template #trigger><span aria-hidden="true">⋯</span></template>
-          <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected && room.canBeHost(watcher.sub)" :disabled="drawing.paused" :title="drawing.paused ? t('social.people.notWhilePaused') : undefined" @click="askToMakeHost(watcher, $event)">{{ t('social.people.makeHost') }}</button>
+          <button v-if="drawing.artists.includes(watcher.sub) && watcher.connected && room.canBeHost(watcher.sub)" :disabled="drawing.paused" :title="drawing.paused ? t('social.people.notWhilePaused') : undefined" :data-off-reason="drawing.paused ? '' : undefined" @click="askToMakeHost(watcher, $event)">{{ t('social.people.makeHost') }}</button>
           <button v-if="drawing.artists.includes(watcher.sub)" @click="drawing.backToWatching(watcher.sub)">{{ t('social.people.backToWatching') }}</button>
           <button v-else-if="drawing.invited.includes(watcher.sub)" @click="drawing.withdraw(watcher.sub)">{{ t('social.people.withdrawInvitation') }}</button>
-          <button v-else-if="watcher.connected" :disabled="!!drawing.artistsFull" :title="drawing.artistsFull ?? undefined" @click="drawing.invite(watcher.sub)">{{ t('social.people.makeArtist') }}</button>
+          <button v-else-if="watcher.connected" :disabled="!!drawing.artistsFull" :title="drawing.artistsFull ?? undefined" :data-off-reason="drawing.artistsFull ? '' : undefined" @click="drawing.invite(watcher.sub)">{{ t('social.people.makeArtist') }}</button>
           <button @click="room.remove(watcher.peer)">{{ t('social.people.kickSession') }}</button>
           <button v-if="room.muted.includes(watcher.sub)" @click="room.mute(watcher.sub, false)">{{ t('social.people.unmute') }}</button>
           <button v-else :title="t('social.people.muteTitle')" @click="room.mute(watcher.sub, true)">{{ t('social.people.mute') }}</button>

@@ -238,6 +238,7 @@ onBeforeUnmount(() => {
           :style="{ backgroundColor: color.paints ? shown(color.hex) : color.hex }"
           :title="color.paints ? color.hex : t('colors.cantPaint', { hex: color.hex.toLowerCase() })"
           :disabled="!color.paints"
+          :data-off-reason="color.paints ? undefined : ''"
           @click="choose(color.hex.toLowerCase(), true, sharedIndex(color.c, project.activePalette), color.kept)"
       ></button>
     </div>

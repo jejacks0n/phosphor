@@ -373,7 +373,7 @@ function onKeyDown(event) {
 
     <p v-if="workspace.pickedLayer === 'base' && !hasRealImage" class="note effects-note">{{ t('panel.effectsNoImage') }}</p>
 
-    <button :disabled="!!locked" :title="locked" @click="store.resetSliders">{{ t('panel.resetAll') }}</button>
+    <button :disabled="!!locked" :title="locked" :data-off-reason="locked ? '' : undefined" @click="store.resetSliders">{{ t('panel.resetAll') }}</button>
 
     <hr/>
 

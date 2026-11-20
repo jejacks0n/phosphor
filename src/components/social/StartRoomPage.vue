@@ -88,7 +88,7 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
       <p v-if="cannotGoLive" class="no-art why">{{ cannotGoLive }}</p>
 
       <div class="buttons">
-        <button class="primary" type="submit" :disabled="social.busy || !hasArt || !!cannotGoLive" :title="cannotGoLive">{{ t('social.start.goLive') }}</button>
+        <button class="primary" type="submit" :disabled="social.busy || !hasArt || !!cannotGoLive" :title="cannotGoLive" :data-off-reason="cannotGoLive ? '' : undefined">{{ t('social.start.goLive') }}</button>
       </div>
     </form>
   </div>

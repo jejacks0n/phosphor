@@ -116,6 +116,7 @@ function foldedItem(el) {
     icon: box ? (box.checked ? CHECK_ICON : '') : el.querySelector('svg')?.outerHTML ?? '',
     title: el.title,
     disabled: !!(box ?? el).disabled,
+    offReason: el.hasAttribute('data-off-reason'), // its title says why it's off
     checked: box ? String(box.checked) : null,
   };
 }
@@ -614,7 +615,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       <PaletteStrip v-if="activeTool.palette"/>
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
         <template v-if="workspace.selection">
-          <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" @click="recolor(b.colors)">{{ b.label }}</button>
+          <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" :data-off-reason="b.disabled ? '' : undefined" @click="recolor(b.colors)">{{ b.label }}</button>
           <div class="divider"/>
           <button :title="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :aria-label="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" @click="copySelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>
           <button :title="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" :aria-label="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" @click="cutSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M192 368A96 96 0 1 1 192 560A96 96 0 1 1 192 368ZM192 416A48 48 0 1 0 192 512A48 48 0 1 0 192 416ZM448 368A96 96 0 1 1 448 560A96 96 0 1 1 448 368ZM448 416A48 48 0 1 0 448 512A48 48 0 1 0 448 416Z"/><path d="M480 48L544 88L310 408L254 372ZM160 48L96 88L330 408L386 372Z"/></svg></button>
@@ -623,15 +624,15 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           <button :title="t('toolbar.selection.stampTitle')" :aria-label="t('toolbar.selection.stamp')" aria-keyshortcuts="S C" @click="stampSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 64H368A48 48 0 0 1 416 112V176C416 224 384 256 384 304H480A64 64 0 0 1 544 368V432H96V368A64 64 0 0 1 160 304H256C256 256 224 224 224 176V112A48 48 0 0 1 272 64ZM96 480H544V544H96Z"/></svg></button>
           <button :title="t('toolbar.selection.flipHTitle')" :aria-label="t('toolbar.selection.flipH')" @click="turnSelection('h')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M272 128V512H64Z"/><path fill-rule="evenodd" d="M368 128L576 512H368ZM416 320V464H494Z"/><path d="M304 64H336V576H304Z"/></svg></button>
           <button :title="t('toolbar.selection.flipV')" :aria-label="t('toolbar.selection.flipV')" @click="turnSelection('v')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M128 272H512L128 64Z"/><path fill-rule="evenodd" d="M128 368H512L128 576ZM320 416H176V494Z"/><path d="M64 304H576V336H64Z"/></svg></button>
-          <button :title="selectionHasCharacters ? t('toolbar.selection.rotateCharsDisabled') : t('toolbar.selection.rotateTitle')" :aria-label="t('toolbar.selection.rotateAria')" :disabled="selectionHasCharacters" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
+          <button :title="selectionHasCharacters ? t('toolbar.selection.rotateCharsDisabled') : t('toolbar.selection.rotateTitle')" :aria-label="t('toolbar.selection.rotateAria')" :disabled="selectionHasCharacters" :data-off-reason="selectionHasCharacters ? '' : undefined" @click="turnSelection('cw')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M320 96A224 224 0 1 0 544 320H480A160 160 0 1 1 433.1 206.9L384 256H544V96L478.4 161.6A223.3 223.3 0 0 0 320 96Z"/></svg></button>
           <div class="divider"/>
           <button class="text" :title="t('toolbar.selection.mergeDownSelectionTitle')" :disabled="!selectionHasEdits" v-bind="mergeOff()" @click="mergeDown(picked, workspace.selection)">{{ t('toolbar.mergeDown') }}</button>
-          <button class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
+          <button class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" :data-off-reason="!artReady && artOff ? '' : undefined" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
           <button class="text" :title="t('toolbar.selection.deselectBlockTitle')" aria-keyshortcuts="Escape Enter" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
         </template>
         <template v-else>
           <span class="hint"><span class="mouse">{{ t('toolbar.selection.dragHint') }}</span><span class="touch">{{ t('toolbar.selection.tapHint') }}</span></span>
-          <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" @click="recolor(b.colors)">{{ b.label }}</button>
+          <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" :data-off-reason="b.disabled ? '' : undefined" @click="recolor(b.colors)">{{ b.label }}</button>
           <button class="text" :title="t('toolbar.selection.selectAllTitle', { key: shortcut('mod', 'A') })" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">{{ t('toolbar.selection.selectAll') }}</button>
           <button class="text" :title="t('toolbar.selection.mergeDownAllTitle')" :disabled="!mergeOn" v-bind="mergeOff()" @click="mergeDown(picked)">{{ t('toolbar.mergeDown') }}</button>
         </template>
@@ -677,12 +678,12 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       </div>
       <div v-if="recolored && activeTool.id === 'wand'" class="tool-setting-group">
         <div class="divider"/>
-        <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" @click="recolor(b.colors)">{{ b.label }}</button>
+        <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" :data-off-reason="b.disabled ? '' : undefined" @click="recolor(b.colors)">{{ b.label }}</button>
       </div>
       <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
         <div class="divider"/>
         <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectionIds)">{{ t('common.delete') }}</button>
-        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" :data-off-reason="!artReady && artOff ? '' : undefined" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
         <button class="text" :title="t('toolbar.selection.wandDeselectTitle')" aria-keyshortcuts="Escape" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
         <!-- The wand's All layers (Select's is its tool option): last on the row, so short of room it's what folds into ⋯, not Delete. -->
         <label v-if="wandHere && activeTool.id === 'wand'" class="checkbox-wrapper" :title="t('tools.select.allLayersTitle')">
@@ -698,6 +699,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             class="choice"
             :title="item.title"
             :disabled="item.disabled"
+            :data-off-reason="item.disabled && item.offReason ? '' : undefined"
             :role="item.checked && 'menuitemcheckbox'"
             :aria-checked="item.checked"
             @click="item.el.click()"

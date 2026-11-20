@@ -62,13 +62,13 @@ async function join() {
           <p class="help">{{ t('social.watch.needsPassword') }}</p>
           <label>{{ t('social.watch.password') }} <input ref="passwordInput" v-model="password" type="password" autocomplete="off" required></label>
         </template>
-        <button class="primary" type="submit" :disabled="!social.desktopName || joining" :title="social.desktopName ? undefined : t('social.desktop.nameFirst')">{{ t('social.watch.join') }}</button>
+        <button class="primary" type="submit" :disabled="!social.desktopName || joining" :title="social.desktopName ? undefined : t('social.desktop.nameFirst')" :data-off-reason="social.desktopName ? undefined : ''">{{ t('social.watch.join') }}</button>
       </form>
 
       <hr>
       <h2>{{ t('social.desktop.hostHeading') }}</h2>
       <p v-if="room.pluginSolversWhy" class="help">{{ room.pluginSolversWhy }}</p>
-      <button :disabled="!!startOff" :title="startOff" @click="social.page = 'start-room'">{{ t('social.lobby.startRoom') }}</button>
+      <button :disabled="!!startOff" :title="startOff" :data-off-reason="startOff ? '' : undefined" @click="social.page = 'start-room'">{{ t('social.lobby.startRoom') }}</button>
 
       <p class="help ip">{{ t('social.desktop.ipSeen') }}</p>
     </template>
