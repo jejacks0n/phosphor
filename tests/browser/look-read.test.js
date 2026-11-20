@@ -101,3 +101,16 @@ test('R11: the Magic Wand in the PIXEL view selects what the fill fills', async 
   wand.begin({ project, workspace, view: 'input' }, { x: 7.5, y: 10.5 }, {});
   expect(workspace.wand.mask.reduce((n, v) => n + (v ? 1 : 0), 0)).toBe(96);
 });
+
+// A layer not in use waits outside what Vue follows, so a change heard on it (a room's) must still reach the read.
+test('R11: a character that lands on a layer not in use (a room\'s change, heard) is in what a fill reads', async () => {
+  const { project, workspace } = await block(' ', '#000000', '#000000');
+  workspace.pickLayer(project.addLayer('cells', 'edit'));
+  await settle(project);
+  const at = (seen) => [...seen.data.slice(4 * (20 * 20 + 15), 4 * (20 * 20 + 15) + 3)]; // grid pixel (15, 20): cell 15, 10
+  expect(at(project.pixelsAsSeen())).toEqual([0, 0, 0]);
+  project.applyChange({ cells: [['15,10', { char: '█', fg: '#ff0000', bg: '#ff0000' }]], runs: [] }); // on Layer 1
+  await settle(project);
+  expect(project.cells[10 * 20 + 15].char).toBe('█');
+  expect(at(project.pixelsAsSeen())).toEqual([255, 0, 0]);
+});

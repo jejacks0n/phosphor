@@ -235,9 +235,6 @@ export const readingActions = {
 
   // What a cell layer's entry is completed against (completeAt): the base's cell as the render style shows it, with the
   // shown cells layers under the layer with the id below over it, each as underlyingAt lays them.
-  // Whether the cell at col, row shows a character of someone's own (typed, opened, pasted, pinned, an art layer's; a
-  // paint block too) on the layer in use or under it: what paint laid there tints, where anything else converts over
-  // it (docs/model.md R2). The Renderer's walk up to the layer (#exactUnder, #upperCell), the topmost entry deciding.
   // The grid as the PIXEL view shows it, cols × rows and opaque, for the fills and the Wand to read (docs/model.md R11):
   // each character of someone's own as it looks at half-cell scale, not its two stored pixels. All of it: what shows
   // (shownCanvas) with the looks over it (looksCanvas), and the characters of the cells layers that show as the Overlay
@@ -267,10 +264,13 @@ export const readingActions = {
     const looks = renderer.looksCanvas(this.processParams);
     if (looks) ctx.drawImage(looks, 0, 0);
     const image = ctx.getImageData(0, 0, cols, rows);
-    for (const i of ownIndexes(this.ownCellMaps, cols, rows, this.renderStyle)) if (this.cells[i]) putCellPixels(image.data, cols, i, this.cells[i]);
+    for (const i of ownIndexes(this.ownCellMaps(), cols, rows, this.renderStyle)) if (this.cells[i]) putCellPixels(image.data, cols, i, this.cells[i]);
     return image;
   },
 
+  // Whether the cell at col, row shows a character of someone's own (typed, opened, pasted, pinned, an art layer's; a
+  // paint block too) on the layer in use or under it: what paint laid there tints, where anything else converts over
+  // it (docs/model.md R2). The Renderer's walk up to the layer (#exactUnder, #upperCell), the topmost entry deciding.
   ownCharAt(col, row) {
     const key = cellKey(col, row), ids = cellsUnder(this, this.editId);
     let own = this.renderer.pinAt(col, row) !== undefined;

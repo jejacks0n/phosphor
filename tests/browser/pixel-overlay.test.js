@@ -3,7 +3,7 @@
 import { test, expect, vi } from 'vitest';
 import { settle } from '../support/app.js';
 import { mountPixelView } from '../support/pixelView.js';
-import { parseKey } from '@/document/editCells';
+import { ownIndexes } from '@/document/editCells';
 
 vi.mock('@/document/editCells', { spy: true });
 
@@ -16,25 +16,27 @@ test('All cells finds no layer\'s cells; turned off, it shows the layers\' cells
   const picture = seen(5, 4); // a generated cell's grid pixel with no overlay
   Object.assign(workspace, { ansiOverlay: 100, ansiOverlayAll: true });
   await settle(project);
-  vi.mocked(parseKey).mockClear();
+  vi.mocked(ownIndexes).mockClear();
   project.typeAt(5, 3, 'A', RED);
   project.commitEdit();
   await settle(project);
-  const parsed = vi.mocked(parseKey).mock.calls.length; // the redraw's own, not the overlay's
+  expect(vi.mocked(ownIndexes)).not.toHaveBeenCalled(); // All cells: the layers' cells aren't looked for
 
   workspace.ansiOverlayAll = false;
   await settle(project);
+  expect(vi.mocked(ownIndexes)).toHaveBeenCalled(); // turned off: looked for again
   expect(seen(5, 6)).toEqual([255, 0, 0]); // the typed cell, both its grid pixels
   expect(seen(5, 7)).toEqual([255, 0, 0]);
   expect(seen(5, 4)).toEqual(picture); // no overlay over a generated cell
   expect(project.cells[3 * COLS + 5].fg.hex).toBe('#ff0000');
 
-  // The same edit with All cells off: the overlay reads every layer cell's key too.
-  vi.mocked(parseKey).mockClear();
+  // The same edit with All cells off: the overlay looks for the layers' cells, once, over every layer cell.
+  vi.mocked(ownIndexes).mockClear();
   project.typeAt(6, 3, 'B', RED);
   project.commitEdit();
   await settle(project);
-  expect(vi.mocked(parseKey).mock.calls.length).toBe(parsed + project.editCells.size);
+  expect(vi.mocked(ownIndexes)).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(ownIndexes).mock.calls[0][0]).toContain(project.editCells);
   expect(seen(6, 6)).toEqual([255, 0, 0]);
   done();
 });

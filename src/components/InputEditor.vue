@@ -38,7 +38,7 @@ const zoom = { get: () => workspaceStore.editZoom, set: workspaceStore.setEditZo
 const shownFrame = () => {
   const played = workspaceStore.playing && workspaceStore.played;
   if (played) return { cells: played.cells, maps: [played.editCells] };
-  return { cells: projectStore.shownCells, maps: projectStore.ownCellMaps };
+  return { cells: projectStore.shownCells, maps: projectStore.ownCellMaps() };
 };
 const sameMaps = (a, b) => a.length === b.length && a.every((map, i) => map === b[i]);
 const overlay = { canvas: null, image: null, cells: null, maps: [], edited: null, all: null, style: null, cols: 0, rows: 0, empty: true };
