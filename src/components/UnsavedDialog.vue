@@ -22,9 +22,10 @@ const choices = computed(() => [
 ]);
 
 function done(go) {
-  const { go: then } = workspace.unsavedAsk;
+  const { go: then, stay } = workspace.unsavedAsk;
   workspace.unsavedAsk = null;
   if (go) then();
+  else stay?.();
 }
 
 async function choose(id) {
