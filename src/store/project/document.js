@@ -25,6 +25,7 @@ import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils.js';
 import { commentLines, keptFields, keptRecord, withLetterSpacing } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
+import { sayMissingBlocks } from '@/composables/useFontSetup.js';
 import { busyWhile } from '@/composables/useBusy.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults, sauceDefaults, sliderDefaults } from '@/store/settings.js';
@@ -296,6 +297,7 @@ export const documentActions = {
       this.render();
       this.markSaved();
       this.asOpened = true;
+      if (art.font) sayMissingBlocks(this.drawingFont); // an XBin's own font, missing blocks besides its lower half
     });
   },
 

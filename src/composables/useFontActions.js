@@ -3,6 +3,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
 import { addFont, addBitmapFont, storedBitmapFont, storeBlocks, removeFont } from '@/lib/userFonts';
+import { sayMissingBlocks } from '@/composables/useFontSetup';
 import { fontId, fontName, fontSheet } from '@/lib/BitmapFont';
 import { downloadBlob, fileStem } from '@/document/projectIO';
 
@@ -29,7 +30,8 @@ export function useFontActions() {
     workspace.displayFont = id;
   }
 
-  // A font file kept in this browser and put to use (not in someone else's room: the font is theirs); its entry.
+  // A font file kept in this browser and put to use (not in someone else's room: the font is theirs); its entry. A
+  // bitmap font missing blocks says which.
   async function loadFile(file) {
     const bitmap = /\.(f\d\d|png)$/i.test(file.name) || file.type === 'image/png';
     let font = await (bitmap ? addBitmapFont(file) : addFont(file));
@@ -40,6 +42,7 @@ export function useFontActions() {
     }
     workspace.userFonts = [...loaded.value.filter((f) => f.id !== font.id), font];
     if (!hostsFont.value) await choose(font.id);
+    if (bitmap) sayMissingBlocks(await storedBitmapFont(font.id)); // blocks it lacks besides its lower half (useFontSetup)
     return font;
   }
 

@@ -1,19 +1,27 @@
 // A drawing whose font has no lower half can't be painted in (project.paintOff): a toast says so until it's fixed,
 // with a button that opens the font's blocks (useFontSetup). A font missing other blocks says which, for a while.
 import { test, expect, afterEach } from 'vitest';
+import { useFontActions } from '@/composables/useFontActions.js';
+import { loadFonts, removeFont } from '@/lib/userFonts.js';
+import { writeXBin } from '@/lib/XBinFile.js';
 import { effectScope, nextTick } from 'vue';
 import { createTestApp } from '../support/app.js';
 import { toast, toastMessage, toastAction, closeToast } from '@/composables/useToast.js';
 import { useFontSetup, showFontSetup } from '@/composables/useFontSetup.js';
 import { encodeFont } from '@/lib/BitmapFont.js';
-import { noLowerHalf, cp437Font } from '../support/blockFonts.js';
+import { noLowerHalf, cp437Font, fontWith } from '../support/blockFonts.js';
 
 const NO_LOWER = 'This drawing’s font, Slab, has no lower half block, so it can’t be painted in yet.';
 const HOST_ONLY = 'Only the host can set its blocks, outside the room.';
 const LOWER = [219, 254, 223, 221, 222, 176, 177, 178];
 
 let scope = null;
-afterEach(() => { scope?.stop(); scope = null; closeToast(); });
+afterEach(async () => {
+  scope?.stop();
+  scope = null;
+  closeToast();
+  for (const font of await loadFonts()) await removeFont(font.id);
+});
 
 async function drawing(font = noLowerHalf) {
   const app = await createTestApp();
@@ -82,5 +90,57 @@ test('in a room it has no button, and says only the host can set the blocks, out
   project.setDrawingFont({ ...noLowerHalf, name: 'Slab' });
   await nextTick();
   expect(toastMessage.value).toBe(`${NO_LOWER} ${HOST_ONLY}`);
+  expect(toastAction.value).toBe(null);
+});
+
+// A font with every block but the shades: its slots 176-178 drawn blank.
+const blank = (h) => Array(h).fill(0);
+const noShades = fontWith({ ...Object.fromEntries([219, 220, 223, 221, 222].map((n) => [n, (h) => cp437Glyph(n, h)])), 176: blank, 177: blank, 178: blank });
+function cp437Glyph(n, h) { return [...cp437Font.bytes.subarray(n * h, (n + 1) * h)]; }
+const NO_SHADES = 'This font has no Light, Medium, or Dark block, so those characters draw blank.';
+const PALETTE = ['#000000', '#0000aa', '#00aa00', '#00aaaa', '#aa0000', '#aa00aa', '#aa5500', '#aaaaaa', '#555555', '#5555ff', '#55ff55', '#55ffff', '#ff5555', '#ff55ff', '#ffff55', '#ffffff'];
+const xbinWith = (font) => new File([writeXBin({ cols: 1, rows: 1, cells: [{ char: ' ', fg: { hex: '#aaaaaa' }, bg: { hex: '#000000' } }], palette: PALETTE, font })], `${font.name}.xb`);
+
+test('a font loaded with + Load that has its lower half but not its shades names them, with the button', async () => {
+  await drawing(cp437Font);
+  await useFontActions().loadFile(new File([noShades.bytes], 'S.F16'));
+  expect(toastMessage.value).toBe(NO_SHADES);
+  expect(toastAction.value.label).toBe('Set up its blocks');
+});
+
+test('a font loaded with no lower half shows only the toast that stays', async () => {
+  await drawing(cp437Font);
+  await useFontActions().loadFile(new File([noLowerHalf.bytes], 'Slab.F16'));
+  await nextTick();
+  expect(toastMessage.value).toBe(NO_LOWER);
+});
+
+test('a font missing one block names it alone', async () => {
+  await drawing(cp437Font);
+  const noDark = fontWith({ ...Object.fromEntries([219, 220, 223, 221, 222, 176, 177].map((n) => [n, (h) => cp437Glyph(n, h)])), 178: blank });
+  await useFontActions().loadFile(new File([noDark.bytes], 'D.F16'));
+  expect(toastMessage.value).toBe('This font has no Dark block, so that character draws blank.');
+});
+
+test('an XBin opened with a font missing its shades names them', async () => {
+  const { project } = await drawing(cp437Font);
+  await project.openArtFile(xbinWith({ ...noShades, name: 'S' }));
+  await nextTick();
+  expect(toastMessage.value).toBe(NO_SHADES);
+  expect(toastAction.value.label).toBe('Set up its blocks');
+});
+
+test('an XBin opened with a font with no lower half shows only the toast that stays', async () => {
+  const { project } = await drawing(cp437Font);
+  await project.openArtFile(xbinWith({ ...noLowerHalf, name: 'Slab' }));
+  await nextTick();
+  expect(toastMessage.value).toBe(NO_LOWER);
+});
+
+test('hosting a room, the font loaded says only the host can set its blocks, outside the room, with no button', async () => {
+  const { project } = await drawing(cp437Font);
+  project._hosting = true;
+  await useFontActions().loadFile(new File([noShades.bytes], 'S.F16'));
+  expect(toastMessage.value).toBe(`${NO_SHADES} ${HOST_ONLY}`);
   expect(toastAction.value).toBe(null);
 });
