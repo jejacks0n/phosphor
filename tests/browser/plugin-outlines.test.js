@@ -10,6 +10,7 @@ import { pluginMatcher, resolvePlugin } from '@/lib/PluginSolve.js';
 import { SAMPLES, resolveShapes, shapeMatcher } from '@/lib/CharResolver.js';
 import { referenceMask, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { PALETTES } from '@/lib/ColorUtils.js';
+import { ASCII_CHARSETS } from '@/lib/charsetPresets.js';
 import { readSolvers } from '@/plugins/script';
 import { solverRef, unregisterSolvers } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
@@ -24,13 +25,15 @@ const REF = solverRef('jane.outlines', 'outlines');
 const DEFAULTS = Object.fromEntries(def.options.map((option) => [option.id, option.default]));
 const SET = ' ░▒▓█▄▀';
 const ASCII_LINES = '-|/\\', BOX_LINES = '─│╱╲';
+// The ASCII presets that already hold some of Outlines' lines: Classic ramp (-) and Long ramp (- | / \\).
+const RAMPS = ASCII_CHARSETS.filter((set) => set.id !== 'default').map((set) => set.chars);
 const key = (cells) => cells.map((c) => c && `${c.char}|${c.fg.r},${c.fg.g},${c.fg.b}|${c.bg.r},${c.bg.g},${c.bg.b}`);
 
 // The layer's set, then the solver's own characters, measured as the renderer measures them.
 async function glyphsOf(set = SET) {
   await loadReferenceFont();
   const own = [...def.chars].filter((char) => !set.includes(char));
-  return [...[...set].map((char) => ({ char, own: false })), ...own.map((char) => ({ char, own: true }))]
+  return [...[...new Set(set)].map((char) => ({ char, own: false })), ...own.map((char) => ({ char, own: true }))]
     .map((g) => ({ ...g, mask: referenceMask(g.char, SAMPLES.w, SAMPLES.h) }));
 }
 const matcherOf = async (options = {}, { palette = null, renderStyle = 'ansi', set } = {}) =>
@@ -108,13 +111,13 @@ test('Clean up removes a lone stroke and straightens a run', async () => {
   expect(await refine(lone)).toMatchObject({ char: ' ', fg: { r: 128, g: 128, b: 128 }, bg: { r: 128, g: 128, b: 128 } }); // Elsewhere: Blank
   expect((await refine(run)).char).toBe('-');
   expect((await refine(column)).char).toBe('|');
-  expect((await refine(['/..', '.\\.', '..\\'])).char).toBe('\\'); // already its run's
-  expect((await refine(['..\\', '.-.', '/..'])).char).toBe('-'); // no run through it: kept
   expect((await refine(['\\..', '.-.', '..\\'])).char).toBe('\\');
-  expect((await refine(corner)).char).toBe('/'); // a line beside it, no run through it: kept
-  for (const rows of [lone, run, column]) expect((await refine(rows, { clean_up: false })).char).toBe(rows[1][1]);
   expect((await refine(['...', '─╱─', '...'], { lines: 1 })).char).toBe('─');
-  expect((await refine(['...', '-/-', '...'], { lines: 1 })).char).toBe(' '); // the other set's lines aren't lines
+  // Cells it doesn't change keep pass 1's (null): one already its run's, one with no run through it, one beside a line,
+  // one that isn't a line (the other set's lines aren't lines), and every cell with Clean up off.
+  for (const rows of [['/..', '.\\.', '..\\'], ['..\\', '.-.', '/..'], corner, ['-.-', '...', '-.-']]) expect(await refine(rows), rows.join()).toBe(null);
+  expect(await refine(['...', '-/-', '...'], { lines: 1 })).toBe(null);
+  for (const rows of [lone, run, column]) expect(await refine(rows, { clean_up: false })).toBe(null);
 });
 
 test('Box drawing uses ─ │ ╱ ╲', async () => {
@@ -171,6 +174,48 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     expect(usePluginStore().problems['jane.outlines']).toBeUndefined();
     expect(spy.mock.results.some((r, i) => r.value && spy.mock.calls[i][3].kind === 'plugin')).toBe(true);
     expect(project.cells.some((c) => ASCII_LINES.includes(c.char))).toBe(true);
+  });
+
+  test('with the Classic ramp and the Long ramp, which hold some of its lines, the shaders draw the lines the JavaScript does', async () => {
+    const cols = 24, lines = 16, gpu = ShapeMatcher.shared();
+    expect(RAMPS).toHaveLength(2);
+    const pictures = { square: picture(cols, lines, square), photo: await samplesOfImage('/tests/fixtures/images/photo.jpg', cols, lines) };
+    for (const set of RAMPS) {
+      for (const [name, samples] of Object.entries(pictures)) {
+        for (const [renderStyle, palette] of [['colorAscii', null], ['colorAscii', PALETTES.vga], ['ascii', null]]) {
+          for (const options of [{}, { threshold: 4 }, { threshold: 4, lines: 1, elsewhere: 1 }]) {
+            const matcher = await matcherOf(options, { palette, renderStyle, set });
+            const shader = key(gpu.resolve(samples, cols, lines, matcher, {}).cells), js = resolvePlugin(samples, cols, lines, matcher, {}).cells;
+            const what = `${set.slice(0, 6)} ${name} ${renderStyle} ${!!palette} ${JSON.stringify(options)}`;
+            expect(shader.filter((cell, i) => cell !== key(js)[i]).length, what).toBe(0);
+            if (name === 'square') expect(js.some((cell) => (ASCII_LINES + BOX_LINES).includes(cell.char)), what).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
+  test('switching presets in one visit draws the right lines on the graphics card', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/square.png', { cols: 24, rows: 32 });
+    project.renderStyle = 'colorAscii';
+    await settle(project);
+    const ref = await onSolver(def);
+    for (const set of [ASCII_CHARSETS[0].chars, ...RAMPS]) {
+      const spy = vi.spyOn(ShapeMatcher.prototype, 'resolve');
+      project.setLayerChars('base', { charsAscii: set, charChoiceAscii: ref });
+      await settle(project);
+      expect(spy.mock.results.some((r, i) => r.value && spy.mock.calls[i][3].kind === 'plugin'), set).toBe(true);
+      expect(usePluginStore().problems['jane.outlines'], set).toBeUndefined();
+      const shown = key(project.cells);
+      expect(project.cells.some((c) => c.char === '-'), set).toBe(true);
+      spy.mockReturnValue(null); // the JavaScript's cells
+      project.renderer.reset();
+      project.render();
+      await settle(project);
+      expect(shown, set).toEqual(key(project.cells));
+      spy.mockRestore();
+    }
   });
 
   test.runIf(import.meta.env.VITE_SPEED === '1')('speed: 300 x 1000, shader and JavaScript, a whole resolve and a dab, against By shape', async () => {

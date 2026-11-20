@@ -5,7 +5,9 @@
 // Pass 1 (solve) reads the cell and its eight neighbors (reach 1): each one's brightness, and a Sobel gradient across
 // the nine. Where the gradient is at or past Threshold, the cell gets the line that runs along the edge.
 // Pass 2 (refine) reads pass 1's characters around the cell. With Clean up, a line with no line beside it goes, and a
-// line between two of another kind takes theirs (a / in a run of - becomes -).
+// line between two of another kind takes theirs (a / in a run of - becomes -). A cell it doesn't change keeps pass 1's
+// result (refine returns null). Pass 2 sees characters only, so when the layer's set holds - (say), By shape's - reads
+// as a line to Clean up too.
 //
 // Both passes are here twice: in JavaScript, and as shaders that run on the graphics card. Phosphor checks the shaders
 // against the JavaScript before it uses them, so they're written to work out the same numbers in the same order.
@@ -86,24 +88,27 @@ function solve(cell, look) {
 }
 
 function refine(cell, look) {
+  if (!look.options.clean_up) return null; // pass 1's cell, kept
   const lines = LINES[look.options.lines];
   const kinds = [];
   for (let j = 0; j < 9; j++) {
     const char = cell.char(j % 3 - 1, Math.floor(j / 3) - 1); // null past the border
     kinds.push(char === null ? -1 : lines.indexOf(char));
   }
-  let k = kinds[4];
-  if (k >= 0 && look.options.clean_up) {
+  const was = kinds[4];
+  let k = was;
+  if (was >= 0) {
     if (kinds.every((kind, j) => j === 4 || kind < 0)) k = -1; // alone
     else {
       for (let d = 0; d < 4; d++) {
-        if (d !== k && kinds[RUNS[d][0]] === d && kinds[RUNS[d][1]] === d) {
+        if (d !== was && kinds[RUNS[d][0]] === d && kinds[RUNS[d][1]] === d) {
           k = d;
           break;
         }
       }
     }
   }
+  if (k === was) return null; // unchanged: pass 1's cell, kept
   readWindow(cell);
   return k < 0 ? elsewhere(cell, look) : lineCell(look, k);
 }
@@ -111,9 +116,10 @@ function refine(cell, look) {
 // ---- GLSL ----
 // Each pass is the body of a function Phosphor puts after its prelude (docs/plugins.md, "The shader passes"); the
 // pieces both passes share are strings put together here. The tables come from the JavaScript's, so they can't drift.
-//
-// Glyph indexes count the layer's set, then this solver's characters not already in it. These shaders take the solver's
-// eight to be the last eight (glyphCount - 8 on): true unless the layer's set already holds one of them.
+// A glyph is named by its index: ownGlyph[n] is the index of this solver's nth character (in chars, LINES joined), so
+// line k of the Lines choice is ownGlyph[4 * opt_lines + k], wherever the layer's set put it.
+// A shader can't keep pass 1's cell as refine's null does, so its refine works pass 1's cell out again (WINDOW, LINE)
+// and uses it where Clean up changes nothing.
 
 const WINDOW_GLSL = `
   vec3 sums[9];
@@ -152,27 +158,28 @@ const PUT_GLSL = `
   vec3 one = (sums[SIDES[k * 6]] + sums[SIDES[k * 6 + 1]] + sums[SIDES[k * 6 + 2]]) / 96.0;
   vec3 two = (sums[SIDES[k * 6 + 3]] + sums[SIDES[k * 6 + 4]] + sums[SIDES[k * 6 + 5]]) / 96.0;
   bool darker = 0.2126 * one.r + 0.7152 * one.g + 0.0722 * one.b <= 0.2126 * two.r + 0.7152 * two.g + 0.0722 * two.b;
-  put(darker ? one : two, darker ? two : one, glyphCount - 8 + 4 * opt_lines + k);`;
+  put(darker ? one : two, darker ? two : one, ownGlyph[4 * opt_lines + k]);`;
 
 const REFINE_GLSL = `
   const int RUNS[8] = int[8](${RUNS.flat().join(', ')});
-  int first = glyphCount - 8 + 4 * opt_lines;
   int kinds[9];
   for (int j = 0; j < 9; j++) {
-    int c = charAt(ivec2(j % 3 - 1, j / 3 - 1)) - first; // charAt is -1 past the border
-    kinds[j] = c >= 0 && c < 4 ? c : -1;
+    int c = charAt(ivec2(j % 3 - 1, j / 3 - 1)); // -1 past the border
+    kinds[j] = -1;
+    for (int n = 0; n < 4; n++) if (c == ownGlyph[4 * opt_lines + n]) kinds[j] = n;
   }
-  int k = kinds[4];
-  if (k >= 0 && opt_clean_up) {
+  int was = kinds[4], now = was;
+  if (was >= 0 && opt_clean_up) {
     bool alone = true;
     for (int j = 0; j < 9; j++) if (j != 4 && kinds[j] >= 0) alone = false;
-    if (alone) k = -1;
+    if (alone) now = -1;
     else {
       for (int d = 0; d < 4; d++) {
-        if (d != k && kinds[RUNS[d * 2]] == d && kinds[RUNS[d * 2 + 1]] == d) { k = d; break; }
+        if (d != was && kinds[RUNS[d * 2]] == d && kinds[RUNS[d * 2 + 1]] == d) { now = d; break; }
       }
     }
-  }`;
+  }
+  if (now != was) k = now; // else pass 1's k, worked out again above`;
 
 export default {
   solvers: [{
@@ -191,7 +198,7 @@ export default {
     refine,
     shader: {
       solve: WINDOW_GLSL + LINE_GLSL + PUT_GLSL,
-      refine: REFINE_GLSL + WINDOW_GLSL + PUT_GLSL,
+      refine: WINDOW_GLSL + LINE_GLSL + REFINE_GLSL + PUT_GLSL,
     },
   }],
 };

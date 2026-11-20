@@ -171,10 +171,12 @@ function makePluginMatcher(def, ref, palette, glyphs, solids, light, style, opti
   }
   const solveCell = { col: 0, line: 0, sample }, refineCell = { col: 0, line: 0, sample, char };
 
-  // A pass called as a plain function (this is undefined), its result held. Anything it throws is a SolverError.
-  const call = (pass, cell, shows) => {
+  // A pass called as a plain function (this is undefined), its result held; with keeps (pass 2), null is kept as null
+  // (pass 1's cell stays). Anything it throws is a SolverError.
+  const call = (pass, cell, shows, keeps = false) => {
     try {
-      return hold(pass(cell, look), shows);
+      const result = pass(cell, look);
+      return keeps && result === null ? null : hold(result, shows);
     } catch (error) {
       throw new SolverError(ref, messageOf(error));
     }
@@ -208,9 +210,9 @@ function makePluginMatcher(def, ref, palette, glyphs, solids, light, style, opti
               ownSamples[j] = clamp(raw[p] + nudge); ownSamples[j + 1] = clamp(raw[p + 1] + nudge); ownSamples[j + 2] = clamp(raw[p + 2] + nudge);
             }
             state.col = col; state.line = line; refineCell.col = col + ox; refineCell.line = line + oy;
-            const { cell, fault } = call(refine, refineCell, false);
-            cells[line * cols + col] = cell;
-            if (fault) faults++;
+            const got = call(refine, refineCell, false, true);
+            cells[line * cols + col] = got ? got.cell : first[line * cols + col]; // null: pass 1's, not a fault
+            if (got?.fault) faults++;
           }
         }
       }
@@ -232,8 +234,8 @@ export const holdCell = (result, matcher) => matcher.hold(result);
 // A plugin solver over the grid: a cell ({ char, fg, bg }) for each of lines x cols, from samples (By shape's: RGBA,
 // cols x SAMPLES.w wide, at least lines x SAMPLES.h tall). Pass 1 rides By shape's walk (walkCells: Floyd–Steinberg's
 // error carried, Bayer's nudge), over area grown by reach, into first; pass 2 (refine, when the solver has one and
-// not alone) over area grown by 2 x reach, from first, with Bayer's nudge and none of the error, into cells. With
-// area, cells and first are the last resolve's, kept by the caller (refine with no first resolves the whole grid).
+// not alone) over area grown by 2 x reach, from first, with Bayer's nudge and none of the error, into cells (a refine
+// that returns null keeps first's cell there: pass 1's, Floyd–Steinberg's error and all). With area, cells and first are the last resolve's, kept by the caller (refine with no first resolves the whole grid).
 // alone (over paint, upper layers): reach 0, no pass 2. origin ({ col, line }): where the samples' first cell is in the
 // drawing, added to the col and line the solver is told (an upper layer's one cell), not to what it reads. first is
 // null without a pass 2. faults: results whose character was held.
