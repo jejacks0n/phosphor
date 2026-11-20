@@ -1152,6 +1152,9 @@
     "stillFull": "L'espace de stockage du navigateur est plein. Ce projet n'a pas pu être enregistré même après avoir libéré les anciennes versions. Veuillez enregistrer un fichier .phosphor.",
     "openFailed": "Impossible de rouvrir ce projet."
   },
+  "busy": {
+    "solving": "Calcul des caractères…"
+  },
   "document": {
     "opening": "Ouverture de {name}…",
     "saving": "Enregistrement de {name}…",

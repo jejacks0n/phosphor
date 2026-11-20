@@ -79,4 +79,17 @@ describe('failures', () => {
     failSolver(ref, 'again');
     expect(listener).toHaveBeenCalledTimes(1);
   });
+  it('from a script no longer registered are ignored, unheard', () => {
+    registerSolvers('jane.outlines', 'h1', [def]);
+    const listener = vi.fn();
+    const stop = onSolverFailure(listener);
+    registerSolvers('jane.outlines', 'h2', [def]); // a Reload while the old script's resolve ran
+    failSolver(ref, 'old', 'h1');
+    expect(failureOf(ref)).toBeNull();
+    expect(listener).not.toHaveBeenCalled();
+    failSolver(ref, 'new', 'h2');
+    expect(failureOf(ref)).toBe('new');
+    expect(listener).toHaveBeenCalledWith(ref, 'new');
+    stop();
+  });
 });
