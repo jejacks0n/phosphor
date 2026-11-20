@@ -104,7 +104,7 @@ function ownParams(params, chars, inRoom, font) {
     made = {
       ...params,
       chars: fitted(font, renderStyle === 'ansi' ? chars.chars : chars.charsAscii),
-      charMode: charModeOf(renderStyle, chars.charChoice, chars.charChoiceAscii),
+      charMode: renderStyle === 'ansi' && font && blocksOf(font)[1] === null ? 'best' : charModeOf(renderStyle, chars.charChoice, chars.charChoiceAscii), // (no lower half: Best match, as the drawing's own)
       charChoice: chars.charChoice,
       ...solverParams(chars, renderStyle, inRoom),
       seed: chars.seed,

@@ -72,6 +72,14 @@ test('a picture converts with Best match while the font has no lower half', asyn
   expect(project.processParams.charMode).toBe('best');
 });
 
+test('a layer with its own settings converts with Best match too while the font has no lower half', async () => {
+  const { project } = await drawing();
+  project.setLayerChars('edit', { charChoice: 'random', seed: 'its-own' });
+  expect(project.layerParams.get('edit').charMode).toBe('best');
+  project.setDrawingFont({ ...cp437Font, name: 'Ok' });
+  expect(project.layerParams.get('edit').charMode).toBe('random');
+});
+
 test('giving the font a lower half turns paint back on', async () => {
   const { project } = await drawing();
   expect(project.paintOff).not.toBeNull();
