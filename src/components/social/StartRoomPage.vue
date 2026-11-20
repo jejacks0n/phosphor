@@ -19,7 +19,8 @@ const hasArt = computed(() => !!project.image && project.cells.length > 0);
 const noArt = computed(() => t('social.start.noArt'));
 const roomsAreStill = computed(() => t('tabs.animateInRoom'));
 const nameFirst = computed(() => (DESKTOP && !social.desktopName ? t('social.desktop.nameFirst') : undefined));   // a pass needs a name
-const cannotGoLive = computed(() => project.hasFrames ? roomsAreStill.value : nameFirst.value);   // why Go live is off, when it's the document (or, on desktop, no name)
+// why Go live is off, when it's the document (frames, a layer on a plugin solver) or, on desktop, no name
+const cannotGoLive = computed(() => (project.hasFrames ? roomsAreStill.value : room.pluginSolversWhy ?? nameFirst.value));
 
 const draft = room.startDraft;   // kept in the store while you're on another tab
 const listed = computed(() => !DESKTOP && draft.isPublic);   // in the lobby, with its card and picture

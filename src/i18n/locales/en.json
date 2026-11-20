@@ -169,6 +169,17 @@
       "intensity": "By intensity",
       "brightness": "By brightness"
     },
+    "solver": {
+      "notHere": "{name} (not here)",
+      "standIn": {
+        "missing": "{name} isn't installed. Showing By shape.",
+        "off": "{name} is off. Showing By shape.",
+        "pluginsOff": "Plugins are off for this visit. Showing By shape.",
+        "style": "{name} doesn't do {style}. Showing By shape.",
+        "failed": "{name} failed: {message}. Showing By shape.",
+        "room": "Plugin solvers aren't used in rooms. Showing By shape."
+      }
+    },
     "seed": {
       "label": "Character seed",
       "placeholder": "Seed",
@@ -1133,7 +1144,8 @@
           "name": "Cast"
         }
       }
-    }
+    },
+    "standIns": "{names} shows By shape in place of its plugin solver. | {names} show By shape in place of their plugin solvers."
   },
   "versions": {
     "title": "Versions",
@@ -1729,6 +1741,9 @@
       "hostReplaced": "This room is open in another tab"
     }
   },
+  "room": {
+    "pluginSolvers": "{names} is on a plugin solver, which rooms don't use. Choose a built-in solver for it, or Flatten the drawing first. | {names} are on plugin solvers, which rooms don't use. Choose built-in solvers for them, or Flatten the drawing first."
+  },
   "art": {
     "make": "Make art layer",
     "makeTitle": "Convert the selected cells into an art layer that you can move and animate",
@@ -1922,16 +1937,18 @@
   "plugins": {
     "open": "Plugins",
     "title": "Plugins",
-    "sub": "Plugins add to Phosphor, themes for now. They come as a file named phosphor-plugin.json, and are kept in this browser.",
+    "sub": "Plugins add themes and ways to choose characters to Phosphor. They come as a folder, a .zip or a phosphor-plugin.json, and are kept in this browser.",
     "empty": "No plugins yet.",
     "docs": "How plugins work",
     "by": "by {author}",
     "themes": "{n} theme | {n} themes",
+    "runsCode": "Runs code",
     "on": "On",
     "off": "Off",
     "remove": "Remove",
     "removeNamed": "Remove {name}",
     "installFile": "Install from a file…",
+    "installFolder": "Install from a folder…",
     "startedOff": "Plugins are off for this visit. Switch one off or remove it here, then load Phosphor again without plugins=off.",
     "startedOffDesktop": "Plugins are off in this window. Switch one off or remove it here, then open a new window (File > New Window).",
     "unavailable": "This browser isn't keeping plugins, so none can be installed.",
@@ -1940,7 +1957,10 @@
       "replaceTitle": "Replace {name} {old} with {version}?",
       "go": "Install",
       "replace": "Replace",
-      "adds": "Adds {adds}. Runs no code."
+      "adds": "Adds {adds}. Runs no code.",
+      "addsScript": "Adds {adds} and a script.",
+      "addsOnlyScript": "Adds a script.",
+      "warning": "⚠ This plugin runs code in Phosphor. Install it only if you trust where it came from."
     },
     "removeQuestion": {
       "title": "Remove {name}?",

@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useLayerName } from '@/composables/useLayerName';
+import { formatList } from '@/i18n/format';
 import { arrowsBetween } from '@/lib/focus';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { charRowsOf } from '@/lib/Cells';
@@ -38,6 +40,11 @@ const saving = ref(false);
 const progress = ref(null); // a GIF's or video's share of frames written while it exports
 const problem = ref('');
 const stem = computed(() => fileStem(name.value, selected.value.ext));
+
+// The layers that show By shape in place of the plugin solver they chose (their params' standIn), bottom first: what's
+// exported is what shows.
+const layerName = useLayerName();
+const standIns = computed(() => project.layers.filter(({ id }) => project.layerParams.get(id)?.standIn).map(({ id }) => layerName(id)));
 
 const tooTall = computed(() => ['ansimation', 'utf8ansimation'].includes(selectedId.value) && (project.cols > 80 || charRowsOf(project.rows) > 25));
 // .ans is CP437: the characters it can't keep and what each becomes. An animated .ans lists what every frame holds,
@@ -173,6 +180,8 @@ function cancel() {
             </button>
           </div>
         </div>
+
+        <p v-if="standIns.length" class="note warn stand-ins">{{ t('export.standIns', { names: formatList(standIns) }, standIns.length) }}</p>
 
         <!-- Animated ANS: too tall/wide warning -->
         <p v-if="tooTall" class="note warn">{{ t('export.modal.tooTall', { cols: project.cols, rows: charRowsOf(project.rows) }) }}</p>

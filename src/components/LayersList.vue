@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useLayerName } from '@/composables/useLayerName';
 import { useMergeDown } from '@/composables/useMergeDown';
+import { useStandIn } from '@/composables/useStandIn';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
@@ -21,6 +22,7 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
 const { t } = useI18n();
 const layerName = useLayerName();
+const standIn = useStandIn();
 const list = useTemplateRef('list');
 const uid = useId();   // for the off rows' reasons: the side panel and the phone dialog may both hold a list
 
@@ -37,6 +39,7 @@ const layers = computed(() => [...project.layers].reverse().map(({ id, kind, hid
   icon: ICONS[id === 'base' ? 'base' : kind],
   name: layerName(id),
   hidden,
+  standIn: standIn(id),   // why By shape shows in place of its plugin solver: a ⚠ beside its name says so
   off: id === 'base' ? drawing.hostOnly ?? (project.artInside ? t('art.baseOff') : null) : null,
 })));
 
@@ -188,6 +191,7 @@ function cancel() {
             <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="layer.icon"/></svg>
             <span class="name" @dblclick="rename(layer)">{{ layer.name }}</span>
           </button>
+          <span v-if="layer.standIn" class="stand-in" role="img" :title="layer.standIn" :aria-label="layer.standIn">⚠</span>
           <span v-if="layer.off" :id="`${uid}-${layer.id}-off`" class="unseen">{{ layer.off }}</span>
           <button
               class="eye link" :aria-label="t(layer.hidden ? 'layers.showAria' : 'layers.hideAria', { name: layer.name })"
@@ -296,6 +300,11 @@ span.unseen {   /* for screen readers only: why the row is off (the title says i
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+span.stand-in {
+  flex-shrink: 0;
+  color: var(--warning);
+  cursor: default;
 }
 span.name {
   overflow: hidden;

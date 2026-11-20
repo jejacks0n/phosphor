@@ -5,8 +5,11 @@ import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { usePluginStore } from '@/store/PluginStore';
+import { useRoomStore } from '@/store/RoomStore';
 import { CHAR_KEYS, SETTINGS, getSetting } from '@/store/settings';
 import { useLayerName } from '@/composables/useLayerName';
+import { useStandIn, solverName } from '@/composables/useStandIn';
 
 import ProjectActions from '@/components/ProjectActions.vue';
 import ProjectFooter from '@/components/ProjectFooter.vue';
@@ -14,6 +17,8 @@ import HelpInfo from '@/components/HelpInfo.vue';
 import RangeField from '@/components/RangeField.vue';
 import CharsetField from '@/components/CharsetField.vue';
 import FontField from '@/components/FontField.vue';
+import SolverOptions from '@/components/SolverOptions.vue';
+import { isSolverRef } from '@/plugins/solvers';
 import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 import { resolves } from '@/lib/CharResolver';
 import { charRowsOf } from '@/lib/Cells';
@@ -27,6 +32,9 @@ const store = useProjectStore();
 const drawing = useDrawingStore();
 const workspace = useWorkspaceStore();
 const layerName = useLayerName();
+const plugins = usePluginStore();
+const room = useRoomStore();
+const standIn = useStandIn();
 
 // Why the settings are off, if they are: only the host's in a room; and inside an art layer the dimmed rest is a snapshot
 // of how they had the picture, which a change would leave stale.
@@ -63,7 +71,10 @@ const own = reactive(Object.fromEntries(CHAR_KEYS.map((key) => [key, computed({
   },
 })])));
 const ownParams = computed(() => store.layerParams.get(picked.value) ?? store.processParams);
+// What the section says above its settings: why a plugin solver the layer chose isn't drawing it, else what it converts.
 const charsNote = computed(() => {
+  const why = standIn(picked.value);
+  if (why) return why;
   if (picked.value === 'base') return null;
   return t(pickedKind.value === 'vector' ? 'panel.charsNoteVector' : 'panel.charsNote', { name: layerName(picked.value) });
 });
@@ -83,6 +94,22 @@ const sections = computed(() => {
 
 const help = (key) => getSetting(key).help;
 const ansi = computed(() => store.renderStyle === 'ansi');
+
+// The plugin solvers the choice offers after the built-in ones: those that do the drawing's style, by name; none in a
+// room, where they aren't used. A plugin solver the layer chose that isn't offered (not installed, off, not this style,
+// in a room) stays as one more option, so the choice still shows it, and the file keeps it until another is chosen.
+const solverChoices = computed(() => (room.inRoom ? [] : Object.entries(plugins.solvers)
+  .filter(([, solver]) => solver.styles.includes(store.renderStyle)).map(([ref, { name }]) => ({ ref, name }))));
+const notOffered = computed(() => {
+  const ref = ansi.value ? own.charChoice : own.charChoiceAscii;
+  if (!isSolverRef(ref) || solverChoices.value.some((choice) => choice.ref === ref)) return null;
+  return { ref, name: t('panel.solver.notHere', { name: solverName(plugins, ref) }) };
+});
+// The plugin solver drawing the layer, if one is (not a stand-in), and its options' values (params' solverOptions). A
+// change replaces the layer's options for that solver and keeps the others' (setLayerChars), each an undo step as a
+// character setting's is: a slider's drag or nudge when it ends, a checkbox or a choice at once.
+const solverInUse = computed(() => plugins.solvers[ownParams.value.solver] ?? null);
+const setSolverOptions = (values) => store.setLayerChars(picked.value, { solverOptions: { ...own.solverOptions, [ownParams.value.solver]: values } });
 
 // A section folds and unfolds on its title, and stays as it was left in this browser. Folded, a slider group says how
 // many of its sliders are on (off their defaults), so a forgotten Threshold doesn't change the picture unseen.
@@ -222,12 +249,20 @@ function onKeyDown(event) {
                 <option value="random">{{ t('panel.charChoice.random') }}</option>
                 <option value="best">{{ t('panel.charChoice.best') }}</option>
                 <option value="shape">{{ t('panel.charChoice.shape') }}</option>
+                <option v-for="choice in solverChoices" :key="choice.ref" :value="choice.ref">{{ choice.name }}</option>
+                <option v-if="notOffered" :value="notOffered.ref">{{ notOffered.name }}</option>
               </select>
               <select v-else id="charChoiceAscii" v-model="own.charChoiceAscii">
                 <option value="weight">{{ store.renderStyle === 'ascii' ? t('panel.charChoice.brightness') : t('panel.charChoice.intensity') }}</option>
                 <option value="shape">{{ t('panel.charChoice.shape') }}</option>
+                <option v-for="choice in solverChoices" :key="choice.ref" :value="choice.ref">{{ choice.name }}</option>
+                <option v-if="notOffered" :value="notOffered.ref">{{ notOffered.name }}</option>
               </select>
             </div>
+            <SolverOptions
+                v-if="solverInUse" :options="solverInUse.options" :values="ownParams.solverOptions"
+                @change="setSolverOptions" @commit="store.commitLayerChars($event)"
+            />
 
             <div class="field">
               <div class="label-row">

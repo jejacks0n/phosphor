@@ -81,3 +81,6 @@ export function formatListParts(length, type = 'conjunction') {
     return { type: 'literal', value: part.value };
   });
 }
+
+// Names as one list in the language in use ("Base, Layer 1 and Vector 1").
+export const formatList = (items) => cached(Intl.ListFormat, locale.value, 'list:conjunction', { type: 'conjunction' }).format(items);

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, nextTick, useTemplateRef, useId } from 'vue';
+import { computed, ref, watch, onMounted, nextTick, useTemplateRef, useId } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -29,6 +29,8 @@ watch(() => room.needsPassword, async (asks) => {   // asked (again, when wrong)
   passwordInput.value?.focus();
   passwordInput.value?.select();
 }, { immediate: true });
+// Why Start a room is off: no name yet (a pass needs one), or a layer on a plugin solver, which rooms don't use.
+const startOff = computed(() => (social.desktopName ? room.pluginSolversWhy ?? undefined : t('social.desktop.nameFirst')));
 async function join() {
   joining.value = true;
   keepPassword.value = !!room.needsPassword;
@@ -65,7 +67,8 @@ async function join() {
 
       <hr>
       <h2>{{ t('social.desktop.hostHeading') }}</h2>
-      <button :disabled="!social.desktopName" :title="social.desktopName ? undefined : t('social.desktop.nameFirst')" @click="social.page = 'start-room'">{{ t('social.lobby.startRoom') }}</button>
+      <p v-if="room.pluginSolversWhy" class="help">{{ room.pluginSolversWhy }}</p>
+      <button :disabled="!!startOff" :title="startOff" @click="social.page = 'start-room'">{{ t('social.lobby.startRoom') }}</button>
 
       <p class="help ip">{{ t('social.desktop.ipSeen') }}</p>
     </template>

@@ -1,6 +1,6 @@
 // The Plugins dialog: what's installed, installing from a manifest file after asking, the on and off switch, Remove
 // after asking, and what it says when the browser keeps nothing or the visit started with plugins off.
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { createApp } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -8,14 +8,21 @@ import midnight from '../fixtures/plugins/midnight/phosphor-plugin.json?raw';
 import { i18n } from '@/i18n';
 import PluginsDialog from '@/components/PluginsDialog.vue';
 import { usePluginStore } from '@/store/PluginStore';
+import { solverRef } from '@/plugins/solvers';
 import { ownDatabase } from '../support/socialDatabase.js';
+import { ownHangMark } from '../support/ownHangMark.js';
+import { zipOf } from '../support/zipOf.js';
 import '@/assets/global.css';
 
 let app, host, loads = [];
-beforeEach(() => ownDatabase('phosphor-plugins', 'plugins-dialog')());
+beforeEach(async () => {
+  await ownDatabase('phosphor-plugins', 'plugins-dialog')();
+  ownHangMark('plugins-dialog');
+});
 afterEach(async () => {
   await Promise.all(loads);
   loads = [];
+  usePluginStore().dropSolvers('jane.midnight'); // the registry outlives the Pinia
   app?.unmount();
   host?.remove();
   app = host = null;
@@ -65,6 +72,7 @@ test('empty, it says what plugins are; a manifest picked is asked about, then li
   expect(heading()).toBe('Install Midnight 1.0.0?');
   expect(dialogText()).toContain('by Jane');
   expect(dialogText()).toContain('Adds 1 theme. Runs no code.');
+  expect(dialogText()).not.toContain('runs code in Phosphor');
   await page.getByRole('button', { name: /^Install/ }).click();
   await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
   const row = document.querySelector('dialog li');
@@ -250,4 +258,110 @@ test('Tab goes from the last row on to Install from a file…, past the hidden f
   link.focus();
   await userEvent.tab();
   expect(document.activeElement.textContent).toBe('Install from a file…');
+});
+
+// A plugin with a script: Midnight's manifest naming edges.js, whose one solver is Edges.
+const SCRIPT = "export default { solvers: [{ id: 'edges', name: 'Edges', styles: ['ansi'], reach: 1, chars: '/', solve: () => ({ char: '/', fg: 0, bg: 0 }) }] };";
+const scripted = (change = () => {}) => changed((m) => { m.script = 'edges.js'; change(m); });
+const WARNING = '⚠ This plugin runs code in Phosphor. Install it only if you trust where it came from.';
+// A folder picked in the hidden folder input, as the browser's own chooser would.
+const pickFolder = async (manifestText, script = SCRIPT) => {
+  const input = document.querySelector('dialog input[webkitdirectory]');
+  const files = new DataTransfer();
+  files.items.add(new File([manifestText], 'phosphor-plugin.json', { type: 'application/json' }));
+  files.items.add(new File([script], 'edges.js', { type: 'text/javascript' }));
+  input.files = files.files;
+  input.dispatchEvent(new Event('change'));
+  await vi.waitFor(() => expect(document.querySelector('dialog h3')?.textContent).not.toBe('Plugins'));
+};
+
+test('the question for a plugin with a script warns that it runs code; a theme-only one says it runs none', async () => {
+  window.showDirectoryPicker = undefined; // a browser with no folder picker: the hidden input
+  onTestFinished(() => { delete window.showDirectoryPicker; });
+  const store = await mount();
+  await page.getByRole('button', { name: 'Install from a folder…' }).click(); // opens the hidden input's chooser
+  await pickFolder(scripted());
+  expect(heading()).toBe('Install Midnight 1.0.0?');
+  expect(dialogText()).toContain('Adds 1 theme and a script.');
+  expect(dialogText()).toContain(WARNING);
+  expect(dialogText()).not.toContain('Runs no code');
+  await page.getByRole('button', { name: /^Install/ }).click();
+  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  expect(store.solvers[solverRef('jane.midnight', 'edges')]).toMatchObject({ name: 'Edges' });
+  expect(document.querySelector('dialog li').textContent).toContain('Runs code');
+
+  await pickFolder(scripted((m) => { m.version = '1.1.0'; delete m.themes; }));
+  expect(dialogText()).toContain('Adds a script.');
+  expect(dialogText()).toContain(WARNING);
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  // a script that won't load is refused in its own words, and nothing is kept
+  await pickFolder(scripted((m) => { m.version = '1.2.0'; }), 'export default {');
+  await page.getByRole('button', { name: /^Replace/ }).click();
+  await vi.waitFor(() => expect(document.querySelector('dialog [role=alert]')?.textContent).toMatch(/^The plugin's script couldn't be loaded: ./));
+  expect(store.plugins[0].manifest.version).toBe('1.0.0');
+});
+
+test('the file button takes a .zip as well as a manifest, and the folder button uses the browser\'s folder picker where it has one', async () => {
+  const store = await mount();
+  expect(document.querySelector('dialog input[type=file]:not([webkitdirectory])').accept).toBe('.zip,.json,application/zip,application/json');
+  const folder = await navigator.storage.getDirectory().then((root) => root.getDirectoryHandle(`dialog-${Math.random().toString(36).slice(2)}`, { create: true }));
+  onTestFinished(() => navigator.storage.getDirectory().then((root) => root.removeEntry(folder.name, { recursive: true })));
+  for (const [name, text] of [['phosphor-plugin.json', scripted()], ['edges.js', SCRIPT]]) {
+    const writable = await (await folder.getFileHandle(name, { create: true })).createWritable();
+    await writable.write(text);
+    await writable.close();
+  }
+  window.showDirectoryPicker = async () => folder;
+  onTestFinished(() => { delete window.showDirectoryPicker; });
+  await page.getByRole('button', { name: 'Install from a folder…' }).click();
+  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.0.0?'));
+  await page.getByRole('button', { name: /^Install/ }).click();
+  await expect.element(page.getByRole('button', { name: 'Reload Midnight' })).toBeVisible(); // the folder's kept
+  expect(store.plugins[0].handle.kind).toBe('directory');
+});
+
+// A folder dropped: the browser hands its entries over webkitGetAsEntry, which a real DataTransfer can't be given.
+const entry = (name, text) => ({ isFile: true, isDirectory: false, name, fullPath: `/midnight/${name}`, file: (resolve) => resolve(new File([text], name)) });
+const folderDrop = (children) => {
+  let read = false;
+  const dir = { isFile: false, isDirectory: true, name: 'midnight', createReader: () => ({ readEntries: (resolve) => resolve(read ? [] : (read = true, children)) }) };
+  const event = new Event('drop', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'dataTransfer', { value: { items: [{ webkitGetAsEntry: () => dir }], files: [] } });
+  document.querySelector('dialog h3').dispatchEvent(event);
+  return event.defaultPrevented;
+};
+
+test('a dropped folder is asked about; a dropped zip too', async () => {
+  await mount();
+  expect(folderDrop([entry('phosphor-plugin.json', scripted()), entry('edges.js', SCRIPT)])).toBe(true);
+  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.0.0?'));
+  expect(dialogText()).toContain(WARNING);
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+
+  const zip = await zipOf([['midnight-main/phosphor-plugin.json', scripted()], ['midnight-main/edges.js', SCRIPT]]);
+  const data = new DataTransfer();
+  data.items.add(new File([zip], 'midnight-main.zip', { type: 'application/zip' }));
+  document.querySelector('dialog h3').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
+  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.0.0?'));
+  expect(dialogText()).toContain('Adds 1 theme and a script.');
+});
+
+test('a row waiting on code asks before running it', async () => {
+  const store = await mount();
+  await installed();
+  const allow = vi.spyOn(store, 'allowCode').mockImplementation(async (id) => { delete store.pendingCode[id]; return true; });
+  const decline = vi.spyOn(store, 'declineCode').mockImplementation(async (id) => { delete store.pendingCode[id]; });
+  store.pendingCode['jane.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
+  await expect.element(page.getByText('Midnight now runs code. Allow?')).toBeVisible();
+  expect(document.querySelector('dialog li').textContent).toContain(WARNING);
+  await page.getByRole('button', { name: 'Not now' }).click();
+  expect(decline).toHaveBeenCalledWith('jane.midnight');
+  await expect.element(page.getByText('Midnight now runs code. Allow?')).not.toBeInTheDocument();
+
+  store.pendingCode['jane.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
+  await page.getByRole('button', { name: 'Allow' }).click();
+  expect(allow).toHaveBeenCalledWith('jane.midnight');
+  await expect.element(page.getByText('Midnight now runs code. Allow?')).not.toBeInTheDocument();
 });

@@ -169,6 +169,17 @@
       "intensity": "Par intensité",
       "brightness": "Par luminosité"
     },
+    "solver": {
+      "notHere": "{name} (absent)",
+      "standIn": {
+        "missing": "{name} n'est pas installé. Affichage Par forme.",
+        "off": "{name} est désactivé. Affichage Par forme.",
+        "pluginsOff": "Les plugins sont désactivés pour cette visite. Affichage Par forme.",
+        "style": "{name} ne gère pas le style {style}. Affichage Par forme.",
+        "failed": "{name} a échoué : {message}. Affichage Par forme.",
+        "room": "Les solveurs des plugins ne servent pas dans les salles. Affichage Par forme."
+      }
+    },
     "seed": {
       "label": "Graine de caractères",
       "placeholder": "Graine",
@@ -1133,7 +1144,8 @@
           "name": "Cast"
         }
       }
-    }
+    },
+    "standIns": "{names} s'affiche Par forme à la place de son solveur de plugin. | {names} s'affichent Par forme à la place de leurs solveurs de plugin."
   },
   "versions": {
     "title": "Versions",
@@ -1729,6 +1741,9 @@
       "hostReplaced": "Cette salle est ouverte dans un autre onglet"
     }
   },
+  "room": {
+    "pluginSolvers": "{names} utilise un solveur de plugin, que les salles n'utilisent pas. Choisissez-lui un solveur intégré, ou aplatissez le dessin d'abord. | {names} utilisent des solveurs de plugin, que les salles n'utilisent pas. Choisissez-leur des solveurs intégrés, ou aplatissez le dessin d'abord."
+  },
   "art": {
     "make": "Créer un calque d'art",
     "makeTitle": "Convertir les cellules sélectionnées en calque d'art que vous pouvez déplacer et animer",
@@ -1922,16 +1937,18 @@
   "plugins": {
     "open": "Plugins",
     "title": "Plugins",
-    "sub": "Les plugins ajoutent à Phosphor, des thèmes pour l'instant. Ils viennent dans un fichier nommé phosphor-plugin.json, et sont gardés dans ce navigateur.",
+    "sub": "Les plugins ajoutent à Phosphor des thèmes et des façons de choisir les caractères. Ils viennent dans un dossier, un .zip ou un phosphor-plugin.json, et sont gardés dans ce navigateur.",
     "empty": "Aucun plugin pour le moment.",
     "docs": "Comment marchent les plugins",
     "by": "par {author}",
     "themes": "{n} thème | {n} thèmes",
+    "runsCode": "Exécute du code",
     "on": "Activé",
     "off": "Désactivé",
     "remove": "Retirer",
     "removeNamed": "Retirer {name}",
     "installFile": "Installer depuis un fichier…",
+    "installFolder": "Installer depuis un dossier…",
     "startedOff": "Les plugins sont désactivés pour cette visite. Désactivez-en un ou retirez-le ici, puis rechargez Phosphor sans plugins=off.",
     "startedOffDesktop": "Les plugins sont désactivés dans cette fenêtre. Désactivez-en un ou retirez-le ici, puis ouvrez une nouvelle fenêtre (Fichier > Nouvelle fenêtre).",
     "unavailable": "Ce navigateur ne garde pas les plugins, donc aucun ne peut être installé.",
@@ -1940,7 +1957,10 @@
       "replaceTitle": "Remplacer {name} {old} par {version} ?",
       "go": "Installer",
       "replace": "Remplacer",
-      "adds": "Ajoute {adds}. N'exécute aucun code."
+      "adds": "Ajoute {adds}. N'exécute aucun code.",
+      "addsScript": "Ajoute {adds} et un script.",
+      "addsOnlyScript": "Ajoute un script.",
+      "warning": "⚠ Ce plugin exécute du code dans Phosphor. Ne l'installez que si vous avez confiance en sa provenance."
     },
     "removeQuestion": {
       "title": "Retirer {name} ?",

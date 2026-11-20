@@ -240,3 +240,14 @@ test('no request leaves the store while hosting', async () => {
   expect(desktop.stopService).toHaveBeenCalled();
   expect(fetched).not.toHaveBeenCalled();
 });
+
+test('hosting is refused while a layer is on a plugin solver, naming it and saying Flatten', async () => {
+  await social.boot();
+  social.setDesktopName('ansi-fan');
+  project.setLayerChars('edit', { charChoice: 'plugin:jane.lines/lines' });
+  const words = 'Layer 1 is on a plugin solver, which rooms don\'t use. Choose a built-in solver for it, or Flatten the drawing first.';
+  await expect(start()).rejects.toMatchObject({ userMessage: words });
+  await expect(room.startDesktopRoom({ name: 'Night shift', welcome: '', password: '', max: 5, port: 31337 })).rejects.toMatchObject({ userMessage: words });
+  expect(desktop.startService).not.toHaveBeenCalled();
+  expect(room.role).toBe(null);
+});
