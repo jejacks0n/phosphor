@@ -50,6 +50,17 @@ test('saves and restores the font with the project', async () => {
   expect(other.drawingFont.name).toBe('Topaz');
 });
 
+test('a font chosen before any drawing is the blank canvas\'s, with nothing to undo', async () => {
+  const { project } = await createTestApp();
+  const version = project.history.version;
+  project.setDrawingFont(font());
+  expect(project.drawingFont.name).toBe('Topaz');
+  expect(project.history.version).toBe(version);
+  expect(project.canUndo).toBe(false);
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  expect(project.drawingFont.name).toBe('Topaz');
+});
+
 test('a new blank canvas keeps the font in use; an ANSI file brings its own or none', async () => {
   const project = await blank();
   project.setDrawingFont(font());
