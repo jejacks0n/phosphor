@@ -308,9 +308,9 @@ frames, and pinch while it plays.
 ### 22. Come back to it
 - Does: presses New project (choosing Start without saving if it asks, as in step 21), then looks at the start
   screen.
-- Expects: "Pick up where you left off" lists her work with its time, whether it's Unchanged, Changed or Saved, and an
-  Open button; Open brings it back; the list fits at 390 wide, each name whole with its extension on a line of its own
-  and the time, status and Open under it.
+- Expects: "Pick up where you left off" lists her work inside the drop box, under Choose a file, with its time, whether
+  it's Unchanged, Changed or Saved, and "Resume ›"; tapping the row brings it back; the list fits at 390 wide, every
+  row two lines (the name, then the time and status) with Resume beside them.
 - Probes: `out-of-order`: from the start screen, start a blank canvas first: Animate is off and no bar shows, though
   it was on in the drawing she left; then open her work again and check Animate is back on with its frames;
   `again`: open it twice, and check the two rows read apart (the seconds, Unchanged); `extremes`: save a

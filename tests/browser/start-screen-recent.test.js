@@ -1,7 +1,7 @@
-// The start screen's "Pick up where you left off" rows (ZeroState.vue): the whole name with its extension, where that
-// copy stands, and a time that tells two rows apart; on a phone, the name on its own line above the time and Open. And
-// its buttons as a list: Up and Down move between Choose a file, Start blank and each Open, and Choose a file has focus
-// in a fresh tab, so Tab goes on from it.
+// The start screen's "Pick up where you left off" rows (ZeroState.vue), in the drop box under its band: the whole name
+// with its extension, where that copy stands, and a time that tells two rows apart; every row two lines, the name over
+// the time and state, with Resume beside both, at any width. And its buttons as a list: Up and Down move between Choose
+// a file, Start blank and each row, and Choose a file has focus in a fresh tab, so Tab goes on from it.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick, ref } from 'vue';
 import ZeroState from '@/components/ZeroState.vue';
@@ -40,7 +40,8 @@ test('a row shows the whole name with its extension, and whether that copy is un
     ['long-20261113-214338.phosphor', 'Saved'],
     ['Untitled', 'Unchanged'],
   ]);
-  expect(rows[0].querySelector('button').getAttribute('aria-label')).toBe('Open long-20261113-214338.ans');
+  expect(rows[0].querySelector('button').getAttribute('aria-label')).toBe('Resume long-20261113-214338.ans');
+  expect(text(rows[0], '.go')).toBe('Resume ›');
 });
 
 test('two rows of the same name in the same minute show their seconds; the year shows only when it isn\'t this one', () => {
@@ -59,20 +60,22 @@ test('two rows of the same name in the same minute show their seconds; the year 
   expect(times[3]).toContain(String(thisYear - 1));
 });
 
-test('a name too long for two lines is cut in the middle, keeping its end', () => {
+test('a name too long for its line ends in an ellipsis, the whole of it in the row\'s title', () => {
   const name = `${'a very long name for a drawing '.repeat(4)}-20261113-214338`;
   const [li] = mount([row('a', { filename: name })]);
-  const shown = text(li, '.name');
-  expect(shown.length).toBeLessThan(name.length);
-  expect(shown).toContain('…');
-  expect(shown.endsWith('-20261113-214338.ans')).toBe(true);
-  expect(li.querySelector('.name').title).toBe(`${name}.ans`);
+  const shown = li.querySelector('.name');
+  expect(shown.textContent).toBe(`${name}.ans`);
+  expect(getComputedStyle(shown).textOverflow).toBe('ellipsis');
+  expect(shown.scrollWidth).toBeGreaterThan(shown.clientWidth);
+  expect(li.title).toBe(`${name}.ans`);
 });
 
-test('Up and Down move between Choose a file, Start blank and each Open, past a drawing open in another tab, and the app\'s shortcuts don\'t hear them', () => {
+test('Up and Down move between Choose a file, Start blank and each row, past a drawing open in another tab, and the app\'s shortcuts don\'t hear them', () => {
   mount([row('a', { openElsewhere: true }), row('b'), row('c')]);
   const [browse, blank, elsewhere, openB, openC] = host.querySelectorAll('button');
   expect(elsewhere.disabled).toBe(true);
+  expect(text(elsewhere, '.go')).toBe('In another tab');
+  expect(elsewhere.getAttribute('aria-label')).toBe('long-20261113-214338.ans (open in another tab)');
   const heard = vi.fn(); // where the app's shortcuts listen
   window.addEventListener('keydown', heard);
   const press = (key) => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
@@ -91,22 +94,44 @@ test('Up and Down move between Choose a file, Start blank and each Open, past a 
   }
 });
 
-test('on a phone the name has its own line, whole, with the time, status and Open under it; wider, it\'s one line', async () => {
-  let [li] = mount([row('a', { asOpened: true })], 358);
-  const name = li.querySelector('.name'), open = li.querySelector('button');
-  expect(name.getBoundingClientRect().bottom).toBeLessThanOrEqual(open.getBoundingClientRect().top + 1);
-  expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
-  expect(name.scrollHeight).toBeLessThanOrEqual(name.clientHeight);
-  expect(open.getBoundingClientRect().right).toBeLessThanOrEqual(host.getBoundingClientRect().right);
+// f16: long names took a second line and short ones didn't, so the times zigzagged and the rows differed in height.
+test('every row is two lines, the name over the time and state, with Resume centered beside them, long name or short, on a phone too', async () => {
+  for (const width of [900, 358]) {
+    const rows = mount([
+      row('a', { filename: 'rt15-long-fixed-20261118-222704-and-then-some-more-of-it' }),
+      row('b', { filename: 'long' }),
+      row('c', { filename: 'renamed-export-20261118-222216', fileExt: 'utf8ans', openElsewhere: true }),
+    ], width);
+    const box = (li, el) => li.querySelector(el).getBoundingClientRect();
+    const heights = rows.map((li) => Math.round(li.getBoundingClientRect().height));
+    expect(new Set(heights).size, `${width}: ${heights}`).toBe(1);
+    for (const li of rows) {
+      const name = box(li, '.name'), when = box(li, 'time'), go = box(li, '.go'), shown = li.getBoundingClientRect();
+      expect(name.bottom).toBeLessThanOrEqual(when.top + 1);
+      expect(Math.abs((go.top + go.bottom) / 2 - (name.top + when.bottom) / 2)).toBeLessThanOrEqual(2);
+      expect(go.left).toBeGreaterThanOrEqual(name.right);
+      expect(shown.right).toBeLessThanOrEqual(host.querySelector('.drop-zone').getBoundingClientRect().right);
+    }
+    expect(Math.round(box(rows[0], 'time').left)).toBe(Math.round(box(rows[1], 'time').left));
+    mounted.unmount();
+    host.remove();
+  }
+  mount([row('a', { asOpened: true })]);
+  await setLocale('fr', { persist: false });
+  expect(text(host, '.status')).toBe('Inchangé');
+  expect(text(host, '.go')).toBe('Reprendre ›');
+});
+
+test('the list sits in the drop box under its band, one width with it; with no recent work there\'s no list', () => {
+  mount([row('a')]);
+  const zone = host.querySelector('.drop-zone');
+  expect(zone.contains(host.querySelector('section.recent'))).toBe(true);
+  expect(zone.getBoundingClientRect().width).toBe(480);
   mounted.unmount();
   host.remove();
-
-  [li] = mount([row('a', { asOpened: true })], 900);
-  const top = (el) => Math.round(li.querySelector(el).getBoundingClientRect().top);
-  expect(Math.abs(top('.name') - top('time'))).toBeLessThanOrEqual(2);
-
-  await setLocale('fr', { persist: false });
-  expect(text(li, '.status')).toBe('Inchangé');
+  mount([]);
+  expect(host.querySelector('section.recent')).toBe(null);
+  expect(host.querySelector('.drop-zone').getBoundingClientRect().width).toBeLessThan(480);
 });
 
 // Mounted waiting (ready false), as a fresh tab's is: Choose a file takes focus once it's ready, unless something has it.

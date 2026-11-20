@@ -163,8 +163,8 @@ look at the status bar, and take `qa.memory` again.
   SAUCE, the same size; opening takes under the `file` budget.
 - Probes: `again`: open it twice in a row from the start screen's recent list, and check the rows can be told apart:
   each whole name with its extension (`.phosphor`, `.ans`), the seconds when two share a minute, and Unchanged,
-  Changed or Saved; the drawing he saved in step 6 and then exported is listed under its `.phosphor` name, not the
-  export's.
+  Changed or Saved; every row is the same two lines, long name or short, so the times line up; the drawing he saved
+  in step 6 and then exported is listed under its `.phosphor` name, not the export's.
 - Rated: yes, wants Cmd+O
 
 ### 11. Restore on top of the original
@@ -232,7 +232,7 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
 
 ### 17. A second tab offers my work
 - Does: opens the app in a second tab of the same browser and looks at the start screen; then closes it.
-- Expects: "Pick up where you left off" lists his work, marked as already open in another tab ("Open in another tab");
+- Expects: "Pick up where you left off" lists his work, marked as already open in another tab (dimmed, "In another tab");
   the first tab's work is as it was. Choose a file has focus as the page opens, so Down reaches the rest at once.
 - Probes: `out-of-order`: open it in the second tab anyway, fix a cell there, close it, and see what the first tab has.
 - Rated: yes, wants Tab to the entry, then Enter
