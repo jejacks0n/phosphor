@@ -31,7 +31,7 @@ export function useFontActions() {
   }
 
   // A font file kept in this browser and put to use (not in someone else's room: the font is theirs); its entry. A
-  // bitmap font missing blocks says which.
+  // bitmap font missing blocks says which (not when a room refused it: that says so).
   async function loadFile(file) {
     const bitmap = /\.(f\d\d|png)$/i.test(file.name) || file.type === 'image/png';
     let font = await (bitmap ? addBitmapFont(file) : addFont(file));
@@ -42,7 +42,7 @@ export function useFontActions() {
     }
     workspace.userFonts = [...loaded.value.filter((f) => f.id !== font.id), font];
     if (!hostsFont.value) await choose(font.id);
-    if (bitmap) sayMissingBlocks(await storedBitmapFont(font.id)); // blocks it lacks besides its lower half (useFontSetup)
+    if (bitmap && (hostsFont.value || drawsIn(font.id))) sayMissingBlocks(await storedBitmapFont(font.id)); // blocks it lacks besides its lower half (useFontSetup)
     return font;
   }
 

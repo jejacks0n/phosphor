@@ -1,9 +1,10 @@
 import { watch } from 'vue';
-import { t, locale } from '@/i18n';
+import { t } from '@/i18n';
 import { toast, closeToast } from '@/composables/useToast';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { BLOCKS, blocksOf, fontId } from '@/lib/BitmapFont';
+import { blocksOf, fontId } from '@/lib/BitmapFont';
+import { missingBlocks, blockNames } from '@/lib/fontSetup';
 
 // A font's blocks set up from a toast: while the drawing's font has no lower half (project.paintOff) a toast says so
 // until it's fixed, with Set up its blocks, which opens the Fonts page on that font with its first missing block
@@ -12,7 +13,7 @@ import { BLOCKS, blocksOf, fontId } from '@/lib/BitmapFont';
 // there's nothing to paint, so nothing is said.
 let shown = null; // the toast that stays, while it's up
 
-const missingOf = (font) => blocksOf(font).flatMap((s, i) => (s === null ? [BLOCKS[i].key] : []));
+const missingOf = missingBlocks;
 const isDrawn = (font) => !!useProjectStore().drawingFont && fontId(useProjectStore().drawingFont) === fontId(font);
 const blocked = (font) => useProjectStore().inRoom && isDrawn(font);
 const said = (text, font) => (blocked(font) ? `${text} ${t('palette.fonts.setupInRoom')}` : text);
@@ -39,7 +40,7 @@ export function showFontSetup() {
 export function sayMissingBlocks(font) {
   const missing = missingOf(font);
   if (!missing.length || missing.includes('lower')) return;
-  const names = new Intl.ListFormat(locale.value, { type: 'disjunction' }).format(missing.map((key) => t(`palette.fonts.blockName.${key}`)));
+  const names = blockNames(missing);
   toast(said(t('palette.fonts.setupMissing', { names }, missing.length), font), button(font));
 }
 

@@ -19,6 +19,7 @@ import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
 import { PALETTES, parseColorList } from '@/lib/ColorUtils.js';
 import { blocksOf, decodeBlocks, decodeFont, fontChars, fontKey } from '@/lib/BitmapFont.js';
 import { t } from '@/i18n/index.js';
+import { notSetUp } from '@/lib/fontSetup.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -215,6 +216,10 @@ export const useProjectStore = defineStore('project', {
     paintOff() {
       const font = this.drawingFont;
       return font && blocksOf(font)[1] === null ? t('tools.paintOff', { name: font.name }) : null;
+    },
+    // Why the drawing's font can't go into a room, or null: a room can't edit its blocks, so all eight need a slot.
+    fontNotSetUp() {
+      return notSetUp(this.drawingFont);
     },
     // The 16 colors an XBin export holds, as hexes in XBin's DOS order, or null when the drawing's palette is more.
     xbinPalette(state) {

@@ -5,6 +5,7 @@ import { useSocialStore } from '@/store/SocialStore';
 import { useRoomStore, MAX_WATCHERS } from '@/store/RoomStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { signalWords } from '@/social/lobby';
+import { openFontSetup } from '@/composables/useFontSetup';
 import LobbyPicture from './LobbyPicture.vue';
 
 // Set up your room, in a box over everything: the room's settings and, for a room listed in the lobby, its lobby card
@@ -19,8 +20,9 @@ const hasArt = computed(() => !!project.image && project.cells.length > 0);
 const noArt = computed(() => t('social.start.noArt'));
 const roomsAreStill = computed(() => t('tabs.animateInRoom'));
 const nameFirst = computed(() => (DESKTOP && !social.desktopName ? t('social.desktop.nameFirst') : undefined));   // a pass needs a name
-// why Go live is off, when it's the document (frames, a layer on a plugin solver) or, on desktop, no name
-const cannotGoLive = computed(() => (project.hasFrames ? roomsAreStill.value : room.pluginSolversWhy ?? nameFirst.value));
+// why Go live is off, when it's the document (frames, a font that isn't set up, a layer on a plugin solver) or, on
+// desktop, no name
+const cannotGoLive = computed(() => (project.hasFrames ? roomsAreStill.value : project.fontNotSetUp ?? room.pluginSolversWhy ?? nameFirst.value));
 
 const draft = room.startDraft;   // kept in the store while you're on another tab
 const listed = computed(() => !DESKTOP && draft.isPublic);   // in the lobby, with its card and picture
@@ -85,7 +87,7 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
         <LobbyPicture v-if="hasArt" />
       </div>
       <p v-else-if="!hasArt" class="no-art why">{{ noArt }}</p>
-      <p v-if="cannotGoLive" class="no-art why">{{ cannotGoLive }}</p>
+      <p v-if="cannotGoLive" class="no-art why">{{ cannotGoLive }}<template v-if="project.fontNotSetUp"> <button type="button" class="ghost" @click="openFontSetup(project.drawingFont)">{{ t('palette.fonts.setupButton') }}</button></template></p>
 
       <div class="buttons">
         <button class="primary" type="submit" :disabled="social.busy || !hasArt || !!cannotGoLive" :title="cannotGoLive" :data-off-reason="cannotGoLive ? '' : undefined">{{ t('social.start.goLive') }}</button>
@@ -118,6 +120,10 @@ p.no-art {   /* in place of the lobby picture: nothing to share yet */
 }
 p.why {
   grid-column: 1 / -1;
+}
+p.why button {
+  margin-left: 6px;
+  font-size: 12px;
 }
 
 /* Two columns, or one under the other when there isn't room, as Settings and stats' are; one when there's no lobby

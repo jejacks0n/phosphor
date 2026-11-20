@@ -104,9 +104,8 @@ test('a drawing opened in the same font once it has a lower half says nothing ab
 });
 
 test('in a room it has no button, and says the blocks can be set once the room ends', async () => {
-  const { project } = await drawing(cp437Font);
+  const { project } = await drawing(noLowerHalf);
   project._hosting = true;
-  project.setDrawingFont({ ...noLowerHalf, name: 'Slab' });
   await nextTick();
   expect(toastMessage.value).toBe(`${NO_LOWER} ${IN_ROOM}`);
   expect(toastAction.value).toBe(null);
@@ -156,11 +155,13 @@ test('an XBin opened with a font with no lower half shows only the toast that st
   expect(toastMessage.value).toBe(NO_LOWER);
 });
 
-test('hosting a room, the font loaded says its blocks can be set once the room ends, with no button', async () => {
+test('hosting a room, a font loaded that isn\u2019t set up is kept but not used, and the toast says what it lacks', async () => {
   const { project } = await drawing(cp437Font);
+  const before = project.fontBitmap;
   project._hosting = true;
   await useFontActions().loadFile(new File([noShades.bytes], 'S.F16'));
-  expect(toastMessage.value).toBe(`${NO_SHADES} ${IN_ROOM}`);
+  expect(project.fontBitmap).toBe(before);
+  expect(toastMessage.value).toMatch(/^S has no Light, Medium, or Dark blocks\. Set up its blocks on the Fonts page first\.$/);
   expect(toastAction.value).toBe(null);
 });
 

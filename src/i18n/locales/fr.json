@@ -879,6 +879,7 @@
       "setupMissing": "Cette police n’a pas de bloc {names} : ce caractère s’affiche vide. | Cette police n’a pas de bloc {names} : ces caractères s’affichent vides.",
       "setupInRoom": "Ses blocs ne peuvent pas changer dans une salle ; définissez-les une fois la salle terminée.",
       "setupButton": "Configurer ses blocs",
+      "notSetUp": "{name} n’a pas de bloc {names}. Configurez d’abord ses blocs dans la page Polices. | {name} n’a pas de blocs {names}. Configurez d’abord ses blocs dans la page Polices.",
       "setupFixed": "Moitié basse placée à l’emplacement {n}. Les outils de peinture sont actifs."
     }
   },

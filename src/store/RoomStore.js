@@ -374,6 +374,10 @@ export const useRoomStore = defineStore('room', {
     // Only a public room sends its signal: the signal shows on its lobby card, and a link-only room has none.
     async startRoom({ name, welcome, isPublic, password, allowGuests, max, signal = null, port }) {
       const project = useProjectStore();
+      if (project.fontNotSetUp) {   // a room can't set up its blocks
+        toast(project.fontNotSetUp);
+        return false;
+      }
       if (project.hasFrames) return false;   // frames never travel, so they'd be lost at a handover (StartRoomPage says why)
       refusePluginSolvers(this);
       const social = useSocialStore();

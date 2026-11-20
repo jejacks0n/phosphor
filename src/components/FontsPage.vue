@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
+import { notSetUp } from '@/lib/fontSetup';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
 import { storedBitmapFont, registerBitmapFont, familyOf, storeBlocks, loadFonts } from '@/lib/userFonts';
 import { fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
@@ -102,6 +103,8 @@ watch(() => workspace.fontSetup, async (setup) => {
   if (!inRoom.value) picked.value = setup.block; // block edits are off in a room
 }, { immediate: true });
 
+// Why this font can't be used in the room you're in: its blocks aren't set up, and a room can't edit them.
+const roomOff = computed(() => (project.inRoom && bitmap.value && font.value ? notSetUp(font.value) : null));
 const inRoom = computed(() => isDrawn.value && project.inRoom); // the drawing's blocks are the room's
 const chars = computed(() => slotChars(font.value));
 const blockAt = computed(() => new Map((font.value ? blocksOf(font.value) : []).flatMap((s, i) => (s === null ? [] : [[s, i]]))));
@@ -214,7 +217,7 @@ const exportPalettes = () => {
         <span class="meta">{{ meta }}</span>
       </div>
       <div class="actions">
-        <button v-if="!isInUse" class="ghost" :disabled="hostsFont" @click="apply">{{ t('palette.fonts.use') }}</button>
+        <button v-if="!isInUse" class="ghost" :disabled="hostsFont || !!roomOff" :title="roomOff ?? undefined" :data-off-reason="roomOff ? '' : undefined" @click="apply">{{ t('palette.fonts.use') }}</button>
         <template v-if="bitmap">
           <button class="ghost" @click="save(saveRaw)">{{ t('palette.fonts.saveRaw', { height: String(chosen.height).padStart(2, '0') }) }}</button>
           <button class="ghost" @click="save(savePng)">{{ t('palette.fonts.savePng') }}</button>

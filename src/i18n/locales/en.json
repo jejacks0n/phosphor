@@ -879,6 +879,7 @@
       "setupMissing": "This font has no {names} block, so that character draws blank. | This font has no {names} block, so those characters draw blank.",
       "setupInRoom": "Its blocks can’t change in a room; set them once the room ends.",
       "setupButton": "Set up its blocks",
+      "notSetUp": "{name} has no {names} block. Set up its blocks on the Fonts page first. | {name} has no {names} blocks. Set up its blocks on the Fonts page first.",
       "setupFixed": "Lower half set to slot {n}. The paint tools are on."
     }
   },

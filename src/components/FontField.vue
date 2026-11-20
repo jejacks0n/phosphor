@@ -1,10 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { DISPLAY_FONTS, MIN_FONT_SIZE as MIN_SIZE, MAX_FONT_SIZE as MAX_SIZE } from '@/lib/displayFonts';
 import { useProjectStore } from '@/store/ProjectStore';
 import { fontId } from '@/lib/BitmapFont';
+import { notSetUp } from '@/lib/fontSetup';
+import { storedBitmapFont } from '@/lib/userFonts';
 import { useFontActions } from '@/composables/useFontActions';
 import HelpInfo from '@/components/HelpInfo.vue';
 
@@ -18,6 +20,13 @@ const loaded = computed(() => workspace.userFonts ?? []);
 const drawn = computed(() => project.drawingFont);   // the drawing's own bitmap font, if it has one (the document's)
 const yours = computed(() => loaded.value.filter((font) => font.id !== (drawn.value && current.value.id)));
 const { choose, hostsFont } = useFontActions();
+// In a room, the bitmap fonts of yours that aren't set up (a room can't edit blocks, so it takes no such font).
+const notReady = ref(new Set());
+watch([yours, () => project.inRoom], async ([list, inRoom]) => {
+  const ids = inRoom ? list.filter((font) => font.kind === 'bitmap') : [];
+  const bad = await Promise.all(ids.map(async (font) => (notSetUp(await storedBitmapFont(font.id).catch(() => null)) ? font.id : null)));
+  notReady.value = new Set(bad.filter(Boolean));
+}, { immediate: true });
 const problem = ref(''); // why the font picked in the dropdown couldn't be used
 
 const without = (sizes, id) => Object.fromEntries(Object.entries(sizes).filter(([key]) => key !== id));
@@ -75,7 +84,7 @@ const onSize = (event) => {
           <option :value="current.id">{{ current.name }}</option>
         </optgroup>
         <optgroup v-if="yours.length" :label="t('font.groupYours')">
-          <option v-for="font in yours" :key="font.id" :value="font.id">{{ font.name }}</option>
+          <option v-for="font in yours" :key="font.id" :value="font.id" :disabled="notReady.has(font.id)">{{ font.name }}</option>
         </optgroup>
       </select>
       <input
