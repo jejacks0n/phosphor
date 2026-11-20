@@ -4,7 +4,9 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import pen from '@/tools/pen.js';
-import { boxHandles, selectionBox } from '@/tools/vselect.js';
+import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
+import { rectShape, worldPoints } from '@/document/shapes.js';
+import { font8 } from '../support/blockFonts.js';
 
 async function drawing() {
   const app = await createTestApp();
@@ -189,4 +191,42 @@ test('after the Pen finishes a shape, its box\'s handles scale and turn it; a pr
 
   click({ x: center.x, y: center.y }); // inside the box, off the handles: a new shape's first point
   expect(project.shapes.size).toBe(2);
+});
+
+// The knob turns on screen: in an 8×8 font a grid pixel is half as tall as it's wide, so a shape square on screen
+// stays square on screen however it's turned.
+test('the knob turns a shape on screen in an 8×8 font: a 4 x 8 square turned a quarter stays 4 x 8', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setDrawingFont(font8);
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
+  expect(project.pixelAspect).toBe(0.5);
+  const unit = { x: 8, y: 4 }, ctx = { project, workspace, view: 'vector', unit };
+  workspace.setActiveTool('vselect');
+  const size = (key) => {
+    const ps = worldPoints(project.shapes.get(key)), xs = ps.map((p) => p.x), ys = ps.map((p) => p.y);
+    return [Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)];
+  };
+  const turn = (key, to) => {
+    workspace.vectorSelected = [key];
+    const knob = boxHandles(selectionBox(project.shapes, [key]), unit).knob;
+    vselect.begin(ctx, knob, {});
+    vselect.move(ctx, knob, to);
+    vselect.end(ctx);
+  };
+  const key = project.addShape(rectShape(10, 10, 14, 18, { fill: '#ff0000', stroke: null, width: 1 }));
+  turn(key, { x: 22, y: 14 }); // straight right of the middle (12, 14): a quarter turn
+  const [w, h] = size(key);
+  expect(w).toBeCloseTo(4, 3);
+  expect(h).toBeCloseTo(8, 3);
+  const { m } = project.shapes.get(key);
+  expect(Math.atan2(m[1] * 0.5, m[0])).toBeCloseTo(Math.PI / 2, 5); // a quarter on screen
+
+  // Shift squares it to 15° steps on screen: a drag a little past the quarter comes back to it.
+  const other = project.addShape(rectShape(10, 10, 14, 18, { fill: '#00ff00', stroke: null, width: 1 }));
+  workspace.isShiftPressed = true;
+  turn(other, { x: 22, y: 15 });
+  workspace.isShiftPressed = false;
+  const [sw, sh] = size(other);
+  expect(sw).toBeCloseTo(4, 3);
+  expect(sh).toBeCloseTo(8, 3);
 });

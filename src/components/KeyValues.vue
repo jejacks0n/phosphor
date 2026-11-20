@@ -25,8 +25,8 @@ const onPath = computed(() => !!shape.value && placed.value !== shape.value);
 // X and Y where it shows (a follower's on its path), the rest its own.
 const values = computed(() => {
   if (!shape.value) return null;
-  const { x, y } = transformValues(placed.value);
-  return { ...transformValues(shape.value), x, y };
+  const { x, y } = transformValues(placed.value, project.pixelAspect);
+  return { ...transformValues(shape.value, project.pixelAspect), x, y };
 });
 // Moving with its path's Start or End: the path, whose tip it shows.
 const tip = computed(() => (onPath.value && shape.value.follow.ride ? project.shapes.get(shape.value.follow.key) : null));
@@ -53,7 +53,7 @@ const set = (name, event) => {
   if (Number.isFinite(value)) {
     const next = name === 'width' ? withShape(shape.value, { width: Math.min(64, Math.max(0.5, value)) })
       : share ? withShape(shape.value, { [name]: Math.min(100, Math.max(0, value)) / 100 })
-        : withTransformValue(shape.value, name, value);
+        : withTransformValue(shape.value, name, value, project.pixelAspect);
     project.updateShapes([[props.shapeKey, next]]);
   }
   event.target.value = inUse(name);

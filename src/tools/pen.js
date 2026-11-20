@@ -39,7 +39,7 @@ export default {
     }
     // Snap to: the point on the grid (with Shift, along its line).
     const snap = snapMode(workspace);
-    if (world.length && workspace.isShiftPressed) pos = snapAlong(world.at(-1), snappedEnd(world.at(-1), pos), snap);
+    if (world.length && workspace.isShiftPressed) pos = snapAlong(world.at(-1), snappedEnd(world.at(-1), pos, project.pixelAspect), snap);
     else pos = snapPoint(pos, snap);
     const added = project.penPoint(pos.x, pos.y);
     press = added && { key: added, at: pos, unit };
@@ -51,7 +51,7 @@ export default {
     const { project, workspace } = ctx;
     const shape = press && project.shapes.get(press.key);
     if (!shape) return;
-    if (workspace.isShiftPressed) to = snappedEnd(press.at, to);
+    if (workspace.isShiftPressed) to = snappedEnd(press.at, to, project.pixelAspect);
     const out = { x: to.x - press.at.x, y: to.y - press.at.y };
     const smooth = Math.hypot(out.x * press.unit.x, out.y * press.unit.y) > SMOOTH_PX;
     const { x, y } = press.at;

@@ -99,3 +99,29 @@ test('a value as it already reads is no change: the same shape comes back', () =
     for (const name of ['x', 'y', 'turn', 'scaleX', 'scaleY']) assert.equal(withTransformValue(shape, name, v[name]), shape, name);
   }
 });
+
+// In an 8×8 font a grid pixel is half as tall on screen as it's wide (aspect 0.5): Turn and Scale are read and set on
+// screen, X and Y stay in grid pixels.
+test('at aspect 0.5 a turn of 90° turns a shape on screen; at aspect 1 the values are as they were', () => {
+  const rect = rectShape(0, 0, 4, 8, style); // 4 wide, 8 tall in grid pixels: square on screen
+  assert.deepEqual(transformValues(rect, 0.5), { x: 2, y: 4, turn: 0, scaleX: 100, scaleY: 100 });
+  const turned = withTransformValue(rect, 'turn', 90, 0.5), b = curveBounds(turned);
+  close(b.x1 - b.x0, 4, 1e-6);
+  close(b.y1 - b.y0, 8, 1e-6);
+  assert.deepEqual(transformValues(turned, 0.5), { x: 2, y: 4, turn: 90, scaleX: 100, scaleY: 100 });
+  // Typed the same again, nothing changes.
+  assert.equal(withTransformValue(turned, 'turn', 90, 0.5), turned);
+  // Scale X of 200 doubles it along itself on screen: turned a quarter, that's down, 16 grid pixels.
+  const tall = withTransformValue(turned, 'scaleX', 200, 0.5), t = curveBounds(tall);
+  close(t.x1 - t.x0, 4, 1e-6);
+  close(t.y1 - t.y0, 16, 1e-6);
+  assert.equal(transformValues(tall, 0.5).scaleX, 200);
+
+  // Aspect 1, given or not: as before, the turn in grid pixels (8 wide, 4 tall).
+  const flat = withTransformValue(rect, 'turn', 90), f = curveBounds(flat);
+  assert.deepEqual(withTransformValue(rect, 'turn', 90, 1), flat);
+  close(f.x1 - f.x0, 8, 1e-6);
+  close(f.y1 - f.y0, 4, 1e-6);
+  assert.deepEqual(transformValues(flat, 1), transformValues(flat));
+  assert.deepEqual(transformValues(flat), { x: 2, y: 4, turn: 90, scaleX: 100, scaleY: 100 });
+});

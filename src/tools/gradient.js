@@ -27,7 +27,7 @@ function fillGradient({ project, workspace, view }, from, to) {
 let start = null, last = null, stopShift = null, dragCtx = null;
 // Escape before letting go throws the drag away: the line goes, and the release fills nothing.
 const onEscape = (event) => { if (event.key === 'Escape') stopDrag(dragCtx); };
-const lineEnd = (workspace) => (workspace.isShiftPressed ? snappedEnd(start, last) : last);
+const lineEnd = ({ project, workspace }) => (workspace.isShiftPressed ? snappedEnd(start, last, project.pixelAspect) : last);
 
 function stopDrag({ workspace }) {
   window.removeEventListener('keydown', onEscape);
@@ -71,16 +71,16 @@ export default {
     stopShift?.();
     // Shift going down or up snaps the line at once, with the pointer still.
     stopShift = watch(() => workspace.isShiftPressed, () => {
-      workspace.shapeDrag = { from: start, to: lineEnd(workspace), line: true };
+      workspace.shapeDrag = { from: start, to: lineEnd(ctx), line: true };
     }, { flush: 'sync' });
     dragCtx = ctx;
     window.addEventListener('keydown', onEscape);
     return true;
   },
-  move({ workspace }, from, to) {
+  move(ctx, from, to) {
     if (!start) return;
     last = to;
-    workspace.shapeDrag = { from: start, to: lineEnd(workspace), line: true };
+    ctx.workspace.shapeDrag = { from: start, to: lineEnd(ctx), line: true };
   },
   // Released on the spot it was pressed: a click, with no line to fill along, so nothing. It needs both colors.
   end(ctx) {

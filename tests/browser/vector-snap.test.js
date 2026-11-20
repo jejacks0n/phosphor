@@ -8,9 +8,11 @@ import pen from '@/tools/pen.js';
 import vshape from '@/tools/vshape.js';
 import vnode from '@/tools/vnode.js';
 import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
+import { font8 } from '../support/blockFonts.js';
 
-async function app() {
+async function app(font = null) {
   const made = await createTestApp();
+  if (font) await made.project.setDrawingFont(font);
   await loadImage(made.project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 30 });
   made.workspace.vectorStyle = { fill: '#ff0000', stroke: null, width: 1 };
   return { ...made, ctx: { project: made.project, workspace: made.workspace, view: 'vector', unit: { x: 8, y: 8 } } };
@@ -85,4 +87,17 @@ test('Vector select\'s move puts the box\'s corner nearest the grab on the grid,
   run(vselect, ctx, { x: 15, y: 15 }, { x: 15.3, y: 15.1 });
   workspace.isCtrlPressed = false;
   expect(bounds(project.shapes.get(key))).toEqual([13.3, 13.1, 26.3, 18.1]);
+});
+
+test('the Shape tool\'s Shift circle in an 8×8 font is round on screen', async () => {
+  const circle = async (font) => {
+    const { project, workspace, ctx } = await app(font);
+    workspace.setActiveTool('vshape');
+    workspace.vectorShapeKind = 'ellipse';
+    workspace.isShiftPressed = true;
+    run(vshape, ctx, { x: 2, y: 2 }, { x: 12, y: 5 });
+    return [project.pixelAspect, project.cols, project.rows, bounds([...project.shapes.values()][0])];
+  };
+  expect(await circle(font8)).toEqual([0.5, 40, 30, [2, 2, 12, 22]]); // 10 columns, 20 grid pixels down
+  expect(await circle(null)).toEqual([1, 40, 30, [2, 2, 12, 12]]);
 });

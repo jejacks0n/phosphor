@@ -24,6 +24,9 @@ const lerp = (a, b, t) => a + (b - a) * t;
 // A transform taken apart into turn, scale and shear, each part way, and put back: so a turn turns (the short way
 // round) instead of shrinking through nothing. The pivot (in the shape's own coordinates) moves in a straight line, so
 // a shape turned about it turns in place.
+// ponytail: the turn is taken apart in grid pixels, as Follow path's facing is: in a font whose grid pixel isn't square
+// on screen (pixelAspect ≠ 1) a tween's turn bends the shape on its way round. Turning on screen means tweening the
+// parts of screenMatrix(m, pixelAspect) and taking the result back with gridMatrix.
 function tweenMatrix(m0, m1, t, [px, py] = [0, 0]) {
   const parts = (m) => {
     const [a, b, c, d, e, f] = m, sx = Math.hypot(a, b);

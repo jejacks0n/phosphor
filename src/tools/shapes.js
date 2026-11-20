@@ -7,7 +7,8 @@
 // Block shapes paint over the cells, each keeping its own character; Block characters (off by
 // default) makes them real ▄/█ cells instead. Character mode is the character in FG, with its own
 // Fill option, and leaves the cells' backgrounds as they were. Shift makes a rectangle a square, an
-// ellipse a circle, and a line run at a 45° step, counted in grid pixels (a cell is two tall).
+// ellipse a circle, and a line run at a 45° step, on screen: a grid pixel is pixelAspect as tall as it's
+// wide (a cell is two tall), so in an 8×8 font a square is twice as many grid pixels down as across.
 import { linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/editCells';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
@@ -40,26 +41,27 @@ const boxLine = ({ shapeKind, shapeDrawWith }, view) =>
 // whichever the drag is closer to, counted in cells (a cell is two grid pixels tall).
 const lineEnd = (from, to) => (Math.abs(to.x - from.x) >= Math.abs(to.y - from.y) / 2 ? { x: to.x, y: from.y } : { x: from.x, y: to.y });
 
-// Shift: as far down as across, by the longer of the two, on the drag's side of the start.
-const squareEnd = (from, to) => {
-  const dx = to.x - from.x, dy = to.y - from.y, side = Math.max(Math.abs(dx), Math.abs(dy));
-  return { x: from.x + (dx < 0 ? -side : side), y: from.y + (dy < 0 ? -side : side) };
+// Shift: as far down as across on screen (a grid pixel is aspect as tall as it's wide), by the longer of the two,
+// on the drag's side of the start.
+const squareEnd = (from, to, aspect = 1) => {
+  const dx = to.x - from.x, dy = to.y - from.y, side = Math.max(Math.abs(dx), Math.abs(dy) * aspect);
+  return { x: from.x + (dx < 0 ? -side : side), y: from.y + (dy < 0 ? -side : side) / aspect };
 };
 
-// Shift on a line: straight across or down within 22.5° of it (tan 22.5° is below), and otherwise the diagonal.
+// Shift on a line: straight across or down within 22.5° of it on screen (tan 22.5° is below), and otherwise the diagonal.
 const TAN_22_5 = Math.SQRT2 - 1;
-export const snappedEnd = (from, to) => {
-  const across = Math.abs(to.x - from.x), down = Math.abs(to.y - from.y);
+export const snappedEnd = (from, to, aspect = 1) => {
+  const across = Math.abs(to.x - from.x), down = Math.abs(to.y - from.y) * aspect;
   if (down < across * TAN_22_5) return { x: to.x, y: from.y };
   if (across < down * TAN_22_5) return { x: from.x, y: to.y };
-  return squareEnd(from, to);
+  return squareEnd(from, to, aspect);
 };
 
 // Where a drag to `to` ends, by what's being drawn and whether Shift is down.
-const dragEnd = (workspace, view, to) => {
+const dragEnd = ({ project, workspace, view }, to) => {
   if (boxLine(workspace, view)) return lineEnd(start, to);
   if (!workspace.isShiftPressed) return to;
-  return workspace.shapeKind === 'line' ? snappedEnd(start, to) : squareEnd(start, to);
+  return workspace.shapeKind === 'line' ? snappedEnd(start, to, project.pixelAspect) : squareEnd(start, to, project.pixelAspect);
 };
 
 // What the ANSI view draws with: an ellipse set to box lines draws half-blocks.
@@ -310,20 +312,21 @@ export default {
       get title() { return t('tools.shapes.blockCharsTitle'); },
     },
   ],
-  begin({ workspace, view }, pos) {
+  begin(ctx, pos) {
+    const { workspace } = ctx;
     start = last = pos;
     workspace.shapeDrag = { from: pos, to: pos };
     stopShift?.();
     // Shift going down or up shapes the drag at once, with the pointer still.
     stopShift = watch(() => workspace.isShiftPressed, () => {
-      workspace.shapeDrag = { from: start, to: dragEnd(workspace, view, last) };
+      workspace.shapeDrag = { from: start, to: dragEnd(ctx, last) };
     }, { flush: 'sync' });
     return true;
   },
-  move({ workspace, view }, from, to) {
+  move(ctx, from, to) {
     if (!start) return;
     last = to;
-    workspace.shapeDrag = { from: start, to: dragEnd(workspace, view, to) };
+    ctx.workspace.shapeDrag = { from: start, to: dragEnd(ctx, to) };
   },
   end(ctx) {
     const drag = ctx.workspace.shapeDrag;

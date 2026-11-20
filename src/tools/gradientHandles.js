@@ -143,7 +143,7 @@ export const gradientDrag = {
       next = withPaint(start, slot, { m: multiply(translation(b.x - a.x, b.y - a.y), start[slot].m) });
     } else if (drag.kind === 'end') {
       const { p0, p1 } = gradientHandles(shown, slot), fixed = drag.which ? p0 : p1, moving = drag.which ? p1 : p0;
-      const end = workspace.isShiftPressed ? snappedEnd(fixed, to) : to;
+      const end = workspace.isShiftPressed ? snappedEnd(fixed, to, project.pixelAspect) : to;
       const turn = about(local(fixed), local(moving), local(end));
       if (turn) next = withPaint(start, slot, { m: multiply(turn, start[slot].m) });
     } else if (drag.kind === 'stop') {

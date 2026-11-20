@@ -1,6 +1,6 @@
 // The Shape tool (the VECTOR tab): drag from corner to corner for a rectangle, an ellipse or a polygon
 // (Sides: 3 to 12), drawn live and made a path, one undo step. Shift makes it a square, a circle
-// or a regular polygon; Snap to puts both corners on the grid. It gets the next shape's style (workspace.vectorStyle) and is selected when it's
+// or a regular polygon, on screen in any font; Snap to puts both corners on the grid. It gets the next shape's style (workspace.vectorStyle) and is selected when it's
 // made; a click without a drag makes nothing. The selection's box shows here as with Vector select, and its handles
 // work the same (vselect.pressHandles): the size handles, the turn knob, and the one selected shape's gradient ends and
 // stops, ahead of drawing. A drag anywhere else, inside the box too, draws a new shape.
@@ -131,12 +131,13 @@ const builtInChoices = () => [
   { value: 'polygon', label: t('tools.vshape.polygon'), icon: '<svg viewBox="0 0 16 16"><path d="M8 1l7 5-2.7 8.5H3.7L1 6zM8 3.5L3.3 6.8l1.8 5.7h5.8l1.8-5.7z"/></svg>' },
 ];
 
-function shapeFor(workspace, { from, kind, outlines, values }, to, square) {
+// Square: as far down as across on screen, where a grid pixel is aspect as tall as it's wide.
+function shapeFor(workspace, { from, kind, outlines, values }, to, square, aspect = 1) {
   let dx = to.x - from.x, dy = to.y - from.y;
   if (square) {
-    const side = Math.max(Math.abs(dx), Math.abs(dy));
+    const side = Math.max(Math.abs(dx), Math.abs(dy) * aspect);
     dx = Math.sign(dx || 1) * side;
-    dy = Math.sign(dy || 1) * side;
+    dy = (Math.sign(dy || 1) * side) / aspect;
   }
   const x0 = Math.min(from.x, from.x + dx), x1 = Math.max(from.x, from.x + dx);
   const y0 = Math.min(from.y, from.y + dy), y1 = Math.max(from.y, from.y + dy);
@@ -196,7 +197,7 @@ export default {
       drag.outlines = plugged(drag.plugin, drag.values);
     }
     if (drag.outlines === null) return; // its outline failed: this drag draws nothing
-    const shape = shapeFor(workspace, drag, to, workspace.isShiftPressed);
+    const shape = shapeFor(workspace, drag, to, workspace.isShiftPressed, project.pixelAspect);
     if (!drag.key) drag.key = project.addShape(shape);
     else {
       const { z, layer } = project.shapes.get(drag.key); // what addShape gave it: its place in the stack and its vector layer

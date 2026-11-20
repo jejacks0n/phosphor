@@ -4,6 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ellipseCoverage } from '@/lib/Brushes';
 import { hex2rgb } from '@/lib/ColorUtils';
+import { cp437Font, font8 } from '../support/blockFonts.js';
 
 const FIRST = { editFgColor: '#ff0000', editBgColor: '#0000ff' };
 const SECOND = { editFgColor: '#00ff00', editBgColor: '#ffff00' };
@@ -171,8 +172,9 @@ test('Connect joins a box to a line it can see, and not to one hidden under pain
 });
 
 // Shift, held while dragging: squares, circles and lines at 45° steps.
-async function shiftScene(settings) {
+async function shiftScene(settings, font = null) {
   const { project, workspace } = await createTestApp();
+  if (font) await project.setDrawingFont(font);
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
   const { default: shapes } = await import('@/tools/shapes');
   Object.assign(workspace, { shapeAntialias: false, editBgNone: true }, settings);
@@ -240,4 +242,56 @@ test('a Shift-dragged square is drawn square, and a box line stays across or dow
   line.shapes.move(box, { x: 4, y: 4 }, { x: 12, y: 8 });
   expect(line.workspace.shapeDrag.to).toEqual({ x: 12, y: 4 });
   line.shapes.cancel(box);
+});
+
+// A half cell is 8 wide and height/2 tall on screen: in an 8×8 font a grid pixel is half as tall as it's wide.
+test('Shift in an 8×8 font: a square is twice as many rows as columns, and a 45° line runs two rows a column', async () => {
+  const { snappedEnd } = await import('@/tools/shapes');
+  expect(snappedEnd({ x: 0, y: 0 }, { x: 10, y: 19 }, 0.5)).toEqual({ x: 10, y: 20 });
+  expect(snappedEnd({ x: 0, y: 0 }, { x: 10, y: 19 }, 1)).toEqual({ x: 19, y: 19 }); // today's diagonal
+  expect(snappedEnd({ x: 0, y: 0 }, { x: 10, y: 19 })).toEqual({ x: 19, y: 19 });
+  expect(snappedEnd({ x: 0, y: 0 }, { x: 12, y: 6 }, 0.5)).toEqual({ x: 12, y: 0 }); // 3 down on screen: across
+  expect(snappedEnd({ x: 0, y: 0 }, { x: 12, y: 6 })).toEqual({ x: 12, y: 12 }); // and the diagonal at aspect 1
+
+  const { project, workspace, shapes, ctx } = await shiftScene({ shapeKind: 'rect', isShiftPressed: true }, font8);
+  expect([project.pixelAspect, project.cols, project.rows]).toEqual([0.5, 40, 40]);
+  shapes.begin(ctx, { x: 4, y: 4 });
+  shapes.move(ctx, { x: 4, y: 4 }, { x: 14, y: 9 });
+  expect(workspace.shapeDrag.to).toEqual({ x: 14, y: 24 });
+  shapes.end(ctx);
+  expect(project.paintLayer.pixelAt(14, 24)).toBeTruthy(); // the far corner: 10 columns across, 20 rows down
+  expect(project.paintLayer.pixelAt(14, 25)).toBeFalsy();
+  expect(project.paintLayer.pixelAt(15, 24)).toBeFalsy();
+
+  // An 8×16 font is a square half cell: the same drag as with no font.
+  const vga = await shiftScene({ shapeKind: 'rect', isShiftPressed: true }, cp437Font);
+  expect(vga.project.pixelAspect).toBe(1);
+  vga.shapes.begin(vga.ctx, { x: 4, y: 4 });
+  vga.shapes.move(vga.ctx, { x: 4, y: 4 }, { x: 14, y: 9 });
+  expect(vga.workspace.shapeDrag.to).toEqual({ x: 14, y: 14 });
+  vga.shapes.cancel(vga.ctx);
+});
+
+// The half-step ellipse draws the box it's given; Shift's box is the one square on screen.
+test('a Shift circle in Vertical half blocks in an 8×8 font covers twice as many half-cell rows as columns', async () => {
+  const drawn = async (font) => {
+    const { project, workspace, shapes } = await shiftScene({
+      shapeKind: 'ellipse', shapeDrawWith: 'full', shapeVerticalHalves: true, editFgColor: '#ff0000', isShiftPressed: true,
+    }, font);
+    const ctx = { project, workspace, view: 'output' };
+    const before = project.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`);
+    shapes.begin(ctx, { x: 4.5, y: 4.5 });
+    shapes.move(ctx, { x: 4.5, y: 4.5 }, { x: 14.5, y: 6.5 });
+    shapes.end(ctx);
+    await settle(project);
+    const cols = [], rows = [];
+    project.cells.forEach((c, i) => {
+      if (`${c.char}${c.fg.hex}${c.bg.hex}` === before[i]) return;
+      cols.push(i % project.cols);
+      rows.push(Math.floor(i / project.cols));
+    });
+    return { aspect: project.pixelAspect, cols: Math.max(...cols) - Math.min(...cols) + 1, halfRows: 2 * (Math.max(...rows) - Math.min(...rows) + 1) };
+  };
+  expect(await drawn(font8)).toEqual({ aspect: 0.5, cols: 11, halfRows: 22 });
+  expect(await drawn(null)).toEqual({ aspect: 1, cols: 11, halfRows: 12 });
 });

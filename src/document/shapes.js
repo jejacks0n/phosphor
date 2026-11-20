@@ -288,7 +288,13 @@ export const apply = ([a, b, c, d, e, f], x, y) => ({ x: a * x + c * y + e, y: b
 export const translation = (dx, dy) => [1, 0, 0, 1, dx, dy];
 // About (ax, ay).
 export const scaling = (sx, sy, ax = 0, ay = 0) => [sx, 0, 0, sy, ax - sx * ax, ay - sy * ay];
-export function rotation(angle, cx = 0, cy = 0) {
+// On screen a grid pixel is `a` (pixelAspect) as tall as it's wide: a matrix in grid pixels as it acts on screen
+// (screen y = grid y × a), and a screen one back in grid pixels.
+export const screenMatrix = (m, a) => (a === 1 ? m : [m[0], m[1] * a, m[2] / a, m[3], m[4], m[5] * a]);
+export const gridMatrix = (M, a) => (a === 1 ? M : [M[0], M[1] / a, M[2] * a, M[3], M[4], M[5] / a]);
+// About (cx, cy), turned on screen where a grid pixel is aspect as tall as it's wide (1: in grid pixels).
+export function rotation(angle, cx = 0, cy = 0, aspect = 1) {
+  if (aspect !== 1) return gridMatrix(rotation(angle, cx, cy * aspect), aspect);
   const cos = Math.cos(angle), sin = Math.sin(angle);
   return [cos, sin, -sin, cos, cx - cos * cx + sin * cy, cy - sin * cx - cos * cy];
 }

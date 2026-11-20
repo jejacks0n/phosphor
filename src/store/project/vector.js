@@ -169,7 +169,7 @@ export const vectorActions = {
 
   // An SVG file's art as shapes, on top, in the file's order (readSvgFile; it throws, with its userMessage, for a
   // file that isn't SVG). Art bigger than the grid (less 2 grid pixels each side) is scaled down into it,
-  // proportions kept; any is centered. Each shape has its whole transform baked into its points (points round to
+  // proportions kept on screen; any is centered. Each shape has its whole transform baked into its points (points round to
   // 1/100, and letters drawn in font units would lose their shape under a kept one), its gradient's with them, and
   // its stroke width scaled with it, once. One step; they're selected, with Vector select. Past a frame's shapes or a shape's points
   // nothing comes in, and a toast says by how much; what couldn't come in is said too. The keys.
@@ -181,9 +181,10 @@ export const vectorActions = {
       return [];
     }
     if (art.items.length && bringsTooMany(this)) return []; // said as that, not as parts left out
-    const room = (n) => Math.max(1, n - 4);
-    const s = Math.min(1, ...[[this.cols, art.width], [this.rows, art.height]].filter(([, n]) => n > 0).map(([c, n]) => room(c) / n));
-    const fit = [s, 0, 0, s, (this.cols - art.width * s) / 2, (this.rows - art.height * s) / 2];
+    // Proportions kept on screen, where a grid pixel is pixelAspect as tall as it's wide: s across, s / aspect down.
+    const room = (n) => Math.max(1, n - 4), aspect = this.pixelAspect;
+    const s = Math.min(1, ...[[this.cols, art.width, 1], [this.rows, art.height, aspect]].filter(([, n]) => n > 0).map(([c, n, k]) => (room(c) * k) / n));
+    const fit = [s, 0, 0, s / aspect, (this.cols - art.width * s) / 2, (this.rows - (art.height * s) / aspect) / 2];
     const shapes = art.items.map((item) => {
       const m = multiply(fit, item.m), [a, b, c, d] = m;
       const bake = (points) => points.map(([x, y, ix, iy, ox, oy, smooth]) => {

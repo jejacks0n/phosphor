@@ -159,15 +159,16 @@ function scaleTo(project, drag, pos, shift, fromMiddle) {
   reshape(project, drag, (shape) => multiply(w, shape.m));
 }
 
+// The turn is measured on screen, where a grid pixel is pixelAspect as tall as it's wide.
 function rotateTo(project, drag, pos, shift) {
-  const { center } = drag.box;
-  let angle = Math.atan2(pos.y - center.y, pos.x - center.x) - Math.atan2(drag.from.y - center.y, drag.from.x - center.x);
+  const { center } = drag.box, a = project.pixelAspect;
+  let angle = Math.atan2((pos.y - center.y) * a, pos.x - center.x) - Math.atan2((drag.from.y - center.y) * a, drag.from.x - center.x);
   if (shift) {
     // One shape: its own angle in steps (so a turned one squares up again); several, square to the grid: the turn.
-    const m = drag.box.local?.m, from = m ? Math.atan2(m[1], m[0]) : 0;
+    const m = drag.box.local?.m, from = m ? Math.atan2(m[1] * a, m[0]) : 0;
     angle = Math.round((from + angle) / SNAP) * SNAP - from;
   }
-  const w = rotation(angle, center.x, center.y);
+  const w = rotation(angle, center.x, center.y, a);
   reshape(project, drag, (shape) => multiply(w, shape.m));
 }
 
@@ -303,7 +304,7 @@ export default {
     if (drag.kind === 'slide') return slideTo(project, drag, to);
     const snap = snapMode(workspace);
     if (drag.kind === 'move') {
-      const end = shift ? snappedEnd(drag.from, to) : to;
+      const end = shift ? snappedEnd(drag.from, to, project.pixelAspect) : to;
       if (drag.box.cells) {
         // An art layer is on whole cells: the pointer's way, in whole cells, whatever Snap to says.
         const by = snapPoint({ x: end.x - drag.from.x, y: end.y - drag.from.y }, 'cells');

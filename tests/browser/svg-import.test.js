@@ -7,6 +7,7 @@ import { toastMessage } from '@/composables/useToast';
 import { IDENTITY, MOST_POINTS, MOST_SHAPES, outlines, scaling, stacked, transformed } from '@/document/shapes.js';
 import { paintShape } from '@/document/ShapeLayer.js';
 import { readSvgFile } from '@/lib/SvgFile.js';
+import { font8 } from '../support/blockFonts.js';
 import rose from '../fixtures/svg/rose-mark.svg?raw';
 import mark from '../fixtures/svg/belle-verriere-mark.svg?raw';
 import logo from '../fixtures/svg/belle-verriere-logo.svg?raw';
@@ -14,8 +15,9 @@ import gradients from '../fixtures/svg/gradients.svg?raw';
 
 const svg = (body, attrs = 'viewBox="0 0 100 100"') => `<svg xmlns="http://www.w3.org/2000/svg" ${attrs}>${body}</svg>`;
 
-async function blank(cols = 160, rows = 200) {
+async function blank(cols = 160, rows = 200, font = null) {
   const app = await createTestApp();
+  if (font) await app.project.setDrawingFont(font);
   await app.project.setBlankCanvas({ withLayer: true, cols, rows });
   return app;
 }
@@ -81,6 +83,21 @@ test('big art fits inside the canvas and small art keeps its size, centered', as
   expect(box(big)).toEqual([2, 61, 158, 139]);
   const [tall] = project.addSvg(svg('<rect x="100" width="100" height="1000"/>', 'viewBox="100 0 100 1000"'));
   expect(box(tall)).toEqual([70.2, 2, 89.8, 198]);
+});
+
+test('in an 8×8 font an imported square SVG is twice as many grid rows as columns', async () => {
+  const imported = async (font, body, viewBox) => {
+    const { project } = await blank(160, 200, font);
+    const [key] = project.addSvg(svg(body, `viewBox="${viewBox}"`));
+    const xs = [], ys = [];
+    for (const { points } of outlines(project.shapes.get(key))) for (const [x, y] of points) xs.push(x) && ys.push(y);
+    return [project.pixelAspect, project.cols, project.rows, [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]];
+  };
+  const square = '<rect width="10" height="10"/>';
+  expect(await imported(font8, square, '0 0 10 10')).toEqual([0.5, 160, 200, [75, 90, 85, 110]]);
+  expect(await imported(null, square, '0 0 10 10')).toEqual([1, 160, 200, [75, 95, 85, 105]]);
+  // Too tall for the grid on screen: scaled down by the rows, 196 grid pixels down and half that across.
+  expect(await imported(font8, '<rect width="100" height="100"/>', '0 0 100 100')).toEqual([0.5, 160, 200, [31, 2, 129, 198]]);
 });
 
 test('transforms are baked into the points, and the curves\' handles with them', async () => {

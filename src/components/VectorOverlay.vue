@@ -115,7 +115,7 @@ const pen = computed(() => {
   const shape = workspace.vectorPen && placed.value.get(workspace.vectorPen);
   if (!shape) return null;
   const world = worldPoints(shape), hover = workspace.vectorHover;
-  const to = hover && (workspace.isShiftPressed && world.length ? snappedEnd(world.at(-1), hover) : hover);
+  const to = hover && (workspace.isShiftPressed && world.length ? snappedEnd(world.at(-1), hover, project.pixelAspect) : hover);
   const all = world.map((p) => px(p));
   return { d: pathData(shape, props.unit.x, props.unit.y), all, next: to && { from: all.at(-1), to: px(to) } };
 });

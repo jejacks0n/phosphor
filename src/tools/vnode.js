@@ -151,7 +151,7 @@ export default {
     }
     // Shift: a point on a line from where it was pressed, a handle on one from its point.
     const shift = workspace.isShiftPressed;
-    if (shift) to = snappedEnd(drag.kind === 'handle' ? drag.anchor : drag.at, to);
+    if (shift) to = snappedEnd(drag.kind === 'handle' ? drag.anchor : drag.at, to, project.pixelAspect);
     const back = invert(drag.shown.m), { start, i } = drag;
     let next;
     if (drag.kind === 'handle') {
