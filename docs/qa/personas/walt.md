@@ -234,7 +234,10 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
 - Does: opens the app in a second tab of the same browser and looks at the start screen; then closes it.
 - Expects: "Pick up where you left off" lists his work, marked as already open in another tab (dimmed, "In another tab");
   the first tab's work is as it was. Choose a file has focus as the page opens, so Down reaches the rest at once.
-- Probes: `out-of-order`: open it in the second tab anyway, fix a cell there, close it, and see what the first tab has.
+  Choose a file and Start with a blank canvas are the list's width, each half of it, their edges on the list's.
+- Probes: `out-of-order`: open it in the second tab anyway, fix a cell there, close it, and see what the first tab has;
+  `extremes`: narrow the window with both panels open, down to where the phone layout takes over, and check the two
+  buttons stay the list's width (one over the other once they can't share a line) and nothing in a row runs under Resume.
 - Rated: yes, wants Tab to the entry, then Enter
 
 ### 18. Go back to an earlier version

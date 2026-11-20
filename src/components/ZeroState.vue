@@ -42,7 +42,7 @@ const rows = computed(() => {
   <!-- Up and Down move between its buttons, top to bottom: Choose a file, Start blank, each row. -->
   <article class="zero-state" @keydown="arrowsBetween($event, $event.currentTarget.querySelectorAll('button'))">
     <!-- The dashed line is around the whole canvas, as all of it takes a dropped file (DropZone.vue). With recent work
-         the drop part shrinks to a band, and the list sits under it, one column in the middle. -->
+         the drop part shrinks to a band, and the list sits under it, one column in the middle, the band the list's width. -->
     <div v-if="ready" class="drop-zone" :class="{ listed: rows.length }">
       <div class="logo"></div>
       <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -96,6 +96,7 @@ article.zero-state {
   overflow-y: auto;
   padding: 16px;
   box-sizing: border-box;
+  container-type: inline-size; /* the canvas's width, which the window's doesn't tell: its panels may be open */
 }
 
 div.logo {
@@ -142,7 +143,8 @@ p {
   color: var(--text-dim);
 }
 
-/* The two ways in, side by side: two buttons of one height, Choose a file the marked one. */
+/* The two ways in, side by side: two buttons of one height, Choose a file the marked one. A canvas too narrow for
+   both on a line (the window's wide, its panels open) has one over the other, each the line's whole width. */
 div.actions {
   display: flex;
   flex-wrap: wrap;
@@ -151,9 +153,19 @@ div.actions {
 }
 
 div.actions button {
-  height: 42px;
+  flex: 1 1 0; /* they share what room the line has; a label stays on one line, so that's what sends one under */
+  min-height: 42px;
   padding: 0 24px;
   font-size: 13px;
+  white-space: nowrap;
+}
+
+@container (max-width: 350px) { /* a sliver of canvas, narrower than a label: it takes two lines sooner than run past the line */
+  div.actions button {
+    flex-basis: 100%;
+    padding-block: 6px;
+    white-space: normal;
+  }
 }
 
 div.actions button:focus-visible { /* the ring stands off the button, with room around it before the next */
@@ -263,13 +275,16 @@ section.recent span.name {
 section.recent span.meta {
   grid-area: meta;
   display: flex;
+  flex-wrap: wrap; /* short of room the state goes under the time, and then the time takes two lines: never under Resume */
   align-items: center;
-  gap: 8px;
-  white-space: nowrap;
+  gap: 2px 8px;
 }
 
 section.recent span.status {
+  overflow: hidden; /* on a line of its own and still short of room, it ends in an ellipsis */
   padding: 0 7px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   border: 1px solid var(--border-light);
   border-radius: 999px;
   font-size: 11px;
@@ -308,25 +323,25 @@ section.recent li button:disabled span.go {
   font-weight: normal;
 }
 
-/* Wider than a phone, with recent work: one column 480px wide in the middle, the arrow beside the prompt with Choose a
-   file and Start blank under it, then the list after a rule. */
+/* Wider than a phone, with recent work: one column 480px wide in the middle, and everything in it that width, edge to
+   edge: the arrow and the prompt on a line, Choose a file and Start blank under it, each half the line, then the list
+   after a rule. */
 @media (min-width: 769px) {
   div.drop-zone.listed {
     display: grid;
-    grid-template-columns: 40px minmax(0, 412px); /* with the gap, 480px; the arrow's column fixed, so the list can't widen it */
-    grid-template-areas: "icon text" "icon actions" "list list";
+    grid-template-columns: 20px minmax(0, 452px); /* with the gap, 480px; the arrow's column fixed, so the list can't widen it */
+    grid-template-areas: "icon text" "actions actions" "list list";
     justify-content: center;
     align-content: center;
-    gap: 10px 28px;
-    justify-items: start;
+    gap: 12px 8px;
     text-align: left;
   }
 
   div.drop-zone.listed svg.icon {
     grid-area: icon;
     align-self: center;
-    width: 40px;
-    height: 40px;
+    width: 20px;
+    height: 20px;
     margin: 0;
   }
 
@@ -340,13 +355,13 @@ section.recent li button:disabled span.go {
 
   div.drop-zone.listed div.actions {
     grid-area: actions;
-    justify-content: flex-start;
     gap: 8px 14px;
   }
 
   div.drop-zone.listed div.actions button {
-    height: 36px;
-    padding: 0 18px;
+    flex-basis: 15.5em; /* about Start with a blank canvas: short of two of these one goes under, so the two are one width */
+    min-height: 36px;
+    padding-inline: 18px;
   }
 
   div.drop-zone.listed section.recent {
@@ -395,7 +410,8 @@ section.recent li button:disabled span.go {
   }
 
   div.actions button {
-    height: 48px;
+    flex: none;
+    min-height: 48px;
     font-size: 15px;
   }
 
