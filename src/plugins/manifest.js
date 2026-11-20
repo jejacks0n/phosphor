@@ -48,6 +48,13 @@ const text = (raw, field, most, { required = true, test = null } = {}) => {
   return value;
 };
 
+// At most 3 lines of at most 24 characters, no control characters but the line break; shown as text.
+const isPreview = (value) => {
+  const lines = value.split('\n');
+  const control = (char) => { const code = char.charCodeAt(0); return code < 32 || (code >= 127 && code < 160); };
+  return lines.length <= 3 && lines.every((line) => line.length <= 24 && ![...line].some(control));
+};
+
 const readTheme = (raw, i, seen) => {
   const at = `themes[${i}]`;
   if (!isObject(raw)) throw new ManifestError('badField', { field: at });
@@ -85,6 +92,7 @@ export function readManifest(source) {
     homepage: text(raw, 'homepage', 200, { required: false, test: (value) => /^https:\/\/[^\s]+$/.test(value) }),
     script: raw.script === undefined ? '' : text(raw, 'script', 200, { test: (value) => SCRIPT_PATH.test(value) }),
     license: text(raw, 'license', 40, { required: false }),
+    preview: text(raw, 'preview', 74, { required: false, test: isPreview }),
   };
   const themes = raw.themes === undefined ? [] : raw.themes;
   if (!Array.isArray(themes) || themes.length > MOST_THEMES) throw new ManifestError('badField', { field: 'themes' });
