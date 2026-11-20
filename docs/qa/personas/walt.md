@@ -163,7 +163,8 @@ look at the status bar, and take `qa.memory` again.
   SAUCE, the same size; opening takes under the `file` budget.
 - Probes: `again`: open it twice in a row from the start screen's recent list, and check the rows can be told apart:
   each whole name with its extension (`.phosphor`, `.ans`), the seconds when two share a minute, and Unchanged,
-  Changed or Saved.
+  Changed or Saved; the drawing he saved in step 6 and then exported is listed under its `.phosphor` name, not the
+  export's.
 - Rated: yes, wants Cmd+O
 
 ### 11. Restore on top of the original
