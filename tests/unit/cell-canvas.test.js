@@ -58,10 +58,11 @@ test('an odd-height bitmap font is its own height; an even one and a TrueType fo
 });
 
 test('a capped cell rounds its height down, so a window of lines stays under the largest side', () => {
-  // JetBrains Mono's 20.4 px line (no font given) and a 16 px TrueType spec, in windows 40 columns wide and 500 to 5000 lines tall at dpr 2:
-  // every one stays at or under 16384 device px. 513 lines was 32 px a cell (16416 px) when the height rounded up.
+  // JetBrains Mono's 20.4 px line (no font given), a 16 px TrueType spec and an 8×11 bitmap font (the odd branch), in
+  // windows 40 columns wide and 500 to 5000 lines tall at dpr 2: every one stays at or under 16384 device px. 513 lines
+  // was 32 px a cell (16416 px) when the height rounded up.
   assert.equal(cellGeometry(10.2, backingScale(40 * 10.2, 513 * 20.4, 2, 16384), true).ch, 30);
-  for (const [font, line] of [[undefined, 20.4], [{ size: 16, lineHeight: 1 }, 16]]) {
+  for (const [font, line] of [[undefined, 20.4], [{ size: 16, lineHeight: 1 }, 16], [{ size: 11, lineHeight: 1, bitmap: true, height: 11 }, 11]]) {
     for (let rows = 500; rows <= 5000; rows++) {
       const scale = backingScale(40 * 10.2, rows * line, 2, 16384);
       assert.ok(rows * cellGeometry(10.2, scale, true, font).ch <= 16384, `${rows} lines of ${line} px`);
