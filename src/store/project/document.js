@@ -24,7 +24,7 @@ import { toast } from '@/composables/useToast.js';
 import { busyWhile } from '@/composables/useBusy.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults, sauceDefaults, sliderDefaults } from '@/store/settings.js';
-import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, savedJson, randomId, blackPicture } from '@/store/project/shared.js';
+import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, savedJson, randomId, blackPicture, putSettings } from '@/store/project/shared.js';
 import { desktop } from '@/social/desktop.js';
 import { generateSlug } from 'random-word-slugs';
 import { markRaw, shallowRef } from 'vue';
@@ -303,13 +303,16 @@ export const documentActions = {
   },
 
   // Swap in a new base image and start a fresh document around it (out of an art layer first): with the base and the
-  // edit layer, which a project's own layers replace as it opens, or with baseOnly the base alone (newLayers).
+  // edit layer, which a project's own layers replace as it opens, or with baseOnly the base alone (newLayers). A plugin
+  // solver's options are the patch's, else none (its defaults): replaced, not merged with the last drawing's
+  // (putSettings), before the new layers take the document's character settings.
   replaceImage(image, imageBuffer, patch = {}, { baseOnly = false } = {}) {
     if (this._artInside) this.leaveArt();
     if (imageBuffer) findUniform(image, imageBuffer); // a blank canvas reopened fills the grid again
     this.renderer.reset();
     this.activePalette = [];
-    this.$patch({
+    putSettings(this, {
+      solverOptions: {},
       documentId: randomId(),
       fileId: randomId(), // a new drawing's; a file opened brings its own in the patch
       filePath: null, // desktop: a project opened from its file says it after

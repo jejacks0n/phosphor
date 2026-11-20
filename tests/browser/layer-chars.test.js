@@ -914,6 +914,28 @@ test('the base\'s options are replaced by a write, not merged: a dropped ref is 
   expect(project.solverOptions[ref]).toEqual({ threshold: 7 });
 });
 
+test('a file saved at the defaults, a new picture and a blank canvas open at the defaults, not the last drawing\'s plugin options', async () => {
+  const { project } = await blank();
+  const ref = await onSolver(OUTLINES);
+  project.setLayerChars('base', { charChoice: ref });
+  const plain = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
+  const changed = () => project.setLayerChars('base', { solverOptions: { [ref]: { threshold: 10 } } });
+  const atDefaults = () => {
+    expect(project.solverOptions).toEqual({});
+    expect(project.processParams.solverOptions).toEqual({ threshold: 40, thin: false, look: 0 });
+    for (const layer of project.layers) expect(project.charsOf(layer.id).solverOptions ?? {}, layer.id).toEqual({});
+  };
+  changed();
+  await project.openParts(await readProject(plain), { filename: 'plain' });
+  atDefaults();
+  changed();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
+  atDefaults();
+  changed();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
+  atDefaults();
+});
+
 test('a heard settings message is cleaned before it is applied: bad entries gone, an over-cap value trimmed, the old refs replaced', async () => {
   const { project } = await blank();
   project.setLayerChars('base', { solverOptions: { 'plugin:p/old': { a: 1 } } });
