@@ -9,8 +9,9 @@ import { storedBitmapFont, registerBitmapFont, familyOf } from '@/lib/userFonts'
 import { fontId, SLOT_CHARS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
+import { DISPLAY_FONTS } from '@/lib/displayFonts';
 
-// The palette layer's Fonts page: the drawing's bitmap font and yours on the left, each sampled in its own glyphs;
+// The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
 // font here only shows it: Use this font applies it, as the Font field's dropdown does.
 const emit = defineEmits(['acted']);
@@ -41,16 +42,19 @@ const drawnId = computed(() => drawn.value && fontId(drawn.value));
 const stored = computed(() => workspace.userFonts ?? []);
 // The font in use: the drawing's bitmap font, else the one viewed in (a TrueType font of yours, or a built-in, not listed).
 const inUseId = computed(() => drawnId.value ?? workspace.displayFontSpec.id);
-// The drawing's font (listed once, though it may be kept in this browser too), then yours.
+const builtIn = DISPLAY_FONTS.map((f) => ({ id: f.id, name: f.name, kind: 'builtIn', family: f.family }));
+// The drawing's font (listed once, though it may be kept in this browser too), then yours, then the built-in ones.
 const all = computed(() => [
   ...(drawn.value ? [{ id: drawnId.value, name: drawn.value.name, kind: 'bitmap', height: drawn.value.height }] : []),
   ...stored.value.filter((f) => f.id !== drawnId.value),
+  ...builtIn,
 ]);
 const groups = computed(() => {
   const query = filter.value.trim().toLowerCase(), shown = all.value.filter((f) => f.name.toLowerCase().includes(query));
   return [
     { key: 'inUse', label: t('palette.fonts.inUse'), rows: shown.filter((f) => f.id === inUseId.value) },
-    { key: 'yours', label: t('common.yours'), rows: shown.filter((f) => f.id !== inUseId.value) },
+    { key: 'yours', label: t('common.yours'), rows: shown.filter((f) => f.id !== inUseId.value && f.kind !== 'builtIn') },
+    { key: 'builtIn', label: t('common.builtIn'), rows: shown.filter((f) => f.id !== inUseId.value && f.kind === 'builtIn') },
   ].filter((g) => g.rows.length);
 });
 // The chosen font; once it's gone (removed), the one in use, else the first.
@@ -63,11 +67,12 @@ const count = computed(() => (bitmap.value ? palettes.countFor(chosen.value.id) 
 
 const size = (f) => (f.kind === 'bitmap' ? `8×${f.height}` : t('palette.fonts.trueType'));
 // Drawn at its own height, or twice that when it's too small to read.
-const styleOf = (f) => ({ fontFamily: familyOf(f.id), fontSize: `${f.kind === 'bitmap' && f.height < 12 ? 2 * f.height : f.height ?? 16}px` });
+const familyFor = (f) => f.family ?? familyOf(f.id);
+const styleOf = (f) => ({ fontFamily: familyFor(f), fontSize: `${f.kind === 'bitmap' && f.height < 12 ? 2 * f.height : f.height ?? 16}px` });
 const meta = computed(() => [
   size(chosen.value),
   isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : isInUse.value && t('palette.fonts.inUseMeta'),
-  !isDrawn.value && t('palette.fonts.inBrowser'),
+  !isDrawn.value && t(chosen.value.kind === 'builtIn' ? 'palette.fonts.builtInMeta' : 'palette.fonts.inBrowser'),
   bitmap.value && t('palette.fonts.palettes', { n: count.value }, count.value),
 ].filter(Boolean).join(' · '));
 
@@ -174,7 +179,7 @@ const exportPalettes = () => {
       </template>
       <template v-else>
         <div class="note">{{ t('palette.fonts.trueTypeNote') }}</div>
-        <div class="sample-text" :style="{ fontFamily: familyOf(chosen.id) }">
+        <div class="sample-text" :style="{ fontFamily: familyFor(chosen) }">
           <div v-for="(line, i) in lines" :key="i">{{ line }}</div>
         </div>
       </template>

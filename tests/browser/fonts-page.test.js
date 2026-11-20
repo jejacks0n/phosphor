@@ -12,6 +12,7 @@ import { addFont, addBitmapFont, loadFonts, removeFont } from '@/lib/userFonts';
 
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
 const rawFile = (height, name, fill = 0) => new File([new Uint8Array(256 * height).fill(fill)], name);
+const BUILT_IN = ['JetBrains Mono', 'IBM VGA', 'Unscii', 'Unifont'];
 const ttfFile = async () => new File([await (await fetch('/tests/fixtures/fonts/tall.ttf')).arrayBuffer()], 'Tall Mono.ttf');
 let app = null, host = null, closes = 0;
 
@@ -63,11 +64,11 @@ test('the switch moves between the pages', async () => {
   expect(workspace.paletteLayerPage).toBe('fonts');
 });
 
-test('lists the drawing\'s font first, then yours', async () => {
+test('lists the drawing\'s font first, then yours, then the built-in ones', async () => {
   const { b, tt } = await mount();
-  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours']);
+  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
   expect([...host.querySelectorAll('.row')].map((r) => [r.querySelector('.name span').textContent, r.querySelector('.name em').textContent]))
-    .toEqual([['A', '8×8'], ['B', '8×16'], ['Tall Mono', 'TrueType']]);
+    .toEqual([['A', '8×8'], ['B', '8×16'], ['Tall Mono', 'TrueType'], ...BUILT_IN.map((name) => [name, 'TrueType'])]);
   const sample = (name) => row(name).querySelector('.sample');
   expect(sample('A').textContent).toBe('Aa░▒▓█▄▀╔═╗☺');
   expect(sample('A').style.fontFamily).toContain(fontId(fontA()));
@@ -176,10 +177,25 @@ test('a TrueType font shows a sample and Use this font', async () => {
   await expect.poll(() => workspace.displayFont).toBe(tt.id);
   expect(project.drawingFont).toBeNull();
   // In use, as a bitmap font is once used: first, under In use, with nothing left to apply
-  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours']);
-  expect(names()).toEqual(['Tall Mono', 'B']);
+  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
+  expect(names()).toEqual(['Tall Mono', 'B', ...BUILT_IN]);
   expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · in your browser');
   expect(actions()).toEqual(['Remove']);
+});
+
+test('a built-in font shows a sample and Use this font, and is listed under In use once used', async () => {
+  const { project, workspace } = await mount();
+  await press(row('IBM VGA'));
+  expect(host.querySelector('.sheet')).toBeNull();
+  expect(host.querySelector('.edit-side .sample-text').style.fontFamily).toContain('IBM VGA 8x16');
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · built in');
+  expect(actions()).toEqual(['Use this font']); // nothing to save or remove
+  await press(button('Use this font'));
+  await expect.poll(() => workspace.displayFont).toBe('vga');
+  expect(project.drawingFont).toBeNull();
+  expect(names()).toEqual(['IBM VGA', 'B', 'Tall Mono', 'JetBrains Mono', 'Unscii', 'Unifont']);
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · built in');
+  expect(actions()).toEqual([]);
 });
 
 test('+ Load loads and applies, and says why not', async () => {
@@ -211,7 +227,7 @@ test('Remove forgets the browser\'s copy', async () => {
   await press(row('B'));
   expect(host.querySelector('.edit-side .meta').textContent).toBe('8×16 · in your browser · 1 palette');
   await press(button('Remove'));
-  await expect.poll(names).toEqual(['A', 'Tall Mono']);
+  await expect.poll(names).toEqual(['A', 'Tall Mono', ...BUILT_IN]);
   expect(title()).toBe('A'); // the drawing's font, chosen in its place
   expect((await loadFonts()).map((f) => f.id)).not.toContain(b.id);
   expect(palettes.userPalettes.map((p) => p.id)).toContain(id);
@@ -231,7 +247,7 @@ test('in someone else\'s room, applying is off', async () => {
 
 test('before any drawing is open, the font chosen is the next drawing\'s', async () => {
   await mount({ canvas: false });
-  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours']);
+  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
   expect(host.querySelector('.edit-side .meta').textContent).toContain('the next drawing\'s font');
   await press(row('B'));
   expect(button('Use this font')).toBeTruthy();

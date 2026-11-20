@@ -824,6 +824,7 @@
       "nextDrawingsFont": "the next drawing's font",
       "inBrowser": "in your browser",
       "inUseMeta": "in use",
+      "builtInMeta": "built in",
       "palettes": "no palettes | 1 palette | {n} palettes",
       "use": "Use this font",
       "saveRaw": "Save .F{height}",

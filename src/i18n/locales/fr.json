@@ -824,6 +824,7 @@
       "nextDrawingsFont": "la police du prochain dessin",
       "inBrowser": "dans votre navigateur",
       "inUseMeta": "utilisée",
+      "builtInMeta": "intégrée",
       "palettes": "aucune palette | 1 palette | {n} palettes",
       "use": "Utiliser cette police",
       "saveRaw": "Enregistrer .F{height}",
