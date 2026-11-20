@@ -10,7 +10,7 @@ on:
 
 permissions:
   contents: read
-  deployments: read # to find the last deployment
+  actions: read # to find the last deploy run
 
 concurrency:
   group: pages # the same group as deploy.yml, so the two never publish at once
@@ -20,20 +20,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # The last successful github-pages deployment's commit, not main's head: main may hold changes that haven't
-      # passed the tests yet, and this workflow runs none. A deployment's newest status says how it ended, so
-      # the lookup walks deployments newest first until one's newest status is success.
+      # The commit of the last successful run of deploy.yml on main: that workflow builds only after its tests pass, so
+      # a success means that commit was tested and shipped. Not the Pages environment's history: deploy-pages records
+      # each deployment against the run's own commit, which for a refresh is main's head, so after one refresh the
+      # next would rebuild untested main. A refresh never moves this: every one rebuilds the last tested deploy.
       - id: last
         run: |
-          for id in $(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=github-pages&per_page=30" --jq '.[].id'); do
-            if [ "$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=1" --jq '.[0].state')" = success ]; then
-              sha=$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id" --jq '.sha')
-              echo "sha=$sha" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          done
-          echo "::error::No successful github-pages deployment to rebuild"
-          exit 1
+          sha=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow deploy.yml --branch main --status success --limit 1 --json headSha --jq '.[0].headSha')
+          test -n "$sha" || { echo "::error::No successful deploy.yml run on main to rebuild"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ github.token }}
       - uses: actions/checkout@v4
@@ -44,10 +39,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # As deploy.yml builds it: a build without the key would turn every sign-up away.
+      # As deploy.yml builds it: a build without the key would turn every sign-up away. GITHUB_SHA is main's head here
+      # and can't be overridden through env:, so it's unset: the build id then comes from the checked-out commit.
       - run: |
           test -n "$VITE_TURNSTILE_SITE_KEY" || { echo "::error::The TURNSTILE_SITE_KEY secret isn't set"; exit 1; }
-          npm run build
+          env -u GITHUB_SHA npm run build
         env:
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
       # --refresh writes nothing and fails when it can't make a safe list, so the site keeps the list it has.
