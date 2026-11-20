@@ -62,7 +62,7 @@ test('takes a script path relative to the manifest', () => {
 });
 
 test("refuses a script path that leaves the folder, is absolute, has an empty or . folder, or isn't JavaScript", () => {
-  for (const script of ['../x.js', '/x.js', 'a/../../x.js', 'x.ts', 'x.js?y', '', 'a\\x.js', 'x'.repeat(200) + '.js', 'a//x.js', 'a/./x.js']) {
+  for (const script of ['../x.js', '/x.js', 'a/../../x.js', 'x.ts', 'x.js?y', 'a\\x.js', 'x'.repeat(200) + '.js', 'a//x.js', 'a/./x.js']) {
     expect(() => readManifest(manifestWith({ script }))).toThrow(expect.objectContaining({ code: 'badField', detail: { field: 'script' } }));
   }
 });
@@ -123,4 +123,11 @@ test('preview: left out is empty, up to 3 short lines are kept, anything else is
 test('the official Outlines manifest reads with its preview', () => {
   const outlines = readFileSync(new URL('../../plugins/outlines/phosphor-plugin.json', import.meta.url), 'utf8');
   expect(readManifest(outlines).preview).toBe(' ╱──╲ \n│    │\n ╲──╱ ');
+});
+
+test('a theme-only manifest reads again from its own output', () => {
+  const text = JSON.stringify({ phosphor: 1, id: 'kim.dusk', name: 'Dusk', version: '1.0.0', author: 'Kim', themes: [{ id: 'dusk', name: 'Dusk', base: 'dark', colors: {} }] });
+  const once = readManifest(text);
+  expect(once.script).toBe('');
+  expect(readManifest(JSON.stringify(once)).id).toBe('kim.dusk');
 });

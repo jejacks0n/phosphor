@@ -39,16 +39,15 @@ async function get(fetch, url, cap, headers) {
     }
     chunks.push(chunk);
   }
-  return Buffer.concat(chunks).toString('utf8');
+  return new TextDecoder().decode(Buffer.concat(chunks)); // like Response.text(): a BOM is dropped
 }
 
 export async function fetchListing(source, { fetch, token }) {
   try {
     let commit = source.commit;
     if (!commit) {
-      const headers = { Accept: 'application/vnd.github+json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
-      const found = await get(fetch, `https://api.github.com/repos/${source.repo}/commits/${source.branch || 'HEAD'}`, MOST_MANIFEST_BYTES, headers);
-      commit = JSON.parse(found).sha;
+      const headers = { Accept: 'application/vnd.github.sha', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+      commit = (await get(fetch, `https://api.github.com/repos/${source.repo}/commits/${source.branch || 'HEAD'}`, 1024, headers)).trim();
       if (!/^[0-9a-f]{40}$/.test(commit ?? '')) throw new Gone();
     }
     const base = `https://raw.githubusercontent.com/${source.repo}/${commit}/${source.path ? `${source.path}/` : ''}`;
@@ -105,6 +104,40 @@ export async function buildList({ official, community, previous, fetch, token, r
   return { list: { format: LIST_FORMAT, built: new Date().toISOString(), plugins }, log };
 }
 
+// The whole run: reads the list served now and the wiki page, builds, and returns { list, log }. Throws 'noPrevious'
+// or 'noWiki' (a refresh that can't publish). On a normal deploy an unreadable wiki keeps the community entries now served.
+export async function makeList({ dir, commit, refresh, fetch, token }) {
+  let previous = null;
+  try {
+    const response = await fetch(LIST_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (response.ok) previous = readList(await response.text()).entries;
+  } catch { /* no list to fall back on */ }
+  if (refresh && !previous) throw new Error('noPrevious');
+  let page = '';
+  let wikiError = '';
+  try {
+    const response = await fetch(WIKI_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+    if (response.ok) page = await response.text();
+    else if (response.status !== 404) throw new Error(`HTTP ${response.status}`);
+  } catch (error) {
+    wikiError = error.message;
+  }
+  if (wikiError && refresh) throw new Error('noWiki');
+  const official = officialSources(dir, commit);
+  const community = wikiLinks(page).map((link) => ({ official: false, ...link }));
+  const built = await buildList({ official, community, previous, fetch, token, refresh });
+  if (wikiError) {
+    built.log.push(`Could not read the wiki page (${wikiError}); kept the community entries now served.`);
+    const ids = new Set(built.list.plugins.map((one) => one.manifest.id));
+    for (const entry of previous ?? []) {
+      if (entry.official || ids.has(entry.manifest.id)) continue;
+      ids.add(entry.manifest.id);
+      built.list.plugins.push(Object.fromEntries(Object.entries(entry).filter(([, value]) => value !== null)));
+    }
+  }
+  return built;
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const arg = (name) => args[args.indexOf(name) + 1];
@@ -115,28 +148,13 @@ async function main() {
     process.exit(1);
   }
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-  let previous = null;
   try {
-    const response = await fetch(LIST_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (response.ok) previous = readList(await response.text()).entries;
-  } catch { /* no list to fall back on */ }
-  // The wiki page must be read: without it every community listing would look gone.
-  let page = '';
-  try {
-    const response = await fetch(WIKI_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-    if (response.ok) page = await response.text();
-    else if (response.status !== 404) throw new Error(`HTTP ${response.status}`);
-  } catch (error) {
-    console.error(`Could not read the wiki page: ${error.message}`);
-    process.exit(1);
-  }
-  const community = wikiLinks(page).map((link) => ({ official: false, ...link }));
-  try {
-    const { list, log } = await buildList({ official: officialSources(join(root, 'plugins'), commit), community, previous, fetch, token: process.env.GITHUB_TOKEN, refresh: args.includes('--refresh') });
+    const { list, log } = await makeList({ dir: join(root, 'plugins'), commit, refresh: args.includes('--refresh'), fetch, token: process.env.GITHUB_TOKEN });
     log.forEach((line) => console.log(line));
     writeFileSync(out, `${JSON.stringify(list, null, 2)}\n`);
   } catch (error) {
-    console.error(error.message === 'noPrevious' ? 'No list to fall back on; publishing nothing.' : error.message);
+    const words = { noPrevious: 'No list to fall back on; publishing nothing.', noWiki: 'Could not read the wiki page; publishing nothing.' };
+    console.error(words[error.message] ?? error.message);
     process.exit(1);
   }
 }
