@@ -7,6 +7,7 @@ import { i18n } from '@/i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ReadingDialog from '@/components/ReadingDialog.vue';
 import AppToast from '@/components/AppToast.vue';
+import '@/assets/global.css'; // button.close, the app's close button
 import { toast, closeToast } from '@/composables/useToast';
 import { cancelTopDialog } from '@/lib/focus';
 
@@ -82,6 +83,19 @@ test('a close request cancels and leaves it open; the backdrop cancels a short o
   long.dialog().click();
   await nextTick();
   expect(long.cancels.value).toBe(0);
+});
+
+test('a closable one has its × over its top right corner, and a long one scrolling under it leaves it there', async () => {
+  const many = () => Array.from({ length: 60 }, (_, i) => h('p', `Line ${i}`));
+  const { dialog } = await mount({ closable: true, long: true }, many);
+  const close = dialog().querySelector('button.close'), box = dialog().getBoundingClientRect();
+  const at = close.getBoundingClientRect();
+  expect(at.right).toBeGreaterThan(box.right);   // over the corner, not inside it
+  expect(at.top).toBeLessThan(box.top);
+  const body = dialog().querySelector('.body');
+  body.scrollTop = 400;
+  expect(body.scrollTop).toBeGreaterThan(0);
+  expect(close.getBoundingClientRect().top).toBe(at.top);
 });
 
 test('closed by the browser, it cancels, and opens again when whoever shows it says no', async () => {
