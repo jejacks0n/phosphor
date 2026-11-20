@@ -84,6 +84,24 @@ test('floating, however wide, the layer has no close button: a press outside clo
   expect(host.querySelector('button.dismiss')).toBeNull();
 });
 
+test('on a window under 1000px wide, the layer is a dialog over the page; under 700px, the whole window', async () => {
+  await page.viewport(850, 700);
+  onTestFinished(() => page.viewport(414, 896));
+  await mount();
+  const layer = host.querySelector('.palette-layer'), box = () => layer.getBoundingClientRect();
+  await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('fixed'));
+  expect([box().left, Math.round(box().width)]).toEqual([20, 810]); // 20px clear of the edges, as the About dialog
+  expect(box().top).toBeGreaterThanOrEqual(20);
+  expect(box().top).toBe(700 - box().bottom); // centered
+  expect(host.querySelector('button.dismiss')).toBeTruthy();
+  host.querySelector('.scrim').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  expect(closes).toBe(1); // a press on the dimmed page closes it
+  await page.viewport(690, 700);
+  await vi.waitFor(() => expect([box().left, box().top, box().width]).toEqual([0, 0, 690])); // the whole window
+  expect(host.querySelector('.scrim')).toBeNull();
+  expect(host.querySelector('button.dismiss')).toBeTruthy();
+});
+
 test('resizing the side panel leaves the layer open', async () => {
   await mount();
   const grip = document.body.appendChild(document.createElement('div')); // the panel's edge

@@ -299,13 +299,15 @@ watch(() => workspace.paletteLayerPage, (page, was) => {
 });
 watch(editing, (on) => { if (!on) fromFonts.value = false; });
 
-// Going full window (on a small one, the media query below) grows out of where the layer floated, the page revealed by
-// a clip from that box; coming back, the floating layer fades in. (A wide window only widens it, by its transition.)
+// Becoming a dialog or the whole window (on a smaller window) grows out of where the layer floated, the page revealed
+// by a clip from that box; coming back, the floating layer fades in. (A big window only widens it, by its transition.)
 const wide = computed(() => editing.value || onFonts.value);
-// Wide on a small window, the layer is the whole window (the media query below), with nothing outside to press: it
-// has a close button then.
+// Wide on a smaller window, the layer is a dialog over the dimmed page, as the About dialog; on a phone's width, the
+// whole window (the media queries below). Either way it has a close button.
 const smallWindow = useMediaQuery('(max-width: 1000px), (max-height: 520px)');
+const phoneWidth = useMediaQuery('(max-width: 700px)');
 const fullWindow = computed(() => wide.value && smallWindow.value);
+const dialog = computed(() => fullWindow.value && !phoneWidth.value);
 watch(wide, () => {
   const el = root.value;
   if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -334,6 +336,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <div v-if="dialog" class="scrim" aria-hidden="true"></div>
   <div ref="root" class="palette-layer" :class="{ editing: editing || onFonts }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
     <div class="pages">
       <div class="tablist" role="tablist" :aria-label="t('palette.pages.aria')">
@@ -585,23 +588,47 @@ div.palette-layer.editing div.row div.glyphs {
 }
 
 /* Editing wants 940px and up to 560px tall; a shorter window shrinks it (the glyph pane gives way first) until it
-   can't fit, and a small window it takes whole instead (between, it fits the toolbar and the slots narrow). On phone
-   widths the list sits above the editor. (smallWindow, for the close button, asks the same.) */
+   can't fit. A smaller window makes it a dialog over the dimmed page, 20px clear of the edges as the About dialog
+   (between, the slots narrow), and a phone's width the whole window, with the list above the editor. (smallWindow and
+   phoneWidth, for the scrim and the close button, ask the same.) */
 @media (max-width: 1000px), (max-height: 520px) {
   div.palette-layer.editing {
     position: fixed;
-    inset: 0;
+    inset: 20px;
     z-index: 5000;
-    width: auto;
+    width: min(940px, calc(100vw - 40px));
+    height: min(600px, calc(100vh - 40px));
     max-width: none;
     max-height: none;
-    border: none;
-    border-radius: 0;
+    margin: auto;
+    border-radius: 12px;
     transition: none;
+  }
+
+  div.scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 4999;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(2px);
+    animation: scrim-in 0.25s ease-out;
   }
 }
 
+@keyframes scrim-in {
+  from { opacity: 0; }
+}
+
 @media (max-width: 700px) {
+  div.palette-layer.editing {
+    inset: 0;
+    width: auto;
+    height: auto;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+  }
+
   div.palette-layer.editing div.page {
     flex-direction: column;
   }

@@ -95,7 +95,7 @@ test('Hide under Built-in puts the built-ins away while the font is in use; Show
   expect(row('Shades & blocks')).toBeTruthy();
 });
 
-test('a wide but short window shrinks the editor before it takes the whole window', async () => {
+test('a wide but short window shrinks the editor before it becomes a dialog over the page', async () => {
   await page.viewport(1400, 600);
   onTestFinished(() => page.viewport(414, 896));
   await mount();
@@ -104,7 +104,9 @@ test('a wide but short window shrinks the editor before it takes the whole windo
   await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('absolute')); // still floating
   expect(layer.getBoundingClientRect().height).toBeLessThanOrEqual(440 + 2); // the window less the toolbar's room
   await page.viewport(1400, 500);
-  await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('fixed')); // too short: the whole window
+  await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('fixed')); // too short: a dialog
+  expect(layer.getBoundingClientRect().top).toBe(20); // 20px clear of the window's edges, as the About dialog
+  await vi.waitFor(() => expect(host.querySelector('.scrim')).toBeTruthy());
 });
 
 test('going full window grows out of the floating layer, and coming back fades it in', async () => {
