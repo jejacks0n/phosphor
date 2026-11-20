@@ -79,6 +79,8 @@ const fontSlotChars = memo((font) => {
 const slotsOf = memo((font) => new Map(slotChars(font).map((c, i) => [c, i])));
 
 export const slotOf = (char, font = null) => (font ? slotsOf(font) : SLOTS).get(char.normalize('NFC')) ?? null;
+// Whether the font has a slot for each of the ten quadrant characters (no font, a display font, does).
+export const hasQuadrants = (font = null) => !font || [...'▘▝▖▗▚▞▛▜▙▟'].every((c) => slotOf(c, font) !== null);
 export const fitFont = (char, font = null) => {
   if (slotOf(char, font) !== null) return char;
   const near = cp437Substitute(char);

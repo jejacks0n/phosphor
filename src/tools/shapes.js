@@ -11,6 +11,7 @@
 // wide (a cell is two tall), so in an 8×8 font a square is twice as many grid pixels down as across.
 import { linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '@/lib/Brushes';
 import { rectCells } from '@/document/editCells';
+import { hasQuadrants } from '@/lib/BitmapFont';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
 import { armsOf, joinBox, inwardArms } from '@/lib/BoxJoin';
 import { hex2rgb } from '@/lib/ColorUtils';
@@ -103,7 +104,8 @@ const twoTone = (all, outline, fg, bg) => {
 // it was. Filled, the inside is BG: cells wholly inside are BG spaces, and an outline cell takes BG
 // behind it where the rest of it is inside.
 function halfCells(project, workspace, end, fill) {
-  const halfRows = drawnWith(workspace) === 'half';
+  // Without quadrants the half-column detail is whole cells tall (▌ ▐ █), as Full-block draws it.
+  const halfRows = drawnWith(workspace) === 'half' && hasQuadrants(project.drawingFont);
   const rows = halfRows ? project.rows : charRowsOf(project.rows);
   const at = (p) => ({ x: p.x, y: halfRows ? p.y : p.y / 2 }); // cells across, rows down
   const shape = (filled) => (workspace.shapeKind === 'line'

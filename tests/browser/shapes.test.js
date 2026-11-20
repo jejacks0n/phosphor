@@ -295,3 +295,32 @@ test('a Shift circle in Vertical half blocks in an 8×8 font covers twice as man
   expect(await drawn(font8)).toEqual({ aspect: 0.5, cols: 11, halfRows: 22 });
   expect(await drawn(null)).toEqual({ aspect: 1, cols: 11, halfRows: 12 });
 });
+
+const drawnChars = async (shapeKind, font) => {
+  const { project, workspace, shapes } = await shiftScene({
+    shapeKind, shapeDrawWith: 'half', shapeVerticalHalves: true, editFgColor: '#ff0000',
+  }, font);
+  const ctx = { project, workspace, view: 'output' };
+  const before = project.cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`);
+  const to = shapeKind === 'line' ? { x: 6.5, y: 30.5 } : { x: 14.5, y: 11.5 };
+  shapes.begin(ctx, { x: 4.5, y: 4.5 });
+  shapes.move(ctx, { x: 4.5, y: 4.5 }, to);
+  shapes.end(ctx);
+  await settle(project);
+  const chars = new Set();
+  project.cells.forEach((c, i) => { if (`${c.char}${c.fg.hex}${c.bg.hex}` !== before[i]) chars.add(c.char); });
+  return chars;
+};
+
+test('Half-block\'s half-column detail in a font with no quadrants draws only ▌ ▐ █, never a stand-in', async () => {
+  for (const font of [cp437Font, font8]) for (const kind of ['ellipse', 'line']) {
+    const chars = await drawnChars(kind, font);
+    expect(chars.size, `${font.name} ${kind}`).toBeGreaterThan(0);
+    expect([...chars].every((c) => '▌▐█ '.includes(c)), `${font.name} ${kind}: ${[...chars].join('')}`).toBe(true);
+  }
+});
+
+test('with no font Half-block\'s half-column detail still draws quadrants', async () => {
+  const chars = new Set([...await drawnChars('ellipse', null), ...await drawnChars('line', null)]);
+  expect([...chars].some((c) => '▘▝▖▗▚▞▛▜▙▟'.includes(c))).toBe(true);
+});

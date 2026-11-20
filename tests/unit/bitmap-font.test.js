@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet, CP437_BLOCKS, findBlocks, slotChars, fontKey, encodeBlocks, decodeBlocks, withBlock } from '@/lib/BitmapFont.js';
-import { cp437Font, lowerAt240, noLowerHalf, solidAt220, lightAt240, slantedLike, nineRowFontWithLowerHalfRows4to8, nineRowFontWithLowerHalfRows5to8 } from '../support/blockFonts.js';
+import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet, CP437_BLOCKS, findBlocks, slotChars, fontKey, encodeBlocks, decodeBlocks, withBlock, hasQuadrants } from '@/lib/BitmapFont.js';
+import { cp437Font, font8, lowerAt240, noLowerHalf, solidAt220, lightAt240, slantedLike, nineRowFontWithLowerHalfRows4to8, nineRowFontWithLowerHalfRows5to8 } from '../support/blockFonts.js';
 
 const solidLowerHalf = (h) => { const b = new Uint8Array(256 * h); for (let r = h / 2; r < h; r++) b[220 * h + r] = 0xff; return b; };
 
@@ -77,6 +77,11 @@ describe('raw fonts', () => {
 });
 
 describe('blocks', () => {
+  it('a bitmap font has no quadrants; no font (the display fonts) has them all', () => {
+    expect(hasQuadrants(null)).toBe(true);
+    expect(hasQuadrants(cp437Font)).toBe(false);
+    expect(hasQuadrants(font8)).toBe(false);
+  });
   it('finds the eight blocks where CP437 puts them', () => {
     expect(findBlocks(cp437Font)).toEqual([219, 220, 223, 221, 222, 176, 177, 178]);
   });
