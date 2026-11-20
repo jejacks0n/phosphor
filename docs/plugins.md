@@ -172,7 +172,7 @@ Its manifest names the script:
   "id": "jane.outlines",
   "name": "Outlines",
   "version": "1.0.0",
-  "author": "Phosphor",
+  "author": "Jane",
   "script": "outlines.js"
 }
 ```

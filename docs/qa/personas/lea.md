@@ -381,9 +381,9 @@ and sideways.
 - Does: with her selfie open, opens the settings, taps Plugins, taps Install from a file… and picks
   `plugins/outlines.zip` (a phone's file picker gives a .zip, not a folder, so this is how she installs it); reads the question and taps Install; then taps Install from a
   folder… to see what her phone offers.
-- Expects: the question says "Install Outlines 1.0.0?", "by Phosphor" and "Adds a script.", with "⚠ This plugin runs
+- Expects: the question says "Install Outlines 1.0.0?", "by Jane" and "Adds a script.", with "⚠ This plugin runs
   code in Phosphor. Install it only if you trust where it came from." under it, all fitting 390 wide with Install and
-  Cancel reachable; after Install the row shows Outlines, 1.0.0, by Phosphor and "Runs code", with no Reload or Follow file
+  Cancel reachable; after Install the row shows Outlines, 1.0.0, by Jane and "Runs code", with no Reload or Follow file
   (a phone keeps no link to the file); Cancel leaves nothing in the list. The folder button opens her phone's own picker or
   does nothing it can explain, and either way leaves the dialog as it was (installing from a folder is checked in the
   end-to-end tests, not here) ([Installing a plugin](../../plugins.md#installing-a-plugin)).
