@@ -234,7 +234,7 @@ tests/fixtures/reference` and commit only what you meant to change.
 
 ## Reporting a bug with the History tab
 
-In `npm run dev` the side panel has a third tab, HISTORY. It lists every step taken since the page
+In `npm run dev` the side panel has a third tab, a clock with a back arrow (History). It lists every step taken since the page
 loaded: tool picks, edits, layers, frames, files, room events, and any error the page threw, with the
 seconds since load. A run of one action is one line with a count: a stroke's moves, or a zoom's notches
 shown as its first and last amount. Steps undo can't reach are

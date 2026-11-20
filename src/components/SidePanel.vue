@@ -155,7 +155,14 @@ function key(e) {
           <span v-if="unread" class="unread">{{ unread }}</span>
           <span v-else-if="!room.inRoom" class="beta" aria-hidden="true">{{ t('tabs.beta') }}</span>
         </button>
-        <button v-if="DEV" role="tab" :aria-selected="tab === 'history'" :class="{ on: tab === 'history' }" @click="pick('history')">History</button>
+        <!-- An icon, not a word: a development tool shouldn't crowd the real tabs. -->
+        <button v-if="DEV" role="tab" class="icon" aria-label="History" title="History" :aria-selected="tab === 'history'" :class="{ on: tab === 'history' }" @click="pick('history')">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M12 7v5l4 2"/>
+          </svg>
+        </button>
         <div class="indicator" :style="markerStyle" aria-hidden="true"></div>
         </div>
         <!-- In a room, the speaker that turns the tone for new messages off and on (RoomStore.chime), on either tab. -->
@@ -320,6 +327,9 @@ div.tabs button[role='tab'] {
   text-transform: uppercase;
   color: var(--text-muted);
   transition: color 0.3s ease;
+}
+div.tabs button[role='tab'].icon {
+  padding: 0 10px;
 }
 div.tabs button[role='tab']:hover { /* not the global button lift */
   transform: none;

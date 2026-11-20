@@ -37,7 +37,7 @@ async function mount(before = () => {}) {
 }
 const panel = () => host.querySelector('.side-panel');
 const words = (b) => [...b.childNodes].filter((n) => n.nodeType !== Node.COMMENT_NODE && !n.classList?.contains('beta')).map((n) => n.textContent).join('').trim().replace(/\s+/g, ' ');
-const tabs = () => [...host.querySelectorAll('.side-panel [role=tab]')].filter((b) => words(b) !== 'History').map((b) => [words(b), b.getAttribute('aria-selected')]);   // the dev-only History tab (tests run in dev) is history-tab.test.js's
+const tabs = () => [...host.querySelectorAll('.side-panel [role=tab]')].filter((b) => b.getAttribute('aria-label') !== 'History').map((b) => [words(b), b.getAttribute('aria-selected')]);   // the dev-only History tab (tests run in dev) is history-tab.test.js's
 const arrow = () => host.querySelector('button.panel');   // » in the panel's tabs while open, « in the nav while folded
 const grip = () => host.querySelector('[role=separator]');
 const press = async (key) => {

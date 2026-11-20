@@ -82,7 +82,7 @@ test('the side panel has a History tab after Social, and picking it shows the pa
   app = createApp({ render: () => h(SidePanel) }).use(getActivePinia()).use(i18n);
   app.mount(host);
   await nextTick();
-  const tabs = () => [...host.querySelectorAll('.side-panel [role=tab]')].map((b) => b.textContent.replace(/\s+/g, ' ').trim());
+  const tabs = () => [...host.querySelectorAll('.side-panel [role=tab]')].map((b) => b.getAttribute('aria-label') ?? b.textContent.replace(/\s+/g, ' ').trim());
   expect(tabs()).toEqual(['Layers', 'Social Beta', 'History']);
   expect(host.querySelector('aside.history')).toBeNull();
   host.querySelectorAll('.side-panel [role=tab]')[2].click();
