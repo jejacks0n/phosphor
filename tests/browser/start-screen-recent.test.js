@@ -1,8 +1,11 @@
 // The start screen (ZeroState.vue): a dashed line around the whole canvas, which is what takes a dropped file, with
 // Choose a file and Start with a blank canvas side by side in its middle as two buttons of one height; on a phone no
-// line, and the two a finger's size, one over the other. And its "Pick up where you left off" rows under them: the whole
+// line, and the two a finger's size, one over the other. With recent work the two are the list's width, edge to edge:
+// each half of it side by side, or one over the other where the canvas is too narrow for that, whatever the window's
+// width. And its "Pick up where you left off" rows under them: the whole
 // name with its extension, where that copy stands, and a time that tells two rows apart; every row two lines, the name
-// over the time and state, with Resume beside both, at any width. And its buttons as a list: Up and Down move between
+// over the time and state, with Resume beside both, on a computer and on a phone (in a sliver of canvas the state goes
+// under the time, neither of them under Resume). And its buttons as a list: Up and Down move between
 // Choose a file, Start blank and each row, and Choose a file has focus in a fresh tab, so Tab goes on from it.
 import { test, expect, afterEach, onTestFinished, vi } from 'vitest';
 import { page } from 'vitest/browser';
@@ -148,13 +151,38 @@ test('on a computer the dashed line runs around the whole canvas, list or no lis
   expect(rect('.drop-zone').width).toBe(900 - 2 * 16); // the canvas, less the gap the line keeps from its edge
   expect(rect('section.recent').width).toBe(480);
   expect(Math.abs(middle(rect('section.recent')) - middle(rect('.drop-zone')))).toBeLessThanOrEqual(1);
-  expect(rect('.actions').left).toBeGreaterThan(rect('svg.icon').right); // the band: the arrow, then the two starts
+  expect(rect('.drop-zone p').left).toBeGreaterThan(rect('svg.icon').right); // the band: the arrow and the prompt on a line
+  expect(Math.abs(middle(rect('.drop-zone p')) - middle(rect('svg.icon'))) > 20).toBe(true);
+  expect(rect('svg.icon').bottom).toBeLessThanOrEqual(rect('.actions').top); // and the two starts under it
   expect(rect('.actions').bottom).toBeLessThanOrEqual(rect('section.recent').top);
   mounted.unmount();
   host.remove();
   mount([]);
   expect(host.querySelector('section.recent')).toBe(null);
   expect(rect('.drop-zone').width).toBe(900 - 2 * 16);
+});
+
+// The window's width doesn't tell the canvas's: a wide window with its panels open has a narrow one. The band was the
+// arrow in a column of its own with the two starts beside it at their words' widths, short of the list's right edge,
+// and in a narrow canvas one under the other at two widths.
+test('with recent work the two starts are the list\'s width at any canvas width: each half of it side by side, or one over the other, each the whole of it', async () => {
+  await onAComputer();
+  // 560: the column is the canvas's, short of 480, with room to spare for both labels in the fonts of any computer the tests run on.
+  for (const [width, stacked] of [[900, false], [560, false], [446, true], [300, true], [215, true]]) {
+    mount([row('a'), row('b')], width);
+    const browse = rect('button.browse'), blank = rect('button.blank'), list = rect('section.recent'), note = `canvas ${width}`;
+    expect(Math.abs(browse.left - list.left), note).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(blank.right - list.right), note).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(blank.width - browse.width), note).toBeLessThanOrEqual(0.5);
+    expect(blank.top >= browse.bottom, note).toBe(stacked);
+    for (const button of host.querySelectorAll('.actions button')) expect(button.scrollHeight, note).toBeLessThanOrEqual(button.clientHeight); // its label in it
+    for (const li of host.querySelectorAll('.recent li')) { // and a row's time and state never run under Resume
+      const go = li.querySelector('.go').getBoundingClientRect();
+      for (const part of li.querySelectorAll('time, .status')) expect(part.getBoundingClientRect().right, note).toBeLessThanOrEqual(go.left);
+    }
+    mounted.unmount();
+    host.remove();
+  }
 });
 
 test('the two starts are two buttons of one height, side by side under a drawn arrow; on a phone one over the other at a finger\'s size, with no dashed line', async () => {
@@ -168,6 +196,14 @@ test('the two starts are two buttons of one height, side by side under a drawn a
   expect(blank.left - browse.right).toBeGreaterThanOrEqual(16); // room for the focus ring before the next button
   expect(rect('.drop-zone p').bottom).toBeLessThan(browse.top);
   expect(Math.abs((browse.left + blank.right) / 2 - middle(rect('.drop-zone')))).toBeLessThanOrEqual(1);
+  mounted.unmount();
+  host.remove();
+
+  mount([], 346); // a canvas too narrow for both on a line: one over the other, the two one width
+  browse = rect('button.browse');
+  blank = rect('button.blank');
+  expect(blank.top).toBeGreaterThan(browse.bottom);
+  expect([blank.left, blank.width]).toEqual([browse.left, browse.width]);
   mounted.unmount();
   host.remove();
 
