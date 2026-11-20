@@ -1,4 +1,4 @@
-import { test, expect } from './support.js';
+import { test, expect, openApp } from './support.js';
 
 // Phones show no tooltips, so a tap on a button that's off says why in a toast.
 test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
@@ -60,4 +60,36 @@ test('a tap on something laid over a disabled button shows no toast', async ({ p
   await finger(page, { x, y });
   await page.waitForTimeout(300);
   await expect(page.locator('.app-toast')).toHaveCount(0);
+});
+
+// On a wide screen that also takes touch: a drawing whose font has no lower half (an 8×16 font of zero bytes has no
+// blocks at all), loaded with the Fonts page's + Load.
+test.describe('a paint tool that\u2019s off', () => {
+  test.use({ isMobile: false, viewport: { width: 1280, height: 800 } });
+
+  test('a mouse click or a tap on it brings back the toast that sets up the font, and its button opens the font\u2019s blocks', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Manage fonts ▸' }).click();
+    const layer = page.locator('.palette-layer');
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser'), layer.getByRole('button', { name: '+ Load' }).click()]);
+    await chooser.setFiles({ name: 'Slab.F16', mimeType: 'application/octet-stream', buffer: Buffer.alloc(4096) });
+    const toast = page.locator('.app-toast');
+    await expect(toast).toContainText('This drawing\u2019s font, Slab, has no lower half block');
+    await page.keyboard.press('Escape');
+    await expect(layer).toHaveCount(0);
+    await toast.click(); // closed
+    await expect(toast).toHaveCount(0);
+    const brush = page.locator('button[data-tool="brush"]');
+    await expect(brush).toBeDisabled();
+    await brush.click({ force: true }); // a disabled button fails Playwright's actionability wait
+    await expect(toast).toContainText('has no lower half block');
+    await expect(toast.getByRole('button', { name: 'Set up its blocks' })).toBeVisible();
+    await toast.click();
+    await expect(toast).toHaveCount(0);
+    await brush.tap({ force: true });
+    await expect(toast).toContainText('has no lower half block, so it can\u2019t be painted in yet'); // not the button's title
+    await toast.getByRole('button', { name: 'Set up its blocks' }).click();
+    await expect(toast).toHaveCount(0);
+    await expect(layer.locator('.blocks button.tile', { hasText: 'Lower' })).toHaveAttribute('aria-pressed', 'true');
+  });
 });

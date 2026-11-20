@@ -22,6 +22,7 @@ import { refusedHidden } from '@/store/project/shared.js';
 import { sameChars } from '@/document/layerInfo.js';
 import { useLayerName } from '@/composables/useLayerName';
 import { asking as merging, useMergeDown } from '@/composables/useMergeDown';
+import { showFontSetup } from '@/composables/useFontSetup';
 
 const { t } = useI18n();
 const project = useProjectStore();
@@ -32,8 +33,13 @@ const { below, offFor, hasAny, mergeDown } = useMergeDown();
 
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
 const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name, 'data-off-reason': '' } : {});
-// A tool's button as off while the drawing's font has no lower half (project.paintOff).
-const toolOff = (tool) => (PAINT_OFF_TOOLS.includes(tool.id) ? off(project.paintOff, tool.title) : {});
+// A tool's button as off while the drawing's font has no lower half (project.paintOff). A click or tap on it brings
+// back the toast that sets up the font (useDisabledReason's offreason), in place of its title.
+const sayFontSetup = (event) => {
+  event.preventDefault();
+  showFontSetup();
+};
+const toolOff = (tool) => (PAINT_OFF_TOOLS.includes(tool.id) && project.paintOff ? { ...off(project.paintOff, tool.title), onOffreason: sayFontSetup } : {});
 // Inside an art layer, what changes the whole drawing (Clear, Merge down, Bake) is off: it would step out and
 // change the drawing kept aside, not the layer (the store steps out first all the same).
 const insideOff = computed(() => (project.artInside ? t('art.wholeLayerOff') : null));

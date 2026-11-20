@@ -1,7 +1,8 @@
 // A drawing whose font has no lower half can't show paint (stored as pixels, drawn as ▄): the paint tools turn off.
 import { test, expect, afterEach, beforeAll, afterAll } from 'vitest';
-import { page } from 'vitest/browser';
-import { createApp } from 'vue';
+import { page, userEvent } from 'vitest/browser';
+import { createApp, h } from 'vue';
+import { useDisabledReason } from '@/composables/useDisabledReason.js';
 import { createTestApp, settle } from '../support/app.js';
 import { i18n } from '@/i18n';
 import EditToolbar from '@/components/EditToolbar.vue';
@@ -27,7 +28,7 @@ async function mount() {
   host = document.createElement('div');
   host.style.width = '1200px';
   document.body.append(host);
-  mounted = createApp(EditToolbar).use(i18n);
+  mounted = createApp({ setup() { useDisabledReason(); return () => h(EditToolbar); } }).use(i18n);
   mounted.mount(host);
   await frame();
 }
@@ -90,4 +91,19 @@ test('giving the font a lower half turns paint back on', async () => {
   expect(project.paintOff).toBeNull();
   project.setDrawingFont({ ...cp437Font, name: 'Ok' });
   expect(project.paintOff).toBeNull();
+});
+
+test('a click on a paint tool that\u2019s off brings back the toast that sets up the font; other buttons that are off say nothing', async () => {
+  await drawing();
+  await mount();
+  closeToast();
+  await userEvent.click(button('brush'), { force: true }); // a disabled button gets no click: the pointer's own events
+  expect(toastMessage.value).toBe('This drawing\u2019s font, Slab, has no lower half block, so it can\u2019t be painted in yet.');
+  expect(toastAction.value?.label).toBe('Set up its blocks');
+  closeToast();
+  const other = host.appendChild(document.createElement('button'));
+  Object.assign(other, { disabled: true, title: 'Nothing to bake.', textContent: 'Bake' });
+  other.dataset.offReason = '';
+  await userEvent.click(other, { force: true });
+  expect(toastMessage.value).toBe(null); // a mouse has the tooltip
 });
