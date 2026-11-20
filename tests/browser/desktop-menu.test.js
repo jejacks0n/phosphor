@@ -5,7 +5,7 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { effectScope, nextTick } from 'vue';
 import { setLocale } from '@/i18n';
 import { useFakeDesktop, resetDesktop } from '@/social/desktop';
-import { MENU_LABELS, checkForUpdates, useDesktopMenu } from '@/composables/useDesktopMenu';
+import { MENU_LABELS, checkForUpdates, reloading, useDesktopMenu } from '@/composables/useDesktopMenu';
 import { toastMessage } from '@/composables/useToast';
 import { useRoomStore } from '@/store/RoomStore';
 import { createTestApp, loadImage } from '../support/app.js';
@@ -72,6 +72,11 @@ test('commands open what they name, and Undo from the menu is the drawing’s ou
   command('shortcuts');
   command('export');   // nothing to export yet
   expect([workspace.showAboutModal, workspace.shortcutsOpen, workspace.exportModal]).toEqual([true, true, false]);
+  command('plugins');
+  expect(workspace.pluginsOpen).toBe(true);
+  const reload = vi.spyOn(reloading, 'withPluginsOff').mockImplementation(() => {});
+  command('pluginsOff');
+  expect(reload).toHaveBeenCalled();
   const requests = workspace.openRequest;
   command('open');
   expect(workspace.openRequest).toBe(requests + 1);

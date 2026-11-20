@@ -23,6 +23,7 @@ export function menuTemplate({ labels: l, state, recent, act, mac, packaged, ver
 
   const about = command(l.about, 'about');
   const updates = command(l.checkUpdates, 'checkUpdates');
+  const plugins = command(l.plugins, 'plugins');
   const openRecent = recent.length
     ? [...recent.map((file) => ({ label: basename(file), click: () => act.openRecent(file) })), sep, { label: l.clearRecent, click: () => act.clearRecent() }]
     : [{ label: l.noRecent, enabled: false }];
@@ -30,7 +31,7 @@ export function menuTemplate({ labels: l, state, recent, act, mac, packaged, ver
   return [
     ...(mac ? [{
       label: 'Phosphor',
-      submenu: [about, updates, sep, { role: 'services', label: l.services }, sep, { role: 'hide', label: l.hide }, { role: 'hideOthers', label: l.hideOthers }, { role: 'unhide', label: l.showAll }, sep, { role: 'quit', label: l.quit }],
+      submenu: [about, updates, plugins, sep, { role: 'services', label: l.services }, sep, { role: 'hide', label: l.hide }, { role: 'hideOthers', label: l.hideOthers }, { role: 'unhide', label: l.showAll }, sep, { role: 'quit', label: l.quit }],
     }] : []),
     {
       label: l.file,
@@ -94,8 +95,9 @@ export function menuTemplate({ labels: l, state, recent, act, mac, packaged, ver
         link(l.releaseNotes, `${REPO}/releases/tag/v${version}`),
         link(l.reportIssue, issueUrl({ version, platform, systemVersion, arch })),
         sep,
-        ...(mac ? [] : [about, updates, sep]),
-        { label: l.troubleshooting, submenu: [{ role: 'toggleDevTools', label: l.devTools }] },
+        ...(mac ? [] : [about, updates, plugins, sep]),
+        // A plugin's theme that leaves the window unreadable is got out of by loading it without plugins.
+        { label: l.troubleshooting, submenu: [{ role: 'toggleDevTools', label: l.devTools }, command(l.startPluginsOff, 'pluginsOff')] },
       ],
     },
   ];

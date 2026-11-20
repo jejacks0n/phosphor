@@ -1906,7 +1906,9 @@
     "stay": "Rester",
     "addressCopied": "Adresse de la salle copiée.",
     "missing": "{name} n'est plus là.",
-    "openFailed": "Ce fichier n'a pas pu être ouvert."
+    "openFailed": "Ce fichier n'a pas pu être ouvert.",
+    "plugins": "Plugins…",
+    "startPluginsOff": "Recharger sans les plugins"
   },
   "updates": {
     "check": "Rechercher les mises à jour",
