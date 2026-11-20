@@ -16,12 +16,23 @@ const grid = (cols, rows, at) => Array.from({ length: cols * rows }, (_, i) => a
 
 describe('XBin', () => {
   it('round-trips every byte 0–255', () => {
-    const cells = grid(16, 16, (x, y) => ({ char: SLOT_CHARS[y * 16 + x], fg: rgb(PAL[x]), bg: rgb(PAL[15 - y]) }));
+    // a cell whose colors match goes out as a space, so none here does
+    const cells = grid(16, 16, (x, y) => ({ char: SLOT_CHARS[y * 16 + x], fg: rgb(PAL[x]), bg: rgb(PAL[15 - y === x ? (x + 1) % 16 : 15 - y]) }));
     const back = readXBin(writeXBin({ cols: 16, rows: 16, cells, palette: PAL, font, sauce: false }), 'a.xb');
     expect(back.cells.map((c) => c.char)).toEqual(cells.map((c) => c.char));
     expect(back.cells.map((c) => [c.fg, c.bg])).toEqual(cells.map((c) => [c.fg.hex, c.bg.hex]));
     expect([...back.font.bytes]).toEqual([...font.bytes]);
     expect(back.palette).toEqual(PAL);
+  });
+  it('writes a cell whose colors are the same palette color as a space, whatever its character', () => {
+    const cells = [
+      { char: '▓', fg: rgb(PAL[0]), bg: rgb(PAL[0]) },
+      { char: '%', fg: rgb('#010101'), bg: rgb(PAL[0]) }, // a different color, the same one in the file's palette
+      { char: '▓', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }, // shows: kept
+    ];
+    const back = readXBin(writeXBin({ cols: 3, rows: 1, cells, palette: PAL, font, sauce: false }), 'a.xb');
+    expect(back.cells.map((c) => c.char)).toEqual([' ', ' ', '▓']);
+    expect(back.cells.map((c) => [c.fg, c.bg])).toEqual([[PAL[0], PAL[0]], [PAL[0], PAL[0]], [PAL[7], PAL[0]]]);
   });
   it('compresses a row of one cell into one run, never across rows', () => {
     const cells = grid(80, 2, () => ({ char: ' ', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }));

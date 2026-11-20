@@ -125,10 +125,12 @@ export function writeXBin({ cols, rows, cells, palette, font, sauce }) {
   out.push(...font.bytes);
   for (let y = 0; y < rows; y++) {
     const row = cells.slice(y * cols, (y + 1) * cols);
+    // a cell whose colors match is invisible, so it goes out as a space (a space is in every font's slot 32)
+    const pairs = row.map((c) => [nearestIndex(c.fg.r, c.fg.g, c.fg.b, colors), nearestIndex(c.bg.r, c.bg.g, c.bg.b, colors)]);
     compressRow(
       out,
-      row.map((c) => slotOf(fitFont(c.char, font), font)),
-      row.map((c) => nearestIndex(c.fg.r, c.fg.g, c.fg.b, colors) | (nearestIndex(c.bg.r, c.bg.g, c.bg.b, colors) << 4)),
+      row.map((c, x) => slotOf(pairs[x][0] === pairs[x][1] ? ' ' : fitFont(c.char, font), font)),
+      pairs.map(([fg, bg]) => fg | (bg << 4)),
     );
   }
   const bytes = Uint8Array.from(out);
