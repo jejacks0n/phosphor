@@ -17,7 +17,7 @@ import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
 import { boundsOf, lowerEdits, lowerPaint } from '@/store/project/shared.js';
 import { toast } from '@/composables/useToast.js';
-import { busyWhile } from '@/composables/useBusy.js';
+import { busyMessage, busyWhile } from '@/composables/useBusy.js';
 import { t } from '@/i18n';
 import { markRaw, watch } from 'vue';
 
@@ -255,7 +255,7 @@ export const renderingActions = {
         this._rendering = false;
       }
     };
-    if (busy) busyWhile(busy, run);
+    if (busy && !busyMessage.value) busyWhile(busy, run); // under another note (a file opening), on the next frame as ever
     else requestAnimationFrame(run);
   },
 

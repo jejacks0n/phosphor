@@ -424,7 +424,7 @@ export default class Renderer {
     let again = false;
     if (whole || changed || (r.stale && carries && !open)) {
       if (whole || (carries && !open) || !resolve({ ...opts, area: changed, cells: r.cells, first: r.first }, r.gpu)) {
-        const { out: { cells, first = null }, gpu } = plugin ? marked(plugin, () => resolve(opts)) : resolve(opts);
+        const { out: { cells, first = null }, gpu } = plugin ? marked(plugin, 'whole', () => resolve(opts)) : resolve(opts);
         this.#resolved = { key, palette: this.palette, cells, first, stale: false, gpu };
         again = true;
       } else {
@@ -1296,7 +1296,7 @@ export default class Renderer {
   #pluginCell(m, s) {
     const raw = (this.#cellRaw ??= new Float64Array(SAMPLES.w * SAMPLES.h * 4));
     for (let i = 0, j = 0; j < s.length; i += 4, j += 3) { raw[i] = s[j]; raw[i + 1] = s[j + 1]; raw[i + 2] = s[j + 2]; }
-    const { cells: [cell] } = marked(m.plugin, () => resolvePlugin(raw, 1, 1, m.matcher, { alone: true, cells: [null] }));
+    const { cells: [cell] } = marked(m.plugin, 'cell', () => resolvePlugin(raw, 1, 1, m.matcher, { alone: true, cells: [null] }));
     return { char: cell.char, fg: cell.fg, bg: cell.bg };
   }
 
@@ -1753,10 +1753,11 @@ const resolvedKey = (params, cols, rows, plugin = solverOf(params)) => JSON.stri
 // (failSolver: the render that failed goes on with By shape), as { def, hash, pluginId }; else null, and By shape.
 const solverOf = (params) => (params.charMode === 'shape' && params.solver && !failureOf(params.solver) ? solverFor(params.solver) : null);
 
-// work() under the hang mark (plugins/hangMark.js) the first time a plugin's script runs this visit, else as it is.
-const ran = new Set(); // plugin id and script hash
-function marked({ pluginId, hash }, work) {
-  const key = `${pluginId}\u0000${hash}`;
+// work() under the hang mark (plugins/hangMark.js) the first time a plugin's script runs this way (what: a whole resolve,
+// or an upper layer's cell) this visit, else as it is. A cell first doesn't leave the whole resolve unmarked.
+const ran = new Set(); // what, plugin id and script hash
+function marked({ pluginId, hash }, what, work) {
+  const key = `${what}\u0000${pluginId}\u0000${hash}`;
   if (ran.has(key)) return work();
   ran.add(key);
   beginRun(pluginId);
