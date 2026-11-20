@@ -1968,6 +1968,7 @@
     },
     "manifestFiles": "Plugins (a .zip or a phosphor-plugin.json)",
     "fromFile": "From a file",
+    "fromFolder": "From a folder",
     "reload": "Reload",
     "reloadNamed": "Reload {name}",
     "follow": "Follow file",
