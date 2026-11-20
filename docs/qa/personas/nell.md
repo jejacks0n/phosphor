@@ -60,8 +60,10 @@ script. Every section ends with Free time.
 ## Load my font
 
 ### 1. Load a raw font
-- Does: starts a new canvas, clicks Manage fonts ▸ beside the Font field, clicks + Load on the Fonts page and picks her `.F08` file.
-- Expects: the font is chosen at once and listed under This drawing, with its 256 slots shown when its row is chosen; the art is drawn in it; Save .F08 and Save PNG
+- Does: on the start screen, before any drawing is open, clicks Manage fonts ▸ beside the Font field, clicks + Load on
+  the Fonts page and picks her `.F08` file; closes the layer and starts a blank canvas.
+- Expects: the font is chosen at once and listed under This drawing, with its 256 slots shown when its row is chosen;
+  the blank canvas starts in it (the Font field shows it, and the art is drawn in it); Save .F08 and Save PNG
   are offered, and save files named for hers without its `.F08` (`name.F08`, `name.png`); a failed file says why in
   words.
 - Probes: `back-out`: open the file box and cancel, then close the layer with Escape and check her keys work; `extremes`: a file of the wrong size (100 bytes) says why it isn't a

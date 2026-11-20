@@ -33,9 +33,10 @@ const onSelect = async (event) => {
   }
 };
 
-// The palette layer on its Fonts page, whatever tool is in hand; from SAUCE, the art is shown first.
+// The palette layer on its Fonts page, whatever tool is in hand; from SAUCE, the art is shown first. With no drawing
+// it opens over the start screen (EditWorkspace).
 const manage = () => {
-  if (!workspace.editMode) workspace.editorTab = 'output';
+  if (project.image && !workspace.editMode) workspace.editorTab = 'output';
   workspace.paletteLayerPage = 'fonts';
   workspace.paletteLayerOpen = true;
 };
@@ -60,8 +61,7 @@ const onSize = (event) => {
       <button
           class="text"
           data-palette-toggle
-          :disabled="!project.image"
-          :title="project.image ? t('font.manageTitle') : t('font.manageNeedsDrawing')"
+          :title="t('font.manageTitle')"
           @mousedown.prevent
           @click="manage"
       >{{ t('font.manage') }}</button>
@@ -122,12 +122,7 @@ button.text {
   cursor: pointer;
 }
 
-button.text:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-button.text:hover:not(:disabled) {
+button.text:hover {
   transform: none;
   background: transparent;
   color: var(--accent-hot);

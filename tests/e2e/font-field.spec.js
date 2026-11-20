@@ -77,6 +77,34 @@ test('Manage fonts opens the Fonts page with any tool, and Escape gives the keys
   await expect.poll(() => store(page, 'workspace', (w) => w.activeTool)).toBe('brush');
 });
 
+test('a bitmap font loaded on the start screen is the blank canvas\'s font, and the art is drawn in it', async ({ page }) => {
+  await page.goto('/');
+  // An 8×16 font whose only lit glyph is A, every pixel of it.
+  const bytes = new Uint8Array(256 * 16);
+  bytes.fill(0xff, 65 * 16, 66 * 16);
+  const layer = await fontsPage(page);
+  await expect(layer).toBeVisible();
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), layer.getByRole('button', { name: '+ Load' }).click()]);
+  await chooser.setFiles({ name: 'Solid A.F16', mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
+  await expect(page.getByLabel('Font', { exact: true }).locator('option:checked')).toHaveText('Solid A');
+  await page.keyboard.press('Escape');
+  await expect(layer).toHaveCount(0);
+  await page.getByRole('button', { name: 'Start with a blank canvas' }).click();
+  await settled(page);
+  await expect(page.getByLabel('Font', { exact: true }).locator('option:checked')).toHaveText('Solid A');
+  const cols = await store(page, 'project', (p) => p.cols);
+  await expect.poll(() => canvasWidth(page)).toBeCloseTo(cols * 8 + 4, 0); // 8×16 cells
+  // A typed A is a solid cell: drawn in the font's glyph, not a letter's. (The second one: the caret's mark is on the first.)
+  await editAt(page, 1, 1);
+  await page.keyboard.insertText('AA');
+  await page.keyboard.press('Escape');
+  const box = await page.locator('.ansi-editor div.display').boundingBox();
+  await expect.poll(async () => {
+    const data = await screenPixels(page, { x: box.x + 2 + 2 * 8 + 1, y: box.y + 2 + 16 + 2, width: 6, height: 12 }); // inside its edges
+    return data.filter((v, i) => i % 4 === 0 && v > 128).length;
+  }).toBe(6 * 12);
+});
+
 // Each toggle's tooltip says what's on now and what a click does (the renderer's button is named for the other one).
 test('the status bar\'s Smooth button turns anti-aliasing off and on, in both views, and keeps it; its and DOM/Canvas\'s tooltips say what\'s on and what a click does', async ({ page }) => {
   await openApp(page);

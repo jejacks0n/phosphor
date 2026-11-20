@@ -49,12 +49,14 @@ test('Manage fonts from SAUCE shows the art first', async () => {
   expect(workspace.paletteLayerOpen).toBe(true);
 });
 
-test('Manage fonts waits for a drawing', async () => {
+test('Manage fonts works before a drawing, on the start screen', async () => {
   const { workspace } = await mount({ drawing: false });
-  expect(manage().disabled).toBe(true);
-  expect(manage().title).toBe('Open or start a drawing to manage fonts');
+  const was = workspace.editorTab;
+  expect(manage().disabled).toBe(false);
   manage().click();
-  expect(workspace.paletteLayerOpen).toBe(false);
+  expect(workspace.paletteLayerOpen).toBe(true);
+  expect(workspace.paletteLayerPage).toBe('fonts');
+  expect(workspace.editorTab).toBe(was); // no art to show
 });
 
 test('a font that can\'t be chosen says why, and the dropdown goes back to the font in use', async () => {

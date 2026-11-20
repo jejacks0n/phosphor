@@ -25,6 +25,7 @@ import KeysPanel from '@/components/KeysPanel.vue';
 import AnsiEditor from '@/components/AnsiEditor.vue';
 import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
+import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import WatchRoomPage from '@/components/social/WatchRoomPage.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 
@@ -240,6 +241,10 @@ async function addSvg(file) {
     <WatchRoomPage v-if="workspace.editorTab === 'room'"/>
     <template v-else>
       <EditToolbar v-if="project.image && workspace.editMode"/>
+      <!-- With no drawing (Manage fonts on the start screen), the palette layer opens at the work area's top right. -->
+      <div v-else-if="!project.image && workspace.paletteLayerOpen" class="layer-anchor">
+        <CharPaletteLayer @close="workspace.paletteLayerOpen = false"/>
+      </div>
       <DropZone @file-dropped="handleFileSelected">
         <div class="edit-viewport viewport" :class="{ editing: workspace.editMode }" v-if="project.image">
           <InputEditor v-if="workspace.editorTab === 'input'"/>
@@ -283,6 +288,11 @@ section.edit-workspace.editing.image {
   linear-gradient(-45deg, var(--surface-dark) 25%, transparent 25%),
   linear-gradient(45deg, transparent 75%, var(--surface-dark) 75%),
   linear-gradient(-45deg, transparent 75%, var(--surface-dark) 75%);
+}
+
+div.layer-anchor {
+  position: relative;
+  height: 0;
 }
 
 div.viewport {
