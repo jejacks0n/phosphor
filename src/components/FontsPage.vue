@@ -88,7 +88,9 @@ const kept = ref(null);
 const font = computed(() => (!bitmap.value ? null : isDrawn.value ? drawn.value : kept.value));
 watch(() => [bitmap.value && !isDrawn.value && chosen.value.id, stored.value], async ([id]) => {
   kept.value = null;
-  if (id) kept.value = await storedBitmapFont(id).catch(() => null);
+  if (!id) return;
+  const got = await storedBitmapFont(id).catch(() => null);
+  if (chosen.value?.id === id) kept.value = got; // not once another font is chosen
 }, { immediate: true });
 watch(() => chosen.value?.id, () => { picked.value = null; });
 
