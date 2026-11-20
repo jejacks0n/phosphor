@@ -144,6 +144,11 @@ jobs:
           npm run build
         env:
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+      # The plugin list is published with the site (the web build only: the desktop build never carries it). The
+      # token is for GitHub's API rate limit; plugin-list.yml rebuilds the list between deploys.
+      - run: node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

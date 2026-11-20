@@ -1,0 +1,73 @@
+name: Refresh the plugin list
+
+# Rebuilds plugins.json without a code deploy: when the wiki's Plugins page is edited, daily (a listed repo's own
+# changes), and by hand. It republishes the site as it already is (the last deployed commit) with a new list.
+on:
+  gollum:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: read # to find the last deployment
+
+concurrency:
+  group: pages # the same group as deploy.yml, so the two never publish at once
+  cancel-in-progress: false # never stop a deploy halfway
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # The last successful github-pages deployment's commit, not main's head: main may hold changes that haven't
+      # passed the tests yet, and this workflow runs none. A deployment's newest status says how it ended, so
+      # the lookup walks deployments newest first until one's newest status is success.
+      - id: last
+        run: |
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=github-pages&per_page=30" --jq '.[].id'); do
+            if [ "$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=1" --jq '.[0].state')" = success ]; then
+              sha=$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id" --jq '.sha')
+              echo "sha=$sha" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "::error::No successful github-pages deployment to rebuild"
+          exit 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.last.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # As deploy.yml builds it: a build without the key would turn every sign-up away.
+      - run: |
+          test -n "$VITE_TURNSTILE_SITE_KEY" || { echo "::error::The TURNSTILE_SITE_KEY secret isn't set"; exit 1; }
+          npm run build
+        env:
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+      # --refresh writes nothing and fails when it can't make a safe list, so the site keeps the list it has.
+      - run: node scripts/plugin-list.mjs --out dist/plugins.json --commit "$SHA" --refresh
+        env:
+          SHA: ${{ steps.last.outputs.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deploy
