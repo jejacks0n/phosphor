@@ -365,6 +365,17 @@ test('picking Lower and clicking a slot sets it, as one undo step, and Find bloc
   expect(tiles()[1].slot).toBe('240');
 });
 
+test('setting a block back to the slot the pixels put it in stores it as found', async () => {
+  const { project } = await mount({ font: lowerAt240 });
+  await press(tile('Lower'));
+  await press(slotCell(254));
+  expect(host.querySelector('.edit-side .meta').textContent).toContain('blocks set by you');
+  await press(slotCell(240));
+  expect(project.fontBlocks).toBe('');
+  expect(host.querySelector('.edit-side .meta').textContent).not.toContain('blocks set by you');
+  expect(button('Find blocks again')).toBeUndefined();
+});
+
 test('picking the slot a block already has is no change, and a tile unpicks on a second click', async () => {
   const { project } = await mount({ font: lowerAt240 });
   await press(tile('Lower'));
