@@ -1,0 +1,18 @@
+{
+  "phosphor": 1,
+  "id": "jane.midnight",
+  "name": "Midnight",
+  "version": "1.0.0",
+  "author": "Jane",
+  "description": "A deep blue theme for late nights.",
+  "homepage": "https://github.com/jane/phosphor-midnight",
+  "license": "MIT",
+  "themes": [
+    {
+      "id": "midnight",
+      "name": "Midnight",
+      "base": "dark",
+      "colors": { "background": "#0b1020", "accent": "#7aa2f7", "surface-0": "#10162b" }
+    }
+  ]
+}
