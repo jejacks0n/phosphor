@@ -28,7 +28,7 @@ describe('publishing the plugin list', () => {
     expect(build).not.toContain('--refresh');
   });
 
-  it('the refresh runs on wiki edits, daily and by hand, in its own concurrency group (never cancelling a pending deploy)', () => {
+  it('the refresh runs on wiki edits, daily and by hand, in its own concurrency group (never canceling a pending deploy)', () => {
     const on = refresh.slice(refresh.indexOf('\non:'), refresh.indexOf('\npermissions:'));
     expect(on).toMatch(/\n {2}gollum:/);
     expect(on).toMatch(/\n {2}schedule:\n\s+- cron: '\d+ \d+ \* \* \*'/);
