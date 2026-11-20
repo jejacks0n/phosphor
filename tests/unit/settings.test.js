@@ -3,7 +3,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
-import { SETTING_KEYS, SAUCE_KEYS, getSetting, groupDefaults, settingsFromStranger, slidersAtDefaults, RESET_GROUPS } from '../../src/store/settings.js';
+import { SETTING_KEYS, SAUCE_KEYS, getSetting, cleanOptions, groupDefaults, settingsFromStranger, slidersAtDefaults, RESET_GROUPS } from '../../src/store/settings.js';
 import { readProject } from '../../src/document/projectIO.js';
 import { editScaleFor } from '../../src/document/PaintLayer.js';
 import { fitRect } from '../../src/lib/Canvas.js';
@@ -131,15 +131,19 @@ test('Edges moves in tenths: an arrow press is a step you can see, 200 presses e
   assert.equal(Math.round((edges.max - edges.min) / edges.step), 200);
 });
 
-test('solverOptions from a stranger: an object of objects of numbers and booleans, small, else refused', () => {
-  const ref = 'plugin:jane.outlines/outlines';
+test('solverOptions from a stranger: bad entries are dropped and the good kept, a value too big is trimmed, only a non-object is refused', () => {
+  const ref = 'plugin:jane.outlines/outlines', other = 'plugin:jane.outlines/other';
   const options = { [ref]: { threshold: 40, thin: true } };
   assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: options }), { ...GOOD, solverOptions: options });
   assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: {} }), { ...GOOD, solverOptions: {} });
-  for (const bad of [null, 'x', [], { [ref]: 4 }, { [ref]: { a: 'x' } }, { [ref]: { a: null } }, { [ref]: { a: Infinity } }, { [ref]: [1] },
-    { [ref]: Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`option${i}`, 1])) }]) {
-    assert.equal(settingsFromStranger({ ...GOOD, solverOptions: bad }), null, JSON.stringify(bad)?.slice(0, 40));
-  }
+  const mixed = { [ref]: { threshold: 40, a: 'x', b: null, c: Infinity, d: [1] }, [other]: 4, 'nope': { a: 1 }, 'plugin:x': { a: 1 }, 'plugin:p/q': [1] };
+  assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: mixed }).solverOptions, { [ref]: { threshold: 40 } });
+  for (const bad of [null, 'x', [], 4]) assert.equal(settingsFromStranger({ ...GOOD, solverOptions: bad }), null);
+  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p/s${i}`, { a: i }]));
+  const trimmed = settingsFromStranger({ ...GOOD, solverOptions: many }).solverOptions;
+  assert.ok(Object.keys(trimmed).length > 0 && Object.keys(trimmed).length < 400);
+  assert.ok(JSON.stringify(trimmed).length <= 4096);
+  assert.deepEqual(cleanOptions(many, 'plugin:p/s399') && Object.keys(cleanOptions(many, 'plugin:p/s399'))[0], 'plugin:p/s399'); // the named ref stays first
 });
 
 test('a plugin ref in charChoice or charChoiceAscii survives a stranger\'s settings', () => {

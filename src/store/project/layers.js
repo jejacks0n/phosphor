@@ -9,7 +9,7 @@
 import { markRaw } from 'vue';
 import { MOST_LAYERS, goodLayerName, layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { exactly, pixelRuns } from '@/document/changes.js';
-import { CHAR_KEYS, DITHER_KEYS, sameSetting } from '@/store/settings.js';
+import { CHAR_KEYS, DITHER_KEYS, cleanOptions, sameSetting } from '@/store/settings.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
@@ -187,6 +187,10 @@ export const layerActions = {
     if (!layer) return false;
     const own = Object.fromEntries(CHAR_KEYS.filter((key) => key in patch && holds(key)).map((key) => [key, patch[key]]));
     const was = this.charsOf(id);
+    if (own.solverOptions) { // kept to what a file can hold, the layer's own solver's first (settings.js cleanOptions)
+      const style = this.renderStyle === 'ansi' ? 'charChoice' : 'charChoiceAscii';
+      own.solverOptions = cleanOptions(own.solverOptions, own[style] ?? was[style]) ?? was.solverOptions;
+    }
     if (Object.keys(own).every((key) => sameSetting(own[key], was[key]))) return false;
     if (this._charsBefore?.id !== id) {
       this.commitLayerChars();
