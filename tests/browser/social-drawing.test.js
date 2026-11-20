@@ -2702,6 +2702,7 @@ test('an unnumbered stroke is sent again after a handover, and lands', async () 
 
   room.people.delete('ann');
   const next = await newHostIs(room, ann, { planned: false });
+  next.project.flushHeard();   // bob's strokes can be numbered already, their cells waiting for the next frame
   expect(next.project._ledger.sum).toBe(next.project.editLayerSum());
   await expect.poll(() => bob.project._sharing.pending.size, PATIENT).toBe(0);
   expect(char(bob.project, 2, 2)).toBe('c');
