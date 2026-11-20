@@ -172,6 +172,9 @@ test('readChange gives back a good change unchanged, the same arrays', () => {
     assert.equal(readChange({ ...good(), cells: [['0,0', bad]] }, GRID), null, JSON.stringify(bad));
     assert.equal(cleanEntry(bad)?.frozen, undefined);
   }
+  const laid = { char: '▌', fg: '#ff0000', laid: true };
+  assert.deepEqual(readChange({ ...good(), cells: [['0,0', laid]] }, GRID).cells[0][1], laid);
+  for (const bad of [{ ...laid, laid: 'yes' }, { ...laid, laid: 1 }, { laid: true }]) assert.equal(readChange({ ...good(), cells: [['0,0', bad]] }, GRID), null, JSON.stringify(bad));
   assert.equal(readChange({ ...good(), stroke: 'é'.repeat(40) }, GRID).stroke.length, 40);
   assert.ok(readChange({ ...good(), runs: [[0, 0, 1, 0xffffffff]] }, GRID));
   assert.ok(readChange({ ...good(), cells: [['0,0', { char: 'a', fg: '#000000', fgIndex: 16, bg: '#ffffff', bgIndex: 231 }]] }, GRID)); // a file's 256-color indexes

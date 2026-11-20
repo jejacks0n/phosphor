@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeEditCells, deserializeEditCells, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  selectionHit, clampOffset, bakeEditCells, mergeKind, cleanEntry, isFrozen, ownEntry, sameEntry, followPicture, isPaintBlock,
+  selectionHit, clampOffset, bakeEditCells, mergeKind, cleanEntry, isFrozen, ownEntry, sameEntry, followPicture, isPaintBlock, isLaid,
 } from '../../src/document/editCells.js';
 
 test('Edit cell map: merge/remove semantics, grid-position keys, (de)serialization and the migration of older index-keyed char edits', async () => {
@@ -144,4 +144,20 @@ test('R1: a font of another height keeps a character of someone\'s own at its co
   assert.deepEqual(doubled.get('3,2'), { char: 'A', fg: '#fff' });
   assert.deepEqual([...doubled.keys()].sort(), ['3,2', '5,8', '5,9']);
   assert.ok(isPaintBlock(doubled.get('5,8')) && isPaintBlock(doubled.get('5,9')));
+});
+
+test('R1: a laid cell keeps its mark while it moves whole, and loses it when a character or color is written', () => {
+  const laid = mergeEntry(undefined, { char: '▌', fg: '#ff0000', laid: true });
+  assert.equal(isLaid(laid), true);
+  assert.ok(ownEntry(laid, 'ansi'));                                                  // someone's own to all but the erasers
+  assert.equal(isLaid(mergeEntry(laid, { char: 'x' })), false);                       // typed over
+  assert.equal(isLaid(mergeEntry(laid, { fg: '#00ff00' })), false);                   // recolored (Retouch, Colors only)
+  assert.equal(isLaid(mergeEntry(laid, { laid: null })), false);
+  assert.equal(isLaid(mergeEntry({ char: ' ', fg: '#aaaaaa', bg: '#000000' }, laid)), true); // a whole entry over a look: Merge down's completeAt
+  const typed = Object.freeze({ char: '▌', fg: '#ff0000' });
+  assert.equal(isLaid(mergeEntry(typed, { char: '▌', fg: '#ff0000', laid: true })), true); // laid over the same typed character
+  assert.equal(sameEntry(typed, laid), false);
+  assert.equal(isLaid(cleanEntry({ char: '▌', laid: true })), true);
+  assert.equal(cleanEntry({ char: '▌', laid: 'yes' }).laid, undefined);
+  assert.equal(deserializeEditCells(serializeEditCells(new Map([['1,1', laid]]))).get('1,1').laid, true); // saved and reopened
 });

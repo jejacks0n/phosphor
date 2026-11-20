@@ -19,9 +19,10 @@ Each cell of it is one of these:
 | **Paint block** `{ char: '▄' }` | Paint with a hint: in ANSI, show my two halves as a ▄ (the drawing font's lower half, drawn from whatever slot the font keeps it in; ▀ the same for its upper half). Not a cell of anyone's; outside ANSI it's nothing (`shownEntry`) | As paint (ANSI shows the ▄) | As paint |
 | **A character of someone's own** | A character someone chose: typed, opened from a file, pasted, pinned on the base, an art layer's | Never | Tints its ink; the character stays (R2), except on the base in Monochrome ASCII, where paint takes the pin (R13) |
 | **Frozen cell** `{ …, frozen: true }` | Paint, still there under it, with Merge down's pinned conversion of it over it: the character and colors it showed, kept because it would convert otherwise in its new place. Paint to everything but the converter, which shows the pin instead of converting the paint | Never again, until paint is written or erased in it: then the pin goes and it's paint | As paint: mixes into its halves, converts (R3) |
+| **Laid block** `{ …, laid: true }` | A block a drawing tool laid: the Shapes tool's Half-column detail (`halfCells`: its ▌ ▐ █ and quadrants, and the BG spaces inside a filled ellipse). A character of someone's own to everything but the Soft Eraser and the PIXEL view's Eraser, which take it whole, as they take a paint block | Never | Tints its ink; the character stays (R2) |
 
 The base is the picture plus pinned characters (`baseRecords.pins`); a pin is a character of someone's own. A frozen
-cell merged onto the base becomes an ordinary pin.
+cell merged onto the base becomes an ordinary pin, and so does a laid one.
 
 ## Rules
 
@@ -44,12 +45,28 @@ it when a whole entry moves, as Merge down's `completeAt` does), goes when a cha
 (that's someone's own now), is accepted from files and the clipboard only as `true` (`cleanEntry`), and is part of a
 room change's hash as any field is.
 
-- Lives in: `src/document/editCells.js` (`isFrozen`, `ownEntry`, `mergeEntry`, `cleanEntry`, `sameEntry`, `followPicture`).
+A laid cell (`isLaid`) is a character of someone's own: `ownEntry` doesn't ask the mark, and only the Eraser does
+(`eraser.move`). The Soft Eraser and the PIXEL view's Eraser clear a laid cell whole when any pixel of a stamp reaches
+either of its halves, whatever the stamp's alpha, as they clear a paint block whose paint they take; the Hard Eraser in
+the ANSI view clears whole cells anyway. A character typed by hand, the same ▌ or ▐, stays. The mark lives as the frozen
+one does: `mergeEntry` keeps it when a whole entry moves (a moved, pasted, flipped or turned selection, the line still a
+laid line; Merge down onto a layer, R3) and drops it when a character or color is written without it (a retype,
+Retouch's recolor, R4, Colors only's tint, R5, a selection's Set FG and Set BG, the Flip key), so a line laid over the
+same typed character is laid. It's accepted from files and the clipboard (`cleanEntry`) and in a room's change
+(`goodEntry`, `src/social/wire.js`) only as `true`, never as a cell by itself, and `sameEntry` tells a laid cell from a
+typed one. Pins hold no mark: a laid line drawn on the base, merged onto it or flattened is pins (R11 says what the
+erasers leave of one). Older files have no mark, and their cells stay characters of someone's own.
+
+- Lives in: `src/document/editCells.js` (`isFrozen`, `isLaid`, `ownEntry`, `mergeEntry`, `cleanEntry`, `sameEntry`,
+  `followPicture`); `halfCells` in `src/tools/shapes.js`; `src/tools/eraser.js`; `goodEntry` in `src/social/wire.js`.
 - Checked by: `tests/unit/edit-cells.test.js › R1: …`; `tests/unit/social-wire.test.js` (the mark through a room's change,
   as `cleanEntry` takes it); `tests/browser/bucket.test.js › R1: …`; `tests/browser/block-chars.test.js › R1: shiftCells …`;
   `tests/browser/selection-recolor.test.js › … Set FG over a frozen cell …`; `tests/browser/merge.test.js › R1: Keep crisp
   cells …`; `tests/browser/selection-turn.test.js › R3: a frozen cell in a rotated block …` (and in an 8×8 font);
-  `tests/unit/edit-cells.test.js › R1: a font of another height …`; `tests/browser/font-height.test.js › R1: …`.
+  `tests/unit/edit-cells.test.js › R1: a font of another height …`; `tests/browser/font-height.test.js › R1: …`;
+  `tests/unit/edit-cells.test.js › R1: a laid cell keeps its mark …`; `tests/unit/social-wire.test.js` (the laid mark
+  through a room's change); `tests/browser/eraser.test.js › R1: …` (the Soft Eraser in ANSI and both erasers in PIXEL
+  take a laid line and leave typed characters; a laid line moved; a laid cell typed over).
 
 ### R2. Paint over a character tints its ink and never picks another character. With no ink to tint, the paint shows as paint.
 
@@ -98,7 +115,9 @@ layers above lay their paint over it as over converted paint (`#exactUnder`, `#u
 merged-into layer is enough, and paint written or erased in the cell (`paintEditPixels`, `putEditPixels`,
 `eraseEditPixels`: every tool's one way in, Retouch and the Eraser included) drops the pin (`unfreeze`), so the paint
 left converts as the layer converts paint. A frozen cell merged further down keeps its paint and its pin; merged onto the
-base, its pin's colors go in and become a pin there, not the paint's. An art layer's characters are written as someone's
+base, its pin's colors go in and become a pin there, not the paint's. A laid cell (R1) goes as the character of someone's
+own it is: onto a layer it keeps its mark (`completeAt` merges the whole entry), onto the base it's a pin, which holds no
+mark. An art layer's characters are written as someone's
 own, unmarked, the paint under them erased. Merged onto the base (Keep crisp cells), entries and paint become the base's
 pixels, which the base snaps to the palette a pixel at a time. A half an entry leaves to the base (a typed letter's with
 no background, its top half) with no paint over it isn't written: the base keeps its own pixels there, which show as
@@ -132,8 +151,9 @@ colors as its two pixels, its character pinned.
 On a drawing layer, Blur, Dodge and Burn change the layer's paint pixel by pixel, a frozen cell's paint among it (the
 first pixel of it a stroke writes drops the pin, R3, so a merged shape's edge fades like a painted one; a frozen cell the
 stroke doesn't change stays), and recolor its characters of someone's own a whole cell at a time, their characters kept
-(Blur spreads their colors into the clear around them as a glow). On the base, a pin is someone's own in the ANSI view
-(recolored) and its pixels in the PIXEL view.
+(Blur spreads their colors into the clear around them as a glow). A laid cell is recolored as a character of someone's
+own, and the recolor drops its mark (R1): it's a recolored character now, which the Soft Eraser leaves. On the base, a
+pin is someone's own in the ANSI view (recolored) and its pixels in the PIXEL view.
 
 - Lives in: `src/tools/retouch.js` (`ownCellAt`, `retouchOwnPaint`, `recolorOwnCells`); `unfreeze` in
   `src/store/project/editLayer.js`.
@@ -145,7 +165,7 @@ stroke doesn't change stays), and recolor its characters of someone's own a whol
 The Brush's and Pencil's Colors only (and a plugin brush, whose paint is always laid so) makes a bare ▄ (a paint
 block) of each cell it reaches that shows no character (R2's predicate for the layer's own cells with colors: their
 halves become paint first, `unlockCells`) and of each frozen cell, whatever its character (its paint is under it
-already; the pin goes); a character of someone's own with ink keeps it and is tinted. A cell the converter drew is paint
+already; the pin goes); a character of someone's own with ink keeps it and is tinted, a laid cell among them, whose tint drops its mark (R1). A cell the converter drew is paint
 to it in full and gets no ▄, on the base and on any layer, whatever chooses its characters (a ▄ isn't converted, so
 one would outlast a change of how characters are chosen): its character is a rendering of the pixels (R7), and the paint
 becomes the character the layer's settings choose over the pixels under it (on the base the paint goes into the pixels).
@@ -264,6 +284,13 @@ Overlay's opacity: a fill covers a cell of spaces whose two colors differ whole,
 at text typed on a layer above. With All layers off, a fill on the base reads the base's own look (its pixels, its pins
 as they look: `baseLook`). What a fill writes is still paint.
 
+A pin an eraser leaves black is a black space. When the PIXEL view's Eraser or the Soft Eraser (in either view, both
+through `eraseBasePixels`, as the Wand's Delete in PIXEL is) leaves both of a pinned cell's pixels black, the pin
+becomes `' '` with no indexes, which is what the Hard Eraser in the ANSI view leaves (`eraseBase`). It looks the same,
+black on black, and the file no longer keeps a character no one can see: it's saved, and sent to a room, as a space. It
+holds for every pin, a laid line's (R1) among them. A pin left partly colored (a soft stroke's edge, one of its two
+colors erased) keeps its character.
+
 What's over the character counts, bottom to top, as the cell itself is laid (`#composeOne`, `#paintedPin`,
 `#upperCell`), so the look stays the ANSI view's cell while that's still the character:
 
@@ -296,7 +323,8 @@ again only over the cells made again since (`#looksDirty`, marked by `composite`
 rect walks its pins, not its cells (`MOST_ASKED`): asking a cell for its pin makes a key, several times the cost of
 reading one.
 
-- Lives in: `looksCanvas`, `#lookAt`, `#lookPainted` and `baseLook` (`src/document/Renderer.js`); drawn by
+- Lives in: `looksCanvas`, `#lookAt`, `#lookPainted` and `baseLook` (`src/document/Renderer.js`); a pin erased black in
+  `eraseBasePixels` (`src/store/project/baseLayer.js`); drawn by
   `redrawDisplay` and `drawVeil` (`src/components/InputEditor.vue`) and `FrameBuilder.build`; read by the fills and the
   Wand through `pixelsAsSeen` (`src/store/project/reading.js`), with the Overlay's cells (`ownIndexes`,
   `src/document/editCells.js`).
@@ -309,6 +337,9 @@ reading one.
   as in 022.xb; a `░`, a letter and a `█` filled whole with no leak; a `▀` by its top halves; the base's own look with
   All layers off; a fill on the base stopped by characters typed on a layer above with the Overlay at 0, and running
   under them with All layers off; the Wand selecting what the fill fills). Timed by `bench/pixel-view.bench.js`.
+  A pin erased black: `tests/browser/eraser.test.js › R11: a pin left partly colored keeps its character …` and
+  `› R11: the Soft Eraser on the base …`, with `› R11: on the base a laid line's pin …` (the PIXEL Eraser, and the
+  Soft Eraser in the ANSI view).
 
 ### R9. A layer's change redraws what's over and under it, and changes nothing of theirs.
 

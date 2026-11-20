@@ -449,7 +449,7 @@ export const selectionActions = {
 // (completeAt), and where it has paint, the character it shows and each painted half's color.
 function shownLook(project, col, row) {
   const entry = project.editCellAt(col, row);
-  const look = { ...project.completeAt(col, row, entry), frozen: null }; // a color written over a frozen cell is someone's own (docs/model.md R1)
+  const look = { ...project.completeAt(col, row, entry), frozen: null, laid: null }; // a color written over a frozen or laid cell is someone's own (docs/model.md R1)
   const top = project.paintLayer?.pixelAt(col, 2 * row), bottom = project.paintLayer?.pixelAt(col, 2 * row + 1);
   if (isFrozen(entry) || (!top?.a && !bottom?.a)) return look; // a frozen cell's pin is its look; the paint under it isn't shown (R3)
   const half = (hex, paint) => (paint?.a && hex ? rgb2hex(over(hex2rgb(hex), paint)) : hex);

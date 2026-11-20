@@ -7,6 +7,8 @@
  * attribute shows what's underneath. fgIndex/bgIndex: the 256-color index a file gave the color when a
  * lower one has the same color (xterm's 16 and 231, fixed, where 0 and 15 follow a terminal's theme), so
  * the export writes it back. Keys are grid positions, so entries outside a shrunken grid are kept.
+ * Two marks, each true or absent: frozen (Merge down wrote the cell to keep its look: isFrozen) and laid (a drawing
+ * tool laid it as a block: isLaid). docs/model.md R1 says what each means and when it goes.
  */
 import { usableChar } from '../lib/CharWidth.js';
 import { getEffectiveColor } from '../lib/PixelTransforms.js';
@@ -14,6 +16,7 @@ import { charRowsOf, isSolidGlyph } from '../lib/Cells.js';
 
 const ATTRS = ['char', 'fg', 'bg', 'fgIndex', 'bgIndex'];
 const WRITTEN = ['char', 'fg', 'bg']; // what makes a cell someone's own when written
+const MARKS = ['frozen', 'laid']; // true or absent, never a cell by themselves (isFrozen, isLaid)
 
 // A ▄ with no colors of its own: Half-block wrote it to show the paint over its cell.
 export const isPaintBlock = (entry) => entry?.char === '▄' && entry.fg === undefined && entry.bg === undefined;
@@ -21,6 +24,11 @@ export const isPaintBlock = (entry) => entry?.char === '▄' && entry.fg === und
 // A cell Merge down wrote as a character so the look stayed (paint that would convert otherwise in its new place),
 // marked frozen: it's paint to everything but the converter (docs/model.md, R1 and R3).
 export const isFrozen = (entry) => entry?.frozen === true;
+
+// A cell a drawing tool laid as a block (the Shapes tool's Half-column detail), marked laid: a character of someone's
+// own to everything but the Soft Eraser and the PIXEL view's Eraser, which take it as they take a paint block
+// (docs/model.md, R1).
+export const isLaid = (entry) => entry?.laid === true;
 
 // The entry a cell shows in renderStyle: a paint block is ANSI's way of showing paint (Colors only makes a cell with no
 // character a ▄), and ASCII has no ▄, so there it's as if there were none and the paint is converted with the layer's
@@ -97,9 +105,9 @@ export function followPicture(cells, { offsetX, offsetY, scaleX, scaleY }, cols,
 
 // The merged entry for one cell: attrs' strings set, null removes, undefined leaves as is.
 // Returns `old` itself when nothing changes and null when no attributes remain. Bulk operations
-// apply this per cell on a single Map copy. The frozen mark stays while the cell only moves (a whole entry merged
-// over a look, as Merge down does), is set or cleared when attrs say (true, null), and goes when a character or color
-// is written: that's someone's own now (docs/model.md, R1).
+// apply this per cell on a single Map copy. The frozen and laid marks stay while the cell only moves (a whole entry
+// merged over a look, as Merge down does), are set or cleared when attrs say (true, null), and go when a character or
+// color is written without them: that's someone's own now (docs/model.md, R1).
 export function mergeEntry(old, attrs) {
   const next = { ...old };
   for (const attr of ATTRS) {
@@ -107,10 +115,13 @@ export function mergeEntry(old, attrs) {
     else if (attrs[attr] !== undefined) next[attr] = attrs[attr];
   }
   for (const color of ['fg', 'bg']) if (attrs[color] !== undefined && attrs[`${color}Index`] === undefined) delete next[`${color}Index`]; // a color set anew has no file's index
-  if (attrs.frozen === true) next.frozen = true;
-  else if (attrs.frozen === null || WRITTEN.some((attr) => attrs[attr] !== undefined)) delete next.frozen;
+  const written = WRITTEN.some((attr) => attrs[attr] !== undefined);
+  for (const mark of MARKS) {
+    if (attrs[mark] === true) next[mark] = true;
+    else if (attrs[mark] === null || written) delete next[mark];
+  }
   if (!ATTRS.some(attr => attr in next)) return null;
-  if (old && ATTRS.every(attr => old[attr] === next[attr]) && isFrozen(old) === isFrozen(next)) return old;
+  if (old && sameEntry(old, next)) return old;
   return Object.freeze(next);
 }
 
@@ -149,7 +160,7 @@ export function cleanEntry(entry) {
   if (!entry || typeof entry !== 'object') return null;
   const clean = Object.fromEntries(ATTRS.filter(attr => VALID[attr](entry[attr], entry)).map(attr => [attr, entry[attr]]));
   if (!Object.keys(clean).length) return null;
-  if (entry.frozen === true) clean.frozen = true;
+  for (const mark of MARKS) if (entry[mark] === true) clean[mark] = true;
   return Object.freeze(clean);
 }
 
@@ -251,7 +262,7 @@ export function pasteBlock(map, block, col, row, cols, rows) {
   return result ?? map;
 }
 
-export const sameEntry = (a, b) => !!a && !!b && ATTRS.every(attr => a[attr] === b[attr]) && isFrozen(a) === isFrozen(b);
+export const sameEntry = (a, b) => !!a && !!b && ATTRS.every(attr => a[attr] === b[attr]) && isFrozen(a) === isFrozen(b) && isLaid(a) === isLaid(b);
 
 // Every cell of a rect merged with attrsFor(col, row, entry), on one Map copy (merge up).
 // Returns the same Map when nothing changed.

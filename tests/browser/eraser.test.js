@@ -4,6 +4,8 @@
 import { test, expect } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
 import eraser from '@/tools/eraser';
+import shapes from '@/tools/shapes';
+import { isLaid, parseKey } from '@/document/editCells';
 
 const RED = { r: 255, g: 0, b: 0 };
 
@@ -139,4 +141,111 @@ test('the options row: Hard or Soft in both views; Soft brings Flow and the PIXE
   expect(offered('output')).toEqual(['editEraserSize', 'editEraserSoft', 'editEraserFlow']);
   expect([eraser.preview.soft(workspace, 'input'), eraser.preview.soft(workspace, 'output')]).toEqual([true, true]);
   expect([eraser.preview.size(workspace, 'input'), eraser.preview.size(workspace, 'output')]).toEqual([5, 5]);   // grid pixels in both
+});
+
+// A 20 x 20 blank canvas with `on` picked ('edit' or 'base'): a steep Half-block line with Half-column detail drawn in the
+// ANSI view, and the same characters typed by hand at column 12 on its rows. drawn: the line's cells (on the base, pins).
+async function lined(on) {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  await settle(project);
+  workspace.pickLayer(on);
+  Object.assign(workspace, { shapeKind: 'line', shapeDrawWith: 'half', shapeVerticalHalves: true, editFgColor: '#ff0000', editBgNone: true });
+  const chars = () => (on === 'base' ? new Map(project.baseRecords.pins) : new Map([...project.editCells].map(([key, entry]) => [key, entry.char])));
+  const before = chars(), ctx = { project, workspace, view: 'output' }, from = { x: 4.5, y: 2.5 }, to = { x: 5.5, y: 16.5 };
+  shapes.begin(ctx, from);
+  shapes.move(ctx, from, to);
+  shapes.end(ctx);
+  const drawn = [...chars()].filter(([key, char]) => before.get(key) !== char).map(([key, char]) => ({ ...parseKey(key), char }))
+    .sort((a, b) => a.row - b.row || a.col - b.col);
+  for (const { row, char } of drawn) project.typeAt(12, row, char, { fg: '#ff0000' });
+  project.commitEdit();
+  return { project, workspace, drawn };
+}
+
+test('R1: the Soft Eraser in the ANSI view and the Eraser in the PIXEL view take a laid line on a layer; typed characters stay', async () => {
+  for (const [view, soft] of [['output', true], ['input', false], ['input', true]]) {
+    const { project, workspace, drawn } = await lined('edit');
+    expect(drawn.every(({ col, row }) => isLaid(project.editCellAt(col, row)))).toBe(true);
+    Object.assign(workspace, { editEraserSoft: soft, editEraserSize: 1, editEraserFlow: 10 });
+    const { col, row } = drawn[3];
+    const ctx = { project, workspace, view };
+    eraser.begin(ctx, { x: col + 0.5, y: 2 * row + 0.5 }); eraser.end(ctx); // the top half alone (grid pixels in both views)
+    expect(project.editCellAt(col, row), `${view} ${soft}`).toBeFalsy();
+    project.undo();
+    expect(isLaid(project.editCellAt(col, row))).toBe(true); // undo brings back the cell and its mark
+    eraser.begin(ctx, { x: 12.5, y: 2 * row + 0.5 }); eraser.end(ctx);
+    expect(project.editCellAt(12, row)?.char, `${view} ${soft}`).toBe(drawn[3].char); // typed by hand: stays
+  }
+});
+
+test('R1: a laid line moved with the Select tool is still laid', async () => {
+  const { project, drawn } = await lined('edit');
+  const { col, row } = drawn[3];
+  project.moveSelection({ c0: 0, r0: 0, c1: 19, r1: 9 }, ['edit'], 1, 0);
+  expect(isLaid(project.editCellAt(col + 1, row))).toBe(true);
+});
+
+test('R1: a laid cell typed over is someone\'s own: the Soft Eraser leaves it', async () => {
+  const { project, workspace, drawn } = await lined('edit');
+  const { col, row } = drawn[3];
+  project.typeAt(col, row, 'x', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  expect(isLaid(project.editCellAt(col, row))).toBe(false);
+  Object.assign(workspace, { editEraserSoft: true, editEraserSize: 1 });
+  const ctx = { project, workspace, view: 'output' };
+  eraser.begin(ctx, { x: col + 0.5, y: 2 * row + 0.5 }); eraser.end(ctx);
+  expect(project.editCellAt(col, row)?.char).toBe('x');
+});
+
+test('R11: on the base a laid line\'s pin the PIXEL Eraser, or the Soft Eraser in the ANSI view, leaves black is a black space', async () => {
+  for (const [view, soft] of [['input', false], ['output', true]]) {
+    const { project, workspace, drawn } = await lined('base');
+    const { col, row, char } = drawn[3], pin = () => project.baseRecords.pins.get(`${col},${row}`);
+    expect(pin()).toBe(char);
+    const ctx = { project, workspace, view };
+    Object.assign(workspace, { editEraserSoft: soft, editEraserSize: 1, editEraserFlow: 100 });
+    // Its red foreground; a line has no background but the canvas's black. Soft lays the black a pass at a time.
+    for (let i = 0; i < 20 && pin() === char; i++) { eraser.begin(ctx, { x: col + 0.5, y: 2 * row + 1.5 }); eraser.end(ctx); }
+    expect(pin(), `${view} ${soft}`).toBe(' ');
+    project.undo();
+    if (soft) while (pin() === ' ') project.undo(); // each pass is its own step
+    expect(pin()).toBe(char);
+  }
+});
+
+// A pin red on blue, its indexes kept beside it (a file's 256 colors), the base picked, in the PIXEL view.
+async function bluePin() {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  await settle(project);
+  workspace.pickLayer('base');
+  project.writeBaseCells([{ col: 3, row: 3, char: '▌', fg: '#ff0000', bg: '#0000ff', fgIndex: 196, bgIndex: 21 }]);
+  project.commitEdit();
+  const ctx = { project, workspace, view: 'input' };
+  const click = (x, y) => { eraser.begin(ctx, { x, y }); eraser.end(ctx); };
+  return { project, workspace, click, pin: () => project.baseRecords.pins.get('3,3'), indexes: () => project.baseRecords.indexes.get('3,3') };
+}
+
+test('R11: a pin left partly colored keeps its character; erased black, it\'s a black space with no indexes, and undo brings them back', async () => {
+  const { workspace, project, click, pin, indexes } = await bluePin();
+  Object.assign(workspace, { editEraserSoft: false, editEraserSize: 1 });
+  click(3.5, 7.5); // the red foreground, and its index with it (black's the pixel's own now): the blue background stays
+  expect([pin(), indexes()]).toEqual(['▌', { bgIndex: 21 }]);
+  click(3.5, 6.5);
+  expect([pin(), indexes()]).toEqual([' ', undefined]);
+  project.undo();
+  expect([pin(), indexes()]).toEqual(['▌', { bgIndex: 21 }]);
+  project.undo();
+  expect([pin(), indexes()]).toEqual(['▌', { fgIndex: 196, bgIndex: 21 }]);
+});
+
+test('R11: the Soft Eraser on the base: one light pass keeps a pin\'s character, passes that leave it black make it a space', async () => {
+  const { workspace, click, pin } = await bluePin();
+  Object.assign(workspace, { editEraserSoft: true, editEraserSize: 3, editEraserFlow: 10 });
+  click(3.5, 7);
+  expect(pin()).toBe('▌');
+  workspace.editEraserFlow = 100;
+  for (let i = 0; i < 20 && pin() !== ' '; i++) click(3.5, 7);
+  expect(pin()).toBe(' ');
 });

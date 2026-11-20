@@ -29,14 +29,23 @@ export const baseLayerActions = {
     this.recompose(pixels.filter(({ x, y }) => x < cols && y < rows));
   },
 
-  // Erase base pixels (the Pixel view, and the Soft Eraser): black, the characters left as they are, but in Monochrome
-  // ASCII, where black can't show on a pin, the pins go (takePins, docs/model.md R13).
+  // Erase base pixels (the Pixel view, and the Soft Eraser): black. In Monochrome ASCII, where black can't show on a pin,
+  // the pins go (takePins, docs/model.md R13); otherwise a pin left partly colored keeps its character, and one whose two
+  // pixels are both black now is a pinned black space with no indexes, as eraseBase leaves it (R11).
   eraseBasePixels(pixels) {
     takePins(this, pixels);
     // A soft eraser's stamps (alpha under 1) lay the black as the Brush would lay it; the rest turn black at once.
     const soft = pixels.filter(({ alpha = 1 }) => alpha < 1);
     if (soft.length) this.paintBasePixels(soft.map(({ x, y, alpha }) => ({ x, y, ...hex2rgb(BLANK.bg), alpha })));
     if (soft.length < pixels.length) this.writeBase(pixels.filter(({ alpha = 1 }) => alpha >= 1).map(({ x, y }) => ({ x, y, hex: BLANK.bg })));
+    const { pins, indexes } = this.baseRecords, { cols, rows } = this;
+    const black = (x, y) => { const p = this.baseLayer?.pixelAt(x, y); return !!p && !p.r && !p.g && !p.b; };
+    const touched = new Map(pixels.map(({ x, y }) => [cellKey(x, y >> 1), { col: x, row: y >> 1 }]));
+    const spaces = [...touched].filter(([key, { col, row }]) => pins.has(key) && !(pins.get(key) === ' ' && !indexes.has(key))
+      && black(col, 2 * row) && (2 * row + 1 >= rows || black(col, 2 * row + 1))).map(([, cell]) => ({ ...cell, char: ' ' }));
+    if (!spaces.length) return;
+    this.setBaseRecords(withPins(this.baseRecords, spaces));
+    this.recompose(spaces.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]).filter(({ x, y }) => x < cols && y < rows));
   },
 
   // Flip the base in these cells: swap each cell's two halves (background and foreground), every

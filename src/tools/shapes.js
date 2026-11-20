@@ -102,7 +102,7 @@ const twoTone = (all, outline, fg, bg) => {
 // A line or ellipse in whole blocks placed to the nearest half cell across (Vertical half blocks:
 // halfStepLine, halfStepEllipse), as block characters: the outline in FG, the rest of each cell as
 // it was. Filled, the inside is BG: cells wholly inside are BG spaces, and an outline cell takes BG
-// behind it where the rest of it is inside.
+// behind it where the rest of it is inside. Every cell is marked laid, so the Soft and PIXEL erasers take it (R1).
 function halfCells(project, workspace, end, fill) {
   // Without quadrants the half-column detail is whole cells tall (▌ ▐ █), as Full-block draws it.
   const halfRows = drawnWith(workspace) === 'half' && hasQuadrants(project.drawingFont);
@@ -118,11 +118,11 @@ function halfCells(project, workspace, end, fill) {
   const cells = halfBlockCells(outline, halfRows).map(({ col, row, char, mask }) => {
     const filled = (inside.get(`${col},${row}`) ?? 0) & ~mask;
     inside.delete(`${col},${row}`);
-    return { col, row, attrs: { char, fg, fgIndex, ...(filled ? { bg, bgIndex } : {}) } };
+    return { col, row, attrs: { char, fg, fgIndex, ...(filled ? { bg, bgIndex } : {}), laid: true } };
   });
   for (const [key] of inside) {
     const [col, row] = key.split(',').map(Number);
-    cells.push({ col, row, attrs: { char: ' ', bg, bgIndex } });
+    cells.push({ col, row, attrs: { char: ' ', bg, bgIndex, laid: true } });
   }
   return cells;
 }

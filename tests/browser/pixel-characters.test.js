@@ -63,10 +63,11 @@ test('R11: a character written on the base shows its look at once, another writt
   project.commitEdit();
   await settle(project);
   expect(shown(seen, 4, 3)).toEqual([gray(0.25), gray(0.25)]);
-  project.eraseBasePixels([{ x: 4, y: 7 }]); // the PIXEL view's Eraser: its foreground black, the character kept
+  project.eraseBasePixels([{ x: 4, y: 7 }]); // its foreground black: both its pixels black, so the pin is a black space (R11)
   project.commitEdit();
   await settle(project);
   expect(shown(seen, 4, 3)).toEqual([BLACK, BLACK]);
+  expect(project.baseRecords.pins.get('4,3')).toBe(' ');
   project.undo();
   project.undo();
   project.undo();

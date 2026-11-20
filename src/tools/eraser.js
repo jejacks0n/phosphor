@@ -2,7 +2,7 @@ import { brushPixels, squarePixels, squareCells } from '@/lib/Brushes';
 import { stampFlow } from '@/tools/brush';
 import { cellsOfPixels } from '@/lib/Cells';
 import { withLeads } from '@/document/wideChars';
-import { isPaintBlock } from '@/document/editCells';
+import { isLaid, isPaintBlock } from '@/document/editCells';
 import { selectionClip } from '@/lib/selectionClip';
 import { t } from '@/i18n/index.js';
 
@@ -12,8 +12,9 @@ import { t } from '@/i18n/index.js';
 // by its Flow (on the base, laying black that way). Hard has each view's own size: the ANSI view's in whole cells
 // (editEraserCells), which go with their characters, the Pixel view's in grid pixels. Soft is the same in both views, as
 // the Brush is: in grid pixels at the Pixel view's size, and on paint alone, so in the ANSI view too a character of
-// someone's own stays (the Pixel view's Eraser never took one), except on the base in Monochrome ASCII, which can't
-// show a pin's colors: there the pins go (docs/model.md R13).
+// someone's own stays (the Pixel view's Eraser never took one), but for a laid one (a Shapes line's block), which goes
+// whole as a paint block does, and on the base in Monochrome ASCII, which can't show a pin's colors: there the pins go
+// (docs/model.md R13).
 const soft = (workspace) => workspace.editEraserSoft;
 const inPixels = (workspace, view) => view === 'input' || soft(workspace);
 const sizeIn = (workspace, view) => (inPixels(workspace, view) ? workspace.editEraserSize : workspace.editEraserCells);
@@ -58,11 +59,13 @@ const eraser = {
       : withLeads(project.cells, project.cols, squareCells(from, to, size, project.cols, project.rows)).filter(({ col, row }) => !clip || clip.cell(col, row));
     const pixels = exact ? square : cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
     // A ▄ with no colors of its own (Half-block: it was there to show the paint) whose last
-    // paint this erases goes too, so the cell's own character comes back. Whole cells are cleared anyway.
+    // paint this erases goes too, so the cell's own character comes back, and a cell a drawing tool laid goes whole
+    // when the eraser reaches either half (docs/model.md R1). Whole cells are cleared anyway.
     const blocks = exact ? cells.filter(({ col, row }) => isPaintBlock(project.editCellAt(col, row)) && project.cellHasPaint(col, row)) : [];
+    const laid = exact ? cells.filter(({ col, row }) => isLaid(project.editCellAt(col, row))) : [];
     project.eraseEditPixels(pixels);
     if (!exact) project.clearEditCells(cells);
-    else project.clearEditCells(blocks.filter(({ col, row }) => !project.cellHasPaint(col, row)));
+    else project.clearEditCells([...laid, ...blocks.filter(({ col, row }) => !project.cellHasPaint(col, row))]);
   },
   end({ project }) {
     project.commitEdit();
