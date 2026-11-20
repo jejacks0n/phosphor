@@ -472,3 +472,13 @@ test('nothing picked, the sheet isn\u2019t marked; a block that has its slot pic
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(true);
   expect(text()).not.toContain('is picked: click the slot'); // Full has its slot: the notes as they were
 });
+
+test('in a room, Set up its blocks picks nothing and says nothing of clicking a slot', async () => {
+  const { workspace } = await mount({ font: noLowerHalf, before: ({ project }) => { project._hosting = true; openFontSetup(project.drawingFont); } });
+  await nextTick();
+  await nextTick();
+  expect(workspace.fontSetup).toBe(null);
+  expect(tile('Lower').getAttribute('aria-pressed')).toBe('false');
+  expect(text()).not.toContain('is picked: click the slot');
+  expect(host.querySelector('.sheet').classList.contains('picking')).toBe(false);
+});

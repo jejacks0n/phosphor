@@ -8,13 +8,14 @@ import { BLOCKS, blocksOf, fontId } from '@/lib/BitmapFont';
 // A font's blocks set up from a toast: while the drawing's font has no lower half (project.paintOff) a toast says so
 // until it's fixed, with Set up its blocks, which opens the Fonts page on that font with its first missing block
 // picked. A font loaded or opened missing other blocks names them, for a while. In a room the drawing's font's blocks
-// can't change (FontsPage's inRoom): no button, and the toast says so.
+// can't change (FontsPage's inRoom): no button, and the toast says so. With no drawing open (the start screen, SOCIAL)
+// there's nothing to paint, so nothing is said.
 let shown = null; // the toast that stays, while it's up
 
 const missingOf = (font) => blocksOf(font).flatMap((s, i) => (s === null ? [BLOCKS[i].key] : []));
 const isDrawn = (font) => !!useProjectStore().drawingFont && fontId(useProjectStore().drawingFont) === fontId(font);
 const blocked = (font) => useProjectStore().inRoom && isDrawn(font);
-const said = (text, font) => (blocked(font) ? `${text} ${t('palette.fonts.setupHostOnly')}` : text);
+const said = (text, font) => (blocked(font) ? `${text} ${t('palette.fonts.setupInRoom')}` : text);
 const button = (font) => (blocked(font) ? {} : { action: { label: t('palette.fonts.setupButton'), run: () => openFontSetup(font) } });
 
 // The palette layer on its Fonts page, with this font chosen and its first missing block picked (Lower first).
@@ -28,8 +29,8 @@ export function openFontSetup(font) {
 
 // The toast that stays, while the drawing's font has no lower half (again, once closed: a paint tool that's off asks).
 export function showFontSetup() {
-  const font = useProjectStore().drawingFont;
-  if (!font || blocksOf(font)[1] !== null) return;
+  const project = useProjectStore(), font = project.drawingFont;
+  if (!project.image || !font || blocksOf(font)[1] !== null) return;
   shown = toast(said(t('palette.fonts.setupNoLower', { name: font.name }), font), { stay: true, ...button(font) });
 }
 
@@ -42,13 +43,21 @@ export function sayMissingBlocks(font) {
   toast(said(t('palette.fonts.setupMissing', { names }, missing.length), font), button(font));
 }
 
-// Installed once (App.vue): the toast that stays follows the drawing's font, and comes back with each document opened
-// (project._layersStarted counts them). Lower given a slot, in the same document and font, says paint is on.
+// Installed once (App.vue): the toast that stays follows the drawing's font, comes back with each document opened
+// (project._layersStarted counts them), goes with the drawing, and changes as a room starts or ends. Each source
+// on its own, so a block set other than Lower (the font rebuilt, the same id) doesn't bring it back. Lower given a
+// slot, in the same document and font, says paint is on.
 export function useFontSetup() {
   const project = useProjectStore();
-  watch(() => [project.paintOff, project.drawingFont && fontId(project.drawingFont), project._layersStarted], ([off, id, opened], was) => {
-    if (off) return showFontSetup();
+  watch([
+    () => project.paintOff,
+    () => project.drawingFont && fontId(project.drawingFont),
+    () => project._layersStarted,
+    () => !!project.image,
+    () => project.inRoom,
+  ], ([off, id, opened, image], was) => {
+    if (off && image) return showFontSetup();
     closeToast(shown);
-    if (was?.[0] && id && id === was[1] && opened === was[2]) toast(t('palette.fonts.setupFixed', { n: blocksOf(project.drawingFont)[1] }));
+    if (image && was?.[0] && id && id === was[1] && opened === was[2]) toast(t('palette.fonts.setupFixed', { n: blocksOf(project.drawingFont)[1] }));
   }, { immediate: true });
 }

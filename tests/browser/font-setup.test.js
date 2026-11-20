@@ -12,7 +12,7 @@ import { encodeFont } from '@/lib/BitmapFont.js';
 import { noLowerHalf, cp437Font, fontWith } from '../support/blockFonts.js';
 
 const NO_LOWER = 'This drawing’s font, Slab, has no lower half block, so it can’t be painted in yet.';
-const HOST_ONLY = 'Only the host can set its blocks, outside the room.';
+const IN_ROOM = 'Its blocks can\u2019t change in a room; set them once the room ends.';
 const LOWER = [219, 254, 223, 221, 222, 176, 177, 178];
 
 let scope = null;
@@ -103,12 +103,12 @@ test('a drawing opened in the same font once it has a lower half says nothing ab
   expect(toastMessage.value).toBe(null);
 });
 
-test('in a room it has no button, and says only the host can set the blocks, outside the room', async () => {
+test('in a room it has no button, and says the blocks can be set once the room ends', async () => {
   const { project } = await drawing(cp437Font);
   project._hosting = true;
   project.setDrawingFont({ ...noLowerHalf, name: 'Slab' });
   await nextTick();
-  expect(toastMessage.value).toBe(`${NO_LOWER} ${HOST_ONLY}`);
+  expect(toastMessage.value).toBe(`${NO_LOWER} ${IN_ROOM}`);
   expect(toastAction.value).toBe(null);
 });
 
@@ -156,10 +156,58 @@ test('an XBin opened with a font with no lower half shows only the toast that st
   expect(toastMessage.value).toBe(NO_LOWER);
 });
 
-test('hosting a room, the font loaded says only the host can set its blocks, outside the room, with no button', async () => {
+test('hosting a room, the font loaded says its blocks can be set once the room ends, with no button', async () => {
   const { project } = await drawing(cp437Font);
   project._hosting = true;
   await useFontActions().loadFile(new File([noShades.bytes], 'S.F16'));
-  expect(toastMessage.value).toBe(`${NO_SHADES} ${HOST_ONLY}`);
+  expect(toastMessage.value).toBe(`${NO_SHADES} ${IN_ROOM}`);
   expect(toastAction.value).toBe(null);
+});
+
+test('the start screen has no toast: New takes it away, and the next drawing in the font brings it back', async () => {
+  const { project } = await drawing();
+  expect(toastMessage.value).toBe(NO_LOWER);
+  project.clearImage(); // New: the font stays, as the next drawing's
+  await nextTick();
+  expect(project.paintOff).not.toBeNull();
+  expect(toastMessage.value).toBe(null);
+  showFontSetup(); // a stroke can't start without a drawing, but nothing says it with none either
+  expect(toastMessage.value).toBe(null);
+  await project.setBlankCanvas({ cols: 10, rows: 10, fontBitmap: project.fontBitmap, fontName: project.fontName });
+  await nextTick();
+  expect(toastMessage.value).toBe(NO_LOWER);
+});
+
+test('New leaves someone else\u2019s message up', async () => {
+  const { project } = await drawing();
+  toast('Saved.');
+  project.clearImage();
+  await nextTick();
+  expect(toastMessage.value).toBe('Saved.');
+});
+
+test('closed, it stays closed while other blocks are set, found again, or undone', async () => {
+  const { project } = await drawing();
+  closeToast();
+  project.setDrawingFont({ ...noLowerHalf, name: 'Slab', blocks: [200, null, 223, 221, 222, 176, 177, 178] }); // Full moved
+  await nextTick();
+  expect(toastMessage.value).toBe(null);
+  project.setDrawingFont({ ...noLowerHalf, name: 'Slab' }); // found again
+  await nextTick();
+  project.undo();
+  await nextTick();
+  expect(toastMessage.value).toBe(null);
+});
+
+test('a room starting takes the button away; the room ending gives it back', async () => {
+  const { project } = await drawing();
+  expect(toastAction.value?.label).toBe('Set up its blocks');
+  project._hosting = true;
+  await nextTick();
+  expect(toastMessage.value).toBe(`${NO_LOWER} ${IN_ROOM}`);
+  expect(toastAction.value).toBe(null);
+  project._hosting = false;
+  await nextTick();
+  expect(toastMessage.value).toBe(NO_LOWER);
+  expect(toastAction.value?.label).toBe('Set up its blocks');
 });

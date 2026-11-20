@@ -99,7 +99,7 @@ watch(() => workspace.fontSetup, async (setup) => {
   workspace.fontSetup = null;
   chosenId.value = setup.id;
   await nextTick();
-  picked.value = setup.block;
+  if (!inRoom.value) picked.value = setup.block; // block edits are off in a room
 }, { immediate: true });
 
 const inRoom = computed(() => isDrawn.value && project.inRoom); // the drawing's blocks are the room's

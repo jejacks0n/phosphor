@@ -877,7 +877,7 @@
       "pickedMissing": "{name} is picked: click the slot in the sheet that should draw the {long}.",
       "setupNoLower": "This drawing’s font, {name}, has no lower half block, so it can’t be painted in yet.",
       "setupMissing": "This font has no {names} block, so that character draws blank. | This font has no {names} block, so those characters draw blank.",
-      "setupHostOnly": "Only the host can set its blocks, outside the room.",
+      "setupInRoom": "Its blocks can’t change in a room; set them once the room ends.",
       "setupButton": "Set up its blocks",
       "setupFixed": "Lower half set to slot {n}. The paint tools are on."
     }
