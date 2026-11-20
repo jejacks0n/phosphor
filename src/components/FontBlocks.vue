@@ -113,6 +113,10 @@ button.tile.picked {
   box-shadow: 0 0 0 1px var(--accent);
 }
 
+button.tile.missing.picked { /* still red: the accent ring says it's picked */
+  border-color: var(--danger);
+}
+
 span.glyph {
   grid-row: span 2;
   display: flex;

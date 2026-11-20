@@ -24,3 +24,13 @@ test('a missing block’s tile is outlined in the warning color', async () => {
   expect(getComputedStyle(tile('Lower')).borderTopColor).toBe(danger);
   expect(getComputedStyle(tile('Full')).borderTopColor).not.toBe(danger);
 });
+
+test('picked, a missing block\u2019s tile keeps its warning outline', async () => {
+  host = document.body.appendChild(document.createElement('div'));
+  app = createApp({ render: () => h(FontBlocks, { font: noLowerHalf, family: 'monospace', picked: 'lower' }) }).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const lower = [...host.querySelectorAll('button.tile')].find((el) => el.querySelector('.name').textContent === 'Lower');
+  expect(lower.classList.contains('picked')).toBe(true);
+  expect(getComputedStyle(lower).borderTopColor).toBe(getComputedStyle(host.querySelector('.note.warn')).color);
+});
