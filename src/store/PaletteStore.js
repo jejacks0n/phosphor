@@ -16,6 +16,7 @@ export const usePaletteStore = defineStore('palettes', {
     userPalettes: useLocalStorage('phosphor.palettes', []),       // { id, name, glyphs, font? }[]; font is { id, name, height } of the bitmap font it belongs to
     activeId: useLocalStorage('phosphor.activePalette', 'shades'),
     recentChars: useLocalStorage('phosphor.recentChars', []),
+    hiddenBuiltins: useLocalStorage('phosphor.hiddenBuiltins', []), // ids of the bitmap fonts the built-ins are hidden for
     flashIndex: null, // the F-key slot that just changed (the strip flashes it)
   }),
 
@@ -37,11 +38,15 @@ export const usePaletteStore = defineStore('palettes', {
       return id ? this.all.filter(p => !p.builtin && p.font?.id === id) : [];
     },
     builtins: () => BUILTIN_PALETTES,
+    // Whether the drawing's bitmap font has the built-ins put away (they rarely suit a font that isn't CP437's shapes).
+    builtinsHidden() {
+      return !!this.currentFont && Array.isArray(this.hiddenBuiltins) && this.hiddenBuiltins.includes(this.currentFont.id);
+    },
     general() {
       return this.all.filter(p => !p.builtin && !p.font);
     },
     shown() {
-      return [...this.tied, ...this.builtins, ...this.general];
+      return [...this.tied, ...(this.builtinsHidden ? [] : this.builtins), ...this.general];
     },
     // Yours tied to a font that isn't in use and isn't kept in this browser.
     unloaded() {
@@ -51,15 +56,17 @@ export const usePaletteStore = defineStore('palettes', {
     countFor() {
       return (id) => this.all.filter(p => p.font?.id === id).length;
     },
-    // The chosen palette when it's shown; else the font's first, else Shades (activeId stays as chosen).
+    // The chosen palette when it's shown; else the first shown (the font's first, else Shades), else Shades even when
+    // hidden, so the strip always has one (activeId stays as chosen).
     active() {
-      return this.shown.find(p => p.id === this.activeId) ?? this.tied[0] ?? BUILTIN_PALETTES.find(p => p.id === 'shades');
+      return this.shown.find(p => p.id === this.activeId) ?? this.shown[0] ?? BUILTIN_PALETTES.find(p => p.id === 'shades');
     },
   },
 
   actions: {
     flip(delta) {
       const all = this.shown;
+      if (!all.length) return;
       const i = all.findIndex(p => p.id === this.active.id);
       this.activeId = all[(i + delta + all.length) % all.length].id;
     },
@@ -100,6 +107,14 @@ export const usePaletteStore = defineStore('palettes', {
       const palette = { id: newId(), name: t('palette.copyName', { name: source.name }), glyphs: [...source.glyphs], font: source.builtin ? this.currentFont : source.font };
       this.userPalettes = [...this.userPalettes, palette];
       return palette.id;
+    },
+
+    // Hides the built-ins while the drawing's bitmap font is in use, or shows them again.
+    hideBuiltins(hidden) {
+      const id = this.currentFont?.id;
+      if (!id) return;
+      const list = (Array.isArray(this.hiddenBuiltins) ? this.hiddenBuiltins : []).filter(f => f !== id);
+      this.hiddenBuiltins = hidden ? [...list, id] : list;
     },
 
     // Ties one of yours to a font (or to none: it shows with any font).

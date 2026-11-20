@@ -75,6 +75,24 @@ test('+ New under the font\'s group makes a tied palette', async () => {
   expect(palettes.userPalettes.at(-1).font).toBeNull();
 });
 
+test('Hide under Built-in puts the built-ins away while the font is in use; Show brings them back', async () => {
+  const { project, palettes } = await mount();
+  await press(row('Single lines'));
+  await press(button('Hide', group('Built-in')));
+  expect(palettes.builtinsHidden).toBe(true);
+  expect(row('Shades & blocks')).toBeUndefined();
+  expect(headers()).toEqual(['For A', 'Built-in', 'Yours']); // the group stays, to bring them back
+  expect(host.querySelector('.row.current')).toBeNull(); // no hidden built-in left highlighted
+  project.setDrawingFont(null);
+  await nextTick();
+  expect(row('Shades & blocks')).toBeTruthy();
+  expect(button('Hide', group('Built-in'))).toBeUndefined(); // only a bitmap font can hide them
+  project.setDrawingFont(fontA());
+  await nextTick();
+  await press(button('Show', group('Built-in')));
+  expect(row('Shades & blocks')).toBeTruthy();
+});
+
 test('the editor shows the tie and changes it', async () => {
   let id;
   const { palettes } = await mount({ setup: (p) => { id = named(p, 'Frogs'); } });

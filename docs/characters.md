@@ -209,7 +209,7 @@ Those fonts don't change how an image converts, or what's saved or exported; a t
 In a drawing with a bitmap font, a palette you make (or a built-in one you copy by editing it) belongs to that font. The Palettes page lists, in this order:
 
 - **For <font>**: the palettes tied to the font in use, shown first while it's in use.
-- **Built-in**.
+- **Built-in**. Its **Hide** puts them away while this font is in use, for a font whose shapes they don't suit: they leave the list and the strip's ◂ ▸, and **Show** brings them back. Other fonts keep them.
 - **Yours**, with **+ New**, **Import** and **Export**.
 - **For fonts not loaded (N)**, collapsed ([For Fonts Not Loaded](#for-fonts-not-loaded)).
 

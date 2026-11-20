@@ -51,7 +51,7 @@ const font = computed(() => palettes.currentFont);
 const isUnloaded = (p) => palettes.unloaded.some(u => u.id === p.id);
 const groups = computed(() => [
   font.value && { key: 'tied', label: t('palette.layer.forFont', { name: font.value.name }), rows: palettes.tied.filter(matches) },
-  { key: 'builtin', label: t('common.builtIn'), rows: palettes.builtins.filter(matches) },
+  { key: 'builtin', label: t('common.builtIn'), rows: palettes.builtinsHidden ? [] : palettes.builtins.filter(matches) },
   { key: 'yours', label: t('common.yours'), rows: palettes.general.filter(matches) },
   palettes.unloaded.length && { key: 'unloaded', label: t('palette.layer.unloaded', { n: palettes.unloaded.length }), rows: palettes.unloaded.filter(matches) },
 ].filter(Boolean));
@@ -181,6 +181,12 @@ const onImport = async (event) => {
 const duplicate = () => {
   const id = palettes.duplicate(current.value.id);
   if (id) currentId.value = id;
+};
+// Hiding the built-ins moves the highlight off one of them, to the palette the strip now uses.
+const hideBuiltins = (hidden) => {
+  palettes.hideBuiltins(hidden);
+  if (hidden && current.value.builtin) currentId.value = palettes.active.id;
+  keepKeys();
 };
 const remove = () => {
   palettes.remove(current.value.id);
@@ -320,6 +326,9 @@ onBeforeUnmount(() => {
             <div class="group">
               <button v-if="g.key === 'unloaded'" class="label fold" :aria-expanded="unloadedOpen" @click="unloadedOpen = !unloadedOpen">{{ g.label }}</button>
               <span v-else class="label">{{ g.label }}</span>
+              <span v-if="g.key === 'builtin' && font" class="actions">
+                <button class="new" :title="t(palettes.builtinsHidden ? 'palette.layer.showBuiltinsTitle' : 'palette.layer.hideBuiltinsTitle', { name: font.name })" @click="hideBuiltins(!palettes.builtinsHidden)">{{ palettes.builtinsHidden ? t('palette.layer.showBuiltins') : t('palette.layer.hideBuiltins') }}</button>
+              </span>
               <span v-if="g.key === 'tied' || g.key === 'yours'" class="actions">
                 <template v-if="g.key === 'yours'">
                   <button class="new" @click="importer.click()">{{ t('palette.layer.import') }}</button>
