@@ -397,7 +397,8 @@ and sideways.
   looks at the cards, types "rain" in Search plugins, clears it, picks Themes then Solvers in the Show menu, and picks
   All again; taps Install on Rain, reads the question and taps Install; taps the Installed tab; then back on Marketplace
   taps Install on Outlines, reads the question and taps Cancel. The app answers `/plugins.json` with the fixture list
-  (`tests/fixtures/plugin-list.json`).
+  (`tests/fixtures/plugin-list.json`), and the development server serves the listed plugins' files from the checkout, so
+  Install works there.
 - Expects: the dialog fills the whole window (no page behind it showing at the sides) with the tabs, search and Show menu
   in reach of a thumb, and the cards in one column, each with its art band, name, version, Official or author, a description
   cut to two lines and its button, nothing wider than 390; Rain's question names Rain, its author and "from the

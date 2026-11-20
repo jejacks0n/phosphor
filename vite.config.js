@@ -87,6 +87,22 @@ export function devModuleIds(depsDir, servedIds = []) {
   ];
 }
 
+// The development server's stand-in for raw GitHub, for the fixture list it answers /plugins.json with: that list's
+// commit and kim/phosphor-rain aren't on GitHub, so its files are served from here, at
+// /dev-raw/<repo>/<commit>/<path>/<file> (src/plugins/market.js asks there when VITE_DEV_RAW is set). A path the list
+// names gives the file's path in this checkout; any other, null.
+const DEV_RAW_FOLDERS = { 'jejacks0n/phosphor': '.', 'kim/phosphor-rain': 'tests/fixtures/plugins/rain' };
+export function devRawFile(url) {
+  const { plugins } = JSON.parse(readFileSync(new URL('./tests/fixtures/plugin-list.json', import.meta.url), 'utf8'));
+  for (const { repo, path, commit, manifest } of plugins) {
+    for (const file of ['phosphor-plugin.json', manifest.script].filter(Boolean)) {
+      const at = [path, file].filter(Boolean).join('/');
+      if (url === `/${repo}/${commit}/${at}`) return fileURLToPath(new URL(`./${DEV_RAW_FOLDERS[repo]}/${at}`, import.meta.url));
+    }
+  }
+  return null;
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const build = buildInfo({ desktop: env.VITE_DESKTOP === '1' });
@@ -135,13 +151,21 @@ export default defineConfig(({ mode }) => {
       },
       {
         // The marketplace's /plugins.json, which the deploy writes: the development server answers with the test fixture's
-        // list (its plugins' files come from raw GitHub as they would). Nothing of it goes into a build.
+        // list, and its plugins' files at /dev-raw/ (devRawFile), where the page asks for them with VITE_DEV_RAW, which
+        // only this sets. Nothing of it goes into a build, and the tests' own config doesn't load this one.
         name: 'phosphor-plugin-list',
         apply: 'serve',
+        config: () => ({ define: { 'import.meta.env.VITE_DEV_RAW': JSON.stringify('1') } }),
         configureServer(server) {
           server.middlewares.use('/plugins.json', (req, res) => {
             res.setHeader('Content-Type', 'application/json');
             res.end(readFileSync(new URL('./tests/fixtures/plugin-list.json', import.meta.url)));
+          });
+          server.middlewares.use('/dev-raw', (req, res) => {
+            const file = devRawFile(req.url);
+            res.statusCode = file ? 200 : 404;
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.end(file ? readFileSync(file) : 'Not found');
           });
         },
       },

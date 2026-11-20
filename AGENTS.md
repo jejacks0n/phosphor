@@ -101,7 +101,8 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   (the desktop main process's two fetches: phosphor.work's list and raw GitHub only), `scripts/plugin-list.mjs` (builds
   `plugins.json` in CI, in `.github/workflows/deploy.yml`, and refreshed by `.github/workflows/plugin-list.yml`),
   `src/components/PluginMarket.vue` (the Marketplace tab) and the fixture list `tests/fixtures/plugin-list.json` (the
-  dev server answers `/plugins.json` with it),
+  dev server answers `/plugins.json` with it, and its plugins' files at `/dev-raw/`, in raw GitHub's place, from
+  `vite.config.js`'s `devRawFile`),
   `src/components/PluginsDialog.vue`, `src/components/SolverOptions.vue` (a solver's options in the Characters section)
   and `src/composables/useTheme.js` (the theme on `<html>`; `index.html`'s inline script paints it before the app starts
   by the same rules). A plugin's script runs only after the person says Install; it is the one code a plugin brings.

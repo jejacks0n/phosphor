@@ -9,6 +9,9 @@ import { ManifestError, MOST_MANIFEST_BYTES, MOST_SCRIPT_BYTES } from './manifes
 const MOST_LIST_BYTES = 4 * 1024 * 1024; // as desktop/pluginList.js's
 const TIMEOUT_MS = 15_000;
 const onDesktop = () => import.meta.env.VITE_DESKTOP === '1';
+// The development server serves the fixture list's files at /dev-raw/ (vite.config.js's devRawFile), as its commit
+// isn't on GitHub; only it sets VITE_DEV_RAW, so a build and the tests fetch from raw GitHub.
+const webUrl = (url) => (import.meta.env.VITE_DEV_RAW === '1' ? url.replace(/^https:\/\/raw\.githubusercontent\.com\//, '/dev-raw/') : url);
 
 // A body of at most `most` bytes as text (a BOM dropped), or an Error. The desktop main process has its own copy.
 async function webText(url, most) {
@@ -40,7 +43,7 @@ export async function loadList() {
 async function listedFile(url, most, hash) {
   let got;
   try {
-    got = onDesktop() ? await desktop.pluginFile(url, most) : { text: await webText(url, most) };
+    got = onDesktop() ? await desktop.pluginFile(url, most) : { text: await webText(webUrl(url), most) };
   } catch (error) {
     got = { failed: error.status === 404 || error.message === 'tooBig' ? 'changed' : 'unreachable' };
   }
