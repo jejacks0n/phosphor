@@ -135,7 +135,7 @@ test('in an 8×8 font a lock turned on keeps the grid\'s shape, and one at the p
   expect({ cols: project.cols, rows: project.rows }).toEqual({ cols: 80, rows: 107 });
 });
 
-test('in an 8×8 font a blank canvas, a Bake and Into the image fill the grid edge to edge, and still do after a Columns change', async () => {
+test('in an 8×8 font a blank canvas, a Bake and Into the image fill the grid edge to edge; a Columns change refits the blank canvas and crops the other two at their grid pixels', async () => {
   const { project, workspace } = await appIn(font8);
   await project.setBlankCanvas({ cols: 40, rows: 40 });
   project.render();
@@ -159,6 +159,12 @@ test('in an 8×8 font a blank canvas, a Bake and Into the image fill the grid ed
   expect(project.fitAspect).toBe(1);
   expect(project.fitFor(project.cols, project.rows)).toEqual(toRaw(project.fit));
   expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 60, dh: 80 });
+  project.updateCols(30); // the Bake is a step: a canvas resize, which crops the picture at its grid pixels
+  await settle(project);
+  expect({ cols: project.cols, rows: project.rows }).toEqual({ cols: 30, rows: 40 });
+  expect(project.resizesCanvas).toBe(true);
+  expect(project.fitAspect).toBe(1);
+  expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 60, dh: 80 });
 
   await project.setBlankCanvas({ cols: 40, rows: 40, withLayer: true });
   await settle(project);
@@ -172,6 +178,11 @@ test('in an 8×8 font a blank canvas, a Bake and Into the image fill the grid ed
   expect(project.fitFor(project.cols, project.rows)).toEqual({ dx: 0, dy: 0, dw: 40, dh: 40 });
   expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 40, dh: 40 });
   expect(project.smoothingMatters).toBe(false);
+  project.updateCols(20); // a step too: cropped the same way
+  await settle(project);
+  expect({ cols: project.cols, rows: project.rows }).toEqual({ cols: 20, rows: 20 });
+  expect(project.fitAspect).toBe(1);
+  expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 40, dh: 40 });
 });
 
 test('a picture added to a layer in an 8×8 font keeps its shape: a square one covers 40 columns and 80 rows of a 40 x 80 grid', async () => {
