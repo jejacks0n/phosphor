@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isXBin, readXBin, writeXBin } from '@/lib/XBinFile.js';
-import { SLOT_CHARS } from '@/lib/BitmapFont.js';
-import { lowerAt240 } from '../support/blockFonts.js';
+import { CP437_BLOCKS, SLOT_CHARS, fontId, withBlock } from '@/lib/BitmapFont.js';
+import { cp437Font, lowerAt240 } from '../support/blockFonts.js';
 import { readSauce } from '@/lib/Sauce.js';
 
 // Noise glyphs, but for the blocks at CP437's slots (where the reader finds them).
@@ -33,6 +33,16 @@ describe('XBin', () => {
   it('writes a block in the slot its font draws it from', () => {
     const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: '▄', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: PAL, font: lowerAt240, sauce: false });
     expect(bytes[11 + 48 + 256 * 16 + 1]).toBe(240);
+  });
+  it('reads an XBin through blocks you set for its font', () => {
+    const blocks = withBlock(CP437_BLOCKS, 'lower', 254);
+    const cell = { char: '▄', fg: rgb(PAL[7]), bg: rgb(PAL[0]) };
+    const bytes = writeXBin({ cols: 1, rows: 1, cells: [cell], palette: PAL, font: { ...cp437Font, blocks }, sauce: false });
+    expect(bytes[11 + 48 + 256 * 16 + 1]).toBe(254);
+    const art = readXBin(bytes, 'a.xb', (id) => (id === fontId(cp437Font) ? blocks : undefined));
+    expect(art.cells[0].char).toBe('▄');
+    expect(art.font.blocks).toEqual(blocks);
+    expect(readXBin(bytes, 'a.xb').font.blocks).toBeUndefined();
   });
   it('fits characters the font lacks', () => {
     const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: '▙', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: PAL, font, sauce: false });

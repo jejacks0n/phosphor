@@ -7,8 +7,9 @@ import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import FontField from '@/components/FontField.vue';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
+import { writeXBin } from '@/lib/XBinFile';
 import { parseFontSheet } from '@/lib/BitmapFont';
-import { addBitmapFont, loadFonts, storedBitmapFont, removeFont } from '@/lib/userFonts';
+import { addBitmapFont, loadFonts, storedBitmapFont, removeFont, storeBlocks } from '@/lib/userFonts';
 import { setDisplayFont } from '@/lib/displayFonts';
 
 let app = null, host = null;
@@ -69,6 +70,32 @@ test('loading the same font twice keeps one', async () => {
   const first = await addBitmapFont(rawFile(16, 'A.F16', 3)), second = await addBitmapFont(rawFile(16, 'B.F16', 3));
   expect(second.id).toBe(first.id);
   expect((await loadFonts()).filter((f) => f.kind === 'bitmap')).toHaveLength(1);
+});
+
+test('blocks set for a stored font are listed, returned, kept when the font is loaded again, and cleared by null', async () => {
+  const font = await addBitmapFont(rawFile(16, 'A.F16', 3));
+  const blocks = [219, 254, 223, 221, 222, 176, null, 178];
+  await storeBlocks(font.id, blocks);
+  expect((await loadFonts()).find((f) => f.id === font.id).blocks).toEqual(blocks);
+  expect((await storedBitmapFont(font.id)).blocks).toEqual(blocks);
+  await addBitmapFont(rawFile(16, 'B.F16', 3));
+  expect((await storedBitmapFont(font.id)).blocks).toEqual(blocks);
+  await storeBlocks(font.id, null);
+  expect((await loadFonts()).find((f) => f.id === font.id).blocks).toBeUndefined();
+  expect((await storedBitmapFont(font.id)).blocks).toBeUndefined();
+});
+
+test('an XBin opens with the blocks kept for its font, before the font list is read', async () => {
+  const { project, workspace } = await createTestApp();
+  const bytes = new Uint8Array(256 * 16);
+  const font = await addBitmapFont(new File([bytes], 'K.F16'));
+  const blocks = [219, 254, 223, 221, 222, 176, 177, 178];
+  await storeBlocks(font.id, blocks);
+  workspace.userFonts = null;
+  const cells = [{ char: '▄', fg: { hex: '#aaaaaa' }, bg: { hex: '#000000' } }];
+  const palette = ['#000000', '#0000aa', '#00aa00', '#00aaaa', '#aa0000', '#aa00aa', '#aa5500', '#aaaaaa', '#555555', '#5555ff', '#55ff55', '#55ffff', '#ff5555', '#ff55ff', '#ffff55', '#ffffff'];
+  await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells, palette, font: { name: 'K', height: 16, bytes, blocks } })], 'k.xb'));
+  expect(project.fontBlocks).toBe(blocks.join('.'));
 });
 
 test('choosing a bitmap font gives the drawing that font, and a built-in takes it away', async () => {

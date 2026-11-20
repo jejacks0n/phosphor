@@ -1,7 +1,7 @@
 // XBin files (16colo.rs, ansilove, Moebius): a header, an optional palette and 8×N font, then the cells,
 // optionally run-length compressed. A cell is a character byte (a slot of the file's font) and an attribute.
 import { CP437 } from './Cp437.js';
-import { fitFont, fontName, slotChars, slotOf } from './BitmapFont.js';
+import { fitFont, fontId, fontName, slotChars, slotOf } from './BitmapFont.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES } from './Cells.js';
 import { PALETTES, nearestIndex } from './ColorUtils.js';
 import { Sauce, readSauce } from './Sauce.js';
@@ -18,7 +18,8 @@ const hex = (r, g, b) => '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '
 
 export const isXBin = (bytes) => MAGIC.every((b, i) => bytes[i] === b);
 
-export function readXBin(bytes, name) {
+// knownBlocks(fontId): the blocks saved for a font, if any; else they're found from its pixels.
+export function readXBin(bytes, name, knownBlocks = () => undefined) {
   const sauce = readSauce(bytes);
   // The data stops where the record or its comments start; a 0x1A is no end here (the header has one, and a font's bytes may).
   const data = bytes.subarray(0, sauce ? bytes.length - 128 - (sauce.comments.length ? 5 + 64 * sauce.comments.length : 0) : bytes.length);
@@ -73,6 +74,8 @@ export function readXBin(bytes, name) {
     for (let n = 0; n < total; n++) { chars[n] = data[at + n * 2]; attrs[n] = data[at + n * 2 + 1]; }
   }
 
+  const blocks = font && knownBlocks(fontId(font));
+  if (blocks) font = { ...font, blocks };
   const table = font ? slotChars(font) : CP437; // a font's slots, its blocks where it keeps them
   const custom = (flags & PALETTE) !== 0;
   const cells = chars.map((byte, n) => {

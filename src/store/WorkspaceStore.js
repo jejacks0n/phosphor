@@ -11,6 +11,7 @@ import { loadGuides, saveGuides } from '@/lib/guideStorage';
 import { snapCursor } from '@/document/wideChars';
 import { savesInPlace } from '@/document/projectIO';
 import { isArtFile, readArtFile } from '@/lib/ArtFile';
+import { knownBlocksOf } from '@/lib/userFonts';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { usePluginStore } from '@/store/PluginStore';
@@ -449,7 +450,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       let art = null;
       if (isArtFile(file.name)) {
         try {
-          art = await busyWhile(t('document.opening', { name: file.name }), async () => markRaw(readArtFile(new Uint8Array(await file.arrayBuffer()), file.name)));
+          art = await busyWhile(t('document.opening', { name: file.name }), async () => markRaw(readArtFile(new Uint8Array(await file.arrayBuffer()), file.name, await knownBlocksOf(this.userFonts))));
         } catch (error) {
           if (!error.userMessage) throw error;
           return void toast(error.userMessage);

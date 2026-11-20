@@ -9,6 +9,7 @@ import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, gzipped, downloadBlob, isProjectFile, PROJECT_EXTENSION, fileStem, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
+import { knownBlocksOf } from '@/lib/userFonts.js';
 import { encodeBlocks, encodeFont } from '@/lib/BitmapFont.js';
 import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
 import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
@@ -256,7 +257,7 @@ export const documentActions = {
   // throws (with its userMessage) before anything changes. `art`: the file as read already (workspace.askArt).
   async openArtFile(file, { layer = 'base', art = null } = {}) {
     return busyWhile(opening(file.name), async () => {
-      art ??= readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
+      art ??= readArtFile(new Uint8Array(await file.arrayBuffer()), file.name, await knownBlocksOf(useWorkspaceStore().userFonts));
       const { sauce } = art;
       const opened = await this.setBlankCanvas({
         withLayer: true,

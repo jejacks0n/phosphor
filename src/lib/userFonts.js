@@ -5,7 +5,7 @@
  *
  * A stored font: { id, name, lineHeight, data (the file's bytes) }. lineHeight: its own height
  * (ascent + descent) per em, so a full block fills its cell. A bitmap font (a raw .F## or a PNG sheet)
- * is { id, name, kind: 'bitmap', height, data (its glyph bytes) }; a record with no kind is an outline font.
+ * is { id, name, kind: 'bitmap', height, data (its glyph bytes), blocks? (the slots set for its block characters) }; a record with no kind is an outline font.
  */
 
 import { t } from '@/i18n';
@@ -115,9 +115,9 @@ async function inStore(mode, use) {
 export async function loadFonts() {
   const stored = await inStore('readonly', (fonts) => fonts.getAll());
   const usable = [];
-  for (const { id, name, kind, lineHeight, height, data } of stored) {
+  for (const { id, name, kind, lineHeight, height, data, blocks } of stored) {
     if (kind === 'bitmap') {
-      usable.push({ id, name, kind, height });
+      usable.push({ id, name, kind, height, ...(blocks && { blocks }) });
       continue;
     }
     try {
@@ -173,15 +173,33 @@ export async function addBitmapFont(file) {
     font = parseRawFont(new Uint8Array(await file.arrayBuffer()), name);
   }
   const id = fontId(font), entry = { id, name, kind: 'bitmap', height: font.height };
-  await inStore('readwrite', (fonts) => fonts.put({ ...entry, data: font.bytes }));
-  return entry;
+  const blocks = (await inStore('readonly', (fonts) => fonts.get(id)))?.blocks; // the same font again keeps its blocks
+  await inStore('readwrite', (fonts) => fonts.put({ ...entry, data: font.bytes, ...(blocks && { blocks }) }));
+  return { ...entry, ...(blocks && { blocks }) };
 }
 
 // A stored bitmap font as a drawing holds one: { name, height, bytes }.
 export async function storedBitmapFont(id) {
   const record = await inStore('readonly', (fonts) => fonts.get(id));
   if (!record) throw new Error(t('font.errors.missing'));
-  return { name: record.name, height: record.height, bytes: record.data };
+  return { name: record.name, height: record.height, bytes: record.data, ...(record.blocks && { blocks: record.blocks }) };
+}
+
+// Keep the slots set for a stored bitmap font's block characters (null: none, so they're found again). The caller
+// refreshes workspace.userFonts (loadFonts, or the font's entry with `blocks`).
+export async function storeBlocks(id, blocks) {
+  const record = await inStore('readonly', (fonts) => fonts.get(id));
+  if (!record) throw new Error(t('font.errors.missing'));
+  const next = { ...record };
+  delete next.blocks;
+  await inStore('readwrite', (fonts) => fonts.put({ ...next, ...(blocks && { blocks }) }));
+}
+
+// What an opened XBin asks for its font's saved blocks: (fontId) => blocks | undefined. `fonts`: workspace.userFonts,
+// which is null until the boot-time read finishes, so a file opened before then reads them itself.
+export async function knownBlocksOf(fonts) {
+  const list = fonts ?? await loadFonts().catch(() => []);
+  return (id) => list.find((f) => f.id === id)?.blocks;
 }
 
 // Forget a stored font. keepFace: the drawing still draws in it (its own bitmap font), so the page keeps it registered.
