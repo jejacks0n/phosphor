@@ -1,7 +1,7 @@
 // A bitmap font's half cell is 8 wide and height/2 tall: a picture with square pixels (a photo, a file) converts in that
 // shape, and the aspect lock keeps it. A picture made from the grid (a blank canvas, a Bake, Into the image) already has
 // grid pixels and fills the grid as it did. No bitmap font, or an 8×16 one, is a square half cell: exactly as before.
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { toRaw } from 'vue';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cp437Font, font8, font11 } from '../support/blockFonts.js';
@@ -59,6 +59,23 @@ test('with an 8×16 font a photo opens, fits and converts exactly as with none',
   expect(none.grid).toEqual({ cols: 80, rows: 54, fit: { dx: 0, dy: 0, dw: 80, dh: 54 }, fitAspect: 1 });
   expect(vga.grid).toEqual(none.grid);
   expect(vga.bytes).toEqual(none.bytes);
+});
+
+test('with no font a photo is read for one color once as it opens, as before; in 8×8 the grid asks first', async () => {
+  const reads = async (font) => {
+    const { project } = await appIn(font);
+    const blob = await (await fetch(PHOTO)).blob(), file = new File([blob], 'photo.jpg', { type: blob.type });
+    const spy = vi.spyOn(CanvasRenderingContext2D.prototype, 'getImageData');
+    try {
+      await project.setImageFromFile(file);
+      return spy.mock.calls.filter((args) => args.join() === '0,0,96,64').length; // findUniform reads the whole photo
+    } finally {
+      spy.mockRestore();
+    }
+  };
+  expect(await reads(null)).toBe(1);
+  expect(await reads(cp437Font)).toBe(1);
+  expect(await reads(font8)).toBe(2); // the grid's shape depends on it (gridPicture), before the picture is in place
 });
 
 test('in an 8×8 font a photo opens at its own shape: photo.jpg at 80 columns is 107 rows, fit edge to edge', async () => {

@@ -213,9 +213,12 @@ export const documentActions = {
         return;
       }
       const ratio = (image.naturalWidth || 1) / (image.naturalHeight || 1);
+      // Its shape in grid pixels (gridRatio) before it's in place: gridPicture's fitAspect, which in a font of another
+      // shape needs findUniform now (replaceImage reads it again); at pixelAspect 1 it's the ratio either way.
+      const shape = this.pixelAspect === 1 ? ratio : ratio * (findUniform(image, buffer) ? 1 : this.pixelAspect);
 
       this.replaceImage(image, buffer, {
-        ...lockedGrid(this.cols, ratio * (findUniform(image, buffer) ? 1 : this.pixelAspect)), // its shape in the font's cells (gridRatio)
+        ...lockedGrid(this.cols, shape),
         ...sauceDefaults(),
         ...sliderDefaults(),
         ...nameOf(file),
