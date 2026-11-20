@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { officialSources, fetchListing, buildList } from '../../scripts/plugin-list.mjs';
+import { officialSources, fetchListing, buildList, makeList } from '../../scripts/plugin-list.mjs';
 import { readList } from '../../src/plugins/listing.js';
 import { sha256 } from '../../src/plugins/hash.js';
 
@@ -19,7 +19,7 @@ const fakeFetch = (map) => async (url) => {
 const api = (repo, ref = 'HEAD') => `https://api.github.com/repos/${repo}/commits/${ref}`;
 const raw = (repo, file, commit = COMMIT) => `https://raw.githubusercontent.com/${repo}/${commit}/${file}`;
 const good = (repo, id, mf = manifest(id)) => ({
-  [api(repo)]: { status: 200, body: JSON.stringify({ sha: COMMIT }) },
+  [api(repo)]: { status: 200, body: COMMIT },
   [raw(repo, 'phosphor-plugin.json')]: { status: 200, body: mf },
   [raw(repo, 'rain.js')]: { status: 200, body: SCRIPT },
 });
@@ -49,12 +49,12 @@ describe('fetchListing', () => {
   });
   it('sends the token and asks for the branch', async () => {
     const seen = [];
-    const inner = fakeFetch({ ...good('kim/rain', 'kim.rain'), [api('kim/rain', 'dev')]: { status: 200, body: JSON.stringify({ sha: COMMIT }) } });
+    const inner = fakeFetch({ ...good('kim/rain', 'kim.rain'), [api('kim/rain', 'dev')]: { status: 200, body: COMMIT } });
     const spy = async (url, init) => { seen.push([url, init?.headers]); return inner(url, init); };
     await fetchListing({ ...source('kim/rain'), branch: 'dev' }, { fetch: spy, token: 'tok' });
     expect(seen[0][0]).toBe(api('kim/rain', 'dev'));
     expect(seen[0][1].Authorization).toBe('Bearer tok');
-    expect(seen[0][1].Accept).toBe('application/vnd.github+json');
+    expect(seen[0][1].Accept).toBe('application/vnd.github.sha');
   });
   it('says gone for a 404, a too-big manifest, and a missing script', async () => {
     const base = good('kim/rain', 'kim.rain');
@@ -101,10 +101,42 @@ describe('buildList', () => {
       ...good('kim/rain', 'kim.rain'),
       [raw('jejacks0n/phosphor', 'plugins/rain/phosphor-plugin.json')]: { status: 200, body: manifest('phosphor.rain') },
       [raw('jejacks0n/phosphor', 'plugins/rain/rain.js')]: { status: 200, body: SCRIPT },
+      ...good('kim/dusk', 'kim.dusk', manifest('kim.dusk', { script: undefined, themes: [{ id: 'dusk', name: 'Dusk', base: 'dark', colors: {} }] })),
     };
-    const { list } = await run([source('kim/rain')], map, { official });
-    expect(list.plugins.map((one) => one.manifest.id)).toEqual(['phosphor.rain', 'kim.rain']);
+    const { list } = await run([source('kim/rain'), source('kim/dusk')], map, { official });
+    expect(list.plugins.map((one) => one.manifest.id)).toEqual(['phosphor.rain', 'kim.rain', 'kim.dusk']);
     expect(list.plugins[0].official).toBe(true);
-    expect(readList(JSON.stringify(list)).entries).toHaveLength(2);
+    expect(readList(JSON.stringify(list)).entries).toHaveLength(3);
+  });
+});
+
+describe('a served BOM and a big commit', () => {
+  it('hashes a script without its BOM, as the page reads it', async () => {
+    const map = { ...good('kim/rain', 'kim.rain'), [raw('kim/rain', 'rain.js')]: { status: 200, body: `\uFEFF${SCRIPT}` } };
+    const { entry } = await fetchListing(source('kim/rain'), { fetch: fakeFetch(map) });
+    expect(entry.scriptHash).toBe(await sha256(SCRIPT));
+  });
+});
+
+describe('makeList', () => {
+  const LIST = 'https://phosphor.work/plugins.json';
+  const WIKI = 'https://raw.githubusercontent.com/wiki/jejacks0n/phosphor/Plugins.md';
+  const dir = mkdtempSync(join(tmpdir(), 'plugins-'));
+  const prev = async () => (await fetchListing(source('kim/rain'), { fetch: fakeFetch(good('kim/rain', 'kim.rain')) })).entry;
+  const served = async () => ({ [LIST]: { status: 200, body: JSON.stringify({ format: 1, built: 'x', plugins: [await prev()] }) } });
+
+  it('keeps the community entries when the wiki is unreadable on a normal deploy', async () => {
+    const map = { ...(await served()), [WIKI]: { status: 500, body: '' } };
+    const { list, log } = await makeList({ dir, commit: COMMIT, refresh: false, fetch: fakeFetch(map) });
+    expect(list.plugins.map((one) => one.manifest.id)).toEqual(['kim.rain']);
+    expect(log.some((line) => line.includes('wiki'))).toBe(true);
+  });
+  it('builds with no community entries when there is nothing to keep', async () => {
+    const { list } = await makeList({ dir, commit: COMMIT, refresh: false, fetch: fakeFetch({ [WIKI]: { status: 'throw', body: '' } }) });
+    expect(list.plugins).toEqual([]);
+  });
+  it('publishes nothing on a refresh with an unreadable wiki', async () => {
+    const map = { ...(await served()), [WIKI]: { status: 500, body: '' } };
+    await expect(makeList({ dir, commit: COMMIT, refresh: true, fetch: fakeFetch(map) })).rejects.toThrow('noWiki');
   });
 });

@@ -90,7 +90,7 @@ export function readManifest(source) {
     author: text(raw, 'author', 60),
     description: text(raw, 'description', 300, { required: false }),
     homepage: text(raw, 'homepage', 200, { required: false, test: (value) => /^https:\/\/[^\s]+$/.test(value) }),
-    script: raw.script === undefined ? '' : text(raw, 'script', 200, { test: (value) => SCRIPT_PATH.test(value) }),
+    script: raw.script === undefined || raw.script === '' ? '' : text(raw, 'script', 200, { test: (value) => SCRIPT_PATH.test(value) }),
     license: text(raw, 'license', 40, { required: false }),
     preview: text(raw, 'preview', 74, { required: false, test: isPreview }),
   };
