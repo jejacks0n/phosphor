@@ -307,12 +307,15 @@ of a GLSL ES 3.00 function (`void solve()`, `void refine()`) that Phosphor puts 
 - `put(vec3 fg, vec3 bg, int glyph)`: the result. Glyph 255 means a solid cell.
 
 The JavaScript is the reference, and the shader has to agree with it. The first time a shader would be used for a set of
-characters in a visit, Phosphor also runs your JavaScript on the drawing's first 8 x 8 cells and compares. If more than 1
-in 16 differ (a few near-ties in 32-bit floats are expected), the shader is off for the visit and the plugin's row says
-why. A shader that doesn't compile shows the compiler's log, and one that stops the graphics card is switched off. The
-check runs again when the set changes, not when an option, the palette or the style does. A shader is used only where
-By shape's is: no Floyd–Steinberg, at most 255 characters and 256 colors. Everywhere else, and on upper layers, the
-JavaScript runs, so write both to agree. Outlines writes its tables once and builds the shader from them for that reason.
+characters in a visit, Phosphor runs both on a test picture of 8 x 8 cells and compares them, with the layer's
+characters, palette and options. A quarter of the picture holds stripes with hard edges at each of 0°, 90°, 45° and 135°
+(in that order, left to right and top to bottom), light over a colored gradient, so the cells a solver draws its own way
+are checked even when the drawing's are plain. If more than 1 in 16 differ (a few near-ties in 32-bit floats are
+expected), the shader is off for the visit and the plugin's row says why. A shader that doesn't compile shows the
+compiler's log, and one that stops the graphics card is switched off. The check runs again when the set changes, not
+when an option, the palette or the style does. A shader is used only where By shape's is: no Floyd–Steinberg, at most
+255 characters and 256 colors. Everywhere else, and on upper layers, the JavaScript runs, so write both to agree.
+Outlines writes its tables once and builds the shader from them for that reason.
 
 ### Limits, and a drawing without the plugin
 

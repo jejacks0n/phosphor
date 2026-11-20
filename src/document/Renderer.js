@@ -1819,8 +1819,8 @@ function resolveBy(gpu, carries, js, ...args) {
 
 // A plugin solver's resolve as resolveBy makes it, its shader used once it agreed with its JavaScript: the first time it
 // runs this visit (for the solver's ref and script, and each set it draws from: a shader can be right for one set and not
-// another, its own characters' indexes moving when the set holds some), the JavaScript also resolves the first 8 x 8 cells and the two are
-// compared (disagreement). One that differs in more than a sixteenth of them (By shape's own shader tips a near-tie
+// another, its own characters' indexes moving when the set holds some), the two also resolve a test picture of 8 x 8
+// cells (CHECK_SAMPLES) and are compared (disagreement). One that differs in more than a sixteenth of them (By shape's own shader tips a near-tie
 // now and then), didn't build (ShapeMatcher's shaderProblem) or lost the context while it ran (a shader that never
 // ends, stopped by the browser) is off for the visit, the plugin's row saying why (offShader), and the JavaScript's
 // cells are used.
@@ -1836,7 +1836,7 @@ function resolvePluginBy({ hash }, ref, gpu, carries, samples, cols, lines, matc
   const got = resolveBy(shaderChecks.get(at) === false ? false : gpu, carries, js, samples, cols, lines, matcher, o);
   if (!got || !checks) return got;
   const log = !got.gpu && ShapeMatcher.shared()?.shaderProblem(ref);
-  const differ = got.gpu && disagreement(samples, cols, lines, matcher, o);
+  const differ = got.gpu && disagreement(matcher, o);
   const lost = !lostBefore && ShapeMatcher.shared()?.lost();
   const why = log ? { log } : lost ? { lost: true } : differ && differ.count * 16 > differ.total ? differ : null;
   if (!why) {
@@ -1848,12 +1848,29 @@ function resolvePluginBy({ hash }, ref, gpu, carries, samples, cols, lines, matc
   return got.gpu ? { out: js(), gpu: false } : got;
 }
 
-// The first 8 x 8 cells (or all, if fewer) by a plugin solver's shader and by its JavaScript, each over just those
-// cells' samples: null when they agree, else { count, total, col, line }, the cells that differ and the first's place.
-// Compared exactly: 32-bit floats can tip a near-tie, which the author finds by the place.
-function disagreement(samples, cols, lines, matcher, { strength, style }) {
-  const w = Math.min(8, cols), h = Math.min(8, lines), row = w * SAMPLES.w * 4, crop = new Uint8ClampedArray(row * h * SAMPLES.h);
-  for (let y = 0; y < h * SAMPLES.h; y++) crop.set(samples.subarray(y * cols * SAMPLES.w * 4, y * cols * SAMPLES.w * 4 + row), y * row);
+// The agreement check's picture: 8 x 8 cells of By shape's samples, a quarter each of hard edges at 0, 90, 45 and 135
+// degrees (stripes, so most cells hold one, put off the samples' and cells' bounds), light over a colored gradient. A
+// drawing's own cells can be plain (a photo's corner, a blank canvas), where a solver leaves everything to By shape and a
+// shader wrong on edges would pass.
+const CHECK = 8;
+const CHECK_SAMPLES = (() => {
+  const w = CHECK * SAMPLES.w, h = CHECK * SAMPLES.h, data = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const angle = [[0, 90], [45, 135]][y < h / 2 ? 0 : 1][x < w / 2 ? 0 : 1] * Math.PI / 180;
+      const across = (x + 0.5) * Math.sin(angle) + (y + 0.5) * Math.cos(angle) + 0.37; // along the edges' normal
+      const v = 24 + (x + y) * 1.4, light = Math.floor(across / 11.3) % 2 === 0;
+      data.set(light ? [235, 228, 210, 255] : [v, v * 0.6, 255 - v, 255], (y * w + x) * 4);
+    }
+  }
+  return data;
+})();
+
+// The test picture (CHECK_SAMPLES) by a plugin solver's shader and by its JavaScript, in the layer's characters, palette,
+// options and dither: null when they agree, else { count, total, col, line }, the cells that differ and the first's place
+// in it. Compared exactly: 32-bit floats can tip a near-tie, which the author finds by the place.
+function disagreement(matcher, { strength, style }) {
+  const w = CHECK, h = CHECK, crop = CHECK_SAMPLES;
   const gpu = ShapeMatcher.shared()?.resolve(crop, w, h, matcher, { strength, style });
   if (!gpu) return null;
   const js = resolvePlugin(crop, w, h, matcher, { strength, style }).cells;
