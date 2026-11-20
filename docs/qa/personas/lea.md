@@ -37,7 +37,7 @@ confused, and the work still there if she comes back to the tab later.
 
 ## What they lean on
 
-- The start screen: the drop box, Choose a file, Start with a blank canvas, Pick up where you left off.
+- The start screen: Choose a file, Start with a blank canvas, Pick up where you left off.
 - The phone layout: the menu button (☰) that slides the settings out, « at the tab bar's right end that slides LAYERS in over
   the art ([The layers list](../../layers.md#the-layers-list)), the Actions menu, the status bar.
 - The settings she can feel: Art style, Color palette, the Characters presets and the dice, Brightness and Contrast,
@@ -93,9 +93,10 @@ script. Every section ends with Free time.
 
 ### 1. See what this is
 - Does: opens the app and looks at the start screen without touching anything, then scrolls it.
-- Expects: the tab bar (☰, PIXEL, ANSI and SAUCE dimmed, and the Animate switch), the Phosphor logo, the box that says
-  "Drop an image, .phosphor, or ANSI file here" with Choose a file, and "Start with a blank canvas", all inside 390
-  wide with nothing cut off; no SOCIAL anywhere (a phone has no side panel).
+- Expects: the tab bar (☰, PIXEL, ANSI and SAUCE dimmed, and the Animate switch), the Phosphor logo, and under it
+  Choose a file and "Start with a blank canvas" as two buttons the screen's width, one over the other, each tall enough
+  for a thumb, with no dashed line around them (a phone has nothing to drop), all inside 390 wide with nothing cut
+  off; no SOCIAL anywhere (a phone has no side panel).
 - Probes: `free`: tap the Animate switch before anything is open (it says "Open an image or create a canvas to animate."); `interrupt`: turn the phone sideways and back, and check the start screen fits both ways;
   `out-of-order`: tap the dimmed ANSI tab.
 - Rated: no (touch only: no keyboard shows here)
@@ -308,7 +309,7 @@ frames, and pinch while it plays.
 ### 22. Come back to it
 - Does: presses New project (choosing Start without saving if it asks, as in step 21), then looks at the start
   screen.
-- Expects: "Pick up where you left off" lists her work inside the drop box, under Choose a file, with its time, whether
+- Expects: "Pick up where you left off" lists her work under Choose a file and Start with a blank canvas, with its time, whether
   it's Unchanged, Changed or Saved, and "Resume ›"; tapping the row brings it back; the list fits at 390 wide, every
   row two lines (the name, then the time and status) with Resume beside them.
 - Probes: `out-of-order`: from the start screen, start a blank canvas first: Animate is off and no bar shows, though

@@ -41,10 +41,13 @@ const rows = computed(() => {
 <template>
   <!-- Up and Down move between its buttons, top to bottom: Choose a file, Start blank, each row. -->
   <article class="zero-state" @keydown="arrowsBetween($event, $event.currentTarget.querySelectorAll('button'))">
-    <!-- With recent work the drop part shrinks to a band, and the list fills the box under it. -->
+    <!-- The dashed line is around the whole canvas, as all of it takes a dropped file (DropZone.vue). With recent work
+         the drop part shrinks to a band, and the list sits under it, one column in the middle. -->
     <div v-if="ready" class="drop-zone" :class="{ listed: rows.length }">
       <div class="logo"></div>
-      <span class="icon">⬆</span>
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+      </svg>
       <p>{{ t('zero.dropPrompt', { ext: PROJECT_EXTENSION }) }}</p>
       <div class="actions">
         <button ref="browse" class="browse" @click="$emit('browse')">
@@ -52,7 +55,7 @@ const rows = computed(() => {
           <span class="desktop">{{ t('zero.browseDesktop') }}</span>
         </button>
 
-        <button class="link" @click="$emit('start-blank')">
+        <button class="blank" @click="$emit('start-blank')">
           {{ t('zero.startBlank') }}
         </button>
       </div>
@@ -91,8 +94,7 @@ article.zero-state {
   width: 100%;
   min-height: 0;
   overflow-y: auto;
-  padding: 20px;
-  gap: 40px;
+  padding: 16px;
   box-sizing: border-box;
 }
 
@@ -107,77 +109,78 @@ div.logo {
   background-position: center;
 }
 
+/* The dashed line fills the canvas; what's in it sits in the middle. */
 div.drop-zone {
-  width: 75%;
-  max-width: 320px;
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  border-radius: 10px;
+  justify-content: center;
   align-items: center;
-  padding: 30px 20px 60px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 40px 24px;
+  border: 1.5px dashed var(--border-light);
+  border-radius: 12px;
   text-align: center;
-  border: 2px dashed var(--border);
-  background: var(--surface-0);
+  transition: border-color 0.2s ease;
 }
 
-span.icon {
-  font-size: 68px;
-  opacity: 0.5;
+svg.icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 18px;
   color: var(--text-faint);
 }
 
 p {
-  font-size: 16px;
-  margin: 0;
+  margin: 0 0 28px;
   font-family: inherit;
-  color: var(--text-muted);
+  font-size: 18px;
+  font-weight: 500;
+  text-wrap: balance;
+  color: var(--text-dim);
+}
+
+/* The two ways in, side by side: two buttons of one height, Choose a file the marked one. */
+div.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+div.actions button {
+  height: 42px;
+  padding: 0 24px;
+  font-size: 13px;
+}
+
+div.actions button:focus-visible { /* the ring stands off the button, with room around it before the next */
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 button.browse {
-  width: 80%;
-  min-width: 100px;
-  max-width: 200px;
-  margin-top: 10px;
-  padding: 15px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  transition: all 0.2s ease;
   background: var(--accent);
   color: var(--text-inverted);
-  border: 1px solid var(--border-light);
+  border-color: transparent;
 }
 
-button.browse:focus-visible {
-  outline: 2px solid var(--text);
-  outline-offset: 2px;
+button.blank {
+  border-color: var(--border-light);
 }
 
-button.browse:hover {
-  transform: translateY(-1px);
-  background: var(--accent-hot);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  border-color: var(--accent);
-  color: var(--text);
+@media (hover: hover) {
+  button.browse:hover {
+    background: var(--accent-hot);
+    border-color: transparent;
+    color: var(--text-inverted);
+  }
 }
 
 span.mobile {
   display: none;
-}
-
-div.actions {
-  display: contents; /* with no list, Choose a file and Start blank stand in the box's column */
-}
-
-/* With recent work: one box 480px wide, the drop part a band at its top, the list under it after a rule. */
-div.drop-zone.listed {
-  width: 100%;
-  max-width: 480px;
-  box-sizing: border-box;
-  padding: 20px 20px 12px;
 }
 
 section.recent {
@@ -305,64 +308,99 @@ section.recent li button:disabled span.go {
   font-weight: normal;
 }
 
-/* Wider than a phone, the band is the arrow beside the prompt, with Choose a file and Start blank under it. */
+/* Wider than a phone, with recent work: one column 480px wide in the middle, the arrow beside the prompt with Choose a
+   file and Start blank under it, then the list after a rule. */
 @media (min-width: 769px) {
   div.drop-zone.listed {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: 40px minmax(0, 412px); /* with the gap, 480px; the arrow's column fixed, so the list can't widen it */
     grid-template-areas: "icon text" "icon actions" "list list";
+    justify-content: center;
+    align-content: center;
     gap: 10px 28px;
     justify-items: start;
     text-align: left;
   }
 
-  div.drop-zone.listed span.icon {
+  div.drop-zone.listed svg.icon {
     grid-area: icon;
-    font-size: 40px;
+    align-self: center;
+    width: 40px;
+    height: 40px;
+    margin: 0;
   }
 
   div.drop-zone.listed p {
     grid-area: text;
+    margin: 0;
     font-size: 14px;
+    font-weight: normal;
+    color: var(--text-muted);
   }
 
   div.drop-zone.listed div.actions {
     grid-area: actions;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    justify-content: flex-start;
     gap: 8px 14px;
   }
 
-  div.drop-zone.listed button.browse {
-    width: auto;
-    max-width: none;
-    margin-top: 0;
-    padding: 9px 18px;
+  div.drop-zone.listed div.actions button {
+    height: 36px;
+    padding: 0 18px;
   }
 
   div.drop-zone.listed section.recent {
     grid-area: list;
     justify-self: stretch;
+    min-width: 0;
+    margin-top: 6px;
   }
 }
 
+/* A phone: nothing can be dropped, so no dashed line. The logo, the two buttons a finger's size, the list under them. */
 @media (max-width: 768px) {
+  article.zero-state {
+    padding: 20px;
+  }
+
+  div.drop-zone {
+    flex: 0 1 auto;
+    max-width: 360px;
+    padding: 0;
+    border: none;
+  }
+
+  div.drop-zone.listed {
+    max-width: 480px;
+  }
+
   div.logo {
     display: block;
+    margin-bottom: 28px;
   }
 
   div.drop-zone.listed div.logo {
     width: 55%;
   }
 
-  div.drop-zone.listed button.browse {
-    padding: 14px;
-  }
-
-  span.icon,
+  svg.icon,
   p {
     display: none;
+  }
+
+  div.actions {
+    flex-direction: column;
+    align-self: stretch;
+    gap: 12px;
+  }
+
+  div.actions button {
+    height: 48px;
+    font-size: 15px;
+  }
+
+  section.recent {
+    margin-top: 24px;
   }
 
   span.desktop {

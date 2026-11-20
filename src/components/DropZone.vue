@@ -44,4 +44,8 @@ article.drop-zone {
 article.dragging {
   background: var(--accent-faint);
 }
+
+article.dragging :deep(.zero-state div.drop-zone) { /* the start screen's dashed line (ZeroState.vue) lights with it */
+  border-color: var(--accent);
+}
 </style>
