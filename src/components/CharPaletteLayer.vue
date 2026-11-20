@@ -572,9 +572,10 @@ div.palette-layer.editing div.row div.glyphs {
   overflow: visible;
 }
 
-/* Editing wants 940px and its full height; on small windows it takes the whole window instead
-   (between, it fits the toolbar and the slots narrow). On phone widths the list sits above the editor. */
-@media (max-width: 1000px), (max-height: 720px) {
+/* Editing wants 940px and up to 560px tall; a shorter window shrinks it (the glyph pane gives way first) until it
+   can't fit, and a small window it takes whole instead (between, it fits the toolbar and the slots narrow). On phone
+   widths the list sits above the editor. */
+@media (max-width: 1000px), (max-height: 520px) {
   div.palette-layer.editing {
     position: fixed;
     inset: 0;
@@ -994,7 +995,7 @@ div.pane {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 180px;
+  min-height: 96px;
   max-height: 280px;
   overflow-y: auto;
   padding: 6px;

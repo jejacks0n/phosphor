@@ -1,6 +1,7 @@
 // The palette layer's Palettes page: the drawing's font's palettes first, a palette's font shown and changed,
 // palettes for fonts not loaded, and palette files in and out.
-import { test, expect, vi, afterEach } from 'vitest';
+import { test, expect, vi, afterEach, onTestFinished } from 'vitest';
+import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
@@ -92,6 +93,18 @@ test('Hide under Built-in puts the built-ins away while the font is in use; Show
   await nextTick();
   await press(button('Show', group('Built-in')));
   expect(row('Shades & blocks')).toBeTruthy();
+});
+
+test('a wide but short window shrinks the editor before it takes the whole window', async () => {
+  await page.viewport(1400, 600);
+  onTestFinished(() => page.viewport(414, 896));
+  await mount();
+  await press(button('Edit ▸'));
+  const layer = host.querySelector('.palette-layer');
+  await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('absolute')); // still floating
+  expect(layer.getBoundingClientRect().height).toBeLessThanOrEqual(440 + 2); // the window less the toolbar's room
+  await page.viewport(1400, 500);
+  await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('fixed')); // too short: the whole window
 });
 
 test('going full window grows out of the floating layer, and coming back fades it in', async () => {
