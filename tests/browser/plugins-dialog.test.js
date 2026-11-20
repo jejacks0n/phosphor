@@ -209,3 +209,36 @@ test('Reload and the Follow file switch call the store, and a problem shows on t
   await expect.element(page.getByRole('alert')).toHaveTextContent('That file can\'t be read anymore.');
   await remove();
 });
+
+// A file dropped on an element, as the browser would: true when the page took the drop (it didn't navigate to the file).
+const drop = (element, text) => {
+  const dataTransfer = new DataTransfer();
+  if (text !== undefined) dataTransfer.items.add(new File([text], 'phosphor-plugin.json', { type: 'application/json' }));
+  element.dispatchEvent(new DragEvent('dragover', { dataTransfer, bubbles: true, cancelable: true }));
+  const event = new DragEvent('drop', { dataTransfer, bubbles: true, cancelable: true });
+  element.dispatchEvent(event);
+  return event.defaultPrevented;
+};
+
+test('a manifest dropped anywhere on the dialog is asked about, and a drop on the question is taken without leaving the page', async () => {
+  await mount();
+  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  expect(drop(document.querySelector('dialog h3'), midnight)).toBe(true);
+  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.0.0?'));
+  expect(drop(document.querySelector('dialog h3'), midnight)).toBe(true);
+  expect(heading()).toBe('Install Midnight 1.0.0?');
+});
+
+test('a browser that will not keep plugins asks nothing about a dropped file, and one that fails to keep it says so', async () => {
+  const store = await mount();
+  await pick(midnight);
+  vi.spyOn(indexedDB, 'open').mockImplementation(() => { throw new DOMException('no', 'QuotaExceededError'); });
+  await page.getByRole('button', { name: /^Install/ }).click();
+  await expect.element(page.getByRole('alert')).toHaveTextContent('This browser didn\'t keep the plugin.');
+  expect(store.plugins).toEqual([]);
+
+  store.unavailable = true;
+  expect(drop(document.querySelector('dialog h3'), midnight)).toBe(true);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(heading()).toBe('Plugins');
+});

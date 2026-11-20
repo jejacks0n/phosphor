@@ -64,3 +64,13 @@ test('the slots are the color properties of :root in global.css', () => {
   const declared = [...root.matchAll(/^\s*--([a-z0-9-]+):/gm)].map(([, name]) => name).filter((name) => !NOT_SLOTS.includes(name));
   expect([...COLOR_SLOTS]).toEqual(declared);
 });
+
+// The store reads a kept manifest again on every load: what was accepted once must be accepted again.
+test('a manifest read once reads again as itself, optional fields left out or empty', () => {
+  const bare = good();
+  delete bare.description; delete bare.homepage; delete bare.license;
+  for (const raw of [good(), bare, { ...good(), homepage: '', license: '' }]) {
+    const once = readManifest(JSON.stringify(raw));
+    expect(readManifest(JSON.stringify(once))).toEqual(once);
+  }
+});

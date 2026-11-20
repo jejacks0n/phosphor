@@ -16,6 +16,7 @@ async function inStore(mode, use) {
       const tx = db.transaction('plugins', mode), request = use(tx.objectStore('plugins'));
       tx.oncomplete = () => resolve(request?.result);
       tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error); // out of room, say
     });
   } finally {
     db.close();
