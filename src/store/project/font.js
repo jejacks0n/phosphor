@@ -1,6 +1,5 @@
 import { encodeBlocks, encodeFont } from '@/lib/BitmapFont.js';
 import { notSetUp } from '@/lib/fontSetup.js';
-import { fitRect } from '@/lib/Canvas.js';
 import { fontGrid } from '@/lib/Cells.js';
 import { isUniform, workingScale } from '@/lib/ImageProcessor.js';
 import { DISPLAY_FONTS } from '@/lib/displayFonts.js';
@@ -53,9 +52,11 @@ function regrid(project, font, settings, from, to) {
   if (project._artInside) project.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
   project.commitPending();
   const { cols, rows } = fontGrid(project.cols, project.rows, from, to);
-  const image = project.image, w0 = image.naturalWidth || image.width, h0 = image.naturalHeight || image.height;
-  const grid = project.gridPicture, fitAspect = grid ? 1 : to / 16;
-  const oldFit = project.fit, newFit = fitRect(w0, grid ? h0 * from / to : h0, cols, rows, fitAspect);
+  const image = project.image, fitAspect = project.gridPicture ? 1 : to / 16;
+  // The old fit stretched down the page by the fonts' heights, so a picture a canvas resize cropped or left in a
+  // corner stays under the cells drawn on it; when the columns give way, shrunk across by as much too.
+  const oldFit = project.fit, sx = cols / project.cols, sy = sx * from / to;
+  const newFit = { dx: Math.round(oldFit.dx * sx), dy: Math.round(oldFit.dy * sy), dw: Math.max(1, Math.round(oldFit.dw * sx)), dh: Math.max(1, Math.round(oldFit.dh * sy)) };
   const w = resizeTransform(oldFit, newFit);
   const doc = project._document, version = project.history.version, was = { cols: project.cols, rows: project.rows };
   const go = (picture) => {

@@ -132,6 +132,37 @@ test('vector shapes follow the picture; an art layer keeps its cells', async () 
   expect(project.shapes.get(art).m).toEqual(m);
 });
 
+test('after a canvas resize the picture keeps its place: cropped or widened, the switch doubles the lines under the typed characters', async () => {
+  for (const [cols, rows] of [[40, 27], [100, 67]]) {
+    const { project } = await photo();
+    project.typeAt(3, 2, 'A');
+    project.commitEdit();
+    dab(project, 30, 20);
+    project.updateCols(cols); // something drawn: a canvas resize, the lock on, so the fit stays
+    await settle(project);
+    expect(grid(project)).toEqual({ cols, rows });
+    expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 80, dh: 54 });
+    const was = ctx2d(project.renderer.pipelineCanvas).getImageData(0, 0, Math.min(cols, 80), 27).data;
+    await project.setDrawingFont(font8);
+    await settle(project);
+    expect(grid(project)).toEqual({ cols, rows: 2 * rows });
+    expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 80, dh: 108 });
+    expect(project.cells[2 * cols + 3].char).toBe('A');
+    expect(project.paintLayer.pixelAt(30, 40)).toMatchObject(RED);
+    expect(project.paintLayer.pixelAt(30, 41)).toMatchObject(RED);
+    expect(project.paintLayer.pixelAt(30, 20)).toBeNull();
+    // The picture under them: each grid pixel of the top 27 lines is the two under it now, within a resample's blur.
+    const now = ctx2d(project.renderer.pipelineCanvas).getImageData(0, 0, Math.min(cols, 80), 54).data, width = Math.min(cols, 80);
+    let off = 0;
+    for (let y = 0; y < 27; y++) {
+      for (let x = 0; x < width; x++) {
+        for (let c = 0; c < 3; c++) off += Math.abs(was[(y * width + x) * 4 + c] - now[(2 * y * width + x) * 4 + c]);
+      }
+    }
+    expect(off / (27 * width * 3)).toBeLessThan(8);
+  }
+});
+
 test('one undo step: undo brings back the font, grid, fit, layers and shapes; a stroke from before it is still undone; redo', async () => {
   const { project } = await photo();
   dab(project, 10, 10);
@@ -160,7 +191,7 @@ test('one undo step: undo brings back the font, grid, fit, layers and shapes; a 
   expect(grid(project)).toEqual({ cols: 80, rows: 108 });
   expect(project.drawingFont.name).toBe('Eight');
   expect(project.paintLayer.pixelAt(10, 20)).toMatchObject(RED);
-  expect(maxY(project.shapes.get(key))).toBeCloseTo(10 * 107 / 54, 2); // a shape keeps three decimals
+  expect(maxY(project.shapes.get(key))).toBe(20); // the fit is twice as tall: 54 lines of picture are 108
 });
 
 test('16 to 11 and back is undone to the grid it was, not a rounded one; on a drawing of only its base too', async () => {

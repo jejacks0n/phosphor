@@ -207,7 +207,7 @@ change one cell on the way.
 ### 17. Switch 8×16 ↔ 8×8 with drawn cells
 - Does: in a drawing in her `.F16` font, types a line of text, draws a Brush stroke, then uses Use this font to switch to her `.F08` font, then undoes, redoes, and switches back.
 - Expects: the typed text keeps its column and line, the lines double going to 8×8 and halve going back to 8×16, the columns stay, and one undo puts the drawing back as it was; the same switch in a drawing with frames is refused with a toast that says why.
-- Probes: `out-of-order`: switch with a selection up; `undo-redo`: undo three times in a row and check nothing else was undone.
+- Probes: `out-of-order`: switch with a selection up; `undo-redo`: undo three times in a row and check nothing else was undone; `extremes`: on a photo with text typed over it, widen Columns to 100 (the canvas grows, the photo stays where it was), then switch: the photo stays under the text, as tall again, not grown to fill the wider grid.
 - Rated: yes, wants Cmd+Z
 
 ### 18. Shapes and paint follow
