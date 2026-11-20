@@ -818,12 +818,12 @@
       "filterAria": "Filter fonts",
       "load": "+ Load",
       "loadTitle": "Load a font from your computer: a bitmap font (.F01 to .F32, or a PNG sheet), or a monospaced TrueType, OpenType, or WOFF font",
-      "thisDrawing": "This drawing",
-      "nextDrawing": "Next drawing",
+      "inUse": "In use",
       "trueType": "TrueType",
       "drawingsFont": "the drawing's font",
       "nextDrawingsFont": "the next drawing's font",
       "inBrowser": "in your browser",
+      "inUseMeta": "in use",
       "palettes": "no palettes | 1 palette | {n} palettes",
       "use": "Use this font",
       "saveRaw": "Save .F{height}",
@@ -835,7 +835,7 @@
       "sheetNote": "All 256 slots, as the font draws them",
       "slot": "Slot {n} {char}",
       "slotHint": "Hover a slot to see its number.",
-      "trueTypeNote": "A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. Viewing in it takes the drawing's bitmap font away.",
+      "trueTypeNote": "A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. Using it takes the drawing's bitmap font away.",
       "pangram": "The quick brown fox jumps over the lazy dog"
     }
   },

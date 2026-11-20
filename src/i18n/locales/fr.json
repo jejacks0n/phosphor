@@ -818,12 +818,12 @@
       "filterAria": "Filtrer les polices",
       "load": "+ Charger",
       "loadTitle": "Charger une police depuis votre ordinateur : une police matricielle (.F01 à .F32, ou une planche PNG), ou une police à chasse fixe TrueType, OpenType ou WOFF",
-      "thisDrawing": "Ce dessin",
-      "nextDrawing": "Prochain dessin",
+      "inUse": "Utilisée",
       "trueType": "TrueType",
       "drawingsFont": "la police du dessin",
       "nextDrawingsFont": "la police du prochain dessin",
       "inBrowser": "dans votre navigateur",
+      "inUseMeta": "utilisée",
       "palettes": "aucune palette | 1 palette | {n} palettes",
       "use": "Utiliser cette police",
       "saveRaw": "Enregistrer .F{height}",
@@ -835,7 +835,7 @@
       "sheetNote": "Les 256 emplacements, tels que la police les dessine",
       "slot": "Emplacement {n} {char}",
       "slotHint": "Survolez un emplacement pour voir son numéro.",
-      "trueTypeNote": "Une police TrueType dessine n'importe quel caractère : elle n'a donc pas d'emplacements, et elle n'est pas enregistrée dans le dessin. L'afficher retire la police matricielle du dessin.",
+      "trueTypeNote": "Une police TrueType dessine n'importe quel caractère : elle n'a donc pas d'emplacements, et elle n'est pas enregistrée dans le dessin. L'utiliser retire la police matricielle du dessin.",
       "pangram": "Portez ce vieux whisky au juge blond qui fume"
     }
   },

@@ -39,6 +39,8 @@ const problem = ref('');
 const drawn = computed(() => project.drawingFont);
 const drawnId = computed(() => drawn.value && fontId(drawn.value));
 const stored = computed(() => workspace.userFonts ?? []);
+// The font in use: the drawing's bitmap font, else the one viewed in (a TrueType font of yours, or a built-in, not listed).
+const inUseId = computed(() => drawnId.value ?? workspace.displayFontSpec.id);
 // The drawing's font (listed once, though it may be kept in this browser too), then yours.
 const all = computed(() => [
   ...(drawn.value ? [{ id: drawnId.value, name: drawn.value.name, kind: 'bitmap', height: drawn.value.height }] : []),
@@ -47,14 +49,15 @@ const all = computed(() => [
 const groups = computed(() => {
   const query = filter.value.trim().toLowerCase(), shown = all.value.filter((f) => f.name.toLowerCase().includes(query));
   return [
-    { key: 'drawing', label: project.image ? t('palette.fonts.thisDrawing') : t('palette.fonts.nextDrawing'), rows: shown.filter((f) => f.id === drawnId.value) },
-    { key: 'yours', label: t('common.yours'), rows: shown.filter((f) => f.id !== drawnId.value) },
+    { key: 'inUse', label: t('palette.fonts.inUse'), rows: shown.filter((f) => f.id === inUseId.value) },
+    { key: 'yours', label: t('common.yours'), rows: shown.filter((f) => f.id !== inUseId.value) },
   ].filter((g) => g.rows.length);
 });
-// The chosen font; once it's gone (removed), the drawing's, else the first.
-const chosen = computed(() => all.value.find((f) => f.id === chosenId.value) ?? all.value[0] ?? null);
+// The chosen font; once it's gone (removed), the one in use, else the first.
+const chosen = computed(() => all.value.find((f) => f.id === chosenId.value) ?? all.value.find((f) => f.id === inUseId.value) ?? all.value[0] ?? null);
 const bitmap = computed(() => chosen.value?.kind === 'bitmap');
 const isDrawn = computed(() => chosen.value?.id === drawnId.value);
+const isInUse = computed(() => chosen.value?.id === inUseId.value);
 const isStored = computed(() => stored.value.some((f) => f.id === chosen.value?.id));
 const count = computed(() => (bitmap.value ? palettes.countFor(chosen.value.id) : 0));
 
@@ -63,7 +66,8 @@ const size = (f) => (f.kind === 'bitmap' ? `8×${f.height}` : t('palette.fonts.t
 const styleOf = (f) => ({ fontFamily: familyOf(f.id), fontSize: `${f.kind === 'bitmap' && f.height < 12 ? 2 * f.height : f.height ?? 16}px` });
 const meta = computed(() => [
   size(chosen.value),
-  isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : t('palette.fonts.inBrowser'),
+  isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : isInUse.value && t('palette.fonts.inUseMeta'),
+  !isDrawn.value && t('palette.fonts.inBrowser'),
   bitmap.value && t('palette.fonts.palettes', { n: count.value }, count.value),
 ].filter(Boolean).join(' · '));
 
@@ -152,7 +156,7 @@ const exportPalettes = () => {
         <span class="meta">{{ meta }}</span>
       </div>
       <div class="actions">
-        <button v-if="!isDrawn" class="ghost" :disabled="hostsFont" @click="apply">{{ t('palette.fonts.use') }}</button>
+        <button v-if="!isInUse" class="ghost" :disabled="hostsFont" @click="apply">{{ t('palette.fonts.use') }}</button>
         <template v-if="bitmap">
           <button class="ghost" @click="save(saveRaw)">{{ t('palette.fonts.saveRaw', { height: String(chosen.height).padStart(2, '0') }) }}</button>
           <button class="ghost" @click="save(savePng)">{{ t('palette.fonts.savePng') }}</button>
