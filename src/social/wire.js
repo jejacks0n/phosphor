@@ -81,7 +81,7 @@
  * Pausing and resuming are the 'away' message and the channel closing.
  */
 import { hex2rgb } from '../lib/ColorUtils.js';
-import { DISPLAY_FONTS, MIN_FONT_SIZE, MAX_FONT_SIZE } from '../lib/displayFonts.js';
+import { DISPLAY_FONTS, DEFAULT_FONT, MIN_FONT_SIZE, MAX_FONT_SIZE } from '../lib/displayFonts.js';
 import { MAX_COLS, MAX_LINES, MAX_CELLS } from '../lib/Cells.js';
 import { usableChar } from '../lib/CharWidth.js';
 import { clampAnsiZoom } from '../lib/zoom.js';
@@ -114,7 +114,7 @@ export const fontOnWire = (spec) => DISPLAY_FONTS.some((f) => f.id === spec.id) 
 // size for one that isn't a number), or Phosphor's default for null or an unknown id.
 export function fontFor(onWire) {
   const font = DISPLAY_FONTS.find((f) => f.id === onWire?.id);
-  if (!font) return { ...DISPLAY_FONTS[0] };
+  if (!font) return { ...DEFAULT_FONT };
   const size = Number.isFinite(onWire.size) ? Math.min(Math.max(Math.round(onWire.size), MIN_FONT_SIZE), MAX_FONT_SIZE) : font.size;
   return { ...font, size };
 }

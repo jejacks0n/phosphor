@@ -4624,7 +4624,7 @@ test('an artist who arrives after the font changed, or whose host\'s font is the
   await expect.poll(() => [fontOf(ann).id, fontOf(ann).size], PATIENT).toEqual(['unifont', 24]);
 
   room.host.setArt(fontArt(null));   // loaded from the host's computer: it can't be sent
-  await expect.poll(() => fontOf(ann).id, PATIENT).toBe('jetbrains');
+  await expect.poll(() => fontOf(ann).id, PATIENT).toBe('vga');
 });
 
 test('someone only watching is sent no font message, and leaving forgets the room\'s font', async () => {

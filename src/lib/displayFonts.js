@@ -12,18 +12,22 @@ import { decodeBlocks, decodeFont, fitFont, glyphRows, slotOf } from './BitmapFo
 import { registerBitmapFont } from './userFonts.js';
 
 export const DISPLAY_FONTS = Object.freeze([
-  { id: 'jetbrains', name: 'JetBrains Mono', family: '"JetBrains Mono", monospace', size: 17, lineHeight: 1.2 },
   { id: 'vga', name: 'IBM VGA', family: '"IBM VGA 8x16", "Phosphor Unscii", monospace', size: 16, lineHeight: 1 },
+  { id: 'jetbrains', name: 'JetBrains Mono', family: '"JetBrains Mono", monospace', size: 17, lineHeight: 1.2 },
   { id: 'unscii', name: 'Unscii', family: '"Phosphor Unscii", monospace', size: 16, lineHeight: 1 },
   { id: 'unifont', name: 'Unifont', family: '"Phosphor Unifont", monospace', size: 16, lineHeight: 1 },
 ].map(Object.freeze));
+
+// The font a new drawing, a fresh browser and every fallback mean by "the default" (first in the list).
+export const DEFAULT_FONT_ID = 'vga';
+export const DEFAULT_FONT = DISPLAY_FONTS.find((f) => f.id === DEFAULT_FONT_ID);
 
 // The sizes FontField allows, in CSS px (and a host's font is held to: wire.fontFor).
 export const MIN_FONT_SIZE = 6, MAX_FONT_SIZE = 64;
 
 // The current font: { id, name, family, size (CSS px), lineHeight }, and for a drawing's bitmap font
 // bitmap: true and source (its base64, BitmapFont.encodeFont). Read it when it's used; it changes in place.
-export const DISPLAY_FONT = { ...DISPLAY_FONTS[0] };
+export const DISPLAY_FONT = { ...DEFAULT_FONT };
 
 // The current font (or another) as a canvas/CSS font shorthand.
 export const displayFontCss = (font = DISPLAY_FONT) => `${font.size}px ${font.family}`;
@@ -84,7 +88,7 @@ export function bitmapOf({ source, name, blocks }) {
 // font in its stack has loaded, so what's measured next is measured in them. A bitmap font (bitmap:
 // true) is registered first, from its source.
 export async function setDisplayFont(font) {
-  const next = typeof font === 'string' ? DISPLAY_FONTS.find((f) => f.id === font) ?? DISPLAY_FONTS[0] : font;
+  const next = typeof font === 'string' ? DISPLAY_FONTS.find((f) => f.id === font) ?? DEFAULT_FONT : font;
   for (const key of Object.keys(DISPLAY_FONT)) if (!(key in next)) delete DISPLAY_FONT[key]; // a bitmap font's bitmap and source go with it
   Object.assign(DISPLAY_FONT, next);
   const style = globalThis.document?.documentElement.style;

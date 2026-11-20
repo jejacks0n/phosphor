@@ -3,7 +3,10 @@
 // exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { DISPLAY_FONTS } from '../../src/lib/displayFonts.js';
 import { backingScale, cellGeometry, gridYAt, gridAt, splitOf, blockMask, packCells, packSpills, MAX_BACKING_AREA } from '../../src/lib/CellCanvas.js';
+
+const jetbrains = DISPLAY_FONTS.find((f) => f.id === 'jetbrains'); // these numbers were drawn in it (the default is IBM VGA)
 
 test("The ANSI view's canvas renderer: its backing size stays under the browsers' canvas limits, its cells snap to whole device pixels (an even height, so the halves match; an odd bitmap font's own), block characters are exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures", async () => {
   assert.equal(backingScale(800, 600, 2), 2);                                    // small grid: full dpr
@@ -12,10 +15,10 @@ test("The ANSI view's canvas renderer: its backing size stays under the browsers
   assert.equal(backingScale(2040, 3060, 1), 1);                                  // under the cap at dpr 1
   assert.equal(backingScale(800, 20400, 2, 16384), 16384 / 20400);               // 1000 lines tall: no side past the GPU's largest buffer
 
-  assert.deepEqual(cellGeometry(10.2, 2), { cw: 20, ch: 40, cellWidth: 10, lineHeight: 20 });
-  assert.deepEqual(cellGeometry(10.2, 1), { cw: 10, ch: 20, cellWidth: 10, lineHeight: 20 });
-  assert.equal(cellGeometry(10.2, 1.601).ch % 2, 0);                            // even at any scale
-  const capped = cellGeometry(10.2, backingScale(200 * 10.2, 300 * 20.4, 2), true); // rounded down under the cap
+  assert.deepEqual(cellGeometry(10.2, 2, false, jetbrains), { cw: 20, ch: 40, cellWidth: 10, lineHeight: 20 });
+  assert.deepEqual(cellGeometry(10.2, 1, false, jetbrains), { cw: 10, ch: 20, cellWidth: 10, lineHeight: 20 });
+  assert.equal(cellGeometry(10.2, 1.601, false, jetbrains).ch % 2, 0);                            // even at any scale
+  const capped = cellGeometry(10.2, backingScale(200 * 10.2, 300 * 20.4, 2), true, jetbrains); // rounded down under the cap
   assert.ok(200 * capped.cw * 300 * capped.ch <= MAX_BACKING_AREA);
 
   const ink = (m, cw, x, y) => m[y * cw + x] === 255;
@@ -58,11 +61,11 @@ test('an odd-height bitmap font is its own height; an even one and a TrueType fo
 });
 
 test('a capped cell rounds its height down, so a window of lines stays under the largest side', () => {
-  // JetBrains Mono's 20.4 px line (no font given), a 16 px TrueType spec and an 8×11 bitmap font (the odd branch), in
+  // JetBrains Mono's 20.4 px line (named), a 16 px TrueType spec and an 8×11 bitmap font (the odd branch), in
   // windows 40 columns wide and 500 to 5000 lines tall at dpr 2: every one stays at or under 16384 device px. 513 lines
   // was 32 px a cell (16416 px) when the height rounded up.
-  assert.equal(cellGeometry(10.2, backingScale(40 * 10.2, 513 * 20.4, 2, 16384), true).ch, 30);
-  for (const [font, line] of [[undefined, 20.4], [{ size: 16, lineHeight: 1 }, 16], [{ size: 11, lineHeight: 1, bitmap: true, height: 11 }, 11]]) {
+  assert.equal(cellGeometry(10.2, backingScale(40 * 10.2, 513 * 20.4, 2, 16384), true, jetbrains).ch, 30);
+  for (const [font, line] of [[jetbrains, 20.4], [{ size: 16, lineHeight: 1 }, 16], [{ size: 11, lineHeight: 1, bitmap: true, height: 11 }, 11]]) {
     for (let rows = 500; rows <= 5000; rows++) {
       const scale = backingScale(40 * 10.2, rows * line, 2, 16384);
       assert.ok(rows * cellGeometry(10.2, scale, true, font).ch <= 16384, `${rows} lines of ${line} px`);

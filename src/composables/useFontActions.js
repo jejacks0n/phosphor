@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useProjectStore } from '@/store/ProjectStore';
-import { DISPLAY_FONTS } from '@/lib/displayFonts';
+import { DEFAULT_FONT_ID } from '@/lib/displayFonts';
 import { addFont, addBitmapFont, storedBitmapFont, storeBlocks, removeFont } from '@/lib/userFonts';
 import { sayMissingBlocks } from '@/composables/useFontSetup';
 import { fontId, fontName, fontSheet } from '@/lib/BitmapFont';
@@ -65,7 +65,7 @@ export function useFontActions() {
     await removeFont(id, { keepFace: own });
     workspace.userFonts = loaded.value.filter((font) => font.id !== id);
     if (!own) workspace.displayFontSizes = Object.fromEntries(Object.entries(workspace.displayFontSizes).filter(([key]) => key !== id));
-    if (workspace.displayFont === id) workspace.displayFont = DISPLAY_FONTS[0].id;
+    if (workspace.displayFont === id) workspace.displayFont = DEFAULT_FONT_ID;
   }
 
   return { loadFile, choose, saveRaw, savePng, remove, hostsFont };

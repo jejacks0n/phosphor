@@ -129,9 +129,8 @@ test('a font goes on the wire by id and size; one loaded from the host\'s comput
   assert.deepEqual(fontFor(fontOnWire({ ...vga, size: 20 })), { ...vga, size: 20 });
   assert.equal(fontFor(fontOnWire({ ...vga, size: 20 })).name, 'IBM VGA');
   assert.equal(fontOnWire({ id: 'user-1', name: 'Mine', family: 'x', size: 16, lineHeight: 1 }), null);
-  const jetbrains = { ...DISPLAY_FONTS[0], size: 17 };
-  assert.deepEqual(fontFor(null), jetbrains);
-  assert.deepEqual(fontFor({ id: 'nope', size: 9 }), jetbrains);
+  assert.deepEqual(fontFor(null), vga);
+  assert.deepEqual(fontFor({ id: 'nope', size: 9 }), vga);
 });
 
 // 300 columns x 1,666 lines of varied cells (the biggest document) goes in chunks that fit the limit.

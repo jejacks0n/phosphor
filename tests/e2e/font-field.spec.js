@@ -21,9 +21,7 @@ test('the Font field sets the font the art is drawn in, in both views, at its si
   await openApp(page);
   const cols = await store(page, 'project', (p) => p.cols);
   const font = page.getByLabel('Font', { exact: true }), size = page.getByLabel('Font size');
-  await expect(font).toHaveValue('jetbrains');
-  await expect(size).toHaveValue('17');
-  await font.selectOption({ label: 'IBM VGA' });
+  await expect(font).toHaveValue('vga'); // the default
   await expect(size).toHaveValue('16');
   // The Characters field shows its characters in it too, as they'll be drawn.
   await expect(page.getByRole('textbox', { name: 'Characters' })).toHaveCSS('font-family', /^"IBM VGA 8x16"/);
@@ -35,9 +33,13 @@ test('the Font field sets the font the art is drawn in, in both views, at its si
   const pre = page.locator('.ansi-editor pre.display');
   await expect(pre).toHaveCSS('font-family', /IBM VGA 8x16/);
   await expect(pre).toHaveCSS('line-height', '32px');
-  // Still chosen, at that size, when the app opens again.
+  // JetBrains Mono is still offered, at its own size; the choice is kept when the app opens again, and VGA's size with it.
+  await font.selectOption({ label: 'JetBrains Mono' });
+  await expect(size).toHaveValue('17');
   await openApp(page);
-  await expect(page.getByLabel('Font', { exact: true })).toHaveValue('vga');
+  await expect(page.getByLabel('Font', { exact: true })).toHaveValue('jetbrains');
+  await expect(page.getByLabel('Font size')).toHaveValue('17');
+  await page.getByLabel('Font', { exact: true }).selectOption({ label: 'IBM VGA' });
   await expect(page.getByLabel('Font size')).toHaveValue('32');
 });
 
@@ -46,7 +48,7 @@ test('a monospaced font from your computer is used and kept; a proportional one 
   const cols = await store(page, 'project', (p) => p.cols);
   await loadFont(page, fixture('fonts/proportional.ttf'));
   await expect(page.getByRole('alert')).toHaveText(/^“proportional” isn't monospaced \(“i” is 4\.0px wide, while “W” is 14\.4px\)\./);
-  await expect(page.getByLabel('Font', { exact: true })).toHaveValue('jetbrains');
+  await expect(page.getByLabel('Font', { exact: true })).toHaveValue('vga');
   // tests/fixtures/fonts/tall.ttf: every glyph 0.6em wide, 1.2em tall; a loaded font starts at 16px.
   await loadFont(page, fixture('fonts/tall.ttf'));
   await expect(page.getByRole('alert')).toHaveCount(0);
@@ -57,7 +59,7 @@ test('a monospaced font from your computer is used and kept; a proportional one 
   await expect(page.getByLabel('Font', { exact: true }).locator('option:checked')).toHaveText('tall');
   // Removed on the Fonts page: back to the default.
   await (await fontsPage(page)).getByRole('button', { name: 'Remove', exact: true }).click();
-  await expect(page.getByLabel('Font', { exact: true })).toHaveValue('jetbrains');
+  await expect(page.getByLabel('Font', { exact: true })).toHaveValue('vga');
   await expect(page.getByLabel('Font', { exact: true }).locator('option', { hasText: 'tall' })).toHaveCount(0);
 });
 

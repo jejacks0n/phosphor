@@ -144,8 +144,8 @@ Best match and By shape measure characters in IBM VGA, whichever font you view t
 
 In the **Drawing** section of the left panel, the **Font** dropdown sets the font the art is drawn in, in both views, and the size field beside it sets its size (6 to 64 px); **Manage fonts ▸** opens the Fonts page ([Managing Fonts](#managing-fonts)). A size typed takes effect on **Enter** or leaving the field; **Escape** puts back the one in use. Phosphor has four built-in fonts, and can load fonts of your own ([Managing Fonts](#managing-fonts), [Bitmap Fonts](#bitmap-fonts)):
 
-- **JetBrains Mono** (default): A clean, modern monospaced font.
-- **IBM VGA**: The VGA font of vintage PC screens, with Unscii for the characters it lacks.
+- **IBM VGA** (default): The VGA font of vintage PC screens, with Unscii for the characters it lacks. A browser that already had a font picked keeps it.
+- **JetBrains Mono**: A clean, modern monospaced font.
 - **Unscii**: An 8-bit style font with wide coverage, including Symbols for Legacy Computing.
 - **Unifont**: GNU Unifont, which covers almost every Unicode character in its own plain style.
 
@@ -198,7 +198,7 @@ A bitmap font belongs to the drawing, not to your browser:
 - **Another height**: Switching to a font of another height keeps the columns and changes the lines so the picture keeps its shape: going from 8×16 to 8×8 doubles the lines, and going back halves them. Typed characters and pins keep their places, so a drawing made in 8×16 has them in the top half of the 8×8 grid, and a pinned character keeps its colors as well as its place. Paint, the picture and vector shapes stretch with the lines, so a picture a Columns change cropped or left in a corner stays where it was under your characters. It's one undo step. It isn't possible in a drawing with frames, and near the size limits the columns give way. With nothing drawn yet, a switch is like changing **Columns** with the lock on, so **Columns** still refits the photo afterward.
 - **The converter measures in it**: Best match and By shape compare each cell with the font's characters, so a photo converts into the shapes your font has.
 - **The status bar shows the code**: In the ANSI view, after **Char** and its character, the status bar gives the character's code in decimal: its slot in the drawing's font, or its classic (CP437) byte when there's no bitmap font. A character with no code shows none. On a narrow bar the code gives way, with the FG and BG hex codes, before anything else does.
-- **In a shared room**: For now the font stays on the host's screen: the room sees the drawing's characters, stand-ins and all, in JetBrains Mono. Only the host can change the font ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
+- **In a shared room**: For now the font stays on the host's screen: the room sees the drawing's characters, stand-ins and all, in IBM VGA. Only the host can change the font ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
 ### The Font's Blocks
 
@@ -252,7 +252,7 @@ A character one cell can't hold (a word, a control character) comes in as an emp
 
 ### Fonts in Shared Rooms
 
-While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A room needs a font that's set up, with a slot for each of the eight blocks, since a room can't change them: **Go live** is off while the drawing's font has one missing, with a button to set it up, and in a room you can't switch to a font that isn't (it's greyed out in the Font field, and **Use this font** is off, each saying what's missing). Opening an XBin or a project file whose font isn't set up is refused the same way. Set up its blocks first, outside the room. A bitmap font isn't sent yet either: the room sees the host's drawing in JetBrains Mono, each character as the font has it (one the font lacks as its stand-in, or blank).
+While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees IBM VGA instead. A room needs a font that's set up, with a slot for each of the eight blocks, since a room can't change them: **Go live** is off while the drawing's font has one missing, with a button to set it up, and in a room you can't switch to a font that isn't (it's greyed out in the Font field, and **Use this font** is off, each saying what's missing). Opening an XBin or a project file whose font isn't set up is refused the same way. Set up its blocks first, outside the room. A bitmap font isn't sent yet either: the room sees the host's drawing in IBM VGA, each character as the font has it (one the font lacks as its stand-in, or blank).
 
 ---
 

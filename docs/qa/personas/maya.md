@@ -131,7 +131,7 @@ script. Every section ends with Free time.
 
 ### 6. Let it choose by shape
 - Does: switches Choose characters to By shape, picks the "High-res" preset, then changes the Font (in Drawing) to
-  IBM VGA and back to JetBrains Mono.
+  JetBrains Mono and back to IBM VGA.
 - Expects: edges inside cells come out as quadrants, `▐ ▌` and rising blocks; changing the font changes how the cells
   look, not which characters they hold ("The characters are measured in IBM VGA").
 - Probes: `speed`: drag Pattern light back and forth for two seconds with `qa.frames` and check frames stay in the

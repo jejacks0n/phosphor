@@ -2,7 +2,7 @@ import { encodeBlocks, encodeFont } from '@/lib/BitmapFont.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { fontGrid } from '@/lib/Cells.js';
 import { isUniform, workingScale } from '@/lib/ImageProcessor.js';
-import { DISPLAY_FONTS } from '@/lib/displayFonts.js';
+import { DISPLAY_FONTS, DEFAULT_FONT } from '@/lib/displayFonts.js';
 import PaintLayer, { resizeTransform } from '@/document/PaintLayer.js';
 import { followPicture, parseKey } from '@/document/editCells.js';
 import { isArt } from '@/document/artLayers.js';
@@ -20,7 +20,7 @@ const trioOf = (project) => ({ fontBitmap: project.fontBitmap, fontName: project
 function nameOf(font) {
   if (font) return font.name;
   const { displayFont, userFonts } = useWorkspaceStore();
-  return (userFonts?.find((f) => f.id === displayFont) ?? DISPLAY_FONTS.find((f) => f.id === displayFont) ?? DISPLAY_FONTS[0]).name;
+  return (userFonts?.find((f) => f.id === displayFont) ?? DISPLAY_FONTS.find((f) => f.id === displayFont) ?? DEFAULT_FONT).name;
 }
 
 // A font of another height (from and to, in pixels) for a drawing: the columns stay and the rows change so the picture

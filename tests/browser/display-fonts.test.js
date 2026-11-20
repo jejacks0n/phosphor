@@ -70,3 +70,12 @@ test('the canvas and glyph coverage put the baseline where CSS does, for a font 
   expect(top).toBe(0);
   expect(bottom).toBeCloseTo(2 / 12, 2);
 });
+
+test('a fresh workspace draws in IBM VGA; a browser that already picked a font keeps it', async () => {
+  const { createPinia } = await import('pinia'), { useWorkspaceStore } = await import('@/store/WorkspaceStore');
+  localStorage.clear();
+  expect(useWorkspaceStore(createPinia()).displayFont).toBe('vga');
+  localStorage.setItem('phosphor.displayFont', 'jetbrains');
+  expect(useWorkspaceStore(createPinia()).displayFont).toBe('jetbrains');
+  localStorage.clear();
+});

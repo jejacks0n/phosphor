@@ -16,7 +16,7 @@ import { openFontSetup } from '@/composables/useFontSetup.js';
 
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
 const rawFile = (height, name, fill = 0) => new File([new Uint8Array(256 * height).fill(fill)], name);
-const BUILT_IN = ['JetBrains Mono', 'IBM VGA', 'Unscii', 'Unifont'];
+const BUILT_IN = ['IBM VGA', 'JetBrains Mono', 'Unscii', 'Unifont'];
 const ttfFile = async () => new File([await (await fetch('/tests/fixtures/fonts/tall.ttf')).arrayBuffer()], 'Tall Mono.ttf');
 let app = null, host = null, closes = 0;
 

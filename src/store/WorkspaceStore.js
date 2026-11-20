@@ -1,7 +1,7 @@
 import { markRaw, shallowRef, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { StorageSerializers, useLocalStorage } from '@vueuse/core';
-import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
+import { DISPLAY_FONT, DISPLAY_FONTS, DEFAULT_FONT, DEFAULT_FONT_ID } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
 import { fontId, fontKey } from '@/lib/BitmapFont';
 import { clampZoom, clampViewZoom, PIXEL_ZOOM_START } from '@/lib/zoom';
@@ -59,7 +59,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     pluginTools: useLocalStorage('phosphor.pluginTools', {}), // { ['brush:' or 'shape:' + ref]: { [optionId]: value } }: the options of plugin brushes and shapes (tools/pluginTool.js), kept in the browser
     recentColors: useLocalStorage('phosphor.recentColors', []),
     ansiRenderer: useLocalStorage('phosphor.ansiRenderer', 'canvas'), // the ANSI view's renderer (trial): 'canvas' | 'dom'
-    displayFont: useLocalStorage('phosphor.displayFont', 'jetbrains'), // the font the art is drawn in: an id in displayFonts.js, or a loaded font's
+    displayFont: useLocalStorage('phosphor.displayFont', DEFAULT_FONT_ID), // the font the art is drawn in: an id in displayFonts.js, or a loaded font's
     displayFontSizes: useLocalStorage('phosphor.displayFontSizes', {}), // { font id: px } for the fonts you've resized
     userFonts: null,         // the fonts you've loaded ([{ id, name, lineHeight }], userFonts.js), once read from this browser (App.vue)
     roomFont: null,          // while drawing in someone's room, their font (wire.fontFor), in place of the two above; never kept
@@ -267,7 +267,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       const loaded = state.userFonts?.find((f) => f.id === state.displayFont);
       const font = loaded
         ? { id: loaded.id, name: loaded.name, family: familyOf(loaded.id), size: 16, lineHeight: loaded.lineHeight }
-        : DISPLAY_FONTS.find((f) => f.id === state.displayFont) ?? DISPLAY_FONTS[0];
+        : DISPLAY_FONTS.find((f) => f.id === state.displayFont) ?? DEFAULT_FONT;
       return { ...font, size: state.displayFontSizes[font.id] ?? font.size };
     },
   },

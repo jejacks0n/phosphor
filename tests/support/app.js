@@ -33,6 +33,7 @@ export async function createTestApp() {
   // Asked of this Pinia by name (which makes it the active one again): a test before this one, finishing late while the
   // font loaded, makes its own active (every Pinia action and getter does), and these would be that test's stores.
   const project = useProjectStore(pinia), workspace = useWorkspaceStore(pinia), drawing = useDrawingStore(pinia);
+  workspace.displayFont = 'jetbrains'; // the reference numbers were drawn in it; the app's default is IBM VGA
   workspace.displayFontLoaded = workspace.displayFontSpec;
   project.seed = 'phosphor-tests'; // the default is a random slug: random characters would differ every run
   stopWatching = followParams(project);
