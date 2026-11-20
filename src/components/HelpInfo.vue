@@ -176,7 +176,7 @@ div.help-tooltip {
   position: fixed;
   width: 180px;
   padding: 8px 12px;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--ui-font-family);
   font-size: 11px;
   font-weight: normal;
   font-style: normal;
