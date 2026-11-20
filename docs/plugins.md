@@ -28,8 +28,8 @@ installed."
 
 ## Picking a plugin's theme
 
-Once a plugin with a theme is on, a select appears beside the Dark, Light and System icons at the bottom of the
-settings panel. It reads **Themes…** until you pick one of the plugins' themes from it; while one is in use, none of the
+Once a plugin with a theme is on, a select appears under the language and the Dark, Light and System icons at the
+bottom of the settings panel. It reads **Themes…** until you pick one of the plugins' themes from it; while one is in use, none of the
 icons is checked. Pick an icon to go back to Phosphor's own themes. Your choice is saved in your browser, and a reload
 shows the theme from the first moment, before the app has started.
 
@@ -102,7 +102,7 @@ The color slots: `background`, `background-highlight`, `accent`, `accent-hot`, `
 a theme's.
 
 A key that isn't a slot, or a value that isn't hex, refuses the whole manifest, and the dialog names it. Fields Phosphor
-doesn't know are left out. The file can be 64 KB at most. Every word in it is shown as you wrote it, as text: never as
+doesn't know are left out, except `script`: a manifest with one is refused ("This plugin needs a newer Phosphor."). The file can be 64 KB at most. Every word in it is shown as you wrote it, as text: never as
 markup, and never translated.
 
 ## Trying it as you write

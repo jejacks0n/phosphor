@@ -21,7 +21,7 @@ You can choose a color theme using the theme selector at the bottom of the setti
 - **Light**: Uses light backgrounds.
 - **System**: Matches your computer's theme setting, and changes when it does.
 
-Your theme choice is saved in your browser. Plugins can add themes of their own, picked in a select beside the icons ([Plugins](plugins.md#picking-a-plugins-theme)).
+Your theme choice is saved in your browser. Plugins can add themes of their own, picked in a select under the icons ([Plugins](plugins.md#picking-a-plugins-theme)).
 
 ### Navigation and URLs
 The browser address bar updates to reflect your current workspace tab and, on SOCIAL, its page, so Back and Forward move between them and a reload comes back to the same place:

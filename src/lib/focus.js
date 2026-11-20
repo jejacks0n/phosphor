@@ -8,7 +8,7 @@ export const firstField = (root) => [...root?.querySelectorAll(FIELD) ?? []].fin
 
 export function keepTabIn(event) {
   if (event.key !== 'Tab') return;
-  const controls = [...event.currentTarget.querySelectorAll(FOCUSABLE)];
+  const controls = [...event.currentTarget.querySelectorAll(FOCUSABLE)].filter((control) => control.checkVisibility()); // a hidden one can't take focus
   const at = controls.indexOf(document.activeElement);
   const next = event.shiftKey ? (at <= 0 ? controls.length - 1 : at - 1) : (at === controls.length - 1 ? 0 : at + 1);
   event.preventDefault();

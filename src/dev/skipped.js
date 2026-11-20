@@ -11,4 +11,5 @@ export const SKIPPED = new Set([
   ...Object.keys(renderingActions).filter((name) => !STEPS.includes(name)),
   'commitPending', 'documentNumber', 'keepLedger', 'projectParts', // autosave's (useAutosave.js)
   'buildGhost', 'syncShapeLayers', 'viewMoved', 'showGuidesFor', 'autosavedBy', // watchers' (EditWorkspace, vector.js, EditorViewport, App.vue)
+  'load', 'checkFollowed', // the plugins read on their own (useTheme.js, PluginsDialog), and a followed file looked at every second
 ]);
