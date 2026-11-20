@@ -93,6 +93,14 @@ watch(() => [bitmap.value && !isDrawn.value && chosen.value.id, stored.value], a
   if (chosen.value?.id === id) kept.value = got; // not once another font is chosen
 }, { immediate: true });
 watch(() => chosen.value?.id, () => { picked.value = null; });
+// Set up its blocks (useFontSetup): that font chosen and that block picked, once the font chosen has dropped the pick.
+watch(() => workspace.fontSetup, async (setup) => {
+  if (!setup) return;
+  workspace.fontSetup = null;
+  chosenId.value = setup.id;
+  await nextTick();
+  picked.value = setup.block;
+}, { immediate: true });
 
 const inRoom = computed(() => isDrawn.value && project.inRoom); // the drawing's blocks are the room's
 const chars = computed(() => slotChars(font.value));
@@ -226,7 +234,7 @@ const exportPalettes = () => {
             @pick="picked = $event"
         />
         <div class="note">{{ t('palette.fonts.sheetNote') }}</div>
-        <div class="grid sheet" :style="styleOf(chosen)" @mouseleave="hovered = null">
+        <div class="grid sheet" :class="{ picking: picked && !inRoom }" :style="styleOf(chosen)" @mouseleave="hovered = null">
           <span
               v-for="(c, i) in chars"
               :key="i"
@@ -294,6 +302,11 @@ div.grid.sheet {
   background: var(--surface-0);
   line-height: 1;
   align-content: start;
+}
+
+div.grid.sheet.picking { /* a block is picked: a click here sets its slot */
+  outline: 1px dashed var(--accent);
+  outline-offset: 2px;
 }
 
 span.cell {

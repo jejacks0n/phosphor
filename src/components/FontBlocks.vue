@@ -24,8 +24,10 @@ const long = (i) => t(`palette.fonts.blockLong.${BLOCKS[i].key}`);
 const note = computed(() => {
   const missing = blocks.value.flatMap((s, i) => (s === null ? [i] : []));
   const moved = blocks.value.flatMap((s, i) => (s !== null && s !== CP437_BLOCKS[i] ? [i] : []));
-  const lines = [];
-  if (missing.includes(1)) lines.push(t('palette.fonts.noLower'));
+  const lines = [], pick = BLOCKS.findIndex((b) => b.key === props.picked);
+  // a missing block picked: what to do with it (in place of "Pick Lower, then click a slot")
+  if (missing.includes(pick)) lines.push(t('palette.fonts.pickedMissing', { name: t(`palette.fonts.blockName.${props.picked}`), long: long(pick).toLowerCase() }));
+  if (missing.includes(1) && pick !== 1) lines.push(t('palette.fonts.noLower'));
   const others = missing.filter((i) => i !== 1);
   if (others.length) lines.push(t('palette.fonts.noBlocks', { names: others.map((i) => long(i).toLowerCase()).join(', ') }));
   for (const i of moved) {
@@ -101,8 +103,9 @@ button.tile:disabled {
   cursor: default;
 }
 
-button.tile.missing {
+button.tile.missing { /* always, so what the font lacks shows at a glance */
   border-style: dashed;
+  border-color: var(--danger);
 }
 
 button.tile.picked {

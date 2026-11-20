@@ -12,6 +12,7 @@ import { fontId, blocksOf, fontKey } from '@/lib/BitmapFont.js';
 import { storedBitmapFont } from '@/lib/userFonts';
 import { cp437Font, lowerAt240, noLowerHalf } from '../support/blockFonts.js';
 import { addFont, addBitmapFont, loadFonts, removeFont } from '@/lib/userFonts';
+import { openFontSetup } from '@/composables/useFontSetup.js';
 
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
 const rawFile = (height, name, fill = 0) => new File([new Uint8Array(256 * height).fill(fill)], name);
@@ -29,7 +30,7 @@ afterEach(async () => {
 
 // The layer on its Fonts page over a blank canvas: the drawing in font A unless drawing is false, with B (an 8×16
 // bitmap font) and a TrueType font kept in this browser.
-async function mount({ drawing = true, canvas = true, font = null } = {}) {
+async function mount({ drawing = true, canvas = true, font = null, before = null } = {}) {
   const { project, workspace } = await createTestApp();
   const pinia = getActivePinia(); // before the awaits: a late await of an earlier test can make its own Pinia active again
   if (canvas) await project.setBlankCanvas({ cols: 10, rows: 10 });
@@ -37,6 +38,7 @@ async function mount({ drawing = true, canvas = true, font = null } = {}) {
   const b = await addBitmapFont(rawFile(16, 'B.F16', 3)), tt = await addFont(await ttfFile());
   workspace.userFonts = await loadFonts();
   workspace.paletteLayerPage = 'fonts';
+  before?.({ project, workspace });
   host = document.body.appendChild(document.createElement('div'));
   closes = 0;
   app = createApp({ render: () => h(CharPaletteLayer, { onClose: () => { closes += 1; } }) }).use(pinia).use(i18n);
@@ -436,4 +438,37 @@ test('the rows and sheet draw in the font\u2019s face again once its blocks move
   await press(tile('Lower'));
   await press(slotCell(254));
   await vi.waitFor(() => expect(host.querySelector('.sheet').style.fontFamily).toContain(fontKey(project.drawingFont)));
+});
+
+test('Set up its blocks opens the page on the font with Lower picked, and a click on a slot gives it one', async () => {
+  const { project, workspace } = await mount({ font: noLowerHalf, before: ({ project }) => openFontSetup(project.drawingFont) });
+  await nextTick();
+  expect(workspace.paletteLayerOpen).toBe(true);
+  expect(title()).toBe('T');
+  expect(tile('Lower').getAttribute('aria-pressed')).toBe('true');
+  expect(workspace.fontSetup).toBe(null); // taken
+  expect(host.querySelector('.sheet').classList.contains('picking')).toBe(true); // the place to click
+  expect(text()).toContain('Lower is picked: click the slot in the sheet that should draw the lower half.');
+  expect(text()).not.toContain('Pick Lower, then click a slot');
+  await press(slotCell(254));
+  expect(blocksOf(project.drawingFont)[1]).toBe(254);
+});
+
+test('Set up its blocks with another font chosen on the page chooses the drawing\u2019s, Lower still picked', async () => {
+  const { project } = await mount({ font: noLowerHalf });
+  await press(row('B'));
+  expect(title()).toBe('B');
+  openFontSetup(project.drawingFont);
+  await expect.poll(() => tile('Lower').getAttribute('aria-pressed')).toBe('true');
+  expect(title()).toBe('T');
+  for (let i = 0; i < 3; i++) await nextTick(); // and the font chosen doesn't drop it after
+  expect(tile('Lower').getAttribute('aria-pressed')).toBe('true');
+});
+
+test('nothing picked, the sheet isn\u2019t marked; a block that has its slot picked, the notes are as they were', async () => {
+  await mount({ font: noLowerHalf });
+  expect(host.querySelector('.sheet').classList.contains('picking')).toBe(false);
+  await press(tile('Full'));
+  expect(host.querySelector('.sheet').classList.contains('picking')).toBe(true);
+  expect(text()).not.toContain('is picked: click the slot'); // Full has its slot: the notes as they were
 });
