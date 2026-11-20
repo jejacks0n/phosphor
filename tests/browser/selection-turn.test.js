@@ -3,12 +3,14 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
+import { cp437Font, font8 } from '../support/blockFonts.js';
 
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
 const EDIT = ['edit'], BOTH = ['base', 'edit'];
 
-async function scene() {
+async function scene(font = null) {
   const { project, workspace } = await createTestApp();
+  if (font) await project.setDrawingFont(font); // before the picture, so the grid is made at its own shape
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
   const type = (col, row, lines) => {
     lines.forEach((line, r) => [...line].forEach((ch, c) => project.typeAt(col + c, row + r, ch, ATTRS)));
@@ -189,4 +191,55 @@ test('a pasted block turned and moved on gives back what it covered; Delete on a
   project.deleteSelection(rect, EDIT);
   await settle(project);
   expect(read(2, 2, 3, 2)).not.toContain('A');
+});
+
+// Phase 3: a bitmap font's half-cell pixel is 8 wide and H / 2 tall (pixelAspect H / 16); Rotate turns by that shape.
+test('in an 8×8 font Rotate turns a 2 x 1-cell block into 1 x 2 cells, the paint with it; one undo step', async () => {
+  const { project, paint } = await scene(font8);
+  expect(project.pixelAspect).toBe(0.5);
+  for (const y of [8, 9]) {
+    project.paintStroke([{ x: 4, y, alpha: 1 }], '#ff0000');
+    project.paintStroke([{ x: 5, y, alpha: 1 }], '#0000ff');
+  }
+  project.commitEdit();
+  expect(project.turnSelection({ c0: 4, r0: 4, c1: 5, r1: 4 }, EDIT, 'cw')).toEqual({ c0: 4, r0: 4, c1: 4, r1: 5 });
+  // Paint is drawn out smoothly (a pixel twice as tall as its source), so the two middle pixels blend a little.
+  const channel = (y, at) => parseInt(paint(4, y).slice(at, at + 2), 16);
+  expect([paint(4, 8), paint(4, 11)]).toEqual(['#ff0000', '#0000ff']);
+  expect([channel(9, 1) > 0xc0, channel(9, 5) < 0x40, channel(10, 1) < 0x40, channel(10, 5) > 0xc0]).toEqual([true, true, true, true]);
+  expect([paint(5, 8), paint(5, 11)]).toEqual([null, null]);
+  project.undo(); await settle(project);
+  expect([paint(4, 8), paint(5, 9), paint(4, 10), paint(4, 11)]).toEqual(['#ff0000', '#0000ff', null, null]);
+});
+
+test('R3: in an 8×8 font a frozen cell in a rotated block goes with the turn; its paint turns as any paint', async () => {
+  const { project, paint } = await scene(font8);
+  for (const y of [8, 9]) {
+    project.paintStroke([{ x: 4, y, alpha: 1 }], '#ff0000');
+    project.paintStroke([{ x: 5, y, alpha: 1 }], '#0000ff');
+  }
+  project.commitEdit();
+  project.setEditCells(new Map([...project.editCells, ['4,4', Object.freeze({ char: '%', fg: '#ff0000', bg: '#0000ff', frozen: true })]]), ['4,4']);
+  project.commitEdit();
+  project.render();
+  await settle(project);
+  expect(project.hasCharacters({ c0: 4, r0: 4, c1: 5, r1: 4 }, EDIT)).toBe(false);
+  expect(project.turnSelection({ c0: 4, r0: 4, c1: 5, r1: 4 }, EDIT, 'cw')).toEqual({ c0: 4, r0: 4, c1: 4, r1: 5 });
+  expect([...project.editCells.values()].some((entry) => entry.frozen)).toBe(false);
+  expect([paint(4, 8), paint(4, 11)]).toEqual(['#ff0000', '#0000ff']);
+});
+
+test('with an 8×16 font Rotate turns a block exactly as with none', async () => {
+  const turned = async (font) => {
+    const { project, paint } = await scene(font);
+    project.paintStroke([{ x: 2, y: 4, alpha: 1 }], '#ff0000');
+    project.paintStroke([{ x: 3, y: 4, alpha: 1 }], '#00ff00');
+    project.paintStroke([{ x: 2, y: 5, alpha: 1 }], '#0000ff');
+    project.commitEdit();
+    const rect = project.turnSelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT, 'cw');
+    return { rect, pixels: [paint(2, 4), paint(3, 4), paint(2, 5), paint(3, 5)], cells: [...project.editCells.keys()] };
+  };
+  const none = await turned(null), vga = await turned(cp437Font);
+  expect(vga).toEqual(none);
+  expect(none.pixels).toEqual(['#0000ff', '#ff0000', null, '#00ff00']);
 });

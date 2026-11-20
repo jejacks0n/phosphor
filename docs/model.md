@@ -48,7 +48,7 @@ room change's hash as any field is.
 - Checked by: `tests/unit/edit-cells.test.js › R1: …`; `tests/unit/social-wire.test.js` (the mark through a room's change,
   as `cleanEntry` takes it); `tests/browser/bucket.test.js › R1: …`; `tests/browser/block-chars.test.js › R1: shiftCells …`;
   `tests/browser/selection-recolor.test.js › … Set FG over a frozen cell …`; `tests/browser/merge.test.js › R1: Keep crisp
-  cells …`; `tests/browser/selection-turn.test.js › R3: a frozen cell in a rotated block …`;
+  cells …`; `tests/browser/selection-turn.test.js › R3: a frozen cell in a rotated block …` (and in an 8×8 font);
   `tests/unit/edit-cells.test.js › R1: a font of another height …`; `tests/browser/font-height.test.js › R1: …`.
 
 ### R2. Paint over a character tints its ink and never picks another character. With no ink to tint, the paint shows as paint.

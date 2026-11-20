@@ -243,7 +243,7 @@ export const selectionActions = {
     const lifted = sameRun ? (run.paste ? null : run.from) : rect;
     const liftedLayers = sameRun ? run.layers : [...ids];
     const under = !lifted ? run.under : null, start = !lifted ? run.start : null, to = !lifted ? run.to : null;
-    const block = turnBlock(sameRun && run.block ? run.block : this.copySelection(lifted, liftedLayers, { shapes: false }), op);
+    const block = turnBlock(sameRun && run.block ? run.block : this.copySelection(lifted, liftedLayers, { shapes: false }), op, this.pixelAspect);
     const col = Math.max(0, Math.min(rect.c0, this.cols - block.w));
     const row = Math.max(0, Math.min(rect.r0, charRowsOf(this.rows) - block.h));
     const place = (dc, dr) => {
@@ -563,8 +563,8 @@ function landOnBottom(project, block, col, row) {
 // A copied block (copySelection) flipped (turnSelection's op 'h' or 'v'): every cell's entry and pin
 // from the cell that lands there, their characters turned, and the paint and base pictures with them.
 // Rotated ('cw'): rotateBlock.
-function turnBlock(block, op) {
-  if (op === 'cw') return rotateBlock(block);
+function turnBlock(block, op, aspect = 1) {
+  if (op === 'cw') return rotateBlock(block, aspect);
   const { w, h } = block;
   const out = { w, h, px: block.px };
   const source = (x, y) => (op === 'h' ? [w - 1 - x, y] : [x, h - 1 - y]);
@@ -609,23 +609,37 @@ function turnCanvas(canvas, op) {
   return out;
 }
 
-// A block rotated 90° clockwise by its picture's shape: W x P grid pixels (a cell is one wide and two
-// tall; P is 2h, or one less for a block rotated from an odd width) turn into P x W, so the block is P
-// cells across and W pixel rows down. When W is odd its last row's bottom half isn't the block's
-// (px marks it; pasteAt fills it from what's under). Only pixels turn (no characters: hasCharacters);
-// a Half-block's ▄ (an edit cell or a pin) goes to each cell showing a pixel from one of its cells,
-// an edit cell's only where that cell has paint (it's there to show it).
-function rotateBlock(block) {
+// A block rotated 90° clockwise by its picture's shape: W x P grid pixels turn into P x W on screen, a grid
+// pixel being 8 wide and 8 × aspect tall (pixelAspect: 1 for no bitmap font or an 8×16 one, 1/2 for 8×8). The turned block is round(P × aspect) columns and round(W / aspect) pixel rows
+// down, so it is P cells across at aspect 1. When its pixel rows are odd, its last row's bottom half isn't the block's
+// (px marks it; pasteAt fills it from what's under). Turned grid pixel (X, Y) comes from source pixel
+// (floor((Y + .5) aspect), floor(P - (X + .5) / aspect)), which at aspect 1 is (Y, P - 1 - X). Only pixels turn (no
+// characters: hasCharacters); a Half-block's ▄ (an edit cell or a pin) goes to each cell showing a pixel from one of its
+// cells, an edit cell's only where that cell has paint (it's there to show it).
+function rotateBlock(block, aspect = 1) {
   const W = block.w, P = block.px ?? 2 * block.h;
-  const out = { w: P, h: Math.ceil(W / 2), px: W };
-  // Turned pixel (X, Y) is source pixel (Y, P - 1 - X): a turned cell's pixels come from one source column.
+  const px = Math.max(1, Math.round(W / aspect));
+  const out = { w: Math.max(1, Math.round(P * aspect)), h: Math.ceil(px / 2), px };
+  const sourceX = (Y) => Math.min(W - 1, Math.floor((Y + 0.5) * aspect));
+  const sourceY = (X) => Math.max(0, Math.min(P - 1, Math.floor(P - (X + 0.5) / aspect)));
   const from = (list) => Array.from({ length: out.w * out.h }, (_, i) => {
-    const col = i % out.w, row = Math.floor(i / out.w), y = P - 1 - col;
-    return [2 * row, 2 * row + 1].filter((x) => x < W).map((x) => list[Math.floor(y / 2) * W + x]).find(Boolean) ?? null;
+    const col = i % out.w, row = Math.floor(i / out.w), y = sourceY(col);
+    return [2 * row, 2 * row + 1].filter((Y) => Y < px).map((Y) => list[Math.floor(y / 2) * W + sourceX(Y)]).find(Boolean) ?? null;
   });
+  // The turned picture, drawn out to the turned block's pixels when a grid pixel isn't square (aspect 1 is exact already).
+  const turnedCanvas = (canvas, smooth) => {
+    const turned = turnCanvas(canvas, 'cw');
+    if (aspect === 1) return turned;
+    const k = canvas.width / W, fit = document.createElement('canvas');
+    [fit.width, fit.height] = [out.w * k, px * k];
+    const ctx = ctx2d(fit);
+    ctx.imageSmoothingEnabled = smooth;
+    ctx.drawImage(turned, 0, 0, fit.width, fit.height);
+    return fit;
+  };
   const rotateLayer = ({ cells, paint }) => {
     const layer = {};
-    if (paint) layer.paint = turnCanvas(paint, 'cw');
+    if (paint) layer.paint = turnedCanvas(paint, true);
     if (cells) {
       const shows = layer.paint && paintedCells(layer.paint, out.w, out.h);
       layer.cells = from(cells).map((entry, i) => (entry && shows?.[i] && isPaintBlock(entry) ? entry : null)); // a frozen cell's pin belongs to the paint it stood over, not the turned paint
@@ -636,18 +650,19 @@ function rotateBlock(block) {
   if (block.parts) out.parts = block.parts.map((part) => ({ id: part.id, ...rotateLayer(part) }));
   if (block.base) {
     const { pixels, scale, colors, pins, indexes } = block.base;
-    out.base = { pixels: turnCanvas(pixels, 'cw'), scale, colors: turnCanvas(colors, 'cw'), pins: from(pins) };
-    if (indexes) out.base.indexes = turnedIndexes(indexes, out, W, P);
+    out.base = { pixels: turnedCanvas(pixels, false), scale, colors: turnedCanvas(colors, false), pins: from(pins) };
+    if (indexes) out.base.indexes = turnedIndexes(indexes, out, W, P, sourceX, sourceY);
   }
   return out;
 }
 
-// A base's indexes (16, 231) turned with its pixels (rotateBlock): a turned cell's top pixel is source pixel (2 row,
-// P - 1 - col) and its bottom one (2 row + 1, the same), each the top (bgIndex) or bottom (fgIndex) half of its source cell.
-function turnedIndexes(indexes, { w, h }, W, P) {
+// A base's indexes (16, 231) turned with its pixels (rotateBlock): a turned cell's top pixel is source pixel
+// (sourceX(2 row), sourceY(col)) and its bottom one (sourceX(2 row + 1), the same), each the top (bgIndex) or bottom
+// (fgIndex) half of its source cell.
+function turnedIndexes(indexes, { w, h, px }, W, P, sourceX, sourceY) {
   return Array.from({ length: w * h }, (_, i) => {
-    const col = i % w, row = Math.floor(i / w), y = P - 1 - col, half = y % 2 ? 'fgIndex' : 'bgIndex';
-    const at = (x) => (x < W ? indexes[Math.floor(y / 2) * W + x]?.[half] : undefined);
+    const col = i % w, row = Math.floor(i / w), y = sourceY(col), half = y % 2 ? 'fgIndex' : 'bgIndex';
+    const at = (Y) => (Y < px ? indexes[Math.floor(y / 2) * W + sourceX(Y)]?.[half] : undefined);
     const bgIndex = at(2 * row), fgIndex = at(2 * row + 1);
     return bgIndex === undefined && fgIndex === undefined ? undefined
       : { ...(fgIndex !== undefined && { fgIndex }), ...(bgIndex !== undefined && { bgIndex }) };
