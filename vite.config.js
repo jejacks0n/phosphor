@@ -133,6 +133,18 @@ export default defineConfig(({ mode }) => {
           this.emitFile({ type: 'asset', fileName: 'licenses.json', source: JSON.stringify(notices) });
         },
       },
+      {
+        // The marketplace's /plugins.json, which the deploy writes: the development server answers with the test fixture's
+        // list (its plugins' files come from raw GitHub as they would). Nothing of it goes into a build.
+        name: 'phosphor-plugin-list',
+        apply: 'serve',
+        configureServer(server) {
+          server.middlewares.use('/plugins.json', (req, res) => {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(readFileSync(new URL('./tests/fixtures/plugin-list.json', import.meta.url)));
+          });
+        },
+      },
     ],
     define: {
       __BUILD__: JSON.stringify(build),

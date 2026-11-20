@@ -69,7 +69,7 @@ test('without a clipboard API (http over a LAN) Copy says it failed, and nothing
 });
 
 test('the skip set leaves out queries and renders, but keeps the grid-size steps a person takes', () => {
-  for (const name of ['readCell', 'render', 'composite', 'commitPending']) expect(SKIPPED.has(name), name).toBe(true);
+  for (const name of ['readCell', 'render', 'composite', 'commitPending', 'load', 'loadMarket']) expect(SKIPPED.has(name), name).toBe(true);
   for (const name of ['updateCols', 'updateRows', 'setAspectLock', 'undo', 'paintStroke']) expect(SKIPPED.has(name), name).toBe(false);
 });
 

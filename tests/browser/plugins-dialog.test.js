@@ -1,10 +1,13 @@
-// The Plugins dialog: what's installed, installing from a manifest file after asking, the on and off switch, Remove
-// after asking, and what it says when the browser keeps nothing or the visit started with plugins off.
+// The Plugins dialog: its two tabs, and on Installed what's installed, installing from a manifest file after asking, the
+// on and off switch, Remove after asking, where a plugin came from, Update and No longer listed, and what it says when
+// the browser keeps nothing or the visit started with plugins off; full window on a narrow screen. The marketplace's
+// list is tests/fixtures/plugin-list.json, through a stubbed fetch.
 import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { createApp } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import midnight from '../../plugins/midnight/phosphor-plugin.json?raw';
+import rain from '../fixtures/plugins/rain/phosphor-plugin.json?raw';
 import { i18n } from '@/i18n';
 import PluginsDialog from '@/components/PluginsDialog.vue';
 import { usePluginStore } from '@/store/PluginStore';
@@ -12,12 +15,15 @@ import { solverRef } from '@/plugins/solvers';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { ownHangMark } from '../support/ownHangMark.js';
 import { zipOf } from '../support/zipOf.js';
+import { serveMarket, listWith, COMMIT, RAW } from '../support/servedMarket.js';
+import { sha256 } from '@/plugins/hash';
 import '@/assets/global.css';
 
-let app, host, loads = [];
+let app, host, loads = [], served, fetched;
 beforeEach(async () => {
   await ownDatabase('phosphor-plugins', 'plugins-dialog')();
   ownHangMark('plugins-dialog');
+  ({ served, fetched } = serveMarket());
 });
 afterEach(async () => {
   await Promise.all(loads);
@@ -30,18 +36,29 @@ afterEach(async () => {
   localStorage.removeItem('phosphor.theme');
 });
 
-const mount = async (before = () => {}) => {
-  const pinia = createPinia();
+// The dialog, on Installed unless `tab` is null (the dialog then picks), over a new Pinia or the one given (opened again
+// in the same visit). `before` may install first.
+const mount = async (before = () => {}, { tab = 'installed', pinia = createPinia() } = {}) => {
   setActivePinia(pinia);
-  const store = usePluginStore(), load = store.load;
-  store.load = (...args) => { const loading = load(...args); loads.push(loading); return loading; };
-  before(store);
+  const store = usePluginStore();
+  for (const name of ['load', 'loadMarket']) {
+    if (store[name].wrapped) continue;
+    const real = store[name];
+    store[name] = Object.assign((...args) => { const loading = real(...args); loads.push(loading); return loading; }, { wrapped: true });
+  }
+  await before(store);
+  if (tab) store.dialogTab = tab;
   host = document.createElement('div');
   document.body.append(host);
   app = createApp(PluginsDialog).use(pinia).use(i18n);
   app.mount(host);
-  await Promise.all(loads); // the dialog's own load, done before anything's installed
+  await Promise.all(loads); // the dialog's own loads, done before anything's installed
   return store;
+};
+const unmount = () => {
+  app.unmount();
+  host.remove();
+  app = host = null;
 };
 const changed = (change) => {
   const raw = JSON.parse(midnight);
@@ -263,8 +280,7 @@ test('a browser that will not keep plugins asks nothing about a dropped file, an
 test('Tab goes from the last row on to Install from a file…, past the hidden file input', async () => {
   await mount();
   await installed();
-  const link = document.querySelector('dialog li a');
-  link.focus();
+  page.getByRole('button', { name: 'Remove Midnight' }).element().focus(); // the row's last control
   await userEvent.tab();
   expect(document.activeElement.textContent).toBe('Install from a file…');
 });
@@ -380,4 +396,148 @@ test('a row waiting on code asks before running it', async () => {
   expect(allow).toHaveBeenCalledWith('phosphor.midnight');
   await expect.element(page.getByText('Midnight now runs code. Allow?')).not.toBeInTheDocument();
   await vi.waitFor(() => expect(document.activeElement).toBe(page.getByRole('switch', { name: 'Midnight' }).element()));
+});
+
+// The tabs.
+const tab = (name) => page.getByRole('tab', { name: new RegExp(`^${name}`) });
+const selected = () => document.querySelector('dialog [role=tab][aria-selected=true]').textContent.trim();
+
+test('Marketplace and Installed are tabs: arrow keys move between them, and Installed shows its count', async () => {
+  await mount(async (store) => { await store.install(JSON.parse(midnight)); });
+  const tabs = [...document.querySelectorAll('dialog [role=tablist] [role=tab]')];
+  expect(tabs.map((one) => one.textContent.replace(/\s+/g, ' ').trim())).toEqual(['Marketplace', 'Installed 1']);
+  const panel = page.getByRole('tabpanel').element();
+  expect(panel.getAttribute('aria-labelledby')).toBe(tabs[1].id);
+  expect(tabs[1].getAttribute('aria-controls')).toBe(panel.id);
+  expect(tabs.map((one) => one.tabIndex)).toEqual([-1, 0]);
+  expect(panel.querySelector('li').textContent).toContain('Midnight');
+
+  tabs[1].focus();
+  await userEvent.keyboard('{ArrowRight}');
+  await expect.element(tab('Marketplace')).toHaveAttribute('aria-selected', 'true');
+  expect(document.activeElement).toBe(tab('Marketplace').element());
+  expect(page.getByRole('tabpanel').element().textContent).toContain('Anyone\'s plugins');
+  await userEvent.keyboard('{ArrowLeft}');
+  await expect.element(tab('Installed')).toHaveAttribute('aria-selected', 'true');
+  await tab('Marketplace').click();
+  await expect.element(tab('Marketplace')).toHaveAttribute('aria-selected', 'true');
+});
+
+test('it opens on Marketplace with nothing installed and on Installed with something, then on the tab last used this visit; it loads the list once', async () => {
+  const pinia = createPinia();
+  let store = await mount(() => {}, { tab: null, pinia });
+  expect(selected()).toBe('Marketplace');
+  await store.install(JSON.parse(midnight)); // installing doesn't move it
+  await vi.waitFor(() => expect(tab('Installed').element().textContent).toMatch(/Installed\s*1/));
+  expect(selected()).toBe('Marketplace');
+  await tab('Installed').click();
+  unmount();
+  await mount(() => {}, { tab: null, pinia });
+  expect(selected()).toMatch(/^Installed/);
+  expect(fetched.mock.calls.filter(([url]) => url === '/plugins.json')).toHaveLength(1);
+
+  unmount();
+  store = await mount(() => {}, { tab: null }); // another visit, the plugin kept
+  expect(store.plugins).toHaveLength(1);
+  expect(selected()).toMatch(/^Installed/);
+});
+
+test('opening the dialog calls loadMarket once', async () => {
+  let calls = 0;
+  await mount((store) => {
+    const real = store.loadMarket;
+    store.loadMarket = (...args) => { calls++; return real(...args); };
+  });
+  expect(calls).toBe(1);
+});
+
+// Installed: where a marketplace plugin came from, Update and No longer listed.
+const listing = (repo, path) => ({ repo, path, commit: COMMIT, official: repo === 'jejacks0n/phosphor' });
+const row = (name) => [...document.querySelectorAll('dialog li')].find((one) => one.querySelector('.name').textContent === name);
+const withListed = async (store) => {
+  await store.install(JSON.parse(midnight), { listing: listing('jejacks0n/phosphor', 'plugins/midnight') });
+  await store.install(JSON.parse(rain), { listing: listing('kim/phosphor-rain', '') });
+  await store.install(JSON.parse(changed((m) => { m.id = 'jane.dusk'; m.name = 'Dusk'; m.author = 'Jane'; })));
+};
+
+test('an Installed row says Official or From the marketplace, Update when the list has a higher version of the same listing, and No longer listed', async () => {
+  served['/plugins.json'] = listWith((plugins) => {
+    plugins.find(({ manifest }) => manifest.id === 'phosphor.midnight').manifest.version = '1.1.0';
+    return plugins.filter(({ manifest }) => manifest.id !== 'kim.rain');
+  });
+  const store = await mount(withListed);
+  await vi.waitFor(() => expect(store.market.status).toBe('ready'));
+  expect(row('Midnight').querySelector('.badge').textContent).toBe('Official');
+  expect(row('Midnight').textContent).not.toContain('From the marketplace');
+  expect(row('Rain').textContent).toContain('From the marketplace');
+  expect(row('Dusk').textContent).not.toContain('From the marketplace');
+  await expect.element(page.getByRole('button', { name: 'Update Midnight' })).toBeVisible();
+  expect(row('Rain').querySelector('button.update')).toBe(null);
+  expect(row('Rain').textContent).toContain('No longer listed');
+  expect(row('Midnight').textContent).not.toContain('No longer listed');
+  expect(row('Dusk').textContent).not.toContain('No longer listed');
+
+  // the list's 1.1.0, served at its commit with its hash
+  const newer = changed((m) => { m.version = '1.1.0'; }), hash = await sha256(newer);
+  served[`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/midnight/phosphor-plugin.json`] = newer;
+  served['/plugins.json'] = listWith((plugins) => {
+    const entry = plugins.find(({ manifest }) => manifest.id === 'phosphor.midnight');
+    entry.manifest.version = '1.1.0';
+    entry.manifestHash = hash;
+  });
+  await store.loadMarket({ again: true });
+  await page.getByRole('button', { name: 'Update Midnight' }).click();
+  await vi.waitFor(() => expect(heading()).toBe('Replace Midnight 1.0.0 with 1.1.0?'));
+  expect(dialogText()).toContain('Official');
+  await page.getByRole('button', { name: /^Replace/ }).click();
+  await vi.waitFor(() => expect(store.plugins.find(({ id }) => id === 'phosphor.midnight').manifest.version).toBe('1.1.0'));
+  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  expect(selected()).toMatch(/^Installed/);
+  expect(page.getByRole('button', { name: 'Update Midnight' }).query()).toBe(null);
+});
+
+test('with no list, Installed works and shows neither Update nor No longer listed', async () => {
+  delete served['/plugins.json'];
+  const store = await mount(withListed);
+  await vi.waitFor(() => expect(store.market.status).toBe('failed'));
+  expect(dialogText()).not.toContain('No longer listed');
+  expect(document.querySelector('dialog button.update')).toBe(null);
+  const toggle = page.getByRole('switch', { name: 'Rain' });
+  await toggle.click();
+  await expect.element(toggle).toHaveAttribute('aria-checked', 'false');
+});
+
+// The width: 860px above 700px wide on both tabs; the whole window at 700 and below, with a row's buttons under its text.
+const sized = async (width, height) => {
+  await page.viewport(width, height);
+  await vi.waitFor(() => expect(window.innerWidth).toBe(width));
+};
+
+test('860px wide on both tabs on a wide window; the whole window at 700px, a row\'s buttons under its text', async () => {
+  try {
+    await sized(1200, 800);
+    await mount(async (store) => { await store.install(JSON.parse(midnight)); });
+    const dialog = () => document.querySelector('dialog');
+    expect(dialog().getBoundingClientRect().width).toBe(860);
+    const act = () => row('Midnight').querySelector('div.act').getBoundingClientRect();
+    const text = () => row('Midnight').querySelector('div.text').getBoundingClientRect();
+    expect(act().left).toBeGreaterThanOrEqual(text().right); // beside it
+    await tab('Marketplace').click();
+    expect(dialog().getBoundingClientRect().width).toBe(860);
+    await tab('Installed').click();
+
+    await sized(700, 800);
+    await vi.waitFor(() => expect(dialog().getBoundingClientRect().toJSON()).toMatchObject({ x: 0, y: 0, width: 700, height: 800 }));
+    expect(getComputedStyle(dialog()).borderTopLeftRadius).toBe('0px');
+    expect(act().top).toBeGreaterThanOrEqual(text().bottom);
+    const close = dialog().querySelector('button.close').getBoundingClientRect();
+    expect(close.top).toBeGreaterThanOrEqual(0);
+    expect(close.right).toBeLessThanOrEqual(700);
+
+    await sized(701, 800);
+    await vi.waitFor(() => expect(dialog().getBoundingClientRect().width).toBe(661)); // 20px clear of each side
+    expect(act().left).toBeGreaterThanOrEqual(text().right);
+  } finally {
+    await sized(414, 896);
+  }
 });
