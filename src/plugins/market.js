@@ -13,7 +13,7 @@ const onDesktop = () => import.meta.env.VITE_DESKTOP === '1';
 // A body of at most `most` bytes as text (a BOM dropped), or an Error. The desktop main process has its own copy.
 async function webText(url, most) {
   const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-  if (!response.ok) throw new Error(`status ${response.status}`);
+  if (!response.ok) throw Object.assign(new Error(`status ${response.status}`), { status: response.status });
   if (!response.body) return '';
   const reader = response.body.getReader(), decoder = new TextDecoder();
   let size = 0, text = '';
@@ -34,16 +34,19 @@ export async function loadList() {
   return readList(onDesktop() ? await desktop.pluginList() : await webText('/plugins.json', MOST_LIST_BYTES));
 }
 
-// A listed file's text when its hash is the listed one. Not reached, a 404 or over the cap: listUnavailable.
+// A listed file's text when its hash is the listed one. A 404 or over the cap (the repository deleted, made private or
+// changed since the list was made), or another hash: changedSinceListed. Not reached, or any other answer:
+// listUnavailable. The desktop main process says which as { text } or { failed } (desktop/pluginList.js's fetchFile).
 async function listedFile(url, most, hash) {
-  let text;
+  let got;
   try {
-    text = onDesktop() ? await desktop.pluginFile(url, most) : await webText(url, most);
-  } catch {
-    throw new ManifestError('listUnavailable');
+    got = onDesktop() ? await desktop.pluginFile(url, most) : { text: await webText(url, most) };
+  } catch (error) {
+    got = { failed: error.status === 404 || error.message === 'tooBig' ? 'changed' : 'unreachable' };
   }
-  if (typeof text !== 'string' || (await sha256(text)) !== hash) throw new ManifestError('changedSinceListed');
-  return text;
+  if (got?.failed === 'unreachable') throw new ManifestError('listUnavailable');
+  if (typeof got?.text !== 'string' || (await sha256(got.text)) !== hash) throw new ManifestError('changedSinceListed');
+  return got.text;
 }
 
 // An entry's manifest and script (null for a plugin with none) as served at its commit, or a ManifestError.
