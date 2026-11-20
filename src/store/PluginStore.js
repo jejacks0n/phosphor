@@ -10,7 +10,7 @@ import { defineStore } from 'pinia';
 import { t } from '@/i18n';
 import { readManifest, ManifestError } from '@/plugins/manifest';
 import { themeRef, pluginOfTheme, pluginsOff } from '@/plugins/themes';
-import { solverFor, pluginOfSolver, allSolvers, registerSolvers, unregisterSolvers, onSolverFailure, registeredHash } from '@/plugins/solvers';
+import { solverFor, pluginOfSolver, allSolvers, registerSolvers, unregisterSolvers, onSolverFailure, onShaderOff, registeredHash } from '@/plugins/solvers';
 import { readPackage, folderStamp } from '@/plugins/package';
 import { sha256, importScript, readSolvers } from '@/plugins/script';
 import { beginRun, endRun, hungLastTime } from '@/plugins/hangMark';
@@ -85,12 +85,19 @@ function keepTimer(store) {
 let stopListening = null;
 function listen(store) {
   stopListening?.();
-  stopListening = onSolverFailure((ref, message) => {
-    const found = solverFor(ref);
-    const pluginId = pluginOfSolver(ref);
-    store.problems[pluginId] = t('plugins.errors.solverFailed', { name: found?.def.name ?? ref, message });
-    store.solverStamp++;
-  });
+  const stops = [
+    onSolverFailure((ref, message) => {
+      const found = solverFor(ref);
+      const pluginId = pluginOfSolver(ref);
+      store.problems[pluginId] = t('plugins.errors.solverFailed', { name: found?.def.name ?? ref, message });
+      store.solverStamp++;
+    }),
+    onShaderOff((ref, { log, ...differ }) => {
+      const message = log ?? t('plugins.errors.shaderDisagrees', differ);
+      store.problems[pluginOfSolver(ref)] = t('plugins.errors.shaderOff', { name: solverFor(ref)?.def.name ?? ref, message });
+    }),
+  ];
+  stopListening = () => stops.forEach((stop) => stop());
 }
 
 const byName = (a, b) => a.manifest.name.localeCompare(b.manifest.name) || a.id.localeCompare(b.id);

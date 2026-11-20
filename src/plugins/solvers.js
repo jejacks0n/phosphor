@@ -14,14 +14,24 @@ function clearFailures(pluginId) {
   for (const ref of failures.keys()) if (pluginOfSolver(ref) === pluginId) failures.delete(ref);
 }
 
+const dropListeners = new Set();
+// A plugin's solvers dropped or replaced (what's kept for them, a shader's program, goes): listener(pluginId).
+export function onSolversDropped(listener) {
+  dropListeners.add(listener);
+  return () => dropListeners.delete(listener);
+}
+const dropped = (pluginId) => { for (const listener of dropListeners) listener(pluginId); };
+
 export function registerSolvers(pluginId, hash, defs) {
   clearFailures(pluginId);
+  if (plugins.has(pluginId)) dropped(pluginId);
   plugins.set(pluginId, { hash, defs: new Map(defs.map((def) => [def.id, def])) });
 }
 
 export function unregisterSolvers(pluginId) {
   clearFailures(pluginId);
   plugins.delete(pluginId);
+  dropped(pluginId);
 }
 
 // The script a plugin's solvers were registered from, or null.
@@ -49,6 +59,18 @@ export const failureOf = (ref) => failures.get(ref) ?? null;
 export function onSolverFailure(listener) {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+// A solver's shader is off for the visit (the renderer's check): why is { log } (it didn't build) or { count, total, col,
+// line } (cells that differed from its JavaScript, the first's place). hash as failSolver's.
+const shaderListeners = new Set();
+export function offShader(ref, why, hash = solverFor(ref)?.hash) {
+  if (hash !== solverFor(ref)?.hash) return;
+  for (const listener of shaderListeners) listener(ref, why);
+}
+export function onShaderOff(listener) {
+  shaderListeners.add(listener);
+  return () => shaderListeners.delete(listener);
 }
 
 // Why a layer shows a stand-in for the solver it chose, or null when the solver runs.

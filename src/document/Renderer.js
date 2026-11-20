@@ -39,7 +39,7 @@ import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatch
 import { loadReferenceFont, referenceInk, referenceMask, coverageOf } from '../lib/GlyphCoverage.js';
 import ShapeMatcher from '../lib/ShapeMatcher.js';
 import { pluginMatcher, resolvePlugin, grownArea, SolverError } from '../lib/PluginSolve.js';
-import { solverFor, failSolver, failureOf } from '../plugins/solvers.js';
+import { solverFor, failSolver, failureOf, offShader } from '../plugins/solvers.js';
 import { beginRun, endRun } from '../plugins/hangMark.js';
 
 export default class Renderer {
@@ -404,7 +404,7 @@ export default class Renderer {
   // By shape: each cell's samples (#shapeSamples), resolved again where they changed. Nothing of
   // Floyd–Steinberg's error is kept (12 bytes a sample): while an edit is open the changed cells are
   // resolved with no error coming in, and the grid is left stale, so the edit's end resolves it whole.
-  // Then the cells under paint (#resolvePainted). A plugin solver (plugin: solverOf's) the same way, in JavaScript: its
+  // Then the cells under paint (#resolvePainted). A plugin solver (plugin: solverOf's) the same way (resolvePluginBy): its
   // pass 1's cells (first) kept with the grid's, and a change resolving the cells within reach of it (twice reach with a
   // pass 2). Its first whole resolve this visit runs under the hang mark (marked). A SolverError goes on to the caller.
   #resolveShapes(params, area, open, paintLayer, { key, whole, glyphs, solids, light, opts, carries, plugin = null }) {
@@ -419,7 +419,7 @@ export default class Renderer {
       ? pluginMatcher({ def: plugin.def, ref: params.solver, palette: this.palette, glyphs, solids, light, renderStyle: style, options: params.solverOptions })
       : shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: style });
     const resolve = plugin
-      ? (o) => ({ out: resolvePlugin(samples.data.data, w, lines, matcher, o), gpu: false })
+      ? (o, gpu) => resolvePluginBy(plugin, params.solver, gpu, carries, samples.data.data, w, lines, matcher, o)
       : (o, gpu) => resolveBy(gpu, carries, () => resolveShapes(samples.data.data, w, lines, matcher, o), samples.data.data, w, lines, matcher, o);
     let again = false;
     if (whole || changed || (r.stale && carries && !open)) {
@@ -1779,6 +1779,39 @@ function resolveBy(gpu, carries, js, ...args) {
     if (gpu) return null;
   }
   return { out: js(), gpu: false };
+}
+
+// A plugin solver's resolve as resolveBy makes it, its shader used once it agreed with its JavaScript: the first time it
+// runs this visit (for the solver's ref and script), the JavaScript also resolves the first 8 x 8 cells and the two are
+// compared (disagreement). One that differs, or didn't build (ShapeMatcher's shaderProblem), is off for the visit, the
+// plugin's row saying why (offShader), and the JavaScript's cells are used.
+const shaderChecks = new Map(); // ref and hash -> true once it agreed, false once it's off
+function resolvePluginBy({ hash }, ref, gpu, carries, samples, cols, lines, matcher, o) {
+  const at = `${ref}\u0000${hash}`, js = () => resolvePlugin(samples, cols, lines, matcher, o);
+  const got = resolveBy(shaderChecks.get(at) === false ? false : gpu, carries, js, samples, cols, lines, matcher, o);
+  if (!got || shaderChecks.has(at)) return got;
+  const log = !got.gpu && ShapeMatcher.shared()?.shaderProblem(ref);
+  const differ = got.gpu && disagreement(samples, cols, lines, matcher, o);
+  if (got.gpu && !differ) shaderChecks.set(at, true);
+  if (!log && !differ) return got;
+  shaderChecks.set(at, false);
+  offShader(ref, log ? { log } : differ, hash);
+  return got.gpu ? { out: js(), gpu: false } : got;
+}
+
+// The first 8 x 8 cells (or all, if fewer) by a plugin solver's shader and by its JavaScript, each over just those
+// cells' samples: null when they agree, else { count, total, col, line }, the cells that differ and the first's place.
+// Compared exactly: 32-bit floats can tip a near-tie, which the author finds by the place.
+function disagreement(samples, cols, lines, matcher, { strength, style }) {
+  const w = Math.min(8, cols), h = Math.min(8, lines), row = w * SAMPLES.w * 4, crop = new Uint8ClampedArray(row * h * SAMPLES.h);
+  for (let y = 0; y < h * SAMPLES.h; y++) crop.set(samples.subarray(y * cols * SAMPLES.w * 4, y * cols * SAMPLES.w * 4 + row), y * row);
+  const gpu = ShapeMatcher.shared()?.resolve(crop, w, h, matcher, { strength, style });
+  if (!gpu) return null;
+  const js = resolvePlugin(crop, w, h, matcher, { strength, style }).cells;
+  const same = (a, b) => a === b || (a.r === b.r && a.g === b.g && a.b === b.b);
+  const differs = js.map((cell, i) => cell.char !== gpu.cells[i].char || !same(cell.fg, gpu.cells[i].fg) || !same(cell.bg, gpu.cells[i].bg));
+  const first = differs.indexOf(true);
+  return first < 0 ? null : { count: differs.filter(Boolean).length, total: w * h, col: first % w, line: Math.floor(first / w) };
 }
 
 // Whether two width-wide images' bytes agree over a rect.

@@ -12,12 +12,15 @@
  */
 import { bayerNudge, nudgeSpread } from './Dither.js';
 import { colorOf, ASCII_BG } from './Cells.js';
-import { cellRange } from './CharResolver.js';
+import { cellRange, SAMPLES } from './CharResolver.js';
+import { grownArea } from './PluginSolve.js';
+import { onSolversDropped, pluginOfSolver } from '../plugins/solvers.js';
 
 const MAX_GLYPHS = 255; // a glyph's index is a byte, 255 the solid
 const MAX_COLORS = 256;
 const MAX_MIXES = 1 << 16; // Best match's flat mixes past that (a set of many shades on VGA): left to the JavaScript
 const MIX_ROW = 1024;      // mixes a row of their textures
+const STYLES = ['ansi', 'colorAscii', 'ascii'];
 
 const VERTEX = `#version 300 es
 void main() { gl_Position = vec4(vec2((gl_VertexID << 1) & 2, gl_VertexID & 2) * 2.0 - 1.0, 0, 1); }`;
@@ -86,15 +89,16 @@ void put(vec3 fg, int fi, vec3 bg, int bi, int glyph) {
 }
 `;
 
-// By shape (shapeMatcher): 4 x 8 samples a cell against each glyph's mask.
-const SHAPE = `${COMMON}
-uniform sampler2D uMasks; // a glyph's mask a row (32 x uGlyphs)
-uniform int uGlyphs;
+// By shape (shapeMatcher): 4 x 8 samples a cell against each glyph's mask, as a function a plugin solver's shader can
+// call too. cellAt(): the cell's place in uSamples (each program has its own).
+const BY_SHAPE = `
+uniform sampler2D uMasks; // a glyph's mask a row (32 x uGlyphs, a plugin solver's own after them)
+uniform int uGlyphs;      // the layer's set
 uniform int uStyle;       // 0 ANSI, 1 Color ASCII, 2 Monochrome ASCII
 const int N = 32;
 
-void main() {
-  ivec2 at = local() * ivec2(4, 8);
+void byShape() {
+  ivec2 at = cellAt() * ivec2(4, 8);
   float n = nudge();
   vec3 s[N];
   vec3 sum = vec3(0);
@@ -154,6 +158,11 @@ void main() {
   if (won < 0) put(solid, solidI, solid, solidI, 255);
   else put(wonFg, wonF, wonBg, wonB, won);
 }
+`;
+const SHAPE = `${COMMON}
+ivec2 cellAt() { return local(); }
+${BY_SHAPE}
+void main() { byShape(); }
 `;
 
 // Best match (bestMatcher): a cell's two halves against the flat glyphs' mixes (the nearest to the
@@ -244,6 +253,67 @@ void main() {
 }
 `;
 
+// A plugin solver's pass (docs/plugins.md): By shape's prelude with the helpers a solver's shader gets, its options as
+// uniforms, the author's body as solve() or refine(), and a main that calls it. The samples go up with reach cells of
+// margin (uSampleFirst: their first cell's column and line); pass 2 reads pass 1's picks (held glyph indices) in uPicks.
+const PLUGIN = `
+uniform ivec2 uGrid;        // the grid's columns and lines
+uniform ivec2 uSampleFirst; // uSamples' first cell
+#define paletteCount uColors
+ivec2 cellAt() { return uFirst + local() - uSampleFirst; }
+${BY_SHAPE}
+float glyphMask(int g, int i) { return texelFetch(uMasks, ivec2(i, g), 0).r; }
+
+// Sample i of the cell d away (within reach), the edge cell's past the border, its nudge in it.
+vec3 sampleAt(ivec2 d, int i) {
+  ivec2 c = clamp(uFirst + local() + clamp(d, ivec2(-reach), ivec2(reach)), ivec2(0), uGrid - 1);
+  i = clamp(i, 0, N - 1);
+  return sampleAt((c - uSampleFirst) * ivec2(4, 8) + ivec2(i % 4, i / 4), uNudge[(c.y & 3) * 4 + (c.x & 3)]);
+}
+
+// The result, held as the JavaScript holds it: a color past 0..255 is black, a glyph not in the set the first (255:
+// the solid), each color the palette's nearest.
+bool inBytes(vec3 v) { return all(greaterThanEqual(v, vec3(0))) && all(lessThanEqual(v, vec3(255))); }
+void put(vec3 fg, vec3 bg, int glyph) {
+  vec3 f, b;
+  int fi = snap(inBytes(fg) ? fg : vec3(0), f), bi = snap(inBytes(bg) ? bg : vec3(0), b);
+  put(f, fi, b, bi, glyph == 255 || (glyph >= 0 && glyph < glyphCount) ? glyph : 0);
+}
+`;
+const CHAR_AT = `
+uniform usampler2D uPicks; // pass 1's picks, from uPicksFirst
+uniform ivec2 uPicksFirst;
+// Pass 1's glyph index for the cell d away (within reach), -1 past the border.
+int charAt(ivec2 d) {
+  ivec2 c = uFirst + local() + clamp(d, ivec2(-reach), ivec2(reach));
+  if (any(lessThan(c, ivec2(0))) || any(greaterThanEqual(c, uGrid))) return -1;
+  return int(texelFetch(uPicks, c - uPicksFirst, 0).r);
+}
+`;
+const UNIFORM = { slider: 'float', checkbox: 'bool', choice: 'int' };
+
+// The fragment shader for a plugin solver's pass ('solve' or 'refine') over glyphs glyphs (the layer's set, then its own).
+export function pluginShaderSource(def, pass, { glyphs, reach }) {
+  const options = def.options.map(({ id, kind }) => `uniform ${UNIFORM[kind]} opt_${id};`).join('\n');
+  return `${COMMON}
+const int glyphCount = ${glyphs};
+const int reach = ${reach};
+${PLUGIN}${pass === 'refine' ? CHAR_AT : ''}
+${options}
+void ${pass}() {
+#line 1
+${def.shader[pass]}
+}
+void main() {
+  put(vec3(0), vec3(0), 0); // a pass that puts nothing: the first glyph, black on black
+  ${pass}();
+}
+`;
+}
+
+// A shader that didn't build: its log kept as log.
+const failed = (name, log) => Object.assign(new Error(`ShapeMatcher ${name}: ${log}`), { log });
+
 export default class ShapeMatcher {
   static #made = false;
   static #one = null;
@@ -274,11 +344,25 @@ export default class ShapeMatcher {
   #palette = null; // the palette in uPalette
   #core = null;    // the matcher core whose glyphs (and mixes) are in their textures
   #mixes = 0;      // how many of them
+  #plugins = new Map(); // a plugin solver's pass: `ref, pass, glyph count` -> { def, program, log }, program null when it didn't build
 
   constructor(gl) {
     this.#gl = gl;
     this.maxSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     this.#programs = { shape: this.#compile('shape', SHAPE), best: this.#compile('best', BEST), mixLut: this.#compile('mixLut', MIX_LUT) };
+    onSolversDropped((pluginId) => {
+      for (const [key, { program }] of this.#plugins) {
+        if (pluginOfSolver(key.slice(0, key.indexOf('\u0000'))) !== pluginId) continue;
+        if (program) gl.deleteProgram(program);
+        this.#plugins.delete(key);
+      }
+    });
+  }
+
+  // The compiler's or linker's log for a plugin solver's pass (ref: its solver ref) that didn't build, or null.
+  shaderProblem(ref) {
+    for (const [key, { log }] of this.#plugins) if (log && key.startsWith(`${ref}\u0000`)) return log;
+    return null;
   }
 
   // Cells ({ char, fg, bg }) as CharResolver's resolveShapes and resolveGrid make them, for matcher
@@ -286,7 +370,9 @@ export default class ShapeMatcher {
   // them wide, at least lines tall), Bayer's nudge by strength (any other style isn't the GPU's), with
   // area only the cells over it (into cells, the rest left as they are); { cells, carried: null }.
   // Null when it can't (match).
-  resolve(samples, cols, lines, matcher, { strength = 0, style, area = null, cells = new Array(cols * lines) } = {}) {
+  // A plugin solver's matcher (PluginSolve's pluginMatcher) by its shaders (#resolvePlugin).
+  resolve(samples, cols, lines, matcher, { strength = 0, style, area = null, cells = new Array(cols * lines), first = null } = {}) {
+    if (matcher.kind === 'plugin') return this.#resolvePlugin(samples, cols, lines, matcher, { strength, style, area, cells, first });
     const out = this.match(samples, cols, lines, matcher, { strength, style, area });
     if (!out) return null;
     const { core } = matcher, palette = core.palette, { c0, c1, l0 } = out, w = c1 - c0;
@@ -340,7 +426,7 @@ export default class ShapeMatcher {
       for (const [unit, name] of [[2, 'inks'], [3, 'mixLut'], [4, 'mixRgb'], [5, 'mixOf']]) this.#bind(unit, this.#textures[name]);
     } else {
       gl.uniform1i(u('uGlyphs'), core.glyphs.length);
-      gl.uniform1i(u('uStyle'), ['ansi', 'colorAscii', 'ascii'].indexOf(core.style));
+      gl.uniform1i(u('uStyle'), STYLES.indexOf(core.style));
       this.#bind(2, this.#textures.masks);
     }
 
@@ -373,17 +459,149 @@ export default class ShapeMatcher {
     return { fg, bg, c0, c1, l0, l1 };
   }
 
+  // A plugin solver's cells by its shaders, as resolvePlugin makes them (each result held to the set, the palette and
+  // the style): pass 1 over area grown by reach, or with a pass 2 by 3 x reach, so pass 2 over area grown by 2 x reach
+  // reads pass 1's picks from the GPU alone (cells and first written there, the rest left as they are); { cells, first,
+  // carried: null }, first null without a pass 2. Null when it can't: Floyd–Steinberg, more than 255 glyphs or 256
+  // colors, a grid wider than a texture, no shader for a pass the solver has, one that didn't build, or the context lost.
+  #resolvePlugin(samples, cols, lines, matcher, { strength, style, area, cells, first }) {
+    const gl = this.#gl, { def, glyphs, palette } = matcher, reach = def.reach, refines = !!def.refine;
+    if (strength > 0 && style !== 'bayer') return null;
+    if (glyphs.length > MAX_GLYPHS || palette?.length > MAX_COLORS || cols * SAMPLES.w > this.maxSize || gl.isContextLost()) return null;
+    if (Math.floor(this.maxSize / SAMPLES.h) <= 2 * reach) return null; // no band with its margins fits
+    const solve = this.#pluginProgram(matcher, 'solve'), refine = refines ? this.#pluginProgram(matcher, 'refine') : null;
+    if (!solve || (refines && !refine)) return null;
+    if (refines && area && !first) area = null; // as resolvePlugin
+    const spread = nudgeSpread(palette), nudges = new Float32Array(16);
+    for (let i = 0; i < 16; i++) nudges[i] = strength > 0 ? bayerNudge(i & 3, i >> 2, spread, strength) : 0;
+    const solid = glyphs.findIndex((g) => g.char === matcher.shape.core.solidChar); // glyph 255's
+
+    const one = cellRange(grownArea(area, refines ? 3 * reach : reach, cols, lines), cols, lines);
+    const picked = this.#pluginPass(solve, matcher, samples, cols, lines, one, nudges, null);
+    if (!picked) return null;
+    if (!refines) {
+      this.#heldCells(picked, one, matcher, cols, cells, solid);
+      return { cells, first: null, carried: null };
+    }
+    first ??= new Array(cols * lines);
+    this.#heldCells(picked, one, matcher, cols, first, solid);
+    const picks = new Uint8Array(picked.fg.length / 4);
+    for (let j = 0; j < picks.length; j++) picks[j] = picked.fg[j * 4 + 3];
+    const two = cellRange(grownArea(area, 2 * reach, cols, lines), cols, lines);
+    const refined = this.#pluginPass(refine, matcher, samples, cols, lines, two, nudges, { data: picks, ...one });
+    if (!refined) return null;
+    this.#heldCells(refined, two, matcher, cols, cells, solid);
+    return { cells, first, carried: null };
+  }
+
+  // A pass's program, built the first time it's asked for (again for a new def: a new script); null when the solver
+  // has no shader for it or it didn't build (its log kept for shaderProblem).
+  #pluginProgram({ def, ref, glyphs }, pass) {
+    if (!def.shader[pass]) return null;
+    const key = `${ref}\u0000${pass}\u0000${glyphs.length}`, had = this.#plugins.get(key);
+    if (had?.def === def) return had.program;
+    if (had?.program) this.#gl.deleteProgram(had.program);
+    let program = null, log = null;
+    try {
+      program = this.#compile(ref, pluginShaderSource(def, pass, { glyphs: glyphs.length, reach: def.reach }));
+    } catch (error) {
+      log = error.log ?? String(error.message);
+    }
+    this.#plugins.set(key, { def, program, log });
+    return program;
+  }
+
+  // One pass over range's cells, in bands of lines whose samples with reach cells of margin each way fit a texture
+  // (and pass 1's picks over them, picks: { data, c0, c1, l0, l1 }, for pass 2): fg [r, g, b, glyph] and bg [r, g, b, 0]
+  // a cell, row-major; null after a GL error.
+  #pluginPass(program, matcher, samples, cols, lines, { c0, c1, l0, l1 }, nudges, picks) {
+    const gl = this.#gl, reach = matcher.def.reach, w = c1 - c0, h = Math.max(0, l1 - l0), sw = SAMPLES.w, sh = SAMPLES.h;
+    const fg = new Uint8Array(w * h * 4), bg = new Uint8Array(w * h * 4);
+    if (!w || !h) return { fg, bg };
+    const band = Math.min(h, Math.floor(this.maxSize / sh) - 2 * reach);
+    this.#frameOf(w, band);
+    if (!this.#textures.samples) this.#texture('samples', gl.RGBA8UI, gl.RGBA_INTEGER, gl.UNSIGNED_BYTE, 1, 1, new Uint8Array(4));
+    if (picks && !this.#textures.picks) this.#texture('picks', gl.R8UI, gl.RED_INTEGER, gl.UNSIGNED_BYTE, 1, 1, new Uint8Array(1));
+    this.#upload(matcher);
+    gl.useProgram(program);
+    const u = (name) => gl.getUniformLocation(program, name);
+    gl.uniform1fv(u('uNudge'), nudges);
+    gl.uniform1i(u('uColors'), matcher.palette?.length ?? 0);
+    gl.uniform1f(u('uLight'), matcher.light);
+    gl.uniform1f(u('uTolerance'), matcher.shape.tolerance ?? 0);
+    gl.uniform1i(u('uGlyphs'), matcher.glyphs.filter((g) => !g.own).length);
+    gl.uniform1i(u('uStyle'), STYLES.indexOf(matcher.style));
+    gl.uniform2i(u('uGrid'), cols, lines);
+    for (const { id, kind } of matcher.def.options) {
+      const value = matcher.look.options[id];
+      if (kind === 'slider') gl.uniform1f(u(`opt_${id}`), value);
+      else gl.uniform1i(u(`opt_${id}`), kind === 'checkbox' ? Number(value) : value);
+    }
+    for (const [name, unit] of Object.entries({ uSamples: 0, uPalette: 1, uMasks: 2, uPicks: 3 })) gl.uniform1i(u(name), unit);
+    this.#bind(1, this.#textures.palette);
+    this.#bind(2, this.#textures.masks);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.#frame.fb);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    const bytes = new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength);
+    for (let l = l0; l < l1; l += band) {
+      const bh = Math.min(band, l1 - l);
+      const s0 = Math.max(0, c0 - reach), s1 = Math.min(cols, c1 + reach), t0 = Math.max(0, l - reach), t1 = Math.min(lines, l + bh + reach);
+      if (picks) { // pass 1's picks over the band's cells and margins, all inside picks' range
+        this.#bind(3, this.#textures.picks);
+        gl.pixelStorei(gl.UNPACK_ROW_LENGTH, picks.c1 - picks.c0);
+        gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0);
+        gl.pixelStorei(gl.UNPACK_SKIP_ROWS, t0 - picks.l0);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, picks.c1 - picks.c0, t1 - t0, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, picks.data);
+        gl.uniform2i(u('uPicksFirst'), picks.c0, t0);
+      }
+      this.#bind(0, this.#textures.samples);
+      gl.pixelStorei(gl.UNPACK_ROW_LENGTH, cols * sw);
+      gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, s0 * sw);
+      gl.pixelStorei(gl.UNPACK_SKIP_ROWS, t0 * sh);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8UI, (s1 - s0) * sw, (t1 - t0) * sh, 0, gl.RGBA_INTEGER, gl.UNSIGNED_BYTE, bytes);
+      gl.uniform2i(u('uFirst'), c0, l);
+      gl.uniform2i(u('uSampleFirst'), s0, t0);
+      gl.viewport(0, 0, w, bh);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      for (const [attachment, into] of [[gl.COLOR_ATTACHMENT0, fg], [gl.COLOR_ATTACHMENT1, bg]]) {
+        gl.readBuffer(attachment);
+        gl.readPixels(0, 0, w, bh, gl.RGBA, gl.UNSIGNED_BYTE, into.subarray((l - l0) * w * 4, (l - l0 + bh) * w * 4));
+      }
+    }
+    for (const name of ['UNPACK_ROW_LENGTH', 'UNPACK_SKIP_PIXELS', 'UNPACK_SKIP_ROWS']) gl.pixelStorei(gl[name], 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    if (gl.getError() !== gl.NO_ERROR) { // as match's
+      this.#core = this.#palette = null;
+      return null;
+    }
+    return { fg, bg };
+  }
+
+  // A pass's read-back cells over range into into, as the JavaScript holds them: glyph 255 is the solid's index
+  // (written back into fg, so pass 1's picks are held glyphs too); Monochrome white on black, Color ASCII's bg black.
+  #heldCells({ fg, bg }, { c0, c1, l0 }, { glyphs, palette, style, shape }, cols, into, solid) {
+    const w = c1 - c0, colorAt = (d, o) => (palette ? palette[d[o]] : colorOf({ r: d[o], g: d[o + 1], b: d[o + 2] }));
+    for (let j = 0, o = 0; o < fg.length; j++, o += 4) {
+      if (fg[o + 3] === 255) fg[o + 3] = solid;
+      const i = (l0 + Math.floor(j / w)) * cols + c0 + (j % w), char = glyphs[fg[o + 3]].char;
+      if (style === 'ascii') into[i] = { char, fg: shape.core.white, bg: ASCII_BG };
+      else into[i] = { char, fg: colorAt(fg, o), bg: style === 'colorAscii' ? ASCII_BG : colorAt(bg, o) };
+    }
+  }
+
   #compile(name, fragment) {
     const gl = this.#gl, program = gl.createProgram();
     for (const [type, source] of [[gl.VERTEX_SHADER, VERTEX], [gl.FRAGMENT_SHADER, fragment]]) {
       const shader = gl.createShader(type);
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(`ShapeMatcher ${name}: ${gl.getShaderInfoLog(shader)}`);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw failed(name, gl.getShaderInfoLog(shader));
       gl.attachShader(program, shader);
     }
     gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(`ShapeMatcher ${name}: ${gl.getProgramInfoLog(program)}`);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw failed(name, gl.getProgramInfoLog(program));
     return program;
   }
 
@@ -414,7 +632,7 @@ export default class ShapeMatcher {
       this.#palette = palette;
     }
     if (this.#core === core) return;
-    if (core.kind === 'shape') {
+    if (core.kind !== 'best') { // By shape's, or a plugin solver's (the set's, then its own)
       const n = core.glyphs.length, data = new Float32Array(32 * Math.max(1, n));
       core.glyphs.forEach((g, i) => data.set(g.mask, i * 32));
       this.#texture('masks', gl.R32F, gl.RED, gl.FLOAT, 32, Math.max(1, n), data);

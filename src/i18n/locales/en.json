@@ -1962,6 +1962,7 @@
       "badChar": "A solver's characters include “{char}”, which a solver can't draw with.",
       "hung": "{name} stopped Phosphor responding last time, so it's off.",
       "shaderOff": "{name}'s shader is off for this visit: {message}",
+      "shaderDisagrees": "{count} of {total} cells differed from its JavaScript, the first at column {col}, line {line} (counted from 0).",
       "hashMismatch": "{name}'s kept script isn't the one that was installed, so it isn't loaded. Install it again.",
       "codeWhileOff": "Plugins are off for this visit, so a plugin that runs code can't be installed now.",
       "solverFailed": "The solver “{name}” failed: {message}",
