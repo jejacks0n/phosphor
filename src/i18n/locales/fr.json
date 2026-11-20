@@ -1950,6 +1950,11 @@
     "follow": "Suivre le fichier",
     "followNamed": "Suivre le fichier de {name}",
     "errors": {
+      "scriptLoad": "Le script du plugin n'a pas pu être chargé : {message}",
+      "scriptShape": "Le script du plugin a un problème à « {field} ».",
+      "twoSolvers": "Le script du plugin a deux solveurs avec l'id « {id} ».",
+      "badChar": "Les caractères d'un solveur incluent « {char} », qu'un solveur ne peut pas dessiner.",
+      "solverFailed": "Le solveur « {name} » a échoué : {message}",
       "badZip": "Ce fichier n'est pas un .zip lisible.",
       "zipEncrypted": "Ce .zip est protégé par un mot de passe, et Phosphor ne peut pas l'ouvrir.",
       "zip64": "Ce .zip utilise le format des grandes archives, que Phosphor ne sait pas lire.",
