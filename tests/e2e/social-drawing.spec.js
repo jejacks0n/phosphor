@@ -179,7 +179,7 @@ test('replaced art is still in the autosave list', async ({ page: host, context 
   person.on('dialog', (dialog) => dialog.accept());
   await tab(person, 'PIXEL').click();
   await person.getByRole('button', { name: 'New project' }).click();
-  await person.getByRole('button', { name: 'Open photo' }).click();
+  await person.getByRole('button', { name: 'Resume photo' }).click();
   await settled(person);
   expect(await store(person, 'project', (p) => p.documentId)).toBe(own);
   expect(await chars(person, 4, 4, 4)).toBe('L');
@@ -1155,7 +1155,7 @@ test('a host cut off who comes back as an artist is told who hosts now, with the
   const other = await context.newPage();
   await other.goto('/');
   const row = other.getByRole('list', { name: 'Pick up where you left off' }).getByRole('listitem').filter({ hasText: 'gradient' });
-  await row.getByRole('button', { name: /^Open/ }).click();
+  await row.getByRole('button', { name: /^Resume/ }).click();
   await settled(other);
   await expect.poll(() => chars(other, 12, 25, 25)).toBe('o');
   await other.close();

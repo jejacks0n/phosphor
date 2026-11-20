@@ -24,12 +24,12 @@ function mount() {
 
 test('a drawing open in another window says window, not tab, and is off', async () => {
   let [elsewhere, free] = mount();
-  expect([elsewhere.textContent.trim(), elsewhere.getAttribute('aria-label'), elsewhere.disabled]).toEqual(['Open in another window', 'night (open in another window)', true]);
-  expect([free.textContent.trim(), free.disabled]).toEqual(['Open', false]);
+  expect([elsewhere.querySelector('.go').textContent.trim(), elsewhere.getAttribute('aria-label'), elsewhere.disabled]).toEqual(['In another window', 'night (open in another window)', true]);
+  expect([free.querySelector('.go').textContent.trim(), free.disabled]).toEqual(['Resume ›', false]);
   mounted.unmount();
   host.remove();
 
   await setLocale('fr', { persist: false });
   [elsewhere] = mount();
-  expect([elsewhere.textContent.trim(), elsewhere.getAttribute('aria-label')]).toEqual(['Ouvert dans une autre fenêtre', 'night (ouvert dans une autre fenêtre)']);
+  expect([elsewhere.querySelector('.go').textContent.trim(), elsewhere.getAttribute('aria-label')]).toEqual(['Dans une autre fenêtre', 'night (ouvert dans une autre fenêtre)']);
 });

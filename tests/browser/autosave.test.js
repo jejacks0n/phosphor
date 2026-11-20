@@ -1751,7 +1751,7 @@ test('the start screen lists at most 5 recent documents; one open elsewhere is d
   expect(rows).toHaveLength(5);
   expect(rows[0].textContent).toContain('art 0');
   expect(rows[1].querySelector('button').disabled).toBe(true);
-  expect(rows[1].querySelector('button').textContent.trim()).toBe('Open in another tab');
+  expect(rows[1].querySelector('.go').textContent.trim()).toBe('In another tab');
   rows[1].querySelector('button').click();
   rows[0].querySelector('button').click();
   expect(opened).toEqual(['d0']);
