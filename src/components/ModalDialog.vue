@@ -12,8 +12,8 @@ import { useModal } from '@/composables/useModal';
 // selection, the arrows nudge it). Escape, the back gesture and the backdrop cancel. `long` is for text to
 // read: wider, its slot lays out in a column that fits the window, and the backdrop does nothing (a drag selecting
 // the text can end there), not even take focus. `wide` is long with room for two columns. With no title (a slot with
-// its own heading), `label` names it; `focus` false leaves focus to the slot. `closable` adds a close button (×) at
-// the top right, which cancels as Escape does. The browser's Back cancels it too, and the page stays, unless `back` is
+// its own heading), `label` names it; `focus` false leaves focus to the slot. `closable` adds a close button (×) over
+// the top right corner, as About's, which cancels as Escape does. The browser's Back cancels it too, and the page stays, unless `back` is
 // false: a dialog the address itself shows or asks about (SOCIAL's pages, its question, ending a room), which Back
 // moves past. The <dialog> itself is useModal's.
 const props = defineProps({
@@ -33,7 +33,7 @@ const { open, onCancel, onClose, outside, element } = useModal(() => emit('cance
   // showModal focuses its first control before the slot's fields have their values (v-model gives them as they
   // mount), so a field that selects its text on focus would select nothing: focus is placed on mounting instead,
   // the dialog's own with focus false, the slot's to place.
-  opened: (el) => (props.focus ? el.contains(document.activeElement) && document.activeElement.blur() : el.focus()),
+  opened: (el) => (props.focus ? el.contains(document.activeElement) && document.activeElement.blur() : (el.querySelector(':scope > .body[tabindex]') ?? el).focus()),
 });
 
 onMounted(() => {
@@ -57,11 +57,13 @@ const onMouseDown = (event) => outside(event) && (props.long || props.wide) && e
 
 <template>
   <Teleport to="body">
-    <dialog :ref="open" class="modal-dialog" :class="{ long: props.long || props.wide, wide: props.wide }" :aria-label="props.title ? null : props.label" :aria-labelledby="props.title ? 'modal-dialog-title' : null" :tabindex="props.long || props.wide ? -1 : undefined" @keydown="onKeyDown" @cancel="onCancel" @close="onClose" @click="onClick" @mousedown="onMouseDown">
+    <dialog :ref="open" class="modal-dialog" :class="{ long: props.long || props.wide, wide: props.wide }" :aria-label="props.title ? null : props.label" :aria-labelledby="props.title ? 'modal-dialog-title' : null" @keydown="onKeyDown" @cancel="onCancel" @close="onClose" @click="onClick" @mousedown="onMouseDown">
       <button v-if="props.closable" class="close" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('cancel')">×</button>
-      <h3 v-if="props.title" id="modal-dialog-title">{{ props.title }}</h3>
-      <p v-if="props.sub" class="sub">{{ props.sub }}</p>
-      <slot/>
+      <div class="body" :tabindex="props.long || props.wide ? -1 : undefined">
+        <h3 v-if="props.title" id="modal-dialog-title">{{ props.title }}</h3>
+        <p v-if="props.sub" class="sub">{{ props.sub }}</p>
+        <slot/>
+      </div>
     </dialog>
   </Teleport>
 </template>
@@ -78,7 +80,8 @@ dialog.modal-dialog {
   width: calc(100% - 40px);
   max-width: 478px; /* 440px inside */
   max-height: calc(100% - 40px);
-  padding: 18px;
+  padding: 0;
+  overflow: visible; /* the body scrolls, and the close button sits over the corner */
   background: var(--surface-0);
   border: 1px solid var(--border-light);
   border-radius: 12px;
@@ -86,27 +89,27 @@ dialog.modal-dialog {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
 }
 
-dialog.modal-dialog.long {
-  max-width: 600px;
-  overflow: auto;   /* a window too short even for what's pinned */
-  outline: none;
-}
-dialog.modal-dialog.long[open] { /* only while open: closed, the dialog's hidden */
+dialog.modal-dialog[open] { /* only while open: closed, the dialog's hidden */
   display: flex;
   flex-direction: column;
 }
-dialog.modal-dialog.wide {   /* after long, which it also is */
-  max-width: 860px;
+div.body {
+  min-height: 0;
+  padding: 18px;
+  overflow: auto;
+  border-radius: inherit;
 }
 
-/* The app's close button, inside the corner rather than over it: a long box scrolls, which would cut it off, and
-   sticky keeps it in reach as it does. It takes no room, so what's under it starts at the top as before. */
-dialog.modal-dialog > button.close {
-  position: sticky;
-  top: 0;
-  flex: none;
-  align-self: flex-end;
-  margin: -8px -8px -22px auto;
+dialog.modal-dialog.long {
+  max-width: 600px;
+}
+dialog.modal-dialog.long > div.body {
+  display: flex;
+  flex-direction: column;
+  outline: none;
+}
+dialog.modal-dialog.wide {   /* after long, which it also is */
+  max-width: 860px;
 }
 
 h3 {
