@@ -213,7 +213,7 @@ In a drawing with a bitmap font, a palette you make (or a built-in one you copy 
 - **Yours**, with **+ New**, **Import** and **Export**.
 - **For fonts not loaded (N)**, collapsed ([For Fonts Not Loaded](#for-fonts-not-loaded)).
 
-Palettes tied to a font are hidden while another font is in use, and the one you had chosen comes back with its font (including when you undo **Use this font**). The editor's head says **For <font> ▾** or **Any font ▾**; its menu has **Use with any font** or **Tie to <font>**. **Duplicate** and **Export** are in its **…** menu. In a font drawing the source tabs are the font's own (**<font> · 256**), **In this drawing** and **Recent**; there's no Unicode tab. A character the font lacks can stay in a palette tied to it, marked as not fitting.
+Palettes tied to a font are hidden while another font is in use, and the one you had chosen comes back with its font (including when you undo **Use this font**). The editor's head says **For <font> ▾** or **Any font ▾**; its menu has **Use with any font** or **Tie to <font>**. **Duplicate**, **Export** and, for your own palettes, **Delete** are in its **…** menu. In a font drawing the source tabs are the font's own (**<font> · 256**), **In this drawing** and **Recent**; there's no Unicode tab. A character the font lacks can stay in a palette tied to it, marked as not fitting.
 
 ### For Fonts Not Loaded
 

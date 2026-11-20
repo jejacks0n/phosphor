@@ -113,7 +113,7 @@ test('the editor shows the tie and changes it', async () => {
   expect(tieButton()).toBeNull(); // built-ins show no tie
 });
 
-test('Duplicate and Export sit in the head\'s … menu', async () => {
+test('Duplicate, Export and Delete sit in the head\'s … menu', async () => {
   const { palettes } = await mount({ setup: (p) => named(p, 'Frogs') });
   await edit('Frogs');
   const head = () => host.querySelector('.head');
@@ -134,6 +134,14 @@ test('Duplicate and Export sit in the head\'s … menu', async () => {
   await press(button('Duplicate', head()));
   expect(palettes.userPalettes.map((p) => p.name)).toContain('Frogs copy');
   expect(button('Duplicate', head())).toBeUndefined();
+  await press(moreButton());
+  await press(button('Delete', head())); // the copy, now the one in the editor
+  expect(palettes.userPalettes.map((p) => p.name)).toEqual(['Frogs']);
+  await expect.poll(() => host.contains(document.activeElement)).toBe(true); // the layer keeps the keys
+  await press(row('Shades & blocks'));
+  await press(moreButton());
+  expect(button('Duplicate', head())).toBeTruthy();
+  expect(button('Delete', head())).toBeUndefined(); // a built-in can't be deleted
 });
 
 test('a font drawing\'s sources are the font', async () => {
@@ -204,13 +212,13 @@ test('palettes for fonts not loaded are reachable', async () => {
   await press(group('For fonts not loaded (1)').querySelector('.label'));
   await edit('Frogs · TEST');
   expect(tieButton().textContent.trim()).toBe('For TEST ▾');
-  expect(host.querySelector('.head [aria-label="Delete palette"]')).toBeTruthy();
   await press(tieButton());
   expect(button('Tie to A')).toBeTruthy();
   await press(button('Use with any font'));
   expect(palettes.general.map((p) => p.id)).toContain(id);
   expect(headers()).toEqual(['For A', 'Built-in', 'Yours']);
-  await press(host.querySelector('.head [aria-label="Delete palette"]'));
+  await press(moreButton());
+  await press(button('Delete', host.querySelector('.head')));
   expect(palettes.userPalettes.map((p) => p.id)).not.toContain(id);
 });
 
