@@ -11,6 +11,7 @@ import { toastMessage, closeToast } from '@/composables/useToast.js';
 import { addBitmapFont, storeBlocks, loadFonts, removeFont } from '@/lib/userFonts';
 import { fontId } from '@/lib/BitmapFont.js';
 import { cp437Font, noLowerHalf } from '../support/blockFonts.js';
+import { writeXBin } from '@/lib/XBinFile.js';
 import StartRoomPage from '@/components/social/StartRoomPage.vue';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import FontField from '@/components/FontField.vue';
@@ -86,15 +87,29 @@ test('startRoom refuses with the reason as a toast and no request while the font
 test('in a room the drawing\'s font can\'t change to one that isn\'t set up: a toast, no change, no undo step', async () => {
   const { project } = await drawing(cp437Font);
   project._hosting = true;
-  const before = project.fontBitmap, undos = project.history.undoStack?.length;
+  const before = project.fontBitmap, couldUndo = project.canUndo;
   project.setDrawingFont({ ...noDark });
   expect(project.fontBitmap).toBe(before);
   expect(toastMessage.value).toBe('Slab has no Dark block. Set up its blocks on the Fonts page first.');
-  expect(project.history.undoStack?.length).toBe(undos);
+  expect(project.canUndo).toBe(couldUndo);
   project.setDrawingFont({ ...noDark, blocks: [219, 220, 223, 221, 222, 176, 177, 178] }); // set up
   expect(project.fontBitmap).not.toBe(before);
   project.setDrawingFont(null); // none is always fine
   expect(project.drawingFont).toBe(null);
+});
+
+test('in a room an XBin whose font isn\'t set up isn\'t opened: a toast, and the drawing stays', async () => {
+  const { project } = await drawing(cp437Font);
+  const file = new File([writeXBin({ cols: 1, rows: 1, cells: [{ char: ' ', fg: { hex: '#aaaaaa' }, bg: { hex: '#000000' } }], palette: Array(16).fill('#aaaaaa'), font: { ...noLowerHalf, name: 'Slab' } })], 'x.xb');
+  const before = project.fontBitmap, cols = project.cols;
+  project._hosting = true;
+  await project.openArtFile(file);
+  expect(toastMessage.value).toBe(MISSING.replace('Slab', 'x'));
+  expect(project.fontBitmap).toBe(before);
+  expect(project.cols).toBe(cols);
+  project._hosting = false;
+  await project.openArtFile(file);
+  expect(project.fontBitmap).not.toBe(before);
 });
 
 test('outside a room a font that isn\'t set up can still be chosen', async () => {

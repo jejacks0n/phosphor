@@ -11,6 +11,7 @@ import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
 import { knownBlocksOf } from '@/lib/userFonts.js';
 import { encodeBlocks, encodeFont } from '@/lib/BitmapFont.js';
+import { notSetUp } from '@/lib/fontSetup.js';
 import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
 import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
 import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
@@ -260,6 +261,8 @@ export const documentActions = {
     return busyWhile(opening(file.name), async () => {
       art ??= readArtFile(new Uint8Array(await file.arrayBuffer()), file.name, await knownBlocksOf(useWorkspaceStore().userFonts));
       const { sauce } = art;
+      const reason = this.inRoom && art.xbin && notSetUp(art.font); // a room can't edit blocks, so it takes no font that needs it
+      if (reason) return void toast(reason);
       const opened = await this.setBlankCanvas({
         withLayer: true,
         ...settingDefaults(),
