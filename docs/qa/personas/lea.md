@@ -417,7 +417,7 @@ and sideways.
   LAYERS' Base row has a ⚠; the export dialog says "Base shows By shape in place of its plugin solver."; back On the
   look comes back with the options she had; after the reload Outlines is still chosen with its options, and the picture
   is the same. Hosting a room isn't on a phone, so Phosphor refusing to host while a layer uses a plugin solver is
-  checked in the browser tests, not here ([Characters](../../characters.md#plugin-solvers)).
+  walked in Juno's step 3, not here ([Characters](../../characters.md#plugin-solvers)).
 - Probes: `interrupt`: open the app at `/?plugins=off` with Outlines chosen and check the note says "Plugins are off
   for this visit. Showing By shape.", and the Plugins dialog says plugins are off for this visit; `again`: switch it Off and On three times; `back-out`: tap Remove, then Cancel at "Remove Outlines?", and check
   Outlines is still chosen.

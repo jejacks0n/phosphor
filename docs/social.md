@@ -194,7 +194,9 @@ An unlisted room has Room settings alone, in a narrower box.
 What you've typed stays while you visit another tab. **Go live** shares the art you have open and closes the box; its
 **×** leaves without starting.
 
-- **Layers**: A room starts from any stack of layers.
+- **Layers**: A room starts from any stack of layers, as long as none of them is on a plugin solver, which rooms don't
+  use ([Plugin solvers](characters.md#plugin-solvers)). Go live is off, and the box says which layer: "Layer 1 is on a
+  plugin solver, which rooms don't use. Choose a built-in solver for it, or Flatten the drawing first."
 - **Animation**: A drawing with frames can't go live: "Shared rooms do not support animation yet."
 
 Once you're live you keep drawing as usual, and watchers see each change as you make it, with a box in your name color
