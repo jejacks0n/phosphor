@@ -829,7 +829,7 @@ Where a paste lands:
   (→ ←, ▲ ▼), and brackets and slashes (( ), < >, / \). Letters, digits and shades stay as they are. They're buttons,
   with no key.
 - **Rotate 90° clockwise**: Turns the picture: the paint and the base's pixels, by their real shape, so a square stays
-  a square (two cells side by side, a cell being twice as tall as it's wide, turn into two cells side by side).
+  a square (in a 1:2 cell, two cells side by side turn into two cells side by side; in an 8×8 font's square cells, into two cells one over the other).
   - The turned picture lands as ▄ half-blocks in its pixels' colors, and a Half-block's ▄ goes with its paint.
   - Characters can't turn that way (a cell would land across half of two), so Rotate is off while the selection has
     any on the layers it acts on: typed or drawn characters on a drawing layer, or characters pinned on the base.

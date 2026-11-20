@@ -31,6 +31,8 @@ that reopens in Phosphor with the same cells, font and palette, and that looks t
   ([Palettes That Belong to a Font](../../characters.md#palettes-that-belong-to-a-font)).
 - The character palette, the status bar's code, Best match and By shape
   ([How the Converter Picks Characters](../../characters.md#how-the-converter-picks-characters)).
+- Cells in the shape of her font: conversion, the PIXEL tab, switching heights and round tools
+  ([Bitmap Fonts](../../characters.md#bitmap-fonts)).
 - Color palette (CGA, Limited count, Custom), Export XBin and Include SAUCE
   ([Saving .xb](../../characters.md#saving-xb)), opening an XBin
   ([Opening ANSI and text files](../../layers.md#opening-ansi-and-text-files)).
@@ -188,7 +190,33 @@ see what that does to the same photo, and save a project and reopen it.
 **Free time:** she'd open a 16colo.rs XBin from the packs, check it against its picture, and export it back, and
 change one cell on the way.
 
+## Square cells
+
+### 15. A photo in Topaz
+- Does: with her 8×8 font (Topaz) as the drawing's font and the aspect lock on, opens a 4:3 photo from the fixtures at 80 columns, then sets Columns to 40.
+- Expects: at 80 columns the grid is 60 lines, and the photo isn't squashed; at 40 columns it's 30 lines and the photo keeps its shape.
+- Probes: `again`: Columns 40 again, and back to 80; `undo-redo`: undo the Columns change and the open.
+- Rated: no (drawing)
+
+### 16. The PIXEL tab agrees
+- Does: flips to the PIXEL tab on that drawing and compares it with the ANSI view at the same zoom, then clicks a cell with the Pencil.
+- Expects: the same cells' halves line up in both views, each cell is square, and the Pencil's pixel lands under the pointer.
+- Probes: `extremes`: zoom in to 800% and out to 25% and check the halves still line up.
+- Rated: no (drawing)
+
+### 17. Switch 8×16 ↔ 8×8 with drawn cells
+- Does: in a drawing in her `.F16` font, types a line of text, draws a Brush stroke, then uses Use this font to switch to her `.F08` font, then undoes, redoes, and switches back.
+- Expects: the typed text keeps its column and line, the lines double going to 8×16 and halve going to 8×8, the columns stay, and one undo puts the drawing back as it was; the same switch in a drawing with frames is refused with a toast that says why.
+- Probes: `out-of-order`: switch with a selection up; `undo-redo`: undo three times in a row and check nothing else was undone.
+- Rated: yes, wants Cmd+Z
+
+### 18. Shapes and paint follow
+- Does: in 8×16, draws a VECTOR circle and a Brush stroke, switches to 8×8, then draws a new circle with Shift in the VECTOR tab and a stroke with the Brush, and looks at the Brush outline. Then loads an 8×11 font of her own (written in the snippet) and draws a Pencil stroke and a half block.
+- Expects: the old circle and stroke stretch with the picture; the new Shift circle and the Brush outline are round on screen; in the 8×11 font a cell's halves are 5 and 6 rows, with nothing a pixel off at the seam.
+- Probes: `again`: switch back to 8×16 and check the circle and stroke return to their shape.
+- Rated: no (drawing)
+
+**Free time:** she'd draw in 8×8 from the start, export an XBin, and reopen it.
+
 ## Known
 
-Until Phosphor draws other cell shapes, an 8×8 font's photo conversion is squashed and a font of odd height draws a
-pixel off. Don't report either.
