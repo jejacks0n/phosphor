@@ -95,7 +95,8 @@ built-in one, and check what the Font field says while the drawing has its own.
 
 ### 4. Type a character my font lacks
 - Does: in Edit Mode, types a letter with an accent and a character from another script, then chooses a built-in font in the Font dropdown.
-- Expects: each shows blank while the font is on (the font has no slot for it), and the status bar's code is nothing; after the font is taken off the characters she typed are back as she typed them.
+- Expects: each shows as its nearest classic stand-in while the font is on, and the status bar's code is the font's
+  slot or nothing; a character with no stand-in in her font shows blank; after the font is taken off the characters she typed are back as she typed them.
 - Probes: `undo-redo`: undo the typing with the font on and off; `again`: type the same character in ten cells.
 - Rated: yes, wants T, then typing
 
@@ -122,29 +123,29 @@ built-in one, and check what the Font field says while the drawing has its own.
 **Free time:** she'd draw a short piece in her font, flip to the PIXEL tab, resize the grid, and check the font stays
 the same through each.
 
-## A photo in my font
-
 ## My font's blocks
 
 ### 8. A font whose lower half is somewhere else
 - Does: builds a copy of her `.F16` in the snippet with slots 220 and 240 swapped, loads it with + Load, opens Manage fonts ▸ and chooses its row, reads the Blocks row and the note under it, then paints with the Brush and the Paint Bucket and hovers over cells.
-- Expects: the Blocks row shows Lower at slot 240 and Upper at slot 220 (the others as before); the note says where the blocks were found; the paint shows as half blocks; the status bar's code over a painted half cell is 240; the meta line doesn't say "blocks set by you".
-- Probes: `again`: load the same file twice and check one copy is listed and the blocks are the same; `undo-redo`: undo the font and check the paint stays and draws in slot 220 for Lower again.
+- Expects: the Blocks row shows Lower at slot 240 and every other block at its CP437 slot; the note says the lower half was found at 240; the paint shows as half blocks; the status bar's code over a painted half cell is 240; the meta line doesn't say "blocks set by you".
+- Probes: `again`: load the same file twice and check one copy is listed and the blocks are the same; `undo-redo`: undo the font change (the drawing goes back to its previous font), and check the paint stays and still shows as half blocks, then redo.
 - Rated: no (drawing)
 
 ### 9. Set a block by hand
-- Does: with that font, picks the Lower tile and clicks slot 220 in the sheet, then undoes, redoes, and clicks Find blocks again. Then paints and exports an XBin (Export, then `.xb`), opens it with Choose a file while the font is loaded in the browser, and again after Remove on the Fonts page.
-- Expects: after the click the Lower tile shows 220, the Upper tile shows none (a slot plays one block), the meta line says "blocks set by you", and the paint she drew before now draws in slot 220; undo and redo each undo or redo the whole change, and Find blocks again puts the slots back to what the pixels say and clears "blocks set by you"; the XBin opens with the blocks as she set them while the font is loaded in the browser, and with the blocks found again after Remove.
-- Probes: `undo-redo`: undo three times in a row and check nothing else was undone; `interrupt`: reload after setting a block and check it's still set; `extremes`: click the slot that plays another block and check it gives that block up.
+- Does: with that font, paints, then picks the Lower tile and clicks slot 220 (≡) in the sheet, then undoes, redoes, and clicks Find blocks again. Picks Lower again and clicks slot 223 (Upper's). Then exports an XBin (Export, then `.xb`), opens it with Choose a file while the font is loaded in the browser, and again after Remove on the Fonts page.
+- Expects: after the click on 220 the Lower tile shows 220, the paint she drew before now shows as ≡, Upper is unchanged at 223, and the meta line says "blocks set by you" (it does whenever any block differs from what the pixels say); undo and redo each undo or redo the whole change; Find blocks again puts Lower back at 240 and clears "blocks set by you"; clicking 223 with Lower picked gives Lower 223 and the Upper tile shows none (a slot plays one block); the XBin opens with the blocks as she set them while the font is loaded in the browser, and with the blocks found again after Remove.
+- Probes: `undo-redo`: undo three times in a row and check nothing else was undone; `interrupt`: reload after setting a block and check it's still set; `extremes`: set a block to the slot that holds a space.
 - Rated: yes, wants Cmd+Z
 
 ### 10. A font with no lower half
-- Does: builds a copy of her `.F16` with slot 220 blanked (and the other half-block shapes with it), loads it, then looks at the tool buttons for Pencil, Brush, Paint Bucket, Shapes, Gradient, Retouch's Blur, Dodge and Burn, the Eraser, Text and Flip. On a phone or tablet she taps a button that's off instead of hovering. Then picks Lower and clicks a slot with a half block drawn in it, and paints again. Opens a photo in it.
-- Expects: with the lower half missing those paint tools are off, and the reason (the font's name and that it has no lower half) is the tooltip on a desktop and a toast on a tap on a phone or tablet (a swipe over them shows none); the Eraser, Text and Flip stay on; the photo converts with Best match; after she gives the font a lower half, the tools come on and paint draws.
-- Probes: `out-of-order`: start a stroke with the tool just before it goes off; `speed`: tap an off button ten times fast; `back-out`: tap the toast's reason away and check the buttons stay off.
-- Rated: yes, wants to be told on the button why it's off
+- Does: builds a copy of her `.F16` with slot 220 blanked and no other half-block shape in the font, loads it, then looks at the tool buttons for Pencil, Brush, Paint Bucket, Shapes, Gradient, Retouch's Blur, Dodge and Burn, the Eraser, Text and Flip. On a phone or tablet she taps a button that's off instead of hovering. Then picks Lower and clicks slot 254 (the small square) in the sheet, and paints again. Opens a photo in the blanked font first.
+- Expects: with the lower half missing those paint tools are off, and the reason (the font's name and that it has no lower half) is the tooltip on a desktop and a toast on a tap on a phone or tablet (a swipe over them shows none); the Eraser, Text and Flip stay on; the photo converts with Best match; after she gives the font a lower half the tools come on and paint draws as the small square.
+- Probes: `out-of-order`: start a stroke with the tool just before it goes off; `speed`: tap an off button ten times fast; `again`: tap a button that's off on top of the button laid over it and check the reason doesn't show for the wrong one.
+- Rated: yes, wants the reason on the button as a tooltip on a phone too
 
 **Free time:** she'd set every block to a slot of her own and export the XBin, undo the lot, and check the Blocks row after a reload.
+
+## A photo in my font
 
 ### 11. Convert a photo
 - Does: opens a photo from the fixtures with her font as the drawing's font, with Characters set to Best match, then

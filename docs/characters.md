@@ -192,7 +192,7 @@ A bitmap font belongs to the drawing, not to your browser:
 
 - **It's saved**: A project keeps it, and so does an XBin export ([Saving .xb](#saving-xb)). Opening an XBin that holds a font gives the drawing that font.
 - **It's one undo step**: Setting it, and taking it off by choosing another font, are each a step you can undo. It's listed under **This drawing** in the Font dropdown; choosing any other font takes it away. **Remove** (on the Fonts page) only clears a loaded font from your browser; the drawing keeps its own.
-- **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots ([The Fonts Page](#the-fonts-page)). A character the font has no slot for shows blank, but the character you typed is kept: choose another font and the original comes back.
+- **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots ([The Fonts Page](#the-fonts-page)). A character the font has no slot for shows as its nearest classic (CP437) stand-in when the font has a slot for that, and blank when it has neither (a ▄ in a font with no lower half, say). The character you typed is kept either way: choose another font and the original comes back.
 - **Blocks and shades come from it**: Block elements and shades are drawn from the font's own pixels, so they look as the font draws them.
 - **The converter measures in it**: Best match and By shape compare each cell with the font's characters, so a photo converts into the shapes your font has.
 - **The status bar shows the code**: In the ANSI view, after **Char** and its character, the status bar gives the character's code in decimal: its slot in the drawing's font, or its classic (CP437) byte when there's no bitmap font. A character with no code shows none. On a narrow bar the code gives way, with the FG and BG hex codes, before anything else does.
@@ -245,7 +245,7 @@ A character one cell can't hold (a word, a control character) comes in as an emp
 
 ### Fonts in Shared Rooms
 
-While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A bitmap font isn't sent yet either: the room sees the host's drawing in JetBrains Mono, each character as the font has it (one the font has no slot for blank).
+While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A bitmap font isn't sent yet either: the room sees the host's drawing in JetBrains Mono, each character as the font has it (one the font lacks as its stand-in, or blank).
 
 ---
 
