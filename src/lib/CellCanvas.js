@@ -45,7 +45,7 @@ export function cellGeometry(advance, scale, capped = false, font = DISPLAY_FONT
   const round = capped ? Math.floor : Math.round;
   const cw = round(advance * scale);
   const tall = font.size * font.lineHeight * scale;
-  const ch = font.bitmap && font.height % 2 === 1 ? Math.round(tall) : Math.round(tall / 2) * 2;
+  const ch = font.bitmap && font.height % 2 === 1 ? round(tall) : round(tall / 2) * 2;
   return { cw, ch, cellWidth: cw / scale, lineHeight: ch / scale };
 }
 

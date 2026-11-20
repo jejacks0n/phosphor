@@ -57,6 +57,18 @@ test('an odd-height bitmap font is its own height; an even one and a TrueType fo
   for (let s = 0.5; s <= 4; s += 0.01) assert.equal(cellGeometry(8, s, false, vga).ch, Math.round((16 * s) / 2) * 2);
 });
 
+test('a capped cell rounds its height down, so a window of lines stays under the largest side', () => {
+  // JetBrains Mono's 20.4 px line (no font given) and a 16 px TrueType spec, in windows 40 columns wide and 500 to 5000 lines tall at dpr 2:
+  // every one stays at or under 16384 device px. 513 lines was 32 px a cell (16416 px) when the height rounded up.
+  assert.equal(cellGeometry(10.2, backingScale(40 * 10.2, 513 * 20.4, 2, 16384), true).ch, 30);
+  for (const [font, line] of [[undefined, 20.4], [{ size: 16, lineHeight: 1 }, 16]]) {
+    for (let rows = 500; rows <= 5000; rows++) {
+      const scale = backingScale(40 * 10.2, rows * line, 2, 16384);
+      assert.ok(rows * cellGeometry(10.2, scale, true, font).ch <= 16384, `${rows} lines of ${line} px`);
+    }
+  }
+});
+
 test('gridYAt: an even cell is y over half its height; an odd one splits where its halves meet', () => {
   assert.equal(gridYAt(7.3, { lineHeight: 16, odd: false }), 7.3 / 8);
   const m = { lineHeight: 11, odd: true, upper: 5 };
