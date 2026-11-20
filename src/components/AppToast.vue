@@ -38,6 +38,11 @@ div.app-toast {
   margin: 0;
   border: none;
   transform: translateX(-50%);
+  box-sizing: border-box;
+  display: flex; /* the message wraps; its button and × keep their size */
+  align-items: center;
+  width: max-content; /* not wrapped at half the screen, where left: 50% would put it */
+  max-width: min(560px, calc(100vw - 32px));
   padding: 7px 14px;
   border-radius: 6px;
   background: #e0b050;
@@ -47,6 +52,8 @@ div.app-toast {
   cursor: pointer; /* a click closes it */
 }
 button.action {
+  flex-shrink: 0;
+  white-space: nowrap;
   margin-left: 10px;
   padding: 2px 8px;
   border: 1px solid currentColor;
@@ -64,6 +71,7 @@ button.action:hover {
 
 div.app-toast::after { /* drawn, so it isn't part of what the message says */
   content: '×';
+  flex-shrink: 0;
   margin-left: 10px;
   opacity: 0.6;
 }

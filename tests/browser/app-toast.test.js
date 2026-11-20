@@ -1,6 +1,7 @@
 // The toast at the bottom of the screen: a click anywhere on it closes it; one with an action has a button that runs
 // the action once and closes it.
-import { afterEach, expect, test } from 'vitest';
+import { afterEach, expect, test, onTestFinished } from 'vitest';
+import { page } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
 import { i18n } from '@/i18n';
 import AppToast from '@/components/AppToast.vue';
@@ -56,4 +57,20 @@ test('an action that shows a message of its own keeps it', async () => {
   await nextTick();
   shown().querySelector('button').click();
   expect(toastMessage.value).toBe('Two.');
+});
+
+test('on a phone, a long toast takes the width of the screen less its margins, centered, its button whole', async () => {
+  await page.viewport(390, 844);
+  onTestFinished(() => page.viewport(414, 896));
+  await expect.poll(() => innerWidth).toBe(390);
+  await mount();
+  toast('This drawing\u2019s font, Slab, has no lower half block, so it can\u2019t be painted in yet.', { stay: true, action: { label: 'Set up its blocks', run: () => {} } });
+  await nextTick();
+  const box = shown().getBoundingClientRect(), button = shown().querySelector('button');
+  expect(box.width).toBeGreaterThan(300); // not wrapped at half the screen
+  expect(box.left).toBeGreaterThanOrEqual(16);
+  expect(box.right).toBeLessThanOrEqual(390 - 16);
+  expect(Math.abs(box.left - (390 - box.right))).toBeLessThan(1); // centered
+  expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth); // its label on one line, not squeezed
+  expect(button.getBoundingClientRect().height).toBeLessThan(30);
 });
