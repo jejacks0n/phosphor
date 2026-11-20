@@ -159,4 +159,17 @@ test('the Font dropdown disables a bitmap font that isn\'t set up, in a room onl
   expect(option().disabled).toBe(false);
   project._hosting = true;
   await vi.waitFor(() => expect(option().disabled).toBe(true));
+  project._hosting = false;
+  await vi.waitFor(() => expect(option().disabled).toBe(false));
+});
+
+test('the Font dropdown reads nothing while it\'s off for someone else\'s room', async () => {
+  const { project, workspace, pinia } = await drawing(cp437Font);
+  const bad = await addBitmapFont(new File([new Uint8Array(256 * 16).fill(3)], 'Bad.F16'));
+  workspace.userFonts = await loadFonts();
+  workspace.roomFont = { id: 'vga' }; // the host's font, so the select is off
+  project._hosting = true;
+  await mountOn(pinia, FontField);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect([...host.querySelectorAll('option')].find((o) => o.value === bad.id).disabled).toBe(false);
 });

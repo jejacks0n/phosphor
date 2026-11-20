@@ -22,10 +22,12 @@ const yours = computed(() => loaded.value.filter((font) => font.id !== (drawn.va
 const { choose, hostsFont } = useFontActions();
 // In a room, the bitmap fonts of yours that aren't set up (a room can't edit blocks, so it takes no such font).
 const notReady = ref(new Set());
-watch([yours, () => project.inRoom], async ([list, inRoom]) => {
-  const ids = inRoom ? list.filter((font) => font.kind === 'bitmap') : [];
+let reading = 0; // the newest read's number, so an older one can't overwrite it
+watch([yours, () => project.inRoom, hostsFont], async ([list, inRoom, theirs]) => {
+  const mine = ++reading;
+  const ids = inRoom && !theirs ? list.filter((font) => font.kind === 'bitmap') : [];
   const bad = await Promise.all(ids.map(async (font) => (notSetUp(await storedBitmapFont(font.id).catch(() => null)) ? font.id : null)));
-  notReady.value = new Set(bad.filter(Boolean));
+  if (mine === reading) notReady.value = new Set(bad.filter(Boolean));
 }, { immediate: true });
 const problem = ref(''); // why the font picked in the dropdown couldn't be used
 
