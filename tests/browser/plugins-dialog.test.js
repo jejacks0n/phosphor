@@ -78,8 +78,8 @@ test('empty, it says what plugins are; a manifest picked is asked about, then li
   const row = document.querySelector('dialog li');
   for (const words of ['Midnight', '1.0.0', 'by Phosphor', '1 theme', 'A deep blue theme for late nights.']) expect(row.textContent).toContain(words);
   const link = row.querySelector('a');
-  expect(link.href).toBe('https://github.com/jane/phosphor-midnight');
-  expect(link.textContent).toBe('github.com/jane/phosphor-midnight');
+  expect(link.href).toBe('https://github.com/jejacks0n/phosphor/tree/main/plugins/midnight');
+  expect(link.textContent).toBe('github.com/jejacks0n/phosphor/tree/main/plugins/midnight');
   expect(link.rel).toContain('noopener');
   expect(store.plugins).toHaveLength(1);
 });

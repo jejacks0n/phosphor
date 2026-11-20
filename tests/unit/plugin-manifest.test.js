@@ -94,7 +94,7 @@ test('optional fields left out read as empty', () => {
 test('the slots are the color properties of :root in global.css', () => {
   const css = readFileSync(new URL('../../src/assets/global.css', import.meta.url), 'utf8');
   const root = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')));
-  const NOT_SLOTS = ['logo', 'display-font-family', 'display-font-size', 'display-line-height', 'white', 'black', 'accent-glow'];
+  const NOT_SLOTS = ['logo', 'display-font-family', 'ui-font-family', 'display-font-size', 'display-line-height', 'white', 'black', 'accent-glow'];
   const declared = [...root.matchAll(/^\s*--([a-z0-9-]+):/gm)].map(([, name]) => name).filter((name) => !NOT_SLOTS.includes(name));
   expect([...COLOR_SLOTS]).toEqual(declared);
 });

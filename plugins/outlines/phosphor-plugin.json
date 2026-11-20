@@ -5,6 +5,7 @@
   "version": "1.0.0",
   "author": "Phosphor",
   "description": "Draws - | / and \\ along a picture's outlines, darker side on lighter, and leaves the rest to By shape.",
+  "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/outlines",
   "license": "MIT",
   "script": "outlines.js"
 }

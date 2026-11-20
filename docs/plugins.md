@@ -109,7 +109,7 @@ ids starting `phosphor.` are kept for the official plugins:
   "version": "1.0.0",
   "author": "Phosphor",
   "description": "A deep blue theme for late nights.",
-  "homepage": "https://github.com/jane/phosphor-midnight",
+  "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/midnight",
   "license": "MIT",
   "themes": [
     {
