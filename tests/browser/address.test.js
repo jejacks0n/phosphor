@@ -218,7 +218,7 @@ test('a Back the moment the address moves cancels one of them, not each other wi
   expect(replace.mock.calls.length).toBeLessThan(3);
 });
 
-test('the art opening goes from / to the tab underneath, and closing goes back, neither a step', async () => {
+test('art that comes before autosave has answered (a late restore) goes from / to the tab underneath, and closing goes back, neither a step', async () => {
   project.clearImage();
   await landed();
   expect(path()).toBe('/');
@@ -233,6 +233,77 @@ test('the art opening goes from / to the tab underneath, and closing goes back, 
   await settled();
   expect(path()).toBe('/');
   expect(push).not.toHaveBeenCalled();
+});
+
+// Art you open yourself, from the start screen, once autosave has answered.
+async function openedFromStart() {
+  project.clearImage();
+  await landed();
+  workspace.documentAnswered = true;
+  workspace.editorTab = 'output';   // a file, say: the tab chosen first
+  await loadImage(project, GRADIENT);
+  await settled();
+}
+
+test('art opened from the start screen is a step, and Back to the start screen closes it', async () => {
+  await openedFromStart();
+  expect(path()).toBe('/ansi');
+  expect(push).toHaveBeenCalledTimes(1);
+  workspace.editorTab = 'sauce';
+  await settled();
+
+  router.back();
+  await settled();
+  expect(path()).toBe('/ansi');   // a tab back, the art still open
+  expect(project.image).not.toBe(null);
+  router.back();
+  await settled();
+  expect(path()).toBe('/');
+  expect(project.image).toBe(null);   // the start screen, with Pick up where you left off
+  expect(push).toHaveBeenCalledTimes(2);
+});
+
+test('Back to the start screen over unsaved work asks first: staying keeps the art and its address', async () => {
+  await openedFromStart();
+  project.typeAt(1, 1, 'A', { fg: '#ffee00', bg: '#0044aa' });
+  project.commitEdit();
+  const image = project.image;
+
+  router.back();
+  await settled();
+  expect(project.image).toBe(image);
+  const ask = workspace.unsavedAsk;
+  expect(ask.name).toBe(null);   // New project's question
+  workspace.unsavedAsk = null;
+  ask.stay();   // Cancel
+  await settled();
+  expect(path()).toBe('/ansi');
+  expect(project.image).toBe(image);
+
+  router.back();
+  await settled();
+  const again = workspace.unsavedAsk;
+  workspace.unsavedAsk = null;
+  again.go();   // Start without saving
+  await settled();
+  expect(path()).toBe('/');
+  expect(project.image).toBe(null);
+});
+
+test('New project after art opened from the start screen still replaces, and a / pasted in closes nothing', async () => {
+  await openedFromStart();
+  await router.push('/');   // pasted in: not the start screen's own entry
+  await settled();
+  expect(path()).toBe('/ansi');
+  expect(project.image).not.toBe(null);
+
+  replace.mockClear();
+  push.mockClear();
+  workspace.newProject();
+  await settled();
+  expect(path()).toBe('/');
+  expect(push).not.toHaveBeenCalled();
+  expect(replace).toHaveBeenCalledTimes(1);
 });
 
 test('/ with the app open is no step: it is replaced, and Back goes past it', async () => {

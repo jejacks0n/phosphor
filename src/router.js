@@ -32,7 +32,7 @@ export function createAddressRouter(history = defaultHistory()) {
 
 export function followAddress(router) {
   const workspace = useWorkspaceStore(), social = useSocialStore(), room = useRoomStore(), project = useProjectStore();
-  let pending = false, ours = false, landing = true, replaceNext = false, joining = false;
+  let pending = false, ours = false, landing = true, replaceNext = false, joining = false, opened = false;
   let artTab = workspace.editorTab === 'room' ? workspace.viewTab : workspace.editorTab;   // the art tab ROOM goes back to
 
   // What decides which SOCIAL pages can be arrived at.
@@ -101,7 +101,7 @@ export function followAddress(router) {
     const path = pathOf({ tab: workspace.editorTab, page: social.page, empty });
     const wanted = going ?? null;
     if (path === current.path && wanted === was) {
-      replaceNext = false;
+      replaceNext = opened = false;
       return;
     }
     // Exit, End, removal, the room ending, a spent entry or a link that asks. (Back past a join never gets here: its address is right.)
@@ -110,12 +110,17 @@ export function followAddress(router) {
     // Sign in under a two-factor code, and the name page has no way back.
     const spentPage = current.meta.page && arrivalPage(current.meta.page, known()) !== current.meta.page;
     const noStep = path === '/social/name' || (path === '/social/two-factor' && current.meta.page === 'sign-in');
-    // The art opening or closing, between an art tab and /, is no step, and nor is the lobby's own address (it opens in
-    // the side panel). A page opening over the start screen is a step, and so is a join from it.
-    const start = current.meta.lobby || (!current.meta.tab && !current.meta.page && workspace.editorTab !== 'room' && !(workspace.documentSettled && social.page !== 'lobby'));   // or a landing at / (or an unknown path); ROOM's entry is a step
+    // Art you open from the start screen (a file, Start blank, a row of Pick up) is a step, and the start screen's entry
+    // is marked, so Back to it closes the art again (askBeforeClosing). Art arriving any other way (a restore, a room's)
+    // or closing (New project) moves between an art tab and / with no step, and the lobby's own address is no step
+    // either (it opens in the side panel). A page opening over the start screen is a step, and so is a join from it.
+    const fromStart = opened && !current.meta.tab && !current.meta.page;
+    const start = current.meta.lobby || (!fromStart && !current.meta.tab && !current.meta.page && workspace.editorTab !== 'room' && !(workspace.documentSettled && social.page !== 'lobby'));   // or a landing at / (or an unknown path); ROOM's entry is a step
     const closed = path === '/' && !current.meta.page && current.meta.tab !== 'room';   // leaving ROOM for it is a step
     const replace = (landing && !room.role) || replaceNext || lost || spentPage || noStep || start || closed;
-    replaceNext = false;
+    replaceNext = opened = false;
+    const { history: entries } = router.options;
+    if (fromStart && !replace) entries.replace(entries.location, { inRoom: entries.state.inRoom, startScreen: true });
     ours = true;
     pending = true;   // beforeEach is a few promises off, and a second call before it would navigate again
     router[replace ? 'replace' : 'push']({
@@ -130,16 +135,33 @@ export function followAddress(router) {
   // A landing has nothing to leave, and App isn't mounted to ask: the plain address in a hosting tab stays.
   async function askBeforeLeavingHost(to, from) {
     if (from === START_LOCATION || room.role !== 'host' || String(to.query.room) === room.id) return true;
+    const end = await holdWhile(() => room.askToEnd());
+    if (!end) return false;   // the router puts the address back, without a navigation
+    room.close();
+    return true;
+  }
+
+  // Back onto the start screen you opened the art from closes it, as New project does (asked first over unsaved work;
+  // staying puts the address back). Only your own art, outside a room, and only on the marked entry: a / pasted in
+  // with the art open is no way out of it.
+  function askBeforeClosing(to, from) {
+    if (ours || from === START_LOCATION || to.meta.tab || to.meta.page || to.meta.lobby || !from.meta.tab || from.meta.tab === 'room') return true;
+    if (from.query.room || room.role || !project.image || !router.options.history.state.startScreen) return true;
+    return holdWhile(() => workspace.newProject());
+  }
+
+  // While a Back or Forward asks, the router hears nothing else.
+  async function holdWhile(ask) {
     const at = router.options.history.state.position;
     const stay = ({ state }) => { if (state && state.position !== at) history.go(at - state.position); };
     router.listening = false;
     addEventListener('popstate', stay);
-    const end = await room.askToEnd();
-    removeEventListener('popstate', stay);
-    router.listening = true;
-    if (!end) return false;   // the router puts the address back, without a navigation
-    room.close();
-    return true;
+    try {
+      return await ask();
+    } finally {
+      removeEventListener('popstate', stay);
+      router.listening = true;
+    }
   }
 
   const stops = [
@@ -147,6 +169,7 @@ export function followAddress(router) {
     router.beforeEach((to, from) => ours || from === START_LOCATION || !cancelTopDialog()),
     router.beforeEach(() => { pending = true; }),
     router.beforeEach(askBeforeLeavingHost),   // after the one above: pending stays true while it asks
+    router.beforeEach(askBeforeClosing),
     router.afterEach((to, from, failure) => {
       const own = ours;
       ours = false;
@@ -158,6 +181,10 @@ export function followAddress(router) {
       nextTick(reconcile);
     }),
     watch(() => workspace.editorTab, (tab) => { if (tab !== 'room') artTab = tab; }, { flush: 'sync' }),
+    // Art you open: once autosave has really answered (not its restore, however late), and not a room's.
+    watch(() => !!project.image, (open) => {
+      opened = open && workspace.documentAnswered && !room.role && social.roomGoingTo === null;
+    }, { flush: 'sync' }),
     // A page SOCIAL's question was asked over, declined, leaves no entry for Back to land on.
     watch(() => social.page, (page, was) => {
       if (page === 'lobby' && was !== 'lobby' && !social.allowed) replaceNext = true;

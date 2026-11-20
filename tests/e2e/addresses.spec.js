@@ -104,19 +104,27 @@ test('/ with nothing open is the start screen, and no step of its own', async ({
   expect(await stepsSinceLoad(page)).toBe(0);
 });
 
-test('opening a file goes from the start screen to ANSI, in place of it: the start screen is no step', async ({ page }) => {
+test('opening a file from the start screen is a step: Back is the start screen again, with the drawing to resume', async ({ page }) => {
   await noteHistoryAtLoad(page);
   await page.goto('/');
   await hash(page, '/');
   await imageInput(page).setInputFiles(fixture('images/gradient.png'));
   await selected(page, 'ANSI');
   await hash(page, '/ansi');
-  expect(await stepsSinceLoad(page)).toBe(0);
+  expect(await stepsSinceLoad(page)).toBe(1);
+  await autosaved(page);
 
-  await tab(page, 'PIXEL').click();   // tabs are steps again, with something open
+  await tab(page, 'PIXEL').click();
   await hash(page, '/pixel');
   await page.goBack();
   await selected(page, 'ANSI');
+  await page.goBack();
+  await startScreen(page);
+  await hash(page, '/');
+  await page.getByRole('button', { name: 'Resume gradient.png' }).click();   // and resuming it is a step too
+  await selected(page, 'ANSI');
+  await page.goBack();
+  await startScreen(page);
 });
 
 test('an address for a SOCIAL page you can\'t be on lands on the nearest one, with no extra step', async ({ page }) => {

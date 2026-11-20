@@ -254,9 +254,11 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
 ### 19. Back and Forward between tabs
 - Does: from ANSI goes to PIXEL, then SAUCE; presses the browser's Back twice, Forward once; reloads on SAUCE.
 - Expects: the address names each tab; Back and Forward move between them; the reload comes back to SAUCE; Back with a
-  dialog open (Export) closes the dialog and the tab stays.
-- Probes: `again`: Back past the first tab to the start screen's address and Forward again; `interrupt`: Back while a
-  dialog is open.
+  dialog open (Export) closes the dialog and the tab stays. Back past the first tab, after a file opened from the start
+  screen, is the start screen again, with the file under Pick up where you left off (asked first with unsaved changes:
+  Cancel stays on the tab) ([Navigation and URLs](../../README.md#navigation-and-urls)).
+- Probes: `again`: Back past the first tab to the start screen and Forward again; `interrupt`: Back while a
+  dialog is open, and Back while the unsaved-changes question is up.
 - Rated: yes, wants ← → with a tab focused. Back and Forward themselves are the browser's (Cmd+[ and Cmd+], which do
   nothing headless, so use `page.goBack()` and `page.goForward()`); rate the step by the app's own keys, `mouse` if it
   has none.

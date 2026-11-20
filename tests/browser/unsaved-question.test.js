@@ -128,3 +128,20 @@ test('New project asks Start a new project?, and Start without saving goes to th
   await choose('Start without saving');
   expect(project.image).toBe(null);
 });
+
+test('New project tells whoever asked whether the drawing closed: Cancel keeps it, Start without saving closes it', async () => {
+  confirmSpy();
+  const { project, workspace } = await drawing();
+  const image = project.image;
+  const kept = workspace.newProject();
+  await settle();
+  await cancel();
+  expect(await kept).toBe(false);
+  expect(project.image).toBe(image);
+
+  const closed = workspace.newProject();
+  await settle();
+  await choose('Start without saving');
+  expect(await closed).toBe(true);
+  expect(project.image).toBe(null);
+});

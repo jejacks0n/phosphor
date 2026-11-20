@@ -147,7 +147,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     colorBox: null,          // the color box (ColorPair's popover) while it's open: 'fg' | 'bg'
     versionsOpen: false,     // the autosaved versions list (VersionsDialog)
     saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'png' and the animated formats (SaveDialog)
-    unsavedAsk: null,        // { name, go, saving? } while UnsavedDialog asks before leaving unsaved work (confirmLeave)
+    unsavedAsk: null,        // { name, go, stay?, saving? } while UnsavedDialog asks before leaving unsaved work (confirmLeave)
     deleteLayerAsk: null,    // { id } while DeleteLayerDialog asks, in a room, before the layer with the id is deleted for everyone; going: asked, till it's gone
     exportModal: false,      // the export modal (ExportModal) open
 
@@ -444,22 +444,25 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.artDrop = { file, at, ...(picture && { picture }), ...(art && { art }) };
     },
     // Goes on (go) at once when the drawing has nothing unsaved; otherwise asks first (UnsavedDialog): save the
-    // project, then go on; go on without saving; or stay. name: the file that would open, or null for New project.
-    confirmLeave(name, go) {
+    // project, then go on; go on without saving; or stay (then stay, if given). name: the file that would open, or null
+    // for New project.
+    confirmLeave(name, go, stay) {
       const project = useProjectStore();
       project.commitPending(); // text typed a moment ago counts
       if (!project.image || !project.unsavedChanges) return void go();
-      this.unsavedAsk = markRaw({ name, go });
+      this.unsavedAsk = markRaw({ name, go, stay });
     },
-    // New project (the button, the desktop menu): asked first when there's unsaved work.
+    // New project (the button, the desktop menu, Back onto the start screen): asked first when there's unsaved work.
+    // Resolves whether the drawing closed.
     newProject() {
       const project = useProjectStore();
-      if (!project.image || useDrawingStore().offWithOthers) return;
-      this.confirmLeave(null, () => {
+      if (!project.image || useDrawingStore().offWithOthers) return Promise.resolve(false);
+      return new Promise((resolve) => this.confirmLeave(null, () => {
         project.clearImage();
         this.editorTab = 'input';
         this.settingsOpen = false; // a phone's drawer: the start screen shows
-      });
+        resolve(true);
+      }, () => resolve(false)));
     },
     // Save project (the button, Cmd/Ctrl+S, the desktop menu; Save As with Shift or from the menu): on desktop, and on
     // the web where the browser savesInPlace, straight over the project's own file, or where the system's save box says
