@@ -23,8 +23,9 @@ const SLOTS = new Set(COLOR_SLOTS);
 const ID = /^[a-z0-9-]+\.[a-z0-9-]+$/;
 const THEME_ID = /^[a-z0-9-]+$/;
 const MOST_THEMES = 20;
-// Relative to the manifest, inside its folder: no leading slash, no .. segment, no backslash, JavaScript.
-const SCRIPT_PATH = /^(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9_-][A-Za-z0-9._/-]*\.m?js$/;
+// Relative to the manifest, inside its folder: no leading slash, no . or .. segment, no empty one (a//b.js), no
+// backslash, JavaScript. Each segment is a name a folder can be opened by.
+const SCRIPT_PATH = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))(?!.*\/\/)[A-Za-z0-9_-][A-Za-z0-9._/-]*\.m?js$/;
 
 // code: tooBig, notJson, newer, nothing, badField { field }, unknownColor { theme, key },
 // badColor { theme, key, value }. The words are the app's (plugins.errors in the locales).

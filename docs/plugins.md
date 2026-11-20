@@ -134,7 +134,7 @@ The fields:
 | `homepage` | Where to read about it, linked from the dialog. | Optional; `https://` only; 200 characters at most. |
 | `license` | Its license, for example `MIT`. | Optional; 40 characters at most. |
 | `themes` | The themes it adds. | At most 20. A plugin has themes, a script, or both; with neither it's refused ("This plugin adds nothing this Phosphor can use."). |
-| `script` | The script that adds solvers ([Writing a solver](#writing-a-solver)). | Optional; a relative path to a `.js` or `.mjs` file inside the plugin's folder (or .zip), going up (`..`) not allowed; 1 MB at most. |
+| `script` | The script that adds solvers ([Writing a solver](#writing-a-solver)). | Optional; a relative path to a `.js` or `.mjs` file inside the plugin's folder (or .zip), going up (`..`), `.` and empty folders (`a//b.js`) not allowed; 1 MB at most. |
 
 Each theme:
 
