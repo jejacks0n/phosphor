@@ -10,7 +10,7 @@ const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
 const byte = (v) => Math.round(clamp(Number.isFinite(v) ? v : 0));
 const inByte = (v) => typeof v === 'number' && v >= 0 && v <= 255; // NaN isn't
 const channels = (color, out) => {
-  out[0] = color.r ?? color[0]; out[1] = color.g ?? color[1]; out[2] = color.b ?? color[2];
+  if (Array.isArray(color)) { out[0] = color[0]; out[1] = color[1]; out[2] = color[2]; } else { out[0] = color.r; out[1] = color.g; out[2] = color.b; }
   return out;
 };
 
@@ -84,10 +84,18 @@ function makePluginMatcher(def, ref, palette, glyphs, solids, light, style, opti
       return nearest ? lookOf.get(nearest(r, g, b)) : { r, g, b };
     },
     // A color's ([r, g, b] or { r, g, b }) brightness, 0..255, with rgb2gray's weights (unrounded).
-    gray: (color) => (channels(color, rgb), 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]),
+    gray: (c) => (Array.isArray(c) ? 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] : 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b),
     // The cell as By shape picks it from the layer's set alone: { char, fg, bg }, overwritten by the next call.
-    byShape: () => shape.match(state.own),
+    byShape() {
+      const r = shape.match(state.own);
+      shaped.char = r.char; shaped.fg = lookColor(r.fg); shaped.bg = lookColor(r.bg);
+      return shaped;
+    },
   });
+  // By shape's shared colors (the palette's, black, Monochrome's white) given as look's copies; a full color is its own.
+  const shaped = { char: '', fg: null, bg: null };
+  const lookBlack = Object.freeze({ r: 0, g: 0, b: 0 }), lookWhite = Object.freeze({ r: white.r, g: white.g, b: white.b });
+  const lookColor = (c) => (c === ASCII_BG ? lookBlack : c === white ? lookWhite : lookOf?.get(c) ?? c);
 
   // A result's color: a palette index (an integer in range) or { r, g, b } (each a number within 0..255), the
   // palette's nearest (rounded without one). Anything else is black: holdCell has no samples to take a mean from,
