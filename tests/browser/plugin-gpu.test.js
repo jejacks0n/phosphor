@@ -310,6 +310,24 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     expect(project.cells.every((c) => c.char === '/')).toBe(true);
   });
 
+  test('a change of set checks the shader again: one that agrees on the first set and not on the next is switched off', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
+    Object.assign(project, { quantize: 'cga', chars: SET });
+    // Its own '\\' taken to be the last glyph: true while the set doesn't hold it.
+    const def = solver({ solve: () => ({ char: '\\', fg: rgb(255, 0, 0), bg: rgb(0, 0, 0) }), shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), glyphCount - 1);' } });
+    project.charChoice = await onSolver(def, { hash: 'set-change' });
+    await settle(project);
+    expect(usePluginStore().problems['jane.outlines']).toBeUndefined();
+    expect(project.cells.every((c) => c.char === '\\')).toBe(true);
+
+    project.chars = `${SET}\\▌`; // holds '\\' now: the last glyph is ▌
+    await settle(project);
+    const words = t('plugins.errors.shaderDisagrees', { count: 64, total: 64, col: 0, line: 0 });
+    expect(usePluginStore().problems['jane.outlines']).toBe(t('plugins.errors.shaderOff', { name: 'Edges', message: words }));
+    expect(project.cells.every((c) => c.char === '\\')).toBe(true); // the JavaScript's
+  });
+
   // Last: the shared context stays lost.
   test('a context lost during a solver\'s first check is put down to its shader, and the JavaScript draws', async () => {
     const { project } = await createTestApp();

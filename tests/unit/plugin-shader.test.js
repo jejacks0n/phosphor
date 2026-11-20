@@ -1,7 +1,7 @@
 // A plugin solver's shader source (ShapeMatcher's pluginShaderSource): the prelude, one uniform per option, the author's
 // body as solve() or refine(), and a main that calls it.
 import { describe, expect, it } from 'vitest';
-import { pluginShaderSource } from '@/lib/ShapeMatcher.js';
+import { pluginShaderSource, ownGlyphs } from '@/lib/ShapeMatcher.js';
 
 const def = {
   id: 'edges', reach: 1,
@@ -36,5 +36,13 @@ describe('pluginShaderSource', () => {
     expect(refine).toMatch(/void refine\(\) \{\n#line 1\nif \(charAt/);
     expect(refine).toMatch(/void main\(\) \{[^}]*refine\(\);/);
     expect(refine.startsWith('#version 300 es')).toBe(true);
+  });
+
+  it('gives the solver\'s own characters\' glyph indexes, in its order: the set\'s where the set holds one', () => {
+    const glyphs = [...' .:-=', '|', '/', '\\'].map((char, i) => ({ char, own: i >= 5 }));
+    const own = { ...def, chars: '-|/\\' };
+    expect(ownGlyphs(own, glyphs)).toEqual([3, 5, 6, 7]);
+    expect(pluginShaderSource(own, 'solve', { glyphs: 8, reach: 1, own: ownGlyphs(own, glyphs) })).toMatch(/const int ownGlyph\[4\] = int\[4\]\(3, 5, 6, 7\);/);
+    expect(pluginShaderSource(def, 'solve', { glyphs: 3, reach: 1, own: [] })).not.toMatch(/ownGlyph/); // no chars: no array
   });
 });

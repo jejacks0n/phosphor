@@ -210,6 +210,24 @@ describe('resolvePlugin', () => {
     expect(() => resolvePlugin(solid(1, 1, color), 1, 1, matcherOf(far), { alone: true })).toThrow(SolverError);
   });
 
+  it('a refine that returns null keeps pass 1\'s cell, not a fault; undefined is still one', () => {
+    const color = (col) => [60 * col, 100, 30];
+    const def = solver({
+      solve: (cell) => ({ char: '▌', fg: cell.col, bg: 2 }),
+      refine: (cell) => [null, undefined, { char: '-', fg: 9, bg: 9 }][cell.col],
+    });
+    const r = resolvePlugin(solid(3, 2, color), 3, 2, matcherOf(def), {});
+    for (const line of [0, 1]) {
+      expect(r.cells[line * 3]).toBe(r.first[line * 3]); // kept, the same cell
+      expect(pick(r.cells[line * 3])).toEqual(['▌', CGA[0].hex.toLowerCase(), CGA[2].hex.toLowerCase()]);
+      expect(r.cells[line * 3 + 1].char).toBe('▀'); // held: the first glyph
+      expect(r.cells[line * 3 + 2].char).toBe('-');
+    }
+    expect(r.faults).toBe(2); // undefined, once a line
+    // Only pass 2 keeps: pass 1's null is held, as before.
+    expect(resolvePlugin(solid(1, 1, color), 1, 1, matcherOf(solver({ solve: () => null })), {}).faults).toBe(1);
+  });
+
   it('holds nonsense: undefined, a foreign character, NaN and out-of-range colors', () => {
     const results = [
       undefined, { char: 'Z' }, { char: '-', fg: { r: NaN, g: 0, b: 0 }, bg: 999 },

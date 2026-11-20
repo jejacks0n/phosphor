@@ -292,13 +292,19 @@ int charAt(ivec2 d) {
 `;
 const UNIFORM = { slider: 'float', checkbox: 'bool', choice: 'int' };
 
-// The fragment shader for a plugin solver's pass ('solve' or 'refine') over glyphs glyphs (the layer's set, then its own).
-export function pluginShaderSource(def, pass, { glyphs, reach }) {
+// Each of a solver's own characters' (def.chars, in its order) index in glyphs ({ char }: the layer's set, then the
+// solver's characters the set doesn't hold): the set's index where the set holds it.
+export const ownGlyphs = (def, glyphs) => [...def.chars].map((char) => glyphs.findIndex((g) => g.char === char));
+
+// The fragment shader for a plugin solver's pass ('solve' or 'refine') over glyphs glyphs (the layer's set, then its own),
+// own its characters' indexes (ownGlyphs) as ownGlyph[], which a solver with no chars doesn't get (GLSL has no empty array).
+export function pluginShaderSource(def, pass, { glyphs, reach, own = [] }) {
   const options = def.options.map(({ id, kind }) => `uniform ${UNIFORM[kind]} opt_${id};`).join('\n');
+  const table = own.length ? `const int ownGlyph[${own.length}] = int[${own.length}](${own.join(', ')});\n` : '';
   return `${COMMON}
 const int glyphCount = ${glyphs};
 const int reach = ${reach};
-${PLUGIN}${pass === 'refine' ? CHAR_AT : ''}
+${table}${PLUGIN}${pass === 'refine' ? CHAR_AT : ''}
 ${options}
 void ${pass}() {
 #line 1
@@ -344,7 +350,7 @@ export default class ShapeMatcher {
   #palette = null; // the palette in uPalette
   #core = null;    // the matcher core whose glyphs (and mixes) are in their textures
   #mixes = 0;      // how many of them
-  #plugins = new Map(); // a plugin solver's pass: `ref, pass, glyph count` -> { def, program, log }, program null when it didn't build
+  #plugins = new Map(); // a plugin solver's pass: `ref, pass, glyph count, ownGlyphs` -> { def, program, log }, program null when it didn't build
 
   constructor(gl) {
     this.#gl = gl;
@@ -502,12 +508,12 @@ export default class ShapeMatcher {
   // has no shader for it or it didn't build (its log kept for shaderProblem).
   #pluginProgram({ def, ref, glyphs }, pass) {
     if (!def.shader[pass]) return null;
-    const key = `${ref}\u0000${pass}\u0000${glyphs.length}`, had = this.#plugins.get(key);
+    const own = ownGlyphs(def, glyphs), key = `${ref}\u0000${pass}\u0000${glyphs.length}\u0000${own}`, had = this.#plugins.get(key);
     if (had?.def === def) return had.program;
     if (had?.program) this.#gl.deleteProgram(had.program);
     let program = null, log = null;
     try {
-      program = this.#compile(ref, pluginShaderSource(def, pass, { glyphs: glyphs.length, reach: def.reach }));
+      program = this.#compile(ref, pluginShaderSource(def, pass, { glyphs: glyphs.length, reach: def.reach, own }));
     } catch (error) {
       log = error.log || String(error.message); // an empty log still says it didn't build
     }
