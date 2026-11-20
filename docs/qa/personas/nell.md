@@ -126,9 +126,9 @@ the same through each.
 ## My font's blocks
 
 ### 8. A font whose lower half is somewhere else
-- Does: builds a copy of her `.F16` in the snippet with slots 220 and 240 swapped, loads it with + Load, opens Manage fonts ▸ and chooses its row, reads the Blocks row and the note under it, then paints with the Brush and the Paint Bucket and hovers over cells.
-- Expects: the Blocks row shows Lower at slot 240 and every other block at its CP437 slot; the note says the lower half was found at 240; the paint shows as half blocks; the status bar's code over a painted half cell is 240; the meta line doesn't say "blocks set by you".
-- Probes: `again`: load the same file twice and check one copy is listed and the blocks are the same; `undo-redo`: undo the font change (the drawing goes back to its previous font), and check the paint stays and still shows as half blocks, then redo; `shades`: build another copy with slots 176, 177 and 178 blanked, load it with + Load, then export an XBin in it and open that, and check each time a short toast says "This font has no Light, Medium, or Dark block, so those characters draw blank." with a **Set up its blocks** button that opens the Fonts page on that font with Light picked.
+- Does: builds a copy of her `.F16` in the snippet with slots 220 and 240 swapped, loads it with + Load, opens Manage fonts ▸ and chooses its row, reads the Blocks row and the note under it, then paints with the Brush and the Paint Bucket and hovers over cells. Then builds another copy with slots 176, 177 and 178 blanked, loads it with + Load, exports an XBin in it and opens that.
+- Expects: the Blocks row shows Lower at slot 240 and every other block at its CP437 slot; the note says the lower half was found at 240; the paint shows as half blocks; the status bar's code over a painted half cell is 240; the meta line doesn't say "blocks set by you"; the copy without shades, loaded and again as the XBin opens, brings a short toast: "This font has no Light, Medium, or Dark block, so those characters draw blank." with a **Set up its blocks** button that opens the Fonts page on that font with Light picked.
+- Probes: `again`: load the same file twice and check one copy is listed and the blocks are the same; `undo-redo`: undo the font change (the drawing goes back to its previous font), and check the paint stays and still shows as half blocks, then redo.
 - Rated: no (drawing)
 
 ### 9. Set a block by hand
