@@ -2041,6 +2041,18 @@ test('the record keeps the extension the drawing came with, then the one it last
   expect(back.project.fileExt).toBe('phosphor');
 });
 
+// Its row in Pick up where you left off then reads as the project, not as one of the exports opened beside it.
+test('an export of a drawing saved as a project keeps the project\'s name and extension', async () => {
+  const { project } = await mounted();
+  await project.openArtFile(textFile());
+  await project.saveProject('hello-fixed');
+  await project.exportFile('ans', { filename: 'hello-fixed-20261118-221300' });
+  await project.exportAnimation('cast', { filename: 'hello-fixed-20261118-221301' });
+  expect({ filename: project.filename, fileExt: project.fileExt }).toEqual({ filename: 'hello-fixed', fileExt: 'phosphor' });
+  await pass(SAVE_AFTER_MS);
+  expect((await readLatest(project.documentId)).record).toMatchObject({ filename: 'hello-fixed', fileExt: 'phosphor' });
+});
+
 test('a blank canvas has no As opened: there is nothing to go back to', async () => {
   const { project } = await mounted();
   await project.setBlankCanvas({ withLayer: true });

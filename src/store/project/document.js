@@ -71,7 +71,18 @@ function newLayers(project, { baseOnly = false } = {}) {
 
 // A file's name as the document's: its stem, and its extension apart, lowercase (null with none).
 const nameOf = ({ name }) => ({ filename: name.replace(/\.[^/.]+$/, ''), fileExt: name.match(/\.([^/.]+)$/)?.[1].toLowerCase() ?? null });
+
 const PROJECT_EXT = PROJECT_EXTENSION.slice(1);
+
+// An export names the drawing after the file it went out as, once there's a file to give the name to, unless the
+// drawing is a project (.phosphor): an export is a copy then, and the drawing keeps its project's name, so its row in
+// Pick up where you left off doesn't read as one of the exports.
+function exported(filename, ext) {
+  if (this.fileExt === PROJECT_EXT) return;
+  this.rename(filename);
+  this.fileExt = ext;
+}
+
 // The note shown while it takes a while (useBusy).
 const opening = (name) => t('document.opening', { name });
 const saving = (name) => t('document.saving', { name });
@@ -581,9 +592,8 @@ export const documentActions = {
         return new Blob([bytes], { type: 'image/gif' });
       }
     });
-    this.rename(filename);
-    this.fileExt = ext;
-    await deliver(blob, `${this.filename}.${ext}`);
+    exported.call(this, filename, ext);
+    await deliver(blob, `${filename.trim() || this.filename}.${ext}`);
   },
 
   // What an art file's SAUCE record says, from the SAUCE tab. An opened file's record comes out as it went in
@@ -636,9 +646,8 @@ export const documentActions = {
         utf8: ext === 'utf8ans',
         ...opts,
       })));
-    this.rename(filename); // once there's a file to give the name to
-    this.fileExt = ext;
-    await deliver(blob, `${this.filename}.${ext}`);
+    exported.call(this, filename, ext);
+    await deliver(blob, `${filename.trim() || this.filename}.${ext}`);
   },
 
   // Files from before the cell layer drew char edits over paint; now paint draws over edit
