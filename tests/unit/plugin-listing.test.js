@@ -14,6 +14,21 @@ test.each(['https://github.com/kim/r/', 'https://github.com/kim/r.git', 'https:/
     expect(wikiLinks(`see ${url} now`)).toEqual([{ repo: 'kim/r', branch: null, path: '' }]);
   });
 
+test('wikiLinks leaves off what ends a sentence after a bare link', () => {
+  expect(wikiLinks('Mine is https://github.com/kim/r. Also https://github.com/lee/s, and https://github.com/lee/t;'))
+    .toEqual([
+      { repo: 'kim/r', branch: null, path: '' },
+      { repo: 'lee/s', branch: null, path: '' },
+      { repo: 'lee/t', branch: null, path: '' },
+    ]);
+  expect(wikiLinks('(see https://github.com/lee/stuff/tree/main/plugins/glow.)')).toEqual([{ repo: 'lee/stuff', branch: 'main', path: 'plugins/glow' }]);
+  expect(wikiLinks('Clone https://github.com/kim/r.git. Or: https://github.com/kim/q:')).toEqual([
+    { repo: 'kim/r', branch: null, path: '' },
+    { repo: 'kim/q', branch: null, path: '' },
+  ]);
+  expect(wikiLinks('https://github.com/kim/r.js/tree/main/a.b')).toEqual([{ repo: 'kim/r.js', branch: 'main', path: 'a.b' }]);
+});
+
 test('wikiLinks ignores a link with no repo or a file, and lists a repo and path once', () => {
   expect(wikiLinks('https://github.com/kim https://github.com/kim/r/blob/main/x.json http://github.com/a/b')).toEqual([]);
   const twice = 'https://github.com/kim/r https://github.com/kim/r/ https://github.com/kim/r/tree/dev/a/b https://github.com/kim/r/tree/main/a/b';

@@ -6,9 +6,11 @@ import { marketState, swatches } from '@/plugins/listing';
 
 // The Plugins dialog's Marketplace tab (docs/plugins.md): the loaded list as cards, Official first, then by name,
 // searched and filtered. Each card's button reads by what's installed with the same id (marketState); taking one is the
-// dialog's (`take`, the entry), which reads its files and asks. A manifest's words, its preview among them, are the
-// author's, shown as text. The search, the filter and where the dialog was scrolled to are the store's (marketView), so
-// they come back after a question (which takes this tab's place) and on the next visit to the tab.
+// dialog's (`take`, the entry), which reads its files and asks, the card saying Reading… meanwhile (`reading`, the ids
+// being read). A manifest's words, its preview among them, are the author's, shown as text. The search, the filter and
+// where the dialog was scrolled to are the store's (marketView), so they come back after a question (which takes this
+// tab's place) and on the next visit to the tab.
+const { reading } = defineProps({ reading: { type: Set, default: () => new Set() } });
 const emit = defineEmits(['take']);
 const { t } = useI18n();
 const plugins = usePluginStore();
@@ -78,10 +80,10 @@ const nameId = (entry) => `market-${entry.manifest.id}`;
             <button
                 type="button"
                 :class="{ primary: ['install', 'update'].includes(state(entry)) }"
-                :disabled="state(entry) === 'installed'"
+                :disabled="state(entry) === 'installed' || reading.has(entry.manifest.id)"
                 :aria-describedby="nameId(entry)"
                 @click="emit('take', entry)"
-            >{{ t(`plugins.market.${state(entry)}`) }}</button>
+            >{{ reading.has(entry.manifest.id) ? t('plugins.market.reading') : t(`plugins.market.${state(entry)}`) }}</button>
           </div>
         </div>
       </li>

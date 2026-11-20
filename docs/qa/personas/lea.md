@@ -401,7 +401,8 @@ and sideways.
   Install works there.
 - Expects: the dialog fills the whole window (no page behind it showing at the sides) with the tabs, search and Show menu
   in reach of a thumb, and the cards in one column, each with its art band, name, version, Official or author, a description
-  cut to two lines and its button, nothing wider than 390; Rain's question names Rain, its author and "from the
+  cut to two lines and its button, nothing wider than 390; Rain's button says Reading… (and does nothing when tapped)
+  until its question shows; Rain's question names Rain, its author and "from the
   marketplace" with the repository; Outlines' question says it runs code, with the warning under it; after Install, Rain's
   card says Installed and its row on Installed says "From the marketplace"; Cancel leaves Outlines as Install; the search
   and the Show menu keep their choice after the question closes ([Plugins](../../plugins.md#the-marketplace)).
