@@ -204,11 +204,11 @@ Paint, and the half-block and shade characters (`▄ ▀ █ ▌ ▐ ░ ▒ ▓
 
 On the Fonts page, a bitmap font's row has a **Blocks** row above its 256 slots: eight tiles, each showing the slot that draws that block, or "none". A note under the row says where the blocks were found, or which are missing.
 
-- **Change one**: Pick a tile, then click a slot in the sheet. A slot plays at most one block, so a slot that had another block's role gives it up. The row's facts then say "blocks set by you". Each change is one undo step.
+- **Change one**: Pick a tile, then click a slot in the sheet. A slot plays at most one block, so a slot that had another block's role gives it up. The row's facts then say "blocks set by you". On the drawing's own font each change is one undo step, and undo puts the drawing's blocks back; this browser's copy of the font keeps the last ones you set. A font that's only in this browser has no undo.
 - **Find blocks again**: Forgets the slots you set and finds the blocks from the font's pixels again.
 - **They're kept**: With the drawing, and with this browser's copy of the font. An XBin can't hold them, so opening one uses the blocks kept with your browser's copy of its font when that font is loaded here, and finds them again when it isn't.
 - **Cells keep their characters**: A cell holds `▄`, not a slot, so after you change a block, paint drawn before draws in the new slot, and a block character you typed looks as the new slot does.
-- **No lower half**: Paint is drawn in the lower half, so a drawing whose font has none can't hold paint. Pencil, Brush, Paint Bucket, Shapes, Gradient, and Retouch's Blur, Dodge and Burn are off, and say why: on a desktop in their tooltip, on a phone or tablet by tapping them (a tap on any button that's off shows its reason; a swipe doesn't). The Eraser, Text and Flip stay on. A picture still converts, with Best match. Give the font a lower half (pick **Lower**, then a slot) and paint is back.
+- **No lower half**: Paint is drawn in the lower half, so a drawing whose font has none can't hold paint. Pencil, Brush, Paint Bucket, Shapes, Gradient, and Retouch's Blur, Dodge and Burn are off, and say why: on a desktop in their tooltip, on a phone or tablet by tapping them (a tap on any button that's off, and whose tooltip says why, shows that reason; a swipe doesn't). The Eraser, Text and Flip stay on. A picture still converts, with Best match. Give the font a lower half (pick **Lower**, then a slot) and paint is back.
 - **In a room**: Blocks can't change in a room.
 
 ### What the Font Changes
