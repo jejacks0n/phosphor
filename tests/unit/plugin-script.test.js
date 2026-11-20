@@ -23,6 +23,7 @@ describe('readSolvers', () => {
     [{ options: [{ id: 'a', kind: 'slider', name: 'A', min: 5, max: 1, step: 1, default: 3 }] }, 'solvers[0].options[0]'],
     [{ options: [{ id: 'a', kind: 'choice', name: 'A', choices: ['x'], default: 1 }] }, 'solvers[0].options[0]'],
     [{ options: [{ id: 'a', kind: 'dial', name: 'A', default: 1 }] }, 'solvers[0].options[0]'],
+    [{ options: [{ id: 'a-b', kind: 'checkbox', name: 'A', default: true }] }, 'solvers[0].options[0]'],
     [{ id: 'Bad Id' }, 'solvers[0].id'], [{ shader: { solve: 3 } }, 'solvers[0].shader'],
   ])('refuses %o at %s', (change, field) => expect(() => read(change)).toThrow(shape(field)));
 
@@ -38,5 +39,25 @@ describe('readSolvers', () => {
 
   it('takes Outlines\' chars: - | / \\ ─ │ ╱ ╲', () => {
     expect(read({ chars: '-|/\\─│╱╲' })[0].chars).toBe('-|/\\─│╱╲');
+  });
+
+  it('reads each field once: a getter that changes its answer cannot get a bad value through', () => {
+    let reads = 0;
+    const tricky = { ...OUTLINE_LIKE, get reach() { return reads++ === 0 ? 1 : 1e9; } };
+    const [def] = readSolvers({ default: { solvers: [tricky] } });
+    expect(def.reach).toBe(1);
+    expect(reads).toBe(1);
+  });
+
+  it('copies an array once: a Proxy whose length changes cannot pass the caps', () => {
+    let reads = 0;
+    const solvers = new Proxy([OUTLINE_LIKE], { get: (target, key) => (key === 'length' && reads++ > 0 ? 1e6 : target[key]) });
+    expect(readSolvers({ default: { solvers } })).toHaveLength(1);
+  });
+
+  it('turns a throwing getter into scriptShape', () => {
+    const boom = { ...OUTLINE_LIKE, get name() { throw new Error('no'); } };
+    expect(() => readSolvers({ default: { solvers: [boom] } })).toThrow(shape('solvers[0]'));
+    expect(() => readSolvers({ get default() { throw new Error('no'); } })).toThrow(shape('default'));
   });
 });
