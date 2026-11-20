@@ -165,6 +165,7 @@ test('in an 8×8 font a blank canvas, a Bake and Into the image fill the grid ed
   expect(project.resizesCanvas).toBe(true);
   expect(project.fitAspect).toBe(1);
   expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 60, dh: 80 });
+  expect(project.fitFor(30, 40)).toEqual({ dx: 0, dy: 0, dw: 30, dh: 40 }); // a refit would still be edge to edge
 
   await project.setBlankCanvas({ cols: 40, rows: 40, withLayer: true });
   await settle(project);
