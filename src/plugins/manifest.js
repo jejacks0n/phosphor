@@ -5,6 +5,7 @@ import { parse } from '../lib/semver.js';
 
 export const MANIFEST_FORMAT = 1;
 export const MOST_MANIFEST_BYTES = 65536;
+export const MOST_SCRIPT_BYTES = 1048576;
 export const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 // The color custom properties of :root in global.css, without their dashes. --logo, the display font, --white,
@@ -22,8 +23,10 @@ const SLOTS = new Set(COLOR_SLOTS);
 const ID = /^[a-z0-9-]+\.[a-z0-9-]+$/;
 const THEME_ID = /^[a-z0-9-]+$/;
 const MOST_THEMES = 20;
+// Relative to the manifest, inside its folder: no leading slash, no .. segment, no backslash, JavaScript.
+const SCRIPT_PATH = /^(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9_-][A-Za-z0-9._/-]*\.m?js$/;
 
-// code: tooBig, notJson, newer, needsNewer, nothing, badField { field }, unknownColor { theme, key },
+// code: tooBig, notJson, newer, nothing, badField { field }, unknownColor { theme, key },
 // badColor { theme, key, value }. The words are the app's (plugins.errors in the locales).
 export class ManifestError extends Error {
   constructor(code, detail = {}) {
@@ -71,7 +74,6 @@ export function readManifest(source) {
   if (!isObject(raw)) throw new ManifestError('notJson');
   if (typeof raw.phosphor === 'number' && raw.phosphor > MANIFEST_FORMAT) throw new ManifestError('newer');
   if (raw.phosphor !== MANIFEST_FORMAT) throw new ManifestError('badField', { field: 'phosphor' });
-  if ('script' in raw) throw new ManifestError('needsNewer');
   const manifest = {
     phosphor: MANIFEST_FORMAT,
     id: text(raw, 'id', 64, { test: (value) => ID.test(value) }),
@@ -80,11 +82,13 @@ export function readManifest(source) {
     author: text(raw, 'author', 60),
     description: text(raw, 'description', 300, { required: false }),
     homepage: text(raw, 'homepage', 200, { required: false, test: (value) => /^https:\/\/[^\s]+$/.test(value) }),
+    script: raw.script === undefined ? '' : text(raw, 'script', 200, { test: (value) => SCRIPT_PATH.test(value) }),
     license: text(raw, 'license', 40, { required: false }),
   };
-  if (raw.themes === undefined || (Array.isArray(raw.themes) && !raw.themes.length)) throw new ManifestError('nothing');
-  if (!Array.isArray(raw.themes) || raw.themes.length > MOST_THEMES) throw new ManifestError('badField', { field: 'themes' });
+  const themes = raw.themes === undefined ? [] : raw.themes;
+  if (!themes.length && !manifest.script) throw new ManifestError('nothing');
+  if (!Array.isArray(themes) || themes.length > MOST_THEMES) throw new ManifestError('badField', { field: 'themes' });
   const seen = new Set();
-  manifest.themes = Object.freeze(raw.themes.map((theme, i) => readTheme(theme, i, seen)));
+  manifest.themes = Object.freeze(themes.map((theme, i) => readTheme(theme, i, seen)));
   return Object.freeze(manifest);
 }

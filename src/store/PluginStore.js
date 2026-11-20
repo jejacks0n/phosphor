@@ -68,7 +68,7 @@ export const usePluginStore = defineStore('plugins', {
       const usable = [];
       for (const record of records) {
         try {
-          usable.push({ ...record, manifest: readManifest(JSON.stringify(record.manifest)) });
+          usable.push({ ...record, manifest: readManifest(JSON.stringify({ ...record.manifest, script: record.manifest.script || undefined })) });
         } catch { /* written by a later Phosphor, or by hand: left out */ }
       }
       this.plugins = usable.sort(byName);
