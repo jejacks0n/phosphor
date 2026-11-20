@@ -9,7 +9,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { toastMessage, closeToast } from '@/composables/useToast.js';
 import { addBitmapFont, storeBlocks, loadFonts, removeFont } from '@/lib/userFonts';
-import { fontId } from '@/lib/BitmapFont.js';
+import { fontId, encodeFont } from '@/lib/BitmapFont.js';
 import { cp437Font, noLowerHalf } from '../support/blockFonts.js';
 import { writeXBin } from '@/lib/XBinFile.js';
 import StartRoomPage from '@/components/social/StartRoomPage.vue';
@@ -110,6 +110,19 @@ test('in a room an XBin whose font isn\'t set up isn\'t opened: a toast, and the
   project._hosting = false;
   await project.openArtFile(file);
   expect(project.fontBitmap).not.toBe(before);
+});
+
+test('in a room a project whose font isn\'t set up isn\'t opened (openParts, which loadProject and restoreDocument reach)', async () => {
+  const { project } = await drawing(cp437Font);
+  const settings = (font) => ({ fontBitmap: encodeFont(font), fontName: 'Slab', fontBlocks: '' });
+  const before = project.fontBitmap;
+  project._hosting = true;
+  expect(await project.openParts({ settings: settings(noLowerHalf) }, { filename: 'p' })).toBe(false);
+  expect(toastMessage.value).toBe(MISSING);
+  expect(project.fontBitmap).toBe(before);
+  closeToast();
+  await project.openParts({ settings: settings(cp437Font) }, { filename: 'p' }).catch(() => {}); // no picture to open: it gets past the font
+  expect(toastMessage.value).toBe(null);
 });
 
 test('outside a room a font that isn\'t set up can still be chosen', async () => {

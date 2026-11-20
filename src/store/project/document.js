@@ -10,7 +10,7 @@ import { loadImage, readProject, writeProject, gzipped, downloadBlob, isProjectF
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
 import { knownBlocksOf } from '@/lib/userFonts.js';
-import { encodeBlocks, encodeFont } from '@/lib/BitmapFont.js';
+import { encodeBlocks, encodeFont, decodeBlocks, decodeFont } from '@/lib/BitmapFont.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
 import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
@@ -92,6 +92,8 @@ function exported(filename, ext) {
 // The note shown while it takes a while (useBusy).
 const opening = (name) => t('document.opening', { name });
 const saving = (name) => t('document.saving', { name });
+
+const withBlocks = (font, text) => { const set = decodeBlocks(text); return font && set ? { ...font, blocks: set } : font; };
 
 // A project's parts as the open document, with its pictures decoded. As `this`, the store.
 // A stack file's layers (stack) come with each cells layer's parts (layerParts) and paint (layerPaint), by id.
@@ -509,7 +511,8 @@ export const documentActions = {
     if (!file || !isProjectFile(file.name)) return;
 
     try {
-      await busyWhile(opening(file.name), async () => this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length), fileExt: PROJECT_EXT }));
+      const opened = await busyWhile(opening(file.name), async () => this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length), fileExt: PROJECT_EXT }));
+      if (opened === false) return; // a room refused its font
       this.savedToFile = true;
       this.filePath = file.desktopPath ?? null; // desktop: where it was opened from, for Save to write over
       this.fileHandle = file.fileHandle ? markRaw(file.fileHandle) : null; // the same on the web (pickFile, a drop)
@@ -542,6 +545,12 @@ export const documentActions = {
   // A project's parts (readProject) as the open document. Without a documentId it gets a new one.
   // If it throws, either nothing has changed or no document is open.
   async openParts(parts, options) {
+    const { fontBitmap, fontName, fontBlocks } = parts.settings ?? {};
+    const reason = this.inRoom && fontBitmap && notSetUp(withBlocks(decodeFont(fontBitmap, fontName), fontBlocks)); // a room can't edit blocks, so it takes no font that needs it
+    if (reason) {
+      toast(reason);
+      return false;
+    }
     const pictures = await loadParts(parts);
     if (this._sharing?.role === 'artist') return; // a host's project landed meanwhile (an artist's reload, racing autosave's restore)
     showParts.call(this, parts, pictures, options);
