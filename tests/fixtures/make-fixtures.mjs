@@ -24,6 +24,7 @@ writeFileSync(at('images/gradient.png'), writePng(gradient));
 writeFileSync(at('images/rgba.png'), writePng(image(48, 48, (x, y) => [255, x * 5, 64, Math.min(255, y * 6)]))); // transparency
 writeFileSync(at('images/deep16.png'), writePng({ ...image(32, 32, (x, y) => [x * 2048, y * 2048, 40000, 65535]), bitDepth: 16 }));
 writeFileSync(at('images/one.png'), writePng(image(1, 1, () => [200, 40, 120, 255])));
+writeFileSync(at('images/square.png'), writePng(image(64, 64, (x, y) => (x >= 16 && x < 48 && y >= 16 && y < 48 ? [0, 0, 0, 255] : [255, 255, 255, 255])))); // hard edges
 writeFileSync(at('images/tall.png'), writePng(image(40, 1200, (x, y) => (Math.floor(y / 40) % 2 ? [20, 20, 20, 255] : [230, 200, 60, 255]))));
 
 // A GIF, written without compression: 3-bit codes with a clear code before the table would grow.
