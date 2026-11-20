@@ -293,7 +293,9 @@ it('IBM VGA as a bitmap font has the font\'s own pixels, edges and all', async (
 });
 
 it('finds the eight blocks in the app\'s own IBM VGA, uneven shades and all', async () => {
-  expect(findBlocks(await vgaBitmapFont())).toEqual([...CP437_BLOCKS]);
+  const vga = await vgaBitmapFont();
+  expect(findBlocks(vga)).toEqual([...CP437_BLOCKS]);
+  expect(vga.blocks).toEqual([...CP437_BLOCKS]); // CP437 by construction, so not left to be found from rasterized pixels
 });
 
 it('exports a character outside CP437 as its substitute, with no font', async () => {

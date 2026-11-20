@@ -8,7 +8,7 @@
  */
 
 import { DISPLAY_FONT, DISPLAY_FONTS, displayFontCss, drawGlyph, loadFontFaces } from './displayFonts.js';
-import { SLOT_CHARS, fitFont, inkOf, slotOf } from './BitmapFont.js';
+import { SLOT_CHARS, CP437_BLOCKS, fitFont, inkOf, slotOf } from './BitmapFont.js';
 
 const EXACT = new Map([
   [' ', [0, 0]], ['\u00a0', [0, 0]],
@@ -91,7 +91,7 @@ export async function vgaBitmapFont() {
       for (let x = 0; x < REF_W; x++) if (data[(y * REF_W + x) * 4 + 3] > 200) bytes[slot * 16 + y] |= 0x80 >> x;
     }
   }
-  return { name: 'IBM VGA', height: 16, bytes };
+  return { name: 'IBM VGA', height: 16, bytes, blocks: [...CP437_BLOCKS] }; // CP437 by construction: its blocks aren't found from rasterized pixels
 }
 
 const referenceInks = new Map();
