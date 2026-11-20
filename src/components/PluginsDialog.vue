@@ -182,8 +182,8 @@ async function answer() {
             <p>{{ t('plugins.nowRunsCode', { name: manifest.name }) }}</p>
             <p class="warn">{{ t('plugins.install.warning') }}</p>
             <div class="file">
-              <button type="button" @click="plugins.allowCode(id)">{{ t('plugins.allow') }}</button>
-              <button type="button" @click="plugins.declineCode(id)">{{ t('plugins.notNow') }}</button>
+              <button type="button" :aria-label="t('plugins.allowNamed', { name: manifest.name })" @click="plugins.allowCode(id)">{{ t('plugins.allow') }}</button>
+              <button type="button" :aria-label="t('plugins.notNowNamed', { name: manifest.name })" @click="plugins.declineCode(id)">{{ t('plugins.notNow') }}</button>
             </div>
           </div>
           <p v-if="plugins.problems[id]" class="problem" role="alert">{{ plugins.problems[id] }}</p>
