@@ -181,3 +181,24 @@ test('with plugins off, the list loads, a theme installs, and a plugin with a sc
   await expect(store.install(read.manifest, { script: read.script, listing: read.listing })).rejects.toMatchObject({ userMessage: OFF });
   expect(store.plugins.map(({ id }) => id)).toEqual(['phosphor.midnight']);
 });
+
+// In `npm run dev` (VITE_DEV_RAW, which only the development server sets) the files come from its /dev-raw/ in raw
+// GitHub's place, as the fixture's commit and kim/phosphor-rain aren't on GitHub; everywhere else, from raw GitHub.
+test('with VITE_DEV_RAW a listed file is fetched from the development server, in raw GitHub\'s place', async () => {
+  vi.stubEnv('VITE_DEV_RAW', '1');
+  for (const [url, text] of Object.entries(served)) served[url.replace(`${RAW}/`, '/dev-raw/')] = text;
+  try {
+    await store.loadMarket();
+    await store.readListed(entry('phosphor.outlines'));
+    expect(fetched.mock.calls.map(([url]) => url)).toEqual([
+      '/plugins.json',
+      `/dev-raw/jejacks0n/phosphor/${COMMIT}/plugins/outlines/phosphor-plugin.json`,
+      `/dev-raw/jejacks0n/phosphor/${COMMIT}/plugins/outlines/outlines.js`,
+    ]);
+  } finally {
+    vi.unstubAllEnvs();
+  }
+  fetched.mockClear();
+  await store.readListed(entry('kim.rain'));
+  expect(fetched.mock.calls.map(([url]) => url)).toEqual([`${RAW}/kim/phosphor-rain/${COMMIT}/phosphor-plugin.json`]);
+});
