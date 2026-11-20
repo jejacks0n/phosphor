@@ -3,9 +3,10 @@ import { getSetting, SETTINGS, SETTING_KEYS, SAUCE_KEYS, RESET_GROUPS } from '@/
 import { markRaw } from 'vue';
 import { Ledger } from '@/document/ledger.js';
 import PaintLayer from '@/document/PaintLayer.js';
+import ShapeLayer from '@/document/ShapeLayer.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { loadImage } from '@/document/projectIO.js';
-import { markUniform } from '@/lib/ImageProcessor.js';
+import { findUniform, markUniform } from '@/lib/ImageProcessor.js';
 import { MOST_CHANGE_BYTES, cellsFitAnyGrid } from '@/social/wire.js';
 import { MAX_CELLS, halfColors, mix } from '@/lib/Cells.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
@@ -50,6 +51,27 @@ export async function blackPicture(cols, rows, scale) {
   const blob = await canvasPng(canvas), image = await loadImage(blob);
   markUniform(image, 'black');
   return { image, imageBuffer: await blob.arrayBuffer() };
+}
+// The picture drawn again at scaleY its height, nearest neighbor so a grid pixel stays one color, both sides lowered
+// alike to stay within the 16M pixels a canvas can be: { image, imageBuffer }. A working copy taking a font of another
+// height (font.js), its pixels grid pixels that change shape with the cells.
+export async function stretchedPicture(image, scaleY) {
+  const w = image.naturalWidth || image.width, h = Math.max(1, Math.round((image.naturalHeight || image.height) * scaleY));
+  const k = Math.min(1, Math.sqrt(16_000_000 / (w * h)));
+  const canvas = Object.assign(document.createElement('canvas'), { width: Math.max(1, Math.floor(w * k)), height: Math.max(1, Math.floor(h * k)) });
+  const ctx = ctx2d(canvas);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const blob = await canvasPng(canvas), picture = await loadImage(blob), imageBuffer = await blob.arrayBuffer();
+  findUniform(picture, imageBuffer);
+  return { image: picture, imageBuffer };
+}
+// base (a PaintLayer) as the base layer: the renderer draws it, and the base's vector shapes draw over it.
+export function useBase(project, base) {
+  project.baseLayer = base;
+  project.renderer.baseLayer = base;
+  project._shapeLayer = markRaw(new ShapeLayer(base));
+  project.renderer.shapes = project._shapeLayer;
 }
 // randomUUID is only there on secure contexts; a plain-http LAN address has getRandomValues.
 export const randomId = () => crypto.randomUUID?.()

@@ -23,11 +23,11 @@ export function useFontActions() {
   // A bitmap font becomes the drawing's own; any other font takes it away again.
   async function choose(id) {
     if (loaded.value.find((font) => font.id === id)?.kind === 'bitmap') {
-      project.setDrawingFont(await storedBitmapFont(id));
+      await project.setDrawingFont(await storedBitmapFont(id));
       return;
     }
-    if (project.drawingFont) project.setDrawingFont(null);
-    workspace.displayFont = id;
+    workspace.displayFont = id; // first, so a toast about the cells' shape names it
+    if (project.drawingFont) await project.setDrawingFont(null);
   }
 
   // A font file kept in this browser and put to use (not in someone else's room: the font is theirs); its entry. A

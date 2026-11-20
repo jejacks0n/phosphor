@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeEditCells, deserializeEditCells, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  selectionHit, clampOffset, bakeEditCells, mergeKind, cleanEntry, isFrozen, ownEntry, sameEntry,
+  selectionHit, clampOffset, bakeEditCells, mergeKind, cleanEntry, isFrozen, ownEntry, sameEntry, followPicture, isPaintBlock,
 } from '../../src/document/editCells.js';
 
 test('Edit cell map: merge/remove semantics, grid-position keys, (de)serialization and the migration of older index-keyed char edits', async () => {
@@ -136,4 +136,12 @@ test('parseKey reads a key as splitting it at its commas does, malformed ones to
   const split = (key) => { const [col, row] = key.split(',').map(Number); return { col, row }; };
   for (const key of ['0,0', '12,345', '299,4999', '7', '', ',', '3,', ',4', '1,2,3', 'a,b', ' 1, 2', '1e3,0x10', '-1,-2', '01,002'])
     assert.deepEqual(parseKey(key), split(key), key);
+});
+
+test('R1: a font of another height keeps a character of someone\'s own at its column and line, moves a paint block with its paint, and drops a frozen mark', () => {
+  const cells = new Map([['3,2', { char: 'A', fg: '#fff' }], ['5,4', { char: '▄' }], ['7,1', { char: '▒', fg: '#fff', bg: '#000', frozen: true }]]);
+  const doubled = followPicture(cells, { offsetX: 0, offsetY: 0, scaleX: 1, scaleY: 2 }, 20, 40);
+  assert.deepEqual(doubled.get('3,2'), { char: 'A', fg: '#fff' });
+  assert.deepEqual([...doubled.keys()].sort(), ['3,2', '5,8', '5,9']);
+  assert.ok(isPaintBlock(doubled.get('5,8')) && isPaintBlock(doubled.get('5,9')));
 });

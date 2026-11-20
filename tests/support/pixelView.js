@@ -7,7 +7,7 @@ import InputEditor from '@/components/InputEditor.vue';
 
 export async function mountPixelView(file = null, { cols = 20, rows = 20, overlay = 100, font = null } = {}) {
   const { project, workspace } = await createTestApp();
-  if (font) project.setDrawingFont(font);
+  if (font) await project.setDrawingFont(font);
   const bytes = file && await (await fetch(file)).arrayBuffer();
   if (file?.endsWith('.phosphor')) await project.loadProject(new File([bytes], 'x.phosphor'));
   else if (file) await project.openArtFile(new File([bytes], file.slice(file.lastIndexOf('/') + 1)));

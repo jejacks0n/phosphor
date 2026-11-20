@@ -39,16 +39,17 @@ entries to act on them (the Paint Bucket's walls, Rotate, Insert and Delete, Kee
 a cell until `ownEntry` says so. Typing's Partial mode, and Delete in Overwrite, move characters of someone's own along
 the row and leave paint, paint blocks and frozen cells where they are; its Insert mode moves everything the layer has
 in the row, the paint and every entry with it, so it asks nothing (`shiftCells`; on the base `shiftBaseCells`, where a
-pinned character is someone's own and every other pixel is paint); Rotate turns pixels and drops a frozen cell's pin with the paint it stood over. The mark travels with the entry (`mergeEntry` keeps
+pinned character is someone's own and every other pixel is paint); Rotate turns pixels and drops a frozen cell's pin with the paint it stood over. A font of another height (`newHeight` and `regrid` in `src/store/project/font.js`, through `followPicture`) keeps a character of someone's own at its column and line, and a pin there with its two base pixels (its colors), while the rest of the base's pixels and paint follow the picture; it moves a paint block with its paint, and drops a frozen cell's mark, whose paint converts where it lands. With nothing drawn it's a settings step, and the grid rescales as a Columns change does. The mark travels with the entry (`mergeEntry` keeps
 it when a whole entry moves, as Merge down's `completeAt` does), goes when a character or color is written over it
 (that's someone's own now), is accepted from files and the clipboard only as `true` (`cleanEntry`), and is part of a
 room change's hash as any field is.
 
-- Lives in: `src/document/editCells.js` (`isFrozen`, `ownEntry`, `mergeEntry`, `cleanEntry`, `sameEntry`).
+- Lives in: `src/document/editCells.js` (`isFrozen`, `ownEntry`, `mergeEntry`, `cleanEntry`, `sameEntry`, `followPicture`).
 - Checked by: `tests/unit/edit-cells.test.js › R1: …`; `tests/unit/social-wire.test.js` (the mark through a room's change,
   as `cleanEntry` takes it); `tests/browser/bucket.test.js › R1: …`; `tests/browser/block-chars.test.js › R1: shiftCells …`;
   `tests/browser/selection-recolor.test.js › … Set FG over a frozen cell …`; `tests/browser/merge.test.js › R1: Keep crisp
-  cells …`; `tests/browser/selection-turn.test.js › R3: a frozen cell in a rotated block …`.
+  cells …`; `tests/browser/selection-turn.test.js › R3: a frozen cell in a rotated block …`;
+  `tests/unit/edit-cells.test.js › R1: a font of another height …`; `tests/browser/font-height.test.js › R1: …`.
 
 ### R2. Paint over a character tints its ink and never picks another character. With no ink to tint, the paint shows as paint.
 

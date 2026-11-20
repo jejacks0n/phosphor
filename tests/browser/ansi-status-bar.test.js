@@ -139,8 +139,10 @@ test('shows the character code under the cursor', async () => {
   expect(await at('█')).toBe('219');
   expect(await at('😀')).toBeUndefined();
   project.setDrawingFont({ name: 'Topaz', height: 8, bytes: new Uint8Array(256 * 8) });
+  await settle(project); // a font of another height draws the grid again, and typing waits for that
   expect(await at('␀')).toBe('0');
   project.setDrawingFont(lowerAt240);
+  await settle(project);
   expect(await at('▄')).toBe('240'); // the slot this font draws it from
 });
 

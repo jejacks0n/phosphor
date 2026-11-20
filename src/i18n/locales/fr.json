@@ -353,6 +353,8 @@
     "sizeAria": "Taille de police",
     "sizeTitle": "Taille de police en pixels",
     "hostsFont": "Utilisation de la police de l'hôte dans ce salon.",
+    "heightFrames": "Un dessin avec des images garde la hauteur de sa police : il ne peut pas prendre {name} (8×{to}), car la police de ce dessin fait 8×{from}.",
+    "heightShrunk": "Les cellules de {name} ont une autre forme : pour garder celle de l'image, la grille fait maintenant {cols} × {rows}, la plus grande qui tient.",
     "errors": {
       "unreadable": "Impossible de lire « {name} » comme un fichier de police. Veuillez utiliser un fichier TrueType (.ttf), OpenType (.otf) ou WOFF.",
       "notMonospaced": "« {name} » n'est pas à chasse fixe ({narrow} mesure {narrowPx} px de large, alors que {wide} en mesure {widePx} px). Phosphor nécessite des polices à espacement fixe où chaque caractère occupe la même largeur de cellule.",

@@ -353,6 +353,8 @@
     "sizeAria": "Font size",
     "sizeTitle": "Font size in pixels",
     "hostsFont": "Using the host's font while in this room.",
+    "heightFrames": "A drawing with frames keeps its font's height, so it can't take {name} (8×{to}): this drawing's font is 8×{from}.",
+    "heightShrunk": "{name}'s cells are another shape: to keep the picture's, the grid is now {cols} × {rows}, the largest that fits.",
     "errors": {
       "unreadable": "Could not read “{name}” as a font file. Please use a TrueType (.ttf), OpenType (.otf), or WOFF file.",
       "notMonospaced": "“{name}” isn't monospaced ({narrow} is {narrowPx}px wide, while {wide} is {widePx}px). Phosphor needs fixed-width fonts where every character shares one cell width.",

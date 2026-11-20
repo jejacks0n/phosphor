@@ -135,7 +135,7 @@ const setBlocks = (blocks) => run(async () => {
   const plain = { ...font.value };
   delete plain.blocks;
   if (blocks && findBlocks(plain).every((s, i) => s === blocks[i])) blocks = undefined; // where the pixels put them: found, not set
-  if (isDrawn.value) project.setDrawingFont(blocks ? { ...plain, blocks } : plain);
+  if (isDrawn.value) await project.setDrawingFont(blocks ? { ...plain, blocks } : plain);
   if (isStored.value) {
     await storeBlocks(chosen.value.id, blocks ?? null);
     workspace.userFonts = await loadFonts();

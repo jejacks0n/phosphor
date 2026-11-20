@@ -108,7 +108,8 @@ it('draws in the drawing\'s font', async () => {
 it('fitCells swaps what the font lacks', async () => {
   const { project } = await createTestApp();
   await project.setBlankCanvas({ cols: 10, rows: 10, withLayer: true }); // a layer to type on
-  project.setDrawingFont(font());
+  // 16 high, as none is: with frames a font of another height is refused.
+  project.setDrawingFont({ ...font(), height: 16, bytes: Uint8Array.from({ length: 256 * 16 }, (_, i) => i % 251) });
   await settle(project);
   project.writeEditCells([{ col: 0, row: 0, attrs: { char: '▙' } }]);
   project.commitEdit();

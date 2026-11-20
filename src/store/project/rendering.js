@@ -13,10 +13,10 @@ import { lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { parseKey } from '@/document/editCells.js';
 import { fitCells } from '@/lib/BitmapFont.js';
 import { fitRect } from '@/lib/Canvas.js';
-import { isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
+import { charRowsOf, isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
-import { boundsOf, lowerEdits, lowerPaint } from '@/store/project/shared.js';
+import { boundsOf, lowerEdits, lowerPaint, useBase } from '@/store/project/shared.js';
 import { toast } from '@/composables/useToast.js';
 import { busyMessage, busyWhile } from '@/composables/useBusy.js';
 import { t } from '@/i18n';
@@ -172,10 +172,7 @@ export const renderingActions = {
       const sh = this.image.naturalHeight || this.image.height;
       this.fit ??= this.fitFor(cols, rows);
       this.paintLayer = markRaw(new PaintLayer({ cols, rows, scale: this.paintScale ?? editScaleFor(sw, sh, cols, rows) }));
-      this.baseLayer = markRaw(new PaintLayer({ cols, rows, scale: this.baseScale ?? this.processingScale(), smooth: false }));
-      this.renderer.baseLayer = this.baseLayer;
-      this._shapeLayer = markRaw(new ShapeLayer(this.baseLayer));
-      this.renderer.shapes = this._shapeLayer;
+      useBase(this, markRaw(new PaintLayer({ cols, rows, scale: this.baseScale ?? this.processingScale(), smooth: false })));
       this.syncShapeLayers();
       this.baseScale = this.baseLayer.scale;
       this._layerGrid = { cols, rows };
@@ -282,6 +279,8 @@ export const renderingActions = {
   // Rebuild the cells under grid pixels (an edit's) from the output as it is, the upper layers over them, and their
   // rows' layout.
   recompose(pixels) {
+    // The grid changed and its render is on its way (a font of another height, a Bake): it draws this edit too.
+    if (this.lowerCells.length !== this.cols * charRowsOf(this.rows)) return void this.render();
     const rows = new Set();
     for (const { y } of pixels) rows.add(y >> 1);
     this.lowerCells = this.renderer.updateCells(this.lowerCells, pixels, this.processParams, lowerEdits(this), this.renderedCells);

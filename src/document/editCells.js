@@ -53,6 +53,34 @@ export function parseKey(key) {
   return { col: +key.slice(0, at), row: +key.slice(at + 1, end < 0 ? key.length : end) };
 }
 
+// A layer's entries on a cols x rows grid (grid pixels) after its paint moved by w ({ offsetX, offsetY, scaleX, scaleY },
+// resizeTransform's): a font of another height (docs/model.md R1). A character of someone's own keeps its column and line,
+// a frozen mark goes (its paint converts where it lands), and a paint block moves with its paint: a new cell is one when
+// its center, mapped back, falls in an old paint block's cell and nothing kept is there.
+export function followPicture(cells, { offsetX, offsetY, scaleX, scaleY }, cols, rows) {
+  const next = new Map(), blocks = new Set();
+  for (const [key, entry] of cells) {
+    if (isPaintBlock(entry)) blocks.add(key);
+    else if (!isFrozen(entry)) next.set(key, entry);
+  }
+  const lines = Math.floor(rows / 2);
+  for (const key of blocks) {
+    const { col, row } = parseKey(key);
+    // The new cells whose centers (c + 0.5, 2r + 1) can land in the old cell's box, each checked mapped back.
+    const c0 = Math.max(0, Math.floor(col * scaleX + offsetX)), c1 = Math.min(cols - 1, Math.ceil((col + 1) * scaleX + offsetX));
+    const r0 = Math.max(0, Math.floor((2 * row * scaleY + offsetY) / 2)), r1 = Math.min(lines - 1, Math.ceil(((2 * row + 2) * scaleY + offsetY) / 2));
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        const at = cellKey(c, r);
+        if (next.has(at)) continue;
+        const x = (c + 0.5 - offsetX) / scaleX, y = (2 * r + 1 - offsetY) / scaleY;
+        if (Math.floor(x) === col && Math.floor(y / 2) === row) next.set(at, cells.get(key));
+      }
+    }
+  }
+  return next;
+}
+
 // The merged entry for one cell: attrs' strings set, null removes, undefined leaves as is.
 // Returns `old` itself when nothing changes and null when no attributes remain. Bulk operations
 // apply this per cell on a single Map copy. The frozen mark stays while the cell only moves (a whole entry merged

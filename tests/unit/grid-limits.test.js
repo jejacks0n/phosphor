@@ -2,7 +2,7 @@
 // so a narrow piece can run long and a wide one stays short.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { MAX_COLS, MAX_LINES, MAX_CELLS, gridFits, maxColsBeside, maxRowsBeside, lockedGrid } from '../../src/lib/Cells.js';
+import { MAX_COLS, MAX_LINES, MAX_CELLS, gridFits, maxColsBeside, maxRowsBeside, lockedGrid, fontGrid } from '../../src/lib/Cells.js';
 
 test('The grid fits within its column, line and cell limits, and a size is shrunk to fit them', () => {
   assert.ok(gridFits(80, 2 * MAX_LINES));                                // 80 wide runs the full height
@@ -22,4 +22,12 @@ test('The grid fits within its column, line and cell limits, and a size is shrun
   assert.deepEqual(lockedGrid(MAX_COLS, 1 / 16), { cols: 250, rows: 4000 }); // between: as big as the cell budget allows
   assert.ok(!gridFits(251, 4016));
   assert.deepEqual(lockedGrid(80, 1 / 100_000), { cols: 1, rows: 2 * MAX_LINES }); // past every limit: one column, full height
+});
+
+test('fontGrid keeps the columns and the picture\'s shape, from the two heights; past the limits the columns give way', () => {
+  assert.deepEqual(fontGrid(80, 60, 16, 16), { cols: 80, rows: 60 });
+  assert.deepEqual(fontGrid(80, 60, 16, 8), { cols: 80, rows: 120 });
+  assert.deepEqual(fontGrid(80, 120, 8, 16), { cols: 80, rows: 60 });
+  assert.deepEqual(fontGrid(80, 60, 16, 11), { cols: 80, rows: 88 });
+  assert.deepEqual(fontGrid(80, 9000, 16, 8), { cols: 44, rows: 9900 });
 });

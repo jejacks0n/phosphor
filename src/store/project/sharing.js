@@ -64,7 +64,7 @@ export const HOST_ONLY_ACTIONS = [
 
 // Refused while someone else is drawing in an art layer, with a toast saying who: a whole-layer action or a new grid
 // goes to the room as the project, which would step them out and lose what they hadn't sent.
-export const WHOLE_LAYER_ACTIONS = ['clearEditLayer', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'bake', 'flattenDrawing', 'updateCols', 'updateRows'];
+export const WHOLE_LAYER_ACTIONS = ['clearEditLayer', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'bake', 'flattenDrawing', 'updateCols', 'updateRows', 'setDrawingFont'];
 export function lockedOut(project) {
   const words = anyoneInside(project);
   if (words) toast(words);

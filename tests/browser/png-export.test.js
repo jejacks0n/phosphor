@@ -128,8 +128,8 @@ test('Cancel on the question closes without exporting', async () => {
 
 test('in an 8×11 font a PNG is 11 pixels a line, a ▄ cell 5 rows of its background over 6 of its foreground', async () => {
   const { project, workspace } = await createTestApp();
+  await project.setDrawingFont(font11); // the next drawing's: on a drawing, a font of another height changes its rows
   await project.setBlankCanvas({ withLayer: true, cols: 6, rows: 4 });
-  project.setDrawingFont(font11);
   await setDisplayFont(workspace.displayFontSpec);
   try {
     project.typeAt(1, 0, '▄', { fg: '#ffee00', bg: '#0044aa' });

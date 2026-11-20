@@ -41,6 +41,13 @@ export function lockedGrid(cols, ratio) {
   return { cols: 1, rows: Math.min(2 * MAX_LINES, Math.max(1, Math.ceil(1 / ratio))) };
 }
 
+// The grid in a font of another height (from and to: the fonts' heights in pixels, 16 for none): the same columns, and
+// the rows that keep the picture's shape in the new cells. Past the limits, the largest grid of that shape that fits.
+export function fontGrid(cols, rows, from, to) {
+  const tall = Math.ceil(rows * from / to);
+  return gridFits(cols, tall) ? { cols, rows: tall } : lockedGrid(cols, cols / tall);
+}
+
 // The character cell under a (fractional) grid pixel position, or null when it's off the grid.
 export function cellAt(x, y, cols, rows) {
   const col = Math.floor(x), row = Math.floor(y / 2);
