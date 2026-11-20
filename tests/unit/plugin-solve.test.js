@@ -344,6 +344,21 @@ describe('resolvePlugin', () => {
     expect(seen).toHaveLength(81 * 32);
     for (const [got, want] of seen) expect(got).toEqual(want);
   });
+
+  it('origin offsets the col and line the solver is told, not the samples it reads', () => {
+    const raw = solid(2, 1, (col) => (col ? [255, 255, 255] : [0, 0, 0])), told = [];
+    const def = solver({
+      solve(cell) {
+        told.push([cell.col, cell.line, cell.sample(0, 0, 0)[0], cell.sample(1, 0, 0)[0]]);
+        return { char: '█', fg: 0, bg: 0 };
+      },
+    });
+    resolvePlugin(raw, 2, 1, matcherOf(def), { origin: { col: 7, line: 3 } });
+    expect(told).toEqual([[7, 3, 0, 255], [8, 3, 255, 255]]);
+    told.length = 0;
+    resolvePlugin(raw, 2, 1, matcherOf(def));
+    expect(told.map(([col, line]) => [col, line])).toEqual([[0, 0], [1, 0]]);
+  });
 });
 
 describe('grownArea', () => {

@@ -165,7 +165,7 @@ test('a solver that throws stands the layer in with By shape and reports the fai
 test('a solver that throws on an upper layer stands it in with By shape', async () => {
   const { project, workspace } = await stripes();
   const ref = await onSolver(solver({ solve(cell, look) {
-    if (cell.col === 0) throw new Error('up');
+    if (cell.col === 4 && cell.line === 2) throw new Error('up'); // the painted cell, where it is
     return look.byShape();
   } }));
   project.setLayerChars('edit', { charChoice: 'shape', chars: '▄▀█ ' });
@@ -179,6 +179,29 @@ test('a solver that throws on an upper layer stands it in with By shape', async 
   expect(failureOf(ref)).toBe('up');
   expect(project.layerParams.get('edit')).toMatchObject({ solver: null, standIn: 'failed' });
   expect(cellsKey(project)).toEqual(byShape);
+});
+
+// R7: a solver keyed on where a cell is draws the same paint the same on an upper layer as in the lower group.
+async function checkered(upper) {
+  const { project, workspace } = await stripes();
+  const ref = await onSolver(solver({ solve: (cell, look) => ((cell.col + cell.line) % 2 ? SLASH : look.byShape()) }));
+  await choose(project, ref);
+  if (upper) project.setLayerChars('edit', { seed: 'its own' }); // its own settings, the same but for a seed it doesn't use
+  workspace.pickLayer('edit');
+  const pixels = [];
+  for (let y = 2; y < 8; y++) for (let x = 3; x < 9; x++) pixels.push({ x, y, r: 255, g: 0, b: 0, alpha: 1 });
+  project.paintEditPixels(pixels);
+  project.commitEdit();
+  await settle(project);
+  expect(project.lowerGroup.upper).toEqual(upper ? ['edit'] : []);
+  const shown = cellsKey(project);
+  usePluginStore().dropSolvers('jane.outlines');
+  return shown;
+}
+test('a solver keyed on the cell\'s col and line draws an upper layer as it draws the lower group', async () => {
+  const lower = await checkered(false), upper = await checkered(true);
+  expect(lower.filter((cell) => cell[0] === '/').length).toBeGreaterThan(20);
+  expect(upper).toEqual(lower);
 });
 
 test('the hang mark is set during the first whole resolve and cleared after', async () => {

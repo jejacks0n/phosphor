@@ -1275,7 +1275,7 @@ export default class Renderer {
       }
       if (matcher.kind === 'plugin') {
         try {
-          return this.#pluginCell(m, s);
+          return this.#pluginCell(m, s, col, row);
         } catch (error) {
           if (!(error instanceof SolverError)) throw error;
           // The solver failed: the layer goes on with By shape (as #resolveUnder), its next params standing in.
@@ -1291,12 +1291,12 @@ export default class Renderer {
   }
 
   // A plugin solver's cell (m: #upperChar's matcher) from one cell's samples (RGB each, the nudge in them), alone: reach 0
-  // and no pass 2, on a grid of that one cell. Under the hang mark the first time this visit (marked).
-  // ponytail: the solver is told col 0, line 0 here; give resolvePlugin an origin if a solver ever reads them.
-  #pluginCell(m, s) {
+  // and no pass 2, on a grid of that one cell, the solver told it's at col, row. Under the hang mark the first time this
+  // visit (marked).
+  #pluginCell(m, s, col, row) {
     const raw = (this.#cellRaw ??= new Float64Array(SAMPLES.w * SAMPLES.h * 4));
     for (let i = 0, j = 0; j < s.length; i += 4, j += 3) { raw[i] = s[j]; raw[i + 1] = s[j + 1]; raw[i + 2] = s[j + 2]; }
-    const { cells: [cell] } = marked(m.plugin, 'cell', () => resolvePlugin(raw, 1, 1, m.matcher, { alone: true, cells: [null] }));
+    const { cells: [cell] } = marked(m.plugin, 'cell', () => resolvePlugin(raw, 1, 1, m.matcher, { alone: true, cells: [null], origin: { col, line: row } }));
     return { char: cell.char, fg: cell.fg, bg: cell.bg };
   }
 
