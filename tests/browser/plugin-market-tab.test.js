@@ -237,3 +237,34 @@ test('Tab goes from the search field to the filter, then into the cards', async 
   await userEvent.tab();
   expect(document.activeElement).toBe(card('Midnight').querySelector('a.name'));
 });
+
+test('a card read late never takes the place of the question already showing', async () => {
+  const store = await mount();
+  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  const real = store.readListed.bind(store);
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  vi.spyOn(store, 'readListed').mockImplementation(async (entry) => {
+    if (entry.manifest.id === 'phosphor.outlines') await held;
+    return real(entry);
+  });
+  button('Outlines').click(); // a script, read slowly
+  button('Rain').click();
+  await vi.waitFor(() => expect(heading()).toBe('Install Rain 1.2.0?'));
+  release();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect(heading()).toBe('Install Rain 1.2.0?');
+  expect(dialogText()).not.toContain(WARNING);
+  expect(store.plugins).toEqual([]);
+});
+
+test('a browser that will not keep plugins asks nothing about a card', async () => {
+  const store = await mount();
+  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  store.unavailable = true;
+  const read = vi.spyOn(store, 'readListed');
+  button('Rain').click();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(read).not.toHaveBeenCalled();
+  expect(heading()).toBe('Plugins');
+});

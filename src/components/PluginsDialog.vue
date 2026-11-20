@@ -76,15 +76,20 @@ async function take(source) {
   }
 }
 
-// A listed plugin's files, read and asked about, or why they can't be.
+// A listed plugin's files, read and asked about, or why they can't be. One read after another card's question is up
+// (two clicked in turn) is dropped: the question showing is never swapped for another under the person's pointer.
 async function takeListed(entry) {
   problem.value = null;
+  if (plugins.unavailable) return;
+  let read;
   try {
-    asking.value = { install: await plugins.readListed(entry) };
+    read = await plugins.readListed(entry);
   } catch (error) {
     if (!error.userMessage) throw error;
-    problem.value = error.userMessage;
+    if (!asking.value) problem.value = error.userMessage;
+    return;
   }
+  if (!asking.value) asking.value = { install: read };
 }
 
 // The hidden inputs, for a browser that can't link a page to a file or folder: a file, or a folder's files by their
