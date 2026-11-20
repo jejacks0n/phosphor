@@ -61,8 +61,9 @@ export function onSolverFailure(listener) {
   return () => listeners.delete(listener);
 }
 
-// A solver's shader is off for the visit (the renderer's check): why is { log } (it didn't build) or { count, total, col,
-// line } (cells that differed from its JavaScript, the first's place). hash as failSolver's.
+// A solver's shader is off for the visit (the renderer's check): why is { log } (it didn't build), { lost: true } (the
+// context was lost while it ran) or { count, total, col, line } (cells that differed from its JavaScript, the first's
+// place). hash as failSolver's.
 const shaderListeners = new Set();
 export function offShader(ref, why, hash = solverFor(ref)?.hash) {
   if (hash !== solverFor(ref)?.hash) return;

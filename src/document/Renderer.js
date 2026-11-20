@@ -1783,19 +1783,26 @@ function resolveBy(gpu, carries, js, ...args) {
 
 // A plugin solver's resolve as resolveBy makes it, its shader used once it agreed with its JavaScript: the first time it
 // runs this visit (for the solver's ref and script), the JavaScript also resolves the first 8 x 8 cells and the two are
-// compared (disagreement). One that differs, or didn't build (ShapeMatcher's shaderProblem), is off for the visit, the
-// plugin's row saying why (offShader), and the JavaScript's cells are used.
+// compared (disagreement). One that differs in more than a sixteenth of them (By shape's own shader tips a near-tie
+// now and then), didn't build (ShapeMatcher's shaderProblem) or lost the context while it ran (a shader that never
+// ends, stopped by the browser) is off for the visit, the plugin's row saying why (offShader), and the JavaScript's
+// cells are used.
 const shaderChecks = new Map(); // ref and hash -> true once it agreed, false once it's off
 function resolvePluginBy({ hash }, ref, gpu, carries, samples, cols, lines, matcher, o) {
   const at = `${ref}\u0000${hash}`, js = () => resolvePlugin(samples, cols, lines, matcher, o);
+  const checks = !shaderChecks.has(at), lostBefore = checks && ShapeMatcher.shared()?.lost();
   const got = resolveBy(shaderChecks.get(at) === false ? false : gpu, carries, js, samples, cols, lines, matcher, o);
-  if (!got || shaderChecks.has(at)) return got;
+  if (!got || !checks) return got;
   const log = !got.gpu && ShapeMatcher.shared()?.shaderProblem(ref);
   const differ = got.gpu && disagreement(samples, cols, lines, matcher, o);
-  if (got.gpu && !differ) shaderChecks.set(at, true);
-  if (!log && !differ) return got;
+  const lost = !lostBefore && ShapeMatcher.shared()?.lost();
+  const why = log ? { log } : lost ? { lost: true } : differ && differ.count * 16 > differ.total ? differ : null;
+  if (!why) {
+    if (got.gpu) shaderChecks.set(at, true);
+    return got;
+  }
   shaderChecks.set(at, false);
-  offShader(ref, log ? { log } : differ, hash);
+  offShader(ref, why, hash);
   return got.gpu ? { out: js(), gpu: false } : got;
 }
 

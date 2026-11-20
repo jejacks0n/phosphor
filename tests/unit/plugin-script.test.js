@@ -24,8 +24,16 @@ describe('readSolvers', () => {
     [{ options: [{ id: 'a', kind: 'choice', name: 'A', choices: ['x'], default: 1 }] }, 'solvers[0].options[0]'],
     [{ options: [{ id: 'a', kind: 'dial', name: 'A', default: 1 }] }, 'solvers[0].options[0]'],
     [{ options: [{ id: 'a-b', kind: 'checkbox', name: 'A', default: true }] }, 'solvers[0].options[0]'],
+    [{ options: [{ id: 'a__b', kind: 'checkbox', name: 'A', default: true }] }, 'solvers[0].options[0]'], // GLSL reserves __
+    [{ options: [{ id: `a${'b'.repeat(32)}`, kind: 'checkbox', name: 'A', default: true }] }, 'solvers[0].options[0]'],
     [{ id: 'Bad Id' }, 'solvers[0].id'], [{ shader: { solve: 3 } }, 'solvers[0].shader'],
   ])('refuses %o at %s', (change, field) => expect(() => read(change)).toThrow(shape(field)));
+
+  it('takes an option id with single underscores, 32 characters at most', () => {
+    for (const id of ['a_b_c', `a${'_b'.repeat(15)}c`]) {
+      expect(read({ options: [{ id, kind: 'checkbox', name: 'A', default: true }] })[0].options[0].id).toBe(id);
+    }
+  });
 
   it('refuses no default export, no solvers, two with one id, and a control, combining or wide character in chars', () => {
     expect(() => readSolvers({})).toThrow(shape('default'));
