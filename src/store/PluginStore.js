@@ -8,6 +8,7 @@ import { defineStore } from 'pinia';
 import { t } from '@/i18n';
 import { readManifest, ManifestError, MOST_MANIFEST_BYTES } from '@/plugins/manifest';
 import { themeRef, pluginOfTheme, pluginsOff } from '@/plugins/themes';
+import { solverFor, pluginOfSolver, allSolvers, registerSolvers, unregisterSolvers, onSolverFailure } from '@/plugins/solvers';
 import { loadPlugins, putPlugin, deletePlugin } from '@/plugins/storage';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
@@ -38,6 +39,18 @@ function keepTimer(store) {
   }
 }
 
+// One listener for the active store: a new Pinia (a test, mostly) takes over rather than adding another.
+let stopListening = null;
+function listen(store) {
+  stopListening?.();
+  stopListening = onSolverFailure((ref, message) => {
+    const found = solverFor(ref);
+    const pluginId = pluginOfSolver(ref);
+    store.problems[pluginId] = t('plugins.errors.solverFailed', { name: found?.def.name ?? ref, message });
+    store.solverStamp++;
+  });
+}
+
 const byName = (a, b) => a.manifest.name.localeCompare(b.manifest.name) || a.id.localeCompare(b.id);
 
 export const usePluginStore = defineStore('plugins', {
@@ -47,14 +60,39 @@ export const usePluginStore = defineStore('plugins', {
     unavailable: false,                      // the browser won't keep anything (some private windows)
     following: {},                           // { [id]: true } for files followed; not kept
     problems: {},                            // { [id]: words } for a file that couldn't be taken; not kept
+    solvers: {},                             // { [ref]: { pluginId, name, styles, reach, chars, options } }, data only; not kept
+    solverStamp: 0,                          // bumped whenever the solvers or one's failure change
   }),
 
   getters: {
+    pluginState: (state) => (pluginId) => {
+      const record = state.plugins.find(({ id }) => id === pluginId);
+      return !record ? 'absent' : record.enabled ? 'on' : 'off';
+    },
     themes: (state) => (state.off ? [] : state.plugins.filter(({ enabled }) => enabled).flatMap(({ id, manifest }) =>
       manifest.themes.map(({ id: theme, name, base, colors }) => ({ ref: themeRef(id, theme), name, base, colors })))),
   },
 
   actions: {
+    // Every register or unregister of a plugin's solvers goes through these two.
+    useSolvers(pluginId, hash, defs) {
+      listen(this);
+      registerSolvers(pluginId, hash, defs);
+      this.refreshSolvers();
+    },
+
+    dropSolvers(pluginId) {
+      listen(this);
+      unregisterSolvers(pluginId);
+      this.refreshSolvers();
+    },
+
+    refreshSolvers() {
+      this.solvers = Object.fromEntries(allSolvers().map(([ref, pluginId, { name, styles, reach, chars, options }]) =>
+        [ref, { pluginId, name, styles, reach, chars, options }]));
+      this.solverStamp++;
+    },
+
     // ponytail: a change made while a load is reading is overwritten by what it read; count loads if that ever bites.
     async load() {
       let records;

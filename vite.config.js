@@ -42,10 +42,10 @@ export function contentSecurityPolicy(html, api, { desktop = false } = {}) {
   return [
     "default-src 'self'",
     ...(desktop ? [
-      `script-src 'self' ${inline.join(' ')}`,
+      `script-src 'self' blob: ${inline.join(' ')}`,
       "connect-src 'self' ws:",
     ] : [
-      `script-src 'self' ${TURNSTILE} ${inline.join(' ')}`,
+      `script-src 'self' blob: ${TURNSTILE} ${inline.join(' ')}`,
       `connect-src 'self' ${servers.join(' ')} ${TURNSTILE}`,
       `frame-src ${TURNSTILE}`,
     ]),
