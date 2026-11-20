@@ -192,11 +192,24 @@ A bitmap font belongs to the drawing, not to your browser:
 
 - **It's saved**: A project keeps it, and so does an XBin export ([Saving .xb](#saving-xb)). Opening an XBin that holds a font gives the drawing that font.
 - **It's one undo step**: Setting it, and taking it off by choosing another font, are each a step you can undo. It's listed under **This drawing** in the Font dropdown; choosing any other font takes it away. **Remove** (on the Fonts page) only clears a loaded font from your browser; the drawing keeps its own.
-- **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots ([The Fonts Page](#the-fonts-page)). A character the font lacks is shown as its nearest classic (CP437) stand-in, but the character you typed is kept: choose another font and the original comes back.
+- **Only its 256 characters**: A drawing with a bitmap font shows and exports only the font's 256 characters, in cells 8 pixels wide and as tall as the font. The **character palette** shows its 256 slots ([The Fonts Page](#the-fonts-page)). A character the font has no slot for shows blank, but the character you typed is kept: choose another font and the original comes back.
 - **Blocks and shades come from it**: Block elements and shades are drawn from the font's own pixels, so they look as the font draws them.
 - **The converter measures in it**: Best match and By shape compare each cell with the font's characters, so a photo converts into the shapes your font has.
 - **The status bar shows the code**: In the ANSI view, after **Char** and its character, the status bar gives the character's code in decimal: its slot in the drawing's font, or its classic (CP437) byte when there's no bitmap font. A character with no code shows none. On a narrow bar the code gives way, with the FG and BG hex codes, before anything else does.
 - **In a shared room**: For now the font stays on the host's screen: the room sees the drawing's characters, stand-ins and all, in JetBrains Mono. Only the host can change the font ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
+
+### The Font's Blocks
+
+Paint, and the half-block and shade characters (`▄ ▀ █ ▌ ▐ ░ ▒ ▓`), need eight shapes from the font: Full, Lower, Upper, Left, Right, Light, Medium and Dark. A bitmap font can keep them in any of its 256 slots, so Phosphor finds them from the font's pixels when the font loads. Each solid block is judged by how much of each quarter of its glyph is lit, and CP437's own slot wins when its glyph fits. A shade is taken from CP437's slot only when that glyph looks like a shade; otherwise it's **none** until you set it.
+
+On the Fonts page, a bitmap font's row has a **Blocks** row above its 256 slots: eight tiles, each showing the slot that draws that block, or "none". A note under the row says where the blocks were found, or which are missing.
+
+- **Change one**: Pick a tile, then click a slot in the sheet. A slot plays at most one block, so a slot that had another block's role gives it up. The row's facts then say "blocks set by you". Each change is one undo step.
+- **Find blocks again**: Forgets the slots you set and finds the blocks from the font's pixels again.
+- **They're kept**: With the drawing, and with this browser's copy of the font. An XBin can't hold them, so opening one uses the blocks kept with your browser's copy of its font when that font is loaded here, and finds them again when it isn't.
+- **Cells keep their characters**: A cell holds `▄`, not a slot, so after you change a block, paint drawn before draws in the new slot, and a block character you typed looks as the new slot does.
+- **No lower half**: Paint is drawn in the lower half, so a drawing whose font has none can't hold paint. Pencil, Brush, Paint Bucket, Shapes, Gradient, and Retouch's Blur, Dodge and Burn are off, and say why: on a desktop in their tooltip, on a phone or tablet by tapping them (a tap on any button that's off shows its reason; a swipe doesn't). The Eraser, Text and Flip stay on. A picture still converts, with Best match. Give the font a lower half (pick **Lower**, then a slot) and paint is back.
+- **In a room**: Blocks can't change in a room.
 
 ### What the Font Changes
 
@@ -232,7 +245,7 @@ A character one cell can't hold (a word, a control character) comes in as an emp
 
 ### Fonts in Shared Rooms
 
-While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A bitmap font isn't sent yet either: the room sees the host's drawing in JetBrains Mono, each character as the font has it (one the font lacks as its stand-in).
+While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A bitmap font isn't sent yet either: the room sees the host's drawing in JetBrains Mono, each character as the font has it (one the font has no slot for blank).
 
 ---
 

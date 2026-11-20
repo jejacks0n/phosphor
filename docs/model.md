@@ -16,7 +16,7 @@ Each cell of it is one of these:
 | Kind | What it is | Converted? | Paint over it |
 | --- | --- | --- | --- |
 | **Paint** | Pixels with alpha, no character, kept finer than the grid (a grid pixel of it reads and shows as its block's average: `PaintLayer.average`) | Yes, where it lies, by its layer's settings | Mixes in, converts again |
-| **Paint block** `{ char: '▄' }` | Paint with a hint: in ANSI, show my two halves as a ▄. Not a cell of anyone's; outside ANSI it's nothing (`shownEntry`) | As paint (ANSI shows the ▄) | As paint |
+| **Paint block** `{ char: '▄' }` | Paint with a hint: in ANSI, show my two halves as a ▄ (the drawing font's lower half, drawn from whatever slot the font keeps it in; ▀ the same for its upper half). Not a cell of anyone's; outside ANSI it's nothing (`shownEntry`) | As paint (ANSI shows the ▄) | As paint |
 | **A character of someone's own** | A character someone chose: typed, opened from a file, pasted, pinned on the base, an art layer's | Never | Tints its ink; the character stays (R2), except on the base in Monochrome ASCII, where paint takes the pin (R13) |
 | **Frozen cell** `{ …, frozen: true }` | Paint, still there under it, with Merge down's pinned conversion of it over it: the character and colors it showed, kept because it would convert otherwise in its new place. Paint to everything but the converter, which shows the pin instead of converting the paint | Never again, until paint is written or erased in it: then the pin goes and it's paint | As paint: mixes into its halves, converts (R3) |
 

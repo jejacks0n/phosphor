@@ -95,8 +95,7 @@ built-in one, and check what the Font field says while the drawing has its own.
 
 ### 4. Type a character my font lacks
 - Does: in Edit Mode, types a letter with an accent and a character from another script, then chooses a built-in font in the Font dropdown.
-- Expects: each shows as its nearest classic stand-in while the font is on, and the status bar's code is the font's
-  slot or nothing; after the font is taken off the characters she typed are back as she typed them.
+- Expects: each shows blank while the font is on (the font has no slot for it), and the status bar's code is nothing; after the font is taken off the characters she typed are back as she typed them.
 - Probes: `undo-redo`: undo the typing with the font on and off; `again`: type the same character in ten cells.
 - Rated: yes, wants T, then typing
 
@@ -125,7 +124,29 @@ the same through each.
 
 ## A photo in my font
 
-### 8. Convert a photo
+## My font's blocks
+
+### 8. A font whose lower half is somewhere else
+- Does: builds a copy of her `.F16` in the snippet with slots 220 and 240 swapped, loads it with + Load, opens Manage fonts ▸ and chooses its row, reads the Blocks row and the note under it, then paints with the Brush and the Paint Bucket and hovers over cells.
+- Expects: the Blocks row shows Lower at slot 240 and Upper at slot 220 (the others as before); the note says where the blocks were found; the paint shows as half blocks; the status bar's code over a painted half cell is 240; the meta line doesn't say "blocks set by you".
+- Probes: `again`: load the same file twice and check one copy is listed and the blocks are the same; `undo-redo`: undo the font and check the paint stays and draws in slot 220 for Lower again.
+- Rated: no (drawing)
+
+### 9. Set a block by hand
+- Does: with that font, picks the Lower tile and clicks slot 220 in the sheet, then undoes, redoes, and clicks Find blocks again. Then paints and exports an XBin (Export, then `.xb`), opens it with Choose a file while the font is loaded in the browser, and again after Remove on the Fonts page.
+- Expects: after the click the Lower tile shows 220, the Upper tile shows none (a slot plays one block), the meta line says "blocks set by you", and the paint she drew before now draws in slot 220; undo and redo each undo or redo the whole change, and Find blocks again puts the slots back to what the pixels say and clears "blocks set by you"; the XBin opens with the blocks as she set them while the font is loaded in the browser, and with the blocks found again after Remove.
+- Probes: `undo-redo`: undo three times in a row and check nothing else was undone; `interrupt`: reload after setting a block and check it's still set; `extremes`: click the slot that plays another block and check it gives that block up.
+- Rated: yes, wants Cmd+Z
+
+### 10. A font with no lower half
+- Does: builds a copy of her `.F16` with slot 220 blanked (and the other half-block shapes with it), loads it, then looks at the tool buttons for Pencil, Brush, Paint Bucket, Shapes, Gradient, Retouch's Blur, Dodge and Burn, the Eraser, Text and Flip. On a phone or tablet she taps a button that's off instead of hovering. Then picks Lower and clicks a slot with a half block drawn in it, and paints again. Opens a photo in it.
+- Expects: with the lower half missing those paint tools are off, and the reason (the font's name and that it has no lower half) is the tooltip on a desktop and a toast on a tap on a phone or tablet (a swipe over them shows none); the Eraser, Text and Flip stay on; the photo converts with Best match; after she gives the font a lower half, the tools come on and paint draws.
+- Probes: `out-of-order`: start a stroke with the tool just before it goes off; `speed`: tap an off button ten times fast; `back-out`: tap the toast's reason away and check the buttons stay off.
+- Rated: yes, wants to be told on the button why it's off
+
+**Free time:** she'd set every block to a slot of her own and export the XBin, undo the lot, and check the Blocks row after a reload.
+
+### 11. Convert a photo
 - Does: opens a photo from the fixtures with her font as the drawing's font, with Characters set to Best match, then
   By shape.
 - Expects: the characters used are the font's glyphs (a photo of a face made of her own shapes), not the classic set;
@@ -138,7 +159,7 @@ see what that does to the same photo, and save a project and reopen it.
 
 ## Export my XBin and open it again
 
-### 9. Export with CGA
+### 12. Export with CGA
 - Does: with CGA as the Color palette, exports XBin (Export, then `.xb`), with and without SAUCE; reopens the file with
   Choose a file.
 - Expects: it reopens with the same cells, the same font (hers, under In use named for the file without its
@@ -150,13 +171,13 @@ see what that does to the same photo, and save a project and reopen it.
   it's drawn in IBM VGA.
 - Rated: yes, wants Cmd+E
 
-### 10. Export with a Custom list of 16
+### 13. Export with a Custom list of 16
 - Does: sets the Color palette to Custom with a list of 16 colors (Lospec style hex codes), exports XBin, reopens it.
 - Expects: it reopens as a Custom list of the same 16 colors, in the same order, with the same cells and font.
 - Probes: `extremes`: a list of one color, and of 16 with a repeated color.
 - Rated: no (drawing)
 
-### 11. Refuse the 17th color
+### 14. Refuse the 17th color
 - Does: sets a Custom list of 17 colors, then opens Export and looks at `.xb`; then tries Limited count at 32.
 - Expects: the Export button is off for XBin and the dialog says XBin holds 16 colors and what to pick instead; the
   other formats still export.
