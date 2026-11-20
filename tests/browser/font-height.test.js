@@ -284,3 +284,24 @@ test('typed in the same tick as a switch, a character waits for the new grid\'s 
   expect(project.cells.slice(0, 2).map((c) => c.char)).toEqual(['B', 'A']);
   expect(project.cells.length).toBe(20 * 10);
 });
+
+test('a reopened Bake, nothing drawn on it, is stretched with the grid: its picture fills 80 x 108, not letterboxed', async () => {
+  const { project } = await photo();
+  project.invert = 100;
+  await settle(project);
+  await project.bake();
+  await settle(project);
+  const file = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'baked.phosphor');
+  const { project: other } = await createTestApp();
+  await other.openParts(await readProject(file), { filename: 'baked' });
+  other.render();
+  await settle(other);
+  expect(other.imageIsWorkingCopy).toBe(true);
+  expect(other.canUndo).toBe(false);
+  const height = other.image.naturalHeight;
+  await other.setDrawingFont(font8);
+  await settle(other);
+  expect(grid(other)).toEqual({ cols: 80, rows: 108 });
+  expect(other.image.naturalHeight).toBe(2 * height);
+  expect(toRaw(other.fit)).toEqual({ dx: 0, dy: 0, dw: 80, dh: 108 });
+});

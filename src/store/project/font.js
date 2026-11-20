@@ -15,6 +15,8 @@ import { t } from '@/i18n';
 import { markRaw, shallowRef } from 'vue';
 
 const heightOf = (font) => font?.height ?? 16;
+// The settings that hold the drawing's font.
+const trioOf = (project) => ({ fontBitmap: project.fontBitmap, fontName: project.fontName, fontBlocks: project.fontBlocks });
 // A font's name for a toast; none is the font picked in the Font field.
 function nameOf(font) {
   if (font) return font.name;
@@ -24,15 +26,17 @@ function nameOf(font) {
 
 // A font of another height (from and to, in pixels) for a drawing: the columns stay and the rows change so the picture
 // keeps its shape (fontGrid). Refused with frames. With nothing drawn (nothing a rescale would leave in the wrong place:
-// resizesCanvas) it's a settings step with the grid in it, and the next render rescales, as a Columns change with the lock
-// on does: the picture refits and a later Columns change refits it again. Otherwise regrid. font: the BitmapFont or null;
+// resizesCanvas), on a picture that isn't a working copy with content (that stretches), it's a settings step with the
+// grid in it, and the next render rescales, as a Columns change with the lock on does: the picture refits and a later
+// Columns change refits it again. Otherwise regrid. font: the BitmapFont or null;
 // settings: its trio (setDrawingFont's). A Promise only while a working copy with content is stretched.
 function newHeight(project, font, settings, from, to) {
   if (project.hasFrames) return void toast(t('font.heightFrames', { name: nameOf(font), to, from }));
   project.ensureLayer();
-  if (project.resizesCanvas) return regrid(project, font, settings, from, to);
+  const stretches = project.imageIsWorkingCopy && !isUniform(project.image); // a working copy with content: its pixels are grid pixels
+  if (project.resizesCanvas || stretches) return regrid(project, font, settings, from, to);
   const ratio = Number(project.aspectRatio), was = project.cols;
-  const before = { fontBitmap: project.fontBitmap, fontName: project.fontName, fontBlocks: project.fontBlocks, cols: project.cols, rows: project.rows, aspectRatio: project.aspectRatio };
+  const before = { ...trioOf(project), cols: project.cols, rows: project.rows, aspectRatio: project.aspectRatio };
   const after = { ...settings, ...fontGrid(project.cols, project.rows, from, to), aspectRatio: ratio > 0 ? ratio * to / from : project.aspectRatio };
   project.commitPending();
   project.$patch(after);
@@ -47,7 +51,6 @@ function newHeight(project, font, settings, from, to) {
 // cells (docs/model.md R1). One whole-layer step that swaps objects, so the steps before it stay undoable.
 function regrid(project, font, settings, from, to) {
   if (project._artInside) project.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
-  project.ensureLayer();
   project.commitPending();
   const { cols, rows } = fontGrid(project.cols, project.rows, from, to);
   const image = project.image, w0 = image.naturalWidth || image.width, h0 = image.naturalHeight || image.height;
@@ -93,7 +96,7 @@ function switched(project, settings, picture, w, oldFit, fitAspect, from, to) {
 
   const ratio = Number(project.aspectRatio);
   const before = {
-    settings: { fontBitmap: project.fontBitmap, fontName: project.fontName, fontBlocks: project.fontBlocks, cols: project.cols, rows: project.rows, fit: oldFit, aspectRatio: project.aspectRatio, baseScale: project.baseScale, paintScale: project.paintScale },
+    settings: { ...trioOf(project), cols: project.cols, rows: project.rows, fit: oldFit, aspectRatio: project.aspectRatio, baseScale: project.baseScale, paintScale: project.paintScale },
     image: project.image, imageBuffer: project.imageBuffer, base: project.baseLayer, stack: stackState(project), shapes: project.shapes,
     edit: { editCells: project.editCells, paintLayer: project.paintLayer, hasPaint: project.hasPaint },
   };
@@ -143,7 +146,7 @@ export const fontActions = {
     if (!this.image) return void this.$patch(after); // no drawing yet: the next one's font, with nothing to undo
     const from = heightOf(this.drawingFont), to = heightOf(font);
     if (from !== to) return newHeight(this, font, after, from, to);
-    const before = { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks };
+    const before = trioOf(this);
     this.commitPending();
     this.$patch(after);
     const on = (values) => () => { this.$patch(values); this.render(); };

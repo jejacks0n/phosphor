@@ -5125,3 +5125,23 @@ test('an artist draws with the Pen, a click at a time, and the host keeps every 
   await sameShapes(room, ann);
   expect(ann.project.shapes.get(key).points.length).toBe(3);
 });
+
+test('a host\'s switch to a font of another height goes to the room as the project once, with nothing drawn and with something', async () => {
+  const { font8, font11 } = await import('../support/blockFonts.js');
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const projects = vi.spyOn(room.host, 'sendProjectToAll');
+  await room.project.setDrawingFont(font8); // nothing drawn: a settings step, the grid's change sends it
+  await later();
+  expect([room.project.cols, room.project.rows]).toEqual([40, 80]);
+  expect(projects).toHaveBeenCalledOnce();
+  await expect.poll(() => ann.project.rows, PATIENT).toBe(80);
+  dab(room.project, 4, 4);
+  await settle(room.project);
+  projects.mockClear();
+  await room.project.setDrawingFont(font11); // something drawn: the whole-layer step sends it
+  await later();
+  expect([room.project.cols, room.project.rows]).toEqual([40, 59]);
+  expect(projects).toHaveBeenCalledOnce();
+  await expect.poll(() => ann.project.rows, PATIENT).toBe(59);
+});

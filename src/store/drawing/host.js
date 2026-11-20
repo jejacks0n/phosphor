@@ -231,14 +231,21 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
 
   function startHostSharing() {
     const theHost = host;
-    project.startSharing({ send: (msg) => host.sendAll(msg), sendDocument: () => host.sendProjectToAll(), hold: () => theHost.hold(), release: () => theHost.release(), role: 'host', me: me(), roomId: host.roomId });
+    let sent = settingsJson(project), grid = `${project.cols},${project.rows}`;
+    // The project sent has the settings and grid as they are: the watch below doesn't send them again (a font of another
+    // height's step, which shares the project, changes the grid too).
+    const sendDocument = () => {
+      sent = settingsJson(project);
+      grid = `${project.cols},${project.rows}`;
+      host.sendProjectToAll();
+    };
+    project.startSharing({ send: (msg) => host.sendAll(msg), sendDocument, hold: () => theHost.hold(), release: () => theHost.release(), role: 'host', me: me(), roomId: host.roomId });
     project.dropOldUndo();
     stops.push(watch(() => project._document, () => { if (!adopting) setArtists([]); }));   // something else opened, with only those who've dropped out listed
     const checks = setInterval(() => { if (!gathering()) host.sendCheck(project._ledger.n, project._ledger.sum); }, CHECK_EVERY_MS);
     stops.push(() => clearInterval(checks));
     const keeps = setInterval(() => project.keepLedger(), KEEP_LEDGER_EVERY_MS);
     stops.push(() => clearInterval(keeps));
-    let sent = settingsJson(project), grid = `${project.cols},${project.rows}`;
     stops.push(watch(() => [settingsJson(project), project._sliderBefore, project._charsBefore], () => {   // a slider's end goes as one change
       const now = settingsJson(project), gridNow = `${project.cols},${project.rows}`;
       if (project._sliderBefore || project._charsBefore || now === sent) return;
