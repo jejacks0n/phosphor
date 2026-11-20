@@ -31,7 +31,7 @@ const layerName = useLayerName();
 const { below, offFor, hasAny, mergeDown } = useMergeDown();
 
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
-const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name } : {});
+const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name, 'data-off-reason': '' } : {});
 // A tool's button as off while the drawing's font has no lower half (project.paintOff).
 const toolOff = (tool) => (PAINT_OFF_TOOLS.includes(tool.id) ? off(project.paintOff, tool.title) : {});
 // Inside an art layer, what changes the whole drawing (Clear, Merge down, Bake) is off: it would step out and

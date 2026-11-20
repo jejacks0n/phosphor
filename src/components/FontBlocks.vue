@@ -48,6 +48,7 @@ const note = computed(() => {
         :aria-pressed="picked === b.key"
         :disabled="disabled"
         :title="disabled ? reason : undefined"
+        :data-off-reason="disabled ? '' : undefined"
         @click="emit('pick', picked === b.key ? null : b.key)"
     >
       <span class="glyph" :style="{ fontFamily: family }">{{ blocks[i] === null ? '' : chars[blocks[i]] }}</span>

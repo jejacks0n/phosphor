@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia';
 import { useAutosave } from '@/composables/useAutosave';
 import { useScreenAwake } from '@/composables/useScreenAwake';
 import { useTheme } from '@/composables/useTheme';
+import { useDisabledReason } from '@/composables/useDisabledReason';
 import { desktopQuery } from '@/social/config';
 import { desktop } from '@/social/desktop';
 import { onLaunchedFiles } from '@/document/projectIO';
@@ -48,6 +49,7 @@ watch(() => project.fileId, (id) => workspace.showGuidesFor(id), { immediate: tr
 
 const autosave = useAutosave();
 useScreenAwake();
+useDisabledReason();
 const { ready, recent, openRecent } = autosave;
 const drawing = useDrawingStore();
 drawing.autosavedBy(autosave.flush);

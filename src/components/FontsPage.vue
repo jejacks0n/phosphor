@@ -210,7 +210,7 @@ const exportPalettes = () => {
         </template>
         <button class="ghost" :disabled="!count" @click="exportPalettes">{{ t('palette.fonts.exportPalettes') }}</button>
         <button v-if="isInUse" class="ghost" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.fonts.toPalettes') }}</button>
-        <button v-if="bitmap && font?.blocks" class="ghost" :disabled="inRoom" :title="inRoom ? t('palette.fonts.blocksInRoom') : t('palette.fonts.findBlocksTitle')" @click="setBlocks(undefined)">{{ t('palette.fonts.findBlocks') }}</button>
+        <button v-if="bitmap && font?.blocks" class="ghost" :disabled="inRoom" :data-off-reason="inRoom ? '' : undefined" :title="inRoom ? t('palette.fonts.blocksInRoom') : t('palette.fonts.findBlocksTitle')" @click="setBlocks(undefined)">{{ t('palette.fonts.findBlocks') }}</button>
         <button v-if="isStored" class="ghost" :title="t('palette.fonts.removeTitle')" @click="forget">{{ t('palette.fonts.remove') }}</button>
       </div>
       <template v-if="bitmap && font">
