@@ -1975,6 +1975,8 @@
     "nowRunsCode": "{name} exécute maintenant du code. Le permettre ?",
     "allow": "Permettre",
     "notNow": "Pas maintenant",
+    "allowNamed": "Permettre à {name} d'exécuter du code",
+    "notNowNamed": "Pas maintenant pour {name}",
     "errors": {
       "scriptLoad": "Le script du plugin n'a pas pu être chargé : {message}",
       "scriptShape": "Le script du plugin a un problème à « {field} ».",

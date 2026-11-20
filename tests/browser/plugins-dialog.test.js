@@ -279,7 +279,9 @@ test('the question for a plugin with a script warns that it runs code; a theme-o
   window.showDirectoryPicker = undefined; // a browser with no folder picker: the hidden input
   onTestFinished(() => { delete window.showDirectoryPicker; });
   const store = await mount();
-  await page.getByRole('button', { name: 'Install from a folder…' }).click(); // opens the hidden input's chooser
+  const chooser = vi.spyOn(document.querySelector('dialog input[webkitdirectory]'), 'click').mockImplementation(() => {});
+  await page.getByRole('button', { name: 'Install from a folder…' }).click();
+  expect(chooser).toHaveBeenCalled(); // the hidden input's chooser
   await pickFolder(scripted());
   expect(heading()).toBe('Install Midnight 1.0.0?');
   expect(dialogText()).toContain('Adds 1 theme and a script.');
@@ -356,12 +358,12 @@ test('a row waiting on code asks before running it', async () => {
   store.pendingCode['jane.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
   await expect.element(page.getByText('Midnight now runs code. Allow?')).toBeVisible();
   expect(document.querySelector('dialog li').textContent).toContain(WARNING);
-  await page.getByRole('button', { name: 'Not now' }).click();
+  await page.getByRole('button', { name: 'Not now for Midnight' }).click();
   expect(decline).toHaveBeenCalledWith('jane.midnight');
   await expect.element(page.getByText('Midnight now runs code. Allow?')).not.toBeInTheDocument();
 
   store.pendingCode['jane.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
-  await page.getByRole('button', { name: 'Allow' }).click();
+  await page.getByRole('button', { name: 'Allow Midnight to run code' }).click();
   expect(allow).toHaveBeenCalledWith('jane.midnight');
   await expect.element(page.getByText('Midnight now runs code. Allow?')).not.toBeInTheDocument();
 });
