@@ -169,7 +169,9 @@ Phosphor then emails you a link to confirm your address. Until you do, you can w
 ## Starting a Room
 
 **Start a room** opens **Set up your room**, laid out the way your room's Settings and stats will be. It needs art
-open: that's what you share. Without any, **Go live** is off.
+open: that's what you share. Without any, **Go live** is off. It's off too while the drawing's bitmap font has a block
+missing (see [The Font's Blocks](characters.md#the-fonts-blocks)); the box says which, with a **Set up its blocks**
+button that opens the Fonts page.
 
 The **Room settings** box asks for:
 

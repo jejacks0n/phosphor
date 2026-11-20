@@ -214,7 +214,7 @@ On the Fonts page, a bitmap font's row has a **Blocks** row above its 256 slots:
   - **Set up its blocks**: Opens the Fonts page on the drawing's font with **Lower** picked (or the first block it's missing), so one click on a slot in the sheet gives it one.
   - **Fixed**: Once Lower has a slot, the toast closes and a short one says "Lower half set to slot *n*. The paint tools are on." Undo takes the lower half away again, and the toast that stays comes back.
 - **Other missing blocks**: A font loaded with **+ Load**, or opened with an XBin, that has its lower half but lacks other blocks says which, for a while: "This font has no Light, Medium, or Dark block, so those characters draw blank.", with the same **Set up its blocks** button. (A font with no lower half shows only the toast that stays.)
-- **In a room**: Blocks can't change in a room. The toasts about the drawing's font have no button there, and add "Its blocks can't change in a room; set them once the room ends." A toast already up when a room starts loses its button, and gets it back when the room ends.
+- **In a room**: Blocks can't change in a room. The toasts about the drawing's font have no button there, and add "Its blocks can't change in a room; set them once the room ends." A toast already up when a room starts loses its button, and gets it back when the room ends. A room can only start with all eight blocks set up, and in one you can only switch to a font that is ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
 ### What the Font Changes
 
@@ -250,7 +250,7 @@ A character one cell can't hold (a word, a control character) comes in as an emp
 
 ### Fonts in Shared Rooms
 
-While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A bitmap font isn't sent yet either: the room sees the host's drawing in JetBrains Mono, each character as the font has it (one the font lacks as its stand-in, or blank).
+While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A font the host loaded from their computer can't be sent, so the room sees JetBrains Mono instead. A room needs a font that's set up, with a slot for each of the eight blocks, since a room can't change them: **Go live** is off while the drawing's font has one missing, with a button to set it up, and in a room you can't switch to a font that isn't (it's greyed out in the Font field, and **Use this font** is off, each saying what's missing). Set up its blocks first, outside the room. A bitmap font isn't sent yet either: the room sees the host's drawing in JetBrains Mono, each character as the font has it (one the font lacks as its stand-in, or blank).
 
 ---
 
