@@ -3,7 +3,7 @@
 // exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { backingScale, cellGeometry, blockMask, packCells, packSpills, MAX_BACKING_AREA } from '../../src/lib/CellCanvas.js';
+import { backingScale, cellGeometry, gridYAt, blockMask, packCells, packSpills, MAX_BACKING_AREA } from '../../src/lib/CellCanvas.js';
 
 test("The ANSI view's canvas renderer: its backing size stays under the browsers' canvas limits, its cells snap to whole device pixels (an even height, so the halves match), block characters are exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures", async () => {
   assert.equal(backingScale(800, 600, 2), 2);                                    // small grid: full dpr
@@ -45,4 +45,20 @@ test("The ANSI view's canvas renderer: its backing size stays under the browsers
   packSpills([src, {}, {}], [null, { from: 0, slice: 1 }, { from: 0, slice: 2 }], 3, sliceOf, ov, ovHi);
   assert.deepEqual([...ov], [0, 0, 0, 0, 9, 8, 7, 0x01, 9, 8, 7, 0x02]);
   assert.deepEqual([...ovHi], [0, 0, 0, 0, 0x03, 255, 0, 0, 0x03, 255, 0, 0]);
+});
+
+test('an odd-height bitmap font is its own height; an even one and a TrueType font keep an even cell', () => {
+  const eleven = { size: 11, lineHeight: 1, bitmap: true, height: 11 }, sixteen = { size: 16, lineHeight: 1, bitmap: true, height: 16 };
+  assert.equal(cellGeometry(8, 1, false, eleven).ch, 11);
+  assert.equal(cellGeometry(8, 2, false, eleven).ch, 22);
+  assert.equal(cellGeometry(8, 1.03, false, sixteen).ch, 16);   // 16.48 still evens to 16
+  assert.equal(cellGeometry(8, 1.04, false, sixteen).ch, 16);   // 16.64: even (today's rounding), not 17
+  const vga = { size: 16, lineHeight: 1 };                       // a TrueType-style spec: no bitmap, no height
+  for (let s = 0.5; s <= 4; s += 0.01) assert.equal(cellGeometry(8, s, false, vga).ch, Math.round((16 * s) / 2) * 2);
+});
+
+test('gridYAt: an even cell is y over half its height; an odd one splits where its halves meet', () => {
+  assert.equal(gridYAt(7.3, { lineHeight: 16, odd: false }), 7.3 / 8);
+  const m = { lineHeight: 11, odd: true, upper: 5 };
+  assert.ok(gridYAt(4.9, m) < 1 && gridYAt(5.1, m) >= 1 && gridYAt(10.9, m) < 2 && gridYAt(11.2, m) >= 2);
 });

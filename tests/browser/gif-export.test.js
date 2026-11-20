@@ -2,6 +2,8 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { drawnCells, gifFile } from '@/lib/GifFile.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { setDisplayFont } from '@/lib/displayFonts.js';
+import { font11 } from '../support/blockFonts.js';
 
 // Each frame of the file as a browser decodes it.
 async function decodedFrames(bytes, count) {
@@ -48,4 +50,19 @@ test('an export too large says so', async () => {
   await settle(project);
   const frames = await project.animationCells();
   await expect(gifFile(frames, project.cols, 4, [2, 2], { tooLarge: () => { throw new Error('too large'); } })).rejects.toThrow('too large');
+});
+
+test('in an 8×11 font a GIF frame is 11 pixels a line', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 6, rows: 4 });
+  project.setDrawingFont(font11);
+  await setDisplayFont(workspace.displayFontSpec);
+  try {
+    const frames = await project.animationCells();
+    const bytes = await gifFile(frames, project.cols, 4, [13], { smooth: false });
+    const [{ width, height }] = await decodedFrames(bytes, 1);
+    expect([width, height]).toEqual([48, 44]); // 4 lines of 11 pixels
+  } finally {
+    await setDisplayFont('jetbrains');
+  }
 });

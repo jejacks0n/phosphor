@@ -7,7 +7,7 @@ import { useTextTool } from '@/composables/useTextTool';
 import { render as renderText } from '@/lib/TextRenderer';
 import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
-import CellCanvas from '@/lib/CellCanvas';
+import CellCanvas, { gridYAt } from '@/lib/CellCanvas';
 import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
 import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
@@ -190,7 +190,7 @@ const coordsAt = (event) => {
   // Measured from inside the display's border, where the cells start.
   return {
     x: (clientX - rect.left - displayEl.clientLeft) / m.cellWidth,
-    y: (clientY - rect.top - displayEl.clientTop) / (m.lineHeight / 2),
+    y: gridYAt(clientY - rect.top - displayEl.clientTop, m),
   };
 };
 

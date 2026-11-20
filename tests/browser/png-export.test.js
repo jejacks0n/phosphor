@@ -6,6 +6,8 @@ import { drawnCells } from '@/lib/GifFile.js';
 import { pngBlob } from '@/lib/PngFile.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import SaveDialog from '@/components/SaveDialog.vue';
+import { setDisplayFont } from '@/lib/displayFonts.js';
+import { font11 } from '../support/blockFonts.js';
 
 afterEach(() => vi.restoreAllMocks());
 // An export waits for a frame to show its note, then draws and packs the picture, on a machine that may be busy with
@@ -121,5 +123,24 @@ test('Cancel on the question closes without exporting', async () => {
     expect(exported).not.toHaveBeenCalled();
   } finally {
     unmount();
+  }
+});
+
+test('in an 8×11 font a PNG is 11 pixels a line, a ▄ cell 5 rows of its background over 6 of its foreground', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 6, rows: 4 });
+  project.setDrawingFont(font11);
+  await setDisplayFont(workspace.displayFontSpec);
+  try {
+    project.typeAt(1, 0, '▄', { fg: '#ffee00', bg: '#0044aa' });
+    project.commitEdit();
+    await settle(project);
+    const shot = await render(project, false);
+    expect([shot.width, shot.height]).toEqual([48, 22]); // 2 lines of 11 pixels
+    const at = (row) => [...shot.data.slice(4 * (row * shot.width + 8), 4 * (row * shot.width + 8) + 3)];
+    for (let row = 0; row < 5; row++) expect(at(row)).toEqual([0x00, 0x44, 0xaa]);
+    for (let row = 5; row < 11; row++) expect(at(row)).toEqual([0xff, 0xee, 0x00]);
+  } finally {
+    await setDisplayFont('jetbrains');
   }
 });
