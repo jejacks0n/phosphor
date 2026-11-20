@@ -340,6 +340,37 @@ test('the hang mark is set over every cell of an upper layer\'s first walk, not 
   expect(localStorage.getItem(HANG_KEY)).toBeNull();
 });
 
+test('the hang mark is set over an upper layer\'s first walk even when the lower group\'s paint ran the solver first in that render', async () => {
+  const { project, workspace } = await stripes();
+  const calls = [];
+  const ref = await onSolver(solver({ styles: ['ansi', 'ascii'], solve(cell, look) {
+    const [r, g] = cell.sample(0, 0, 0);
+    calls.push({ col: cell.col, red: r > 200 && g < 50, mark: JSON.parse(localStorage.getItem(HANG_KEY))?.pluginId ?? null });
+    return look.byShape();
+  } }), { pluginId: 'jane.hang', hash: 'lower-then-upper' });
+  project.renderStyle = 'ascii';
+  workspace.pickLayer('edit');
+  project.typeAt(2, 2, ' ', { fg: '#ffffff', bg: '#000000' }); // its own character, which paint opens in ASCII
+  project.commitEdit();
+  project.paintStroke([{ x: 2, y: 4, alpha: 1 }, { x: 2, y: 5, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  const upper = project.addLayer('cells', 'edit');
+  project.setLayerChars(upper, { charsAscii: ' .:#' }); // its own settings: an upper layer
+  workspace.pickLayer(upper);
+  project.paintStroke(RED_CELLS, '#ff0000');
+  project.commitEdit();
+  await settle(project);
+  expect(project.lowerGroup.upper).toEqual([upper]);
+  calls.length = 0;
+  for (const id of ['base', 'edit', upper]) project.setLayerChars(id, { charChoiceAscii: ref }); // one render: the lower group's, then the upper walk
+  await settle(project);
+  // Red at column 2: the lower group's (its paint over the base, then over the typed space); at 4, 8 and 12 the upper layer's.
+  const up = calls.filter((call) => call.red && [4, 8, 12].includes(call.col));
+  expect(calls.findIndex((call) => call.red && call.col === 2)).toBeLessThan(calls.indexOf(up[0]));
+  expect(up.length).toBeGreaterThanOrEqual(3);
+  expect(up.slice(0, 3).map((call) => call.mark)).toEqual(Array(3).fill('jane.hang'));
+});
+
 test('a solver gone between the params and the render is By shape there, and is not called', async () => {
   const { project } = await stripes();
   await choose(project, 'shape');
