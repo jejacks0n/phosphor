@@ -96,7 +96,7 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
   const own = this.layers; // replaceImage starts them over
   const pickedBefore = useWorkspaceStore().pickedLayer; // and the pick
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
-  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, filename, fileExt, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
+  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, ...(!settings?.fontBitmap && !this._takingProject && { fontBitmap: this.fontBitmap, fontName: this.fontName }), filename, fileExt, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
   try {
     // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
     // files: paint at the image's size or the grid's.
@@ -264,7 +264,8 @@ export const documentActions = {
         cols: art.cols,
         rows: 2 * art.rows,
         ...nameOf(file),
-        ...(art.font && { fontBitmap: encodeFont(art.font), fontName: art.font.name }),
+        // the font in use stays, but an XBin sets it: its own, or none (IBM VGA, below)
+        ...(art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName }),
         ...(Array.isArray(art.palette) && art.palette.some((hex, i) => hex !== PALETTES.cga[ANSI_OF_DOS[i]].hex)
           ? { quantize: 'palette', palette: art.palette.join(' ') } // an XBin's own 16, in its DOS order
           : { quantize: Array.isArray(art.palette) ? 'cga' : art.palette }),
@@ -282,6 +283,7 @@ export const documentActions = {
         sauceRecord: keptRecord(sauce, art.cols, art.rows),
       });
       if (!opened) return;
+      if (art.xbin && !art.font) useWorkspaceStore().displayFont = 'vga'; // an XBin with no font of its own is drawn in IBM VGA's
       const cells = art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell }));
       if (layer === 'edit') this.writeEditCells(cells.map(({ col, row, ...attrs }) => ({ col, row, attrs }))); // char, fg, bg and any 256-color index
       else this.writeBaseCells(cells);

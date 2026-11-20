@@ -77,7 +77,7 @@ test('Manage fonts opens the Fonts page with any tool, and Escape gives the keys
   await expect.poll(() => store(page, 'workspace', (w) => w.activeTool)).toBe('brush');
 });
 
-test('a bitmap font loaded on the start screen is the blank canvas\'s font, and the art is drawn in it', async ({ page }) => {
+test('a bitmap font loaded on the start screen stays through a reload, is the blank canvas\'s font, and the art is drawn in it', async ({ page }) => {
   await page.goto('/');
   // An 8×16 font whose only lit glyph is A, every pixel of it.
   const bytes = new Uint8Array(256 * 16);
@@ -89,6 +89,8 @@ test('a bitmap font loaded on the start screen is the blank canvas\'s font, and 
   await expect(page.getByLabel('Font', { exact: true }).locator('option:checked')).toHaveText('Solid A');
   await page.keyboard.press('Escape');
   await expect(layer).toHaveCount(0);
+  await page.reload(); // a reload keeps the font picked
+  await expect(page.getByLabel('Font', { exact: true }).locator('option:checked')).toHaveText('Solid A');
   await page.getByRole('button', { name: 'Start with a blank canvas' }).click();
   await settled(page);
   await expect(page.getByLabel('Font', { exact: true }).locator('option:checked')).toHaveText('Solid A');

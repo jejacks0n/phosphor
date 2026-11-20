@@ -1,7 +1,7 @@
 // The drawing's bitmap font as document state: one undo step, saved with the project, kept by a new blank canvas.
 import { test, it, expect, afterEach } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
-import { readXBin } from '@/lib/XBinFile.js';
+import { readXBin, writeXBin } from '@/lib/XBinFile.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { fontId, encodeFont, fontChars } from '@/lib/BitmapFont.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
@@ -61,14 +61,33 @@ test('a font chosen before any drawing is the blank canvas\'s, with nothing to u
   expect(project.drawingFont.name).toBe('Topaz');
 });
 
-test('a new blank canvas keeps the font in use; an ANSI file brings its own or none', async () => {
+test('the font in use stays through a new blank canvas, an ANSI file, and a project without a font of its own', async () => {
   const project = await blank();
   project.setDrawingFont(font());
   project.clearImage(); // New
   await project.setBlankCanvas({ cols: 10, rows: 10 });
   expect(project.drawingFont.name).toBe('Topaz');
   await project.openArtFile(new File(['hello'], 'note.ans'));
+  expect(project.drawingFont.name).toBe('Topaz');
+  const { project: plain } = await createTestApp();
+  await plain.setBlankCanvas({ cols: 4, rows: 4 });
+  const file = new File([await writeProject({ imageBuffer: plain.imageBuffer, ...await plain.projectParts() })], 'plain.phosphor');
+  await project.openParts(await readProject(file), { filename: 'plain' });
+  expect(project.drawingFont.name).toBe('Topaz');
+});
+
+test('an XBin brings its own font, or IBM VGA when it has none', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  project.setDrawingFont(font());
+  const palette = Array.from({ length: 16 }, () => '#000000'), solid = { name: 'Solid', height: 16, bytes: new Uint8Array(16 * 256).fill(255) };
+  const cells = [{ char: 'A', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }];
+  await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells, palette, font: solid })], 'own.xb'));
+  expect(project.drawingFont.name).toBe('own'); // an XBin's font is named for its file
+  // XBIN, 1A, 2 columns, 1 row, height 16, no flags (no palette, no font), then each cell's character and attribute
+  await project.openArtFile(new File([Uint8Array.of(0x58, 0x42, 0x49, 0x4e, 0x1a, 2, 0, 1, 0, 16, 0, 65, 7, 66, 7)], 'plain.xb'));
   expect(project.drawingFont).toBeNull();
+  expect(workspace.displayFont).toBe('vga');
 });
 
 it('draws in the drawing\'s font', async () => {

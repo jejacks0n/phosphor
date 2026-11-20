@@ -82,7 +82,7 @@ export function readXBin(bytes, name) {
       ...(!custom && { fgIndex: ANSI_OF_DOS[fgIndex], bgIndex: ANSI_OF_DOS[bgIndex] }),
     };
   });
-  return { cols, rows, cells, sauce, palette, font, notUtf8: false };
+  return { cols, rows, cells, sauce, palette, font, xbin: true, notUtf8: false };
 }
 
 // One row's cells as runs: at each cell the longest of both-same (3), char-same (1), attr-same (2), else a plain run (0).

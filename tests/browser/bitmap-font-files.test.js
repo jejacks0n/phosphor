@@ -136,6 +136,8 @@ test('Remove clears the browser\'s copy of the drawing\'s font and leaves the dr
   workspace.userFonts = await loadFonts();
   await mountFontsPage(workspace);
   const press = (label) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === label).click();
+  [...host.querySelectorAll('.row')].find((r) => r.querySelector('.name span').textContent === 'SIXTEEN').click(); // the page opens on the font in use
+  await nextTick();
   press('Use this font');
   await expect.poll(() => project.drawingFont?.height).toBe(16);
   workspace.displayFontSizes = { [font.id]: 24 };

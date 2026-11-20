@@ -61,9 +61,9 @@ script. Every section ends with Free time.
 
 ### 1. Load a raw font
 - Does: on the start screen, before any drawing is open, clicks Manage fonts ▸ beside the Font field, clicks + Load on
-  the Fonts page and picks her `.F08` file; closes the layer and starts a blank canvas.
+  the Fonts page and picks her `.F08` file; closes the layer, reloads the page and starts a blank canvas.
 - Expects: the font is chosen at once and listed under In use (its line says the next drawing's font), with its 256 slots shown when its row is chosen;
-  the blank canvas starts in it (the Font field shows it, and the art is drawn in it); Save .F08 and Save PNG
+  the reload keeps it; the blank canvas starts in it (the Font field shows it, and the art is drawn in it); Save .F08 and Save PNG
   are offered, and save files named for hers without its `.F08` (`name.F08`, `name.png`); a failed file says why in
   words.
 - Probes: `back-out`: open the file box and cancel, then close the layer with Escape and check her keys work; `extremes`: a file of the wrong size (100 bytes) says why it isn't a
@@ -109,8 +109,8 @@ built-in one, and check what the Font field says while the drawing has its own.
 - Rated: yes, wants F1 to F12 for characters, as moebiusXBIN has them
 
 ### 6. A palette made in my font
-- Does: with her font as the drawing's font, opens the character palette layer on Palettes, makes a new palette with + New and fills a few slots, then starts a new canvas with no font of her own and looks at Palettes, then goes back to her font (undo, or Use this font on the Fonts page). Hides the built-in palettes with Hide under Built-in, flips the strip with Alt+← and Alt+→, starts a drawing without her font and comes back, then shows them again. Exports the palette (Export in the editor head's … menu, beside Duplicate, and Export palettes on the Fonts page) and imports the file with Import, then does it again with her font not loaded in the browser (Remove on the Fonts page, in a drawing without it).
-- Expects: the new palette is listed under For her font, first; it's gone in the font-less drawing and back with her font, chosen as before; with the built-ins hidden, the list keeps Built-in with only Show under it, the strip flips only through her palettes, and the font-less drawing still has the built-ins; the editor's head says For her font ▾ and offers Use with any font; the exported `name.palettes.json` imports with its name ("name (custom)" while she still has one called that), empty slots and font; with her font not loaded the import adds the palette under For fonts not loaded (N) and says "Added 1 palette for her font. Load that font to see it."; a file that isn't a palette file is refused with a reason.
+- Does: with her font as the drawing's font, opens the character palette layer on Palettes, makes a new palette with + New and fills a few slots, then picks JetBrains Mono in the Font field and looks at Palettes, then goes back to her font (undo, or Use this font on the Fonts page). Hides the built-in palettes with Hide under Built-in, flips the strip with Alt+← and Alt+→, picks JetBrains Mono and comes back, then shows them again. Exports the palette (Export in the editor head's … menu, beside Duplicate, and Export palettes on the Fonts page) and imports the file with Import, then does it again with her font not loaded in the browser (Remove on the Fonts page, in a drawing without it).
+- Expects: the new palette is listed under For her font, first; it's gone in JetBrains Mono and back with her font, chosen as before; with the built-ins hidden, the list keeps Built-in with only Show under it, the strip flips only through her palettes, and JetBrains Mono still has the built-ins; the editor's head says For her font ▾ and offers Use with any font; the exported `name.palettes.json` imports with its name ("name (custom)" while she still has one called that), empty slots and font; with her font not loaded the import adds the palette under For fonts not loaded (N) and says "Added 1 palette for her font. Load that font to see it."; a file that isn't a palette file is refused with a reason.
 - Probes: `undo-redo`: undo Use this font and check the palette she had chosen is in use again; `extremes`: import a broken file and a file with 13 glyphs, and check what she kept is unchanged; `again`: import the same file twice.
 - Rated: no (drawing)
 
@@ -141,11 +141,13 @@ see what that does to the same photo, and save a project and reopen it.
 ### 9. Export with CGA
 - Does: with CGA as the Color palette, exports XBin (Export, then `.xb`), with and without SAUCE; reopens the file with
   Choose a file.
-- Expects: it reopens with the same cells, the same font (hers, under This drawing named for the file without its
+- Expects: it reopens with the same cells, the same font (hers, under In use named for the file without its
   `.xb`) and CGA as the palette; with no font of her own the export holds IBM VGA 8×16, its glyphs as crisp as the
   font's; Include SAUCE is optional, and the record names no font.
 - Probes: `again`: export twice and open both; `back-out`: close the dialog without exporting; `again`: add the file
-  to a new canvas with no font of its own, and check a cell in the font's first slot comes in as a space.
+  to a new canvas with no font of its own, and check a cell in the font's first slot comes in as a space;
+  `out-of-order`: open an `.ans` after the XBin and check her font stays, then an XBin with no font in it and check
+  it's drawn in IBM VGA.
 - Rated: yes, wants Cmd+E
 
 ### 10. Export with a Custom list of 16
