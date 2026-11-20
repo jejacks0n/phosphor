@@ -272,6 +272,20 @@ test('+ Load loads and applies, and says why not', async () => {
   await expect.poll(() => host.querySelector('[role="alert"]')?.textContent).toContain('SHEET isn\'t a bitmap font Phosphor can read');
 });
 
+test('+ Load of the drawing\u2019s own font keeps the blocks set on it, and keeps them with the browser\u2019s copy', async () => {
+  const { project } = await mount({ font: lowerAt240 });
+  const blocks = [219, 254, 223, 221, 222, 176, 177, 178];
+  project.setDrawingFont({ ...lowerAt240, blocks }); // set by hand; the browser has no copy yet
+  const before = project.fontBlocks;
+  const input = host.querySelector('input[type="file"]');
+  const files = new DataTransfer();
+  files.items.add(new File([lowerAt240.bytes], 'L.F16'));
+  input.files = files.files;
+  input.dispatchEvent(new Event('change'));
+  await vi.waitFor(async () => expect((await storedBitmapFont(fontId(lowerAt240))).blocks).toEqual(blocks));
+  expect(project.fontBlocks).toBe(before);
+});
+
 test('Remove forgets the browser\'s copy', async () => {
   const { palettes, b } = await mount();
   const id = palettes.create();

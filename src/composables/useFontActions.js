@@ -2,7 +2,7 @@ import { computed } from 'vue';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
-import { addFont, addBitmapFont, storedBitmapFont, removeFont } from '@/lib/userFonts';
+import { addFont, addBitmapFont, storedBitmapFont, storeBlocks, removeFont } from '@/lib/userFonts';
 import { fontId, fontName, fontSheet } from '@/lib/BitmapFont';
 import { downloadBlob, fileStem } from '@/document/projectIO';
 
@@ -32,7 +32,12 @@ export function useFontActions() {
   // A font file kept in this browser and put to use (not in someone else's room: the font is theirs); its entry.
   async function loadFile(file) {
     const bitmap = /\.(f\d\d|png)$/i.test(file.name) || file.type === 'image/png';
-    const font = await (bitmap ? addBitmapFont(file) : addFont(file));
+    let font = await (bitmap ? addBitmapFont(file) : addFont(file));
+    const set = bitmap && drawsIn(font.id) ? project.drawingFont.blocks : null;
+    if (set) { // the drawing's own font again: the blocks set on it stay, and the browser's copy takes them
+      await storeBlocks(font.id, set);
+      font = { ...font, blocks: set };
+    }
     workspace.userFonts = [...loaded.value.filter((f) => f.id !== font.id), font];
     if (!hostsFont.value) await choose(font.id);
     return font;
