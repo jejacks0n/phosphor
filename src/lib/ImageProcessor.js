@@ -57,7 +57,7 @@ const onGridSizes = new WeakMap(); // picture -> Map 'dw,dh' -> whether it's on 
 export function onGrid(image, params) {
   if (uniform.has(image)) return true;
   const w = image.naturalWidth || image.width, h = image.naturalHeight || image.height;
-  const { dw, dh } = params.fit ?? fitRect(w, h, params.cols, params.rows), key = `${dw},${dh}`;
+  const { dw, dh } = params.fit ?? fitRect(w, h, params.cols, params.rows, params.fitAspect), key = `${dw},${dh}`;
   const known = onGridSizes.get(image) ?? new Map();
   onGridSizes.set(image, known);
   if (!known.has(key)) {
@@ -129,8 +129,11 @@ function prepare(image, params, scale = null) {
   // the grid (processed at its own size, no whole pixels to keep), and holding a working-size copy
   // of it (Into the image) to 1 would shrink the picture to the grid.
   const maxDim = 400;
-  // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted.
-  const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows);
+  // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted in the cell's shape.
+  // The fit alone resamples the picture to grid pixels, however tall they show: a grid pixel is m x m processed pixels.
+  // ponytail: so Blur, Sharpen, Flatten and Edges reach as many grid pixels down as across, which in an 8x8 font is half
+  // as far down on screen; scale their vertical reach by params.fitAspect if that shows.
+  const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows, params.fitAspect);
   const natural = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
   let m = scale ?? (params.workScale > 1 && natural >= 1 ? params.workScale : natural);
   // A long grid at m pixels a grid pixel can be more than the GPU draws (the picture would come out
@@ -140,10 +143,11 @@ function prepare(image, params, scale = null) {
   let pw = dw * m;
   let ph = dh * m;
   if (m < 1) {
-    // Source smaller than the grid: keep it at native size rather than upscaling (blurring) it
-    const s = Math.min(1, (capped ? limit : maxDim) / Math.max(sw, sh));
+    // Source smaller than the grid: keep it at native size rather than upscaling (blurring) it, in grid pixels: its rows
+    // stretched by the cell's shape (fitAspect), so a Bake of it is a picture of grid pixels, as one at m >= 1 is.
+    const tall = sh / (params.fitAspect ?? 1), s = Math.min(1, (capped ? limit : maxDim) / Math.max(sw, tall));
     pw = Math.floor(sw * s);
-    ph = Math.floor(sh * s);
+    ph = Math.floor(tall * s);
   }
 
   return { dx, dy, dw, dh, m, pw, ph, glParams: shaderParams(params) };

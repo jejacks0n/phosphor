@@ -215,7 +215,7 @@ export const documentActions = {
       const ratio = (image.naturalWidth || 1) / (image.naturalHeight || 1);
 
       this.replaceImage(image, buffer, {
-        ...lockedGrid(this.cols, ratio),
+        ...lockedGrid(this.cols, ratio * (findUniform(image, buffer) ? 1 : this.pixelAspect)), // its shape in the font's cells (gridRatio)
         ...sauceDefaults(),
         ...sliderDefaults(),
         ...nameOf(file),

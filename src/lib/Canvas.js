@@ -16,9 +16,10 @@ export function canvasPng(canvas) {
 // Letterbox sw x sh into tw x th. Shared by the pipeline and the store so they agree exactly.
 // Rounds (not floors) dw/dh so a grid-aspect image (e.g. a flattened one) fits as identity. A side less than a
 // pixel short of the grid fills it: a grid made for a picture is up to a pixel longer than it (lockedGrid rounds
-// up), and rounding down there would leave a black row along the edge.
-export function fitRect(sw, sh, tw, th) {
-  const sa = sw / sh, ta = tw / th;
+// up), and rounding down there would leave a black row along the edge. aspect: a grid pixel's height over its width
+// (pixelAspect), so the picture's ratio in grid pixels is sw / sh * aspect; with 1, exactly the square-pixel fit.
+export function fitRect(sw, sh, tw, th, aspect = 1) {
+  const sa = (sw / sh) * aspect, ta = tw / th;
   let dw, dh;
   if (sa > ta) {
     dw = tw;

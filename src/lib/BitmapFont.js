@@ -6,6 +6,9 @@ import { t } from '@/i18n';
 
 export const MAX_FONT_HEIGHT = 32;
 
+// A half cell's height over its width (8): 1 with no bitmap font or an 8x16 one, 0.5 in 8x8.
+export const pixelAspectOf = (font) => (font?.height ?? 16) / 16;
+
 // CP437[i], except slot 0 (CP437 shows it as a space, which slot 32 already is).
 export const SLOT_CHARS = Object.freeze([...CP437].map((c, i) => (i === 0 ? '␀' : c)));
 const SLOTS = new Map(SLOT_CHARS.map((c, i) => [c, i]));

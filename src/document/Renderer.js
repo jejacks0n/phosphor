@@ -145,7 +145,7 @@ export default class Renderer {
     this.#baseParams = baseParams;
     const sp = baseParams ?? {};
     const filters = JSON.stringify((sp.pluginFilters ?? []).map(({ ref, hash, values }) => [ref, hash, values])); // they run before the adjustments, so the stored colors have them
-    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness, snapsLate(sp), filters].join();
+    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.fitAspect, params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness, snapsLate(sp), filters].join();
     if (baseParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
       const { canvas: source } = await processImage(image, baseParams, { samples: false });
       this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };
@@ -185,7 +185,7 @@ export default class Renderer {
   // At the base layer's scale, or lower when the GPU can't process the picture that large (a project
   // made on a GPU that draws more); { canvas, scale } with the scale it's at.
   async #processedInGrid(image, baseParams, scale) {
-    const { dx, dy, dw, dh } = baseParams.fit ?? fitRect(image.naturalWidth || image.width, image.naturalHeight || image.height, baseParams.cols, baseParams.rows);
+    const { dx, dy, dw, dh } = baseParams.fit ?? fitRect(image.naturalWidth || image.width, image.naturalHeight || image.height, baseParams.cols, baseParams.rows, baseParams.fitAspect);
     const m = fittingScale(scale, dw, dh);
     if (m < 1) return { canvas: this.#sourceCanvas(), scale: 1 };
     const picture = await processedImage(image, baseParams, { m });

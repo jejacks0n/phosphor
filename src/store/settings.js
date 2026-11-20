@@ -16,8 +16,8 @@ export const SETTINGS = [
   { key: 'cols', default: 80, group: 'setup', get label() { return t('settings.cols.label'); }, get help() { return t('settings.cols.help'); } },
   { key: 'rows', default: 50, group: 'setup' },
   { key: 'aspectLock', default: true, group: 'setup', pipeline: false },
-  // The shape the aspect lock keeps, columns over grid-pixel rows, from the grid when it was locked (setAspectLock); 0 for
-  // the picture's own (imageRatio). A new picture starts at 0.
+  // The shape the aspect lock keeps, in grid units (columns over grid-pixel rows, in the drawing's font), from the grid
+  // when it was locked (setAspectLock); 0 for the picture's own (gridRatio). A new picture starts at 0.
   { key: 'aspectRatio', default: 0, group: 'setup', pipeline: false, min: 0, max: MAX_COLS },
   { key: 'renderStyle', default: 'ansi', group: 'setup', get help() { return t('settings.renderStyle.help'); } },
   { key: 'chars', default: '.*:%░░▒▒▓▓▄■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, most: MOST_LIST, get help() { return t('settings.chars.help'); } },

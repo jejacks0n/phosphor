@@ -10,14 +10,14 @@ import { artBounds } from '@/document/artLayers.js';
 import { placedShapes } from '@/document/followers.js';
 import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { charModeOf } from '@/lib/CharResolver.js';
-import { onGrid } from '@/lib/ImageProcessor.js';
+import { isUniform, onGrid } from '@/lib/ImageProcessor.js';
 import { isSolverRef, solverFor, standInOf, optionValues, filterFor } from '@/plugins/solvers.js';
 import { filterGroups, runningFilters } from '@/plugins/filters.js';
 import { usePluginStore } from '@/store/PluginStore.js';
 import { useRoomStore } from '@/store/RoomStore.js';
 import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
 import { PALETTES, parseColorList } from '@/lib/ColorUtils.js';
-import { blocksOf, decodeBlocks, decodeFont, fontChars, fontKey } from '@/lib/BitmapFont.js';
+import { blocksOf, decodeBlocks, decodeFont, fontChars, fontKey, pixelAspectOf } from '@/lib/BitmapFont.js';
 import { t } from '@/i18n/index.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
@@ -212,6 +212,8 @@ export const useProjectStore = defineStore('project', {
   getters: {
     // The drawing's bitmap font, or null: decoded once for each fontBitmap.
     drawingFont: (state) => fontFor(state.fontBitmap, state.fontName, state.fontBlocks),
+    // A grid pixel's height over its width in the drawing's font: 1 with none or an 8x16 one, 0.5 in 8x8.
+    pixelAspect() { return pixelAspectOf(this.drawingFont); },
     // Why paint is off, or null: paint is stored as pixels and shown as lower half blocks, so a drawing whose font has none can't show it.
     paintOff() {
       const font = this.drawingFont;
@@ -388,8 +390,15 @@ export const useProjectStore = defineStore('project', {
       const h = state.image.naturalHeight || state.image.height || 1;
       return w / h;
     },
-    // The shape the aspect lock keeps: the one it was locked at (aspectRatio), or the picture's own.
-    lockRatio() { return Number(this.aspectRatio) > 0 ? Number(this.aspectRatio) : this.imageRatio; },
+    // A picture made from the grid, whose pixels are grid pixels already: one color all over (a blank canvas, Flatten's
+    // black) or a working copy (Bake, Into the image). It fits at its own pixels' shape (fitAspect 1); a photo or a file has
+    // square pixels, and fits in the drawing's cell shape (pixelAspect).
+    gridPicture: (state) => state.imageIsWorkingCopy || (!!state.image && isUniform(state.image)),
+    fitAspect() { return this.gridPicture ? 1 : this.pixelAspect; },
+    // The picture's shape in grid pixels: columns over grid-pixel rows.
+    gridRatio() { return this.imageRatio * this.fitAspect; },
+    // The shape the aspect lock keeps, in grid pixels: the one it was locked at (aspectRatio), or the picture's own.
+    lockRatio() { return Number(this.aspectRatio) > 0 ? Number(this.aspectRatio) : this.gridRatio; },
     // The grid's largest size (Cells.js): aspect locked, the biggest that keeps the lock's ratio (lockRatio);
     // otherwise the most there's room for beside the other side.
     // With frames, whichever is less: that and an animation's own limit.
@@ -445,6 +454,7 @@ export const useProjectStore = defineStore('project', {
         patternLight: state.patternLight,
         image: state.image,
         fit: state.fit,
+        fitAspect: state.fitAspect, // where the picture fits when fit isn't fixed (fitRect)
         workScale: state.baseScale,
         pluginFilters: running.length ? running : NO_FILTERS, // in run order, as WebGLProcessor takes them
       };

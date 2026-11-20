@@ -42,3 +42,7 @@ export const slantedLike = fontWith({
 const rowsFrom = (start) => (h) => rowsOf(h, (r) => (r >= start ? 0xff : 0));
 export const nineRowFontWithLowerHalfRows4to8 = fontWith({ 220: rowsFrom(4) }, 9);
 export const nineRowFontWithLowerHalfRows5to8 = fontWith({ 220: rowsFrom(5) }, 9);
+
+// CP437's blocks in an 8×8 and an 8×11 font: a half cell 8 wide and 4 (or 5.5) tall.
+export const font8 = { ...fontWith(cp437, 8), name: 'Eight' };
+export const font11 = { ...fontWith(cp437, 11), name: 'Eleven' };

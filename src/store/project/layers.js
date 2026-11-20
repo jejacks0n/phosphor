@@ -332,7 +332,7 @@ export const layerActions = {
     ready(this);
     const fitted = (snapshot, { cols, rows, scale }) => {
       const canvas = Object.assign(document.createElement('canvas'), { width: cols * scale, height: rows * scale });
-      const ctx = ctx2d(canvas), { dx, dy, dw, dh } = fitRect(picture.naturalWidth, picture.naturalHeight, cols, rows);
+      const ctx = ctx2d(canvas), { dx, dy, dw, dh } = fitRect(picture.naturalWidth, picture.naturalHeight, cols, rows, this.pixelAspect); // square pixels, in the font's cells
       if (snapshot) ctx.drawImage(snapshot.canvas, 0, 0);
       ctx.drawImage(picture, dx * scale, dy * scale, dw * scale, dh * scale);
       return { canvas, hasPaint: true };

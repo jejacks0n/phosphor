@@ -111,11 +111,12 @@ function cellsUnder(pixels, cols) {
 // Whether the aspect lock holds a size change, with the grid's shape kept first (aspectRatio): the one it kept before
 // while the grid still has it, the picture's own while the grid is at that (neither rounded to whole cells), or the
 // grid's own when it's left both (unlocked, animation on, an older file). It holds after drawing too: a canvas resize
-// keeps the shape as a rescale does. Not with animation on.
+// keeps the shape as a rescale does. Not with animation on. Shapes in grid pixels (gridRatio: the picture's in the
+// drawing's cells). A side effect: it writes aspectRatio (0, or cols / rows) when the grid has left the kept shape.
 function locked(project) {
   if (!project.aspectLock || !project.image || project.hasFrames) return false;
   const fits = (ratio) => { const at = lockedGrid(project.cols, ratio); return at.cols === project.cols && at.rows === project.rows; };
-  if (!fits(project.lockRatio)) project.aspectRatio = fits(project.imageRatio) ? 0 : project.cols / project.rows;
+  if (!fits(project.lockRatio)) project.aspectRatio = fits(project.gridRatio) ? 0 : project.cols / project.rows;
   return true;
 }
 
@@ -222,9 +223,9 @@ export const renderingActions = {
     return workingScale(this.image, { ...this.processParams, ...params, workScale: null }) ?? 1;
   },
 
-  // Where the image fits a cols x rows grid.
-  fitFor(cols, rows) {
-    return fitRect(this.image.naturalWidth || this.image.width, this.image.naturalHeight || this.image.height, cols, rows);
+  // Where the image fits a cols x rows grid, its pixels aspect (a grid pixel's height over width) each.
+  fitFor(cols, rows, aspect = this.fitAspect) {
+    return fitRect(this.image.naturalWidth || this.image.width, this.image.naturalHeight || this.image.height, cols, rows, aspect);
   },
 
   // Full re-render on the next frame (calls in the same frame coalesce).
