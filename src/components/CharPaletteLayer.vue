@@ -573,10 +573,11 @@ div.page {
   min-height: 0;
 }
 
-/* While editing, the list is only as wide as a palette's row of glyphs (they never wrap; long
-   names do), so the editor gets the rest. */
+/* While editing (and on the Fonts page), the list is a narrow column, a little wider than a palette's row of glyphs
+   (they never wrap; long names do), so the editor gets the rest. */
 div.palette-layer.editing :deep(div.list-side) {
-  width: min-content;
+  flex: 0 0 220px;
+  min-width: 0;
 }
 
 div.palette-layer.editing div.row div.glyphs {
@@ -606,6 +607,7 @@ div.palette-layer.editing div.row div.glyphs {
   }
 
   div.palette-layer.editing :deep(div.list-side) {
+    flex: 1 1 300px;
     width: auto;
     max-height: 35vh;
     border-right: none;
