@@ -283,13 +283,14 @@ div.indicator {
 }
 
 button.panel {
-  margin-left: -6px;
+  margin: -4px 0 0 -6px;   /* 2px above the row's middle, where the side panel's » is (measured) */
   padding: 4px;
   font-size: 14px;
 }
 
 label.animate {
   position: relative;
+  top: -1px;   /* 1px above the row's middle, by eye */
   display: flex;
   align-items: center;
   gap: 6px;
