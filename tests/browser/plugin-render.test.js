@@ -7,7 +7,7 @@ import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { onSolver } from '../support/pluginSolvers.js';
 import { readSolvers } from '@/plugins/script';
 import { readManifest } from '@/plugins/manifest';
-import { failureOf } from '@/plugins/solvers';
+import { failureOf, unregisterSolvers } from '@/plugins/solvers';
 import { HANG_KEY } from '@/plugins/hangMark.js';
 import { usePluginStore } from '@/store/PluginStore';
 import { busyMessage } from '@/composables/useBusy';
@@ -197,6 +197,43 @@ test('the hang mark is set during the first whole resolve and cleared after', as
   expect([...during]).toEqual([null]);
 });
 
+test('the hang mark is set for the base\'s first whole resolve even after an upper layer ran the solver first', async () => {
+  const { project, workspace } = await stripes();
+  const during = [];
+  const ref = await onSolver(solver({ solve(cell, look) {
+    during.push(localStorage.getItem(HANG_KEY));
+    return look.byShape();
+  } }), { pluginId: 'jane.hang', hash: 'another' }); // a script not yet run this visit (the mark's kept per page)
+  project.setLayerChars('edit', { charChoice: ref, chars: '▄▀█ ' }); // an upper layer of its own
+  workspace.pickLayer('edit');
+  project.paintStroke([{ x: 4, y: 4, alpha: 1 }, { x: 4, y: 5, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  await settle(project);
+  expect(during.length).toBeGreaterThan(0);
+  during.length = 0;
+  project.setLayerChars('base', { charChoice: ref });
+  await settle(project);
+  expect(during.slice(0, 100)).toEqual(Array(100).fill('jane.hang')); // the whole resolve, before the upper cell's laid again
+  expect(localStorage.getItem(HANG_KEY)).toBeNull();
+});
+
+test('a solver gone between the params and the render is By shape there, and is not called', async () => {
+  const { project } = await stripes();
+  await choose(project, 'shape');
+  const byShape = cellsKey(project);
+  let calls = 0;
+  const ref = await onSolver(solver({ solve: () => (calls++, SLASH) }));
+  await choose(project, ref);
+  expect(project.processParams.solver).toBe(ref);
+  unregisterSolvers('jane.outlines'); // not through the store: the params still name it
+  calls = 0;
+  project.render();
+  await settle(project);
+  expect(project.processParams.solver).toBe(ref);
+  expect(calls).toBe(0);
+  expect(cellsKey(project)).toEqual(byShape);
+});
+
 test('changing an option recomputes, and the same option twice does not', async () => {
   const { project } = await stripes();
   let calls = 0;
@@ -244,8 +281,28 @@ test('choosing a plugin solver or changing its options puts the busy note up; ot
     expect(await noted(() => project.setLayerChars('base', { solverOptions: { [ref]: { level: 9 } } }))).toBe(true);
     expect(await noted(() => { project.brightness = 120; })).toBe(false);
     expect(await noted(() => project.setLayerChars('base', { charChoice: 'shape' }))).toBe(false);
+    expect(await noted(() => project.setLayerChars('edit', { charChoice: ref }))).toBe(true); // a layer's own
+    expect(await noted(() => project.setLayerChars('edit', { solverOptions: { [ref]: { level: 3 } } }))).toBe(true);
   } finally {
     clearInterval(watching);
+  }
+});
+
+test('under another busy note a solver chosen renders on the next frame, as any change does', async () => {
+  const { project } = await stripes();
+  const ref = await onSolver(solver({ solve: (cell, look) => look.byShape() }));
+  const pipeline = vi.spyOn(project.renderer, 'render');
+  busyMessage.value = 'Opening x…';
+  try {
+    project.setLayerChars('base', { charChoice: ref });
+    await nextTick(); // the watcher has run
+    expect(project._renderQueued).toBe(true);
+    expect(pipeline).not.toHaveBeenCalled();
+    await settle(project);
+    expect(pipeline).toHaveBeenCalledTimes(1);
+    expect(busyMessage.value).toBe('Opening x…');
+  } finally {
+    busyMessage.value = null;
   }
 });
 
