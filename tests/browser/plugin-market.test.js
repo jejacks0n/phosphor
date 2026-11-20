@@ -61,7 +61,7 @@ afterEach(() => {
 });
 
 test('the list loads once a visit from /plugins.json, with every entry the fixture lists, and again only when asked', async () => {
-  expect(store.market).toEqual({ status: 'idle', entries: [], built: null });
+  expect(store.market).toEqual({ status: 'idle', entries: [], built: null, reason: null });
   await store.loadMarket();
   expect(store.market.status).toBe('ready');
   expect(store.market.built).toBe('2026-11-20T12:00:00.000Z');
@@ -78,14 +78,23 @@ test('the list loads once a visit from /plugins.json, with every entry the fixtu
   expect(store.market.status).toBe('ready');
 });
 
-test('a list that is missing or not JSON leaves the market failed and empty', async () => {
+test('a list that is missing, not JSON or for a newer Phosphor leaves the market failed and empty, with why', async () => {
   delete served['/plugins.json'];
   await store.loadMarket();
-  expect(store.market).toEqual({ status: 'failed', entries: [], built: null });
+  expect(store.market).toEqual({ status: 'failed', entries: [], built: null, reason: 'unreachable' });
 
   served['/plugins.json'] = '<html>nope</html>';
   await store.loadMarket({ again: true });
-  expect(store.market).toEqual({ status: 'failed', entries: [], built: null });
+  expect(store.market).toEqual({ status: 'failed', entries: [], built: null, reason: 'notJson' });
+
+  served['/plugins.json'] = JSON.stringify({ ...JSON.parse(listText), format: 2 });
+  await store.loadMarket({ again: true });
+  expect(store.market).toEqual({ status: 'failed', entries: [], built: null, reason: 'newer' });
+
+  served['/plugins.json'] = listText;
+  await store.loadMarket({ again: true });
+  expect(store.market.status).toBe('ready');
+  expect(store.market.reason).toBe(null);
 });
 
 test('a listed plugin is installed from its raw files, kept as from the marketplace with its listing', async () => {
@@ -123,13 +132,25 @@ test('a served file one byte off its listed hash is refused in words, and an old
   expect(store.plugins.map(({ id, manifest }) => [id, manifest.version])).toEqual([['phosphor.outlines', '0.9.0']]);
 });
 
-test('a served file that can\'t be had, or is over its cap, is refused in words', async () => {
+// A 404 or a file over its cap is a repository changed (deleted, made private, grown) since the list was made, not the
+// connection; the connection's words are for a fetch that fails or a server that answers with anything else.
+test('a served file that\'s gone, or over its cap, has changed since it was listed', async () => {
   await store.loadMarket();
   delete served[`${RAW}/kim/phosphor-rain/${COMMIT}/phosphor-plugin.json`];
-  await expect(store.readListed(entry('kim.rain'))).rejects.toMatchObject({ userMessage: UNAVAILABLE });
+  await expect(store.readListed(entry('kim.rain'))).rejects.toMatchObject({ userMessage: CHANGED });
 
   served[`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/outlines/outlines.js`] = 'x'.repeat(MOST_SCRIPT_BYTES + 1);
-  await expect(store.readListed(entry('phosphor.outlines'))).rejects.toMatchObject({ userMessage: UNAVAILABLE });
+  await expect(store.readListed(entry('phosphor.outlines'))).rejects.toMatchObject({ userMessage: CHANGED });
+  expect(await loadPlugins()).toEqual([]);
+});
+
+test('a served file that can\'t be reached, or answers with an error but a 404, says the marketplace couldn\'t be reached', async () => {
+  await store.loadMarket();
+  const rain = `${RAW}/kim/phosphor-rain/${COMMIT}/phosphor-plugin.json`;
+  fetched.mockImplementation(async (url) => (url === rain ? new Response('down', { status: 500 }) : new Response(served[url])));
+  await expect(store.readListed(entry('kim.rain'))).rejects.toMatchObject({ userMessage: UNAVAILABLE });
+  fetched.mockImplementation(async () => { throw new TypeError('Failed to fetch'); });
+  await expect(store.readListed(entry('kim.rain'))).rejects.toMatchObject({ userMessage: UNAVAILABLE });
   expect(await loadPlugins()).toEqual([]);
 });
 

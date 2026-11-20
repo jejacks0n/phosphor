@@ -2017,6 +2017,7 @@
       "codeWhileOff": "Les plugins sont désactivés pour cette visite, donc un plugin qui exécute du code ne peut pas être installé maintenant.",
       "changedSinceListed": "Ce plugin a changé après avoir été listé. Réessayez après la prochaine mise à jour de la liste.",
       "listUnavailable": "Impossible de joindre la place de marché. Vérifiez votre connexion et réessayez.",
+      "listNewer": "Cette place de marché demande une version plus récente de Phosphor. Mettez Phosphor à jour pour la voir.",
       "solverFailed": "Le solveur « {name} » a échoué : {message}",
       "solverFault": "Le solveur « {name} » a renvoyé un caractère avec lequel il ne dessine pas : le premier caractère du jeu s'affiche à sa place.",
       "badZip": "Ce fichier n'est pas un .zip lisible.",

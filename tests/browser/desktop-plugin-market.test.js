@@ -8,6 +8,8 @@ import { resetDesktop, useFakeDesktop } from '@/social/desktop';
 import { MOST_MANIFEST_BYTES, MOST_SCRIPT_BYTES, ManifestError } from '@/plugins/manifest';
 import { fetchListed, loadList } from '@/plugins/market';
 
+const code = (promise) => promise.then(() => null, (error) => (error instanceof ManifestError ? error.code : error));
+
 const BASE = 'https://raw.githubusercontent.com/jejacks0n/phosphor/0123456789abcdef0123456789abcdef01234567/plugins/outlines/';
 
 afterEach(() => {
@@ -18,7 +20,7 @@ afterEach(() => {
 const fake = (files = { [`${BASE}phosphor-plugin.json`]: outlinesManifest, [`${BASE}outlines.js`]: outlinesScript }) => {
   const desktop = {
     pluginList: vi.fn(async () => listText),
-    pluginFile: vi.fn(async (url) => files[url]),
+    pluginFile: vi.fn(async (url) => (url in files ? { text: files[url] } : { failed: files.failed ?? 'changed' })),
   };
   useFakeDesktop(desktop);
   return desktop;
@@ -45,4 +47,15 @@ test('a file the main process gives that differs from the listed hash is refused
   const refused = await fetchListed(entries[0]).catch((error) => error);
   expect(refused).toBeInstanceOf(ManifestError);
   expect(refused.code).toBe('changedSinceListed');
+});
+
+test('a file the main process says is gone or too big is changed since listed; one it couldn\'t reach is unavailable', async () => {
+  fake({});
+  const { entries } = await loadList();
+  expect(await code(fetchListed(entries[0]))).toBe('changedSinceListed');
+  fake({ failed: 'unreachable' });
+  expect(await code(fetchListed(entries[0]))).toBe('listUnavailable');
+  const desktop = fake();
+  desktop.pluginFile.mockRejectedValue(new Error('Error invoking remote method'));
+  expect(await code(fetchListed(entries[0]))).toBe('listUnavailable');
 });

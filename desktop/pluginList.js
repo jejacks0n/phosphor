@@ -16,12 +16,12 @@ export function allowedUrl(url) {
   return parsed.href === url && parsed.origin === RAW && !parsed.username && !parsed.password && !url.split(/[/?#]/).includes('..');
 }
 
-// A body of at most `most` bytes as text (a BOM dropped, as Response.text() does), or an Error: notAllowed, status N,
-// tooBig.
+// A body of at most `most` bytes as text (a BOM dropped, as Response.text() does), or an Error: notAllowed, status N
+// (with its status), tooBig.
 export async function fetchText(url, { fetch, most }) {
   if (!allowedUrl(url)) throw new Error('notAllowed');
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(TIMEOUT_MS) });
-  if (!response.ok) throw new Error(`status ${response.status}`);
+  if (!response.ok) throw Object.assign(new Error(`status ${response.status}`), { status: response.status });
   if (!response.body) return '';
   const reader = response.body.getReader(), decoder = new TextDecoder();
   let size = 0, text = '';
@@ -37,7 +37,15 @@ export async function fetchText(url, { fetch, most }) {
   }
 }
 
-// A file the page asks for, at most `most` bytes and never more than a script's cap, whatever it sends.
-export const fetchFile = (url, most, { fetch }) => fetchText(url, {
-  fetch, most: typeof most === 'number' && most >= 0 ? Math.min(most, MOST_FILE_BYTES) : MOST_FILE_BYTES,
-});
+// A file the page asks for, at most `most` bytes and never more than a script's cap, whatever it sends. IPC keeps only
+// an Error's message, so it's { text }, or { failed }: changed for a 404 or a body over the cap (the listing isn't what
+// was listed), unreachable for anything else.
+export async function fetchFile(url, most, { fetch }) {
+  try {
+    return { text: await fetchText(url, {
+      fetch, most: typeof most === 'number' && most >= 0 ? Math.min(most, MOST_FILE_BYTES) : MOST_FILE_BYTES,
+    }) };
+  } catch (error) {
+    return { failed: error.status === 404 || error.message === 'tooBig' ? 'changed' : 'unreachable' };
+  }
+}

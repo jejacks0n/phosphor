@@ -2017,6 +2017,7 @@
       "codeWhileOff": "Plugins are off for this visit, so a plugin that runs code can't be installed now.",
       "changedSinceListed": "This plugin changed after it was listed. Try again after the list is next updated.",
       "listUnavailable": "The marketplace couldn't be reached. Check your connection and try again.",
+      "listNewer": "This marketplace needs a newer Phosphor. Update Phosphor to see it.",
       "solverFailed": "The solver “{name}” failed: {message}",
       "solverFault": "The solver “{name}” returned a character it doesn't draw with, so the first character of the set shows in its place.",
       "badZip": "That file isn't a readable .zip.",

@@ -17,7 +17,7 @@ import { readPackage, folderStamp } from '@/plugins/package';
 import { sha256, importScript, readSolvers } from '@/plugins/script';
 import { beginRun, endRun, hungLastTime } from '@/plugins/hangMark';
 import { loadPlugins, putPlugin, deletePlugin } from '@/plugins/storage';
-import { sameListing } from '@/plugins/listing';
+import { ListError, sameListing } from '@/plugins/listing';
 import { loadList, fetchListed } from '@/plugins/market';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
@@ -123,7 +123,8 @@ export const usePluginStore = defineStore('plugins', {
     solvers: {},                             // { [ref]: { pluginId, name, styles, reach, chars, options } }, data only; not kept
     solverStamp: 0,                          // bumped whenever the solvers or one's failure change
     pendingCode: {},                         // { [id]: { manifest, scriptText, handle, following } }: a reload that adds a script, asked about; not kept
-    market: { status: 'idle', entries: [], built: null }, // the marketplace's list: idle, loading, ready or failed; not kept
+    // the marketplace's list: idle, loading, ready or failed, and why it failed (a ListError's code, or unreachable); not kept
+    market: { status: 'idle', entries: [], built: null, reason: null },
     dialogTab: null,                         // the Plugins dialog's tab, 'market' or 'installed', once it's opened this visit; not kept
     marketView: { search: '', filter: 'all', scroll: 0 }, // the Marketplace tab's search, filter and scroll, for the visit; not kept
   }),
@@ -224,12 +225,13 @@ export const usePluginStore = defineStore('plugins', {
     async loadMarket({ again = false } = {}) {
       if (!again && this.market.status !== 'idle') return;
       const mine = ++marketLoads;
-      this.market = { status: 'loading', entries: [], built: null };
+      this.market = { status: 'loading', entries: [], built: null, reason: null };
       try {
         const { built, entries } = await loadList();
-        if (mine === marketLoads) this.market = { status: 'ready', entries, built };
-      } catch {
-        if (mine === marketLoads) this.market = { status: 'failed', entries: [], built: null };
+        if (mine === marketLoads) this.market = { status: 'ready', entries, built, reason: null };
+      } catch (error) {
+        const reason = error instanceof ListError ? error.code : 'unreachable';
+        if (mine === marketLoads) this.market = { status: 'failed', entries: [], built: null, reason };
       }
     },
 

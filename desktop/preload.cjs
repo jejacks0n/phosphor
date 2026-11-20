@@ -56,7 +56,8 @@ contextBridge.exposeInMainWorld('phosphorDesktop', {
   },
   saveProject: ({ bytes, name, path, as } = {}) => ipcRenderer.invoke('phosphor:save-project', { bytes, name, path, as }),
   releases: () => ipcRenderer.invoke('phosphor:releases'),
-  // The marketplace's list, and a listed plugin's file (a raw GitHub URL) of at most `most` bytes, as text.
+  // The marketplace's list as text, and a listed plugin's file (a raw GitHub URL) of at most `most` bytes as { text } or
+  // { failed: 'changed' | 'unreachable' }.
   pluginList: () => ipcRenderer.invoke('phosphor:plugin-list'),
   pluginFile: (url, most) => ipcRenderer.invoke('phosphor:plugin-file', url, most),
 });

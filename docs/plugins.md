@@ -38,7 +38,8 @@ lines, what it adds, and a button. Type in **Search plugins** to narrow the card
 Official, Themes or Solvers.
 
 The list is loaded once a visit, the first time you open the dialog. If it can't be loaded, the tab says so and offers
-**Try again**.
+**Try again**. A list made for a newer Phosphor than yours says "This marketplace needs a newer Phosphor. Update Phosphor
+to see it."
 
 The button depends on what you have:
 
@@ -55,8 +56,10 @@ A plugin that leaves the list stays installed and keeps working. Its row on Inst
 Nothing says that, or offers an Update, until the list has loaded.
 
 Phosphor installs from the list only the files the list was built from. Each entry is pinned to the commit seen when the list
-was built, with a hash of each file. If a file has changed since, the install is refused. Updates an author pushes show
-after the next refresh of the list, which happens when the wiki page changes, once a day, and with each deploy.
+was built, with a hash of each file. If a file has changed since, is gone (its repository deleted or made private) or
+has grown past its size limit, the install is refused: "This plugin changed after it was listed." Phosphor says "The
+marketplace couldn't be reached." only when the connection fails. Updates an author pushes show after the next refresh
+of the list, which happens when the wiki page changes, once a day, and with each deploy.
 
 A browser that won't keep anything (some private windows) says "This browser isn't keeping plugins, so none can be
 installed."

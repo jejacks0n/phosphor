@@ -18,6 +18,7 @@ import '@/assets/global.css';
 
 const WARNING = '⚠ This plugin runs code in Phosphor. Install it only if you trust where it came from.';
 const UNAVAILABLE = 'The marketplace couldn\'t be reached. Check your connection and try again.';
+const NEWER = 'This marketplace needs a newer Phosphor. Update Phosphor to see it.';
 const CHANGED = 'This plugin changed after it was listed. Try again after the list is next updated.';
 
 let app, host, loads = [], served;
@@ -226,6 +227,15 @@ test('a list that can\'t be had says so, and Try again loads it again', async ()
   expect(again).toHaveBeenCalledWith({ again: true });
   await vi.waitFor(() => expect(names()).toEqual(['Midnight', 'Outlines', 'Rain']));
   expect(page.getByText(UNAVAILABLE).query()).toBe(null);
+});
+
+test('a list for a newer Phosphor asks for an update in place of the connection\'s words', async () => {
+  served['/plugins.json'] = JSON.stringify({ ...JSON.parse(listWith(() => {})), format: 2 });
+  await mount();
+  await expect.element(page.getByText(NEWER)).toBeVisible();
+  expect(page.getByRole('alert').element().textContent).toBe(NEWER);
+  expect(page.getByText(UNAVAILABLE).query()).toBe(null);
+  expect(cards()).toEqual([]);
 });
 
 test('Tab goes from the search field to the filter, then into the cards', async () => {

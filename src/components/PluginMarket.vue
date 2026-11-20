@@ -53,7 +53,7 @@ const nameId = (entry) => `market-${entry.manifest.id}`;
     </div>
 
     <div v-if="plugins.market.status === 'failed'" class="none">
-      <p role="alert">{{ t('plugins.errors.listUnavailable') }}</p>
+      <p role="alert">{{ t(plugins.market.reason === 'newer' ? 'plugins.errors.listNewer' : 'plugins.errors.listUnavailable') }}</p>
       <button type="button" @click="plugins.loadMarket({ again: true })">{{ t('plugins.market.tryAgain') }}</button>
     </div>
     <p v-else-if="plugins.market.status !== 'ready'" class="none">{{ t('plugins.market.loading') }}</p>

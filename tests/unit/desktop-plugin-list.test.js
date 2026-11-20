@@ -70,8 +70,22 @@ test('a file asked for is capped at a script\'s cap, whatever the page asks', as
   assert.equal(MOST_FILE_BYTES, MOST_SCRIPT_BYTES);
   for (const most of [MOST_FILE_BYTES + 1, Infinity, NaN, '9999999', undefined, -1]) {
     const { body } = streamed(1, MOST_FILE_BYTES + 1);
-    await assert.rejects(fetchFile(RAW, most, { fetch: answering(new Response(body)).fetch }), /tooBig/, String(most));
+    assert.deepEqual(await fetchFile(RAW, most, { fetch: answering(new Response(body)).fetch }), { failed: 'changed' }, String(most));
   }
   const { body } = streamed(1, 11);
-  await assert.rejects(fetchFile(RAW, 10, { fetch: answering(new Response(body)).fetch }), /tooBig/);
+  assert.deepEqual(await fetchFile(RAW, 10, { fetch: answering(new Response(body)).fetch }), { failed: 'changed' });
+});
+
+// IPC keeps only an Error's message, so a file comes to the page as { text } or { failed }: changed for a 404 or a body
+// over its cap (the listing isn't what was listed), unreachable for anything else.
+test('a file is given as { text }, or why it failed in a word the page can tell apart', async () => {
+  assert.deepEqual(await fetchFile(RAW, 100, { fetch: answering(new Response('{"a":1}')).fetch }), { text: '{"a":1}' });
+  assert.deepEqual(await fetchFile(RAW, 100, { fetch: answering(new Response('gone', { status: 404 })).fetch }), { failed: 'changed' });
+  for (const fetch of [
+    answering(new Response('down', { status: 500 })).fetch,
+    answering(new Response('no', { status: 403 })).fetch,
+    async () => { throw new TypeError('fetch failed'); },
+    async () => { throw new DOMException('timed out', 'TimeoutError'); },
+  ]) assert.deepEqual(await fetchFile(RAW, 100, { fetch }), { failed: 'unreachable' });
+  assert.deepEqual(await fetchFile('https://phosphor.work/x', 100, { fetch: answering(new Response('')).fetch }), { failed: 'unreachable' });
 });
