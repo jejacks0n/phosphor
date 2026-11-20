@@ -61,6 +61,9 @@ ANSI and the ASCII styles keep separate character sets.
 - **Best match** (ANSI): For each cell, finds the character and the foreground and background colors that come closest to the picture, with both colors taken from the palette. Each character counts by how much ink it has in its top half and its bottom half, so `▄` shows one color above and another below, and `░`, `▒`, and `▓` show one flat mix of their two colors. With **Blocks & shades** (`▄░▒▓█`) and the CGA or VGA palette, it draws gradients with shades of the palette's colors. Without a palette (Full color), it mostly gives `▄` or solid cells, since it has no colors to mix.
 - **By shape** (all styles): Samples each cell at a finer grid of 4 × 8 points and compares it with the shape of each character in your set; the closest wins. In ANSI it picks the character and both colors; in Color ASCII, the character and its ink color, on black; in Monochrome ASCII, the character alone, white on black. **Smoothing** doesn't change these samples: they're always averaged.
 
+- **A plugin's solver**: a plugin that adds one puts it in the list after the built-ins, under its own name
+  ([Plugin solvers](#plugin-solvers)).
+
 Best match and By shape ignore repeated characters in your set.
 
 ### Tuning Best Match and By Shape
@@ -75,13 +78,44 @@ Best match and By shape ignore repeated characters in your set.
 - With **Random**, **By intensity**, and **By brightness**, Dither works on the picture's pixels, as described in [Layers](layers.md).
 - With **Best match** or **By shape**, **Floyd–Steinberg** carries each cell's error on to the cells after it, and **Ordered (Bayer)** nudges each cell by its place in the grid. Floyd–Steinberg can lag on very large documents. While you edit the base layer, the cells under the edit settle when you let go.
 
+### Plugin solvers
+
+A [plugin](plugins.md) with a script can add ways to choose characters. They're listed in **Choose characters** after the
+built-ins, by the plugin's names, and only the ones that do the drawing's Art style. A plugin solver is a kind of By
+shape: it sees each cell as By shape does, and it holds to the layer's set (and the characters it adds itself), the
+palette and the style, so a cell it draws can never be outside them. Its options show under it, in the plugin's own words:
+sliders, checkboxes and choices. Each option change is one undo step, and the choice and the options are kept for each
+layer and saved with the drawing. Choosing one, or changing an option, works out the whole drawing again, which for a
+large one takes a moment ("Working out the characters…" shows while it does).
+
+Over the picture, a plugin solver may look at the cells around a cell (as far as its own reach). Where paint is drawn
+over the picture, and on layers above, it sees only that cell, and what it draws there is what the drawing shows once
+those layers are merged down ([Cells and paint](model.md), R12). With **Floyd–Steinberg** dither, the cells
+within reach of a stroke you're drawing lose their dither until you let go, as By shape's edited cells do, over a wider
+area.
+
+**When the solver isn't there**, the layer shows By shape in its place, with a note under **Choose characters**, and a ⚠
+beside the layer's name in LAYERS. The note says why:
+
+- "Outlines isn't installed. Showing By shape." The plugin was removed, or this browser never had it. When the plugin is gone its name isn't known, so the note uses the solver's id.
+- "Outlines is off. Showing By shape." The plugin is switched off.
+- "Plugins are off for this visit. Showing By shape." The page was loaded with `plugins=off`.
+- "Outlines doesn't do ASCII. Showing By shape." The solver doesn't do the drawing's Art style.
+- "Outlines failed: … Showing By shape." The script threw; the message is its own.
+- "Plugin solvers aren't used in rooms. Showing By shape." In a room, everyone sees By shape.
+
+The file keeps the choice and its options, so installing the plugin, or switching it on, brings the look back. Exports
+use By shape for those layers, and the export dialog names them ("Base shows By shape in
+place of its plugin solver."). Hosting a room is refused while a layer uses a plugin solver (a stand-in counts), and says
+which layer: choose a built-in solver for it, or Flatten the drawing first.
+
 ### Each Layer's Own Character Settings
 
 Each layer has its own **Choose characters**, **Characters** set, **Character seed**, **Solids**, **Pattern light**, and (for the base and vector layers, with a palette) **Dither style** and **Dither**. A change in the Characters section changes only how the picked layer's paint, picture, or shapes become characters. The **Art style** and the **Color palette** belong to the whole drawing ([Layers](layers.md#the-left-column)).
 
 - **New layers** start with the picked layer's settings. A drawing saved before layers had their own settings gives every layer the settings it had, so it looks the same.
 - **Seams**: Where a layer's settings differ from the base's, a seam can show where its cells meet the ones under it.
-- **Best match and By shape on other layers** pick the way they do on the base. By shape samples a vector layer's shapes inside each cell over what's under them, so a circle's edge gets the same characters on its own layer as on the base. Best match mixes a layer's colors before the palette, so a soft edge can get a shade. By shape samples a drawing layer's paint inside each cell too: brush strokes cover whole half cells, but a picture added to the layer (dropped on the drawing, then **Add to this drawing**) gets the characters its edges would get on the base.
+- **Best match, By shape and plugin solvers on other layers** pick the way they do on the base (a plugin solver sees only its own cell there, [Plugin solvers](#plugin-solvers)). By shape samples a vector layer's shapes inside each cell over what's under them, so a circle's edge gets the same characters on its own layer as on the base. Best match mixes a layer's colors before the palette, so a soft edge can get a shade. By shape samples a drawing layer's paint inside each cell too: brush strokes cover whole half cells, but a picture added to the layer (dropped on the drawing, then **Add to this drawing**) gets the characters its edges would get on the base.
 - **Dither on other layers**: On a layer using Best match or By shape, its own **Ordered (Bayer)** dither nudges each cell by its place, as on the base. Its own **Floyd–Steinberg** does nothing there, because those cells are matched one at a time over what's under them.
 
 ### Typed Cells, Pinned Characters, and Paint
