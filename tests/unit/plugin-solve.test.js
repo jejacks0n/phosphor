@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { readSolvers } from '@/plugins/script';
 import { pluginMatcher, resolvePlugin, grownArea, holdCell, SolverError } from '@/lib/PluginSolve';
-import { shapeMatcher, resolveShapes } from '@/lib/CharResolver';
+import { shapeMatcher, resolveShapes, mixChannel } from '@/lib/CharResolver';
 import { PALETTES } from '@/lib/ColorUtils';
 import { ASCII_BG } from '@/lib/Cells';
 
@@ -280,6 +280,55 @@ describe('resolvePlugin', () => {
     expect(a).toMatchObject({ ref: REF, message: 'boom' });
     const b = caught(solver({ solve: () => ({ char: '█', fg: 0, bg: 0 }), refine: () => { throw 'nope'; } }));
     expect(b).toMatchObject({ ref: REF, message: 'nope' });
+  });
+
+  it('look holds the set then the solver\'s own, the palette as colors, the settings, and the helpers', () => {
+    let look = null, shaped = null;
+    const def = solver({
+      reach: 0,
+      solve(cell, l) {
+        look = l;
+        const r = l.byShape(cell);
+        shaped = { fg: r.fg, bg: r.bg };
+        return r;
+      },
+    });
+    const raw = solid(1, 1, () => [170, 0, 0]);
+    resolvePlugin(raw, 1, 1, matcherOf(def, { solids: 0.25, light: 0.5, options: { threshold: 40 } }));
+    expect(look.glyphs.map(({ char, own }) => [char, own])).toEqual([['▀', false], ['▄', false], ['█', false], ['▌', false], ['|', true], ['-', true]]);
+    expect([...look.glyphs[4].mask]).toEqual([...GLYPHS[4].mask]);
+    expect(look.glyphs[4].mask).not.toBe(GLYPHS[4].mask); // a copy: a solver can't change the app's masks
+    expect(look.palette).toHaveLength(16);
+    expect(look.palette[9]).toEqual({ r: 255, g: 85, b: 85 });
+    expect(look).toMatchObject({ style: 'ansi', options: { threshold: 40 }, light: 0.5, solids: 0.25 });
+    expect(look.mix(10, 200, 0.3)).toBe(mixChannel(10, 200, 0.3, 0.5));
+    expect(look.nearest([250, 80, 90])).toBe(look.palette[9]);
+    expect(look.nearest({ r: 1, g: 2, b: 3 })).toBe(look.palette[0]);
+    expect(look.gray([10, 20, 30])).toBeCloseTo(0.2126 * 10 + 0.7152 * 20 + 0.0722 * 30);
+    expect(look.gray({ r: 10, g: 20, b: 30 })).toBe(look.gray([10, 20, 30]));
+    // byShape's colors are look's copies too, not the app's palette entries.
+    expect(shaped.fg).toBe(look.palette[1]);
+    expect(CGA).not.toContain(shaped.fg);
+
+    let full = null;
+    const fullDef = solver({ reach: 0, solve: (cell, l) => ((full = l), { char: '█', fg: 0, bg: 0 }) });
+    resolvePlugin(raw, 1, 1, matcherOf(fullDef, { palette: null, renderStyle: 'colorAscii' }));
+    expect(full.palette).toBe(null);
+    expect(full.style).toBe('colorAscii');
+    expect(full.nearest([12.4, 300, -5])).toEqual({ r: 12, g: 255, b: 0 });
+  });
+
+  it('a half-cell offset or char() past reach is the solver\'s mistake; an area with no first resolves whole', () => {
+    const raw = solid(3, 2, () => [0, 0, 0]), done = { char: '█', fg: 0, bg: 0 };
+    const half = solver({ reach: 1, solve: (cell) => (cell.sample(0.5, 0, 0), done) });
+    expect(() => resolvePlugin(raw, 3, 2, matcherOf(half))).toThrow(SolverError);
+    const far = solver({ reach: 1, solve: () => done, refine: (cell) => (cell.char(0, 2), done) });
+    expect(() => resolvePlugin(raw, 3, 2, matcherOf(far))).toThrow(SolverError);
+    let refined = 0;
+    const counted = solver({ reach: 1, solve: () => done, refine: () => (refined++, done) });
+    const r = resolvePlugin(raw, 3, 2, matcherOf(counted), { area: { x: 1, y: 0, w: 1, h: 2 } });
+    expect(refined).toBe(6);
+    expect(r.first).toHaveLength(6);
   });
 
   it('a 1-column, 1-line drawing at reach 4 reads only its own cell', () => {
