@@ -94,6 +94,18 @@ test('Hide under Built-in puts the built-ins away while the font is in use; Show
   expect(row('Shades & blocks')).toBeTruthy();
 });
 
+test('going full window grows out of the floating layer, and coming back fades it in', async () => {
+  await mount();
+  const animate = vi.spyOn(Element.prototype, 'animate');
+  await press(button('Edit ▸')); // a phone's width: the editor takes the whole window
+  await vi.waitFor(() => expect(animate).toHaveBeenCalledTimes(1));
+  const [grow] = animate.mock.calls[0][0];
+  expect(grow.clipPath).toMatch(/^inset\([\d.]+px [\d.]+px [\d.]+px [\d.]+px round 10px\)$/); // from where the layer floated
+  await press(button('◂ Done'));
+  await vi.waitFor(() => expect(animate).toHaveBeenCalledTimes(2));
+  expect(animate.mock.calls[1][0][0].opacity).toBe(0);
+});
+
 test('the editor shows the tie and changes it', async () => {
   let id;
   const { palettes } = await mount({ setup: (p) => { id = named(p, 'Frogs'); } });

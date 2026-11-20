@@ -296,6 +296,25 @@ watch(() => workspace.paletteLayerPage, (page, was) => {
   keepKeys();
 });
 watch(editing, (on) => { if (!on) fromFonts.value = false; });
+
+// Going full window (on a small one, the media query below) grows out of where the layer floated, the page revealed by
+// a clip from that box; coming back, the floating layer fades in. (A wide window only widens it, by its transition.)
+const wide = computed(() => editing.value || onFonts.value);
+watch(wide, () => {
+  const el = root.value;
+  if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const from = el.getBoundingClientRect(), wasFull = getComputedStyle(el).position === 'fixed';
+  nextTick(() => {
+    const full = getComputedStyle(el).position === 'fixed', options = { duration: 250, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' };
+    if (full && !wasFull) {
+      const to = el.getBoundingClientRect(), px = (n) => `${Math.max(0, n)}px`;
+      const box = `${px(from.top - to.top)} ${px(to.right - from.right)} ${px(to.bottom - from.bottom)} ${px(from.left - to.left)}`;
+      el.animate([{ clipPath: `inset(${box} round 10px)` }, { clipPath: 'inset(0px 0px 0px 0px round 0px)' }], options);
+    } else if (wasFull && !full) {
+      el.animate([{ opacity: 0, transform: 'scale(0.98)' }, { opacity: 1, transform: 'none' }], { ...options, duration: 150 });
+    }
+  });
+});
 watch([currentId, editing], () => { tieOpen.value = moreOpen.value = false; });
 
 onMounted(() => {
@@ -495,9 +514,10 @@ div.tablist {
 }
 
 div.pages button[role='tab'] {
-  padding: 0 12px;
+  padding: 4px 12px 0; /* as the side panel's: the label a little low in the row */
   border: none;
   border-radius: 0;
+  box-shadow: none;
   background: none;
   color: var(--text-muted);
   font: inherit;
