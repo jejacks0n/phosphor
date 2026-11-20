@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, useTemplateRef, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
@@ -274,7 +275,8 @@ const onKeyDown = (event) => {
 const onPointerDown = (event) => {
   if (tieOpen.value && !event.target.closest?.('.tie')) tieOpen.value = false;
   if (moreOpen.value && !event.target.closest?.('.more')) moreOpen.value = false;
-  if (root.value && !root.value.contains(event.target) && !event.target.closest('[data-palette-toggle]')) emit('close');
+  // a press outside closes it, but not its own toggle's, nor a resize edge's (the side panel's: the layer follows it)
+  if (root.value && !root.value.contains(event.target) && !event.target.closest('[data-palette-toggle], [role="separator"]')) emit('close');
 };
 
 // Leaving the editor unmounts whatever had focus in it: keep the keyboard on the layer.
@@ -300,6 +302,10 @@ watch(editing, (on) => { if (!on) fromFonts.value = false; });
 // Going full window (on a small one, the media query below) grows out of where the layer floated, the page revealed by
 // a clip from that box; coming back, the floating layer fades in. (A wide window only widens it, by its transition.)
 const wide = computed(() => editing.value || onFonts.value);
+// Wide on a small window, the layer is the whole window (the media query below), with nothing outside to press: it
+// has a close button then.
+const smallWindow = useMediaQuery('(max-width: 1000px), (max-height: 520px)');
+const fullWindow = computed(() => wide.value && smallWindow.value);
 watch(wide, () => {
   const el = root.value;
   if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -334,8 +340,7 @@ onBeforeUnmount(() => {
         <button role="tab" :class="{ on: !onFonts }" :aria-selected="!onFonts" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.pages.palettes') }}</button>
         <button role="tab" :class="{ on: onFonts }" :aria-selected="onFonts" @click="workspace.paletteLayerPage = 'fonts'">{{ t('palette.pages.fonts') }}</button>
       </div>
-      <!-- wide (or the whole window), the layer has no outside close at hand to press -->
-      <button v-if="editing || onFonts" class="close" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('close')">×</button>
+      <button v-if="fullWindow" class="dismiss" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('close')">×</button>
     </div>
     <FontsPage v-if="onFonts" ref="fontsPage" @acted="keepKeys"/>
     <!-- the Palettes page -->
@@ -496,8 +501,8 @@ div.palette-layer.editing {
   width: 940px;
 }
 
-/* The Palettes | Fonts tabs over the page, as the side panel's, and the wide layer's × (the app's, global.css) at the
-   row's right end, inside the layer, which clips what hangs off it. */
+/* The Palettes | Fonts tabs over the page, as the side panel's, and, taking the whole window, a plain × at the row's
+   right end. */
 div.pages {
   display: flex;
   align-items: stretch;
@@ -543,15 +548,21 @@ div.pages button[role='tab'].on {
   box-shadow: inset 0 -2px var(--accent);
 }
 
-div.pages button.close {
-  position: static;
+div.pages button.dismiss {
   align-self: center;
   flex: none;
-  width: 26px;
-  height: 26px;
-  font-size: 17px;
-  line-height: 1.15;
+  padding: 4px 8px;
+  border: none;
   box-shadow: none;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+}
+
+div.pages button.dismiss:hover {
+  color: var(--text);
 }
 
 /* The rules below that the Fonts page shares reach into it (:deep). */
@@ -574,7 +585,7 @@ div.palette-layer.editing div.row div.glyphs {
 
 /* Editing wants 940px and up to 560px tall; a shorter window shrinks it (the glyph pane gives way first) until it
    can't fit, and a small window it takes whole instead (between, it fits the toolbar and the slots narrow). On phone
-   widths the list sits above the editor. */
+   widths the list sits above the editor. (smallWindow, for the close button, asks the same.) */
 @media (max-width: 1000px), (max-height: 520px) {
   div.palette-layer.editing {
     position: fixed;

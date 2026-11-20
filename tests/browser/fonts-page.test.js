@@ -1,6 +1,7 @@
 // The palette layer's Fonts page: the drawing's font and yours, each sampled in its own glyphs; the chosen one's
 // 256 slots and its actions (Load, Save, Use this font, Export palettes, Remove).
-import { test, expect, vi, afterEach } from 'vitest';
+import { test, expect, vi, afterEach, onTestFinished } from 'vitest';
+import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
@@ -64,15 +65,35 @@ test('the switch moves between the pages', async () => {
   expect(workspace.paletteLayerPage).toBe('fonts');
 });
 
-test('the pages are tabs, and the wide layer has a close button', async () => {
+test('the pages are tabs, and the layer taking the whole window has a close button', async () => {
   const { workspace } = await mount();
   const tabs = [...host.querySelectorAll('[role="tablist"] [role="tab"]')];
   expect(tabs.map((el) => [el.textContent.trim(), el.getAttribute('aria-selected')])).toEqual([['Palettes', 'false'], ['Fonts', 'true']]);
-  await press(host.querySelector('button.close[aria-label="Close"]'));
+  await press(host.querySelector('button.dismiss[aria-label="Close"]')); // a phone's width: the whole window
   expect(closes).toBe(1);
   await press(tabs[0]);
   expect(workspace.paletteLayerPage).toBe('palettes');
-  expect(host.querySelector('button.close')).toBeTruthy(); // the palette editor is wide too
+  expect(host.querySelector('button.dismiss')).toBeTruthy(); // the palette editor takes it too
+});
+
+test('floating, however wide, the layer has no close button: a press outside closes it', async () => {
+  await page.viewport(1400, 900);
+  onTestFinished(() => page.viewport(414, 896));
+  await mount();
+  await vi.waitFor(() => expect(getComputedStyle(host.querySelector('.palette-layer')).position).toBe('absolute'));
+  expect(host.querySelector('button.dismiss')).toBeNull();
+});
+
+test('resizing the side panel leaves the layer open', async () => {
+  await mount();
+  const grip = document.body.appendChild(document.createElement('div')); // the panel's edge
+  grip.setAttribute('role', 'separator');
+  onTestFinished(() => grip.remove());
+  grip.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await nextTick();
+  expect(closes).toBe(0);
+  document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  expect(closes).toBe(1); // a press anywhere else outside still closes it
 });
 
 test('lists the drawing\'s font first, then yours, then the built-in ones', async () => {
