@@ -837,7 +837,7 @@ Where a paste lands:
   wobble a few pixels, even across a cell's edge, and still only place the cursor.
 - **Shift and the Arrow Keys**: Do the same from the cursor's cell. With the Select tool, they grow or shrink the
   selection: they move its far corner, so it keeps the corner it started from (the top-left, for a selection drawn
-  some other way). Each press is an undo step. The arrow keys alone then nudge the selection.
+  some other way). Each press that changes it is an undo step. The arrow keys alone then nudge the selection.
 - **Back to Typing**: A selection made from Edit Mode, by dragging or with Shift and the arrows, takes you back there
   when you set it down (**Escape** or **Enter**), with the cursor where you left it.
 
@@ -914,7 +914,8 @@ nothing until you select cells. With the wand they come at the end of its row, o
 
 - **Selection Steps**: Making, changing or dropping a selection is an undo step too: a wand click, a new rectangle,
   moving the rectangle's outline, **Select all**, **Escape** and **Deselect**. Undo brings back the selection you had
-  before, so a stray wand click is one undo away.
+  before, so a stray wand click is one undo away. One that leaves the selection as it was (a second wand click on the
+  same cell, **Select all** again) isn't a step.
 - **Setting a Block Down**: Dropping the selection of a floating block (**Escape**, **Enter**, **Deselect**, a click
   outside) sets it down and isn't a step of its own: it belongs to the move or paste it ends, so the next undo takes
   that back, with the block floating and selected again. Redo leaves the block floating where you left it, to set down

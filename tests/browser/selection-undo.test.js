@@ -33,6 +33,19 @@ test('a wand click undoes back to the selection before it and redoes, without ch
   expect(project.editVersion).toBe(edits);
 });
 
+test('a wand click that selects what is already selected adds no undo step', async () => {
+  const { project, workspace, click } = await scene();
+  click(2, 2);
+  const made = workspace.wand;
+  const version = project.history.version;
+  click(2, 2);
+  expect(project.history.version).toBe(version);
+  project.undo();
+  expect(workspace.wand).toBe(null);
+  project.redo();
+  expect(workspace.wand.mask).toEqual(made.mask);
+});
+
 test('with nothing selected a tap selects its cell, an undo step; with a selection a tap outside only drops it', async () => {
   const { project, workspace, drag, tap } = await scene();
   const edits = project.editVersion;
