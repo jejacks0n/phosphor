@@ -87,6 +87,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     typingMode: 'overwrite', // typing replaces the cell ('overwrite'), or pushes the row right: its characters and paint ('insert'), or its characters alone ('partial')
     paletteLayerOpen: false, // the character palette layer has the keyboard
     paletteLayerPage: 'palettes', // the palette layer's page: 'palettes' | 'fonts'
+    fontSetup: null,         // { id, block }: the Fonts page chooses that font and picks that block (useFontSetup's Set up its blocks)
     playing: false,          // an animation is playing (usePlayback)
     playFrame: 0,            // and this frame is on screen
     played: shallowRef(null), // that frame, built (FrameBuilder): what the views show meanwhile

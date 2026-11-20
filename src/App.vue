@@ -6,6 +6,7 @@ import { useAutosave } from '@/composables/useAutosave';
 import { useScreenAwake } from '@/composables/useScreenAwake';
 import { useTheme } from '@/composables/useTheme';
 import { useDisabledReason } from '@/composables/useDisabledReason';
+import { useFontSetup } from '@/composables/useFontSetup';
 import { desktopQuery } from '@/social/config';
 import { desktop } from '@/social/desktop';
 import { onLaunchedFiles } from '@/document/projectIO';
@@ -50,6 +51,7 @@ watch(() => project.fileId, (id) => workspace.showGuidesFor(id), { immediate: tr
 const autosave = useAutosave();
 useScreenAwake();
 useDisabledReason();
+useFontSetup(); // a drawing whose font has no lower half says so until it's fixed
 const { ready, recent, openRecent } = autosave;
 const drawing = useDrawingStore();
 drawing.autosavedBy(autosave.flush);

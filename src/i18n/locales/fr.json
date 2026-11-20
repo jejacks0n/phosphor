@@ -873,7 +873,13 @@
       "noBlocks": "Aucun bloc ({names}) trouvé dans cette police : ces caractères s'affichent vides.",
       "blocksHint": "Pour changer un bloc, choisissez-le, puis cliquez sur l'emplacement qui le dessine.",
       "slotBlock": "Emplacement {n} {char} · {block}",
-      "slotBlockSet": "Emplacement {n} {char} · {block} (défini par vous)"
+      "slotBlockSet": "Emplacement {n} {char} · {block} (défini par vous)",
+      "pickedMissing": "{name} est choisi : cliquez dans la feuille sur l’emplacement qui doit dessiner ce bloc ({long}).",
+      "setupNoLower": "La police de ce dessin, {name}, n’a pas de demi-bloc inférieur : on ne peut pas encore y peindre.",
+      "setupMissing": "Cette police n’a pas de bloc {names} : ce caractère s’affiche vide. | Cette police n’a pas de bloc {names} : ces caractères s’affichent vides.",
+      "setupHostOnly": "Seul l’hôte peut définir ses blocs, hors de la salle.",
+      "setupButton": "Configurer ses blocs",
+      "setupFixed": "Moitié basse placée à l’emplacement {n}. Les outils de peinture sont actifs."
     }
   },
   "status": {

@@ -38,6 +38,7 @@ import vnode from './vnode';
 import vshape from './vshape';
 import pen from './pen';
 import { toast } from '@/composables/useToast';
+import { showFontSetup } from '@/composables/useFontSetup';
 import { refusedNoCells, sayBaseOnEveryFrame } from '@/store/project/shared.js';
 import { shortcut } from '@/lib/keyLabels';
 import { EDITOR_KEYS } from '@/lib/TextKeys';
@@ -71,7 +72,7 @@ function guardBegin(tool) {
   const begin = tool.begin;
   tool.begin = (ctx, ...rest) => {
     if ((PAINT_OFF_TOOLS.includes(tool.id) || tool.section === 'plugin') && ctx.project.paintOff) {
-      toast(ctx.project.paintOff);
+      showFontSetup(); // the toast that stays, with its button
       return false;
     }
     if (refusesHidden(ctx) || refusedNoCells(ctx.project)) return false;

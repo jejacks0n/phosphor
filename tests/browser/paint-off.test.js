@@ -6,7 +6,7 @@ import { createTestApp, settle } from '../support/app.js';
 import { i18n } from '@/i18n';
 import EditToolbar from '@/components/EditToolbar.vue';
 import { getTool } from '@/tools';
-import { toastMessage, closeToast } from '@/composables/useToast.js';
+import { toastMessage, toastAction, closeToast } from '@/composables/useToast.js';
 import { noLowerHalf, cp437Font } from '../support/blockFonts.js';
 
 let mounted = null, host = null;
@@ -55,13 +55,14 @@ test('a flyout offers its tools off too', async () => {
   for (const id of ['blur', 'dodge', 'burn']) expect(choice(id).hasAttribute('disabled'), id).toBe(true);
 });
 
-test('a stroke begun with a paint tool already in hand is refused with the reason', async () => {
+test('a stroke begun with a paint tool already in hand is refused with the toast that sets up the font', async () => {
   const { project, workspace } = await drawing();
   const ctx = { project, workspace, view: 'output', unit: { x: 1, y: 1 } };
   for (const id of ['pencil', 'brush', 'bucket', 'shapes', 'gradient', 'blur', 'dodge', 'burn']) {
     closeToast();
     expect(getTool(id).begin(ctx, { x: 2, y: 2 }), id).toBe(false);
-    expect(toastMessage.value, id).toBe(project.paintOff);
+    expect(toastMessage.value, id).toBe('This drawing\u2019s font, Slab, has no lower half block, so it can\u2019t be painted in yet.');
+    expect(toastAction.value?.label, id).toBe('Set up its blocks');
   }
   expect(project.editCells.size).toBe(0);
 });

@@ -873,7 +873,13 @@
       "noBlocks": "No {names} found in this font, so those characters draw blank.",
       "blocksHint": "To change a block, pick it, then click the slot that draws it.",
       "slotBlock": "Slot {n} {char} · {block}",
-      "slotBlockSet": "Slot {n} {char} · {block} (set by you)"
+      "slotBlockSet": "Slot {n} {char} · {block} (set by you)",
+      "pickedMissing": "{name} is picked: click the slot in the sheet that should draw the {long}.",
+      "setupNoLower": "This drawing’s font, {name}, has no lower half block, so it can’t be painted in yet.",
+      "setupMissing": "This font has no {names} block, so that character draws blank. | This font has no {names} block, so those characters draw blank.",
+      "setupHostOnly": "Only the host can set its blocks, outside the room.",
+      "setupButton": "Set up its blocks",
+      "setupFixed": "Lower half set to slot {n}. The paint tools are on."
     }
   },
   "status": {
