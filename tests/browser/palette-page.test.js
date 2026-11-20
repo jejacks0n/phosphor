@@ -45,6 +45,7 @@ const group = (label) => [...host.querySelectorAll('.group')].find((g) => g.quer
 const button = (text, within = host) => [...within.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 const row = (name) => [...host.querySelectorAll('.row')].find((r) => r.querySelector('.name span').textContent === name);
 const tieButton = () => host.querySelector('.head .tie > button');
+const moreButton = () => host.querySelector('.head .more > button');
 const press = async (el) => {
   el.click();
   await nextTick();
@@ -92,6 +93,29 @@ test('the editor shows the tie and changes it', async () => {
   expect(tieButton().textContent.trim()).toBe('For A ▾');
   await press(row('Shades & blocks'));
   expect(tieButton()).toBeNull(); // built-ins show no tie
+});
+
+test('Duplicate and Export sit in the head\'s … menu', async () => {
+  const { palettes } = await mount({ setup: (p) => named(p, 'Frogs') });
+  await edit('Frogs');
+  const head = () => host.querySelector('.head');
+  expect(button('⧉ Duplicate', head())).toBeUndefined();
+  expect(moreButton().getAttribute('aria-label')).toBe('More palette actions');
+  await press(moreButton());
+  expect(moreButton().getAttribute('aria-expanded')).toBe('true');
+  expect(button('Export', head())).toBeTruthy();
+  host.querySelector('[tabindex]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await nextTick();
+  expect(button('Export', head())).toBeUndefined(); // Escape shuts the menu first, the editor stays
+  expect(host.querySelector('.edit-side')).toBeTruthy();
+  await press(moreButton());
+  document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await nextTick();
+  expect(button('Export', head())).toBeUndefined(); // a press elsewhere shuts it too
+  await press(moreButton());
+  await press(button('⧉ Duplicate', head()));
+  expect(palettes.userPalettes.map((p) => p.name)).toContain('Frogs copy');
+  expect(button('⧉ Duplicate', head())).toBeUndefined();
 });
 
 test('a font drawing\'s sources are the font', async () => {
@@ -207,6 +231,7 @@ test('export and import', async () => {
   expect(palettes.userPalettes).toHaveLength(4);
 
   await edit('Frogs');
+  await press(moreButton());
   await press(button('Export', host.querySelector('.head')));
   await expect.poll(() => saved.length).toBe(2);
   expect(saved[1].name).toBe('Frogs.palettes.json');

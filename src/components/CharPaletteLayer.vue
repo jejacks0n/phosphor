@@ -36,6 +36,7 @@ const block = ref(0);
 const hint = ref({ text: '', warn: false });
 const hoveredChar = ref(null);
 const tieOpen = ref(false);         // the editor head's tie menu
+const moreOpen = ref(false);        // the editor head's … menu: Duplicate and Export
 const unloadedOpen = ref(false);    // the For fonts not loaded group, unfolded
 const importer = useTemplateRef('importer');
 const onFonts = computed(() => workspace.paletteLayerPage === 'fonts');
@@ -253,7 +254,7 @@ const onKeyDown = (event) => {
   } else if (event.key === 'Backspace' && editing.value) {
     assign(target.value, '', false);
   } else if (event.key === 'Escape') {
-    if (tieOpen.value) tieOpen.value = false;
+    if (tieOpen.value || moreOpen.value) tieOpen.value = moreOpen.value = false;
     else if (editing.value && !fromFonts.value) editing.value = false;
     else emit('close');
   } else {
@@ -264,6 +265,7 @@ const onKeyDown = (event) => {
 
 const onPointerDown = (event) => {
   if (tieOpen.value && !event.target.closest?.('.tie')) tieOpen.value = false;
+  if (moreOpen.value && !event.target.closest?.('.more')) moreOpen.value = false;
   if (root.value && !root.value.contains(event.target) && !event.target.closest('[data-palette-toggle]')) emit('close');
 };
 
@@ -286,7 +288,7 @@ watch(() => workspace.paletteLayerPage, (page, was) => {
   keepKeys();
 });
 watch(editing, (on) => { if (!on) fromFonts.value = false; });
-watch([currentId, editing], () => { tieOpen.value = false; });
+watch([currentId, editing], () => { tieOpen.value = moreOpen.value = false; });
 
 onMounted(() => {
   document.addEventListener('pointerdown', onPointerDown, true);
@@ -363,8 +365,13 @@ onBeforeUnmount(() => {
             </span>
           </span>
           <span class="spacer"></span>
-          <button class="ghost" @click="duplicate">{{ t('palette.layer.duplicateBtn') }}</button>
-          <button class="ghost" @click="exportPalettes([current], current.name)">{{ t('palette.layer.export') }}</button>
+          <span class="more">
+            <button class="ghost" :title="t('palette.layer.moreAria')" :aria-label="t('palette.layer.moreAria')" :aria-expanded="moreOpen" @click="moreOpen = !moreOpen">…</button>
+            <span v-if="moreOpen" class="menu">
+              <button @click="moreOpen = false; duplicate(); keepKeys()">{{ t('palette.layer.duplicateBtn') }}</button>
+              <button @click="moreOpen = false; exportPalettes([current], current.name); keepKeys()">{{ t('palette.layer.export') }}</button>
+            </span>
+          </span>
           <button v-if="!current.builtin" class="ghost icon" :title="t('palette.layer.deletePalette')" :aria-label="t('palette.layer.deletePalette')" @click="remove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M135.2 17.7C140.6 6.8 151.7 0 163.8 0h120.4c12.1 0 23.2 6.8 28.6 17.7L320 32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 96 0 81.7 0 64s14.3-32 32-32h96l7.2-14.3zM32 128h384v320c0 35.3-28.7 64-64 64H96c-35.3 0-64-28.7-64-64V128zm96 64c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16zm96 0c-8.8 0-16 7.2-16 16v224c0 8.8 7.2 16 16 16s16-7.2 16-16V208c0-8.8-7.2-16-16-16z"/></svg></button>
         </div>
 
@@ -629,8 +636,9 @@ button.fold[aria-expanded="true"]::before {
   content: '▾ ';
 }
 
-/* The editor head's tie: its button opens a small menu under it. */
-span.tie {
+/* The editor head's tie and … menu: each button opens a small menu under it. */
+span.tie,
+span.more {
   position: relative;
 }
 
@@ -639,7 +647,8 @@ span.tie button.ghost:disabled {
   opacity: 0.6;
 }
 
-span.tie span.menu {
+span.tie span.menu,
+span.more span.menu {
   position: absolute;
   top: calc(100% + 2px);
   left: 0;
@@ -653,7 +662,14 @@ span.tie span.menu {
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
 
-span.tie span.menu button {
+/* The … menu sits at the head's right end, so it opens leftward. */
+span.more span.menu {
+  left: auto;
+  right: 0;
+}
+
+span.tie span.menu button,
+span.more span.menu button {
   padding: 4px 10px;
   border: none;
   border-radius: 4px;
@@ -666,7 +682,8 @@ span.tie span.menu button {
   cursor: pointer;
 }
 
-span.tie span.menu button:hover {
+span.tie span.menu button:hover,
+span.more span.menu button:hover {
   background: var(--accent);
   color: var(--white);
 }
