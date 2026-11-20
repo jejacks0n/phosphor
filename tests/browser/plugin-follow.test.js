@@ -156,3 +156,41 @@ test('canceling the picker installs nothing', async () => {
   expect(await store.pick()).toBe(null);
   expect(store.plugins).toEqual([]);
 });
+
+test('a followed folder takes a save of either file', async () => {
+  const folder = await dir.getDirectoryHandle(`folder-${Math.random().toString(36).slice(2)}`, { create: true });
+  const put = async (file, text) => {
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const writable = await (await folder.getFileHandle(file, { create: true })).createWritable();
+    await writable.write(text);
+    await writable.close();
+  };
+  const SCRIPT = (name) => `export default { solvers: [{ id: 'edges', name: '${name}', styles: ['ansi'], reach: 0, solve: () => ({ char: ' ', fg: 0, bg: 0 }) }] };`;
+  const EDGES = 'plugin:jane.midnight/edges';
+  try {
+    await put('phosphor-plugin.json', changed((m) => { m.script = 'outlines.js'; }));
+    await put('outlines.js', SCRIPT('Edges'));
+    window.showDirectoryPicker = vi.fn(async () => folder);
+    store = newStore();
+    const picked = await store.pickFolder();
+    await store.install(picked.manifest, { script: picked.script, handle: picked.handle });
+    await store.follow(ID, true);
+    const reload = vi.spyOn(store, 'reload');
+    await store.checkFollowed();
+    expect(reload).not.toHaveBeenCalled();
+
+    await put('outlines.js', SCRIPT('Edges 2'));
+    await store.checkFollowed();
+    expect(store.solvers[EDGES].name).toBe('Edges 2');
+
+    await put('phosphor-plugin.json', changed((m) => { m.script = 'outlines.js'; m.version = '1.0.5'; }));
+    await store.checkFollowed();
+    expect(store.plugins[0].manifest.version).toBe('1.0.5');
+    expect(reload).toHaveBeenCalledTimes(2);
+    expect(store.following[ID]).toBe(true);
+  } finally {
+    store.dropSolvers(ID);
+    window.showDirectoryPicker = undefined;
+    await dir.removeEntry(folder.name, { recursive: true });
+  }
+});

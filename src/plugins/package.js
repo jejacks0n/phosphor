@@ -46,11 +46,13 @@ async function ofHandle(handle) {
     if (name === MANIFEST && entry.kind === 'file') paths.push(name);
     else if (entry.kind === 'directory' && (await get(`${name}/${MANIFEST}`))) paths.push(`${name}/${MANIFEST}`);
   }
+  const file = async (path) => (await get(path))?.getFile() ?? null;
   return {
     paths,
+    file,
     read: async (path, most) => {
-      const found = await get(path);
-      return found ? ofFile(await found.getFile(), most) : null;
+      const found = await file(path);
+      return found ? ofFile(found, most) : null;
     },
   };
 }
@@ -68,6 +70,19 @@ async function ofZip(blob) {
   };
 }
 
+// the top wins; two one folder down and none at the top is ambiguous
+const rootOf = (paths) => paths.find((path) => path === MANIFEST) ?? (paths.length === 1 ? paths[0] : null);
+
+// A followed folder's manifest and its script (the path the installed manifest names) as lastModified/size, without
+// reading them; a file that isn't there is a stamp too, so its return is seen. A folder that's gone throws.
+export async function folderStamp(handle, script) {
+  const found = await ofHandle(handle);
+  const at = rootOf(found.paths);
+  if (at === null) return '-';
+  const files = await Promise.all([at, ...(script ? [dirOf(at) + script] : [])].map(found.file));
+  return files.map((file) => (file ? `${file.lastModified}/${file.size}` : '-')).join(' ');
+}
+
 // A folder's files ({ path, file }), a directory handle, a .zip, or a lone manifest into
 // { manifestText, scriptText (null when it has none), handle (the directory handle, else null) }.
 export async function readPackage(source) {
@@ -82,10 +97,8 @@ export async function readPackage(source) {
   else if (source instanceof Blob) found = await ofZip(source);
   else found = await ofHandle(source);
 
-  // the top wins; two one folder down and none at the top is ambiguous
-  const top = found.paths.find((path) => path === MANIFEST);
-  const at = top ?? (found.paths.length === 1 ? found.paths[0] : null);
-  if (at === null || at === undefined) throw new ManifestError('noManifest');
+  const at = rootOf(found.paths);
+  if (at === null) throw new ManifestError('noManifest');
   const manifestText = await found.read(at, MOST_MANIFEST_BYTES);
   const { script } = readManifest(manifestText);
   let scriptText = null;
