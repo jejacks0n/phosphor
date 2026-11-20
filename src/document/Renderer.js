@@ -878,7 +878,7 @@ export default class Renderer {
   // rest stay. Not open, cells at indexes it reaches work it out again over every cell it reaches (#settled), as its
   // pattern after a change can move anywhere after it.
   composeUpper(...args) {
-    return inRun(() => this.#composeUpper(...args)); // one run: a plugin solver's first walk under the hang mark throughout
+    return inRun(() => this.#composeUpper(...args), 'upper'); // one run: a plugin solver's first walk under the hang mark throughout
   }
   #composeUpper(lower, indexes, palette, composed = null, { open = false } = {}) {
     const out = (indexes && composed?.length === lower.length ? composed : lower).slice();
@@ -1311,7 +1311,7 @@ export default class Renderer {
     const raw = (this.#cellRaw ??= new Float64Array(SAMPLES.w * SAMPLES.h * 4));
     for (let i = 0, j = 0; j < s.length; i += 4, j += 3) { raw[i] = s[j]; raw[i + 1] = s[j + 1]; raw[i + 2] = s[j + 2]; }
     const { cells: [cell] } = inRun(() => {
-      marks(m.plugin, 'cell');
+      marks(m.plugin, run.cell);
       const out = resolvePlugin(raw, 1, 1, m.matcher, { alone: true, cells: [null], origin: { col, line: row } });
       tally(m.matcher.ref, m.plugin.hash, out.faults);
       return out;
@@ -1774,17 +1774,18 @@ const solverOf = (params) => (params.charMode === 'shape' && params.solver && !f
 
 // A run: work(), one of the renderer's ways to a plugin solver (the base's resolve with its cells under paint, a walk
 // over the cells laid over others, a lone cell). marks() in it sets the hang mark (plugins/hangMark.js) the first time a
-// plugin's script runs one way (what: a whole resolve, the cells under paint, a cell laid over others) this visit, and
+// plugin's script runs one way (what: a whole resolve, the cells under paint, the lower group's own characters under
+// paint, the upper layers' cells; cell: the run's way for a cell, #pluginCell's) this visit, and
 // the mark stays to the run's end, so a solver that hangs on any of the run's cells leaves it behind. Each way is its own
 // first: one run first doesn't leave another unmarked. A solver's faults in the run (tally: results held to the set's
 // first character) are told once, at its end (faultSolver), unless it threw.
 // ponytail: the page has one mark, so two plugins first run in one run leave the later's, and a hang in the earlier
 // blames it; the earlier is found by the hang after. A mark per plugin if that's ever seen.
 const ran = new Set(); // what, plugin id and script hash
-let run = null; // the run going on: { marked, faults: ref -> script hash }
-function inRun(work) {
+let run = null; // the run going on: { cell, marked, faults: ref -> script hash }
+function inRun(work, cell = 'cell') {
   if (run) return work();
-  const own = (run = { marked: false, faults: new Map() });
+  const own = (run = { cell, marked: false, faults: new Map() });
   let out;
   try {
     out = work();
