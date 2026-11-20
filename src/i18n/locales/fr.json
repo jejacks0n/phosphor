@@ -1962,6 +1962,7 @@
       "badChar": "Les caractères d'un solveur incluent « {char} », qu'un solveur ne peut pas dessiner.",
       "hung": "{name} a empêché Phosphor de répondre la dernière fois, il est donc désactivé.",
       "shaderOff": "Le shader de {name} est désactivé pour cette visite : {message}",
+      "shaderDisagrees": "{count} cellules sur {total} différaient de son JavaScript, la première à la colonne {col}, ligne {line} (comptées à partir de 0).",
       "hashMismatch": "Le script gardé de {name} n'est pas celui qui a été installé, il n'est donc pas chargé. Installez-le à nouveau.",
       "codeWhileOff": "Les plugins sont désactivés pour cette visite, donc un plugin qui exécute du code ne peut pas être installé maintenant.",
       "solverFailed": "Le solveur « {name} » a échoué : {message}",
