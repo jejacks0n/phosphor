@@ -9,7 +9,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { toastMessage, closeToast } from '@/composables/useToast.js';
 import { addBitmapFont, storeBlocks, loadFonts, removeFont } from '@/lib/userFonts';
-import { fontId, encodeFont } from '@/lib/BitmapFont.js';
+import { fontId } from '@/lib/BitmapFont.js';
 import { cp437Font, noLowerHalf } from '../support/blockFonts.js';
 import { writeXBin } from '@/lib/XBinFile.js';
 import StartRoomPage from '@/components/social/StartRoomPage.vue';
@@ -112,16 +112,38 @@ test('in a room an XBin whose font isn\'t set up isn\'t opened: a toast, and the
   expect(project.fontBitmap).not.toBe(before);
 });
 
-test('in a room a project whose font isn\'t set up isn\'t opened (openParts, which loadProject and restoreDocument reach)', async () => {
-  const { project } = await drawing(cp437Font);
-  const settings = (font) => ({ fontBitmap: encodeFont(font), fontName: 'Slab', fontBlocks: '' });
+// The .phosphor file saveProject downloads, of a drawing in a font that isn't set up (saved outside a room).
+async function projectFile(project) {
+  project.setDrawingFont({ ...noLowerHalf, name: 'Slab' });
+  const spy = vi.spyOn(URL, 'createObjectURL');
+  await project.saveProject();
+  return spy.mock.calls.at(-1)[0];
+}
+
+test('in a room a project file whose font isn\'t set up isn\'t opened (loadProject), and nothing is marked saved', async () => {
+  const { project } = await drawing();
+  const blob = await projectFile(project);
+  project.setDrawingFont(cp437Font);
   const before = project.fontBitmap;
+  project.savedToFile = false;
   project._hosting = true;
-  expect(await project.openParts({ settings: settings(noLowerHalf) }, { filename: 'p' })).toBe(false);
+  await project.loadProject(new File([blob], 'p.phosphor'));
   expect(toastMessage.value).toBe(MISSING);
   expect(project.fontBitmap).toBe(before);
-  closeToast();
-  await project.openParts({ settings: settings(cp437Font) }, { filename: 'p' }).catch(() => {}); // no picture to open: it gets past the font
+  expect(project.savedToFile).toBe(false);
+  project._hosting = false;
+  await project.loadProject(new File([blob], 'p.phosphor')); // outside a room it opens
+  expect(project.fontNotSetUp).toBe(MISSING);
+});
+
+test('a restore in a room is never refused, whatever its font', async () => {
+  const { project } = await drawing();
+  const blob = await projectFile(project);
+  const record = { filename: 'mine', fileExt: null, rest: new Uint8Array(await blob.arrayBuffer()), savedToFile: false, dirty: false };
+  project.setDrawingFont(cp437Font);
+  project._hosting = true;
+  await project.restoreDocument({ record, imageBuffer: project.imageBuffer }, { documentId: project.documentId });
+  expect(project.fontNotSetUp).toBe(MISSING);
   expect(toastMessage.value).toBe(null);
 });
 

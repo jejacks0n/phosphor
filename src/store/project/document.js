@@ -511,8 +511,17 @@ export const documentActions = {
     if (!file || !isProjectFile(file.name)) return;
 
     try {
-      const opened = await busyWhile(opening(file.name), async () => this.openParts(await readProject(file), { filename: file.name.slice(0, -PROJECT_EXTENSION.length), fileExt: PROJECT_EXT }));
-      if (opened === false) return; // a room refused its font
+      const opened = await busyWhile(opening(file.name), async () => {
+        const parts = await readProject(file);
+        const { fontBitmap, fontName, fontBlocks } = parts.settings ?? {};
+        const reason = this.inRoom && fontBitmap && notSetUp(withBlocks(decodeFont(fontBitmap, fontName), fontBlocks)); // a room can't edit blocks, so it takes no font that needs it (a restore is never refused: losing the drawing is worse)
+        if (reason) {
+          toast(reason);
+          return false;
+        }
+        await this.openParts(parts, { filename: file.name.slice(0, -PROJECT_EXTENSION.length), fileExt: PROJECT_EXT });
+      });
+      if (opened === false) return;
       this.savedToFile = true;
       this.filePath = file.desktopPath ?? null; // desktop: where it was opened from, for Save to write over
       this.fileHandle = file.fileHandle ? markRaw(file.fileHandle) : null; // the same on the web (pickFile, a drop)
@@ -545,12 +554,6 @@ export const documentActions = {
   // A project's parts (readProject) as the open document. Without a documentId it gets a new one.
   // If it throws, either nothing has changed or no document is open.
   async openParts(parts, options) {
-    const { fontBitmap, fontName, fontBlocks } = parts.settings ?? {};
-    const reason = this.inRoom && fontBitmap && notSetUp(withBlocks(decodeFont(fontBitmap, fontName), fontBlocks)); // a room can't edit blocks, so it takes no font that needs it
-    if (reason) {
-      toast(reason);
-      return false;
-    }
     const pictures = await loadParts(parts);
     if (this._sharing?.role === 'artist') return; // a host's project landed meanwhile (an artist's reload, racing autosave's restore)
     showParts.call(this, parts, pictures, options);
