@@ -19,6 +19,7 @@ import { isSvgFile } from '@/lib/SvgFile.js';
 import { isControl, ownsKey } from '@/lib/fields';
 import { withShape } from '@/document/shapes.js';
 import { pickedFrom, pickedIndexes } from '@/store/project/reading.js';
+import { gridAt } from '@/lib/CellCanvas';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -127,7 +128,7 @@ function pickAt(pos, event) {
 }
 
 // Brush/eraser outline under the pointer, or the character cell for cell tools.
-const gridPos = (pos) => ({ x: pos.x / props.unit.x, y: pos.y / props.unit.y });
+const gridPos = (pos) => gridAt(pos, props.unit);
 const CELL_HIGHLIGHT = { borderRadius: '0', transform: 'none', mixBlendMode: 'difference', background: 'white', outline: '1px solid red', border: 'none', boxShadow: 'none' };
 const previewStyle = computed(() => {
   const preview = tool.value.preview;
@@ -215,21 +216,21 @@ const shapeDragStyle = computed(() => {
 // path… picks (the shape under it lit).
 watch(() => props.view === 'vector' && (workspaceStore.vectorPen || workspaceStore.pickingPath) && isMouseOver.value && mousePos.value, (pos) => {
   const unit = props.unit;
-  workspaceStore.vectorHover = pos && unit ? { x: pos.x / unit.x, y: pos.y / unit.y } : null;
+  workspaceStore.vectorHover = pos && unit ? gridAt(pos, unit) : null;
 });
 
 // A tool's own pointer over the content (the Select tool's border vs inside), when it has one.
 const toolCursor = computed(() => {
   const pos = mousePos.value, unit = props.unit;
   if (!tool.value.cursor || !pos || !isMouseOver.value || !unit) return null;
-  return tool.value.cursor(toolCtx(), { x: pos.x / unit.x, y: pos.y / unit.y });
+  return tool.value.cursor(toolCtx(), gridAt(pos, unit));
 });
 
 // The character under the pointer, on the grid: for the rulers' moving labels and others' view of where you are.
 const hoverCell = computed(() => {
   const pos = mousePos.value, unit = props.unit;
   if (!pos || !isMouseOver.value || !unit) return null;
-  const col = Math.floor(pos.x / unit.x), row = Math.floor(pos.y / unit.y / 2);
+  const col = Math.floor(pos.x / unit.x), row = Math.floor(gridAt(pos, unit).y / 2);
   return col >= 0 && row >= 0 && col < projectStore.cols && row < charRowsOf(projectStore.rows) ? { col, row } : null;
 });
 

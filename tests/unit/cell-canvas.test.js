@@ -1,11 +1,11 @@
 // The ANSI view's canvas renderer: its backing size stays under the browsers' canvas limits, its
-// cells snap to whole device pixels (an even height, so the halves match), block characters are
+// cells snap to whole device pixels (an even height, so the halves match; an odd bitmap font's own), block characters are
 // exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { backingScale, cellGeometry, gridYAt, blockMask, packCells, packSpills, MAX_BACKING_AREA } from '../../src/lib/CellCanvas.js';
+import { backingScale, cellGeometry, gridYAt, gridAt, splitOf, blockMask, packCells, packSpills, MAX_BACKING_AREA } from '../../src/lib/CellCanvas.js';
 
-test("The ANSI view's canvas renderer: its backing size stays under the browsers' canvas limits, its cells snap to whole device pixels (an even height, so the halves match), block characters are exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures", async () => {
+test("The ANSI view's canvas renderer: its backing size stays under the browsers' canvas limits, its cells snap to whole device pixels (an even height, so the halves match; an odd bitmap font's own), block characters are exact rectangles, and each cell's colors and 16-bit glyph index pack into the data textures", async () => {
   assert.equal(backingScale(800, 600, 2), 2);                                    // small grid: full dpr
   const s = backingScale(2040, 3060, 2);                                         // 200x300 at dpr 2 is 25M px: capped
   assert.ok(s < 2 && s * 2040 * s * 3060 <= MAX_BACKING_AREA + 1);
@@ -60,5 +60,30 @@ test('an odd-height bitmap font is its own height; an even one and a TrueType fo
 test('gridYAt: an even cell is y over half its height; an odd one splits where its halves meet', () => {
   assert.equal(gridYAt(7.3, { lineHeight: 16, odd: false }), 7.3 / 8);
   const m = { lineHeight: 11, odd: true, upper: 5 };
-  assert.ok(gridYAt(4.9, m) < 1 && gridYAt(5.1, m) >= 1 && gridYAt(10.9, m) < 2 && gridYAt(11.2, m) >= 2);
+  assert.equal(gridYAt(0, m), 0);
+  assert.equal(gridYAt(5, m), 1);
+  assert.equal(gridYAt(8, m), 1.5);
+  assert.equal(gridYAt(11, m), 2);
+  assert.equal(gridYAt(16, m), 3);
+  assert.equal(gridYAt(22, m), 4);
+});
+
+test("an odd font's split follows its rows at any scale, whatever the device parity; others say nothing", () => {
+  const eleven = { size: 11, lineHeight: 1, bitmap: true, height: 11 };
+  assert.deepEqual(splitOf(eleven, 11), { odd: true, upper: 5 });            // scale 1: ch 11
+  assert.deepEqual(splitOf(eleven, 11), { odd: true, upper: 5 });            // scale 2: ch 22 is 11 CSS px, the split still 5
+  const m = { lineHeight: 11, ...splitOf(eleven, 11) };
+  assert.equal(gridYAt(5, m), 1);
+  assert.equal(gridYAt(11, m), 2);
+  assert.equal(cellGeometry(8, 1.5, false, eleven).ch, 17);                  // scale 1.5: 17 device px, 11.333 CSS px
+  assert.ok(Math.abs(splitOf(eleven, 17 / 1.5).upper - 5.151515151515151) < 1e-12); // 5/11 of it
+  assert.deepEqual(splitOf({ size: 16, lineHeight: 1, bitmap: true, height: 16 }, 16), {});
+  assert.deepEqual(splitOf({ size: 16, lineHeight: 1 }, 16), {});
+});
+
+test('gridAt: the pointer conversions share the cell split; an even unit is a plain division', () => {
+  const even = { x: 8, y: 8 }, odd = { x: 8, y: 5.5, lineHeight: 11, odd: true, upper: 5 };
+  assert.deepEqual(gridAt({ x: 16, y: 12 }, even), { x: 2, y: 1.5 });
+  assert.deepEqual(gridAt({ x: 16, y: 5 }, odd), { x: 2, y: 1 });             // where an 8x11 cell's halves meet
+  assert.deepEqual(gridAt({ x: 4, y: 16 }, odd), { x: 0.5, y: 3 });             // the second cell's bottom pixel starts at 16
 });

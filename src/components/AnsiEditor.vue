@@ -195,7 +195,11 @@ const coordsAt = (event) => {
 };
 
 // CSS px per grid pixel (a grid pixel is half a character cell tall), for tool previews.
-const unit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight / 2 } : null));
+// An odd cell also says its split (gridAt), the one the pointer's conversions share with coordsAt.
+const unit = computed(() => {
+  const m = metrics.value;
+  return m ? { x: m.cellWidth, y: m.lineHeight / 2, ...(m.odd && { lineHeight: m.lineHeight, odd: true, upper: m.upper }) } : null;
+});
 
 // CSS px per cell, for the Magic Wand's overlay.
 const cellUnit = computed(() => (metrics.value ? { x: metrics.value.cellWidth, y: metrics.value.lineHeight } : null));

@@ -37,9 +37,10 @@ export function backingScale(cssWidth, cssHeight, dpr, maxSide = Infinity) {
   return Math.min(dpr, Math.sqrt(MAX_BACKING_AREA / (cssWidth * cssHeight)), maxSide / cssWidth, maxSide / cssHeight);
 }
 
-// A cell in whole device pixels (an even height, so the two halves match, as GlyphCoverage
-// rasterizes; or a bitmap font's own odd height, its halves then splitting the middle unevenly) and in CSS px. advance: the font's character width at its CSS size. capped: the scale
-// was lowered to the cap, so sizes round down (rounding up would pass it again).
+// A cell in whole device pixels and in CSS px. Its height is even, so the two halves match (as GlyphCoverage
+// rasterizes), or a bitmap font's own odd height, its halves then splitting the middle unevenly.
+// advance: the font's character width at its CSS size. capped: the scale was lowered to the cap, so
+// sizes round down (rounding up would pass it again).
 export function cellGeometry(advance, scale, capped = false, font = DISPLAY_FONT) {
   const round = capped ? Math.floor : Math.round;
   const cw = round(advance * scale);
@@ -48,8 +49,9 @@ export function cellGeometry(advance, scale, capped = false, font = DISPLAY_FONT
   return { cw, ch, cellWidth: cw / scale, lineHeight: ch / scale };
 }
 
-// An odd cell's split for gridYAt (even cells say nothing: their halves are equal).
-const splitOf = (ch, css) => (ch % 2 ? { odd: true, upper: Math.floor(ch / 2) / css } : {});
+// An odd-height bitmap font's split for gridYAt, in CSS px: its top floor(height / 2) font rows are the top
+// grid pixel, however many device pixels a row is. Other fonts say nothing: their halves are equal.
+export const splitOf = (font, lineHeight) => (font.bitmap && font.height % 2 === 1 ? { odd: true, upper: Math.floor(font.height / 2) * lineHeight / font.height } : {});
 
 // A y in CSS px inside the display, as grid pixels (fractional; a cell is two). An odd cell's top `upper`
 // CSS px are its top grid pixel and the rest its bottom one, as blockMask splits it.
@@ -58,6 +60,10 @@ export function gridYAt(y, { lineHeight, odd, upper }) {
   const row = Math.floor(y / lineHeight), into = y - row * lineHeight;
   return row * 2 + (into < upper ? into / upper : 1 + (into - upper) / (lineHeight - upper));
 }
+
+// A point in CSS px inside the display as grid pixels, by a view's unit ({ x, y }: CSS px per grid pixel, and for
+// an odd cell its lineHeight, odd and upper): the one conversion every tool preview and hit test shares.
+export const gridAt = (pos, unit) => ({ x: pos.x / unit.x, y: unit.odd ? gridYAt(pos.y, unit) : pos.y / unit.y });
 
 // Block elements as exact quadrants, the way the cell model means them (GlyphCoverage's exact
 // table), so blocks never seam: top-left 1, top-right 2, bottom-left 4, bottom-right 8.
@@ -219,7 +225,7 @@ export default class CellCanvas {
   // The cell size in CSS px, or null before the first resize.
   get metrics() {
     const g = this.#geom;
-    return g ? { cellWidth: g.cw / g.css, lineHeight: g.ch / g.css, ...splitOf(g.ch, g.css) } : null;
+    return g ? { cellWidth: g.cw / g.css, lineHeight: g.ch / g.css, ...splitOf(this.#fontNow, g.ch / g.css) } : null;
   }
 
   // Whether text is anti-aliased; changing it draws every glyph again.
@@ -238,7 +244,7 @@ export default class CellCanvas {
   // sizes its first window by, before resize has run.
   cellSize(dpr, zoom = 1) {
     const { cw, ch } = cellGeometry(this.#advance ??= measureAdvance(this.#fontNow), dpr * zoom, false, this.#fontNow);
-    return { cellWidth: cw / dpr, lineHeight: ch / dpr, ...splitOf(ch, dpr) };
+    return { cellWidth: cw / dpr, lineHeight: ch / dpr, ...splitOf(this.#fontNow, ch / dpr) };
   }
 
   // Size the canvas for cols x rows cells (the window of the grid it draws) at the display's dpr and a
