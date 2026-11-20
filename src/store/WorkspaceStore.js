@@ -58,7 +58,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     userFonts: null,         // the fonts you've loaded ([{ id, name, lineHeight }], userFonts.js), once read from this browser (App.vue)
     roomFont: null,          // while drawing in someone's room, their font (wire.fontFor), in place of the two above; never kept
     displayFontLoaded: null, // displayFontSpec, once it's loaded and measured in (App.vue)
-    theme: useLocalStorage('phosphor.theme', 'dark'), // the app's colors: 'dark' | 'light' | 'system' (the computer's; index.html sets it before the first paint)
+    theme: useLocalStorage('phosphor.theme', 'dark'), // the app's colors: 'dark' | 'light' | 'system' (the computer's) | a plugin's, 'plugin:<id>/<theme>' (useTheme.js; index.html sets it before the first paint)
     smoothText: useLocalStorage('phosphor.smoothText', true), // the art's text anti-aliased (both views), or sharp
     rulers: useLocalStorage('phosphor.rulers', false), // the character rulers (and the guides) shown on PIXEL, ANSI and VECTOR
     rulerOpacity: useLocalStorage('phosphor.rulerOpacity', 100), // the rulers' strips, in %; the guides and labels stay solid

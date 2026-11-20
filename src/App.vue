@@ -1,9 +1,10 @@
 <script setup>
-import { watch, watchEffect, onMounted, onBeforeUnmount } from 'vue';
+import { watch, onMounted, onBeforeUnmount } from 'vue';
 import { useMediaQuery } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
 import { useAutosave } from '@/composables/useAutosave';
 import { useScreenAwake } from '@/composables/useScreenAwake';
+import { useTheme } from '@/composables/useTheme';
 import { desktopQuery } from '@/social/config';
 import { desktop } from '@/social/desktop';
 import { onLaunchedFiles } from '@/document/projectIO';
@@ -40,11 +41,7 @@ const { image } = storeToRefs(project);
 const wide = useMediaQuery(desktopQuery);   // a narrow screen's settings are a drawer
 const { activeTool, isPainting, isCtrlPressed, isAltPressed, isMiddleClick, showAboutModal, saveDialog, exportModal, shortcutsOpen, legalPage, versionsOpen } = storeToRefs(workspace);
 
-// The theme on <html>, for global.css: the one picked, or with System the computer's (and it follows a change).
-const prefersLight = useMediaQuery('(prefers-color-scheme: light)');
-watchEffect(() => {
-  document.documentElement.dataset.theme = workspace.theme === 'system' ? (prefersLight.value ? 'light' : 'dark') : workspace.theme;
-});
+useTheme();
 
 watch(() => project.fileId, (id) => workspace.showGuidesFor(id), { immediate: true }); // each drawing has its own guides
 

@@ -30,13 +30,25 @@
       if (window.top !== window.self) document.documentElement.style.display = 'none';
     </script>
     <script>
-      // The theme before the first paint, as App.vue sets it after: the one picked (dark until one is), or with
-      // System the computer's.
+      // The theme before the first paint, as useTheme.js sets it after: the one picked (dark until one is), or with
+      // System the computer's. A plugin's theme is painted from the copy kept of it (src/plugins/themes.js), its base
+      // and, unless the address says plugins=off, its hex colors; with no copy of that theme, dark.
       try {
-        const theme = localStorage.getItem('phosphor.theme');
+        const html = document.documentElement, theme = localStorage.getItem('phosphor.theme');
         const light = theme === 'light' || (theme === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
-        document.documentElement.dataset.theme = light ? 'light' : 'dark';
-      } catch { /* no storage: the default, dark */ }
+        html.dataset.theme = light ? 'light' : 'dark';
+        if (theme && theme.startsWith('plugin:')) {
+          const copy = JSON.parse(localStorage.getItem('phosphor.themeColors'));
+          if (copy && copy.theme === theme && (copy.base === 'dark' || copy.base === 'light')) {
+            html.dataset.theme = copy.base;
+            if (new URLSearchParams(location.search).get('plugins') !== 'off') {
+              for (const [key, value] of Object.entries(copy.colors || {})) {
+                if (/^[a-z0-9-]+$/.test(key) && /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value)) html.style.setProperty(`--${key}`, value);
+              }
+            }
+          }
+        }
+      } catch { /* no storage, or a damaged copy: what's set so far */ }
     </script>
   </head>
   <body>
