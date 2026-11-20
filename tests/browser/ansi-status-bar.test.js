@@ -7,6 +7,7 @@ import { i18n, setLocale } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { rectShape } from '@/document/shapes.js';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
+import { lowerAt240 } from '../support/blockFonts.js';
 import { shortcut } from '@/lib/keyLabels';
 
 let app = null, host = null;
@@ -139,6 +140,8 @@ test('shows the character code under the cursor', async () => {
   expect(await at('😀')).toBeUndefined();
   project.setDrawingFont({ name: 'Topaz', height: 8, bytes: new Uint8Array(256 * 8) });
   expect(await at('␀')).toBe('0');
+  project.setDrawingFont(lowerAt240);
+  expect(await at('▄')).toBe('240'); // the slot this font draws it from
 });
 
 // dex-10: at 1280 with both panels open, Edit Mode's readout squeezed the buttons until the last was cut. Too narrow for

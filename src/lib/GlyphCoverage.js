@@ -32,7 +32,7 @@ export function setGlyphRasterizer(fn, { exact = true } = {}) {
 
 // Coverage measured from a bitmap font's own pixels (BitmapFont.inkOf), blocks and the space too; a
 // character it has no slot for is measured as its stand-in (fitFont), the character the views show.
-export const useBitmapCoverage = (font) => setGlyphRasterizer((char) => inkOf(font, slotOf(fitFont(char)) ?? 32), { exact: false });
+export const useBitmapCoverage = (font) => setGlyphRasterizer((char) => inkOf(font, slotOf(fitFont(char, font), font) ?? 32), { exact: false });
 
 export function coverageOf(char) {
   const exact = useExact && EXACT.get(char);

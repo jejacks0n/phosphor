@@ -8,7 +8,7 @@ import { usePaletteStore } from '@/store/PaletteStore';
 import { UNICODE_BLOCKS, fitsGrid, parseFind } from '@/lib/charPalettes';
 import { CP437, cp437Byte, isCp437 } from '@/lib/Cp437';
 import { cellWidth } from '@/lib/CharWidth';
-import { SLOT_CHARS, slotOf } from '@/lib/BitmapFont';
+import { slotChars, slotOf } from '@/lib/BitmapFont';
 import { ownsKey } from '@/lib/fields';
 import { toast } from '@/composables/useToast';
 import { writePaletteFile, readPaletteFile, paletteFileName } from '@/lib/PaletteFile';
@@ -62,7 +62,7 @@ const groups = computed(() => [
 const visible = computed(() => groups.value.flatMap(g => (g.key === 'unloaded' && !unloadedOpen.value ? [] : g.rows)));
 
 // Whether a glyph can go in a cell: one or two columns wide, as a terminal lays it out; with a drawing font, one it holds.
-const fits = (char) => fitsGrid(char) && (!project.drawingFont || slotOf(char) !== null);
+const fits = (char) => fitsGrid(char) && (!project.drawingFont || slotOf(char, project.drawingFont) !== null);
 const code = (char) => `U+${char.codePointAt(0).toString(16).toUpperCase().padStart(4, '0')}`;
 
 // The glyphs the source pane shows, plus a note above them.
@@ -76,7 +76,7 @@ const visibleBlocks = computed(() => {
 const pane = computed(() => {
   const shown = allPane.value;
   if (!project.drawingFont) return shown;
-  return { ...shown, chars: tab.value === 'cp437' && !findResult.value ? SLOT_CHARS : shown.chars.filter((c) => slotOf(c) !== null) };
+  return { ...shown, chars: tab.value === 'cp437' && !findResult.value ? slotChars(project.drawingFont) : shown.chars.filter((c) => slotOf(c, project.drawingFont) !== null) };
 });
 // A font drawing has no Unicode tab: its font tab stands in for it (a block find still shows under it, filtered).
 const tab = computed(() => (font.value && source.value === 'unicode' ? 'cp437' : source.value));

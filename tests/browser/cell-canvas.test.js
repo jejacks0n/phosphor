@@ -6,7 +6,7 @@ import { createTestApp } from '../support/app.js';
 import CellCanvas, { MAX_BACKING_AREA } from '@/lib/CellCanvas';
 import { layoutWide } from '@/lib/Cells';
 import { fontFor } from '@/social/wire';
-import { encodeFont, fontId } from '@/lib/BitmapFont';
+import { CP437_BLOCKS, encodeBlocks, encodeFont, fontId } from '@/lib/BitmapFont';
 import { registerBitmapFont } from '@/lib/userFonts';
 
 const rgb = (hex) => ({ hex, r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
@@ -380,9 +380,9 @@ test('a full atlas draws what doesn\'t fit as blank, however many characters a g
 
 test('draws █ from a bitmap font, not as a block', async () => {
   await createTestApp();
-  const f = { name: 'No block', height: 16, bytes: new Uint8Array(256 * 16).fill(0xff) };
+  const f = { name: 'No block', height: 16, bytes: new Uint8Array(256 * 16).fill(0xff), blocks: [...CP437_BLOCKS] };
   f.bytes.fill(0, 219 * 16, 220 * 16); // █ is an empty glyph
-  const font = { id: fontId(f), name: f.name, family: await registerBitmapFont(f), size: 16, lineHeight: 1, bitmap: true, source: encodeFont(f) };
+  const font = { id: fontId(f), name: f.name, family: await registerBitmapFont(f), size: 16, lineHeight: 1, bitmap: true, source: encodeFont(f), blocks: encodeBlocks(f.blocks) };
   for (const smooth of [true, false]) {
     const { width, height, at } = drawAndRead(1, 1, [cell('█', '#ffffff', '#000000')], 1, { smooth, font });
     expect(width * height).toBeGreaterThan(0);

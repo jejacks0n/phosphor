@@ -166,7 +166,7 @@ export const editLayerActions = {
   // column: false, and nothing is typed. mode (workspace.typingMode): 'overwrite' replaces the cell; 'insert' pushes
   // the rest of the row right first, its characters and its paint; 'partial' its characters alone (shiftCells).
   typeAt(col, row, char, attrs, { mode = 'overwrite' } = {}) {
-    if (this.drawingFont) char = fitFont(char); // only what the drawing's font holds
+    if (this.drawingFont) char = fitFont(char, this.drawingFont); // only what the drawing's font holds
     const width = cellWidth(char);
     if (refusedNoCells(this, { toast: false })) return null; // no cells layer to type on (typeLines says so)
     if (width === 2 && col === this.cols - 1) return false;

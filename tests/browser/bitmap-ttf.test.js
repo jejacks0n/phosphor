@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { ttfOf } from '@/lib/BitmapTtf.js';
+import { CP437_BLOCKS } from '@/lib/BitmapFont.js';
 import { drawGlyph } from '@/lib/displayFonts.js';
 
 const bytes = new Uint8Array(256 * 16);
@@ -7,7 +8,7 @@ for (let r = 0; r < 16; r++) {
   bytes[65 * 16 + r] = r % 2 ? 0x55 : 0xaa;
   bytes[r] = 0xff;
 }
-const face = new FontFace('BT', ttfOf({ name: 'BT', height: 16, bytes }));
+const face = new FontFace('BT', ttfOf({ name: 'BT', height: 16, bytes, blocks: [...CP437_BLOCKS] }) /* slot 0 is solid: found as █ without these */);
 await face.load();
 document.fonts.add(face);
 const font = { family: '"BT"', size: 16, lineHeight: 1 };

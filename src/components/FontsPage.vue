@@ -6,7 +6,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
 import { storedBitmapFont, registerBitmapFont, familyOf } from '@/lib/userFonts';
-import { fontId, SLOT_CHARS } from '@/lib/BitmapFont';
+import { fontId, fontKey, SLOT_CHARS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
@@ -67,7 +67,8 @@ const count = computed(() => (chosen.value ? palettes.countFor(chosen.value.id) 
 
 const size = (f) => (f.kind === 'bitmap' ? `8×${f.height}` : t('palette.fonts.trueType'));
 // Drawn at its own height, or twice that when it's too small to read.
-const familyFor = (f) => f.family ?? familyOf(f.id);
+const keys = ref({}); // a bitmap font's id -> the key it's registered under (its blocks too: BitmapFont.fontKey)
+const familyFor = (f) => f.family ?? familyOf(keys.value[f.id] ?? f.id);
 const styleOf = (f) => ({ fontFamily: familyFor(f), fontSize: `${f.kind === 'bitmap' && f.height < 12 ? 2 * f.height : f.height ?? 16}px` });
 const meta = computed(() => [
   size(chosen.value),
@@ -84,7 +85,9 @@ const bitmapOf = (f) => (f.id === drawnId.value ? drawn.value : storedBitmapFont
 watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => f.id).join(' '), async () => {
   for (const f of all.value.filter((font) => font.kind === 'bitmap')) {
     try {
-      await registerBitmapFont(await bitmapOf(f));
+      const font = await bitmapOf(f);
+      await registerBitmapFont(font);
+      keys.value[f.id] = fontKey(font);
     } catch {
       // it draws in the fallback font
     }

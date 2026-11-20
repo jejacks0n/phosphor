@@ -9,7 +9,7 @@
  */
 
 import { t } from '@/i18n';
-import { fontId, fontName, parseRawFont, parseFontSheet } from './BitmapFont.js';
+import { fontId, fontKey, fontName, parseRawFont, parseFontSheet } from './BitmapFont.js';
 import { ttfOf } from './BitmapTtf.js';
 
 // Checked to be one width: the narrowest and widest characters of a proportional font, and a digit.
@@ -61,9 +61,9 @@ function register(id, data) {
 
 // A drawing's bitmap font, registered with the page as a TrueType font; its CSS family.
 export async function registerBitmapFont(font) {
-  const id = fontId(font);
-  await register(id, ttfOf(font));
-  return familyOf(id);
+  const key = fontKey(font);
+  await register(key, ttfOf(font));
+  return familyOf(key);
 }
 
 function unregister(id) {

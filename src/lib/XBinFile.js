@@ -1,7 +1,7 @@
 // XBin files (16colo.rs, ansilove, Moebius): a header, an optional palette and 8×N font, then the cells,
 // optionally run-length compressed. A cell is a character byte (a slot of the file's font) and an attribute.
 import { CP437 } from './Cp437.js';
-import { SLOT_CHARS, fitFont, fontName, slotOf } from './BitmapFont.js';
+import { fitFont, fontName, slotChars, slotOf } from './BitmapFont.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES } from './Cells.js';
 import { PALETTES, nearestIndex } from './ColorUtils.js';
 import { Sauce, readSauce } from './Sauce.js';
@@ -73,7 +73,7 @@ export function readXBin(bytes, name) {
     for (let n = 0; n < total; n++) { chars[n] = data[at + n * 2]; attrs[n] = data[at + n * 2 + 1]; }
   }
 
-  const table = font ? SLOT_CHARS : CP437;
+  const table = font ? slotChars(font) : CP437; // a font's slots, its blocks where it keeps them
   const custom = (flags & PALETTE) !== 0;
   const cells = chars.map((byte, n) => {
     const fgIndex = attrs[n] & 15, bgIndex = flags & NON_BLINK ? attrs[n] >> 4 : (attrs[n] >> 4) & 7;
@@ -124,7 +124,7 @@ export function writeXBin({ cols, rows, cells, palette, font, sauce }) {
     const row = cells.slice(y * cols, (y + 1) * cols);
     compressRow(
       out,
-      row.map((c) => slotOf(fitFont(c.char))),
+      row.map((c) => slotOf(fitFont(c.char, font), font)),
       row.map((c) => nearestIndex(c.fg.r, c.fg.g, c.fg.b, colors) | (nearestIndex(c.bg.r, c.bg.g, c.bg.b, colors) << 4)),
     );
   }

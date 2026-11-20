@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { StorageSerializers, useLocalStorage } from '@vueuse/core';
 import { DISPLAY_FONT, DISPLAY_FONTS } from '@/lib/displayFonts';
 import { familyOf } from '@/lib/userFonts';
-import { fontId } from '@/lib/BitmapFont';
+import { fontId, fontKey } from '@/lib/BitmapFont';
 import { clampZoom, clampViewZoom, PIXEL_ZOOM_START } from '@/lib/zoom';
 import { measureAdvance } from '@/lib/CellCanvas';
 import { charRowsOf } from '@/lib/Cells';
@@ -260,7 +260,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       const project = useProjectStore(), drawn = project.drawingFont;
       if (drawn) {
         const id = fontId(drawn);
-        return { id, name: drawn.name, family: familyOf(id), size: state.displayFontSizes[id] ?? drawn.height, lineHeight: 1, bitmap: true, source: project.fontBitmap };
+        return { id, name: drawn.name, family: familyOf(fontKey(drawn)), size: state.displayFontSizes[id] ?? drawn.height, lineHeight: 1, bitmap: true, source: project.fontBitmap, blocks: project.fontBlocks };
       }
       const loaded = state.userFonts?.find((f) => f.id === state.displayFont);
       const font = loaded

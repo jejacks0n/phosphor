@@ -41,7 +41,7 @@ import ShapeMatcher from '../lib/ShapeMatcher.js';
 import { pluginMatcher, resolvePlugin, grownArea, SolverError } from '../lib/PluginSolve.js';
 import { solverFor, failSolver, faultSolver, failureOf, offShader } from '../plugins/solvers.js';
 import { beginRun, endRun } from '../plugins/hangMark.js';
-import { fontId, fontChars, inkOf, maskOf, slotOf } from '../lib/BitmapFont.js';
+import { fontChars, fontKey, inkOf, maskOf, slotOf } from '../lib/BitmapFont.js';
 
 export default class Renderer {
   pipelineCanvas = null;
@@ -533,7 +533,7 @@ export default class Renderer {
     if (!glyphs) {
       if (this.#glyphs.size >= 16) this.#glyphs.clear();
       const measure = font
-        ? (char) => ({ char, ink: inkOf(font, slotOf(char)), mask: maskOf(font, slotOf(char), SAMPLES.w, SAMPLES.h) })
+        ? (char) => ({ char, ink: inkOf(font, slotOf(char, font)), mask: maskOf(font, slotOf(char, font), SAMPLES.w, SAMPLES.h) })
         : (char) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h) });
       const glyph = (char, own) => ({ ...measure(char), ...(own && { own }) });
       const set = [...new Set(glyphsOf(params.chars))], more = extra ? glyphsOf(font ? fontChars(extra) : extra) : [];
@@ -547,7 +547,7 @@ export default class Renderer {
   useFont(font) {
     if (font === this.#font) return;
     this.#font = font;
-    this.#fontId = font && fontId(font);
+    this.#fontId = font && fontKey(font);
     // Cells matched before the render that brings the font (an edit between the change and it) were measured in the
     // one before, under params that already name this one: resolved again.
     this.#matchers = new WeakMap();

@@ -8,7 +8,7 @@
  * The 8x16 fonts share the IBM VGA font's cell, so a character one lacks falls back to the next on
  * the same grid (src/assets/fonts/README.md); wide characters and emoji come from the system's fonts.
  */
-import { decodeFont, fitFont, glyphRows, slotOf } from './BitmapFont.js';
+import { decodeBlocks, decodeFont, fitFont, glyphRows, slotOf } from './BitmapFont.js';
 import { registerBitmapFont } from './userFonts.js';
 
 export const DISPLAY_FONTS = Object.freeze([
@@ -49,7 +49,7 @@ export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth 
   const bitmap = font.bitmap && bitmapOf(font);
   if (bitmap) {
     ctx.fillStyle = fill;
-    const rows = glyphRows(bitmap, slotOf(fitFont(char)) ?? 32), edge = (n, of, size) => Math.ceil(n * size / of);
+    const rows = glyphRows(bitmap, slotOf(fitFont(char, bitmap), bitmap) ?? 32), edge = (n, of, size) => Math.ceil(n * size / of);
     for (let r = 0; r < bitmap.height; r++) {
       for (let b = 0; b < 8; b++) {
         if (!((rows[r] >> (7 - b)) & 1)) continue;
@@ -68,10 +68,15 @@ export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth 
   return data;
 }
 
-const bitmaps = new Map(); // a bitmap font's source -> the font
-function bitmapOf({ source, name }) {
-  if (!bitmaps.has(source)) bitmaps.set(source, decodeFont(source, name));
-  return bitmaps.get(source);
+// A bitmap font spec's font, with the blocks it names (none: they're found), decoded once for each source and blocks.
+const bitmaps = new Map();
+export function bitmapOf({ source, name, blocks }) {
+  const key = `${source}|${blocks ?? ''}`;
+  if (!bitmaps.has(key)) {
+    const font = decodeFont(source, name), set = decodeBlocks(blocks);
+    bitmaps.set(key, font && set ? { ...font, blocks: set } : font);
+  }
+  return bitmaps.get(key);
 }
 
 // Make a font the current one, and the CSS variables the views style their text with: one of
@@ -87,7 +92,7 @@ export async function setDisplayFont(font) {
   style.setProperty('--display-font-family', DISPLAY_FONT.family);
   style.setProperty('--display-font-size', `${DISPLAY_FONT.size}px`);
   style.setProperty('--display-line-height', String(DISPLAY_FONT.lineHeight));
-  if (next.bitmap) await registerBitmapFont(decodeFont(next.source, next.name));
+  if (next.bitmap) await registerBitmapFont(bitmapOf(next));
   await loadFontFaces(DISPLAY_FONT);
 }
 

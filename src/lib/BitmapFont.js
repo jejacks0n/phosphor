@@ -173,6 +173,7 @@ export function fontKey(font) {
 export const encodeBlocks = (blocks) => blocks.map((s) => s ?? 'x').join('.');
 
 export function decodeBlocks(text) {
+  if (typeof text !== 'string') return undefined;
   const parts = text.split('.');
   if (parts.length !== BLOCKS.length) return undefined;
   const blocks = parts.map((p) => (p === 'x' ? null : /^\d{1,3}$/.test(p) && +p < 256 ? +p : undefined));

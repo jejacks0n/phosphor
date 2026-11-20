@@ -3,7 +3,8 @@ import { test, it, expect, afterEach } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { readXBin, writeXBin } from '@/lib/XBinFile.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
-import { fontId, encodeFont, fontChars, findBlocks, CP437_BLOCKS } from '@/lib/BitmapFont.js';
+import { fontId, encodeFont, fontChars, findBlocks, CP437_BLOCKS, slotOf, blocksOf, withBlock, fontKey, encodeBlocks } from '@/lib/BitmapFont.js';
+import { cp437Font, lowerAt240 } from '../support/blockFonts.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
 import { registerBitmapFont } from '@/lib/userFonts.js';
@@ -14,7 +15,8 @@ afterEach(async () => {
   setGlyphRasterizer(rasterizeCoverage);
 });
 
-const font = () => ({ name: 'Topaz', height: 8, bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => i % 251) });
+// Test fonts say where their blocks are (CP437's): their glyphs are noise, in which none would be found.
+const font = () => ({ name: 'Topaz', height: 8, bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => i % 251), blocks: [...CP437_BLOCKS] });
 
 async function blank() {
   const { project } = await createTestApp();
@@ -122,14 +124,14 @@ it('fitCells swaps what the font lacks', async () => {
 });
 
 it('measures coverage from the font\'s pixels', () => {
-  const f = { name: 'Solid space', height: 8, bytes: new Uint8Array(256 * 8) };
+  const f = { name: 'Solid space', height: 8, bytes: new Uint8Array(256 * 8), blocks: [...CP437_BLOCKS] };
   f.bytes.fill(0xff, 32 * 8, 33 * 8);
   useBitmapCoverage(f); // as App.vue installs it
   expect(coverageOf(' ')).toEqual([1, 1]);
   expect(coverageOf('█')).toEqual([0, 0]); // a block too: this font's is blank
   expect(coverageOf('▙')).toEqual(coverageOf('▄')); // no slot: measured as its stand-in, the ▄ the ANSI view shows
   expect(coverageOf('▄')).toEqual([0, 0]);
-  const spec = { id: fontId(f), name: f.name, family: 'monospace', size: 8, lineHeight: 1, bitmap: true, source: encodeFont(f) };
+  const spec = { id: fontId(f), name: f.name, family: 'monospace', size: 8, lineHeight: 1, bitmap: true, source: encodeFont(f), blocks: encodeBlocks(f.blocks) };
   expect(drawGlyph('▙', 8, 8, 1, '#fff', false, spec)).toEqual(drawGlyph('▄', 8, 8, 1, '#fff', false, spec)); // drawn as it, too
 });
 
@@ -169,12 +171,12 @@ it('registering a font twice at once adds one face', async () => {
   const f = { name: 'Twice', height: 8, bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => (i * 7) % 256) };
   const [a, b] = await Promise.all([registerBitmapFont(f), registerBitmapFont(f)]);
   expect(a).toBe(b);
-  expect([...document.fonts].filter((face) => face.family.replace(/"/g, '') === `Phosphor Font ${fontId(f)}`)).toHaveLength(1);
+  expect([...document.fonts].filter((face) => face.family.replace(/"/g, '') === `Phosphor Font ${fontKey(f)}`)).toHaveLength(1);
 });
 
 // A 16-tall font whose only lit glyphs are the full block (219) and an A with its left half lit (65), or, top, its top half.
 function halfA({ top = false } = {}) {
-  const f = { name: 'Half A', height: 16, bytes: new Uint8Array(256 * 16) };
+  const f = { name: 'Half A', height: 16, bytes: new Uint8Array(256 * 16), blocks: [...CP437_BLOCKS] };
   f.bytes.fill(0xff, 219 * 16, 220 * 16);
   if (top) f.bytes.fill(0xff, 65 * 16, 65 * 16 + 8);
   else f.bytes.fill(0xf0, 65 * 16, 66 * 16);
@@ -317,4 +319,88 @@ it('a Limited count of 8 exports its 8 colors and black after', async () => {
   const near = (a, b) => [1, 3, 5].every((i) => Math.abs(parseInt(a.slice(i, i + 2), 16) - parseInt(b.slice(i, i + 2), 16)) < 4); // the file keeps 6 bits a channel
   expect(palette.slice(0, 8).every((hex, i) => near(hex, active[i]))).toBe(true);
   expect(palette.slice(8)).toEqual(Array(8).fill('#000000'));
+});
+
+// A drawing in a font whose lower half is at 240 (lowerAt240): paint's ▄ is drawn from that slot.
+async function movedHalf() {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10, withLayer: true });
+  project.setDrawingFont(lowerAt240);
+  await settle(project);
+  return { project, workspace };
+}
+
+it('a drawing in a font whose lower half moved draws paint in that slot, and exports it there', async () => {
+  const { project } = await movedHalf();
+  project.quantize = 'cga';
+  project.paintStroke([{ x: 0, y: 1, alpha: 1 }], '#ff5555', { blockChars: true }); // the lower half of cell 0, as the Brush
+  project.commitEdit();
+  await settle(project);
+  expect(project.cells[0].char).toBe('▄');
+  expect(slotOf(project.cells[0].char, project.drawingFont)).toBe(240);
+  expect(project.processParams.font).toBe(fontKey(project.drawingFont));
+  let blob;
+  await project.exportFile('xb', { deliver: (b) => { blob = b; }, sauce: false });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  expect(bytes.slice(11 + 48 + 256 * 16).includes(240)).toBe(true); // the byte in the file
+});
+
+it('a block edit is one undo step, and undo draws in the old map at once', async () => {
+  const { project } = await movedHalf();
+  expect(project.fontBlocks).toBe('');
+  const before = project.drawingFont;
+  const version = project.history.version;
+  project.setDrawingFont({ ...project.drawingFont, blocks: withBlock(blocksOf(project.drawingFont), 'lower', 220) });
+  expect(project.history.version).toBe(version + 1);
+  expect(project.fontBlocks).not.toBe('');
+  expect(slotOf('▄', project.drawingFont)).toBe(220);
+  const family = await registerBitmapFont(project.drawingFont);
+  project.undo();
+  expect(project.fontBlocks).toBe('');
+  expect(slotOf('▄', project.drawingFont)).toBe(240);
+  expect(await registerBitmapFont(project.drawingFont)).not.toBe(family);
+  expect(await registerBitmapFont(before)).toBe(await registerBitmapFont(project.drawingFont));
+});
+
+it('set blocks come back with the project, and a project with a slot twice falls back to found ones', async () => {
+  const { project } = await movedHalf();
+  project.setDrawingFont({ ...project.drawingFont, blocks: withBlock(blocksOf(project.drawingFont), 'lower', 220) });
+  const file = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'a.phosphor');
+  const { project: other } = await createTestApp();
+  await other.openParts(await readProject(file), { filename: 'other' });
+  expect(other.fontBlocks).toBe(project.fontBlocks);
+  expect(slotOf('▄', other.drawingFont)).toBe(220);
+  other.fontBlocks = '219.219.223.221.222.176.177.178';
+  expect(slotOf('▄', other.drawingFont)).toBe(240); // found again
+});
+
+it('the canvas draws a block edit and its undo at once', async () => {
+  const { project, workspace } = await movedHalf();
+  const lit = async () => {
+    const spec = workspace.displayFontSpec;
+    await setDisplayFont(spec);
+    return [...drawGlyph('▄', 8, 16, 1, '#fff', false, spec)].filter((_, i) => i % 4 === 3 && _).length;
+  };
+  const whole = 8 * 8; // half of an 8 x 16 cell
+  expect(await lit()).toBe(whole); // slot 240's lower half
+  project.setDrawingFont({ ...project.drawingFont, blocks: withBlock(blocksOf(project.drawingFont), 'lower', 220) });
+  expect(workspace.displayFontSpec.family).toContain(fontKey(project.drawingFont));
+  expect(await lit()).not.toBe(whole); // slot 220's mark
+  project.undo();
+  expect(await lit()).toBe(whole);
+});
+
+it('set blocks stay through an .ans opened after, and an XBin with no blocks of its own resets them', async () => {
+  const { project } = await movedHalf();
+  project.setDrawingFont({ ...project.drawingFont, blocks: withBlock(blocksOf(project.drawingFont), 'lower', 220) });
+  const blocks = project.fontBlocks;
+  await project.openArtFile(new File(['hello'], 'note.ans'));
+  expect(project.fontBlocks).toBe(blocks);
+  project.clearImage();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  expect(project.fontBlocks).toBe(blocks);
+  const palette = Array.from({ length: 16 }, () => '#000000');
+  const cells = [{ char: 'A', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }];
+  await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells, palette, font: cp437Font })], 'own.xb'));
+  expect(project.fontBlocks).toBe('');
 });

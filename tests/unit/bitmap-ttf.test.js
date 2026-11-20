@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { ttfOf } from '@/lib/BitmapTtf.js';
+import { cp437Font, lowerAt240 } from '../support/blockFonts.js';
 
 const font = (h) => ({ name: 'Test', height: h, bytes: new Uint8Array(256 * h).fill(0x81) });
 const tables = (buf) => {
@@ -39,4 +40,19 @@ it('declares name lengths that match its bytes, for a name above U+FFFF', () => 
     end = Math.max(end, v.getUint16(r + 8) + v.getUint16(r + 10));
   }
   expect(storage + end).toBe(name.length);
+});
+
+// The glyph the cmap gives a code point (format 4).
+const glyphFor = (buf, code) => {
+  const v = new DataView(buf), { cmap } = tables(buf), sub = cmap.offset + v.getUint32(cmap.offset + 8);
+  const n = v.getUint16(sub + 6) / 2, end = sub + 14, start = end + n * 2 + 2, delta = start + n * 2, range = delta + n * 2;
+  for (let i = 0; i < n; i++) {
+    if (v.getUint16(end + i * 2) < code || v.getUint16(start + i * 2) > code) continue;
+    return v.getUint16(range + i * 2) === 0 ? (code + v.getInt16(delta + i * 2)) & 0xffff : null;
+  }
+  return null;
+};
+it('maps ▄ to the slot the font draws it from', () => {
+  expect(glyphFor(ttfOf(cp437Font), 0x2584)).toBe(221);
+  expect(glyphFor(ttfOf(lowerAt240), 0x2584)).toBe(241);
 });

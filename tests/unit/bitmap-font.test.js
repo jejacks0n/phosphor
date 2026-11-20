@@ -118,6 +118,7 @@ describe('blocks', () => {
     expect(encodeBlocks(CP437_BLOCKS)).toBe('219.220.223.221.222.176.177.178');
     expect(decodeBlocks(encodeBlocks(blocks))).toEqual(blocks);
     expect(decodeBlocks('')).toBeUndefined();
+    expect(decodeBlocks(undefined)).toBeUndefined();
     expect(decodeBlocks('219.219.223.221.222.176.177.178')).toBeUndefined();
     expect(decodeBlocks('219.220')).toBeUndefined();
     expect(decodeBlocks('219.256.223.221.222.176.177.178')).toBeUndefined();

@@ -193,7 +193,7 @@ export default class FrameBuilder {
       return { kind: 'cells', cells: cellsIn(own), paint: u.paint, params: u.params, ownChars: u.ownChars };
     });
     if (renderer.upper.length) cells = renderer.composeUpper(cells, null, renderer.palette);
-    if (this.#font) cells = fitCells(cells);
+    if (this.#font) cells = fitCells(cells, this.#font);
     cells = layoutWide(cells, cols);
     if (previous?.cells.length === cells.length) {
       for (let i = 0; i < cells.length; i++) if (sameCell(cells[i], previous.cells[i])) cells[i] = previous.cells[i];

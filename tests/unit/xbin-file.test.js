@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { isXBin, readXBin, writeXBin } from '@/lib/XBinFile.js';
 import { SLOT_CHARS } from '@/lib/BitmapFont.js';
+import { lowerAt240 } from '../support/blockFonts.js';
 import { readSauce } from '@/lib/Sauce.js';
 
+// Noise glyphs, but for the blocks at CP437's slots (where the reader finds them).
 const font = { name: 'f', height: 8, bytes: Uint8Array.from({ length: 2048 }, (_, i) => i & 0xff) };
+const rows = (top, bottom) => [...Array(4).fill(top), ...Array(4).fill(bottom)];
+const shade = (a, b) => [a, b, a, b, a, b, a, b];
+Object.entries({ 219: rows(255, 255), 220: rows(0, 255), 223: rows(255, 0), 221: rows(0xf0, 0xf0), 222: rows(0x0f, 0x0f), 176: shade(0x88, 0x22), 177: shade(0xaa, 0x55), 178: shade(0xdd, 0x77) })
+  .forEach(([slot, glyph]) => font.bytes.set(glyph, slot * 8));
 const PAL = ['#000000', '#0000aa', '#00aa00', '#00aaaa', '#aa0000', '#aa00aa', '#aa5500', '#aaaaaa', '#555555', '#5555ff', '#55ff55', '#55ffff', '#ff5555', '#ff55ff', '#ffff55', '#ffffff'];
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16), hex });
 const grid = (cols, rows, at) => Array.from({ length: cols * rows }, (_, i) => at(i % cols, Math.floor(i / cols)));
@@ -23,6 +29,10 @@ describe('XBin', () => {
     const data = bytes.slice(11 + 48 + 2048);
     // 80 = 64 + 16 per row: [0xFF ' ' attr] [0xCF ' ' attr], twice
     expect([...data]).toEqual([0xff, 32, 7, 0xcf, 32, 7, 0xff, 32, 7, 0xcf, 32, 7]);
+  });
+  it('writes a block in the slot its font draws it from', () => {
+    const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: '▄', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: PAL, font: lowerAt240, sauce: false });
+    expect(bytes[11 + 48 + 256 * 16 + 1]).toBe(240);
   });
   it('fits characters the font lacks', () => {
     const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: '▙', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: PAL, font, sauce: false });

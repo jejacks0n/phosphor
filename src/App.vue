@@ -13,8 +13,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage } from '@/lib/GlyphCoverage';
-import { setDisplayFont } from '@/lib/displayFonts';
-import { decodeFont } from '@/lib/BitmapFont';
+import { bitmapOf, setDisplayFont } from '@/lib/displayFonts';
 import { loadFonts } from '@/lib/userFonts';
 import { charRowsOf } from '@/lib/Cells';
 
@@ -135,7 +134,7 @@ watch(() => workspace.userFonts && JSON.stringify(workspace.displayFontSpec), (s
   const font = JSON.parse(spec), change = ++fontChange;
   setDisplayFont(font).then(() => {
     if (change !== fontChange) return; // changed again meanwhile
-    const bitmap = font.bitmap && decodeFont(font.source, font.name);
+    const bitmap = font.bitmap && bitmapOf(font);
     if (bitmap) useBitmapCoverage(bitmap);
     else setGlyphRasterizer(rasterizeCoverage);
     workspace.displayFontLoaded = font;

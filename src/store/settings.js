@@ -23,6 +23,7 @@ export const SETTINGS = [
   { key: 'chars', default: '.*:%░░▒▒▓▓▄■■■■■■■▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄', group: 'setup', pipeline: false, most: MOST_LIST, get help() { return t('settings.chars.help'); } },
   { key: 'fontBitmap', default: '', group: 'setup', pipeline: false, most: MOST_LIST }, // the drawing's bitmap font, base64 ('' for none)
   { key: 'fontName', default: '', group: 'setup', pipeline: false },
+  { key: 'fontBlocks', default: '', group: 'setup', pipeline: false }, // the slots the drawing's font draws its eight blocks from (BitmapFont.encodeBlocks), '' for the ones found
   { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false, most: MOST_LIST },
   { key: 'seed', default: () => generateSlug(2), group: 'setup', get help() { return t('settings.seed.help'); } },
   { key: 'charChoice', default: 'random', group: 'setup', pipeline: false, get help() { return t('settings.charChoice.help'); } },

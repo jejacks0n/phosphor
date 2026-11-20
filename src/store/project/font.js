@@ -1,14 +1,16 @@
-import { encodeFont } from '@/lib/BitmapFont.js';
+import { encodeBlocks, encodeFont } from '@/lib/BitmapFont.js';
 
-// The drawing's bitmap font: kept in the settings as base64 (fontBitmap, with its name), so it's saved,
+// The drawing's bitmap font: kept in the settings as base64 (fontBitmap, with its name and blocks), so it's saved,
 // autosaved and fingerprinted like the rest. Changing it is one undo step; before a drawing, the next one's font.
 export const fontActions = {
   // font: a BitmapFont ({ name, height, bytes }) or null for none. The font it already has is no step.
   setDrawingFont(font) {
-    const after = font ? { fontBitmap: encodeFont(font), fontName: font.name } : { fontBitmap: '', fontName: '' };
-    if (after.fontBitmap === this.fontBitmap && after.fontName === this.fontName) return;
+    const after = font
+      ? { fontBitmap: encodeFont(font), fontName: font.name, fontBlocks: font.blocks ? encodeBlocks(font.blocks) : '' }
+      : { fontBitmap: '', fontName: '', fontBlocks: '' };
+    if (Object.keys(after).every((key) => after[key] === this[key])) return;
     if (!this.image) return void this.$patch(after); // no drawing yet: the next one's font, with nothing to undo
-    const before = { fontBitmap: this.fontBitmap, fontName: this.fontName };
+    const before = { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks };
     this.commitPending();
     this.$patch(after);
     const on = (values) => () => { this.$patch(values); this.render(); };

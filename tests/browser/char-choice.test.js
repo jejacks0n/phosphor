@@ -9,6 +9,7 @@ import ShapeMatcher from '@/lib/ShapeMatcher.js';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { setDisplayFont } from '@/lib/displayFonts';
+import { CP437_BLOCKS } from '@/lib/BitmapFont';
 import { layoutWide, halfColors } from '@/lib/Cells';
 import { PALETTES } from '@/lib/ColorUtils.js';
 import { processImage } from '@/lib/ImageProcessor.js';
@@ -412,7 +413,7 @@ for (const [renderStyle, shape, chars] of [['ansi', { charChoice: 'shape' }, HIG
 it('offers only the font\'s glyphs', async () => {
   const { project } = await createTestApp();
   await project.setBlankCanvas({ cols: 10, rows: 10 });
-  project.setDrawingFont({ name: 'Blank', height: 8, bytes: new Uint8Array(256 * 8) });
+  project.setDrawingFont({ name: 'Blank', height: 8, bytes: new Uint8Array(256 * 8), blocks: [...CP437_BLOCKS] }); // blocks said: none would be found in a blank font
   const host = document.body.appendChild(document.createElement('div'));
   const app = createApp({ render: () => h(CharPaletteLayer) }).use(getActivePinia()).use(i18n);
   app.mount(host);

@@ -1,6 +1,6 @@
 // A bitmap font as a TrueType font of square pixels (a pixel is 64 units, the em is 64 x height), so
 // canvas fillText and CSS draw it pixel for pixel at font-size: <height>px.
-import { SLOT_CHARS, glyphRows } from './BitmapFont.js';
+import { glyphRows, slotChars } from './BitmapFont.js';
 
 const PX = 64;
 const ADVANCE = 8 * PX;
@@ -68,12 +68,12 @@ export function ttfOf(font) {
   const { height } = font;
   const em = PX * height;
   const glyphs = [{ data: new Uint8Array(0), xMin: 0, points: 0, contours: 0 }];
-  SLOT_CHARS.forEach((_, i) => glyphs.push(glyphOf(glyphRows(font, i), height)));
+  for (let i = 0; i < 256; i++) glyphs.push(glyphOf(glyphRows(font, i), height));
   const n = glyphs.length;
   const padded = glyphs.map((g) => join([g.data, new Uint8Array((4 - (g.data.length % 4)) % 4)]));
   const offsets = padded.reduce((a, p) => (a.push(a[a.length - 1] + p.length), a), [0]);
 
-  const codes = SLOT_CHARS.map((c, i) => [c.codePointAt(0), i + 1]).sort((a, b) => a[0] - b[0]);
+  const codes = slotChars(font).map((c, i) => [c.codePointAt(0), i + 1]).sort((a, b) => a[0] - b[0]);
   const segs = [...codes, [0xffff, 0]];
   const sc = segs.length;
   const pow = 2 ** Math.floor(Math.log2(sc));

@@ -269,7 +269,7 @@ export const renderingActions = {
   // With a drawing font, a character it lacks is swapped for its stand-in (BitmapFont.fitCells); the edit cells keep it.
   setCells(composed, rows = null, laid = this.cells) {
     if (this.drawingFont) { // ponytail: fits every cell each edit; fit only `rows` if 500k-cell drawings feel it
-      const fitted = fitCells(composed);
+      const fitted = fitCells(composed, this.drawingFont);
       if (laid === composed) laid = fitted; // layUpper's rows kept as composed: fitted too
       composed = fitted;
     }

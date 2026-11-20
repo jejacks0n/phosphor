@@ -17,7 +17,7 @@ import { usePluginStore } from '@/store/PluginStore.js';
 import { useRoomStore } from '@/store/RoomStore.js';
 import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
 import { PALETTES, parseColorList } from '@/lib/ColorUtils.js';
-import { decodeFont, fontChars, fontId } from '@/lib/BitmapFont.js';
+import { decodeBlocks, decodeFont, fontChars, fontKey } from '@/lib/BitmapFont.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -75,7 +75,7 @@ const NO_FILTERS = Object.freeze([]); // no plugin filter runs: one array, so pa
 // A layer's params: the drawing's (processParams) with its own character settings over them, made once per processParams
 // and chars (layerParams), so each keeps its identity while neither changes: the Renderer's caches go by it. With a
 // drawing font (params.font) the characters are the font's (fontChars), as processParams' are.
-const fitted = (font, chars) => (font ? fontChars(chars) : chars);
+const fitted = (font, chars) => (font ? fontChars(chars, font) : chars);
 const OWN_PARAMS = new WeakMap(); // processParams -> WeakMap(chars -> params)
 
 // What a layer's plugin solver comes to in its params: the solver to use (null for a built-in, or a stand-in), its options,
@@ -123,11 +123,15 @@ function firstLedger() {
   return newLedger(() => useProjectStore(pinia));
 }
 
-// decodeFont's last answer, so the getter doesn't decode the same string for each store.
-let lastFont = { text: '', name: '', font: null };
-function fontFor(text, name) {
+// decodeFont's last answer, so the getter doesn't decode the same string for each store. blocks: the drawing's own
+// (fontBlocks), when they decode; else the font has none and they're found.
+let lastFont = { text: '', name: '', blocks: '', font: null };
+function fontFor(text, name, blocks) {
   if (!text) return null;
-  if (lastFont.text !== text || lastFont.name !== name) lastFont = { text, name, font: decodeFont(text, name) };
+  if (lastFont.text !== text || lastFont.name !== name || lastFont.blocks !== blocks) {
+    const font = decodeFont(text, name), set = decodeBlocks(blocks);
+    lastFont = { text, name, blocks, font: font && set ? { ...font, blocks: set } : font };
+  }
   return lastFont.font;
 }
 
@@ -205,7 +209,7 @@ export const useProjectStore = defineStore('project', {
 
   getters: {
     // The drawing's bitmap font, or null: decoded once for each fontBitmap.
-    drawingFont: (state) => fontFor(state.fontBitmap, state.fontName),
+    drawingFont: (state) => fontFor(state.fontBitmap, state.fontName, state.fontBlocks),
     // The 16 colors an XBin export holds, as hexes in XBin's DOS order, or null when the drawing's palette is more.
     xbinPalette(state) {
       const hexes = (colors) => (colors.length >= 1 && colors.length <= 16 ? colors.map((c) => c.hex) : null);
@@ -414,14 +418,14 @@ export const useProjectStore = defineStore('project', {
         .map(({ ref, pluginId, found }) => ({ ref, pluginId, hash: found.hash, def: found.def }));
       return filterGroups({ saved: this.filterOptions, installed, pluginState: plugins.pluginState, pluginsOff: plugins.off, failures: plugins.filterFailures });
     },
-    // font: the drawing font's id (BitmapFont.fontId), or null; with one, chars are only what it holds (fontChars).
+    // font: the drawing font's key (BitmapFont.fontKey), or null; with one, chars are only what it holds (fontChars).
     processParams(state) {
       const plugins = usePluginStore();
       void plugins.solverStamp; void plugins.off; void plugins.plugins.map(({ id, enabled }) => id + enabled); // the params made anew when the plugins change
       const running = runningFilters(this.filterGroups);
       return {
         ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
-        font: state.drawingFont && fontId(state.drawingFont),
+        font: state.drawingFont && fontKey(state.drawingFont),
         chars: fitted(state.drawingFont, state.renderStyle === 'ansi' ? state.chars : state.charsAscii),
         charMode: charModeOf(state.renderStyle, state.charChoice, state.charChoiceAscii), // how a cell's character is picked (Cells.js)
         charChoice: state.charChoice,
