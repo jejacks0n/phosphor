@@ -310,9 +310,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="root" class="palette-layer" :class="{ editing: editing || onFonts }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
-    <div class="pages" role="group" :aria-label="t('palette.pages.aria')">
-      <button :class="{ on: !onFonts }" :aria-pressed="!onFonts" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.pages.palettes') }}</button>
-      <button :class="{ on: onFonts }" :aria-pressed="onFonts" @click="workspace.paletteLayerPage = 'fonts'">{{ t('palette.pages.fonts') }}</button>
+    <div class="pages">
+      <div class="tablist" role="tablist" :aria-label="t('palette.pages.aria')">
+        <button role="tab" :class="{ on: !onFonts }" :aria-selected="!onFonts" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.pages.palettes') }}</button>
+        <button role="tab" :class="{ on: onFonts }" :aria-selected="onFonts" @click="workspace.paletteLayerPage = 'fonts'">{{ t('palette.pages.fonts') }}</button>
+      </div>
+      <!-- wide (or the whole window), the layer has no outside close at hand to press -->
+      <button v-if="editing || onFonts" class="close" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('close')">×</button>
     </div>
     <FontsPage v-if="onFonts" ref="fontsPage" @acted="keepKeys"/>
     <!-- the Palettes page -->
@@ -473,27 +477,61 @@ div.palette-layer.editing {
   width: 940px;
 }
 
-/* The Palettes | Fonts switch, over the page. */
+/* The Palettes | Fonts tabs over the page, as the side panel's, and the wide layer's × (the app's, global.css) at the
+   row's right end, inside the layer, which clips what hangs off it. */
 div.pages {
   display: flex;
-  gap: 4px;
-  padding: 8px 12px 0;
+  align-items: stretch;
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--border);
 }
 
-div.pages button {
-  padding: 4px 10px;
+div.tablist {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
+div.pages button[role='tab'] {
+  padding: 0 12px;
   border: none;
-  border-radius: 4px;
-  background: transparent;
+  border-radius: 0;
+  background: none;
   color: var(--text-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
+  transition: color 0.3s ease;
 }
 
-div.pages button.on {
-  background: var(--surface-3);
+div.pages button[role='tab']:not(.on):hover {
+  color: var(--accent);
+}
+
+div.pages button[role='tab']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+div.pages button[role='tab'].on {
+  font-weight: 600;
   color: var(--text);
+  box-shadow: inset 0 -2px var(--accent);
+}
+
+div.pages button.close {
+  position: static;
+  align-self: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  font-size: 17px;
+  line-height: 1.15;
+  box-shadow: none;
 }
 
 /* The rules below that the Fonts page shares reach into it (:deep). */

@@ -156,11 +156,11 @@ IBM VGA, Unscii, and Unifont are 8×16 pixel fonts that share one cell, so box d
 
 ### Managing Fonts
 
-The Font dropdown chooses the font; loading, saving and removing fonts happen on the **Fonts** page of the character palette layer. Click **Manage fonts ▸** beside the Font field to open it. It opens with any tool in hand (from the SAUCE tab it switches to ANSI first), and on the start screen before any drawing is open. A bitmap font chosen there, or in use when you start a blank canvas, is the new drawing's font; opening an ANSI, text or XBin file brings that file's own font, or none. Switching from **Fonts** to **Palettes** (or **Palettes ▸**) opens the palette editor, so the layer keeps its width; **Escape** there closes the layer. Close the layer with **Escape**, a click outside it, or the Type tool's palette button.
+The Font dropdown chooses the font; loading, saving and removing fonts happen on the **Fonts** page of the character palette layer. Click **Manage fonts ▸** beside the Font field to open it. It opens with any tool in hand (from the SAUCE tab it switches to ANSI first), and on the start screen before any drawing is open. A bitmap font chosen there, or in use when you start a blank canvas, is the new drawing's font; opening an ANSI, text or XBin file brings that file's own font, or none. Switching from **Fonts** to **Palettes** (or **Palettes ▸**) opens the palette editor, so the layer keeps its width; **Escape** there closes the layer. Close the layer with **Escape**, a click outside it, the Type tool's palette button, or, while it's wide, the **×** at its top right.
 
-In someone else's room, and while you're inside an art layer, **Manage fonts ▸** is off with the rest of the Drawing settings. There, reach the Fonts page through the Type tool's palette button and the layer's **Fonts** switch ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
+In someone else's room, and while you're inside an art layer, **Manage fonts ▸** is off with the rest of the Drawing settings. There, reach the Fonts page through the Type tool's palette button and the layer's **Fonts** tab ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
-The character palette layer has a **Palettes | Fonts** switch at the top. **Palettes** is the palette editor ([Palettes That Belong to a Font](#palettes-that-belong-to-a-font)).
+The character palette layer has two tabs at the top, **Palettes** and **Fonts**. **Palettes** is the palette editor ([Palettes That Belong to a Font](#palettes-that-belong-to-a-font)).
 
 ### The Fonts Page
 

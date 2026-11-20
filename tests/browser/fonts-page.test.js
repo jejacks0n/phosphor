@@ -64,6 +64,17 @@ test('the switch moves between the pages', async () => {
   expect(workspace.paletteLayerPage).toBe('fonts');
 });
 
+test('the pages are tabs, and the wide layer has a close button', async () => {
+  const { workspace } = await mount();
+  const tabs = [...host.querySelectorAll('[role="tablist"] [role="tab"]')];
+  expect(tabs.map((el) => [el.textContent.trim(), el.getAttribute('aria-selected')])).toEqual([['Palettes', 'false'], ['Fonts', 'true']]);
+  await press(host.querySelector('button.close[aria-label="Close"]'));
+  expect(closes).toBe(1);
+  await press(tabs[0]);
+  expect(workspace.paletteLayerPage).toBe('palettes');
+  expect(host.querySelector('button.close')).toBeTruthy(); // the palette editor is wide too
+});
+
 test('lists the drawing\'s font first, then yours, then the built-in ones', async () => {
   const { b, tt } = await mount();
   expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);

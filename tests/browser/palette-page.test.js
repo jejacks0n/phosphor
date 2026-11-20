@@ -57,6 +57,7 @@ const edit = async (name) => {
 
 test('the drawing\'s font\'s palettes come first', async () => {
   await mount({ setup: (p) => named(p, 'Frogs') });
+  expect(host.querySelector('button.close')).toBeNull(); // the narrow list closes by a press outside it
   expect(headers()).toEqual(['For A', 'Built-in', 'Yours']);
   expect(row('Frogs')).toBeTruthy();
   app.unmount();
