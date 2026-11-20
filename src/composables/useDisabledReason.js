@@ -6,8 +6,10 @@ import { toast } from '@/composables/useToast';
 // target: some disabled buttons have pointer-events: none. But only when nothing else is laid over it: what's under the
 // finger must be the button, a child of it, or an ancestor of it (the one a pointer-events: none button's touch lands on).
 // A touch that moved (a swipe or scroll) is not a tap. A mouse or pen click (pointerup: a disabled button gets no
-// click, but does get the pointer's own events) has the tooltip, so says nothing by itself. Either way the button
-// first hears a cancelable `offreason` event: canceled, it has said why itself (a paint tool that's off: useFontSetup).
+// click) is found the same way: in the app a disabled button has pointer-events: none, so the pointer's events land on
+// an ancestor, and the hit-test by rectangle is what finds the button. A mouse has the tooltip, so it says nothing by
+// itself. Either way the button first hears a cancelable `offreason` event: canceled, it has said why itself (a paint
+// tool that's off: useFontSetup).
 const SLOP = 10; // px a finger may drift and still be a tap
 let down = null, pressed = null;
 
