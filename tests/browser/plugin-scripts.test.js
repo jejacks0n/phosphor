@@ -11,6 +11,7 @@ import { usePluginStore } from '@/store/PluginStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { zipOf } from '../support/zipOf.js';
 import { ownDatabase } from '../support/socialDatabase.js';
+import { ownHangMark } from '../support/ownHangMark.js';
 
 const ID = 'jane.outlines';
 const EDGES = solverRef(ID, 'edges');
@@ -40,12 +41,14 @@ const installed = async (from = pkg()) => {
 
 beforeEach(async () => {
   await ownDatabase('phosphor-plugins', 'plugin-scripts')();
+  ownHangMark('plugin-scripts');
   globalThis.ran = 0;
   store = newStore();
 });
 afterEach(async () => {
   for (const id of Object.keys(store?.following ?? {})) await store.follow(id, false);
   store?.dropSolvers(ID);
+  localStorage.removeItem(HANG_KEY);
   vi.restoreAllMocks();
   window.showOpenFilePicker = undefined;
   window.showDirectoryPicker = undefined;
@@ -155,12 +158,10 @@ test('a stored script whose hash no longer matches is not loaded and says so', a
 test('a hang mark left by the last visit switches that plugin off with the reason', async () => {
   await installed();
   store.dropSolvers(ID);
-  // The origin's localStorage is shared with other test files' loads, so the mark is stubbed, not written.
-  const getItem = Storage.prototype.getItem;
-  const mark = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (key) { return key === HANG_KEY ? ID : getItem.call(this, key); });
+  localStorage.setItem(HANG_KEY, ID);
   store = newStore();
   await store.load();
-  mark.mockRestore();
+  expect(localStorage.getItem(HANG_KEY)).toBe(null);
   expect(store.plugins[0].enabled).toBe(false);
   expect((await loadPlugins())[0].enabled).toBe(false);
   expect(store.solvers[EDGES]).toBeUndefined();
@@ -170,6 +171,11 @@ test('a hang mark left by the last visit switches that plugin off with the reaso
   expect(store.problems[ID]).toBeDefined();
   await store.setEnabled(ID, true);
   expect(store.solvers[EDGES]).toBeDefined();
+  expect(store.problems[ID]).toBeUndefined();
+
+  localStorage.setItem(HANG_KEY, ID); // as an import of this visit's own would hold it
+  await store.load();
+  expect(store.plugins[0].enabled).toBe(true);
   expect(store.problems[ID]).toBeUndefined();
 });
 

@@ -6,12 +6,14 @@ import midnight from '../fixtures/plugins/midnight/phosphor-plugin.json?raw';
 import { usePluginStore, linksFiles } from '@/store/PluginStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ownDatabase } from '../support/socialDatabase.js';
+import { ownHangMark } from '../support/ownHangMark.js';
 
 const ID = 'jane.midnight';
 let dir, name, handle, store;
 
 beforeEach(async () => {
   await ownDatabase('phosphor-plugins', 'plugin-follow')();
+  ownHangMark('plugin-follow');
   dir = await navigator.storage.getDirectory();
   name = `plugin-${Math.random().toString(36).slice(2)}.json`;
   handle = await dir.getFileHandle(name, { create: true });

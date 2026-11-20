@@ -229,9 +229,9 @@ export const usePluginStore = defineStore('plugins', {
       });
       delete this.pendingCode[id];
       if (!handle) this.unfollow(id);
-      // registering replaces what an older script registered, so nothing calls its solvers again
+      // an older script's solvers go first, so nothing calls them again
+      this.dropSolvers(id);
       if (defs && enabled) this.useSolvers(id, scriptHash, defs);
-      else this.dropSolvers(id);
     },
 
     // The linked file or folder read again: true when it's taken, false with the reason in problems (the record as it
