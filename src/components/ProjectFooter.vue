@@ -3,10 +3,14 @@ import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { usePluginStore } from '@/store/PluginStore';
 import { SUPPORTED_LOCALES, locale, setLocale } from '@/i18n';
 
 const { t } = useI18n();
-const { theme } = storeToRefs(useWorkspaceStore());
+const { theme, pluginsOpen } = storeToRefs(useWorkspaceStore());
+const plugins = usePluginStore();
+// The select shows a plugin's theme while it's the one in use, and Themes… otherwise.
+const pluginTheme = computed(() => (plugins.themes.some(({ ref }) => ref === theme.value) ? theme.value : ''));
 const year = new Date().getFullYear();
 
 const THEME_ICONS = {
@@ -24,7 +28,8 @@ const themes = computed(() => [
 
 <template>
   <footer class="project-footer">
-    <div class="footer-controls">
+    <!-- With a plugin's theme on offer, a third control: the language, the icons, and the select of those themes. -->
+    <div class="footer-controls" :class="{ thirds: plugins.themes.length }">
       <label class="locale-picker" :title="t('footer.language')">
         <select
             class="locale-select"
@@ -44,7 +49,19 @@ const themes = computed(() => [
           <span v-html="icon"></span>
         </label>
       </div>
+      <select
+          v-if="plugins.themes.length"
+          class="locale-select"
+          :value="pluginTheme"
+          :aria-label="t('tabs.pluginThemesAria')"
+          :title="t('tabs.pluginThemesAria')"
+          @change="theme = $event.target.value"
+      >
+        <option value="" disabled hidden>{{ t('tabs.themes.more') }}</option>
+        <option v-for="item in plugins.themes" :key="item.ref" :value="item.ref">{{ item.name }}</option>
+      </select>
     </div>
+    <button type="button" class="plugins-button" @click="pluginsOpen = true">{{ t('plugins.open') }}</button>
     <div class="copyright">{{ t('footer.copyright', { year }) }}</div>
   </footer>
 </template>
@@ -63,6 +80,14 @@ footer.project-footer {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
+  margin-bottom: 10px;
+}
+.footer-controls.thirds {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.plugins-button {
+  width: 100%;
+  padding: 6px 12px;
   margin-bottom: 10px;
 }
 div.themes {

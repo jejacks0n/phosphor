@@ -142,6 +142,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     isMiddleClick: false,
     settingsOpen: false,
     showAboutModal: false,
+    pluginsOpen: false,      // the Plugins dialog (PluginsDialog)
     shortcutsOpen: false,    // the keyboard shortcuts list (ShortcutsDialog)
     legalPage: null,         // the Terms, Privacy Policy or Community Guidelines while one's open (LegalDialog): 'terms' | 'privacy' | 'guidelines'
     colorBox: null,          // the color box (ColorPair's popover) while it's open: 'fg' | 'bg'
