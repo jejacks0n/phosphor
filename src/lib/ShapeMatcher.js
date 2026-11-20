@@ -359,6 +359,10 @@ export default class ShapeMatcher {
     });
   }
 
+  lost() {
+    return this.#gl.isContextLost();
+  }
+
   // The compiler's or linker's log for a plugin solver's pass (ref: its solver ref) that didn't build, or null.
   shaderProblem(ref) {
     for (const [key, { log }] of this.#plugins) if (log && key.startsWith(`${ref}\u0000`)) return log;
@@ -474,7 +478,7 @@ export default class ShapeMatcher {
     if (refines && area && !first) area = null; // as resolvePlugin
     const spread = nudgeSpread(palette), nudges = new Float32Array(16);
     for (let i = 0; i < 16; i++) nudges[i] = strength > 0 ? bayerNudge(i & 3, i >> 2, spread, strength) : 0;
-    const solid = glyphs.findIndex((g) => g.char === matcher.shape.core.solidChar); // glyph 255's
+    const solid = Math.max(0, glyphs.findIndex((g) => g.char === matcher.shape.core.solidChar)); // glyph 255's: none in the set, the first (as the JavaScript holds it)
 
     const one = cellRange(grownArea(area, refines ? 3 * reach : reach, cols, lines), cols, lines);
     const picked = this.#pluginPass(solve, matcher, samples, cols, lines, one, nudges, null);
@@ -505,7 +509,7 @@ export default class ShapeMatcher {
     try {
       program = this.#compile(ref, pluginShaderSource(def, pass, { glyphs: glyphs.length, reach: def.reach }));
     } catch (error) {
-      log = error.log ?? String(error.message);
+      log = error.log || String(error.message); // an empty log still says it didn't build
     }
     this.#plugins.set(key, { def, program, log });
     return program;

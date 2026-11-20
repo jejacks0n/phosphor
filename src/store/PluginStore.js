@@ -92,8 +92,8 @@ function listen(store) {
       store.problems[pluginId] = t('plugins.errors.solverFailed', { name: found?.def.name ?? ref, message });
       store.solverStamp++;
     }),
-    onShaderOff((ref, { log, ...differ }) => {
-      const message = log ?? t('plugins.errors.shaderDisagrees', differ);
+    onShaderOff((ref, { log, lost, ...differ }) => {
+      const message = log ?? (lost ? t('plugins.errors.shaderLost') : t('plugins.errors.shaderDisagrees', differ));
       store.problems[pluginOfSolver(ref)] = t('plugins.errors.shaderOff', { name: solverFor(ref)?.def.name ?? ref, message });
     }),
   ];

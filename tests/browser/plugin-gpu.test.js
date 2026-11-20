@@ -220,6 +220,22 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     expect(shown).toEqual(key(project.cells)); // the JavaScript's
   });
 
+  test('an empty compiler log still says the shader didn\'t build', async () => {
+    vi.spyOn(WebGL2RenderingContext.prototype, 'getShaderInfoLog').mockReturnValue('');
+    const def = solver({ ...PASS_ONE, shader: { solve: 'this is not glsl;' } }), gpu = ShapeMatcher.shared();
+    expect(gpu.resolve(samplesOf(4, 3), 4, 3, await matcherOf(def), {})).toBe(null);
+    expect(gpu.shaderProblem(REF)).toBeTruthy();
+  });
+
+  test('a set with no solid in it reads glyph 255 back as the first glyph, as the JavaScript holds it', async () => {
+    const def = solver({ solve: () => ({ char: '█', fg: rgb(9, 9, 9), bg: rgb(0, 0, 0) }), shader: { solve: 'put(vec3(9.0), vec3(0.0), 255);' } });
+    const glyphs = (await glyphsOf()).filter((g) => g.own), samples = samplesOf(3, 2);
+    const matcher = pluginMatcher({ def, ref: REF, palette: null, glyphs, renderStyle: 'ansi' });
+    const { cells } = ShapeMatcher.shared().resolve(samples, 3, 2, matcher, {});
+    expect(key(cells)).toEqual(key(resolvePlugin(samples, 3, 2, matcher, {}).cells));
+    expect(cells[0].char).toBe('/');
+  });
+
   test('a shader that does not compile falls back to the JavaScript and keeps the log', async () => {
     const def = solver({ ...PASS_ONE, shader: { solve: 'this is not glsl;' } }), samples = samplesOf(4, 3), gpu = ShapeMatcher.shared();
     const matcher = await matcherOf(def);
@@ -238,6 +254,25 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     expect(message).toContain(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
     expect(message).toMatch(/error/i);
     expect(project.cells.some((c) => c.char === '/')).toBe(true); // the JavaScript's
+  });
+
+  test('a shader that differs from its JavaScript in a near-tie or two stays on', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
+    Object.assign(project, { quantize: 'cga', chars: SET });
+    const def = solver({
+      solve: () => ({ char: '/', fg: rgb(255, 0, 0), bg: rgb(0, 0, 0) }),
+      shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), uFirst + local() == ivec2(0) ? 5 : 4);' }, // its first cell differs
+    });
+    const spy = vi.spyOn(ShapeMatcher.prototype, 'resolve');
+    project.charChoice = await onSolver(def, { hash: 'near-tie' });
+    await settle(project);
+    expect(usePluginStore().problems['jane.outlines']).toBeUndefined();
+    expect(project.cells[0].char).toBe('\\'); // the shader's cell
+    const calls = spy.mock.calls.length;
+    project.brightness = 120;
+    await settle(project);
+    expect(spy.mock.calls.length).toBeGreaterThan(calls);
   });
 
   test('a shader that agrees is used, and one that disagrees with its JavaScript is switched off after the first check', async () => {
@@ -273,5 +308,22 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     await settle(project);
     expect(wrong.mock.calls.length).toBe(calls);
     expect(project.cells.every((c) => c.char === '/')).toBe(true);
+  });
+
+  // Last: the shared context stays lost.
+  test('a context lost during a solver\'s first check is put down to its shader, and the JavaScript draws', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
+    Object.assign(project, { quantize: 'cga', chars: SET });
+    const draw = WebGL2RenderingContext.prototype.drawArrays;
+    vi.spyOn(WebGL2RenderingContext.prototype, 'drawArrays').mockImplementation(function (...args) {
+      draw.apply(this, args);
+      this.getExtension('WEBGL_lose_context').loseContext(); // as a watchdog does to a shader that never ends
+    });
+    project.charChoice = await onSolver(solver(PASS_ONE), { hash: 'lost' });
+    await settle(project);
+    const words = t('plugins.errors.shaderOff', { name: 'Edges', message: t('plugins.errors.shaderLost') });
+    expect(usePluginStore().problems['jane.outlines']).toBe(words);
+    expect(project.cells.some((c) => c.char === '/')).toBe(true); // the JavaScript's
   });
 });
