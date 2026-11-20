@@ -148,11 +148,16 @@ script. Every section ends with Free time.
 ### 3. Check my art fits a room
 - Does: presses Add layer to add a second cells layer and Add vector layer, opens Start a room and looks at Go live;
   closes it; then turns Animate on, adds a frame, and looks again; undoes the frame and turns Animate off.
-- Expects: with any stack of layers, Go live is on, with nothing said about layers; with two frames it is off and
+- Expects: with any stack of layers whose characters are chosen by a built-in solver, Go live is on, with nothing said
+  about layers; with two frames it is off and
   says "Shared rooms do not support animation yet."; once the art has one frame again, Go live is on
   ([Starting a room](../../social.md#starting-a-room)).
 - Probes: `undo-redo`: undo the layers, redo them, and check Go live stays on; `out-of-order`: give Layer 1 character
-  settings of its own and check Go live is still on, and that the settings come to everyone once she's live.
+  settings of its own and check Go live is still on, and that the settings come to everyone once she's live; `interrupt`: install Outlines
+  (Plugins → Install from a folder… with `plugins/outlines/`, or from a file with `plugins/outlines.zip`), choose it
+  in Choose characters on Layer 1, and open Start a room (with the art at one frame): Go live is off, and the box says
+  "Layer 1 is on a plugin solver, which rooms don't use. Choose a built-in solver for it, or Flatten the drawing
+  first."; choose By shape for it and Go live is on again; put her settings back and remove Outlines.
 - Rated: yes, wants a key for Start a room
 
 **Free time:** she'd open Edit account and look at her name's cell and glyph, try Start a room with nothing open
