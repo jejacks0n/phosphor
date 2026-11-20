@@ -95,13 +95,19 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   to, the copy kept for `index.html`'s first paint, `?plugins=off`; `storage.js`, the IndexedDB records),
   `src/lib/PluginSolve.js` (a plugin solver's passes in JavaScript, the reference its shader must agree with; its
   shader's side is in `src/lib/ShapeMatcher.js`, and the agreement check in `src/document/Renderer.js`),
-  `src/store/PluginStore.js` (installed plugins, the themes on offer, Reload, Follow file and Allow),
+  `src/store/PluginStore.js` (installed plugins, the themes on offer, Reload, Follow file and Allow, and the Marketplace's list
+  and installs from it); the Marketplace: `listing.js` (a listing's rules: the wiki's links, reading `plugins.json`, raw URLs,
+  what a card's button is), `hash.js` (sha256) and `market.js` (the page's fetches, hash-checked), `desktop/pluginList.js`
+  (the desktop main process's two fetches: phosphor.work's list and raw GitHub only), `scripts/plugin-list.mjs` (builds
+  `plugins.json` in CI, in `.github/workflows/deploy.yml`, and refreshed by `.github/workflows/plugin-list.yml`),
+  `src/components/PluginMarket.vue` (the Marketplace tab) and the fixture list `tests/fixtures/plugin-list.json` (the
+  dev server answers `/plugins.json` with it),
   `src/components/PluginsDialog.vue`, `src/components/SolverOptions.vue` (a solver's options in the Characters section)
   and `src/composables/useTheme.js` (the theme on `<html>`; `index.html`'s inline script paints it before the app starts
   by the same rules). A plugin's script runs only after the person says Install; it is the one code a plugin brings.
   A plugin solver is a kind of By shape, with the rule R12 in [docs/model.md](docs/model.md). Its tests are the `plugin-*`
   files and `solver-options.test.js` in `tests/unit` and `tests/browser`, `tests/browser/plugins-dialog.test.js` and
-  `tests/e2e/plugins.spec.js`, with the official plugins in `plugins/` (Midnight, a theme, and Outlines, a solver) and, in
+  `tests/e2e/plugins.spec.js`, with the official plugins in `plugins/` (Midnight, a theme, and Outlines, a solver; they aren't in the app's build, and people install them from the Marketplace) and, in
   `tests/fixtures/plugins/`, `outlines.zip`, as GitHub makes one.
 - `src/dev/actionLog.js` (and `skipped.js`, the actions it leaves out) and `src/components/dev/HistoryPanel.vue`: the
   development-only HISTORY tab, every step taken this session as a log to paste into a bug report ([docs/testing.md](docs/testing.md)).

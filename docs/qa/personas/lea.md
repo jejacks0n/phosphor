@@ -358,7 +358,7 @@ and sideways.
 ## Plugins
 
 ### 26. Add a theme from a file
-- Does: opens the settings, taps Plugins, taps Install from a file… and picks `plugins/midnight/phosphor-plugin.json`;
+- Does: opens the settings, taps Plugins (it opens on Marketplace, as she has no plugins), taps the Installed tab, taps Install from a file… and picks `plugins/midnight/phosphor-plugin.json`;
   reads the question and taps Install; closes the dialog and picks Midnight in the select under the theme icons.
 - Expects: the question says "Install Midnight 1.0.0?", "by Phosphor" and "Adds 1 theme. Runs no code."; the row shows
   Midnight, 1.0.0, by Phosphor, 1 theme and its homepage; with Midnight picked the app turns deep blue and no theme icon is
@@ -368,7 +368,7 @@ and sideways.
 - Rated: no (touch only: no keyboard shows here)
 
 ### 27. Reload, switch it off, remove it
-- Does: reloads with Midnight in use; opens Plugins and taps Midnight's switch to Off; taps it back On, picks Midnight
+- Does: reloads with Midnight in use; opens Plugins (it opens on Installed now) and taps Midnight's switch to Off; taps it back On, picks Midnight
   again, then taps Midnight's trash can and Remove.
 - Expects: the reload is deep blue from the first moment, with no flash of Dark; Off takes the theme away and the app
   goes Dark, with the Dark icon checked and the select gone; the trash can asks "Remove Midnight?" first, and after it the
@@ -378,7 +378,7 @@ and sideways.
 - Rated: no (touch only: no keyboard shows here)
 
 ### 28. Add Outlines
-- Does: with her selfie open, opens the settings, taps Plugins, taps Install from a file… and picks
+- Does: with her selfie open, opens the settings, taps Plugins and the Installed tab, taps Install from a file… and picks
   `tests/fixtures/plugins/outlines.zip` (a phone's file picker gives a .zip, not a folder, so this is how she installs it); reads the question and taps Install; then taps Install from a
   folder… to see what her phone offers.
 - Expects: the question says "Install Outlines 1.0.0?", "by Phosphor" and "Adds a script.", with "⚠ This plugin runs
@@ -390,6 +390,24 @@ and sideways.
 - Probes: `back-out`: tap Cancel at the question, check the list is unchanged, and start again; `out-of-order`: pick
   `images/photo.jpg` with Install from a file… (it says "That file isn't a plugin's manifest." or that it isn't a
   readable .zip); `again`: install the zip twice (the second asks "Replace Outlines 1.0.0 with 1.0.0?").
+- Rated: no (touch only: no keyboard shows here)
+
+### 28b. Browse the Marketplace and install from it
+- Does: with no plugins installed, opens the settings and taps Plugins (it opens on Marketplace, filling her phone's window);
+  looks at the cards, types "rain" in Search plugins, clears it, picks Themes then Solvers in the Show menu, and picks
+  All again; taps Install on Rain, reads the question and taps Install; taps the Installed tab; then back on Marketplace
+  taps Install on Outlines, reads the question and taps Cancel. The app answers `/plugins.json` with the fixture list
+  (`tests/fixtures/plugin-list.json`).
+- Expects: the dialog fills the whole window (no page behind it showing at the sides) with the tabs, search and Show menu
+  in reach of a thumb, and the cards in one column, each with its art band, name, version, Official or author, a description
+  cut to two lines and its button, nothing wider than 390; Rain's question names Rain, its author and "from the
+  marketplace" with the repository; Outlines' question says it runs code, with the warning under it; after Install, Rain's
+  card says Installed and its row on Installed says "From the marketplace"; Cancel leaves Outlines as Install; the search
+  and the Show menu keep their choice after the question closes ([Plugins](../../plugins.md#the-marketplace)).
+- Probes: `back-out`: close the dialog and open it again, and check it opens on Installed with Rain, the tab's last
+  choice kept; `out-of-order`: search for something nothing matches ("No plugins match."); `interrupt`: turn the phone
+  sideways with the dialog open and back upright (wider than 700 it's a dialog again, and nothing is lost); `again`:
+  tap Install on Rain twice (the second time the button says Installed and does nothing).
 - Rated: no (touch only: no keyboard shows here)
 
 ### 29. Draw her selfie in lines

@@ -5,7 +5,7 @@ import ReadingDialog from '@/components/ReadingDialog.vue';
 import EnLegal from '@/i18n/legal/en.vue';
 
 // The Terms, the Privacy Policy and the Community Guidelines, read over the app like About. `page` is 'terms',
-// 'privacy' or 'guidelines'; a link to another of them asks for it with open. The desktop app sends nothing to Phosphor,
+// 'privacy' or 'guidelines'; a link to another of them asks for it with open. The desktop app has no hosted service,
 // so its privacy page is a short note in place of the hosted service's policy.
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const props = defineProps({ page: { type: String, required: true } });
