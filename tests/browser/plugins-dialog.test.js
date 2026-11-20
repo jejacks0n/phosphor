@@ -128,6 +128,15 @@ test('the switch turns a plugin off and on', async () => {
   expect(store.plugins[0].enabled).toBe(true);
 });
 
+test('Remove is a trash can named for its plugin', async () => {
+  await mount();
+  await installed();
+  const remove = page.getByRole('button', { name: 'Remove Midnight' }).element();
+  expect(remove.textContent.trim()).toBe('');
+  expect(remove.querySelector('svg')).not.toBeNull();
+  expect(remove.title).toBe('Remove Midnight');
+});
+
 test('Remove asks first, then forgets it', async () => {
   const store = await mount();
   await installed();

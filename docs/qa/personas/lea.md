@@ -369,9 +369,9 @@ and sideways.
 
 ### 27. Reload, switch it off, remove it
 - Does: reloads with Midnight in use; opens Plugins and taps Midnight's switch to Off; taps it back On, picks Midnight
-  again, then taps Remove and Remove.
+  again, then taps Midnight's trash can and Remove.
 - Expects: the reload is deep blue from the first moment, with no flash of Dark; Off takes the theme away and the app
-  goes Dark, with the Dark icon checked and the select gone; Remove asks "Remove Midnight?" first, and after it the
+  goes Dark, with the Dark icon checked and the select gone; the trash can asks "Remove Midnight?" first, and after it the
   dialog says there are no plugins yet.
 - Probes: `back-out`: tap Cancel at "Remove Midnight?"; `interrupt`: open the app at `/?plugins=off` with Midnight in
   use and check it's Dark, with the dialog saying plugins are off for this visit.

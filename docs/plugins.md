@@ -20,7 +20,7 @@ who made it, what it adds ("1 theme"), its homepage, and its description.
   the old one's On or Off.
 - **On and Off**: each plugin has a switch. A plugin that's off keeps its place in the list, but its themes aren't
   offered.
-- **Remove** asks first ("Remove Midnight?"), then forgets the plugin.
+- **The trash can** (Remove) asks first ("Remove Midnight?"), then forgets the plugin.
 
 If the theme you're using belongs to a plugin you switch off or remove, or to a new version that no longer has it,
 Phosphor goes to that theme's base: Dark or Light.

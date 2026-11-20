@@ -5,6 +5,7 @@ import ModalDialog from '@/components/ModalDialog.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import { usePluginStore, linksFiles, linksFolders } from '@/store/PluginStore';
 import { filesOfDrop } from '@/plugins/package';
+import { TRASH } from '@/components/icons';
 
 // The Plugins dialog (docs/plugins.md): what's installed, each switched on or off or removed, and a plugin installed
 // from a folder, a .zip or a lone manifest, picked or dropped: the browser's folder picker can't choose a file nor its
@@ -161,8 +162,10 @@ async function answer() {
                 type="button"
                 class="remove"
                 :aria-label="t('plugins.removeNamed', { name: manifest.name })"
+                :title="t('plugins.removeNamed', { name: manifest.name })"
                 @click="asking = { remove: { id, manifest } }"
-            >{{ t('plugins.remove') }}</button>
+                v-html="TRASH"
+            />
           </div>
           <p class="line">
             <span>{{ t('plugins.by', { author: manifest.author }) }}</span>
@@ -253,6 +256,15 @@ div.file {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+}
+button.remove {
+  display: inline-flex;
+  align-items: center;
+}
+button.remove :deep(svg) {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
 }
 button.switch[aria-checked='true'] {
   border-color: var(--accent);
