@@ -178,6 +178,7 @@ export default {
   options: [
     ...FILL_OPTIONS,
     { key: 'bucketSet', get label() { return t('tools.bucket.set'); }, type: 'toggles', options: SET_OPTIONS, ...cellOptions },
+    { key: 'activeChar', get label() { return t('tools.matchToggles.char'); }, type: 'char', views: ['output'], when: (ws) => ws.bucketFillWith === 'cells' && ws.bucketSet.char },
     FILL_WITH,
   ],
   // One click fills, with no stroke to continue; a click outside the selection does nothing.

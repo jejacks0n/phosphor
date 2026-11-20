@@ -11,6 +11,7 @@ import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
 import PaletteStrip from '@/components/PaletteStrip.vue';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
+import CharField from '@/components/CharField.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import VectorOptions from '@/components/VectorOptions.vue';
@@ -675,6 +676,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
                 @click="setOptionValue(workspace, option, choice.value)"
             ><span v-if="offered(option).some((c) => c.glyph)" class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
           </DropdownMenu>
+          <CharField v-else-if="option.type === 'char'" :model-value="optionValue(workspace, option)" :label="option.label" @update:model-value="setOptionValue(workspace, option, $event)"/>
           <RangeField v-else compact :setting="option" :model-value="optionValue(workspace, option)" @update:model-value="setOptionValue(workspace, option, $event)" @commit="option.commit?.()"/>
         </template>
       </div>

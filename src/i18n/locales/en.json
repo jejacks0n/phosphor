@@ -568,6 +568,10 @@
       "char": "Char",
       "charTitle": "Cells with the same character"
     },
+    "charField": {
+      "choose": "Choose a character",
+      "title": "Type a character, or choose one"
+    },
     "drawWith": {
       "label": "Draw with",
       "normal": "Colors only",

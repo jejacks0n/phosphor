@@ -568,6 +568,10 @@
       "char": "Car.",
       "charTitle": "Cellules avec le même caractère"
     },
+    "charField": {
+      "choose": "Choisir un caractère",
+      "title": "Tapez un caractère ou choisissez-en un"
+    },
     "drawWith": {
       "label": "Dessiner avec",
       "normal": "Couleurs seulement",

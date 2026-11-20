@@ -287,9 +287,11 @@ export default {
         { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═', when: (ws) => ws.shapeKind !== 'ellipse', instead: 'half' },
         { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },
         { value: 'full', get label() { return t('tools.drawWith.fullBlock'); }, glyph: '██' },
-        // Offered unless the active character is a block the other choices already draw.
-        { value: 'char', get label() { return t('tools.drawWith.character'); }, glyph: (workspace) => workspace.activeChar.repeat(2), when: (ws) => !'▀▄█'.includes(ws.activeChar) },
+        { value: 'char', get label() { return t('tools.drawWith.character'); }, glyph: (workspace) => workspace.activeChar.repeat(2) },
       ],
+    },
+    {
+      key: 'activeChar', get label() { return t('tools.drawWith.character'); }, type: 'char', views: ['output'], when: (ws) => ws.shapeDrawWith === 'char',
     },
     {
       key: 'shapeCharFill', get label() { return t('tools.shapes.fill'); }, type: 'checkbox', views: ['output'], when: (ws) => ws.shapeDrawWith === 'char' && ws.shapeKind !== 'line',
