@@ -1983,6 +1983,7 @@
     "fromMarket": "Depuis la place de marché",
     "notListed": "Plus listé",
     "updateNamed": "Mettre à jour {name}",
+    "updateTo": "Mise à jour vers {version}",
     "market": {
       "tab": "Place de marché",
       "intro": "Les plugins de tout le monde, tels que leurs auteurs les ont faits. Les plugins officiels viennent de Phosphor.",

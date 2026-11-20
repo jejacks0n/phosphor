@@ -268,3 +268,27 @@ test('a browser that will not keep plugins asks nothing about a card', async () 
   expect(read).not.toHaveBeenCalled();
   expect(heading()).toBe('Plugins');
 });
+
+test('the search, the filter and where the grid was scrolled to come back after a question', async () => {
+  const themed = (i) => listed({ id: `sam.theme${i}`, name: `Theme ${i}`, description: 'Another theme.', themes: [
+    { id: 'one', name: 'One', base: 'dark', colors: { background: '#101010', accent: '#808080' } },
+  ] });
+  served['/plugins.json'] = listWith((plugins) => [...plugins, amber, ...Array.from({ length: 8 }, (_, i) => themed(i))]);
+  await mount();
+  await vi.waitFor(() => expect(names()).toHaveLength(12));
+  await page.getByRole('combobox', { name: 'Show' }).selectOptions('Themes');
+  await page.getByRole('searchbox', { name: 'Search plugins' }).fill('theme');
+  expect(names()).toHaveLength(10);
+  const body = () => document.querySelector('dialog > div.body');
+  body().scrollTop = 300;
+  await vi.waitFor(() => expect(body().scrollTop).toBe(300));
+
+  button('Rain').click();
+  await vi.waitFor(() => expect(heading()).toBe('Install Rain 1.2.0?'));
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await vi.waitFor(() => expect(heading()).toBe('Plugins'));
+  expect(page.getByRole('searchbox', { name: 'Search plugins' }).element().value).toBe('theme');
+  expect(page.getByRole('combobox', { name: 'Show' }).element().value).toBe('themes');
+  expect(names()).toHaveLength(10);
+  await vi.waitFor(() => expect(body().scrollTop).toBe(300));
+});

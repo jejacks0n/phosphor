@@ -1983,6 +1983,7 @@
     "fromMarket": "From the marketplace",
     "notListed": "No longer listed",
     "updateNamed": "Update {name}",
+    "updateTo": "Update to {version}",
     "market": {
       "tab": "Marketplace",
       "intro": "Anyone's plugins, as their authors made them. Official plugins come from Phosphor.",

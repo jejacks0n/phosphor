@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { usePluginStore } from '@/store/PluginStore';
 import { marketState, swatches } from '@/plugins/listing';
@@ -7,13 +7,17 @@ import { marketState, swatches } from '@/plugins/listing';
 // The Plugins dialog's Marketplace tab (docs/plugins.md): the loaded list as cards, Official first, then by name,
 // searched and filtered. Each card's button reads by what's installed with the same id (marketState); taking one is the
 // dialog's (`take`, the entry), which reads its files and asks. A manifest's words, its preview among them, are the
-// author's, shown as text.
+// author's, shown as text. The search, the filter and where the dialog was scrolled to are the store's (marketView), so
+// they come back after a question (which takes this tab's place) and on the next visit to the tab.
 const emit = defineEmits(['take']);
 const { t } = useI18n();
 const plugins = usePluginStore();
 
-const search = ref('');
-const filter = ref('all');
+const view = plugins.marketView;
+const root = useTemplateRef('root');
+const scroller = () => root.value?.closest('div.body');
+onMounted(() => nextTick(() => { if (scroller()) scroller().scrollTop = view.scroll; }));
+onBeforeUnmount(() => { view.scroll = scroller()?.scrollTop ?? 0; });
 const FILTERS = {
   all: () => true,
   official: (entry) => entry.official,
@@ -22,9 +26,9 @@ const FILTERS = {
 };
 
 const shown = computed(() => {
-  const words = search.value.trim().toLowerCase();
+  const words = view.search.trim().toLowerCase();
   const matches = ({ manifest: { name, author, description, id } }) => [name, author, description, id].some((field) => field.toLowerCase().includes(words));
-  return plugins.market.entries.filter((entry) => FILTERS[filter.value](entry) && matches(entry))
+  return plugins.market.entries.filter((entry) => FILTERS[view.filter](entry) && matches(entry))
     .sort((a, b) => b.official - a.official || a.manifest.name.localeCompare(b.manifest.name));
 });
 
@@ -39,11 +43,11 @@ const nameId = (entry) => `market-${entry.manifest.id}`;
 </script>
 
 <template>
-  <div class="market">
+  <div ref="root" class="market">
     <p class="intro">{{ t('plugins.market.intro') }}</p>
     <div class="find">
-      <input v-model="search" type="search" :placeholder="t('plugins.market.search')" :aria-label="t('plugins.market.search')">
-      <select v-model="filter" :aria-label="t('plugins.market.show')">
+      <input v-model="view.search" type="search" :placeholder="t('plugins.market.search')" :aria-label="t('plugins.market.search')">
+      <select v-model="view.filter" :aria-label="t('plugins.market.show')">
         <option v-for="(_, id) in FILTERS" :key="id" :value="id">{{ t(`plugins.market.${id}`) }}</option>
       </select>
     </div>
