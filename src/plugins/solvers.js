@@ -35,7 +35,10 @@ export function solverFor(ref) {
 export const allSolvers = () => [...plugins].flatMap(([pluginId, { defs }]) =>
   [...defs.values()].map((def) => [solverRef(pluginId, def.id), pluginId, def]));
 
-export function failSolver(ref, message) {
+// A solver's pass threw. hash: the script it was resolved with; a failure from a script since replaced (a Reload while it
+// ran) is the old one's, and isn't heard.
+export function failSolver(ref, message, hash = solverFor(ref)?.hash) {
+  if (hash !== solverFor(ref)?.hash) return;
   failures.set(ref, message);
   for (const listener of listeners) listener(ref, message);
 }

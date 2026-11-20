@@ -1152,6 +1152,9 @@
     "stillFull": "Browser storage is full. This project could not be saved even after clearing old versions. Please save a .phosphor file.",
     "openFailed": "Could not reopen that project."
   },
+  "busy": {
+    "solving": "Working out the characters…"
+  },
   "document": {
     "opening": "Opening {name}…",
     "saving": "Saving {name}…",

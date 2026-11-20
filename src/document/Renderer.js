@@ -38,6 +38,9 @@ import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
 import { snapsLate, resolves, carriesError, bestMatcher, resolveGrid, shapeMatcher, resolveShapes, SAMPLES } from '../lib/CharResolver.js';
 import { loadReferenceFont, referenceInk, referenceMask, coverageOf } from '../lib/GlyphCoverage.js';
 import ShapeMatcher from '../lib/ShapeMatcher.js';
+import { pluginMatcher, resolvePlugin, grownArea, SolverError } from '../lib/PluginSolve.js';
+import { solverFor, failSolver, failureOf } from '../plugins/solvers.js';
+import { beginRun, endRun } from '../plugins/hangMark.js';
 
 export default class Renderer {
   pipelineCanvas = null;
@@ -89,6 +92,7 @@ export default class Renderer {
   #tileBytes = 0;       // what #tiles hold
   sampleBudget = 32 * 1024 * 1024; // the most bytes of By shape samples upper layers keep, together
   #cellSamples = null;  // one cell's samples, for By shape on an upper layer (#upperChar)
+  #cellRaw = null;      // them as RGBA, for a plugin solver on an upper layer (#pluginCell)
   #exact = false;       // whether the cell #upperCell made last holds a character that's someone's own
   #fineSamples = null;  // #fineUnder's one cell of samples, reused
   #lowerPaint = null;   // the lower group's paint layer, from the last composite() (#fineUnder samples it finely)
@@ -362,13 +366,24 @@ export default class Renderer {
       this.#resolved = null;
       return false;
     }
-    const { width: w, height: h } = this.#baseData, r = this.#resolved;
-    const key = resolvedKey(params, w, h), whole = r?.palette !== this.palette || r.key !== key;
-    const glyphs = this.#glyphsOf(params.chars), solids = params.solids / 100, light = params.patternLight / 100;
+    const { width: w, height: h } = this.#baseData, r = this.#resolved, plugin = solverOf(params);
+    const key = resolvedKey(params, w, h, plugin), whole = r?.palette !== this.palette || r.key !== key;
+    const glyphs = this.#glyphsOf(params.chars, plugin?.def.chars), solids = params.solids / 100, light = params.patternLight / 100;
     const palette = !!this.palette?.length; // without one Dither does nothing (as #ditherUnder), Bayer too
     const opts = { strength: palette ? params.dither / 100 : 0, style: params.ditherStyle };
     const carries = palette && carriesError(params);
-    if (params.charMode === 'shape') return this.#resolveShapes(params, area, open, paintLayer, { key, whole, glyphs, solids, light, opts, carries });
+    if (params.charMode === 'shape') {
+      if (!plugin) return this.#resolveShapes(params, area, open, paintLayer, { key, whole, glyphs, solids, light, opts, carries });
+      try {
+        return this.#resolveShapes(params, area, open, paintLayer, { key, whole, glyphs, solids, light, opts, carries, plugin });
+      } catch (error) {
+        if (!(error instanceof SolverError)) throw error;
+        // The solver failed: this render goes on with By shape (solverOf sees the failure), and the next params stand in.
+        failSolver(error.ref, error.message, plugin.hash);
+        this.#resolved = this.#painted = null; // an area's resolve may have written some of them
+        return this.#resolveUnder(params, area, open, paintLayer) || true;
+      }
+    }
 
     // Best match: each cell's two halves (#baseData). While an edit is open Floyd–Steinberg resolves
     // the area from the error that arrived there before, and raw stays as it was, so the edit's end
@@ -389,25 +404,33 @@ export default class Renderer {
   // By shape: each cell's samples (#shapeSamples), resolved again where they changed. Nothing of
   // Floyd–Steinberg's error is kept (12 bytes a sample): while an edit is open the changed cells are
   // resolved with no error coming in, and the grid is left stale, so the edit's end resolves it whole.
-  // Then the cells under paint (#resolvePainted).
-  #resolveShapes(params, area, open, paintLayer, { key, whole, glyphs, solids, light, opts, carries }) {
+  // Then the cells under paint (#resolvePainted). A plugin solver (plugin: solverOf's) the same way, in JavaScript: its
+  // pass 1's cells (first) kept with the grid's, and a change resolving the cells within reach of it (twice reach with a
+  // pass 2). Its first whole resolve this visit runs under the hang mark (marked). A SolverError goes on to the caller.
+  #resolveShapes(params, area, open, paintLayer, { key, whole, glyphs, solids, light, opts, carries, plugin = null }) {
     const samples = this.#shapeSamples(params);
     if (!samples) {
       this.#resolved = this.#painted = null;
       return false;
     }
-    const { width: w, height: h } = this.#baseData, r = this.#resolved, { changed } = samples;
-    const matcher = shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle });
-    const resolve = (o, gpu) => resolveBy(gpu, carries, () => resolveShapes(samples.data.data, w, charRowsOf(h), matcher, o), samples.data.data, w, charRowsOf(h), matcher, o);
+    const { width: w, height: h } = this.#baseData, lines = charRowsOf(h), r = this.#resolved, { changed } = samples;
+    const style = params.renderStyle;
+    const matcher = plugin
+      ? pluginMatcher({ def: plugin.def, ref: params.solver, palette: this.palette, glyphs, solids, light, renderStyle: style, options: params.solverOptions })
+      : shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: style });
+    const resolve = plugin
+      ? (o) => ({ out: resolvePlugin(samples.data.data, w, lines, matcher, o), gpu: false })
+      : (o, gpu) => resolveBy(gpu, carries, () => resolveShapes(samples.data.data, w, lines, matcher, o), samples.data.data, w, lines, matcher, o);
     let again = false;
     if (whole || changed || (r.stale && carries && !open)) {
-      if (whole || (carries && !open) || !resolve({ ...opts, area: changed, cells: r.cells }, r.gpu)) {
-        const { out: { cells }, gpu } = resolve(opts);
-        this.#resolved = { key, palette: this.palette, cells, stale: false, gpu };
+      if (whole || (carries && !open) || !resolve({ ...opts, area: changed, cells: r.cells, first: r.first }, r.gpu)) {
+        const { out: { cells, first = null }, gpu } = plugin ? marked(plugin, () => resolve(opts)) : resolve(opts);
+        this.#resolved = { key, palette: this.palette, cells, first, stale: false, gpu };
         again = true;
       } else {
         r.stale ||= carries;
-        again = !inside(changed, area); // a change to the samples past the composite's area (all of them, as the base's last pixels go)
+        const reach = plugin ? plugin.def.reach * (plugin.def.refine ? 2 : 1) : 0; // the cells a change reaches
+        again = !inside(grownArea(changed, reach, w, lines), area); // a change to the samples past the composite's area (all of them, as the base's last pixels go)
       }
     }
     this.#resolvePainted(params, paintLayer, samples, matcher, opts, area, changed);
@@ -445,7 +468,8 @@ export default class Renderer {
     const saved = rowsOf(data, width, inSamples);
     baseSamplesOver(data, width, paintLayer, params, cellsIn, n);
     const o = { ...opts, area: cellsIn, cells: painted.cells };
-    if (!resolveBy(r.gpu, false, () => resolveShapes(data, w, lines, matcher, o), data, w, lines, matcher, o)) resolveShapes(data, w, lines, matcher, o);
+    if (matcher.kind === 'plugin') resolvePlugin(data, w, lines, matcher, { ...o, alone: true }); // its own cell only
+    else if (!resolveBy(r.gpu, false, () => resolveShapes(data, w, lines, matcher, o), data, w, lines, matcher, o)) resolveShapes(data, w, lines, matcher, o);
     // A cell the paint didn't change is the base's.
     const rowBytes = SAMPLES.w * 4;
     for (let line = cellsIn.y / 2; line < (cellsIn.y + cellsIn.h) / 2; line++) {
@@ -491,13 +515,16 @@ export default class Renderer {
   }
 
   // The set's one-column characters (as the converter's, Cells.glyphsOf), each once, with their ink
-  // (Best match) and mask (By shape) in the reference font.
-  #glyphsOf(chars) {
-    let glyphs = this.#glyphs.get(chars);
+  // (Best match) and mask (By shape) in the reference font; then extra's (a plugin solver's own) not among them, own.
+  #glyphsOf(chars, extra = '') {
+    const key = extra ? `${chars}\u0000${extra}` : chars;
+    let glyphs = this.#glyphs.get(key);
     if (!glyphs) {
       if (this.#glyphs.size >= 16) this.#glyphs.clear();
-      glyphs = [...new Set(glyphsOf(chars))].map((char) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h) }));
-      this.#glyphs.set(chars, glyphs);
+      const glyph = (char, own) => ({ char, ink: referenceInk(char), mask: referenceMask(char, SAMPLES.w, SAMPLES.h), ...(own && { own }) });
+      const set = [...new Set(glyphsOf(chars))];
+      glyphs = [...set.map((char) => glyph(char, false)), ...[...new Set(extra ? glyphsOf(extra) : [])].filter((char) => !set.includes(char)).map((char) => glyph(char, true))];
+      this.#glyphs.set(key, glyphs);
     }
     return glyphs;
   }
@@ -1221,9 +1248,10 @@ export default class Renderer {
     if (resolves(params) && this.#fontReady) {
       let m = this.#matchers.get(params);
       if (m?.palette !== this.palette) {
-        const glyphs = this.#glyphsOf(params.chars), solids = params.solids / 100, light = params.patternLight / 100;
-        const matcher = params.charMode === 'shape' ? shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle }) : bestMatcher({ palette: this.palette, glyphs, solids, light });
-        this.#matchers.set(params, m = { palette: this.palette, matcher });
+        const plugin = solverOf(params), glyphs = this.#glyphsOf(params.chars, plugin?.def.chars), solids = params.solids / 100, light = params.patternLight / 100;
+        const matcher = plugin ? pluginMatcher({ def: plugin.def, ref: params.solver, palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle, options: params.solverOptions })
+          : params.charMode === 'shape' ? shapeMatcher({ palette: this.palette, glyphs, solids, light, renderStyle: params.renderStyle }) : bestMatcher({ palette: this.palette, glyphs, solids, light });
+        this.#matchers.set(params, m = { palette: this.palette, matcher, plugin });
       }
       const { matcher } = m;
       if (params.charMode !== 'shape') {
@@ -1245,11 +1273,31 @@ export default class Renderer {
           s[j] = clamp(m.r + nudge); s[j + 1] = clamp(m.g + nudge); s[j + 2] = clamp(m.b + nudge);
         }
       }
-      const r = matcher.match(s);
+      if (matcher.kind === 'plugin') {
+        try {
+          return this.#pluginCell(m, s);
+        } catch (error) {
+          if (!(error instanceof SolverError)) throw error;
+          // The solver failed: the layer goes on with By shape (as #resolveUnder), its next params standing in.
+          failSolver(error.ref, error.message, m.plugin.hash);
+          m.matcher = shapeMatcher({ palette: this.palette, glyphs: this.#glyphsOf(params.chars), solids: params.solids / 100, light: params.patternLight / 100, renderStyle: params.renderStyle });
+        }
+      }
+      const r = m.matcher.match(s);
       return { char: r.char, fg: r.fg, bg: r.bg };
     }
     const t = snap(top), b = snap(bottom);
     return buildCell(t, b, keepsSeed(params.charMode) ? seededChar(params.chars, params.seed, col, row) : weightedChar(t, b, params.chars, params.charMode), params.renderStyle);
+  }
+
+  // A plugin solver's cell (m: #upperChar's matcher) from one cell's samples (RGB each, the nudge in them), alone: reach 0
+  // and no pass 2, on a grid of that one cell. Under the hang mark the first time this visit (marked).
+  // ponytail: the solver is told col 0, line 0 here; give resolvePlugin an origin if a solver ever reads them.
+  #pluginCell(m, s) {
+    const raw = (this.#cellRaw ??= new Float64Array(SAMPLES.w * SAMPLES.h * 4));
+    for (let i = 0, j = 0; j < s.length; i += 4, j += 3) { raw[i] = s[j]; raw[i + 1] = s[j + 1]; raw[i + 2] = s[j + 2]; }
+    const { cells: [cell] } = marked(m.plugin, () => resolvePlugin(raw, 1, 1, m.matcher, { alone: true, cells: [null] }));
+    return { char: cell.char, fg: cell.fg, bg: cell.bg };
   }
 
   // An upper layer's own samples in the cell at col, row (a vector layer's shapes or a cells layer's paint, SAMPLES a cell, alpha their coverage, through
@@ -1696,8 +1744,28 @@ function rowsOf(data, width, { x, y, w, h }) {
   return out;
 }
 
-// What Best match's cells (Renderer #resolved) are worked out from, besides the picture and the palette.
-const resolvedKey = (params, cols, rows) => JSON.stringify([params.charMode, params.chars, params.solids, params.patternLight, params.dither, params.ditherStyle, params.renderStyle, cols, rows]);
+// What Best match's or By shape's cells (Renderer #resolved) are worked out from, besides the picture and the palette:
+// with a plugin solver (solverOf's), its ref, its script and its options too.
+const resolvedKey = (params, cols, rows, plugin = solverOf(params)) => JSON.stringify([params.charMode, params.chars, params.solids, params.patternLight, params.dither, params.ditherStyle, params.renderStyle, cols, rows,
+  plugin ? params.solver : null, plugin?.hash ?? null, plugin ? JSON.stringify(params.solverOptions) : null]);
+
+// The plugin solver a By shape layer's params name, as the renderer can use it now: registered, and not failed
+// (failSolver: the render that failed goes on with By shape), as { def, hash, pluginId }; else null, and By shape.
+const solverOf = (params) => (params.charMode === 'shape' && params.solver && !failureOf(params.solver) ? solverFor(params.solver) : null);
+
+// work() under the hang mark (plugins/hangMark.js) the first time a plugin's script runs this visit, else as it is.
+const ran = new Set(); // plugin id and script hash
+function marked({ pluginId, hash }, work) {
+  const key = `${pluginId}\u0000${hash}`;
+  if (ran.has(key)) return work();
+  ran.add(key);
+  beginRun(pluginId);
+  try {
+    return work();
+  } finally {
+    endRun();
+  }
+}
 
 // A resolve's cells, { out, gpu }: with no error carried from cell to cell the GPU's (ShapeMatcher,
 // args) when it can match them, else the JavaScript's (js), gpu saying which. gpu given (an area):

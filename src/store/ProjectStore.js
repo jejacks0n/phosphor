@@ -69,15 +69,21 @@ const NO_CELLS = new Map(); // a hidden or empty layer's cells, never changed
 // and chars (layerParams), so each keeps its identity while neither changes: the Renderer's caches go by it.
 const OWN_PARAMS = new WeakMap(); // processParams -> WeakMap(chars -> params)
 
-// What a layer's plugin solver comes to in its params: the solver to use (null for a built-in, or a stand-in), its options, the
-// one the layer wants whether or not it's used, and why it isn't (plugins/solvers.js standInOf). Reads what the plugin store
-// and the room change, so the params made from it are made again when they do (processParams reads them first).
+// What a layer's plugin solver comes to in its params: the solver to use (null for a built-in, or a stand-in), its options,
+// the script it's from (solverHash: a Reload renders again), the one the layer wants whether or not it's used, and why it
+// isn't (plugins/solvers.js standInOf). Reads what the plugin store and the room change, so the params made from it are
+// made again when they do (processParams reads them first). No solver's options are one object, so params made again
+// with nothing changed compare the same (followParams).
+const NO_OPTIONS = Object.freeze({});
 function solverParams(chars, renderStyle, inRoom) {
   const plugins = usePluginStore(), choice = renderStyle === 'ansi' ? chars.charChoice : chars.charChoiceAscii;
-  if (!isSolverRef(choice)) return { solver: null, solverOptions: {}, wantedSolver: null, standIn: null };
+  if (!isSolverRef(choice)) return { solver: null, solverOptions: NO_OPTIONS, solverHash: null, wantedSolver: null, standIn: null };
   const standIn = standInOf({ ref: choice, renderStyle, inRoom, pluginsOff: plugins.off, pluginState: plugins.pluginState });
   const found = standIn ? null : solverFor(choice);
-  return { solver: found ? choice : null, solverOptions: found ? optionValues(found.def, chars.solverOptions?.[choice]) : {}, wantedSolver: choice, standIn };
+  return {
+    solver: found ? choice : null, solverOptions: found ? optionValues(found.def, chars.solverOptions?.[choice]) : NO_OPTIONS,
+    solverHash: found?.hash ?? null, wantedSolver: choice, standIn,
+  };
 }
 function ownParams(params, chars, inRoom) {
   let own = OWN_PARAMS.get(params);

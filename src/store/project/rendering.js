@@ -17,6 +17,7 @@ import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
 import { boundsOf, lowerEdits, lowerPaint } from '@/store/project/shared.js';
 import { toast } from '@/composables/useToast.js';
+import { busyWhile } from '@/composables/useBusy.js';
 import { t } from '@/i18n';
 import { markRaw, watch } from 'vue';
 
@@ -77,16 +78,22 @@ function settledRows(project, rows) {
 // Settings changes render again (EditWorkspace.vue, and the tests' app): the drawing's params, or a layer's own character
 // settings (a layer added or gone draws itself, and a rename keeps its params). Not to params the same as those the render
 // on its way, or the last, used (_rendered): its ensureLayer can move the base's scale (a first render, a restore, a resize
-// past MAX_LAYER_DIM), which makes processParams and every layer's params anew. Returns what stops it.
-const sameParams = (a, b) => !!b && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((key) => a[key] === b[key]);
+// past MAX_LAYER_DIM), which makes processParams and every layer's params anew. A plugin solver's options are made anew
+// with them, so they're compared by value. Choosing a plugin solver, or changing one of its options, resolves the layer
+// whole, which can take a while: the busy note goes up first (solving). Returns what stops it.
+const sameValue = (key, a, b) => a === b || (key === 'solverOptions' && JSON.stringify(a) === JSON.stringify(b));
+const sameParams = (a, b) => !!b && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((key) => sameValue(key, a[key], b[key]));
+const solving = (now, rendered) => !!now.solver && !!rendered && (now.solver !== rendered.solver || !sameValue('solverOptions', now.solverOptions, rendered.solverOptions));
 export function followParams(project) {
+  const render = (busy) => project.render(busy ? { busy: t('busy.solving') } : undefined);
   const stops = [
     watch(() => project.processParams, (now, was) => {
-      if (now === was || !sameParams(now, project._rendered?.params)) project.render(); // the same object: changed inside
+      const rendered = project._rendered?.params;
+      if (now === was || !sameParams(now, rendered)) render(solving(now, rendered)); // the same object: changed inside
     }, { deep: true }),
     watch(() => project.layerParams, (now, was) => {
-      const rendered = project._rendered?.layers;
-      if ([...now].some(([id, params]) => was.has(id) && was.get(id) !== params && !sameParams(params, rendered?.get(id)))) project.render();
+      const rendered = project._rendered?.layers, changed = [...now].filter(([id, params]) => was.has(id) && was.get(id) !== params && !sameParams(params, rendered?.get(id)));
+      if (changed.length) render(changed.some(([id, params]) => solving(params, rendered?.get(id))));
     }),
   ];
   return () => stops.forEach((stop) => stop());
@@ -218,11 +225,12 @@ export const renderingActions = {
   },
 
   // Full re-render on the next frame (calls in the same frame coalesce).
-  // _renderQueued and _rendering say whether one is still to come (tests wait on them).
-  render() {
+  // _renderQueued and _rendering say whether one is still to come (tests wait on them). busy: words for the busy note,
+  // up from now until the render ends (it waits for a frame with the note in it).
+  render({ busy = null } = {}) {
     if (this._renderQueued) return;
     this._renderQueued = true;
-    requestAnimationFrame(async () => {
+    const run = async () => {
       this._renderQueued = false;
       if (!this.image) return;
       this._rendering = true;
@@ -246,7 +254,9 @@ export const renderingActions = {
       } finally {
         this._rendering = false;
       }
-    });
+    };
+    if (busy) busyWhile(busy, run);
+    else requestAnimationFrame(run);
   },
 
   // New composed cells: laid out with their wide characters as what the views show and export.
