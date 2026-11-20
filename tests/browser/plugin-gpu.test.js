@@ -310,6 +310,28 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     expect(project.cells.every((c) => c.char === '/')).toBe(true);
   });
 
+  test('a shader wrong only where a cell holds an edge is switched off, though the drawing\'s corner is plain', async () => {
+    const { project } = await createTestApp();
+    await project.setBlankCanvas({ cols: 16, rows: 24 }); // black: no edges anywhere
+    Object.assign(project, { quantize: 'cga', chars: SET });
+    await settle(project);
+    const def = solver({
+      solve(cell, look) { // a '/' where its own samples hold an edge
+        let low = 255, high = 0;
+        for (let i = 0; i < 32; i++) {
+          const [r, g, b] = cell.sample(0, 0, i), v = r + g + b;
+          low = Math.min(low, v);
+          high = Math.max(high, v);
+        }
+        return high - low > 150 ? { char: '/', fg: rgb(255, 255, 255), bg: rgb(0, 0, 0) } : look.byShape();
+      },
+      shader: { solve: 'byShape();' }, // forgets the edges
+    });
+    project.charChoice = await onSolver(def, { hash: 'edges-only' });
+    await settle(project);
+    expect(usePluginStore().problems['jane.outlines']).toContain(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
+  });
+
   test('a change of set checks the shader again: one that agrees on the first set and not on the next is switched off', async () => {
     const { project } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
