@@ -6,7 +6,7 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { onSolver } from '../support/pluginSolvers.js';
 import ShapeMatcher from '@/lib/ShapeMatcher.js';
 import { pluginMatcher, resolvePlugin, grownArea } from '@/lib/PluginSolve.js';
-import { SAMPLES, cellRange } from '@/lib/CharResolver.js';
+import { SAMPLES, cellRange, shapeMatcher } from '@/lib/CharResolver.js';
 import { referenceMask, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { PALETTES } from '@/lib/ColorUtils.js';
 import { readSolvers } from '@/plugins/script';
@@ -175,6 +175,49 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
       expect(key(cells), `${cols} x ${lines}`).toEqual(key(resolvePlugin(samples, cols, lines, matcher, {}).cells));
       expect(cells[0].fg).toMatchObject(rgb(samples[0], samples[1], samples[2])); // its own first sample: the edge cell's
     }
+  });
+
+  test('byShape() in a solver\'s shader is By shape\'s own shader over the layer\'s set, in bands or not', async () => {
+    const def = solver({ reach: 2, solve: (cell, look) => look.byShape(), shader: { solve: 'byShape();' } });
+    const cols = 9, lines = 21, samples = samplesOf(cols, lines), gpu = ShapeMatcher.shared(), maxSize = gpu.maxSize;
+    const set = (await glyphsOf()).filter((g) => !g.own), dither = { strength: 0.7, style: 'bayer' };
+    try {
+      for (const [renderStyle, palette] of [['ansi', PALETTES.cga], ['ansi', null], ['ascii', null]]) {
+        const own = gpu.resolve(samples, cols, lines, shapeMatcher({ palette, glyphs: set, solids: 0.25, light: 1, renderStyle }), dither).cells;
+        const matcher = await matcherOf(def, { palette, renderStyle });
+        for (const size of [maxSize, 64]) {
+          gpu.maxSize = size; // 64: 8 lines of samples a texture, 4 a band with two lines of margin each way
+          expect(key(gpu.resolve(samples, cols, lines, matcher, dither).cells), `${renderStyle} ${!!palette} ${size}`).toEqual(key(own));
+        }
+        gpu.maxSize = maxSize;
+      }
+    } finally {
+      gpu.maxSize = maxSize;
+    }
+  });
+
+  test('a shader that writes past put() is held to the set and the palette, and switched off by the check', async () => {
+    const def = solver({ ...PASS_ONE, shader: { solve: 'outFg = vec4(0.5); outBg = vec4(0.5);' } });
+    const matcher = await matcherOf(def, { palette: PALETTES.cga }), samples = samplesOf(4, 3);
+    const { cells } = ShapeMatcher.shared().resolve(samples, 4, 3, matcher, {});
+    for (const cell of cells) {
+      expect(ALL).toContain(cell.char);
+      expect(PALETTES.cga).toContain(cell.fg);
+      expect(PALETTES.cga).toContain(cell.bg);
+    }
+
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
+    Object.assign(project, { quantize: 'cga', chars: SET });
+    project.charChoice = await onSolver(def, { hash: 'writes-past' });
+    await settle(project);
+    expect(usePluginStore().problems['jane.outlines']).toMatch(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
+    const shown = key(project.cells);
+    vi.spyOn(ShapeMatcher.prototype, 'resolve').mockReturnValue(null);
+    project.renderer.reset();
+    project.render();
+    await settle(project);
+    expect(shown).toEqual(key(project.cells)); // the JavaScript's
   });
 
   test('a shader that does not compile falls back to the JavaScript and keeps the log', async () => {
