@@ -359,10 +359,10 @@ and sideways.
 
 ### 26. Add a theme from a file
 - Does: opens the settings, taps Plugins, taps Install from a file… and picks `plugins/midnight/phosphor-plugin.json`;
-  reads the question and taps Install; closes the dialog and picks Midnight in the select beside the theme icons.
+  reads the question and taps Install; closes the dialog and picks Midnight in the select under the theme icons.
 - Expects: the question says "Install Midnight 1.0.0?", "by Jane" and "Adds 1 theme. Runs no code."; the row shows
   Midnight, 1.0.0, by Jane, 1 theme and its homepage; with Midnight picked the app turns deep blue and no theme icon is
-  checked; the language, the icons and the select fit the column's width in one row ([Plugins](../../plugins.md)).
+  checked; the language and the icons keep their row, a half each, with the select on its own row under them, fitting the column's width ([Plugins](../../plugins.md)).
 - Probes: `out-of-order`: first pick `images/photo.jpg` (it says "That file isn't a plugin's manifest."); `again`:
   install the same file twice (the second asks "Replace Midnight 1.0.0 with 1.0.0?").
 - Rated: no (touch only: no keyboard shows here)

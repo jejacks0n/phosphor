@@ -1,7 +1,7 @@
 // The Plugins dialog: what's installed, installing from a manifest file after asking, the on and off switch, Remove
 // after asking, and what it says when the browser keeps nothing or the visit started with plugins off.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { createApp } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import midnight from '../fixtures/plugins/midnight/phosphor-plugin.json?raw';
@@ -241,4 +241,13 @@ test('a browser that will not keep plugins asks nothing about a dropped file, an
   expect(drop(document.querySelector('dialog h3'), midnight)).toBe(true);
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(heading()).toBe('Plugins');
+});
+
+test('Tab goes from the last row on to Install from a file…, past the hidden file input', async () => {
+  await mount();
+  await installed();
+  const link = document.querySelector('dialog li a');
+  link.focus();
+  await userEvent.tab();
+  expect(document.activeElement.textContent).toBe('Install from a file…');
 });

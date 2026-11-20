@@ -28,8 +28,7 @@ const themes = computed(() => [
 
 <template>
   <footer class="project-footer">
-    <!-- With a plugin's theme on offer, a third control: the language, the icons, and the select of those themes. -->
-    <div class="footer-controls" :class="{ thirds: plugins.themes.length }">
+    <div class="footer-controls">
       <label class="locale-picker" :title="t('footer.language')">
         <select
             class="locale-select"
@@ -49,18 +48,19 @@ const themes = computed(() => [
           <span v-html="icon"></span>
         </label>
       </div>
-      <select
-          v-if="plugins.themes.length"
-          class="locale-select"
-          :value="pluginTheme"
-          :aria-label="t('tabs.pluginThemesAria')"
-          :title="t('tabs.pluginThemesAria')"
-          @change="theme = $event.target.value"
-      >
-        <option value="" disabled hidden>{{ t('tabs.themes.more') }}</option>
-        <option v-for="item in plugins.themes" :key="item.ref" :value="item.ref">{{ item.name }}</option>
-      </select>
     </div>
+    <!-- With a plugin's theme on offer, a row of its own: the themes plugins add. -->
+    <select
+        v-if="plugins.themes.length"
+        class="locale-select plugin-themes"
+        :value="pluginTheme"
+        :aria-label="t('tabs.pluginThemesAria')"
+        :title="t('tabs.pluginThemesAria')"
+        @change="theme = $event.target.value"
+    >
+      <option value="" disabled hidden>{{ t('tabs.themes.more') }}</option>
+      <option v-for="item in plugins.themes" :key="item.ref" :value="item.ref">{{ item.name }}</option>
+    </select>
     <button type="button" class="plugins-button" @click="pluginsOpen = true">{{ t('plugins.open') }}</button>
     <div class="copyright">{{ t('footer.copyright', { year }) }}</div>
   </footer>
@@ -82,8 +82,8 @@ footer.project-footer {
   gap: 6px;
   margin-bottom: 10px;
 }
-.footer-controls.thirds {
-  grid-template-columns: 1fr 1fr 1fr;
+.plugin-themes {
+  margin-bottom: 10px;
 }
 .plugins-button {
   width: 100%;
