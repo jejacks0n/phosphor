@@ -14,7 +14,7 @@ const refused = (change) => {
 test('the example reads as itself, frozen, with nothing extra kept', () => {
   const raw = { ...good(), extra: 1, themes: [{ ...good().themes[0], extra: 1 }] };
   const m = readManifest(JSON.stringify(raw));
-  expect(m).toEqual(good());
+  expect(m).toEqual({ ...good(), script: '' });
   expect(Object.isFrozen(m.themes[0].colors)).toBe(true);
 });
 
@@ -29,7 +29,6 @@ test.each([
 
 test.each([
   [(m) => { m.phosphor = 2; }, 'newer', {}],
-  [(m) => { m.script = 'plugin.js'; }, 'needsNewer', {}],
   [(m) => { m.themes = []; }, 'nothing', {}],
   [(m) => { m.id = 'Jane.Midnight'; }, 'badField', { field: 'id' }],
   [(m) => { m.id = 'midnight'; }, 'badField', { field: 'id' }],
@@ -48,6 +47,29 @@ test.each([
   const error = refused(change);
   expect(error).toBeInstanceOf(ManifestError);
   expect({ code: error.code, detail: error.detail }).toEqual({ code, detail });
+});
+
+const manifestWith = (change) => {
+  const raw = { ...good(), ...change };
+  for (const key of Object.keys(raw)) if (raw[key] === undefined) delete raw[key];
+  return JSON.stringify(raw);
+};
+
+test('takes a script path relative to the manifest', () => {
+  expect(readManifest(manifestWith({ script: 'outlines.js' })).script).toBe('outlines.js');
+  expect(readManifest(manifestWith({ script: 'src/outlines.mjs' })).script).toBe('src/outlines.mjs');
+});
+
+test("refuses a script path that leaves the folder, is absolute or isn't JavaScript", () => {
+  for (const script of ['../x.js', '/x.js', 'a/../../x.js', 'x.ts', 'x.js?y', '', 'a\\x.js', 'x'.repeat(200) + '.js']) {
+    expect(() => readManifest(manifestWith({ script }))).toThrow(expect.objectContaining({ code: 'badField', detail: { field: 'script' } }));
+  }
+});
+
+test('a script without themes is enough; neither is nothing', () => {
+  expect(readManifest(manifestWith({ script: 'x.js', themes: undefined })).themes).toEqual([]);
+  expect(readManifest(manifestWith({ script: 'x.js', themes: [] })).themes).toEqual([]);
+  expect(() => readManifest(manifestWith({ themes: undefined }))).toThrow(expect.objectContaining({ code: 'nothing' }));
 });
 
 test('optional fields left out read as empty', () => {
@@ -69,8 +91,8 @@ test('the slots are the color properties of :root in global.css', () => {
 test('a manifest read once reads again as itself, optional fields left out or empty', () => {
   const bare = good();
   delete bare.description; delete bare.homepage; delete bare.license;
-  for (const raw of [good(), bare, { ...good(), homepage: '', license: '' }]) {
+  for (const raw of [good(), bare, { ...good(), script: 'x.js', themes: [] }, { ...good(), homepage: '', license: '' }]) {
     const once = readManifest(JSON.stringify(raw));
-    expect(readManifest(JSON.stringify(once))).toEqual(once);
+    expect(readManifest(JSON.stringify({ ...once, script: once.script || undefined }))).toEqual(once);
   }
 });
