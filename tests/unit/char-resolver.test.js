@@ -255,3 +255,10 @@ test('resolveShapes Floyd–Steinberg carries each sample\'s error on, keeping o
     else assert.equal(again.cells[i], undefined);
   }
 });
+
+test('a plugin solver\'s choice is a By shape kind of mode', () => {
+  assert.equal(charModeOf('ansi', 'plugin:jane.outlines/outlines', 'weight'), 'shape');
+  assert.equal(charModeOf('colorAscii', 'random', 'plugin:jane.outlines/outlines'), 'shape');
+  assert.equal(charModeOf('ascii', 'random', 'plugin:jane.outlines/outlines'), 'shape');
+  assert.equal(charModeOf('ansi', 'random', 'plugin:jane.outlines/outlines'), 'random'); // the other style's choice doesn't count
+});

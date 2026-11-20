@@ -1,4 +1,4 @@
-import { shallowRef, markRaw } from 'vue';
+import { shallowRef, markRaw, toRaw } from 'vue';
 import { defineStore, getActivePinia } from 'pinia';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
@@ -11,6 +11,8 @@ import { placedShapes } from '@/document/followers.js';
 import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { charModeOf } from '@/lib/CharResolver.js';
 import { onGrid } from '@/lib/ImageProcessor.js';
+import { isSolverRef, solverFor, standInOf, optionValues } from '@/plugins/solvers.js';
+import { usePluginStore } from '@/store/PluginStore.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -30,7 +32,7 @@ import { handoverActions } from '@/store/project/handover.js';
 import { animationActions } from '@/store/project/animation.js';
 import { vectorActions } from '@/store/project/vector.js';
 import { layerActions } from '@/store/project/layers.js';
-import { PIPELINE_KEYS, savedJson, MAX_HISTORY_BYTES, ALONE, newLedger } from '@/store/project/shared.js';
+import { PIPELINE_KEYS, layerName, savedJson, MAX_HISTORY_BYTES, ALONE, newLedger } from '@/store/project/shared.js';
 
 // A cell an edit didn't touch stays the same object, except a wide one, which is laid out again with its row.
 const sameLook = (a, b) => a === b || (!!a?.wide && !!b && a.wide === b.wide && a.char === b.char && a.fg.hex === b.fg.hex && a.bg.hex === b.bg.hex);
@@ -66,7 +68,18 @@ const NO_CELLS = new Map(); // a hidden or empty layer's cells, never changed
 // A layer's params: the drawing's (processParams) with its own character settings over them, made once per processParams
 // and chars (layerParams), so each keeps its identity while neither changes: the Renderer's caches go by it.
 const OWN_PARAMS = new WeakMap(); // processParams -> WeakMap(chars -> params)
-function ownParams(params, chars) {
+
+// What a layer's plugin solver comes to in its params: the solver to use (null for a built-in, or a stand-in), its options, the
+// one the layer wants whether or not it's used, and why it isn't (plugins/solvers.js standInOf). Reads what the plugin store
+// and the room change, so the params made from it are made again when they do (processParams reads them first).
+function solverParams(chars, renderStyle, inRoom) {
+  const plugins = usePluginStore(), choice = renderStyle === 'ansi' ? chars.charChoice : chars.charChoiceAscii;
+  if (!isSolverRef(choice)) return { solver: null, solverOptions: {}, wantedSolver: null, standIn: null };
+  const standIn = standInOf({ ref: choice, renderStyle, inRoom, pluginsOff: plugins.off, pluginState: plugins.pluginState });
+  const found = standIn ? null : solverFor(choice);
+  return { solver: found ? choice : null, solverOptions: found ? optionValues(found.def, chars.solverOptions?.[choice]) : {}, wantedSolver: choice, standIn };
+}
+function ownParams(params, chars, inRoom) {
   let own = OWN_PARAMS.get(params);
   if (!own) OWN_PARAMS.set(params, own = new WeakMap());
   let made = own.get(chars);
@@ -77,6 +90,7 @@ function ownParams(params, chars) {
       chars: renderStyle === 'ansi' ? chars.chars : chars.charsAscii,
       charMode: charModeOf(renderStyle, chars.charChoice, chars.charChoiceAscii),
       charChoice: chars.charChoice,
+      ...solverParams(chars, renderStyle, inRoom),
       seed: chars.seed,
       solids: chars.solids,
       patternLight: chars.patternLight,
@@ -198,7 +212,7 @@ export const useProjectStore = defineStore('project', {
     // The vector layer is there once it's added, or with the drawing's first shape, and stays when its last one goes.
     hasVectorLayer: (state) => state.layers.some((layer) => layer.kind === 'vector'),
     // The bottom's character settings: the document's own fields (settings.js CHAR_KEYS).
-    baseChars: (state) => Object.fromEntries(CHAR_KEYS.map((key) => [key, state[key]])),
+    baseChars: (state) => Object.fromEntries(CHAR_KEYS.map((key) => [key, toRaw(state[key])])), // raw: an object (solverOptions) mustn't reach a layer, a save or IndexedDB as a proxy
     // A layer's character settings: its own (layer.chars), the bottom's for the bottom, or for a layer that has none yet;
     // a cells layer's Dither is the bottom's (it holds none: layerChars), so a layer made from it takes that.
     charsOf() {
@@ -212,7 +226,14 @@ export const useProjectStore = defineStore('project', {
     // layer whose settings are the bottom's (ownParams keeps each one's identity while nothing changes).
     layerParams() {
       const params = this.processParams, base = this.baseChars;
-      return new Map(this.layers.map((layer) => [layer.id, sameChars(layer.chars, base, layer.kind) ? params : ownParams(params, layer.chars)]));
+      return new Map(this.layers.map((layer) => [layer.id, sameChars(layer.chars, base, layer.kind) ? params : ownParams(params, layer.chars, this.inRoom)]));
+    },
+    // The base and the layers whose characters are a plugin's solver, a stand-in or not, in stack order.
+    pluginSolverLayers() {
+      return this.layers.filter((layer) => {
+        const chars = this.charsOf(layer.id);
+        return isSolverRef(this.renderStyle === 'ansi' ? chars.charChoice : chars.charChoiceAscii);
+      }).map((layer) => ({ id: layer.id, name: layerName(layer) }));
     },
     // Whether a layer's eye is shut.
     layerHidden() { return (id) => !!this.layerById(id)?.hidden; },
@@ -345,17 +366,22 @@ export const useProjectStore = defineStore('project', {
       void this.editVersion;
       return !onGrid(this.image, this.processParams) || !!this.baseLayer?.finerThanGrid();
     },
-    processParams: (state) => ({
-      ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
-      chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,
-      charMode: charModeOf(state.renderStyle, state.charChoice, state.charChoiceAscii), // how a cell's character is picked (Cells.js)
-      charChoice: state.charChoice,
-      solids: state.solids,
-      patternLight: state.patternLight,
-      image: state.image,
-      fit: state.fit,
-      workScale: state.baseScale,
-    }),
+    processParams(state) {
+      const plugins = usePluginStore();
+      void plugins.solverStamp; void plugins.off; void plugins.plugins.map(({ id, enabled }) => id + enabled); // the params made anew when the plugins change
+      return {
+        ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
+        chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,
+        charMode: charModeOf(state.renderStyle, state.charChoice, state.charChoiceAscii), // how a cell's character is picked (Cells.js)
+        charChoice: state.charChoice,
+        ...solverParams(state, state.renderStyle, this.inRoom),
+        solids: state.solids,
+        patternLight: state.patternLight,
+        image: state.image,
+        fit: state.fit,
+        workScale: state.baseScale,
+      };
+    },
   },
 
   // One file per area in store/project/ (AGENTS.md, "Where things live").

@@ -14,7 +14,7 @@ import { generateSlug } from 'random-word-slugs';
 
 test("Settings schema: same keys, storage keys and reset defaults as before the schema existed, so users' persisted settings survive", async () => {
   // same 23 keys as the pre-schema SETTING_KEYS; order follows the table
-  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'aspectRatio', 'renderStyle', 'chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solids', 'patternLight', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'].sort());
+  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'aspectRatio', 'renderStyle', 'chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solverOptions', 'solids', 'patternLight', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'].sort());
   assert.deepEqual(SAUCE_KEYS, ['sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments', 'sauceRecord', 'sauceLetterSpacing']);
   assert.equal(getSetting('brightness').storageKey ?? 'current_file.brightness', 'current_file.brightness');
   assert.equal(getSetting('sauceUse9pxFont').storageKey, 'current_file.sauce.use9pxFont');
@@ -129,4 +129,20 @@ test('Edges moves in tenths: an arrow press is a step you can see, 200 presses e
   assert.equal(edges.step, 0.1);
   assert.equal(edges.decimals, 1);
   assert.equal(Math.round((edges.max - edges.min) / edges.step), 200);
+});
+
+test('solverOptions from a stranger: an object of objects of numbers and booleans, small, else refused', () => {
+  const ref = 'plugin:jane.outlines/outlines';
+  const options = { [ref]: { threshold: 40, thin: true } };
+  assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: options }), { ...GOOD, solverOptions: options });
+  assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: {} }), { ...GOOD, solverOptions: {} });
+  for (const bad of [null, 'x', [], { [ref]: 4 }, { [ref]: { a: 'x' } }, { [ref]: { a: null } }, { [ref]: { a: Infinity } }, { [ref]: [1] },
+    { [ref]: Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`option${i}`, 1])) }]) {
+    assert.equal(settingsFromStranger({ ...GOOD, solverOptions: bad }), null, JSON.stringify(bad)?.slice(0, 40));
+  }
+});
+
+test('a plugin ref in charChoice or charChoiceAscii survives a stranger\'s settings', () => {
+  const ref = 'plugin:jane.outlines/outlines';
+  assert.deepEqual(settingsFromStranger({ ...GOOD, charChoice: ref, charChoiceAscii: ref }), { ...GOOD, charChoice: ref, charChoiceAscii: ref });
 });

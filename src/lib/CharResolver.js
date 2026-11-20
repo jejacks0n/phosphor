@@ -1,14 +1,15 @@
 // Choosing a cell's character: the mode the settings come to, and what it asks of the pipeline.
 // No DOM and no translations here: the unit tests run it in Node.
 import { bayerNudge, nudgeSpread } from './Dither.js';
+import { isSolverRef } from '../plugins/solvers.js';
 import { charRowsOf, colorOf, buildCell, ASCII_BG } from './Cells.js';
 
 // How a cell's character is picked (Cells.js): ANSI picks at random, or Best match / By shape;
 // Color ASCII by intensity or By shape; ASCII by brightness or By shape. Anything unknown (an old
 // file, another browser) falls back to today's way.
 export function charModeOf(renderStyle, charChoice, charChoiceAscii) {
-  if (renderStyle === 'ansi') return charChoice === 'best' || charChoice === 'shape' ? charChoice : 'random';
-  const byShape = charChoiceAscii === 'shape';
+  if (renderStyle === 'ansi') return charChoice === 'best' || charChoice === 'shape' ? charChoice : isSolverRef(charChoice) ? 'shape' : 'random';
+  const byShape = charChoiceAscii === 'shape' || isSolverRef(charChoiceAscii); // a plugin's solver is a kind of By shape
   return renderStyle === 'colorAscii' ? (byShape ? 'shape' : 'intensity') : (byShape ? 'shape' : 'brightness');
 }
 
