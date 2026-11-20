@@ -98,14 +98,34 @@ export function slidersAtDefaults(state) {
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const asNumber = (value) => (typeof value === 'string' && value.trim() ? Number(value) : value);
 const plain = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
-const goodOptions = (value) => plain(value) && JSON.stringify(value).length <= MOST_TEXT * 4 && Object.values(value).every((own) =>
-  plain(own) && Object.values(own).every((each) => typeof each === 'boolean' || (typeof each === 'number' && Number.isFinite(each))));
+const MOST_OPTIONS = MOST_TEXT * 4; // bytes of JSON
+const PLUGIN_REF = /^plugin:[^/]+\/.+$/;
+
+// A solverOptions value as one a document can hold: only what's well formed kept (a ref's object of finite numbers and
+// booleans), as much as fits MOST_OPTIONS, the ref named first so it's the one that stays when not all do. null for a
+// value that isn't an object at all. Run on what's read from a file or a host, and on what's written, so nothing the app
+// writes is more than it will read.
+export function cleanOptions(value, first = null) {
+  if (!plain(value)) return null;
+  const refs = Object.keys(value).sort((a, b) => (b === first) - (a === first));
+  const kept = {};
+  let size = 2;
+  for (const ref of refs) {
+    if (!PLUGIN_REF.test(ref) || !plain(value[ref])) continue;
+    const own = Object.fromEntries(Object.entries(value[ref]).filter(([, each]) => typeof each === 'boolean' || (typeof each === 'number' && Number.isFinite(each))));
+    const bytes = JSON.stringify([ref, own]).length;
+    if (size + bytes > MOST_OPTIONS) continue;
+    size += bytes;
+    kept[ref] = own;
+  }
+  return kept;
+}
 
 // Whether two values of a character setting are the same one (an object by its JSON, the rest by their text: a slider can hold a numeric string).
 export const sameSetting = (a, b) => (plain(a) || plain(b) ? JSON.stringify(a) === JSON.stringify(b) : String(a) === String(b));
 
 function goodSetting({ default: usual, object, min = -Infinity, max = Infinity, most = MOST_TEXT }, value) {
-  if (object) return goodOptions(value);
+  if (object) return plain(value);
   if (typeof usual === 'boolean') return typeof value === 'boolean';
   if (typeof usual === 'number') return typeof asNumber(value) === 'number' && Number.isFinite(asNumber(value)) && asNumber(value) >= min && asNumber(value) <= max;
   return typeof value === 'string' && charCount(value) <= most && (typeof usual !== 'string' || !HEX_COLOR.test(usual) || HEX_COLOR.test(value));
@@ -120,7 +140,7 @@ export function settingsFromStranger(values) {
   for (const setting of SETTINGS) {
     if (!(setting.key in values)) continue;
     if (!goodSetting(setting, values[setting.key])) return null;
-    taken[setting.key] = values[setting.key];
+    taken[setting.key] = setting.object ? cleanOptions(values[setting.key]) : values[setting.key];
   }
   const cols = asNumber(taken.cols ?? 1), rows = asNumber(taken.rows ?? 1);
   if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1 || cols > MAX_COLS || rows > maxRowsBeside(cols)) return null;
@@ -147,7 +167,7 @@ export function getSetting(key) {
 
 // Each tab keeps its own document: another tab's changes reach this one only on reload.
 export function settingsState() {
-  return Object.fromEntries(SETTINGS.map(s => [s.key, useLocalStorage(s.storageKey ?? `current_file.${s.key}`, defaultOf(s), { listenToStorageChanges: false })]));
+  return Object.fromEntries(SETTINGS.map(s => [s.key, useLocalStorage(s.storageKey ?? `current_file.${s.key}`, defaultOf(s), { listenToStorageChanges: false, shallow: !!s.object })]));
 }
 
 export const settingDefaults = () => Object.fromEntries(SETTINGS.map(s => [s.key, defaultOf(s)]));

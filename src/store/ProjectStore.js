@@ -1,4 +1,4 @@
-import { shallowRef, markRaw, toRaw } from 'vue';
+import { shallowRef, markRaw } from 'vue';
 import { defineStore, getActivePinia } from 'pinia';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
 import Renderer from '@/document/Renderer.js';
@@ -212,7 +212,7 @@ export const useProjectStore = defineStore('project', {
     // The vector layer is there once it's added, or with the drawing's first shape, and stays when its last one goes.
     hasVectorLayer: (state) => state.layers.some((layer) => layer.kind === 'vector'),
     // The bottom's character settings: the document's own fields (settings.js CHAR_KEYS).
-    baseChars: (state) => Object.fromEntries(CHAR_KEYS.map((key) => [key, toRaw(state[key])])), // raw: an object (solverOptions) mustn't reach a layer, a save or IndexedDB as a proxy
+    baseChars: (state) => Object.fromEntries(CHAR_KEYS.map((key) => [key, state[key]])),
     // A layer's character settings: its own (layer.chars), the bottom's for the bottom, or for a layer that has none yet;
     // a cells layer's Dither is the bottom's (it holds none: layerChars), so a layer made from it takes that.
     charsOf() {

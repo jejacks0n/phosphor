@@ -852,3 +852,26 @@ test('in a room a plugin choice stands in as room', async () => {
   expect(project.layerParams.get('edit')).toMatchObject({ solver: null, wantedSolver: ref, standIn: 'room', charMode: 'shape' });
   project.stopSharing?.();
 });
+
+test('options kept per solver are cut to what a file holds, the layer\'s own solver first, and the file still opens', async () => {
+  const { project } = await blank();
+  const ref = await onSolver(OUTLINES);
+  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p/s${i}`, { a: i }]));
+  project.setLayerChars('edit', { charChoice: ref, solverOptions: { ...many, [ref]: { threshold: 70 } } });
+  project.commitLayerChars();
+  const kept = project.charsOf('edit').solverOptions;
+  expect(kept[ref]).toEqual({ threshold: 70 });
+  expect(JSON.stringify(kept).length).toBeLessThanOrEqual(4096);
+  const blob = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
+  await project.openParts(await readProject(blob), { filename: 'many' });
+  await settle(project);
+  expect(project.charsOf('edit').solverOptions).toEqual(kept);
+});
+
+test('as host, a setting changed can be kept for a reload: the ledger clones', async () => {
+  const { project } = await blank();
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  project.sendSettings();
+  expect(() => structuredClone(project._ledger.kept())).not.toThrow();
+  project.stopSharing();
+});
