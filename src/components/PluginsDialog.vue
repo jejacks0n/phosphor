@@ -3,11 +3,12 @@ import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
-import { usePluginStore } from '@/store/PluginStore';
+import { usePluginStore, linksFiles } from '@/store/PluginStore';
 
 // The Plugins dialog (docs/plugins.md): what's installed, each switched on or off or removed, and a plugin installed
 // from its manifest file, picked or dropped. Installing and removing ask first, in a ChoiceDialog in this one's place.
-// A manifest's words are the author's, shown as text.
+// A manifest's words are the author's, shown as text. Where the browser can link a page to a file (linksFiles), a
+// plugin is picked with its picker and keeps its file, for Reload and Follow file.
 const DOCS = 'https://github.com/jejacks0n/phosphor/blob/main/docs/plugins.md';
 const emit = defineEmits(['close']);
 const { t } = useI18n();
@@ -40,6 +41,18 @@ function onFile(event) {
 
 const onDrop = (event) => take(event.dataTransfer.files[0]);
 
+async function installFile() {
+  problem.value = null;
+  if (!linksFiles()) return fileInput.value.click();
+  try {
+    const picked = await plugins.pick();
+    if (picked) asking.value = { install: picked };
+  } catch (error) {
+    if (!error.userMessage) throw error;
+    problem.value = error.userMessage;
+  }
+}
+
 function installQuestion({ manifest, replaces }) {
   const named = { name: manifest.name, version: manifest.version };
   return {
@@ -59,7 +72,7 @@ function removeQuestion(record) {
 
 async function answer() {
   const { install, remove } = asking.value;
-  if (install) await plugins.install(install.manifest);
+  if (install) await plugins.install(install.manifest, { handle: install.handle });
   else await plugins.uninstall(remove.id);
   asking.value = null;
 }
@@ -78,7 +91,7 @@ async function answer() {
       <p v-if="plugins.unavailable" class="note">{{ t('plugins.unavailable') }}</p>
 
       <ul v-if="plugins.plugins.length">
-        <li v-for="{ id, manifest, enabled } in plugins.plugins" :key="id">
+        <li v-for="{ id, manifest, enabled, handle } in plugins.plugins" :key="id">
           <div class="head">
             <strong class="name">{{ manifest.name }}</strong>
             <span class="version">{{ manifest.version }}</span>
@@ -101,8 +114,25 @@ async function answer() {
             <span>{{ t('plugins.by', { author: manifest.author }) }}</span>
             <span>{{ adds(manifest) }}</span>
             <a v-if="manifest.homepage" :href="manifest.homepage" target="_blank" rel="noopener noreferrer">{{ address(manifest.homepage) }}</a>
+            <span v-if="handle">{{ t('plugins.fromFile') }}</span>
           </p>
           <p v-if="manifest.description" class="description">{{ manifest.description }}</p>
+          <div v-if="handle" class="file">
+            <button
+                type="button"
+                :aria-label="t('plugins.reloadNamed', { name: manifest.name })"
+                @click="plugins.reload(id)"
+            >{{ t('plugins.reload') }}</button>
+            <button
+                type="button"
+                role="switch"
+                class="switch"
+                :aria-checked="plugins.following[id] ? 'true' : 'false'"
+                :aria-label="t('plugins.followNamed', { name: manifest.name })"
+                @click="plugins.follow(id, !plugins.following[id])"
+            >{{ t('plugins.follow') }}</button>
+          </div>
+          <p v-if="plugins.problems[id]" class="problem" role="alert">{{ plugins.problems[id] }}</p>
         </li>
       </ul>
       <p v-else-if="!plugins.unavailable" class="none">
@@ -114,7 +144,7 @@ async function answer() {
 
       <input ref="fileInput" type="file" accept=".json,application/json" hidden @change="onFile">
       <div class="actions">
-        <button type="button" :disabled="plugins.unavailable" @click="problem = null; fileInput.click()">{{ t('plugins.installFile') }}</button>
+        <button type="button" :disabled="plugins.unavailable" @click="installFile">{{ t('plugins.installFile') }}</button>
       </div>
     </div>
   </ModalDialog>
@@ -151,8 +181,13 @@ span.version {
   margin-right: auto;
   color: var(--text-muted);
 }
-div.head button {
+div.head button, div.file button {
   padding: 4px 10px;
+}
+div.file {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }
 button.switch[aria-checked='true'] {
   border-color: var(--accent);

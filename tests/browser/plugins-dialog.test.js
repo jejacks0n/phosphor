@@ -161,3 +161,51 @@ test('started with plugins off, it says so and still lists them', async () => {
   expect(store.plugins).toHaveLength(1);
   expect(document.querySelector('dialog li').textContent).toContain('Midnight');
 });
+
+// A file of the origin's private file system, as the browser's picker would give.
+const privateFile = async (text) => {
+  const dir = await navigator.storage.getDirectory(), name = `dialog-${Math.random().toString(36).slice(2)}.json`;
+  const file = await dir.getFileHandle(name, { create: true }), writable = await file.createWritable();
+  await writable.write(text);
+  await writable.close();
+  return { file, remove: () => dir.removeEntry(name) };
+};
+
+test('a plugin installed through the browser\'s picker shows From a file, Reload and Follow file; one from a plain file shows none of them', async () => {
+  const store = await mount();
+  await installed();
+  expect(dialogText()).not.toContain('From a file');
+  expect(page.getByRole('button', { name: 'Reload Midnight' }).query()).toBe(null);
+  expect(page.getByRole('switch', { name: 'Follow Midnight\'s file' }).query()).toBe(null);
+
+  const { file, remove } = await privateFile(midnight);
+  await store.install(JSON.parse(midnight), { handle: file });
+  await expect.element(page.getByRole('button', { name: 'Reload Midnight' })).toBeVisible();
+  expect(dialogText()).toContain('From a file');
+  await expect.element(page.getByRole('switch', { name: 'Follow Midnight\'s file' })).toHaveAttribute('aria-checked', 'false');
+  await remove();
+});
+
+test('Reload and the Follow file switch call the store, and a problem shows on the row', async () => {
+  const store = await mount();
+  const { file, remove } = await privateFile(midnight);
+  await store.install(JSON.parse(midnight), { handle: file });
+  const reload = vi.spyOn(store, 'reload').mockResolvedValue(true);
+  const follow = vi.spyOn(store, 'follow').mockImplementation(async (id, on) => {
+    if (on) store.following[id] = true;
+    else delete store.following[id];
+  });
+  await page.getByRole('button', { name: 'Reload Midnight' }).click();
+  expect(reload).toHaveBeenCalledWith('jane.midnight');
+  const following = page.getByRole('switch', { name: 'Follow Midnight\'s file' });
+  await following.click();
+  expect(follow).toHaveBeenCalledWith('jane.midnight', true);
+  await expect.element(following).toHaveAttribute('aria-checked', 'true');
+  await following.click();
+  expect(follow).toHaveBeenLastCalledWith('jane.midnight', false);
+  await expect.element(following).toHaveAttribute('aria-checked', 'false');
+
+  store.problems['jane.midnight'] = 'That file can\'t be read anymore.';
+  await expect.element(page.getByRole('alert')).toHaveTextContent('That file can\'t be read anymore.');
+  await remove();
+});

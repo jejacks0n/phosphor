@@ -1,5 +1,8 @@
 // The plugins installed in this browser (docs/plugins.md): read from a manifest file, switched on and off, removed,
 // and the themes the ones that are on offer. A theme in use whose plugin stops offering it gives way to its base.
+// Picked with the browser's picker (Chrome, Edge), a plugin keeps its file's handle, for an author: Reload reads the
+// file again, and Follow file looks at it every FOLLOW_MS and takes each save, keeping the last good version when a
+// save isn't a good manifest.
 import { toRaw } from 'vue';
 import { defineStore } from 'pinia';
 import { t } from '@/i18n';
@@ -13,6 +16,28 @@ const refused = (error) => {
   return Object.assign(new Error(error.message), { userMessage: t(`plugins.errors.${error.code}`, error.detail) });
 };
 
+// Plugins linked to their files: a browser with File System Access, not the desktop app (its files are its own).
+export const linksFiles = () => import.meta.env.VITE_DESKTOP !== '1' && typeof globalThis.showOpenFilePicker === 'function';
+export const FOLLOW_MS = 1000;
+
+const problem = (code, detail) => Object.assign(new Error(code), { userMessage: t(`plugins.errors.${code}`, detail) });
+// The browser lets a page read a kept file once asked; asking needs a click, so a timer only looks.
+const readable = async (handle, ask) => (await handle.queryPermission({ mode: 'read' })) === 'granted'
+  || (ask && (await handle.requestPermission({ mode: 'read' })) === 'granted');
+const stamp = (file) => `${file.lastModified}/${file.size}`;
+
+// Followed files' stamps as last seen, by plugin id, and the one timer that looks at them.
+const seen = new Map();
+let timer = null, checking = false;
+function keepTimer(store) {
+  const any = Object.keys(store.following).length > 0;
+  if (any && !timer) timer = setInterval(() => store.checkFollowed(), FOLLOW_MS);
+  if (!any && timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+}
+
 const byName = (a, b) => a.manifest.name.localeCompare(b.manifest.name) || a.id.localeCompare(b.id);
 
 export const usePluginStore = defineStore('plugins', {
@@ -20,6 +45,8 @@ export const usePluginStore = defineStore('plugins', {
     plugins: [],                             // records, by name
     off: pluginsOff(globalThis.location?.search ?? ''), // ?plugins=off: read once, for this visit
     unavailable: false,                      // the browser won't keep anything (some private windows)
+    following: {},                           // { [id]: true } for files followed; not kept
+    problems: {},                            // { [id]: words } for a file that couldn't be taken; not kept
   }),
 
   getters: {
@@ -59,11 +86,90 @@ export const usePluginStore = defineStore('plugins', {
       }
     },
 
-    async install(manifest) {
+    // The browser's picker: { manifest, replaces, handle }, or null when it's canceled.
+    async pick() {
+      let handle;
+      try {
+        [handle] = await globalThis.showOpenFilePicker({
+          types: [{ description: t('plugins.manifestFiles'), accept: { 'application/json': ['.json'] } }],
+        });
+      } catch (error) {
+        if (error.name === 'AbortError') return null;
+        throw error;
+      }
+      return { ...(await this.read(await handle.getFile())), handle };
+    },
+
+    // With no handle, a link to an earlier file is forgotten, and it isn't followed.
+    async install(manifest, { handle = null } = {}) {
       const old = this.plugins.find(({ id }) => id === manifest.id);
       await this.changing(manifest.id, {
         id: manifest.id, manifest, enabled: old ? old.enabled : true, source: 'file', installedAt: Date.now(),
+        ...(handle && { handle }),
       });
+      if (!handle) this.unfollow(manifest.id);
+    },
+
+    // The linked file read again: true when it's taken, false with the reason in problems (the record as it was).
+    async reload(id) {
+      const handle = this.plugins.find((plugin) => plugin.id === id)?.handle;
+      try {
+        if (!handle || !(await readable(handle, true))) throw problem('notAllowed');
+        let file;
+        try { file = await handle.getFile(); } catch { throw problem('fileGone'); }
+        const { manifest } = await this.read(file);
+        if (manifest.id !== id) throw problem('otherPlugin', { id: manifest.id });
+        await this.install(manifest, { handle });
+        delete this.problems[id];
+        return true;
+      } catch (error) {
+        this.problems[id] = error.userMessage ?? t('plugins.errors.fileGone');
+        return false;
+      }
+    },
+
+    async follow(id, on) {
+      if (!on) return this.unfollow(id);
+      const handle = this.plugins.find((plugin) => plugin.id === id)?.handle;
+      try {
+        if (!handle || !(await readable(handle, true))) throw problem('notAllowed');
+        seen.set(id, stamp(await handle.getFile()));
+        this.following[id] = true;
+        keepTimer(this);
+      } catch (error) {
+        this.problems[id] = error.userMessage ?? t('plugins.errors.fileGone');
+      }
+    },
+
+    unfollow(id) {
+      delete this.following[id];
+      seen.delete(id);
+      keepTimer(this);
+    },
+
+    // What the timer runs: each followed file whose stamp changed is reloaded; one that can't be read is let go.
+    async checkFollowed() {
+      if (checking) return;
+      checking = true;
+      try {
+        for (const id of Object.keys(this.following)) {
+          const handle = this.plugins.find((plugin) => plugin.id === id)?.handle;
+          let file;
+          try {
+            if (!handle || !(await readable(handle, false))) throw problem('notAllowed');
+            try { file = await handle.getFile(); } catch { throw problem('fileGone'); }
+          } catch (error) {
+            this.unfollow(id);
+            this.problems[id] = error.userMessage;
+            continue;
+          }
+          if (seen.get(id) === stamp(file)) continue;
+          seen.set(id, stamp(file));
+          await this.reload(id);
+        }
+      } finally {
+        checking = false;
+      }
     },
 
     async setEnabled(id, on) {
@@ -72,6 +178,8 @@ export const usePluginStore = defineStore('plugins', {
     },
 
     async uninstall(id) {
+      this.unfollow(id);
+      delete this.problems[id];
       await this.changing(id, null);
     },
 
