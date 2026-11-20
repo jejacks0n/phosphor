@@ -51,7 +51,7 @@ test('a file that is not a manifest is refused in words, and nothing is stored',
   const { store } = stores();
   await expect(store.read(file('{nope'))).rejects.toMatchObject({ userMessage: 'That file isn\'t a plugin\'s manifest.' });
   await expect(store.read(file(' '.repeat(MOST_MANIFEST_BYTES + 1))))
-    .rejects.toMatchObject({ userMessage: 'That file is too big to be a plugin\'s manifest.' });
+    .rejects.toMatchObject({ userMessage: 'That file is too big for a plugin.' });
   await expect(store.read(file(changed((m) => { m.themes[0].colors.accent = 'red'; }))))
     .rejects.toMatchObject({ userMessage: 'The theme “Midnight” sets “accent” to “red”, which isn\'t a hex color.' });
   expect(await loadPlugins()).toEqual([]);
