@@ -89,7 +89,7 @@ function nearestMix(mixes, r, g, b) {
 // The palette's nearest color to r, g, b (bytes), as nearestIndex finds it (squared distance, the
 // first of a tie), only faster: each 15-bit box keeps the few colors that can be nearest somewhere
 // inside it, and only those are measured.
-function nearestOf(palette) {
+export function nearestOf(palette) {
   const boxes = new Array(1 << 15);
   const far = (v, lo) => Math.max(Math.abs(v - lo), Math.abs(v - lo - 7)); // to the box's far side
   const gap = (v, lo) => (v < lo ? lo - v : v > lo + 7 ? v - lo - 7 : 0);   // to its near side
