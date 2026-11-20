@@ -3,6 +3,8 @@
      without it Safari, iOS's too, draws them dark on the dark fields. */
   color-scheme: dark;
   --logo: url('/logo.png');
+  /* The interface's own words: each platform's system face. */
+  --ui-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   /* The ANSI view's font: displayFonts.js sets these to the chosen one. */
   --display-font-family: "JetBrains Mono", monospace;
   --display-font-size: 17px;
@@ -59,7 +61,7 @@ html, body {
 
 body {
   position: fixed; /* prevent pull-to-refresh */
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--ui-font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--surface-0);
