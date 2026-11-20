@@ -409,6 +409,7 @@ test('Marketplace and Installed are tabs: arrow keys move between them, and Inst
   const panel = page.getByRole('tabpanel').element();
   expect(panel.getAttribute('aria-labelledby')).toBe(tabs[1].id);
   expect(tabs[1].getAttribute('aria-controls')).toBe(panel.id);
+  expect(tabs[0].hasAttribute('aria-controls')).toBe(false); // its panel isn't there to point at
   expect(tabs.map((one) => one.tabIndex)).toEqual([-1, 0]);
   expect(panel.querySelector('li').textContent).toContain('Midnight');
 
@@ -417,6 +418,8 @@ test('Marketplace and Installed are tabs: arrow keys move between them, and Inst
   await expect.element(tab('Marketplace')).toHaveAttribute('aria-selected', 'true');
   expect(document.activeElement).toBe(tab('Marketplace').element());
   expect(page.getByRole('tabpanel').element().textContent).toContain('Anyone\'s plugins');
+  expect(tabs[0].getAttribute('aria-controls')).toBe(page.getByRole('tabpanel').element().id);
+  expect(tabs[1].hasAttribute('aria-controls')).toBe(false);
   await userEvent.keyboard('{ArrowLeft}');
   await expect.element(tab('Installed')).toHaveAttribute('aria-selected', 'true');
   await tab('Marketplace').click();

@@ -23,11 +23,11 @@ export class ListError extends Error {
 }
 
 // The GitHub links in a wiki page, in page order, a repo and path once: https://github.com/<owner>/<repo> or
-// .../tree/<branch>/<path>. Everything else is ignored.
+// .../tree/<branch>/<path>. Everything else is ignored. A bare link ending a sentence leaves off its . , ; : or ).
 export function wikiLinks(markdown) {
   const found = [];
   for (const [, tail] of markdown.matchAll(/https:\/\/github\.com\/([^\s)\]>"'<]+)/g)) {
-    const parts = tail.split(/[#?]/)[0].split('/');
+    const parts = tail.replace(/[.,;:)]+$/, '').split(/[#?]/)[0].split('/');
     while (parts.length && parts.at(-1) === '') parts.pop();
     parts[1] = parts[1]?.replace(/\.git$/, '');
     const [owner, name, tree, branch, ...path] = parts;

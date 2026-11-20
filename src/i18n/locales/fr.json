@@ -2002,6 +2002,7 @@
       "installed": "Installé",
       "update": "Mettre à jour",
       "replace": "Remplacer",
+      "reading": "Lecture…",
       "from": "par {author}, depuis la place de marché, {source}"
     },
     "errors": {

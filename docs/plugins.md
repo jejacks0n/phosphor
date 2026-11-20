@@ -44,7 +44,8 @@ to see it."
 The button depends on what you have:
 
 - **Install** asks the same question as any install ([Installing](#installing-a-plugin)). Its question says who made the plugin and where it comes
-  from. Official plugins that run code still warn that they run code.
+  from. Official plugins that run code still warn that they run code. While Phosphor reads the plugin's files to ask, the
+  button says **Reading…** and can't be pressed again; the other cards can.
 - **Installed** (dimmed) means you have this plugin at this version or a newer one.
 - **Update** shows when the list has a higher version than yours. Raising `version` is the only thing that makes an Update;
   a changed file at the same version isn't one. The Installed tab marks the row "Update to 1.1.0".
@@ -59,7 +60,8 @@ Phosphor installs from the list only the files the list was built from. Each ent
 was built, with a hash of each file. If a file has changed since, is gone (its repository deleted or made private) or
 has grown past its size limit, the install is refused: "This plugin changed after it was listed." Phosphor says "The
 marketplace couldn't be reached." only when the connection fails. Updates an author pushes show after the next refresh
-of the list, which happens when the wiki page changes, once a day, and with each deploy.
+of the list, which happens when the wiki page changes, once a day, and with each deploy. The pin covers what's
+installed, not what runs later: a plugin's script can fetch more code after it's installed, and nothing checks that.
 
 A browser that won't keep anything (some private windows) says "This browser isn't keeping plugins, so none can be
 installed."

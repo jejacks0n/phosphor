@@ -268,6 +268,37 @@ test('a card read late never takes the place of the question already showing', a
   expect(store.plugins).toEqual([]);
 });
 
+test('a card being read says Reading… and can\'t be pressed again until its question is up or the read fails; the rest stay usable', async () => {
+  const store = await mount();
+  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  const real = store.readListed.bind(store);
+  const held = {};
+  vi.spyOn(store, 'readListed').mockImplementation(async (entry) => {
+    await new Promise((resolve, reject) => { held[entry.manifest.id] = { resolve, reject }; });
+    return real(entry);
+  });
+  button('Outlines').click();
+  await vi.waitFor(() => expect(button('Outlines').textContent).toBe('Reading…'));
+  expect(button('Outlines').disabled).toBe(true);
+  expect(button('Rain').textContent).toBe('Install');
+  expect(button('Rain').disabled).toBe(false);
+  expect(button('Midnight').disabled).toBe(false);
+
+  held['phosphor.outlines'].reject(Object.assign(new Error('changed'), { userMessage: CHANGED }));
+  await expect.element(page.getByRole('alert')).toHaveTextContent(CHANGED);
+  expect(button('Outlines').textContent).toBe('Install');
+  expect(button('Outlines').disabled).toBe(false);
+
+  button('Rain').click();
+  await vi.waitFor(() => expect(button('Rain').textContent).toBe('Reading…'));
+  held['kim.rain'].resolve();
+  await vi.waitFor(() => expect(heading()).toBe('Install Rain 1.2.0?'));
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await vi.waitFor(() => expect(heading()).toBe('Plugins'));
+  expect(button('Rain').textContent).toBe('Install');
+  expect(button('Rain').disabled).toBe(false);
+});
+
 test('a browser that will not keep plugins asks nothing about a card', async () => {
   const store = await mount();
   await vi.waitFor(() => expect(names()).toHaveLength(3));

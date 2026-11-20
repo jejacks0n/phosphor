@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
@@ -78,16 +78,22 @@ async function take(source) {
 
 // A listed plugin's files, read and asked about, or why they can't be. One read after another card's question is up
 // (two clicked in turn) is dropped: the question showing is never swapped for another under the person's pointer.
+// While its files are read, a card says so (reading, by id) and can't be pressed again.
+const reading = reactive(new Set());
 async function takeListed(entry) {
   problem.value = null;
   if (plugins.unavailable) return;
+  const { id } = entry.manifest;
   let read;
+  reading.add(id);
   try {
     read = await plugins.readListed(entry);
   } catch (error) {
     if (!error.userMessage) throw error;
     if (!asking.value) problem.value = error.userMessage;
     return;
+  } finally {
+    reading.delete(id);
   }
   if (!asking.value) asking.value = { install: read };
 }
@@ -198,7 +204,7 @@ const update = (record) => {
             role="tab"
             :class="{ on: tab === id }"
             :aria-selected="tab === id ? 'true' : 'false'"
-            :aria-controls="`plugins-panel-${id}`"
+            :aria-controls="tab === id ? `plugins-panel-${id}` : undefined"
             :tabindex="tab === id ? 0 : -1"
             @click="plugins.dialogTab = id"
         >
@@ -211,7 +217,7 @@ const update = (record) => {
       <p v-if="plugins.unavailable" class="note">{{ t('plugins.unavailable') }}</p>
 
       <div :id="`plugins-panel-${tab}`" role="tabpanel" :aria-labelledby="`plugins-tab-${tab}`">
-        <PluginMarket v-if="tab === 'market'" @take="takeListed"/>
+        <PluginMarket v-if="tab === 'market'" :reading="reading" @take="takeListed"/>
         <template v-else>
           <p class="intro">{{ t('plugins.sub') }}</p>
           <ul v-if="plugins.plugins.length" ref="list">
