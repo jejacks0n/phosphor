@@ -240,6 +240,47 @@ test('the hang mark is set for the base\'s first whole resolve even after an upp
   expect(localStorage.getItem(HANG_KEY)).toBeNull();
 });
 
+// Each call's mark, and whether the cell it was given is under red paint (its own samples red).
+function marking(hash) {
+  const calls = [];
+  const def = solver({ solve(cell, look) {
+    const [r, g] = cell.sample(0, 0, 0);
+    calls.push({ red: r > 200 && g < 50, mark: JSON.parse(localStorage.getItem(HANG_KEY))?.pluginId ?? null });
+    return look.byShape();
+  } });
+  return { calls, ref: onSolver(def, { pluginId: 'jane.hang', hash }) };
+}
+const RED_CELLS = [4, 8, 12].flatMap((x) => [{ x, y: 4, alpha: 1 }, { x, y: 5, alpha: 1 }]); // three cells, apart
+
+test('the hang mark is set while a solver first draws the cells under paint, after its whole resolve', async () => {
+  const { project, workspace } = await stripes();
+  const { calls, ref } = marking('under-paint');
+  await choose(project, await ref);
+  expect(calls.length).toBeGreaterThan(0);
+  calls.length = 0;
+  workspace.pickLayer('edit');
+  project.paintStroke(RED_CELLS, '#ff0000');
+  project.commitEdit();
+  await settle(project);
+  const red = calls.filter((call) => call.red);
+  expect(red.length).toBeGreaterThanOrEqual(3);
+  expect(red.slice(0, 3).map((call) => call.mark)).toEqual(Array(3).fill('jane.hang'));
+  expect(localStorage.getItem(HANG_KEY)).toBeNull();
+});
+
+test('the hang mark is set over every cell of an upper layer\'s first walk, not only its first cell', async () => {
+  const { project, workspace } = await stripes();
+  const { calls, ref } = marking('upper-walk');
+  project.setLayerChars('edit', { charChoice: await ref, chars: '▄▀█ ' }); // an upper layer of its own
+  workspace.pickLayer('edit');
+  project.paintStroke(RED_CELLS, '#ff0000');
+  project.commitEdit();
+  await settle(project);
+  expect(calls.length).toBeGreaterThanOrEqual(3);
+  expect(calls.slice(0, 3).map((call) => call.mark)).toEqual(Array(3).fill('jane.hang'));
+  expect(localStorage.getItem(HANG_KEY)).toBeNull();
+});
+
 test('a solver gone between the params and the render is By shape there, and is not called', async () => {
   const { project } = await stripes();
   await choose(project, 'shape');
