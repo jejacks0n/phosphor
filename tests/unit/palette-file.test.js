@@ -9,6 +9,7 @@ describe('palette files', () => {
     const list = [
       { name: 'Frogs', glyphs, font: { id: 'f1', name: 'TEST', height: 16 } },
       { name: 'Plain', glyphs: Array(12).fill(''), font: null },
+      { name: 'Wide', glyphs, font: { id: 'font-tt', name: 'Tall Mono', height: null } }, // a TrueType font has no height
     ];
     expect(readPaletteFile(writePaletteFile(list), 'x')).toEqual(list);
   });
@@ -28,7 +29,7 @@ describe('palette files', () => {
     expect(b.glyphs).toEqual(['', '', 'x', ...Array(9).fill('')]);
     expect(b.name).toBe(t('palette.untitled'));
     expect(b.font).toBeNull();
-    expect(c.font).toBeNull();
+    expect(c.font).toEqual({ id: 'f', name: 'N', height: null }); // the tie kept, the height it can't use dropped
   });
 
   it('keeps only glyphs one cell can hold', () => {

@@ -144,6 +144,22 @@ test('Duplicate, Export and Delete sit in the head\'s … menu', async () => {
   expect(button('Delete', head())).toBeUndefined(); // a built-in can't be deleted
 });
 
+test('with a TrueType or built-in font in use, the tie menu ties a palette to it', async () => {
+  const { palettes } = await mount({ font: false, setup: (p) => named(p, 'Frogs') });
+  expect(headers()).toEqual(['Built-in', 'Yours']); // no group for the font until a palette is tied to it
+  await edit('Frogs');
+  expect(tieButton().textContent.trim()).toBe('Any font ▾');
+  expect(tieButton().disabled).toBe(false);
+  await press(tieButton());
+  await press(button('Tie to JetBrains Mono'));
+  expect(palettes.tied.map((p) => p.name)).toEqual(['Frogs']);
+  expect(headers()).toEqual(['For JetBrains Mono', 'Built-in', 'Yours']);
+  expect(tieButton().textContent.trim()).toBe('For JetBrains Mono ▾');
+  await press(button('＋ New', group('For JetBrains Mono')));
+  expect(palettes.tied).toHaveLength(2); // + New there ties the new one too
+  expect(button('CP437')).toBeTruthy(); // the sources stay a TrueType font's
+});
+
 test('a font drawing\'s sources are the font', async () => {
   const tabs = () => [...host.querySelectorAll('.sources .tabs button')].map((b) => b.textContent.trim());
   await mount();

@@ -172,15 +172,15 @@ test('a TrueType font shows a sample and Use this font', async () => {
   expect(host.querySelectorAll('.edit-side .sample-text div')).toHaveLength(5);
   expect(host.querySelector('.edit-side .sample-text').style.fontFamily).toContain(tt.id);
   expect(host.querySelector('.edit-side .note').textContent).toContain('A TrueType font draws any character');
-  expect(actions()).toEqual(['Use this font', 'Remove']);
+  expect(actions()).toEqual(['Use this font', 'Export palettes', 'Remove']);
   await press(button('Use this font'));
   await expect.poll(() => workspace.displayFont).toBe(tt.id);
   expect(project.drawingFont).toBeNull();
   // In use, as a bitmap font is once used: first, under In use, with nothing left to apply
   expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
   expect(names()).toEqual(['Tall Mono', 'B', ...BUILT_IN]);
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · in your browser');
-  expect(actions()).toEqual(['Remove']);
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · in your browser · no palettes');
+  expect(actions()).toEqual(['Export palettes', 'Palettes ▸', 'Remove']);
 });
 
 test('a built-in font shows a sample and Use this font, and is listed under In use once used', async () => {
@@ -188,14 +188,14 @@ test('a built-in font shows a sample and Use this font, and is listed under In u
   await press(row('IBM VGA'));
   expect(host.querySelector('.sheet')).toBeNull();
   expect(host.querySelector('.edit-side .sample-text').style.fontFamily).toContain('IBM VGA 8x16');
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · built in');
-  expect(actions()).toEqual(['Use this font']); // nothing to save or remove
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · built in · no palettes');
+  expect(actions()).toEqual(['Use this font', 'Export palettes']); // nothing to save or remove
   await press(button('Use this font'));
   await expect.poll(() => workspace.displayFont).toBe('vga');
   expect(project.drawingFont).toBeNull();
   expect(names()).toEqual(['IBM VGA', 'B', 'Tall Mono', 'JetBrains Mono', 'Unscii', 'Unifont']);
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · built in');
-  expect(actions()).toEqual([]);
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · built in · no palettes');
+  expect(actions()).toEqual(['Export palettes', 'Palettes ▸']);
 });
 
 test('+ Load loads and applies, and says why not', async () => {

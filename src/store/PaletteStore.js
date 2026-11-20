@@ -5,6 +5,7 @@ import { t } from '@/i18n/index.js';
 import { fontId } from '@/lib/BitmapFont.js';
 import { useProjectStore } from '@/store/ProjectStore.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
+import { DISPLAY_FONTS } from '@/lib/displayFonts.js';
 
 const RECENT_CHARS = 24;
 const newId = () => `u${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -28,14 +29,19 @@ export const usePaletteStore = defineStore('palettes', {
         .filter(p => p && typeof p.id === 'string')
         .map(p => ({ ...p, name: String(p.name ?? t('palette.untitled')), glyphs: normalizeGlyphs(Array.isArray(p.glyphs) ? p.glyphs.map(g => (typeof g === 'string' && fitsGrid(g) ? g : '')) : ''), font: p.font && typeof p.font.id === 'string' ? p.font : null })),
     ],
-    // The drawing's bitmap font, as a palette's tie names it.
+    // The drawing's bitmap font, as a palette's tie names it: a palette made in its drawing is tied to it at once.
     currentFont() {
       const font = useProjectStore().drawingFont;
       return font ? { id: fontId(font), name: font.name, height: font.height } : null;
     },
+    // The font in use, as a tie names it: the bitmap font, else the TrueType or built-in one viewed in (tied by choice).
+    fontInUse() {
+      const spec = useWorkspaceStore().displayFontSpec;
+      return this.currentFont ?? { id: spec.id, name: spec.name, height: null };
+    },
     tied() {
-      const id = this.currentFont?.id;
-      return id ? this.all.filter(p => !p.builtin && p.font?.id === id) : [];
+      const id = this.fontInUse.id;
+      return this.all.filter(p => !p.builtin && p.font?.id === id);
     },
     builtins: () => BUILTIN_PALETTES,
     // Whether the drawing's bitmap font has the built-ins put away (they rarely suit a font that isn't CP437's shapes).
@@ -48,9 +54,9 @@ export const usePaletteStore = defineStore('palettes', {
     shown() {
       return [...this.tied, ...(this.builtinsHidden ? [] : this.builtins), ...this.general];
     },
-    // Yours tied to a font that isn't in use and isn't kept in this browser.
+    // Yours tied to a font that isn't in use, built in or kept in this browser.
     unloaded() {
-      const known = new Set([this.currentFont?.id, ...(useWorkspaceStore().userFonts ?? []).map(f => f.id)]);
+      const known = new Set([this.fontInUse.id, ...(useWorkspaceStore().userFonts ?? []).map(f => f.id), ...DISPLAY_FONTS.map(f => f.id)]);
       return this.all.filter(p => p.font && !known.has(p.font.id));
     },
     countFor() {
@@ -134,7 +140,7 @@ export const usePaletteStore = defineStore('palettes', {
       this.userPalettes = [...this.userPalettes, ...added];
       const missing = new Set(this.unloaded.map(p => p.id));
       const waiting = [...new Set(added.filter(p => missing.has(p.id)).map(p => p.font.name))];
-      const unused = [...new Set(added.filter(p => p.font && p.font.id !== this.currentFont?.id && !missing.has(p.id)).map(p => p.font.name))];
+      const unused = [...new Set(added.filter(p => p.font && p.font.id !== this.fontInUse.id && !missing.has(p.id)).map(p => p.font.name))];
       return { added: added.length, waiting, unused };
     },
 

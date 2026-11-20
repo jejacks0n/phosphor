@@ -3,11 +3,11 @@ import { fileStem } from '../document/projectIO.js';
 import { t } from '@/i18n/index.js';
 
 // Palettes as a file: each one's name, its twelve slots ('' for an empty one, or one a cell can't hold) and the font
-// it's tied to, if any.
+// it's tied to, if any (a bitmap font's height; a TrueType or built-in font has none).
 
 const font = (f) =>
-  f && typeof f.id === 'string' && Number.isInteger(f.height) && f.height >= 1 && f.height <= 32
-    ? { id: f.id, name: typeof f.name === 'string' ? f.name : '', height: f.height }
+  f && typeof f.id === 'string'
+    ? { id: f.id, name: typeof f.name === 'string' ? f.name : '', height: Number.isInteger(f.height) && f.height >= 1 && f.height <= 32 ? f.height : null }
     : null;
 
 export function writePaletteFile(palettes) {

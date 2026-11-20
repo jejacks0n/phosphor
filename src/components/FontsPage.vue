@@ -63,7 +63,7 @@ const bitmap = computed(() => chosen.value?.kind === 'bitmap');
 const isDrawn = computed(() => chosen.value?.id === drawnId.value);
 const isInUse = computed(() => chosen.value?.id === inUseId.value);
 const isStored = computed(() => stored.value.some((f) => f.id === chosen.value?.id));
-const count = computed(() => (bitmap.value ? palettes.countFor(chosen.value.id) : 0));
+const count = computed(() => (chosen.value ? palettes.countFor(chosen.value.id) : 0));
 
 const size = (f) => (f.kind === 'bitmap' ? `8×${f.height}` : t('palette.fonts.trueType'));
 // Drawn at its own height, or twice that when it's too small to read.
@@ -73,7 +73,7 @@ const meta = computed(() => [
   size(chosen.value),
   isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : isInUse.value && t('palette.fonts.inUseMeta'),
   !isDrawn.value && t(chosen.value.kind === 'builtIn' ? 'palette.fonts.builtInMeta' : 'palette.fonts.inBrowser'),
-  bitmap.value && t('palette.fonts.palettes', { n: count.value }, count.value),
+  t('palette.fonts.palettes', { n: count.value }, count.value),
 ].filter(Boolean).join(' · '));
 
 // A listed bitmap font as a drawing holds one: { name, height, bytes }.
@@ -165,9 +165,9 @@ const exportPalettes = () => {
         <template v-if="bitmap">
           <button class="ghost" @click="save(saveRaw)">{{ t('palette.fonts.saveRaw', { height: String(chosen.height).padStart(2, '0') }) }}</button>
           <button class="ghost" @click="save(savePng)">{{ t('palette.fonts.savePng') }}</button>
-          <button class="ghost" :disabled="!count" @click="exportPalettes">{{ t('palette.fonts.exportPalettes') }}</button>
-          <button v-if="isDrawn" class="ghost" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.fonts.toPalettes') }}</button>
         </template>
+        <button class="ghost" :disabled="!count" @click="exportPalettes">{{ t('palette.fonts.exportPalettes') }}</button>
+        <button v-if="isInUse" class="ghost" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.fonts.toPalettes') }}</button>
         <button v-if="isStored" class="ghost" :title="t('palette.fonts.removeTitle')" @click="forget">{{ t('palette.fonts.remove') }}</button>
       </div>
       <template v-if="bitmap">

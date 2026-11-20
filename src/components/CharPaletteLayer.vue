@@ -47,10 +47,12 @@ const matches = (p) => {
   const f = filter.value.trim().toLowerCase();
   return !f || p.name.toLowerCase().includes(f) || p.glyphs.join('').includes(f);
 };
-const font = computed(() => palettes.currentFont);
+const font = computed(() => palettes.currentFont); // the drawing's bitmap font: its glyphs are the only ones a cell takes
+const inUse = computed(() => palettes.fontInUse); // the font a palette can be tied to: that one, or the TrueType font in use
 const isUnloaded = (p) => palettes.unloaded.some(u => u.id === p.id);
 const groups = computed(() => [
-  font.value && { key: 'tied', label: t('palette.layer.forFont', { name: font.value.name }), rows: palettes.tied.filter(matches) },
+  // a bitmap font's group always shows, to offer + New; another font's once a palette is tied to it
+  (font.value || palettes.tied.length) && { key: 'tied', label: t('palette.layer.forFont', { name: inUse.value.name }), rows: palettes.tied.filter(matches) },
   { key: 'builtin', label: t('common.builtIn'), rows: palettes.builtinsHidden ? [] : palettes.builtins.filter(matches) },
   { key: 'yours', label: t('common.yours'), rows: palettes.general.filter(matches) },
   palettes.unloaded.length && { key: 'unloaded', label: t('palette.layer.unloaded', { n: palettes.unloaded.length }), rows: palettes.unloaded.filter(matches) },
@@ -148,7 +150,7 @@ const toggleEditing = () => (editing.value ? (editing.value = false) : startEdit
 // + New under For <font> makes one tied to it; under Yours, one for any font.
 const createPalette = (tied) => {
   const id = palettes.create();
-  if (!tied) palettes.tie(id, null);
+  palettes.tie(id, tied ? inUse.value : null);
   currentId.value = id;
   startEditing();
 };
@@ -367,10 +369,10 @@ onBeforeUnmount(() => {
           >{{ current.name }}</span>
           <span v-if="current.builtin" class="lock"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M192 288V192A128 128 0 0 1 448 192V288H384V192A64 64 0 0 0 256 192V288ZM176 288H464A48 48 0 0 1 512 336V528A48 48 0 0 1 464 576H176A48 48 0 0 1 128 528V336A48 48 0 0 1 176 288Z"/></svg>{{ t('palette.layer.lockedNote') }}</span>
           <span v-if="!current.builtin" class="tie">
-            <button class="ghost" :disabled="!current.font && !font" :aria-expanded="tieOpen" @click="tieOpen = !tieOpen">{{ current.font ? t('palette.layer.forFont', { name: current.font.name }) : t('palette.layer.anyFont') }} ▾</button>
+            <button class="ghost" :aria-expanded="tieOpen" @click="tieOpen = !tieOpen">{{ current.font ? t('palette.layer.forFont', { name: current.font.name }) : t('palette.layer.anyFont') }} ▾</button>
             <span v-if="tieOpen" class="menu">
               <button v-if="current.font" @click="tie(null)">{{ t('palette.layer.untie') }}</button>
-              <button v-if="font && current.font?.id !== font.id" @click="tie(font)">{{ t('palette.layer.tieTo', { name: font.name }) }}</button>
+              <button v-if="current.font?.id !== inUse.id" @click="tie(inUse)">{{ t('palette.layer.tieTo', { name: inUse.name }) }}</button>
             </span>
           </span>
           <span class="spacer"></span>
@@ -649,11 +651,6 @@ button.fold[aria-expanded="true"]::before {
 span.tie,
 span.more {
   position: relative;
-}
-
-span.tie button.ghost:disabled {
-  cursor: default;
-  opacity: 0.6;
 }
 
 span.tie span.menu,

@@ -170,7 +170,7 @@ Choosing a row shows that font's name, a line of facts (its size, whether it's t
 
 - **The drawing's font**: **Save .F##**, **Save PNG**, **Export palettes** and **Palettes ▸** (which opens the Palettes page). If the same font is also kept in this browser, **Remove** is there too.
 - **Another bitmap font**: **Use this font**, **Save .F##**, **Save PNG**, **Export palettes** and **Remove**. **Use this font** gives the drawing that font, as one undo step; it's saved with the drawing.
-- **A TrueType font**: a sample of text, **Use this font** and **Remove**. A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. **Use this font** takes the drawing's bitmap font away (one undo step) and draws in the TrueType font, for you only: it's kept in your browser, not in the drawing.
+- **A TrueType font** (a built-in one too): a sample of text, **Use this font**, **Export palettes**, **Palettes ▸** once it's in use, and **Remove** (not for a built-in one). A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. **Use this font** takes the drawing's bitmap font away (one undo step) and draws in the TrueType font, for you only: it's kept in your browser, not in the drawing.
 - **In someone else's room**: **Use this font** is off. Loading, saving, **Remove** and the palettes still work.
 - **Remove**: forgets this browser's copy of the font. A drawing keeps its own font, and the palettes tied to the removed font stay ([For Fonts Not Loaded](#for-fonts-not-loaded)).
 
@@ -206,9 +206,9 @@ Those fonts don't change how an image converts, or what's saved or exported; a t
 
 ### Palettes That Belong to a Font
 
-In a drawing with a bitmap font, a palette you make (or a built-in one you copy by editing it) belongs to that font. The Palettes page lists, in this order:
+In a drawing with a bitmap font, a palette you make (or a built-in one you copy by editing it) belongs to that font. With a TrueType or built-in font in use, a palette you make is for any font until you tie it to that font with **Tie to <font>** in the editor's head. The Palettes page lists, in this order:
 
-- **For <font>**: the palettes tied to the font in use, shown first while it's in use.
+- **For <font>**: the palettes tied to the font in use, shown first while it's in use (for a TrueType or built-in font, once one is tied to it).
 - **Built-in**. Its **Hide** puts them away while this font is in use, for a font whose shapes they don't suit: they leave the list and the strip's ◂ ▸, and **Show** brings them back. Other fonts keep them.
 - **Yours**, with **+ New**, **Import** and **Export**.
 - **For fonts not loaded (N)**, collapsed ([For Fonts Not Loaded](#for-fonts-not-loaded)).

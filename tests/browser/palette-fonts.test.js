@@ -134,3 +134,19 @@ test('a font can hide the built-ins: not shown, not flipped to, and back with th
   palettes.hideBuiltins(false);
   expect(palettes.shown.some(p => p.builtin)).toBe(true);
 });
+
+test('a palette can be tied to a TrueType or built-in font in use, by choice', async () => {
+  const { palettes, workspace } = await setup();
+  workspace.displayFont = 'vga';
+  const id = palettes.create();
+  expect(palettes.all.find(p => p.id === id).font).toBeNull(); // made for any font: only a bitmap font ties at once
+  expect(palettes.fontInUse).toEqual({ id: 'vga', name: 'IBM VGA', height: null });
+  palettes.tie(id, palettes.fontInUse);
+  expect(palettes.tied.map(p => p.id)).toEqual([id]);
+  expect(palettes.shown[0].id).toBe(id);
+  workspace.displayFont = 'unscii';
+  expect(palettes.shown.map(p => p.id)).not.toContain(id);
+  expect(palettes.unloaded.map(p => p.id)).not.toContain(id); // a built-in font is always loaded
+  workspace.displayFont = 'vga';
+  expect(palettes.shown[0].id).toBe(id);
+});
