@@ -30,6 +30,19 @@ test('a tap on a disabled button shows why it is off', async ({ page }) => {
   await expect(page.locator('.app-toast')).toHaveText(BAKE_NOTHING);
 });
 
+test('a tap on a child of a disabled button, such as its icon, shows why it is off', async ({ page }) => {
+  const { bake, x, y } = await openBake(page);
+  await bake.evaluate((el) => { // a child that takes the touch, like an icon or a label
+    const child = document.createElement('span');
+    child.style.cssText = 'position:absolute;inset:0;pointer-events:auto';
+    el.style.position = 'relative';
+    el.append(child);
+  });
+  expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y).tagName, [x, y])).toBe('SPAN');
+  await finger(page, { x, y });
+  await expect(page.locator('.app-toast')).toHaveText(BAKE_NOTHING);
+});
+
 test('a swipe that starts over a disabled button shows no toast', async ({ page }) => {
   const { x, y } = await openBake(page);
   await finger(page, { x, y }, { x, y: y + 60 });

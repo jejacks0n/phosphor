@@ -4,7 +4,7 @@ import { toast } from '@/composables/useToast';
 // Phones and tablets show no tooltips, so a tap on a disabled button marked data-off-reason says why (its title) in a
 // toast. touchend in the capture phase: a disabled button gets no click. Hit-tested by rectangle, not by the touch's
 // target: some disabled buttons have pointer-events: none. But only when nothing else is laid over it: what's under the
-// finger must be the button or an ancestor of it (the one a pointer-events: none button's touch lands on).
+// finger must be the button, a child of it, or an ancestor of it (the one a pointer-events: none button's touch lands on).
 // A touch that moved (a swipe or scroll) is not a tap. Mouse and pen are left alone: they have the tooltip.
 const SLOP = 10; // px a finger may drift and still be a tap
 let down = null;
@@ -20,7 +20,7 @@ function onTouchEnd(e) {
   for (const button of document.querySelectorAll('button[data-off-reason]:disabled')) {
     const r = button.getBoundingClientRect();
     if (button.title && point.clientX >= r.left && point.clientX <= r.right && point.clientY >= r.top && point.clientY <= r.bottom) {
-      if (hit && hit.contains(button)) toast(button.title); // contains: the button itself, or an ancestor
+      if (hit && (hit.contains(button) || button.contains(hit))) toast(button.title); // the button, a child of it, or an ancestor
       return;
     }
   }
