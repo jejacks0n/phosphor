@@ -490,3 +490,21 @@ test('with no share sheet there is no Share', async () => {
     if (had) Object.defineProperty(navigator, 'canShare', had); else delete navigator.canShare;
   }
 });
+
+test('names the layers showing a stand-in', async () => {
+  const { project } = await drawing();
+  const { unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    const note = () => modal.querySelector('p.stand-ins')?.textContent;
+    expect(note()).toBeUndefined();
+    project.setLayerChars('edit', { charChoice: 'plugin:jane.lines/lines' }); // a plugin this browser doesn't have
+    await nextTick();
+    expect(note()).toBe('Layer 1 shows By shape in place of its plugin solver.');
+    project.setLayerChars('base', { charChoice: 'plugin:jane.lines/lines' });
+    await nextTick();
+    expect(note()).toBe('Base and Layer 1 show By shape in place of their plugin solvers.');
+  } finally {
+    unmount();
+  }
+});

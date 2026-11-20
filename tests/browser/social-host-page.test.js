@@ -367,3 +367,24 @@ test('Set up your room: the signal is a select in the lobby card, and choosing o
   expect(host.querySelector('div.column')).toBe(null);
   expect(host.querySelector('h3')).toBe(null);
 });
+
+test('hosting is refused while a layer is on a plugin solver, naming it and saying Flatten', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp(StartRoomPage).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  project.setLayerChars('edit', { charChoice: 'plugin:jane.lines/lines' });   // a stand-in counts: the drawing holds it
+  await nextTick();
+  const words = 'Layer 1 is on a plugin solver, which rooms don\'t use. Choose a built-in solver for it, or Flatten the drawing first.';
+  expect(host.textContent).toContain(words);
+  expect(button('Go live').disabled).toBe(true);
+  expect(button('Go live').title).toBe(words);
+  await expect(useRoomStore().startRoom({ name: 'Night', welcome: '', isPublic: true, allowGuests: true, max: 12 })).rejects.toMatchObject({ userMessage: words });
+  project.setLayerChars('edit', { charChoice: 'shape' });
+  await nextTick();
+  expect(host.textContent).not.toContain('plugin solver');
+  expect(button('Go live').disabled).toBe(false);
+});

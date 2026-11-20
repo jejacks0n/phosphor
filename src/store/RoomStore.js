@@ -26,6 +26,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { desktop } from '@/social/desktop';
 import { TONE_GAP_MS, chatFocused, tone } from '@/social/tone';
 import { t } from '@/i18n/index.js';
+import { formatList } from '@/i18n/format.js';
 
 // The desktop build has no server: a room is served by the room service on the host's computer (desktop/roomService.js),
 // started through the desktop bridge, and reached on loopback with the secret it was started with.
@@ -258,6 +259,12 @@ const noRoom = () => ({
 // The room you host or watch: its socket (a LobbyConnection with the room's greeting), and the host's
 // side (Host: your art to every watcher) or the watcher's (Watch: the host's art, never your own
 // project). One room at a time; signing in or out closes it (SocialStore.becameSomeoneElse).
+// The start pages keep Start off while a layer is on a plugin solver; called anyway, a start throws with why.
+function refusePluginSolvers(room) {
+  const why = room.pluginSolversWhy;
+  if (why) throw Object.assign(new Error('pluginSolvers'), { userMessage: why });
+}
+
 export const useRoomStore = defineStore('room', {
   state: () => ({
     ...noRoom(),
@@ -291,6 +298,12 @@ export const useRoomStore = defineStore('room', {
     // On desktop there's no one to report to.
     canReport() {
       return !DESKTOP && this.canChat;
+    },
+    // Why a room can't be hosted with this drawing: its layers on a plugin solver, a stand-in or not (the drawing holds
+    // the choice), which rooms don't use; null when none is. The start pages show it and keep Start off.
+    pluginSolversWhy() {
+      const layers = useProjectStore().pluginSolverLayers;
+      return layers.length ? t('room.pluginSolvers', { names: formatList(layers.map(({ name }) => name)) }, layers.length) : null;
     },
     // A watcher reported this room (Report room is gone).
     roomReported: (state) => state.reported.includes(ROOM_REPORT),
@@ -357,6 +370,7 @@ export const useRoomStore = defineStore('room', {
     async startRoom({ name, welcome, isPublic, password, allowGuests, max, signal = null, port }) {
       const project = useProjectStore();
       if (project.hasFrames) return false;   // frames never travel, so they'd be lost at a handover (StartRoomPage says why)
+      refusePluginSolvers(this);
       const social = useSocialStore();
       if (DESKTOP) return this.startDesktopRoom({ name, welcome, password, max, port });
       const body = { name, public: isPublic, allowGuests, max, signal: isPublic ? signal : null, ...(!isPublic && password ? { password } : {}) };   // a private room's password is optional
@@ -380,6 +394,7 @@ export const useRoomStore = defineStore('room', {
     // startRoom on desktop: this computer's room service in place of the server, with no lobby, link or guests. Every
     // join waits for the host's yes, and the password goes only to the service.
     async startDesktopRoom({ name, welcome, password, max, port }) {
+      refusePluginSolvers(this);
       const social = useSocialStore();
       // One service: a room hosted here ends, or standby stops, before a room starts on it (else close() below would stop it).
       if (this.role === 'host' || this._standby) this.close();

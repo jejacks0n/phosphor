@@ -9,6 +9,7 @@ import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
+import { useProjectStore } from '@/store/ProjectStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import DesktopStartPage from '@/components/social/DesktopStartPage.vue';
@@ -392,4 +393,20 @@ test('LegalDialog desktop: the app\'s privacy note in place of the hosted servic
   app.mount(host);
   await nextTick();
   expect(document.querySelector('.legal-body h1').textContent).toBe('Terms');
+});
+
+test('DesktopStartPage keeps Start a room off while a layer is on a plugin solver, saying why', async () => {
+  const { social } = await mount(DesktopStartPage, ({ social }) => social.setDesktopName('ansi-fan'));
+  const project = useProjectStore();
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 4 });
+  project.setLayerChars('edit', { charChoice: 'plugin:jane.lines/lines' });
+  await nextTick();
+  const words = 'Layer 1 is on a plugin solver, which rooms don\'t use. Choose a built-in solver for it, or Flatten the drawing first.';
+  expect(host.textContent).toContain(words);
+  expect(button('Start a room').disabled).toBe(true);
+  expect(button('Start a room').title).toBe(words);
+  project.setLayerChars('edit', { charChoice: 'shape' });
+  await nextTick();
+  expect(button('Start a room').disabled).toBe(false);
+  expect(social.page).not.toBe('start-room');
 });
