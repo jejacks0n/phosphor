@@ -355,4 +355,28 @@ Terms from it and check they fit, and look for a Share button.
 the room link again while sideways (it asks first, as SOCIAL does; she taps Not now), and look at the address upright
 and sideways.
 
+## Plugins
+
+### 26. Add a theme from a file
+- Does: opens the settings, taps Plugins, taps Install from a file… and picks `plugins/midnight/phosphor-plugin.json`;
+  reads the question and taps Install; closes the dialog and picks Midnight in the select beside the theme icons.
+- Expects: the question says "Install Midnight 1.0.0?", "by Jane" and "Adds 1 theme. Runs no code."; the row shows
+  Midnight, 1.0.0, by Jane, 1 theme and its homepage; with Midnight picked the app turns deep blue and no theme icon is
+  checked; the language, the icons and the select fit the column's width in one row ([Plugins](../../plugins.md)).
+- Probes: `out-of-order`: first pick `images/photo.jpg` (it says "That file isn't a plugin's manifest."); `again`:
+  install the same file twice (the second asks "Replace Midnight 1.0.0 with 1.0.0?").
+- Rated: no (touch only: no keyboard shows here)
+
+### 27. Reload, switch it off, remove it
+- Does: reloads with Midnight in use; opens Plugins and taps Midnight's switch to Off; taps it back On, picks Midnight
+  again, then taps Remove and Remove.
+- Expects: the reload is deep blue from the first moment, with no flash of Dark; Off takes the theme away and the app
+  goes Dark, with the Dark icon checked and the select gone; Remove asks "Remove Midnight?" first, and after it the
+  dialog says there are no plugins yet.
+- Probes: `back-out`: tap Cancel at "Remove Midnight?"; `interrupt`: open the app at `/?plugins=off` with Midnight in
+  use and check it's Dark, with the dialog saying plugins are off for this visit.
+- Rated: no (touch only: no keyboard shows here)
+
+**Free time:** she'd open Midnight's homepage link and How plugins work, and switch the language with Midnight in use.
+
 ## Known

@@ -10,6 +10,7 @@ Learn how to create art, edit layers, and animate in Phosphor.
 - [Animation](animation.md) — Create frame-by-frame animations, see what carries from one frame to the next, use onion skinning (ghosting), set frame timing, and export to animated `.ans`, `.cast`, `.gif`, or video (`.mp4`).
 - [Rulers and Guides](rulers.md) — Measure character columns and rows, drag guide lines from rulers, set origin points, and see what's kept with each drawing.
 - [Social Rooms](social.md) — Use SOCIAL in the side panel: the lobby, accounts and guests, hosting a room or watching someone draw, drawing together, chat, and blocking and reporting.
+- [Plugins](plugins.md) — Install a plugin from its manifest file, switch it on or off, remove it, pick the themes it adds, start with plugins off, and write a plugin of your own and try it as you go.
 - [The Desktop App](desktop.md) — Download Phosphor for macOS, Windows, or Linux, host a room on your computer and share its address, join a room by address, let people in, and change hosts. No account needed, and nothing is sent to Phosphor.
 
 ## Interface Basics
@@ -20,7 +21,7 @@ You can choose a color theme using the theme selector at the bottom of the setti
 - **Light**: Uses light backgrounds.
 - **System**: Matches your computer's theme setting, and changes when it does.
 
-Your theme choice is saved in your browser.
+Your theme choice is saved in your browser. Plugins can add themes of their own, picked in a select beside the icons ([Plugins](plugins.md#picking-a-plugins-theme)).
 
 ### Navigation and URLs
 The browser address bar updates to reflect your current workspace tab and, on SOCIAL, its page, so Back and Forward move between them and a reload comes back to the same place:

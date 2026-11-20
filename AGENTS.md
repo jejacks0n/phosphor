@@ -87,6 +87,14 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   pre-release: package.json's version, higher by semver than every version tag before it, checked by
   `scripts/release-tag.mjs`). Its
   tests are the `desktop-*` files in `tests/unit`, `tests/browser` (the `browser-desktop` project) and `tests/e2e`.
+- Plugins ([docs/plugins.md](docs/plugins.md)): `src/plugins/` (`manifest.js`, a stranger's `phosphor-plugin.json` read
+  into a clean manifest, and the color slots; `themes.js`, a theme value naming a plugin's theme, what it resolves to,
+  the copy kept for `index.html`'s first paint, `?plugins=off`; `storage.js`, the IndexedDB records),
+  `src/store/PluginStore.js` (installed plugins, the themes on offer, Reload and Follow file),
+  `src/components/PluginsDialog.vue`, and `src/composables/useTheme.js` (the theme on `<html>`; `index.html`'s inline
+  script paints it before the app starts by the same rules). No plugin code runs yet. Its tests are the `plugin-*`
+  files in `tests/unit` and `tests/browser`, `tests/browser/plugins-dialog.test.js` and `tests/e2e/plugins.spec.js`,
+  with the example manifest in `tests/fixtures/plugins/midnight/`.
 - `src/dev/actionLog.js` (and `skipped.js`, the actions it leaves out) and `src/components/dev/HistoryPanel.vue`: the
   development-only HISTORY tab, every step taken this session as a log to paste into a bug report ([docs/testing.md](docs/testing.md)).
 - `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be

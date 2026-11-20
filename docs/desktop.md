@@ -37,7 +37,10 @@ The app's own menus, in the language Phosphor shows:
 - **View**: Actual Size, Zoom In and Zoom Out (the whole window, as a browser's zoom) and Full Screen.
 - **Help**: Keyboard Shortcuts, Phosphor on GitHub, the Release Notes for your version, and Report an Issue…, which
   opens a new GitHub issue with your Phosphor version and system written in. Troubleshooting has the developer tools,
-  for when someone helping you asks what they say.
+  for when someone helping you asks what they say, and Reload with Plugins Off, for a plugin's theme that makes the
+  window hard to read ([Plugins](plugins.md#starting-with-plugins-off)).
+- **Plugins…** (in the Phosphor menu on macOS, in Help elsewhere, after Check for Updates…) opens the Plugins dialog
+  ([Plugins](plugins.md)).
 
 ## Windows
 
