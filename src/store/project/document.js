@@ -224,7 +224,8 @@ export const documentActions = {
   // The blank picture is BLANK_CANVAS_SCALE pixels a grid pixel, or fewer for a long grid: no more than
   // the GPU processes (gpuMaxSide) and Safari draws (16M pixels a canvas). cols, rows: its size
   // (grid pixels), else the grid's; withLayer: with Layer 1 above the base (an opened ANSI file), else the base alone;
-  // patch: more for replaceImage. False when it couldn't start.
+  // patch: more for replaceImage. It keeps the font in use (an art file's patch brings its own or none). False when it
+  // couldn't start.
   async setBlankCanvas({ cols = this.cols || DEFAULT_COLS, rows = this.rows || DEFAULT_ROWS, withLayer = false, ...patch } = {}) {
     const scale = Math.max(1, Math.min(BLANK_CANVAS_SCALE, Math.floor(gpuMaxSide() / Math.max(cols, rows)), Math.floor(Math.sqrt(16_000_000 / (cols * rows)))));
     let picture;
@@ -240,8 +241,6 @@ export const documentActions = {
       rows: Math.max(1, rows),
       ...sauceDefaults(),
       ...sliderDefaults(),
-      fontBitmap: '',
-      fontName: '',
       filename: t('common.untitled'),
       savedToFile: false,
       ...patch,

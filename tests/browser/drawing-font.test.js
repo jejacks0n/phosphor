@@ -1,4 +1,4 @@
-// The drawing's bitmap font as document state: one undo step, saved with the project, gone on a new drawing.
+// The drawing's bitmap font as document state: one undo step, saved with the project, kept by a new blank canvas.
 import { test, it, expect, afterEach } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { readXBin } from '@/lib/XBinFile.js';
@@ -50,10 +50,13 @@ test('saves and restores the font with the project', async () => {
   expect(other.drawingFont.name).toBe('Topaz');
 });
 
-test('a new drawing has no font', async () => {
+test('a new blank canvas keeps the font in use; an ANSI file brings its own or none', async () => {
   const project = await blank();
   project.setDrawingFont(font());
+  project.clearImage(); // New
   await project.setBlankCanvas({ cols: 10, rows: 10 });
+  expect(project.drawingFont.name).toBe('Topaz');
+  await project.openArtFile(new File(['hello'], 'note.ans'));
   expect(project.drawingFont).toBeNull();
 });
 
