@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser';
 import { createApp } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import midnight from '../fixtures/plugins/midnight/phosphor-plugin.json?raw';
+import midnight from '../../plugins/midnight/phosphor-plugin.json?raw';
 import { i18n } from '@/i18n';
 import PluginsDialog from '@/components/PluginsDialog.vue';
 import { usePluginStore } from '@/store/PluginStore';
@@ -22,7 +22,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await Promise.all(loads);
   loads = [];
-  usePluginStore().dropSolvers('jane.midnight'); // the registry outlives the Pinia
+  usePluginStore().dropSolvers('phosphor.midnight'); // the registry outlives the Pinia
   app?.unmount();
   host?.remove();
   app = host = null;
@@ -70,13 +70,13 @@ test('empty, it says what plugins are; a manifest picked is asked about, then li
   await expect.element(page.getByRole('link', { name: 'How plugins work' })).toBeVisible();
   await pick(midnight);
   expect(heading()).toBe('Install Midnight 1.0.0?');
-  expect(dialogText()).toContain('by Jane');
+  expect(dialogText()).toContain('by Phosphor');
   expect(dialogText()).toContain('Adds 1 theme. Runs no code.');
   expect(dialogText()).not.toContain('runs code in Phosphor');
   await page.getByRole('button', { name: /^Install/ }).click();
   await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
   const row = document.querySelector('dialog li');
-  for (const words of ['Midnight', '1.0.0', 'by Jane', '1 theme', 'A deep blue theme for late nights.']) expect(row.textContent).toContain(words);
+  for (const words of ['Midnight', '1.0.0', 'by Phosphor', '1 theme', 'A deep blue theme for late nights.']) expect(row.textContent).toContain(words);
   const link = row.querySelector('a');
   expect(link.href).toBe('https://github.com/jane/phosphor-midnight');
   expect(link.textContent).toBe('github.com/jane/phosphor-midnight');
@@ -213,16 +213,16 @@ test('Reload and the Follow file switch call the store, and a problem shows on t
     else delete store.following[id];
   });
   await page.getByRole('button', { name: 'Reload Midnight' }).click();
-  expect(reload).toHaveBeenCalledWith('jane.midnight');
+  expect(reload).toHaveBeenCalledWith('phosphor.midnight');
   const following = page.getByRole('switch', { name: 'Follow Midnight\'s file' });
   await following.click();
-  expect(follow).toHaveBeenCalledWith('jane.midnight', true);
+  expect(follow).toHaveBeenCalledWith('phosphor.midnight', true);
   await expect.element(following).toHaveAttribute('aria-checked', 'true');
   await following.click();
-  expect(follow).toHaveBeenLastCalledWith('jane.midnight', false);
+  expect(follow).toHaveBeenLastCalledWith('phosphor.midnight', false);
   await expect.element(following).toHaveAttribute('aria-checked', 'false');
 
-  store.problems['jane.midnight'] = 'That file can\'t be read anymore.';
+  store.problems['phosphor.midnight'] = 'That file can\'t be read anymore.';
   await expect.element(page.getByRole('alert')).toHaveTextContent('That file can\'t be read anymore.');
   await remove();
 });
@@ -298,7 +298,7 @@ test('the question for a plugin with a script warns that it runs code; a theme-o
   expect(dialogText()).not.toContain('Runs no code');
   await page.getByRole('button', { name: /^Install/ }).click();
   await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
-  expect(store.solvers[solverRef('jane.midnight', 'edges')]).toMatchObject({ name: 'Edges' });
+  expect(store.solvers[solverRef('phosphor.midnight', 'edges')]).toMatchObject({ name: 'Edges' });
   expect(document.querySelector('dialog li').textContent).toContain('Runs code');
 
   await pickFolder(scripted((m) => { m.version = '1.1.0'; delete m.themes; }));
@@ -366,18 +366,18 @@ test('a row waiting on code asks before running it', async () => {
   await installed();
   const allow = vi.spyOn(store, 'allowCode').mockImplementation(async (id) => { delete store.pendingCode[id]; return true; });
   const decline = vi.spyOn(store, 'declineCode').mockImplementation(async (id) => { delete store.pendingCode[id]; });
-  store.pendingCode['jane.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
+  store.pendingCode['phosphor.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
   await expect.element(page.getByText('Midnight now runs code. Allow?')).toBeVisible();
   expect(page.getByRole('status').query()?.textContent).toBe('Midnight now runs code. Allow?'); // heard when a Reload brings it
   expect(document.querySelector('dialog li').textContent).toContain(WARNING);
   await page.getByRole('button', { name: 'Not now for Midnight' }).click();
-  expect(decline).toHaveBeenCalledWith('jane.midnight');
+  expect(decline).toHaveBeenCalledWith('phosphor.midnight');
   await expect.element(page.getByText('Midnight now runs code. Allow?')).not.toBeInTheDocument();
   await vi.waitFor(() => expect(document.activeElement).toBe(page.getByRole('switch', { name: 'Midnight' }).element())); // not lost with the buttons
 
-  store.pendingCode['jane.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
+  store.pendingCode['phosphor.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
   await page.getByRole('button', { name: 'Allow Midnight to run code' }).click();
-  expect(allow).toHaveBeenCalledWith('jane.midnight');
+  expect(allow).toHaveBeenCalledWith('phosphor.midnight');
   await expect.element(page.getByText('Midnight now runs code. Allow?')).not.toBeInTheDocument();
   await vi.waitFor(() => expect(document.activeElement).toBe(page.getByRole('switch', { name: 'Midnight' }).element()));
 });

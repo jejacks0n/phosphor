@@ -1,8 +1,8 @@
-// Outlines, the example plugin (tests/fixtures/plugins/outlines, docs/plugins.md): its JavaScript draws - | / and \
+// Outlines, the example plugin (plugins/outlines, docs/plugins.md): its JavaScript draws - | / and \
 // along a picture's edges and By shape elsewhere, Clean up tidies the lines, Box drawing swaps them, and its shaders give
 // the same cells. With VITE_SPEED=1, how long it takes on a large drawing against By shape (logged, not checked).
 import { test, expect, describe, afterEach, vi } from 'vitest';
-import outlines from '../fixtures/plugins/outlines/outlines.js';
+import outlines from '../../plugins/outlines/outlines.js';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { onSolver } from '../support/pluginSolvers.js';
 import ShapeMatcher from '@/lib/ShapeMatcher.js';
@@ -17,11 +17,11 @@ import { usePluginStore } from '@/store/PluginStore';
 
 afterEach(() => {
   vi.restoreAllMocks();
-  unregisterSolvers('jane.outlines');
+  unregisterSolvers('phosphor.outlines');
 });
 
 const def = readSolvers({ default: outlines })[0];
-const REF = solverRef('jane.outlines', 'outlines');
+const REF = solverRef('phosphor.outlines', 'outlines');
 const DEFAULTS = Object.fromEntries(def.options.map((option) => [option.id, option.default]));
 const SET = ' ░▒▓█▄▀';
 const ASCII_LINES = '-|/\\', BOX_LINES = '─│╱╲';
@@ -171,7 +171,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     project.charChoice = await onSolver(def);
     project.setLayerChars('base', { solverOptions: { [REF]: { ...DEFAULTS, threshold: 10 } } });
     await settle(project);
-    expect(usePluginStore().problems['jane.outlines']).toBeUndefined();
+    expect(usePluginStore().problems['phosphor.outlines']).toBeUndefined();
     expect(spy.mock.results.some((r, i) => r.value && spy.mock.calls[i][3].kind === 'plugin')).toBe(true);
     expect(project.cells.some((c) => ASCII_LINES.includes(c.char))).toBe(true);
   });
@@ -206,7 +206,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
       project.setLayerChars('base', { charsAscii: set, charChoiceAscii: ref });
       await settle(project);
       expect(spy.mock.results.some((r, i) => r.value && spy.mock.calls[i][3].kind === 'plugin'), set).toBe(true);
-      expect(usePluginStore().problems['jane.outlines'], set).toBeUndefined();
+      expect(usePluginStore().problems['phosphor.outlines'], set).toBeUndefined();
       const shown = key(project.cells);
       expect(project.cells.some((c) => c.char === '-'), set).toBe(true);
       spy.mockReturnValue(null); // the JavaScript's cells

@@ -70,9 +70,9 @@ it('refuses a deflate stream that is broken, a local header that is not where th
   await expect(readZip(await zipOf([['m.json', '{}', { method: 12 }]]), () => 99)).rejects.toMatchObject({ code: 'badZip' }); // bzip2
 });
 it('the example plugin\'s .zip holds the files of its folder, byte for byte, as GitHub makes one', async () => {
-  const fixture = (path) => new Uint8Array(readFileSync(new URL(`../fixtures/plugins/${path}`, import.meta.url)));
+  const read = (url) => new Uint8Array(readFileSync(new URL(url, import.meta.url)));
   const names = [];
-  const got = await readZip(new Blob([fixture('outlines.zip')]), (name) => (names.push(name), 1 << 20));
+  const got = await readZip(new Blob([read('../fixtures/plugins/outlines.zip')]), (name) => (names.push(name), 1 << 20));
   expect(names).toEqual(['phosphor-outlines-main/', 'phosphor-outlines-main/phosphor-plugin.json', 'phosphor-outlines-main/outlines.js']);
-  for (const file of ['phosphor-plugin.json', 'outlines.js']) expect(got.get(`phosphor-outlines-main/${file}`), file).toEqual(fixture(`outlines/${file}`));
+  for (const file of ['phosphor-plugin.json', 'outlines.js']) expect(got.get(`phosphor-outlines-main/${file}`), file).toEqual(read(`../../plugins/outlines/${file}`));
 });

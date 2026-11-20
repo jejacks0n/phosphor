@@ -101,8 +101,8 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   by the same rules). A plugin's script runs only after the person says Install; it is the one code a plugin brings.
   A plugin solver is a kind of By shape, with the rule R12 in [docs/model.md](docs/model.md). Its tests are the `plugin-*`
   files and `solver-options.test.js` in `tests/unit` and `tests/browser`, `tests/browser/plugins-dialog.test.js` and
-  `tests/e2e/plugins.spec.js`, with the example manifest in `tests/fixtures/plugins/midnight/` and the example solver,
-  Outlines, in `tests/fixtures/plugins/outlines/` (and `outlines.zip`, as GitHub makes one).
+  `tests/e2e/plugins.spec.js`, with the official plugins in `plugins/` (Midnight, a theme, and Outlines, a solver) and, in
+  `tests/fixtures/plugins/`, `outlines.zip`, as GitHub makes one.
 - `src/dev/actionLog.js` (and `skipped.js`, the actions it leaves out) and `src/components/dev/HistoryPanel.vue`: the
   development-only HISTORY tab, every step taken this session as a log to paste into a bug report ([docs/testing.md](docs/testing.md)).
 - `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be

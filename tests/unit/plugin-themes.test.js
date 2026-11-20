@@ -1,7 +1,7 @@
 import { test, expect } from 'vitest';
 import { themeRef, isPluginTheme, pluginOfTheme, pluginsOff, readThemeCache, resolveTheme } from '../../src/plugins/themes.js';
 
-const MIDNIGHT = 'plugin:jane.midnight/midnight';
+const MIDNIGHT = 'plugin:phosphor.midnight/midnight';
 const themes = [{ ref: MIDNIGHT, base: 'dark', colors: { 'surface-0': '#10162b' } }];
 const cached = { theme: 'plugin:sam.dusk/dusk', base: 'light', colors: { text: '#123456' } };
 
@@ -43,9 +43,9 @@ test('a good kept copy reads as itself', () => {
 });
 
 test('a name round-trips', () => {
-  expect(themeRef('jane.midnight', 'midnight')).toBe(MIDNIGHT);
+  expect(themeRef('phosphor.midnight', 'midnight')).toBe(MIDNIGHT);
   expect(isPluginTheme(MIDNIGHT)).toBe(true);
   expect(isPluginTheme('dark')).toBe(false);
-  expect(pluginOfTheme(MIDNIGHT)).toBe('jane.midnight');
+  expect(pluginOfTheme(MIDNIGHT)).toBe('phosphor.midnight');
   expect(pluginOfTheme('dark')).toBe(null);
 });

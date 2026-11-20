@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { test, expect } from 'vitest';
 import { readManifest, ManifestError, COLOR_SLOTS, MOST_MANIFEST_BYTES } from '../../src/plugins/manifest.js';
 
-const text = readFileSync(new URL('../fixtures/plugins/midnight/phosphor-plugin.json', import.meta.url), 'utf8');
+const text = readFileSync(new URL('../../plugins/midnight/phosphor-plugin.json', import.meta.url), 'utf8');
 const good = () => JSON.parse(text);
 const refused = (change) => {
   const raw = good();

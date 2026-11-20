@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import midnight from '../fixtures/plugins/midnight/phosphor-plugin.json?raw';
+import midnight from '../../plugins/midnight/phosphor-plugin.json?raw';
 import { i18n } from '@/i18n';
 import ProjectFooter from '@/components/ProjectFooter.vue';
 import { usePluginStore } from '@/store/PluginStore';
@@ -12,7 +12,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ownDatabase } from '../support/socialDatabase.js';
 import '@/assets/global.css';
 
-const MIDNIGHT = 'plugin:jane.midnight/midnight';
+const MIDNIGHT = 'plugin:phosphor.midnight/midnight';
 
 let app, host;
 beforeEach(() => ownDatabase('phosphor-plugins', 'plugin-picker')());
@@ -67,7 +67,7 @@ test('a theme whose plugin is switched off leaves the select', async () => {
   const { plugins } = mount();
   await plugins.install(JSON.parse(midnight));
   await expect.element(select()).toBeVisible();
-  await plugins.setEnabled('jane.midnight', false);
+  await plugins.setEnabled('phosphor.midnight', false);
   await nextTick();
   expect(select().query()).toBe(null);
 });

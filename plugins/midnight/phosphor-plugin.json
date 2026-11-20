@@ -1,9 +1,9 @@
 {
   "phosphor": 1,
-  "id": "jane.midnight",
+  "id": "phosphor.midnight",
   "name": "Midnight",
   "version": "1.0.0",
-  "author": "Jane",
+  "author": "Phosphor",
   "description": "A deep blue theme for late nights.",
   "homepage": "https://github.com/jane/phosphor-midnight",
   "license": "MIT",

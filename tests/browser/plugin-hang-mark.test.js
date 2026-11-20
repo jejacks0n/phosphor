@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 test('a mark whose page still holds its lock is not a hang, and is left alone', async () => {
-  beginRun('jane.outlines'); // this page, at work
+  beginRun('phosphor.outlines'); // this page, at work
   const mark = localStorage.getItem(HANG_KEY);
   expect(await hungLastTime()).toBe(null);
   expect(localStorage.getItem(HANG_KEY)).toBe(mark);
@@ -20,15 +20,15 @@ test('a mark whose page still holds its lock is not a hang, and is left alone', 
 });
 
 test('a mark whose page is gone is a hang, and is cleared', async () => {
-  localStorage.setItem(HANG_KEY, JSON.stringify({ pluginId: 'jane.outlines', page: 'a-page-no-one-holds' }));
-  expect(await hungLastTime()).toBe('jane.outlines');
+  localStorage.setItem(HANG_KEY, JSON.stringify({ pluginId: 'phosphor.outlines', page: 'a-page-no-one-holds' }));
+  expect(await hungLastTime()).toBe('phosphor.outlines');
   expect(localStorage.getItem(HANG_KEY)).toBe(null);
   localStorage.setItem(HANG_KEY, 'jane.older'); // an earlier Phosphor's mark
   expect(await hungLastTime()).toBe('jane.older');
 });
 
 test('a page ending its run leaves another page\'s mark', () => {
-  const other = JSON.stringify({ pluginId: 'jane.outlines', page: 'another-page' });
+  const other = JSON.stringify({ pluginId: 'phosphor.outlines', page: 'another-page' });
   localStorage.setItem(HANG_KEY, other);
   endRun();
   expect(localStorage.getItem(HANG_KEY)).toBe(other);

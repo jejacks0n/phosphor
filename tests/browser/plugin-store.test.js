@@ -2,14 +2,14 @@
 // and what happens to the theme in use when its plugin stops offering it. Real IndexedDB, a database of this file's own.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import midnight from '../fixtures/plugins/midnight/phosphor-plugin.json?raw';
+import midnight from '../../plugins/midnight/phosphor-plugin.json?raw';
 import { MOST_MANIFEST_BYTES } from '@/plugins/manifest';
 import { loadPlugins, putPlugin } from '@/plugins/storage';
 import { usePluginStore } from '@/store/PluginStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ownDatabase } from '../support/socialDatabase.js';
 
-const MIDNIGHT = 'plugin:jane.midnight/midnight';
+const MIDNIGHT = 'plugin:phosphor.midnight/midnight';
 
 beforeEach(() => ownDatabase('phosphor-plugins', 'plugin-store')());
 afterEach(() => {
@@ -32,15 +32,15 @@ const installed = async (store, text = midnight) => store.install((await store.r
 test('a manifest read from a file is installed on, listed, and still there after a load in a new store', async () => {
   const { store } = stores();
   const read = await store.read(file(midnight));
-  expect(read.manifest.id).toBe('jane.midnight');
+  expect(read.manifest.id).toBe('phosphor.midnight');
   expect(read.replaces).toBe(null);
   await store.install(read.manifest);
   expect(store.plugins).toHaveLength(1);
-  expect(store.plugins[0]).toMatchObject({ id: 'jane.midnight', enabled: true, source: 'file' });
+  expect(store.plugins[0]).toMatchObject({ id: 'phosphor.midnight', enabled: true, source: 'file' });
 
   const again = stores().store;
   await again.load();
-  expect(again.plugins.map(({ id }) => id)).toEqual(['jane.midnight']);
+  expect(again.plugins.map(({ id }) => id)).toEqual(['phosphor.midnight']);
   expect(again.themes).toEqual([{
     ref: MIDNIGHT, name: 'Midnight', base: 'dark',
     colors: { background: '#0b1020', accent: '#7aa2f7', 'surface-0': '#10162b' },
@@ -61,10 +61,10 @@ test('off, its themes leave the list and the theme in use goes to its base; on a
   const { store, workspace } = stores();
   await installed(store);
   workspace.theme = MIDNIGHT;
-  await store.setEnabled('jane.midnight', false);
+  await store.setEnabled('phosphor.midnight', false);
   expect(store.themes).toEqual([]);
   expect(workspace.theme).toBe('dark');
-  await store.setEnabled('jane.midnight', true);
+  await store.setEnabled('phosphor.midnight', true);
   expect(store.themes.map(({ ref }) => ref)).toEqual([MIDNIGHT]);
   expect(workspace.theme).toBe('dark');
 });
@@ -73,7 +73,7 @@ test('removed, it is forgotten and the theme in use goes to its base', async () 
   const { store, workspace } = stores();
   await installed(store, changed((m) => { m.themes[0].base = 'light'; }));
   workspace.theme = MIDNIGHT;
-  await store.uninstall('jane.midnight');
+  await store.uninstall('phosphor.midnight');
   expect(store.plugins).toEqual([]);
   expect(workspace.theme).toBe('light');
   expect(await loadPlugins()).toEqual([]);
@@ -82,14 +82,14 @@ test('removed, it is forgotten and the theme in use goes to its base', async () 
 test('a newer version replaces it and keeps it off; without the theme in use, the app goes to its base', async () => {
   const { store, workspace } = stores();
   await installed(store);
-  await store.setEnabled('jane.midnight', false);
+  await store.setEnabled('phosphor.midnight', false);
   const read = await store.read(file(changed((m) => { m.version = '1.1.0'; })));
   expect(read.replaces.manifest.version).toBe('1.0.0');
   await store.install(read.manifest);
   expect(store.plugins).toHaveLength(1);
   expect(store.plugins[0]).toMatchObject({ enabled: false, manifest: { version: '1.1.0' } });
 
-  await store.setEnabled('jane.midnight', true);
+  await store.setEnabled('phosphor.midnight', true);
   workspace.theme = MIDNIGHT;
   await installed(store, changed((m) => { m.version = '1.2.0'; m.themes[0].id = 'dusk'; }));
   expect(workspace.theme).toBe('dark');
@@ -98,10 +98,10 @@ test('a newer version replaces it and keeps it off; without the theme in use, th
 test('a stored record that is no longer a good manifest is skipped', async () => {
   const { store } = stores();
   const manifest = JSON.parse(midnight);
-  await putPlugin({ id: 'jane.midnight', manifest, enabled: true, source: 'file', installedAt: 1 });
+  await putPlugin({ id: 'phosphor.midnight', manifest, enabled: true, source: 'file', installedAt: 1 });
   await putPlugin({ id: 'jane.later', manifest: { ...manifest, id: 'jane.later', phosphor: 2 }, enabled: true, source: 'file', installedAt: 2 });
   await store.load();
-  expect(store.plugins.map(({ id }) => id)).toEqual(['jane.midnight']);
+  expect(store.plugins.map(({ id }) => id)).toEqual(['phosphor.midnight']);
 });
 
 test('a browser that will not keep anything starts with no plugins and says so', async () => {
@@ -125,5 +125,5 @@ test('a plugin with no homepage is still listed after a load in a new store', as
   await installed(store, changed((m) => { delete m.homepage; delete m.description; delete m.license; }));
   const again = stores().store;
   await again.load();
-  expect(again.plugins.map(({ id }) => id)).toEqual(['jane.midnight']);
+  expect(again.plugins.map(({ id }) => id)).toEqual(['phosphor.midnight']);
 });

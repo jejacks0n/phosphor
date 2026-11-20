@@ -132,7 +132,7 @@ test('Edges moves in tenths: an arrow press is a step you can see, 200 presses e
 });
 
 test('solverOptions from a stranger: bad entries are dropped and the good kept, a value too big is trimmed, only a non-object is refused', () => {
-  const ref = 'plugin:jane.outlines/outlines', other = 'plugin:jane.outlines/other';
+  const ref = 'plugin:phosphor.outlines/outlines', other = 'plugin:phosphor.outlines/other';
   const options = { [ref]: { threshold: 40, thin: true } };
   assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: options }), { ...GOOD, solverOptions: options });
   assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: {} }), { ...GOOD, solverOptions: {} });
@@ -147,6 +147,6 @@ test('solverOptions from a stranger: bad entries are dropped and the good kept, 
 });
 
 test('a plugin ref in charChoice or charChoiceAscii survives a stranger\'s settings', () => {
-  const ref = 'plugin:jane.outlines/outlines';
+  const ref = 'plugin:phosphor.outlines/outlines';
   assert.deepEqual(settingsFromStranger({ ...GOOD, charChoice: ref, charChoiceAscii: ref }), { ...GOOD, charChoice: ref, charChoiceAscii: ref });
 });
