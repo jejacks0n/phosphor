@@ -117,7 +117,7 @@ test('Duplicate and Export sit in the head\'s … menu', async () => {
   const { palettes } = await mount({ setup: (p) => named(p, 'Frogs') });
   await edit('Frogs');
   const head = () => host.querySelector('.head');
-  expect(button('⧉ Duplicate', head())).toBeUndefined();
+  expect(button('Duplicate', head())).toBeUndefined();
   expect(moreButton().getAttribute('aria-label')).toBe('More palette actions');
   await press(moreButton());
   expect(moreButton().getAttribute('aria-expanded')).toBe('true');
@@ -131,9 +131,9 @@ test('Duplicate and Export sit in the head\'s … menu', async () => {
   await nextTick();
   expect(button('Export', head())).toBeUndefined(); // a press elsewhere shuts it too
   await press(moreButton());
-  await press(button('⧉ Duplicate', head()));
+  await press(button('Duplicate', head()));
   expect(palettes.userPalettes.map((p) => p.name)).toContain('Frogs copy');
-  expect(button('⧉ Duplicate', head())).toBeUndefined();
+  expect(button('Duplicate', head())).toBeUndefined();
 });
 
 test('a font drawing\'s sources are the font', async () => {
