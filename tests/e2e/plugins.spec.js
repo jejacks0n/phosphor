@@ -3,6 +3,7 @@
 // solver) installed from its folder and its zip, drawing, kept over a reload, and missed by a browser without it.
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { test, expect, openApp, pickLayer, settled, autosaved, store, saveAs, imageInput, otherBrowser } from './support.js';
 
 const MANIFEST = fileURLToPath(new URL('../../plugins/midnight/phosphor-plugin.json', import.meta.url));
@@ -13,9 +14,11 @@ const theme = (page) => page.locator('html').getAttribute('data-theme');
 const background = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const pluginThemes = (page) => page.getByRole('combobox', { name: 'Plugin themes' });
 const dialog = (page) => page.getByRole('dialog');
+const installedTab = (page) => dialog(page).getByRole('tab', { name: /^Installed/ }).click(); // the file buttons live there
 
 async function installMidnight(page) {
   await page.getByRole('button', { name: 'Plugins', exact: true }).click();
+  await installedTab(page);
   const chooser = page.waitForEvent('filechooser');
   await dialog(page).getByRole('button', { name: 'Install from a file…' }).click();
   await (await chooser).setFiles(MANIFEST);
@@ -55,6 +58,7 @@ test('plugins=off loads without the theme, keeps the choice, and the dialog can 
   expect(await page.evaluate(() => localStorage.getItem('phosphor.theme'))).toBe(MIDNIGHT);
 
   await page.getByRole('button', { name: 'Plugins', exact: true }).click();
+  await installedTab(page);
   await expect(dialog(page).getByText(/Plugins are off for this visit/)).toBeVisible();
   await dialog(page).getByRole('button', { name: 'Remove Midnight' }).click();
   await dialog(page).getByRole('button', { name: /^Remove/ }).click();
@@ -83,6 +87,7 @@ test('a damaged kept copy loads as Dark', async ({ page, context }) => {
 // browser's own), a zip through the file input. The warning is there before Install.
 async function installOutlines(page, { from, replaces = false }) {
   await page.getByRole('button', { name: 'Plugins', exact: true }).click();
+  await installedTab(page);
   const chooser = page.waitForEvent('filechooser');
   await dialog(page).getByRole('button', { name: from === 'folder' ? 'Install from a folder…' : 'Install from a file…' }).click();
   await (await chooser).setFiles(from === 'folder' ? OUTLINES : OUTLINES_ZIP);
@@ -143,4 +148,83 @@ test('a drawing on Outlines opened without the plugin shows By shape and says so
   await expect(charChoice(other).locator('option:checked')).toHaveText('outlines (not here)');
   expect(await middleColumn(other)).toBe(byShape);
   await other.context().close();
+});
+
+// The marketplace: the list at /plugins.json and a listed plugin's files from raw GitHub, both answered here.
+const FIXTURES = new URL('../fixtures/', import.meta.url);
+const LIST = JSON.parse(await readFile(new URL('plugin-list.json', FIXTURES), 'utf8'));
+const OUTLINES_MANIFEST = await readFile(new URL('../../plugins/outlines/phosphor-plugin.json', import.meta.url), 'utf8');
+const RAW = 'https://raw.githubusercontent.com/';
+const SHA = '0123456789abcdef0123456789abcdef01234567';
+const FILES = {
+  [`jejacks0n/phosphor/${SHA}/plugins/outlines/phosphor-plugin.json`]: OUTLINES_MANIFEST,
+  [`jejacks0n/phosphor/${SHA}/plugins/outlines/outlines.js`]: await readFile(new URL('../../plugins/outlines/outlines.js', import.meta.url), 'utf8'),
+  [`jejacks0n/phosphor/${SHA}/plugins/midnight/phosphor-plugin.json`]: await readFile(MANIFEST, 'utf8'),
+  [`kim/phosphor-rain/${SHA}/phosphor-plugin.json`]: await readFile(new URL('plugins/rain/phosphor-plugin.json', FIXTURES), 'utf8'),
+};
+async function routeMarket(page, list = () => LIST, files = FILES) {
+  await page.route('**/plugins.json', (route) => route.fulfill({ json: list() }));
+  await page.route(`${RAW}**`, (route) => {
+    const body = files[route.request().url().slice(RAW.length)];
+    return body === undefined ? route.fulfill({ status: 404, body: '' }) : route.fulfill({ body, contentType: 'text/plain' });
+  });
+}
+const openPlugins = (page) => page.getByRole('button', { name: 'Plugins', exact: true }).click();
+
+test('Outlines is found in the Marketplace, installed as Official and draws', async ({ page }) => {
+  await routeMarket(page);
+  await openApp(page, 'images/square.png');
+  await pickLayer(page, 'Base');
+  await openPlugins(page);
+  await expect(dialog(page).getByRole('tab', { name: 'Marketplace' })).toHaveAttribute('aria-selected', 'true');
+  await dialog(page).getByPlaceholder('Search plugins').fill('out');
+  await expect(dialog(page).getByRole('link', { name: 'Midnight' })).toHaveCount(0);
+  await dialog(page).getByRole('button', { name: 'Install', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Install Outlines 1.0.0?' })).toBeVisible();
+  await expect(page.getByText('Official', { exact: true })).toBeVisible(); // the question says where it comes from
+  await dialog(page).getByRole('button', { name: /^Install Adds a script/ }).click();
+  await installedTab(page);
+  await expect(dialog(page).getByRole('switch', { name: 'Outlines' })).toBeVisible();
+  await expect(dialog(page).locator('span.badge', { hasText: 'Official' })).toBeVisible();
+  await dialog(page).getByRole('button', { name: 'Close' }).click();
+  await charChoice(page).selectOption({ label: 'Outlines' });
+  await expect.poll(() => middleColumn(page)).toContain('-');
+});
+
+test('after a reload the dialog opens on Installed, and a higher listed version shows Update', async ({ page }) => {
+  await routeMarket(page);
+  await page.goto('/');
+  await openPlugins(page);
+  await dialog(page).getByPlaceholder('Search plugins').fill('midnight');
+  await dialog(page).getByRole('button', { name: 'Install', exact: true }).click();
+  await dialog(page).getByRole('button', { name: /^Install Adds 1 theme/ }).click();
+  await installedTab(page);
+  await expect(dialog(page).getByRole('switch', { name: 'Midnight' })).toBeVisible();
+
+  const manifest = JSON.stringify({ ...JSON.parse(await readFile(MANIFEST, 'utf8')), version: '1.1.0' }, null, 2) + '\n';
+  const newer = JSON.parse(JSON.stringify(LIST));
+  const entry = newer.plugins.find((p) => p.manifest.id === 'phosphor.midnight');
+  entry.manifest.version = '1.1.0';
+  entry.manifestHash = createHash('sha256').update(manifest).digest('hex');
+  await page.unroute('**/plugins.json');
+  await page.unroute(`${RAW}**`);
+  await routeMarket(page, () => newer, { ...FILES, [`jejacks0n/phosphor/${SHA}/plugins/midnight/phosphor-plugin.json`]: manifest });
+
+  await page.reload();
+  await openPlugins(page);
+  await expect(dialog(page).getByRole('tab', { name: /^Installed/ })).toHaveAttribute('aria-selected', 'true');
+  await dialog(page).getByRole('button', { name: 'Update Midnight' }).click();
+  await expect(dialog(page).getByRole('heading', { name: 'Replace Midnight 1.0.0 with 1.1.0?' })).toBeVisible();
+});
+
+test('on a phone the Plugins dialog fills the window and × closes it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await routeMarket(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Toggle settings' }).click();
+  await openPlugins(page);
+  const box = await dialog(page).boundingBox();
+  expect(box).toEqual({ x: 0, y: 0, width: 390, height: 844 });
+  await dialog(page).getByRole('button', { name: 'Close' }).click();
+  await expect(dialog(page)).toHaveCount(0);
 });
