@@ -58,10 +58,11 @@ const manifestWith = (change) => {
 test('takes a script path relative to the manifest', () => {
   expect(readManifest(manifestWith({ script: 'outlines.js' })).script).toBe('outlines.js');
   expect(readManifest(manifestWith({ script: 'src/outlines.mjs' })).script).toBe('src/outlines.mjs');
+  expect(readManifest(manifestWith({ script: 'a/.b/x.js' })).script).toBe('a/.b/x.js'); // a folder whose name starts with .
 });
 
-test("refuses a script path that leaves the folder, is absolute or isn't JavaScript", () => {
-  for (const script of ['../x.js', '/x.js', 'a/../../x.js', 'x.ts', 'x.js?y', '', 'a\\x.js', 'x'.repeat(200) + '.js']) {
+test("refuses a script path that leaves the folder, is absolute, has an empty or . folder, or isn't JavaScript", () => {
+  for (const script of ['../x.js', '/x.js', 'a/../../x.js', 'x.ts', 'x.js?y', '', 'a\\x.js', 'x'.repeat(200) + '.js', 'a//x.js', 'a/./x.js']) {
     expect(() => readManifest(manifestWith({ script }))).toThrow(expect.objectContaining({ code: 'badField', detail: { field: 'script' } }));
   }
 });
