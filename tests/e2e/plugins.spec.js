@@ -5,10 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { test, expect, openApp, pickLayer, settled, autosaved, store, saveAs, imageInput, otherBrowser } from './support.js';
 
-const MANIFEST = fileURLToPath(new URL('../fixtures/plugins/midnight/phosphor-plugin.json', import.meta.url));
-const OUTLINES = fileURLToPath(new URL('../fixtures/plugins/outlines', import.meta.url));
+const MANIFEST = fileURLToPath(new URL('../../plugins/midnight/phosphor-plugin.json', import.meta.url));
+const OUTLINES = fileURLToPath(new URL('../../plugins/outlines', import.meta.url));
 const OUTLINES_ZIP = fileURLToPath(new URL('../fixtures/plugins/outlines.zip', import.meta.url));
-const MIDNIGHT = 'plugin:jane.midnight/midnight';
+const MIDNIGHT = 'plugin:phosphor.midnight/midnight';
 const theme = (page) => page.locator('html').getAttribute('data-theme');
 const background = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const pluginThemes = (page) => page.getByRole('combobox', { name: 'Plugin themes' });

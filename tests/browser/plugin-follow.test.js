@@ -2,13 +2,13 @@
 // Follow file takes each save. Real handles from the origin's private file system stand in for a picked file.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import midnight from '../fixtures/plugins/midnight/phosphor-plugin.json?raw';
+import midnight from '../../plugins/midnight/phosphor-plugin.json?raw';
 import { usePluginStore, linksFiles } from '@/store/PluginStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { ownHangMark } from '../support/ownHangMark.js';
 
-const ID = 'jane.midnight';
+const ID = 'phosphor.midnight';
 let dir, name, handle, store;
 
 beforeEach(async () => {
@@ -168,7 +168,7 @@ test('a followed folder takes a save of either file', async () => {
     await writable.close();
   };
   const SCRIPT = (name) => `export default { solvers: [{ id: 'edges', name: '${name}', styles: ['ansi'], reach: 0, solve: () => ({ char: ' ', fg: 0, bg: 0 }) }] };`;
-  const EDGES = 'plugin:jane.midnight/edges';
+  const EDGES = 'plugin:phosphor.midnight/edges';
   try {
     await put('phosphor-plugin.json', changed((m) => { m.script = 'outlines.js'; }));
     await put('outlines.js', SCRIPT('Edges'));

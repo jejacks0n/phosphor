@@ -13,15 +13,15 @@ const def = {
     { id: 'set', kind: 'choice', choices: ['a', 'b'], default: 0 },
   ],
 };
-const ref = solverRef('jane.outlines', 'edges');
-afterEach(() => unregisterSolvers('jane.outlines'));
+const ref = solverRef('phosphor.outlines', 'edges');
+afterEach(() => unregisterSolvers('phosphor.outlines'));
 
 describe('refs', () => {
   it('are plugin:<plugin>/<solver>', () => {
-    expect(ref).toBe('plugin:jane.outlines/edges');
+    expect(ref).toBe('plugin:phosphor.outlines/edges');
     expect(isSolverRef(ref)).toBe(true);
     expect(isSolverRef('dark')).toBe(false);
-    expect(pluginOfSolver(ref)).toBe('jane.outlines');
+    expect(pluginOfSolver(ref)).toBe('phosphor.outlines');
     expect(pluginOfSolver('bestMatch')).toBeNull();
   });
 });
@@ -29,10 +29,10 @@ describe('refs', () => {
 describe('registry', () => {
   it('finds a registered solver and nothing else', () => {
     expect(solverFor(ref)).toBeNull();
-    registerSolvers('jane.outlines', 'h1', [def]);
-    expect(solverFor(ref)).toEqual({ def, hash: 'h1', pluginId: 'jane.outlines' });
-    expect(solverFor(solverRef('jane.outlines', 'nope'))).toBeNull();
-    unregisterSolvers('jane.outlines');
+    registerSolvers('phosphor.outlines', 'h1', [def]);
+    expect(solverFor(ref)).toEqual({ def, hash: 'h1', pluginId: 'phosphor.outlines' });
+    expect(solverFor(solverRef('phosphor.outlines', 'nope'))).toBeNull();
+    unregisterSolvers('phosphor.outlines');
     expect(solverFor(ref)).toBeNull();
   });
 });
@@ -40,13 +40,13 @@ describe('registry', () => {
 describe('standInOf', () => {
   const ok = { ref, renderStyle: 'ansi', inRoom: false, pluginsOff: false, pluginState: () => 'on' };
   it('gives the reasons, in order', () => {
-    registerSolvers('jane.outlines', 'h', [def]);
+    registerSolvers('phosphor.outlines', 'h', [def]);
     expect(standInOf(ok)).toBeNull();
     expect(standInOf({ ...ok, inRoom: true, pluginsOff: true, pluginState: () => 'absent' })).toBe('room');
     expect(standInOf({ ...ok, pluginsOff: true, pluginState: () => 'absent' })).toBe('pluginsOff');
     expect(standInOf({ ...ok, pluginState: () => 'absent' })).toBe('missing');
     expect(standInOf({ ...ok, pluginState: () => 'off' })).toBe('off');
-    expect(standInOf({ ...ok, ref: solverRef('jane.outlines', 'nope') })).toBe('missing');
+    expect(standInOf({ ...ok, ref: solverRef('phosphor.outlines', 'nope') })).toBe('missing');
     expect(standInOf({ ...ok, renderStyle: 'ascii' })).toBe('style');
     failSolver(ref, 'boom');
     expect(standInOf(ok)).toBe('failed');
@@ -67,23 +67,23 @@ describe('optionValues', () => {
 
 describe('failures', () => {
   it('are reported to listeners and cleared when the plugin registers again', () => {
-    registerSolvers('jane.outlines', 'h', [def]);
+    registerSolvers('phosphor.outlines', 'h', [def]);
     const listener = vi.fn();
     const stop = onSolverFailure(listener);
     failSolver(ref, 'boom');
     expect(listener).toHaveBeenCalledWith(ref, 'boom');
     expect(failureOf(ref)).toBe('boom');
-    registerSolvers('jane.outlines', 'h2', [def]);
+    registerSolvers('phosphor.outlines', 'h2', [def]);
     expect(failureOf(ref)).toBeNull();
     stop();
     failSolver(ref, 'again');
     expect(listener).toHaveBeenCalledTimes(1);
   });
   it('from a script no longer registered are ignored, unheard', () => {
-    registerSolvers('jane.outlines', 'h1', [def]);
+    registerSolvers('phosphor.outlines', 'h1', [def]);
     const listener = vi.fn();
     const stop = onSolverFailure(listener);
-    registerSolvers('jane.outlines', 'h2', [def]); // a Reload while the old script's resolve ran
+    registerSolvers('phosphor.outlines', 'h2', [def]); // a Reload while the old script's resolve ran
     failSolver(ref, 'old', 'h1');
     expect(failureOf(ref)).toBeNull();
     expect(listener).not.toHaveBeenCalled();

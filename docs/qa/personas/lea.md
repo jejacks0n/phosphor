@@ -360,8 +360,8 @@ and sideways.
 ### 26. Add a theme from a file
 - Does: opens the settings, taps Plugins, taps Install from a file… and picks `plugins/midnight/phosphor-plugin.json`;
   reads the question and taps Install; closes the dialog and picks Midnight in the select under the theme icons.
-- Expects: the question says "Install Midnight 1.0.0?", "by Jane" and "Adds 1 theme. Runs no code."; the row shows
-  Midnight, 1.0.0, by Jane, 1 theme and its homepage; with Midnight picked the app turns deep blue and no theme icon is
+- Expects: the question says "Install Midnight 1.0.0?", "by Phosphor" and "Adds 1 theme. Runs no code."; the row shows
+  Midnight, 1.0.0, by Phosphor, 1 theme and its homepage; with Midnight picked the app turns deep blue and no theme icon is
   checked; the language and the icons keep their row, a half each, with the select on its own row under them, fitting the column's width ([Plugins](../../plugins.md)).
 - Probes: `out-of-order`: first pick `images/photo.jpg` (it says "That file isn't a plugin's manifest."); `again`:
   install the same file twice (the second asks "Replace Midnight 1.0.0 with 1.0.0?").
@@ -379,11 +379,11 @@ and sideways.
 
 ### 28. Add Outlines
 - Does: with her selfie open, opens the settings, taps Plugins, taps Install from a file… and picks
-  `plugins/outlines.zip` (a phone's file picker gives a .zip, not a folder, so this is how she installs it); reads the question and taps Install; then taps Install from a
+  `tests/fixtures/plugins/outlines.zip` (a phone's file picker gives a .zip, not a folder, so this is how she installs it); reads the question and taps Install; then taps Install from a
   folder… to see what her phone offers.
-- Expects: the question says "Install Outlines 1.0.0?", "by Jane" and "Adds a script.", with "⚠ This plugin runs
+- Expects: the question says "Install Outlines 1.0.0?", "by Phosphor" and "Adds a script.", with "⚠ This plugin runs
   code in Phosphor. Install it only if you trust where it came from." under it, all fitting 390 wide with Install and
-  Cancel reachable; after Install the row shows Outlines, 1.0.0, by Jane and "Runs code", with no Reload or Follow file
+  Cancel reachable; after Install the row shows Outlines, 1.0.0, by Phosphor and "Runs code", with no Reload or Follow file
   (a phone keeps no link to the file); Cancel leaves nothing in the list. The folder button opens her phone's own picker or
   does nothing it can explain, and either way leaves the dialog as it was (installing from a folder is checked in the
   end-to-end tests, not here) ([Installing a plugin](../../plugins.md#installing-a-plugin)).

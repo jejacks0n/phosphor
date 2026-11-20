@@ -6,7 +6,7 @@ import { zipOf } from '../support/zipOf.js';
 
 const theme = { id: 'ink', name: 'Ink', base: 'dark', colors: {} };
 const manifest = (script = 'outlines.js') =>
-  JSON.stringify({ phosphor: 1, id: 'jane.outlines', name: 'Outlines', version: '1.0.0', author: 'Jane', ...(script ? { script } : { themes: [theme] }) });
+  JSON.stringify({ phosphor: 1, id: 'phosphor.outlines', name: 'Outlines', version: '1.0.0', author: 'Phosphor', ...(script ? { script } : { themes: [theme] }) });
 const SCRIPT = 'export default { solvers: [] }';
 const file = (text, name = 'x') => new File([text], name);
 const files = (entries) => entries.map(([path, text]) => ({ path, file: file(text, path.split('/').pop()) }));
@@ -14,7 +14,7 @@ const files = (entries) => entries.map(([path, text]) => ({ path, file: file(tex
 test('a folder\'s files: the manifest at the top or one folder down, and the script it names', async () => {
   const got = await readPackage(files([['outlines/phosphor-plugin.json', manifest()], ['outlines/outlines.js', SCRIPT]]));
   expect(got).toMatchObject({ scriptText: SCRIPT, handle: null });
-  expect(JSON.parse(got.manifestText).id).toBe('jane.outlines');
+  expect(JSON.parse(got.manifestText).id).toBe('phosphor.outlines');
   // picked from one level up, the same plugin one folder down
   const down = await readPackage(files([['repo/outlines/phosphor-plugin.json', manifest('src/o.js')], ['repo/outlines/src/o.js', SCRIPT], ['repo/readme.md', '#']]));
   expect(down.scriptText).toBe(SCRIPT);

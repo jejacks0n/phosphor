@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import midnight from '../fixtures/plugins/midnight/phosphor-plugin.json?raw';
+import midnight from '../../plugins/midnight/phosphor-plugin.json?raw';
 import { THEME_CACHE_KEY } from '@/plugins/themes';
 import { putPlugin } from '@/plugins/storage';
 import { useTheme } from '@/composables/useTheme';
@@ -12,7 +12,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ownDatabase } from '../support/socialDatabase.js';
 import '@/assets/global.css';
 
-const MIDNIGHT = 'plugin:jane.midnight/midnight';
+const MIDNIGHT = 'plugin:phosphor.midnight/midnight';
 const DUSK = { theme: 'plugin:sam.dusk/dusk', base: 'light', colors: { text: '#123456' } };
 const html = document.documentElement;
 
@@ -102,7 +102,7 @@ test('a plugin installed in another tab is picked up when its theme arrives', as
   const { pinia, plugins, workspace } = stores();
   mount(pinia);
   await plugins.load();
-  await putPlugin({ id: 'jane.midnight', manifest: JSON.parse(midnight), enabled: true, source: 'file', installedAt: 1 });
+  await putPlugin({ id: 'phosphor.midnight', manifest: JSON.parse(midnight), enabled: true, source: 'file', installedAt: 1 });
   workspace.theme = MIDNIGHT;
   await expect.poll(() => property('--surface-0')).toBe('#10162b');
 });

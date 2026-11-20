@@ -1,9 +1,9 @@
 {
   "phosphor": 1,
-  "id": "jane.outlines",
+  "id": "phosphor.outlines",
   "name": "Outlines",
   "version": "1.0.0",
-  "author": "Jane",
+  "author": "Phosphor",
   "description": "Draws - | / and \\ along a picture's outlines, darker side on lighter, and leaves the rest to By shape.",
   "license": "MIT",
   "script": "outlines.js"

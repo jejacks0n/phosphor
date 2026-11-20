@@ -16,10 +16,10 @@ import { t } from '@/i18n';
 
 afterEach(() => {
   vi.restoreAllMocks();
-  unregisterSolvers('jane.outlines');
+  unregisterSolvers('phosphor.outlines');
 });
 
-const REF = solverRef('jane.outlines', 'edges');
+const REF = solverRef('phosphor.outlines', 'edges');
 const SET = '▄▀█ ', OWN = '/\\', ALL = [...SET, ...OWN];
 const key = (cells) => cells.map((c) => c && `${c.char}|${c.fg.r},${c.fg.g},${c.fg.b},${c.fg.c}|${c.bg.r},${c.bg.g},${c.bg.b},${c.bg.c}`);
 const solver = (fields) => readSolvers({ default: { solvers: [{ id: 'edges', name: 'Edges', styles: ['ansi', 'colorAscii', 'ascii'], reach: 1, chars: OWN, ...fields }] } })[0];
@@ -211,7 +211,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     Object.assign(project, { quantize: 'cga', chars: SET });
     project.charChoice = await onSolver(def, { hash: 'writes-past' });
     await settle(project);
-    expect(usePluginStore().problems['jane.outlines']).toMatch(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
+    expect(usePluginStore().problems['phosphor.outlines']).toMatch(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
     const shown = key(project.cells);
     vi.spyOn(ShapeMatcher.prototype, 'resolve').mockReturnValue(null);
     project.renderer.reset();
@@ -241,7 +241,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     const matcher = await matcherOf(def);
     expect(gpu.resolve(samples, 4, 3, matcher, {})).toBe(null);
     expect(gpu.shaderProblem(REF)).toMatch(/error/i);
-    unregisterSolvers('jane.outlines');
+    unregisterSolvers('phosphor.outlines');
     expect(gpu.shaderProblem(REF)).toBe(null);
 
     const { project } = await createTestApp();
@@ -250,7 +250,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     const ref = await onSolver(def, { hash: 'no-compile' });
     project.charChoice = ref;
     await settle(project);
-    const message = usePluginStore().problems['jane.outlines'];
+    const message = usePluginStore().problems['phosphor.outlines'];
     expect(message).toContain(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
     expect(message).toMatch(/error/i);
     expect(project.cells.some((c) => c.char === '/')).toBe(true); // the JavaScript's
@@ -267,7 +267,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     const spy = vi.spyOn(ShapeMatcher.prototype, 'resolve');
     project.charChoice = await onSolver(def, { hash: 'near-tie' });
     await settle(project);
-    expect(usePluginStore().problems['jane.outlines']).toBeUndefined();
+    expect(usePluginStore().problems['phosphor.outlines']).toBeUndefined();
     expect(project.cells[0].char).toBe('\\'); // the shader's cell
     const calls = spy.mock.calls.length;
     project.brightness = 120;
@@ -285,7 +285,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     project.charChoice = await onSolver(solver(PASS_ONE), { hash: 'agrees' });
     await settle(project);
     expect(used()).toBeGreaterThan(0);
-    expect(usePluginStore().problems['jane.outlines']).toBeUndefined();
+    expect(usePluginStore().problems['phosphor.outlines']).toBeUndefined();
     const agreed = key(project.cells);
     spy.mockReturnValue(null);
     project.renderer.reset();
@@ -294,14 +294,14 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     expect(key(project.cells)).toEqual(agreed); // the JavaScript's
     spy.mockRestore();
 
-    usePluginStore().dropSolvers('jane.outlines');
+    usePluginStore().dropSolvers('phosphor.outlines');
     const wrong = vi.spyOn(ShapeMatcher.prototype, 'resolve');
     const def = solver({ solve: () => ({ char: '/', fg: rgb(255, 0, 0), bg: rgb(0, 0, 0) }), shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), 5);' } });
     project.charChoice = await onSolver(def, { hash: 'disagrees' });
     await settle(project);
     expect(wrong.mock.results.some((r) => r.value)).toBe(true); // it ran once, for the check
     const words = t('plugins.errors.shaderDisagrees', { count: 64, total: 64, col: 0, line: 0 });
-    expect(usePluginStore().problems['jane.outlines']).toBe(t('plugins.errors.shaderOff', { name: 'Edges', message: words }));
+    expect(usePluginStore().problems['phosphor.outlines']).toBe(t('plugins.errors.shaderOff', { name: 'Edges', message: words }));
     expect(project.cells.every((c) => c.char === '/')).toBe(true);
     const calls = wrong.mock.calls.length;
     project.brightness = 120; // a whole render again
@@ -329,7 +329,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     });
     project.charChoice = await onSolver(def, { hash: 'edges-only' });
     await settle(project);
-    expect(usePluginStore().problems['jane.outlines']).toContain(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
+    expect(usePluginStore().problems['phosphor.outlines']).toContain(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
   });
 
   test('a change of set checks the shader again: one that agrees on the first set and not on the next is switched off', async () => {
@@ -340,13 +340,13 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     const def = solver({ solve: () => ({ char: '\\', fg: rgb(255, 0, 0), bg: rgb(0, 0, 0) }), shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), glyphCount - 1);' } });
     project.charChoice = await onSolver(def, { hash: 'set-change' });
     await settle(project);
-    expect(usePluginStore().problems['jane.outlines']).toBeUndefined();
+    expect(usePluginStore().problems['phosphor.outlines']).toBeUndefined();
     expect(project.cells.every((c) => c.char === '\\')).toBe(true);
 
     project.chars = `${SET}\\▌`; // holds '\\' now: the last glyph is ▌
     await settle(project);
     const words = t('plugins.errors.shaderDisagrees', { count: 64, total: 64, col: 0, line: 0 });
-    expect(usePluginStore().problems['jane.outlines']).toBe(t('plugins.errors.shaderOff', { name: 'Edges', message: words }));
+    expect(usePluginStore().problems['phosphor.outlines']).toBe(t('plugins.errors.shaderOff', { name: 'Edges', message: words }));
     expect(project.cells.every((c) => c.char === '\\')).toBe(true); // the JavaScript's
   });
 
@@ -363,7 +363,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     project.charChoice = await onSolver(solver(PASS_ONE), { hash: 'lost' });
     await settle(project);
     const words = t('plugins.errors.shaderOff', { name: 'Edges', message: t('plugins.errors.shaderLost') });
-    expect(usePluginStore().problems['jane.outlines']).toBe(words);
+    expect(usePluginStore().problems['phosphor.outlines']).toBe(words);
     expect(project.cells.some((c) => c.char === '/')).toBe(true); // the JavaScript's
   });
 });

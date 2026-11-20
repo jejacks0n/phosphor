@@ -97,16 +97,17 @@ this visit." There you can switch the plugin off or remove it; then load Phospho
 
 ## Writing a plugin
 
-A plugin is a file named `phosphor-plugin.json`. This one is Midnight, a deep blue theme (it's in Phosphor's repository
-as `tests/fixtures/plugins/midnight/phosphor-plugin.json`):
+A plugin is a file named `phosphor-plugin.json`. This one is Midnight, a deep blue theme (one of the official plugins in Phosphor's
+`plugins/` folder, `plugins/midnight/phosphor-plugin.json`). Your own plugin's id is yours, `author.name`, like `jane.rain`;
+ids starting `phosphor.` are kept for the official plugins:
 
 ```json
 {
   "phosphor": 1,
-  "id": "jane.midnight",
+  "id": "phosphor.midnight",
   "name": "Midnight",
   "version": "1.0.0",
-  "author": "Jane",
+  "author": "Phosphor",
   "description": "A deep blue theme for late nights.",
   "homepage": "https://github.com/jane/phosphor-midnight",
   "license": "MIT",
@@ -161,7 +162,7 @@ A solver is a way to choose each cell's character, added to the **Choose charact
 ([Characters](characters.md#how-the-converter-picks-characters)): Phosphor hands it each cell the way By shape sees it
 (32 samples of the picture, 4 across and 8 down, with the palette, the style and the layer's set), and it gives back a
 character and two colors. The example is Outlines, which draws `- | / \` along a picture's outlines and leaves the rest
-to By shape. It's in Phosphor's repository as `tests/fixtures/plugins/outlines/` (and `tests/fixtures/plugins/outlines.zip`,
+to By shape. It's one of the official plugins in Phosphor's `plugins/` folder, as `plugins/outlines/` (and `tests/fixtures/plugins/outlines.zip`,
 as GitHub's Download ZIP makes it). Install it from either to try it, and copy the folder to start your own.
 
 Its manifest names the script:
@@ -169,10 +170,10 @@ Its manifest names the script:
 ```json
 {
   "phosphor": 1,
-  "id": "jane.outlines",
+  "id": "phosphor.outlines",
   "name": "Outlines",
   "version": "1.0.0",
-  "author": "Jane",
+  "author": "Phosphor",
   "script": "outlines.js"
 }
 ```

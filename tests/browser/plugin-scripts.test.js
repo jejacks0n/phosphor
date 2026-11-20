@@ -13,10 +13,10 @@ import { zipOf } from '../support/zipOf.js';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { ownHangMark } from '../support/ownHangMark.js';
 
-const ID = 'jane.outlines';
+const ID = 'phosphor.outlines';
 const EDGES = solverRef(ID, 'edges');
 const manifest = (change = () => {}) => {
-  const raw = { phosphor: 1, id: ID, name: 'Outlines', version: '1.0.0', author: 'Jane', script: 'outlines.js' };
+  const raw = { phosphor: 1, id: ID, name: 'Outlines', version: '1.0.0', author: 'Phosphor', script: 'outlines.js' };
   change(raw);
   return JSON.stringify(raw);
 };

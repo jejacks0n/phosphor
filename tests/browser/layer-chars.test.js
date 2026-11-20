@@ -22,7 +22,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 let app = null, host = null;
 afterEach(() => {
-  unregisterSolvers('jane.outlines');
+  unregisterSolvers('phosphor.outlines');
   app?.unmount();
   host?.remove();
   app = host = null;
@@ -778,12 +778,12 @@ test('a layer on a plugin solver: params carry it while it is registered and on;
   expect(project.layerParams.get('edit')).toMatchObject({ charMode: 'shape', solver: ref, wantedSolver: ref, standIn: null, solverOptions: { threshold: 40, thin: false, look: 0 } });
   project.setLayerChars('base', { charChoice: ref });
   expect(project.processParams).toMatchObject({ charMode: 'shape', solver: ref, standIn: null });
-  plugins.dropSolvers('jane.outlines');
+  plugins.dropSolvers('phosphor.outlines');
   expect(project.layerParams.get('edit')).toMatchObject({ charMode: 'shape', solver: null, wantedSolver: ref, standIn: 'missing', solverOptions: {} });
   expect(project.processParams).toMatchObject({ solver: null, standIn: 'missing' });
-  plugins.useSolvers('jane.outlines', 'h', [OUTLINES]);
+  plugins.useSolvers('phosphor.outlines', 'h', [OUTLINES]);
   expect(project.layerParams.get('edit').solver).toBe(ref);
-  await plugins.setEnabled?.('jane.outlines', false);
+  await plugins.setEnabled?.('phosphor.outlines', false);
   if (plugins.setEnabled) expect(project.layerParams.get('edit')).toMatchObject({ solver: null, standIn: 'off' });
   project.setLayerChars('edit', { charChoice: 'shape' });
   expect(project.layerParams.get('edit')).toMatchObject({ solver: null, wantedSolver: null, standIn: null, solverOptions: {} });
@@ -863,7 +863,7 @@ test('pluginSolverLayers names the layers on a plugin solver, stand-ins included
   project.setLayerChars('edit', { charChoice: ref });
   project.setLayerChars('base', { charChoice: ref });
   expect(project.pluginSolverLayers).toEqual([{ id: 'base', name: 'Base' }, { id: 'edit', name: 'Layer 1' }]);
-  plugins.dropSolvers('jane.outlines');
+  plugins.dropSolvers('phosphor.outlines');
   expect(project.pluginSolverLayers.map(({ id }) => id)).toEqual(['base', 'edit']);
 });
 
