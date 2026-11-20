@@ -491,6 +491,7 @@ function buildKey(project) {
   return {
     image, settings: JSON.stringify(params), baseLayer: project.baseLayer, baseVersion: project.baseLayer?.version, baseRecords: project.baseRecords,
     layers: JSON.stringify(project.layers.map(({ id, kind, hidden, chars }) => ({ id, kind, hidden, chars }))), // their order, eyes and own character settings: a name shows nowhere
+    solvers: JSON.stringify([...project.layerParams].map(([id, p]) => [id, p.solver, p.solverHash, p.standIn])), // each layer's plugin solver as used: a Reload or a stand-in changes it
   };
 }
 const sameKey = (a, b) => !!a && !!b && Object.keys(a).every((name) => a[name] === b[name]);

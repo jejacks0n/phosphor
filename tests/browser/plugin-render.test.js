@@ -216,6 +216,30 @@ test('on an upper layer, a character it does not draw with is told on its row; a
   expect(usePluginStore().problems['jane.outlines']).toContain('later');
 });
 
+test('a movie\'s built frames are built again when only an upper layer\'s solver changes: a Reload, or its plugin gone', async () => {
+  const { project, workspace } = await stripes();
+  const def = solver({ solve: (cell, look) => (cell.col % 2 ? SLASH : look.byShape()) });
+  const ref = await onSolver(def, { hash: 'first' });
+  await choose(project, 'shape'); // the base isn't on it
+  project.setLayerChars('edit', { charChoice: ref, chars: '▄▀█ ' }); // an upper layer of its own
+  workspace.pickLayer('edit');
+  project.paintStroke(RED_CELLS, '#ff0000');
+  project.commitEdit();
+  project.animate = true;
+  project.addFrame('duplicate');
+  await settle(project);
+  const built = async () => (await project.builtFrame(1), project._builder);
+  const first = await built();
+  expect(await built()).toBe(first); // nothing changed: kept
+  usePluginStore().useSolvers('jane.outlines', 'second', [def]); // a Reload: another script
+  await settle(project);
+  const second = await built();
+  expect(second).not.toBe(first);
+  usePluginStore().dropSolvers('jane.outlines'); // the layer stands in with By shape
+  await settle(project);
+  expect(await built()).not.toBe(second);
+});
+
 // R7: a solver keyed on where a cell is draws the same paint the same on an upper layer as in the lower group.
 async function checkered(upper) {
   const { project, workspace } = await stripes();
