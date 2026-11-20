@@ -580,11 +580,13 @@ export default class ShapeMatcher {
   }
 
   // A pass's read-back cells over range into into, as the JavaScript holds them: glyph 255 is the solid's index
-  // (written back into fg, so pass 1's picks are held glyphs too); Monochrome white on black, Color ASCII's bg black.
+  // (written back into fg, so pass 1's picks are held glyphs too); Monochrome white on black, Color ASCII's bg black. A
+  // shader can write its outputs without put(): a glyph past the set is the first, a color past the palette its first.
   #heldCells({ fg, bg }, { c0, c1, l0 }, { glyphs, palette, style, shape }, cols, into, solid) {
-    const w = c1 - c0, colorAt = (d, o) => (palette ? palette[d[o]] : colorOf({ r: d[o], g: d[o + 1], b: d[o + 2] }));
+    const w = c1 - c0, colorAt = (d, o) => (palette ? palette[d[o]] ?? palette[0] : colorOf({ r: d[o], g: d[o + 1], b: d[o + 2] }));
     for (let j = 0, o = 0; o < fg.length; j++, o += 4) {
       if (fg[o + 3] === 255) fg[o + 3] = solid;
+      else if (fg[o + 3] >= glyphs.length) fg[o + 3] = 0;
       const i = (l0 + Math.floor(j / w)) * cols + c0 + (j % w), char = glyphs[fg[o + 3]].char;
       if (style === 'ascii') into[i] = { char, fg: shape.core.white, bg: ASCII_BG };
       else into[i] = { char, fg: colorAt(fg, o), bg: style === 'colorAscii' ? ASCII_BG : colorAt(bg, o) };
