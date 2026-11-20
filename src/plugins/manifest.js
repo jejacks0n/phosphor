@@ -86,8 +86,8 @@ export function readManifest(source) {
     license: text(raw, 'license', 40, { required: false }),
   };
   const themes = raw.themes === undefined ? [] : raw.themes;
-  if (!themes.length && !manifest.script) throw new ManifestError('nothing');
   if (!Array.isArray(themes) || themes.length > MOST_THEMES) throw new ManifestError('badField', { field: 'themes' });
+  if (!themes.length && !manifest.script) throw new ManifestError('nothing');
   const seen = new Set();
   manifest.themes = Object.freeze(themes.map((theme, i) => readTheme(theme, i, seen)));
   return Object.freeze(manifest);

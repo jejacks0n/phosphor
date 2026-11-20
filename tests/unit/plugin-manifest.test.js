@@ -72,6 +72,17 @@ test('a script without themes is enough; neither is nothing', () => {
   expect(() => readManifest(manifestWith({ themes: undefined }))).toThrow(expect.objectContaining({ code: 'nothing' }));
 });
 
+test('themes that are not a list, and a script that is not text, are badField', () => {
+  for (const themes of [null, {}, 'x', 5]) {
+    for (const script of [undefined, 'x.js']) {
+      expect(() => readManifest(manifestWith({ themes, script }))).toThrow(expect.objectContaining({ code: 'badField', detail: { field: 'themes' } }));
+    }
+  }
+  for (const script of [null, 5, {}]) {
+    expect(() => readManifest(manifestWith({ script }))).toThrow(expect.objectContaining({ code: 'badField', detail: { field: 'script' } }));
+  }
+});
+
 test('optional fields left out read as empty', () => {
   const raw = good();
   delete raw.description; delete raw.homepage; delete raw.license;
