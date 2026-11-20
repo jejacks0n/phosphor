@@ -2,6 +2,9 @@
 // checked and frozen. A script imports nothing, so one blob is the whole module.
 import { ManifestError } from './manifest.js';
 import { isWideChar } from '@/lib/Cells';
+import { sha256 } from './hash.js';
+
+export { sha256 };
 
 export const MOST_REACH = 4;
 const MOST_SOLVERS = 8, MOST_OPTIONS = 12, MOST_CHOICES = 20, MOST_NAME = 40, MOST_CHARS = 32, MOST_SHADER = 64 * 1024;
@@ -9,11 +12,6 @@ const STYLES = ['ansi', 'colorAscii', 'ascii'];
 const ID = /^[a-z0-9-]{1,40}$/;
 const MOST_COPY = 1000; // a longer array is over every cap; not walked (undefined fills, which no check passes)
 const OPTION_ID = /^[a-z](?:[a-z0-9]|_(?!_)){0,31}$/; // a GLSL identifier suffix (the shader's uniform is opt_<id>): no __, which GLSL reserves
-
-export async function sha256(text) {
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
 
 export async function importScript(text) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));

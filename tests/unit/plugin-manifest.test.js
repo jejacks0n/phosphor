@@ -14,7 +14,7 @@ const refused = (change) => {
 test('the example reads as itself, frozen, with nothing extra kept', () => {
   const raw = { ...good(), extra: 1, themes: [{ ...good().themes[0], extra: 1 }] };
   const m = readManifest(JSON.stringify(raw));
-  expect(m).toEqual({ ...good(), script: '' });
+  expect(m).toEqual({ ...good(), script: '', preview: '' });
   expect(Object.isFrozen(m.themes[0].colors)).toBe(true);
 });
 
@@ -107,4 +107,20 @@ test('a manifest read once reads again as itself, optional fields left out or em
     const once = readManifest(JSON.stringify(raw));
     expect(readManifest(JSON.stringify({ ...once, script: once.script || undefined }))).toEqual(once);
   }
+});
+
+test('preview: left out is empty, up to 3 short lines are kept, anything else is refused', () => {
+  expect(readManifest(JSON.stringify(good())).preview).toBe('');
+  expect(readManifest(JSON.stringify({ ...good(), preview: 'ab\ncd' })).preview).toBe('ab\ncd');
+  expect(readManifest(JSON.stringify({ ...good(), preview: 'x'.repeat(24) })).preview).toBe('x'.repeat(24));
+  for (const preview of ['a\nb\nc\nd', 'x'.repeat(25), 'a\tb', 'a\u0007b', 5, ['a']]) {
+    const error = refused((raw) => { raw.preview = preview; });
+    expect(error, JSON.stringify(preview)).toBeInstanceOf(ManifestError);
+    expect([error.code, error.detail]).toEqual(['badField', { field: 'preview' }]);
+  }
+});
+
+test('the official Outlines manifest reads with its preview', () => {
+  const outlines = readFileSync(new URL('../../plugins/outlines/phosphor-plugin.json', import.meta.url), 'utf8');
+  expect(readManifest(outlines).preview).toBe(' ╱──╲ \n│    │\n ╲──╱ ');
 });
