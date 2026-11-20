@@ -145,6 +145,18 @@ test('Half steps: whole blocks placed to the nearest half cell, so one between t
   assert.ok(disc.length > halfStepEllipse({ x: 0.5, y: 0.5 }, { x: 16.5, y: 13.5 }, false, 30, 30).length * 3);
 });
 
+test('a half-step line and its mirror are mirror images, left to right and up and down', () => {
+  const cols = 12, rows = 12, keys = (ps) => ps.map(({ x, y }) => `${x},${y}`).sort();
+  for (let c0 = 0; c0 < cols; c0++) for (let r0 = 0; r0 < rows; r0++) for (let c1 = 0; c1 < cols; c1++) for (let r1 = 0; r1 < rows; r1++) {
+    const line = halfStepLine({ x: c0, y: r0 }, { x: c1, y: r1 }, cols, rows);
+    const across = halfStepLine({ x: cols - 1 - c0, y: r0 }, { x: cols - 1 - c1, y: r1 }, cols, rows);
+    const down = halfStepLine({ x: c0, y: rows - 1 - r0 }, { x: c1, y: rows - 1 - r1 }, cols, rows);
+    const at = `(${c0},${r0})-(${c1},${r1})`;
+    assert.deepEqual(keys(across), keys(line.map(({ x, y }) => ({ x: 2 * cols - 1 - x, y }))), `across ${at}`);
+    assert.deepEqual(keys(down), keys(line.map(({ x, y }) => ({ x, y: rows - 1 - y }))), `down ${at}`);
+  }
+});
+
 // The ANSI view's Eraser counts in cells: size N is an N by N square of cells around the cell under the pointer, the
 // extra column right and the extra row below when N is even. rows are grid pixels, two to a cell.
 test('squareCells: an N by N square of whole cells around the cell under the pointer', () => {

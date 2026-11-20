@@ -184,17 +184,21 @@ const roundOut = (v) => Math.sign(v) * Math.round(Math.abs(v)); // halves away f
 // cell at a time, each on the row the line is in there.
 export function halfStepLine(from, to, cols, rows) {
   const a = centerOf(from), b = centerOf(to), dx = b.x - a.x, dy = b.y - a.y;
+  // Measured from the line's middle and rounded away from it, so a line and its mirror agree.
+  const midX = (a.x + b.x) / 2, midY = (a.y + b.y) / 2, midH = a.x + b.x - 1; // midH: the half cell a block centered on the middle starts at
   const grid = halfGrid(cols, rows);
   if (Math.abs(dy) >= Math.abs(dx)) {
     const r0 = Math.floor(a.y), r1 = Math.floor(b.y), step = Math.sign(r1 - r0) || 1;
     for (let row = r0; ; row += step) {
-      const x = dy ? a.x + (dx * (row + 0.5 - a.y)) / dy : a.x;
-      grid.block(Math.round(2 * x - 1), row);
+      grid.block(midH + roundOut((2 * dx * (row + 0.5 - midY)) / (dy || 1)), row);
       if (row === r1) break;
     }
   } else {
     const h0 = 2 * Math.floor(Math.min(a.x, b.x)), h1 = 2 * Math.floor(Math.max(a.x, b.x)) + 1;
-    for (let h = h0; h <= h1; h++) grid.add(h, Math.floor(a.y + (dy * ((h + 0.5) / 2 - a.x)) / dx));
+    for (let h = h0; h <= h1; h++) {
+      const v = (dy * ((h + 0.5) / 2 - midX)) / dx, y = midY + v;
+      grid.add(h, v > 0 ? Math.floor(y) : Math.ceil(y) - 1); // on a row boundary, the row farther from the middle
+    }
   }
   return grid.pixels();
 }
