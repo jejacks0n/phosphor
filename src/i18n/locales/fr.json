@@ -1930,6 +1930,7 @@
     "removeNamed": "Retirer {name}",
     "installFile": "Installer depuis un fichier…",
     "startedOff": "Les plugins sont désactivés pour cette visite. Désactivez-en un ou retirez-le ici, puis rechargez Phosphor sans plugins=off.",
+    "startedOffDesktop": "Les plugins sont désactivés dans cette fenêtre. Désactivez-en un ou retirez-le ici, puis ouvrez une nouvelle fenêtre (Fichier > Nouvelle fenêtre).",
     "unavailable": "Ce navigateur ne garde pas les plugins, donc aucun ne peut être installé.",
     "install": {
       "title": "Installer {name} {version} ?",
@@ -1959,7 +1960,8 @@
       "badColor": "Le thème « {theme} » donne à « {key} » la valeur « {value} », qui n'est pas une couleur hexadécimale.",
       "otherPlugin": "Ce fichier est maintenant un autre plugin ({id}).",
       "fileGone": "Ce fichier ne peut plus être lu.",
-      "notAllowed": "Le navigateur ne laisse pas Phosphor lire ce fichier."
+      "notAllowed": "Le navigateur ne laisse pas Phosphor lire ce fichier.",
+      "notKept": "Ce navigateur n'a pas gardé le plugin."
     }
   }
 }

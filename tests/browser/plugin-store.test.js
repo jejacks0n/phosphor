@@ -119,3 +119,11 @@ test('started with plugins off, no theme is on offer though the plugins are list
   expect(store.themes).toEqual([]);
   expect(store.plugins).toHaveLength(1);
 });
+
+test('a plugin with no homepage is still listed after a load in a new store', async () => {
+  const { store } = stores();
+  await installed(store, changed((m) => { delete m.homepage; delete m.description; delete m.license; }));
+  const again = stores().store;
+  await again.load();
+  expect(again.plugins.map(({ id }) => id)).toEqual(['jane.midnight']);
+});

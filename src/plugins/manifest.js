@@ -37,7 +37,7 @@ const isObject = (value) => value !== null && typeof value === 'object' && !Arra
 
 const text = (raw, field, most, { required = true, test = null } = {}) => {
   const value = raw[field.split('.').pop()];
-  if (value === undefined && !required) return '';
+  if ((value === undefined || value === '') && !required) return ''; // left out, or as this file keeps it
   if (typeof value !== 'string' || value.length > most || (required && !value.trim()) || (test && !test(value))) {
     throw new ManifestError('badField', { field });
   }

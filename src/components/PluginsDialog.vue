@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
@@ -10,10 +10,28 @@ import { usePluginStore, linksFiles } from '@/store/PluginStore';
 // A manifest's words are the author's, shown as text. Where the browser can link a page to a file (linksFiles), a
 // plugin is picked with its picker and keeps its file, for Reload and Follow file.
 const DOCS = 'https://github.com/jejacks0n/phosphor/blob/main/docs/plugins.md';
+// A desktop window started with plugins off has no address to load again without them: a new window starts with them.
+const STARTED_OFF = import.meta.env.VITE_DESKTOP === '1' ? 'plugins.startedOffDesktop' : 'plugins.startedOff';
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const plugins = usePluginStore();
 onMounted(() => plugins.load()); // another window may have changed them
+
+// A file dropped anywhere while the dialog is up is the dialog's (the page behind it is inert): a manifest is asked
+// about, and nothing dropped sends the tab off to the file.
+const onDragOver = (event) => event.preventDefault();
+function onDrop(event) {
+  event.preventDefault();
+  if (!asking.value) take(event.dataTransfer.files[0]);
+}
+onMounted(() => {
+  window.addEventListener('dragover', onDragOver);
+  window.addEventListener('drop', onDrop);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('dragover', onDragOver);
+  window.removeEventListener('drop', onDrop);
+});
 
 const fileInput = ref(null);
 const problem = ref(null);
@@ -24,7 +42,7 @@ const address = (homepage) => homepage.replace(/^https:\/\//, '');
 
 async function take(file) {
   problem.value = null;
-  if (!file) return;
+  if (!file || plugins.unavailable) return;
   try {
     asking.value = { install: await plugins.read(file) };
   } catch (error) {
@@ -38,8 +56,6 @@ function onFile(event) {
   event.target.value = ''; // the same file, picked again, is a change
   take(file);
 }
-
-const onDrop = (event) => take(event.dataTransfer.files[0]);
 
 async function installFile() {
   problem.value = null;
@@ -72,8 +88,13 @@ function removeQuestion(record) {
 
 async function answer() {
   const { install, remove } = asking.value;
-  if (install) await plugins.install(install.manifest, { handle: install.handle });
-  else await plugins.uninstall(remove.id);
+  try {
+    if (install) await plugins.install(install.manifest, { handle: install.handle });
+    else await plugins.uninstall(remove.id);
+  } catch (error) {
+    console.warn('Could not keep the change to plugins', error);
+    problem.value = t('plugins.errors.notKept');
+  }
   asking.value = null;
 }
 </script>
@@ -86,8 +107,8 @@ async function answer() {
       @cancel="asking = null"
   />
   <ModalDialog v-else :title="t('plugins.title')" :sub="t('plugins.sub')" long closable @cancel="emit('close')">
-    <div class="plugins" @dragover.prevent @drop.prevent.stop="onDrop">
-      <p v-if="plugins.off" class="note">{{ t('plugins.startedOff') }}</p>
+    <div class="plugins">
+      <p v-if="plugins.off" class="note">{{ t(STARTED_OFF) }}</p>
       <p v-if="plugins.unavailable" class="note">{{ t('plugins.unavailable') }}</p>
 
       <ul v-if="plugins.plugins.length">
