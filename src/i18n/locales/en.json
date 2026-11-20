@@ -1950,6 +1950,9 @@
     "follow": "Follow file",
     "followNamed": "Follow {name}'s file",
     "errors": {
+      "badZip": "That file isn't a readable .zip.",
+      "zipEncrypted": "That .zip is password protected, which Phosphor can't open.",
+      "zip64": "That .zip uses the large-archive format, which Phosphor can't read.",
       "tooBig": "That file is too big to be a plugin's manifest.",
       "notJson": "That file isn't a plugin's manifest.",
       "newer": "This plugin was made for a newer Phosphor.",
