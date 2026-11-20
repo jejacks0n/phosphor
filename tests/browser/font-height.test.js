@@ -194,6 +194,19 @@ test('one undo step: undo brings back the font, grid, fit, layers and shapes; a 
   expect(maxY(project.shapes.get(key))).toBe(20); // the fit is twice as tall: 54 lines of picture are 108
 });
 
+test('a picture that reached the grid\'s bottom still does after 16 to 11, though the lines round up: 60 lines are 88, its fit 88 tall', async () => {
+  const { project, workspace } = await blank(80, 60);
+  workspace.pickLayer('edit');
+  dab(project, 4, 6);
+  await project.mergeIntoPicture(); // a working copy with content, stretched with the grid
+  await settle(project);
+  expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 80, dh: 60 });
+  await project.setDrawingFont(font11);
+  await settle(project);
+  expect(grid(project)).toEqual({ cols: 80, rows: 88 }); // 60 × 16 / 11 is 87.27, rounded up
+  expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 80, dh: 88 });
+});
+
 test('16 to 11 and back is undone to the grid it was, not a rounded one; on a drawing of only its base too', async () => {
   const { project } = await createTestApp();
   await project.setBlankCanvas({ cols: 80, rows: 60 }); // no layer: the base is the one in use
