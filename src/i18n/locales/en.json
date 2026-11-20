@@ -404,6 +404,7 @@
     "pluginTitle": "{name} ({plugin})",
     "titleWithKeys": "{title} · {keys}",
     "keysOr": "{a} or {b}",
+    "paintOff": "Paint is off: this drawing's font, {name}, has no lower half block, and paint is drawn in it. Give the font one on the Fonts page.",
     "moreTools": "More tools",
     "groups": {
       "fill": "Fill tools",

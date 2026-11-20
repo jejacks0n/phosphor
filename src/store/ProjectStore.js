@@ -17,7 +17,8 @@ import { usePluginStore } from '@/store/PluginStore.js';
 import { useRoomStore } from '@/store/RoomStore.js';
 import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
 import { PALETTES, parseColorList } from '@/lib/ColorUtils.js';
-import { decodeBlocks, decodeFont, fontChars, fontKey } from '@/lib/BitmapFont.js';
+import { blocksOf, decodeBlocks, decodeFont, fontChars, fontKey } from '@/lib/BitmapFont.js';
+import { t } from '@/i18n/index.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -210,6 +211,11 @@ export const useProjectStore = defineStore('project', {
   getters: {
     // The drawing's bitmap font, or null: decoded once for each fontBitmap.
     drawingFont: (state) => fontFor(state.fontBitmap, state.fontName, state.fontBlocks),
+    // Why paint is off, or null: paint is stored as pixels and shown as lower half blocks, so a drawing whose font has none can't show it.
+    paintOff() {
+      const font = this.drawingFont;
+      return font && blocksOf(font)[1] === null ? t('tools.paintOff', { name: font.name }) : null;
+    },
     // The 16 colors an XBin export holds, as hexes in XBin's DOS order, or null when the drawing's palette is more.
     xbinPalette(state) {
       const hexes = (colors) => (colors.length >= 1 && colors.length <= 16 ? colors.map((c) => c.hex) : null);
@@ -427,7 +433,7 @@ export const useProjectStore = defineStore('project', {
         ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
         font: state.drawingFont && fontKey(state.drawingFont),
         chars: fitted(state.drawingFont, state.renderStyle === 'ansi' ? state.chars : state.charsAscii),
-        charMode: charModeOf(state.renderStyle, state.charChoice, state.charChoiceAscii), // how a cell's character is picked (Cells.js)
+        charMode: state.renderStyle === 'ansi' && state.paintOff ? 'best' : charModeOf(state.renderStyle, state.charChoice, state.charChoiceAscii), // (paint off: Best match) how a cell's character is picked (Cells.js)
         charChoice: state.charChoice,
         ...solverParams(state, state.renderStyle, this.inRoom),
         solids: state.solids,

@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { bakeWarning, mergeWarning, useDrawingStore } from '@/store/DrawingStore';
-import { getTool, keyLabel, optionValue, setOptionValue, slotFace, toolSlots, toolTitle } from '@/tools';
+import { PAINT_OFF_TOOLS, getTool, keyLabel, optionValue, setOptionValue, slotFace, toolSlots, toolTitle } from '@/tools';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
@@ -32,6 +32,8 @@ const { below, offFor, hasAny, mergeDown } = useMergeDown();
 
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
 const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name } : {});
+// A tool's button as off while the drawing's font has no lower half (project.paintOff).
+const toolOff = (tool) => (PAINT_OFF_TOOLS.includes(tool.id) ? off(project.paintOff, tool.title) : {});
 // Inside an art layer, what changes the whole drawing (Clear, Merge down, Bake) is off: it would step out and
 // change the drawing kept aside, not the layer (the store steps out first all the same).
 const insideOff = computed(() => (project.artInside ? t('art.wholeLayerOff') : null));
@@ -435,6 +437,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
               :title="toolTitle(face)"
               :aria-label="face.title"
               :aria-keyshortcuts="face.keys?.join(' ')"
+              v-bind="toolOff(face)"
               @click="workspace.setActiveTool(face.id)"
               v-html="face.icon"
           ></button>
@@ -455,6 +458,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
                   :title="toolTitle(face)"
                   :aria-label="face.title"
                   :aria-keyshortcuts="face.keys?.join(' ')"
+                  v-bind="toolOff(face)"
                   @click="chooseFace(slot.id, face)"
                   @pointerdown="pressSlot(slot.id)"
                   @pointerup="releaseSlot"
@@ -465,7 +469,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
               ></button>
             </template>
             <template #trigger><span class="slot-corner" :class="{ lit: workspace.activeTool === face.id }"></span></template>
-            <button v-for="tool in slot.tools" :key="tool.id" class="choice" :class="{ on: workspace.activeTool === tool.id }" @click="workspace.setActiveTool(tool.id)">
+            <button v-for="tool in slot.tools" :key="tool.id" class="choice" :class="{ on: workspace.activeTool === tool.id }" v-bind="toolOff(tool)" @click="workspace.setActiveTool(tool.id)">
               <span class="tool-icon" v-html="tool.icon"></span><span class="slot-name">{{ tool.title }}</span><span v-if="!phoneLayout && tool.keys" class="slot-keys">{{ keysOf(tool) }}</span>
             </button>
           </DropdownMenu>
@@ -480,7 +484,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
           align="left"
       >
         <template #trigger><span v-html="MORE_ICON"></span></template>
-        <button v-for="tool in moreTools" :key="tool.id" class="choice" :class="{ on: workspace.activeTool === tool.id }" @click="workspace.setActiveTool(tool.id)">
+        <button v-for="tool in moreTools" :key="tool.id" class="choice" :class="{ on: workspace.activeTool === tool.id }" v-bind="toolOff(tool)" @click="workspace.setActiveTool(tool.id)">
           <span class="tool-icon" v-html="tool.icon"></span><span>{{ tool.title }}</span>
         </button>
       </DropdownMenu>

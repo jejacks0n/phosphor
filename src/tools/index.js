@@ -13,7 +13,7 @@
  *   begin(ctx, pos, event) -> false when there's no stroke to continue; move(ctx, from, to); end(ctx).
  *              A paint tool's (not VECTOR's, nor Select's and the Wand's, which select what shows) is refused while the
  *              picked layer is hidden (refusesHidden), and with no cells layer to draw on (an artist's, in a room with
- *              only the base: refusedNoCells), each saying why. One on the base in a movie says, once, that the base is on
+ *              only the base: refusedNoCells), each saying why; and while the font has no lower half (PAINT_OFF_TOOLS, project.paintOff). One on the base in a movie says, once, that the base is on
  *              every frame (sayBaseOnEveryFrame).
  *   cancel?(ctx)  end without applying (a second finger landed: a pinch); without it, end(ctx)
  *   keydown?(ctx, event) -> true when the tool took the key (useKeyboardShortcuts asks it first)
@@ -59,12 +59,21 @@ export function refusesHidden({ project, workspace, view }) {
   return true;
 }
 
-// A paint tool's begin, wrapped to refuse where drawing is refused (a hidden layer, no cells layer) and to say once that
-// the base in a movie is on every frame. Applied to every built-in paint tool and to each plugin tool.
+// The paint tools that turn off while the drawing's font has no lower half block (project.paintOff); plugin brushes,
+// which paint too, turn off with them.
+export const PAINT_OFF_TOOLS = ['pencil', 'brush', 'bucket', 'shapes', 'gradient', 'blur', 'dodge', 'burn'];
+
+// A paint tool's begin, wrapped to refuse where drawing is refused (a hidden layer, no cells layer, a font with no lower
+// half) and to say once that the base in a movie is on every frame. Applied to every built-in paint tool and to each
+// plugin tool.
 function guardBegin(tool) {
   if (tool.kind !== 'paint' || tool.views.includes('vector') || tool.section === 'select') return;
   const begin = tool.begin;
   tool.begin = (ctx, ...rest) => {
+    if ((PAINT_OFF_TOOLS.includes(tool.id) || tool.section === 'plugin') && ctx.project.paintOff) {
+      toast(ctx.project.paintOff);
+      return false;
+    }
     if (refusesHidden(ctx) || refusedNoCells(ctx.project)) return false;
     sayBaseOnEveryFrame(ctx.project);
     return begin.call(tool, ctx, ...rest);

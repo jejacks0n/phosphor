@@ -404,6 +404,7 @@
     "pluginTitle": "{name} ({plugin})",
     "titleWithKeys": "{title} · {keys}",
     "keysOr": "{a} ou {b}",
+    "paintOff": "La peinture est désactivée : la police de ce dessin, {name}, n'a pas de demi-bloc inférieur, et la peinture est dessinée avec. Ajoutez-en un à la police sur la page Polices.",
     "moreTools": "Plus d'outils",
     "groups": {
       "fill": "Outils de remplissage",
