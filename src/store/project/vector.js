@@ -171,8 +171,9 @@ export const vectorActions = {
   // file that isn't SVG). Art bigger than the grid (less 2 grid pixels each side) is scaled down into it,
   // proportions kept on screen; any is centered. Each shape has its whole transform baked into its points (points round to
   // 1/100, and letters drawn in font units would lose their shape under a kept one), its gradient's with them, and
-  // its stroke width scaled with it, once. One step; they're selected, with Vector select. Past a frame's shapes or a shape's points
-  // nothing comes in, and a toast says by how much; what couldn't come in is said too. The keys.
+  // its stroke width scaled with it, once (by s, in grid pixels: the fit's area less its stretch down). One step;
+  // they're selected, with Vector select. Past a frame's shapes or a shape's points nothing comes in, and a toast
+  // says by how much; what couldn't come in is said too. The keys.
   addSvg(text) {
     const art = readSvgFile(text), left = new Set(art.left);
     const refusal = svgRefusal(art, MOST_SHAPES - this.shapes.size);
@@ -194,7 +195,7 @@ export const vectorActions = {
       const [first, ...rest] = item.outlines, baked = (paint) => (isGradient(paint) ? { ...paint, m: multiply(m, paint.m) } : paint);
       return {
         closed: first.closed, points: bake(first.points), more: rest.map((o) => [o.closed, bake(o.points)]), m: IDENTITY,
-        fill: baked(item.fill), stroke: baked(item.stroke), width: Math.min(64, Math.max(0.5, item.width * Math.sqrt(Math.abs(a * d - b * c)))),
+        fill: baked(item.fill), stroke: baked(item.stroke), width: Math.min(64, Math.max(0.5, item.width * Math.sqrt(Math.abs(a * d - b * c) * aspect))),
         rule: item.rule, cap: item.cap, join: item.join, miter: item.miter,
       };
     });

@@ -90,7 +90,12 @@ test('in an 8×8 font an imported square SVG is twice as many grid rows as colum
     const { project } = await blank(160, 200, font);
     const [key] = project.addSvg(svg(body, `viewBox="${viewBox}"`));
     const xs = [], ys = [];
-    for (const { points } of outlines(project.shapes.get(key))) for (const [x, y] of points) xs.push(x) && ys.push(y);
+    for (const { points } of outlines(project.shapes.get(key))) {
+      for (const [x, y] of points) {
+        xs.push(x);
+        ys.push(y);
+      }
+    }
     return [project.pixelAspect, project.cols, project.rows, [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]];
   };
   const square = '<rect width="10" height="10"/>';
@@ -98,6 +103,19 @@ test('in an 8×8 font an imported square SVG is twice as many grid rows as colum
   expect(await imported(null, square, '0 0 10 10')).toEqual([1, 160, 200, [75, 95, 85, 105]]);
   // Too tall for the grid on screen: scaled down by the rows, 196 grid pixels down and half that across.
   expect(await imported(font8, '<rect width="100" height="100"/>', '0 0 100 100')).toEqual([0.5, 160, 200, [31, 2, 129, 198]]);
+});
+
+test('in an 8×8 font an imported stroke is s × its width in grid pixels', async () => {
+  const width = async (font) => {
+    const { project } = await blank(160, 200, font);
+    const [key] = project.addSvg(svg('<path d="M0 0 L100 100" stroke="red" stroke-width="6"/>'));
+    return [project.pixelAspect, project.shapes.get(key).width];
+  };
+  // 100 × 100 art in 160 × 200 grid pixels, half as tall as wide on screen: s = 196 × 0.5 / 100 = 0.98.
+  const [aspect, eight] = await width(font8);
+  expect(aspect).toBe(0.5);
+  expect(eight).toBeCloseTo(0.98 * 6, 9);
+  expect(await width(null)).toEqual([1, 6]); // s = 1
 });
 
 test('transforms are baked into the points, and the curves\' handles with them', async () => {
