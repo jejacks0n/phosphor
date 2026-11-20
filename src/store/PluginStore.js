@@ -1,14 +1,19 @@
-// The plugins installed in this browser (docs/plugins.md): read from a manifest file, switched on and off, removed,
-// and the themes the ones that are on offer. A theme in use whose plugin stops offering it gives way to its base.
-// Picked with the browser's picker (Chrome, Edge), a plugin keeps its file's handle, for an author: Reload reads the
-// file again, and Follow file looks at it every FOLLOW_MS and takes each save, keeping the last good version when a
-// save isn't a good manifest.
+// The plugins installed in this browser (docs/plugins.md): read from a package (a folder, a .zip or a lone manifest),
+// switched on and off, removed, the themes the ones that are on offer, and the solvers their scripts add. A theme in
+// use whose plugin stops offering it gives way to its base. A script is imported only once the person says Install, and
+// then on each visit for a plugin that's on; it's kept in the record with its hash, and imported under the hang mark.
+// Picked with the browser's picker (Chrome, Edge), a plugin keeps its file's or folder's handle, for an author: Reload
+// reads it again, and Follow file looks at it every FOLLOW_MS and takes each save, keeping the last good version when a
+// save isn't a good plugin. A save that gives a plugin a script for the first time waits for the person (pendingCode).
 import { toRaw } from 'vue';
 import { defineStore } from 'pinia';
 import { t } from '@/i18n';
-import { readManifest, ManifestError, MOST_MANIFEST_BYTES } from '@/plugins/manifest';
+import { readManifest, ManifestError } from '@/plugins/manifest';
 import { themeRef, pluginOfTheme, pluginsOff } from '@/plugins/themes';
-import { solverFor, pluginOfSolver, allSolvers, registerSolvers, unregisterSolvers, onSolverFailure } from '@/plugins/solvers';
+import { solverFor, pluginOfSolver, allSolvers, registerSolvers, unregisterSolvers, onSolverFailure, registeredHash } from '@/plugins/solvers';
+import { readPackage, folderStamp } from '@/plugins/package';
+import { sha256, importScript, readSolvers } from '@/plugins/script';
+import { beginRun, endRun, hungLastTime } from '@/plugins/hangMark';
 import { loadPlugins, putPlugin, deletePlugin } from '@/plugins/storage';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
@@ -19,13 +24,47 @@ const refused = (error) => {
 
 // Plugins linked to their files: a browser with File System Access, not the desktop app (its files are its own).
 export const linksFiles = () => import.meta.env.VITE_DESKTOP !== '1' && typeof globalThis.showOpenFilePicker === 'function';
+export const linksFolders = () => import.meta.env.VITE_DESKTOP !== '1' && typeof globalThis.showDirectoryPicker === 'function';
 export const FOLLOW_MS = 1000;
 
 const problem = (code, detail) => Object.assign(new Error(code), { userMessage: t(`plugins.errors.${code}`, detail) });
 // The browser lets a page read a kept file once asked; asking needs a click, so a timer only looks.
 const readable = async (handle, ask) => (await handle.queryPermission({ mode: 'read' })) === 'granted'
   || (ask && (await handle.requestPermission({ mode: 'read' })) === 'granted');
-const stamp = (file) => `${file.lastModified}/${file.size}`;
+// A followed file's lastModified/size, or a folder's manifest's and script's (a record installed from a lone manifest
+// keeps its file's handle).
+async function stampOf(record) {
+  try {
+    if (record.handle.kind === 'file') {
+      const file = await record.handle.getFile();
+      return `${file.lastModified}/${file.size}`;
+    }
+    return await folderStamp(record.handle, record.manifest.script);
+  } catch {
+    throw problem('fileGone');
+  }
+}
+
+// A script's solvers, checked; importing runs its top level, so it's under the hang mark like a first resolve.
+async function solversOf(pluginId, script) {
+  beginRun(pluginId);
+  try {
+    return readSolvers(await importScript(script));
+  } catch (error) {
+    throw refused(error);
+  } finally {
+    endRun();
+  }
+}
+
+// A record's kept script, its hash checked, into its solvers; or an Error with its userMessage.
+async function keptSolvers(record) {
+  if ((await sha256(record.script)) !== record.scriptHash) throw problem('hashMismatch', { name: record.manifest.name });
+  return solversOf(record.id, record.script);
+}
+
+// The stores whose first load has read the hang mark: later loads this visit don't (an import of their own holds it).
+const hangRead = new WeakSet();
 
 // Followed files' stamps as last seen, by plugin id, and the one timer that looks at them.
 const seen = new Map();
@@ -62,6 +101,7 @@ export const usePluginStore = defineStore('plugins', {
     problems: {},                            // { [id]: words } for a file that couldn't be taken; not kept
     solvers: {},                             // { [ref]: { pluginId, name, styles, reach, chars, options } }, data only; not kept
     solverStamp: 0,                          // bumped whenever the solvers or one's failure change
+    pendingCode: {},                         // { [id]: { manifest, scriptText, handle } }: a reload that adds a script, asked about; not kept
   }),
 
   getters: {
@@ -94,7 +134,10 @@ export const usePluginStore = defineStore('plugins', {
     },
 
     // ponytail: a change made while a load is reading is overwritten by what it read; count loads if that ever bites.
+    // Two loads at once may import one script twice (harmless: its solvers are registered once more).
     async load() {
+      const hung = hangRead.has(this) ? null : hungLastTime();
+      hangRead.add(this);
       let records;
       try {
         records = await loadPlugins();
@@ -111,54 +154,105 @@ export const usePluginStore = defineStore('plugins', {
       }
       this.plugins = usable.sort(byName);
       this.unavailable = false;
+      const stuck = this.plugins.find(({ id }) => id === hung);
+      if (stuck?.enabled) {
+        await this.changing(stuck.id, { ...toRaw(stuck), enabled: false });
+        this.problems[stuck.id] = t('plugins.errors.hung', { name: stuck.manifest.name });
+      }
+      if (this.off) return;
+      for (const record of this.plugins) {
+        // what this visit already has (the dialog loads each time it opens) isn't imported again
+        if (!record.enabled || !record.script || registeredHash(record.id) === record.scriptHash) continue;
+        try {
+          this.useSolvers(record.id, record.scriptHash, await keptSolvers(record));
+        } catch (error) {
+          this.problems[record.id] = error.userMessage ?? t('plugins.errors.notKept');
+        }
+      }
     },
 
-    // { manifest, replaces: the record it would replace, or null }, or an Error with its userMessage.
-    async read(file) {
+    // A package (as readPackage takes it) read and checked, nothing of its script run: { manifest, script: its text or
+    // null, replaces: the record it would replace or null, handle: a folder's, else null }, or an Error with its
+    // userMessage.
+    async read(source) {
       try {
-        if (file.size > MOST_MANIFEST_BYTES) throw new ManifestError('tooBig');
-        const manifest = readManifest(await file.text());
-        return { manifest, replaces: this.plugins.find(({ id }) => id === manifest.id) ?? null };
+        const { manifestText, scriptText, handle } = await readPackage(source);
+        const manifest = readManifest(manifestText);
+        return { manifest, script: scriptText, replaces: this.plugins.find(({ id }) => id === manifest.id) ?? null, handle };
       } catch (error) {
         throw refused(error);
       }
     },
 
-    // The browser's picker: { manifest, replaces, handle }, or null when it's canceled.
+    // The browser's file picker, a .zip or a lone manifest: what read gives, with a manifest's file handle kept (a
+    // zip's isn't: Reload reads a lone manifest only); null when it's canceled.
     async pick() {
       let handle;
       try {
         [handle] = await globalThis.showOpenFilePicker({
-          types: [{ description: t('plugins.manifestFiles'), accept: { 'application/json': ['.json'] } }],
+          types: [{ description: t('plugins.manifestFiles'), accept: { 'application/json': ['.json'], 'application/zip': ['.zip'] } }],
         });
       } catch (error) {
         if (error.name === 'AbortError') return null;
         throw error;
       }
-      return { ...(await this.read(await handle.getFile())), handle };
+      const file = await handle.getFile();
+      const read = await this.read(file);
+      return { ...read, handle: /\.zip$/i.test(file.name) ? null : handle };
     },
 
-    // With no handle, a link to an earlier file is forgotten, and it isn't followed.
-    async install(manifest, { handle = null } = {}) {
-      const old = this.plugins.find(({ id }) => id === manifest.id);
-      await this.changing(manifest.id, {
-        id: manifest.id, manifest, enabled: old ? old.enabled : true, source: 'file', installedAt: Date.now(),
-        ...(handle && { handle }),
+    // The browser's folder picker: what read gives, the folder's handle kept; null when it's canceled.
+    async pickFolder() {
+      let handle;
+      try {
+        handle = await globalThis.showDirectoryPicker();
+      } catch (error) {
+        if (error.name === 'AbortError') return null;
+        throw error;
+      }
+      return this.read(handle);
+    },
+
+    // With no handle, a link to an earlier file is forgotten, and it isn't followed. A script is imported and its
+    // solvers checked before anything is kept: one that fails throws with its userMessage, and an older version stays.
+    async install(manifest, { script = null, handle = null } = {}) {
+      const id = manifest.id;
+      if (manifest.script && script === null) throw problem('noScript', { path: manifest.script });
+      if (script !== null && this.off) throw problem('codeWhileOff');
+      const old = this.plugins.find((plugin) => plugin.id === id);
+      const enabled = old ? old.enabled : true;
+      const scriptHash = script === null ? null : await sha256(script);
+      const defs = script === null ? null : await solversOf(id, script);
+      await this.changing(id, {
+        id, manifest, enabled, source: 'file', installedAt: Date.now(),
+        ...(handle && { handle }), ...(script !== null && { script, scriptHash }),
       });
-      if (!handle) this.unfollow(manifest.id);
+      delete this.pendingCode[id];
+      if (!handle) this.unfollow(id);
+      // registering replaces what an older script registered, so nothing calls its solvers again
+      if (defs && enabled) this.useSolvers(id, scriptHash, defs);
+      else this.dropSolvers(id);
     },
 
-    // The linked file read again: true when it's taken, false with the reason in problems (the record as it was).
+    // The linked file or folder read again: true when it's taken, false with the reason in problems (the record as it
+    // was). A plugin that had no script and now has one isn't taken: it waits in pendingCode for allowCode, unfollowed.
     async reload(id) {
-      const handle = this.plugins.find((plugin) => plugin.id === id)?.handle;
+      const record = this.plugins.find((plugin) => plugin.id === id), handle = record?.handle;
       try {
         if (!handle || !(await readable(handle, true))) throw problem('notAllowed');
-        let file;
-        try { file = await handle.getFile(); } catch { throw problem('fileGone'); }
-        const { manifest } = await this.read(file);
+        let source = handle;
+        if (handle.kind === 'file') {
+          try { source = await handle.getFile(); } catch { throw problem('fileGone'); }
+        }
+        const { manifest, script } = await this.read(source);
         if (manifest.id !== id) throw problem('otherPlugin', { id: manifest.id });
-        await this.install(manifest, { handle });
         delete this.problems[id];
+        if (script !== null && !record.script) {
+          this.pendingCode[id] = { manifest, scriptText: script, handle };
+          this.unfollow(id);
+          return false;
+        }
+        await this.install(manifest, { script, handle });
         return true;
       } catch (error) {
         this.problems[id] = error.userMessage ?? t('plugins.errors.fileGone');
@@ -166,12 +260,32 @@ export const usePluginStore = defineStore('plugins', {
       }
     },
 
+    // The person allowed a reload's new script (pendingCode): installed, as Install would. False with the reason in
+    // problems when it fails its checks.
+    async allowCode(id) {
+      const pending = toRaw(this.pendingCode[id]);
+      if (!pending) return false;
+      delete this.pendingCode[id];
+      try {
+        await this.install(pending.manifest, { script: pending.scriptText, handle: pending.handle });
+        delete this.problems[id];
+        return true;
+      } catch (error) {
+        this.problems[id] = error.userMessage ?? t('plugins.errors.notKept');
+        return false;
+      }
+    },
+
+    declineCode(id) {
+      delete this.pendingCode[id];
+    },
+
     async follow(id, on) {
       if (!on) return this.unfollow(id);
-      const handle = this.plugins.find((plugin) => plugin.id === id)?.handle;
+      const record = this.plugins.find((plugin) => plugin.id === id);
       try {
-        if (!handle || !(await readable(handle, true))) throw problem('notAllowed');
-        seen.set(id, stamp(await handle.getFile()));
+        if (!record?.handle || !(await readable(record.handle, true))) throw problem('notAllowed');
+        seen.set(id, await stampOf(record));
         this.following[id] = true;
         keepTimer(this);
       } catch (error) {
@@ -185,24 +299,24 @@ export const usePluginStore = defineStore('plugins', {
       keepTimer(this);
     },
 
-    // What the timer runs: each followed file whose stamp changed is reloaded; one that can't be read is let go.
+    // What the timer runs: each followed file or folder whose stamp changed is reloaded; one that can't be read is let go.
     async checkFollowed() {
       if (checking) return;
       checking = true;
       try {
         for (const id of Object.keys(this.following)) {
-          const handle = this.plugins.find((plugin) => plugin.id === id)?.handle;
-          let file;
+          const record = this.plugins.find((plugin) => plugin.id === id);
+          let now;
           try {
-            if (!handle || !(await readable(handle, false))) throw problem('notAllowed');
-            try { file = await handle.getFile(); } catch { throw problem('fileGone'); }
+            if (!record?.handle || !(await readable(record.handle, false))) throw problem('notAllowed');
+            now = await stampOf(record);
           } catch (error) {
             this.unfollow(id);
-            this.problems[id] = error.userMessage;
+            this.problems[id] = error.userMessage ?? t('plugins.errors.fileGone');
             continue;
           }
-          if (seen.get(id) === stamp(file)) continue;
-          seen.set(id, stamp(file));
+          if (seen.get(id) === now) continue;
+          seen.set(id, now);
           await this.reload(id);
         }
       } finally {
@@ -210,15 +324,31 @@ export const usePluginStore = defineStore('plugins', {
       }
     },
 
+    // On, a plugin's kept script is imported (not under plugins=off); one that fails stays off, saying why.
     async setEnabled(id, on) {
       const record = this.plugins.find((plugin) => plugin.id === id);
-      if (record) await this.changing(id, { ...toRaw(record), enabled: on });
+      if (!record) return;
+      let defs = null;
+      if (on && record.script && !this.off) {
+        try {
+          defs = await keptSolvers(record);
+        } catch (error) {
+          this.problems[id] = error.userMessage ?? t('plugins.errors.notKept');
+          return;
+        }
+        delete this.problems[id];
+      }
+      await this.changing(id, { ...toRaw(record), enabled: on });
+      if (defs) this.useSolvers(id, record.scriptHash, defs);
+      else if (!on) this.dropSolvers(id);
     },
 
     async uninstall(id) {
       this.unfollow(id);
       delete this.problems[id];
+      delete this.pendingCode[id];
       await this.changing(id, null);
+      this.dropSolvers(id);
     },
 
     // A plugin's record put (or deleted, for null), with the theme in use moved to its base when it's no longer on

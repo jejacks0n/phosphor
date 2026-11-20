@@ -24,6 +24,9 @@ export function unregisterSolvers(pluginId) {
   plugins.delete(pluginId);
 }
 
+// The script a plugin's solvers were registered from, or null.
+export const registeredHash = (pluginId) => plugins.get(pluginId)?.hash ?? null;
+
 export function solverFor(ref) {
   const pluginId = pluginOfSolver(ref);
   const entry = plugins.get(pluginId);
