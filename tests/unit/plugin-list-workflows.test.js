@@ -38,7 +38,13 @@ describe('publishing the plugin list', () => {
 
   it('the refresh builds the last deployed commit and runs the script with --refresh on that commit', () => {
     const build = job(refresh, 'build');
-    expect(build).toContain('environment=github-pages');
+    expect(build).toContain('--workflow deploy.yml');
+    expect(build).toContain('--status success');
+    expect(build).toContain('--branch main');
+    expect(build).toContain('headSha');
+    expect(build).not.toContain('deployments');
+    expect(build).toContain('::error::');
+    expect(build).toContain('env -u GITHUB_SHA npm run build'); // the build names the checked-out commit, not main's head
     expect(build).toContain('ref: ${{ steps.last.outputs.sha }}');
     expect(build).toContain('npm ci');
     expect(build).toContain('VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}');
@@ -53,6 +59,8 @@ describe('publishing the plugin list', () => {
   it('the refresh holds pages and id-token write only on its deploy job', () => {
     const top = refresh.slice(refresh.indexOf('\npermissions:'), refresh.indexOf('\njobs:'));
     expect(top).toContain('contents: read');
+    expect(top).toContain('actions: read');
+    expect(top).not.toContain('deployments');
     expect(top).not.toMatch(/pages: write|id-token: write/);
     const build = job(refresh, 'build');
     expect(build).not.toMatch(/pages: write|id-token: write/);
