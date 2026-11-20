@@ -123,8 +123,10 @@
     "themes": {
       "dark": "Dark",
       "light": "Light",
-      "system": "System"
-    }
+      "system": "System",
+      "more": "Themes…"
+    },
+    "pluginThemesAria": "Plugin themes"
   },
   "panel": {
     "groups": {
@@ -1913,6 +1915,7 @@
     "available": "Phosphor {version} is out (you have {current}). Open its download page?"
   },
   "plugins": {
+    "open": "Plugins",
     "errors": {
       "tooBig": "That file is too big to be a plugin's manifest.",
       "notJson": "That file isn't a plugin's manifest.",
