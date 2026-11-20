@@ -181,6 +181,41 @@ test('a solver that throws on an upper layer stands it in with By shape', async 
   expect(cellsKey(project)).toEqual(byShape);
 });
 
+// 'Z' isn't among its characters nor the set: the cell takes the set's first, and the row says so.
+const OFF_SET = { char: 'Z', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } };
+
+test('a solver that returns a character it does not draw with is told on its row, and keeps drawing', async () => {
+  const { project } = await stripes();
+  let calls = 0;
+  const ref = await onSolver(solver({ solve(cell, look) {
+    calls++;
+    return cell.col === 3 ? OFF_SET : look.byShape();
+  } }));
+  await choose(project, ref);
+  expect(usePluginStore().problems['jane.outlines']).toBe(t('plugins.errors.solverFault', { name: 'Edges' }));
+  expect(project.processParams).toMatchObject({ solver: ref, standIn: null });
+  expect(calls).toBeGreaterThan(0);
+});
+
+test('on an upper layer, a character it does not draw with is told on its row; a failure\'s words are not replaced', async () => {
+  const { project, workspace } = await stripes();
+  let fails = false;
+  const ref = await onSolver(solver({ solve(cell, look) {
+    if (fails && cell.col === 8) throw new Error('later');
+    return cell.col === 4 ? OFF_SET : look.byShape();
+  } }));
+  project.setLayerChars('edit', { charChoice: ref, chars: '▄▀█ ' }); // an upper layer of its own
+  workspace.pickLayer('edit');
+  project.paintStroke(RED_CELLS, '#ff0000');
+  project.commitEdit();
+  await settle(project);
+  expect(usePluginStore().problems['jane.outlines']).toBe(t('plugins.errors.solverFault', { name: 'Edges' }));
+  fails = true;
+  project.brightness = 120; // the layer walked again: col 4 faults, then col 8 throws
+  await settle(project);
+  expect(usePluginStore().problems['jane.outlines']).toContain('later');
+});
+
 // R7: a solver keyed on where a cell is draws the same paint the same on an upper layer as in the lower group.
 async function checkered(upper) {
   const { project, workspace } = await stripes();

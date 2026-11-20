@@ -1990,6 +1990,7 @@
       "hashMismatch": "{name}'s kept script isn't the one that was installed, so it isn't loaded. Install it again.",
       "codeWhileOff": "Plugins are off for this visit, so a plugin that runs code can't be installed now.",
       "solverFailed": "The solver “{name}” failed: {message}",
+      "solverFault": "The solver “{name}” returned a character it doesn't draw with, so the first character of the set shows in its place.",
       "badZip": "That file isn't a readable .zip.",
       "zipEncrypted": "That .zip is password protected, which Phosphor can't open.",
       "zip64": "That .zip uses the large-archive format, which Phosphor can't read.",

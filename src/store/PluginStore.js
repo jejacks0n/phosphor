@@ -10,7 +10,7 @@ import { defineStore } from 'pinia';
 import { t } from '@/i18n';
 import { readManifest, ManifestError } from '@/plugins/manifest';
 import { themeRef, pluginOfTheme, pluginsOff } from '@/plugins/themes';
-import { solverFor, pluginOfSolver, allSolvers, registerSolvers, unregisterSolvers, onSolverFailure, onShaderOff, registeredHash } from '@/plugins/solvers';
+import { solverFor, pluginOfSolver, allSolvers, registerSolvers, unregisterSolvers, onSolverFailure, onSolverFault, onShaderOff, registeredHash } from '@/plugins/solvers';
 import { readPackage, folderStamp } from '@/plugins/package';
 import { sha256, importScript, readSolvers } from '@/plugins/script';
 import { beginRun, endRun, hungLastTime } from '@/plugins/hangMark';
@@ -95,6 +95,10 @@ function listen(store) {
     onShaderOff((ref, { log, lost, ...differ }) => {
       const message = log ?? (lost ? t('plugins.errors.shaderLost') : t('plugins.errors.shaderDisagrees', differ));
       store.problems[pluginOfSolver(ref)] = t('plugins.errors.shaderOff', { name: solverFor(ref)?.def.name ?? ref, message });
+    }),
+    // Kept as a failure's are (until the plugin's solvers are registered again), and never over a failure's or a shader's words.
+    onSolverFault((ref) => {
+      store.problems[pluginOfSolver(ref)] ??= t('plugins.errors.solverFault', { name: solverFor(ref)?.def.name ?? ref });
     }),
   ];
   stopListening = () => stops.forEach((stop) => stop());

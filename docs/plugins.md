@@ -252,7 +252,8 @@ chosen for every cell, and it can read what pass 1 chose around it.
 
 A pass returns `{ char, fg, bg }`. A color is a palette index or `{ r, g, b }`, 0 to 255, and gets the palette's nearest
 color when there is one. The result is held to the layer's set and the style: a character the layer's set and your
-`chars` don't hold is the first character of the set (and counts as a fault), Color ASCII's background is black and
+`chars` don't hold is the first character of the set (a fault: where your JavaScript draws, the plugin's row in the
+Plugins dialog says the solver returned a character it doesn't draw with), Color ASCII's background is black and
 Monochrome ASCII is white on black. `refine` may return `null` to keep pass 1's cell, as Outlines does where Clean up
 changes nothing. A pass that throws stands the layer in with By shape, and the row says why.
 
