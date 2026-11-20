@@ -5,11 +5,12 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
-import { storedBitmapFont, registerBitmapFont, familyOf } from '@/lib/userFonts';
-import { fontId, fontKey, SLOT_CHARS } from '@/lib/BitmapFont';
+import { storedBitmapFont, registerBitmapFont, familyOf, storeBlocks, loadFonts } from '@/lib/userFonts';
+import { fontId, fontKey, encodeBlocks, blocksOf, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
+import FontBlocks from '@/components/FontBlocks.vue';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
@@ -36,6 +37,7 @@ const filter = ref('');
 const chosenId = ref(null);
 const hovered = ref(null); // the slot under the pointer
 const problem = ref('');
+const picked = ref(null); // the block (BLOCKS key) whose slot a click on the sheet sets
 
 const drawn = computed(() => project.drawingFont);
 const drawnId = computed(() => drawn.value && fontId(drawn.value));
@@ -74,15 +76,35 @@ const meta = computed(() => [
   size(chosen.value),
   isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : isInUse.value && t('palette.fonts.inUseMeta'),
   !isDrawn.value && t(chosen.value.kind === 'builtIn' ? 'palette.fonts.builtInMeta' : 'palette.fonts.inBrowser'),
+  font.value?.blocks && t('palette.fonts.blocksSetMeta'),
   t('palette.fonts.palettes', { n: count.value }, count.value),
 ].filter(Boolean).join(' · '));
 
 // A listed bitmap font as a drawing holds one: { name, height, bytes }.
 const bitmapOf = (f) => (f.id === drawnId.value ? drawn.value : storedBitmapFont(f.id));
 
+// The chosen bitmap font as a drawing holds one, with its blocks: the drawing's own, else the browser's copy.
+const kept = ref(null);
+const font = computed(() => (!bitmap.value ? null : isDrawn.value ? drawn.value : kept.value));
+watch(() => [bitmap.value && !isDrawn.value && chosen.value.id, stored.value], async ([id]) => {
+  kept.value = null;
+  if (id) kept.value = await storedBitmapFont(id).catch(() => null);
+}, { immediate: true });
+watch(() => chosen.value?.id, () => { picked.value = null; });
+
+const inRoom = computed(() => isDrawn.value && project.inRoom); // the drawing's blocks are the room's
+const chars = computed(() => slotChars(font.value));
+const blockAt = computed(() => new Map((font.value ? blocksOf(font.value) : []).flatMap((s, i) => (s === null ? [] : [[s, i]]))));
+const readout = (n) => {
+  const i = blockAt.value.get(n), char = chars.value[n];
+  if (i === undefined) return t('palette.fonts.slot', { n, char });
+  return t(font.value.blocks ? 'palette.fonts.slotBlockSet' : 'palette.fonts.slotBlock', { n, char, block: t(`palette.fonts.blockLong.${BLOCKS[i].key}`) });
+};
+
 // Every listed bitmap font registered with the page, so its sample and sheet draw in its own glyphs. (TrueType fonts
-// are registered as they're loaded.)
-watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => f.id).join(' '), async () => {
+// are registered as they're loaded.) Again when a font's blocks change: its face is keyed by them.
+const faceSignature = (f) => (f.id === drawnId.value ? fontKey(drawn.value) : f.blocks ? encodeBlocks(f.blocks) : '');
+watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => `${f.id}:${faceSignature(f)}`).join(' '), async () => {
   for (const f of all.value.filter((font) => font.kind === 'bitmap')) {
     try {
       const font = await bitmapOf(f);
@@ -93,6 +115,23 @@ watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => f.id).join('
     }
   }
 }, { immediate: true });
+
+// Gives the chosen font these blocks (undefined: found again). The drawing's font changes as one undo step; the
+// browser's copy of it, when there is one, is kept too.
+const setBlocks = (blocks) => run(async () => {
+  const plain = { ...font.value };
+  delete plain.blocks;
+  if (isDrawn.value) project.setDrawingFont(blocks ? { ...plain, blocks } : plain);
+  if (isStored.value) {
+    await storeBlocks(chosen.value.id, blocks ?? null);
+    workspace.userFonts = await loadFonts();
+  }
+});
+const setSlot = (n) => {
+  if (!picked.value || inRoom.value || !font.value) return;
+  const blocks = blocksOf(font.value), next = withBlock(blocks, picked.value, n);
+  if (next.some((s, i) => s !== blocks[i])) setBlocks(next);
+};
 
 // An action, with what went wrong said under the list. acted: done (its button may be gone).
 const run = async (action) => {
@@ -171,14 +210,30 @@ const exportPalettes = () => {
         </template>
         <button class="ghost" :disabled="!count" @click="exportPalettes">{{ t('palette.fonts.exportPalettes') }}</button>
         <button v-if="isInUse" class="ghost" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.fonts.toPalettes') }}</button>
+        <button v-if="bitmap && font?.blocks" class="ghost" :disabled="inRoom" :title="inRoom ? t('palette.fonts.blocksInRoom') : t('palette.fonts.findBlocksTitle')" @click="setBlocks(undefined)">{{ t('palette.fonts.findBlocks') }}</button>
         <button v-if="isStored" class="ghost" :title="t('palette.fonts.removeTitle')" @click="forget">{{ t('palette.fonts.remove') }}</button>
       </div>
-      <template v-if="bitmap">
+      <template v-if="bitmap && font">
+        <FontBlocks
+            :font="font"
+            :family="familyFor(chosen)"
+            :picked="picked"
+            :disabled="inRoom"
+            :reason="t('palette.fonts.blocksInRoom')"
+            @pick="picked = $event"
+        />
         <div class="note">{{ t('palette.fonts.sheetNote') }}</div>
         <div class="grid sheet" :style="styleOf(chosen)" @mouseleave="hovered = null">
-          <span v-for="(c, i) in SLOT_CHARS" :key="i" class="cell" @mouseenter="hovered = i">{{ i === 0 ? ' ' : c }}</span>
+          <span
+              v-for="(c, i) in chars"
+              :key="i"
+              class="cell"
+              :class="{ role: blockAt.has(i), picked: blockAt.get(i) !== undefined && BLOCKS[blockAt.get(i)].key === picked }"
+              @mouseenter="hovered = i"
+              @click="setSlot(i)"
+          >{{ c === '␀' ? ' ' : c }}</span>
         </div>
-        <div class="info">{{ hovered === null ? t('palette.fonts.slotHint') : t('palette.fonts.slot', { n: hovered, char: SLOT_CHARS[hovered] }) }}</div>
+        <div class="info">{{ hovered === null ? t('palette.fonts.slotHint') : readout(hovered) }}</div>
       </template>
       <template v-else>
         <div class="note">{{ t('palette.fonts.trueTypeNote') }}</div>
@@ -247,6 +302,15 @@ span.cell {
   border-radius: 3px;
   background: var(--surface-1);
   color: var(--text);
+}
+
+span.cell.role {
+  border-color: var(--surface-3);
+}
+
+span.cell.picked {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 span.cell:hover {

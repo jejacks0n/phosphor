@@ -837,7 +837,42 @@
       "slot": "Slot {n} {char}",
       "slotHint": "Hover a slot to see its number.",
       "trueTypeNote": "A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. Using it takes the drawing's bitmap font away.",
-      "pangram": "The quick brown fox jumps over the lazy dog"
+      "pangram": "The quick brown fox jumps over the lazy dog",
+      "blocks": "Blocks",
+      "blockNone": "none",
+      "blockName": {
+        "full": "Full",
+        "lower": "Lower",
+        "upper": "Upper",
+        "left": "Left",
+        "right": "Right",
+        "light": "Light",
+        "medium": "Medium",
+        "dark": "Dark"
+      },
+      "blockLong": {
+        "full": "Full block",
+        "lower": "Lower half",
+        "upper": "Upper half",
+        "left": "Left half",
+        "right": "Right half",
+        "light": "Light shade",
+        "medium": "Medium shade",
+        "dark": "Dark shade"
+      },
+      "blocksSetMeta": "blocks set by you",
+      "findBlocks": "Find blocks again",
+      "findBlocksTitle": "Forget the slots you set and find the blocks from the font's pixels again",
+      "blocksInRoom": "Blocks can’t change in a room.",
+      "blocksFound": "All eight blocks found, at the slots CP437 puts them.",
+      "blocksSet": "Blocks set by you. Find blocks again goes back to what the pixels say.",
+      "blockMovedFound": "{name} found at slot {n}. CP437 puts it at {home}, which holds {char} here.",
+      "blockMovedSet": "{name} set to slot {n}. CP437 puts it at {home}, which holds {char} here.",
+      "noLower": "No lower half found in this font, so drawings in it can’t hold paint. Pick Lower, then click a slot to give it one.",
+      "noBlocks": "No {names} found in this font, so those characters draw blank.",
+      "blocksHint": "To change a block, pick it, then click the slot that draws it.",
+      "slotBlock": "Slot {n} {char} · {block}",
+      "slotBlockSet": "Slot {n} {char} · {block} (set by you)"
     }
   },
   "status": {

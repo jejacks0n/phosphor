@@ -8,7 +8,9 @@ import { i18n } from '@/i18n';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { createTestApp } from '../support/app.js';
 import { usePaletteStore } from '@/store/PaletteStore.js';
-import { fontId } from '@/lib/BitmapFont.js';
+import { fontId, blocksOf, fontKey } from '@/lib/BitmapFont.js';
+import { storedBitmapFont } from '@/lib/userFonts';
+import { cp437Font, lowerAt240, noLowerHalf } from '../support/blockFonts.js';
 import { addFont, addBitmapFont, loadFonts, removeFont } from '@/lib/userFonts';
 
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
@@ -27,11 +29,11 @@ afterEach(async () => {
 
 // The layer on its Fonts page over a blank canvas: the drawing in font A unless drawing is false, with B (an 8×16
 // bitmap font) and a TrueType font kept in this browser.
-async function mount({ drawing = true, canvas = true } = {}) {
+async function mount({ drawing = true, canvas = true, font = null } = {}) {
   const { project, workspace } = await createTestApp();
   const pinia = getActivePinia(); // before the awaits: a late await of an earlier test can make its own Pinia active again
   if (canvas) await project.setBlankCanvas({ cols: 10, rows: 10 });
-  if (drawing) project.setDrawingFont(fontA());
+  if (drawing) project.setDrawingFont(font ?? fontA());
   const b = await addBitmapFont(rawFile(16, 'B.F16', 3)), tt = await addFont(await ttfFile());
   workspace.userFonts = await loadFonts();
   workspace.paletteLayerPage = 'fonts';
@@ -301,4 +303,109 @@ test('before any drawing is open, the font chosen is the next drawing\'s', async
   expect(host.querySelector('.edit-side .meta').textContent).toContain('the next drawing\'s font');
   await press(row('B'));
   expect(button('Use this font')).toBeTruthy();
+});
+
+const tiles = () => [...host.querySelectorAll('.blocks button.tile')].map((el) => ({ el, name: el.querySelector('.name').textContent, slot: el.querySelector('.slot').textContent }));
+const tile = (name) => tiles().find((t) => t.name === name).el;
+const slotCell = (n) => host.querySelectorAll('.sheet .cell')[n];
+const text = () => host.querySelector('.edit-side').textContent.replace(/\s+/g, ' ');
+
+test('shows the eight blocks, and where CP437 would put a moved one', async () => {
+  await mount({ font: lowerAt240 });
+  expect(tiles().map((t) => t.slot)).toEqual(['219', '240', '223', '221', '222', '176', '177', '178']);
+  expect(tiles().map((t) => t.name)).toEqual(['Full', 'Lower', 'Upper', 'Left', 'Right', 'Light', 'Medium', 'Dark']);
+  expect(text()).toContain('Lower half found at slot 240. CP437 puts it at 220, which holds');
+  expect(text()).toContain('To change a block, pick it');
+  expect(slotCell(240).textContent).toBe('▄'); // the sheet shows each slot's own character
+  expect(slotCell(240).classList.contains('role')).toBe(true);
+  expect(host.querySelector('.edit-side .actions').textContent).not.toContain('Find blocks again');
+});
+
+test('a font with every block where CP437 puts it says so', async () => {
+  await mount({ font: cp437Font });
+  expect(text()).toContain('All eight blocks found');
+});
+
+test('picking Lower and clicking a slot sets it, as one undo step, and Find blocks again clears it', async () => {
+  const { project } = await mount({ font: lowerAt240 });
+  await press(tile('Lower'));
+  expect(tile('Lower').getAttribute('aria-pressed')).toBe('true');
+  await press(slotCell(254));
+  expect(blocksOf(project.drawingFont)[1]).toBe(254);
+  expect(tiles()[1].slot).toBe('254');
+  expect(tile('Lower').getAttribute('aria-pressed')).toBe('true'); // it stays picked
+  expect(host.querySelector('.edit-side .meta').textContent).toContain('blocks set by you');
+  slotCell(254).dispatchEvent(new Event('mouseenter'));
+  await nextTick();
+  expect(host.querySelector('.edit-side .info').textContent).toBe('Slot 254 ▄ · Lower half (set by you)');
+  project.undo();
+  await nextTick();
+  expect(blocksOf(project.drawingFont)[1]).toBe(240);
+  expect(host.querySelector('.edit-side .meta').textContent).not.toContain('blocks set by you');
+  await press(slotCell(254)); // still picked
+  await press(button('Find blocks again'));
+  expect(project.fontBlocks).toBe('');
+  expect(tiles()[1].slot).toBe('240');
+});
+
+test('picking the slot a block already has is no change, and a tile unpicks on a second click', async () => {
+  const { project } = await mount({ font: lowerAt240 });
+  await press(tile('Lower'));
+  await press(slotCell(240));
+  expect(project.fontBlocks).toBe('');
+  await press(tile('Lower'));
+  expect(tile('Lower').getAttribute('aria-pressed')).toBe('false');
+});
+
+test('a font with no lower half says paint is off', async () => {
+  await mount({ font: noLowerHalf });
+  expect(tiles()[1].slot).toBe('none');
+  expect(tile('Lower').classList.contains('missing')).toBe(true);
+  expect(text()).toContain('No lower half found in this font, so drawings in it can\u2019t hold paint');
+  expect(host.querySelector('.blocks .note').classList.contains('warn')).toBe(true);
+});
+
+test('an edit to a font only in the browser is kept with it and leaves the drawing alone', async () => {
+  const { project, workspace } = await mount();
+  const stored = await addBitmapFont(new File([lowerAt240.bytes], 'L.F16'));
+  workspace.userFonts = await loadFonts();
+  await vi.waitFor(() => expect(row('L')).toBeTruthy());
+  await press(row('L'));
+  await vi.waitFor(() => expect(tiles()[1]?.slot).toBe('240'));
+  await press(tile('Lower'));
+  await press(slotCell(254));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks?.[1]).toBe(254));
+  expect(project.fontBlocks).toBe(''); // the drawing's font is untouched
+  expect(workspace.userFonts.find((f) => f.id === stored.id).blocks[1]).toBe(254);
+  await vi.waitFor(() => expect(button('Find blocks again')).toBeTruthy());
+  await press(button('Find blocks again'));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks).toBeUndefined());
+});
+
+test('a palette tied to the font stays tied after its blocks change', async () => {
+  const { project, palettes } = await mount({ font: lowerAt240 });
+  const id = fontId(lowerAt240);
+  expect(palettes.countFor(id)).toBe(palettes.countFor(fontId(project.drawingFont)));
+  const before = palettes.countFor(id);
+  await press(tile('Lower'));
+  await press(slotCell(254));
+  expect(fontId(project.drawingFont)).toBe(id);
+  expect(palettes.countFor(id)).toBe(before);
+});
+
+test('block edits on the drawing\u2019s font are off in a room', async () => {
+  const { project } = await mount({ font: lowerAt240 });
+  project._hosting = true;
+  await nextTick();
+  expect(tile('Lower').disabled).toBe(true);
+  expect(tile('Lower').title).toBe('Blocks can\u2019t change in a room.');
+  await press(slotCell(254));
+  expect(project.fontBlocks).toBe('');
+});
+
+test('the rows and sheet draw in the font\u2019s face again once its blocks move', async () => {
+  const { project } = await mount({ font: lowerAt240 });
+  await press(tile('Lower'));
+  await press(slotCell(254));
+  await vi.waitFor(() => expect(host.querySelector('.sheet').style.fontFamily).toContain(fontKey(project.drawingFont)));
 });

@@ -837,7 +837,42 @@
       "slot": "Emplacement {n} {char}",
       "slotHint": "Survolez un emplacement pour voir son numéro.",
       "trueTypeNote": "Une police TrueType dessine n'importe quel caractère : elle n'a donc pas d'emplacements, et elle n'est pas enregistrée dans le dessin. L'utiliser retire la police matricielle du dessin.",
-      "pangram": "Portez ce vieux whisky au juge blond qui fume"
+      "pangram": "Portez ce vieux whisky au juge blond qui fume",
+      "blocks": "Blocs",
+      "blockNone": "aucun",
+      "blockName": {
+        "full": "Plein",
+        "lower": "Bas",
+        "upper": "Haut",
+        "left": "Gauche",
+        "right": "Droite",
+        "light": "Clair",
+        "medium": "Moyen",
+        "dark": "Sombre"
+      },
+      "blockLong": {
+        "full": "Bloc plein",
+        "lower": "Moitié basse",
+        "upper": "Moitié haute",
+        "left": "Moitié gauche",
+        "right": "Moitié droite",
+        "light": "Trame claire",
+        "medium": "Trame moyenne",
+        "dark": "Trame sombre"
+      },
+      "blocksSetMeta": "blocs définis par vous",
+      "findBlocks": "Retrouver les blocs",
+      "findBlocksTitle": "Oublier les emplacements définis et retrouver les blocs d'après les pixels de la police",
+      "blocksInRoom": "Les blocs ne peuvent pas changer dans une salle.",
+      "blocksFound": "Les huit blocs sont trouvés, aux emplacements de CP437.",
+      "blocksSet": "Blocs définis par vous. Retrouver les blocs revient à ce que disent les pixels.",
+      "blockMovedFound": "{name} trouvé à l'emplacement {n}. CP437 le place en {home}, qui contient {char} ici.",
+      "blockMovedSet": "{name} placé à l'emplacement {n}. CP437 le place en {home}, qui contient {char} ici.",
+      "noLower": "Aucune moitié basse trouvée dans cette police : les dessins qui l'utilisent ne peuvent pas contenir de peinture. Choisissez Bas, puis cliquez sur un emplacement pour lui en donner une.",
+      "noBlocks": "Aucun bloc ({names}) trouvé dans cette police : ces caractères s'affichent vides.",
+      "blocksHint": "Pour changer un bloc, choisissez-le, puis cliquez sur l'emplacement qui le dessine.",
+      "slotBlock": "Emplacement {n} {char} · {block}",
+      "slotBlockSet": "Emplacement {n} {char} · {block} (défini par vous)"
     }
   },
   "status": {
