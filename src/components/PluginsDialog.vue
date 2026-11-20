@@ -221,6 +221,7 @@ const update = (record) => {
                   <strong class="name">{{ record.manifest.name }}</strong>
                   <span class="version">{{ record.manifest.version }}</span>
                   <span v-if="record.listing?.official" class="badge">{{ t('plugins.official') }}</span>
+                  <span v-if="update(record)" class="badge">{{ t('plugins.updateTo', { version: update(record).manifest.version }) }}</span>
                   <span v-if="plugins.notListed(record.id)" class="badge dim">{{ t('plugins.notListed') }}</span>
                 </div>
                 <p class="line">

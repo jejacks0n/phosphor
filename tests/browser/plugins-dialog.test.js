@@ -472,7 +472,9 @@ test('an Installed row says Official or From the marketplace, Update when the li
   expect(row('Rain').textContent).toContain('From the marketplace');
   expect(row('Dusk').textContent).not.toContain('From the marketplace');
   await expect.element(page.getByRole('button', { name: 'Update Midnight' })).toBeVisible();
+  expect([...row('Midnight').querySelectorAll('.badge')].map((badge) => badge.textContent)).toEqual(['Official', 'Update to 1.1.0']);
   expect(row('Rain').querySelector('button.update')).toBe(null);
+  expect(row('Rain').textContent).not.toContain('Update to');
   expect(row('Rain').textContent).toContain('No longer listed');
   expect(row('Midnight').textContent).not.toContain('No longer listed');
   expect(row('Dusk').textContent).not.toContain('No longer listed');

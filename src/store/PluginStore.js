@@ -125,6 +125,7 @@ export const usePluginStore = defineStore('plugins', {
     pendingCode: {},                         // { [id]: { manifest, scriptText, handle, following } }: a reload that adds a script, asked about; not kept
     market: { status: 'idle', entries: [], built: null }, // the marketplace's list: idle, loading, ready or failed; not kept
     dialogTab: null,                         // the Plugins dialog's tab, 'market' or 'installed', once it's opened this visit; not kept
+    marketView: { search: '', filter: 'all', scroll: 0 }, // the Marketplace tab's search, filter and scroll, for the visit; not kept
   }),
 
   getters: {
