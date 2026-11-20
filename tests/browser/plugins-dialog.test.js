@@ -321,6 +321,8 @@ test('the file button takes a .zip as well as a manifest, and the folder button 
   await page.getByRole('button', { name: /^Install/ }).click();
   await expect.element(page.getByRole('button', { name: 'Reload Midnight' })).toBeVisible(); // the folder's kept
   expect(store.plugins[0].handle.kind).toBe('directory');
+  expect(dialogText()).toContain('From a folder');
+  expect(dialogText()).not.toContain('From a file');
 });
 
 // A folder dropped: the browser hands its entries over webkitGetAsEntry, which a real DataTransfer can't be given.
@@ -357,13 +359,16 @@ test('a row waiting on code asks before running it', async () => {
   const decline = vi.spyOn(store, 'declineCode').mockImplementation(async (id) => { delete store.pendingCode[id]; });
   store.pendingCode['jane.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
   await expect.element(page.getByText('Midnight now runs code. Allow?')).toBeVisible();
+  expect(page.getByRole('status').query()?.textContent).toBe('Midnight now runs code. Allow?'); // heard when a Reload brings it
   expect(document.querySelector('dialog li').textContent).toContain(WARNING);
   await page.getByRole('button', { name: 'Not now for Midnight' }).click();
   expect(decline).toHaveBeenCalledWith('jane.midnight');
   await expect.element(page.getByText('Midnight now runs code. Allow?')).not.toBeInTheDocument();
+  await vi.waitFor(() => expect(document.activeElement).toBe(page.getByRole('switch', { name: 'Midnight' }).element())); // not lost with the buttons
 
   store.pendingCode['jane.midnight'] = { manifest: JSON.parse(scripted()), scriptText: SCRIPT, handle: null, following: false };
   await page.getByRole('button', { name: 'Allow Midnight to run code' }).click();
   expect(allow).toHaveBeenCalledWith('jane.midnight');
   await expect.element(page.getByText('Midnight now runs code. Allow?')).not.toBeInTheDocument();
+  await vi.waitFor(() => expect(document.activeElement).toBe(page.getByRole('switch', { name: 'Midnight' }).element()));
 });

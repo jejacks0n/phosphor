@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
@@ -81,6 +81,15 @@ async function install(picker, input) {
     problem.value = error.userMessage;
   }
 }
+// Allow or Not now: the question and its buttons go at once, so focus goes to the row's switch rather than the page.
+const list = useTemplateRef('list');
+async function answerCode(id, allow) {
+  const done = allow ? plugins.allowCode(id) : plugins.declineCode(id);
+  await nextTick();
+  list.value?.querySelector(`li[data-id="${CSS.escape(id)}"] button.switch`)?.focus();
+  await done;
+}
+
 const installFile = () => install(linksFiles() && (() => plugins.pick()), fileInput.value);
 const installFolder = () => install(linksFolders() && (() => plugins.pickFolder()), folderInput.value);
 
@@ -135,8 +144,8 @@ async function answer() {
       <p v-if="plugins.off" class="note">{{ t(STARTED_OFF) }}</p>
       <p v-if="plugins.unavailable" class="note">{{ t('plugins.unavailable') }}</p>
 
-      <ul v-if="plugins.plugins.length">
-        <li v-for="{ id, manifest, enabled, handle } in plugins.plugins" :key="id">
+      <ul v-if="plugins.plugins.length" ref="list">
+        <li v-for="{ id, manifest, enabled, handle } in plugins.plugins" :key="id" :data-id="id">
           <div class="head">
             <strong class="name">{{ manifest.name }}</strong>
             <span class="version">{{ manifest.version }}</span>
@@ -160,7 +169,7 @@ async function answer() {
             <span v-if="manifest.themes.length">{{ adds(manifest) }}</span>
             <span v-if="manifest.script">{{ t('plugins.runsCode') }}</span>
             <a v-if="manifest.homepage" :href="manifest.homepage" target="_blank" rel="noopener noreferrer">{{ address(manifest.homepage) }}</a>
-            <span v-if="handle">{{ t('plugins.fromFile') }}</span>
+            <span v-if="handle">{{ handle.kind === 'directory' ? t('plugins.fromFolder') : t('plugins.fromFile') }}</span>
           </p>
           <p v-if="manifest.description" class="description">{{ manifest.description }}</p>
           <div v-if="handle" class="file">
@@ -179,11 +188,11 @@ async function answer() {
             >{{ t('plugins.follow') }}</button>
           </div>
           <div v-if="plugins.pendingCode[id]" class="pending">
-            <p>{{ t('plugins.nowRunsCode', { name: manifest.name }) }}</p>
+            <p role="status">{{ t('plugins.nowRunsCode', { name: manifest.name }) }}</p>
             <p class="warn">{{ t('plugins.install.warning') }}</p>
             <div class="file">
-              <button type="button" :aria-label="t('plugins.allowNamed', { name: manifest.name })" @click="plugins.allowCode(id)">{{ t('plugins.allow') }}</button>
-              <button type="button" :aria-label="t('plugins.notNowNamed', { name: manifest.name })" @click="plugins.declineCode(id)">{{ t('plugins.notNow') }}</button>
+              <button type="button" :aria-label="t('plugins.allowNamed', { name: manifest.name })" @click="answerCode(id, true)">{{ t('plugins.allow') }}</button>
+              <button type="button" :aria-label="t('plugins.notNowNamed', { name: manifest.name })" @click="answerCode(id, false)">{{ t('plugins.notNow') }}</button>
             </div>
           </div>
           <p v-if="plugins.problems[id]" class="problem" role="alert">{{ plugins.problems[id] }}</p>

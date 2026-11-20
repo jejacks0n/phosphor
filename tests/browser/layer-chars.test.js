@@ -822,6 +822,30 @@ test('options are one undo step each, kept per solver ref, and survive a save an
   expect(project.charsOf('edit').solverOptions['plugin:other/x']).toEqual({ a: 1 });
 });
 
+test('nudges to two options a moment apart are two undo steps; nudges to one are one', async () => {
+  const { project } = await blank();
+  const ref = await onSolver(OUTLINES);
+  project.setLayerChars('edit', { charChoice: ref });
+  project.commitLayerChars();
+  const steps = project.history.version;
+  const nudge = (values) => {
+    project.setLayerChars('edit', { solverOptions: { [ref]: { ...project.layerParams.get('edit').solverOptions, ...values } } });
+    project.commitLayerChars({ nudge: true });
+  };
+  nudge({ look: 1 }); // the first change to options none were kept for: keyed by the one changed, not the first declared
+  nudge({ threshold: 41 });
+  expect(project.history.version).toBe(steps + 2);
+  nudge({ threshold: 42 });
+  nudge({ threshold: 43 });
+  expect(project.history.version).toBe(steps + 2); // the same slider's nudges extend its step
+  nudge({ look: 2 });
+  expect(project.history.version).toBe(steps + 3);
+  project.undo();
+  expect(project.layerParams.get('edit').solverOptions).toEqual({ threshold: 43, thin: false, look: 1 });
+  project.undo();
+  expect(project.layerParams.get('edit').solverOptions).toEqual({ threshold: 40, thin: false, look: 1 });
+});
+
 test('options of an older or newer version fall back to their defaults', async () => {
   const { project } = await blank();
   const ref = await onSolver(OUTLINES);

@@ -18,6 +18,7 @@ import { NUDGE_MS, bytesHeld, dropFromSums, emptyFields, layerName, putLayer, pu
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
+import { solverFor, optionValues } from '@/plugins/solvers.js';
 
 // id's layer with changes made, or no change when there's no such layer.
 function changed(store, id, patch) {
@@ -162,6 +163,21 @@ function stackStep(store, { held, undo, redo, before, after }) {
   store.pushWholeLayer(() => { undo(); show(before); }, () => { redo(); show(after); }, bytes, { everyFrame: true, layerOp: true });
 }
 
+// The setting a change is to, for commitLayerChars' nudge merge: a plugin solver's options by the option changed (against
+// the values in use, its defaults where none are kept), so two of its sliders nudged a moment apart are two undo steps,
+// as two built-in sliders are.
+function changedKey(own, was) {
+  const key = Object.keys(own)[0];
+  if (key !== 'solverOptions') return key;
+  for (const [ref, values] of Object.entries(own.solverOptions)) {
+    const def = solverFor(ref)?.def, kept = was.solverOptions?.[ref];
+    const old = def ? optionValues(def, kept) : kept ?? {};
+    const option = Object.keys(values).find((option) => !sameSetting(values[option], old[option]));
+    if (option) return `solverOptions:${ref}:${option}`;
+  }
+  return key;
+}
+
 export const layerActions = {
   // name: as typed; blank is the default name.
   renameLayer(id, name) {
@@ -194,7 +210,7 @@ export const layerActions = {
     if (Object.keys(own).every((key) => sameSetting(own[key], was[key]))) return false;
     if (this._charsBefore?.id !== id) {
       this.commitLayerChars();
-      this._charsBefore = { id, key: Object.keys(own)[0], values: pick(was, CHAR_KEYS), hadNoOwn: id !== 'base' && !layer.chars };
+      this._charsBefore = { id, key: changedKey(own, was), values: pick(was, CHAR_KEYS), hadNoOwn: id !== 'base' && !layer.chars };
     }
     putChars(this, id, own);
     return true;
