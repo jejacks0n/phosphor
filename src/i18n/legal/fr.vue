@@ -159,6 +159,8 @@ const emit = defineEmits(['open']);
       les données de ce site dans votre navigateur les supprime.</p>
     <p>Nous n'utilisons aucun outil d'analyse d'audience, de publicité ou de cookies de suivi. L'application elle-même est hébergée sur GitHub
       Pages, qui, comme tout hébergeur web, reçoit votre adresse IP lorsque votre navigateur charge le site.</p>
+    <p>Quand vous installez un plugin depuis la place de marché, votre navigateur télécharge ses fichiers depuis GitHub, qui voit la requête
+      et votre adresse IP. La liste des plugins elle-même provient de notre propre site.</p>
 
     <h2>L'onglet SOCIAL</h2>
     <p>Rien provenant de l'onglet SOCIAL ne s'exécute tant que vous n'ouvrez pas cet onglet (ou ne suivez pas un lien depuis l'un de nos e-mails). À

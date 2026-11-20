@@ -159,6 +159,8 @@ const emit = defineEmits(['open']);
       this site's data in your browser deletes them.</p>
     <p>We do not use analytics, advertising, or tracking cookies. The app itself is hosted on GitHub
       Pages, which, like any web host, receives your IP address when your browser loads the site.</p>
+    <p>When you install a plugin from the Marketplace, your browser downloads its files from GitHub, which sees the request
+      and your IP address. The list of plugins itself comes from our own site.</p>
 
     <h2>The SOCIAL Tab</h2>
     <p>Nothing from the SOCIAL tab runs until you open that tab (or follow a link from one of our emails). From

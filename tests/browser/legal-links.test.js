@@ -5,6 +5,7 @@ import { createApp, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
+import LegalDialog from '@/components/LegalDialog.vue';
 import ReportDialog from '@/components/social/ReportDialog.vue';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
@@ -105,4 +106,11 @@ test('About without licenses.json (a host that answers with the page) leaves the
   expect(document.querySelector('section.licenses p').textContent).toContain('MIT License');
   expect(document.querySelector('section.licenses ul.assets')).not.toBeNull();
   expect(document.querySelector('section.licenses ul.packages')).toBeNull();
+});
+
+test('the Privacy Policy says installing from the Marketplace downloads the plugin\'s files from GitHub, which sees the request', async () => {
+  await mount(LegalDialog, { page: 'privacy' });
+  await vi.waitUntil(() => document.querySelector('.legal-body'));
+  const text = document.querySelector('.legal-body').textContent.replace(/\s+/g, ' ');
+  expect(text).toContain('When you install a plugin from the Marketplace, your browser downloads its files from GitHub, which sees the request and your IP address.');
 });

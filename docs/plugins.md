@@ -9,8 +9,13 @@ in the desktop app), and nowhere else: another browser or computer doesn't have 
 ## The Plugins dialog
 
 **Plugins**, under the language and theme at the bottom of the settings panel, opens the dialog (on the desktop app,
-**Plugins…** in the Phosphor menu on macOS, in Help elsewhere). It lists each plugin installed: its name and version,
-who made it, what it adds ("1 theme"), its homepage, and its description.
+**Plugins…** in the Phosphor menu on macOS, in Help elsewhere). It has two tabs, **Marketplace** and **Installed**. It
+opens on Installed when you have any plugins, and on Marketplace when you have none; the tab you used last stays for the
+rest of the visit. The dialog is 860 pixels wide, and on a screen 700 pixels wide or less it fills the window.
+
+**Installed** lists each plugin you have: its name and version, who made it, what it adds ("1 theme"), its homepage, its
+description, and a line saying where it came from ("From a folder", "From the marketplace"). An Official badge marks
+Phosphor's own.
 
 - **Install from a file…** asks for a `.zip` or a `phosphor-plugin.json`.
 - **Install from a folder…** asks for a folder.
@@ -24,6 +29,34 @@ who made it, what it adds ("1 theme"), its homepage, and its description.
 
 If the theme you're using belongs to a plugin you switch off or remove, or to a new version that no longer has it,
 Phosphor goes to that theme's base: Dark or Light.
+
+## The Marketplace
+
+**Marketplace** is a grid of cards, one for each plugin on the list. A card has a band of art at the top (the plugin's
+`preview`, or its theme's colors, or nothing), then its name, version, author (or Official), a description cut to two
+lines, what it adds, and a button. Type in **Search plugins** to narrow the cards, and use the **Show** menu to see All,
+Official, Themes or Solvers.
+
+The list is loaded once a visit, the first time you open the dialog. If it can't be loaded, the tab says so and offers
+**Try again**.
+
+The button depends on what you have:
+
+- **Install** asks the same question as any install ([Installing](#installing-a-plugin)). Its question says who made the plugin and where it comes
+  from. Official plugins that run code still warn that they run code.
+- **Installed** (dimmed) means you have this plugin at this version or a newer one.
+- **Update** shows when the list has a higher version than yours. Raising `version` is the only thing that makes an Update;
+  a changed file at the same version isn't one. The Installed tab marks the row "Update to 1.1.0".
+- **Replace** shows when you have a plugin with the same id that came from somewhere else (a file, a folder or another
+  repository). The question names where the new one comes from ("by Kim, from the marketplace, kim/phosphor-rain"), so you can tell
+  it isn't the plugin you have.
+
+A plugin that leaves the list stays installed and keeps working. Its row on Installed says **No longer listed**.
+Nothing says that, or offers an Update, until the list has loaded.
+
+Phosphor installs from the list only the files the list was built from. Each entry is pinned to the commit seen when the list
+was built, with a hash of each file. If a file has changed since, the install is refused. Updates an author pushes show
+after the next refresh of the list, which happens when the wiki page changes, once a day, and with each deploy.
 
 A browser that won't keep anything (some private windows) says "This browser isn't keeping plugins, so none can be
 installed."
@@ -134,6 +167,7 @@ The fields:
 | `description` | A line about it. | Optional; 300 characters at most. |
 | `homepage` | Where to read about it, linked from the dialog. | Optional; `https://` only; 200 characters at most. |
 | `license` | Its license, for example `MIT`. | Optional; 40 characters at most. |
+| `preview` | Up to three short lines shown as text on the art band of its Marketplace card. | Optional; 3 lines at most (split on a new line), 24 characters each, no control characters. Shown as text, never as markup. |
 | `themes` | The themes it adds. | At most 20. A plugin has themes, a script, or both; with neither it's refused ("This plugin adds nothing this Phosphor can use."). |
 | `script` | The script that adds solvers ([Writing a solver](#writing-a-solver)). | Optional; a relative path to a `.js` or `.mjs` file inside the plugin's folder (or .zip), going up (`..`), `.` and empty folders (`a//b.js`) not allowed; 1 MB at most. |
 
@@ -340,3 +374,20 @@ You don't need to build Phosphor to try a plugin: install your file in the app a
   **Follow file** read the manifest and the script again, so a save to the script shows at once. Its row says "From a
   folder". A script you save that fails its checks is left, and the last good one stays.
 - **The desktop app** doesn't link to files: write your plugin in Chrome or Edge.
+
+## Listing a plugin
+
+Official plugins live in Phosphor's repository, one folder each directly under `plugins/` (Midnight and Outlines are
+there), each with a `phosphor-plugin.json`. They aren't part of Phosphor's build: people install them from the
+Marketplace. The ids starting `phosphor.` are kept for them, and a community listing that uses one is left out.
+
+To list yours, put it on GitHub with `phosphor-plugin.json` and its script, and add a line to the wiki page **Plugins** in
+jejacks0n/phosphor (collaborators can edit it). The line is a link in one of two forms:
+
+- `https://github.com/<owner>/<repo>`: the manifest is at the top of the repository's default branch.
+- `https://github.com/<owner>/<repo>/tree/<branch>/<path>`: the manifest is in that folder of that branch.
+
+Anything else on the page is ignored. If two listings have one id, the first wins: official plugins, then the wiki's in
+page order. The manifest's and the script's size limits are the same as for installing. The list is built from the page
+at the next refresh. It takes the commit it sees then, so a later push shows only after the next refresh, and it makes an
+Update only if you raise `version`. Take the line off the page and the plugin leaves the list; people who have it keep it.

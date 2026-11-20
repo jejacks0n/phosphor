@@ -386,8 +386,9 @@ test('SocialDialogs desktop: no question, no account pages, no room link; Start 
 test('LegalDialog desktop: the app\'s privacy note in place of the hosted service\'s policy; the Terms stay', async () => {
   await mount(LegalDialog, () => {}, { page: 'privacy' });
   const body = () => document.querySelector('.legal-body').textContent;
-  expect(body()).toContain('This app sends nothing to Phosphor. In a room, the people you connect with see your IP address. When you choose Check for Updates, it asks GitHub for Phosphor\'s releases, and GitHub sees your IP address.');
-  expect(body()).not.toContain('phosphor.work');
+  expect(body()).toContain('In a room, the people you connect with see your IP address. When you choose Check for Updates, it asks GitHub for Phosphor\'s releases, and GitHub sees your IP address.');
+  expect(body()).toContain('When you open Plugins, it asks phosphor.work for the plugin list, and phosphor.work sees your IP address. When you install a plugin from the Marketplace, it asks GitHub for the plugin\'s files, and GitHub sees your IP address.');
+  expect(body()).not.toContain('sends nothing to Phosphor');
   app.unmount();
   app = createApp({ render: () => h(LegalDialog, { page: 'terms' }) }).use(getActivePinia()).use(i18n);
   app.mount(host);
