@@ -632,7 +632,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
         </template>
       </div>
       <div v-if="toolOptions.length" class="tool-setting-group">
-        <template v-for="(option, i) in toolOptions" :key="option.key ?? option.id">
+        <template v-for="(option, i) in toolOptions" :key="option.key">
           <div v-if="i > 0" class="divider"/>
           <label v-if="option.type === 'checkbox'" class="checkbox-wrapper" :title="option.title">
             <span>{{ option.label }}</span>

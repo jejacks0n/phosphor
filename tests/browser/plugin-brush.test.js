@@ -2,7 +2,8 @@
 import { test, expect, afterEach, beforeAll, afterAll } from 'vitest';
 import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
+import { createPinia, getActivePinia, setActivePinia } from 'pinia';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { createTestApp, settle } from '../support/app.js';
 import { onPlugin } from '../support/pluginSolvers.js';
 import { i18n } from '@/i18n';
@@ -122,13 +123,20 @@ test('the toolbar draws the options, keeps changes, and ] steps the size to its 
   await nextTick();
   await new Promise((resolve) => setTimeout(resolve, 20));
   expect(JSON.parse(localStorage.getItem('phosphor.pluginTools'))[ref].mode).toBe(1);
-  listen(app);
+  // A fresh Pinia and workspace read the kept value back through the option's own get.
   const tool = getTool(ref);
+  const pinia = getActivePinia(), other = createPinia();
+  setActivePinia(other);
+  const fresh = useWorkspaceStore(other);
+  expect(tool.options.find((o) => o.label === 'Mode').get(fresh)).toBe(1);
+  setActivePinia(pinia);
+  listen(app);
   const size = tool.options.find((o) => o.size);
   size.set(app.workspace, 4.5);
   window.dispatchEvent(new KeyboardEvent('keydown', { key: ']', bubbles: true }));
   window.dispatchEvent(new KeyboardEvent('keydown', { key: ']', bubbles: true }));
   expect(size.get(app.workspace)).toBe(5);
+  expect(size.decimals).toBe(1);
 });
 
 test('the shortcuts list has a Plugin tools group only with plugin keys', async () => {

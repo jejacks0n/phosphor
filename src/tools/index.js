@@ -78,7 +78,7 @@ const NONE = { id: 'none', kind: 'none', views: [] };
 // plugin's own, none in a room or with plugins off. The tool objects are kept until something they're made from changes
 // (the scripts' parts, the room, the plugins' order or on/off); the reads of that state below are what make a computed
 // calling this run again.
-let built = { stamp: null, tools: [] };
+let built = { stamp: null, tools: [] }; // assumes one Pinia per page: tests that swap Pinia can see the same stamp
 export function pluginTools() {
   const plugins = usePluginStore(), inRoom = useRoomStore().inRoom, off = plugins.off;
   const stamp = [plugins.solverStamp, inRoom, off, ...plugins.plugins.map(({ id, enabled }) => `${id}:${enabled}`)].join('|');
