@@ -1,6 +1,6 @@
 // The soft Brush's Flow slider: each stamp lays the slider's value squared (never less than the paint
 // layer's smallest step), so its low end builds up gently and 100% is as it always was.
-import { test, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
 import brush from '@/tools/brush';
 
@@ -93,3 +93,67 @@ for (const hardness of [100, 10]) {
     onOwnLayer.forEach((v, i) => expect(Math.abs(v - onLayerAbove[i])).toBeLessThanOrEqual(3));
   });
 }
+
+// docs/model.md R13: Monochrome ASCII shows a pin as its character in white on black, so paint on the base can't recolor
+// it: the paint takes the pin of every cell it lands in, and the cell converts again. The report
+// (projects/ascii-pinned-paint.phosphor): a drawing flattened onto the base, every cell pinned, in Monochrome ASCII, where
+// the Brush showed only over the pinned ▄s (pixels outside ANSI).
+describe('R13: paint on the base in Monochrome ASCII takes the pins', () => {
+  const open = async (renderStyle) => {
+    const { project, workspace } = await createTestApp();
+    await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/ascii-pinned-paint.phosphor')).arrayBuffer()], 'x.phosphor'));
+    await settle(project);
+    if (renderStyle) project.renderStyle = renderStyle;
+    await settle(project);
+    return { project, workspace };
+  };
+  const shown = (project, col, row) => project.cells[row * project.cols + col].char;
+  // Row 0: pinned spaces at 0-1, '.' at 76, '%' at 77, '@' at 86-87, '#' at 126.
+  const CELLS = [0, 1, 76, 77, 86, 87, 126];
+  const halves = (cols) => cols.flatMap((col) => [{ x: col, y: 0, alpha: 1 }, { x: col, y: 1, alpha: 1 }]);
+
+  test('the report: white over pinned spaces shows, black over pinned characters clears them, and undo brings the pins back', async () => {
+    const { project } = await open();
+    expect(project.renderStyle).toBe('ascii');
+    expect(CELLS.map((col) => shown(project, col, 0))).toEqual([' ', ' ', '.', '%', '@', '@', '#']);
+    project.paintStroke(halves([0, 1]), '#ffffff');
+    project.paintStroke(halves([76, 77, 86, 87, 126]), '#000000');
+    project.commitEdit();
+    await settle(project);
+    expect(CELLS.map((col) => project.baseRecords.pins.has(`${col},0`))).toEqual(Array(7).fill(false));
+    expect(CELLS.map((col) => shown(project, col, 0))).toEqual(['@', '@', ' ', ' ', ' ', ' ', ' ']);
+    expect(project.baseRecords.pins.get('2,0')).toBe(' '); // a cell the paint missed keeps its pin
+    project.paintStroke([{ x: 202, y: 8, alpha: 1 }, { x: 202, y: 9, alpha: 1 }], '#ffffff'); // a pinned ▄ is pixels already: it converts, and keeps its pin for ANSI
+    project.commitEdit();
+    await settle(project);
+    expect([project.baseRecords.pins.get('202,4'), shown(project, 202, 4)]).toEqual(['▄', '@']);
+    project.undo();
+    await settle(project);
+    expect(project.baseRecords.pins.size).toBe(19200 - 7);
+    project.undo();
+    await settle(project);
+    expect(project.baseRecords.pins.size).toBe(19200);
+    expect(CELLS.map((col) => shown(project, col, 0))).toEqual([' ', ' ', '.', '%', '@', '@', '#']);
+  });
+
+  test('the Eraser on the base, soft or in the PIXEL view, takes the pins too', async () => {
+    const { project } = await open();
+    project.eraseEditPixels([{ x: 86, y: 0, alpha: 0.5 }, { x: 86, y: 1, alpha: 0.5 }, { x: 87, y: 0 }, { x: 87, y: 1 }]);
+    project.commitEdit();
+    await settle(project);
+    expect([86, 87].map((col) => project.baseRecords.pins.has(`${col},0`))).toEqual([false, false]);
+    expect(shown(project, 87, 0)).toBe(' ');
+  });
+
+  for (const renderStyle of ['ansi', 'colorAscii']) {
+    test(`in ${renderStyle} the paint recolors the pins and they stay (R2)`, async () => {
+      const { project } = await open(renderStyle);
+      project.paintStroke(halves([0, 86]), '#ff0000');
+      project.commitEdit();
+      await settle(project);
+      expect(project.baseRecords.pins.get('0,0')).toBe(' ');
+      expect(project.baseRecords.pins.get('86,0')).toBe('@');
+      expect(shown(project, 86, 0)).toBe('@');
+    });
+  }
+});

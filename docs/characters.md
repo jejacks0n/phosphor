@@ -86,7 +86,7 @@ Each layer has its own **Choose characters**, **Characters** set, **Character se
 
 ### Typed Cells, Pinned Characters, and Paint
 
-- **Typed cells** are never changed by the converter, and a pinned character stays pinned.
+- **Typed cells** are never changed by the converter, and a pinned character stays pinned, except under paint on the base in Monochrome ASCII, which can't show a pinned character's colors: the paint takes the pin, and the cell is converted from the paint ([Layers](layers.md)).
 - **With Random and Best match**, paint colors a cell's halves through its character (or makes a `▄` over a solid cell).
 - **On the base under Best match and By shape**, paint goes into the base's pixels and the cell is matched again from them, with no `▄` (except over a pinned space), so switching between the two picks its character afresh.
 - **On a layer under Best match and By shape**, a cell is matched again with the paint over it the same way, with no `▄` kept. A layer whose settings differ from the base's draws its paint with them: on a layer set to Random, strokes over a flat canvas come out in Random's characters, not half-blocks. The base's Random is the same: a stroke on a blank canvas, on the base or on a layer that shares its settings, comes out in Random's characters, with no `▄` made of a blank cell (Half-block draws `▄`).

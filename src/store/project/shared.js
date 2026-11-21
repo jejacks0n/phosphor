@@ -13,6 +13,7 @@ import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
 import { layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { hashCell, hashPixel, pack } from '@/document/changes.js';
+import { withoutPins } from '@/document/baseRecords.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -132,6 +133,21 @@ function baseFields(project, was) {
 // Whether the edit layer's fields are the bottom's (the base picked, outside an art layer): what the tools draw goes on
 // the base itself, cells as pins and pixels (writeBaseCells), paint as base pixels.
 export const onBottom = (project) => project.editId === 'base' && !project._artInside;
+
+// docs/model.md R13: Monochrome ASCII shows a pin as its character in white on black, so paint (or the Eraser's black)
+// laid on the base there can't recolor one: the cells it lands in lose their pins, before the paint, as part of the edit,
+// and convert again. A pinned ▄ is pixels outside ANSI already (Renderer.pinAt) and stays, so what ANSI shows comes back
+// (Colors only pins one). The other styles show a pin's colors, and it stays, recolored (R2).
+export function takePins(project, pixels) {
+  const { pins } = project.baseRecords;
+  if (project.renderStyle !== 'ascii' || !pins.size) return;
+  const cells = pixels.map(({ x, y }) => ({ col: x, row: y >> 1 })).filter(({ col, row }) => pins.get(`${col},${row}`) !== '▄');
+  const records = withoutPins(project.baseRecords, cells);
+  if (records === project.baseRecords) return;
+  project.ensureLayer();
+  project.beginEdit();
+  project.setBaseRecords(records);
+}
 
 // What typing pushes past a row's right edge (Insert and Partial shift the row: shiftCells, shiftBaseCells), remembered so
 // a left shift of the row (Backspace there, Delete) brings it back cell for cell: project._pastEdge = { at, rows:

@@ -13,7 +13,7 @@ import { blockOver, cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, refusedHidden, refusedNoCells } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, refusedHidden, refusedNoCells, takePins } from '@/store/project/shared.js';
 
 // A typed character with the colors it's typed in. A space has no ink, so it takes the background alone: the cell keeps
 // the foreground it had (on the base that's its lower pixel, which the PIXEL view shows; on a layer a color no one sees
@@ -23,7 +23,10 @@ const typed = (char, attrs) => (char.trim() ? { char, ...attrs } : { char, ...at
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100, stack = false) {
     if (!pixels.length || !this.renderer.outputCanvas || refusedNoCells(this, { toast: false })) return; // no cells layer has the fields
-    if (onBottom(this)) return this.paintBasePixels(pixels, opacity, stack);
+    if (onBottom(this)) {
+      takePins(this, pixels);
+      return this.paintBasePixels(pixels, opacity, stack);
+    }
     this.ensureLayer();
     this.beginEdit();
     unfreeze(this, pixels);

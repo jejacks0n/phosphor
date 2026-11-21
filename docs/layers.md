@@ -218,6 +218,10 @@ generating a new seed or changing the character set doesn't change them.
   BG**), Merge down's **Keep crisp cells**, opening a file or flattening with **Draw on top**, and erasing in the ANSI
   view (a pinned space).
 - **What Doesn't**: Paint on the base's pixels, and erasing in the PIXEL view.
+- **What Unpins**: In **Monochrome ASCII**, which shows every pinned character in white on black whatever its
+  colors, paint on the base (the Brush, the Paint Bucket, Gradient, a Shape's fill, Retouch) and the PIXEL view's or
+  the Soft Eraser take the pin off every cell they touch, so the paint shows as your ASCII characters. A pinned `▄`
+  stays. In ANSI and Color ASCII the paint recolors a pinned character, and it stays pinned.
 - **Everything Else**: Any other character belongs to its cell's position. The converter picks it there, whatever
   colors are underneath.
 - **In Color ASCII**: The converter's cells are ink on black, but a pinned character whose two pixels differ shows them

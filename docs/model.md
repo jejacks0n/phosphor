@@ -17,7 +17,7 @@ Each cell of it is one of these:
 | --- | --- | --- | --- |
 | **Paint** | Pixels with alpha, no character, kept finer than the grid (a grid pixel of it reads and shows as its block's average: `PaintLayer.average`) | Yes, where it lies, by its layer's settings | Mixes in, converts again |
 | **Paint block** `{ char: '▄' }` | Paint with a hint: in ANSI, show my two halves as a ▄. Not a cell of anyone's; outside ANSI it's nothing (`shownEntry`) | As paint (ANSI shows the ▄) | As paint |
-| **A character of someone's own** | A character someone chose: typed, opened from a file, pasted, pinned on the base, an art layer's | Never | Tints its ink; the character stays (R2) |
+| **A character of someone's own** | A character someone chose: typed, opened from a file, pasted, pinned on the base, an art layer's | Never | Tints its ink; the character stays (R2), except on the base in Monochrome ASCII, where paint takes the pin (R13) |
 | **Frozen cell** `{ …, frozen: true }` | Paint, still there under it, with Merge down's pinned conversion of it over it: the character and colors it showed, kept because it would convert otherwise in its new place. Paint to everything but the converter, which shows the pin instead of converting the paint | Never again, until paint is written or erased in it: then the pin goes and it's paint | As paint: mixes into its halves, converts (R3) |
 
 The base is the picture plus pinned characters (`baseRecords.pins`); a pin is a character of someone's own. A frozen
@@ -333,6 +333,24 @@ the stored shape keeps it; a record made from scratch needs `layer` named. A sel
   (`src/store/project/selection.js`), `src/tools/vshape.js`, `shapesOnVector` (`src/store/project/merging.js`).
 - Checked by: `tests/browser/vector-render.test.js › R10: …`; `tests/browser/art-layers.test.js › R10: …`;
   `tests/browser/merge.test.js › Merge down of a vector layer into the vector layer under it …`.
+
+### R13. In Monochrome ASCII, paint on the base takes the pins it lands on.
+
+Monochrome ASCII shows every pin as its character in white on black, so R2's tint has nothing to show there: a pinned
+character under the Brush stayed as it was, and a drawing whose every cell is a pin (Flatten's Draw on top, an opened
+ANSI file) took paint nowhere but its pinned `▄`s. So in Monochrome ASCII, paint laid on the base (the Brush, the Paint
+Bucket, Gradient, a Shape's fill, Retouch) and the Eraser's black in the PIXEL view or Soft take the pin of every
+cell they reach, a part-covered one too, and the cell converts from its pixels again: the pin's two colors with the
+paint over them. A pinned `▄` stays: outside ANSI it's pixels already (`Renderer.pinAt`), and it keeps what ANSI
+shows (Colors only pins one). The ANSI view's Hard Eraser still leaves a pinned space, and writing cells still pins.
+The other styles show a pin's colors, so there the pin stays, recolored (R2, R4, R8). The pins go as part of the edit,
+so Undo brings them back.
+
+- Lives in: `takePins` (`src/store/project/shared.js`), called by `paintEditPixels` (`src/store/project/editLayer.js`)
+  on the base and by `eraseBasePixels` (`src/store/project/baseLayer.js`).
+- Checked by: `tests/browser/brush.test.js › R13: …` (the report's file, `projects/ascii-pinned-paint.phosphor`: a
+  drawing flattened onto the base, every cell pinned; the Brush and the Eraser in Monochrome ASCII, a pinned `▄` kept,
+  Undo, and ANSI and Color ASCII keeping their pins).
 
 ## Where the rules are walked and what else they reach
 
