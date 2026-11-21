@@ -70,3 +70,18 @@ export function fontId(font) {
 
 // What the Fonts page and the library's index show of a font: these characters, drawn from the slots CP437 puts them in.
 export const SAMPLE_CHARS = 'Aa░▒▓█▄▀╔═╗☺';
+
+// How wide a font's glyphs really are: the rightmost lit column of any slot, plus one (8 when nothing is lit).
+export function ownWidthOf(font) {
+  let any = 0;
+  for (const b of font.bytes) any |= b;
+  return any ? 8 - (31 - Math.clz32(any & -any)) : 8;
+}
+
+export const NARROW_WIDTHS = Object.freeze([4, 5, 6, 7]);
+
+// The own width when it's one a font is offered narrow at, else null.
+export function narrowWidthOf(font) {
+  const w = ownWidthOf(font);
+  return NARROW_WIDTHS.includes(w) ? w : null;
+}

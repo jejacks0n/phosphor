@@ -3,9 +3,9 @@
 import { CP437, cp437Substitute } from './Cp437.js';
 import { graphemes } from './CharWidth.js';
 import { t } from '@/i18n';
-import { BLOCKS, CP437_BLOCKS, findBlocks, fontId, glyphRows, lit, maskOf } from './BitmapGlyphs.js';
+import { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, lit, maskOf, narrowWidthOf, ownWidthOf } from './BitmapGlyphs.js';
 
-export { BLOCKS, CP437_BLOCKS, findBlocks, fontId, glyphRows, maskOf };
+export { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, maskOf, narrowWidthOf, ownWidthOf };
 
 export const MAX_FONT_HEIGHT = 32;
 
