@@ -224,8 +224,8 @@ test('R11: on the base a laid line\'s pin the PIXEL Eraser, or the Soft Eraser i
     for (let i = 0; i < 20 && pin() === char; i++) { eraser.begin(ctx, { x: col + 0.5, y: 2 * row + 1.5 }); eraser.end(ctx); }
     expect(pin(), `${view} ${soft}`).toBe(' ');
     project.undo();
-    if (soft) while (pin() === ' ') project.undo(); // each pass is its own step
-    expect(pin()).toBe(char);
+    if (soft) for (let i = 0; i < 20 && pin() === ' '; i++) project.undo(); // each pass is its own step
+    expect(pin(), 'undo brings the pin back within 20 steps').toBe(char);
   }
 });
 
