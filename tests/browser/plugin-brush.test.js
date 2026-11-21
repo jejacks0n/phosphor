@@ -77,7 +77,7 @@ test('two plugins come in the Plugins dialog order, whatever they registered in'
   expect(toolSlots('input', app.project).slice(-2).map((slot) => slot.id)).toEqual(wanted);
 });
 
-test('a dropped brush is no tool and the active tool reads Brush; so is a room', async () => {
+test('a dropped brush is no tool and the active tool reads Brush; so is a room, plugins off, and its plugin off', async () => {
   const app = await start('input');
   const [ref] = (await onPlugin({ brushes: [brush()] })).brushes;
   app.workspace.setActiveTool(ref);
@@ -86,6 +86,16 @@ test('a dropped brush is no tool and the active tool reads Brush; so is a room',
   expect(toolSlots('input', app.project).some((slot) => slot.id === ref)).toBe(false);
   expect(app.workspace.activeTool).toBe('brush');
   useRoomStore().role = null;
+  expect(app.workspace.activeTool).toBe(ref);
+  usePluginStore().off = true;
+  expect(pluginTools()).toEqual([]);
+  expect(app.workspace.activeTool).toBe('brush');
+  usePluginStore().off = false;
+  const plugin = usePluginStore().plugins.find(({ id }) => id === 'phosphor.outlines');
+  plugin.enabled = false;
+  expect(pluginTools()).toEqual([]);
+  expect(app.workspace.activeTool).toBe('brush');
+  plugin.enabled = true;
   expect(app.workspace.activeTool).toBe(ref);
   usePluginStore().dropScript('phosphor.outlines');
   expect(getTool(ref).id).toBe('none');

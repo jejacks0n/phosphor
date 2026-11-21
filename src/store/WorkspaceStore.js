@@ -12,9 +12,10 @@ import { savesInPlace } from '@/document/projectIO';
 import { isArtFile, readArtFile } from '@/lib/ArtFile';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
+import { usePluginStore } from '@/store/PluginStore';
+import { useRoomStore } from '@/store/RoomStore';
 import { groupOf } from '@/tools/groups';
-import { getTool } from '@/tools';
-import { isSolverRef } from '@/plugins/solvers';
+import { brushOffered, isSolverRef } from '@/plugins/solvers';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { busyWhile } from '@/composables/useBusy';
@@ -218,7 +219,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // A plugin's brush that's gone (its plugin dropped or off, or a room started) reads as the Brush.
     activeTool(state) {
       const id = state[toolKey(state.editorTab)];
-      return isSolverRef(id) && getTool(id).id === 'none' ? 'brush' : id;
+      return isSolverRef(id) && !brushOffered(id, usePluginStore(), useRoomStore().inRoom) ? 'brush' : id;
     },
     // The layers a selection's actions act on (Select's Copy, Cut, Delete, Stamp, moves by drag or arrow key, flip and
     // turn; the Magic Wand's Delete; Set FG / Set BG), every one of them: the picked layer, or with All layers on
