@@ -70,3 +70,15 @@ test("useScript fills the brushes, shapes and filters slices in the plugin's ord
   expect(plugins.filters).toEqual({});
   expect(plugins.filterFailures).toEqual({});
 });
+
+test('registering a plugin again clears its filter failures from the slice', async () => {
+  setActivePinia(createPinia());
+  const plugins = usePluginStore();
+  const filter = { id: 'glow', name: 'Glow', passes: ['void main(){}'] };
+  const parts = readScript({ default: { filters: [filter] } });
+  const { filters: [glow] } = await onPlugin(parts);
+  failFilter(glow, { log: 'nope' });
+  expect(plugins.filterFailures[glow]).toBeDefined();
+  plugins.useScript('phosphor.outlines', 'h2', parts);
+  expect(plugins.filterFailures).toEqual({});
+});
