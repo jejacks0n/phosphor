@@ -13,7 +13,7 @@ import { thumbnailOf } from '@/social/thumbnail';
 import { forgetKey, loadKey } from '@/social/keys';
 import { toBase64url } from '@/social/base64url';
 import { hex2rgb } from '@/lib/ColorUtils';
-import { desktopQuery, rtcConfig } from '@/social/config';
+import { appOrigin, desktopQuery, rtcConfig } from '@/social/config';
 import { Watch } from '@/social/watching';
 import { Host, RETURN_WITHIN_MS } from '@/social/hosting';
 import { measureAdvance } from '@/lib/CellCanvas';
@@ -163,13 +163,21 @@ test('a Go live the server refuses leaves the layers and undo as they were', asy
   expect(project.canUndo).toBe(true);
 });
 
+test('a new room\'s link is on the page\'s own origin, whatever origin the response names', async () => {
+  server.route('POST /api/rooms', () => [200, { id: ID, link: `https://elsewhere.example/?room=${ID}` }]);
+  await social.boot();
+  expect(await startPublic()).toBe(true);
+  expect(room.link).toBe(`${appOrigin()}/?room=${ID}`);
+  expect(room.link).not.toContain('elsewhere');
+});
+
 test('startRoom POSTs the room with the draft\'s signal and no password; a private one sends its password and no signal', async () => {
   await social.boot();
   expect(room.startDraft.signal).toBe(null);
   expect(await startPublic({ signal: 'chat' })).toBe(true);
   expect(server.sent('POST', '/api/rooms')[0].body).toEqual({ name: 'Night shift', public: true, allowGuests: true, max: 12, signal: 'chat' });
   expect(room.role).toBe('host');
-  expect(room.link).toBe(`http://localhost/?room=${ID}`);
+  expect(room.link).toBe(`${appOrigin()}/?room=${ID}`);
   room.leave();
 
   expect(await room.startRoom({ name: 'Back room', welcome: '', isPublic: false, password: 'sesame', allowGuests: false, max: 3, signal: 'chat' })).toBe(true);
