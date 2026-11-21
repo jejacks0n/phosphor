@@ -453,7 +453,7 @@ else {
   handle('phosphor:open-in-window', openInWindow);
   handle('phosphor:save-project', saveProject);
   handle('phosphor:releases', () => releases());
-  // The Plugins dialog's marketplace: the list from phosphor.work and a listed plugin's files from raw GitHub.
+  // The Plugins dialog's marketplace: the list from phosphor.work (next.phosphor.work's for a pre-release) and a listed plugin's files from raw GitHub.
   handle('phosphor:plugin-list', () => fetchText(LIST_URL, { fetch: net.fetch, most: MOST_LIST_BYTES, listUrl: LIST_URL }));
   handle('phosphor:plugin-file', (_entry, url, most) => fetchFile(url, most, { fetch: net.fetch }));
   ipcMain.on('phosphor:files-ready', (event) => {

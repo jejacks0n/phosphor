@@ -34,6 +34,8 @@ export const noFilePickers = (context) => context.addInitScript(() => {
 
 export const test = base.extend({
   consented: [true, { option: true }],
+  // A policy refusal a test expects (framing's), as a regular expression on the console message.
+  expectedRefusal: [null, { option: true }],
   context: async ({ context, consented }, use) => {
     await noBlur(context);
     await noFilePickers(context);
@@ -42,9 +44,9 @@ export const test = base.extend({
     await context.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
     await use(context);
   },
-  page: async ({ page }, use) => {
+  page: async ({ page, expectedRefusal }, use) => {
     const refused = [];
-    page.on('console', (m) => { if (m.text().includes('Content Security Policy')) refused.push(m.text()); });
+    page.on('console', (m) => { if (m.text().includes('Content Security Policy') && !expectedRefusal?.test(m.text())) refused.push(m.text()); });
     await use(page);
     base.expect(refused).toEqual([]);
   },

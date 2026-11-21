@@ -19,7 +19,7 @@ Phosphor's rules come from `AGENTS.md`, and that file binds everything you write
     their own project: run one with `--project browser-desktop`, not `--project browser`.
 
   Up to 3 builders run at once, each in its own worktree. The browser tests are safe side by side: each run takes the
-  next free port. The end-to-end tests aren't: their config serves the build on fixed ports, `4180` and `4181`, and
+  next free port. The end-to-end tests aren't: their config serves the build on one fixed port, `4180`, and
   reuses a server it finds there, so one builder's run would test another's build, and the config has no way to give
   it another port. So never run `npm test` or `npm run test:e2e`. When the bug belongs in `tests/e2e`, write the test
   there all the same; CI runs it on the pull request.

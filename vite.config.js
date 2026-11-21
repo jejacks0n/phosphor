@@ -65,6 +65,12 @@ export function securityHeaders(policy) {
   return `/*\n  Content-Security-Policy: ${policy}\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n`;
 }
 
+// The headers of a _headers file's /* block, as the build writes it (securityHeaders): name and value pairs. The preview
+// server sends them, since vite preview doesn't read the file, so a page under test gets the policy it will have.
+export function previewHeaders(text) {
+  return text.split('\n').filter((line) => /^ {2}[\w-]+: /.test(line)).map((line) => line.trim().split(/: (.*)/s).slice(0, 2));
+}
+
 // The open-source packages a build holds, for About's Licenses: each package any of the build's modules came from
 // (moduleIds), plus extra (the desktop app's main process, which isn't bundled), with its version, license, page and
 // license text, by name.
@@ -145,6 +151,19 @@ export default defineConfig(({ mode }) => {
           if (env.VITE_DESKTOP === '1') return;
           const policy = contentSecurityPolicy(String(bundle['index.html'].source), env.VITE_SOCIAL_API || 'https://api.phosphor.work', { header: true });
           this.emitFile({ type: 'asset', fileName: '_headers', source: securityHeaders(policy) });
+        },
+      },
+      {
+        // vite preview serves dist/ without its _headers file, so the end-to-end tests would run with no policy.
+        name: 'phosphor-preview-headers',
+        configurePreviewServer(server) {
+          const file = resolve(server.config.root, server.config.build.outDir, '_headers');
+          if (!existsSync(file)) return;
+          const headers = previewHeaders(readFileSync(file, 'utf8'));
+          server.middlewares.use((req, res, next) => {
+            headers.forEach(([name, value]) => res.setHeader(name, value));
+            next();
+          });
         },
       },
       {

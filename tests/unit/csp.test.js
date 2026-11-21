@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { contentSecurityPolicy, securityHeaders } from '../../vite.config.js';
+import { contentSecurityPolicy, securityHeaders, previewHeaders } from '../../vite.config.js';
 
 const HTML = '<html><head><script>window.a = 1;</script></head><body></body></html>';
 const directive = (policy, name) => policy.split('; ').find((d) => d.startsWith(`${name} `));
@@ -39,6 +39,15 @@ describe('the web build headers',() => {
 
   it('_headers sends the policy and the other security headers for every path', () => {
     expect(securityHeaders('P')).toBe('/*\n  Content-Security-Policy: P\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n');
+  });
+
+  it('the preview server sends the /* headers of _headers, values whole', () => {
+    expect(previewHeaders(securityHeaders("default-src 'self'; a: b"))).toEqual([
+      ['Content-Security-Policy', "default-src 'self'; a: b"],
+      ['X-Content-Type-Options', 'nosniff'],
+      ['Referrer-Policy', 'strict-origin-when-cross-origin'],
+      ['Permissions-Policy', 'camera=(), microphone=(), geolocation=()'],
+    ]);
   });
 
   const out = mkdtempSync(join(tmpdir(), 'phosphor-csp-'));
