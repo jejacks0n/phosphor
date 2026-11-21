@@ -205,7 +205,7 @@ test('a filter that isn\'t installed keeps its values through a save and an open
   expect(document.querySelector('.modal-dialog').textContent).toContain('Left out: the plugin filter Glow.');
 });
 
-test('a filter that\'s on refuses a room, naming it, beside a plugin solver\'s words', async () => {
+test('a filter\'s settings held refuse a room, naming it, beside a plugin solver\'s words', async () => {
   const { project } = await drawing();
   const room = useRoomStore();
   const host = await mount(StartRoomPage);
@@ -214,7 +214,7 @@ test('a filter that\'s on refuses a room, naming it, beside a plugin solver\'s w
   project.setSlider('filterOptions', { [ref]: { name: 'Aberration', values: { distance: 2 } } });
   project.commitSliders('filterOptions');
   await nextTick();
-  const words = 'The plugin filter Aberration is on, which rooms don\'t use. Reset it or switch it off first.';
+  const words = 'This drawing holds settings for the plugin filter Aberration, which rooms don\'t use. Reset it first.';
   expect(room.pluginSolversWhy).toBe(words);
   expect(goLive().disabled).toBe(true);
   expect(goLive().title).toBe(words);

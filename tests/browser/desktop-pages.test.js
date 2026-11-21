@@ -415,5 +415,5 @@ test('DesktopStartPage keeps Start a room off while a layer is on a plugin solve
   project.commitSliders('filterOptions');
   await nextTick();
   expect(button('Start a room').disabled).toBe(true);
-  expect(button('Start a room').title).toBe('The plugin filter Glow is on, which rooms don\'t use. Reset it or switch it off first.');
+  expect(button('Start a room').title).toBe('This drawing holds settings for the plugin filter Glow, which rooms don\'t use. Reset it first.');
 });
