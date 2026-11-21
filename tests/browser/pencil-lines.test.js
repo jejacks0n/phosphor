@@ -176,3 +176,31 @@ test('the Single and Double labels follow a language change', async () => {
     await setLocale('en', { persist: false });
   }
 });
+
+test("Draw with sets the font's styles apart from Double by a rule that the arrow keys pass over", async () => {
+  const { project, workspace } = await scene();
+  workspace.editorTab = 'output';
+  workspace.setActiveTool('pencil');
+  const host = document.createElement('div');
+  document.body.append(host);
+  mounted = createApp(EditToolbar).use(i18n);
+  mounted.mount(host);
+  const menu = async () => {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    host.querySelector('.option-menu .dropdown-trigger').click();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    return [...host.querySelector('.option-menu .dropdown-content').children];
+  };
+  expect((await menu()).some((el) => el.getAttribute('role') === 'separator')).toBe(false); // no styles of the font's own: no rule
+  host.querySelector('.option-menu .dropdown-trigger').click();
+  await project.setDrawingFont(fontWith(HEAVY));
+  const items = await menu();
+  const rule = items.findIndex((el) => el.getAttribute('role') === 'separator');
+  expect(rule).toBeGreaterThan(0);
+  expect(items[rule - 1].textContent).toContain('Double');
+  expect(items[rule + 1].textContent).toContain('Heavy');
+  items[rule - 1].focus();
+  items[rule - 1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  expect(document.activeElement).toBe(items[rule + 1]);
+  host.remove();
+});

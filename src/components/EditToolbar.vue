@@ -669,13 +669,14 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             <ToggleGroup :model-value="shownToggles(option)" :options="option.options" :label="option.label" :single="!!option.single" @update:model-value="setOptionValue(workspace, option, $event)"/>
           </template>
           <DropdownMenu v-else-if="option.type === 'dropdown'" class="option-menu" align="left" :label="shownChoice(option)?.label ?? option.label">
-            <button
-                v-for="choice in offered(option)"
-                :key="String(choice.value)"
-                class="choice"
-                :class="{ on: shownChoice(option) === choice }"
-                @click="setOptionValue(workspace, option, choice.value)"
-            ><span v-if="offered(option).some((c) => c.glyph)" class="glyph" :class="{ 'display-font': choice.glyphFont }">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
+            <template v-for="choice in offered(option)" :key="String(choice.value)">
+              <div v-if="choice.divider" class="menu-rule" role="separator"/><!-- not a button: the arrow keys pass over it -->
+              <button
+                  class="choice"
+                  :class="{ on: shownChoice(option) === choice }"
+                  @click="setOptionValue(workspace, option, choice.value)"
+              ><span v-if="offered(option).some((c) => c.glyph)" class="glyph" :class="{ 'display-font': choice.glyphFont }">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
+            </template>
           </DropdownMenu>
           <CharField v-else-if="option.type === 'char'" :model-value="optionValue(workspace, option)" :label="option.label" @update:model-value="setOptionValue(workspace, option, $event)"/>
           <RangeField v-else compact :setting="option" :model-value="optionValue(workspace, option)" @update:model-value="setOptionValue(workspace, option, $event)" @commit="option.commit?.()"/>
@@ -1137,6 +1138,12 @@ div.vector-options > :deep(button:disabled) {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   line-height: 1;
+}
+
+/* The rule between Single and Double and the font's own line styles. */
+.option-menu div.menu-rule {
+  margin: 4px 0;
+  border-top: 1px solid var(--surface-3);
 }
 
 .option-menu span.glyph.display-font {

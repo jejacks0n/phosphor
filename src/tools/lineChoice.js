@@ -22,9 +22,10 @@ export function drawnValue(value, font, fallback) {
   return style ? lineValue(style) : fallback;
 }
 
-// The font's own offered styles as choices, to follow Double; their glyphs draw in the display font.
-export const lineChoices = (font) => offeredStyles(font).filter((s) => !s.stock).map((s) => ({
-  value: lineValue(s), label: s.name, glyph: s.chars[2] + s.chars[0], glyphFont: true,
+// The font's own offered styles as choices, to follow Double; their glyphs draw in the display font. The first has a
+// rule above it (divider), setting them apart from Single and Double.
+export const lineChoices = (font) => offeredStyles(font).filter((s) => !s.stock).map((s, i) => ({
+  value: lineValue(s), label: s.name, glyph: s.chars[2] + s.chars[0], glyphFont: true, divider: i === 0,
 }));
 
 // A stock choice that goes when the font doesn't offer it (the toolbar then shows what's drawn instead).
