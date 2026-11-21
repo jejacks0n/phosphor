@@ -40,8 +40,7 @@ const note = computed(() => {
 </script>
 
 <template>
-  <div class="blocks">
-    <span class="label">{{ t('palette.fonts.blocks') }}</span>
+  <div class="blocks" role="group" :aria-label="t('palette.fonts.blocks')"><!-- under the Blocks tab, which shows the name -->
     <button
         v-for="(b, i) in BLOCKS"
         :key="b.key"
@@ -69,14 +68,6 @@ div.blocks {
   flex-wrap: wrap;
   gap: 4px;
   align-items: stretch;
-}
-
-span.label {
-  flex-basis: 100%;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 button.tile.moved span.slot {

@@ -354,6 +354,14 @@ test('shows the eight blocks, and where CP437 would put a moved one', async () =
   expect(host.querySelector('.edit-side .actions').textContent).not.toContain('Find blocks again');
 });
 
+test('under the Blocks tab the blocks have no second Blocks heading, and are a group named Blocks', async () => {
+  await mount({ font: cp437Font });
+  const group = host.querySelector('.blocks');
+  expect(group.textContent).not.toMatch(/^\s*Blocks/);
+  expect(group.getAttribute('role')).toBe('group');
+  expect(group.getAttribute('aria-label')).toBe('Blocks');
+});
+
 test('a font with every block where CP437 puts it says so', async () => {
   await mount({ font: cp437Font });
   expect(text()).toContain('All eight blocks found');
