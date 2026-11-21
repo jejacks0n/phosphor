@@ -214,7 +214,9 @@ const turnSelection = (op) => {
 const offered = (option) => option.choices.filter(c => !c.when || c.when(workspace));
 const shownChoice = (option) => {
   const current = option.choices.find(c => c.value === optionValue(workspace, option)), list = offered(option);
-  return list.includes(current) ? current : list.find(c => c.value === current?.instead) ?? current;
+  if (list.includes(current)) return current;
+  const instead = typeof current?.instead === 'function' ? current.instead(workspace) : current?.instead;
+  return list.find(c => c.value === instead) ?? current;
 };
 
 // A selection the tools keep to: the Magic Wand's or the Select tool's rectangle (either, in both

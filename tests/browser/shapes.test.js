@@ -367,3 +367,30 @@ test('an ellipse set to a font\'s style draws half-blocks', async () => {
   expect(project.cells.some((c) => H.includes(c.char))).toBe(false);
   expect(workspace.shapeDrawWith).toBe('line:l1');
 });
+
+// The choice the toolbar's Draw with shows: the setting's own when it's on offer, else the one it names in `instead`.
+const shownDrawWith = async (settings) => {
+  const { workspace } = await heavyScene(settings);
+  const { default: shapes } = await import('@/tools/shapes');
+  const choices = shapes.options.find((o) => o.key === 'shapeDrawWith').choices;
+  const current = choices.find((c) => c.value === workspace.shapeDrawWith);
+  const list = choices.filter((c) => !c.when || c.when(workspace));
+  const instead = typeof current?.instead === 'function' ? current.instead(workspace) : current?.instead;
+  return (list.includes(current) ? current : list.find((c) => c.value === instead) ?? current).value;
+};
+
+test.each(['single', 'double', 'line:l1'])('an ellipse set to %s shows Half-block', async (shapeDrawWith) => {
+  expect(await shownDrawWith({ shapeKind: 'ellipse', shapeDrawWith })).toBe('half');
+});
+
+test('a rectangle set to a Single the font hides shows its first offered style', async () => {
+  const lines = { hide: ['single'], styles: HEAVY_FONT.lines.styles };
+  const s = await shiftScene({ shapeKind: 'rect', shapeDrawWith: 'single' }, { ...HEAVY_FONT, lines });
+  const { default: shapes } = await import('@/tools/shapes');
+  const choices = shapes.options.find((o) => o.key === 'shapeDrawWith').choices;
+  const current = choices.find((c) => c.value === 'single');
+  const list = choices.filter((c) => !c.when || c.when(s.workspace));
+  expect(list.includes(current)).toBe(false);
+  const instead = typeof current.instead === 'function' ? current.instead(s.workspace) : current.instead;
+  expect(list.find((c) => c.value === instead)?.value).toBe('double');
+});

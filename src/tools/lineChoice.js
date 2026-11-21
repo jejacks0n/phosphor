@@ -20,7 +20,8 @@ export const lineChoices = (font) => offeredStyles(font).filter((s) => !s.stock)
 export const stockChoice = (font, id, choice, fallback) => Object.defineProperties({}, {
   ...Object.getOwnPropertyDescriptors(choice), // copied as descriptors, so the label getter stays live
   when: { value: (ws) => !!styleById(font, id)?.offered && (choice.when?.(ws) ?? true), enumerable: true }, // and the choice's own `when`
-  instead: { get() { const first = offeredStyles(font)[0]; return first ? lineValue(first) : fallback; }, enumerable: true },
+  // a function of the workspace, so a choice hidden by its own `when` shows the fallback
+  instead: { get() { return (ws) => { const first = offeredStyles(font)[0]; return first && (!choice.when || choice.when(ws)) ? lineValue(first) : fallback; }; }, enumerable: true },
 });
 
 // A function of the font whose result is kept per font, so the toolbar sees the same choices each time.
