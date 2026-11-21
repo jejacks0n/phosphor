@@ -53,7 +53,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // where those follow a terminal's theme), so what's drawn with it exports as it (edit cells' fgIndex, bgIndex).
     editFgIndex: undefined,
     editBgIndex: undefined,
-    pluginTools: useLocalStorage('phosphor.pluginTools', {}), // { [ref]: { [optionId]: value } }: the options of plugin brushes (and shapes), kept in the browser
+    pluginTools: useLocalStorage('phosphor.pluginTools', {}), // { ['brush:' or 'shape:' + ref]: { [optionId]: value } }: the options of plugin brushes and shapes (tools/pluginTool.js), kept in the browser
     recentColors: useLocalStorage('phosphor.recentColors', []),
     ansiRenderer: useLocalStorage('phosphor.ansiRenderer', 'canvas'), // the ANSI view's renderer (trial): 'canvas' | 'dom'
     displayFont: useLocalStorage('phosphor.displayFont', 'jetbrains'), // the font the art is drawn in: an id in displayFonts.js, or a loaded font's

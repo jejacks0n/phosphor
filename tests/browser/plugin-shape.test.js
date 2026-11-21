@@ -3,7 +3,9 @@
 import { test, expect, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
+import { createPinia, getActivePinia, setActivePinia } from 'pinia';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { getTool } from '@/tools';
 import { createTestApp, loadImage } from '../support/app.js';
 import { onPlugin } from '../support/pluginSolvers.js';
 import { i18n, t } from '@/i18n/index.js';
@@ -108,13 +110,14 @@ test('a shape of two outlines makes the second its more', async () => {
 
 test('outline gets the values set through the toolbar, a color as { r, g, b }, once a drag', async () => {
   const calls = [];
-  const { workspace, drag } = await shaper({ outline: (options) => { calls.push(options); return TRIANGLE; } });
+  const { ref, drag } = await shaper({ outline: (options) => { calls.push(options); return TRIANGLE; } });
   await mount();
-  const slider = vshape.options.find((o) => o.label === 'Points'), color = host.querySelector('input[type=color]');
+  const slider = document.getElementById(`${ref}/points`), color = host.querySelector('input[type=color]');
   expect(color.getAttribute('aria-label')).toBe('Tint');
   color.value = '#00ff00';
   color.dispatchEvent(new Event('input'));
-  slider.set(workspace, 7);
+  slider.value = '7';
+  slider.dispatchEvent(new Event('input'));
   drag({ x: 10, y: 10 }, { x: 15, y: 15 }, { x: 20, y: 20 }, { x: 30, y: 20 });
   expect(calls).toEqual([{ points: 7, tint: { r: 0, g: 255, b: 0 } }]);
 });
@@ -192,4 +195,22 @@ test('in a room it isn\'t in the row, and a drag draws a rectangle', async () =>
   expect(only(project)[0].points).toHaveLength(4);
   useRoomStore().role = null;
   expect(shapeTool.shapeKind(workspace)).toBe(ref);
+});
+
+test('a brush and a shape of one id in one plugin keep their values apart, in the browser too', async () => {
+  const { workspace, ref } = await shaper();
+  const option = { id: 'points', kind: 'slider', name: 'Points', min: 1, max: 12, step: 1, default: 5 };
+  const brush = { id: 'triangle', name: 'Triangle', icon: ICON, options: [option], move() {} };
+  usePluginStore().useScript('phosphor.outlines', 'h', { brushes: [brush], shapes: [shape({ options: [option] })] });
+  const brushOption = getTool(ref).options[0], shapeOption = vshape.options.find((o) => o.label === 'Points');
+  brushOption.set(workspace, 2);
+  shapeOption.set(workspace, 9);
+  expect([brushOption.get(workspace), shapeOption.get(workspace)]).toEqual([2, 9]);
+  await nextTick();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const pinia = getActivePinia();
+  setActivePinia(createPinia());
+  const fresh = useWorkspaceStore();
+  expect([brushOption.get(fresh), shapeOption.get(fresh)]).toEqual([2, 9]);
+  setActivePinia(pinia);
 });

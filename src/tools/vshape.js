@@ -17,9 +17,9 @@ import vselect from '@/tools/vselect.js';
 import { pluginShapeFor, scriptOptions } from '@/plugins/solvers.js';
 import { readOutlines } from '@/plugins/script.js';
 import { ManifestError } from '@/plugins/manifest.js';
-import { usePluginStore } from '@/store/PluginStore';
+import { refusalWords, usePluginStore } from '@/store/PluginStore';
 import { useRoomStore } from '@/store/RoomStore';
-import { firstUnderMark, sayFailed, toolOption, valuesOf } from '@/tools/pluginBrush.js';
+import { firstUnderMark, sayFailed, toolOption, valuesOf } from '@/tools/pluginTool.js';
 
 // { from, key, kind, plugin (a plugin shape's pluginShapes entry, as the drag began), outlines (its, once its outline
 // was called; null when that failed) }
@@ -49,9 +49,9 @@ export function shapeKind(workspace) {
 // toast and in its plugin's row). The first call of a visit runs under the hang mark.
 function plugged(workspace, { ref, pluginId, hash, def }) {
   try {
-    return readOutlines(firstUnderMark('shape', ref, hash, pluginId, () => def.outline(scriptOptions(def, valuesOf(workspace, ref, def)))));
+    return readOutlines(firstUnderMark('shape', ref, hash, pluginId, () => def.outline(scriptOptions(def, valuesOf(workspace, 'shape', ref, def)))));
   } catch (error) {
-    sayFailed('plugins.shapeFailed', def.name, pluginId, error instanceof ManifestError ? t(`plugins.errors.${error.code}`, error.detail) : error);
+    sayFailed('plugins.shapeFailed', def.name, pluginId, error instanceof ManifestError ? refusalWords(error) : error);
     return null;
   }
 }
@@ -108,7 +108,7 @@ export default {
         key: 'vectorSides', label: t('tools.vshape.sides'), title: t('tools.vshape.sidesTitle'), min: 3, max: 12, readout: true,
         when: (ws) => shapeKind(ws) === 'polygon',
       },
-      ...plugged.flatMap(({ ref, def }) => def.options.map((option) => ({ ...toolOption(ref, def, option), when: (ws) => shapeKind(ws) === ref }))),
+      ...plugged.flatMap(({ ref, def }) => def.options.map((option) => ({ ...toolOption('shape', ref, def, option), when: (ws) => shapeKind(ws) === ref }))),
     ];
   },
 

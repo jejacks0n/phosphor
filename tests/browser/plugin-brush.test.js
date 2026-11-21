@@ -116,19 +116,19 @@ test('the toolbar draws the options, keeps changes, and ] steps the size to its 
   expect(color.value).toBe('#ff0000');
   color.value = '#00ff00';
   color.dispatchEvent(new Event('input'));
-  expect(app.workspace.pluginTools[ref].tint).toBe('#00ff00');
+  expect(app.workspace.pluginTools[`brush:${ref}`].tint).toBe('#00ff00');
   [...host.querySelectorAll('.checkbox-wrapper')].find((l) => l.textContent.trim() === 'Wet').querySelector('input').click();
-  expect(app.workspace.pluginTools[ref].wet).toBe(true);
+  expect(app.workspace.pluginTools[`brush:${ref}`].wet).toBe(true);
   const trigger = [...host.querySelectorAll('.option-menu .dropdown-trigger')].at(-1);
   trigger.click();
   await nextTick();
   expect([...host.querySelectorAll('button.choice')].map((b) => b.textContent.trim())).toEqual(['Drag', 'Spread']);
   const spread = [...host.querySelectorAll('button.choice')][1];
   spread.click();
-  expect(app.workspace.pluginTools[ref].mode).toBe(1);
+  expect(app.workspace.pluginTools[`brush:${ref}`].mode).toBe(1);
   await nextTick();
   await new Promise((resolve) => setTimeout(resolve, 20));
-  expect(JSON.parse(localStorage.getItem('phosphor.pluginTools'))[ref].mode).toBe(1);
+  expect(JSON.parse(localStorage.getItem('phosphor.pluginTools'))[`brush:${ref}`].mode).toBe(1);
   // A fresh Pinia and workspace read the kept value back through the option's own get.
   const tool = getTool(ref);
   const pinia = getActivePinia(), other = createPinia();
