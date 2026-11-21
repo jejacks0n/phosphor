@@ -18,22 +18,39 @@ export function machineOf(path) {
   return VILER_MACHINES[top] ?? 'Other';
 }
 
-// Character sets: by folder or file name, falling back to CP437.
+// Character sets. Folder rules first (a whole folder is one script), then rules on the file's name, which are matched
+// against its words (split on anything but letters and digits) and never against substrings, so BRUSH is not Russian.
+const FOLDER_CHARS = [
+  [/^(CPIKOI12|RU_UTIL)$/, 'cyrillic'], [/^HEB_UTIL$/, 'hebrew'], [/^VGAGREEK$/, 'greek'],
+  [/^(CPIISO12|CPIWIN12|CPIMAC12)$/, 'latin1'],
+];
+// ISO 8859 parts that are not Latin scripts (FONTS.TXT's FREEBSD fonts are named ISOnn after them); the rest are Latin.
+const ISO_SCRIPTS = { 5: 'cyrillic', 6: 'arabic', 7: 'greek', 8: 'hebrew' };
+const WORD_CHARS = [
+  [/(KOI8)|^(CYR|CYRUS$|RUS$|RUSS|CP866|CP1251|SWIS1251|SWIS1131)/, 'cyrillic'],
+  [/^(HEB|OLIPC1HE)/, 'hebrew'],
+  [/^(GREEK|GRK$|ACERGR|ATISWGR|MTGRC|OLIPC1GR|OLIVGR|HYUNMGR|GRMONO)/, 'greek'],
+  [/^ARAB/, 'arabic'],
+  [/^(ARMSCII|HAIK)/, 'armenian'],
+  [/^(C64|PETSCII)/, 'petscii'],
+  [/TOPAZ/, 'latin1'],
+];
+
 export function charsOf(path) {
   const parts = path.split('/');
   const [collection, top] = parts;
-  const name = parts[parts.length - 1];
   if (collection === 'moebius') {
     if (top === 'amiga') return 'latin1';
     if (top === 'c64') return 'petscii';
     if (top !== 'discmaster') return 'cp437';
   }
-  if (/CPIKOI|RU_UTIL/i.test(path) || /koi|cyr|rus/i.test(name)) return 'cyrillic';
-  if (/HEB_UTIL/i.test(path) || /heb/i.test(name)) return 'hebrew';
-  if (/VGAGREEK/i.test(path) || /greek|grk/i.test(name)) return 'greek';
-  if (/arab/i.test(name)) return 'arabic';
-  if (/CPIISO|CPIWIN|CPIMAC/i.test(path) || /topaz|iso|latin/i.test(name)) return 'latin1';
-  if (/c64|petscii/i.test(name)) return 'petscii';
+  for (const folder of parts.slice(1, -1)) for (const [re, chars] of FOLDER_CHARS) if (re.test(folder)) return chars;
+  const words = parts[parts.length - 1].replace(/\.[^.]*$/, '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  for (const word of words) {
+    const iso = /^ISO(\d\d?)(?!\d)/.exec(word);
+    if (iso) return ISO_SCRIPTS[+iso[1]] ?? 'latin1';
+    for (const [re, chars] of WORD_CHARS) if (re.test(word)) return chars;
+  }
   return 'cp437';
 }
 

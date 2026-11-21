@@ -113,6 +113,30 @@ describe('machineOf and charsOf', () => {
     expect(charsOf('viler/SYSTEM/FREEDOS/CPIISO12/CP819.F08')).toBe('latin1');
   });
 
+  it('ISO fonts take the script of their ISO 8859 part', () => {
+    expect(charsOf('viler/SYSTEM/FREEBSD/ISO05.F16')).toBe('cyrillic');
+    expect(charsOf('viler/SYSTEM/FREEBSD/ISO06.F16')).toBe('arabic');
+    expect(charsOf('viler/SYSTEM/FREEBSD/ISO07.F16')).toBe('greek');
+    expect(charsOf('viler/SYSTEM/FREEBSD/ISO08.F16')).toBe('hebrew');
+    expect(charsOf('viler/SYSTEM/FREEBSD/ISO01.F16')).toBe('latin1');
+    expect(charsOf('viler/SYSTEM/FREEBSD/ISO15_T.F16')).toBe('latin1');
+    expect(charsOf('moebius/discmaster/Xen-Wide-ISO9.f08')).toBe('latin1');
+    expect(charsOf('moebius/discmaster/ISOTopazPL.f08')).toBe('latin1');
+  });
+
+  it('each name rule matches whole words, so unrelated fonts stay cp437', () => {
+    for (const p of ['viler/SOFTWARE/FE2/BRUSH.F16', 'viler/BIGPILE/GRUSS.F16', 'viler/BIGPILE/PRISON.F14', 'viler/BIGPILE/SHEBA.F14', 'viler/BIGPILE/CYBER.F16', 'viler/BIGPILE/ORABIC.F16', 'viler/PC-OTHER/PRISM.F16', 'viler/PC-OTHER/AC64.F16', 'viler/PC-OTHER/ISOCP850.F16', 'viler/PC-OTHER/TERMISO80.F16'])
+      expect(charsOf(p), p).toBe('cp437');
+    expect(charsOf('viler/BIGPILE/KOI8-R.F16')).toBe('cyrillic');
+    expect(charsOf('moebius/discmaster/Venuskoi8.f08')).toBe('cyrillic');
+    expect(charsOf('viler/BIGPILE/866_RUS.F16')).toBe('cyrillic');
+    expect(charsOf('viler/BIGPILE/HEB-BOLD.F16')).toBe('hebrew');
+    expect(charsOf('viler/BIGPILE/GREEK2.F14')).toBe('greek');
+    expect(charsOf('viler/BIGPILE/ARABKUFI.F14')).toBe('arabic');
+    expect(charsOf('viler/SYSTEM/FREEBSD/HAIK8.F16')).toBe('armenian');
+    expect(charsOf('moebius/discmaster/Topaz_1.f11')).toBe('latin1');
+  });
+
   it('machines come from the top folder', () => {
     expect(machineOf('viler/PC-IBM/EGA8.F14')).toBe('IBM PC');
     expect(machineOf('viler/NON-PC/APC-III.F08')).toBe('Other computers');
