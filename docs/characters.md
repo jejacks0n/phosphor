@@ -228,7 +228,7 @@ Box-drawing lines are drawn from a font's own pieces. A bitmap font can carry li
 - **Connect and Flip stay in a style**: **Connect** joins only the lines of the style being drawn, and flipping a selection turns a style's pieces into the same style's.
 - **Single and Double**: A font that doesn't draw one of them properly can **Hide** it, and **Show** brings it back. It leaves **Draw with** for that font only, and its characters in a selection or a file are left alone when you flip. A **Draw with** set to a style that isn't offered (hidden, deleted, or not in this font) draws, and shows, the first style that is; with none offered, the Pencil draws **Colors only** and Shapes **Half-block**.
 - **Ellipses**: An ellipse set to any line style draws half-blocks, as it does for Single and Double.
-- **They're kept**: With the drawing (saved, autosaved, and one undo step on the drawing's font) and with this browser's copy of the font, and they go to the artists drawing in a room.
+- **They're kept**: With the drawing (saved, autosaved, and one undo step on the drawing's font) and with this browser's copy of the font, and they go to the artists drawing in a room. A font that's only in this browser has no undo, so deleting one of its styles shows "Deleted *name*." with an **Undo** button that puts the style back where it was; deleting a set does the same.
 - **In a room**: Lines can't change in a room. Artists drawing with the host get the font's lines with its blocks, and draw in them; watchers see the drawing in the font ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
 ### The Font's Sets

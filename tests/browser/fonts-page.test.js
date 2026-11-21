@@ -11,8 +11,9 @@ import { usePaletteStore } from '@/store/PaletteStore.js';
 import { fontId, blocksOf, fontKey } from '@/lib/BitmapFont.js';
 import { storedBitmapFont } from '@/lib/userFonts';
 import { cp437Font, lowerAt240, noLowerHalf } from '../support/blockFonts.js';
-import { addFont, addBitmapFont, loadFonts, removeFont } from '@/lib/userFonts';
+import { addFont, addBitmapFont, loadFonts, removeFont, storeFontPart } from '@/lib/userFonts';
 import { openFontSetup } from '@/composables/useFontSetup.js';
+import { toastMessage, toastAction, closeToast } from '@/composables/useToast.js';
 
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
 const rawFile = (height, name, fill = 0) => new File([new Uint8Array(256 * height).fill(fill)], name);
@@ -706,6 +707,44 @@ test('two clicks on a stored font\u2019s sheet, the second before the first is w
   await press(slotCell(2));
   await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines?.styles[0].slots.slice(0, 3)).toEqual([1, 2, null]));
   expect(workspace.userFonts.find((f) => f.id === stored.id).lines.styles[0].slots.slice(0, 3)).toEqual([1, 2, null]);
+});
+
+test('Delete on a font kept only in this browser says so, with an Undo that puts it back where it was', async () => {
+  const { workspace } = await mount();
+  onTestFinished(() => closeToast());
+  const thin = { ...heavy, id: 'l2', name: 'Thin' };
+  const stored = await addBitmapFont(new File([cp437Font.bytes], 'L.F16'));
+  await storeFontPart(stored.id, 'lines', { hide: [], styles: [heavy, thin] });
+  await storeFontPart(stored.id, 'sets', { hideStock: false, sets: [{ id: 's1', name: 'Grit', slots: [250] }] });
+  workspace.userFonts = await loadFonts();
+  await vi.waitFor(() => expect(row('L')).toBeTruthy());
+  await press(row('L'));
+  await vi.waitFor(() => expect(sectionTab('Lines')).toBeTruthy());
+  await press(sectionTab('Lines'));
+  await press(host.querySelector('.lines .card button.ghost')); // Heavy's Delete
+  expect(toastMessage.value).toBe('Deleted Heavy.');
+  expect(toastAction.value.label).toBe('Undo');
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles.map((s) => s.id)).toEqual(['l2']));
+  toastAction.value.run();
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles).toEqual([heavy, thin]));
+  await vi.waitFor(() => expect([...host.querySelectorAll('.lines .card input')].map((el) => el.value)).toEqual(['Heavy', 'Thin']));
+  await press(sectionTab('Sets'));
+  await press(host.querySelector('.sets .set button.ghost'));
+  expect(toastMessage.value).toBe('Deleted Grit.');
+  toastAction.value.run();
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).sets.sets.map((s) => s.name)).toEqual(['Grit']));
+});
+
+test('Delete on the drawing\u2019s font is an undo step, with no toast', async () => {
+  const { project } = await mount({ font: { ...cp437Font, lines: { hide: [], styles: [heavy] } } });
+  onTestFinished(() => closeToast());
+  closeToast();
+  await press(sectionTab('Lines'));
+  await press(host.querySelector('.lines .card button.ghost'));
+  expect(project.drawingFont.lines).toBeUndefined();
+  expect(toastMessage.value).toBe(null);
+  project.undo();
+  expect(project.drawingFont.lines.styles).toEqual([heavy]);
 });
 
 test('lines and sets are read-only in a room', async () => {

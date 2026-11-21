@@ -11,6 +11,7 @@ import { fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlo
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
+import { toast } from '@/composables/useToast';
 import FontBlocks from '@/components/FontBlocks.vue';
 import FontLines from '@/components/FontLines.vue';
 import FontSets from '@/components/FontSets.vue';
@@ -153,13 +154,29 @@ watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => `${f.id}:${f
 // browser's store is written builds on it, then the store.
 const setPart = (key, value) => run(async () => {
   if (isDrawn.value) await project.setDrawingFont({ ...font.value, [key]: value });
-  if (isStored.value) {
-    const id = chosen.value.id;
-    if (!isDrawn.value) kept.value = withPart(kept.value, key, value);
-    workspace.userFonts = workspace.userFonts.map((f) => (f.id === id ? withPart(toRaw(f), key, value) : f));
-    await storeFontPart(id, key, value ?? null);
-  }
+  if (isStored.value) await storePart(chosen.value.id, key, value);
 });
+const storePart = async (id, key, value) => {
+  if (!isDrawn.value && chosen.value?.id === id) kept.value = withPart(kept.value, key, value);
+  workspace.userFonts = workspace.userFonts.map((f) => (f.id === id ? withPart(toRaw(f), key, value) : f));
+  await storeFontPart(id, key, value ?? null);
+};
+// A style or set deleted ({ entry, at }) from a font kept only in this browser, which has no undo: a toast whose Undo
+// puts it back where it was. The drawing's font has its undo step.
+const removed = ({ entry, at }) => {
+  if (isDrawn.value || !isStored.value) return;
+  const id = chosen.value.id, key = section.value, list = key === 'lines' ? 'styles' : 'sets';
+  const putBack = () => run(async () => {
+    const record = toRaw(workspace.userFonts?.find((f) => f.id === id));
+    if (!record) return; // the font removed since
+    const part = record[key] ?? (key === 'lines' ? { hide: [], styles: [] } : { hideStock: false, sets: [] });
+    if (part[list].some((e) => e.id === entry.id)) return;
+    const items = [...part[list]];
+    items.splice(Math.min(at, items.length), 0, entry);
+    await storePart(id, key, { ...part, [list]: items });
+  });
+  toast(t('palette.fonts.deleted', { name: entry.name }), { action: { label: t('toolbar.undo'), run: putBack } });
+};
 // These blocks (undefined: found again).
 const setBlocks = (blocks) => {
   const found = blocks && findBlocks({ ...font.value, blocks: undefined });
@@ -283,6 +300,7 @@ const exportPalettes = () => {
             :reason="t('palette.fonts.blocksInRoom')"
             @pick="picked = $event"
             @change="setPart(section, $event)"
+            @removed="removed"
         />
         <div class="note">{{ t('palette.fonts.sheetNote') }}</div>
         <div class="grid sheet" :class="{ picking: picked && !inRoom }" :style="styleOf(chosen)" @mouseleave="hovered = null">

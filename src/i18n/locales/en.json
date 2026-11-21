@@ -909,6 +909,7 @@
       "setCharsAria": "{name}’s characters",
       "setPicked": "{name} is open: click slots on the sheet to add them, in order (a slot can go in twice), or type into its field. Backspace takes the last one off.",
       "setsHint": "To add to a set, click into its characters, then click slots on the sheet.",
+      "deleted": "Deleted {name}.",
       "showStockSets": "Show stock sets"
     }
   },

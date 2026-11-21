@@ -13,7 +13,7 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   reason: { type: String, default: '' }, // why it's disabled
 });
-const emit = defineEmits(['pick', 'change']);
+const emit = defineEmits(['pick', 'change', 'removed']); // removed: { entry, at }, a style deleted and where it was
 const { t } = useI18n();
 
 const SAMPLE = '┌─┬─┐ ├─┼─┤ └─┴─┘';
@@ -53,7 +53,9 @@ const rename = (id, field) => {
 };
 const remove = (id) => {
   if (props.picked?.style === id) emit('pick', null);
+  const at = lines.value.styles.findIndex((s) => s.id === id), entry = lines.value.styles[at];
   change(lines.value.styles.filter((s) => s.id !== id));
+  emit('removed', { entry, at });
 };
 const add = () => {
   const id = nextId(lines.value.styles, 'l');

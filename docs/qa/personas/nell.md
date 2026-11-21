@@ -259,7 +259,7 @@ change one cell on the way.
 ### 25. Make a set
 - Does: opens **Sets**, clicks **+ New set**, clicks into its characters, then clicks slots 3, 5, 3 in the sheet. Types an "a" in the field after them. Opens a photo and picks the set from the Characters field's ▾ with **Choose characters** on Random. Unchecks **Show stock sets** and reopens the ▾.
 - Expects: the set holds the three slots with the repeat kept, and the typed character; the ▾ lists her set first, under her font's name, then **Stock**; the photo converts in only her characters; with **Show stock sets** off the stock sets leave the menu, and still show for a font with no sets of her own.
-- Probes: `extremes`: empty the set with Backspace, leave the field and check it's no longer offered, and that one undo brings the whole set back.
+- Probes: `extremes`: empty the set with Backspace, leave the field and check it's no longer offered, and that one undo brings the whole set back; `undo-redo`: on a font of hers that's only in this browser (not the drawing's), delete a set and click **Undo** on the "Deleted …" toast, and check the set is back where it was.
 - Rated: no (drawing)
 
 ### 26. All of it after a reload

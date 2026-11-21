@@ -14,7 +14,7 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   reason: { type: String, default: '' }, // why it's disabled
 });
-const emit = defineEmits(['pick', 'change']);
+const emit = defineEmits(['pick', 'change', 'removed']); // removed: { entry, at }, a set deleted and where it was
 const { t } = useI18n();
 
 const sets = computed(() => props.font.sets ?? { hideStock: false, sets: [] });
@@ -35,7 +35,9 @@ const rename = (id, field) => {
 };
 const remove = (id) => {
   if (props.picked === id) emit('pick', null);
+  const at = sets.value.sets.findIndex((s) => s.id === id), entry = sets.value.sets[at];
   change(sets.value.sets.filter((s) => s.id !== id));
+  emit('removed', { entry, at });
 };
 const add = () => {
   const id = nextId(sets.value.sets, 's');

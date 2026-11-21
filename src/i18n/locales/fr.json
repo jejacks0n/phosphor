@@ -909,6 +909,7 @@
       "setCharsAria": "Caractères de {name}",
       "setPicked": "{name} est ouvert : cliquez sur des emplacements de la feuille pour les ajouter, dans l'ordre (un emplacement peut y être deux fois), ou tapez dans son champ. Retour arrière enlève le dernier.",
       "setsHint": "Pour compléter un jeu, cliquez dans ses caractères, puis sur des emplacements de la feuille.",
+      "deleted": "{name} supprimé.",
       "showStockSets": "Afficher les jeux prédéfinis"
     }
   },
