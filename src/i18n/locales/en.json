@@ -164,7 +164,8 @@
     "chars": {
       "label": "Characters",
       "placeholder": "Characters…",
-      "setsAria": "Character presets"
+      "setsAria": "Character presets",
+      "stockGroup": "Stock"
     },
     "charChoice": {
       "label": "Choose characters",

@@ -6,6 +6,7 @@
 // Characters label (about 15 characters).
 import { t } from '@/i18n';
 import { getSetting } from '../store/settings.js';
+import { fontSetsOf, showsStockSets } from './FontLines.js';
 
 const ANSI_DEFAULT = getSetting('chars').default;
 
@@ -32,3 +33,14 @@ export const ASCII_CHARSETS = [
   preset('classicRamp', ' .:-=+*#%@'),
   preset('longRamp', ' .\'`^",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$'),
 ];
+
+// What the Characters ▾ offers: with a bitmap font that has sets of its own, those first (grouped under the font's
+// name), then the stock sets (grouped under stockLabel) unless the font hides them; otherwise the stock list as is.
+export function charsetPresetsFor(font, stock, stockLabel) {
+  const own = fontSetsOf(font);
+  if (!own.length) return stock;
+  return [
+    ...own.map((s) => ({ name: s.name, chars: s.chars, group: font.name })),
+    ...(showsStockSets(font) ? stock.map((p) => ({ name: p.name, chars: p.chars, group: stockLabel })) : []),
+  ];
+}

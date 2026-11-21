@@ -9,7 +9,7 @@ import { onIOS } from '@/lib/platform';
 // the field it replaces; picking a set commits at once.
 const props = defineProps({
   modelValue: { type: String, required: true },
-  presets: { type: Array, required: true }, // [{ name, chars }]
+  presets: { type: Array, required: true }, // [{ name, chars, group? }]
   id: { type: String, required: true },
 });
 const emit = defineEmits(['update:modelValue']);
@@ -19,6 +19,17 @@ const { t } = useI18n();
 // they're drawn (and wrap onto more lines): there the sets go by their names alone.
 const named = onIOS();
 const current = computed(() => props.presets.findIndex((p) => p.chars === props.modelValue));
+const grouped = computed(() => props.presets.some((p) => p.group));
+const groups = computed(() => {
+  const list = [];
+  props.presets.forEach((preset, i) => {
+    let g = list.find((e) => e.label === preset.group);
+    if (!g) list.push(g = { label: preset.group, items: [] });
+    g.items.push({ preset, i });
+  });
+  return list;
+});
+const label = (preset) => (named ? preset.name : `${preset.name} · ${preview(preset.chars)}`);
 const preview = (chars) => {
   const all = [...chars];
   return all.length > 14 ? `${all.slice(0, 14).join('')}…` : chars;
@@ -43,7 +54,14 @@ function pick(event) {
     >
     <select :aria-label="t('panel.chars.setsAria')" :value="current" @change="pick">
       <option v-if="current < 0" :value="-1" disabled>{{ t('common.custom') }}</option>
-      <option v-for="(preset, i) in presets" :key="preset.name" :value="i">{{ named ? preset.name : `${preset.name} · ${preview(preset.chars)}` }}</option>
+      <template v-if="grouped">
+        <optgroup v-for="g in groups" :key="g.label" :label="g.label">
+          <option v-for="{ preset, i } in g.items" :key="i" :value="i">{{ label(preset) }}</option>
+        </optgroup>
+      </template>
+      <template v-else>
+        <option v-for="(preset, i) in presets" :key="i" :value="i">{{ label(preset) }}</option>
+      </template>
     </select>
     <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
   </div>

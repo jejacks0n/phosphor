@@ -38,3 +38,28 @@ test('an iPad asking for the desktop site is iOS too', async () => {
   vi.spyOn(navigator, 'maxTouchPoints', 'get').mockReturnValue(5);
   expect(await options()).toEqual(['Shades', 'Halves']);
 });
+
+let picked = null;
+async function mountWith(presets) {
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp({ render: () => h(CharsetField, { id: 'chars', modelValue: '', presets, 'onUpdate:modelValue': (v) => { picked = v; } }) }).use(i18n);
+  app.mount(host);
+  await nextTick();
+  return host.querySelector('select');
+}
+
+test('presets with groups render as optgroups in order', async () => {
+  const select = await mountWith([{ name: 'Pipes', chars: 'ab', group: 'NELL' }, { name: 'Shades', chars: '░▒', group: 'Stock' }]);
+  const groups = [...select.querySelectorAll('optgroup')];
+  expect(groups.map((g) => g.label)).toEqual(['NELL', 'Stock']);
+  expect(groups.map((g) => g.querySelectorAll('option').length)).toEqual([1, 1]);
+  select.value = groups[1].querySelector('option').value;
+  select.dispatchEvent(new Event('change'));
+  expect(picked).toBe('░▒');
+});
+
+test('without groups the options are flat', async () => {
+  const select = await mountWith(PRESETS);
+  expect(select.querySelector('optgroup')).toBeNull();
+});

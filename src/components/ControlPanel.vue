@@ -20,7 +20,7 @@ import FontField from '@/components/FontField.vue';
 import SolverOptions from '@/components/SolverOptions.vue';
 import { isSolverRef } from '@/plugins/solvers';
 import { filterEntry } from '@/plugins/filters';
-import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
+import { ANSI_CHARSETS, ASCII_CHARSETS, charsetPresetsFor } from '@/lib/charsetPresets';
 import { resolves } from '@/lib/CharResolver';
 import { charRowsOf } from '@/lib/Cells';
 import { isUniform } from '@/lib/ImageProcessor';
@@ -155,8 +155,10 @@ const showSolids = computed(() => ansi.value && showPatternLight.value); // ASCI
 const showDither = computed(() => store.quantize !== 'none' && (picked.value === 'base' || pickedKind.value === 'vector'));
 
 // The ready-made set the Characters field holds, or Custom.
+const ansiPresets = computed(() => charsetPresetsFor(store.drawingFont, ANSI_CHARSETS, t('panel.chars.stockGroup')));
+const asciiPresets = computed(() => charsetPresetsFor(store.drawingFont, ASCII_CHARSETS, t('panel.chars.stockGroup')));
 const charsetName = computed(() => {
-  const [chars, presets] = store.renderStyle === 'ansi' ? [own.chars, ANSI_CHARSETS] : [own.charsAscii, ASCII_CHARSETS];
+  const [chars, presets] = store.renderStyle === 'ansi' ? [own.chars, ansiPresets.value] : [own.charsAscii, asciiPresets.value];
   return presets.find((p) => p.chars === chars)?.name ?? t('common.custom');
 });
 
@@ -298,8 +300,8 @@ function onKeyDown(event) {
                 <div class="label-group"><label for="chars">{{ t('panel.chars.label') }}</label><HelpInfo :name="t('panel.chars.label')" :text="help('chars')" /></div>
                 <span class="value">{{ charsetName }}</span>
               </div>
-              <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="own.chars" :presets="ANSI_CHARSETS"/>
-              <CharsetField v-else id="chars" v-model="own.charsAscii" :presets="ASCII_CHARSETS"/>
+              <CharsetField v-if="store.renderStyle === 'ansi'" id="chars" v-model="own.chars" :presets="ansiPresets"/>
+              <CharsetField v-else id="chars" v-model="own.charsAscii" :presets="asciiPresets"/>
             </div>
 
             <div v-if="showSeed" class="field">
