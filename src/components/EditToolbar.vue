@@ -674,7 +674,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
                 class="choice"
                 :class="{ on: shownChoice(option) === choice }"
                 @click="setOptionValue(workspace, option, choice.value)"
-            ><span v-if="offered(option).some((c) => c.glyph)" class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
+            ><span v-if="offered(option).some((c) => c.glyph)" class="glyph" :class="{ 'display-font': choice.glyphFont }">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
           </DropdownMenu>
           <CharField v-else-if="option.type === 'char'" :model-value="optionValue(workspace, option)" :label="option.label" @update:model-value="setOptionValue(workspace, option, $event)"/>
           <RangeField v-else compact :setting="option" :model-value="optionValue(workspace, option)" @update:model-value="setOptionValue(workspace, option, $event)" @commit="option.commit?.()"/>
@@ -1136,6 +1136,10 @@ div.vector-options > :deep(button:disabled) {
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   line-height: 1;
+}
+
+.option-menu span.glyph.display-font {
+  font-family: var(--display-font-family);
 }
 
 /* Icon choices take the button's text color, and are as tall as a text label. */

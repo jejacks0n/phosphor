@@ -4,7 +4,9 @@
 // or lands on, and those whose ends point into it, as Shapes' Connect does; without, it draws over them.
 // A line that ends on another joins it (a T), rather than running through it.
 import { cellSteps } from '@/lib/Brushes';
-import { armsOf, inwardArms, pieceOf } from '@/lib/BoxJoin';
+import { armsOf, familyFor, inwardArms, pieceOf } from '@/lib/BoxJoin';
+import { offeredStyles } from '@/lib/FontLines';
+import { drawnStyle } from '@/tools/lineChoice';
 import { charRowsOf, showsChar } from '@/lib/Cells';
 import { selectionClip } from '@/lib/selectionClip';
 
@@ -16,6 +18,9 @@ let stroke = null;
 // Where the last stroke ended: its cell, the piece it left there and that piece's arms before its lone
 // arm ran on (pieceOf), so a stroke that starts there (Shift-click) turns rather than tees.
 let lastEnd = null;
+
+// The family of pieces the stroke draws with, from the font's style the Pencil is set to.
+const familyOf = (project, workspace) => familyFor(offeredStyles(project.drawingFont), drawnStyle(workspace.pencilDrawWith, project.drawingFont));
 
 // The cell under a grid position, held to the grid.
 const cellOf = (project, { x, y }) => ({
@@ -31,10 +36,11 @@ function shownAt(project, col, row) {
 }
 
 // The arms of the box piece a cell shows (none when it shows something else).
-const armsAt = (project, { col, row }) => armsOf(shownAt(project, col, row)) ?? [0, 0, 0, 0];
+const armsAt = (project, family, { col, row }) => armsOf(shownAt(project, col, row), family) ?? [0, 0, 0, 0];
 
 // Write the stroke's pieces in these cells, in the colors you're typing with.
 function draw(project, workspace, cells) {
+  const { family } = stroke;
   const attrs = workspace.typingAttrs();
   const clip = selectionClip(workspace);
   const written = [];
@@ -46,11 +52,11 @@ function draw(project, workspace, cells) {
     let arms = own;
     if (workspace.pencilConnect) {
       const under = stroke.under.get(keyOf({ col, row }));
-      const inward = inwardArms(STEPS.map(([dc, dr]) => shownAt(project, col + dc, row + dr)));
+      const inward = inwardArms(STEPS.map(([dc, dr]) => shownAt(project, col + dc, row + dr)), family);
       const v = own[0] || own[2], h = own[1] || own[3];
       arms = own.map((w, d) => w || ((under[d] || inward[d]) && ((d % 2 ? h : v) || under[d] || inward[d])));
     }
-    const char = pieceOf(arms);
+    const char = pieceOf(arms, family);
     if (char && (!clip || clip.cell(col, row))) written.push({ col, row, attrs: { char, ...attrs } });
     if (col === stroke.at.col && row === stroke.at.row) stroke.end = { char, arms };
   }
@@ -59,14 +65,15 @@ function draw(project, workspace, cells) {
 
 // begin, then move for each step of the drag, then end (the Pencil commits the edit).
 export default {
-  begin({ project }, pos) {
+  begin({ project, workspace }, pos) {
     const cell = cellOf(project, pos), key = keyOf(cell);
     const continues = lastEnd?.key === key && lastEnd.char === shownAt(project, cell.col, cell.row);
-    stroke = { at: cell, arms: new Map([[key, [0, 0, 0, 0]]]), under: new Map([[key, continues ? lastEnd.arms : armsAt(project, cell)]]) };
+    const family = familyOf(project, workspace);
+    stroke = { family, at: cell, arms: new Map([[key, [0, 0, 0, 0]]]), under: new Map([[key, continues ? lastEnd.arms : armsAt(project, family, cell)]]) };
   },
   move({ project, workspace }, from, to) {
     if (!stroke) return;
-    const weight = workspace.pencilDrawWith === 'double' ? 2 : 1;
+    const weight = stroke.family.weight;
     const touched = new Map();
     let at = stroke.at;
     for (const step of cellSteps(at, cellOf(project, to))) {
@@ -74,7 +81,7 @@ export default {
       const key = keyOf(step);
       if (!stroke.arms.has(key)) {
         stroke.arms.set(key, [0, 0, 0, 0]);
-        stroke.under.set(key, armsAt(project, step));
+        stroke.under.set(key, armsAt(project, stroke.family, step));
       }
       stroke.arms.get(keyOf(at))[d] = weight;
       stroke.arms.get(key)[(d + 2) % 4] = weight;

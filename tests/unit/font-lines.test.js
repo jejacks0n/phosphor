@@ -53,6 +53,7 @@ describe('lineStylesOf', () => {
   it('offers a style with every piece set after Single and Double', () => {
     const font = withLines({ hide: [], styles: [heavy] });
     expect(offeredStyles(font).map((s) => s.id)).toEqual(['single', 'double', 'l1']);
+    expect(offeredStyles(font)).toBe(offeredStyles(font));
     expect(styleById(font, 'l1').chars).toEqual(slotChars(font).slice(1, 12));
   });
 

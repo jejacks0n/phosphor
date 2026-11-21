@@ -70,7 +70,14 @@ export const lineStylesOf = (() => {
   };
 })();
 
-export const offeredStyles = (font) => lineStylesOf(font).filter((s) => s.offered);
+export const offeredStyles = (() => {
+  const cache = new WeakMap();
+  return (font) => {
+    const all = lineStylesOf(font);
+    if (!cache.has(all)) cache.set(all, all.filter((s) => s.offered));
+    return cache.get(all);
+  };
+})();
 export const styleById = (font, id) => lineStylesOf(font).find((s) => s.id === id) ?? null;
 
 export const fontSetsOf = (font) => {

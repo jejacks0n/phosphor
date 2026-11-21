@@ -4,6 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
 import pencil from '@/tools/pencil';
+import { CP437_BLOCKS, slotChars } from '@/lib/BitmapFont.js';
 
 async function scene(settings = {}) {
   const { project, workspace } = await createTestApp();
@@ -96,4 +97,48 @@ test('Normal and Half-block paint as before, and the pixel view always paints', 
   pencil.move({ project, workspace, view: 'input' }, { x: 2.5, y: 15 }, { x: 6.5, y: 15 });
   pencil.end({ project, workspace, view: 'input' });
   expect(row(7, 2, 6)).not.toMatch(/─/);
+});
+
+// A bitmap font's own line styles.
+const fontWith = (lines) => ({ name: 'T', height: 16, bytes: new Uint8Array(4096), blocks: [...CP437_BLOCKS], lines });
+const HEAVY = { hide: [], styles: [{ id: 'l1', name: 'Heavy', slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }] };
+
+test("a font's own style draws its pieces and turns its corners", async () => {
+  const { project, drag, row, col } = await scene({ pencilDrawWith: 'line:l1' });
+  const font = fontWith(HEAVY);
+  await project.setDrawingFont(font);
+  const H = slotChars(font).slice(1, 12);
+  drag([2, 2], [8, 2], [8, 6]);
+  expect(row(2, 2, 8)).toBe(H[0].repeat(6) + H[3]);
+  expect(col(8, 3, 6)).toBe(H[1].repeat(4));
+});
+
+test('crossing a Single line, the new style wins', async () => {
+  const { project, workspace, drag, row } = await scene();
+  const font = fontWith(HEAVY);
+  await project.setDrawingFont(font);
+  const H = slotChars(font).slice(1, 12);
+  drag([5, 1], [5, 8]);
+  workspace.pencilDrawWith = 'line:l1';
+  drag([2, 4], [9, 4]);
+  expect(row(4, 5, 5)).toBe(H[0]);
+});
+
+test('a style no longer offered falls back to the first offered; none offered paints', async () => {
+  const { project, drag, row } = await scene({ pencilDrawWith: 'single' });
+  await project.setDrawingFont(fontWith({ hide: ['single'], styles: [] }));
+  drag([2, 2], [6, 2]);
+  expect(row(2, 3, 5)).toBe('═══');
+  const none = await scene({ pencilDrawWith: 'single' });
+  await none.project.setDrawingFont(fontWith({ hide: ['single', 'double'], styles: [] }));
+  none.drag([2, 2], [6, 2]);
+  expect(none.row(2, 3, 5)).not.toMatch(/[─═]/);
+});
+
+test("Draw with lists the font's styles after Double", async () => {
+  const { project, workspace } = await scene();
+  await project.setDrawingFont(fontWith(HEAVY));
+  expect(pencil.options[0].choices.filter((c) => !c.when || c.when(workspace)).map((c) => c.value))
+    .toEqual(['normal', 'single', 'double', 'line:l1', 'half']);
+  expect(pencil.options[0].choices).toBe(pencil.options[0].choices);
 });
