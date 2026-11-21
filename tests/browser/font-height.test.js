@@ -349,3 +349,20 @@ test('a reopened Bake, nothing drawn on it, is stretched with the grid: its pict
   expect(other.image.naturalHeight).toBe(2 * height);
   expect(toRaw(other.fit)).toEqual({ dx: 0, dy: 0, dw: 80, dh: 108 });
 });
+
+test('a library font of another height sets its SAUCE font name in the same step, nothing drawn or something drawn', async () => {
+  for (const drawn of [false, true]) {
+    const { project } = await photo();
+    if (drawn) dab(project, 10, 10);
+    await project.setDrawingFont(font8, { sauceFontName: 'IBM VGA50' });
+    await settle(project);
+    expect(project.history.last.settingsOnly).toBe(drawn ? undefined : true); // regrid's whole-layer step, or a settings step
+    expect([grid(project), project.drawingFont.name, project.sauceFontName]).toEqual([{ cols: 80, rows: 108 }, 'Eight', 'IBM VGA50']);
+    project.undo();
+    await settle(project);
+    expect([grid(project), project.drawingFont, project.sauceFontName]).toEqual([{ cols: 80, rows: 54 }, null, 'IBM VGA']);
+    project.redo();
+    await settle(project);
+    expect([grid(project), project.drawingFont.name, project.sauceFontName]).toEqual([{ cols: 80, rows: 108 }, 'Eight', 'IBM VGA50']);
+  }
+});

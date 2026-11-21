@@ -14,6 +14,7 @@ import { cp437Font, lowerAt240, noLowerHalf } from '../support/blockFonts.js';
 import { addFont, addBitmapFont, loadFonts, removeFont, storeFontPart } from '@/lib/userFonts';
 import { openFontSetup } from '@/composables/useFontSetup.js';
 import { forgetLibrary } from '@/lib/fontLibrary';
+import { useFontActions } from '@/composables/useFontActions.js';
 import { toastMessage, toastAction, closeToast } from '@/composables/useToast.js';
 
 // A stand-in linked font: the font whose id a test sets is FROGBLOCK, as FROGBLOCK's bytes can't be shipped.
@@ -858,10 +859,13 @@ test('the Library group lists the library under Built-in, each row sampled', asy
 });
 
 test('the index is fetched when the page opens, not before', async () => {
-  stubLibrary(FIXTURE());
+  await mount({ library: FIXTURE(), before: ({ workspace }) => { workspace.paletteLayerPage = 'palettes'; } });
+  expect(row('Shades & blocks')).toBeTruthy(); // the layer is open, on Palettes
+  await new Promise((resolve) => setTimeout(resolve, 50));
   expect(indexFetches).toBe(0);
-  await mount({ library: FIXTURE() });
-  await waitFor(() => indexFetches === 1);
+  await press(button('Fonts'));
+  await waitFor(() => libraryNames().length);
+  expect(indexFetches).toBe(1);
 });
 
 test('search matches names, machines and descriptions', async () => {
@@ -1122,6 +1126,26 @@ test('the arrow keys in the open tag picker leave the font list alone', async ()
   await arrow('ArrowDown', host.querySelector('button.tags'));
   expect(title()).toBe('Alpha');
   expect(host.querySelector('.picker')).toBeTruthy();
+});
+
+test('useLibraryFont and keepLibraryFont, for a font in Yours or the drawing\'s, fetch nothing and make no second entry', async () => {
+  const index = FIXTURE(), bytes = new Uint8Array(2048).fill(9), entry = serveFile(index, 'Zeta', { bytes });
+  entry.sauce = 'IBM EGA43';
+  const { project, workspace } = await mount({ library: index });
+  workspace.userFonts = [...workspace.userFonts, await addBitmapFont(new File([bytes], 'Mine.F08'))];
+  const { useLibraryFont, keepLibraryFont } = useFontActions();
+  const count = () => workspace.userFonts.filter((f) => f.id === entry.fontId).length;
+  await keepLibraryFont(entry); // in Yours
+  expect([fileFetches, count()]).toEqual([0, 1]);
+  await useLibraryFont(entry); // in Yours: used from there, with its SAUCE name
+  expect([fileFetches, count(), fontId(project.drawingFont), project.drawingFont.name, project.sauceFontName]).toEqual([0, 1, entry.fontId, 'Mine', 'IBM EGA43']);
+  const steps = project.history.version;
+  await useLibraryFont(entry); // the drawing's font: nothing to do
+  await keepLibraryFont(entry);
+  expect([fileFetches, count(), project.history.version]).toEqual([0, 1, steps]);
+  workspace.userFonts = workspace.userFonts.filter((f) => f.id !== entry.fontId); // only the drawing's now
+  await keepLibraryFont(entry);
+  expect([fileFetches, count()]).toEqual([0, 0]);
 });
 
 test('a failed fetch or a wrong-size file says so and changes nothing', async () => {
