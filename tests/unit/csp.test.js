@@ -1,7 +1,12 @@
 // The built page's Content-Security-Policy (vite.config.js): the web build's, and the desktop build's, which reaches
 // nothing outside the app but the rooms' sockets (its marketplace fetches are the main process's).
-import { describe, it, expect } from 'vitest';
-import { contentSecurityPolicy } from '../../vite.config.js';
+import { describe, it, expect, afterAll } from 'vitest';
+import { build } from 'vite';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { contentSecurityPolicy, securityHeaders } from '../../vite.config.js';
 
 const HTML = '<html><head><script>window.a = 1;</script></head><body></body></html>';
 const directive = (policy, name) => policy.split('; ').find((d) => d.startsWith(`${name} `));
@@ -24,4 +29,31 @@ describe('contentSecurityPolicy', () => {
     expect(policy).toContain("default-src 'self'");
     expect(policy).toContain("object-src 'none'");
   });
+});
+
+describe('the web build headers',() => {
+  it('a header policy forbids framing, which a <meta> policy cannot say', () => {
+    expect(contentSecurityPolicy(HTML, 'https://api.phosphor.work', { header: true })).toMatch(/; frame-ancestors 'none'$/);
+    expect(contentSecurityPolicy(HTML, 'https://api.phosphor.work')).not.toContain('frame-ancestors');
+  });
+
+  it('_headers sends the policy and the other security headers for every path', () => {
+    expect(securityHeaders('P')).toBe('/*\n  Content-Security-Policy: P\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n');
+  });
+
+  const out = mkdtempSync(join(tmpdir(), 'phosphor-csp-'));
+  afterAll(() => rmSync(out, { recursive: true, force: true }));
+
+  it('a web build writes _headers whose hashes match the page, leaves no <meta> policy and no 404.html', async () => {
+    process.env.VITE_SOCIAL_STUN = 'none';
+    await build({ configFile: join(process.cwd(), 'vite.config.js'), build: { outDir: out, emptyOutDir: true }, logLevel: 'silent' });
+    const html = readFileSync(join(out, 'index.html'), 'utf8');
+    const headers = readFileSync(join(out, '_headers'), 'utf8');
+    const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(([, code]) => `'sha256-${createHash('sha256').update(code).digest('base64')}'`);
+    expect(hashes.length).toBeGreaterThan(0);
+    for (const hash of hashes) expect(headers).toContain(hash);
+    expect(headers).toContain("frame-ancestors 'none'");
+    expect(html).not.toMatch(/http-equiv="Content-Security-Policy"/);
+    expect(existsSync(join(out, '404.html'))).toBe(false);
+  }, 180000);
 });

@@ -29,14 +29,15 @@ export function buildInfo({ desktop = false } = {}) {
   return { version: `${major}.${minor}.${day}`, sha: sha + dirty };
 }
 
-// The built page's Content-Security-Policy, as a <meta> (GitHub Pages can't send headers): scripts only from here,
+// The built page's Content-Security-Policy: the web build sends it as a header (the _headers file, see securityHeaders;
+// header: true adds frame-ancestors, which a <meta> can't carry) and the desktop build as a <meta>. Scripts only from here,
 // Turnstile, and the page's own inline ones by hash; connections only to the SOCIAL server (both the one built in
 // and the local one, as config.js picks by hostname), Turnstile, and raw GitHub files (the plugin marketplace). Styles stay open to inline ones: the icons are
 // SVG markup with style attributes. Not in development, where Vite's own client needs more.
 // The desktop build (VITE_DESKTOP=1) has no SOCIAL server and no Turnstile: it connects only to rooms' sockets (ws:),
 // and its marketplace fetches are the main process's (desktop/pluginList.js).
 const TURNSTILE = 'https://challenges.cloudflare.com';
-export function contentSecurityPolicy(html, api, { desktop = false } = {}) {
+export function contentSecurityPolicy(html, api, { desktop = false, header = false } = {}) {
   const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
     .map(([, code]) => `'sha256-${createHash('sha256').update(code).digest('base64')}'`);
   const servers = [...new Set([api, 'http://localhost:8787'])].flatMap((origin) => [origin, origin.replace(/^http/, 'ws')]);
@@ -55,7 +56,13 @@ export function contentSecurityPolicy(html, api, { desktop = false } = {}) {
     "style-src 'self' 'unsafe-inline'",
     "object-src 'none'",
     "base-uri 'self'",
+    ...(header ? ["frame-ancestors 'none'"] : []),
   ].join('; ');
+}
+
+// Cloudflare Pages' _headers file for the web build: the policy and a few more security headers, on every path.
+export function securityHeaders(policy) {
+  return `/*\n  Content-Security-Policy: ${policy}\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n`;
 }
 
 // The open-source packages a build holds, for About's Licenses: each package any of the build's modules came from
@@ -121,15 +128,23 @@ export default defineConfig(({ mode }) => {
         transformIndexHtml: () => [{ tag: 'meta', attrs: { name: 'phosphor-build', content: `v${build.version} ${build.sha}` }, injectTo: 'head' }],
       },
       {
+        // The web build's policy goes in _headers, made from the page as emitted so its script hashes match; the
+        // desktop build, which has no host to send headers, keeps a <meta>.
         name: 'phosphor-csp',
         apply: 'build',
+        enforce: 'post',
         transformIndexHtml: {
           order: 'post',
-          handler: (html) => [{
+          handler: (html) => env.VITE_DESKTOP === '1' ? [{
             tag: 'meta',
-            attrs: { 'http-equiv': 'Content-Security-Policy', content: contentSecurityPolicy(html, env.VITE_SOCIAL_API || 'https://api.phosphor.work', { desktop: env.VITE_DESKTOP === '1' }) },
+            attrs: { 'http-equiv': 'Content-Security-Policy', content: contentSecurityPolicy(html, env.VITE_SOCIAL_API || 'https://api.phosphor.work', { desktop: true }) },
             injectTo: 'head-prepend',
-          }],
+          }] : undefined,
+        },
+        generateBundle(options, bundle) {
+          if (env.VITE_DESKTOP === '1') return;
+          const policy = contentSecurityPolicy(String(bundle['index.html'].source), env.VITE_SOCIAL_API || 'https://api.phosphor.work', { header: true });
+          this.emitFile({ type: 'asset', fileName: '_headers', source: securityHeaders(policy) });
         },
       },
       {
