@@ -21,9 +21,11 @@ import { ListError, sameListing } from '@/plugins/listing';
 import { loadList, fetchListed } from '@/plugins/market';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
+// A refusal's words: the app's for its code (plugins.errors in the locales), never the error's own message.
+export const refusalWords = (error) => t(`plugins.errors.${error.code}`, error.detail);
 const refused = (error) => {
   if (!(error instanceof ManifestError)) return error;
-  return Object.assign(new Error(error.message), { userMessage: t(`plugins.errors.${error.code}`, error.detail) });
+  return Object.assign(new Error(error.message), { userMessage: refusalWords(error) });
 };
 
 // Plugins linked to their files: a browser with File System Access, not the desktop app (its files are its own).
