@@ -142,10 +142,9 @@ stroke doesn't change stays), and recolor its characters of someone's own a whol
 ### R5. Colors only makes paint of what's paint to it, and tints a character of someone's own.
 
 The Brush's and Pencil's Colors only (and a plugin brush, whose paint is always laid so) makes a bare ▄ (a paint
-block) of each cell it reaches that shows no character
-(R2's predicate for the layer's own cells with colors: their halves become paint first, `unlockCells`) and of each frozen
-cell, whatever its character (its paint is under it already; the pin goes); a character of someone's own with ink keeps
-it and is tinted. A cell the converter drew is paint to it in full and gets no ▄, on the base and on any layer, whatever
+block) of each cell it reaches that shows no character (R2's predicate for the layer's own cells with colors: their
+halves become paint first, `unlockCells`) and of each frozen cell, whatever its character (its paint is under it
+already; the pin goes); a character of someone's own with ink keeps it and is tinted. A cell the converter drew is paint to it in full and gets no ▄, on the base and on any layer, whatever
 chooses its characters (a ▄ isn't converted, so one would outlast a change of how characters are chosen): its character
 is a rendering of the pixels (R7), and the paint becomes the character the layer's settings choose over the pixels under
 it (on the base the paint goes into the pixels). Under Random that brings out the character a blank cell held in its own

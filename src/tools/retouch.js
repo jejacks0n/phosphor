@@ -104,7 +104,9 @@ function retouchCells(project, pixels, change, strength) {
 // A drawing layer's own paint at grid pixel x, y (ownPixelAt), as the stroke first read it.
 function ownPaintAt(project, x, y) {
   const key = `p${x},${y}`;
-  if (!stroke.read.has(key)) stroke.read.set(key, ownPixelAt(project, x, y));
+  if (!stroke.read.has(key)) { // both pixels of its cell together: recolorOwnCells may change the cell later in the stroke
+    for (const py of [y & ~1, y | 1]) if (py < project.rows) stroke.read.set(`p${x},${py}`, ownPixelAt(project, x, py));
+  }
   return stroke.read.get(key);
 }
 const samePaint = (a, b) => (!a || !b ? !a && !b : a.r === b.r && a.g === b.g && a.b === b.b && Math.round(a.a * 255) === Math.round(b.a * 255));

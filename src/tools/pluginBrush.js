@@ -9,6 +9,7 @@ import { beginRun, endRun } from '@/plugins/hangMark';
 import { usePluginStore } from '@/store/PluginStore';
 import { toast } from '@/composables/useToast';
 import { t } from '@/i18n/index.js';
+import brushTool from '@/tools/brush';
 
 // A plugin brush as a tool (tools/index.js's pluginTools makes one for each brush of a plugin that's on). Its looks, keys,
 // options and the modes it works in are here; its painting is the plugin's own work, behind its begin, move and end, each
@@ -41,6 +42,8 @@ function toolOption(ref, def, option) {
 // (plugins/hangMark.js), so a brush that freezes the page is turned off next time.
 const ran = new Set();
 const point = ({ x, y }) => ({ x: Number(x), y: Number(y) });
+const MAX_SIZE = brushTool.options.find((option) => option.size).max; // the Brush's largest size
+const MAX_MESSAGE = 200; // the longest of a plugin's own words shown in a toast and its row
 const channel = (v) => Math.min(255, Math.max(0, Math.round(v)));
 
 // A stroke's paint, the one object its begin, moves and end are handed (docs/plugins.md), with the puts of the call going
@@ -81,7 +84,12 @@ function newStroke({ project, workspace }, def, values) {
       if (![color?.r, color?.g, color?.b, alpha].every(Number.isFinite)) return;
       puts.set(`${x},${y}`, { x, y, color: { r: channel(color.r), g: channel(color.g), b: channel(color.b) }, alpha: Math.min(1, Math.max(0, alpha)) });
     },
-    dab: (from, to, size, hardness) => brushPixels(point(from), point(to), { size: Number(size), flow: 1, hardness: Number(hardness) }, cols, rows).map(({ x, y, alpha }) => ({ x, y, alpha })),
+    // The Brush's dab: a size that isn't a number is none, and one past the Brush's own largest is that.
+    dab(from, to, size, hardness) {
+      if (!Number.isFinite(Number(size))) return [];
+      const soft = Number.isFinite(Number(hardness)) ? Math.min(1, Math.max(0, Number(hardness))) : 1;
+      return brushPixels(point(from), point(to), { size: Math.min(MAX_SIZE, Number(size)), flow: 1, hardness: soft }, cols, rows).map(({ x, y, alpha }) => ({ x, y, alpha }));
+    },
   });
   return { paint, puts, base, shown, own, rows, dead: false };
 }
@@ -107,8 +115,12 @@ function lay(project, stroke) {
   else project.putEditPixels(pixels.map(({ x, y, color, alpha }) => ({ x, y, ...(mixPaint(stroke.own(x, y), { ...color, a: 1 }, alpha) ?? { r: 0, g: 0, b: 0, a: 0 }) })));
 }
 
+// The stroke going on (newStroke's), one at a time as the built-in tools' are; dead once the plugin threw in it. It's kept
+// here, not in a tool, with the tool that began it (owner): the tools are made again when a plugin is reloaded, and a move
+// or the release reaching a new one is the old one's, so the stroke ends on the script it began on.
+let stroke = null;
+
 export function makeBrushTool({ ref, pluginId, pluginName, hash, def, key }) {
-  let stroke = null; // the stroke going on (newStroke's); dead once the plugin threw in it
 
   // A stroke that failed: what it laid is taken back with no undo step (cancelEdit), and the toast and the plugin's row
   // say why. Nothing more of it runs.
@@ -118,7 +130,7 @@ export function makeBrushTool({ ref, pluginId, pluginName, hash, def, key }) {
     project.cancelEdit();
     let message;
     try {
-      message = String(error?.message ?? error);
+      message = String(error?.message ?? error).slice(0, MAX_MESSAGE);
     } catch {
       message = '?';
     }
@@ -164,18 +176,22 @@ export function makeBrushTool({ ref, pluginId, pluginName, hash, def, key }) {
     options: def.options.map((option) => toolOption(ref, def, option)),
     // The press: the plugin's begin, then a move for the press itself (Shift: from where the last stroke ended).
     begin(ctx, pos, event) {
-      stroke = newStroke(ctx, def, valuesOf(ctx.workspace, ref, def));
+      stroke = Object.assign(newStroke(ctx, def, valuesOf(ctx.workspace, ref, def)), { owner: tool });
       const from = (event?.shiftKey && ctx.workspace.strokeEnd) || pos;
       if (!def.begin || call(ctx.project, (paint) => def.begin(point(pos), paint))) tool.move(ctx, from, pos);
       return true;
     },
-    move({ project, workspace }, from, to) {
+    move(ctx, from, to) {
+      if (stroke && stroke.owner !== tool) return stroke.owner.move(ctx, from, to);
+      const { project, workspace } = ctx;
       if (!stroke || stroke.dead) return;
       workspace.strokeEnd = to;
       call(project, (paint) => move(paint, from, to));
     },
     // The release: the plugin's end, and the stroke is one undo step.
-    end({ project }) {
+    end(ctx) {
+      if (stroke && stroke.owner !== tool) return stroke.owner.end(ctx);
+      const { project } = ctx;
       if (stroke && !stroke.dead && (!def.end || call(project, (paint) => def.end(paint)))) project.commitEdit();
       stroke = null;
     },
