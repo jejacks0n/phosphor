@@ -354,7 +354,7 @@ export const documentActions = {
     if (this._artInside) this.leaveArt();
     this.renderer.reset();
     this.activePalette = [];
-    this.$patch({
+    putSettings(this, { // the plugin filters' values replaced, not merged
       image: null,
       imageBuffer: null,
       documentId: null,

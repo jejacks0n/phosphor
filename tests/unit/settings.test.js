@@ -14,7 +14,7 @@ import { generateSlug } from 'random-word-slugs';
 
 test("Settings schema: same keys, storage keys and reset defaults as before the schema existed, so users' persisted settings survive", async () => {
   // same 23 keys as the pre-schema SETTING_KEYS; order follows the table
-  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'aspectRatio', 'renderStyle', 'chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solverOptions', 'solids', 'patternLight', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness'].sort());
+  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'aspectRatio', 'renderStyle', 'chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solverOptions', 'solids', 'patternLight', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness', 'filterOptions'].sort());
   assert.deepEqual(SAUCE_KEYS, ['sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments', 'sauceRecord', 'sauceLetterSpacing']);
   assert.equal(getSetting('brightness').storageKey ?? 'current_file.brightness', 'current_file.brightness');
   assert.equal(getSetting('sauceUse9pxFont').storageKey, 'current_file.sauce.use9pxFont');
@@ -32,6 +32,10 @@ test("Settings schema: same keys, storage keys and reset defaults as before the 
   assert.equal(slidersAtDefaults({ ...neutral, brightness: '100' }), true);    // a slider's numeric string
   assert.equal(slidersAtDefaults({ ...neutral, edgeColor: '#ff0000' }), false); // the Edges color counts
   assert.equal(slidersAtDefaults({ ...neutral, colorize: '#00ff00' }), true);   // the Colorize color alone doesn't
+  // A plugin filter's values are a group of their own, which Reset all and a bake reset too; none set is none on.
+  assert.deepEqual(groupDefaults('filters'), { filterOptions: {} });
+  assert.equal(slidersAtDefaults({ ...neutral, filterOptions: {} }), true);
+  assert.equal(slidersAtDefaults({ ...neutral, filterOptions: { 'plugin:p/f': { name: 'F', values: { a: 1 } } } }), false);
 });
 
 const GOOD = { brightness: 120, contrast: '150', chars: 'abc', colorize: '#00ff00', aspectLock: false, sauceTitle: 'Hi', cols: 80, rows: 50 };
@@ -144,6 +148,12 @@ test('solverOptions from a stranger: bad entries are dropped and the good kept, 
   assert.ok(Object.keys(trimmed).length > 0 && Object.keys(trimmed).length < 400);
   assert.ok(JSON.stringify(trimmed).length <= 4096);
   assert.deepEqual(cleanOptions(many, 'plugin:p/s399') && Object.keys(cleanOptions(many, 'plugin:p/s399'))[0], 'plugin:p/s399'); // the named ref stays first
+});
+
+test('filterOptions from a stranger are cleaned as a filter\'s (name and values), not as a solver\'s; a non-object is refused', () => {
+  const good = { 'plugin:p/f': { name: 'Glow', values: { soft: true, tint: '#00ff00' } } };
+  assert.deepEqual(settingsFromStranger({ ...GOOD, filterOptions: { ...good, nope: { name: 'N', values: {} } } }), { ...GOOD, filterOptions: good });
+  for (const bad of [null, 'x', [], 4]) assert.equal(settingsFromStranger({ ...GOOD, filterOptions: bad }), null);
 });
 
 test('cleanOptions keeps a color option as a lowercase #rrggbb and drops other text', () => {

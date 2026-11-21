@@ -141,6 +141,11 @@
     "charsNote": "Contrôle la façon dont la peinture ou les images sur {name} sont converties en caractères.",
     "charsNoteVector": "Les formes et calques d'art sur {name} utilisent ces réglages de caractères lors de la conversion.",
     "effectsNoImage": "Les filtres d'image nécessitent une image. Ouvrez une image ou utilisez Figer pour convertir le canevas en image.",
+    "pluginChip": "Plugin",
+    "filter": {
+      "missing": "{name} n'est pas installé. L'image s'affiche sans lui.",
+      "off": "{name} est désactivé. L'image s'affiche sans lui."
+    },
     "reset": "Réinitialiser",
     "resetAll": "Tout réinitialiser",
     "onCount": "{count} actif | {count} actifs",
@@ -1146,6 +1151,7 @@
         }
       }
     },
+    "filtersLeftOut": "Laissé de côté : le filtre de plugin {names}. | Laissés de côté : les filtres de plugin {names}.",
     "standIns": "{names} s'affiche Par forme à la place de son solveur de plugin. | {names} s'affichent Par forme à la place de leurs solveurs de plugin."
   },
   "versions": {
@@ -1744,6 +1750,7 @@
     }
   },
   "room": {
+    "pluginFilters": "Le filtre de plugin {names} est activé, et les salles ne l'utilisent pas. Réinitialisez-le ou désactivez-le d'abord. | Les filtres de plugin {names} sont activés, et les salles ne les utilisent pas. Réinitialisez-les ou désactivez-les d'abord.",
     "pluginSolvers": "{names} utilise un solveur de plugin, que les salles n'utilisent pas. Choisissez-lui un solveur intégré, ou aplatissez le dessin d'abord. | {names} utilisent des solveurs de plugin, que les salles n'utilisent pas. Choisissez-leur des solveurs intégrés, ou aplatissez le dessin d'abord."
   },
   "art": {

@@ -141,6 +141,11 @@
     "charsNote": "Controls how paint or images on {name} convert into characters.",
     "charsNoteVector": "Shapes and art layers on {name} use these character settings when converted.",
     "effectsNoImage": "Image filters require an image. Open an image or use Bake to turn the canvas into an image.",
+    "pluginChip": "Plugin",
+    "filter": {
+      "missing": "{name} isn't installed. The picture shows without it.",
+      "off": "{name} is off. The picture shows without it."
+    },
     "reset": "Reset",
     "resetAll": "Reset all",
     "onCount": "{count} on",
@@ -1146,6 +1151,7 @@
         }
       }
     },
+    "filtersLeftOut": "Left out: the plugin filter {names}. | Left out: the plugin filters {names}.",
     "standIns": "{names} shows By shape in place of its plugin solver. | {names} show By shape in place of their plugin solvers."
   },
   "versions": {
@@ -1744,6 +1750,7 @@
     }
   },
   "room": {
+    "pluginFilters": "The plugin filter {names} is on, which rooms don't use. Reset it or switch it off first. | The plugin filters {names} are on, which rooms don't use. Reset them or switch them off first.",
     "pluginSolvers": "{names} is on a plugin solver, which rooms don't use. Choose a built-in solver for it, or Flatten the drawing first. | {names} are on plugin solvers, which rooms don't use. Choose built-in solvers for them, or Flatten the drawing first."
   },
   "art": {

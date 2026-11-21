@@ -11,7 +11,8 @@ import { placedShapes } from '@/document/followers.js';
 import { MAX_ANIMATION_CELLS, MAX_FRAME_CELLS, maxFramesFor, MAX_COLS, charRowsOf, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { charModeOf } from '@/lib/CharResolver.js';
 import { onGrid } from '@/lib/ImageProcessor.js';
-import { isSolverRef, solverFor, standInOf, optionValues } from '@/plugins/solvers.js';
+import { isSolverRef, solverFor, standInOf, optionValues, filterFor } from '@/plugins/solvers.js';
+import { filterGroups, runningFilters } from '@/plugins/filters.js';
 import { usePluginStore } from '@/store/PluginStore.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -64,6 +65,7 @@ function insideCells(project, inside, cells) {
 }
 
 const NO_CELLS = new Map(); // a hidden or empty layer's cells, never changed
+const NO_FILTERS = Object.freeze([]); // no plugin filter runs: one array, so params made again compare the same
 
 // A layer's params: the drawing's (processParams) with its own character settings over them, made once per processParams
 // and chars (layerParams), so each keeps its identity while neither changes: the Renderer's caches go by it.
@@ -372,9 +374,23 @@ export const useProjectStore = defineStore('project', {
       void this.editVersion;
       return !onGrid(this.image, this.processParams) || !!this.baseLayer?.finerThanGrid();
     },
+    // The plugin filters' groups in the settings column (plugins/filters.js): those installed, in the Plugins dialog's
+    // order and then each script's, then the drawing's saved ones that aren't. None in a room, where no filter applies.
+    filterGroups() {
+      if (this.inRoom) return [];
+      const plugins = usePluginStore();
+      void plugins.solverStamp; // a script registered again (a Reload) is the same slice with a new hash
+      const order = new Map(plugins.plugins.map(({ id }, i) => [id, i]));
+      const installed = Object.entries(plugins.filters).map(([ref, { pluginId, index }]) => ({ ref, pluginId, index, found: filterFor(ref) }))
+        .filter(({ found }) => found)
+        .sort((a, b) => (order.get(a.pluginId) ?? order.size) - (order.get(b.pluginId) ?? order.size) || a.index - b.index)
+        .map(({ ref, pluginId, found }) => ({ ref, pluginId, hash: found.hash, def: found.def }));
+      return filterGroups({ saved: this.filterOptions, installed, pluginState: plugins.pluginState, pluginsOff: plugins.off, failures: plugins.filterFailures });
+    },
     processParams(state) {
       const plugins = usePluginStore();
       void plugins.solverStamp; void plugins.off; void plugins.plugins.map(({ id, enabled }) => id + enabled); // the params made anew when the plugins change
+      const running = runningFilters(this.filterGroups);
       return {
         ...Object.fromEntries(PIPELINE_KEYS.map(key => [key, state[key]])),
         chars: state.renderStyle === 'ansi' ? state.chars : state.charsAscii,
@@ -386,6 +402,7 @@ export const useProjectStore = defineStore('project', {
         image: state.image,
         fit: state.fit,
         workScale: state.baseScale,
+        pluginFilters: running.length ? running : NO_FILTERS, // in run order, as WebGLProcessor takes them
       };
     },
   },

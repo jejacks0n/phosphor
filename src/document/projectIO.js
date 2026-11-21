@@ -17,6 +17,7 @@ import { goodLayers } from './layerInfo.js';
 import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 import { MAX_LAYER_DIM } from './PaintLayer.js';
 import { MAX_COLS, MAX_LINES, maxRowsBeside } from '../lib/Cells.js';
+import { cleanFilterOptions } from '../plugins/filters.js';
 
 export const PROJECT_EXTENSION = '.phosphor';
 export const isProjectFile = (name) => name.toLowerCase().endsWith(PROJECT_EXTENSION);
@@ -127,6 +128,7 @@ export async function readProject(file) {
   if (!goodFit(fit)) delete settings.fit;
   if (!goodScale(paintScale, size)) delete settings.paintScale;
   if (typeof settings.imageIsWorkingCopy !== 'boolean') delete settings.imageIsWorkingCopy;
+  if ('filterOptions' in settings) settings.filterOptions = cleanFilterOptions(settings.filterOptions); // untrusted: a plugin filter's values, shown and run
   const imageBuffer = buffer.slice(offset, offset += imageLen);
   const hasBase = Number.isInteger(baseLength) && baseLength > 0;
   if (stacked) return readStack({ buffer, offset, imageBuffer, baseLength: hasBase ? baseLength : 0, settings, base, shapes, rawStack, frames, frame, fps, motion, cellsCarry });

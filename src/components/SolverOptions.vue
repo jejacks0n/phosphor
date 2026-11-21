@@ -9,10 +9,11 @@ import RangeField from '@/components/RangeField.vue';
 const props = defineProps({
   options: { type: Array, required: true },
   values: { type: Object, required: true },
+  idPrefix: { type: String, default: 'solver' }, // the fields' ids are this and each option's id: a plugin filter's group has its own
 });
 const emit = defineEmits(['change', 'commit']);
 
-const idOf = (option) => `solver-${option.id}`;
+const idOf = (option) => `${props.idPrefix}-${option.id}`;
 const decimals = (step) => (String(step).split('.')[1] ?? '').length;
 const setting = (option) => ({ key: idOf(option), label: option.name, min: option.min, max: option.max, step: option.step, decimals: decimals(option.step) });
 // The colors right after a slider sit in its slot, beside the slider, as ControlPanel puts Edges' color.

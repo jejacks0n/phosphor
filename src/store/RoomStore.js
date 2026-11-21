@@ -302,8 +302,13 @@ export const useRoomStore = defineStore('room', {
     // Why a room can't be hosted with this drawing: its layers on a plugin solver, a stand-in or not (the drawing holds
     // the choice), which rooms don't use; null when none is. The start pages show it and keep Start off.
     pluginSolversWhy() {
-      const layers = useProjectStore().pluginSolverLayers;
-      return layers.length ? t('room.pluginSolvers', { names: formatList(layers.map(({ name }) => name)) }, layers.length) : null;
+      const project = useProjectStore(), layers = project.pluginSolverLayers;
+      const filters = Object.values(project.filterOptions).map(({ name }) => name); // on, here or not: the drawing holds them
+      const why = [
+        layers.length && t('room.pluginSolvers', { names: formatList(layers.map(({ name }) => name)) }, layers.length),
+        filters.length && t('room.pluginFilters', { names: formatList(filters) }, filters.length),
+      ].filter(Boolean);
+      return why.length ? why.join(' ') : null;
     },
     // A watcher reported this room (Report room is gone).
     roomReported: (state) => state.reported.includes(ROOM_REPORT),

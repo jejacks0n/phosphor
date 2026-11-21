@@ -1,20 +1,20 @@
-// The Transforms, Adjustments and Image Filters sliders as undo steps: a drag, a run of key nudges, a
-// color pick, RESET and RESET ALL are one step each. Owns _sliderBefore (the values before a move)
+// The Transforms, Adjustments and Image Filters sliders (and the plugin filters' values) as undo steps: a drag, a run of
+// key nudges, a color pick, RESET and RESET ALL are one step each. Owns _sliderBefore (the values before a move)
 // and _lastSlider (the step a nudge can extend).
-import { SLIDER_KEYS, NUDGE_MS } from '@/store/project/shared.js';
-import { RESET_GROUPS, groupDefaults } from '@/store/settings.js';
+import { SLIDER_KEYS, NUDGE_MS, putSettings } from '@/store/project/shared.js';
+import { RESET_GROUPS, groupDefaults, sameSetting } from '@/store/settings.js';
 
 export const sliderActions = {
   // RESET ALL and a group's RESET: one undo step each.
   resetSliders() {
     this._sliderBefore ??= this.sliderValues();
-    RESET_GROUPS.forEach(group => this.$patch(groupDefaults(group)));
+    RESET_GROUPS.forEach(group => putSettings(this, groupDefaults(group)));
     this.commitSliders();
   },
 
   resetGroup(group) {
     this._sliderBefore ??= this.sliderValues();
-    this.$patch(groupDefaults(group));
+    putSettings(this, groupDefaults(group));
     this.commitSliders();
   },
 
@@ -42,9 +42,9 @@ export const sliderActions = {
       last.entry.after = after;
       return;
     }
-    if (SLIDER_KEYS.every(k => before[k] === after[k])) return;
+    if (SLIDER_KEYS.every(k => before[k] === after[k] || (typeof before[k] === 'object' && sameSetting(before[k], after[k])))) return; // filterOptions by its JSON
     this.commitPending();
-    const entry = { settingsOnly: true, after, undo: () => this.$patch(before), redo: () => this.$patch(entry.after) }; // settingsOnly: kept when the grid changes (rendering.js dropEdits)
+    const entry = { settingsOnly: true, after, undo: () => putSettings(this, before), redo: () => putSettings(this, entry.after) }; // settingsOnly: kept when the grid changes (rendering.js dropEdits)
     this.pushEdit(entry);
     this._lastSlider = nudge ? { key, entry, version: this.history.version, at: Date.now() } : null;
   },

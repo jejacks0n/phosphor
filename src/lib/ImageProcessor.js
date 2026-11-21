@@ -184,9 +184,9 @@ function shaderParams(params) {
 }
 
 // The plugin filters that have been through the pipeline this visit, by ref and script hash: the first of each (its
-// first render, Bake or Into the image) runs under the hang mark (plugins/hangMark.js), so one whose shader freezes the
-// page is turned off next time. The mark names one plugin, so a call with several new filters marks the first, and the
-// next call the next.
+// first render or Bake; Into the image runs none, as it makes the picture with nothing applied) runs under the hang mark
+// (plugins/hangMark.js), so one whose shader freezes the page is turned off next time. The mark names one plugin, so a
+// call with several new filters marks the first, and the next call the next.
 const filtersRan = new Set();
 function underMark(filters, fn) {
   const first = filters.find(({ ref, hash }) => !filtersRan.has(`${ref}|${hash}`));
