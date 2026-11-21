@@ -47,6 +47,7 @@ async function drawing() {
   await loadImage(stores.project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   await onPlugin({ filters: [ABERRATION, SAME, DIM] }, { pluginId: 'jane.fx' });
   await settle(stores.project);
+  stores.workspace.pickLayer('base'); // the groups show where Image filters do: the base picked, with a real picture
   return stores;
 }
 async function mount(component, props = {}) {
@@ -174,7 +175,7 @@ test('Bake presses the filter into the picture and clears it, once; Flatten and 
 });
 
 test('a filter that isn\'t installed keeps its values through a save and an open, dimmed and named in Export', async () => {
-  const { project } = await drawing();
+  const { project, workspace } = await drawing();
   const glow = { [GLOW]: { name: 'Glow', values: { soft: true, amount: 0.25, tint: '#00ff88' } } };
   project.setSlider('filterOptions', glow);
   project.commitSliders('filterOptions');
@@ -192,6 +193,7 @@ test('a filter that isn\'t installed keeps its values through a save and an open
   parts.settings.filterOptions = { ...glow, nope: { name: 'Nope', values: {} }, [solverRef('ann.fx', 'red')]: { name: 'Red', values: { tint: 'red' } } };
   expect((await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...parts }))).settings.filterOptions).toEqual(glow);
 
+  workspace.pickLayer('base');
   const host = await mount(ControlPanel);
   const group = groupOf(host, 'Glow');
   expect(group.classList.contains('dim')).toBe(true);
@@ -245,6 +247,52 @@ test('a group folds on its title, each by its own, and stays folded', async () =
   const again = await mount(ControlPanel);
   expect(groupOf(again, 'Aberration').classList.contains('folded')).toBe(true);
   expect(groupOf(again, 'Same').classList.contains('folded')).toBe(false);
+});
+
+test('a folded group says how many of its options are on, as the other groups do', async () => {
+  const { project } = await drawing();
+  const host = await mount(ControlPanel);
+  groupOf(host, 'Aberration').querySelector('legend button.fold').click();
+  await nextTick();
+  expect(groupOf(host, 'Aberration').querySelector('legend .on')).toBe(null);
+  project.setSlider('filterOptions', { [ref]: { name: 'Aberration', values: { distance: 2, tint: '#ff0000' } } });
+  project.commitSliders('filterOptions');
+  await nextTick();
+  expect(groupOf(host, 'Aberration').querySelector('legend .on').textContent).toBe('2 on');
+});
+
+test('the groups show where Image filters do: not with another layer picked, nor on a blank canvas', async () => {
+  const { project, workspace } = await drawing();
+  const host = await mount(ControlPanel);
+  expect(groupOf(host, 'Aberration')).toBeTruthy();
+  workspace.pickLayer('edit');
+  await nextTick();
+  expect(groupOf(host, 'Aberration')).toBe(undefined);
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
+  workspace.pickLayer('base');
+  await nextTick();
+  expect(groupOf(host, 'Aberration')).toBe(undefined);
+});
+
+test('Bake leaves a filter that isn\'t running as it is, and one that\'s missing alone has nothing to bake', async () => {
+  const { project } = await drawing();
+  const glow = { [GLOW]: { name: 'Glow', values: { soft: true, amount: 0.25 } } };
+  project.setSlider('filterOptions', glow);
+  project.commitSliders('filterOptions');
+  expect(project.canBake).toBe(false);
+  project.setSlider('brightness', 120);
+  project.commitSliders('brightness');
+  expect(project.canBake).toBe(true);
+  const version = project.history.version;
+  await project.bake();
+  await settle(project);
+  expect(project.brightness).toBe(100);
+  expect(JSON.stringify(project.filterOptions)).toBe(JSON.stringify(glow));
+  expect(project.history.version).toBe(version + 1);
+  project.undo();
+  await settle(project);
+  expect(project.brightness).toBe(120);
+  expect(JSON.stringify(project.filterOptions)).toBe(JSON.stringify(glow));
 });
 
 test('a plugin filter on makes the drawing bakeable; none, and it isn\'t', async () => {

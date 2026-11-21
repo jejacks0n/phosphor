@@ -90,9 +90,10 @@ const sections = computed(() => {
   const picture = { id: 'picture', title: t('panel.groups.picture', { name: layerName('base') }) };
   // Picture (Smoothing, how the picture and the base's own pixels are scaled to the grid) only where it changes something.
   const scaled = store.smoothingMatters ? [picture] : [];
-  // After them, a group per plugin filter (store.filterGroups), titled with its name; none in a room, where none applies.
+  // After Image filters, and only where they show, a group per plugin filter (store.filterGroups), titled with its name;
+  // none in a room, where none applies.
   const filters = room.inRoom ? [] : store.filterGroups.map((filter) => ({ id: filter.ref, title: filter.name, filter }));
-  return [transform, adjust, characters, ...(workspace.pickedLayer === 'base' ? [...scaled, ...(hasRealImage.value ? [effects] : [])] : []), ...filters];
+  return [transform, adjust, characters, ...(workspace.pickedLayer === 'base' ? [...scaled, ...(hasRealImage.value ? [effects, ...filters] : [])] : [])];
 });
 
 const help = (key) => getSetting(key).help;
@@ -119,7 +120,9 @@ const setSolverOptions = (values) => store.setLayerChars(picked.value, { solverO
 const folded = useLocalStorage('phosphor.panel.folded', []);
 const isFolded = (id) => folded.value.includes(id);
 const toggleFold = (id) => { folded.value = isFolded(id) ? folded.value.filter((f) => f !== id) : [...folded.value, id]; };
-const onCount = (group) => (group.sliders ?? []).filter((s) => Number(store[s.key]) !== s.default).length;
+// A plugin filter's group counts its options off their defaults (with no def, those saved).
+const onCount = (group) => (group.filter ? filterOnCount(group.filter) : (group.sliders ?? []).filter((s) => Number(store[s.key]) !== s.default).length);
+const filterOnCount = ({ def, values }) => (def ? def.options.filter((option) => values[option.id] !== option.default).length : Object.keys(values).length);
 
 // A plugin filter's group: its options drawn as a solver's are (SolverOptions), each change the drawing's filterOptions
 // with this filter's entry replaced (only its values off their defaults, none at all when every one's at its default), an

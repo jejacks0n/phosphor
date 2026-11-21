@@ -1,11 +1,18 @@
 // A plugin filter's values as a drawing keeps them (the filterOptions setting: { [ref]: { name, values: { [optionId]: value } } }),
 // and the settings column's groups made from them and the filters installed. A filter runs only while one of its options is
 // off its default, so only those are kept, with the filter's name, which a drawing whose filter isn't there shows it by.
-import { isSolverRef, optionValues, pluginOfSolver } from './solvers.js';
-import { OPTION_ID } from './script.js';
+import { isSolverRef, optionValues, pluginOfSolver, solverRef } from './solvers.js';
+import { ID, OPTION_ID } from './script.js';
+import { goodPluginId } from './manifest.js';
 
 const MOST_ENTRIES = 64, MOST_VALUES = 12, MOST_NAME = 40;
 const HEX = /^#[0-9a-f]{6}$/;
+// A ref as solverRef makes one from ids the readers take (which bounds its length): a stranger's key that isn't is dropped.
+const goodRef = (ref) => {
+  if (!isSolverRef(ref)) return false;
+  const pluginId = pluginOfSolver(ref), id = ref.slice(ref.lastIndexOf('/') + 1);
+  return goodPluginId(pluginId) && ID.test(id) && ref === solverRef(pluginId, id);
+};
 const plain = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
 const goodValue = (value) => typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value)) || (typeof value === 'string' && HEX.test(value));
 
@@ -16,7 +23,8 @@ export function filterEntry(def, name, values) {
   return changed.length ? { name, values: Object.fromEntries(changed) } : null;
 }
 
-// A stranger's filterOptions (a file's, a host's) as one a drawing can hold: an entry kept whole only when its key is a ref,
+// A stranger's filterOptions (a file's, a host's) as one a drawing can hold: an entry kept whole only when its key is a ref
+// of the shape solverRef makes (plugin:<pluginId>/<id>, each as its reader allows),
 // its name text of at most 40 characters (counted as a script's are), and its values at most 12 option ids each a finite
 // number, a boolean or a lowercase '#rrggbb'; at most 64 entries. Anything else is dropped, and what isn't an object is none.
 export function cleanFilterOptions(raw) {
@@ -24,7 +32,7 @@ export function cleanFilterOptions(raw) {
   if (!plain(raw)) return kept;
   for (const [ref, entry] of Object.entries(raw)) {
     if (Object.keys(kept).length >= MOST_ENTRIES) break;
-    if (!isSolverRef(ref) || !plain(entry) || typeof entry.name !== 'string' || [...entry.name].length > MOST_NAME || !plain(entry.values)) continue;
+    if (!goodRef(ref) || !plain(entry) || typeof entry.name !== 'string' || [...entry.name].length > MOST_NAME || !plain(entry.values)) continue;
     const values = Object.entries(entry.values);
     if (values.length > MOST_VALUES || !values.every(([id, value]) => OPTION_ID.test(id) && goodValue(value))) continue;
     kept[ref] = { name: entry.name, values: Object.fromEntries(values) };

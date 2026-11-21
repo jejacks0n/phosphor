@@ -21,6 +21,9 @@ export const COLOR_SLOTS = Object.freeze([
 const SLOTS = new Set(COLOR_SLOTS);
 
 const ID = /^[a-z0-9-]+\.[a-z0-9-]+$/;
+const MOST_ID = 64;
+// A plugin's id as a manifest may have it (author.name, at most 64 characters): also what a ref's plugin part is held to.
+export const goodPluginId = (value) => typeof value === 'string' && value.length <= MOST_ID && ID.test(value);
 const THEME_ID = /^[a-z0-9-]+$/;
 const MOST_THEMES = 20;
 // Relative to the manifest, inside its folder: no leading slash, no . or .. segment, no empty one (a//b.js), no
@@ -84,7 +87,7 @@ export function readManifest(source) {
   if (raw.phosphor !== MANIFEST_FORMAT) throw new ManifestError('badField', { field: 'phosphor' });
   const manifest = {
     phosphor: MANIFEST_FORMAT,
-    id: text(raw, 'id', 64, { test: (value) => ID.test(value) }),
+    id: text(raw, 'id', MOST_ID, { test: goodPluginId }),
     name: text(raw, 'name', 60),
     version: text(raw, 'version', 60, { test: (value) => parse(`v${value}`) !== null }),
     author: text(raw, 'author', 60),
