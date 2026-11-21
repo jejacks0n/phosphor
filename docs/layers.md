@@ -163,7 +163,7 @@ The settings on the left come in sections, each following a layer:
 - **Adjustments**: **Brightness**, **Contrast**, **Black point**, **White point**, **Midtones**, **Saturation**,
   **Posterize** and **Threshold** (with its **Dark color** and **Light color**).
 - **Characters · (layer name)**: The selected layer's **Choose characters**, **Characters** set (with presets in
-  its ▾ menu), **Character seed** (**Generate new seed** shuffles it), **Solids**, **Pattern light**, and for the base
+  its ▾ menu, a bitmap font's own sets first: [The Font's Sets](characters.md#the-fonts-sets)), **Character seed** (**Generate new seed** shuffles it), **Solids**, **Pattern light**, and for the base
   and a vector layer with a palette, **Dither style** and **Dither**. Inside an [art layer](vector.md#art-layers) it's
   its vector layer's. On the start screen, with no drawing open, it's the base's: the settings the next drawing starts
   with. Some only show when they apply: the seed with Random, Pattern light with Best match or By shape,
@@ -502,6 +502,9 @@ In the ANSI view, the Pencil and Brush have a **Draw with** menu:
   back, in the foreground color (and the background color, unless it's None). A diagonal drag becomes a staircase.
   With **Connect** on (the default) it joins the lines it crosses (┼) or ends on (┬), and the ones that point into
   it; off, it draws over them.
+- **A bitmap font's own line styles** (Pencil and Shapes): With a bitmap font that has a line style of its own, with all
+  eleven pieces set, the style is offered after **Double line** and draws as they do, joining only its own style
+  ([The Font's Lines](characters.md#the-fonts-lines)).
 
 ### Opacity, Build Up, and Flow
 

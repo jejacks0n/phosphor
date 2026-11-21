@@ -218,6 +218,29 @@ On the Fonts page, a bitmap font's row has a **Blocks** row above its 256 slots:
 - **Other missing blocks**: A font loaded with **+ Load**, or opened with an XBin, that has its lower half but lacks other blocks says which, for a while: "This font has no Light, Medium, or Dark block, so those characters draw blank.", with the same **Set up its blocks** button. (A font with no lower half shows only the toast that stays.)
 - **In a room**: Blocks can't change in a room. The toasts about the drawing's font have no button there, and add "Its blocks can't change in a room; set them once the room ends." A toast already up when a room starts loses its button, and gets it back when the room ends. A room can only start with all eight blocks set up, and in one you can only switch to a font that is ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
+### The Font's Lines
+
+Box-drawing lines are drawn from a font's own pieces. A bitmap font can carry line styles of its own, for a font whose lines aren't where CP437 puts them or that draws a second kind (a heavy one, say). A style is eleven pieces: ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼. On the Fonts page, a bitmap font's row has **Lines** beside **Blocks** and **Sets**.
+
+- **Make one**: **+ New line style** adds a style of eleven tiles. Pick a tile, then click the slot in the sheet that draws it; the next piece that isn't set gets picked, so clicking eleven slots in order fills the style. A style has a name you can change, and a note says how many pieces are still to go. A slot that draws one of the font's blocks is refused, since a block can't be a line piece.
+- **Under Draw with**: Once all eleven pieces are set, the style is offered after **Double line** in the Pencil's and Shapes' **Draw with** ([Draw With](layers.md#draw-with)), under the name you gave it. Until then it isn't offered, and the style says how many pieces to go.
+- **It joins itself**: A style joins its own corners and tees. Where a line crosses a line of another style, the new line wins and the cell becomes its piece: styles don't join each other. **Single line** and **Double line** still join each other when both are offered.
+- **Connect and Flip stay in a style**: **Connect** joins only the lines of the style being drawn, and flipping a selection turns a style's pieces into the same style's.
+- **Single and Double**: A font that doesn't draw one of them properly can **Hide** it, and **Show** brings it back. It leaves **Draw with** for that font only, and its characters in a selection or a file are left alone when you flip.
+- **Ellipses**: An ellipse set to any line style draws half-blocks, as it does for Single and Double.
+- **They're kept**: With the drawing (saved, autosaved, and one undo step on the drawing's font) and with this browser's copy of the font, and they're sent to a room.
+- **In a room**: Lines can't change in a room. They show in the room as the host drew them.
+
+### The Font's Sets
+
+A bitmap font can carry character sets of its own, for the characters it draws well. On the Fonts page, **Sets** has **+ New set**; a set has a name you can change and its characters.
+
+- **Build one**: Click into the set's characters, then click slots on the sheet to add them in order. A slot can go in twice, and repeats are kept: a character in a set twice is picked twice as often by **Random**. Or type into the field: it takes the characters the font has, and leaves the others out. **Backspace** takes the last one off.
+- **Empty sets**: A set with no characters is kept, so you can fill it later, but isn't offered.
+- **Under Characters**: The **Characters** field's ▾ menu lists the font's sets first, under the font's name, then the stock sets under **Stock**. Picking one puts its characters in the field. **Show stock sets** on the Fonts page is one switch for the font: off, the stock sets leave the menu. A font with no sets of its own shows the stock ones whatever it says.
+- **They're kept**: Like lines, with the drawing and with this browser's copy of the font, and sent to a room.
+- **In a room**: Sets can't change in a room.
+
 ### What the Font Changes
 
 The font changes how the art looks in Phosphor. It also changes how the characters you draw look in the PIXEL tab, and in the image when you merge them into it: each cell blends its colors by how much of it the character covers, measured in the font you see.

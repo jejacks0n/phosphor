@@ -242,5 +242,33 @@ change one cell on the way.
 
 **Free time:** she'd draw in 8×8 from the start, export an XBin, and reopen it.
 
+## My font's lines and sets
+
+### 23. Make a line style
+- Does: with her `.F16` in use, opens Manage fonts ▸, chooses its row, opens **Lines**, clicks **+ New line style** and names it "Heavy". Clicks the first tile and then slots 1 to 11 in the sheet one after another, then goes to the drawing and opens the Pencil's **Draw with**. Draws a box with Shapes in it, then a Single line across it.
+- Expects: after each click the next tile is picked and the note says how many pieces are to go; "Heavy" isn't under **Draw with** until the eleventh is set, then is offered after **Double line**; clicking the slot that draws a block is refused with the slot's block named; the box has her corners and tees, and where the Single line crosses it her Single line's piece wins (┼ stays Single's, no mix of styles), and drawn again over itself the box joins itself.
+- Probes: `again`: draw the same box twice and check it's the same; `undo-redo`: undo the style and check it leaves **Draw with**, then redo.
+- Rated: no (drawing)
+
+### 24. Flip it and hide Double
+- Does: selects the box and flips it, then back. On the Fonts page clicks **Hide** on Double, then **Show**.
+- Expects: the flip turns her pieces into her own pieces (no Single or Double character appears); with Double hidden it leaves **Draw with** and **Show** brings it back, for her font only (another font still offers it).
+- Probes: `extremes`: hide both Single and Double and check **Draw with** still offers hers.
+- Rated: no (drawing)
+
+### 25. Make a set
+- Does: opens **Sets**, clicks **+ New set**, clicks into its characters, then clicks slots 3, 5, 3 in the sheet. Types an "a" in the field after them. Opens a photo and picks the set from the Characters field's ▾ with **Choose characters** on Random. Unchecks **Show stock sets** and reopens the ▾.
+- Expects: the set holds the three slots with the repeat kept, and the typed character; the ▾ lists her set first, under her font's name, then **Stock**; the photo converts in only her characters; with **Show stock sets** off the stock sets leave the menu, and still show for a font with no sets of her own.
+- Probes: `extremes`: empty the set with Backspace and check it's no longer offered.
+- Rated: no (drawing)
+
+### 26. All of it after a reload
+- Does: reloads the page, then exports an XBin, reopens the project and checks the Fonts page. Then starts a room as host and looks at the Fonts page in it.
+- Expects: the style, the sets, the hidden Double and **Show stock sets** are back after the reload, and with the project; in the room the Lines and Sets can't be changed, and say "A font's blocks, lines and sets can't change in a room."
+- Probes: `interrupt`: reload right after the last slot click and check the style is whole.
+- Rated: no (drawing)
+
+**Free time:** she'd make a second style, draw a spiral with each, and undo the lot.
+
 ## Known
 
