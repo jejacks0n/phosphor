@@ -5,14 +5,18 @@ import { t } from '@/i18n/index.js';
 // options and the modes it works in are here; its painting is the plugin's own work, behind begin, move and end (stubs
 // until the painting is wired in). The options it declares are kept by ref in workspace.pluginTools, { [optionId]: value },
 // and read back through optionValues, so a value that no longer fits (a plugin's update changed a range) is its default.
-const decimals = (step) => (String(step).split('.')[1] ?? '').length;
+// The digits a step shows: those after its point, less its exponent when it's written 1e-7 style (toFixed takes up to 100).
+const decimals = (step) => {
+  const [digits, exponent] = String(step).split('e');
+  return Math.min(100, Math.max(0, (digits.split('.')[1] ?? '').length - Number(exponent ?? 0)));
+};
 
 const valuesOf = (workspace, ref, def) => optionValues(def, workspace.pluginTools[ref]);
 
 // One declared option as a toolbar option: the plugin's words for its label, and get and set over the kept values.
 function toolOption(ref, def, option) {
   const base = {
-    key: option.id,
+    key: `${ref}/${option.id}`, // RangeField's element id: unique on the page, whatever ids plugins pick
     label: option.name,
     title: option.name,
     get: (workspace) => valuesOf(workspace, ref, def)[option.id],
