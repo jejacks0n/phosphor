@@ -1,5 +1,5 @@
 // The drawing's bitmap font as document state: one undo step, saved with the project, kept by a new blank canvas.
-import { test, it, expect, afterEach } from 'vitest';
+import { test, it, expect, afterEach, vi } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { readXBin, writeXBin } from '@/lib/XBinFile.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
@@ -438,6 +438,20 @@ test('a style added to the drawing\'s font is one undo step', async () => {
   expect(project.drawingFont.name).toBe('Topaz');
   project.redo();
   expect(project.drawingFont.lines.styles[0].name).toBe('Heavy');
+});
+
+// Lines and sets don't change the picture, so a step that changes only them, its undo and its redo draw nothing again.
+test('a change to only the font\'s lines or sets doesn\'t render', async () => {
+  const project = await blank();
+  project.setDrawingFont(font());
+  const render = vi.spyOn(project, 'render');
+  project.setDrawingFont({ ...project.drawingFont, lines: { hide: [], styles: [heavy] } });
+  project.setDrawingFont({ ...project.drawingFont, sets: { hideStock: true, sets: [] } });
+  project.undo();
+  project.redo();
+  expect(render).not.toHaveBeenCalled();
+  project.setDrawingFont({ ...project.drawingFont, blocks: [...CP437_BLOCKS].reverse() });
+  expect(render).toHaveBeenCalled();
 });
 
 test('lines and sets are saved with the project', async () => {

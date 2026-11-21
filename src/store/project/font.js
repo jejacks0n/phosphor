@@ -160,10 +160,12 @@ export const fontActions = {
     const from = heightOf(this.drawingFont), to = heightOf(font);
     if (from !== to) return newHeight(this, font, after, from, to);
     const before = fontKeysOf(this);
+    // Lines and sets don't change the picture: a step that changes only them draws nothing again.
+    const looks = Object.keys(after).some((key) => key !== 'fontLines' && key !== 'fontSets' && after[key] !== before[key]);
     this.commitPending();
     this.$patch(after);
-    const on = (values) => () => { this.$patch(values); this.render(); };
+    const on = (values) => () => { this.$patch(values); if (looks) this.render(); };
     this.pushEdit({ settingsOnly: true, undo: on(before), redo: on(after) });
-    this.render();
+    if (looks) this.render();
   },
 };

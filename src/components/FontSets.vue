@@ -38,17 +38,21 @@ const add = () => {
   change([...sets.value.sets, { id, name: t('palette.fonts.setName', { n: id.slice(1) }), slots: [] }]);
   emit('pick', id);
 };
-// Typed characters as the font's slots, dropping those it has none for; the field shows what's kept.
-const typed = (set, event) => {
-  const slots = [...event.target.value].map((c) => slotOf(c, props.font)).filter((s) => s !== null);
+// A field's characters as the font's slots, dropping those it has none for.
+const slotsOf = (field) => [...field.value].map((c) => slotOf(c, props.font)).filter((s) => s !== null);
+// Typing shows only what's kept; the set takes it when the field is done (change), as one undo step.
+const typed = (event) => { event.target.value = slotsOf(event.target).map((s) => chars.value[s]).join(''); };
+const done = (set, event) => {
+  const slots = slotsOf(event.target);
   if (slots.length !== set.slots.length || slots.some((s, i) => s !== set.slots[i])) setSlots(set.id, slots);
-  event.target.value = slots.map((s) => chars.value[s]).join('');
 };
 // Backspace with nothing selected takes the last slot off, wherever the caret is (clicks add at the end).
 const backspace = (set, event) => {
   if (event.target.selectionStart !== event.target.selectionEnd) return;
   event.preventDefault();
-  if (set.slots.length) setSlots(set.id, set.slots.slice(0, -1));
+  const slots = slotsOf(event.target).slice(0, -1);
+  event.target.value = slots.map((s) => chars.value[s]).join('');
+  done(set, event);
 };
 
 const slot = (n) => {
@@ -70,7 +74,8 @@ defineExpose({ slot });
           :disabled="disabled"
           :title="disabled ? reason : undefined"
           @focus="emit('pick', s.id)"
-          @input="typed(s, $event)"
+          @input="typed"
+          @change="done(s, $event)"
           @keydown.backspace="backspace(s, $event)"
       >
       <button class="ghost" :disabled="disabled" :title="disabled ? reason : undefined" @click="remove(s.id)">{{ t('common.delete') }}</button>

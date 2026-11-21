@@ -575,9 +575,26 @@ test('typing into a set maps each character to its slot, dropping ones the font 
   const chars = host.querySelector('.sets input.chars');
   chars.value = '·░\u{1F600}A';
   chars.dispatchEvent(new Event('input'));
+  chars.dispatchEvent(new Event('change'));
   await nextTick();
   expect(project.drawingFont.sets.sets[0].slots).toEqual([250, 176, 65]);
   expect(chars.value).toBe('·░A');
+});
+
+test('characters typed into a set are one undo step, taken when the field is done', async () => {
+  const { project } = await mount({ font: { ...cp437Font, sets: { hideStock: false, sets: [{ id: 's1', name: 'Grit', slots: [250] }] } } });
+  await press(sectionTab('Sets'));
+  const chars = host.querySelector('.sets input.chars');
+  for (const value of ['·░', '·░A', '·░AB']) {
+    chars.value = value;
+    chars.dispatchEvent(new Event('input'));
+  }
+  chars.dispatchEvent(new Event('change'));
+  await nextTick();
+  expect(project.drawingFont.sets.sets[0].slots).toEqual([250, 176, 65, 66]);
+  project.undo();
+  await nextTick();
+  expect(project.drawingFont.sets.sets[0].slots).toEqual([250]);
 });
 
 test('Show stock sets is one switch', async () => {
