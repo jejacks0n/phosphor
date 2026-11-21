@@ -461,8 +461,10 @@ and sideways.
   This layer and smears where she hasn't painted; undoes the last two strokes from Actions → Undo.
 - Expects: Smear is in ⋯ after the built-in tools, with its own icon, named "Smear (Smear)"; chosen, its options show in
   the options row in its words (Size, Strength, Reads), fitting 390 wide or folding into the row's own ⋯; a drag drags
-  the colors under it along the way her finger went, softer at the brush's edge, and in ANSI the cells show it as Colors
-  only does (▄ in the stroke's colors); a higher Strength smears more; with This layer a stroke where the layer has no
+  the colors under it along the way her finger went, softer at the brush's edge, and in ANSI the smeared cells take the
+  new colors in characters her layer's Characters settings choose, as for any converted cell, with no ▄ half-blocks
+  (where it crosses her caption, its letters stay and are tinted; Colors only's paint, [R5](../../model.md#r5-colors-only-makes-paint-of-whats-paint-to-it-and-tints-a-character-of-someones-own));
+  a higher Strength smears more; with This layer a stroke where the layer has no
   paint changes nothing; each stroke is one undo step ([Writing a brush](../../plugins.md#writing-a-brush)).
 - Probes: `out-of-order`: tap once without dragging (a press alone changes nothing); `extremes`: Strength 0 (nothing
   changes) and Size 20; `again`: reload and check Smear's Size and Strength are as she left them (they're kept in the
