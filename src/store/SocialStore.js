@@ -14,6 +14,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { ROOM_ID, useRoomStore, hasReportedRoom, keepRoomReport, keptRoomReports } from '@/store/RoomStore';
 import { REASONS } from '@/social/chat';
 import { CONSENT_KEY, CONSENT_VERSION } from '@/social/consent';
+import { keptHostingRecord } from '@/social/hostingRecord';
 import { emptyLobby, applyLobbyMessage, sortedRooms, sortedPeople, LobbyConnection } from '@/social/lobby';
 import { t } from '@/i18n/index.js';
 
@@ -221,7 +222,9 @@ export const useSocialStore = defineStore('social', {
       const url = new URL(location.href);
       const params = url.searchParams;
       // With path addresses, the room on an entry of yours is the address's own: the router's to follow, not a link.
-      const returned = history.state?.inRoom ? RETURN_PARAMS.filter((name) => name !== 'room') : RETURN_PARAMS;
+      // So is the room this tab hosts, in a copy window.open made (its record comes along, its entry doesn't).
+      const own = history.state?.inRoom || (params.has('room') && keptHostingRecord()?.id === params.get('room'));
+      const returned = own ? RETURN_PARAMS.filter((name) => name !== 'room') : RETURN_PARAMS;
       const error = params.get('error');
       if (params.get('verified') === '1') this.notice = error ? messageFor(error) : t('social.notices.emailConfirmed');
       if (params.get('reset')) Object.assign(this, { resetToken: params.get('reset'), page: 'reset' });

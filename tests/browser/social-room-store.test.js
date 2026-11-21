@@ -24,7 +24,7 @@ import { fontFor } from '@/social/wire';
 import { openPeer } from '@/social/peer';
 import { passKey } from '@/social/pass';
 import { ROOM_AWAY_WORDS, HOST_REPLACED_WORDS, GOING_BACK_FAILED_WORDS, ART_NOT_OPENED_WORDS, refusalWords } from '@/social/messages';
-import { keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
+import { forgetHostingRecord, keepHostingRecord, keptHostingRecord } from '@/social/hostingRecord';
 import { toastMessage } from '@/composables/useToast';
 import { newSession, removedCount } from '@/social/session';
 import { createTestApp, loadImage, settle } from '../support/app.js';
@@ -583,6 +583,18 @@ test('?room=<id> on a desktop opens the lobby and asks once you\'re known, joini
   expect([room.role, useWorkspaceStore().editorTab]).toEqual(['watch', 'room']);   // its art shows
   await social.showLobby();
   expect(sockets.filter((s) => s.url.includes('/api/rooms/'))).toHaveLength(1);   // once
+});
+
+test('the ?room= of the room this tab hosts is no link, with no entry of its own (a copy from window.open has the record, not the entry)', async () => {
+  const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
+  keepHostingRecord({ id: ID });
+  try {
+    await social.start(at(`?room=${ID}`));
+  } finally {
+    forgetHostingRecord();
+  }
+  expect([social._roomLink, social._roomLinkAsks, social.roomInvite]).toEqual([null, false, null]);
+  expect(replaceState).not.toHaveBeenCalled();   // the router's to follow
 });
 
 test('saying no to a ?room= link joins nothing', async () => {
