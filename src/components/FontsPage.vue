@@ -142,14 +142,13 @@ const stored = computed(() => workspace.userFonts ?? []);
 const inUseId = computed(() => drawnId.value ?? workspace.displayFontSpec.id);
 const builtIn = DISPLAY_FONTS.map((f) => ({ id: f.id, name: f.name, kind: 'builtIn', family: f.family }));
 // The drawing's font (listed once, though it may be kept in this browser too), then yours, then the built-in ones.
-// A font whose bytes are a linked font's takes that entry's name (a file loaded as FROGBLOCK.F08 or anything else).
+// A font whose bytes are a linked font's was named for it when loaded (addBitmapFont); its row shows the credit.
 const linkedOf = (id) => index.value?.linked.find((e) => e.fontId === id);
-const named = (f) => { const e = linkedOf(f.id); return e ? { ...f, name: e.name } : f; };
 const all = computed(() => [
   ...(drawn.value ? [{ id: drawnId.value, name: drawn.value.name, kind: 'bitmap', height: drawn.value.height }] : []),
   ...stored.value.filter((f) => f.id !== drawnId.value),
   ...builtIn,
-].map(named));
+]);
 const groups = computed(() => {
   const query = filter.value.trim().toLowerCase(), shown = all.value.filter((f) => f.name.toLowerCase().includes(query));
   return [

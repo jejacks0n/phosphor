@@ -11,6 +11,7 @@
 import { t } from '@/i18n';
 import { fontId, fontKey, fontName, parseRawFont, parseFontSheet } from './BitmapFont.js';
 import { ttfOf } from './BitmapTtf.js';
+import { linkedFontOf } from './linkedFonts.js';
 
 // Checked to be one width: the narrowest and widest characters of a proportional font, and a digit.
 export const MONOSPACE_SAMPLE = Object.freeze([...'il.\' MWm@0']);
@@ -163,6 +164,7 @@ export async function addFont(file) {
 
 // Load a bitmap font file (a raw .F## or a PNG sheet, told by its name or type) and store it:
 // { id, name, kind: 'bitmap', height }. Rejects with the not-a-bitmap-font message. The same font twice is one entry.
+// A linked font's bytes (FROGBLOCK's) take that font's name, whatever the file is called.
 export async function addBitmapFont(file) {
   const name = fontName(file.name);
   let font;
@@ -182,7 +184,7 @@ export async function addBitmapFont(file) {
   } else {
     font = parseRawFont(new Uint8Array(await file.arrayBuffer()), name);
   }
-  const id = fontId(font), entry = { id, name, kind: 'bitmap', height: font.height };
+  const id = fontId(font), entry = { id, name: linkedFontOf(id)?.name ?? name, kind: 'bitmap', height: font.height };
   const old = await inStore('readonly', (fonts) => fonts.get(id)); // the same font again keeps its blocks, lines and sets
   const { blocks, lines, sets } = old ?? {}, kept = { ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) };
   await inStore('readwrite', (fonts) => fonts.put({ ...entry, data: font.bytes, ...kept }));

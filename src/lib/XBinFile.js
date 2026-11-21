@@ -3,6 +3,7 @@
 import { CP437 } from './Cp437.js';
 import { fitFont, fontId, fontName, slotChars, slotOf } from './BitmapFont.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES } from './Cells.js';
+import { linkedFontOf } from './linkedFonts.js';
 import { PALETTES, nearestIndex } from './ColorUtils.js';
 import { Sauce, readSauce } from './Sauce.js';
 import { t } from '@/i18n';
@@ -45,7 +46,8 @@ export function readXBin(bytes, name, knownBlocks = () => undefined) {
   let font = null;
   if (flags & FONT) {
     if (!size || size > 32 || data.length < at + size * 256) broken();
-    font = { name: fontName(name), height: size, bytes: data.slice(at, at + size * 256) };
+    const bytes = data.slice(at, at + size * 256);
+    font = { name: linkedFontOf(fontId({ height: size, bytes }))?.name ?? fontName(name), height: size, bytes }; // named for the file, or a linked font's own name
     at += size * 256;
   }
 

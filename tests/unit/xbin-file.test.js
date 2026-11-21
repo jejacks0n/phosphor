@@ -1,8 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { isXBin, readXBin, writeXBin } from '@/lib/XBinFile.js';
 import { CP437_BLOCKS, SLOT_CHARS, fontId, withBlock } from '@/lib/BitmapFont.js';
 import { cp437Font, lowerAt240 } from '../support/blockFonts.js';
 import { readSauce } from '@/lib/Sauce.js';
+
+// A stand-in linked font: the font whose id the test sets, as FROGBLOCK's bytes can't be shipped.
+vi.mock('@/lib/linkedFonts.js', async (importOriginal) => {
+  const real = await importOriginal();
+  return { ...real, linkedFontOf: (id) => (id === globalThis.__linkedId ? real.LINKED_FONTS[0] : real.linkedFontOf(id)) };
+});
 
 // Noise glyphs, but for the blocks at CP437's slots (where the reader finds them).
 const font = { name: 'f', height: 8, bytes: Uint8Array.from({ length: 2048 }, (_, i) => i & 0xff) };
@@ -120,6 +126,9 @@ describe('XBin', () => {
     expect([...art.font.bytes]).toEqual(fontBytes);
     expect(art.font.height).toBe(8);
     expect(readXBin(file(2, 1, 2, fontBytes, [65, 7, 66, 7]), 'ACID-55.XB').font.name).toBe('ACID-55'); // named for the file, less its .xb
+    globalThis.__linkedId = fontId({ height: 8, bytes: Uint8Array.from(fontBytes) });
+    expect(readXBin(file(2, 1, 2, fontBytes, [65, 7, 66, 7]), 'ACID-55.XB').font.name).toBe('FROGBLOCK'); // a linked font's bytes: its name
+    globalThis.__linkedId = undefined;
     // non-blink: the background is 4 bits
     expect(art.cells[0]).toMatchObject({ fg: '#000000', bg: '#ffffff' });
     expect(art.cells[1]).toMatchObject({ fg: '#ffffff', bg: '#000000' });

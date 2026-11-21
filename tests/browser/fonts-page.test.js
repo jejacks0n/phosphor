@@ -16,6 +16,12 @@ import { openFontSetup } from '@/composables/useFontSetup.js';
 import { forgetLibrary } from '@/lib/fontLibrary';
 import { toastMessage, toastAction, closeToast } from '@/composables/useToast.js';
 
+// A stand-in linked font: the font whose id a test sets is FROGBLOCK, as FROGBLOCK's bytes can't be shipped.
+vi.mock('@/lib/linkedFonts', async (importOriginal) => {
+  const real = await importOriginal();
+  return { ...real, linkedFontOf: (id) => (id === globalThis.__linkedId ? real.LINKED_FONTS[0] : real.linkedFontOf(id)) };
+});
+
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
 const rawFile = (height, name, fill = 0) => new File([new Uint8Array(256 * height).fill(fill)], name);
 const BUILT_IN = ['IBM VGA', 'JetBrains Mono', 'Unscii', 'Unifont'];
@@ -29,6 +35,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   forgetLibrary();
+  globalThis.__linkedId = undefined;
   for (const font of await loadFonts()) await removeFont(font.id);
 });
 
@@ -1171,6 +1178,7 @@ test('details show tags, From and License: None given for VileR, Unknown with Te
 test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show as FROGBLOCK with its credit', async () => {
   const index = FIXTURE(), bytes = new Uint8Array(2048).fill(5), frogId = fontId({ height: 8, bytes });
   index.linked[0].fontId = frogId;
+  globalThis.__linkedId = frogId;
   const { project } = await mount({ library: index });
   await chooseLibrary('FROGBLOCK');
   expect(host.querySelector('.edit-side .meta').textContent).toBe('Bitmap 8×8 · Library · not included');
@@ -1186,6 +1194,8 @@ test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show
   input.dispatchEvent(new Event('change'));
   await waitFor(() => project.drawingFont && fontId(project.drawingFont) === frogId);
   await waitFor(() => title() === 'FROGBLOCK');
+  expect(project.drawingFont.name).toBe('FROGBLOCK'); // the name it's kept and drawn under (the Font field's), not the file's
+  expect((await loadFonts()).find((f) => f.id === frogId).name).toBe('FROGBLOCK');
   expect(origin()).toContain('Credit FROGBLOCK font by Polyducks');
   expect(row('FROGBLOCK').querySelector('.credit').textContent).toBe('FROGBLOCK font by Polyducks');
 });
