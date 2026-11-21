@@ -900,6 +900,7 @@
       "lineToGo": "Encore {n} pièce avant que Dessiner avec le propose | Encore {n} pièces avant que Dessiner avec le propose",
       "lineSharesBlock": "{piece} partage l'emplacement {n} avec {block}",
       "lineBlockSlot": "L'emplacement {n} dessine le bloc {block} : il ne peut pas être une pièce de ligne.",
+      "lineSlotTaken": "L'emplacement {n} est déjà la pièce {piece} de ce style.",
       "linePicked": "{piece} est choisie dans {name} : cliquez sur l'emplacement qui la dessine. Un style relie ses propres coins et jonctions ; là où une ligne croise un autre style, la nouvelle ligne l'emporte.",
       "linesHint": "Pour définir une pièce, choisissez sa tuile, puis cliquez sur l'emplacement qui la dessine.",
       "newSet": "+ Nouveau jeu",

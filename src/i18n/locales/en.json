@@ -900,6 +900,7 @@
       "lineToGo": "{n} piece to go before Draw with offers it | {n} pieces to go before Draw with offers it",
       "lineSharesBlock": "{piece} shares slot {n} with {block}",
       "lineBlockSlot": "Slot {n} draws the {block} block, so it can’t be a line piece.",
+      "lineSlotTaken": "Slot {n} is already this style’s {piece}.",
       "linePicked": "{piece} is picked in {name}: click the slot that draws it. A style joins its own corners and tees; where a line crosses another style, the new line wins.",
       "linesHint": "To set a piece, pick its tile, then click the slot that draws it.",
       "newSet": "+ New set",

@@ -21,7 +21,7 @@ const lines = computed(() => props.font.lines ?? { hide: [], styles: [] });
 const all = computed(() => lineStylesOf(props.font));
 const stock = computed(() => all.value.filter((s) => s.stock));
 const own = computed(() => all.value.filter((s) => !s.stock));
-const refused = ref(null); // { n, block }: the block's slot last clicked for a piece
+const refused = ref(null); // { n, block } or { n, piece }: a slot last clicked for a piece that a block, or another piece of the style, has
 watch(() => props.picked, () => { refused.value = null; });
 
 const blockName = (key) => t(`palette.fonts.blockName.${key}`);
@@ -37,7 +37,8 @@ const status = (s) => {
 };
 const isPicked = (s, piece) => props.picked?.style === s.id && props.picked.piece === piece;
 const note = computed(() => {
-  if (refused.value) return { text: t('palette.fonts.lineBlockSlot', { n: refused.value.n, block: blockName(refused.value.block) }), tone: 'warn' };
+  const no = refused.value;
+  if (no) return { text: no.block ? t('palette.fonts.lineBlockSlot', { n: no.n, block: blockName(no.block) }) : t('palette.fonts.lineSlotTaken', { n: no.n, piece: PIECES[no.piece] }), tone: 'warn' };
   const style = own.value.find((s) => s.id === props.picked?.style);
   if (style && !props.disabled) return { text: t('palette.fonts.linePicked', { piece: PIECES[props.picked.piece], name: style.name }), tone: '' };
   return own.value.length ? { text: t('palette.fonts.linesHint'), tone: '' } : null;
@@ -60,13 +61,16 @@ const add = () => {
   emit('pick', { style: id, piece: 0 });
 };
 
-// A slot clicked on the sheet: the picked piece's, unless a block is drawn from it; then the next unset piece is picked.
+// A slot clicked on the sheet: the picked piece's, unless a block is drawn from it or another piece of the style has it
+// (two styles may share one); then the next unset piece is picked.
 const slot = (n) => {
   const style = lines.value.styles.find((s) => s.id === props.picked?.style);
   if (props.disabled || !style) return;
   const block = blocksOf(props.font).indexOf(n);
   if (block >= 0) return void (refused.value = { n, block: BLOCKS[block].key });
-  const piece = props.picked.piece, slots = style.slots.map((s, i) => (i === piece ? n : s));
+  const piece = props.picked.piece, other = style.slots.findIndex((s, i) => s === n && i !== piece);
+  if (other >= 0) return void (refused.value = { n, piece: other });
+  const slots = style.slots.map((s, i) => (i === piece ? n : s));
   if (style.slots[piece] !== n) change(lines.value.styles.map((s) => (s === style ? { ...s, slots } : s)));
   const next = [...slots.keys()].map((i) => (piece + 1 + i) % slots.length).find((i) => slots[i] === null);
   emit('pick', next === undefined ? null : { style: style.id, piece: next });

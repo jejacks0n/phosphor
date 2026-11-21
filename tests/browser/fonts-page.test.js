@@ -545,6 +545,20 @@ test('a block\u2019s slot can\u2019t be a piece', async () => {
   expect(text()).toContain('Slot 220 draws the Lower block, so it can\u2019t be a line piece.');
 });
 
+test('a slot one piece of a style has can\u2019t be another of its pieces; another style may have it', async () => {
+  const font = { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, slots: [1, 2, ...Array(9).fill(null)] }, { ...heavy, id: 'l2', name: 'Thin', slots: Array(11).fill(null) }] } };
+  const { project } = await mount({ font });
+  await press(sectionTab('Lines'));
+  await press(lineTiles()[2]); // Heavy's ┌
+  await press(slotCell(2));
+  expect(project.drawingFont.lines.styles[0].slots[2]).toBe(null);
+  expect(text()).toContain('Slot 2 is already this style\u2019s │.');
+  expect(lineTiles()[2].getAttribute('aria-pressed')).toBe('true'); // still on ┌
+  await press(lineTiles()[11]); // Thin's ─
+  await press(slotCell(1));
+  expect(project.drawingFont.lines.styles[1].slots[0]).toBe(1);
+});
+
 test('a block on a piece\u2019s slot keeps the piece and says so', async () => {
   await mount({ font: { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, slots: [1, 2, 3, 4, 5, 6, 220, 8, 9, 10, 11] }] } } });
   await press(sectionTab('Lines'));
