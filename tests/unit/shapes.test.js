@@ -426,6 +426,12 @@ test('shapeBounds reaches as far as the stroke does: half its width centered, no
   assert.equal(shapeBounds(withShape(square, { align: 'left', closed: false })).x, -4); // a side: all of it
 });
 
+test('in an 8×8 font a stroke\'s bounds reach twice as far down as across, in grid pixels', () => {
+  const rect = rectShape(1, 1, 3, 3, { stroke: '#000000', width: 2 });
+  assert.deepEqual(shapeBounds(rect, 0.5), { x: 0, y: -1, w: 4, h: 6 });
+  assert.deepEqual(shapeBounds(rect, 1), shapeBounds(rect));
+});
+
 test('shapeBounds pads for miters and square caps', () => {
   const line = makeShape({ points: [[0, 0, 0, 0, 0, 0, 0], [10, 0, 0, 0, 0, 0, 0]], closed: false, stroke: '#ff0000', width: 4 });
   assert.equal(shapeBounds(line).x, -2);

@@ -95,7 +95,7 @@ export const vectorActions = {
     if (!this._shapeLayer) return rects;
     const { lower, upper } = shapesOfStack(this), layers = this.layers;
     const rank = (shape) => layers.findIndex((layer) => layer.id === (shape.layer ?? 'vector'));
-    rects.lower = this._shapeLayer.set(lower, rank);
+    rects.lower = this._shapeLayer.set(lower, rank, this.pixelAspect);
     for (const [id, shapes] of upper) {
       let layer = this._upperShapes.get(id);
       if (!layer) {
@@ -103,7 +103,7 @@ export const vectorActions = {
         this._upperShapes.set(id, layer = markRaw(new ShapeLayer(null)));
       }
       layer.grid(this.cols, this.rows, this.paintLayer.scale); // the paint's scale: Merge down draws its shapes into a cells layer's paint as they are, and By shape samples both alike (docs/model.md R7)
-      const rect = layer.set(shapes);
+      const rect = layer.set(shapes, null, this.pixelAspect);
       if (rect) rects.upper = union(rects.upper, rect);
     }
     for (const id of [...this._upperShapes.keys()]) if (!this.layerById(id)) this._upperShapes.delete(id);
@@ -452,8 +452,8 @@ export const vectorActions = {
       for (let i = order.length - 1; i >= 0; i--) { // top down: each one added is below, and looked at later
         const [key, shape] = order[i];
         if (!pressed.has(key)) continue;
-        const bounds = shapeBounds(shape);
-        for (let j = i - 1; j >= 0; j--) if (!pressed.has(order[j][0]) && meets(bounds, shapeBounds(order[j][1]))) pressed.add(order[j][0]);
+        const bounds = shapeBounds(shape, this.pixelAspect);
+        for (let j = i - 1; j >= 0; j--) if (!pressed.has(order[j][0]) && meets(bounds, shapeBounds(order[j][1], this.pixelAspect))) pressed.add(order[j][0]);
       }
     }
     return pressed;
@@ -625,12 +625,12 @@ export const vectorActions = {
     const moving = new Set(keys), up = direction === 'forward', sequence = up ? [...order].reverse() : [...order];
     for (const key of sequence) {
       if (!moving.has(key)) continue;
-      const at = order.indexOf(key), bounds = shapeBounds(this.shapes.get(key));
+      const at = order.indexOf(key), bounds = shapeBounds(this.shapes.get(key), this.pixelAspect);
       for (let i = at + (up ? 1 : -1); i >= 0 && i < order.length; i += up ? 1 : -1) {
         const other = order[i];
         // Only past a shape on its own vector layer: the layers' order decides between two on different ones, so a step
         // past one of those would show nothing.
-        if (moving.has(other) || layerOf(other) !== layerOf(key) || !meets(bounds, shapeBounds(this.shapes.get(other)))) continue;
+        if (moving.has(other) || layerOf(other) !== layerOf(key) || !meets(bounds, shapeBounds(this.shapes.get(other), this.pixelAspect))) continue;
         order.splice(at, 1);
         order.splice(i, 0, key);
         break;

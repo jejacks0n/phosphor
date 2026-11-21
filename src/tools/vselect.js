@@ -127,9 +127,9 @@ function slideTo(project, drag, to) {
 
 // Follow a path…'s pick: the key of the topmost shape under pos that the picker could follow (one with an outline, not
 // an art layer, not a follower, not the picker), seen through any that can't (a dot on a line's tip picks the line), or
-// null. placed: the shapes where they show (placedShapes), a guide hit on its outline.
-export function pathAt(placed, picker, pos, tol) {
-  for (const key of shapesAt(placed, pos.x, pos.y, tol)) {
+// null. placed: the shapes where they show (placedShapes), a guide hit on its outline. aspect: the drawing's pixelAspect.
+export function pathAt(placed, picker, pos, tol, aspect = 1) {
+  for (const key of shapesAt(placed, pos.x, pos.y, tol, true, null, aspect)) {
     const shape = placed.get(key);
     if (key !== picker && !isArt(shape) && !shape.follow) return key;
   }
@@ -194,7 +194,7 @@ function endDrag(project, workspace) {
   if (kind === 'marquee') {
     const box = workspace.vectorMarquee;
     workspace.vectorMarquee = null;
-    const touched = box ? shapesTouching(placedShapes(project), box, project.shapeRank) : [];
+    const touched = box ? shapesTouching(placedShapes(project), box, project.shapeRank, project.pixelAspect) : [];
     if (box || !shift) project.selectShapes(shift ? [...keys, ...touched.filter((key) => !keys.includes(key))] : touched);
     return;
   }
@@ -242,9 +242,9 @@ export default {
     const placed = placedShapes(project), keys = selected(workspace, project), box = selectionBox(placed, keys); // where they show
     const at = grab(project, placed, keys, box, pos, shift);
     if (workspace.pickingPath) { // Follow a path…: a click picks the path, or on empty canvas, ends the pick
-      const path = pathAt(placed, workspace.pickingPath, pos, tol);
+      const path = pathAt(placed, workspace.pickingPath, pos, tol, project.pixelAspect);
       if (path) project.followPath(workspace.pickingPath, path);
-      if (path || !shapeAt(placed, pos.x, pos.y, tol, true, project.shapeRank)) workspace.pickingPath = null;
+      if (path || !shapeAt(placed, pos.x, pos.y, tol, true, project.shapeRank, project.pixelAspect)) workspace.pickingPath = null;
       return false;
     }
     if (box && !shift) {
@@ -255,7 +255,7 @@ export default {
       const own = boxGrips(box, unit, pos, at, workspace);
       if (pick.press([...trims.filter((c) => c.d <= REACH), ...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
     } else pick.reset();
-    const hit = shapeAt(placed, pos.x, pos.y, tol, true, project.shapeRank);
+    const hit = shapeAt(placed, pos.x, pos.y, tol, true, project.shapeRank, project.pixelAspect);
     // A second click edits points; an art layer has none, so it steps into the layer (see endDrag).
     const now = performance.now(), second = hit && lastPress?.key === hit && now - lastPress.time < DOUBLE_MS && near(pos, lastPress.pos, unit, DOUBLE_PX);
     const art = isArt(project.shapes.get(hit)), again = second && !art, enter = second && art;

@@ -1,7 +1,8 @@
 // Which shape is under a point, and how near a point is to one's outline: through Path2D on one 2D context
-// kept for it (the shapes' paths in grid pixels; tolerances in grid pixels).
+// kept for it (the shapes' paths in grid pixels, or on screen where a hit's aspect says; tolerances in grid pixels
+// across).
 import { isArt } from '@/document/artLayers.js';
-import { curveBounds, pathData, stacked, strokeAlign, strokeOf, strokeReach, strokeSide } from '@/document/shapes.js';
+import { curveBounds, onScreen, pathData, stacked, strokeAlign, strokeOf, strokeReach, strokeSide } from '@/document/shapes.js';
 
 let context = null;
 const ctx = () => (context ??= document.createElement('canvas').getContext('2d'));
@@ -19,11 +20,15 @@ export function sidePath(shape, side, pad = 0, k = 1) {
 
 // An art layer: anywhere in its box. A guide: within tol of its outline alone. Otherwise on its fill (under its fill rule: a hole isn't on it), or within tol of its outline (or of its stroke's edge,
 // caps and joins as it draws them; a stroke inside or outside the outline, or to a side of it, only there).
-export function hitsShape(shape, x, y, tol) {
+// aspect (pixelAspect): the shape and the point are tested on screen (onScreen), as the shape is drawn, and tol is in
+// screen units (a grid pixel across).
+export function hitsShape(shape, x, y, tol, aspect = 1) {
   if (isArt(shape)) { // anywhere in its box, drawn on or not
     const { x0, y0, x1, y1 } = curveBounds(shape);
     return x >= x0 - tol && x <= x1 + tol && y >= y0 - tol && y <= y1 + tol;
   }
+  shape = onScreen(shape, aspect);
+  y *= aspect;
   const c = ctx(), path = new Path2D(pathData(shape)), { rule, cap, join, miter } = strokeOf(shape);
   if (shape.guide) { // it draws nothing: only its outline, as VECTOR shows it, within tol
     Object.assign(c, { lineWidth: 2 * tol, lineCap: 'round', lineJoin: 'round' });
@@ -43,30 +48,30 @@ export function hitsShape(shape, x, y, tol) {
 }
 
 // The keys of the shapes at (x, y), topmost first, found as they're asked for. art false: art layers pass unseen.
-// rank: a shape's vector layer's place in the stack (the store's shapeRank), which comes before its z.
-export function* shapesAt(shapes, x, y, tol, art = true, rank = null) {
+// rank: a shape's vector layer's place in the stack (the store's shapeRank), which comes before its z. aspect: hitsShape's.
+export function* shapesAt(shapes, x, y, tol, art = true, rank = null, aspect = 1) {
   const order = stacked(shapes, rank).filter(([, shape]) => art || !isArt(shape));
-  for (let i = order.length - 1; i >= 0; i--) if (hitsShape(order[i][1], x, y, tol)) yield order[i][0];
+  for (let i = order.length - 1; i >= 0; i--) if (hitsShape(order[i][1], x, y, tol, aspect)) yield order[i][0];
 }
 
 // The key of the topmost shape at (x, y), or null. art false: art layers pass unseen (the Node tool has no points on them).
-export const shapeAt = (shapes, x, y, tol, art = true, rank = null) => shapesAt(shapes, x, y, tol, art, rank).next().value ?? null;
+export const shapeAt = (shapes, x, y, tol, art = true, rank = null, aspect = 1) => shapesAt(shapes, x, y, tol, art, rank, aspect).next().value ?? null;
 
 // The keys of the shapes a box (grid pixels) touches, bottom to top: wholly inside it, or its fill or stroke
-// found at points sampled over where the two overlap.
+// found at points sampled over where the two overlap. aspect: hitsShape's (a stroke reaches 1 / aspect as far down).
 // ponytail: about 4000 samples a shape, each grown by half the spacing, so over a big overlap a shape that
 // close to the box's edge counts; exact geometry (curves against the box's edges) if that's ever noticed.
-export function shapesTouching(shapes, { x0, y0, x1, y1 }, rank = null) {
+export function shapesTouching(shapes, { x0, y0, x1, y1 }, rank = null, aspect = 1) {
   return stacked(shapes, rank).filter(([, shape]) => {
-    const b = curveBounds(shape), pad = strokeReach(shape);
+    const b = curveBounds(shape), pad = strokeReach(shape), padY = pad / aspect;
     if (b.x0 >= x0 && b.y0 >= y0 && b.x1 <= x1 && b.y1 <= y1) return true;
     if (isArt(shape)) return b.x0 <= x1 && b.x1 >= x0 && b.y0 <= y1 && b.y1 >= y0; // its box, touched
-    const ax = Math.max(x0, b.x0 - pad), ay = Math.max(y0, b.y0 - pad), bx = Math.min(x1, b.x1 + pad), by = Math.min(y1, b.y1 + pad);
+    const ax = Math.max(x0, b.x0 - pad), ay = Math.max(y0, b.y0 - padY), bx = Math.min(x1, b.x1 + pad), by = Math.min(y1, b.y1 + padY);
     if (ax > bx || ay > by) return false;
-    const step = Math.max(0.5, Math.sqrt(((bx - ax) * (by - ay)) / 4000));
-    const nx = Math.ceil((bx - ax) / step), ny = Math.ceil((by - ay) / step);
+    const step = Math.max(0.5, Math.sqrt(((bx - ax) * (by - ay) * aspect) / 4000)); // on screen, as tol is
+    const nx = Math.ceil((bx - ax) / step), ny = Math.ceil(((by - ay) * aspect) / step);
     for (let j = 0; j <= ny; j++) {
-      for (let i = 0; i <= nx; i++) if (hitsShape(shape, ax + ((bx - ax) * i) / (nx || 1), ay + ((by - ay) * j) / (ny || 1), step / 2)) return true;
+      for (let i = 0; i <= nx; i++) if (hitsShape(shape, ax + ((bx - ax) * i) / (nx || 1), ay + ((by - ay) * j) / (ny || 1), step / 2, aspect)) return true;
     }
     return false;
   }).map(([key]) => key);

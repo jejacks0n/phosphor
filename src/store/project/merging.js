@@ -162,7 +162,7 @@ function onBase(project, id, rect) {
 // all), with those beneath on it that overlap them, pressed into the base layer's pixels, where they stop being shapes.
 function pressLayer(project, id, rect, keys) {
   const area = rect && { x: rect.c0, y: 2 * rect.r0, w: rect.c1 - rect.c0 + 1, h: 2 * (rect.r1 - rect.r0 + 1) };
-  const named = keys ?? [...placedShapes(project)].filter(onLayerId(id)).filter(([, shape]) => !area || meets(shapeBounds(shape), area)).map(([key]) => key);
+  const named = keys ?? [...placedShapes(project)].filter(onLayerId(id)).filter(([, shape]) => !area || meets(shapeBounds(shape, project.pixelAspect), area)).map(([key]) => key);
   // The whole layer goes too, unless it has guides: they're never pressed, so the layer stays with them.
   const guided = [...project.shapes].some((entry) => onLayerId(id)(entry) && entry[1].guide);
   const pressed = project.pressedKeys(named, id), whole = !rect && !keys && !guided;

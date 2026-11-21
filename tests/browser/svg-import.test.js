@@ -4,7 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { toastMessage } from '@/composables/useToast';
-import { IDENTITY, MOST_POINTS, MOST_SHAPES, outlines, scaling, stacked, transformed } from '@/document/shapes.js';
+import { IDENTITY, MOST_POINTS, MOST_SHAPES, outlines, scaling, stacked, transformed, worldPoints } from '@/document/shapes.js';
 import { paintShape } from '@/document/ShapeLayer.js';
 import { readSvgFile } from '@/lib/SvgFile.js';
 import { font8 } from '../support/blockFonts.js';
@@ -105,17 +105,25 @@ test('in an 8×8 font an imported square SVG is twice as many grid rows as colum
   expect(await imported(font8, '<rect width="100" height="100"/>', '0 0 100 100')).toEqual([0.5, 160, 200, [31, 2, 129, 198]]);
 });
 
-test('in an 8×8 font an imported stroke is s × its width in grid pixels', async () => {
+test('in an 8×8 font an imported stroke is s × its width on screen', async () => {
   const width = async (font) => {
     const { project } = await blank(160, 200, font);
     const [key] = project.addSvg(svg('<path d="M0 0 L100 100" stroke="red" stroke-width="6"/>'));
     return [project.pixelAspect, project.shapes.get(key).width];
   };
-  // 100 × 100 art in 160 × 200 grid pixels, half as tall as wide on screen: s = 196 × 0.5 / 100 = 0.98.
+  // 100 × 100 art in 160 × 200 grid pixels, half as tall as wide on screen: s = 196 × 0.5 / 100 = 0.98. The width is
+  // drawn in screen units (a grid pixel across), so the stroke is s × its width every way on screen.
   const [aspect, eight] = await width(font8);
   expect(aspect).toBe(0.5);
   expect(eight).toBeCloseTo(0.98 * 6, 9);
   expect(await width(null)).toEqual([1, 6]); // s = 1
+});
+
+test('in an 8×8 font an imported SVG\'s own rotation turns on screen: a turned square is a square diamond there', async () => {
+  const { project } = await blank(160, 200, font8);
+  const [key] = project.addSvg(svg('<rect width="10" height="10" transform="rotate(45 5 5)"/>', 'viewBox="0 0 10 10"'));
+  const points = worldPoints(project.shapes.get(key)), xs = points.map((p) => p.x), ys = points.map((p) => p.y * 0.5);
+  expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(Math.max(...ys) - Math.min(...ys), 6);
 });
 
 test('transforms are baked into the points, and the curves\' handles with them', async () => {

@@ -211,8 +211,8 @@ change one cell on the way.
 - Rated: yes, wants Cmd+Z
 
 ### 18. Shapes and paint follow
-- Does: in 8×16, draws a VECTOR circle and a Brush stroke, switches to 8×8, then draws a new circle with Shift in the VECTOR tab and a stroke with the Brush, and looks at the Brush outline. Then loads an 8×11 font of her own (written in the snippet) and draws a Pencil stroke and a half block.
-- Expects: the old circle and stroke stretch with the picture; the new Shift circle and the Brush outline are round on screen; in the 8×11 font a cell's halves are 5 and 6 rows, with nothing a pixel off at the seam.
+- Does: in 8×16, draws a VECTOR circle and a Brush stroke, switches to 8×8, then draws a new circle with Shift in the VECTOR tab, gives it a thick stroke and clicks just inside the stroke's top edge, draws a stroke with the Brush, and looks at the Brush outline. Then loads an 8×11 font of her own (written in the snippet) and draws a Pencil stroke and a half block.
+- Expects: the old circle and stroke stretch with the picture; the new Shift circle and the Brush outline are round on screen, the circle's stroke is as thick at its top as at its side, and the click on its edge selects it; in the 8×11 font a cell's halves are 5 and 6 rows, with nothing a pixel off at the seam.
 - Probes: `again`: switch back to 8×16 and check the circle and stroke return to their shape.
 - Rated: no (drawing)
 

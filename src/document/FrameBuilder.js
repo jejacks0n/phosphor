@@ -22,7 +22,7 @@ import Renderer from './Renderer.js';
 import { paintImage } from './frames.js';
 import { getPaletteColors } from '../lib/ImageProcessor.js';
 import { layoutWide } from '../lib/Cells.js';
-import { fitCells } from '../lib/BitmapFont.js';
+import { fitCells, pixelAspectOf } from '../lib/BitmapFont.js';
 import { ctx2d } from '../lib/Canvas.js';
 
 const sameColor = (a, b) => a === b || (a.hex === b.hex && (a.c === b.c || typeof a.c !== 'number'));
@@ -118,7 +118,7 @@ export default class FrameBuilder {
   // The lower group composited for a frame: its paint and shapes in, the output drawn.
   #compositeLower(states, shapes, params) {
     this.#scratch.loadGrid(paintImage(states, params.cols, params.rows));
-    this.#shapes?.set(shapes, this.#rank);
+    this.#shapes?.set(shapes, this.#rank, pixelAspectOf(this.#font));
     this.#renderer.composite(this.#scratch, params);
   }
 
@@ -156,7 +156,7 @@ export default class FrameBuilder {
   // A frame's layers, split by #every, as Renderer.everyLayer: the base with the lower group's shapes over it, the
   // group's paint, then each layer above it.
   #counted({ states, shapes, upper }, every, scratch, params) {
-    scratch.shapes?.set(shapes, this.#rank);
+    scratch.shapes?.set(shapes, this.#rank, pixelAspectOf(this.#font));
     scratch.paint.loadGrid(paintImage(states, params.cols, params.rows));
     return [
       { layer: scratch.shapes?.drawsShapes ? scratch.shapes : this.#renderer.baseLayer },
@@ -164,7 +164,7 @@ export default class FrameBuilder {
       ...every.upper.map(({ id, kind }, at) => {
         const layer = scratch.upper[at], own = upper.get(id) ?? NO_SHAPES;
         if (kind === 'vector') {
-          layer.set(own);
+          layer.set(own, null, pixelAspectOf(this.#font));
           return { layer };
         }
         layer.loadGrid(paintImage(own, params.cols, params.rows));
@@ -185,7 +185,7 @@ export default class FrameBuilder {
     let cells = renderer.composeAll(renderer.cellsFromOutput(params), editCells, params);
     renderer.upper = this.#upper.map((u) => {
       if (u.kind === 'vector') {
-        u.layer.set(upper.get(u.id) ?? NO_SHAPES);
+        u.layer.set(upper.get(u.id) ?? NO_SHAPES, null, pixelAspectOf(this.#font));
         return { kind: 'vector', layer: u.layer, params: u.params };
       }
       const own = upper.get(u.id) ?? NO_SHAPES;

@@ -18,7 +18,7 @@
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
 import { isArt } from './artLayers.js';
-import { dirtyRect, invert, isGradient, multiply, pathData, scaling, shapeBounds, stacked, strokeAlign, strokeOf } from './shapes.js';
+import { dirtyRect, invert, isGradient, multiply, onScreen, pathData, scaling, shapeBounds, stacked, strokeAlign, strokeOf } from './shapes.js';
 import { sidePath } from '../lib/shapeHits.js';
 import { measure } from './pathLength.js';
 
@@ -42,7 +42,8 @@ export default class ShapeLayer {
   #chars = null;        // a cell's character (charAt): undefined, null or an art layer's
   #scratch = null;      // a band of shapes between art layers drawn alone, for which cells it covers
   #hasArt = false;
-  #paths = new WeakMap(); // shape -> { k, path }
+  #paths = new WeakMap(); // shape -> { k, aspect, path }
+  #aspect = 1;          // a grid pixel's height over its width on screen (pixelAspect): the shapes are drawn on screen
   version = 0;
   #changes = [];
   #hideBase = false;
@@ -78,20 +79,27 @@ export default class ShapeLayer {
   get hasPaint() { return this.#base.hasPaint || this.drawsShapes; }
   get hasArt() { return this.#hasArt; }
 
-  // The shapes to draw (the store's map), and rank(shape), their layers' order when they're from several vector layers
-  // (shapes.js: stacked). The grid rect that changed, or null when none did.
-  set(shapes, rank = null) {
-    if (shapes === this.#shapes) return null;
+  // The shapes to draw (the store's map), rank(shape), their layers' order when they're from several vector layers
+  // (shapes.js: stacked), and aspect, the drawing's pixelAspect: another draws everything again. The grid rect that
+  // changed, or null when none did.
+  set(shapes, rank = null, aspect = 1) {
+    const reshaped = aspect !== this.#aspect;
+    if (shapes === this.#shapes && !reshaped) return null;
     const bounds = [];
+    if (reshaped) {
+      this.#aspect = aspect;
+      this.#paths = new WeakMap();
+      if (shapes.size || this.#shapes.size) bounds.push({ x: 0, y: 0, w: this.#base.cols, h: this.#base.rows });
+    }
     for (const [key, shape] of shapes) {
       const was = this.#shapes.get(key);
       if (was === shape) continue;
-      bounds.push(shapeBounds(shape));
-      if (was) bounds.push(shapeBounds(was));
+      bounds.push(shapeBounds(shape, aspect));
+      if (was) bounds.push(shapeBounds(was, aspect));
     }
-    for (const [key, shape] of this.#shapes) if (!shapes.has(key)) bounds.push(shapeBounds(shape));
+    for (const [key, shape] of this.#shapes) if (!shapes.has(key)) bounds.push(shapeBounds(shape, aspect));
     this.#shapes = shapes;
-    this.#order = stacked(shapes, rank).map(([key, shape]) => [key, shape, shapeBounds(shape)]);
+    this.#order = stacked(shapes, rank).map(([key, shape]) => [key, shape, shapeBounds(shape, aspect)]);
     this.#hasArt = this.#order.some(([, shape]) => isArt(shape));
     if (!this.#hasArt) this.#scratch = null;
     const rect = dirtyRect(...bounds);
@@ -248,13 +256,14 @@ export default class ShapeLayer {
   }
 
   #path(shape, k) {
+    const aspect = this.#aspect;
     let held = this.#paths.get(shape);
-    if (held?.k !== k) this.#paths.set(shape, held = { k, path: trimmedPath(shape, k) });
+    if (held?.k !== k || held.aspect !== aspect) this.#paths.set(shape, held = { k, aspect, path: trimmedPath(shape, k, aspect) });
     return held.path;
   }
 
   #paint(ctx, shape, k) {
-    paintShape(ctx, shape, k, isArt(shape) ? null : this.#path(shape, k));
+    paintShape(ctx, shape, k, isArt(shape) ? null : this.#path(shape, k), this.#aspect);
   }
 
   // Draw a rect (layer pixels, whole cells, inside the canvas) again: the shapes that meet it, then the base
@@ -373,33 +382,40 @@ const isTrimmed = ({ start = 0, end = 1 }) => share(start) > 0 || share(end) < 1
 
 // What a shape draws, at k canvas pixels per grid pixel, as a Path2D: its outlines, or only their stretch from
 // Start to End (each clamped to 0 to 1; a tween can overshoot) as open outlines. Nothing when End isn't past Start.
-export function trimmedPath(shape, k) {
-  if (!isTrimmed(shape)) return new Path2D(pathData(shape, k, k));
+// Start and End are measured in grid pixels, as Follow path's along is; the path is the shape on screen (onScreen),
+// where a grid pixel is aspect as tall as it's wide, so it's drawn under a scale of 1 / aspect down (paintShape).
+export function trimmedPath(shape, k, aspect = 1) {
+  if (!isTrimmed(shape)) return new Path2D(pathData(onScreen(shape, aspect), k, k));
   const [first, ...rest] = measure(shape).cut(share(shape.start ?? 0), share(shape.end ?? 1));
-  return first ? new Path2D(pathData({ ...shape, points: first.points, closed: false, more: rest.map((o) => [o.closed, o.points]) }, k, k)) : new Path2D();
+  return first ? new Path2D(pathData(onScreen({ ...shape, points: first.points, closed: false, more: rest.map((o) => [o.closed, o.points]) }, aspect), k, k)) : new Path2D();
 }
 
 // One shape drawn at k canvas pixels per grid pixel (path: what it draws at that scale, as a Path2D, trimmedPath):
 // its fill under its fill rule, then its stroke with its width, caps, joins and miter limit, centered on the
 // outline or inside or outside it (strokeAlign), the sides worked out from the whole outline. An art layer, its
-// cells (paintArt).
-export function paintShape(ctx, shape, k, path = trimmedPath(shape, k)) {
+// cells (paintArt). aspect (pixelAspect): the shape drawn on screen (onScreen) under a scale of 1 / aspect down, so its
+// stroke is as wide down as across there; a path given is trimmedPath's at that aspect.
+export function paintShape(ctx, shape, k, path = null, aspect = 1) {
   if (isArt(shape)) return paintArt(ctx, shape, k);
-  const { rule, cap, join, miter } = strokeOf(shape);
-  if (isGradient(shape.fill)) paintGradient(ctx, shape, k, path, rule);
+  path ??= trimmedPath(shape, k, aspect);
+  const screen = onScreen(shape, aspect), { rule, cap, join, miter } = strokeOf(shape);
+  const align = strokeAlign(shape), stroked = shape.stroke && shape.width > 0, masked = stroked && (isGradient(shape.stroke) || align !== 'center');
+  const styled = (c) => Object.assign(c, { lineWidth: shape.width * k * (align === 'center' ? 1 : 2), lineJoin: join, lineCap: cap, miterLimit: miter });
+  if (aspect !== 1) {
+    ctx.save();
+    ctx.scale(1, 1 / aspect);
+  }
+  if (isGradient(shape.fill)) paintGradient(ctx, screen, k, path, rule);
   else if (shape.fill) {
     ctx.fillStyle = shape.fill;
     ctx.fill(path, rule);
   }
-  if (shape.stroke && shape.width > 0) {
-    const align = strokeAlign(shape);
-    const styled = (c) => Object.assign(c, { lineWidth: shape.width * k * (align === 'center' ? 1 : 2), lineJoin: join, lineCap: cap, miterLimit: miter });
-    if (isGradient(shape.stroke) || align !== 'center') paintMaskedStroke(ctx, shape, k, path, styled, align, rule);
-    else {
-      ctx.strokeStyle = shape.stroke;
-      styled(ctx).stroke(path);
-    }
+  if (stroked && !masked) {
+    ctx.strokeStyle = shape.stroke;
+    styled(ctx).stroke(path);
   }
+  if (aspect !== 1) ctx.restore();
+  if (masked) paintMaskedStroke(ctx, shape, k, path, styled, align, rule, aspect); // its mask scaled, drawn unscaled
 }
 
 // A canvas gradient for a shape's fill or stroke, in its own unit space.
@@ -414,20 +430,24 @@ function canvasGradient(ctx, { type, stops, f = [0, 0] }) {
 // filled into that (a gradient under its unit space's transform, as a fill's is), and the mask drawn over. Drawn
 // in the gradient's space, as a fill is, the stroke's width would stretch with it. The mask is a ctx2d canvas, as
 // the layer's are: one the GPU might draw would come out a shade apart from one drawing to the next.
-function paintMaskedStroke(ctx, shape, k, path, styled, align, rule) {
-  const b = shapeBounds(shape), x = Math.max(0, Math.floor(b.x * k)), y = Math.max(0, Math.floor(b.y * k));
+// aspect (pixelAspect): the mask's stroke, side and inside are the shape's on screen, drawn under a scale of 1 / aspect
+// down, and the mask's color and gradient are in canvas pixels, as at 1.
+function paintMaskedStroke(ctx, shape, k, path, styled, align, rule, aspect = 1) {
+  const b = shapeBounds(shape, aspect), x = Math.max(0, Math.floor(b.x * k)), y = Math.max(0, Math.floor(b.y * k));
   const w = Math.min(ctx.canvas.width, Math.ceil((b.x + b.w) * k)) - x, h = Math.min(ctx.canvas.height, Math.ceil((b.y + b.h) * k)) - y;
   if (w <= 0 || h <= 0) return;
-  const mask = ctx2d(new OffscreenCanvas(w, h));
+  const mask = ctx2d(new OffscreenCanvas(w, h)), screen = onScreen(shape, aspect);
   mask.translate(-x, -y);
+  if (aspect !== 1) mask.scale(1, 1 / aspect);
   styled(mask).stroke(path); // the stretch drawn; the sides and the inside and outside are the whole outline's
   if (align === 'left' || align === 'right') {
     mask.globalCompositeOperation = 'destination-in';
-    mask.fill(sidePath(shape, align, 0, k));
+    mask.fill(sidePath(screen, align, 0, k));
   } else if (align !== 'center') {
     mask.globalCompositeOperation = align === 'inside' ? 'destination-in' : 'destination-out';
-    mask.fill(isTrimmed(shape) ? new Path2D(pathData(shape, k, k)) : path, rule);
+    mask.fill(isTrimmed(shape) ? new Path2D(pathData(screen, k, k)) : path, rule);
   }
+  if (aspect !== 1) mask.setTransform(1, 0, 0, 1, -x, -y);
   mask.globalCompositeOperation = 'source-in';
   if (!isGradient(shape.stroke)) {
     mask.fillStyle = shape.stroke;

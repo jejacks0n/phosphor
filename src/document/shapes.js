@@ -34,7 +34,7 @@
  *           shape's m) carries into the shape's own: a linear one runs from (0, 0) to (1, 0), a radial one is the
  *           circle at (0, 0) of radius 1, its focal point f (absent: the center). 2 to 16 stops, their offsets
  *           0 to 1 and in order (to 1/1000). It moves, scales and turns with the shape.
- *   width   the stroke's width in grid pixels (it doesn't scale with the shape)
+ *   width   the stroke's width in grid pixels across, as wide down on screen (onScreen); it doesn't scale with the shape
  *   m       [a, b, c, d, e, f]: local to grid pixels, x' = a x + c y + e, y' = b x + d y + f
  *   z       stacking order, low first (ties go by key)
  * An art layer's record is a shape of another kind, { z, m, art } (artLayers.js): hand-drawn cells that only move on
@@ -299,6 +299,20 @@ export function rotation(angle, cx = 0, cy = 0, aspect = 1) {
   return [cos, sin, -sin, cos, cx - cos * cx + sin * cy, cy - sin * cx - cos * cy];
 }
 
+// The shape as it stands on screen, where a grid pixel is aspect as tall as it's wide: its m's y row scaled by aspect, so
+// its points land in screen units (a grid pixel across). Nothing is rounded. The shape itself at 1, and an art layer,
+// which sits on whole cells. What drawing, bounds and hits all go through, so they agree.
+const screens = new WeakMap(); // shape -> { aspect, screen }
+export function onScreen(shape, aspect = 1) {
+  if (aspect === 1 || isArt(shape)) return shape;
+  let held = screens.get(shape);
+  if (held?.aspect !== aspect) {
+    const [a, b, c, d, e, f] = shape.m;
+    screens.set(shape, held = { aspect, screen: Object.freeze({ ...shape, m: Object.freeze([a, b * aspect, c, d * aspect, e, f * aspect]) }) });
+  }
+  return held.screen;
+}
+
 // The shape moved by w, after its own transform.
 export const transformed = (shape, w) => withShape(shape, { m: multiply(w, shape.m) });
 
@@ -391,9 +405,14 @@ export const curveBounds = (shape) => pathBox(shape, shape.m);
 
 // Grid pixels the shape can draw in: its points' and handles' hull (a cubic stays inside it), with the stroke
 // around it: half its width (none inside, all of it outside), as far as a miter join can reach past a corner, and
-// a square cap past a diagonal end.
-export function shapeBounds(shape) {
+// a square cap past a diagonal end. aspect (pixelAspect): the stroke is as wide down as across on screen, so in grid
+// pixels it reaches 1 / aspect as far down.
+export function shapeBounds(shape, aspect = 1) {
   if (isArt(shape)) return artBounds(shape);
+  if (aspect !== 1) {
+    const { x, y, w, h } = shapeBounds(onScreen(shape, aspect));
+    return { x, y: y / aspect, w, h: h / aspect };
+  }
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const p of worldPoints(shape)) {
     for (const q of [p, p.in, p.out]) {

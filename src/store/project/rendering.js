@@ -51,7 +51,7 @@ function countedLayers(project) {
   let lower = project._shapeLayer;
   if (project.layerHidden('base') || shown.vectors.join() !== all.vectors.join()) {
     lower = new ShapeLayer(project.baseLayer);
-    lower.set(shapesOn(all.vectors), (shape) => layers.findIndex((layer) => layer.id === (shape.layer ?? 'vector')));
+    lower.set(shapesOn(all.vectors), (shape) => layers.findIndex((layer) => layer.id === (shape.layer ?? 'vector')), project.pixelAspect);
   }
   const counted = [{ layer: lower.drawsShapes ? lower : project.baseLayer }];
   if (all.cells) counted.push({ paint: project.paintOf(all.cells) });
@@ -61,7 +61,7 @@ function countedLayers(project) {
     else {
       const alone = new ShapeLayer(null);
       alone.grid(project.cols, project.rows, project.paintLayer.scale); // as syncShapeLayers grids an upper vector layer
-      alone.set(shapesOn([id]));
+      alone.set(shapesOn([id]), null, project.pixelAspect);
       counted.push({ layer: alone });
     }
   }
