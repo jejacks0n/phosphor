@@ -1,0 +1,12 @@
+{
+  "phosphor": 1,
+  "id": "phosphor.superformula",
+  "name": "Superformula",
+  "version": "1.0.0",
+  "author": "Phosphor",
+  "description": "A shape drawn by Gielis's superformula: stars, flowers and soft polygons, with 1 to 20 points.",
+  "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/superformula",
+  "license": "MIT",
+  "script": "superformula.js",
+  "preview": "  ▄▄█▄▄  \n ▀▀███▀▀ \n  ▄▀ ▀▄  "
+}

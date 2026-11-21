@@ -68,7 +68,7 @@ test('with nothing installed it opens on Marketplace: the line under the tabs an
   await mount();
   await expect.element(page.getByRole('tab', { name: 'Marketplace' })).toHaveAttribute('aria-selected', 'true');
   expect(page.getByRole('tabpanel').element().textContent).toContain('Anyone\'s plugins, as their authors made them.');
-  expect(names()).toEqual(['Midnight', 'Outlines', 'Amber CRT', 'Rain']);
+  expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Smear', 'Superformula', 'Amber CRT', 'Rain']);
 
   const outlines = card('Outlines');
   for (const words of ['1.0.0', 'Official', 'Adds a script']) expect(outlines.textContent).toContain(words);
@@ -129,16 +129,16 @@ test('search matches name, author, description and id; the filter is All, Offici
   const filter = page.getByRole('combobox', { name: 'Show' });
   expect([...filter.element().options].map((option) => option.textContent)).toEqual(['All', 'Official', 'Themes', 'Scripts']);
   await filter.selectOptions('Official');
-  expect(names()).toEqual(['Midnight', 'Outlines']);
+  expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Smear', 'Superformula']);
   await filter.selectOptions('Themes');
   expect(names()).toEqual(['Midnight', 'Rain']);
   await filter.selectOptions('Scripts');
-  expect(names()).toEqual(['Outlines', 'Amber CRT']);
+  expect(names()).toEqual(['Aberration', 'Outlines', 'Smear', 'Superformula', 'Amber CRT']);
   await search.fill('amber');
   expect(names()).toEqual(['Amber CRT']);
   await filter.selectOptions('All');
   await search.fill('');
-  expect(names()).toHaveLength(4);
+  expect(names()).toHaveLength(7);
 });
 
 test('a card\'s button reads Install, Installed, Update or Replace by what is installed', async () => {
@@ -153,7 +153,7 @@ test('a card\'s button reads Install, Installed, Update or Replace by what is in
     await store.install({ ...JSON.parse(midnight), id: 'phosphor.outlines', name: 'My outlines' });
     store.dialogTab = 'market';
   });
-  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  await vi.waitFor(() => expect(names()).toHaveLength(6));
   expect(button('Midnight').textContent).toBe('Installed');
   expect(button('Midnight').disabled).toBe(true);
   expect(button('Rain').textContent).toBe('Update');
@@ -167,7 +167,7 @@ test('a card\'s button reads Install, Installed, Update or Replace by what is in
 test('Install asks first, naming Official and warning of code, and the answer installs it as from the marketplace', async () => {
   const store = await mount();
   await expect.element(page.getByRole('tab', { name: 'Marketplace' })).toHaveAttribute('aria-selected', 'true');
-  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  await vi.waitFor(() => expect(names()).toHaveLength(6));
   button('Outlines').click();
   await vi.waitFor(() => expect(heading()).toBe('Install Outlines 1.0.0?'));
   expect(document.querySelector('dialog p.sub').textContent).toBe('Official');
@@ -209,7 +209,7 @@ test('Replace names where the new one comes from, and the answer keeps its listi
 test('a listed plugin whose files changed says so on the tab, and installs nothing', async () => {
   served[`${RAW}/kim/phosphor-rain/${COMMIT}/phosphor-plugin.json`] = rain.replace('1.2.0', '1.3.0');
   const store = await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  await vi.waitFor(() => expect(names()).toHaveLength(6));
   button('Rain').click();
   await expect.element(page.getByRole('alert')).toHaveTextContent(CHANGED);
   expect(heading()).toBe('Plugins');
@@ -225,7 +225,7 @@ test('a list that can\'t be had says so, and Try again loads it again', async ()
   const again = vi.spyOn(store, 'loadMarket');
   await page.getByRole('button', { name: 'Try again' }).click();
   expect(again).toHaveBeenCalledWith({ again: true });
-  await vi.waitFor(() => expect(names()).toEqual(['Midnight', 'Outlines', 'Rain']));
+  await vi.waitFor(() => expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Smear', 'Superformula', 'Rain']));
   expect(page.getByText(UNAVAILABLE).query()).toBe(null);
 });
 
@@ -240,17 +240,17 @@ test('a list for a newer Phosphor asks for an update in place of the connection\
 
 test('Tab goes from the search field to the filter, then into the cards', async () => {
   await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  await vi.waitFor(() => expect(names()).toHaveLength(6));
   page.getByRole('searchbox', { name: 'Search plugins' }).element().focus();
   await userEvent.tab();
   expect(document.activeElement).toBe(page.getByRole('combobox', { name: 'Show' }).element());
   await userEvent.tab();
-  expect(document.activeElement).toBe(card('Midnight').querySelector('a.name'));
+  expect(document.activeElement).toBe(card('Aberration').querySelector('a.name'));
 });
 
 test('a card read late never takes the place of the question already showing', async () => {
   const store = await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  await vi.waitFor(() => expect(names()).toHaveLength(6));
   const real = store.readListed.bind(store);
   let release;
   const held = new Promise((resolve) => { release = resolve; });
@@ -270,7 +270,7 @@ test('a card read late never takes the place of the question already showing', a
 
 test('a card being read says Reading… and can\'t be pressed again until its question is up or the read fails; the rest stay usable', async () => {
   const store = await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  await vi.waitFor(() => expect(names()).toHaveLength(6));
   const real = store.readListed.bind(store);
   const held = {};
   vi.spyOn(store, 'readListed').mockImplementation(async (entry) => {
@@ -301,7 +301,7 @@ test('a card being read says Reading… and can\'t be pressed again until its qu
 
 test('a browser that will not keep plugins asks nothing about a card', async () => {
   const store = await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(3));
+  await vi.waitFor(() => expect(names()).toHaveLength(6));
   store.unavailable = true;
   const read = vi.spyOn(store, 'readListed');
   button('Rain').click();
@@ -316,7 +316,7 @@ test('the search, the filter and where the grid was scrolled to come back after 
   ] });
   served['/plugins.json'] = listWith((plugins) => [...plugins, amber, ...Array.from({ length: 8 }, (_, i) => themed(i))]);
   await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(12));
+  await vi.waitFor(() => expect(names()).toHaveLength(15));
   await page.getByRole('combobox', { name: 'Show' }).selectOptions('Themes');
   await page.getByRole('searchbox', { name: 'Search plugins' }).fill('theme');
   expect(names()).toHaveLength(10);

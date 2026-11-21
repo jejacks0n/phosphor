@@ -65,7 +65,7 @@ test('the list loads once a visit from /plugins.json, with every entry the fixtu
   await store.loadMarket();
   expect(store.market.status).toBe('ready');
   expect(store.market.built).toBe('2026-11-20T12:00:00.000Z');
-  expect(store.market.entries.map(({ manifest }) => manifest.id)).toEqual(['phosphor.outlines', 'phosphor.midnight', 'kim.rain']);
+  expect(store.market.entries.map(({ manifest }) => manifest.id)).toEqual(['phosphor.outlines', 'phosphor.midnight', 'phosphor.smear', 'phosphor.superformula', 'phosphor.aberration', 'kim.rain']);
   expect(entry('kim.rain')).toMatchObject({ official: false, repo: 'kim/phosphor-rain', path: '', commit: COMMIT, scriptHash: null });
   expect(entry('jane.nope')).toBe(null);
   expect(fetched).toHaveBeenCalledTimes(1);
