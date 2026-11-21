@@ -340,7 +340,8 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
   `undo-redo`: undo the base edit and the typing in order; `scope`: on the base in Monochrome ASCII, a white Brush
   stroke across his characters and across the black shows wherever it goes as ASCII characters (the characters under
   it give way, a `▄` among them converting as it did), and in PIXEL a soft stroke's edge over the black is soft, with
-  no dashes or bands, and a second soft stroke over the white the first one left stays white, with no dark rim; Undo brings the characters back, and in ANSI the same stroke tints the characters and keeps them.
+  no dashes or bands, and a second soft stroke over the white the first one left stays white, with no dark rim; Undo brings the characters back, and in ANSI the same stroke tints the characters and keeps them. `again`: in PIXEL, the Eraser over both halves of a `█` on
+  the base leaves a pinned black space, which the ANSI view shows as a space.
 - Rated: yes, wants a key to pick the base
 
 ### 26. Merge my layer into the base

@@ -670,7 +670,8 @@ The **Eraser** (**E**) erases the selected layer:
 - **In the PIXEL View**: The Eraser removes paint (on a drawing layer) and turns base pixels black (on the base),
   leaving the characters as they are, except a ▄ that Half-block made to show paint (one with no colors of its own):
   when its cell's last paint is erased, the cell gets its own character back. A block a line or ellipse drew with
-  **Half-column detail** goes whole as soon as the Eraser touches either half of its cell. On the base, a character
+  **Half-column detail** goes whole, a cell at a time, as soon as the Eraser touches either half of its cell, until it's
+  typed over or recolored. Characters typed by hand stay. On the base, a character
   whose two colors are both erased to black becomes a black space, as the Hard Eraser leaves it in the ANSI view.
 - **Hard or Soft**: **Hard**, as it starts, is a square that clears everything under it at once: pixels in the PIXEL
   view, whole cells with their characters in the ANSI view. **Soft** is round with a feathered edge, like the Brush,
@@ -679,7 +680,8 @@ The **Eraser** (**E**) erases the selected layer:
 - **Soft in the ANSI View**: Soft is the same eraser in both views, as the Brush is the same brush: it works in pixels,
   at the PIXEL view's **Size · px** (which the ANSI view's row shows in place of **Size · cells** while Soft is on).
   It takes paint, not characters: a character you typed or drew stays where it is, as it does under the Eraser in the
-  PIXEL view, except the blocks of a line or ellipse drawn with **Half-column detail**, which go whole. To take other
+  PIXEL view, except the blocks of a line or ellipse drawn with **Half-column detail**, which go whole, a cell at a time, until
+  they're typed over or recolored. To take other
   characters, use Hard.
 - **Its Outline**: The pointer shows what the Eraser covers: the square of cells or pixels it would clear, or Soft's
   circle. Off the canvas, where there's nothing to erase, the outline still follows the pointer.
@@ -730,10 +732,12 @@ canvas:
     half) or foreground (its lower half), which shows through the whole cell. So a soft stroke across an opened ANSI
     file looks the same with **All cells** on or off. A shape over the character takes the cell, as it does in the
     ANSI view.
-  - **What the Tools Work On**: The cell's two stored colors, as before: its background in the upper pixel and its
-    foreground in the lower one. The Eyedropper on a gray `▒` picks one of those two, and the Brush with the base
-    picked changes the color of the half it touches, which the character may hide (a `█` shows only its
-    foreground). Nothing saved or exported changes.
+  - **What the Tools Work On**: The **Paint Bucket**, the **Gradient** and the **Magic Wand** go by what the PIXEL view
+    shows: an opened file's characters as they look, and with **All layers** on the characters typed on the layers
+    above, even with the Overlay at 0%. The **Eyedropper** and the drawing tools work on each cell's two stored colors,
+    its background in the upper pixel and its foreground in the lower one. The Eyedropper on a gray `▒` picks one of
+    those two, and the Brush with the base picked changes the color of the half it touches, which the character may
+    hide (a `█` shows only its foreground). Nothing saved or exported changes.
 
 ---
 
@@ -871,7 +875,8 @@ The **Magic Wand** (**W**, in both views) selects what matches the cell or pixel
 
 - **Match** (ANSI view): Choose what a cell must share with the one you click: its **FG**, **BG** and/or character
   (**Char**). FG and Char to start.
-- **In the PIXEL View**: It matches the pixel's color: the picture and paint, not the ANSI layer drawn over them.
+- **In the PIXEL View**: It selects by color as the view shows it: the picture and paint, an opened file's characters
+  as they look, and with **All layers** on the characters typed on the layers above.
 - **Tolerance** (0–100, 10 to start): How far a color may be from the one you clicked and still match. Characters
   match exactly.
 - **Contiguous**: On, it selects only what touches the click (sharing a side, as the Paint Bucket fills). Off, every
@@ -964,8 +969,9 @@ swaps the two halves of each cell's base colors.
     crosses a character someone drew (a line box, a letter), on its layer or one under it, so the crossing is a clean
     half-block whichever half of the cell the edge falls in; paint alone would fill the whole cell from one half and
     only recolor the character from the other.
-  - **Character**: the shape is the active character in the foreground color, and the cells' backgrounds are left
-    alone. **Fill** fills the inside with the character too. It isn't offered when the active character is ▀, ▄ or █.
+  - **Character**: the shape is the character in the foreground color, and the cells' backgrounds are left alone.
+    **Fill** fills the inside with the character too. It's always offered. Its field shows the character drawn: type
+    one, or open the picker for the F-key palette's characters and every character the drawing's font has.
 - **Line**: Draws a straight line from where you start dragging to where you let go, in the foreground color: one pixel
   thick in the PIXEL view and in Half-block, or whole cells in Full-block or Character. Single and Double lines run
   straight across or down, whichever your drag is closer to, and with Connect join the lines they cross (╫) or end on
@@ -977,10 +983,14 @@ swaps the two halves of each cell's base colors.
   (▌▐), and a steep line or a round edge steps by half a cell instead of a whole one. In Half-block the blocks are half
   a cell tall, so the halves are quadrants (▝▘, ▗▖). They're always block characters: the parts of a cell the shape
   doesn't cover show the cell's background color, and a filled shape's inside is the background color you've picked.
+  In a bitmap font, which has no quarter blocks, Half-block draws ▌ ▐ and █ a whole cell tall instead. A line and its
+  mirror image are drawn alike.
 - **Paint Bucket** (**G**): Fills what you see, in the foreground color.
   - **Walls**: Text and lines you've drawn (any drawing-layer cell whose character isn't a space, █, ▀ or ▄) are walls:
     a fill stops at them and never covers them, so it stays inside a box and leaves your text readable. A line hidden
     under paint isn't a wall, since you can't see it.
+  - **What It Goes By**: A Normal fill goes by what the view shows, as the Magic Wand does: in the PIXEL view an opened
+    file's characters as they look, and with **All layers** on the characters typed on the layers above.
   - **Options**: **Tolerance**, **Contiguous** (off fills every match across the canvas) and **Feather**, which softens
     the filled edge.
   - **Selections**: With a selection, the fill stays inside it, and a click outside it fills nothing.
@@ -994,7 +1004,7 @@ swaps the two halves of each cell's base colors.
     the color you see. **Match** chooses what a cell must share with the one you click (its **FG**, **BG** and/or
     character, **Char**; all three to start, so cells that look the same), with the colors within the Tolerance, and
     **Set** what the fill gives the cells: your foreground color (to start), background color and/or character. There's
-    no Feather. Cells fills text and lines too, since it's matching cells rather than flowing around them. With
+    no Feather. Set → **Char** shows the same character field as the Shapes tool's Character. Cells fills text and lines too, since it's matching cells rather than flowing around them. With
     **All layers** off it matches the selected layer's own cells: a character with its own colors, a painted cell by
     its paint, and a cell with nothing on that layer only with other empty ones.
 - **Gradient** (**Shift+G**, sharing the Paint Bucket's button): Fills with a blend from your foreground color to your

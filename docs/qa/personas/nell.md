@@ -216,6 +216,30 @@ change one cell on the way.
 - Probes: `again`: switch back to 8×16 and check the circle and stroke return to their shape.
 - Rated: no (drawing)
 
+### 19. Fill an XBin of spaces
+- Does: in her `.F08`, writes in the snippet an XBin of red spaces with black ink (022's case) and opens it. Fills with the Paint Bucket in both views, then with All layers on types a word on Layer 1 and fills the base around it.
+- Expects: whole cells fill, and the fill goes around the word.
+- Probes: `again`: All layers off, and the fill runs under the word.
+- Rated: no (drawing)
+
+### 20. Half-column detail in her font
+- Does: draws a Half-block ellipse and two steep lines, leaning left and right, with Half-column detail. Then the Soft Eraser goes over one, and she types over a cell of the other and erases it.
+- Expects: ▌ ▐ █ only, the lines mirror images, the Soft Eraser takes the drawn cells, and the typed one stays.
+- Probes: `again`: draw the same lines again and check they come out the same.
+- Rated: no (drawing)
+
+### 21. VECTOR in 8×8
+- Does: draws a rect with a 2-wide stroke, makes a new Radial gradient, tweens a quarter turn and has a shape Follow a diagonal path with Rotate to face path.
+- Expects: the stroke is as thick on top as at the side, the gradient is round, the turn doesn't bend the shape, and the follower faces along the path on screen.
+- Probes: `again`: undo the tween and tween it again.
+- Rated: no (drawing)
+
+### 22. A switched file exports clean
+- Does: opens an `.ans`, switches to her `.F08`, exports an XBin and reopens it.
+- Expects: the lines the switch added are spaces, with no hidden characters.
+- Probes: `again`: export and reopen once more.
+- Rated: no (drawing)
+
 **Free time:** she'd draw in 8×8 from the start, export an XBin, and reopen it.
 
 ## Known

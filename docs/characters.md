@@ -294,6 +294,7 @@ With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, 
 ### Saving .xb
 
 - **`.xb`**: XBin, the format 16colo.rs shows with the art's own font and 16 colors inside the file. The export holds your cells, the drawing's bitmap font (IBM VGA 8×16 when it has none) and the palette.
+- **Cells with one color**: A cell whose foreground and background are the same palette color is written as a space, as in an `.ans`, so no hidden character rides along.
 - **Needs 16 colors or fewer**: XBin is offered when the **Color palette** is CGA, **Limited count** of 16 or fewer, or a **Custom** list of up to 16 colors. With any other palette the **Export** button is off and the dialog says what to pick.
 - **SAUCE** is optional, as it is for `.ans`: **Include SAUCE** is the Export dialog's checkbox. An XBin's record names no font (the font is in the file), whatever **Font name** holds.
 - **Opening** an `.xb` gives the drawing its cells, font and palette ([Opening ANSI and text files](layers.md#opening-ansi-and-text-files)). The font is listed under **This drawing** by the file's name, without the `.xb`.

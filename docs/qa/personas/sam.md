@@ -266,7 +266,8 @@ Animate off and check the .cast export goes away, and save the project and reope
 
 ### 23. Fill the wide banner
 - Does: stamps the title block a few times across with S, draws a Double line box around the whole canvas, and fills
-  the space behind with the Paint Bucket's Cells fill and a `░`.
+  the space behind with the Paint Bucket's Cells fill and a `░` chosen in the character field beside Set (typed, or
+  picked from the picker) rather than from the F-key strip.
 - Expects: each stamp is one undo step; the box joins with Connect; Cells fills whole cells matching the one clicked,
   setting the character and colors chosen.
 - Probes: `speed`: press S twenty times quickly with the arrows between; `undo-redo`: mash Cmd+Z thirty times and then

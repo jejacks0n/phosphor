@@ -514,8 +514,9 @@ engineering rules behind these steps are docs/model.md (R1–R8); a finding here
   over it (but see the Base's characters below); a typed letter shows in the Overlay; a merged shape's edge has no holes, dark lines or half-blocks that
   the ANSI view doesn't have; a character on the Base (typed there, or left by Keep crisp cells) shows as it looks at
   that scale with the Overlay at 0% too, a `█` solid and never a stripe of its background over its foreground. The one
-  exception: paint over a space on the Base in an ASCII style shows as the character the ANSI view turns it into,
-  never as stripes.
+  exception: paint over an open character on the Base shows as the cell the ANSI view makes of it, never as stripes:
+  in an ASCII style, over a space or a character in its own background color; in ANSI, over such a character under a
+  layer with characters of its own.
 - Probes: `scope`: a stroke in the PIXEL view over a merged edge and over the caption, then the same stroke in
   ANSI (the same result).
 - Rated: no (looking)
