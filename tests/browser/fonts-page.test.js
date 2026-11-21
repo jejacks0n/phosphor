@@ -367,6 +367,19 @@ test('picking Lower and clicking a slot sets it, as one undo step, and Find bloc
   expect(tiles()[1].slot).toBe('240');
 });
 
+test('picking Dark and clicking the slot Light has shares it: both tiles show it, and its readout names both', async () => {
+  const { project } = await mount({ font: cp437Font });
+  await press(tile('Dark'));
+  await press(slotCell(176));
+  expect(tiles().map((t) => t.slot).slice(5)).toEqual(['176', '177', '176']);
+  slotCell(176).dispatchEvent(new Event('mouseenter'));
+  await nextTick();
+  expect(host.querySelector('.edit-side .info').textContent).toBe('Slot 176 ░ · Light shade, Dark shade (set by you)');
+  await press(slotCell(178)); // Dark back to its own slot: Light stays
+  expect(tiles().map((t) => t.slot).slice(5)).toEqual(['176', '177', '178']);
+  expect(project.fontBlocks).toBe('');
+});
+
 test('setting a block back to the slot the pixels put it in stores it as found', async () => {
   const { project } = await mount({ font: lowerAt240 });
   await press(tile('Lower'));

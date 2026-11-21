@@ -107,11 +107,18 @@ watch(() => workspace.fontSetup, async (setup) => {
 const roomOff = computed(() => (project.inRoom && bitmap.value && font.value ? notSetUp(font.value) : null));
 const inRoom = computed(() => isDrawn.value && project.inRoom); // the drawing's blocks are the room's
 const chars = computed(() => slotChars(font.value));
-const blockAt = computed(() => new Map((font.value ? blocksOf(font.value) : []).flatMap((s, i) => (s === null ? [] : [[s, i]]))));
+// Each slot a block is drawn from, with every block drawn from it (several may share one).
+const blockAt = computed(() => {
+  const at = new Map();
+  (font.value ? blocksOf(font.value) : []).forEach((s, i) => s !== null && at.set(s, [...(at.get(s) ?? []), i]));
+  return at;
+});
 const readout = (n) => {
-  const i = blockAt.value.get(n), char = chars.value[n];
-  if (i === undefined) return t('palette.fonts.slot', { n, char });
-  return t(font.value.blocks && findBlocks({ ...font.value, blocks: undefined })[i] !== n ? 'palette.fonts.slotBlockSet' : 'palette.fonts.slotBlock', { n, char, block: t(`palette.fonts.blockLong.${BLOCKS[i].key}`) });
+  const at = blockAt.value.get(n), char = chars.value[n];
+  if (!at) return t('palette.fonts.slot', { n, char });
+  const found = font.value.blocks && findBlocks({ ...font.value, blocks: undefined });
+  const block = at.map((i) => t(`palette.fonts.blockLong.${BLOCKS[i].key}`)).join(', ');
+  return t(found && at.some((i) => found[i] !== n) ? 'palette.fonts.slotBlockSet' : 'palette.fonts.slotBlock', { n, char, block });
 };
 
 // Every listed bitmap font registered with the page, so its sample and sheet draw in its own glyphs. (TrueType fonts
@@ -242,7 +249,7 @@ const exportPalettes = () => {
               v-for="(c, i) in chars"
               :key="i"
               class="cell"
-              :class="{ role: blockAt.has(i), picked: blockAt.get(i) !== undefined && BLOCKS[blockAt.get(i)].key === picked }"
+              :class="{ role: blockAt.has(i), picked: !!blockAt.get(i)?.some((b) => BLOCKS[b].key === picked) }"
               @mouseenter="hovered = i"
               @click="setSlot(i)"
           >{{ c === '␀' ? ' ' : c }}</span>
