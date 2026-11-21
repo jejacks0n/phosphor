@@ -51,14 +51,16 @@ either of its halves, whatever the stamp's alpha, as they clear a paint block wh
 the ANSI view clears whole cells anyway. A character typed by hand, the same ▌ or ▐, stays. The mark lives as the frozen
 one does: `mergeEntry` keeps it when a whole entry moves (a moved, pasted, flipped or turned selection, the line still a
 laid line; Merge down onto a layer, R3) and drops it when a character or color is written without it (a retype,
-Retouch's recolor, R4, Colors only's tint, R5, a selection's Set FG and Set BG, the Flip key), so a line laid over the
+Retouch's recolor, R4, a selection's Set FG and Set BG, the Flip key) or paint is laid over it (Colors only's tint, R5,
+or any stroke or fill: `unfreeze`), so a line laid over the
 same typed character is laid. It's accepted from files and the clipboard (`cleanEntry`) and in a room's change
 (`goodEntry`, `src/social/wire.js`) only as `true`, never as a cell by itself, and `sameEntry` tells a laid cell from a
 typed one. Pins hold no mark: a laid line drawn on the base, merged onto it or flattened is pins (R11 says what the
 erasers leave of one). Older files have no mark, and their cells stay characters of someone's own.
 
 - Lives in: `src/document/editCells.js` (`isFrozen`, `isLaid`, `ownEntry`, `mergeEntry`, `cleanEntry`, `sameEntry`,
-  `followPicture`); `halfCells` in `src/tools/shapes.js`; `src/tools/eraser.js`; `goodEntry` in `src/social/wire.js`.
+  `followPicture`); `halfCells` in `src/tools/shapes.js`; `src/tools/eraser.js`; `unfreeze` in
+  `src/store/project/editLayer.js` (paint over a laid cell drops its mark); `goodEntry` in `src/social/wire.js`.
 - Checked by: `tests/unit/edit-cells.test.js › R1: …`; `tests/unit/social-wire.test.js` (the mark through a room's change,
   as `cleanEntry` takes it); `tests/browser/bucket.test.js › R1: …`; `tests/browser/block-chars.test.js › R1: shiftCells …`;
   `tests/browser/selection-recolor.test.js › … Set FG over a frozen cell …`; `tests/browser/merge.test.js › R1: Keep crisp
@@ -66,7 +68,8 @@ erasers leave of one). Older files have no mark, and their cells stay characters
   `tests/unit/edit-cells.test.js › R1: a font of another height …`; `tests/browser/font-height.test.js › R1: …`;
   `tests/unit/edit-cells.test.js › R1: a laid cell keeps its mark …`; `tests/unit/social-wire.test.js` (the laid mark
   through a room's change); `tests/browser/eraser.test.js › R1: …` (the Soft Eraser in ANSI and both erasers in PIXEL
-  take a laid line and leave typed characters; a laid line moved; a laid cell typed over).
+  take a laid line and leave typed characters; a laid line moved; a laid cell typed over; one tinted by Colors only or
+  painted over).
 
 ### R2. Paint over a character tints its ink and never picks another character. With no ink to tint, the paint shows as paint.
 

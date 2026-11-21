@@ -3,7 +3,7 @@
 // being applied) and _typingTimer (the pause that ends a typing run). With the base picked (onBottom)
 // it all goes on the base: a cell written as it then shows (completeAt, writeBaseCells), paint as base
 // pixels, and a row pushed along by typing as shiftBaseCells moves it.
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, isFrozen, isPaintBlock, ownEntry } from '@/document/editCells.js';
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, isFrozen, isLaid, isPaintBlock, ownEntry } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
@@ -30,7 +30,7 @@ export const editLayerActions = {
     }
     this.ensureLayer();
     this.beginEdit();
-    unfreeze(this, pixels);
+    unfreeze(this, pixels, { painted: true });
     this.noteDrawn(pixels);
     this.paintLayer.paint(pixels, opacity, stack);
     this.hasPaint = this.paintLayer.hasPaint;
@@ -125,7 +125,7 @@ export const editLayerActions = {
     if (!pixels.length || !this.renderer.outputCanvas || onBottom(this) || refusedNoCells(this, { toast: false })) return;
     this.ensureLayer();
     this.beginEdit();
-    unfreeze(this, pixels);
+    unfreeze(this, pixels, { painted: true });
     this.noteDrawn(pixels);
     this.paintLayer.put(pixels);
     this.hasPaint = this.paintLayer.hasPaint;
@@ -398,10 +398,14 @@ export const editLayerActions = {
 };
 
 // The frozen cells (docs/model.md R3: Merge down's pinned conversion of the paint under them) among the cells the grid
-// pixels touch lose their mark: paint written or erased there is paint again, converted as the layer converts it.
-function unfreeze(project, pixels) {
-  const cells = cellsOfPixels(pixels, project.cols, project.rows).filter(({ col, row }) => isFrozen(project.editCellAt(col, row)));
-  if (cells.length) project.clearEditCells(cells);
+// pixels touch lose their mark: paint written or erased there is paint again, converted as the layer converts it. With
+// painted, the laid cells among them lose theirs too: a tinted laid character is someone's own (R1, R5).
+function unfreeze(project, pixels, { painted = false } = {}) {
+  const cells = cellsOfPixels(pixels, project.cols, project.rows);
+  const frozen = cells.filter(({ col, row }) => isFrozen(project.editCellAt(col, row)));
+  if (frozen.length) project.clearEditCells(frozen);
+  const laid = painted ? cells.filter(({ col, row }) => isLaid(project.editCellAt(col, row))) : [];
+  if (laid.length) project.writeEditCells(laid.map((c) => ({ ...c, attrs: { laid: null } })));
 }
 
 // Whether the layer in use (not the base, whose cells are pins) has a cell of its own at col, row with a color of its own.

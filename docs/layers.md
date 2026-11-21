@@ -671,7 +671,7 @@ The **Eraser** (**E**) erases the selected layer:
   leaving the characters as they are, except a ▄ that Half-block made to show paint (one with no colors of its own):
   when its cell's last paint is erased, the cell gets its own character back. A block a line or ellipse drew with
   **Half-column detail** goes whole, a cell at a time, as soon as the Eraser touches either half of its cell, until it's
-  typed over or recolored. Characters typed by hand stay. On the base, a character
+  typed over, recolored or painted over. Characters typed by hand stay. On the base, a character
   whose two colors are both erased to black becomes a black space, as the Hard Eraser leaves it in the ANSI view.
 - **Hard or Soft**: **Hard**, as it starts, is a square that clears everything under it at once: pixels in the PIXEL
   view, whole cells with their characters in the ANSI view. **Soft** is round with a feathered edge, like the Brush,
@@ -681,7 +681,7 @@ The **Eraser** (**E**) erases the selected layer:
   at the PIXEL view's **Size · px** (which the ANSI view's row shows in place of **Size · cells** while Soft is on).
   It takes paint, not characters: a character you typed or drew stays where it is, as it does under the Eraser in the
   PIXEL view, except the blocks of a line or ellipse drawn with **Half-column detail**, which go whole, a cell at a time, until
-  they're typed over or recolored. To take other
+  they're typed over, recolored or painted over. To take other
   characters, use Hard.
 - **Its Outline**: The pointer shows what the Eraser covers: the square of cells or pixels it would clear, or Soft's
   circle. Off the canvas, where there's nothing to erase, the outline still follows the pointer.

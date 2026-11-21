@@ -198,6 +198,21 @@ test('R1: a laid cell typed over is someone\'s own: the Soft Eraser leaves it', 
   expect(project.editCellAt(col, row)?.char).toBe('x');
 });
 
+test('R1: a laid cell tinted by Colors only, or painted over, is someone\'s own: the Soft Eraser leaves it', async () => {
+  for (const blockChars of ['plain', false]) {
+    const { project, workspace, drawn } = await lined('edit');
+    const { col, row, char } = drawn[3];
+    project.paintStroke([{ x: col, y: 2 * row, alpha: 1 }], '#0000ff', { blockChars });
+    project.commitEdit();
+    expect(isLaid(project.editCellAt(col, row)), `${blockChars}`).toBe(false);
+    expect(project.editCellAt(col, row)?.char).toBe(char); // tinted, still the line's character
+    Object.assign(workspace, { editEraserSoft: true, editEraserSize: 1, editEraserFlow: 10 });
+    const ctx = { project, workspace, view: 'output' };
+    eraser.begin(ctx, { x: col + 0.5, y: 2 * row + 1.5 }); eraser.end(ctx); // the half the paint didn't reach
+    expect(project.editCellAt(col, row)?.char, `${blockChars}`).toBe(char);
+  }
+});
+
 test('R11: on the base a laid line\'s pin the PIXEL Eraser, or the Soft Eraser in the ANSI view, leaves black is a black space', async () => {
   for (const [view, soft] of [['input', false], ['output', true]]) {
     const { project, workspace, drawn } = await lined('base');
