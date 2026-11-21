@@ -118,17 +118,27 @@ describe('blocks', () => {
     expect(fontKey(lowerAt240)).toBe(`${fontId(lowerAt240)}-219.240.223.221.222.176.177.178`);
     expect(fontKey({ ...cp437Font, blocks: withBlock(CP437_BLOCKS, 'dark', null) })).toMatch(/\.x$/);
   });
-  it('round-trips blocks as text, and refuses a slot twice', () => {
+  it('round-trips blocks as text, a slot shared by blocks too', () => {
     const blocks = [219, 240, 223, 221, 222, 176, 177, null];
     expect(encodeBlocks(CP437_BLOCKS)).toBe('219.220.223.221.222.176.177.178');
     expect(decodeBlocks(encodeBlocks(blocks))).toEqual(blocks);
+    expect(decodeBlocks('219.220.223.221.222.176.176.176')).toEqual([219, 220, 223, 221, 222, 176, 176, 176]);
     expect(decodeBlocks('')).toBeUndefined();
     expect(decodeBlocks(undefined)).toBeUndefined();
-    expect(decodeBlocks('219.219.223.221.222.176.177.178')).toBeUndefined();
     expect(decodeBlocks('219.220')).toBeUndefined();
     expect(decodeBlocks('219.256.223.221.222.176.177.178')).toBeUndefined();
   });
-  it('moves a block off a slot another block takes', () => {
-    expect(withBlock(CP437_BLOCKS, 'dark', 219)).toEqual([null, 220, 223, 221, 222, 176, 177, 219]);
+  it('gives a block a slot another block has, and leaves that block on it', () => {
+    expect(withBlock(CP437_BLOCKS, 'dark', 176)).toEqual([219, 220, 223, 221, 222, 176, 177, 176]);
+  });
+  it('draws every block at a shared slot from it, and holds the slot as its CP437 home\u2019s block, else the first', () => {
+    const shades = { ...cp437Font, blocks: [219, 220, 223, 221, 222, 177, 177, 177] }; // all three at ▒'s home
+    expect(['░', '▒', '▓'].map((c) => slotOf(c, shades))).toEqual([177, 177, 177]);
+    expect(slotChars(shades)[177]).toBe('▒');
+    expect(fitFont('▓', shades)).toBe('▓'); // a slot, so not a stand-in
+    const away = { ...cp437Font, blocks: [219, 220, 223, 221, 222, 240, 240, 240] }; // at nobody's home
+    expect(slotChars(away)[240]).toBe('░');
+    expect(new Set(slotChars(shades)).size).toBe(256);
+    expect(new Set(slotChars(away)).size).toBe(256);
   });
 });

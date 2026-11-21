@@ -24,6 +24,12 @@ describe('XBin', () => {
     expect([...back.font.bytes]).toEqual([...font.bytes]);
     expect(back.palette).toEqual(PAL);
   });
+  it('writes the blocks of a shared slot as that slot, and reads it back as the slot\u2019s own block', () => {
+    const shared = { ...font, blocks: [219, 220, 223, 221, 222, 177, 177, 177] };
+    const cells = ['░', '▒', '▓'].map((char) => ({ char, fg: rgb(PAL[7]), bg: rgb(PAL[0]) }));
+    const back = readXBin(writeXBin({ cols: 3, rows: 1, cells, palette: PAL, font: shared, sauce: false }), 'a.xb');
+    expect(back.cells.map((c) => c.char)).toEqual(['▒', '▒', '▒']);
+  });
   it('writes a cell whose colors are the same palette color as a space, whatever its character', () => {
     const cells = [
       { char: '▓', fg: rgb(PAL[0]), bg: rgb(PAL[0]) },

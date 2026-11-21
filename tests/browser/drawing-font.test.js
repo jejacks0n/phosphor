@@ -366,7 +366,7 @@ it('a block edit is one undo step, and undo draws in the old map at once', async
   expect(await registerBitmapFont(before)).toBe(await registerBitmapFont(project.drawingFont));
 });
 
-it('set blocks come back with the project, and a project with a slot twice falls back to found ones', async () => {
+it('set blocks come back with the project, and a project with a slot past 255 falls back to found ones', async () => {
   const { project } = await movedHalf();
   project.setDrawingFont({ ...project.drawingFont, blocks: withBlock(blocksOf(project.drawingFont), 'lower', 220) });
   const file = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'a.phosphor');
@@ -374,8 +374,10 @@ it('set blocks come back with the project, and a project with a slot twice falls
   await other.openParts(await readProject(file), { filename: 'other' });
   expect(other.fontBlocks).toBe(project.fontBlocks);
   expect(slotOf('▄', other.drawingFont)).toBe(220);
-  other.fontBlocks = '219.219.223.221.222.176.177.178';
+  other.fontBlocks = '219.256.223.221.222.176.177.178';
   expect(slotOf('▄', other.drawingFont)).toBe(240); // found again
+  other.fontBlocks = '219.219.223.221.222.176.177.178'; // a slot twice is two blocks sharing it
+  expect(slotOf('▄', other.drawingFont)).toBe(219);
 });
 
 it('the canvas draws a block edit and its undo at once', async () => {

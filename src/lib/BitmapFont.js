@@ -60,15 +60,16 @@ const memo = (make) => {
 export const blocksOf = memo((font) => font.blocks ?? findBlocks(font));
 
 // The character each slot is held as: the block characters at their font's slots, and the characters
-// those slots displaced in the slots left over.
+// those slots displaced in the slots left over. A slot several blocks share is held as the block whose
+// CP437 home it is, else the first of them in BLOCKS order.
 export const slotChars = (font) => (font ? fontSlotChars(font) : SLOT_CHARS);
 const fontSlotChars = memo((font) => {
   const chars = new Array(256);
   const displaced = [];
   blocksOf(font).forEach((s, i) => {
-    if (s === null) return;
+    if (s === null || (chars[s] && BLOCKS[i].slot !== s)) return;
+    if (!chars[s] && !BLOCK_CHARS.has(SLOT_CHARS[s])) displaced.push(SLOT_CHARS[s]);
     chars[s] = BLOCKS[i].char;
-    if (!BLOCK_CHARS.has(SLOT_CHARS[s])) displaced.push(SLOT_CHARS[s]);
   });
   displaced.sort((a, b) => SLOT_CHARS.indexOf(a) - SLOT_CHARS.indexOf(b));
   for (let i = 0; i < 256; i++) if (!chars[i] && !BLOCK_CHARS.has(SLOT_CHARS[i])) chars[i] = SLOT_CHARS[i];
@@ -76,7 +77,12 @@ const fontSlotChars = memo((font) => {
   return chars;
 });
 
-const slotsOf = memo((font) => new Map(slotChars(font).map((c, i) => [c, i])));
+// Each slot's own character, and every block character at its slot (a shared slot's others too).
+const slotsOf = memo((font) => {
+  const slots = new Map(slotChars(font).map((c, i) => [c, i]));
+  blocksOf(font).forEach((s, i) => s !== null && slots.set(BLOCKS[i].char, s));
+  return slots;
+});
 
 export const slotOf = (char, font = null) => (font ? slotsOf(font) : SLOTS).get(char.normalize('NFC')) ?? null;
 // Whether the font has a slot for each of the ten quadrant characters (no font, a display font, does).
@@ -182,14 +188,13 @@ export function decodeBlocks(text) {
   const parts = text.split('.');
   if (parts.length !== BLOCKS.length) return undefined;
   const blocks = parts.map((p) => (p === 'x' ? null : /^\d{1,3}$/.test(p) && +p < 256 ? +p : undefined));
-  const slots = blocks.filter((s) => s !== null);
-  return blocks.includes(undefined) || new Set(slots).size !== slots.length ? undefined : blocks;
+  return blocks.includes(undefined) ? undefined : blocks;
 }
 
-// A copy of blocks with this block at slot (or none), and any other block that was there moved off it.
+// A copy of blocks with this block at slot (or none); another block there shares it.
 export function withBlock(blocks, key, slot) {
   const at = BLOCKS.findIndex((b) => b.key === key);
-  return blocks.map((s, i) => (i === at ? slot : s === slot ? null : s));
+  return blocks.map((s, i) => (i === at ? slot : s));
 }
 
 export const encodeFont = (font) => btoa(String.fromCharCode(...font.bytes));
