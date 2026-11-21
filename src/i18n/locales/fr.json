@@ -1937,6 +1937,7 @@
     "available": "Phosphor {version} est disponible (vous avez {current}). Ouvrir sa page de téléchargement ?"
   },
   "plugins": {
+    "brushFailed": "{name} a échoué : {message}",
     "open": "Plugins",
     "title": "Plugins",
     "sub": "Les plugins ajoutent à Phosphor des thèmes et des façons de choisir les caractères. Ils viennent dans un dossier, un .zip ou un phosphor-plugin.json, et sont gardés dans ce navigateur.",

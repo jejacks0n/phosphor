@@ -1937,6 +1937,7 @@
     "available": "Phosphor {version} is out (you have {current}). Open its download page?"
   },
   "plugins": {
+    "brushFailed": "{name} failed: {message}",
     "open": "Plugins",
     "title": "Plugins",
     "sub": "Plugins add themes and ways to choose characters to Phosphor. They come as a folder, a .zip or a phosphor-plugin.json, and are kept in this browser.",

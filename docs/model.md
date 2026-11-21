@@ -141,7 +141,8 @@ stroke doesn't change stays), and recolor its characters of someone's own a whol
 
 ### R5. Colors only makes paint of what's paint to it, and tints a character of someone's own.
 
-The Brush's and Pencil's Colors only makes a bare ▄ (a paint block) of each cell it reaches that shows no character
+The Brush's and Pencil's Colors only (and a plugin brush, whose paint is always laid so) makes a bare ▄ (a paint
+block) of each cell it reaches that shows no character
 (R2's predicate for the layer's own cells with colors: their halves become paint first, `unlockCells`) and of each frozen
 cell, whatever its character (its paint is under it already; the pin goes); a character of someone's own with ink keeps
 it and is tinted. A cell the converter drew is paint to it in full and gets no ▄, on the base and on any layer, whatever
@@ -169,8 +170,9 @@ by the converter too and gets no ▄: a ▄ there made a stroke that crossed fro
 layer's Characters to half-blocks, so what a vector layer held changed how the layer above it painted. Inside an art
 layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoChar`).
 
-- Lives in: `paintStroke` in `src/store/project/editLayer.js` (`blockChars: 'plain'`; `converted` says which cells the
-  converter drew), with `showsNoChar` and `shapeUnder` there; Half-block's and Write block glyphs' ▄ in `writeBlocks`
+- Lives in: `colorsOnlyCells` in `src/store/project/editLayer.js`, which `paintStroke` there calls for `blockChars: 'plain'`
+  and a plugin brush for each call's puts (`lay` in `src/tools/pluginBrush.js`); `converted` says which cells the
+  converter drew, with `showsNoChar` and `shapeUnder` there; Half-block's and Write block glyphs' ▄ in `writeBlocks`
   there, which the Shape tool's Half-block asks for every cell with Write block glyphs on and for the cells `ownCharAt`
   (`src/store/project/reading.js`) names with it off (`apply` in `src/tools/shapes.js`); a block over a character under
   it in `blockOver` (`src/lib/Cells.js`), which the Renderer's `#upperCell` and
@@ -184,7 +186,8 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
   Write block glyphs on the layer above a line …` (with Merge down and the stored look), `› blockOver: …` and
   `› R5: the report: Half-block boxes over a line box …` (projects/boxes2.phosphor: the Shape tool and the Pencil, on the
   base and a layer, a half cell apart, Merge down and undo) and `› R5: the report: with Write block glyphs off …`
-  (the crossings ▄s, Random's characters over the canvas, no ▄ written there).
+  (the crossings ▄s, Random's characters over the canvas, no ▄ written there); `tests/browser/plugin-brush.test.js › R5: in
+  ANSI a put makes the cells Colors only would …` (a plugin brush's puts against the Brush's over the same pixels).
 
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
 
