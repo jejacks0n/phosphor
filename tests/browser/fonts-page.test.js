@@ -288,6 +288,22 @@ test('+ Load of the drawing\u2019s own font keeps the blocks set on it, and keep
   expect(project.fontBlocks).toBe(before);
 });
 
+test('+ Load of the drawing\u2019s own font keeps the lines and sets made on it, and keeps them with the browser\u2019s copy', async () => {
+  const { project } = await mount({ font: lowerAt240 });
+  const lines = { hide: ['single'], styles: [{ id: 'l1', name: 'Heavy', slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }] };
+  const sets = { hideStock: false, sets: [{ id: 's1', name: 'Grit', slots: [250, 176] }] };
+  project.setDrawingFont({ ...lowerAt240, lines, sets }); // made by hand; the browser has no copy yet
+  const before = [project.fontLines, project.fontSets];
+  const input = host.querySelector('input[type="file"]');
+  const files = new DataTransfer();
+  files.items.add(new File([lowerAt240.bytes], 'L.F16'));
+  input.files = files.files;
+  input.dispatchEvent(new Event('change'));
+  await vi.waitFor(async () => expect((await storedBitmapFont(fontId(lowerAt240))).sets).toEqual(sets));
+  expect((await storedBitmapFont(fontId(lowerAt240))).lines).toEqual(lines);
+  expect([project.fontLines, project.fontSets]).toEqual(before);
+});
+
 test('Remove forgets the browser\'s copy', async () => {
   const { palettes, b } = await mount();
   const id = palettes.create();

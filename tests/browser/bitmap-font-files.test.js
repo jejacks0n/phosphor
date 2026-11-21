@@ -9,7 +9,7 @@ import FontField from '@/components/FontField.vue';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { writeXBin } from '@/lib/XBinFile';
 import { parseFontSheet } from '@/lib/BitmapFont';
-import { addBitmapFont, loadFonts, storedBitmapFont, removeFont, storeBlocks } from '@/lib/userFonts';
+import { addBitmapFont, loadFonts, storedBitmapFont, removeFont, storeBlocks, storeFontPart } from '@/lib/userFonts';
 import { setDisplayFont } from '@/lib/displayFonts';
 
 let app = null, host = null;
@@ -96,6 +96,23 @@ test('an XBin opens with the blocks kept for its font, before the font list is r
   const palette = ['#000000', '#0000aa', '#00aa00', '#00aaaa', '#aa0000', '#aa00aa', '#aa5500', '#aaaaaa', '#555555', '#5555ff', '#55ff55', '#55ffff', '#ff5555', '#ff55ff', '#ffff55', '#ffffff'];
   await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells, palette, font: { name: 'K', height: 16, bytes, blocks } })], 'k.xb'));
   expect(project.fontBlocks).toBe(blocks.join('.'));
+  await settle(project); // so no late work reaches the next test
+});
+
+test('an XBin opens with the line styles and sets kept for its font', async () => {
+  const { project, workspace } = await createTestApp();
+  const bytes = new Uint8Array(256 * 16);
+  const font = await addBitmapFont(new File([bytes], 'K.F16'));
+  const lines = { hide: ['double'], styles: [{ id: 'l1', name: 'Heavy', slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }] };
+  const sets = { hideStock: true, sets: [{ id: 's1', name: 'Grit', slots: [250, 176] }] };
+  await storeFontPart(font.id, 'lines', lines);
+  await storeFontPart(font.id, 'sets', sets);
+  workspace.userFonts = null;
+  const cells = [{ char: 'A', fg: { hex: '#aaaaaa' }, bg: { hex: '#000000' } }];
+  const palette = ['#000000', '#0000aa', '#00aa00', '#00aaaa', '#aa0000', '#aa00aa', '#aa5500', '#aaaaaa', '#555555', '#5555ff', '#55ff55', '#55ffff', '#ff5555', '#ff55ff', '#ffff55', '#ffffff'];
+  await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells, palette, font: { name: 'K', height: 16, bytes } })], 'k.xb'));
+  expect(project.drawingFont.lines).toEqual(lines);
+  expect(project.drawingFont.sets).toEqual(sets);
   await settle(project); // so no late work reaches the next test
 });
 
