@@ -1,7 +1,8 @@
 # Plugins
 
-A plugin adds something to Phosphor: color themes, a script that adds ways to choose characters (a solver), or both. A
-plugin is a folder (or a .zip of one) holding its manifest, `phosphor-plugin.json`, and the script the manifest names.
+A plugin adds something to Phosphor: color themes, a script, or both. A script can add ways to choose characters
+(solvers), brushes, shapes for the Shape tool and filters for the picture. A plugin is a folder (or a .zip of one)
+holding its manifest, `phosphor-plugin.json`, and the script the manifest names.
 A plugin with only themes is just the manifest and runs no code. A plugin with a script runs code in Phosphor, so it asks
 you before it's installed ([Installing](#installing-a-plugin)). A plugin is kept in the browser you installed it in (or
 in the desktop app), and nowhere else: another browser or computer doesn't have it until you install it there too.
@@ -13,9 +14,9 @@ in the desktop app), and nowhere else: another browser or computer doesn't have 
 opens on Installed when you have any plugins, and on Marketplace when you have none; the tab you used last stays for the
 rest of the visit. The dialog is 860 pixels wide, and on a screen 700 pixels wide or less it fills the window.
 
-**Installed** lists each plugin you have: its name and version, who made it, what it adds ("1 theme"), its homepage, its
-description, and a line saying where it came from ("From a folder", "From the marketplace"). An Official badge marks
-Phosphor's own.
+**Installed** lists each plugin you have: its name and version, who made it, what it adds ("1 theme", and once its
+script is loaded "1 solver", "1 brush", "1 shape" or "1 filter"), its homepage, its description, and a line saying where
+it came from ("From a folder", "From the marketplace"). An Official badge marks Phosphor's own.
 
 - **Install from a file…** asks for a `.zip` or a `phosphor-plugin.json`.
 - **Install from a folder…** asks for a folder.
@@ -23,8 +24,8 @@ Phosphor's own.
 
 - **Replacing**: installing a plugin you already have asks "Replace Midnight 1.0.0 with 1.1.0?". The new version keeps
   the old one's On or Off.
-- **On and Off**: each plugin has a switch. A plugin that's off keeps its place in the list, but its themes aren't
-  offered.
+- **On and Off**: each plugin has a switch. A plugin that's off keeps its place in the list, but nothing of it is
+  offered: its themes, solvers, brushes, shapes and filters.
 - **The trash can** (Remove) asks first ("Remove Midnight?"), then forgets the plugin.
 
 If the theme you're using belongs to a plugin you switch off or remove, or to a new version that no longer has it,
@@ -35,7 +36,8 @@ Phosphor goes to that theme's base: Dark or Light.
 **Marketplace** is a grid of cards, one for each plugin on the list. A card has a band of art at the top (the plugin's
 `preview`, or its theme's colors, or nothing), then its name, version, author (or Official), a description cut to two
 lines, what it adds, and a button. Type in **Search plugins** to narrow the cards, and use the **Show** menu to see All,
-Official, Themes or Solvers.
+Official, Themes or Scripts. Scripts is every plugin with a script: a card is made from the manifest alone, which names
+the script but not what's in it, so it can't tell a solver from a brush.
 
 The list is loaded once a visit, the first time you open the dialog. If it can't be loaded, the tab says so and offers
 **Try again**. A list made for a newer Phosphor than yours says "This marketplace needs a newer Phosphor. Update Phosphor
@@ -91,7 +93,9 @@ What's refused, and what the dialog says:
 - A manifest over 64 KB or a script over 1 MB ("That file is too big for a plugin.").
 - A script the manifest names that isn't there ("The plugin names a script, outlines.js, that isn't in it.").
 - A script that doesn't load ("The plugin's script couldn't be loaded: …"), or whose export isn't the shape
-  ("The plugin's script has a problem at “…”."), or that has two solvers with one id.
+  ("The plugin's script has a problem at “…”.", naming the field), or that has two solvers with one id ("The plugin's
+  script has two solvers with the id “…”."). Two brushes, two shapes or two filters with one id are a problem at the
+  second one's `id`, and a script that adds none of the four kinds is a problem at “default”.
 - Any plugin with a script while Phosphor is started with `plugins=off`: "Plugins are off for this visit, so a plugin
   that runs code can't be installed now."
 
@@ -106,8 +110,9 @@ memory until the page reloads, which does no harm.
 
 ### When a script stops Phosphor
 
-Before a plugin's script is loaded, and the first time in a visit a solver works out a drawing, the cells under paint or
-the cells of a layer above the others, Phosphor marks that plugin as running (in your browser's local storage, tied to
+Before a plugin's script is loaded, the first time in a visit a solver works out a drawing, the cells under paint or
+the cells of a layer above the others, and the first time in a visit a brush moves, a shape gives its outline or a
+filter runs, Phosphor marks that plugin as running (in your browser's local storage, tied to
 the page that runs it) and takes the mark off when that's done. If a page froze there, the mark stays, and the next visit that finds the mark of a page that's gone starts that
 plugin off and says "Outlines stopped Phosphor responding last time, so it's off." You can switch it on again from the
 Plugins dialog, or remove it. `plugins=off` ([Starting with plugins off](#starting-with-plugins-off)) stays the last
@@ -172,7 +177,7 @@ The fields:
 | `license` | Its license, for example `MIT`. | Optional; 40 characters at most. |
 | `preview` | Up to three short lines shown as text on the art band of its Marketplace card. | Optional; 3 lines at most (split on a new line), 24 characters each, no control characters. Shown as text, never as markup. |
 | `themes` | The themes it adds. | At most 20. A plugin has themes, a script, or both; with neither it's refused ("This plugin adds nothing this Phosphor can use."). |
-| `script` | The script that adds solvers ([Writing a solver](#writing-a-solver)). | Optional; a relative path to a `.js` or `.mjs` file inside the plugin's folder (or .zip), going up (`..`), `.` and empty folders (`a//b.js`) not allowed; 1 MB at most. |
+| `script` | The script that adds solvers, brushes, shapes and filters ([Writing a script](#writing-a-script)). | Optional; a relative path to a `.js` or `.mjs` file inside the plugin's folder (or .zip), going up (`..`), `.` and empty folders (`a//b.js`) not allowed; 1 MB at most. |
 
 Each theme:
 
@@ -192,6 +197,71 @@ a theme's.
 A key that isn't a slot, or a value that isn't hex, refuses the whole manifest, and the dialog names it. Fields Phosphor
 doesn't know are left out, except that a manifest from a format newer than Phosphor's is refused. The file can be 64 KB at most. Every word in it is shown as you wrote it, as text: never as
 markup, and never translated.
+
+## Writing a script
+
+A script is a JavaScript module that imports nothing: everything it needs comes in its calls. Its default export lists
+what it adds, in four lists. Each is optional, and at least one has something in it:
+
+```js
+export default {
+  solvers: [ /* … */ ],
+  brushes: [ /* … */ ],
+  shapes: [ /* … */ ],
+  filters: [ /* … */ ],
+};
+```
+
+| List | Each one is | Where it shows | Written in |
+|---|---|---|---|
+| `solvers` | A way to choose each cell's character. | **Choose characters**, after the built-ins. | JavaScript, and GLSL if you like ([Writing a solver](#writing-a-solver)). |
+| `brushes` | A tool that lays paint. | The toolbar in PIXEL and ANSI, after the built-in tools. | JavaScript ([Writing a brush](#writing-a-brush)). |
+| `shapes` | A shape for the Shape tool, drawn from its outline. | The Shape tool's row on VECTOR, after Polygon. | JavaScript ([Writing a shape](#writing-a-shape)). |
+| `filters` | An effect on the picture. | A group of its own in the settings column, after Image filters. | GLSL only ([Writing a filter](#writing-a-filter)). |
+
+A script holds 8 of each kind at most. Each has an `id` (lowercase letters, digits and hyphens, 40 characters at most,
+one of its kind in the script: a brush and a shape may share one) and a `name` (40 characters at most). Everything is
+read once, when the script is loaded, and anything that isn't the shape refuses the plugin, naming the field ("The
+plugin's script has a problem at “brushes[0].icon”."). A plugin's words are shown as you wrote them, as text, and never
+translated.
+
+While a plugin is off, or Phosphor is started with `plugins=off`, nothing of its script is offered. In a room none of it
+is: rooms don't use plugin solvers, brushes, shapes or filters ([In a room](#in-a-room)).
+
+### Options
+
+Each of the four kinds can have up to 12 options: what the person can set, drawn with Phosphor's own controls in your
+words. Each has an `id` (a lowercase letter first, then up to 31 lowercase letters, digits and underscores, never two
+underscores together: it's the end of a shader's uniform name, `opt_<id>`; one of its kind among the item's options), a
+`name` and a `kind`:
+
+- `slider`: `min`, `max`, `step` and `default`.
+- `checkbox`: `default`, true or false.
+- `choice`: `choices` (up to 20, each 40 characters at most) and `default`, the number of the choice (the first is 0).
+- `color`: `default`, a color as `'#rrggbb'` (kept in lowercase). JavaScript gets it as `{ r, g, b }`, each 0 to 255,
+  and a shader as a `vec3`, each channel 0 to 1. It shows as a swatch; in the settings column one right after a slider
+  sits beside it, as Edges has its color.
+
+Where the values are kept depends on the kind: a solver's for each layer, saved with the drawing; a filter's with the
+drawing; a brush's and a shape's in this browser, for each brush and each shape, and not in the drawing. A value kept
+that no longer fits (a new version changed a range or the choices) is the option's default.
+
+### Icons
+
+A brush and a shape each have an `icon`, an SVG as a string, 8 KB (8,192 characters) at most. Phosphor never puts your
+markup on the page: it reads the SVG, keeps only what's listed here, checks each value, and writes the icon again from
+what it read. Anything else refuses the plugin ("The plugin's script has a problem at “brushes[0].icon”.").
+
+- The root is an `svg` with a `viewBox` at least 16 by 16. Its `width` and `height` are dropped (the toolbar sizes
+  icons), and so is `xmlns`.
+- Inside it: `g`, `path`, `circle`, `ellipse`, `rect`, `line`, `polyline` and `polygon`.
+- Their attributes: the geometry (`d`, `points`, `cx`, `cy`, `r`, `rx`, `ry`, `x`, `y`, `width`, `height`, `x1`,
+  `y1`, `x2`, `y2`), `stroke-width` and `opacity` as plain numbers (no units), `fill` and `stroke` as `currentColor` or
+  `none`, `fill-rule` and `clip-rule` (`nonzero`, `evenodd`), `stroke-linecap` and `stroke-linejoin`.
+- Comments are fine, and so is an `<?xml …?>` line at the very start. Text, styles, classes, `transform`, links (`use`,
+  `xlink:href`), entities, scripts and colors of their own aren't.
+
+Draw it in `currentColor`, so it takes the toolbar's colors in every theme.
 
 ## Writing a solver
 
@@ -215,10 +285,9 @@ Its manifest names the script:
 }
 ```
 
-### The script
+### The solver
 
-A script is a JavaScript module that imports nothing: everything a solver needs comes in its calls. It exports the
-solvers it adds:
+A solver is one entry of the script's `solvers`:
 
 ```js
 export default {
@@ -251,16 +320,8 @@ export default {
 | `solve`, `refine` | The passes. | `solve` is required. |
 | `shader` | The passes for the graphics card. | Optional; each string 64 KB at most. |
 
-A script holds 8 solvers at most. A name, an option's name and a choice are 40 characters at most, and a plugin's words
-are shown as you wrote them, as text, and never translated.
-
-**Options** show under the Characters section when the solver is chosen, in your words, and are kept for each layer and
-saved with the drawing. Each has an `id` (lowercase letters, digits and single underscores, starting with a letter, 32
-characters at most), a `name` and a `kind`:
-
-- `slider`: `min`, `max`, `step` and `default`.
-- `checkbox`: `default`, true or false.
-- `choice`: `choices` (up to 20) and `default`, the number of the choice (the first is 0).
+**Options** ([Options](#options)) show under the Characters section when the solver is chosen, and are kept for each
+layer and saved with the drawing.
 
 ### The two passes
 
@@ -336,7 +397,7 @@ of a GLSL ES 3.00 function (`void solve()`, `void refine()`) that Phosphor puts 
 - `ownGlyph[k]`: the index of the solver's k-th own character in the set (only where the solver has `chars`). A glyph is
   named by its index, so use this where the JavaScript uses a character.
 - `uLight` (Pattern light), `uTolerance` (Solids), `uStyle`, and `opt_<id>` for each option: a `float` for a slider, a
-  `bool` for a checkbox, an `int` for a choice.
+  `bool` for a checkbox, an `int` for a choice and a `vec3` (0 to 1) for a color.
 - `snap(vec3 v, out vec3 c)` (rounds `v` to bytes into `c` and returns the palette's nearest index, or -1 with no
   palette), `mixed(bg, fg, lb, lf, ink)` (By shape's blend, `lb` and `lf` the linear light of the colors), and
   `toLinear` and `toSrgb`: the helpers By shape uses.
@@ -361,6 +422,226 @@ A solver is chosen from the **Choose characters** list, under the built-ins and 
 style. It isn't used in rooms. A drawing that uses a solver whose plugin isn't there keeps the choice and its options,
 and shows By shape until the plugin is back; see [Characters](characters.md#plugin-solvers).
 
+## Writing a brush
+
+A brush is a tool that lays paint, in PIXEL and in ANSI. Brushes show in the toolbar after the built-in tools, past a
+divider, one button each, in the Plugins dialog's order and then each script's (on a narrow screen, what doesn't fit
+goes into ⋯, as the built-in tools do). A brush's tooltip is its name and its plugin's, "Smear (Smear)", with its key.
+Chosen, its options show in the options row: a slider, a checkbox, a choice as a menu and a color as a swatch. The
+example is Smear (`plugins/smear/`), which smudges the colors under it along the way it moves:
+
+```js
+export default {
+  brushes: [{
+    id: 'smear',
+    name: 'Smear',
+    icon: '<svg viewBox="0 0 16 16">…</svg>',
+    key: 'J',
+    size: 'size',
+    options: [
+      { id: 'size', kind: 'slider', name: 'Size', min: 1, max: 20, step: 1, default: 6 },
+      { id: 'strength', kind: 'slider', name: 'Strength', min: 0, max: 100, step: 1, default: 60 },
+      { id: 'reads', kind: 'choice', name: 'Reads', choices: ['What shows', 'This layer'], default: 0 },
+    ],
+    begin,   // optional: the press, before its first move
+    move,    // the pointer from one place to the next
+    // end,  // optional: the release (Smear has none)
+  }],
+};
+```
+
+| Field | What it is | Rules |
+|---|---|---|
+| `id`, `name` | Its own name in the plugin, and the name its tooltip and the Shortcuts dialog show. | Required ([Writing a script](#writing-a-script)). |
+| `icon` | Its button's icon. | Required ([Icons](#icons)). |
+| `key` | The key that picks it ([Keys](#keys)). | Optional; a letter, or Shift and a letter: `'J'`, `'shift+j'`. |
+| `size` | The `id` of the slider that is its size: it gets the Brush's circle under the pointer, and `]` and `[` step it. | Optional; one of its own sliders. |
+| `options` | What the person can set. | Up to 12 ([Options](#options)). |
+| `begin`, `move`, `end` | The calls a stroke makes. | `move` is required. |
+
+Around the brush's own work, Phosphor does what it does for the Brush: Shift-click draws a straight line from where the
+last stroke ended, Alt picks a color, a selection limits where it paints, a hidden layer refuses it, the base in an
+animation says once that it's on every frame, and a stroke is one undo step.
+
+### A stroke
+
+A position is `{ x, y }` in grid pixels, fractional as the pointer gives it. A press calls `begin(at, paint)`, then
+`move(from, to, paint)` for the press itself (`from` and `to` the same place, or with Shift, `from` where the last
+stroke ended), then `move` for each move of the pointer, and `end(paint)` at the release. They're called as plain
+functions, so `this` is undefined. `paint` is made once a stroke, and is the same object in each call:
+
+- `paint.cols`, `paint.rows`: the grid's size in grid pixels.
+- `paint.options`: the brush's values, by id.
+- `paint.fg`, `paint.bg`: the foreground and background colors, as `{ r, g, b }`.
+- `paint.shown(x, y)`: the color of a grid pixel as it shows, up to and including the picked layer (what Retouch reads),
+  as `{ r, g, b }`, or `null` off the grid.
+- `paint.own(x, y)`: the picked layer's own paint there, as `{ r, g, b, a }` (`a` from 0 to 1), or `null` where it has
+  none. With the base picked it's what `shown` gives.
+- `paint.put(x, y, color, alpha)`: paints a grid pixel with `color` (`{ r, g, b }`, 0 to 255) at `alpha` (0 to 1) over
+  what the picked layer had there when the stroke began.
+- `paint.dab(from, to, size, hardness)`: the grid pixels a round brush of that size and hardness (0 to 1) covers moving
+  from `from` to `to`, as `[{ x, y, alpha }]`, laid as the Brush lays them, so a brush needn't work out its own
+  footprint. The size is held to the Brush's largest, 20, and a hardness that isn't given is 1. A pixel can come more
+  than once along a long move.
+
+What a stroke reads is the drawing as it was when the stroke began: `shown` and `own` never give back the stroke's own
+paint. They take a fractional position to the pixel it's in, and give a copy each time, so changing it changes nothing.
+A put needs whole numbers on the grid, inside the selection when there is one; any other is ignored, as is one whose
+color or alpha isn't a number. Colors are rounded and held to 0 to 255, and alpha to 0 to 1. A later put to a pixel in
+the same stroke replaces the earlier one: puts don't build up, so a brush that wants them to keeps its own running
+color, as Smear keeps the strongest share it gave each pixel. The puts of one call are laid together when it returns.
+
+A brush lays paint, never characters. On a drawing layer it's the layer's paint; on the base, the base's own pixels,
+opaque (the color at its alpha over what shows there). In ANSI, the cells show it as the Brush's paint shows with
+**Draw with: Colors only** (rule R5 in [Cells and paint](model.md)).
+
+A brush that throws stops its stroke: what the stroke laid is taken back, a toast says "Smear failed: …" with its
+error's message, and the plugin's row in the Plugins dialog says so until you Reload the plugin or the page.
+
+### Keys
+
+A brush may ask for one key: a letter, or Shift and a letter (`'J'` or `'shift+j'`, in either case). If a built-in tool
+has that key, or a brush earlier in the Plugins dialog's order asked for it, they keep it and this brush has no key:
+it's picked from the toolbar. Smear asks for J, as M is Select's. The Shortcuts dialog lists the brushes that have keys
+under **Plugin tools**. Shapes and filters have no keys.
+
+## Writing a shape
+
+A shape is one more kind in the Shape tool's row on VECTOR, after Rectangle, Ellipse and Polygon: its icon, titled with
+its name and its plugin's ("Superformula (Superformula)"). Chosen, its options follow the row, as Polygon's Sides does.
+A drag draws it live in the next shape's style: Shift makes its box square, and Snap to snaps the box's corners. Let go
+and it's an ordinary path, one undo step, which Vector select and the Node tool change like any other, saved in the file
+and never tied to the plugin again. Its options shape the next drag; a shape already drawn doesn't change. The example
+is Superformula (`plugins/superformula/`), Johan Gielis's superformula, a soft five-pointed star at its defaults:
+
+```js
+export default {
+  shapes: [{
+    id: 'superformula',
+    name: 'Superformula',
+    icon: '<svg viewBox="0 0 16 16">…</svg>',
+    options: [
+      { id: 'points', kind: 'slider', name: 'Points', min: 1, max: 20, step: 1, default: 5 },
+      { id: 'pinch', kind: 'slider', name: 'Pinch', min: 0.1, max: 4, step: 0.1, default: 0.3 },
+      { id: 'round', kind: 'slider', name: 'Round', min: 0.1, max: 4, step: 0.1, default: 1.7 },
+    ],
+    outline,   // the shape in a box of its own, 0 to 1 across and down
+  }],
+};
+```
+
+`id`, `name`, `icon` and `options` are as a brush's; `outline` is required.
+
+`outline(options)` is called once for each drag, at its first move, with the shape's values by id. It gives back the
+shape in a box of its own, 0 to 1 across and 0 to 1 down, which Phosphor stretches over the box you drag (so a shape
+that fills its box fills the drag, as the built-in shapes do). That's a list of 1 to 200 outlines, each
+`{ closed, points }` with at least 2 points, and 500 points in all:
+
+```js
+function outline({ points, pinch, round }) {
+  return [{ closed: true, points: [[1, 0.5], [0.62, 0.38], /* … */] }];
+}
+```
+
+A point is `[x, y]`, a corner, or `[x, y, inX, inY, outX, outY]`, a point with handles. As in Phosphor's own paths, the
+handles are relative to their point: `inX, inY` is the way from the point to the handle before it, `outX, outY` to the
+one after, and they're stretched with the box. Two or more outlines are one path. Numbers that aren't finite, too many
+outlines or points, or anything that isn't this shape draw nothing for that drag: a toast says "Superformula couldn't
+draw: …" with why, and the plugin's row says so. An `outline` that throws does the same.
+
+## Writing a filter
+
+A filter is an effect on the picture, written for the graphics card. Filters show in the settings column after **Image
+filters**, and only where Image filters show, with the base picked and a picture
+([The Left Column](layers.md#the-left-column)): a group each, with its name, a PLUGIN chip, its own fold and Reset, and
+its options, drawn as the Image filters' are. Folded, a group says how many of its options are on. The example is Aberration
+(`plugins/aberration/`), which splits the picture's colors sideways, as a cheap lens does:
+
+```js
+const PASS = `
+  vec3 C = pixel(vec2(0.0));
+  vec3 L = pixel(vec2(-opt_distance, 0.0));
+  vec3 R = pixel(vec2(opt_distance, 0.0));
+  vec3 scale = 1.0 / max(vec3(1.0), opt_left_color + opt_right_color);
+  return C + opt_left_color * scale * (L - C) + opt_right_color * scale * (R - C);`;
+
+export default {
+  filters: [{
+    id: 'aberration',
+    name: 'Aberration',
+    options: [
+      { id: 'distance', kind: 'slider', name: 'Distance', min: 0, max: 10, step: 1, default: 0 },
+      { id: 'left_color', kind: 'color', name: 'Left color', default: '#ff0000' },
+      { id: 'right_color', kind: 'color', name: 'Right color', default: '#00ffff' },
+    ],
+    passes: [PASS],
+  }],
+};
+```
+
+`id`, `name` and `options` are as a brush's. `passes` is required: 1 to 4 strings, each 64 KB at most.
+
+### When a filter runs
+
+A filter runs only while one of its options is off its default, so installing one changes no drawing, and its Reset
+puts it back. Make each option's default the setting that changes nothing, as Aberration's Distance 0 is. Its values are
+part of the drawing: each change is an undo step, as a slider's is, and they go wherever the drawing's settings go
+(autosave, Versions, the file, Duplicate). Image filters' Reset leaves them; Reset all clears them.
+
+Filters work on the picture after Blur, Simplify and Edges, one after another in the order their groups show (the
+Plugins dialog's order, then each script's), and then come the color sliders, Sharpen and the palette. Sharpen works on
+the filtered picture, each pixel against its filtered neighbors. With Simplify or Edges on as well, that can look a
+little different from Sharpen with no plugin filter running, which compares a pixel after those effects with its
+neighbors from before them. A filter runs wherever the picture's effects do: the canvas, exports, Bake. It changes the
+picture only: not paint, typed cells or a layer's characters. A pass that changes nothing (`return pixel(vec2(0.0));`)
+leaves the picture as it was, up to rounding; with no filter running, the picture is made exactly as it is without
+plugins.
+
+### The passes
+
+Each pass is the body of a GLSL ES 1.00 function, `vec3 filter()`, that returns the pixel's new color (0 to 1 a channel,
+clamped after). Phosphor puts it after a prelude of its own:
+
+- `pixel(vec2 d)`: the color of the pixel `d` pixels away from this one (the edge's past the border), as the pass before
+  left it, as a `vec3` of 0 to 1. The first pass reads the picture after Blur, Simplify and Edges.
+- `uv`: this pixel's place in the picture, 0 to 1 each way, and `uResolution`: the picture's size in pixels, as the
+  effects work on it.
+- `luma(vec3 c)`: a color's brightness, with the weights Edges uses.
+- `opt_<id>` for each option: a `float` for a slider, a `bool` for a checkbox, an `int` for a choice, and a `vec3` (0 to
+  1) for a color.
+
+Passes run in order, each reading what the one before left. There's no JavaScript twin: the picture is made only on the
+graphics card.
+
+A pass that doesn't build is skipped, with the rest of its filter, and the group and the plugin's row show the
+compiler's log ("Aberration's filter didn't build: …"). A filter that loses the graphics card is off until you reload
+("Aberration's filter lost the graphics card, and is off until you reload.").
+
+### A drawing without the filter
+
+A drawing whose filter isn't there keeps its values, shows the picture without it, and shows its group dimmed, saying
+why. The name is the one saved with the values:
+
+- "Aberration isn't installed. The picture shows without it." The plugin was removed, or this browser never had it.
+- "Aberration is off. The picture shows without it." The plugin is switched off, or Phosphor was started with
+  `plugins=off`.
+
+Reset clears the values. The Export dialog names each filter that's set but left out (not there, off or failed):
+"Left out: the plugin filter Aberration." **Bake** bakes in, and clears, only the filters that are running, and keeps
+the values of one that isn't there, is off or failed; with nothing else to bake, a drawing whose only set filter isn't
+running has nothing to bake. **Flatten** clears every filter's values, and undo brings them back.
+
+## In a room
+
+Rooms don't use plugins' scripts. In a room, as the host or an artist, plugin solvers aren't offered, plugin brushes
+aren't in the toolbar (one in use is swapped for the Brush), plugin shapes aren't in the Shape tool's row (one chosen
+draws a Rectangle), and the plugin filter groups don't show, so no filter can be set and none runs.
+
+Hosting is refused while the drawing holds a plugin filter's values, running or not: **Go live**, and on the desktop app
+**Start a room**, are off and say so, naming it ("The plugin filter Aberration is on, which rooms don't use. Reset it or
+switch it off first."). Reset is what lifts it: a filter whose plugin is off or missing still holds its values. A layer
+on a plugin solver is refused the same way ([Characters](characters.md#plugin-solvers)). Joining a room isn't affected.
+
 ## Trying it as you write
 
 You don't need to build Phosphor to try a plugin: install your file in the app as it is.
@@ -380,9 +661,10 @@ You don't need to build Phosphor to try a plugin: install your file in the app a
 
 ## Listing a plugin
 
-Official plugins live in Phosphor's repository, one folder each directly under `plugins/` (Midnight and Outlines are
-there), each with a `phosphor-plugin.json`. They aren't part of Phosphor's build: people install them from the
-Marketplace. The ids starting `phosphor.` are kept for them, and a community listing that uses one is left out.
+Official plugins live in Phosphor's repository, one folder each directly under `plugins/` (Midnight, Outlines, Smear,
+Superformula and Aberration are there), each with a `phosphor-plugin.json`. They aren't part of Phosphor's build: people
+install them from the Marketplace. The ids starting `phosphor.` are kept for them, and a community listing that uses one
+is left out.
 
 To list yours, put it on GitHub with `phosphor-plugin.json` and its script, and add a line to the wiki page **Plugins** in
 jejacks0n/phosphor (collaborators can edit it). The line is a link in one of two forms:

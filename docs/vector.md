@@ -148,6 +148,7 @@ Drag from corner to corner to create a standard geometric shape. Choose the kind
 - **Rectangle**: Hold **Shift** for a square.
 - **Ellipse**: Hold **Shift** for a circle.
 - **Polygon**: Set the number of **Sides** (3 to 12) in the options row; the polygon fits the box you drag, its first corner at the top. Hold **Shift** for a regular polygon.
+- **A plugin's shapes**: After Polygon, each with its options after the row while it's chosen; it fits the box you drag, and **Shift** makes the box square ([Writing a shape](plugins.md#writing-a-shape)).
 
 The shape is drawn as you drag, becomes an ordinary path when you let go (so its points can be edited like any other), and is selected. A click without a drag makes nothing. Each shape is one undo step.
 

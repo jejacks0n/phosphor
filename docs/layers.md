@@ -180,10 +180,12 @@ The settings on the left come in sections, each following a layer:
   the base's pixels then, finer than a grid pixel). A blank canvas has none, and still has none after a Bake, after
   paint on the base, or after **Blend into source image**, which paints each grid pixel into the picture whole: Image
   filters work on that picture, but Smoothing has nothing finer to scale.
-- **Image filters**: **Blur**, **Simplify**, **Sharpen**, **Edges** (with its color) and **Edge thickness**, which
-  work on the picture itself. Only with the base selected, and only with a picture: on a blank canvas, or after
-  Flatten, a note says image filters require an image instead. After a Bake or **Blend into source image** the picture
-  is a working copy, and the filters work on it as on the one you opened.
+- **Image filters**: **Blur**, **Simplify**, **Sharpen**, **Edges** (with its color) and **Edge thickness**, which work
+  on the picture itself. Only with the base selected, and only with a picture: on a blank canvas, or after Flatten, a
+  note says image filters require an image instead. After a Bake or **Blend into source image** the picture is a working
+  copy, and the filters work on it as on the one you opened. A [plugin's filters](plugins.md#writing-a-filter) each have
+  a group after this one, shown in the same places, and work on the picture after these: Bake bakes in those that are
+  running, and Flatten clears them.
 
 Each section under Drawing folds and unfolds on its title, and your browser remembers which are folded. A folded
 slider group says how many of its sliders are on.
@@ -708,6 +710,8 @@ canvas:
   - **Blur (`R`)**: Evens out colors with their neighbors.
   - **Dodge (`O`)**: Lightens colors in shadows, midtones, or highlights.
   - **Burn (`Shift+O`)**: Darkens colors in shadows, midtones, or highlights.
+- **A Plugin's Brushes** (both views): After the built-in tools, past a divider. They lay paint, as the Brush does,
+  shown in the ANSI view as **Colors only** shows it ([Writing a brush](plugins.md#writing-a-brush)).
 - **Overlay**: The slider in the options bar draws the cells of your layers (or every cell, with **All cells**) over
   the pixels, as the ANSI view shows them. Paint that the art style turns into characters (Colors only's ▄s, in Color
   ASCII and Monochrome ASCII) isn't drawn over: you see the paint itself, blended with what's under it.
