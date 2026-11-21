@@ -13,6 +13,8 @@ import { isArtFile, readArtFile } from '@/lib/ArtFile';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { groupOf } from '@/tools/groups';
+import { getTool } from '@/tools';
+import { isSolverRef } from '@/plugins/solvers';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
 import { busyWhile } from '@/composables/useBusy';
@@ -51,6 +53,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     // where those follow a terminal's theme), so what's drawn with it exports as it (edit cells' fgIndex, bgIndex).
     editFgIndex: undefined,
     editBgIndex: undefined,
+    pluginTools: useLocalStorage('phosphor.pluginTools', {}), // { [ref]: { [optionId]: value } }: the options of plugin brushes (and shapes), kept in the browser
     recentColors: useLocalStorage('phosphor.recentColors', []),
     ansiRenderer: useLocalStorage('phosphor.ansiRenderer', 'canvas'), // the ANSI view's renderer (trial): 'canvas' | 'dom'
     displayFont: useLocalStorage('phosphor.displayFont', 'jetbrains'), // the font the art is drawn in: an id in displayFonts.js, or a loaded font's
@@ -212,8 +215,10 @@ export const useWorkspaceStore = defineStore('workspace', {
   }),
   getters: {
     shownPick: (state) => (useProjectStore().artInside ? useProjectStore().drawsOn : state.pickedLayer), // inside an art layer its vector layer's row shows as picked
+    // A plugin's brush that's gone (its plugin dropped or off, or a room started) reads as the Brush.
     activeTool(state) {
-      return state[toolKey(state.editorTab)];
+      const id = state[toolKey(state.editorTab)];
+      return isSolverRef(id) && getTool(id).id === 'none' ? 'brush' : id;
     },
     // The layers a selection's actions act on (Select's Copy, Cut, Delete, Stamp, moves by drag or arrow key, flip and
     // turn; the Magic Wand's Delete; Set FG / Set BG), every one of them: the picked layer, or with All layers on

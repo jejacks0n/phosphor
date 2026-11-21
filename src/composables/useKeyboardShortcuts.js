@@ -1,5 +1,5 @@
 import { onMounted, onBeforeUnmount, watch, toRaw } from 'vue';
-import { getTool, offeredTools } from '@/tools';
+import { getTool, offeredTools, optionValue, setOptionValue } from '@/tools';
 import { clampOffset, normalizeRect } from '@/document/editCells';
 import { stacked } from '@/document/shapes.js';
 import { charRowsOf } from '@/lib/Cells';
@@ -313,7 +313,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const option = getTool(workspaceStore.activeTool).options?.find((o) => o.size && (!o.views || o.views.includes(workspaceStore.editorTab)) && (!o.when || o.when(workspaceStore)));
     if (!option) return false;
     const round = 10 ** (option.decimals ?? 0);
-    workspaceStore[option.key] = Math.min(option.max, Math.max(option.min, Math.round((workspaceStore[option.key] + by) * round) / round));
+    setOptionValue(workspaceStore, option, Math.min(option.max, Math.max(option.min, Math.round((optionValue(workspaceStore, option) + by) * round) / round)));
     e.preventDefault();
     return true;
   };

@@ -395,6 +395,7 @@
     "charsHostOnly": "Seul l'hôte modifie les réglages de caractères dans un salon."
   },
   "tools": {
+    "pluginTitle": "{name} ({plugin})",
     "titleWithKeys": "{title} · {keys}",
     "keysOr": "{a} ou {b}",
     "moreTools": "Plus d'outils",
@@ -1184,6 +1185,7 @@
     "notUtf8": "{name} n'est pas en UTF-8 : il a été lu en CP437, comme un fichier .ans."
   },
   "shortcuts": {
+    "pluginTools": "Outils des plugins",
     "title": "Raccourcis clavier",
     "holdKey": "maintenir {key}",
     "holdSpace": "maintenir Espace",

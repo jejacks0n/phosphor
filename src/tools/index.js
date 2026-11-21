@@ -42,6 +42,10 @@ import { refusedNoCells, sayBaseOnEveryFrame } from '@/store/project/shared.js';
 import { shortcut } from '@/lib/keyLabels';
 import { groupOf } from './groups';
 import { t } from '@/i18n/index.js';
+import { usePluginStore } from '@/store/PluginStore';
+import { useRoomStore } from '@/store/RoomStore';
+import { brushFor } from '@/plugins/solvers.js';
+import { makeBrushTool } from './pluginBrush.js';
 
 // A group's tools (tools/groups.js) are listed in its order.
 export const TOOLS = [vselect, vnode, pen, vshape, pencil, brush, eraser, bucket, gradient, blur, dodge, burn, shapes, picker, select, wand, hand, zoom, text, flip];
@@ -54,8 +58,10 @@ export function refusesHidden({ project, workspace, view }) {
   return true;
 }
 
-for (const tool of TOOLS) {
-  if (tool.kind !== 'paint' || tool.views.includes('vector') || tool.section === 'select') continue;
+// A paint tool's begin, wrapped to refuse where drawing is refused (a hidden layer, no cells layer) and to say once that
+// the base in a movie is on every frame. Applied to every built-in paint tool and to each plugin tool.
+function guardBegin(tool) {
+  if (tool.kind !== 'paint' || tool.views.includes('vector') || tool.section === 'select') return;
   const begin = tool.begin;
   tool.begin = (ctx, ...rest) => {
     if (refusesHidden(ctx) || refusedNoCells(ctx.project)) return false;
@@ -63,17 +69,54 @@ for (const tool of TOOLS) {
     return begin.call(tool, ctx, ...rest);
   };
 }
+TOOLS.forEach(guardBegin);
 
 const BY_ID = new Map(TOOLS.map(tool => [tool.id, tool]));
 const NONE = { id: 'none', kind: 'none', views: [] };
 
+// The plugin brushes on offer as tools: those of the plugins that are on, in the Plugins dialog's order and then each
+// plugin's own, none in a room or with plugins off. The tool objects are kept until something they're made from changes
+// (the scripts' parts, the room, the plugins' order or on/off); the reads of that state below are what make a computed
+// calling this run again.
+let built = { stamp: null, tools: [] };
+export function pluginTools() {
+  const plugins = usePluginStore(), inRoom = useRoomStore().inRoom, off = plugins.off;
+  const stamp = [plugins.solverStamp, inRoom, off, ...plugins.plugins.map(({ id, enabled }) => `${id}:${enabled}`)].join('|');
+  if (stamp === built.stamp) return built.tools;
+  const tools = [], taken = new Set(TOOLS.flatMap((tool) => tool.keys ?? []));
+  if (!inRoom && !off) {
+    for (const { id, enabled, manifest } of plugins.plugins) {
+      if (!enabled) continue;
+      const mine = Object.entries(plugins.brushes).filter(([, brush]) => brush.pluginId === id).sort(([, a], [, b]) => a.index - b.index);
+      for (const [ref] of mine) {
+        const found = brushFor(ref);
+        if (!found) continue;
+        const key = found.def.key && !taken.has(found.def.key) ? found.def.key : null;
+        if (key) taken.add(key);
+        const tool = makeBrushTool({ ref, pluginId: id, pluginName: manifest.name, hash: found.hash, def: found.def, key });
+        guardBegin(tool);
+        tools.push(tool);
+      }
+    }
+  }
+  built = { stamp, tools };
+  return tools;
+}
+
 export function getTool(id) {
-  return BY_ID.get(id) ?? NONE;
+  return BY_ID.get(id) ?? pluginTools().find((tool) => tool.id === id) ?? NONE;
+}
+
+// An option's value and its change: an option with get and set (a plugin brush's) uses them, any other the workspace's field.
+export const optionValue = (workspace, option) => (option.get ? option.get(workspace) : workspace[option.key]);
+export function setOptionValue(workspace, option, value) {
+  if (option.set) option.set(workspace, value);
+  else workspace[option.key] = value;
 }
 
 // The tools offered in a view ('input', 'output' or 'vector'), as the toolbar shows them: every one, whichever layer is picked.
 export function offeredTools(view, project) {
-  return TOOLS.filter(tool => tool.views.includes(view) && (!tool.available || tool.available(project)));
+  return [...TOOLS, ...(['input', 'output'].includes(view) ? pluginTools() : [])].filter(tool => tool.views.includes(view) && (!tool.available || tool.available(project)));
 }
 
 // The toolbar's slots in a view, in order: each offered tool on its own, or a group's offered tools together
