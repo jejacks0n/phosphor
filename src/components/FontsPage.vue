@@ -423,7 +423,7 @@ const exportPalettes = () => {
         <button v-if="bitmap && font?.blocks" class="ghost" :disabled="inRoom" :data-off-reason="inRoom ? '' : undefined" :title="inRoom ? t('palette.fonts.blocksInRoom') : t('palette.fonts.findBlocksTitle')" @click="setBlocks(undefined)">{{ t('palette.fonts.findBlocks') }}</button>
         <button v-if="isStored" class="ghost" :title="t('palette.fonts.removeTitle')" @click="forget">{{ t('palette.fonts.remove') }}</button>
       </div>
-<dl v-if="held" class="origin">
+      <dl v-if="held" class="origin">
         <template v-for="l in originLines(held)" :key="l.label">
           <dt>{{ l.label }}</dt>
           <dd>{{ l.prefix }}<a v-if="l.href" :href="l.href" target="_blank" rel="noopener">{{ l.text }}</a><template v-else>{{ l.text }}</template></dd>

@@ -251,8 +251,9 @@ and the web app carry the same fonts. If it can't (the tag isn't main's latest c
 builds the tag as it is, without the new fonts.
 
 `FONTS_DEPLOY_KEY` is the private half of a deploy key added to the repository with write access. A push with the
-workflow's own token wouldn't start the fresh run; one with a deploy key does. If main is protected, the key must be
-allowed to bypass the protection to push there.
+workflow's own token wouldn't start the fresh run; one with a deploy key does. If main is protected, protect it with a
+repository ruleset that lists **Deploy keys** as a bypass actor: classic branch protection can't exempt a deploy key.
+If version tags have a ruleset too, it needs the same bypass, or the tag can't be moved.
 
 ## Not in this version
 

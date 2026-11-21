@@ -62,7 +62,7 @@ jobs:
       - id: mirror
         run: npm run fonts
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # the upstream trees are read through the API: no rate limit
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # the upstream trees are read through the API: a higher rate limit than without a token
       - id: step
         run: node scripts/library-release.mjs
         env:
