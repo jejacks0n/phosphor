@@ -8,6 +8,7 @@ import { cleanFilterOptions } from '@/plugins/filters.js';
 
 // A list of characters or colors, in characters: every CP437 character 64 times over, or 2000 colors.
 const MOST_LIST = 16 * 1024;
+const MOST_FONT_PART = 256 * 1024; // a font's lines or sets: many full sets, far past a list's size
 const MOST_TEXT = 1024;   // any other text a setting holds
 
 // Every persisted project setting, declared once. Order within the transform, adjust and effects
@@ -24,8 +25,8 @@ export const SETTINGS = [
   { key: 'fontBitmap', default: '', group: 'setup', pipeline: false, most: MOST_LIST }, // the drawing's bitmap font, base64 ('' for none)
   { key: 'fontName', default: '', group: 'setup', pipeline: false },
   { key: 'fontBlocks', default: '', group: 'setup', pipeline: false }, // the slots the drawing's font draws its eight blocks from (BitmapFont.encodeBlocks), '' for the ones found
-  { key: 'fontLines', default: '', group: 'setup', pipeline: false, most: MOST_LIST }, // the font's own line styles (FontLines.encodeLines), '' for none
-  { key: 'fontSets', default: '', group: 'setup', pipeline: false, most: MOST_LIST }, // the font's own character sets (FontLines.encodeSets), '' for none
+  { key: 'fontLines', default: '', group: 'setup', pipeline: false, most: MOST_FONT_PART }, // the font's own line styles (FontLines.encodeLines), '' for none
+  { key: 'fontSets', default: '', group: 'setup', pipeline: false, most: MOST_FONT_PART }, // the font's own character sets (FontLines.encodeSets), '' for none
   { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false, most: MOST_LIST },
   { key: 'seed', default: () => generateSlug(2), group: 'setup', get help() { return t('settings.seed.help'); } },
   { key: 'charChoice', default: 'random', group: 'setup', pipeline: false, get help() { return t('settings.charChoice.help'); } },

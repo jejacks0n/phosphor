@@ -9,6 +9,7 @@ import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
 import { registerBitmapFont } from '@/lib/userFonts.js';
 import { settingsFromStranger } from '@/store/settings.js';
+import { encodeSets } from '@/lib/FontLines.js';
 import { coverageOf, setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage, vgaBitmapFont } from '@/lib/GlyphCoverage.js';
 
 afterEach(async () => {
@@ -459,4 +460,11 @@ test('settings from a stranger with bad lines keep the good ones', async () => {
   project.$patch(got);
   expect(project.drawingFont.lines.styles).toEqual([heavy]);
   expect(settingsFromStranger({ fontLines: 7 })).toBeNull();
+});
+
+test('settings from a stranger take a font with five full character sets', () => {
+  const sets = Array.from({ length: 5 }, (_, i) => ({ id: `s${i + 1}`, name: `Set ${i + 1}`, slots: Array.from({ length: 1024 }, (_, j) => j % 256) }));
+  const fontSets = encodeSets({ sets });
+  expect(fontSets.length).toBeGreaterThan(16 * 1024);
+  expect(settingsFromStranger({ fontSets })).not.toBeNull();
 });
