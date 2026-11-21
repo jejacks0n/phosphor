@@ -33,6 +33,12 @@ describe('encodeLines and decodeLines', () => {
     const long = decodeLines(encodeLines({ styles: [{ ...heavy, name: 'a'.repeat(100) }] }));
     expect(long.styles[0].name).toHaveLength(40);
   });
+
+  it('drop a style named for Single or Double, or one whose id came before', () => {
+    const style = (id, name) => ({ id, name, slots: Array(11).fill(1) });
+    const text = JSON.stringify({ styles: [style('single', 'a'), style('double', 'b'), style('l1', 'c'), style('l1', 'd')] });
+    expect(decodeLines(text).styles).toEqual([style('l1', 'c')]);
+  });
 });
 
 describe('decodeSets', () => {
@@ -41,6 +47,11 @@ describe('decodeSets', () => {
     expect(decodeSets(text)).toEqual({ hideStock: true, sets: [{ id: 's1', name: 'Grit', slots: [250, 250, 176] }, { id: 's2', name: 'none', slots: [] }] });
     expect(decodeSets('')).toBeNull();
     expect(decodeSets('{')).toBeNull();
+  });
+
+  it('drops a set whose id came before', () => {
+    const text = encodeSets({ sets: [{ id: 's1', name: 'a', slots: [1] }, { id: 's1', name: 'b', slots: [2] }] });
+    expect(decodeSets(text).sets).toEqual([{ id: 's1', name: 'a', slots: [1] }]);
   });
 });
 

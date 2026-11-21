@@ -23,7 +23,11 @@ const entryOf = (e, slotsOk) => (
     ? { id: e.id, name: e.name.slice(0, NAME_MAX), slots: [...e.slots] }
     : null
 );
-const list = (v, slotsOk) => (Array.isArray(v) ? v.map((e) => entryOf(e, slotsOk)).filter(Boolean) : []);
+// Entries that read, each id once; `taken` ids (Single's and Double's) are dropped too.
+const list = (v, slotsOk, taken = []) => {
+  const seen = new Set(taken);
+  return (Array.isArray(v) ? v.map((e) => entryOf(e, slotsOk)) : []).filter((e) => e && !seen.has(e.id) && seen.add(e.id));
+};
 
 export const encodeLines = ({ hide = [], styles = [] } = {}) => (hide.length || styles.length ? JSON.stringify({ hide, styles }) : '');
 
@@ -31,7 +35,7 @@ export function decodeLines(text) {
   const v = text && parse(text);
   if (!v) return null;
   const hide = Array.isArray(v.hide) ? v.hide.filter((h) => STOCK_STYLES.some((s) => s.id === h)) : [];
-  return { hide, styles: list(v.styles, (s) => s.length === 11 && s.every((x) => x === null || slotOk(x))) };
+  return { hide, styles: list(v.styles, (s) => s.length === 11 && s.every((x) => x === null || slotOk(x)), STOCK_STYLES.map((s) => s.id)) };
 }
 
 export const encodeSets = ({ hideStock = false, sets = [] } = {}) => (hideStock || sets.length ? JSON.stringify({ hideStock, sets }) : '');
