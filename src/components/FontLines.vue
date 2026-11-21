@@ -45,7 +45,11 @@ const note = computed(() => {
 
 const change = (styles, hide = lines.value.hide) => emit('change', { hide, styles });
 const toggleHide = (id) => change(lines.value.styles, lines.value.hide.includes(id) ? lines.value.hide.filter((h) => h !== id) : [...lines.value.hide, id]);
-const rename = (id, name) => change(lines.value.styles.map((s) => (s.id === id ? { ...s, name } : s)));
+// A name left empty, or only spaces, is the one + New gives (the field shows it too).
+const rename = (id, field) => {
+  const name = field.value = field.value.trim() ? field.value : t('palette.fonts.lineName', { n: id.slice(1) });
+  change(lines.value.styles.map((s) => (s.id === id ? { ...s, name } : s)));
+};
 const remove = (id) => {
   if (props.picked?.style === id) emit('pick', null);
   change(lines.value.styles.filter((s) => s.id !== id));
@@ -80,7 +84,7 @@ defineExpose({ slot });
     </div>
     <div v-for="s in own" :key="s.id" class="card">
       <div class="top-row">
-        <input :value="s.name" maxlength="40" :aria-label="t('palette.fonts.lineNameAria')" :disabled="disabled" @change="rename(s.id, $event.target.value)">
+        <input :value="s.name" maxlength="40" :aria-label="t('palette.fonts.lineNameAria')" :disabled="disabled" @change="rename(s.id, $event.target)">
         <button class="ghost" :disabled="disabled" :title="disabled ? reason : undefined" @click="remove(s.id)">{{ t('common.delete') }}</button>
       </div>
       <div class="tiles">

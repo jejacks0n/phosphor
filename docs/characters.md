@@ -222,7 +222,7 @@ On the Fonts page, a bitmap font's row has a **Blocks** row above its 256 slots:
 
 Box-drawing lines are drawn from a font's own pieces. A bitmap font can carry line styles of its own, for a font whose lines aren't where CP437 puts them or that draws a second kind (a heavy one, say). A style is eleven pieces: ─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼. On the Fonts page, a bitmap font's row has **Lines** beside **Blocks** and **Sets**.
 
-- **Make one**: **+ New line style** adds a style of eleven tiles. Pick a tile, then click the slot in the sheet that draws it; the next piece that isn't set gets picked, so clicking eleven slots in order fills the style. A style has a name you can change, and a note says how many pieces are still to go. A slot that draws one of the font's blocks is refused, since a block can't be a line piece.
+- **Make one**: **+ New line style** adds a style of eleven tiles. Pick a tile, then click the slot in the sheet that draws it; the next piece that isn't set gets picked, so clicking eleven slots in order fills the style. A style has a name you can change (left empty, it goes back to the one it was given, "Line 1" say), and a note says how many pieces are still to go. A slot that draws one of the font's blocks is refused, since a block can't be a line piece.
 - **Under Draw with**: Once all eleven pieces are set, the style is offered after **Double line**, set apart from it by a rule, in the Pencil's and Shapes' **Draw with** ([Draw With](layers.md#draw-with)), under the name you gave it. Until then it isn't offered, and the style says how many pieces to go.
 - **It joins itself**: A style joins its own corners and tees. Where a line crosses a line of another style, the new line wins and the cell becomes its piece: styles don't join each other. **Single line** and **Double line** still join each other when both are offered.
 - **Connect and Flip stay in a style**: **Connect** joins only the lines of the style being drawn, and flipping a selection turns a style's pieces into the same style's.
@@ -233,7 +233,7 @@ Box-drawing lines are drawn from a font's own pieces. A bitmap font can carry li
 
 ### The Font's Sets
 
-A bitmap font can carry character sets of its own, for the characters it draws well. On the Fonts page, **Sets** has **+ New set**; a set has a name you can change and its characters.
+A bitmap font can carry character sets of its own, for the characters it draws well. On the Fonts page, **Sets** has **+ New set**; a set has a name you can change (left empty, it goes back to the one it was given, "Set 1" say) and its characters.
 
 - **Build one**: Click into the set's characters, then click slots on the sheet to add them in order. A slot can go in twice, and repeats are kept: a character in a set twice is picked twice as often by **Random**. Or type into the field: it takes the characters the font has, and leaves the others out. **Backspace** takes the last one off. What you type and take off in one visit to the field is one undo step, taken when you leave it.
 - **Empty sets**: A set with no characters is kept, so you can fill it later, but isn't offered.

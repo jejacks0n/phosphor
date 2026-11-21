@@ -634,6 +634,24 @@ test('characters typed into a set are one undo step, taken when the field is don
   expect(project.drawingFont.sets.sets[0].slots).toEqual([250]);
 });
 
+test('a style or set named nothing, or only spaces, takes its default name', async () => {
+  const font = { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, id: 'l3' }] }, sets: { hideStock: false, sets: [{ id: 's2', name: 'Grit', slots: [250] }] } };
+  const { project } = await mount({ font });
+  const rename = async (input, value) => {
+    input.value = value;
+    input.dispatchEvent(new Event('change'));
+    await nextTick();
+  };
+  await press(sectionTab('Lines'));
+  await rename(host.querySelector('.lines .card input'), '   ');
+  expect(project.drawingFont.lines.styles[0].name).toBe('Line 3');
+  expect(host.querySelector('.lines .card input').value).toBe('Line 3');
+  await press(sectionTab('Sets'));
+  await rename(host.querySelector('.sets input.name'), '');
+  expect(project.drawingFont.sets.sets[0].name).toBe('Set 2');
+  expect(host.querySelector('.sets input.name').value).toBe('Set 2');
+});
+
 test('Show stock sets is one switch', async () => {
   const { project } = await mount({ font: cp437Font });
   await press(sectionTab('Sets'));

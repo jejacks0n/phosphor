@@ -28,7 +28,11 @@ const note = computed(() => (pickedSet.value && !props.disabled
 
 const change = (list, hideStock = sets.value.hideStock) => emit('change', { hideStock, sets: list });
 const setSlots = (id, slots) => change(sets.value.sets.map((s) => (s.id === id ? { ...s, slots } : s)));
-const rename = (id, name) => change(sets.value.sets.map((s) => (s.id === id ? { ...s, name } : s)));
+// A name left empty, or only spaces, is the one + New gives (the field shows it too).
+const rename = (id, field) => {
+  const name = field.value = field.value.trim() ? field.value : t('palette.fonts.setName', { n: id.slice(1) });
+  change(sets.value.sets.map((s) => (s.id === id ? { ...s, name } : s)));
+};
 const remove = (id) => {
   if (props.picked === id) emit('pick', null);
   change(sets.value.sets.filter((s) => s.id !== id));
@@ -63,7 +67,7 @@ defineExpose({ slot });
 <template>
   <div class="sets">
     <div v-for="s in sets.sets" :key="s.id" class="set">
-      <input class="name" :value="s.name" maxlength="40" :aria-label="t('palette.fonts.setNameAria')" :disabled="disabled" @change="rename(s.id, $event.target.value)">
+      <input class="name" :value="s.name" maxlength="40" :aria-label="t('palette.fonts.setNameAria')" :disabled="disabled" @change="rename(s.id, $event.target)">
       <input
           class="chars"
           :class="{ picked: picked === s.id }"
