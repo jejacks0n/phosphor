@@ -20,13 +20,14 @@ import { reachableAddresses } from './addresses.js';
 import { OPENABLE, filesIn, isOpenable, isProject, recentFiles, writeWhole } from './files.js';
 import { REPO, menuTemplate } from './menu.js';
 import { cascade, fileTarget, leave } from './windows.js';
-import { LIST_URL, MOST_LIST_BYTES, fetchText, fetchFile } from './pluginList.js';
+import { listUrl, MOST_LIST_BYTES, fetchText, fetchFile } from './pluginList.js';
 
 const ORIGIN = 'app://phosphor';
 const DIST = fileURLToPath(new URL('../dist-desktop/', import.meta.url));
 const QUIT_WITHIN_MS = 20_000;
 // Phosphor's version, packaged or not (unpackaged, app.getVersion() is Electron's).
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
+const LIST_URL = listUrl({ version: VERSION, site: process.env.PHOSPHOR_SITE });
 
 // The end-to-end tests' settings, which a packaged app doesn't take (they run the app unpackaged).
 if (app.isPackaged) for (const name of ['PHOSPHOR_USER_DATA', 'PHOSPHOR_ADDRESSES', 'PHOSPHOR_RETURN_WITHIN_MS']) delete process.env[name];
@@ -453,7 +454,7 @@ else {
   handle('phosphor:save-project', saveProject);
   handle('phosphor:releases', () => releases());
   // The Plugins dialog's marketplace: the list from phosphor.work and a listed plugin's files from raw GitHub.
-  handle('phosphor:plugin-list', () => fetchText(LIST_URL, { fetch: net.fetch, most: MOST_LIST_BYTES }));
+  handle('phosphor:plugin-list', () => fetchText(LIST_URL, { fetch: net.fetch, most: MOST_LIST_BYTES, listUrl: LIST_URL }));
   handle('phosphor:plugin-file', (_entry, url, most) => fetchFile(url, most, { fetch: net.fetch }));
   ipcMain.on('phosphor:files-ready', (event) => {
     const entry = entryOf(event);
