@@ -238,6 +238,19 @@ The Plugins dialog's Marketplace reads `https://phosphor.work/plugins.json`. A p
 `1.2.3-beta`) reads `https://next.phosphor.work/plugins.json` instead, and so does any version started with
 `PHOSPHOR_SITE=next` in its environment. The app reads exactly one of the two, never both.
 
+## Releasing
+
+A version tag first checks the font library. The workflow's library job mirrors Phosphor's two upstream font
+collections (`npm run fonts`). If nothing is new, the tag builds. If there are new fonts, the tag is main's latest
+commit and the `FONTS_DEPLOY_KEY` secret is set, it commits them to main ("The font library takes N new fonts"), moves
+the tag onto that commit and stops: the moved tag starts a fresh run, which finds nothing new and builds, so the release
+and the web app carry the same fonts. If it can't (the tag isn't main's latest commit, or there's no key), it warns and
+builds the tag as it is, without the new fonts.
+
+`FONTS_DEPLOY_KEY` is the private half of a deploy key added to the repository with write access. A push with the
+workflow's own token wouldn't start the fresh run; one with a deploy key does. If main is protected, the key must be
+allowed to bypass the protection to push there.
+
 ## Not in this version
 
 - Joining a desktop room from a browser, or a web room from the app.

@@ -40,8 +40,54 @@ jobs:
     outputs:
       prerelease: ${{ steps.tag.outputs.prerelease }}
 
-  package:
+  # Once, after the version check: new fonts upstream are mirrored into main and the tag moved onto them, so the release
+  # and the web app carry them. A push made with the workflow's own token starts no run, but one over SSH with a deploy
+  # key does: that moved tag starts this workflow again, where nothing is new and it builds. This run then builds nothing.
+  library:
     needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HAS_KEY: ${{ secrets.FONTS_DEPLOY_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # main's head, to compare with, and every tag
+          ssh-key: ${{ secrets.FONTS_DEPLOY_KEY }} # empty when the secret isn't set, which is no key
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - id: mirror
+        run: npm run fonts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # the upstream trees are read through the API: no rate limit
+      - id: step
+        run: node scripts/library-release.mjs
+        env:
+          CHANGED: ${{ steps.mirror.outputs.changed }}
+      - id: commit
+        if: steps.step.outputs.step == 'commit'
+        env:
+          CHANGED: ${{ steps.mirror.outputs.changed }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A public/fonts/library
+          git commit -m "The font library takes $CHANGED new fonts"
+          git push origin HEAD:main
+          git tag -f "$GITHUB_REF_NAME"
+          git push -f origin "$GITHUB_REF_NAME"
+          echo "restarted=true" >> "$GITHUB_OUTPUT"
+      - if: steps.step.outputs.step == 'warn'
+        run: git checkout -- . && git clean -fd public/fonts/library
+    outputs:
+      restarted: ${{ steps.commit.outputs.restarted }}
+
+  package:
+    needs: [version, library]
+    if: needs.library.outputs.restarted != 'true'
     strategy:
       fail-fast: false # one platform's failure still shows the others'
       matrix:
