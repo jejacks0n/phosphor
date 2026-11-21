@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { isMac, shortcut } from '@/lib/keyLabels';
 import { useProjectStore } from '@/store/ProjectStore';
+import { keyLabel, pluginTools } from '@/tools';
 
 // The keyboard shortcuts, opened with ? (Alt+? while typing in Edit Mode). Keys are written the
 // platform's way (⌘ and ⌥ on a Mac). Keep it in step with useKeyboardShortcuts, useTextTool and
@@ -116,6 +117,11 @@ const groups = computed(() => [
       [['Delete', 'Backspace'], t('shortcuts.rows.vectorDelete')],
       [['Esc'], t('shortcuts.rows.vectorEsc')],
     ],
+  },
+  // The brushes plugins add that have a key, absent when there are none.
+  pluginTools().some(({ keys }) => keys.length) && {
+    title: t('shortcuts.pluginTools'),
+    rows: pluginTools().filter(({ keys }) => keys.length).map((tool) => [tool.keys.map(keyLabel), tool.title]),
   },
   project.animate && {
     title: t('shortcuts.groups.animation'),

@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { bakeWarning, mergeWarning, useDrawingStore } from '@/store/DrawingStore';
-import { getTool, keyLabel, slotFace, toolSlots, toolTitle } from '@/tools';
+import { getTool, keyLabel, optionValue, setOptionValue, slotFace, toolSlots, toolTitle } from '@/tools';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
@@ -202,7 +202,7 @@ const turnSelection = (op) => {
 // that isn't on offer, the choice the tool draws instead.
 const offered = (option) => option.choices.filter(c => !c.when || c.when(workspace));
 const shownChoice = (option) => {
-  const current = option.choices.find(c => c.value === workspace[option.key]), list = offered(option);
+  const current = option.choices.find(c => c.value === optionValue(workspace, option)), list = offered(option);
   return list.includes(current) ? current : list.find(c => c.value === current?.instead) ?? current;
 };
 
@@ -367,7 +367,7 @@ const selectionHasCharacters = computed(() => {
 // A toggle group as shown: one with shiftFlips (the Eyedropper's one-lit choices) shows the other lit while Shift is
 // held, as that's what a click then picks.
 const shownToggles = (option) => {
-  const value = workspace[option.key];
+  const value = optionValue(workspace, option);
   return option.shiftFlips && workspace.isShiftPressed ? Object.fromEntries(Object.entries(value).map(([k, on]) => [k, !on])) : value;
 };
 const SNAP_MODES = ['none', 'cells', 'half'];
@@ -632,26 +632,27 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
         </template>
       </div>
       <div v-if="toolOptions.length" class="tool-setting-group">
-        <template v-for="(option, i) in toolOptions" :key="option.key">
+        <template v-for="(option, i) in toolOptions" :key="option.key ?? option.id">
           <div v-if="i > 0" class="divider"/>
           <label v-if="option.type === 'checkbox'" class="checkbox-wrapper" :title="option.title">
             <span>{{ option.label }}</span>
-            <input type="checkbox" v-model="workspace[option.key]"/>
+            <input type="checkbox" :checked="optionValue(workspace, option)" @change="setOptionValue(workspace, option, $event.target.checked)"/>
           </label>
+          <input v-else-if="option.type === 'color'" type="color" class="option-color" :value="optionValue(workspace, option)" :aria-label="option.label" :title="option.label" @input="setOptionValue(workspace, option, $event.target.value)"/>
           <div v-else-if="option.type === 'segmented'" class="segmented" role="group" :aria-label="option.label">
             <button
                 v-for="choice in option.choices"
                 class="text"
                 :key="String(choice.value)"
-                :class="{ on: workspace[option.key] === choice.value }"
+                :class="{ on: optionValue(workspace, option) === choice.value }"
                 :title="choice.icon && choice.label"
                 :aria-label="choice.icon && choice.label"
-                @click="workspace[option.key] = choice.value"
+                @click="setOptionValue(workspace, option, choice.value)"
             ><span v-if="choice.icon" v-html="choice.icon"></span><template v-else>{{ choice.label }}</template></button>
           </div>
           <template v-else-if="option.type === 'toggles'">
             <span class="option-label">{{ option.label }}</span>
-            <ToggleGroup :model-value="shownToggles(option)" :options="option.options" :label="option.label" :single="!!option.single" @update:model-value="workspace[option.key] = $event"/>
+            <ToggleGroup :model-value="shownToggles(option)" :options="option.options" :label="option.label" :single="!!option.single" @update:model-value="setOptionValue(workspace, option, $event)"/>
           </template>
           <DropdownMenu v-else-if="option.type === 'dropdown'" class="option-menu" align="left" :label="shownChoice(option)?.label ?? option.label">
             <button
@@ -659,10 +660,10 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
                 :key="String(choice.value)"
                 class="choice"
                 :class="{ on: shownChoice(option) === choice }"
-                @click="workspace[option.key] = choice.value"
+                @click="setOptionValue(workspace, option, choice.value)"
             ><span class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
           </DropdownMenu>
-          <RangeField v-else compact :setting="option" v-model="workspace[option.key]"/>
+          <RangeField v-else compact :setting="option" :model-value="optionValue(workspace, option)" @update:model-value="setOptionValue(workspace, option, $event)"/>
         </template>
       </div>
       <div v-if="activeTool.id === 'hand'" class="tool-setting-group">

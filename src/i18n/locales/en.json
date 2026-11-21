@@ -395,6 +395,7 @@
     "charsHostOnly": "Only the host changes character settings in a room."
   },
   "tools": {
+    "pluginTitle": "{name} ({plugin})",
     "titleWithKeys": "{title} · {keys}",
     "keysOr": "{a} or {b}",
     "moreTools": "More tools",
@@ -1184,6 +1185,7 @@
     "notUtf8": "{name} isn't UTF-8, so it was read as CP437, as an .ans file is."
   },
   "shortcuts": {
+    "pluginTools": "Plugin tools",
     "title": "Keyboard shortcuts",
     "holdKey": "hold {key}",
     "holdSpace": "hold Space",
