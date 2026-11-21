@@ -126,9 +126,10 @@ describe('hosting on Cloudflare Pages', () => {
 
   it('builds for production on a push or a run by hand, and for next only on a label from this repository\'s own pull request', () => {
     const build = job(deploy, 'build');
-    expect(build).toContain("if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'next'))");
+    expect(build).toContain("if: (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'next'))");
     expect(build).toMatch(/needs: \[test, browser, e2e, desktop-e2e\]/);
     expect(build).toContain('ref: ${{ github.event.pull_request.head.sha || github.sha }}');
+    expect(build).toContain('env -u GITHUB_SHA npm run build'); // the build id names the head commit, not a pull request's merge commit
     expect(build).toContain('VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}');
     expect(build).toContain("The TURNSTILE_SITE_KEY secret isn't set");
   });
@@ -150,5 +151,11 @@ describe('hosting on Cloudflare Pages', () => {
   it('holds no job permissions beyond reading the repository', () => {
     expect(deploy).not.toMatch(/pages: write|id-token: write/);
     expect(deploy).toMatch(/\npermissions:\n {2}contents: read\n/);
+  });
+
+  it('checks out the pull request\'s head in every test job, so what is tested is what reaches next', () => {
+    for (const name of ['test', 'browser', 'e2e', 'desktop-e2e']) {
+      expect(job(deploy, name), name).toMatch(/- uses: actions\/checkout@v4\n\s+with:\n\s+ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+    }
   });
 });

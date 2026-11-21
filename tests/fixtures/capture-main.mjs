@@ -1,4 +1,4 @@
-// Saves a project with the live site's code (the main branch, what GitHub Pages serves), so tests
+// Saves a project with the live site's code (the main branch, what phosphor.work serves), so tests
 // load what real users have on disk: builds main in a temporary worktree, serves it, draws a little
 // through its store (paint, typed characters, a flipped cell) and saves. Run once; the result
 // (projects/live-main.phosphor) is committed. Run: node tests/fixtures/capture-main.mjs
