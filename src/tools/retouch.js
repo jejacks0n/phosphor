@@ -230,7 +230,7 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
         const { pins } = project.baseRecords, pinned = ({ x, y }) => pins.has(`${x},${y >> 1}`);
         retouchPixels(project, pixels.filter((p) => !pinned(p)), changed, strength); // the converter's cells: as in the pixel view, read before the pinned ones change
         retouchCells(project, pixels.filter(pinned), changed, strength);
-      } else retouchPixels(project, pixels, changed, strength); // Monochrome ASCII shows a cell's brightness as its character alone: its pixels change, and the characters follow
+      } else retouchPixels(project, pixels, changed, strength); // Monochrome ASCII shows a cell's brightness as its character alone: its pixels change, and the characters follow (the base's pins go: R13)
       workspace.strokeEnd = to;
     },
     end({ project }) {

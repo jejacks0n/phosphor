@@ -337,7 +337,10 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Probes: `out-of-order`: press Insert on the base and type into the middle of a line with a Brush stroke after it (the
   whole row moves right, stroke and all), press Insert again for Partial and type (the letters move, the stroke
   stays), then Delete in each (the row comes back the same way; in Insert the cell at the row's end is black);
-  `undo-redo`: undo the base edit and the typing in order.
+  `undo-redo`: undo the base edit and the typing in order; `scope`: on the base in Monochrome ASCII, a white Brush
+  stroke across his characters and across the black shows wherever it goes as ASCII characters (the characters under
+  it give way, a `▄` among them converting as it did), Undo brings the characters back, and in ANSI the same stroke
+  tints the characters and keeps them.
 - Rated: yes, wants a key to pick the base
 
 ### 26. Merge my layer into the base

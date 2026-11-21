@@ -5,7 +5,7 @@ import { withPins, withoutPins } from '@/document/baseRecords.js';
 import { BLANK, cellKey, parseKey } from '@/document/editCells.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
-import { pastEdge } from '@/store/project/shared.js';
+import { pastEdge, takePins } from '@/store/project/shared.js';
 
 export const baseLayerActions = {
   // Erase the base in these cells: black, with a pinned space (and no 256-color index).
@@ -29,8 +29,10 @@ export const baseLayerActions = {
     this.recompose(pixels.filter(({ x, y }) => x < cols && y < rows));
   },
 
-  // Erase base pixels (the Pixel view): black, the characters left as they are.
+  // Erase base pixels (the Pixel view, and the Soft Eraser): black, the characters left as they are, but in Monochrome
+  // ASCII, where black can't show on a pin, the pins go (takePins, docs/model.md R13).
   eraseBasePixels(pixels) {
+    takePins(this, pixels);
     // A soft eraser's stamps (alpha under 1) lay the black as the Brush would lay it; the rest turn black at once.
     const soft = pixels.filter(({ alpha = 1 }) => alpha < 1);
     if (soft.length) this.paintBasePixels(soft.map(({ x, y, alpha }) => ({ x, y, ...hex2rgb(BLANK.bg), alpha })));

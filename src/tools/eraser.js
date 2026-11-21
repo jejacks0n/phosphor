@@ -12,7 +12,8 @@ import { t } from '@/i18n/index.js';
 // by its Flow (on the base, laying black that way). Hard has each view's own size: the ANSI view's in whole cells
 // (editEraserCells), which go with their characters, the Pixel view's in grid pixels. Soft is the same in both views, as
 // the Brush is: in grid pixels at the Pixel view's size, and on paint alone, so in the ANSI view too a character of
-// someone's own stays (the Pixel view's Eraser never took one).
+// someone's own stays (the Pixel view's Eraser never took one), except on the base in Monochrome ASCII, which can't
+// show a pin's colors: there the pins go (docs/model.md R13).
 const soft = (workspace) => workspace.editEraserSoft;
 const inPixels = (workspace, view) => view === 'input' || soft(workspace);
 const sizeIn = (workspace, view) => (inPixels(workspace, view) ? workspace.editEraserSize : workspace.editEraserCells);
