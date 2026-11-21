@@ -12,6 +12,7 @@ import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
 import { toast } from '@/composables/useToast';
+import { nextId } from '@/lib/FontLines';
 import FontBlocks from '@/components/FontBlocks.vue';
 import FontLines from '@/components/FontLines.vue';
 import FontSets from '@/components/FontSets.vue';
@@ -170,9 +171,9 @@ const removed = ({ entry, at }) => {
     const record = toRaw(workspace.userFonts?.find((f) => f.id === id));
     if (!record) return; // the font removed since
     const part = record[key] ?? (key === 'lines' ? { hide: [], styles: [] } : { hideStock: false, sets: [] });
-    if (part[list].some((e) => e.id === entry.id)) return;
+    const taken = part[list].some((e) => e.id === entry.id); // by one made since: it comes back under a new id
     const items = [...part[list]];
-    items.splice(Math.min(at, items.length), 0, entry);
+    items.splice(Math.min(at, items.length), 0, taken ? { ...entry, id: nextId(part[list], key === 'lines' ? 'l' : 's') } : entry);
     await storePart(id, key, { ...part, [list]: items });
   });
   toast(t('palette.fonts.deleted', { name: entry.name }), { action: { label: t('toolbar.undo'), run: putBack } });

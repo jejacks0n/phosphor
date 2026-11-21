@@ -743,6 +743,25 @@ test('Delete on a font kept only in this browser says so, with an Undo that puts
   await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).sets.sets.map((s) => s.name)).toEqual(['Grit']));
 });
 
+test('the toast\u2019s Undo puts a deleted style back under a new id when a newer style has taken its own', async () => {
+  const { workspace } = await mount();
+  onTestFinished(() => closeToast());
+  const thin = { ...heavy, id: 'l2', name: 'Thin' };
+  const stored = await addBitmapFont(new File([cp437Font.bytes], 'L.F16'));
+  await storeFontPart(stored.id, 'lines', { hide: [], styles: [heavy, thin] });
+  workspace.userFonts = await loadFonts();
+  await vi.waitFor(() => expect(row('L')).toBeTruthy());
+  await press(row('L'));
+  await vi.waitFor(() => expect(sectionTab('Lines')).toBeTruthy());
+  await press(sectionTab('Lines'));
+  await press(host.querySelectorAll('.lines .card button.ghost')[1]); // Thin's Delete
+  const undo = toastAction.value.run;
+  await press(button('+ New line style')); // l2 again
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles.map((s) => s.id)).toEqual(['l1', 'l2']));
+  undo();
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles.map((s) => [s.id, s.name])).toEqual([['l1', 'Heavy'], ['l3', 'Thin'], ['l2', 'Line 2']]));
+});
+
 test('Delete on the drawing\u2019s font is an undo step, with no toast', async () => {
   const { project } = await mount({ font: { ...cp437Font, lines: { hide: [], styles: [heavy] } } });
   onTestFinished(() => closeToast());
