@@ -99,10 +99,19 @@ export function standInOf({ ref, renderStyle, inRoom, pluginsOff, pluginState })
   return failures.has(ref) ? 'failed' : null;
 }
 
+const HEX = /^#[0-9a-f]{6}$/;
 const valid = (option, value) => {
   if (option.kind === 'slider') return typeof value === 'number' && value >= option.min && value <= option.max;
   if (option.kind === 'checkbox') return typeof value === 'boolean';
+  if (option.kind === 'color') return typeof value === 'string' && HEX.test(value);
   return Number.isInteger(value) && value >= 0 && value < option.choices.length;
 };
 export const optionValues = (def, stored) => Object.fromEntries(def.options.map((option) =>
   [option.id, valid(option, stored?.[option.id]) ? stored[option.id] : option.default]));
+
+// A solver's option values as its JavaScript gets them (by id, frozen): a color's '#rrggbb' as { r, g, b } (0..255),
+// every other value as it is. The raw values stay what's stored, compared and sent to a shader.
+export const scriptOptions = (def, values) => Object.freeze(Object.fromEntries(Object.entries(values).map(([id, value]) => {
+  const color = def.options.find((option) => option.id === id)?.kind === 'color' && HEX.test(value);
+  return [id, color ? Object.freeze({ r: parseInt(value.slice(1, 3), 16), g: parseInt(value.slice(3, 5), 16), b: parseInt(value.slice(5), 16) }) : value];
+})));

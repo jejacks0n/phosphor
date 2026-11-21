@@ -135,6 +135,26 @@ test('options are drawn from what the solver declares, in its own words, and eac
   expect(host.querySelector('#solver-threshold').value).toBe('40');
 });
 
+test('a color option is a color input that changes as it is picked and commits when it is let go', async () => {
+  const { project } = await blank();
+  const ref = await onSolver(solver({
+    id: 'tinted', name: 'Tinted', options: [
+      { id: 'amount', kind: 'slider', name: 'Amount', min: 0, max: 10, step: 1, default: 5 },
+      { id: 'tint', kind: 'color', name: 'Tint', default: '#ff8800' },
+    ],
+  }));
+  const host = await mount(ControlPanel);
+  await change(host.querySelector('#charChoice'), ref);
+  const input = host.querySelector('input[type=color]#solver-tint');
+  expect(input.value).toBe('#ff8800');
+  expect(input.closest('.field')).not.toBe(null); // beside the slider, in its field
+  const version = project.history.version;
+  await change(input, '#00ff00', 'input');
+  expect(project.charsOf('edit').solverOptions[ref].tint).toBe('#00ff00');
+  await change(input, '#00ff00');
+  expect(project.history.version - version).toBe(1);
+});
+
 test('a missing solver keeps its option and the note says By shape stands in', async () => {
   const { project } = await blank();
   const plugins = usePluginStore();

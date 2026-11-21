@@ -4,6 +4,7 @@
 import { walkCells, shapeMatcher, mixChannel, cellRange, nearestOf, SAMPLES } from './CharResolver.js';
 import { ASCII_BG, colorOf } from './Cells.js';
 import { bayerNudge, nudgeSpread } from './Dither.js';
+import { scriptOptions } from '@/plugins/solvers.js';
 
 const N = SAMPLES.w * SAMPLES.h;
 const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
@@ -49,7 +50,7 @@ const sameOptions = (a, b) => {
 export function pluginMatcher({ def, ref, palette, glyphs, solids = 0, light = 0, renderStyle = 'ansi', options = {} }) {
   const l = lastPlugin;
   const fits = l?.def === def && l.ref === ref && l.paletteIn === palette && l.solids === solids && l.light === light
-    && l.style === renderStyle && sameOptions(l.look.options, options) && l.glyphs.length === glyphs.length
+    && l.style === renderStyle && sameOptions(l.options, options) && l.glyphs.length === glyphs.length
     && glyphs.every((g, i) => g.char === l.glyphs[i].char && g.mask === l.glyphs[i].mask && !g.own === !l.glyphs[i].own);
   if (!fits) lastPlugin = makePluginMatcher(def, ref, palette, glyphs, solids, light, renderStyle, options);
   return lastPlugin;
@@ -72,7 +73,7 @@ function makePluginMatcher(def, ref, palette, glyphs, solids, light, style, opti
     glyphs: Object.freeze(glyphs.map(({ char, mask, own }) => Object.freeze({ char, mask: Float32Array.from(mask), own: !!own }))),
     palette: lookPalette,
     style,
-    options: Object.freeze({ ...options }),
+    options: scriptOptions(def, options),
     light,
     solids,
     // One channel: bg mixed with fg by ink (0..1), as By shape scores it (Pattern light included).
@@ -222,7 +223,7 @@ function makePluginMatcher(def, ref, palette, glyphs, solids, light, style, opti
     return { cells, first, faults };
   }
 
-  return { kind: 'plugin', def, ref, palette: pal, glyphs, look, shape, solids, light, style, paletteIn: palette, hold, run };
+  return { kind: 'plugin', def, ref, options: Object.freeze({ ...options }), palette: pal, glyphs, look, shape, solids, light, style, paletteIn: palette, hold, run };
 }
 
 // A pass's result ({ char, fg, bg }) held to the matcher's set, palette and style: { cell, shown, fault }, one object

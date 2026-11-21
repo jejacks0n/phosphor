@@ -290,7 +290,7 @@ int charAt(ivec2 d) {
   return int(texelFetch(uPicks, c - uPicksFirst, 0).r);
 }
 `;
-const UNIFORM = { slider: 'float', checkbox: 'bool', choice: 'int' };
+const UNIFORM = { slider: 'float', checkbox: 'bool', choice: 'int', color: 'vec3' };
 
 // Each of a solver's own characters' (def.chars, in its order) index in glyphs ({ char }: the layer's set, then the
 // solver's characters the set doesn't hold): the set's index where the set holds it.
@@ -543,8 +543,9 @@ export default class ShapeMatcher {
     gl.uniform1i(u('uStyle'), STYLES.indexOf(matcher.style));
     gl.uniform2i(u('uGrid'), cols, lines);
     for (const { id, kind } of matcher.def.options) {
-      const value = matcher.look.options[id];
+      const value = matcher.options[id];
       if (kind === 'slider') gl.uniform1f(u(`opt_${id}`), value);
+      else if (kind === 'color') gl.uniform3f(u(`opt_${id}`), parseInt(value.slice(1, 3), 16) / 255, parseInt(value.slice(3, 5), 16) / 255, parseInt(value.slice(5), 16) / 255);
       else gl.uniform1i(u(`opt_${id}`), kind === 'checkbox' ? Number(value) : value);
     }
     for (const [name, unit] of Object.entries({ uSamples: 0, uPalette: 1, uMasks: 2, uPicks: 3 })) gl.uniform1i(u(name), unit);
