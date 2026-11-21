@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('test-{0}', github.ref) || 'pages' }}
+  group: ${{ github.event_name == 'pull_request' && format('test-{0}', github.ref) || github.ref == 'refs/heads/main' && 'pages' || format('branch-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }} # never stop a deploy halfway
 
 # A pull request's jobs check out its head commit, not the merge commit, so what is tested is what reaches next.

@@ -142,8 +142,8 @@ describe('hosting on Cloudflare Pages', () => {
     expect(build).toContain("pages deploy dist --project-name=phosphor --branch=${{ github.event_name == 'pull_request' && 'next' || 'main' }} --commit-hash=${{ github.event.pull_request.head.sha || github.sha }}");
   });
 
-  it('keeps production in the pages group without canceling, and next in its own that the last label wins', () => {
-    expect(deploy).toMatch(/\nconcurrency:\n {2}group: \$\{\{ github\.event_name == 'pull_request' && format\('test-\{0\}', github\.ref\) \|\| 'pages' \}\}\n {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  it('keeps production (main) alone in the pages group without canceling, a run by hand on another branch in a group of its own, and next in its own that the last label wins', () => {
+    expect(deploy).toMatch(/\nconcurrency:\n {2}group: \$\{\{ github\.event_name == 'pull_request' && format\('test-\{0\}', github\.ref\) \|\| github\.ref == 'refs\/heads\/main' && 'pages' \|\| format\('branch-\{0\}', github\.ref\) \}\}\n {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
     const build = job(deploy, 'build');
     expect(build).toMatch(/concurrency:\n {6}group: \$\{\{ github\.event_name == 'pull_request' && 'next' \|\| github\.run_id \}\}\n {6}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
   });
