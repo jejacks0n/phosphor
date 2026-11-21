@@ -377,18 +377,24 @@ test('a .utf8ans that isn\'t UTF-8 asks as an .ans would, and says it was read a
   expect(toastMessage.value).toBe('renamed.utf8ans isn\'t UTF-8, so it was read as CP437, as an .ans file is.');
 });
 
-test('paint over a file\'s cells covers them as it covers typed ones: a space or block takes the paint on the half it covers', async () => {
+// docs/model.md R2: the file's characters are pins on the base, so a layer's paint over its open ones (the spaces) is
+// converted with the layer's characters (here the base's Random), and over a letter it tints the letter.
+test('R2: a layer\'s paint over a file\'s cells tints its letters and converts its spaces with the layer\'s characters', async () => {
   const project = await afterAnotherDocument();
   await project.openArtFile(new File(['ab  \nab  '], 'note.txt'));
   await settle(project);
   project.paintStroke([{ x: 2, y: 0, alpha: 1 }, { x: 3, y: 1, alpha: 1 }, { x: 0, y: 0, alpha: 1 }], '#ffffff'); // top of (2, 0), bottom of (3, 0), top of the a
   await settle(project);
   const shows = () => [0, 2, 3].map((col) => { const { char, fg, bg } = project.cells[col]; return [char, bg.hex.toLowerCase(), fg.hex.toLowerCase()]; });
-  const expected = [['a', '#ffffff', '#aaaaaa'], ['▄', '#ffffff', '#000000'], ['▄', '#000000', '#ffffff']]; // a letter keeps its character, tinted
-  expect(shows()).toEqual(expected);
+  const first = shows();
+  expect(first[0]).toEqual(['a', '#ffffff', '#aaaaaa']); // a letter keeps its character, tinted
+  for (const [char, bg, fg] of first.slice(1)) { // a space takes the paint in the layer's characters, over its own two colors
+    expect(char).not.toBe(' ');
+    expect([bg, fg].sort()).toEqual(['#000000', '#ffffff']);
+  }
   project.render(); // a whole render composes them the same way
   await settle(project);
-  expect(shows()).toEqual(expected);
+  expect(shows()).toEqual(first);
 });
 
 test('a new blank canvas clears all SAUCE fields to their defaults', async () => {
