@@ -5,7 +5,8 @@ import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import { i18n, initLocale } from './i18n';
-import { createAddressRouter, followAddress } from './router';
+import { createAddressRouter, followAddress, hashAddresses } from './router';
+import { fromHashAddress } from './lib/addresses';
 import { useSocialStore } from './store/SocialStore';
 import { useRoomStore } from './store/RoomStore';
 import { useWorkspaceStore, followLayerPick } from './store/WorkspaceStore';
@@ -16,6 +17,10 @@ import { desktop } from './social/desktop';
 import { useDesktopMenu } from './composables/useDesktopMenu';
 import { installActionLog } from './dev/actionLog.js';
 import { SKIPPED } from './dev/skipped.js';
+
+// An old hash address (/#/social?room=x) is the path address it means, in its place, before anything reads it.
+const pathAddress = !hashAddresses() && fromHashAddress(location.href);
+if (pathAddress) history.replaceState(history.state, '', pathAddress);
 
 const pinia = createPinia();
 // Development only: the side panel's HISTORY tab logs every step taken (src/dev/actionLog.js), but for what skipped.js names.

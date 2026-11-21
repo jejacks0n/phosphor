@@ -139,7 +139,7 @@ script. Every section ends with Free time.
 - Expects: "Joining…" and "Waiting for the host…", then the ROOM tab, after SAUCE, shows just the host's art, view
   only, in the host's font; the side panel's Social tab becomes CHAT, with the room's name, "hosted by ansi-fan", Exit,
   and the welcome pinned under them ("Pinned note"); "You joined" in the log; a box in the host's color with a tag in
-  its corner, "· tracking"; the address is `/#/room?room=abcdefghij`. The art shows within the `file` budget of the press
+  its corner, "· tracking"; the address is `/room?room=abcdefghij`. The art shows within the `file` budget of the press
   ([Watching](../../social.md#watching)).
 - Probes: `again`: press Join twice quickly and check he's in once (the host's N here counts him once);
   `interrupt`: switch to PIXEL and back while it's joining.

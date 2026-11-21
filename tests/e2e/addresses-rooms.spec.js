@@ -1,7 +1,7 @@
 // The room you're watching in the address: Back, Forward and reload, with a real history (its entries'
 // marks are what tell your own room from a link).
 import { test, expect, tab, store, startScreen } from './support.js';
-import { fakeRoom, ROOM_ID, shown, goLive, watcherPage, followLink, joinFromCard, selected, hash, asked, chat, outOfRoom, live, joins } from './social-support.js';
+import { fakeRoom, ROOM_ID, shown, goLive, watcherPage, followLink, joinFromCard, selected, addressIs, asked, chat, outOfRoom, live, joins } from './social-support.js';
 
 const UNAVAILABLE = "This room isn't available";
 const status = (page) => store(page, 'room', (r) => r.status);
@@ -13,7 +13,7 @@ async function watching(host, context, room) {
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
   await joinFromCard(watcher);
-  await hash(watcher, `/room?room=${ROOM_ID}`);
+  await addressIs(watcher, `/room?room=${ROOM_ID}`);
   return watcher;
 }
 
@@ -21,27 +21,27 @@ test('a watcher reloading on the start screen is back in the room, unasked, stil
   const room = fakeRoom();
   const watcher = await watching(host, context, room);
   await tab(watcher, 'PIXEL').click();   // nothing of the watcher's own open: the start screen
-  await hash(watcher, `/?room=${ROOM_ID}`);
+  await addressIs(watcher, `/?room=${ROOM_ID}`);
 
   await watcher.reload();
   await live(watcher);
   await expect(asked(watcher)).toHaveCount(0);
   await startScreen(watcher);
-  await hash(watcher, `/?room=${ROOM_ID}`);
+  await addressIs(watcher, `/?room=${ROOM_ID}`);
   expect(joins(room)).toBe(2);
 });
 
-test('a pasted #/pixel?room=<id> asks first, with the lobby open; Not now leaves no ?room= and no socket', async ({ context }) => {
+test('a pasted /pixel?room=<id> asks first, with the lobby open; Not now leaves no ?room= and no socket', async ({ context }) => {
   const room = fakeRoom();
   const watcher = await watcherPage(context, room);
-  await watcher.goto(`/#/pixel?room=${ROOM_ID}`);
+  await watcher.goto(`/pixel?room=${ROOM_ID}`);
   await expect(asked(watcher)).toBeVisible();
   await expect(shown(watcher, 'lobby')).toBeVisible();
   expect(room.received).toEqual([]);
 
   await asked(watcher).getByRole('button', { name: 'Not now' }).click();
   await expect(asked(watcher)).toHaveCount(0);
-  await hash(watcher, '/');   // nothing open: the start screen
+  await addressIs(watcher, '/');   // nothing open: the start screen
   await outOfRoom(watcher);
   expect(room.received).toEqual([]);
 });
@@ -53,10 +53,10 @@ test('a followed link: Join, then Back leaves the room and lands on the start sc
   await followLink(watcher);
   await live(watcher);
   await selected(watcher, 'ROOM');
-  await hash(watcher, `/room?room=${ROOM_ID}`);
+  await addressIs(watcher, `/room?room=${ROOM_ID}`);
 
   await watcher.goBack();
-  await hash(watcher, '/');
+  await addressIs(watcher, '/');
   await outOfRoom(watcher);
   await expect(tab(watcher, 'ROOM')).toHaveCount(0);
   await expect(shown(watcher, 'lobby')).toBeVisible();
@@ -65,7 +65,7 @@ test('a followed link: Join, then Back leaves the room and lands on the start sc
   await live(watcher);
   await expect(asked(watcher)).toHaveCount(0);
   await selected(watcher, 'ROOM');
-  await hash(watcher, `/room?room=${ROOM_ID}`);
+  await addressIs(watcher, `/room?room=${ROOM_ID}`);
   expect(joins(room)).toBe(2);
 });
 
@@ -73,14 +73,14 @@ test('exit, reload, Back onto the room\'s entry: not rejoined, ?room= gone', asy
   const room = fakeRoom();
   const watcher = await watching(host, context, room);
   await tab(watcher, 'PIXEL').click();
-  await hash(watcher, `/?room=${ROOM_ID}`);
+  await addressIs(watcher, `/?room=${ROOM_ID}`);
   await chat(watcher).getByRole('button', { name: 'Exit' }).click();
-  await hash(watcher, '/');
+  await addressIs(watcher, '/');
 
   await watcher.reload();
-  await hash(watcher, '/');
+  await addressIs(watcher, '/');
   await watcher.goBack();   // onto the join's entry, on ROOM: no room, so the start screen
-  await hash(watcher, '/');
+  await addressIs(watcher, '/');
   await expect(tab(watcher, 'ROOM')).toHaveCount(0);
   await startScreen(watcher);
   await expect(asked(watcher)).toHaveCount(0);
@@ -92,31 +92,31 @@ test('Forward onto a room that ended shows why in the lobby, and the entry loses
   const room = fakeRoom();
   const watcher = await watching(host, context, room);
   await tab(watcher, 'PIXEL').click();
-  await hash(watcher, `/?room=${ROOM_ID}`);
+  await addressIs(watcher, `/?room=${ROOM_ID}`);
   await watcher.goBack();
   await watcher.goBack();
-  await hash(watcher, '/');
+  await addressIs(watcher, '/');
   await outOfRoom(watcher);
 
   await store(host, 'room', (r) => r.endRoom());
   await expect.poll(() => store(host, 'room', (r) => r.role)).toBe(null);
   await watcher.evaluate(() => history.go(2));   // right onto the start screen's entry: the words aren't there
   await expect(shown(watcher, 'lobby').getByText(UNAVAILABLE)).toBeVisible();
-  await hash(watcher, '/');
+  await addressIs(watcher, '/');
   await outOfRoom(watcher);
 });
 
 test('with no record, a host\'s reload lands where it was without ?room= and never joins', async ({ page: host }) => {
   const room = fakeRoom();
   await goLive(host, room);
-  await hash(host, `/ansi?room=${ROOM_ID}`);
+  await addressIs(host, `/ansi?room=${ROOM_ID}`);
   await tab(host, 'PIXEL').click();
-  await hash(host, `/pixel?room=${ROOM_ID}`);
+  await addressIs(host, `/pixel?room=${ROOM_ID}`);
   host.on('dialog', (dialog) => dialog.accept());   // the page-closing prompt
   await host.addInitScript(() => sessionStorage.removeItem('phosphor-hosting'));   // nothing kept to come back to
 
   await host.reload();
-  await hash(host, '/pixel');
+  await addressIs(host, '/pixel');
   await selected(host, 'PIXEL');
   await expect(asked(host)).toHaveCount(0);
   await outOfRoom(host);
@@ -127,21 +127,21 @@ for (const typed of ['garbage', 'a&room=b']) {
   test(`a typed ?room=${typed}: no socket, the unavailable words, a clean address`, async ({ context }) => {
     const room = fakeRoom();
     const watcher = await watcherPage(context, room);
-    await watcher.goto(`/#/pixel?room=${typed}`);
+    await watcher.goto(`/pixel?room=${typed}`);
     await expect(shown(watcher, 'lobby').getByText(UNAVAILABLE)).toBeVisible();
     await expect(asked(watcher)).toHaveCount(0);
-    await hash(watcher, '/');
+    await addressIs(watcher, '/');
     expect(room.received).toEqual([]);
   });
 }
 
-test('a link to a room you already left asks, from the address or a page load', async ({ page: host, context }) => {
+test('a link to a room you already left asks, by its address or an old #/ one', async ({ page: host, context }) => {
   const room = fakeRoom();
   const watcher = await watching(host, context, room);
   await chat(watcher).getByRole('button', { name: 'Exit' }).click();
-  await hash(watcher, '/');
+  await addressIs(watcher, '/');
 
-  await watcher.evaluate((id) => { location.hash = `#/pixel?room=${id}`; }, ROOM_ID);
+  await watcher.goto(`/pixel?room=${ROOM_ID}`);
   await expect(asked(watcher)).toBeVisible();
   await asked(watcher).getByRole('button', { name: 'Not now' }).click();
 
@@ -163,7 +163,7 @@ test('with storage that can\'t be read, reloading on an entry of yours doesn\'t 
   });
 
   await watcher.reload();
-  await hash(watcher, '/');
+  await addressIs(watcher, '/');
   await expect(asked(watcher)).toHaveCount(0);
   await outOfRoom(watcher);
   expect(joins(room)).toBe(1);
@@ -192,15 +192,15 @@ const navigated = (page) => page.evaluate(() => window.navigated);
 
 test('going live is a step; Back past it from PIXEL asks over PIXEL', async ({ page: host }) => {
   await goLive(host, fakeRoom());
-  await hash(host, LIVE);
+  await addressIs(host, LIVE);
   await tab(host, 'PIXEL').click();
-  await hash(host, `/pixel?room=${ROOM_ID}`);
+  await addressIs(host, `/pixel?room=${ROOM_ID}`);
 
   await host.goBack();   // from PIXEL to ANSI, still in the room: past nothing
-  await hash(host, LIVE);
+  await addressIs(host, LIVE);
   await expect(endRoom(host)).toHaveCount(0);
   await host.goForward();
-  await hash(host, `/pixel?room=${ROOM_ID}`);
+  await addressIs(host, `/pixel?room=${ROOM_ID}`);
 
   await host.evaluate(() => history.go(-2));
   await expect(endRoom(host)).toBeVisible();
@@ -209,23 +209,23 @@ test('going live is a step; Back past it from PIXEL asks over PIXEL', async ({ p
 
 test('Back with End room\'s question already open is one question, and one Cancel answers it', async ({ page: host }) => {
   await goLive(host, fakeRoom());
-  await hash(host, LIVE);
+  await addressIs(host, LIVE);
   await chat(host).getByRole('button', { name: 'End room' }).click();
   await expect(endRoom(host)).toHaveCount(1);
 
   await host.goBack();
-  await expect.poll(() => new URL(host.url()).hash).toBe('#/social/start');   // it's asking for Back now
+  await addressIs(host, '/social/start');   // it's asking for Back now
   await expect(endRoom(host)).toHaveCount(1);
   await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
   await expect(endRoom(host)).toHaveCount(0);
-  await hash(host, LIVE);
+  await addressIs(host, LIVE);
   expect(await status(host)).toBe('live');
 });
 
 test('Cancel: still live, URL unchanged, Back asks again', async ({ page: host }) => {
   const room = fakeRoom();
   await goLive(host, room);
-  await hash(host, LIVE);
+  await addressIs(host, LIVE);
   const before = await entry(host);
   await noteNavigations(host);
 
@@ -233,7 +233,7 @@ test('Cancel: still live, URL unchanged, Back asks again', async ({ page: host }
   await expect(endRoom(host)).toBeVisible();
   await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
   await expect(endRoom(host)).toHaveCount(0);
-  await hash(host, LIVE);
+  await addressIs(host, LIVE);
   await expect.poll(() => entry(host)).toEqual(before);
   expect(await navigated(host)).toEqual([['/social/start', 4]]);   // refused, and putting it back is no navigation
   expect(await status(host)).toBe('live');
@@ -244,7 +244,7 @@ test('Cancel: still live, URL unchanged, Back asks again', async ({ page: host }
   await host.goBack();
   await expect(endRoom(host)).toBeVisible();
   await endRoom(host).getByRole('button', { name: 'End room' }).click();
-  await hash(host, '/social/start');
+  await addressIs(host, '/social/start');
   await outOfRoom(host);
   await expect(shown(host, 'start-room')).toBeVisible();
   await expect.poll(() => room.received.filter((r) => r.msg.type === 'end').length).toBe(1);
@@ -253,14 +253,14 @@ test('Cancel: still live, URL unchanged, Back asks again', async ({ page: host }
 test('Back past several entries at once asks once: Cancel puts them all back, End lands where it was going', async ({ page: host }) => {
   await goLive(host, fakeRoom());
   await tab(host, 'PIXEL').click();
-  await hash(host, `/pixel?room=${ROOM_ID}`);
+  await addressIs(host, `/pixel?room=${ROOM_ID}`);
   const before = await entry(host);
 
   await host.evaluate(() => history.go(-3));   // PIXEL, ANSI live, Set up your room: the drawing before
   await expect(endRoom(host)).toBeVisible();
-  await hash(host, '/ansi');
+  await addressIs(host, '/ansi');
   await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
-  await hash(host, `/pixel?room=${ROOM_ID}`);
+  await addressIs(host, `/pixel?room=${ROOM_ID}`);
   await expect.poll(() => entry(host)).toEqual(before);
   await selected(host, 'PIXEL');
   expect(await status(host)).toBe('live');
@@ -269,7 +269,7 @@ test('Back past several entries at once asks once: Cancel puts them all back, En
   await expect(endRoom(host)).toBeVisible();
   await endRoom(host).getByRole('button', { name: 'End room' }).click();
   await outOfRoom(host);
-  await hash(host, '/ansi');
+  await addressIs(host, '/ansi');
   await selected(host, 'ANSI');
   await expect(shown(host, 'lobby')).toBeVisible();   // in the side panel, where the chat was
 });
@@ -277,19 +277,19 @@ test('Back past several entries at once asks once: Cancel puts them all back, En
 for (const presses of [1, 3]) {
   test(`${presses} more Back pressed while it asks: one question, and its answer stands`, async ({ page: host }) => {
     await goLive(host, fakeRoom());
-    await hash(host, LIVE);
+    await addressIs(host, LIVE);
     const before = await entry(host);
     const pressed = async () => {
       await host.goBack();
       await expect(endRoom(host)).toBeVisible();
       for (let i = 0; i < presses; i++) await host.evaluate(() => history.back());
-      await hash(host, '/social/start');   // those steps are undone
+      await addressIs(host, '/social/start');   // those steps are undone
       await expect(endRoom(host)).toHaveCount(1);
     };
 
     await pressed();
     await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
-    await hash(host, LIVE);
+    await addressIs(host, LIVE);
     await expect.poll(() => entry(host)).toEqual(before);
     await expect(endRoom(host)).toHaveCount(0);
     expect(await status(host)).toBe('live');
@@ -297,34 +297,23 @@ for (const presses of [1, 3]) {
     await pressed();
     await endRoom(host).getByRole('button', { name: 'End room' }).click();
     await outOfRoom(host);
-    await hash(host, '/social/start');
+    await addressIs(host, '/social/start');
     await expect(shown(host, 'start-room')).toBeVisible();
     await expect(endRoom(host)).toHaveCount(0);
   });
 }
 
-test('an address pasted while live asks too: Cancel puts it back', async ({ page: host }) => {
-  await goLive(host, fakeRoom());
-  await hash(host, LIVE);
-  await host.evaluate(() => { location.hash = '#/pixel'; });
-  await expect(endRoom(host)).toBeVisible();
-  await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
-  await hash(host, LIVE);
-  await selected(host, 'ANSI');
-  expect(await status(host)).toBe('live');
-});
-
 test('Forward pressed while it asks changes nothing: Cancel is still the way back', async ({ page: host }) => {
   await goLive(host, fakeRoom());
-  await hash(host, LIVE);
+  await addressIs(host, LIVE);
   await host.goBack();
   await expect(endRoom(host)).toBeVisible();
 
   await host.evaluate(() => history.forward());
-  await hash(host, '/social/start');
+  await addressIs(host, '/social/start');
   await expect(endRoom(host)).toBeVisible();
   await endRoom(host).getByRole('button', { name: 'Cancel' }).click();
-  await hash(host, LIVE);
+  await addressIs(host, LIVE);
   expect(await status(host)).toBe('live');
 });
 
@@ -332,20 +321,20 @@ test('after End, Forward and Back on the room\'s entries don\'t rejoin', async (
   const room = fakeRoom();
   await goLive(host, room);
   await tab(host, 'PIXEL').click();
-  await hash(host, `/pixel?room=${ROOM_ID}`);
+  await addressIs(host, `/pixel?room=${ROOM_ID}`);
   await host.evaluate(() => history.go(-2));
   await endRoom(host).getByRole('button', { name: 'End room' }).click();
-  await hash(host, '/social/start');
+  await addressIs(host, '/social/start');
   await outOfRoom(host);
 
   await host.goForward();
-  await hash(host, '/ansi');
+  await addressIs(host, '/ansi');
   await selected(host, 'ANSI');
   await host.goForward();
-  await hash(host, '/pixel');
+  await addressIs(host, '/pixel');
   await selected(host, 'PIXEL');
   await host.goBack();
-  await hash(host, '/ansi');
+  await addressIs(host, '/ansi');
   await selected(host, 'ANSI');
   await expect(endRoom(host)).toHaveCount(0);
   await expect(asked(host)).toHaveCount(0);

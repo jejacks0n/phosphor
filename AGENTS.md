@@ -18,9 +18,9 @@ npm run build:desktop             # the desktop build alone, in dist-desktop/ (p
 npm run test:e2e:desktop          # the desktop app's end-to-end tests, not part of npm test
 ```
 
-Addresses are hash addresses (`/#/social`) by default. `VITE_ADDRESSES=path npm run build` builds path
-addresses (`/social`) instead, and the host must then serve `index.html` for every path. The
-`path-addresses` end-to-end project tests that build.
+Addresses are path addresses (`/social`) on the web, so the host serves `index.html` for every path (Cloudflare
+does). An old hash address (`/#/social`) is rewritten to its path on load. `VITE_ADDRESSES=hash npm run build` builds
+hash addresses instead, and the desktop app always has them. The end-to-end tests run on the path build.
 
 ## Where things live
 
@@ -55,7 +55,8 @@ addresses (`/social`) instead, and the host must then serve `index.html` for eve
   IndexedDB storage).
 - `src/router.js` and `src/lib/addresses.js`: the address (which tab, SOCIAL page and room) and Back,
   Forward and reload. The stores are the truth; the router follows them, and `reconcile` is the one
-  place that navigates. `addresses.js` is the table of paths and where an address may land.
+  place that navigates. `addresses.js` is the table of paths, where an address may land, and the path an old hash
+  address (`/#/social`) means.
 - `src/document/frames.js` (a frame as data, what it resolves to) and `src/document/FrameBuilder.js` (a frame's cells, made the way a still's are), with `src/composables/usePlayback.js` (playing) and `src/lib/CastFile.js` and `src/lib/GifFile.js` (exports; a GIF's palette and file are made off the page in `src/lib/gifWorker.js`, with `src/lib/GifEncoder.js`): animation.
 - `src/document/`: the document's data (layers, cells, history, files); `src/lib/`: the libraries
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.

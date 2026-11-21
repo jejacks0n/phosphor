@@ -11,18 +11,18 @@ test('with nothing open no tab is selected; whatever opens lands on ANSI, and Ne
   await expect(editorTabs(page).getByRole('tab', { selected: true })).toHaveCount(0);
   await expect(editorTabs(page).locator('[tabindex="0"]')).toHaveCount(0); // no tab to choose, so no Tab stop
   await expect(page.locator('.tab-list .indicator')).toHaveCSS('opacity', '0');
-  expect(new URL(page.url()).hash).toBe('#/');
+  expect(new URL(page.url()).pathname).toBe('/');
 
   await page.getByRole('button', { name: 'Start with a blank canvas' }).click();
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
   await expect(tab(page, 'PIXEL')).toBeEnabled();
   await expect(page.locator('.tab-list .indicator')).toHaveCSS('opacity', '1');
-  await expect.poll(() => new URL(page.url()).hash).toBe('#/ansi');
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/ansi');
 
   await page.getByRole('button', { name: 'New project' }).click(); // nothing drawn: no question
   await expect(page.getByRole('button', { name: 'Start with a blank canvas' })).toBeVisible();
   await expect(editorTabs(page).getByRole('tab', { selected: true })).toHaveCount(0);
-  await expect.poll(() => new URL(page.url()).hash).toBe('#/');
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/');
 });
 
 // A watcher of a room with no art of their own: ROOM is the only tab with something to show.

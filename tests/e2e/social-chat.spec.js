@@ -3,7 +3,7 @@
 // characters, one a second), who can send, folding to the rail, earlier messages on scrolling up, and the
 // host's Delete and room menu, and who is here with Remove and Block.
 import { test, expect, tab, store } from './support.js';
-import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, hash, live, joins, ROOM_ID } from './social-support.js';
+import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, addressIs, live, joins, ROOM_ID } from './social-support.js';
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
@@ -186,15 +186,15 @@ test('a guest is asked to sign in over the room: closing it returns to the room,
   expect(await store(watcher, 'room', (r) => r.role)).toBe('watch');
 
   await panel(watcher).getByRole('button', { name: 'Sign in to chat' }).click();
-  await hash(watcher, `/social/sign-in?room=${ROOM_ID}`);
+  await addressIs(watcher, `/social/sign-in?room=${ROOM_ID}`);
   await signInWithPassword(watcher);
   await expect.poll(() => joins(room)).toBe(2);
   await live(watcher);
-  await hash(watcher, `/room?room=${ROOM_ID}`);
+  await addressIs(watcher, `/room?room=${ROOM_ID}`);
   await backAsWren(host, watcher);
 
   await watcher.goBack();
-  await hash(watcher, `/room?room=${ROOM_ID}`);
+  await addressIs(watcher, `/room?room=${ROOM_ID}`);
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');
   await expect(shown(watcher, 'watch-room')).toBeVisible();
   expect(joins(room)).toBe(2);

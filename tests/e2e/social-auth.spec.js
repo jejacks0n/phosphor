@@ -103,7 +103,7 @@ test('the sign-in page links to creating an account, a forgotten password and th
 
 test('the Community Guidelines open from sign-up, say what they are and link to what governs', async ({ page }) => {
   await fakeServer(page);
-  await page.goto('/#/social/create');
+  await page.goto('/social/create');
   await page.locator('section.lobby, .people-forms').getByRole('button', { name: 'Community Guidelines' }).click();
   const dialog = page.getByRole('dialog', { name: 'Community Guidelines' });
   await expect(dialog).toContainText('section 5 of our Terms');

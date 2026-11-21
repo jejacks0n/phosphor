@@ -110,8 +110,8 @@ for the browser layer): Playwright can't answer Chromium's own open and save pic
 a download, as in Safari and Firefox. Saving over a file is tested with stand-in pickers giving files in the origin's
 private file system (`tests/browser/save-in-place.test.js`, `tests/e2e/save-in-place.spec.js`).
 
-`tests/e2e/path-addresses.spec.js` runs against the other way the app can be built, with path addresses
-(`/social` in place of `/#/social`): its own Playwright project, build and port.
+The end-to-end tests run on the web build, with path addresses (`/social`); `tests/e2e/addresses-path.spec.js` holds
+what's particular to them, and old hash addresses (`/#/social`) loading as their paths.
 
 From `tests/e2e/edit-drag-select.spec.js` (shortened):
 
