@@ -292,6 +292,18 @@ export default class PaintLayer {
     return PaintLayer.average(data, rect.w, 0, 0, rect.w, rect.h);
   }
 
+  // The paint of grid pixels x0..x1, y0..y1 read at once: a function giving each of them as pixelAt does (null outside
+  // them), so many reads cost one getImageData.
+  pixelsIn(x0, y0, x1, y1) {
+    const a = this.#cellRect(x0, y0), b = this.#cellRect(x1, y1);
+    if (!a || !b) return (x, y) => this.pixelAt(x, y); // past the layer's edge: a read each
+    const w = b.x + b.w - a.x, { data } = ctx2d(this.canvas).getImageData(a.x, a.y, w, b.y + b.h - a.y);
+    return (x, y) => {
+      const rect = x >= x0 && x <= x1 && y >= y0 && y <= y1 && this.#cellRect(x, y);
+      return rect ? PaintLayer.average(data, w, rect.x - a.x, rect.y - a.y, rect.w, rect.h) : null;
+    };
+  }
+
   // Selection blocks. A cell rect ({ c0, r0, c1, r1 }) is scale x 2·scale layer pixels per cell.
   // The paint over a cell rect, as its own canvas.
   copyCells({ c0, r0, c1, r1 }) {

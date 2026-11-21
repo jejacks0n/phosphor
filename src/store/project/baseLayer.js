@@ -39,10 +39,16 @@ export const baseLayerActions = {
     if (soft.length) this.paintBasePixels(soft.map(({ x, y, alpha }) => ({ x, y, ...hex2rgb(BLANK.bg), alpha })));
     if (soft.length < pixels.length) this.writeBase(pixels.filter(({ alpha = 1 }) => alpha >= 1).map(({ x, y }) => ({ x, y, hex: BLANK.bg })));
     const { pins, indexes } = this.baseRecords, { cols, rows } = this;
-    const black = (x, y) => { const p = this.baseLayer?.pixelAt(x, y); return !!p && !p.r && !p.g && !p.b; };
     const touched = new Map(pixels.map(({ x, y }) => [cellKey(x, y >> 1), { col: x, row: y >> 1 }]));
-    const spaces = [...touched].filter(([key, { col, row }]) => pins.has(key) && !(pins.get(key) === ' ' && !indexes.has(key))
-      && black(col, 2 * row) && (2 * row + 1 >= rows || black(col, 2 * row + 1))).map(([, cell]) => ({ ...cell, char: ' ' }));
+    const pinned = [...touched].filter(([key]) => pins.has(key) && !(pins.get(key) === ' ' && !indexes.has(key)));
+    if (!pinned.length || !this.baseLayer) return;
+    // The pinned cells' pixels read at once (a read a pixel stalled every eraser move over a file's characters).
+    let c0 = Infinity, r0 = Infinity, c1 = -1, r1 = -1;
+    for (const [, { col, row }] of pinned) { c0 = Math.min(c0, col); r0 = Math.min(r0, row); c1 = Math.max(c1, col); r1 = Math.max(r1, row); }
+    const pixelAt = this.baseLayer.pixelsIn(c0, 2 * r0, c1, Math.min(rows - 1, 2 * r1 + 1));
+    const black = (x, y) => { const p = pixelAt(x, y); return !!p && !p.r && !p.g && !p.b; };
+    const spaces = pinned.filter(([, { col, row }]) => black(col, 2 * row) && (2 * row + 1 >= rows || black(col, 2 * row + 1)))
+      .map(([, cell]) => ({ ...cell, char: ' ' }));
     if (!spaces.length) return;
     this.setBaseRecords(withPins(this.baseRecords, spaces));
     this.recompose(spaces.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]).filter(({ x, y }) => x < cols && y < rows));

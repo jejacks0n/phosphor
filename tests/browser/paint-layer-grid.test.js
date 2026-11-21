@@ -108,3 +108,13 @@ test('paint finer than the grid reads as its block\'s average, in pixelAt and gr
   expect(at(layer.gridPixels(), 2, 3)).toEqual([170, 0, 85, 192]); // the canvas keeps the half-transparent half at 128/255
   expect(layer.pixelAt(3, 3)).toBeNull();
 });
+
+for (const scale of [1, 4, 2.5]) {
+  test(`pixelsIn reads a region as pixelAt reads each pixel, and nothing outside it, at scale ${scale}`, () => {
+    const layer = layerAt(scale);
+    layer.paint([{ x: 2, y: 1, r: 200, g: 40, b: 90, alpha: 1 }, { x: 4, y: 4, r: 10, g: 20, b: 30, alpha: 0.5 }, { x: 6, y: 2, r: 9, g: 9, b: 9, alpha: 1 }]);
+    const read = layer.pixelsIn(1, 1, 5, 4);
+    for (let y = 1; y <= 4; y++) for (let x = 1; x <= 5; x++) expect(read(x, y), `${x},${y}`).toEqual(layer.pixelAt(x, y));
+    expect(read(6, 2)).toBe(null); // painted, but outside the region
+  });
+}

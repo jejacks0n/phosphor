@@ -1,7 +1,7 @@
 // The Eraser's Hard and Soft: Hard is a square that clears what it covers at once (pixels in the PIXEL view, whole cells
 // with their characters in the ANSI view); Soft is round and feathered and takes paint away a little at a time, by its
 // Flow, as the Brush lays it, the same in both views. On the base, where erasing is black, Soft lays the black that way.
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
 import eraser from '@/tools/eraser';
 import shapes from '@/tools/shapes';
@@ -263,4 +263,22 @@ test('R11: the Soft Eraser on the base: one light pass keeps a pin\'s character,
   workspace.editEraserFlow = 100;
   for (let i = 0; i < 20 && pin() !== ' '; i++) click(3.5, 7);
   expect(pin()).toBe(' ');
+});
+
+test('R11: erasing the base over many pins reads its pixels once, not once a pin', async () => {
+  const { project } = await bluePin();
+  const cells = Array.from({ length: 12 }, (_, i) => ({ col: 5 + i, row: 4 }));
+  project.writeBaseCells(cells.map((c) => ({ ...c, char: '▌', fg: '#ff0000', bg: '#0000ff' })));
+  project.commitEdit();
+  const ctx = project.baseLayer.canvas.getContext('2d');
+  const reads = (list) => {
+    const spy = vi.spyOn(ctx, 'getImageData');
+    project.eraseBasePixels(list.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]));
+    const count = spy.mock.calls.length;
+    spy.mockRestore();
+    return count;
+  };
+  const one = reads([{ col: 3, row: 3 }]);
+  expect(reads(cells)).toBe(one);
+  expect(cells.every(({ col, row }) => project.baseRecords.pins.get(`${col},${row}`) === ' ')).toBe(true); // erased black: spaces (R11)
 });
