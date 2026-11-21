@@ -87,6 +87,31 @@ test('ANSI view: on the base Dodge recolors a cell\'s character and background, 
 // A drawing layer's own cells keep their characters under all three, as the base's pinned ones do: Blur evens a cell's
 // colors with its other cells', foreground with foreground and background with background (a color set to None stays
 // None), and spreads them into the clear beside them as paint.
+// Going over a spot again in a stroke adds nothing: a cell's two pixels are read together, as the stroke began, so one first
+// read after an earlier move recolored the cell (the other half was read before it) isn't read recolored.
+test('ANSI view: Blur reads both pixels of an own cell as the stroke began, though an earlier move recolored it', async () => {
+  const run = async (moves) => {
+    const { project, ctx } = await blank('output');
+    Object.assign(ctx.workspace, { retouchSize: 1.2 });
+    project.writeEditCells([
+      { col: 5, row: 5, attrs: { char: '█', fg: '#ffffff', bg: '#000080' } }, // solid glyphs: a half is the foreground
+      { col: 6, row: 5, attrs: { char: '█', fg: '#000000', bg: '#000080' } },
+    ]);
+    project.paintEditPixels([{ x: 6, y: 12, r: 200, g: 200, b: 200, alpha: 1 }]);
+    project.commitEdit();
+    blur.begin(ctx, moves[0], {});
+    for (let i = 1; i < moves.length; i++) {
+      await settle(project); // the cell's new colors are drawn, as they are between a stroke's moves
+      blur.move(ctx, moves[i - 1], moves[i]);
+    }
+    blur.end(ctx);
+    return project.paintLayer.pixelAt(6, 12);
+  };
+  const alone = await run([{ x: 6.5, y: 12.5 }]);
+  const both = await run([{ x: 6.5, y: 10 }, { x: 6.5, y: 12.5 }]);
+  expect(both).toEqual(alone);
+});
+
 for (const view of ['input', 'output']) {
   test(`${view === 'input' ? 'pixel' : 'ANSI'} view: on a drawing layer Blur keeps typed characters, evens their colors and spreads them into the clear`, async () => {
     const { project, ctx } = await blank(view);

@@ -232,7 +232,9 @@ test('a put outside the selection, off the grid or at a fraction is ignored', as
     },
   });
   workspace.selection = { c0: 1, r0: 1, c1: 5, r1: 3 };
+  const laid = vi.spyOn(project, 'putEditPixels');
   stroke([at(3, 5)]);
+  expect(laid.mock.calls.flatMap(([pixels]) => pixels).map(({ x, y }) => `${x},${y}`)).toEqual(['3,5']); // [3, 40] is off the grid: dropped
   expect(paintAt(project, 3, 5)).toMatchObject({ r: 255, a: 1 });
   for (const [x, y] of [[0, 0], [1, 5], [2, 5], [0, 5]]) expect(paintAt(project, x, y), `${x},${y}`).toBe(null);
 });
@@ -333,4 +335,47 @@ test('a brush\'s first move of a visit runs under the hang mark, and later ones 
   expect(JSON.parse(marks[0]).pluginId).toBe('phosphor.outlines');
   expect(marks.slice(1)).toEqual([null, null]);
   expect(localStorage.getItem(HANG_KEY)).toBe(null);
+});
+
+test('dab takes a size that is a number, up to the Brush\'s largest, and a hardness between 0 and 1', async () => {
+  const dabs = [];
+  const { stroke } = await painter({ move(from, to, paint) { dabs.push([NaN, 'x', Infinity, 1e9, 25, 30].map((size) => paint.dab(from, from, size, 1).length)); dabs.push(paint.dab(from, from, 20, NaN).length, paint.dab(from, from, 20, 1).length); } });
+  stroke([{ x: 10, y: 10 }]);
+  const [[nan, text, infinity, huge, past, thirty], soft, hard] = dabs;
+  expect([nan, text, infinity]).toEqual([0, 0, 0]);
+  expect(huge).toBe(past);
+  expect(past).toBe(thirty);
+  expect(past).toBe(hard); // the Brush's largest, 20, whatever was asked above it
+  expect(soft).toBe(hard);
+});
+
+test('an error\'s words are cut short in the toast and the plugin\'s row', async () => {
+  const { tool, ctx } = await painter({ move() { throw new Error('x'.repeat(5000)); } });
+  toastMessage.value = null;
+  tool.begin(ctx, at(3, 4), {});
+  tool.end(ctx);
+  expect(toastMessage.value.length).toBeLessThan(300);
+  expect(usePluginStore().problems['phosphor.outlines']).toBe(toastMessage.value);
+});
+
+test('the plugins reloaded mid-stroke: the stroke ends on the script it began on, as one undo step, nothing left open', async () => {
+  const { project, ref, tool, ctx } = await painter({
+    move(from, to, paint) { paint.put(Math.floor(to.x), Math.floor(to.y), RED, 1); },
+    end(paint) { paint.put(9, 9, GREEN, 1); },
+  }, { hash: 'one' });
+  const version = project.history.version;
+  tool.begin(ctx, at(2, 2), {});
+  tool.move(ctx, at(2, 2), at(3, 3));
+  // A Reload: the script is registered again, a new stamp, the tools made again, the brush's script now another.
+  await onPlugin({ brushes: [brush({ key: null, move(from, to, paint) { paint.put(0, 0, BLUE, 1); } })] }, { hash: 'two' });
+  const rebuilt = getTool(ref);
+  expect(rebuilt).not.toBe(tool);
+  rebuilt.move(ctx, at(3, 3), at(4, 4));
+  rebuilt.end(ctx);
+  expect(project._stroke).toBe(null);
+  expect(project.history.version).toBe(version + 1);
+  expect([[2, 2], [3, 3], [4, 4], [9, 9]].map(([x, y]) => paintAt(project, x, y)?.g)).toEqual([0, 0, 0, 255]);
+  expect(paintAt(project, 0, 0)).toBe(null); // the new script wasn't part of it
+  project.undo();
+  expect([[2, 2], [3, 3], [4, 4], [9, 9]].map(([x, y]) => paintAt(project, x, y))).toEqual(Array(4).fill(null));
 });
