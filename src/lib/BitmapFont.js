@@ -9,8 +9,8 @@ export { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, mas
 
 export const MAX_FONT_HEIGHT = 32;
 
-// A half cell's height over its width (8): 1 with no bitmap font or an 8x16 one, 0.5 in 8x8.
-export const pixelAspectOf = (font) => (font?.height ?? 16) / 16;
+// A half cell's height over its width (the font's drawn cellWidth, 8 without): 1 with no bitmap font or an 8x16 one, 0.5 in 8x8.
+export const pixelAspectOf = (font) => (font?.height ?? 16) / (2 * (font?.cellWidth ?? 8));
 
 // CP437[i], except slot 0 (CP437 shows it as a space, which slot 32 already is).
 export const SLOT_CHARS = Object.freeze([...CP437].map((c, i) => (i === 0 ? '␀' : c)));

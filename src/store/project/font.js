@@ -1,4 +1,4 @@
-import { encodeBlocks, encodeFont, fontId } from '@/lib/BitmapFont.js';
+import { encodeBlocks, encodeFont, fontId, narrowWidthOf } from '@/lib/BitmapFont.js';
 import { storeFontPart, withPart } from '@/lib/userFonts.js';
 import { encodeLines, encodeSets } from '@/lib/FontLines.js';
 import { notSetUp } from '@/lib/fontSetup.js';
@@ -18,11 +18,12 @@ import { markRaw, shallowRef, toRaw } from 'vue';
 const heightOf = (font) => font?.height ?? 16;
 // The settings that hold the drawing's font.
 // settings: the step's own, which may carry the SAUCE font name along, so its before does too.
-const fontKeysOf = (project, settings) => ({ fontBitmap: project.fontBitmap, fontName: project.fontName, fontBlocks: project.fontBlocks, fontLines: project.fontLines, fontSets: project.fontSets, ...(settings && 'sauceFontName' in settings && { sauceFontName: project.sauceFontName }) });
+const fontKeysOf = (project, settings) => ({ fontBitmap: project.fontBitmap, fontName: project.fontName, fontWidth: project.fontWidth, fontBlocks: project.fontBlocks, fontLines: project.fontLines, fontSets: project.fontSets, ...(settings && 'sauceFontName' in settings && { sauceFontName: project.sauceFontName }) });
 // A BitmapFont (or none) as the settings that hold it.
 export const fontSettingsOf = (font) => ({
   fontBitmap: font ? encodeFont(font) : '',
   fontName: font?.name ?? '',
+  fontWidth: font && narrowWidthOf(font) === font.width ? String(font.width) : '',
   fontBlocks: font?.blocks ? encodeBlocks(font.blocks) : '',
   fontLines: font?.lines ? encodeLines(font.lines) : '',
   fontSets: font?.sets ? encodeSets(font.sets) : '',
@@ -147,7 +148,7 @@ function switched(project, settings, picture, w, oldFit, fitAspect, from, to) {
   project.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(base, before.base, ...layers, after.image !== before.image && after.image), { everyFrame: true });
 }
 
-// The parts of the drawing's font a step changed ('blocks', 'lines', 'sets'), put in this browser's copy of the font
+// The parts of the drawing's font a step changed ('width', 'blocks', 'lines', 'sets'), put in this browser's copy of the font
 // too when it has one, as they now are: an undo or redo, so an XBin opened later gets what the drawing shows. Only
 // while the copy still holds what the step left there (from: the settings undone or redone from): an edit made to the
 // copy since, which has no undo, stays. Only the step's maker has it (an artist can't change the font, and a watcher
@@ -156,14 +157,14 @@ function keepCopy(project, parts, from) {
   const workspace = useWorkspaceStore(), font = project.drawingFont, id = font && fontId(font);
   if (!parts.length || !workspace.userFonts?.some((f) => f.id === id)) return;
   for (const setting of parts) {
-    const key = PART_KEYS[setting], value = font[key], when = (kept) => (kept ? ENCODE[key](kept) : '') === from[setting];
+    const key = PART_KEYS[setting], value = key === 'width' ? font.width ?? 8 : font[key], when = (kept) => (kept ? ENCODE[key](kept) : '') === (setting === 'fontWidth' && !from[setting] ? '8' : from[setting]); // the drawing's '' is a remembered 8
     storeFontPart(id, key, value ?? null, { when }).then((wrote) => {
       if (wrote) workspace.userFonts = workspace.userFonts?.map((f) => (f.id === id ? withPart(toRaw(f), key, value) : f));
     }, () => {}); // the copy removed since: nothing to keep
   }
 }
-const PART_KEYS = { fontBlocks: 'blocks', fontLines: 'lines', fontSets: 'sets' };
-const ENCODE = { blocks: encodeBlocks, lines: encodeLines, sets: encodeSets };
+const PART_KEYS = { fontWidth: 'width', fontBlocks: 'blocks', fontLines: 'lines', fontSets: 'sets' };
+const ENCODE = { width: String, blocks: encodeBlocks, lines: encodeLines, sets: encodeSets };
 
 // The drawing's bitmap font: kept in the settings as base64 (fontBitmap, with its name and blocks), so it's saved,
 // autosaved and fingerprinted like the rest. Changing it is one undo step; before a drawing, the next one's font. In a

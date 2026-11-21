@@ -18,7 +18,7 @@ import { useRoomStore } from '@/store/RoomStore.js';
 import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
 import { PALETTES, parseColorList } from '@/lib/ColorUtils.js';
 import { decodeLines, decodeSets } from '@/lib/FontLines.js';
-import { blocksOf, decodeBlocks, decodeFont, fontChars, fontKey, pixelAspectOf } from '@/lib/BitmapFont.js';
+import { blocksOf, decodeBlocks, decodeFont, fontChars, fontKey, narrowWidthOf, pixelAspectOf } from '@/lib/BitmapFont.js';
 import { t } from '@/i18n/index.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
@@ -128,12 +128,14 @@ function firstLedger() {
 
 // decodeFont's last answer, so the getter doesn't decode the same string for each store. blocks: the drawing's own
 // (fontBlocks), when they decode; else the font has none and they're found.
-let lastFont = { text: '', name: '', blocks: '', lines: '', sets: '', font: null };
-function fontFor(text, name, blocks, lines, sets) {
+let lastFont = { text: '', name: '', blocks: '', lines: '', sets: '', width: '', nine: false, font: null };
+function fontFor(text, name, blocks, lines, sets, width, nine) {
   if (!text) return null;
-  if (lastFont.text !== text || lastFont.name !== name || lastFont.blocks !== blocks || lastFont.lines !== lines || lastFont.sets !== sets) {
+  if (lastFont.text !== text || lastFont.name !== name || lastFont.blocks !== blocks || lastFont.lines !== lines || lastFont.sets !== sets || lastFont.width !== width || lastFont.nine !== nine) {
     const font = decodeFont(text, name), set = decodeBlocks(blocks), l = decodeLines(lines), s = decodeSets(sets);
-    lastFont = { text, name, blocks, lines, sets, font: font && { ...font, ...(set && { blocks: set }), ...(l && { lines: l }), ...(s && { sets: s }) } };
+    // width: fontWidth when it's the font's own narrow width (else the font is drawn at 8, or 9 with letter spacing 9)
+    const narrow = font && narrowWidthOf(font) === Number(width) ? Number(width) : null;
+    lastFont = { text, name, blocks, lines, sets, width, nine, font: font && { ...font, ...(narrow && { width: narrow }), cellWidth: narrow ?? (nine ? 9 : 8), ...(set && { blocks: set }), ...(l && { lines: l }), ...(s && { sets: s }) } };
   }
   return lastFont.font;
 }
@@ -212,7 +214,9 @@ export const useProjectStore = defineStore('project', {
 
   getters: {
     // The drawing's bitmap font, or null: decoded once for each fontBitmap.
-    drawingFont: (state) => fontFor(state.fontBitmap, state.fontName, state.fontBlocks, state.fontLines, state.fontSets),
+    // Letter spacing 9px (its own setting, or the SAUCE 9px flag while that's unset): bitmap fonts of 8 draw at 9.
+    letterSpacing9: (state) => state.sauceLetterSpacing === '9' || (state.sauceLetterSpacing === '' && state.sauceUse9pxFont),
+    drawingFont() { return fontFor(this.fontBitmap, this.fontName, this.fontBlocks, this.fontLines, this.fontSets, this.fontWidth, this.letterSpacing9); },
     // A grid pixel's height over its width in the drawing's font: 1 with none or an 8x16 one, 0.5 in 8x8.
     pixelAspect() { return pixelAspectOf(this.drawingFont); },
     // Why paint is off, or null: paint is stored as pixels and shown as lower half blocks, so a drawing whose font has none can't show it.

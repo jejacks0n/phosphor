@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet, CP437_BLOCKS, findBlocks, slotChars, fontKey, encodeBlocks, decodeBlocks, withBlock, hasQuadrants } from '@/lib/BitmapFont.js';
+import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet, CP437_BLOCKS, findBlocks, slotChars, fontKey, encodeBlocks, decodeBlocks, withBlock, hasQuadrants, pixelAspectOf } from '@/lib/BitmapFont.js';
 import { cp437Font, font8, lowerAt240, noLowerHalf, solidAt220, lightAt240, slantedLike, nineRowFontWithLowerHalfRows4to8, nineRowFontWithLowerHalfRows5to8 } from '../support/blockFonts.js';
 
 const solidLowerHalf = (h) => { const b = new Uint8Array(256 * h); for (let r = h / 2; r < h; r++) b[220 * h + r] = 0xff; return b; };
@@ -141,4 +141,11 @@ describe('blocks', () => {
     expect(new Set(slotChars(shades)).size).toBe(256);
     expect(new Set(slotChars(away)).size).toBe(256);
   });
+});
+
+it('pixelAspectOf: height over twice the cell width', () => {
+  expect(pixelAspectOf({ height: 7, cellWidth: 7 })).toBe(0.5);
+  expect(pixelAspectOf({ height: 16, cellWidth: 8 })).toBe(1);
+  expect(pixelAspectOf({ height: 16, cellWidth: 9 })).toBe(16 / 18);
+  expect(pixelAspectOf(null)).toBe(1);
 });

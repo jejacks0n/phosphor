@@ -628,3 +628,72 @@ test('an .ans naming a font already in Yours opens with the lines and sets kept 
   expect(project.drawingFont.lines.styles[0].name).toBe('Heavy');
   expect(project.canUndo).toBe(false);
 });
+
+// Widths: a font narrower than 8 drawn at its own width, 9 for letter spacing.
+const narrow = () => ({ name: 'Slim', height: 7, bytes: Uint8Array.from({ length: 256 * 7 }, (_, i) => (i % 251) & 0xfe), blocks: [...CP437_BLOCKS] });
+
+test('a narrow font drawn narrow: the drawing font\u2019s cellWidth is its own width', async () => {
+  const project = await blank();
+  project.setDrawingFont({ ...narrow(), width: 7 });
+  expect(project.fontWidth).toBe('7');
+  expect(project.drawingFont.cellWidth).toBe(7);
+  expect(project.pixelAspect).toBe(7 / 14);
+});
+
+test('fontWidth that isn\u2019t the font\u2019s own width reads as 8', async () => {
+  const project = await blank();
+  project.setDrawingFont(narrow());
+  project.$patch({ fontWidth: '5' });
+  expect(project.drawingFont.cellWidth).toBe(8);
+});
+
+test('Letter spacing 9px draws an 8-wide font at 9; a narrow font stays narrow', async () => {
+  const project = await blank();
+  project.setDrawingFont(font());
+  project.$patch({ sauceLetterSpacing: '9' });
+  expect(project.drawingFont.cellWidth).toBe(9);
+  project.$patch({ sauceLetterSpacing: '', sauceUse9pxFont: true });
+  expect(project.drawingFont.cellWidth).toBe(9);
+  project.setDrawingFont({ ...narrow(), width: 7 });
+  expect(project.drawingFont.cellWidth).toBe(7);
+});
+
+test('a drawing saved before widths opens at 8, or 9 when its SAUCE says 9px', async () => {
+  const project = await blank();
+  project.setDrawingFont(font());
+  const parts = await project.projectParts();
+  delete parts.settings.fontWidth;
+  const other = (await createTestApp()).project;
+  await other.openParts(await readProject(new File([await writeProject({ imageBuffer: project.imageBuffer, ...parts })], 'a.phosphor')), { filename: 'old' });
+  expect(other.drawingFont.cellWidth).toBe(8);
+  parts.settings.sauceUse9pxFont = true;
+  await other.openParts(await readProject(new File([await writeProject({ imageBuffer: project.imageBuffer, ...parts })], 'a.phosphor')), { filename: 'old' });
+  expect(other.drawingFont.cellWidth).toBe(9);
+});
+
+test('with no bitmap font, the cell is the display font\u2019s', async () => {
+  const project = await blank();
+  project.$patch({ sauceLetterSpacing: '9' });
+  expect(project.drawingFont).toBeNull();
+  expect(project.pixelAspect).toBe(1);
+});
+
+test('undo of a width change keeps the browser\u2019s copy\u2019s width in step', async () => {
+  const project = await blank();
+  const workspace = useWorkspaceStore();
+  const f = narrow(), stored = await addBitmapFont(new File([f.bytes], 'Slim.F07'));
+  try {
+    workspace.userFonts = await loadFonts();
+    project.setDrawingFont({ ...f, width: 8 });
+    await storeFontPart(stored.id, 'width', 8);
+    project.setDrawingFont({ ...project.drawingFont, width: 7 }); // narrow
+    await storeFontPart(stored.id, 'width', 7);
+    project.undo(); // back to keeping 8
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(8));
+    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).width).toBe(8));
+    project.redo();
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(7));
+  } finally {
+    await removeFont(stored.id);
+  }
+});

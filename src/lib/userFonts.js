@@ -126,9 +126,9 @@ async function inStore(mode, use) {
 export async function loadFonts() {
   const stored = await inStore('readonly', (fonts) => fonts.getAll());
   const usable = [];
-  for (const { id, name, kind, lineHeight, height, data, blocks, lines, sets } of stored) {
+  for (const { id, name, kind, lineHeight, height, data, blocks, lines, sets, width } of stored) {
     if (kind === 'bitmap') {
-      usable.push({ id, name, kind, height, ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) });
+      usable.push({ id, name, kind, height, ...(width && { width }), ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) });
       continue;
     }
     try {
@@ -186,7 +186,7 @@ export async function addBitmapFont(file) {
   }
   const id = fontId(font), entry = { id, name: linkedFontOf(id)?.name ?? name, kind: 'bitmap', height: font.height };
   const old = await inStore('readonly', (fonts) => fonts.get(id)); // the same font again keeps its blocks, lines and sets
-  const { blocks, lines, sets } = old ?? {}, kept = { ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) };
+  const { blocks, lines, sets, width } = old ?? {}, kept = { ...(width && { width }), ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) };
   await inStore('readwrite', (fonts) => fonts.put({ ...entry, data: font.bytes, ...kept }));
   return { ...entry, ...kept };
 }
@@ -195,10 +195,10 @@ export async function addBitmapFont(file) {
 export async function storedBitmapFont(id) {
   const record = await inStore('readonly', (fonts) => fonts.get(id));
   if (!record) throw new Error(t('font.errors.missing'));
-  return { name: record.name, height: record.height, bytes: record.data, ...(record.blocks && { blocks: record.blocks }), ...(record.lines && { lines: record.lines }), ...(record.sets && { sets: record.sets }) };
+  return { name: record.name, height: record.height, bytes: record.data, ...(record.width && { width: record.width }), ...(record.blocks && { blocks: record.blocks }), ...(record.lines && { lines: record.lines }), ...(record.sets && { sets: record.sets }) };
 }
 
-// Keep one part of a stored bitmap font's own setup: key 'blocks' (the slots its block characters are drawn from),
+// Keep one part of a stored bitmap font's own setup: key 'width' (the answer to drawing it narrow: its own width, or 8), 'blocks' (the slots its block characters are drawn from),
 // 'lines' (its line styles, FontLines.encodeLines) or 'sets' (its character sets); value null: none, so the font
 // goes back to the found ones. The caller refreshes workspace.userFonts (loadFonts, or the font's entry). Read and
 // written in one transaction, so writes made one after another land in that order, none built on a record another
