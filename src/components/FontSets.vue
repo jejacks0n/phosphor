@@ -40,19 +40,18 @@ const add = () => {
 };
 // A field's characters as the font's slots, dropping those it has none for.
 const slotsOf = (field) => [...field.value].map((c) => slotOf(c, props.font)).filter((s) => s !== null);
-// Typing shows only what's kept; the set takes it when the field is done (change), as one undo step.
+// Typing shows only what's kept; the set takes it when the field is done (change, or leaving it: a Backspace's value
+// is set here, which no change follows), as one undo step for the visit.
 const typed = (event) => { event.target.value = slotsOf(event.target).map((s) => chars.value[s]).join(''); };
 const done = (set, event) => {
   const slots = slotsOf(event.target);
   if (slots.length !== set.slots.length || slots.some((s, i) => s !== set.slots[i])) setSlots(set.id, slots);
 };
 // Backspace with nothing selected takes the last slot off, wherever the caret is (clicks add at the end).
-const backspace = (set, event) => {
+const backspace = (event) => {
   if (event.target.selectionStart !== event.target.selectionEnd) return;
   event.preventDefault();
-  const slots = slotsOf(event.target).slice(0, -1);
-  event.target.value = slots.map((s) => chars.value[s]).join('');
-  done(set, event);
+  event.target.value = slotsOf(event.target).slice(0, -1).map((s) => chars.value[s]).join('');
 };
 
 const slot = (n) => {
@@ -76,7 +75,8 @@ defineExpose({ slot });
           @focus="emit('pick', s.id)"
           @input="typed"
           @change="done(s, $event)"
-          @keydown.backspace="backspace(s, $event)"
+          @blur="done(s, $event)"
+          @keydown.backspace="backspace"
       >
       <button class="ghost" :disabled="disabled" :title="disabled ? reason : undefined" @click="remove(s.id)">{{ t('common.delete') }}</button>
     </div>

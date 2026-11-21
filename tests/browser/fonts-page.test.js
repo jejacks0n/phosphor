@@ -580,9 +580,30 @@ test('the Sets section builds a set from clicked slots, repeats kept', async () 
   expect(project.drawingFont.sets.sets[0]).toEqual({ id: 's1', name: 'Set 1', slots: [250, 250, 176] });
   const chars = host.querySelector('.sets input.chars');
   expect(chars.value).toBe('··░');
+  chars.focus();
   chars.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+  chars.blur();
   await nextTick();
   expect(project.drawingFont.sets.sets[0].slots).toEqual([250, 250]);
+});
+
+test('Backspaces and typing in one visit to a set\u2019s characters are one undo step', async () => {
+  const { project } = await mount({ font: { ...cp437Font, sets: { hideStock: false, sets: [{ id: 's1', name: 'Grit', slots: [250, 176, 177] }] } } });
+  await press(sectionTab('Sets'));
+  const chars = host.querySelector('.sets input.chars');
+  chars.focus();
+  const version = project.historyVersion;
+  for (let i = 0; i < 2; i++) chars.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+  expect(chars.value).toBe('·');
+  expect(project.historyVersion).toBe(version); // nothing taken yet: the field isn't done
+  chars.value = '·A';
+  chars.dispatchEvent(new Event('input'));
+  chars.blur();
+  await nextTick();
+  expect(project.drawingFont.sets.sets[0].slots).toEqual([250, 65]);
+  project.undo();
+  await nextTick();
+  expect(project.drawingFont.sets.sets[0].slots).toEqual([250, 176, 177]);
 });
 
 test('typing into a set maps each character to its slot, dropping ones the font lacks', async () => {

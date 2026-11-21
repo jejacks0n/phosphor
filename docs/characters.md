@@ -235,7 +235,7 @@ Box-drawing lines are drawn from a font's own pieces. A bitmap font can carry li
 
 A bitmap font can carry character sets of its own, for the characters it draws well. On the Fonts page, **Sets** has **+ New set**; a set has a name you can change and its characters.
 
-- **Build one**: Click into the set's characters, then click slots on the sheet to add them in order. A slot can go in twice, and repeats are kept: a character in a set twice is picked twice as often by **Random**. Or type into the field: it takes the characters the font has, and leaves the others out. **Backspace** takes the last one off.
+- **Build one**: Click into the set's characters, then click slots on the sheet to add them in order. A slot can go in twice, and repeats are kept: a character in a set twice is picked twice as often by **Random**. Or type into the field: it takes the characters the font has, and leaves the others out. **Backspace** takes the last one off. What you type and take off in one visit to the field is one undo step, taken when you leave it.
 - **Empty sets**: A set with no characters is kept, so you can fill it later, but isn't offered.
 - **Under Characters**: The **Characters** field's ▾ menu lists the font's sets first, under the font's name, then the stock sets under **Stock**. Picking one puts its characters in the field. **Show stock sets** on the Fonts page is one switch for the font: off, the stock sets leave the menu. A font with no sets of its own shows the stock ones whatever it says.
 - **They're kept**: Like lines, with the drawing and with this browser's copy of the font, and go to the artists drawing in a room.
