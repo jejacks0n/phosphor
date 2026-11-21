@@ -370,6 +370,33 @@ for (const charChoice of ['random', 'best', 'shape']) {
   });
 }
 
+// The report: stripes in the PIXEL view after painting an opened file in an ASCII style. A Colors only stroke on the base
+// that fills a character's two pixels with one color leaves it showing nothing, so the next stroke to reach it makes it a
+// ▄ (R5). That ▄ was written in the colors the art style shows the cell in, not its own: in Color ASCII and Monochrome
+// ASCII a black background, so the second stroke turned the cell's top pixel black under paint that never touched it.
+for (const renderStyle of ['ansi', 'colorAscii', 'ascii']) {
+  test(`R5: ${renderStyle}: a second Colors only stroke on the base over a character the first filled with one color keeps its two pixels`, async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    project.writeBaseCells([{ col: 6, row: 3, char: '░', fg: '#ffffff', bg: '#0000ff' }]);
+    project.commitEdit();
+    project.renderStyle = renderStyle;
+    await settle(project);
+    workspace.pickLayer('base');
+    Object.assign(workspace, { editFgColor: '#ff8020', pencilDrawWith: 'normal' });
+    const ctx = { project, workspace, view: 'output' };
+    pencil.begin(ctx, { x: 6.5, y: 6.5 }, {});
+    pencil.move(ctx, { x: 6.5, y: 6.5 }, { x: 6.5, y: 7.5 }); // both its pixels
+    pencil.end(ctx);
+    expect([project.baseColorAt(6, 6), project.baseColorAt(6, 7)]).toEqual(['#ff8020', '#ff8020']);
+    pencil.begin(ctx, { x: 6.5, y: 7.5 }, {}); // its lower pixel again
+    pencil.end(ctx);
+    await settle(project);
+    expect(project.baseRecords.pins.get('6,3')).toBe('▄');
+    expect([project.baseColorAt(6, 6), project.baseColorAt(6, 7)]).toEqual(['#ff8020', '#ff8020']);
+  });
+}
+
 // docs/model.md R5 on a layer: Colors only makes no ▄ of a cell the converter drew. The report (projects/random-layer-blocks.phosphor: a white canvas under Best match
 // with paint on the base and Layer 1, and Layer 2 above with Random and a seed of its own): Layer 2's strokes came out
 // as half-blocks wherever the canvas under them was flat, and as Random's characters only along the edges of what was

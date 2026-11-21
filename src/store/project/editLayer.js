@@ -9,7 +9,7 @@ import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { blockOver, cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.js';
+import { bakedEntry, blockOver, cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { fitFont } from '@/lib/BitmapFont.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
@@ -85,7 +85,10 @@ export const editLayerActions = {
     // A cell of the layer's own with colors shows them itself, and a ▄ with colors of its own isn't a paint block
     // (ASCII would show it): its colors go into paint, as it showed (unlockCells), and the ▄ has none.
     this.unlockCells(cells.filter(({ col, row }) => ownColored(this, col, row)));
-    this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
+    // On the base the ▄ keeps the cell's own two pixels, as ANSI shows them, whatever the art style: Color ASCII and
+    // Monochrome ASCII show a character there on black, and written as it shows, its top pixel turned black.
+    const bottom = onBottom(this);
+    this.writeEditCells(cells.map((c) => ({ ...c, attrs: { ...(bottom && bakedEntry('ansi', this.baseCellAt(c.col, c.row))), char: '▄' } })));
   },
 
   // Cells of the layer in use ([{ col, row }]) turned into paint: a cell with colors of its own has the two halves it
