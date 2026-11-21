@@ -104,8 +104,8 @@ test('a stroke right after a save comes back from a reload, unsaved, even one th
   await drag(page, await cellPoint(page, 4, 5, 0), await cellPoint(page, 14, 5, 0));
 
   // The next page takes a moment to arrive, as over a network, but less than autosave's second.
-  await page.route((url) => url.pathname === '/', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 500));
+  await page.route('**/*', async (route) => {
+    if (route.request().isNavigationRequest()) await new Promise((resolve) => setTimeout(resolve, 500)); // the page, at its tab's path
     await route.continue();
   });
   page.once('dialog', (dialog) => dialog.accept()); // its write is under way, not done: leaving still asks
