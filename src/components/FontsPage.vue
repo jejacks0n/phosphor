@@ -96,7 +96,13 @@ const toggleTag = (key) => { tags.value = tags.value.includes(key) ? tags.value.
 const clearAll = () => { tags.value = []; filter.value = ''; };
 const togglePicker = async () => {
   pickerOpen.value = !pickerOpen.value;
-  if (pickerOpen.value) { await nextTick(); picker.value?.focus(); }
+  if (!pickerOpen.value) return;
+  await nextTick();
+  // It ends at the page's bottom and scrolls inside: taller, focusing it would scroll the layer's clipped page.
+  // ponytail: sized when it opens, not on a resize while open.
+  const room = page.value.getBoundingClientRect().bottom - tagsWrap.value.getBoundingClientRect().bottom - 8;
+  picker.value.style.maxHeight = `${Math.max(room, 120)}px`;
+  picker.value.focus({ preventScroll: true });
 };
 const closePicker = () => { pickerOpen.value = false; tagsWrap.value?.querySelector('button.tags')?.focus(); };
 // A library entry's From, License and Credit lines: [{ label, text, href?, tail? }].
@@ -566,6 +572,7 @@ div.picker {
   left: 12px;
   right: 12px;
   z-index: 5;
+  box-sizing: border-box; /* the max-height it's given on opening holds its padding and border */
   max-height: 60vh;
   overflow-y: auto;
   padding: 8px;

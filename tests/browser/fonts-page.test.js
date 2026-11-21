@@ -902,6 +902,22 @@ test('picking tags narrows the list and shows them as chips; Clear removes them'
   expect(host.querySelector('.tag-row > button.chip')).toBeNull();
 });
 
+test('a tall tag picker fits in the layer and scrolls inside it, leaving the page where it was', async () => {
+  await page.viewport(1400, 900);
+  onTestFinished(() => page.viewport(414, 896));
+  const index = FIXTURE();
+  for (let i = 0; i < 80; i += 1) index.fonts.push(libFont(`Many${i}`, { machine: `Machine ${i}` }));
+  await mount({ library: index });
+  await waitFor(() => libraryNames().length);
+  const layer = host.querySelector('.palette-layer');
+  await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('absolute'));
+  await openTags();
+  const picker = host.querySelector('.picker');
+  expect(layer.scrollTop).toBe(0); // focusing the picker doesn't scroll the layer's clipped page
+  expect(picker.getBoundingClientRect().bottom).toBeLessThanOrEqual(layer.getBoundingClientRect().bottom);
+  expect(picker.scrollHeight).toBeGreaterThan(picker.clientHeight); // its chips scroll in it instead
+});
+
 test('Escape or a click outside closes the tag picker', async () => {
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
