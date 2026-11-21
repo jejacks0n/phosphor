@@ -1,9 +1,8 @@
 // A bitmap font as a TrueType font of square pixels (a pixel is 64 units, the em is 64 x height), so
 // canvas fillText and CSS draw it pixel for pixel at font-size: <height>px.
-import { glyphRows, slotsOf } from './BitmapFont.js';
+import { glyphRows, ninthSlots, slotsOf } from './BitmapFont.js';
 
 const PX = 64;
-const ADVANCE = 8 * PX;
 const TYPES = { B: [1, 'setUint8'], H: [2, 'setUint16'], h: [2, 'setInt16'], L: [4, 'setUint32'] };
 
 // Big-endian values by type letter: pack('HhL', 1, -2, 3).
@@ -35,13 +34,15 @@ const sum = (bytes) => {
 };
 
 // One clockwise rectangle per run of lit pixels in a row.
-function glyphOf(rows, height) {
+// width columns wide; a ninth repeats the eighth when `ninth`.
+function glyphOf(rows, height, width, ninth) {
   const rects = [];
   rows.forEach((bits, r) => {
-    for (let x = 0; x < 8; x++) {
-      if (!(bits & (0x80 >> x))) continue;
+    const lit = (x) => (x < 8 ? bits & (0x80 >> x) : ninth && bits & 1);
+    for (let x = 0; x < width; x++) {
+      if (!lit(x)) continue;
       let end = x;
-      while (end < 7 && bits & (0x80 >> (end + 1))) end++;
+      while (end < width - 1 && lit(end + 1)) end++;
       rects.push([x * PX, (end + 1) * PX, (height - r) * PX, (height - r - 1) * PX]);
       x = end;
     }
@@ -65,10 +66,10 @@ function glyphOf(rows, height) {
 const utf16 = (text) => pack('H'.repeat(text.length), Array.from({ length: text.length }, (_, i) => text.charCodeAt(i)));
 
 export function ttfOf(font) {
-  const { height } = font;
+  const { height } = font, width = font.cellWidth ?? 8, ADVANCE = width * PX;
   const em = PX * height;
   const glyphs = [{ data: new Uint8Array(0), xMin: 0, points: 0, contours: 0 }];
-  for (let i = 0; i < 256; i++) glyphs.push(glyphOf(glyphRows(font, i), height));
+  for (let i = 0; i < 256; i++) glyphs.push(glyphOf(glyphRows(font, i), height, width, width === 9 && ninthSlots(font).has(i)));
   const n = glyphs.length;
   const padded = glyphs.map((g) => join([g.data, new Uint8Array((4 - (g.data.length % 4)) % 4)]));
   const offsets = padded.reduce((a, p) => (a.push(a[a.length - 1] + p.length), a), [0]);

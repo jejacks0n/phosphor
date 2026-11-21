@@ -262,7 +262,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       const project = useProjectStore(), drawn = project.drawingFont;
       if (drawn) {
         const id = fontId(drawn);
-        return { id, name: drawn.name, family: familyOf(fontKey(drawn)), size: state.displayFontSizes[id] ?? drawn.height, lineHeight: 1, bitmap: true, height: drawn.height, source: project.fontBitmap, blocks: project.fontBlocks };
+        return { id, name: drawn.name, family: familyOf(fontKey(drawn)), size: state.displayFontSizes[id] ?? drawn.height, lineHeight: 1, bitmap: true, height: drawn.height, source: project.fontBitmap, blocks: project.fontBlocks, width: drawn.cellWidth, lines: project.fontLines };
       }
       const loaded = state.userFonts?.find((f) => f.id === state.displayFont);
       const font = loaded

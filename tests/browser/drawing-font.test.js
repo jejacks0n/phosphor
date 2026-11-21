@@ -671,6 +671,23 @@ test('a drawing saved before widths opens at 8, or 9 when its SAUCE says 9px', a
   expect(other.drawingFont.cellWidth).toBe(9);
 });
 
+test('the canvas view\u2019s cell is the drawn width', async () => {
+  const project = await blank();
+  const workspace = useWorkspaceStore();
+  const cellAt = async () => {
+    await setDisplayFont(JSON.parse(JSON.stringify(workspace.displayFontSpec)));   // as App.vue sets it
+    return measureAdvance(DISPLAY_FONT);
+  };
+  project.setDrawingFont({ ...narrow(), width: 7 });
+  expect(workspace.displayFontSpec.width).toBe(7);
+  expect(await cellAt()).toBe(7);
+  project.setDrawingFont({ ...narrow(), width: 8 });
+  expect(await cellAt()).toBe(8);
+  project.$patch({ sauceLetterSpacing: '9' });
+  expect(workspace.displayFontSpec.width).toBe(9);
+  expect(await cellAt()).toBe(9);
+});
+
 test('with no bitmap font, the cell is the display font\u2019s', async () => {
   const project = await blank();
   project.$patch({ sauceLetterSpacing: '9' });

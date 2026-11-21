@@ -8,7 +8,8 @@
  * The 8x16 fonts share the IBM VGA font's cell, so a character one lacks falls back to the next on
  * the same grid (src/assets/fonts/README.md); wide characters and emoji come from the system's fonts.
  */
-import { decodeBlocks, decodeFont, fitFont, fontKey, glyphRows, slotOf } from './BitmapFont.js';
+import { decodeBlocks, decodeFont, fitFont, fontKey, glyphRows, ninthSlots, ownWidthOf, slotOf } from './BitmapFont.js';
+import { decodeLines } from './FontLines.js';
 import { registerBitmapFont, releaseBitmapFont } from './userFonts.js';
 
 export const DISPLAY_FONTS = Object.freeze([
@@ -53,12 +54,13 @@ export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth 
   const bitmap = font.bitmap && bitmapOf(font);
   if (bitmap) {
     ctx.fillStyle = fill;
-    const rows = glyphRows(bitmap, slotOf(fitFont(char, bitmap), bitmap) ?? 32), edge = (n, of, size) => Math.ceil(n * size / of);
+    const slot = slotOf(fitFont(char, bitmap), bitmap) ?? 32, rows = glyphRows(bitmap, slot), edge = (n, of, size) => Math.ceil(n * size / of);
+    const cols = bitmap.cellWidth ?? 8, ninth = cols === 9 && ninthSlots(bitmap).has(slot);   // the cell's columns: 8 bits, and a ninth that repeats the eighth
     for (let r = 0; r < bitmap.height; r++) {
-      for (let b = 0; b < 8; b++) {
-        if (!((rows[r] >> (7 - b)) & 1)) continue;
-        const x0 = edge(b, 8, width), y0 = edge(r, bitmap.height, height); // the pixels whose nearest bit is this one
-        ctx.fillRect(x0, y0, edge(b + 1, 8, width) - x0, edge(r + 1, bitmap.height, height) - y0);
+      for (let b = 0; b < cols; b++) {
+        if (!(b < 8 ? (rows[r] >> (7 - b)) & 1 : ninth && rows[r] & 1)) continue;
+        const x0 = edge(b, cols, width), y0 = edge(r, bitmap.height, height); // the pixels whose nearest bit is this one
+        ctx.fillRect(x0, y0, edge(b + 1, cols, width) - x0, edge(r + 1, bitmap.height, height) - y0);
       }
     }
     return ctx.getImageData(0, 0, width, height).data;
@@ -76,15 +78,17 @@ export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth 
 // or its face registered again, if it comes back). The Fonts page's faces stay (userFonts.registerBitmapFont).
 const MOST_BITMAPS = 4;
 
-// A bitmap font spec's font, with the blocks it names (none: they're found), decoded once for each source and blocks
-// (null when it doesn't decode), for the MOST_BITMAPS last used.
+// A bitmap font spec's font, with the blocks it names (none: they're found), the drawn width (8, 9, or the font's own
+// narrow width; anything else is 8) and the line styles that 9 repeats a column for, decoded once for each source,
+// blocks, width and lines (null when it doesn't decode), for the MOST_BITMAPS last used.
 const bitmaps = new Map();
-export function bitmapOf({ source, name, blocks }) {
-  const key = `${source}|${blocks ?? ''}`;
+export function bitmapOf({ source, name, blocks, width, lines }) {
+  const key = `${source}|${blocks ?? ''}|${width}|${lines ?? ''}`;
   let font = bitmaps.get(key);
   if (font === undefined) {
-    const decoded = decodeFont(source, name), set = decodeBlocks(blocks);
-    font = decoded && set ? { ...decoded, blocks: set } : decoded;
+    const decoded = decodeFont(source, name), set = decodeBlocks(blocks), l = decodeLines(lines);
+    font = decoded && { ...decoded, ...(set && { blocks: set }), ...(l && { lines: l }) };
+    if (font) font.cellWidth = width === 9 || width === ownWidthOf(font) ? width : 8;   // ownWidthOf 4-7 are the offered narrow widths, 8 is 8
   }
   bitmaps.delete(key);
   bitmaps.set(key, font);   // the newest last

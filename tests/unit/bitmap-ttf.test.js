@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { ttfOf } from '@/lib/BitmapTtf.js';
+import { fontKey } from '@/lib/BitmapFont.js';
 import { cp437Font, lowerAt240 } from '../support/blockFonts.js';
 
 const font = (h) => ({ name: 'Test', height: h, bytes: new Uint8Array(256 * h).fill(0x81) });
@@ -60,4 +61,50 @@ it('maps ▄ to the slot the font draws it from', () => {
 it('maps every block of a slot several share to that slot', () => {
   const buf = ttfOf({ ...cp437Font, blocks: [219, 220, 223, 221, 222, 177, 177, 177] });
   expect(['░', '▒', '▓'].map((c) => glyphFor(buf, c.codePointAt(0)))).toEqual([178, 178, 178]); // slot 177 is glyph 178 (.notdef first)
+});
+
+// The glyph for a slot, its glyf bytes' xMax (0 when it draws nothing), and the font's advance.
+const glyfOf = (buf, slot) => {
+  const v = new DataView(buf), t = tables(buf), loca = (i) => v.getUint32(t.loca.offset + i * 4);
+  const at = loca(slot + 1), end = loca(slot + 2);
+  return end === at ? { xMax: 0 } : { xMax: v.getInt16(t.glyf.offset + at + 6) };
+};
+const advanceOf = (buf) => new DataView(buf).getUint16(tables(buf).hhea.offset + 10);
+const ruled = { name: 'R', height: 8, bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => (i >> 3 === 0xc4 ? 0x01 : i >> 3 === 0xdc ? 0x01 : i >> 3 === 65 ? 0x03 : 0)) };
+
+it('at 7: the advance is 7 pixels and column 8 draws nothing', () => {
+  const lit8 = { name: 'N', height: 8, bytes: new Uint8Array(256 * 8).fill(0xff) };
+  const at7 = ttfOf({ ...lit8, cellWidth: 7 });
+  expect(advanceOf(at7)).toBe(7 * 64);
+  expect(glyfOf(at7, 65).xMax).toBe(7 * 64);
+  expect(advanceOf(ttfOf(lit8))).toBe(8 * 64);
+});
+
+it('at 9: column 9 repeats column 8 for C4 and a moved lower block\u2019s slot, and is blank for A', () => {
+  const font = { ...ruled, bytes: ruled.bytes.slice() };
+  font.bytes.set(Array(8).fill(1), 240 * 8);
+  const at9 = ttfOf({ ...font, cellWidth: 9, blocks: [219, 240, 223, 221, 222, 176, 177, 178] });
+  expect(advanceOf(at9)).toBe(9 * 64);
+  expect(glyfOf(at9, 0xc4).xMax).toBe(9 * 64);   // bit 0 lit: column 8, repeated into column 9
+  expect(glyfOf(at9, 240).xMax).toBe(9 * 64);    // a moved lower block
+  expect(glyfOf(at9, 65).xMax).toBe(8 * 64);     // A: column 9 blank
+  expect(glyfOf(at9, 0xdc).xMax).toBe(9 * 64);   // C0-DF always
+});
+
+it('at 9: a slot of the font\u2019s own line style repeats too, and one outside every set does not', () => {
+  const font = { ...ruled, bytes: ruled.bytes.slice(), cellWidth: 9, lines: { hide: [], styles: [{ id: 'x', name: 'X', slots: [10, null, null, null, null, null, null, null, null, null, null] }] } };
+  font.bytes.set(Array(8).fill(1), 10 * 8);
+  font.bytes.set(Array(8).fill(1), 11 * 8);
+  const buf = ttfOf(font);
+  expect(glyfOf(buf, 10).xMax).toBe(9 * 64);
+  expect(glyfOf(buf, 11).xMax).toBe(8 * 64);
+});
+
+it('fontKey differs by width, and 8 is the id as before', () => {
+  const keys = [7, 8, 9].map((cellWidth) => fontKey({ ...ruled, cellWidth }));
+  expect(new Set(keys).size).toBe(3);
+  expect(fontKey(ruled)).toBe(fontKey({ ...ruled, cellWidth: 8 }));
+  expect(keys[1]).not.toMatch(/-w/);
+  const own = { ...ruled, lines: { hide: [], styles: [{ id: 'x', name: 'X', slots: [10, null, null, null, null, null, null, null, null, null, null] }] } };
+  expect(fontKey({ ...own, cellWidth: 9 })).not.toBe(fontKey({ ...ruled, cellWidth: 9 }));   // the ninth column follows the lines
 });

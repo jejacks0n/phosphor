@@ -111,10 +111,21 @@ export function inkOf(font, slot) {
   return [top / half, bottom / half];
 }
 
-// A font's id, and its blocks too once they aren't where CP437 puts them.
+// The slots whose ninth column (at a drawn width of 9) repeats the eighth, as VGA's does: 0xC0-0xDF, the font's blocks and its own line styles'.
+export const ninthSlots = memo((font) => {
+  const slots = new Set(Array.from({ length: 32 }, (_, i) => 0xc0 + i));
+  blocksOf(font).forEach((s) => s !== null && slots.add(s));
+  (font.lines?.styles ?? []).forEach((style) => style.slots.forEach((s) => s !== null && slots.add(s)));
+  return slots;
+});
+
+// A font's id, its blocks too once they aren't where CP437 puts them, and its drawn width once that isn't 8 (at 9 the
+// ninth column follows the blocks and the line styles, so the key holds the slots it repeats).
 export function fontKey(font) {
-  const blocks = blocksOf(font);
-  return blocks.every((s, i) => s === CP437_BLOCKS[i]) ? fontId(font) : `${fontId(font)}-${blocks.map((s) => s ?? 'x').join('.')}`;
+  const blocks = blocksOf(font), w = font.cellWidth ?? 8;
+  const key = blocks.every((s, i) => s === CP437_BLOCKS[i]) ? fontId(font) : `${fontId(font)}-${blocks.map((s) => s ?? 'x').join('.')}`;
+  if (w === 8) return key;
+  return w === 9 ? `${key}-w9-${[...ninthSlots(font)].sort((a, b) => a - b).join('.')}` : `${key}-w${w}`;
 }
 
 export const encodeBlocks = (blocks) => blocks.map((s) => s ?? 'x').join('.');

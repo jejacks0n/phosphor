@@ -99,14 +99,14 @@ test('a size from a stranger is held to the font field\'s range, and a size that
 const bitmapSpec = (height = 8, blocks = '', name = 'Slab') => {
   const font = { name, height, bytes: Uint8Array.from({ length: 256 * height }, (_, i) => (i * 7) % 256) };
   const drawn = blocks ? { ...font, blocks: blocks.split('.').map((s) => (s === 'x' ? null : +s)) } : font;
-  return { id: fontId(font), name, family: familyOf(fontKey(drawn)), size: 12, lineHeight: 1, bitmap: true, height, source: encodeFont(font), blocks };
+  return { id: fontId(font), name, family: familyOf(fontKey(drawn)), size: 12, lineHeight: 1, bitmap: true, height, source: encodeFont(font), blocks, width: 8, lines: '' };
 };
 
 test('a drawing\'s bitmap font goes on the wire whole, and comes off it as the host\'s spec', () => {
   const moved = encodeBlocks(CP437_BLOCKS.map((s, i) => (i === 0 ? 1 : s)));
   for (const spec of [bitmapSpec(), bitmapSpec(16, moved), bitmapSpec(32)]) {
     const onWire = fontOnWire(spec);
-    assert.deepEqual(onWire, { bitmap: true, name: spec.name, height: spec.height, size: 12, source: spec.source, blocks: spec.blocks });
+    assert.deepEqual(onWire, { bitmap: true, name: spec.name, height: spec.height, size: 12, source: spec.source, blocks: spec.blocks, width: 8, lines: '' });
     assert.deepEqual(fontFor(JSON.parse(JSON.stringify(onWire))), spec);
   }
   assert.notEqual(fontFor(fontOnWire(bitmapSpec(16, moved))).family, fontFor(fontOnWire(bitmapSpec(16))).family);   // its own face
@@ -115,6 +115,19 @@ test('a drawing\'s bitmap font goes on the wire whole, and comes off it as the h
   assert.equal(long.name, 'n'.repeat(60));
   assert.equal(fontFor({ ...fontOnWire(bitmapSpec()), size: 1e9 }).size, 64);
   assert.equal(fontFor({ ...fontOnWire(bitmapSpec()), size: 'big' }).size, 8);   // its height
+});
+
+test('a bitmap font\'s width comes off the wire when it is 8, 9 or the font\'s own, and is 8 otherwise', () => {
+  const seven = { name: 'Slim', height: 8, bytes: Uint8Array.from({ length: 256 * 8 }, () => 0xfe) };   // lit to column 7
+  const spec = { ...bitmapSpec(8), source: encodeFont(seven) };
+  const width = (w) => fontFor({ ...fontOnWire(spec), width: w }).width;
+  assert.equal(width(7), 7);
+  assert.equal(width(9), 9);
+  assert.equal(width(8), 8);
+  for (const bad of [5, 3, 10, NaN, 'x', '7', null, undefined, 7.5]) assert.equal(width(bad), 8, String(bad));
+  assert.equal(fontFor({ ...fontOnWire(bitmapSpec(8)), width: 7 }).width, 8);   // 7 isn't this font's own width (it lights column 8)
+  assert.notEqual(fontFor({ ...fontOnWire(spec), width: 9 }).family, fontFor({ ...fontOnWire(spec), width: 8 }).family);
+  assert.notEqual(fontFor({ ...fontOnWire(spec), width: 7 }).family, fontFor({ ...fontOnWire(spec), width: 8 }).family);
 });
 
 test('a bitmap font from a stranger that doesn\'t decode is the default, not a throw', () => {

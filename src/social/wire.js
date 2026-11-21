@@ -113,7 +113,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 // its name held to MOST_NAME; one of Phosphor's by id; null for a TrueType font loaded from the host's computer, which
 // can't be sent.
 export function fontOnWire(spec) {
-  if (spec.bitmap) return { bitmap: true, name: spec.name.slice(0, MOST_NAME), height: spec.height, size: spec.size, source: spec.source, blocks: spec.blocks };
+  if (spec.bitmap) return { bitmap: true, name: spec.name.slice(0, MOST_NAME), height: spec.height, size: spec.size, source: spec.source, blocks: spec.blocks, width: spec.width, lines: spec.lines };
   return DISPLAY_FONTS.some((f) => f.id === spec.id) ? { id: spec.id, size: spec.size } : null;
 }
 
@@ -130,12 +130,15 @@ export function fontFor(onWire) {
   return { ...font, size: sizeOf(onWire.size, font.size) };
 }
 
-function bitmapFontFor({ name, source, blocks, size }) {
+const MOST_FONT_LINES = 8192;   // the longest lines text a stranger sends
+
+function bitmapFontFor({ name, source, blocks, size, width, lines }) {
   if (typeof name !== 'string' || name.length > MOST_NAME || typeof source !== 'string' || source.length > MOST_FONT_SOURCE) return null;
   if (typeof blocks !== 'string' || (blocks && !decodeBlocks(blocks))) return null;   // '': none, so they're found
-  const font = bitmapOf({ source, name, blocks });
+  if (typeof lines !== 'string' || lines.length > MOST_FONT_LINES) lines = '';   // lines only shape a ninth column: none is no harm
+  const font = bitmapOf({ source, name, blocks, width, lines });   // a width that isn't 8, 9 or the font's own is 8
   if (!font) return null;
-  return { id: fontId(font), name, family: familyOf(fontKey(font)), size: sizeOf(size, font.height), lineHeight: 1, bitmap: true, height: font.height, source, blocks };
+  return { id: fontId(font), name, family: familyOf(fontKey(font)), size: sizeOf(size, font.height), lineHeight: 1, bitmap: true, height: font.height, source, blocks, width: font.cellWidth, lines };
 }
 
 // Cells as [char, fg, bg] (a fourth item for a wide half), the colors as indexes into a table.
