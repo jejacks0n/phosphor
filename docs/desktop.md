@@ -101,6 +101,9 @@ of what Phosphor opens is offered under **Open With**, and you can make Phosphor
   `.asc`. On Windows, open them with Open… or by dropping them on the window: other apps own them there (`.nfo` is
   Windows' System Information file), so installing Phosphor doesn't claim them.
 
+The font library comes with the app. Its links to VileR's `FONTS.TXT` (from a font's **License** line and from
+About) open the copy on GitHub in your browser, since the app's own files don't open outside it.
+
 ## Your name
 
 Out of a room, the **Social** tab in the side panel starts with **Your name**: the name others see in a room you host

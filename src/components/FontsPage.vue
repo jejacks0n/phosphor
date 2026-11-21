@@ -18,7 +18,7 @@ import FontBlocks from '@/components/FontBlocks.vue';
 import FontLines from '@/components/FontLines.vue';
 import FontSets from '@/components/FontSets.vue';
 import GlyphSample from '@/components/GlyphSample.vue';
-import { loadLibrary, libraryEntryOf, libraryUrl, searchLibrary, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
+import { loadLibrary, libraryEntryOf, licenseUrl, searchLibrary, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
@@ -111,7 +111,7 @@ const originLines = (e) => {
   if (!c) return lines;
   lines.push({ label: t('palette.fonts.from'), text: c.name, href: c.url });
   const license = c.license?.kind === 'none'
-    ? { text: t('palette.fonts.licenseNone'), href: libraryUrl(c.license.file) }
+    ? { text: t('palette.fonts.licenseNone'), href: licenseUrl(c.license.file) }
     : { text: t('palette.fonts.licenseUnknown'), href: tellUsUrl(e, index.value), prefix: t('palette.fonts.unknown') };
   lines.push({ label: t('palette.fonts.license'), ...license });
   return lines;

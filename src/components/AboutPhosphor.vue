@@ -5,12 +5,13 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import ReadingDialog from '@/components/ReadingDialog.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import { LINKED_FONTS } from '@/lib/linkedFonts';
+import { licenseUrl } from '@/lib/fontLibrary';
 
 // This build: the version (its third number is the day it was built) and the commit (vite.config.js, buildInfo).
 const { version, sha } = __BUILD__;
 
 const frogblock = LINKED_FONTS.find((f) => f.id === 'linked/frogblock');
-const vilerCredits = `${import.meta.env.BASE_URL}fonts/library/viler/FONTS.TXT`;
+const vilerCredits = licenseUrl('viler/FONTS.TXT');
 
 const emit = defineEmits(['close']);
 const { t } = useI18n();
