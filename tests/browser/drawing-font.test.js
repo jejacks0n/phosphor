@@ -457,12 +457,37 @@ test('undo and redo of a change to the drawing\u2019s font\u2019s lines or block
     await storeFontPart(stored.id, 'blocks', blocks);
     project.undo();
     await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks).toEqual(f.blocks));
-    expect(workspace.userFonts.find((e) => e.id === stored.id).blocks).toEqual(f.blocks);
+    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).blocks).toEqual(f.blocks));
     project.undo();
     await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines).toBeUndefined());
     project.redo();
     await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines).toEqual(lines));
-    expect(workspace.userFonts.find((e) => e.id === stored.id).lines).toEqual(lines);
+    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).lines).toEqual(lines));
+  } finally {
+    await removeFont(stored.id);
+  }
+});
+
+// An edit made to the copy since (the font no longer the drawing's, so with no undo) isn't lost to an undo or redo.
+test('undo and redo leave this browser\u2019s copy alone once it holds a newer edit than the step\u2019s', async () => {
+  const project = await blank();
+  const workspace = useWorkspaceStore();
+  const f = font(), stored = await addBitmapFont(new File([f.bytes], 'Topaz.F08'));
+  const g = { ...font(), name: 'Other', bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => i % 241) };
+  try {
+    workspace.userFonts = await loadFonts();
+    project.setDrawingFont(f);
+    const lines = { hide: [], styles: [heavy] }, newer = { hide: [], styles: [{ ...heavy, name: 'Newer' }] };
+    project.setDrawingFont({ ...project.drawingFont, lines }); // step A
+    await storeFontPart(stored.id, 'lines', lines);
+    project.setDrawingFont(g);
+    await storeFontPart(stored.id, 'lines', newer); // the Fonts page, on the copy alone
+    project.undo(); // back to the font
+    project.undo(); // step A
+    expect(project.drawingFont.lines).toBeUndefined();
+    project.redo();
+    expect((await storedBitmapFont(stored.id)).lines).toEqual(newer); // read after the undo's and redo's writes, which go first
+    expect(workspace.userFonts.find((e) => e.id === stored.id).lines).toBeUndefined(); // the redo put no lines in the list either
   } finally {
     await removeFont(stored.id);
   }

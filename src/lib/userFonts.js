@@ -200,19 +200,22 @@ export async function storedBitmapFont(id) {
 // 'lines' (its line styles, FontLines.encodeLines) or 'sets' (its character sets); value null: none, so the font
 // goes back to the found ones. The caller refreshes workspace.userFonts (loadFonts, or the font's entry). Read and
 // written in one transaction, so writes made one after another land in that order, none built on a record another
-// has since changed.
-export async function storeFontPart(id, key, value) {
+// has since changed. when: given the part as kept, whether to write (in the same transaction); whether it wrote.
+export async function storeFontPart(id, key, value, { when = () => true } = {}) {
+  let wrote = false;
   const record = await inStore('readwrite', (fonts) => {
     const get = fonts.get(id);
     get.onsuccess = () => {
-      if (!get.result) return;
+      if (!get.result || !when(get.result[key])) return;
       const next = { ...get.result };
       delete next[key];
       fonts.put({ ...next, ...(value && { [key]: value }) });
+      wrote = true;
     };
     return get;
   });
   if (!record) throw new Error(t('font.errors.missing'));
+  return wrote;
 }
 // A font (a stored font's entry, or one as a drawing holds it) with this part (null or undefined: none).
 export const withPart = (font, key, value) => {

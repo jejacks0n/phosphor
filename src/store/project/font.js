@@ -147,17 +147,22 @@ function switched(project, settings, picture, w, oldFit, fitAspect, from, to) {
 }
 
 // The parts of the drawing's font a step changed ('blocks', 'lines', 'sets'), put in this browser's copy of the font
-// too when it has one, as they now are: an undo or redo, so an XBin opened later gets what the drawing shows. Only the
-// step's maker has it (an artist can't change the font, and a watcher takes none), so the copy is always theirs.
-function keepCopy(project, parts) {
+// too when it has one, as they now are: an undo or redo, so an XBin opened later gets what the drawing shows. Only
+// while the copy still holds what the step left there (from: the settings undone or redone from): an edit made to the
+// copy since, which has no undo, stays. Only the step's maker has it (an artist can't change the font, and a watcher
+// takes none), so the copy is always theirs.
+function keepCopy(project, parts, from) {
   const workspace = useWorkspaceStore(), font = project.drawingFont, id = font && fontId(font);
   if (!parts.length || !workspace.userFonts?.some((f) => f.id === id)) return;
-  for (const key of parts) {
-    workspace.userFonts = workspace.userFonts.map((f) => (f.id === id ? withPart(toRaw(f), key, font[key]) : f));
-    storeFontPart(id, key, font[key] ?? null).catch(() => {}); // the copy removed since: nothing to keep
+  for (const setting of parts) {
+    const key = PART_KEYS[setting], value = font[key], when = (kept) => (kept ? ENCODE[key](kept) : '') === from[setting];
+    storeFontPart(id, key, value ?? null, { when }).then((wrote) => {
+      if (wrote) workspace.userFonts = workspace.userFonts?.map((f) => (f.id === id ? withPart(toRaw(f), key, value) : f));
+    }, () => {}); // the copy removed since: nothing to keep
   }
 }
 const PART_KEYS = { fontBlocks: 'blocks', fontLines: 'lines', fontSets: 'sets' };
+const ENCODE = { blocks: encodeBlocks, lines: encodeLines, sets: encodeSets };
 
 // The drawing's bitmap font: kept in the settings as base64 (fontBitmap, with its name and blocks), so it's saved,
 // autosaved and fingerprinted like the rest. Changing it is one undo step; before a drawing, the next one's font. In a
@@ -177,11 +182,11 @@ export const fontActions = {
     // Lines and sets don't change the picture: a step that changes only them draws nothing again.
     const looks = Object.keys(after).some((key) => key !== 'fontLines' && key !== 'fontSets' && after[key] !== before[key]);
     // The same font with other blocks, lines or sets: undo and redo keep this browser's copy of it in step too.
-    const parts = before.fontBitmap === after.fontBitmap ? Object.keys(PART_KEYS).filter((key) => after[key] !== before[key]).map((key) => PART_KEYS[key]) : [];
+    const parts = before.fontBitmap === after.fontBitmap ? Object.keys(PART_KEYS).filter((key) => after[key] !== before[key]) : [];
     this.commitPending();
     this.$patch(after);
-    const on = (values) => () => { this.$patch(values); keepCopy(this, parts); if (looks) this.render(); };
-    this.pushEdit({ settingsOnly: true, undo: on(before), redo: on(after) });
+    const on = (values, from) => () => { this.$patch(values); keepCopy(this, parts, from); if (looks) this.render(); };
+    this.pushEdit({ settingsOnly: true, undo: on(before, after), redo: on(after, before) });
     if (looks) this.render();
   },
 };
