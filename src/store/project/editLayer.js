@@ -11,7 +11,7 @@ import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { blockOver, cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
-import { hex2rgb } from '@/lib/ColorUtils.js';
+import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, refusedHidden, refusedNoCells, takePins } from '@/store/project/shared.js';
 
@@ -444,5 +444,15 @@ function showsNoChar(project, col, row, cell) {
 function writeOnBottom(project, list) {
   const own = (attrs) => Object.fromEntries(Object.entries(attrs).filter(([, value]) => value != null));
   const blanks = overwritesAll(project.cells, project.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));
-  project.writeBaseCells([...list, ...blanks.map((cell) => ({ ...cell, attrs: { char: ' ' } }))].map(({ col, row, attrs }) => ({ col, row, ...project.completeAt(col, row, own(attrs)) })));
+  project.writeBaseCells([...list, ...blanks.map((cell) => ({ ...cell, attrs: { char: ' ' } }))].map(({ col, row, attrs }) => ({ col, row, ...colored(project, col, row, project.completeAt(col, row, own(attrs))) })));
+}
+
+// Monochrome ASCII's look of a base cell is its character alone (reading.js baseLook), so a cell written there with no
+// colors of its own takes the halves it shows: a pin's look (white on black, R11), else its pixels (a converted cell's,
+// a ▄ pin's, which are its look outside ANSI: Renderer.pinAt). Left without, writeBaseCells wrote it black: the Brush's
+// ▄ over a cell it had painted went in black, and a soft stroke over white painted before showed a black rim.
+function colored(project, col, row, entry) {
+  if (entry.fg !== undefined || entry.bg !== undefined) return entry;
+  const [bg, fg] = project.renderer.baseLook(col, row, project.processParams)?.map(rgb2hex) ?? [project.baseColorAt(col, 2 * row), project.baseColorAt(col, 2 * row + 1)];
+  return { ...entry, bg, fg };
 }
