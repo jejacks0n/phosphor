@@ -34,7 +34,7 @@ function num(text) {
   return String(n);
 }
 
-// A list of numbers split by commas and whitespace, printed with single spaces.
+// An array of numbers (as text), read from a list split by commas and whitespace and each printed from its parsed number.
 function numbers(text) {
   const parts = text.split(/[\s,]+/).filter(Boolean);
   return parts.map(num);
@@ -44,7 +44,12 @@ const escapeValue = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 // An attribute's value, checked by its rule and printed again; null for xmlns, which is dropped.
 function value(name, text, isRoot) {
+  // xmlns is dropped (Phosphor writes its own), and so are a root's width and height, so a plugin can't size its icon.
   if (name === 'xmlns') return null;
+  if (isRoot && (name === 'width' || name === 'height')) {
+    num(text.trim());
+    return null;
+  }
   if (name === 'viewBox') {
     if (!isRoot) fail();
     const v = numbers(text);
@@ -69,6 +74,7 @@ function value(name, text, isRoot) {
   return fail();
 }
 
+const SPACE = /\s+/y;
 const OPEN = /<([A-Za-z][A-Za-z0-9]*)((?:\s+[A-Za-z][A-Za-z0-9:-]*\s*=\s*(?:"[^"<>&]*"|'[^'<>&]*'))*)\s*(\/?)>/y;
 const CLOSE = /<\/([A-Za-z][A-Za-z0-9]*)\s*>/y;
 const ATTR = /([A-Za-z][A-Za-z0-9:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
@@ -78,8 +84,9 @@ export function cleanIcon(text) {
   let at = 0;
   const skip = () => {
     for (;;) {
-      const space = /^\s+/.exec(text.slice(at));
-      if (space) at += space[0].length;
+      SPACE.lastIndex = at;
+      const space = SPACE.test(text);
+      if (space) at = SPACE.lastIndex;
       if (text.startsWith('<!--', at)) {
         const end = text.indexOf('-->', at + 4);
         if (end < 0) fail();
@@ -87,7 +94,6 @@ export function cleanIcon(text) {
       } else if (!space) return;
     }
   };
-  at = 0;
   const lead = /^\s*<\?xml[^<>?&]*\?>/.exec(text);
   if (lead) at = lead[0].length;
 
