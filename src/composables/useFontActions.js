@@ -6,6 +6,7 @@ import { addFont, addBitmapFont, storedBitmapFont, storeFontPart, removeFont } f
 import { sayMissingBlocks } from '@/composables/useFontSetup';
 import { fontId, fontName, fontSheet } from '@/lib/BitmapFont';
 import { downloadBlob, fileStem } from '@/document/projectIO';
+import { libraryFile } from '@/lib/fontLibrary';
 
 // The files Load takes: outline fonts, and bitmap fonts as PNG sheets or raw .F01-.F32.
 export const FONT_FILES = ['.ttf', '.otf', '.woff', '.woff2', '.png', ...Array.from({ length: 32 }, (_, i) => `.f${String(i + 1).padStart(2, '0')}`)].join(',');
@@ -50,6 +51,21 @@ export function useFontActions() {
     return font;
   }
 
+  // A library font ({ fontId, ... } from the index) put to use or kept in Yours. One already in Yours or the drawing's font
+  // fetches nothing and makes no second entry; a failed or wrong-size fetch throws before anything changes. Not applied
+  // in someone else's room (loadFile's rule).
+  const held = (entry) => loaded.value.some((f) => f.id === entry.fontId);
+  async function useLibraryFont(entry) {
+    if (drawsIn(entry.fontId)) return;
+    if (!held(entry)) return loadFile(await libraryFile(entry));
+    if (!hostsFont.value) await choose(entry.fontId);
+  }
+  async function keepLibraryFont(entry) {
+    if (held(entry) || drawsIn(entry.fontId)) return;
+    const font = await addBitmapFont(await libraryFile(entry));
+    workspace.userFonts = [...loaded.value.filter((f) => f.id !== font.id), font];
+  }
+
   const stem = (font, ext) => fileStem(fontName(font.name), ext) || 'font'; // a nameless font still gets a name
   const pad = (font) => String(font.height).padStart(2, '0');
 
@@ -72,5 +88,5 @@ export function useFontActions() {
     if (workspace.displayFont === id) workspace.displayFont = DEFAULT_FONT_ID;
   }
 
-  return { loadFile, choose, saveRaw, savePng, remove, hostsFont };
+  return { loadFile, choose, useLibraryFont, keepLibraryFont, saveRaw, savePng, remove, hostsFont };
 }

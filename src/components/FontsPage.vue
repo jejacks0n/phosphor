@@ -18,7 +18,7 @@ import FontBlocks from '@/components/FontBlocks.vue';
 import FontLines from '@/components/FontLines.vue';
 import FontSets from '@/components/FontSets.vue';
 import GlyphSample from '@/components/GlyphSample.vue';
-import { loadLibrary, searchLibrary, tagCounts, tagsOf } from '@/lib/fontLibrary';
+import { loadLibrary, libraryEntryOf, searchLibrary, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
@@ -28,7 +28,7 @@ const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const palettes = usePaletteStore();
-const { loadFile, choose, saveRaw, savePng, remove, hostsFont } = useFontActions();
+const { loadFile, choose, useLibraryFont, keepLibraryFont, saveRaw, savePng, remove, hostsFont } = useFontActions();
 const fileInput = useTemplateRef('file');
 const page = useTemplateRef('page');
 const part = useTemplateRef('part'); // the Lines or Sets section, which a click on the sheet goes to
@@ -99,6 +99,34 @@ const togglePicker = async () => {
   if (pickerOpen.value) { await nextTick(); picker.value?.focus(); }
 };
 const closePicker = () => { pickerOpen.value = false; tagsWrap.value?.querySelector('button.tags')?.focus(); };
+// A library entry's From, License and Credit lines: [{ label, text, href?, tail? }].
+const originLines = (e) => {
+  const lines = [];
+  if (e.linked) {
+    lines.push({ label: t('palette.fonts.credit'), text: e.linked.credit });
+    lines.push({ label: t('palette.fonts.license'), text: t('palette.fonts.licenseFile'), href: e.linked.license });
+    return lines;
+  }
+  const c = index.value.collections[e.collection];
+  if (!c) return lines;
+  lines.push({ label: t('palette.fonts.from'), text: c.name, href: c.url });
+  const license = c.license?.kind === 'none'
+    ? { text: t('palette.fonts.licenseNone'), href: `${import.meta.env.BASE_URL}fonts/library/${c.license.file}` }
+    : { text: t('palette.fonts.licenseUnknown'), href: tellUsUrl(e, index.value), prefix: t('palette.fonts.unknown') };
+  lines.push({ label: t('palette.fonts.license'), ...license });
+  return lines;
+};
+const libMeta = (e) => [t('palette.fonts.bitmapMeta', { height: e.height }), t('palette.fonts.library'), e.linked && t('palette.fonts.notIncluded')].filter(Boolean).join(' · ');
+const fetching = ref(false);
+// Use this font / Add to Yours: the fetch, then the font is in Yours and the page shows it (chosen follows by font id).
+const fromLibrary = (action) => async () => {
+  const entry = libEntry.value;
+  fetching.value = true;
+  try { await run(() => action(entry)); } finally { fetching.value = false; }
+};
+const useFromLibrary = fromLibrary((e) => useLibraryFont(e));
+const keepFromLibrary = fromLibrary((e) => keepLibraryFont(e));
+const pickTag = (key) => { tags.value = [key]; filter.value = ''; };
 const libraryMeta = (e) => (e.linked ? t('palette.fonts.notIncluded') : `8×${e.height} · ${e.machine}`);
 const chosenId = ref(null);
 const hovered = ref(null); // the slot under the pointer
@@ -114,11 +142,14 @@ const stored = computed(() => workspace.userFonts ?? []);
 const inUseId = computed(() => drawnId.value ?? workspace.displayFontSpec.id);
 const builtIn = DISPLAY_FONTS.map((f) => ({ id: f.id, name: f.name, kind: 'builtIn', family: f.family }));
 // The drawing's font (listed once, though it may be kept in this browser too), then yours, then the built-in ones.
+// A font whose bytes are a linked font's takes that entry's name (a file loaded as FROGBLOCK.F08 or anything else).
+const linkedOf = (id) => index.value?.linked.find((e) => e.fontId === id);
+const named = (f) => { const e = linkedOf(f.id); return e ? { ...f, name: e.name } : f; };
 const all = computed(() => [
   ...(drawn.value ? [{ id: drawnId.value, name: drawn.value.name, kind: 'bitmap', height: drawn.value.height }] : []),
   ...stored.value.filter((f) => f.id !== drawnId.value),
   ...builtIn,
-]);
+].map(named));
 const groups = computed(() => {
   const query = filter.value.trim().toLowerCase(), shown = all.value.filter((f) => f.name.toLowerCase().includes(query));
   return [
@@ -128,7 +159,12 @@ const groups = computed(() => {
   ].filter((g) => g.rows.length);
 });
 // The chosen font; once it's gone (removed), the one in use, else the first.
-const chosen = computed(() => all.value.find((f) => f.id === chosenId.value) ?? all.value.find((f) => f.id === inUseId.value) ?? all.value[0] ?? null);
+// A library row chosen shows the library's details, unless its font is already in Yours or the drawing's: then those.
+const libEntry = computed(() => (index.value && chosenId.value ? [...index.value.fonts, ...index.value.linked].find((e) => e.id === chosenId.value) : null) ?? null);
+const chosen = computed(() => all.value.find((f) => f.id === chosenId.value)
+  ?? (libEntry.value ? all.value.find((f) => f.id === libEntry.value.fontId) : null)
+  ?? (libEntry.value ? null : all.value.find((f) => f.id === inUseId.value) ?? all.value[0] ?? null));
+const held = computed(() => (index.value && chosen.value ? libraryEntryOf(index.value, chosen.value.id) : null)); // a library font's entry, for From and License
 const bitmap = computed(() => chosen.value?.kind === 'bitmap');
 const isDrawn = computed(() => chosen.value?.id === drawnId.value);
 const isInUse = computed(() => chosen.value?.id === inUseId.value);
@@ -335,6 +371,7 @@ const exportPalettes = () => {
               @click="chosenId = f.id"
           >
             <div class="name"><span>{{ f.name }}</span><em>{{ size(f) }}</em></div>
+            <div v-if="linkedOf(f.id)" class="credit">{{ linkedOf(f.id).linked.credit }}</div>
             <div class="sample" :style="styleOf(f)">{{ SAMPLE }}</div>
           </div>
         </template>
@@ -384,6 +421,12 @@ const exportPalettes = () => {
         <button v-if="bitmap && font?.blocks" class="ghost" :disabled="inRoom" :data-off-reason="inRoom ? '' : undefined" :title="inRoom ? t('palette.fonts.blocksInRoom') : t('palette.fonts.findBlocksTitle')" @click="setBlocks(undefined)">{{ t('palette.fonts.findBlocks') }}</button>
         <button v-if="isStored" class="ghost" :title="t('palette.fonts.removeTitle')" @click="forget">{{ t('palette.fonts.remove') }}</button>
       </div>
+<dl v-if="held" class="origin">
+        <template v-for="l in originLines(held)" :key="l.label">
+          <dt>{{ l.label }}</dt>
+          <dd>{{ l.prefix }}<a v-if="l.href" :href="l.href" target="_blank" rel="noopener">{{ l.text }}</a><template v-else>{{ l.text }}</template></dd>
+        </template>
+      </dl>
       <template v-if="bitmap && font">
         <div class="sections" role="tablist" :aria-label="t('palette.fonts.sectionsAria')">
           <button v-for="s in sections" :key="s.key" role="tab" :class="{ on: section === s.key }" :aria-selected="section === s.key" @click="section = s.key">
@@ -431,6 +474,33 @@ const exportPalettes = () => {
           <div v-for="(line, i) in lines" :key="i">{{ line }}</div>
         </div>
       </template>
+    </div>
+    <!-- a library font not in Yours -->
+    <div v-else-if="libEntry" class="edit-side">
+      <div class="head">
+        <span class="title">{{ libEntry.name }}</span>
+        <span class="meta">{{ libMeta(libEntry) }}</span>
+      </div>
+      <div class="actions">
+        <template v-if="libEntry.linked">
+          <a class="ghost button" :href="libEntry.linked.url" target="_blank" rel="noopener">{{ t('palette.fonts.getIt') }}</a>
+          <button class="ghost" :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
+        </template>
+        <template v-else>
+          <button class="ghost primary" :disabled="fetching" @click="useFromLibrary">{{ t('palette.fonts.use') }}</button>
+          <button class="ghost" :disabled="fetching" @click="keepFromLibrary">{{ t('palette.fonts.addToYours') }}</button>
+        </template>
+      </div>
+      <div class="chips tag-chips">
+        <button v-for="x in tagsOf(libEntry)" :key="x.key" class="chip" @click="pickTag(x.key)">{{ tagLabel(x.key) }}</button>
+      </div>
+      <dl class="origin">
+        <template v-for="l in originLines(libEntry)" :key="l.label">
+          <dt>{{ l.label }}</dt>
+          <dd>{{ l.prefix }}<a v-if="l.href" :href="l.href" target="_blank" rel="noopener">{{ l.text }}</a><template v-else>{{ l.text }}</template></dd>
+        </template>
+      </dl>
+      <GlyphSample v-if="!libEntry.linked" :sample="libEntry.sample" :height="libEntry.height" class="big" />
     </div>
   </div>
 </template>
@@ -673,5 +743,67 @@ div.sample-text {
   white-space: pre;
   overflow-x: auto;
   color: var(--text);
+}
+
+a.ghost.button {
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+a.ghost.button:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+button.ghost.primary {
+  background: var(--accent);
+  color: var(--accent-text, #fff);
+}
+
+div.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 12px;
+}
+
+div.tag-chips button.chip {
+  padding: 2px 8px;
+  border: 1px solid var(--surface-3);
+  border-radius: 10px;
+  background: var(--surface-1);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+dl.origin {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+dl.origin dt {
+  color: var(--text-dim);
+}
+
+dl.origin dd {
+  margin: 0;
+}
+
+dl.origin a {
+  color: var(--accent);
+}
+
+canvas.big {
+  margin: 8px 12px;
+  zoom: 2;
 }
 </style>

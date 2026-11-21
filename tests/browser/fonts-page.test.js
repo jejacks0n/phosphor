@@ -56,13 +56,13 @@ const SAMPLE_B64 = btoa(String.fromCharCode(...new Uint8Array(12 * 8).fill(0x18)
 const libFont = (name, extra = {}) => ({ id: `viler/${name}.F08`, fontId: `bitmap-${name}`, name, file: `viler/${name}.F08`, height: 8, collection: 'viler', machine: 'IBM PC', chars: 'cp437', ready: true, sample: SAMPLE_B64, ...extra });
 const FIXTURE = () => ({
   version: 1,
-  collections: { viler: { name: 'VileR', url: 'u', license: 'l' }, moebius: { name: 'Mœbius', url: 'u', license: 'l' } },
+  collections: { viler: { name: 'VileR', url: 'https://example.test/viler', license: { kind: 'none', file: 'viler/FONTS.TXT' } }, moebius: { name: 'Mœbius', url: 'https://example.test/moebius', license: { kind: 'unknown' } } },
   fonts: [
     libFont('Zeta'),
     libFont('Topaz', { machine: 'Amiga', collection: 'moebius', chars: 'latin1', height: 16, about: 'a rounded face' }),
     libFont('Alpha', { ready: false }),
   ],
-  linked: [{ id: 'linked/frogblock', fontId: 'bitmap-frog', name: 'FROGBLOCK', height: 8, machine: 'Custom', chars: 'cp437', linked: { credit: 'FROGBLOCK font by Polyducks', url: 'https://polyducks.itch.io/frogblock', license: 'l' } }],
+  linked: [{ id: 'linked/frogblock', fontId: 'bitmap-frog', name: 'FROGBLOCK', height: 8, machine: 'Custom', chars: 'cp437', linked: { credit: 'FROGBLOCK font by Polyducks', url: 'https://polyducks.itch.io/frogblock', license: 'https://example.test/frog-license' } }],
 });
 let indexFetches = 0;
 function stubLibrary(index) {
@@ -988,4 +988,138 @@ test("a linked font's row says not included and shows its credit", async () => {
   expect(frog.querySelector('.name em').textContent).toBe('not included');
   expect(frog.querySelector('.credit').textContent).toBe('FROGBLOCK font by Polyducks');
   expect(frog.querySelector('canvas')).toBeNull();
+});
+
+// A library font's file: the index entry named gets the id of these bytes, and fetching its file gives them (or the
+// response given). Counts the file fetches.
+let fileFetches = 0;
+function serveFile(index, name, { bytes = new Uint8Array(2048).fill(7), response = null } = {}) {
+  const entry = [...index.fonts, ...index.linked].find((e) => e.name === name);
+  entry.fontId = fontId({ height: entry.height, bytes });
+  fileFetches = 0;
+  const before = fetch;
+  vi.stubGlobal('fetch', async (url, ...rest) => {
+    if (!String(url).endsWith(`fonts/library/${entry.file}`)) return before(url, ...rest);
+    fileFetches += 1;
+    return response ?? new Response(bytes);
+  });
+  return entry;
+}
+const origin = () => [...host.querySelectorAll('.edit-side .origin dt')].map((dt) => `${dt.textContent} ${dt.nextElementSibling.textContent}`);
+const chooseLibrary = async (name) => {
+  await waitFor(() => libraryNames().length);
+  await press([...host.querySelectorAll('.row.library')].find((r) => r.querySelector('.name span').textContent === name));
+};
+
+test('Use this font fetches the font, keeps it in Yours and makes it the drawing\'s font', async () => {
+  const index = FIXTURE(), entry = serveFile(index, 'Zeta');
+  const { project, workspace } = await mount({ library: index });
+  await chooseLibrary('Zeta');
+  expect(title()).toBe('Zeta');
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('Bitmap 8×8 · Library');
+  expect(actions()).toEqual(['Use this font', 'Add to Yours']);
+  await press(button('Use this font'));
+  await waitFor(() => project.drawingFont && fontId(project.drawingFont) === entry.fontId);
+  expect(fileFetches).toBe(1);
+  expect(workspace.userFonts.filter((f) => f.id === entry.fontId).length).toBe(1);
+  expect((await loadFonts()).map((f) => f.id)).toContain(entry.fontId);
+  await waitFor(() => host.querySelector('.edit-side .sheet')); // the stored font's own details, with From and License
+  expect(origin()).toContain('From VileR');
+});
+
+test('Add to Yours keeps it without using it', async () => {
+  const index = FIXTURE(), entry = serveFile(index, 'Zeta');
+  const { project, workspace } = await mount({ library: index });
+  await chooseLibrary('Zeta');
+  await press(button('Add to Yours'));
+  await waitFor(() => workspace.userFonts.some((f) => f.id === entry.fontId));
+  expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
+  await waitFor(() => host.querySelector('.edit-side .sheet'));
+  expect(button('Use this font')).toBeTruthy();
+  expect(button('Remove')).toBeTruthy();
+});
+
+test('a library font already in Yours fetches nothing and makes no second entry', async () => {
+  const index = FIXTURE(), bytes = new Uint8Array(2048).fill(9), entry = serveFile(index, 'Zeta', { bytes });
+  const { workspace } = await mount({ library: index });
+  workspace.userFonts = [...workspace.userFonts, await addBitmapFont(new File([bytes], 'Mine.F08'))];
+  const before = workspace.userFonts.length;
+  await chooseLibrary('Zeta');
+  await waitFor(() => host.querySelector('.edit-side .sheet'));
+  expect(title()).toBe('Mine'); // the copy in Yours
+  expect(origin()).toContain('From VileR');
+  await press(button('Use this font'));
+  expect(fileFetches).toBe(0);
+  expect(workspace.userFonts.length).toBe(before);
+  expect(workspace.userFonts.filter((f) => f.id === entry.fontId).length).toBe(1);
+});
+
+test('a failed fetch or a wrong-size file says so and changes nothing', async () => {
+  for (const response of [new Response('', { status: 404 }), new Response(new Uint8Array(100))]) {
+    const index = FIXTURE();
+    serveFile(index, 'Zeta', { response });
+    const { project, workspace } = await mount({ library: index });
+    const fonts = workspace.userFonts.length;
+    await chooseLibrary('Zeta');
+    await press(button('Use this font'));
+    await waitFor(() => host.querySelector('.problem'));
+    expect(fileFetches).toBe(1);
+    expect(workspace.userFonts.length).toBe(fonts);
+    expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
+    expect(title()).toBe('Zeta');
+    app.unmount();
+    host.remove();
+    forgetLibrary();
+  }
+});
+
+test('in someone else\'s room, Use this font keeps it in Yours but doesn\'t apply it', async () => {
+  const index = FIXTURE(), entry = serveFile(index, 'Zeta');
+  const { project, workspace } = await mount({ library: index });
+  workspace.roomFont = { id: 'jetbrains', name: 'JetBrains Mono', family: 'JetBrains Mono', size: 16, lineHeight: 1.2 };
+  await chooseLibrary('Zeta');
+  expect(button('Use this font').disabled).toBe(false);
+  await press(button('Use this font'));
+  await waitFor(() => workspace.userFonts.some((f) => f.id === entry.fontId));
+  expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
+});
+
+test('details show tags, From and License: None given for VileR, Unknown with Tell us for Mœbius', async () => {
+  await mount({ library: FIXTURE() });
+  await chooseLibrary('Zeta');
+  const chips = () => [...host.querySelectorAll('.edit-side .tag-chips .chip')].map((el) => el.textContent);
+  expect(chips()).toEqual(['IBM PC', '8×8', 'CP437', 'VileR', 'Ready to paint']);
+  const link = (name) => [...host.querySelectorAll('.edit-side .origin a')].find((a) => a.textContent === name);
+  expect(origin()).toEqual(['From VileR', 'License None given · credits in FONTS.TXT']);
+  expect(link('VileR').href).toBe('https://example.test/viler');
+  expect(link('None given · credits in FONTS.TXT').href).toMatch(/fonts\/library\/viler\/FONTS\.TXT$/);
+  expect(host.querySelector('.edit-side canvas.glyph-sample')).toBeTruthy();
+  await chooseLibrary('Topaz');
+  expect(origin()).toEqual(['From Mœbius', 'License Unknown · Know it? Tell us']);
+  expect(decodeURIComponent(link('Know it? Tell us').href)).toContain('title=License for Topaz (Mœbius)');
+  await press([...host.querySelectorAll('.edit-side .tag-chips .chip')].find((el) => el.textContent === 'Amiga'));
+  expect(libraryNames()).toEqual(['Topaz']); // the chip became the picked tag
+  expect(host.querySelector('.tag-row > button.chip').textContent).toContain('Amiga');
+});
+
+test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show as FROGBLOCK with its credit', async () => {
+  const index = FIXTURE(), bytes = new Uint8Array(2048).fill(5), frogId = fontId({ height: 8, bytes });
+  index.linked[0].fontId = frogId;
+  const { project } = await mount({ library: index });
+  await chooseLibrary('FROGBLOCK');
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('Bitmap 8×8 · Library · not included');
+  expect(actions()).toEqual(['+ Load']);
+  expect(host.querySelector('.edit-side a.button').textContent).toBe('Get it ↗');
+  expect(host.querySelector('.edit-side a.button').href).toBe('https://polyducks.itch.io/frogblock');
+  expect(origin()).toContain('Credit FROGBLOCK font by Polyducks');
+  expect([...host.querySelectorAll('.edit-side .origin a')].map((a) => a.href)).toEqual(['https://example.test/frog-license']);
+  const input = host.querySelector('input[type=file]');
+  const data = new DataTransfer();
+  data.items.add(new File([bytes], 'whatever.F08'));
+  input.files = data.files;
+  input.dispatchEvent(new Event('change'));
+  await waitFor(() => project.drawingFont && fontId(project.drawingFont) === frogId);
+  await waitFor(() => title() === 'FROGBLOCK');
+  expect(origin()).toContain('Credit FROGBLOCK font by Polyducks');
+  expect(row('FROGBLOCK').querySelector('.credit').textContent).toBe('FROGBLOCK font by Polyducks');
 });
