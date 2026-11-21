@@ -291,9 +291,7 @@ export const isSolidGlyph = (char) => coverageOf(char).every(c => c === 0 || c =
 // (docs/model.md, R2). One in its own background color in any style; in ANSI a solid or empty glyph too (coverCell makes
 // a ▄ of it, each half its color under the paint); in the ASCII styles, which draw no half-blocks, one with no ink at
 // all (a space), which the paint is converted over as it is over a cell with no character of anyone's.
-// A character with no ink at all: a space, or one drawn in its own background color.
-export const hasNoInk = (cell) => !showsChar(cell) || coverageOf(cell.char).every((c) => c === 0);
-export const opensToPaint = (cell, renderStyle) => (renderStyle === 'ansi' ? !showsChar(cell) || isSolidGlyph(cell.char) : hasNoInk(cell));
+export const opensToPaint = (cell, renderStyle) => !showsChar(cell) || (renderStyle === 'ansi' ? isSolidGlyph(cell.char) : coverageOf(cell.char).every((c) => c === 0));
 
 // Paint over a cell: a textured character stays, the paint tinting the background (top half) and
 // foreground (bottom half), the way image cells are built (buildCell); a solid or empty one, or one

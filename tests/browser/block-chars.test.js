@@ -528,6 +528,36 @@ test('R2: paint on a layer that shares the base\'s Random over an opened file\'s
   await settle(project);
   const shown = cols.map((col) => project.cells[cellIndex(col, row, project.cols)].char);
   expect(new Set(shown).size, shown.join('')).toBeGreaterThan(1); // Random's, not one ▄ after another
+  const before = project.cells.map(({ char, fg, bg }) => char + fg.hex + bg.hex);
+  project.mergeDown(layer);
+  await settle(project);
+  expect(project.cells.map(({ char, fg, bg }) => char + fg.hex + bg.hex)).toEqual(before); // R3: nothing changes
+});
+
+test('R2: a layer\'s paint over pinned solid blocks converts with its characters in ANSI, over the blocks\' own colors', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await settle(project);
+  workspace.pickLayer('base');
+  project.writeEditCells([
+    { col: 5, row: 5, attrs: { char: '█', fg: '#aa0000', bg: '#000000' } },
+    { col: 6, row: 5, attrs: { char: '▄', fg: '#ffffff', bg: '#0000aa' } },
+    { col: 7, row: 5, attrs: { char: 'A', fg: '#ffffff', bg: '#000000' } },
+  ]);
+  project.commitEdit();
+  const layer = project.addLayer('cells', 'base');
+  workspace.pickLayer(layer);
+  project.setLayerChars(layer, { seed: 'a-seed-of-its-own', chars: '░▒▓' });
+  await settle(project);
+  for (const col of [5, 6, 7]) {
+    project.paintStroke([{ x: col, y: 11, alpha: 1 }], '#ff5555', { blockChars: 'plain' }); // the bottom half
+    project.commitEdit();
+  }
+  await settle(project);
+  const at = (col) => project.cells[cellIndex(col, 5, 20)];
+  expect('░▒▓'.includes(at(5).char) && [at(5).fg.hex, at(5).bg.hex].sort()).toEqual(['#aa0000', '#ff5555']); // the █'s red kept
+  expect('░▒▓'.includes(at(6).char) && [at(6).fg.hex, at(6).bg.hex].sort()).toEqual(['#0000aa', '#ff5555']);
+  expect([at(7).char, at(7).fg.hex]).toEqual(['A', '#ff5555']); // a letter has ink: tinted
 });
 
 // On a layer, with the base's settings or its own, Colors only makes no ▄ of a cell the converter drew: its paint

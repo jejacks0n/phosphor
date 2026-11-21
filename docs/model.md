@@ -74,19 +74,22 @@ erasers leave of one). Older files have no mark, and their cells stay characters
 ### R2. Paint over a character tints its ink and never picks another character. With no ink to tint, the paint shows as paint.
 
 A character of someone's own under paint keeps its character; the paint colors the half it lies on (the top half the
-background, the bottom half the foreground). A character with no ink to tint is open: the paint shows there as paint
-does in that style. A layer's paint is its characters, so a character with no ink at all (a space, or one in its own
-background color) is converted over as paint over a cell with no character is, in every style: mixed into the cell's
-halves and converted with the layer's settings, whether they're its own or the base's. A ▄ there would show the base's
-look in place of the layer's, so a layer on Random painted half-blocks over a flattened drawing or an opened file,
-every cell of which is a pin. In ANSI a solid glyph (`█ ▀ ▄`) is open too: under paint it's a ▄ with the paint in each
-half it covers. A Half-block ▄ (a paint block, R5) is the layer's own ▄, and its paint colors it. In Color ASCII and
-Monochrome ASCII `█` has ink and stays. The base's own strokes are its pixels, not paint over a cell (R7).
+background, the bottom half the foreground). A character with no ink to tint is open: in ANSI a solid or empty glyph
+(a space, `█ ▀ ▄`) or one in its own background color; in Color ASCII and Monochrome ASCII one with no ink at all (a
+space, or one in its own background color), `█` having ink there and staying. A layer's paint is its characters, so
+over someone else's open character (a pin on the base, a lower layer's cell) it's converted with the layer's settings,
+whether they're its own or the base's: in ANSI over the character's own two colors, in the ASCII styles over the
+picture's pixels, as paint over a cell with no character is. A ▄ there would show the base's look in place of the
+layer's, so a layer on Random painted half-blocks over a flattened drawing or an opened file, every cell of which is a
+pin. In ANSI the paint over the layer's own open cells, a Half-block ▄ (a paint block, R5) among them, is a ▄ with the
+paint in each half it covers; the ASCII styles convert those too. The base's own strokes are its pixels, not paint
+over a cell (R7).
 
 - Lives in: `Renderer.#paintOver` (`src/document/Renderer.js`), which every paint-over-cell path goes through: the lower
-  group's `#composeOne`, a base pin under paint (`#paintedPin`) and the upper walk (`#upperCell`), each of which hands a
-  character with no ink (`hasNoInk` in `src/lib/Cells.js`) to the convert path. `opensToPaint` there is what's open in a
-  style; `coverCell` is the tint. `storedLookAt` (`src/store/project/reading.js`)
+  group's `#composeOne` (the layer's own cells), a base pin under paint (`#paintedPin`) and the upper walk
+  (`#upperCell`). In ANSI the last two hand an open character with no entry of the layer's own to the convert path over
+  its halves (`halfColors`), and `#lookAt` follows them (R11). The predicate is `opensToPaint` in `src/lib/Cells.js`;
+  `coverCell` there is the tint. `storedLookAt` (`src/store/project/reading.js`)
   mirrors it in stored colors, and Colors only (`paintStroke` in `src/store/project/editLayer.js`) uses the predicate to
   tell which of the layer's own cells become paint blocks.
 - Checked by: `tests/browser/layer-stack.test.js › R2: …` (a typed space and a letter under paint, on the layer and on
@@ -94,7 +97,9 @@ Monochrome ASCII `█` has ink and stays. The base's own strokes are its pixels,
   (the one-by-one reference converts open cells); `tests/unit/compose.test.js` (coverCell's tint in ANSI);
   `tests/browser/block-chars.test.js › R2: the report: paint on a layer with its own Random …` (a flattened drawing under
   a layer of its own Random, the Brush in ANSI), `› R2: paint on a layer that shares the base's Random …` (an opened
-  file's spaces under the base's Random) and `› R5: random: …` (a pinned space under the base's seed and its own);
+  file's spaces under the base's Random, then Merge down), `› R2: a layer's paint over pinned solid blocks …` (a █ and
+  a ▄ keep their colors under a layer of its own Random) and `› R5: random: …` (a pinned space under the base's seed and
+  its own);
   `tests/browser/animation-build.test.js › built frames equal the still with a layer of its own characters …`.
 
 ### R3. Merge down moves each kind as itself, and nothing on the canvas changes but a soft edge, which stays paint.
@@ -307,7 +312,7 @@ What's over the character counts, bottom to top, as the cell itself is laid (`#c
   paint is in its background (upper half) or foreground (lower half) and shows through the whole cell by the ink. The
   blend itself is never snapped: a shade's mix isn't a palette color, and the first trace of paint (a soft stroke's
   edge) would turn it into one, a hard ring round every stroke. Where the paint doesn't tint the character but is
-  converted over the cell's two pixels (R2: a character with no ink, but under a Half-block ▄ in ANSI), the look is the character it converts to, as the ANSI view shows it. The two pixels
+  converted over the cell's two pixels (R2: in ANSI an open character with no entry of the layer's, in the ASCII styles any), the look is the character it converts to, as the ANSI view shows it. The two pixels
   aren't shown: under a space they're its background over its foreground, so soft paint over an opened file's spaces
   showed as horizontal stripes.
 - **A paint block over it** (a Half-block's `▄`, R5) takes its place, as `blockOver` has it: a solid glyph's own
