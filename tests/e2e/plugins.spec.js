@@ -236,7 +236,8 @@ test('on a phone the Plugins dialog fills the window and × closes it', async ({
   await expect(dialog(page)).toHaveCount(0);
 });
 
-// The autosave record's editedAt for the open document (0 before its first write): it moves on with each change written.
+// The autosave record's editedAt for the open document (0 before its first write): when the write that's there began,
+// which is before it reads the drawing, so a write that began after a change holds it.
 const editedAt = (page) => store(page, 'project', (p) => p.documentId).then((id) => page.evaluate((id) => new Promise((resolve, reject) => {
   const open = indexedDB.open('phosphor-autosave', 1);
   open.onerror = () => reject(open.error);
@@ -287,13 +288,13 @@ test('Smear, Superformula and Aberration install from the Marketplace: Smear pai
   await pickLayer(page, 'Base');
   const group = page.locator('aside.control-panel fieldset.plugin-filter').filter({ hasText: 'Aberration' });
   await expect(group.locator('legend')).toContainText('Plugin');
-  const written = await editedAt(page);
   const distance = group.getByLabel('Distance', { exact: true });
   await distance.focus();
   for (let i = 0; i < 3; i++) await distance.press('ArrowRight');
   await expect.poll(() => store(page, 'project', (p) => p.filterOptions))
     .toEqual({ 'plugin:phosphor.aberration/aberration': { name: 'Aberration', values: { distance: 3 } } });
-  await expect.poll(() => editedAt(page)).toBeGreaterThan(written);
+  const changed = await page.evaluate(() => Date.now()); // the Distance change is in: a write that begins from now holds it
+  await expect.poll(() => editedAt(page)).toBeGreaterThanOrEqual(changed);
 
   await page.reload();
   await settled(page);
