@@ -63,9 +63,10 @@ const within = (a, b, most) => a.map((v, i) => Math.abs(v - b[i])).filter((d) =>
 // An identity filter against none. Byte for byte only where that holds by construction: with Simplify and Edges on, the
 // pass without a filter sharpens its center (after the effects) against neighbors from before them, while the pass
 // after a filter reads both after; so Sharpen with Simplify or Edges isn't the same, and isn't asked to be. And only
-// under a palette snap, or with no resampling: the pass without a filter reads the picture through its smoothing (a
-// processed size that isn't the picture's, as the app's almost always is) as colors between 8-bit steps, which the
-// filter's pass rounds to 8 bits, and only the snap rounds both alike (round8, center and neighbors).
+// where the picture isn't resampled: at a processed size that isn't the picture's (as the app's almost always is), the
+// pass without a filter reads the picture's smoothed colors between 8-bit steps, which the filter's pass reads rounded
+// to 8 bits. A palette snap doesn't make that exact either: the 8-bit texture's rounding differs from round8 at ties,
+// and that can flip a palette pick, so under a snap there's no useful bound.
 test('an identity filter changes no byte with Simplify and Edges off: no adjustment or snap is doubled', () => {
   // At the picture's own size, with no effects, the last main pass copies its 8-bit input (every read at a pixel's
   // center) and the identity filter copies that, so the pass after it reads the very colors the pass without a filter
@@ -81,14 +82,9 @@ test('an identity filter changes no byte with Simplify and Edges off: no adjustm
   }
 });
 
-test('resampled, an identity filter changes no byte under a snap, and is within three without one', () => {
+test('resampled, an identity filter is within three of none without a snap', () => {
   const image = picture(), params = { brightness: 120, sharpen: 40 }, SIZE = 24; // 16 x 16 processed at 24 x 24
-  // Under the CGA snap, both round8 the center and its neighbors before adjusting them, and the filter's 8-bit pixels
-  // are those very roundings (each read where the pass without a filter reads it), so every byte is the same.
-  const snapped = { ...params, palette: PALETTES.cga };
-  expect(run(image, { ...snapped, pluginFilters: [filter('same', [IDENTITY])] }, {}, SIZE))
-    .toEqual(run(image, { ...snapped, pluginFilters: [] }, {}, SIZE));
-  // Without one, the filter's pass rounds the center and four neighbors that went in unrounded: each off by half a step
+  // The filter's pass rounds the center and four neighbors that went in unrounded: each off by half a step
   // at most, times brightness 1.2, the center then times 1 + 4 x 0.4 and the neighbors' sum times 0.4, is
   // 0.6 x (2.6 + 1.6) = 2.52 steps, and two outputs that close round at most three apart.
   const none = run(image, { ...params, pluginFilters: [] }, {}, SIZE);

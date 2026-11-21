@@ -186,10 +186,11 @@ const aberration = async (values) => {
 };
 
 test('Aberration: Distance 0 is the identity: no byte changed where the picture isn\'t resampled, and the identity filter\'s bytes where it is', async () => {
-  // The Task 8 identity check (plugin-filter-gpu.test.js), where it holds by construction: at the picture's own size,
-  // with Simplify and Edges off, any adjustments, Sharpen and palette. Resampled, a filter's pass rounds to 8 bits what
-  // the pass without one reads between steps, so there Distance 0 is held to the plain identity filter's bytes (a palette
-  // snap doesn't make that exact against none: with Sharpen 40 and CGA, one pixel of this picture snaps the other way).
+  // The Task 8 identity check (plugin-filter-gpu.test.js): byte identity against none holds only where the picture isn't
+  // resampled (Simplify and Edges off; any adjustments, Sharpen and palette). Resampled, a filter's pass reads the
+  // picture rounded to 8 bits where the pass without one reads it between steps, and under a snap the 8-bit texture's
+  // rounding differs from round8 at ties, which can flip a palette pick. So there Distance 0 is held to the plain
+  // identity filter's bytes: its pass is C exactly (L and R are C), so it's that filter whatever the rounding does.
   const heard = [];
   unlisten.push(onFilterFailure((...args) => heard.push(args)));
   const image = canvasOf((x, y) => [x * 16, y * 15, ((x * y) % 7) * 36]), filter = await aberration({ distance: 0 });
