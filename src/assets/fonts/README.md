@@ -37,7 +37,7 @@ The Fonts page lists bitmap fonts mirrored into `public/fonts/library/` (the ind
 Skipped: Mœbius's `app/fonts/viler/` (the VileR collection covers it; a font in both is listed once, under VileR's) and FROGBLOCK,
 which is linked to its author's page (`src/lib/linkedFonts.js`) and never copied. About credits both collections and FROGBLOCK.
 
-`npm run fonts` (`scripts/font-library.mjs`) mirrors new fonts from both and rewrites the index. It never deletes a font: one gone upstream stays.
+`npm run fonts` (`scripts/font-library.mjs`) mirrors new fonts from both and rewrites the index. It never deletes a font: one gone upstream stays. `npm run fonts -- --index-only` rewrites the index from the fonts already here and fetches nothing.
 
 On a version tag, the release job in `.github/workflows/desktop.yml` runs the same mirror, commits any new fonts to main and moves the tag onto
 that commit, so the release carries them. It needs the `FONTS_DEPLOY_KEY` secret; without it the release builds with the fonts already

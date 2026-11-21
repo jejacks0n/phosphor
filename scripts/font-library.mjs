@@ -1,5 +1,6 @@
 // Mirrors VileR's and Mœbius's font files into public/fonts/library/ and rebuilds the library's index.
-// `npm run fonts`. Never deletes a font: one gone upstream stays.
+// `npm run fonts`. Never deletes a font: one gone upstream stays. `npm run fonts -- --index-only` rebuilds the index from
+// the files already mirrored, fetching nothing.
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -97,11 +98,11 @@ async function walk(dir, base = '') {
   return out;
 }
 
-async function main() {
+async function main({ indexOnly = false } = {}) {
   const local = new Map(Object.entries(JSON.parse(await readFile(MIRROR_FILE, 'utf8').catch(() => '{}'))));
   const skip = LINKED_FONTS.map((f) => f.upstream);
   let changed = 0;
-  for (const { repo, from, to, keep } of SOURCES) {
+  for (const { repo, from, to, keep } of indexOnly ? [] : SOURCES) {
     const tree = (await (await get(`https://api.github.com/repos/${repo}/git/trees/master?recursive=1`)).json()).tree;
     const upstream = tree
       .filter((t) => t.type === 'blob' && t.path.startsWith(from) && keep(t.path.slice(from.length)))
@@ -117,12 +118,14 @@ async function main() {
     }
   }
   await mkdir(ROOT, { recursive: true });
-  await writeFile(MIRROR_FILE, `${JSON.stringify(Object.fromEntries([...local].sort()), null, 1)}\n`);
+  if (!indexOnly) await writeFile(MIRROR_FILE, `${JSON.stringify(Object.fromEntries([...local].sort()), null, 1)}\n`);
   // FONTS.TXT lives at the repo's root, outside FONTS/: fetched when missing, shipped unchanged.
-  const fontsTxt = (await readFile(join(ROOT, 'viler', 'FONTS.TXT'), 'utf8').catch(() => '')) ||
-    (await (await get('https://raw.githubusercontent.com/viler-int10h/vga-text-mode-fonts/master/FONTS.TXT')).text());
-  await mkdir(join(ROOT, 'viler'), { recursive: true });
-  await writeFile(join(ROOT, 'viler', 'FONTS.TXT'), fontsTxt);
+  const fontsTxt = (await readFile(join(ROOT, 'viler', 'FONTS.TXT'), 'utf8').catch(() => '')) || (indexOnly ? '' :
+    await (await get('https://raw.githubusercontent.com/viler-int10h/vga-text-mode-fonts/master/FONTS.TXT')).text());
+  if (!indexOnly) {
+    await mkdir(join(ROOT, 'viler'), { recursive: true });
+    await writeFile(join(ROOT, 'viler', 'FONTS.TXT'), fontsTxt);
+  }
 
   const paths = (await walk(ROOT)).sort();
   const files = await Promise.all(paths.map(async (path) => ({ path, bytes: new Uint8Array(await readFile(join(ROOT, path))) })));
@@ -135,4 +138,4 @@ async function main() {
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `changed=${changed}\n`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main({ indexOnly: process.argv.includes('--index-only') });
