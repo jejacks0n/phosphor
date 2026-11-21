@@ -84,8 +84,8 @@ A [plugin](plugins.md) with a script can add ways to choose characters. They're 
 built-ins, by the plugin's names, and only the ones that do the drawing's Art style. A plugin solver is a kind of By
 shape: it sees each cell as By shape does, and it holds to the layer's set (and the characters it adds itself), the
 palette and the style, so a cell it draws can never be outside them. Its options show under it, in the plugin's own words:
-sliders, checkboxes and choices. Each option change is one undo step, and the choice and the options are kept for each
-layer and saved with the drawing. Choosing one, or changing an option, works out the whole drawing again, which for a
+sliders, checkboxes, choices and colors. Each option change is one undo step, and the choice and the options are kept
+for each layer and saved with the drawing. Choosing one, or changing an option, works out the whole drawing again, which for a
 large one takes a moment ("Working out the characters…" shows while it does).
 
 Over the picture, a plugin solver may look at the cells around a cell (as far as its own reach). Where paint is drawn

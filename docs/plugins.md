@@ -586,7 +586,7 @@ export default {
 A filter runs only while one of its options is off its default, so installing one changes no drawing, and its Reset
 puts it back. Make each option's default the setting that changes nothing, as Aberration's Distance 0 is. Its values are
 part of the drawing: each change is an undo step, as a slider's is, and they go wherever the drawing's settings go
-(autosave, Versions, the file, Duplicate). Image filters' Reset leaves them; Reset all clears them.
+(autosave, Versions and the file). Image filters' Reset leaves them; Reset all clears them.
 
 Filters work on the picture after Blur, Simplify and Edges, one after another in the order their groups show (the
 Plugins dialog's order, then each script's), and then come the color sliders, Sharpen and the palette. Sharpen works on
