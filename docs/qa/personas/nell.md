@@ -276,7 +276,7 @@ change one cell on the way.
 
 ### 28. Use a library font
 - Does: on the Fonts page, chooses a VileR font and a Mœbius font in the Library group; reads the tags, From and License lines; clicks a tag chip; presses Use this font on one and Add to Yours on the other; chooses the first again; chooses FROGBLOCK, follows Get it ↗, then uses + Load with the file.
-- Expects: details say "Bitmap 8×h · Library" with both buttons; VileR says None given · credits in FONTS.TXT, Mœbius says Unknown · Know it? Tell us; a tag chip becomes the picked tag; Use this font makes it the drawing's font and puts it in Yours, Add to Yours only puts it in Yours; a font already in Yours shows its stored details with the same From and License lines and isn't added twice; FROGBLOCK says "not included" with Get it ↗, + Load and its credit, and the loaded file shows as FROGBLOCK with its credit under its name.
+- Expects: details say "Bitmap 8×h · Library" with both buttons; VileR says None given · credits in FONTS.TXT, Mœbius says Unknown · Know it? Tell us; a tag chip becomes the picked tag; Use this font makes it the drawing's font and puts it in Yours, Add to Yours only puts it in Yours; a font already in Yours shows its stored details with the same From and License lines and isn't added twice; FROGBLOCK says "not included" with Get it ↗, + Load and its credit, and the loaded file shows as FROGBLOCK with its credit under its name, and its credit shows under the settings panel's Font field while the drawing uses it.
 - Probes: `interrupt`: reload right after Use this font and check the font is in Yours once; `offline`: Use this font with the network off says so and changes nothing.
 - Rated: no (library)
 

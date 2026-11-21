@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { DISPLAY_FONTS, MIN_FONT_SIZE as MIN_SIZE, MAX_FONT_SIZE as MAX_SIZE } from '@/lib/displayFonts';
 import { useProjectStore } from '@/store/ProjectStore';
 import { fontId } from '@/lib/BitmapFont';
+import { linkedFontOf } from '@/lib/linkedFonts';
 import { notSetUp } from '@/lib/fontSetup';
 import { storedBitmapFont } from '@/lib/userFonts';
 import { useFontActions } from '@/composables/useFontActions';
@@ -18,6 +19,7 @@ const project = useProjectStore();
 const current = computed(() => workspace.displayFontSpec);
 const loaded = computed(() => workspace.userFonts ?? []);
 const drawn = computed(() => project.drawingFont);   // the drawing's own bitmap font, if it has one (the document's)
+const credit = computed(() => (drawn.value ? linkedFontOf(fontId(drawn.value))?.credit : null)); // a linked font's credit, like FROGBLOCK's
 const yours = computed(() => loaded.value.filter((font) => font.id !== (drawn.value && current.value.id)));
 const { choose, hostsFont } = useFontActions();
 // In a room, the bitmap fonts of yours that aren't set up (a room can't edit blocks, so it takes no such font).
@@ -103,6 +105,7 @@ const onSize = (event) => {
       >
     </div>
     <p v-if="hostsFont" class="hosts-font">{{ t('font.hostsFont') }}</p>
+    <p v-if="credit" class="credit">{{ credit }}</p>
     <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
   </div>
 </template>
@@ -144,6 +147,12 @@ p.problem {
   font-size: 12px;
   line-height: 1.4;
   color: var(--danger);
+}
+
+p.credit {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 p.hosts-font {

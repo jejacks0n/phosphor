@@ -1,11 +1,18 @@
 // The settings Font field: the dropdown and the size choose the font; Manage fonts ▸ opens the palette layer's Fonts
 // page, where fonts are loaded, saved and removed.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
+import { fontId } from '@/lib/BitmapFont';
 import FontField from '@/components/FontField.vue';
+
+// A stand-in linked font: the one whose bytes are all 1s, which the other tests' drawing font uses too.
+const stub = new Uint8Array(2048).fill(7);
+vi.mock('@/lib/linkedFonts', () => ({
+  linkedFontOf: (id) => (id === globalThis.__linkedId ? { credit: 'FROGBLOCK font by Polyducks' } : null),
+}));
 
 let app = null, host = null;
 afterEach(() => {
@@ -83,4 +90,17 @@ test('a font chosen before a drawing is listed as the next drawing\'s', async ()
   await project.setBlankCanvas({ cols: 10, rows: 10 });
   await nextTick();
   expect([...host.querySelectorAll('optgroup')].map((g) => g.label)).toContain('This drawing');
+});
+
+test('a linked font\'s credit shows under the Font field, and any other font shows none', async () => {
+  const { project } = await mount();
+  expect(host.querySelector('p.credit')).toBeNull();
+  globalThis.__linkedId = fontId({ name: 'A', height: 8, bytes: stub });
+  project.setDrawingFont({ name: 'A', height: 8, bytes: stub });
+  await nextTick();
+  expect(host.querySelector('p.credit').textContent).toBe('FROGBLOCK font by Polyducks');
+  project.setDrawingFont({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
+  await nextTick();
+  expect(host.querySelector('p.credit')).toBeNull();
+  globalThis.__linkedId = undefined;
 });
