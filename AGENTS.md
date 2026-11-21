@@ -90,27 +90,38 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   tests are the `desktop-*` files in `tests/unit`, `tests/browser` (the `browser-desktop` project) and `tests/e2e`.
 - Plugins ([docs/plugins.md](docs/plugins.md)): `src/plugins/` (`manifest.js`, a stranger's `phosphor-plugin.json` read
   into a clean manifest, and the color slots; `zip.js` and `package.js`, a folder, a `.zip` or a lone manifest read into
-  the manifest and the script it names; `script.js`, a script's export read into clean solvers; `solvers.js`, the solvers
-  on offer, the layer's options and the stand-ins; `hangMark.js`, the mark a script leaves while it runs, so a
-  plugin that froze the page starts off next time; `themes.js`, a theme value naming a plugin's theme, what it resolves
-  to, the copy kept for `index.html`'s first paint, `?plugins=off`; `storage.js`, the IndexedDB records),
-  `src/lib/PluginSolve.js` (a plugin solver's passes in JavaScript, the reference its shader must agree with; its
-  shader's side is in `src/lib/ShapeMatcher.js`, and the agreement check in `src/document/Renderer.js`),
-  `src/store/PluginStore.js` (installed plugins, the themes on offer, Reload, Follow file and Allow, and the Marketplace's list
-  and installs from it); the Marketplace: `listing.js` (a listing's rules: the wiki's links, reading `plugins.json`, raw URLs,
-  what a card's button is), `hash.js` (sha256) and `market.js` (the page's fetches, hash-checked), `desktop/pluginList.js`
-  (the desktop main process's two fetches: phosphor.work's list and raw GitHub only), `scripts/plugin-list.mjs` (builds
-  `plugins.json` in CI, in `.github/workflows/deploy.yml`, and refreshed by `.github/workflows/plugin-list.yml`),
+  the manifest and the script it names; `script.js`, a script's export read into clean solvers, brushes, shapes and
+  filters; `icon.js`, a brush's or shape's SVG icon read and rebuilt, so none of a stranger's markup reaches the page;
+  `solvers.js`, the registry of a script's parts (its solvers, brushes, shapes and filters by ref), the layer's options
+  and the stand-ins; `filters.js`, a filter's values as a drawing keeps them (`filterOptions`) and the settings column's
+  groups; `hangMark.js`, the mark a script leaves while it runs, so a plugin that froze the page starts off next time;
+  `themes.js`, a theme value naming a plugin's theme, what it resolves to, the copy kept for `index.html`'s first paint,
+  `?plugins=off`; `storage.js`, the IndexedDB records), `src/lib/PluginSolve.js` (a plugin solver's passes in
+  JavaScript, the reference its shader must agree with; its shader's side is in `src/lib/ShapeMatcher.js`, and the
+  agreement check in `src/document/Renderer.js`), `src/tools/pluginBrush.js` (a plugin brush as a tool, and a stroke's
+  `paint`), `src/tools/pluginTool.js` (what a plugin's brushes and shapes share: their options in the toolbar, the hang
+  mark on a first call, a failure said), the Shape tool's plugin shapes in `src/tools/vshape.js`, the plugin brushes
+  beside the built-in tools in `src/tools/index.js` (`pluginTools`), a filter's passes in `src/lib/WebGLProcessor.js`
+  (after the effects, before the color sliders), `src/store/PluginStore.js` (installed plugins, the themes on offer,
+  Reload, Follow file and Allow, and the Marketplace's list and installs from it); the Marketplace: `listing.js` (a
+  listing's rules: the wiki's links, reading `plugins.json`, raw URLs, what a card's button is), `hash.js` (sha256) and
+  `market.js` (the page's fetches, hash-checked), `desktop/pluginList.js` (the desktop main process's two fetches:
+  phosphor.work's list and raw GitHub only), `scripts/plugin-list.mjs` (builds `plugins.json` in CI, in
+  `.github/workflows/deploy.yml`, and refreshed by `.github/workflows/plugin-list.yml`),
   `src/components/PluginMarket.vue` (the Marketplace tab) and the fixture list `tests/fixtures/plugin-list.json` (the
   dev server answers `/plugins.json` with it, and its plugins' files at `/dev-raw/`, in raw GitHub's place, from
-  `vite.config.js`'s `devRawFile`),
-  `src/components/PluginsDialog.vue`, `src/components/SolverOptions.vue` (a solver's options in the Characters section)
-  and `src/composables/useTheme.js` (the theme on `<html>`; `index.html`'s inline script paints it before the app starts
-  by the same rules). A plugin's script runs only after the person says Install; it is the one code a plugin brings.
-  A plugin solver is a kind of By shape, with the rule R12 in [docs/model.md](docs/model.md). Its tests are the `plugin-*`
-  files and `solver-options.test.js` in `tests/unit` and `tests/browser`, `tests/browser/plugins-dialog.test.js` and
-  `tests/e2e/plugins.spec.js`, with the official plugins in `plugins/` (Midnight, a theme, and Outlines, a solver; they aren't in the app's build, and people install them from the Marketplace) and, in
-  `tests/fixtures/plugins/`, `outlines.zip`, as GitHub makes one.
+  `vite.config.js`'s `devRawFile`), `src/components/PluginsDialog.vue`, `src/components/SolverOptions.vue` (a solver's
+  options in the Characters section, and a filter's in its group, which `src/components/ControlPanel.vue` draws after
+  Image filters) and `src/composables/useTheme.js` (the theme on `<html>`; `index.html`'s inline script paints it before
+  the app starts by the same rules). A plugin's script runs only after the person says Install; it is the one code a
+  plugin brings. A plugin solver is a kind of By shape, with the rule R12 in [docs/model.md](docs/model.md); a plugin
+  brush's paint follows R5 there. Its tests are the `plugin-*` files and `solver-options.test.js` in `tests/unit` and
+  `tests/browser` (a brush's in `plugin-brush.test.js`, a shape's in `plugin-shape.test.js`, a filter's in
+  `plugin-filters.test.js` and `plugin-filter-gpu.test.js`, an icon's in `tests/unit/plugin-icon.test.js`, the three
+  examples' in `tests/browser/plugin-examples.test.js`), `tests/browser/plugins-dialog.test.js` and
+  `tests/e2e/plugins.spec.js`, with the official plugins in `plugins/` (Midnight, a theme; Outlines, a solver; Smear, a
+  brush; Superformula, a shape; and Aberration, a filter; they aren't in the app's build, and people install them from
+  the Marketplace) and, in `tests/fixtures/plugins/`, `outlines.zip`, as GitHub makes one.
 - `src/dev/actionLog.js` (and `skipped.js`, the actions it leaves out) and `src/components/dev/HistoryPanel.vue`: the
   development-only HISTORY tab, every step taken this session as a log to paste into a bug report ([docs/testing.md](docs/testing.md)).
 - `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be

@@ -1,10 +1,11 @@
 // Plugins through the whole page: a manifest installed with the real file chooser, its theme there before the app's
-// script runs after a reload, the plugins=off address, a kept copy of a theme that's damaged, and Outlines (the example
-// solver) installed from its folder and its zip, drawing, kept over a reload, and missed by a browser without it.
+// script runs after a reload, the plugins=off address, a kept copy of a theme that's damaged, Outlines (the example
+// solver) installed from its folder and its zip, drawing, kept over a reload, and missed by a browser without it, and
+// the examples of a brush, a shape and a filter (Smear, Superformula, Aberration) installed from the Marketplace and used.
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { test, expect, openApp, pickLayer, settled, autosaved, store, saveAs, imageInput, otherBrowser } from './support.js';
+import { test, expect, openApp, pickLayer, settled, autosaved, store, saveAs, imageInput, otherBrowser, tab, drag, screenPixels } from './support.js';
 
 const MANIFEST = fileURLToPath(new URL('../../plugins/midnight/phosphor-plugin.json', import.meta.url));
 const OUTLINES = fileURLToPath(new URL('../../plugins/outlines', import.meta.url));
@@ -162,6 +163,12 @@ const FILES = {
   [`jejacks0n/phosphor/${SHA}/plugins/midnight/phosphor-plugin.json`]: await readFile(MANIFEST, 'utf8'),
   [`kim/phosphor-rain/${SHA}/phosphor-plugin.json`]: await readFile(new URL('plugins/rain/phosphor-plugin.json', FIXTURES), 'utf8'),
 };
+// The three examples of a brush, a shape and a filter, each its folder's manifest and script, as the list has them.
+for (const [folder, script] of [['smear', 'smear.js'], ['superformula', 'superformula.js'], ['aberration', 'aberration.js']]) {
+  for (const file of ['phosphor-plugin.json', script]) {
+    FILES[`jejacks0n/phosphor/${SHA}/plugins/${folder}/${file}`] = await readFile(new URL(`../../plugins/${folder}/${file}`, import.meta.url), 'utf8');
+  }
+}
 async function routeMarket(page, list = () => LIST, files = FILES) {
   await page.route('**/plugins.json', (route) => route.fulfill({ json: list() }));
   await page.route(`${RAW}**`, (route) => {
@@ -227,4 +234,71 @@ test('on a phone the Plugins dialog fills the window and × closes it', async ({
   expect(box).toEqual({ x: 0, y: 0, width: 390, height: 844 });
   await dialog(page).getByRole('button', { name: 'Close' }).click();
   await expect(dialog(page)).toHaveCount(0);
+});
+
+// The autosave record's editedAt for the open document (0 before its first write): it moves on with each change written.
+const editedAt = (page) => store(page, 'project', (p) => p.documentId).then((id) => page.evaluate((id) => new Promise((resolve, reject) => {
+  const open = indexedDB.open('phosphor-autosave', 1);
+  open.onerror = () => reject(open.error);
+  open.onsuccess = () => {
+    const db = open.result;
+    const get = db.transaction('documents').objectStore('documents').get(id);
+    get.onsuccess = () => { db.close(); resolve(get.result?.editedAt ?? 0); };
+  };
+}), id));
+
+test('Smear, Superformula and Aberration install from the Marketplace: Smear paints, Superformula draws, and Aberration is kept over a reload', async ({ page }) => {
+  await routeMarket(page);
+  await openApp(page, 'images/square.png'); // a black square on white: hard edges for Smear to drag across
+  await openPlugins(page);
+  for (const name of ['Smear', 'Superformula', 'Aberration']) {
+    await dialog(page).getByPlaceholder('Search plugins').fill(name.toLowerCase());
+    await dialog(page).getByRole('button', { name: 'Install', exact: true }).click();
+    await expect(page.getByRole('heading', { name: `Install ${name} 1.0.0?` })).toBeVisible();
+    await dialog(page).getByRole('button', { name: /^Install Adds a script/ }).click();
+    await expect(dialog(page).getByRole('button', { name: 'Installed', exact: true })).toBeVisible();
+  }
+  await dialog(page).getByRole('button', { name: 'Close' }).click();
+
+  // Smear, by its key, on PIXEL: a drag across the square's edges smudges what shows under it.
+  await tab(page, 'PIXEL').click();
+  await page.keyboard.press('j');
+  expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('plugin:phosphor.smear/smear');
+  const box = await page.locator('.pixel-display').boundingBox();
+  const strip = { x: Math.floor(box.x), y: Math.floor(box.y + box.height / 2) - 4, width: Math.floor(box.width), height: 8 };
+  const offCanvas = () => page.mouse.move(box.x + box.width / 2, box.y + box.height + 40); // no brush circle in the strip
+  await offCanvas();
+  const before = await screenPixels(page, strip);
+  await drag(page, { x: box.x + box.width * 0.05, y: box.y + box.height / 2 }, { x: box.x + box.width * 0.95, y: box.y + box.height / 2 });
+  await offCanvas();
+  await settled(page);
+  await expect.poll(async () => (await screenPixels(page, strip)).some((v, i) => v !== before[i])).toBe(true);
+  expect(await store(page, 'project', (p) => p.canUndo)).toBe(true);
+
+  // Superformula, in the Shape tool's row on VECTOR: one drag, one path of its 120 corners.
+  await pickLayer(page); // Vector 1, added: the tabs go to VECTOR
+  await page.keyboard.press('u');
+  await page.getByRole('button', { name: 'Superformula (Superformula)', exact: true }).click();
+  const display = await page.locator('.ansi-editor .display').boundingBox();
+  await drag(page, { x: display.x + display.width * 0.3, y: display.y + display.height * 0.3 }, { x: display.x + display.width * 0.7, y: display.y + display.height * 0.7 });
+  expect(await store(page, 'project', (p) => [...p.shapes.values()].map((shape) => shape.points.length))).toEqual([120]);
+
+  // Aberration's group, with the base picked: Distance to 3, written by autosave, and there again after a reload.
+  await pickLayer(page, 'Base');
+  const group = page.locator('aside.control-panel fieldset.plugin-filter').filter({ hasText: 'Aberration' });
+  await expect(group.locator('legend')).toContainText('Plugin');
+  const written = await editedAt(page);
+  const distance = group.getByLabel('Distance', { exact: true });
+  await distance.focus();
+  for (let i = 0; i < 3; i++) await distance.press('ArrowRight');
+  await expect.poll(() => store(page, 'project', (p) => p.filterOptions))
+    .toEqual({ 'plugin:phosphor.aberration/aberration': { name: 'Aberration', values: { distance: 3 } } });
+  await expect.poll(() => editedAt(page)).toBeGreaterThan(written);
+
+  await page.reload();
+  await settled(page);
+  await pickLayer(page, 'Base');
+  await expect(group.locator('legend')).toContainText('Aberration');
+  await expect(group.getByLabel('Distance', { exact: true })).toHaveValue('3');
+  expect(await store(page, 'project', (p) => p.processParams.pluginFilters.map(({ ref }) => ref))).toEqual(['plugin:phosphor.aberration/aberration']);
 });

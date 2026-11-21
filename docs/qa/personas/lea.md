@@ -394,7 +394,7 @@ and sideways.
 
 ### 28b. Browse the Marketplace and install from it
 - Does: with no plugins installed, opens the settings and taps Plugins (it opens on Marketplace, filling her phone's window);
-  looks at the cards, types "rain" in Search plugins, clears it, picks Themes then Solvers in the Show menu, and picks
+  looks at the cards, types "rain" in Search plugins, clears it, picks Themes then Scripts in the Show menu, and picks
   All again; taps Install on Rain, reads the question and taps Install; taps the Installed tab; then back on Marketplace
   taps Install on Outlines, reads the question and taps Cancel. The app answers `/plugins.json` with the fixture list
   (`tests/fixtures/plugin-list.json`), and the development server serves the listed plugins' files from the checkout, so
@@ -443,6 +443,69 @@ and sideways.
   Outlines is still chosen.
 - Rated: no (touch only: no keyboard shows here)
 
-**Free time:** she'd open Midnight's homepage link and How plugins work, switch the language with Midnight in use, and tap Remove on Outlines to see what her drawing says when its plugin is gone (the note then says "outlines isn't installed", the solver's id, as the plugin's name is gone with it).
+### 31. Install a brush, a shape and a filter
+- Does: opens the settings, taps Plugins and the Marketplace tab, picks Scripts in the Show menu; taps Install on Smear,
+  reads the question and taps Install; then the same for Superformula and Aberration; taps the Installed tab.
+- Expects: Scripts shows the cards of the plugins with a script (Outlines, Smear, Superformula and Aberration), not
+  Midnight or Rain; each question names the plugin ("Install Smear 1.0.0?"), says it's Official and "Adds a script.",
+  with "⚠ This plugin runs code in Phosphor. Install it only if you trust where it came from." under it, fitting 390
+  wide; each card then says Installed; on Installed the rows say what each script added: "1 brush", "1 shape" and "1
+  filter", with the Official badge ([The Marketplace](../../plugins.md#the-marketplace)).
+- Probes: `back-out`: tap Cancel at Smear's question and check its card still says Install; `again`: tap Install on
+  Superformula once it says Installed (nothing happens).
+- Rated: no (touch only: no keyboard shows here)
+
+### 32. Smear her selfie
+- Does: closes the dialog, picks her layer ("doodles") in Layers, opens ⋯ in the toolbar and picks Smear; drags a finger
+  across her face, from her cheek out past its edge; sets Strength to 100 and Size to 12 and smears again; picks Reads →
+  This layer and smears where she hasn't painted; undoes the last two strokes from Actions → Undo.
+- Expects: Smear is in ⋯ after the built-in tools, with its own icon, named "Smear (Smear)"; chosen, its options show in
+  the options row in its words (Size, Strength, Reads), fitting 390 wide or folding into the row's own ⋯; a drag drags
+  the colors under it along the way her finger went, softer at the brush's edge, and in ANSI the cells show it as Colors
+  only does (▄ in the stroke's colors); a higher Strength smears more; with This layer a stroke where the layer has no
+  paint changes nothing; each stroke is one undo step ([Writing a brush](../../plugins.md#writing-a-brush)).
+- Probes: `out-of-order`: tap once without dragging (a press alone changes nothing); `extremes`: Strength 0 (nothing
+  changes) and Size 20; `again`: reload and check Smear's Size and Strength are as she left them (they're kept in the
+  browser, not the drawing).
+- Rated: no (drawing)
+
+### 33. Draw a Superformula star
+- Does: opens Layers and taps Add vector layer (the tabs go to VECTOR); picks the Shape tool, taps Superformula in its
+  row of shapes, and drags a finger from corner to corner; sets Points to 8 and drags another; undoes the second.
+- Expects: the row of shapes shows Superformula's star after Rectangle, Ellipse and Polygon, named "Superformula
+  (Superformula)"; chosen, Points, Pinch and Round follow the row, fitting 390 wide; the drag draws a soft five-pointed
+  star live in the next shape's style, filling the box she drags, and selected when she lets go; Points 8 makes the next
+  star eight-pointed while the first stays five; each star is one undo step, and an ordinary shape the Node tool can
+  edit ([Writing a shape](../../plugins.md#writing-a-shape)).
+- Probes: `back-out`: tap without dragging (it makes nothing); `extremes`: Points 1 and 20, and Pinch 4; `undo-redo`:
+  undo the star from Actions → Undo, then Redo.
+- Rated: no (drawing)
+
+### 34. Set Aberration, save, and come back to it
+- Does: picks Base in Layers, opens the settings and scrolls past Image filters to Aberration; drags Distance to 3 and
+  picks a new Left color from its swatch; folds the group; then taps Save project, keeps the name and presses Go, and
+  reloads the page.
+- Expects: Aberration's group is after Image filters, titled Aberration with a PLUGIN chip and its own Reset, with
+  Distance and the two colors (the colors beside the Distance slider), fitting the column's width; at Distance 3 the
+  picture's edges split into her two colors; folded, the group says how many of its options are on; Distance and the
+  color are each one undo step; a .phosphor downloads; after the reload Aberration is still at 3 with her color, and the
+  picture is the same ([Writing a filter](../../plugins.md#writing-a-filter)).
+- Probes: `undo-redo`: undo the Distance change from Actions → Undo, then Redo; `out-of-order`: pick her layer and check
+  Aberration's group isn't shown there (only with Base picked); `extremes`: Distance 10.
+- Rated: yes, wants Go on the phone's keyboard
+
+### 35. Switch Aberration off
+- Does: opens Plugins and taps Aberration's switch to Off; reads Aberration's group in the settings; taps Export .png
+  and looks at the dialog before closing it; then taps the switch back On.
+- Expects: with it Off the picture shows without the split, and the group is dimmed and says "Aberration is off. The
+  picture shows without it.", keeping her values; the export dialog says "Left out: the plugin filter Aberration.";
+  back On the split comes back with her values
+  ([A drawing without the filter](../../plugins.md#a-drawing-without-the-filter)).
+- Probes: `interrupt`: open the app at `/?plugins=off` and check the group says the same; `back-out`: tap Remove on
+  Aberration, then Cancel at "Remove Aberration?", and check the group is as it was; `again`: switch it Off and On three
+  times.
+- Rated: no (touch only: no keyboard shows here)
+
+**Free time:** she'd open Midnight's homepage link and How plugins work, switch the language with Midnight in use, and tap Remove on Outlines to see what her drawing says when its plugin is gone (the note then says "outlines isn't installed", the solver's id, as the plugin's name is gone with it), and remove Aberration to see its group say "Aberration isn't installed. The picture shows without it.", then press Reset on it.
 
 ## Known
