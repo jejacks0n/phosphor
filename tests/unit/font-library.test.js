@@ -94,6 +94,15 @@ describe('font library', () => {
     }
   });
 
+  it('fetches a font whose path has a # or spaces in it, each part encoded', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, arrayBuffer: async () => new ArrayBuffer(256 * 16) });
+    vi.stubGlobal('fetch', fetchMock);
+    const { libraryFile } = await mod();
+    await libraryFile({ name: 'DKY#001', file: 'viler/BIGPILE/DKY#001.F16', height: 16 });
+    await libraryFile({ name: 'PETSCII shifted', file: 'moebius/c64/PETSCII shifted.F16', height: 16 });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/fonts/library/viler/BIGPILE/DKY%23001.F16', '/fonts/library/moebius/c64/PETSCII%20shifted.F16']);
+  });
+
   it('builds the license issue URL', async () => {
     const { tellUsUrl } = await mod();
     const u = new URL(tellUsUrl(index.fonts[1], index));

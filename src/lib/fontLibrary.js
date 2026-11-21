@@ -3,6 +3,8 @@ import { t } from '@/i18n';
 
 const base = () => `${import.meta.env.BASE_URL}fonts/library/`;
 const pad = (h) => String(h).padStart(2, '0');
+// A mirrored file's address: each part of its path encoded, so a # or a space in a name (DKY#001.F16) stays in the path.
+export const libraryUrl = (path) => `${base()}${path.split('/').map(encodeURIComponent).join('/')}`;
 
 let loading = null;
 let sauceNames = null;
@@ -60,7 +62,7 @@ const fail = (userMessage) => { throw Object.assign(new Error(userMessage), { us
 
 // One library font as a File; a fetch that fails (no network, a 404) or a file of the wrong size throws with its userMessage.
 export async function libraryFile(entry) {
-  const r = await fetch(`${base()}${entry.file}`).catch(() => null);
+  const r = await fetch(libraryUrl(entry.file)).catch(() => null);
   if (!r?.ok) fail(t('font.errors.libraryUnreachable', { name: entry.name }));
   const bytes = await r.arrayBuffer().catch(() => fail(t('font.errors.libraryUnreachable', { name: entry.name })));
   if (bytes.byteLength !== 256 * entry.height) fail(t('font.errors.notBitmap', { name: entry.name }));
