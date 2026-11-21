@@ -56,7 +56,7 @@ beforeEach(async () => {
   store = newStore();
 });
 afterEach(() => {
-  store?.dropSolvers('phosphor.outlines');
+  store?.dropScript('phosphor.outlines');
   vi.restoreAllMocks();
 });
 
@@ -109,7 +109,7 @@ test('a listed plugin is installed from its raw files, kept as from the marketpl
   const again = newStore();
   await again.load();
   expect(again.plugins[0]).toMatchObject({ source: 'marketplace', listing: read.listing });
-  store.dropSolvers('phosphor.outlines');
+  store.dropScript('phosphor.outlines');
   store = again;
 });
 

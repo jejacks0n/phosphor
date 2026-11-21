@@ -24,7 +24,7 @@ const FILTERS = {
   all: () => true,
   official: (entry) => entry.official,
   themes: (entry) => entry.manifest.themes.length > 0,
-  solvers: (entry) => !!entry.manifest.script,
+  scripts: (entry) => !!entry.manifest.script,
 };
 
 const shown = computed(() => {

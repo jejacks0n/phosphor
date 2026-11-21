@@ -12,12 +12,12 @@ import { referenceMask, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { PALETTES } from '@/lib/ColorUtils.js';
 import { ASCII_CHARSETS } from '@/lib/charsetPresets.js';
 import { readScript } from '@/plugins/script';
-import { solverRef, unregisterSolvers } from '@/plugins/solvers';
+import { solverRef, unregisterScript } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 
 afterEach(() => {
   vi.restoreAllMocks();
-  unregisterSolvers('phosphor.outlines');
+  unregisterScript('phosphor.outlines');
 });
 
 const def = readScript({ default: outlines }).solvers[0];

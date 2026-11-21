@@ -11,7 +11,7 @@ import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
 import { rectShape, ellipseShape, makeShape } from '@/document/shapes.js';
 import { readScript } from '@/plugins/script';
-import { unregisterSolvers } from '@/plugins/solvers';
+import { unregisterScript } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 import { onSolver } from '../support/pluginSolvers.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
@@ -22,7 +22,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 let app = null, host = null;
 afterEach(() => {
-  unregisterSolvers('phosphor.outlines');
+  unregisterScript('phosphor.outlines');
   app?.unmount();
   host?.remove();
   app = host = null;
@@ -778,10 +778,10 @@ test('a layer on a plugin solver: params carry it while it is registered and on;
   expect(project.layerParams.get('edit')).toMatchObject({ charMode: 'shape', solver: ref, wantedSolver: ref, standIn: null, solverOptions: { threshold: 40, thin: false, look: 0 } });
   project.setLayerChars('base', { charChoice: ref });
   expect(project.processParams).toMatchObject({ charMode: 'shape', solver: ref, standIn: null });
-  plugins.dropSolvers('phosphor.outlines');
+  plugins.dropScript('phosphor.outlines');
   expect(project.layerParams.get('edit')).toMatchObject({ charMode: 'shape', solver: null, wantedSolver: ref, standIn: 'missing', solverOptions: {} });
   expect(project.processParams).toMatchObject({ solver: null, standIn: 'missing' });
-  plugins.useSolvers('phosphor.outlines', 'h', [OUTLINES]);
+  plugins.useScript('phosphor.outlines', 'h', { solvers: [OUTLINES] });
   expect(project.layerParams.get('edit').solver).toBe(ref);
   await plugins.setEnabled?.('phosphor.outlines', false);
   if (plugins.setEnabled) expect(project.layerParams.get('edit')).toMatchObject({ solver: null, standIn: 'off' });
@@ -863,7 +863,7 @@ test('pluginSolverLayers names the layers on a plugin solver, stand-ins included
   project.setLayerChars('edit', { charChoice: ref });
   project.setLayerChars('base', { charChoice: ref });
   expect(project.pluginSolverLayers).toEqual([{ id: 'base', name: 'Base' }, { id: 'edit', name: 'Layer 1' }]);
-  plugins.dropSolvers('phosphor.outlines');
+  plugins.dropScript('phosphor.outlines');
   expect(project.pluginSolverLayers.map(({ id }) => id)).toEqual(['base', 'edit']);
 });
 

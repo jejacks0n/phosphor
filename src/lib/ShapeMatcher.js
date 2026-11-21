@@ -14,7 +14,7 @@ import { bayerNudge, nudgeSpread } from './Dither.js';
 import { colorOf, ASCII_BG } from './Cells.js';
 import { cellRange, SAMPLES } from './CharResolver.js';
 import { grownArea } from './PluginSolve.js';
-import { onSolversDropped, pluginOfSolver } from '../plugins/solvers.js';
+import { onScriptDropped, pluginOfSolver } from '../plugins/solvers.js';
 
 const MAX_GLYPHS = 255; // a glyph's index is a byte, 255 the solid
 const MAX_COLORS = 256;
@@ -356,7 +356,7 @@ export default class ShapeMatcher {
     this.#gl = gl;
     this.maxSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
     this.#programs = { shape: this.#compile('shape', SHAPE), best: this.#compile('best', BEST), mixLut: this.#compile('mixLut', MIX_LUT) };
-    onSolversDropped((pluginId) => {
+    onScriptDropped((pluginId) => {
       for (const [key, { program }] of this.#plugins) {
         if (pluginOfSolver(key.slice(0, key.indexOf('\u0000'))) !== pluginId) continue;
         if (program) gl.deleteProgram(program);

@@ -47,7 +47,7 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   for (const id of Object.keys(store?.following ?? {})) await store.follow(id, false);
-  store?.dropSolvers(ID);
+  store?.dropScript(ID);
   localStorage.removeItem(HANG_KEY);
   vi.restoreAllMocks();
   window.showOpenFilePicker = undefined;
@@ -119,7 +119,7 @@ test('a load imports only on plugins, and none under plugins=off', async () => {
 
   await store.setEnabled(ID, true);
   expect(globalThis.ran).toBe(1);
-  store.dropSolvers(ID);
+  store.dropScript(ID);
   store = newStore();
   await store.load();
   expect(globalThis.ran).toBe(2);
@@ -127,7 +127,7 @@ test('a load imports only on plugins, and none under plugins=off', async () => {
   await store.load(); // the dialog opening: what this visit has is kept, not imported again
   expect(globalThis.ran).toBe(2);
 
-  store.dropSolvers(ID);
+  store.dropScript(ID);
   store = newStore();
   store.off = true;
   await store.load();
@@ -146,7 +146,7 @@ test('a plugin with a script is not installed while plugins are off', async () =
 
 test('a stored script whose hash no longer matches is not loaded and says so', async () => {
   await installed();
-  store.dropSolvers(ID);
+  store.dropScript(ID);
   const [record] = await loadPlugins();
   await putPlugin({ ...record, script: script({ name: 'Swapped' }) });
   store = newStore();
@@ -157,7 +157,7 @@ test('a stored script whose hash no longer matches is not loaded and says so', a
 
 test('a hang mark left by the last visit switches that plugin off with the reason', async () => {
   await installed();
-  store.dropSolvers(ID);
+  store.dropScript(ID);
   localStorage.setItem(HANG_KEY, JSON.stringify({ pluginId: ID, page: 'a-page-no-one-holds' }));
   store = newStore();
   await store.load();
@@ -181,7 +181,7 @@ test('a hang mark left by the last visit switches that plugin off with the reaso
 
 test('a mark another open page holds is not a hang', async () => {
   await installed();
-  store.dropSolvers(ID);
+  store.dropScript(ID);
   beginRun(ID); // this page stands in for the other: it holds its lock
   store = newStore();
   await store.load();
@@ -194,7 +194,7 @@ const slow = (name) => script({ name, top: 'globalThis.ran++; await new Promise(
 
 test('a new script installed while a load imports the old one is the one registered', async () => {
   await installed(pkg(manifest(), slow('Edges')));
-  store.dropSolvers(ID);
+  store.dropScript(ID);
   globalThis.ran = 0;
   store = newStore();
   const loading = store.load();

@@ -191,7 +191,7 @@ test('a followed folder takes a save of either file', async () => {
     expect(reload).toHaveBeenCalledTimes(2);
     expect(store.following[ID]).toBe(true);
   } finally {
-    store.dropSolvers(ID);
+    store.dropScript(ID);
     window.showDirectoryPicker = undefined;
     await dir.removeEntry(folder.name, { recursive: true });
   }

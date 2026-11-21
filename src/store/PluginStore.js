@@ -12,7 +12,7 @@ import { defineStore } from 'pinia';
 import { t } from '@/i18n';
 import { readManifest, ManifestError } from '@/plugins/manifest';
 import { themeRef, pluginOfTheme, pluginsOff } from '@/plugins/themes';
-import { solverFor, pluginOfSolver, allSolvers, registerSolvers, unregisterSolvers, onSolverFailure, onSolverFault, onShaderOff, registeredHash } from '@/plugins/solvers';
+import { solverFor, filterFor, pluginOfSolver, allOf, registerScript, unregisterScript, onSolverFailure, onSolverFault, onShaderOff, onFilterFailure, registeredHash } from '@/plugins/solvers';
 import { readPackage, folderStamp } from '@/plugins/package';
 import { sha256, importScript, readScript } from '@/plugins/script';
 import { beginRun, endRun, hungLastTime } from '@/plugins/hangMark';
@@ -49,11 +49,11 @@ async function stampOf(record) {
   }
 }
 
-// A script's solvers, checked; importing runs its top level, so it's under the hang mark like a first resolve.
-async function solversOf(pluginId, script) {
+// A script's parts (solvers, brushes, shapes, filters), checked; importing runs its top level, so it's under the hang mark like a first resolve.
+async function scriptOf(pluginId, script) {
   beginRun(pluginId);
   try {
-    return readScript(await importScript(script)).solvers;
+    return readScript(await importScript(script));
   } catch (error) {
     throw refused(error);
   } finally {
@@ -61,10 +61,10 @@ async function solversOf(pluginId, script) {
   }
 }
 
-// A record's kept script, its hash checked, into its solvers; or an Error with its userMessage.
-async function keptSolvers(record) {
+// A record's kept script, its hash checked, into its parts; or an Error with its userMessage.
+async function keptScript(record) {
   if ((await sha256(record.script)) !== record.scriptHash) throw problem('hashMismatch', { name: record.manifest.name });
-  return solversOf(record.id, record.script);
+  return scriptOf(record.id, record.script);
 }
 
 // A record read before an await is still the one kept: nothing replaced it meanwhile.
@@ -100,6 +100,11 @@ function listen(store) {
       const message = log ?? (lost ? t('plugins.errors.shaderLost') : t('plugins.errors.shaderDisagrees', differ));
       store.problems[pluginOfSolver(ref)] = t('plugins.errors.shaderOff', { name: solverFor(ref)?.def.name ?? ref, message });
     }),
+    onFilterFailure((ref, why) => {
+      store.filterFailures[ref] = why;
+      const name = filterFor(ref)?.def.name ?? ref;
+      store.problems[pluginOfSolver(ref)] = why.lost ? t('plugins.errors.filterLost', { name }) : t('plugins.errors.filterShader', { name, log: why.log });
+    }),
     // Kept as a failure's are (until the plugin's solvers are registered again), and never over a failure's or a shader's words.
     onSolverFault((ref) => {
       store.problems[pluginOfSolver(ref)] ??= t('plugins.errors.solverFault', { name: solverFor(ref)?.def.name ?? ref });
@@ -121,7 +126,11 @@ export const usePluginStore = defineStore('plugins', {
     following: {},                           // { [id]: true } for files followed; not kept
     problems: {},                            // { [id]: words } for a file that couldn't be taken; not kept
     solvers: {},                             // { [ref]: { pluginId, name, styles, reach, chars, options } }, data only; not kept
-    solverStamp: 0,                          // bumped whenever the solvers or one's failure change
+    brushes: {},                             // { [ref]: { pluginId, name, index, options, icon, key, size } }, data only; not kept
+    shapes: {},                              // { [ref]: { pluginId, name, index, options, icon } }, data only; not kept
+    filters: {},                             // { [ref]: { pluginId, name, index, options } }, data only; not kept
+    filterFailures: {},                      // { [ref]: why } for a filter that didn't build or lost the context; not kept
+    solverStamp: 0,                          // bumped whenever the scripts' parts or a failure change
     pendingCode: {},                         // { [id]: { manifest, scriptText, handle, following } }: a reload that adds a script, asked about; not kept
     // the marketplace's list: idle, loading, ready or failed, and why it failed (a ListError's code, or unreachable); not kept
     market: { status: 'idle', entries: [], built: null, reason: null },
@@ -136,6 +145,11 @@ export const usePluginStore = defineStore('plugins', {
     },
     themes: (state) => (state.off ? [] : state.plugins.filter(({ enabled }) => enabled).flatMap(({ id, manifest }) =>
       manifest.themes.map(({ id: theme, name, base, colors }) => ({ ref: themeRef(id, theme), name, base, colors })))),
+    // How many of each a plugin's registered script adds.
+    partsOf: (state) => (pluginId) => {
+      const count = (slice) => Object.values(slice).filter((item) => item.pluginId === pluginId).length;
+      return { solvers: count(state.solvers), brushes: count(state.brushes), shapes: count(state.shapes), filters: count(state.filters) };
+    },
     // The loaded list's entry with that id, or null.
     marketFor: (state) => (id) => state.market.entries.find(({ manifest }) => manifest.id === id) ?? null,
     // A marketplace plugin whose repo and path the loaded list no longer has; never before the list has loaded.
@@ -146,22 +160,29 @@ export const usePluginStore = defineStore('plugins', {
   },
 
   actions: {
-    // Every register or unregister of a plugin's solvers goes through these two.
-    useSolvers(pluginId, hash, defs) {
+    // Every register or unregister of a plugin's script goes through these two.
+    useScript(pluginId, hash, parts) {
       listen(this);
-      registerSolvers(pluginId, hash, defs);
-      this.refreshSolvers();
+      registerScript(pluginId, hash, parts);
+      this.refreshScripts();
     },
 
-    dropSolvers(pluginId) {
+    dropScript(pluginId) {
       listen(this);
-      unregisterSolvers(pluginId);
-      this.refreshSolvers();
+      unregisterScript(pluginId);
+      this.refreshScripts();
     },
 
-    refreshSolvers() {
-      this.solvers = Object.fromEntries(allSolvers().map(([ref, pluginId, { name, styles, reach, chars, options }]) =>
+    refreshScripts() {
+      this.solvers = Object.fromEntries(allOf('solvers').map(([ref, pluginId, { name, styles, reach, chars, options }]) =>
         [ref, { pluginId, name, styles, reach, chars, options }]));
+      this.brushes = Object.fromEntries(allOf('brushes').map(([ref, pluginId, { name, options, icon, key, size }, index]) =>
+        [ref, { pluginId, name, index, options, icon, key, size }]));
+      this.shapes = Object.fromEntries(allOf('shapes').map(([ref, pluginId, { name, options, icon }, index]) =>
+        [ref, { pluginId, name, index, options, icon }]));
+      this.filters = Object.fromEntries(allOf('filters').map(([ref, pluginId, { name, options }, index]) =>
+        [ref, { pluginId, name, index, options }]));
+      for (const ref of Object.keys(this.filterFailures)) if (!this.filters[ref]) delete this.filterFailures[ref];
       this.solverStamp++;
     },
 
@@ -196,15 +217,15 @@ export const usePluginStore = defineStore('plugins', {
       for (const record of this.plugins) {
         // what this visit already has (the dialog loads each time it opens) isn't imported again
         if (!record.enabled || !record.script || registeredHash(record.id) === record.scriptHash) continue;
-        let defs;
+        let parts;
         try {
-          defs = await keptSolvers(record);
+          parts = await keptScript(record);
         } catch (error) {
           if (isCurrent(this, record)) this.problems[record.id] = error.userMessage ?? t('plugins.errors.notKept');
           continue;
         }
         // a Reload, a switch or another load while it imported: what they did stands
-        if (isCurrent(this, record)) this.useSolvers(record.id, record.scriptHash, defs);
+        if (isCurrent(this, record)) this.useScript(record.id, record.scriptHash, parts);
       }
     },
 
@@ -291,7 +312,7 @@ export const usePluginStore = defineStore('plugins', {
       const old = this.plugins.find((plugin) => plugin.id === id);
       const enabled = old ? old.enabled : true;
       const scriptHash = script === null ? null : await sha256(script);
-      const defs = script === null ? null : await solversOf(id, script);
+      const parts = script === null ? null : await scriptOf(id, script);
       await this.changing(id, {
         id, manifest, enabled, source: listing ? 'marketplace' : 'file', installedAt: Date.now(),
         ...(listing && { listing: { repo: listing.repo, path: listing.path, commit: listing.commit, official: listing.official } }),
@@ -300,8 +321,8 @@ export const usePluginStore = defineStore('plugins', {
       delete this.pendingCode[id];
       if (!handle) this.unfollow(id);
       // an older script's solvers go first, so nothing calls them again
-      this.dropSolvers(id);
-      if (defs && enabled) this.useSolvers(id, scriptHash, defs);
+      this.dropScript(id);
+      if (parts && enabled) this.useScript(id, scriptHash, parts);
     },
 
     // The linked file or folder read again: true when it's taken, false with the reason in problems (the record as it
@@ -403,10 +424,10 @@ export const usePluginStore = defineStore('plugins', {
     async setEnabled(id, on) {
       const record = this.plugins.find((plugin) => plugin.id === id);
       if (!record) return;
-      let defs = null;
+      let parts = null;
       if (on && record.script && !this.off) {
         try {
-          defs = await keptSolvers(record);
+          parts = await keptScript(record);
         } catch (error) {
           if (isCurrent(this, record)) this.problems[id] = error.userMessage ?? t('plugins.errors.notKept');
           return;
@@ -415,8 +436,8 @@ export const usePluginStore = defineStore('plugins', {
         delete this.problems[id];
       }
       await this.changing(id, { ...toRaw(record), enabled: on });
-      if (defs) this.useSolvers(id, record.scriptHash, defs);
-      else if (!on) this.dropSolvers(id);
+      if (parts) this.useScript(id, record.scriptHash, parts);
+      else if (!on) this.dropScript(id);
     },
 
     async uninstall(id) {
@@ -424,7 +445,7 @@ export const usePluginStore = defineStore('plugins', {
       delete this.problems[id];
       delete this.pendingCode[id];
       await this.changing(id, null);
-      this.dropSolvers(id);
+      this.dropScript(id);
     },
 
     // A plugin's record put (or deleted, for null), with the theme in use moved to its base when it's no longer on

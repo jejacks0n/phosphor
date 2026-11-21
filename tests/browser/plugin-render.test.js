@@ -7,7 +7,7 @@ import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { onSolver } from '../support/pluginSolvers.js';
 import { readScript } from '@/plugins/script';
 import { readManifest } from '@/plugins/manifest';
-import { failureOf, unregisterSolvers } from '@/plugins/solvers';
+import { failureOf, unregisterScript } from '@/plugins/solvers';
 import { HANG_KEY } from '@/plugins/hangMark.js';
 import { usePluginStore } from '@/store/PluginStore';
 import { busyMessage } from '@/composables/useBusy';
@@ -17,7 +17,7 @@ import midnight from '../../plugins/midnight/phosphor-plugin.json';
 const IDS = ['phosphor.outlines', 'jane.hang', 'jane.theme'];
 afterEach(() => {
   const plugins = usePluginStore();
-  for (const id of IDS) plugins.dropSolvers(id);
+  for (const id of IDS) plugins.dropScript(id);
   localStorage.removeItem(HANG_KEY);
 });
 
@@ -231,11 +231,11 @@ test('a movie\'s built frames are built again when only an upper layer\'s solver
   const built = async () => (await project.builtFrame(1), project._builder);
   const first = await built();
   expect(await built()).toBe(first); // nothing changed: kept
-  usePluginStore().useSolvers('phosphor.outlines', 'second', [def]); // a Reload: another script
+  usePluginStore().useScript('phosphor.outlines', 'second', { solvers: [def] }); // a Reload: another script
   await settle(project);
   const second = await built();
   expect(second).not.toBe(first);
-  usePluginStore().dropSolvers('phosphor.outlines'); // the layer stands in with By shape
+  usePluginStore().dropScript('phosphor.outlines'); // the layer stands in with By shape
   await settle(project);
   expect(await built()).not.toBe(second);
 });
@@ -254,7 +254,7 @@ async function checkered(upper) {
   await settle(project);
   expect(project.lowerGroup.upper).toEqual(upper ? ['edit'] : []);
   const shown = cellsKey(project);
-  usePluginStore().dropSolvers('phosphor.outlines');
+  usePluginStore().dropScript('phosphor.outlines');
   return shown;
 }
 test('a solver keyed on the cell\'s col and line draws an upper layer as it draws the lower group', async () => {
@@ -379,7 +379,7 @@ test('a solver gone between the params and the render is By shape there, and is 
   const ref = await onSolver(solver({ solve: () => (calls++, SLASH) }));
   await choose(project, ref);
   expect(project.processParams.solver).toBe(ref);
-  unregisterSolvers('phosphor.outlines'); // not through the store: the params still name it
+  unregisterScript('phosphor.outlines'); // not through the store: the params still name it
   calls = 0;
   project.render();
   await settle(project);
@@ -469,12 +469,12 @@ test('a solver swapped while a layer uses it: the next render calls the new one;
   await choose(project, ref);
   expect(old).toBeGreaterThan(0);
   const plugins = usePluginStore();
-  plugins.useSolvers('phosphor.outlines', 'h2', [solver({ solve: () => (now++, SLASH) })]); // a Reload
+  plugins.useScript('phosphor.outlines', 'h2', { solvers: [solver({ solve: () => (now++, SLASH) })] }); // a Reload
   await settle(project);
   expect(now).toBe(100);
   expect(project.cells.every((cell) => cell.char === '/')).toBe(true);
   old = now = 0;
-  plugins.dropSolvers('phosphor.outlines');
+  plugins.dropScript('phosphor.outlines');
   await settle(project);
   expect(cellsKey(project)).toEqual(byShape);
   project.brightness = 120;
