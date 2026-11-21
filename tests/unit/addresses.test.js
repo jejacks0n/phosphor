@@ -52,6 +52,11 @@ test.each([
   ['https://phosphor.work/?room=a&plugins=off#/pixel?room=b', '/pixel?room=b&plugins=off'],   // the hash's query wins
   ['https://phosphor.work/#//evil.example/x', '/evil.example/x'],   // never another origin
   ['https://phosphor.work/#/.//evil.example/x', '/evil.example/x'],
+  ['https://phosphor.work/#/\\evil.example/x', '/evil.example/x'],   // a backslash is a slash to the URL parser
   ['https://phosphor.work/social', null],
   ['https://phosphor.work/#section', null],
 ])('an old hash address %s is the path address %s', (href, expected) => expect(fromHashAddress(href)).toBe(expected));
+test.each(['https://phosphor.work/#/\\[', 'https://phosphor.work/#/\\a:99999', 'https://phosphor.work/#/\\\\'])('an old hash address %s never throws: a path of this origin or null', (href) => {
+  const path = fromHashAddress(href);
+  if (path !== null) expect(new URL(path, 'https://phosphor.work').origin).toBe('https://phosphor.work');
+});
