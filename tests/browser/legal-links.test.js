@@ -121,3 +121,15 @@ test('the Privacy Policy (en and fr) names Cloudflare as the web application\'s 
   expect(fr.default.replace(/\s+/g, ' ')).toContain("<strong>Cloudflare :</strong> Héberge et diffuse l'application web");
   expect(en.default + fr.default).not.toContain('GitHub Pages');
 });
+
+test('About credits the font library collections and the FROGBLOCK author, each with its link', async () => {
+  await mount(AboutPhosphor);
+  const hrefs = (text) => [...document.querySelectorAll('a')].filter((a) => a.closest('li')?.textContent.includes(text)).map((a) => a.href);
+  const viler = hrefs("VileR's VGA text mode fonts");
+  expect(viler).toContain('https://github.com/viler-int10h/vga-text-mode-fonts');
+  expect(viler).toContain(new URL(`${import.meta.env.BASE_URL}fonts/library/viler/FONTS.TXT`, location.href).href);
+  expect(document.body.textContent).toContain('credits in FONTS.TXT');
+  expect(hrefs('Mœbius XBin fonts')).toContain('https://github.com/hlotvonen/moebiusXBIN');
+  expect(document.body.textContent).toContain('license unknown');
+  expect(hrefs('FROGBLOCK font by Polyducks')).toEqual(['https://polyducks.itch.io/frogblock']);
+});

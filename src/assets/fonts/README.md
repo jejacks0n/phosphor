@@ -26,3 +26,19 @@ baseline) so they line up with it and with each other. Rebuild with:
 python3 -m pip install fonttools brotli
 python3 src/assets/fonts/make-display-fonts.py unscii-16-full.ttf unifont-16.0.04.otf unifont_upper-16.0.04.otf
 ```
+
+## The font library
+
+The Fonts page lists bitmap fonts mirrored into `public/fonts/library/` (the index is `index.json` there), from two collections:
+
+- VileR's [VGA text mode fonts](https://github.com/viler-int10h/vga-text-mode-fonts): `FONTS/**`, with its `FONTS.TXT` (the credits) shipped unchanged.
+- [Mœbius XBin fonts](https://github.com/hlotvonen/moebiusXBIN): `app/fonts/{amiga,c64,custom,discmaster,ibm}/**`. License unknown.
+
+Skipped: Mœbius's `app/fonts/viler/` (the VileR collection covers it; a font in both is listed once, under VileR's) and FROGBLOCK,
+which is linked to its author's page (`src/lib/linkedFonts.js`) and never copied. About credits both collections and FROGBLOCK.
+
+`npm run fonts` (`scripts/font-library.mjs`) mirrors new fonts from both and rewrites the index. It never deletes a font: one gone upstream stays.
+
+On a version tag, the release job in `.github/workflows/desktop.yml` runs the same mirror, commits any new fonts to main and moves the tag onto
+that commit, so the release carries them. It needs the `FONTS_DEPLOY_KEY` secret; without it the release builds with the fonts already
+committed and warns.
