@@ -107,7 +107,8 @@ export function getTool(id) {
   return BY_ID.get(id) ?? pluginTools().find((tool) => tool.id === id) ?? NONE;
 }
 
-// An option's value and its change: an option with get and set (a plugin brush's) uses them, any other the workspace's field.
+// An option's value and its change: an option with get or set (a plugin brush's or shape's, the Shape tool's kind) uses
+// them, any other the workspace's field.
 export const optionValue = (workspace, option) => (option.get ? option.get(workspace) : workspace[option.key]);
 export function setOptionValue(workspace, option, value) {
   if (option.set) option.set(workspace, value);

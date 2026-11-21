@@ -199,7 +199,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorPen: null,         // the key of the Pen's shape while it's being drawn, or null
     vectorStyle: { fill: 'fg', stroke: null, width: 1, cap: 'round', join: 'round', miter: 4, align: 'center' }, // what a new shape gets: a color, 'fg' (the foreground's then) or null
     vectorHover: null,       // where the pointer is over VECTOR's art, in grid pixels, for the Pen's next segment
-    vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon'
+    vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon', or a plugin shape's ref (vshape.shapeKind reads it)
     vectorSides: 5,          // a polygon's sides, 3 to 12
     sidePanelWidth: useLocalStorage('phosphor.sidePanelWidth', 280, { serializer: StorageSerializers.number, listenToStorageChanges: false }), // the side panel's (SidePanel) width in px, as dragged: each tab its own, the last kept for the next
     sidePanelFolded: useLocalStorage('phosphor.sidePanelFolded', false, { listenToStorageChanges: false }), // the side panel folded away (it starts open; a fold is kept in the browser)
