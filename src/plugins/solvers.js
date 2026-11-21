@@ -53,6 +53,14 @@ export const brushFor = (ref) => found('brushes', ref);
 export const pluginShapeFor = (ref) => found('shapes', ref);
 export const filterFor = (ref) => found('filters', ref);
 
+// Whether a plugin's brush is on offer as a tool: out of a room (inRoom, the room store's), with plugins on, its plugin
+// on and its brush registered. pluginTools (tools/index.js) lists these, and the workspace's activeTool reads a chosen
+// brush that isn't as the Brush; both ask here, so they can't drift. plugins is the plugin store: its brushes slice is
+// read too, so a computed asking this runs again when the scripts' parts change. Here, and not in tools/index.js, so
+// the workspace store needn't import the tools (a tool's module imports the stores).
+export const brushOffered = (ref, plugins, inRoom) => !inRoom && !plugins.off && !!plugins.brushes[ref] && !!brushFor(ref)
+  && plugins.plugins.some(({ id, enabled }) => enabled && id === pluginOfSolver(ref));
+
 // Every registered def of a kind, [[ref, pluginId, def, index]] (index: its place in its plugin's script), for the store's
 // reactive slices.
 export const allOf = (kind) => [...plugins].flatMap(([pluginId, { kinds }]) =>

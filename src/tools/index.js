@@ -44,7 +44,7 @@ import { groupOf } from './groups';
 import { t } from '@/i18n/index.js';
 import { usePluginStore } from '@/store/PluginStore';
 import { useRoomStore } from '@/store/RoomStore';
-import { brushFor } from '@/plugins/solvers.js';
+import { brushFor, brushOffered } from '@/plugins/solvers.js';
 import { makeBrushTool } from './pluginBrush.js';
 
 // A group's tools (tools/groups.js) are listed in its order.
@@ -84,19 +84,15 @@ export function pluginTools() {
   const stamp = [plugins.solverStamp, inRoom, off, ...plugins.plugins.map(({ id, enabled }) => `${id}:${enabled}`)].join('|');
   if (stamp === built.stamp && plugins === built.plugins) return built.tools;
   const tools = [], taken = new Set(TOOLS.flatMap((tool) => tool.keys ?? []));
-  if (!inRoom && !off) {
-    for (const { id, enabled, manifest } of plugins.plugins) {
-      if (!enabled) continue;
-      const mine = Object.entries(plugins.brushes).filter(([, brush]) => brush.pluginId === id).sort(([, a], [, b]) => a.index - b.index);
-      for (const [ref] of mine) {
-        const found = brushFor(ref);
-        if (!found) continue;
-        const key = found.def.key && !taken.has(found.def.key) ? found.def.key : null;
-        if (key) taken.add(key);
-        const tool = makeBrushTool({ ref, pluginId: id, pluginName: manifest.name, hash: found.hash, def: found.def, key });
-        guardBegin(tool);
-        tools.push(tool);
-      }
+  for (const { id, manifest } of plugins.plugins) {
+    const mine = Object.entries(plugins.brushes).filter(([ref, brush]) => brush.pluginId === id && brushOffered(ref, plugins, inRoom)).sort(([, a], [, b]) => a.index - b.index);
+    for (const [ref] of mine) {
+      const found = brushFor(ref);
+      const key = found.def.key && !taken.has(found.def.key) ? found.def.key : null;
+      if (key) taken.add(key);
+      const tool = makeBrushTool({ ref, pluginId: id, pluginName: manifest.name, hash: found.hash, def: found.def, key });
+      guardBegin(tool);
+      tools.push(tool);
     }
   }
   built = { stamp, plugins, tools };
