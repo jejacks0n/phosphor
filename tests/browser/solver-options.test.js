@@ -8,7 +8,7 @@ import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { readScript } from '@/plugins/script';
-import { unregisterSolvers, failSolver } from '@/plugins/solvers';
+import { unregisterScript, failSolver } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { onSolver } from '../support/pluginSolvers.js';
@@ -17,7 +17,7 @@ import LayersList from '@/components/LayersList.vue';
 
 let apps = [];
 afterEach(() => {
-  unregisterSolvers('phosphor.outlines');
+  unregisterScript('phosphor.outlines');
   for (const { app, host } of apps) {
     app.unmount();
     host.remove();
@@ -58,7 +58,7 @@ async function mount(component) {
 // Both solvers, of one plugin.
 async function installed() {
   const ref = await onSolver(OUTLINES);
-  usePluginStore().useSolvers('phosphor.outlines', 'h', [OUTLINES, LINES]);
+  usePluginStore().useScript('phosphor.outlines', 'h', { solvers: [OUTLINES, LINES] });
   return { ref, lines: ref.replace('/outlines', '/lines') };
 }
 const choices = (select) => [...select.options].map((o) => o.text);
@@ -167,23 +167,23 @@ test('a missing solver keeps its option and the note says By shape stands in', a
   expect(note()).toBe('Controls how paint or images on Layer 1 convert into characters.');
   expect(host.querySelector('.solver-options')).not.toBe(null);
 
-  plugins.dropSolvers('phosphor.outlines');
+  plugins.dropScript('phosphor.outlines');
   await nextTick();
   expect(note()).toBe('outlines isn\'t installed. Showing By shape.');
   expect(choices(select)).toEqual(['Random', 'Best match', 'By shape', 'outlines (not here)']);
   expect(select.value).toBe(ref);
   expect(host.querySelector('.solver-options')).toBe(null); // nothing to set while it isn't there
 
-  plugins.useSolvers('phosphor.outlines', 'h', [OUTLINES, LINES]);
+  plugins.useScript('phosphor.outlines', 'h', { solvers: [OUTLINES, LINES] });
   failSolver(ref, 'Out of lines');
   await nextTick();
   expect(note()).toBe('Outlines failed: Out of lines. Showing By shape.');
-  plugins.useSolvers('phosphor.outlines', 'h', [OUTLINES, LINES]);
+  plugins.useScript('phosphor.outlines', 'h', { solvers: [OUTLINES, LINES] });
   await plugins.setEnabled('phosphor.outlines', false);
   await nextTick();
   expect(note()).toBe('Midnight is off. Showing By shape.'); // the plugin's name: it's the plugin that's off
   await plugins.setEnabled('phosphor.outlines', true);
-  plugins.useSolvers('phosphor.outlines', 'h', [OUTLINES, LINES]);
+  plugins.useScript('phosphor.outlines', 'h', { solvers: [OUTLINES, LINES] });
   plugins.off = true;
   await nextTick();
   expect(note()).toBe('Plugins are off for this visit. Showing By shape.');
@@ -202,7 +202,7 @@ test('the layer\'s row shows the stand-in warning', async () => {
   const host = await mount(LayersList);
   const warning = () => host.querySelector('li[data-id="edit"] .stand-in');
   expect(warning()).toBe(null);
-  usePluginStore().dropSolvers('phosphor.outlines');
+  usePluginStore().dropScript('phosphor.outlines');
   await nextTick();
   expect(warning().textContent).toBe('⚠');
   expect(warning().title).toBe('outlines isn\'t installed. Showing By shape.');

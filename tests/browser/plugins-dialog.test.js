@@ -11,6 +11,7 @@ import rain from '../fixtures/plugins/rain/phosphor-plugin.json?raw';
 import { i18n } from '@/i18n';
 import PluginsDialog from '@/components/PluginsDialog.vue';
 import { usePluginStore } from '@/store/PluginStore';
+import { readManifest } from '@/plugins/manifest';
 import { solverRef } from '@/plugins/solvers';
 import { ownDatabase } from '../support/socialDatabase.js';
 import { ownHangMark } from '../support/ownHangMark.js';
@@ -28,7 +29,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await Promise.all(loads);
   loads = [];
-  usePluginStore().dropSolvers('phosphor.midnight'); // the registry outlives the Pinia
+  usePluginStore().dropScript('phosphor.midnight'); // the registry outlives the Pinia
   app?.unmount();
   host?.remove();
   app = host = null;
@@ -81,6 +82,16 @@ const installed = async (text = midnight) => {
   await page.getByRole('button', { name: /^(Install|Replace)/ }).click();
   await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
 };
+
+test("a loaded plugin's row counts what its script adds", async () => {
+  const store = await mount();
+  await store.install(readManifest(midnight));
+  store.useScript('phosphor.midnight', 'h', { brushes: [{ id: 'a' }], shapes: [{ id: 'b' }], filters: [{ id: 'c' }] });
+  await expect.element(page.getByText('1 brush')).toBeVisible();
+  const row = document.querySelector('dialog li').textContent;
+  for (const words of ['1 theme', '1 brush', '1 shape', '1 filter']) expect(row).toContain(words);
+  expect(row).not.toContain('solver');
+});
 
 test('empty, it says what plugins are; a manifest picked is asked about, then listed', async () => {
   const store = await mount();

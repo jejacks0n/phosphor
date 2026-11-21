@@ -1,52 +1,75 @@
-// The solvers plugins add, held outside Pinia (functions don't belong in reactive state). The plugin store keeps a small
-// reactive slice over this (PluginStore.useSolvers); everything that registers or unregisters goes through the store.
+// The solvers, brushes, shapes and filters plugins add, held outside Pinia (functions don't belong in reactive state). The plugin store keeps a small
+// reactive slice over this (PluginStore.useScript); everything that registers or unregisters goes through the store.
 const PREFIX = 'plugin:';
 
 export const solverRef = (pluginId, solverId) => `${PREFIX}${pluginId}/${solverId}`;
 export const isSolverRef = (value) => typeof value === 'string' && value.startsWith(PREFIX) && value.includes('/');
 export const pluginOfSolver = (ref) => (isSolverRef(ref) ? ref.slice(PREFIX.length, ref.lastIndexOf('/')) : null);
 
-const plugins = new Map();   // pluginId -> { hash, defs: Map(solverId -> def) }
+const KINDS = ['solvers', 'brushes', 'shapes', 'filters'];
+const plugins = new Map();   // pluginId -> { hash, kinds: { solvers: Map(id -> def), brushes, shapes, filters } }
 const failures = new Map();  // ref -> message
+const filterFailures = new Map(); // a filter's ref -> why ({ log } or { lost: true })
 const listeners = new Set();
+const filterListeners = new Set();
 
 function clearFailures(pluginId) {
-  for (const ref of failures.keys()) if (pluginOfSolver(ref) === pluginId) failures.delete(ref);
+  for (const map of [failures, filterFailures]) for (const ref of map.keys()) if (pluginOfSolver(ref) === pluginId) map.delete(ref);
 }
 
 const dropListeners = new Set();
-// A plugin's solvers dropped or replaced (what's kept for them, a shader's program, goes): listener(pluginId).
-export function onSolversDropped(listener) {
+// A plugin's script dropped or replaced (what's kept for it, a shader's program, goes): listener(pluginId).
+export function onScriptDropped(listener) {
   dropListeners.add(listener);
   return () => dropListeners.delete(listener);
 }
 const dropped = (pluginId) => { for (const listener of dropListeners) listener(pluginId); };
 
-export function registerSolvers(pluginId, hash, defs) {
+// A plugin's script registered: parts has any of { solvers, brushes, shapes, filters } (defs); a missing one is none.
+export function registerScript(pluginId, hash, parts) {
   clearFailures(pluginId);
   if (plugins.has(pluginId)) dropped(pluginId);
-  plugins.set(pluginId, { hash, defs: new Map(defs.map((def) => [def.id, def])) });
+  const kinds = Object.fromEntries(KINDS.map((kind) => [kind, new Map((parts[kind] ?? []).map((def) => [def.id, def]))]));
+  plugins.set(pluginId, { hash, kinds });
 }
 
-export function unregisterSolvers(pluginId) {
+export function unregisterScript(pluginId) {
   clearFailures(pluginId);
   plugins.delete(pluginId);
   dropped(pluginId);
 }
 
-// The script a plugin's solvers were registered from, or null.
+// The script a plugin's parts were registered from, or null.
 export const registeredHash = (pluginId) => plugins.get(pluginId)?.hash ?? null;
 
-export function solverFor(ref) {
+function found(kind, ref) {
   const pluginId = pluginOfSolver(ref);
   const entry = plugins.get(pluginId);
-  const def = entry?.defs.get(ref.slice(ref.lastIndexOf('/') + 1));
+  const def = entry?.kinds[kind].get(ref.slice(ref.lastIndexOf('/') + 1));
   return def ? { def, hash: entry.hash, pluginId } : null;
 }
+export const solverFor = (ref) => found('solvers', ref);
+export const brushFor = (ref) => found('brushes', ref);
+export const pluginShapeFor = (ref) => found('shapes', ref);
+export const filterFor = (ref) => found('filters', ref);
 
-// Every registered solver, [[ref, pluginId, def]], for the store's reactive slice.
-export const allSolvers = () => [...plugins].flatMap(([pluginId, { defs }]) =>
-  [...defs.values()].map((def) => [solverRef(pluginId, def.id), pluginId, def]));
+// Every registered def of a kind, [[ref, pluginId, def, index]] (index: its place in its plugin's script), for the store's
+// reactive slices.
+export const allOf = (kind) => [...plugins].flatMap(([pluginId, { kinds }]) =>
+  [...kinds[kind].values()].map((def, index) => [solverRef(pluginId, def.id), pluginId, def, index]));
+export const allSolvers = () => allOf('solvers').map(([ref, pluginId, def]) => [ref, pluginId, def]);
+
+// A filter's shader didn't build, or its context was lost: why is { log } or { lost: true }. hash as failSolver's.
+export function failFilter(ref, why, hash = filterFor(ref)?.hash) {
+  if (hash !== filterFor(ref)?.hash) return;
+  filterFailures.set(ref, why);
+  for (const listener of filterListeners) listener(ref, why);
+}
+export const filterFailureOf = (ref) => filterFailures.get(ref) ?? null;
+export function onFilterFailure(listener) {
+  filterListeners.add(listener);
+  return () => filterListeners.delete(listener);
+}
 
 // A solver's pass threw. hash: the script it was resolved with; a failure from a script since replaced (a Reload while it
 // ran) is the old one's, and isn't heard.

@@ -10,13 +10,13 @@ import { SAMPLES, cellRange, shapeMatcher } from '@/lib/CharResolver.js';
 import { referenceMask, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { PALETTES } from '@/lib/ColorUtils.js';
 import { readScript } from '@/plugins/script';
-import { solverRef, unregisterSolvers } from '@/plugins/solvers';
+import { solverRef, unregisterScript } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 import { t } from '@/i18n';
 
 afterEach(() => {
   vi.restoreAllMocks();
-  unregisterSolvers('phosphor.outlines');
+  unregisterScript('phosphor.outlines');
 });
 
 const REF = solverRef('phosphor.outlines', 'edges');
@@ -257,7 +257,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     const matcher = await matcherOf(def);
     expect(gpu.resolve(samples, 4, 3, matcher, {})).toBe(null);
     expect(gpu.shaderProblem(REF)).toMatch(/error/i);
-    unregisterSolvers('phosphor.outlines');
+    unregisterScript('phosphor.outlines');
     expect(gpu.shaderProblem(REF)).toBe(null);
 
     const { project } = await createTestApp();
@@ -310,7 +310,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     expect(key(project.cells)).toEqual(agreed); // the JavaScript's
     spy.mockRestore();
 
-    usePluginStore().dropSolvers('phosphor.outlines');
+    usePluginStore().dropScript('phosphor.outlines');
     const wrong = vi.spyOn(ShapeMatcher.prototype, 'resolve');
     const def = solver({ solve: () => ({ char: '/', fg: rgb(255, 0, 0), bg: rgb(0, 0, 0) }), shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), 5);' } });
     project.charChoice = await onSolver(def, { hash: 'disagrees' });

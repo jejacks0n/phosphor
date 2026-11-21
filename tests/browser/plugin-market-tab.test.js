@@ -30,7 +30,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await Promise.all(loads);
   loads = [];
-  usePluginStore().dropSolvers('phosphor.outlines'); // the registry outlives the Pinia
+  usePluginStore().dropScript('phosphor.outlines'); // the registry outlives the Pinia
   app?.unmount();
   host?.remove();
   app = host = null;
@@ -110,7 +110,7 @@ test('the art band: the preview as text, else a block per theme color, else empt
   expect(art('Amber CRT').children).toHaveLength(0);
 });
 
-test('search matches name, author, description and id; the filter is All, Official, Themes or Solvers', async () => {
+test('search matches name, author, description and id; the filter is All, Official, Themes or Scripts', async () => {
   served['/plugins.json'] = listWith((plugins) => [...plugins, amber]);
   await mount();
   const search = page.getByRole('searchbox', { name: 'Search plugins' });
@@ -127,12 +127,12 @@ test('search matches name, author, description and id; the filter is All, Offici
   await search.fill('');
 
   const filter = page.getByRole('combobox', { name: 'Show' });
-  expect([...filter.element().options].map((option) => option.textContent)).toEqual(['All', 'Official', 'Themes', 'Solvers']);
+  expect([...filter.element().options].map((option) => option.textContent)).toEqual(['All', 'Official', 'Themes', 'Scripts']);
   await filter.selectOptions('Official');
   expect(names()).toEqual(['Midnight', 'Outlines']);
   await filter.selectOptions('Themes');
   expect(names()).toEqual(['Midnight', 'Rain']);
-  await filter.selectOptions('Solvers');
+  await filter.selectOptions('Scripts');
   expect(names()).toEqual(['Outlines', 'Amber CRT']);
   await search.fill('amber');
   expect(names()).toEqual(['Amber CRT']);

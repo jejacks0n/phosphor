@@ -236,6 +236,9 @@ const update = (record) => {
                   <span v-if="record.manifest.themes.length" class="swatches" aria-hidden="true">
                     <i v-for="(color, i) in swatches(record.manifest)" :key="i" :style="{ background: color }"/>
                   </span>
+                  <template v-for="kind in ['solvers', 'brushes', 'shapes', 'filters']" :key="kind">
+                    <span v-if="plugins.partsOf(record.id)[kind]">{{ t(`plugins.${kind}`, plugins.partsOf(record.id)[kind]) }}</span>
+                  </template>
                   <span v-if="record.manifest.script">{{ t('plugins.runsCode') }}</span>
                   <span v-if="record.listing && !record.listing.official">{{ t('plugins.fromMarket') }}</span>
                   <a v-if="record.manifest.homepage" :href="record.manifest.homepage" target="_blank" rel="noopener noreferrer">{{ address(record.manifest.homepage) }}</a>
