@@ -7,19 +7,18 @@ import { marketState, swatches } from '@/plugins/listing';
 // The Plugins dialog's Marketplace tab (docs/plugins.md): the loaded list as cards, Official first, then by name,
 // searched and filtered. Each card's button reads by what's installed with the same id (marketState); taking one is the
 // dialog's (`take`, the entry), which reads its files and asks, the card saying Reading… meanwhile (`reading`, the ids
-// being read). A manifest's words, its preview among them, are the author's, shown as text. The search, the filter and
-// where the dialog was scrolled to are the store's (marketView), so they come back after a question (which takes this
-// tab's place) and on the next visit to the tab.
+// being read). A manifest's words, its preview among them, are the author's, shown as text. Only the cards scroll; the
+// words and the search above them stay. The search, the filter and where the cards were scrolled to are the store's
+// (marketView), so they come back after a question (which takes this tab's place) and on the next visit to the tab.
 const { reading } = defineProps({ reading: { type: Set, default: () => new Set() } });
 const emit = defineEmits(['take']);
 const { t } = useI18n();
 const plugins = usePluginStore();
 
 const view = plugins.marketView;
-const root = useTemplateRef('root');
-const scroller = () => root.value?.closest('div.body');
-onMounted(() => nextTick(() => { if (scroller()) scroller().scrollTop = view.scroll; }));
-onBeforeUnmount(() => { view.scroll = scroller()?.scrollTop ?? 0; });
+const cards = useTemplateRef('cards');
+onMounted(() => nextTick(() => { if (cards.value) cards.value.scrollTop = view.scroll; }));
+onBeforeUnmount(() => { view.scroll = cards.value?.scrollTop ?? 0; });
 const FILTERS = {
   all: () => true,
   official: (entry) => entry.official,
@@ -45,7 +44,7 @@ const nameId = (entry) => `market-${entry.manifest.id}`;
 </script>
 
 <template>
-  <div ref="root" class="market">
+  <div class="market">
     <p class="intro">{{ t('plugins.market.intro') }}</p>
     <div class="find">
       <input v-model="view.search" type="search" :placeholder="t('plugins.market.search')" :aria-label="t('plugins.market.search')">
@@ -61,7 +60,7 @@ const nameId = (entry) => `market-${entry.manifest.id}`;
     <p v-else-if="plugins.market.status !== 'ready'" class="none">{{ t('plugins.market.loading') }}</p>
     <p v-else-if="!shown.length" class="none">{{ t('plugins.market.none') }}</p>
 
-    <ul v-if="shown.length" class="cards">
+    <ul v-if="shown.length" ref="cards" class="cards">
       <li v-for="entry in shown" :key="entry.manifest.id" class="card">
         <div v-if="entry.manifest.preview" class="art preview" aria-hidden="true">{{ entry.manifest.preview }}</div>
         <div v-else class="art" aria-hidden="true">
@@ -92,6 +91,13 @@ const nameId = (entry) => `market-${entry.manifest.id}`;
 </template>
 
 <style scoped>
+div.market {   /* a column in the dialog's tab panel, the cards taking what's left (PluginsDialog) */
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
 p.intro {
   margin: 0 0 10px;
   font-size: 13px;
@@ -130,8 +136,11 @@ div.none button {
 }
 
 ul.cards {
+  min-height: 0;
+  overflow: auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-auto-rows: max-content; /* a card hides its overflow, so rows would otherwise squeeze to fit instead of scroll */
   gap: 12px;
   margin: 0;
   padding: 0;

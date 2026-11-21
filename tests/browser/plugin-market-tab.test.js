@@ -320,9 +320,9 @@ test('the search, the filter and where the grid was scrolled to come back after 
   await page.getByRole('combobox', { name: 'Show' }).selectOptions('Themes');
   await page.getByRole('searchbox', { name: 'Search plugins' }).fill('theme');
   expect(names()).toHaveLength(10);
-  const body = () => document.querySelector('dialog > div.body');
-  body().scrollTop = 300;
-  await vi.waitFor(() => expect(body().scrollTop).toBe(300));
+  const cards = () => document.querySelector('dialog ul.cards');
+  cards().scrollTop = 300;
+  await vi.waitFor(() => expect(cards().scrollTop).toBe(300));
 
   button('Rain').click();
   await vi.waitFor(() => expect(heading()).toBe('Install Rain 1.2.0?'));
@@ -331,5 +331,24 @@ test('the search, the filter and where the grid was scrolled to come back after 
   expect(page.getByRole('searchbox', { name: 'Search plugins' }).element().value).toBe('theme');
   expect(page.getByRole('combobox', { name: 'Show' }).element().value).toBe('themes');
   expect(names()).toHaveLength(10);
-  await vi.waitFor(() => expect(body().scrollTop).toBe(300));
+  await vi.waitFor(() => expect(cards().scrollTop).toBe(300));
+});
+
+test('only the cards scroll: the tabs, the search and the filter stay where they are', async () => {
+  const themed = (i) => listed({ id: `sam.theme${i}`, name: `Theme ${i}`, description: 'Another theme.', themes: [
+    { id: 'one', name: 'One', base: 'dark', colors: { background: '#101010', accent: '#808080' } },
+  ] });
+  served['/plugins.json'] = listWith((plugins) => [...plugins, amber, ...Array.from({ length: 12 }, (_, i) => themed(i))]);
+  await mount();
+  await vi.waitFor(() => expect(names()).toHaveLength(19));
+  const body = document.querySelector('dialog > div.body');
+  const cards = document.querySelector('dialog ul.cards');
+  const search = page.getByRole('searchbox', { name: 'Search plugins' }).element();
+  const tab = document.querySelector('dialog [role=tab]');
+  expect(body.scrollHeight).toBeLessThanOrEqual(body.clientHeight + 1);
+  expect(cards.scrollHeight).toBeGreaterThan(cards.clientHeight);
+  const before = [search.getBoundingClientRect().top, tab.getBoundingClientRect().top];
+  cards.scrollTop = 400;
+  await vi.waitFor(() => expect(cards.scrollTop).toBe(400));
+  expect([search.getBoundingClientRect().top, tab.getBoundingClientRect().top]).toEqual(before);
 });

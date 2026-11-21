@@ -317,6 +317,15 @@ const update = (record) => {
 </template>
 
 <style scoped>
+/* Only the list scrolls: the tabs, the notes and the panel's own words and buttons stay. The dialog's body is a column
+   no taller than the window, so each column down to the list may shrink (min-height: 0) and the list takes the rest. */
+div.plugins, div[role='tabpanel'] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* The tabs, as the side panel's: words in capitals, the one shown with the accent along its foot. */
 div.tabs {
   display: flex;
@@ -377,8 +386,10 @@ p.intro {
 }
 
 ul {
+  min-height: 0;
   margin: 0;
   padding: 0;
+  overflow: auto;
   list-style: none;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
