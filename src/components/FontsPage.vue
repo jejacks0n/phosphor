@@ -94,14 +94,22 @@ const tagList = computed(() => {
 const counts = computed(() => (pickerOpen.value && index.value ? tagCounts(index.value, libraryFilter.value) : new Map()));
 const toggleTag = (key) => { tags.value = tags.value.includes(key) ? tags.value.filter((k) => k !== key) : [...tags.value, key]; };
 const clearAll = () => { tags.value = []; filter.value = ''; };
+// The picker ends at the page's bottom and scrolls inside, resized with the layer (a shorter window) and the tag row
+// (picked chips wrapping): taller, it would run past the layer's clipped page out of reach.
+const sizePicker = () => {
+  if (!picker.value) return;
+  const room = page.value.getBoundingClientRect().bottom - tagsWrap.value.getBoundingClientRect().bottom - 8;
+  picker.value.style.maxHeight = `${Math.max(room, 0)}px`;
+};
+const pickerFits = new ResizeObserver(sizePicker);
+onBeforeUnmount(() => pickerFits.disconnect());
 const togglePicker = async () => {
   pickerOpen.value = !pickerOpen.value;
-  if (!pickerOpen.value) return;
+  if (!pickerOpen.value) return pickerFits.disconnect();
   await nextTick();
-  // It ends at the page's bottom and scrolls inside: taller, focusing it would scroll the layer's clipped page.
-  // ponytail: sized when it opens, not on a resize while open.
-  const room = page.value.getBoundingClientRect().bottom - tagsWrap.value.getBoundingClientRect().bottom - 8;
-  picker.value.style.maxHeight = `${Math.max(room, 120)}px`;
+  pickerFits.observe(page.value);
+  pickerFits.observe(tagsWrap.value);
+  sizePicker();
   picker.value.focus({ preventScroll: true });
 };
 const closePicker = () => { pickerOpen.value = false; tagsWrap.value?.querySelector('button.tags')?.focus(); };

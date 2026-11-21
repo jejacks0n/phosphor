@@ -916,6 +916,11 @@ test('a tall tag picker fits in the layer and scrolls inside it, leaving the pag
   expect(layer.scrollTop).toBe(0); // focusing the picker doesn't scroll the layer's clipped page
   expect(picker.getBoundingClientRect().bottom).toBeLessThanOrEqual(layer.getBoundingClientRect().bottom);
   expect(picker.scrollHeight).toBeGreaterThan(picker.clientHeight); // its chips scroll in it instead
+  await page.viewport(1400, 420); // a shorter window while it's open: it shrinks with the layer, all of it reachable
+  await vi.waitFor(() => expect(picker.getBoundingClientRect().bottom).toBeLessThanOrEqual(layer.getBoundingClientRect().bottom));
+  expect(layer.scrollTop).toBe(0);
+  await page.viewport(1400, 900); // and grows back
+  await vi.waitFor(() => expect(picker.getBoundingClientRect().bottom).toBeGreaterThan(layer.getBoundingClientRect().bottom - 40));
 });
 
 test('Escape or a click outside closes the tag picker', async () => {
