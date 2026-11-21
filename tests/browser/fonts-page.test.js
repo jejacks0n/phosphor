@@ -13,6 +13,7 @@ import { storedBitmapFont } from '@/lib/userFonts';
 import { cp437Font, lowerAt240, noLowerHalf } from '../support/blockFonts.js';
 import { addFont, addBitmapFont, loadFonts, removeFont, storeFontPart } from '@/lib/userFonts';
 import { openFontSetup } from '@/composables/useFontSetup.js';
+import { forgetLibrary } from '@/lib/fontLibrary';
 import { toastMessage, toastAction, closeToast } from '@/composables/useToast.js';
 
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
@@ -26,12 +27,15 @@ afterEach(async () => {
   host?.remove();
   app = host = null;
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  forgetLibrary();
   for (const font of await loadFonts()) await removeFont(font.id);
 });
 
 // The layer on its Fonts page over a blank canvas: the drawing in font A unless drawing is false, with B (an 8×16
 // bitmap font) and a TrueType font kept in this browser.
-async function mount({ drawing = true, canvas = true, font = null, before = null } = {}) {
+async function mount({ drawing = true, canvas = true, font = null, before = null, library = false } = {}) {
+  stubLibrary(library);
   const { project, workspace } = await createTestApp();
   const pinia = getActivePinia(); // before the awaits: a late await of an earlier test can make its own Pinia active again
   if (canvas) await project.setBlankCanvas({ cols: 10, rows: 10 });
@@ -47,6 +51,44 @@ async function mount({ drawing = true, canvas = true, font = null, before = null
   await nextTick();
   return { project, workspace, palettes: usePaletteStore(pinia), b, tt };
 }
+// The library index the page fetches: this fixture (or none: it fails to load), other URLs going through.
+const SAMPLE_B64 = btoa(String.fromCharCode(...new Uint8Array(12 * 8).fill(0x18)));
+const libFont = (name, extra = {}) => ({ id: `viler/${name}.F08`, fontId: `bitmap-${name}`, name, file: `viler/${name}.F08`, height: 8, collection: 'viler', machine: 'IBM PC', chars: 'cp437', ready: true, sample: SAMPLE_B64, ...extra });
+const FIXTURE = () => ({
+  version: 1,
+  collections: { viler: { name: 'VileR', url: 'u', license: 'l' }, moebius: { name: 'Mœbius', url: 'u', license: 'l' } },
+  fonts: [
+    libFont('Zeta'),
+    libFont('Topaz', { machine: 'Amiga', collection: 'moebius', chars: 'latin1', height: 16, about: 'a rounded face' }),
+    libFont('Alpha', { ready: false }),
+  ],
+  linked: [{ id: 'linked/frogblock', fontId: 'bitmap-frog', name: 'FROGBLOCK', height: 8, machine: 'Custom', chars: 'cp437', linked: { credit: 'FROGBLOCK font by Polyducks', url: 'https://polyducks.itch.io/frogblock', license: 'l' } }],
+});
+let indexFetches = 0;
+function stubLibrary(index) {
+  const real = fetch.bind(globalThis);
+  indexFetches = 0;
+  vi.stubGlobal('fetch', async (url, ...rest) => {
+    if (!String(url).endsWith('fonts/library/index.json')) return real(url, ...rest);
+    indexFetches += 1;
+    if (!index) return new Response('', { status: 404 });
+    return new Response(JSON.stringify(index));
+  });
+}
+const libraryNames = () => [...host.querySelectorAll('.row.library .name span')].map((el) => el.textContent);
+const waitFor = (check) => vi.waitFor(() => expect(check()).toBeTruthy());
+const type = async (text) => {
+  const input = host.querySelector('.top input');
+  input.value = text;
+  input.dispatchEvent(new Event('input'));
+  await nextTick();
+};
+const openTags = async () => {
+  await press(button('Tags ▾') ?? [...host.querySelectorAll('button.tags')][0]);
+};
+const chip = (label) => [...host.querySelectorAll('.picker .chip')].find((el) => el.firstChild.textContent.trim() === label);
+const label = () => host.querySelector('.library-group .label').textContent.trim();
+
 const button = (text) => [...host.querySelectorAll('button')].find((el) => el.textContent.trim() === text);
 const row = (name) => [...host.querySelectorAll('.row')].find((r) => r.querySelector('.name span').textContent === name);
 const names = () => [...host.querySelectorAll('.row')].map((r) => r.querySelector('.name span').textContent);
@@ -121,7 +163,7 @@ test('resizing the side panel leaves the layer open', async () => {
 
 test('lists the drawing\'s font first, then yours, then the built-in ones', async () => {
   const { b, tt } = await mount();
-  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
+  expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
   expect([...host.querySelectorAll('.row')].map((r) => [r.querySelector('.name span').textContent, r.querySelector('.name em').textContent]))
     .toEqual([['A', '8×8'], ['B', '8×16'], ['Tall Mono', 'TrueType'], ...BUILT_IN.map((name) => [name, 'TrueType'])]);
   const sample = (name) => row(name).querySelector('.sample');
@@ -232,7 +274,7 @@ test('a TrueType font shows a sample and Use this font', async () => {
   await expect.poll(() => workspace.displayFont).toBe(tt.id);
   expect(project.drawingFont).toBeNull();
   // In use, as a bitmap font is once used: first, under In use, with nothing left to apply
-  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
+  expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
   expect(names()).toEqual(['Tall Mono', 'B', ...BUILT_IN]);
   expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · in your browser · no palettes');
   expect(actions()).toEqual(['Export palettes', 'Palettes ▸', 'Remove']);
@@ -332,7 +374,7 @@ test('in someone else\'s room, applying is off', async () => {
 
 test('before any drawing is open, the font chosen is the next drawing\'s', async () => {
   await mount({ canvas: false });
-  expect([...host.querySelectorAll('.group .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
+  expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
   expect(host.querySelector('.edit-side .meta').textContent).toContain('the next drawing\'s font');
   await press(row('B'));
   expect(button('Use this font')).toBeTruthy();
@@ -789,4 +831,132 @@ test('lines and sets are read-only in a room', async () => {
   expect(project.drawingFont.lines.styles[0].slots[0]).toBe(1);
   await press(sectionTab('Sets'));
   expect([...host.querySelectorAll('.sets button, .sets input')].every((el) => el.disabled)).toBe(true);
+});
+
+test('the Library group lists the library under Built-in, each row sampled', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  expect(libraryNames()).toEqual(['Alpha', 'FROGBLOCK', 'Topaz', 'Zeta']);
+  expect(names().slice(-4)).toEqual(['Alpha', 'FROGBLOCK', 'Topaz', 'Zeta']);
+  expect(label()).toBe('Library · 4 fonts');
+  const topaz = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('Topaz'));
+  expect(topaz.querySelector('.name em').textContent).toBe('8×16 · Amiga');
+  expect(topaz.querySelector('canvas.glyph-sample')).toBeTruthy();
+  await press(topaz);
+  expect(topaz.classList.contains('current')).toBe(true);
+});
+
+test('the index is fetched when the page opens, not before', async () => {
+  stubLibrary(FIXTURE());
+  expect(indexFetches).toBe(0);
+  await mount({ library: FIXTURE() });
+  await waitFor(() => indexFetches === 1);
+});
+
+test('search matches names, machines and descriptions', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await type('zet');
+  expect(libraryNames()).toEqual(['Zeta']);
+  expect(label()).toBe('Library · 1 found');
+  await type('amiga');
+  expect(libraryNames()).toEqual(['Topaz']);
+  await type('rounded');
+  expect(libraryNames()).toEqual(['Topaz']);
+  expect(host.querySelector('.top input').placeholder).toBe('Search fonts…');
+  await type('IBM VGA'); // the built-in groups filter by name too
+  expect(names()).toContain('IBM VGA');
+});
+
+test('picking tags narrows the list and shows them as chips; Clear removes them', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await openTags();
+  expect([...host.querySelectorAll('.picker .tag-group .label')].map((el) => el.textContent)).toEqual(['Machine', 'Shape', 'Characters', 'Collection', 'Other']);
+  expect(chip('8×16')).toBeTruthy();
+  expect(chip('Latin-1')).toBeTruthy();
+  expect(chip('Mœbius')).toBeTruthy();
+  expect(chip('Ready to paint').querySelector('.count').textContent).toBe('2');
+  await press(chip('IBM PC'));
+  expect(libraryNames()).toEqual(['Alpha', 'Zeta']);
+  expect(label()).toBe('Library · 2 found');
+  expect(host.querySelector('button.tags .badge').textContent).toBe('1');
+  expect(host.querySelector('.tag-row button.chip.picked').textContent).toContain('IBM PC');
+  await press(button('Clear'));
+  expect(libraryNames().length).toBe(4);
+  expect(host.querySelector('.tag-row > button.chip')).toBeNull();
+});
+
+test('Escape or a click outside closes the tag picker', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await openTags();
+  host.querySelector('.picker').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await nextTick();
+  expect(host.querySelector('.picker')).toBeNull();
+  expect(closes).toBe(0);
+  await openTags();
+  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+  await nextTick();
+  expect(host.querySelector('.picker')).toBeNull();
+});
+
+test('a tag no current match carries is disabled', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await type('zet');
+  await openTags();
+  expect(chip('Amiga').disabled).toBe(true);
+  expect(chip('IBM PC').disabled).toBe(false);
+  await press(chip('IBM PC'));
+  expect(chip('IBM PC').disabled).toBe(false); // a picked tag stays enabled
+});
+
+test('nothing matching says so, with Clear', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await type('zzzz');
+  expect(host.querySelector('.library-note').textContent).toContain('No fonts match.');
+  expect(libraryNames()).toEqual([]);
+  await press(host.querySelector('.library-note button'));
+  expect(host.querySelector('.top input').value).toBe('');
+  expect(libraryNames().length).toBe(4);
+});
+
+test('past 100 matches, Show 100 more shows the next 100', async () => {
+  const index = FIXTURE();
+  index.fonts = Array.from({ length: 150 }, (_, i) => libFont(`F${String(i).padStart(3, '0')}`));
+  index.linked = [];
+  await mount({ library: index });
+  await waitFor(() => libraryNames().length);
+  expect(libraryNames().length).toBe(100);
+  await press(button('Show 100 more'));
+  expect(libraryNames().length).toBe(150);
+  expect(button('Show 100 more')).toBeUndefined();
+});
+
+test('the library failing to load says so, Try again fetches again, and the other groups still work', async () => {
+  await mount();
+  await waitFor(() => host.querySelector('.library-note'));
+  expect(host.querySelector('.library-note').textContent).toContain("The font library couldn't load.");
+  expect(button('Tags ▾')).toBeUndefined();
+  expect(names()).toEqual(['A', 'B', 'Tall Mono', ...BUILT_IN]); // In use, Yours and Built-in as before
+  await press(row('B'));
+  expect(title()).toBe('B');
+  const before = indexFetches;
+  stubLibrary(FIXTURE());
+  await press(button('Try again'));
+  await waitFor(() => libraryNames().length);
+  expect(indexFetches).toBe(1);
+  expect(before).toBe(1);
+  expect(names().slice(0, 7)).toEqual(['A', 'B', 'Tall Mono', ...BUILT_IN].slice(0, 7));
+});
+
+test("a linked font's row says not included and shows its credit", async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  const frog = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('FROGBLOCK'));
+  expect(frog.querySelector('.name em').textContent).toBe('not included');
+  expect(frog.querySelector('.credit').textContent).toBe('FROGBLOCK font by Polyducks');
+  expect(frog.querySelector('canvas')).toBeNull();
 });

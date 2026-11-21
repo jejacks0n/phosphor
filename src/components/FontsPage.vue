@@ -1,5 +1,5 @@
 <script setup>
-import { ref, shallowRef, computed, watch, useTemplateRef, nextTick, toRaw } from 'vue';
+import { ref, shallowRef, computed, watch, useTemplateRef, nextTick, toRaw, onMounted, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -10,12 +10,15 @@ import { storedBitmapFont, registerBitmapFont, familyOf, storeFontPart, withPart
 import { fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
+import { SAMPLE_CHARS } from '@/lib/BitmapGlyphs';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
 import { toast } from '@/composables/useToast';
 import { nextId } from '@/lib/FontLines';
 import FontBlocks from '@/components/FontBlocks.vue';
 import FontLines from '@/components/FontLines.vue';
 import FontSets from '@/components/FontSets.vue';
+import GlyphSample from '@/components/GlyphSample.vue';
+import { loadLibrary, searchLibrary, tagCounts, tagsOf } from '@/lib/fontLibrary';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
@@ -30,7 +33,7 @@ const fileInput = useTemplateRef('file');
 const page = useTemplateRef('page');
 const part = useTemplateRef('part'); // the Lines or Sets section, which a click on the sheet goes to
 
-const SAMPLE = 'Aa░▒▓█▄▀╔═╗☺';
+const SAMPLE = SAMPLE_CHARS;
 const lines = computed(() => [
   t('palette.fonts.pangram'),
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789',
@@ -40,6 +43,63 @@ const lines = computed(() => [
 ]);
 
 const filter = ref('');
+// The font library: its index is fetched when this page opens, the rows shown 100 at a time, narrowed by the filter and tags.
+const PAGE = 100;
+const TAG_GROUPS = ['machine', 'shape', 'chars', 'collection', 'other'];
+const index = shallowRef(null);
+const libraryState = ref('loading'); // 'loading' | 'ready' | 'failed'
+const tags = ref([]); // the picked tags' keys
+const shownCount = ref(PAGE);
+const pickerOpen = ref(false);
+const tagsWrap = useTemplateRef('tagsWrap');
+const picker = useTemplateRef('picker');
+const fetchLibrary = async () => {
+  libraryState.value = 'loading';
+  try {
+    index.value = await loadLibrary();
+    libraryState.value = 'ready';
+  } catch {
+    libraryState.value = 'failed';
+  }
+};
+const outside = (event) => { if (!tagsWrap.value?.contains(event.target)) pickerOpen.value = false; };
+onMounted(() => {
+  fetchLibrary();
+  document.addEventListener('pointerdown', outside);
+});
+onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
+const libraryFilter = computed(() => ({ query: filter.value, tags: tags.value }));
+const matches = computed(() => (index.value ? searchLibrary(index.value, libraryFilter.value) : []));
+const libraryRows = computed(() => matches.value.slice(0, shownCount.value));
+const narrowed = computed(() => tags.value.length > 0 || !!filter.value.trim());
+watch(libraryFilter, () => { shownCount.value = PAGE; });
+const tagLabel = (key) => {
+  const [group, value] = [key.split(':')[0], key.slice(key.indexOf(':') + 1)];
+  if (group === 'shape') return `8×${value}`;
+  if (group === 'chars') return t(`palette.fonts.charsets.${value}`, value);
+  if (group === 'collection') return index.value.collections[value]?.name ?? value;
+  if (key === 'ready') return t('palette.fonts.tagReady');
+  return value;
+};
+// Every tag the library carries, by group: machines and character sets by name, shapes by height.
+const tagList = computed(() => {
+  const found = new Map();
+  for (const e of [...index.value.fonts, ...index.value.linked]) for (const { key, group } of tagsOf(e)) found.set(key, group);
+  return TAG_GROUPS.map((group) => ({
+    group,
+    tags: [...found].filter(([, g]) => g === group).map(([key]) => ({ key, label: tagLabel(key) }))
+      .sort((a, b) => (group === 'shape' ? parseInt(a.label.slice(2), 10) - parseInt(b.label.slice(2), 10) : a.label.localeCompare(b.label))),
+  })).filter((g) => g.tags.length);
+});
+const counts = computed(() => (pickerOpen.value && index.value ? tagCounts(index.value, libraryFilter.value) : new Map()));
+const toggleTag = (key) => { tags.value = tags.value.includes(key) ? tags.value.filter((k) => k !== key) : [...tags.value, key]; };
+const clearAll = () => { tags.value = []; filter.value = ''; };
+const togglePicker = async () => {
+  pickerOpen.value = !pickerOpen.value;
+  if (pickerOpen.value) { await nextTick(); picker.value?.focus(); }
+};
+const closePicker = () => { pickerOpen.value = false; tagsWrap.value?.querySelector('button.tags')?.focus(); };
+const libraryMeta = (e) => (e.linked ? t('palette.fonts.notIncluded') : `8×${e.height} · ${e.machine}`);
 const chosenId = ref(null);
 const hovered = ref(null); // the slot under the pointer
 const problem = ref('');
@@ -240,6 +300,29 @@ const exportPalettes = () => {
         <button :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         <input ref="file" type="file" :accept="FONT_FILES" hidden @change="onFile">
       </div>
+      <div v-if="libraryState === 'ready'" ref="tagsWrap" class="tag-row" @keydown.esc.stop="closePicker">
+        <button class="tags" :aria-expanded="pickerOpen" @click="togglePicker">
+          {{ t('palette.fonts.tags') }}<span v-if="tags.length" class="badge">{{ tags.length }}</span> ▾
+        </button>
+        <button v-for="k in tags" :key="k" class="chip picked" :aria-label="t('palette.fonts.removeTag', { tag: tagLabel(k) })" @click="toggleTag(k)">{{ tagLabel(k) }} ×</button>
+        <button v-if="tags.length" class="clear" @click="clearAll">{{ t('palette.fonts.clear') }}</button>
+        <div v-if="pickerOpen" ref="picker" class="picker" tabindex="-1" role="group" :aria-label="t('palette.fonts.tags')">
+          <div v-for="g in tagList" :key="g.group" class="tag-group">
+            <span class="label">{{ t(`palette.fonts.tagGroups.${g.group}`) }}</span>
+            <div class="chips">
+              <button
+                  v-for="x in g.tags"
+                  :key="x.key"
+                  class="chip"
+                  :class="{ picked: tags.includes(x.key) }"
+                  :aria-pressed="tags.includes(x.key)"
+                  :disabled="!tags.includes(x.key) && !counts.get(x.key)"
+                  @click="toggleTag(x.key)"
+              >{{ x.label }} <span class="count">{{ counts.get(x.key) ?? 0 }}</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
       <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
       <div class="list">
         <template v-for="g in groups" :key="g.key">
@@ -254,6 +337,32 @@ const exportPalettes = () => {
             <div class="name"><span>{{ f.name }}</span><em>{{ size(f) }}</em></div>
             <div class="sample" :style="styleOf(f)">{{ SAMPLE }}</div>
           </div>
+        </template>
+        <div class="group library-group">
+          <span class="label">{{ libraryState === 'ready' ? t(narrowed ? 'palette.fonts.libraryFound' : 'palette.fonts.libraryCount', { n: matches.length }, matches.length) : t('palette.fonts.library') }}</span>
+        </div>
+        <p v-if="libraryState === 'loading'" class="library-note">{{ t('palette.fonts.libraryLoading') }}</p>
+        <div v-else-if="libraryState === 'failed'" class="library-note">
+          <p>{{ t('palette.fonts.libraryFailed') }}</p>
+          <button @click="fetchLibrary">{{ t('palette.fonts.tryAgain') }}</button>
+        </div>
+        <div v-else-if="!matches.length" class="library-note">
+          <p>{{ t('palette.fonts.libraryNone') }}</p>
+          <button @click="clearAll">{{ t('palette.fonts.clear') }}</button>
+        </div>
+        <template v-else>
+          <div
+              v-for="e in libraryRows"
+              :key="e.id"
+              class="row library"
+              :class="{ current: e.id === chosenId }"
+              @click="chosenId = e.id"
+          >
+            <div class="name"><span>{{ e.name }}</span><em>{{ libraryMeta(e) }}</em></div>
+            <div v-if="e.linked" class="credit">{{ e.linked.credit }}</div>
+            <GlyphSample v-else :sample="e.sample" :height="e.height" />
+          </div>
+          <button v-if="matches.length > shownCount" class="more" @click="shownCount += PAGE">{{ t('palette.fonts.showMore', { n: PAGE }) }}</button>
         </template>
       </div>
     </div>
@@ -333,6 +442,112 @@ div.sample {
   white-space: nowrap;
   line-height: 1;
   color: var(--text);
+}
+
+div.tag-row {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px 6px;
+}
+
+div.tag-row button {
+  padding: 2px 8px;
+  border: 1px solid var(--surface-3);
+  border-radius: 10px;
+  background: var(--surface-1);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+div.tag-row button.clear {
+  border-color: transparent;
+  background: none;
+  color: var(--accent);
+}
+
+div.tag-row button.picked,
+div.tag-row button[aria-expanded='true'] {
+  border-color: var(--accent);
+}
+
+div.tag-row button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+span.badge {
+  margin-left: 4px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--surface-0);
+}
+
+div.picker {
+  position: absolute;
+  top: 100%;
+  left: 12px;
+  right: 12px;
+  z-index: 5;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--surface-3);
+  border-radius: 6px;
+  background: var(--surface-0);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.4);
+}
+
+div.tag-group span.label {
+  display: block;
+  margin: 6px 0 3px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+div.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+@media (max-width: 700px) { /* a phone: the picker over the full width, its chips in two columns */
+  div.picker {
+    left: 0;
+    right: 0;
+  }
+
+  div.chips {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.library-note {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.library-note p {
+  margin: 0 0 6px;
+}
+
+div.credit {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+button.more {
+  margin: 6px 12px;
 }
 
 /* Blocks | Lines | Sets: as the layer's page tabs, a size smaller */

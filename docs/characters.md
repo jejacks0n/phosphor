@@ -176,6 +176,12 @@ Choosing a row shows that font's name, a line of facts (its size, whether it's t
 
 Loaded fonts stay in this browser until you remove them. They're never uploaded anywhere.
 
+#### The font library
+
+Under **Built-in** is a fourth group, **Library**: a few thousand bitmap fonts from VileR's VGA text mode fonts and Mœbius's XBin fonts, each row with its name, its size and machine (`8×16 · Amiga`) and a sample drawn in its own glyphs. The library is fetched when the Fonts page opens, not before; while it loads the group says so, and if it can't load it says "The font library couldn't load." with **Try again**. The other groups work either way. The group's label counts the fonts ("Library · 2,458 fonts", or "Library · N found" while you've narrowed it), and it shows 100 at a time: **Show 100 more** adds the next 100. FROGBLOCK is listed but isn't included: its row says "not included" and shows its credit instead of a sample. Choosing a library row selects it, as any other.
+
+The filter field is **Search fonts…**. It matches a library font's name, machine and description, and the names in the other groups. Beside it, **Tags ▾** opens a picker over the page with five groups (Machine, Shape, Characters, Collection and Other: Ready to paint). Each tag shows how many fonts it would leave under the current search and tags; a tag with none is off. Pick several to narrow further: each shows as a chip you can click to remove, the button shows how many are picked, and **Clear** removes them all. **Escape** or a click outside closes the picker. When nothing matches, the group says so and **Clear** puts back the whole library.
+
 ### Custom Fonts
 
 A TrueType (`.ttf`), OpenType (`.otf`) or WOFF (`.woff`, `.woff2`) font loaded with **+ Load** shows in the Font dropdown under **Yours**:

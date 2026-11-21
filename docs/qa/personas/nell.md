@@ -90,11 +90,6 @@ script. Every section ends with Free time.
   set and check it's still the drawing's.
 - Rated: yes, wants Cmd+Z
 
-**Free time:** she'd save the font back as `.F08` and as PNG and load them again, switch between her fonts and a
-built-in one, and check what the Font field says while the drawing has its own.
-
-## Draw in it
-
 ### 4. Type a character my font lacks
 - Does: in Edit Mode, types a letter with an accent and a character from another script, then chooses a built-in font in the Font dropdown.
 - Expects: each shows as its nearest classic stand-in while the font is on, and the status bar's code is the font's
@@ -267,6 +262,17 @@ change one cell on the way.
 - Expects: the style, the sets, the hidden Double and **Show stock sets** are back after the reload, and with the project; in the room the Lines and Sets can't be changed, and say "A font's blocks, lines and sets can't change in a room."; the artist draws in her font and offers her style under **Draw with** and her sets under the Characters ▾; the watching browser sees the drawing in her font too, and so does the room's picture in the lobby.
 - Probes: `interrupt`: reload right after the last slot click and check the style is whole.
 - Rated: no (drawing)
+
+### 27. Look in the library
+- Does: on the Fonts page, waits for the Library group, types `amiga` in Search fonts…, then clears it; opens Tags ▾, picks Amiga and 8×8, removes one chip, then Clear; searches for something that matches nothing and clicks Clear; scrolls to Show 100 more; looks at FROGBLOCK's row.
+- Expects: Library · N fonts becomes Library · N found while narrowed; each tag shows a count, and a tag no current match carries is off; Escape or a click outside closes the picker (Escape doesn't close the layer); no matches says so with Clear; Show 100 more adds the next 100; FROGBLOCK says "not included" with its credit; offline, the group says the library couldn't load and Try again works, with In use, Yours and Built-in unaffected.
+- Probes: `back-out`: open Tags ▾ and press Escape; `extremes`: pick tags until the count is one; `speed`: type in the search while the library loads.
+- Rated: no (library)
+
+**Free time:** she'd save the font back as `.F08` and as PNG and load them again, switch between her fonts and a
+built-in one, and check what the Font field says while the drawing has its own.
+
+## Draw in it
 
 **Free time:** she'd make a second style, draw a spiral with each, and undo the lot.
 

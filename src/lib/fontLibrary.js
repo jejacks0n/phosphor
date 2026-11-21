@@ -71,3 +71,8 @@ export function tellUsUrl(entry, index) {
   const title = `License for ${entry.name}${collection ? ` (${collection})` : ''}`;
   return `https://github.com/jejacks0n/phosphor/issues/new?title=${encodeURIComponent(title)}`;
 }
+
+// For tests: forget the fetched index.
+export const forgetLibrary = () => {
+  loading = null;
+};
