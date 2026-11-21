@@ -232,6 +232,12 @@ Updates. Its Privacy page says so: "This app sends nothing to Phosphor. In a roo
 your IP address. When you choose Check for Updates, it asks GitHub for Phosphor's releases, and GitHub sees your IP
 address." Your drawings, name and settings stay on your computer.
 
+## The Marketplace's list
+
+The Plugins dialog's Marketplace reads `https://phosphor.work/plugins.json`. A pre-release version of the app (one like
+`1.2.3-beta`) reads `https://next.phosphor.work/plugins.json` instead, and so does any version started with
+`PHOSPHOR_SITE=next` in its environment. The app reads exactly one of the two, never both.
+
 ## Not in this version
 
 - Joining a desktop room from a browser, or a web room from the app.

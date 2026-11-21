@@ -131,6 +131,18 @@ describe('makeList', () => {
     expect(list.plugins.map((one) => one.manifest.id)).toEqual(['kim.rain']);
     expect(log.some((line) => line.includes('wiki'))).toBe(true);
   });
+  it('reads the previous list from --previous, or phosphor.work when none is given', async () => {
+    const NEXT = 'https://next.phosphor.work/plugins.json';
+    const seen = [];
+    const spy = (map) => async (url, ...rest) => { seen.push(url); return fakeFetch(map)(url, ...rest); };
+    const map = { ...(await served()), [WIKI]: { status: 404, body: '' } };
+    await makeList({ dir, commit: COMMIT, refresh: false, fetch: spy(map), previousUrl: NEXT });
+    expect(seen).toContain(NEXT);
+    expect(seen).not.toContain(LIST);
+    seen.length = 0;
+    await makeList({ dir, commit: COMMIT, refresh: false, fetch: spy(map) });
+    expect(seen).toContain(LIST);
+  });
   it('builds with no community entries when there is nothing to keep', async () => {
     const { list } = await makeList({ dir, commit: COMMIT, refresh: false, fetch: fakeFetch({ [WIKI]: { status: 'throw', body: '' } }) });
     expect(list.plugins).toEqual([]);

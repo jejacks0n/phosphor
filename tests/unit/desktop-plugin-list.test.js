@@ -2,9 +2,11 @@
 // raw GitHub files, follows no redirect, and stops reading a body past its cap.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { LIST_URL, MOST_FILE_BYTES, allowedUrl, fetchText, fetchFile } from '../../desktop/pluginList.js';
+import { listUrl, MOST_FILE_BYTES, allowedUrl, fetchText, fetchFile } from '../../desktop/pluginList.js';
 import { MOST_SCRIPT_BYTES } from '../../src/plugins/manifest.js';
 
+const LIST_URL = 'https://phosphor.work/plugins.json';
+const NEXT_URL = 'https://next.phosphor.work/plugins.json';
 const RAW = 'https://raw.githubusercontent.com/kim/phosphor-rain/0123456789abcdef0123456789abcdef01234567/phosphor-plugin.json';
 
 // A body of `chunks` chunks of `size` bytes each, counting the chunks pulled and whether it was canceled.
@@ -26,15 +28,30 @@ const answering = (response) => {
 };
 
 test('only the list and raw GitHub URLs are allowed', () => {
-  assert.equal(LIST_URL, 'https://phosphor.work/plugins.json');
-  assert.ok(allowedUrl(LIST_URL));
-  assert.ok(allowedUrl(RAW));
+  assert.ok(allowedUrl(LIST_URL, LIST_URL));
+  assert.ok(allowedUrl(RAW, LIST_URL));
   for (const url of [
     'https://phosphor.work/x', 'https://raw.githubusercontent.com.evil.test/x', 'http://raw.githubusercontent.com/x',
     'file:///etc/passwd', 'https://raw.githubusercontent.com/kim/rain/../../x', 'https://raw.githubusercontent.com/kim/%2e%2e/x',
     'https://raw.githubusercontent.com\\kim/x', 'https://user@raw.githubusercontent.com/x', 'https://phosphor.work/plugins.json?x',
     undefined, null, 42, { toString: () => LIST_URL },
-  ]) assert.equal(allowedUrl(url), false, String(url));
+  ]) assert.equal(allowedUrl(url, LIST_URL), false, String(url));
+});
+
+test('listUrl is next for a pre-release version or site next, production otherwise', () => {
+  assert.equal(listUrl({ version: '1.2.3' }), LIST_URL);
+  assert.equal(listUrl({ version: '1.2.3+build' }), LIST_URL);
+  assert.equal(listUrl({ version: '1.2.3-beta' }), NEXT_URL);
+  assert.equal(listUrl({ version: '1.2.3-rc.1' }), NEXT_URL);
+  assert.equal(listUrl({ version: '1.2.3', site: 'next' }), NEXT_URL);
+  assert.equal(listUrl({ version: '1.2.3', site: 'prod' }), LIST_URL);
+});
+
+test('exactly one list URL is allowed', () => {
+  assert.equal(allowedUrl(NEXT_URL, LIST_URL), false);
+  assert.equal(allowedUrl(LIST_URL, NEXT_URL), false);
+  assert.ok(allowedUrl(NEXT_URL, NEXT_URL));
+  assert.equal(allowedUrl(LIST_URL), false);
 });
 
 test('a disallowed URL is refused without a fetch', async () => {
@@ -45,7 +62,7 @@ test('a disallowed URL is refused without a fetch', async () => {
 
 test('a fetch follows no redirect, has a timeout, and gives the text with a BOM dropped', async () => {
   const { calls, fetch } = answering(new Response('﻿{"a":1}'));
-  assert.equal(await fetchText(LIST_URL, { fetch, most: 100 }), '{"a":1}');
+  assert.equal(await fetchText(LIST_URL, { fetch, most: 100, listUrl: LIST_URL }), '{"a":1}');
   assert.equal(calls[0].options.redirect, 'error');
   assert.ok(calls[0].options.signal instanceof AbortSignal);
 });
