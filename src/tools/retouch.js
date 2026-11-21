@@ -16,7 +16,7 @@ import { selectionClip } from '@/lib/selectionClip';
 import { charRowsOf, mix, showsChar } from '@/lib/Cells.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { averaged, averagedPaint, burned, dodged, mixPaint } from '@/lib/Retouch.js';
-import { onBottom, ownHalves } from '@/store/project/shared.js';
+import { onBottom, ownPixelAt } from '@/store/project/shared.js';
 import { isFrozen } from '@/document/editCells.js';
 import { t } from '@/i18n/index.js';
 
@@ -44,16 +44,6 @@ function ownCellAt(project, col, row) {
     stroke.read.set(key, (entry?.fg || entry?.bg) && !isFrozen(entry) ? entry : null);
   }
   return stroke.read.get(key);
-}
-
-// Its two halves ([top, bottom], { r, g, b }) as it shows at pixel scale (ownHalves); null where it has no color of its
-// own.
-function ownCellHalves(project, col, row) {
-  const key = `h${col},${row}`;
-  if (stroke.read.has(key)) return stroke.read.get(key);
-  const halves = ownCellAt(project, col, row) ? ownHalves(project, col, row) : null;
-  stroke.read.set(key, halves);
-  return halves;
 }
 
 // Each grid pixel: its color up to the layer in use (the base's on the base), changed, as opaque paint.
@@ -111,14 +101,10 @@ function retouchCells(project, pixels, change, strength) {
   project.writeEditCells(out, { clearPaint: true });
 }
 
-// A drawing layer's own paint at grid pixel x, y ({ r, g, b, a }, or null where it has none; a cell of its own with
-// colors there as it shows, opaque), as the stroke first read it.
+// A drawing layer's own paint at grid pixel x, y (ownPixelAt), as the stroke first read it.
 function ownPaintAt(project, x, y) {
   const key = `p${x},${y}`;
-  if (!stroke.read.has(key)) {
-    const cell = ownCellHalves(project, x, Math.floor(y / 2));
-    stroke.read.set(key, cell ? { ...cell[y % 2], a: 1 } : project.paintLayer?.pixelAt(x, y) ?? null);
-  }
+  if (!stroke.read.has(key)) stroke.read.set(key, ownPixelAt(project, x, y));
   return stroke.read.get(key);
 }
 const samePaint = (a, b) => (!a || !b ? !a && !b : a.r === b.r && a.g === b.g && a.b === b.b && Math.round(a.a * 255) === Math.round(b.a * 255));

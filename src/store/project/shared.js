@@ -14,6 +14,7 @@ import { shownShapes } from '@/document/followers.js';
 import { layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { hashCell, hashPixel, pack } from '@/document/changes.js';
 import { withoutPins } from '@/document/baseRecords.js';
+import { isFrozen } from '@/document/editCells.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -391,6 +392,15 @@ export function ownHalves(project, col, row) {
     const paint = project.paintLayer?.pixelAt(col, 2 * row + k);
     return paint ? mix(half, paint, paint.a) : half;
   });
+}
+
+// The layer in use's own paint at grid pixel x, y ({ r, g, b, a }, a 0..1), or null where it has none: a cell of its own
+// with colors of its own (not a frozen one, whose paint is under it: R3) as it shows (ownHalves), opaque, else its paint
+// pixel. What Retouch (cached for its stroke) and a plugin brush's paint.own read. Not the base's.
+export function ownPixelAt(project, x, y) {
+  const entry = project.editCellAt(x, y >> 1);
+  if ((entry?.fg || entry?.bg) && !isFrozen(entry)) return { ...ownHalves(project, x, y >> 1)[y & 1], a: 1 };
+  return project.paintLayer?.pixelAt(x, y) ?? null;
 }
 
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });

@@ -40,46 +40,51 @@ export const editLayerActions = {
   // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity,
   // stacking or not (Stack opacity). blockChars (the Pencil's and Brush's Half-block, ANSI view)
   // makes each cell painted a ▄ first, which the paint colors half by half, instead of showing through
-  // the cell's own character; 'plain' (their Colors only, in either view) only the cells that show no character in ANSI
-  // (showsNoChar: a blank canvas's, in their own background color) as the stroke first reaches them, so the paint
-  // doesn't bring a hidden one out (a cell the stroke itself paints into one color stays as it was). The same cells take
-  // it whichever view and art style the stroke is laid in; the ▄ shows in ANSI alone (editCells.js shownEntry, and the
-  // base's ▄ pins: Renderer.pinAt), and in ASCII the paint is converted with the ASCII characters.
+  // the cell's own character; 'plain' (their Colors only, in either view) only the cells colorsOnlyCells says.
   paintStroke(pixels, color, { blockChars = false } = {}) {
     const workspace = useWorkspaceStore();
     const { r, g, b } = hex2rgb(color ?? workspace.editFgColor);
     const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill
     const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows);
-    if (blockChars) {
-      let cells = cellsOfPixels(inGrid, cols, rows).filter(({ col, row }) => !isPaintBlock(this.editCellAt(col, row))); // a block already; a frozen ▄ is a frozen cell (R5)
-      if (blockChars === 'plain' && cells.length) {
-        if (!refusedNoCells(this, { toast: false })) {
-          this.ensureLayer();
-          this.beginEdit();
-        }
-        const seen = this._stroke && (this._stroke.plainSeen ??= new Set());
-        // A cell the converter drew is paint to Colors only and gets no ▄ (one would outlast a change of how characters
-        // are chosen): the paint becomes the characters the layer's settings choose over the pixels under it (R7), the
-        // base's Random among them, so a stroke on a blank canvas shows Random's characters. A pinned character (the
-        // base), or a cell of the layer's own, is someone's own (R5); over one under the layer the paint shows as R2 has
-        // it, with no entry. Inside an art layer every cell is someone's own, and the rule below holds.
-        const converted = this._artInside ? null : (key) => !(onBottom(this) ? this.baseRecords.pins : this.editCells).has(key);
-        cells = !seen ? [] : cells.filter(({ col, row }) => {
-          const key = cellKey(col, row), first = !seen.has(key), cell = this.cells[cellIndex(col, row, cols)];
-          seen.add(key);
-          if (!first || !cell || converted?.(key)) return false;
-          // docs/model.md R5 (a frozen cell is paint) and R2 (a character with nothing to tint)
-          return isFrozen(this.editCellAt(col, row)) || (ownColored(this, col, row) ? opensToPaint(cell, this.renderStyle) : showsNoChar(this, col, row, cell));
-        });
-        // A cell of the layer's own with colors shows them itself, and a ▄ with colors of its own isn't a paint block
-        // (ASCII would show it): its colors go into paint, as it showed (unlockCells), and the ▄ has none.
-        this.unlockCells(cells.filter(({ col, row }) => ownColored(this, col, row)));
-        this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
-        cells = [];
-      }
-      this.writeBlocks(cells);
-    }
+    if (blockChars === 'plain') this.colorsOnlyCells(inGrid);
+    else if (blockChars) this.writeBlocks(cellsOfPixels(inGrid, cols, rows).filter(({ col, row }) => !isPaintBlock(this.editCellAt(col, row)))); // a block already; a frozen ▄ is a frozen cell (R5)
     this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
+  },
+
+  // Colors only's cells (docs/model.md R5, R2), before paint is laid at grid pixels ({ x, y }, on the grid): the Brush's
+  // and Pencil's (paintStroke's 'plain'), and a plugin brush's, whose paint shows as theirs does (tools/pluginBrush.js).
+  // Each cell the pixels reach that shows no character in ANSI (showsNoChar: a blank canvas's, in its own background
+  // color) as the stroke first reaches it becomes a bare ▄, so the paint doesn't bring a hidden one out (a cell the
+  // stroke itself paints into one color stays as it was), and so does a frozen cell. The same cells take it whichever
+  // view and art style the stroke is laid in; the ▄ shows in ANSI alone (editCells.js shownEntry, and the base's ▄ pins:
+  // Renderer.pinAt), and in ASCII the paint is converted with the ASCII characters. Part of the current edit (begun here
+  // when a cell changes); the caller lays the paint and commits.
+  colorsOnlyCells(pixels) {
+    const { cols, rows } = this;
+    let cells = cellsOfPixels(pixels, cols, rows).filter(({ col, row }) => !isPaintBlock(this.editCellAt(col, row))); // a block already; a frozen ▄ is a frozen cell (R5)
+    if (!cells.length) return;
+    if (!refusedNoCells(this, { toast: false })) {
+      this.ensureLayer();
+      this.beginEdit();
+    }
+    const seen = this._stroke && (this._stroke.plainSeen ??= new Set());
+    // A cell the converter drew is paint to Colors only and gets no ▄ (one would outlast a change of how characters
+    // are chosen): the paint becomes the characters the layer's settings choose over the pixels under it (R7), the
+    // base's Random among them, so a stroke on a blank canvas shows Random's characters. A pinned character (the
+    // base), or a cell of the layer's own, is someone's own (R5); over one under the layer the paint shows as R2 has
+    // it, with no entry. Inside an art layer every cell is someone's own, and the rule below holds.
+    const converted = this._artInside ? null : (key) => !(onBottom(this) ? this.baseRecords.pins : this.editCells).has(key);
+    cells = !seen ? [] : cells.filter(({ col, row }) => {
+      const key = cellKey(col, row), first = !seen.has(key), cell = this.cells[cellIndex(col, row, cols)];
+      seen.add(key);
+      if (!first || !cell || converted?.(key)) return false;
+      // docs/model.md R5 (a frozen cell is paint) and R2 (a character with nothing to tint)
+      return isFrozen(this.editCellAt(col, row)) || (ownColored(this, col, row) ? opensToPaint(cell, this.renderStyle) : showsNoChar(this, col, row, cell));
+    });
+    // A cell of the layer's own with colors shows them itself, and a ▄ with colors of its own isn't a paint block
+    // (ASCII would show it): its colors go into paint, as it showed (unlockCells), and the ▄ has none.
+    this.unlockCells(cells.filter(({ col, row }) => ownColored(this, col, row)));
+    this.writeEditCells(cells.map((c) => ({ ...c, attrs: { char: '▄' } })));
   },
 
   // Cells of the layer in use ([{ col, row }]) turned into paint: a cell with colors of its own has the two halves it
