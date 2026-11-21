@@ -17,10 +17,10 @@ export const lineChoices = (font) => offeredStyles(font).filter((s) => !s.stock)
 }));
 
 // A stock choice that goes when the font doesn't offer it, and what shows in its place.
-export const stockChoice = (font, id, choice, fallback) => ({
-  ...choice,
-  when: () => !!styleById(font, id)?.offered,
-  get instead() { const first = offeredStyles(font)[0]; return first ? lineValue(first) : fallback; },
+export const stockChoice = (font, id, choice, fallback) => Object.defineProperties({}, {
+  ...Object.getOwnPropertyDescriptors(choice), // copied as descriptors, so the label getter stays live
+  when: { value: () => !!styleById(font, id)?.offered, enumerable: true },
+  instead: { get() { const first = offeredStyles(font)[0]; return first ? lineValue(first) : fallback; }, enumerable: true },
 });
 
 // A function of the font whose result is kept per font, so the toolbar sees the same choices each time.

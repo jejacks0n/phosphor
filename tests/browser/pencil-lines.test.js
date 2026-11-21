@@ -4,6 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
 import pencil from '@/tools/pencil';
+import { setLocale } from '@/i18n';
 import { CP437_BLOCKS, slotChars } from '@/lib/BitmapFont.js';
 
 async function scene(settings = {}) {
@@ -141,4 +142,17 @@ test("Draw with lists the font's styles after Double", async () => {
   expect(pencil.options[0].choices.filter((c) => !c.when || c.when(workspace)).map((c) => c.value))
     .toEqual(['normal', 'single', 'double', 'line:l1', 'half']);
   expect(pencil.options[0].choices).toBe(pencil.options[0].choices);
+});
+
+test('the Single and Double labels follow a language change', async () => {
+  await scene();
+  const label = () => pencil.options[0].choices.find((c) => c.value === 'single').label;
+  await setLocale('en', { persist: false });
+  const en = label();
+  try {
+    await setLocale('fr', { persist: false });
+    expect(label()).not.toBe(en);
+  } finally {
+    await setLocale('en', { persist: false });
+  }
 });
