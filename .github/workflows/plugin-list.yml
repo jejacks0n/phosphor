@@ -30,10 +30,11 @@ jobs:
       sha: ${{ steps.last.outputs.sha }}
     steps:
       # The commit of the last successful run of deploy.yml on main that deployed (OURS): that workflow builds only after
-      # its tests pass, so a success means that commit was tested and shipped. Not the Pages environment's history:
-      # deploy-pages records each deployment against the run's own commit, which for a refresh is main's head, so after
-      # one refresh the next would rebuild untested main. A refresh never moves this: every one rebuilds the last tested
-      # deploy. (The API's runs, which say what repository a run's commit came from.)
+      # its tests pass, so a success means that commit was tested and shipped. Not the host's deployment history, which
+      # records each deployment against the run's own commit, which for a refresh is main's head, so after one refresh
+      # the next would rebuild untested main. A refresh never moves this: every one rebuilds the last tested deploy.
+      # (The API's runs, which say what repository a run's commit came from.) A next deploy is a pull request's run,
+      # so it never counts.
       - id: last
         run: |
           runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&status=success&per_page=50")
@@ -62,24 +63,22 @@ jobs:
         env:
           SHA: ${{ steps.last.outputs.sha }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-pages-artifact@v3
+      # Handed to the deploy job, which publishes it only if its check passes.
+      - uses: actions/upload-artifact@v4
         with:
+          name: site
           path: dist
+          if-no-files-found: error
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     permissions:
       actions: read # to look for a deploy on its way
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       # Publishes only when no deploy.yml run is queued or running (that deploy publishes a fresh list itself) and the
       # last deploy is still the commit this run built; otherwise a notice, not a failure. Anything not answered skips.
-      # ponytail: a deploy queued in the seconds between this check and deploy-pages still races it; a lock shared with
+      # ponytail: a deploy queued in the seconds between this check and the publish still races it; a lock shared with
       # deploy.yml that doesn't cancel would close it, if that's ever seen.
       - id: check
         run: |
@@ -98,5 +97,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ needs.build.outputs.sha }}
       - if: steps.check.outputs.publish == 'true'
-        uses: actions/deploy-pages@v4
-        id: deploy
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: dist
+      - if: steps.check.outputs.publish == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=phosphor --branch=main --commit-hash=${{ needs.build.outputs.sha }}

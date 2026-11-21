@@ -241,9 +241,8 @@ const emit = defineEmits(['open']);
     <p>Nous ne vendons, ne louons ni ne partageons de données personnelles avec des tiers à des fins marketing, et nous n'affichons aucune publicité.
       Les prestataires de services suivants traitent des données pour notre compte, uniquement pour faire fonctionner Phosphor :</p>
     <ul>
-      <li><strong>Cloudflare :</strong> Exploite l'infrastructure de serveurs de SOCIAL, sa base de données, son stockage, ses limites de débit et
-        Turnstile.</li>
-      <li><strong>GitHub Pages :</strong> Héberge l'application web.</li>
+      <li><strong>Cloudflare :</strong> Héberge et diffuse l'application web, et exploite l'infrastructure de serveurs de SOCIAL, sa base de
+        données, son stockage, ses limites de débit et Turnstile.</li>
       <li><strong>Mailjet :</strong> Assure l'acheminement des e-mails transactionnels.</li>
       <li><strong>Have I Been Pwned :</strong> Vérifie les mots de passe compromis (en utilisant uniquement un préfixe de hachage à cinq caractères).</li>
     </ul>

@@ -114,3 +114,10 @@ test('the Privacy Policy says installing from the Marketplace downloads the plug
   const text = document.querySelector('.legal-body').textContent.replace(/\s+/g, ' ');
   expect(text).toContain('When you install a plugin from the Marketplace, your browser downloads its files from GitHub, which sees the request and your IP address.');
 });
+
+test('the Privacy Policy (en and fr) names Cloudflare as the web application\'s host, not GitHub Pages', async () => {
+  const [en, fr] = await Promise.all([import('../../src/i18n/legal/en.vue?raw'), import('../../src/i18n/legal/fr.vue?raw')]);
+  expect(en.default.replace(/\s+/g, ' ')).toContain('<strong>Cloudflare:</strong> Hosts and serves the web application');
+  expect(fr.default.replace(/\s+/g, ' ')).toContain("<strong>Cloudflare :</strong> Héberge et diffuse l'application web");
+  expect(en.default + fr.default).not.toContain('GitHub Pages');
+});

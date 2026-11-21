@@ -1,9 +1,10 @@
-name: Test and deploy to GitHub Pages
+name: Test and deploy to Cloudflare Pages
 
 on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   workflow_dispatch:
 
 permissions:
@@ -125,12 +126,22 @@ jobs:
             test-results/
           if-no-files-found: ignore
 
+  # Builds and publishes in one job (no artifact between them): production (the Pages project's main branch) on a
+  # push or a run by hand, and next.phosphor.work (its next branch) for a pull request from this repository labeled
+  # next, at the pull request's own head commit rather than the merge commit. Fork pull requests never get here.
+  # Another label than next runs the tests above and publishes nothing.
   build:
     needs: [test, browser, e2e, desktop-e2e]
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'next'))
     runs-on: ubuntu-latest
+    # The workflow's pages group serializes production; here the last labeled push to next wins.
+    concurrency:
+      group: ${{ github.event_name == 'pull_request' && 'next' || github.run_id }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -145,24 +156,18 @@ jobs:
         env:
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
       # The plugin list is published with the site (the web build only: the desktop build never carries it). The
-      # token is for GitHub's API rate limit; plugin-list.yml rebuilds the list between deploys.
-      - run: node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.sha }}
+      # token is for GitHub's API rate limit; plugin-list.yml rebuilds the list between deploys. A next deploy falls
+      # back on next's own list, not production's.
+      - if: github.event_name != 'pull_request'
+        run: node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.sha }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-pages-artifact@v3
+      - if: github.event_name == 'pull_request'
+        run: node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.event.pull_request.head.sha }} --previous https://next.phosphor.work/plugins.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: cloudflare/wrangler-action@v3
         with:
-          path: dist
-
-  deploy:
-    needs: build
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - uses: actions/deploy-pages@v4
-        id: deploy
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=phosphor --branch=${{ github.event_name == 'pull_request' && 'next' || 'main' }} --commit-hash=${{ github.event.pull_request.head.sha || github.sha }}
