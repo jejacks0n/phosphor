@@ -1,0 +1,78 @@
+/* A font slot's tile (FontBlocks, FontLines): its glyph in the font, a name, the slot number. */
+button.tile {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 6px;
+  align-items: center;
+  padding: 3px 7px 3px 4px;
+  border: 1px solid var(--surface-3);
+  border-radius: 4px;
+  background: var(--surface-1);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+button.tile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button.tile:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.tile.missing { /* always, so what the font lacks shows at a glance */
+  border-style: dashed;
+  border-color: var(--danger);
+}
+
+button.tile.picked {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+button.tile.missing.picked { /* still red: the accent ring says it's picked */
+  border-color: var(--danger);
+}
+
+span.glyph {
+  grid-row: span 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--surface-0);
+  font-size: 16px;
+  line-height: 1;
+}
+
+span.slot {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+button.tile.missing span.slot {
+  color: var(--danger);
+}
+
+p.note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+p.note.accent {
+  color: var(--accent);
+}
+
+p.note.warn {
+  color: var(--danger);
+}

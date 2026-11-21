@@ -71,7 +71,7 @@ test('the switch moves between the pages', async () => {
 
 test('the pages are tabs, and the layer taking the whole window has a close button', async () => {
   const { workspace } = await mount();
-  const tabs = [...host.querySelectorAll('[role="tablist"] [role="tab"]')];
+  const tabs = [...host.querySelectorAll('.pages [role="tablist"] [role="tab"]')];
   expect(tabs.map((el) => [el.textContent.trim(), el.getAttribute('aria-selected')])).toEqual([['Palettes', 'false'], ['Fonts', 'true']]);
   await press(host.querySelector('button.dismiss[aria-label="Close"]')); // a phone's width: the whole window
   expect(closes).toBe(1);
@@ -441,7 +441,7 @@ test('block edits on the drawing\u2019s font are off in a room', async () => {
   project._hosting = true;
   await nextTick();
   expect(tile('Lower').disabled).toBe(true);
-  expect(tile('Lower').title).toBe('Blocks can\u2019t change in a room.');
+  expect(tile('Lower').title).toBe('A font\u2019s blocks, lines and sets can\u2019t change in a room.');
   await press(slotCell(254));
   expect(project.fontBlocks).toBe('');
 });
@@ -494,4 +494,131 @@ test('in a room, Set up its blocks picks nothing and says nothing of clicking a 
   expect(tile('Lower').getAttribute('aria-pressed')).toBe('false');
   expect(text()).not.toContain('is picked: click the slot');
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(false);
+});
+
+// The Lines and Sets sections over the same sheet.
+const sectionTab = (name) => [...host.querySelectorAll('.sections [role="tab"]')].find((el) => el.textContent.trim().startsWith(name));
+const lineTiles = () => [...host.querySelectorAll('.lines .card button.tile')];
+const heavy = { id: 'l1', name: 'Heavy', slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] };
+
+test('the Lines section adds a style slot by slot', async () => {
+  const { project } = await mount({ font: cp437Font });
+  await press(sectionTab('Lines'));
+  expect(sectionTab('Lines').getAttribute('aria-selected')).toBe('true');
+  await press(button('+ New line style'));
+  expect(host.querySelector('.lines .card input').value).toBe('Line 1');
+  for (let n = 1; n <= 11; n++) await press(slotCell(n));
+  expect(project.drawingFont.lines.styles[0].slots).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+  expect(host.querySelector('.lines .card').textContent).toContain('Offered under Draw with');
+  expect(sectionTab('Lines').textContent.replace(/\s+/g, ' ').trim()).toBe('Lines 1');
+});
+
+test('a style missing pieces says how many are left', async () => {
+  await mount({ font: { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, slots: [1, 2, ...Array(9).fill(null)] }] } } });
+  await press(sectionTab('Lines'));
+  expect(host.querySelector('.lines .card').textContent).toContain('9 pieces to go before Draw with offers it');
+  expect(lineTiles()[2].classList.contains('missing')).toBe(true);
+});
+
+test('a block\u2019s slot can\u2019t be a piece', async () => {
+  const { project } = await mount({ font: cp437Font });
+  await press(sectionTab('Lines'));
+  await press(button('+ New line style'));
+  await press(slotCell(220));
+  expect(project.drawingFont.lines.styles[0].slots).toEqual(Array(11).fill(null));
+  expect(text()).toContain('Slot 220 draws the Lower block, so it can\u2019t be a line piece.');
+});
+
+test('a block on a piece\u2019s slot keeps the piece and says so', async () => {
+  await mount({ font: { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, slots: [1, 2, 3, 4, 5, 6, 220, 8, 9, 10, 11] }] } } });
+  await press(sectionTab('Lines'));
+  expect(host.querySelector('.lines .card').textContent).toContain('├ shares slot 220 with Lower');
+  expect(lineTiles()[6].title).toBe('├ shares slot 220 with Lower');
+});
+
+test('undo of a style edit shows on the Lines section', async () => {
+  const { project } = await mount({ font: cp437Font });
+  await press(sectionTab('Lines'));
+  await press(button('+ New line style'));
+  await press(slotCell(1));
+  expect(lineTiles()[0].querySelector('.slot').textContent).toBe('1');
+  project.undo();
+  await nextTick();
+  expect(lineTiles()[0].querySelector('.slot').textContent).toBe('—');
+});
+
+test('hiding Single takes it off Draw with', async () => {
+  const { project } = await mount({ font: cp437Font });
+  await press(sectionTab('Lines'));
+  await press(button('Hide'));
+  expect(project.drawingFont.lines.hide).toEqual(['single']);
+  await press(button('Show'));
+  expect(project.fontLines).toBe(''); // nothing hidden and no styles: nothing kept
+});
+
+test('the Sets section builds a set from clicked slots, repeats kept', async () => {
+  const { project } = await mount({ font: cp437Font });
+  await press(sectionTab('Sets'));
+  await press(button('+ New set'));
+  for (const n of [250, 250, 176]) await press(slotCell(n));
+  expect(project.drawingFont.sets.sets[0]).toEqual({ id: 's1', name: 'Set 1', slots: [250, 250, 176] });
+  const chars = host.querySelector('.sets input.chars');
+  expect(chars.value).toBe('··░');
+  chars.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+  await nextTick();
+  expect(project.drawingFont.sets.sets[0].slots).toEqual([250, 250]);
+});
+
+test('typing into a set maps each character to its slot, dropping ones the font lacks', async () => {
+  const { project } = await mount({ font: { ...cp437Font, sets: { hideStock: false, sets: [{ id: 's1', name: 'Grit', slots: [250] }] } } });
+  await press(sectionTab('Sets'));
+  const chars = host.querySelector('.sets input.chars');
+  chars.value = '·░\u{1F600}A';
+  chars.dispatchEvent(new Event('input'));
+  await nextTick();
+  expect(project.drawingFont.sets.sets[0].slots).toEqual([250, 176, 65]);
+  expect(chars.value).toBe('·░A');
+});
+
+test('Show stock sets is one switch', async () => {
+  const { project } = await mount({ font: cp437Font });
+  await press(sectionTab('Sets'));
+  const box = host.querySelector('.sets input[type="checkbox"]');
+  expect(box.checked).toBe(true);
+  await press(box);
+  expect(project.drawingFont.sets.hideStock).toBe(true);
+});
+
+test('a stored font\u2019s lines are kept in this browser', async () => {
+  const { project, workspace } = await mount();
+  const stored = await addBitmapFont(new File([cp437Font.bytes], 'L.F16'));
+  workspace.userFonts = await loadFonts();
+  await vi.waitFor(() => expect(row('L')).toBeTruthy());
+  await press(row('L'));
+  await vi.waitFor(() => expect(sectionTab('Lines')).toBeTruthy());
+  const version = project.historyVersion;
+  await press(sectionTab('Lines'));
+  await press(button('+ New line style'));
+  await vi.waitFor(() => expect(lineTiles()).toHaveLength(11));
+  await press(slotCell(1));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines?.styles[0].slots[0]).toBe(1));
+  expect(project.historyVersion).toBe(version);
+  expect(project.fontLines).toBe('');
+});
+
+test('lines and sets are read-only in a room', async () => {
+  const font = { ...cp437Font, lines: { hide: [], styles: [heavy] }, sets: { hideStock: false, sets: [{ id: 's1', name: 'Grit', slots: [250] }] } };
+  const { project } = await mount({ font });
+  project._hosting = true;
+  await nextTick();
+  expect([...host.querySelectorAll('.sections [role="tab"]')].map((el) => el.textContent.replace(/\s+/g, ' ').trim())).toEqual(['Blocks', 'Lines 1', 'Sets 1']);
+  await press(sectionTab('Lines'));
+  const lines = host.querySelector('.lines');
+  expect([...lines.querySelectorAll('button, input')].every((el) => el.disabled)).toBe(true);
+  expect(lineTiles()[0].title).toBe('A font\u2019s blocks, lines and sets can\u2019t change in a room.');
+  await press(lineTiles()[0]);
+  await press(slotCell(20));
+  expect(project.drawingFont.lines.styles[0].slots[0]).toBe(1);
+  await press(sectionTab('Sets'));
+  expect([...host.querySelectorAll('.sets button, .sets input')].every((el) => el.disabled)).toBe(true);
 });

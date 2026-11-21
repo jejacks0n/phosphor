@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, useTemplateRef, nextTick } from 'vue';
+import { ref, shallowRef, computed, watch, useTemplateRef, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -12,6 +12,8 @@ import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { DISPLAY_FONTS } from '@/lib/displayFonts';
 import FontBlocks from '@/components/FontBlocks.vue';
+import FontLines from '@/components/FontLines.vue';
+import FontSets from '@/components/FontSets.vue';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
@@ -24,6 +26,7 @@ const palettes = usePaletteStore();
 const { loadFile, choose, saveRaw, savePng, remove, hostsFont } = useFontActions();
 const fileInput = useTemplateRef('file');
 const page = useTemplateRef('page');
+const part = useTemplateRef('part'); // the Lines or Sets section, which a click on the sheet goes to
 
 const SAMPLE = 'Aa░▒▓█▄▀╔═╗☺';
 const lines = computed(() => [
@@ -38,7 +41,9 @@ const filter = ref('');
 const chosenId = ref(null);
 const hovered = ref(null); // the slot under the pointer
 const problem = ref('');
-const picked = ref(null); // the block (BLOCKS key) whose slot a click on the sheet sets
+const section = ref('blocks'); // 'blocks' | 'lines' | 'sets', over the one sheet
+// What a click on the sheet sets: the block's key (Blocks), { style, piece } (Lines) or the set's id (Sets).
+const picked = ref(null);
 
 const drawn = computed(() => project.drawingFont);
 const drawnId = computed(() => drawn.value && fontId(drawn.value));
@@ -85,20 +90,21 @@ const meta = computed(() => [
 const bitmapOf = (f) => (f.id === drawnId.value ? drawn.value : storedBitmapFont(f.id));
 
 // The chosen bitmap font as a drawing holds one, with its blocks: the drawing's own, else the browser's copy.
-const kept = ref(null);
+const kept = shallowRef(null); // shallow: its parts go back to the browser's store, which can't keep a proxy
 const font = computed(() => (!bitmap.value ? null : isDrawn.value ? drawn.value : kept.value));
-watch(() => [bitmap.value && !isDrawn.value && chosen.value.id, stored.value], async ([id]) => {
-  kept.value = null;
+watch(() => [bitmap.value && !isDrawn.value && chosen.value.id, stored.value], async ([id], [was] = []) => {
+  if (id !== was) kept.value = null; // the same font kept again stays on screen, so its fields keep their focus
   if (!id) return;
   const got = await storedBitmapFont(id).catch(() => null);
   if (chosen.value?.id === id) kept.value = got; // not once another font is chosen
 }, { immediate: true });
-watch(() => chosen.value?.id, () => { picked.value = null; });
+watch([() => chosen.value?.id, section], () => { picked.value = null; });
 // Set up its blocks (useFontSetup): that font chosen and that block picked, once the font chosen has dropped the pick.
 watch(() => workspace.fontSetup, async (setup) => {
   if (!setup) return;
   workspace.fontSetup = null;
   chosenId.value = setup.id;
+  section.value = 'blocks';
   await nextTick();
   if (!inRoom.value) picked.value = setup.block; // block edits are off in a room
 }, { immediate: true });
@@ -136,23 +142,31 @@ watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => `${f.id}:${f
   }
 }, { immediate: true });
 
-// Gives the chosen font these blocks (undefined: found again). The drawing's font changes as one undo step; the
-// browser's copy of it, when there is one, is kept too.
-const setBlocks = (blocks) => run(async () => {
-  const plain = { ...font.value };
-  delete plain.blocks;
-  if (blocks && findBlocks(plain).every((s, i) => s === blocks[i])) blocks = undefined; // where the pixels put them: found, not set
-  if (isDrawn.value) await project.setDrawingFont(blocks ? { ...plain, blocks } : plain);
+// Gives the chosen font this part ('blocks', 'lines' or 'sets'; undefined: none). The drawing's font changes as one
+// undo step; the browser's copy of it, when there is one, is kept too.
+const setPart = (key, value) => run(async () => {
+  if (isDrawn.value) await project.setDrawingFont({ ...font.value, [key]: value });
   if (isStored.value) {
-    await storeFontPart(chosen.value.id, 'blocks', blocks ?? null);
+    await storeFontPart(chosen.value.id, key, value ?? null);
     workspace.userFonts = await loadFonts();
   }
 });
+// These blocks (undefined: found again).
+const setBlocks = (blocks) => {
+  const found = blocks && findBlocks({ ...font.value, blocks: undefined });
+  setPart('blocks', found?.every((s, i) => s === blocks[i]) ? undefined : blocks); // where the pixels put them: found, not set
+};
 const setSlot = (n) => {
   if (!picked.value || inRoom.value || !font.value) return;
+  if (section.value !== 'blocks') return part.value?.slot(n);
   const blocks = blocksOf(font.value), next = withBlock(blocks, picked.value, n);
   if (next.some((s, i) => s !== blocks[i])) setBlocks(next);
 };
+const sections = computed(() => [
+  { key: 'blocks', label: t('palette.fonts.blocks') },
+  { key: 'lines', label: t('palette.fonts.lines'), count: font.value?.lines?.styles.length ?? 0 },
+  { key: 'sets', label: t('palette.fonts.sets'), count: font.value?.sets?.sets.length ?? 0 },
+]);
 
 // An action, with what went wrong said under the list. acted: done (its button may be gone).
 const run = async (action) => {
@@ -235,13 +249,31 @@ const exportPalettes = () => {
         <button v-if="isStored" class="ghost" :title="t('palette.fonts.removeTitle')" @click="forget">{{ t('palette.fonts.remove') }}</button>
       </div>
       <template v-if="bitmap && font">
+        <div class="sections" role="tablist" :aria-label="t('palette.fonts.sectionsAria')">
+          <button v-for="s in sections" :key="s.key" role="tab" :class="{ on: section === s.key }" :aria-selected="section === s.key" @click="section = s.key">
+            {{ s.label }} <span v-if="s.count !== undefined" class="count">{{ s.count }}</span>
+          </button>
+        </div>
         <FontBlocks
+            v-if="section === 'blocks'"
             :font="font"
             :family="familyFor(chosen)"
             :picked="picked"
             :disabled="inRoom"
             :reason="t('palette.fonts.blocksInRoom')"
             @pick="picked = $event"
+        />
+        <component
+            :is="section === 'lines' ? FontLines : FontSets"
+            v-else
+            ref="part"
+            :font="font"
+            :family="familyFor(chosen)"
+            :picked="picked"
+            :disabled="inRoom"
+            :reason="t('palette.fonts.blocksInRoom')"
+            @pick="picked = $event"
+            @change="setPart(section, $event)"
         />
         <div class="note">{{ t('palette.fonts.sheetNote') }}</div>
         <div class="grid sheet" :class="{ picking: picked && !inRoom }" :style="styleOf(chosen)" @mouseleave="hovered = null">
@@ -275,6 +307,44 @@ div.sample {
   color: var(--text);
 }
 
+/* Blocks | Lines | Sets: as the layer's page tabs, a size smaller */
+div.sections {
+  display: flex;
+  border-bottom: 1px solid var(--surface-3);
+}
+
+div.sections button[role='tab'] {
+  padding: 4px 10px 6px 0;
+  margin-right: 10px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+div.sections button[role='tab']:not(.on):hover {
+  color: var(--accent);
+}
+
+div.sections button[role='tab']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+div.sections button[role='tab'].on {
+  color: var(--text);
+  box-shadow: inset 0 -2px var(--accent);
+}
+
+span.count {
+  color: var(--text-muted);
+}
+
 span.meta {
   font-size: 12px;
   color: var(--text-muted);
@@ -301,11 +371,17 @@ p.problem {
   color: var(--danger);
 }
 
+/* A tall Lines or Sets section scrolls the side, the sheet keeping a few rows. */
+div.edit-side {
+  overflow-y: auto;
+  min-height: 0;
+}
+
 /* The 256 slots, 16 to a row as the font's sheet lays them out, framed as the Palettes page's glyph pane. */
 div.grid.sheet {
   grid-template-columns: repeat(16, minmax(0, 1fr));
   overflow-y: auto;
-  min-height: 0;
+  min-height: 160px;
   padding: 6px;
   border: 1px solid var(--surface-3);
   border-radius: 4px;

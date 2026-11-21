@@ -36,9 +36,9 @@ describe('encodeLines and decodeLines', () => {
 });
 
 describe('decodeSets', () => {
-  it('drops bad sets and keeps hideStock', () => {
-    const text = encodeSets({ hideStock: true, sets: [{ id: 's1', name: 'Grit', slots: [250, 250, 176] }, { id: 's2', name: 'none', slots: [] }] });
-    expect(decodeSets(text)).toEqual({ hideStock: true, sets: [{ id: 's1', name: 'Grit', slots: [250, 250, 176] }] });
+  it('drops bad sets, keeps a new empty one and hideStock', () => {
+    const text = encodeSets({ hideStock: true, sets: [{ id: 's1', name: 'Grit', slots: [250, 250, 176] }, { id: 's2', name: 'none', slots: [] }, { id: 's3', name: 'bad', slots: [256] }] });
+    expect(decodeSets(text)).toEqual({ hideStock: true, sets: [{ id: 's1', name: 'Grit', slots: [250, 250, 176] }, { id: 's2', name: 'none', slots: [] }] });
     expect(decodeSets('')).toBeNull();
     expect(decodeSets('{')).toBeNull();
   });
@@ -88,6 +88,12 @@ describe('sets', () => {
   it("gives each set's characters in the font", () => {
     const font = { ...cp437Font, sets: { hideStock: false, sets: [{ id: 's1', name: 'G', slots: [65, 66] }] } };
     expect(fontSetsOf(font)).toEqual([{ id: 's1', name: 'G', chars: slotChars(font)[65] + slotChars(font)[66] }]);
+  });
+
+  it('offers no set until it has a slot, and shows the stock sets while only empty ones are hidden behind', () => {
+    const font = { ...cp437Font, sets: { hideStock: true, sets: [{ id: 's1', name: 'New', slots: [] }] } };
+    expect(fontSetsOf(font)).toEqual([]);
+    expect(showsStockSets(font)).toBe(true);
   });
 
   it('shows stock sets when there are no sets even when hidden', () => {

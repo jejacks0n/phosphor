@@ -39,7 +39,7 @@ export const encodeSets = ({ hideStock = false, sets = [] } = {}) => (hideStock 
 export function decodeSets(text) {
   const v = text && parse(text);
   if (!v) return null;
-  return { hideStock: v.hideStock === true, sets: list(v.sets, (s) => s.length >= 1 && s.length <= 1024 && s.every(slotOk)) };
+  return { hideStock: v.hideStock === true, sets: list(v.sets, (s) => s.length <= 1024 && s.every(slotOk)) };
 }
 
 // Every style a font has, Single and Double first, with whether each is offered and what stops it.
@@ -80,11 +80,12 @@ export const offeredStyles = (() => {
 })();
 export const styleById = (font, id) => lineStylesOf(font).find((s) => s.id === id) ?? null;
 
+// A set with no slots yet (just made on the Fonts page) is kept but not offered.
 export const fontSetsOf = (font) => {
   const chars = slotChars(font);
-  return (font?.sets?.sets ?? []).map(({ id, name, slots }) => ({ id, name, chars: slots.map((s) => chars[s]).join('') }));
+  return (font?.sets?.sets ?? []).filter((s) => s.slots.length).map(({ id, name, slots }) => ({ id, name, chars: slots.map((s) => chars[s]).join('') }));
 };
-export const showsStockSets = (font) => !font?.sets?.hideStock || !font.sets.sets.length;
+export const showsStockSets = (font) => !font?.sets?.hideStock || !font.sets.sets.some((s) => s.slots.length);
 
 // The next id for a list: the prefix and one past the highest number used.
 export const nextId = (list, prefix) => `${prefix}${1 + Math.max(0, ...list.map((e) => Number(e.id.slice(prefix.length)) || 0))}`;
