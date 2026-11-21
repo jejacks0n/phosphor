@@ -44,11 +44,11 @@ export function firstUnderMark(kind, ref, hash, pluginId, fn) {
   const run = `${kind}\u0000${ref}\u0000${hash}`;
   if (ran.has(run)) return fn();
   ran.add(run);
-  beginRun(pluginId);
+  const mark = beginRun(pluginId);
   try {
     return fn();
   } finally {
-    endRun();
+    endRun(mark);
   }
 }
 

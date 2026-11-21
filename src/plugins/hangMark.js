@@ -23,16 +23,30 @@ const read = () => {
   }
 };
 
+// This page's runs going on, oldest first; the mark names the latest. A run can begin inside another (a filter's first
+// render while a script's import awaits), and one ending puts back the mark of the latest still going.
+const runs = [];
+const markOf = ({ pluginId }) => JSON.stringify({ pluginId, page: PAGE });
+
+// A run begins: its plugin is the mark. The run returned is what endRun takes.
 export function beginRun(pluginId) {
+  const run = { pluginId };
+  runs.push(run);
   try {
-    localStorage.setItem(HANG_KEY, JSON.stringify({ pluginId, page: PAGE }));
+    localStorage.setItem(HANG_KEY, markOf(run));
   } catch { /* nothing kept */ }
+  return run;
 }
 
-// Only this page's own mark is cleared: another page's run goes on.
-export function endRun() {
+// A run (beginRun's) ends: the mark goes back to this page's latest run still going, or goes with the last. Only this
+// page's own mark is touched: another page's run goes on.
+export function endRun(run) {
+  const at = runs.indexOf(run);
+  if (at >= 0) runs.splice(at, 1);
   try {
-    if (read()?.page === PAGE) localStorage.removeItem(HANG_KEY);
+    if (read()?.page !== PAGE) return;
+    if (runs.length) localStorage.setItem(HANG_KEY, markOf(runs.at(-1)));
+    else localStorage.removeItem(HANG_KEY);
   } catch { /* nothing kept */ }
 }
 

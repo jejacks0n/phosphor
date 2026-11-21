@@ -11,11 +11,11 @@ afterEach(() => {
 });
 
 test('a mark whose page still holds its lock is not a hang, and is left alone', async () => {
-  beginRun('phosphor.outlines'); // this page, at work
+  const run = beginRun('phosphor.outlines'); // this page, at work
   const mark = localStorage.getItem(HANG_KEY);
   expect(await hungLastTime()).toBe(null);
   expect(localStorage.getItem(HANG_KEY)).toBe(mark);
-  endRun();
+  endRun(run);
   expect(localStorage.getItem(HANG_KEY)).toBe(null);
 });
 
@@ -32,4 +32,26 @@ test('a page ending its run leaves another page\'s mark', () => {
   localStorage.setItem(HANG_KEY, other);
   endRun();
   expect(localStorage.getItem(HANG_KEY)).toBe(other);
+});
+
+// A script's import holds the mark across an await, and a filter's first render (or a brush's first stroke) can begin
+// and end its own run in that gap: the import's mark must still be there after it.
+const marked = () => JSON.parse(localStorage.getItem(HANG_KEY))?.pluginId ?? null;
+test('a run begun and ended inside another leaves the other\'s mark', () => {
+  const outer = beginRun('jane.script');
+  const inner = beginRun('jane.filter');
+  expect(marked()).toBe('jane.filter');
+  endRun(inner);
+  expect(marked()).toBe('jane.script');
+  endRun(outer);
+  expect(localStorage.getItem(HANG_KEY)).toBe(null);
+});
+
+test('a run that ends before one begun after it leaves the later one\'s mark', () => {
+  const first = beginRun('jane.script');
+  const second = beginRun('jane.other');
+  endRun(first);
+  expect(marked()).toBe('jane.other');
+  endRun(second);
+  expect(localStorage.getItem(HANG_KEY)).toBe(null);
 });

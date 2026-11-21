@@ -3,7 +3,7 @@
 // of this file's own; the registry outlives a Pinia, so each test drops what it registered.
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { HANG_KEY, beginRun } from '@/plugins/hangMark';
+import { HANG_KEY, beginRun, endRun } from '@/plugins/hangMark';
 import { sha256 } from '@/plugins/script';
 import { solverRef } from '@/plugins/solvers';
 import { loadPlugins, putPlugin } from '@/plugins/storage';
@@ -182,11 +182,12 @@ test('a hang mark left by the last visit switches that plugin off with the reaso
 test('a mark another open page holds is not a hang', async () => {
   await installed();
   store.dropScript(ID);
-  beginRun(ID); // this page stands in for the other: it holds its lock
+  const run = beginRun(ID); // this page stands in for the other: it holds its lock
   store = newStore();
   await store.load();
   expect(store.plugins[0].enabled).toBe(true);
   expect(store.problems[ID]).toBeUndefined();
+  endRun(run);
 });
 
 // A script whose import waits: ran goes up first, so a test knows the import is under way.
