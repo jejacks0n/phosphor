@@ -61,16 +61,19 @@ export function nameOf(path) {
   return `${file.replace(/_2x$/i, '').replace(/_/g, ' ')}${doubled ? ' (doubled)' : ''}`;
 }
 
-export function buildIndex({ files, about = {}, collections = [], sauceNames = {} }) {
+export function buildIndex({ files, about = {}, collections = {}, sauceNames = {} }) {
   const fonts = [];
   const seen = new Map(); // fontId -> collection that listed it first
-  const byPath = new Map();
-  const ordered = [...files].sort((a, b) => (a.path.startsWith('viler/') ? 0 : 1) - (b.path.startsWith('viler/') ? 0 : 1));
+  const idOfPath = new Map(); // every file's font id, so a name can reach the entry that kept its shape
+  const byId = new Map();
+  const linkedPaths = LINKED_FONTS.map((f) => f.upstream); // listed as linked, never twice
+  const ordered = files.filter((f) => !linkedPaths.includes(f.path)).sort((a, b) => (a.path.startsWith('viler/') ? 0 : 1) - (b.path.startsWith('viler/') ? 0 : 1));
   for (const { path, bytes } of ordered) {
     const height = bytes.length / 256;
     if (!Number.isInteger(height) || height < 1 || height > 32) continue;
     const font = { name: nameOf(path), height, bytes };
     const id = fontId(font);
+    idOfPath.set(path, id);
     const collection = path.split('/')[0];
     if (seen.has(id) && seen.get(id) !== collection) continue;
     seen.set(id, collection);
@@ -84,14 +87,14 @@ export function buildIndex({ files, about = {}, collections = [], sauceNames = {
     };
     if (entry.about === undefined) delete entry.about;
     fonts.push(entry);
-    byPath.set(path, entry);
+    byId.set(id, entry);
   }
   const sauce = {};
   for (const [sauceName, path] of Object.entries(sauceNames)) {
-    const e = byPath.get(path);
+    const e = byId.get(idOfPath.get(path));
     if (!e) continue;
     e.sauce = sauceName;
-    sauce[sauceName] = { file: path, name: e.name, height: e.height };
+    sauce[sauceName] = { file: e.file, name: e.name, height: e.height };
   }
   const linked = LINKED_FONTS.map(({ credit, url, license, ...rest }) => {
     delete rest.upstream;

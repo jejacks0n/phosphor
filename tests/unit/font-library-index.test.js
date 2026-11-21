@@ -90,6 +90,13 @@ describe('buildIndex', () => {
     expect(index.fonts[0].sauce).toBe('IBM VGA');
   });
 
+  it('a sauce name whose file was listed once under VileR points at VileR\'s file', () => {
+    const { sauce } = run([
+      { path: 'viler/PC-IBM/EGA8.F14', bytes: make(14) }, { path: 'moebius/ibm/CP437.F14', bytes: make(14) },
+    ], { sauceNames: { 'IBM EGA': 'moebius/ibm/CP437.F14' } });
+    expect(sauce['IBM EGA'].file).toBe('viler/PC-IBM/EGA8.F14');
+  });
+
   it('carries the about text of a VileR font', () => {
     const { index } = run([{ path: 'viler/PC-IBM/A.F08', bytes: make(8) }], { about: { 'viler/PC-IBM/A.F08': 'Hello' } });
     expect(index.fonts[0].about).toBe('Hello');
@@ -143,5 +150,13 @@ describe('machineOf and charsOf', () => {
     expect(machineOf('moebius/amiga/X.F16')).toBe('Amiga');
     expect(machineOf('moebius/c64/X.F08')).toBe('Commodore 64');
     expect(machineOf('viler/NEW/X.F08')).toBe('Other');
+  });
+});
+
+describe('buildIndex and linked fonts', () => {
+  it('a file at a linked font\'s upstream path is never listed', () => {
+    const { index } = run([{ path: LINKED_FONTS[0].upstream, bytes: make(8) }]);
+    expect(index.fonts).toEqual([]);
+    expect(index.linked).toHaveLength(1);
   });
 });

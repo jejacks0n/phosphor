@@ -12,6 +12,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "fonts": "node scripts/font-library.mjs",
     "build": "vite build",
     "build:desktop": "VITE_DESKTOP=1 vite build --outDir dist-desktop",
     "desktop": "npm run build:desktop && electron desktop/main.js",
