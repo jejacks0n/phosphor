@@ -284,9 +284,9 @@ const FRAGMENT_SHADER = `
 `;
 
 const GLSL_TYPES = { slider: 'float', checkbox: 'bool', choice: 'int', color: 'vec3' };
-// An option's uniform: opt_ and its id, a hyphen made an underscore (a hyphen isn't GLSL; ids have no underscores, so
-// two never meet).
-const optUniform = (id) => `opt_${id.replace(/-/g, '_')}`;
+// An option's uniform: opt_ and its id, which reading the script (OPTION_ID in plugins/script.js) holds to a letter
+// first, then letters, digits and single underscores, so the name is always GLSL's (no hyphen, no reserved __).
+const optUniform = (id) => `opt_${id}`;
 
 // A plugin filter's pass (the body of its vec3 filter()) in a program of its own, after the prelude docs/plugins.md
 // describes: pixel(d), the color d processed pixels away as the pass before left it (the edge's past the border), uv,
@@ -634,13 +634,14 @@ export default class WebGLProcessor {
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // A context lost while the filters drew is said for each filter in the call.
-    if (pluginFilters.length > 0 && gl.isContextLost()) for (const { ref, hash } of pluginFilters) failFilter(ref, { lost: true }, hash);
-
     // Clean up multi-pass resources
     gl.deleteFramebuffer(fb);
     tempTextures.forEach(tex => gl.deleteTexture(tex));
     this.#dropFilterPrograms(used);
+
+    // A context lost while the filters drew is said for each filter in the call, once everything's freed (a listener
+    // that throws leaks nothing).
+    if (pluginFilters.length > 0 && gl.isContextLost()) for (const { ref, hash } of pluginFilters) failFilter(ref, { lost: true }, hash);
   }
 
   // The filter programs whose keys aren't in keep, deleted.
