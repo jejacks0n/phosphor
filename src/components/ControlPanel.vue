@@ -19,6 +19,7 @@ import CharsetField from '@/components/CharsetField.vue';
 import FontField from '@/components/FontField.vue';
 import SolverOptions from '@/components/SolverOptions.vue';
 import { isSolverRef } from '@/plugins/solvers';
+import { filterEntry } from '@/plugins/filters';
 import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
 import { resolves } from '@/lib/CharResolver';
 import { charRowsOf } from '@/lib/Cells';
@@ -89,7 +90,9 @@ const sections = computed(() => {
   const picture = { id: 'picture', title: t('panel.groups.picture', { name: layerName('base') }) };
   // Picture (Smoothing, how the picture and the base's own pixels are scaled to the grid) only where it changes something.
   const scaled = store.smoothingMatters ? [picture] : [];
-  return [transform, adjust, characters, ...(workspace.pickedLayer === 'base' ? [...scaled, ...(hasRealImage.value ? [effects] : [])] : [])];
+  // After them, a group per plugin filter (store.filterGroups), titled with its name; none in a room, where none applies.
+  const filters = room.inRoom ? [] : store.filterGroups.map((filter) => ({ id: filter.ref, title: filter.name, filter }));
+  return [transform, adjust, characters, ...(workspace.pickedLayer === 'base' ? [...scaled, ...(hasRealImage.value ? [effects] : [])] : []), ...filters];
 });
 
 const help = (key) => getSetting(key).help;
@@ -117,6 +120,27 @@ const folded = useLocalStorage('phosphor.panel.folded', []);
 const isFolded = (id) => folded.value.includes(id);
 const toggleFold = (id) => { folded.value = isFolded(id) ? folded.value.filter((f) => f !== id) : [...folded.value, id]; };
 const onCount = (group) => (group.sliders ?? []).filter((s) => Number(store[s.key]) !== s.default).length;
+
+// A plugin filter's group: its options drawn as a solver's are (SolverOptions), each change the drawing's filterOptions
+// with this filter's entry replaced (only its values off their defaults, none at all when every one's at its default), an
+// undo step as a slider's; its Reset takes the entry out, one step. A group whose filter isn't running says why, dimmed.
+const without = (ref) => Object.fromEntries(Object.entries(store.filterOptions).filter(([key]) => key !== ref));
+function setFilter({ ref, def, name }, values) {
+  const entry = filterEntry(def, name, values);
+  store.setSlider('filterOptions', entry ? { ...without(ref), [ref]: entry } : without(ref));
+}
+function resetFilter(ref) {
+  store.setSlider('filterOptions', without(ref));
+  store.commitSliders();
+}
+const dimmed = (group) => !!group.filter && !['on', 'idle'].includes(group.filter.state);
+function filterWords({ ref, name, state }) {
+  if (state === 'missing') return t('panel.filter.missing', { name });
+  if (state === 'off' || state === 'pluginsOff') return t('panel.filter.off', { name });
+  if (state !== 'failed') return null;
+  const why = plugins.filterFailures[ref];
+  return why?.lost ? t('plugins.errors.filterLost', { name }) : t('plugins.errors.filterShader', { name, log: why?.log ?? '' });
+}
 
 // Each way of choosing characters' own options, from the way the picked layer's cells are made (an unknown choice
 // from an old file or a room converts as Random or By weight, and shows their options).
@@ -229,14 +253,16 @@ function onKeyDown(event) {
       <!-- Under a folded group its title's line is the separator. -->
       <hr v-if="i === 0 || !isFolded(sections[i - 1].id)"/>
 
-      <fieldset :class="[group.id, { folded: isFolded(group.id) }]" :disabled="!!locked" :title="lockedFor(group)">
+      <fieldset :class="[group.filter ? 'plugin-filter' : group.id, { folded: isFolded(group.id), dim: dimmed(group) }]" :disabled="!!locked" :title="lockedFor(group)">
         <legend class="folds">
           <button class="fold" :aria-expanded="!isFolded(group.id)" :aria-controls="`group-${group.id}`" @click="toggleFold(group.id)">
             <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
             <span class="title" :title="group.title">{{ group.title }}</span>
             <span v-if="isFolded(group.id) && onCount(group)" class="on">{{ t('panel.onCount', onCount(group)) }}</span>
+            <span v-if="group.filter" class="chip">{{ t('panel.pluginChip') }}</span>
           </button>
           <button v-if="group.sliders" :disabled="!!locked" @click="store.resetGroup(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
+          <button v-else-if="group.filter" :disabled="!!locked" @click="resetFilter(group.id)" tabindex="-1">{{ t('panel.reset') }}</button>
         </legend>
 
         <div v-show="!isFolded(group.id)" :id="`group-${group.id}`">
@@ -305,6 +331,14 @@ function onKeyDown(event) {
                 <option value="high">{{ t('panel.smoothing.high') }}</option>
               </select>
             </div>
+          </template>
+
+          <template v-else-if="group.filter">
+            <p v-if="filterWords(group.filter)" class="note">{{ filterWords(group.filter) }}</p>
+            <SolverOptions
+                v-if="group.filter.def" :id-prefix="`filter-${group.id}`" :options="group.filter.def.options" :values="group.filter.values"
+                @change="setFilter(group.filter, $event)" @commit="store.commitSliders(`filterOptions:${group.id}`, $event)"
+            />
           </template>
 
           <template v-else>
@@ -473,6 +507,22 @@ legend button.fold svg.chevron {
 
 legend button.fold[aria-expanded="false"] svg.chevron {
   transform: rotate(-90deg);
+}
+
+/* A plugin filter's group: a small PLUGIN chip after its name, and dimmed (its title and options) while it isn't running. */
+legend button.fold span.chip {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+fieldset.dim legend span.title,
+fieldset.dim .solver-options {
+  opacity: 0.5;
 }
 
 legend button.fold span.on {

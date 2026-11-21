@@ -20,7 +20,7 @@ import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { findUniform, processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putStack, refusedHidden, stackState } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putSettings, putStack, refusedHidden, stackState } from '@/store/project/shared.js';
 import { layerChars, lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { placedShapes } from '@/document/followers.js';
 import { CHAR_KEYS, RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
@@ -434,7 +434,7 @@ export const mergingActions = {
       // The color pair and the clipboard swap only while they hold what the other side left: a
       // color picked or a block copied since is kept.
       const apply = (state, from) => {
-        this.$patch({ image: shallowRef(state.image), imageBuffer: state.imageBuffer, imageIsWorkingCopy: state.workingCopy, ...state.sliders });
+        putSettings(this, { image: shallowRef(state.image), imageBuffer: state.imageBuffer, imageIsWorkingCopy: state.workingCopy, ...state.sliders }); // the plugin filters' values replaced, not merged
         this.baseLayer.restore(state.base);
         putStack(this, state.stack);
         this.shapes = state.shapes;
@@ -534,7 +534,7 @@ export const mergingActions = {
 
       // The color pair and the clipboard swap only while they hold what the other side left (as Bake's).
       const apply = (state, from) => {
-        this.$patch({ image: shallowRef(state.image), imageBuffer: state.imageBuffer, imageIsWorkingCopy: state.workingCopy, ...state.settings });
+        putSettings(this, { image: shallowRef(state.image), imageBuffer: state.imageBuffer, imageIsWorkingCopy: state.workingCopy, ...state.settings });
         this.fit = state.fit && { ...state.fit }; // set, not patched: a patch would merge into the object before holds
         this.baseLayer.restore(state.base);
         this.shapes = state.shapes;
@@ -620,7 +620,7 @@ export const mergingActions = {
       this.commitPending();
       const params = this.processParams;
       const doc = this._document, version = this.history.version;
-      const neutral = { ...params, ...Object.assign({}, ...RESET_GROUPS.map(groupDefaults)) };
+      const neutral = { ...params, ...Object.assign({}, ...RESET_GROUPS.map(groupDefaults)), pluginFilters: [] }; // the picture as it is: the sliders and filters stay, and apply to what it becomes
       const fitNow = params.fit ?? this.fitFor(this.cols, this.rows);
       const m = fittingScale(workingScale(this.image, params) ?? Math.max(2, Math.floor(400 / Math.max(this.cols, this.rows))), fitNow.dw, fitNow.dh);
       // A picture too long for the GPU at a pixel a grid pixel can't take the drawing in whole pixels:

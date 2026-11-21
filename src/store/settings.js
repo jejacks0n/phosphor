@@ -4,6 +4,7 @@ import { goodBaseScale, goodFit, goodScale } from '@/document/projectIO.js';
 import { MAX_COLS, maxRowsBeside } from '@/lib/Cells.js';
 import { SAUCE_WIDTHS, charCount } from '@/lib/Sauce.js';
 import { t } from '@/i18n/index.js';
+import { cleanFilterOptions } from '@/plugins/filters.js';
 
 // A list of characters or colors, in characters: every CP437 character 64 times over, or 2000 colors.
 const MOST_LIST = 16 * 1024;
@@ -58,6 +59,10 @@ export const SETTINGS = [
   { key: 'edgeColor', default: '#000000', group: 'effects' },
   { key: 'edgeThickness', default: 1, group: 'effects', get label() { return t('settings.edgeThickness.label'); }, min: 0, max: 5, step: 0.1, decimals: 1, get help() { return t('settings.edgeThickness.help'); } },
 
+  // The plugin filters' values, only those off their defaults (plugins/filters.js): a group of its own, so Image filters'
+  // Reset leaves them and Reset all clears them; each change an undo step as a slider's.
+  { key: 'filterOptions', default: () => ({}), object: true, group: 'filters', clean: cleanFilterOptions },
+
   { key: 'sauceUse9pxFont', default: false, group: 'sauce', storageKey: 'current_file.sauce.use9pxFont' },
   { key: 'sauceFontName', default: 'IBM VGA', group: 'sauce', most: SAUCE_WIDTHS.fontName, storageKey: 'current_file.sauce.fontName' },
   { key: 'sauceTitle', default: '', group: 'sauce', most: SAUCE_WIDTHS.title, storageKey: 'current_file.sauce.title' },
@@ -79,7 +84,7 @@ const defaultOf = (s) => (typeof s.default === 'function' ? s.default() : s.defa
 // Conversion settings: persisted, saved with projects, and edited in the ControlPanel.
 export const SETTING_KEYS = SETTINGS.filter(s => s.group !== 'sauce').map(s => s.key);
 export const SAUCE_KEYS = SETTINGS.filter(s => s.group === 'sauce').map(s => s.key);
-export const RESET_GROUPS = ['transform', 'adjust', 'effects'];
+export const RESET_GROUPS = ['transform', 'adjust', 'effects', 'filters'];
 // The character settings each layer has its own of (the bottom's are these fields themselves): how its paint, its
 // picture or its shapes become characters, and how they're dithered. The rest are the whole drawing's, or the picture's.
 export const CHAR_KEYS = ['chars', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solverOptions', 'solids', 'patternLight', 'ditherStyle', 'dither'];
@@ -87,10 +92,10 @@ export const CHAR_KEYS = ['chars', 'charsAscii', 'seed', 'charChoice', 'charChoi
 export const DITHER_KEYS = ['ditherStyle', 'dither'];
 
 // Whether every slider a bake (or Reset All) resets is at its default: nothing to bake. A slider
-// can hold its value as a numeric string.
+// can hold its value as a numeric string; an object setting (filterOptions) is compared by its JSON.
 export function slidersAtDefaults(state) {
   return RESET_GROUPS.every(group => Object.entries(groupDefaults(group)).every(([key, value]) =>
-    (typeof value === 'number' ? Number(state[key]) === value : state[key] === value)));
+    (typeof value === 'number' ? Number(state[key]) === value : plain(value) ? sameSetting(state[key], value) : state[key] === value)));
 }
 
 // A value a setting could hold: its default's kind, a slider within its range (a slider can hold a numeric
@@ -140,7 +145,7 @@ export function settingsFromStranger(values) {
   for (const setting of SETTINGS) {
     if (!(setting.key in values)) continue;
     if (!goodSetting(setting, values[setting.key])) return null;
-    taken[setting.key] = setting.object ? cleanOptions(values[setting.key]) : values[setting.key];
+    taken[setting.key] = setting.object ? (setting.clean ?? cleanOptions)(values[setting.key]) : values[setting.key];
   }
   const cols = asNumber(taken.cols ?? 1), rows = asNumber(taken.rows ?? 1);
   if (!Number.isInteger(cols) || !Number.isInteger(rows) || cols < 1 || rows < 1 || cols > MAX_COLS || rows > maxRowsBeside(cols)) return null;

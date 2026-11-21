@@ -12,7 +12,7 @@ const MOST_EACH = 8, MOST_OUTLINES = 200, MOST_POINTS = 500, MOST_OPTIONS = 12, 
 const STYLES = ['ansi', 'colorAscii', 'ascii'];
 const ID = /^[a-z0-9-]{1,40}$/;
 const MOST_COPY = 1000; // a longer array is over every cap; not walked (undefined fills, which no check passes)
-const OPTION_ID = /^[a-z](?:[a-z0-9]|_(?!_)){0,31}$/; // a GLSL identifier suffix (the shader's uniform is opt_<id>): no __, which GLSL reserves
+export const OPTION_ID = /^[a-z](?:[a-z0-9]|_(?!_)){0,31}$/; // a GLSL identifier suffix (the shader's uniform is opt_<id>): no __, which GLSL reserves
 
 export async function importScript(text) {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));

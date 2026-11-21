@@ -231,12 +231,12 @@ export function refusedHidden(project, ids) {
   return true;
 }
 
-// values as the document's settings: patched in, except solverOptions, which is replaced (a patch merges objects, and keeps
-// a ref that was dropped, or more than a file holds).
+// values as the document's settings: patched in, except the object settings (solverOptions, filterOptions), which are
+// replaced (a patch merges objects, and keeps a ref that was dropped, or more than a file holds).
+const OBJECT_KEYS = SETTINGS.filter((s) => s.object).map((s) => s.key);
 export function putSettings(store, values) {
-  const { solverOptions, ...rest } = values;
-  store.$patch(rest);
-  if (solverOptions) store.solverOptions = solverOptions;
+  store.$patch(Object.fromEntries(Object.entries(values).filter(([key]) => !OBJECT_KEYS.includes(key))));
+  for (const key of OBJECT_KEYS) if (values[key]) store[key] = values[key];
 }
 
 // A layer's name as shown (useLayerName's, in the store): its own, else "Base", "Layer n" or "Vector n".

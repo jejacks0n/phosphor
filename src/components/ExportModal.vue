@@ -45,6 +45,9 @@ const stem = computed(() => fileStem(name.value, selected.value.ext));
 // exported is what shows.
 const layerName = useLayerName();
 const standIns = computed(() => project.layers.filter(({ id }) => project.layerParams.get(id)?.standIn).map(({ id }) => layerName(id)));
+// The plugin filters the drawing sets that aren't running (not installed, off, failed), by the names saved with them: the
+// export is the picture without them.
+const filtersLeftOut = computed(() => project.filterGroups.filter(({ ref, state }) => ref in project.filterOptions && !['on', 'idle'].includes(state)).map(({ name }) => name));
 
 const tooTall = computed(() => ['ansimation', 'utf8ansimation'].includes(selectedId.value) && (project.cols > 80 || charRowsOf(project.rows) > 25));
 // .ans is CP437: the characters it can't keep and what each becomes. An animated .ans lists what every frame holds,
@@ -182,6 +185,7 @@ function cancel() {
         </div>
 
         <p v-if="standIns.length" class="note warn stand-ins">{{ t('export.standIns', { names: formatList(standIns) }, standIns.length) }}</p>
+        <p v-if="filtersLeftOut.length" class="note warn filters-left-out">{{ t('export.filtersLeftOut', { names: formatList(filtersLeftOut) }, filtersLeftOut.length) }}</p>
 
         <!-- Animated ANS: too tall/wide warning -->
         <p v-if="tooTall" class="note warn">{{ t('export.modal.tooTall', { cols: project.cols, rows: charRowsOf(project.rows) }) }}</p>

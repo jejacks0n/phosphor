@@ -137,11 +137,12 @@ export default class Renderer {
     this.#pipelineData = ctx2d(this.pipelineCanvas).getImageData(0, 0, params.cols, params.rows);
     this.#effective = new Map();
 
-    // Underlying colors depend only on the image, grid, smoothing, effects and CGA/VGA, so color
+    // Underlying colors depend only on the image, grid, smoothing, effects, plugin filters and CGA/VGA, so color
     // adjustments don't redo this.
     this.#baseParams = baseParams;
     const sp = baseParams ?? {};
-    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness, snapsLate(sp)].join();
+    const filters = JSON.stringify((sp.pluginFilters ?? []).map(({ ref, hash, values }) => [ref, hash, values])); // they run before the adjustments, so the stored colors have them
+    const sourceKey = [params.cols, params.rows, JSON.stringify(params.fit), params.smoothing, sp.quantize, sp.blur, sp.sharpen, sp.flatten, sp.edges, sp.edgeColor, sp.edgeThickness, snapsLate(sp), filters].join();
     if (baseParams && (this.#source?.image !== image || this.#source.key !== sourceKey)) {
       const { canvas: source } = await processImage(image, baseParams, { samples: false });
       this.#source = { image, key: sourceKey, data: ctx2d(source.canvas).getImageData(0, 0, params.cols, params.rows) };

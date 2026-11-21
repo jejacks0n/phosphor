@@ -81,7 +81,9 @@ function settledRows(project, rows) {
 // past MAX_LAYER_DIM), which makes processParams and every layer's params anew. A plugin solver's options are made anew
 // with them, so they're compared by value. Choosing a plugin solver, or changing one of its options, resolves the layer
 // whole, which can take a while: the busy note goes up first (solving). Returns what stops it.
-const sameValue = (key, a, b) => a === b || (key === 'solverOptions' && JSON.stringify(a) === JSON.stringify(b));
+// The plugin filters that run are made anew too, and compared by what changes their passes: each one's ref, script and values.
+const filtersKey = (list) => JSON.stringify(list.map(({ ref, hash, values }) => [ref, hash, values]));
+const sameValue = (key, a, b) => a === b || (key === 'solverOptions' && JSON.stringify(a) === JSON.stringify(b)) || (key === 'pluginFilters' && filtersKey(a) === filtersKey(b));
 const sameParams = (a, b) => !!b && Object.keys(a).length === Object.keys(b).length && Object.keys(a).every((key) => sameValue(key, a[key], b[key]));
 const solving = (now, rendered) => !!now.solver && !!rendered && (now.solver !== rendered.solver || !sameValue('solverOptions', now.solverOptions, rendered.solverOptions));
 export function followParams(project) {
