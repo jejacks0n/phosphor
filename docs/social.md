@@ -199,7 +199,7 @@ What you've typed stays while you visit another tab. **Go live** shares the art 
   plugin solver, which rooms don't use. Choose a built-in solver for it, or Flatten the drawing first."
 - **Plugin filters**: Nor while the drawing holds a plugin filter's values, running or not
   ([In a room](plugins.md#in-a-room)). Go live is off, and the box names it: "The plugin filter Aberration is on, which
-  rooms don't use. Reset it or switch it off first." Its Reset, with the base picked, is what lifts it.
+  rooms don't use. Reset it or switch it off first." Its Reset (with the base picked) or Reset all lifts it.
 - **Animation**: A drawing with frames can't go live: "Shared rooms do not support animation yet."
 
 Once you're live you keep drawing as usual, and watchers see each change as you make it, with a box in your name color

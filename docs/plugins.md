@@ -239,8 +239,8 @@ underscores together: it's the end of a shader's uniform name, `opt_<id>`; one o
 - `checkbox`: `default`, true or false.
 - `choice`: `choices` (up to 20, each 40 characters at most) and `default`, the number of the choice (the first is 0).
 - `color`: `default`, a color as `'#rrggbb'` (kept in lowercase). JavaScript gets it as `{ r, g, b }`, each 0 to 255,
-  and a shader as a `vec3`, each channel 0 to 1. It shows as a swatch; in the settings column one right after a slider
-  sits beside it, as Edges has its color.
+  and a shader as a `vec3`, each channel 0 to 1. It shows as a swatch; in the settings column the colors that come right
+  after a slider, one after another, sit beside it, as Edges has its color (both of Aberration's sit by Distance).
 
 Where the values are kept depends on the kind: a solver's for each layer, saved with the drawing; a filter's with the
 drawing; a brush's and a shape's in this browser, for each brush and each shape, and not in the drawing. A value kept
@@ -476,7 +476,7 @@ functions, so `this` is undefined. `paint` is made once a stroke, and is the sam
 - `paint.shown(x, y)`: the color of a grid pixel as it shows, up to and including the picked layer (what Retouch reads),
   as `{ r, g, b }`, or `null` off the grid.
 - `paint.own(x, y)`: the picked layer's own paint there, as `{ r, g, b, a }` (`a` from 0 to 1), or `null` where it has
-  none. With the base picked it's what `shown` gives.
+  none. With the base picked it's what `shown` gives: `{ r, g, b }`, with no `a`.
 - `paint.put(x, y, color, alpha)`: paints a grid pixel with `color` (`{ r, g, b }`, 0 to 255) at `alpha` (0 to 1) over
   what the picked layer had there when the stroke began.
 - `paint.dab(from, to, size, hardness)`: the grid pixels a round brush of that size and hardness (0 to 1) covers moving
@@ -535,7 +535,8 @@ export default {
 `outline(options)` is called once for each drag, at its first move, with the shape's values by id. It gives back the
 shape in a box of its own, 0 to 1 across and 0 to 1 down, which Phosphor stretches over the box you drag (so a shape
 that fills its box fills the drag, as the built-in shapes do). That's a list of 1 to 200 outlines, each
-`{ closed, points }` with at least 2 points, and 500 points in all:
+`{ closed, points }`: `closed` true or false (a boolean, not just truthy), with at least 2 points, and 500 points in
+all:
 
 ```js
 function outline({ points, pinch, round }) {
@@ -546,8 +547,9 @@ function outline({ points, pinch, round }) {
 A point is `[x, y]`, a corner, or `[x, y, inX, inY, outX, outY]`, a point with handles. As in Phosphor's own paths, the
 handles are relative to their point: `inX, inY` is the way from the point to the handle before it, `outX, outY` to the
 one after, and they're stretched with the box. Two or more outlines are one path. Numbers that aren't finite, too many
-outlines or points, or anything that isn't this shape draw nothing for that drag: a toast says "Superformula couldn't
-draw: …" with why, and the plugin's row says so. An `outline` that throws does the same.
+outlines or points, a `closed` that isn't a boolean, or anything that isn't this shape draw nothing for that drag: a
+toast says "Superformula couldn't draw: …" with why, and the plugin's row says so. An `outline` that throws does the
+same.
 
 ## Writing a filter
 
@@ -639,8 +641,9 @@ draws a Rectangle), and the plugin filter groups don't show, so no filter can be
 
 Hosting is refused while the drawing holds a plugin filter's values, running or not: **Go live**, and on the desktop app
 **Start a room**, are off and say so, naming it ("The plugin filter Aberration is on, which rooms don't use. Reset it or
-switch it off first."). Reset is what lifts it: a filter whose plugin is off or missing still holds its values. A layer
-on a plugin solver is refused the same way ([Characters](characters.md#plugin-solvers)). Joining a room isn't affected.
+switch it off first."). Reset (or Reset all) lifts it: a filter whose plugin is off or missing still holds its values. A
+layer on a plugin solver is refused the same way ([Characters](characters.md#plugin-solvers)). Joining a room isn't
+affected.
 
 ## Trying it as you write
 
