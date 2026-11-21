@@ -120,7 +120,11 @@ test('outline gets the values set through the toolbar, a color as { r, g, b }, o
 });
 
 test('an outline that throws or is refused draws nothing, no undo step, one toast a drag, and the row says so', async () => {
-  for (const outline of [() => { throw new Error('boom'); }, () => [{ closed: true, points: [[NaN, 0], [1, 1]] }]]) {
+  const cases = [
+    [() => { throw new Error('boom'); }, 'boom'],
+    [() => [{ closed: true, points: [[NaN, 0], [1, 1]] }], t('plugins.errors.scriptShape', { field: 'outline' })],
+  ];
+  for (const [outline, message] of cases) {
     let calls = 0;
     const { project, ctx } = await shaper({ outline: () => { calls++; return outline(); } });
     const version = project.history.version, last = project.history.last;
@@ -128,7 +132,7 @@ test('an outline that throws or is refused draws nothing, no undo step, one toas
     vshape.begin(ctx, { x: 10, y: 10 }, {});
     vshape.move(ctx, { x: 10, y: 10 }, { x: 20, y: 15 });
     const words = toastMessage.value;
-    expect(words).toMatch(/^Triangle couldn't draw: /);
+    expect(words).toBe(t('plugins.shapeFailed', { name: 'Triangle', message }));
     toastMessage.value = null;
     vshape.move(ctx, { x: 20, y: 15 }, { x: 30, y: 20 });
     vshape.end(ctx);
