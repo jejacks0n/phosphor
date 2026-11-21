@@ -56,3 +56,8 @@ it('maps ▄ to the slot the font draws it from', () => {
   expect(glyphFor(ttfOf(cp437Font), 0x2584)).toBe(221);
   expect(glyphFor(ttfOf(lowerAt240), 0x2584)).toBe(241);
 });
+
+it('maps every block of a slot several share to that slot', () => {
+  const buf = ttfOf({ ...cp437Font, blocks: [219, 220, 223, 221, 222, 177, 177, 177] });
+  expect(['░', '▒', '▓'].map((c) => glyphFor(buf, c.codePointAt(0)))).toEqual([178, 178, 178]); // slot 177 is glyph 178 (.notdef first)
+});

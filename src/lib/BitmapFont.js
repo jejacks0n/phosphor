@@ -78,7 +78,7 @@ const fontSlotChars = memo((font) => {
 });
 
 // Each slot's own character, and every block character at its slot (a shared slot's others too).
-const slotsOf = memo((font) => {
+export const slotsOf = memo((font) => {
   const slots = new Map(slotChars(font).map((c, i) => [c, i]));
   blocksOf(font).forEach((s, i) => s !== null && slots.set(BLOCKS[i].char, s));
   return slots;
