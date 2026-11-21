@@ -328,7 +328,8 @@ the picture → the base layer's own pixels → shapes → edit cells → paint
 
 - **Converted With the Picture**: Shapes directly on the base are converted with the picture, so the color sliders,
   the palette and Dither reach them (the image filters don't). A shape over a pinned character shows its conversion
-  there.
+  there, over the colors the character shows in ANSI (a soft edge over a red █ blends with red, not with the black
+  stored under it).
 - **Pressed Into the Base**: When a shape is pressed into the base (Bake, Merge down), pins it covers go, since its
   pixels are what shows there now; an art layer's characters become pins instead.
 - **Higher in the Stack**: A vector layer higher up converts against everything below it. Where a shape reaches a

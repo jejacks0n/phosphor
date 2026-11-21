@@ -238,9 +238,8 @@ for (const [style, ownChars] of [['colorAscii', false], ['ascii', false], ['ansi
 }
 
 // A shape over a pinned character takes the cell: the converter picks a character for the shape over the pixels under it
-// (docs/model.md R7), so those are what shows. On a layer above the base they're the character's look with the shape
-// over it (the white █'s top stays white); a vector layer right on the base still converts over the two the base stores
-// (its background over its foreground), which is open.
+// (docs/model.md R7), so those are what shows: the character's look with the shape over it (the white █'s top stays
+// white), on a vector layer right on the base or above it.
 test('R11: a character a shape reaches over gives way to it, under the layer above the base and over it', async () => {
   const { project, workspace, seen, done } = await mountPixelView(null, { overlay: 0 });
   pin(project, 4, 3, '█');
@@ -253,9 +252,8 @@ test('R11: a character a shape reaches over gives way to it, under the layer abo
   project.addShape(rectShape(10, 7, 11, 8, { fill: '#ff0000' }));
   await settle(project);
   expect(project.lowerGroup.upper).toContain(over);
-  expect(shown(seen, 4, 3)).toEqual([BLACK, RED]);
-  expect(shown(seen, 4, 3)).toEqual(stored(project, 4, 3));
-  expect(shown(seen, 10, 3)).toEqual([WHITE, RED]);
+  for (const col of [4, 10]) expect(shown(seen, col, 3), `column ${col}`).toEqual([WHITE, RED]);
+  expect(shown(seen, 4, 3)).toEqual(stored(project, 4, 3)); // the pin gives way: the pixels show
   done();
 });
 

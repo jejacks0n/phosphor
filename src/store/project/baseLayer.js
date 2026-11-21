@@ -25,8 +25,10 @@ export const baseLayerActions = {
     const pixels = cells.flatMap(({ col, row, fg, bg }) => [{ x: col, y: 2 * row, hex: bg }, { x: col, y: 2 * row + 1, hex: fg }]);
     this.writeBase(pixels);
     this.setBaseRecords(withPins(this.baseRecords, cells));
-    const { cols, rows } = this;
-    this.recompose(pixels.filter(({ x, y }) => x < cols && y < rows));
+    const { cols, rows } = this, inGrid = pixels.filter(({ x, y }) => x < cols && y < rows);
+    // Shapes on the bottom draw a pin's look under them (docs/model.md R7), and writeBase drew them before the pins changed.
+    if (this._shapeLayer?.drawsShapes) this.refreshCells(inGrid);
+    else this.recompose(inGrid);
   },
 
   // Erase base pixels (the Pixel view, and the Soft Eraser): black. In Monochrome ASCII, where black can't show on a pin,

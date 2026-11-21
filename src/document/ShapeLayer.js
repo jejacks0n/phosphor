@@ -17,6 +17,8 @@
  */
 import { ctx2d } from '../lib/Canvas.js';
 import { charRowsOf } from '../lib/Cells.js';
+import { coverageOf } from '../lib/GlyphCoverage.js';
+import { cellKey } from './editCells.js';
 import { isArt } from './artLayers.js';
 import { dirtyRect, invert, isGradient, multiply, onScreen, pathData, scaling, shapeBounds, stacked, strokeAlign, strokeOf } from './shapes.js';
 import { sidePath } from '../lib/shapeHits.js';
@@ -47,6 +49,36 @@ export default class ShapeLayer {
   version = 0;
   #changes = [];
   #hideBase = false;
+  #pins = null;         // () => the base's pins while a shape over one mixes with its look (ANSI), else null (lookUnder)
+  #pinsSeen = null;     // the pins map the looks were drawn from
+  #looked = new Map();  // each cell the shapes take, as row * cols + col -> the pin its look was drawn from (or undefined)
+
+  // Whether a shape over a pinned character mixes with the character's look, as the ANSI view shows it, or with the two
+  // pixels the base stores under it, its background over its foreground (docs/model.md R7). pins: () => the base's pins
+  // map, or null. A change of which draws everything again on the next sync; a pin's own change comes with its pixels'.
+  lookUnder(pins) {
+    if (!pins === !this.#pins) {
+      this.#pins = pins;
+      return;
+    }
+    this.#pins = pins;
+    this.reset();
+  }
+
+  // The cells whose pin changed since the looks were drawn, drawn again on this sync: an undo can put a pin back without
+  // its pixels changing, which the base's version doesn't see. Many (a whole file's pins put back): everything.
+  #pinsChanged() {
+    const pins = this.#pins?.() ?? null;
+    if (pins === this.#pinsSeen) return;
+    this.#pinsSeen = pins;
+    if (!this.#size) return;
+    const cols = this.#base.cols, changed = [];
+    for (const [i, pin] of this.#looked) {
+      if ((pins?.get(cellKey(i % cols, Math.floor(i / cols))) ?? undefined) === pin) continue;
+      if (changed.push(i) > 256) return this.reset();
+    }
+    for (const i of changed) this.#pending.push({ x: i % cols, y: 2 * Math.floor(i / cols), w: 1, h: 2 });
+  }
 
   // The base's eye is shut: the shapes are drawn over nothing, and everything's drawn again on the next sync.
   get hideBase() { return this.#hideBase; }
@@ -115,12 +147,14 @@ export default class ShapeLayer {
   // Catch up with the base layer and the shapes set since.
   sync() {
     if (!this.drawsShapes) return;
+    this.#pinsChanged();
     const base = this.#base, k = base.scale, { width, height } = base.canvas;
     const held = this.#size;
     if (held?.width !== width || held.height !== height || held.k !== k) {
       this.#size = { width, height, k };
       this.canvas = newCanvas(width, height);
       this.#chars = new Array(base.cols * charRowsOf(base.rows));
+      this.#looked.clear();
       this.#scratch = null;
       this.#pending = [];
       this.#seen = base.version;
@@ -186,11 +220,13 @@ export default class ShapeLayer {
     const base = this.#base, k = base.scale, { width, height } = base.canvas;
     const own = newCanvas(width, height), ownCtx = ctx2d(own);
     for (const [key, shape] of this.#order) if (keys.has(key)) this.#paint(ownCtx, shape, k);
-    const canvas = newCanvas(width, height), ctx = ctx2d(canvas);
-    ctx.putImageData(ctx2d(base.canvas).getImageData(0, 0, width, height), 0, 0);
+    const canvas = newCanvas(width, height), ctx = ctx2d(canvas), chars = this.#pressedChars(keys);
+    const bytes = ctx2d(base.canvas).getImageData(0, 0, width, height), taken = new Set(chars.covered.map(({ col, row }) => row * base.cols + col));
+    if (!this.#hideBase) this.#looks(bytes, { x: 0, y: 0 }, (i) => taken.has(i)); // under the cells they take, as #draw lays them
+    ctx.putImageData(bytes, 0, 0);
     ctx.drawImage(own, 0, 0);
     offHalfSteps(ctx, ownCtx.getImageData(0, 0, width, height).data, width, height);
-    return { canvas, ...this.#pressedChars(keys) };
+    return { canvas, ...chars };
   }
 
   // The characters the art layers among keys show, worked out as #draw does (a shape stacked above has the converter
@@ -280,22 +316,31 @@ export default class ShapeLayer {
     own.clearRect(x, y, w, h);
     for (const shape of drawn) this.#paint(own, shape, k);
 
-    // The base's bytes, not a drawImage of its canvas: two canvases that read back the same can hold a
-    // semi-transparent pixel premultiplied a little differently (an undo puts tiles back with putImageData),
-    // and the shapes over it would then come out a shade apart. Alone, over nothing: the rect of the shapes'
-    // own, so what's read (a whole re-read too) never has a shape's edge drawn twice past an earlier rect.
-    const ctx = ctx2d(this.canvas);
-    if (this.#alone || this.#hideBase) ctx.clearRect(x, y, w, h);
-    else ctx.putImageData(ctx2d(this.#base.canvas).getImageData(x, y, w, h), x, y);
-    ctx.drawImage(drawing, x, y, w, h, x, y, w, h);
-
     const cols = this.#base.cols, rows = charRowsOf(this.#base.rows);
     const c0 = x / k, r0 = y / (2 * k), c1 = Math.min(cols, c0 + w / k), r1 = Math.min(rows, r0 + h / (2 * k));
     for (let row = r0; row < r1; row++) this.#chars.fill(undefined, row * cols + c0, row * cols + c1);
-    if (!drawn.some(isArt)) {
-      this.#reach(own, rect);
-      return;
+    if (drawn.some(isArt)) this.#artChars(drawn, rect, c0, r0, c1, r1);
+    else this.#reach(own, rect);
+
+    // The base's bytes, not a drawImage of its canvas: two canvases that read back the same can hold a
+    // semi-transparent pixel premultiplied a little differently (an undo puts tiles back with putImageData),
+    // and the shapes over it would then come out a shade apart. Alone, over nothing: the rect of the shapes'
+    // own, so what's read (a whole re-read too) never has a shape's edge drawn twice past an earlier rect. Under the cells
+    // the shapes take (charAt null), a pinned character's look (#looks).
+    const ctx = ctx2d(this.canvas);
+    if (this.#alone || this.#hideBase) ctx.clearRect(x, y, w, h);
+    else {
+      const bytes = ctx2d(this.#base.canvas).getImageData(x, y, w, h);
+      this.#looks(bytes, rect, (i) => this.#chars[i] === null, this.#looked);
+      ctx.putImageData(bytes, x, y);
     }
+    ctx.drawImage(drawing, x, y, w, h, x, y, w, h);
+  }
+
+  // The art layers' characters among drawn in rect's cells (c0 … c1, r0 … r1), with the bands of shapes between them
+  // given over to the conversion (#reach), bottom up.
+  #artChars(drawn, rect, c0, r0, c1, r1) {
+    const k = this.#base.scale, cols = this.#base.cols, { x, y, w, h } = rect, drawing = ownCanvas(this.#base.canvas.width, this.#base.canvas.height);
     const scratch = ctx2d(this.#scratch ??= newCanvas(drawing.width, drawing.height));
     let band = [];
     const flush = () => {
@@ -318,6 +363,36 @@ export default class ShapeLayer {
       }
     }
     flush();
+  }
+
+  // In image (the base's bytes over rect, whole cells), each cell the shapes take (taken(row * cols + col)) that holds a
+  // pinned character becomes the character's look, as the ANSI view shows it: each half its background (the top half's
+  // pixels) and foreground (the bottom half's) mixed by the glyph's ink in that half, as halfColors has it. A red █ is red
+  // in both halves, not the black stored over the red, which a soft edge mixed into by turns (docs/model.md R7).
+  // looked: a map to keep each taken cell's pin in (#looked), its cells in rect cleared first, or null.
+  #looks(image, rect, taken, looked = null) {
+    if (!this.#pins) return;
+    const pins = this.#pins();
+    const k = this.#base.scale, cols = this.#base.cols, rows = charRowsOf(this.#base.rows), { data, width } = image;
+    const c0 = rect.x / k, r0 = rect.y / (2 * k), c1 = Math.min(cols, c0 + image.width / k), r1 = Math.min(rows, r0 + image.height / (2 * k));
+    const half = (col, row, k2) => { // the average of a half's k × k block
+      const x0 = col * k - rect.x, y0 = (2 * row + k2) * k - rect.y, sum = [0, 0, 0];
+      for (let y = y0; y < y0 + k; y++) for (let x = x0; x < x0 + k; x++) { const o = (y * width + x) * 4; sum[0] += data[o]; sum[1] += data[o + 1]; sum[2] += data[o + 2]; }
+      return sum.map((v) => v / (k * k));
+    };
+    for (let row = r0; row < r1; row++) for (let col = c0; col < c1; col++) {
+      const i = row * cols + col;
+      if (!taken(i)) { looked?.delete(i); continue; }
+      const pin = pins?.get(cellKey(col, row));
+      looked?.set(i, pin);
+      if (pin === undefined) continue;
+      const bg = half(col, row, 0), fg = half(col, row, 1), ink = coverageOf(pin);
+      for (const k2 of [0, 1]) {
+        const c = bg.map((v, n) => Math.round(v + (fg[n] - v) * ink[k2]));
+        const x0 = col * k - rect.x, y0 = (2 * row + k2) * k - rect.y;
+        for (let y = y0; y < y0 + k; y++) for (let x = x0; x < x0 + k; x++) { const o = (y * width + x) * 4; data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; }
+      }
+    }
   }
 
   // The cells of rect that what's drawn on ctx reaches (any alpha) given over to the conversion: null.

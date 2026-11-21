@@ -257,6 +257,8 @@ export default class Renderer {
   composite(paintLayer, params, { hold = false, rect = null, open = false } = {}) {
     if (!this.outputCanvas || !this.pipelineCanvas) return false;
     this.#pinStyle = params.renderStyle;
+    // In ANSI a shape on the bottom over a pinned character mixes with the character's look (docs/model.md R7).
+    this.shapes?.lookUnder(params.renderStyle === 'ansi' ? () => (this.hideBase ? null : this.baseRecords.pins) : null);
 
     const ctx = ctx2d(this.outputCanvas);
     const w = this.outputCanvas.width, h = this.outputCanvas.height;

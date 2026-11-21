@@ -1029,7 +1029,7 @@ test('a save after a one-cell edit encodes one layer\'s PNG, not every layer\'s'
 // docs/model.md R7: under a character of someone's own (a pin here) the pixels an upper layer converts over are the
 // character as the PIXEL view shows it (its look, R11), not the two the base stores under it, its background over its
 // foreground: a soft shape's edge over a red █ mixed into black on every top half and red on every bottom one, stripes.
-test('R7: a vector layer\'s soft edge over pinned blocks converts over the blocks\' color, the same in both halves', async () => {
+for (const where of ['above', 'on the base']) test(`R7: a vector layer's soft edge over pinned blocks converts over the blocks' color, the same in both halves (${where})`, async () => {
   const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ cols: 20, rows: 20 });
   await settle(project);
@@ -1038,18 +1038,22 @@ test('R7: a vector layer\'s soft edge over pinned blocks converts over the block
   project.writeEditCells(Array.from({ length: 40 }, (_, k) => ({ col: 2 + (k % 8), row: 2 + Math.floor(k / 8), attrs: { char: '█', fg: '#ff0000', bg: '#000000' } })));
   project.commitEdit();
   project.addLayer('cells', 'base');
-  const vector = project.addLayer('vector');
+  const vector = project.addLayer('vector', where === 'above' ? undefined : 'base');
   workspace.pickLayer(vector);
   project.addShape(rectShape(5.5, 0, 20, 40, { fill: '#00ff00' })); // half of column 5 covered: its alpha a half
   project.commitEdit();
   await settle(project);
-  expect(project.lowerGroup.upper).toContain(vector);
+  expect(project.lowerGroup[where === 'above' ? 'upper' : 'vectors']).toContain(vector);
   const halves = (col, row) => { const { fg, bg, char } = project.cells[cellIndex(col, row, 20)]; return char === ' ' ? [bg.hex, bg.hex] : char === '▄' ? [bg.hex, fg.hex] : char === '▀' ? [fg.hex, bg.hex] : char === '█' ? [fg.hex, fg.hex] : [char]; };
   for (let row = 2; row < 7; row++) {
     const [top, bottom] = halves(5, row);
     expect(top, `row ${row}: ${halves(5, row)}`).toBe(bottom); // no stripe
     expect(top).not.toBe('#000000');
   }
+  const before = project.cells.map(({ char, fg, bg }) => char + fg.hex + bg.hex);
+  project.mergeDown(vector); // R3: pressed into the base (or onto the layer under it) as it showed
+  await settle(project);
+  expect(project.cells.map(({ char, fg, bg }) => char + fg.hex + bg.hex)).toEqual(before);
 });
 
 // The report (projects/vector-edge-over-pins.phosphor): a circle on a vector layer over an opened file's red box lines
@@ -1078,4 +1082,38 @@ test('R7: the report: a vector circle\'s edge over a file\'s pinned blocks shows
   }
   expect(checked).toBeGreaterThan(5);
   expect(black).toEqual([]);
+});
+
+// docs/model.md R7: under a shape on the bottom a pin's look is drawn into the shapes' pixels, so a pin changed with its
+// pixels left as they were (an undo of typing over it in its own colors) draws that cell again.
+test('R7: a pin changed alone under a shape on the base shows its new look, and undo its old one', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  project.charChoice = 'best';
+  await settle(project);
+  workspace.pickLayer('base');
+  project.writeEditCells([{ col: 5, row: 2, attrs: { char: '█', fg: '#ff0000', bg: '#000000' } }]);
+  project.commitEdit();
+  const vector = project.addLayer('vector', 'base');
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(5.5, 0, 20, 40, { fill: '#00ff00' }));
+  project.commitEdit();
+  await settle(project);
+  const at = () => { const { char, fg, bg } = project.cells[cellIndex(5, 2, 20)]; return char + fg.hex + bg.hex; };
+  const solid = at();
+  workspace.pickLayer('base');
+  project.writeEditCells([{ col: 5, row: 2, attrs: { char: ' ', fg: '#ff0000', bg: '#000000' } }]); // the same two pixels
+  project.commitEdit();
+  await settle(project);
+  const space = at();
+  expect(space).not.toBe(solid);
+  project.render();
+  await settle(project);
+  expect(at()).toBe(space);
+  project.undo();
+  await settle(project);
+  expect(at()).toBe(solid);
+  project.render();
+  await settle(project);
+  expect(at()).toBe(solid);
 });

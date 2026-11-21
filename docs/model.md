@@ -231,8 +231,10 @@ halves (those are ink on black, far darker than the pixels, so a faint stroke on
 under a character of someone's own (a pin, the lower cells layer's), the PIXEL view shows the character's look (R11), so
 that's what's under: its halves, not the two pixels the base stores under it (its background over its foreground). A
 circle's soft edge over an opened file's red box lines mixed into black on every top half and red on every bottom one,
-olive and black stripes by turns. A vector layer right on the base still converts over the stored two (its shapes are
-drawn into the converter's input, before the color settings and the palette, where a look can't go): open. The lower
+olive and black stripes by turns. A vector layer right on the base draws its shapes into the converter's input, so
+there each cell a shape takes holds the pin's look in place of its two pixels (each half the background and foreground
+mixed by the glyph's ink in it), before the color settings, as the pixels would be; Merge down and Bake press them
+into the base over that look, so nothing changes. The lower
 group's own paint converts over the picture the same way. Under By shape (and plugin solvers, R12), which matches finer samples of the picture
 (4 × 8 a cell), the layer above matches the same samples with the layers between and its own pixels laid over them
 (`#fineUnder`), so a photo's detail under soft paint counts there as it does on the lower group; where the picture has no
@@ -247,11 +249,13 @@ another step, dither error, By shape's finer samples, a plugin solver's neighbor
 
 - Lives in: `Renderer.#pixelsUnder` and `#fineUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and
   for `#paintOver`'s convert path, with `pictureUnder` for the lower group; the look under a character of someone's own
-  comes from `composeUpper`'s reader (`#lowerPx`), and `#fineUnder` steps aside there; `storedLookAt` (`src/store/project/reading.js`)
+  comes from `composeUpper`'s reader (`#lowerPx`), and `#fineUnder` steps aside there; on the bottom, `ShapeLayer`'s
+  `#looks` (in `#draw` and `pressed`, turned on by `lookUnder` in ANSI), which draws a cell again when its pin changes
+  alone (`#pinsChanged`), and `writeBaseCells` composites again after its pins; `storedLookAt` (`src/store/project/reading.js`)
   tracks the stored pixels under the same way.
 - Checked by: `tests/browser/layer-stack.test.js › R7: …` (faint red over white, in Color ASCII by intensity and By
-  shape and in ANSI; the report's file; a soft edge over pinned blocks, and the report
-  `projects/vector-edge-over-pins.phosphor`); `tests/browser/merge.test.js › R7: under By shape …` (soft paint over a photo
+  shape and in ANSI; the report's file; a soft edge over pinned blocks, on a layer above or on the base, then Merge
+  down; a pin changed alone under a shape, and its undo; the report `projects/vector-edge-over-pins.phosphor`); `tests/browser/merge.test.js › R7: under By shape …` (soft paint over a photo
   merges down with nothing frozen) and `› R3: the report (as saved) …` (a shape merged into an upper By shape layer,
   nothing frozen); `tests/browser/layer-chars.test.js › R7: By shape on a picture added as a layer …` (the same
   characters on its own layer as in the lower group).
@@ -325,9 +329,10 @@ What's over the character counts, bottom to top, as the cell itself is laid (`#c
 - **A paint block over it** (a Half-block's `▄`, R5) takes its place, as `blockOver` has it: a solid glyph's own
   halves, a textured character's background in both.
 - **A frozen cell over it** (R3) is its paint, and the pixels show.
-- **A shape reaching the cell** takes it: under the lower group's shapes the pin gives way (`pinAt`) and the pixels
-  show; an upper vector layer's shape makes the cell a rendering of the pixels under it (R7), which in ANSI are the
-  look's halves, so those with the shape and what's above it over them show, snapped.
+- **A shape reaching the cell** takes it, and makes it a rendering of the pixels under it (R7), which in ANSI are the
+  look's halves with the shape over them: under the lower group's shapes the pin gives way (`pinAt`) and the pixels
+  show, the look drawn into them; under an upper vector layer's, those halves with the shape and what's above it over
+  them show, snapped.
 - **An upper art layer's character** has a look of its own, of the cell `#upperCell` builds there.
 - **A hidden base** has no pins. A layer's own characters aren't pixels at all: the Overlay draws them (R6), over
   whatever is under them.
