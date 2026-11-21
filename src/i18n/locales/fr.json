@@ -1938,6 +1938,7 @@
   },
   "plugins": {
     "brushFailed": "{name} a échoué : {message}",
+    "shapeFailed": "Impossible de dessiner {name} : {message}",
     "open": "Plugins",
     "title": "Plugins",
     "sub": "Les plugins ajoutent à Phosphor des thèmes et des façons de choisir les caractères. Ils viennent dans un dossier, un .zip ou un phosphor-plugin.json, et sont gardés dans ce navigateur.",
