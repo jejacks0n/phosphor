@@ -920,7 +920,15 @@ export default class Renderer {
       if (row < pr0) pr0 = row;
       if (row > pr1) pr1 = row;
     }
-    this.#lowerPx = n ? this.#outputReader(px0, 2 * pr0, px1, 2 * pr1 + 1) : null;
+    // In ANSI, under a character of someone's own (a pin, the lower cells layer's) the pixels are the character as the
+    // PIXEL view shows it, its look (R11), not the two stored under it: a pinned █ is its color in both halves, not its
+    // background over its foreground, which a soft shape's edge mixed into by turns, a stripe a row (docs/model.md R7).
+    // Not in the ASCII styles, whose looks are ink on black.
+    const read = n ? this.#outputReader(px0, 2 * pr0, px1, 2 * pr1 + 1) : null, ansi = this.#lowerStyle === 'ansi';
+    this.#lowerPx = read && !ansi ? read : read && ((x, y) => {
+      const row = y >> 1, cell = lower[row * cols + x];
+      return cell && this.#exactUnder(x, row) ? halfColors(cell)[y & 1] : read(x, y);
+    });
     if (settles.includes(true)) this.#composeSettling(out, lower, visited, palette, reads, settles, cols);
     else {
       for (let k = 0; k < n; k++) {
@@ -1190,6 +1198,7 @@ export default class Renderer {
   // above convert over what the lower group's would, finer samples included.
   #fineUnder(col, row, reads, upTo, over, params) {
     const base = this.#baseData, picture = this.#picture, n = SAMPLES.w;
+    if (params.renderStyle === 'ansi' && this.#exactUnder(col, row)) return null; // a character of someone's own: its look's halves (#pixelsUnder)
     if (!base || !picture || picture.width !== base.width * n || picture.height !== base.height * n || 2 * row + 1 >= base.height) return null;
     const samples = this.#samples?.picture === picture ? this.#samples.data : picture, width = picture.width, src = samples.data;
     const out = this.#fineSamples ??= new Float64Array(SAMPLES.w * SAMPLES.h * 3);
@@ -1529,9 +1538,10 @@ export default class Renderer {
   // - A paint block over it (a Half-block's ▄, on the lower group's cells layer or one above) takes its place, as
   //   blockOver has it: a solid glyph's own halves, a textured character's background in both.
   // - Paint over it, the lower group's or an upper cells layer's, tints it (#lookPainted).
-  // - A frozen cell over it (Merge down's, R3) is its paint, and an upper vector layer's shape reaching the cell makes it
-  //   a rendering of the pixels (R7): no look, the pixels show. An upper art layer's character starts over: the cell
-  //   #upperCell builds, from the two pixels under the layers so far with its own over them (#pixelsUnder).
+  // - A frozen cell over it (Merge down's, R3) is its paint: no look, the pixels show. An upper vector layer's shape
+  //   reaching the cell makes it a rendering of the pixels under it (R7), which are the look's halves: those with the
+  //   shape and what's above it over them show, snapped. An upper art layer's character starts over: the cell #upperCell
+  //   builds, from the look's halves with its own over them (#pixelsUnder).
   // A character typed on a cells layer over it is the Overlay's to draw (R6); the look goes on under it.
   #lookAt(col, row, key, pin, top, bottom, params, reads) {
     const { renderStyle } = params, width = this.outputCanvas.width, palette = this.#heldData ? null : this.palette;
@@ -1546,16 +1556,19 @@ export default class Renderer {
         if (cell) cell = this.#lookPainted(cell, over, overBelow, renderStyle, block, (under) => this.#paintOver(under, renderStyle === 'ansi' ? () => halfColors(under) : () => this.pictureUnder(under, col, row, params), over, overBelow, false, col, row, params, palette, renderStyle === 'ansi' ? null : () => this.#fineUnder(col, row, null, 0, null, params)));
       }
     }
+    let pixels = false; // a shape converted the look over its halves: those, with what's over them, show
     for (let at = 0; at < reads.length; at++) {
       const u = this.upper[at], bytes = u.kind === 'cells' ? reads[at] : reads[at]?.data;
       const char = u.kind === 'vector' ? (bytes ? u.layer.charAt(col, row) : undefined) : null;
       if (char === undefined) continue;
+      if (cell && renderStyle === 'ansi') [top, bottom] = halfColors(cell); // what's under the layer is the look, as #pixelsUnder has it (R7)
       const o = (2 * row * width + col) * 4, below = o + 4 * width;
       const over = bytes?.[o + 3] ? { r: bytes[o], g: bytes[o + 1], b: bytes[o + 2], a: bytes[o + 3] / 255 } : null;
       const overBelow = bytes?.[below + 3] ? { r: bytes[below], g: bytes[below + 1], b: bytes[below + 2], a: bytes[below + 3] / 255 } : null;
       if (over) top = mix(top, over, over.a);
       if (overBelow) bottom = mix(bottom, overBelow, overBelow.a);
       if (u.kind === 'vector') {
+        if (char === null && cell) pixels = true;
         cell = char === null ? null : buildCell(nearestColor(top, palette), nearestColor(bottom, palette), char, renderStyle);
         continue;
       }
@@ -1564,7 +1577,8 @@ export default class Renderer {
       if (isFrozen(entry)) cell = null;
       else cell = this.#lookPainted(isPaintBlock(entry) ? blockOver(cell) : cell, over, overBelow, renderStyle, isPaintBlock(entry), (under) => this.#paintOver(under, renderStyle === 'ansi' ? () => halfColors(under) : () => this.#pixelsUnder(under, col, row, reads, at), over, overBelow, false, col, row, u.params, palette, renderStyle === 'ansi' ? null : () => this.#fineUnder(col, row, reads, at, [over, overBelow], u.params), u.paint));
     }
-    return cell && halfColors(cell);
+    if (!cell) return pixels ? [nearestColor(top, palette), nearestColor(bottom, palette)] : null;
+    return halfColors(cell);
   }
 
   // #lookAt's cell with a layer's paint over it, top and bottom ({ r, g, b, a } or null): tinted as the ANSI view tints

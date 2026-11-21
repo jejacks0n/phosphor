@@ -7,7 +7,7 @@ import { makeShape, rectShape, transformed, translation } from '@/document/shape
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
 import { toastMessage } from '@/composables/useToast.js';
-import { coverCell } from '@/lib/Cells.js';
+import { cellIndex, coverCell } from '@/lib/Cells.js';
 import { typeText } from '@/composables/useTextTool.js';
 import { createApp } from 'vue';
 import ColorPopover from '@/components/ColorPopover.vue';
@@ -1024,4 +1024,58 @@ test('a save after a one-cell edit encodes one layer\'s PNG, not every layer\'s'
   expect(encoded).toHaveBeenCalledTimes(1);
   expect(parts.stack.filter((layer) => layer.paintBlob).length).toBe(4);
   encoded.mockRestore();
+});
+
+// docs/model.md R7: under a character of someone's own (a pin here) the pixels an upper layer converts over are the
+// character as the PIXEL view shows it (its look, R11), not the two the base stores under it, its background over its
+// foreground: a soft shape's edge over a red █ mixed into black on every top half and red on every bottom one, stripes.
+test('R7: a vector layer\'s soft edge over pinned blocks converts over the blocks\' color, the same in both halves', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await settle(project);
+  project.charChoice = 'best'; // its blocks say which color each half is
+  workspace.pickLayer('base');
+  project.writeEditCells(Array.from({ length: 40 }, (_, k) => ({ col: 2 + (k % 8), row: 2 + Math.floor(k / 8), attrs: { char: '█', fg: '#ff0000', bg: '#000000' } })));
+  project.commitEdit();
+  project.addLayer('cells', 'base');
+  const vector = project.addLayer('vector');
+  workspace.pickLayer(vector);
+  project.addShape(rectShape(5.5, 0, 20, 40, { fill: '#00ff00' })); // half of column 5 covered: its alpha a half
+  project.commitEdit();
+  await settle(project);
+  expect(project.lowerGroup.upper).toContain(vector);
+  const halves = (col, row) => { const { fg, bg, char } = project.cells[cellIndex(col, row, 20)]; return char === ' ' ? [bg.hex, bg.hex] : char === '▄' ? [bg.hex, fg.hex] : char === '▀' ? [fg.hex, bg.hex] : char === '█' ? [fg.hex, fg.hex] : [char]; };
+  for (let row = 2; row < 7; row++) {
+    const [top, bottom] = halves(5, row);
+    expect(top, `row ${row}: ${halves(5, row)}`).toBe(bottom); // no stripe
+    expect(top).not.toBe('#000000');
+  }
+});
+
+// The report (projects/vector-edge-over-pins.phosphor): a circle on a vector layer over an opened file's red box lines
+// and blocks banded along its edge, black and olive by turns. Under a pinned █ whose foreground isn't black, the edge
+// shows no black.
+test('R7: the report: a vector circle\'s edge over a file\'s pinned blocks shows no black stripes', async () => {
+  const { project } = await createTestApp();
+  await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/vector-edge-over-pins.phosphor')).arrayBuffer()], 'x.phosphor'));
+  await settle(project);
+  const r = project.renderer, W = r.outputCanvas.width, H = r.outputCanvas.height;
+  const view = Object.assign(document.createElement('canvas'), { width: W, height: H }), g = view.getContext('2d'); // as the PIXEL view lays them
+  g.drawImage(r.shownCanvas(), 0, 0);
+  g.drawImage(r.looksCanvas(project.processParams), 0, 0);
+  const shown = g.getImageData(0, 0, W, H).data;
+  const shapes = project._upperShapes.get('vector'), black = [];
+  let checked = 0;
+  for (let row = 0; row < project.rows / 2; row++) for (let col = 0; col < project.cols; col++) {
+    if (r.pinAt(col, row) !== '█' || project.baseColorAt(col, 2 * row + 1) === '#000000') continue; // a █ in a color
+    for (const k of [0, 1]) {
+      const y = 2 * row + k, a = r.upperStoredAt(shapes, col, y)?.a ?? 0;
+      if (!a || a > 0.9) continue; // the circle's soft edge
+      checked++;
+      const o = (y * W + col) * 4;
+      if (!shown[o] && !shown[o + 1] && !shown[o + 2]) black.push(`${col},${y}`);
+    }
+  }
+  expect(checked).toBeGreaterThan(5);
+  expect(black).toEqual([]);
 });

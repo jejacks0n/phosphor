@@ -333,7 +333,9 @@ the picture → the base layer's own pixels → shapes → edit cells → paint
   pixels are what shows there now; an art layer's characters become pins instead.
 - **Higher in the Stack**: A vector layer higher up converts against everything below it. Where a shape reaches a
   cell, the cell's two halves take the shape's pixels over what the layers under it show there (a typed character
-  included), and the converter picks the character from them, with the layer's character settings. The layers above
+  included; in ANSI a file's character counts as the colors it shows, so a soft edge over a red █ blends with red,
+  not with the black stored under it), and the converter picks the character from them, with the layer's
+  character settings. The layers above
   then cover it as they cover anything.
 - **Paint on a Drawing Layer**: Behaves the same way: over a typed character or a pin it tints it, as paint does on
   the edit layer, and over converted pixels it's converted with them.
