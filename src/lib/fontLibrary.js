@@ -56,14 +56,14 @@ export function tagCounts(index, filter) {
   return counts;
 }
 
+const fail = (userMessage) => { throw Object.assign(new Error(userMessage), { userMessage }); };
+
+// One library font as a File; a fetch that fails (no network, a 404) or a file of the wrong size throws with its userMessage.
 export async function libraryFile(entry) {
-  const r = await fetch(`${base()}${entry.file}`);
-  if (!r.ok) throw new Error(`library font ${r.status}`);
-  const bytes = await r.arrayBuffer();
-  if (bytes.byteLength !== 256 * entry.height) {
-    const userMessage = t('font.errors.notBitmap', { name: entry.name });
-    throw Object.assign(new Error(userMessage), { userMessage });
-  }
+  const r = await fetch(`${base()}${entry.file}`).catch(() => null);
+  if (!r?.ok) fail(t('font.errors.libraryUnreachable', { name: entry.name }));
+  const bytes = await r.arrayBuffer().catch(() => fail(t('font.errors.libraryUnreachable', { name: entry.name })));
+  if (bytes.byteLength !== 256 * entry.height) fail(t('font.errors.notBitmap', { name: entry.name }));
   return new File([bytes], `${entry.name}.F${pad(entry.height)}`);
 }
 

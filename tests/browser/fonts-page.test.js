@@ -991,7 +991,7 @@ test("a linked font's row says not included and shows its credit", async () => {
 });
 
 // A library font's file: the index entry named gets the id of these bytes, and fetching its file gives them (or the
-// response given). Counts the file fetches.
+// response the function given makes, or throws). Counts the file fetches.
 let fileFetches = 0;
 function serveFile(index, name, { bytes = new Uint8Array(2048).fill(7), response = null } = {}) {
   const entry = [...index.fonts, ...index.linked].find((e) => e.name === name);
@@ -1001,7 +1001,7 @@ function serveFile(index, name, { bytes = new Uint8Array(2048).fill(7), response
   vi.stubGlobal('fetch', async (url, ...rest) => {
     if (!String(url).endsWith(`fonts/library/${entry.file}`)) return before(url, ...rest);
     fileFetches += 1;
-    return response ?? new Response(bytes);
+    return response ? response() : new Response(bytes);
   });
   return entry;
 }
@@ -1073,7 +1073,13 @@ test('Add to Yours, then Use this font sets the SAUCE font name the library give
 });
 
 test('a failed fetch or a wrong-size file says so and changes nothing', async () => {
-  for (const response of [new Response('', { status: 404 }), new Response(new Uint8Array(100))]) {
+  const unreachable = "Phosphor couldn't fetch Zeta from the font library. Check your connection and try again.";
+  const cases = [
+    [() => new Response('', { status: 404 }), unreachable],
+    [() => { throw new TypeError('Failed to fetch'); }, unreachable], // offline
+    [() => new Response(new Uint8Array(100)), "Zeta isn't a bitmap font Phosphor can read: it needs 256 glyphs, 8 pixels wide and 1 to 32 tall."],
+  ];
+  for (const [response, said] of cases) {
     const index = FIXTURE();
     serveFile(index, 'Zeta', { response });
     const { project, workspace } = await mount({ library: index });
@@ -1081,6 +1087,7 @@ test('a failed fetch or a wrong-size file says so and changes nothing', async ()
     await chooseLibrary('Zeta');
     await press(button('Use this font'));
     await waitFor(() => host.querySelector('.problem'));
+    expect(host.querySelector('.problem').textContent).toBe(said);
     expect(fileFetches).toBe(1);
     expect(workspace.userFonts.length).toBe(fonts);
     expect(fontId(project.drawingFont)).toBe(fontId(fontA()));

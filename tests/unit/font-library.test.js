@@ -83,6 +83,17 @@ describe('font library', () => {
     await expect(libraryFile(index.fonts[1])).rejects.toThrow();
   });
 
+  it('a font that can\'t be fetched (a 404, or no network) rejects with words a person can read', async () => {
+    const said = "Phosphor couldn't fetch alpha from the font library. Check your connection and try again.";
+    for (const fetchMock of [vi.fn().mockResolvedValue({ ok: false, status: 404 }), vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))]) {
+      vi.stubGlobal('fetch', fetchMock);
+      const { libraryFile } = await mod();
+      const error = await libraryFile(index.fonts[1]).catch((e) => e);
+      expect(error.message).toBe(said);
+      expect(error.userMessage).toBe(said);
+    }
+  });
+
   it('builds the license issue URL', async () => {
     const { tellUsUrl } = await mod();
     const u = new URL(tellUsUrl(index.fonts[1], index));
