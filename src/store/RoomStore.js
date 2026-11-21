@@ -383,7 +383,7 @@ export const useRoomStore = defineStore('room', {
       this.close();
       this.hostRoom({
         startDraft: newStartDraft(), settingsDraft: newSettingsDraft(), hasPassword: !isPublic && !!password, lobbyPin,
-        id: data.id, link: data.link, status: 'connecting',
+        id: data.id, link: `${appOrigin()}/?room=${data.id}`, status: 'connecting',
         room: { name, welcome: welcome ?? '', public: isPublic, allowGuests, max, signal: isPublic ? signal : null, count: 0 },
       });
       this.share();
