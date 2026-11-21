@@ -511,9 +511,11 @@ engineering rules behind these steps are docs/model.md (R1–R8); a finding here
 - Does: after each of the steps above, compares the PIXEL view with the Overlay at 100%, 50% and 0% against the ANSI
   view.
 - Expects: paint in the PIXEL view is the paint itself, blended with what's under it, never ASCII characters drawn
-  over it; a typed letter shows in the Overlay; a merged shape's edge has no holes, dark lines or half-blocks that
+  over it (but see the Base's characters below); a typed letter shows in the Overlay; a merged shape's edge has no holes, dark lines or half-blocks that
   the ANSI view doesn't have; a character on the Base (typed there, or left by Keep crisp cells) shows as it looks at
-  that scale with the Overlay at 0% too, a `█` solid and never a stripe of its background over its foreground.
+  that scale with the Overlay at 0% too, a `█` solid and never a stripe of its background over its foreground. The one
+  exception: paint over a space on the Base in an ASCII style shows as the character the ANSI view turns it into,
+  never as stripes.
 - Probes: `scope`: a stroke in the PIXEL view over a merged edge and over the caption, then the same stroke in
   ANSI (the same result).
 - Rated: no (looking)

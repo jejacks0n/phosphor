@@ -301,7 +301,9 @@ What's over the character counts, bottom to top, as the cell itself is laid (`#c
   blend itself is never snapped: a shade's mix isn't a palette color, and the first trace of paint (a soft stroke's
   edge) would turn it into one, a hard ring round every stroke. Where the paint doesn't tint the character but is
   converted over the cell's two pixels (R2: a character with no ink, in the ASCII styles, and in ANSI under a layer
-  with characters of its own), the pixels show, as the conversion reads them.
+  with characters of its own), the look is the character it converts to, as the ANSI view shows it. The two pixels
+  aren't shown: under a space they're its background over its foreground, so soft paint over an opened file's spaces
+  showed as horizontal stripes.
 - **A paint block over it** (a Half-block's `▄`, R5) takes its place, as `blockOver` has it: a solid glyph's own
   halves, a textured character's background in both.
 - **A frozen cell over it** (R3) is its paint, and the pixels show.
@@ -331,7 +333,8 @@ reading one.
 - Checked by: `tests/browser/pixel-characters.test.js › R11: …` (the report's file; a character written, written over
   and undone; paint over one on the layer above and on one above that, as the ANSI view tints it; on a palette, faint
   paint that leaves a shade as it was; an opened ANSI file under soft strokes, the same to the pixel with All cells off
-  and on; a Half-block `▄` over a character; a layer with its own characters; shapes; a hidden base; both ASCII styles;
+  and on; soft paint over spaces with no ink in both ASCII styles and under a layer of its own characters, with no
+  stripes; a Half-block `▄` over a character; a `█` under a layer with its own characters; shapes; a hidden base; both ASCII styles;
   a palette with Best match; art layers above and in the lower group; a built frame; the ghost; the Overlay; a redraw
   that asks no cell), and `tests/browser/look-read.test.js › R11: …` (spaces of two colors filled whole in both views,
   as in 022.xb; a `░`, a letter and a `█` filled whole with no leak; a `▀` by its top halves; the base's own look with

@@ -190,8 +190,9 @@ test('R11: a Half-block ▄ over a character on the base shows as the block, on 
 });
 
 // A layer with characters of its own converts its paint over a character with no ink to tint (R2), a █ among them: the
-// cell is a rendering of the pixels then, so those show, as the conversion reads them.
-test('R11: paint from a layer with its own characters over a █ on the base shows over its two pixels, as it converts', async () => {
+// cell is a rendering of the pixels then, and it's that cell that shows, as the ANSI view has it, not the two pixels
+// (black over white under the paint: a stripe).
+test('R11: paint from a layer with its own characters over a █ on the base shows the character it converts to', async () => {
   const { project, workspace, seen, done } = await mountPixelView(null, { overlay: 0 });
   pin(project, 4, 3, '█');
   pin(project, 10, 3, '▒');
@@ -203,12 +204,38 @@ test('R11: paint from a layer with its own characters over a █ on the base sho
   project.commitEdit();
   await settle(project);
   expect(project.cells[3 * project.cols + 4].char).not.toBe('█');
-  expect(shown(seen, 4, 3)).toEqual(stored(project, 4, 3));
-  expect(shown(seen, 4, 3)[0]).not.toEqual(shown(seen, 4, 3)[1]); // half red over its black background, and over its white
+  expect(stored(project, 4, 3)[0]).not.toEqual(stored(project, 4, 3)[1]); // half red over its black background, and over its white
+  expect(shown(seen, 4, 3)).toEqual(look(project, 4, 3));
   expect(project.cells[3 * project.cols + 10].char).toBe('▒'); // ink to tint: the shade stays, and its look with it
   expect(shown(seen, 10, 3)).toEqual(look(project, 10, 3));
   done();
 });
+
+// The report: soft paint in the ANSI view over an opened file's spaces (two colors, no ink), then the PIXEL view showed
+// horizontal stripes. Where the paint isn't a tint but is converted (R2: a character with no ink, in the ASCII styles,
+// and in ANSI under a layer with characters of its own), the view showed the cell's two pixels, its background over its
+// foreground under the paint; the ANSI view shows the character it converts to.
+for (const [style, ownChars] of [['colorAscii', false], ['ascii', false], ['ansi', true]]) {
+  test(`R11: soft paint over spaces with no ink shows in PIXEL as the ANSI view shows it, with no stripes (${style}${ownChars ? ', under a layer of its own characters' : ''})`, async () => {
+    const { project, workspace, seen, done } = await mountPixelView(null, { overlay: 0 });
+    for (const col of [4, 5, 6]) pin(project, col, 3, ' ', '#ff0000', '#0000ff');
+    project.commitEdit();
+    project.renderStyle = style;
+    if (ownChars) {
+      project.setLayerChars('edit', { seed: 'a-seed-of-its-own', chars: '░▒▓' });
+      workspace.pickLayer(project.addLayer('cells', 'edit'));
+    } else workspace.pickLayer('edit');
+    project.paintEditPixels([4, 5, 6].flatMap((x) => [{ x, y: 6, r: 255, g: 128, b: 32, alpha: 0.4 }, { x, y: 7, r: 255, g: 128, b: 32, alpha: 0.4 }]));
+    project.commitEdit();
+    await settle(project);
+    for (const col of [4, 5, 6]) {
+      const [top, bottom] = stored(project, col, 3);
+      expect(top, `column ${col}`).not.toEqual(bottom); // the stripe under it: blue over red, with the paint over each
+      expect(shown(seen, col, 3), `column ${col}`).toEqual(look(project, col, 3));
+    }
+    done();
+  });
+}
 
 // A shape over a pinned character takes the cell: the converter picks a character for the shape over the cell's two
 // pixels (docs/model.md R7), so those are what shows.

@@ -1533,7 +1533,7 @@ export default class Renderer {
   //   #upperCell builds, from the two pixels under the layers so far with its own over them (#pixelsUnder).
   // A character typed on a cells layer over it is the Overlay's to draw (R6); the look goes on under it.
   #lookAt(col, row, key, pin, top, bottom, params, reads) {
-    const { renderStyle } = params, width = this.outputCanvas.width;
+    const { renderStyle } = params, width = this.outputCanvas.width, palette = this.#heldData ? null : this.palette;
     let cell = null; // the character's cell with what's over it so far, or null: no look
     if (pin !== undefined) {
       const over = this.#noPaint ? null : this.paintAt(col, 2 * row), overBelow = this.#noPaint ? null : this.paintAt(col, 2 * row + 1);
@@ -1542,7 +1542,7 @@ export default class Renderer {
         const block = isPaintBlock(entry);
         cell = over || overBelow || block ? this.underCell(col, row, params, []) : pinnedCell(top, bottom, pin, renderStyle, asIs);
         if (cell && block) cell = blockOver(cell);
-        if (cell) cell = this.#lookPainted(cell, over, overBelow, false, renderStyle);
+        if (cell) cell = this.#lookPainted(cell, over, overBelow, false, renderStyle, (under) => this.#paintOver(under, () => this.pictureUnder(under, col, row, params), over, overBelow, false, col, row, params, palette, () => this.#fineUnder(col, row, null, 0, null, params)));
       }
     }
     for (let at = 0; at < reads.length; at++) {
@@ -1555,14 +1555,13 @@ export default class Renderer {
       if (over) top = mix(top, over, over.a);
       if (overBelow) bottom = mix(bottom, overBelow, overBelow.a);
       if (u.kind === 'vector') {
-        const palette = this.#heldData ? null : this.palette;
         cell = char === null ? null : buildCell(nearestColor(top, palette), nearestColor(bottom, palette), char, renderStyle);
         continue;
       }
       if (!cell) continue;
       const entry = u.cells.size ? shownEntry(u.cells.get(key ??= cellKey(col, row)), renderStyle) : undefined;
       if (isFrozen(entry)) cell = null;
-      else cell = this.#lookPainted(isPaintBlock(entry) ? blockOver(cell) : cell, over, overBelow, u.ownChars, renderStyle);
+      else cell = this.#lookPainted(isPaintBlock(entry) ? blockOver(cell) : cell, over, overBelow, u.ownChars, renderStyle, (under) => this.#paintOver(under, () => this.#pixelsUnder(under, col, row, reads, at), over, overBelow, false, col, row, u.params, palette, () => this.#fineUnder(col, row, reads, at, [over, overBelow], u.params), u.paint));
     }
     return cell && halfColors(cell);
   }
@@ -1571,13 +1570,14 @@ export default class Renderer {
   // a character of someone's own (coverCell, R2), so the look is the one All cells draws and a soft stroke over a file's
   // characters shows no step the ANSI view doesn't have. The paint goes into the character's two colors, each snapped
   // as paint is, and the glyph's ink blends them again; the blend itself isn't snapped (a shade's mix isn't a palette
-  // color, and the first trace of paint would turn it into one, a hard ring round every stroke). Null where the paint
-  // is converted over the cell's two pixels instead, so those show (#paintOver: a character with no ink to tint, in the
-  // ASCII styles, and in ANSI too under a layer with characters of its own, ownChars).
-  #lookPainted(cell, top, bottom, ownChars, renderStyle) {
+  // color, and the first trace of paint would turn it into one, a hard ring round every stroke). Where the paint is
+  // converted over the cell's two pixels instead (#paintOver: a character with no ink to tint, in the ASCII styles, and
+  // in ANSI too under a layer with characters of its own, ownChars), it's the cell that conversion makes (convert(cell)),
+  // the one the ANSI view shows: the two pixels are a space's background over its foreground, a stripe under the paint.
+  #lookPainted(cell, top, bottom, ownChars, renderStyle, convert) {
     if (!top && !bottom) return cell;
     const under = realCell(cell);
-    if (opensToPaint(under, renderStyle) && (renderStyle !== 'ansi' || ownChars)) return null;
+    if (opensToPaint(under, renderStyle) && (renderStyle !== 'ansi' || ownChars)) return convert(under);
     return coverCell(under, top, bottom, { renderStyle, palette: this.#heldData ? null : this.palette });
   }
 
