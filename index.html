@@ -25,8 +25,8 @@
     <meta name="twitter:description" content="Turn images into ANSI or ASCII art in your browser, then paint, type, animate, and export.">
     <meta name="twitter:image" content="https://phosphor.work/og-image.png">
     <script>
-      // Framed by another site, whose page could sit over this one and take its clicks, nothing shows. (Only a
-      // header could refuse the frame itself, and the host can't send one.)
+      // Framed by another site, whose page could sit over this one and take its clicks, nothing shows. (The web
+      // host's frame-ancestors header refuses the frame itself; this is for builds with no such header, the desktop app's.)
       if (window.top !== window.self) document.documentElement.style.display = 'none';
     </script>
     <script>

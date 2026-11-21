@@ -1,5 +1,5 @@
-// The desktop app's marketplace fetches (desktop/pluginList.js): the main process asks only for phosphor.work's list and
-// raw GitHub files, follows no redirect, and stops reading a body past its cap.
+// The desktop app's marketplace fetches (desktop/pluginList.js): the main process asks only for the one list (phosphor.work's,
+// or next.phosphor.work's for a pre-release) and raw GitHub files, follows no redirect, and stops reading a body past its cap.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { listUrl, MOST_FILE_BYTES, allowedUrl, fetchText, fetchFile } from '../../desktop/pluginList.js';
