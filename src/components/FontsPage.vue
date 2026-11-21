@@ -307,7 +307,7 @@ const onFile = (event) => {
   event.target.value = ''; // so the same file can be picked again
   if (file) run(async () => { chosenId.value = (await loadFile(file)).id; });
 };
-const apply = () => run(() => choose(chosen.value.id));
+const apply = () => run(() => choose(chosen.value.id, held.value?.sauce ? { sauceFontName: held.value.sauce } : undefined)); // a library font's SAUCE name, as from the library
 // The drawing's font saves at once; one only in this browser is read from it first.
 const save = (as) => run(async () => as(isDrawn.value ? drawn.value : await storedBitmapFont(chosen.value.id)));
 const forget = () => run(() => remove(chosen.value.id));

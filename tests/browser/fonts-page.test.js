@@ -1054,6 +1054,24 @@ test('a library font already in Yours fetches nothing and makes no second entry'
   expect(workspace.userFonts.filter((f) => f.id === entry.fontId).length).toBe(1);
 });
 
+test('Add to Yours, then Use this font sets the SAUCE font name the library gives it', async () => {
+  const index = FIXTURE(), entry = serveFile(index, 'Zeta');
+  entry.sauce = 'IBM EGA';
+  const { project, workspace } = await mount({ library: index });
+  await chooseLibrary('Zeta');
+  await press(button('Add to Yours'));
+  await waitFor(() => workspace.userFonts.some((f) => f.id === entry.fontId));
+  await waitFor(() => host.querySelector('.edit-side .sheet')); // the stored font's details now
+  expect(project.sauceFontName).toBe('IBM VGA');
+  await press(button('Use this font'));
+  await waitFor(() => project.drawingFont && fontId(project.drawingFont) === entry.fontId);
+  expect(project.sauceFontName).toBe('IBM EGA');
+  expect(fileFetches).toBe(1);
+  project.undo(); // one step: the font and the name
+  expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
+  expect(project.sauceFontName).toBe('IBM VGA');
+});
+
 test('a failed fetch or a wrong-size file says so and changes nothing', async () => {
   for (const response of [new Response('', { status: 404 }), new Response(new Uint8Array(100))]) {
     const index = FIXTURE();

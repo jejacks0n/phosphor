@@ -97,6 +97,15 @@ describe('buildIndex', () => {
     expect(sauce['IBM EGA'].file).toBe('viler/PC-IBM/EGA8.F14');
   });
 
+  it('every listed copy of a SAUCE name\'s font carries the name, the first name in the table when two share a font', () => {
+    const bytes = make(8);
+    const { sauce, index } = run([
+      { path: 'viler/PC-IBM/A.F08', bytes }, { path: 'viler/PC-IBM/B.F08', bytes }, { path: 'moebius/ibm/CP437.F08', bytes },
+    ], { sauceNames: { 'IBM EGA43': 'moebius/ibm/CP437.F08', 'IBM VGA50': 'moebius/ibm/CP437.F08' } });
+    expect(index.fonts.map((f) => [f.id, f.sauce])).toEqual([['viler/PC-IBM/A.F08', 'IBM EGA43'], ['viler/PC-IBM/B.F08', 'IBM EGA43']]);
+    expect(Object.keys(sauce)).toEqual(['IBM EGA43', 'IBM VGA50']); // both names still open in the font
+  });
+
   it('carries the about text of a VileR font', () => {
     const { index } = run([{ path: 'viler/PC-IBM/A.F08', bytes: make(8) }], { about: { 'viler/PC-IBM/A.F08': 'Hello' } });
     expect(index.fonts[0].about).toBe('Hello');

@@ -89,11 +89,13 @@ export function buildIndex({ files, about = {}, collections = {}, sauceNames = {
     fonts.push(entry);
     byId.set(id, entry);
   }
+  // Every listed copy of a SAUCE name's font carries the name, so whichever the app finds sets it. Two names for one font
+  // (IBM EGA43 and IBM VGA50 are both CP437.F08): the copies carry the first in the table's order; both names open it.
   const sauce = {};
   for (const [sauceName, path] of Object.entries(sauceNames)) {
-    const e = byId.get(idOfPath.get(path));
+    const id = idOfPath.get(path), e = byId.get(id);
     if (!e) continue;
-    e.sauce = sauceName;
+    for (const copy of fonts) if (copy.fontId === id) copy.sauce ??= sauceName;
     sauce[sauceName] = { file: e.file, name: e.name, height: e.height };
   }
   const linked = LINKED_FONTS.map(({ credit, url, license, ...rest }) => {
