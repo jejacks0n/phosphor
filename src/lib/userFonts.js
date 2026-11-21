@@ -59,11 +59,20 @@ function register(id, data) {
   return faces.get(id);
 }
 
-// A drawing's bitmap font, registered with the page as a TrueType font; its CSS family.
-export async function registerBitmapFont(font) {
+const keptFaces = new Set(); // the bitmap faces registered to stay (the Fonts page's), which releaseBitmapFont leaves
+
+// A drawing's bitmap font, registered with the page as a TrueType font; its CSS family. keep false: displayFonts lets it
+// go once it's no longer in use (releaseBitmapFont), as a room's host can send font after font.
+export async function registerBitmapFont(font, { keep = true } = {}) {
   const key = fontKey(font);
+  if (keep) keptFaces.add(key);
   await register(key, ttfOf(font));
   return familyOf(key);
+}
+
+// Take a bitmap face (by its fontKey) off the page, unless it was registered to stay.
+export function releaseBitmapFont(key) {
+  if (!keptFaces.has(key)) unregister(key);
 }
 
 function unregister(id) {

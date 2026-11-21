@@ -8,8 +8,8 @@
  * The 8x16 fonts share the IBM VGA font's cell, so a character one lacks falls back to the next on
  * the same grid (src/assets/fonts/README.md); wide characters and emoji come from the system's fonts.
  */
-import { decodeBlocks, decodeFont, fitFont, glyphRows, slotOf } from './BitmapFont.js';
-import { registerBitmapFont } from './userFonts.js';
+import { decodeBlocks, decodeFont, fitFont, fontKey, glyphRows, slotOf } from './BitmapFont.js';
+import { registerBitmapFont, releaseBitmapFont } from './userFonts.js';
 
 export const DISPLAY_FONTS = Object.freeze([
   { id: 'vga', name: 'IBM VGA', family: '"IBM VGA 8x16", "Phosphor Unscii", monospace', size: 16, lineHeight: 1 },
@@ -72,15 +72,38 @@ export function drawGlyph(char, width, height, scale = 1, fill = '#fff', smooth 
   return data;
 }
 
-// A bitmap font spec's font, with the blocks it names (none: they're found), decoded once for each source and blocks.
+// Enough for the drawing's font, a room's and a change or two of either; past it the oldest is let go (decoded again,
+// or its face registered again, if it comes back). The Fonts page's faces stay (userFonts.registerBitmapFont).
+const MOST_BITMAPS = 4;
+
+// A bitmap font spec's font, with the blocks it names (none: they're found), decoded once for each source and blocks
+// (null when it doesn't decode), for the MOST_BITMAPS last used.
 const bitmaps = new Map();
 export function bitmapOf({ source, name, blocks }) {
   const key = `${source}|${blocks ?? ''}`;
-  if (!bitmaps.has(key)) {
-    const font = decodeFont(source, name), set = decodeBlocks(blocks);
-    bitmaps.set(key, font && set ? { ...font, blocks: set } : font);
+  let font = bitmaps.get(key);
+  if (font === undefined) {
+    const decoded = decodeFont(source, name), set = decodeBlocks(blocks);
+    font = decoded && set ? { ...decoded, blocks: set } : decoded;
   }
-  return bitmaps.get(key);
+  bitmaps.delete(key);
+  bitmaps.set(key, font);   // the newest last
+  if (bitmaps.size > MOST_BITMAPS) bitmaps.delete(bitmaps.keys().next().value);
+  return font;
+}
+
+// The bitmap faces loadFontFaces registered, oldest first. Past MOST_BITMAPS the oldest that isn't the display font's
+// is taken off the page.
+let faces = [];
+function usedFace(key) {
+  faces = [...faces.filter((k) => k !== key), key];
+  const shown = DISPLAY_FONT.bitmap && bitmapOf(DISPLAY_FONT);
+  const keep = shown && fontKey(shown);
+  while (faces.length > MOST_BITMAPS) {
+    const old = faces.find((k) => k !== keep);
+    faces = faces.filter((k) => k !== old);
+    releaseBitmapFont(old);
+  }
 }
 
 // Make a font the current one, and the CSS variables the views style their text with: one of
@@ -103,7 +126,7 @@ export async function setDisplayFont(font) {
 // first, from its source: a room's, which a watcher never sets, draws in its own face too.
 export async function loadFontFaces(font) {
   const bitmap = font.bitmap && bitmapOf(font);
-  if (bitmap) await registerBitmapFont(bitmap).catch(() => {});
+  if (bitmap) await registerBitmapFont(bitmap, { keep: false }).then(() => usedFace(fontKey(bitmap)), () => {});
   const families = font.family.split(',').map((name) => name.trim().replace(/^"|"$/g, ''));
   await Promise.all([...document.fonts].filter((face) => families.includes(face.family.replace(/^"|"$/g, ''))).map((face) => face.load().catch(() => {})));
 }

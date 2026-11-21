@@ -2,7 +2,9 @@
 // IBM VGA font (Unscii: here, Symbols for Legacy Computing) draw on its grid, so their blocks line up.
 import { test, expect, afterEach } from 'vitest';
 import { createTestApp } from '../support/app.js';
-import { setDisplayFont, DISPLAY_FONT } from '@/lib/displayFonts';
+import { setDisplayFont, DISPLAY_FONT, loadFontFaces, bitmapOf } from '@/lib/displayFonts';
+import { fontFor } from '@/social/wire';
+import { encodeFont } from '@/lib/BitmapFont';
 import { setGlyphRasterizer, rasterizeCoverage, coverageOf } from '@/lib/GlyphCoverage';
 import { drawnWidth, fitColumns } from '@/lib/DrawnWidth';
 import CellCanvas from '@/lib/CellCanvas';
@@ -78,4 +80,23 @@ test('a fresh workspace draws in IBM VGA; a browser that already picked a font k
   localStorage.setItem('phosphor.displayFont', 'jetbrains');
   expect(useWorkspaceStore(createPinia()).displayFont).toBe('jetbrains');
   localStorage.clear();
+});
+
+// A room's host can send font after font: what's kept of them is bounded, and the font the art is drawn in keeps its face.
+test('bitmap fonts loaded one after another keep only the last few decoded and registered, and the display font\'s face', async () => {
+  await createTestApp();
+  const specOf = (n) => fontFor({ bitmap: true, name: `F${n}`, height: 8, size: 8, source: encodeFont({ height: 8, bytes: new Uint8Array(256 * 8).fill(n) }), blocks: '' });
+  const faceOf = (spec) => [...document.fonts].some((face) => `"${face.family.replace(/^"|"$/g, '')}", monospace` === spec.family);
+  const shown = specOf(200);
+  await setDisplayFont(shown);
+  const sent = Array.from({ length: 12 }, (_, i) => specOf(i + 1)), decoded = [];
+  for (const spec of sent) {
+    await loadFontFaces(spec);
+    decoded.push(bitmapOf(spec));
+  }
+  await expect.poll(() => sent.filter(faceOf).length).toBeLessThanOrEqual(4);
+  expect(faceOf(sent.at(-1))).toBe(true);
+  expect(faceOf(shown)).toBe(true);   // the art is drawn in it
+  expect(bitmapOf(sent[11])).toBe(decoded[11]);   // the newest is held
+  expect(bitmapOf(sent[7])).not.toBe(decoded[7]);   // the fifth newest was let go, and is decoded again
 });
