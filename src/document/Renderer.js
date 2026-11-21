@@ -31,7 +31,7 @@ import { applyTransforms, transformsOn } from '../lib/PixelTransforms.js';
 import { nearestColor, paletteIndex, withIndex } from '../lib/ColorUtils.js';
 import { effectiveColor } from '../lib/PixelTransforms.js';
 import Canvas, { ctx2d, fitRect } from '../lib/Canvas.js';
-import { blockOver, buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, colorOf, composeCell, coverCell, glyphsOf, halfColors, mix, opensToPaint, pinnedCell } from '../lib/Cells.js';
+import { blockOver, buildCellsFromBytes, buildCell, keepsSeed, seededChar, weightedChar, cellIndex, cellOfPixel, charRowsOf, colorOf, composeCell, coverCell, glyphsOf, halfColors, hasNoInk, mix, opensToPaint, pinnedCell } from '../lib/Cells.js';
 import { cellKey, parseKey, shownEntry, isFrozen, isPaintBlock, tintedEntry } from './editCells.js';
 import { EMPTY_BASE } from './baseRecords.js';
 import { bayerNudge, ditherPixels, nudgeSpread } from '../lib/Dither.js';
@@ -1169,9 +1169,10 @@ export default class Renderer {
         exact = !isFrozen(entry); // a frozen cell shows its character, and is paint to what's over it (docs/model.md R3)
         if (!exact) continue; // its own paint under it is what it stands for: not laid over it
       }
-      // A layer with characters of its own converts its paint over a character with no ink to tint, in ANSI as in the
-      // ASCII styles: its paint is its characters, not the base's ▄ (docs/model.md R2).
-      const tints = exact && !(u.ownChars && renderStyle === 'ansi' && opensToPaint(cell, renderStyle));
+      // A layer's paint over a character with no ink (a space, or one in its own background color) converts with the
+      // layer's characters, in ANSI as in the ASCII styles: its paint is its characters, not a ▄ in the base's look.
+      // Half-block's ▄ (a paint block) is the layer's own ▄, and its paint colors it (docs/model.md R2).
+      const tints = exact && !(!isPaintBlock(entry) && hasNoInk(cell));
       cell = this.#paintOver(cell, () => this.#pixelsUnder(cell, col, row, reads, at), top, bottom, tints, col, row, params, palette, () => this.#fineUnder(col, row, reads, at, [top, bottom], params), u.paint);
     }
     this.#exact = exact;
@@ -1542,7 +1543,7 @@ export default class Renderer {
         const block = isPaintBlock(entry);
         cell = over || overBelow || block ? this.underCell(col, row, params, []) : pinnedCell(top, bottom, pin, renderStyle, asIs);
         if (cell && block) cell = blockOver(cell);
-        if (cell) cell = this.#lookPainted(cell, over, overBelow, false, renderStyle, (under) => this.#paintOver(under, () => this.pictureUnder(under, col, row, params), over, overBelow, false, col, row, params, palette, () => this.#fineUnder(col, row, null, 0, null, params)));
+        if (cell) cell = this.#lookPainted(cell, over, overBelow, renderStyle, block, (under) => this.#paintOver(under, () => this.pictureUnder(under, col, row, params), over, overBelow, false, col, row, params, palette, () => this.#fineUnder(col, row, null, 0, null, params)));
       }
     }
     for (let at = 0; at < reads.length; at++) {
@@ -1561,7 +1562,7 @@ export default class Renderer {
       if (!cell) continue;
       const entry = u.cells.size ? shownEntry(u.cells.get(key ??= cellKey(col, row)), renderStyle) : undefined;
       if (isFrozen(entry)) cell = null;
-      else cell = this.#lookPainted(isPaintBlock(entry) ? blockOver(cell) : cell, over, overBelow, u.ownChars, renderStyle, (under) => this.#paintOver(under, () => this.#pixelsUnder(under, col, row, reads, at), over, overBelow, false, col, row, u.params, palette, () => this.#fineUnder(col, row, reads, at, [over, overBelow], u.params), u.paint));
+      else cell = this.#lookPainted(isPaintBlock(entry) ? blockOver(cell) : cell, over, overBelow, renderStyle, isPaintBlock(entry), (under) => this.#paintOver(under, () => this.#pixelsUnder(under, col, row, reads, at), over, overBelow, false, col, row, u.params, palette, () => this.#fineUnder(col, row, reads, at, [over, overBelow], u.params), u.paint));
     }
     return cell && halfColors(cell);
   }
@@ -1571,13 +1572,13 @@ export default class Renderer {
   // characters shows no step the ANSI view doesn't have. The paint goes into the character's two colors, each snapped
   // as paint is, and the glyph's ink blends them again; the blend itself isn't snapped (a shade's mix isn't a palette
   // color, and the first trace of paint would turn it into one, a hard ring round every stroke). Where the paint is
-  // converted over the cell's two pixels instead (#paintOver: a character with no ink to tint, in the ASCII styles, and
-  // in ANSI too under a layer with characters of its own, ownChars), it's the cell that conversion makes (convert(cell)),
+  // converted over the cell's two pixels instead (#paintOver: a character with no ink, but under a paint block, block,
+  // in ANSI), it's the cell that conversion makes (convert(cell)),
   // the one the ANSI view shows: the two pixels are a space's background over its foreground, a stripe under the paint.
-  #lookPainted(cell, top, bottom, ownChars, renderStyle, convert) {
+  #lookPainted(cell, top, bottom, renderStyle, block, convert) {
     if (!top && !bottom) return cell;
     const under = realCell(cell);
-    if (opensToPaint(under, renderStyle) && (renderStyle !== 'ansi' || ownChars)) return convert(under);
+    if (renderStyle === 'ansi' ? !block && hasNoInk(under) : opensToPaint(under, renderStyle)) return convert(under);
     return coverCell(under, top, bottom, { renderStyle, palette: this.#heldData ? null : this.palette });
   }
 
@@ -1665,7 +1666,7 @@ export default class Renderer {
     const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
     if (!top && !bottom) return null;
     const under = this.underCell(col, row, params, []);
-    return under && this.#paintOver(under, () => this.pictureUnder(under, col, row, params), top, bottom, true, col, row, params, this.#heldData ? null : this.palette, () => this.#fineUnder(col, row, null, 0, null, params));
+    return under && this.#paintOver(under, () => this.pictureUnder(under, col, row, params), top, bottom, !hasNoInk(under), col, row, params, this.#heldData ? null : this.palette, () => this.#fineUnder(col, row, null, 0, null, params)); // a pin with no ink converts (R2)
   }
 
   // A converted cell with the base layer's pin (if any) as its character, and the 256-color indexes kept beside the pin

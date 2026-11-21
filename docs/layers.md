@@ -456,11 +456,11 @@ under it, and the last edit to a cell wins.
 - **Nothing to Show Through**: A cell whose character is solid or empty (a space, █, ▀ or ▄), or doesn't show (drawn
   in its own background color), has nothing to show paint through, so under paint it becomes a ▄ half-block instead.
   The same goes for the base layer's pinned characters (an opened file's, or ones Merge down or Flatten left), shown in
-  the colors they show. On a layer with character settings of its own, the paint is converted with that layer's
-  characters there instead, as in the ASCII styles below. In Color ASCII and Monochrome ASCII there are no half-blocks: a character with nothing to show
-  paint through (a space, or one in its own background color) is converted with your ASCII characters, paint and all,
-  as an empty cell under paint is, so painting over a typed or opened space shows the paint; a character with ink,
-  `█` included, keeps it and is tinted. A pinned ▄ is its two colors, converted the same way.
+  the colors they show. A space, or a character drawn in its own background color, has no ink at all: paint on a layer
+  over it is converted with that layer's characters, paint and all, as an empty cell under paint is, so a layer on
+  Random draws Random's characters over an opened file's spaces as it does on a blank canvas. In Color ASCII and
+  Monochrome ASCII there are no half-blocks: the same goes for every character with nothing to show paint through, and
+  a character with ink, `█` included, keeps it and is tinted. A pinned ▄ is its two colors, converted the same way.
 - **Cells Over Paint**: Typing or drawing cells (a line box, a Character shape, block glyphs) over paint replaces the
   paint in those cells, so what you wrote shows. With the background set to None, each cell keeps the background
   color the paint gave it, as it keeps the picture's or an earlier cell's.
@@ -562,8 +562,7 @@ and the PIXEL view give you:
   with nothing between it and where it was, looks the same.
 - **Your characters stay yours.** A cell you typed, pasted or opened from a file keeps its character: paint over it
   tints it, Blur, Dodge and Burn recolor it, Colors only tints it. A character with nothing to tint (a space, or one
-  drawn in its own background color) lets the paint show: as a ▄ in ANSI (or the layer's own characters, on a layer
-  with character settings of its own), as your ASCII characters in Color ASCII and Monochrome ASCII.
+  drawn in its own background color) lets the paint show, converted with the layer's characters.
 - **Merging changes nothing.** Merge down keeps paint as paint, so the paint tools keep working on it. Where the
   converter would have to pick a cell differently in its new place, the merge pins the cell as it showed, and that
   pin is paint to everything but the converter: the PIXEL view shows the paint, paint above lays over it as before,

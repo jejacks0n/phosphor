@@ -509,6 +509,27 @@ test('R2: the report: paint on a layer with its own Random over open pinned char
   expect(shown(40).every((cell) => cell.char !== '▄')).toBe(true);
 });
 
+// The report (022.xb, and any opened file: every cell a pinned space): Layer 1 left on Random, the base's own setting,
+// painted ▄ over the file where a blank canvas shows Random's characters. A layer's paint over a character with no ink
+// to tint converts with the layer's characters, whatever they share with the base's (docs/model.md R2).
+test('R2: paint on a layer that shares the base\'s Random over an opened file\'s spaces shows Random\'s characters in ANSI', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.openArtFile(new File([await (await fetch('/tests/fixtures/ansi/past-the-edge.ans')).arrayBuffer()], 'p.ans'));
+  await settle(project);
+  const layer = project.addLayer('cells', 'base');
+  workspace.pickLayer(layer);
+  expect([project.renderStyle, project.charChoice, project.lowerGroup.cells]).toEqual(['ansi', 'random', layer]); // the base's settings
+  Object.assign(workspace, { editFgColor: '#ff0000', editBrushSize: 1, editBrushOpacity: 100, editBrushFlow: 100, editBrushHardness: 100, brushDrawWith: 'normal' });
+  const ctx = { project, workspace, view: 'output' }, row = 2, cols = [...Array(10).keys()].map((i) => i + 2);
+  expect(cols.every((col) => project.renderer.pinAt(col, row) === ' ')).toBe(true); // the file's spaces
+  brush.begin(ctx, { x: 2.5, y: 2 * row + 0.5 }, {});
+  brush.move(ctx, { x: 2.5, y: 2 * row + 0.5 }, { x: 11.5, y: 2 * row + 0.5 });
+  brush.end(ctx);
+  await settle(project);
+  const shown = cols.map((col) => project.cells[cellIndex(col, row, project.cols)].char);
+  expect(new Set(shown).size, shown.join('')).toBeGreaterThan(1); // Random's, not one ▄ after another
+});
+
 // On a layer, with the base's settings or its own, Colors only makes no ▄ of a cell the converter drew: its paint
 // converts over the pixels under it (R7), under Random (its blank cell's hidden character brought out), Best match and By
 // shape alike.
@@ -533,9 +554,10 @@ for (const charChoice of ['random', 'best', 'shape']) {
     await settle(project);
     expect(project.editCellAt(12, 5)).toBeUndefined();
     expect(at(12).fg.hex === '#ff5555' || at(12).bg.hex === '#ff5555').toBe(true); // the paint shows either way
-    paint(5); // over the pinned space the paint shows as a ▄ (R2), with an entry or without
+    paint(5); // over the pinned space the paint converts with the layer's characters (R2), with an entry or without
     await settle(project);
-    expect([at(5).char, at(5).fg.hex, at(5).bg.hex]).toEqual(['▄', '#ff5555', '#000000']);
+    if (charChoice === 'random') expect(at(5).fg.hex === '#ff5555' || at(5).bg.hex === '#ff5555').toBe(true); // Random's pick
+    else expect([at(5).char, at(5).fg.hex, at(5).bg.hex]).toEqual(['▄', '#ff5555', '#000000']);
     if (charChoice !== 'random') return;
     project.setLayerChars(layer, { seed: 'a-seed-of-its-own', chars: '░▒▓' }); // no ▄ Random could pick by chance
     await settle(project);

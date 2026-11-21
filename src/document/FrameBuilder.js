@@ -17,7 +17,7 @@ import PaintLayer from './PaintLayer.js';
 import ShapeLayer from './ShapeLayer.js';
 import { isShapeKey } from './shapes.js';
 import { shownShapes } from './followers.js';
-import { keyLayer, layersFromOld, lowerGroup, sameChars } from './layerInfo.js';
+import { keyLayer, layersFromOld, lowerGroup } from './layerInfo.js';
 import Renderer from './Renderer.js';
 import { paintImage } from './frames.js';
 import { getPaletteColors } from '../lib/ImageProcessor.js';
@@ -51,7 +51,7 @@ export default class FrameBuilder {
   #shapes = null; // its own ShapeLayer over the store's base layer: each frame has its own shapes
   #layers = layersFromOld(null, { hasShapes: false });
   #lower = lowerGroup(this.#layers, {}); // these layers have no chars of their own
-  #upper = []; // the layers above the lower group, each with its scratch and params: { id, kind, paint, params, ownChars } or { id, kind, layer, params }
+  #upper = []; // the layers above the lower group, each with its scratch and params: { id, kind, paint, params } or { id, kind, layer, params }
   #plain = true; // every key a frame holds is the lower group's, as before layers: nothing to split
   #every = null; // the stack with every eye open, while anything is hidden or above the lower group: { lower, upper }, as #lower and #upper (moviePalette counts it)
 
@@ -76,8 +76,8 @@ export default class FrameBuilder {
     Object.assign(this.#renderer, { baseLayer, baseRecords, shapes: this.#shapes, hideBase });
     this.#scratch = new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 });
     this.#upper = this.#lower.upper.map((id) => {
-      const { kind, chars } = layers.find((layer) => layer.id === id), own = layerParams?.get(id) ?? params;
-      if (kind === 'cells') return { id, kind, paint: new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 }), params: own, ownChars: !sameChars(chars, baseChars, kind) };
+      const { kind } = layers.find((layer) => layer.id === id), own = layerParams?.get(id) ?? params;
+      if (kind === 'cells') return { id, kind, paint: new PaintLayer({ cols: params.cols, rows: params.rows, scale: 1 }), params: own };
       const layer = new ShapeLayer(null);
       layer.grid(params.cols, params.rows, paintScale ?? baseLayer?.scale ?? 1);
       return { id, kind, layer, params: own };
@@ -191,7 +191,7 @@ export default class FrameBuilder {
       }
       const own = upper.get(u.id) ?? NO_SHAPES;
       u.paint.loadGrid(paintImage(own, cols, rows));
-      return { kind: 'cells', cells: cellsIn(own), paint: u.paint, params: u.params, ownChars: u.ownChars };
+      return { kind: 'cells', cells: cellsIn(own), paint: u.paint, params: u.params };
     });
     if (renderer.upper.length) cells = renderer.composeUpper(cells, null, renderer.palette);
     if (this.#font) cells = fitCells(cells, this.#font);
