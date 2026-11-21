@@ -14,12 +14,15 @@ concurrency:
   group: ${{ github.event_name == 'pull_request' && format('test-{0}', github.ref) || 'pages' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }} # never stop a deploy halfway
 
+# A pull request's jobs check out its head commit, not the merge commit, so what is tested is what reaches next.
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20 # a hung test (an endless loop can't be timed out from inside) fails, not runs for hours
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -43,6 +46,8 @@ jobs:
         shard: [1, 2]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -72,6 +77,8 @@ jobs:
         shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -96,6 +103,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -132,7 +141,7 @@ jobs:
   # Another label than next runs the tests above and publishes nothing.
   build:
     needs: [test, browser, e2e, desktop-e2e]
-    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'next'))
+    if: (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'next'))
     runs-on: ubuntu-latest
     # The workflow's pages group serializes production; here the last labeled push to next wins.
     concurrency:
@@ -152,7 +161,7 @@ jobs:
       # reaches Cloudflare.
       - run: |
           test -n "$VITE_TURNSTILE_SITE_KEY" || { echo "::error::The TURNSTILE_SITE_KEY secret isn't set"; exit 1; }
-          npm run build
+          env -u GITHUB_SHA npm run build
         env:
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
       # The plugin list is published with the site (the web build only: the desktop build never carries it). The
