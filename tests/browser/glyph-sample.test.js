@@ -1,21 +1,22 @@
 // GlyphSample: a library row's sample, drawn from the 12 glyphs' rows without loading the font.
 import { test, expect } from 'vitest';
-import { createApp, h, nextTick } from 'vue';
+import { createApp, h, nextTick, reactive } from 'vue';
 import GlyphSample from '@/components/GlyphSample.vue';
 
 const sampleOf = (height, lit = [[0, 0]]) => {
   const bytes = new Uint8Array(12 * height);
-  for (const [glyph, row, bit] of lit.map(([g, r, b = 7]) => [g, r, b])) bytes[glyph * height + row] |= 1 << bit;
+  for (const [glyph, row, bit = 7] of lit) bytes[glyph * height + row] |= 1 << bit;
   return btoa(String.fromCharCode(...bytes));
 };
-const mount = async (props) => {
+const mount = async (initial) => {
+  const props = reactive(initial);
   const host = document.createElement('div');
   document.body.append(host);
   const app = createApp({ render: () => h(GlyphSample, props) });
   app.mount(host);
   await nextTick();
   const canvas = host.querySelector('canvas');
-  return { canvas, unmount: () => { app.unmount(); host.remove(); } };
+  return { canvas, props, unmount: () => { app.unmount(); host.remove(); } };
 };
 const alphaAt = (canvas, x, y) => canvas.getContext('2d').getImageData(x, y, 1, 1).data[3];
 
@@ -38,4 +39,16 @@ test('draws a glyph\'s lit pixels in the text color, and doubles fonts under 12 
   expect(alphaAt(e, 2 * 22, 2)).toBe(0);
   expect(getComputedStyle(e).imageRendering).toBe('pixelated');
   d.unmount();
+});
+
+test('redraws when the sample and height change on a mounted instance', async () => {
+  const w = await mount({ sample: sampleOf(16), height: 16 });
+  expect(alphaAt(w.canvas, 0, 0)).toBe(255);
+  w.props.sample = sampleOf(8, [[1, 3]]); // glyph 1, row 3, leftmost -> x = 8, doubled
+  w.props.height = 8;
+  await nextTick();
+  expect([w.canvas.width, w.canvas.height]).toEqual([192, 16]);
+  expect(alphaAt(w.canvas, 16, 6)).toBe(255);
+  expect(alphaAt(w.canvas, 0, 0)).toBe(0);
+  w.unmount();
 });
