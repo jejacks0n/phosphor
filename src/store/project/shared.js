@@ -8,7 +8,7 @@ import { loadImage } from '@/document/projectIO.js';
 import { markUniform } from '@/lib/ImageProcessor.js';
 import { MOST_CHANGE_BYTES, cellsFitAnyGrid } from '@/social/wire.js';
 import { MAX_CELLS, halfColors, mix } from '@/lib/Cells.js';
-import { hex2rgb } from '@/lib/ColorUtils.js';
+import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
 import { layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
@@ -136,17 +136,25 @@ export const onBottom = (project) => project.editId === 'base' && !project._artI
 
 // docs/model.md R13: Monochrome ASCII shows a pin as its character in white on black, so paint (or the Eraser's black)
 // laid on the base there can't recolor one: the cells it lands in lose their pins, before the paint, as part of the edit,
-// and convert again. A pinned ▄ is pixels outside ANSI already (Renderer.pinAt) and stays, so what ANSI shows comes back
-// (Colors only pins one). The other styles show a pin's colors, and it stays, recolored (R2).
+// and convert again. Each keeps its look in its two pixels (the halves the PIXEL view draws, R11), not the background
+// over foreground it was stored as, so a half the paint misses shows as it did (bare, a pinned space's black over white
+// showed as bands along a soft edge). A pinned ▄ is pixels outside ANSI already (Renderer.pinAt), its look its pixels,
+// and stays, so what ANSI shows comes back (Colors only pins one). The other styles show a pin's colors, and it stays,
+// recolored (R2).
 export function takePins(project, pixels) {
   const { pins } = project.baseRecords;
   if (project.renderStyle !== 'ascii' || !pins.size) return;
-  const cells = pixels.map(({ x, y }) => ({ col: x, row: y >> 1 })).filter(({ col, row }) => pins.get(`${col},${row}`) !== '▄');
-  const records = withoutPins(project.baseRecords, cells);
-  if (records === project.baseRecords) return;
+  const cells = new Map();
+  for (const { x, y } of pixels) {
+    const key = `${x},${y >> 1}`, pin = pins.get(key);
+    if (pin !== undefined && pin !== '▄') cells.set(key, { col: x, row: y >> 1 });
+  }
+  if (!cells.size) return;
   project.ensureLayer();
   project.beginEdit();
-  project.setBaseRecords(records);
+  const params = project.processParams;
+  project.writeBase([...cells.values()].flatMap(({ col, row }) => (project.renderer.baseLook(col, row, params) ?? []).map((half, k) => ({ x: col, y: 2 * row + k, hex: rgb2hex(half) }))));
+  project.setBaseRecords(withoutPins(project.baseRecords, [...cells.values()]));
 }
 
 // What typing pushes past a row's right edge (Insert and Partial shift the row: shiftCells, shiftBaseCells), remembered so

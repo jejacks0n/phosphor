@@ -340,8 +340,10 @@ Monochrome ASCII shows every pin as its character in white on black, so R2's tin
 character under the Brush stayed as it was, and a drawing whose every cell is a pin (Flatten's Draw on top, an opened
 ANSI file) took paint nowhere but its pinned `▄`s. So in Monochrome ASCII, paint laid on the base (the Brush, the Paint
 Bucket, Gradient, a Shape's fill, Retouch) and the Eraser's black in the PIXEL view or Soft take the pin of every
-cell they reach, a part-covered one too, and the cell converts from its pixels again: the pin's two colors with the
-paint over them. A pinned `▄` stays: outside ANSI it's pixels already (`Renderer.pinAt`), and it keeps what ANSI
+cell they reach, a part-covered one too, and the cell converts from its pixels again. As the pin goes, the cell's two
+pixels take its look (the halves the PIXEL view drew for it, R11) in place of the background over foreground it was
+stored as, and the paint lands on that: a half the paint misses shows as it did. Left bare, a pinned space's black over
+white showed as bands along a soft stroke's edge. A pinned `▄` stays: outside ANSI it's pixels already (`Renderer.pinAt`), and it keeps what ANSI
 shows (Colors only pins one). The ANSI view's Hard Eraser still leaves a pinned space, and writing cells still pins.
 The other styles show a pin's colors, so there the pin stays, recolored (R2, R4, R8). The pins go as part of the edit,
 so Undo brings them back.
@@ -349,8 +351,8 @@ so Undo brings them back.
 - Lives in: `takePins` (`src/store/project/shared.js`), called by `paintEditPixels` (`src/store/project/editLayer.js`)
   on the base and by `eraseBasePixels` (`src/store/project/baseLayer.js`).
 - Checked by: `tests/browser/brush.test.js › R13: …` (the report's file, `projects/ascii-pinned-paint.phosphor`: a
-  drawing flattened onto the base, every cell pinned; the Brush and the Eraser in Monochrome ASCII, a pinned `▄` kept,
-  Undo, and ANSI and Color ASCII keeping their pins).
+  drawing flattened onto the base, every cell pinned; the Brush and the Eraser in Monochrome ASCII, a half-covered cell
+  keeping its look in the other half, a pinned `▄` kept, Undo, and ANSI and Color ASCII keeping their pins).
 
 ## Where the rules are walked and what else they reach
 
