@@ -111,3 +111,18 @@ test('the picker holds the palette\'s glyphs and every slot of the font; a click
   await frames();
   expect(workspace.activeChar).toBe(fitFont(quick[0].dataset.char, font8));
 });
+
+test('slot 0 is the font\'s own glyph in a bitmap font; with no drawing font it\'s a space, as CP437 shows byte 0', async () => {
+  const { workspace } = await toolOn('shapes', { shapeDrawWith: 'char' }, font8);
+  await openPicker();
+  document.querySelector('.dropdown-content .char-slots button').click();
+  await frames();
+  expect(workspace.activeChar).toBe(slotChars(font8)[0]);
+  mounted.unmount(); host.remove();
+  const plain = await toolOn('shapes', { shapeDrawWith: 'char' });
+  expect(plain.project.drawingFont).toBeNull();
+  await openPicker();
+  document.querySelector('.dropdown-content .char-slots button').click();
+  await frames();
+  expect(plain.workspace.activeChar).toBe(' ');
+});

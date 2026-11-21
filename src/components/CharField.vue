@@ -7,7 +7,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import { cellWidth, graphemes, usableChar } from '@/lib/CharWidth';
-import { fitFont, slotChars } from '@/lib/BitmapFont';
+import { SLOT_CHARS, fitFont, slotChars } from '@/lib/BitmapFont';
 
 const props = defineProps({ modelValue: String, label: String });
 const emit = defineEmits(['update:modelValue']);
@@ -18,6 +18,8 @@ const palettes = usePaletteStore();
 const shown = (g) => (project.drawingFont ? fitFont(g, project.drawingFont) : g);
 const palette = computed(() => palettes.active.glyphs.filter(Boolean));
 const slots = computed(() => slotChars(project.drawingFont));
+// A font's slot 0 (␀) is that font's own glyph; a drawing with no font has none, and CP437 shows byte 0 as a space.
+const slotPicked = (c) => emit('update:modelValue', !project.drawingFont && c === SLOT_CHARS[0] ? ' ' : c);
 
 function typed(event) {
   const g = graphemes(event.target.value).at(-1);
@@ -34,7 +36,7 @@ function typed(event) {
         <button v-for="(g, i) in palette" :key="i" class="glyph-cell" :data-char="g" @click="emit('update:modelValue', shown(g))">{{ shown(g) }}</button>
       </div>
       <div class="char-slots">
-        <button v-for="(c, i) in slots" :key="i" class="glyph-cell" :data-char="c" @click="emit('update:modelValue', c)">{{ c === '␀' ? ' ' : shown(c) }}</button>
+        <button v-for="(c, i) in slots" :key="i" class="glyph-cell" :data-char="c" @click="slotPicked(c)">{{ c === '␀' ? ' ' : shown(c) }}</button>
       </div>
     </DropdownMenu>
   </div>
