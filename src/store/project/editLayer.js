@@ -85,10 +85,8 @@ export const editLayerActions = {
     // A cell of the layer's own with colors shows them itself, and a ▄ with colors of its own isn't a paint block
     // (ASCII would show it): its colors go into paint, as it showed (unlockCells), and the ▄ has none.
     this.unlockCells(cells.filter(({ col, row }) => ownColored(this, col, row)));
-    // On the base the ▄ keeps the cell's own two pixels, as ANSI shows them, whatever the art style: Color ASCII and
-    // Monochrome ASCII show a character there on black, and written as it shows, its top pixel turned black.
     const bottom = onBottom(this);
-    this.writeEditCells(cells.map((c) => ({ ...c, attrs: { ...(bottom && bakedEntry('ansi', this.baseCellAt(c.col, c.row))), char: '▄' } })));
+    this.writeEditCells(cells.map((c) => ({ ...c, attrs: bottom ? baseBlock(this, c.col, c.row) : { char: '▄' } })));
   },
 
   // Cells of the layer in use ([{ col, row }]) turned into paint: a cell with colors of its own has the two halves it
@@ -111,12 +109,7 @@ export const editLayerActions = {
   // (blockOver: a solid glyph, a ▄ among them, keeps its halves); a cell the converter drew keeps the halves it had.
   writeBlocks(cells) {
     if (onBottom(this)) {
-      const { pins } = this.baseRecords;
-      return this.writeEditCells(cells.map((c) => {
-        if (!pins.has(cellKey(c.col, c.row))) return { ...c, attrs: { char: '▄' } };
-        const { fg, bg } = blockOver(this.completeAt(c.col, c.row)); // a ▄ pinned already (a stroke back over it) keeps its halves
-        return { ...c, attrs: { char: '▄', fg, bg } };
-      }));
+      return this.writeEditCells(cells.map((c) => ({ ...c, attrs: baseBlock(this, c.col, c.row) })));
     }
     const { rows } = this, backed = cells.filter(({ col, row }) => this.editCellAt(col, row)?.bg && !isFrozen(this.editCellAt(col, row)));
     this.putEditPixels(backed.flatMap(({ col, row }) => [0, 1].map((k) => {
@@ -446,6 +439,17 @@ function showsNoChar(project, col, row, cell) {
   if (project.renderStyle === 'ansi' && !showsChar(cell)) return true;
   const look = onBottom(project) ? { bg: project.baseColorAt(col, 2 * row), fg: project.baseColorAt(col, 2 * row + 1) } : project.underlyingAt(col, row, { evenHidden: true });
   return look.bg.toLowerCase() === look.fg.toLowerCase();
+}
+
+// A ▄ written on the base at col, row (Half-block's, Write block glyphs', Colors only's), in the cell's own colors as ANSI
+// shows them, whatever the art style: Color ASCII and Monochrome ASCII show a character there on black or in no colors
+// at all, and a ▄ written as it showed stored a black top pixel under paint that never reached it. A pinned character's
+// block takes its background in both (blockOver: a solid glyph, a ▄ pinned already among them, keeps its halves); a
+// cell the converter drew keeps the halves it had (docs/model.md R5).
+function baseBlock(project, col, row) {
+  const own = bakedEntry('ansi', project.baseCellAt(col, row));
+  const { fg, bg, fgIndex, bgIndex } = project.baseRecords.pins.has(cellKey(col, row)) ? blockOver(own) : own; // with the 256-color indexes they carry
+  return { char: '▄', fg, bg, fgIndex, bgIndex };
 }
 
 // Cells written on the base ([{ col, row, attrs }], attrs as writeEditCells takes them: undefined keeps, null clears):

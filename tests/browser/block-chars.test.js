@@ -397,6 +397,31 @@ for (const renderStyle of ['ansi', 'colorAscii', 'ascii']) {
   });
 }
 
+// R5 on the base: a Half-block's ▄ over a pinned character takes its background in both pixels, in every art style. It was
+// written in the colors the style shows the cell in: Monochrome ASCII shows none, Color ASCII none for a pin whose two
+// pixels match, so the block's top pixel was stored black under paint that only touched the lower one.
+for (const renderStyle of ['ansi', 'colorAscii', 'ascii']) {
+  test(`R5: ${renderStyle}: on the base a Half-block ▄ over a pinned character takes its background in both pixels`, async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ cols: 20, rows: 20 });
+    project.writeBaseCells([{ col: 6, row: 3, char: '░', fg: '#ffffff', bg: '#0000ff' }, { col: 8, row: 3, char: 'A', fg: '#00ff00', bg: '#00ff00' }]);
+    project.commitEdit();
+    project.renderStyle = renderStyle;
+    await settle(project);
+    workspace.pickLayer('base');
+    Object.assign(workspace, { editFgColor: '#ff8020', pencilDrawWith: 'half' });
+    const ctx = { project, workspace, view: 'output' };
+    for (const x of [6.5, 8.5]) {
+      pencil.begin(ctx, { x, y: 7.5 }, {}); // the lower pixel alone
+      pencil.end(ctx);
+    }
+    await settle(project);
+    expect([project.baseRecords.pins.get('6,3'), project.baseRecords.pins.get('8,3')]).toEqual(['▄', '▄']);
+    expect([project.baseColorAt(6, 6), project.baseColorAt(6, 7)]).toEqual(['#0000ff', '#ff8020']);
+    expect([project.baseColorAt(8, 6), project.baseColorAt(8, 7)]).toEqual(['#00ff00', '#ff8020']);
+  });
+}
+
 // docs/model.md R5 on a layer: Colors only makes no ▄ of a cell the converter drew. The report (projects/random-layer-blocks.phosphor: a white canvas under Best match
 // with paint on the base and Layer 1, and Layer 2 above with Random and a seed of its own): Layer 2's strokes came out
 // as half-blocks wherever the canvas under them was flat, and as Random's characters only along the edges of what was

@@ -184,10 +184,10 @@ a blank canvas), and in ANSI makes a block of each cell that shows a character o
 under it (`ownCharAt`): R2's tint there took the whole cell from an edge on its top half (the background) and only
 recolored the character from one on its bottom half, so a box half a cell up or down crossed a line otherwise. A pinned
 character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a character of someone's own
-under the layer the paint shows as R2 has it, with no entry. On the base, Colors only's ▄
-over a pin that shows no character (a space, or one a stroke before filled with one color) keeps the cell's two pixels
-in every art style. The ASCII styles show a pin on black, and a ▄ written in those colors turned its top pixel black
-under paint that never reached it: stripes in the PIXEL view.
+under the layer the paint shows as R2 has it, with no entry. A ▄ on the base (Colors only's
+over a pin that shows no character, Half-block's, Write block glyphs') is made of the cell's own two pixels in every art
+style, as ANSI shows them. The ASCII styles show a pin on black or in no colors at all, and a ▄ written in those colors
+turned its top pixel black under paint that never reached it: stripes in the PIXEL view.
 
 A cell a shape covers under the layer (the topmost thing under it there is a vector layer's fill or stroke) is drawn
 by the converter too and gets no ▄: a ▄ there made a stroke that crossed from the picture onto a shape switch from the
@@ -197,14 +197,14 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
 - Lives in: `colorsOnlyCells` in `src/store/project/editLayer.js`, which `paintStroke` there calls for `blockChars: 'plain'`
   and a plugin brush for each call's puts (`lay` in `src/tools/pluginBrush.js`); `converted` says which cells the
   converter drew, with `showsNoChar` and `shapeUnder` there; Half-block's and Write block glyphs' ▄ in `writeBlocks`
-  there, which the Shape tool's Half-block asks for every cell with Write block glyphs on and for the cells `ownCharAt`
+  there (on the base both through `baseBlock`), which the Shape tool's Half-block asks for every cell with Write block glyphs on and for the cells `ownCharAt`
   (`src/store/project/reading.js`) names with it off (`apply` in `src/tools/shapes.js`); a block over a character under
   it in `blockOver` (`src/lib/Cells.js`), which the Renderer's `#upperCell` and
   `#composeOne`, `layerOver` in `src/store/project/reading.js` and Merge down's `onCells` use.
 - Checked by: `tests/browser/block-chars.test.js › R5: …` (the base and a layer under Random, Best match and By shape;
   the reports: the Brush on a blank canvas under the base's Random, a layer with its own Random over a flat canvas; a
-  flat shape under the layer; a second stroke on the base over a pin the first filled with one color, in each art
-  style), `› with Colors only on the base, a cell that shows no character …`, `› with Colors only,
+  flat shape under the layer; a second stroke on the base over a pin the first filled with one color, and a Half-block
+  ▄ over a pinned character on the base, in each art style), `› with Colors only on the base, a cell that shows no character …`, `› with Colors only,
   a cell that shows no character (the black of an opened file's grown lines) …` and
   `› …with Colors only, a layer's own cell that shows no character becomes a plain ▄ …`; `› R5: the report: a Half-block
   box with Write block glyphs over a line box …`, `› R5: on the base, a Half-block box …`, `› R5: a Half-block box with
