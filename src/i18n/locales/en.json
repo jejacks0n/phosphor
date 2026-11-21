@@ -823,7 +823,7 @@
     },
     "fonts": {
       "filterPlaceholder": "Search fonts…",
-      "filterAria": "Filter fonts",
+      "filterAria": "Search fonts",
       "tags": "Tags",
       "removeTag": "Remove {tag}",
       "clear": "Clear",

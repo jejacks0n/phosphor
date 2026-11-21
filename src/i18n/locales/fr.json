@@ -823,7 +823,7 @@
     },
     "fonts": {
       "filterPlaceholder": "Rechercher des polices…",
-      "filterAria": "Filtrer les polices",
+      "filterAria": "Rechercher des polices",
       "tags": "Étiquettes",
       "removeTag": "Retirer {tag}",
       "clear": "Effacer",

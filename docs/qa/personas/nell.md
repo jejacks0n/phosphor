@@ -90,6 +90,11 @@ script. Every section ends with Free time.
   set and check it's still the drawing's.
 - Rated: yes, wants Cmd+Z
 
+**Free time:** she'd save the font back as `.F08` and as PNG and load them again, switch between her fonts and a
+built-in one, and check what the Font field says while the drawing has its own.
+
+## Draw in it
+
 ### 4. Type a character my font lacks
 - Does: in Edit Mode, types a letter with an accent and a character from another script, then chooses a built-in font in the Font dropdown.
 - Expects: each shows as its nearest classic stand-in while the font is on, and the status bar's code is the font's
@@ -268,11 +273,6 @@ change one cell on the way.
 - Expects: Library · N fonts becomes Library · N found while narrowed; each tag shows a count, and a tag no current match carries is off; Escape or a click outside closes the picker (Escape doesn't close the layer); no matches says so with Clear; Show 100 more adds the next 100; FROGBLOCK says "not included" with its credit; offline, the group says the library couldn't load and Try again works, with In use, Yours and Built-in unaffected.
 - Probes: `back-out`: open Tags ▾ and press Escape; `extremes`: pick tags until the count is one; `speed`: type in the search while the library loads.
 - Rated: no (library)
-
-**Free time:** she'd save the font back as `.F08` and as PNG and load them again, switch between her fonts and a
-built-in one, and check what the Font field says while the drawing has its own.
-
-## Draw in it
 
 **Free time:** she'd make a second style, draw a spiral with each, and undo the lot.
 

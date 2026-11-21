@@ -901,6 +901,21 @@ test('Escape or a click outside closes the tag picker', async () => {
   expect(host.querySelector('.picker')).toBeNull();
 });
 
+test('with the picker closed, Escape on Tags reaches the layer', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await openTags();
+  const tags = host.querySelector('button.tags');
+  tags.focus();
+  tags.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await nextTick();
+  expect(host.querySelector('.picker')).toBeNull();
+  expect(closes).toBe(0);
+  tags.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await nextTick();
+  expect(closes).toBe(1);
+});
+
 test('a tag no current match carries is disabled', async () => {
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
@@ -919,6 +934,20 @@ test('nothing matching says so, with Clear', async () => {
   expect(host.querySelector('.library-note').textContent).toContain('No fonts match.');
   expect(libraryNames()).toEqual([]);
   await press(host.querySelector('.library-note button'));
+  expect(host.querySelector('.top input').value).toBe('');
+  expect(libraryNames().length).toBe(4);
+});
+
+test('tags plus a query that match nothing say so, and Clear empties both', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await openTags();
+  await press(chip('IBM PC'));
+  await type('rounded'); // Topaz is Amiga: nothing under IBM PC
+  expect(host.querySelector('.library-note').textContent).toContain('No fonts match.');
+  expect(chip('Amiga').disabled).toBe(true);
+  await press(host.querySelector('.library-note button'));
+  expect(host.querySelector('.tag-row > button.chip')).toBeNull();
   expect(host.querySelector('.top input').value).toBe('');
   expect(libraryNames().length).toBe(4);
 });

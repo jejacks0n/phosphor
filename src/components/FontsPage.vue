@@ -300,7 +300,7 @@ const exportPalettes = () => {
         <button :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         <input ref="file" type="file" :accept="FONT_FILES" hidden @change="onFile">
       </div>
-      <div v-if="libraryState === 'ready'" ref="tagsWrap" class="tag-row" @keydown.esc.stop="closePicker">
+      <div v-if="libraryState === 'ready'" ref="tagsWrap" class="tag-row" @keydown.esc="pickerOpen && ($event.stopPropagation(), closePicker())">
         <button class="tags" :aria-expanded="pickerOpen" @click="togglePicker">
           {{ t('palette.fonts.tags') }}<span v-if="tags.length" class="badge">{{ tags.length }}</span> ▾
         </button>
