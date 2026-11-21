@@ -35,6 +35,9 @@ describe('font library', () => {
     expect(searchLibrary(index, { query: 'alpha', tags: ['shape:16'] })).toEqual([]);
     expect(tagsOf(index.linked[0], index).map((t) => t.key)).not.toContain('collection:undefined');
     expect(tagsOf(index.fonts[0], index).map((t) => t.key)).toEqual(['machine:IBM PC', 'shape:16', 'chars:cp437', 'collection:viler', 'ready']);
+    const { machine, ...noMachine } = index.fonts[0]; // a font whose folder names no machine
+    expect(machine).toBe('IBM PC');
+    expect(tagsOf(noMachine).map((t) => t.key)).toEqual(['shape:16', 'chars:cp437', 'collection:viler', 'ready']);
   });
 
   it('counts tags among the current matches', async () => {

@@ -127,7 +127,7 @@ const fromLibrary = (action) => async () => {
 const useFromLibrary = fromLibrary((e) => useLibraryFont(e));
 const keepFromLibrary = fromLibrary((e) => keepLibraryFont(e));
 const pickTag = (key) => { tags.value = [key]; filter.value = ''; };
-const libraryMeta = (e) => (e.linked ? t('palette.fonts.notIncluded') : `8×${e.height} · ${e.machine}`);
+const libraryMeta = (e) => (e.linked ? t('palette.fonts.notIncluded') : [`8×${e.height}`, e.machine].filter(Boolean).join(' · '));
 const chosenId = ref(null);
 const hovered = ref(null); // the slot under the pointer
 const problem = ref('');

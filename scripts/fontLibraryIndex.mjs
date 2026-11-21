@@ -5,16 +5,38 @@ import { LINKED_FONTS } from '../src/lib/linkedFonts.js';
 
 const SAMPLE_SLOTS = [...SAMPLE_CHARS].map((c) => CP437.indexOf(c));
 
-// Machines: VileR's top folders, Mœbius's folders.
+// Machines. VileR's folders of PC fonts (its own at the top, the programs', the systems', the big pile) are IBM PC
+// fonts; its non-PC and other-PC fonts are named for their machine (FONTS.TXT says which), the rest of those being an
+// other computer's or a PC clone's (a video card's or a BIOS's). Mœbius's folders name theirs, but discmaster: none.
 const VILER_MACHINES = {
-  'PC-IBM': 'IBM PC', 'PC-OTHER': 'PC clones', 'NON-PC': 'Other computers', BIGPILE: 'Big pile',
-  SOFTWARE: 'Software', SYSTEM: 'Operating systems', UNSCII: 'Unscii',
+  'PC-IBM': 'IBM PC', BIGPILE: 'IBM PC', SOFTWARE: 'IBM PC', SYSTEM: 'IBM PC',
+  'PC-OTHER': 'PC clones', 'NON-PC': 'Other computers', UNSCII: 'Unscii',
 };
-const MOEBIUS_MACHINES = { amiga: 'Amiga', c64: 'Commodore 64', custom: 'Custom', discmaster: 'Discmaster', ibm: 'IBM PC' };
+const MOEBIUS_MACHINES = { amiga: 'Amiga', c64: 'Commodore 64', custom: 'Custom', discmaster: undefined, ibm: 'IBM PC' };
+// NON-PC's and PC-OTHER's file names (the start of each, upper case) and the machine they name.
+const NAMED_MACHINES = [
+  [/^A7100/, 'Robotron A7100'], [/^ACER/, 'Acer'], [/^(APC-III|NEC-MS)/, 'NEC'], [/^APRI/, 'Apricot'],
+  [/^AS-100/, 'Canon AS-100'], [/^AST-/, 'AST'], [/^ATARI/, 'Atari'], [/^BBC/, 'BBC Micro'], [/^COMPAQ/, 'Compaq'],
+  [/^COMPIS/, 'TeleNova Compis'], [/^DG1/, 'Data General One'], [/^EAGLE/, 'Eagle'], [/^EUROPC/, 'Schneider EuroPC'],
+  [/^FM-TOWNS/, 'FM Towns'], [/^HP-LX/, 'HP 200LX'], [/^ITTX/, 'ITT Xtra'], [/^(KAYPRO|KPRO2K)/, 'Kaypro'],
+  [/^LBPC/, 'Ampro Little Board'], [/^LE-D/, 'Leading Edge'], [/^MBC/, 'Sanyo'], [/^MBPC230/, 'Micro Byte'],
+  [/^MINDSET/, 'Mindset'], [/^NIMBUS/, 'RM Nimbus'], [/^NIX-/, 'Nixdorf'], [/^OLI/, 'Olivetti'], [/^OTRONA/, 'Otrona Attaché'],
+  [/^(PC1640|PPC)/, 'Amstrad'], [/^PC6300/, 'AT&T'], [/^PVBGC/, 'Pravetz'], [/^(RB100|VT220)/, 'DEC'],
+  [/^SEEQUA/, 'Seequa Chameleon'], [/^SHARP/, 'Sharp'], [/^SIEMPCD/, 'Siemens PC-D'], [/^SPERRY/, 'Sperry'],
+  [/^TANDY/, 'Tandy'], [/^TELEPC/, 'Televideo'], [/^TI-PC/, 'TI Professional'], [/^(T3100|TOSH)/, 'Toshiba'],
+  [/^VTECH/, 'VTech'], [/^(WANG|WVGA)/, 'Wang'], [/^YES-/, 'Philips :YES'], [/^Z100/, 'Zenith Z-100'],
+];
 
+// The machine a font was made for, or undefined when its folder names none.
 export function machineOf(path) {
-  const [collection, top] = path.split('/');
-  if (collection === 'moebius') return MOEBIUS_MACHINES[top] ?? 'Other';
+  const parts = path.split('/'), [collection, top] = parts;
+  if (collection === 'moebius') return top in MOEBIUS_MACHINES ? MOEBIUS_MACHINES[top] : 'Other';
+  if (parts.length === 2) return 'IBM PC'; // VileR's own, at the top
+  if (top === 'NON-PC' || top === 'PC-OTHER') {
+    const stem = parts[parts.length - 1].toUpperCase();
+    const named = NAMED_MACHINES.find(([re]) => re.test(stem));
+    if (named) return named[1];
+  }
   return VILER_MACHINES[top] ?? 'Other';
 }
 
@@ -86,6 +108,7 @@ export function buildIndex({ files, about = {}, collections = {}, sauceNames = {
       about: about[path], sample: Buffer.from(sample).toString('base64'),
     };
     if (entry.about === undefined) delete entry.about;
+    if (entry.machine === undefined) delete entry.machine;
     fonts.push(entry);
     byId.set(id, entry);
   }

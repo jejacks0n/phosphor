@@ -841,13 +841,17 @@ test('lines and sets are read-only in a room', async () => {
 });
 
 test('the Library group lists the library under Built-in, each row sampled', async () => {
-  await mount({ library: FIXTURE() });
+  const index = FIXTURE();
+  delete index.fonts[2].machine; // Alpha's folder names no machine
+  await mount({ library: index });
   await waitFor(() => libraryNames().length);
   expect(libraryNames()).toEqual(['Alpha', 'FROGBLOCK', 'Topaz', 'Zeta']);
   expect(names().slice(-4)).toEqual(['Alpha', 'FROGBLOCK', 'Topaz', 'Zeta']);
   expect(label()).toBe('Library · 4 fonts');
   const topaz = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('Topaz'));
   expect(topaz.querySelector('.name em').textContent).toBe('8×16 · Amiga');
+  const alpha = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('Alpha'));
+  expect(alpha.querySelector('.name em').textContent).toBe('8×8'); // no machine
   expect(topaz.querySelector('canvas.glyph-sample')).toBeTruthy();
   await press(topaz);
   expect(topaz.classList.contains('current')).toBe(true);

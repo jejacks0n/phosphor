@@ -106,6 +106,11 @@ describe('buildIndex', () => {
     expect(Object.keys(sauce)).toEqual(['IBM EGA43', 'IBM VGA50']); // both names still open in the font
   });
 
+  it('a font with no machine carries no machine', () => {
+    const { index } = run([{ path: 'moebius/discmaster/X.f08', bytes: make(8) }]);
+    expect(index.fonts[0]).not.toHaveProperty('machine');
+  });
+
   it('carries the about text of a VileR font', () => {
     const { index } = run([{ path: 'viler/PC-IBM/A.F08', bytes: make(8) }], { about: { 'viler/PC-IBM/A.F08': 'Hello' } });
     expect(index.fonts[0].about).toBe('Hello');
@@ -155,10 +160,39 @@ describe('machineOf and charsOf', () => {
 
   it('machines come from the top folder', () => {
     expect(machineOf('viler/PC-IBM/EGA8.F14')).toBe('IBM PC');
-    expect(machineOf('viler/NON-PC/APC-III.F08')).toBe('Other computers');
     expect(machineOf('moebius/amiga/X.F16')).toBe('Amiga');
     expect(machineOf('moebius/c64/X.F08')).toBe('Commodore 64');
+    expect(machineOf('moebius/ibm/CP437.F16')).toBe('IBM PC');
     expect(machineOf('viler/NEW/X.F08')).toBe('Other');
+  });
+
+  it('VileR\'s folders of PC fonts and its own fonts are IBM PC fonts', () => {
+    for (const p of ['viler/SOFTWARE/FE2/BRUSH.F16', 'viler/SYSTEM/FREEDOS/CPIKOI12/CP878.F16', 'viler/BIGPILE/GRUSS.F16', 'viler/9THWAVE.F14'])
+      expect(machineOf(p), p).toBe('IBM PC');
+  });
+
+  it('a folder that names no machine gives none', () => {
+    expect(machineOf('moebius/discmaster/c641.f08')).toBeUndefined();
+  });
+
+  it('non-PC and other PC fonts take their machine from the file name', () => {
+    const machines = {
+      'viler/NON-PC/ATARIPOF.F08': 'Atari', 'viler/NON-PC/BBC512_D.F16': 'BBC Micro', 'viler/NON-PC/TANDY2K1.F16': 'Tandy',
+      'viler/NON-PC/KAYPROII.F10': 'Kaypro', 'viler/NON-PC/WANG437M.F12': 'Wang', 'viler/NON-PC/VT220CRT.F10': 'DEC',
+      'viler/NON-PC/RB100ROM.F10': 'DEC', 'viler/NON-PC/APC-III.F08': 'NEC', 'viler/NON-PC/Z100-A_D.F18': 'Zenith Z-100',
+      'viler/NON-PC/TOSHT300.F08': 'Toshiba', 'viler/NON-PC/COMPIS.F16': 'TeleNova Compis',
+      'viler/PC-OTHER/PC1640AD.F16': 'Amstrad', 'viler/PC-OTHER/PPC-M1.F14': 'Amstrad', 'viler/PC-OTHER/PC6300.F16': 'AT&T',
+      'viler/PC-OTHER/MBC775.F08': 'Sanyo', 'viler/PC-OTHER/MBPC230M.F14': 'Micro Byte', 'viler/PC-OTHER/COMPAQP3.F16': 'Compaq',
+      'viler/PC-OTHER/TANDY2M9.F14': 'Tandy', 'viler/PC-OTHER/KPRO2K.F08': 'Kaypro', 'viler/PC-OTHER/T3100-A1.F16': 'Toshiba',
+      'viler/PC-OTHER/WVGA8.F16': 'Wang', 'viler/PC-OTHER/NEC-MS1A.F08': 'NEC',
+    };
+    for (const [p, machine] of Object.entries(machines)) expect(machineOf(p), p).toBe(machine);
+  });
+
+  it('a video card\'s or a BIOS\'s font is a PC clone\'s; a non-PC font no pattern names stays an other computer\'s', () => {
+    for (const p of ['viler/PC-OTHER/ATI8X16.F16', 'viler/PC-OTHER/TRIVGA8.F16', 'viler/PC-OTHER/PHXBIOS.F08', 'viler/PC-OTHER/COPAMX.F08'])
+      expect(machineOf(p), p).toBe('PC clones');
+    expect(machineOf('viler/NON-PC/NEWONE.F08')).toBe('Other computers');
   });
 });
 
