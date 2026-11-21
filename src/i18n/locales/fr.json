@@ -900,14 +900,14 @@
       "lineToGo": "Encore {n} pièce avant que Dessiner avec le propose | Encore {n} pièces avant que Dessiner avec le propose",
       "lineSharesBlock": "{piece} partage l'emplacement {n} avec {block}",
       "lineBlockSlot": "L'emplacement {n} dessine le bloc {block} : il ne peut pas être une pièce de ligne.",
-      "linePicked": "{piece} est choisie dans {name} : cliquez sur l'emplacement qui le dessine. Un style relie ses propres coins et jonctions ; là où une ligne croise un autre style, la nouvelle ligne l'emporte.",
+      "linePicked": "{piece} est choisie dans {name} : cliquez sur l'emplacement qui la dessine. Un style relie ses propres coins et jonctions ; là où une ligne croise un autre style, la nouvelle ligne l'emporte.",
       "linesHint": "Pour définir une pièce, choisissez sa tuile, puis cliquez sur l'emplacement qui la dessine.",
       "newSet": "+ Nouveau jeu",
       "setName": "Jeu {n}",
       "setNameAria": "Nom du jeu",
       "setCharsAria": "Caractères de {name}",
-      "setPicked": "{name} est ouvert : cliquez sur des emplacements de la planche pour les ajouter, dans l'ordre (un emplacement peut y être deux fois), ou tapez dans son champ. Retour arrière enlève le dernier.",
-      "setsHint": "Pour compléter un jeu, cliquez dans ses caractères, puis sur des emplacements de la planche.",
+      "setPicked": "{name} est ouvert : cliquez sur des emplacements de la feuille pour les ajouter, dans l'ordre (un emplacement peut y être deux fois), ou tapez dans son champ. Retour arrière enlève le dernier.",
+      "setsHint": "Pour compléter un jeu, cliquez dans ses caractères, puis sur des emplacements de la feuille.",
       "showStockSets": "Afficher les jeux prédéfinis"
     }
   },
