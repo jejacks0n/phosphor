@@ -2,7 +2,7 @@
 // passes through the server, so all of this is between the two pages; the room's socket only carries signals.
 import { readFile } from 'node:fs/promises';
 import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, openApp, imageInput, otherBrowser, pickLayer } from './support.js';
-import { fakeRoom, member, ROOM_ID, goLive, shown, chat, hash, selected, ARTIST, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard, followLink } from './social-support.js';
+import { fakeRoom, member, ROOM_ID, goLive, shown, chat, addressIs, selected, ARTIST, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard, followLink } from './social-support.js';
 
 const WAITING_WORDS = 'Waiting for the host to reconnect. Drawing is paused…';
 const CHANGING_WORDS = 'Transferring host controls. Drawing is paused…';
@@ -149,9 +149,9 @@ test('accepting opens the room\'s art, and the row shows the artist tag, not tha
   expect(await store(artist, 'room', (r) => r.role)).toBe('watch');
 
   // In the room on PIXEL and ANSI, at the address, and Back and Forward as for anyone watching.
-  await hash(artist, `/ansi?room=${ROOM_ID}`);
+  await addressIs(artist, `/ansi?room=${ROOM_ID}`);
   await tab(artist, 'PIXEL').click();
-  await hash(artist, `/pixel?room=${ROOM_ID}`);
+  await addressIs(artist, `/pixel?room=${ROOM_ID}`);
   expect(await store(artist, 'room', (r) => r.id)).toBe(ROOM_ID);
   await artist.goBack();
   await selected(artist, 'ANSI');
@@ -567,7 +567,7 @@ test('reload as an artist rejoins, shows everything, and has no undo steps', asy
   expect(await chars(artist, 4, 4, 4)).toBe('r');
   expect(await store(artist, 'project', (p) => p.canUndo)).toBe(false);
   expect(await store(artist, 'project', (p) => p.documentId)).toBe(id);   // the same in the list: no copy to pile up
-  await hash(artist, `/ansi?room=${ROOM_ID}`);
+  await addressIs(artist, `/ansi?room=${ROOM_ID}`);
   await expect(invitation(artist)).toHaveCount(0);
 
   await typeAt(artist, 8, 4, 'y');
@@ -969,7 +969,7 @@ test('Make host asks, the host stays an artist whose ROOM tab shows its own docu
   await notDrawing(artist);
   await expect(chat(person).getByRole('status').filter({ hasText: 'ansi-fan made tin_owl the host.' })).toBeVisible();
   await expect(chat(person).getByText('hosted by')).toContainText('tin_owl');
-  await hash(host, `/ansi?room=${ROOM_ID}`);
+  await addressIs(host, `/ansi?room=${ROOM_ID}`);
   expect(await store(host, 'project', (p) => p.canUndo)).toBe(true);
 
   // The former host's ROOM tab shows the document it carries on with, and the new host has no art left over
@@ -1056,7 +1056,7 @@ test('an artist reloading before autosave has their document comes back on the t
   await mayDraw(artist).toBe(true);
   await settled(artist);
   await selected(artist, 'ANSI');
-  await hash(artist, `/ansi?room=${ROOM_ID}`);
+  await addressIs(artist, `/ansi?room=${ROOM_ID}`);
   await typeAt(artist, 2, 2, 'b');
   await expect.poll(() => chars(host, 2, 2, 2), { timeout: 10_000 }).toBe('b');
 });

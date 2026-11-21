@@ -878,6 +878,27 @@ test('an unmarked ?room= asks with the lobby open, and the address it came in on
   expect(social.roomInvite).toBe(null);
 });
 
+// Held before in the end-to-end layer with a pasted #/ address, which the path build has no way to make.
+test('Back with SOCIAL\'s question up forgets the link\'s room, and the lobby it opened stays', async () => {
+  useFakeSockets();
+  serverFor(member());
+  await landed();
+  social.consentVersion = 0;   // SOCIAL's question not answered yet
+  await router.push(`/pixel?room=${ID}`);
+  await settled();
+  expect(social._roomLink).toBe(ID);
+  expect(workspace.sidePanelTab).toBe('social');
+
+  router.back();
+  await settled();
+  expect(address()).toBe('/pixel');
+  expect(social._roomLink).toBe(null);
+  expect(workspace.sidePanelTab).toBe('social');
+  social.acceptConsent();
+  await settled();
+  expect([social.roomInvite, room.role, roomSockets()]).toEqual([null, null, []]);
+});
+
 test('on a phone an unmarked ?room= asks too, with the lobby open over the art, and the address it came in on goes', async () => {
   desktop(false);
   useFakeSockets();

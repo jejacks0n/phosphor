@@ -126,9 +126,7 @@ If a theme makes Phosphor hard to read, load it with `plugins=off` in its addres
 colors (the theme's base, Dark or Light), keeps your choice of theme, and the Plugins dialog says "Plugins are off for
 this visit." There you can switch the plugin off or remove it; then load Phosphor again without `plugins=off`.
 
-- With hash addresses (the default): `https://phosphor.work/?plugins=off` or, on a tab,
-  `https://phosphor.work/?plugins=off#/ansi`.
-- With path addresses: `https://phosphor.work/ansi?plugins=off`.
+- On the web: `https://phosphor.work/?plugins=off` or, on a tab, `https://phosphor.work/ansi?plugins=off`.
 - On the desktop app: **Help > Troubleshooting > Reload with Plugins Off**. With unsaved work it asks first, as any
   reload does. That window stays without plugins; once you've switched the plugin off or removed it, open a new window
   (**File > New Window**), which starts with them.

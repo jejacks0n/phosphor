@@ -11,8 +11,11 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 const Empty = { render: () => null };   // the stores decide what shows
 
+// Path addresses (/social) on the web; hash addresses (/#/social) in the desktop app, or with VITE_ADDRESSES=hash.
+export const hashAddresses = () => import.meta.env.VITE_DESKTOP === '1' || import.meta.env.VITE_ADDRESSES === 'hash';
+
 export function defaultHistory() {
-  return import.meta.env.VITE_ADDRESSES === 'path' ? createWebHistory() : createWebHashHistory();
+  return hashAddresses() ? createWebHashHistory() : createWebHistory();
 }
 
 // With path addresses a return from the server shares the query. It's been read (readReturn takes it off the URL,

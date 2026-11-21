@@ -38,3 +38,13 @@ export function arrivalPage(page, { signedIn, needsOnboarding, resetToken, codeP
   if (page === 'start-room') return canStart ? page : 'lobby';
   return page;
 }
+
+// An old hash address (/#/social?room=x, or /?plugins=off#/ansi) as the path address it means: the hash's path, and
+// the URL's query with the hash's merged in (the hash's winning). Null for any other URL. Always this origin's.
+export function fromHashAddress(href) {
+  const url = new URL(href);
+  if (!url.hash.startsWith('#/')) return null;
+  const inner = new URL(url.hash.slice(1).replace(/^\/+/, '/'), url.origin);
+  for (const [name, value] of inner.searchParams) url.searchParams.set(name, value);
+  return inner.pathname + url.search;
+}

@@ -26,7 +26,7 @@ test('the VECTOR tab shows the ANSI art and its address is /vector', async ({ pa
   await openApp(page);
   await pickLayer(page);
   await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
-  await expect.poll(() => new URL(page.url()).hash).toBe('#/vector');
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/vector');
   await expect(page.locator('.ansi-editor .display canvas')).toBeVisible();
   await expect(page.locator('.vector-overlay')).toHaveCount(1);
   await page.keyboard.press('v');

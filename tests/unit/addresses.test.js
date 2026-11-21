@@ -1,6 +1,6 @@
 // The table of addresses: which tab, SOCIAL page or the lobby each path is, and where a page may land.
 import { test, expect, vi, afterEach } from 'vitest';
-import { PLACES, pathOf, arrivalPage } from '../../src/lib/addresses.js';
+import { PLACES, pathOf, arrivalPage, fromHashAddress } from '../../src/lib/addresses.js';
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -45,3 +45,12 @@ test('desktop arrivalPage sends sign-in and account to lobby; hosting stays', ()
   expect(arrivalPage('lobby', known)).toBe('lobby');
   expect(arrivalPage('start-room', known)).toBe('start-room');   // anyone hosts on desktop
 });
+test.each([
+  ['https://phosphor.work/#/social?room=abc123', '/social?room=abc123'],
+  ['https://phosphor.work/?plugins=off#/ansi', '/ansi?plugins=off'],
+  ['https://phosphor.work/#/', '/'],
+  ['https://phosphor.work/?room=a&plugins=off#/pixel?room=b', '/pixel?room=b&plugins=off'],   // the hash's query wins
+  ['https://phosphor.work/#//evil.example/x', '/evil.example/x'],   // never another origin
+  ['https://phosphor.work/social', null],
+  ['https://phosphor.work/#section', null],
+])('an old hash address %s is the path address %s', (href, expected) => expect(fromHashAddress(href)).toBe(expected));

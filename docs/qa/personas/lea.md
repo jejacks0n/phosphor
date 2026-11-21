@@ -334,7 +334,7 @@ Terms from it and check they fit, and look for a Share button.
 ## Rooms
 
 ### 24. Open a room link a friend sent
-- Does: opens the app at a room's address (`/#/social?room=abc123`), as a link in a message would.
+- Does: opens the app at a room's address (`/social?room=abc123`), as a link in a message would.
 - Expects: it asks "Join this room?" with the lobby open over the art; Join takes her to ROOM with the host's art and
   the panel shut; « opens CHAT over the art, with what was said counted beside it, and a tap on the strip of art shuts
   it ([The Side Panel](../../social.md#the-side-panel)). Her work in progress is still there when she leaves.

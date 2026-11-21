@@ -1,12 +1,8 @@
-// The build with path addresses (VITE_ADDRESSES=path): its own project in playwright.config.js. There the room in
-// the address is in the same query a link from outside and a return from the server use.
-import { test, expect, tab, store, startScreen } from './support.js';
-import { fakeRoom, fakeServer, ROOM_ID, goLive, watcherPage, followLink, openLobby, shown } from './social-support.js';
+// Path addresses, the web build's: the room in the address is in the same query a link from outside and a return
+// from the server use, and an old #/ address is the path address it means.
+import { test, expect, store, startScreen, openApp, autosaved } from './support.js';
+import { fakeRoom, fakeServer, ROOM_ID, goLive, watcherPage, followLink, openLobby, shown, selected, asked, live, addressIs as at } from './social-support.js';
 
-const selected = (page, label) => expect(tab(page, label)).toHaveAttribute('aria-selected', 'true');
-const at = (page, address) => expect.poll(() => { const url = new URL(page.url()); return url.pathname + url.search; }).toBe(address);
-const asked = (page) => page.getByRole('dialog', { name: 'Join this room?' });
-const live = (page) => expect.poll(() => store(page, 'room', (r) => r.status), { timeout: 20_000, intervals: [100] }).toBe('live');
 // Steps that move the address with nothing open (the art tabs are off then): Sign in opening, and Escape closing it.
 async function stepAway(page) {
   await shown(page, 'lobby').getByRole('button', { name: 'Sign in' }).click();
@@ -104,4 +100,39 @@ test.describe('before SOCIAL\'s question is answered', () => {
     await consent(page).getByRole('button', { name: 'Accept' }).click();
     await expect(asked(page)).toBeVisible();
   });
+});
+
+// Links from before path addresses: each loads as the path address it means, in place of it (no step of its own).
+test('an old #/ room link asks, as its path address does, and Back never lands on a #/ address', async ({ context }) => {
+  const room = fakeRoom();
+  const watcher = await watcherPage(context, room);
+  await watcher.goto(`/social?room=${ROOM_ID}`);
+  await expect(asked(watcher)).toBeVisible();
+  await at(watcher, '/');   // the room read, and the lobby's address giving way: nothing open, the start screen
+
+  await watcher.goto('/social/sign-in');   // a page load before it, for Back (from / it would be the same page)
+  await at(watcher, '/social/sign-in');
+  await watcher.goto(`/#/social?room=${ROOM_ID}`);
+  await expect(asked(watcher)).toBeVisible();
+  await at(watcher, '/');
+  await watcher.goBack();
+  await at(watcher, '/social/sign-in');
+  expect(joins(room)).toBe(0);
+});
+
+test('an old ?plugins=off#/ansi link is /ansi?plugins=off, on ANSI with plugins off', async ({ page }) => {
+  await openApp(page);
+  await autosaved(page);
+  await page.goto('about:blank');
+  await page.goto('/?plugins=off#/ansi');
+  await selected(page, 'ANSI');
+  await at(page, '/ansi?plugins=off');
+  expect(await store(page, 'plugins', (p) => p.off)).toBe(true);
+});
+
+test('a return from the server in an old #/ link\'s query is read as one in the address is', async ({ page }) => {
+  await fakeServer(page);
+  await page.goto('/#/?verified=1');
+  await expect(shown(page, 'lobby').getByText('Your email is confirmed')).toBeVisible();
+  await at(page, '/');
 });

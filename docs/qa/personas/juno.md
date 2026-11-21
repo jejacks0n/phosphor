@@ -139,7 +139,7 @@ script. Every section ends with Free time.
   a room; once signed in (or from the start, signed in) the top shows `ansi-fan` after its cell, with Edit account and
   Sign out, and Start a room sits under Public rooms; In the lobby lists her, marked (you)
   ([Members and guests](../../social.md#members-and-guests)).
-- Probes: `out-of-order`: as a guest, open the Start a room address (`/#/social/start`) before signing in: it doesn't
+- Probes: `out-of-order`: as a guest, open the Start a room address (`/social/start`) before signing in: it doesn't
   open, and the lobby shows; `back-out`: open Sign in and close it with × and with Escape, and check where focus lands;
   `interrupt`: reload with the lobby showing and check she's still signed in; `free`: press Create one to see what a
   new account asks, then close it.

@@ -1,6 +1,6 @@
 // SOCIAL's first question: nothing of SOCIAL runs until it's answered, however you arrive (the Social tab, a page, a link).
 import { test, expect, tab, store, openApp, startScreen } from './support.js';
-import { fakeServer, fakeRoom, goLive, shown, asked, hash, selected, live, chat, ROOM_ID, openLobby } from './social-support.js';
+import { fakeServer, fakeRoom, goLive, shown, asked, addressIs, selected, live, chat, ROOM_ID, openLobby } from './social-support.js';
 import { CONSENT_KEY } from '../../src/social/consent.js';
 
 test.use({ consented: false });
@@ -88,7 +88,7 @@ test('Not now puts the panel back on Layers, leaves the tab you were on as it wa
   await expect(consent(page)).toHaveCount(0);
   await selected(page, 'Layers');
   await selected(page, 'SAUCE');
-  await hash(page, '/sauce');
+  await addressIs(page, '/sauce');
   await nothingRan(page, server, seen);
   await page.goBack();   // no SOCIAL left to land on: the step before SAUCE
   await selected(page, 'ANSI');
@@ -99,32 +99,17 @@ test('Not now puts the panel back on Layers, leaves the tab you were on as it wa
   await expect(agree(page)).not.toBeChecked();
 });
 
-// The link opened the lobby behind its question; Back takes the link's room away, not the lobby, which still asks.
-test('Back with a link\'s question up forgets the link\'s room; the question stays for the lobby the link opened', async ({ page }) => {
-  const server = await fakeServer(page);
-  await page.goto('/#/pixel');
-  await page.evaluate((id) => { location.hash = `#/pixel?room=${id}`; }, ROOM_ID);
-  await expect(consent(page)).toBeVisible();
-  await page.goBack();
-  await startScreen(page);
-  expect(new URL(page.url()).hash).not.toContain('room=');
-  await selected(page, 'Social');
-  await accepted(page);
-  await expect.poll(() => server.lobby.received.map((m) => m.type)).toEqual(['hello']);
-  await expect(asked(page)).toHaveCount(0);
-});
-
 test('Not now over a page or a link with nothing open leaves the start screen at a clean address, with no room asked', async ({ page }) => {
   const seen = elsewhere(page);
   const server = await fakeServer(page);
-  await page.goto(`/#/social/sign-in`);
+  await page.goto('/social/sign-in');
   await notNow(page).click();
   await startScreen(page);
-  await hash(page, '/');
+  await addressIs(page, '/');
   await page.goto(`/?room=${ROOM_ID}`);
   await notNow(page).click();
   await startScreen(page);
-  await hash(page, '/');
+  await addressIs(page, '/');
   expect(new URL(page.url()).search).toBe('');
   await selected(page, 'Layers');   // the lobby the link opened, closed
   await nothingRan(page, server, seen);
@@ -141,11 +126,11 @@ test('Not now over a page or a link with nothing open leaves the start screen at
 // Each its own test: a page load is slow on CI, and six of them don't fit one test's time.
 for (const [address, there] of [
   [`/?room=${ROOM_ID}`, (page) => expect(asked(page)).toBeVisible()],
-  [`/#/pixel?room=${ROOM_ID}`, (page) => expect(asked(page)).toBeVisible()],
+  [`/pixel?room=${ROOM_ID}`, (page) => expect(asked(page)).toBeVisible()],
   ['/?reset=tok', (page) => expect(shown(page, 'reset')).toBeVisible()],
   ['/?verified=1', (page) => expect(shown(page, 'lobby').locator('p.notice')).toContainText('Your email is confirmed')],
   ['/?social=two-factor', (page) => expect(shown(page, 'two-factor')).toBeVisible()],
-  ['/#/social/sign-in', (page) => expect(shown(page, 'sign-in')).toBeVisible()],
+  ['/social/sign-in', (page) => expect(shown(page, 'sign-in')).toBeVisible()],
 ]) {
   test(`${address} waits for the answer, then goes on to where it was going`, async ({ page }) => {
     const server = await fakeServer(page);
@@ -279,7 +264,7 @@ test('in a window too short for it, the modal scrolls and its buttons stay reach
 test('a narrow screen asks first too: an address for SOCIAL opens the panel over the art, with the question', async ({ page }) => {
   await fakeServer(page);
   await page.setViewportSize({ width: 700, height: 900 });
-  await page.goto('/#/social');
+  await page.goto('/social');
   await expect(consent(page)).toBeVisible();
   await expect(page.locator('.side-panel')).toHaveCSS('position', 'fixed');
 });

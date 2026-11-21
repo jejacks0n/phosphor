@@ -467,10 +467,10 @@ export async function followLink(page) {
   await page.getByRole('dialog', { name: 'Join this room?' }).getByRole('button', { name: 'Join', exact: true }).click();
 }
 
-// The address and the page, as the flows read them: a tab selected, the address's hash, the question a link
+// The address and the page, as the flows read them: a tab selected, the address (its path, query and hash), the question a link
 // asks, the chat panel, and whether you're in no room.
 export const selected = (page, label) => expect(tab(page, label)).toHaveAttribute('aria-selected', 'true');
-export const hash = (page, path) => expect.poll(() => new URL(page.url()).hash).toBe(`#${path}`);
+export const addressIs = (page, address) => expect.poll(() => { const url = new URL(page.url()); return url.pathname + url.search + url.hash; }).toBe(address);
 export const asked = (page) => page.getByRole('dialog', { name: 'Join this room?' });
 export const chat = (page) => page.getByRole('complementary', { name: 'Chat' });
 export const outOfRoom = (page) => expect.poll(() => store(page, 'room', (r) => r.role)).toBe(null);
@@ -483,7 +483,7 @@ export async function watching(host, context, room, options) {
   const watcher = await watcherPage(context, room);
   await watcher.goto('/');
   await joinFromCard(watcher);
-  await hash(watcher, `/room?room=${ROOM_ID}`);
+  await addressIs(watcher, `/room?room=${ROOM_ID}`);
   return watcher;
 }
 
