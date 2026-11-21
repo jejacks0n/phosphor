@@ -3,15 +3,15 @@ import lines from '@/tools/lines';
 import { selectionClip } from '@/lib/selectionClip';
 import { t } from '@/i18n/index.js';
 import { useProjectStore } from '@/store/ProjectStore';
-import { drawnStyle, lineChoices, perFont, stockChoice } from '@/tools/lineChoice';
+import { drawnStyle, drawnValue, lineChoices, perFont, stockChoice } from '@/tools/lineChoice';
 
 // Single, Double and a font's own styles draw box-drawing lines from cell to cell (lines.js); they're the ANSI view's.
 const drawsLines = ({ view, workspace, project }) => view === 'output' && !!drawnStyle(workspace.pencilDrawWith, project.drawingFont);
 
 const drawWithChoices = perFont((font) => [
   { value: 'normal', get label() { return t('tools.drawWith.normal'); }, glyph: '' }, // paint over each cell's own character, which shows through
-  stockChoice(font, 'single', { value: 'single', get label() { return t('tools.drawWith.single'); }, glyph: '┌─' }, 'normal'),
-  stockChoice(font, 'double', { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═' }, 'normal'),
+  stockChoice(font, 'single', { value: 'single', get label() { return t('tools.drawWith.single'); }, glyph: '┌─' }),
+  stockChoice(font, 'double', { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═' }),
   ...lineChoices(font),
   { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },
 ]);
@@ -28,6 +28,7 @@ const pencil = {
     {
       key: 'pencilDrawWith', get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
       get choices() { return drawWithChoices(useProjectStore().drawingFont); },
+      drawn: (ws) => drawnValue(ws.pencilDrawWith, useProjectStore().drawingFont, 'normal'), // Normal when the font offers no line style
     },
     {
       key: 'pencilConnect', get label() { return t('tools.pencil.connect'); }, type: 'checkbox', views: ['output'],

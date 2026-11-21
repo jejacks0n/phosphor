@@ -15,7 +15,7 @@ import { hasQuadrants } from '@/lib/BitmapFont';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
 import { armsOf, familyFor, joinBox, inwardArms } from '@/lib/BoxJoin';
 import { offeredStyles } from '@/lib/FontLines';
-import { drawnStyle, lineChoices, perFont, stockChoice } from '@/tools/lineChoice';
+import { drawnStyle, drawnValue, isLineValue, lineChoices, perFont, stockChoice } from '@/tools/lineChoice';
 import { useProjectStore } from '@/store/ProjectStore';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { selectionClip } from '@/lib/selectionClip';
@@ -33,9 +33,13 @@ const cellRect = (a, b) => ({
 
 const SHADES = [[7 / 8, '█'], [5 / 8, '▓'], [3 / 8, '▒'], [1 / 8, '░']];
 
+// What the ANSI view draws with: an ellipse set to box lines draws half-blocks, and a line style the font doesn't
+// offer the first one it does, or half-blocks when it offers none.
+const drawnWith = ({ shapeKind, shapeDrawWith }) =>
+  (shapeKind === 'ellipse' && isLineValue(shapeDrawWith) ? 'half' : drawnValue(shapeDrawWith, useProjectStore().drawingFont, 'half'));
+
 // Whether the ANSI view draws this shape as cells (rather than paint).
-export const drawsCells = ({ shapeKind, shapeDrawWith }) =>
-  shapeDrawWith === 'full' || shapeDrawWith === 'char' || (shapeKind !== 'ellipse' && shapeDrawWith !== 'half');
+export const drawsCells = (ws) => drawnWith(ws) !== 'half';
 
 // Whether this is a line of box characters, which only run straight across or down.
 const boxLine = ({ shapeKind, shapeDrawWith }, view, font) =>
@@ -68,20 +72,13 @@ const dragEnd = ({ project, workspace, view }, to) => {
   return workspace.shapeKind === 'line' ? snappedEnd(start, to, project.pixelAspect) : squareEnd(start, to, project.pixelAspect);
 };
 
-// Whether a Draw with value is Single, Double or a font's own line style.
-const isLineValue = (v) => v === 'single' || v === 'double' || String(v).startsWith('line:');
-
-// What the ANSI view draws with: an ellipse set to box lines draws half-blocks.
-const drawnWith = ({ shapeKind, shapeDrawWith }) => (shapeKind === 'ellipse' && isLineValue(shapeDrawWith) ? 'half' : shapeDrawWith);
-
 // Whether a line or ellipse is drawn in the ANSI view's blocks (Half-block or Full block), where it
 // can use ▌ and ▐ too (Vertical half blocks), and is.
 const blockShape = (ws) => ws.shapeKind !== 'rect' && (drawnWith(ws) === 'half' || drawnWith(ws) === 'full');
 const usesHalves = (ws) => blockShape(ws) && !!ws.shapeVerticalHalves;
 
 // Whether the ANSI view draws this shape in blocks (half or full), so Block characters applies.
-const drawsBlocks = ({ shapeKind, shapeDrawWith }) =>
-  shapeDrawWith === 'half' || shapeDrawWith === 'full' || (shapeKind === 'ellipse' && shapeDrawWith !== 'char');
+const drawsBlocks = (ws) => drawnWith(ws) === 'half' || drawnWith(ws) === 'full';
 
 // A shape's inside: its whole coverage (field: alpha or cover) minus its outline's, by key. For an
 // anti-aliased ellipse the two then add up to the filled shape's coverage, pixel by pixel.
@@ -136,16 +133,17 @@ function halfCells(project, workspace, end, fill) {
 // Box lines are for rectangles and lines; an ellipse set to them draws (and shows) half-blocks.
 const notEllipse = (ws) => ws.shapeKind !== 'ellipse';
 const drawWithChoices = perFont((font) => [
-  stockChoice(font, 'single', { value: 'single', get label() { return t('tools.drawWith.single'); }, glyph: '┌─', when: notEllipse }, 'half'),
-  stockChoice(font, 'double', { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═', when: notEllipse }, 'half'),
-  ...lineChoices(font).map((c) => ({ ...c, when: notEllipse, instead: 'half' })),
+  stockChoice(font, 'single', { value: 'single', get label() { return t('tools.drawWith.single'); }, glyph: '┌─', when: notEllipse }),
+  stockChoice(font, 'double', { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═', when: notEllipse }),
+  ...lineChoices(font).map((c) => ({ ...c, when: notEllipse })),
   { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },
   { value: 'full', get label() { return t('tools.drawWith.fullBlock'); }, glyph: '██' },
   { value: 'char', get label() { return t('tools.drawWith.character'); }, glyph: (workspace) => workspace.activeChar.repeat(2) },
 ]);
 
 function apply({ project, workspace, view }, end) {
-  const { shapeKind: kind, shapeDrawWith: drawWith, shapeBlockChars: blockChars } = workspace;
+  const { shapeKind: kind, shapeBlockChars: blockChars } = workspace;
+  const drawWith = drawnWith(workspace);
   // Anti-aliased in the Pixel view, and in the ANSI view's blocks (Vertical half blocks has no shades).
   const antialias = workspace.shapeAntialias && kind !== 'rect' && (view === 'input' || (kind === 'ellipse' ? drawWith !== 'char' : blockShape(workspace)) && !usesHalves(workspace));
   const charMode = view === 'output' && drawWith === 'char';
@@ -301,6 +299,7 @@ export default {
     {
       key: 'shapeDrawWith', get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
       get choices() { return drawWithChoices(useProjectStore().drawingFont); },
+      drawn: drawnWith,
     },
     {
       key: 'activeChar', get label() { return t('tools.drawWith.character'); }, type: 'char', views: ['output'], when: (ws) => ws.shapeDrawWith === 'char',

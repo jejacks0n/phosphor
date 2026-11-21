@@ -3,12 +3,23 @@ import { lineStylesOf, offeredStyles, styleById } from '@/lib/FontLines';
 
 export const lineValue = (style) => (style.stock ? style.id : `line:${style.id}`);
 
+// Whether a Draw with value is Single, Double or a font's own line style.
+export const isLineValue = (v) => v === 'single' || v === 'double' || String(v).startsWith('line:');
+
 // The offered style a Draw with value names; one that isn't offered gives the first offered. Null when the
 // value isn't a line style, or none is offered.
 export function drawnStyle(value, font) {
+  if (!isLineValue(value)) return null;
   const offered = offeredStyles(font);
-  if (value !== 'single' && value !== 'double' && !String(value).startsWith('line:')) return null;
   return offered.find((s) => lineValue(s) === value) ?? offered[0] ?? null;
+}
+
+// The Draw with value a tool draws: a line style's is the style drawnStyle gives, or the tool's `fallback` when the
+// font offers none; anything else is itself. The toolbar shows the choice for it.
+export function drawnValue(value, font, fallback) {
+  if (!isLineValue(value)) return value;
+  const style = drawnStyle(value, font);
+  return style ? lineValue(style) : fallback;
 }
 
 // The font's own offered styles as choices, to follow Double; their glyphs draw in the display font.
@@ -16,12 +27,10 @@ export const lineChoices = (font) => offeredStyles(font).filter((s) => !s.stock)
   value: lineValue(s), label: s.name, glyph: s.chars[2] + s.chars[0], glyphFont: true,
 }));
 
-// A stock choice that goes when the font doesn't offer it, and what shows in its place.
-export const stockChoice = (font, id, choice, fallback) => Object.defineProperties({}, {
+// A stock choice that goes when the font doesn't offer it (the toolbar then shows what's drawn instead).
+export const stockChoice = (font, id, choice) => Object.defineProperties({}, {
   ...Object.getOwnPropertyDescriptors(choice), // copied as descriptors, so the label getter stays live
   when: { value: (ws) => !!styleById(font, id)?.offered && (choice.when?.(ws) ?? true), enumerable: true }, // and the choice's own `when`
-  // a function of the workspace, so a choice hidden by its own `when` shows the fallback
-  instead: { get() { return (ws) => { const first = offeredStyles(font)[0]; return first && (!choice.when || choice.when(ws)) ? lineValue(first) : fallback; }; }, enumerable: true },
 });
 
 // A function of the font whose result is kept per font, so the toolbar sees the same choices each time.

@@ -210,13 +210,12 @@ const turnSelection = (op) => {
 };
 
 // A dropdown's choices on offer right now, and the one it shows: the setting's own choice, or when
-// that isn't on offer, the choice the tool draws instead.
+// that isn't on offer, the choice for what the tool draws instead (the option's `drawn`).
 const offered = (option) => option.choices.filter(c => !c.when || c.when(workspace));
 const shownChoice = (option) => {
-  const current = option.choices.find(c => c.value === optionValue(workspace, option)), list = offered(option);
-  if (list.includes(current)) return current;
-  const instead = typeof current?.instead === 'function' ? current.instead(workspace) : current?.instead;
-  return list.find(c => c.value === instead) ?? current;
+  const list = offered(option), value = optionValue(workspace, option);
+  return list.find(c => c.value === value) ?? list.find(c => option.drawn && c.value === option.drawn(workspace))
+    ?? option.choices.find(c => c.value === value);
 };
 
 // A selection the tools keep to: the Magic Wand's or the Select tool's rectangle (either, in both

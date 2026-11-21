@@ -1,7 +1,10 @@
 // The Pencil's Single and Double (ANSI view): drag from cell to cell and each cell gets the box piece
 // its path needs, turning corners and joining the lines it crosses or lands on (Connect).
-import { test, expect } from 'vitest';
+import { test, expect, afterEach } from 'vitest';
+import { createApp } from 'vue';
 import { createTestApp, loadImage } from '../support/app.js';
+import EditToolbar from '@/components/EditToolbar.vue';
+import { i18n } from '@/i18n';
 import { cellIndex } from '@/lib/Cells';
 import pencil from '@/tools/pencil';
 import { setLocale } from '@/i18n';
@@ -142,6 +145,23 @@ test("Draw with lists the font's styles after Double", async () => {
   expect(pencil.options[0].choices.filter((c) => !c.when || c.when(workspace)).map((c) => c.value))
     .toEqual(['normal', 'single', 'double', 'line:l1', 'half']);
   expect(pencil.options[0].choices).toBe(pencil.options[0].choices);
+});
+
+// A style the font no longer has (deleted, its making undone, another font): Draw with shows the style drawn instead.
+let mounted = null;
+afterEach(() => { mounted?.unmount(); mounted = null; });
+test('Draw with set to a style the font no longer has shows the first offered style, which it draws', async () => {
+  const { project, workspace, drag, row } = await scene({ pencilDrawWith: 'line:l1' });
+  await project.setDrawingFont(fontWith({ hide: [], styles: [] }));
+  workspace.editorTab = 'output';
+  workspace.setActiveTool('pencil');
+  const host = document.createElement('div');
+  mounted = createApp(EditToolbar).use(i18n);
+  mounted.mount(host);
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  expect(host.querySelector('.option-menu .dropdown-trigger').title).toBe('Single line');
+  drag([2, 2], [6, 2]);
+  expect(row(2, 2, 6)).toBe('─────');
 });
 
 test('the Single and Double labels follow a language change', async () => {

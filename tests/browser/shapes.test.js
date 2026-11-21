@@ -1,7 +1,10 @@
 // The Shapes tool's paint: a filled shape is its outline in FG and its inside in BG, and where it
 // covers a pixel fully nothing under it shows through, anti-aliased or not.
-import { test, expect } from 'vitest';
+import { test, expect, afterEach } from 'vitest';
+import { createApp } from 'vue';
 import { createTestApp, loadImage, settle } from '../support/app.js';
+import EditToolbar from '@/components/EditToolbar.vue';
+import { i18n } from '@/i18n';
 import { ellipseCoverage } from '@/lib/Brushes';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { cp437Font, font8 } from '../support/blockFonts.js';
@@ -368,29 +371,48 @@ test('an ellipse set to a font\'s style draws half-blocks', async () => {
   expect(workspace.shapeDrawWith).toBe('line:l1');
 });
 
-// The choice the toolbar's Draw with shows: the setting's own when it's on offer, else the one it names in `instead`.
-const shownDrawWith = async (settings) => {
-  const { workspace } = await heavyScene(settings);
-  const { default: shapes } = await import('@/tools/shapes');
-  const choices = shapes.options.find((o) => o.key === 'shapeDrawWith').choices;
-  const current = choices.find((c) => c.value === workspace.shapeDrawWith);
-  const list = choices.filter((c) => !c.when || c.when(workspace));
-  const instead = typeof current?.instead === 'function' ? current.instead(workspace) : current?.instead;
-  return (list.includes(current) ? current : list.find((c) => c.value === instead) ?? current).value;
+// What the toolbar's Draw with shows for the Shapes tool, mounted as the app has it.
+let mounted = null;
+afterEach(() => { mounted?.unmount(); mounted = null; });
+const shownDrawWith = async (workspace) => {
+  workspace.editorTab = 'output';
+  workspace.setActiveTool('shapes');
+  const host = document.createElement('div');
+  mounted = createApp(EditToolbar).use(i18n);
+  mounted.mount(host);
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  return host.querySelector('.option-menu .dropdown-trigger').title;
 };
 
 test.each(['single', 'double', 'line:l1'])('an ellipse set to %s shows Half-block', async (shapeDrawWith) => {
-  expect(await shownDrawWith({ shapeKind: 'ellipse', shapeDrawWith })).toBe('half');
+  const { workspace } = await heavyScene({ shapeKind: 'ellipse', shapeDrawWith });
+  expect(await shownDrawWith(workspace)).toBe('Half-block');
 });
 
 test('a rectangle set to a Single the font hides shows its first offered style', async () => {
   const lines = { hide: ['single'], styles: HEAVY_FONT.lines.styles };
-  const s = await shiftScene({ shapeKind: 'rect', shapeDrawWith: 'single' }, { ...HEAVY_FONT, lines });
-  const { default: shapes } = await import('@/tools/shapes');
-  const choices = shapes.options.find((o) => o.key === 'shapeDrawWith').choices;
-  const current = choices.find((c) => c.value === 'single');
-  const list = choices.filter((c) => !c.when || c.when(s.workspace));
-  expect(list.includes(current)).toBe(false);
-  const instead = typeof current.instead === 'function' ? current.instead(s.workspace) : current.instead;
-  expect(list.find((c) => c.value === instead)?.value).toBe('double');
+  const { workspace } = await shiftScene({ shapeKind: 'rect', shapeDrawWith: 'single' }, { ...HEAVY_FONT, lines });
+  expect(await shownDrawWith(workspace)).toBe('Double line');
+});
+
+// A style the font no longer has (deleted, its making undone, another font): Draw with shows the style drawn instead.
+test('a rectangle set to a style the font no longer has shows and draws the first offered style', async () => {
+  const { draw, at, row, project, workspace } = await heavyScene();
+  await project.setDrawingFont({ ...HEAVY_FONT, lines: { hide: [], styles: [] } });
+  expect(await shownDrawWith(workspace)).toBe('Single line');
+  draw(at([2, 2]), at([6, 4]));
+  expect(row(2, 2, 6)).toBe('┌───┐');
+});
+
+// With Single and Double hidden and no style of its own, Draw with shows Half-block, and that's what's drawn: paint,
+// never Full block's shaded outline.
+test('a rectangle set to Double when the font offers no line style shows and draws Half-block', async () => {
+  const { draw, at, project, workspace } = await heavyScene({ shapeDrawWith: 'double' });
+  await project.setDrawingFont({ ...HEAVY_FONT, lines: { hide: ['single', 'double'], styles: [] } });
+  expect(await shownDrawWith(workspace)).toBe('Half-block');
+  const chars = () => project.cells.map((c) => c.char).join('');
+  const before = chars(), paint = project.paintLayer.pixelAt(4, 5);
+  draw(at([2, 2]), at([6, 4]));
+  expect(chars()).toBe(before);
+  expect(project.paintLayer.pixelAt(4, 5)).not.toEqual(paint);
 });

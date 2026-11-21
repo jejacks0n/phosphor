@@ -3,6 +3,7 @@ import { CP437_BLOCKS, slotChars, withBlock } from '@/lib/BitmapFont.js';
 import {
   encodeLines, decodeLines, encodeSets, decodeSets, lineStylesOf, offeredStyles, styleById, fontSetsOf, showsStockSets, nextId,
 } from '@/lib/FontLines.js';
+import { drawnStyle, drawnValue } from '@/tools/lineChoice.js';
 import { cp437Font } from '../support/blockFonts.js';
 
 const heavy = { id: 'l1', name: 'Heavy', slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] };
@@ -118,5 +119,23 @@ describe('nextId', () => {
   it('skips past the highest', () => {
     expect(nextId([{ id: 'l1' }, { id: 'l4' }], 'l')).toBe('l5');
     expect(nextId([], 's')).toBe('s1');
+  });
+});
+
+describe('drawnStyle and drawnValue', () => {
+  const none = withLines({ hide: ['single', 'double'], styles: [] });
+  it('give nothing of a line for what isn\'t a line style', () => {
+    expect(drawnStyle('half', null)).toBeNull();
+    expect(drawnValue('half', none, 'normal')).toBe('half');
+  });
+
+  it('give the first offered style for one the font doesn\'t offer, and the fallback when it offers none', () => {
+    const font = withLines({ hide: ['single'], styles: [heavy] });
+    expect(drawnStyle('line:l9', font).id).toBe('double');
+    expect(drawnValue('single', font, 'half')).toBe('double');
+    expect(drawnValue('line:l1', font, 'half')).toBe('line:l1');
+    expect(drawnStyle('double', none)).toBeNull();
+    expect(drawnValue('double', none, 'half')).toBe('half');
+    expect(drawnValue('line:l1', none, 'normal')).toBe('normal');
   });
 });
