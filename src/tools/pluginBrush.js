@@ -21,10 +21,11 @@ const decimals = (step) => {
   return Math.min(100, Math.max(0, (digits.split('.')[1] ?? '').length - Number(exponent ?? 0)));
 };
 
-const valuesOf = (workspace, ref, def) => optionValues(def, workspace.pluginTools[ref]);
+export const valuesOf = (workspace, ref, def) => optionValues(def, workspace.pluginTools[ref]);
 
-// One declared option as a toolbar option: the plugin's words for its label, and get and set over the kept values.
-function toolOption(ref, def, option) {
+// One declared option as a toolbar option: the plugin's words for its label, and get and set over the kept values. A
+// plugin shape's options are these too (tools/vshape.js).
+export function toolOption(ref, def, option) {
   const base = {
     key: `${ref}/${option.id}`, // RangeField's element id: unique on the page, whatever ids plugins pick
     label: option.name,
@@ -38,12 +39,38 @@ function toolOption(ref, def, option) {
   return { ...base, type: 'dropdown', choices: option.choices.map((label, value) => ({ value, label })) };
 }
 
-// The brushes whose first move this visit has run, by ref and script hash: that first one runs under the hang mark
-// (plugins/hangMark.js), so a brush that freezes the page is turned off next time.
+// The plugin calls that have run this visit, by kind ('brush', 'shape'), ref and script hash: the first of each (a
+// brush's first move, a shape's first outline) runs under the hang mark (plugins/hangMark.js), so one that freezes the
+// page is turned off next time. The kind is in the key as ids are unique only within a kind.
 const ran = new Set();
+export function firstUnderMark(kind, ref, hash, pluginId, fn) {
+  const run = `${kind}\u0000${ref}\u0000${hash}`;
+  if (ran.has(run)) return fn();
+  ran.add(run);
+  beginRun(pluginId);
+  try {
+    return fn();
+  } finally {
+    endRun();
+  }
+}
 const point = ({ x, y }) => ({ x: Number(x), y: Number(y) });
 const MAX_SIZE = brushTool.options.find((option) => option.size).max; // the Brush's largest size
 const MAX_MESSAGE = 200; // the longest of a plugin's own words shown in a toast and its row
+
+// A plugin's brush or shape failed: its words (the locale's key, given the item's name and the error's message, read
+// safely and cut short) in a toast and in its plugin's row until a Reload.
+export function sayFailed(key, name, pluginId, error) {
+  let message;
+  try {
+    message = String(error?.message ?? error).slice(0, MAX_MESSAGE);
+  } catch {
+    message = '?';
+  }
+  const words = t(key, { name, message });
+  toast(words);
+  usePluginStore().problems[pluginId] = words;
+}
 const channel = (v) => Math.min(255, Math.max(0, Math.round(v)));
 
 // A stroke's paint, the one object its begin, moves and end are handed (docs/plugins.md), with the puts of the call going
@@ -128,15 +155,7 @@ export function makeBrushTool({ ref, pluginId, pluginName, hash, def, key }) {
     stroke.dead = true;
     stroke.puts.clear();
     project.cancelEdit();
-    let message;
-    try {
-      message = String(error?.message ?? error).slice(0, MAX_MESSAGE);
-    } catch {
-      message = '?';
-    }
-    const words = t('plugins.brushFailed', { name: def.name, message });
-    toast(words);
-    usePluginStore().problems[pluginId] = words;
+    sayFailed('plugins.brushFailed', def.name, pluginId, error);
   };
   // One of the plugin's calls on the stroke's paint, its puts laid after: false when it threw (or the stroke is dead).
   const call = (project, fn) => {
@@ -150,17 +169,7 @@ export function makeBrushTool({ ref, pluginId, pluginName, hash, def, key }) {
     lay(project, stroke);
     return true;
   };
-  const move = (paint, from, to) => {
-    const run = `${ref}\u0000${hash}`;
-    if (ran.has(run)) return def.move(point(from), point(to), paint);
-    ran.add(run);
-    beginRun(pluginId);
-    try {
-      def.move(point(from), point(to), paint);
-    } finally {
-      endRun();
-    }
-  };
+  const move = (paint, from, to) => firstUnderMark('brush', ref, hash, pluginId, () => def.move(point(from), point(to), paint));
 
   const tool = {
     id: ref,
