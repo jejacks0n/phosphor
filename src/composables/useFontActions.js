@@ -2,7 +2,7 @@ import { computed } from 'vue';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useProjectStore } from '@/store/ProjectStore';
 import { DEFAULT_FONT_ID } from '@/lib/displayFonts';
-import { addFont, addBitmapFont, storedBitmapFont, storeBlocks, removeFont } from '@/lib/userFonts';
+import { addFont, addBitmapFont, storedBitmapFont, storeFontPart, removeFont } from '@/lib/userFonts';
 import { sayMissingBlocks } from '@/composables/useFontSetup';
 import { fontId, fontName, fontSheet } from '@/lib/BitmapFont';
 import { downloadBlob, fileStem } from '@/document/projectIO';
@@ -35,10 +35,14 @@ export function useFontActions() {
   async function loadFile(file) {
     const bitmap = /\.(f\d\d|png)$/i.test(file.name) || file.type === 'image/png';
     let font = await (bitmap ? addBitmapFont(file) : addFont(file));
-    const set = bitmap && drawsIn(font.id) ? project.drawingFont.blocks : null;
-    if (set) { // the drawing's own font again: the blocks set on it stay, and the browser's copy takes them
-      await storeBlocks(font.id, set);
-      font = { ...font, blocks: set };
+    const own = bitmap && drawsIn(font.id) ? project.drawingFont : null;
+    if (own) { // the drawing's own font again: the blocks, lines and sets set on it stay, and the browser's copy takes them
+      font = { ...font };
+      for (const key of ['blocks', 'lines', 'sets']) {
+        if (!own[key]) continue;
+        await storeFontPart(font.id, key, own[key]);
+        font[key] = own[key];
+      }
     }
     workspace.userFonts = [...loaded.value.filter((f) => f.id !== font.id), font];
     if (!hostsFont.value) await choose(font.id);

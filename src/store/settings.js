@@ -24,6 +24,8 @@ export const SETTINGS = [
   { key: 'fontBitmap', default: '', group: 'setup', pipeline: false, most: MOST_LIST }, // the drawing's bitmap font, base64 ('' for none)
   { key: 'fontName', default: '', group: 'setup', pipeline: false },
   { key: 'fontBlocks', default: '', group: 'setup', pipeline: false }, // the slots the drawing's font draws its eight blocks from (BitmapFont.encodeBlocks), '' for the ones found
+  { key: 'fontLines', default: '', group: 'setup', pipeline: false, most: MOST_LIST }, // the font's own line styles (FontLines.encodeLines), '' for none
+  { key: 'fontSets', default: '', group: 'setup', pipeline: false, most: MOST_LIST }, // the font's own character sets (FontLines.encodeSets), '' for none
   { key: 'charsAscii', default: ' .:*%#@', group: 'setup', pipeline: false, most: MOST_LIST },
   { key: 'seed', default: () => generateSlug(2), group: 'setup', get help() { return t('settings.seed.help'); } },
   { key: 'charChoice', default: 'random', group: 'setup', pipeline: false, get help() { return t('settings.charChoice.help'); } },

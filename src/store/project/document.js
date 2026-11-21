@@ -9,8 +9,9 @@ import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, gzipped, downloadBlob, isProjectFile, PROJECT_EXTENSION, fileStem, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
-import { knownBlocksOf } from '@/lib/userFonts.js';
-import { encodeBlocks, encodeFont, decodeBlocks, decodeFont } from '@/lib/BitmapFont.js';
+import { knownBlocksOf, loadFonts } from '@/lib/userFonts.js';
+import { encodeBlocks, encodeFont, decodeBlocks, decodeFont, fontId } from '@/lib/BitmapFont.js';
+import { encodeLines, encodeSets } from '@/lib/FontLines.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
 import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
@@ -101,7 +102,7 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
   const own = this.layers; // replaceImage starts them over
   const pickedBefore = useWorkspaceStore().pickedLayer; // and the pick
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
-  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, ...(!settings?.fontBitmap && !this._takingProject && { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks }), filename, fileExt, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
+  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, ...(!settings?.fontBitmap && !this._takingProject && { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets }), filename, fileExt, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
   try {
     // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
     // files: paint at the image's size or the grid's.
@@ -266,6 +267,7 @@ export const documentActions = {
     return busyWhile(opening(file.name), async () => {
       art ??= readArtFile(new Uint8Array(await file.arrayBuffer()), file.name, await knownBlocksOf(useWorkspaceStore().userFonts));
       const { sauce } = art;
+      const stored = art.xbin && art.font ? (useWorkspaceStore().userFonts ?? await loadFonts().catch(() => [])).find((f) => f.id === fontId(art.font)) : null; // the lines and sets kept in this browser for the XBin's font
       const reason = this.inRoom && art.xbin && notSetUp(art.font); // a room can't edit blocks, so it takes no font that needs it
       if (reason) return void toast(reason);
       const opened = await this.setBlankCanvas({
@@ -275,7 +277,7 @@ export const documentActions = {
         rows: 2 * art.rows,
         ...nameOf(file),
         // the font in use stays, but an XBin sets it: its own, or none (IBM VGA, below)
-        ...(art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '', fontBlocks: art.font?.blocks ? encodeBlocks(art.font.blocks) : '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks }),
+        ...(art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '', fontBlocks: art.font?.blocks ? encodeBlocks(art.font.blocks) : '', fontLines: stored?.lines ? encodeLines(stored.lines) : '', fontSets: stored?.sets ? encodeSets(stored.sets) : '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets }),
         ...(Array.isArray(art.palette) && art.palette.some((hex, i) => hex !== PALETTES.cga[ANSI_OF_DOS[i]].hex)
           ? { quantize: 'palette', palette: art.palette.join(' ') } // an XBin's own 16, in its DOS order
           : { quantize: Array.isArray(art.palette) ? 'cga' : art.palette }),

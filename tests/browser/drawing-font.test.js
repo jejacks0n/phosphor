@@ -8,6 +8,7 @@ import { cp437Font, lowerAt240 } from '../support/blockFonts.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
 import { registerBitmapFont } from '@/lib/userFonts.js';
+import { settingsFromStranger } from '@/store/settings.js';
 import { coverageOf, setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage, vgaBitmapFont } from '@/lib/GlyphCoverage.js';
 
 afterEach(async () => {
@@ -421,4 +422,41 @@ it('set blocks stay through an .ans opened after, and an XBin with no blocks of 
   const cells = [{ char: 'A', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }];
   await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells, palette, font: cp437Font })], 'own.xb'));
   expect(project.fontBlocks).toBe('');
+});
+
+const heavy = { id: 'l1', name: 'Heavy', slots: [219, 219, 219, 219, 219, 219, 219, 219, 219, 219, 219] };
+
+test('a style added to the drawing\'s font is one undo step', async () => {
+  const project = await blank();
+  project.setDrawingFont(font());
+  project.setDrawingFont({ ...project.drawingFont, lines: { hide: [], styles: [heavy] } });
+  expect(project.drawingFont.lines.styles[0].name).toBe('Heavy');
+  expect(project.fontLines).not.toBe('');
+  project.undo();
+  expect(project.drawingFont.lines).toBeUndefined();
+  expect(project.drawingFont.name).toBe('Topaz');
+  project.redo();
+  expect(project.drawingFont.lines.styles[0].name).toBe('Heavy');
+});
+
+test('lines and sets are saved with the project', async () => {
+  const project = await blank();
+  const sets = { hideStock: true, sets: [{ id: 's1', name: 'Mine', slots: [65, 66] }] };
+  project.setDrawingFont({ ...font(), lines: { hide: [], styles: [heavy] }, sets });
+  const file = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'a.phosphor');
+  const { project: other } = await createTestApp();
+  await other.openParts(await readProject(file), { filename: 'other' });
+  expect(other.drawingFont.lines).toEqual({ hide: [], styles: [heavy] });
+  expect(other.drawingFont.sets).toEqual(sets);
+});
+
+test('settings from a stranger with bad lines keep the good ones', async () => {
+  const project = await blank();
+  project.setDrawingFont(font());
+  const fontLines = JSON.stringify({ hide: ['x'], styles: [heavy, { id: 'l2', slots: [1] }] });
+  const got = settingsFromStranger({ fontLines });
+  expect(got).not.toBeNull();
+  project.$patch(got);
+  expect(project.drawingFont.lines.styles).toEqual([heavy]);
+  expect(settingsFromStranger({ fontLines: 7 })).toBeNull();
 });

@@ -1,4 +1,5 @@
 import { encodeBlocks, encodeFont } from '@/lib/BitmapFont.js';
+import { encodeLines, encodeSets } from '@/lib/FontLines.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { fontGrid } from '@/lib/Cells.js';
 import { isUniform, workingScale } from '@/lib/ImageProcessor.js';
@@ -15,7 +16,15 @@ import { markRaw, shallowRef } from 'vue';
 
 const heightOf = (font) => font?.height ?? 16;
 // The settings that hold the drawing's font.
-const trioOf = (project) => ({ fontBitmap: project.fontBitmap, fontName: project.fontName, fontBlocks: project.fontBlocks });
+const fontKeysOf = (project) => ({ fontBitmap: project.fontBitmap, fontName: project.fontName, fontBlocks: project.fontBlocks, fontLines: project.fontLines, fontSets: project.fontSets });
+// A BitmapFont (or none) as the settings that hold it.
+export const fontSettingsOf = (font) => ({
+  fontBitmap: font ? encodeFont(font) : '',
+  fontName: font?.name ?? '',
+  fontBlocks: font?.blocks ? encodeBlocks(font.blocks) : '',
+  fontLines: font?.lines ? encodeLines(font.lines) : '',
+  fontSets: font?.sets ? encodeSets(font.sets) : '',
+});
 // A font's name for a toast; none is the font picked in the Font field.
 function nameOf(font) {
   if (font) return font.name;
@@ -28,14 +37,14 @@ function nameOf(font) {
 // resizesCanvas), on a picture that isn't a working copy with content (that stretches), it's a settings step with the
 // grid in it, and the next render rescales, as a Columns change with the lock on does: the picture refits and a later
 // Columns change refits it again. Otherwise regrid. font: the BitmapFont or null;
-// settings: its trio (setDrawingFont's). A Promise only while a working copy with content is stretched.
+// settings: its settings (setDrawingFont's). A Promise only while a working copy with content is stretched.
 function newHeight(project, font, settings, from, to) {
   if (project.hasFrames) return void toast(t('font.heightFrames', { name: nameOf(font), to, from }));
   project.ensureLayer();
   const stretches = project.imageIsWorkingCopy && !isUniform(project.image); // a working copy with content: its pixels are grid pixels
   if (project.resizesCanvas || stretches) return regrid(project, font, settings, from, to);
   const ratio = Number(project.aspectRatio), was = project.cols;
-  const before = { ...trioOf(project), cols: project.cols, rows: project.rows, aspectRatio: project.aspectRatio };
+  const before = { ...fontKeysOf(project), cols: project.cols, rows: project.rows, aspectRatio: project.aspectRatio };
   const after = { ...settings, ...fontGrid(project.cols, project.rows, from, to), aspectRatio: ratio > 0 ? ratio * to / from : project.aspectRatio };
   project.commitPending();
   project.$patch(after);
@@ -102,7 +111,7 @@ function switched(project, settings, picture, w, oldFit, fitAspect, from, to) {
 
   const ratio = Number(project.aspectRatio);
   const before = {
-    settings: { ...trioOf(project), cols: project.cols, rows: project.rows, fit: oldFit, aspectRatio: project.aspectRatio, baseScale: project.baseScale, paintScale: project.paintScale },
+    settings: { ...fontKeysOf(project), cols: project.cols, rows: project.rows, fit: oldFit, aspectRatio: project.aspectRatio, baseScale: project.baseScale, paintScale: project.paintScale },
     image: project.image, imageBuffer: project.imageBuffer, base: project.baseLayer, stack: stackState(project), shapes: project.shapes,
     edit: { editCells: project.editCells, paintLayer: project.paintLayer, hasPaint: project.hasPaint },
   };
@@ -143,16 +152,14 @@ export const fontActions = {
   // font: a BitmapFont ({ name, height, bytes }) or null for none. The font it already has is no step. A Promise only
   // while a working copy is stretched for a font of another height (newHeight); await it either way.
   setDrawingFont(font) {
-    const after = font
-      ? { fontBitmap: encodeFont(font), fontName: font.name, fontBlocks: font.blocks ? encodeBlocks(font.blocks) : '' }
-      : { fontBitmap: '', fontName: '', fontBlocks: '' };
+    const after = fontSettingsOf(font);
     if (Object.keys(after).every((key) => after[key] === this[key])) return;
     const reason = this.inRoom && notSetUp(font); // a room can't edit blocks, so it takes no font that needs it (undo and redo patch on their own)
     if (reason) return void toast(reason);
     if (!this.image) return void this.$patch(after); // no drawing yet: the next one's font, with nothing to undo
     const from = heightOf(this.drawingFont), to = heightOf(font);
     if (from !== to) return newHeight(this, font, after, from, to);
-    const before = trioOf(this);
+    const before = fontKeysOf(this);
     this.commitPending();
     this.$patch(after);
     const on = (values) => () => { this.$patch(values); this.render(); };

@@ -17,6 +17,7 @@ import { usePluginStore } from '@/store/PluginStore.js';
 import { useRoomStore } from '@/store/RoomStore.js';
 import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
 import { PALETTES, parseColorList } from '@/lib/ColorUtils.js';
+import { decodeLines, decodeSets } from '@/lib/FontLines.js';
 import { blocksOf, decodeBlocks, decodeFont, fontChars, fontKey, pixelAspectOf } from '@/lib/BitmapFont.js';
 import { t } from '@/i18n/index.js';
 import { notSetUp } from '@/lib/fontSetup.js';
@@ -127,12 +128,12 @@ function firstLedger() {
 
 // decodeFont's last answer, so the getter doesn't decode the same string for each store. blocks: the drawing's own
 // (fontBlocks), when they decode; else the font has none and they're found.
-let lastFont = { text: '', name: '', blocks: '', font: null };
-function fontFor(text, name, blocks) {
+let lastFont = { text: '', name: '', blocks: '', lines: '', sets: '', font: null };
+function fontFor(text, name, blocks, lines, sets) {
   if (!text) return null;
-  if (lastFont.text !== text || lastFont.name !== name || lastFont.blocks !== blocks) {
-    const font = decodeFont(text, name), set = decodeBlocks(blocks);
-    lastFont = { text, name, blocks, font: font && set ? { ...font, blocks: set } : font };
+  if (lastFont.text !== text || lastFont.name !== name || lastFont.blocks !== blocks || lastFont.lines !== lines || lastFont.sets !== sets) {
+    const font = decodeFont(text, name), set = decodeBlocks(blocks), l = decodeLines(lines), s = decodeSets(sets);
+    lastFont = { text, name, blocks, lines, sets, font: font && { ...font, ...(set && { blocks: set }), ...(l && { lines: l }), ...(s && { sets: s }) } };
   }
   return lastFont.font;
 }
@@ -211,7 +212,7 @@ export const useProjectStore = defineStore('project', {
 
   getters: {
     // The drawing's bitmap font, or null: decoded once for each fontBitmap.
-    drawingFont: (state) => fontFor(state.fontBitmap, state.fontName, state.fontBlocks),
+    drawingFont: (state) => fontFor(state.fontBitmap, state.fontName, state.fontBlocks, state.fontLines, state.fontSets),
     // A grid pixel's height over its width in the drawing's font: 1 with none or an 8x16 one, 0.5 in 8x8.
     pixelAspect() { return pixelAspectOf(this.drawingFont); },
     // Why paint is off, or null: paint is stored as pixels and shown as lower half blocks, so a drawing whose font has none can't show it.

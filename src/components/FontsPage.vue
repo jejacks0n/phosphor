@@ -6,7 +6,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { notSetUp } from '@/lib/fontSetup';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
-import { storedBitmapFont, registerBitmapFont, familyOf, storeBlocks, loadFonts } from '@/lib/userFonts';
+import { storedBitmapFont, registerBitmapFont, familyOf, storeFontPart, loadFonts } from '@/lib/userFonts';
 import { fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
@@ -144,7 +144,7 @@ const setBlocks = (blocks) => run(async () => {
   if (blocks && findBlocks(plain).every((s, i) => s === blocks[i])) blocks = undefined; // where the pixels put them: found, not set
   if (isDrawn.value) await project.setDrawingFont(blocks ? { ...plain, blocks } : plain);
   if (isStored.value) {
-    await storeBlocks(chosen.value.id, blocks ?? null);
+    await storeFontPart(chosen.value.id, 'blocks', blocks ?? null);
     workspace.userFonts = await loadFonts();
   }
 });

@@ -5,7 +5,7 @@
  *
  * A stored font: { id, name, lineHeight, data (the file's bytes) }. lineHeight: its own height
  * (ascent + descent) per em, so a full block fills its cell. A bitmap font (a raw .F## or a PNG sheet)
- * is { id, name, kind: 'bitmap', height, data (its glyph bytes), blocks? (the slots set for its block characters) }; a record with no kind is an outline font.
+ * is { id, name, kind: 'bitmap', height, data (its glyph bytes), blocks? (the slots set for its block characters), lines? and sets? (its own line styles and character sets, decoded: FontLines) }; a record with no kind is an outline font.
  */
 
 import { t } from '@/i18n';
@@ -115,9 +115,9 @@ async function inStore(mode, use) {
 export async function loadFonts() {
   const stored = await inStore('readonly', (fonts) => fonts.getAll());
   const usable = [];
-  for (const { id, name, kind, lineHeight, height, data, blocks } of stored) {
+  for (const { id, name, kind, lineHeight, height, data, blocks, lines, sets } of stored) {
     if (kind === 'bitmap') {
-      usable.push({ id, name, kind, height, ...(blocks && { blocks }) });
+      usable.push({ id, name, kind, height, ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) });
       continue;
     }
     try {
@@ -173,27 +173,30 @@ export async function addBitmapFont(file) {
     font = parseRawFont(new Uint8Array(await file.arrayBuffer()), name);
   }
   const id = fontId(font), entry = { id, name, kind: 'bitmap', height: font.height };
-  const blocks = (await inStore('readonly', (fonts) => fonts.get(id)))?.blocks; // the same font again keeps its blocks
-  await inStore('readwrite', (fonts) => fonts.put({ ...entry, data: font.bytes, ...(blocks && { blocks }) }));
-  return { ...entry, ...(blocks && { blocks }) };
+  const old = await inStore('readonly', (fonts) => fonts.get(id)); // the same font again keeps its blocks, lines and sets
+  const { blocks, lines, sets } = old ?? {}, kept = { ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) };
+  await inStore('readwrite', (fonts) => fonts.put({ ...entry, data: font.bytes, ...kept }));
+  return { ...entry, ...kept };
 }
 
 // A stored bitmap font as a drawing holds one: { name, height, bytes }.
 export async function storedBitmapFont(id) {
   const record = await inStore('readonly', (fonts) => fonts.get(id));
   if (!record) throw new Error(t('font.errors.missing'));
-  return { name: record.name, height: record.height, bytes: record.data, ...(record.blocks && { blocks: record.blocks }) };
+  return { name: record.name, height: record.height, bytes: record.data, ...(record.blocks && { blocks: record.blocks }), ...(record.lines && { lines: record.lines }), ...(record.sets && { sets: record.sets }) };
 }
 
-// Keep the slots set for a stored bitmap font's block characters (null: none, so they're found again). The caller
-// refreshes workspace.userFonts (loadFonts, or the font's entry with `blocks`).
-export async function storeBlocks(id, blocks) {
+// Keep one part of a stored bitmap font's own setup: key 'blocks' (the slots its block characters are drawn from),
+// 'lines' (its line styles, FontLines.encodeLines) or 'sets' (its character sets); value null: none, so the font
+// goes back to the found ones. The caller refreshes workspace.userFonts (loadFonts, or the font's entry).
+export async function storeFontPart(id, key, value) {
   const record = await inStore('readonly', (fonts) => fonts.get(id));
   if (!record) throw new Error(t('font.errors.missing'));
   const next = { ...record };
-  delete next.blocks;
-  await inStore('readwrite', (fonts) => fonts.put({ ...next, ...(blocks && { blocks }) }));
+  delete next[key];
+  await inStore('readwrite', (fonts) => fonts.put({ ...next, ...(value && { [key]: value }) }));
 }
+export const storeBlocks = (id, blocks) => storeFontPart(id, 'blocks', blocks);
 
 // What an opened XBin asks for its font's saved blocks: (fontId) => blocks | undefined. `fonts`: workspace.userFonts,
 // which is null until the boot-time read finishes, so a file opened before then reads them itself.
