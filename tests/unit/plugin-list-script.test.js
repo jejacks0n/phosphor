@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { officialSources, fetchListing, buildList, makeList } from '../../scripts/plugin-list.mjs';
+import { officialSources, fetchListing, buildList, makeList, parseArgs } from '../../scripts/plugin-list.mjs';
 import { readList } from '../../src/plugins/listing.js';
 import { sha256 } from '../../src/plugins/hash.js';
 
@@ -150,5 +150,22 @@ describe('makeList', () => {
   it('publishes nothing on a refresh with an unreadable wiki', async () => {
     const map = { ...(await served()), [WIKI]: { status: 500, body: '' } };
     await expect(makeList({ dir, commit: COMMIT, refresh: true, fetch: fakeFetch(map) })).rejects.toThrow('noWiki');
+  });
+});
+
+describe('parseArgs', () => {
+  const SHA = 'b'.repeat(40);
+  it('leaves a missing flag undefined, so --previous falls back to the default', () => {
+    const args = parseArgs(['--out', 'dist/plugins.json', '--commit', SHA, '--refresh']);
+    expect(args).toEqual({ out: 'dist/plugins.json', commit: SHA, refresh: true, previous: 'https://phosphor.work/plugins.json' });
+  });
+  it('reads --previous, and no --refresh is false', () => {
+    const args = parseArgs(['--out', 'dist/plugins.json', '--commit', SHA, '--previous', 'https://next.phosphor.work/plugins.json']);
+    expect(args.previous).toBe('https://next.phosphor.work/plugins.json');
+    expect(args.refresh).toBe(false);
+  });
+  it('a missing --out or --commit is undefined, not another flag', () => {
+    expect(parseArgs(['--refresh'])).toMatchObject({ out: undefined, commit: undefined });
+    expect(parseArgs([]).out).toBeUndefined();
   });
 });
