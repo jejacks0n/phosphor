@@ -50,7 +50,7 @@ test('the long file reads back as 300 by 1600 and uses every color', () => {
   expect([art.cols, art.rows]).toEqual([300, 1600]);
   expect(new Set(art.cells.map((cell) => cell.fg)).size).toBeGreaterThanOrEqual(240);
   expect(new Set(art.cells.map((cell) => cell.bg)).size).toBeGreaterThanOrEqual(240);
-});
+}, 20_000); // 480,000 cells: about 1.5 s here, and up to 5 s on a CI runner, past the default limit
 
 test('the logo reads back as 20 by 5 with spaces around the shape', () => {
   const art = readArtFile(makeLogoAns(), 'logo.ans');
