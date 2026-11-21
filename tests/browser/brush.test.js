@@ -152,6 +152,27 @@ describe('R13: paint on the base in Monochrome ASCII takes the pins', () => {
     expect(project.baseColorAt(0, 1)).toBe('#000000');
   });
 
+  // The owner's second screenshot: soft white strokes over white already painted drew a black rim. The first stroke had
+  // made the cells pinned ▄s; the next one wrote each block again from its look, which in Monochrome ASCII has no
+  // colors, so the block went in black and the soft edge blended over it. A block takes the colors the cell shows.
+  test('a soft white stroke over white already painted stays white', async () => {
+    const { project, workspace } = await open();
+    workspace.editorTab = 'input';
+    const ctx = { project, workspace, view: 'input' };
+    const stroke = (a, b, size, hardness) => {
+      Object.assign(workspace, { editFgColor: '#ffffff', editBrushSize: size, editBrushHardness: hardness, editBrushOpacity: 100, editBrushFlow: 100 });
+      brush.begin(ctx, a, {});
+      brush.move(ctx, a, b);
+      brush.end(ctx);
+    };
+    stroke({ x: 80, y: 40 }, { x: 120, y: 40 }, 30, 100); // a hard white area over the hand's characters
+    stroke({ x: 90, y: 36 }, { x: 110, y: 44 }, 8, 20); // a soft stroke inside it
+    await settle(project);
+    const dark = [];
+    for (let y = 32; y <= 48; y++) for (let x = 86; x <= 114; x++) if (project.baseColorAt(x, y) !== '#ffffff') dark.push(`${x},${y} ${project.baseColorAt(x, y)}`);
+    expect(dark).toEqual([]);
+  });
+
   test('the Eraser on the base, soft or in the PIXEL view, takes the pins too', async () => {
     const { project } = await open();
     project.eraseEditPixels([{ x: 86, y: 0, alpha: 0.5 }, { x: 86, y: 1, alpha: 0.5 }, { x: 87, y: 0 }, { x: 87, y: 1 }]);
