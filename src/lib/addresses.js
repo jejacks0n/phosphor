@@ -44,7 +44,12 @@ export function arrivalPage(page, { signedIn, needsOnboarding, resetToken, codeP
 export function fromHashAddress(href) {
   const url = new URL(href);
   if (!url.hash.startsWith('#/')) return null;
-  const inner = new URL(url.hash.slice(1).replace(/^\/+/, '/'), url.origin);
+  let inner;
+  try {   // (a backslash is a slash to the parser: only one leading one, or it's a host to parse)
+    inner = new URL(url.hash.slice(1).replace(/^[/\\]+/, '/'), url.origin);
+  } catch {
+    return null;
+  }
   for (const [name, value] of inner.searchParams) url.searchParams.set(name, value);
-  return inner.pathname.replace(/^\/+/, '/') + url.search;
+  return inner.pathname.replace(/^[/\\]+/, '/') + url.search;
 }
