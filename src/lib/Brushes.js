@@ -304,10 +304,11 @@ const BOX = {
 // A line-drawn box's outline cells for a cell rect (either corner first), row-major, clipped to the
 // grid (cols x rows cells) after the shape is decided, so a box running off the edge keeps its real
 // corners. One row is a horizontal run, one column a vertical run (a single cell is horizontal).
+// `style` is 'single', 'double' or a style's 11 chars (─│┌┐└┘├┤┬┴┼).
 export function boxCells(rect, style, cols, rows) {
   const c0 = Math.min(rect.c0, rect.c1), c1 = Math.max(rect.c0, rect.c1);
   const r0 = Math.min(rect.r0, rect.r1), r1 = Math.max(rect.r0, rect.r1);
-  const g = BOX[style];
+  const g = typeof style === 'string' ? BOX[style] : { h: style[0], v: style[1], tl: style[2], tr: style[3], bl: style[4], br: style[5] };
   const cells = [];
   for (let row = Math.max(0, r0); row <= Math.min(rows - 1, r1); row++) {
     for (let col = Math.max(0, c0); col <= Math.min(cols - 1, c1); col++) {

@@ -13,7 +13,10 @@ import { linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse
 import { rectCells } from '@/document/editCells';
 import { hasQuadrants } from '@/lib/BitmapFont';
 import { charRowsOf, cellsOfPixels, showsChar } from '@/lib/Cells';
-import { armsOf, joinBox, inwardArms } from '@/lib/BoxJoin';
+import { armsOf, familyFor, joinBox, inwardArms } from '@/lib/BoxJoin';
+import { offeredStyles } from '@/lib/FontLines';
+import { drawnStyle, lineChoices, perFont, stockChoice } from '@/tools/lineChoice';
+import { useProjectStore } from '@/store/ProjectStore';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { selectionClip } from '@/lib/selectionClip';
 import { watch } from 'vue';
@@ -35,8 +38,8 @@ export const drawsCells = ({ shapeKind, shapeDrawWith }) =>
   shapeDrawWith === 'full' || shapeDrawWith === 'char' || (shapeKind !== 'ellipse' && shapeDrawWith !== 'half');
 
 // Whether this is a line of box characters, which only run straight across or down.
-const boxLine = ({ shapeKind, shapeDrawWith }, view) =>
-  view === 'output' && shapeKind === 'line' && (shapeDrawWith === 'single' || shapeDrawWith === 'double');
+const boxLine = ({ shapeKind, shapeDrawWith }, view, font) =>
+  view === 'output' && shapeKind === 'line' && !!drawnStyle(shapeDrawWith, font);
 
 // Where a drag to `to` ends: a box line runs across from `from` (on its row) or down (in its column),
 // whichever the drag is closer to, counted in cells (a cell is two grid pixels tall).
@@ -60,13 +63,16 @@ export const snappedEnd = (from, to, aspect = 1) => {
 
 // Where a drag to `to` ends, by what's being drawn and whether Shift is down.
 const dragEnd = ({ project, workspace, view }, to) => {
-  if (boxLine(workspace, view)) return lineEnd(start, to);
+  if (boxLine(workspace, view, project.drawingFont)) return lineEnd(start, to);
   if (!workspace.isShiftPressed) return to;
   return workspace.shapeKind === 'line' ? snappedEnd(start, to, project.pixelAspect) : squareEnd(start, to, project.pixelAspect);
 };
 
+// Whether a Draw with value is Single, Double or a font's own line style.
+const isLineValue = (v) => v === 'single' || v === 'double' || String(v).startsWith('line:');
+
 // What the ANSI view draws with: an ellipse set to box lines draws half-blocks.
-const drawnWith = ({ shapeKind, shapeDrawWith }) => (shapeKind === 'ellipse' && (shapeDrawWith === 'single' || shapeDrawWith === 'double') ? 'half' : shapeDrawWith);
+const drawnWith = ({ shapeKind, shapeDrawWith }) => (shapeKind === 'ellipse' && isLineValue(shapeDrawWith) ? 'half' : shapeDrawWith);
 
 // Whether a line or ellipse is drawn in the ANSI view's blocks (Half-block or Full block), where it
 // can use ▌ and ▐ too (Vertical half blocks), and is.
@@ -126,6 +132,17 @@ function halfCells(project, workspace, end, fill) {
   }
   return cells;
 }
+
+// Box lines are for rectangles and lines; an ellipse set to them draws (and shows) half-blocks.
+const notEllipse = (ws) => ws.shapeKind !== 'ellipse';
+const drawWithChoices = perFont((font) => [
+  stockChoice(font, 'single', { value: 'single', get label() { return t('tools.drawWith.single'); }, glyph: '┌─', when: notEllipse }, 'half'),
+  stockChoice(font, 'double', { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═', when: notEllipse }, 'half'),
+  ...lineChoices(font).map((c) => ({ ...c, when: notEllipse, instead: 'half' })),
+  { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },
+  { value: 'full', get label() { return t('tools.drawWith.fullBlock'); }, glyph: '██' },
+  { value: 'char', get label() { return t('tools.drawWith.character'); }, glyph: (workspace) => workspace.activeChar.repeat(2) },
+]);
 
 function apply({ project, workspace, view }, end) {
   const { shapeKind: kind, shapeDrawWith: drawWith, shapeBlockChars: blockChars } = workspace;
@@ -191,7 +208,9 @@ function apply({ project, workspace, view }, end) {
     }
     return rectCells(rect).filter(inGrid).filter(c => filled || isEdge(c)).map(c => ({ ...c, cover: 1 }));
   };
-  const lines = drawWith === 'single' || drawWith === 'double';
+  const style = drawnStyle(drawWith, project.drawingFont);
+  const family = style && familyFor(offeredStyles(project.drawingFont), style);
+  const lines = !!style;
   const outline = lines ? null : shapeOf(false);
   const inside = lines || !fill ? [] : insideOf(shapeOf(true), outline, cellKey, 'cover');
 
@@ -231,7 +250,7 @@ function apply({ project, workspace, view }, end) {
     // A straight run's ends point only back along it, so one that lands on a line joins it as a T
     // rather than crossing it.
     const ends = (col, row, char) => {
-      const arms = [...armsOf(char)];
+      const arms = [...armsOf(char, family)];
       if (rect.r0 === rect.r1 && rect.c0 < rect.c1) { if (col === rect.c0) arms[3] = 0; if (col === rect.c1) arms[1] = 0; }
       if (rect.c0 === rect.c1 && rect.r0 < rect.r1) { if (row === rect.r0) arms[0] = 0; if (row === rect.r1) arms[2] = 0; }
       return arms;
@@ -239,9 +258,9 @@ function apply({ project, workspace, view }, end) {
     const join = (col, row, char) => {
       if (!workspace.shapeConnect) return char;
       const closed = STEPS.map(([dc, dr]) => erased(col + dc, row + dr));
-      return joinBox(ends(col, row, char), shown(col, row), inwardArms(STEPS.map(([dc, dr]) => shown(col + dc, row + dr))), closed);
+      return joinBox(ends(col, row, char), shown(col, row), inwardArms(STEPS.map(([dc, dr]) => shown(col + dc, row + dr)), family), closed, family);
     };
-    cells = boxCells(rect, drawWith, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char: join(col, row, char), ...attrs } }));
+    cells = boxCells(rect, style.stock ? style.id : style.chars, project.cols, rows).map(({ col, row, char }) => ({ col, row, attrs: { char: join(col, row, char), ...attrs } }));
     if (fill) {
       const interior = rectCells(rect).filter(inGrid).filter(c => !isEdge(c));
       cells.push(...interior.map(c => ({ ...c, attrs: { char: ' ', bg, bgIndex: workspace.editBgIndex } })));
@@ -265,7 +284,7 @@ export default {
   kind: 'paint',
   altPicks: true,
   // What Shift does, for the status bar. A box line only runs across or down already.
-  shiftHint: (ws) => (boxLine(ws, 'output') ? null : {
+  shiftHint: (ws) => (boxLine(ws, 'output', useProjectStore().drawingFont) ? null : {
     rect: t('tools.shapes.shiftSquare'),
     ellipse: t('tools.shapes.shiftCircle'),
     line: t('tools.shapes.shiftSnap45'),
@@ -281,14 +300,7 @@ export default {
     },
     {
       key: 'shapeDrawWith', get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
-      choices: [
-        // Box lines are for rectangles and lines; an ellipse set to them draws (and shows) half-blocks.
-        { value: 'single', get label() { return t('tools.drawWith.single'); }, glyph: '┌─', when: (ws) => ws.shapeKind !== 'ellipse', instead: 'half' },
-        { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═', when: (ws) => ws.shapeKind !== 'ellipse', instead: 'half' },
-        { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },
-        { value: 'full', get label() { return t('tools.drawWith.fullBlock'); }, glyph: '██' },
-        { value: 'char', get label() { return t('tools.drawWith.character'); }, glyph: (workspace) => workspace.activeChar.repeat(2) },
-      ],
+      get choices() { return drawWithChoices(useProjectStore().drawingFont); },
     },
     {
       key: 'activeChar', get label() { return t('tools.drawWith.character'); }, type: 'char', views: ['output'], when: (ws) => ws.shapeDrawWith === 'char',
@@ -299,7 +311,7 @@ export default {
     },
     {
       key: 'shapeConnect', get label() { return t('tools.shapes.connect'); }, type: 'checkbox', views: ['output'],
-      when: (ws) => ws.shapeKind !== 'ellipse' && (ws.shapeDrawWith === 'single' || ws.shapeDrawWith === 'double'),
+      when: (ws) => ws.shapeKind !== 'ellipse' && !!drawnStyle(ws.shapeDrawWith, useProjectStore().drawingFont),
       get title() { return t('tools.shapes.connectTitle'); },
     },
     {

@@ -5,6 +5,7 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ellipseCoverage } from '@/lib/Brushes';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { cp437Font, font8 } from '../support/blockFonts.js';
+import { CP437_BLOCKS, slotChars } from '@/lib/BitmapFont.js';
 
 const FIRST = { editFgColor: '#ff0000', editBgColor: '#0000ff' };
 const SECOND = { editFgColor: '#00ff00', editBgColor: '#ffff00' };
@@ -323,4 +324,46 @@ test('Half-block\'s half-column detail in a font with no quadrants draws only �
 test('with no font Half-block\'s half-column detail still draws quadrants', async () => {
   const chars = new Set([...await drawnChars('ellipse', null), ...await drawnChars('line', null)]);
   expect([...chars].some((c) => '▘▝▖▗▚▞▛▜▙▟'.includes(c))).toBe(true);
+});
+
+// A bitmap font's own line styles.
+const HEAVY_FONT = { name: 'T', height: 16, bytes: new Uint8Array(4096), blocks: [...CP437_BLOCKS], lines: { hide: [], styles: [{ id: 'l1', name: 'Heavy', slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }] } };
+const heavyScene = async (settings) => {
+  const s = await shiftScene({ shapeKind: 'rect', shapeDrawWith: 'line:l1', shapeConnect: true, editFgColor: '#ffffff' }, HEAVY_FONT);
+  const H = slotChars(HEAVY_FONT).slice(1, 12);
+  Object.assign(s.workspace, settings);
+  const draw = (from, to) => {
+    const ctx = { project: s.project, workspace: s.workspace, view: 'output' };
+    s.shapes.begin(ctx, from);
+    s.shapes.move(ctx, from, to);
+    s.shapes.end(ctx);
+  };
+  const at = ([c, r]) => ({ x: c + 0.5, y: 2 * r + 1 });
+  const row = (r, c0, c1) => Array.from({ length: c1 - c0 + 1 }, (_, i) => charAt(s.project, c0 + i, r)).join('');
+  return { ...s, H, draw, at, row };
+};
+
+test("a rectangle in a font's own style uses its corners and sides", async () => {
+  const { H, draw, at, row, project } = await heavyScene();
+  draw(at([2, 2]), at([6, 5]));
+  expect(row(2, 2, 6)).toBe(H[2] + H[0].repeat(3) + H[3]);
+  expect(row(5, 2, 6)).toBe(H[4] + H[0].repeat(3) + H[5]);
+  expect([charAt(project, 2, 3), charAt(project, 6, 4)]).toEqual([H[1], H[1]]);
+});
+
+test("a style's box crossing a Single box keeps its own pieces", async () => {
+  const { H, draw, at, row, project, workspace } = await heavyScene({ shapeDrawWith: 'single' });
+  draw(at([2, 2]), at([10, 8]));
+  workspace.shapeDrawWith = 'line:l1';
+  draw(at([5, 0]), at([14, 5])); // its bottom edge crosses the Single box's top edge
+  // Where its sides cross the Single top edge and its bottom edge crosses the Single side: its own pieces, its own arms.
+  expect([charAt(project, 5, 2), charAt(project, 10, 5)]).toEqual([H[1], H[0]]);
+  expect(row(2, 6, 9)).toBe('────');
+});
+
+test('an ellipse set to a font\'s style draws half-blocks', async () => {
+  const { H, draw, at, project, workspace } = await heavyScene({ shapeKind: 'ellipse' });
+  draw(at([4, 4]), at([14, 10]));
+  expect(project.cells.some((c) => H.includes(c.char))).toBe(false);
+  expect(workspace.shapeDrawWith).toBe('line:l1');
 });

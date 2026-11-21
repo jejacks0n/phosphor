@@ -19,7 +19,7 @@ export const lineChoices = (font) => offeredStyles(font).filter((s) => !s.stock)
 // A stock choice that goes when the font doesn't offer it, and what shows in its place.
 export const stockChoice = (font, id, choice, fallback) => Object.defineProperties({}, {
   ...Object.getOwnPropertyDescriptors(choice), // copied as descriptors, so the label getter stays live
-  when: { value: () => !!styleById(font, id)?.offered, enumerable: true },
+  when: { value: (ws) => !!styleById(font, id)?.offered && (choice.when?.(ws) ?? true), enumerable: true }, // and the choice's own `when`
   instead: { get() { const first = offeredStyles(font)[0]; return first ? lineValue(first) : fallback; }, enumerable: true },
 });
 
