@@ -60,6 +60,10 @@ function readOption(raw, field) {
     if (typeof value !== 'boolean') throw shape(field);
     return Object.freeze({ id, kind, name, default: value });
   }
+  if (kind === 'color') {
+    if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) throw shape(field);
+    return Object.freeze({ id, kind, name, default: value.toLowerCase() });
+  }
   if (kind === 'choice') {
     const choices = copy(option.choices);
     if (!choices || choices.length < 1 || choices.length > MOST_CHOICES || !choices.every(text)

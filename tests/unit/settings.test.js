@@ -146,6 +146,10 @@ test('solverOptions from a stranger: bad entries are dropped and the good kept, 
   assert.deepEqual(cleanOptions(many, 'plugin:p/s399') && Object.keys(cleanOptions(many, 'plugin:p/s399'))[0], 'plugin:p/s399'); // the named ref stays first
 });
 
+test('cleanOptions keeps a color option as a lowercase #rrggbb and drops other text', () => {
+  assert.deepEqual(cleanOptions({ 'plugin:p/s': { tint: '#00ff00', up: '#00FF00', word: 'green', n: 3 } }), { 'plugin:p/s': { tint: '#00ff00', n: 3 } });
+});
+
 test('a plugin ref in charChoice or charChoiceAscii survives a stranger\'s settings', () => {
   const ref = 'plugin:phosphor.outlines/outlines';
   assert.deepEqual(settingsFromStranger({ ...GOOD, charChoice: ref, charChoiceAscii: ref }), { ...GOOD, charChoice: ref, charChoiceAscii: ref });

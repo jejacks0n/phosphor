@@ -1,7 +1,7 @@
 // The solver registry: refs, stand-in reasons, option values and failures.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  failSolver, failureOf, isSolverRef, onSolverFailure, optionValues, pluginOfSolver, registerSolvers, solverFor,
+  failSolver, failureOf, isSolverRef, onSolverFailure, optionValues, pluginOfSolver, registerSolvers, scriptOptions, solverFor,
   solverRef, standInOf, unregisterSolvers,
 } from '@/plugins/solvers';
 
@@ -62,6 +62,20 @@ describe('optionValues', () => {
     expect(optionValues(def, { threshold: 70, thin: false, set: 2 })).toEqual({ threshold: 70, thin: false, set: 0 });
     expect(optionValues(def, { set: 0.5 }).set).toBe(0);
     expect(optionValues(def, undefined)).toEqual({ threshold: 40, thin: true, set: 0 });
+  });
+});
+
+describe('color options', () => {
+  const tinted = { ...def, options: [...def.options, { id: 'tint', kind: 'color', default: '#112233' }] };
+  it('keep a stored hex and replace anything else with the default', () => {
+    expect(optionValues(tinted, { tint: '#00ff00' }).tint).toBe('#00ff00');
+    expect(optionValues(tinted, { tint: 'green' }).tint).toBe('#112233');
+    expect(optionValues(tinted, { tint: '#00FF00' }).tint).toBe('#112233');
+  });
+  it('reach a script as { r, g, b }, other values as they are', () => {
+    const got = scriptOptions(tinted, { threshold: 7, tint: '#ff8000' });
+    expect(got).toEqual({ threshold: 7, tint: { r: 255, g: 128, b: 0 } });
+    expect(Object.isFrozen(got) && Object.isFrozen(got.tint)).toBe(true);
   });
 });
 

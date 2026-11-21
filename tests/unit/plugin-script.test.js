@@ -29,6 +29,16 @@ describe('readSolvers', () => {
     [{ id: 'Bad Id' }, 'solvers[0].id'], [{ shader: { solve: 3 } }, 'solvers[0].shader'],
   ])('refuses %o at %s', (change, field) => expect(() => read(change)).toThrow(shape(field)));
 
+  it('reads a color option, its default lowercased', () => {
+    const option = { id: 'tint', kind: 'color', name: 'Tint', default: '#FF8800' };
+    expect(read({ options: [option] })[0].options[0]).toEqual({ ...option, default: '#ff8800' });
+  });
+
+  it.each(['#ff88', 'ff8800', '#gg0000', 12])('refuses a color option\'s default %o', (value) => {
+    const options = [{ id: 'tint', kind: 'color', name: 'Tint', default: value }];
+    expect(() => read({ options })).toThrow(shape('solvers[0].options[0]'));
+  });
+
   it('takes an option id with single underscores, 32 characters at most', () => {
     for (const id of ['a_b_c', `a${'_b'.repeat(15)}c`]) {
       expect(read({ options: [{ id, kind: 'checkbox', name: 'A', default: true }] })[0].options[0].id).toBe(id);

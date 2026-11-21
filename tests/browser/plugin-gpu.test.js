@@ -115,6 +115,22 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     }
   });
 
+  test('a color option is a vec3 in the shader and { r, g, b } in the JavaScript, and they agree', async () => {
+    const def = solver({
+      options: [{ id: 'tint', kind: 'color', name: 'Tint', default: '#ff8000' }],
+      solve(cell, look) {
+        const t = look.options.tint, a = cell.sample(0, 0, 0)[0];
+        return { char: '/', fg: rgb(t.r, a, 0), bg: rgb(0, t.g, t.b) };
+      },
+      shader: { solve: 'put(opt_tint * 255.0 * vec3(1.0, 0.0, 0.0) + vec3(0.0, sampleAt(ivec2(0, 0), 0).r, 0.0), vec3(0.0, opt_tint.g * 255.0, opt_tint.b * 255.0), 4);' },
+    });
+    const samples = samplesOf(6, 4), gpu = ShapeMatcher.shared();
+    for (const tint of ['#ff8000', '#123456']) {
+      const matcher = await matcherOf(def, { options: { tint } });
+      expect(key(gpu.resolve(samples, 6, 4, matcher).cells)).toEqual(key(resolvePlugin(samples, 6, 4, matcher).cells));
+    }
+  });
+
   test('an area\'s GPU resolve equals the whole grid\'s over the grown area, in bands or not', async () => {
     const def = solver(TWO_PASSES), cols = 10, lines = 23, samples = samplesOf(cols, lines), gpu = ShapeMatcher.shared();
     const matcher = await matcherOf(def), dither = { strength: 0.7, style: 'bayer' };
