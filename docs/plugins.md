@@ -502,7 +502,9 @@ error's message, and the plugin's row in the Plugins dialog says so until you Re
 
 A brush may ask for one key: a letter, or Shift and a letter (`'J'` or `'shift+j'`, in either case). If a built-in tool
 has that key, or a brush earlier in the Plugins dialog's order asked for it, they keep it and this brush has no key:
-it's picked from the toolbar. Smear asks for J, as M is Select's. The Shortcuts dialog lists the brushes that have keys
+it's picked from the toolbar. The editor's own keys are never given: X (which swaps the colors; Shift+X is free), and L
+and N with or without Shift (which play and add a frame with Animate on). Smear asks for J, as M is Select's. The
+Shortcuts dialog lists the brushes that have keys
 under **Plugin tools**. Shapes and filters have no keys.
 
 ## Writing a shape

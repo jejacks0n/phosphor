@@ -40,6 +40,7 @@ import pen from './pen';
 import { toast } from '@/composables/useToast';
 import { refusedNoCells, sayBaseOnEveryFrame } from '@/store/project/shared.js';
 import { shortcut } from '@/lib/keyLabels';
+import { EDITOR_KEYS } from '@/lib/TextKeys';
 import { groupOf } from './groups';
 import { t } from '@/i18n/index.js';
 import { usePluginStore } from '@/store/PluginStore';
@@ -83,7 +84,7 @@ export function pluginTools() {
   const plugins = usePluginStore(), inRoom = useRoomStore().inRoom, off = plugins.off;
   const stamp = [plugins.solverStamp, inRoom, off, ...plugins.plugins.map(({ id, enabled }) => `${id}:${enabled}`)].join('|');
   if (stamp === built.stamp && plugins === built.plugins) return built.tools;
-  const tools = [], taken = new Set(TOOLS.flatMap((tool) => tool.keys ?? []));
+  const tools = [], taken = new Set([...EDITOR_KEYS, ...TOOLS.flatMap((tool) => tool.keys ?? [])]); // the editor's own keys come first
   for (const { id, manifest } of plugins.plugins) {
     const mine = Object.entries(plugins.brushes).filter(([ref, brush]) => brush.pluginId === id && brushOffered(ref, plugins, inRoom)).sort(([, a], [, b]) => a.index - b.index);
     for (const [ref] of mine) {
