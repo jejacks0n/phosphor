@@ -55,6 +55,69 @@
       "manifestHash": "8002a74b766695d0dbe1266acf54d909b155e8fa9b0f148c1f1b3855a8df153a"
     },
     {
+      "official": true,
+      "repo": "jejacks0n/phosphor",
+      "path": "plugins/smear",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifest": {
+        "phosphor": 1,
+        "id": "phosphor.smear",
+        "name": "Smear",
+        "version": "1.0.0",
+        "author": "Phosphor",
+        "description": "A brush that smudges the colors under it along the way it moves, as a finger in wet paint.",
+        "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/smear",
+        "script": "smear.js",
+        "license": "MIT",
+        "preview": "██▓▓▒▒░░    \n████▓▓▓▒▒░░ \n██▓▓▒▒░░    ",
+        "themes": []
+      },
+      "manifestHash": "41a42b5b9d1ff743f2e7607ea21a17fcd3b180615390df7b7af9909f9822f82d",
+      "scriptHash": "67a96e16d9319d2b840896cb868fd5fd0de1b71ff23920166f80a49925a05296"
+    },
+    {
+      "official": true,
+      "repo": "jejacks0n/phosphor",
+      "path": "plugins/superformula",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifest": {
+        "phosphor": 1,
+        "id": "phosphor.superformula",
+        "name": "Superformula",
+        "version": "1.0.0",
+        "author": "Phosphor",
+        "description": "A shape drawn by Gielis's superformula: stars, flowers and soft polygons, with 1 to 20 points.",
+        "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/superformula",
+        "script": "superformula.js",
+        "license": "MIT",
+        "preview": "  ▄▄█▄▄  \n ▀▀███▀▀ \n  ▄▀ ▀▄  ",
+        "themes": []
+      },
+      "manifestHash": "92888aeca147730af1e0ae11ba136dc098ca66011f2716a40d4f23a7627a84ce",
+      "scriptHash": "164f4eae3369310096c487fad5af9380a6669a2dc837ccff9e1baeee5eef6edc"
+    },
+    {
+      "official": true,
+      "repo": "jejacks0n/phosphor",
+      "path": "plugins/aberration",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifest": {
+        "phosphor": 1,
+        "id": "phosphor.aberration",
+        "name": "Aberration",
+        "version": "1.0.0",
+        "author": "Phosphor",
+        "description": "A filter that splits a picture's colors sideways, red to one side and cyan to the other, as a cheap lens does.",
+        "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/aberration",
+        "script": "aberration.js",
+        "license": "MIT",
+        "preview": "▐█▌ ▐█▌ ▐█▌",
+        "themes": []
+      },
+      "manifestHash": "2763199cb698a1e86e794a86eecccb93cae2c6a7bf6c0ec8ffbbbb6324c133f5",
+      "scriptHash": "9341bce4fecf7ba7d299991e21aec6f9fdd37f708f164089ff7f4f6520fe796d"
+    },
+    {
       "official": false,
       "repo": "kim/phosphor-rain",
       "path": "",

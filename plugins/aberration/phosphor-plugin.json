@@ -1,0 +1,12 @@
+{
+  "phosphor": 1,
+  "id": "phosphor.aberration",
+  "name": "Aberration",
+  "version": "1.0.0",
+  "author": "Phosphor",
+  "description": "A filter that splits a picture's colors sideways, red to one side and cyan to the other, as a cheap lens does.",
+  "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/aberration",
+  "license": "MIT",
+  "script": "aberration.js",
+  "preview": "▐█▌ ▐█▌ ▐█▌"
+}

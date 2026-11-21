@@ -3,6 +3,12 @@ import listText from '../fixtures/plugin-list.json?raw';
 import outlinesManifest from '../../plugins/outlines/phosphor-plugin.json?raw';
 import outlinesScript from '../../plugins/outlines/outlines.js?raw';
 import midnightManifest from '../../plugins/midnight/phosphor-plugin.json?raw';
+import smearManifest from '../../plugins/smear/phosphor-plugin.json?raw';
+import smearScript from '../../plugins/smear/smear.js?raw';
+import superformulaManifest from '../../plugins/superformula/phosphor-plugin.json?raw';
+import superformulaScript from '../../plugins/superformula/superformula.js?raw';
+import aberrationManifest from '../../plugins/aberration/phosphor-plugin.json?raw';
+import aberrationScript from '../../plugins/aberration/aberration.js?raw';
 import rainManifest from '../fixtures/plugins/rain/phosphor-plugin.json?raw';
 
 // The marketplace as a browser test sees it: fetch stubbed with tests/fixtures/plugin-list.json at /plugins.json and the
@@ -17,6 +23,12 @@ export function serveMarket() {
     [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/outlines/phosphor-plugin.json`]: outlinesManifest,
     [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/outlines/outlines.js`]: outlinesScript,
     [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/midnight/phosphor-plugin.json`]: midnightManifest,
+    [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/smear/phosphor-plugin.json`]: smearManifest,
+    [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/smear/smear.js`]: smearScript,
+    [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/superformula/phosphor-plugin.json`]: superformulaManifest,
+    [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/superformula/superformula.js`]: superformulaScript,
+    [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/aberration/phosphor-plugin.json`]: aberrationManifest,
+    [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/aberration/aberration.js`]: aberrationScript,
     [`${RAW}/kim/phosphor-rain/${COMMIT}/phosphor-plugin.json`]: rainManifest,
   };
   const fetched = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => (url in served
