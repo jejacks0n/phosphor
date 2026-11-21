@@ -22,6 +22,11 @@ describe('cleanIcon', () => {
     expect(out).not.toMatch(/\bon\w*=|href|style/);
   });
 
+  it('drops a root width and height but keeps them on shapes', () => {
+    expect(cleanIcon('<svg viewBox="0 0 24 24" width="900" height="900"><rect width="3" height="4"/></svg>'))
+      .toBe(`<svg ${NS} viewBox="0 0 24 24"><rect width="3" height="4"></rect></svg>`);
+  });
+
   const KB9 = `<svg viewBox="0 0 24 24"><path d="${'M0 0 '.repeat(1800)}"/></svg>`;
   it.each([
     ['script', '<svg viewBox="0 0 24 24"><script>x</script></svg>'],
@@ -53,6 +58,11 @@ describe('cleanIcon', () => {
     ['a bad number', '<svg viewBox="0 0 24 24"><circle r="1px"/></svg>'],
     ['an uppercase attribute', '<svg viewBox="0 0 24 24"><g Fill="none"/></svg>'],
     ['an uppercase element', '<svg viewBox="0 0 24 24"><G/></svg>'],
+    ['a quote injection', `<svg viewBox="0 0 24 24"><path fill='none" onload="x'/></svg>`],
+    ['xlink:href', '<svg viewBox="0 0 24 24"><path xlink:href="#a"/></svg>'],
+    ['an unterminated comment', '<svg viewBox="0 0 24 24"><!-- x</svg>'],
+    ['an xml header after a comment', '<!-- x --><?xml version="1.0"?><svg viewBox="0 0 24 24"></svg>'],
+    ['a bad root width', '<svg viewBox="0 0 24 24" width="big"></svg>'],
     ['not a string', 5],
     ['nothing', ''],
   ])('refuses %s', (_n, input) => {
