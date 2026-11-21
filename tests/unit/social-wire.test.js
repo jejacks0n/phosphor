@@ -125,6 +125,10 @@ test('a bitmap font\'s width comes off the wire when it is 8, 9 or the font\'s o
   assert.equal(width(9), 9);
   assert.equal(width(8), 8);
   for (const bad of [5, 3, 10, NaN, 'x', '7', null, undefined, 7.5]) assert.equal(width(bad), 8, String(bad));
+  for (const w of [1, 2, 3]) {   // a font whose own width is under 4 is never narrow
+    const thin = { ...spec, source: encodeFont({ name: 'Thin', height: 8, bytes: new Uint8Array(256 * 8).fill(0x80 >> (w - 1)) }) };
+    assert.equal(fontFor({ ...fontOnWire(thin), width: w }).width, 8, `own width ${w}`);
+  }
   assert.equal(fontFor({ ...fontOnWire(bitmapSpec(8)), width: 7 }).width, 8);   // 7 isn't this font's own width (it lights column 8)
   assert.notEqual(fontFor({ ...fontOnWire(spec), width: 9 }).family, fontFor({ ...fontOnWire(spec), width: 8 }).family);
   assert.notEqual(fontFor({ ...fontOnWire(spec), width: 7 }).family, fontFor({ ...fontOnWire(spec), width: 8 }).family);

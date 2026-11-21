@@ -7,6 +7,12 @@ import { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, lit
 
 export { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, maskOf, narrowWidthOf, ownWidthOf };
 
+// The width a font is drawn at: `width` when it's the font's own narrow width (4-7), else 9 when `nine`, else 8.
+export function drawnWidthOf(font, width, nine) {
+  const narrow = narrowWidthOf(font);
+  return narrow !== null && narrow === Number(width) ? narrow : nine ? 9 : 8;
+}
+
 export const MAX_FONT_HEIGHT = 32;
 
 // A half cell's height over its width (the font's drawn cellWidth, 8 without): 1 with no bitmap font or an 8x16 one, 0.5 in 8x8.

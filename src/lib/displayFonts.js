@@ -8,7 +8,7 @@
  * The 8x16 fonts share the IBM VGA font's cell, so a character one lacks falls back to the next on
  * the same grid (src/assets/fonts/README.md); wide characters and emoji come from the system's fonts.
  */
-import { decodeBlocks, decodeFont, fitFont, fontKey, glyphRows, ninthSlots, ownWidthOf, slotOf } from './BitmapFont.js';
+import { decodeBlocks, decodeFont, fitFont, fontKey, drawnWidthOf, glyphRows, ninthSlots, slotOf } from './BitmapFont.js';
 import { decodeLines } from './FontLines.js';
 import { registerBitmapFont, releaseBitmapFont } from './userFonts.js';
 
@@ -88,7 +88,7 @@ export function bitmapOf({ source, name, blocks, width, lines }) {
   if (font === undefined) {
     const decoded = decodeFont(source, name), set = decodeBlocks(blocks), l = decodeLines(lines);
     font = decoded && { ...decoded, ...(set && { blocks: set }), ...(l && { lines: l }) };
-    if (font) font.cellWidth = width === 9 || width === ownWidthOf(font) ? width : 8;   // ownWidthOf 4-7 are the offered narrow widths, 8 is 8
+    if (font) font.cellWidth = drawnWidthOf(font, typeof width === 'number' ? width : 0, width === 9);   // 9, the font's own narrow width, else 8
   }
   bitmaps.delete(key);
   bitmaps.set(key, font);   // the newest last

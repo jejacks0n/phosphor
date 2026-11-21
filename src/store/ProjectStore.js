@@ -18,7 +18,7 @@ import { useRoomStore } from '@/store/RoomStore.js';
 import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
 import { PALETTES, parseColorList } from '@/lib/ColorUtils.js';
 import { decodeLines, decodeSets } from '@/lib/FontLines.js';
-import { blocksOf, decodeBlocks, decodeFont, fontChars, fontKey, narrowWidthOf, pixelAspectOf } from '@/lib/BitmapFont.js';
+import { blocksOf, decodeBlocks, decodeFont, drawnWidthOf, fontChars, fontKey, pixelAspectOf } from '@/lib/BitmapFont.js';
 import { t } from '@/i18n/index.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
@@ -134,8 +134,8 @@ function fontFor(text, name, blocks, lines, sets, width, nine) {
   if (lastFont.text !== text || lastFont.name !== name || lastFont.blocks !== blocks || lastFont.lines !== lines || lastFont.sets !== sets || lastFont.width !== width || lastFont.nine !== nine) {
     const font = decodeFont(text, name), set = decodeBlocks(blocks), l = decodeLines(lines), s = decodeSets(sets);
     // width: fontWidth when it's the font's own narrow width (else the font is drawn at 8, or 9 with letter spacing 9)
-    const narrow = font && narrowWidthOf(font) === Number(width) ? Number(width) : null;
-    lastFont = { text, name, blocks, lines, sets, width, nine, font: font && { ...font, ...(narrow && { width: narrow }), cellWidth: narrow ?? (nine ? 9 : 8), ...(set && { blocks: set }), ...(l && { lines: l }), ...(s && { sets: s }) } };
+    const cellWidth = font && drawnWidthOf(font, width, nine), narrow = font && cellWidth < 8 ? cellWidth : null;
+    lastFont = { text, name, blocks, lines, sets, width, nine, font: font && { ...font, ...(narrow && { width: narrow }), cellWidth, ...(set && { blocks: set }), ...(l && { lines: l }), ...(s && { sets: s }) } };
   }
   return lastFont.font;
 }
