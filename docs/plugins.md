@@ -640,8 +640,8 @@ aren't in the toolbar (one in use is swapped for the Brush), plugin shapes aren'
 draws a Rectangle), and the plugin filter groups don't show, so no filter can be set and none runs.
 
 Hosting is refused while the drawing holds a plugin filter's values, running or not: **Go live**, and on the desktop app
-**Start a room**, are off and say so, naming it ("The plugin filter Aberration is on, which rooms don't use. Reset it or
-switch it off first."). Reset (or Reset all) lifts it: a filter whose plugin is off or missing still holds its values. A
+**Start a room**, are off and say so, naming it ("This drawing holds settings for the plugin filter Aberration, which rooms don't
+use. Reset it first."). Reset (or Reset all) lifts it: a filter whose plugin is off or missing still holds its values. A
 layer on a plugin solver is refused the same way ([Characters](characters.md#plugin-solvers)). Joining a room isn't
 affected.
 

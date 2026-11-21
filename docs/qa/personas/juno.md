@@ -157,11 +157,11 @@ script. Every section ends with Free time.
   (Plugins → Install from a folder… with `plugins/outlines/`, or from a file with `tests/fixtures/plugins/outlines.zip`), choose it
   in Choose characters on Layer 1, and open Start a room (with the art at one frame): Go live is off, and the box says
   "Layer 1 is on a plugin solver, which rooms don't use. Choose a built-in solver for it, or Flatten the drawing
-  first."; choose By shape for it and Go live is on again; put her settings back and remove Outlines. With `maya` as
-  her partner (the one whose art is a picture, which plugin filters need), then install Aberration from the
-  Marketplace, pick Base and set its Distance to 3, and open Start a room: Go live is off, and the box says "The plugin
-  filter Aberration is on, which rooms don't use. Reset it or switch it off first."; press Aberration's Reset and Go
-  live is on again; remove Aberration.
+  first."; choose By shape for it and Go live is on again; put her settings back and remove Outlines. Only when
+  `maya` is her partner (plugin filters show only over a picture, and maya's art is one): install Aberration from the
+  Marketplace, pick Base, set its Distance to 3 and open Start a room. Go live is off, and the box says "This drawing
+  holds settings for the plugin filter Aberration, which rooms don't use. Reset it first."; press Aberration's Reset
+  and Go live is on again; remove Aberration.
 - Rated: yes, wants a key for Start a room
 
 **Free time:** she'd open Edit account and look at her name's cell and glyph, try Start a room with nothing open

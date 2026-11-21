@@ -1750,7 +1750,7 @@
     }
   },
   "room": {
-    "pluginFilters": "Le filtre de plugin {names} est activé, et les salles ne l'utilisent pas. Réinitialisez-le ou désactivez-le d'abord. | Les filtres de plugin {names} sont activés, et les salles ne les utilisent pas. Réinitialisez-les ou désactivez-les d'abord.",
+    "pluginFilters": "Ce dessin contient des réglages du filtre de plugin {names}, que les salles n'utilisent pas. Réinitialisez-le d'abord. | Ce dessin contient des réglages des filtres de plugin {names}, que les salles n'utilisent pas. Réinitialisez-les d'abord.",
     "pluginSolvers": "{names} utilise un solveur de plugin, que les salles n'utilisent pas. Choisissez-lui un solveur intégré, ou aplatissez le dessin d'abord. | {names} utilisent des solveurs de plugin, que les salles n'utilisent pas. Choisissez-leur des solveurs intégrés, ou aplatissez le dessin d'abord."
   },
   "art": {
