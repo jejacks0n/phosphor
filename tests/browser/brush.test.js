@@ -136,6 +136,22 @@ describe('R13: paint on the base in Monochrome ASCII takes the pins', () => {
     expect(CELLS.map((col) => shown(project, col, 0))).toEqual([' ', ' ', '.', '%', '@', '@', '#']);
   });
 
+  // The owner's screenshot: a soft stroke's edge left dashes across the black. A pinned space's two pixels are its
+  // background over its foreground (black over white); the PIXEL view draws its look over them (R11), but a pin the paint
+  // took showed them bare. The cell keeps its look in its pixels as the pin goes: half a cell painted leaves the other
+  // half as it showed.
+  test('a cell the paint only half covers keeps the look it had in its other half, with no bands', async () => {
+    const { project } = await open();
+    const looks = [0, 86].map((col) => project.renderer.baseLook(col, 0, project.processParams));
+    expect(project.baseColorAt(0, 1)).toBe('#ffffff'); // the pinned space's stored foreground, under its black look
+    project.paintStroke([{ x: 0, y: 0, alpha: 1 }, { x: 86, y: 0, alpha: 1 }], '#ffffff'); // the top halves alone
+    project.commitEdit();
+    await settle(project);
+    const hex = ({ r, g, b }) => '#' + [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+    expect([project.baseColorAt(0, 1), project.baseColorAt(86, 1)]).toEqual([hex(looks[0][1]), hex(looks[1][1])]);
+    expect(project.baseColorAt(0, 1)).toBe('#000000');
+  });
+
   test('the Eraser on the base, soft or in the PIXEL view, takes the pins too', async () => {
     const { project } = await open();
     project.eraseEditPixels([{ x: 86, y: 0, alpha: 0.5 }, { x: 86, y: 1, alpha: 0.5 }, { x: 87, y: 0 }, { x: 87, y: 1 }]);
