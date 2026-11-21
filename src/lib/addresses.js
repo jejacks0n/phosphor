@@ -46,5 +46,5 @@ export function fromHashAddress(href) {
   if (!url.hash.startsWith('#/')) return null;
   const inner = new URL(url.hash.slice(1).replace(/^\/+/, '/'), url.origin);
   for (const [name, value] of inner.searchParams) url.searchParams.set(name, value);
-  return inner.pathname + url.search;
+  return inner.pathname.replace(/^\/+/, '/') + url.search;
 }

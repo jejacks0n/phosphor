@@ -51,6 +51,7 @@ test.each([
   ['https://phosphor.work/#/', '/'],
   ['https://phosphor.work/?room=a&plugins=off#/pixel?room=b', '/pixel?room=b&plugins=off'],   // the hash's query wins
   ['https://phosphor.work/#//evil.example/x', '/evil.example/x'],   // never another origin
+  ['https://phosphor.work/#/.//evil.example/x', '/evil.example/x'],
   ['https://phosphor.work/social', null],
   ['https://phosphor.work/#section', null],
 ])('an old hash address %s is the path address %s', (href, expected) => expect(fromHashAddress(href)).toBe(expected));

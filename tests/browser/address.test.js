@@ -9,7 +9,7 @@ import { useRoomStore, hasLeftRoom } from '@/store/RoomStore';
 import { forgetKey } from '@/social/keys';
 import { ownSocialDatabase } from '../support/socialDatabase.js';
 import { fakeServer, member, sockets, useFakeSockets } from '../support/socialServer.js';
-import { createAddressRouter, followAddress } from '@/router';
+import { createAddressRouter, followAddress, hashAddresses } from '@/router';
 import { cancelOnBack } from '@/lib/focus';
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
@@ -62,6 +62,7 @@ afterEach(() => {
   stop?.();
   room.close({ spent: false });
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -1027,4 +1028,15 @@ test('a store changing while it asks moves the address only after the answer', a
   await settled();
   expect(address()).toBe(`/sauce?room=${ID}`);
   expect(room.role).toBe('host');
+});
+
+test('the web build has path addresses; the desktop app and VITE_ADDRESSES=hash have hash ones', () => {
+  vi.stubEnv('VITE_DESKTOP', '');
+  vi.stubEnv('VITE_ADDRESSES', '');
+  expect(hashAddresses()).toBe(false);
+  vi.stubEnv('VITE_ADDRESSES', 'hash');
+  expect(hashAddresses()).toBe(true);
+  vi.stubEnv('VITE_ADDRESSES', '');
+  vi.stubEnv('VITE_DESKTOP', '1');
+  expect(hashAddresses()).toBe(true);
 });
