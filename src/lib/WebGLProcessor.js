@@ -2,6 +2,8 @@
  * WebGL-based image processing for high-performance filters.
  */
 
+import { failFilter, optionValues, scriptOptions } from '../plugins/solvers.js';
+
 const VERTEX_SHADER = `
     attribute vec2 position;
     attribute vec2 texCoord;
@@ -12,6 +14,9 @@ const VERTEX_SHADER = `
         vTexCoord = vec2(texCoord.x, uFlipY ? 1.0 - texCoord.y : texCoord.y);
     }
 `;
+
+// The main shader's luma weights (Edges), which a plugin filter's luma() shares.
+const LUMA = 'vec3(0.299, 0.587, 0.114)';
 
 const FRAGMENT_SHADER = `
     precision highp float;
@@ -204,7 +209,7 @@ const FRAGMENT_SHADER = `
 
         // Sobel (Edges)
         if (uEdges > 0.0) {
-            vec3 lum = vec3(0.299, 0.587, 0.114);
+            vec3 lum = ${LUMA};
             float edge = 0.0;
             float thickness = uEdgeThickness;
 
@@ -278,6 +283,26 @@ const FRAGMENT_SHADER = `
     }
 `;
 
+const GLSL_TYPES = { slider: 'float', checkbox: 'bool', choice: 'int', color: 'vec3' };
+// An option's uniform: opt_ and its id, a hyphen made an underscore (a hyphen isn't GLSL; ids have no underscores, so
+// two never meet).
+const optUniform = (id) => `opt_${id.replace(/-/g, '_')}`;
+
+// A plugin filter's pass (the body of its vec3 filter()) in a program of its own, after the prelude docs/plugins.md
+// describes: pixel(d), the color d processed pixels away as the pass before left it (the edge's past the border), uv,
+// uResolution, luma() and an opt_ uniform for each option.
+const filterSource = (pass, options) => `precision highp float;
+uniform sampler2D uImage; uniform vec2 uResolution; varying vec2 vTexCoord;
+vec2 uv;
+vec3 pixel(vec2 d) { vec2 h = 0.5 / uResolution; return texture2D(uImage, clamp(uv + d / uResolution, h, 1.0 - h)).rgb; }
+float luma(vec3 c) { return dot(c, ${LUMA}); }
+${options.map((option) => `uniform ${GLSL_TYPES[option.kind]} ${optUniform(option.id)};`).join('\n')}
+vec3 filter() {
+${pass}
+}
+void main() { uv = vTexCoord; gl_FragColor = vec4(clamp(filter(), 0.0, 1.0), texture2D(uImage, uv).a); }
+`;
+
 export default class WebGLProcessor {
   constructor() {
     this.canvas = document.createElement('canvas');
@@ -293,6 +318,9 @@ export default class WebGLProcessor {
     this.texture = null;
     this.paletteTexture = null;
     this.lastImage = null;
+    // Plugin filters' programs, `${hash}|${ref}|${pass}` -> program, or null for a pass that didn't build (its filter is
+    // skipped until a new script replaces it). Those a process didn't use are deleted at its end.
+    this.filterPrograms = new Map();
   }
 
   // A picture larger than the GPU takes (it would come out black) goes up scaled down to fit; the
@@ -310,14 +338,22 @@ export default class WebGLProcessor {
 
   #createProgram(vsSource, fsSource) {
     const gl = this.gl;
-    const vs = this.#createShader(gl.VERTEX_SHADER, vsSource);
+    // The fragment shader first: a plugin filter's may not build, and then there's no vertex shader left over.
     const fs = this.#createShader(gl.FRAGMENT_SHADER, fsSource);
+    const vs = this.#createShader(gl.VERTEX_SHADER, vsSource);
     const program = gl.createProgram();
     gl.attachShader(program, vs);
     gl.attachShader(program, fs);
+    // Every program draws from the one pair of buffers (initBuffers), so each has its attributes in the same places.
+    gl.bindAttribLocation(program, 0, 'position');
+    gl.bindAttribLocation(program, 1, 'texCoord');
     gl.linkProgram(program);
+    gl.deleteShader(vs); // freed with the program
+    gl.deleteShader(fs);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      throw new Error(gl.getProgramInfoLog(program));
+      const log = gl.getProgramInfoLog(program);
+      gl.deleteProgram(program);
+      throw new Error(log);
     }
     return program;
   }
@@ -362,6 +398,48 @@ export default class WebGLProcessor {
     const texLoc = gl.getAttribLocation(program, 'texCoord');
     gl.enableVertexAttribArray(texLoc);
     gl.vertexAttribPointer(texLoc, 2, gl.FLOAT, false, 0, 0);
+  }
+
+  // The programs of the plugin filters in a process that built, [{ filter, programs }], in their order; used gets every
+  // key looked up. A filter whose pass doesn't build is left out, its other passes too, and said (failFilter) when it's
+  // built: its entry stays null, so later calls skip it without saying it again, until a new script's hash replaces it.
+  // A build that fails because the context is lost keeps nothing (process says the loss).
+  #filtersBuilt(filters, used) {
+    const built = [];
+    for (const filter of filters) {
+      const programs = [];
+      for (const [i, pass] of filter.passes.entries()) {
+        const key = `${filter.hash}|${filter.ref}|${i}`;
+        used.add(key);
+        if (!this.filterPrograms.has(key)) {
+          try {
+            this.filterPrograms.set(key, this.#createProgram(VERTEX_SHADER, filterSource(pass, filter.options)));
+          } catch (error) {
+            if (this.gl.isContextLost()) break;
+            this.filterPrograms.set(key, null);
+            failFilter(filter.ref, { log: error.message || 'no log' }, filter.hash); // never empty, as ShapeMatcher's
+          }
+        }
+        const program = this.filterPrograms.get(key);
+        if (!program) break;
+        programs.push(program);
+      }
+      if (programs.length === filter.passes.length) built.push({ filter, programs });
+    }
+    return built;
+  }
+
+  // A filter's option values as its opt_ uniforms: a slider a float, a checkbox a bool, a choice its index and a color
+  // a vec3, each channel 0-1.
+  #setOptions(program, filter) {
+    const gl = this.gl, values = scriptOptions(filter, optionValues(filter, filter.values));
+    for (const option of filter.options) {
+      const loc = gl.getUniformLocation(program, optUniform(option.id)), value = values[option.id];
+      if (loc === null) continue; // not read by the pass: compiled away
+      if (option.kind === 'slider') gl.uniform1f(loc, value);
+      else if (option.kind === 'color') gl.uniform3f(loc, value.r / 255, value.g / 255, value.b / 255);
+      else gl.uniform1i(loc, Number(value));
+    }
   }
 
   // snapLastPass: false leaves the CGA/VGA palette snap out of the last pass (a bake captures the
@@ -414,10 +492,15 @@ export default class WebGLProcessor {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, paletteSize, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, data);
     }
 
+    // Plugin filters (params.pluginFilters, [{ ref, pluginId, hash, passes, options, values }], in run order) go between
+    // the effects and the color adjustments. With none that builds, the passes are exactly as without them.
+    const pluginFilters = params.pluginFilters ?? [], used = new Set();
+    const built = this.#filtersBuilt(pluginFilters, used), filtered = built.length > 0;
+
     gl.useProgram(program);
 
-    const setUniform = (name, val) => {
-      const loc = gl.getUniformLocation(program, name);
+    const setUniform = (name, val, on = program) => {
+      const loc = gl.getUniformLocation(on, name);
       if (typeof loc === 'undefined' || loc === null) return;
       if (typeof val === 'number') gl.uniform1f(loc, val);
       else if (typeof val === 'boolean') gl.uniform1i(loc, val ? 1 : 0);
@@ -446,15 +529,15 @@ export default class WebGLProcessor {
     const passes = params.passes || 1;
     let currentSrc = this.texture, drawn = 0;
 
-    // Draws a pass of what's drawn so far into the next scratch texture.
-    const pass = () => {
+    // Draws a pass of what's drawn so far into the next scratch texture, with the main program or a filter's.
+    const pass = (on = program) => {
       const destTex = tempTextures[drawn++ % 2];
       gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
       gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, destTex, 0);
       gl.viewport(0, 0, w, h);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, currentSrc);
-      gl.uniform1i(gl.getUniformLocation(program, 'uImage'), 0);
+      gl.uniform1i(gl.getUniformLocation(on, 'uImage'), 0);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       currentSrc = destTex;
     };
@@ -500,9 +583,30 @@ export default class WebGLProcessor {
       setUniform('uEdgeColor', params.edgeColor ?? [0, 0, 0]);
       setUniform('uEdgeThickness', params.edgeThickness ?? 1);
       setUniform('uPaletteSize', paletteSize);
-      setUniform('uUsePalette', paletteSize > 0 && (snapLastPass || i < passes - 1));
-      setUniform('uApplyFilters', i === passes - 1);
+      // With plugin filters the last main pass neither adjusts nor snaps: the pass after the filters does.
+      setUniform('uUsePalette', paletteSize > 0 && ((snapLastPass && !filtered) || i < passes - 1));
+      setUniform('uApplyFilters', !filtered && i === passes - 1);
 
+      pass();
+    }
+
+    if (filtered) {
+      // Each filter's passes in order, each its own program reading what the one before left.
+      for (const { filter, programs } of built) {
+        for (const filterProgram of programs) {
+          gl.useProgram(filterProgram);
+          setUniform('uFlipY', false, filterProgram);
+          setUniform('uResolution', [w, h], filterProgram);
+          this.#setOptions(filterProgram, filter);
+          pass(filterProgram);
+        }
+      }
+      // Then one more main pass with no effects: the color adjustments, Sharpen and the snap the last pass held back.
+      gl.useProgram(program);
+      setUniform('uFlatten', 0);
+      setUniform('uEdges', 0);
+      setUniform('uUsePalette', paletteSize > 0 && snapLastPass);
+      setUniform('uApplyFilters', true);
       pass();
     }
 
@@ -530,14 +634,28 @@ export default class WebGLProcessor {
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+    // A context lost while the filters drew is said for each filter in the call.
+    if (pluginFilters.length > 0 && gl.isContextLost()) for (const { ref, hash } of pluginFilters) failFilter(ref, { lost: true }, hash);
+
     // Clean up multi-pass resources
     gl.deleteFramebuffer(fb);
     tempTextures.forEach(tex => gl.deleteTexture(tex));
+    this.#dropFilterPrograms(used);
+  }
+
+  // The filter programs whose keys aren't in keep, deleted.
+  #dropFilterPrograms(keep = new Set()) {
+    for (const [key, program] of this.filterPrograms) {
+      if (keep.has(key)) continue;
+      if (program) this.gl.deleteProgram(program);
+      this.filterPrograms.delete(key);
+    }
   }
 
   destroy() {
     if (this.texture) this.gl.deleteTexture(this.texture);
     if (this.paletteTexture) this.gl.deleteTexture(this.paletteTexture);
+    this.#dropFilterPrograms();
     this.lastImage = null;
   }
 }
