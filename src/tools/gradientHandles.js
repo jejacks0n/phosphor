@@ -11,7 +11,7 @@
 // or the last) opens that chip's box for it. Each drag or click that changes the gradient is one undo step;
 // removeStop is Delete's. The handles are where the shape shows (placedShapes: a follower on its path), and a drag is
 // taken back through that to the gradient's own place on the shape.
-import { MOST_STOPS, apply, gradientColorAt, invert, isGradient, multiply, translation, withShape } from '@/document/shapes.js';
+import { MOST_STOPS, apply, gradientColorAt, gridMatrix, invert, isGradient, multiply, translation, withShape } from '@/document/shapes.js';
 import { snappedEnd } from '@/tools/shapes.js';
 import { DOUBLE_MS, DOUBLE_PX } from '@/tools/handlePick.js';
 import { placedShapes } from '@/document/followers.js';
@@ -144,7 +144,8 @@ export const gradientDrag = {
     } else if (drag.kind === 'end') {
       const { p0, p1 } = gradientHandles(shown, slot), fixed = drag.which ? p0 : p1, moving = drag.which ? p1 : p0;
       const end = workspace.isShiftPressed ? snappedEnd(fixed, to, project.pixelAspect) : to;
-      const turn = about(local(fixed), local(moving), local(end));
+      const a = project.pixelAspect, flat = (p) => ({ x: local(p).x, y: local(p).y * a }); // on screen, where a grid pixel is a as tall as wide
+      const flatTurn = about(flat(fixed), flat(moving), flat(end)), turn = flatTurn && gridMatrix(flatTurn, a);
       if (turn) next = withPaint(start, slot, { m: multiply(turn, start[slot].m) });
     } else if (drag.kind === 'stop') {
       const { p0, p1 } = gradientHandles(shown, slot), on = along(p0, p1, to, unit), stops = start[slot].stops;

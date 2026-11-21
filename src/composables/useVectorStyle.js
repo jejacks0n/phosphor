@@ -49,7 +49,7 @@ export function useVectorStyle() {
     const colors = { from: workspace.editFgColor, to: workspace.editBgColor };
     project.updateShapes(selected.value.map((key) => {
       const shape = project.shapes.get(key);
-      return [key, withShape(shape, { [slot]: fillAs(shape, kind, colors, slot) })];
+      return [key, withShape(shape, { [slot]: fillAs(shape, kind, colors, slot, project.pixelAspect) })];
     }));
     if (kind !== 'solid') workspace.vectorGradientSlot = slot;
   };

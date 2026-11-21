@@ -5,7 +5,7 @@ import { test, expect, onTestFinished, vi } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { outputKey } from '../support/scenes.js';
 import { layoutWide } from '@/lib/Cells';
-import { MOST_SHAPES, deletePoint, makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, stacked, withShape, worldPoints } from '@/document/shapes';
+import { MOST_SHAPES, deletePoint, fillAs, multiply, makeShape, outlines, rectShape, ellipseShape, translation, transformed, rotation, scaling, setSmooth, stacked, withShape, worldPoints } from '@/document/shapes';
 import ShapeLayer, { paintShape } from '@/document/ShapeLayer.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { toastMessage } from '@/composables/useToast';
@@ -13,8 +13,9 @@ import { shapeAt } from '@/lib/shapeHits.js';
 import vnode, { pickedPoints } from '@/tools/vnode.js';
 import vselect, { boxHandles, selectionBox } from '@/tools/vselect.js';
 import vshape from '@/tools/vshape.js';
-import { gradientHandles, gradientKey } from '@/tools/gradientHandles.js';
+import { gradientDrag, gradientHandles, gradientKey } from '@/tools/gradientHandles.js';
 import { DOUBLE_MS } from '@/tools/handlePick.js';
+import { font8 } from '../support/blockFonts.js';
 
 // performance.now, moved past a double-click's window by each call of what it returns: a click after that is a
 // click again (the next handle there), not a double-click (a stop's color).
@@ -42,8 +43,9 @@ async function fromScratch(project) {
   return { output: outputKey(project), cells: key(project.cells) };
 }
 
-async function gradient(cols = 30, rows = 30) {
+async function gradient(cols = 30, rows = 30, font = null) {
   const app = await createTestApp();
+  if (font) await app.project.setDrawingFont(font);
   await loadImage(app.project, '/tests/fixtures/images/gradient.png', { cols, rows });
   return app;
 }
@@ -1101,4 +1103,24 @@ test('the Shape tool\'s handles scale and turn the selected shape; a drag off th
 
   drag({ x: center.x - 1, y: center.y - 1 }, { x: center.x + 2, y: center.y + 2 }); // inside its box, off the handles
   expect(project.shapes.size).toBe(2);
+});
+
+test('in an 8×8 font a gradient\'s end turned to 45° on screen has its stripes square to it on screen', async () => {
+  const { project, workspace } = await gradient(30, 30, font8);
+  const colors = { from: '#000000', to: '#ffffff' };
+  const rect = rectShape(4, 4, 20, 36, RED), key = project.addShape(withShape(rect, { fill: fillAs(rect, 'linear', colors, 'fill', 0.5) }));
+  workspace.vectorSelected = [key];
+  workspace.setActiveTool('vselect');
+  const shape = () => project.shapes.get(key);
+  const ctx = { project, workspace, view: 'vector', unit: { x: 8, y: 4 } };
+  const p0 = { x: 4, y: 20 }, p1 = { x: 20, y: 20 };
+  expect(gradientHandles(shape()).p0).toEqual(p0);
+  const g1 = gradientDrag.candidates(ctx, p1, 20).find((c) => c.id === 'g1');
+  g1.take();
+  gradientDrag.move(ctx, p1, { x: 12, y: 36 }); // 8 across, 16 grid rows (8 on screen) down
+  gradientDrag.end(ctx);
+  // The gradient's unit space on screen is A·m·F, A = diag(1, a).
+  const M = multiply(shape().m, shape().fill.m), S = [M[0], M[1] * 0.5, M[2], M[3] * 0.5];
+  expect(Math.atan2(S[1], S[0])).toBeCloseTo(Math.PI / 4, 6);
+  expect(S[0] * S[2] + S[1] * S[3]).toBeCloseTo(0, 6); // square: the stripes run across the line
 });

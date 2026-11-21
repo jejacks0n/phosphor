@@ -616,3 +616,11 @@ test('made round trips through JSON and a stranger\'s check, and a stranger\'s t
     assert.equal(as(bad), null, JSON.stringify(bad));
   }
 });
+
+test('in an 8×8 font a new radial gradient is round on screen; aspect 1 is today\'s', () => {
+  const rect = rectShape(0, 0, 8, 16, { fill: '#ff0000' }); // 8 × 8 on screen
+  const { m } = fillAs(rect, 'radial', { from: '#000000', to: '#ffffff' }, 'fill', 0.5), r = Math.hypot(8, 8) / 2;
+  assert.deepEqual(m.map((v) => +v.toFixed(9)), [r, 0, 0, 2 * r, 4, 8].map((v) => +v.toFixed(9)));
+  assert.deepEqual(fillAs(rect, 'radial', { from: '#000000', to: '#ffffff' }, 'fill', 1), fillAs(rect, 'radial', { from: '#000000', to: '#ffffff' }));
+  assert.deepEqual(fillAs(rect, 'linear', { from: '#000000', to: '#ffffff' }, 'fill', 1), fillAs(rect, 'linear', { from: '#000000', to: '#ffffff' }));
+});

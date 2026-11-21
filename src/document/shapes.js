@@ -263,17 +263,19 @@ export function styleColors({ vectorStyle: style, editFgColor, editFgNone }) {
 // The shape's fill (or its stroke: slot) as another kind: 'solid' (a gradient's first stop), or 'linear' (across
 // its box, left to right) or 'radial' (from its box's middle to the farthest corner), a gradient keeping its stops
 // and a color going from itself (from, for none) to the color to.
-export function fillAs(shape, kind, { from, to }, slot = 'fill') {
+export function fillAs(shape, kind, { from, to }, slot = 'fill', aspect = 1) {
   const fill = shape[slot];
   if (kind === 'solid') return isGradient(fill) ? fill.stops[0][1] : fill;
   if (isGradient(fill) && fill.type === kind) return fill;
   const stops = isGradient(fill) ? fill.stops : [[0, fill ?? from], [1, to]];
-  const { x0, y0, x1, y1 } = localBounds(shape), w = x1 - x0, h = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  // In a font whose cells aren't 1:2 (aspect ≠ 1) it's made from the box as it looks on screen (y × aspect), then given back in grid pixels.
+  const b = localBounds(shape), x0 = b.x0, x1 = b.x1, y0 = b.y0 * aspect, y1 = b.y1 * aspect, w = x1 - x0, h = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const grid = (m) => (aspect === 1 ? m : [m[0], m[1] / aspect, m[2], m[3] / aspect, m[4], m[5] / aspect]);
   if (kind === 'radial') {
     const r = Math.hypot(w, h) / 2 || 1;
-    return { type: 'radial', stops, m: [r, 0, 0, r, cx, cy] };
+    return { type: 'radial', stops, m: grid([r, 0, 0, r, cx, cy]) };
   }
-  return { type: 'linear', stops, m: w ? [w, 0, 0, w, x0, cy] : [0, h || 1, -(h || 1), 0, cx, y0] }; // a line straight down: top to bottom
+  return { type: 'linear', stops, m: grid(w ? [w, 0, 0, w, x0, cy] : [0, h || 1, -(h || 1), 0, cx, y0]) }; // a line straight down: top to bottom
 }
 
 // Matrices, [a, b, c, d, e, f] as canvas has them.
