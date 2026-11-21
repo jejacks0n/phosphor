@@ -7,6 +7,7 @@ import Canvas, { fitRect, ctx2d, boxFiltered, flatBlock } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
 import quantizeColors from './Quantizer.js';
 import { snapsLate, SAMPLES } from './CharResolver.js';
+import { beginRun, endRun } from '../plugins/hangMark.js';
 
 let glProcessor;
 let glBase; // the base layer's own, so the pipeline's processor keeps the picture uploaded
@@ -177,8 +178,26 @@ function shaderParams(params) {
     edgeThickness: parseFloat(edgeThickness),
     // Dithering and resolving characters need the colors between CGA's or VGA's: the grid is snapped later instead (Renderer).
     palette: (quantize === 'cga' || quantize === 'vga') && !snapsLate(params) ? PALETTES[quantize] : null,
-    passes: Math.max(1, Math.floor(parseFloat(flatten) / 2))
+    passes: Math.max(1, Math.floor(parseFloat(flatten) / 2)),
+    pluginFilters: params.pluginFilters ?? [],
   };
+}
+
+// The plugin filters that have been through the pipeline this visit, by ref and script hash: the first of each (its
+// first render, Bake or Into the image) runs under the hang mark (plugins/hangMark.js), so one whose shader freezes the
+// page is turned off next time. The mark names one plugin, so a call with several new filters marks the first, and the
+// next call the next.
+const filtersRan = new Set();
+function underMark(filters, fn) {
+  const first = filters.find(({ ref, hash }) => !filtersRan.has(`${ref}|${hash}`));
+  if (!first) return fn();
+  filtersRan.add(`${first.ref}|${first.hash}`);
+  beginRun(first.pluginId);
+  try {
+    return fn();
+  } finally {
+    endRun();
+  }
 }
 
 // A canvas's pixels through the shader's color adjustments and CGA/VGA snap, and nothing else (no
@@ -201,7 +220,7 @@ export function adjustedPixels(canvas, params) {
       part = Object.assign(document.createElement('canvas'), { width: w, height: bh });
       ctx2d(part).drawImage(canvas, 0, y, w, bh, 0, 0, w, bh);
     }
-    glBase.process(part, { ...shaderParams(params), blur: 0, sharpen: 0, flatten: 0, edges: 0, passes: 1 }, w, bh);
+    glBase.process(part, { ...shaderParams(params), blur: 0, sharpen: 0, flatten: 0, edges: 0, passes: 1, pluginFilters: [] }, w, bh);
     ctx.clearRect(0, 0, w, band);
     ctx.drawImage(glBase.canvas, 0, 0);
     pixels.set(ctx.getImageData(0, 0, w, bh).data, y * w * 4);
@@ -227,28 +246,30 @@ export async function processImage(image, params, { samples = true } = {}) {
   const { cols, rows, smoothing } = params;
   const { dx, dy, dw, dh, pw, ph, glParams } = prepare(image, params);
   glProcessor ??= new WebGLProcessor();
-  // A one-color picture stays one color through every pass: each pixel is adjusted alike, and blur, Flatten, Edges and
-  // Sharpen read neighbors of that color (the edges clamped). So one pixel goes through, and every grid pixel is it: it has
-  // no shape to keep, so it fills the grid at any size, never letterboxed (whose black the adjustments don't reach).
-  const one = uniform.get(image);
-  glProcessor.process(one ?? image, glParams, one ? 1 : pw, one ? 1 : ph);
-  const pixel = one && boxFiltered(glProcessor.canvas, 1, 1, 0, 0, 1, 1).data;
+  return underMark(glParams.pluginFilters, () => {
+    // A one-color picture stays one color through every pass: each pixel is adjusted alike, and blur, Flatten, Edges and
+    // Sharpen read neighbors of that color (the edges clamped). So one pixel goes through, and every grid pixel is it: it has
+    // no shape to keep, so it fills the grid at any size, never letterboxed (whose black the adjustments don't reach).
+    const one = uniform.get(image);
+    glProcessor.process(one ?? image, glParams, one ? 1 : pw, one ? 1 : ph);
+    const pixel = one && boxFiltered(glProcessor.canvas, 1, 1, 0, 0, 1, 1).data;
 
-  // Final output stage (downsizing)
-  const canvas = new Canvas();
-  canvas.resize(cols, rows);
-  canvas.ctx.imageSmoothingEnabled = true;
-  canvas.ctx.imageSmoothingQuality = smoothing;
-  // Fit by the image's natural aspect (the store's fit), not pw x ph
-  if (one) canvas.ctx.putImageData(filled(cols, rows, 0, 0, cols, rows, pixel), 0, 0);
-  else canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
-  const s = SAMPLES.w; // a grid pixel's samples each way (a cell is two grid pixels tall)
-  const sampled = !(samples && params.charMode === 'shape') ? null
-    : one ? filled(cols * s, rows * s, 0, 0, cols * s, rows * s, pixel) : boxFiltered(glProcessor.canvas, cols * s, rows * s, dx * s, dy * s, dw * s, dh * s);
+    // Final output stage (downsizing)
+    const canvas = new Canvas();
+    canvas.resize(cols, rows);
+    canvas.ctx.imageSmoothingEnabled = true;
+    canvas.ctx.imageSmoothingQuality = smoothing;
+    // Fit by the image's natural aspect (the store's fit), not pw x ph
+    if (one) canvas.ctx.putImageData(filled(cols, rows, 0, 0, cols, rows, pixel), 0, 0);
+    else canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
+    const s = SAMPLES.w; // a grid pixel's samples each way (a cell is two grid pixels tall)
+    const sampled = !(samples && params.charMode === 'shape') ? null
+      : one ? filled(cols * s, rows * s, 0, 0, cols * s, rows * s, pixel) : boxFiltered(glProcessor.canvas, cols * s, rows * s, dx * s, dy * s, dw * s, dh * s);
 
-  // Quantization happens after paint is composited (Renderer), not here. The Number palette is picked
-  // there too, from the composited picture (Renderer.composite), so it isn't worked out here.
-  return { canvas, paletteColors: params.quantize === 'count' ? null : getPaletteColors(params, canvas), samples: sampled };
+    // Quantization happens after paint is composited (Renderer), not here. The Number palette is picked
+    // there too, from the composited picture (Renderer.composite), so it isn't worked out here.
+    return { canvas, paletteColors: params.quantize === 'count' ? null : getPaletteColors(params, canvas), samples: sampled };
+  });
 }
 
 // The image as the preview is made from it (the processed image before it's downsized to the
@@ -258,10 +279,12 @@ export async function processImage(image, params, { samples = true } = {}) {
 export async function processedImage(image, params, { m = null, snap = false } = {}) {
   const { pw, ph, glParams } = prepare(image, params, m);
   if (!glProcessor) glProcessor = new WebGLProcessor();
-  glProcessor.process(image, glParams, pw, ph, { snapLastPass: snap });
-  const out = document.createElement('canvas');
-  out.width = pw;
-  out.height = ph;
-  ctx2d(out).drawImage(glProcessor.canvas, 0, 0);
-  return out;
+  return underMark(glParams.pluginFilters, () => {
+    glProcessor.process(image, glParams, pw, ph, { snapLastPass: snap });
+    const out = document.createElement('canvas');
+    out.width = pw;
+    out.height = ph;
+    ctx2d(out).drawImage(glProcessor.canvas, 0, 0);
+    return out;
+  });
 }
