@@ -13,6 +13,7 @@ import { knownBlocksOf, loadFonts, addBitmapFont, storedBitmapFont } from '@/lib
 import { encodeBlocks, encodeFont, decodeBlocks, decodeFont, fontId } from '@/lib/BitmapFont.js';
 import { encodeLines, encodeSets } from '@/lib/FontLines.js';
 import { sauceFont } from '@/lib/fontLibrary.js';
+import { fontSettingsOf } from '@/store/project/font.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
 import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
@@ -273,7 +274,7 @@ export const documentActions = {
       if (reason) return void toast(reason);
       // An .ans whose SAUCE names a library font opens in it (kept in Yours); a font that can't be fetched leaves it in the one in use.
       let named = null;
-      if (!art.xbin && sauce?.fontName && !this.inRoom) {
+      if (/\.ans$/i.test(file.name) && sauce?.fontName && !this.inRoom) { // a CP437 file: a .utf8ans's characters need the font in use
         try {
           const file = await sauceFont(sauce.fontName);
           if (file) {
@@ -293,7 +294,7 @@ export const documentActions = {
         rows: 2 * art.rows,
         ...nameOf(file),
         // the font in use stays, but an XBin sets it: its own, or none (IBM VGA, below)
-        ...(named ? { fontBitmap: encodeFont(named), fontName: named.name, fontBlocks: '', fontLines: '', fontSets: '' } : art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '', fontBlocks: art.font?.blocks ? encodeBlocks(art.font.blocks) : '', fontLines: stored?.lines ? encodeLines(stored.lines) : '', fontSets: stored?.sets ? encodeSets(stored.sets) : '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets }),
+        ...(named ? fontSettingsOf(named) : art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '', fontBlocks: art.font?.blocks ? encodeBlocks(art.font.blocks) : '', fontLines: stored?.lines ? encodeLines(stored.lines) : '', fontSets: stored?.sets ? encodeSets(stored.sets) : '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets }),
         ...(Array.isArray(art.palette) && art.palette.some((hex, i) => hex !== PALETTES.cga[ANSI_OF_DOS[i]].hex)
           ? { quantize: 'palette', palette: art.palette.join(' ') } // an XBin's own 16, in its DOS order
           : { quantize: Array.isArray(art.palette) ? 'cga' : art.palette }),

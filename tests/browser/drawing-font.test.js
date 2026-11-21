@@ -556,7 +556,7 @@ function stubSauceLibrary({ fail = false } = {}) {
   });
   return fetches;
 }
-const sauceAns = (fontName) => new File([new AnsiFile(2, 1, [{ char: 'A', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }, { char: 'B', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }]).toBlob({ colorMode: 'cga', sauce: { title: '', author: '', group: '', date: '', fontName, use9pxFont: false, comments: [] } })], 'art.ans');
+const sauceAns = (fontName, name = 'art.ans') => new File([new AnsiFile(2, 1, [{ char: 'A', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }, { char: 'B', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }]).toBlob({ colorMode: 'cga', sauce: { title: '', author: '', group: '', date: '', fontName, use9pxFont: false, comments: [] } })], name);
 
 test('using a library font with a SAUCE name sets the SAUCE Font name in the same undo step', async () => {
   const project = await blank();
@@ -604,4 +604,27 @@ test('a SAUCE font that can\'t be fetched leaves the file open in the built-in f
   expect(project.cols).toBe(2);
   expect(toastMessage.value).toContain('Amiga Topaz 1+');
   closeToast();
+});
+
+test('opening a .utf8ans whose SAUCE names a mapped font opens as before, with nothing fetched', async () => {
+  const project = await blank();
+  const fetches = stubSauceLibrary();
+  await project.openArtFile(sauceAns('Amiga Topaz 1+', 'art.utf8ans'));
+  expect(project.drawingFont).toBeNull();
+  expect(fetches).toEqual([]);
+});
+
+test('an .ans naming a font already in Yours opens with the lines and sets kept for it', async () => {
+  const project = await blank();
+  const workspace = useWorkspaceStore();
+  stubSauceLibrary();
+  const file = new File([new Uint8Array(256 * 16).fill(5)], 'TopazPlus a500.F16');
+  const stored = await addBitmapFont(file);
+  const lines = { hide: [], styles: [heavy] };
+  await storeFontPart(stored.id, 'lines', lines);
+  workspace.userFonts = await loadFonts();
+  await project.openArtFile(sauceAns('Amiga Topaz 1+'));
+  expect(project.drawingFont.name).toBe('TopazPlus a500');
+  expect(project.drawingFont.lines.styles[0].name).toBe('Heavy');
+  expect(project.canUndo).toBe(false);
 });

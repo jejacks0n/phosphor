@@ -27,7 +27,7 @@ const CHARS = { ans: ['a', 'Z', '█', '▀', '░', '╬', ' ', '~'], utf8ans: 
 const build = (cols, rows, mode, chars) => layoutWide(Array.from({ length: cols * rows }, (_, i) =>
   buildCell(COLORS[mode][(i * 3 + (i >> 3)) % 6], COLORS[mode][(i * 5 + 1) % 6], chars[(i * 7 + (i >> 2)) % chars.length], 'ansi')), cols);
 
-const SAUCE = { title: 'Boat', author: 'Ann', group: 'Crew', date: '20261102', fontName: 'Rowboat 8', use9pxFont: true, comments: ['Rowing out', 'at dawn'] };
+const SAUCE = { title: 'Boat', author: 'Ann', group: 'Crew', date: '20261102', fontName: 'IBM VGA50', use9pxFont: true, comments: ['Rowing out', 'at dawn'] };
 
 const artFile = async (name, cols, rows, cells, opts) => new File([new AnsiFile(cols, rows, cells).toBlob(opts)], name);
 
@@ -58,7 +58,7 @@ test('a CGA .ans opens as a document: its cells, size, palette and SAUCE, nothin
   const project = await afterAnotherDocument();
   const cols = 10, rows = 4, cells = build(cols, rows, 'cga', CHARS.ans);
   const before = project.documentId;
-  await project.openArtFile(await artFile('boat.ans', cols, rows, cells, { colorMode: 'cga', sauce: SAUCE }));
+  await project.openArtFile(await artFile('boat.ans', cols, rows, cells, { colorMode: 'cga', sauce: { ...SAUCE, fontName: 'Rowboat 8' } }));
   await settle(project);
 
   expect(project.documentId).not.toBe(before);
