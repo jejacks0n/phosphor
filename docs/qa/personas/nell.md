@@ -279,6 +279,8 @@ change one cell on the way.
 - Expects: details say "Bitmap 8×h · Library" with both buttons; VileR says None given · credits in FONTS.TXT, Mœbius says Unknown · Know it? Tell us; a tag chip becomes the picked tag; Use this font makes it the drawing's font and puts it in Yours, Add to Yours only puts it in Yours; a font already in Yours shows its stored details with the same From and License lines and isn't added twice; FROGBLOCK says "not included" with Get it ↗, + Load and its credit, and the loaded file shows as FROGBLOCK with its credit under its name, and its credit shows under the settings panel's Font field while the drawing uses it.
 - Probes: `interrupt`: reload right after Use this font and check the font is in Yours once; `offline`: Use this font with the network off says so and changes nothing.
 - Rated: no (library)
+- Also: uses Amiga Topaz 1+ from the library, opens the SAUCE tab, then presses undo; exports an `.ans`, then opens a file whose SAUCE font name is Amiga Topaz 1+ (and one that says IBM VGA), and again with the network off.
+- Also expects: Font name reads Amiga Topaz 1+ after Use this font and one undo takes the font and the name back together; the opened file shows in Amiga Topaz 1+ with that font in Yours and nothing to undo; the IBM VGA file opens as it always did; offline, the file still opens, in the font in use, with a note that the font couldn't be fetched.
 
 **Free time:** she'd make a second style, draw a spiral with each, and undo the lot.
 

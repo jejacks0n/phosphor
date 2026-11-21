@@ -22,9 +22,9 @@ export function useFontActions() {
   const drawsIn = (id) => !!project.drawingFont && fontId(project.drawingFont) === id;
 
   // A bitmap font becomes the drawing's own; any other font takes it away again.
-  async function choose(id) {
+  async function choose(id, options) {
     if (loaded.value.find((font) => font.id === id)?.kind === 'bitmap') {
-      await project.setDrawingFont(await storedBitmapFont(id));
+      await project.setDrawingFont(await storedBitmapFont(id), options);
       return;
     }
     workspace.displayFont = id; // first, so a toast about the cells' shape names it
@@ -33,7 +33,7 @@ export function useFontActions() {
 
   // A font file kept in this browser and put to use (not in someone else's room: the font is theirs); its entry. A
   // bitmap font missing blocks says which (not when a room refused it: that says so).
-  async function loadFile(file) {
+  async function loadFile(file, options) {
     const bitmap = /\.(f\d\d|png)$/i.test(file.name) || file.type === 'image/png';
     let font = await (bitmap ? addBitmapFont(file) : addFont(file));
     const own = bitmap && drawsIn(font.id) ? project.drawingFont : null;
@@ -46,7 +46,7 @@ export function useFontActions() {
       }
     }
     workspace.userFonts = [...loaded.value.filter((f) => f.id !== font.id), font];
-    if (!hostsFont.value) await choose(font.id);
+    if (!hostsFont.value) await choose(font.id, options);
     if (bitmap && (hostsFont.value || drawsIn(font.id))) sayMissingBlocks(await storedBitmapFont(font.id)); // blocks it lacks besides its lower half (useFontSetup)
     return font;
   }
@@ -57,8 +57,9 @@ export function useFontActions() {
   const held = (entry) => loaded.value.some((f) => f.id === entry.fontId);
   async function useLibraryFont(entry) {
     if (drawsIn(entry.fontId)) return;
-    if (!held(entry)) return loadFile(await libraryFile(entry));
-    if (!hostsFont.value) await choose(entry.fontId);
+    const options = entry.sauce ? { sauceFontName: entry.sauce } : undefined; // the SAUCE name the export writes, in the same step
+    if (!held(entry)) return loadFile(await libraryFile(entry), options);
+    if (!hostsFont.value) await choose(entry.fontId, options);
   }
   async function keepLibraryFont(entry) {
     if (held(entry) || drawsIn(entry.fontId)) return;

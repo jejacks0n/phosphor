@@ -90,3 +90,38 @@ describe('font library', () => {
     expect(u.searchParams.get('title')).toBe('License for alpha (Mœbius)');
   });
 });
+
+describe('SAUCE font names', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const reply = (n) => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(n) });
+  const names = { 'Amiga Topaz 1+': { file: 'moebius/amiga/T.F16', name: 'TopazPlus a500', height: 16 } };
+
+  it("sauceFont('IBM VGA') is null and fetches nothing", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const { sauceFont } = await mod();
+    expect(await sauceFont('IBM VGA')).toBeNull();
+    expect(await sauceFont('')).toBeNull();
+    expect(await sauceFont(undefined)).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('fetches the map once and returns the mapped font as a File, or null for a name it lacks', async () => {
+    const fetchMock = vi.fn(async (url) => (url.endsWith('sauce.json') ? { ok: true, json: async () => names } : reply(4096)));
+    vi.stubGlobal('fetch', fetchMock);
+    const { sauceFont } = await mod();
+    expect((await sauceFont('Amiga Topaz 1+')).name).toBe('TopazPlus a500.F16');
+    expect(await sauceFont('Nobody 9')).toBeNull();
+    await sauceFont('Amiga Topaz 1+');
+    expect(fetchMock.mock.calls.filter(([url]) => url.endsWith('sauce.json'))).toHaveLength(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('/fonts/library/sauce.json');
+  });
+
+  it('refetches the map after a failure', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 500 }).mockResolvedValueOnce({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+    const { sauceFont } = await mod();
+    await expect(sauceFont('Amiga Topaz 1+')).rejects.toThrow();
+    expect(await sauceFont('Amiga Topaz 1+')).toBeNull();
+  });
+});

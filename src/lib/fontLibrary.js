@@ -5,6 +5,7 @@ const base = () => `${import.meta.env.BASE_URL}fonts/library/`;
 const pad = (h) => String(h).padStart(2, '0');
 
 let loading = null;
+let sauceNames = null;
 
 // The index, fetched once per page; a failure forgets itself so Try again refetches.
 export function loadLibrary() {
@@ -66,13 +67,31 @@ export async function libraryFile(entry) {
   return new File([bytes], `${entry.name}.F${pad(entry.height)}`);
 }
 
+// The library font a SAUCE font name stands for, as a File, or null: the built-in IBM VGA, an empty name, or a name the
+// library doesn't map. The map is fetched once per page; a failed fetch (the map's or the font's) throws.
+export async function sauceFont(name) {
+  if (!name || name === 'IBM VGA') return null;
+  sauceNames ??= fetch(`${base()}sauce.json`)
+    .then((r) => {
+      if (!r.ok) throw new Error(`library SAUCE names ${r.status}`);
+      return r.json();
+    })
+    .catch((e) => {
+      sauceNames = null;
+      throw e;
+    });
+  const entry = (await sauceNames)[name];
+  return entry ? libraryFile(entry) : null;
+}
+
 export function tellUsUrl(entry, index) {
   const collection = index.collections[entry.collection]?.name;
   const title = `License for ${entry.name}${collection ? ` (${collection})` : ''}`;
   return `https://github.com/jejacks0n/phosphor/issues/new?title=${encodeURIComponent(title)}`;
 }
 
-// For tests: forget the fetched index.
+// For tests: forget the fetched index and SAUCE names.
 export const forgetLibrary = () => {
   loading = null;
+  sauceNames = null;
 };

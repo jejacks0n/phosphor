@@ -17,7 +17,8 @@ import { markRaw, shallowRef, toRaw } from 'vue';
 
 const heightOf = (font) => font?.height ?? 16;
 // The settings that hold the drawing's font.
-const fontKeysOf = (project) => ({ fontBitmap: project.fontBitmap, fontName: project.fontName, fontBlocks: project.fontBlocks, fontLines: project.fontLines, fontSets: project.fontSets });
+// settings: the step's own, which may carry the SAUCE font name along, so its before does too.
+const fontKeysOf = (project, settings) => ({ fontBitmap: project.fontBitmap, fontName: project.fontName, fontBlocks: project.fontBlocks, fontLines: project.fontLines, fontSets: project.fontSets, ...(settings && 'sauceFontName' in settings && { sauceFontName: project.sauceFontName }) });
 // A BitmapFont (or none) as the settings that hold it.
 export const fontSettingsOf = (font) => ({
   fontBitmap: font ? encodeFont(font) : '',
@@ -45,7 +46,7 @@ function newHeight(project, font, settings, from, to) {
   const stretches = project.imageIsWorkingCopy && !isUniform(project.image); // a working copy with content: its pixels are grid pixels
   if (project.resizesCanvas || stretches) return regrid(project, font, settings, from, to);
   const ratio = Number(project.aspectRatio), was = project.cols;
-  const before = { ...fontKeysOf(project), cols: project.cols, rows: project.rows, aspectRatio: project.aspectRatio };
+  const before = { ...fontKeysOf(project, settings), cols: project.cols, rows: project.rows, aspectRatio: project.aspectRatio };
   const after = { ...settings, ...fontGrid(project.cols, project.rows, from, to), aspectRatio: ratio > 0 ? ratio * to / from : project.aspectRatio };
   project.commitPending();
   project.$patch(after);
@@ -112,7 +113,7 @@ function switched(project, settings, picture, w, oldFit, fitAspect, from, to) {
 
   const ratio = Number(project.aspectRatio);
   const before = {
-    settings: { ...fontKeysOf(project), cols: project.cols, rows: project.rows, fit: oldFit, aspectRatio: project.aspectRatio, baseScale: project.baseScale, paintScale: project.paintScale },
+    settings: { ...fontKeysOf(project, settings), cols: project.cols, rows: project.rows, fit: oldFit, aspectRatio: project.aspectRatio, baseScale: project.baseScale, paintScale: project.paintScale },
     image: project.image, imageBuffer: project.imageBuffer, base: project.baseLayer, stack: stackState(project), shapes: project.shapes,
     edit: { editCells: project.editCells, paintLayer: project.paintLayer, hasPaint: project.hasPaint },
   };
@@ -170,15 +171,16 @@ const ENCODE = { blocks: encodeBlocks, lines: encodeLines, sets: encodeSets };
 export const fontActions = {
   // font: a BitmapFont ({ name, height, bytes }) or null for none. The font it already has is no step. A Promise only
   // while a working copy is stretched for a font of another height (newHeight); await it either way.
-  setDrawingFont(font) {
-    const after = fontSettingsOf(font);
+  // sauceFontName: the SAUCE font name the export writes, set in the same step (before and after both carry it).
+  setDrawingFont(font, { sauceFontName } = {}) {
+    const after = { ...fontSettingsOf(font), ...(sauceFontName !== undefined && { sauceFontName }) };
     if (Object.keys(after).every((key) => after[key] === this[key])) return;
     const reason = this.inRoom && notSetUp(font); // a room can't edit blocks, so it takes no font that needs it (undo and redo patch on their own)
     if (reason) return void toast(reason);
     if (!this.image) return void this.$patch(after); // no drawing yet: the next one's font, with nothing to undo
     const from = heightOf(this.drawingFont), to = heightOf(font);
     if (from !== to) return newHeight(this, font, after, from, to);
-    const before = fontKeysOf(this);
+    const before = fontKeysOf(this, after);
     // Lines and sets don't change the picture: a step that changes only them draws nothing again.
     const looks = Object.keys(after).some((key) => key !== 'fontLines' && key !== 'fontSets' && after[key] !== before[key]);
     // The same font with other blocks, lines or sets: undo and redo keep this browser's copy of it in step too.

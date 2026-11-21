@@ -9,11 +9,17 @@ import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
 import { registerBitmapFont, addBitmapFont, loadFonts, removeFont, storedBitmapFont, storeFontPart } from '@/lib/userFonts.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
+import { useFontActions } from '@/composables/useFontActions.js';
+import { AnsiFile } from '@/lib/AnsiFile.js';
+import { forgetLibrary } from '@/lib/fontLibrary.js';
+import { closeToast, toastMessage } from '@/composables/useToast.js';
 import { settingsFromStranger } from '@/store/settings.js';
 import { encodeSets } from '@/lib/FontLines.js';
 import { coverageOf, setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage, vgaBitmapFont } from '@/lib/GlyphCoverage.js';
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
+  forgetLibrary();
   await setDisplayFont('jetbrains');
   setGlyphRasterizer(rasterizeCoverage);
 });
@@ -534,4 +540,68 @@ test('settings from a stranger take a font with five full character sets', () =>
   const fontSets = encodeSets({ sets });
   expect(fontSets.length).toBeGreaterThan(16 * 1024);
   expect(settingsFromStranger({ fontSets })).not.toBeNull();
+});
+
+// A library font that a SAUCE font name stands for: the map and the font are fetched (a stub of the library).
+function stubSauceLibrary({ fail = false } = {}) {
+  const map = { 'Amiga Topaz 1+': { file: 'moebius/amiga/TopazPlus_a500.F16', name: 'TopazPlus a500', height: 16 } };
+  const fetches = [];
+  const real = globalThis.fetch;
+  vi.stubGlobal('fetch', async (url, ...rest) => {
+    if (!String(url).includes('fonts/library/')) return real(url, ...rest);
+    fetches.push(String(url));
+    if (fail) return { ok: false, status: 404 };
+    if (String(url).endsWith('sauce.json')) return { ok: true, json: async () => map };
+    return { ok: true, arrayBuffer: async () => new Uint8Array(256 * 16).fill(5).buffer };
+  });
+  return fetches;
+}
+const sauceAns = (fontName) => new File([new AnsiFile(2, 1, [{ char: 'A', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }, { char: 'B', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }]).toBlob({ colorMode: 'cga', sauce: { title: '', author: '', group: '', date: '', fontName, use9pxFont: false, comments: [] } })], 'art.ans');
+
+test('using a library font with a SAUCE name sets the SAUCE Font name in the same undo step', async () => {
+  const project = await blank();
+  const { useLibraryFont } = useFontActions();
+  stubSauceLibrary();
+  const entry = { fontId: 'bitmap-topaz', name: 'TopazPlus a500', file: 'moebius/amiga/TopazPlus_a500.F16', height: 16, sauce: 'Amiga Topaz 1+' };
+  await useLibraryFont(entry);
+  expect(project.drawingFont.name).toBe('TopazPlus a500');
+  expect(project.sauceFontName).toBe('Amiga Topaz 1+');
+  expect(project.sauceFields().fontName).toBe('Amiga Topaz 1+');
+  project.undo();
+  expect(project.drawingFont).toBeNull();
+  expect(project.sauceFontName).toBe('IBM VGA');
+  project.redo();
+  expect([project.drawingFont.name, project.sauceFontName]).toEqual(['TopazPlus a500', 'Amiga Topaz 1+']);
+});
+
+test('opening an .ans whose SAUCE names Amiga Topaz 1+ opens in that font', async () => {
+  const project = await blank();
+  const workspace = useWorkspaceStore();
+  const fetches = stubSauceLibrary();
+  await project.openArtFile(sauceAns('Amiga Topaz 1+'));
+  expect(project.drawingFont.name).toBe('TopazPlus a500');
+  expect(project.drawingFont.height).toBe(16);
+  expect(project.sauceFontName).toBe('Amiga Topaz 1+');
+  expect(workspace.userFonts.some((f) => f.name === 'TopazPlus a500')).toBe(true);
+  expect(project.canUndo).toBe(false);
+  expect(fetches).toHaveLength(2);
+});
+
+test('opening an .ans whose SAUCE says IBM VGA opens as before', async () => {
+  const project = await blank();
+  const fetches = stubSauceLibrary();
+  await project.openArtFile(sauceAns('IBM VGA'));
+  expect(project.drawingFont).toBeNull();
+  expect(fetches).toEqual([]);
+});
+
+test('a SAUCE font that can\'t be fetched leaves the file open in the built-in font and says so', async () => {
+  const project = await blank();
+  stubSauceLibrary({ fail: true });
+  await project.openArtFile(sauceAns('Amiga Topaz 1+'));
+  expect(project.drawingFont).toBeNull();
+  expect(project.sauceFontName).toBe('Amiga Topaz 1+');
+  expect(project.cols).toBe(2);
+  expect(toastMessage.value).toContain('Amiga Topaz 1+');
+  closeToast();
 });

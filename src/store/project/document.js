@@ -9,9 +9,10 @@ import { frameDuration, serializeFrames } from '@/document/frames.js';
 import { loadImage, readProject, writeProject, gzipped, downloadBlob, isProjectFile, PROJECT_EXTENSION, fileStem, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
-import { knownBlocksOf, loadFonts } from '@/lib/userFonts.js';
+import { knownBlocksOf, loadFonts, addBitmapFont, storedBitmapFont } from '@/lib/userFonts.js';
 import { encodeBlocks, encodeFont, decodeBlocks, decodeFont, fontId } from '@/lib/BitmapFont.js';
 import { encodeLines, encodeSets } from '@/lib/FontLines.js';
+import { sauceFont } from '@/lib/fontLibrary.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
 import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
@@ -270,6 +271,21 @@ export const documentActions = {
       const stored = art.xbin && art.font ? (useWorkspaceStore().userFonts ?? await loadFonts().catch(() => [])).find((f) => f.id === fontId(art.font)) : null; // the lines and sets kept in this browser for the XBin's font
       const reason = this.inRoom && art.xbin && notSetUp(art.font); // a room can't edit blocks, so it takes no font that needs it
       if (reason) return void toast(reason);
+      // An .ans whose SAUCE names a library font opens in it (kept in Yours); a font that can't be fetched leaves it in the one in use.
+      let named = null;
+      if (!art.xbin && sauce?.fontName && !this.inRoom) {
+        try {
+          const file = await sauceFont(sauce.fontName);
+          if (file) {
+            const kept = await addBitmapFont(file);
+            const workspace = useWorkspaceStore();
+            workspace.userFonts = [...(workspace.userFonts ?? []).filter((f) => f.id !== kept.id), kept];
+            named = await storedBitmapFont(kept.id); // the BitmapFont the settings hold
+          }
+        } catch {
+          toast(t('font.sauceNotFetched', { name: sauce.fontName }));
+        }
+      }
       const opened = await this.setBlankCanvas({
         withLayer: true,
         ...settingDefaults(),
@@ -277,7 +293,7 @@ export const documentActions = {
         rows: 2 * art.rows,
         ...nameOf(file),
         // the font in use stays, but an XBin sets it: its own, or none (IBM VGA, below)
-        ...(art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '', fontBlocks: art.font?.blocks ? encodeBlocks(art.font.blocks) : '', fontLines: stored?.lines ? encodeLines(stored.lines) : '', fontSets: stored?.sets ? encodeSets(stored.sets) : '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets }),
+        ...(named ? { fontBitmap: encodeFont(named), fontName: named.name, fontBlocks: '', fontLines: '', fontSets: '' } : art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '', fontBlocks: art.font?.blocks ? encodeBlocks(art.font.blocks) : '', fontLines: stored?.lines ? encodeLines(stored.lines) : '', fontSets: stored?.sets ? encodeSets(stored.sets) : '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets }),
         ...(Array.isArray(art.palette) && art.palette.some((hex, i) => hex !== PALETTES.cga[ANSI_OF_DOS[i]].hex)
           ? { quantize: 'palette', palette: art.palette.join(' ') } // an XBin's own 16, in its DOS order
           : { quantize: Array.isArray(art.palette) ? 'cga' : art.palette }),

@@ -345,6 +345,7 @@
   "font": {
     "label": "Police",
     "help": "Définit la police d'affichage de votre canevas. Chargez, enregistrez et retirez des polices (polices matricielles, ou polices à chasse fixe TrueType, OpenType ou WOFF depuis votre ordinateur) avec Gérer les polices. Les polices matricielles (bitmap) sont optimales à des multiples de leur taille native (comme 16 px ou 32 px pour les polices 8×16). Votre choix de police est enregistré dans votre navigateur. Dans un salon partagé, vous voyez la police de l'hôte.",
+    "sauceNotFetched": "Impossible de récupérer la police {name} nommée dans le SAUCE de ce fichier. Il s'est ouvert avec la police en cours.",
     "manage": "Gérer les polices ▸",
     "manageTitle": "Charger, enregistrer et retirer des polices dans la page Polices du calque des palettes",
     "groupBuiltIn": "Intégrées",
