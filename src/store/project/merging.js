@@ -405,7 +405,9 @@ export const mergingActions = {
         return;
       }
 
-      const defaults = Object.assign({}, ...RESET_GROUPS.map(groupDefaults));
+      // The plugin filters that ran are baked in and cleared; one that didn't (missing, off, failed) keeps its values.
+      const running = new Set(params.pluginFilters.map(({ ref }) => ref));
+      const defaults = { ...Object.assign({}, ...RESET_GROUPS.map(groupDefaults)), filterOptions: Object.fromEntries(Object.entries(params.filterOptions).filter(([ref]) => !running.has(ref))) };
       const sliders = (from = this) => Object.fromEntries(Object.keys(defaults).map(key => [key, from[key]]));
       const baked = (snapshot) => snapshot && { ...snapshot, canvas: bakedCanvas(snapshot.canvas, params) };
       const clip = toRaw(workspace.clipboard);

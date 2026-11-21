@@ -151,7 +151,7 @@ test('solverOptions from a stranger: bad entries are dropped and the good kept, 
 });
 
 test('filterOptions from a stranger are cleaned as a filter\'s (name and values), not as a solver\'s; a non-object is refused', () => {
-  const good = { 'plugin:p/f': { name: 'Glow', values: { soft: true, tint: '#00ff00' } } };
+  const good = { 'plugin:jane.fx/glow': { name: 'Glow', values: { soft: true, tint: '#00ff00' } } };
   assert.deepEqual(settingsFromStranger({ ...GOOD, filterOptions: { ...good, nope: { name: 'N', values: {} } } }), { ...GOOD, filterOptions: good });
   for (const bad of [null, 'x', [], 4]) assert.equal(settingsFromStranger({ ...GOOD, filterOptions: bad }), null);
 });

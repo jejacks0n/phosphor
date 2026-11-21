@@ -196,9 +196,11 @@ export const useProjectStore = defineStore('project', {
     // Shapes on the vector layers directly on the bottom make a still bakeable (Bake presses them in); in an animation,
     // or above a cells layer, they stay shapes.
     canFlatten: (state) => !!state.image && state.frames.length <= 1, // the picture is under every frame
+    // A plugin filter counts only while it runs (processParams.pluginFilters): one that isn't there (missing, off, failed)
+    // keeps its values, and Bake leaves them.
     canBake(state) {
       if (!state.image) return false;
-      if (!slidersAtDefaults(state)) return true;
+      if (!slidersAtDefaults({ ...this.sliderValues(), filterOptions: {} }) || this.processParams.pluginFilters.length) return true;
       const { vectors } = lowerGroup(state.layers, state.baseChars);
       return state.frames.length <= 1 && [...state.shapes.values()].some((shape) => vectors.includes(shape.layer ?? 'vector'));
     },

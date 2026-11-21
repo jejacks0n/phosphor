@@ -44,6 +44,18 @@ describe('cleanFilterOptions', () => {
     })).toEqual({ [ref]: good });
   });
 
+  it('drops a ref of the wrong shape: a plugin id or an id the readers wouldn\'t take, or one too long', () => {
+    for (const bad of ['plugin:/x', 'plugin:jane/x', 'plugin:jane.fx/', 'plugin:jane.fx/Up', 'plugin:jane.fx/a/b', 'plugin:Jane.fx/x',
+      `plugin:jane.fx/${'a'.repeat(41)}`, `plugin:${'a'.repeat(62)}.fx/x`]) {
+      expect(cleanFilterOptions({ [bad]: good }), bad).toEqual({});
+    }
+  });
+
+  it('keeps a ref at the longest the readers allow', () => {
+    const longest = solverRef(`${'a'.repeat(61)}.fx`, 'b'.repeat(40));
+    expect(cleanFilterOptions({ [longest]: good })).toEqual({ [longest]: good });
+  });
+
   it('keeps 64 entries and drops a 65th', () => {
     const raw = Object.fromEntries(Array.from({ length: 65 }, (_, i) => [solverRef('jane.fx', `f${i}`), good]));
     const kept = cleanFilterOptions(raw);

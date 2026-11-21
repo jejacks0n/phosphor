@@ -10,7 +10,7 @@ export { sha256 };
 export const MOST_REACH = 4;
 const MOST_EACH = 8, MOST_OUTLINES = 200, MOST_POINTS = 500, MOST_OPTIONS = 12, MOST_CHOICES = 20, MOST_NAME = 40, MOST_CHARS = 32, MOST_SHADER = 64 * 1024;
 const STYLES = ['ansi', 'colorAscii', 'ascii'];
-const ID = /^[a-z0-9-]{1,40}$/;
+export const ID = /^[a-z0-9-]{1,40}$/; // a solver's, brush's, shape's or filter's id in its plugin
 const MOST_COPY = 1000; // a longer array is over every cap; not walked (undefined fills, which no check passes)
 export const OPTION_ID = /^[a-z](?:[a-z0-9]|_(?!_)){0,31}$/; // a GLSL identifier suffix (the shader's uniform is opt_<id>): no __, which GLSL reserves
 
