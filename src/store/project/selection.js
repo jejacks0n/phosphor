@@ -243,7 +243,7 @@ export const selectionActions = {
     const lifted = sameRun ? (run.paste ? null : run.from) : rect;
     const liftedLayers = sameRun ? run.layers : [...ids];
     const under = !lifted ? run.under : null, start = !lifted ? run.start : null, to = !lifted ? run.to : null;
-    const block = turnBlock(sameRun && run.block ? run.block : this.copySelection(lifted, liftedLayers, { shapes: false }), op, this.pixelAspect);
+    const block = turnBlock(sameRun && run.block ? run.block : this.copySelection(lifted, liftedLayers, { shapes: false }), op, this.pixelAspect, this.drawingFont);
     const col = Math.max(0, Math.min(rect.c0, this.cols - block.w));
     const row = Math.max(0, Math.min(rect.r0, charRowsOf(this.rows) - block.h));
     const place = (dc, dr) => {
@@ -563,7 +563,7 @@ function landOnBottom(project, block, col, row) {
 // A copied block (copySelection) flipped (turnSelection's op 'h' or 'v'): every cell's entry and pin
 // from the cell that lands there, their characters turned, and the paint and base pictures with them.
 // Rotated ('cw'): rotateBlock.
-function turnBlock(block, op, aspect = 1) {
+function turnBlock(block, op, aspect = 1, font = null) {
   if (op === 'cw') return rotateBlock(block, aspect);
   const { w, h } = block;
   const out = { w, h, px: block.px };
@@ -582,16 +582,16 @@ function turnBlock(block, op, aspect = 1) {
     }
     return cells;
   };
-  const turnCells = (cells) => turned(cells, (e) => (e?.char && !isPaintBlock(e) ? { ...e, char: turnChar(e.char, op) } : e));
+  const turnCells = (cells) => turned(cells, (e) => (e?.char && !isPaintBlock(e) ? { ...e, char: turnChar(e.char, op, font) } : e));
   const turnLayer = ({ cells, paint }) => ({ ...(cells && { cells: turnCells(cells) }), ...(paint && { paint: turnCanvas(paint, op) }) });
   Object.assign(out, turnLayer(block));
   if (block.parts) out.parts = block.parts.map((part) => ({ id: part.id, ...turnLayer(part) }));
   if (block.shown) Object.assign(out, { shown: turnCells(block.shown), shownAt: block.shownAt });
-  if (block.looks) out.looks = turned(block.looks, (e) => ({ ...e, char: turnChar(e.char, op) }));
+  if (block.looks) out.looks = turned(block.looks, (e) => ({ ...e, char: turnChar(e.char, op, font) }));
   if (block.base) {
     const { pixels, scale, colors, pins, indexes } = block.base;
     const swapped = (kept) => (kept && op === 'v' ? { fgIndex: kept.bgIndex, bgIndex: kept.fgIndex } : kept); // the halves swap
-    out.base = { pixels: turnCanvas(pixels, op), scale, colors: turnCanvas(colors, op), pins: turned(pins, (char) => char && turnChar(char, op)), ...(indexes && { indexes: turned(indexes, swapped) }) };
+    out.base = { pixels: turnCanvas(pixels, op), scale, colors: turnCanvas(colors, op), pins: turned(pins, (char) => char && turnChar(char, op, font)), ...(indexes && { indexes: turned(indexes, swapped) }) };
   }
   return out;
 }

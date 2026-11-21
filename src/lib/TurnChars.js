@@ -2,6 +2,7 @@
 // vertically). Box pieces and blocks turn by their shape; arrows, triangles, brackets and the like by
 // a table. Anything else (letters, shades) stays as it is. (Rotate turns only pixels: no characters.)
 import { QUADRANTS } from '@/lib/Brushes';
+import { lineStylesOf } from '@/lib/FontLines';
 
 // Box pieces by family, in the order of their arms [up, right, down, left]: a flip moves the arms,
 // and the piece with the moved arms is in the same family.
@@ -11,12 +12,35 @@ const FAMILIES = [
   '─│╭╮╰╯', '┄┆', '┅┇', '┈┊', '┉┋', '╌╎', '╍╏',
 ];
 const MOVE = { h: (a) => [a[0], a[3], a[2], a[1]], v: (a) => [a[2], a[1], a[0], a[3]] };
-const BOX = new Map(); // char -> its family and shape
-for (const chars of FAMILIES) {
-  [...chars].forEach((char, i) => { if (!BOX.has(char)) BOX.set(char, { chars, shape: SHAPES[i] }); });
+const boxOf = (families) => {
+  const box = new Map(); // char -> its family and shape
+  for (const chars of families) {
+    [...chars].forEach((char, i) => { if (!box.has(char)) box.set(char, { chars, shape: SHAPES[i] }); });
+  }
+  return box;
+};
+const BOX = boxOf(FAMILIES);
+
+// With a bitmap font, only the stock families whose styles it offers turn (a mixed one needs both), and
+// an offered style of its own turns within itself; a stock piece a style reuses keeps its stock turn.
+const fontBoxes = new WeakMap(); // the font's styles -> its table
+function boxFor(font) {
+  if (!font) return BOX;
+  const styles = lineStylesOf(font);
+  if (!fontBoxes.has(styles)) {
+    const on = (id) => styles.find((s) => s.id === id)?.offered;
+    const both = on('single') && on('double');
+    const keep = [on('single'), on('double'), true, both, both]; // families 0-4; the rest always
+    const box = boxOf(FAMILIES.filter((_, i) => keep[i] ?? true));
+    for (const { chars } of styles.filter((s) => !s.stock && s.offered)) {
+      for (const [char, v] of boxOf([chars.join('')])) if (!box.has(char)) box.set(char, v);
+    }
+    fontBoxes.set(styles, box);
+  }
+  return fontBoxes.get(styles);
 }
-function turnBox(char, op) {
-  const { chars, shape } = BOX.get(char);
+function turnBox(box, char, op) {
+  const { chars, shape } = box.get(char);
   return [...chars][SHAPES.indexOf(MOVE[op]([...shape]).join(''))] ?? char;
 }
 
@@ -35,9 +59,10 @@ for (const op of ['h', 'v']) {
   for (const [a, b] of PAIRS[op]) TABLE[op].set(a, b).set(b, a);
 }
 
-export function turnChar(char, op) {
+export function turnChar(char, op, font = null) {
   const mask = QUADRANTS.indexOf(char);
   if (mask > 0) return QUADRANTS[turnQuadrants(mask, op)];
-  if (BOX.has(char)) return turnBox(char, op);
+  const box = boxFor(font);
+  if (box.has(char)) return turnBox(box, char, op);
   return TABLE[op].get(char) ?? char;
 }

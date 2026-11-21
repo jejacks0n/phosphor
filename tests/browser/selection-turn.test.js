@@ -4,6 +4,7 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
 import { cp437Font, font8 } from '../support/blockFonts.js';
+import { slotChars } from '@/lib/BitmapFont';
 
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
 const EDIT = ['edit'], BOTH = ['base', 'edit'];
@@ -30,6 +31,15 @@ test('flipping across and down turns box pieces, half-blocks and arrows with the
   expect(read(2, 2, 5, 3)).toEqual(['←▀─┐', '↑▐─┘']);
   project.turnSelection({ c0: 2, r0: 2, c1: 5, r1: 3 }, EDIT, 'v');
   expect(read(2, 2, 5, 3)).toEqual(['↓▐─┐', '←▄─┘']);
+});
+
+test("a selection holding a bitmap font's own line piece flips to that style's piece", async () => {
+  const font = { ...cp437Font, lines: { hide: [], styles: [{ id: 'l1', name: 'Heavy', slots: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }] } };
+  const { project, type, read } = await scene(font);
+  const H = slotChars(font).slice(1, 12);
+  type(2, 2, [H[2] + H[0]]);
+  project.turnSelection({ c0: 2, r0: 2, c1: 3, r1: 2 }, EDIT, 'h');
+  expect(read(2, 2, 3, 2)).toEqual([H[0] + H[3]]);
 });
 
 // Rotate turns the picture by its shape (a cell is two grid pixels, one wide and two tall), so
