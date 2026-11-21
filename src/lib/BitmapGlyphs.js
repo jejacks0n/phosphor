@@ -67,3 +67,6 @@ export function fontId(font) {
   for (const b of [font.height, ...font.bytes]) h = Math.imul(h ^ b, 0x01000193) >>> 0;
   return `bitmap-${h.toString(16).padStart(8, '0')}`;
 }
+
+// What the Fonts page and the library's index show of a font: these characters, drawn from the slots CP437 puts them in.
+export const SAMPLE_CHARS = 'Aa░▒▓█▄▀╔═╗☺';
