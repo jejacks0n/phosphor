@@ -115,6 +115,12 @@ test('keys: a built-in keeps its key, the earlier plugin keeps its own, and the 
   expect(app.workspace.activeTool).toBe('plugin:phosphor.a/y');
 });
 
+test('keys: X, and L and N (Animate\'s), are the editor\'s, so a brush asking for one has none; Shift+X is free', async () => {
+  await start('input');
+  await onPlugin({ brushes: ['X', 'L', 'Shift+L', 'N', 'Shift+N', 'Shift+X'].map((key, i) => brush({ id: `k${i}`, key })) });
+  expect(pluginTools().map((tool) => tool.keys)).toEqual([[], [], [], [], [], ['Shift+X']]);
+});
+
 test('the toolbar draws the options, keeps changes, and ] steps the size to its cap', async () => {
   const app = await start('input');
   const [ref] = (await onPlugin({ brushes: [brush()] })).brushes;

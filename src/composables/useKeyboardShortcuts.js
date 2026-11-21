@@ -6,7 +6,7 @@ import { charRowsOf } from '@/lib/Cells';
 import { copySelection, decodeBlock } from '@/composables/clipboard';
 import { readClipboardHtml } from '@/lib/clipboardBlocks';
 import { typeText } from '@/composables/useTextTool';
-import { colorBoxKey, frameStepKey, helpKey } from '@/lib/TextKeys';
+import { ADD_FRAME_KEY, PLAY_KEY, SWAP_COLORS_KEY, colorBoxKey, frameStepKey, helpKey } from '@/lib/TextKeys';
 import { ownsKey, typesIn } from '@/lib/fields';
 import { usePlayback } from '@/composables/usePlayback';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
@@ -149,7 +149,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   const _handleSwapColors = (e) => {
-    if (e.key.toLowerCase() !== 'x' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
+    if (e.key.toLowerCase() !== SWAP_COLORS_KEY || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
     if (ownsKey(e.target, e) || !workspaceStore.editMode || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
     swapColors();
     return true;
@@ -377,7 +377,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (e.key === 'Shift') workspaceStore.isShiftPressed = true;
     if (e.key === 'Alt') workspaceStore.isAltPressed = true;
 
-    if (_animationKeysApply(e) && e.key.toLowerCase() === 'l') {
+    if (_animationKeysApply(e) && e.key.toLowerCase() === PLAY_KEY) {
       e.preventDefault();
       if (!e.repeat) playback.toggle();
       return;
@@ -394,7 +394,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       return;
     }
     // N: a new frame after the one showing, of its kind (held, it goes on adding them).
-    if (_animationKeysApply(e) && e.key.toLowerCase() === 'n') {
+    if (_animationKeysApply(e) && e.key.toLowerCase() === ADD_FRAME_KEY) {
       e.preventDefault();
       projectStore.addFrame(projectStore.currentFrame.kind);
       return;
