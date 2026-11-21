@@ -311,13 +311,16 @@ const apply = () => run(() => choose(chosen.value.id, held.value?.sauce ? { sauc
 // The drawing's font saves at once; one only in this browser is read from it first.
 const save = (as) => run(async () => as(isDrawn.value ? drawn.value : await storedBitmapFont(chosen.value.id)));
 const forget = () => run(() => remove(chosen.value.id));
-// The next or previous font on screen, in the list's order (the layer passes its arrow keys here).
+// The next or previous font on screen, in the list's order, the library rows shown last (the layer passes its arrow
+// keys here). A library row chosen is where it steps from, though its font in Yours is current too.
 const step = (delta) => {
-  const rows = groups.value.flatMap((g) => g.rows), i = rows.findIndex((f) => f.id === chosen.value?.id);
-  const next = rows[Math.max(0, Math.min(rows.length - 1, i + delta))];
+  const library = libraryState.value === 'ready' ? libraryRows.value.map((e) => e.id) : [];
+  const ids = [...groups.value.flatMap((g) => g.rows.map((f) => f.id)), ...library];
+  const at = ids.indexOf(chosenId.value), i = at >= 0 ? at : ids.indexOf(chosen.value?.id);
+  const next = ids[Math.max(0, Math.min(ids.length - 1, i + delta))];
   if (!next) return;
-  chosenId.value = next.id;
-  nextTick(() => page.value?.querySelector('.row.current')?.scrollIntoView({ block: 'nearest' }));
+  chosenId.value = next;
+  nextTick(() => page.value?.querySelector(library.includes(next) ? '.row.library.current' : '.row.current')?.scrollIntoView({ block: 'nearest' }));
 };
 defineExpose({ step });
 
@@ -336,7 +339,7 @@ const exportPalettes = () => {
         <button :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         <input ref="file" type="file" :accept="FONT_FILES" hidden @change="onFile">
       </div>
-      <div v-if="libraryState === 'ready'" ref="tagsWrap" class="tag-row" @keydown.esc="pickerOpen && ($event.stopPropagation(), closePicker())">
+      <div v-if="libraryState === 'ready'" ref="tagsWrap" class="tag-row" @keydown.esc="pickerOpen && ($event.stopPropagation(), closePicker())" @keydown.up.down="pickerOpen && $event.stopPropagation()">
         <button class="tags" :aria-expanded="pickerOpen" @click="togglePicker">
           {{ t('palette.fonts.tags') }}<span v-if="tags.length" class="badge">{{ tags.length }}</span> ▾
         </button>

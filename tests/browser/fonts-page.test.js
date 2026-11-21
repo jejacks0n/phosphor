@@ -1072,6 +1072,47 @@ test('Add to Yours, then Use this font sets the SAUCE font name the library give
   expect(project.sauceFontName).toBe('IBM VGA');
 });
 
+const arrow = async (k, on = host.querySelector('.palette-layer')) => {
+  on.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+  await nextTick();
+};
+
+test('the arrow keys walk into and through the library rows', async () => {
+  await mount({ library: FIXTURE() });
+  await chooseLibrary('Alpha');
+  const before = names()[names().indexOf('Alpha') - 1]; // the last built-in font
+  await arrow('ArrowDown');
+  expect(title()).toBe('FROGBLOCK');
+  expect(host.querySelector('.row.library.current .name span').textContent).toBe('FROGBLOCK');
+  await arrow('ArrowUp');
+  expect(title()).toBe('Alpha');
+  await arrow('ArrowUp');
+  expect(title()).toBe(before);
+  await arrow('ArrowDown');
+  expect(title()).toBe('Alpha');
+});
+
+test('from a library row whose font is in Yours, the arrow keys step from that row', async () => {
+  const index = FIXTURE(), bytes = new Uint8Array(2048).fill(9);
+  serveFile(index, 'Zeta', { bytes });
+  const { workspace } = await mount({ library: index });
+  workspace.userFonts = [...workspace.userFonts, await addBitmapFont(new File([bytes], 'Mine.F08'))];
+  await chooseLibrary('Zeta');
+  expect(title()).toBe('Mine'); // the copy in Yours
+  await arrow('ArrowUp');
+  expect(title()).toBe('Topaz');
+});
+
+test('the arrow keys in the open tag picker leave the font list alone', async () => {
+  await mount({ library: FIXTURE() });
+  await chooseLibrary('Alpha');
+  await openTags();
+  await arrow('ArrowDown', host.querySelector('.picker'));
+  await arrow('ArrowDown', host.querySelector('button.tags'));
+  expect(title()).toBe('Alpha');
+  expect(host.querySelector('.picker')).toBeTruthy();
+});
+
 test('a failed fetch or a wrong-size file says so and changes nothing', async () => {
   const unreachable = "Phosphor couldn't fetch Zeta from the font library. Check your connection and try again.";
   const cases = [
