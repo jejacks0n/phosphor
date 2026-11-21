@@ -53,13 +53,13 @@ async function stampOf(record) {
 
 // A script's parts (solvers, brushes, shapes, filters), checked; importing runs its top level, so it's under the hang mark like a first resolve.
 async function scriptOf(pluginId, script) {
-  beginRun(pluginId);
+  const mark = beginRun(pluginId);
   try {
     return readScript(await importScript(script));
   } catch (error) {
     throw refused(error);
   } finally {
-    endRun();
+    endRun(mark);
   }
 }
 

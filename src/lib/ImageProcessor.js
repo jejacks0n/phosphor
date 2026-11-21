@@ -192,11 +192,11 @@ function underMark(filters, fn) {
   const first = filters.find(({ ref, hash }) => !filtersRan.has(`${ref}|${hash}`));
   if (!first) return fn();
   filtersRan.add(`${first.ref}|${first.hash}`);
-  beginRun(first.pluginId);
+  const mark = beginRun(first.pluginId);
   try {
     return fn();
   } finally {
-    endRun();
+    endRun(mark);
   }
 }
 

@@ -1783,16 +1783,16 @@ const solverOf = (params) => (params.charMode === 'shape' && params.solver && !f
 // ponytail: the page has one mark, so two plugins first run in one run leave the later's, and a hang in the earlier
 // blames it; the earlier is found by the hang after. A mark per plugin if that's ever seen.
 const ran = new Set(); // what, plugin id and script hash
-let run = null; // the run going on: { cell, marked, faults: ref -> script hash }
+let run = null; // the run going on: { cell, marks (beginRun's, for endRun), faults: ref -> script hash }
 function inRun(work, cell = 'cell') {
   if (run) return work();
-  const own = (run = { cell, marked: false, faults: new Map() });
+  const own = (run = { cell, marks: [], faults: new Map() });
   let out;
   try {
     out = work();
   } finally {
     run = null;
-    if (own.marked) endRun();
+    for (const mark of own.marks) endRun(mark);
   }
   for (const [ref, hash] of own.faults) faultSolver(ref, hash);
   return out;
@@ -1802,8 +1802,7 @@ function marks({ pluginId, hash }, what) {
   const key = `${what}\u0000${pluginId}\u0000${hash}`;
   if (!run || ran.has(key)) return;
   ran.add(key);
-  beginRun(pluginId);
-  run.marked = true;
+  run.marks.push(beginRun(pluginId));
 }
 
 // A resolve's cells, { out, gpu }: with no error carried from cell to cell the GPU's (ShapeMatcher,
