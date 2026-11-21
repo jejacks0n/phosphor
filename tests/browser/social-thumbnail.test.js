@@ -5,6 +5,7 @@ import { thumbnailOf, lobbyWindow } from '@/social/thumbnail';
 import { fontFor } from '@/social/wire';
 import { pictureUrl } from '@/social/lobby';
 import CellCanvas from '@/lib/CellCanvas';
+import { encodeFont } from '@/lib/BitmapFont';
 
 const COLS = 300, LINES = 1666;
 const black = { hex: '#000000', r: 0, g: 0, b: 0 }, white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
@@ -84,6 +85,18 @@ test('a grid shorter than the window is the whole of it', async () => {
   const small = { ...gridOf(0, 0), cols: 20, lines: 10 };
   small.cells = Array.from({ length: 200 }, () => ({ char: '█', fg: white, bg: black }));
   expect(whiteShare(await pixelsOf(await thumbnailOf(small, MIDDLE)))).toBeGreaterThan(0.95);
+});
+
+test('a room\'s bitmap font draws the picture in its own cell, its face loaded though it was never the display font', async () => {
+  const square = { name: 'Square', height: 8, bytes: new Uint8Array(256 * 8) };
+  square.bytes.fill(0xff, 219 * 8, 220 * 8);   // its own █
+  const bitmap = fontFor({ bitmap: true, name: 'Square', height: 8, size: 8, source: encodeFont(square), blocks: '' });
+  expect(bitmap.bitmap).toBe(true);
+  // 8x8 cells: 80 columns are 40 lines at 2:1, and the blocks fill the first 20 of them.
+  const art = { cols: 80, lines: 100, font: bitmap, cells: Array.from({ length: 80 * 100 }, (_, i) => ({ char: i < 80 * 20 ? '█' : ' ', fg: white, bg: black })) };
+  const webp = await thumbnailOf(art, { col: 0, row: 0 });
+  expect(webp).toMatch(BASE64);
+  expect(whiteShare(await pixelsOf(webp))).toBeCloseTo(0.5, 1);
 });
 
 test('a larger picture that is over the limit at 0.8 is tried again at 0.5; still over, it gives null', async () => {

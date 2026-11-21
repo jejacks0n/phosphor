@@ -9,6 +9,7 @@ import { createTestApp } from '../support/app.js';
 import RoomArt from '@/components/social/RoomArt.vue';
 import CellCanvas from '@/lib/CellCanvas';
 import { nameColor, nameGlyph } from '@/social/names';
+import { encodeFont, encodeBlocks, CP437_BLOCKS } from '@/lib/BitmapFont';
 
 const COLS = 100, LINES = 50;
 const black = { hex: '#000000', r: 0, g: 0, b: 0 }, white = { hex: '#ffffff', r: 255, g: 255, b: 255 };
@@ -153,6 +154,17 @@ test('a new zoom sizes its first window by the new zoom\'s cells, not the old on
   await frames();
   const windows = resize.mock.calls.map(([cols, rows]) => `${cols}x${rows}`);
   expect(new Set(windows).size).toBe(1);   // the window at 0.5 from the first pass
+});
+
+test('the host\'s bitmap font is the art\'s: its own cells, and a change to its blocks draws it again', async () => {
+  await createTestApp();
+  const square = { name: 'Square', height: 8, bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => (i * 13) % 256) };
+  const font = { bitmap: true, name: 'Square', height: 8, size: 8, source: encodeFont(square), blocks: '' };   // as the host sends it
+  const { state, box } = mount({ art: { ...art, font }, hostView: { col: 40, row: 20, cols: 10, rows: 4 } });
+  await expect.poll(() => [box.style.width, box.style.height]).toEqual(['80px', '32px']);   // 8 x 8 cells, not VGA's 8 x 16
+  const canvas = host.querySelector('canvas');
+  state.art = { ...art, font: { ...font, blocks: encodeBlocks(CP437_BLOCKS.map((s, i) => (i === 0 ? 1 : s))) } };
+  await expect.poll(() => host.querySelector('canvas')).not.toBe(canvas);   // its own face, drawn afresh
 });
 
 test('Ctrl+wheel asks for a zoom instead of looking around, and takes the page\'s zoom from the browser', async () => {

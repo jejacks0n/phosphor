@@ -10,6 +10,8 @@ import { cleanEntry } from '../../src/document/editCells.js';
 import { withPins, EMPTY_BASE } from '../../src/document/baseRecords.js';
 import { hex2rgb } from '../../src/lib/ColorUtils.js';
 import { DISPLAY_FONTS } from '../../src/lib/displayFonts.js';
+import { encodeFont, encodeBlocks, fontId, fontKey, CP437_BLOCKS } from '../../src/lib/BitmapFont.js';
+import { familyOf } from '../../src/lib/userFonts.js';
 
 const color = (hex) => ({ ...hex2rgb(hex), hex });
 const cell = (char, fg, bg, wide) => ({ char, fg: color(fg), bg: color(bg), ...(wide && { wide }) });
@@ -91,6 +93,40 @@ test('a size from a stranger is held to the font field\'s range, and a size that
   const size = (sent) => fontFor({ id: 'vga', size: sent }).size;
   assert.deepEqual([size(1e300), size(-5), size(0), size(6), size(64), size(20.4)], [64, 6, 6, 6, 64, 20]);
   for (const sent of [NaN, Infinity, '16px', null, undefined, {}]) assert.equal(size(sent), 16);
+});
+
+// A drawing's bitmap font as WorkspaceStore.displayFontSpec makes it.
+const bitmapSpec = (height = 8, blocks = '', name = 'Slab') => {
+  const font = { name, height, bytes: Uint8Array.from({ length: 256 * height }, (_, i) => (i * 7) % 256) };
+  const drawn = blocks ? { ...font, blocks: blocks.split('.').map((s) => (s === 'x' ? null : +s)) } : font;
+  return { id: fontId(font), name, family: familyOf(fontKey(drawn)), size: 12, lineHeight: 1, bitmap: true, height, source: encodeFont(font), blocks };
+};
+
+test('a drawing\'s bitmap font goes on the wire whole, and comes off it as the host\'s spec', () => {
+  const moved = encodeBlocks(CP437_BLOCKS.map((s, i) => (i === 0 ? 1 : s)));
+  for (const spec of [bitmapSpec(), bitmapSpec(16, moved), bitmapSpec(32)]) {
+    const onWire = fontOnWire(spec);
+    assert.deepEqual(onWire, { bitmap: true, name: spec.name, height: spec.height, size: 12, source: spec.source, blocks: spec.blocks });
+    assert.deepEqual(fontFor(JSON.parse(JSON.stringify(onWire))), spec);
+  }
+  assert.notEqual(fontFor(fontOnWire(bitmapSpec(16, moved))).family, fontFor(fontOnWire(bitmapSpec(16))).family);   // its own face
+  const long = fontFor(fontOnWire(bitmapSpec(8, '', 'n'.repeat(100))));   // a long file name: the font still goes, its name cut
+  assert.equal(long.bitmap, true);
+  assert.equal(long.name, 'n'.repeat(60));
+  assert.equal(fontFor({ ...fontOnWire(bitmapSpec()), size: 1e9 }).size, 64);
+  assert.equal(fontFor({ ...fontOnWire(bitmapSpec()), size: 'big' }).size, 8);   // its height
+});
+
+test('a bitmap font from a stranger that doesn\'t decode is the default, not a throw', () => {
+  const good = fontOnWire(bitmapSpec());
+  const vga = { ...DISPLAY_FONTS[0] };
+  const junk = [
+    { source: '!!!not base64!!!' }, { source: btoa('x'.repeat(256 * 8 + 1)) }, { source: '' }, { source: btoa('x'.repeat(256 * 33)) },
+    { source: 'A'.repeat(1e6) }, { name: 'n'.repeat(61) }, { blocks: 'junk' }, { blocks: '1.2' },
+    { source: 5 }, { name: null }, { name: 5 }, { blocks: null }, { blocks: ['x'] }, { source: undefined },
+  ];
+  for (const bad of junk) assert.deepEqual(fontFor({ ...good, ...bad }), vga, JSON.stringify(bad).slice(0, 60));
+  assert.equal(fontOnWire({ id: 'user-1', name: 'Mine', family: 'x', size: 16, lineHeight: 1 }), null);   // TrueType from the host's computer
 });
 
 test('changedCells finds the indexes that differ', () => {

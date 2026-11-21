@@ -86,7 +86,7 @@ export function bitmapOf({ source, name, blocks }) {
 // Make a font the current one, and the CSS variables the views style their text with: one of
 // DISPLAY_FONTS by id (the first, for an unknown one), or a font of its shape. Resolves once every
 // font in its stack has loaded, so what's measured next is measured in them. A bitmap font (bitmap:
-// true) is registered first, from its source.
+// true) is registered first, from its source (loadFontFaces).
 export async function setDisplayFont(font) {
   const next = typeof font === 'string' ? DISPLAY_FONTS.find((f) => f.id === font) ?? DEFAULT_FONT : font;
   for (const key of Object.keys(DISPLAY_FONT)) if (!(key in next)) delete DISPLAY_FONT[key]; // a bitmap font's bitmap and source go with it
@@ -96,12 +96,14 @@ export async function setDisplayFont(font) {
   style.setProperty('--display-font-family', DISPLAY_FONT.family);
   style.setProperty('--display-font-size', `${DISPLAY_FONT.size}px`);
   style.setProperty('--display-line-height', String(DISPLAY_FONT.lineHeight));
-  if (next.bitmap) await registerBitmapFont(bitmapOf(next));
   await loadFontFaces(DISPLAY_FONT);
 }
 
-// Resolves once every face of every font in a font's stack has loaded (or failed to).
+// Resolves once every face of every font in a font's stack has loaded (or failed to). A bitmap font is registered
+// first, from its source: a room's, which a watcher never sets, draws in its own face too.
 export async function loadFontFaces(font) {
+  const bitmap = font.bitmap && bitmapOf(font);
+  if (bitmap) await registerBitmapFont(bitmap).catch(() => {});
   const families = font.family.split(',').map((name) => name.trim().replace(/^"|"$/g, ''));
   await Promise.all([...document.fonts].filter((face) => families.includes(face.family.replace(/^"|"$/g, ''))).map((face) => face.load().catch(() => {})));
 }

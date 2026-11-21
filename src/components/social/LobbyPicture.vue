@@ -29,8 +29,9 @@ const art = computed(() => (project.cells.length
 
 // The font's cell, once its faces have loaded (measured in a fallback until then).
 const loaded = ref(0);
-watch(() => `${font.value.id}:${font.value.size}`, (key) => {
-  loadFontFaces(font.value).then(() => { if (key === `${font.value.id}:${font.value.size}`) loaded.value++; });
+const fontKey = () => `${font.value.family}:${font.value.size}`;   // a bitmap font's blocks are in its family
+watch(fontKey, (key) => {
+  loadFontFaces(font.value).then(() => { if (key === fontKey()) loaded.value++; });
 }, { immediate: true });
 const advance = computed(() => (void loaded.value, measureAdvance(font.value)));
 

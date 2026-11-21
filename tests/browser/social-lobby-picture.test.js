@@ -8,6 +8,7 @@ import { i18n } from '@/i18n';
 import { createTestApp, loadImage } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import LobbyPicture from '@/components/social/LobbyPicture.vue';
+import { CP437_BLOCKS } from '@/lib/BitmapFont';
 
 let app = null, host = null;
 afterEach(() => {
@@ -133,4 +134,20 @@ test('the frame fills the width it\'s given, never past it, and follows when tha
   host.style.width = '260px';
   await expect.poll(() => frame.getBoundingClientRect().width).toBeLessThan(240);
   await fills();
+});
+
+// The window is 2:1 when it's measured in the font RoomArt draws in: a bitmap font's own face, its blocks' too.
+test('a drawing\'s bitmap font, and a change to its blocks, keep the frame at 2:1', async () => {
+  const { project } = await mount(200);
+  const frame = host.querySelector('.frame');
+  const aspect = () => {
+    const { width, height } = frame.getBoundingClientRect();
+    return Math.round((width / height) * 10) / 10;
+  };
+  const slab = { name: 'Slab', height: 16, bytes: Uint8Array.from({ length: 256 * 16 }, (_, i) => (i * 13) % 256) };
+  project.setDrawingFont(slab);
+  await expect.poll(aspect).toBe(2);
+  project.setDrawingFont({ ...slab, blocks: CP437_BLOCKS.map((s, i) => (i === 0 ? 1 : s)) });
+  await frames(8);
+  await expect.poll(aspect).toBe(2);
 });

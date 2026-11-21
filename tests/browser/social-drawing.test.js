@@ -18,7 +18,9 @@ import { useRoomStore } from '@/store/RoomStore';
 import { onLayer } from '@/document/layerInfo';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { serializeBase, withPins } from '@/document/baseRecords';
-import { CHUNK_BYTES, packValue } from '@/social/wire';
+import { CHUNK_BYTES, fontOnWire, packValue } from '@/social/wire';
+import { CP437_BLOCKS, fontKey } from '@/lib/BitmapFont';
+import { familyOf } from '@/lib/userFonts';
 import { writeProject } from '@/document/projectIO';
 import { hashCell } from '@/document/changes';
 import { Ledger, keptForWire, keptFromWire } from '@/document/ledger';
@@ -4639,6 +4641,24 @@ test('someone only watching is sent no font message, and leaving forgets the roo
 
   ann.drawing.close();
   expect(useWorkspaceStore(ann.pinia).roomFont).toBe(null);
+});
+
+test('an artist draws in the host\'s bitmap font, its own face as their drawing\'s font, and a change to its blocks reaches them', async () => {
+  const slab = { name: 'Slab', height: 16, bytes: Uint8Array.from({ length: 256 * 16 }, (_, i) => (i * 13) % 256) };
+  const room = await hosting({ before: (project) => project.setDrawingFont(slab) });
+  const black = { hex: '#000000' };
+  const hostArt = () => ({ ...fontArt(fontOnWire(useWorkspaceStore(room.pinia).displayFontSpec)), cells: [{ char: 'a', fg: black, bg: black }, { char: 'b', fg: black, bg: black }] });
+  room.host.setArt(hostArt());
+  const ann = await artist(room, 'ann');
+  await expect.poll(() => fontOf(ann).bitmap, PATIENT).toBe(true);
+  expect(useWorkspaceStore(ann.pinia).roomFont.bitmap).toBe(true);
+  expect(fontOf(ann).family).toBe(useWorkspaceStore(room.pinia).displayFontSpec.family);
+  expect(fontOf(ann).family).toBe(familyOf(fontKey(ann.project.drawingFont)));   // the face their drawing's font has
+
+  room.project.setDrawingFont({ ...slab, blocks: CP437_BLOCKS.map((s, i) => (i === 0 ? 1 : s)) });
+  room.host.setArt(hostArt());   // the same cells: only the font is new
+  await expect.poll(() => fontOf(ann).blocks, PATIENT).toBe(room.project.fontBlocks);
+  expect(fontOf(ann).family).toBe(useWorkspaceStore(room.pinia).displayFontSpec.family);
 });
 
 // Shapes travel as changes do: a 'v:' key and the shape, numbered, sent, in the check, undone per person.

@@ -37,7 +37,7 @@ const { t } = useI18n();
 
 const scrollRef = useTemplateRef('scroll'), sizerRef = useTemplateRef('sizer'), canvasRef = useTemplateRef('canvas'), tagRef = useTemplateRef('tag');
 const font = computed(() => fontFor(props.art?.font));
-const fontKey = computed(() => `${font.value.id}:${font.value.size}`); // a new font gets a new canvas
+const fontKey = computed(() => `${font.value.family}:${font.value.size}`); // a new font gets a new canvas (a bitmap font's blocks are in its family)
 const unavailable = ref(false);
 const metrics = ref(null); // the cell in CSS px the last draw used, which the sizer and the box follow
 let cellCanvas = null, renderFrame = null, resizeObserver = null;

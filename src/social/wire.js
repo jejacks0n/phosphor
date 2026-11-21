@@ -81,7 +81,9 @@
  * Pausing and resuming are the 'away' message and the channel closing.
  */
 import { hex2rgb } from '../lib/ColorUtils.js';
-import { DISPLAY_FONTS, DEFAULT_FONT, MIN_FONT_SIZE, MAX_FONT_SIZE } from '../lib/displayFonts.js';
+import { DISPLAY_FONTS, DEFAULT_FONT, MIN_FONT_SIZE, MAX_FONT_SIZE, bitmapOf } from '../lib/displayFonts.js';
+import { MAX_FONT_HEIGHT, decodeBlocks, fontId, fontKey } from '../lib/BitmapFont.js';
+import { familyOf } from '../lib/userFonts.js';
 import { MAX_COLS, MAX_LINES, MAX_CELLS } from '../lib/Cells.js';
 import { usableChar } from '../lib/CharWidth.js';
 import { clampAnsiZoom } from '../lib/zoom.js';
@@ -107,16 +109,33 @@ const WIDE = { lead: 1, trail: 2 };
 const WIDE_NAMES = [undefined, 'lead', 'trail'];
 const HEX = /^#[0-9a-f]{6}$/i;
 
-// The host's displayFontSpec as sent: null for a font loaded from the host's computer.
-export const fontOnWire = (spec) => DISPLAY_FONTS.some((f) => f.id === spec.id) ? { id: spec.id, size: spec.size } : null;
+// The host's displayFontSpec as sent: a drawing's bitmap font whole (its base64 and blocks, as the settings hold them),
+// its name held to MOST_NAME; one of Phosphor's by id; null for a TrueType font loaded from the host's computer, which
+// can't be sent.
+export function fontOnWire(spec) {
+  if (spec.bitmap) return { bitmap: true, name: spec.name.slice(0, MOST_NAME), height: spec.height, size: spec.size, source: spec.source, blocks: spec.blocks };
+  return DISPLAY_FONTS.some((f) => f.id === spec.id) ? { id: spec.id, size: spec.size } : null;
+}
+
+const MOST_FONT_SOURCE = Math.ceil((256 * MAX_FONT_HEIGHT) / 3) * 4;   // the base64 of the tallest bitmap font
+const sizeOf = (sent, own) => (Number.isFinite(sent) ? Math.min(Math.max(Math.round(sent), MIN_FONT_SIZE), MAX_FONT_SIZE) : own);
 
 // The font a watcher draws in: that one at the sent size (held to the sizes FontField allows; its own
-// size for one that isn't a number), or Phosphor's default for null or an unknown id.
+// size for one that isn't a number), or Phosphor's default for null, an unknown id or a bitmap font that doesn't
+// decode. A bitmap font comes back as the host's displayFontSpec made it, so its face is the same.
 export function fontFor(onWire) {
+  if (onWire?.bitmap === true) return bitmapFontFor(onWire) ?? { ...DEFAULT_FONT };
   const font = DISPLAY_FONTS.find((f) => f.id === onWire?.id);
   if (!font) return { ...DEFAULT_FONT };
-  const size = Number.isFinite(onWire.size) ? Math.min(Math.max(Math.round(onWire.size), MIN_FONT_SIZE), MAX_FONT_SIZE) : font.size;
-  return { ...font, size };
+  return { ...font, size: sizeOf(onWire.size, font.size) };
+}
+
+function bitmapFontFor({ name, source, blocks, size }) {
+  if (typeof name !== 'string' || name.length > MOST_NAME || typeof source !== 'string' || source.length > MOST_FONT_SOURCE) return null;
+  if (typeof blocks !== 'string' || (blocks && !decodeBlocks(blocks))) return null;   // '': none, so they're found
+  const font = bitmapOf({ source, name, blocks });
+  if (!font) return null;
+  return { id: fontId(font), name, family: familyOf(fontKey(font)), size: sizeOf(size, font.height), lineHeight: 1, bitmap: true, height: font.height, source, blocks };
 }
 
 // Cells as [char, fg, bg] (a fourth item for a wide half), the colors as indexes into a table.

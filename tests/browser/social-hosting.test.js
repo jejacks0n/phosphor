@@ -114,6 +114,15 @@ test('each watcher gets the room, the latest messages, then art deep-equal to th
   ]);
 });
 
+test('a watcher gets the host\'s bitmap font with the art, and again when only its blocks change', async () => {
+  const font = { bitmap: true, name: 'Slab', height: 8, size: 8, source: btoa('\x7e'.repeat(256 * 8)), blocks: '' };   // as fontOnWire sends it
+  const r = await room(['p1'], { first: { ...art(), font } });
+  await expect.poll(() => lastArt(r.log.p1)?.font, PATIENT).toEqual(font);
+  const moved = { ...font, blocks: '1.220.223.221.222.176.177.178' };
+  r.host.setArt({ ...art(), font: moved });   // the same cells
+  await expect.poll(() => lastArt(r.log.p1).font, PATIENT).toEqual(moved);
+});
+
 test('one changed cell goes as one cells message per watcher; half the grid changed goes as a snapshot', async () => {
   const sends = watchSends();
   const r = await room();
