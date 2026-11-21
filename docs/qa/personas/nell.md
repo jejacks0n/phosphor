@@ -86,7 +86,7 @@ script. Every section ends with Free time.
 - Expects: taking it off is one undo step; undo brings the font back with the art drawn in it; redo takes it off again; the
   characters she typed are the same ones after each. Remove with the font chosen on the Fonts page leaves the art drawn in it,
   its cells as wide as before, the character palette too.
-- Probes: `undo-redo`: undo three times in a row and check nothing else was undone; `interrupt`: reload with the font
+- Probes: `undo-redo`: undo three times in a row and check nothing else was undone, then export an XBin and open it while the font is loaded in the browser: it opens with the blocks the drawing shows after the undos, not the last ones she set; `interrupt`: reload with the font
   set and check it's still the drawing's.
 - Rated: yes, wants Cmd+Z
 

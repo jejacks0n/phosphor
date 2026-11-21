@@ -7,7 +7,8 @@ import { fontId, encodeFont, fontChars, findBlocks, CP437_BLOCKS, slotOf, blocks
 import { cp437Font, lowerAt240 } from '../support/blockFonts.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
-import { registerBitmapFont } from '@/lib/userFonts.js';
+import { registerBitmapFont, addBitmapFont, loadFonts, removeFont, storedBitmapFont, storeFontPart } from '@/lib/userFonts.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingsFromStranger } from '@/store/settings.js';
 import { encodeSets } from '@/lib/FontLines.js';
 import { coverageOf, setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage, vgaBitmapFont } from '@/lib/GlyphCoverage.js';
@@ -438,6 +439,33 @@ test('a style added to the drawing\'s font is one undo step', async () => {
   expect(project.drawingFont.name).toBe('Topaz');
   project.redo();
   expect(project.drawingFont.lines.styles[0].name).toBe('Heavy');
+});
+
+// The drawing's font kept in this browser too: an undo or redo of a change to its blocks, lines or sets puts them in
+// the browser's copy as well (the Fonts page wrote the change itself), so an XBin opened later gets what the drawing shows.
+test('undo and redo of a change to the drawing\u2019s font\u2019s lines or blocks reach this browser\u2019s copy of it', async () => {
+  const project = await blank();
+  const workspace = useWorkspaceStore();
+  const f = font(), stored = await addBitmapFont(new File([f.bytes], 'Topaz.F08'));
+  try {
+    workspace.userFonts = await loadFonts();
+    project.setDrawingFont(f);
+    const lines = { hide: [], styles: [heavy] }, blocks = withBlock(f.blocks, 'lower', 250);
+    project.setDrawingFont({ ...project.drawingFont, lines });
+    await storeFontPart(stored.id, 'lines', lines); // as the Fonts page does
+    project.setDrawingFont({ ...project.drawingFont, blocks });
+    await storeFontPart(stored.id, 'blocks', blocks);
+    project.undo();
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks).toEqual(f.blocks));
+    expect(workspace.userFonts.find((e) => e.id === stored.id).blocks).toEqual(f.blocks);
+    project.undo();
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines).toBeUndefined());
+    project.redo();
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines).toEqual(lines));
+    expect(workspace.userFonts.find((e) => e.id === stored.id).lines).toEqual(lines);
+  } finally {
+    await removeFont(stored.id);
+  }
 });
 
 // Lines and sets don't change the picture, so a step that changes only them, its undo and its redo draw nothing again.

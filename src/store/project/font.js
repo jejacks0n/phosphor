@@ -1,4 +1,5 @@
-import { encodeBlocks, encodeFont } from '@/lib/BitmapFont.js';
+import { encodeBlocks, encodeFont, fontId } from '@/lib/BitmapFont.js';
+import { storeFontPart, withPart } from '@/lib/userFonts.js';
 import { encodeLines, encodeSets } from '@/lib/FontLines.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { fontGrid } from '@/lib/Cells.js';
@@ -12,7 +13,7 @@ import { bytesHeld, putStack, stackState, stretchedPicture, useBase } from '@/st
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast.js';
 import { t } from '@/i18n';
-import { markRaw, shallowRef } from 'vue';
+import { markRaw, shallowRef, toRaw } from 'vue';
 
 const heightOf = (font) => font?.height ?? 16;
 // The settings that hold the drawing's font.
@@ -145,6 +146,19 @@ function switched(project, settings, picture, w, oldFit, fitAspect, from, to) {
   project.pushWholeLayer(() => apply(before), () => apply(after), bytesHeld(base, before.base, ...layers, after.image !== before.image && after.image), { everyFrame: true });
 }
 
+// The parts of the drawing's font a step changed ('blocks', 'lines', 'sets'), put in this browser's copy of the font
+// too when it has one, as they now are: an undo or redo, so an XBin opened later gets what the drawing shows. Only the
+// step's maker has it (an artist can't change the font, and a watcher takes none), so the copy is always theirs.
+function keepCopy(project, parts) {
+  const workspace = useWorkspaceStore(), font = project.drawingFont, id = font && fontId(font);
+  if (!parts.length || !workspace.userFonts?.some((f) => f.id === id)) return;
+  for (const key of parts) {
+    workspace.userFonts = workspace.userFonts.map((f) => (f.id === id ? withPart(toRaw(f), key, font[key]) : f));
+    storeFontPart(id, key, font[key] ?? null).catch(() => {}); // the copy removed since: nothing to keep
+  }
+}
+const PART_KEYS = { fontBlocks: 'blocks', fontLines: 'lines', fontSets: 'sets' };
+
 // The drawing's bitmap font: kept in the settings as base64 (fontBitmap, with its name and blocks), so it's saved,
 // autosaved and fingerprinted like the rest. Changing it is one undo step; before a drawing, the next one's font. In a
 // room it can't change to a font that isn't set up (fontNotSetUp). A font of another height changes the grid (newHeight).
@@ -162,9 +176,11 @@ export const fontActions = {
     const before = fontKeysOf(this);
     // Lines and sets don't change the picture: a step that changes only them draws nothing again.
     const looks = Object.keys(after).some((key) => key !== 'fontLines' && key !== 'fontSets' && after[key] !== before[key]);
+    // The same font with other blocks, lines or sets: undo and redo keep this browser's copy of it in step too.
+    const parts = before.fontBitmap === after.fontBitmap ? Object.keys(PART_KEYS).filter((key) => after[key] !== before[key]).map((key) => PART_KEYS[key]) : [];
     this.commitPending();
     this.$patch(after);
-    const on = (values) => () => { this.$patch(values); if (looks) this.render(); };
+    const on = (values) => () => { this.$patch(values); keepCopy(this, parts); if (looks) this.render(); };
     this.pushEdit({ settingsOnly: true, undo: on(before), redo: on(after) });
     if (looks) this.render();
   },
