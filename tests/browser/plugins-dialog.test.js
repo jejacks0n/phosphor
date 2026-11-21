@@ -557,3 +557,22 @@ test('860px wide on both tabs on a wide window; the whole window at 700px, a row
     await sized(414, 896);
   }
 });
+
+test('only the rows scroll: the tabs and the install buttons stay where they are', async () => {
+  const store = await mount();
+  for (let i = 0; i < 20; i++) {
+    await store.install(readManifest(changed((raw) => { raw.id = `phosphor.night${i}`; raw.name = `Night ${i}`; })));
+  }
+  await vi.waitFor(() => expect(document.querySelectorAll('dialog li')).toHaveLength(20));
+  const body = document.querySelector('dialog > div.body');
+  const rows = document.querySelector('dialog ul');
+  const tab = document.querySelector('dialog [role=tab]');
+  const add = page.getByRole('button', { name: /^Install from a file/ }).element();
+  expect(body.scrollHeight).toBeLessThanOrEqual(body.clientHeight + 1);
+  expect(rows.scrollHeight).toBeGreaterThan(rows.clientHeight);
+  const before = [tab.getBoundingClientRect().top, add.getBoundingClientRect().top];
+  rows.scrollTop = 400;
+  await vi.waitFor(() => expect(rows.scrollTop).toBe(400));
+  expect([tab.getBoundingClientRect().top, add.getBoundingClientRect().top]).toEqual(before);
+  for (let i = 0; i < 20; i++) await store.uninstall(`phosphor.night${i}`);
+});
