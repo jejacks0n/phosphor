@@ -144,25 +144,26 @@ stroke doesn't change stays), and recolor its characters of someone's own a whol
 The Brush's and Pencil's Colors only (and a plugin brush, whose paint is always laid so) makes a bare ▄ (a paint
 block) of each cell it reaches that shows no character (R2's predicate for the layer's own cells with colors: their
 halves become paint first, `unlockCells`) and of each frozen cell, whatever its character (its paint is under it
-already; the pin goes); a character of someone's own with ink keeps it and is tinted. A cell the converter drew is paint to it in full and gets no ▄, on the base and on any layer, whatever
-chooses its characters (a ▄ isn't converted, so one would outlast a change of how characters are chosen): its character
-is a rendering of the pixels (R7), and the paint becomes the character the layer's settings choose over the pixels under
-it (on the base the paint goes into the pixels). Under Random that brings out the character a blank cell held in its own
-background color, which is Random's: a stroke on a blank canvas shows Random's characters
-(the base's Random had kept a ▄ there, so the default Brush painted half-blocks on a fresh canvas). Half-block is the way
-to draw ▄, and its ▄ (the Shape tool's Write block glyphs' too) is a paint block over any cell: the character it
-replaces goes with its foreground, which a ▄ kept would show in its bottom half, a whole cell where the paint drew half
-of one. A background of the cell's own stays, as paint under the layer's; on the base a pinned character's block takes
-its background in both pixels (a ▄ pinned already, a stroke passing back over it, keeps its halves), and a cell the
-converter drew keeps its halves. A block on a layer above a character of someone's own (on a layer under it, or a pin)
-shows the same in ANSI: it takes the character's place, a textured character's halves its background and a solid
-glyph's its own halves (`blockOver` in `src/lib/Cells.js`), where it had shown the character's foreground in its bottom
-half; Merge down puts it there (R3). The Shape tool's Half-block with Write block glyphs off lays paint, which is the
-layer's characters over a cell the converter drew (Random's out of a blank canvas), and in ANSI makes a block of each
-cell that shows a character of someone's own on the layer in use or under it (`ownCharAt`): R2's tint there took the
-whole cell from an edge on its top half (the background) and only recolored the character from one on its bottom half,
-so a box half a cell up or down crossed a line otherwise. A pinned character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a
-character of someone's own under the layer the paint shows as R2 has it, with no entry.
+already; the pin goes); a character of someone's own with ink keeps it and is tinted. A cell the converter drew is paint
+to it in full and gets no ▄, on the base and on any layer, whatever chooses its characters (a ▄ isn't converted, so
+one would outlast a change of how characters are chosen): its character is a rendering of the pixels (R7), and the paint
+becomes the character the layer's settings choose over the pixels under it (on the base the paint goes into the pixels).
+Under Random that brings out the character a blank cell held in its own background color, which is Random's: a stroke on
+a blank canvas shows Random's characters (the base's Random had kept a ▄ there, so the default Brush painted
+half-blocks on a fresh canvas). Half-block is the way to draw ▄, and its ▄ (the Shape tool's Write block glyphs'
+too) is a paint block over any cell: the character it replaces goes with its foreground, which a ▄ kept would show in
+its bottom half, a whole cell where the paint drew half of one. A background of the cell's own stays, as paint under the
+layer's; on the base a pinned character's block takes its background in both pixels (a ▄ pinned already, a stroke
+passing back over it, keeps its halves), and a cell the converter drew keeps its halves. A block on a layer above a
+character of someone's own (on a layer under it, or a pin) shows the same in ANSI: it takes the character's place, a
+textured character's halves its background and a solid glyph's its own halves (`blockOver` in `src/lib/Cells.js`), where
+it had shown the character's foreground in its bottom half; Merge down puts it there (R3). The Shape tool's Half-block
+with Write block glyphs off lays paint, which is the layer's characters over a cell the converter drew (Random's out of
+a blank canvas), and in ANSI makes a block of each cell that shows a character of someone's own on the layer in use or
+under it (`ownCharAt`): R2's tint there took the whole cell from an edge on its top half (the background) and only
+recolored the character from one on its bottom half, so a box half a cell up or down crossed a line otherwise. A pinned
+character on the base, or a cell of the layer's own, is someone's own, as anywhere; over a character of someone's own
+under the layer the paint shows as R2 has it, with no entry.
 
 A cell a shape covers under the layer (the topmost thing under it there is a vector layer's fill or stroke) is drawn
 by the converter too and gets no ▄: a ▄ there made a stroke that crossed from the picture onto a shape switch from the
