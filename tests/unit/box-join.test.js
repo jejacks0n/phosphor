@@ -1,7 +1,8 @@
 // Joining box-drawing characters (the Shapes tool's Connect).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { armsOf, joinBox, inwardArms, pieceOf } from '../../src/lib/BoxJoin.js';
+import { armsOf, joinBox, inwardArms, pieceOf, familyFor } from '../../src/lib/BoxJoin.js';
+import { offeredStyles } from '../../src/lib/FontLines.js';
 import { cellSteps } from '../../src/lib/Brushes.js';
 
 test("Joining box-drawing characters (the Shapes tool's Connect)", async () => {
@@ -74,4 +75,44 @@ test('The Lines tool: the piece for a cell\'s arms, and the cells a drag passes 
   }
   assert.deepEqual(cellSteps({ col: 4, row: 1 }, { col: 1, row: 1 }), [{ col: 3, row: 1 }, { col: 2, row: 1 }, { col: 1, row: 1 }]);
   assert.deepEqual(cellSteps({ col: 2, row: 2 }, { col: 2, row: 2 }), []);
+});
+
+const own = (id, chars) => ({ id, stock: false, chars: [...chars], offered: true });
+const heavy = own('heavy', 'ABCDEFGHIJK');
+const dots = own('dots', 'AXYZabcdefg'); // shares A (its ─) with Heavy
+
+test("A font's own style joins its corners and tees", () => {
+  const fam = familyFor([heavy], heavy);
+  assert.equal(pieceOf([0, 1, 1, 0], fam), 'C');
+  assert.equal(joinBox('A', 'B', [0, 0, 0, 0], undefined, fam), 'K'); // ─ over │ is ┼
+  assert.deepEqual(armsOf('B', fam), [1, 0, 1, 0]);
+  assert.equal(armsOf('─', fam), null);
+});
+
+test('The new line wins over another style', () => {
+  const fam = familyFor([heavy], heavy);
+  assert.equal(joinBox('A', '│', [0, 0, 0, 0], undefined, fam), 'A'); // Single's │ under is nothing
+  assert.equal(joinBox('─', 'B', [0, 0, 0, 0]), '─');                 // Heavy's B is nothing to Single
+  assert.equal(joinBox('A', ' ', inwardArms(['', '', '', ''], fam), undefined, fam), 'A');
+  assert.equal(joinBox('A', ' ', inwardArms(['B', '', '', ''], fam), undefined, fam), 'J'); // own pieces point in
+  assert.equal(inwardArms(['│', '', '', ''], fam)[0], 0);
+});
+
+test('With Single hidden, Double reads fewer characters', () => {
+  const [single, double] = offeredStyles(null);
+  const fam = familyFor([double], double);
+  assert.equal(joinBox('═', '│', [0, 0, 0, 0], undefined, fam), '═');
+  assert.equal(pieceOf([1, 2, 0, 0], fam), null); // no mixed pieces
+  assert.equal(pieceOf([0, 0, 0, 0], fam), null);
+  assert.equal(familyFor([single], single).piece([0, 1, 1, 0]), '┌');
+  assert.equal(familyFor([single, double], double).weight, 2);
+  assert.equal(joinBox('═', '│', [0, 0, 0, 0], undefined, familyFor([single, double], double)), '╪');
+});
+
+test('A slot two styles share reads as the style being drawn', () => {
+  const styles = [heavy, dots];
+  assert.deepEqual(armsOf('A', familyFor(styles, heavy)), [0, 1, 0, 1]);
+  assert.deepEqual(armsOf('A', familyFor(styles, dots)), [0, 1, 0, 1]);
+  assert.equal(joinBox('X', 'A', [0, 0, 0, 0], undefined, familyFor(styles, dots)), 'g'); // Dots' ┼, not Heavy's K
+  assert.equal(familyFor(styles, dots), familyFor(styles, dots)); // kept per styles array
 });
