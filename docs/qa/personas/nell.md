@@ -246,7 +246,7 @@ change one cell on the way.
 
 ### 23. Make a line style
 - Does: with her `.F16` in use, opens Manage fonts ▸, chooses its row, opens **Lines**, clicks **+ New line style** and names it "Heavy". Clicks the first tile and then slots 1 to 11 in the sheet one after another, then goes to the drawing and opens the Pencil's **Draw with**. Draws a box with Shapes in it, then a Single line across it.
-- Expects: after each click the next tile is picked and the note says how many pieces are to go; "Heavy" isn't under **Draw with** until the eleventh is set, then is offered after **Double line**; clicking the slot that draws a block is refused with the slot's block named; the box has her corners and tees, and where the Single line crosses it her Single line's piece wins (┼ stays Single's, no mix of styles), and drawn again over itself the box joins itself.
+- Expects: after each click the next tile is picked and the note says how many pieces are to go; "Heavy" isn't under **Draw with** until the eleventh is set, then is offered after **Double line**; clicking the slot that draws a block is refused with the slot's block named; the box has her corners and tees, and where the Single line crosses it the crossing cell holds the new line's piece, in the new line's style (the Single line's ┼ if she drew Single last, her own piece if she drew hers last), and drawn again over itself the box joins itself.
 - Probes: `again`: draw the same box twice and check it's the same; `undo-redo`: undo the style and check it leaves **Draw with**, then redo.
 - Rated: no (drawing)
 
@@ -263,8 +263,8 @@ change one cell on the way.
 - Rated: no (drawing)
 
 ### 26. All of it after a reload
-- Does: reloads the page, then exports an XBin, reopens the project and checks the Fonts page. Then starts a room as host and looks at the Fonts page in it.
-- Expects: the style, the sets, the hidden Double and **Show stock sets** are back after the reload, and with the project; in the room the Lines and Sets can't be changed, and say "A font's blocks, lines and sets can't change in a room."
+- Does: reloads the page, then exports an XBin, reopens the project and checks the Fonts page. Then starts a room as host, has a second browser join as an artist, and looks at the Fonts page in each.
+- Expects: the style, the sets, the hidden Double and **Show stock sets** are back after the reload, and with the project; in the room the Lines and Sets can't be changed, and say "A font's blocks, lines and sets can't change in a room."; the artist draws in her font and offers her style under **Draw with** and her sets under the Characters ▾; a watcher sees the drawing in IBM VGA
 - Probes: `interrupt`: reload right after the last slot click and check the style is whole.
 - Rated: no (drawing)
 
