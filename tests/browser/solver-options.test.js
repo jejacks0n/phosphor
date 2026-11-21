@@ -7,7 +7,7 @@ import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
-import { readSolvers } from '@/plugins/script';
+import { readScript } from '@/plugins/script';
 import { unregisterSolvers, failSolver } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 import { useRoomStore } from '@/store/RoomStore';
@@ -25,9 +25,9 @@ afterEach(() => {
   apps = [];
 });
 
-const solver = (fields) => readSolvers({ default: { solvers: [{
+const solver = (fields) => readScript({ default: { solvers: [{
   styles: ['ansi', 'ascii'], reach: 0, chars: '/\\-|', solve: () => ({ char: '|', fg: 0, bg: 0 }), options: [], ...fields,
-}] } })[0];
+}] } }).solvers[0];
 // Outlines, with a slider, a checkbox and a choice, one of them named in markup that must show as text.
 const OUTLINES = solver({
   id: 'outlines', name: 'Outlines',

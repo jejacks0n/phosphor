@@ -10,7 +10,7 @@ import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
 import { rectShape, ellipseShape, makeShape } from '@/document/shapes.js';
-import { readSolvers } from '@/plugins/script';
+import { readScript } from '@/plugins/script';
 import { unregisterSolvers } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 import { onSolver } from '../support/pluginSolvers.js';
@@ -760,14 +760,14 @@ test('with real keys: a seed typed and entered, then Cmd+Z, undoes the step and 
 });
 
 // A plugin solver of the kind By shape is: Outlines, with a slider, a checkbox and a choice.
-const OUTLINES = readSolvers({ default: { solvers: [{
+const OUTLINES = readScript({ default: { solvers: [{
   id: 'outlines', name: 'Outlines', styles: ['ansi', 'ascii'], reach: 1, chars: '/\\-|', solve: () => ({ char: '|', fg: 0, bg: 0 }),
   options: [
     { id: 'threshold', kind: 'slider', name: 'Threshold', min: 0, max: 100, step: 1, default: 40 },
     { id: 'thin', kind: 'checkbox', name: 'Thin', default: false },
     { id: 'look', kind: 'choice', name: 'Look', choices: ['a', 'b', 'c'], default: 0 },
   ],
-}] } })[0];
+}] } }).solvers[0];
 
 test('a layer on a plugin solver: params carry it while it is registered and on; a stand-in reason otherwise', async () => {
   const { project } = await blank();

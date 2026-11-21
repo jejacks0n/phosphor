@@ -1,14 +1,14 @@
 // A plugin's script in the browser: imported from a blob: address, and the plugin store's slice over the solver registry.
 import { afterEach, expect, test, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { importScript, readSolvers } from '@/plugins/script';
+import { importScript, readScript } from '@/plugins/script';
 import { failSolver, solverRef } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 import { onSolver } from '../support/pluginSolvers.js';
 
-const DEF = readSolvers({ default: { solvers: [{
+const DEF = readScript({ default: { solvers: [{
   id: 'edges', name: 'Edges', styles: ['ansi'], reach: 1, chars: '/', solve: () => ({ char: '/', fg: 0, bg: 0 }),
-}] } })[0];
+}] } }).solvers[0];
 
 afterEach(() => vi.restoreAllMocks());
 
