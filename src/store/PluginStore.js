@@ -14,7 +14,7 @@ import { readManifest, ManifestError } from '@/plugins/manifest';
 import { themeRef, pluginOfTheme, pluginsOff } from '@/plugins/themes';
 import { solverFor, pluginOfSolver, allSolvers, registerSolvers, unregisterSolvers, onSolverFailure, onSolverFault, onShaderOff, registeredHash } from '@/plugins/solvers';
 import { readPackage, folderStamp } from '@/plugins/package';
-import { sha256, importScript, readSolvers } from '@/plugins/script';
+import { sha256, importScript, readScript } from '@/plugins/script';
 import { beginRun, endRun, hungLastTime } from '@/plugins/hangMark';
 import { loadPlugins, putPlugin, deletePlugin } from '@/plugins/storage';
 import { ListError, sameListing } from '@/plugins/listing';
@@ -53,7 +53,7 @@ async function stampOf(record) {
 async function solversOf(pluginId, script) {
   beginRun(pluginId);
   try {
-    return readSolvers(await importScript(script));
+    return readScript(await importScript(script)).solvers;
   } catch (error) {
     throw refused(error);
   } finally {

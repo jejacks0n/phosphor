@@ -5,7 +5,7 @@ import { test, expect, afterEach, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { onSolver } from '../support/pluginSolvers.js';
-import { readSolvers } from '@/plugins/script';
+import { readScript } from '@/plugins/script';
 import { readManifest } from '@/plugins/manifest';
 import { failureOf, unregisterSolvers } from '@/plugins/solvers';
 import { HANG_KEY } from '@/plugins/hangMark.js';
@@ -21,7 +21,7 @@ afterEach(() => {
   localStorage.removeItem(HANG_KEY);
 });
 
-const solver = (fields) => readSolvers({ default: { solvers: [{ id: 'edges', name: 'Edges', styles: ['ansi'], reach: 1, chars: '/', ...fields }] } })[0];
+const solver = (fields) => readScript({ default: { solvers: [{ id: 'edges', name: 'Edges', styles: ['ansi'], reach: 1, chars: '/', ...fields }] } }).solvers[0];
 // A cell's mean brightness dx, dy away (every sample's channels).
 const mean = (cell, dx, dy) => {
   let sum = 0;

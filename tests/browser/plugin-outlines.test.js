@@ -11,7 +11,7 @@ import { SAMPLES, resolveShapes, shapeMatcher } from '@/lib/CharResolver.js';
 import { referenceMask, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { PALETTES } from '@/lib/ColorUtils.js';
 import { ASCII_CHARSETS } from '@/lib/charsetPresets.js';
-import { readSolvers } from '@/plugins/script';
+import { readScript } from '@/plugins/script';
 import { solverRef, unregisterSolvers } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 
@@ -20,7 +20,7 @@ afterEach(() => {
   unregisterSolvers('phosphor.outlines');
 });
 
-const def = readSolvers({ default: outlines })[0];
+const def = readScript({ default: outlines }).solvers[0];
 const REF = solverRef('phosphor.outlines', 'outlines');
 const DEFAULTS = Object.fromEntries(def.options.map((option) => [option.id, option.default]));
 const SET = ' ░▒▓█▄▀';

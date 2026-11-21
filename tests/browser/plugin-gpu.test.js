@@ -9,7 +9,7 @@ import { pluginMatcher, resolvePlugin, grownArea } from '@/lib/PluginSolve.js';
 import { SAMPLES, cellRange, shapeMatcher } from '@/lib/CharResolver.js';
 import { referenceMask, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { PALETTES } from '@/lib/ColorUtils.js';
-import { readSolvers } from '@/plugins/script';
+import { readScript } from '@/plugins/script';
 import { solverRef, unregisterSolvers } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 import { t } from '@/i18n';
@@ -22,7 +22,7 @@ afterEach(() => {
 const REF = solverRef('phosphor.outlines', 'edges');
 const SET = '▄▀█ ', OWN = '/\\', ALL = [...SET, ...OWN];
 const key = (cells) => cells.map((c) => c && `${c.char}|${c.fg.r},${c.fg.g},${c.fg.b},${c.fg.c}|${c.bg.r},${c.bg.g},${c.bg.b},${c.bg.c}`);
-const solver = (fields) => readSolvers({ default: { solvers: [{ id: 'edges', name: 'Edges', styles: ['ansi', 'colorAscii', 'ascii'], reach: 1, chars: OWN, ...fields }] } })[0];
+const solver = (fields) => readScript({ default: { solvers: [{ id: 'edges', name: 'Edges', styles: ['ansi', 'colorAscii', 'ascii'], reach: 1, chars: OWN, ...fields }] } }).solvers[0];
 const rgb = (r, g, b) => ({ r, g, b });
 
 async function glyphsOf() {

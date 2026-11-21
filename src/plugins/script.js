@@ -1,13 +1,14 @@
-// A plugin's script (docs/plugins.md): hashed, imported from a blob: address, and its default export's solvers
-// checked and frozen. A script imports nothing, so one blob is the whole module.
+// A plugin's script (docs/plugins.md): hashed, imported from a blob: address, and its default export's solvers, brushes,
+// shapes and filters checked and frozen. A script imports nothing, so one blob is the whole module.
 import { ManifestError } from './manifest.js';
 import { isWideChar } from '@/lib/Cells';
 import { sha256 } from './hash.js';
+import { cleanIcon } from './icon.js';
 
 export { sha256 };
 
 export const MOST_REACH = 4;
-const MOST_SOLVERS = 8, MOST_OPTIONS = 12, MOST_CHOICES = 20, MOST_NAME = 40, MOST_CHARS = 32, MOST_SHADER = 64 * 1024;
+const MOST_EACH = 8, MOST_OUTLINES = 200, MOST_POINTS = 500, MOST_OPTIONS = 12, MOST_CHOICES = 20, MOST_NAME = 40, MOST_CHARS = 32, MOST_SHADER = 64 * 1024;
 const STYLES = ['ansi', 'colorAscii', 'ascii'];
 const ID = /^[a-z0-9-]{1,40}$/;
 const MOST_COPY = 1000; // a longer array is over every cap; not walked (undefined fills, which no check passes)
@@ -118,18 +119,144 @@ function readSolver(raw, index) {
   });
 }
 
-export function readSolvers(namespace) {
-  const solvers = guarded('default', () => {
-    const exported = namespace?.default;
-    if (!isObject(exported)) throw shape('default');
-    return guarded('solvers', () => copy(exported.solvers));
-  });
-  if (!solvers || !solvers.length || solvers.length > MOST_SOLVERS) throw shape('solvers');
-  const defs = solvers.map(readSolver);
-  const seen = new Set();
-  for (const { id } of defs) {
-    if (seen.has(id)) throw new ManifestError('twoSolvers', { id });
-    seen.add(id);
+// A list of options, checked (at most MOST_OPTIONS, unique ids) and frozen.
+function readOptions(raw, at) {
+  const list = raw === undefined ? [] : copy(raw);
+  if (!list || list.length > MOST_OPTIONS) throw shape(`${at}.options`);
+  const options = list.map((option, i) => readOption(option, `${at}.options[${i}]`));
+  if (new Set(options.map((option) => option.id)).size < options.length) throw shape(`${at}.options`);
+  return Object.freeze(options);
+}
+
+// A brush's or shape's id, name and icon (an SVG string, rebuilt by cleanIcon or refused).
+function readHead(raw, at) {
+  const { id, name, icon } = raw;
+  if (typeof id !== 'string' || !ID.test(id)) throw shape(`${at}.id`);
+  if (!text(name)) throw shape(`${at}.name`);
+  if (typeof icon !== 'string') throw shape(`${at}.icon`);
+  try {
+    return { id, name, icon: cleanIcon(icon) };
+  } catch {
+    throw shape(`${at}.icon`);
   }
+}
+
+// A function a script keeps (move, outline, begin, end): read once here, never called while reading.
+const fn = (value, at, optional) => {
+  if (optional && value == null) return null;
+  if (typeof value !== 'function') throw shape(at);
+  return value;
+};
+
+function readBrush(raw, index) {
+  const at = `brushes[${index}]`;
+  return guarded(at, () => {
+    if (!isObject(raw)) throw shape(at);
+    const fields = pick(raw, ['id', 'name', 'icon', 'key', 'size', 'options', 'begin', 'move', 'end']);
+    const head = readHead(fields, at);
+    const options = readOptions(fields.options, at);
+    let key = null;
+    if (fields.key != null) {
+      if (typeof fields.key !== 'string' || !/^(shift\+)?[a-z]$/i.test(fields.key)) throw shape(`${at}.key`);
+      const letter = fields.key.slice(-1).toUpperCase();
+      key = fields.key.length > 1 ? `Shift+${letter}` : letter;
+    }
+    let size = null;
+    if (fields.size != null) {
+      if (typeof fields.size !== 'string' || !options.some((o) => o.id === fields.size && o.kind === 'slider')) throw shape(`${at}.size`);
+      size = fields.size;
+    }
+    return Object.freeze({
+      ...head, key, size, options,
+      begin: fn(fields.begin, `${at}.begin`, true), move: fn(fields.move, `${at}.move`), end: fn(fields.end, `${at}.end`, true),
+    });
+  });
+}
+
+function readShape(raw, index) {
+  const at = `shapes[${index}]`;
+  return guarded(at, () => {
+    if (!isObject(raw)) throw shape(at);
+    const fields = pick(raw, ['id', 'name', 'icon', 'options', 'outline']);
+    const head = readHead(fields, at);
+    return Object.freeze({ ...head, options: readOptions(fields.options, at), outline: fn(fields.outline, `${at}.outline`) });
+  });
+}
+
+function readFilter(raw, index) {
+  const at = `filters[${index}]`;
+  return guarded(at, () => {
+    if (!isObject(raw)) throw shape(at);
+    const { id, name, options, passes: rawPasses } = pick(raw, ['id', 'name', 'options', 'passes']);
+    if (typeof id !== 'string' || !ID.test(id)) throw shape(`${at}.id`);
+    if (!text(name)) throw shape(`${at}.name`);
+    const passes = copy(rawPasses);
+    if (!passes || passes.length < 1 || passes.length > 4) throw shape(`${at}.passes`);
+    passes.forEach((pass, i) => {
+      if (typeof pass !== 'string' || !pass.length || pass.length > MOST_SHADER) throw shape(`${at}.passes[${i}]`);
+    });
+    return Object.freeze({ id, name, options: readOptions(options, at), passes: Object.freeze(passes) });
+  });
+}
+
+// One kind's list: at most MOST_EACH, ids unique. (Solvers say twoSolvers; the others are a shape refusal at the id.)
+function readKind(exported, kind, read) {
+  const list = guarded(kind, () => (exported[kind] === undefined ? [] : copy(exported[kind])));
+  if (!list || list.length > MOST_EACH) throw shape(kind);
+  const defs = list.map(read);
+  const seen = new Set();
+  defs.forEach(({ id }, i) => {
+    if (seen.has(id)) {
+      if (kind === 'solvers') throw new ManifestError('twoSolvers', { id });
+      throw shape(`${kind}[${i}].id`);
+    }
+    seen.add(id);
+  });
   return Object.freeze(defs);
+}
+
+// A script's default export read into frozen parts: { solvers, brushes, shapes, filters }, each possibly empty, never all.
+export function readScript(namespace) {
+  const exported = guarded('default', () => {
+    const value = namespace?.default;
+    if (!isObject(value)) throw shape('default');
+    return value;
+  });
+  const parts = Object.freeze({
+    solvers: readKind(exported, 'solvers', readSolver),
+    brushes: readKind(exported, 'brushes', readBrush),
+    shapes: readKind(exported, 'shapes', readShape),
+    filters: readKind(exported, 'filters', readFilter),
+  });
+  if (!Object.values(parts).some((list) => list.length)) throw shape('default');
+  return parts;
+}
+
+// A shape's outline function's answer, read into frozen outlines: each { closed, points }, a point being
+// [x, y, inX, inY, outX, outY] (a 2-number point has no handles). 1-200 outlines, 500 points in all, every number finite.
+export function readOutlines(raw) {
+  try {
+    const list = copy(raw);
+    if (!list || list.length < 1 || list.length > MOST_OUTLINES) throw shape('outline');
+    let total = 0;
+    const outlines = list.map((item) => {
+      if (!isObject(item)) throw shape('outline');
+      const { closed, points: rawPoints } = pick(item, ['closed', 'points']);
+      const points = copy(rawPoints);
+      if (typeof closed !== 'boolean' || !points || points.length < 2) throw shape('outline');
+      total += points.length;
+      if (total > MOST_POINTS) throw shape('outline');
+      return Object.freeze({
+        closed,
+        points: Object.freeze(points.map((point) => {
+          const numbers = copy(point);
+          if (!numbers || (numbers.length !== 2 && numbers.length !== 6) || !numbers.every(num)) throw shape('outline');
+          return Object.freeze(numbers.length === 2 ? [...numbers, 0, 0, 0, 0] : numbers);
+        })),
+      });
+    });
+    return Object.freeze(outlines);
+  } catch (error) {
+    throw error instanceof ManifestError ? error : shape('outline');
+  }
 }

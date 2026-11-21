@@ -1,6 +1,6 @@
 // A plugin solver's JavaScript passes: the window of neighbors, the second pass over the first's picks, every result held.
 import { describe, expect, it } from 'vitest';
-import { readSolvers } from '@/plugins/script';
+import { readScript } from '@/plugins/script';
 import { pluginMatcher, resolvePlugin, grownArea, holdCell, SolverError } from '@/lib/PluginSolve';
 import { shapeMatcher, resolveShapes, mixChannel } from '@/lib/CharResolver';
 import { PALETTES } from '@/lib/ColorUtils';
@@ -15,7 +15,7 @@ const SET = ['▀', '▄', '█', '▌'].map((char) => ({ char, mask: maskOf(REC
 const GLYPHS = [...SET, ...['|', '-'].map((char) => ({ char, mask: maskOf(RECTS[char]), own: true }))];
 const CHARS = GLYPHS.map(({ char }) => char);
 
-const solver = (fields) => readSolvers({ default: { solvers: [{ id: 't', name: 'T', styles: ['ansi', 'colorAscii', 'ascii'], reach: 1, ...fields }] } })[0];
+const solver = (fields) => readScript({ default: { solvers: [{ id: 't', name: 'T', styles: ['ansi', 'colorAscii', 'ascii'], reach: 1, ...fields }] } }).solvers[0];
 const matcherOf = (def, more) => pluginMatcher({ def, ref: REF, palette: CGA, glyphs: GLYPHS, solids: 0, light: 0, renderStyle: 'ansi', options: {}, ...more });
 const pick = (c) => [c.char, c.fg.hex.toLowerCase(), c.bg.hex.toLowerCase()];
 
