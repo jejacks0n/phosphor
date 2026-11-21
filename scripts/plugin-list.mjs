@@ -138,18 +138,21 @@ export async function makeList({ dir, commit, refresh, fetch, token, previousUrl
   return built;
 }
 
+// The command line: a flag that isn't there is undefined (indexOf's -1 would read the first argument).
+export function parseArgs(argv) {
+  const value = (name) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
+  return { out: value('--out'), commit: value('--commit'), refresh: argv.includes('--refresh'), previous: value('--previous') ?? PREVIOUS_URL };
+}
+
 async function main() {
-  const args = process.argv.slice(2);
-  const arg = (name) => args[args.indexOf(name) + 1];
-  const out = arg('--out');
-  const commit = arg('--commit');
+  const { out, commit, refresh, previous } = parseArgs(process.argv.slice(2));
   if (!out || !/^[0-9a-f]{40}$/.test(commit ?? '')) {
     console.error('usage: node scripts/plugin-list.mjs --out <file> --commit <sha> [--refresh] [--previous <url>]');
     process.exit(1);
   }
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
   try {
-    const { list, log } = await makeList({ dir: join(root, 'plugins'), commit, refresh: args.includes('--refresh'), previousUrl: arg('--previous') ?? PREVIOUS_URL, fetch, token: process.env.GITHUB_TOKEN });
+    const { list, log } = await makeList({ dir: join(root, 'plugins'), commit, refresh, previousUrl: previous, fetch, token: process.env.GITHUB_TOKEN });
     log.forEach((line) => console.log(line));
     writeFileSync(out, `${JSON.stringify(list, null, 2)}\n`);
   } catch (error) {
