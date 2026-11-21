@@ -198,7 +198,7 @@ A bitmap font belongs to the drawing, not to your browser:
 - **Another height**: Switching to a font of another height keeps the columns and changes the lines so the picture keeps its shape: going from 8×16 to 8×8 doubles the lines, and going back halves them. Typed characters and pins keep their places, so a drawing made in 8×16 has them in the top half of the 8×8 grid, and a pinned character keeps its colors as well as its place. Paint, the picture and vector shapes stretch with the lines, so a picture a Columns change cropped or left in a corner stays where it was under your characters. It's one undo step. It isn't possible in a drawing with frames, and near the size limits the columns give way. With nothing drawn yet, a switch is like changing **Columns** with the lock on, so **Columns** still refits the photo afterward.
 - **The converter measures in it**: Best match and By shape compare each cell with the font's characters, so a photo converts into the shapes your font has.
 - **The status bar shows the code**: In the ANSI view, after **Char** and its character, the status bar gives the character's code in decimal: its slot in the drawing's font, or its classic (CP437) byte when there's no bitmap font. A character with no code shows none. On a narrow bar the code gives way, with the FG and BG hex codes, before anything else does.
-- **In a shared room**: Artists drawing with the host draw in the font; watchers see the drawing's characters, stand-ins and all, in IBM VGA. Only the host can change the font ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
+- **In a shared room**: Artists drawing with the host draw in the font, and watchers see the drawing in it, as does the room's picture in the lobby. Only the host can change the font ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
 ### The Font's Blocks
 
@@ -229,7 +229,7 @@ Box-drawing lines are drawn from a font's own pieces. A bitmap font can carry li
 - **Single and Double**: A font that doesn't draw one of them properly can **Hide** it, and **Show** brings it back. It leaves **Draw with** for that font only, and its characters in a selection or a file are left alone when you flip. A **Draw with** set to a style that isn't offered (hidden, deleted, or not in this font) draws, and shows, the first style that is; with none offered, the Pencil draws **Colors only** and Shapes **Half-block**.
 - **Ellipses**: An ellipse set to any line style draws half-blocks, as it does for Single and Double.
 - **They're kept**: With the drawing (saved, autosaved, and one undo step on the drawing's font) and with this browser's copy of the font, and they go to the artists drawing in a room.
-- **In a room**: Lines can't change in a room. Artists drawing with the host get the font's lines with its blocks, and draw in them; watchers see the drawing in IBM VGA ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
+- **In a room**: Lines can't change in a room. Artists drawing with the host get the font's lines with its blocks, and draw in them; watchers see the drawing in the font ([Fonts in Shared Rooms](#fonts-in-shared-rooms)).
 
 ### The Font's Sets
 
@@ -239,7 +239,7 @@ A bitmap font can carry character sets of its own, for the characters it draws w
 - **Empty sets**: A set with no characters is kept, so you can fill it later, but isn't offered.
 - **Under Characters**: The **Characters** field's ▾ menu lists the font's sets first, under the font's name, then the stock sets under **Stock**. Picking one puts its characters in the field. **Show stock sets** on the Fonts page is one switch for the font: off, the stock sets leave the menu. A font with no sets of its own shows the stock ones whatever it says.
 - **They're kept**: Like lines, with the drawing and with this browser's copy of the font, and go to the artists drawing in a room.
-- **In a room**: Sets can't change in a room. Artists drawing with the host get the font's sets, and watchers see the drawing in IBM VGA.
+- **In a room**: Sets can't change in a room. Artists drawing with the host get the font's sets, and watchers see the drawing in the font.
 
 ### What the Font Changes
 
@@ -275,7 +275,7 @@ A character one cell can't hold (a word, a control character) comes in as an emp
 
 ### Fonts in Shared Rooms
 
-While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A TrueType font the host loaded from their computer can't be sent, so the room sees IBM VGA instead. A room needs a font that's set up, with a slot for each of the eight blocks, since a room can't change them: **Go live** is off while the drawing's font has one missing, with a button to set it up, and in a room you can't switch to a font that isn't (it's grayed out in the Font field, and **Use this font** is off, each saying what's missing). Opening an XBin or a project file whose font isn't set up is refused the same way. Set up its blocks first, outside the room. A bitmap font reaches the people drawing with the host: they draw in it, with its blocks, lines and sets, none of which they can change. Watchers don't get it: they see the drawing in IBM VGA, each character as the font has it (one the font lacks as its stand-in, or blank).
+While you draw in someone's room, the art is drawn in the host's font and size, and follows them when they change it. The Font field shows the host's font, turned off, and yours comes back when you stop. A TrueType font the host loaded from their computer can't be sent, so the room sees IBM VGA instead. A room needs a font that's set up, with a slot for each of the eight blocks, since a room can't change them: **Go live** is off while the drawing's font has one missing, with a button to set it up, and in a room you can't switch to a font that isn't (it's grayed out in the Font field, and **Use this font** is off, each saying what's missing). Opening an XBin or a project file whose font isn't set up is refused the same way. Set up its blocks first, outside the room. A bitmap font reaches everyone in the room. The people drawing with the host draw in it, with its blocks, lines and sets, none of which they can change. Watchers see the drawing in it too, as does the room's picture in the lobby.
 
 ---
 

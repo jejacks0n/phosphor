@@ -264,7 +264,7 @@ change one cell on the way.
 
 ### 26. All of it after a reload
 - Does: reloads the page, then exports an XBin, reopens the project and checks the Fonts page. Then starts a room as host, has a second browser join as an artist and a third watch, and looks at the Fonts page in the host's and the artist's.
-- Expects: the style, the sets, the hidden Double and **Show stock sets** are back after the reload, and with the project; in the room the Lines and Sets can't be changed, and say "A font's blocks, lines and sets can't change in a room."; the artist draws in her font and offers her style under **Draw with** and her sets under the Characters ▾; the watching browser sees the drawing in IBM VGA.
+- Expects: the style, the sets, the hidden Double and **Show stock sets** are back after the reload, and with the project; in the room the Lines and Sets can't be changed, and say "A font's blocks, lines and sets can't change in a room."; the artist draws in her font and offers her style under **Draw with** and her sets under the Characters ▾; the watching browser sees the drawing in her font too, and so does the room's picture in the lobby.
 - Probes: `interrupt`: reload right after the last slot click and check the style is whole.
 - Rated: no (drawing)
 
