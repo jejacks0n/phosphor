@@ -1,12 +1,12 @@
 <script setup>
-import { ref, shallowRef, computed, watch, useTemplateRef, nextTick } from 'vue';
+import { ref, shallowRef, computed, watch, useTemplateRef, nextTick, toRaw } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { notSetUp } from '@/lib/fontSetup';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
-import { storedBitmapFont, registerBitmapFont, familyOf, storeFontPart, loadFonts } from '@/lib/userFonts';
+import { storedBitmapFont, registerBitmapFont, familyOf, storeFontPart, withPart } from '@/lib/userFonts';
 import { fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
@@ -95,6 +95,12 @@ const font = computed(() => (!bitmap.value ? null : isDrawn.value ? drawn.value 
 watch(() => [bitmap.value && !isDrawn.value && chosen.value.id, stored.value], async ([id], [was] = []) => {
   if (id !== was) kept.value = null; // the same font kept again stays on screen, so its fields keep their focus
   if (!id) return;
+  const entry = stored.value.find((f) => f.id === id);
+  if (kept.value && entry) { // the same font: its parts are the list's (set at once by setPart), its glyphs the same
+    const { name, height, blocks, lines, sets } = toRaw(entry); // not the store's proxies: its parts go back to the browser's store
+    kept.value = { name, height, bytes: kept.value.bytes, ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) };
+    return;
+  }
   const got = await storedBitmapFont(id).catch(() => null);
   if (chosen.value?.id === id) kept.value = got; // not once another font is chosen
 }, { immediate: true });
@@ -143,12 +149,15 @@ watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => `${f.id}:${f
 }, { immediate: true });
 
 // Gives the chosen font this part ('blocks', 'lines' or 'sets'; undefined: none). The drawing's font changes as one
-// undo step; the browser's copy of it, when there is one, is kept too.
+// undo step; the browser's copy of it, when there is one, is kept too: the page's copy at once, so a click before the
+// browser's store is written builds on it, then the store.
 const setPart = (key, value) => run(async () => {
   if (isDrawn.value) await project.setDrawingFont({ ...font.value, [key]: value });
   if (isStored.value) {
-    await storeFontPart(chosen.value.id, key, value ?? null);
-    workspace.userFonts = await loadFonts();
+    const id = chosen.value.id;
+    if (!isDrawn.value) kept.value = withPart(kept.value, key, value);
+    workspace.userFonts = workspace.userFonts.map((f) => (f.id === id ? withPart(toRaw(f), key, value) : f));
+    await storeFontPart(id, key, value ?? null);
   }
 });
 // These blocks (undefined: found again).

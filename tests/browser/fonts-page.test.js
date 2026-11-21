@@ -692,6 +692,22 @@ test('a stored font\u2019s lines are kept in this browser', async () => {
   expect(project.fontLines).toBe('');
 });
 
+test('two clicks on a stored font\u2019s sheet, the second before the first is written, both land', async () => {
+  const { workspace } = await mount();
+  const stored = await addBitmapFont(new File([cp437Font.bytes], 'L.F16'));
+  workspace.userFonts = await loadFonts();
+  await vi.waitFor(() => expect(row('L')).toBeTruthy());
+  await press(row('L'));
+  await vi.waitFor(() => expect(sectionTab('Lines')).toBeTruthy());
+  await press(sectionTab('Lines'));
+  await press(button('+ New line style'));
+  await vi.waitFor(() => expect(lineTiles()).toHaveLength(11));
+  await press(slotCell(1)); // only the page drawn again between them (as between two real clicks), not this browser's store written
+  await press(slotCell(2));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines?.styles[0].slots.slice(0, 3)).toEqual([1, 2, null]));
+  expect(workspace.userFonts.find((f) => f.id === stored.id).lines.styles[0].slots.slice(0, 3)).toEqual([1, 2, null]);
+});
+
 test('lines and sets are read-only in a room', async () => {
   const font = { ...cp437Font, lines: { hide: [], styles: [heavy] }, sets: { hideStock: false, sets: [{ id: 's1', name: 'Grit', slots: [250] }] } };
   const { project } = await mount({ font });

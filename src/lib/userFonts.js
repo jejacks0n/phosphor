@@ -112,6 +112,7 @@ async function inStore(mode, use) {
       const tx = db.transaction('fonts', mode), request = use(tx.objectStore('fonts'));
       tx.oncomplete = () => resolve(request?.result);
       tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error ?? new Error('aborted')); // a callback that threw ends it with no error event
     });
   } finally {
     db.close();
@@ -197,14 +198,28 @@ export async function storedBitmapFont(id) {
 
 // Keep one part of a stored bitmap font's own setup: key 'blocks' (the slots its block characters are drawn from),
 // 'lines' (its line styles, FontLines.encodeLines) or 'sets' (its character sets); value null: none, so the font
-// goes back to the found ones. The caller refreshes workspace.userFonts (loadFonts, or the font's entry).
+// goes back to the found ones. The caller refreshes workspace.userFonts (loadFonts, or the font's entry). Read and
+// written in one transaction, so writes made one after another land in that order, none built on a record another
+// has since changed.
 export async function storeFontPart(id, key, value) {
-  const record = await inStore('readonly', (fonts) => fonts.get(id));
+  const record = await inStore('readwrite', (fonts) => {
+    const get = fonts.get(id);
+    get.onsuccess = () => {
+      if (!get.result) return;
+      const next = { ...get.result };
+      delete next[key];
+      fonts.put({ ...next, ...(value && { [key]: value }) });
+    };
+    return get;
+  });
   if (!record) throw new Error(t('font.errors.missing'));
-  const next = { ...record };
-  delete next[key];
-  await inStore('readwrite', (fonts) => fonts.put({ ...next, ...(value && { [key]: value }) }));
 }
+// A font (a stored font's entry, or one as a drawing holds it) with this part (null or undefined: none).
+export const withPart = (font, key, value) => {
+  const next = { ...font };
+  delete next[key];
+  return value ? { ...next, [key]: value } : next;
+};
 export const storeBlocks = (id, blocks) => storeFontPart(id, 'blocks', blocks);
 
 // What an opened XBin asks for its font's saved blocks: (fontId) => blocks | undefined. `fonts`: workspace.userFonts,
