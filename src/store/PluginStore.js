@@ -164,13 +164,20 @@ export const usePluginStore = defineStore('plugins', {
     useScript(pluginId, hash, parts) {
       listen(this);
       registerScript(pluginId, hash, parts);
+      this.forgetFilterFailures(pluginId);
       this.refreshScripts();
     },
 
     dropScript(pluginId) {
       listen(this);
       unregisterScript(pluginId);
+      this.forgetFilterFailures(pluginId);
       this.refreshScripts();
+    },
+
+    // The registry forgets a plugin's filter failures when its script is registered again or dropped; so does the slice.
+    forgetFilterFailures(pluginId) {
+      for (const ref of Object.keys(this.filterFailures)) if (pluginOfSolver(ref) === pluginId) delete this.filterFailures[ref];
     },
 
     refreshScripts() {
