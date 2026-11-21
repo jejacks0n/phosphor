@@ -1,6 +1,6 @@
 // Tweens: a shape worked out part way between two of its versions (its key frames), with the timing that eases it.
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
-import { allPoints, apply, isGradient, outlines, withShape } from './shapes.js';
+import { allPoints, apply, gridMatrix, isGradient, outlines, screenMatrix, withShape } from './shapes.js';
 import { snapPoint } from '../lib/vectorSnap.js';
 import { ALL_PARTS, PART_FIELDS, partsOf } from './parts.js';
 import { isArt, onCells } from './artLayers.js';
@@ -23,11 +23,10 @@ const lerp = (a, b, t) => a + (b - a) * t;
 
 // A transform taken apart into turn, scale and shear, each part way, and put back: so a turn turns (the short way
 // round) instead of shrinking through nothing. The pivot (in the shape's own coordinates) moves in a straight line, so
-// a shape turned about it turns in place.
-// ponytail: the turn is taken apart in grid pixels, as Follow path's facing is: in a font whose grid pixel isn't square
-// on screen (pixelAspect ≠ 1) a tween's turn bends the shape on its way round. Turning on screen means tweening the
-// parts of screenMatrix(m, pixelAspect) and taking the result back with gridMatrix.
-function tweenMatrix(m0, m1, t, [px, py] = [0, 0]) {
+// a shape turned about it turns in place. The parts are taken on screen, where a grid pixel is aspect as tall as it's
+// wide, so in a font whose cells aren't 1:2 the turn doesn't bend the shape on its way round.
+function tweenMatrix(m0, m1, t, [px, py] = [0, 0], aspect = 1) {
+  if (aspect !== 1) return gridMatrix(tweenMatrix(screenMatrix(m0, aspect), screenMatrix(m1, aspect), t, [px, py * aspect]), aspect);
   const parts = (m) => {
     const [a, b, c, d, e, f] = m, sx = Math.hypot(a, b);
     return sx ? { e, f, angle: Math.atan2(b, a), sx, sy: (a * d - b * c) / sx, k: (a * c + b * d) / sx } : null;
@@ -83,10 +82,11 @@ const fieldsOf = (shape, name) => Object.fromEntries(PART_FIELDS[name].map((fiel
 
 // One part (parts.js) of shape a at t = 0 to b at t = 1 (t already eased), as fields; turned about at (a's middle by
 // default). What can't be part way (the outlines' structure, a solid color against a gradient, the stroke's style, the
-// fill rule, stacking) is a's until half way, then b's. An art layer's move lands on the nearest whole cell.
-export function tweenPart(name, a, b, t, at = pivot(a)) {
+// fill rule, stacking) is a's until half way, then b's. An art layer's move lands on the nearest whole cell. aspect: a
+// grid pixel's height on screen over its width, which a turn is true in (an art layer doesn't turn).
+export function tweenPart(name, a, b, t, at = pivot(a), aspect = 1) {
   const late = t < 0.5 ? a : b;
-  if (name === 'transform') return { m: isArt(a) ? onCells(tweenMatrix(a.m, b.m, t)) : tweenMatrix(a.m, b.m, t, at) };
+  if (name === 'transform') return { m: isArt(a) ? onCells(tweenMatrix(a.m, b.m, t)) : tweenMatrix(a.m, b.m, t, at, aspect) };
   if (name === 'outline') {
     const mixed = tweenOutlines(a, b, t);
     return mixed ? { ...mixed, closed: a.closed, rule: late.rule } : fieldsOf(late, name);
@@ -101,10 +101,10 @@ export function tweenPart(name, a, b, t, at = pivot(a)) {
   return fieldsOf(late, name);
 }
 
-// Shape a at t = 0 to b at t = 1, every part.
-export function tweenShape(a, b, t) {
+// Shape a at t = 0 to b at t = 1, every part, turning true on screen at aspect (tweenPart).
+export function tweenShape(a, b, t, aspect = 1) {
   const at = pivot(a);
-  return withShape(t < 0.5 ? a : b, Object.assign({}, ...partsOf(a).map((name) => tweenPart(name, a, b, t, at))));
+  return withShape(t < 0.5 ? a : b, Object.assign({}, ...partsOf(a).map((name) => tweenPart(name, a, b, t, at, aspect))));
 }
 
 // Spans: a shape's key frames are the frames that own it (have its key in their changes). A tween runs from one key
@@ -177,16 +177,16 @@ function snappedMove(from, m, motion) {
 // fading to its next as a's easing has it, the move snapped as the Transform's key's motion says (an art layer's is
 // always on whole cells, tweenPart's, whatever the motion). With nothing fading, the key frame's own. life and keyed:
 // the life around frame i and its key frames (keyFramesOf), when they're known already, so frame after frame of one
-// life doesn't walk it each time.
+// life doesn't walk it each time. aspect: the grid pixel's on screen, which turns are true in (tweenPart).
 // ponytail: each call walks the shape's life; per-shape lives worked out once per movie if huge movies lag.
-export function shapeAt(frames, key, i, life = lifeAt(frames, key, i), keyed = undefined) {
+export function shapeAt(frames, key, i, { life = lifeAt(frames, key, i), keyed, aspect = 1 } = {}) {
   if (!life.length) return null;
   const stored = (k) => frames[k].changes.get(key).cell, at = life.findLast((k) => k <= i), fields = {};
   let own = true, transformAt = at;
   for (const [name, { a, b, easing }] of partTweens(frames, key, life, i, keyed)) {
     const t = easing && b !== undefined && a !== i ? ease(easing, (i - a) / (b - a)) : 0;
     if (a !== at || t) own = false;
-    Object.assign(fields, t ? tweenPart(name, stored(a), stored(b), t) : fieldsOf(stored(a), name));
+    Object.assign(fields, t ? tweenPart(name, stored(a), stored(b), t, undefined, aspect) : fieldsOf(stored(a), name));
     if (name !== 'transform') continue;
     const motion = frames[a].motions?.get(key) ?? 'smooth';
     transformAt = a;
@@ -199,19 +199,19 @@ const tweenedKeys = (frames) => new Set(frames.flatMap((frame) => [...(frame.twe
 const workedKeys = (frames) => new Set(frames.flatMap((frame) => [...(frame.tweens?.keys() ?? []), ...(frame.parts?.keys() ?? [])]));
 
 // Every shape on frame i that a tween or a key frame setting only some of it works out, key to shape (what frame i
-// shows of it over what its key frames hold).
-export function workedOutAt(frames, i) {
+// shows of it over what its key frames hold), turning true on screen at aspect (shapeAt).
+export function workedOutAt(frames, i, aspect = 1) {
   const out = new Map();
   for (const key of workedKeys(frames)) {
-    const shape = shapeAt(frames, key, i);
+    const shape = shapeAt(frames, key, i, { aspect });
     if (shape) out.set(key, shape);
   }
   return out;
 }
 
 // Every shape a tween runs across frame i in, key to { shape, parts }: parts maps each part tweening across it (from a
-// key before i to one after) to { easing, motion } (motion the Transform's; smooth for the rest).
-export function tweenedAt(frames, i) {
+// key before i to one after) to { easing, motion } (motion the Transform's; smooth for the rest). aspect as shapeAt's.
+export function tweenedAt(frames, i, aspect = 1) {
   const out = new Map();
   for (const key of tweenedKeys(frames)) {
     const life = lifeAt(frames, key, i), parts = new Map();
@@ -220,7 +220,7 @@ export function tweenedAt(frames, i) {
       if (!easing || b === undefined || a === i) continue;
       parts.set(name, { easing, motion: (name === 'transform' && frames[a].motions?.get(key)) || 'smooth' });
     }
-    if (parts.size) out.set(key, { shape: shapeAt(frames, key, i), parts });
+    if (parts.size) out.set(key, { shape: shapeAt(frames, key, i, { aspect }), parts });
   }
   return out;
 }

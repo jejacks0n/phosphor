@@ -37,10 +37,10 @@ function cellsIn(states) {
 }
 
 // A frame's shapes, from its resolved states, as they're drawn: followers on their paths, guides left out.
-function shapesOf(resolved) {
+function shapesOf(resolved, aspect) {
   const shapes = new Map();
   for (const [key, { cell }] of resolved) if (cell && isShapeKey(key)) shapes.set(key, cell);
-  return shownShapes(shapes);
+  return shownShapes(shapes, aspect);
 }
 
 export default class FrameBuilder {
@@ -91,7 +91,7 @@ export default class FrameBuilder {
   // position. A plain stack hands the frame over as it is, with nothing copied.
   // grouping: another split of the stack (#every), as { lower, upper }.
   #split(all, grouping = null) {
-    if (this.#plain && !grouping) return { states: all, shapes: shapesOf(all), upper: null, every: null };
+    if (this.#plain && !grouping) return { states: all, shapes: shapesOf(all, pixelAspectOf(this.#font)), upper: null, every: null };
     const { lower: group, upper: above } = grouping ?? { lower: this.#lower, upper: this.#upper };
     const { cells: lowerId, vectors } = group, states = new Map(), shapes = new Map(), every = new Map();
     const upper = new Map(above.map(({ id }) => [id, new Map()]));
@@ -108,8 +108,9 @@ export default class FrameBuilder {
       else upper.get(id)?.set(at, state);
       if (state.cell && (id === lowerId || upper.has(id))) every.set(at, state.cell);
     }
-    for (const u of above) if (u.kind === 'vector') upper.set(u.id, shownShapes(upper.get(u.id)));
-    return { states, shapes: shownShapes(shapes), upper, every };
+    const aspect = pixelAspectOf(this.#font);
+    for (const u of above) if (u.kind === 'vector') upper.set(u.id, shownShapes(upper.get(u.id), aspect));
+    return { states, shapes: shownShapes(shapes, aspect), upper, every };
   }
 
   // The lower group's shapes in the layers' order (shapes.js: stacked).

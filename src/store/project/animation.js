@@ -152,14 +152,14 @@ function withMotion(motions, key, motion) {
 function inheritance(project) {
   const at = project.frame, frame = project.currentFrame, bare = project.frames.slice();
   bare[at] = { ...frame, changes: new Map([...frame.changes].filter(([key]) => !isShapeKey(key))) };
-  const tweened = tweenedAt(bare, at);
-  const shapeOf = (key) => shapeAt(bare, key, at);
+  const aspect = project.pixelAspect, tweened = tweenedAt(bare, at, aspect);
+  const shapeOf = (key) => shapeAt(bare, key, at, { aspect });
   const inherits = (key, shape) => sameShape(shape ?? undefined, shapeOf(key) ?? undefined)
     && (!tweened.has(key) || !frame.changes.has(key) || !!frame.splits?.has(key));
   const unsetOf = (key, shape) => {
     const none = project.frames.slice();
     none[at] = { ...frame, changes: new Map(frame.changes).set(key, cellState(shape, 0, 0)), parts: new Map([...(frame.parts ?? []), [key, new Set()]]) };
-    return shapeAt(none, key, at);
+    return shapeAt(none, key, at, { aspect });
   };
   return { shapeOf, unsetOf, inherits, tweened };
 }
@@ -575,7 +575,7 @@ export const animationActions = {
       const previous = at ? this.frames[at - 1].passes : NOTHING;
       frame.resolved = resolveOver(previous, frame);
       const kept = [];
-      for (const [key, shape] of workedOutAt(this.frames, at)) {
+      for (const [key, shape] of workedOutAt(this.frames, at, this.pixelAspect)) {
         frame.resolved.set(key, cellState(shape, 0, 0));
         // A key frame's whole shape is kept as it shows, for when what it carries from goes (the frame showing's is note's).
         const held = frame.changes.get(key)?.cell;
@@ -827,12 +827,12 @@ export const animationActions = {
 
   // The keys refs name go, but the shape's first and fixed ones (deletedKeys): one undo step.
   deleteKeys(shapeKey, refs) {
-    keyStep(this, shapeKey, (frames) => deletedKeys(frames, shapeKey, refs));
+    keyStep(this, shapeKey, (frames) => deletedKeys(frames, shapeKey, refs, this.pixelAspect));
   },
 
   // A key for part on the frame showing, with the value it has there (addedKey): one undo step.
   addKey(shapeKey, part) {
-    keyStep(this, shapeKey, (frames) => addedKey(frames, shapeKey, part, this.frame));
+    keyStep(this, shapeKey, (frames) => addedKey(frames, shapeKey, part, this.frame, this.pixelAspect));
   },
 
   // The keys refs name moved by `by` frames, as far as they can go (moveRange): one undo step, or with drag (the
@@ -845,7 +845,7 @@ export const animationActions = {
     if (drag) drag.before ??= framesNow(this);
     const { least, most } = moveRange(this.frames, shapeKey, refs), step = clamped(by, least, most);
     const start = drag && refs.length ? partKeys(this.frames, shapeKey, refs[0].at)?.start : undefined;
-    const moved = movedKeys(this.frames, shapeKey, refs, step);
+    const moved = movedKeys(this.frames, shapeKey, refs, step, this.pixelAspect);
     if (drag) {
       putKeys(this, shapeKey, moved.patch);
       // The shape's start dragged past the frame showing: the frame it now begins on shows, so it stays in view.

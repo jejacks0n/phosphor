@@ -45,7 +45,7 @@ function countedLayers(project) {
   if (!all.upper.length && !layers.some((layer) => layer.hidden)) return [];
   let byLayer = null; // the shapes each vector layer draws, made when a scratch layer needs them
   const shapesOn = (ids) => {
-    byLayer ??= [...shownShapes(project.shapes)];
+    byLayer ??= [...shownShapes(project.shapes, project.pixelAspect)];
     return new Map(byLayer.filter(([, shape]) => ids.includes(shape.layer ?? 'vector')));
   };
   let lower = project._shapeLayer;

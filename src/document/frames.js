@@ -163,7 +163,7 @@ export function paintImage(resolved, cols, rows) {
 // (MOTIONS). A shape is saved as the frame shows it, so a copy from before parts shows each key frame right; parts:
 // [key, [part, …]] for the shapes the frame sets only some of, on every frame with shapes (a frame with shapes and no
 // parts was saved before them).
-export const serializeFrames = (frames) => frames.map((frame, i) => {
+export const serializeFrames = (frames, aspect = 1) => frames.map((frame, i) => {
   const { kind, hold, changes } = frame, drawn = [...drawnKeys(frame)].filter((key) => !changes.has(key));
   const all = [...changes], shapes = all.filter(([key]) => isShapeKey(key));
   const eases = [...(frame.tweens ?? [])].filter(([key]) => changes.get(key)?.cell)
@@ -178,7 +178,7 @@ export const serializeFrames = (frames) => frames.map((frame, i) => {
     changes: all.filter(([key]) => !isShapeKey(key)).map(([key, { cell, top, bottom }]) => [key, cell, top, bottom]),
     ...(drawn.length && { drawn }),
     ...(stays.length && { stays }),
-    ...(shapes.length && { shapes: shapes.map(([key, { cell }]) => [key, cell && shapeAt(frames, key, i)]), parts }),
+    ...(shapes.length && { shapes: shapes.map(([key, { cell }]) => [key, cell && shapeAt(frames, key, i, { aspect })]), parts }),
     ...(eases.length && { eases }),
     ...(motions.length && { motions }),
   };

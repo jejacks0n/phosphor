@@ -1,7 +1,7 @@
 // Placing followers on their paths, and dropping guides from what's drawn.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { apply, localBounds, makeShape, rotation } from '../../src/document/shapes.js';
+import { apply, localBounds, makeShape, rotation, screenMatrix } from '../../src/document/shapes.js';
 import { makeArt } from '../../src/document/artLayers.js';
 import { placeFollowers, shownShapes } from '../../src/document/followers.js';
 
@@ -101,4 +101,12 @@ test('shownShapes drops a guide and keeps its follower placed on it', () => {
   assert.deepEqual([...shown.keys()], ['v:f']);
   at(shown.get('v:f'), 10, 0);
   assert.ok(placeFollowers(shapes).has('v:p')); // placed keeps it
+});
+
+test('in an 8×8 font Rotate to face path faces a path at 45° on screen at 45° on screen', () => {
+  const shapes = [['v:p', line(0, 0, 10, 20)], ['v:f', square(50, 50, { follow: { key: 'v:p', face: true }, along: 0.5 })]];
+  const S = screenMatrix(placeFollowers(new Map(shapes), 0.5).get('v:f').m, 0.5);
+  close(Math.atan2(S[1], S[0]), Math.PI / 4);
+  close(S[0] * S[2] + S[1] * S[3], 0);
+  assert.deepEqual(placeFollowers(new Map(shapes), 1).get('v:f'), placed(shapes)); // aspect 1 is today's
 });

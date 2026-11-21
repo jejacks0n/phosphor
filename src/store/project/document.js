@@ -494,7 +494,7 @@ export const documentActions = {
     if (this.hasFrames) { // as of the call, as the rest is
       this.noteFrame();
       this.resolvedOf(this.frames.length - 1); // every key frame's shape as it shows, kept on it
-      const frames = serializeFrames(this.frames);
+      const frames = serializeFrames(this.frames, this.pixelAspect);
       parts.animation = { frames: slots ? oldFrames(frames, slots.cells) : frames, frame: this.frame, fps: this.fps };
     }
     const baseBlob = this.baseLayer?.hasPaint ? this.baseLayer.toBlob() : null;

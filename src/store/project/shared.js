@@ -390,7 +390,7 @@ export function shapesOfStack(project) {
   const { vectors, upper: above } = project.lowerGroup, inside = project._artInside?.key;
   const lower = new Map(), upper = new Map();
   for (const id of above) if (project.layerById(id).kind === 'vector') upper.set(id, new Map());
-  for (const [key, shape] of shownShapes(project.shapes)) {
+  for (const [key, shape] of shownShapes(project.shapes, project.pixelAspect)) {
     if (key === inside) continue;
     const id = shape.layer ?? 'vector';
     if (vectors.includes(id)) lower.set(key, shape);

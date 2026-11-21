@@ -1,7 +1,7 @@
 // Tweens: a shape worked out part way between two of its versions, and the timing that eases it.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { makeShape, polygonShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
+import { makeShape, polygonShape, rectShape, rotation, screenMatrix, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { makeArt } from '../../src/document/artLayers.js';
 import { EASINGS, MOTIONS, ease, lifeAt, setPartsAt, shapeAt, strayEasings, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
 import { PARTS } from '../../src/document/parts.js';
@@ -419,4 +419,12 @@ test('an outline part way between two keys is a path; at either end it\'s the ke
   assert.equal(tweenPart('outline', a, b, 0.5).made, undefined);
   const held = polygonShape(0, 0, 10, 10, 5, { fill: '#ff0000' }), other = polygonShape(0, 0, 10, 10, 6, { fill: '#ff0000' });
   assert.deepEqual(tweenPart('outline', held, other, 0.25).made, held.made); // outlines that can't be part way: a's until half way
+});
+
+test('in an 8×8 font a quarter turn is a turn on screen all the way round: a 4 × 8 rect stays 4 × 4 on screen', () => {
+  const R = rectShape(0, 0, 4, 8, { fill: '#ff0000' }), turned = transformed(R, rotation(Math.PI / 2, 2, 4, 0.5));
+  const half = screenMatrix(tweenShape(R, turned, 0.5, 0.5).m, 0.5);
+  [Math.SQRT1_2, Math.SQRT1_2, -Math.SQRT1_2, Math.SQRT1_2].forEach((v, i) => close(half[i], v)); // shapes keep m to 1/10000
+  tweenShape(R, turned, 1, 0.5).m.forEach((v, i) => close(v, turned.m[i]));
+  assert.deepEqual(tweenShape(R, turned, 0.5, 1), tweenShape(R, turned, 0.5)); // aspect 1 is today's
 });

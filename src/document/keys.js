@@ -117,7 +117,7 @@ const entryOf = (frame, key) => JSON.stringify([...[frame.tweens, frame.motions,
 // The patch that gives a life the keys in rows (as keysIn, the part's value from each key's cell). A frame with no key
 // left has none of the shape; each key frame holds the whole shape as it shows after, and the last key of each part
 // keeps no easing, nor does any key of the shape's elsewhere that no tween uses.
-function rewritten(frames, key, life, rows) {
+function rewritten(frames, key, life, rows, aspect = 1) {
   const next = frames.slice(), own = new Map(); // frame index to its keys, part to key
   for (const [part, row] of rows) {
     row.forEach((k, j) => {
@@ -138,7 +138,7 @@ function rewritten(frames, key, life, rows) {
     });
   }
   const after = lifeAt(next, key, start), keyed = keyFramesOf(next, key, after); // one life, every key in it: walked once
-  for (const [at, keys] of own) next[at].changes.set(key, cellState(withParts(shapeAt(next, key, at, after, keyed), next[at].changes.get(key).cell, [...keys.keys()]), 0, 0));
+  for (const [at, keys] of own) next[at].changes.set(key, cellState(withParts(shapeAt(next, key, at, { life: after, keyed, aspect }), next[at].changes.get(key).cell, [...keys.keys()]), 0, 0));
   for (const { at, part } of strayEasings(next, key)) { // another life's, left by an edit
     const frame = next[at], eases = new Map(frame.tweens.get(key));
     eases.delete(part);
@@ -156,7 +156,7 @@ function rewritten(frames, key, life, rows) {
 // The refs' keys moved by `by` frames (within moveRange), { patch, refs }: each with its part's value, easing and
 // motion, replacing a key of its part where it lands; refs, those naming a key, where they landed. A moved start moves
 // the whole shape.
-export function movedKeys(frames, key, refs, by) {
+export function movedKeys(frames, key, refs, by, aspect = 1) {
   const life = lifeOf(frames, key, refs), rows = life.length ? keysIn(frames, key, life) : null;
   refs = rows ? matching(refs, rows) : [];
   if (!refs.length || !by) return { patch: new Map(), refs };
@@ -165,29 +165,29 @@ export function movedKeys(frames, key, refs, by) {
     const moved = row.filter(({ at }) => moves(part, at)).map((k) => ({ ...k, at: k.at + by })), landed = new Set(moved.map(({ at }) => at));
     rows.set(part, [...row.filter(({ at }) => !moves(part, at) && !landed.has(at)), ...moved].sort((a, b) => a.at - b.at));
   }
-  return { patch: rewritten(frames, key, life, rows), refs: refs.map(({ part, at }) => ({ part, at: at + by })) };
+  return { patch: rewritten(frames, key, life, rows, aspect), refs: refs.map(({ part, at }) => ({ part, at: at + by })) };
 }
 
 // The refs' keys gone, but the start's and fixed ones: each part tweens from the key before to the key after, eased
 // as the one before is.
-export function deletedKeys(frames, key, refs) {
+export function deletedKeys(frames, key, refs, aspect = 1) {
   const life = lifeOf(frames, key, refs), start = life[0];
   if (!life.length) return new Map();
   const gone = new Set(refs.filter(({ at }) => at !== start && !isFixed(frames, at, start)).map(({ part, at }) => `${part}@${at}`));
   const rows = keysIn(frames, key, life);
   for (const [part, row] of rows) rows.set(part, row.filter(({ at }) => !gone.has(`${part}@${at}`)));
-  return rewritten(frames, key, life, rows);
+  return rewritten(frames, key, life, rows, aspect);
 }
 
 // A key for part on frame at, with the value it shows there; inside the part's tween, eased and moving as that tween
 // (both halves keep it). Null when the shape has no such part (partsOf) or a key for it there, or the frame doesn't
 // show the shape.
-export function addedKey(frames, key, part, at) {
+export function addedKey(frames, key, part, at, aspect = 1) {
   const life = lifeAt(frames, key, at);
   if (!life.length) return null;
   const rows = keysIn(frames, key, life), row = rows.get(part);
   if (!row || row.some((k) => k.at === at)) return null;
   const { easing, motion } = row.findLast((k) => k.at < at);
-  rows.set(part, [...row, { at, cell: shapeAt(frames, key, at), easing, motion }].sort((a, b) => a.at - b.at));
-  return rewritten(frames, key, life, rows);
+  rows.set(part, [...row, { at, cell: shapeAt(frames, key, at, { aspect }), easing, motion }].sort((a, b) => a.at - b.at));
+  return rewritten(frames, key, life, rows, aspect);
 }
