@@ -14,6 +14,7 @@ import { onGrid } from '@/lib/ImageProcessor.js';
 import { isSolverRef, solverFor, standInOf, optionValues, filterFor } from '@/plugins/solvers.js';
 import { filterGroups, runningFilters } from '@/plugins/filters.js';
 import { usePluginStore } from '@/store/PluginStore.js';
+import { useRoomStore } from '@/store/RoomStore.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { combineActions, guarded } from '@/store/project/combineActions.js';
@@ -377,7 +378,7 @@ export const useProjectStore = defineStore('project', {
     // The plugin filters' groups in the settings column (plugins/filters.js): those installed, in the Plugins dialog's
     // order and then each script's, then the drawing's saved ones that aren't. None in a room, where no filter applies.
     filterGroups() {
-      if (this.inRoom) return [];
+      if (this.inRoom || useRoomStore().inRoom) return []; // hosting or drawing in one, as the panel goes by the room's role
       const plugins = usePluginStore();
       void plugins.solverStamp; // a script registered again (a Reload) is the same slice with a new hash
       const order = new Map(plugins.plugins.map(({ id }, i) => [id, i]));

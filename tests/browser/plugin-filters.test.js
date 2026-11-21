@@ -148,6 +148,31 @@ test('Into the image makes the picture without the filter, which still applies a
   for (const channel of ['r', 'g', 'b']) expect(Math.abs(after[channel] - before[channel])).toBeLessThanOrEqual(2);
 });
 
+test('Bake presses the filter into the picture and clears it, once; Flatten and closing the drawing clear it; undo brings it back', async () => {
+  const { project } = await drawing();
+  const dim = solverRef('jane.fx', 'dim'), set = { [dim]: { name: 'Dim', values: { amount: 0.5 } } };
+  const at = () => project.renderer.imageAt(2, 2, project.cols, project.rows);
+  project.setSlider('filterOptions', set);
+  project.commitSliders('filterOptions');
+  await settle(project);
+  const before = at();
+  await project.bake();
+  await settle(project);
+  expect(project.filterOptions).toEqual({});
+  for (const channel of ['r', 'g', 'b']) expect(Math.abs(at()[channel] - before[channel])).toBeLessThanOrEqual(2);
+  project.undo();
+  await settle(project);
+  expect(project.filterOptions).toEqual(set);
+
+  expect(await project.flattenDrawing()).toBe(true);
+  expect(project.filterOptions).toEqual({});
+  project.undo();
+  expect(project.filterOptions).toEqual(set);
+
+  project.clearImage();
+  expect(project.filterOptions).toEqual({});
+});
+
 test('a filter that isn\'t installed keeps its values through a save and an open, dimmed and named in Export', async () => {
   const { project } = await drawing();
   const glow = { [GLOW]: { name: 'Glow', values: { soft: true, amount: 0.25, tint: '#00ff88' } } };
@@ -203,12 +228,10 @@ test('in a room the groups aren\'t shown and no filter runs', async () => {
   const host = await mount(ControlPanel);
   expect(groupOf(host, 'Aberration')).toBeTruthy();
   useRoomStore().role = 'host';
-  project._hosting = true;
   await nextTick();
   expect(groupOf(host, 'Aberration')).toBe(undefined);
   expect(project.filterGroups).toEqual([]);
   expect(project.processParams.pluginFilters).toEqual([]);
-  project._hosting = false;
 });
 
 test('a group folds on its title, each by its own, and stays folded', async () => {

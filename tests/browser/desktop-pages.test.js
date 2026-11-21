@@ -396,7 +396,7 @@ test('LegalDialog desktop: the app\'s privacy note in place of the hosted servic
   expect(document.querySelector('.legal-body h1').textContent).toBe('Terms');
 });
 
-test('DesktopStartPage keeps Start a room off while a layer is on a plugin solver, saying why', async () => {
+test('DesktopStartPage keeps Start a room off while a layer is on a plugin solver or a plugin filter is set, saying why', async () => {
   const { social } = await mount(DesktopStartPage, ({ social }) => social.setDesktopName('ansi-fan'));
   const project = useProjectStore();
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 4 });
@@ -410,4 +410,10 @@ test('DesktopStartPage keeps Start a room off while a layer is on a plugin solve
   await nextTick();
   expect(button('Start a room').disabled).toBe(false);
   expect(social.page).not.toBe('start-room');
+  // A plugin filter set, here or not, keeps it off too, naming it.
+  project.setSlider('filterOptions', { 'plugin:jane.fx/glow': { name: 'Glow', values: { soft: true } } });
+  project.commitSliders('filterOptions');
+  await nextTick();
+  expect(button('Start a room').disabled).toBe(true);
+  expect(button('Start a room').title).toBe('The plugin filter Glow is on, which rooms don\'t use. Reset it or switch it off first.');
 });
