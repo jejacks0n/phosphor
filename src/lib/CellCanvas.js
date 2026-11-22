@@ -43,9 +43,21 @@ export function backingScale(cssWidth, cssHeight, dpr, maxSide = Infinity) {
 // sizes round down (rounding up would pass it again).
 export function cellGeometry(advance, scale, capped = false, font = DISPLAY_FONT) {
   const round = capped ? Math.floor : Math.round;
+  const odd = font.bitmap && font.height % 2 === 1;
+  if (font.bitmap) {
+    // A bitmap font's height follows its width, so the cell keeps the font's shape at every zoom: rounded each on its
+    // own, an 8×8 cell went 9×8, 9×10, 10×10. Its width steps by the fewest pixels (1 or 2) that give a whole height
+    // of the font's shape, even unless the font is odd; past 2 (8×14: 4 by 7, an odd 7) by 1, to the nearest height.
+    const ratio = (font.size * font.lineHeight) / advance;
+    const whole = (n) => Math.abs(n * ratio - Math.round(n * ratio)) < 1e-3 && (odd || Math.round(n * ratio) % 2 === 0);
+    const step = whole(1) ? 1 : whole(2) ? 2 : 1;
+    const cw = Math.max(step, round((advance * scale) / step) * step);
+    const ch = odd ? Math.max(1, round(cw * ratio)) : Math.max(2, round((cw * ratio) / 2) * 2);
+    return { cw, ch, cellWidth: cw / scale, lineHeight: ch / scale };
+  }
   const cw = round(advance * scale);
   const tall = font.size * font.lineHeight * scale;
-  const ch = font.bitmap && font.height % 2 === 1 ? round(tall) : round(tall / 2) * 2;
+  const ch = round(tall / 2) * 2;
   return { cw, ch, cellWidth: cw / scale, lineHeight: ch / scale };
 }
 

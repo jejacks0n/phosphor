@@ -103,3 +103,24 @@ test('gridAt: the pointer conversions share the cell split; an even unit is a pl
   assert.deepEqual(gridAt({ x: 16, y: 5 }, odd), { x: 2, y: 1 });             // where an 8x11 cell's halves meet
   assert.deepEqual(gridAt({ x: 4, y: 16 }, odd), { x: 0.5, y: 3 });             // the second cell's bottom pixel starts at 16
 });
+
+// The report: zooming an 8×8 font stretched its cells sideways, then up, then sideways again (9×8, 9×10, 10×10 at
+// dpr 1), as the width and height were each rounded on their own. A bitmap font's cell keeps its shape at every zoom:
+// its height follows its width, the two step together, and they never step back.
+test("a bitmap font's cell keeps the font's shape at every zoom, its width and height stepping together", () => {
+  const f08 = { size: 8, lineHeight: 1, bitmap: true, height: 8 }, f16 = { size: 16, lineHeight: 1, bitmap: true, height: 16 };
+  const f14 = { size: 14, lineHeight: 1, bitmap: true, height: 14 };
+  let was = null;
+  for (let s = 0.25; s <= 8; s += 0.005) {
+    const square = cellGeometry(8, s, false, f08);
+    assert.equal(square.ch, square.cw, `8×8 at ${s}`);           // square, so its halves are whole: an even side
+    assert.equal(square.cw % 2, 0, `8×8 at ${s}`);
+    if (was) assert.ok(square.cw >= was.cw && square.ch >= was.ch, `8×8 at ${s} stepped back`);
+    was = square;
+    const tall = cellGeometry(8, s, false, f16);
+    assert.equal(tall.ch, 2 * tall.cw, `8×16 at ${s}`);
+    const ega = cellGeometry(8, s, false, f14);                   // 7/4 has no whole step this small: the nearest even height
+    assert.equal(ega.ch, Math.max(2, Math.round((ega.cw * 1.75) / 2) * 2), `8×14 at ${s}`);
+    assert.equal(cellGeometry(8, s, true, f08).cw, cellGeometry(8, s, true, f08).ch); // capped too
+  }
+});
