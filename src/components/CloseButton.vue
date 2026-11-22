@@ -26,8 +26,10 @@ button.close {
   color: var(--text-muted);
 }
 
-button.close:hover {
-  color: var(--text);
+@media (hover: hover) { /* a tap on a touch screen leaves no hover look behind */
+  button.close:hover {
+    color: var(--text);
+  }
 }
 
 button.close svg {
