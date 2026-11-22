@@ -55,6 +55,23 @@ describe('favorite color palettes', () => {
     expect([p.name.length, p.author.length]).toEqual([100, 100]);
   });
 
+  it('keep stores only a sound palette: a long name cut to 100, one with no colors not at all', () => {
+    const store = fresh();
+    store.keep(pal('long', { name: 'n'.repeat(500) }));
+    expect(store.favorites.map(p => p.name.length)).toEqual([100]);
+    store.keep(pal('none', { colors: [] }));
+    store.toggle(pal('none', { colors: [] }));
+    expect(store.favorites.map(p => p.slug)).toEqual(['long']);
+  });
+
+  it('two entries with one slug are one favorite, the first', () => {
+    localStorage.setItem(KEY, JSON.stringify([
+      { slug: 'ok', name: 'First', colors: ['#000000'] },
+      { slug: 'ok', name: 'Second', colors: ['#ffffff'] },
+    ]));
+    expect(fresh().kept.map(p => p.name)).toEqual(['First']);
+  });
+
   it('with storage blocked, the store still works and keeps nothing', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
