@@ -101,7 +101,7 @@ onBeforeUnmount(close);
       :wide="onPalettes"
       :width="WIDTH"
       :left="left"
-      keep=".color-pair, [data-colors-toggle]"
+      keep=".color-pair, [data-colors-toggle], .app-toast"
       :label="t('colorLayer.aria')"
       @keydown="onKeyDown"
       @close="close"

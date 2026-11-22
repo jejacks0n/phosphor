@@ -12,7 +12,8 @@ import ArrowIcon from '@/components/ArrowIcon.vue';
 // something is edited, so a list it didn't write stays as it was typed. The pick is a place, not a color, so a color
 // the list holds twice is no trouble. While the system picker is open the list follows it, and `picking` says when a
 // pick starts and ends, so whoever holds the list can send it on as one change, as a slider drag goes.
-const props = defineProps({ modelValue: { type: String, default: '' }, name: { type: String, default: '' } });
+// `disabled` turns off every control (the holder's lock: the editor isn't inside the settings' disabled fieldset any more).
+const props = defineProps({ modelValue: { type: String, default: '' }, name: { type: String, default: '' }, disabled: Boolean });
 const emit = defineEmits(['update:modelValue', 'picking']);
 const { t } = useI18n();
 
@@ -82,6 +83,8 @@ const endPick = () => {
   if (picking) emit('picking', (picking = false));
 };
 onBeforeUnmount(endPick);
+// A pick still open when the controls went off is over, since a disabled chip may never say it ended.
+watch(() => props.disabled, (off) => { if (off) endPick(); });
 
 // The swatches are one Tab stop, the picked one, and the keys walk them as the grid they're drawn in: Left and Right
 // a swatch, Up and Down a row, Home and End to the first and last, stopping at the ends. Each picks the swatch it
@@ -97,7 +100,7 @@ const onSwatchKey = (event, i) => {
   event.stopPropagation();
   if (to < 0 || to > last) return;
   picked.value = to;
-  event.currentTarget.parentElement.children[to].focus();
+  event.currentTarget.closest('div.swatches').querySelectorAll('button.swatch')[to].focus();
 };
 
 // With a mouse or a pen a swatch can be dragged to another place; a finger's drag scrolls the settings, so it can't.
@@ -150,98 +153,118 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
 
 <template>
   <div class="color-list">
-    <label for="palette">{{ t('panel.paletteColors.label') }}</label>
+    <div class="head">
+      <span class="title">{{ t('panel.quantize.palette') }}</span>
+      <span class="meta">{{ t('colorList.count', colors.length) }}</span>
+    </div>
+    <div class="actions">
+      <button type="button" class="ghost import" :disabled="disabled" :title="t('colorList.importTitle')" @click="file.click()">{{ t('colorList.import') }}</button>
+      <button type="button" class="ghost export" :disabled="disabled || !colors.length" :title="t('colorList.exportTitle')" @click="exportList">{{ t('colorList.export') }}</button>
+    </div>
     <div class="swatches">
-      <button
-          v-for="(hex, i) in colors"
-          :key="i"
-          type="button"
-          class="swatch"
-          :style="{ backgroundColor: hex }"
-          :aria-label="t('colorList.swatch', { hex, n: i + 1, count: colors.length })"
-          :title="hex"
-          :aria-pressed="String(i === picked)"
-          :tabindex="i === picked ? 0 : -1"
-          data-walk
-          :draggable="mouse"
-          @click="picked = i"
-          @keydown="onSwatchKey($event, i)"
-          @dragstart="onDragStart($event, i)"
-          @dragover="onDragOver"
-          @drop.prevent="onDrop(i)"
-          @dragend="dragged = null"
-      ></button>
+      <div v-for="(hex, i) in colors" :key="i" class="swatch">
+        <button
+            type="button"
+            class="swatch"
+            :style="{ backgroundColor: hex }"
+            :aria-label="t('colorList.swatch', { hex, n: i + 1, count: colors.length })"
+            :title="hex"
+            :aria-pressed="String(i === picked)"
+            :tabindex="i === picked ? 0 : -1"
+            :disabled="disabled"
+            data-walk
+            :draggable="mouse"
+            @click="picked = i"
+            @keydown="onSwatchKey($event, i)"
+            @dragstart="onDragStart($event, i)"
+            @dragover="onDragOver"
+            @drop.prevent="onDrop(i)"
+            @dragend="dragged = null"
+        ></button>
+        <span aria-hidden="true">{{ hex }}</span>
+      </div>
       <button
           type="button"
           class="add"
           :aria-label="t('colorList.add')"
           :title="t('colorList.add')"
-          :disabled="!colors.length || colors.length >= MOST_COLORS"
+          :disabled="disabled || !colors.length || colors.length >= MOST_COLORS"
           @click="add"
       >+</button>
     </div>
     <div class="picked">
-      <input type="color" class="chip" :aria-label="t('colorList.color')" :title="t('colorList.color')" :value="current || '#000000'" @input="onPick" @change="endPick" @blur="endPick">
+      <input type="color" class="chip" :aria-label="t('colorList.color')" :title="t('colorList.color')" :disabled="disabled" :value="current || '#000000'" @input="onPick" @change="endPick" @blur="endPick">
       <input
           id="palette"
           type="text"
           class="mono"
+          :aria-label="t('colorList.hex')"
           spellcheck="false"
           autocomplete="off"
           autocapitalize="off"
           autocorrect="off"
           enterkeyhint="done"
+          :disabled="disabled"
           :value="current"
           @keydown.enter="apply"
           @keydown.esc="putBack"
           @blur="apply"
       >
-      <button type="button" class="earlier" :aria-label="t('colorList.earlier')" :title="t('colorList.earlier')" :disabled="picked <= 0" @click="move(picked - 1)"><ArrowIcon shape="triangle" :turn="180"/></button>
-      <button type="button" class="later" :aria-label="t('colorList.later')" :title="t('colorList.later')" :disabled="picked >= colors.length - 1" @click="move(picked + 1)"><ArrowIcon shape="triangle"/></button>
-      <button type="button" class="remove text" :disabled="colors.length <= 1" @click="remove">{{ t('colorList.remove') }}</button>
+      <button type="button" class="earlier" :aria-label="t('colorList.earlier')" :title="t('colorList.earlier')" :disabled="disabled || picked <= 0" @click="move(picked - 1)"><ArrowIcon shape="triangle" :turn="180"/></button>
+      <button type="button" class="later" :aria-label="t('colorList.later')" :title="t('colorList.later')" :disabled="disabled || picked >= colors.length - 1" @click="move(picked + 1)"><ArrowIcon shape="triangle"/></button>
+      <button type="button" class="remove text" :disabled="disabled || colors.length <= 1" @click="remove">{{ t('colorList.remove') }}</button>
     </div>
-    <div class="foot">
-      <p class="count">{{ t('colorList.count', colors.length) }}</p>
-      <span class="links">
-        <button type="button" class="import text" :title="t('colorList.importTitle')" @click="file.click()">{{ t('colorList.import') }}</button>
-        <span aria-hidden="true">·</span>
-        <button type="button" class="export text" :title="t('colorList.exportTitle')" :disabled="!colors.length" @click="exportList">{{ t('colorList.export') }}</button>
-      </span>
-    </div>
-    <input ref="file" type="file" class="hex-file" accept=".hex,.txt,text/plain" hidden @change="onFile">
+    <input ref="file" type="file" class="hex-file" accept=".hex,.txt,text/plain" hidden :disabled="disabled" @change="onFile">
   </div>
 </template>
 
 <style scoped src="./textLink.css"></style>
 <style scoped>
-/* Eight to a row, as the color box lays out the same list. */
-div.swatches {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 3px;
-  margin-top: 6px;
+/* The details' own head, actions and swatches (FloatingPanel's and the Palettes page's) lay the list out; the swatches
+   scroll inside the details when they're many, so the actions stay in reach. Keyed on this root, so no rule ties a shared
+   one's class and property. */
+div.color-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
 }
 
-button.swatch,
-button.add {
-  aspect-ratio: 1;
+div.color-list > div.swatches {
+  flex: 0 1 auto;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+div.color-list button.swatch {
+  width: 100%;
+  aspect-ratio: 3 / 2;
   min-width: 0;
   padding: 0;
   border: 1px solid var(--border-light);
-  border-radius: 2px;
+  border-radius: 3px;
   box-shadow: none;
 }
 
-button.swatch:hover {
+div.color-list button.swatch:hover {
   transform: none;
 }
 
-button.swatch[aria-pressed=true] {
+div.color-list button.swatch[aria-pressed=true] {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
-button.add {
+div.color-list button.add {
+  align-self: start;
+  aspect-ratio: 3 / 2;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  box-shadow: none;
   background: transparent;
   font-size: 14px;
   line-height: 1;
@@ -250,13 +273,12 @@ button.add {
 
 div.picked {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 4px;
-  margin-top: 8px;
 }
 
-/* Square, at the hex field's height, and the field's padding and arrows narrow, so a whole #rrggbb shows in the settings
-   column. */
+/* Square, at the hex field's height, and the field's padding and arrows narrow, so a whole #rrggbb shows. */
 div.picked input.chip {
   flex: none;
   width: 34px;
@@ -293,28 +315,9 @@ button.later {
   div.picked button.remove {
     margin-left: auto;
   }
-}
-
-div.foot {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-p.count {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-span.links {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  color: var(--text-faint);
-  font-size: 10px;
+  div.color-list div.actions button.ghost {
+    min-height: 32px; /* a press a little above and below the words */
+  }
 }
 
 button.remove {

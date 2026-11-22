@@ -1,5 +1,6 @@
-// ColorList is the Custom color list's editor: the list as swatches, one picked, with the picked color's chip, hex,
-// ◂ ▸ and Remove under them, and the count, Import and Export at the foot. It writes the `palette` setting only when
+// ColorList is the Custom color list's editor, This drawing's details on the color layer's Palettes page: a head with the
+// count, Import .hex and Export .hex, the list as large swatches with their hex, one picked, and under them the picked
+// color's chip, hex, ◂ ▸ and Remove. It writes the `palette` setting only when
 // something is edited, as lowercase #rrggbb with single spaces.
 import { afterEach, expect, onTestFinished, test, vi } from 'vitest';
 import { page } from 'vitest/browser';
@@ -21,7 +22,7 @@ afterEach(() => {
 
 // The editor on its own, its list held as the settings column holds it; `wrap` puts it inside something, and with `takes`
 // false the holder doesn't take what the editor writes (as the settings column while they're locked).
-async function mount(value, wrap = (node) => node, { takes = true } = {}) {
+async function mount(value, wrap = (node) => node, { takes = true, disabled = false } = {}) {
   const list = ref(value), emitted = [], picks = [];
   host = document.createElement('div');
   document.body.append(host);
@@ -29,6 +30,7 @@ async function mount(value, wrap = (node) => node, { takes = true } = {}) {
     render: () => wrap(h(ColorList, {
       modelValue: list.value,
       name: 'art',
+      disabled,
       'onUpdate:modelValue': (v) => { if (takes) list.value = v; emitted.push(v); },
       onPicking: (v) => picks.push(v),
     })),
@@ -43,7 +45,7 @@ const gone = () => {
   host.remove();
   app = host = null;
 };
-const swatches = () => [...host.querySelectorAll('div.swatches > button.swatch')];
+const swatches = () => [...host.querySelectorAll('div.swatches button.swatch')];
 const field = () => host.querySelector('input#palette');
 const pressed = () => swatches().findIndex((s) => s.getAttribute('aria-pressed') === 'true');
 const press = async (el) => {
@@ -81,8 +83,11 @@ test('the list shows as swatches in its order, the first picked, and writes noth
   expect(swatches()[1].getAttribute('aria-pressed')).toBe('false');
   expect(swatches()[1].style.backgroundColor).toBe('rgb(170, 85, 0)');
   expect(field().value).toBe('#ffffff');
-  expect(host.querySelector('label[for=palette]').textContent).toBe('Palette colors');
-  expect(host.querySelector('p.count').textContent).toBe('3 colors');
+  expect(host.querySelector('div.head span.title').textContent).toBe('Custom color list');
+  expect(host.querySelector('div.head span.meta').textContent).toBe('3 colors');
+  expect(host.querySelector('label')).toBe(null);
+  expect(host.querySelector('div.foot')).toBe(null);
+  expect([...host.querySelectorAll('div.swatches div.swatch > span')].map((el) => el.textContent)).toEqual(['#ffffff', '#aa5500', '#000000']); // the hex under each
   expect(emitted).toEqual([]);
   // a phone's keyboard leaves a hex as typed, and its Enter key says Done
   expect(['autocapitalize', 'autocorrect', 'spellcheck', 'enterkeyhint'].map((name) => field().getAttribute(name))).toEqual(['off', 'off', 'false', 'done']);
@@ -274,14 +279,14 @@ test('+ adds a copy of the picked color after the last and picks it; Remove take
   await press(host.querySelector('button.add'));
   expect(list.value).toBe('#000000 #000000');
   expect(pressed()).toBe(1);
-  expect(host.querySelector('p.count').textContent).toBe('2 colors');
+  expect(host.querySelector('div.head span.meta').textContent).toBe('2 colors');
   await type('#ff0000');
   await key(field(), 'Enter');
   await press(swatches()[0]);
   await press(host.querySelector('button.remove'));
   expect(list.value).toBe('#ff0000');
   expect(pressed()).toBe(0);
-  expect(host.querySelector('p.count').textContent).toBe('1 color');
+  expect(host.querySelector('div.head span.meta').textContent).toBe('1 color');
   expect(host.querySelector('button.remove').disabled).toBe(true);
 
   list.value = Array.from({ length: 256 }, (_, i) => `#0000${i.toString(16).padStart(2, '0')}`).join(' ');
@@ -456,20 +461,37 @@ test('Export saves the list as <name>.hex', async () => {
   const saved = [];
   vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => { saved.push({ blob }); return 'blob:x'; });
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { saved.at(-1).name = this.download; });
-  await press(host.querySelector('button.export'));
+  await press(host.querySelector('.actions button.export'));
   expect(saved[0].name).toBe('art.hex');
   expect(await saved[0].blob.text()).toBe('ffffff\naa5500\n000000\n');
 });
 
 test('Export is off with no colors to save, as + is', async () => {
   await mount('');
-  expect(host.querySelector('button.export').disabled).toBe(true);
+  expect(host.querySelector('.actions button.export').disabled).toBe(true);
   expect(host.querySelector('button.add').disabled).toBe(true);
 });
 
-test('inside a disabled fieldset every control of it is off', async () => {
-  await mount('#ffffff #000000', (node) => h('fieldset', { disabled: true }, [node]));
+test('disabled turns off every control, and a pick open when it came is over', async () => {
+  const { picks } = await mount('#ffffff #000000', undefined, { disabled: true });
   const controls = [...host.querySelectorAll('button, input')];
   expect(controls.length).toBeGreaterThan(8);
   expect(controls.filter((el) => !el.matches(':disabled'))).toEqual([]);
+
+  app.unmount();
+  host.remove();
+  const open = ref(false), more = [];
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp({ render: () => h(ColorList, { modelValue: '#ffffff #000000', disabled: open.value, onPicking: (v) => more.push(v) }) }).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const chip = host.querySelector('input.chip');
+  chip.value = '#ff0000';
+  await fire(chip, 'input');
+  expect(more).toEqual([true]);
+  open.value = true;
+  await nextTick();
+  expect(more).toEqual([true, false]);
+  expect(picks).toEqual([]);
 });

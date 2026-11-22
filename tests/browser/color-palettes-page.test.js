@@ -10,6 +10,9 @@ import { i18n } from '@/i18n';
 import ColorLayer from '@/components/ColorLayer.vue';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { SHIPPED, useColorLibraryStore } from '@/store/ColorLibraryStore';
+import { PALETTES } from '@/lib/ColorUtils';
+import { listColors } from '@/lib/colorList';
+import { closeToast, toastAction, toastMessage } from '@/composables/useToast';
 import { getPalette } from '@/lib/lospec';
 import '@/assets/global.css';
 
@@ -237,8 +240,8 @@ test('Put back outlasts a visit to the Colors page, and is forgotten when the la
   expect(title()).toBe('Custom color list');
 });
 
-// A window that browsed on the start screen and then opened a file (the desktop app's menu) is another drawing: Put
-// back would write the first one's choice and list onto it.
+// Another drawing replacing this one while the toolbar stays mounted (the document id changes under the open layer) is
+// another drawing: Put back would write the first one's choice and list onto it.
 test('Put back is forgotten when another drawing opens', async () => {
   await mount({ quantize: 'cga', palette: '#111111 #222222' });
   await choose('Sweetie 16');
@@ -327,7 +330,7 @@ test('This drawing shows VGA\'s colors and Full color\'s note', async () => {
   expect(swatches()).toHaveLength(256);
   expect(swatches()[1].querySelector('span').textContent).toBe('#aa0000');
   expect(row('VGA (256 colors)', 'This drawing').querySelectorAll('div.strip > i')).toHaveLength(256);
-  expect(details().querySelector('div.actions')).toBe(null);
+  expect([...details().querySelectorAll('div.actions button')].map((b) => b.className)).toEqual(['ghost edit']); // Edit as a Custom color list only
   expect(getComputedStyle(details()).overflowY).toBe('auto'); // 256 swatches scroll inside the details
   project.quantize = 'none';
   await nextTick();
@@ -530,4 +533,169 @@ test('Get works while the settings are locked, since it changes nothing of the d
   expect([project.quantize, project.palette]).toEqual(['cga', '#111111']);
   await nextTick();
   expect(focusKept()).toBe(true);
+});
+
+// This drawing with the Custom color list chosen is the list's editor (ColorList); with any other choice it shows the
+// colors and Edit as a Custom color list makes them the list.
+const editor = () => details().querySelector('div.color-list');
+const hexField = () => editor().querySelector('input#palette');
+const typeHex = async (text, k = 'Enter') => {
+  hexField().focus();
+  hexField().value = text;
+  hexField().dispatchEvent(new Event('input', { bubbles: true }));
+  await key(k);
+};
+
+test('with a Custom color list, This drawing is the editor; its edits write the list', async () => {
+  await mount({ quantize: 'palette', palette: '#FFFFFF #000000' });
+  expect(title()).toBe('Custom color list');
+  expect(meta()).toBe('2 colors');
+  expect(editor().querySelectorAll('div.swatches button.swatch')).toHaveLength(2);
+  expect(hexField().value).toBe('#ffffff');
+  expect(details().querySelector('div.actions button.import').textContent).toBe('Import .hex');
+  expect(details().querySelector('.actions .edit')).toBe(null);
+  await typeHex('#00ff00');
+  expect(project.palette).toBe('#00ff00 #000000');
+  expect(project.quantize).toBe('palette');
+  expect(listed()['This drawing']).toEqual(['Custom color list']);
+  expect(row('Custom color list', 'This drawing').querySelectorAll('div.strip > i')).toHaveLength(2);
+});
+
+test('a hand edit after a Use ends Put back', async () => {
+  await mount({ quantize: 'cga', palette: '#111111' });
+  await choose('Sweetie 16');
+  await press(action('use'));
+  await choose('Custom color list', 'This drawing');
+  expect(details().querySelector('p.put-back')).not.toBe(null);
+  await typeHex('#123456');
+  expect(project.palette).toBe(`#123456 ${SWEETIE.colors.slice(1).join(' ')}`);
+  expect(details().querySelector('p.put-back')).toBe(null);
+  expect(project.quantize).toBe('palette');
+});
+
+test('Edit as a Custom color list from VGA makes VGA\'s colors the list; from Full color the kept list; Put back undoes it', async () => {
+  await mount({ quantize: 'vga', palette: '#111111 #222222' });
+  expect(action('edit').textContent).toBe('Edit as a Custom color list');
+  expect(action('edit').disabled).toBe(false);
+  await press(action('edit'));
+  expect(project.quantize).toBe('palette');
+  expect(listColors(project.palette)).toEqual(PALETTES.vga.map((p) => p.hex.toLowerCase()));
+  expect(editor()).not.toBe(null);
+  await press(details().querySelector('p.put-back > button'));
+  expect([project.quantize, project.palette]).toEqual(['vga', '#111111 #222222']);
+
+  project.quantize = 'cga';
+  await nextTick();
+  await press(action('edit'));
+  expect(listColors(project.palette)).toEqual(PALETTES.cga.map((p) => p.hex.toLowerCase()));
+  await press(details().querySelector('p.put-back > button'));
+
+  project.quantize = 'none';
+  await nextTick();
+  await press(action('edit'));
+  expect([project.quantize, project.palette]).toEqual(['palette', '#111111 #222222']); // the kept list, as it was
+  await press(details().querySelector('p.put-back > button'));
+  expect([project.quantize, project.palette]).toEqual(['none', '#111111 #222222']);
+});
+
+test('Edit as a Custom color list is off for Limited count with no picture, and for a locked drawing', async () => {
+  await mount({ quantize: 'count', drawing: false });
+  expect(action('edit').disabled).toBe(true);
+  project.quantize = 'vga';
+  await nextTick();
+  expect(action('edit').disabled).toBe(false);
+  project.startSharing({ send: () => {}, role: 'artist', me: 'ann' }); // only the host's now
+  await nextTick();
+  expect(action('edit').disabled).toBe(true);
+  expect(action('edit').title).toBe(i18n.global.t('social.drawing.onlyHost'));
+  await press(action('edit'));
+  expect(project.quantize).toBe('vga');
+});
+
+test('the editor is off while the settings are locked, and writes nothing', async () => {
+  await mount({ quantize: 'palette', palette: '#FFFFFF #000000' });
+  project.startSharing({ send: () => {}, role: 'artist', me: 'ann' });
+  await nextTick();
+  const controls = [...editor().querySelectorAll('button, input')];
+  expect(controls.length).toBeGreaterThan(8);
+  expect(controls.filter((el) => !el.matches(':disabled'))).toEqual([]);
+  expect([...details().querySelectorAll('p.locked')]).toHaveLength(1);
+});
+
+test('the editor\'s import toast goes when another drawing opens, so its Put back can\'t reach it', async () => {
+  await mount({ quantize: 'palette', palette: '#FFFFFF #000000' });
+  const input = editor().querySelector('input.hex-file'), files = new DataTransfer();
+  files.items.add(new File(['1a1c2c\n5d275d\n'], 'sweetie.hex'));
+  input.files = files.files;
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  await vi.waitFor(() => expect(toastAction.value?.label).toBe('Put back'));
+  expect(project.palette).toBe('#1a1c2c #5d275d');
+  project.documentId = 'another';
+  await nextTick();
+  expect(toastMessage.value).toBe(null);
+  closeToast();
+});
+
+test('Escape in the hex field puts back the color and the layer stays open; a second Escape closes it', async () => {
+  await mount({ quantize: 'palette', palette: '#FFFFFF #000000' });
+  hexField().focus();
+  await userEvent.keyboard('#00FF00');
+  await userEvent.keyboard('{Escape}');
+  expect(hexField().value).toBe('#ffffff');
+  expect(workspace.colorBox).toBe('fg');
+  expect(layer().contains(document.activeElement)).toBe(true);
+  hexField().blur(); // a click elsewhere
+  expect(project.palette).toBe('#FFFFFF #000000'); // nothing rewritten
+  layer().focus();
+  await userEvent.keyboard('{Escape}');
+  expect(workspace.colorBox).toBe(null);
+});
+
+test('Up and Down on a swatch of the editor stay the swatches\' and don\'t walk the page\'s rows', async () => {
+  await mount({ quantize: 'palette', palette: Array.from({ length: 20 }, (_, i) => `#0000${i.toString(16).padStart(2, '0')}`).join(' ') });
+  const swatch = editor().querySelector('button.swatch');
+  swatch.focus();
+  await key('ArrowDown');
+  expect(title()).toBe('Custom color list');
+  expect(editor().querySelectorAll('button.swatch')[8].getAttribute('aria-pressed')).toBe('true');
+});
+
+test('two hundred colors scroll inside the details, the actions still on screen', async () => {
+  await mount({ quantize: 'palette', palette: Array.from({ length: 200 }, (_, i) => `#${(i + 1).toString(16).padStart(6, '0')}`).join(' ') });
+  const grid = editor().querySelector('div.swatches');
+  expect(grid.querySelectorAll('button.swatch')).toHaveLength(200);
+  expect(getComputedStyle(grid).overflowY).toBe('auto');
+  expect(grid.scrollHeight).toBeGreaterThan(grid.clientHeight);
+  const bottom = (el) => el.getBoundingClientRect().bottom;
+  for (const el of [details().querySelector('div.actions'), editor().querySelector('div.picked')]) {
+    expect(bottom(el)).toBeLessThanOrEqual(innerHeight);
+    expect(bottom(el)).toBeLessThanOrEqual(bottom(layer()) + 1);
+  }
+  expect(details().scrollHeight).toBeLessThanOrEqual(details().clientHeight + 1); // the details themselves don't scroll
+});
+
+test('a kept palette whose slug is drawing is its own row, not This drawing', async () => {
+  await mount({ quantize: 'cga' });
+  library.keep({ slug: 'drawing', name: 'Drawing', author: '', colors: ['#000000', '#ffffff'] });
+  await nextTick();
+  await choose('Drawing', 'Favorites');
+  expect(title()).toBe('Drawing');
+  expect(row('Drawing', 'Favorites').classList.contains('current')).toBe(true);
+  expect(row('CGA (16 colors)', 'This drawing').classList.contains('current')).toBe(false);
+  expect(action('use')).not.toBe(null);
+});
+
+// The editor's import toast (and its Put back) is the editor's: pressing it isn't a press outside the layer.
+test('a press on a toast doesn\'t close the layer, a press elsewhere outside does', async () => {
+  await mount({ quantize: 'palette', palette: '#FFFFFF #000000' });
+  const toast = document.body.appendChild(document.createElement('div'));
+  toast.className = 'app-toast';
+  toast.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await nextTick();
+  expect(workspace.colorBox).toBe('fg');
+  toast.className = '';
+  toast.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await nextTick();
+  expect(workspace.colorBox).toBe(null);
+  toast.remove();
 });
