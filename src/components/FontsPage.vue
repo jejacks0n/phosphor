@@ -577,7 +577,7 @@ const exportPalettes = () => {
         </template>
       </div>
       <div class="chips tag-chips">
-        <button v-for="x in tagsOf(libEntry)" :key="x.key" class="chip" @click="pickTag(x.key)">{{ tagLabel(x.key) }}</button>
+        <button v-for="x in tagsOf(libEntry)" :key="x.key" class="chip" :title="tagLabel(x.key)" @click="pickTag(x.key)">{{ tagLabel(x.key) }}</button>
       </div>
       <template v-if="previewChars">
         <div class="grid sheet" :style="styleOf({ kind: 'bitmap', height: libEntry.height, family: preview.family })" @mouseleave="hovered = null">
@@ -821,8 +821,24 @@ span.meta {
 div.actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-left: -8px; /* the first button's text lines up with the title */
+  gap: 6px;
+}
+
+/* The chosen font's actions as buttons: framed, the first one (Use this font, from the library) lit. */
+div.actions button.ghost,
+div.actions a.ghost.button {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: none;
+}
+
+div.actions button.ghost:hover,
+div.actions a.ghost.button:hover {
+  transform: none;
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 
 button.ghost:disabled {
@@ -845,10 +861,11 @@ div.edit-side {
   min-height: 0;
 }
 
-/* The 256 slots, 16 to a row as the font's sheet lays them out, framed as the Palettes page's glyph pane. */
+/* The 256 slots, 16 to a row as the font's sheet lays them out, framed as the Palettes page's glyph pane. A slot is never
+   narrower than 28px or a little more than its glyph: past that the sheet scrolls across as well as down. */
 div.grid.sheet {
-  grid-template-columns: repeat(16, minmax(0, 1fr));
-  overflow-y: auto;
+  grid-template-columns: repeat(16, minmax(max(28px, 1.25em), 1fr));
+  overflow: auto;
   min-height: 160px;
   padding: 6px;
   border: 1px solid var(--surface-3);
@@ -913,7 +930,8 @@ a.ghost.button:hover {
   color: var(--text);
 }
 
-button.ghost.primary {
+div.actions button.ghost.primary {
+  border-color: var(--accent);
   background: var(--accent);
   color: var(--accent-text, #fff);
 }
@@ -922,7 +940,7 @@ div.tag-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 6px 12px;
+  padding: 6px 0;
 }
 
 div.tag-chips button.chip {
@@ -934,6 +952,10 @@ div.tag-chips button.chip {
   font: inherit;
   font-size: 12px;
   cursor: pointer;
+  max-width: 60px; /* one line each, cut short (the whole of it on hover) */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 dl.origin {
@@ -941,7 +963,7 @@ dl.origin {
   grid-template-columns: max-content 1fr;
   gap: 2px 12px;
   margin: 0;
-  padding: 6px 12px;
+  padding: 6px 0;
   font-size: 12px;
 }
 

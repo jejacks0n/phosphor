@@ -1251,6 +1251,27 @@ test("a library font chosen shows its 256 slots, fetched once (Use this font doe
   expect(fileFetches).toBe(1);
 });
 
+test("the slots keep a least width and the sheet scrolls both ways; the details' chips and From line up with the title", async () => {
+  const index = FIXTURE();
+  serveFile(index, 'Zeta');
+  await mount({ library: index }); // a phone's width: the slots don't fit across
+  await chooseLibrary('Zeta');
+  await vi.waitFor(() => expect(host.querySelectorAll('.edit-side .grid.sheet .cell').length).toBe(256));
+  const sheet = host.querySelector('.edit-side .grid.sheet');
+  expect(getComputedStyle(sheet).overflowX).toBe('auto');
+  expect(getComputedStyle(sheet).overflowY).toBe('auto');
+  expect(sheet.querySelector('.cell').getBoundingClientRect().width).toBeGreaterThanOrEqual(28);
+  expect(sheet.scrollWidth).toBeGreaterThan(sheet.clientWidth);
+  const left = host.querySelector('.edit-side .head .title').getBoundingClientRect().left;
+  const chips = host.querySelector('.edit-side .tag-chips'), originList = host.querySelector('.edit-side dl.origin');
+  expect(chips.querySelector('.chip').getBoundingClientRect().left).toBe(left);
+  expect(originList.querySelector('dt').getBoundingClientRect().left).toBe(left);
+  const long = [...chips.querySelectorAll('.chip')].find((el) => el.textContent === 'Ready to paint');
+  expect(getComputedStyle(long).maxWidth).toBe('60px');
+  expect([getComputedStyle(long).whiteSpace, getComputedStyle(long).textOverflow]).toEqual(['nowrap', 'ellipsis']);
+  expect(long.title).toBe('Ready to paint'); // the whole of it on hover
+});
+
 test("a library font that can't be fetched shows its sample instead of its slots", async () => {
   await wide();
   const index = FIXTURE();
