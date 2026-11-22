@@ -90,6 +90,7 @@ const nameId = (entry) => `market-${entry.manifest.id}`;
   </div>
 </template>
 
+<style scoped src="./cards.css"></style>
 <style scoped>
 div.market {   /* a column in the dialog's tab panel, the cards taking what's left (PluginsDialog) */
   display: flex;
@@ -132,113 +133,6 @@ div.none p {
   margin: 0;
 }
 div.none button {
-  padding: 4px 12px;
-}
-
-ul.cards {
-  min-height: 0;
-  overflow: auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  grid-auto-rows: max-content; /* a card hides its overflow, so rows would otherwise squeeze to fit instead of scroll */
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-li.card {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  background: var(--surface-1);
-  font-size: 13px;
-}
-
-div.art {
-  display: flex;
-  height: 64px;
-  flex: none;
-  background: var(--surface-2);
-}
-div.art i {
-  flex: 1;
-}
-div.art.preview {   /* the author's characters, as a drawing shows them */
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: #000; /* the art's own ground, whatever the theme */
-  color: var(--accent);
-  font: 15px/1.05 'JetBrains Mono', monospace;
-  letter-spacing: 1px;
-  white-space: pre;
-}
-
-div.in {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
-}
-div.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 8px;
-}
-a.name {
-  min-width: 0;
-  font-weight: 600;
-  color: var(--text);
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-a.name:hover {
-  color: var(--accent);
-  text-decoration: underline;
-}
-span.version, span.author {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-span.badge {   /* as the Installed rows' */
-  align-self: center;
-  padding: 1px 5px;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-p.description {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  line-height: 1.45;
-  color: var(--text-dim);
-  overflow-wrap: anywhere;
-}
-div.foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 8px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-div.foot button {
-  flex: none;
   padding: 4px 12px;
 }
 </style>
