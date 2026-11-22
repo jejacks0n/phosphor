@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -16,10 +16,11 @@ import { downloadBlob } from '@/document/projectIO';
 // dialog stays; the card whose colors are the list, in its order, says In use. Put back is a line at the dialog's foot,
 // not a toast: the page under a modal dialog is inert, a toast's button with it. It brings back the Color palette choice
 // and the list as they were before the first Use, however many were tried since, and what it would bring back is
-// forgotten when the dialog closes. A lock can arrive while the dialog is up (someone joins the room): Use and Put back
-// are off then, with the settings column's reason. Under the Library's search, Get from Lospec asks Lospec for one
-// palette by name or link, the dialog's only request, and keeps it under Favorites, which it then shows; it changes
-// nothing of the drawing, so a lock doesn't stop it.
+// forgotten when the dialog closes or another drawing opens (a desktop window's start screen opening a file), so it
+// never writes one drawing's choice and list onto another. A lock can arrive while the dialog is up (someone joins the
+// room): Use and Put back are off then, with the settings column's reason. Under the Library's search, Get from Lospec
+// asks Lospec for one palette by name or link, the dialog's only request, and keeps it under Favorites, which it then
+// shows; it changes nothing of the drawing, so a lock doesn't stop it.
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const project = useProjectStore();
@@ -52,6 +53,7 @@ async function keepFocus() {
 }
 
 const before = ref(null); // { quantize, palette } as they were before the first Use, until Put back
+watch(() => project.documentId, () => { before.value = null; });
 function use({ colors }) {
   if (locked.value) return;
   before.value ??= { quantize: project.quantize, palette: project.palette };
@@ -73,8 +75,9 @@ function star(palette) {
 }
 // Get from Lospec: what's typed is made a slug here (slugOf), and only a slug is asked for: of lospec.com on the web, of
 // the main process in the desktop app, whose page reaches nothing but rooms. A failure this doesn't know reads as Lospec
-// out of reach. `cut` is the palette just got when Lospec's had more than 256 colors, for the note on Favorites: what's
-// kept doesn't remember how many there were.
+// out of reach, and a failure shows the Library, where the form and its message are (the person may have gone to
+// Favorites while it waited). `cut` is the palette just got when Lospec's had more than 256 colors, for the note on
+// Favorites: what's kept doesn't remember how many there were.
 const FAILURES = ['notFound', 'unreachable', 'notPalette'];
 const typed = ref('');
 const getting = ref(false);
@@ -102,6 +105,8 @@ async function get() {
     keepFocus();
   } catch (error) {
     problem.value = t(`colorsDialog.errors.${FAILURES.includes(error.message) ? error.message : 'unreachable'}`, { name: slug });
+    tab.value = 'library';
+    keepFocus();
   } finally {
     getting.value = false;
   }

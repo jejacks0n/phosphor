@@ -12,7 +12,7 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import ControlPanel from '@/components/ControlPanel.vue';
-import { closeToast, toastAction } from '@/composables/useToast';
+import { closeToast, toastAction, toastMessage } from '@/composables/useToast';
 
 async function grid(cols = 40, rows = 40) {
   const { project, workspace } = await createTestApp();
@@ -345,6 +345,28 @@ test('the Custom color list is swatches in the settings column, and a color chan
     await userEvent.keyboard('#00ff00{Enter}');
     expect(project.palette).toBe('#00ff00 #000000');
   } finally {
+    gone();
+  }
+});
+
+// Put back would write the old drawing's list onto the one opened since.
+test('the import toast goes when another drawing opens, so its Put back can\'t reach it', async () => {
+  const { project } = await grid(40, 40);
+  project.quantize = 'palette';
+  project.palette = '#FFFFFF #000000';
+  const { host, gone } = mountPanel();
+  await nextTick();
+  try {
+    const input = host.querySelector('input.hex-file'), files = new DataTransfer();
+    files.items.add(new File(['1a1c2c\n5d275d\n'], 'sweetie.hex'));
+    input.files = files.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() => expect(toastAction.value?.label).toBe('Put back'));
+    project.documentId = 'another';
+    await nextTick();
+    expect(toastMessage.value).toBe(null);
+  } finally {
+    closeToast();
     gone();
   }
 });

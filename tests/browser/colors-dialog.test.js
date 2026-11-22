@@ -304,3 +304,30 @@ test('Get works while the settings are locked, since it changes nothing of the d
   await nextTick();
   expect(focusKept()).toBe(true); // Use is off, so not there
 });
+
+// A window that browsed on the start screen and then opened a file (the desktop app's menu) is another drawing: Put
+// back would write the first one's choice and list onto it.
+test('what Put back would bring back is forgotten when another drawing opens', async () => {
+  await mount({ quantize: 'cga', palette: '#111111 #222222' });
+  await press(card('Sweetie 16').querySelector('button.use'));
+  expect(dialog().querySelector('p.put-back')).not.toBe(null);
+  project.documentId = 'another';
+  await nextTick();
+  expect(dialog().querySelector('p.put-back')).toBe(null);
+  expect([project.quantize, project.palette]).toEqual(['palette', SWEETIE.colors.join(' ')]);
+});
+
+test('a Get that fails after a switch to Favorites shows Library, where its message is', async () => {
+  let fail;
+  vi.stubGlobal('fetch', vi.fn(() => new Promise((_, reject) => { fail = reject; })));
+  await mount();
+  await press(card('Endesga 16').querySelector('button.star'));
+  await get('sweetie 17');
+  await show('favorites');
+  card('Endesga 16').querySelector('button.use').focus();
+  fail(new TypeError('Failed to fetch'));
+  await vi.waitFor(() => expect(tab('library').getAttribute('aria-selected')).toBe('true'));
+  expect(problem().textContent).toBe("Couldn't get sweetie-17 from Lospec. Check its name or link, or try again.");
+  await nextTick();
+  expect(focusKept()).toBe(true);
+});
