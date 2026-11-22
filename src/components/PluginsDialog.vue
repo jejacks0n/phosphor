@@ -193,7 +193,7 @@ const update = (record) => {
       @choose="answer"
       @cancel="asking = null"
   />
-  <ModalDialog v-else :title="t('plugins.title')" wide full :focus="false" closable @cancel="emit('close')">
+  <ModalDialog v-else :title="t('plugins.title')" wide full tall :focus="false" closable @cancel="emit('close')">
     <div class="plugins">
       <div class="tabs" role="tablist" :aria-label="t('plugins.title')" @keydown="onTabKey">
         <button
