@@ -8,6 +8,7 @@ import { i18n } from '@/i18n';
 import ColorList from '@/components/ColorList.vue';
 import '@/assets/global.css';
 import { closeToast, toast, toastAction, toastMessage } from '@/composables/useToast';
+import { ownsKey } from '@/lib/fields';
 
 let app, host;
 afterEach(() => {
@@ -234,6 +235,9 @@ test('on a swatch Left and Right pick the one before and after, Up and Down the 
   expect(await from(14, 'ArrowDown')).toBe(14);
   expect(list.value).toBe(twenty);
   expect(emitted).toEqual([]); // a pick writes nothing
+  // The app's keys ask ownsKey first, and the art takes focus for an arrow a control doesn't keep, before the swatch
+  // hears it.
+  for (const k of ['ArrowLeft', 'ArrowDown', 'Home', 'End', 'Enter']) expect(ownsKey(swatches()[10], { key: k }), k).toBe(true);
 });
 
 test('a key with Ctrl, Alt or Cmd on a swatch is left to the app', async () => {
