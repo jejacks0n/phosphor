@@ -653,15 +653,15 @@ export const useRoomStore = defineStore('room', {
 
     // The host's art to the Host as it changes, at most every SEND_EVERY_MS, and its view at most every
     // VIEW_EVERY_MS. Every change makes new cells (setCells), which the Host compares cell by cell
-    // against what it sent. While a slider moves, nothing goes: its end goes as one change. A public
-    // room's lobby picture goes once soon after it's live, then after a change, 3 minutes apart at least.
+    // against what it sent. While a slider moves or a color is picked, nothing goes: its end goes as one change. A
+    // public room's lobby picture goes once soon after it's live, then after a change, 3 minutes apart at least.
     share() {
       const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore();
       let timer = null, pictureTimer = null, pictureAt = null;
       const artNow = () => artOf(project, workspace);
       const flush = () => {
         timer = null;
-        if (project._sliderBefore || project._charsBefore) return schedule();
+        if (project._sliderBefore || project._charsBefore || project._colorPick) return schedule();
         const art = artNow();
         if (art.cells.length === art.cols * art.lines) this._host?.setArt(art);   // not a new size before its render
       };
