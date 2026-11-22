@@ -1065,7 +1065,7 @@ test("in a short window, a long Filters column scrolls and its head and the sear
   expect([host.querySelector('.filters-head'), host.querySelector('.list-side .top')].map((el) => el.getBoundingClientRect().height)).toEqual([55, 55]);
 });
 
-test('the column starts folded at every size; opened, the floating layer is 200 and 220, full screen 260 and 320', async () => {
+test('the column starts folded at every size; opened, the floating layer narrows it and the list before the details, full screen 260 and 320', async () => {
   await page.viewport(900, 700);
   onTestFinished(() => page.viewport(414, 896));
   await mount({ library: FIXTURE() });
@@ -1081,11 +1081,19 @@ test('the column starts folded at every size; opened, the floating layer is 200 
   await press(host.querySelector('.pages button.maximize'));
   await openFilters();
   const widths = () => [host.querySelector('aside.filters-side'), host.querySelector('.list-side')].map((el) => Math.round(el.getBoundingClientRect().width));
-  await vi.waitFor(() => expect(widths()).toEqual([200, 220]));
+  const narrowed = () => {
+    const [filters, list] = widths();
+    expect(filters).toBeGreaterThanOrEqual(140);
+    expect(filters).toBeLessThan(200);
+    expect(list).toBeGreaterThanOrEqual(180);
+    expect(list).toBeLessThan(220);
+    expect(host.querySelector('.page.fonts > .edit-side').getBoundingClientRect().width).toBeGreaterThanOrEqual(530); // 16 slots of 28px
+  };
+  await vi.waitFor(narrowed);
   await press(host.querySelector('.pages button.maximize'));
   await vi.waitFor(() => expect(widths()).toEqual([260, 320]));
   await press(host.querySelector('.pages button.maximize'));
-  await vi.waitFor(() => expect(widths()).toEqual([200, 220]));
+  await vi.waitFor(narrowed);
 });
 
 test('on a phone, » opens a sheet; Show N fonts or Escape closes it, and Escape leaves the layer open', async () => {

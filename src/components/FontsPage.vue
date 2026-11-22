@@ -706,9 +706,9 @@ div.top button.filters-toggle:hover {
 aside.filters-side {
   order: -1; /* left of the list, though after it in the page */
   display: flex;
-  flex: 0 0 200px;
+  flex: 0 1 200px;
   flex-direction: column;
-  min-width: 0;
+  min-width: 140px;
   overflow-y: auto;
   border-right: 1px solid var(--surface-3);
 }
@@ -894,7 +894,12 @@ p.problem {
   color: var(--danger);
 }
 
-/* A tall Lines or Sets section scrolls the side, the sheet keeping a few rows. */
+/* The details keep the room for 16 slots of 28px while the list and the Filters column narrow (they shrink far more
+   readily), then give way themselves. A tall Lines or Sets section scrolls the side, the sheet keeping a few rows. */
+div.page.fonts:not(.phone) > div.edit-side {
+  flex: 2 0.01 530px;
+}
+
 div.edit-side {
   overflow-y: auto;
   min-height: 0;

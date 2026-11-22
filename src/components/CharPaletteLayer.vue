@@ -620,6 +620,14 @@ div.palette-layer.editing :deep(div.list-side) {
   min-width: 0;
 }
 
+/* Beside the Fonts page's details, its list gives way first, down to 180px (its Filters column too: FontsPage). */
+@media (min-width: 701px) {
+  div.palette-layer.editing :deep(div.page.fonts > div.list-side) {
+    flex: 0 1 220px;
+    min-width: 180px;
+  }
+}
+
 /* Full screen gives the Fonts page's list more room too (its Filters column widens itself). */
 div.palette-layer.editing.maximized :deep(div.page.fonts > div.list-side) {
   flex-basis: 320px;
