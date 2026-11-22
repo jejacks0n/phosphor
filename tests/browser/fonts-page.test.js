@@ -94,7 +94,8 @@ const type = async (text) => {
 };
 const chip = (label) => [...host.querySelectorAll('.font-filters .chip')].find((el) => el.firstChild.textContent.trim() === label);
 const toggle = () => host.querySelector('.top button.filters-toggle'); // « / » beside the search
-// A window wide enough for the floating layer, with the Filters column beside the list.
+const openFilters = () => press(toggle()); // the Filters column starts folded: » opens it
+// A window wide enough for the floating layer, with room for the Filters column beside the list.
 const wide = async () => {
   await page.viewport(1400, 900);
   onTestFinished(() => page.viewport(414, 896));
@@ -876,6 +877,7 @@ test('the library lists CM-7X7 as 7×7, and its Shape tag reads 7×7', async () 
   index.fonts.push(libFont('CM-7X7', { height: 7, width: 7 }));
   await mount({ library: index });
   await waitFor(() => libraryNames().length);
+  await openFilters();
   const row = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('CM-7X7'));
   expect(row.querySelector('.name em').textContent).toBe('7×7 · IBM PC');
   expect(row.querySelector('canvas.glyph-sample').width).toBe(84); // 7 pixels a glyph, its own size
@@ -986,6 +988,7 @@ test('the Filters column sits beside the list, each tag counted across the libra
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
+  await openFilters();
   expect(host.querySelector('aside.filters-side')).toBeTruthy();
   expect([...host.querySelectorAll('.filter-group .group-head .name')].map((el) => el.textContent)).toEqual(['Machine', 'Shape', 'Characters', 'Collection', 'Other']);
   expect(chip('8×16')).toBeTruthy();
@@ -1008,6 +1011,7 @@ test('tags in one group widen, tags in two narrow; Clear all keeps the search', 
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
+  await openFilters();
   await press(chip('IBM PC'));
   await press(chip('Amiga'));
   expect(libraryNames()).toEqual(['Alpha', 'Topaz', 'Zeta']);
@@ -1021,20 +1025,21 @@ test('tags in one group widen, tags in two narrow; Clear all keeps the search', 
   expect(host.querySelector('button.clear-all')).toBeNull();
 });
 
-test('« beside the search folds the column, » brings it back, remembered next time', async () => {
+test('» beside the search opens the column, « folds it again, remembered next time', async () => {
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
   const search = host.querySelector('.top input');
   expect(toggle().compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // just before the search
-  expect([toggle().textContent.trim(), toggle().getAttribute('aria-expanded')]).toEqual(['«', 'true']);
-  expect(host.querySelector('button.filters-open')).toBeNull();
-  expect(host.querySelector('.filters-head button.fold')).toBeNull();
+  expect(host.querySelector('aside.filters-side')).toBeNull(); // folded until » is pressed
+  expect([toggle().textContent.trim(), toggle().getAttribute('aria-expanded')]).toEqual(['»', 'false']);
   const button0 = toggle();
   toggle().focus();
   await press(toggle());
-  expect(host.querySelector('aside.filters-side')).toBeNull();
-  expect([toggle().textContent.trim(), toggle().getAttribute('aria-expanded')]).toEqual(['»', 'false']);
+  expect(host.querySelector('aside.filters-side')).toBeTruthy();
+  expect([toggle().textContent.trim(), toggle().getAttribute('aria-expanded')]).toEqual(['«', 'true']);
+  expect(host.querySelector('button.filters-open')).toBeNull();
+  expect(host.querySelector('.filters-head button.fold')).toBeNull();
   expect(toggle()).toBe(button0); // the same button, so the focus stays on it
   expect(document.activeElement).toBe(button0);
   const kept = localStorage.getItem('phosphor.fontFilters');
@@ -1042,9 +1047,9 @@ test('« beside the search folds the column, » brings it back, remembered next 
   host.remove();
   await mount({ library: FIXTURE(), before: () => localStorage.setItem('phosphor.fontFilters', kept) }); // a new mount clears localStorage first
   await waitFor(() => libraryNames().length);
-  expect(host.querySelector('aside.filters-side')).toBeNull();
-  await press(toggle());
   expect(host.querySelector('aside.filters-side')).toBeTruthy();
+  await press(toggle());
+  expect(host.querySelector('aside.filters-side')).toBeNull();
 });
 
 test("in a short window, a long Filters column scrolls and its head and the search's row keep their height", async () => {
@@ -1054,20 +1059,27 @@ test("in a short window, a long Filters column scrolls and its head and the sear
   for (let i = 0; i < 80; i += 1) index.fonts.push(libFont(`Many${i}`, { machine: `Machine ${i}`, height: 6 + (i % 30) }));
   await mount({ library: index });
   await waitFor(() => libraryNames().length);
+  await openFilters();
   const aside = host.querySelector('aside.filters-side');
   expect(aside.scrollHeight).toBeGreaterThan(aside.clientHeight);
   expect([host.querySelector('.filters-head'), host.querySelector('.list-side .top')].map((el) => el.getBoundingClientRect().height)).toEqual([55, 55]);
 });
 
-test('the dialog under 1000px starts folded; the floating layer is 200 and 220, full screen 260 and 320', async () => {
+test('the column starts folded at every size; opened, the floating layer is 200 and 220, full screen 260 and 320', async () => {
   await page.viewport(900, 700);
   onTestFinished(() => page.viewport(414, 896));
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
-  expect(host.querySelector('aside.filters-side')).toBeNull();
-  expect(toggle().getAttribute('aria-expanded')).toBe('false');
+  const starts = () => [!!host.querySelector('aside.filters-side'), toggle().textContent.trim(), toggle().getAttribute('aria-expanded')];
+  expect(starts()).toEqual([false, '»', 'false']); // the dialog
   await page.viewport(1400, 900);
-  await vi.waitFor(() => expect(host.querySelector('aside.filters-side')).toBeTruthy()); // never pressed: the stage decides
+  await vi.waitFor(() => expect(Math.round(host.querySelector('.list-side').getBoundingClientRect().width)).toBe(220));
+  expect(starts()).toEqual([false, '»', 'false']); // the floating layer
+  await press(host.querySelector('.pages button.maximize'));
+  await vi.waitFor(() => expect(Math.round(host.querySelector('.list-side').getBoundingClientRect().width)).toBe(320));
+  expect(starts()).toEqual([false, '»', 'false']); // full screen
+  await press(host.querySelector('.pages button.maximize'));
+  await openFilters();
   const widths = () => [host.querySelector('aside.filters-side'), host.querySelector('.list-side')].map((el) => Math.round(el.getBoundingClientRect().width));
   await vi.waitFor(() => expect(widths()).toEqual([200, 220]));
   await press(host.querySelector('.pages button.maximize'));
@@ -1105,6 +1117,7 @@ test('the Filters column sits left of the list but comes after the search in tab
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
+  await openFilters();
   const aside = host.querySelector('aside.filters-side'), search = host.querySelector('.top input');
   expect(search.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(aside.getBoundingClientRect().right).toBeLessThanOrEqual(host.querySelector('.list-side').getBoundingClientRect().left + 1);
@@ -1114,6 +1127,7 @@ test('Clear all, gone once pressed, leaves the keys with the layer', async () =>
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
+  await openFilters();
   await press(chip('IBM PC'));
   host.querySelector('button.clear-all').focus();
   await press(host.querySelector('button.clear-all'));
@@ -1135,6 +1149,7 @@ test('Escape on a filter chip closes the layer', async () => {
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
+  await openFilters();
   chip('IBM PC').focus();
   chip('IBM PC').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await nextTick();
@@ -1156,6 +1171,7 @@ test('tags plus a query that match nothing say so, and Clear empties both', asyn
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
+  await openFilters();
   await press(chip('IBM PC'));
   await type('rounded'); // Topaz is Amiga: nothing under IBM PC
   expect(host.querySelector('.library-note').textContent).toContain('No fonts match.');
@@ -1365,6 +1381,7 @@ test('the arrow keys walk the font rows from a filter chip', async () => {
   await wide();
   await mount({ library: FIXTURE() });
   await chooseLibrary('Alpha');
+  await openFilters();
   await arrow('ArrowDown', chip('IBM PC'));
   expect(title()).not.toBe('Alpha');
 });

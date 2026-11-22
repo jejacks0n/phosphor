@@ -56,12 +56,12 @@ const index = shallowRef(null);
 const libraryState = ref('loading'); // 'loading' | 'ready' | 'failed'
 const tags = ref([]); // the picked tags' keys
 const shownCount = ref(PAGE);
-// The Filters column's fold (null until « or » is pressed: then folded only in the dialog), its groups' folds, and the
-// list's folded groups (Yours, Built-in, Library: In use never folds).
+// The Filters column's fold (null until « or » is pressed: folded till then), its groups' folds, and the list's folded
+// groups (Yours, Built-in, Library: In use never folds).
 const prefs = useLocalStorage('phosphor.fontFilters', { folded: null, closed: [], list: [] }, { mergeDefaults: true });
 const listOpen = (key) => key === 'inUse' || !prefs.value.list.includes(key);
 const foldList = (key) => { prefs.value.list = listOpen(key) ? [...prefs.value.list, key] : prefs.value.list.filter((k) => k !== key); };
-const folded = computed(() => prefs.value.folded ?? props.stage === 'dialog');
+const folded = computed(() => prefs.value.folded ?? true);
 const showColumn = computed(() => libraryState.value === 'ready' && props.stage !== 'phone' && !folded.value);
 const fetchLibrary = async () => {
   libraryState.value = 'loading';
