@@ -6,30 +6,40 @@ const deploy = read('deploy.yml');
 const refresh = read('plugin-list.yml');
 const desktop = read('desktop.yml');
 
-// The text of one top-level job (from its "  name:" line to the next job).
+// The text of one top-level job (from its "  name:" line to the next job or the comment above it).
 const job = (text, name) => {
   const start = text.indexOf(`\n  ${name}:\n`);
   expect(start, `job ${name}`).toBeGreaterThan(-1);
   const rest = text.slice(start + 1);
-  const next = rest.slice(1).search(/\n {2}[\w-]+:\n/);
+  const next = rest.slice(1).search(/\n {2}([\w-]+:\n|# )/); // the next job, or the comment above it
   return next < 0 ? rest : rest.slice(0, next + 1);
 };
 
 describe('publishing the plugin list', () => {
-  it('the deploy writes dist/plugins.json after the build and before the deploy, with the token', () => {
+  it('the deploy to next writes dist/plugins.json after the build and before the deploy, with the token, from next\'s own list', () => {
     const build = job(deploy, 'build');
     const run = build.indexOf('npm run build');
-    const list = build.indexOf('node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.sha }}');
-    const next = build.indexOf('node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.event.pull_request.head.sha }} --previous https://next.phosphor.work/plugins.json');
+    const list = build.indexOf('node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.sha }} --previous https://next.phosphor.work/plugins.json');
     const publish = build.indexOf('cloudflare/wrangler-action@v3');
     expect(run).toBeGreaterThan(-1);
     expect(list).toBeGreaterThan(run);
-    expect(next).toBeGreaterThan(run);
     expect(publish).toBeGreaterThan(list);
-    expect(publish).toBeGreaterThan(next);
-    expect(build.slice(list, publish).match(/GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/g)).toHaveLength(2);
-    expect(build.slice(list, next)).not.toContain('--previous'); // production keeps the script's default list
+    expect(build.slice(list, publish)).toContain('GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
+    expect(build.match(/plugin-list\.mjs/g)).toHaveLength(1);
     expect(build).not.toContain('--refresh');
+  });
+
+  it('the release writes production\'s dist/plugins.json after the web build and before the deploy, from the default list', () => {
+    const site = job(desktop, 'site');
+    const run = site.indexOf('npm run build');
+    const list = site.indexOf('node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.sha }}\n');
+    const publish = site.indexOf('cloudflare/wrangler-action@v3');
+    expect(run).toBeGreaterThan(-1);
+    expect(list).toBeGreaterThan(run);
+    expect(publish).toBeGreaterThan(list);
+    expect(site.slice(list, publish)).toContain('GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
+    expect(site).not.toContain('--previous'); // production keeps the script's default list
+    expect(site).not.toContain('--refresh');
   });
 
   it('the refresh runs on wiki edits, daily and by hand, in its own concurrency group (never canceling a pending deploy)', () => {
@@ -41,26 +51,43 @@ describe('publishing the plugin list', () => {
     expect(refresh).not.toMatch(/group: pages/);
   });
 
-  // A pull request's run of deploy.yml ends in success without deploying, and one from a fork's main has the head branch
-  // main: only this repository's runs that weren't pull requests (pushes and runs by hand) count as deployed.
-  const OURS = `OURS: '[.workflow_runs[] | select(.event != "pull_request" and .head_repository.full_name == $repo)]'`;
-  const RUNS = 'gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main';
+  // Production is published by desktop.yml's runs for a release tag pushed to this repository, never a pre-release's
+  // (whose site job is skipped) and never deploy.yml's (which publishes next).
+  const OURS = `OURS: '[.workflow_runs[] | select(.event == "push" and .head_repository.full_name == $repo and (.head_branch | test("^v[0-9]+\\\\.[0-9]+\\\\.[0-9]+$")))]'`;
+  const RUNS = 'gh api "repos/$GITHUB_REPOSITORY/actions/workflows/desktop.yml/runs?event=push';
   const LAST = 'jq -r --arg repo "$GITHUB_REPOSITORY" "$OURS | .[0].head_sha // empty"';
 
-  it('the last deployed commit is this repository\'s last successful deploy.yml run on main that was no pull request', () => {
+  it('the last released commit is this repository\'s last successful desktop.yml run for a release tag', () => {
     expect(refresh).toContain(OURS);
-    const build = job(refresh, 'build');
-    expect(build).toContain(`runs=$(${RUNS}&status=success&per_page=50")`);
-    expect(build).toContain(`sha=$(${LAST} <<<"$runs")`);
-    expect(build).not.toContain('gh run list');
-    expect(build).toMatch(/outputs:\n\s+sha: \$\{\{ steps\.last\.outputs\.sha \}\}/);
+    expect(refresh).not.toContain('deploy.yml/runs');
+    const last = job(refresh, 'last');
+    expect(last).toContain(`runs=$(${RUNS}&status=success&per_page=50")`);
+    expect(last).toContain(`sha=$(${LAST} <<<"$runs")`);
+    expect(last).not.toContain('gh run list');
+    expect(last).toMatch(/outputs:\n\s+sha: \$\{\{ steps\.last\.outputs\.sha \}\}/);
   });
 
-  it('the refresh publishes only when no deploy is on its way and the last deploy is still the commit it built', () => {
+  it('before the first release the refresh says so and builds and publishes nothing, rather than failing', () => {
+    const last = job(refresh, 'last');
+    expect(last).toContain('::notice::No release has published phosphor.work yet');
+    expect(last).not.toContain('exit 1');
+    expect(job(refresh, 'build')).toContain("needs: last\n    if: needs.last.outputs.sha != ''");
+    expect(job(refresh, 'deploy')).toContain('needs: [last, build]');
+  });
+
+  // The release's site job is what the refresh counts as published, so it must be the run's last job, after the builds.
+  it('the release run publishes phosphor.work last, so its success means it published', () => {
+    const site = job(desktop, 'site');
+    expect(site).toContain('needs: [version, package]');
+    const jobs = [...desktop.slice(desktop.indexOf('\njobs:')).matchAll(/\n {2}([\w-]+):\n {4}/g)].map((m) => m[1]);
+    expect(jobs).toEqual(['version', 'package', 'site']); // site needs every other job
+  });
+
+  it('the refresh publishes only when no release is on its way and the last release is still the commit it built', () => {
     const dep = job(refresh, 'deploy');
     expect(dep).toContain('actions: read');
     expect(dep).toContain('GH_TOKEN: ${{ github.token }}');
-    expect(dep).toContain('SHA: ${{ needs.build.outputs.sha }}');
+    expect(dep).toContain('SHA: ${{ needs.last.outputs.sha }}');
     const check = dep.indexOf('id: check');
     const publish = dep.indexOf('cloudflare/wrangler-action@v3');
     expect(check).toBeGreaterThan(-1);
@@ -69,7 +96,7 @@ describe('publishing the plugin list', () => {
     expect(checking).toContain(`${RUNS}&per_page=50")`); // every status, to see a queued or running one
     expect(checking).toContain('jq --arg repo "$GITHUB_REPOSITORY" "$OURS | map(select(.status != \\"completed\\")) | length"');
     expect(checking).toContain(`${RUNS}&status=success&per_page=50")`);
-    expect(checking).toContain(`last=$(${LAST} <<<"$deployed")`);
+    expect(checking).toContain(`last=$(${LAST} <<<"$released")`);
     expect(checking).toContain('[ "$last" != "$SHA" ]');
     expect(checking).toContain('::notice::');
     expect(checking).toContain('echo "publish=true" >> "$GITHUB_OUTPUT"');
@@ -77,18 +104,17 @@ describe('publishing the plugin list', () => {
     expect(dep.slice(publish - 200, publish)).toContain("if: steps.check.outputs.publish == 'true'");
   });
 
-  it('the refresh builds the last deployed commit and runs the script with --refresh on that commit', () => {
+  it('the refresh builds the last released commit and runs the script with --refresh on that commit', () => {
     const build = job(refresh, 'build');
-    expect(build).toContain('actions/workflows/deploy.yml/runs?branch=main&status=success');
-    expect(build).toContain('head_sha');
-    expect(build).not.toContain('deployments');
+    expect(job(refresh, 'last')).toContain('head_sha');
+    expect(refresh).not.toContain('deployments');
     expect(build).toContain('::error::');
     expect(build).toContain('env -u GITHUB_SHA npm run build'); // the build names the checked-out commit, not main's head
-    expect(build).toContain('ref: ${{ steps.last.outputs.sha }}');
+    expect(build).toContain('ref: ${{ needs.last.outputs.sha }}');
     expect(build).toContain('npm ci');
     expect(build).toContain('VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}');
     expect(build).toContain('node scripts/plugin-list.mjs --out dist/plugins.json --commit "$SHA" --refresh');
-    expect(build).toContain('SHA: ${{ steps.last.outputs.sha }}');
+    expect(build).toContain('SHA: ${{ needs.last.outputs.sha }}');
     expect(build).toContain('GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
     expect(build.indexOf('npm run build')).toBeLessThan(build.indexOf('plugin-list.mjs'));
     expect(build.indexOf('plugin-list.mjs')).toBeLessThan(build.indexOf('actions/upload-artifact@v4'));
@@ -105,47 +131,77 @@ describe('publishing the plugin list', () => {
     expect(dep).toContain('cloudflare/wrangler-action@v3');
     expect(dep).toContain('apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
     expect(dep).toContain('accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}');
-    expect(dep).toContain('pages deploy dist --project-name=phosphor --branch=main --commit-hash=${{ needs.build.outputs.sha }}');
+    expect(dep).toContain('pages deploy dist --project-name=phosphor --branch=main --commit-hash=${{ needs.last.outputs.sha }}');
   });
 
-  it('the desktop workflow never runs the script', () => {
-    expect(desktop).not.toContain('plugin-list');
-    expect(desktop).not.toContain('plugins.json');
+  it('the desktop builds never carry the list: only the release\'s site job runs the script', () => {
+    for (const name of ['version', 'package']) {
+      expect(job(desktop, name), name).not.toContain('plugin-list');
+      expect(job(desktop, name), name).not.toContain('plugins.json');
+    }
   });
 });
 
 describe('hosting on Cloudflare Pages', () => {
   it('has no GitHub Pages in its workflows, and no CNAME', () => {
-    for (const text of [deploy, refresh]) expect(text).not.toMatch(/upload-pages-artifact|deploy-pages|pages: write|id-token: write|github-pages|GitHub Pages/);
+    for (const text of [deploy, refresh, desktop]) expect(text).not.toMatch(/upload-pages-artifact|deploy-pages|pages: write|id-token: write|github-pages|GitHub Pages/);
     expect(existsSync(new URL('../../public/CNAME', import.meta.url))).toBe(false);
   });
 
-  it('runs on pull requests as they open, change, reopen and are labeled', () => {
-    expect(deploy).toMatch(/\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened, labeled\]/);
+  it('runs on pull requests as they open, change and reopen', () => {
+    expect(deploy).toMatch(/\n {2}pull_request:\n {4}types: \[opened, synchronize, reopened\]\n/);
   });
 
-  it('builds for production on a push or a run by hand, and for next only on a label from this repository\'s own pull request', () => {
+  it('builds for next on a push to main or a run by hand on main, and never for a pull request', () => {
     const build = job(deploy, 'build');
-    expect(build).toContain("if: (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'next'))");
+    expect(build).toContain("if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'\n");
+    expect(build).not.toContain('labels');
     expect(build).toMatch(/needs: \[test, browser, e2e, desktop-e2e\]/);
-    expect(build).toContain('ref: ${{ github.event.pull_request.head.sha || github.sha }}');
-    expect(build).toContain('env -u GITHUB_SHA npm run build'); // the build id names the head commit, not a pull request's merge commit
+    expect(build).toContain('env -u GITHUB_SHA npm run build');
     expect(build).toContain('VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}');
     expect(build).toContain("The TURNSTILE_SITE_KEY secret isn't set");
   });
 
-  it('publishes with wrangler: main for production, next for a pull request, the commit it built', () => {
+  it('publishes main to next with wrangler, the commit it built, and never to production', () => {
     const build = job(deploy, 'build');
     expect(build).toContain('cloudflare/wrangler-action@v3');
     expect(build).toContain('apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
     expect(build).toContain('accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}');
-    expect(build).toContain("pages deploy dist --project-name=phosphor --branch=${{ github.event_name == 'pull_request' && 'next' || 'main' }} --commit-hash=${{ github.event.pull_request.head.sha || github.sha }}");
+    expect(build).toContain('pages deploy dist --project-name=phosphor --branch=next --commit-hash=${{ github.sha }}');
+    expect(deploy).not.toContain('--branch=main');
   });
 
-  it('keeps production (main) alone in the pages group without canceling, a run by hand on another branch in a group of its own, and next in its own that the last label wins', () => {
-    expect(deploy).toMatch(/\nconcurrency:\n {2}group: \$\{\{ github\.event_name == 'pull_request' && format\('test-\{0\}', github\.ref\) \|\| github\.ref == 'refs\/heads\/main' && 'pages' \|\| format\('branch-\{0\}', github\.ref\) \}\}\n {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
-    const build = job(deploy, 'build');
-    expect(build).toMatch(/concurrency:\n {6}group: \$\{\{ github\.event_name == 'pull_request' && 'next' \|\| github\.run_id \}\}\n {6}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  it('publishes production from a release tag only: after the builds, not for a pre-release, the tag\'s commit', () => {
+    const site = job(desktop, 'site');
+    expect(site).toContain("if: needs.version.outputs.prerelease == 'false'");
+    expect(site).toContain('VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}');
+    expect(site).toContain("The TURNSTILE_SITE_KEY secret isn't set");
+    expect(site).toContain('npm run build');
+    expect(site).not.toContain('build:desktop');
+    expect(site).toContain('apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
+    expect(site).toContain('accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}');
+    expect(site).toContain('pages deploy dist --project-name=phosphor --branch=main --commit-hash=${{ github.sha }}');
+    expect(site).toMatch(/concurrency:\n {6}group: production\n {6}cancel-in-progress: false/);
+  });
+
+  it('releases only a commit main\'s tests passed on: this repository\'s successful deploy.yml run on main for it', () => {
+    const version = job(desktop, 'version');
+    expect(version).toContain('actions: read');
+    expect(version).toContain('GH_TOKEN: ${{ github.token }}');
+    expect(version).toContain('gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&head_sha=$GITHUB_SHA&status=success"');
+    expect(version).toContain(`select(.event != "pull_request" and .head_repository.full_name == $repo)`);
+    expect(version).toContain('::error::$GITHUB_SHA has no successful deploy.yml run on main');
+    for (const name of ['package', 'site']) expect(job(desktop, name), name).toMatch(/needs: (version|\[version, package\])\n/);
+  });
+
+  it('keeps main\'s deploys to next in one group without canceling, a run by hand on another branch in a group of its own', () => {
+    expect(deploy).toMatch(/\nconcurrency:\n {2}group: \$\{\{ github\.event_name == 'pull_request' && format\('test-\{0\}', github\.ref\) \|\| github\.ref == 'refs\/heads\/main' && 'next' \|\| format\('branch-\{0\}', github\.ref\) \}\}\n {2}cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
+  });
+
+  it('holds release write access only where the desktop builds publish to the GitHub Release', () => {
+    expect(desktop).toMatch(/\npermissions:\n {2}contents: read\n/);
+    expect(job(desktop, 'package')).toContain('contents: write');
+    for (const name of ['version', 'site']) expect(job(desktop, name), name).not.toContain('contents: write');
   });
 
   it('holds no job permissions beyond reading the repository', () => {
@@ -153,7 +209,7 @@ describe('hosting on Cloudflare Pages', () => {
     expect(deploy).toMatch(/\npermissions:\n {2}contents: read\n/);
   });
 
-  it('checks out the pull request\'s head in every test job, so what is tested is what reaches next', () => {
+  it('checks out the pull request\'s head in every test job, so what is tested is what was pushed', () => {
     for (const name of ['test', 'browser', 'e2e', 'desktop-e2e']) {
       expect(job(deploy, name), name).toMatch(/- uses: actions\/checkout@v4\n\s+with:\n\s+ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
     }

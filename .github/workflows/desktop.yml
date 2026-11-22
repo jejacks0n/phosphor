@@ -1,28 +1,42 @@
-name: Build the desktop app
+name: Release
 
-# Only a version tag builds it: v and three numbers (v0.2.0), or a pre-release with a dash after them (v0.2.0-beta,
+# Only a version tag releases: v and three numbers (v0.2.0), or a pre-release with a dash after them (v0.2.0-beta,
 # v0.2.0-beta.2), matching package.json's version and higher than every version tag before it by semver's order, where
-# v0.2.0-beta comes before v0.2.0 (scripts/release-tag.mjs). It builds the three platforms and attaches them to a GitHub
-# Release for the tag: a draft to look over and publish by hand, or for a pre-release, a pre-release published as the
-# builds finish.
+# v0.2.0-beta comes before v0.2.0 (scripts/release-tag.mjs), on a commit main's tests passed. It builds the desktop app
+# for the three platforms and attaches them to a GitHub Release for the tag: a draft to look over and publish by hand,
+# or for a pre-release, a pre-release published as the builds finish. A release (not a pre-release) then publishes
+# phosphor.work from the tag's commit; a pre-release's web side is next.phosphor.work, which every push to main
+# publishes (deploy.yml).
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+', 'v[0-9]+.[0-9]+.[0-9]+-*']
 
 permissions:
-  contents: write # the tag's release
+  contents: read
 
 jobs:
   # Once, before the three builds: a tag that isn't the next version builds nothing.
   version:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # to find main's run for the commit
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # every tag, to compare with
       - id: tag
         run: node scripts/release-tag.mjs "$GITHUB_REF_NAME"
+      # The commit was tested: deploy.yml ran on main for it, this repository's own run, and succeeded (and so published
+      # it to next). A tag pushed before that run finishes, or on a commit whose run was superseded by a later merge's,
+      # fails here; re-run this once main's run has passed, or tag a commit it passed on.
+      - run: |
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&head_sha=$GITHUB_SHA&status=success")
+          tested=$(jq --arg repo "$GITHUB_REPOSITORY" '[.workflow_runs[] | select(.event != "pull_request" and .head_repository.full_name == $repo)] | length' <<<"$runs")
+          [ "$tested" != 0 ] || { echo "::error::$GITHUB_SHA has no successful deploy.yml run on main. Release only a commit main's tests passed on"; exit 1; }
+        env:
+          GH_TOKEN: ${{ github.token }}
     outputs:
       prerelease: ${{ steps.tag.outputs.prerelease }}
 
@@ -34,6 +48,8 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    permissions:
+      contents: write # the tag's release
     env:
       # electron-builder reads these: the macOS Developer ID .p12 and its password, the Apple account that notarizes,
       # and the Windows .pfx and its password.
@@ -72,3 +88,40 @@ jobs:
       - run: node -e "require('electron')"
       - run: npm run build:desktop
       - run: npx electron-builder --publish always
+
+  # phosphor.work (the Pages project's main branch), for a release and not a pre-release, after the three builds: a
+  # platform that fails to build publishes nothing, and re-running it publishes once it passes. Last in the run, so
+  # plugin-list.yml can take a release run's success to mean this published.
+  site:
+    needs: [version, package]
+    if: needs.version.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    concurrency:
+      group: production
+      cancel-in-progress: false # never stop a deploy halfway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # As deploy.yml builds it: a build without the key would turn every sign-up away.
+      - run: |
+          test -n "$VITE_TURNSTILE_SITE_KEY" || { echo "::error::The TURNSTILE_SITE_KEY secret isn't set"; exit 1; }
+          npm run build
+        env:
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
+      # The plugin list is published with the site, falling back on production's own list (the script's default). The
+      # web build only: the package job's desktop build never carries it.
+      - run: node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=phosphor --branch=main --commit-hash=${{ github.sha }}
