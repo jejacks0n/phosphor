@@ -357,3 +357,43 @@ test('Polygon: Sides changes the selected polygons, and on a shape with keys onl
   workspace.vectorSelected = [key];
   expect(optionOf('Sides').get(workspace)).toBe(5);
 });
+
+test('the row follows the selection: a shape that remembers what made it chooses its kind when it\'s selected, and a click in the row still wins', async () => {
+  const { project, workspace, ref, drag } = await shaper({ outline: ROUND });
+  drag({ x: 10, y: 10 }, { x: 16, y: 16 });
+  const [star] = workspace.vectorSelected;
+  workspace.vectorShapeKind = 'polygon';
+  drag({ x: 20, y: 10 }, { x: 26, y: 16 });
+  const [polygon] = workspace.vectorSelected;
+  workspace.vectorShapeKind = 'rect';
+  drag({ x: 30, y: 10 }, { x: 36, y: 16 });
+  const [rect] = workspace.vectorSelected;
+  await mount();
+  const select = async (...keys) => { workspace.vectorSelected = keys; await nextTick(); };
+  // Picked with Vector select, then the Shape tool: the star's kind is the one chosen, its options showing its values.
+  workspace.setActiveTool('vselect');
+  await select(star);
+  expect(workspace.vectorShapeKind).toBe(ref);
+  workspace.setActiveTool('vshape');
+  await nextTick();
+  expect(kindRow().querySelectorAll('button')[3].classList.contains('on')).toBe(true);
+  expect(document.getElementById(`${ref}/points`)).toBeTruthy();
+  await select(polygon);
+  expect(workspace.vectorShapeKind).toBe('polygon');
+  // A rectangle remembers nothing, so the kind stays; with several, the first one's.
+  await select(rect);
+  expect(workspace.vectorShapeKind).toBe('polygon');
+  await select(star, polygon);
+  expect(workspace.vectorShapeKind).toBe(ref);
+  // A click in the row with the star still selected chooses that kind, and the same selection said again leaves it.
+  kindRow().querySelectorAll('button')[2].click();
+  await nextTick();
+  expect(workspace.vectorShapeKind).toBe('polygon');
+  await select(star, polygon);
+  expect(workspace.vectorShapeKind).toBe('polygon');
+  // A kind that isn't on offer (its plugin off) isn't followed.
+  usePluginStore().plugins.find(({ id }) => id === 'phosphor.outlines').enabled = false;
+  await select(star);
+  expect(workspace.vectorShapeKind).toBe('polygon');
+  expect(project.shapes.get(star).made.kind).toBe(ref);
+});
