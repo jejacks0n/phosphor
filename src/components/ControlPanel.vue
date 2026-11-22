@@ -260,8 +260,10 @@ function onKeyDown(event) {
       </div>
 
       <RangeField v-if="store.quantize === 'count'" :setting="getSetting('colorCount')" v-model="store.colorCount"/>
+      <!-- One editor per drawing, so its toast's Put back never reaches another (keyed by the document). -->
       <ColorList
           v-else-if="store.quantize === 'palette'"
+          :key="store.documentId ?? ''"
           class="field"
           :model-value="store.palette"
           :name="store.filename ?? ''"
