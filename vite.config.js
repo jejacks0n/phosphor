@@ -101,10 +101,10 @@ export function devModuleIds(depsDir, servedIds = []) {
 }
 
 // The development server's stand-in for raw GitHub, for the fixture list it answers /plugins.json with: that list's
-// commit and kim/phosphor-rain aren't on GitHub, so its files are served from here, at
+// commit and kim/phosphor-fog aren't on GitHub, so its files are served from here, at
 // /dev-raw/<repo>/<commit>/<path>/<file> (src/plugins/market.js asks there when VITE_DEV_RAW is set). A path the list
 // names gives the file's path in this checkout; any other, null.
-const DEV_RAW_FOLDERS = { 'jejacks0n/phosphor': '.', 'kim/phosphor-rain': 'tests/fixtures/plugins/rain' };
+const DEV_RAW_FOLDERS = { 'jejacks0n/phosphor': '.', 'kim/phosphor-fog': 'tests/fixtures/plugins/fog' };
 export function devRawFile(url) {
   const { plugins } = JSON.parse(readFileSync(new URL('./tests/fixtures/plugin-list.json', import.meta.url), 'utf8'));
   for (const { repo, path, commit, manifest } of plugins) {

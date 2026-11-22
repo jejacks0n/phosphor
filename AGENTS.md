@@ -121,7 +121,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   `tests/browser` (a brush's in `plugin-brush.test.js`, a shape's in `plugin-shape.test.js`, a filter's in
   `plugin-filters.test.js` and `plugin-filter-gpu.test.js`, an icon's in `tests/unit/plugin-icon.test.js`, the three
   examples' in `tests/browser/plugin-examples.test.js`), `tests/browser/plugins-dialog.test.js` and
-  `tests/e2e/plugins.spec.js`, with the official plugins in `plugins/` (Midnight, a theme; Outlines, a solver; Smear, a
+  `tests/e2e/plugins.spec.js`, with the official plugins in `plugins/` (Midnight, a dark theme; Rain, a light one; Outlines, a solver; Smear, a
   brush; Superformula, a shape; and Aberration, a filter; they aren't in the app's build, and people install them from
   the Marketplace) and, in `tests/fixtures/plugins/`, `outlines.zip`, as GitHub makes one.
 - `src/dev/actionLog.js` (and `skipped.js`, the actions it leaves out) and `src/components/dev/HistoryPanel.vue`: the

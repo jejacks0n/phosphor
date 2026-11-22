@@ -161,7 +161,7 @@ const FILES = {
   [`jejacks0n/phosphor/${SHA}/plugins/outlines/phosphor-plugin.json`]: OUTLINES_MANIFEST,
   [`jejacks0n/phosphor/${SHA}/plugins/outlines/outlines.js`]: await readFile(new URL('../../plugins/outlines/outlines.js', import.meta.url), 'utf8'),
   [`jejacks0n/phosphor/${SHA}/plugins/midnight/phosphor-plugin.json`]: await readFile(MANIFEST, 'utf8'),
-  [`kim/phosphor-rain/${SHA}/phosphor-plugin.json`]: await readFile(new URL('plugins/rain/phosphor-plugin.json', FIXTURES), 'utf8'),
+  [`kim/phosphor-fog/${SHA}/phosphor-plugin.json`]: await readFile(new URL('plugins/fog/phosphor-plugin.json', FIXTURES), 'utf8'),
 };
 // The three examples of a brush, a shape and a filter, each its folder's manifest and script, as the list has them.
 for (const [folder, script] of [['smear', 'smear.js'], ['superformula', 'superformula.js'], ['aberration', 'aberration.js']]) {

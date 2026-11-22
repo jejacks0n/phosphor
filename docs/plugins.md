@@ -52,7 +52,7 @@ The button depends on what you have:
 - **Update** shows when the list has a higher version than yours. Raising `version` is the only thing that makes an Update;
   a changed file at the same version isn't one. The Installed tab marks the row "Update to 1.1.0".
 - **Replace** shows when you have a plugin with the same id that came from somewhere else (a file, a folder or another
-  repository). The question names where the new one comes from ("by Kim, from the marketplace, kim/phosphor-rain"), so you can tell
+  repository). The question names where the new one comes from ("by Kim, from the marketplace, kim/phosphor-fog"), so you can tell
   it isn't the plugin you have.
 
 A plugin that leaves the list stays installed and keeps working. Its row on Installed says **No longer listed**.
@@ -188,7 +188,7 @@ Each theme:
 | `base` | `dark` or `light`: Phosphor's own theme under it, which gives every color it doesn't set, and the theme Phosphor goes to when this one isn't there. | `dark` or `light`. |
 | `colors` | The colors it sets. | Each key is one of the color slots below; each value a hex color: `#rgb`, `#rrggbb` or `#rrggbbaa`. |
 
-The color slots, and what each colors (a theme that sets them all changes the whole interface, as Midnight does; the
+The color slots, and what each colors (a theme that sets them all changes the whole interface, as the official Midnight, a dark one, and Rain, a light one, do; the
 art's own colors aren't a theme's):
 
 | Slot | What it colors |
@@ -708,7 +708,7 @@ You don't need to build Phosphor to try a plugin: install your file in the app a
 
 ## Listing a plugin
 
-Official plugins live in Phosphor's repository, one folder each directly under `plugins/` (Midnight, Outlines, Smear,
+Official plugins live in Phosphor's repository, one folder each directly under `plugins/` (Midnight, Rain, Outlines, Smear,
 Superformula and Aberration are there), each with a `phosphor-plugin.json`. They aren't part of Phosphor's build: people
 install them from the Marketplace. The ids starting `phosphor.` are kept for them, and a community listing that uses one
 is left out.

@@ -88,6 +88,68 @@
     {
       "official": true,
       "repo": "jejacks0n/phosphor",
+      "path": "plugins/rain",
+      "commit": "0123456789abcdef0123456789abcdef01234567",
+      "manifest": {
+        "phosphor": 1,
+        "id": "phosphor.rain",
+        "name": "Rain",
+        "version": "1.0.0",
+        "author": "Phosphor",
+        "description": "A light theme, cool and gray as a rainy day.",
+        "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/rain",
+        "script": "",
+        "license": "MIT",
+        "preview": "",
+        "themes": [
+          {
+            "id": "rain",
+            "name": "Rain",
+            "base": "light",
+            "colors": {
+              "white": "#ffffff",
+              "black": "#1f2a33",
+              "background": "#c9d3db",
+              "background-highlight": "#ffffff66",
+              "accent": "#3d6f95",
+              "accent-hot": "#2f6690",
+              "accent-hover": "#1f4c70",
+              "accent-glow": "#3d6f9533",
+              "accent-faint": "#3d6f950d",
+              "danger": "#c2413b",
+              "danger-hover": "#a8322d",
+              "warning": "#b7791f",
+              "success": "#2f855a",
+              "surface-dark": "#ffffff",
+              "surface-0": "#eef2f5",
+              "surface-1": "#e4eaef",
+              "surface-2": "#d9e1e8",
+              "surface-3": "#cdd7df",
+              "surface-4": "#c0ccd6",
+              "surface-light": "#1f2a33",
+              "border": "#bcc8d2",
+              "border-dark": "#aab8c4",
+              "border-subtle": "#d5dee6",
+              "border-light": "#9fb0bd",
+              "text": "#1b2730",
+              "text-dim": "#33424e",
+              "text-muted": "#5d6f7d",
+              "text-faint": "#8494a1",
+              "text-inverted": "#ffffff",
+              "shadow": "#3a4a57",
+              "guide": "#d9480f",
+              "toast": "#33424e",
+              "toast-text": "#eef2f5",
+              "wand-fill": "#3d6f954d"
+            }
+          }
+        ]
+      },
+      "manifestHash": "05e25cfecc2d0c5f69f3b3753a256c6af86d31670b18975c6cc9310ddfbbbea3"
+    },
+    {
+      "official": true,
+      "repo": "jejacks0n/phosphor",
       "path": "plugins/smear",
       "commit": "0123456789abcdef0123456789abcdef01234567",
       "manifest": {
@@ -150,65 +212,34 @@
     },
     {
       "official": false,
-      "repo": "kim/phosphor-rain",
+      "repo": "kim/phosphor-fog",
       "path": "",
       "commit": "0123456789abcdef0123456789abcdef01234567",
       "manifest": {
         "phosphor": 1,
-        "id": "kim.rain",
-        "name": "Rain",
+        "id": "kim.fog",
+        "name": "Fog",
         "version": "1.2.0",
         "author": "Kim",
-        "description": "A light theme, cool and gray as a rainy day.",
-        "homepage": "https://github.com/kim/phosphor-rain",
+        "description": "A gray, foggy theme.",
+        "homepage": "https://github.com/kim/phosphor-fog",
         "script": "",
         "license": "MIT",
         "preview": "",
         "themes": [
           {
-            "id": "rain",
-            "name": "Rain",
-            "base": "light",
+            "id": "fog",
+            "name": "Fog",
+            "base": "dark",
             "colors": {
-              "white": "#ffffff",
-              "black": "#1f2a33",
-              "background": "#c9d3db",
-              "background-highlight": "#ffffff66",
-              "accent": "#3d6f95",
-              "accent-hot": "#2f6690",
-              "accent-hover": "#1f4c70",
-              "accent-glow": "#3d6f9533",
-              "accent-faint": "#3d6f950d",
-              "danger": "#c2413b",
-              "danger-hover": "#a8322d",
-              "warning": "#b7791f",
-              "success": "#2f855a",
-              "surface-dark": "#ffffff",
-              "surface-0": "#eef2f5",
-              "surface-1": "#e4eaef",
-              "surface-2": "#d9e1e8",
-              "surface-3": "#cdd7df",
-              "surface-4": "#c0ccd6",
-              "surface-light": "#1f2a33",
-              "border": "#bcc8d2",
-              "border-dark": "#aab8c4",
-              "border-subtle": "#d5dee6",
-              "border-light": "#9fb0bd",
-              "text": "#1b2730",
-              "text-dim": "#33424e",
-              "text-muted": "#5d6f7d",
-              "text-faint": "#8494a1",
-              "text-inverted": "#ffffff",
-              "shadow": "#3a4a57",
-              "guide": "#d9480f",
-              "toast": "#33424e",
-              "toast-text": "#eef2f5",
-              "wand-fill": "#3d6f954d"
+              "background": "#1c2024",
+              "accent": "#8fa3b5",
+              "surface-0": "#23282d"
             }
           }
         ]
       },
-      "manifestHash": "04033187b3a9e99cabed5102a546d8f923387cd926f89c0992b5763b81b98bee"
+      "manifestHash": "d23171fe659f7d80bfff233e674325a34e441874a0a9f91ed1792c2a06ce8986"
     }
   ]
 }

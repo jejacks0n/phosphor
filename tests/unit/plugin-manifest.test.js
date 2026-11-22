@@ -145,10 +145,10 @@ test('the marks over the art and the ground behind a picture use no white or bla
   }
 });
 
-// The two themes the dev Marketplace shows are a dark one and a light one, each setting every slot, so either changes
-// the whole interface: the official Midnight, and the fixture list's Rain.
+// The two official themes are a dark one and a light one, each setting every slot, so either changes the whole
+// interface: Midnight and Rain.
 test('Midnight is a dark theme and Rain a light one, each setting every color slot', () => {
-  for (const [path, base] of [['../../plugins/midnight/phosphor-plugin.json', 'dark'], ['../fixtures/plugins/rain/phosphor-plugin.json', 'light']]) {
+  for (const [path, base] of [['../../plugins/midnight/phosphor-plugin.json', 'dark'], ['../../plugins/rain/phosphor-plugin.json', 'light']]) {
     const [theme] = readManifest(readFileSync(new URL(path, import.meta.url), 'utf8')).themes;
     expect([path, theme.base]).toEqual([path, base]);
     expect(Object.keys(theme.colors).sort()).toEqual([...COLOR_SLOTS].sort());

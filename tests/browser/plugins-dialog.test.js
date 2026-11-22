@@ -7,7 +7,7 @@ import { page, userEvent } from 'vitest/browser';
 import { createApp } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import midnight from '../../plugins/midnight/phosphor-plugin.json?raw';
-import rain from '../fixtures/plugins/rain/phosphor-plugin.json?raw';
+import fog from '../fixtures/plugins/fog/phosphor-plugin.json?raw';
 import { i18n } from '@/i18n';
 import PluginsDialog from '@/components/PluginsDialog.vue';
 import { usePluginStore } from '@/store/PluginStore';
@@ -470,26 +470,26 @@ const listing = (repo, path) => ({ repo, path, commit: COMMIT, official: repo ==
 const row = (name) => [...document.querySelectorAll('dialog li')].find((one) => one.querySelector('.name').textContent === name);
 const withListed = async (store) => {
   await store.install(JSON.parse(midnight), { listing: listing('jejacks0n/phosphor', 'plugins/midnight') });
-  await store.install(JSON.parse(rain), { listing: listing('kim/phosphor-rain', '') });
+  await store.install(JSON.parse(fog), { listing: listing('kim/phosphor-fog', '') });
   await store.install(JSON.parse(changed((m) => { m.id = 'jane.dusk'; m.name = 'Dusk'; m.author = 'Jane'; })));
 };
 
 test('an Installed row says Official or From the marketplace, Update when the list has a higher version of the same listing, and No longer listed', async () => {
   served['/plugins.json'] = listWith((plugins) => {
     plugins.find(({ manifest }) => manifest.id === 'phosphor.midnight').manifest.version = '1.3.0';
-    return plugins.filter(({ manifest }) => manifest.id !== 'kim.rain');
+    return plugins.filter(({ manifest }) => manifest.id !== 'kim.fog');
   });
   const store = await mount(withListed);
   await vi.waitFor(() => expect(store.market.status).toBe('ready'));
   expect(row('Midnight').querySelector('.badge').textContent).toBe('Official');
   expect(row('Midnight').textContent).not.toContain('From the marketplace');
-  expect(row('Rain').textContent).toContain('From the marketplace');
+  expect(row('Fog').textContent).toContain('From the marketplace');
   expect(row('Dusk').textContent).not.toContain('From the marketplace');
   await expect.element(page.getByRole('button', { name: 'Update Midnight' })).toBeVisible();
   expect([...row('Midnight').querySelectorAll('.badge')].map((badge) => badge.textContent)).toEqual(['Official', 'Update to 1.3.0']);
-  expect(row('Rain').querySelector('button.update')).toBe(null);
-  expect(row('Rain').textContent).not.toContain('Update to');
-  expect(row('Rain').textContent).toContain('No longer listed');
+  expect(row('Fog').querySelector('button.update')).toBe(null);
+  expect(row('Fog').textContent).not.toContain('Update to');
+  expect(row('Fog').textContent).toContain('No longer listed');
   expect(row('Midnight').textContent).not.toContain('No longer listed');
   expect(row('Dusk').textContent).not.toContain('No longer listed');
 
@@ -518,7 +518,7 @@ test('with no list, Installed works and shows neither Update nor No longer liste
   await vi.waitFor(() => expect(store.market.status).toBe('failed'));
   expect(dialogText()).not.toContain('No longer listed');
   expect(document.querySelector('dialog button.update')).toBe(null);
-  const toggle = page.getByRole('switch', { name: 'Rain' });
+  const toggle = page.getByRole('switch', { name: 'Fog' });
   await toggle.click();
   await expect.element(toggle).toHaveAttribute('aria-checked', 'false');
 });

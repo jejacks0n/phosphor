@@ -9,7 +9,7 @@ import superformulaManifest from '../../plugins/superformula/phosphor-plugin.jso
 import superformulaScript from '../../plugins/superformula/superformula.js?raw';
 import aberrationManifest from '../../plugins/aberration/phosphor-plugin.json?raw';
 import aberrationScript from '../../plugins/aberration/aberration.js?raw';
-import rainManifest from '../fixtures/plugins/rain/phosphor-plugin.json?raw';
+import fogManifest from '../fixtures/plugins/fog/phosphor-plugin.json?raw';
 
 // The marketplace as a browser test sees it: fetch stubbed with tests/fixtures/plugin-list.json at /plugins.json and the
 // raw GitHub files it lists. A test changes `served` (by URL) before the file's fetched; a URL not there is a 404.
@@ -29,7 +29,7 @@ export function serveMarket() {
     [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/superformula/superformula.js`]: superformulaScript,
     [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/aberration/phosphor-plugin.json`]: aberrationManifest,
     [`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/aberration/aberration.js`]: aberrationScript,
-    [`${RAW}/kim/phosphor-rain/${COMMIT}/phosphor-plugin.json`]: rainManifest,
+    [`${RAW}/kim/phosphor-fog/${COMMIT}/phosphor-plugin.json`]: fogManifest,
   };
   const fetched = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => (url in served
     ? new Response(served[url]) : new Response('Not found', { status: 404 })));
