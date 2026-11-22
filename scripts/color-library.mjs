@@ -1,4 +1,4 @@
-// Writes src/lib/colorPalettes.json, the sixteen-color palettes the Colors dialog ships with, from Lospec.
+// Writes src/lib/colorPalettes.json, the sixteen-color palettes the color layer's Palettes page ships with, from Lospec.
 // `npm run colors`, by hand and never in CI: Lospec's terms forbid crawling, so this makes one documented request a
 // palette (its per-palette API), 500 ms apart, and the file it writes is committed. A palette that can't be had, or
 // isn't sixteen colors, stops the run with its slug.

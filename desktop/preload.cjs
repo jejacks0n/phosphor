@@ -60,7 +60,7 @@ contextBridge.exposeInMainWorld('phosphorDesktop', {
   // { failed: 'changed' | 'unreachable' }.
   pluginList: () => ipcRenderer.invoke('phosphor:plugin-list'),
   pluginFile: (url, most) => ipcRenderer.invoke('phosphor:plugin-file', url, most),
-  // The Colors dialog's Get from Lospec: one palette by its slug as { text } or { failed: 'notFound' | 'unreachable' |
+  // The color layer's Get from Lospec: one palette by its slug as { text } or { failed: 'notFound' | 'unreachable' |
   // 'notPalette' }.
   lospecPalette: (slug) => ipcRenderer.invoke('phosphor:lospec-palette', slug),
 });

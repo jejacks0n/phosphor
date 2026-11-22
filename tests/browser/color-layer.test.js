@@ -5,6 +5,7 @@ import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
 import { i18n } from '@/i18n';
 import ColorLayer from '@/components/ColorLayer.vue';
+import ColorPair from '@/components/ColorPair.vue';
 import { createTestApp, settle } from '../support/app.js';
 import '@/assets/global.css';
 
@@ -45,7 +46,7 @@ test('it opens under the toolbar at the pair\'s left, as wide as the box before 
   const page = panel().querySelector('.color-popover'), pad = getComputedStyle(page);
   expect(page.clientWidth - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight)).toBe(260); // the old box's content
   expect(page.querySelector('.head').getBoundingClientRect().width).toBe(260);
-  expect([...panel().querySelectorAll('[role="tab"]')].map((tab) => tab.textContent.trim())).toEqual(['Colors']);
+  expect([...panel().querySelectorAll('[role="tab"]')].map((tab) => tab.textContent.trim())).toEqual(['Colors', 'Palettes']);
   expect(panel().getAttribute('aria-label')).toBe('Colors');
   expect(panel().querySelector('.color-popover')).not.toBe(null);
 });
@@ -112,4 +113,57 @@ test('in a toolbar narrower than the pair\'s left plus its width, it stays 10px 
   expect(at.left).toBeGreaterThanOrEqual(bar.left + 10);
   host.style.width = '800px';
   await vi.waitFor(() => expect(Math.round(panel().getBoundingClientRect().left - bar.left)).toBe(120));
+});
+
+// Review Focus 1, on Palettes: the big size in a toolbar narrower than the pair's left plus 940px (a 1050px window with
+// the side panel open) keeps its right edge 10px inside the toolbar's, and Colors brings it back under the pair. The
+// window is wide enough that the big size floats under the toolbar rather than being a dialog.
+test('on Palettes, in a toolbar too narrow for the big size at the pair, its right edge stays 10px inside; back on Colors it returns under the pair', async () => {
+  await page.viewport(1400, 900);
+  onTestFinished(() => page.viewport(414, 896));
+  await vi.waitFor(() => expect(innerWidth).toBe(1400));
+  const { workspace, panel } = await mount({ width: 800 });
+  const bar = host.getBoundingClientRect();
+  workspace.colorLayerPage = 'palettes';
+  await vi.waitFor(() => {
+    const at = panel().getBoundingClientRect();
+    expect(at.width).toBe(782); // the toolbar less 20px, border and all
+    expect(Math.round(bar.right - at.right)).toBe(10);
+  });
+  workspace.colorLayerPage = 'colors';
+  await vi.waitFor(() => {
+    const at = panel().getBoundingClientRect();
+    expect(Math.round(at.left - bar.left)).toBe(120);
+    expect(at.width).toBe(282);
+  });
+});
+
+// The chips open their slot's Colors page: the other chip switches the slot, the same chip on Colors closes the layer, and
+// on Palettes either chip goes to Colors (the chip's job is the picker).
+test('a chip opens its slot\'s Colors page, closes it from Colors, and from Palettes goes to Colors', async () => {
+  const { project, workspace, pinia } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
+  host = document.body.appendChild(document.createElement('article'));
+  Object.assign(host.style, { position: 'relative', width: '800px', height: '70px' });
+  app = createApp({ render: () => [h(ColorPair), workspace.colorBox ? h(ColorLayer) : null] }).use(pinia).use(i18n);
+  app.mount(host);
+  const press = async (slot) => {
+    host.querySelector(`button.chip.${slot}`).click();
+    await nextTick();
+  };
+  const state = () => [workspace.colorBox, workspace.colorLayerPage, !!host.querySelector('.color-layer')];
+  await press('fg');
+  expect(state()).toEqual(['fg', 'colors', true]);
+  await press('bg');
+  expect(state()).toEqual(['bg', 'colors', true]);
+  await press('bg');
+  expect(state()).toEqual([null, 'colors', false]);
+  workspace.openColors('fg', 'palettes');
+  await nextTick();
+  await press('fg');
+  expect(state()).toEqual(['fg', 'colors', true]);
+  workspace.colorLayerPage = 'palettes';
+  await nextTick();
+  await press('bg');
+  expect(state()).toEqual(['bg', 'colors', true]);
 });

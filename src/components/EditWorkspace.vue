@@ -26,6 +26,7 @@ import AnsiEditor from '@/components/AnsiEditor.vue';
 import InputEditor from '@/components/InputEditor.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
+import ColorLayer from '@/components/ColorLayer.vue';
 import WatchRoomPage from '@/components/social/WatchRoomPage.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 
@@ -241,9 +242,11 @@ async function addSvg(file) {
     <WatchRoomPage v-if="workspace.editorTab === 'room'"/>
     <template v-else>
       <EditToolbar v-if="project.image && workspace.editMode"/>
-      <!-- With no drawing (Manage fonts on the start screen), the palette layer opens at the work area's top right. -->
-      <div v-else-if="!project.image && workspace.paletteLayerOpen" class="layer-anchor">
-        <CharPaletteLayer @close="workspace.paletteLayerOpen = false"/>
+      <!-- With no drawing (Manage fonts or Palettes on the start screen), the palette layer or the color layer opens at the
+           work area's top right. -->
+      <div v-else-if="!project.image && (workspace.paletteLayerOpen || workspace.colorBox)" class="layer-anchor">
+        <CharPaletteLayer v-if="workspace.paletteLayerOpen" @close="workspace.paletteLayerOpen = false"/>
+        <ColorLayer v-else/>
       </div>
       <DropZone @file-dropped="handleFileSelected">
         <div class="edit-viewport viewport" :class="{ editing: workspace.editMode }" v-if="project.image">

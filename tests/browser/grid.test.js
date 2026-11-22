@@ -12,6 +12,7 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import ControlPanel from '@/components/ControlPanel.vue';
+import EditWorkspace from '@/components/EditWorkspace.vue';
 import { closeToast, toastAction, toastMessage } from '@/composables/useToast';
 
 async function grid(cols = 40, rows = 40) {
@@ -403,26 +404,62 @@ test('while the settings are locked the Custom color list writes nothing, and a 
   }
 });
 
-test('Browse beside Color palette opens the Colors dialog, whatever the palette choice, and is off when settings are locked', async () => {
+test('Palettes beside Color palette opens the color layer on Palettes, whatever the choice, off when settings are locked', async () => {
   const { project, workspace } = await grid(40, 40);
   const { host, gone } = mountPanel();
-  const browse = () => host.querySelector('#quantize').closest('.field').querySelector('button.browse');
+  const link = () => host.querySelector('#quantize').closest('.field').querySelector('button.text.palettes');
   try {
     for (const quantize of ['none', 'palette']) {
       project.quantize = quantize;
-      workspace.colorsOpen = false;
+      workspace.colorBox = null;
+      workspace.settingsOpen = true; // a phone's settings drawer, where the link is
       await nextTick();
-      expect(browse().textContent).toBe('Browse');
-      expect(browse().title).toBe('Browse color palettes');
-      browse().click();
-      expect(workspace.colorsOpen).toBe(true);
+      expect(link().textContent).toBe('Palettes');
+      expect(link().title).toBe('Browse color palettes');
+      expect(link().hasAttribute('data-colors-toggle')).toBe(true); // a press while the layer is open doesn't close it first
+      link().click();
+      expect([workspace.colorBox, workspace.colorLayerPage, workspace.settingsOpen]).toEqual(['fg', 'palettes', false]);
     }
+    workspace.openColors('bg'); // the slot open stays
+    link().click();
+    expect([workspace.colorBox, workspace.colorLayerPage]).toEqual(['bg', 'palettes']);
     project.startSharing({ send: () => {}, role: 'artist', me: 'ann' }); // only the host's now
     await nextTick();
-    expect(browse().matches(':disabled')).toBe(true); // inside the settings' fieldset
+    expect(link().matches(':disabled')).toBe(true); // inside the settings' fieldset
   } finally {
     project.stopSharing();
     gone();
+  }
+});
+
+test('from SAUCE it shows ANSI first; with no drawing it opens over the start screen, the group reading New drawings', async () => {
+  const { workspace } = await grid(40, 40);
+  workspace.editorTab = 'sauce';
+  let { host, gone } = mountPanel();
+  host.querySelector('button.text.palettes').click();
+  expect(workspace.editorTab).toBe('output');
+  expect(workspace.colorLayerPage).toBe('palettes');
+  gone();
+
+  const fresh = await createTestApp(); // no drawing: the start screen
+  const was = fresh.workspace.editorTab;
+  const screen = document.body.appendChild(document.createElement('div'));
+  const editor = createApp(EditWorkspace).use(fresh.pinia).use(i18n);
+  editor.mount(screen);
+  ({ host, gone } = mountPanel());
+  try {
+    await nextTick();
+    host.querySelector('button.text.palettes').click();
+    await nextTick();
+    await nextTick();
+    const layer = screen.querySelector('div.layer-anchor > .color-layer');
+    expect(layer).not.toBe(null);
+    expect(fresh.workspace.editorTab).toBe(was); // no art to show
+    expect(layer.querySelector('div.group span.label').textContent).toBe('New drawings');
+  } finally {
+    gone();
+    editor.unmount();
+    screen.remove();
   }
 });
 

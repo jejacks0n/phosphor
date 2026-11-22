@@ -1,3 +1,9 @@
+<script>
+// The big size's width, which the styles below take from the panel's --panel-big; a layer that places the frame along
+// the toolbar (ColorLayer) reads it here.
+export const BIG_WIDTH = 940;
+</script>
+
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, useTemplateRef, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -22,9 +28,9 @@ const emit = defineEmits(['close']);
 const { t } = useI18n();
 const root = useTemplateRef('root');
 
-// The small width and where along the toolbar it opens, as properties the styles read, so the big size and the
+// The small and big widths and where along the toolbar it opens, as properties the styles read, so the big size and the
 // dialog's inset still take over from them.
-const place = computed(() => ({ '--panel-width': `${props.width}px`, ...(props.left === null ? {} : { '--panel-left': `${props.left}px` }) }));
+const place = computed(() => ({ '--panel-width': `${props.width}px`, '--panel-big': `${BIG_WIDTH}px`, ...(props.left === null ? {} : { '--panel-left': `${props.left}px` }) }));
 
 // Wide on a smaller window, the layer is a dialog over the dimmed page, as the About dialog; on a phone's width, the
 // whole window (the media queries below). Either way it has a close button.
@@ -61,10 +67,12 @@ watch(() => props.wide, () => {
 const onPointerDown = (event) => {
   if (root.value && !root.value.contains(event.target) && !event.target.closest(['[role="separator"]', props.keep].filter(Boolean).join(', '))) emit('close');
 };
-// A button that goes away once pressed (a page's, a menu's, the Fonts page's actions) takes the focus with it: this
-// gives the keyboard back to the layer.
+// A button that goes away once pressed (a page's, a menu's, the Fonts page's actions) takes the focus with it, and one
+// turned off by its press (Use this palette, In use now) keeps it but hears no keys: this gives the keyboard back to the
+// layer.
 const keepKeys = () => nextTick(() => {
-  if (root.value && !root.value.contains(document.activeElement)) root.value.focus();
+  const focused = document.activeElement;
+  if (root.value && (!root.value.contains(focused) || focused.disabled)) root.value.focus();
 });
 
 onMounted(() => document.addEventListener('pointerdown', onPointerDown, true));
@@ -113,7 +121,7 @@ div.floating-panel {
 }
 
 div.floating-panel.editing {
-  width: 940px;
+  width: var(--panel-big);
 }
 
 /* The page's tabs over it (tabStrip.css, a dialog's too) and, at the row's right end, the full screen toggle and,
@@ -162,9 +170,10 @@ div.floating-panel.editing.maximized {
   transition: none;
 }
 
-/* From here on: how a page and its list and editor sides size in each of the frame's forms, the frame's own dialog,
-   scrim and phone rules among them, and then, from div.list-side on, the rules every page shares (the Palettes page's,
-   the Fonts page's). What reaches into a page does it with :deep. */
+/* From here on, rules that reach into the pages (with :deep). First, how a page and its list and details size in each
+   of the frame's forms, with the frame's own dialog, scrim and phone rules among them. Then, starting at the plain
+   :deep(div.list-side) rule after the phone's, the page rules every page shares, each page using those it has: the
+   Colors page its head and spacer; the two Palettes pages and the Fonts page their list, details and actions. */
 :deep(div.page) {
   display: flex;
   flex: 1;
@@ -202,7 +211,7 @@ div.floating-panel.editing.maximized :deep(div.page.fonts > div.list-side) {
     position: fixed;
     inset: 20px;
     z-index: 5000;
-    width: min(940px, calc(100vw - 40px));
+    width: min(var(--panel-big), calc(100vw - 40px));
     height: min(600px, calc(100vh - 40px));
     max-width: none;
     max-height: none;
@@ -400,6 +409,58 @@ div.floating-panel.editing.maximized :deep(div.page.fonts > div.list-side) {
 :deep(button.ghost:hover) {
   background: var(--surface-3);
   color: var(--text);
+}
+
+/* A page's actions row (the chosen font's, the chosen palette's): its buttons and links framed, the first one lit where a
+   page marks it primary. */
+:deep(div.actions) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+:deep(div.actions button.ghost),
+:deep(div.actions a.ghost.button) {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: none;
+}
+
+:deep(div.actions button.ghost:hover),
+:deep(div.actions a.ghost.button:hover) {
+  transform: none;
+  border-color: var(--accent);
+  background: var(--surface-3);
+}
+
+:deep(div.actions button.ghost:disabled) {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+:deep(a.ghost.button) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+:deep(a.ghost.button:hover) {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+:deep(div.actions button.ghost.primary) { /* after the hover above, which it ties */
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-text, #fff);
 }
 
 :deep(div.note) {

@@ -1,6 +1,5 @@
-/* A card in a grid of cards, the Marketplace's (PluginMarket) and the Colors dialog's (ColorsDialog): a band of art
-   across its top, a name linking to its page with who made it beside it, and a foot with a few words and its buttons.
-   Only the cards scroll. */
+/* A card in a grid of cards, the Marketplace's (PluginMarket): a band of art across its top, a name linking to its page
+   with who made it beside it, and a foot with a few words and its buttons. Only the cards scroll. */
 ul.cards {
   min-height: 0;
   overflow: auto;

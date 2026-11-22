@@ -10,7 +10,8 @@ import { useVectorStyle } from '@/composables/useVectorStyle.js';
 
 // The foreground/background chips: each shows its color as it displays (after adjustments and the
 // palette); a none slot shows a checkerboard. Clicking a chip opens the color layer (ColorLayer, under the toolbar) on
-// that slot's picker, and clicking it again closes it (Alt+F / Alt+A and Alt+B open it too: workspace.openColors). On
+// that slot's picker, and clicking it again closes it; on the layer's Palettes page either chip goes back to its slot's
+// picker (Alt+F / Alt+A and Alt+B open it too: workspace.openColors). On
 // VECTOR they're the shapes' Fill and Stroke (useVectorStyle).
 const { t } = useI18n();
 const project = useProjectStore();
@@ -29,7 +30,10 @@ const shown = (hex) => {
 // The foreground only means "none" for typing, in the ANSI view; paint always uses its color.
 const fgNone = computed(() => ansiView.value && workspace.editFgNone);
 
-const toggle = (slot) => (workspace.colorBox === slot ? (workspace.colorBox = null) : workspace.openColors(slot));
+const toggle = (slot) => {
+  if (workspace.colorBox === slot && workspace.colorLayerPage === 'colors') workspace.colorBox = null;
+  else workspace.openColors(slot);
+};
 
 const vector = computed(() => workspace.editorTab === 'vector');
 const style = useVectorStyle();

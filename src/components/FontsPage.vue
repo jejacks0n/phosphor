@@ -673,7 +673,7 @@ const exportPalettes = () => {
 </template>
 
 <style scoped>
-/* The list, row, head, meta and grid styles every page shares are FloatingPanel's; these are the page's own. */
+/* The list, row, head, meta, grid and actions styles every page shares are FloatingPanel's; these are the page's own. */
 div.sample {
   overflow: hidden;
   white-space: nowrap;
@@ -899,35 +899,6 @@ span.count {
   color: var(--text-muted);
 }
 
-div.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-/* The chosen font's actions as buttons: framed, the first one (Use this font, from the library) lit. */
-div.actions button.ghost,
-div.actions a.ghost.button {
-  padding: 5px 10px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  box-shadow: none;
-}
-
-div.actions button.ghost:hover,
-div.actions a.ghost.button:hover {
-  transform: none;
-  border-color: var(--accent);
-  background: var(--surface-3);
-}
-
-button.ghost:disabled {
-  opacity: 0.4;
-  cursor: default;
-  pointer-events: none;
-}
-
 p.problem {
   margin: 0;
   padding: 6px 12px;
@@ -1036,28 +1007,6 @@ div.sample-text {
   white-space: pre;
   overflow-x: auto;
   color: var(--text);
-}
-
-a.ghost.button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  color: var(--text-dim);
-  font-size: 12px;
-  text-decoration: none;
-}
-
-a.ghost.button:hover {
-  background: var(--surface-3);
-  color: var(--text);
-}
-
-div.actions button.ghost.primary {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-text, #fff);
 }
 
 div.tag-chips {

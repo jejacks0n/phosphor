@@ -204,8 +204,8 @@
       "cga": "CGA (16 couleurs)",
       "count": "Nombre limité",
       "palette": "Liste de couleurs personnalisée",
-      "browse": "Voir",
-      "browseTitle": "Parcourir les palettes de couleurs"
+      "palettes": "Palettes",
+      "palettesTitle": "Parcourir les palettes de couleurs"
     },
     "paletteColors": {
       "label": "Couleurs de la palette"
@@ -350,23 +350,24 @@
     "classicRamp": "Rampe classique",
     "longRamp": "Rampe étendue"
   },
-  "colorsDialog": {
-    "title": "Palettes de couleurs",
-    "library": "Bibliothèque",
-    "favorites": "Favoris",
-    "libraryIntro": "Des palettes de seize couleurs de Lospec, chacune par son auteur. En utiliser une remplace la liste de couleurs personnalisée de ce dessin.",
-    "favoritesIntro": "Les palettes que vous avez étoilées, gardées dans ce navigateur, avec celles que vous avez prises sur Lospec.",
-    "favoritesEmpty": "Rien de gardé pour le moment. ★ sur une palette la garde ici.",
+  "colorPalettes": {
+    "thisDrawing": "Ce dessin",
+    "newDrawings": "Nouveaux dessins",
+    "favorites": "Favoris · {n}",
+    "library": "Bibliothèque · {n}",
+    "favoritesEmpty": "Rien de gardé pour le moment. ☆ Favori sur une palette la garde ici.",
     "search": "Chercher des palettes",
     "none": "Aucune palette ne correspond.",
     "by": "par {author}",
     "onLospec": "sur Lospec",
     "colors": "{n} couleur | {n} couleurs",
-    "hex": ".hex",
-    "hexAria": "Enregistrer {name} dans un fichier .hex",
-    "star": "Mettre {name} en favori",
-    "use": "Utiliser",
+    "use": "Utiliser cette palette",
     "inUse": "Utilisée",
+    "favorite": "Favori",
+    "saveHex": "Enregistrer .hex",
+    "lospecPage": "Sur Lospec",
+    "useNote": "Utiliser cette palette remplace la liste de couleurs personnalisée de ce dessin.",
+    "fullColor": "Les couleurs réelles montrent chaque couleur telle qu'elle est : elles n'ont pas de liste de couleurs.",
     "replaced": "Les couleurs de ce dessin ont été remplacées.",
     "putBack": "Remettre",
     "notHere": "Pas ici ?",
@@ -757,7 +758,8 @@
   },
   "colorLayer": {
     "aria": "Couleurs",
-    "colors": "Couleurs"
+    "colors": "Couleurs",
+    "palettes": "Palettes"
   },
   "colors": {
     "fgAria": "Couleur de premier plan",

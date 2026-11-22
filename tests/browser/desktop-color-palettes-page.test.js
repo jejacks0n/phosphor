@@ -2,9 +2,9 @@
 // process (window.phosphorDesktop's lospecPalette, faked here), asked for by slug, and never through the page's fetch.
 // The main process sees Lospec's 404, so a palette Lospec doesn't have says so, as the browser can't.
 import { afterEach, expect, test, vi } from 'vitest';
-import { createApp, nextTick } from 'vue';
+import { createApp, h, nextTick } from 'vue';
 import { i18n } from '@/i18n';
-import ColorsDialog from '@/components/ColorsDialog.vue';
+import ColorLayer from '@/components/ColorLayer.vue';
 import { resetDesktop, useFakeDesktop } from '@/social/desktop';
 import { createTestApp } from '../support/app.js';
 import '@/assets/global.css';
@@ -19,22 +19,32 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// The color layer opened on its Palettes page, over a blank canvas.
 const mount = async () => {
-  const made = await createTestApp();
-  await made.project.setBlankCanvas({ cols: 20, rows: 10 });
-  host = document.createElement('div');
-  document.body.append(host);
-  app = createApp(ColorsDialog).use(made.pinia).use(i18n);
+  const { project, workspace, pinia } = await createTestApp();
+  await project.setBlankCanvas({ cols: 20, rows: 10 });
+  workspace.openColors('fg', 'palettes');
+  host = document.body.appendChild(document.createElement('div'));
+  app = createApp({ render: () => (workspace.colorBox ? h(ColorLayer) : null) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
 };
 
-const dialog = () => document.querySelector('dialog');
-const tab = (key) => document.getElementById(`colors-tab-${key}`);
-const names = () => [...dialog().querySelectorAll('ul.cards > li.card a.name')].map((a) => a.textContent);
-const problem = () => dialog().querySelector('p.get-problem');
+const page = () => document.querySelector('.color-layer div.page.colors-palettes');
+const favorites = () => {
+  const names = [];
+  let inside = false;
+  for (const el of page().querySelector('div.list').children) {
+    if (el.matches('div.group')) inside = el.querySelector('span.label').textContent.startsWith('Favorites');
+    else if (inside && el.matches('div.row')) names.push(el.querySelector('div.name > span').textContent);
+  }
+  return names;
+};
+const favoritesLabel = () => [...page().querySelectorAll('div.group span.label')].map((el) => el.textContent).find((text) => text.startsWith('Favorites'));
+const title = () => page().querySelector('div.edit-side div.head span.title').textContent;
+const problem = () => page().querySelector('p.get-problem');
 const get = async (typed) => {
-  const form = dialog().querySelector('form.get'), field = form.querySelector('input.get-name');
+  const form = page().querySelector('form.get'), field = form.querySelector('input.get-name');
   field.value = typed;
   field.dispatchEvent(new Event('input'));
   form.querySelector('button[type=submit]').click();
@@ -53,10 +63,10 @@ test('in the desktop app Get asks the main process and never the network', async
   useFakeDesktop({ lospecPalette });
   await mount();
   await get('https://lospec.com/palette-list/lospec-five');
-  await vi.waitFor(() => expect(tab('favorites').getAttribute('aria-selected')).toBe('true'));
+  await vi.waitFor(() => expect(title()).toBe('Lospec Five'));
   expect(lospecPalette.mock.calls).toEqual([['lospec-five']]);
-  expect(names()).toEqual(['Lospec Five']);
-  expect(dialog().querySelector('li.card span.author').textContent).toBe('by Someone');
+  expect(favorites()).toEqual(['Lospec Five']);
+  expect(page().querySelector('div.edit-side span.meta').textContent).toBe('5 colors · by Someone');
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -70,6 +80,6 @@ test('in the desktop app a palette Lospec doesn\'t have says so, and Lospec out 
   lospecPalette.mockResolvedValue({ failed: 'unreachable' });
   await get('sweetie 17');
   await vi.waitFor(() => expect(problem()?.textContent).toBe("Couldn't get sweetie-17 from Lospec. Check its name or link, or try again."));
-  expect(tab('favorites').querySelector('.count').textContent).toBe('0');
+  expect(favoritesLabel()).toBe('Favorites · 0');
   expect(fetch).not.toHaveBeenCalled();
 });

@@ -18,7 +18,7 @@ const sound = (p) => {
   return { slug: p.slug, name: cut(p.name), author: typeof p.author === 'string' ? cut(p.author) : '', colors: [...p.colors] };
 };
 
-// The color palettes you starred in the Colors dialog, kept in this browser, newest first.
+// The color palettes you starred on the color layer's Palettes page, kept in this browser, newest first.
 export const useColorLibraryStore = defineStore('colorLibrary', {
   state: () => ({
     favorites: useLocalStorage('phosphor.colorFavorites', []), // { slug, name, author, colors }[]

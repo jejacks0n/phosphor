@@ -151,7 +151,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     settingsOpen: false,
     showAboutModal: false,
     pluginsOpen: false,      // the Plugins dialog (PluginsDialog)
-    colorsOpen: false,       // the Colors dialog (ColorsDialog), from Browse ▸ beside Color palette
     shortcutsOpen: false,    // the keyboard shortcuts list (ShortcutsDialog)
     legalPage: null,         // the Terms, Privacy Policy or Community Guidelines while one's open (LegalDialog): 'terms' | 'privacy' | 'guidelines'
     colorBox: null,          // the color box (ColorLayer) while it's open, for this slot: 'fg' | 'bg'
