@@ -7,7 +7,7 @@ import { page, userEvent } from 'vitest/browser';
 import { createApp } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import midnight from '../../plugins/midnight/phosphor-plugin.json?raw';
-import rain from '../fixtures/plugins/rain/phosphor-plugin.json?raw';
+import fog from '../fixtures/plugins/fog/phosphor-plugin.json?raw';
 import { i18n } from '@/i18n';
 import PluginsDialog from '@/components/PluginsDialog.vue';
 import { usePluginStore } from '@/store/PluginStore';
@@ -68,7 +68,7 @@ test('with nothing installed it opens on Marketplace: the line under the tabs an
   await mount();
   await expect.element(page.getByRole('tab', { name: 'Marketplace' })).toHaveAttribute('aria-selected', 'true');
   expect(page.getByRole('tabpanel').element().textContent).toContain('Anyone\'s plugins, as their authors made them.');
-  expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Smear', 'Superformula', 'Amber CRT', 'Rain']);
+  expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Rain', 'Smear', 'Superformula', 'Amber CRT', 'Fog']);
 
   const outlines = card('Outlines');
   for (const words of ['1.0.0', 'Official', 'Adds a script']) expect(outlines.textContent).toContain(words);
@@ -81,9 +81,9 @@ test('with nothing installed it opens on Marketplace: the line under the tabs an
   expect(link.target).toBe('_blank');
   expect(link.rel).toContain('noopener');
 
-  const rainCard = card('Rain');
-  for (const words of ['1.2.0', 'by Kim', '1 theme']) expect(rainCard.textContent).toContain(words);
-  expect(rainCard.textContent).not.toContain('Official');
+  const fogCard = card('Fog');
+  for (const words of ['1.2.0', 'by Kim', '1 theme']) expect(fogCard.textContent).toContain(words);
+  expect(fogCard.textContent).not.toContain('Official');
   expect(card('Amber CRT').querySelector('a.name').href).toBe('https://github.com/sam/phosphor-amber'); // no homepage: the repo
 });
 
@@ -118,7 +118,7 @@ test('search matches name, author, description and id; the filter is All, Offici
     await search.fill(words);
     return names();
   };
-  expect(await find('RAIN')).toEqual(['Rain']);
+  expect(await find('FOG')).toEqual(['Fog']);
   expect(await find('sam ortiz')).toEqual(['Amber CRT']);
   expect(await find('late nights')).toEqual(['Midnight']);
   expect(await find('phosphor.outl')).toEqual(['Outlines']);
@@ -129,45 +129,45 @@ test('search matches name, author, description and id; the filter is All, Offici
   const filter = page.getByRole('combobox', { name: 'Show' });
   expect([...filter.element().options].map((option) => option.textContent)).toEqual(['All', 'Official', 'Themes', 'Scripts']);
   await filter.selectOptions('Official');
-  expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Smear', 'Superformula']);
+  expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Rain', 'Smear', 'Superformula']);
   await filter.selectOptions('Themes');
-  expect(names()).toEqual(['Midnight', 'Rain']);
+  expect(names()).toEqual(['Midnight', 'Rain', 'Fog']);
   await filter.selectOptions('Scripts');
   expect(names()).toEqual(['Aberration', 'Outlines', 'Smear', 'Superformula', 'Amber CRT']);
   await search.fill('amber');
   expect(names()).toEqual(['Amber CRT']);
   await filter.selectOptions('All');
   await search.fill('');
-  expect(names()).toHaveLength(7);
+  expect(names()).toHaveLength(8);
 });
 
 test('a card\'s button reads Install, Installed, Update or Replace by what is installed', async () => {
   served['/plugins.json'] = listWith((plugins) => {
-    plugins.find(({ manifest }) => manifest.id === 'kim.rain').manifest.version = '1.3.0';
+    plugins.find(({ manifest }) => manifest.id === 'kim.fog').manifest.version = '1.3.0';
   });
   await mount(async (store) => {
     const listing = (repo, path) => ({ repo, path, commit: COMMIT, official: repo === 'jejacks0n/phosphor' });
     await store.install(JSON.parse(midnight), { listing: listing('jejacks0n/phosphor', 'plugins/midnight') });
-    await store.install(JSON.parse(rain), { listing: listing('kim/phosphor-rain', '') });
+    await store.install(JSON.parse(fog), { listing: listing('kim/phosphor-fog', '') });
     // the same id from a file: not the listed one
     await store.install({ ...JSON.parse(midnight), id: 'phosphor.outlines', name: 'My outlines' });
     store.dialogTab = 'market';
   });
-  await vi.waitFor(() => expect(names()).toHaveLength(6));
+  await vi.waitFor(() => expect(names()).toHaveLength(7));
   expect(button('Midnight').textContent).toBe('Installed');
   expect(button('Midnight').disabled).toBe(true);
-  expect(button('Rain').textContent).toBe('Update');
+  expect(button('Fog').textContent).toBe('Update');
   expect(button('Outlines').textContent).toBe('Replace');
   expect(button('Outlines').disabled).toBe(false);
 
-  await usePluginStore().uninstall('kim.rain');
-  await vi.waitFor(() => expect(button('Rain').textContent).toBe('Install'));
+  await usePluginStore().uninstall('kim.fog');
+  await vi.waitFor(() => expect(button('Fog').textContent).toBe('Install'));
 });
 
 test('Install asks first, naming Official and warning of code, and the answer installs it as from the marketplace', async () => {
   const store = await mount();
   await expect.element(page.getByRole('tab', { name: 'Marketplace' })).toHaveAttribute('aria-selected', 'true');
-  await vi.waitFor(() => expect(names()).toHaveLength(6));
+  await vi.waitFor(() => expect(names()).toHaveLength(7));
   button('Outlines').click();
   await vi.waitFor(() => expect(heading()).toBe('Install Outlines 1.0.0?'));
   expect(document.querySelector('dialog p.sub').textContent).toBe('Official');
@@ -183,9 +183,9 @@ test('Install asks first, naming Official and warning of code, and the answer in
   await expect.element(page.getByRole('tab', { name: 'Marketplace' })).toHaveAttribute('aria-selected', 'true');
   await vi.waitFor(() => expect(button('Outlines').textContent).toBe('Installed'));
 
-  button('Rain').click();
-  await vi.waitFor(() => expect(heading()).toBe('Install Rain 1.2.0?'));
-  expect(document.querySelector('dialog p.sub').textContent).toBe('by Kim, from the marketplace, kim/phosphor-rain');
+  button('Fog').click();
+  await vi.waitFor(() => expect(heading()).toBe('Install Fog 1.2.0?'));
+  expect(document.querySelector('dialog p.sub').textContent).toBe('by Kim, from the marketplace, kim/phosphor-fog');
   expect(dialogText()).not.toContain(WARNING);
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect.element(page.getByRole('tab', { name: 'Marketplace' })).toBeVisible();
@@ -194,23 +194,23 @@ test('Install asks first, naming Official and warning of code, and the answer in
 
 test('Replace names where the new one comes from, and the answer keeps its listing', async () => {
   const store = await mount(async (plugins) => {
-    await plugins.install(JSON.parse(rain)); // from a file
+    await plugins.install(JSON.parse(fog)); // from a file
     plugins.dialogTab = 'market';
   });
-  await vi.waitFor(() => expect(button('Rain').textContent).toBe('Replace'));
-  button('Rain').click();
-  await vi.waitFor(() => expect(heading()).toBe('Replace Rain 1.2.0 with 1.2.0?'));
-  expect(document.querySelector('dialog p.sub').textContent).toBe('by Kim, from the marketplace, kim/phosphor-rain');
+  await vi.waitFor(() => expect(button('Fog').textContent).toBe('Replace'));
+  button('Fog').click();
+  await vi.waitFor(() => expect(heading()).toBe('Replace Fog 1.2.0 with 1.2.0?'));
+  expect(document.querySelector('dialog p.sub').textContent).toBe('by Kim, from the marketplace, kim/phosphor-fog');
   await page.getByRole('button', { name: /^Replace/ }).click();
   await vi.waitFor(() => expect(store.plugins[0].source).toBe('marketplace'));
-  expect(store.plugins[0].listing).toEqual({ repo: 'kim/phosphor-rain', path: '', commit: COMMIT, official: false });
+  expect(store.plugins[0].listing).toEqual({ repo: 'kim/phosphor-fog', path: '', commit: COMMIT, official: false });
 });
 
 test('a listed plugin whose files changed says so on the tab, and installs nothing', async () => {
-  served[`${RAW}/kim/phosphor-rain/${COMMIT}/phosphor-plugin.json`] = rain.replace('1.2.0', '1.3.0');
+  served[`${RAW}/kim/phosphor-fog/${COMMIT}/phosphor-plugin.json`] = fog.replace('1.2.0', '1.3.0');
   const store = await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(6));
-  button('Rain').click();
+  await vi.waitFor(() => expect(names()).toHaveLength(7));
+  button('Fog').click();
   await expect.element(page.getByRole('alert')).toHaveTextContent(CHANGED);
   expect(heading()).toBe('Plugins');
   expect(store.plugins).toEqual([]);
@@ -225,7 +225,7 @@ test('a list that can\'t be had says so, and Try again loads it again', async ()
   const again = vi.spyOn(store, 'loadMarket');
   await page.getByRole('button', { name: 'Try again' }).click();
   expect(again).toHaveBeenCalledWith({ again: true });
-  await vi.waitFor(() => expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Smear', 'Superformula', 'Rain']));
+  await vi.waitFor(() => expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Rain', 'Smear', 'Superformula', 'Fog']));
   expect(page.getByText(UNAVAILABLE).query()).toBe(null);
 });
 
@@ -240,7 +240,7 @@ test('a list for a newer Phosphor asks for an update in place of the connection\
 
 test('Tab goes from the search field to the filter, then into the cards', async () => {
   await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(6));
+  await vi.waitFor(() => expect(names()).toHaveLength(7));
   page.getByRole('searchbox', { name: 'Search plugins' }).element().focus();
   await userEvent.tab();
   expect(document.activeElement).toBe(page.getByRole('combobox', { name: 'Show' }).element());
@@ -250,7 +250,7 @@ test('Tab goes from the search field to the filter, then into the cards', async 
 
 test('a card read late never takes the place of the question already showing', async () => {
   const store = await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(6));
+  await vi.waitFor(() => expect(names()).toHaveLength(7));
   const real = store.readListed.bind(store);
   let release;
   const held = new Promise((resolve) => { release = resolve; });
@@ -259,18 +259,18 @@ test('a card read late never takes the place of the question already showing', a
     return real(entry);
   });
   button('Outlines').click(); // a script, read slowly
-  button('Rain').click();
-  await vi.waitFor(() => expect(heading()).toBe('Install Rain 1.2.0?'));
+  button('Fog').click();
+  await vi.waitFor(() => expect(heading()).toBe('Install Fog 1.2.0?'));
   release();
   await new Promise((resolve) => setTimeout(resolve, 100));
-  expect(heading()).toBe('Install Rain 1.2.0?');
+  expect(heading()).toBe('Install Fog 1.2.0?');
   expect(dialogText()).not.toContain(WARNING);
   expect(store.plugins).toEqual([]);
 });
 
 test('a card being read says Reading… and can\'t be pressed again until its question is up or the read fails; the rest stay usable', async () => {
   const store = await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(6));
+  await vi.waitFor(() => expect(names()).toHaveLength(7));
   const real = store.readListed.bind(store);
   const held = {};
   vi.spyOn(store, 'readListed').mockImplementation(async (entry) => {
@@ -280,8 +280,8 @@ test('a card being read says Reading… and can\'t be pressed again until its qu
   button('Outlines').click();
   await vi.waitFor(() => expect(button('Outlines').textContent).toBe('Reading…'));
   expect(button('Outlines').disabled).toBe(true);
-  expect(button('Rain').textContent).toBe('Install');
-  expect(button('Rain').disabled).toBe(false);
+  expect(button('Fog').textContent).toBe('Install');
+  expect(button('Fog').disabled).toBe(false);
   expect(button('Midnight').disabled).toBe(false);
 
   held['phosphor.outlines'].reject(Object.assign(new Error('changed'), { userMessage: CHANGED }));
@@ -289,22 +289,22 @@ test('a card being read says Reading… and can\'t be pressed again until its qu
   expect(button('Outlines').textContent).toBe('Install');
   expect(button('Outlines').disabled).toBe(false);
 
-  button('Rain').click();
-  await vi.waitFor(() => expect(button('Rain').textContent).toBe('Reading…'));
-  held['kim.rain'].resolve();
-  await vi.waitFor(() => expect(heading()).toBe('Install Rain 1.2.0?'));
+  button('Fog').click();
+  await vi.waitFor(() => expect(button('Fog').textContent).toBe('Reading…'));
+  held['kim.fog'].resolve();
+  await vi.waitFor(() => expect(heading()).toBe('Install Fog 1.2.0?'));
   await page.getByRole('button', { name: 'Cancel' }).click();
   await vi.waitFor(() => expect(heading()).toBe('Plugins'));
-  expect(button('Rain').textContent).toBe('Install');
-  expect(button('Rain').disabled).toBe(false);
+  expect(button('Fog').textContent).toBe('Install');
+  expect(button('Fog').disabled).toBe(false);
 });
 
 test('a browser that will not keep plugins asks nothing about a card', async () => {
   const store = await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(6));
+  await vi.waitFor(() => expect(names()).toHaveLength(7));
   store.unavailable = true;
   const read = vi.spyOn(store, 'readListed');
-  button('Rain').click();
+  button('Fog').click();
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(read).not.toHaveBeenCalled();
   expect(heading()).toBe('Plugins');
@@ -316,21 +316,21 @@ test('the search, the filter and where the grid was scrolled to come back after 
   ] });
   served['/plugins.json'] = listWith((plugins) => [...plugins, amber, ...Array.from({ length: 8 }, (_, i) => themed(i))]);
   await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(15));
+  await vi.waitFor(() => expect(names()).toHaveLength(16));
   await page.getByRole('combobox', { name: 'Show' }).selectOptions('Themes');
   await page.getByRole('searchbox', { name: 'Search plugins' }).fill('theme');
-  expect(names()).toHaveLength(10);
+  expect(names()).toHaveLength(11);
   const cards = () => document.querySelector('dialog ul.cards');
   cards().scrollTop = 300;
   await vi.waitFor(() => expect(cards().scrollTop).toBe(300));
 
-  button('Rain').click();
-  await vi.waitFor(() => expect(heading()).toBe('Install Rain 1.2.0?'));
+  button('Fog').click();
+  await vi.waitFor(() => expect(heading()).toBe('Install Fog 1.2.0?'));
   await page.getByRole('button', { name: 'Cancel' }).click();
   await vi.waitFor(() => expect(heading()).toBe('Plugins'));
   expect(page.getByRole('searchbox', { name: 'Search plugins' }).element().value).toBe('theme');
   expect(page.getByRole('combobox', { name: 'Show' }).element().value).toBe('themes');
-  expect(names()).toHaveLength(10);
+  expect(names()).toHaveLength(11);
   await vi.waitFor(() => expect(cards().scrollTop).toBe(300));
 });
 
@@ -340,7 +340,7 @@ test('only the cards scroll: the tabs, the search and the filter stay where they
   ] });
   served['/plugins.json'] = listWith((plugins) => [...plugins, amber, ...Array.from({ length: 12 }, (_, i) => themed(i))]);
   await mount();
-  await vi.waitFor(() => expect(names()).toHaveLength(19));
+  await vi.waitFor(() => expect(names()).toHaveLength(20));
   const body = document.querySelector('dialog > div.body');
   const cards = document.querySelector('dialog ul.cards');
   const search = page.getByRole('searchbox', { name: 'Search plugins' }).element();
@@ -365,8 +365,8 @@ test('on a wide window the dialog keeps one height, whatever a search finds or t
     await search.fill('no plugin is named this');
     await vi.waitFor(() => expect(names()).toHaveLength(0));
     expect(height()).toBe(720);
-    await search.fill('rain');
-    await vi.waitFor(() => expect(names()).toEqual(['Rain']));
+    await search.fill('fog');
+    await vi.waitFor(() => expect(names()).toEqual(['Fog']));
     expect(height()).toBe(720);
     const installed = [...document.querySelectorAll('dialog [role=tab]')].find((tab) => tab.textContent.includes('Installed'));
     installed.click();

@@ -395,22 +395,22 @@ and sideways.
 
 ### 28b. Browse the Marketplace and install from it
 - Does: with no plugins installed, opens the settings and taps Plugins (it opens on Marketplace, filling her phone's window);
-  looks at the cards, types "rain" in Search plugins, clears it, picks Themes then Scripts in the Show menu, and picks
-  All again; taps Install on Rain, reads the question and taps Install; taps the Installed tab; then back on Marketplace
+  looks at the cards, types "fog" in Search plugins, clears it, picks Themes then Scripts in the Show menu, and picks
+  All again; taps Install on Fog, reads the question and taps Install; taps the Installed tab; then back on Marketplace
   taps Install on Outlines, reads the question and taps Cancel. The app answers `/plugins.json` with the fixture list
   (`tests/fixtures/plugin-list.json`), and the development server serves the listed plugins' files from the checkout, so
   Install works there.
 - Expects: the dialog fills the whole window (no page behind it showing at the sides) with the tabs, search and Show menu
   in reach of a thumb, and the cards in one column, each with its art band, name, version, Official or author, a description
-  cut to two lines and its button, nothing wider than 390; Rain's button says Reading… (and does nothing when tapped)
-  until its question shows; Rain's question names Rain, its author and "from the
-  marketplace" with the repository; Outlines' question says it runs code, with the warning under it; after Install, Rain's
+  cut to two lines and its button, nothing wider than 390; Fog's button says Reading… (and does nothing when tapped)
+  until its question shows; Fog's question names Fog, its author and "from the
+  marketplace" with the repository; Outlines' question says it runs code, with the warning under it; after Install, Fog's
   card says Installed and its row on Installed says "From the marketplace"; Cancel leaves Outlines as Install; the search
   and the Show menu keep their choice after the question closes ([Plugins](../../plugins.md#the-marketplace)).
-- Probes: `back-out`: close the dialog and open it again, and check it opens on Installed with Rain, the tab's last
+- Probes: `back-out`: close the dialog and open it again, and check it opens on Installed with Fog, the tab's last
   choice kept; `out-of-order`: search for something nothing matches ("No plugins match."); `interrupt`: turn the phone
   sideways with the dialog open and back upright (wider than 700 it's a dialog again, and nothing is lost); `again`:
-  tap Install on Rain twice (the second time the button says Installed and does nothing).
+  tap Install on Fog twice (the second time the button says Installed and does nothing).
 - Rated: no (touch only: no keyboard shows here)
 
 ### 29. Draw her selfie in lines
@@ -448,7 +448,7 @@ and sideways.
 - Does: opens the settings, taps Plugins and the Marketplace tab, picks Scripts in the Show menu; taps Install on Smear,
   reads the question and taps Install; then the same for Superformula and Aberration; taps the Installed tab.
 - Expects: Scripts shows the cards of the plugins with a script (Outlines, Smear, Superformula and Aberration), not
-  Midnight or Rain; each question names the plugin ("Install Smear 1.0.0?"), says it's Official and "Adds a script.",
+  Midnight, Rain or Fog; each question names the plugin ("Install Smear 1.0.4?"), says it's Official and "Adds a script.",
   with "⚠ This plugin runs code in Phosphor. Install it only if you trust where it came from." under it, fitting 390
   wide; each card then says Installed; on Installed the rows say what each script added: "1 brush", "1 shape" and "1
   filter", with the Official badge ([The Marketplace](../../plugins.md#the-marketplace)).

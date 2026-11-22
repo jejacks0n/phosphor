@@ -17,7 +17,7 @@ describe('devRawFile', () => {
     expect(devRawFile(`/jejacks0n/phosphor/${COMMIT}/plugins/outlines/phosphor-plugin.json`)).toBe(here('plugins/outlines/phosphor-plugin.json'));
     expect(devRawFile(`/jejacks0n/phosphor/${COMMIT}/plugins/outlines/outlines.js`)).toBe(here('plugins/outlines/outlines.js'));
     expect(devRawFile(`/jejacks0n/phosphor/${COMMIT}/plugins/midnight/phosphor-plugin.json`)).toBe(here('plugins/midnight/phosphor-plugin.json'));
-    expect(devRawFile(`/kim/phosphor-rain/${COMMIT}/phosphor-plugin.json`)).toBe(here('tests/fixtures/plugins/rain/phosphor-plugin.json'));
+    expect(devRawFile(`/kim/phosphor-fog/${COMMIT}/phosphor-plugin.json`)).toBe(here('tests/fixtures/plugins/fog/phosphor-plugin.json'));
     for (const { repo, path, commit, manifest, manifestHash, scriptHash } of list.plugins) {
       const at = `/${repo}/${commit}/${path ? `${path}/` : ''}`;
       expect(sha256(devRawFile(`${at}phosphor-plugin.json`)), repo + path).toBe(manifestHash);
@@ -30,9 +30,9 @@ describe('devRawFile', () => {
       `/jejacks0n/phosphor/${COMMIT}/package.json`,
       `/jejacks0n/phosphor/${COMMIT}/plugins/outlines/../../package.json`,
       `/jejacks0n/phosphor/${COMMIT}/plugins/outlines/%2e%2e/%2e%2e/package.json`,
-      `/kim/phosphor-rain/${COMMIT}/../../outlines.zip`,
-      `/kim/phosphor-rain/${'f'.repeat(40)}/phosphor-plugin.json`,
-      `/kim/phosphor-rain/${COMMIT}/phosphor-plugin.json?x`,
+      `/kim/phosphor-fog/${COMMIT}/../../outlines.zip`,
+      `/kim/phosphor-fog/${'f'.repeat(40)}/phosphor-plugin.json`,
+      `/kim/phosphor-fog/${COMMIT}/phosphor-plugin.json?x`,
       `/sam/phosphor-amber/${COMMIT}/phosphor-plugin.json`,
       '/', '', undefined,
     ]) expect(devRawFile(url), String(url)).toBe(null);
