@@ -1,6 +1,6 @@
 <script setup>
 import { ref, shallowRef, computed, watch, useTemplateRef, nextTick, toRaw, onMounted } from 'vue';
-import { useLocalStorage } from '@vueuse/core';
+import { useLocalStorage, useEventListener } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -334,6 +334,31 @@ const setSlot = (n) => {
   const blocks = blocksOf(font.value), next = withBlock(blocks, picked.value, n);
   if (next.some((s, i) => s !== blocks[i])) setBlocks(next);
 };
+// A slot clicked (no block picked to set): its glyph large over the sheet, for a closer look. It's in the top layer, so
+// the sheet's scrolling can't cut it. Another click, Escape, a press elsewhere or a scroll puts it away.
+const zoom = ref(null); // { n, char, family, size, left, top }
+const zoomEl = useTemplateRef('zoomEl');
+const closeZoom = () => { zoom.value = null; };
+const showZoom = async (event, n, char, f) => {
+  if (zoom.value?.n === n) return closeZoom();
+  const cell = event.currentTarget.getBoundingClientRect();
+  const size = f.height * Math.max(2, Math.round(96 / f.height)); // about 96px, a whole number of times the font's size
+  zoom.value = { n, char: char === '␀' ? ' ' : char, family: styleOf(f).fontFamily, size, left: 0, top: 0 };
+  await nextTick();
+  const el = zoomEl.value;
+  el.showPopover();
+  const { offsetWidth: w, offsetHeight: h } = el;
+  const above = cell.top - h - 6;
+  zoom.value.left = Math.min(Math.max(8, cell.left + cell.width / 2 - w / 2), innerWidth - w - 8);
+  zoom.value.top = above >= 8 ? above : cell.bottom + 6;
+  el.focus({ preventScroll: true });
+};
+const clickSlot = (event, n) => (picked.value && !inRoom.value ? setSlot(n) : showZoom(event, n, chars.value[n], chosen.value));
+const zoomOut = () => { closeZoom(); emit('acted'); };
+watch([chosenId, () => libEntry.value?.id, picked, section], closeZoom);
+useEventListener(document, 'pointerdown', (e) => { if (zoom.value && !e.target.closest?.('span.cell, .glyph-zoom')) closeZoom(); }, true);
+useEventListener(window, 'scroll', closeZoom, { capture: true, passive: true });
+useEventListener(window, 'resize', closeZoom);
 const sections = computed(() => [
   { key: 'blocks', label: t('palette.fonts.blocks') },
   { key: 'lines', label: t('palette.fonts.lines'), count: font.value?.lines?.styles.length ?? 0 },
@@ -542,7 +567,7 @@ const exportPalettes = () => {
               class="cell"
               :class="{ role: blockAt.has(i), picked: !!blockAt.get(i)?.some((b) => BLOCKS[b].key === picked) }"
               @mouseenter="hovered = i"
-              @click="setSlot(i)"
+              @click="clickSlot($event, i)"
           >{{ c === '␀' ? ' ' : c }}</span>
         </div>
         <div class="info">{{ hovered === null ? t('palette.fonts.slotHint') : readout(hovered) }}</div>
@@ -581,7 +606,7 @@ const exportPalettes = () => {
       </div>
       <template v-if="previewChars">
         <div class="grid sheet" :style="styleOf({ kind: 'bitmap', height: libEntry.height, family: preview.family })" @mouseleave="hovered = null">
-          <span v-for="(c, i) in previewChars" :key="i" class="cell" @mouseenter="hovered = i">{{ c === '␀' ? ' ' : c }}</span>
+          <span v-for="(c, i) in previewChars" :key="i" class="cell" @mouseenter="hovered = i" @click="showZoom($event, i, c, { kind: 'bitmap', height: libEntry.height, family: preview.family })">{{ c === '␀' ? ' ' : c }}</span>
         </div>
         <div class="info">{{ hovered === null ? t('palette.fonts.slotHint') : t('palette.fonts.slot', { n: hovered, char: previewChars[hovered] }) }}</div>
       </template>
@@ -592,6 +617,20 @@ const exportPalettes = () => {
           <dd>{{ l.prefix }}<a v-if="l.href" :href="l.href" target="_blank" rel="noopener">{{ l.text }}</a><template v-else>{{ l.text }}</template></dd>
         </template>
       </dl>
+    </div>
+    <div
+        v-if="zoom"
+        ref="zoomEl"
+        popover="manual"
+        class="glyph-zoom"
+        role="dialog"
+        tabindex="-1"
+        :aria-label="t('palette.fonts.slot', { n: zoom.n, char: zoom.char })"
+        :style="{ left: `${zoom.left}px`, top: `${zoom.top}px` }"
+        @keydown.esc.stop="zoomOut"
+    >
+      <div class="glyph" :style="{ fontFamily: zoom.family, fontSize: `${zoom.size}px` }">{{ zoom.char }}</div>
+      <div class="caption">{{ t('palette.fonts.slot', { n: zoom.n, char: zoom.char }) }}</div>
     </div>
   </div>
 </template>
@@ -898,6 +937,38 @@ span.cell.role {
 span.cell.picked {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
+}
+
+div.grid.sheet:not(.picking) span.cell {
+  cursor: zoom-in;
+}
+
+/* A slot's glyph large (showZoom), placed over the slot clicked. */
+div.glyph-zoom {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface-1);
+  color: var(--text);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.4);
+  outline: none;
+}
+
+div.glyph-zoom div.glyph {
+  min-width: 1ch;
+  line-height: 1;
+  text-align: center;
+  white-space: pre;
+}
+
+div.glyph-zoom div.caption {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: center;
 }
 
 span.cell:hover {

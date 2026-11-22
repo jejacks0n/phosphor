@@ -1259,6 +1259,48 @@ test("a library font chosen shows its 256 slots, fetched once (Use this font doe
   expect(fileFetches).toBe(1);
 });
 
+test('a click on a slot shows its glyph large over the sheet; a second click, Escape or a click elsewhere puts it away', async () => {
+  await wide();
+  const index = FIXTURE();
+  serveFile(index, 'Zeta');
+  await mount({ library: index });
+  await chooseLibrary('Zeta');
+  await vi.waitFor(() => expect(host.querySelectorAll('.edit-side .grid.sheet .cell').length).toBe(256));
+  const zoom = () => document.querySelector('.glyph-zoom');
+  const cells = () => host.querySelectorAll('.edit-side .grid.sheet .cell');
+  await press(cells()[65]);
+  await vi.waitFor(() => expect(zoom()?.matches(':popover-open')).toBe(true));
+  expect(zoom().getAttribute('aria-label')).toBe('Slot 65 A');
+  expect(zoom().querySelector('.glyph').textContent).toBe('A');
+  expect(getComputedStyle(zoom().querySelector('.glyph')).fontSize).toBe('96px'); // an 8-line font, 12 times its size
+  expect(document.activeElement).toBe(zoom());
+  await press(cells()[66]); // another slot moves it
+  await vi.waitFor(() => expect(zoom().getAttribute('aria-label')).toBe('Slot 66 B'));
+  await press(cells()[66]); // the same slot again puts it away
+  expect(zoom()).toBeNull();
+  await press(cells()[65]);
+  await vi.waitFor(() => expect(zoom()).toBeTruthy());
+  zoom().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await nextTick();
+  expect(zoom()).toBeNull();
+  expect(closes).toBe(0); // the layer stays open
+  await press(cells()[65]);
+  await vi.waitFor(() => expect(zoom()).toBeTruthy());
+  host.querySelector('.edit-side .title').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await nextTick();
+  expect(zoom()).toBeNull();
+});
+
+test('with a block picked, a click on a slot sets it rather than showing it large', async () => {
+  const { project } = await mount({ font: lowerAt240 });
+  await press(slotCell(254));
+  await vi.waitFor(() => expect(document.querySelector('.glyph-zoom')).toBeTruthy()); // nothing picked: a closer look
+  await press(tile('Lower'));
+  await press(slotCell(254));
+  expect(blocksOf(project.drawingFont)[1]).toBe(254);
+  expect(document.querySelector('.glyph-zoom')).toBeNull();
+});
+
 test("a library font that can't be fetched shows its sample instead of its slots", async () => {
   await wide();
   const index = FIXTURE();
