@@ -170,7 +170,13 @@ The settings on the left come in sections, each following a layer:
   the dialog stays open; the card whose colors are the list, in the same order, says **In use**. After a Use the foot of
   the dialog says the drawing's colors were replaced, with **Put back**, which brings back the Color palette and the list
   as they were before the first Use, however many you tried; closing the dialog keeps what's in use. **★** keeps a
-  palette under Favorites or takes it out, and **.hex** saves it as a `.hex` file. Browse ▸ is off while the settings
+  palette under Favorites or takes it out, and **.hex** saves it as a `.hex` file. A palette that isn't in the Library
+  can be got: under its search, **Not here?** takes a palette's name (`Sweetie 16`) or its lospec.com link, and **Get
+  from Lospec** asks lospec.com for that one palette, and only when it's pressed; opening the dialog, browsing and
+  using the Library ask nothing of anyone. The palette is kept under Favorites, which the dialog then shows with it
+  first (one of more than 256 colors keeps its first 256, and says so). When Lospec has no palette by that name, can't
+  be reached, or answers with something that isn't a palette, the line under the field says which and nothing is kept.
+  Get changes nothing of the drawing, so it works while the settings are locked. Browse ▸ is off while the settings
   are, and a lock that comes while the dialog is open turns Use and Put back off. About's Licenses tab credits the
   palettes to Lospec's Palette List and their authors.
 - **Transforms**: **Colorize** (with its color), **Hue shift** and **Invert**.

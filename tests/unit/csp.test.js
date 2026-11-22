@@ -12,9 +12,9 @@ const HTML = '<html><head><script>window.a = 1;</script></head><body></body></ht
 const directive = (policy, name) => policy.split('; ').find((d) => d.startsWith(`${name} `));
 
 describe('contentSecurityPolicy', () => {
-  it('web CSP connects to the SOCIAL server, Turnstile and raw GitHub files (the marketplace), and hashes inline scripts', () => {
+  it('web CSP connects to the SOCIAL server, Turnstile, raw GitHub files (the marketplace) and Lospec (Get from Lospec), and hashes inline scripts', () => {
     const policy = contentSecurityPolicy(HTML, 'https://api.phosphor.work');
-    expect(directive(policy, 'connect-src')).toBe("connect-src 'self' https://api.phosphor.work wss://api.phosphor.work http://localhost:8787 ws://localhost:8787 https://challenges.cloudflare.com https://raw.githubusercontent.com");
+    expect(directive(policy, 'connect-src')).toBe("connect-src 'self' https://api.phosphor.work wss://api.phosphor.work http://localhost:8787 ws://localhost:8787 https://challenges.cloudflare.com https://raw.githubusercontent.com https://lospec.com");
     expect(directive(policy, 'script-src')).toMatch(/^script-src 'self' blob: https:\/\/challenges\.cloudflare\.com 'sha256-[^']+'$/);
     expect(directive(policy, 'frame-src')).toBe('frame-src https://challenges.cloudflare.com');
   });
@@ -25,6 +25,7 @@ describe('contentSecurityPolicy', () => {
     expect(directive(policy, 'script-src')).toMatch(/^script-src 'self' blob: 'sha256-[^']+'$/);
     expect(policy).not.toMatch(/https?:/);
     expect(policy).not.toContain('raw.githubusercontent.com');
+    expect(policy).not.toContain('lospec.com');
     expect(policy).not.toContain('frame-src');
     expect(policy).toContain("default-src 'self'");
     expect(policy).toContain("object-src 'none'");

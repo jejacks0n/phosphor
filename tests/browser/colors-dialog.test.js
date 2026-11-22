@@ -1,6 +1,7 @@
 // The Colors dialog (docs/layers.md): the shipped palettes under Library and the starred ones under Favorites, as cards,
 // searched by name or author; Use making a palette the drawing's Custom color list, Put back undoing every Use since the
-// dialog opened, ★ keeping a palette, .hex saving one, and Use and Put back off while the settings are locked.
+// dialog opened, ★ keeping a palette, .hex saving one, Use and Put back off while the settings are locked, and Get from
+// Lospec, with fetch stubbed: nothing asked until it's pressed, the palette kept under Favorites, or what went wrong.
 import { afterEach, expect, test, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { i18n } from '@/i18n';
@@ -16,6 +17,7 @@ afterEach(() => {
   host?.remove();
   app = host = project = null;
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const mount = async ({ quantize = 'cga', palette = '' } = {}) => {
@@ -167,4 +169,112 @@ test('a lock arriving while it is open turns Use and Put back off, with the reas
     expect(button.title).toBe(reason);
     expect(button.hasAttribute('data-off-reason')).toBe(true);
   }
+});
+
+// fetch stubbed with a fresh answer each call (a body reads once); `calls` holds the addresses asked.
+const stubFetch = (answer) => {
+  const fetch = vi.fn(async () => answer());
+  vi.stubGlobal('fetch', fetch);
+  return fetch;
+};
+const answer = (data, status = 200) => () => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });
+const SWEETIE_ANSWER = answer({ name: 'Sweetie 16', author: '', colors: SWEETIE.colors.map((c) => c.slice(1)) });
+const getForm = () => dialog().querySelector('form.get');
+const problem = () => dialog().querySelector('p.get-problem');
+// Type into Get's field and submit the form, as Enter or the button does.
+const get = async (typed) => {
+  const field = getForm().querySelector('input.get-name');
+  field.value = typed;
+  field.dispatchEvent(new Event('input'));
+  getForm().querySelector('button[type=submit]').click();
+  await nextTick();
+};
+
+test('opening the dialog, browsing, starring and using ask nothing of Lospec', async () => {
+  const fetch = stubFetch(SWEETIE_ANSWER);
+  await mount();
+  await search('sweetie');
+  await press(card('Sweetie 16').querySelector('button.star'));
+  await press(card('Sweetie 16').querySelector('button.use'));
+  await show('favorites');
+  await search('');
+  await show('library');
+  expect(getForm()).not.toBe(null);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test('Get from Lospec keeps the palette under Favorites and shows it there', async () => {
+  const fetch = stubFetch(answer({ name: 'Lospec Five', author: 'Someone', colors: ['000000', '111111', '222222', '333333', 'FFFFFF'] }));
+  await mount();
+  await press(card('Endesga 16').querySelector('button.star'));
+  const form = getForm();
+  expect(form.querySelector('span').textContent).toBe('Not here?');
+  const field = form.querySelector('input.get-name[type=text]');
+  expect(field.placeholder).toBe("A palette's name or lospec.com link");
+  expect(form.querySelector('button[type=submit]').textContent).toBe('Get from Lospec');
+  await search('endesga'); // a search that would hide what's got is cleared
+  field.focus();
+  await get('Lospec Five');
+  expect(form.querySelector('button[type=submit]').textContent).toBe('Getting…');
+  await vi.waitFor(() => expect(tab('favorites').getAttribute('aria-selected')).toBe('true'));
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch.mock.calls[0][0]).toBe('https://lospec.com/palette-list/lospec-five.json');
+  expect(names()).toEqual(['Lospec Five', 'Endesga 16']);
+  expect(card('Lospec Five').querySelector('span.author').textContent).toBe('by Someone');
+  expect(card('Lospec Five').querySelector('div.foot > span').textContent).toBe('5 colors');
+  expect(dialog().querySelector('input[type=search]').value).toBe('');
+  expect(dialog().querySelector('p.get-note')).toBe(null);
+  await nextTick();
+  expect(document.activeElement).toBe(card('Lospec Five').querySelector('button.use')); // the kept card's Use
+  await show('library');
+  expect(getForm().querySelector('input.get-name').value).toBe('');
+  expect(problem()).toBe(null);
+});
+
+test('nothing typed, or only punctuation, asks nothing and says what to type', async () => {
+  const fetch = stubFetch(SWEETIE_ANSWER);
+  await mount();
+  for (const typed of ['', '   ', '!!! ---', 'https://example.com/palette-list/sweetie-16']) {
+    await get(typed);
+    expect(problem().textContent).toBe("Type a palette's name or paste its lospec.com link.");
+    expect(problem().getAttribute('role')).toBe('alert');
+  }
+  expect(fetch).not.toHaveBeenCalled();
+  expect(tab('library').getAttribute('aria-selected')).toBe('true');
+});
+
+test('a palette Lospec doesn\'t have, Lospec out of reach and an answer that isn\'t a palette each say so, and nothing is kept', async () => {
+  await mount();
+  const cases = [
+    [answer({ error: 'file not found' }, 404), 'Lospec has no palette called sweetie-17.'],
+    [() => { throw new TypeError('Failed to fetch'); }, "Couldn't reach Lospec. Try again."],
+    [() => new Response('<!DOCTYPE html><title>Lospec</title>'), "That isn't a palette Phosphor can read."],
+  ];
+  for (const [failure, says] of cases) {
+    stubFetch(failure);
+    await get('https://lospec.com/palette-list/sweetie-17');
+    await vi.waitFor(() => expect(problem()?.textContent).toBe(says));
+    expect(getForm().querySelector('button[type=submit]').textContent).toBe('Get from Lospec');
+    expect(getForm().querySelector('input.get-name').value).toBe('https://lospec.com/palette-list/sweetie-17'); // kept, to try again
+    expect(tab('library').getAttribute('aria-selected')).toBe('true');
+    expect(tab('favorites').querySelector('.count').textContent).toBe('0');
+  }
+  stubFetch(SWEETIE_ANSWER);
+  await get('sweetie 16');
+  await vi.waitFor(() => expect(tab('favorites').getAttribute('aria-selected')).toBe('true'));
+  await show('library');
+  expect(problem()).toBe(null); // gone once a Get works
+});
+
+test('a palette of 300 colors is kept as its first 256, and says so', async () => {
+  const colors = Array.from({ length: 300 }, (_, i) => i.toString(16).padStart(6, '0'));
+  stubFetch(answer({ name: 'Big', author: '', colors }));
+  await mount();
+  await get('big');
+  await vi.waitFor(() => expect(tab('favorites').getAttribute('aria-selected')).toBe('true'));
+  expect(card('Big').querySelector('div.foot > span').textContent).toBe('256 colors');
+  expect(card('Big').querySelectorAll('div.art > i')).toHaveLength(256);
+  expect(dialog().querySelector('p.get-note').textContent).toBe('Kept the first 256 of its 300 colors.');
+  await press(card('Big').querySelector('button.star')); // taken out, the note goes with it
+  expect(dialog().querySelector('p.get-note')).toBe(null);
 });

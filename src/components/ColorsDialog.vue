@@ -6,7 +6,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { SHIPPED, useColorLibraryStore } from '@/store/ColorLibraryStore';
 import { useSettingsLock } from '@/composables/useSettingsLock';
 import { hexFile, listColors, sameColors, writeList } from '@/lib/colorList';
-import { pageOf } from '@/lib/lospec';
+import { getPalette, pageOf, slugOf } from '@/lib/lospec';
 import { downloadBlob } from '@/document/projectIO';
 
 // The Colors dialog (docs/layers.md), from Browse ▸ beside Color palette: two tabs, Library (the palettes Phosphor ships
@@ -16,7 +16,9 @@ import { downloadBlob } from '@/document/projectIO';
 // not a toast: the page under a modal dialog is inert, a toast's button with it. It brings back the Color palette choice
 // and the list as they were before the first Use, however many were tried since, and what it would bring back is
 // forgotten when the dialog closes. A lock can arrive while the dialog is up (someone joins the room): Use and Put back
-// are off then, with the settings column's reason.
+// are off then, with the settings column's reason. Under the Library's search, Get from Lospec asks Lospec for one
+// palette by name or link, the dialog's only request, and keeps it under Favorites, which it then shows; it changes
+// nothing of the drawing, so a lock doesn't stop it.
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const project = useProjectStore();
@@ -68,6 +70,39 @@ function star(palette) {
   library.toggle(palette);
   keepFocus();
 }
+// Get from Lospec: what's typed is made a slug here (slugOf), and only a slug is asked for. `cut` is the palette just got
+// when Lospec's had more than 256 colors, for the note on Favorites: what's kept doesn't remember how many there were.
+const typed = ref('');
+const getting = ref(false);
+const problem = ref('');
+const cut = ref(null); // { slug, of }
+async function get() {
+  if (getting.value) return;
+  const slug = slugOf(typed.value);
+  if (!slug) {
+    problem.value = t('colorsDialog.errors.noName');
+    return;
+  }
+  problem.value = '';
+  getting.value = true;
+  try {
+    const palette = await getPalette(slug);
+    library.keep(palette);
+    cut.value = palette.of ? { slug, of: palette.of } : null;
+    typed.value = '';
+    search.value = ''; // so it shows, first
+    tab.value = 'favorites';
+    // The form is gone with the Library: focus goes to the kept card's Use, else where keepFocus puts it.
+    await nextTick();
+    root.value?.querySelector(`#${nameId(palette)}`)?.closest('li')?.querySelector('button.use:not(:disabled)')?.focus();
+    keepFocus();
+  } catch (error) {
+    problem.value = t(`colorsDialog.errors.${error.message}`, { name: slug });
+  } finally {
+    getting.value = false;
+  }
+}
+
 const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { type: 'text/plain' }), `${slug}.hex`);
 </script>
 
@@ -77,6 +112,15 @@ const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { ty
       <div :id="`colors-panel-${tab}`" role="tabpanel" :aria-labelledby="`colors-tab-${tab}`">
         <p class="intro">{{ t(tab === 'library' ? 'colorsDialog.libraryIntro' : 'colorsDialog.favoritesIntro') }}</p>
         <input v-model="search" type="search" class="search" :placeholder="t('colorsDialog.search')" :aria-label="t('colorsDialog.search')">
+        <template v-if="tab === 'library'">
+          <form class="get" @submit.prevent="get">
+            <span>{{ t('colorsDialog.notHere') }}</span>
+            <input v-model="typed" type="text" class="get-name" :placeholder="t('colorsDialog.getPlaceholder')" :aria-label="t('colorsDialog.getPlaceholder')">
+            <button type="submit">{{ getting ? t('colorsDialog.getting') : t('colorsDialog.get') }}</button>
+          </form>
+          <p v-if="problem" class="get-problem" role="alert">{{ problem }}</p>
+        </template>
+        <p v-else-if="cut && library.has(cut.slug)" class="get-note" role="status">{{ t('colorsDialog.cut', { n: cut.of }) }}</p>
 
         <ul v-if="shown.length" class="cards">
           <li v-for="palette in shown" :key="palette.slug" class="card">
@@ -143,6 +187,36 @@ p.intro {
 input.search {
   flex: none;
   margin: 0 0 12px;
+}
+/* Not here? [field] [Get from Lospec] on one line, the field taking the room; in a narrow window the button wraps under. */
+form.get {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+input.get-name {
+  flex: 1 1 12em;
+  min-width: 0;
+}
+form.get button {
+  padding: 4px 12px;
+}
+p.get-problem, p.get-note {
+  flex: none;
+  margin: -4px 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+p.get-problem {
+  color: var(--danger);
+}
+p.get-note {
+  color: var(--text-muted);
 }
 p.none {
   margin: 0;

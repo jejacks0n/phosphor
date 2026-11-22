@@ -161,6 +161,8 @@ const emit = defineEmits(['open']);
       Pages, qui, comme tout hébergeur web, reçoit votre adresse IP lorsque votre navigateur charge le site.</p>
     <p>Quand vous installez un plugin depuis la place de marché, votre navigateur télécharge ses fichiers depuis GitHub, qui voit la requête
       et votre adresse IP. La liste des plugins elle-même provient de notre propre site.</p>
+    <p>Quand vous prenez une palette sur Lospec par son nom ou son lien, votre navigateur la demande à lospec.com, qui voit
+      la requête et votre adresse IP. Les palettes fournies avec Phosphor ne nécessitent aucune requête.</p>
 
     <h2>L'onglet SOCIAL</h2>
     <p>Rien provenant de l'onglet SOCIAL ne s'exécute tant que vous n'ouvrez pas cet onglet (ou ne suivez pas un lien depuis l'un de nos e-mails). À

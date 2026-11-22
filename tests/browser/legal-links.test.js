@@ -129,6 +129,15 @@ test('the Privacy Policy says installing from the Marketplace downloads the plug
   expect(text).toContain('When you install a plugin from the Marketplace, your browser downloads its files from GitHub, which sees the request and your IP address.');
 });
 
+test('the Privacy Policy (en and fr) says getting a palette from Lospec asks lospec.com, and the shipped ones ask nothing', async () => {
+  await mount(LegalDialog, { page: 'privacy' });
+  await vi.waitUntil(() => document.querySelector('.legal-body'));
+  const text = document.querySelector('.legal-body').textContent.replace(/\s+/g, ' ');
+  expect(text).toContain('When you get a palette from Lospec by name or link, your browser requests it from lospec.com, which sees the request and your IP address. The palettes that come with Phosphor need no request.');
+  const fr = (await import('../../src/i18n/legal/fr.vue?raw')).default.replace(/\s+/g, ' ');
+  expect(fr).toContain('votre navigateur la demande à lospec.com, qui voit la requête et votre adresse IP.');
+});
+
 test('the Privacy Policy (en and fr) names Cloudflare as the web application\'s host, not GitHub Pages', async () => {
   const [en, fr] = await Promise.all([import('../../src/i18n/legal/en.vue?raw'), import('../../src/i18n/legal/fr.vue?raw')]);
   expect(en.default.replace(/\s+/g, ' ')).toContain('<strong>Cloudflare:</strong> Hosts and serves the web application');
