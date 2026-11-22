@@ -13,7 +13,8 @@ in the desktop app), and nowhere else: another browser or computer doesn't have 
 **Plugins…** in the Phosphor menu on macOS, in Help elsewhere). It has two tabs along its top, **Marketplace** and
 **Installed**, with the close button (**×**) at their right end. It
 opens on Installed when you have any plugins, and on Marketplace when you have none; the tab you used last stays for the
-rest of the visit. The dialog is 860 pixels wide, and on a screen 700 pixels wide or less it fills the window.
+rest of the visit. The dialog is 860 pixels wide, and on a screen 700 pixels wide or less, or 520 tall or less (a phone on its side), it
+fills the window.
 
 **Installed** lists each plugin you have: its name and version, who made it, what it adds ("1 theme", and once its
 script is loaded "1 solver", "1 brush", "1 shape" or "1 filter"), its homepage, its description, and a line saying where
