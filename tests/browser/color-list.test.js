@@ -40,6 +40,12 @@ async function mount(value, wrap = (node) => node, { takes = true, disabled = fa
   return { list, emitted, picks };
 }
 
+// The swatches laid out in so many columns, as the Palettes page's CSS does (the editor on its own has none).
+const gridOf = (columns) => {
+  const grid = host.querySelector('div.swatches');
+  grid.style.cssText = `display: grid; grid-template-columns: repeat(${columns}, 1fr); width: ${columns * 40}px`;
+};
+
 const gone = () => {
   app.unmount();
   host.remove();
@@ -214,6 +220,7 @@ test('only the picked swatch is in the tab order', async () => {
 test('on a swatch Left and Right pick the one before and after, Up and Down the one a row away, Home and End the first and last', async () => {
   const twenty = Array.from({ length: 20 }, (_, i) => `#0000${i.toString(16).padStart(2, '0')}`).join(' ');
   const { list, emitted } = await mount(twenty);
+  gridOf(5); // a row is the five the grid holds: Up and Down go by that
   const from = async (i, k) => {
     await press(swatches()[i]);
     swatches()[i].focus();
@@ -231,15 +238,15 @@ test('on a swatch Left and Right pick the one before and after, Up and Down the 
   };
   expect(await from(10, 'ArrowLeft')).toBe(9);
   expect(await from(10, 'ArrowRight')).toBe(11);
-  expect(await from(10, 'ArrowUp')).toBe(2);
-  expect(await from(10, 'ArrowDown')).toBe(18);
+  expect(await from(10, 'ArrowUp')).toBe(5);
+  expect(await from(10, 'ArrowDown')).toBe(15);
   expect(await from(10, 'Home')).toBe(0);
   expect(await from(10, 'End')).toBe(19);
   // At the ends they stop: no wrapping, and no row where there isn't one.
   expect(await from(0, 'ArrowLeft')).toBe(0);
   expect(await from(19, 'ArrowRight')).toBe(19);
-  expect(await from(5, 'ArrowUp')).toBe(5);
-  expect(await from(14, 'ArrowDown')).toBe(14);
+  expect(await from(2, 'ArrowUp')).toBe(2);
+  expect(await from(17, 'ArrowDown')).toBe(17);
   expect(list.value).toBe(twenty);
   expect(emitted).toEqual([]); // a pick writes nothing
   // The app's keys ask ownsKey first, and the art takes focus for an arrow a control doesn't keep, before the swatch

@@ -72,6 +72,7 @@ test.describe('on a phone', () => {
     await customList(page);
 
     const panel = page.locator('.color-layer');
+    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {})))); // the layer's opening is done, so nothing is measured mid-motion
     expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0); // nothing runs off to the side
     for (const swatch of await swatches(page).all()) expect(await swatch.getAttribute('draggable')).not.toBe('true');
     await expect(field(page)).toHaveValue('#ff0000');
