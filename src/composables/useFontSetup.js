@@ -23,6 +23,7 @@ const button = (font) => (blocked(font) ? {} : { action: { label: t('palette.fon
 export function openFontSetup(font) {
   const project = useProjectStore(), workspace = useWorkspaceStore(), missing = missingOf(font);
   if (project.image && !workspace.editMode) workspace.editorTab = 'output'; // as the Font field's Manage fonts does
+  workspace.settingsOpen = false; // a phone's settings drawer, so the page shows whole
   workspace.fontSetup = { id: fontId(font), block: missing.includes('lower') ? 'lower' : missing[0] ?? null };
   workspace.paletteLayerPage = 'fonts';
   workspace.paletteLayerOpen = true;

@@ -47,9 +47,10 @@ const onSelect = async (event) => {
 };
 
 // The palette layer on its Fonts page, whatever tool is in hand; from SAUCE, the art is shown first. With no drawing
-// it opens over the start screen (EditWorkspace).
+// it opens over the start screen (EditWorkspace). A phone's settings drawer, where the field is, shuts so the page shows whole.
 const manage = () => {
   if (project.image && !workspace.editMode) workspace.editorTab = 'output';
+  workspace.settingsOpen = false;
   workspace.paletteLayerPage = 'fonts';
   workspace.paletteLayerOpen = true;
 };

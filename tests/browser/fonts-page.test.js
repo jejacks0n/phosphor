@@ -559,7 +559,8 @@ test('the rows and sheet draw in the font\u2019s face again once its blocks move
 });
 
 test('Set up its blocks opens the page on the font with Lower picked, and a click on a slot gives it one', async () => {
-  const { project, workspace } = await mount({ font: noLowerHalf, before: ({ project }) => openFontSetup(project.drawingFont) });
+  const { project, workspace } = await mount({ font: noLowerHalf, before: ({ project, workspace }) => { workspace.settingsOpen = true; openFontSetup(project.drawingFont); } });
+  expect(workspace.settingsOpen).toBe(false); // a phone's settings drawer shut, so the page shows whole
   await nextTick();
   expect(workspace.paletteLayerOpen).toBe(true);
   expect(title()).toBe('T');
