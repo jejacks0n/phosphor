@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet, CP437_BLOCKS, findBlocks, slotChars, fontKey, encodeBlocks, decodeBlocks, withBlock, hasQuadrants, pixelAspectOf } from '@/lib/BitmapFont.js';
-import { cp437Font, font8, lowerAt240, noLowerHalf, solidAt220, lightAt240, slantedLike, nineRowFontWithLowerHalfRows4to8, nineRowFontWithLowerHalfRows5to8 } from '../support/blockFonts.js';
+import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet, CP437_BLOCKS, findBlocks, slotChars, fontKey, encodeBlocks, decodeBlocks, withBlock, hasQuadrants, pixelAspectOf, drawnMaskOf } from '@/lib/BitmapFont.js';
+import { cp437Font, font8, lowerAt240, noLowerHalf, solidAt220, lightAt240, slantedLike, nineRowFontWithLowerHalfRows4to8, nineRowFontWithLowerHalfRows5to8, fontWith } from '../support/blockFonts.js';
 
 const solidLowerHalf = (h) => { const b = new Uint8Array(256 * h); for (let r = h / 2; r < h; r++) b[220 * h + r] = 0xff; return b; };
 
@@ -54,6 +54,17 @@ describe('raw fonts', () => {
     const mask = maskOf(font, 220, 4, 8);
     expect(mask.slice(0, 16).every((v) => v === 0)).toBe(true);
     expect(mask.slice(16).every((v) => v === 1)).toBe(true);
+  });
+  it('measures a glyph over the width it is drawn at: its own 7, or 9 with the ninth column as drawn', () => {
+    const seven = { ...fontWith({ 219: (h) => Array(h).fill(0xfe), 220: (h) => Array.from({ length: h }, (_, r) => (r >= h / 2 ? 0xfe : 0)), 65: (h) => Array(h).fill(0x80) }, 8), cellWidth: 7 };
+    expect(inkOf(seven, 219)).toEqual([1, 1]);
+    expect(inkOf(seven, 220)).toEqual([0, 1]);
+    expect(inkOf(seven, 65)).toEqual([1 / 7, 1 / 7]);
+    expect(drawnMaskOf(seven, 219, 4, 8).every((v) => v === 1)).toBe(true);
+    expect(maskOf(seven, 219, 4, 8).every((v) => v === 1)).toBe(false); // findBlocks measures at 8, whatever the width
+    const nine = { ...cp437Font, cellWidth: 9 };
+    expect(inkOf(nine, 219)).toEqual([1, 1]); // the ninth column repeated
+    expect(drawnMaskOf(nine, 219, 4, 8).every((v) => v === 1)).toBe(true);
   });
   it('splits an odd height evenly', () => {
     const bytes = new Uint8Array(256 * 3); bytes[65 * 3 + 1] = 0xff; // the middle row of 3

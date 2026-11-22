@@ -39,11 +39,15 @@ export const glyphRows = (font, slot) => font.bytes.subarray(slot * font.height,
 
 export const lit = (rows, x, y) => (rows[y] >> (7 - x)) & 1;
 
-// The box-averaged ink fraction over an sw x sh grid, row-major; boxes that cut pixels weigh by area.
-export function maskOf(font, slot, sw, sh) {
+// Pixel x of row y as drawn: a ninth column (x 8) repeats the eighth when `ninth`, else is blank.
+export const litDrawn = (rows, x, y, ninth) => (x < 8 ? lit(rows, x, y) : ninth ? lit(rows, 7, y) : 0);
+
+// The box-averaged ink fraction over an sw x sh grid, row-major; boxes that cut pixels weigh by area. Measured over
+// `width` columns (8 unless the font is drawn otherwise; at 9 the ninth repeats the eighth when `ninth`).
+export function maskOf(font, slot, sw, sh, width = 8, ninth = false) {
   const rows = glyphRows(font, slot);
   const out = new Float32Array(sw * sh);
-  const bw = 8 / sw;
+  const bw = width / sw;
   const bh = font.height / sh;
   for (let gy = 0; gy < sh; gy++) {
     for (let gx = 0; gx < sw; gx++) {
@@ -51,9 +55,9 @@ export function maskOf(font, slot, sw, sh) {
       for (let y = Math.floor(gy * bh); y < Math.min(font.height, Math.ceil((gy + 1) * bh)); y++) {
         const oy = Math.min(y + 1, (gy + 1) * bh) - Math.max(y, gy * bh);
         if (oy <= 0) continue;
-        for (let x = Math.floor(gx * bw); x < Math.min(8, Math.ceil((gx + 1) * bw)); x++) {
+        for (let x = Math.floor(gx * bw); x < Math.min(width, Math.ceil((gx + 1) * bw)); x++) {
           const ox = Math.min(x + 1, (gx + 1) * bw) - Math.max(x, gx * bw);
-          if (ox > 0 && lit(rows, x, y)) sum += ox * oy;
+          if (ox > 0 && litDrawn(rows, x, y, ninth)) sum += ox * oy;
         }
       }
       out[gy * sw + gx] = sum / (bw * bh);

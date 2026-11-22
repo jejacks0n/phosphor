@@ -3,8 +3,9 @@
 // that paint in the Pixel view gives the cell its generated character back.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
-import { blockOver, cellIndex } from '@/lib/Cells';
-import { coverageOf } from '@/lib/GlyphCoverage.js';
+import { blockOver, cellIndex, isSolidGlyph, opensToPaint } from '@/lib/Cells';
+import { coverageOf, setGlyphRasterizer, useBitmapCoverage } from '@/lib/GlyphCoverage.js';
+import { font7 } from '../support/blockFonts.js';
 import { ellipseShape, rectShape } from '@/document/shapes.js';
 import pencil from '@/tools/pencil';
 import brush from '@/tools/brush';
@@ -706,6 +707,20 @@ test('blockOver: a textured character\'s block is its background in both halves;
   expect(blockOver({ char: '█', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'F', bg: 'F' });
   expect(blockOver({ char: '▀', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'B', bg: 'F' });
   expect(blockOver({ char: ' ', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'B', bg: 'B' });
+});
+
+// A bitmap font drawn at its own width (7) measures its glyphs over 7 columns, as App.vue installs it: its █ is solid, so
+// R2 and R5 hold for it as at 8 (it measured 7/8, a textured glyph).
+test('R2: in a font drawn at its own width of 7, a typed █ under paint opens to paint, and R5: a ▄ over it keeps its halves', () => {
+  useBitmapCoverage(font7);
+  try {
+    expect(isSolidGlyph('█')).toBe(true);
+    expect(opensToPaint({ char: '█', fg: { hex: '#ff0000' }, bg: { hex: '#000000' } }, 'ansi')).toBe(true);
+    expect(blockOver({ char: '█', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'F', bg: 'F' });
+    expect(blockOver({ char: '▀', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'B', bg: 'F' });
+  } finally {
+    setGlyphRasterizer(null);
+  }
 });
 
 // The report (projects/boxes2.phosphor: a double-line box pinned on the base): Half-block boxes placed over it a half

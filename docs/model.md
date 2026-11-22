@@ -99,7 +99,7 @@ over a cell (R7).
   a layer of its own Random, the Brush in ANSI), `› R2: paint on a layer that shares the base's Random …` (an opened
   file's spaces under the base's Random, then Merge down), `› R2: a layer's paint over pinned solid blocks …` (a █ and
   a ▄ keep their colors under a layer of its own Random) and `› R5: random: …` (a pinned space under the base's seed and
-  its own);
+  its own), `› R2: in a font drawn at its own width of 7 …` (its █ measured over 7 columns, solid, so it opens to paint);
   `tests/browser/animation-build.test.js › built frames equal the still with a layer of its own characters …`.
 
 ### R3. Merge down moves each kind as itself, and nothing on the canvas changes but a soft edge, which stays paint.
@@ -216,7 +216,8 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
   a cell that shows no character (the black of an opened file's grown lines) …` and
   `› …with Colors only, a layer's own cell that shows no character becomes a plain ▄ …`; `› R5: the report: a Half-block
   box with Write block glyphs over a line box …`, `› R5: on the base, a Half-block box …`, `› R5: a Half-block box with
-  Write block glyphs on the layer above a line …` (with Merge down and the stored look), `› blockOver: …` and
+  Write block glyphs on the layer above a line …` (with Merge down and the stored look), `› blockOver: …`, `› R2: in a font
+  drawn at its own width of 7 … R5: a ▄ over it keeps its halves` (blockOver over a narrow font's █) and
   `› R5: the report: Half-block boxes over a line box …` (projects/boxes2.phosphor: the Shape tool and the Pencil, on the
   base and a layer, a half cell apart, Merge down and undo) and `› R5: the report: with Write block glyphs off …`
   (the crossings ▄s, Random's characters over the canvas, no ▄ written there); `tests/browser/plugin-brush.test.js › R5: in

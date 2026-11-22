@@ -49,3 +49,9 @@ export const font11 = { ...fontWith(cp437, 11), name: 'Eleven' };
 // font8 with a blank space and an A that inks its two halves alike (a bar down the middle), for tests that measure the
 // glyphs in it (useBitmapCoverage, as App.vue does): a space looks like its background, an A the same in both halves.
 export const font8Text = { ...fontWith({ ...cp437, 32: blank, 65: (h) => solid(h, 0x18) }, 8), name: 'Eight text' };
+// CP437's blocks in a font 7 pixels wide (its eighth column blank), as the store hands it drawn at its own width.
+const seven = (byte) => (h) => solid(h, byte & 0xfe);
+export const font7 = {
+  ...fontWith({ 219: seven(0xff), 220: (h) => lowerHalf(h).map((b) => b & 0xfe), 223: (h) => solid(h, 0xfe).map((b, r) => (r < h / 2 ? b : 0)), 221: seven(0xe0), 222: seven(0x1e) }, 8),
+  name: 'Seven', cellWidth: 7,
+};

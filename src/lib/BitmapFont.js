@@ -3,7 +3,7 @@
 import { CP437, cp437Substitute } from './Cp437.js';
 import { graphemes } from './CharWidth.js';
 import { t } from '@/i18n';
-import { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, lit, maskOf, narrowWidthOf, ownWidthOf } from './BitmapGlyphs.js';
+import { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, lit, litDrawn, maskOf, narrowWidthOf, ownWidthOf } from './BitmapGlyphs.js';
 
 export { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, maskOf, narrowWidthOf, ownWidthOf };
 
@@ -102,20 +102,32 @@ export function parseRawFont(bytes, name) {
   return { name, height, bytes: Uint8Array.from(bytes) };
 }
 
-// The fraction of the top and the bottom half lit; an odd height's middle row counts half to each.
+// How a slot is drawn: the font's drawn width (8 without one), and whether its ninth column repeats the eighth.
+const drawnAs = (font, slot) => {
+  const width = font.cellWidth ?? 8;
+  return [width, width === 9 && ninthSlots(font).has(slot)];
+};
+
+// The fraction of the top and the bottom half lit, over the width the font is drawn at; an odd height's middle row
+// counts half to each.
 export function inkOf(font, slot) {
-  const rows = glyphRows(font, slot);
+  const rows = glyphRows(font, slot), [width, ninth] = drawnAs(font, slot);
   const half = font.height / 2;
   let top = 0;
   let bottom = 0;
   for (let y = 0; y < font.height; y++) {
-    const n = (rows[y].toString(2).split('1').length - 1) / 8;
+    let n = 0;
+    for (let x = 0; x < width; x++) n += litDrawn(rows, x, y, ninth);
+    n /= width;
     const inTop = Math.max(0, Math.min(y + 1, half) - y);
     top += n * inTop;
     bottom += n * (1 - inTop);
   }
   return [top / half, bottom / half];
 }
+
+// maskOf over the width the font is drawn at, as Best match and By shape see a glyph (findBlocks measures at 8).
+export const drawnMaskOf = (font, slot, sw, sh) => maskOf(font, slot, sw, sh, ...drawnAs(font, slot));
 
 // The slots whose ninth column (at a drawn width of 9) repeats the eighth, as VGA's does: 0xC0-0xDF, the font's blocks and its own line styles'.
 export const ninthSlots = memo((font) => {
