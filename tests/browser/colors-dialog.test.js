@@ -278,3 +278,18 @@ test('a palette of 300 colors is kept as its first 256, and says so', async () =
   await press(card('Big').querySelector('button.star')); // taken out, the note goes with it
   expect(dialog().querySelector('p.get-note')).toBe(null);
 });
+
+test('Get works while the settings are locked, since it changes nothing of the drawing, and focus stays in the dialog', async () => {
+  stubFetch(SWEETIE_ANSWER);
+  await mount({ quantize: 'cga', palette: '#111111' });
+  project.startSharing({ send: () => {}, role: 'artist', me: 'ann' }); // only the host's now
+  await nextTick();
+  getForm().querySelector('input.get-name').focus();
+  await get('Sweetie 16');
+  await vi.waitFor(() => expect(tab('favorites').getAttribute('aria-selected')).toBe('true'));
+  expect(names()).toEqual(['Sweetie 16']);
+  expect(card('Sweetie 16').querySelector('button.use').disabled).toBe(true);
+  expect([project.quantize, project.palette]).toEqual(['cga', '#111111']);
+  await nextTick();
+  expect(focusKept()).toBe(true); // Use is off, so not there
+});
