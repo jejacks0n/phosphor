@@ -833,6 +833,8 @@
       "filterPlaceholder": "Search fonts…",
       "filterAria": "Search fonts",
       "filters": "Filters",
+      "closeFilters": "Close filters",
+      "showFonts": "Show {n} font | Show {n} fonts",
       "clearAll": "Clear all",
       "foldFilters": "Hide filters",
       "removeTag": "Remove {tag}",

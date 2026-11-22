@@ -97,7 +97,20 @@ const counts = computed(() => (index.value ? tagCounts(index.value) : new Map())
 const toggleTag = (key) => { tags.value = tags.value.includes(key) ? tags.value.filter((k) => k !== key) : [...tags.value, key]; };
 const clearAll = () => { tags.value = []; filter.value = ''; };
 const clearTags = () => { tags.value = []; };
-const openFilters = () => { prefs.value.folded = false; };
+// Folded, Filters opens the column; on a phone, a sheet over the layer, which gives the focus back to Filters on closing.
+const sheetOpen = ref(false);
+const openFilters = async () => {
+  if (props.stage !== 'phone') return void (prefs.value.folded = false);
+  sheetOpen.value = true;
+  await nextTick();
+  page.value.querySelector('button.close-sheet')?.focus();
+};
+const closeSheet = async () => {
+  sheetOpen.value = false;
+  await nextTick();
+  page.value.querySelector('button.filters-open')?.focus();
+};
+watch(() => props.stage, (stage) => { if (stage !== 'phone') sheetOpen.value = false; });
 // A library entry's From, License and Credit lines: [{ label, text, href?, tail? }].
 const originLines = (e) => {
   const lines = [];
@@ -347,6 +360,24 @@ const exportPalettes = () => {
       </div>
       <FontFilters v-model:closed="prefs.closed" :groups="tagList" :counts="counts" :picked="tags" @toggle="toggleTag" />
     </aside>
+    <!-- a phone's filters: a sheet over the layer (Escape and the arrow keys stop at it) -->
+    <div
+        v-if="sheetOpen"
+        class="filters-sheet"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="t('palette.fonts.filters')"
+        @keydown.esc.stop="closeSheet"
+        @keydown.up.down.stop
+    >
+      <div class="filters-head">
+        <span class="title">{{ t('palette.fonts.filters') }}</span>
+        <button v-if="tags.length" class="clear-all" @click="clearTags">{{ t('palette.fonts.clearAll') }}</button>
+        <button class="close-sheet" :aria-label="t('palette.fonts.closeFilters')" :title="t('palette.fonts.closeFilters')" @click="closeSheet">×</button>
+      </div>
+      <FontFilters v-model:closed="prefs.closed" class="sheet-body" :groups="tagList" :counts="counts" :picked="tags" @toggle="toggleTag" />
+      <button class="show" @click="closeSheet">{{ t('palette.fonts.showFonts', { n: matches.length }, matches.length) }}</button>
+    </div>
     <!-- the list: choose a font to see it (or with the arrow keys) -->
     <div class="list-side">
       <div class="top">
@@ -579,6 +610,37 @@ aside.filters-side {
 
 div.page.full aside.filters-side {
   flex-basis: 260px;
+}
+
+div.filters-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 5001;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-0);
+}
+
+div.filters-sheet .sheet-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+div.filters-sheet button.close-sheet {
+  color: var(--text-muted);
+  font-size: 18px;
+}
+
+div.filters-sheet button.show {
+  margin: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--surface-0);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 div.filters-head {

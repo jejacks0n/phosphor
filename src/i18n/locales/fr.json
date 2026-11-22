@@ -833,6 +833,8 @@
       "filterPlaceholder": "Rechercher des polices…",
       "filterAria": "Rechercher des polices",
       "filters": "Filtres",
+      "closeFilters": "Fermer les filtres",
+      "showFonts": "Voir {n} police | Voir {n} polices",
       "clearAll": "Tout effacer",
       "foldFilters": "Masquer les filtres",
       "removeTag": "Retirer {tag}",

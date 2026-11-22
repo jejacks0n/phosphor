@@ -1002,6 +1002,30 @@ test('the dialog under 1000px starts folded; the floating layer is 200 and 220, 
   await vi.waitFor(() => expect(widths()).toEqual([200, 220]));
 });
 
+test('on a phone, Filters opens a sheet; Show N fonts or Escape closes it, and Escape leaves the layer open', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  expect(host.querySelector('aside.filters-side')).toBeNull();
+  const open = () => host.querySelector('button.filters-open');
+  await press(open());
+  const sheet = host.querySelector('.filters-sheet');
+  expect(sheet.getAttribute('role')).toBe('dialog');
+  const r = sheet.getBoundingClientRect();
+  expect([r.left, r.top, r.width, r.height]).toEqual([0, 0, innerWidth, innerHeight]);
+  await vi.waitFor(() => expect(document.activeElement).toBe(host.querySelector('button.close-sheet')));
+  await press(chip('IBM PC'));
+  expect(host.querySelector('button.show').textContent.trim()).toBe('Show 2 fonts');
+  await press(host.querySelector('button.show'));
+  expect(host.querySelector('.filters-sheet')).toBeNull();
+  expect(libraryNames()).toEqual(['Alpha', 'Zeta']);
+  await vi.waitFor(() => expect(document.activeElement).toBe(open()));
+  await press(open());
+  host.querySelector('.filters-sheet').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await nextTick();
+  expect(host.querySelector('.filters-sheet')).toBeNull();
+  expect(closes).toBe(0);
+});
+
 test('Escape on a filter chip closes the layer', async () => {
   await wide();
   await mount({ library: FIXTURE() });
