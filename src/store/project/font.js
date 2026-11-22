@@ -1,4 +1,4 @@
-import { encodeBlocks, encodeFont, fontId, narrowWidthOf } from '@/lib/BitmapFont.js';
+import { drawnWidthOf, encodeBlocks, encodeFont, fontId, narrowWidthOf, pixelAspectOf } from '@/lib/BitmapFont.js';
 import { storeFontPart, withPart } from '@/lib/userFonts.js';
 import { encodeLines, encodeSets } from '@/lib/FontLines.js';
 import { notSetUp } from '@/lib/fontSetup.js';
@@ -16,9 +16,14 @@ import { t } from '@/i18n';
 import { markRaw, shallowRef, toRaw } from 'vue';
 
 const heightOf = (font) => font?.height ?? 16;
+// A cell's height as the lines count it, drawn at width (nine: Letter spacing 9px): the font's height at a cell 8 wide
+// (16 × pixelAspectOf), so a cell of another width is a taller or shorter one.
+const tallOf = (font, width, nine) => 16 * pixelAspectOf(font && { ...font, cellWidth: drawnWidthOf(font, width, nine) });
 // The settings that hold the drawing's font.
-// settings: the step's own, which may carry the SAUCE font name along, so its before does too.
-const fontKeysOf = (project, settings) => ({ fontBitmap: project.fontBitmap, fontName: project.fontName, fontWidth: project.fontWidth, fontBlocks: project.fontBlocks, fontLines: project.fontLines, fontSets: project.fontSets, ...(settings && 'sauceFontName' in settings && { sauceFontName: project.sauceFontName }) });
+// settings: the step's own, which may carry others along (the SAUCE font name, Letter spacing), so its before does too.
+const fontKeysOf = (project, settings = {}) => ({ fontBitmap: project.fontBitmap, fontName: project.fontName, fontWidth: project.fontWidth, fontBlocks: project.fontBlocks, fontLines: project.fontLines, fontSets: project.fontSets, ...Object.fromEntries(Object.keys(settings).map((key) => [key, project[key]])) });
+// The parts of the same font a step changes, which undo and redo keep in this browser's copy of it too (keepCopy).
+const partsOf = (before, after) => (before.fontBitmap === after.fontBitmap ? Object.keys(PART_KEYS).filter((key) => after[key] !== before[key]) : []);
 // A BitmapFont (or none) as the settings that hold it.
 export const fontSettingsOf = (font) => ({
   fontBitmap: font ? encodeFont(font) : '',
@@ -35,24 +40,25 @@ function nameOf(font) {
   return (userFonts?.find((f) => f.id === displayFont) ?? DISPLAY_FONTS.find((f) => f.id === displayFont) ?? DEFAULT_FONT).name;
 }
 
-// A font of another height (from and to, in pixels) for a drawing: the columns stay and the rows change so the picture
-// keeps its shape (fontGrid). Refused with frames. With nothing drawn (nothing a rescale would leave in the wrong place:
-// resizesCanvas), on a picture that isn't a working copy with content (that stretches), it's a settings step with the
-// grid in it, and the next render rescales, as a Columns change with the lock on does: the picture refits and a later
-// Columns change refits it again. Otherwise regrid. font: the BitmapFont or null;
-// settings: its settings (setDrawingFont's). A Promise only while a working copy with content is stretched.
+// A font of another height (from and to: the cells' heights as tallOf counts them) for a drawing: the columns stay and
+// the rows change so the picture keeps its shape (fontGrid). Refused with frames. With nothing drawn (nothing a rescale
+// would leave in the wrong place: resizesCanvas), on a picture that isn't a working copy with content (that stretches),
+// it's a settings step with the grid in it, and the next render rescales, as a Columns change with the lock on does: the
+// picture refits and a later Columns change refits it again. Otherwise regrid. font: the BitmapFont or null;
+// settings: its settings (fontStep's). A Promise only while a working copy with content is stretched.
 function newHeight(project, font, settings, from, to) {
-  if (project.hasFrames) return void toast(t('font.heightFrames', { name: nameOf(font), to, from }));
+  if (project.hasFrames) return void toast(t('font.heightFrames', { name: nameOf(font), to: heightOf(font), from: heightOf(project.drawingFont) }));
   project.ensureLayer();
   const stretches = project.imageIsWorkingCopy && !isUniform(project.image); // a working copy with content: its pixels are grid pixels
   if (project.resizesCanvas || stretches) return regrid(project, font, settings, from, to);
   const ratio = Number(project.aspectRatio), was = project.cols;
   const before = { ...fontKeysOf(project, settings), cols: project.cols, rows: project.rows, aspectRatio: project.aspectRatio };
   const after = { ...settings, ...fontGrid(project.cols, project.rows, from, to), aspectRatio: ratio > 0 ? ratio * to / from : project.aspectRatio };
+  const parts = partsOf(before, after);
   project.commitPending();
   project.$patch(after);
-  const on = (values) => () => { project.$patch(values); project.render(); };
-  project.pushEdit({ settingsOnly: true, undo: on(before), redo: on(after) }); // settingsOnly: kept through a rescale (dropEdits)
+  const on = (values, from) => () => { project.$patch(values); keepCopy(project, parts, from); project.render(); };
+  project.pushEdit({ settingsOnly: true, undo: on(before, after), redo: on(after, before) }); // settingsOnly: kept through a rescale (dropEdits)
   project.render();
   if (after.cols < was) toast(t('font.heightShrunk', { name: nameOf(font), cols: after.cols, rows: after.rows }));
 }
@@ -151,13 +157,13 @@ function switched(project, settings, picture, w, oldFit, fitAspect, from, to) {
 // The parts of the drawing's font a step changed ('width', 'blocks', 'lines', 'sets'), put in this browser's copy of the font
 // too when it has one, as they now are: an undo or redo, so an XBin opened later gets what the drawing shows. Only
 // while the copy still holds what the step left there (from: the settings undone or redone from): an edit made to the
-// copy since, which has no undo, stays. Only the step's maker has it (an artist can't change the font, and a watcher
-// takes none), so the copy is always theirs.
+// copy since, which has no undo, stays. No from: whatever the copy holds (a width answered). Only the step's maker has
+// it (an artist can't change the font, and a watcher takes none), so the copy is always theirs.
 function keepCopy(project, parts, from) {
   const workspace = useWorkspaceStore(), font = project.drawingFont, id = font && fontId(font);
   if (!parts.length || !workspace.userFonts?.some((f) => f.id === id)) return;
   for (const setting of parts) {
-    const key = PART_KEYS[setting], value = key === 'width' ? font.width ?? 8 : font[key], when = (kept) => (kept ? ENCODE[key](kept) : '') === (setting === 'fontWidth' && !from[setting] ? '8' : from[setting]); // the drawing's '' is a remembered 8
+    const key = PART_KEYS[setting], value = key === 'width' ? font.width ?? 8 : font[key], when = from && ((kept) => (kept ? ENCODE[key](kept) : '') === (setting === 'fontWidth' && !from[setting] ? '8' : from[setting])); // the drawing's '' is a remembered 8
     storeFontPart(id, key, value ?? null, { when }).then((wrote) => {
       if (wrote) workspace.userFonts = workspace.userFonts?.map((f) => (f.id === id ? withPart(toRaw(f), key, value) : f));
     }, () => {}); // the copy removed since: nothing to keep
@@ -166,30 +172,68 @@ function keepCopy(project, parts, from) {
 const PART_KEYS = { fontWidth: 'width', fontBlocks: 'blocks', fontLines: 'lines', fontSets: 'sets' };
 const ENCODE = { width: String, blocks: encodeBlocks, lines: encodeLines, sets: encodeSets };
 
+// Something drawn a refit would leave in the wrong place (newHeight's test), or frames: a cell of another width alone
+// then keeps the grid.
+const keepsGrid = (project) => project.hasFrames || project.resizesCanvas || (project.imageIsWorkingCopy && !isUniform(project.image));
+
+// The drawing given these font settings (after: fontSettingsOf's, with any set along). A font of another height changes
+// the grid (newHeight); so does a cell of another width with nothing drawn and no frames (the lines refit to the
+// picture). Otherwise a settings step on the grid as it is: a width changes how cells look, never which cells hold what.
+function fontStep(project, font, after) {
+  const was = project.drawingFont, nine = 'sauceLetterSpacing' in after ? after.sauceLetterSpacing === '9' : project.letterSpacing9;
+  const from = 16 * project.pixelAspect, to = tallOf(font, after.fontWidth, nine);
+  if (heightOf(was) !== heightOf(font) || (from !== to && !keepsGrid(project))) return newHeight(project, font, after, from, to);
+  const before = fontKeysOf(project, after);
+  // Lines and sets don't change the picture: a step that changes only them draws nothing again.
+  const looks = Object.keys(after).some((key) => key !== 'fontLines' && key !== 'fontSets' && after[key] !== before[key]);
+  // The same font with other blocks, lines, sets or width: undo and redo keep this browser's copy of it in step too.
+  const parts = partsOf(before, after);
+  project.commitPending();
+  project.$patch(after);
+  const on = (values, from) => () => { project.$patch(values); keepCopy(project, parts, from); if (looks) project.render(); };
+  project.pushEdit({ settingsOnly: true, undo: on(before, after), redo: on(after, before) });
+  if (looks) project.render();
+}
+
 // The drawing's bitmap font: kept in the settings as base64 (fontBitmap, with its name and blocks), so it's saved,
 // autosaved and fingerprinted like the rest. Changing it is one undo step; before a drawing, the next one's font. In a
 // room it can't change to a font that isn't set up (fontNotSetUp). A font of another height changes the grid (newHeight).
 export const fontActions = {
-  // font: a BitmapFont ({ name, height, bytes }) or null for none. The font it already has is no step. A Promise only
-  // while a working copy is stretched for a font of another height (newHeight); await it either way.
+  // font: a BitmapFont ({ name, height, bytes }) or null for none, with its remembered width (the browser's copy's
+  // answer: its own width or 8) when it has one. The font it already has is no step. A Promise only while a working
+  // copy is stretched for a font of another height (newHeight); await it either way.
   // sauceFontName: the SAUCE font name the export writes, set in the same step (before and after both carry it).
+  // Another font narrower than 8 with no answer is drawn at its own width until it has one: { ask: true } once it's
+  // the drawing's (the question is the caller's). The drawing's own font with no width keeps the width it's drawn at.
   setDrawingFont(font, { sauceFontName } = {}) {
     const after = { ...fontSettingsOf(font), ...(sauceFontName !== undefined && { sauceFontName }) };
+    const same = after.fontBitmap === this.fontBitmap, own = font && font.width === undefined && !same && narrowWidthOf(font);
+    if (own) after.fontWidth = String(own);
+    else if (font && font.width === undefined && same) after.fontWidth = this.fontWidth; // its own font again, unanswered: drawn as it is
+    const asked = () => (own && this.fontBitmap === after.fontBitmap ? { ask: true } : undefined);
     if (Object.keys(after).every((key) => after[key] === this[key])) return;
     const reason = this.inRoom && notSetUp(font); // a room can't edit blocks, so it takes no font that needs it (undo and redo patch on their own)
     if (reason) return void toast(reason);
-    if (!this.image) return void this.$patch(after); // no drawing yet: the next one's font, with nothing to undo
-    const from = heightOf(this.drawingFont), to = heightOf(font);
-    if (from !== to) return newHeight(this, font, after, from, to);
-    const before = fontKeysOf(this, after);
-    // Lines and sets don't change the picture: a step that changes only them draws nothing again.
-    const looks = Object.keys(after).some((key) => key !== 'fontLines' && key !== 'fontSets' && after[key] !== before[key]);
-    // The same font with other blocks, lines or sets: undo and redo keep this browser's copy of it in step too.
-    const parts = before.fontBitmap === after.fontBitmap ? Object.keys(PART_KEYS).filter((key) => after[key] !== before[key]) : [];
-    this.commitPending();
-    this.$patch(after);
-    const on = (values, from) => () => { this.$patch(values); keepCopy(this, parts, from); if (looks) this.render(); };
-    this.pushEdit({ settingsOnly: true, undo: on(before, after), redo: on(after, before) });
-    if (looks) this.render();
+    if (!this.image) { // no drawing yet: the next one's font, with nothing to undo
+      this.$patch(after);
+      return asked();
+    }
+    const made = fontStep(this, font, after);
+    return made instanceof Promise ? made.then(asked) : asked();
+  },
+
+  // The drawing's font drawn at width: its own width (4-7: narrow), 8, or 9 (Letter spacing 9px). One undo step that
+  // never moves a drawn cell (fontStep), and the answer kept on this browser's copy of the font: its own width, or 8
+  // for 8 and 9 (Letter spacing is the drawing's). A width it's already drawn at is no step, whatever set it (Letter
+  // spacing unset, or the SAUCE 9px flag); one it can't take, nothing.
+  setDrawingFontWidth(width) {
+    const font = this.drawingFont, own = font && narrowWidthOf(font);
+    if (!font || !(width === own || width === 8 || width === 9)) return;
+    const after = { ...fontKeysOf(this), ...(width === own ? { fontWidth: String(own) } : { fontWidth: '', sauceLetterSpacing: String(width) }) };
+    if (font.cellWidth !== width) {
+      if (!this.image) this.$patch(after); // no drawing yet: the next one's, with nothing to undo
+      else fontStep(this, font, after); // the same height: never a Promise (keepsGrid has no working copy stretched)
+    }
+    if (own) keepCopy(this, ['fontWidth']);
   },
 };

@@ -194,6 +194,6 @@ test('Remove clears the browser\'s copy of the drawing\'s font and leaves the dr
   expect(project.drawingFont).not.toBeNull();
   const ctx = document.createElement('canvas').getContext('2d');
   ctx.font = `16px ${workspace.displayFontSpec.family}`;
-  expect(ctx.measureText('M').width).toBe(8); // still the font's 8-pixel cells, not a fallback's
+  expect(ctx.measureText('M').width).toBe(6); // still the font's own cells, not a fallback's: rows of 0x3c are 6 wide, drawn so while unanswered
   expect(workspace.displayFontSizes).toEqual({ [font.id]: 24 });
 });

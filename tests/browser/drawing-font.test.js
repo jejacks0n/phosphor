@@ -714,3 +714,114 @@ test('undo of a width change keeps the browser\u2019s copy\u2019s width in step'
     await removeFont(stored.id);
   }
 });
+
+test('a width change is one undo step with Letter spacing', async () => {
+  const project = await blank();
+  await project.setDrawingFont({ ...narrow(), width: 7 });
+  const spacing = project.sauceLetterSpacing;
+  await project.setDrawingFontWidth(9);
+  expect(project.fontWidth).toBe('');
+  expect(project.sauceLetterSpacing).toBe('9');
+  expect(project.drawingFont.cellWidth).toBe(9);
+  expect(project.history.last.settingsOnly).toBe(true);
+  project.undo(); // one undo takes back both
+  expect(project.fontWidth).toBe('7');
+  expect(project.sauceLetterSpacing).toBe(spacing);
+  expect(project.drawingFont.cellWidth).toBe(7);
+  project.redo();
+  expect(project.drawingFont.cellWidth).toBe(9);
+  const redone = project.history.version;
+  await project.setDrawingFontWidth(9); // the width it has: no step
+  await project.setDrawingFontWidth(5); // not its own width: nothing
+  expect(project.history.version).toBe(redone);
+  expect(project.drawingFont.cellWidth).toBe(9);
+});
+
+test('a font remembered narrow is drawn narrow; one remembered "keep 8" is drawn at 8 (9 with Letter spacing 9px)', async () => {
+  const project = await blank();
+  expect(await project.setDrawingFont({ ...narrow(), width: 7 })).toBeUndefined();
+  expect(project.drawingFont.cellWidth).toBe(7);
+  await project.setDrawingFont(font());
+  expect(await project.setDrawingFont({ ...narrow(), width: 8 })).toBeUndefined();
+  expect(project.drawingFont.cellWidth).toBe(8);
+  await project.setDrawingFont(font());
+  project.$patch({ sauceLetterSpacing: '9' });
+  await project.setDrawingFont({ ...narrow(), width: 8 });
+  expect(project.fontWidth).toBe('');
+  expect(project.drawingFont.cellWidth).toBe(9);
+});
+
+test('a narrow font with no answer draws narrow and asks', async () => {
+  const project = await blank();
+  expect(await project.setDrawingFont(narrow())).toEqual({ ask: true });
+  expect(project.fontWidth).toBe('7');
+  expect(project.drawingFont.cellWidth).toBe(7);
+  const { project: fresh } = await createTestApp(); // before any drawing: the next one's, asked too
+  expect(await fresh.setDrawingFont(narrow())).toEqual({ ask: true });
+  expect(fresh.fontWidth).toBe('7');
+});
+
+test('the drawing’s own narrow font kept at 8, given lines, stays at 8 and doesn’t ask', async () => {
+  const project = await blank();
+  await project.setDrawingFont({ ...narrow(), width: 8 });
+  expect(await project.setDrawingFont({ ...project.drawingFont, lines: { hide: [], styles: [heavy] } })).toBeUndefined();
+  expect(project.fontWidth).toBe('');
+  expect(project.drawingFont.cellWidth).toBe(8);
+  expect(project.drawingFont.lines.styles[0].name).toBe('Heavy');
+});
+
+test('a width change remembers its answer on the browser’s copy, and undo and redo keep it in step', async () => {
+  const project = await blank();
+  const workspace = useWorkspaceStore();
+  const f = narrow(), stored = await addBitmapFont(new File([f.bytes], 'Slim.F07'));
+  const kept = async (width) => {
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(width));
+    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).width).toBe(width));
+  };
+  try {
+    workspace.userFonts = await loadFonts();
+    await project.setDrawingFont({ ...f, width: 8 });
+    await project.setDrawingFontWidth(7);
+    await kept(7);
+    await project.setDrawingFontWidth(9);
+    await kept(8); // 9 is the drawing's Letter spacing: the font's answer is keep 8
+    project.undo();
+    await kept(7);
+    project.redo();
+    await kept(8);
+  } finally {
+    await removeFont(stored.id);
+  }
+});
+
+test('a project without a font of its own keeps the narrow drawing’s width', async () => {
+  const project = await blank();
+  await project.setDrawingFont({ ...narrow(), width: 7 });
+  const { project: plain } = await createTestApp();
+  await plain.setBlankCanvas({ cols: 4, rows: 4 });
+  const file = new File([await writeProject({ imageBuffer: plain.imageBuffer, ...await plain.projectParts() })], 'plain.phosphor');
+  await project.openParts(await readProject(file), { filename: 'plain' });
+  expect(project.fontWidth).toBe('7');
+  expect(project.drawingFont.cellWidth).toBe(7);
+});
+
+test('picked again with no answer, the drawing’s own narrow font keeps its width and is no step', async () => {
+  const project = await blank();
+  await project.setDrawingFont(narrow());
+  const version = project.history.version;
+  expect(await project.setDrawingFont(narrow())).toBeUndefined();
+  expect(project.fontWidth).toBe('7');
+  expect(project.history.version).toBe(version);
+});
+
+test('a width the drawing is already drawn at is no step, whatever Letter spacing says it', async () => {
+  const project = await blank();
+  await project.setDrawingFont({ ...narrow(), width: 8 });
+  const version = project.history.version;
+  await project.setDrawingFontWidth(8); // drawn at 8 with Letter spacing unset
+  expect(project.sauceLetterSpacing).toBe('');
+  project.$patch({ sauceUse9pxFont: true }); // drawn at 9 by the SAUCE flag
+  await project.setDrawingFontWidth(9);
+  expect(project.sauceLetterSpacing).toBe('');
+  expect(project.history.version).toBe(version);
+});

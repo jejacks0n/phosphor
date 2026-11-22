@@ -13,6 +13,8 @@ import { toastMessage } from '@/composables/useToast';
 import { isArt } from '@/document/artLayers.js';
 import { baseParams } from '@/store/settings.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
+import { CP437_BLOCKS } from '@/lib/BitmapFont.js';
+import { fontGrid } from '@/lib/Cells.js';
 
 const PHOTO = '/tests/fixtures/images/photo.jpg'; // 96 x 64: 80 columns are 54 rows with square half cells
 const RED = { r: 255, g: 0, b: 0 };
@@ -365,4 +367,113 @@ test('a library font of another height sets its SAUCE font name in the same step
     await settle(project);
     expect([grid(project), project.drawingFont.name, project.sauceFontName]).toEqual([{ cols: 80, rows: 108 }, 'Eight', 'IBM VGA50']);
   }
+});
+
+// Widths: a cell of another width changes how the cells look, never which cells hold what.
+const slim = { ...cp437Font, name: 'Slim', bytes: cp437Font.bytes.map((b) => b & 0xfe), blocks: [...CP437_BLOCKS] }; // 7 wide, 16 tall
+const slim7 = { name: 'Slim 7', height: 7, bytes: Uint8Array.from({ length: 256 * 7 }, (_, i) => (i % 251) & 0xfe), blocks: [...CP437_BLOCKS] };
+
+test('R1: 7 → 8 → 7 with art keeps every cell, and one undo per toggle walks the width back', async () => {
+  const { project, workspace } = await photo();
+  await project.setDrawingFont({ ...slim, width: 7 });
+  await settle(project);
+  project.typeAt(3, 2, 'A');
+  project.commitEdit();
+  dab(project, 10, 10);
+  workspace.pickLayer('base');
+  project.writeBaseCells([{ col: 6, row: 3, char: 'P', fg: '#ffffff', bg: '#0000aa' }]);
+  project.paintBasePixels([{ x: 12, y: 4, ...RED, alpha: 1 }]);
+  project.commitEdit();
+  workspace.pickLayer('edit');
+  await settle(project);
+  const base = project.baseLayer, scale = project.baseScale, at = grid(project);
+  const snap = () => ({
+    grid: grid(project), cells: [...project.editCells], pins: [...project.baseRecords.pins],
+    paint: project.paintLayer.gridPixels().data, basePixels: project.baseLayer.gridPixels().data,
+    typed: project.cells[2 * project.cols + 3].char, pinned: [project.cells[3 * project.cols + 6].fg.hex, project.cells[3 * project.cols + 6].bg.hex],
+  });
+  const was = snap();
+  expect(was.typed).toBe('A');
+  expect(was.pinned).toEqual(['#ffffff', '#0000aa']);
+  await project.setDrawingFontWidth(8);
+  await settle(project);
+  expect(project.drawingFont.cellWidth).toBe(8);
+  expect(snap()).toEqual(was);
+  await project.setDrawingFontWidth(7);
+  await settle(project);
+  expect(project.drawingFont.cellWidth).toBe(7);
+  expect(snap()).toEqual(was);
+  project.undo();
+  await settle(project);
+  expect([project.fontWidth, project.sauceLetterSpacing]).toEqual(['', '8']);
+  expect(snap()).toEqual(was);
+  project.undo();
+  await settle(project);
+  expect([project.fontWidth, project.drawingFont.cellWidth]).toEqual(['7', 7]);
+  expect(snap()).toEqual(was);
+  expect(grid(project)).toEqual(at);
+  expect(project.baseLayer).toBe(base);
+  expect(project.baseScale).toBe(scale);
+});
+
+test('with nothing drawn, a width change refits the lines', async () => {
+  const { project } = await blank(80, 40);
+  await project.setDrawingFont({ ...slim7, width: 8 }); // 8 × 7
+  await settle(project);
+  const rows = project.rows;
+  await project.setDrawingFontWidth(7); // the cell 7 × 7: taller for its width, so fewer lines keep the picture's shape
+  await settle(project);
+  expect(grid(project)).toEqual(fontGrid(80, rows, 7, 8));
+  expect(grid(project)).toEqual({ cols: 80, rows: Math.ceil(rows * 7 / 8) });
+  expect(project.history.last.settingsOnly).toBe(true);
+  project.undo();
+  await settle(project);
+  expect(grid(project)).toEqual({ cols: 80, rows });
+  expect(project.drawingFont.cellWidth).toBe(8);
+});
+
+test('with frames, a width change keeps the grid and every frame takes it', async () => {
+  const { project } = await photo();
+  await project.setDrawingFont(cp437Font);
+  await settle(project);
+  project.typeAt(3, 2, 'A');
+  project.commitEdit();
+  project.addFrame('duplicate');
+  project.typeAt(4, 2, 'B');
+  project.commitEdit();
+  const at = grid(project), version = project.history.version;
+  toastMessage.value = null;
+  await project.setDrawingFont({ ...slim, width: 7 }); // the same height at another width: never refused
+  expect(toastMessage.value).toBeNull();
+  expect(project.drawingFont.cellWidth).toBe(7);
+  await project.setDrawingFontWidth(9);
+  expect(project.drawingFont.cellWidth).toBe(9);
+  expect(project.history.version).toBe(version + 2);
+  expect(grid(project)).toEqual(at);
+  project.showFrame(0);
+  await settle(project);
+  expect(project.drawingFont.cellWidth).toBe(9);
+  expect(grid(project)).toEqual(at);
+  expect(project.editCellAt(3, 2).char).toBe('A');
+  expect(project.editCellAt(4, 2)).toBeFalsy();
+  project.undo(); // from the other frame
+  await settle(project);
+  expect(project.drawingFont.cellWidth).toBe(7);
+  expect(grid(project)).toEqual(at);
+  project.showFrame(1);
+  await settle(project);
+  expect(project.drawingFont.cellWidth).toBe(7);
+  expect(project.editCellAt(4, 2).char).toBe('B');
+});
+
+test('with art, a narrow font of another height regrids by the cell’s shape at its width', async () => {
+  const { project } = await photo();
+  dab(project, 10, 10);
+  await settle(project);
+  await project.setDrawingFont({ ...slim7, width: 7 }); // 7 × 7: a cell as tall for its width as 8 × 8
+  await settle(project);
+  expect(grid(project)).toEqual(fontGrid(80, 54, 16, 8));
+  expect(grid(project)).toEqual({ cols: 80, rows: 108 });
+  expect(project.history.last.wholeLayer).toBe(true);
+  expect(project.paintLayer.pixelAt(10, 20)).toMatchObject(RED); // the paint followed the picture down
 });

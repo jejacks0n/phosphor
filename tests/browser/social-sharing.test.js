@@ -1255,7 +1255,7 @@ test('an action added to the edit layer or selection is listed or known to only 
     expect([name, DRAWING_ACTIONS.includes(name) || HOST_ONLY_ACTIONS.includes(name) || ['setShapes', 'refreshShapes', 'syncShapeLayers', 'finishPen', 'leaveArt', 'commitArt', 'loadArt', 'pressedKeys', 'pressShapes'].includes(name)]).toEqual([name, true]);
   }
   expect(HOST_ONLY_ACTIONS).toContain('mergeShapes');
-  for (const name of [...Object.keys(mergingActions), ...Object.keys(baseLayerActions), 'clearEditLayer', 'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'updateCols', 'updateRows', 'setImageFromFile', 'setBlankCanvas', 'loadProject', 'restoreDocument', 'openParts', 'replaceImage', 'newDocument', 'clearImage']) {
+  for (const name of [...Object.keys(mergingActions), ...Object.keys(baseLayerActions), 'clearEditLayer', 'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'updateCols', 'updateRows', 'setImageFromFile', 'setBlankCanvas', 'loadProject', 'restoreDocument', 'openParts', 'replaceImage', 'newDocument', 'clearImage', 'setDrawingFont', 'setDrawingFontWidth']) {
     expect([name, HOST_ONLY_ACTIONS.includes(name)]).toEqual([name, true]);
   }
 });

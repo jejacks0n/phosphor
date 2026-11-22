@@ -104,7 +104,7 @@ function showParts({ settings, imageBuffer, editCells, baseRecords, shapes, laye
   const own = this.layers; // replaceImage starts them over
   const pickedBefore = useWorkspaceStore().pickedLayer; // and the pick
   // A setting the file doesn't have (it's older than the setting) is its default, not the last document's.
-  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, ...(!settings?.fontBitmap && !this._takingProject && { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets }), filename, fileExt, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
+  this.replaceImage(image, imageBuffer, { ...settingDefaults(), ...settings, ...(!settings?.fontBitmap && !this._takingProject && { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets, fontWidth: this.fontWidth }), filename, fileExt, savedToFile: false, ...(documentId && { documentId }), ...(fileId !== undefined && { fileId }) });
   try {
     // Saved with its scale: the whole layer, reaching past the grid if it was shrunk. Older
     // files: paint at the image's size or the grid's.

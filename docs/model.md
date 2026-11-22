@@ -40,7 +40,7 @@ entries to act on them (the Paint Bucket's walls, Rotate, Insert and Delete, Kee
 a cell until `ownEntry` says so. Typing's Partial mode, and Delete in Overwrite, move characters of someone's own along
 the row and leave paint, paint blocks and frozen cells where they are; its Insert mode moves everything the layer has
 in the row, the paint and every entry with it, so it asks nothing (`shiftCells`; on the base `shiftBaseCells`, where a
-pinned character is someone's own and every other pixel is paint); Rotate turns pixels and drops a frozen cell's pin with the paint it stood over. A font of another height (`newHeight` and `regrid` in `src/store/project/font.js`, through `followPicture`) keeps a character of someone's own at its column and line, and a pin there with its two base pixels (its colors), while the rest of the base's pixels and paint follow the picture; it moves a paint block with its paint, and drops a frozen cell's mark, whose paint converts where it lands. With nothing drawn it's a settings step, and the grid rescales as a Columns change does. The mark travels with the entry (`mergeEntry` keeps
+pinned character is someone's own and every other pixel is paint); Rotate turns pixels and drops a frozen cell's pin with the paint it stood over. A font of another height (`newHeight` and `regrid` in `src/store/project/font.js`, through `followPicture`) keeps a character of someone's own at its column and line, and a pin there with its two base pixels (its colors), while the rest of the base's pixels and paint follow the picture; it moves a paint block with its paint, and drops a frozen cell's mark, whose paint converts where it lands. With nothing drawn it's a settings step, and the grid rescales as a Columns change does. A cell of another width (a font drawn at its own narrow width, or at 9 for Letter spacing 9px: `setDrawingFontWidth`) moves nothing: with something drawn or frames it's a settings step on the same grid, every cell where it was; with nothing drawn the lines refit as they do for a height. The mark travels with the entry (`mergeEntry` keeps
 it when a whole entry moves, as Merge down's `completeAt` does), goes when a character or color is written over it
 (that's someone's own now), is accepted from files and the clipboard only as `true` (`cleanEntry`), and is part of a
 room change's hash as any field is.
@@ -65,7 +65,7 @@ erasers leave of one). Older files have no mark, and their cells stay characters
   as `cleanEntry` takes it); `tests/browser/bucket.test.js › R1: …`; `tests/browser/block-chars.test.js › R1: shiftCells …`;
   `tests/browser/selection-recolor.test.js › … Set FG over a frozen cell …`; `tests/browser/merge.test.js › R1: Keep crisp
   cells …`; `tests/browser/selection-turn.test.js › R3: a frozen cell in a rotated block …` (and in an 8×8 font);
-  `tests/unit/edit-cells.test.js › R1: a font of another height …`; `tests/browser/font-height.test.js › R1: …`;
+  `tests/unit/edit-cells.test.js › R1: a font of another height …`; `tests/browser/font-height.test.js › R1: …`; `tests/browser/font-height.test.js › R1: 7 → 8 → 7 with art keeps every cell …`;
   `tests/unit/edit-cells.test.js › R1: a laid cell keeps its mark …`; `tests/unit/social-wire.test.js` (the laid mark
   through a room's change); `tests/browser/eraser.test.js › R1: …` (the Soft Eraser in ANSI and both erasers in PIXEL
   take a laid line and leave typed characters; a laid line moved; a laid cell typed over; one tinted by Colors only or
