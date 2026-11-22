@@ -1,42 +1,82 @@
-// Smear, an example Phosphor plugin: a brush that smudges the colors under it along the way it moves. Copy this folder to
-// start your own (docs/plugins.md, "Writing a brush").
+// Smear, an example Phosphor plugin: a brush that drags the colors under it along the way it moves, as a finger in wet
+// paint. Copy this folder to start your own (docs/plugins.md, "Writing a brush").
 //
-// Each move takes the Brush's own dab between where it was and where it is, and every pixel of the dab takes some of
-// the color one step back along the motion: Strength's share of it, times the dab's falloff there. Reads says where the
-// colors come from: What shows (every layer up to this one, as you see them) or This layer (its own paint only: a pixel
-// with nothing of this layer's one step back is left alone, and one where the layer is clear takes the paint smeared
-// into it).
+// The stroke goes a pixel at a time. At each step, every pixel under the Brush's own dab takes some of the color of the
+// pixel one step back along the motion, as that pixel is by then: Strength's share of it, times the dab's falloff there.
+// So a color rides along with the brush, thinning as it goes (at Strength 100 it goes the whole way).
 //
 // Phosphor reads every pixel as it was when the stroke began, and a later put to a pixel replaces an earlier one, so
-// a pixel keeps the strongest share the stroke gave it: the dab's soft edge passing over it later doesn't undo it.
+// the stroke keeps its own account: for each pixel it has changed, the paint laid there so far, which with what the
+// pixel began as is what it is now. Reads says what a pixel is: What shows (every layer up to this one, as you see
+// them) or This layer (its own paint only, clear where it has none). A brush only lays paint, so This layer carries
+// paint out over clear spots and other paint, and never thins the paint it came from.
 
-let strongest = new Map(); // "x,y" to the largest share put there this stroke
+let laid = new Map(); // a pixel's index to the paint laid there this stroke, { r, g, b, a }: its colors times a
+let travel = 0;       // how far the stroke has moved since its last step, in pixels
 
 function begin() {
-  strongest = new Map();
+  laid = new Map();
+  travel = 0;
+}
+
+// A pixel as it is now: what it began as with the stroke's paint over it. { r, g, b, a }, a 0 for clear; null off the grid.
+function now(paint, own, x, y) {
+  if (x < 0 || y < 0 || x >= paint.cols || y >= paint.rows) return null;
+  const start = own ? paint.own(x, y) : paint.shown(x, y), over = laid.get(y * paint.cols + x);
+  const sa = start ? start.a ?? 1 : 0;
+  if (!over) return start ? { r: start.r, g: start.g, b: start.b, a: sa } : { a: 0 };
+  const a = over.a + sa * (1 - over.a), under = sa * (1 - over.a);
+  if (a <= 0) return { a: 0 };
+  return { r: (over.r + (start?.r ?? 0) * under) / a, g: (over.g + (start?.g ?? 0) * under) / a, b: (over.b + (start?.b ?? 0) * under) / a, a };
+}
+
+// The least paint over the color `from` that shows as the color `to`: { color, alpha }.
+function thinnest(from, to) {
+  let alpha = 0;
+  for (const c of ['r', 'g', 'b']) {
+    if (to[c] > from[c]) alpha = Math.max(alpha, (to[c] - from[c]) / (255 - from[c]));
+    else if (to[c] < from[c]) alpha = Math.max(alpha, (from[c] - to[c]) / from[c]);
+  }
+  if (alpha <= 0) return { color: to, alpha: 0 };
+  return { color: { r: from.r + (to.r - from.r) / alpha, g: from.g + (to.g - from.g) / alpha, b: from.b + (to.b - from.b) / alpha }, alpha: Math.min(1, alpha) };
 }
 
 function move(from, to, paint) {
   const dx = to.x - from.x, dy = to.y - from.y, length = Math.hypot(dx, dy);
-  if (length === 0) return; // a press alone has no direction to smear in
-  const ux = dx / length, uy = dy / length;
-  const read = paint.options.reads === 1 ? paint.own : paint.shown;
-  // A dab pixel can come once for each step along the move: its largest alpha is the one it has.
-  const dab = new Map();
-  for (const { x, y, alpha } of paint.dab(from, to, paint.options.size, 0.5)) {
-    const key = `${x},${y}`;
-    if (!(dab.get(key)?.alpha >= alpha)) dab.set(key, { x, y, alpha });
+  if (length === 0 || !(paint.options.strength > 0)) return; // a press alone has no direction to smear in
+  const ux = dx / length, uy = dy / length, own = paint.options.reads === 1, strength = paint.options.strength / 100;
+  const touched = new Set();
+  let at = 1 - travel; // how far into this move the next step is
+  for (; at <= length; at++) {
+    const here = { x: from.x + ux * at, y: from.y + uy * at };
+    // Every pixel of the step is read before any is changed, so a color moves one pixel a step.
+    const taken = [];
+    for (const { x, y, alpha } of paint.dab(here, here, paint.options.size, 0.5)) {
+      const back = now(paint, own, Math.floor(x + 0.5 - ux), Math.floor(y + 0.5 - uy)); // the pixel whose middle is one step back
+      if (!back || !back.a) continue; // nothing there to carry
+      const is = now(paint, own, x, y), share = strength * alpha;
+      // The same color (or a clear spot): it only grows more solid, toward what's behind it and no further. Another
+      // color: what's behind is laid over it.
+      if (!is.a || (Math.abs(is.r - back.r) < 0.5 && Math.abs(is.g - back.g) < 0.5 && Math.abs(is.b - back.b) < 0.5)) {
+        if (is.a < back.a) taken.push([y * paint.cols + x, back, share * (back.a - is.a) / (1 - is.a)]);
+      } else taken.push([y * paint.cols + x, back, share * back.a]);
+    }
+    for (const [key, back, share] of taken) {
+      const over = laid.get(key) ?? { r: 0, g: 0, b: 0, a: 0 };
+      laid.set(key, { r: back.r * share + over.r * (1 - share), g: back.g * share + over.g * (1 - share), b: back.b * share + over.b * (1 - share), a: share + over.a * (1 - share) });
+      touched.add(key);
+    }
   }
-  for (const [key, { x, y, alpha }] of dab) {
-    const share = (paint.options.strength / 100) * alpha;
-    if (!(share > (strongest.get(key) ?? 0))) continue;
-    const here = read(x, y), back = read(x + 0.5 - ux, y + 0.5 - uy); // the pixel whose middle is one step back
-    if (!back || (here && here.r === back.r && here.g === back.g && here.b === back.b)) continue;
-    strongest.set(key, share);
-    // The color a step back laid at that share over what this layer had: on the base, or over this layer's own paint,
-    // that's the two colors mixed; over what shows through a clear spot, it's the same mix as you see it, and the layer
-    // stays as clear as it can.
-    paint.put(x, y, back, share);
+  travel = length - (at - 1);
+  for (const key of touched) {
+    const x = key % paint.cols, y = (key - x) / paint.cols, over = laid.get(key);
+    // This layer: the paint laid, over the layer's own. What shows: the least paint that shows as the pixel is now, so
+    // a layer stays as clear as it can (a color dragged over a clear spot is that color, thin, not a mix with what's under).
+    if (own) paint.put(x, y, { r: over.r / over.a, g: over.g / over.a, b: over.b / over.a }, over.a);
+    else {
+      const { color, alpha } = thinnest(paint.shown(x, y), now(paint, false, x, y));
+      paint.put(x, y, color, alpha);
+    }
   }
 }
 

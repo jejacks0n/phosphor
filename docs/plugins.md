@@ -503,7 +503,7 @@ paint. They take a fractional position to the pixel it's in, and give a copy eac
 A put needs whole numbers on the grid, inside the selection when there is one; any other is ignored, as is one whose
 color or alpha isn't a number. Colors are rounded and held to 0 to 255, and alpha to 0 to 1. A later put to a pixel in
 the same stroke replaces the earlier one: puts don't build up, so a brush that wants them to keeps its own running
-color, as Smear keeps the strongest share it gave each pixel. The puts of one call are laid together when it returns.
+color, as Smear keeps the paint it has laid at each pixel, to drag a color further than one pixel. The puts of one call are laid together when it returns.
 
 A brush lays paint, never characters. On a drawing layer it's the layer's paint; on the base, the base's own pixels,
 opaque (the color at its alpha over what shows there). In ANSI, the cells show it as the Brush's paint shows with
