@@ -210,21 +210,25 @@ div.picked {
   margin-top: 8px;
 }
 
+/* Square, at the hex field's height, and the field's padding and ◂ ▸ narrow, so a whole #rrggbb shows in the settings
+   column. */
 div.picked input.chip {
   flex: none;
-  height: 34px; /* the hex field's */
+  width: 34px;
+  height: 34px;
 }
 
 div.picked input#palette {
   flex: 1;
   min-width: 0;
+  padding: 8px 6px;
 }
 
 button.earlier,
 button.later {
   flex: none;
   height: 34px;
-  padding: 0 8px;
+  padding: 0 6px;
 }
 
 div.foot {

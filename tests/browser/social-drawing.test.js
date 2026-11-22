@@ -11,6 +11,7 @@ import { Watch } from '@/social/watching';
 import { toBase64url } from '@/social/base64url';
 import { CHECK_EVERY_MS, MOST_ARTISTS, useDrawingStore } from '@/store/DrawingStore';
 import RoomPeople from '@/components/social/RoomPeople.vue';
+import ControlPanel from '@/components/ControlPanel.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { ASK_AGAIN_MS, HELD_FLOAT_MS } from '@/store/project/sharing';
 import { followParams } from '@/store/project/rendering';
@@ -1131,6 +1132,43 @@ test('a host\'s slider move reaches the artist and rerenders, with no history en
   await settle(room.project);
   await settle(ann.project);
   await expect.poll(() => cellsKey(ann.project), PATIENT).toEqual(cellsKey(room.project));
+});
+
+test('a color being picked is one change to the room: nothing goes while the picker is open, and the list goes once when it shuts, or when the editor goes away', async () => {
+  const room = await hosting({ before: (project) => Object.assign(project, { quantize: 'palette', palette: '#ffffff #000000' }) });
+  await settle(room.project);
+  const ann = await artist(room, 'ann');
+  await settle(ann.project);
+  const send = vi.spyOn(room.host, 'sendAll');
+  const lists = () => send.mock.calls.filter(([m]) => m.t === 'settings').map(([m]) => m.values.palette);
+  room.project._colorPick = true;
+  for (const hex of ['#110000', '#220000', '#330000']) {
+    room.project.palette = `${hex} #000000`;
+    await wait(10);
+  }
+  expect(lists()).toEqual([]);
+  room.project._colorPick = false;
+  await expect.poll(() => ann.project.palette, PATIENT).toBe('#330000 #000000');
+  expect(lists()).toEqual(['#330000 #000000']);
+
+  // The editor goes while the system picker is open: the pick is over, and what it got to goes.
+  const element = document.createElement('div');
+  document.body.append(element);
+  const app = createApp(ControlPanel).use(room.pinia).use(i18n);
+  app.mount(element);
+  toStop.push(() => { if (element.isConnected) { app.unmount(); element.remove(); } });
+  await nextTick();
+  const chip = element.querySelector('input.chip');
+  chip.value = '#440000';
+  chip.dispatchEvent(new Event('input', { bubbles: true }));
+  expect(room.project._colorPick).toBe(true);
+  await wait(10);
+  expect(lists()).toHaveLength(1);
+  app.unmount();
+  element.remove();
+  expect(room.project._colorPick).toBe(false);
+  await expect.poll(() => ann.project.palette, PATIENT).toBe('#440000 #000000');
+  expect(lists()).toEqual(['#330000 #000000', '#440000 #000000']);
 });
 
 test('the settings number joins the same sequence, so the next change follows it', async () => {
