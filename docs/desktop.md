@@ -237,7 +237,7 @@ It connects only to these, and only then:
 - phosphor.work (next.phosphor.work for a pre-release, see below), for the Marketplace's plugin list, when you open
   Plugins, and raw GitHub files (`raw.githubusercontent.com`), for a plugin's files, when you install one from the
   Marketplace;
-- lospec.com, for one palette, when you press **Get from Lospec** in the **Color palettes** dialog.
+- lospec.com, for one palette, when you press **Get from Lospec** in the color layer's **Palettes** page.
 
 Its Privacy page names each of them and says who sees your IP address. Your drawings, name and settings stay on your
 computer.
@@ -250,7 +250,7 @@ The Plugins dialog's Marketplace reads `https://phosphor.work/plugins.json`. A p
 
 ## A palette from Lospec
 
-In the **Color palettes** dialog (**Browse** beside Color palette), **Get from Lospec** asks `https://lospec.com/palette-list/<name>.json` for the one palette typed,
+In the color layer's **Palettes** page (the **Palettes** link beside Color palette), **Get from Lospec** asks `https://lospec.com/palette-list/<name>.json` for the one palette typed,
 only when it's pressed. The page can't reach lospec.com, so the app asks for it and hands the page the answer, which the
 page checks as the web app does. The app builds that address itself from the palette's name, and asks for nothing else
 there.

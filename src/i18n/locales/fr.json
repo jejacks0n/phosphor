@@ -74,7 +74,7 @@
     "credit16Colors": "lordscarlet (Doug Moore) et Brendan O'Connor pour avoir créé sixteencolors, ainsi que tous ceux qui œuvrent pour maintenir {sixteenColors} en ligne.",
     "creditFonts": "Polices : {ibmVga} du pack Ultimate Oldschool PC Font de VileR ({ccBySa}), {jetbrains} par les auteurs du projet JetBrains Mono ({ofl1}), {unscii} par viznut (domaine public), et {unifont} par Roman Czyborra, Paul Hardy et d'autres ({ofl2})",
     "creditIcons": "Icônes : la plupart des icônes proviennent de {fontAwesome} par Fonticons, Inc. ({ccBy})",
-    "creditPalettes": "Palettes de couleurs : tirées de la Palette List de {lospec}, chacune par l'auteur que nomme sa carte",
+    "creditPalettes": "Palettes de couleurs : tirées de la Palette List de {lospec}, chacune par l'auteur que nomme sa ligne",
     "vilerName": "Polices VGA en mode texte de VileR",
     "creditVilerFonts": "{viler} (crédits dans {fontsTxt})",
     "moebiusName": "Polices XBin de Mœbius",

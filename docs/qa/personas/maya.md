@@ -110,15 +110,15 @@ script. Every section ends with Free time.
 ### 4. Try every palette
 - Does: in Color palette, tries Full color (24-bit), VGA (256 colors), CGA (16 colors), Limited count (and moves its
   Color count) and Custom color list, where she tabs to the swatches and arrows through them. Then, on CGA, opens
-  Browse, searches for a palette, presses Use on it and on another, and Put back.
+  the Palettes link beside Color palette, searches for a palette, presses Use this palette on it and on another, and Put back.
 - Expects: each one recolors the picture to its colors; Limited count shows a Color count slider; Custom color list
-  shows Palette colors as swatches to edit, one Tab stop where the arrow keys pick the next swatch (and Home and End
+  the color layer's Palettes page shows This drawing as swatches to edit, one Tab stop where the arrow keys pick the next swatch (and Home and End
   the first and last), and Escape in the hex field puts back the color in use; Dither style and Dither appear in the
-  Characters section once there's a palette. In the Color palettes dialog the search narrows the
-  cards as she types; Use recolors the picture behind it to that palette, its card says In use and the dialog stays;
+  Characters section once there's a palette. On the Palettes page the search narrows the
+  list as she types; Use this palette recolors the picture behind it to that palette, its button says In use and the layer stays;
   Put back returns her to CGA and its line goes away.
 - Probes: `extremes`: set Color count to its least and its most; `undo-redo`: undo back to Full color and check the
-  Dither controls go away again; `again`: pick CGA twice in a row; `out-of-order`: in the Color palettes dialog, press
+  Dither controls go away again; `again`: pick CGA twice in a row; `out-of-order`: on the Palettes page, press
   Get from Lospec with nothing typed under "Not here?", and check it says to type a palette's name or paste its
   lospec.com link and asks nothing of lospec.com (a palette by name needs lospec.com, which a run doesn't reach).
 - Rated: yes, wants Tab to Color palette then the arrows

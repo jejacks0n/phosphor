@@ -146,12 +146,13 @@ in the status bar to see what they do, and try "Start with a blank canvas" from 
 
 ### 6. Try the looks
 - Does: picks each Art style (ANSI, Color ASCII, Monochrome ASCII) and each Color palette from their pickers. On Custom
-  color list she shuts the drawer, taps the color pair and then Edit colors. Then she comes back to ANSI and Full
+  color list she shuts the drawer, taps the color pair, then Palettes in the color layer, and edits This drawing there (on a phone
+  it takes the whole window). Then she closes it and comes back to ANSI and Full
   color.
 - Expects: each pick redraws the picture in under the `setting` budget; the pickers are the phone's own and readable;
-  Limited count shows a Color count slider and Custom color list shows its colors as swatches, both fitting the column,
-  a whole #rrggbb showing in the hex field; ◂ and ▸, a fingertip wide on the line under it, move the picked color a place (a finger's drag on a swatch scrolls
-  the drawer and moves nothing). Edit colors shuts the color box and opens the drawer with the picked swatch focused.
+  Limited count shows a Color count slider fitting the column, and the Palettes page's This drawing shows the colors as large
+  swatches with their hex, a whole #rrggbb showing in the hex field; the move earlier and move later buttons, a fingertip wide on the line under it, move the picked color a place (a finger's drag on a swatch scrolls
+  the page and moves nothing); the Palettes page takes the whole window, with its list above and the details below.
 - Probes: `again`: pick the same style twice; `undo-redo`: undo the last three picks from Actions → Undo and check the
   pickers and the picture go back together.
 - Rated: no (touch only: no keyboard shows here)

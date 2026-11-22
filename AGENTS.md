@@ -65,15 +65,18 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   Colors only and the PIXEL view's Overlay do with each: [docs/model.md](docs/model.md), numbered rules that say where
   each lives and which tests hold it. Read it before changing any of those paths; a change to a rule changes it there,
   in the same commit, and its tests name the rule.
-- The Custom color list ([docs/layers.md](docs/layers.md), Palette colors and Browse ▸): its editor in the settings
-  column, `src/components/ColorList.vue` (swatches, the picked color, Import and Export), with `src/lib/colorList.js`
-  (a list read, written and changed); the Color palettes dialog, `src/components/ColorsDialog.vue` (Library, Favorites,
-  Use and Put back, Get from Lospec); favorites and the shipped set, `src/store/ColorLibraryStore.js` and
-  `src/lib/colorPalettes.json`, written by `scripts/color-library.mjs` (`npm run colors`, run by hand, never in CI);
-  Lospec, `src/lib/lospec.js` (a palette's slug, its address, its answer read), and `desktop/lospec.js` for the desktop
-  app. Its tests are `color-list.test.js`, `lospec.test.js` and `desktop-lospec.test.js` in `tests/unit`,
-  `color-list.test.js`, `colors-dialog.test.js`, `color-library-store.test.js` and `desktop-colors-dialog.test.js` in
-  `tests/browser`, and `color-list.spec.js` and `colors.spec.js` in `tests/e2e`.
+- The color layer ([docs/layers.md](docs/layers.md), The Color Layer): `src/components/ColorLayer.vue` (the box under the
+  color pair, tabs Colors | Palettes), framed by `src/components/FloatingPanel.vue` (the character palette layer uses it
+  too: small, floating, dialog and whole-window sizes); `ColorsPage.vue` (the picker) and `ColorPalettesPage.vue` (This
+  drawing, Favorites, Library, Get from Lospec, Use and Put back), with `ColorList.vue` (the Custom color list's editor in
+  This drawing: swatches, the picked color, Import and Export) and `src/lib/colorList.js` (a list read, written and
+  changed); `src/components/ArrowIcon.vue` draws every arrow (no arrow glyphs in templates or strings); favorites and the
+  shipped set, `src/store/ColorLibraryStore.js` and `src/lib/colorPalettes.json`, written by `scripts/color-library.mjs`
+  (`npm run colors`, run by hand, never in CI); Lospec, `src/lib/lospec.js` (a palette's slug, its address, its answer
+  read), and `desktop/lospec.js` for the desktop app. Its tests are `color-list.test.js`, `lospec.test.js` and
+  `desktop-lospec.test.js` in `tests/unit`, `color-layer.test.js`, `colors-page.test.js`, `color-palettes-page.test.js`,
+  `color-list.test.js`, `color-library-store.test.js` and `desktop-color-palettes-page.test.js` in `tests/browser`, and
+  `color-list.spec.js`, `color-keys.spec.js`, `color-palettes-phone.spec.js` and `colors.spec.js` in `tests/e2e`.
 - The SOCIAL tab: `src/social/` (the network and crypto modules: API calls, the lobby socket, keys
   and passes, Turnstile, names, the server's error words; for rooms `wire.js` (messages between
   browsers), `peer.js` (WebRTC), `hosting.js`, `watching.js`, `pending.js` (an artist's changes with no number yet), `thumbnail.js`
