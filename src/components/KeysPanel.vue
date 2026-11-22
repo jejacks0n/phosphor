@@ -13,6 +13,7 @@ import { lifeAt } from '@/document/tweens.js';
 import { MIN_FRAME_PX, MIN_FRAME_PX_PHONE, MOST_FRAME_PX, edgeSpeed, frameAt, labelEvery, laneLayout, xOf, zoomAround } from '@/lib/keyLanes.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import KeyValues from '@/components/KeyValues.vue';
+import ArrowIcon from '@/components/ArrowIcon.vue';
 
 // Over the animation bar on VECTOR: the first selected shape's parts as rows, each with its keys as diamonds on a lane
 // of frames lined up with the scrubber's marks below. Keys are selected, eased, deleted and added here. Following a
@@ -379,7 +380,7 @@ const focusIn = () => {
   <section ref="root" class="keys-panel" tabindex="0" :aria-label="t('keysPanel.aria')" :style="{ '--lead': `${want.lead}px`, '--lane': `${want.lane}px` }" @keydown="keydown" @pointerdown="focusIn" @lostpointercapture="lostKeys">
     <div class="head">
       <div class="lead">
-        <button class="fold" :aria-label="t('keysPanel.fold')" aria-expanded="true" :title="t('keysPanel.fold')" @click="workspace.keysOpen = false">▾</button>
+        <button class="fold" :aria-label="t('keysPanel.fold')" aria-expanded="true" :title="t('keysPanel.fold')" @click="workspace.keysOpen = false"><ArrowIcon :turn="90"/></button>
         <DropdownMenu v-if="shapeKey" class="add-key" :label="t('keysPanel.addKey')" align="left" up :disabled="!unlisted.length && !canFollow">
           <button v-for="part in unlisted" :key="part" :disabled="!!keyAt(part, project.frame)" @click="addKey(part)">{{ partName(part) }}</button>
           <template v-if="canFollow">
@@ -425,7 +426,7 @@ const focusIn = () => {
       <div v-for="row in rows" :key="row.part" class="row" :class="{ picked: selected.some(({ part }) => part === row.part) }" :data-part="row.part">
         <div class="lead">
           <DropdownMenu v-if="row.part === 'along' && follow" class="along" :label="t('keysPanel.alongMenu')" align="left" up>
-            <template #trigger><span class="name">{{ rowName('along') }} ▾</span></template>
+            <template #trigger><span class="name">{{ rowName('along') }}</span><ArrowIcon :turn="90" :size="12"/></template>
             <p class="heading">{{ t('keysPanel.moves') }}</p>
             <button v-for="[choice, words] in RIDES" :key="choice" :aria-pressed="(follow.ride ?? 'along') === choice" @click="ride(choice === 'along' ? undefined : choice)">{{ t(`keysPanel.${words}`) }}</button>
             <button v-if="!isArt(shape)" :aria-pressed="!!follow.face" @click="face">{{ t('keysPanel.face') }}</button>
@@ -436,9 +437,9 @@ const focusIn = () => {
           </DropdownMenu>
           <span v-else class="name">{{ rowName(row.part) }}</span>
           <span v-if="!phone" class="nav">
-            <button :aria-label="t('keysPanel.previous', { part: partName(row.part) })" :disabled="previous(row) === undefined" @click="show(previous(row))">◀</button>
+            <button :aria-label="t('keysPanel.previous', { part: partName(row.part) })" :disabled="previous(row) === undefined" @click="show(previous(row))"><ArrowIcon shape="triangle" :turn="180"/></button>
             <button class="here" :class="{ on: !!keyAt(row.part, at) }" :aria-label="t('keysPanel.here', { part: partName(row.part) })" :aria-pressed="!!keyAt(row.part, at)" :disabled="!!keyAt(row.part, at) && !deletable(keyAt(row.part, at))" @click="toggleHere(row.part)">{{ keyAt(row.part, at) ? '◆' : '◇' }}</button>
-            <button :aria-label="t('keysPanel.next', { part: partName(row.part) })" :disabled="next(row) === undefined" @click="show(next(row))">▶</button>
+            <button :aria-label="t('keysPanel.next', { part: partName(row.part) })" :disabled="next(row) === undefined" @click="show(next(row))"><ArrowIcon shape="triangle"/></button>
           </span>
         </div>
         <div class="lane" @wheel="wheel" @click.self="dragged || (workspace.selectedKeys = [])">
@@ -530,8 +531,10 @@ button.fold, span.nav button, button.frame, button.key {
   transition: none;
 }
 button.fold {
-  width: 14px;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
   color: var(--text-dim);
 }
 span.nav {
@@ -540,7 +543,10 @@ span.nav {
   gap: 2px;
 }
 span.nav button {
-  width: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
   font-size: 10px;
   font-weight: 400;
   color: var(--text-muted);
@@ -849,7 +855,7 @@ span.shrinks {
   text-overflow: ellipsis;
 }
 
-/* On a phone: no values and no ◀ ▶; a ◆ toggle ends each row. The top line is the fold, + Add key and the buttons; the
+/* On a phone: no values and no previous or next arrows; a ◆ toggle ends each row. The top line is the fold, + Add key and the buttons; the
    ruler (and the zoom) has the next, under the lanes' own columns. */
 div.row > button.here {
   flex: none;

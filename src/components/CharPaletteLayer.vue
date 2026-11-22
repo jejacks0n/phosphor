@@ -15,6 +15,7 @@ import { writePaletteFile, readPaletteFile, paletteFileName } from '@/lib/Palett
 import { downloadBlob } from '@/document/projectIO';
 import FontsPage from '@/components/FontsPage.vue';
 import CloseButton from '@/components/CloseButton.vue';
+import ArrowIcon from '@/components/ArrowIcon.vue';
 
 // The character palette layer: one element in two sizes. Compact, it's the list of palettes (each
 // shown as its 12 glyphs) for choosing one; Edit grows the same element into the editor, with the
@@ -367,7 +368,7 @@ onBeforeUnmount(() => {
         <div class="list">
           <template v-for="g in groups" :key="g.key">
             <div class="group">
-              <button v-if="g.key === 'unloaded'" class="label fold" :aria-expanded="unloadedOpen" @click="unloadedOpen = !unloadedOpen">{{ g.label }}</button>
+              <button v-if="g.key === 'unloaded'" class="label fold" :aria-expanded="unloadedOpen" @click="unloadedOpen = !unloadedOpen"><ArrowIcon :turn="unloadedOpen ? 90 : 0" :size="12"/>{{ g.label }}</button>
               <span v-else class="label">{{ g.label }}</span>
               <span v-if="g.key === 'builtin' && font" class="actions">
                 <button class="new" :title="t(palettes.builtinsHidden ? 'palette.layer.showBuiltinsTitle' : 'palette.layer.hideBuiltinsTitle', { name: font.name })" @click="hideBuiltins(!palettes.builtinsHidden)">{{ palettes.builtinsHidden ? t('palette.layer.showBuiltins') : t('palette.layer.hideBuiltins') }}</button>
@@ -410,7 +411,7 @@ onBeforeUnmount(() => {
           >{{ current.name }}</span>
           <span v-if="current.builtin" class="lock"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M192 288V192A128 128 0 0 1 448 192V288H384V192A64 64 0 0 0 256 192V288ZM176 288H464A48 48 0 0 1 512 336V528A48 48 0 0 1 464 576H176A48 48 0 0 1 128 528V336A48 48 0 0 1 176 288Z"/></svg>{{ t('palette.layer.lockedNote') }}</span>
           <span v-if="!current.builtin" class="tie">
-            <button class="ghost" :aria-expanded="tieOpen" @click="tieOpen = !tieOpen">{{ current.font ? t('palette.layer.forFont', { name: current.font.name }) : t('palette.layer.anyFont') }} ▾</button>
+            <button class="ghost" :aria-expanded="tieOpen" @click="tieOpen = !tieOpen">{{ current.font ? t('palette.layer.forFont', { name: current.font.name }) : t('palette.layer.anyFont') }}<ArrowIcon :turn="90" :size="12"/></button>
             <span v-if="tieOpen" class="menu">
               <button v-if="current.font" @click="tie(null)">{{ t('palette.layer.untie') }}</button>
               <button v-if="current.font?.id !== inUse.id" @click="tie(inUse)">{{ t('palette.layer.tieTo', { name: inUse.name }) }}</button>
@@ -742,6 +743,9 @@ button.new:disabled {
 }
 
 button.fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 0;
   border: none;
   background: transparent;
@@ -752,15 +756,13 @@ button.fold {
   cursor: pointer;
 }
 
-button.fold::before {
-  content: '▸ ';
-}
-
-button.fold[aria-expanded="true"]::before {
-  content: '▾ ';
-}
-
 /* The editor head's tie and … menu: each button opens a small menu under it. */
+span.tie button.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 span.tie,
 span.more {
   position: relative;

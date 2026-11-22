@@ -5,9 +5,10 @@ import { useMediaQuery } from '@vueuse/core';
 import { closeToast, toast } from '@/composables/useToast';
 import { downloadBlob, fileStem } from '@/document/projectIO';
 import { MOST_COLORS, firstColors, hexFile, listColors, moved, sameColors, withColor, withCopy, without, writeList } from '@/lib/colorList';
+import ArrowIcon from '@/components/ArrowIcon.vue';
 
 // The Custom color list's editor: the `palette` setting as swatches, one of them picked, and under them the picked
-// color's chip (the system color picker), its hex, ◂ ▸ to move it and Remove. It writes the setting only when
+// color's chip (the system color picker), its hex, arrows to move it and Remove. It writes the setting only when
 // something is edited, so a list it didn't write stays as it was typed. The pick is a place, not a color, so a color
 // the list holds twice is no trouble. While the system picker is open the list follows it, and `picking` says when a
 // pick starts and ends, so whoever holds the list can send it on as one change, as a slider drag goes.
@@ -195,8 +196,8 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
           @keydown.esc="putBack"
           @blur="apply"
       >
-      <button type="button" class="earlier" :aria-label="t('colorList.earlier')" :title="t('colorList.earlier')" :disabled="picked <= 0" @click="move(picked - 1)">◂</button>
-      <button type="button" class="later" :aria-label="t('colorList.later')" :title="t('colorList.later')" :disabled="picked >= colors.length - 1" @click="move(picked + 1)">▸</button>
+      <button type="button" class="earlier" :aria-label="t('colorList.earlier')" :title="t('colorList.earlier')" :disabled="picked <= 0" @click="move(picked - 1)"><ArrowIcon shape="triangle" :turn="180"/></button>
+      <button type="button" class="later" :aria-label="t('colorList.later')" :title="t('colorList.later')" :disabled="picked >= colors.length - 1" @click="move(picked + 1)"><ArrowIcon shape="triangle"/></button>
       <button type="button" class="remove text" :disabled="colors.length <= 1" @click="remove">{{ t('colorList.remove') }}</button>
     </div>
     <div class="foot">
@@ -254,7 +255,7 @@ div.picked {
   margin-top: 8px;
 }
 
-/* Square, at the hex field's height, and the field's padding and ◂ ▸ narrow, so a whole #rrggbb shows in the settings
+/* Square, at the hex field's height, and the field's padding and arrows narrow, so a whole #rrggbb shows in the settings
    column. */
 div.picked input.chip {
   flex: none;
@@ -270,12 +271,14 @@ div.picked input#palette {
 
 button.earlier,
 button.later {
+  display: flex;
+  align-items: center;
   flex: none;
   height: 34px;
   padding: 0 6px;
 }
 
-/* Under a finger ◂ ▸ are a fingertip wide, on a line of their own with Remove, and the whole hex shows over them. */
+/* Under a finger the arrows are a fingertip wide, on a line of their own with Remove, and the whole hex shows over them. */
 @media (pointer: coarse) {
   div.picked {
     flex-wrap: wrap;

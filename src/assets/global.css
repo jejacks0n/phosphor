@@ -566,3 +566,13 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
   -webkit-font-smoothing: var(--display-font-smoothing, antialiased);
   -moz-osx-font-smoothing: var(--display-moz-font-smoothing, grayscale);
 }
+
+/* Words for a screen reader that aren't drawn: an icon's meaning (opens in a new tab) beside a link's text. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -92,7 +92,7 @@ test('a follower has an Along row whatever its keys, its name a menu', async () 
   expect(project.frames[1].parts?.get(f)).toBeUndefined(); // nothing keyed on the frame showing
   const row = host.querySelector('[data-part="along"]');
   expect(row).not.toBeNull();
-  expect(row.querySelector('.along .dropdown-trigger').textContent.trim()).toBe('Along ▾');
+  expect(row.querySelector('.along .dropdown-trigger').textContent.trim()).toBe('Along');
 });
 
 test('the Along menu sets Moves, Rotate to face path and Motion, and Stop following path, each one history entry', async () => {

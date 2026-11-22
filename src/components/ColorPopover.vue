@@ -15,6 +15,7 @@ import picker from '@/tools/picker.js';
 import { toast } from '@/composables/useToast';
 import { useSettingsLock } from '@/composables/useSettingsLock';
 import { desktopQuery } from '@/social/config';
+import ArrowIcon from '@/components/ArrowIcon.vue';
 
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
@@ -267,7 +268,7 @@ onBeforeUnmount(() => {
         <button v-for="hex in inUse" :key="hex" class="swatch" :style="{ backgroundColor: shown(hex) }" :title="hex" @click="choose(hex)"></button>
       </div>
       <button v-if="painted.length" class="row-label fold" :aria-expanded="showPainted" @click="showPainted = !showPainted">
-        {{ t('colors.painted', { arrow: showPainted ? '▾' : '▸', count: painted.length }) }}
+        <ArrowIcon :turn="showPainted ? 90 : 0" :size="12"/>{{ t('colors.painted', { count: painted.length }) }}
       </button>
       <div v-if="showPainted && painted.length" class="swatches" style="grid-template-columns: repeat(8, 1fr)">
         <button v-for="hex in painted" :key="hex" class="swatch" :style="{ backgroundColor: shown(hex) }" :title="hex" @click="choose(hex)"></button>
