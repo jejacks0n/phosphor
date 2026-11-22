@@ -167,7 +167,7 @@ div.groups {
   padding: 0 18px;
   overflow-y: auto;
 }
-@media (max-width: 700px), (max-height: 520px) { /* the whole window (ModalDialog's rule): the list takes the room, Done the bottom */
+@media (max-width: 700px) { /* the whole window: the list takes the room, Done the bottom */
   div.groups {
     flex: 1;
     min-height: 0;
