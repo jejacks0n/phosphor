@@ -346,6 +346,23 @@
     "classicRamp": "Rampe classique",
     "longRamp": "Rampe étendue"
   },
+  "colorList": {
+    "swatch": "{hex}, {n} sur {count}",
+    "add": "Ajouter une couleur",
+    "color": "Couleur",
+    "earlier": "Déplacer avant",
+    "later": "Déplacer après",
+    "remove": "Retirer",
+    "count": "{n} couleur | {n} couleurs",
+    "import": "Importer",
+    "export": "Exporter",
+    "importTitle": "Remplacer la liste par les couleurs d'un fichier .hex",
+    "exportTitle": "Enregistrer la liste dans un fichier .hex",
+    "noColors": "Aucune couleur trouvée dans {name}.",
+    "imported": "Couleurs de la palette remplacées par celles de {name}.",
+    "importedCut": "Couleurs de la palette remplacées par les 256 premières des {n} de {name}.",
+    "putBack": "Remettre"
+  },
   "font": {
     "label": "Police",
     "help": "Définit la police d'affichage de votre canevas. Chargez, enregistrez et retirez des polices (polices matricielles, ou polices à chasse fixe TrueType, OpenType ou WOFF depuis votre ordinateur) avec Gérer les polices. Les polices matricielles (bitmap) sont optimales à des multiples de leur taille native (comme 16 px ou 32 px pour les polices 8×16). Votre choix de police est enregistré dans votre navigateur. Dans un salon partagé, vous voyez la police de l'hôte.",
