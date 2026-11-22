@@ -163,7 +163,16 @@ The settings on the left come in sections, each following a layer:
   a list of two or more colors typed or pasted there replaces every color. **Import** reads a `.hex` or `.txt` file's
   colors in place of the list (the toast's **Put back** brings the old one back) and **Export** saves the list as a
   `.hex` file. A changed color rewrites nothing drawn: paint and cells keep their colors and show as the nearest color in
-  the list.
+  the list. **Browse ▸**, beside Color palette whatever it's set to, opens the **Color palettes** dialog: **Library**
+  holds sixteen-color palettes from Lospec, and **Favorites** the ones you starred, newest first, kept in this browser.
+  Each card shows the palette's colors, its name (a link to its page on Lospec) and its author, and the search above
+  narrows either tab by name or author. **Use** sets Color palette to Custom color list with that palette's colors, and
+  the dialog stays open; the card whose colors are the list, in the same order, says **In use**. After a Use the foot of
+  the dialog says the drawing's colors were replaced, with **Put back**, which brings back the Color palette and the list
+  as they were before the first Use, however many you tried; closing the dialog keeps what's in use. **★** keeps a
+  palette under Favorites or takes it out, and **.hex** saves it as a `.hex` file. Browse ▸ is off while the settings
+  are, and a lock that comes while the dialog is open turns Use and Put back off. About's Licenses tab credits the
+  palettes to Lospec's Palette List and their authors.
 - **Transforms**: **Colorize** (with its color), **Hue shift** and **Invert**.
 - **Adjustments**: **Brightness**, **Contrast**, **Black point**, **White point**, **Midtones**, **Saturation**,
   **Posterize** and **Threshold** (with its **Dark color** and **Light color**).

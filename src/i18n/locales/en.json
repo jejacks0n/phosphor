@@ -73,6 +73,7 @@
     "credit16Colors": "lordscarlet (Doug Moore) and Brendan O'Connor for creating sixteencolors, and everyone working to keep {sixteenColors} online.",
     "creditFonts": "Fonts: {ibmVga} from VileR's Ultimate Oldschool PC Font Pack ({ccBySa}), {jetbrains} by The JetBrains Mono Project Authors ({ofl1}), {unscii} by viznut (public domain), and {unifont} by Roman Czyborra, Paul Hardy, and others ({ofl2})",
     "creditIcons": "Icons: most icons are from {fontAwesome} by Fonticons, Inc. ({ccBy})",
+    "creditPalettes": "Color palettes: from the {lospec} Palette List, each by the author its card names",
     "vilerName": "VileR's VGA text mode fonts",
     "creditVilerFonts": "{viler} (credits in {fontsTxt})",
     "moebiusName": "Mœbius XBin fonts",
@@ -201,7 +202,9 @@
       "vga": "VGA (256 colors)",
       "cga": "CGA (16 colors)",
       "count": "Limited count",
-      "palette": "Custom color list"
+      "palette": "Custom color list",
+      "browse": "Browse ▸",
+      "browseTitle": "Browse color palettes"
     },
     "paletteColors": {
       "label": "Palette colors"
@@ -345,6 +348,26 @@
     "highres": "High-res",
     "classicRamp": "Classic ramp",
     "longRamp": "Long ramp"
+  },
+  "colorsDialog": {
+    "title": "Color palettes",
+    "library": "Library",
+    "favorites": "Favorites",
+    "libraryIntro": "Sixteen-color palettes from Lospec, each by its author. Using one replaces this drawing's Custom color list.",
+    "favoritesIntro": "The palettes you starred, kept in this browser, with any you got from Lospec.",
+    "favoritesEmpty": "Nothing kept yet. ★ on a palette keeps it here.",
+    "search": "Search palettes",
+    "none": "No palettes match.",
+    "by": "by {author}",
+    "onLospec": "on Lospec",
+    "colors": "{n} color | {n} colors",
+    "hex": ".hex",
+    "hexAria": "Save {name} as a .hex file",
+    "star": "Favorite {name}",
+    "use": "Use",
+    "inUse": "In use",
+    "replaced": "This drawing's colors were replaced.",
+    "putBack": "Put back"
   },
   "colorList": {
     "swatch": "{hex}, {n} of {count}",

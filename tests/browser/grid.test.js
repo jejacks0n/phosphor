@@ -381,6 +381,29 @@ test('while the settings are locked the Custom color list writes nothing, and a 
   }
 });
 
+test('Browse ▸ beside Color palette opens the Colors dialog, whatever the palette choice, and is off when settings are locked', async () => {
+  const { project, workspace } = await grid(40, 40);
+  const { host, gone } = mountPanel();
+  const browse = () => host.querySelector('#quantize').closest('.field').querySelector('button.browse');
+  try {
+    for (const quantize of ['none', 'palette']) {
+      project.quantize = quantize;
+      workspace.colorsOpen = false;
+      await nextTick();
+      expect(browse().textContent).toBe('Browse ▸');
+      expect(browse().title).toBe('Browse color palettes');
+      browse().click();
+      expect(workspace.colorsOpen).toBe(true);
+    }
+    project.startSharing({ send: () => {}, role: 'artist', me: 'ann' }); // only the host's now
+    await nextTick();
+    expect(browse().matches(':disabled')).toBe(true); // inside the settings' fieldset
+  } finally {
+    project.stopSharing();
+    gone();
+  }
+});
+
 // The report (bug bash 2): Escape in the font's size kept the typed number, and a click elsewhere then applied it. Escape
 // now puts the field back to the size in use, as it does in Dimensions and Palette colors. A typed field that waits for
 // Enter or a blur takes Escape this way: a new one needs it too.

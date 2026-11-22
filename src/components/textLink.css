@@ -1,6 +1,6 @@
 /* A small, quiet link of a button, styled like the panel's RESET buttons beside the section titles: Manage fonts ▸ beside
-   Font's label (FontField), the Custom color list's Remove, Import and Export (ColorList), the color box's Edit colors ▸
-   (ColorPopover). */
+   Font's label (FontField), Browse ▸ beside Color palette's (ControlPanel), the Custom color list's Remove, Import and
+   Export (ColorList), the color box's Edit colors ▸ (ColorPopover). */
 button.text {
   padding: 3px 0;
   border: none;

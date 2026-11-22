@@ -246,7 +246,10 @@ function onKeyDown(event) {
       <FontField/>
 
       <div class="field">
-        <div class="label-group"><label for="quantize">{{ t('panel.quantize.label') }}</label><HelpInfo :name="t('panel.quantize.label')" :text="help('quantize')" /></div>
+        <div class="label-row">
+          <div class="label-group"><label for="quantize">{{ t('panel.quantize.label') }}</label><HelpInfo :name="t('panel.quantize.label')" :text="help('quantize')" /></div>
+          <button type="button" class="text browse" :title="t('panel.quantize.browseTitle')" @click="workspace.colorsOpen = true">{{ t('panel.quantize.browse') }}</button>
+        </div>
         <select id="quantize" v-model="store.quantize">
           <option value="none">{{ t('panel.quantize.none') }}</option>
           <option value="vga">{{ t('panel.quantize.vga') }}</option>
@@ -397,6 +400,7 @@ function onKeyDown(event) {
   </aside>
 </template>
 
+<style scoped src="./textLink.css"></style>
 <style scoped>
 aside.control-panel {
   display: flex;

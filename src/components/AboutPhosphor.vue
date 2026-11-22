@@ -88,6 +88,13 @@ watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { fl
             </template>
           </i18n-t>
         </li>
+        <li>
+          <i18n-t keypath="about.creditPalettes" tag="span">
+            <template #lospec>
+              <a href="https://lospec.com/palette-list" target="_blank" rel="noopener">Lospec</a>
+            </template>
+          </i18n-t>
+        </li>
       </ul>
       <template v-if="licenses?.length">
         <p>{{ t('about.packagesIntro') }}</p>
