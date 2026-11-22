@@ -375,6 +375,7 @@ for (const charChoice of ['random', 'best', 'shape']) {
 // that fills a character's two pixels with one color leaves it showing nothing, so the next stroke to reach it makes it a
 // ▄ (R5). That ▄ was written in the colors the art style shows the cell in, not its own: in Color ASCII and Monochrome
 // ASCII a black background, so the second stroke turned the cell's top pixel black under paint that never touched it.
+// In Monochrome ASCII the first stroke takes the pin (R13), so the cell converts and the second leaves no ▄.
 for (const renderStyle of ['ansi', 'colorAscii', 'ascii']) {
   test(`R5: ${renderStyle}: a second Colors only stroke on the base over a character the first filled with one color keeps its two pixels`, async () => {
     const { project, workspace } = await createTestApp();
@@ -393,7 +394,7 @@ for (const renderStyle of ['ansi', 'colorAscii', 'ascii']) {
     pencil.begin(ctx, { x: 6.5, y: 7.5 }, {}); // its lower pixel again
     pencil.end(ctx);
     await settle(project);
-    expect(project.baseRecords.pins.get('6,3')).toBe('▄');
+    expect(project.baseRecords.pins.get('6,3')).toBe(renderStyle === 'ascii' ? undefined : '▄');
     expect([project.baseColorAt(6, 6), project.baseColorAt(6, 7)]).toEqual(['#ff8020', '#ff8020']);
   });
 }
