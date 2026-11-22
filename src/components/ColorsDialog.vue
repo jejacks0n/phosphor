@@ -121,11 +121,11 @@ const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { ty
     <div ref="root" class="colors">
       <div :id="`colors-panel-${tab}`" role="tabpanel" :aria-labelledby="`colors-tab-${tab}`">
         <p class="intro">{{ t(tab === 'library' ? 'colorsDialog.libraryIntro' : 'colorsDialog.favoritesIntro') }}</p>
-        <input v-model="search" type="search" class="search" :placeholder="t('colorsDialog.search')" :aria-label="t('colorsDialog.search')">
+        <input v-model="search" type="search" class="search" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" :placeholder="t('colorsDialog.search')" :aria-label="t('colorsDialog.search')">
         <template v-if="tab === 'library'">
           <form class="get" @submit.prevent="get">
             <span>{{ t('colorsDialog.notHere') }}</span>
-            <input v-model="typed" type="text" class="get-name" :placeholder="t('colorsDialog.getPlaceholder')" :aria-label="t('colorsDialog.getPlaceholder')">
+            <input v-model="typed" type="text" class="get-name" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="go" :placeholder="t('colorsDialog.getPlaceholder')" :aria-label="t('colorsDialog.getPlaceholder')">
             <button type="submit">{{ getting ? t('colorsDialog.getting') : t('colorsDialog.get') }}</button>
           </form>
           <p v-if="problem" class="get-problem" role="alert">{{ problem }}</p>
@@ -186,6 +186,18 @@ div.colors, div[role='tabpanel'] {
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
+}
+
+/* In a phone's window (the dialog is all of it: ModalDialog's rule) the whole tab scrolls, its words, search and Get
+   going up with the cards, so the palettes get the room; Put back's line stays. */
+@media (max-width: 700px), (max-height: 520px) {
+  div[role='tabpanel'] {
+    display: block;
+    overflow: auto;
+  }
+  ul.cards {
+    overflow: visible;
+  }
 }
 
 p.intro {

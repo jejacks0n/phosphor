@@ -187,6 +187,9 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
           class="mono"
           spellcheck="false"
           autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          enterkeyhint="done"
           :value="current"
           @keydown.enter="apply"
           @keydown.esc="putBack"
@@ -270,6 +273,23 @@ button.later {
   flex: none;
   height: 34px;
   padding: 0 6px;
+}
+
+/* Under a finger ◂ ▸ are a fingertip wide, on a line of their own with Remove, and the whole hex shows over them. */
+@media (pointer: coarse) {
+  div.picked {
+    flex-wrap: wrap;
+  }
+  div.picked input#palette {
+    flex-basis: calc(100% - 38px); /* beside the chip (34px and the gap) */
+  }
+  button.earlier,
+  button.later {
+    width: 44px;
+  }
+  div.picked button.remove {
+    margin-left: auto;
+  }
 }
 
 div.foot {
