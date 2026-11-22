@@ -136,6 +136,8 @@ test('the Privacy Policy (en and fr) says getting a palette from Lospec asks los
   expect(text).toContain('When you get a palette from Lospec by name or link, your browser requests it from lospec.com, which sees the request and your IP address. The palettes that come with Phosphor need no request.');
   const fr = (await import('../../src/i18n/legal/fr.vue?raw')).default.replace(/\s+/g, ' ');
   expect(fr).toContain('votre navigateur la demande à lospec.com, qui voit la requête et votre adresse IP.');
+  const frLocale = JSON.parse((await import('../../src/i18n/locales/fr.json?raw')).default);
+  expect(frLocale.legal.desktopPrivacy).toContain("l'application la demande à lospec.com, qui voit la requête et votre adresse IP."); // the same noun
 });
 
 test('the Privacy Policy (en and fr) names Cloudflare as the web application\'s host, not GitHub Pages', async () => {
