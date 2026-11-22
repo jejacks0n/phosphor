@@ -230,10 +230,17 @@ There's nothing to report to either: no one at Phosphor sees a desktop room.
 ## Nothing goes to Phosphor
 
 The app has no account and no sign-in, and sends nothing to Phosphor: no lobby, no room list, no reports, no usage.
-It connects only to the rooms you host or join, at the addresses you give it, and to GitHub when you choose Check for
-Updates. Its Privacy page says so: "This app sends nothing to Phosphor. In a room, the people you connect with see
-your IP address. When you choose Check for Updates, it asks GitHub for Phosphor's releases, and GitHub sees your IP
-address." Your drawings, name and settings stay on your computer.
+It connects only to these, and only then:
+
+- the rooms you host or join, at the addresses you give it;
+- GitHub, for Phosphor's releases, when you choose Check for Updates;
+- phosphor.work (next.phosphor.work for a pre-release, see below), for the Marketplace's plugin list, when you open
+  Plugins, and raw GitHub files (`raw.githubusercontent.com`), for a plugin's files, when you install one from the
+  Marketplace;
+- lospec.com, for one palette, when you press **Get from Lospec** in the **Color palettes** dialog.
+
+Its Privacy page names each of them and says who sees your IP address. Your drawings, name and settings stay on your
+computer.
 
 ## The Marketplace's list
 
@@ -243,7 +250,7 @@ The Plugins dialog's Marketplace reads `https://phosphor.work/plugins.json`. A p
 
 ## A palette from Lospec
 
-The Colors dialog's **Get from Lospec** asks `https://lospec.com/palette-list/<name>.json` for the one palette typed,
+In the **Color palettes** dialog (**Browse ▸** beside Color palette), **Get from Lospec** asks `https://lospec.com/palette-list/<name>.json` for the one palette typed,
 only when it's pressed. The page can't reach lospec.com, so the app asks for it and hands the page the answer, which the
 page checks as the web app does. The app builds that address itself from the palette's name, and asks for nothing else
 there.

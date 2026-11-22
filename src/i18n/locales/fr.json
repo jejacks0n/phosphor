@@ -49,7 +49,7 @@
       "privacy": "Politique de confidentialité",
       "guidelines": "Règles de la communauté"
     },
-    "desktopPrivacy": "Dans une salle, les personnes avec qui vous vous connectez voient votre adresse IP. Quand vous choisissez Rechercher les mises à jour, elle demande à GitHub les versions de Phosphor, et GitHub voit votre adresse IP. Quand vous ouvrez Plugins, elle demande à phosphor.work la liste des plugins, et phosphor.work voit votre adresse IP. Quand vous installez un plugin depuis la place de marché, elle demande à GitHub les fichiers du plugin, et GitHub voit votre adresse IP. Quand vous prenez une palette sur Lospec par son nom ou son lien, l'application la demande à lospec.com, qui voit la demande et votre adresse IP."
+    "desktopPrivacy": "Dans une salle, les personnes avec qui vous vous connectez voient votre adresse IP. Quand vous choisissez Rechercher les mises à jour, elle demande à GitHub les versions de Phosphor, et GitHub voit votre adresse IP. Quand vous ouvrez Plugins, elle demande à phosphor.work la liste des plugins, et phosphor.work voit votre adresse IP. Quand vous installez un plugin depuis la place de marché, elle demande à GitHub les fichiers du plugin, et GitHub voit votre adresse IP. Quand vous prenez une palette sur Lospec par son nom ou son lien, l'application la demande à lospec.com, qui voit la requête et votre adresse IP."
   },
   "footer": {
     "language": "Langue",
