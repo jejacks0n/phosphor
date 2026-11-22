@@ -1107,6 +1107,24 @@ test('in a narrow dialog with the Filters column open, the details narrow too an
   expect(right('.page.fonts > .edit-side')).toBeLessThanOrEqual(right('.page.fonts'));
 });
 
+test('the sheet\'s first line is a dialog\'s: its title 18px in, and the app\'s close button 6px inside the top right corner, clear of Clear all', async () => {
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await press(toggle());
+  const head = host.querySelector('.filters-sheet .filters-head');
+  const title = head.querySelector('h3.title'), close = head.querySelector('button.close.close-sheet');
+  expect(title.textContent).toBe('Filters');
+  expect(title.getBoundingClientRect().left).toBe(18);
+  expect(close.getAttribute('aria-label')).toBe('Close filters');
+  expect(close.querySelector('svg')).toBeTruthy(); // CloseButton's ×, drawn: a dialog's and the layer's own
+  const at = close.getBoundingClientRect();
+  expect([innerWidth - at.right, at.top, at.width, at.height]).toEqual([6, 6, 26, 26]);
+  await press(chip('IBM PC'));
+  expect(head.querySelector('button.clear-all').getBoundingClientRect().right).toBeLessThanOrEqual(at.left);
+  await press(close);
+  expect(host.querySelector('.filters-sheet')).toBeNull();
+});
+
 test('on a phone, » opens a sheet; Show N fonts or Escape closes it, and Escape leaves the layer open', async () => {
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
