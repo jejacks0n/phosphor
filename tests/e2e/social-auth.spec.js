@@ -315,7 +315,7 @@ test('two-factor: a backup code works instead', async ({ page }) => {
 test('two-factor: Cancel goes back to Sign in', async ({ page }) => {
   await fakeServer(page, { twoFactor: true });
   const form = await twoFactorForm(page);
-  await form.getByRole('button', { name: '‹ Cancel' }).click();
+  await form.getByRole('button', { name: 'Cancel' }).click();
   await expect(shown(page, 'sign-in')).toBeVisible();
 });
 

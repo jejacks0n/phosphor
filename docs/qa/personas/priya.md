@@ -38,7 +38,7 @@ every key, easing and path where she left it.
 - Art layers: Make art layer, Edit art, Done ([Art layers](../../vector.md#art-layers)).
 - The Keys panel: keys per part, easings, motion, values, key drags ([Tweens](../../animation.md#tweens),
   [The Keys panel](../../animation.md#the-keys-panel)).
-- Start and End, Follow a path…, Along ▾, Guide ([Following a path](../../animation.md#following-a-path),
+- Start and End, Follow a path…, Along, Guide ([Following a path](../../animation.md#following-a-path),
   [Following a path on VECTOR](../../vector.md#following-a-path)).
 - The ghost and its box ([The ghost](../../animation.md#the-ghost)).
 - Export .gif and Export .cast, Save project ([Exporting](../../animation.md#exporting)).
@@ -63,7 +63,7 @@ every key, easing and path where she left it.
 
 ## Traits
 
-All apply. She has no account and no partner. On a phone, the Keys panel has no values column and no ◀ or ▶
+All apply. She has no account and no partner. On a phone, the Keys panel has no values column and no previous-key or next-key arrows
 ([The Keys panel](../../animation.md#the-keys-panel)), so the steps that type values are done by dragging and keying
 on the frame showing instead, and the bar takes two lines.
 
@@ -214,7 +214,7 @@ the arrow keys once it has focus.
   lane shows a bar with the easing's curve; each change is one undo step ([Tweens](../../animation.md#tweens)).
 - Probes: `undo-redo`: undo the easing, then the move, then redo both and check the frames between come back;
   `out-of-order`: with no shape selected, look at the panel ("Select a shape to view its keyframes."); `interrupt`: fold the
-  panel with ▾ and reload, and check it comes back folded.
+  panel with its fold arrow and reload, and check it comes back folded.
 - Rated: yes, wants a key to open the Keys panel, then F9 or a key for the easing
 
 ### 12. Bounce it back up
@@ -317,7 +317,7 @@ number, try Mixed by selecting keys with different easings, and Shift-click a ke
 - Rated: yes, wants a key for Follow a path…
 
 ### 21. Ride the spark's tip
-- Does: draws a second dot, links it to the spark line, then opens Along ▾ and chooses Stay with line end; then
+- Does: draws a second dot, links it to the spark line, then opens Along and chooses Stay with line end; then
   makes the spark line a Guide.
 - Expects: the dot sits on the spark's End on every frame whatever its own Along keys say (they're kept); its value is
   grayed; Guide hides the line in the cells and the exports and shows it on VECTOR as a thin dashed outline
@@ -325,10 +325,10 @@ number, try Mixed by selecting keys with different easings, and Shift-click a ke
 - Probes: `interrupt`: change the spark's End easing to Elastic, check the dot still rides the tip, and put it back;
   `undo-redo`: undo Guide and the ride, one at a time, then redo both; `free`: try to select the Guide by clicking
   inside it (only its outline takes a click).
-- Rated: yes, wants a key for the Along ▾ menu
+- Rated: yes, wants a key for the Along menu
 
 ### 22. Rotate to face path, and step a follower by keys
-- Does: has the ellipse from the SVG follow the curve too (Follow a path…), chooses Along ▾ → Rotate to face path; then, on
+- Does: has the ellipse from the SVG follow the curve too (Follow a path…), chooses Along → Rotate to face path; then, on
   frame 10, presses the right arrow five times and Shift+right twice.
 - Expects: the curve now has two followers; the ellipse turns the way the curve runs, its own turn on top; each arrow
   steps it along by 1% (10% with Shift), keyed on the frame showing; Stop following path lets go of the path on every

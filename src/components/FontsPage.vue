@@ -619,7 +619,7 @@ const exportPalettes = () => {
       </div>
       <div class="actions">
         <template v-if="libEntry.linked">
-          <a class="ghost button" :href="libEntry.linked.url" target="_blank" rel="noopener">{{ t('palette.fonts.getIt') }}<ArrowIcon shape="out" :size="12"/><span class="visually-hidden">{{ t('common.newTab') }}</span></a>
+          <a class="ghost button" :href="libEntry.linked.url" target="_blank" rel="noopener">{{ t('palette.fonts.getIt') }}<ArrowIcon shape="out" :size="12"/><span class="visually-hidden">{{ ' ' + t('common.newTab') }}</span></a>
           <button class="ghost" :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         </template>
         <template v-else>

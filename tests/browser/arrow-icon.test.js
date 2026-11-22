@@ -41,7 +41,7 @@ test('ArrowIcon draws each shape at its size, turned, hidden from screen readers
   expect([...svg.querySelectorAll('path')].map((p) => p.getAttribute('d'))).toEqual(['M9 2.5h4.5V7M13.5 2.5l-6 6M12 10v3.5H2.5V4H6']);
 });
 
-test('the editor\'s move earlier and later, the Keys panel\'s previous and next and the side panel\'s fold are drawn, not typed', async () => {
+test('the editor\'s move earlier and later and the side panel\'s fold are drawn, not typed', async () => {
   await mount(ColorList, { modelValue: '#000000 #ffffff', name: 'art' });
   for (const name of ['earlier', 'later']) {
     const button = host.querySelector(`button.${name}`);

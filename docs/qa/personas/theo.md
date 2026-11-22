@@ -175,7 +175,7 @@ narrow the window until the side panel comes in over the art instead.
 ### 7. Look around on my own
 - Does: scrolls the art with the wheel (a touch drag on a tablet), then with the arrow keys after clicking the art;
   presses Track; scrolls the host's box out of sight.
-- Expects: scrolling stops tracking and keeps his zoom; the tag becomes a "Track ›" button; Track brings back the host's
+- Expects: scrolling stops tracking and keeps his zoom; the tag becomes a "Track" button; Track brings back the host's
   view at the host's zoom; with the box out of sight its tag waits at the art's edge with an arrow pointing to it
   ([Watching](../../social.md#watching)).
 - Probes: `interrupt`: have the host scroll while he's looking around, and check his view stays put; `again`: press
@@ -246,7 +246,7 @@ ROOM tab, open PIXEL to see whether his own art's PIXEL view is still his, and r
 ### 14. Scroll back through a busy chat
 - Does: has the host and `tin_owl` send 60 messages between them; then scrolls the log to the top and back down while
   one more arrives.
-- Expects: the newest 50 show; "↑ Scroll up for earlier messages" loads the rest as he scrolls up; "You joined" marks
+- Expects: the newest 50 show; "Scroll up for earlier messages" loads the rest as he scrolls up; "You joined" marks
   where he came in; a message arriving while he's scrolled up keeps his place, and at the bottom the log follows it
   ([Chat](../../social.md#chat)).
 - Probes: `speed`: scroll up as fast as the wheel goes for two seconds with `qa.frames`; `interrupt`: fold the panel

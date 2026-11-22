@@ -53,7 +53,7 @@ const press = async (el) => {
 };
 const edit = async (name) => {
   await press(row(name));
-  if (!host.querySelector('.edit-side')) await press(button('Edit ▸'));
+  if (!host.querySelector('.edit-side')) await press(button('Edit'));
 };
 
 test('the drawing\'s font\'s palettes come first', async () => {
@@ -99,7 +99,7 @@ test('a wide but short window shrinks the editor before it becomes a dialog over
   await page.viewport(1400, 600);
   onTestFinished(() => page.viewport(414, 896));
   await mount();
-  await press(button('Edit ▸'));
+  await press(button('Edit'));
   const layer = host.querySelector('.palette-layer');
   await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('absolute')); // still floating
   expect(layer.getBoundingClientRect().height).toBeLessThanOrEqual(440 + 2); // the window less the toolbar's room
@@ -112,11 +112,11 @@ test('a wide but short window shrinks the editor before it becomes a dialog over
 test('going full window grows out of the floating layer, and coming back fades it in', async () => {
   await mount();
   const animate = vi.spyOn(Element.prototype, 'animate');
-  await press(button('Edit ▸')); // a phone's width: the editor takes the whole window
+  await press(button('Edit')); // a phone's width: the editor takes the whole window
   await vi.waitFor(() => expect(animate).toHaveBeenCalledTimes(1));
   const [grow] = animate.mock.calls[0][0];
   expect(grow.clipPath).toMatch(/^inset\([\d.]+px [\d.]+px [\d.]+px [\d.]+px round 10px\)$/); // from where the layer floated
-  await press(button('◂ Done'));
+  await press(button('Done'));
   await vi.waitFor(() => expect(animate).toHaveBeenCalledTimes(2));
   expect(animate.mock.calls[1][0][0].opacity).toBe(0);
 });
@@ -191,13 +191,13 @@ test('with a TrueType or built-in font in use, the tie menu ties a palette to it
 test('a font drawing\'s sources are the font', async () => {
   const tabs = () => [...host.querySelectorAll('.sources .tabs button')].map((b) => b.textContent.trim());
   await mount();
-  await press(button('Edit ▸'));
+  await press(button('Edit'));
   expect(tabs()).toEqual(['A · 256', 'In this drawing', 'Recent']);
   expect(host.querySelector('.legend').textContent).not.toContain('not in CP437');
   app.unmount();
   host.remove();
   await mount({ font: false });
-  await press(button('Edit ▸'));
+  await press(button('Edit'));
   expect(tabs()).toEqual(['CP437', 'Unicode', 'In this drawing', 'Recent']);
   expect(host.querySelector('.legend').textContent).toContain('not in CP437');
 });
@@ -206,7 +206,7 @@ test('the Unicode tab gives way to the font tab when the drawing gets a font', a
   const on = () => host.querySelector('.sources .tabs button.on')?.textContent.trim();
   const glyphs = () => [...host.querySelectorAll('.grid button.g')].map((b) => b.textContent);
   const { project } = await mount({ font: false });
-  await press(button('Edit ▸'));
+  await press(button('Edit'));
   await press(button('Unicode'));
   expect(on()).toBe('Unicode');
   project.setDrawingFont(fontA());

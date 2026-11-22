@@ -83,7 +83,7 @@ test.describe('a paint tool that\u2019s off', () => {
   test('a mouse click or a tap on it brings back the toast that sets up the font, and its button opens the font\u2019s blocks', async ({ page }) => {
     await openApp(page);
     const before = await keptHash(page);
-    await page.getByRole('button', { name: 'Manage fonts ▸' }).click();
+    await page.getByRole('button', { name: 'Manage fonts' }).click();
     const layer = page.locator('.palette-layer');
     const [chooser] = await Promise.all([page.waitForEvent('filechooser'), layer.getByRole('button', { name: '+ Load' }).click()]);
     await chooser.setFiles({ name: 'Slab.F16', mimeType: 'application/octet-stream', buffer: Buffer.alloc(4096) });

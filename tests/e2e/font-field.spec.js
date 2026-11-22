@@ -6,7 +6,7 @@ const canvasWidth = (page) => page.locator('.ansi-editor div.display').evaluate(
 
 // The palette layer, opened on its Fonts page by the Font field's Manage fonts.
 const fontsPage = async (page) => {
-  await page.getByRole('button', { name: 'Manage fonts ▸' }).click();
+  await page.getByRole('button', { name: 'Manage fonts' }).click();
   return page.locator('.palette-layer');
 };
 
@@ -70,8 +70,8 @@ test('Manage fonts opens the Fonts page with any tool, and Escape gives the keys
   await expect.poll(() => store(page, 'workspace', (w) => w.activeTool)).toBe('hand');
   const layer = await fontsPage(page);
   await expect(layer.getByRole('button', { name: '+ Load' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Manage fonts ▸' })).toBeVisible(); // a second click leaves it open
-  await page.getByRole('button', { name: 'Manage fonts ▸' }).click();
+  await expect(page.getByRole('button', { name: 'Manage fonts' })).toBeVisible(); // a second click leaves it open
+  await page.getByRole('button', { name: 'Manage fonts' }).click();
   await expect(layer).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(layer).toHaveCount(0);

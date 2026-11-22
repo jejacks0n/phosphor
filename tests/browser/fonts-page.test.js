@@ -217,7 +217,7 @@ test('the drawing\'s font\'s actions', async () => {
   const { workspace } = await mount();
   expect(title()).toBe('A');
   expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · the drawing\'s font · no palettes');
-  expect(actions()).toEqual(['Save .F08', 'Save PNG', 'Export palettes', 'Palettes ▸']); // no Remove: A isn't kept in this browser
+  expect(actions()).toEqual(['Save .F08', 'Save PNG', 'Export palettes', 'Palettes']); // no Remove: A isn't kept in this browser
   expect(button('Export palettes').disabled).toBe(true); // it has none
   const cells = host.querySelectorAll('.sheet .cell');
   expect(cells).toHaveLength(256);
@@ -226,7 +226,7 @@ test('the drawing\'s font\'s actions', async () => {
   cells[65].dispatchEvent(new Event('mouseenter'));
   await nextTick();
   expect(host.querySelector('.edit-side .info').textContent).toBe('Slot 65 A');
-  await press(button('Palettes ▸'));
+  await press(button('Palettes'));
   expect(workspace.paletteLayerPage).toBe('palettes');
 });
 
@@ -294,7 +294,7 @@ test('the keys stay with the layer when the button pressed goes away', async () 
   await expect.poll(() => host.contains(document.activeElement)).toBe(true);
   escape();
   expect(closes).toBe(1);
-  pressFocused(button('Palettes ▸')); // the page it's on goes away
+  pressFocused(button('Palettes')); // the page it's on goes away
   await expect.poll(() => host.contains(document.activeElement)).toBe(true);
   escape();
   expect(closes).toBe(2);
@@ -315,7 +315,7 @@ test('a TrueType font shows a sample and Use this font', async () => {
   expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
   expect(names()).toEqual(['Tall Mono', 'B', ...BUILT_IN]);
   expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · in your browser · no palettes');
-  expect(actions()).toEqual(['Export palettes', 'Palettes ▸', 'Remove']);
+  expect(actions()).toEqual(['Export palettes', 'Palettes', 'Remove']);
 });
 
 test('a built-in font shows a sample and Use this font, and is listed under In use once used', async () => {
@@ -330,7 +330,7 @@ test('a built-in font shows a sample and Use this font, and is listed under In u
   expect(project.drawingFont).toBeNull();
   expect(names()).toEqual(['IBM VGA', 'B', 'Tall Mono', 'JetBrains Mono', 'Unscii', 'Unifont']);
   expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · built in · no palettes');
-  expect(actions()).toEqual(['Export palettes', 'Palettes ▸']);
+  expect(actions()).toEqual(['Export palettes', 'Palettes']);
 });
 
 test('+ Load loads and applies, and says why not', async () => {
@@ -1566,7 +1566,7 @@ test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show
   await chooseLibrary('FROGBLOCK');
   expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · Library · not included');
   expect(actions()).toEqual(['+ Load']);
-  expect(host.querySelector('.edit-side a.button').textContent).toBe('Get it(opens in a new tab)');
+  expect(host.querySelector('.edit-side a.button').textContent).toBe('Get it (opens in a new tab)');
   expect(host.querySelector('.edit-side a.button').href).toBe('https://polyducks.itch.io/frogblock');
   expect(origin()).toContain('Credit FROGBLOCK font by Polyducks');
   expect([...host.querySelectorAll('.edit-side .origin a')].map((a) => a.href)).toEqual(['https://example.test/frog-license']);

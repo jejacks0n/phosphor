@@ -165,7 +165,7 @@ The settings on the left come in sections, each following a layer:
   pasted there replaces every color, and the toast's **Put back** brings the old list back. **Import** reads a `.hex`
   or `.txt` file's colors in place of the list (again with **Put back**; a file over 1 MB isn't read) and **Export**
   saves the list as a `.hex` file. A changed color rewrites nothing drawn: paint and cells keep their colors and show as the nearest color in
-  the list. **Browse ▸**, beside Color palette whatever it's set to, opens the **Color palettes** dialog: **Library**
+  the list. **Browse**, beside Color palette whatever it's set to, opens the **Color palettes** dialog: **Library**
   holds sixteen-color palettes from Lospec, and **Favorites** the ones you starred, newest first, kept in this browser.
   Each card shows the palette's colors, its name (a link to its page on Lospec) and its author, and the search above
   narrows either tab by name or author. **Use** sets Color palette to Custom color list with that palette's colors, and
@@ -180,7 +180,7 @@ The settings on the left come in sections, each following a layer:
   be reached, or answers with something that isn't a palette, the line under the field says which and nothing is kept.
   In the browser a name Lospec doesn't have and Lospec out of reach get the same message, since Lospec's answer for a
   missing palette is one the page isn't allowed to read; the desktop app asks Lospec itself and tells them apart.
-  Get changes nothing of the drawing, so it works while the settings are locked. Browse ▸ is off while the settings
+  Get changes nothing of the drawing, so it works while the settings are locked. Browse is off while the settings
   are, and a lock that comes while the dialog is open turns Use and Put back off. About's Licenses tab credits the
   palettes to Lospec's Palette List and their authors.
 - **Transforms**: **Colorize** (with its color), **Hue shift** and **Invert**.
@@ -1202,7 +1202,7 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   only grays) shows under a "no" sign (a circle with a slash) and can't be picked, in **Recent** too, and the arrows, and
   **Alt+↑** and **Alt+↓** in Edit Mode, step past it. **Recent** keeps the palette colors you picked; a recent color
   the palette doesn't have (one picked in Full Color) shows as the palette's nearest. With a Custom color list,
-  **Edit colors ▸** at the foot of the box shuts it and takes you to **Palette colors** in the settings, on its picked
+  **Edit colors** at the foot of the box shuts it and takes you to **Palette colors** in the settings, on its picked
   color (on a phone the settings drawer opens). It isn't there while the settings are off.
 - **Shift+Cmd+X** (Shift+Ctrl+X): Swap the foreground and background. Plain **X** swaps them too, except in Edit Mode,
   where it types.

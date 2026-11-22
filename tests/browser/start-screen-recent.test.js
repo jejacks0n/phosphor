@@ -48,7 +48,7 @@ test('a row shows the whole name with its extension, and whether that copy is un
     ['Untitled', 'Unchanged'],
   ]);
   expect(rows[0].querySelector('button').getAttribute('aria-label')).toBe('Resume long-20261113-214338.ans');
-  expect(text(rows[0], '.go')).toBe('Resume ›');
+  expect(text(rows[0], '.go')).toBe('Resume');
 });
 
 test('two rows of the same name in the same minute show their seconds; the year shows only when it isn\'t this one', () => {
@@ -126,7 +126,7 @@ test('every row is two lines, the name over the time and state, with Resume cent
   mount([row('a', { asOpened: true })]);
   await setLocale('fr', { persist: false });
   expect(text(host, '.status')).toBe('Inchangé');
-  expect(text(host, '.go')).toBe('Reprendre ›');
+  expect(text(host, '.go')).toBe('Reprendre');
 });
 
 const rect = (selector) => host.querySelector(selector).getBoundingClientRect();
