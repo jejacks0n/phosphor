@@ -93,8 +93,11 @@ function remade(shape, values, plugin, quiet) {
 
 // An option of kind's (Sides, or a plugin shape's) over the selected shapes it made: shown as the first one's value, and
 // a change draws them again with it, as well as being the tool's own (get and set: the tool's). A slider's drag, or the
-// picker's, holds one edit open until commit. A plugin outline that fails is said once an edit.
+// picker's, holds one edit open until commit. A key's nudge of a slider is held longer, as a run (editRun): the next
+// nudge of the same option within the pause joins it, so a run of them is one undo step, as a settings slider's is. A
+// plugin outline that fails is said once an edit.
 let failedInEdit = false;
+let nudged = null; // { key, stroke }: the option a run of nudges is on, and the edit the run holds open
 function overSelected(kind, plugin, option, id, { get, set }) {
   const valuesOfShape = (shape) => (plugin ? optionValues(plugin.def, shape.made.values) : shape.made.values);
   const held = option.type === undefined || option.type === 'color'; // a slider (RangeField) or a color: a drag
@@ -109,19 +112,27 @@ function overSelected(kind, plugin, option, id, { get, set }) {
       const chosen = madeSelected(workspace, kind);
       if (!chosen.length) return;
       const project = useProjectStore();
-      if (held) project.beginEdit();
-      const changes = [];
-      for (const [key, shape] of chosen) {
-        const next = remade(shape, { ...valuesOfShape(shape), [id]: value }, plugin, failedInEdit);
-        if (next) changes.push([key, next]);
-        else failedInEdit = held;
-      }
-      project.updateShapes(changes);
+      const redraw = () => {
+        const changes = [];
+        for (const [key, shape] of chosen) {
+          const next = remade(shape, { ...valuesOfShape(shape), [id]: value }, plugin, failedInEdit);
+          if (next) changes.push([key, next]);
+          else failedInEdit = held;
+        }
+        project.updateShapes(changes);
+      };
+      if (held && nudged?.key === option.key && nudged.stroke === project._stroke) return project.editRun(redraw); // this option's run goes on
+      if (held) project.beginEdit(); // which ends a run of another option's, or of typing
+      redraw();
     },
-    commit: () => {
+    // The drag ended or the color was picked (the edit is one step), or a key nudged the slider (the edit is held, as a run).
+    commit: ({ nudge = false } = {}) => {
       failedInEdit = false;
-      const project = useProjectStore();
-      if (project._stroke && !project._stroke.typing) project.commitEdit();
+      const project = useProjectStore(), stroke = project._stroke;
+      if (!stroke || (stroke.typing && nudged?.stroke !== stroke)) return; // nothing changed, or it's a typing run's
+      if (!nudge) return void project.commitEdit();
+      project.editRun(() => {});
+      nudged = { key: option.key, stroke };
     },
   };
 }

@@ -258,6 +258,7 @@ test('a slider\'s drag in the toolbar is one undo step, and a color picked is an
   const slider = document.getElementById(`${ref}/points`), color = host.querySelector('input[type=color]');
   expect(slider.value).toBe('5');
   const version = project.history.version;
+  slider.dispatchEvent(new PointerEvent('pointerdown')); // a drag, not a key
   for (const value of ['6', '7', '9']) {
     slider.value = value;
     slider.dispatchEvent(new Event('input'));
@@ -273,6 +274,61 @@ test('a slider\'s drag in the toolbar is one undo step, and a color picked is an
   expect(project.shapes.get(key).made.values.tint).toBe('#0000ff');
   expect(project.history.version).toBe(version + 2);
   expect(project._stroke).toBe(null);
+});
+
+// A key on a slider: the value, then the change, with no pointer down (RangeField says it's a nudge).
+const nudge = (slider, value) => {
+  slider.value = String(value);
+  slider.dispatchEvent(new Event('input'));
+  slider.dispatchEvent(new Event('change'));
+};
+
+test('a quick run of key nudges on one option is one undo step; another option, or a pause, starts the next', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    const sliders = { options: [
+      { id: 'points', kind: 'slider', name: 'Points', min: 3, max: 12, step: 1, default: 5 },
+      { id: 'twist', kind: 'slider', name: 'Twist', min: 0, max: 9, step: 1, default: 0 },
+    ] };
+    const { project, workspace, ref, drag } = await shaper({ ...sliders, outline: ROUND });
+    drag({ x: 10, y: 10 }, { x: 30, y: 20 });
+    const [key] = workspace.vectorSelected, corners = () => project.shapes.get(key).points.length;
+    await mount();
+    const points = document.getElementById(`${ref}/points`), twist = document.getElementById(`${ref}/twist`);
+    const version = project.history.version;
+    for (const value of [6, 7, 8]) nudge(points, value);
+    expect(corners()).toBe(8);
+    expect(project._stroke).toBeTruthy(); // the run's edit, still open
+    vi.advanceTimersByTime(1100);
+    expect(project._stroke).toBe(null);
+    expect(project.history.version).toBe(version + 1);
+    project.undo();
+    expect(corners()).toBe(5);
+    project.redo();
+    // Another option inside the pause is a step of its own, and undo ends a run still open.
+    nudge(points, 9);
+    nudge(twist, 1);
+    nudge(twist, 2);
+    project.undo();
+    expect([corners(), project.shapes.get(key).made.values.twist]).toEqual([9, 0]);
+    project.undo();
+    expect(corners()).toBe(8);
+    // Up and back down is still one step (as a settings slider's is), and leaves nothing open.
+    const before = project.history.version;
+    nudge(points, 9);
+    nudge(points, 8);
+    vi.advanceTimersByTime(1100);
+    expect([project.history.version, project._stroke]).toEqual([before + 1, null]);
+    // A drag right after a nudge joins its step; the drag's end closes it at once.
+    nudge(points, 9);
+    points.dispatchEvent(new PointerEvent('pointerdown'));
+    nudge(points, 11);
+    expect(project._stroke).toBe(null);
+    project.undo();
+    expect(corners()).toBe(8);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test('points edited by hand make it a path: its options are the tool\'s again and a change leaves it', async () => {

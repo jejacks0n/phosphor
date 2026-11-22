@@ -691,7 +691,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             </template>
           </DropdownMenu>
           <CharField v-else-if="option.type === 'char'" :model-value="optionValue(workspace, option)" :label="option.label" @update:model-value="setOptionValue(workspace, option, $event)"/>
-          <RangeField v-else compact :setting="option" :model-value="optionValue(workspace, option)" @update:model-value="setOptionValue(workspace, option, $event)" @commit="option.commit?.()"/>
+          <RangeField v-else compact :setting="option" :model-value="optionValue(workspace, option)" @update:model-value="setOptionValue(workspace, option, $event)" @commit="option.commit?.($event)"/>
         </template>
       </div>
       <div v-if="activeTool.id === 'hand'" class="tool-setting-group">

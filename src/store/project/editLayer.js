@@ -200,15 +200,24 @@ export const editLayerActions = {
     this.typing(() => this.shiftCells(row, col + k, -k, { paint: mode === 'insert' }));
   },
 
-  // A run of typing is one undo step: its stroke stays open across keystrokes and is committed
-  // after a pause, by any other edit (beginEdit), or by undo/redo/save (commitPending).
+  // A run of typing is one undo step (editRun).
   typing(fn) {
     if (refusedNoCells(this, { toast: false })) return;
     this.ensureLayer();
+    this.editRun(() => {
+      if (this._stroke && !this._stroke.typing) this._stroke.cursor = useWorkspaceStore().textCursor; // where undo puts it back
+      fn();
+    });
+  },
+
+  // A run of small edits as one undo step (typing; a shape option's key nudges, tools/vshape.js): fn's edit joins the
+  // run's stroke, which stays open across them (its typing says it's a run's) and is committed after a pause, by any
+  // other edit (beginEdit), or by undo/redo/save (commitPending). With fn changing nothing, the edit open now becomes a
+  // run's.
+  editRun(fn) {
     this._typingNow = true;
     try {
       this.beginEdit();
-      if (this._stroke && !this._stroke.typing) this._stroke.cursor = useWorkspaceStore().textCursor; // where undo puts it back
       fn();
     } finally {
       this._typingNow = false;
