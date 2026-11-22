@@ -208,7 +208,7 @@ lobby, and look at Who's here.
 - Rated: yes, wants Enter on Go live
 
 **Free time:** she'd press Copy link and paste it into the chat box (if the browser refuses, "Couldn't copy the link"
-should say so), open Settings and stats and read Room settings' facts, fold the side panel with » and open it with «,
+should say so), open Settings and stats and read Room settings' facts, fold the side panel with its fold button and open it with the unfold button,
 and drag the panel wider.
 
 ## Live, with people watching
@@ -228,7 +228,7 @@ and drag the panel wider.
 - Expects: her message shows with her name, a host tag and a time, and reaches every watcher; Shift+Enter makes a new
   line and the box grows to 5 lines, then scrolls; Send is gray with nothing to send; her own message plays no tone,
   and `tin_owl`'s answer plays one only if she's back on her art (focus out of the chat), and the speaker beside the
-  side panel's » turns that off and on ([Chat](../../social.md#chat)).
+  side panel's fold button turns that off and on ([Chat](../../social.md#chat)).
 - Probes: `extremes`: a 300-character message with emoji (the 301st character can't be typed), then the full room: 9
   more members join (12 watchers) and each says a line, and she times her own message reaching a watcher against
   `response`, then the nine leave (their pages closed), so later steps aren't refused as "Room is full"; `speed`: send five messages as fast as she can ("Please wait a moment before sending another message." after
