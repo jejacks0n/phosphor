@@ -1186,7 +1186,7 @@
     "fontName": "Nom de la police",
     "spacing": "Espacement des lettres",
     "spacingNone": "Non défini",
-    "viewersHelp": "Ces réglages indiquent aux autres visionneuses comment afficher le fichier. L'affichage de Phosphor garde votre police.",
+    "viewersHelp": "Ces réglages indiquent aux autres visionneuses comment afficher le fichier. L'affichage de Phosphor garde votre police, sauf qu'avec une police matricielle, « Espacement des lettres » est la largeur à laquelle elle est dessinée.",
     "countAria": "{count} caractères sur {width}",
     "commentLines": "{count} ligne SAUCE sur {most} | {count} lignes SAUCE sur {most}",
     "commentLinesOwn": "{count} lignes SAUCE sur {most} (dont {own} de Phosphor)",

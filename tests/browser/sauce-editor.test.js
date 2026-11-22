@@ -204,7 +204,7 @@ test('Date comes after Group, takes digits only, and a date that isn\'t a real Y
 test('For other viewers: Font name (20, counted) and Letter spacing, with a line saying what they\'re for', async () => {
   const { project } = await mount();
   expect(host.textContent).toContain('For other viewers');
-  expect(host.textContent).toContain('These tell other viewers how to show the file. Phosphor\'s view keeps your display font.');
+  expect(host.textContent).toContain('These tell other viewers how to show the file. Phosphor\'s view keeps your display font, except that with a bitmap font Letter spacing is the width it\'s drawn at.');
   expect(field('sauce-font').value).toBe('IBM VGA'); // what a new drawing's export writes
   expect(countOf('sauce-font').textContent.trim()).toBe('7 / 20');
   await edit('sauce-font', 'Amiga Topaz 1+ and then some');

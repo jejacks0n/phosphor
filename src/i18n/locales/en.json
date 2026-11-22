@@ -1186,7 +1186,7 @@
     "fontName": "Font name",
     "spacing": "Letter spacing",
     "spacingNone": "Not set",
-    "viewersHelp": "These tell other viewers how to show the file. Phosphor's view keeps your display font.",
+    "viewersHelp": "These tell other viewers how to show the file. Phosphor's view keeps your display font, except that with a bitmap font Letter spacing is the width it's drawn at.",
     "countAria": "{count} of {width} characters",
     "commentLines": "{count} of {most} SAUCE lines",
     "commentLinesOwn": "{count} of {most} SAUCE lines ({own} are Phosphor's own)",
