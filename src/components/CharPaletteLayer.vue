@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, useTemplateRef, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
@@ -14,20 +13,22 @@ import { toast } from '@/composables/useToast';
 import { writePaletteFile, readPaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import FontsPage from '@/components/FontsPage.vue';
-import CloseButton from '@/components/CloseButton.vue';
+import FloatingPanel from '@/components/FloatingPanel.vue';
 import ArrowIcon from '@/components/ArrowIcon.vue';
 
 // The character palette layer: one element in two sizes. Compact, it's the list of palettes (each
 // shown as its 12 glyphs) for choosing one; Edit grows the same element into the editor, with the
 // selected palette's slots and glyph sources. Built-ins are locked: the first edit makes your copy.
 // The list puts the drawing's bitmap font's palettes first, then the built-ins, yours, and (folded)
-// yours for fonts not loaded. Beside the Palettes page is the Fonts page (FontsPage), always the wide size.
+// yours for fonts not loaded. Beside the Palettes page is the Fonts page (FontsPage), always the wide size. Its frame,
+// the sizes and forms the layer takes, is FloatingPanel's.
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const palettes = usePaletteStore();
-const root = useTemplateRef('root');
+const panel = useTemplateRef('panel');
+const root = computed(() => panel.value?.root); // the layer's element, which has the keyboard
 
 const editing = ref(false);
 const currentId = ref(palettes.active.id); // the highlighted row; the palette being edited
@@ -274,11 +275,10 @@ const onKeyDown = (event) => {
   event.preventDefault();
 };
 
+// A press anywhere but in the tie or … menu shuts it (a press outside the layer is FloatingPanel's: it closes the layer).
 const onPointerDown = (event) => {
   if (tieOpen.value && !event.target.closest?.('.tie')) tieOpen.value = false;
   if (moreOpen.value && !event.target.closest?.('.more')) moreOpen.value = false;
-  // a press outside closes it, but not its own toggle's, nor a resize edge's (the side panel's: the layer follows it)
-  if (root.value && !root.value.contains(event.target) && !event.target.closest('[data-palette-toggle], [role="separator"]')) emit('close');
 };
 
 // Leaving the editor unmounts whatever had focus in it: keep the keyboard on the layer.
@@ -286,9 +286,7 @@ watch(editing, (on) => {
   if (!on) nextTick(() => root.value?.focus());
 });
 // The same for any button that goes away once pressed (a page's, the tie menu's, the Fonts page's actions).
-const keepKeys = () => nextTick(() => {
-  if (root.value && !root.value.contains(document.activeElement)) root.value.focus();
-});
+const keepKeys = () => panel.value?.keepKeys();
 // From the wide Fonts page, the Palettes page opens in the editor, so the layer keeps its width; Escape there closes
 // the layer, as it does on Fonts, rather than shrinking it to the list.
 const fromFonts = ref(false);
@@ -301,36 +299,6 @@ watch(() => workspace.paletteLayerPage, (page, was) => {
 });
 watch(editing, (on) => { if (!on) fromFonts.value = false; });
 
-// Becoming a dialog or the whole window (on a smaller window) grows out of where the layer floated, the page revealed
-// by a clip from that box; coming back, the floating layer fades in. (A big window only widens it, by its transition.)
-const wide = computed(() => editing.value || onFonts.value);
-// Wide on a smaller window, the layer is a dialog over the dimmed page, as the About dialog; on a phone's width, the
-// whole window (the media queries below). Either way it has a close button.
-const smallWindow = useMediaQuery('(max-width: 1000px), (max-height: 520px)');
-const phoneWidth = useMediaQuery('(max-width: 700px)');
-// Wide and short of the whole window, the layer can be made to take it (its full screen button), list still beside the
-// editor; that holds until it closes.
-const maximized = ref(false);
-const canMaximize = computed(() => wide.value && !phoneWidth.value);
-const fullScreen = computed(() => maximized.value && canMaximize.value);
-const fullWindow = computed(() => wide.value && (smallWindow.value || fullScreen.value));
-const dialog = computed(() => fullWindow.value && !phoneWidth.value && !fullScreen.value);
-const fontsStage = computed(() => (phoneWidth.value ? 'phone' : fullScreen.value ? 'full' : dialog.value ? 'dialog' : 'float')); // the Fonts page lays out its filters by it
-watch(wide, () => {
-  const el = root.value;
-  if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const from = el.getBoundingClientRect(), wasFull = getComputedStyle(el).position === 'fixed';
-  nextTick(() => {
-    const full = getComputedStyle(el).position === 'fixed', options = { duration: 250, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' };
-    if (full && !wasFull) {
-      const to = el.getBoundingClientRect(), px = (n) => `${Math.max(0, n)}px`;
-      const box = `${px(from.top - to.top)} ${px(to.right - from.right)} ${px(to.bottom - from.bottom)} ${px(from.left - to.left)}`;
-      el.animate([{ clipPath: `inset(${box} round 10px)` }, { clipPath: 'inset(0px 0px 0px 0px round 0px)' }], options);
-    } else if (wasFull && !full) {
-      el.animate([{ opacity: 0, transform: 'scale(0.98)' }, { opacity: 1, transform: 'none' }], { ...options, duration: 150 });
-    }
-  });
-});
 watch([currentId, editing], () => { tieOpen.value = moreOpen.value = false; });
 
 onMounted(() => {
@@ -344,21 +312,16 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="dialog" class="scrim" aria-hidden="true"></div>
-  <div ref="root" class="palette-layer" :class="{ editing: editing || onFonts, maximized: fullScreen }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
-    <div class="pages tab-strip">
+  <FloatingPanel ref="panel" class="palette-layer" :wide="editing || onFonts" :label="t('palette.layer.dialogAria')" keep="[data-palette-toggle]" @keydown="onKeyDown" @close="emit('close')">
+    <template #tabs>
       <div class="tablist" role="tablist" :aria-label="t('palette.pages.aria')">
         <button role="tab" :class="{ on: !onFonts }" :aria-selected="!onFonts" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.pages.palettes') }}</button>
         <button role="tab" :class="{ on: onFonts }" :aria-selected="onFonts" @click="workspace.paletteLayerPage = 'fonts'">{{ t('palette.pages.fonts') }}</button>
       </div>
-      <button v-if="canMaximize" class="maximize" :title="t(fullScreen ? 'palette.layer.exitFullScreen' : 'palette.layer.fullScreen')" :aria-label="t(fullScreen ? 'palette.layer.exitFullScreen' : 'palette.layer.fullScreen')" @click="maximized = !fullScreen; keepKeys()">
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="fullScreen ? 'M6 2v4H2M10 2v4h4M14 10h-4v4M2 10h4v4' : 'M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4'"/></svg>
-      </button>
-      <CloseButton v-if="fullWindow" class="dismiss" @click="emit('close')"/>
-    </div>
-    <FontsPage v-if="onFonts" ref="fontsPage" :stage="fontsStage" @acted="keepKeys"/>
+    </template>
+    <FontsPage v-if="onFonts" ref="fontsPage" :stage="panel?.stage" @acted="keepKeys"/>
     <!-- the Palettes page -->
-    <div v-else class="page">
+    <div v-else class="page" :class="{ editing }">
       <!-- the list: choose a palette -->
       <div class="list-side">
         <div class="top">
@@ -485,242 +448,15 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-  </div>
+  </FloatingPanel>
 </template>
 
 <style scoped src="./tabStrip.css"></style>
 <style scoped>
-/* Opens from the toolbar's bottom right, inside its padding. */
-div.palette-layer {
-  position: absolute;
-  top: calc(100% + 2px);
-  right: 10px;
-  z-index: 300;
-  display: flex;
-  flex-direction: column;
-  width: 300px;
-  max-width: calc(100% - 20px); /* never wider than the toolbar it opens from */
-  max-height: min(560px, calc(100vh - 160px));
-  background: var(--surface-1);
-  border: 1px solid var(--accent);
-  border-radius: 10px;
-  box-shadow: 0 10px 34px color-mix(in srgb, var(--shadow) 65%, transparent);
-  overflow: hidden;
-  outline: none;
-  transition: width 0.25s ease;
-  font-size: 13px;
-  color: var(--text);
-}
-
-div.palette-layer.editing {
-  width: 940px;
-}
-
-/* The Palettes | Fonts tabs over the page (tabStrip.css, a dialog's too) and, at the row's right end, the full screen
-   toggle and, taking the whole window, the close button (CloseButton), drawn alike. */
-div.pages button.maximize {
-  align-self: center;
-  flex: none;
-  display: flex;
-  padding: 6px;
-  border: none;
-  box-shadow: none;
-  background: none;
-  color: var(--text-muted);
-}
-
-div.pages button.maximize:hover {
-  color: var(--text);
-}
-
-div.pages button.maximize svg {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-div.pages button.dismiss {
-  align-self: center;
-}
-
-/* Full screen: the whole window, on any window wider than a phone's (which has it already). */
-div.palette-layer.editing.maximized {
-  position: fixed;
-  inset: 0;
-  z-index: 5000;
-  width: auto;
-  height: auto;
-  max-width: none;
-  max-height: none;
-  margin: 0;
-  border: none;
-  border-radius: 0;
-  transition: none;
-}
-
-/* The rules below that the Fonts page shares reach into it (:deep). */
-div.page {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-}
-
-/* While editing (and on the Fonts page), the list is a narrow column, a little wider than a palette's row of glyphs
-   (they never wrap; long names do), so the editor gets the rest. */
-div.palette-layer.editing :deep(div.list-side) {
-  flex: 0 0 220px;
-  min-width: 0;
-}
-
-/* Beside the Fonts page's details, its list gives way first (shrink weight 10 to their 1), down to 180px; its Filters
-   column does the same (FontsPage). */
-@media (min-width: 701px) {
-  div.palette-layer.editing :deep(div.page.fonts > div.list-side) {
-    flex: 0 10 220px;
-    min-width: 180px;
-  }
-}
-
-/* Full screen gives the Fonts page's list more room too (its Filters column widens itself). */
-div.palette-layer.editing.maximized :deep(div.page.fonts > div.list-side) {
-  flex-basis: 320px;
-}
-
-div.palette-layer.editing div.row div.glyphs {
+/* The Palettes page's own; the layer's frame and the rules every page shares are FloatingPanel's. While editing, a
+   palette's row of glyphs isn't cut short. */
+div.page.editing div.row div.glyphs {
   overflow: visible;
-}
-
-/* Editing wants 940px and up to 560px tall; a shorter window shrinks it (the glyph pane gives way first) until it
-   can't fit. A smaller window makes it a dialog over the dimmed page, 20px clear of the edges as the About dialog
-   (between, the slots narrow), and a phone's width the whole window, with the list above the editor. (smallWindow and
-   phoneWidth, for the scrim and the close button, ask the same.) */
-@media (max-width: 1000px), (max-height: 520px) {
-  div.palette-layer.editing {
-    position: fixed;
-    inset: 20px;
-    z-index: 5000;
-    width: min(940px, calc(100vw - 40px));
-    height: min(600px, calc(100vh - 40px));
-    max-width: none;
-    max-height: none;
-    margin: auto;
-    border-radius: 12px;
-    transition: none;
-  }
-
-  div.scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 4999;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(2px);
-    animation: scrim-in 0.25s ease-out;
-  }
-}
-
-@keyframes scrim-in {
-  from { opacity: 0; }
-}
-
-@media (max-width: 700px) {
-  div.palette-layer.editing {
-    inset: 0;
-    width: auto;
-    height: auto;
-    margin: 0;
-    border: none;
-    border-radius: 0;
-  }
-
-  div.palette-layer.editing div.page {
-    flex-direction: column;
-  }
-
-  div.palette-layer.editing :deep(div.list-side) {
-    flex: 1 1 300px;
-    width: auto;
-    max-height: 35vh;
-    border-right: none;
-    border-bottom: 1px solid var(--surface-3);
-  }
-
-  div.palette-layer.editing :deep(div.edit-side) {
-    max-height: 65vh;
-  }
-}
-
-:deep(div.list-side) {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 300px;
-  min-width: 260px;
-  border-right: 1px solid var(--surface-3);
-}
-
-:deep(div.top) {
-  display: flex;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--surface-3);
-}
-
-/* The field and its buttons one height, an input's (global.css's 34px), so they line up. */
-:deep(div.top input),
-:deep(div.top button) {
-  box-sizing: border-box;
-  height: 34px;
-}
-
-:deep(div.top input) {
-  flex: 1;
-  min-width: 0;
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface-2);
-  color: var(--text);
-  font: inherit;
-  font-size: 12px;
-}
-
-:deep(div.top button) {
-  padding: 5px 10px;
-  border: none;
-  border-radius: 4px;
-  background: var(--surface-3);
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-:deep(div.top button:hover) {
-  background: var(--accent);
-  color: var(--white);
-}
-
-:deep(div.list) {
-  flex: 1;
-  overflow-y: auto;
-  padding: 6px 0;
-}
-
-:deep(div.group) {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px 2px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 button.new {
@@ -809,70 +545,10 @@ span.more span.menu button:hover {
   color: var(--white);
 }
 
-:deep(div.row) {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 12px;
-  cursor: pointer;
-  border-left: 2px solid transparent;
-}
-
-:deep(div.row:hover) {
-  background: var(--surface-2);
-}
-
-:deep(div.row.current) {
-  background: var(--surface-2);
-}
-
-:deep(div.row.active) {
-  border-left-color: var(--accent);
-}
-
-:deep(div.name) {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--text);
-}
-
-:deep(div.name em) {
-  font-size: 9px;
-  font-style: normal;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}
-
 div.glyphs {
   display: flex;
   gap: 2px;
   overflow: hidden;
-}
-
-:deep(div.edit-side) {
-  display: flex;
-  flex-direction: column;
-  flex: 2 1 600px;
-  min-width: 0;
-  padding: 12px 16px;
-  gap: 10px;
-}
-
-:deep(div.head) {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-:deep(span.title) {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-  padding: 2px 4px;
-  border-radius: 4px;
-  outline: none;
 }
 
 span.title[contenteditable="true"]:focus {
@@ -892,22 +568,6 @@ span.lock svg {
   width: 11px;
   height: 11px;
   fill: currentColor;
-}
-
-:deep(button.ghost) {
-  padding: 4px 8px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-:deep(button.ghost:hover) {
-  background: var(--surface-3);
-  color: var(--text);
 }
 
 div.slots {
@@ -1061,12 +721,6 @@ div.pane {
   gap: 6px;
 }
 
-:deep(div.note) {
-  font-size: 11px;
-  color: var(--text-muted);
-  padding: 2px 4px;
-}
-
 div.blocks {
   display: flex;
   flex-wrap: wrap;
@@ -1089,12 +743,6 @@ div.blocks button.on {
   background: var(--accent);
   color: var(--white);
   border-color: var(--accent);
-}
-
-:deep(div.grid) {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
-  gap: 2px;
 }
 
 button.g {
@@ -1164,16 +812,5 @@ div.legend span.l2::before {
 
 div.legend span.l3::before {
   content: '—';
-}
-
-:deep(div.info) {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  min-height: 16px;
-}
-
-:deep(.spacer) {
-  flex: 1;
 }
 </style>
