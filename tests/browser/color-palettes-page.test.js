@@ -752,3 +752,32 @@ test('Up and Down on a button of This drawing\'s details keep the keyboard in th
   await nextTick();
   expect(layer().contains(document.activeElement)).toBe(true);
 });
+
+test('a lock arriving while Use has focus, and the import toast\'s Put back, leave the keyboard in the layer', async () => {
+  await mount({ quantize: 'palette', palette: '#FFFFFF #000000' });
+  const input = editor().querySelector('input.hex-file'), files = new DataTransfer();
+  files.items.add(new File(['1a1c2c\n5d275d\n'], 'sweetie.hex'));
+  input.files = files.files;
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  await vi.waitFor(() => expect(project.palette).toBe('#1a1c2c #5d275d'));
+  const outside = document.body.appendChild(document.createElement('button'));
+  onTestFinished(() => outside.remove());
+  outside.focus(); // the toast's button
+  toastAction.value.run();
+  await vi.waitFor(() => expect(layer().contains(document.activeElement)).toBe(true));
+  closeToast();
+  editor().querySelector('button').focus();
+  project.startSharing({ send: () => {}, role: 'artist', me: 'ann' }); // only the host's now
+  await vi.waitFor(() => expect(layer().contains(document.activeElement)).toBe(true));
+});
+
+test('a favorite that is also in the Library lights only the row it was chosen in', async () => {
+  await mount();
+  library.toggle(SWEETIE);
+  await nextTick();
+  const current = () => [...page().querySelectorAll('div.list > div.row.current')];
+  await choose('Sweetie 16', 'Favorites');
+  expect(current()).toEqual([row('Sweetie 16', 'Favorites')]);
+  await choose('Sweetie 16', 'Library');
+  expect(current()).toEqual([row('Sweetie 16', 'Library')]);
+});

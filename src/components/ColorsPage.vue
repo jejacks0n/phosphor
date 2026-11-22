@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore, recentColor } from '@/store/WorkspaceStore';
 import { getEffectiveColor, paletteChoices } from '@/lib/PixelTransforms';
+import { choicePalette } from '@/lib/colorList';
 import { swatchSections, drawingColors, sharedIndex, recentIndex } from '@/lib/ColorUtils';
 import { nearestInDirection } from '@/lib/spatialFocus';
 import { shortcut } from '@/lib/keyLabels';
@@ -66,8 +67,10 @@ const offersNone = computed(() => !stop.value && (vector.value || props.slotName
 
 // The palette as the colors its swatches store, or (paints false) a palette color nothing paints as.
 // kept: the palette color, for the recent colors.
+// With no drawing there is no render, so the palette is the choice's own (the Palettes page's This drawing reads the same).
+const activePalette = computed(() => (project.image ? project.activePalette : choicePalette(project)) ?? []);
 const swatches = computed(() => {
-  const palette = project.activePalette ?? [];
+  const palette = activePalette.value;
   const choices = paletteChoices(project, palette);
   return palette.map((p, i) => ({ ...p, hex: choices[i] ?? p.hex, paints: !!choices[i], kept: p.hex.toLowerCase() }));
 });
@@ -82,13 +85,13 @@ const painted = computed(() => {
   return drawingColors([], counts).filter(hex => !inUse.value.includes(hex));
 });
 const showPainted = ref(false);
-const shown = (hex) => getEffectiveColor(hex, project, project.activePalette);
+const shown = (hex) => getEffectiveColor(hex, project, activePalette.value);
 // With a palette, a recent color is its palette color's swatch; in Full color, the color as it was kept.
 const recent = computed(() => workspace.recentColors.map((entry) => {
   const { hex, index } = recentColor(entry);
   if (!sections.value.length) return { entry, hex, index, paints: true, kept: hex };
-  const at = recentIndex({ hex, index }, project.activePalette);
-  return { entry, ...swatches.value[at], index: sharedIndex(at, project.activePalette) };
+  const at = recentIndex({ hex, index }, activePalette.value);
+  return { entry, ...swatches.value[at], index: sharedIndex(at, activePalette.value) };
 }));
 
 // index: a swatch's, kept when a lower index shares its color (16 and 231: sharedIndex).
@@ -221,12 +224,12 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
           v-for="color in section.colors"
           :key="color.hex + color.c"
           class="swatch"
-          :class="{ selected: color.paints && !isNone && current.toLowerCase() === color.hex.toLowerCase() && currentIndex === sharedIndex(color.c, project.activePalette) }"
+          :class="{ selected: color.paints && !isNone && current.toLowerCase() === color.hex.toLowerCase() && currentIndex === sharedIndex(color.c, activePalette) }"
           :style="{ backgroundColor: color.paints ? shown(color.hex) : color.hex }"
           :title="color.paints ? color.hex : t('colors.cantPaint', { hex: color.hex.toLowerCase() })"
           :disabled="!color.paints"
           :data-off-reason="color.paints ? undefined : ''"
-          @click="choose(color.hex.toLowerCase(), true, sharedIndex(color.c, project.activePalette), color.kept)"
+          @click="choose(color.hex.toLowerCase(), true, sharedIndex(color.c, activePalette), color.kept)"
       ></button>
     </div>
 

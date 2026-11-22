@@ -1,6 +1,6 @@
 // The Custom color list as a list of colors: lowercase '#rrggbb' strings in order. A color is named by its
 // place, not its value, so a color the list holds twice is no trouble. None of these changes the list given.
-import { parseColorList } from './ColorUtils.js';
+import { PALETTES, parseColorList } from './ColorUtils.js';
 
 export const MOST_COLORS = 256;
 
@@ -36,3 +36,8 @@ export const sameColors = (a, b) => a.length === b.length && a.every((c, i) => c
 
 // Lospec's .hex file: six digits a line, no #.
 export const hexFile = (colors) => colors.map(c => `${c.slice(1)}\n`).join('');
+
+// The palette a drawing's Color palette choice names before any render, as palette entries: VGA's or CGA's, the Custom
+// color list, none (null) otherwise. Limited count's come from a picture's render, so they are not here. The Palettes
+// page's This drawing and the Colors page with no drawing both read it.
+export const choicePalette = ({ quantize, palette }) => (quantize === 'palette' ? parseColorList(palette) : PALETTES[quantize] ?? null);

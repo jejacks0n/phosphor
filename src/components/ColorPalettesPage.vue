@@ -4,8 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { SHIPPED, useColorLibraryStore } from '@/store/ColorLibraryStore';
 import { useSettingsLock } from '@/composables/useSettingsLock';
-import { hexFile, listColors, sameColors, writeList } from '@/lib/colorList';
-import { PALETTES } from '@/lib/ColorUtils';
+import { choicePalette, hexFile, listColors, sameColors, writeList } from '@/lib/colorList';
 import { getPalette, pageOf, slugOf } from '@/lib/lospec';
 import { desktop } from '@/social/desktop';
 import { downloadBlob } from '@/document/projectIO';
@@ -36,11 +35,8 @@ const page = useTemplateRef('page');
 // and for Full color no list at all (null). Only Limited count's are read from the render (activePalette): with no
 // drawing open there is none, but the next drawing's VGA, CGA or list are known.
 const drawingColors = computed(() => {
-  const { quantize } = project;
-  if (quantize === 'palette') return listColors(project.palette);
-  if (PALETTES[quantize]) return PALETTES[quantize].map((p) => p.hex.toLowerCase());
-  if (quantize === 'count') return (project.activePalette ?? []).map((p) => p.hex.toLowerCase());
-  return null;
+  if (project.quantize === 'count') return (project.activePalette ?? []).map((p) => p.hex.toLowerCase());
+  return choicePalette(project)?.map((p) => p.hex.toLowerCase()) ?? null;
 });
 // This drawing's row id: not a slug, which is only letters, digits and hyphens, so no palette's can be it.
 const DRAWING = ':drawing';
@@ -94,6 +90,7 @@ const metaOf = ({ colors, author }) => `${t('colorPalettes.colors', colors.lengt
 
 const before = ref(null); // { quantize, palette } as they were before the first Use, until Put back
 watch(() => project.documentId, () => { before.value = null; });
+watch(locked, (why) => { if (why) emit('acted'); }); // the control focused is off now, and the keys go with it
 function use(colors) {
   if (locked.value) return;
   before.value ??= { quantize: project.quantize, palette: project.palette };
@@ -107,6 +104,7 @@ const editAsList = () => use(drawingColors.value ?? listColors(project.palette))
 // A hand edit of the list (typed, picked, moved, imported, put back by its toast) is the person's own, so what Put back
 // would bring back is theirs to keep: it ends Put back. A lock stops it, as it stops everything of the settings.
 const edited = (text) => {
+  emit('acted'); // the import toast's Put back may have been pressed: its button isn't the layer's
   if (locked.value) return;
   before.value = null;
   project.palette = text;
@@ -172,7 +170,7 @@ const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { ty
         <template v-for="g in groups" :key="g.key">
           <div class="group"><span class="label">{{ g.label }}</span></div>
           <p v-if="g.key === 'favorites' && !library.kept.length" class="empty">{{ t('colorPalettes.favoritesEmpty') }}</p>
-          <div v-for="r in g.rows" :key="r.id" class="row" :class="{ current: r.id === chosen }" @click="choose(r)">
+          <div v-for="r in g.rows" :key="r.id" class="row" :class="{ current: r.id === chosen && g.key === chosenIn }" @click="choose(r)">
             <template v-if="r.palette">
               <div class="name"><span>{{ r.palette.name }}</span><em>{{ r.palette.author }}</em></div>
               <div class="strip" aria-hidden="true"><i v-for="(color, i) in r.palette.colors" :key="i" :style="{ background: color }"></i></div>

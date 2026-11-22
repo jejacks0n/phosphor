@@ -199,3 +199,14 @@ test('with Hue moved, Recent keeps the palette color picked, and picking it agai
     close();
   }
 });
+
+test('with no drawing and VGA chosen, the Colors page shows VGA\'s 256 swatches, as the Palettes page does', async () => {
+  const { project, workspace } = await createTestApp();
+  project.quantize = 'vga';
+  workspace.editorTab = 'output';
+  const { host, close } = await openBox({ slotName: 'fg' });
+  expect(project.image).toBeFalsy();
+  expect(host.querySelectorAll('.swatches .swatch').length).toBe(256);
+  expect(host.querySelector('.swatches .swatch').style.backgroundColor).not.toBe('');
+  close();
+});
