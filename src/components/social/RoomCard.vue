@@ -77,7 +77,7 @@ article.room-card:hover {
 div.thumb {
   position: relative;
   aspect-ratio: 2 / 1;
-  background: var(--black);
+  background: #000; /* the art's own ground, whatever the theme */
 }
 div.thumb img {
   display: block;
@@ -140,7 +140,7 @@ article.more {   /* the ⋯, over the picture's top right corner, see-through un
 article.more :deep(.dropdown-trigger) {
   border-color: transparent;
   background: rgba(0, 0, 0, 0.45);
-  color: var(--white);
+  color: #fff; /* words over the picture's dark overlay, whatever the theme */
   opacity: 0.75;
 }
 article.more :deep(.dropdown-trigger:hover),

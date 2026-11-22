@@ -135,3 +135,12 @@ test('a theme-only manifest reads again from its own output', () => {
   expect(once.script).toBe('');
   expect(readManifest(JSON.stringify(once)).id).toBe('kim.dusk');
 });
+
+// What's drawn over the art (the Brush's circle, a selection's dashes) and the black behind a picture must show on
+// any art under any theme, so they're true white and black, not the slots a theme may set.
+test('the marks over the art and the ground behind a picture use no white or black slot', () => {
+  for (const file of ['EditorViewport.vue', 'PluginMarket.vue', 'social/RoomCard.vue']) {
+    const source = readFileSync(new URL(`../../src/components/${file}`, import.meta.url), 'utf8');
+    expect([file, /var\(--(white|black)\)/.test(source)]).toEqual([file, false]);
+  }
+});

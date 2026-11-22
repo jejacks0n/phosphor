@@ -12,8 +12,9 @@
 // A polygon or a plugin shape keeps what made it (shapes.js: made). Only the chosen kind's options show; with shapes of
 // that kind selected they show the first one's values, and a change draws the selected ones of the kind again in their
 // boxes (and is the next shape's too); a slider's drag or a color picked is one undo step. The row follows the
-// selection: when it changes to one whose first shape remembers its kind, that kind is chosen (EditToolbar watches,
-// selectedKind says which), so picking a star shows the star's options; a click in the row after still chooses. Its points edited by hand, it's a path, and its options are the tool's again. A
+// selection: when it changes, with another tool, to one whose first shape remembers its kind, that kind is chosen
+// (EditToolbar watches, selectedKind says which), so a star picked with Vector select shows the star's options when
+// this tool is; a click in the row after still chooses. Its points edited by hand, it's a path, and its options are the tool's again. A
 // plugin shape whose plugin isn't on offer is a path until it is. On a shape with keys, the change is the frame's.
 import { t } from '@/i18n/index.js';
 import { ellipseShape, makeShape, polygonShape, rectShape, styleColors, withShape } from '@/document/shapes.js';
@@ -132,6 +133,7 @@ function overSelected(kind, plugin, option, id, { get, set }) {
       if (!stroke || (stroke.typing && nudged?.stroke !== stroke)) return; // nothing changed, or it's a typing run's
       if (!nudge) return void project.commitEdit();
       project.editRun(() => {});
+      if (!stroke.typing) return void project.commitEdit(); // refused (a paused room draws nothing): closed, as a drag's is
       nudged = { key: option.key, stroke };
     },
   };

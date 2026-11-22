@@ -326,6 +326,11 @@ test('a quick run of key nudges on one option is one undo step; another option, 
     expect(project._stroke).toBe(null);
     project.undo();
     expect(corners()).toBe(8);
+    // In a paused room nothing may be drawn: a nudge changes nothing, and leaves no edit open behind it.
+    project._paused = true;
+    nudge(points, 10);
+    expect([corners(), project._stroke]).toEqual([8, null]);
+    project._paused = false;
   } finally {
     vi.useRealTimers();
   }
@@ -425,13 +430,17 @@ test('the row follows the selection: a shape that remembers what made it chooses
   drag({ x: 30, y: 10 }, { x: 36, y: 16 });
   const [rect] = workspace.vectorSelected;
   await mount();
-  const select = async (...keys) => { workspace.vectorSelected = keys; await nextTick(); };
-  // Picked with Vector select, then the Shape tool: the star's kind is the one chosen, its options showing its values.
-  workspace.setActiveTool('vselect');
+  // Picked with Vector select (the Shape tool selects only what it draws), then the Shape tool chosen.
+  const select = async (...keys) => {
+    workspace.setActiveTool('vselect');
+    workspace.vectorSelected = keys;
+    await nextTick();
+    workspace.setActiveTool('vshape');
+    await nextTick();
+  };
+  // The star's kind is the one chosen, its options showing its values.
   await select(star);
   expect(workspace.vectorShapeKind).toBe(ref);
-  workspace.setActiveTool('vshape');
-  await nextTick();
   expect(kindRow().querySelectorAll('button')[3].classList.contains('on')).toBe(true);
   expect(document.getElementById(`${ref}/points`)).toBeTruthy();
   await select(polygon);
@@ -446,6 +455,16 @@ test('the row follows the selection: a shape that remembers what made it chooses
   await nextTick();
   expect(workspace.vectorShapeKind).toBe('polygon');
   await select(star, polygon);
+  expect(workspace.vectorShapeKind).toBe('polygon');
+  // With the Shape tool, the selection changing under it leaves the kind: a polygon drawn and undone puts the star
+  // back in the selection, and the next drag is still a polygon.
+  await select(star);
+  kindRow().querySelectorAll('button')[2].click();
+  drag({ x: 2, y: 30 }, { x: 8, y: 36 });
+  await nextTick();
+  project.undo();
+  await nextTick();
+  expect(workspace.vectorSelected).toEqual([star]);
   expect(workspace.vectorShapeKind).toBe('polygon');
   // A kind that isn't on offer (its plugin off) isn't followed.
   usePluginStore().plugins.find(({ id }) => id === 'phosphor.outlines').enabled = false;

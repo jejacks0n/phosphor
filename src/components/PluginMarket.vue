@@ -170,7 +170,7 @@ div.art.preview {   /* the author's characters, as a drawing shows them */
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: var(--black);
+  background: #000; /* the art's own ground, whatever the theme */
   color: var(--accent);
   font: 15px/1.05 'JetBrains Mono', monospace;
   letter-spacing: 1px;
