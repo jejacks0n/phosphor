@@ -247,7 +247,7 @@ test('a palette Lospec doesn\'t have, Lospec out of reach and an answer that isn
   await mount();
   const cases = [
     [answer({ error: 'file not found' }, 404), 'Lospec has no palette called sweetie-17.'],
-    [() => { throw new TypeError('Failed to fetch'); }, "Couldn't reach Lospec. Try again."],
+    [() => { throw new TypeError('Failed to fetch'); }, "Couldn't get sweetie-17 from Lospec. Check its name or link, or try again."],
     [() => new Response('<!DOCTYPE html><title>Lospec</title>'), "That isn't a palette Phosphor can read."],
   ];
   for (const [failure, says] of cases) {
