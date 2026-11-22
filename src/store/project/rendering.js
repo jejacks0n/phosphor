@@ -351,6 +351,9 @@ export const renderingActions = {
 
   applyEditCells() {
     if (!this.renderedCells.length) return;
+    // A render that landed after the grid changed under it (a file of another size opened while it ran): its cells are
+    // the old grid's, and the render the change queued composes the new one's (as recompose does).
+    if (this.renderedCells.length !== this.cols * charRowsOf(this.rows)) return void this.render();
     this.lowerCells = this.renderer.composeAll(this.renderedCells, lowerEdits(this), this.processParams);
     layUpper(this);
   },

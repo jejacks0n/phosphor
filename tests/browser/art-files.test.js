@@ -612,3 +612,35 @@ test('exported at 9, the .ans opens again at 9', async () => {
   await settle(project);
   expect(project.drawingFont.cellWidth).toBe(9);
 });
+
+// A render that lands after the grid changed under it: two XBins opened one after the other, the second wider, while
+// the first's render was still running. Its cells were one grid's, composed against the next one's columns, and the
+// pin the second file put at column 1 read past their end (an unhandled "reading 'fg'"). They're left for the render
+// the change queued, which composes the right ones.
+test('a render that lands after a file of another size opened composes nothing, and the next one draws the new file', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await settle(project);
+  const real = project.renderer.render.bind(project.renderer);
+  let release, held = false;
+  const gate = new Promise((resolve) => { release = resolve; });
+  project.renderer.render = async (...args) => {
+    const out = await real(...args);
+    if (!held && args[1].cols === 1) { held = true; await gate; } // the first file's render, held until the second has opened
+    return out;
+  };
+  const errors = [], caught = (event) => { errors.push(String(event.reason)); event.preventDefault(); };
+  window.addEventListener('unhandledrejection', caught);
+  const cells = [{ char: 'A', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }];
+  const palette = Array.from({ length: 16 }, () => '#000000');
+  await project.openArtFile(new File([writeXBin({ cols: 1, rows: 1, cells, palette, font: { name: 'Solid', height: 16, bytes: new Uint8Array(16 * 256).fill(255) } })], 'one.xb'));
+  await vi.waitFor(() => expect(held).toBe(true));
+  project.renderer.render = real;
+  // XBIN, 1A, 2 columns, 1 row, height 16, no flags, then each cell's character and attribute
+  await project.openArtFile(new File([Uint8Array.of(0x58, 0x42, 0x49, 0x4e, 0x1a, 2, 0, 1, 0, 16, 0, 65, 7, 66, 7)], 'two.xb'));
+  release();
+  await settle(project);
+  window.removeEventListener('unhandledrejection', caught);
+  expect(errors).toEqual([]);
+  expect(project.cells.map((c) => c.char)).toEqual(['A', 'B']);
+});
