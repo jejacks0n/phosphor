@@ -530,7 +530,7 @@ test('what’s drawn in exactly the inherited color stays solid once undo can’
 });
 
 // Priya's run: Escape in FPS kept the typed 20, and a tap away then set it. Escape puts a typed field back to the value in
-// use, as Dimensions and Palette colors do; Hold the same.
+// use, as Dimensions and the Custom color list's hex do; Hold the same.
 test('Escape in FPS or Hold puts the field back, and a blur after it changes nothing', async () => {
   const { project } = await animated();
   project.addFrame('blank');

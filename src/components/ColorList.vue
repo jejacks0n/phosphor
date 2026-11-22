@@ -7,12 +7,12 @@ import { downloadBlob, fileStem } from '@/document/projectIO';
 import { MOST_COLORS, firstColors, hexFile, listColors, moved, sameColors, withColor, withCopy, without, writeList } from '@/lib/colorList';
 import ArrowIcon from '@/components/ArrowIcon.vue';
 
-// The Custom color list's editor: the `palette` setting as swatches, one of them picked, and under them the picked
+// The Custom color list's editor, in This drawing's details on the color layer's Palettes page: the list as swatches, one of them picked, and under them the picked
 // color's chip (the system color picker), its hex, arrows to move it and Remove. It writes the setting only when
 // something is edited, so a list it didn't write stays as it was typed. The pick is a place, not a color, so a color
 // the list holds twice is no trouble. While the system picker is open the list follows it, and `picking` says when a
 // pick starts and ends, so whoever holds the list can send it on as one change, as a slider drag goes.
-// `disabled` turns off every control (the holder's lock: the editor isn't inside the settings' disabled fieldset any more).
+// `disabled` turns off every control (the holder's lock: the editor sits in no disabled fieldset).
 const props = defineProps({ modelValue: { type: String, default: '' }, name: { type: String, default: '' }, disabled: Boolean });
 const emit = defineEmits(['update:modelValue', 'picking']);
 const { t } = useI18n();
@@ -109,7 +109,7 @@ const onSwatchKey = (event, i) => {
   grid.querySelectorAll('button.swatch')[to].focus();
 };
 
-// With a mouse or a pen a swatch can be dragged to another place; a finger's drag scrolls the settings, so it can't.
+// With a mouse or a pen a swatch can be dragged to another place; a finger's drag scrolls the details, so it can't.
 const mouse = useMediaQuery('(pointer: fine)');
 let dragged = null;
 const onDragStart = (event, i) => {
@@ -128,7 +128,7 @@ const onDrop = (i) => {
 };
 
 // A list typed or a file imported replaces the whole list, and its toast puts back the list as it was, as it was
-// written. The toast goes when the editor does (and the settings column makes a new editor for another drawing), so no
+// written. The toast goes when the editor does (and the Palettes page makes a new editor for another drawing), so no
 // Put back is left that does nothing or writes one drawing's list onto another.
 let replacedToast = null;
 onBeforeUnmount(() => {
@@ -179,7 +179,7 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
             :tabindex="i === picked ? 0 : -1"
             :disabled="disabled"
             data-walk
-            :draggable="mouse"
+            :draggable="mouse && !disabled"
             @click="picked = i"
             @keydown="onSwatchKey($event, i)"
             @dragstart="onDragStart($event, i)"

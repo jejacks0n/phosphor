@@ -59,8 +59,10 @@ const onKeyDown = (event) => {
     if (event.key === 'Escape') panel.value.root.focus();
     return;
   }
-  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') palettesPage.value?.step(event.key === 'ArrowDown' ? 1 : -1);
-  else if (event.key === 'Escape') close();
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    palettesPage.value?.step(event.key === 'ArrowDown' ? 1 : -1);
+    keepKeys(); // the button focused may be the details' own, gone with the row it showed
+  } else if (event.key === 'Escape') close();
   else return;
   event.preventDefault();
 };

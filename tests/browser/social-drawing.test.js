@@ -11,7 +11,7 @@ import { Watch } from '@/social/watching';
 import { toBase64url } from '@/social/base64url';
 import { CHECK_EVERY_MS, MOST_ARTISTS, useDrawingStore } from '@/store/DrawingStore';
 import RoomPeople from '@/components/social/RoomPeople.vue';
-import ControlPanel from '@/components/ControlPanel.vue';
+import ColorLayer from '@/components/ColorLayer.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { ASK_AGAIN_MS, HELD_FLOAT_MS } from '@/store/project/sharing';
 import { followParams } from '@/store/project/rendering';
@@ -1154,11 +1154,13 @@ test('a color being picked is one change to the room: nothing goes while the pic
   // The editor goes while the system picker is open: the pick is over, and what it got to goes.
   const element = document.createElement('div');
   document.body.append(element);
-  const app = createApp(ControlPanel).use(room.pinia).use(i18n);
+  const workspace = useWorkspaceStore(room.pinia);
+  workspace.openColors('fg', 'palettes'); // the layer on Palettes, where This drawing is the Custom color list's editor
+  const app = createApp({ render: () => (workspace.colorBox ? h(ColorLayer) : null) }).use(room.pinia).use(i18n);
   app.mount(element);
   toStop.push(() => { if (element.isConnected) { app.unmount(); element.remove(); } });
   await nextTick();
-  const chip = element.querySelector('input.chip');
+  const chip = element.querySelector('.color-layer input.chip');
   chip.value = '#440000';
   chip.dispatchEvent(new Event('input', { bubbles: true }));
   expect(room.project._colorPick).toBe(true);

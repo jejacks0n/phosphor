@@ -390,7 +390,7 @@ test('from SAUCE it shows ANSI first; with no drawing it opens over the start sc
 });
 
 // The report (bug bash 2): Escape in the font's size kept the typed number, and a click elsewhere then applied it. Escape
-// now puts the field back to the size in use, as it does in Dimensions and Palette colors. A typed field that waits for
+// now puts the field back to the size in use, as it does in Dimensions and the Custom color list's hex. A typed field that waits for
 // Enter or a blur takes Escape this way: a new one needs it too.
 test('Font size: Escape puts the field back to the size in use, and a blur after it changes nothing', async () => {
   const { workspace } = await grid(40, 40);

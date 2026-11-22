@@ -270,7 +270,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const _handleWandKeys = (e) => {
     const wand = workspaceStore.wand;
     if (!wand || e.defaultPrevented || ownsKey(e.target, e) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
-    if (workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false; // the palette has the keys; mid-drag, the drag's end decides
+    if (workspaceStore.paletteLayerOpen || workspaceStore.colorBox || workspaceStore.isPainting) return false; // the palettes have the keys; mid-drag, the drag's end decides
     if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
     else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectionIds);
     else return false;

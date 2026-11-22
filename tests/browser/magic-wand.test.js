@@ -169,6 +169,27 @@ test('with a checkbox focused (All layers, just tapped), Delete takes the wand c
   }
 });
 
+// The color layer's swatches and buttons take Delete and Backspace themselves: the wand's selection isn't erased under them.
+test('with the color layer open, Delete on a button of it leaves the drawing and the wand selection alone', async () => {
+  const { project, workspace, type, click, read } = await scene();
+  app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
+  app.mount(document.createElement('div'));
+  type(2, 2, ['aBa']);
+  workspace.wandContiguous = false;
+  click(2, 2);
+  workspace.openColors('fg', 'palettes');
+  const swatch = document.body.appendChild(document.createElement('button'));
+  try {
+    swatch.focus();
+    for (const key of ['Delete', 'Backspace']) swatch.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    await settle(project);
+    expect(read(2, 2, 4)).toBe('aBa');
+    expect(workspace.wand).not.toBe(null);
+  } finally {
+    swatch.remove();
+  }
+});
+
 test('a wand click outside the rectangle keeps the rectangle and selects nothing', async () => {
   const { workspace, type, click } = await scene();
   type(2, 2, ['aBa']);
