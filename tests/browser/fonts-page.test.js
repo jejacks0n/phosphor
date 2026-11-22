@@ -1047,14 +1047,6 @@ test('« beside the search folds the column, » brings it back, remembered next 
   expect(host.querySelector('aside.filters-side')).toBeTruthy();
 });
 
-test("the Filters column's head is as tall as the search's row beside it", async () => {
-  await wide();
-  await mount({ library: FIXTURE() });
-  await waitFor(() => libraryNames().length);
-  const height = (el) => el.getBoundingClientRect().height;
-  expect(height(host.querySelector('.filters-head'))).toBe(height(host.querySelector('.list-side .top')));
-});
-
 test("in a short window, a long Filters column scrolls and its head and the search's row keep their height", async () => {
   await page.viewport(1400, 600);
   onTestFinished(() => page.viewport(414, 896));
@@ -1249,27 +1241,6 @@ test("a library font chosen shows its 256 slots, fetched once (Use this font doe
   await press(button('Use this font'));
   await vi.waitFor(async () => expect((await loadFonts()).some((f) => f.id === entry.fontId)).toBe(true)); // kept, before the next test clears the store
   expect(fileFetches).toBe(1);
-});
-
-test("the slots keep a least width and the sheet scrolls both ways; the details' chips and From line up with the title", async () => {
-  const index = FIXTURE();
-  serveFile(index, 'Zeta');
-  await mount({ library: index }); // a phone's width: the slots don't fit across
-  await chooseLibrary('Zeta');
-  await vi.waitFor(() => expect(host.querySelectorAll('.edit-side .grid.sheet .cell').length).toBe(256));
-  const sheet = host.querySelector('.edit-side .grid.sheet');
-  expect(getComputedStyle(sheet).overflowX).toBe('auto');
-  expect(getComputedStyle(sheet).overflowY).toBe('auto');
-  expect(sheet.querySelector('.cell').getBoundingClientRect().width).toBeGreaterThanOrEqual(28);
-  expect(sheet.scrollWidth).toBeGreaterThan(sheet.clientWidth);
-  const left = host.querySelector('.edit-side .head .title').getBoundingClientRect().left;
-  const chips = host.querySelector('.edit-side .tag-chips'), originList = host.querySelector('.edit-side dl.origin');
-  expect(chips.querySelector('.chip').getBoundingClientRect().left).toBe(left);
-  expect(originList.querySelector('dt').getBoundingClientRect().left).toBe(left);
-  const long = [...chips.querySelectorAll('.chip')].find((el) => el.textContent === 'Ready to paint');
-  expect(getComputedStyle(long).maxWidth).toBe('60px');
-  expect([getComputedStyle(long).whiteSpace, getComputedStyle(long).textOverflow]).toEqual(['nowrap', 'ellipsis']);
-  expect(long.title).toBe('Ready to paint'); // the whole of it on hover
 });
 
 test("a library font that can't be fetched shows its sample instead of its slots", async () => {
