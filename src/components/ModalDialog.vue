@@ -15,8 +15,9 @@ import { useModal } from '@/composables/useModal';
 // its own heading), `label` names it; `focus` false leaves focus to the slot. `closable` adds a close button (×) over
 // the top right corner, as About's, which cancels as Escape does. The browser's Back cancels it too, and the page stays, unless `back` is
 // false: a dialog the address itself shows or asks about (SOCIAL's pages, its question, ending a room), which Back
-// moves past. `full` makes it the whole window at 700px wide and below (the Plugins dialog), its × inside the corner. The
-// <dialog> itself is useModal's.
+// moves past. `full` makes it the whole window at 700px wide and below (the Plugins dialog), its × inside the corner.
+// `tall` gives it one height whatever it holds, so it doesn't change size as a list in it is searched; a shorter window
+// still shortens it. The <dialog> itself is useModal's.
 const props = defineProps({
   title: { type: String, default: '' },
   label: { type: String, default: '' },
@@ -27,6 +28,7 @@ const props = defineProps({
   closable: { type: Boolean, default: false },
   back: { type: Boolean, default: true },
   full: { type: Boolean, default: false },
+  tall: { type: Boolean, default: false },
 });
 const { t } = useI18n();
 const emit = defineEmits(['cancel']);
@@ -59,7 +61,7 @@ const onMouseDown = (event) => outside(event) && (props.long || props.wide) && e
 
 <template>
   <Teleport to="body">
-    <dialog :ref="open" class="modal-dialog" :class="{ long: props.long || props.wide, wide: props.wide, full: props.full }" :aria-label="props.title ? null : props.label" :aria-labelledby="props.title ? 'modal-dialog-title' : null" @keydown="onKeyDown" @cancel="onCancel" @close="onClose" @click="onClick" @mousedown="onMouseDown">
+    <dialog :ref="open" class="modal-dialog" :class="{ long: props.long || props.wide, wide: props.wide, full: props.full, tall: props.tall }" :aria-label="props.title ? null : props.label" :aria-labelledby="props.title ? 'modal-dialog-title' : null" @keydown="onKeyDown" @cancel="onCancel" @close="onClose" @click="onClick" @mousedown="onMouseDown">
       <button v-if="props.closable" class="close" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('cancel')">×</button>
       <div class="body" :tabindex="props.long || props.wide ? -1 : undefined">
         <h3 v-if="props.title" id="modal-dialog-title">{{ props.title }}</h3>
@@ -113,7 +115,11 @@ dialog.modal-dialog.long > div.body {
 dialog.modal-dialog.wide {   /* after long, which it also is */
   max-width: 860px;
 }
-@media (max-width: 700px) {   /* after wide, which it may also be */
+/* One height whatever it holds (a list inside does the scrolling), up to the window's, which max-height keeps it in. */
+dialog.modal-dialog.tall {
+  height: 720px;
+}
+@media (max-width: 700px) {   /* after wide and tall, which it may also be */
   dialog.modal-dialog.full {
     inset: 0;
     width: 100%;

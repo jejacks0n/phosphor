@@ -352,3 +352,30 @@ test('only the cards scroll: the tabs, the search and the filter stay where they
   await vi.waitFor(() => expect(cards.scrollTop).toBe(400));
   expect([search.getBoundingClientRect().top, tab.getBoundingClientRect().top]).toEqual(before);
 });
+
+test('on a wide window the dialog keeps one height, whatever a search finds or the tab shown, and follows the window\'s', async () => {
+  await page.viewport(1200, 800);
+  await vi.waitFor(() => expect(window.innerWidth).toBe(1200));
+  try {
+    await mount();
+    await vi.waitFor(() => expect(names().length).toBeGreaterThan(3));
+    const height = () => Math.round(document.querySelector('dialog.modal-dialog').getBoundingClientRect().height);
+    expect(height()).toBe(720);
+    const search = page.getByRole('searchbox', { name: 'Search plugins' });
+    await search.fill('no plugin is named this');
+    await vi.waitFor(() => expect(names()).toHaveLength(0));
+    expect(height()).toBe(720);
+    await search.fill('rain');
+    await vi.waitFor(() => expect(names()).toEqual(['Rain']));
+    expect(height()).toBe(720);
+    const installed = [...document.querySelectorAll('dialog [role=tab]')].find((tab) => tab.textContent.includes('Installed'));
+    installed.click();
+    await vi.waitFor(() => expect(installed.getAttribute('aria-selected')).toBe('true'));
+    expect(height()).toBe(720);
+    // A shorter window: 20px clear of its edges, as every dialog is.
+    await page.viewport(1200, 600);
+    await vi.waitFor(() => expect(height()).toBe(560));
+  } finally {
+    await page.viewport(414, 896);
+  }
+});
