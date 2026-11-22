@@ -567,6 +567,12 @@ legend button.fold span.on {
   align-items: baseline;
 }
 
+/* Browse ▸ keeps to one line, and a long label (French's Palette de couleurs) wraps beside it instead. */
+button.browse {
+  flex: none;
+  white-space: nowrap;
+}
+
 :deep(div.row-inputs) {
   display: flex;
   justify-content: space-between;

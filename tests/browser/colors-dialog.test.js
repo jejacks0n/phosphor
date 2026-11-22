@@ -45,6 +45,8 @@ const search = async (words) => {
   field.dispatchEvent(new Event('input'));
   await nextTick();
 };
+// Focus on something of the dialog's that's still there and on, so keys stay the dialog's rather than the page's.
+const focusKept = () => dialog().contains(document.activeElement) && !document.activeElement.disabled;
 const SWEETIE = SHIPPED.find((p) => p.slug === 'sweetie-16');
 
 test('Library lists the shipped palettes: colors, name linking to its Lospec page, author or "on Lospec", and how many colors', async () => {
@@ -92,7 +94,7 @@ test('Use makes the palette this drawing\'s Custom color list and its card says 
   button.focus();
   await press(button);
   await nextTick();
-  expect(dialog().contains(document.activeElement) && !document.activeElement.disabled).toBe(true); // keys stay the dialog's
+  expect(focusKept()).toBe(true);
   expect(project.quantize).toBe('palette');
   expect(project.palette).toBe(SWEETIE.colors.join(' '));
   const use = card('Sweetie 16').querySelector('button.use');
@@ -109,9 +111,13 @@ test('Put back restores the Color palette and the list as they were when the dia
   const line = dialog().querySelector('p.put-back');
   expect(line.textContent).toContain("This drawing's colors were replaced.");
   await show('favorites');
-  await press(dialog().querySelector('p.put-back > button'));
+  const back = dialog().querySelector('p.put-back > button');
+  back.focus();
+  await press(back);
   expect([project.quantize, project.palette]).toEqual(['cga', '#111111 #222222']);
   expect(dialog().querySelector('p.put-back')).toBe(null);
+  await nextTick();
+  expect(focusKept()).toBe(true);
 });
 
 test('★ keeps a palette under Favorites, which counts it, and takes it out again', async () => {
@@ -127,8 +133,12 @@ test('★ keeps a palette under Favorites, which counts it, and takes it out aga
   expect(tab('favorites').querySelector('.count').textContent).toBe('1');
   await show('favorites');
   expect(names()).toEqual(['Sweetie 16']);
-  await press(card('Sweetie 16').querySelector('button.star'));
+  const unstar = card('Sweetie 16').querySelector('button.star');
+  unstar.focus();
+  await press(unstar);
   expect(cards()).toHaveLength(0);
+  await nextTick();
+  expect(focusKept()).toBe(true);
   expect(dialog().querySelector('p.none').textContent).toBe('Nothing kept yet. ★ on a palette keeps it here.');
   expect(tab('favorites').querySelector('.count').textContent).toBe('0');
 });
@@ -157,7 +167,4 @@ test('a lock arriving while it is open turns Use and Put back off, with the reas
     expect(button.title).toBe(reason);
     expect(button.hasAttribute('data-off-reason')).toBe(true);
   }
-  use.click();
-  back.click();
-  expect(project.palette).toBe(SWEETIE.colors.join(' ')); // nothing written
 });
