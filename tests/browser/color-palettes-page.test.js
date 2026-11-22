@@ -3,8 +3,8 @@
 // Put back undoes every Use since the layer opened, ☆ Favorite keeps a palette, Save .hex saves one, Use and Put back are
 // off while the settings are locked, and Get from Lospec, with fetch stubbed: nothing asked until it's pressed, the
 // palette kept under Favorites and chosen, or what went wrong under the field.
-import { afterEach, expect, test, vi } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest';
+import { page as browserPage, userEvent } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
 import { i18n } from '@/i18n';
 import ColorLayer from '@/components/ColorLayer.vue';
@@ -651,13 +651,34 @@ test('Escape in the hex field puts back the color and the layer stays open; a se
   expect(workspace.colorBox).toBe(null);
 });
 
-test('Up and Down on a swatch of the editor stay the swatches\' and don\'t walk the page\'s rows', async () => {
-  await mount({ quantize: 'palette', palette: Array.from({ length: 20 }, (_, i) => `#0000${i.toString(16).padStart(2, '0')}`).join(' ') });
-  const swatch = editor().querySelector('button.swatch');
-  swatch.focus();
-  await key('ArrowDown');
-  expect(title()).toBe('Custom color list');
-  expect(editor().querySelectorAll('button.swatch')[8].getAttribute('aria-pressed')).toBe('true');
+test('Up and Down on a swatch of the editor stay the swatches\' and land on the swatch directly above and below, at any width', async () => {
+  await mount({ quantize: 'palette', palette: Array.from({ length: 40 }, (_, i) => `#0000${i.toString(16).padStart(2, '0')}`).join(' ') });
+  const cells = () => [...editor().querySelectorAll('div.swatches > div.swatch')];
+  const buttons = () => [...editor().querySelectorAll('button.swatch')];
+  const pickedAt = () => buttons().findIndex((b) => b.getAttribute('aria-pressed') === 'true');
+  const columns = () => cells().filter((c) => c.offsetTop === cells()[0].offsetTop).length;
+  const check = async () => {
+    const n = columns();
+    expect(n).toBeGreaterThan(1);
+    const from = n + 1; // second row, second column
+    buttons()[from].focus();
+    await key('ArrowDown');
+    expect(title()).toBe('Custom color list'); // the page's rows weren't walked
+    expect(pickedAt()).toBe(from + n);
+    expect(cells()[from + n].offsetLeft).toBe(cells()[from].offsetLeft);
+    await key('ArrowUp');
+    await key('ArrowUp');
+    expect(pickedAt()).toBe(from - n);
+    expect(cells()[from - n].offsetLeft).toBe(cells()[from].offsetLeft);
+    return n;
+  };
+  const small = await check();
+  await browserPage.viewport(1000, 800);
+  onTestFinished(() => browserPage.viewport(414, 896));
+  await vi.waitFor(() => expect(innerWidth).toBe(1000));
+  await nextTick();
+  await vi.waitFor(() => expect(columns()).not.toBe(small));
+  expect(await check()).not.toBe(small);
 });
 
 test('two hundred colors scroll inside the details, the actions still on screen', async () => {

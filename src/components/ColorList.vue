@@ -88,19 +88,25 @@ watch(() => props.disabled, (off) => { if (off) endPick(); });
 
 // The swatches are one Tab stop, the picked one, and the keys walk them as the grid they're drawn in: Left and Right
 // a swatch, Up and Down a row, Home and End to the first and last, stopping at the ends. Each picks the swatch it
-// reaches. The keys stop here, so they don't reach the app's (data-walk tells ownsKey the swatch keeps them).
-const ROW = 8;
-const STEP = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -ROW, ArrowDown: ROW };
+// reaches. The keys stop here, so they don't reach the app's (data-walk tells ownsKey the swatch keeps them). A row is
+// as many swatches as the laid-out grid holds in one (those sharing the first one's top), which changes as the layer is
+// resized, so Up and Down always land on the swatch above and below.
+const columnsOf = (grid) => {
+  const cells = [...grid.querySelectorAll('div.swatch')];
+  return Math.max(1, cells.filter((cell) => cell.offsetTop === cells[0].offsetTop).length);
+};
 const onSwatchKey = (event, i) => {
   if (event.altKey || event.metaKey || event.ctrlKey) return;
-  const last = colors.value.length - 1;
-  const to = { Home: 0, End: last }[event.key] ?? (STEP[event.key] === undefined ? null : i + STEP[event.key]);
+  const grid = event.currentTarget.closest('div.swatches');
+  const last = colors.value.length - 1, row = columnsOf(grid);
+  const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -row, ArrowDown: row };
+  const to = { Home: 0, End: last }[event.key] ?? (step[event.key] === undefined ? null : i + step[event.key]);
   if (to === null) return;
   event.preventDefault();
   event.stopPropagation();
   if (to < 0 || to > last) return;
   picked.value = to;
-  event.currentTarget.closest('div.swatches').querySelectorAll('button.swatch')[to].focus();
+  grid.querySelectorAll('button.swatch')[to].focus();
 };
 
 // With a mouse or a pen a swatch can be dragged to another place; a finger's drag scrolls the settings, so it can't.
