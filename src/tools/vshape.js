@@ -9,9 +9,9 @@
 // as Polygon's Sides is. A drag with one calls its outline once, at the drag's first move, with the options' values, and
 // stretches the outlines it gives (in a 0-to-1 box) over the drag's box.
 //
-// A polygon or a plugin shape keeps what made it (shapes.js: made), so while it's selected its options show its values,
-// and a change draws the selected ones of its kind again in their boxes (and is the next shape's too); a slider's drag
-// or a color picked is one undo step. Its points edited by hand, it's a path, and its options are the tool's again. A
+// A polygon or a plugin shape keeps what made it (shapes.js: made). Only the chosen kind's options show; with shapes of
+// that kind selected they show the first one's values, and a change draws the selected ones of the kind again in their
+// boxes (and is the next shape's too); a slider's drag or a color picked is one undo step. Its points edited by hand, it's a path, and its options are the tool's again. A
 // plugin shape whose plugin isn't on offer is a path until it is. On a shape with keys, the change is the frame's.
 import { t } from '@/i18n/index.js';
 import { ellipseShape, makeShape, polygonShape, rectShape, styleColors, withShape } from '@/document/shapes.js';
@@ -167,11 +167,11 @@ export default {
       },
       overSelected('polygon', null, {
         key: 'vectorSides', label: t('tools.vshape.sides'), title: t('tools.vshape.sidesTitle'), min: 3, max: 12, readout: true,
-        when: (ws) => shapeKind(ws) === 'polygon' || madeSelected(ws, 'polygon').length > 0,
+        when: (ws) => shapeKind(ws) === 'polygon',
       }, 'sides', { get: (ws) => ws.vectorSides, set: (ws, value) => { ws.vectorSides = value; } }),
       ...plugged.flatMap((plugin) => plugin.def.options.map((declared) => {
         const option = toolOption('shape', plugin.ref, plugin.def, declared);
-        const when = (ws) => shapeKind(ws) === plugin.ref || madeSelected(ws, plugin.ref).length > 0;
+        const when = (ws) => shapeKind(ws) === plugin.ref;
         return overSelected(plugin.ref, plugin, { ...option, when }, declared.id, option);
       })),
     ];

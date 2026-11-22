@@ -527,9 +527,9 @@ A shape is one more kind in the Shape tool's row on VECTOR, after Rectangle, Ell
 its name and its plugin's ("Superformula (Superformula)"). Chosen, its options follow the row, as Polygon's Sides does.
 A drag draws it live in the next shape's style: Shift makes its box square, and Snap to snaps the box's corners. Let go
 and it's a path, one undo step, which Vector select and the Node tool change like any other, and which draws without
-the plugin (in a room, or where it isn't installed). It keeps its options' values, so while it's selected they show
-and a change draws it again, until its points are edited by hand; with nothing selected, the options shape the next
-drag. The example
+the plugin (in a room, or where it isn't installed). It keeps its options' values, so while it's selected and
+its kind is the one chosen they show, and a change draws it again, until its points are edited by hand; with nothing
+of its kind selected, the options shape the next drag. The example
 is Superformula (`plugins/superformula/`), Johan Gielis's superformula, a soft five-pointed star at its defaults:
 
 ```js
