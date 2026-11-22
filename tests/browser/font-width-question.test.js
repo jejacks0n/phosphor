@@ -7,26 +7,42 @@ import { useFontActions } from '@/composables/useFontActions.js';
 import { askFontWidth } from '@/composables/useFontWidth.js';
 import { toastMessage, toastAction, toastSecond, closeToast } from '@/composables/useToast.js';
 import { addBitmapFont, loadFonts, removeFont, storedBitmapFont, storeFontPart } from '@/lib/userFonts.js';
-import { CP437_BLOCKS, fontId } from '@/lib/BitmapFont.js';
+import { blocksOf, fontId } from '@/lib/BitmapFont.js';
+import { fontWith } from '../support/blockFonts.js';
+import { useFontSetup } from '@/composables/useFontSetup.js';
+import { effectScope, nextTick } from 'vue';
 import { writeXBin } from '@/lib/XBinFile.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { forgetLibrary } from '@/lib/fontLibrary.js';
 
 // The fonts kept in a store of this file's own: other files, run beside it in the same browser, empty the shared one.
+// refused: the store won't open, as when the browser's storage is full or blocked.
 const shared = indexedDB;
+let refused = false, scope = null;
 beforeEach(() => vi.stubGlobal('indexedDB', {
-  open: (name, version) => shared.open(name === 'phosphor-fonts' ? 'phosphor-fonts-width-question' : name, version),
+  open: (name, version) => {
+    if (refused && name === 'phosphor-fonts') throw new DOMException('Storage is full.', 'QuotaExceededError');
+    return shared.open(name === 'phosphor-fonts' ? 'phosphor-fonts-width-question' : name, version);
+  },
   deleteDatabase: (name) => shared.deleteDatabase(name),
 }));
 afterEach(async () => {
+  refused = false;
+  scope?.stop();
+  scope = null;
   for (const font of await loadFonts()) await removeFont(font.id);
   vi.unstubAllGlobals();
   forgetLibrary();
   closeToast();
 });
 
-// Its bit 0 is never lit, so its own width is 7.
-const slim = () => ({ name: 'Slim', height: 7, bytes: Uint8Array.from({ length: 256 * 7 }, (_, i) => (i % 251) & 0xfe), blocks: [...CP437_BLOCKS] });
+// Its bit 0 is never lit, so its own width is 7; its full, lower and upper blocks are where CP437 puts them (lower: false,
+// none at all).
+const rows = (from, to) => (h) => Array.from({ length: h }, (_, r) => (r >= from(h) && r < to(h) ? 0xfe : 0));
+const slim = ({ lower = true } = {}) => ({
+  ...fontWith({ 219: rows(() => 0, (h) => h), 220: lower ? rows((h) => Math.floor(h / 2), (h) => h) : rows(() => 0, () => 0), 223: rows(() => 0, (h) => Math.floor(h / 2)) }, 7),
+  name: 'Slim',
+});
 const QUESTION = 'Slim is 7 pixels wide.';
 
 async function blank() {
@@ -52,11 +68,11 @@ const asked = () => {
   expect(toastAction.value.label).toBe('Draw it 7 wide');
   expect(toastSecond.value.label).toBe('Keep it 8 wide');
 };
-const xbin = (name = 'Slim.xb') => {
+const xbin = (name = 'Slim.xb', font = slim()) => {
   const palette = Array.from({ length: 16 }, (_, i) => '#' + (i * 16 + 8).toString(16).padStart(2, '0').repeat(3));
   const ink = { r: 255, g: 255, b: 255 }, paper = { r: 0, g: 0, b: 0 };
   const cells = Array.from({ length: 4 }, () => ({ char: 'A', fg: ink, bg: paper }));
-  return new File([writeXBin({ cols: 2, rows: 2, cells, palette, font: slim() })], name);
+  return new File([writeXBin({ cols: 2, rows: 2, cells, palette, font })], name);
 };
 
 test('choosing a narrow font with no answer draws it narrow and asks; Draw it 7 wide keeps 7 and remembers it', async () => {
@@ -127,13 +143,13 @@ test('opening an XBin in a narrow font asks; one in a font answered before doesn
   await storeFontPart(id, 'width', 8);
   workspace.userFonts = await loadFonts();
   await project.openArtFile(xbin('Slim again.xb'));
-  expect(toastMessage.value).toBe(null);
+  expect(toastSecond.value).toBe(null); // no question (only what blocks it lacks)
   expect(project.fontWidth).toBe('');
   expect(project.drawingFont.cellWidth).toBe(8);
   await storeFontPart(id, 'width', 7);
   workspace.userFonts = await loadFonts();
   await project.openArtFile(xbin('Slim third.xb'));
-  expect(toastMessage.value).toBe(null);
+  expect(toastSecond.value).toBe(null);
   expect(project.drawingFont.cellWidth).toBe(7);
 });
 
@@ -154,15 +170,49 @@ test('opening an .ans whose SAUCE names a narrow library font opens it narrow an
 });
 
 test('in someone else\'s room nothing is asked', async () => {
-  const { project } = await blank();
+  const { project, workspace } = await blank();
   await project.setDrawingFont(slim());
   project.startSharing({ send: () => {}, role: 'artist', me: 'u_5' });
+  workspace.roomFont = project.drawingFont; // the host's, as an artist drawing with them takes it
   try {
     askFontWidth(project.drawingFont);
     expect(toastMessage.value).toBe(null);
   } finally {
     project.stopSharing();
   }
+});
+
+// Ruling 6: "Set up its blocks" has the one toast; the width is asked once the font has a lower half.
+test('a narrow font with no lower half, chosen or opened as an XBin, says to set up its blocks and doesn\'t ask', async () => {
+  const { project, workspace } = await blank();
+  scope = effectScope();
+  scope.run(() => useFontSetup());
+  const bare = slim({ lower: false });
+  expect(blocksOf(bare)[1]).toBe(null);
+  const stored = await addBitmapFont(new File([bare.bytes], 'Slim.F07'));
+  workspace.userFonts = await loadFonts();
+  await useFontActions().choose(stored.id);
+  await nextTick();
+  expect(project.drawingFont.cellWidth).toBe(7); // narrow meanwhile, unanswered
+  expect(toastMessage.value).toBe('This drawing’s font, Slim, has no lower half block, so it can’t be painted in yet.');
+  expect(toastSecond.value).toBe(null);
+  closeToast();
+  await project.openArtFile(xbin('Slim.xb', bare));
+  await nextTick();
+  expect(project.drawingFont.cellWidth).toBe(7);
+  expect(toastMessage.value).toBe('This drawing’s font, Slim, has no lower half block, so it can’t be painted in yet.');
+  expect((await storedBitmapFont(stored.id)).width).toBeUndefined();
+});
+
+test('an answer the browser can\'t keep still sets the width, and says it wasn\'t kept', async () => {
+  const { project } = await blank();
+  await project.openArtFile(xbin()); // not in Yours: the answer adds it
+  asked();
+  refused = true;
+  await toastSecond.value.run();
+  expect(project.drawingFont.cellWidth).toBe(8);
+  expect(project.canUndo).toBe(true);
+  expect(toastMessage.value).toBe('This browser couldn’t keep Slim, so it will ask its width again next time.');
 });
 
 test('with no drawing nothing is asked', async () => {

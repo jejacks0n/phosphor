@@ -922,6 +922,7 @@
       "widthQuestion": "{name} fait {n} pixels de large.",
       "widthNarrow": "La dessiner sur {n} de large",
       "widthKeep": "La garder sur 8 de large",
+      "widthNotKept": "Ce navigateur n’a pas pu garder {name} : sa largeur sera redemandée la prochaine fois.",
       "sectionsAria": "Blocs, lignes ou jeux",
       "lines": "Lignes",
       "sets": "Jeux",

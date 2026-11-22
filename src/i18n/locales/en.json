@@ -922,6 +922,7 @@
       "widthQuestion": "{name} is {n} pixels wide.",
       "widthNarrow": "Draw it {n} wide",
       "widthKeep": "Keep it 8 wide",
+      "widthNotKept": "This browser couldn’t keep {name}, so it will ask its width again next time.",
       "sectionsAria": "Blocks, lines or sets",
       "lines": "Lines",
       "sets": "Sets",
