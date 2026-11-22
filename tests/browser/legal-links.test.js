@@ -100,6 +100,16 @@ test('About switches to Licenses, which lists the build\'s open-source packages 
   expect(fetched).toHaveBeenCalledTimes(1);
 });
 
+test('Licenses credits the color palettes to Lospec\'s Palette List and their authors, with its link', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('[]', { headers: { 'content-type': 'application/json' } })));
+  await mount(AboutPhosphor);
+  await showLicenses();
+  const line = [...document.querySelectorAll('section.licenses ul.assets li')].find((li) => li.textContent.startsWith('Color palettes'));
+  expect(line.textContent).toBe('Color palettes: from the Lospec Palette List, each by the author its card names');
+  const link = line.querySelector('a');
+  expect([link.textContent, link.href, link.target]).toEqual(['Lospec', 'https://lospec.com/palette-list', '_blank']);
+});
+
 test('About without licenses.json (a host that answers with the page) leaves the list out, quietly', async () => {
   const warned = vi.spyOn(console, 'warn');
   vi.stubGlobal('fetch', vi.fn(async () => new Response('<!DOCTYPE html>', { headers: { 'content-type': 'text/html' } })));

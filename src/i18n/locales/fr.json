@@ -73,6 +73,7 @@
     "credit16Colors": "lordscarlet (Doug Moore) et Brendan O'Connor pour avoir créé sixteencolors, ainsi que tous ceux qui œuvrent pour maintenir {sixteenColors} en ligne.",
     "creditFonts": "Polices : {ibmVga} du pack Ultimate Oldschool PC Font de VileR ({ccBySa}), {jetbrains} par les auteurs du projet JetBrains Mono ({ofl1}), {unscii} par viznut (domaine public), et {unifont} par Roman Czyborra, Paul Hardy et d'autres ({ofl2})",
     "creditIcons": "Icônes : la plupart des icônes proviennent de {fontAwesome} par Fonticons, Inc. ({ccBy})",
+    "creditPalettes": "Palettes de couleurs : tirées de la Palette List de {lospec}, chacune par l'auteur que nomme sa carte",
     "vilerName": "Polices VGA en mode texte de VileR",
     "creditVilerFonts": "{viler} (crédits dans {fontsTxt})",
     "moebiusName": "Polices XBin de Mœbius",
@@ -201,7 +202,9 @@
       "vga": "VGA (256 couleurs)",
       "cga": "CGA (16 couleurs)",
       "count": "Nombre limité",
-      "palette": "Liste de couleurs personnalisée"
+      "palette": "Liste de couleurs personnalisée",
+      "browse": "Parcourir ▸",
+      "browseTitle": "Parcourir les palettes de couleurs"
     },
     "paletteColors": {
       "label": "Couleurs de la palette"
@@ -345,6 +348,26 @@
     "highres": "Haute rés.",
     "classicRamp": "Rampe classique",
     "longRamp": "Rampe étendue"
+  },
+  "colorsDialog": {
+    "title": "Palettes de couleurs",
+    "library": "Bibliothèque",
+    "favorites": "Favoris",
+    "libraryIntro": "Des palettes de seize couleurs de Lospec, chacune par son auteur. En utiliser une remplace la liste de couleurs personnalisée de ce dessin.",
+    "favoritesIntro": "Les palettes que vous avez étoilées, gardées dans ce navigateur, avec celles que vous avez prises sur Lospec.",
+    "favoritesEmpty": "Rien de gardé pour le moment. ★ sur une palette la garde ici.",
+    "search": "Chercher des palettes",
+    "none": "Aucune palette ne correspond.",
+    "by": "par {author}",
+    "onLospec": "sur Lospec",
+    "colors": "{n} couleur | {n} couleurs",
+    "hex": ".hex",
+    "hexAria": "Enregistrer {name} dans un fichier .hex",
+    "star": "Mettre {name} en favori",
+    "use": "Utiliser",
+    "inUse": "Utilisée",
+    "replaced": "Les couleurs de ce dessin ont été remplacées.",
+    "putBack": "Remettre"
   },
   "colorList": {
     "swatch": "{hex}, {n} sur {count}",

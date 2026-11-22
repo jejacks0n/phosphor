@@ -109,10 +109,13 @@ script. Every section ends with Free time.
 
 ### 4. Try every palette
 - Does: in Color palette, tries Full color (24-bit), VGA (256 colors), CGA (16 colors), Limited count (and moves its
-  Color count) and Custom color list.
+  Color count) and Custom color list. Then, on CGA, opens Browse ▸, searches for a palette, presses Use on it and on
+  another, and Put back.
 - Expects: each one recolors the picture to its colors; Limited count shows a Color count slider; Custom color list
   shows Palette colors as swatches to edit, where Escape in the hex field puts back the color in use; Dither style and
-  Dither appear in the Characters section once there's a palette.
+  Dither appear in the Characters section once there's a palette. In the Color palettes dialog the search narrows the
+  cards as she types; Use recolors the picture behind it to that palette, its card says In use and the dialog stays;
+  Put back returns her to CGA and its line goes away.
 - Probes: `extremes`: set Color count to its least and its most; `undo-redo`: undo back to Full color and check the
   Dither controls go away again; `again`: pick CGA twice in a row.
 - Rated: yes, wants Tab to Color palette then the arrows
