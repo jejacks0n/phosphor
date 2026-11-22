@@ -88,7 +88,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Space pans unless the art isn't showing (SAUCE, SOCIAL), it types (a text field, a menu, Edit Mode's
   // typing) or it presses a focused control (a button, a checkbox) while the pointer isn't over the canvas.
   const _spacePans = (e) => {
-    if (!workspaceStore.editMode || workspaceStore.paletteLayerOpen || workspaceStore.isPainting) return false;
+    if (!workspaceStore.editMode || workspaceStore.paletteLayerOpen || workspaceStore.colorBox || workspaceStore.isPainting) return false;
     if (workspaceStore.activeTool === 'text' && workspaceStore.textCursor && workspaceStore.editorTab === 'output') return false; // typing, wherever focus is
     if (typesIn(e.target) || e.target?.tagName === 'SELECT') return false;
     return !ownsKey(e.target, e) || workspaceStore.pointerOverEditor;
@@ -142,7 +142,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
 
   // The shortcuts list: ?, or Alt+? while typing in Edit Mode (where ? types). Not in a field.
   const _handleHelp = (e) => {
-    if (!helpKey(e, { typing: _typing() }) || ownsKey(e.target, e) || workspaceStore.paletteLayerOpen) return false;
+    if (!helpKey(e, { typing: _typing() }) || ownsKey(e.target, e) || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
     e.preventDefault();
     workspaceStore.shortcutsOpen = true;
     return true;

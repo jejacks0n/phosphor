@@ -8,6 +8,7 @@ import ColorLayer from '@/components/ColorLayer.vue';
 import ColorPair from '@/components/ColorPair.vue';
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import { createTestApp, settle } from '../support/app.js';
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import '@/assets/global.css';
 
 let app = null, host = null;
@@ -291,4 +292,16 @@ test('a chip opens its slot\'s Colors page, closes it from Colors, and from Pale
   await nextTick();
   await press('bg');
   expect(state()).toEqual(['bg', 'colors', true]);
+});
+
+test('with the layer open and focus on its frame, Space holds no Hand tool and ? opens no shortcuts list', async () => {
+  const { project, workspace, panel } = await mount({ on: 'palettes', before: ({ workspace }) => { workspace.editMode = true; } });
+  const keys = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
+  keys.mount(document.createElement('div'));
+  onTestFinished(() => keys.unmount());
+  panel().focus();
+  panel().dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
+  panel().dispatchEvent(new KeyboardEvent('keydown', { key: '?', shiftKey: true, bubbles: true, cancelable: true }));
+  expect(workspace.heldTool).toBe(null);
+  expect(workspace.shortcutsOpen).toBe(false);
 });

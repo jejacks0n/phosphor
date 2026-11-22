@@ -1,6 +1,5 @@
 /* A small, quiet link of a button, styled like the panel's RESET buttons beside the section titles: Manage fonts beside
-   Font's label (FontField), Palettes beside Color palette's (ControlPanel), the Custom color list's Remove, Import and
-   Export (ColorList). */
+   Font's label (FontField), Palettes beside Color palette's (ControlPanel), the Custom color list's Remove (ColorList). */
 button.text {
   padding: 3px 0;
   border: none;

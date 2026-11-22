@@ -1234,7 +1234,7 @@ test('the library failing to load says so, Try again fetches again, and the othe
   await mount();
   await waitFor(() => host.querySelector('.library-note'));
   expect(host.querySelector('.library-note').textContent).toContain("The font library couldn't load.");
-  expect(button('Tags ▾')).toBeUndefined();
+  expect(host.querySelector('[title="Show filters"], [title="Hide filters"]')).toBe(null); // no Filters column to fold without a library
   expect(names()).toEqual(['A', 'B', 'Tall Mono', ...BUILT_IN]); // In use, Yours and Built-in as before
   await press(row('B'));
   expect(title()).toBe('B');
