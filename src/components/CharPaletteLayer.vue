@@ -352,7 +352,9 @@ onBeforeUnmount(() => {
       <button v-if="canMaximize" class="maximize" :title="t(fullScreen ? 'palette.layer.exitFullScreen' : 'palette.layer.fullScreen')" :aria-label="t(fullScreen ? 'palette.layer.exitFullScreen' : 'palette.layer.fullScreen')" @click="maximized = !fullScreen; keepKeys()">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="fullScreen ? 'M6 2v4H2M10 2v4h4M14 10h-4v4M2 10h4v4' : 'M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4'"/></svg>
       </button>
-      <button v-if="fullWindow" class="dismiss" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('close')">×</button>
+      <button v-if="fullWindow" class="dismiss" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('close')">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
+      </button>
     </div>
     <FontsPage v-if="onFonts" ref="fontsPage" :stage="fontsStage" @acted="keepKeys"/>
     <!-- the Palettes page -->
@@ -560,24 +562,8 @@ div.pages button[role='tab'].on {
   box-shadow: inset 0 -2px var(--accent);
 }
 
+div.pages button.maximize,
 div.pages button.dismiss {
-  align-self: center;
-  flex: none;
-  padding: 4px 8px;
-  border: none;
-  box-shadow: none;
-  background: none;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 20px;
-  line-height: 1;
-}
-
-div.pages button.dismiss:hover {
-  color: var(--text);
-}
-
-div.pages button.maximize {
   align-self: center;
   flex: none;
   display: flex;
@@ -588,11 +574,13 @@ div.pages button.maximize {
   color: var(--text-muted);
 }
 
-div.pages button.maximize:hover {
+div.pages button.maximize:hover,
+div.pages button.dismiss:hover {
   color: var(--text);
 }
 
-div.pages button.maximize svg {
+div.pages button.maximize svg,
+div.pages button.dismiss svg {
   width: 14px;
   height: 14px;
   fill: none;
