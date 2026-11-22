@@ -92,10 +92,12 @@ const type = async (text) => {
   input.dispatchEvent(new Event('input'));
   await nextTick();
 };
-const openTags = async () => {
-  await press(button('Tags ▾') ?? [...host.querySelectorAll('button.tags')][0]);
+const chip = (label) => [...host.querySelectorAll('.font-filters .chip')].find((el) => el.firstChild.textContent.trim() === label);
+// A window wide enough for the floating layer, with the Filters column beside the list.
+const wide = async () => {
+  await page.viewport(1400, 900);
+  onTestFinished(() => page.viewport(414, 896));
 };
-const chip = (label) => [...host.querySelectorAll('.picker .chip')].find((el) => el.firstChild.textContent.trim() === label);
 const label = () => host.querySelector('.library-group .label').textContent.trim();
 
 const button = (text) => [...host.querySelectorAll('button')].find((el) => el.textContent.trim() === text);
@@ -868,6 +870,7 @@ test('lines and sets are read-only in a room', async () => {
 });
 
 test('the library lists CM-7X7 as 7×7, and its Shape tag reads 7×7', async () => {
+  await wide();
   const index = FIXTURE();
   index.fonts.push(libFont('CM-7X7', { height: 7, width: 7 }));
   await mount({ library: index });
@@ -875,7 +878,6 @@ test('the library lists CM-7X7 as 7×7, and its Shape tag reads 7×7', async () 
   const row = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('CM-7X7'));
   expect(row.querySelector('.name em').textContent).toBe('7×7 · IBM PC');
   expect(row.querySelector('canvas.glyph-sample').width).toBe(168);
-  await openTags();
   expect(chip('7×7')).toBeTruthy();
   await press(row);
   expect(host.querySelector('.edit-side .meta').textContent).toBe('7×7 · Library');
@@ -923,11 +925,12 @@ test('search matches names, machines and descriptions', async () => {
   expect(names()).toContain('IBM VGA');
 });
 
-test('picking tags narrows the list and shows them as chips; Clear removes them', async () => {
+test('the Filters column sits beside the list, each tag counted across the library; picking narrows, and picked tags show above the list', async () => {
+  await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
-  await openTags();
-  expect([...host.querySelectorAll('.picker .tag-group .label')].map((el) => el.textContent)).toEqual(['Machine', 'Shape', 'Characters', 'Collection', 'Other']);
+  expect(host.querySelector('aside.filters-side')).toBeTruthy();
+  expect([...host.querySelectorAll('.filter-group .group-head .name')].map((el) => el.textContent)).toEqual(['Machine', 'Shape', 'Characters', 'Collection', 'Other']);
   expect(chip('8×16')).toBeTruthy();
   expect(chip('Latin-1')).toBeTruthy();
   expect(chip('Mœbius')).toBeTruthy();
@@ -935,72 +938,78 @@ test('picking tags narrows the list and shows them as chips; Clear removes them'
   await press(chip('IBM PC'));
   expect(libraryNames()).toEqual(['Alpha', 'Zeta']);
   expect(label()).toBe('Library · 2 found');
-  expect(host.querySelector('button.tags .badge').textContent).toBe('1');
+  expect(chip('Amiga').querySelector('.count').textContent).toBe('1'); // the whole library's count, not the results'
+  expect(chip('Amiga').disabled).toBe(false);
   expect(host.querySelector('.tag-row button.chip.picked').textContent).toContain('IBM PC');
   await press(button('Clear'));
   expect(libraryNames().length).toBe(4);
   expect(host.querySelector('.tag-row > button.chip')).toBeNull();
+  expect(host.querySelector('.picker')).toBeNull();
+  expect(host.querySelector('button.tags')).toBeNull();
 });
 
-test('a tall tag picker fits in the layer and scrolls inside it, leaving the page where it was', async () => {
-  await page.viewport(1400, 900);
+test('tags in one group widen, tags in two narrow; Clear all keeps the search', async () => {
+  await wide();
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await press(chip('IBM PC'));
+  await press(chip('Amiga'));
+  expect(libraryNames()).toEqual(['Alpha', 'Topaz', 'Zeta']);
+  await press(chip('8×16'));
+  expect(libraryNames()).toEqual(['Topaz']);
+  expect(label()).toBe('Library · 1 found');
+  await type('t');
+  await press(host.querySelector('button.clear-all'));
+  expect(host.querySelector('.tag-row button.chip.picked')).toBeNull();
+  expect(host.querySelector('.top input').value).toBe('t');
+  expect(host.querySelector('button.clear-all')).toBeNull();
+});
+
+test('« folds the column behind a Filters button with the picked count, remembered next time', async () => {
+  await wide();
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  expect(host.querySelector('button.filters-open')).toBeNull();
+  await press(chip('IBM PC'));
+  await press(host.querySelector('button.fold'));
+  expect(host.querySelector('aside.filters-side')).toBeNull();
+  expect(host.querySelector('button.filters-open .badge').textContent).toBe('1');
+  expect(host.querySelector('.tag-row button.chip.picked').textContent).toContain('IBM PC'); // still removable above the list
+  const kept = localStorage.getItem('phosphor.fontFilters');
+  app.unmount();
+  host.remove();
+  await mount({ library: FIXTURE(), before: () => localStorage.setItem('phosphor.fontFilters', kept) }); // a new mount clears localStorage first
+  await waitFor(() => libraryNames().length);
+  expect(host.querySelector('aside.filters-side')).toBeNull();
+  await press(host.querySelector('button.filters-open'));
+  expect(host.querySelector('aside.filters-side')).toBeTruthy();
+});
+
+test('the dialog under 1000px starts folded; the floating layer is 200 and 220, full screen 260 and 320', async () => {
+  await page.viewport(900, 700);
   onTestFinished(() => page.viewport(414, 896));
-  const index = FIXTURE();
-  for (let i = 0; i < 80; i += 1) index.fonts.push(libFont(`Many${i}`, { machine: `Machine ${i}` }));
-  await mount({ library: index });
-  await waitFor(() => libraryNames().length);
-  const layer = host.querySelector('.palette-layer');
-  await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('absolute'));
-  await openTags();
-  const picker = host.querySelector('.picker');
-  expect(layer.scrollTop).toBe(0); // focusing the picker doesn't scroll the layer's clipped page
-  expect(picker.getBoundingClientRect().bottom).toBeLessThanOrEqual(layer.getBoundingClientRect().bottom);
-  expect(picker.scrollHeight).toBeGreaterThan(picker.clientHeight); // its chips scroll in it instead
-  await page.viewport(1400, 420); // a shorter window while it's open: it shrinks with the layer, all of it reachable
-  await vi.waitFor(() => expect(picker.getBoundingClientRect().bottom).toBeLessThanOrEqual(layer.getBoundingClientRect().bottom));
-  expect(layer.scrollTop).toBe(0);
-  await page.viewport(1400, 900); // and grows back
-  await vi.waitFor(() => expect(picker.getBoundingClientRect().bottom).toBeGreaterThan(layer.getBoundingClientRect().bottom - 40));
-});
-
-test('Escape or a click outside closes the tag picker', async () => {
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
-  await openTags();
-  host.querySelector('.picker').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  await nextTick();
-  expect(host.querySelector('.picker')).toBeNull();
-  expect(closes).toBe(0);
-  await openTags();
-  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-  await nextTick();
-  expect(host.querySelector('.picker')).toBeNull();
+  expect(host.querySelector('aside.filters-side')).toBeNull();
+  expect(host.querySelector('button.filters-open')).toBeTruthy();
+  await page.viewport(1400, 900);
+  await vi.waitFor(() => expect(host.querySelector('aside.filters-side')).toBeTruthy()); // never pressed: the stage decides
+  const widths = () => [host.querySelector('aside.filters-side'), host.querySelector('.list-side')].map((el) => Math.round(el.getBoundingClientRect().width));
+  await vi.waitFor(() => expect(widths()).toEqual([200, 220]));
+  await press(host.querySelector('.pages button.maximize'));
+  await vi.waitFor(() => expect(widths()).toEqual([260, 320]));
+  await press(host.querySelector('.pages button.maximize'));
+  await vi.waitFor(() => expect(widths()).toEqual([200, 220]));
 });
 
-test('with the picker closed, Escape on Tags reaches the layer', async () => {
+test('Escape on a filter chip closes the layer', async () => {
+  await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
-  await openTags();
-  const tags = host.querySelector('button.tags');
-  tags.focus();
-  tags.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  await nextTick();
-  expect(host.querySelector('.picker')).toBeNull();
-  expect(closes).toBe(0);
-  tags.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  chip('IBM PC').focus();
+  chip('IBM PC').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   await nextTick();
   expect(closes).toBe(1);
-});
-
-test('a tag no current match carries is disabled', async () => {
-  await mount({ library: FIXTURE() });
-  await waitFor(() => libraryNames().length);
-  await type('zet');
-  await openTags();
-  expect(chip('Amiga').disabled).toBe(true);
-  expect(chip('IBM PC').disabled).toBe(false);
-  await press(chip('IBM PC'));
-  expect(chip('IBM PC').disabled).toBe(false); // a picked tag stays enabled
 });
 
 test('nothing matching says so, with Clear', async () => {
@@ -1015,13 +1024,12 @@ test('nothing matching says so, with Clear', async () => {
 });
 
 test('tags plus a query that match nothing say so, and Clear empties both', async () => {
+  await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
-  await openTags();
   await press(chip('IBM PC'));
   await type('rounded'); // Topaz is Amiga: nothing under IBM PC
   expect(host.querySelector('.library-note').textContent).toContain('No fonts match.');
-  expect(chip('Amiga').disabled).toBe(true);
   await press(host.querySelector('.library-note button'));
   expect(host.querySelector('.tag-row > button.chip')).toBeNull();
   expect(host.querySelector('.top input').value).toBe('');
@@ -1179,14 +1187,12 @@ test('from a library row whose font is in Yours, the arrow keys step from that r
   expect(title()).toBe('Topaz');
 });
 
-test('the arrow keys in the open tag picker leave the font list alone', async () => {
+test('the arrow keys walk the font rows from a filter chip', async () => {
+  await wide();
   await mount({ library: FIXTURE() });
   await chooseLibrary('Alpha');
-  await openTags();
-  await arrow('ArrowDown', host.querySelector('.picker'));
-  await arrow('ArrowDown', host.querySelector('button.tags'));
-  expect(title()).toBe('Alpha');
-  expect(host.querySelector('.picker')).toBeTruthy();
+  await arrow('ArrowDown', chip('IBM PC'));
+  expect(title()).not.toBe('Alpha');
 });
 
 test('useLibraryFont and keepLibraryFont, for a font in Yours or the drawing\'s, fetch nothing and make no second entry', async () => {

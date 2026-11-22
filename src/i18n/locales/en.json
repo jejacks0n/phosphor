@@ -832,7 +832,9 @@
     "fonts": {
       "filterPlaceholder": "Search fonts…",
       "filterAria": "Search fonts",
-      "tags": "Tags",
+      "filters": "Filters",
+      "clearAll": "Clear all",
+      "foldFilters": "Hide filters",
       "removeTag": "Remove {tag}",
       "clear": "Clear",
       "library": "Library",

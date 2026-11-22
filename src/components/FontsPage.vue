@@ -1,5 +1,6 @@
 <script setup>
-import { ref, shallowRef, computed, watch, useTemplateRef, nextTick, toRaw, onMounted, onBeforeUnmount } from 'vue';
+import { ref, shallowRef, computed, watch, useTemplateRef, nextTick, toRaw, onMounted } from 'vue';
+import { useLocalStorage } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -19,11 +20,14 @@ import FontBlocks from '@/components/FontBlocks.vue';
 import FontLines from '@/components/FontLines.vue';
 import FontSets from '@/components/FontSets.vue';
 import GlyphSample from '@/components/GlyphSample.vue';
+import FontFilters from '@/components/FontFilters.vue';
 import { loadLibrary, libraryEntryOf, licenseUrl, searchLibrary, shapeOf, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
 // font here only shows it: Use this font applies it, as the Font field's dropdown does.
+// stage: where the layer is, 'float' | 'dialog' (under 1000px) | 'full' (full screen) | 'phone'
+const props = defineProps({ stage: { type: String, default: 'float' } });
 const emit = defineEmits(['acted']);
 const { t } = useI18n();
 const project = useProjectStore();
@@ -51,9 +55,10 @@ const index = shallowRef(null);
 const libraryState = ref('loading'); // 'loading' | 'ready' | 'failed'
 const tags = ref([]); // the picked tags' keys
 const shownCount = ref(PAGE);
-const pickerOpen = ref(false);
-const tagsWrap = useTemplateRef('tagsWrap');
-const picker = useTemplateRef('picker');
+// The Filters column's fold (null until « or Filters is pressed: then folded only in the dialog) and its groups' folds.
+const prefs = useLocalStorage('phosphor.fontFilters', { folded: null, closed: [] }, { mergeDefaults: true });
+const folded = computed(() => prefs.value.folded ?? props.stage === 'dialog');
+const showColumn = computed(() => libraryState.value === 'ready' && props.stage !== 'phone' && !folded.value);
 const fetchLibrary = async () => {
   libraryState.value = 'loading';
   try {
@@ -63,12 +68,7 @@ const fetchLibrary = async () => {
     libraryState.value = 'failed';
   }
 };
-const outside = (event) => { if (!tagsWrap.value?.contains(event.target)) pickerOpen.value = false; };
-onMounted(() => {
-  fetchLibrary();
-  document.addEventListener('pointerdown', outside);
-});
-onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
+onMounted(fetchLibrary);
 const libraryFilter = computed(() => ({ query: filter.value, tags: tags.value }));
 const matches = computed(() => (index.value ? searchLibrary(index.value, libraryFilter.value) : []));
 const libraryRows = computed(() => matches.value.slice(0, shownCount.value));
@@ -93,28 +93,11 @@ const tagList = computed(() => {
       .sort((a, b) => (group === 'shape' ? shapeOrder(a.label) - shapeOrder(b.label) : a.label.localeCompare(b.label))),
   })).filter((g) => g.tags.length);
 });
-const counts = computed(() => (pickerOpen.value && index.value ? tagCounts(index.value, libraryFilter.value) : new Map()));
+const counts = computed(() => (index.value ? tagCounts(index.value) : new Map()));
 const toggleTag = (key) => { tags.value = tags.value.includes(key) ? tags.value.filter((k) => k !== key) : [...tags.value, key]; };
 const clearAll = () => { tags.value = []; filter.value = ''; };
-// The picker ends at the page's bottom and scrolls inside, resized with the layer (a shorter window) and the tag row
-// (picked chips wrapping): taller, it would run past the layer's clipped page out of reach.
-const sizePicker = () => {
-  if (!picker.value) return;
-  const room = page.value.getBoundingClientRect().bottom - tagsWrap.value.getBoundingClientRect().bottom - 8;
-  picker.value.style.maxHeight = `${Math.max(room, 0)}px`;
-};
-const pickerFits = new ResizeObserver(sizePicker);
-onBeforeUnmount(() => pickerFits.disconnect());
-const togglePicker = async () => {
-  pickerOpen.value = !pickerOpen.value;
-  if (!pickerOpen.value) return pickerFits.disconnect();
-  await nextTick();
-  pickerFits.observe(page.value);
-  pickerFits.observe(tagsWrap.value);
-  sizePicker();
-  picker.value.focus({ preventScroll: true });
-};
-const closePicker = () => { pickerOpen.value = false; tagsWrap.value?.querySelector('button.tags')?.focus(); };
+const clearTags = () => { tags.value = []; };
+const openFilters = () => { prefs.value.folded = false; };
 // A library entry's From, License and Credit lines: [{ label, text, href?, tail? }].
 const originLines = (e) => {
   const lines = [];
@@ -354,7 +337,16 @@ const exportPalettes = () => {
 </script>
 
 <template>
-  <div ref="page" class="page">
+  <div ref="page" class="page fonts" :class="stage">
+    <!-- the library's tags, beside the list where there's room -->
+    <aside v-if="showColumn" class="filters-side">
+      <div class="filters-head">
+        <span class="title">{{ t('palette.fonts.filters') }}</span>
+        <button v-if="tags.length" class="clear-all" @click="clearTags">{{ t('palette.fonts.clearAll') }}</button>
+        <button class="fold" :aria-label="t('palette.fonts.foldFilters')" :title="t('palette.fonts.foldFilters')" @click="prefs.folded = true">«</button>
+      </div>
+      <FontFilters v-model:closed="prefs.closed" :groups="tagList" :counts="counts" :picked="tags" @toggle="toggleTag" />
+    </aside>
     <!-- the list: choose a font to see it (or with the arrow keys) -->
     <div class="list-side">
       <div class="top">
@@ -362,28 +354,12 @@ const exportPalettes = () => {
         <button :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         <input ref="file" type="file" :accept="FONT_FILES" hidden @change="onFile">
       </div>
-      <div v-if="libraryState === 'ready'" ref="tagsWrap" class="tag-row" @keydown.esc="pickerOpen && ($event.stopPropagation(), closePicker())" @keydown.up.down="pickerOpen && $event.stopPropagation()">
-        <button class="tags" :aria-expanded="pickerOpen" @click="togglePicker">
-          {{ t('palette.fonts.tags') }}<span v-if="tags.length" class="badge">{{ tags.length }}</span> ▾
+      <div v-if="libraryState === 'ready' && (tags.length || !showColumn)" class="tag-row">
+        <button v-if="!showColumn" class="filters-open" @click="openFilters">
+          {{ t('palette.fonts.filters') }}<span v-if="tags.length" class="badge">{{ tags.length }}</span>
         </button>
         <button v-for="k in tags" :key="k" class="chip picked" :aria-label="t('palette.fonts.removeTag', { tag: tagLabel(k) })" @click="toggleTag(k)">{{ tagLabel(k) }} ×</button>
         <button v-if="tags.length" class="clear" @click="clearAll">{{ t('palette.fonts.clear') }}</button>
-        <div v-if="pickerOpen" ref="picker" class="picker" tabindex="-1" role="group" :aria-label="t('palette.fonts.tags')">
-          <div v-for="g in tagList" :key="g.group" class="tag-group">
-            <span class="label">{{ t(`palette.fonts.tagGroups.${g.group}`) }}</span>
-            <div class="chips">
-              <button
-                  v-for="x in g.tags"
-                  :key="x.key"
-                  class="chip"
-                  :class="{ picked: tags.includes(x.key) }"
-                  :aria-pressed="tags.includes(x.key)"
-                  :disabled="!tags.includes(x.key) && !counts.get(x.key)"
-                  @click="toggleTag(x.key)"
-              >{{ x.label }} <span class="count">{{ counts.get(x.key) ?? 0 }}</span></button>
-            </div>
-          </div>
-        </div>
       </div>
       <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
       <div class="list">
@@ -560,7 +536,7 @@ div.tag-row {
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  padding: 0 12px 6px;
+  padding: 6px 12px;
 }
 
 div.tag-row button {
@@ -580,14 +556,8 @@ div.tag-row button.clear {
   color: var(--accent);
 }
 
-div.tag-row button.picked,
-div.tag-row button[aria-expanded='true'] {
+div.tag-row button.picked {
   border-color: var(--accent);
-}
-
-div.tag-row button:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 
 span.badge {
@@ -598,47 +568,45 @@ span.badge {
   color: var(--surface-0);
 }
 
-div.picker {
-  position: absolute;
-  top: 100%;
-  left: 12px;
-  right: 12px;
-  z-index: 5;
-  box-sizing: border-box; /* the max-height it's given on opening holds its padding and border */
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 8px;
-  border: 1px solid var(--surface-3);
-  border-radius: 6px;
-  background: var(--surface-0);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.4);
-}
-
-div.tag-group span.label {
-  display: block;
-  margin: 6px 0 3px;
-  font-size: 10px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-div.chips {
+aside.filters-side {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex: 0 0 200px;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--surface-3);
 }
 
-@media (max-width: 700px) { /* a phone: the picker over the full width, its chips in two columns */
-  div.picker {
-    left: 0;
-    right: 0;
-  }
+div.page.full aside.filters-side {
+  flex-basis: 260px;
+}
 
-  div.chips {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
+div.filters-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--surface-3);
+}
+
+div.filters-head span.title {
+  flex: 1;
+  font-weight: 600;
+}
+
+div.filters-head button {
+  padding: 2px 6px;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+div.filters-head button.fold {
+  color: var(--text-muted);
+  font-size: 14px;
 }
 
 .library-note {

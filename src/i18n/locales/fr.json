@@ -832,7 +832,9 @@
     "fonts": {
       "filterPlaceholder": "Rechercher des polices…",
       "filterAria": "Rechercher des polices",
-      "tags": "Étiquettes",
+      "filters": "Filtres",
+      "clearAll": "Tout effacer",
+      "foldFilters": "Masquer les filtres",
       "removeTag": "Retirer {tag}",
       "clear": "Effacer",
       "library": "Bibliothèque",

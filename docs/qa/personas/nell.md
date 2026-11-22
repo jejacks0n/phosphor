@@ -269,9 +269,9 @@ change one cell on the way.
 - Rated: no (drawing)
 
 ### 27. Look in the library
-- Does: on the Fonts page, waits for the Library group, types `amiga` in Search fonts…, then clears it; opens Tags ▾, picks Tandy and 8×8, removes one chip, then Clear; searches for something that matches nothing and clicks Clear; scrolls to Show 100 more; looks at FROGBLOCK's row; chooses a library row and presses Down and Up, then opens Tags ▾ and presses Down.
-- Expects: Library · N fonts becomes Library · N found while narrowed; each tag shows a count, and a tag no current match carries is off; Machine names the machines (IBM PC, Amiga, Tandy, BBC Micro…), not folders; Escape or a click outside closes the picker (Escape doesn't close the layer); no matches says so with Clear; Show 100 more adds the next 100; FROGBLOCK says "not included" with its credit; Down and Up from a library row choose the next and previous rows (from the first one, Up goes to the last built-in font), and with the picker open they leave the chosen font alone; offline, the group says the library couldn't load and Try again works, with In use, Yours and Built-in unaffected.
-- Probes: `back-out`: open Tags ▾ and press Escape; `extremes`: pick tags until the count is one; `speed`: type in the search while the library loads.
+- Does: on the Fonts page, waits for the Library group, types `amiga` in Search fonts…, then clears it; in the Filters column, picks Tandy, Amiga and 8×8, removes one chip, then Clear; folds Shape and opens it again; types in Find a machine…; presses + N more; searches for something that matches nothing and clicks Clear; scrolls to Show 100 more; looks at FROGBLOCK's row; chooses a library row and presses Down and Up, then presses Down with a filter chip focused; folds the column with « and opens it with Filters.
+- Expects: Library · N fonts becomes Library · N found while narrowed; each tag shows how many library fonts carry it, and none is ever off; two machines list both machines' fonts, and a shape with them lists only that shape; Machine names the machines (IBM PC, Amiga, Tandy, BBC Micro…), not folders; Machine shows ten machines (picked ones first) until + N more shows them all by name, and Find a machine… narrows them; « folds the column behind a Filters button with the picked count, and it stays folded after a reload; no matches says so with Clear; Show 100 more adds the next 100; FROGBLOCK says "not included" with its credit; Down and Up from a library row choose the next and previous rows (from the first one, Up goes to the last built-in font), and from a filter chip they still walk the rows; offline, the group says the library couldn't load and Try again works, with In use, Yours and Built-in unaffected.
+- Probes: `back-out`: fold the column with « and open it with Filters; `extremes`: pick tags until the count is one; `speed`: type in the search while the library loads.
 - Rated: no (library)
 
 ### 28. Use a library font
@@ -307,7 +307,7 @@ change one cell on the way.
 - Rated: no (fonts)
 
 ### 33. The library at real widths
-- Does: on the Fonts page, searches the library for CM-7X7, reads its row and the sample beside it, chooses it and reads its details, then opens Tags ▾ and looks at the Shape group.
+- Does: on the Fonts page, searches the library for CM-7X7, reads its row and the sample beside it, chooses it and reads its details, then looks at the Filters column's Shape group.
 - Expects: the row says 7×7 with its machine and its sample is drawn 7 pixels a glyph; the details say "7×7 · Library" and its Shape tag reads 7×7; Shape lists the shapes by height, then width (7×7 before 8×8, 8×14 before 8×16); picking 7×7 lists only the 7-wide fonts of that height.
 - Probes: `extremes`: pick 4×6 and then another Shape tag.
 - Rated: no (fonts)

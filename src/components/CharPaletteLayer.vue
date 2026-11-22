@@ -313,6 +313,7 @@ const canMaximize = computed(() => wide.value && !phoneWidth.value);
 const fullScreen = computed(() => maximized.value && canMaximize.value);
 const fullWindow = computed(() => wide.value && (smallWindow.value || fullScreen.value));
 const dialog = computed(() => fullWindow.value && !phoneWidth.value && !fullScreen.value);
+const fontsStage = computed(() => (phoneWidth.value ? 'phone' : fullScreen.value ? 'full' : dialog.value ? 'dialog' : 'float')); // the Fonts page lays out its filters by it
 watch(wide, () => {
   const el = root.value;
   if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -353,7 +354,7 @@ onBeforeUnmount(() => {
       </button>
       <button v-if="fullWindow" class="dismiss" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('close')">×</button>
     </div>
-    <FontsPage v-if="onFonts" ref="fontsPage" @acted="keepKeys"/>
+    <FontsPage v-if="onFonts" ref="fontsPage" :stage="fontsStage" @acted="keepKeys"/>
     <!-- the Palettes page -->
     <div v-else class="page">
       <!-- the list: choose a palette -->
@@ -629,6 +630,11 @@ div.page {
 div.palette-layer.editing :deep(div.list-side) {
   flex: 0 0 220px;
   min-width: 0;
+}
+
+/* Full screen gives the Fonts page's list more room too (its Filters column widens itself). */
+div.palette-layer.editing.maximized :deep(div.page.fonts > div.list-side) {
+  flex-basis: 320px;
 }
 
 div.palette-layer.editing div.row div.glyphs {
