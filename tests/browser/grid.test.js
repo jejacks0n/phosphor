@@ -432,14 +432,34 @@ test('Palettes beside Color palette opens the color layer on Palettes, whatever 
   }
 });
 
+// The layer closes on a switch away, as the character palette layer does, so the one that opens on ANSI after SAUCE is
+// a new one, and nothing closing may take its color box from it.
 test('from SAUCE it shows ANSI first; with no drawing it opens over the start screen, the group reading New drawings', async () => {
   const { workspace } = await grid(40, 40);
-  workspace.editorTab = 'sauce';
+  const art = document.body.appendChild(document.createElement('div'));
+  const drawing = createApp(EditWorkspace).use(getActivePinia()).use(i18n);
+  drawing.mount(art);
   let { host, gone } = mountPanel();
-  host.querySelector('button.text.palettes').click();
-  expect(workspace.editorTab).toBe('output');
-  expect(workspace.colorLayerPage).toBe('palettes');
-  gone();
+  try {
+    workspace.editorTab = 'output';
+    workspace.openColors('fg');
+    await nextTick();
+    expect(art.querySelector('article.edit-toolbar .color-layer')).not.toBe(null);
+    workspace.editorTab = 'sauce'; // a switch away closes it
+    await nextTick();
+    expect(art.querySelector('.color-layer')).toBe(null);
+    expect(workspace.colorBox).toBe(null);
+    host.querySelector('button.text.palettes').click();
+    expect(workspace.editorTab).toBe('output');
+    await nextTick();
+    await nextTick();
+    expect(art.querySelector('article.edit-toolbar .color-layer')).not.toBe(null);
+    expect([workspace.colorBox, workspace.colorLayerPage]).toEqual(['fg', 'palettes']);
+  } finally {
+    gone();
+    drawing.unmount();
+    art.remove();
+  }
 
   const fresh = await createTestApp(); // no drawing: the start screen
   const was = fresh.workspace.editorTab;
