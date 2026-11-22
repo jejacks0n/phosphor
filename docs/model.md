@@ -170,8 +170,10 @@ pin is someone's own in the ANSI view (recolored) and its pixels in the PIXEL vi
 
 ### R5. Colors only makes paint of what's paint to it, and tints a character of someone's own.
 
-The Brush's and Pencil's Colors only (and a plugin brush, whose paint is always laid so) makes a bare ▄ (a paint
-block) of each cell it reaches that shows no character (R2's predicate for the layer's own cells with colors: their
+The Brush's and Pencil's Colors only (and a plugin brush, whose paint is always laid so, over the layer's paint as the
+Brush's is: what its `own` reads is what its writes land on, so over a character of the layer's own with ink that's the
+paint over the character, not the character's colors, and a write at less than full alpha tints it that much) makes a
+bare ▄ (a paint block) of each cell it reaches that shows no character (R2's predicate for the layer's own cells with colors: their
 halves become paint first, `unlockCells`) and of each frozen cell, whatever its character (its paint is under it
 already; the pin goes); a character of someone's own with ink keeps it and is tinted, a laid cell among them, whose tint drops its mark (R1). A cell the converter drew is paint
 to it in full and gets no ▄, on the base and on any layer, whatever chooses its characters (a ▄ isn't converted, so
@@ -203,7 +205,8 @@ layer's Characters to half-blocks, so what a vector layer held changed how the l
 layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoChar`).
 
 - Lives in: `colorsOnlyCells` in `src/store/project/editLayer.js`, which `paintStroke` there calls for `blockChars: 'plain'`
-  and a plugin brush for each call's puts (`lay` in `src/tools/pluginBrush.js`); `converted` says which cells the
+  and a plugin brush for each call's writes that leave paint (`lay` in `src/tools/pluginBrush.js`; what it reads as the
+  layer's own is `ownPaintAt` in `src/store/project/shared.js`, with `ownInked` there for a character that's tinted); `converted` says which cells the
   converter drew, with `showsNoChar` and `shapeUnder` there; Half-block's and Write block glyphs' ▄ in `writeBlocks`
   there (on the base both through `baseBlock`), which the Shape tool's Half-block asks for every cell with Write block glyphs on and for the cells `ownCharAt`
   (`src/store/project/reading.js`) names with it off (`apply` in `src/tools/shapes.js`); a block over a character under
@@ -221,7 +224,10 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
   `› R5: the report: Half-block boxes over a line box …` (projects/boxes2.phosphor: the Shape tool and the Pencil, on the
   base and a layer, a half cell apart, Merge down and undo) and `› R5: the report: with Write block glyphs off …`
   (the crossings ▄s, Random's characters over the canvas, no ▄ written there); `tests/browser/plugin-brush.test.js › R5: in
-  ANSI a put makes the cells Colors only would …` (a plugin brush's puts against the Brush's over the same pixels).
+  ANSI a put makes the cells Colors only would …` (a plugin brush's puts against the Brush's over the same pixels),
+  `› R5: in PIXEL …` and `› R5: in ANSI a put at half alpha over a letter of the layer's own tints it as the Brush at 50%
+  does`, and `› own reads the paint a write lands on …`; `tests/browser/plugin-examples.test.js › Smear: red dragged
+  across a typed letter leaves it a letter, tinted, with either Reads`.
 
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
 

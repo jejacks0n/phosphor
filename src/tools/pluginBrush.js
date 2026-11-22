@@ -3,7 +3,7 @@ import { selectionClip } from '@/lib/selectionClip';
 import { mix } from '@/lib/Cells.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { mixPaint } from '@/lib/Retouch.js';
-import { onBottom, ownPixelAt } from '@/store/project/shared.js';
+import { onBottom, ownPaintAt } from '@/store/project/shared.js';
 import { scriptOptions } from '@/plugins/solvers.js';
 import { t } from '@/i18n/index.js';
 import brushTool from '@/tools/brush';
@@ -17,10 +17,12 @@ const point = ({ x, y }) => ({ x: Number(x), y: Number(y) });
 const MAX_SIZE = brushTool.options.find((option) => option.size).max; // the Brush's largest size
 const channel = (v) => Math.min(255, Math.max(0, Math.round(v)));
 
-// A stroke's paint, the one object its begin, moves and end are handed (docs/plugins.md), with the puts of the call going
-// on. What it reads is as the stroke began, read once a pixel: shown, the colors up to the picked layer (as Retouch reads
-// them), and own, the picked layer's own paint (ownPixelAt; on the base, shown). A put is kept until the call returns;
-// one that isn't a whole grid pixel, or is outside the selection, is dropped.
+// A stroke's paint, the one object its begin, moves and end are handed (docs/plugins.md), with the writes of the call
+// going on. What it reads is as the stroke began, read once a pixel: shown, the colors up to the picked layer (as Retouch
+// reads them), and own, the picked layer's own paint (ownPaintAt, which is what a write lands on: a character of the
+// layer's own with ink isn't paint; on the base, shown). A write is a put (a color at an alpha over what the layer had)
+// or a set (the paint made exactly that, clear at 0), kept until the call returns, the last to a pixel winning; one that
+// isn't a whole grid pixel, or is outside the selection, is dropped.
 function newStroke({ project, workspace }, def, values) {
   const { cols, rows } = project, base = onBottom(project), upTo = project.editId, clip = selectionClip(workspace);
   const inGrid = (x, y) => x >= 0 && y >= 0 && x < cols && y < rows;
@@ -33,7 +35,7 @@ function newStroke({ project, workspace }, def, values) {
     };
   };
   const shown = cached((x, y) => hex2rgb(project.rawColorAt(x, y, { upTo })));
-  const own = base ? shown : cached((x, y) => ownPixelAt(project, x, y));
+  const own = base ? shown : cached((x, y) => ownPaintAt(project, x, y));
   // A read for the plugin: a copy (its changes stay its own), null off the grid.
   const reader = (read) => (x, y) => {
     x = Math.floor(x);
@@ -42,6 +44,12 @@ function newStroke({ project, workspace }, def, values) {
     return color && { ...color };
   };
   const puts = new Map();
+  const write = (x, y, color, alpha, exact) => {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || !inGrid(x, y) || (clip && !clip.pixel(x, y)) || !Number.isFinite(alpha)) return;
+    const clears = exact && alpha <= 0; // a set to nothing needs no color
+    if (!clears && ![color?.r, color?.g, color?.b].every(Number.isFinite)) return;
+    puts.set(`${x},${y}`, { x, y, exact, color: clears ? null : { r: channel(color.r), g: channel(color.g), b: channel(color.b) }, alpha: Math.min(1, Math.max(0, alpha)) });
+  };
   const paint = Object.freeze({
     cols,
     rows,
@@ -50,11 +58,8 @@ function newStroke({ project, workspace }, def, values) {
     bg: hex2rgb(workspace.editBgColor),
     shown: reader(shown),
     own: reader(own),
-    put(x, y, color, alpha) {
-      if (!Number.isInteger(x) || !Number.isInteger(y) || !inGrid(x, y) || (clip && !clip.pixel(x, y))) return;
-      if (![color?.r, color?.g, color?.b, alpha].every(Number.isFinite)) return;
-      puts.set(`${x},${y}`, { x, y, color: { r: channel(color.r), g: channel(color.g), b: channel(color.b) }, alpha: Math.min(1, Math.max(0, alpha)) });
-    },
+    put: (x, y, color, alpha) => write(x, y, color, alpha, false),
+    set: (x, y, color, alpha) => write(x, y, color, alpha, true),
     // The Brush's dab: a size that isn't a number is none, and one past the Brush's own largest is that.
     dab(from, to, size, hardness) {
       if (!Number.isFinite(Number(size))) return [];
@@ -62,14 +67,20 @@ function newStroke({ project, workspace }, def, values) {
       return brushPixels(point(from), point(to), { size: Math.min(MAX_SIZE, Number(size)), flow: 1, hardness: soft }, cols, rows).map(({ x, y, alpha }) => ({ x, y, alpha }));
     },
   });
-  return { paint, puts, base, shown, own, rows, dead: false };
+  return { paint, puts, base, shown, own, rows, written: new Set(), dead: false };
 }
 
-// The puts of a call laid: Colors only's cells first (colorsOnlyCells: the paint shows in ANSI as the Brush's Colors only
-// does, docs/model.md R5), then each pixel the color at its alpha over what the picked layer had there when the stroke
-// began, so a later put replaces an earlier one: on a layer its paint exactly (putEditPixels, clear where nothing's left),
-// on the base its pixels, opaque (paintEditPixels). Both pixels of each cell are read first, as they were: Colors only
-// can turn a cell of the layer's own into paint.
+const CLEAR = { r: 0, g: 0, b: 0, a: 0 };
+const samePaint = (a, b) => (a?.a ?? 0) === (b?.a ?? 0) && (!a?.a || (a.r === b.r && a.g === b.g && a.b === b.b));
+
+// The writes of a call laid. Each is worked out as the paint it leaves, over what the picked layer had there when the
+// stroke began (a put: its color at its alpha over that; a set: exactly its own), so a later write replaces an earlier
+// one. One that leaves a pixel the stroke hasn't touched as it was is dropped, with no cell changed for it. Then Colors
+// only's cells for the pixels left with paint (colorsOnlyCells: the paint shows in ANSI as the Brush's Colors only does,
+// docs/model.md R5; a character of the layer's own with ink stays, the paint over it tinting it), and the paint
+// (putEditPixels, clear where nothing's left, as the Eraser leaves a pixel). On the base every pixel is opaque: either
+// kind of write is its color at its alpha over what shows there (paintEditPixels). Both pixels of each cell are read
+// first, as they were: Colors only can turn a cell of the layer's own into paint.
 function lay(project, stroke) {
   const pixels = [...stroke.puts.values()];
   stroke.puts.clear();
@@ -81,9 +92,18 @@ function lay(project, stroke) {
       stroke.shown(x, py);
     }
   }
-  project.colorsOnlyCells(pixels);
-  if (stroke.base) project.paintEditPixels(pixels.map(({ x, y, color, alpha }) => ({ x, y, ...mix(stroke.shown(x, y), color, alpha), alpha: 1 })), 100, false);
-  else project.putEditPixels(pixels.map(({ x, y, color, alpha }) => ({ x, y, ...(mixPaint(stroke.own(x, y), { ...color, a: 1 }, alpha) ?? { r: 0, g: 0, b: 0, a: 0 }) })));
+  if (stroke.base) {
+    const laid = pixels.filter(({ alpha }) => alpha > 0);
+    project.colorsOnlyCells(laid);
+    return project.paintEditPixels(laid.map(({ x, y, color, alpha }) => ({ x, y, ...mix(stroke.shown(x, y), color, alpha), alpha: 1 })), 100, false);
+  }
+  const left = ({ x, y, exact, color, alpha }) => (exact ? (alpha > 0 ? { ...color, a: alpha } : CLEAR) : mixPaint(stroke.own(x, y), { ...color, a: 1 }, alpha) ?? CLEAR);
+  const writes = pixels.map((pixel) => ({ x: pixel.x, y: pixel.y, ...left(pixel) }))
+    .filter((pixel) => stroke.written.has(`${pixel.x},${pixel.y}`) || !samePaint(pixel, stroke.own(pixel.x, pixel.y)));
+  if (!writes.length) return;
+  for (const { x, y } of writes) stroke.written.add(`${x},${y}`);
+  project.colorsOnlyCells(writes.filter(({ a }) => a > 0));
+  project.putEditPixels(writes);
 }
 
 // The stroke going on (newStroke's), one at a time as the built-in tools' are; dead once the plugin threw in it. It's kept

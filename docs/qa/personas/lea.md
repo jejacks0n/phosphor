@@ -468,7 +468,8 @@ and sideways.
   new colors in characters her layer's Characters settings choose, as for any converted cell, with no ▄ half-blocks
   (where it crosses her caption, its letters stay and are tinted; Colors only's paint, [R5](../../model.md#r5-colors-only-makes-paint-of-whats-paint-to-it-and-tints-a-character-of-someones-own));
   a higher Strength carries a color further (at 100 the whole way); with This layer a stroke where the layer has no
-  paint changes nothing, and one from her doodle out drags its colors into the clear layer past its edge; each stroke is one undo step ([Writing a brush](../../plugins.md#writing-a-brush)).
+  paint changes nothing, one from her doodle out drags its colors into the clear layer past its edge, and one from
+  the clear into her doodle thins it there; each stroke is one undo step ([Writing a brush](../../plugins.md#writing-a-brush)).
 - Probes: `out-of-order`: tap once without dragging (a press alone changes nothing); `extremes`: Strength 0 (nothing
   changes) and Size 20; `again`: reload and check Smear's Size and Strength are as she left them (they're kept in the
   browser, not the drawing).

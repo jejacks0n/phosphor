@@ -8,7 +8,7 @@ import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { loadImage } from '@/document/projectIO.js';
 import { findUniform, markUniform } from '@/lib/ImageProcessor.js';
 import { MOST_CHANGE_BYTES, cellsFitAnyGrid } from '@/social/wire.js';
-import { MAX_CELLS, halfColors, mix } from '@/lib/Cells.js';
+import { MAX_CELLS, cellIndex, halfColors, mix, opensToPaint } from '@/lib/Cells.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
@@ -423,6 +423,27 @@ export function ownPixelAt(project, x, y) {
   const entry = project.editCellAt(x, y >> 1);
   if ((entry?.fg || entry?.bg) && !isFrozen(entry)) return { ...ownHalves(project, x, y >> 1)[y & 1], a: 1 };
   return project.paintLayer?.pixelAt(x, y) ?? null;
+}
+
+// Whether the layer in use (not the base, whose cells are pins) has a cell of its own at col, row with a color of its own.
+export function ownColored(project, col, row) {
+  if (onBottom(project)) return false;
+  const entry = project.editCellAt(col, row);
+  return !!(entry?.fg || entry?.bg);
+}
+
+// Whether paint over the layer in use's own cell at col, row tints its character (docs/model.md R2, R5): one with colors
+// of its own and ink to tint, not frozen. Colors only makes paint of the layer's other colored cells (colorsOnlyCells).
+export function ownInked(project, col, row) {
+  const cell = project.cells[cellIndex(col, row, project.cols)];
+  return ownColored(project, col, row) && !isFrozen(project.editCellAt(col, row)) && !!cell && !opensToPaint(cell, project.renderStyle);
+}
+
+// What a plugin brush reads as the layer in use's own paint at grid pixel x, y, and so what its writes land on
+// (tools/pluginBrush.js): as ownPixelAt, but a character of the layer's own with ink isn't paint (R5: it's kept, and
+// tinted by the paint over it), so there it's the paint over the character, or null.
+export function ownPaintAt(project, x, y) {
+  return ownInked(project, x, y >> 1) ? project.paintLayer?.pixelAt(x, y) ?? null : ownPixelAt(project, x, y);
 }
 
 export const over = (under, { r, g, b, a }) => ({ r: Math.round(under.r + (r - under.r) * a), g: Math.round(under.g + (g - under.g) * a), b: Math.round(under.b + (b - under.b) * a) });
