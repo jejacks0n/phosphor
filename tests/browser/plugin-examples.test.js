@@ -207,6 +207,20 @@ test('Smear: thin paint carried into a clear spot is never more solid than the p
   }
 });
 
+test('Smear: All layers drags the color of a block of colored spaces typed on the layer, not what\'s under it', async () => {
+  const { project, stroke } = await smearing();
+  project.writeEditCells([0, 1, 2, 3, 4, 5, 6, 7, 8, 9].flatMap((col) => [4, 5].map((row) => ({ col, row, attrs: { char: ' ', fg: '#000000', bg: '#0000ff' } }))));
+  project.commitEdit();
+  await settle(project);
+  stroke([at(4, 10), at(8, 10), at(12, 10), at(16, 10)]);
+  // Blue rides out past the block's edge onto the clear layer, as thin blue paint, less the further it goes.
+  const alphas = [10, 11, 12].map((x) => paintAt(project, x, 10)?.a ?? 0);
+  expect(alphas[0]).toBeGreaterThan(0.5);
+  expect(alphas[2]).toBeLessThan(alphas[0]);
+  expect(alphas[2]).toBeGreaterThan(0.05);
+  for (const x of [10, 11, 12]) expect(paintAt(project, x, 10)).toMatchObject({ r: 0, g: 0, b: 255 });
+});
+
 // ---- Superformula ----
 
 const outlineOf = async (values = {}) => {

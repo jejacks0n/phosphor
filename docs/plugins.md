@@ -499,8 +499,9 @@ functions, so `this` is undefined. `paint` is made once a stroke, and is the sam
 - `paint.cols`, `paint.rows`: the grid's size in grid pixels.
 - `paint.options`: the brush's values, by id.
 - `paint.fg`, `paint.bg`: the foreground and background colors, as `{ r, g, b }`.
-- `paint.shown(x, y)`: the color of a grid pixel as it shows, up to and including the picked layer (what Retouch reads),
-  as `{ r, g, b }`, or `null` off the grid.
+- `paint.shown(x, y)`: the color of a grid pixel as it shows, up to and including the picked layer, as `{ r, g, b }`, or
+  `null` off the grid. That's paint and cells both: a block of colored spaces typed on the layer, or on one under it, is
+  its color, and a letter is its ink over its background as its shape covers that half of the cell.
 - `paint.own(x, y)`: the picked layer's own paint there, as `{ r, g, b, a }` (`a` from 0 to 1), or `null` where it has
   none. With the base picked it's what `shown` gives: `{ r, g, b }`, with no `a`.
 - `paint.put(x, y, color, alpha)`: paints a grid pixel with `color` (`{ r, g, b }`, 0 to 255) at `alpha` (0 to 1) over
@@ -527,8 +528,9 @@ A brush reads and lays paint, never characters. On a drawing layer it's the laye
 pixels, opaque (the color at its alpha over what shows there). In ANSI, the cells show it as the Brush's paint shows with
 **Draw with: Colors only** (rule R5 in [Cells and paint](model.md)). A letter typed on the layer isn't paint: `own`
 reads the paint over it (`null` when there's none), a write lays paint over it, and the letter stays, tinted by that
-paint as the Brush's tints it. A blank cell of the layer's own in a color is paint: `own` reads its color, and a write
-makes paint of it.
+paint as the Brush's tints it: its background from the paint on the cell's top pixel, its ink from the bottom one, so a
+brush that paints whole cells (as `dab` covers them) gets what it would over paint. A blank cell of the layer's own in
+a color is paint: `own` reads its color, and a write makes paint of it.
 
 A brush that throws stops its stroke: what the stroke laid is taken back, a toast says "Smear failed: …" with its
 error's message, and the plugin's row in the Plugins dialog says so until you Reload the plugin or the page.

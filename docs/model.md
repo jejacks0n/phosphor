@@ -206,7 +206,9 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
 
 - Lives in: `colorsOnlyCells` in `src/store/project/editLayer.js`, which `paintStroke` there calls for `blockChars: 'plain'`
   and a plugin brush for each call's writes that leave paint (`lay` in `src/tools/pluginBrush.js`; what it reads as the
-  layer's own is `ownPaintAt` in `src/store/project/shared.js`, with `ownInked` there for a character that's tinted); `converted` says which cells the
+  layer's own is `ownPaintAt` in `src/store/project/shared.js`, with `ownInked` there for a character that's tinted, and
+  as what shows, `shownHalves` in `src/store/project/reading.js`: paint and cells both, so a write lands over what was
+  read); `converted` says which cells the
   converter drew, with `showsNoChar` and `shapeUnder` there; Half-block's and Write block glyphs' ▄ in `writeBlocks`
   there (on the base both through `baseBlock`), which the Shape tool's Half-block asks for every cell with Write block glyphs on and for the cells `ownCharAt`
   (`src/store/project/reading.js`) names with it off (`apply` in `src/tools/shapes.js`); a block over a character under
@@ -226,7 +228,8 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
   (the crossings ▄s, Random's characters over the canvas, no ▄ written there); `tests/browser/plugin-brush.test.js › R5: in
   ANSI a put makes the cells Colors only would …` (a plugin brush's puts against the Brush's over the same pixels),
   `› R5: in PIXEL …` and `› R5: in ANSI a put at half alpha over a letter of the layer's own tints it as the Brush at 50%
-  does`, and `› own reads the paint a write lands on …`; `tests/browser/plugin-examples.test.js › Smear: red dragged
+  does`, `› own reads the paint a write lands on …`, `› shown reads what shows at a pixel …` and `› a put lands over what shown
+  read …`; `tests/browser/plugin-examples.test.js › Smear: red dragged
   across a typed letter leaves it a letter, tinted, with either Reads`.
 
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.

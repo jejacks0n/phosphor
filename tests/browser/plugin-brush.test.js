@@ -16,7 +16,7 @@ import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { toastMessage } from '@/composables/useToast';
 import { HANG_KEY } from '@/plugins/hangMark';
 import { ownHangMark } from '../support/ownHangMark.js';
-import { cellIndex } from '@/lib/Cells';
+import { cellIndex, halfColors, mix } from '@/lib/Cells';
 import { t } from '@/i18n/index.js';
 import builtinBrush from '@/tools/brush';
 import '@/assets/global.css'; // the color tokens, for the icon colors
@@ -530,4 +530,52 @@ test('set makes a pixel\'s paint exactly a color at an alpha, and clears it at 0
   call = 0;
   stroke([at(0, 4)]);
   expect(project.baseColorAt(0, 4)).toBe('#000080');
+});
+
+// shown is what shows at a pixel up to the picked layer: paint, and the cells typed or pasted there or on a layer under
+// it, a character as its ink over its background at pixel scale. Not paint alone: a block of colored spaces is color.
+const WHITE = { r: 255, g: 255, b: 255 }, DEEP = { r: 0, g: 0, b: 255 };
+test('shown reads what shows at a pixel: paint, a blank cell in a color, a letter as it looks, on the layer and on one under it', async () => {
+  const read = [];
+  const { project, workspace, stroke } = await meadow({ move(from, to, paint) { read.push(SPOTS.map(([x, y]) => [paint.shown(x, y), paint.own(x, y)])); } });
+  const close = (color, want, what) => expect(near([color.r, color.g, color.b], [want.r, want.g, want.b]), `${what}: ${JSON.stringify(color)} for ${JSON.stringify(want)}`).toBe(true);
+  const expected = [
+    { r: 0, g: 0, b: 0 },                                          // clear: the black canvas under it
+    mix({ r: 0, g: 0, b: 0 }, { r: 10, g: 200, b: 30 }, 0.5),      // paint at half over it
+    halfColors({ char: 'A', bg: DEEP, fg: WHITE })[0],             // the top half of a white A on blue
+    halfColors({ char: 'B', bg: mix(DEEP, { r: 200, g: 100, b: 0 }, 0.25), fg: WHITE })[0], // a B whose background the paint over it tints
+    DEEP,                                                          // a blank cell in blue
+    { r: 9, g: 9, b: 9 },                                          // a frozen cell: the paint under it
+  ];
+  stroke([at(0, 4)]);
+  read[0].forEach(([shown], i) => close(shown, expected[i], `spot ${i}`));
+  // From a layer above, the same shows through, and none of it is that layer's own.
+  workspace.pickLayer(project.addLayer('cells', project.editId));
+  stroke([at(0, 4)]);
+  read[1].forEach(([shown, own], i) => {
+    close(shown, expected[i], `from above, spot ${i}`);
+    expect(own).toBe(null);
+  });
+});
+
+// Both pixels of each cell, as a dab covers them: paint over a letter tints its background from the top half and its
+// ink from the bottom (R2), so one half alone isn't paint over that half's look.
+test('a put lands over what shown read, whatever is there: read again, the pixel is that much of the way to the color', async () => {
+  let pass = 0;
+  const read = [[], []];
+  const { stroke } = await meadow({
+    move(from, to, paint) {
+      for (const [x, y] of SPOTS) {
+        read[pass].push(paint.shown(x, y));
+        if (pass === 0) for (const py of [y, y + 1]) paint.put(x, py, RED, 0.5);
+      }
+    },
+  });
+  stroke([at(0, 4)]);
+  pass = 1;
+  stroke([at(0, 4)]);
+  read[0].forEach((was, i) => {
+    const want = mix(was, RED, 0.5), got = read[1][i];
+    expect(near([got.r, got.g, got.b], [want.r, want.g, want.b]), `spot ${i}: ${JSON.stringify(got)} for ${JSON.stringify(want)}`).toBe(true);
+  });
 });
