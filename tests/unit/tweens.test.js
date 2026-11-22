@@ -1,7 +1,7 @@
 // Tweens: a shape worked out part way between two of its versions, and the timing that eases it.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { makeShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
+import { makeShape, polygonShape, rectShape, rotation, transformed, translation, withShape } from '../../src/document/shapes.js';
 import { makeArt } from '../../src/document/artLayers.js';
 import { EASINGS, MOTIONS, ease, lifeAt, setPartsAt, shapeAt, strayEasings, tweenBands, tweenPart, tweenReach, tweenShape, tweenedAt, workedOutAt } from '../../src/document/tweens.js';
 import { PARTS } from '../../src/document/parts.js';
@@ -411,4 +411,12 @@ test('a tweened art layer steps a whole cell at a time, eased', () => {
     assert.deepEqual([1, 2, 3, 4, 5].map((i) => at(i).slice(4)), rounded, motion);
   }
   assert.deepEqual(tweenPart('transform', art(0, 0), art(8, 16), 1 / 6).m, [1, 0, 0, 1, 1, 2]);
+});
+
+test('an outline part way between two keys is a path; at either end it\'s the key\'s, made and all', () => {
+  const a = polygonShape(0, 0, 10, 10, 5, { fill: '#ff0000' }), b = polygonShape(0, 0, 20, 20, 5, { fill: '#ff0000' });
+  assert.equal(tweenShape(a, b, 0.5).made, undefined);
+  assert.equal(tweenPart('outline', a, b, 0.5).made, undefined);
+  const held = polygonShape(0, 0, 10, 10, 5, { fill: '#ff0000' }), other = polygonShape(0, 0, 10, 10, 6, { fill: '#ff0000' });
+  assert.deepEqual(tweenPart('outline', held, other, 0.25).made, held.made); // outlines that can't be part way: a's until half way
 });

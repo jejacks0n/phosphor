@@ -526,8 +526,10 @@ under **Plugin tools**. Shapes and filters have no keys.
 A shape is one more kind in the Shape tool's row on VECTOR, after Rectangle, Ellipse and Polygon: its icon, titled with
 its name and its plugin's ("Superformula (Superformula)"). Chosen, its options follow the row, as Polygon's Sides does.
 A drag draws it live in the next shape's style: Shift makes its box square, and Snap to snaps the box's corners. Let go
-and it's an ordinary path, one undo step, which Vector select and the Node tool change like any other, saved in the file
-and never tied to the plugin again. Its options shape the next drag; a shape already drawn doesn't change. The example
+and it's a path, one undo step, which Vector select and the Node tool change like any other, and which draws without
+the plugin (in a room, or where it isn't installed). It keeps its options' values, so while it's selected they show
+and a change draws it again, until its points are edited by hand; with nothing selected, the options shape the next
+drag. The example
 is Superformula (`plugins/superformula/`), Johan Gielis's superformula, a soft five-pointed star at its defaults:
 
 ```js
@@ -548,8 +550,10 @@ export default {
 
 `id`, `name`, `icon` and `options` are as a brush's; `outline` is required.
 
-`outline(options)` is called once for each drag, at its first move, with the shape's values by id. It gives back the
-shape in a box of its own, 0 to 1 across and 0 to 1 down, which Phosphor stretches over the box you drag (so a shape
+`outline(options)` is called once for each drag, at its first move, with the shape's values by id, and again whenever
+an option changes on a drawn shape that's selected (a slider's drag calls it at every step), so it should give the same
+outlines for the same values. The shape keeps its values and the box it was drawn in, so it's drawn again in that box
+until its points are edited by hand ([Shape](vector.md#shape-u)). It gives back the shape in a box of its own, 0 to 1 across and 0 to 1 down, which Phosphor stretches over the box you drag (so a shape
 that fills its box fills the drag, as the built-in shapes do). That's a list of 1 to 200 outlines, each
 `{ closed, points }`: `closed` true or false (a boolean, not just truthy), with at least 2 points, and 500 points in
 all:
@@ -565,7 +569,7 @@ handles are relative to their point: `inX, inY` is the way from the point to the
 one after, and they're stretched with the box. Two or more outlines are one path. Numbers that aren't finite, too many
 outlines or points, a `closed` that isn't a boolean, or anything that isn't this shape draw nothing for that drag: a
 toast says "Superformula couldn't draw: …" with why, and the plugin's row says so. An `outline` that throws does the
-same.
+same. When an option changes on a drawn shape, a failure leaves the shape as it was, and a slider's drag says so once.
 
 ## Writing a filter
 

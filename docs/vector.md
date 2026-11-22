@@ -150,7 +150,9 @@ Drag from corner to corner to create a standard geometric shape. Choose the kind
 - **Polygon**: Set the number of **Sides** (3 to 12) in the options row; the polygon fits the box you drag, its first corner at the top. Hold **Shift** for a regular polygon.
 - **A plugin's shapes**: After Polygon, each with its options after the row while it's chosen; it fits the box you drag, and **Shift** makes the box square ([Writing a shape](plugins.md#writing-a-shape)).
 
-The shape is drawn as you drag, becomes an ordinary path when you let go (so its points can be edited like any other), and is selected. A click without a drag makes nothing. Each shape is one undo step.
+The shape is drawn as you drag, becomes a path when you let go (so its points can be edited like any other), and is selected. A click without a drag makes nothing. Each shape is one undo step.
+
+A polygon, or a plugin's shape, remembers its options. While it's selected with the Shape tool, the options row shows them, whichever kind is chosen, and changing one draws it again in the box it was drawn in. It keeps where it was moved, scaled or turned to, and its colors. With several selected, every one of that kind changes. A change is the next shape's too, and a slider's drag, or a color picked, is one undo step. On a shape with [keys](animation.md), the change goes to the frame's key. Once you edit its points by hand it's a plain path, and its options are the tool's again. A plugin's shape whose plugin is off or not installed is a plain path until the plugin is back.
 
 The selected shape's box shows, and its handles work without changing tools, as they do with [Vector select](#vector-select-v): drag a handle to scale (**Shift** keeps the proportions, **Alt** scales from the middle) or the knob above the box to rotate (**Shift**: steps of 15°). A drag anywhere else, inside the box too, draws a new shape, so shapes can go inside one another; to move a shape, use Vector select.
 

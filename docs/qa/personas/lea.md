@@ -474,14 +474,17 @@ and sideways.
 
 ### 33. Draw a Superformula star
 - Does: opens Layers and taps Add vector layer (the tabs go to VECTOR); picks the Shape tool, taps Superformula in its
-  row of shapes, and drags a finger from corner to corner; sets Points to 8 and drags another; undoes the second.
+  row of shapes, and drags a finger from corner to corner; with the star still selected, sets Points to 8 and drags
+  Round about; drags another star; undoes the second.
 - Expects: the row of shapes shows Superformula's star after Rectangle, Ellipse and Polygon, named "Superformula
   (Superformula)"; chosen, Points, Pinch and Round follow the row, fitting 390 wide; the drag draws a soft five-pointed
-  star live in the next shape's style, filling the box she drags, and selected when she lets go; Points 8 makes the next
-  star eight-pointed while the first stays five; each star is one undo step, and an ordinary shape the Node tool can
-  edit ([Writing a shape](../../plugins.md#writing-a-shape)).
+  star live in the next shape's style, filling the box she drags, and selected when she lets go; Points 8 turns that
+  star eight-pointed in the same box, and Round reshapes it as she drags, each one undo step; the second star comes out
+  eight-pointed with her Round, as the first now is; each star is one undo step, and a path the Node tool can edit
+  ([Shape](../../vector.md#shape-u), [Writing a shape](../../plugins.md#writing-a-shape)).
 - Probes: `back-out`: tap without dragging (it makes nothing); `extremes`: Points 1 and 20, and Pinch 4; `undo-redo`:
-  undo the star from Actions → Undo, then Redo.
+  undo the star from Actions → Undo, then Redo; `out-of-order`: move a point of the first star with the Node tool, pick
+  the Shape tool and change Points (that star stays as she edited it).
 - Rated: no (drawing)
 
 ### 34. Set Aberration, save, and come back to it

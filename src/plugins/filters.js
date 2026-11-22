@@ -8,13 +8,16 @@ import { goodPluginId } from './manifest.js';
 const MOST_ENTRIES = 64, MOST_VALUES = 12, MOST_NAME = 40;
 const HEX = /^#[0-9a-f]{6}$/;
 // A ref as solverRef makes one from ids the readers take (which bounds its length): a stranger's key that isn't is dropped.
-const goodRef = (ref) => {
+export const goodPluginRef = (ref) => {
   if (!isSolverRef(ref)) return false;
   const pluginId = pluginOfSolver(ref), id = ref.slice(ref.lastIndexOf('/') + 1);
   return goodPluginId(pluginId) && ID.test(id) && ref === solverRef(pluginId, id);
 };
 const plain = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
 const goodValue = (value) => typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value)) || (typeof value === 'string' && HEX.test(value));
+// A stranger's values for a plugin's options: at most 12 option ids, each a finite number, a boolean or a lowercase '#rrggbb'.
+export const goodPluginValues = (values) => plain(values) && Object.keys(values).length <= MOST_VALUES
+  && Object.entries(values).every(([id, value]) => OPTION_ID.test(id) && goodValue(value));
 
 // A filter's entry for values (every option's, as its options give them): only those off their defaults, or null when
 // none are (the filter's off).
@@ -32,10 +35,8 @@ export function cleanFilterOptions(raw) {
   if (!plain(raw)) return kept;
   for (const [ref, entry] of Object.entries(raw)) {
     if (Object.keys(kept).length >= MOST_ENTRIES) break;
-    if (!goodRef(ref) || !plain(entry) || typeof entry.name !== 'string' || [...entry.name].length > MOST_NAME || !plain(entry.values)) continue;
-    const values = Object.entries(entry.values);
-    if (values.length > MOST_VALUES || !values.every(([id, value]) => OPTION_ID.test(id) && goodValue(value))) continue;
-    kept[ref] = { name: entry.name, values: Object.fromEntries(values) };
+    if (!goodPluginRef(ref) || !plain(entry) || typeof entry.name !== 'string' || [...entry.name].length > MOST_NAME || !goodPluginValues(entry.values)) continue;
+    kept[ref] = { name: entry.name, values: { ...entry.values } };
   }
   return kept;
 }

@@ -638,7 +638,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             <span>{{ option.label }}</span>
             <input type="checkbox" :checked="optionValue(workspace, option)" @change="setOptionValue(workspace, option, $event.target.checked)"/>
           </label>
-          <input v-else-if="option.type === 'color'" type="color" class="option-color" :value="optionValue(workspace, option)" :aria-label="option.label" :title="option.label" @input="setOptionValue(workspace, option, $event.target.value)"/>
+          <input v-else-if="option.type === 'color'" type="color" class="option-color" :value="optionValue(workspace, option)" :aria-label="option.label" :title="option.label" @input="setOptionValue(workspace, option, $event.target.value)" @change="option.commit?.()"/>
           <div v-else-if="option.type === 'segmented'" class="segmented" role="group" :aria-label="option.label">
             <button
                 v-for="choice in option.choices"
@@ -663,7 +663,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
                 @click="setOptionValue(workspace, option, choice.value)"
             ><span v-if="offered(option).some((c) => c.glyph)" class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
           </DropdownMenu>
-          <RangeField v-else compact :setting="option" :model-value="optionValue(workspace, option)" @update:model-value="setOptionValue(workspace, option, $event)"/>
+          <RangeField v-else compact :setting="option" :model-value="optionValue(workspace, option)" @update:model-value="setOptionValue(workspace, option, $event)" @commit="option.commit?.()"/>
         </template>
       </div>
       <div v-if="activeTool.id === 'hand'" class="tool-setting-group">
