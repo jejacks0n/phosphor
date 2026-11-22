@@ -1317,6 +1317,24 @@ test('a stored font not in use shows 7 · 8 and pressing stores its answer witho
   expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
 });
 
+test('the rows read each font\'s width: the drawing\'s as drawn, a stored one\'s remembered width, else its own', async () => {
+  const { project, workspace } = await mount({ font: { ...slim(), width: 7 } });
+  const size = (name) => row(name).querySelector('.name em').textContent;
+  expect(size('Slim')).toBe('7×7'); // In use, drawn at its own width
+  const other = { ...slim(), name: 'Other', bytes: slim().bytes.map((b) => b & 0xfc) }; // 6 wide
+  await addBitmapFont(new File([other.bytes], 'Other.F07'));
+  workspace.userFonts = await loadFonts();
+  await vi.waitFor(() => expect(row('Other')).toBeTruthy());
+  expect(size('Other')).toBe('6×7'); // unanswered: its own width
+  const id = workspace.userFonts.find((f) => f.name === 'Other').id;
+  await storeFontPart(id, 'width', 8);
+  workspace.userFonts = await loadFonts();
+  await vi.waitFor(() => expect(size('Other')).toBe('8×7')); // its remembered answer
+  project.setDrawingFontWidth(9);
+  await vi.waitFor(() => expect(size('Slim')).toBe('9×7'));
+  expect(size('B')).toBe('8×16');
+});
+
 test('the meta reads the width: 7×7', async () => {
   await mount({ font: { ...slim(), width: 7 } });
   expect(host.querySelector('.edit-side .meta').textContent).toMatch(/^7×7 · /);

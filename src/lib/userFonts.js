@@ -9,7 +9,7 @@
  */
 
 import { t } from '@/i18n';
-import { fontId, fontKey, fontName, parseRawFont, parseFontSheet } from './BitmapFont.js';
+import { fontId, fontKey, fontName, narrowWidthOf, parseRawFont, parseFontSheet } from './BitmapFont.js';
 import { ttfOf } from './BitmapTtf.js';
 import { linkedFontOf } from './linkedFonts.js';
 
@@ -120,7 +120,10 @@ async function inStore(mode, use) {
   }
 }
 
-// Every stored font: [{ id, name, kind, lineHeight | height }]. Outline fonts are registered with the page; one that
+// A bitmap font's own width when it's narrow (4-7), for its row's size: listed, never stored.
+const ownWidthPart = (bytes) => { const own = narrowWidthOf({ bytes }); return own ? { ownWidth: own } : {}; };
+
+// Every stored font: [{ id, name, kind, lineHeight | height }], a narrow bitmap font's own width too. Outline fonts are registered with the page; one that
 // no longer loads (the browser stopped accepting it) is left out. Bitmap fonts are only listed: a drawing registers
 // the one it uses.
 export async function loadFonts() {
@@ -128,7 +131,7 @@ export async function loadFonts() {
   const usable = [];
   for (const { id, name, kind, lineHeight, height, data, blocks, lines, sets, width } of stored) {
     if (kind === 'bitmap') {
-      usable.push({ id, name, kind, height, ...(width && { width }), ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) });
+      usable.push({ id, name, kind, height, ...ownWidthPart(data), ...(width && { width }), ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) });
       continue;
     }
     try {
@@ -188,7 +191,7 @@ export async function addBitmapFont(file) {
   const old = await inStore('readonly', (fonts) => fonts.get(id)); // the same font again keeps its blocks, lines and sets
   const { blocks, lines, sets, width } = old ?? {}, kept = { ...(width && { width }), ...(blocks && { blocks }), ...(lines && { lines }), ...(sets && { sets }) };
   await inStore('readwrite', (fonts) => fonts.put({ ...entry, data: font.bytes, ...kept }));
-  return { ...entry, ...kept };
+  return { ...entry, ...ownWidthPart(font.bytes), ...kept };
 }
 
 // A stored bitmap font as a drawing holds one: { name, height, bytes }.

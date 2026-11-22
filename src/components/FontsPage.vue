@@ -19,7 +19,7 @@ import FontBlocks from '@/components/FontBlocks.vue';
 import FontLines from '@/components/FontLines.vue';
 import FontSets from '@/components/FontSets.vue';
 import GlyphSample from '@/components/GlyphSample.vue';
-import { loadLibrary, libraryEntryOf, licenseUrl, searchLibrary, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
+import { loadLibrary, libraryEntryOf, licenseUrl, searchLibrary, shapeOf, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
@@ -132,7 +132,7 @@ const originLines = (e) => {
   lines.push({ label: t('palette.fonts.license'), ...license });
   return lines;
 };
-const libMeta = (e) => [`${e.width ?? 8}×${e.height}`, t('palette.fonts.library'), e.linked && t('palette.fonts.notIncluded')].filter(Boolean).join(' · ');
+const libMeta = (e) => [shapeOf(e.width, e.height), t('palette.fonts.library'), e.linked && t('palette.fonts.notIncluded')].filter(Boolean).join(' · ');
 const fetching = ref(false);
 // Use this font / Add to Yours: the fetch, then the font is in Yours and the page shows it (chosen follows by font id).
 const fromLibrary = (action) => async () => {
@@ -143,7 +143,7 @@ const fromLibrary = (action) => async () => {
 const useFromLibrary = fromLibrary((e) => useLibraryFont(e));
 const keepFromLibrary = fromLibrary((e) => keepLibraryFont(e));
 const pickTag = (key) => { tags.value = [key]; filter.value = ''; };
-const libraryMeta = (e) => (e.linked ? t('palette.fonts.notIncluded') : [`${e.width ?? 8}×${e.height}`, e.machine].filter(Boolean).join(' · '));
+const libraryMeta = (e) => (e.linked ? t('palette.fonts.notIncluded') : [shapeOf(e.width, e.height), e.machine].filter(Boolean).join(' · '));
 const chosenId = ref(null);
 const hovered = ref(null); // the slot under the pointer
 const problem = ref('');
@@ -161,7 +161,7 @@ const builtIn = DISPLAY_FONTS.map((f) => ({ id: f.id, name: f.name, kind: 'built
 // A font whose bytes are a linked font's was named for it when loaded (addBitmapFont); its row shows the credit.
 const linkedOf = (id) => index.value?.linked.find((e) => e.fontId === id);
 const all = computed(() => [
-  ...(drawn.value ? [{ id: drawnId.value, name: drawn.value.name, kind: 'bitmap', height: drawn.value.height }] : []),
+  ...(drawn.value ? [{ id: drawnId.value, name: drawn.value.name, kind: 'bitmap', height: drawn.value.height, cellWidth: drawn.value.cellWidth }] : []),
   ...stored.value.filter((f) => f.id !== drawnId.value),
   ...builtIn,
 ]);
@@ -186,7 +186,8 @@ const isInUse = computed(() => chosen.value?.id === inUseId.value);
 const isStored = computed(() => stored.value.some((f) => f.id === chosen.value?.id));
 const count = computed(() => (chosen.value ? palettes.countFor(chosen.value.id) : 0));
 
-const size = (f) => (f.kind === 'bitmap' ? `8×${f.height}` : t('palette.fonts.trueType'));
+// A row's size: the drawing's font as it's drawn (cellWidth), another bitmap font at its remembered width, else its own.
+const size = (f) => (f.kind === 'bitmap' ? shapeOf(f.cellWidth ?? f.width ?? f.ownWidth, f.height) : t('palette.fonts.trueType'));
 // Drawn at its own height, or twice that when it's too small to read.
 const keys = ref({}); // a bitmap font's id -> the key it's registered under (its blocks too: BitmapFont.fontKey)
 const familyFor = (f) => f.family ?? familyOf(keys.value[f.id] ?? f.id);
@@ -199,7 +200,7 @@ const widths = computed(() => (isDrawn.value || own.value ? [...(own.value ? [ow
 const widthOff = computed(() => isDrawn.value && project._sharing?.role === 'artist'); // the host's width is the room's
 const setWidth = (w) => run(() => (isDrawn.value ? setFontWidth(drawn.value, w) : storePart(chosen.value.id, 'width', w)));
 const meta = computed(() => [
-  bitmap.value ? `${widthNow.value}×${chosen.value.height}` : size(chosen.value),
+  bitmap.value ? shapeOf(widthNow.value, chosen.value.height) : size(chosen.value),
   isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : isInUse.value && t('palette.fonts.inUseMeta'),
   !isDrawn.value && t(chosen.value.kind === 'builtIn' ? 'palette.fonts.builtInMeta' : 'palette.fonts.inBrowser'),
   font.value?.blocks && t('palette.fonts.blocksSetMeta'),

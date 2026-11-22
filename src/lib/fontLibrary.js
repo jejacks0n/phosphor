@@ -30,11 +30,14 @@ export function loadLibrary() {
 export const libraryEntryOf = (index, fontId) =>
   [...index.fonts, ...index.linked].find((e) => e.fontId === fontId) ?? null;
 
-// A font's tags (the shape is its own width by its height, 8 wide when the index doesn't say); one whose folder names no machine (Mœbius's discmaster) has no machine tag.
+// A font's shape, its width by its height (7×7): 8 wide when no width is given.
+export const shapeOf = (width, height, by = '×') => `${width ?? 8}${by}${height}`;
+
+// A font's tags (the shape is its own width by its height); one whose folder names no machine (Mœbius's discmaster) has no machine tag.
 export function tagsOf(entry) {
   const tags = [
     ...(entry.machine ? [{ key: `machine:${entry.machine}`, group: 'machine' }] : []),
-    { key: `shape:${entry.width ?? 8}x${entry.height}`, group: 'shape' },
+    { key: `shape:${shapeOf(entry.width, entry.height, 'x')}`, group: 'shape' },
     { key: `chars:${entry.chars}`, group: 'chars' },
   ];
   if (entry.collection) tags.push({ key: `collection:${entry.collection}`, group: 'collection' });
