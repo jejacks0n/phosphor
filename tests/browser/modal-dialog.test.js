@@ -200,21 +200,6 @@ test('a big one (long, wide, reading or full) is a phone\'s whole window, and a 
   expect(boxed.dialog().getBoundingClientRect().width).toBe(600);
 });
 
-test('a big one is the whole window of a phone on its side too (a short window), as the Palettes and Fonts layer is', async () => {
-  await page.viewport(844, 390);
-  onTestFinished(() => page.viewport(414, 896));
-  await vi.waitFor(() => expect([innerWidth, innerHeight]).toEqual([844, 390]));
-  for (const props of [{ long: true }, { wide: true }, { reading: true }, { full: true }]) {
-    const { dialog } = await mount(props);
-    const box = dialog().getBoundingClientRect();
-    expect([props, box.left, box.top, box.width, box.height]).toEqual([props, 0, 0, 844, 390]);
-    app.unmount();
-    host.remove();
-  }
-  const small = await mount();
-  expect(small.dialog().getBoundingClientRect().width).toBe(478); // a small box keeps its size and its margin
-});
-
 test('closed by the browser, it cancels, and opens again when whoever shows it says no', async () => {
   const { refuse, cancels, dialog } = await mount();
   refuse.value = true;

@@ -23,8 +23,8 @@ import CloseButton from '@/components/CloseButton.vue';
 // Escape does. The browser's Back cancels it too, and the page stays, unless `back` is false: a dialog the address
 // itself shows or asks about (SOCIAL's pages, its question, ending a room), or one read over another (About, the legal
 // pages), which Back moves past.
-// In a window 700px wide or less, or 520px tall or less (a phone on its side), a big one (long, wide or reading, or
-// `full`: Keyboard shortcuts) is the whole window, and a small one keeps its margin. `tall` gives it one height whatever it holds, so it doesn't change size as a list in it
+// At 700px wide and below a big one (long, wide or reading, or `full`: Keyboard shortcuts) is the whole window, and a
+// small one keeps its margin. `tall` gives it one height whatever it holds, so it doesn't change size as a list in it
 // is searched; a shorter window still shortens it. The <dialog> itself is useModal's.
 const props = defineProps({
   title: { type: String, default: '' },
@@ -217,8 +217,7 @@ dialog.modal-dialog.reading > div.head:not(.tab-strip) + div.body { /* under the
 dialog.modal-dialog.tall {
   height: 720px;
 }
-/* A phone's window, upright (narrow) or on its side (short, as the Palettes and Fonts layer counts it): a big one is all of it. */
-@media (max-width: 700px), (max-height: 520px) {   /* after the others, which it may also be */
+@media (max-width: 700px) {   /* after the others, which it may also be */
   dialog.modal-dialog.full {
     inset: 0;
     width: 100%;
