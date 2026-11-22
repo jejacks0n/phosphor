@@ -175,13 +175,16 @@ see what that does to the same photo, and save a project and reopen it.
 - Rated: yes, wants Cmd+E
 
 ### 13. Export with a Custom list of 16
-- Does: sets the Color palette to Custom with a list of 16 colors (Lospec style hex codes), exports XBin, reopens it.
-- Expects: it reopens as a Custom list of the same 16 colors, in the same order, with the same cells and font.
-- Probes: `extremes`: a list of one color, and of 16 with a repeated color.
+- Does: sets the Color palette to Custom color list and pastes 16 Lospec style hex codes into Palette colors' hex field,
+  then Enter (or Imports them as a `.hex` file); exports XBin, reopens it.
+- Expects: the 16 replace the whole list, as 16 swatches; it reopens as a Custom list of the same 16 colors, in the same
+  order, with the same cells and font.
+- Probes: `extremes`: a list of one color (Remove down to it), and of 16 with a repeated color.
 - Rated: no (drawing)
 
 ### 14. Refuse the 17th color
-- Does: sets a Custom list of 17 colors, then opens Export and looks at `.xb`; then tries Limited count at 32.
+- Does: with the 16 of step 13, presses + for a 17th color, then opens Export and looks at `.xb`; then tries Limited
+  count at 32.
 - Expects: the Export button is off for XBin and the dialog says XBin holds 16 colors and what to pick instead; the
   other formats still export.
 - Probes: `out-of-order`: change the palette to 16 with the dialog open and check the button comes on.

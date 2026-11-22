@@ -1182,7 +1182,9 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   its palette color whatever the color adjustments are. A color the adjustments can't make at all (Saturation at 0 makes
   only grays) shows under a "no" sign (a circle with a slash) and can't be picked, in **Recent** too, and the arrows, and
   **Alt+↑** and **Alt+↓** in Edit Mode, step past it. **Recent** keeps the palette colors you picked; a recent color
-  the palette doesn't have (one picked in Full Color) shows as the palette's nearest.
+  the palette doesn't have (one picked in Full Color) shows as the palette's nearest. With a Custom color list,
+  **Edit colors ▸** at the foot of the box shuts it and takes you to **Palette colors** in the settings, on its picked
+  color (on a phone the settings drawer opens). It isn't there while the settings are off.
 - **Shift+Cmd+X** (Shift+Ctrl+X): Swap the foreground and background. Plain **X** swaps them too, except in Edit Mode,
   where it types.
 

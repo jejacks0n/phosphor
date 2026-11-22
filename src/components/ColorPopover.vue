@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore, recentColor } from '@/store/WorkspaceStore';
@@ -13,6 +13,8 @@ import { gradientKey, gradientSlot, recolorStop } from '@/tools/gradientHandles.
 import RangeField from '@/components/RangeField.vue';
 import picker from '@/tools/picker.js';
 import { toast } from '@/composables/useToast';
+import { useSettingsLock } from '@/composables/useSettingsLock';
+import { desktopQuery } from '@/social/config';
 
 // The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
 // for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
@@ -156,6 +158,18 @@ const setMiter = (e) => {
   e.target.value = style.value('miter');
 };
 
+// With a Custom color list, the way to its editor in the settings column (ColorList): the box shuts, a narrow
+// window's settings drawer opens (a wide one's settings always show), and focus goes to the editor's picked swatch,
+// once the drawer has put it on its first control. Not while the settings are off, as the editor is then.
+const locked = useSettingsLock();
+const editsColors = computed(() => project.quantize === 'palette' && !locked.value);
+async function editColors() {
+  emit('close');
+  if (!matchMedia(desktopQuery).matches && !workspace.settingsOpen) workspace.toggleSettings();
+  await nextTick();
+  document.querySelector('.color-list button.swatch[aria-pressed=true]')?.focus();
+}
+
 const onPointerDown = (event) => {
   if (root.value && !root.value.contains(event.target) && !event.target.closest('.color-pair')) emit('close');
 };
@@ -275,6 +289,9 @@ onBeforeUnmount(() => {
       ></button>
     </div>
 
+    <!-- .stop: a click that reached the art's area would shut the drawer it opens. -->
+    <button v-if="editsColors" type="button" class="edit-colors text" @click.stop="editColors">{{ t('colors.editColors') }}</button>
+
     <div v-if="strokeSide" class="stroke-settings">
       <RangeField :setting="WIDTH" v-model="width" @commit="style.finish">
         <input type="number" class="width-value" min="0.5" max="64" step="0.1" :aria-label="t('vector.widthValue')" :title="t('vector.widthValue')" :value="style.value('width')" @change="setWidth"/>
@@ -299,6 +316,7 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
+<style scoped src="./textLink.css"></style>
 <style scoped>
 /* The popover's own styles undone: no centering, scrollbar or system colors. */
 div.color-popover {
@@ -615,5 +633,9 @@ button.row-label.fold:hover {
 
 .spacer {
   flex: 1;
+}
+
+button.edit-colors {
+  align-self: flex-start;
 }
 </style>

@@ -145,10 +145,13 @@ in the status bar to see what they do, and try "Start with a blank canvas" from 
 - Rated: no (touch only: no keyboard shows here)
 
 ### 6. Try the looks
-- Does: picks each Art style (ANSI, Color ASCII, Monochrome ASCII) and each Color palette from their pickers, coming
-  back to ANSI and Full color.
+- Does: picks each Art style (ANSI, Color ASCII, Monochrome ASCII) and each Color palette from their pickers. On Custom
+  color list she shuts the drawer, taps the color pair and then Edit colors ▸. Then she comes back to ANSI and Full
+  color.
 - Expects: each pick redraws the picture in under the `setting` budget; the pickers are the phone's own and readable;
-  Limited count shows a Color count slider and Custom color list shows colors to edit, both fitting the column.
+  Limited count shows a Color count slider and Custom color list shows its colors as swatches, both fitting the column,
+  a whole #rrggbb showing in the hex field; ◂ and ▸ move the picked color a place (a finger's drag on a swatch scrolls
+  the drawer and moves nothing). Edit colors ▸ shuts the color box and opens the drawer with the picked swatch focused.
 - Probes: `again`: pick the same style twice; `undo-redo`: undo the last three picks from Actions → Undo and check the
   pickers and the picture go back together.
 - Rated: no (touch only: no keyboard shows here)
