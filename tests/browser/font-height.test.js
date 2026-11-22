@@ -386,7 +386,7 @@ test('R1: 7 → 8 → 7 with art keeps every cell, and one undo per toggle walks
   project.commitEdit();
   workspace.pickLayer('edit');
   await settle(project);
-  const base = project.baseLayer, scale = project.baseScale, at = grid(project);
+  const base = project.baseLayer, scale = project.baseScale, at = grid(project), spacing = project.sauceLetterSpacing;
   const snap = () => ({
     grid: grid(project), cells: [...project.editCells], pins: [...project.baseRecords.pins],
     paint: project.paintLayer.gridPixels().data, basePixels: project.baseLayer.gridPixels().data,
@@ -409,7 +409,7 @@ test('R1: 7 → 8 → 7 with art keeps every cell, and one undo per toggle walks
   expect(snap()).toEqual(was);
   project.undo();
   await settle(project);
-  expect([project.fontWidth, project.drawingFont.cellWidth]).toEqual(['7', 7]);
+  expect([project.fontWidth, project.drawingFont.cellWidth, project.sauceLetterSpacing]).toEqual(['7', 7, spacing]);
   expect(snap()).toEqual(was);
   expect(grid(project)).toEqual(at);
   expect(project.baseLayer).toBe(base);
@@ -441,7 +441,7 @@ test('with frames, a width change keeps the grid and every frame takes it', asyn
   project.addFrame('duplicate');
   project.typeAt(4, 2, 'B');
   project.commitEdit();
-  const at = grid(project), version = project.history.version;
+  const at = grid(project), version = project.history.version, builtBefore = await project.builtFrame(0);
   toastMessage.value = null;
   await project.setDrawingFont({ ...slim, width: 7 }); // the same height at another width: never refused
   expect(toastMessage.value).toBeNull();
@@ -450,10 +450,13 @@ test('with frames, a width change keeps the grid and every frame takes it', asyn
   expect(project.drawingFont.cellWidth).toBe(9);
   expect(project.history.version).toBe(version + 2);
   expect(grid(project)).toEqual(at);
+  const built = await project.builtFrame(0); // the frame not showing, built again for the new width
+  expect(built).not.toBe(builtBefore);
   project.showFrame(0);
   await settle(project);
-  expect(project.drawingFont.cellWidth).toBe(9);
   expect(grid(project)).toEqual(at);
+  const key = (cells) => cells.map((c) => `${c.char}${c.fg.hex}${c.bg.hex}`).join();
+  expect(key(built.cells)).toBe(key(project.cells)); // as the still draws it at 9
   expect(project.editCellAt(3, 2).char).toBe('A');
   expect(project.editCellAt(4, 2)).toBeFalsy();
   project.undo(); // from the other frame

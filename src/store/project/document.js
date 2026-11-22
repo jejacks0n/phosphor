@@ -294,7 +294,7 @@ export const documentActions = {
         rows: 2 * art.rows,
         ...nameOf(file),
         // the font in use stays, but an XBin sets it: its own, or none (IBM VGA, below)
-        ...(named ? fontSettingsOf(named) : art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '', fontBlocks: art.font?.blocks ? encodeBlocks(art.font.blocks) : '', fontLines: stored?.lines ? encodeLines(stored.lines) : '', fontSets: stored?.sets ? encodeSets(stored.sets) : '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets }),
+        ...(named ? fontSettingsOf(named) : art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '', fontBlocks: art.font?.blocks ? encodeBlocks(art.font.blocks) : '', fontLines: stored?.lines ? encodeLines(stored.lines) : '', fontSets: stored?.sets ? encodeSets(stored.sets) : '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets, fontWidth: this.fontWidth }),
         ...(Array.isArray(art.palette) && art.palette.some((hex, i) => hex !== PALETTES.cga[ANSI_OF_DOS[i]].hex)
           ? { quantize: 'palette', palette: art.palette.join(' ') } // an XBin's own 16, in its DOS order
           : { quantize: Array.isArray(art.palette) ? 'cga' : art.palette }),

@@ -49,8 +49,7 @@ function nameOf(font) {
 function newHeight(project, font, settings, from, to) {
   if (project.hasFrames) return void toast(t('font.heightFrames', { name: nameOf(font), to: heightOf(font), from: heightOf(project.drawingFont) }));
   project.ensureLayer();
-  const stretches = project.imageIsWorkingCopy && !isUniform(project.image); // a working copy with content: its pixels are grid pixels
-  if (project.resizesCanvas || stretches) return regrid(project, font, settings, from, to);
+  if (holdsGrid(project)) return regrid(project, font, settings, from, to);
   const ratio = Number(project.aspectRatio), was = project.cols;
   const before = { ...fontKeysOf(project, settings), cols: project.cols, rows: project.rows, aspectRatio: project.aspectRatio };
   const after = { ...settings, ...fontGrid(project.cols, project.rows, from, to), aspectRatio: ratio > 0 ? ratio * to / from : project.aspectRatio };
@@ -172,9 +171,10 @@ function keepCopy(project, parts, from) {
 const PART_KEYS = { fontWidth: 'width', fontBlocks: 'blocks', fontLines: 'lines', fontSets: 'sets' };
 const ENCODE = { width: String, blocks: encodeBlocks, lines: encodeLines, sets: encodeSets };
 
-// Something drawn a refit would leave in the wrong place (newHeight's test), or frames: a cell of another width alone
-// then keeps the grid.
-const keepsGrid = (project) => project.hasFrames || project.resizesCanvas || (project.imageIsWorkingCopy && !isUniform(project.image));
+// Something drawn a refit would leave in the wrong place (resizesCanvas), or a working copy with content (its pixels are
+// grid pixels, so it stretches): newHeight regrids, and a cell of another width alone keeps the grid (with frames too).
+const holdsGrid = (project) => project.resizesCanvas || (project.imageIsWorkingCopy && !isUniform(project.image));
+const keepsGrid = (project) => project.hasFrames || holdsGrid(project);
 
 // The drawing given these font settings (after: fontSettingsOf's, with any set along). A font of another height changes
 // the grid (newHeight); so does a cell of another width with nothing drawn and no frames (the lines refit to the
@@ -224,13 +224,13 @@ export const fontActions = {
 
   // The drawing's font drawn at width: its own width (4-7: narrow), 8, or 9 (Letter spacing 9px). One undo step that
   // never moves a drawn cell (fontStep), and the answer kept on this browser's copy of the font: its own width, or 8
-  // for 8 and 9 (Letter spacing is the drawing's). A width it's already drawn at is no step, whatever set it (Letter
-  // spacing unset, or the SAUCE 9px flag); one it can't take, nothing.
+  // for 8 and 9 (Letter spacing is the drawing's, and 8 or 9 sets it, so the export writes it, even at the width it's
+  // drawn at). Settings it already has are no step; a width it can't take, nothing.
   setDrawingFontWidth(width) {
     const font = this.drawingFont, own = font && narrowWidthOf(font);
     if (!font || !(width === own || width === 8 || width === 9)) return;
     const after = { ...fontKeysOf(this), ...(width === own ? { fontWidth: String(own) } : { fontWidth: '', sauceLetterSpacing: String(width) }) };
-    if (font.cellWidth !== width) {
+    if (!Object.keys(after).every((key) => after[key] === this[key])) {
       if (!this.image) this.$patch(after); // no drawing yet: the next one's, with nothing to undo
       else fontStep(this, font, after); // the same height: never a Promise (keepsGrid has no working copy stretched)
     }

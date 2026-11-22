@@ -12,7 +12,7 @@ import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
 import { readSauce } from '@/lib/Sauce';
 import { readXBin, writeXBin } from '@/lib/XBinFile';
-import { SLOT_CHARS } from '@/lib/BitmapFont';
+import { CP437_BLOCKS, SLOT_CHARS } from '@/lib/BitmapFont';
 import { closeToast, toastMessage } from '@/composables/useToast';
 import { slidersAtDefaults } from '@/store/settings';
 
@@ -563,4 +563,15 @@ test('an XBin with a font, added to a drawing without one, brings its slot 0 in 
     app.unmount();
     host.remove();
   }
+});
+
+test('a narrow font in use stays narrow through an .ans with no font of its own', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  const slim = { name: 'Slim', height: 7, bytes: Uint8Array.from({ length: 256 * 7 }, (_, i) => (i % 251) & 0xfe), blocks: [...CP437_BLOCKS] };
+  await project.setDrawingFont({ ...slim, width: 7 });
+  await project.openArtFile(new File(['hello'], 'note.ans'));
+  expect(project.drawingFont.name).toBe('Slim');
+  expect(project.fontWidth).toBe('7');
+  expect(project.drawingFont.cellWidth).toBe(7);
 });

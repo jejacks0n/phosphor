@@ -814,14 +814,17 @@ test('picked again with no answer, the drawing’s own narrow font keeps its wid
   expect(project.history.version).toBe(version);
 });
 
-test('a width the drawing is already drawn at is no step, whatever Letter spacing says it', async () => {
+test('8 or 9 at the width the drawing is drawn at still sets Letter spacing, as one step', async () => {
   const project = await blank();
   await project.setDrawingFont({ ...narrow(), width: 8 });
-  const version = project.history.version;
-  await project.setDrawingFontWidth(8); // drawn at 8 with Letter spacing unset
+  await project.setDrawingFontWidth(8); // drawn at 8 with Letter spacing unset: the export would write none
+  expect([project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['8', 8]);
+  project.undo();
   expect(project.sauceLetterSpacing).toBe('');
   project.$patch({ sauceUse9pxFont: true }); // drawn at 9 by the SAUCE flag
   await project.setDrawingFontWidth(9);
-  expect(project.sauceLetterSpacing).toBe('');
+  expect([project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['9', 9]);
+  const version = project.history.version;
+  await project.setDrawingFontWidth(9); // every setting as asked: no step
   expect(project.history.version).toBe(version);
 });
