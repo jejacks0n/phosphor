@@ -1,5 +1,5 @@
 import { t } from '@/i18n';
-import { toast } from '@/composables/useToast';
+import { closeToast, toast } from '@/composables/useToast';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { addBitmapFont } from '@/lib/userFonts';
@@ -15,24 +15,38 @@ import { blocksOf, fontId, narrowWidthOf } from '@/lib/BitmapFont';
 export function askFontWidth(font) {
   const project = useProjectStore(), workspace = useWorkspaceStore(), n = narrowWidthOf(font), id = fontId(font);
   if (!project.image || !n || workspace.roomFont || blocksOf(font)[1] === null) return;
-  const answer = (width) => async () => {
+  const answer = (width) => () => {
     if (!project.drawingFont || fontId(project.drawingFont) !== id) return;
-    let kept = workspace.userFonts?.some((f) => f.id === id);
-    if (!kept) { // so the answer has somewhere to live
-      try {
-        const entry = await addBitmapFont(new File([font.bytes], `${font.name}.F${String(font.height).padStart(2, '0')}`));
-        workspace.userFonts = [...(workspace.userFonts ?? []).filter((f) => f.id !== entry.id), entry];
-        kept = true;
-      } catch {
-        // the browser's storage refused it: the drawing still takes the width
-      }
-    }
-    project.setDrawingFontWidth(width);
-    if (!kept) toast(t('palette.fonts.widthNotKept', { name: font.name }));
+    return setFontWidth(font, width);
   };
-  toast(t('palette.fonts.widthQuestion', { name: font.name, n }), {
-    stay: true,
-    action: { label: t('palette.fonts.widthNarrow', { n }), run: answer(n) },
-    second: { label: t('palette.fonts.widthKeep'), run: answer(8) },
-  });
+  question = {
+    id,
+    toast: toast(t('palette.fonts.widthQuestion', { name: font.name, n }), {
+      stay: true,
+      action: { label: t('palette.fonts.widthNarrow', { n }), run: answer(n) },
+      second: { label: t('palette.fonts.widthKeep'), run: answer(8) },
+    }),
+  };
+}
+let question = null; // the width question last shown: its font's id and its toast's
+
+// The drawing's font (font) drawn at width (setDrawingFontWidth), its answer kept: a narrow font not in Yours joins it
+// first, so the answer has somewhere to live (when the browser's storage refuses it, the width still changes and a
+// toast says the answer wasn't kept). The question's answers and the Fonts page's Width switch; a width question for
+// the font still showing closes.
+export async function setFontWidth(font, width) {
+  const project = useProjectStore(), workspace = useWorkspaceStore(), id = fontId(font);
+  if (question?.id === id) closeToast(question.toast);
+  let kept = !narrowWidthOf(font) || workspace.userFonts?.some((f) => f.id === id);
+  if (!kept) {
+    try {
+      const entry = await addBitmapFont(new File([font.bytes], `${font.name}.F${String(font.height).padStart(2, '0')}`));
+      workspace.userFonts = [...(workspace.userFonts ?? []).filter((f) => f.id !== entry.id), entry];
+      kept = true;
+    } catch {
+      // the browser's storage refused it: the drawing still takes the width
+    }
+  }
+  project.setDrawingFontWidth(width);
+  if (!kept) toast(t('palette.fonts.widthNotKept', { name: font.name }));
 }

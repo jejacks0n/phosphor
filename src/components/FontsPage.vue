@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { notSetUp } from '@/lib/fontSetup';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
+import { setFontWidth } from '@/composables/useFontWidth';
 import { storedBitmapFont, registerBitmapFont, familyOf, storeFontPart, withPart } from '@/lib/userFonts';
 import { narrowWidthOf, fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
@@ -196,7 +197,7 @@ const widthNow = computed(() => (isDrawn.value ? drawn.value.cellWidth : stored.
 // 9 only on the drawing (it's never remembered per font), and a font that isn't the drawing's shows the switch only when narrow
 const widths = computed(() => (isDrawn.value || own.value ? [...(own.value ? [own.value] : []), 8, ...(isDrawn.value ? [9] : [])] : []));
 const widthOff = computed(() => isDrawn.value && project._sharing?.role === 'artist'); // the host's width is the room's
-const setWidth = (w) => run(() => (isDrawn.value ? project.setDrawingFontWidth(w) : storePart(chosen.value.id, 'width', w)));
+const setWidth = (w) => run(() => (isDrawn.value ? setFontWidth(drawn.value, w) : storePart(chosen.value.id, 'width', w)));
 const meta = computed(() => [
   bitmap.value ? `${widthNow.value}×${chosen.value.height}` : size(chosen.value),
   isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : isInUse.value && t('palette.fonts.inUseMeta'),

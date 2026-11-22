@@ -16,6 +16,7 @@ import { openFontSetup } from '@/composables/useFontSetup.js';
 import { forgetLibrary } from '@/lib/fontLibrary';
 import { useFontActions } from '@/composables/useFontActions.js';
 import { toastMessage, toastAction, closeToast } from '@/composables/useToast.js';
+import { askFontWidth } from '@/composables/useFontWidth.js';
 
 // A stand-in linked font: the font whose id a test sets is FROGBLOCK, as FROGBLOCK's bytes can't be shipped.
 vi.mock('@/lib/linkedFonts', async (importOriginal) => {
@@ -1277,6 +1278,20 @@ test('the drawing\'s narrow font shows Width 7 · 8 · 9, pressed at its width; 
   await waitFor(() => project.drawingFont.cellWidth === 9);
   expect(pressed()).toEqual(['9']);
   expect(project.sauceLetterSpacing).toBe('9');
+});
+
+// Ruling 15: the drawing's font from an XBin isn't in Yours, so a press had nowhere to keep its answer and the next XBin
+// in it asked again. It joins Yours first, as the width question's answer does, and that question, still showing, closes.
+test('pressing the switch on the drawing\'s narrow font that isn\'t in Yours adds it there with the answer and closes its question', async () => {
+  const { project, workspace } = await mount({ font: slim() });
+  const id = fontId(project.drawingFont);
+  askFontWidth(project.drawingFont);
+  expect(toastMessage.value).toBe('Slim is 7 pixels wide.');
+  expect(workspace.userFonts.some((f) => f.id === id)).toBe(false);
+  await press(widthButtons()[1]);
+  await vi.waitFor(async () => expect((await storedBitmapFont(id))?.width).toBe(8));
+  expect(project.drawingFont.cellWidth).toBe(8);
+  expect(toastMessage.value).toBe(null);
 });
 
 test('an 8-wide font shows 8 · 9 only', async () => {
