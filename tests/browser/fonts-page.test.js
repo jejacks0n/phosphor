@@ -8,7 +8,7 @@ import { i18n } from '@/i18n';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { createTestApp } from '../support/app.js';
 import { usePaletteStore } from '@/store/PaletteStore.js';
-import { fontId, blocksOf, fontKey } from '@/lib/BitmapFont.js';
+import { fontId, blocksOf, fontKey, CP437_BLOCKS as cp437Blocks } from '@/lib/BitmapFont.js';
 import { storedBitmapFont } from '@/lib/userFonts';
 import { cp437Font, lowerAt240, noLowerHalf } from '../support/blockFonts.js';
 import { addFont, addBitmapFont, loadFonts, removeFont, storeFontPart } from '@/lib/userFonts';
@@ -1247,4 +1247,59 @@ test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show
   expect((await loadFonts()).find((f) => f.id === frogId).name).toBe('FROGBLOCK');
   expect(origin()).toContain('Credit FROGBLOCK font by Polyducks');
   expect(row('FROGBLOCK').querySelector('.credit').textContent).toBe('FROGBLOCK font by Polyducks');
+});
+
+// The Width switch: a bitmap font's own width (when narrower than 8), 8 and 9.
+const slim = () => ({ name: 'Slim', height: 7, bytes: Uint8Array.from({ length: 256 * 7 }, (_, i) => (i % 251) & 0xfe), blocks: [...cp437Blocks] });
+const widthButtons = () => [...host.querySelectorAll('.width-switch button')];
+const pressed = () => widthButtons().filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent.trim());
+const shown = () => widthButtons().map((b) => b.textContent.trim());
+
+test('the drawing\'s narrow font shows Width 7 · 8 · 9, pressed at its width; pressing 9 widens it', async () => {
+  const { project } = await mount({ font: { ...slim(), width: 7 } });
+  expect(shown()).toEqual(['7', '8', '9']);
+  expect(pressed()).toEqual(['7']);
+  await press(widthButtons()[2]);
+  await waitFor(() => project.drawingFont.cellWidth === 9);
+  expect(pressed()).toEqual(['9']);
+  expect(project.sauceLetterSpacing).toBe('9');
+});
+
+test('an 8-wide font shows 8 · 9 only', async () => {
+  await mount();
+  expect(shown()).toEqual(['8', '9']);
+  expect(pressed()).toEqual(['8']);
+});
+
+test('a stored font not in use shows 7 · 8 and pressing stores its answer without touching the drawing', async () => {
+  const { project, workspace } = await mount();
+  const f = slim(), id = (await addBitmapFont(new File([f.bytes], 'Slim.F07'))).id;
+  workspace.userFonts = await loadFonts();
+  await vi.waitFor(() => expect(row('Slim')).toBeTruthy());
+  await press(row('Slim'));
+  await waitFor(() => widthButtons().length);
+  expect(shown()).toEqual(['7', '8']);
+  expect(pressed()).toEqual(['7']); // unanswered: drawn at its own width
+  const drawn = project.drawingFont.cellWidth;
+  await press(widthButtons()[1]);
+  await vi.waitFor(async () => expect((await storedBitmapFont(id)).width).toBe(8));
+  expect(pressed()).toEqual(['8']);
+  expect(project.drawingFont.cellWidth).toBe(drawn);
+  expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
+});
+
+test('the meta reads the width: 7×7', async () => {
+  await mount({ font: { ...slim(), width: 7 } });
+  expect(host.querySelector('.edit-side .meta').textContent).toMatch(/^7×7 · /);
+});
+
+test('in someone else\'s room the switch is off with a reason', async () => {
+  const { project } = await mount({ font: { ...slim(), width: 7 } });
+  project._hosting = true;
+  await nextTick();
+  for (const b of widthButtons()) {
+    expect(b.disabled).toBe(true);
+    expect(b.title).toBe('A font’s blocks, lines and sets can’t change in a room.');
+    expect(b.hasAttribute('data-off-reason')).toBe(true);
+  }
 });

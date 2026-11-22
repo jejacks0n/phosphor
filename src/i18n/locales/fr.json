@@ -900,6 +900,7 @@
         "dark": "Trame sombre"
       },
       "blocksSetMeta": "blocs définis par vous",
+      "width": "Largeur",
       "findBlocks": "Retrouver les blocs",
       "findBlocksTitle": "Oublier les emplacements définis et retrouver les blocs d'après les pixels de la police",
       "blocksInRoom": "Les blocs, lignes et jeux d’une police ne peuvent pas changer dans une salle.",

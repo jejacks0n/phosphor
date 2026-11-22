@@ -294,6 +294,12 @@ change one cell on the way.
 - Probes: `speed`: press Keep it 8 wide and undo at once, then choose another font and the narrow one again: it asks again; `back-out`: with the narrow font in use and unanswered, + Load its file again: it asks again.
 - Rated: no (fonts)
 
+### 31. Switch a font to 9 and back
+- Does: with her 8-wide font in use, opens its details on the Fonts page, notes the Width switch, presses 9, draws a few characters, presses 8, then undoes twice and redoes once; chooses a font only in Yours and presses a width on its switch; then loads a 7-wide font with no lower half block, reads the toast, and chooses another font and that one again.
+- Expects: the switch shows 8 and 9 for her font (7, 8 and 9 for a 7-wide one) with the width in use pressed, and the meta line says it (8×16); 9 redraws the cells 9 pixels wide with her drawn cells where they were, repeats the line and block characters into the ninth column and leaves the rest blank, and sets Letter spacing to 9px; 8 puts both back; each press is one undo; a font only in Yours changes its remembered width and not the drawing; the 7-wide font with no lower half says to set up its blocks instead of asking its width, stays 7 wide, and asks its width the next time it's chosen.
+- Probes: `speed`: press 9 and 8 ten times fast; `undo-redo`: undo and redo across the width and check Letter spacing and the switch agree.
+- Rated: no (fonts)
+
 **Free time:** she'd make a second style, draw a spiral with each, and undo the lot.
 
 ## Known

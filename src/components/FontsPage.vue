@@ -7,7 +7,7 @@ import { usePaletteStore } from '@/store/PaletteStore';
 import { notSetUp } from '@/lib/fontSetup';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
 import { storedBitmapFont, registerBitmapFont, familyOf, storeFontPart, withPart } from '@/lib/userFonts';
-import { fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
+import { narrowWidthOf, fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { SAMPLE_CHARS } from '@/lib/BitmapGlyphs';
@@ -189,8 +189,13 @@ const size = (f) => (f.kind === 'bitmap' ? `8×${f.height}` : t('palette.fonts.t
 const keys = ref({}); // a bitmap font's id -> the key it's registered under (its blocks too: BitmapFont.fontKey)
 const familyFor = (f) => f.family ?? familyOf(keys.value[f.id] ?? f.id);
 const styleOf = (f) => ({ fontFamily: familyFor(f), fontSize: `${f.kind === 'bitmap' && f.height < 12 ? 2 * f.height : f.height ?? 16}px` });
+// The width a bitmap font is drawn at: the drawing's own cellWidth; a stored font's remembered answer, else its own width.
+const own = computed(() => (font.value ? narrowWidthOf(font.value) : null));
+const widthNow = computed(() => (isDrawn.value ? drawn.value.cellWidth : stored.value.find((f) => f.id === chosen.value?.id)?.width ?? own.value ?? 8));
+const widths = computed(() => [...(own.value ? [own.value] : []), 8, ...(isDrawn.value ? [9] : [])]); // 9 only on the drawing: it's never remembered per font
+const setWidth = (w) => run(() => (isDrawn.value ? project.setDrawingFontWidth(w) : storePart(chosen.value.id, 'width', w)));
 const meta = computed(() => [
-  size(chosen.value),
+  bitmap.value ? `${widthNow.value}×${chosen.value.height}` : size(chosen.value),
   isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : isInUse.value && t('palette.fonts.inUseMeta'),
   !isDrawn.value && t(chosen.value.kind === 'builtIn' ? 'palette.fonts.builtInMeta' : 'palette.fonts.inBrowser'),
   font.value?.blocks && t('palette.fonts.blocksSetMeta'),
@@ -449,6 +454,20 @@ const exportPalettes = () => {
             {{ s.label }} <span v-if="s.count !== undefined" class="count">{{ s.count }}</span>
           </button>
         </div>
+        <div class="width-row">
+          <span class="width-label">{{ t('palette.fonts.width') }}</span>
+          <div class="width-switch" role="group" :aria-label="t('palette.fonts.width')">
+            <button
+                v-for="w in widths"
+                :key="w"
+                :aria-pressed="widthNow === w"
+                :disabled="inRoom"
+                :title="inRoom ? t('palette.fonts.blocksInRoom') : undefined"
+                :data-off-reason="inRoom ? '' : undefined"
+                @click="setWidth(w)"
+            >{{ w }}</button>
+          </div>
+        </div>
         <FontBlocks
             v-if="section === 'blocks'"
             :font="font"
@@ -669,6 +688,40 @@ div.sections button[role='tab']:focus-visible {
 div.sections button[role='tab'].on {
   color: var(--text);
   box-shadow: inset 0 -2px var(--accent);
+}
+
+div.width-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+span.width-label {
+  color: var(--text-muted);
+}
+
+div.width-switch {
+  display: flex;
+}
+
+div.width-switch button {
+  padding: 2px 10px;
+  border: 1px solid var(--surface-3);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+div.width-switch button[aria-pressed='true'] {
+  box-shadow: inset 0 -2px var(--accent);
+}
+
+div.width-switch button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
 }
 
 span.count {
