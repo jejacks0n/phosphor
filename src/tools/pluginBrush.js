@@ -4,6 +4,7 @@ import { mix } from '@/lib/Cells.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 import { mixPaint } from '@/lib/Retouch.js';
 import { onBottom, ownPaintAt } from '@/store/project/shared.js';
+import { shownHalves } from '@/store/project/reading.js';
 import { scriptOptions } from '@/plugins/solvers.js';
 import { t } from '@/i18n/index.js';
 import brushTool from '@/tools/brush';
@@ -18,8 +19,8 @@ const MAX_SIZE = brushTool.options.find((option) => option.size).max; // the Bru
 const channel = (v) => Math.min(255, Math.max(0, Math.round(v)));
 
 // A stroke's paint, the one object its begin, moves and end are handed (docs/plugins.md), with the writes of the call
-// going on. What it reads is as the stroke began, read once a pixel: shown, the colors up to the picked layer (as Retouch
-// reads them), and own, the picked layer's own paint (ownPaintAt, which is what a write lands on: a character of the
+// going on. What it reads is as the stroke began, read once a pixel: shown, what shows up to the picked layer, paint and
+// cells both (shownHalves), and own, the picked layer's own paint (ownPaintAt, which is what a write lands on: a character of the
 // layer's own with ink isn't paint; on the base, shown). A write is a put (a color at an alpha over what the layer had)
 // or a set (the paint made exactly that, clear at 0), kept until the call returns, the last to a pixel winning; one that
 // isn't a whole grid pixel, or is outside the selection, is dropped.
@@ -34,7 +35,8 @@ function newStroke({ project, workspace }, def, values) {
       return seen.get(key);
     };
   };
-  const shown = cached((x, y) => hex2rgb(project.rawColorAt(x, y, { upTo })));
+  // On a layer, what shows: paint and cells both (shownHalves). On the base, its own pixels (a pin's two, R11).
+  const shown = cached(base ? (x, y) => hex2rgb(project.rawColorAt(x, y, { upTo })) : (x, y) => shownHalves(project, x, y >> 1)[y & 1]);
   const own = base ? shown : cached((x, y) => ownPaintAt(project, x, y));
   // A read for the plugin: a copy (its changes stay its own), null off the grid.
   const reader = (read) => (x, y) => {

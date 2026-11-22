@@ -7,7 +7,7 @@ import { isShapeKey } from '@/document/shapes.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
-import { bakedEntry, blockOver, cellIndex, charRowsOf, isSolidGlyph, mix, opensToPaint, putCellPixels } from '@/lib/Cells.js';
+import { bakedEntry, blockOver, cellIndex, charRowsOf, isSolidGlyph, mix, opensToPaint, putCellPixels, halfColors } from '@/lib/Cells.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { resolves } from '@/lib/CharResolver.js';
@@ -132,13 +132,48 @@ export function pickedIndexes(project, col, row) {
 // the Renderer shows it.
 function layerOver(project, id, col, row, look, withPaint = true, exact = false) {
   const entry = project.cellsOf(id).get(cellKey(col, row));
-  let out = entry ? mergeEntry(exact && isPaintBlock(entry) && project.renderStyle === 'ansi' ? blockOver(look) : look, entry) : look;
-  const paint = withPaint && project.paintOf(id);
-  if (!paint?.hasPaint || isFrozen(entry)) return out; // a frozen cell's paint under it is what the entry stands for
+  const out = entry ? mergeEntry(exact && isPaintBlock(entry) && project.renderStyle === 'ansi' ? blockOver(look) : look, entry) : look;
+  return !withPaint || isFrozen(entry) ? out : paintOver(project, id, col, row, out); // a frozen cell's paint under it is what the entry stands for
+}
+
+// look with cells layer id's paint over each half by its alpha, bg the top, fg the bottom.
+function paintOver(project, id, col, row, look) {
+  const paint = project.paintOf(id);
+  if (!paint?.hasPaint) return look;
   const top = paint.pixelAt(col, 2 * row), bottom = paint.pixelAt(col, 2 * row + 1);
+  let out = look;
   if (top) out = mergeEntry(out, { bg: rgb2hex(over(hex2rgb(out.bg), top)) });
   if (bottom) out = mergeEntry(out, { fg: rgb2hex(over(hex2rgb(out.fg), bottom)) });
   return out;
+}
+
+// The two pixels ([top, bottom], { r, g, b }, stored colors) the cell at col, row shows up to and including the layer in
+// use (it even hidden, as rawColorAt reads it): the base's, then each shown cells layer under it and the layer itself,
+// its cell and its paint, and the upper vector layers' shapes between them. Paint and a cell the converter drew are
+// their two pixels; a character of someone's own on one of those layers is its ink over its background as its glyph
+// covers each half (halfColors; on black in the ASCII styles, as ownHalves has it), tinted by the paint over it (R2); a
+// frozen cell is the paint under it (R3), and a paint block over a character takes its place in ANSI (blockOver, R5).
+// What a plugin brush's paint.shown reads (tools/pluginBrush.js): rawColorAt reads paint alone, so a block of colored
+// spaces typed on a layer was the color under it.
+export function shownHalves(project, col, row) {
+  const ids = [...cellsUnder(project, project.editId), project.editId], upper = project.lowerGroup.upper;
+  const last = project.layers.findIndex((layer) => layer.id === project.editId), key = cellKey(col, row);
+  let look = { bg: project.baseColorAt(col, 2 * row), fg: project.baseColorAt(col, 2 * row + 1) };
+  for (const { id, kind } of project.layers.slice(1, last + 1)) {
+    if (kind === 'cells') {
+      if (!ids.includes(id)) continue;
+      look = isFrozen(project.cellsOf(id).get(key)) ? paintOver(project, id, col, row, look) : layerOver(project, id, col, row, look, true, look.char !== undefined);
+      continue;
+    }
+    if (!upper.includes(id)) continue;
+    const shapes = project._upperShapes.get(id), top = project.renderer.upperStoredAt(shapes, col, 2 * row), bottom = project.renderer.upperStoredAt(shapes, col, 2 * row + 1);
+    if (top) look = { ...look, bg: rgb2hex(over(hex2rgb(look.bg), top)) };
+    if (bottom) look = { ...look, fg: rgb2hex(over(hex2rgb(look.fg), bottom)) };
+  }
+  const bg = hex2rgb(look.bg), fg = hex2rgb(look.fg);
+  if (look.char === undefined) return [bg, fg];
+  const ascii = project.renderStyle === 'colorAscii' || project.renderStyle === 'ascii';
+  return halfColors({ char: look.char, bg: ascii ? { r: 0, g: 0, b: 0 } : bg, fg });
 }
 
 export const readingActions = {
