@@ -822,7 +822,7 @@ span.more span.menu {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 6px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--shadow) 50%, transparent);
 }
 
 /* The … menu sits at the head's right end, so it opens leftward. */
