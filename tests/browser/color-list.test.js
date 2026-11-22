@@ -84,6 +84,8 @@ test('the list shows as swatches in its order, the first picked, and writes noth
   expect(host.querySelector('label[for=palette]').textContent).toBe('Palette colors');
   expect(host.querySelector('p.count').textContent).toBe('3 colors');
   expect(emitted).toEqual([]);
+  // a phone's keyboard leaves a hex as typed, and its Enter key says Done
+  expect(['autocapitalize', 'autocorrect', 'spellcheck', 'enterkeyhint'].map((name) => field().getAttribute(name))).toEqual(['off', 'off', 'false', 'done']);
 });
 
 test('a hex typed changes the picked color on Enter; Escape puts the field back and a blur after it changes nothing', async () => {

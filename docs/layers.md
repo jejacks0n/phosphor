@@ -158,7 +158,7 @@ The settings on the left come in sections, each following a layer:
 - **Drawing** (all layers): **Dimensions**, **Art style** (ANSI, Color ASCII, Monochrome ASCII), **Font**, and
   **Color palette** with its **Color count** or **Palette colors**. These belong to the whole drawing, whichever
   layer is selected. **Palette colors** shows the Custom color list as swatches, one of them picked, with the picked
-  color's chip (the system color picker), its hex, **◂** and **▸** to move it a place, and **Remove**; **+** adds a copy
+  color's chip (the system color picker), its hex, **◂** and **▸** to move it a place (on a touch screen they sit under the color, a fingertip wide), and **Remove**; **+** adds a copy
   of it at the end. The swatches are one **Tab** stop, the picked one: from there **←** and **→** pick the one before
   or after, **↑** and **↓** the one a row away, and **Home** and **End** the first and last. A hex typed takes effect
   on **Enter** or leaving the field and **Escape** puts back the one in use; a list of two or more colors typed or

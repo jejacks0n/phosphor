@@ -78,6 +78,17 @@ test.describe('on a phone', () => {
     expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0); // nothing runs off to the side
     for (const swatch of await swatches(page).all()) expect(await swatch.getAttribute('draggable')).not.toBe('true');
     await expect(page.getByRole('textbox', { name: 'Palette colors' })).toHaveValue('#ff0000');
+    // Under a finger: ◂ ▸ a fingertip wide, on a line under the color with Remove, the whole hex showing over them; and
+    // the small links (Remove, Import, Export, Browse ▸) take a press a little above and below their words.
+    const box = (selector) => page.locator(selector).boundingBox();
+    const [field, earlier, later] = [await box('.color-list #palette'), await box('.color-list button.earlier'), await box('.color-list button.later')];
+    expect([earlier.width, later.width].every((width) => width >= 44)).toBe(true);
+    expect(earlier.y).toBeGreaterThanOrEqual(field.y + field.height);
+    expect(await page.locator('.color-list #palette').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    for (const link of ['.color-list button.remove', '.color-list button.import', '.color-list button.export', 'aside.control-panel button.browse']) {
+      expect((await box(link)).height, link).toBeGreaterThanOrEqual(28);
+    }
+    expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
 
     await page.locator('.color-list button.later').tap();
     await expect.poll(() => store(page, 'project', (p) => p.palette)).toBe('#00ff00 #ff0000 #0000ff');

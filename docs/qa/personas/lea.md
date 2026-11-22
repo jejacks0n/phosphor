@@ -150,7 +150,7 @@ in the status bar to see what they do, and try "Start with a blank canvas" from 
   color.
 - Expects: each pick redraws the picture in under the `setting` budget; the pickers are the phone's own and readable;
   Limited count shows a Color count slider and Custom color list shows its colors as swatches, both fitting the column,
-  a whole #rrggbb showing in the hex field; ◂ and ▸ move the picked color a place (a finger's drag on a swatch scrolls
+  a whole #rrggbb showing in the hex field; ◂ and ▸, a fingertip wide on the line under it, move the picked color a place (a finger's drag on a swatch scrolls
   the drawer and moves nothing). Edit colors ▸ shuts the color box and opens the drawer with the picked swatch focused.
 - Probes: `again`: pick the same style twice; `undo-redo`: undo the last three picks from Actions → Undo and check the
   pickers and the picture go back together.

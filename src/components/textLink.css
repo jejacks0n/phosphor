@@ -20,3 +20,11 @@ button.text:hover {
   background: transparent;
   color: var(--accent-hot);
 }
+
+/* Under a finger it takes a press a little above and below its words; where it sits doesn't change. */
+@media (pointer: coarse) {
+  button.text {
+    padding-block: 9px;
+    margin-block: -6px;
+  }
+}
