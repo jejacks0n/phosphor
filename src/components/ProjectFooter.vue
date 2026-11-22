@@ -9,7 +9,7 @@ import { SUPPORTED_LOCALES, locale, setLocale } from '@/i18n';
 const { t } = useI18n();
 const { theme, pluginsOpen } = storeToRefs(useWorkspaceStore());
 const plugins = usePluginStore();
-// The select shows a plugin's theme while it's the one in use, and Themes… otherwise.
+// The select shows a plugin's theme while it's the one in use, and Themes (from plugins)… otherwise.
 const pluginTheme = computed(() => (plugins.themes.some(({ ref }) => ref === theme.value) ? theme.value : ''));
 const year = new Date().getFullYear();
 

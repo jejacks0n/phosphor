@@ -49,7 +49,7 @@ test('a plugin theme is picked in the select, which unchecks the icons; an icon 
   const { plugins, workspace } = mount();
   await plugins.install(JSON.parse(midnight));
   await expect.element(select()).toBeVisible();
-  expect([...select().element().options].map((option) => option.text.trim())).toEqual(['Themes…', 'Midnight']);
+  expect([...select().element().options].map((option) => option.text.trim())).toEqual(['Themes (from plugins)…', 'Midnight']);
   expect(select().element().value).toBe('');
 
   await userEvent.selectOptions(select(), MIDNIGHT);
