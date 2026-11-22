@@ -126,7 +126,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     }
     if (workspaceStore.heldTool?.by === 'alt') workspaceStore.releaseTool();
     // ASCII in the ANSI view has no colors to choose (ColorPair hides itself).
-    if (!(workspaceStore.editorTab === 'output' && projectStore.renderStyle === 'ascii')) workspaceStore.colorBox = slot;
+    if (!(workspaceStore.editorTab === 'output' && projectStore.renderStyle === 'ascii')) workspaceStore.openColors(slot);
     return true;
   };
 

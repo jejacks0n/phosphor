@@ -27,7 +27,7 @@ test('an eyedropper pick puts the color it replaced and the color it picked in R
   expect(after.recent.slice(0, expected.length)).toEqual(expected);
   expect(after.recent).toEqual([...expected, ...before.recent.filter((c) => !expected.includes(c))].slice(0, 12));
 
-  // Getting the old color back: one click in the color popover's Recent row.
+  // Getting the old color back: one click in the color box's Recent row.
   await page.getByRole('button', { name: 'Foreground color' }).click();
   await page.getByTitle(`Recent: ${before.fg}`).click();
   expect(await workspace(page, (w) => w.editFgColor)).toBe(before.fg);

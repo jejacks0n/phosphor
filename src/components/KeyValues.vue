@@ -73,7 +73,7 @@ const chipStyle = (color) => {
 const openColor = (slot) => {
   playback.pause();
   workspace.vectorSelected = [props.shapeKey];
-  workspace.colorBox = slot;
+  workspace.openColors(slot);
 };
 const cased = (word) => word[0].toUpperCase() + word.slice(1);
 </script>

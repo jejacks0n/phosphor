@@ -12,6 +12,7 @@ import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
 import PaletteStrip from '@/components/PaletteStrip.vue';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
+import ColorLayer from '@/components/ColorLayer.vue';
 import CharField from '@/components/CharField.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
@@ -732,12 +733,14 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
     </div>
     <!-- Opened by the Text tool's strip or the Font field's Manage fonts, with any tool; from the toolbar's bottom edge, so no scrolling row clips it. -->
     <CharPaletteLayer v-if="workspace.paletteLayerOpen" @close="workspace.paletteLayerOpen = false"/>
+    <!-- The color box, opened by the color pair's chips (one layer at a time: ColorLayer closes the other). -->
+    <ColorLayer v-if="workspace.colorBox"/>
   </article>
 </template>
 
 <style scoped>
 article.edit-toolbar {
-  position: relative; /* the palette layer opens from its bottom edge */
+  position: relative; /* the palette and color layers open from its bottom edge */
   display: flex;
   flex-direction: column;
   background: var(--surface-1);

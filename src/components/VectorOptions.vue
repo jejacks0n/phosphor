@@ -2,7 +2,7 @@
 // VECTOR's options row. With Vector select: Copy, Cut and Paste, and with shapes selected Forward and Back (the
 // stacking order), Join, Separate, Add, Subtract and Delete (one shape's gradient's selected stop, or else the shapes), each one
 // undo step, and on one shape with two gradients Fill or Stroke. Fill and Stroke, and the stroke's width, caps,
-// joins and miter limit, are the color pair's (ColorPopover, useVectorStyle). While Follow a path… picks (the Keys
+// joins and miter limit, are the color pair's (ColorsPage, useVectorStyle). While Follow a path… picks (the Keys
 // panel's), the hint says how, on a phone too. While a shape's points are edited,
 // the Point row: the selected point Smooth, Free or Sharp, and Delete (the selected stop of its gradient, or else the
 // point); Esc or empty canvas ends it. With one art layer selected, Edit art steps into it. On a shape with two gradients, Fill or Stroke too. The buttons are icons, named in their titles; a phone's rows have no label or hint.

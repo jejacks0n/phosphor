@@ -9,7 +9,7 @@ import { PALETTES } from '@/lib/ColorUtils';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools/index.js';
 import { pickedIndexes } from '@/store/project/reading.js';
-import ColorPopover from '@/components/ColorPopover.vue';
+import ColorsPage from '@/components/ColorsPage.vue';
 import { i18n } from '@/i18n';
 import { copySelection, decodeBlock } from '@/composables/clipboard';
 import { readClipboardHtml } from '@/lib/clipboardBlocks';
@@ -167,7 +167,7 @@ test('the color box\'s swatches 16 and 231 keep their index, and only the chosen
   workspace.editorTab = 'output';
   const host = document.createElement('div');
   document.body.append(host);
-  mounted = createApp(ColorPopover, { slotName: 'fg' }).use(i18n);
+  mounted = createApp(ColorsPage, { slotName: 'fg' }).use(i18n);
   mounted.mount(host);
   const swatches = () => [...host.querySelectorAll('.swatches .swatch')];
   const marked = async () => {
@@ -237,7 +237,7 @@ test('the recent colors keep 16 and 231 apart from 0 and 15', async () => {
   workspace.setColor('fg', '#ffffff', { index: 231 });
   const host = document.createElement('div');
   document.body.append(host);
-  mounted = createApp(ColorPopover, { slotName: 'fg' }).use(i18n);
+  mounted = createApp(ColorsPage, { slotName: 'fg' }).use(i18n);
   mounted.mount(host);
   const chosen = [];
   for (const swatch of host.querySelectorAll('.foot .swatch.small')) {

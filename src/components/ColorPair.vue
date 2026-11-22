@@ -1,5 +1,5 @@
 <script setup>
-import { computed, useId } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -7,11 +7,11 @@ import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { hex2rgb, rgb2gray } from '@/lib/ColorUtils';
 import { shortcut } from '@/lib/keyLabels';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
-import ColorPopover from '@/components/ColorPopover.vue';
 
 // The foreground/background chips: each shows its color as it displays (after adjustments and the
-// palette); a none slot shows a checkerboard. Clicking a chip opens the picker for that slot (so do
-// Alt+F / Alt+A and Alt+B: workspace.colorBox). On VECTOR they're the shapes' Fill and Stroke (useVectorStyle).
+// palette); a none slot shows a checkerboard. Clicking a chip opens the color layer (ColorLayer, under the toolbar) on
+// that slot's picker, and clicking it again closes it (Alt+F / Alt+A and Alt+B open it too: workspace.openColors). On
+// VECTOR they're the shapes' Fill and Stroke (useVectorStyle).
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
@@ -29,9 +29,7 @@ const shown = (hex) => {
 // The foreground only means "none" for typing, in the ANSI view; paint always uses its color.
 const fgNone = computed(() => ansiView.value && workspace.editFgNone);
 
-const anchor = `--color-pair-${useId()}`; // what ColorPopover is anchored to
-
-const toggle = (slot) => { workspace.colorBox = workspace.colorBox === slot ? null : slot; };
+const toggle = (slot) => (workspace.colorBox === slot ? (workspace.colorBox = null) : workspace.openColors(slot));
 
 const vector = computed(() => workspace.editorTab === 'vector');
 const style = useVectorStyle();
@@ -51,7 +49,7 @@ const chip = (slot) => {
 </script>
 
 <template>
-  <div class="color-pair" :style="{ '--anchor': anchor }">
+  <div class="color-pair">
     <button
         v-for="slot in ['fg', 'bg']"
         :key="slot"
@@ -62,7 +60,6 @@ const chip = (slot) => {
         :aria-label="chip(slot).aria"
         @click="toggle(slot)"
     ></button>
-    <ColorPopover v-if="workspace.colorBox" v-model:slot-name="workspace.colorBox" @close="workspace.colorBox = null"/>
   </div>
 </template>
 
@@ -72,11 +69,6 @@ div.color-pair {
   width: 42px;
   height: 30px;
   flex: none;
-}
-@supports (position-area: block-end) {
-  div.color-pair {
-    anchor-name: var(--anchor);
-  }
 }
 
 button.chip {

@@ -10,7 +10,7 @@ import { toastMessage } from '@/composables/useToast.js';
 import { cellIndex, coverCell } from '@/lib/Cells.js';
 import { typeText } from '@/composables/useTextTool.js';
 import { createApp } from 'vue';
-import ColorPopover from '@/components/ColorPopover.vue';
+import ColorsPage from '@/components/ColorsPage.vue';
 import { i18n } from '@/i18n';
 
 const keys = (cells) => [...cells.keys()];
@@ -864,7 +864,7 @@ test('the color box offers every cells layer\'s colors, not only the one in use'
   workspace.pickLayer('base');
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ColorPopover, { slotName: 'fg' }).use(i18n);
+  const app = createApp(ColorsPage, { slotName: 'fg' }).use(i18n);
   app.mount(host);
   await new Promise((resolve) => requestAnimationFrame(resolve));
   const titles = [...host.querySelectorAll('.swatch')].map((b) => b.title.toLowerCase());

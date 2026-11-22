@@ -65,14 +65,6 @@ test.describe('on a phone', () => {
     const drawer = page.getByRole('button', { name: 'Toggle settings' });
     await drawer.tap();
     await customList(page);
-    await drawer.tap(); // shut, so the color box's link is what opens it
-    await expect.poll(() => store(page, 'workspace', (w) => w.settingsOpen)).toBe(false);
-
-    await page.getByRole('button', { name: 'Foreground color' }).tap();
-    await page.getByRole('button', { name: 'Edit colors' }).tap();
-    await expect(page.getByRole('dialog', { name: 'Color picker' })).toHaveCount(0);
-    await expect.poll(() => store(page, 'workspace', (w) => w.settingsOpen)).toBe(true);
-    await expect(page.locator('.color-list button.swatch[aria-pressed=true]')).toBeFocused();
 
     const panel = page.locator('aside.control-panel');
     expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0); // nothing runs off to the side
