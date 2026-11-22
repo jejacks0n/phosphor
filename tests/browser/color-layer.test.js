@@ -35,12 +35,16 @@ async function mount({ slot = 'fg', width = 800, pair = 120, before } = {}) {
   return { project, workspace, panel: () => host.querySelector('.color-layer') };
 }
 
-test('it opens under the toolbar at the pair\'s left, 260px wide, with the Colors tab', async () => {
+test('it opens under the toolbar at the pair\'s left, as wide as the box before it with 260px of swatches, with the Colors tab', async () => {
   const { panel } = await mount();
   const bar = host.getBoundingClientRect(), at = panel().getBoundingClientRect();
   expect(Math.round(at.left - bar.left)).toBe(120);
   expect(Math.round(at.top)).toBe(Math.round(bar.bottom + 2));
-  expect(getComputedStyle(panel()).width).toBe('260px');
+  expect(getComputedStyle(panel()).width).toBe('280px');
+  expect(at.width).toBe(282); // the old box's width, border and all
+  const page = panel().querySelector('.color-popover'), pad = getComputedStyle(page);
+  expect(page.clientWidth - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight)).toBe(260); // the old box's content
+  expect(page.querySelector('.head').getBoundingClientRect().width).toBe(260);
   expect([...panel().querySelectorAll('[role="tab"]')].map((tab) => tab.textContent.trim())).toEqual(['Colors']);
   expect(panel().getAttribute('aria-label')).toBe('Colors');
   expect(panel().querySelector('.color-popover')).not.toBe(null);
@@ -101,10 +105,10 @@ test('on a short window VECTOR\'s Stroke side scrolls inside the box, Miter reac
 // Review Focus 1: a toolbar narrower than the pair's left plus the layer's width keeps the layer 10px inside its right,
 // and the toolbar widening (the side panel folded, say) lets it back under the pair.
 test('in a toolbar narrower than the pair\'s left plus its width, it stays 10px inside', async () => {
-  const { panel } = await mount({ width: 300 });
+  const { panel } = await mount({ width: 320 });
   const bar = host.getBoundingClientRect(), at = panel().getBoundingClientRect();
   expect(at.right).toBeLessThanOrEqual(bar.right - 10);
-  expect(getComputedStyle(panel()).width).toBe('260px');
+  expect(getComputedStyle(panel()).width).toBe('280px');
   expect(at.left).toBeGreaterThanOrEqual(bar.left + 10);
   host.style.width = '800px';
   await vi.waitFor(() => expect(Math.round(panel().getBoundingClientRect().left - bar.left)).toBe(120));
