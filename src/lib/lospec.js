@@ -1,6 +1,7 @@
 // Lospec's palettes as this app reads them: the slug a typed link or name means, the page and the API address a slug
-// has, an answer from the API read as a palette, and getPalette, the one fetch, made only when Get is pressed. The
-// answer is a stranger's, so its size is capped, its colors checked and its words cut before anything shows them.
+// has, an answer from the API read as a palette, and getPalette, the one request (in the desktop app, the main
+// process's), made only when Get is pressed. The answer is a stranger's, so its size is capped, its colors checked
+// and its words cut before anything shows them.
 import { firstColors } from './colorList.js';
 
 export const SLUG = /^[a-z0-9-]{1,100}$/;
@@ -61,10 +62,19 @@ async function cappedText(response, most) {
 // The palette a slug names on Lospec, asked of its API address alone (no redirect followed, no credentials sent), or an
 // Error saying which way it failed: 'notFound' (a 404, or an answer saying error), 'unreachable' (no answer, or one
 // cut off), 'notPalette' (a slug that isn't one, which asks nothing, or an answer that isn't a palette or is too big).
-// `fetch` is passed in so a plain Node script and the tests can give their own.
-export async function getPalette(slug, { fetch = globalThis.fetch } = {}) {
+// `fetch` is passed in so a plain Node script and the tests can give their own. The desktop app passes `ask`, its main
+// process (desktop/lospec.js), which fetches in the page's place and answers { text } or { failed }.
+export async function getPalette(slug, { fetch = globalThis.fetch, ask } = {}) {
   if (typeof slug !== 'string' || !SLUG.test(slug)) throw new Error('notPalette');
-  let response, text;
+  const text = ask ? await askedText(slug, ask) : await fetchedText(slug, fetch);
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error('notPalette'); }
+  if (data && typeof data === 'object' && 'error' in data) throw new Error('notFound');
+  return readPalette(data, slug);
+}
+
+async function fetchedText(slug, fetch) {
+  let response;
   try {
     response = await fetch(apiOf(slug), { redirect: 'error', credentials: 'omit', signal: AbortSignal.timeout(TIMEOUT_MS) });
   } catch {
@@ -73,12 +83,17 @@ export async function getPalette(slug, { fetch = globalThis.fetch } = {}) {
   if (response.status === 404) throw new Error('notFound');
   if (!response.ok) throw new Error('unreachable');
   try {
-    text = await cappedText(response, MOST_BYTES);
+    return await cappedText(response, MOST_BYTES);
   } catch (error) {
     throw new Error(error.message === 'tooBig' ? 'notPalette' : 'unreachable', { cause: error });
   }
-  let data;
-  try { data = JSON.parse(text); } catch { throw new Error('notPalette'); }
-  if (data && typeof data === 'object' && 'error' in data) throw new Error('notFound');
-  return readPalette(data, slug);
+}
+
+// The main process's answer, whose failures are only the ones this file says; anything else it says, or the asking
+// failing, is Lospec out of reach.
+async function askedText(slug, ask) {
+  let got;
+  try { got = await ask(slug); } catch { throw new Error('unreachable'); }
+  if (typeof got?.text === 'string') return got.text;
+  throw new Error(got?.failed === 'notFound' || got?.failed === 'notPalette' ? got.failed : 'unreachable');
 }

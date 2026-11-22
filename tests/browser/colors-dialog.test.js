@@ -8,7 +8,10 @@ import { i18n } from '@/i18n';
 import ColorsDialog from '@/components/ColorsDialog.vue';
 import { createTestApp } from '../support/app.js';
 import { SHIPPED } from '@/store/ColorLibraryStore';
+import { getPalette } from '@/lib/lospec';
 import '@/assets/global.css';
+
+vi.mock('@/lib/lospec', { spy: true }); // the real one, but one test makes it fail in a way it can't today
 
 let app, host, project;
 afterEach(() => {
@@ -264,6 +267,14 @@ test('a palette Lospec doesn\'t have, Lospec out of reach and an answer that isn
   await vi.waitFor(() => expect(tab('favorites').getAttribute('aria-selected')).toBe('true'));
   await show('library');
   expect(problem()).toBe(null); // gone once a Get works
+});
+
+test('a failure Get doesn\'t know reads as Lospec out of reach, never as a raw key', async () => {
+  vi.mocked(getPalette).mockRejectedValueOnce(new Error('changed'));
+  await mount();
+  await get('sweetie 17');
+  await vi.waitFor(() => expect(problem()?.textContent).toBe("Couldn't get sweetie-17 from Lospec. Check its name or link, or try again."));
+  expect(tab('favorites').querySelector('.count').textContent).toBe('0');
 });
 
 test('a palette of 300 colors is kept as its first 256, and says so', async () => {

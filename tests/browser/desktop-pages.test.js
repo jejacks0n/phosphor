@@ -388,6 +388,7 @@ test('LegalDialog desktop: the app\'s privacy note in place of the hosted servic
   const body = () => document.querySelector('.legal-body').textContent;
   expect(body()).toContain('In a room, the people you connect with see your IP address. When you choose Check for Updates, it asks GitHub for Phosphor\'s releases, and GitHub sees your IP address.');
   expect(body()).toContain('When you open Plugins, it asks phosphor.work for the plugin list, and phosphor.work sees your IP address. When you install a plugin from the Marketplace, it asks GitHub for the plugin\'s files, and GitHub sees your IP address.');
+  expect(body()).toContain('When you get a palette from Lospec by name or link, the app requests it from lospec.com, which sees the request and your IP address.');
   expect(body()).not.toContain('sends nothing to Phosphor');
   app.unmount();
   app = createApp({ render: () => h(LegalDialog, { page: 'terms' }) }).use(getActivePinia()).use(i18n);

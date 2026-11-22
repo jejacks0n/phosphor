@@ -7,6 +7,7 @@ import { SHIPPED, useColorLibraryStore } from '@/store/ColorLibraryStore';
 import { useSettingsLock } from '@/composables/useSettingsLock';
 import { hexFile, listColors, sameColors, writeList } from '@/lib/colorList';
 import { getPalette, pageOf, slugOf } from '@/lib/lospec';
+import { desktop } from '@/social/desktop';
 import { downloadBlob } from '@/document/projectIO';
 
 // The Colors dialog (docs/layers.md), from Browse ▸ beside Color palette: two tabs, Library (the palettes Phosphor ships
@@ -70,8 +71,11 @@ function star(palette) {
   library.toggle(palette);
   keepFocus();
 }
-// Get from Lospec: what's typed is made a slug here (slugOf), and only a slug is asked for. `cut` is the palette just got
-// when Lospec's had more than 256 colors, for the note on Favorites: what's kept doesn't remember how many there were.
+// Get from Lospec: what's typed is made a slug here (slugOf), and only a slug is asked for: of lospec.com on the web, of
+// the main process in the desktop app, whose page reaches nothing but rooms. A failure this doesn't know reads as Lospec
+// out of reach. `cut` is the palette just got when Lospec's had more than 256 colors, for the note on Favorites: what's
+// kept doesn't remember how many there were.
+const FAILURES = ['notFound', 'unreachable', 'notPalette'];
 const typed = ref('');
 const getting = ref(false);
 const problem = ref('');
@@ -86,7 +90,7 @@ async function get() {
   problem.value = '';
   getting.value = true;
   try {
-    const palette = await getPalette(slug);
+    const palette = await getPalette(slug, import.meta.env.VITE_DESKTOP === '1' ? { ask: (s) => desktop.lospecPalette(s) } : {});
     library.keep(palette);
     cut.value = palette.of ? { slug, of: palette.of } : null;
     typed.value = '';
@@ -97,7 +101,7 @@ async function get() {
     root.value?.querySelector(`#${nameId(palette)}`)?.closest('li')?.querySelector('button.use:not(:disabled)')?.focus();
     keepFocus();
   } catch (error) {
-    problem.value = t(`colorsDialog.errors.${error.message}`, { name: slug });
+    problem.value = t(`colorsDialog.errors.${FAILURES.includes(error.message) ? error.message : 'unreachable'}`, { name: slug });
   } finally {
     getting.value = false;
   }
