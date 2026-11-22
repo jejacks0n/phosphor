@@ -81,7 +81,8 @@ export const SETTINGS = [
   // with no record; empty for another drawing, whose record and comment lines are Phosphor's own.
   { key: 'sauceRecord', default: '', group: 'sauce', storageKey: 'current_file.sauce.record' },
   // The SAUCE tab's Letter spacing: 'none', '8' or '9' once chosen (Sauce.js withLetterSpacing); '' until then, when the
-  // record's flags are an opened file's as they came, or Phosphor's own (sauceUse9pxFont's).
+  // record's flags are an opened file's as they came, or Phosphor's own (sauceUse9pxFont's). With a bitmap font it is
+  // also the drawing's width, 8 or 9 (setDrawingFontWidth sets both), and an opened file's replaces the drawing's.
   { key: 'sauceLetterSpacing', default: '', group: 'sauce', most: 4, storageKey: 'current_file.sauce.letterSpacing' },
 ];
 

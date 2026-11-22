@@ -300,6 +300,12 @@ change one cell on the way.
 - Probes: `speed`: press 9 and 8 ten times fast; `undo-redo`: undo and redo across the width and check Letter spacing and the switch agree.
 - Rated: no (fonts)
 
+### 32. Letter spacing is the width
+- Does: with her 8-wide font in use, opens the SAUCE tab and presses 9px for Letter spacing, then looks at the Fonts page; presses 8px; switches to a 7-wide font drawn narrow and reads the SAUCE tab; presses 8px; exports an `.ans` at 9px, opens it again, and opens an `.ans` whose SAUCE says 8px while the drawing is at 9.
+- Expects: 9px on the SAUCE tab draws the cells 9 wide and the Fonts page's switch shows 9; with a narrow font neither 8px nor 9px is lit, and pressing 8px draws it 8 wide; a narrow drawing exports Letter spacing 8px; the `.ans` exported at 9 opens 9 wide, and one saying 8px opens at 8.
+- Probes: `undo-redo`: undo after pressing 9px and check the SAUCE tab and the switch agree.
+- Rated: no (fonts)
+
 **Free time:** she'd make a second style, draw a spiral with each, and undo the lot.
 
 ## Known

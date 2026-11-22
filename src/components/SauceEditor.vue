@@ -47,9 +47,16 @@ const dateOff = computed(() => {
 
 // Letter spacing as the record will say it: an opened file's flags, or Phosphor's own, until one is chosen.
 const SPACINGS = computed(() => [['none', t('sauce.spacingNone')], ['8', '8px'], ['9', '9px']].map(([key, label]) => ({ key, label })));
+// 8px and 9px are the drawing's width when it has a bitmap font (setDrawingFontWidth), so a narrow drawing shows neither
+// lit (it exports 8px, but it's drawn at its own width) and either one a click away.
+const narrow = computed(() => (project.drawingFont?.cellWidth ?? 8) < 8);
 const spacing = computed({
-  get: () => Object.fromEntries(['none', '8', '9'].map((key) => [key, letterSpacingOf(project.sauceFields().flags) === key])),
-  set: (picked) => { project.sauceLetterSpacing = Object.keys(picked).find((key) => picked[key]); },
+  get: () => Object.fromEntries(['none', '8', '9'].map((key) => [key, !narrow.value && letterSpacingOf(project.sauceFields().flags) === key])),
+  set: (picked) => {
+    const key = Object.keys(picked).find((k) => picked[k]);
+    if (key !== 'none' && project.drawingFont) project.setDrawingFontWidth(Number(key));
+    else project.sauceLetterSpacing = key;
+  },
 });
 
 const quoted = (text, most = 20) => ([...text].length > most ? `${[...text].slice(0, most).join('')}…` : text);

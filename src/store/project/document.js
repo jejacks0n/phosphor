@@ -26,7 +26,7 @@ import { findUniform, gpuMaxSide } from '@/lib/ImageProcessor.js';
 
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils.js';
-import { commentLines, keptFields, keptRecord, withLetterSpacing } from '@/lib/Sauce.js';
+import { commentLines, keptFields, keptRecord, letterSpacingOf, withLetterSpacing } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
 import { sayMissingBlocks } from '@/composables/useFontSetup.js';
 import { askFontWidth } from '@/composables/useFontWidth.js';
@@ -311,6 +311,7 @@ export const documentActions = {
           sauceUserComments: sauce.comments.join('\n'),
           sauceFontName: sauce.fontName,
           sauceUse9pxFont: sauce.use9pxFont,
+          sauceLetterSpacing: letterSpacingOf(sauce.flags), // the file's own, whatever the drawing was at
         }),
         sauceRecord: keptRecord(sauce, art.cols, art.rows),
       });
@@ -668,7 +669,7 @@ export const documentActions = {
     const typed = this.sauceUserComments ? this.sauceUserComments.split('\n') : [];
     return {
       ...kept,
-      flags: withLetterSpacing(kept?.flags ?? (1 | (this.sauceUse9pxFont ? 4 : 2)), this.sauceLetterSpacing),
+      flags: withLetterSpacing(kept?.flags ?? (1 | (this.sauceUse9pxFont ? 4 : 2)), (this.drawingFont?.cellWidth ?? 8) < 8 ? '8' : this.sauceLetterSpacing), // a narrow drawing writes 8px
       fontName: asIs(this.sauceFontName),
       title: this.sauceTitle,
       author: this.sauceAuthor,

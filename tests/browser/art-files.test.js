@@ -575,3 +575,40 @@ test('a narrow font in use stays narrow through an .ans with no font of its own'
   expect(project.fontWidth).toBe('7');
   expect(project.drawingFont.cellWidth).toBe(7);
 });
+
+const SLIM = () => ({ name: 'Slim', height: 7, bytes: Uint8Array.from({ length: 256 * 7 }, (_, i) => (i % 251) & 0xfe), blocks: [...CP437_BLOCKS] });
+const withSpacing = (spacing) => artFile('s.ans', 4, 2, build(4, 2, 'cga', CHARS.ans), { colorMode: 'cga', sauce: { ...SAUCE, fontName: '', use9pxFont: spacing === 9, ...(spacing === 'none' && { flags: 0 }) } });
+
+test('an .ans whose SAUCE says 9px opens 9 wide; one saying 8px opens a drawing that was at 9 at 8', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await project.setDrawingFont({ ...SLIM(), width: 8 });
+  await project.openArtFile(await withSpacing(9));
+  await settle(project);
+  expect([project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['9', 9]);
+  await project.openArtFile(await withSpacing(8));
+  await settle(project);
+  expect([project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['8', 8]);
+});
+
+test('a narrow drawing exports Letter spacing 8px', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await project.setDrawingFont({ ...SLIM(), width: 7 });
+  project.sauceLetterSpacing = '9';
+  expect(project.drawingFont.cellWidth).toBe(7);
+  expect(readSauce(await exported(project)).flags & 6).toBe(2);
+});
+
+test('exported at 9, the .ans opens again at 9', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  await project.setDrawingFont({ ...SLIM(), width: 8 });
+  await project.setDrawingFontWidth(9);
+  const bytes = await exported(project);
+  expect(readSauce(bytes).flags & 6).toBe(4);
+  await project.setDrawingFontWidth(8);
+  await project.openArtFile(new File([bytes], 'again.ans'));
+  await settle(project);
+  expect(project.drawingFont.cellWidth).toBe(9);
+});

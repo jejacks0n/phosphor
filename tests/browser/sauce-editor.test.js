@@ -6,6 +6,7 @@ import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import SauceEditor from '@/components/SauceEditor.vue';
+import { CP437_BLOCKS } from '@/lib/BitmapFont.js';
 
 let app = null, host = null;
 afterEach(() => {
@@ -230,4 +231,26 @@ test('for an artist in a room, Date, Font name and Letter spacing are off too', 
   await mount(({ project }) => { project._sharing = { role: 'artist' }; });
   for (const id of ['sauce-date', 'sauce-font']) expect(field(id).matches(':disabled'), id).toBe(true);
   expect([...host.querySelectorAll('[aria-label="Letter spacing"] button')].every((b) => b.matches(':disabled'))).toBe(true);
+});
+
+const SLIM = () => ({ name: 'Slim', height: 7, bytes: Uint8Array.from({ length: 256 * 7 }, (_, i) => (i % 251) & 0xfe), blocks: [...CP437_BLOCKS] });
+const pick = async (index) => { host.querySelectorAll('[aria-label="Letter spacing"] button')[index].click(); await nextTick(); };
+
+test('choosing 9px on the SAUCE tab widens the drawing to 9, and the Fonts page shows 9', async () => {
+  const { project } = await mount();
+  await project.setDrawingFont({ ...SLIM(), width: 8 });
+  await pick(2);
+  expect(project.sauceLetterSpacing).toBe('9');
+  expect(project.drawingFont.cellWidth).toBe(9); // what the Fonts page's Width switch reads
+});
+
+test('choosing 8px while drawn narrow sets it not narrow', async () => {
+  const { project } = await mount();
+  await project.setDrawingFont({ ...SLIM(), width: 7 });
+  expect(project.drawingFont.cellWidth).toBe(7);
+  expect([...host.querySelectorAll('[aria-label="Letter spacing"] button')].map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'false']);
+  await pick(1);
+  expect(project.fontWidth).toBe('');
+  expect(project.sauceLetterSpacing).toBe('8');
+  expect(project.drawingFont.cellWidth).toBe(8);
 });
