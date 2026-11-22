@@ -395,6 +395,9 @@
     "noColors": "No colors found in {name}.",
     "imported": "Palette colors replaced with {name}'s.",
     "importedCut": "Palette colors replaced with the first 256 of {name}'s {n}.",
+    "typed": "Palette colors replaced with the {n} typed.",
+    "typedCut": "Palette colors replaced with the first 256 of the {n} typed.",
+    "tooBig": "{name} is too big to be a list of colors.",
     "putBack": "Put back"
   },
   "font": {

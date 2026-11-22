@@ -151,6 +151,102 @@ test('a list typed or pasted into the hex field replaces every color', async () 
   expect(list.value).toBe('#111111 #222222 #333333 #444444');
 });
 
+test('a list typed replaces the whole list with a toast whose Put back brings it back as it was written; one color typed shows none', async () => {
+  const { list, emitted } = await mount('#FFF, #a50;000');
+  await type('#123456');
+  await key(field(), 'Enter');
+  expect(toastMessage.value).toBe(null); // one color: the picked one's, nothing to put back
+  list.value = '#FFF, #a50;000';
+  await nextTick();
+  await type('color: #333; background: #fff');
+  field().blur(); // a click elsewhere
+  await nextTick();
+  expect(list.value).toBe('#333333 #ffffff');
+  expect(toastMessage.value).toBe('Palette colors replaced with the 2 typed.');
+  expect(toastAction.value.label).toBe('Put back');
+  toastAction.value.run();
+  await nextTick();
+  expect(list.value).toBe('#FFF, #a50;000');
+
+  closeToast();
+  const count = emitted.length;
+  await type('#ffffff #aa5500 #000000'); // the list it is: nothing replaced
+  await key(field(), 'Enter');
+  expect(emitted.length).toBe(count);
+  expect(toastMessage.value).toBe(null);
+
+  await type(Array.from({ length: 300 }, (_, i) => `#${(i % 256).toString(16).padStart(6, '0')}`).join(' '));
+  await key(field(), 'Enter');
+  field().blur(); // after Enter, the field holds one color again: no second toast
+  await nextTick();
+  expect(swatches()).toHaveLength(256);
+  expect(toastMessage.value).toBe('Palette colors replaced with the first 256 of the 300 typed.');
+  toastAction.value.run();
+  await nextTick();
+  expect(list.value).toBe('#FFF, #a50;000');
+});
+
+test('the toast of a list typed goes with the editor', async () => {
+  await mount('#FFF #000');
+  await type('#111 #222 #333');
+  await key(field(), 'Enter');
+  expect(toastMessage.value).toBe('Palette colors replaced with the 3 typed.');
+  gone();
+  expect(toastMessage.value).toBe(null);
+});
+
+// The list is one Tab stop, as a tab list is: the picked swatch takes it, and the keys walk the swatches from there.
+test('only the picked swatch is in the tab order', async () => {
+  await mount('#111111 #222222 #333333');
+  expect(swatches().map((s) => s.tabIndex)).toEqual([0, -1, -1]);
+  await press(swatches()[2]);
+  expect(swatches().map((s) => s.tabIndex)).toEqual([-1, -1, 0]);
+});
+
+test('on a swatch Left and Right pick the one before and after, Up and Down the one a row away, Home and End the first and last', async () => {
+  const twenty = Array.from({ length: 20 }, (_, i) => `#0000${i.toString(16).padStart(2, '0')}`).join(' ');
+  const { list, emitted } = await mount(twenty);
+  const from = async (i, k) => {
+    await press(swatches()[i]);
+    swatches()[i].focus();
+    const event = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });
+    const heard = vi.fn();
+    host.addEventListener('keydown', heard);
+    swatches()[i].dispatchEvent(event);
+    host.removeEventListener('keydown', heard);
+    await nextTick();
+    expect(heard).not.toHaveBeenCalled(); // the key stops at the swatch, so the app's keys never see it
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(swatches()[pressed()]);
+    expect(swatches()[pressed()].tabIndex).toBe(0);
+    return pressed();
+  };
+  expect(await from(10, 'ArrowLeft')).toBe(9);
+  expect(await from(10, 'ArrowRight')).toBe(11);
+  expect(await from(10, 'ArrowUp')).toBe(2);
+  expect(await from(10, 'ArrowDown')).toBe(18);
+  expect(await from(10, 'Home')).toBe(0);
+  expect(await from(10, 'End')).toBe(19);
+  // At the ends they stop: no wrapping, and no row where there isn't one.
+  expect(await from(0, 'ArrowLeft')).toBe(0);
+  expect(await from(19, 'ArrowRight')).toBe(19);
+  expect(await from(5, 'ArrowUp')).toBe(5);
+  expect(await from(14, 'ArrowDown')).toBe(14);
+  expect(list.value).toBe(twenty);
+  expect(emitted).toEqual([]); // a pick writes nothing
+});
+
+test('a key with Ctrl, Alt or Cmd on a swatch is left to the app', async () => {
+  await mount('#111111 #222222 #333333');
+  for (const mod of ['ctrlKey', 'altKey', 'metaKey']) {
+    const event = new KeyboardEvent('keydown', { key: 'ArrowRight', [mod]: true, bubbles: true, cancelable: true });
+    swatches()[0].dispatchEvent(event);
+    await nextTick();
+    expect(event.defaultPrevented).toBe(false);
+    expect(pressed()).toBe(0);
+  }
+});
+
 test('◂ and ▸ move the picked color and keep it picked; a repeated color moves by its place', async () => {
   const { list } = await mount('#111111 #222222 #111111');
   await press(swatches()[2]);
@@ -319,6 +415,16 @@ test('Import replaces the list with a .hex file\'s colors and offers Put back; a
   await importFile(Array.from({ length: 300 }, (_, i) => (i % 256).toString(16).padStart(6, '0')).join('\n'), 'big.hex');
   expect(swatches()).toHaveLength(256);
   expect(toastMessage.value).toBe('Palette colors replaced with the first 256 of big.hex\'s 300.');
+});
+
+test('Import reads no file over 1 MB, and says so', async () => {
+  const { emitted } = await mount('#FFF #000');
+  const read = vi.spyOn(Blob.prototype, 'text');
+  await importFile(new Uint8Array(2 * 1024 * 1024), 'huge.hex');
+  expect(toastMessage.value).toBe('huge.hex is too big to be a list of colors.');
+  expect(toastAction.value).toBe(null);
+  expect(emitted).toEqual([]);
+  expect(read).not.toHaveBeenCalled();
 });
 
 test('the import toast goes with the editor, so its Put back is never left doing nothing; another toast since is left alone', async () => {

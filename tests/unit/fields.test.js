@@ -36,6 +36,10 @@ test('a checkbox or a button keeps Space and Enter; a radio its arrows too; a ta
   assert.deepEqual(owned(el('BUTTON', { role: 'tab' })), [' ', 'Enter', 'ArrowLeft']); // not Home and End: they scroll the art
 });
 
+test('a button of a grid walked by the keys (the Custom color list\'s swatches) keeps Space, Enter, the arrows, Home and End', () => {
+  assert.deepEqual(owned(el('BUTTON', { dataset: { walk: '' } })), [' ', 'Enter', 'ArrowLeft', 'ArrowUp', 'Home', 'End']);
+});
+
 test('anything else, Edit Mode\'s textarea, or nothing focused keeps no keys', () => {
   assert.deepEqual(owned(el('DIV')), []);
   assert.deepEqual(owned(el('A')), []); // no href: not a link

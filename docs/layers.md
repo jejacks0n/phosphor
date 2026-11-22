@@ -159,10 +159,12 @@ The settings on the left come in sections, each following a layer:
   **Color palette** with its **Color count** or **Palette colors**. These belong to the whole drawing, whichever
   layer is selected. **Palette colors** shows the Custom color list as swatches, one of them picked, with the picked
   color's chip (the system color picker), its hex, **◂** and **▸** to move it a place, and **Remove**; **+** adds a copy
-  of it at the end. A hex typed takes effect on **Enter** or leaving the field and **Escape** puts back the one in use;
-  a list of two or more colors typed or pasted there replaces every color. **Import** reads a `.hex` or `.txt` file's
-  colors in place of the list (the toast's **Put back** brings the old one back) and **Export** saves the list as a
-  `.hex` file. A changed color rewrites nothing drawn: paint and cells keep their colors and show as the nearest color in
+  of it at the end. The swatches are one **Tab** stop, the picked one: from there **←** and **→** pick the one before
+  or after, **↑** and **↓** the one a row away, and **Home** and **End** the first and last. A hex typed takes effect
+  on **Enter** or leaving the field and **Escape** puts back the one in use; a list of two or more colors typed or
+  pasted there replaces every color, and the toast's **Put back** brings the old list back. **Import** reads a `.hex`
+  or `.txt` file's colors in place of the list (again with **Put back**; a file over 1 MB isn't read) and **Export**
+  saves the list as a `.hex` file. A changed color rewrites nothing drawn: paint and cells keep their colors and show as the nearest color in
   the list. **Browse ▸**, beside Color palette whatever it's set to, opens the **Color palettes** dialog: **Library**
   holds sixteen-color palettes from Lospec, and **Favorites** the ones you starred, newest first, kept in this browser.
   Each card shows the palette's colors, its name (a link to its page on Lospec) and its author, and the search above

@@ -33,12 +33,18 @@ const write = (list) => {
 const recolored = (hex) => (colors.value.length ? withColor(colors.value, picked.value, hex) : [hex.toLowerCase()]);
 
 // What's typed is applied on Enter or on leaving the field: one color is the picked one's, two or more are the whole
-// list, and none changes nothing. The field then shows the picked color of the list written (its prop is the old list
-// until the next render, and a color typed as it was, in capitals, isn't a new value to show).
+// list (with Put back, as Import's, since the field shows one color and what it replaced can't be seen), and none
+// changes nothing. The field then shows the picked color of the list written (its prop is the old list until the next
+// render, and a color typed as it was, in capitals, isn't a new value to show).
 const apply = (event) => {
   const typed = listColors(event.target.value);
-  const list = typed.length === 1 ? recolored(typed[0]) : typed.length ? firstColors(typed).colors : colors.value;
-  write(list);
+  let list = colors.value;
+  if (typed.length === 1) write((list = recolored(typed[0])));
+  else if (typed.length) {
+    const { colors: first, of } = firstColors(typed);
+    list = first;
+    if (!sameColors(list, colors.value)) replace(list, of ? t('colorList.typedCut', { n: of }) : t('colorList.typed', { n: typed.length }));
+  }
   event.target.value = list[Math.min(picked.value, list.length - 1)] ?? '';
 };
 const putBack = (event) => { event.target.value = current.value; };
@@ -76,6 +82,23 @@ const endPick = () => {
 };
 onBeforeUnmount(endPick);
 
+// The swatches are one Tab stop, the picked one, and the keys walk them as the grid they're drawn in: Left and Right
+// a swatch, Up and Down a row, Home and End to the first and last, stopping at the ends. Each picks the swatch it
+// reaches. The keys stop here, so they don't reach the app's (data-walk tells ownsKey the swatch keeps them).
+const ROW = 8;
+const STEP = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -ROW, ArrowDown: ROW };
+const onSwatchKey = (event, i) => {
+  if (event.altKey || event.metaKey || event.ctrlKey) return;
+  const last = colors.value.length - 1;
+  const to = { Home: 0, End: last }[event.key] ?? (STEP[event.key] === undefined ? null : i + STEP[event.key]);
+  if (to === null) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (to < 0 || to > last) return;
+  picked.value = to;
+  event.currentTarget.parentElement.children[to].focus();
+};
+
 // With a mouse or a pen a swatch can be dragged to another place; a finger's drag scrolls the settings, so it can't.
 const mouse = useMediaQuery('(pointer: fine)');
 let dragged = null;
@@ -94,24 +117,32 @@ const onDrop = (i) => {
   dragged = null;
 };
 
-// A .hex file (Lospec's: six digits a line) or any text with colors in it replaces the list, and the toast puts back
-// the list as it was, as it was written. The toast goes when the editor does, so no Put back is left that does nothing.
-const file = ref(null);
-let importToast = null;
+// A list typed or a file imported replaces the whole list, and its toast puts back the list as it was, as it was
+// written. The toast goes when the editor does (and the settings column makes a new editor for another drawing), so no
+// Put back is left that does nothing or writes one drawing's list onto another.
+let replacedToast = null;
 onBeforeUnmount(() => {
-  if (importToast) closeToast(importToast);
+  if (replacedToast) closeToast(replacedToast);
 });
+const replace = (list, message) => {
+  const before = props.modelValue;
+  write(list);
+  replacedToast = toast(message, { action: { label: t('colorList.putBack'), run: () => emit('update:modelValue', before) } });
+};
+
+// A .hex file (Lospec's: six digits a line) or any text with colors in it replaces the list. A file past MOST_BYTES
+// isn't read: no list of colors is that big, and reading one would hold the page.
+const MOST_BYTES = 1024 * 1024;
+const file = ref(null);
 const onFile = async (event) => {
   const [chosen] = event.target.files;
   event.target.value = ''; // so the same file can be chosen again
   if (!chosen) return;
+  if (chosen.size > MOST_BYTES) return toast(t('colorList.tooBig', { name: chosen.name }));
   const found = listColors(await chosen.text());
   if (!found.length) return toast(t('colorList.noColors', { name: chosen.name }));
-  const before = props.modelValue, { colors: list, of } = firstColors(found);
-  write(list);
-  importToast = toast(of ? t('colorList.importedCut', { name: chosen.name, n: of }) : t('colorList.imported', { name: chosen.name }), {
-    action: { label: t('colorList.putBack'), run: () => emit('update:modelValue', before) },
-  });
+  const { colors: list, of } = firstColors(found);
+  replace(list, of ? t('colorList.importedCut', { name: chosen.name, n: of }) : t('colorList.imported', { name: chosen.name }));
 };
 const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 'text/plain' }), `${fileStem(props.name, 'hex') || 'palette'}.hex`);
 </script>
@@ -129,8 +160,11 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
           :aria-label="t('colorList.swatch', { hex, n: i + 1, count: colors.length })"
           :title="hex"
           :aria-pressed="String(i === picked)"
+          :tabindex="i === picked ? 0 : -1"
+          data-walk
           :draggable="mouse"
           @click="picked = i"
+          @keydown="onSwatchKey($event, i)"
           @dragstart="onDragStart($event, i)"
           @dragover="onDragOver"
           @drop.prevent="onDrop(i)"
