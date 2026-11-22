@@ -242,6 +242,26 @@ test('Nothing is sent while a slider move is open; once it ends, one snapshot go
   expect(shown(log.arts[1].cells)).toEqual(shown(project.cells));
 });
 
+test('Nothing is sent while a color is picked; once the pick ends, one snapshot goes', async () => {
+  const socket = await goLive();
+  const log = await watcherOn(socket);
+  const sent = channelSends();
+  project._colorPick = true;
+  Object.assign(project, { quantize: 'palette', palette: '#ff0000 #000000' });
+  await settle(project);
+  project.palette = '#00ff00 #000000';
+  await settle(project);
+  await wait(400);
+  expect(log.arts).toHaveLength(1);
+  expect(sent()).toEqual([]);
+
+  project._colorPick = false;
+  await expect.poll(() => log.arts.length, PATIENT).toBe(2);
+  await wait(300);
+  expect(sent().map((m) => m.t)).toEqual(['snapshot']);
+  expect(shown(log.arts[1].cells)).toEqual(shown(project.cells));
+});
+
 test('Two changeSettings within a second send one settings, then the latest; settings-now replaces the room, keeping the welcome', async () => {
   const socket = await goLive();
   const settings = () => socket.sent.filter((m) => m.type === 'settings');
