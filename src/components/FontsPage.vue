@@ -353,7 +353,26 @@ const showZoom = async (event, n, char, f) => {
   zoom.value.top = above >= 8 ? above : cell.bottom + 6;
   el.focus({ preventScroll: true });
 };
-const clickSlot = (event, n) => (picked.value && !inRoom.value ? setSlot(n) : showZoom(event, n, chars.value[n], chosen.value));
+// A long press shows the slot large whatever a click would do (set a block's or a line piece's slot), and the click
+// that ends it lands nowhere.
+let pressTimer = 0, longPressed = false;
+const pressSlot = (event, open) => {
+  clearTimeout(pressTimer);
+  longPressed = false;
+  const target = event.currentTarget;
+  pressTimer = setTimeout(() => {
+    longPressed = true;
+    open({ currentTarget: target });
+  }, 500);
+};
+const releaseSlot = () => clearTimeout(pressTimer);
+const pressedLong = (n) => longPressed && zoom.value?.n === n;
+const chosenZoom = (event, n) => (zoom.value?.n === n ? null : showZoom(event, n, chars.value[n], chosen.value));
+const clickSlot = (event, n) => {
+  if (pressedLong(n)) return;
+  return picked.value && !inRoom.value ? setSlot(n) : showZoom(event, n, chars.value[n], chosen.value);
+};
+const libFace = computed(() => libEntry.value && preview.value && { kind: 'bitmap', height: libEntry.value.height, family: preview.value.family });
 const zoomOut = () => { closeZoom(); emit('acted'); };
 watch([chosenId, () => libEntry.value?.id, picked, section], closeZoom);
 useEventListener(document, 'pointerdown', (e) => { if (zoom.value && !e.target.closest?.('span.cell, .glyph-zoom')) closeZoom(); }, true);
@@ -567,6 +586,11 @@ const exportPalettes = () => {
               class="cell"
               :class="{ role: blockAt.has(i), picked: !!blockAt.get(i)?.some((b) => BLOCKS[b].key === picked) }"
               @mouseenter="hovered = i"
+              @pointerdown="pressSlot($event, (e) => chosenZoom(e, i))"
+              @pointerup="releaseSlot"
+              @pointerleave="releaseSlot"
+              @pointercancel="releaseSlot"
+              @contextmenu.prevent
               @click="clickSlot($event, i)"
           >{{ c === '␀' ? ' ' : c }}</span>
         </div>
@@ -606,7 +630,18 @@ const exportPalettes = () => {
       </div>
       <template v-if="previewChars">
         <div class="grid sheet" :style="styleOf({ kind: 'bitmap', height: libEntry.height, family: preview.family })" @mouseleave="hovered = null">
-          <span v-for="(c, i) in previewChars" :key="i" class="cell" @mouseenter="hovered = i" @click="showZoom($event, i, c, { kind: 'bitmap', height: libEntry.height, family: preview.family })">{{ c === '␀' ? ' ' : c }}</span>
+          <span
+              v-for="(c, i) in previewChars"
+              :key="i"
+              class="cell"
+              @mouseenter="hovered = i"
+              @pointerdown="pressSlot($event, (e) => zoom?.n !== i && showZoom(e, i, c, libFace))"
+              @pointerup="releaseSlot"
+              @pointerleave="releaseSlot"
+              @pointercancel="releaseSlot"
+              @contextmenu.prevent
+              @click="pressedLong(i) || showZoom($event, i, c, libFace)"
+          >{{ c === '␀' ? ' ' : c }}</span>
         </div>
         <div class="info">{{ hovered === null ? t('palette.fonts.slotHint') : t('palette.fonts.slot', { n: hovered, char: previewChars[hovered] }) }}</div>
       </template>
@@ -926,6 +961,8 @@ div.grid.sheet.picking { /* a block is picked: a click here sets its slot */
 }
 
 span.cell {
+  -webkit-touch-callout: none; /* a long press is a closer look, not the phone's menu */
+  user-select: none;
   display: flex;
   align-items: center;
   justify-content: center;

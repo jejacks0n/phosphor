@@ -882,7 +882,7 @@
       "removeTitle": "Forget this browser's copy of the font",
       "sheetNote": "All 256 slots, as the font draws them",
       "slot": "Slot {n} {char}",
-      "slotHint": "Hover a slot to see its number; click it for a closer look.",
+      "slotHint": "Hover a slot to see its number; click it for a closer look, or press and hold while setting a block or a line piece.",
       "trueTypeNote": "A TrueType font draws any character, so it has no slots, and it isn't saved in the drawing. Using it takes the drawing's bitmap font away.",
       "pangram": "The quick brown fox jumps over the lazy dog",
       "blocks": "Blocks",

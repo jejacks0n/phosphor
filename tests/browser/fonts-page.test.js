@@ -1319,6 +1319,24 @@ test('with a block picked, a click on a slot sets it rather than showing it larg
   expect(document.querySelector('.glyph-zoom')).toBeNull();
 });
 
+test('with a block or a line piece picked, a long press on a slot shows it large, and its click sets nothing', async () => {
+  const { project } = await mount({ font: lowerAt240 });
+  await press(tile('Lower'));
+  const hold = async (cell) => {
+    cell.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    await vi.waitFor(() => expect(document.querySelector('.glyph-zoom')?.getAttribute('aria-label')).toMatch(/^Slot 254 /), { timeout: 2000 });
+    cell.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    await press(cell); // the click that ends the press
+  };
+  await hold(slotCell(254));
+  expect(blocksOf(project.drawingFont)[1]).toBe(240); // not set
+  expect(document.querySelector('.glyph-zoom')).toBeTruthy(); // and still open
+  slotCell(254).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); // a short press is a click again
+  slotCell(254).dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  await press(slotCell(254));
+  expect(blocksOf(project.drawingFont)[1]).toBe(254);
+});
+
 test("a library font that can't be fetched shows its sample instead of its slots", async () => {
   await wide();
   const index = FIXTURE();
