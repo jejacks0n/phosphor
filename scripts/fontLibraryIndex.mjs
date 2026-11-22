@@ -83,6 +83,11 @@ export function nameOf(path) {
   return `${file.replace(/_2x$/i, '').replace(/_/g, ' ')}${doubled ? ' (doubled)' : ''}`;
 }
 
+// The name a mirrored file is stored under. The dev server and the preview read an address the way decodeURI does,
+// leaving %26 (&), %2B (+), %23 (#) and their like as they are, so a file with one of those in its name is never found
+// there. The stored name has them escaped already, and % with them, so decodeURIComponent gives the font's own path back.
+export const storedPath = (path) => path.replace(/[%;?:@&=+$,#]/g, encodeURIComponent);
+
 export function buildIndex({ files, about = {}, collections = {}, sauceNames = {} }) {
   const fonts = [];
   const seen = new Map(); // fontId -> collection that listed it first
@@ -102,7 +107,7 @@ export function buildIndex({ files, about = {}, collections = {}, sauceNames = {
     const sample = new Uint8Array(SAMPLE_SLOTS.length * height);
     SAMPLE_SLOTS.forEach((slot, i) => sample.set(glyphRows(font, slot), i * height));
     const entry = {
-      id: path, fontId: id, name: font.name, file: path, height, width: ownWidthOf(font), collection,
+      id: path, fontId: id, name: font.name, file: storedPath(path), height, width: ownWidthOf(font), collection,
       machine: machineOf(path), chars: charsOf(path),
       ready: findBlocks(font).every((s) => s !== null),
       about: about[path], sample: Buffer.from(sample).toString('base64'),

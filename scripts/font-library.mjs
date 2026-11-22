@@ -5,7 +5,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildIndex } from './fontLibraryIndex.mjs';
+import { buildIndex, storedPath } from './fontLibraryIndex.mjs';
 import { LINKED_FONTS } from '../src/lib/linkedFonts.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'fonts', 'library');
@@ -111,8 +111,8 @@ async function main({ indexOnly = false } = {}) {
     const srcOf = new Map(upstream.map((u) => [u.path, u.src]));
     for (const path of plan.fetch) {
       const bytes = Buffer.from(await (await get(`https://raw.githubusercontent.com/${repo}/master/${srcOf.get(path).split('/').map(encodeURIComponent).join('/')}`)).arrayBuffer());
-      await mkdir(dirname(join(ROOT, path)), { recursive: true });
-      await writeFile(join(ROOT, path), bytes);
+      await mkdir(dirname(join(ROOT, storedPath(path))), { recursive: true });
+      await writeFile(join(ROOT, storedPath(path)), bytes);
       local.set(path, upstream.find((u) => u.path === path).sha);
       changed++;
     }
@@ -127,8 +127,9 @@ async function main({ indexOnly = false } = {}) {
     await writeFile(join(ROOT, 'viler', 'FONTS.TXT'), fontsTxt);
   }
 
-  const paths = (await walk(ROOT)).sort();
-  const files = await Promise.all(paths.map(async (path) => ({ path, bytes: new Uint8Array(await readFile(join(ROOT, path))) })));
+  // The files are stored under escaped names (storedPath); the index is built from each font's own path.
+  const paths = (await walk(ROOT)).map(decodeURIComponent).sort();
+  const files = await Promise.all(paths.map(async (path) => ({ path, bytes: new Uint8Array(await readFile(join(ROOT, storedPath(path)))) })));
   const { index, sauce } = buildIndex({
     files, collections: COLLECTIONS, sauceNames: SAUCE_NAMES, about: aboutFor(paths, parseAbout(fontsTxt)),
   });
