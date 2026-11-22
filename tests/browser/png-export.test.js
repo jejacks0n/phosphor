@@ -7,7 +7,7 @@ import { pngBlob } from '@/lib/PngFile.js';
 import { charRowsOf } from '@/lib/Cells.js';
 import SaveDialog from '@/components/SaveDialog.vue';
 import { setDisplayFont } from '@/lib/displayFonts.js';
-import { font11 } from '../support/blockFonts.js';
+import { font11, font7 } from '../support/blockFonts.js';
 
 afterEach(() => vi.restoreAllMocks());
 // An export waits for a frame to show its note, then draws and packs the picture, on a machine that may be busy with
@@ -140,6 +140,26 @@ test('in an 8×11 font a PNG is 11 pixels a line, a ▄ cell 5 rows of its backg
     const at = (row) => [...shot.data.slice(4 * (row * shot.width + 8), 4 * (row * shot.width + 8) + 3)];
     for (let row = 0; row < 5; row++) expect(at(row)).toEqual([0x00, 0x44, 0xaa]);
     for (let row = 5; row < 11; row++) expect(at(row)).toEqual([0xff, 0xee, 0x00]);
+  } finally {
+    await setDisplayFont('jetbrains');
+  }
+});
+
+test('in a font drawn at its own width of 7 a PNG is 7 pixels a column', async () => {
+  const { project, workspace } = await createTestApp();
+  const { cellWidth, ...seven } = font7;
+  await project.setDrawingFont({ ...seven, width: cellWidth }); // answered: drawn at its own width
+  await project.setBlankCanvas({ withLayer: true, cols: 6, rows: 4 });
+  await setDisplayFont(workspace.displayFontSpec);
+  try {
+    expect(project.drawingFont.cellWidth).toBe(7);
+    project.typeAt(1, 0, '█', { fg: '#ffee00', bg: '#0044aa' });
+    project.commitEdit();
+    await settle(project);
+    const download = nextDownload();
+    await project.exportFile('png', { filename: 'art', smooth: false });
+    const png = await decoded((await download).bytes);
+    expect([png.width, png.height]).toEqual([6 * 7, 2 * 8]); // 6 columns of 7 pixels, 2 lines of 8
   } finally {
     await setDisplayFont('jetbrains');
   }
