@@ -169,7 +169,7 @@ div.dropdown-content {
   gap: 2px;
   background: var(--surface-1);
   border: 1px solid var(--accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 50%, transparent);
 }
 
 /* Anchored to the trigger: lined up with its right edge (or its left, with align left), below it (or above, with

@@ -8,15 +8,17 @@ export const MOST_MANIFEST_BYTES = 65536;
 export const MOST_SCRIPT_BYTES = 1048576;
 export const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
-// The color custom properties of :root in global.css, without their dashes. --logo, the display font, --white,
-// --black and --accent-glow (worked out from the accent) aren't slots. The list can grow, never shrink: an unknown
-// key refuses a manifest.
+// The color custom properties of :root in global.css, without their dashes, in its order. --logo and the fonts aren't
+// slots. accent-glow is worked out from the accent unless a theme sets it. The list can grow, never shrink: an unknown
+// key refuses a manifest, so a theme that sets a slot added later isn't read by a copy of Phosphor from before it.
 export const COLOR_SLOTS = Object.freeze([
+  'white', 'black',
   'background', 'background-highlight',
-  'accent', 'accent-hot', 'accent-hover', 'accent-faint', 'danger', 'danger-hover', 'warning', 'success',
+  'accent', 'accent-hot', 'accent-hover', 'accent-glow', 'accent-faint', 'danger', 'danger-hover', 'warning', 'success',
   'surface-dark', 'surface-0', 'surface-1', 'surface-2', 'surface-3', 'surface-4', 'surface-light',
   'border', 'border-dark', 'border-subtle', 'border-light',
   'text', 'text-dim', 'text-muted', 'text-faint', 'text-inverted',
+  'shadow', 'guide', 'toast', 'toast-text', 'wand-fill',
 ]);
 const SLOTS = new Set(COLOR_SLOTS);
 

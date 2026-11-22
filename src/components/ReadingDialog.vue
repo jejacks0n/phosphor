@@ -54,7 +54,7 @@ dialog.reading-dialog {
   border-radius: 12px;
   color: var(--text);
   line-height: 1.6;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 40px color-mix(in srgb, var(--shadow) 60%, transparent);
 }
 dialog.reading-dialog[open] { /* only while open: closed, the dialog's hidden */
   display: flex;

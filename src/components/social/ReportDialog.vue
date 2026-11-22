@@ -143,7 +143,7 @@ p.reported {
   border-radius: 12px;
   color: var(--text);
   font-size: 13px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 40px color-mix(in srgb, var(--shadow) 60%, transparent);
 }
 p.reported:empty {   /* waiting for its words: there for screen readers, not seen */
   width: 1px;

@@ -312,7 +312,7 @@ div.viewport {
     border: 0;
     border-radius: 0;
     transition: transform 0.2s ease;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 40%, transparent);
   }
 
   section.edit-workspace.settings-open {

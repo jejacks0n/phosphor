@@ -312,7 +312,7 @@ div.color-popover {
   background: var(--surface-1);
   border: 1px solid var(--accent);
   border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--shadow) 60%, transparent);
   display: flex;
   flex-direction: column;
   gap: 6px;

@@ -23,7 +23,7 @@ async function installMidnight(page) {
   const chooser = page.waitForEvent('filechooser');
   await dialog(page).getByRole('button', { name: 'Install from a file…' }).click();
   await (await chooser).setFiles(MANIFEST);
-  await expect(dialog(page).getByRole('heading', { name: 'Install Midnight 1.1.0?' })).toBeVisible();
+  await expect(dialog(page).getByRole('heading', { name: 'Install Midnight 1.2.0?' })).toBeVisible();
   await dialog(page).getByRole('button', { name: /^Install Adds 1 theme/ }).click();
   await expect(dialog(page).getByRole('switch', { name: 'Midnight' })).toBeVisible();
   await dialog(page).getByRole('button', { name: 'Close' }).click();
@@ -208,10 +208,10 @@ test('after a reload the dialog opens on Installed, and a higher listed version 
   await installedTab(page);
   await expect(dialog(page).getByRole('switch', { name: 'Midnight' })).toBeVisible();
 
-  const manifest = JSON.stringify({ ...JSON.parse(await readFile(MANIFEST, 'utf8')), version: '1.2.0' }, null, 2) + '\n';
+  const manifest = JSON.stringify({ ...JSON.parse(await readFile(MANIFEST, 'utf8')), version: '1.3.0' }, null, 2) + '\n';
   const newer = JSON.parse(JSON.stringify(LIST));
   const entry = newer.plugins.find((p) => p.manifest.id === 'phosphor.midnight');
-  entry.manifest.version = '1.2.0';
+  entry.manifest.version = '1.3.0';
   entry.manifestHash = createHash('sha256').update(manifest).digest('hex');
   await page.unroute('**/plugins.json');
   await page.unroute(`${RAW}**`);
@@ -221,7 +221,7 @@ test('after a reload the dialog opens on Installed, and a higher listed version 
   await openPlugins(page);
   await expect(dialog(page).getByRole('tab', { name: /^Installed/ })).toHaveAttribute('aria-selected', 'true');
   await dialog(page).getByRole('button', { name: 'Update Midnight' }).click();
-  await expect(dialog(page).getByRole('heading', { name: 'Replace Midnight 1.1.0 with 1.2.0?' })).toBeVisible();
+  await expect(dialog(page).getByRole('heading', { name: 'Replace Midnight 1.2.0 with 1.3.0?' })).toBeVisible();
 });
 
 test('on a phone the Plugins dialog fills the window and × closes it', async ({ page }) => {

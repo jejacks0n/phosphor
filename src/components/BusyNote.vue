@@ -26,7 +26,7 @@ div.busy-note {
   color: var(--text);
   font-size: 12px;
   white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--shadow) 50%, transparent);
   overflow: hidden;
   pointer-events: none;
   animation: busy-in 0.15s 0.5s both;
