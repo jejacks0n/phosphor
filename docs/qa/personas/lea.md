@@ -459,14 +459,15 @@ and sideways.
 ### 32. Smear her selfie
 - Does: closes the dialog, picks her layer ("doodles") in Layers, opens ⋯ in the toolbar and picks Smear; drags a finger
   across her face, from her cheek out past its edge; sets Strength to 100 and Size to 12 and smears again; picks Reads →
-  This layer and smears where she hasn't painted; undoes the last two strokes from Actions → Undo.
+  This layer and smears where she hasn't painted, then from her own doodle out past its edge; undoes the last three
+  strokes from Actions → Undo.
 - Expects: Smear is in ⋯ after the built-in tools, with its own icon, named "Smear (Smear)"; chosen, its options show in
   the options row in its words (Size, Strength, Reads), fitting 390 wide or folding into the row's own ⋯; a drag drags
   the colors under it along the way her finger went, softer at the brush's edge, and in ANSI the smeared cells take the
   new colors in characters her layer's Characters settings choose, as for any converted cell, with no ▄ half-blocks
   (where it crosses her caption, its letters stay and are tinted; Colors only's paint, [R5](../../model.md#r5-colors-only-makes-paint-of-whats-paint-to-it-and-tints-a-character-of-someones-own));
   a higher Strength smears more; with This layer a stroke where the layer has no
-  paint changes nothing; each stroke is one undo step ([Writing a brush](../../plugins.md#writing-a-brush)).
+  paint changes nothing, and one from her doodle out drags its colors into the clear layer past its edge; each stroke is one undo step ([Writing a brush](../../plugins.md#writing-a-brush)).
 - Probes: `out-of-order`: tap once without dragging (a press alone changes nothing); `extremes`: Strength 0 (nothing
   changes) and Size 20; `again`: reload and check Smear's Size and Strength are as she left them (they're kept in the
   browser, not the drawing).
@@ -482,7 +483,7 @@ and sideways.
   star eight-pointed in the same box, and Round reshapes it as she drags, each one undo step; the second star comes out
   eight-pointed with her Round, as the first now is; each star is one undo step, and a path the Node tool can edit
   ([Shape](../../vector.md#shape-u), [Writing a shape](../../plugins.md#writing-a-shape)).
-- Probes: `back-out`: tap without dragging (it makes nothing); `extremes`: Points 1 and 20, and Pinch 4; `undo-redo`:
+- Probes: `back-out`: tap without dragging (it makes nothing); `extremes`: Points 1 and 20, and Pinch 1; `undo-redo`:
   undo the star from Actions → Undo, then Redo; `out-of-order`: move a point of the first star with the Node tool, pick
   the Shape tool and change Points (that star stays as she edited it).
 - Rated: no (drawing)

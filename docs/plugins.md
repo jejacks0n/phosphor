@@ -540,7 +540,7 @@ export default {
     icon: '<svg viewBox="0 0 16 16">…</svg>',
     options: [
       { id: 'points', kind: 'slider', name: 'Points', min: 1, max: 20, step: 1, default: 5 },
-      { id: 'pinch', kind: 'slider', name: 'Pinch', min: 0.1, max: 4, step: 0.1, default: 0.3 },
+      { id: 'pinch', kind: 'slider', name: 'Pinch', min: 0.1, max: 1, step: 0.1, default: 0.3 },
       { id: 'round', kind: 'slider', name: 'Round', min: 0.1, max: 4, step: 0.1, default: 1.7 },
     ],
     outline,   // the shape in a box of its own, 0 to 1 across and down

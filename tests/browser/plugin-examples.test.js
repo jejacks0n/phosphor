@@ -105,6 +105,23 @@ test('Smear: Reads This layer on a clear layer changes nothing; What shows smear
   expect(paintAt(project, 11, 10)).toBe(null);
 });
 
+test('Smear: Reads This layer carries the layer\'s paint out into where it\'s clear, as What shows does', async () => {
+  const { project, workspace, ref, stroke } = await smearing();
+  project.putEditPixels(RED_BLUE.filter(({ x }) => x < 10)); // red, and the layer clear right of it
+  project.commitEdit();
+  for (const reads of [1, 0]) {
+    workspace.pluginTools[`brush:${ref}`] = { reads };
+    stroke([at(4, 10), at(8, 10), at(12, 10), at(16, 10)]);
+    // The first clear pixel takes Strength's 60% of the red a step back of it; the next has clear a step back (as the
+    // stroke began), so it's left alone; the red beside the edge has red a step back.
+    expect(paintAt(project, 10, 10), `reads ${reads}`).toMatchObject({ r: 255, g: 0, b: 0 });
+    expect(paintAt(project, 10, 10).a).toBeCloseTo(0.6, 2);
+    expect(paintAt(project, 9, 10)).toEqual(RED);
+    if (reads === 1) expect(paintAt(project, 11, 10)).toBe(null);
+    project.undo();
+  }
+});
+
 // ---- Superformula ----
 
 const outlineOf = async (values = {}) => {
