@@ -43,7 +43,9 @@ test('the Font field chooses; Manage fonts opens the Fonts page', async () => {
   expect(host.querySelector('input[type="file"]')).toBeNull();
   for (const gone of ['Load font', 'Save .F08', 'Save PNG', 'Remove']) expect(labels()).not.toContain(gone);
   expect(manage().hasAttribute('data-palette-toggle')).toBe(true); // a click while it's open doesn't close it first
+  workspace.settingsOpen = true; // a phone's settings drawer, where the field is
   manage().click();
+  expect(workspace.settingsOpen).toBe(false); // shut, so the Fonts page shows whole
   expect(workspace.paletteLayerPage).toBe('fonts');
   expect(workspace.paletteLayerOpen).toBe(true);
   expect(workspace.editorTab).toBe('input'); // the art was showing: it stays where it was
@@ -73,7 +75,9 @@ test('a font that can\'t be chosen says why, and the dropdown goes back to the f
   const select = host.querySelector('select');
   select.value = 'gone';
   select.dispatchEvent(new Event('change'));
-  await expect.poll(() => host.querySelector('[role="alert"]')?.textContent).toBe('That font isn\'t in this browser anymore. Load it again.');
+  // The read of the browser's font store waits behind other files' writes to it (the Fonts page's tests write all the
+  // time, side by side with these): past a second, now and then. So it's waited for, not timed.
+  await expect.poll(() => host.querySelector('[role="alert"]')?.textContent, { timeout: 5000 }).toBe('That font isn\'t in this browser anymore. Load it again.');
   expect(select.value).toBe('jetbrains');
   expect(project.drawingFont).toBeNull();
   // The next choice clears it.
