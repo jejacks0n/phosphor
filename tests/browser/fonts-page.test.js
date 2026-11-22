@@ -1026,6 +1026,40 @@ test('on a phone, Filters opens a sheet; Show N fonts or Escape closes it, and E
   expect(closes).toBe(0);
 });
 
+test('the Filters column sits left of the list but comes after the search in tab order', async () => {
+  await wide();
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  const aside = host.querySelector('aside.filters-side'), search = host.querySelector('.top input');
+  expect(search.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(aside.getBoundingClientRect().right).toBeLessThanOrEqual(host.querySelector('.list-side').getBoundingClientRect().left + 1);
+});
+
+test('the buttons that go away when pressed leave the keys with the layer', async () => {
+  await wide();
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  const focusPress = async (el) => { el.focus(); await press(el); await nextTick(); };
+  await press(chip('IBM PC'));
+  await focusPress(host.querySelector('button.clear-all')); // Clear all goes with the tags
+  await vi.waitFor(() => expect(host.querySelector('.palette-layer').contains(document.activeElement)).toBe(true));
+  await focusPress(host.querySelector('button.fold')); // « hands the focus to Filters
+  await vi.waitFor(() => expect(document.activeElement).toBe(host.querySelector('button.filters-open')));
+  await focusPress(host.querySelector('button.filters-open')); // and Filters back to «
+  await vi.waitFor(() => expect(document.activeElement).toBe(host.querySelector('button.fold')));
+});
+
+test('the phone sheet closing because the window widened leaves the keys with the layer', async () => {
+  onTestFinished(() => page.viewport(414, 896));
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await press(host.querySelector('button.filters-open'));
+  await vi.waitFor(() => expect(document.activeElement).toBe(host.querySelector('button.close-sheet')));
+  await page.viewport(1400, 900);
+  await vi.waitFor(() => expect(host.querySelector('.filters-sheet')).toBeNull());
+  await vi.waitFor(() => expect(host.querySelector('.palette-layer').contains(document.activeElement)).toBe(true));
+});
+
 test('Escape on a filter chip closes the layer', async () => {
   await wide();
   await mount({ library: FIXTURE() });

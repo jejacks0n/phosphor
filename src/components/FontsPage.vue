@@ -96,21 +96,29 @@ const tagList = computed(() => {
 const counts = computed(() => (index.value ? tagCounts(index.value) : new Map()));
 const toggleTag = (key) => { tags.value = tags.value.includes(key) ? tags.value.filter((k) => k !== key) : [...tags.value, key]; };
 const clearAll = () => { tags.value = []; filter.value = ''; };
-const clearTags = () => { tags.value = []; };
+// Clear all, «, and Filters go away once pressed: the focus goes to their counterpart, or back to the layer.
+const clearTags = () => { tags.value = []; emit('acted'); };
+const focusOn = async (selector) => { await nextTick(); page.value.querySelector(selector)?.focus(); };
+const foldFilters = () => { prefs.value.folded = true; focusOn('button.filters-open'); };
 // Folded, Filters opens the column; on a phone, a sheet over the layer, which gives the focus back to Filters on closing.
 const sheetOpen = ref(false);
-const openFilters = async () => {
-  if (props.stage !== 'phone') return void (prefs.value.folded = false);
+const openFilters = () => {
+  if (props.stage !== 'phone') {
+    prefs.value.folded = false;
+    return focusOn('.filters-head button.fold');
+  }
   sheetOpen.value = true;
-  await nextTick();
-  page.value.querySelector('button.close-sheet')?.focus();
+  focusOn('button.close-sheet');
 };
-const closeSheet = async () => {
+const closeSheet = () => {
   sheetOpen.value = false;
-  await nextTick();
-  page.value.querySelector('button.filters-open')?.focus();
+  focusOn('button.filters-open');
 };
-watch(() => props.stage, (stage) => { if (stage !== 'phone') sheetOpen.value = false; });
+watch(() => props.stage, (stage) => {
+  if (stage === 'phone' || !sheetOpen.value) return;
+  sheetOpen.value = false; // a window grown past a phone's: the column takes over
+  emit('acted');
+});
 // A library entry's From, License and Credit lines: [{ label, text, href?, tail? }].
 const originLines = (e) => {
   const lines = [];
@@ -351,15 +359,6 @@ const exportPalettes = () => {
 
 <template>
   <div ref="page" class="page fonts" :class="stage">
-    <!-- the library's tags, beside the list where there's room -->
-    <aside v-if="showColumn" class="filters-side">
-      <div class="filters-head">
-        <span class="title">{{ t('palette.fonts.filters') }}</span>
-        <button v-if="tags.length" class="clear-all" @click="clearTags">{{ t('palette.fonts.clearAll') }}</button>
-        <button class="fold" :aria-label="t('palette.fonts.foldFilters')" :title="t('palette.fonts.foldFilters')" @click="prefs.folded = true">«</button>
-      </div>
-      <FontFilters v-model:closed="prefs.closed" :groups="tagList" :counts="counts" :picked="tags" @toggle="toggleTag" />
-    </aside>
     <!-- a phone's filters: a sheet over the layer (Escape and the arrow keys stop at it) -->
     <div
         v-if="sheetOpen"
@@ -437,6 +436,15 @@ const exportPalettes = () => {
       </div>
     </div>
 
+    <!-- the library's tags, left of the list where there's room (after the search in tab order) -->
+    <aside v-if="showColumn" class="filters-side">
+      <div class="filters-head">
+        <span class="title">{{ t('palette.fonts.filters') }}</span>
+        <button v-if="tags.length" class="clear-all" @click="clearTags">{{ t('palette.fonts.clearAll') }}</button>
+        <button class="fold" :aria-label="t('palette.fonts.foldFilters')" :title="t('palette.fonts.foldFilters')" @click="foldFilters">«</button>
+      </div>
+      <FontFilters v-model:closed="prefs.closed" :groups="tagList" :counts="counts" :picked="tags" @toggle="toggleTag" />
+    </aside>
     <!-- the chosen font -->
     <div v-if="chosen" class="edit-side">
       <div class="head">
@@ -600,6 +608,7 @@ span.badge {
 }
 
 aside.filters-side {
+  order: -1; /* left of the list, though after it in the page */
   display: flex;
   flex: 0 0 200px;
   flex-direction: column;
